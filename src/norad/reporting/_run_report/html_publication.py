@@ -92,6 +92,8 @@ def _render_with_quarto(
         expected_identity=_expected_html_identity(context),
     )
     return output_path
+
+
 def publish_report(context: RenderContext) -> None:
     created = _create_directories(context.output_dir)
     output_dir_metadata = context.output_dir.lstat()

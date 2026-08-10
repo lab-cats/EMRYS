@@ -42,6 +42,8 @@ def _tool_first_line(path: Path, arguments: Sequence[str], label: str) -> str:
     if not line:
         _fail(f"{label} returned no version text")
     return line
+
+
 def _read_receipt_tsv(path: Path) -> dict[str, Any]:
     snapshot = html_report._snapshot_regular(path, "report output receipt")
     try:
@@ -68,6 +70,8 @@ def _read_receipt_tsv(path: Path) -> dict[str, Any]:
         _fail("Existing report receipt row order differs from its JSON record")
     html_report._assert_snapshot(snapshot, "report output receipt")
     return document
+
+
 def _validate_existing_bundle(
     receipt_path: Path,
     output_dir: Path,
@@ -115,6 +119,8 @@ def _validate_existing_bundle(
             f"its receipt: {sorted(str(path) for path in unexpected)}"
         )
     return snapshots
+
+
 def prepare_context(arguments: argparse.Namespace) -> BundleContext:
     requested = ("html", "pdf") if arguments.formats == "all" else (arguments.formats,)
     base_arguments = argparse.Namespace(

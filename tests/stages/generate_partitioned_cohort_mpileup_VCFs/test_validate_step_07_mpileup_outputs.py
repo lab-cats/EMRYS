@@ -1,30 +1,19 @@
-import csv
 import gzip
 import hashlib
-import importlib.util
 import subprocess
 import sys
 from pathlib import Path
-from types import ModuleType
 
 import pytest
 
+from tests.stage_validator_test_support import (
+    load_exact_module,
+    load_roster_oracle,
+)
+from tests.stage_validator_test_support import read_tsv as rows
+
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = (
-    ROOT
-    / "tests"
-    / "contract_integration"
-    / "validation_rosters"
-    / "validation_roster_expectations.py"
-)
-ROSTER_SPEC = importlib.util.spec_from_file_location(
-    "generate_partitioned_cohort_mpileup_vcfs_validation_roster_oracle",
-    ROSTER_ORACLE,
-)
-assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
-ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
-ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
-assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
+assert_exact_check_roster = load_roster_oracle(ROOT).assert_exact_check_roster
 SCRIPT = (
     ROOT
     / "src"
@@ -134,27 +123,6 @@ def run(values, *extra, cwd=ROOT):
     )
 
 
-def rows(path):
-    with path.open() as stream:
-        return list(csv.DictReader(stream, delimiter="\t"))
-
-
-def load_validator() -> ModuleType:
-    sys.modules.pop(TEST_MODULE_NAME, None)
-    spec = importlib.util.spec_from_file_location(TEST_MODULE_NAME, SCRIPT)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not exact-load validator: {SCRIPT}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[TEST_MODULE_NAME] = module
-    try:
-        spec.loader.exec_module(module)
-    except BaseException:
-        if sys.modules.get(TEST_MODULE_NAME) is module:
-            sys.modules.pop(TEST_MODULE_NAME, None)
-        raise
-    return module
-
-
 def test_dry_run_is_side_effect_free(tmp_path):
     values = fixture(tmp_path)
     assert run(values).returncode == 0
@@ -259,7 +227,7 @@ def test_post_build_input_mutation_preserves_valid_predecessor(
     input_paths = values[:-1]
     before = {path: path.read_bytes() for path in input_paths}
     target = input_paths[input_index]
-    validator = load_validator()
+    validator = load_exact_module(SCRIPT, TEST_MODULE_NAME)
     real_build = validator.build
 
     def mutate_after_build(args):

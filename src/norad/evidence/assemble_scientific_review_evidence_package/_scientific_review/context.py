@@ -104,9 +104,7 @@ def build_context(
         step08_sites.rows,
     )
     step09.validate_significant_subset(all_sites.rows, significant.rows)
-    register_table(
-        "step09_significant_sites", "Step 09 significant-sites", significant
-    )
+    register_table("step09_significant_sites", "Step 09 significant-sites", significant)
     step09_summary_table = step09.validate_step09_summary(
         paths["step09_summary"],
         analysis_id,
@@ -131,9 +129,7 @@ def build_context(
     mutation = step09.validate_mutation_spectrum(
         paths["step09_mutation_spectrum"], analysis_id, all_sites.rows
     )
-    register_table(
-        "step09_mutation_spectrum", "Step 09 mutation spectrum", mutation
-    )
+    register_table("step09_mutation_spectrum", "Step 09 mutation spectrum", mutation)
     for key, label in (
         ("step09_mutation_spectrum_pdf", "Step 09 mutation-spectrum PDF"),
         ("step09_depth_delta_pdf", "Step 09 depth-delta PDF"),

@@ -1,84 +1,50 @@
 # Task registry
 
-Task cards are temporary specifications for actionable work. They are not a
-historical archive: when a card is completed or retired, delete it. Git preserves
-the former scope and evidence.
+[`BACKLOG.md`](BACKLOG.md) is the single live inventory of open work and
+nonselectable proposals. It is intentionally coarse: one item records only its
+kind, genuine technological blockers, intent, and boundaries.
 
-Existing cards keep their current paths under `TODO/`, `IN_PROGRESS/`, or
-`INTEGRATION_REVIEW/`; selecting, pausing, resuming, or completing work does
-not move or rewrite a card. New actionable cards start under `cards/`.
-Nonselectable proposals remain under `UNREFINED/`.
+Create a detailed file under [`cards/`](cards/) only when an actionable item is
+selected. Delete that file when the package completes, pauses without an active
+execution plan, or is retired. Remove the backlog item only when the obligation
+is completed, absorbed into a named canonical owner, or explicitly retired.
+Git preserves former wording and completed detail.
 
-## Read-only status
+## Status
 
-From the repository root:
+Render the read-only derived view from the repository root:
 
 ```bash
-./scripts/git_orchestration/task_status.py --repo "$(git rev-parse --show-toplevel)"
+./scripts/git_orchestration/task_status.py \
+  --repo "$(git rev-parse --show-toplevel)"
 ```
 
-The output is derived from the surviving card files and is not registry
-authority.
+The view grants no approval and owns no priority or execution order. Preferred
+sequence belongs in [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md); current
+state and evidence belong in [`HANDOFF.md`](../operations/HANDOFF.md).
 
-## Actionable-card contract
+## Dependency meaning
 
-Actionable cards retain this heading order:
+`Blocked by` names only an open actionable item whose unavailable technical
+output prevents meaningful progress. It never encodes preference, chronology,
+approval, environment state, useful context, or a completed prerequisite.
+Proposals cannot block or be blocked. Reverse dependency views are derived.
 
-1. `Objective`
-2. `Why this exists`
-3. `Fixed decisions`
-4. `Blocked by`
-5. `Completion unblocks`
-6. `Prerequisites`
-7. `Required context`
-8. `Questions owned by this card`
-9. `In scope`
-10. `Out of scope`
-11. `Deliverables`
-12. `Acceptance evidence`
-13. `Canonical documentation updates`
-14. `Escalation conditions`
-15. `Completion record`
+The documentation gate rejects duplicate or unknown IDs, proposal blockers,
+self-dependencies, and cycles. Deleting a blocker without removing or replacing
+its dependent edge is an error; absence is never interpreted as completion.
 
-## Dependency semantics
+## Archived detail
 
-Dependency lines use the following shape, with real IDs and relative paths:
+The detailed predecessor registry is preserved at Git commit
+`755678ec28a6aa4e58149447704551312e365254`. Retrieve an old item without
+restoring it to the worktree:
 
-```text
-- CARD-ID, relative/path.md — Required: reason
-- CARD-ID, relative/path.md — Fully: result
-- CARD-ID, relative/path.md — Partially: result
+```bash
+git show 755678ec28a6aa4e58149447704551312e365254:docs/tasks/TODO/<file>.md
+git show 755678ec28a6aa4e58149447704551312e365254:docs/tasks/UNREFINED/<file>.md
 ```
 
-Use `- None.` when a section has no edges. A referenced card that still
-exists is an open dependency. A referenced card that has been deleted is
-treated as satisfied; surviving cards are intentionally not repaired when
-completed cards disappear. Self-dependencies and cycles among surviving cards
-remain invalid.
-
-A card owns only its bounded objective, dependencies, deliverables, acceptance,
-documentation triggers, and escalation conditions. Current state, commands,
-topology, rationale, and evidence belong in their canonical documents.
-
-## `UNREFINED` proposals
-
-`UNREFINED` preserves rough ideas without making them selectable work. Each
-proposal has exactly one H1, the standard proposal-state line, and these
-headings in order:
-
-1. `Proposal`
-2. `Why preserve it`
-3. `Settled boundaries`
-4. `Questions before refinement`
-5. `Promotion conditions`
-
-Proposals do not carry task dependencies, priority, implementation authority,
-or completion records. Promotion requires explicit review and a new actionable
-card; do not mutate the proposal into one.
-
-## Validation
-
-`make -s documentation-check` validates live-document links and anchors,
-Mermaid sources, proposal shape, actionable-card structure, and dependency
-cycles among surviving cards. Link targets inside card bodies and
-`docs/history` are intentionally frozen and are not path-repair obligations.
+The compact item is live authority. Archived prose is refinement input only;
+reconcile it against current code, contracts, decisions, questions, and Git
+state before creating a JIT card.

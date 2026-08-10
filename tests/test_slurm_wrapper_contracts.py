@@ -9,467 +9,24 @@ from dataclasses import dataclass, fields
 from pathlib import Path
 
 import pytest
+from slurm_wrapper_cases import (
+    CONTRACTS,
+    DELEGATED_FIXTURES,
+    DELEGATED_JOBS,
+    EMPTY_ARRAY_DRY_RUN_DEFECTS,
+    ENV_BASH_JOBS,
+    EXECUTABLE_JOBS,
+    JOB_PATHS,
+    NO_EXPLICIT_MODE_JOBS,
+    SBATCH_DIRECTIVES,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 JOBS_ROOT = REPO_ROOT / "jobs"
-JOB_PATHS = {
-    "step_00a_build_novogene_star_index.slurm": Path(
-        "src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm"
-    ),
-    "step_00b_gtf_to_bed12.slurm": Path(
-        "src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm"
-    ),
-    "step_00c_prepare_gatk_reference.slurm": Path(
-        "src/norad/stages/construct_FASTA_sidecars/"
-        "step_00c_prepare_gatk_reference.slurm"
-    ),
-    "step_01_star_align.slurm": Path(
-        "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm"
-    ),
-    "step_02_sort_index_bam.slurm": Path(
-        "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.slurm"
-    ),
-    "step_02b_bam_qc.slurm": Path(
-        "src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.slurm"
-    ),
-    "step_03_infer_strandedness_and_orientation.slurm": Path(
-        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
-        "step_03_infer_strandedness_and_orientation.slurm"
-    ),
-    "step_04_mark_duplicates.slurm": Path(
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.slurm"
-    ),
-    "step_05_split_n_cigar_reads.slurm": Path(
-        "src/norad/stages/split_N_cigar_reads_with_GATK/"
-        "step_05_split_n_cigar_reads.slurm"
-    ),
-    "step_06_split_bam_by_read_orientation.slurm": Path(
-        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
-        "step_06_split_bam_by_read_orientation.slurm"
-    ),
-    "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": Path(
-        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
-        "step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
-    ),
-    "step_08_vcf_preprocessing.slurm": Path(
-        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
-        "step_08_vcf_preprocessing.slurm"
-    ),
-    "step_09_cmh_editing_site_calling.slurm": Path(
-        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
-        "step_09_cmh_editing_site_calling.slurm"
-    ),
-    "tool_check.slurm": Path("src/norad/evidence/runtime_preflight/tool_check.slurm"),
-    "validate_manifest.slurm": Path(
-        "src/norad/ingestion/sample_manifest_admission/validate_manifest.slurm"
-    ),
-}
 
 
 def job_path(name: str) -> Path:
     return REPO_ROOT / JOB_PATHS[name]
-
-
-@dataclass(frozen=True)
-class WrapperContract:
-    default: str
-    execute: str
-    invalid_mode: str
-    module_policy: str
-    module_calls: tuple[str, ...]
-    submit_cwd: str
-    delegation: str
-    output_validation: str
-    exit_propagation: str
-
-
-CONTRACTS = {
-    "step_00a_build_novogene_star_index.slurm": WrapperContract(
-        default="legacy_implicit_execute",
-        execute="implicit_only",
-        invalid_mode="not_applicable",
-        module_policy="strict",
-        module_calls=("load star/2.7.11b", "list"),
-        submit_cwd="caller",
-        delegation="embedded_star",
-        output_validation="none_after_child_success",
-        exit_propagation="strict",
-    ),
-    "step_00b_gtf_to_bed12.slurm": WrapperContract(
-        default="legacy_implicit_execute",
-        execute="implicit_only",
-        invalid_mode="not_applicable",
-        module_policy="strict_loads_tolerated_lists",
-        module_calls=("list", "load bedtools/2.31.1", "list"),
-        submit_cwd="required",
-        delegation="embedded_python_and_bedtools",
-        output_validation="bed12_field_count",
-        exit_propagation="strict",
-    ),
-    "step_00c_prepare_gatk_reference.slurm": WrapperContract(
-        default="dry_run_with_bash32_empty_array_defect",
-        execute="explicit",
-        invalid_mode="reject",
-        module_policy="tolerated",
-        module_calls=("list", "load samtools/1.19.2", "list"),
-        submit_cwd="fallback",
-        delegation=(
-            "src/norad/stages/construct_FASTA_sidecars/"
-            "step_00c_prepare_gatk_reference.sh"
-        ),
-        output_validation="wrapper_files",
-        exit_propagation="strict",
-    ),
-    "step_01_star_align.slurm": WrapperContract(
-        default="dry_run_with_fixture_side_effects",
-        execute="explicit",
-        invalid_mode="reject",
-        module_policy="strict_loads_tolerated_lists",
-        module_calls=("list", "load star/2.7.11b", "list"),
-        submit_cwd="caller",
-        delegation=("src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"),
-        output_validation="delegate_only",
-        exit_propagation="strict",
-    ),
-    "step_02_sort_index_bam.slurm": WrapperContract(
-        default="dry_run_creates_output_directory_with_bash32_empty_array_defect",
-        execute="explicit",
-        invalid_mode="reject",
-        module_policy="strict_loads_tolerated_lists",
-        module_calls=("list", "load samtools/1.19.2", "list"),
-        submit_cwd="caller",
-        delegation=(
-            "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh"
-        ),
-        output_validation="wrapper_files",
-        exit_propagation="strict",
-    ),
-    "step_02b_bam_qc.slurm": WrapperContract(
-        default="dry_run_creates_output_directory_with_bash32_empty_array_defect",
-        execute="explicit",
-        invalid_mode="reject",
-        module_policy="strict_loads_tolerated_lists",
-        module_calls=("load samtools/1.19.2", "list"),
-        submit_cwd="required",
-        delegation=(
-            "src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh"
-        ),
-        output_validation="wrapper_files",
-        exit_propagation="strict",
-    ),
-    "step_03_infer_strandedness_and_orientation.slurm": WrapperContract(
-        default="dry_run_with_bash32_empty_array_defect",
-        execute="explicit",
-        invalid_mode="reject",
-        module_policy="tolerated",
-        module_calls=("list",),
-        submit_cwd="fallback",
-        delegation=(
-            "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
-            "step_03_infer_strandedness_and_orientation.sh"
-        ),
-        output_validation="wrapper_files",
-        exit_propagation="strict",
-    ),
-    "step_04_mark_duplicates.slurm": WrapperContract(
-        default="dry_run_with_bash32_empty_array_defect",
-        execute="explicit",
-        invalid_mode="reject",
-        module_policy="strict_loads_tolerated_lists",
-        module_calls=(
-            "list",
-            "load picard/3.1.1",
-            "load samtools/1.19.2",
-            "list",
-        ),
-        submit_cwd="fallback",
-        delegation=(
-            "src/norad/stages/mark_BAM_duplicates_with_Picard/"
-            "step_04_mark_duplicates.sh"
-        ),
-        output_validation="wrapper_files",
-        exit_propagation="strict",
-    ),
-    "step_05_split_n_cigar_reads.slurm": WrapperContract(
-        default="dry_run_with_bash32_empty_array_defect",
-        execute="explicit",
-        invalid_mode="reject",
-        module_policy="tolerated",
-        module_calls=("list", "load samtools/1.19.2", "list"),
-        submit_cwd="fallback",
-        delegation=(
-            "src/norad/stages/split_N_cigar_reads_with_GATK/"
-            "step_05_split_n_cigar_reads.sh"
-        ),
-        output_validation="wrapper_files",
-        exit_propagation="strict",
-    ),
-    "step_06_split_bam_by_read_orientation.slurm": WrapperContract(
-        default="dry_run_with_bash32_empty_array_defect",
-        execute="explicit",
-        invalid_mode="reject",
-        module_policy="tolerated",
-        module_calls=("list", "load samtools/1.19.2", "list"),
-        submit_cwd="fallback",
-        delegation=(
-            "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
-            "step_06_split_bam_by_read_orientation.sh"
-        ),
-        output_validation="wrapper_files",
-        exit_propagation="strict",
-    ),
-    "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": WrapperContract(
-        default="dry_run",
-        execute="explicit",
-        invalid_mode="reject",
-        module_policy="tolerated",
-        module_calls=("list", "load CBI bcftools/1.21", "list"),
-        submit_cwd="fallback",
-        delegation=(
-            "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
-            "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
-        ),
-        output_validation="wrapper_files",
-        exit_propagation="strict",
-    ),
-    "step_08_vcf_preprocessing.slurm": WrapperContract(
-        default="dry_run",
-        execute="explicit",
-        invalid_mode="reject",
-        module_policy="tolerated",
-        module_calls=("list",),
-        submit_cwd="fallback",
-        delegation=(
-            "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
-            "step_08_vcf_preprocessing.sh"
-        ),
-        output_validation="wrapper_files",
-        exit_propagation="strict",
-    ),
-    "step_09_cmh_editing_site_calling.slurm": WrapperContract(
-        default="dry_run",
-        execute="explicit",
-        invalid_mode="reject",
-        module_policy="tolerated",
-        module_calls=("list",),
-        submit_cwd="fallback",
-        delegation=(
-            "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
-            "step_09_cmh_editing_site_calling.sh"
-        ),
-        output_validation="wrapper_files",
-        exit_propagation="strict",
-    ),
-    "tool_check.slurm": WrapperContract(
-        default="lightweight_probe",
-        execute="not_applicable",
-        invalid_mode="not_applicable",
-        module_policy="strict",
-        module_calls=(
-            "load python39",
-            "load star/2.7.11b",
-            "load samtools/1.19.2",
-            "load picard/3.1.1",
-            "list",
-        ),
-        submit_cwd="caller",
-        delegation="tool_version_probes",
-        output_validation="probe_only",
-        exit_propagation="strict_except_optional_picard_probe",
-    ),
-    "validate_manifest.slurm": WrapperContract(
-        default="lightweight_validation",
-        execute="not_applicable",
-        invalid_mode="not_applicable",
-        module_policy="strict",
-        module_calls=("load python39",),
-        submit_cwd="caller",
-        delegation=(
-            "src/norad/ingestion/sample_manifest_admission/validate_manifest.py"
-        ),
-        output_validation="child_exit_only",
-        exit_propagation="strict",
-    ),
-}
-
-
-SBATCH_DIRECTIVES = {
-    "step_00a_build_novogene_star_index.slurm": (
-        "#SBATCH --job-name=norad-build-star-index",
-        "#SBATCH --partition=long",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-        "#SBATCH --time=08:00:00",
-        "#SBATCH --cpus-per-task=8",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-    ),
-    "step_00b_gtf_to_bed12.slurm": (
-        "#SBATCH --job-name=norad-gtf-bed12",
-        "#SBATCH --partition=short",
-        "#SBATCH --time=00:30:00",
-        "#SBATCH --cpus-per-task=1",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-    ),
-    "step_00c_prepare_gatk_reference.slurm": (
-        "#SBATCH --job-name=norad-gatk-ref",
-        "#SBATCH --partition=short",
-        "#SBATCH --time=00:30:00",
-        "#SBATCH --cpus-per-task=1",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-    ),
-    "step_01_star_align.slurm": (
-        "#SBATCH --job-name=norad-star-align",
-        "#SBATCH --partition=long",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-        "#SBATCH --time=08:00:00",
-        "#SBATCH --cpus-per-task=8",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-    ),
-    "step_02_sort_index_bam.slurm": (
-        "#SBATCH --job-name=norad-sort-index-bam",
-        "#SBATCH --partition=short",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-        "#SBATCH --time=01:00:00",
-        "#SBATCH --cpus-per-task=8",
-    ),
-    "step_02b_bam_qc.slurm": (
-        "#SBATCH --job-name=norad-bam-qc",
-        "#SBATCH --partition=short",
-        "#SBATCH --time=00:30:00",
-        "#SBATCH --cpus-per-task=1",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-    ),
-    "step_03_infer_strandedness_and_orientation.slurm": (
-        "#SBATCH --job-name=norad-infer-strandedness",
-        "#SBATCH --partition=short",
-        "#SBATCH --time=00:30:00",
-        "#SBATCH --cpus-per-task=1",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-    ),
-    "step_04_mark_duplicates.slurm": (
-        "#SBATCH --job-name=norad-markdup",
-        "#SBATCH --partition=short",
-        "#SBATCH --time=02:00:00",
-        "#SBATCH --cpus-per-task=1",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-    ),
-    "step_05_split_n_cigar_reads.slurm": (
-        "#SBATCH --job-name=norad-split-n-cigar",
-        "#SBATCH --partition=short",
-        "#SBATCH --time=02:00:00",
-        "#SBATCH --cpus-per-task=1",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-    ),
-    "step_06_split_bam_by_read_orientation.slurm": (
-        "#SBATCH --job-name=norad-split-orientation",
-        "#SBATCH --partition=short",
-        "#SBATCH --time=02:00:00",
-        "#SBATCH --cpus-per-task=1",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-    ),
-    "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": (
-        "#SBATCH --job-name=norad-mpileup",
-        "#SBATCH --partition=long",
-        "#SBATCH --time=08:00:00",
-        "#SBATCH --cpus-per-task=1",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-    ),
-    "step_08_vcf_preprocessing.slurm": (
-        "#SBATCH --job-name=norad-vcf-preprocess",
-        "#SBATCH --partition=long",
-        "#SBATCH --time=08:00:00",
-        "#SBATCH --cpus-per-task=1",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-    ),
-    "step_09_cmh_editing_site_calling.slurm": (
-        "#SBATCH --job-name=norad-cmh",
-        "#SBATCH --partition=long",
-        "#SBATCH --time=08:00:00",
-        "#SBATCH --cpus-per-task=1",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-    ),
-    "tool_check.slurm": (
-        "#SBATCH --job-name=norad-tool-check",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-        "#SBATCH --time=00:05:00",
-        "#SBATCH --cpus-per-task=1",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-    ),
-    "validate_manifest.slurm": (
-        "#SBATCH --job-name=norad-validate-manifest",
-        "#SBATCH --output=logs/%x-%j.out",
-        "#SBATCH --error=logs/%x-%j.err",
-        "#SBATCH --time=00:05:00",
-        "#SBATCH --cpus-per-task=1",
-        "#SBATCH --export=ALL,TMPDIR=/tmp",
-    ),
-}
-
-
-ENV_BASH_JOBS = frozenset(
-    {
-        "step_00a_build_novogene_star_index.slurm",
-        "step_00b_gtf_to_bed12.slurm",
-        "step_00c_prepare_gatk_reference.slurm",
-        "step_01_star_align.slurm",
-        "step_02b_bam_qc.slurm",
-        "step_03_infer_strandedness_and_orientation.slurm",
-        "step_04_mark_duplicates.slurm",
-        "step_05_split_n_cigar_reads.slurm",
-        "step_06_split_bam_by_read_orientation.slurm",
-        "step_07_bcftools_mpileup_by_chrom_and_strand.slurm",
-        "step_08_vcf_preprocessing.slurm",
-        "step_09_cmh_editing_site_calling.slurm",
-    }
-)
-EXECUTABLE_JOBS = frozenset(
-    {
-        "step_00b_gtf_to_bed12.slurm",
-        "step_00c_prepare_gatk_reference.slurm",
-        "step_06_split_bam_by_read_orientation.slurm",
-        "step_09_cmh_editing_site_calling.slurm",
-    }
-)
-DELEGATED_JOBS = tuple(
-    name for name, contract in CONTRACTS.items() if contract.execute == "explicit"
-)
-NO_EXPLICIT_MODE_JOBS = tuple(
-    name for name, contract in CONTRACTS.items() if contract.execute != "explicit"
-)
-EMPTY_ARRAY_DRY_RUN_DEFECTS = frozenset(
-    {
-        "step_00c_prepare_gatk_reference.slurm",
-        "step_02_sort_index_bam.slurm",
-        "step_02b_bam_qc.slurm",
-        "step_03_infer_strandedness_and_orientation.slurm",
-        "step_04_mark_duplicates.slurm",
-        "step_05_split_n_cigar_reads.slurm",
-        "step_06_split_bam_by_read_orientation.slurm",
-    }
-)
 
 
 @dataclass
@@ -634,6 +191,7 @@ def base_environment(root: Path, fake_bin: Path) -> dict[str, str]:
 
 def prepare_delegated(name: str, tmp_path: Path) -> PreparedWrapper:
     contract = CONTRACTS[name]
+    case = DELEGATED_FIXTURES[name]
     submit = tmp_path / "submit"
     launch = tmp_path / "alternate-launch"
     fake_bin = tmp_path / "fake-bin"
@@ -645,432 +203,38 @@ def prepare_delegated(name: str, tmp_path: Path) -> PreparedWrapper:
     install_delegate_stub(submit / contract.delegation)
 
     environment = base_environment(tmp_path, fake_bin)
-    environment["SLURM_SUBMIT_DIR"] = str(submit)
-    environment["FAKE_DELEGATE_LOG"] = str(tmp_path / "delegate.args")
-    environment["FAKE_DELEGATE_CWD_LOG"] = str(tmp_path / "delegate.cwd")
-    environment["FAKE_CHILD_EXIT"] = "0"
-    environment["FAKE_SKIP_OUTPUTS"] = "0"
+    environment.update(
+        {
+            "SLURM_SUBMIT_DIR": str(submit),
+            "FAKE_DELEGATE_LOG": str(tmp_path / "delegate.args"),
+            "FAKE_DELEGATE_CWD_LOG": str(tmp_path / "delegate.cwd"),
+            "FAKE_CHILD_EXIT": "0",
+            "FAKE_SKIP_OUTPUTS": "0",
+        }
+    )
+    context = {"submit": str(submit), "fake_bin": str(fake_bin)}
+    for fixture_path in case.paths:
+        resolved = Path(fixture_path.template.format_map(context))
+        if fixture_path.kind == "file":
+            touch(resolved, fixture_path.content)
+        elif fixture_path.kind == "directory":
+            resolved.mkdir(parents=True)
+        elif fixture_path.kind != "path":
+            raise AssertionError(f"unknown fixture path kind: {fixture_path.kind}")
+        context[fixture_path.name] = str(resolved)
 
-    outputs: tuple[Path, ...]
-    output_directories: tuple[Path, ...]
-
-    if name == "step_00c_prepare_gatk_reference.slurm":
-        fasta = touch(submit / "refs" / "genome.fa", ">chr1\nACGT\n")
-        environment.update(
-            {
-                "REFERENCE_FASTA": str(fasta),
-                "SAMTOOLS_BIN_OVERRIDE": str(fake_bin / "samtools"),
-                "GATK_BIN_OVERRIDE": str(fake_bin / "gatk"),
-                "JAVA_BIN_OVERRIDE": str(fake_bin / "java"),
-            }
-        )
-        expected_args = (
-            "--reference-fasta",
-            str(fasta),
-            "--samtools-bin",
-            str(fake_bin / "samtools"),
-            "--gatk-bin",
-            str(fake_bin / "gatk"),
-            "--java-bin",
-            str(fake_bin / "java"),
-        )
-        outputs = (Path(f"{fasta}.fai"), fasta.parent / "genome.dict")
-        output_directories = ()
-    elif name == "step_01_star_align.slurm":
-        r1 = touch(submit / "inputs" / "sample_R1.fastq.gz")
-        r2 = touch(submit / "inputs" / "sample_R2.fastq.gz")
-        star_index = submit / "refs" / "star-index"
-        star_index.mkdir(parents=True)
-        output_dir = submit / "outputs" / "step01"
-        environment.update(
-            {
-                "SAMPLE_ID": "sample-test",
-                "R1_FASTQ": str(r1),
-                "R2_FASTQ": str(r2),
-                "STAR_INDEX": str(star_index),
-                "OUTPUT_DIR": str(output_dir),
-            }
-        )
-        expected_args = (
-            "--sample-id",
-            "sample-test",
-            "--r1-fastq",
-            str(r1),
-            "--r2-fastq",
-            str(r2),
-            "--star-index",
-            str(star_index),
-            "--output-dir",
-            str(output_dir),
-            "--threads",
-            "3",
-        )
-        outputs = ()
-        output_directories = (output_dir,)
-    elif name == "step_02_sort_index_bam.slurm":
-        input_alignment = touch(submit / "inputs" / "aligned.bam")
-        output_dir = submit / "outputs" / "step02"
-        environment.update(
-            {
-                "SAMPLE_ID": "sample02",
-                "INPUT_ALIGNMENT": str(input_alignment),
-                "OUTPUT_DIR": str(output_dir),
-                "THREADS": "4",
-            }
-        )
-        expected_args = (
-            "--sample-id",
-            "sample02",
-            "--input-alignment",
-            str(input_alignment),
-            "--output-dir",
-            str(output_dir),
-            "--threads",
-            "4",
-        )
-        output_bam = output_dir / "sample02.sorted.bam"
-        outputs = (output_bam, Path(f"{output_bam}.bai"))
-        output_directories = (output_dir,)
-    elif name == "step_02b_bam_qc.slurm":
-        bam = touch(submit / "inputs" / "sample02b.bam")
-        output_dir = submit / "outputs" / "step02b"
-        environment.update(
-            {
-                "SAMPLE_ID": "sample02b",
-                "BAM": str(bam),
-                "OUTPUT_DIR": str(output_dir),
-            }
-        )
-        expected_args = (
-            "--sample-id",
-            "sample02b",
-            "--bam",
-            str(bam),
-            "--output-dir",
-            str(output_dir),
-        )
-        outputs = (
-            output_dir / "sample02b.quickcheck.txt",
-            output_dir / "sample02b.flagstat.txt",
-        )
-        output_directories = (output_dir,)
-    elif name == "step_03_infer_strandedness_and_orientation.slurm":
-        bam = touch(submit / "inputs" / "sample03.bam")
-        bed = touch(submit / "refs" / "genes.bed")
-        output_dir = submit / "outputs" / "step03"
-        environment.update(
-            {
-                "SAMPLE_ID": "sample03",
-                "BAM": str(bam),
-                "BED12": str(bed),
-                "OUTPUT_DIR": str(output_dir),
-                "INFER_EXPERIMENT_BIN": str(fake_bin / "infer_experiment.py"),
-            }
-        )
-        expected_args = (
-            "--sample-id",
-            "sample03",
-            "--input-bam",
-            str(bam),
-            "--bed12",
-            str(bed),
-            "--output-dir",
-            str(output_dir),
-            "--infer-experiment-bin",
-            str(fake_bin / "infer_experiment.py"),
-        )
-        outputs = (output_dir / "sample03.infer_experiment.txt",)
-        output_directories = (output_dir,)
-    elif name == "step_04_mark_duplicates.slurm":
-        bam = touch(submit / "inputs" / "sample04.bam")
-        output_dir = submit / "outputs" / "step04"
-        metrics_dir = submit / "outputs" / "step04-qc"
-        picard = touch(fake_bin / "picard.jar", "mock jar\n")
-        environment.update(
-            {
-                "SAMPLE_ID": "sample04",
-                "INPUT_BAM": str(bam),
-                "OUTPUT_DIR": str(output_dir),
-                "METRICS_DIR": str(metrics_dir),
-                "PICARD": str(picard),
-                "JAVA_BIN_OVERRIDE": str(fake_bin / "java"),
-            }
-        )
-        expected_args = (
-            "--sample-id",
-            "sample04",
-            "--input-bam",
-            str(bam),
-            "--output-dir",
-            str(output_dir),
-            "--metrics-dir",
-            str(metrics_dir),
-            "--picard-jar",
-            str(picard),
-            "--java-bin",
-            str(fake_bin / "java"),
-        )
-        output_bam = output_dir / "sample04.markdup.bam"
-        outputs = (
-            output_bam,
-            Path(f"{output_bam}.bai"),
-            metrics_dir / "sample04.markdup.metrics.txt",
-        )
-        output_directories = (output_dir, metrics_dir)
-    elif name == "step_05_split_n_cigar_reads.slurm":
-        bam = touch(submit / "inputs" / "sample05.bam")
-        fasta = touch(submit / "refs" / "genome.fa", ">chr1\nACGT\n")
-        output_dir = submit / "outputs" / "step05"
-        environment.update(
-            {
-                "SAMPLE_ID": "sample05",
-                "INPUT_BAM": str(bam),
-                "REFERENCE_FASTA": str(fasta),
-                "OUTPUT_DIR": str(output_dir),
-                "GATK_BIN_OVERRIDE": str(fake_bin / "gatk"),
-                "SAMTOOLS_BIN_OVERRIDE": str(fake_bin / "samtools"),
-                "JAVA_BIN_OVERRIDE": str(fake_bin / "java"),
-            }
-        )
-        expected_args = (
-            "--sample-id",
-            "sample05",
-            "--input-bam",
-            str(bam),
-            "--reference-fasta",
-            str(fasta),
-            "--output-dir",
-            str(output_dir),
-            "--gatk-bin",
-            str(fake_bin / "gatk"),
-            "--samtools-bin",
-            str(fake_bin / "samtools"),
-            "--java-bin",
-            str(fake_bin / "java"),
-        )
-        output_bam = output_dir / "sample05.split_ncigar.bam"
-        outputs = (output_bam, Path(f"{output_bam}.bai"))
-        output_directories = (output_dir,)
-    elif name == "step_06_split_bam_by_read_orientation.slurm":
-        bam = touch(submit / "inputs" / "sample06.bam")
-        output_dir = submit / "outputs" / "step06"
-        qc_dir = submit / "outputs" / "step06-qc"
-        environment.update(
-            {
-                "SAMPLE_ID": "sample06",
-                "INPUT_BAM": str(bam),
-                "OUTPUT_DIR": str(output_dir),
-                "QC_DIR": str(qc_dir),
-                "THREADS": "2",
-                "SAMTOOLS_BIN_OVERRIDE": str(fake_bin / "samtools"),
-            }
-        )
-        expected_args = (
-            "--sample-id",
-            "sample06",
-            "--input-bam",
-            str(bam),
-            "--output-dir",
-            str(output_dir),
-            "--qc-dir",
-            str(qc_dir),
-            "--threads",
-            "2",
-            "--samtools-bin",
-            str(fake_bin / "samtools"),
-        )
-        fwd_bam = output_dir / "sample06.FWD_like.bam"
-        rev_bam = output_dir / "sample06.REV_like.bam"
-        outputs = (
-            fwd_bam,
-            Path(f"{fwd_bam}.bai"),
-            rev_bam,
-            Path(f"{rev_bam}.bai"),
-            qc_dir / "sample06.orientation_counts.tsv",
-        )
-        output_directories = (output_dir, qc_dir)
-    elif name == "step_07_bcftools_mpileup_by_chrom_and_strand.slurm":
-        sample_manifest = touch(submit / "inputs" / "samples.tsv")
-        partition_manifest = touch(submit / "inputs" / "partitions.tsv")
-        orientation_root = submit / "inputs" / "orientation"
-        reference = touch(submit / "refs" / "genome.fa", ">chr1\nACGT\n")
-        output_root = submit / "outputs" / "step07"
-        filter_expression = "INFO/AD[1-]>7 & MAX(FORMAT/DP)>31"
-        environment.update(
-            {
-                "COHORT_ID": "cohort07",
-                "SAMPLE_MANIFEST": str(sample_manifest),
-                "PARTITION_MANIFEST": str(partition_manifest),
-                "PARTITION_ID": "part-A",
-                "ORIENTATION_ROOT": str(orientation_root),
-                "REFERENCE_FASTA": str(reference),
-                "OUTPUT_ROOT": str(output_root),
-                "MAX_DEPTH": "123",
-                "FILTER_EXPRESSION": filter_expression,
-                "BCFTOOLS_BIN_OVERRIDE": str(fake_bin / "bcftools"),
-            }
-        )
-        expected_args = (
-            "--cohort-id",
-            "cohort07",
-            "--sample-manifest",
-            str(sample_manifest),
-            "--partition-manifest",
-            str(partition_manifest),
-            "--partition-id",
-            "part-A",
-            "--orientation-root",
-            str(orientation_root),
-            "--reference-fasta",
-            str(reference),
-            "--output-root",
-            str(output_root),
-            "--max-depth",
-            "123",
-            "--filter-expression",
-            filter_expression,
-            "--bcftools-bin",
-            str(fake_bin / "bcftools"),
-        )
-        partition_output = output_root / "cohort07" / "part-A"
-        outputs = (
-            partition_output / "cohort07.part-A.FWD_like.mpileup.vcf",
-            partition_output / "cohort07.part-A.REV_like.mpileup.vcf",
-            partition_output / "cohort07.part-A.step07_outputs.tsv",
-        )
-        output_directories = (partition_output,)
-    elif name == "step_08_vcf_preprocessing.slurm":
-        sample_manifest = touch(submit / "inputs" / "samples.tsv")
-        partition_manifest = touch(submit / "inputs" / "partitions.tsv")
-        annotation = touch(submit / "refs" / "genes.gtf")
-        step07_root = submit / "inputs" / "step07"
-        output_root = submit / "outputs" / "step08"
-        qc_root = submit / "outputs" / "step08-qc"
-        r_script = touch(submit / "implementation" / "step08.R")
-        environment.update(
-            {
-                "COHORT_ID": "cohort08",
-                "SAMPLE_MANIFEST": str(sample_manifest),
-                "PARTITION_MANIFEST": str(partition_manifest),
-                "STEP07_ROOT": str(step07_root),
-                "ANNOTATION_GTF": str(annotation),
-                "OUTPUT_ROOT": str(output_root),
-                "QC_ROOT": str(qc_root),
-                "RSCRIPT_BIN_OVERRIDE": str(fake_bin / "Rscript"),
-                "STEP08_R_SCRIPT": str(r_script),
-            }
-        )
-        expected_args = (
-            "--cohort-id",
-            "cohort08",
-            "--sample-manifest",
-            str(sample_manifest),
-            "--partition-manifest",
-            str(partition_manifest),
-            "--step07-root",
-            str(step07_root),
-            "--annotation-gtf",
-            str(annotation),
-            "--output-root",
-            str(output_root),
-            "--qc-root",
-            str(qc_root),
-            "--rscript-bin",
-            str(fake_bin / "Rscript"),
-            "--r-script",
-            str(r_script),
-        )
-        outputs = (
-            output_root / "cohort08" / "cohort08.step08_sites.tsv",
-            output_root / "cohort08" / "cohort08.step08_inputs.tsv",
-            qc_root / "cohort08.step08_summary.tsv",
-        )
-        output_directories = (output_root / "cohort08", qc_root)
-    elif name == "step_09_cmh_editing_site_calling.slurm":
-        sample_manifest = touch(submit / "inputs" / "samples.tsv")
-        partition_manifest = touch(submit / "inputs" / "partitions.tsv")
-        step08_root = submit / "inputs" / "step08"
-        output_root = submit / "outputs" / "step09"
-        r_script = touch(submit / "implementation" / "step09.R")
-        environment.update(
-            {
-                "ANALYSIS_ID": "analysis09",
-                "COHORT_ID": "cohort09",
-                "SAMPLE_MANIFEST": str(sample_manifest),
-                "PARTITION_MANIFEST": str(partition_manifest),
-                "STEP08_ROOT": str(step08_root),
-                "OUTPUT_ROOT": str(output_root),
-                "CONTROL_CONDITION": "control",
-                "TREATMENT_CONDITION": "treatment",
-                "RNA_REF": "C",
-                "RNA_ALT": "T",
-                "MIN_SAMPLE_DP": "2",
-                "MEAN_DP_THRESHOLD": "42",
-                "FDR_THRESHOLD": "0.1",
-                "COMMON_OR_THRESHOLD": "1.5",
-                "ABSOLUTE_DIFFERENCE_THRESHOLD": "0.02",
-                "BACKGROUND_CONDITION": "background",
-                "BACKGROUND_MAX_FRACTION": "0.03",
-                "RSCRIPT_BIN_OVERRIDE": str(fake_bin / "Rscript"),
-                "STEP09_R_SCRIPT": str(r_script),
-            }
-        )
-        expected_args = (
-            "--analysis-id",
-            "analysis09",
-            "--cohort-id",
-            "cohort09",
-            "--sample-manifest",
-            str(sample_manifest),
-            "--partition-manifest",
-            str(partition_manifest),
-            "--step08-root",
-            str(step08_root),
-            "--output-root",
-            str(output_root),
-            "--control-condition",
-            "control",
-            "--treatment-condition",
-            "treatment",
-            "--rna-ref",
-            "C",
-            "--rna-alt",
-            "T",
-            "--min-sample-dp",
-            "2",
-            "--mean-dp-threshold",
-            "42",
-            "--fdr-threshold",
-            "0.1",
-            "--common-or-threshold",
-            "1.5",
-            "--absolute-difference-threshold",
-            "0.02",
-            "--background-max-fraction",
-            "0.03",
-            "--rscript-bin",
-            str(fake_bin / "Rscript"),
-            "--r-script",
-            str(r_script),
-            "--background-condition",
-            "background",
-        )
-        analysis_dir = output_root / "analysis09"
-        outputs = tuple(
-            analysis_dir / f"analysis09.{suffix}"
-            for suffix in (
-                "cmh_all_sites.tsv",
-                "cmh_significant_sites.tsv",
-                "cmh_summary.tsv",
-                "mutation_spectrum.tsv",
-                "mutation_spectrum.pdf",
-                "depth_delta.pdf",
-            )
-        )
-        output_directories = (analysis_dir,)
-    else:  # pragma: no cover - exact inventory tests make this unreachable
-        raise AssertionError(f"missing delegated fixture for {name}")
-
+    environment.update(
+        {key: value.format_map(context) for key, value in case.environment}
+    )
+    expected_args = tuple(
+        item
+        for flag, value in case.arguments
+        for item in (flag, value.format_map(context))
+    )
+    outputs = tuple(Path(value.format_map(context)) for value in case.outputs)
+    output_directories = tuple(
+        Path(value.format_map(context)) for value in case.output_directories
+    )
     output_list = tmp_path / "outputs.list"
     output_list.write_text(
         "".join(f"{output}\n" for output in outputs),
@@ -1824,65 +988,161 @@ def test_step_06_split_bam_by_read_orientation_propagates_samtools_version_failu
 
 
 @pytest.mark.parametrize("tool_state", ("missing", "nonexecutable"))
-def test_step_06_split_bam_by_read_orientation_warns_and_delegates_unusable_samtools(
-    tmp_path: Path,
+@pytest.mark.parametrize(
+    ("name", "tool", "override", "argument", "warns", "checks_empty_log"),
+    (
+        (
+            "step_06_split_bam_by_read_orientation.slurm",
+            "samtools",
+            "SAMTOOLS_BIN_OVERRIDE",
+            "--samtools-bin",
+            True,
+            False,
+        ),
+        (
+            "step_07_bcftools_mpileup_by_chrom_and_strand.slurm",
+            "bcftools",
+            "BCFTOOLS_BIN_OVERRIDE",
+            "--bcftools-bin",
+            True,
+            False,
+        ),
+        (
+            "step_08_vcf_preprocessing.slurm",
+            "Rscript",
+            "RSCRIPT_BIN_OVERRIDE",
+            "--rscript-bin",
+            True,
+            True,
+        ),
+        (
+            "step_09_cmh_editing_site_calling.slurm",
+            "Rscript",
+            "RSCRIPT_BIN_OVERRIDE",
+            "--rscript-bin",
+            False,
+            True,
+        ),
+    ),
+)
+def test_late_stage_delegates_unusable_tool_override(
+    name: str,
+    tool: str,
+    override: str,
+    argument: str,
+    warns: bool,
+    checks_empty_log: bool,
     tool_state: str,
+    tmp_path: Path,
 ) -> None:
-    prepared = prepare_delegated(
-        "step_06_split_bam_by_read_orientation.slurm", tmp_path
-    )
-    samtools_path = tmp_path / f"{tool_state}-samtools"
+    prepared = prepare_delegated(name, tmp_path)
+    tool_path = tmp_path / f"{tool_state}-{tool}"
     if tool_state == "nonexecutable":
-        touch(samtools_path, "not executable\n")
+        touch(tool_path, "not executable\n")
     expected_args = list(prepared.expected_args)
-    expected_args[expected_args.index("--samtools-bin") + 1] = str(samtools_path)
+    expected_args[expected_args.index(argument) + 1] = str(tool_path)
 
     result = run_prepared(
         prepared,
         execute="1",
-        environment_updates={"SAMTOOLS_BIN_OVERRIDE": str(samtools_path)},
+        environment_updates={override: str(tool_path)},
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert (
-        "WARNING: samtools path is not executable before script validation: "
-        f"{samtools_path}"
-    ) in result.stdout
+    warning = f"WARNING: {tool} path is not executable before script validation"
+    assert (warning in result.stdout) is warns
     assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
+    if checks_empty_log:
+        assert read_lines(tmp_path / "tool.log") == ()
     assert all(
         output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
     )
 
 
-def test_step_06_split_bam_by_read_orientation_forwards_path_basename(
+@pytest.mark.parametrize(
+    ("name", "tool", "override", "argument", "probe_policy"),
+    (
+        (
+            "step_06_split_bam_by_read_orientation.slurm",
+            "samtools",
+            "SAMTOOLS_BIN_OVERRIDE",
+            "--samtools-bin",
+            "warn",
+        ),
+        (
+            "step_07_bcftools_mpileup_by_chrom_and_strand.slurm",
+            "bcftools",
+            "BCFTOOLS_BIN_OVERRIDE",
+            "--bcftools-bin",
+            "warn",
+        ),
+        (
+            "step_08_vcf_preprocessing.slurm",
+            "Rscript",
+            "RSCRIPT_BIN_OVERRIDE",
+            "--rscript-bin",
+            "version",
+        ),
+        (
+            "step_09_cmh_editing_site_calling.slurm",
+            "Rscript",
+            "RSCRIPT_BIN_OVERRIDE",
+            "--rscript-bin",
+            "none",
+        ),
+    ),
+)
+def test_late_stage_forwards_path_tool_basename(
+    name: str,
+    tool: str,
+    override: str,
+    argument: str,
+    probe_policy: str,
     tmp_path: Path,
 ) -> None:
-    prepared = prepare_delegated(
-        "step_06_split_bam_by_read_orientation.slurm", tmp_path
-    )
+    prepared = prepare_delegated(name, tmp_path)
     expected_args = list(prepared.expected_args)
-    expected_args[expected_args.index("--samtools-bin") + 1] = "samtools"
+    expected_args[expected_args.index(argument) + 1] = tool
 
     result = run_prepared(
         prepared,
         execute="1",
-        environment_updates={"SAMTOOLS_BIN_OVERRIDE": "samtools"},
+        environment_updates={override: tool},
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert (
-        "WARNING: samtools path is not executable before script validation: samtools"
-    ) in result.stdout
     assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
-    assert "samtools\t--version" not in read_lines(tmp_path / "tool.log")
+    tool_log = read_lines(tmp_path / "tool.log")
+    assert (f"{tool}\t--version" in tool_log) is (probe_policy == "version")
+    if probe_policy == "warn":
+        assert (
+            f"WARNING: {tool} path is not executable before script validation: {tool}"
+            in result.stdout
+        )
+    elif probe_policy == "version":
+        assert f"{tool} version:" in result.stdout
+        assert "Rscript 4.6.1" in result.stdout
+    else:
+        assert "WARNING:" not in result.stdout
+    assert all(
+        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
+    )
 
 
-def test_step_06_split_bam_by_read_orientation_uses_dynamic_cwd_without_submit_directory(
+@pytest.mark.parametrize(
+    "name",
+    (
+        "step_06_split_bam_by_read_orientation.slurm",
+        "step_07_bcftools_mpileup_by_chrom_and_strand.slurm",
+        "step_08_vcf_preprocessing.slurm",
+        "step_09_cmh_editing_site_calling.slurm",
+    ),
+)
+def test_late_stage_uses_dynamic_cwd_without_submit_directory(
+    name: str,
     tmp_path: Path,
 ) -> None:
-    prepared = prepare_delegated(
-        "step_06_split_bam_by_read_orientation.slurm", tmp_path
-    )
+    prepared = prepare_delegated(name, tmp_path)
     install_delegate_stub(prepared.launch / CONTRACTS[prepared.name].delegation)
 
     result = run_prepared(
@@ -1946,18 +1206,36 @@ def test_step_06_split_bam_by_read_orientation_threads_are_independent_of_one_cp
     assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
 
 
-def test_step_06_split_bam_by_read_orientation_stale_five_mask_missing_child_outputs(
+@pytest.mark.parametrize(
+    ("name", "validation_message"),
+    (
+        (
+            "step_06_split_bam_by_read_orientation.slurm",
+            "Validated Step 06 read-orientation outputs:",
+        ),
+        (
+            "step_07_bcftools_mpileup_by_chrom_and_strand.slurm",
+            "Validated Step 07 cohort mpileup outputs:",
+        ),
+        (
+            "step_08_vcf_preprocessing.slurm",
+            "Validated Step 08 VCF preprocessing outputs:",
+        ),
+        (
+            "step_09_cmh_editing_site_calling.slurm",
+            "Validated Step 09 output paths:",
+        ),
+    ),
+)
+def test_late_stage_stale_outputs_mask_missing_child_outputs(
+    name: str,
+    validation_message: str,
     tmp_path: Path,
 ) -> None:
-    prepared = prepare_delegated(
-        "step_06_split_bam_by_read_orientation.slurm", tmp_path
-    )
-    stale_bytes = (
-        b"stale FWD_like BAM\n",
-        b"stale FWD_like BAI\n",
-        b"stale REV_like BAM\n",
-        b"stale REV_like BAI\n",
-        b"stale orientation counts\n",
+    prepared = prepare_delegated(name, tmp_path)
+    stale_bytes = tuple(
+        f"stale preserved output {index}\n".encode()
+        for index in range(len(prepared.outputs))
     )
     for output, content in zip(prepared.outputs, stale_bytes, strict=True):
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -1974,7 +1252,7 @@ def test_step_06_split_bam_by_read_orientation_stale_five_mask_missing_child_out
         "--execute",
     )
     assert tuple(output.read_bytes() for output in prepared.outputs) == stale_bytes
-    assert "Validated Step 06 read-orientation outputs:" in result.stdout
+    assert validation_message in result.stdout
 
 
 def test_step_07_bcftools_mpileup_propagates_bcftools_version_failure(
@@ -1995,128 +1273,29 @@ def test_step_07_bcftools_mpileup_propagates_bcftools_version_failure(
     assert read_lines(tmp_path / "tool.log") == ("bcftools\t--version",)
 
 
-@pytest.mark.parametrize("tool_state", ("missing", "nonexecutable"))
-def test_step_07_bcftools_mpileup_warns_and_delegates_unusable_bcftools(
-    tmp_path: Path,
-    tool_state: str,
-) -> None:
-    prepared = prepare_delegated(
-        "step_07_bcftools_mpileup_by_chrom_and_strand.slurm", tmp_path
-    )
-    bcftools_path = tmp_path / f"{tool_state}-bcftools"
-    if tool_state == "nonexecutable":
-        touch(bcftools_path, "not executable\n")
-    expected_args = list(prepared.expected_args)
-    expected_args[expected_args.index("--bcftools-bin") + 1] = str(bcftools_path)
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_updates={"BCFTOOLS_BIN_OVERRIDE": str(bcftools_path)},
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert (
-        "WARNING: bcftools path is not executable before script validation: "
-        f"{bcftools_path}"
-    ) in result.stdout
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
-    assert all(
-        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
-    )
-
-
-def test_step_07_bcftools_mpileup_forwards_path_basename(
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated(
-        "step_07_bcftools_mpileup_by_chrom_and_strand.slurm", tmp_path
-    )
-    expected_args = list(prepared.expected_args)
-    expected_args[expected_args.index("--bcftools-bin") + 1] = "bcftools"
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_updates={"BCFTOOLS_BIN_OVERRIDE": "bcftools"},
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert (
-        "WARNING: bcftools path is not executable before script validation: bcftools"
-    ) in result.stdout
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
-    assert "bcftools\t--version" not in read_lines(tmp_path / "tool.log")
-
-
-def test_step_07_bcftools_mpileup_uses_dynamic_cwd_without_submit_directory(
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated(
-        "step_07_bcftools_mpileup_by_chrom_and_strand.slurm", tmp_path
-    )
-    install_delegate_stub(prepared.launch / CONTRACTS[prepared.name].delegation)
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_removals=("SLURM_SUBMIT_DIR",),
-        cwd=prepared.launch,
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
-        "--execute",
-    )
-    assert prepared.delegate_cwd_log.read_text(encoding="utf-8").strip() == str(
-        prepared.launch
-    )
-    assert (prepared.launch / "logs").is_dir()
-
-
-def test_step_07_bcftools_mpileup_dry_run_creates_logs_only(
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated(
-        "step_07_bcftools_mpileup_by_chrom_and_strand.slurm", tmp_path
-    )
+@pytest.mark.parametrize(
+    "name",
+    (
+        "step_07_bcftools_mpileup_by_chrom_and_strand.slurm",
+        "step_08_vcf_preprocessing.slurm",
+        "step_09_cmh_editing_site_calling.slurm",
+    ),
+)
+def test_late_stage_dry_run_creates_logs_only(name: str, tmp_path: Path) -> None:
+    prepared = prepare_delegated(name, tmp_path)
+    before = {path.relative_to(prepared.submit) for path in prepared.submit.rglob("*")}
 
     result = run_prepared(prepared)
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert (prepared.submit / "logs").is_dir()
+    after = {path.relative_to(prepared.submit) for path in prepared.submit.rglob("*")}
+    if name.startswith(("step_08", "step_09")):
+        assert after - before == {Path("logs")}
+    else:
+        assert (prepared.submit / "logs").is_dir()
     assert all(not output.exists() for output in prepared.outputs)
     assert all(not directory.exists() for directory in prepared.output_directories)
     assert read_nul_args(prepared.delegate_log) == prepared.expected_args
-
-
-def test_step_07_bcftools_mpileup_stale_three_mask_missing_child_outputs(
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated(
-        "step_07_bcftools_mpileup_by_chrom_and_strand.slurm", tmp_path
-    )
-    stale_bytes = (
-        b"stale FWD_like mpileup VCF\n",
-        b"stale REV_like mpileup VCF\n",
-        b"stale Step 07 receipt\n",
-    )
-    for output, content in zip(prepared.outputs, stale_bytes, strict=True):
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_bytes(content)
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_updates={"FAKE_SKIP_OUTPUTS": "1"},
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
-        "--execute",
-    )
-    assert tuple(output.read_bytes() for output in prepared.outputs) == stale_bytes
-    assert "Validated Step 07 cohort mpileup outputs:" in result.stdout
 
 
 def test_step_08_vcf_preprocessing_tolerates_rscript_version_failure(
@@ -2140,56 +1319,6 @@ def test_step_08_vcf_preprocessing_tolerates_rscript_version_failure(
     )
 
 
-@pytest.mark.parametrize("rscript_state", ("missing", "nonexecutable"))
-def test_step_08_vcf_preprocessing_warns_and_delegates_unusable_rscript(
-    tmp_path: Path,
-    rscript_state: str,
-) -> None:
-    prepared = prepare_delegated("step_08_vcf_preprocessing.slurm", tmp_path)
-    rscript_path = tmp_path / f"{rscript_state}-Rscript"
-    if rscript_state == "nonexecutable":
-        touch(rscript_path, "not executable\n")
-    expected_args = list(prepared.expected_args)
-    expected_args[expected_args.index("--rscript-bin") + 1] = str(rscript_path)
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_updates={"RSCRIPT_BIN_OVERRIDE": str(rscript_path)},
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert (
-        "WARNING: Rscript path is not executable before script validation: "
-        f"{rscript_path}"
-    ) in result.stdout
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
-    assert read_lines(tmp_path / "tool.log") == ()
-    assert all(
-        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
-    )
-
-
-def test_step_08_vcf_preprocessing_forwards_path_rscript_basename(
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated("step_08_vcf_preprocessing.slurm", tmp_path)
-    expected_args = list(prepared.expected_args)
-    expected_args[expected_args.index("--rscript-bin") + 1] = "Rscript"
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_updates={"RSCRIPT_BIN_OVERRIDE": "Rscript"},
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "Rscript version:" in result.stdout
-    assert "Rscript 4.6.1" in result.stdout
-    assert read_lines(tmp_path / "tool.log") == ("Rscript\t--version",)
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
-
-
 def test_step_08_vcf_preprocessing_forwards_r_program_for_child_validation(
     tmp_path: Path,
 ) -> None:
@@ -2206,120 +1335,6 @@ def test_step_08_vcf_preprocessing_forwards_r_program_for_child_validation(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert not missing_r_program.exists()
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
-    assert all(
-        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
-    )
-
-
-def test_step_08_vcf_preprocessing_uses_dynamic_cwd_without_submit_directory(
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated("step_08_vcf_preprocessing.slurm", tmp_path)
-    install_delegate_stub(prepared.launch / CONTRACTS[prepared.name].delegation)
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_removals=("SLURM_SUBMIT_DIR",),
-        cwd=prepared.launch,
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
-        "--execute",
-    )
-    assert prepared.delegate_cwd_log.read_text(encoding="utf-8").strip() == str(
-        prepared.launch
-    )
-    assert (prepared.launch / "logs").is_dir()
-
-
-def test_step_08_vcf_preprocessing_dry_run_creates_logs_only(
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated("step_08_vcf_preprocessing.slurm", tmp_path)
-    before = {path.relative_to(prepared.submit) for path in prepared.submit.rglob("*")}
-
-    result = run_prepared(prepared)
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    after = {path.relative_to(prepared.submit) for path in prepared.submit.rglob("*")}
-    assert after - before == {Path("logs")}
-    assert all(not output.exists() for output in prepared.outputs)
-    assert all(not directory.exists() for directory in prepared.output_directories)
-    assert read_nul_args(prepared.delegate_log) == prepared.expected_args
-
-
-def test_step_08_vcf_preprocessing_stale_three_mask_missing_child_outputs(
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated("step_08_vcf_preprocessing.slurm", tmp_path)
-    stale_bytes = (
-        b"stale Step 08 sites\n",
-        b"stale Step 08 inputs\n",
-        b"stale Step 08 summary\n",
-    )
-    for output, content in zip(prepared.outputs, stale_bytes, strict=True):
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_bytes(content)
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_updates={"FAKE_SKIP_OUTPUTS": "1"},
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
-        "--execute",
-    )
-    assert tuple(output.read_bytes() for output in prepared.outputs) == stale_bytes
-    assert "Validated Step 08 VCF preprocessing outputs:" in result.stdout
-
-
-@pytest.mark.parametrize("rscript_state", ("missing", "nonexecutable"))
-def test_step_09_cmh_editing_site_calling_forwards_unusable_rscript_to_child(
-    tmp_path: Path,
-    rscript_state: str,
-) -> None:
-    prepared = prepare_delegated("step_09_cmh_editing_site_calling.slurm", tmp_path)
-    rscript_path = tmp_path / f"{rscript_state}-Rscript"
-    if rscript_state == "nonexecutable":
-        touch(rscript_path, "not executable\n")
-    expected_args = list(prepared.expected_args)
-    expected_args[expected_args.index("--rscript-bin") + 1] = str(rscript_path)
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_updates={"RSCRIPT_BIN_OVERRIDE": str(rscript_path)},
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "WARNING:" not in result.stdout
-    assert read_lines(tmp_path / "tool.log") == ()
-    assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
-    assert all(
-        output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
-    )
-
-
-def test_step_09_cmh_editing_site_calling_forwards_path_rscript_basename(
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated("step_09_cmh_editing_site_calling.slurm", tmp_path)
-    expected_args = list(prepared.expected_args)
-    expected_args[expected_args.index("--rscript-bin") + 1] = "Rscript"
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_updates={"RSCRIPT_BIN_OVERRIDE": "Rscript"},
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert read_lines(tmp_path / "tool.log") == ()
     assert read_nul_args(prepared.delegate_log) == tuple(expected_args) + ("--execute",)
     assert all(
         output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
@@ -2347,71 +1362,6 @@ def test_step_09_cmh_editing_site_calling_forwards_missing_r_program_to_child(
     assert all(
         output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
     )
-
-
-def test_step_09_cmh_editing_site_calling_uses_launch_cwd_without_submit_dir(
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated("step_09_cmh_editing_site_calling.slurm", tmp_path)
-    install_delegate_stub(prepared.launch / CONTRACTS[prepared.name].delegation)
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_removals=("SLURM_SUBMIT_DIR",),
-        cwd=prepared.launch,
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
-        "--execute",
-    )
-    assert prepared.delegate_cwd_log.read_text(encoding="utf-8").strip() == str(
-        prepared.launch
-    )
-    assert (prepared.launch / "logs").is_dir()
-
-
-def test_step_09_cmh_editing_site_calling_dry_run_creates_logs_only(
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated("step_09_cmh_editing_site_calling.slurm", tmp_path)
-    before = {path.relative_to(prepared.submit) for path in prepared.submit.rglob("*")}
-
-    result = run_prepared(prepared)
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    after = {path.relative_to(prepared.submit) for path in prepared.submit.rglob("*")}
-    assert after - before == {Path("logs")}
-    assert all(not output.exists() for output in prepared.outputs)
-    assert all(not directory.exists() for directory in prepared.output_directories)
-    assert read_nul_args(prepared.delegate_log) == prepared.expected_args
-
-
-def test_step_09_cmh_editing_site_calling_stale_six_mask_missing_child_outputs(
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated("step_09_cmh_editing_site_calling.slurm", tmp_path)
-    stale_bytes = tuple(
-        f"stale Step 09 output {index}\n".encode()
-        for index in range(len(prepared.outputs))
-    )
-    for output, content in zip(prepared.outputs, stale_bytes, strict=True):
-        output.parent.mkdir(parents=True, exist_ok=True)
-        output.write_bytes(content)
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_updates={"FAKE_SKIP_OUTPUTS": "1"},
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
-        "--execute",
-    )
-    assert tuple(output.read_bytes() for output in prepared.outputs) == stale_bytes
-    assert "Validated Step 09 output paths:" in result.stdout
 
 
 @pytest.mark.parametrize("name", sorted(DELEGATED_JOBS))

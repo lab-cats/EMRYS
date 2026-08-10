@@ -29,6 +29,8 @@ def _fail(message: str) -> None:
 def _recheck_inputs(context: BundleContext) -> None:
     html_report._recheck_inputs(context.html)
     html_report._assert_snapshot(context.pdf_template_snapshot, "PDF report template")
+
+
 def _assert_predecessors(context: BundleContext) -> None:
     for path in context.stable_paths:
         previous = context.previous_snapshots.get(path)
@@ -39,6 +41,8 @@ def _assert_predecessors(context: BundleContext) -> None:
             html_report._assert_snapshot(
                 previous, f"existing report output {path.name}"
             )
+
+
 def publish_bundle(context: BundleContext) -> None:
     created = html_report._create_directories(context.html.output_dir)
     directory_meta = context.html.output_dir.lstat()

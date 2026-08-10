@@ -46,6 +46,7 @@ _CATEGORY_STATUS_RULES: dict[str, tuple[set[str] | None, set[str] | None, str]] 
     ),
 }
 
+
 def _require_known_evidence_ids(
     label: str,
     references: list[str],
@@ -199,8 +200,8 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
             )
         referenced_evidence_ids.update(referenced_ids)
         status = category["status"]
-        allowed_statuses, required_statuses, rule_message = (
-            _CATEGORY_STATUS_RULES.get(status, (None, None, ""))
+        allowed_statuses, required_statuses, rule_message = _CATEGORY_STATUS_RULES.get(
+            status, (None, None, "")
         )
         if status in {"complete", "incomplete"} and not records:
             raise ContractValidationError(
@@ -280,12 +281,17 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
             "status, a category, a decision, or a limitation: "
             + ", ".join(orphan_evidence)
         )
-    if document["primary_analysis_id"] != document["run_contract"]["primary_analysis_id"]:
+    if (
+        document["primary_analysis_id"]
+        != document["run_contract"]["primary_analysis_id"]
+    ):
         raise ContractValidationError(
             "scientific review primary_analysis_id does not match its "
             "immutable run contract"
         )
-    if len(document["input_artifacts"]) != len({record["path"] for record in document["input_artifacts"]}):
+    if len(document["input_artifacts"]) != len(
+        {record["path"] for record in document["input_artifacts"]}
+    ):
         raise ContractValidationError(
             "scientific review input artifact paths must be unique"
         )
@@ -310,7 +316,10 @@ def validate_scientific_review_semantics(document: dict[str, Any]) -> None:
         ("sample_manifest", "sample_manifest_sha256"),
         ("partition_manifest", "partition_manifest_sha256"),
     ):
-        if input_index[manifest_role]["sha256"] != document["run_contract"][contract_field]:
+        if (
+            input_index[manifest_role]["sha256"]
+            != document["run_contract"][contract_field]
+        ):
             raise ContractValidationError(
                 f"{manifest_role} input hash does not match the run contract"
             )

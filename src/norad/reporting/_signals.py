@@ -20,7 +20,9 @@ def install(
             name = signal.Signals(signum).name
         except ValueError:
             name = str(signum)
-        raise error_type(f"{interrupt_subject} publication interrupted by signal {name}")
+        raise error_type(
+            f"{interrupt_subject} publication interrupted by signal {name}"
+        )
 
     try:
         for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM):

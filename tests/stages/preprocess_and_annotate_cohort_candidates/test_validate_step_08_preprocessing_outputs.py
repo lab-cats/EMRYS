@@ -5,22 +5,10 @@ import subprocess
 import sys
 from pathlib import Path
 
+from tests.stage_validator_test_support import load_roster_oracle
+
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = (
-    ROOT
-    / "tests"
-    / "contract_integration"
-    / "validation_rosters"
-    / "validation_roster_expectations.py"
-)
-ROSTER_SPEC = importlib.util.spec_from_file_location(
-    "preprocess_and_annotate_cohort_candidates_validation_roster_oracle",
-    ROSTER_ORACLE,
-)
-assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
-ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
-ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
-assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
+assert_exact_check_roster = load_roster_oracle(ROOT).assert_exact_check_roster
 
 STEP08_PATH = ROOT / "src" / "norad" / "contracts" / "scientific_evidence" / "step08.py"
 STEP08_TEST_MODULE_NAME = "_norad_step08_scientific_evidence_contract"

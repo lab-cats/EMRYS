@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from norad.contracts.scientific_evidence import (
     computational_validation,
-    review_package,
     step08,
     step09,
 )

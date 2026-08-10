@@ -25,14 +25,20 @@ def _fail(message: str) -> None:
 
 def _markdown_escape(value: Any) -> str:
     return str(value).replace("\\", "\\\\").replace("|", "\\|").replace("\n", " ")
+
+
 def _pdf_hash(value: str) -> str:
     """Keep long fixed-width hashes readable within a portrait PDF."""
 
     midpoint = len(value) // 2
     return f"`{value[:midpoint]}` `{value[midpoint:]}`"
+
+
 def _pdf_code(value: Any) -> str:
     text = str(value).replace("`", "'").replace("\n", " ")
     return f"`{text}`"
+
+
 def _pdf_candidate_summary(table: html_report.ApprovedTable) -> list[str]:
     """Render approved candidate rows as compact records, not wide tables."""
 
@@ -95,6 +101,8 @@ def _pdf_candidate_summary(table: html_report.ApprovedTable) -> list[str]:
             )
         lines.append("")
     return lines
+
+
 def _pdf_body(context: BundleContext) -> bytes:
     summary = context.html.summary
     banner = html_report.SCIENCE_BANNERS[summary["science_status"]]
@@ -136,9 +144,10 @@ def _pdf_body(context: BundleContext) -> bytes:
         "Cluster dry-run",
         "Cluster proof",
     )
-    status_values = (summary["summary_state"], *(
-        rollup[field] for field in contracts.RUN_SUMMARY_STATUS_FIELDS
-    ))
+    status_values = (
+        summary["summary_state"],
+        *(rollup[field] for field in contracts.RUN_SUMMARY_STATUS_FIELDS),
+    )
     for label, value in zip(status_labels, status_values):
         lines.append(f"| {label} | `{_markdown_escape(value)}` |")
     failed_scopes = [
@@ -221,6 +230,8 @@ def _pdf_body(context: BundleContext) -> bytes:
     if "```{" in template:
         _fail("Tracked PDF template must contain no executable code cells")
     return template.replace(PDF_BODY_MARKER, "\n".join(lines)).encode("utf-8")
+
+
 def _run_quarto(
     context: BundleContext,
     stage: Path,
@@ -260,6 +271,8 @@ def _run_quarto(
     if not output.is_file():
         _fail(f"Quarto did not publish the expected staged output: {output}")
     return output
+
+
 def _validate_pdf(path: Path, banner: str) -> int:
     snapshot = html_report._snapshot_regular(path, "rendered PDF report")
     payload = path.read_bytes()

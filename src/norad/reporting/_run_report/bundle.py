@@ -60,6 +60,7 @@ _assert_predecessors = _publication._assert_predecessors
 _recheck_inputs = _publication._recheck_inputs
 publish_bundle = _publication.publish_bundle
 
+
 def _fail(message: str) -> None:
     raise html_report.ReportRenderError(message)
 
@@ -81,46 +82,6 @@ def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--execute", action="store_true")
     return parser.parse_args(argv)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 def print_plan(context: BundleContext) -> None:

@@ -1,7 +1,8 @@
 # NORAD pipeline plan
 
 This document owns current pipeline evidence ceilings, open package families,
-and package acceptance. Task scope belongs to [task cards](../tasks/README.md),
+and package acceptance. Open intent and selected scope belong to the [task
+registry](../tasks/README.md),
 current blockers to [`HANDOFF.md`](../operations/HANDOFF.md), commands to the
 [`RUNBOOK.md`](../operations/RUNBOOK.md), and rationale to
 [`DECISIONS.md`](DECISIONS.md).
@@ -72,8 +73,8 @@ Reporting remains split across characterization, contract, projection,
 usability, and default-profile cards; renderer decomposition is implemented.
 Logging, validation
 receipts, documentation maintenance, future acquisition/analysis, and
-installable-control-plane cards remain unselected. `UNREFINED` proposals are
-not actionable.
+installable-control-plane items remain unselected. Backlog proposals are not
+actionable.
 
 ## Package acceptance
 
@@ -93,9 +94,9 @@ Every package must:
 - validate in proportion to changed behavior and shared risk.
 
 Documentation-only work must preserve live operational and scientific meaning
-and pass the documentation gate. Task cards and historical records are not
-live canonical owners: completed cards are deleted, surviving cards are not
-path-repaired, and `docs/history` is maintained separately.
+and pass the documentation gate. JIT cards and historical records are not live
+subject-matter owners: completed detail is deleted, every dependent backlog
+edge is repaired atomically, and `docs/history` is maintained separately.
 
 ## Scientific exit boundary
 

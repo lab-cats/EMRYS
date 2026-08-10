@@ -550,6 +550,20 @@ base=(
     --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
 )
 
+run_step09() {
+    local fixture="$1"
+    local analysis="$2"
+    shift 2
+    "$script" --analysis-id "$analysis" --cohort-id cohort \
+        --sample-manifest "$fixture/samples.tsv" \
+        --partition-manifest "$fixture/partitions.tsv" \
+        --step08-root "$fixture/step08" \
+        --output-root "$fixture/output" \
+        --rscript-bin "${STEP09_RSCRIPT_BIN:-$fake_r}" \
+        --r-script "${STEP09_R_PROGRAM:-$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R}" \
+        "$@"
+}
+
 assert_preflight_preserved() {
     local fixture="$1"
     local analysis="$2"
@@ -569,18 +583,8 @@ run_input_mutation_case() {
     copy_fixture "$fixture"
     mkdir -p "$fixture/output/$analysis"
     printf 'unrelated bytes\n' > "$fixture/output/$analysis/unrelated.txt"
-    expect_fail "$diagnostic" \
-        env \
-        FAKE_R_MARKER="$marker" \
-        FAKE_R_MODE="$mode" \
-        "$script" --analysis-id "$analysis" --cohort-id cohort \
-        --sample-manifest "$fixture/samples.tsv" \
-        --partition-manifest "$fixture/partitions.tsv" \
-        --step08-root "$fixture/step08" \
-        --output-root "$fixture/output" \
-        --rscript-bin "$fake_r" \
-        --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
-        --execute
+    FAKE_R_MARKER="$marker" FAKE_R_MODE="$mode" \
+        expect_fail "$diagnostic" run_step09 "$fixture" "$analysis" --execute
     [[ -e "$marker" ]] || fail "$mode did not invoke fake R"
     assert_no_finals "$fixture/output" "$analysis"
     assert_no_scratch "$fixture/output" "$analysis"
@@ -703,13 +707,7 @@ awk -F '\t' -v OFS='\t' '
 mv "$duplicate_manifest_header/rewritten.tsv" \
     "$duplicate_manifest_header/samples.tsv"
 expect_fail "duplicate sample manifest column: condition" \
-    "$script" --analysis-id duplicate-manifest-header --cohort-id cohort \
-    --sample-manifest "$duplicate_manifest_header/samples.tsv" \
-    --partition-manifest "$duplicate_manifest_header/partitions.tsv" \
-    --step08-root "$duplicate_manifest_header/step08" \
-    --output-root "$duplicate_manifest_header/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$duplicate_manifest_header" duplicate-manifest-header
 
 manifest_field_count="$tmp/manifest-field-count"
 copy_fixture "$manifest_field_count"
@@ -719,26 +717,14 @@ awk -F '\t' -v OFS='\t' '
 ' "$manifest_field_count/samples.tsv" > "$manifest_field_count/rewritten.tsv"
 mv "$manifest_field_count/rewritten.tsv" "$manifest_field_count/samples.tsv"
 expect_fail "sample manifest row 2 has 7 fields; expected 6" \
-    "$script" --analysis-id manifest-field-count --cohort-id cohort \
-    --sample-manifest "$manifest_field_count/samples.tsv" \
-    --partition-manifest "$manifest_field_count/partitions.tsv" \
-    --step08-root "$manifest_field_count/step08" \
-    --output-root "$manifest_field_count/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$manifest_field_count" manifest-field-count
 
 partition_field_count="$tmp/partition-field-count"
 copy_fixture "$partition_field_count"
 printf '%s\n' $'p2\tregion\t2:1-100\textra' \
     >> "$partition_field_count/partitions.tsv"
 expect_fail "partition manifest row 3 has 4 fields; expected 3" \
-    "$script" --analysis-id partition-field-count --cohort-id cohort \
-    --sample-manifest "$partition_field_count/samples.tsv" \
-    --partition-manifest "$partition_field_count/partitions.tsv" \
-    --step08-root "$partition_field_count/step08" \
-    --output-root "$partition_field_count/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$partition_field_count" partition-field-count
 
 missing_replicate="$tmp/missing-replicate"
 copy_fixture "$missing_replicate"
@@ -748,13 +734,7 @@ awk -F '\t' -v OFS='\t' '
 ' "$missing_replicate/samples.tsv" > "$missing_replicate/rewritten.tsv"
 mv "$missing_replicate/rewritten.tsv" "$missing_replicate/samples.tsv"
 expect_fail "analysis sample ABE_EV_2 has an empty replicate" \
-    "$script" --analysis-id missing-replicate --cohort-id cohort \
-    --sample-manifest "$missing_replicate/samples.tsv" \
-    --partition-manifest "$missing_replicate/partitions.tsv" \
-    --step08-root "$missing_replicate/step08" \
-    --output-root "$missing_replicate/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$missing_replicate" missing-replicate
 
 unmatched_replicate="$tmp/unmatched-replicate"
 copy_fixture "$unmatched_replicate"
@@ -762,13 +742,7 @@ awk -F '\t' '$1 != "ABE_PUM1_4"' \
     "$unmatched_replicate/samples.tsv" > "$unmatched_replicate/rewritten.tsv"
 mv "$unmatched_replicate/rewritten.tsv" "$unmatched_replicate/samples.tsv"
 expect_fail "control replicate 4 has no treatment pair" \
-    "$script" --analysis-id unmatched-replicate --cohort-id cohort \
-    --sample-manifest "$unmatched_replicate/samples.tsv" \
-    --partition-manifest "$unmatched_replicate/partitions.tsv" \
-    --step08-root "$unmatched_replicate/step08" \
-    --output-root "$unmatched_replicate/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$unmatched_replicate" unmatched-replicate
 
 duplicate_pair="$tmp/duplicate-pair"
 copy_fixture "$duplicate_pair"
@@ -776,50 +750,24 @@ printf '%s\n' \
     $'ABE_EV_2_DUP\tABE_EV_2_DUP_R1\tABE_EV_2_DUP_R2\treverse\tEV\t2' \
     >> "$duplicate_pair/samples.tsv"
 expect_fail "condition EV has more than one sample for replicate 2" \
-    "$script" --analysis-id duplicate-pair --cohort-id cohort \
-    --sample-manifest "$duplicate_pair/samples.tsv" \
-    --partition-manifest "$duplicate_pair/partitions.tsv" \
-    --step08-root "$duplicate_pair/step08" \
-    --output-root "$duplicate_pair/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$duplicate_pair" duplicate-pair
 
 one_stratum="$tmp/one-stratum"
 copy_fixture "$one_stratum"
 head -3 "$one_stratum/samples.tsv" > "$one_stratum/rewritten.tsv"
 mv "$one_stratum/rewritten.tsv" "$one_stratum/samples.tsv"
 expect_fail "at least two replicate strata" \
-    "$script" --analysis-id one-stratum --cohort-id cohort \
-    --sample-manifest "$one_stratum/samples.tsv" \
-    --partition-manifest "$one_stratum/partitions.tsv" \
-    --step08-root "$one_stratum/step08" \
-    --output-root "$one_stratum/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$one_stratum" one-stratum
 
 background_same="$tmp/background-same"
 copy_fixture "$background_same"
 expect_fail "Background condition must differ from control and treatment" \
-    "$script" --analysis-id background-same --cohort-id cohort \
-    --sample-manifest "$background_same/samples.tsv" \
-    --partition-manifest "$background_same/partitions.tsv" \
-    --step08-root "$background_same/step08" \
-    --output-root "$background_same/output" \
-    --background-condition EV \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$background_same" background-same --background-condition EV
 
 background_absent="$tmp/background-absent"
 copy_fixture "$background_absent"
 expect_fail "background condition has no samples: NODOX" \
-    "$script" --analysis-id background-absent --cohort-id cohort \
-    --sample-manifest "$background_absent/samples.tsv" \
-    --partition-manifest "$background_absent/partitions.tsv" \
-    --step08-root "$background_absent/step08" \
-    --output-root "$background_absent/output" \
-    --background-condition NODOX \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$background_absent" background-absent --background-condition NODOX
 
 background_valid="$tmp/background-valid"
 copy_fixture "$background_valid"
@@ -873,40 +821,24 @@ awk -F '\t' '
 tampered_background_max="$tmp/tampered-background-max"
 copy_fixture "$tampered_background_max"
 add_background_sample "$tampered_background_max"
-expect_fail "Step 09 all-sites rows do not preserve the Step 08 source/analysis contract" \
-    env \
-    FAKE_R_MARKER="$tampered_background_max/fake-r.invoked" \
-    FAKE_R_MODE=tamper_background_max \
-    "$script" --analysis-id tampered-background-max --cohort-id cohort \
-    --sample-manifest "$tampered_background_max/samples.tsv" \
-    --partition-manifest "$tampered_background_max/partitions.tsv" \
-    --step08-root "$tampered_background_max/step08" \
-    --output-root "$tampered_background_max/output" \
-    --background-condition NODOX \
-    --background-max-fraction 0.009 \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
-    --execute
+FAKE_R_MARKER="$tampered_background_max/fake-r.invoked" \
+FAKE_R_MODE=tamper_background_max \
+    expect_fail \
+        "Step 09 all-sites rows do not preserve the Step 08 source/analysis contract" \
+        run_step09 "$tampered_background_max" tampered-background-max \
+        --background-condition NODOX --background-max-fraction 0.009 --execute
 assert_no_finals "$tampered_background_max/output" tampered-background-max
 assert_no_scratch "$tampered_background_max/output" tampered-background-max
 
 tampered_background_status="$tmp/tampered-background-status"
 copy_fixture "$tampered_background_status"
 add_background_sample "$tampered_background_status"
-expect_fail "Step 09 all-sites rows do not preserve the Step 08 source/analysis contract" \
-    env \
-    FAKE_R_MARKER="$tampered_background_status/fake-r.invoked" \
-    FAKE_R_MODE=tamper_background_status \
-    "$script" --analysis-id tampered-background-status --cohort-id cohort \
-    --sample-manifest "$tampered_background_status/samples.tsv" \
-    --partition-manifest "$tampered_background_status/partitions.tsv" \
-    --step08-root "$tampered_background_status/step08" \
-    --output-root "$tampered_background_status/output" \
-    --background-condition NODOX \
-    --background-max-fraction 0.009 \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
-    --execute
+FAKE_R_MARKER="$tampered_background_status/fake-r.invoked" \
+FAKE_R_MODE=tamper_background_status \
+    expect_fail \
+        "Step 09 all-sites rows do not preserve the Step 08 source/analysis contract" \
+        run_step09 "$tampered_background_status" tampered-background-status \
+        --background-condition NODOX --background-max-fraction 0.009 --execute
 assert_no_finals "$tampered_background_status/output" tampered-background-status
 assert_no_scratch "$tampered_background_status/output" tampered-background-status
 
@@ -920,13 +852,7 @@ copy_fixture "$wrong_receipt_order"
 mv "$wrong_receipt_order/rewritten.tsv" \
     "$wrong_receipt_order/step08/cohort/cohort.step08_inputs.tsv"
 expect_fail "Step 08 input receipt content/order/counts are invalid" \
-    "$script" --analysis-id wrong-receipt-order --cohort-id cohort \
-    --sample-manifest "$wrong_receipt_order/samples.tsv" \
-    --partition-manifest "$wrong_receipt_order/partitions.tsv" \
-    --step08-root "$wrong_receipt_order/step08" \
-    --output-root "$wrong_receipt_order/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$wrong_receipt_order" wrong-receipt-order
 
 stale_manifest_hash="$tmp/stale-manifest-hash"
 copy_fixture "$stale_manifest_hash"
@@ -938,13 +864,7 @@ awk -F '\t' -v OFS='\t' -v stale_hash="$(printf 'b%.0s' {1..64})" '
 mv "$stale_manifest_hash/rewritten.tsv" \
     "$stale_manifest_hash/step08/cohort/cohort.step08_inputs.tsv"
 expect_fail "Step 08 input receipt content/order/counts are invalid" \
-    "$script" --analysis-id stale-manifest-hash --cohort-id cohort \
-    --sample-manifest "$stale_manifest_hash/samples.tsv" \
-    --partition-manifest "$stale_manifest_hash/partitions.tsv" \
-    --step08-root "$stale_manifest_hash/step08" \
-    --output-root "$stale_manifest_hash/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$stale_manifest_hash" stale-manifest-hash
 
 receipt_reconciliation="$tmp/receipt-reconciliation"
 copy_fixture "$receipt_reconciliation"
@@ -956,13 +876,7 @@ awk -F '\t' -v OFS='\t' '
 mv "$receipt_reconciliation/rewritten.tsv" \
     "$receipt_reconciliation/step08/cohort/cohort.step08_inputs.tsv"
 expect_fail "Step 08 input receipt content/order/counts are invalid" \
-    "$script" --analysis-id receipt-reconciliation --cohort-id cohort \
-    --sample-manifest "$receipt_reconciliation/samples.tsv" \
-    --partition-manifest "$receipt_reconciliation/partitions.tsv" \
-    --step08-root "$receipt_reconciliation/step08" \
-    --output-root "$receipt_reconciliation/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$receipt_reconciliation" receipt-reconciliation
 
 reordered_sample_columns="$tmp/reordered-sample-columns"
 copy_fixture "$reordered_sample_columns"
@@ -978,13 +892,7 @@ awk -F '\t' -v OFS='\t' '
 mv "$reordered_sample_columns/rewritten.tsv" \
     "$reordered_sample_columns/step08/cohort/cohort.step08_sites.tsv"
 expect_fail "Step 08 sites table header is invalid" \
-    "$script" --analysis-id reordered-sample-columns --cohort-id cohort \
-    --sample-manifest "$reordered_sample_columns/samples.tsv" \
-    --partition-manifest "$reordered_sample_columns/partitions.tsv" \
-    --step08-root "$reordered_sample_columns/step08" \
-    --output-root "$reordered_sample_columns/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$reordered_sample_columns" reordered-sample-columns
 
 missing_sample_column="$tmp/missing-sample-column"
 copy_fixture "$missing_sample_column"
@@ -995,13 +903,7 @@ awk -F '\t' -v OFS='\t' '
 mv "$missing_sample_column/rewritten.tsv" \
     "$missing_sample_column/step08/cohort/cohort.step08_sites.tsv"
 expect_fail "Step 08 sites table header is invalid" \
-    "$script" --analysis-id missing-sample-column --cohort-id cohort \
-    --sample-manifest "$missing_sample_column/samples.tsv" \
-    --partition-manifest "$missing_sample_column/partitions.tsv" \
-    --step08-root "$missing_sample_column/step08" \
-    --output-root "$missing_sample_column/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$missing_sample_column" missing-sample-column
 
 duplicate_candidate="$tmp/duplicate-candidate"
 copy_fixture "$duplicate_candidate"
@@ -1014,13 +916,7 @@ awk -F '\t' -v OFS='\t' '
 mv "$duplicate_candidate/rewritten.tsv" \
     "$duplicate_candidate/step08/cohort/cohort.step08_sites.tsv"
 expect_fail "Step 08 sites table rows or partition/orientation counts are invalid" \
-    "$script" --analysis-id duplicate-candidate --cohort-id cohort \
-    --sample-manifest "$duplicate_candidate/samples.tsv" \
-    --partition-manifest "$duplicate_candidate/partitions.tsv" \
-    --step08-root "$duplicate_candidate/step08" \
-    --output-root "$duplicate_candidate/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$duplicate_candidate" duplicate-candidate
 
 orientation_count_mismatch="$tmp/orientation-count-mismatch"
 copy_fixture "$orientation_count_mismatch"
@@ -1032,13 +928,7 @@ awk -F '\t' -v OFS='\t' '
 mv "$orientation_count_mismatch/rewritten.tsv" \
     "$orientation_count_mismatch/step08/cohort/cohort.step08_sites.tsv"
 expect_fail "Step 08 sites table rows or partition/orientation counts are invalid" \
-    "$script" --analysis-id orientation-count-mismatch --cohort-id cohort \
-    --sample-manifest "$orientation_count_mismatch/samples.tsv" \
-    --partition-manifest "$orientation_count_mismatch/partitions.tsv" \
-    --step08-root "$orientation_count_mismatch/step08" \
-    --output-root "$orientation_count_mismatch/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    run_step09 "$orientation_count_mismatch" orientation-count-mismatch
 
 header_only="$tmp/header-only"
 copy_fixture "$header_only"
@@ -1057,14 +947,7 @@ mv "$header_only/rewritten.tsv" \
     "$header_only/step08/cohort/cohort.step08_inputs.tsv"
 header_only_marker="$header_only/fake-r.invoked"
 FAKE_R_MARKER="$header_only_marker" \
-"$script" --analysis-id header-only --cohort-id cohort \
-    --sample-manifest "$header_only/samples.tsv" \
-    --partition-manifest "$header_only/partitions.tsv" \
-    --step08-root "$header_only/step08" \
-    --output-root "$header_only/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
-    --execute > "$header_only/execute.out"
+    run_step09 "$header_only" header-only --execute > "$header_only/execute.out"
 header_only_output="$header_only/output/header-only"
 [[ -e "$header_only_marker" ]] ||
     fail "header-only Step 08 inputs did not invoke fake R"
@@ -1083,18 +966,9 @@ awk -F '\t' 'NR > 1 { total += $5 } END { exit !(total == 0) }' \
 fake_r_failure="$tmp/fake-r-failure"
 copy_fixture "$fake_r_failure"
 fake_r_failure_marker="$fake_r_failure/fake-r.invoked"
-expect_fail "Step 09 R CMH analysis failed" \
-    env \
-    FAKE_R_MARKER="$fake_r_failure_marker" \
-    FAKE_R_MODE=fail \
-    "$script" --analysis-id fake-r-failure --cohort-id cohort \
-    --sample-manifest "$fake_r_failure/samples.tsv" \
-    --partition-manifest "$fake_r_failure/partitions.tsv" \
-    --step08-root "$fake_r_failure/step08" \
-    --output-root "$fake_r_failure/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
-    --execute
+FAKE_R_MARKER="$fake_r_failure_marker" FAKE_R_MODE=fail \
+    expect_fail "Step 09 R CMH analysis failed" \
+        run_step09 "$fake_r_failure" fake-r-failure --execute
 [[ -e "$fake_r_failure_marker" ]] ||
     fail "fake-R failure mode was not invoked"
 assert_no_finals "$fake_r_failure/output" fake-r-failure
@@ -1103,36 +977,18 @@ assert_no_scratch "$fake_r_failure/output" fake-r-failure
 omitted_output="$tmp/omitted-output"
 copy_fixture "$omitted_output"
 omitted_output_marker="$omitted_output/fake-r.invoked"
-expect_fail "Step 09 summary does not exist or is empty" \
-    env \
-    FAKE_R_MARKER="$omitted_output_marker" \
-    FAKE_R_MODE=omit_summary \
-    "$script" --analysis-id omitted-output --cohort-id cohort \
-    --sample-manifest "$omitted_output/samples.tsv" \
-    --partition-manifest "$omitted_output/partitions.tsv" \
-    --step08-root "$omitted_output/step08" \
-    --output-root "$omitted_output/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
-    --execute
+FAKE_R_MARKER="$omitted_output_marker" FAKE_R_MODE=omit_summary \
+    expect_fail "Step 09 summary does not exist or is empty" \
+        run_step09 "$omitted_output" omitted-output --execute
 assert_no_finals "$omitted_output/output" omitted-output
 assert_no_scratch "$omitted_output/output" omitted-output
 
 malformed_pdf="$tmp/malformed-pdf"
 copy_fixture "$malformed_pdf"
 malformed_pdf_marker="$malformed_pdf/fake-r.invoked"
-expect_fail "Step 09 mutation-spectrum PDF is missing a PDF signature" \
-    env \
-    FAKE_R_MARKER="$malformed_pdf_marker" \
-    FAKE_R_MODE=bad_pdf \
-    "$script" --analysis-id malformed-pdf --cohort-id cohort \
-    --sample-manifest "$malformed_pdf/samples.tsv" \
-    --partition-manifest "$malformed_pdf/partitions.tsv" \
-    --step08-root "$malformed_pdf/step08" \
-    --output-root "$malformed_pdf/output" \
-    --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
-    --execute
+FAKE_R_MARKER="$malformed_pdf_marker" FAKE_R_MODE=bad_pdf \
+    expect_fail "Step 09 mutation-spectrum PDF is missing a PDF signature" \
+        run_step09 "$malformed_pdf" malformed-pdf --execute
 assert_no_finals "$malformed_pdf/output" malformed-pdf
 assert_no_scratch "$malformed_pdf/output" malformed-pdf
 

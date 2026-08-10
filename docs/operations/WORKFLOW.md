@@ -3,7 +3,7 @@
 This is the complete repository-development workflow. The root
 [`AGENTS.md`](../../AGENTS.md) supplies the safety and authority guard,
 [`TASK_START.md`](TASK_START.md) selects the smallest sufficient context, and a
-task card supplies scope and acceptance but never mutation authority.
+selected JIT card supplies scope and acceptance but never mutation authority.
 
 ## Start
 
@@ -18,6 +18,10 @@ task card supplies scope and acceptance but never mutation authority.
   to one outcome and one coherent owner boundary.
 - Change implementation, direct tests, contracts, and subject-affected
   documentation together. One semantic commit is the default.
+- For a physical ownership move, freeze the old public and fault boundary,
+  move the implementation, direct tests, affected callers, contracts, and
+  tooling together, and leave one live final owner. Do not accept a temporary
+  implementation shadow as completion.
 - Use focused checks as useful feedback. Review the complete final diff and run
   one de-duplicated applicable gate after the final state is assembled; rerun
   only evidence invalidated by later changes.
@@ -28,17 +32,20 @@ task card supplies scope and acceptance but never mutation authority.
   missing required evidence, or an external decision. Do not turn an unrelated
   observation into current scope.
 
-## Documentation and cards
+## Documentation and task detail
 
 Update a canonical document only when its subject changes. Branch names,
 commits, routine progress, repeated test totals, and unchanged facts are not
 documentation triggers. Keep exact commands and defects with their functional
 owner; cross-cutting procedures and recovery rules stay in the operations docs.
 
-Cards retain their paths during selection, pause, review, and execution.
-Delete a card when its work is completed or retired; do not maintain a
-completed-card archive or repair surviving cards because former targets were
-deleted. History and `UNREFINED` are not live path-maintenance surfaces.
+The compact backlog retains stable identities, real open blockers, intent, and
+boundaries. Create a detailed card only for selected work and delete it when
+the execution package completes or pauses. Completing or retiring an item must
+also remove or replace every live dependent edge; missing blockers are errors,
+not implicit completion. Before deleting detail, move every durable contract,
+safety rule, defect, decision, and evidence ceiling to its canonical subject
+owner; then discard chronology, repeated totals, and superseded planning.
 
 ## Close and publish
 

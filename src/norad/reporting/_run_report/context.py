@@ -42,6 +42,8 @@ def _expected_html_identity(context: RenderContext) -> dict[str, str]:
         "data-run-id": context.summary["run_id"],
         "data-run-summary-sha256": metadata["run_summary_sha256"],
     }
+
+
 def prepare_context(arguments: argparse.Namespace) -> RenderContext:
     run_summary_path = _explicit_path(
         arguments.run_summary,

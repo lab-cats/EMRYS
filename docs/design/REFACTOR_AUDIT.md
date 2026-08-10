@@ -1,86 +1,124 @@
 # Refactor audit index and recheck triggers
 
-This is the current route for refactor-audit findings and recheck triggers. It
-does not restate dated evidence or own roadmap order, task status, executable
-behavior, or scientific conclusions.
+This file is the self-contained current owner for refactor findings, durable
+constraints, and recheck triggers. It does not own roadmap order, task status,
+executable behavior, or scientific conclusions. Exact current behavior and
+defects remain with the applicable owner `README.md` and `CONTRACT.md`; current
+test routes remain in [`TEST_BASELINE.md`](TEST_BASELINE.md).
 
-## Historical record
+## Status vocabulary
 
-The complete Phase `00` audit is frozen as the
-[`2026-07-30 comprehensive refactor audit`](../history/audits/2026-07-30-comprehensive-refactor-audit.md).
-That record identifies the audited target, initial record commit, exact frozen
-source snapshot, later amendment date, and source blob. Its ranks,
-recommendations, measurements, and finding statuses describe that dated
-record; current order remains in [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md), current
-checkout and evidence in [`HANDOFF.md`](../operations/HANDOFF.md), and active
-task status in the [task registry](../tasks/README.md).
+- `open` — a verified current gap still needs a separately reviewed correction;
+- `characterized` — tests or owner documentation expose the defect or limit,
+  but do not approve or correct it;
+- `monitor` — no current defect justifies work; measure again on the named
+  trigger;
+- `resolved` — the current owner topology and regression routes remove the
+  finding; and
+- `retain` — the boundary is intentionally independent or owner-specific and
+  must not be collapsed by a generic refactor.
 
-## Finding index
+## Current finding ledger
 
-The links below are navigation into the immutable record, not current status
-claims.
+| ID | Finding | Status and current route |
+| --- | --- | --- |
+| `RA-001` | Step `09` independent CMH oracle gap | `open`: the count-derived test oracle is independent, but the production validator still does not recompute CMH statistic, p-value, odds ratio, or count-derived estimability. |
+| `RA-002` | Shared validation publication and recheck safety | `open`: fault tests characterize metadata-only rewrite blindness, late-foreign-final deletion, and incomplete rollback or lock-loss; successful-path report bytes remain protected. |
+| `RA-003` | Exact validator check-roster gap | `open`: artifact inspection validates common structure, safe unique IDs, step, scope, and status, but still does not enforce each producer's exact ordered check roster. |
+| `RA-004` | Early-stage execution and publication behavior | `characterized`: direct-final, partial-publication, stale-output, dry-run, and recovery limits remain producer-specific and are routed through [`TROUBLESHOOTING.md`](../operations/TROUBLESHOOTING.md) and owner contracts. |
+| `RA-005` | Artifact-adapter cohesion and coupling | `resolved`: artifact indexing now has one public facade over private registry, inspection, reconciliation, assembly, validation, and publication owners. |
+| `RA-006` | Report-module import cycle | `resolved`: the public renderers delegate to an acyclic private `_run_report` package while retaining their public entry points. |
+| `RA-007` | Stage-specific code used as generic infrastructure | `resolved`: the complete allowed neutral seams and dependency direction are declared in [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md); peer-private imports remain prohibited. |
+| `RA-008` | Oversized mixed-responsibility modules | `monitor`: the reporting, artifact, runtime, storage, reference, Step `08`, Step `09`, and Step `09c` slices were decomposed without scientific or evidence-policy change; reassess other owners only with a measured coupling or change-cost trigger. |
+| `RA-009` | Heterogeneous transaction mechanisms | `retain`: locking, publication, rollback, and recovery stay producer-specific until equivalent semantics and failure states are proved across named consumers. |
+| `RA-010` | Primitive internal representations | `monitor`: introduce stronger internal models only when a current invariant is hidden or repeated; representation similarity alone is not refactor authority. |
+| `RA-011` | Diagnostic and exit semantics | `characterized`: readable failed evidence may publish `status=fail` and exit zero, while malformed or unsafe operation exits nonzero and publishes nothing; other stream and exit behavior stays owner-local. |
+| `RA-012` | Stale canonical lineage and status | `resolved`: [`HANDOFF.md`](../operations/HANDOFF.md), [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md), the task registry, and live Git have distinct current ownership. |
+| `RA-013` | Operations-document navigation load | `resolved`: canonical ownership, compact task routing, owner-local commands, and the reduced runbook/troubleshooting routes replace repeated narrative. |
+| `RA-014` | Architecture and reliability-description drift | `resolved`: current topology, artifact edges, and evidence boundaries have explicit canonical owners. |
+| `RA-015` | Runbook command and validation-claim drift | `resolved`: supported commands live in [`RUNBOOK.md`](../operations/RUNBOOK.md); [`TEST_BASELINE.md`](TEST_BASELINE.md) limits what each validation route proves. |
+| `RA-016` | Missing measured Python baseline | `resolved`: the tracked line/branch snapshot, comparator, update boundary, and direct policy tests own the current baseline. |
+| `RA-017` | Incomplete public-contract traceability | `resolved`: public CLI, SLURM, roster, contract-golden, transaction, and scientific-oracle routes are indexed in [`TEST_BASELINE.md`](TEST_BASELINE.md). |
+| `RA-018` | Uneven SLURM behavior coverage | `characterized`: local directives, delegation, modes, arguments, CWD, and exits are covered; real scheduler, module, and production-runtime evidence remains environment-deferred. |
+| `RA-019` | Production/test shared-defect exposure | `retain`: independent rosters, contract goldens, frozen bytes, and the CMH oracle supplement producer-coupled fixtures and must not import the production rule they verify. |
+| `RA-020` | Large fixture builders and coupled integration edits | `monitor`: split a fixture only after measured repeated surgery or loss of expectation independence; size alone is insufficient. |
+| `RA-021` | Stale planning and configuration artifacts | `resolved`: the [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md) and compact [`BACKLOG.md`](../tasks/BACKLOG.md) explicitly classify retained root surfaces, deferred inputs, and actionable work. |
+| `RA-022` | Unmeasured repeated parsing, hashing, and input I/O | `monitor`: measure material runtime or change cost before caching or sharing; textual repetition is not evidence of a safe seam. |
+| `RA-023` | Direct-script and working-directory inconsistency | `characterized`: public CLI and owner suites preserve declared file modes, arbitrary-CWD behavior, Bash `3.2` limits, side effects, and failures. |
+| `RA-024` | Independent shell, R, and Python checks | `retain`: these lanes detect different failure classes and must not be collapsed into one production-derived oracle. |
+| `RA-025` | Steps `07`–`09` algorithm boundary | `retain`: local refactors may preserve and characterize these algorithms but may not change or validate scientific meaning beyond the named independent evidence. |
+| `RA-026` | Action-local safety and recovery | `retain`: recovery stays visible with the producer whose files, locks, transactions, and failure states it governs. |
+| `RA-027` | Evidence-state separation | `retain`: computational, transaction, local-test, runtime, cluster, scientific-review, and biological-readiness states remain distinct. |
+| `RA-028` | Unique documentation evidence preservation | `retain`: before deleting a live document, move each operative contract, safety rule, defect, and evidence ceiling to the owner declared by [`DOCUMENTATION_OWNERSHIP.md`](../sitemap/DOCUMENTATION_OWNERSHIP.md). |
+| `RA-029` | Locked R reproducibility versus mutable repository freshness | `resolved/recheck`: [`RUNBOOK.md`](../operations/RUNBOOK.md) makes restoration explicit and lock changes reviewed; a future upstream-metadata-only failure stops for policy review rather than silently refreshing the lock. |
 
-| ID | Historical finding |
-| --- | --- |
-| [`RA-001`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-001--step-09-independent-cmh-oracle-gap) | Step 09 independent CMH oracle gap |
-| [`RA-002`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-002--shared-validation-publication-and-recheck-safety) | Shared validation publication and recheck safety |
-| [`RA-003`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-003--adapter-does-not-enforce-exact-validator-check-rosters) | Exact validator check-rosters gap |
-| [`RA-004`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-004--legacy-early-stage-execution-and-publication-behavior) | Legacy early-stage execution and publication behavior |
-| [`RA-005`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-005--artifact-adapter-monolith-and-shotgun-surgery) | Artifact-adapter cohesion and coupling |
-| [`RA-006`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-006--report-module-import-cycle) | Report-module import cycle |
-| [`RA-007`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-007--stage-specific-modules-used-as-generic-infrastructure) | Stage-specific modules used as generic infrastructure |
-| [`RA-008`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-008--oversized-mixed-responsibility-modules) | Oversized mixed-responsibility modules |
-| [`RA-009`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-009--repeated-transaction-mechanisms-are-not-one-proven-abstraction) | Heterogeneous transaction mechanisms |
-| [`RA-010`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-010--primitive-internal-representations-hide-invariants) | Primitive internal representations |
-| [`RA-011`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-011--diagnostic-and-exit-semantics-are-inconsistent) | Diagnostic and exit semantics |
-| [`RA-012`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-012--canonical-lineage-and-status-were-stale) | Stale canonical lineage and status |
-| [`RA-013`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-013--operations-document-navigation-load) | Operations-document navigation load |
-| [`RA-014`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-014--architecture-and-reliability-description-drift) | Architecture and reliability-description drift |
-| [`RA-015`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-015--runbook-command-and-validation-claim-drift) | Runbook command and validation-claim drift |
-| [`RA-029`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-029--mutable-repository-freshness-conflicts-with-the-locked-r-gate) | Locked-R versus mutable-repository freshness |
-| [`RA-016`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-016--no-measured-python-line-and-branch-baseline) | Missing measured Python baseline |
-| [`RA-017`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-017--incomplete-public-contract-traceability) | Incomplete public-contract traceability |
-| [`RA-018`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-018--uneven-slurm-behavior-coverage) | Uneven SLURM behavior coverage |
-| [`RA-019`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-019--productiontest-shared-defect-exposure) | Production/test shared-defect exposure |
-| [`RA-020`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-020--large-fixture-builders-and-coupled-integration-edits) | Large fixture builders and coupled integration edits |
-| [`RA-021`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-021--stale-planning-and-configuration-artifacts) | Stale planning and configuration artifacts |
-| [`RA-022`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-022--repeated-parsing-hashing-and-input-io-lacks-measurement) | Unmeasured repeated parsing, hashing, and input I/O |
-| [`RA-023`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-023--direct-script-and-working-directory-inconsistency) | Direct-script and working-directory inconsistency |
-| [`RA-024`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-024--independent-shell-r-and-python-checks-should-not-be-collapsed) | Independent shell, R, and Python checks |
-| [`RA-025`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-025--steps-0709-algorithms-are-outside-local-refactor-scope) | Steps 07–09 algorithm boundary |
-| [`RA-026`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-026--action-local-safety-and-producer-specific-recovery-should-remain-visible) | Action-local safety and producer-specific recovery |
-| [`RA-027`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-027--computational-transaction-scientific-and-biological-states-must-stay-separate) | Evidence-state separation |
-| [`RA-028`](../history/audits/2026-07-30-comprehensive-refactor-audit.md#ra-028--unique-documentation-evidence-must-survive-any-navigation-refactor) | Unique documentation evidence preservation |
+## Active correction boundaries
 
-## Current dispositions
+### `RA-001` — production CMH validation
 
-| Finding | Current disposition |
-| --- | --- |
-| `RA-006` | Resolved for the live reporting owner. The public renderer files are compatibility facades over one private `_run_report` package; dispatch points from HTML selection to the bundle coordinator without the former HTML-to-bundle-to-HTML cycle. Direct-import, direct-script, format, deterministic-output, signal, lock, rollback, recovery, and arbitrary-CWD contracts remain protected by `make report-test`. |
-| `RA-008` | Step `08` R, Step `09` R, Step `09c` internals, runtime preflight, storage inventory, reference provenance, the Step `08` and Step `09` scientific-evidence contracts, artifact-contract Python, artifact-index, canonical run-summary, and reporting-renderer slices are structurally resolved; the repository-wide finding remains open for its other named owners. Step `08` retains a 402-line R coordinator over modules no larger than 430 lines, with all 23 prior function bodies parse-identical, including all ten functions in the VCF/count/candidate split; its roughly 1,900 total R-owner lines remain visible rather than being hidden behind facade size. Step `09` retains five cohesive R files totaling 1,101 lines with a largest file of 279 lines; no safe dead-function or duplication deletion was found. Step `09c` retains 42- and 16-line intake and review-analysis sibling facades; review-analysis is split across owners no larger than 190 lines with all seven extracted function bodies AST-identical. Runtime preflight retains a 251-line public owner over modules no larger than 167 lines. Storage inventory retains a 90-line interpreter-only facade over contract, measurement/rendering, and publication owners no larger than 212 lines, with all 12 pre-split function bodies AST-identical. Reference provenance retains a 230-line CLI/publication facade over private modules no larger than 135 lines; its five files total 693 lines, and all nine extracted function bodies are AST-identical to the monolith. The Step `08` contract retains a 56-line direct-load compatibility owner over modules no larger than 271 lines, with all 19 extracted function bodies AST-identical; the Step `09` contract retains its 47-line compatibility owner over modules no larger than 373 lines. Artifact contracts retain 47-, 18-, and 192-line facades with report-receipt and inventory owners no larger than 246 lines; all 12 functions extracted from the public facade are AST-identical, and the five-schema registry remains one file per public `$id`. Artifact-index text reading retains a 51-line facade over modules no larger than 258 lines, with all 13 extracted bodies AST-identical and the frozen producer-byte oracle unchanged. Reporting slices retain their established facade, fault-injection, and transaction boundaries. No scientific algorithm, independent oracle, generic framework, shared-library promotion, or evidence promotion was introduced. |
+The independent test oracle derives Step `09` statistic, p-value, odds ratio,
+and estimability behavior from counts. The production validator checks related
+depth, allele-frequency, background, call, and global-BH semantics but can
+still accept a coordinated false CMH result. Any correction must preserve the
+public check roster, statuses, deterministic report bytes, valid degeneracy
+behavior, and the oracle's independence; local characterization is not
+scientific or biological validation.
 
-The reporting package passed 157 focused report tests plus its shell contract.
-Runtime preflight and the public CLI contract passed 158 focused tests, with
-one environment-dependent skip.
-Reference provenance and the public CLI contract passed 145 focused tests,
-with one environment-dependent skip.
-Artifact indexing and the public CLI contract passed 210 focused tests, with
-one environment-dependent skip, including frozen producer-byte evidence.
-Artifact contract, index, run-summary, and public-CLI consumers passed 335
-focused tests, with one environment-dependent skip.
-Step `09c` review analysis and its contract, artifact-index, and public-CLI
-boundaries passed 296 focused tests, with one environment-dependent skip.
-The Step `08` contract and its Step `09`, artifact-index, and producer-validator
-consumers passed 163 focused tests.
-Storage inventory and public-CLI contracts passed 144 focused tests, with one
-environment-dependent skip. Import-focused Pylint reported no `E0401` or
-`E0402` findings when run with the repository `src` root.
-The repository coverage non-regression gate passed 1,250 tests with 18 skips at
-line `0.858942` and branch `0.746933`, above the tracked `0.838935` and
-`0.736276` baselines. These are local engineering results only; they do not
-establish runtime, cluster, scientific-review, or biological evidence.
-That coverage snapshot predates the storage-inventory split; the full gate was
-not rerun for this slice by explicit user direction.
+Recheck through the production
+[`validate_step_09_cmh_outputs.py`](../../src/norad/analyses/rank_cohort_candidates_with_paired_CMH/validate_step_09_cmh_outputs.py)
+and the independent
+[`test_step_09_cmh_oracle.py`](../../tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_oracle.py).
+
+### `RA-002` — validation-report publication
+
+The shared publisher can miss a same-size rewrite with restored mtime, delete a
+late foreign final, or lose protection after incomplete rollback or cleanup.
+Any correction must preserve valid first/repeat publication bytes, names,
+stage and predecessor validation, symlink and identity rejection, signal
+behavior, descriptor cleanup, and recovery evidence across every consuming
+validator. Do not generalize this transaction to unrelated publishers.
+
+Recheck through the shared publisher's
+[`test_validation_report.py`](../../tests/libraries/test_validation_report.py)
+and every affected validator transaction suite.
+
+### `RA-003` — artifact-side roster enforcement
+
+Independent fixtures freeze every validator's ordered check IDs. Artifact
+inspection must eventually reject missing, extra, substituted, duplicate, or
+reordered checks without importing the producer roster or changing valid
+records. Until then, a structurally plausible report can be mislabeled in the
+artifact graph even when its native validator would reject it.
+
+Recheck the current
+[`inspection.py`](../../src/norad/reporting/_artifact_index/inspection.py),
+independent [roster expectations](../../tests/contract_integration/validation_rosters/validation_roster_expectations.py),
+and [artifact-adapter tests](../../tests/reporting/test_artifact_adapters.py).
+
+### `RA-008` — residual decomposition
+
+Completed decompositions preserved public facades, direct imports, function
+bodies, deterministic outputs, transactions, and evidence boundaries. Reopen
+only for a named owner with measured repeated edit coupling, review load, or
+regression isolation failure. Do not use facade size to hide total owner size,
+create a generic framework, or move scientific and recovery policy into a
+shared utility.
+
+The [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
+owns the current decomposition and direct protection routes.
+
+## Permanent refactor constraints
+
+- Preserve independent expectations even when that duplicates a production
+  rule intentionally.
+- Preserve producer-specific transaction and recovery semantics; similarity
+  is not proof of one safe abstraction.
+- Preserve public schemas, headers, bytes, check rosters, paths, modes,
+  streams, exits, CWD behavior, and unrelated-file boundaries.
+- Preserve scientific-algorithm and evidence-state boundaries. Structural
+  cleanup does not promote runtime, cluster, review, or biological evidence.
+- Preserve unique operative documentation in its canonical subject owner;
+  discard chronology, repeated totals, and superseded planning after that move.
 
 ## Current recheck triggers
 
@@ -91,6 +129,8 @@ Re-run the applicable audit evidence before changing a disposition when:
 - runtime or cluster evidence for Steps `07`–`09` lands;
 - a production Step `09c` review or report is inspected;
 - an implementation package changes a transaction or recovery path;
-- coverage or mutation evidence contradicts the current ranking; or
+- coverage, mutation evidence, or repeated change coupling contradicts a
+  current disposition;
+- mutable dependency metadata invalidates an otherwise synchronized lock; or
 - a proposed abstraction would make an independent test import the production
   rule it is meant to verify.

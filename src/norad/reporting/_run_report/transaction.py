@@ -46,6 +46,8 @@ def _create_directories(path: Path) -> list[Path]:
         _fail(f"Could not create report output directory {path}: {exc}")
     _reject_symlink_components(path, "report output directory")
     return created
+
+
 def _remove_empty_created_directories(created: Sequence[Path]) -> None:
     for directory in reversed(created):
         try:
@@ -54,6 +56,8 @@ def _remove_empty_created_directories(created: Sequence[Path]) -> None:
             continue
         except OSError:
             break
+
+
 def _lock_payload(context: RenderContext, token: str) -> str:
     return (
         "owner\tNORAD_REPORT_HTML\n"
@@ -62,6 +66,8 @@ def _lock_payload(context: RenderContext, token: str) -> str:
         f"run_id\t{context.summary['run_id']}\n"
         f"run_summary_sha256\t{context.run_summary_snapshot.sha256}\n"
     )
+
+
 def _acquire_lock(context: RenderContext, token: str) -> LockOwnership:
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     try:
@@ -109,6 +115,8 @@ def _acquire_lock(context: RenderContext, token: str) -> LockOwnership:
         device=metadata.st_dev,
         inode=metadata.st_ino,
     )
+
+
 def _release_lock(ownership: LockOwnership) -> None:
     snapshot = _snapshot_regular(ownership.path, "owned report render lock")
     try:
@@ -125,8 +133,12 @@ def _release_lock(ownership: LockOwnership) -> None:
             f"cleanup: {ownership.path}"
         )
     ownership.path.unlink()
+
+
 def _install_publication_signal_handlers() -> dict[int, Any]:
     return _signals.install(ReportRenderError, "Report", "report publication")
+
+
 def _snapshot_at(snapshot: FileSnapshot, path: Path) -> FileSnapshot:
     return FileSnapshot(
         path=path,
@@ -137,6 +149,8 @@ def _snapshot_at(snapshot: FileSnapshot, path: Path) -> FileSnapshot:
         mtime_ns=snapshot.mtime_ns,
         ctime_ns=snapshot.ctime_ns,
     )
+
+
 def _capture_moved_snapshot(
     path: Path,
     expected: FileSnapshot,
@@ -160,6 +174,8 @@ def _capture_moved_snapshot(
     if stable_identity != expected_identity:
         _fail(f"{label} changed identity or content during publication: {path}")
     return current
+
+
 def _assert_predecessor(context: RenderContext) -> None:
     previous = context.previous_output_snapshot
     if previous is None:
@@ -175,9 +191,13 @@ def _assert_predecessor(context: RenderContext) -> None:
         expected_banner=None,
     )
     _assert_snapshot(previous, "existing report output")
+
+
 def _write_recovery_marker(path: Path, message: str) -> None:
     with contextlib.suppress(OSError, ReportRenderError):
         _write_owned_file(path, message.encode("utf-8"))
+
+
 def _write_owned_file(path: Path, payload: bytes) -> None:
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     descriptor = os.open(path, flags, 0o600)
@@ -188,18 +208,24 @@ def _write_owned_file(path: Path, payload: bytes) -> None:
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
+
+
 def _fsync_file(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
+
+
 def _fsync_directory(path: Path) -> None:
     descriptor = os.open(path, os.O_RDONLY)
     try:
         os.fsync(descriptor)
     finally:
         os.close(descriptor)
+
+
 def _remove_owned_stage(
     path: Path,
     token: str,
@@ -217,6 +243,8 @@ def _remove_owned_stage(
     ):
         _fail(f"Refusing to remove unverified report staging path: {path}")
     shutil.rmtree(path)
+
+
 def _recheck_inputs(context: RenderContext) -> None:
     labels = (
         "run-summary document",
@@ -227,5 +255,6 @@ def _recheck_inputs(context: RenderContext) -> None:
     )
     for snapshot, label in zip(context.input_snapshots, labels):
         _assert_snapshot(snapshot, label)
+
 
 _restore_signal_handlers = _signals.restore

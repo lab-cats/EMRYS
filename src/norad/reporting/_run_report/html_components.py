@@ -34,6 +34,8 @@ def _fallback_render_metadata() -> dict[str, str]:
         "run_summary_path": "not bound in in-memory generation",
         "run_summary_sha256": "not bound in in-memory generation",
     }
+
+
 def _escape(value: Any) -> str:
     if value is None:
         text = "Not available"
@@ -42,13 +44,21 @@ def _escape(value: Any) -> str:
     else:
         text = str(value)
     return html.escape(text, quote=True).replace("`", "&#96;")
+
+
 def _status_class(value: Any) -> str:
     normalized = SAFE_STATUS_RE.sub("-", str(value).lower()).strip("-")
     return f"status-{normalized or 'unknown'}"
+
+
 def _status(value: Any) -> str:
     return f'<span class="{_status_class(value)}">{_escape(value)}</span>'
+
+
 def _empty(message: str) -> str:
     return f'<p class="empty-state">{_escape(message)}</p>'
+
+
 def _section(section_id: str, title: str, body: str) -> str:
     heading_id = f"{section_id}-heading"
     return (
@@ -58,6 +68,8 @@ def _section(section_id: str, title: str, body: str) -> str:
         f"{body}\n"
         "</section>"
     )
+
+
 def _category(
     category_id: str,
     title: str,
@@ -73,6 +85,8 @@ def _category(
         f'<div class="report-category-body">\n{body}\n</div>\n'
         "</details>"
     )
+
+
 def _table(
     *,
     table_id: str,
@@ -112,6 +126,8 @@ def _table(
         "</table>\n"
         "</div>"
     )
+
+
 def _key_value_table(
     *,
     table_id: str,
@@ -125,6 +141,8 @@ def _key_value_table(
         rows=rows,
         row_headers=True,
     )
+
+
 def _render_approved_table(table: ApprovedTable) -> str:
     controlled_candidate_titles = {
         "candidate_selection": ("CMH-ranked candidates: approved selection summary"),
@@ -154,6 +172,8 @@ def _render_approved_table(table: ApprovedTable) -> str:
         )
         content += f'<p class="provenance-note">{_escape(detail)}</p>'
     return content
+
+
 def _tables_for_roles(
     tables_by_role: Mapping[str, Sequence[ApprovedTable]],
     roles: Sequence[str],
@@ -163,6 +183,8 @@ def _tables_for_roles(
     if not selected:
         return _empty(empty_message)
     return "\n".join(_render_approved_table(table) for table in selected)
+
+
 def _render_json_block(title: str, value: Any) -> str:
     payload = json.dumps(
         value,

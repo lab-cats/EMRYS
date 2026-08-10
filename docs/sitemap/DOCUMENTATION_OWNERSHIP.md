@@ -27,9 +27,9 @@ this file explains the human roles.
 | Durable rationale and unresolved choices | [`DECISIONS.md`](../design/DECISIONS.md), its detail files, and [`QUESTIONS.md`](../design/QUESTIONS.md) |
 | Exact behavior, commands, defects, and tests | Applicable colocated owner `README.md` and `CONTRACT.md` |
 | Test policy and current recheck routes | [`TEST_BASELINE.md`](../design/TEST_BASELINE.md) and [`REFACTOR_AUDIT.md`](../design/REFACTOR_AUDIT.md) |
-| Actionable work, rough proposals, and dated records | [`docs/tasks`](../tasks/README.md), `UNREFINED`, and [`docs/history`](../history/) respectively |
+| Actionable work, proposals, and dated records | Compact [`BACKLOG.md`](../tasks/BACKLOG.md), selected [`cards/`](../tasks/cards/), and [`docs/history`](../history/) respectively |
 
-Cards and history are not live path-maintenance surfaces. Delete completed or
-retired cards; do not repair surviving cards or frozen history because an old
-target disappeared. Before deleting any live owner, retain its operative
-contract, safety rule, defect, or evidence ceiling in the destination.
+JIT cards and history are not live subject-matter owners. Delete completed or
+retired JIT detail, but remove or replace every dependent backlog edge in the
+same package. Before deleting any live owner, retain its operative contract,
+safety rule, defect, or evidence ceiling in the destination.

@@ -26,6 +26,8 @@ def _sanitized_tool_environment() -> dict[str, str]:
         "TMPDIR": "/tmp",
         "TZ": "UTC",
     }
+
+
 def _quarto_version(path: Path) -> str:
     try:
         result = subprocess.run(
@@ -48,6 +50,8 @@ def _quarto_version(path: Path) -> str:
             f"{QUARTO_VERSION!r}"
         )
     return lines[0]
+
+
 def _source_date_epoch(summary: Mapping[str, Any]) -> str:
     value = summary["generated_at"]
     try:
@@ -55,6 +59,8 @@ def _source_date_epoch(summary: Mapping[str, Any]) -> str:
     except ValueError as exc:  # schema validation should make this unreachable
         _fail(f"Could not derive fixed report time from generated_at: {exc}")
     return str(int(parsed.timestamp()))
+
+
 def _terminate_process_group(process: subprocess.Popen[str]) -> None:
     """Stop the complete Quarto process group and reap its direct process."""
     with contextlib.suppress(ProcessLookupError):
@@ -71,6 +77,8 @@ def _terminate_process_group(process: subprocess.Popen[str]) -> None:
             process.stdout.close()
         if process.stderr is not None:
             process.stderr.close()
+
+
 def _run_quarto_process(
     command: Sequence[str],
     stage: Path,

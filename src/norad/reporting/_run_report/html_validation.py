@@ -71,6 +71,8 @@ def build_qmd_bytes(
     if EXECUTABLE_QMD_RE.search(qmd):
         _fail("Generated QMD contains an executable fenced cell")
     return qmd.encode("utf-8")
+
+
 def validate_qmd_template(template: str) -> None:
     if template.count(BODY_MARKER) != 1:
         _fail(f"Report QMD template must contain exactly one {BODY_MARKER!r} marker")
@@ -113,12 +115,16 @@ def validate_qmd_template(template: str) -> None:
             "Report QMD body must contain only the tracked static-contract "
             "comment and the report-body marker"
         )
+
+
 def _validate_css_resources(css: str, label: str) -> None:
     for match in CSS_RESOURCE_RE.finditer(css):
         resource = (match.group(2) or match.group(4) or "").strip()
         if resource.startswith(("data:", "#")):
             continue
         _fail(f"{label} contains a non-embedded CSS resource: {resource!r}")
+
+
 class ReportHTMLInspector(HTMLParser):
     """Collect local structural and active-resource facts from rendered HTML."""
 
@@ -265,10 +271,7 @@ class ReportHTMLInspector(HTMLParser):
                     self.active_resource_errors.append(
                         f"<{tag}> {name} uses remote resource {resource!r}"
                     )
-                elif not (
-                    resource.startswith(("data:", "#"))
-                    or resource == ""
-                ):
+                elif not (resource.startswith(("data:", "#")) or resource == ""):
                     self.active_resource_errors.append(
                         f"<{tag}> {name} is not embedded: {resource!r}"
                     )
@@ -318,6 +321,8 @@ class ReportHTMLInspector(HTMLParser):
             self.style_text.append(data)
         if self.title_depth:
             self.title_text.append(data)
+
+
 def validate_rendered_html(
     path: Path,
     *,

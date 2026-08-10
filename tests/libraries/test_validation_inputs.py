@@ -42,7 +42,9 @@ def test_read_bytes_rejects_unreadable_file(
         INPUTS.read_bytes(source, "Unreadable file")
 
 
-def test_read_bytes_rejects_mutated_source(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+def test_read_bytes_rejects_mutated_source(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     source = tmp_path / "input.txt"
     source.write_text("fixture")
     before = INPUTS.regular_snapshot(source, "Mutable fixture")
@@ -64,14 +66,18 @@ def test_read_bytes_rejects_mutated_source(monkeypatch: pytest.MonkeyPatch, tmp_
 
 
 def test_integer_stdout_rejects_failed_process() -> None:
-    result = subprocess.CompletedProcess(["fake"], returncode=1, stdout="5", stderr="failed")
+    result = subprocess.CompletedProcess(
+        ["fake"], returncode=1, stdout="5", stderr="failed"
+    )
 
     with pytest.raises(REPORT.ValidationError, match="failed"):
         INPUTS.integer_stdout(result, "Example command")
 
 
 def test_integer_stdout_rejects_non_integer_output() -> None:
-    result = subprocess.CompletedProcess(["fake"], returncode=0, stdout="not-a-number", stderr="")
+    result = subprocess.CompletedProcess(
+        ["fake"], returncode=0, stdout="not-a-number", stderr=""
+    )
 
     with pytest.raises(REPORT.ValidationError, match="noninteger count"):
         INPUTS.integer_stdout(result, "Example command")

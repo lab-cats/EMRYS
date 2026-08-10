@@ -12,8 +12,9 @@ Load only these sources at task start:
 1. The exact current root [`AGENTS.md`](../../AGENTS.md).
 2. Live Git identity and state: repository root, branch, `HEAD`, worktree
    changes, upstream relation, and any competing worktree relevant to the task.
-3. The selected task card in full, or one explicitly bounded objective when no
-   card is needed. `UNREFINED` proposals are not selectable.
+3. The selected backlog item and its JIT card in full, or one explicitly
+   bounded objective when no card is needed. Backlog proposals are not
+   selectable.
 4. The directly affected functional owners: implementation, adjacent
    `README.md` or `CONTRACT.md`, public callers and consumers, tests, and
    fixtures that define or exercise the affected behavior.
@@ -23,7 +24,7 @@ Load only these sources at task start:
    the [architecture index](../architecture/README.md) for cross-owner identity
    and dependency direction.
 
-Do not preload the full documentation corpus, history, unrelated cards, every
+Do not preload the full documentation corpus, history, unrelated backlog items, every
 owner, all tests, or entire canonical documents merely for orientation. Do not
 infer live state from memory, an agent identity, a conversation summary, an old
 test total, or a former branch.

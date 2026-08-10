@@ -132,246 +132,184 @@ def table_row(header: Sequence[str], **values: str) -> dict[str, str]:
     return {column: values.get(column, "NA") for column in header}
 
 
+def evidence_row(
+    header: Sequence[str], evidence_id: str, **values: str
+) -> dict[str, str]:
+    defaults = {
+        "review_id": REVIEW_ID,
+        "evidence_id": evidence_id,
+        "analysis_id": PRIMARY_ANALYSIS_ID,
+        "reviewer": "reviewer_one",
+        "review_date": "2026-01-10",
+    }
+    row_values = {key: value for key, value in defaults.items() if key in header}
+    row_values.update(values)
+    return table_row(header, **row_values)
+
+
 def write_pdf(path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(b"%PDF-1.4\n% synthetic Step 09c fixture\n%%EOF\n")
 
 
 def sample_rows() -> list[dict[str, str]]:
+    cases = (
+        ("ABE_EV_2", "EV", "2"),
+        ("ABE_EV_3", "EV", "3"),
+        ("ABE_EV4", "EV", "4"),
+        ("ABE_PUM1_2", "PUM1", "2"),
+        ("ABE_PUM1_3", "PUM1", "3"),
+        ("ABE_PUM1_4", "PUM1", "4"),
+    )
     return [
         {
-            "sample_id": "ABE_EV_2",
-            "r1_fastq": "reads/ABE_EV_2_R1.fastq.gz",
-            "r2_fastq": "reads/ABE_EV_2_R2.fastq.gz",
+            "sample_id": sample,
+            "r1_fastq": f"reads/{sample}_R1.fastq.gz",
+            "r2_fastq": f"reads/{sample}_R2.fastq.gz",
             "strandedness": "reverse",
-            "condition": "EV",
-            "replicate": "2",
-        },
-        {
-            "sample_id": "ABE_EV_3",
-            "r1_fastq": "reads/ABE_EV_3_R1.fastq.gz",
-            "r2_fastq": "reads/ABE_EV_3_R2.fastq.gz",
-            "strandedness": "reverse",
-            "condition": "EV",
-            "replicate": "3",
-        },
-        {
-            "sample_id": "ABE_EV4",
-            "r1_fastq": "reads/ABE_EV4_R1.fastq.gz",
-            "r2_fastq": "reads/ABE_EV4_R2.fastq.gz",
-            "strandedness": "reverse",
-            "condition": "EV",
-            "replicate": "4",
-        },
-        {
-            "sample_id": "ABE_PUM1_2",
-            "r1_fastq": "reads/ABE_PUM1_2_R1.fastq.gz",
-            "r2_fastq": "reads/ABE_PUM1_2_R2.fastq.gz",
-            "strandedness": "reverse",
-            "condition": "PUM1",
-            "replicate": "2",
-        },
-        {
-            "sample_id": "ABE_PUM1_3",
-            "r1_fastq": "reads/ABE_PUM1_3_R1.fastq.gz",
-            "r2_fastq": "reads/ABE_PUM1_3_R2.fastq.gz",
-            "strandedness": "reverse",
-            "condition": "PUM1",
-            "replicate": "3",
-        },
-        {
-            "sample_id": "ABE_PUM1_4",
-            "r1_fastq": "reads/ABE_PUM1_4_R1.fastq.gz",
-            "r2_fastq": "reads/ABE_PUM1_4_R2.fastq.gz",
-            "strandedness": "reverse",
-            "condition": "PUM1",
-            "replicate": "4",
-        },
+            "condition": condition,
+            "replicate": replicate,
+        }
+        for sample, condition, replicate in cases
     ]
+
+
+def candidate_spec(
+    partition_id: str,
+    candidate_id: str,
+    annotation_strand: str,
+    gene_ids: str,
+    transcript_ids: str,
+    regions: tuple[str, ...],
+    dp: tuple[int, ...],
+    ad: tuple[int, ...],
+    test_status: str,
+    call_status: str,
+    means: tuple[str, str, str],
+    statistics: tuple[str, str, str, str] = ("NA",) * 4,
+    rna_change: str = "A>G",
+) -> dict[str, object]:
+    orientation, chromosome, position, genomic_change = candidate_id.split("|")
+    genomic_ref, genomic_alt = genomic_change.split(">")
+    rna_ref, rna_alt = rna_change.split(">")
+    return {
+        "partition_id": partition_id,
+        "candidate_id": candidate_id,
+        "orientation": orientation,
+        "chromosome": chromosome,
+        "position": position,
+        "genomic_ref": genomic_ref,
+        "genomic_alt": genomic_alt,
+        "rna_ref": rna_ref,
+        "rna_alt": rna_alt,
+        "annotation_strand": annotation_strand,
+        "gene_ids": gene_ids,
+        "transcript_ids": transcript_ids,
+        **{
+            f"is_{region}": str(region in regions).upper()
+            for region in ("cds", "five_prime_utr", "three_prime_utr", "exon", "intron")
+        },
+        "dp": dp,
+        "ad": ad,
+        "test_status": test_status,
+        "call_status": call_status,
+        **dict(
+            zip(("mean_control_af", "mean_treatment_af", "delta"), means, strict=True)
+        ),
+        **dict(
+            zip(
+                ("cmh_statistic", "cmh_p_value", "cmh_fdr_bh", "common_odds_ratio"),
+                statistics,
+                strict=True,
+            )
+        ),
+    }
 
 
 def candidate_specs() -> list[dict[str, object]]:
     return [
-        {
-            "partition_id": "p1",
-            "candidate_id": "FWD_like|1|10|T>C",
-            "orientation": "FWD_like",
-            "chromosome": "1",
-            "position": "10",
-            "genomic_ref": "T",
-            "genomic_alt": "C",
-            "rna_ref": "A",
-            "rna_alt": "G",
-            "annotation_strand": "+",
-            "gene_ids": "gene1;gene_overlap",
-            "transcript_ids": "tx1;tx1b",
-            "is_cds": "TRUE",
-            "is_five_prime_utr": "FALSE",
-            "is_three_prime_utr": "FALSE",
-            "is_exon": "TRUE",
-            "is_intron": "FALSE",
-            "dp": [100, 100, 100, 100, 100, 100],
-            "ad": [10, 12, 14, 30, 32, 34],
-            "test_status": "tested",
-            "call_status": "significant_up",
-            "mean_control_af": "0.12",
-            "mean_treatment_af": "0.32",
-            "delta": "0.20",
-            "cmh_statistic": "12.0",
-            "cmh_p_value": "0.0005",
-            "cmh_fdr_bh": "0.0015",
-            "common_odds_ratio": "3.5",
-        },
-        {
-            "partition_id": "p1",
-            "candidate_id": "REV_like|1|20|A>G",
-            "orientation": "REV_like",
-            "chromosome": "1",
-            "position": "20",
-            "genomic_ref": "A",
-            "genomic_alt": "G",
-            "rna_ref": "A",
-            "rna_alt": "G",
-            "annotation_strand": "-",
-            "gene_ids": "gene2",
-            "transcript_ids": "tx2",
-            "is_cds": "FALSE",
-            "is_five_prime_utr": "FALSE",
-            "is_three_prime_utr": "TRUE",
-            "is_exon": "TRUE",
-            "is_intron": "FALSE",
-            "dp": [100, 100, 100, 100, 100, 100],
-            "ad": [30, 28, 26, 10, 12, 14],
-            "test_status": "tested",
-            "call_status": "significant_down",
-            "mean_control_af": "0.28",
-            "mean_treatment_af": "0.12",
-            "delta": "-0.16",
-            "cmh_statistic": "10.0",
-            "cmh_p_value": "0.001",
-            "cmh_fdr_bh": "0.0015",
-            "common_odds_ratio": "0.35",
-        },
-        {
-            "partition_id": "p1",
-            "candidate_id": "REV_like|1|30|C>T",
-            "orientation": "REV_like",
-            "chromosome": "1",
-            "position": "30",
-            "genomic_ref": "C",
-            "genomic_alt": "T",
-            "rna_ref": "C",
-            "rna_alt": "T",
-            "annotation_strand": "-",
-            "gene_ids": "gene3",
-            "transcript_ids": "tx3",
-            "is_cds": "FALSE",
-            "is_five_prime_utr": "TRUE",
-            "is_three_prime_utr": "FALSE",
-            "is_exon": "TRUE",
-            "is_intron": "FALSE",
-            "dp": [100, 100, 100, 100, 100, 100],
-            "ad": [5, 5, 5, 5, 5, 5],
-            "test_status": "not_target_change",
-            "call_status": "not_tested",
-            "mean_control_af": "0.05",
-            "mean_treatment_af": "0.05",
-            "delta": "0",
-            "cmh_statistic": "NA",
-            "cmh_p_value": "NA",
-            "cmh_fdr_bh": "NA",
-            "common_odds_ratio": "NA",
-        },
-        {
-            "partition_id": "p2",
-            "candidate_id": "FWD_like|2|40|T>C",
-            "orientation": "FWD_like",
-            "chromosome": "2",
-            "position": "40",
-            "genomic_ref": "T",
-            "genomic_alt": "C",
-            "rna_ref": "A",
-            "rna_alt": "G",
-            "annotation_strand": "+",
-            "gene_ids": "gene4",
-            "transcript_ids": "tx4",
-            "is_cds": "FALSE",
-            "is_five_prime_utr": "FALSE",
-            "is_three_prime_utr": "FALSE",
-            "is_exon": "FALSE",
-            "is_intron": "TRUE",
-            "dp": [0, 10, 10, 10, 10, 10],
-            "ad": [0, 1, 1, 2, 2, 2],
-            "test_status": "low_coverage",
-            "call_status": "not_tested",
-            "mean_control_af": "NA",
-            "mean_treatment_af": "NA",
-            "delta": "NA",
-            "cmh_statistic": "NA",
-            "cmh_p_value": "NA",
-            "cmh_fdr_bh": "NA",
-            "common_odds_ratio": "NA",
-        },
-        {
-            "partition_id": "p2",
-            "candidate_id": "FWD_like|2|50|T>C",
-            "orientation": "FWD_like",
-            "chromosome": "2",
-            "position": "50",
-            "genomic_ref": "T",
-            "genomic_alt": "C",
-            "rna_ref": "A",
-            "rna_alt": "G",
-            "annotation_strand": "+",
-            "gene_ids": "gene5",
-            "transcript_ids": "tx5",
-            "is_cds": "FALSE",
-            "is_five_prime_utr": "FALSE",
-            "is_three_prime_utr": "FALSE",
-            "is_exon": "FALSE",
-            "is_intron": "TRUE",
-            "dp": [100, 100, 100, 100, 100, 100],
-            "ad": [0, 0, 0, 0, 0, 0],
-            "test_status": "degenerate_table",
-            "call_status": "not_tested",
-            "mean_control_af": "0",
-            "mean_treatment_af": "0",
-            "delta": "0",
-            "cmh_statistic": "NA",
-            "cmh_p_value": "NA",
-            "cmh_fdr_bh": "NA",
-            "common_odds_ratio": "NA",
-        },
-        {
-            "partition_id": "p2",
-            "candidate_id": "REV_like|2|60|A>G",
-            "orientation": "REV_like",
-            "chromosome": "2",
-            "position": "60",
-            "genomic_ref": "A",
-            "genomic_alt": "G",
-            "rna_ref": "A",
-            "rna_alt": "G",
-            "annotation_strand": "-",
-            "gene_ids": "NA",
-            "transcript_ids": "NA",
-            "is_cds": "FALSE",
-            "is_five_prime_utr": "FALSE",
-            "is_three_prime_utr": "FALSE",
-            "is_exon": "FALSE",
-            "is_intron": "FALSE",
-            "dp": [100, 100, 100, 100, 100, 100],
-            "ad": [10, 11, 12, 12, 13, 14],
-            "test_status": "tested",
-            "call_status": "effect_not_met",
-            "mean_control_af": "0.11",
-            "mean_treatment_af": "0.13",
-            "delta": "0.02",
-            "cmh_statistic": "0.5",
-            "cmh_p_value": "0.01",
-            "cmh_fdr_bh": "0.01",
-            "common_odds_ratio": "1.2",
-        },
+        candidate_spec(
+            "p1",
+            "FWD_like|1|10|T>C",
+            "+",
+            "gene1;gene_overlap",
+            "tx1;tx1b",
+            ("cds", "exon"),
+            (100,) * 6,
+            (10, 12, 14, 30, 32, 34),
+            "tested",
+            "significant_up",
+            ("0.12", "0.32", "0.20"),
+            ("12.0", "0.0005", "0.0015", "3.5"),
+        ),
+        candidate_spec(
+            "p1",
+            "REV_like|1|20|A>G",
+            "-",
+            "gene2",
+            "tx2",
+            ("three_prime_utr", "exon"),
+            (100,) * 6,
+            (30, 28, 26, 10, 12, 14),
+            "tested",
+            "significant_down",
+            ("0.28", "0.12", "-0.16"),
+            ("10.0", "0.001", "0.0015", "0.35"),
+        ),
+        candidate_spec(
+            "p1",
+            "REV_like|1|30|C>T",
+            "-",
+            "gene3",
+            "tx3",
+            ("five_prime_utr", "exon"),
+            (100,) * 6,
+            (5,) * 6,
+            "not_target_change",
+            "not_tested",
+            ("0.05", "0.05", "0"),
+            rna_change="C>T",
+        ),
+        candidate_spec(
+            "p2",
+            "FWD_like|2|40|T>C",
+            "+",
+            "gene4",
+            "tx4",
+            ("intron",),
+            (0, 10, 10, 10, 10, 10),
+            (0, 1, 1, 2, 2, 2),
+            "low_coverage",
+            "not_tested",
+            ("NA", "NA", "NA"),
+        ),
+        candidate_spec(
+            "p2",
+            "FWD_like|2|50|T>C",
+            "+",
+            "gene5",
+            "tx5",
+            ("intron",),
+            (100,) * 6,
+            (0,) * 6,
+            "degenerate_table",
+            "not_tested",
+            ("0",) * 3,
+        ),
+        candidate_spec(
+            "p2",
+            "REV_like|2|60|A>G",
+            "-",
+            "NA",
+            "NA",
+            (),
+            (100,) * 6,
+            (10, 11, 12, 12, 13, 14),
+            "tested",
+            "effect_not_met",
+            ("0.11", "0.13", "0.02"),
+            ("0.5", "0.01", "0.01", "1.2"),
+        ),
     ]
 
 
@@ -526,11 +464,9 @@ def write_evidence_tables(
 
     orientation_path = evidence_dir / "orientation_locus_audit.tsv"
     orientation_rows = [
-        table_row(
+        evidence_row(
             REVIEW_PACKAGE.ORIENTATION_HEADER,
-            review_id=REVIEW_ID,
-            evidence_id="e_orientation",
-            analysis_id=PRIMARY_ANALYSIS_ID,
+            "e_orientation",
             locus_id="locus_plus",
             candidate_id="FWD_like|1|10|T>C",
             partition_id="p1",
@@ -555,15 +491,11 @@ def write_evidence_tables(
             inverted_expected_rna_ref="T",
             inverted_expected_rna_alt="C",
             concordance_status="concordant",
-            reviewer="reviewer_one",
-            review_date=review_date,
             detail="Synthetic plus-strand concordance.",
         ),
-        table_row(
+        evidence_row(
             REVIEW_PACKAGE.ORIENTATION_HEADER,
-            review_id=REVIEW_ID,
-            evidence_id="e_orientation",
-            analysis_id=PRIMARY_ANALYSIS_ID,
+            "e_orientation",
             locus_id="locus_minus",
             candidate_id="REV_like|1|20|A>G",
             partition_id="p1",
@@ -588,8 +520,6 @@ def write_evidence_tables(
             inverted_expected_rna_ref="T",
             inverted_expected_rna_alt="C",
             concordance_status="concordant",
-            reviewer="reviewer_one",
-            review_date=review_date,
             detail="Synthetic minus-strand concordance.",
         ),
     ]
@@ -656,11 +586,9 @@ def write_evidence_tables(
             spec for spec in candidate_specs() if spec["candidate_id"] == candidate_id
         )
         annotation_rows.append(
-            table_row(
+            evidence_row(
                 REVIEW_PACKAGE.ANNOTATION_HEADER,
-                review_id=REVIEW_ID,
-                evidence_id="e_annotation",
-                analysis_id=PRIMARY_ANALYSIS_ID,
+                "e_annotation",
                 audit_id=audit_id,
                 candidate_id=candidate_id,
                 chromosome=chrom,
@@ -688,8 +616,6 @@ def write_evidence_tables(
                     if case_type in {"overlapping_gene", "multi_transcript"}
                     else "unambiguous"
                 ),
-                reviewer="reviewer_one",
-                review_date=review_date,
                 detail=f"Synthetic {case_type} annotation audit.",
             )
         )
@@ -718,11 +644,9 @@ def write_evidence_tables(
         significant_down,
     ) in qc_specs:
         qc_rows.append(
-            table_row(
+            evidence_row(
                 REVIEW_PACKAGE.QC_FUNNEL_HEADER,
-                review_id=REVIEW_ID,
-                evidence_id="e_qc",
-                analysis_id=PRIMARY_ANALYSIS_ID,
+                "e_qc",
                 scope_type="partition_orientation",
                 partition_id=partition,
                 orientation=orientation,
@@ -772,11 +696,9 @@ def write_evidence_tables(
             treatment_af = treatment_ad / treatment_dp
             difference = treatment_af - control_af
             replicate_rows.append(
-                table_row(
+                evidence_row(
                     REVIEW_PACKAGE.REPLICATE_EFFECTS_HEADER,
-                    review_id=REVIEW_ID,
-                    evidence_id="e_replicates",
-                    analysis_id=PRIMARY_ANALYSIS_ID,
+                    "e_replicates",
                     candidate_id=candidate_id,
                     partition_id=str(candidate["partition_id"]),
                     orientation=str(candidate["orientation"]),
@@ -793,8 +715,6 @@ def write_evidence_tables(
                     direction_status=(
                         "concordant_up" if difference > 0 else "concordant_down"
                     ),
-                    reviewer="reviewer_one",
-                    review_date=review_date,
                     detail=f"Synthetic replicate effect {pair_index + 1}.",
                 )
             )
@@ -849,10 +769,9 @@ def write_evidence_tables(
         down,
     ) in sensitivity_specs:
         sensitivity_rows.append(
-            table_row(
+            evidence_row(
                 REVIEW_PACKAGE.SENSITIVITY_HEADER,
-                review_id=REVIEW_ID,
-                evidence_id="e_sensitivity",
+                "e_sensitivity",
                 analysis_id=analysis_id,
                 is_primary=is_primary,
                 analysis_summary_path=str(summary_path.resolve()),
@@ -873,8 +792,6 @@ def write_evidence_tables(
                 significant_up_count=up,
                 significant_down_count=down,
                 comparison_status=("primary" if is_primary == "TRUE" else "reviewed"),
-                reviewer="reviewer_one",
-                review_date=review_date,
                 detail=f"Synthetic sensitivity set {parameter_id}.",
             )
         )
@@ -900,10 +817,9 @@ def write_evidence_tables(
             ),
         ):
             loo_rows.append(
-                table_row(
+                evidence_row(
                     REVIEW_PACKAGE.LEAVE_ONE_OUT_HEADER,
-                    review_id=REVIEW_ID,
-                    evidence_id="e_loo",
+                    "e_loo",
                     primary_analysis_id=PRIMARY_ANALYSIS_ID,
                     omitted_replicate=replicate,
                     analysis_id=f"analysis_loo_{replicate}",
@@ -922,8 +838,6 @@ def write_evidence_tables(
                     primary_fdr=fdr,
                     leave_one_out_fdr=fdr,
                     direction_concordance="concordant",
-                    reviewer="reviewer_one",
-                    review_date=review_date,
                     detail="Synthetic leave-one-pair-out result.",
                 )
             )
@@ -974,11 +888,9 @@ def write_evidence_tables(
         delta,
     ) in selection_specs:
         selection_rows.append(
-            table_row(
+            evidence_row(
                 REVIEW_PACKAGE.CANDIDATE_SELECTION_HEADER,
-                review_id=REVIEW_ID,
-                evidence_id="e_selection",
-                analysis_id=PRIMARY_ANALYSIS_ID,
+                "e_selection",
                 selection_set=selection_set,
                 rank="1",
                 candidate_id=candidate_id,
@@ -990,8 +902,6 @@ def write_evidence_tables(
                 source_fdr=fdr,
                 source_common_or=common_or,
                 source_delta=delta,
-                reviewer="reviewer_one",
-                review_date=review_date,
             )
         )
     write_tsv(
@@ -1004,11 +914,9 @@ def write_evidence_tables(
     adjudication_rows = []
     for selection_set, candidate_id, *_ in selection_specs:
         adjudication_rows.append(
-            table_row(
+            evidence_row(
                 REVIEW_PACKAGE.CANDIDATE_ADJUDICATION_HEADER,
-                review_id=REVIEW_ID,
-                evidence_id="e_adjudication",
-                analysis_id=PRIMARY_ANALYSIS_ID,
+                "e_adjudication",
                 candidate_id=candidate_id,
                 selection_set=selection_set,
                 adjudication_status=(
@@ -1028,8 +936,6 @@ def write_evidence_tables(
                 orthogonal_evidence_status="unavailable",
                 reason=f"Synthetic {selection_set} adjudication.",
                 supporting_evidence_ids="e_selection",
-                reviewer="reviewer_one",
-                review_date=review_date,
             )
         )
     write_tsv(
@@ -1051,11 +957,9 @@ def write_evidence_tables(
     decisions_rows = []
     for dimension in REVIEW_PACKAGE.DECISION_DIMENSIONS:
         decisions_rows.append(
-            table_row(
+            evidence_row(
                 REVIEW_PACKAGE.DECISIONS_HEADER,
-                review_id=REVIEW_ID,
-                evidence_id="e_decisions",
-                analysis_id=PRIMARY_ANALYSIS_ID,
+                "e_decisions",
                 decision_id=f"decision_{dimension}",
                 decision_dimension=dimension,
                 evidence_status="complete",
@@ -1080,11 +984,9 @@ def write_evidence_tables(
         ("lim_orthogonal", "orthogonal_evidence_unavailable", "high"),
     ):
         limitation_rows.append(
-            table_row(
+            evidence_row(
                 REVIEW_PACKAGE.LIMITATIONS_HEADER,
-                review_id=REVIEW_ID,
-                evidence_id="e_limitations",
-                analysis_id=PRIMARY_ANALYSIS_ID,
+                "e_limitations",
                 limitation_id=limitation_id,
                 limitation_category=category,
                 limitation_status="active",
@@ -1093,7 +995,6 @@ def write_evidence_tables(
                 impact="Results remain exploratory and provisional.",
                 mitigation="Retain explicit reporting banner.",
                 owner="owner_one",
-                review_date=review_date,
                 related_evidence_ids="e_decisions",
             )
         )
@@ -1101,18 +1002,15 @@ def write_evidence_tables(
 
     computational_path = evidence_dir / "computational_validation.tsv"
     computational_rows = [
-        table_row(
+        evidence_row(
             CONTRACT.COMPUTATIONAL_VALIDATION_HEADER,
-            review_id=REVIEW_ID,
-            evidence_id="e_computational",
-            analysis_id=PRIMARY_ANALYSIS_ID,
+            "e_computational",
             validation_scope="local_fixture_tests",
             validation_status="passed",
             evidence_path="NA",
             evidence_sha256="NA",
             scheduler_state="NA",
             exit_code="0",
-            reviewer="reviewer_one",
             evidence_date=review_date,
             notes="Synthetic local-only evidence; no cluster claim.",
         )

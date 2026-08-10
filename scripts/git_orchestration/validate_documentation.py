@@ -1,47 +1,32 @@
 #!/usr/bin/env python3
-"""Validate NORAD documentation ownership and local document structure."""
+"""Validate NORAD documentation ownership and the compact task registry."""
 
 from __future__ import annotations
 
 import argparse
 import re
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
-CARD_SECTIONS = (
-    "Objective",
-    "Why this exists",
-    "Fixed decisions",
-    "Blocked by",
-    "Completion unblocks",
-    "Prerequisites",
-    "Required context",
-    "Questions owned by this card",
-    "In scope",
-    "Out of scope",
+JIT_SECTIONS = (
+    "Outcome",
+    "Touches",
+    "Stop",
+    "Context",
     "Deliverables",
     "Acceptance evidence",
-    "Canonical documentation updates",
-    "Escalation conditions",
-    "Completion record",
+    "Documentation updates",
 )
-UNREFINED_SECTIONS = (
-    "Proposal",
-    "Why preserve it",
-    "Settled boundaries",
-    "Questions before refinement",
-    "Promotion conditions",
+BACKLOG_FIELDS = ("Kind", "Blocked by", "Intent", "Boundaries")
+TASK_H1_PATTERN = re.compile(r"^([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+) — (.+)$")
+BACKLOG_ENTRY_PATTERN = re.compile(
+    r"^## ([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+) — (.+)$", re.MULTILINE
 )
-CARD_STATE_BY_DIRECTORY = {
-    "TODO": "planned",
-    "IN_PROGRESS": "planned",
-    "INTEGRATION_REVIEW": "review",
-}
-TASK_H1_PATTERN = re.compile(r"^([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+) — .+$")
-UNREFINED_STATE_PATTERN = re.compile(
-    r"State: \[`UNREFINED` proposal\]\(README\.md\)\.(?: .+)?"
+FIELD_PATTERN = re.compile(
+    r"^- \*\*(Kind|Blocked by|Intent|Boundaries):\*\* (.+)$", re.MULTILINE
 )
+BLOCKER_LIST_PATTERN = re.compile(r"`([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)`(?:, |$)")
 
 CANONICAL_DOCUMENTS = {
     "AGENTS.md": "# NORAD safety guard",
@@ -54,6 +39,7 @@ CANONICAL_DOCUMENTS = {
     "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
     "docs/architecture/PIPELINE_OVERVIEW.md": "# Current pipeline overview",
     "docs/design/DECISIONS.md": "# Durable decisions",
+    "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
     "docs/design/PIPELINE_PLAN.md": "# NORAD pipeline plan",
     "docs/design/QUESTIONS.md": "# Open questions",
     "docs/design/REFACTOR_AUDIT.md": "# Refactor audit index and recheck triggers",
@@ -77,6 +63,7 @@ RETIRED_DOCUMENTS = (
     "docs/operations/TASK_DELIVERY.md",
     "src/norad/contracts/MIGRATION_MECHANICS.md",
 )
+RETIRED_TASK_DIRECTORIES = ("TODO", "IN_PROGRESS", "INTEGRATION_REVIEW", "UNREFINED")
 
 CROSS_CUTTING_OWNER_DOCS = (
     "src/norad/contracts/artifacts/README.md",
@@ -95,10 +82,11 @@ class DocumentationError(RuntimeError):
 @dataclass(frozen=True)
 class TaskCard:
     card_id: str
+    title: str
     path: Path
     state: str
+    kind: str
     blockers: frozenset[str]
-    unblocks: dict[str, str]
 
 
 def git_paths(root: Path, pattern: str) -> list[Path]:
@@ -199,132 +187,149 @@ def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
             problems.append(f"missing mirrored test owner: {tests.relative_to(root)}")
 
 
-def card_section(text: str, heading: str) -> str:
-    marker = f"## {heading}\n"
-    return text.split(marker, 1)[1].split("\n## ", 1)[0].strip()
+def parse_blockers(value: str, card_id: str, problems: list[str]) -> frozenset[str]:
+    if value == "None":
+        return frozenset()
+    blockers = BLOCKER_LIST_PATTERN.findall(value)
+    if not blockers or ", ".join(f"`{item}`" for item in blockers) != value:
+        problems.append(f"invalid backlog blocker list: {card_id}")
+        return frozenset()
+    if len(blockers) != len(set(blockers)):
+        problems.append(f"duplicate backlog blocker: {card_id}")
+    return frozenset(blockers)
 
 
-def card_identity(path: Path, text: str, kind: str, problems: list[str]) -> str | None:
-    titles = re.findall(r"^#\s+(.+)$", text, flags=re.MULTILINE)
-    match = TASK_H1_PATTERN.fullmatch(titles[0]) if len(titles) == 1 else None
-    if not match:
-        problems.append(f"invalid {kind} H1: {path}")
-        return None
-    card_id = match.group(1)
-    if not path.name.startswith(f"{card_id}-"):
-        problems.append(f"{kind} ID/filename mismatch: {path}")
-    return card_id
+def cycle_nodes(cards: dict[str, TaskCard]) -> set[str]:
+    """Return actionable IDs participating in a dependency cycle."""
+    visiting: list[str] = []
+    visited: set[str] = set()
+    cycles: set[str] = set()
+
+    def visit(card_id: str) -> None:
+        if card_id in visiting:
+            cycles.update(visiting[visiting.index(card_id) :])
+            return
+        if card_id in visited:
+            return
+        visiting.append(card_id)
+        for blocker in cards[card_id].blockers:
+            if blocker in cards:
+                visit(blocker)
+        visiting.pop()
+        visited.add(card_id)
+
+    for card_id in cards:
+        visit(card_id)
+    return cycles
 
 
-def validate_proposal(root: Path, path: Path, problems: list[str]) -> str | None:
+def validate_jit_card(
+    root: Path,
+    path: Path,
+    items: dict[str, TaskCard],
+    active: dict[str, Path],
+    problems: list[str],
+) -> None:
     relative = path.relative_to(root)
     text = path.read_text(encoding="utf-8")
-    proposal_id = card_identity(relative, text, "proposal", problems)
-    state_lines = re.findall(r"^State: .+$", text, flags=re.MULTILINE)
-    if len(state_lines) != 1 or not UNREFINED_STATE_PATTERN.fullmatch(state_lines[0]):
-        problems.append(f"invalid proposal state declaration: {relative}")
-    headings = re.findall(r"^##\s+(.+)$", text, flags=re.MULTILINE)
-    indices = [
-        headings.index(value)
-        for value in UNREFINED_SECTIONS
-        if headings.count(value) == 1
-    ]
-    if len(indices) != len(UNREFINED_SECTIONS) or indices != sorted(indices):
-        problems.append(f"proposal heading order/count: {relative}")
-    if any(heading in CARD_SECTIONS for heading in headings):
-        problems.append(f"actionable card heading in proposal: {relative}")
-    return proposal_id
+    h1s = re.findall(r"^# (.+)$", text, flags=re.MULTILINE)
+    match = TASK_H1_PATTERN.fullmatch(h1s[0]) if len(h1s) == 1 else None
+    if not match:
+        problems.append(f"invalid JIT card H1: {relative}")
+        return
+    card_id = match.group(1)
+    if not path.name.startswith(f"{card_id}-"):
+        problems.append(f"JIT card ID/filename mismatch: {relative}")
+    if card_id not in items:
+        problems.append(f"JIT card has unknown backlog ID: {card_id}")
+        return
+    if items[card_id].kind != "actionable":
+        problems.append(f"proposal has JIT card: {card_id}")
+        return
+    if card_id in active:
+        problems.append(f"duplicate JIT card: {card_id}")
+    active[card_id] = path
+    headings = re.findall(r"^## (.+)$", text, flags=re.MULTILINE)
+    if headings != list(JIT_SECTIONS):
+        problems.append(f"JIT card heading order/count: {relative}")
+    for heading in JIT_SECTIONS:
+        marker = f"## {heading}\n"
+        if marker in text and not text.split(marker, 1)[1].split("\n## ", 1)[0].strip():
+            problems.append(f"empty JIT card section {heading}: {relative}")
 
 
 def validate_cards(root: Path, problems: list[str]) -> dict[str, TaskCard]:
-    """Validate card-local structure without judging cross-card references."""
+    """Validate the compact backlog and any selected JIT detail."""
     task_root = root / "docs" / "tasks"
-    required_readmes = {
-        task_root / "README.md",
-        task_root / "TODO" / "README.md",
-        task_root / "IN_PROGRESS" / "README.md",
-        task_root / "INTEGRATION_REVIEW" / "README.md",
-        task_root / "UNREFINED" / "README.md",
-    }
-    for readme in sorted(required_readmes):
-        if not readme.is_file():
-            problems.append(f"missing task-registry README: {readme.relative_to(root)}")
+    backlog = task_root / "BACKLOG.md"
+    required = (task_root / "README.md", backlog, task_root / "cards" / "README.md")
+    for path in required:
+        if not path.is_file():
+            problems.append(f"missing task-registry document: {path.relative_to(root)}")
+    for dirname in RETIRED_TASK_DIRECTORIES:
+        if git_paths(root, f"docs/tasks/{dirname}/*.md"):
+            problems.append(
+                f"retired task directory contains Markdown: docs/tasks/{dirname}"
+            )
+    if not backlog.is_file():
+        return {}
+    if first_heading(backlog) != "# Backlog":
+        problems.append("backlog H1 mismatch: docs/tasks/BACKLOG.md")
 
-    cards: dict[str, TaskCard] = {}
-    identifiers: set[str] = set()
-    required_pattern = re.compile(r"^- \[([A-Z0-9-]+)\]\([^)]+\.md\) — Required: .+$")
-    unblock_pattern = re.compile(
-        r"^- \[([A-Z0-9-]+)\]\([^)]+\.md\) — (Fully|Partially): .+$"
-    )
-
-    for path in sorted(task_root.rglob("*.md")):
-        if path in required_readmes:
+    text = backlog.read_text(encoding="utf-8")
+    matches = list(BACKLOG_ENTRY_PATTERN.finditer(text))
+    items: dict[str, TaskCard] = {}
+    for index, match in enumerate(matches):
+        card_id, title = match.groups()
+        body_end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+        body = text[match.end() : body_end]
+        fields = FIELD_PATTERN.findall(body)
+        if [name for name, _ in fields] != list(BACKLOG_FIELDS):
+            problems.append(f"backlog field order/count: {card_id}")
             continue
-        relative = path.relative_to(root)
-        if path.parent == task_root / "UNREFINED":
-            proposal_id = validate_proposal(root, path, problems)
-            if proposal_id:
-                if proposal_id in identifiers:
-                    problems.append(f"duplicate proposal ID: {proposal_id}")
-                identifiers.add(proposal_id)
+        values = dict(fields)
+        kind = values["Kind"]
+        if kind not in {"actionable", "proposal"}:
+            problems.append(f"invalid backlog kind: {card_id}")
+        blockers = parse_blockers(values["Blocked by"], card_id, problems)
+        if kind == "proposal" and blockers:
+            problems.append(f"proposal has blockers: {card_id}")
+        if card_id in items:
+            problems.append(f"duplicate backlog ID: {card_id}")
             continue
-        if (
-            path.parent.parent != task_root
-            or path.parent.name not in CARD_STATE_BY_DIRECTORY
-        ):
-            problems.append(f"invalid card location: {relative}")
-            continue
-
-        text = path.read_text(encoding="utf-8")
-        card_id = card_identity(relative, text, "card", problems)
-        if card_id is None:
-            continue
-        if card_id in identifiers:
-            problems.append(f"duplicate card ID: {card_id}")
-        identifiers.add(card_id)
-
-        headings = re.findall(r"^##\s+(.+)$", text, flags=re.MULTILINE)
-        structurally_valid = headings == list(CARD_SECTIONS)
-        if not structurally_valid:
-            problems.append(f"card heading order/count: {relative}")
-        if re.search(r"^State: .+$", text, flags=re.MULTILINE):
-            problems.append(f"obsolete card state declaration: {relative}")
-
-        blockers: frozenset[str] = frozenset()
-        unblocks: dict[str, str] = {}
-        if structurally_valid:
-            blocked_text = card_section(text, "Blocked by")
-            blocked_lines = [line for line in blocked_text.splitlines() if line.strip()]
-            if blocked_lines != ["- None."] and not all(
-                required_pattern.fullmatch(line) for line in blocked_lines
-            ):
-                problems.append(f"invalid Blocked by syntax: {relative}")
-            blockers = frozenset(re.findall(r"\[([A-Z0-9-]+)\]\(", blocked_text))
-
-            unblocks_text = card_section(text, "Completion unblocks")
-            unblock_lines = [
-                line for line in unblocks_text.splitlines() if line.strip()
-            ]
-            if unblock_lines != ["- None."] and not all(
-                unblock_pattern.fullmatch(line) for line in unblock_lines
-            ):
-                problems.append(f"invalid Completion unblocks syntax: {relative}")
-            unblocks = {
-                target: mode
-                for target, mode in re.findall(
-                    r"\[([A-Z0-9-]+)\]\([^)]+\) — (Fully|Partially):",
-                    unblocks_text,
-                )
-            }
-
-        cards[card_id] = TaskCard(
+        items[card_id] = TaskCard(
             card_id=card_id,
-            path=path,
-            state=CARD_STATE_BY_DIRECTORY[path.parent.name],
+            title=title,
+            path=backlog,
+            state="proposal" if kind == "proposal" else "planned",
+            kind=kind,
             blockers=blockers,
-            unblocks=unblocks,
         )
-    return cards
+
+    for card_id, item in items.items():
+        if card_id in item.blockers:
+            problems.append(f"self dependency: {card_id}")
+        for blocker in item.blockers:
+            target = items.get(blocker)
+            if target is None:
+                problems.append(f"unknown backlog blocker: {card_id} -> {blocker}")
+            elif target.kind != "actionable":
+                problems.append(f"proposal used as blocker: {card_id} -> {blocker}")
+    cycles = cycle_nodes(
+        {key: value for key, value in items.items() if value.kind == "actionable"}
+    )
+    if cycles:
+        problems.append(f"backlog dependency cycle: {', '.join(sorted(cycles))}")
+
+    active: dict[str, Path] = {}
+    cards_readme = task_root / "cards" / "README.md"
+    for path in sorted(git_paths(root, "docs/tasks/cards/*.md")):
+        if path == cards_readme:
+            continue
+        validate_jit_card(root, path, items, active, problems)
+    for card_id, path in active.items():
+        items[card_id] = replace(items[card_id], state="active", path=path)
+    return items
 
 
 def validate_diagrams(diagrams: list[Path], root: Path, problems: list[str]) -> int:
@@ -346,7 +351,7 @@ def validate_diagrams(diagrams: list[Path], root: Path, problems: list[str]) -> 
     return len(diagrams)
 
 
-def validate(root: Path) -> tuple[int, int, int]:
+def validate(root: Path) -> tuple[int, int, int, int]:
     documents = git_paths(root, "*.md")
     diagrams = git_paths(root, "*.mmd")
     problems: list[str] = []
@@ -355,7 +360,9 @@ def validate(root: Path) -> tuple[int, int, int]:
     diagram_count = validate_diagrams(diagrams, root, problems)
     if problems:
         raise DocumentationError("Documentation gate failures:\n" + "\n".join(problems))
-    return len(documents), len(cards), diagram_count
+    actionable_count = sum(card.kind == "actionable" for card in cards.values())
+    proposal_count = sum(card.kind == "proposal" for card in cards.values())
+    return len(documents), actionable_count, proposal_count, diagram_count
 
 
 def parse_args() -> argparse.Namespace:
@@ -370,12 +377,13 @@ def main() -> None:
     args = parse_args()
     try:
         root = repository_root(args.repo)
-        document_count, card_count, diagram_count = validate(root)
+        document_count, actionable_count, proposal_count, diagram_count = validate(root)
     except DocumentationError as exc:
         raise SystemExit(f"ERROR: {exc}") from exc
     print(
         f"PASS documentation structure ({document_count} Markdown documents, "
-        f"{card_count} task cards, {diagram_count} Mermaid sources)"
+        f"{actionable_count} actionable items, {proposal_count} proposals, "
+        f"{diagram_count} Mermaid sources)"
     )
 
 

@@ -151,12 +151,8 @@ def test_star_text_parser_failure_branches() -> None:
         True,
         "1 splice-junction rows",
     )
-    assert not star.valid_splice_junction_table(
-        "chr1\tbad\t2\t0\t0\t0\t0\t0\t0"
-    )[0]
-    assert not star.valid_splice_junction_table(
-        "chr1\t2\t1\t0\t0\t0\t0\t0\t0"
-    )[0]
+    assert not star.valid_splice_junction_table("chr1\tbad\t2\t0\t0\t0\t0\t0\t0")[0]
+    assert not star.valid_splice_junction_table("chr1\t2\t1\t0\t0\t0\t0\t0\t0")[0]
 
 
 def test_star_file_parser_failure_branches(tmp_path: Path) -> None:

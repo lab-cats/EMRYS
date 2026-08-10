@@ -56,8 +56,7 @@ EXPECTED_PRODUCER_EVIDENCE = {
         "ddca3b0f11bb690fdee60f99b8885be74b64000b02dd250d7740ab9db47a9a79",
     ),
     "00c": (
-        "src/norad/stages/construct_FASTA_sidecars/"
-        "step_00c_prepare_gatk_reference.sh",
+        "src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh",
         "a78a5769d47a638e486d1ef82582331f91689baad99fef01962d16e6d3f991bf",
     ),
     "01": (
@@ -78,13 +77,11 @@ EXPECTED_PRODUCER_EVIDENCE = {
         "0ee478b58419ba1a1b535d8397fd107fc0f8610afb45e43adffc3b57dd2406c7",
     ),
     "04": (
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
-        "step_04_mark_duplicates.sh",
+        "src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh",
         "d99ab505094595c233ba3a9b37a08a06d214d0501aa634b842f57f88217bf733",
     ),
     "05": (
-        "src/norad/stages/split_N_cigar_reads_with_GATK/"
-        "step_05_split_n_cigar_reads.sh",
+        "src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh",
         "e4d1b5f16bb42b670bfb617455f61e969fdd0b3012cccfe93344ea24a0b4e5e4",
     ),
     "06": (
@@ -281,9 +278,7 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes() ->
 
     assert tuple(evidence) == tuple(EXPECTED_PRODUCER_EVIDENCE)
     assert tuple(ADAPTER.STEP_PRODUCERS) == tuple(EXPECTED_PRODUCER_EVIDENCE)
-    for step_id, (expected_path, expected_sha256) in (
-        EXPECTED_PRODUCER_EVIDENCE.items()
-    ):
+    for step_id, (expected_path, expected_sha256) in EXPECTED_PRODUCER_EVIDENCE.items():
         record = evidence[step_id]
         assert record["status"] == "implemented"
         assert record["git_commit"] == git_commit

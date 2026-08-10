@@ -1,25 +1,12 @@
-import csv
-import importlib.util
 import subprocess
 import sys
 from pathlib import Path
 
+from tests.stage_validator_test_support import load_roster_oracle
+from tests.stage_validator_test_support import read_tsv as report_rows
+
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = (
-    ROOT
-    / "tests"
-    / "contract_integration"
-    / "validation_rosters"
-    / "validation_roster_expectations.py"
-)
-ROSTER_SPEC = importlib.util.spec_from_file_location(
-    "construct_star_index_validation_roster_oracle",
-    ROSTER_ORACLE,
-)
-assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
-ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
-ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
-assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
+assert_exact_check_roster = load_roster_oracle(ROOT).assert_exact_check_roster
 SCRIPT = (
     ROOT
     / "src"
@@ -101,11 +88,6 @@ def run(
         text=True,
         capture_output=True,
     )
-
-
-def report_rows(path: Path):
-    with path.open() as stream:
-        return list(csv.DictReader(stream, delimiter="\t"))
 
 
 def test_dry_run_is_side_effect_free(tmp_path):

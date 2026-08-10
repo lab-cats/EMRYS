@@ -39,6 +39,21 @@ and fixtures. `tests/contracts/` protects neutral contracts;
 artifacts; repository-wide scheduler, CLI, coverage, and validation-gate tests
 remain cross-owner development protection.
 
+## Owner cutovers
+
+A physical ownership move is one semantic package: final-owner implementation,
+mirrored direct tests, affected callers, contracts, owner documentation, and
+coverage or tooling configuration move together. Capture the old public
+boundary first, including faults, then prove the final path preserves declared
+bytes, streams, exits, modes, arbitrary-CWD behavior, side effects,
+transactions, recovery, and unrelated files.
+
+An accepted cutover leaves one live implementation. Remove the embedded or old
+helper in the same package; do not retain a temporary re-export, forwarding
+wrapper, duplicate test owner, or compatibility shadow unless that exact public
+surface is separately approved as a continuing contract. Rollback is the
+coherent semantic package, not a mixture of old and final owners.
+
 ## Approved shared seams
 
 | Seam | Neutral owner | Current consumers and boundary |

@@ -39,6 +39,8 @@ def _validate_receipt(document: Mapping[str, Any]) -> None:
         contracts.validate_document_semantics("report-receipt", dict(document))
     except contracts.ContractValidationError as exc:
         _fail(f"Report receipt semantic validation failed: {exc}")
+
+
 def _summary_tsv_bytes(context: BundleContext) -> bytes:
     rows = []
     summary = context.html.summary
@@ -63,6 +65,8 @@ def _summary_tsv_bytes(context: BundleContext) -> bytes:
     writer.writerow(SUMMARY_HEADER)
     writer.writerows(rows)
     return stream.getvalue().encode("utf-8")
+
+
 def _validate_summary_tsv(path: Path, context: BundleContext) -> None:
     snapshot = html_report._snapshot_regular(path, "exported run-summary TSV")
     with path.open("r", encoding="utf-8", newline="") as stream:
@@ -75,6 +79,8 @@ def _validate_summary_tsv(path: Path, context: BundleContext) -> None:
     if any(len(row) != len(SUMMARY_HEADER) for row in rows[1:]):
         _fail("Exported run-summary TSV contains a malformed row")
     html_report._assert_snapshot(snapshot, "exported run-summary TSV")
+
+
 def _truncations(context: BundleContext) -> list[dict[str, Any]]:
     return [
         {
@@ -92,6 +98,8 @@ def _truncations(context: BundleContext) -> list[dict[str, Any]]:
         for table in context.html.tables
         if table.truncated
     ]
+
+
 def _receipt_document(
     context: BundleContext,
     staged_outputs: Sequence[tuple[str, str, Path, Path, int | None]],
@@ -188,6 +196,8 @@ def _receipt_document(
     }
     _validate_receipt(document)
     return document
+
+
 def _receipt_tsv_bytes(document: Mapping[str, Any]) -> bytes:
 
     canonical = json.dumps(

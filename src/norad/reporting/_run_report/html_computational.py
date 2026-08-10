@@ -61,6 +61,8 @@ def _artifact_overview(summary: Mapping[str, Any]) -> str:
         f'<ul class="artifact-legend" aria-label="Artifact state legend">'
         f"{legend}</ul>"
     )
+
+
 def _failed_scope_summary(summary: Mapping[str, Any]) -> str:
     failed = [
         (
@@ -81,6 +83,8 @@ def _failed_scope_summary(summary: Mapping[str, Any]) -> str:
         '<div class="notice"><p><strong>Failed expected scopes</strong></p>'
         f"<ul>{items}</ul></div>"
     )
+
+
 def _render_run_identity(summary: Mapping[str, Any]) -> str:
     contract = summary["run_contract"]
     rows = (
@@ -107,6 +111,8 @@ def _render_run_identity(summary: Mapping[str, Any]) -> str:
         caption="Immutable run identity and explicit source records",
         rows=rows,
     )
+
+
 def _render_report_provenance(metadata: Mapping[str, str]) -> str:
     rows = (
         ("Run-summary input", metadata["run_summary_path"]),
@@ -128,6 +134,8 @@ def _render_report_provenance(metadata: Mapping[str, str]) -> str:
         caption="Static report renderer provenance",
         rows=rows,
     )
+
+
 def _render_status_panels(summary: Mapping[str, Any]) -> str:
     rollup = summary["computational_rollup"]
     computational_rows = tuple(
@@ -176,6 +184,8 @@ def _render_status_panels(summary: Mapping[str, Any]) -> str:
         f"{scientific}</div>\n"
         "</div>\n" + _artifact_overview(summary) + _failed_scope_summary(summary)
     )
+
+
 def _render_scope_matrix(summary: Mapping[str, Any]) -> str:
     rows = []
     for scope_record in summary["expected_scopes"]:
@@ -210,6 +220,8 @@ def _render_scope_matrix(summary: Mapping[str, Any]) -> str:
         ),
         rows=rows,
     )
+
+
 def _render_qc_metrics(summary: Mapping[str, Any]) -> str:
     promoted_ids = {metric["metric_id"] for metric in summary["qc_metrics"]}
     rows = [
@@ -246,6 +258,8 @@ def _render_qc_metrics(summary: Mapping[str, Any]) -> str:
         ),
         rows=rows,
     )
+
+
 def _render_attempt_lineage(summary: Mapping[str, Any]) -> str:
     attempts = summary["attempts"]
     if not attempts:
@@ -311,6 +325,8 @@ def _render_attempt_lineage(summary: Mapping[str, Any]) -> str:
         + f'<p class="provenance-note">Superseded run attempt IDs: '
         f"{_escape(superseded)}.</p>"
     )
+
+
 def _render_artifact_appendix(summary: Mapping[str, Any]) -> str:
     return _table(
         table_id="artifact-evidence-index",
@@ -363,6 +379,8 @@ def _render_artifact_appendix(summary: Mapping[str, Any]) -> str:
             for artifact in summary["artifacts"]
         ),
     )
+
+
 def _render_tools(summary: Mapping[str, Any]) -> str:
     if not summary["tools"]:
         return _empty("No aggregate software records are declared.")
@@ -381,6 +399,8 @@ def _render_tools(summary: Mapping[str, Any]) -> str:
             for tool in summary["tools"]
         ),
     )
+
+
 def _render_issues(summary: Mapping[str, Any]) -> str:
     rows = [
         (
@@ -388,9 +408,7 @@ def _render_issues(summary: Mapping[str, Any]) -> str:
             issue["code"],
             issue["message"],
             ", ".join(issue["related_artifact_ids"]) or "None declared",
-            ", ".join(
-                reference["evidence_id"] for reference in issue["evidence"]
-            )
+            ", ".join(reference["evidence_id"] for reference in issue["evidence"])
             or "None declared",
         )
         for level in ("warnings", "errors")
@@ -404,6 +422,8 @@ def _render_issues(summary: Mapping[str, Any]) -> str:
         header=("Level", "Code", "Message", "Artifact IDs", "Evidence IDs"),
         rows=rows,
     )
+
+
 def _render_table_inventory(tables: Sequence[ApprovedTable]) -> str:
     if not tables:
         return _empty(

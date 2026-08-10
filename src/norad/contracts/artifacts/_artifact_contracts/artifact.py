@@ -45,18 +45,22 @@ def validate_artifact_semantics(document: dict[str, Any]) -> None:
         }
         if selected_attempt_id in superseded_ids:
             raise ContractValidationError(
-                f"{artifact_label} selected attempt "
-                "has been superseded"
+                f"{artifact_label} selected attempt has been superseded"
             )
         completion = document["completion_status"]
-        if completion == "incomplete" and selected["state"] not in _INCOMPLETE_SELECTED_ATTEMPT_STATES:
+        if (
+            completion == "incomplete"
+            and selected["state"] not in _INCOMPLETE_SELECTED_ATTEMPT_STATES
+        ):
             raise ContractValidationError(
                 f"{artifact_label} incomplete state "
                 "must select a failed, cancelled, or blocked attempt"
             )
-        if (expected_state := _SELECTED_ATTEMPT_STATE_BY_COMPLETION.get(completion)) is not None and selected["state"] != expected_state:
+        if (
+            expected_state := _SELECTED_ATTEMPT_STATE_BY_COMPLETION.get(completion)
+        ) is not None and selected["state"] != expected_state:
             raise ContractValidationError(
-                f"{artifact_label} {completion.replace('_','-')} state "
+                f"{artifact_label} {completion.replace('_', '-')} state "
                 f"must select a {expected_state} attempt"
             )
 

@@ -170,6 +170,3 @@ class RenderContext:
             self.quarto_snapshot,
             *(table.snapshot for table in self.tables),
         )
-
-
-

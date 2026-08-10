@@ -28,12 +28,23 @@ sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
 
 from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
     audits as _audit_owner,
+)
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
     context as _context_owner,
+)
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
     contracts as _contract_owner,
+)
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
     evidence as _evidence_owner,
+)
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
     intake as _intake_owner,
+)
+from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
     review_analysis as _review_analysis_owner,
 )
+
 step08 = _contract_owner.step08
 step09 = _contract_owner.step09
 review_package = _contract_owner.review_package
@@ -74,7 +85,9 @@ expected_qc_rows = _audit_owner.expected_qc_rows
 validate_qc_funnel = _audit_owner.validate_qc_funnel
 validate_replicate_effects = _audit_owner.validate_replicate_effects
 
-validate_analysis_file_reference = _review_analysis_owner.validate_analysis_file_reference
+validate_analysis_file_reference = (
+    _review_analysis_owner.validate_analysis_file_reference
+)
 validate_sensitivity_matrix = _review_analysis_owner.validate_sensitivity_matrix
 validate_leave_one_pair_out = _review_analysis_owner.validate_leave_one_pair_out
 validate_candidate_selection = _review_analysis_owner.validate_candidate_selection

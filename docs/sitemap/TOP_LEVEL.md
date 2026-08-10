@@ -6,8 +6,8 @@
   test policy.
 - [Operations](../operations/) — workflow, handoff, cross-cutting commands, and
   troubleshooting.
-- [Tasks](../tasks/README.md) — temporary actionable cards and preserved
-  `UNREFINED` proposals.
+- [Tasks](../tasks/README.md) — compact actionable/proposal backlog and
+  temporary JIT execution cards.
 - [Demonstrations](../demo/README.md) — reviewed presenter guides.
 - [History](../history/) — immutable dated records maintained separately.
 - [Documentation ownership](DOCUMENTATION_OWNERSHIP.md) — audience routes and

@@ -12,6 +12,8 @@ from .models import COMPUTATIONAL_STATUS_FIELDS
 def _scientific_record(summary: Mapping[str, Any]) -> Mapping[str, Any] | None:
     record = summary["scientific_review"]["record"]
     return record if isinstance(record, Mapping) else None
+
+
 def _render_evidence_categories(summary: Mapping[str, Any]) -> str:
     record = _scientific_record(summary)
     if record is None:
@@ -36,6 +38,8 @@ def _render_evidence_categories(summary: Mapping[str, Any]) -> str:
         header=("Category", "Status", "Evidence IDs", "Not-applicable reason"),
         rows=rows,
     )
+
+
 def _render_limitations(summary: Mapping[str, Any]) -> str:
     limitations = summary["limitations"]
     if not limitations:
@@ -71,6 +75,8 @@ def _render_limitations(summary: Mapping[str, Any]) -> str:
             for item in limitations
         ),
     )
+
+
 def _render_decisions(summary: Mapping[str, Any]) -> str:
     record = _scientific_record(summary)
     if record is None:
@@ -110,6 +116,8 @@ def _render_decisions(summary: Mapping[str, Any]) -> str:
         ),
         rows=rows,
     )
+
+
 def _render_rerun_implications(summary: Mapping[str, Any]) -> str:
     record = _scientific_record(summary)
     if record is None:
@@ -142,6 +150,8 @@ def _render_rerun_implications(summary: Mapping[str, Any]) -> str:
         ),
         rows=rows,
     )
+
+
 def _render_evidence_index(summary: Mapping[str, Any]) -> str:
     record = _scientific_record(summary)
     if record is None or not record["evidence_records"]:
@@ -187,6 +197,8 @@ def _render_evidence_index(summary: Mapping[str, Any]) -> str:
             for evidence in record["evidence_records"]
         ),
     )
+
+
 def _render_input_artifacts(summary: Mapping[str, Any]) -> str:
     record = _scientific_record(summary)
     if record is None:
@@ -206,6 +218,8 @@ def _render_input_artifacts(summary: Mapping[str, Any]) -> str:
             for item in record["input_artifacts"]
         ),
     )
+
+
 def _render_science_methods(summary: Mapping[str, Any]) -> str:
     record = _scientific_record(summary)
     if record is None:
@@ -231,8 +245,7 @@ def _render_science_methods(summary: Mapping[str, Any]) -> str:
     )
     computational = record["computational_status"]
     status_rows = tuple(
-        (label, computational[field])
-        for label, field in COMPUTATIONAL_STATUS_FIELDS
+        (label, computational[field]) for label, field in COMPUTATIONAL_STATUS_FIELDS
     )
     status_table = _key_value_table(
         table_id="science-computational-status",

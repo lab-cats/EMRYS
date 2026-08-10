@@ -25,14 +25,20 @@ from .models import (
 
 def _fail(message: str) -> None:
     raise ReportRenderError(message)
+
+
 def _explicit_path(path: Path, label: str) -> Path:
     try:
         contracts.validate_resolved_path(str(path), label)
     except contracts.ContractValidationError as exc:
         _fail(str(exc))
     return path.absolute()
+
+
 def _reject_symlink_components(path: Path, label: str) -> None:
     _files.reject_symlink_components(path, label, _fail)
+
+
 def _snapshot_regular(
     path: Path,
     label: str,
@@ -70,6 +76,8 @@ def _snapshot_regular(
     states = before, after, current
     message = f"{label} changed while its snapshot was captured: {path}"
     return _files.stable_snapshot(path, sha256, states, _fail, message)
+
+
 def _assert_snapshot(snapshot: FileSnapshot, label: str) -> None:
     current = _snapshot_regular(
         snapshot.path,
@@ -78,6 +86,8 @@ def _assert_snapshot(snapshot: FileSnapshot, label: str) -> None:
     )
     if current != snapshot:
         _fail(f"{label} changed during report rendering: {snapshot.path}")
+
+
 def _load_run_summary(path: Path) -> dict[str, Any]:
     try:
         document = contracts.load_json_object(path, "run-summary document")
@@ -104,6 +114,8 @@ def _load_run_summary(path: Path) -> dict[str, Any]:
             f"{document['science_status']!r}"
         )
     return document
+
+
 def _resolve_contract_file(value: str, label: str) -> Path:
     try:
         contracts.validate_resolved_path(value, label)
@@ -118,6 +130,8 @@ def _resolve_contract_file(value: str, label: str) -> Path:
     if resolved != lexical:
         _fail(f"{label} must not traverse a symbolic link: {value}")
     return resolved
+
+
 def _read_approved_table(record: Mapping[str, Any]) -> ApprovedTable:
     table_id = record["table_id"]
     path = _resolve_contract_file(

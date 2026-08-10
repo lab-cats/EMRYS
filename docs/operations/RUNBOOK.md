@@ -61,16 +61,17 @@ test, diagnostics, and recovery routes when those surfaces exist. Its adjacent
 
 ## Task status
 
-Task cards are temporary specifications. Inspect the derived view:
+The backlog is coarse and execution cards are created just in time. Inspect the
+derived view:
 
 ```bash
 ./scripts/git_orchestration/task_status.py \
   --repo "$(git rev-parse --show-toplevel)"
 ```
 
-Selection does not move or rewrite a card. Delete a card only when its work is
-completed or retired. See the [workflow kernel](WORKFLOW.md) and
-[task registry](../tasks/README.md).
+Selection adds a temporary JIT card under `docs/tasks/cards/`; completion or
+pause removes it. See the [workflow kernel](WORKFLOW.md) and [task
+registry](../tasks/README.md).
 
 ## Local validation
 
@@ -103,9 +104,9 @@ git status --short
 git diff --name-status
 ```
 
-The documentation gate checks local document structure and mechanically
-derived ownership. It deliberately does not validate links, anchors, diagrams'
-inbound references, or relationships among cards.
+The documentation gate checks local document structure, mechanically derived
+ownership, compact backlog dependencies, and JIT-card structure. It does not
+validate general Markdown links, anchors, or diagrams' inbound references.
 
 ## Explicit dependency setup
 
@@ -130,6 +131,12 @@ RSCRIPT_BIN=/usr/local/bin/Rscript make local-real-r-test
 They opt into the repository library with `NORAD_USE_RENV=1`, disable automatic
 snapshots and the `renv` sandbox, and establish local configured-environment
 evidence only.
+
+An unchanged synchronized lock can still fail an online freshness check after
+upstream repository metadata changes. Do not restore, snapshot, or update the
+lock merely to turn that result green. Record the lock and repository evidence,
+then review a lock update or a separation of reproducibility and online
+freshness as its own authorized dependency-policy change.
 
 ## Manual job inspection
 

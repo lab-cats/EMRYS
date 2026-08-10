@@ -49,6 +49,7 @@ _status_class = _components._status_class
 _table = _components._table
 _tables_for_roles = _components._tables_for_roles
 
+
 def build_report_body(
     summary: Mapping[str, Any],
     tables: Sequence[ApprovedTable],

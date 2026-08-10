@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render a deterministic read-only view of surviving NORAD task cards."""
+"""Render a deterministic read-only view of the compact NORAD backlog."""
 
 from __future__ import annotations
 
@@ -19,17 +19,16 @@ def reverse_dependencies(cards: Mapping[str, TaskCard]) -> dict[str, list[str]]:
     result = {card_id: [] for card_id in cards}
     for target, card in cards.items():
         for blocker in card.blockers:
-            if blocker in result:
-                result[blocker].append(target)
+            result[blocker].append(target)
     for targets in result.values():
         targets.sort()
     return result
 
 
-def readiness(card: TaskCard, cards: Mapping[str, TaskCard]) -> str:
-    if card.state != "planned":
+def readiness(card: TaskCard) -> str:
+    if card.kind != "actionable" or card.state == "active":
         return "—"
-    return "yes" if all(blocker not in cards for blocker in card.blockers) else "no"
+    return "yes" if not card.blockers else "no"
 
 
 def render_markdown(root: Path, cards: Mapping[str, TaskCard]) -> str:
@@ -37,26 +36,28 @@ def render_markdown(root: Path, cards: Mapping[str, TaskCard]) -> str:
     lines = [
         "# Task status",
         "",
-        "Generated from surviving card files; this output is not registry authority.",
+        "Generated from the compact backlog and JIT cards; this output is not registry authority.",
         "",
-        "| ID | State | Ready | Blocked by | Unblocks | Path |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "| ID | Kind | State | Ready | Blocked by | Unblocks | Detail |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
     for card_id in sorted(cards):
         card = cards[card_id]
         blockers = ", ".join(sorted(card.blockers)) or "—"
         unblocks = ", ".join(reverse[card_id]) or "—"
-        path = card.path.relative_to(root).as_posix()
+        detail = (
+            card.path.relative_to(root).as_posix() if card.state == "active" else "—"
+        )
         lines.append(
-            f"| {card_id} | {card.state} | {readiness(card, cards)} | "
-            f"{blockers} | {unblocks} | {path} |"
+            f"| {card_id} | {card.kind} | {card.state} | {readiness(card)} | "
+            f"{blockers} | {unblocks} | {detail} |"
         )
     return "\n".join(lines) + "\n"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Render deterministic NORAD surviving-card status."
+        description="Render deterministic NORAD backlog status."
     )
     parser.add_argument("--repo", required=True, type=Path)
     return parser.parse_args()

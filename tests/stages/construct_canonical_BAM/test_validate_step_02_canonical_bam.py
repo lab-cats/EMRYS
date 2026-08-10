@@ -1,26 +1,13 @@
-import csv
 import hashlib
-import importlib.util
 import subprocess
 import sys
 from pathlib import Path
 
+from tests.stage_validator_test_support import load_roster_oracle
+from tests.stage_validator_test_support import read_tsv as rows
+
 ROOT = Path(__file__).resolve().parents[3]
-ROSTER_ORACLE = (
-    ROOT
-    / "tests"
-    / "contract_integration"
-    / "validation_rosters"
-    / "validation_roster_expectations.py"
-)
-ROSTER_SPEC = importlib.util.spec_from_file_location(
-    "construct_canonical_bam_validation_roster_oracle",
-    ROSTER_ORACLE,
-)
-assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
-ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
-ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
-assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
+assert_exact_check_roster = load_roster_oracle(ROOT).assert_exact_check_roster
 SCRIPT = (
     ROOT / "src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py"
 )
@@ -75,11 +62,6 @@ def run(values, *extra, env=None, cwd: Path | None = None):
         capture_output=True,
         env=env,
     )
-
-
-def rows(path):
-    with path.open() as stream:
-        return list(csv.DictReader(stream, delimiter="\t"))
 
 
 def test_dry_run_is_side_effect_free(tmp_path):

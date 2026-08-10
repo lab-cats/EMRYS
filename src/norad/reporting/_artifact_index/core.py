@@ -19,8 +19,8 @@ from typing import Any
 from jsonschema import Draft202012Validator, FormatChecker
 
 from norad.libraries.alignments import orientation as alignment_orientation
-
 from norad.reporting import _files
+
 from .contracts import contracts
 from .models import (
     RUN_CONTRACT_FIELDS,
