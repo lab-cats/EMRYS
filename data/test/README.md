@@ -5,7 +5,7 @@ material. No committed file here currently forms a runnable fixture.
 
 The structural [`samples.example.tsv`](../../configs/samples.example.tsv)
 names paths under this directory without requiring them to exist. The
-[Step `01` owner](../../src/norad/stages/align_RNA_reads_with_STAR/README.md)
+[Step `01` owner](../../src/norad/stages/star_alignment/README.md)
 uses only the `sample_001` mate paths as default dry-run placeholders.
 
 FASTQ patterns remain ignored repository-wide. File presence here establishes

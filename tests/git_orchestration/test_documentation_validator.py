@@ -48,7 +48,7 @@ SEMANTIC_OWNERS = (
     ("stage", "construct_STAR_index"),
     ("stage", "construct_FASTA_sidecars"),
     ("stage", "convert_GTF_to_BED12"),
-    ("stage", "STAGE-04"),
+    ("stage", "align_RNA_reads_with_STAR"),
     ("stage", "STAGE-05"),
     ("stage", "STAGE-06"),
     ("stage", "STAGE-07"),
@@ -61,6 +61,7 @@ SEMANTIC_OWNERS = (
     ("evidence", "EVIDENCE-03"),
 )
 SOURCE_OWNER_DIRECTORIES = {
+    ("stage", "align_RNA_reads_with_STAR"): "star_alignment",
     ("stage", "construct_STAR_index"): "star_index",
     ("stage", "construct_FASTA_sidecars"): "fasta_sidecars",
     ("stage", "convert_GTF_to_BED12"): "gtf_to_bed12",

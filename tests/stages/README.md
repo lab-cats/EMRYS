@@ -7,7 +7,7 @@ This directory mirrors the ten computational stage owners.
   [`gtf_to_bed12/`](gtf_to_bed12/README.md), and
   [`fasta_sidecars/`](fasta_sidecars/README.md).
 - Sample processing:
-  [`align_RNA_reads_with_STAR/`](align_RNA_reads_with_STAR/README.md),
+  [`star_alignment/`](star_alignment/README.md),
   [`construct_canonical_BAM/`](construct_canonical_BAM/README.md),
   [`mark_BAM_duplicates_with_Picard/`](mark_BAM_duplicates_with_Picard/README.md),
   [`split_N_cigar_reads_with_GATK/`](split_N_cigar_reads_with_GATK/README.md),

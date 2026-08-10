@@ -39,10 +39,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 14,
-      "covered_lines": 67,
+      "covered_lines": 71,
       "line_rate": "1.000000",
       "num_branches": 14,
-      "num_statements": 67,
+      "num_statements": 71,
       "path": "src/norad/__main__.py"
     },
     {
@@ -1353,15 +1353,6 @@
     {
       "branch_rate": "0.500000",
       "covered_branches": 1,
-      "covered_lines": 38,
-      "line_rate": "0.904762",
-      "num_branches": 2,
-      "num_statements": 42,
-      "path": "src/norad/stages/align_RNA_reads_with_STAR/validate_step_01_star_alignment.py"
-    },
-    {
-      "branch_rate": "0.500000",
-      "covered_branches": 1,
       "covered_lines": 34,
       "line_rate": "1.000000",
       "num_branches": 2,
@@ -1465,6 +1456,24 @@
       "line_rate": "1.000000",
       "num_branches": 0,
       "num_statements": 0,
+      "path": "src/norad/stages/star_alignment/__init__.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 30,
+      "line_rate": "0.882353",
+      "num_branches": 0,
+      "num_statements": 34,
+      "path": "src/norad/stages/star_alignment/validator.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
       "path": "src/norad/stages/star_index/__init__.py"
     },
     {
@@ -1510,11 +1519,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.748647",
-    "covered_branches": 3321,
-    "covered_lines": 10306,
-    "line_rate": "0.860483",
-    "num_branches": 4436,
-    "num_statements": 11977
+    "branch_rate": "0.748760",
+    "covered_branches": 3320,
+    "covered_lines": 10302,
+    "line_rate": "0.860436",
+    "num_branches": 4434,
+    "num_statements": 11973
   }
 }

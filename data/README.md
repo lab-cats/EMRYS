@@ -11,7 +11,7 @@ data lifecycle.
 - [`test/`](test/) is the retained local fixture workspace named by the structural
   [`sample-manifest starter`](../configs/samples.example.tsv); no orchestrator
   wires that starter into a run. Independently, the
-  [Step `01` scheduler owner](../src/norad/stages/align_RNA_reads_with_STAR/README.md)
+  [Step `01` scheduler owner](../src/norad/stages/star_alignment/README.md)
   uses only the `sample_001` mate paths as current default dry-run placeholders.
   Directory or placeholder-file presence alone does not establish a runnable
   fixture or production evidence.

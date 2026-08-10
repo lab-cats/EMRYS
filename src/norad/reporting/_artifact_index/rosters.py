@@ -109,7 +109,7 @@ STEP_PRODUCERS = {
     "00a": ("src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm"),
     "00b": "src/norad/stages/gtf_to_bed12/converter.py",
     "00c": ("src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"),
-    "01": ("src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"),
+    "01": ("src/norad/stages/star_alignment/step_01_star_align.sh"),
     "02": ("src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh"),
     "02b": ("src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh"),
     "03": (

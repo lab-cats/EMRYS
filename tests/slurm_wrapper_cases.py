@@ -51,7 +51,7 @@ CONTRACTS = {
         module_calls=("list", "load samtools/1.19.2", "list"),
     ),
     "step_01_star_align.slurm": contract(
-        "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh",
+        "src/norad/stages/star_alignment/step_01_star_align.sh",
         default="dry_run_with_fixture_side_effects",
         module_policy="strict_loads_tolerated_lists",
         module_calls=("list", "load star/2.7.11b", "list"),

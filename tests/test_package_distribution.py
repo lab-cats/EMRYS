@@ -181,6 +181,8 @@ def _assert_wheel_contents(wheel: Path) -> None:
             "norad/stages/gtf_to_bed12/validator.py",
             "norad/stages/star_index/__init__.py",
             "norad/stages/star_index/validator.py",
+            "norad/stages/star_alignment/__init__.py",
+            "norad/stages/star_alignment/validator.py",
         }
         assert not any(member.startswith("norad/analyses/") for member in members)
         assert not any(member.endswith((".R", ".sh", ".slurm")) for member in members)
@@ -478,6 +480,96 @@ def _assert_installed_fasta_sidecars_validation(
     assert unrelated_path.read_text(encoding="utf-8") == "preserve\n"
 
 
+def _build_star_alignment_fixture(
+    working_directory: Path,
+) -> tuple[Path, Path, Path, Path, Path, Path]:
+    output_directory = working_directory / "star-alignment-output"
+    output_directory.mkdir()
+    bam_path = output_directory / "wheel_fixture.Aligned.sortedByCoord.out.bam"
+    bam_path.write_bytes(b"BAM\x01synthetic")
+    final_log_path = output_directory / "wheel_fixture.Log.final.out"
+    final_log_path.write_text(
+        "Number of input reads | 100\n"
+        "Uniquely mapped reads % | 90.00%\n"
+        "% of reads mapped to multiple loci | 8.00%\n"
+        "% of reads mapped to too many loci | 1.00%\n",
+        encoding="utf-8",
+    )
+    log_path = output_directory / "wheel_fixture.Log.out"
+    log_path.write_text("ALL DONE!\n", encoding="utf-8")
+    progress_path = output_directory / "wheel_fixture.Log.progress.out"
+    progress_path.write_text("ALL DONE!\n", encoding="utf-8")
+    splice_junction_path = output_directory / "wheel_fixture.SJ.out.tab"
+    splice_junction_path.write_text(
+        "1\t10\t20\t1\t1\t0\t1\t0\t1\n",
+        encoding="utf-8",
+    )
+    validation_directory = working_directory / "star-alignment-validation"
+    validation_directory.mkdir()
+    return (
+        bam_path,
+        final_log_path,
+        log_path,
+        progress_path,
+        splice_junction_path,
+        validation_directory / "wheel_fixture.validation.tsv",
+    )
+
+
+def _assert_installed_star_alignment_validation(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    *input_paths, output_path = _build_star_alignment_fixture(working_directory)
+    input_bytes = tuple(path.read_bytes() for path in input_paths)
+    unrelated_path = working_directory / "star-alignment-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+
+    validation = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "star-alignment",
+        "--scope-id",
+        "wheel_fixture",
+        "--bam",
+        str(input_paths[0]),
+        "--log-final",
+        str(input_paths[1]),
+        "--log-out",
+        str(input_paths[2]),
+        "--log-progress",
+        str(input_paths[3]),
+        "--sj-out",
+        str(input_paths[4]),
+        "--output",
+        str(output_path),
+    )
+    assert validation.returncode == 0, validation.stdout + validation.stderr
+    assert validation.stderr == ""
+    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
+    report_rows = [
+        line.split("\t")
+        for line in validation.stdout.splitlines()
+        if line.startswith("01\t")
+    ]
+    assert len(report_rows) == 5
+    assert {row[2] for row in report_rows} == {
+        "output_files",
+        "bam_structure",
+        "final_log_structure",
+        "mapping_summary",
+        "splice_junction_structure",
+    }
+    assert {row[3] for row in report_rows} == {"pass"}
+    assert not output_path.exists()
+    assert not list(output_path.parent.glob(".*validation*"))
+    assert tuple(path.read_bytes() for path in input_paths) == input_bytes
+    assert unrelated_path.read_text(encoding="utf-8") == "preserve\n"
+
+
 def _assert_installed_commands(
     environment_python: Path,
     working_directory: Path,
@@ -540,6 +632,11 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_star_alignment_validation(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_private_source_layout() -> None:
@@ -571,6 +668,14 @@ def _assert_private_source_layout() -> None:
 
     assert not (REPO_ROOT / "tests/stages/construct_FASTA_sidecars").exists()
     assert (REPO_ROOT / "tests/stages/fasta_sidecars").is_dir()
+
+    star_alignment_owner = REPO_ROOT / "src/norad/stages/star_alignment"
+    assert not (REPO_ROOT / "src/norad/stages/align_RNA_reads_with_STAR").exists()
+    assert not (star_alignment_owner / "validate_step_01_star_alignment.py").exists()
+    assert (star_alignment_owner / "validator.py").stat().st_mode & 0o111 == 0
+
+    assert not (REPO_ROOT / "tests/stages/align_RNA_reads_with_STAR").exists()
+    assert (REPO_ROOT / "tests/stages/star_alignment").is_dir()
 
 
 def _assert_wrong_checkout_rejected(

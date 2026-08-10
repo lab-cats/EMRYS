@@ -6,15 +6,16 @@ Native owner of `norad.stage.align_RNA_reads_with_STAR.v1` (historical `01`).
 ## Entry points
 
 - producer: [`step_01_star_align.sh`](step_01_star_align.sh)
-- validator: [`validate_step_01_star_alignment.py`](validate_step_01_star_alignment.py)
 - scheduler: [`step_01_star_align.slurm`](step_01_star_align.slurm)
+- validator: grouped route `python -I -m norad validate star-alignment`,
+  implemented by private [`validator.py`](validator.py)
 
 ## Operate
 
 Producer dry-run from the repository root:
 
 ```bash
-src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh \
+src/norad/stages/star_alignment/step_01_star_align.sh \
   --sample-id ABE_EV_2 \
   --r1-fastq data/ABE_EV_2_R1.fastq.gz \
   --r2-fastq data/ABE_EV_2_R2.fastq.gz \
@@ -31,7 +32,7 @@ cleanup, no-clobber rule, or post-STAR validation.
 Validator dry-run:
 
 ```bash
-.venv/bin/python src/norad/stages/align_RNA_reads_with_STAR/validate_step_01_star_alignment.py \
+.venv/bin/python -I -m norad validate star-alignment \
   --scope-id ABE_EV_2 \
   --bam results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
   --log-final results/star/ABE_EV_2/ABE_EV_2.Log.final.out \
@@ -52,7 +53,7 @@ cd <checkout>
 SAMPLE_ID=ABE_EV_2 R1_FASTQ=/absolute/R1.fastq.gz \
 R2_FASTQ=/absolute/R2.fastq.gz STAR_INDEX=/absolute/star-index \
 OUTPUT_DIR=/absolute/results/star/ABE_EV_2 EXECUTE=1 \
-  sbatch src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm
+  sbatch src/norad/stages/star_alignment/step_01_star_align.slurm
 ```
 
 The wrapper strictly loads STAR `2.7.11b` and does not validate outputs.
@@ -64,9 +65,9 @@ Do not delete or adopt partial output; use the validator dry-run as the next
 safe inspection and follow [`TROUBLESHOOTING.md`](../../../../docs/operations/TROUBLESHOOTING.md).
 
 ```bash
-bash tests/stages/align_RNA_reads_with_STAR/test_step_01_star_align.sh
+bash tests/stages/star_alignment/test_step_01_star_align.sh
 .venv/bin/python -m pytest -q \
-  tests/stages/align_RNA_reads_with_STAR/test_validate_step_01_star_alignment.py \
+  tests/stages/star_alignment/test_validate_step_01_star_alignment.py \
   tests/test_slurm_wrapper_contracts.py
 ```
 

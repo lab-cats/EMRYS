@@ -3,9 +3,10 @@
 This document records the observed current contract of historical Step `01`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is now the implemented native owner; it remains an exact file-path surface, not
-a Python package or installed command namespace. Supported commands and
-diagnostics are adjacent in the [owner README](README.md).
+is now the implemented native owner and an installed Python package for its
+private validator. The shell producer and scheduler remain exact
+repository-path surfaces. Supported commands and diagnostics are adjacent in
+the [owner README](README.md).
 
 ## Responsibility
 
@@ -100,11 +101,11 @@ output validation after delegation.
 
 ## Validation interface
 
-[`validate_step_01_star_alignment.py`](validate_step_01_star_alignment.py)
-accepts an explicit scope, BAM, three STAR log paths, splice-junction table,
-and output path. Validation is dry-run by default; `--execute` publishes
-`<scope-id>.validation.tsv` using the common seven-field step-validation
-contract.
+`python -I -m norad validate star-alignment`, implemented by private
+[`validator.py`](validator.py), accepts an explicit scope, BAM, three STAR log
+paths, splice-junction table, and output path. Validation is dry-run by
+default; `--execute` publishes `<scope-id>.validation.tsv` using the common
+seven-field step-validation contract.
 
 The report contains exactly these five check identities:
 
@@ -128,8 +129,9 @@ new report.
 The validator imports general report rendering, snapshot, validation,
 locking, and publication functions from the neutral
 [`validation/report.py`](../../libraries/validation/report.py) owner through the
-repository-local `norad` package. Its bootstrap promotes the checkout's `src`
-root ahead of ambient import paths.
+installed `norad` package. The grouped command resolves independently of caller
+CWD, rejects a different installed checkout when invoked from a NORAD worktree,
+and excludes ambient `PYTHONPATH` under isolated invocation.
 
 ## Consumers
 
@@ -147,12 +149,12 @@ No downstream stage should depend on this stage's implementation module.
 
 ## Protected behavior and evidence
 
-- [`test_step_01_star_align.sh`](../../../../tests/stages/align_RNA_reads_with_STAR/test_step_01_star_align.sh)
+- [`test_step_01_star_align.sh`](../../../../tests/stages/star_alignment/test_step_01_star_align.sh)
   protects the public CLI, command construction, current dry-run directory
   side effect, execute invocation, compression handling, thread validation,
   missing-input failures, and exact child-exit/output-directory residue with
   local tool mocks.
-- [`test_validate_step_01_star_alignment.py`](../../../../tests/stages/align_RNA_reads_with_STAR/test_validate_step_01_star_alignment.py)
+- [`test_validate_step_01_star_alignment.py`](../../../../tests/stages/star_alignment/test_validate_step_01_star_alignment.py)
   protects dry-run, the five checks, failed mapping and splice-junction
   evidence, fail-closed missing inputs, publication, and foreign-lock
   preservation, including deterministic execute/repeat behavior from a

@@ -59,8 +59,8 @@ EXPECTED_PRODUCER_EVIDENCE = {
         "47fd09d6cf4c8c520ee39ec8491007f8e9a4dba37f2f428d56a4adfc762aefa1",
     ),
     "01": (
-        "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh",
-        "dd275a60c7ed6d5f74d9d5e3296c15e0fddb0ff93b6b1f0ea09e83483360e2d0",
+        "src/norad/stages/star_alignment/step_01_star_align.sh",
+        "b69c81666b4d1191404bba3693995b46649b6f57bc4393becf7972f55ee25431",
     ),
     "02": (
         "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh",

@@ -70,6 +70,7 @@ CROSS_CUTTING_OWNER_DOCS = (
     "src/norad/reporting/README.md",
 )
 SOURCE_OWNER_DIRECTORY_NAMES = {
+    ("stage", "align_RNA_reads_with_STAR"): "star_alignment",
     ("stage", "construct_STAR_index"): "star_index",
     ("stage", "construct_FASTA_sidecars"): "fasta_sidecars",
     ("stage", "convert_GTF_to_BED12"): "gtf_to_bed12",

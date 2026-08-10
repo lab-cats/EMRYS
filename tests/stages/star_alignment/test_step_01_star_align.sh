@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"
+SCRIPT="$REPO_ROOT/src/norad/stages/star_alignment/step_01_star_align.sh"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
