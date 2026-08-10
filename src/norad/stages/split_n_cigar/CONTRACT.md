@@ -4,7 +4,10 @@ This is the observed contract of historical Step `05`, now implemented in this
 native owner directory. The exact public identity and historical alias are
 owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug and owns the producer, validator, and scheduler assets.
+is the lowercase physical owner for that public slug and owns the producer,
+validator, and scheduler assets. Its Python validator is installed only
+through the grouped command; the shell producer and scheduler remain explicit
+repository-path interfaces.
 
 ## Responsibility and execution dependencies
 
@@ -61,10 +64,11 @@ wrapper has the characterized Bash 3.2 empty-array dry-run defect.
 
 ## Validation interface
 
-[`validate_step_05_split_ncigar.py`](validate_step_05_split_ncigar.py)
-accepts explicit BAM, BAI, FASTA, FAI, DICT, samtools, scope, and report paths.
-Dry-run prints the common TSV; `--execute` snapshot-rechecks inputs and uses the
-neutral validation-report publisher.
+The grouped `python -I -m norad validate split-n-cigar` route, implemented by
+private [`validator.py`](validator.py), accepts explicit BAM, BAI, FASTA, FAI,
+DICT, samtools, scope, and report paths. Dry-run prints the common TSV;
+`--execute` snapshot-rechecks inputs and uses the neutral validation-report
+publisher.
 
 Exact checks are:
 
@@ -82,9 +86,9 @@ report/BAM helpers from neutral
 [`validation/report.py`](../../libraries/validation/report.py) and
 [`alignments/bam.py`](../../libraries/alignments/bam.py), and reference parsers
 from neutral [`references/contigs.py`](../../libraries/references/contigs.py).
-The validator promotes the checkout's `src` root ahead of ambient import paths;
-no public helper CLI, compatibility import, or peer-stage implementation
-dependency is supported.
+Package selection is owned by the grouped command; direct execution of private
+`validator.py`, ambient `PYTHONPATH` injection, compatibility imports, and
+peer-stage implementation dependencies are not supported interfaces.
 
 The producer sources only `resolve_executable_value` from neutral
 [`executable_resolution.sh`](../../libraries/executable_resolution.sh).
@@ -102,10 +106,10 @@ failures, and report-publication failures exit `2`.
 - Artifact adapters register `step05_split_bam_v1`, `step05_split_bai_v1`, and
   `step05_validation_report_v1`; summary/report code consumes them without
   rerunning GATK.
-- [`test_step_05_split_n_cigar_reads.sh`](../../../../tests/stages/split_N_cigar_reads_with_GATK/test_step_05_split_n_cigar_reads.sh)
+- [`test_step_05_split_n_cigar_reads.sh`](../../../../tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh)
   protects dry-run, tools/Java, reference prerequisites, locks, temp cleanup,
   staged validation, complete-pair rules, and ordinary rollback fault paths.
-- [`test_validate_step_05_split_ncigar.py`](../../../../tests/stages/split_N_cigar_reads_with_GATK/test_validate_step_05_split_ncigar.py),
+- [`test_validate_step_05_split_ncigar.py`](../../../../tests/stages/split_n_cigar/test_validate_step_05_split_ncigar.py),
   wrapper, roster, publication-fault, public-CLI, artifact, report, data-check,
   and coverage tests protect the recorded boundaries.
 

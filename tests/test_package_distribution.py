@@ -229,6 +229,8 @@ def _assert_wheel_contents(wheel: Path) -> None:
             "norad/stages/gtf_to_bed12/__init__.py",
             "norad/stages/gtf_to_bed12/converter.py",
             "norad/stages/gtf_to_bed12/validator.py",
+            "norad/stages/split_n_cigar/__init__.py",
+            "norad/stages/split_n_cigar/validator.py",
             "norad/stages/star_index/__init__.py",
             "norad/stages/star_index/validator.py",
             "norad/stages/star_alignment/__init__.py",
@@ -964,6 +966,115 @@ def _assert_installed_duplicate_marking_validation(
     )
 
 
+def _build_split_n_cigar_fixture(
+    working_directory: Path,
+) -> tuple[Path, Path, Path, Path, Path, Path, Path]:
+    input_directory = working_directory / "split-n-cigar-inputs"
+    input_directory.mkdir()
+    bam_path = input_directory / "wheel_fixture.split_ncigar.bam"
+    bam_path.write_bytes(b"BAM\x01synthetic")
+    bai_path = input_directory / "wheel_fixture.split_ncigar.bam.bai"
+    bai_path.write_bytes(b"BAI\x01synthetic")
+    fasta_path = input_directory / "genome.fa"
+    fasta_path.write_text(">1\nACGT\n", encoding="utf-8")
+    fai_path = input_directory / "genome.fa.fai"
+    fai_path.write_text("1\t4\t3\t4\t5\n", encoding="utf-8")
+    dictionary_path = input_directory / "genome.dict"
+    dictionary_path.write_text(
+        "@HD\tVN:1.6\n@SQ\tSN:1\tLN:4\n",
+        encoding="utf-8",
+    )
+    samtools_path = input_directory / "samtools"
+    samtools_path.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'case "${1:-} ${2:-}" in\n'
+        "  'quickcheck -v') exit 0 ;;\n"
+        "  'view -H')\n"
+        "    printf '@HD\\tVN:1.6\\tSO:coordinate\\n"
+        "@RG\\tID:wheel_fixture\\tSM:wheel_fixture\\n' ;;\n"
+        "  *) exit 9 ;;\n"
+        "esac\n",
+        encoding="utf-8",
+    )
+    samtools_path.chmod(0o755)
+    validation_directory = working_directory / "split-n-cigar-validation"
+    validation_directory.mkdir()
+    return (
+        bam_path,
+        bai_path,
+        fasta_path,
+        fai_path,
+        dictionary_path,
+        samtools_path,
+        validation_directory / "wheel_fixture.validation.tsv",
+    )
+
+
+def _assert_installed_split_n_cigar_validation(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    *input_paths, output_path = _build_split_n_cigar_fixture(working_directory)
+    input_states = tuple(
+        (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    )
+    unrelated_path = working_directory / "split-n-cigar-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+    unrelated_state = (unrelated_path.read_bytes(), unrelated_path.stat().st_mode)
+
+    validation = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "split-n-cigar",
+        "--scope-id",
+        "wheel_fixture",
+        "--bam",
+        str(input_paths[0]),
+        "--bai",
+        str(input_paths[1]),
+        "--reference-fasta",
+        str(input_paths[2]),
+        "--reference-fai",
+        str(input_paths[3]),
+        "--reference-dict",
+        str(input_paths[4]),
+        "--samtools-bin",
+        str(input_paths[5]),
+        "--output",
+        str(output_path),
+    )
+    assert validation.returncode == 0, validation.stdout + validation.stderr
+    assert validation.stderr == ""
+    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
+    report_rows = [
+        line.split("\t")
+        for line in validation.stdout.splitlines()
+        if line.startswith("05\t")
+    ]
+    assert len(report_rows) == 5
+    assert {row[2] for row in report_rows} == {
+        "bam_bai_structure",
+        "samtools_quickcheck",
+        "coordinate_sorting",
+        "read_group_preservation",
+        "reference_sidecars",
+    }
+    assert {row[3] for row in report_rows} == {"pass"}
+    assert not output_path.exists()
+    assert not list(output_path.parent.glob(".*validation*"))
+    assert (
+        tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
+        == input_states
+    )
+    assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
+        unrelated_state
+    )
+
+
 def _assert_installed_commands(
     environment_python: Path,
     working_directory: Path,
@@ -1051,6 +1162,20 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_split_n_cigar_validation(
+        environment_python,
+        working_directory,
+        environment,
+    )
+
+
+def _assert_split_n_cigar_private_layout() -> None:
+    owner = REPO_ROOT / "src/norad/stages/split_n_cigar"
+    assert not (REPO_ROOT / "src/norad/stages/split_N_cigar_reads_with_GATK").exists()
+    assert not (owner / "validate_step_05_split_ncigar.py").exists()
+    assert (owner / "validator.py").stat().st_mode & 0o111 == 0
+    assert not (REPO_ROOT / "tests/stages/split_N_cigar_reads_with_GATK").exists()
+    assert (REPO_ROOT / "tests/stages/split_n_cigar").is_dir()
 
 
 def _assert_private_source_layout() -> None:
@@ -1132,6 +1257,8 @@ def _assert_private_source_layout() -> None:
 
     assert not (REPO_ROOT / "tests/stages/mark_BAM_duplicates_with_Picard").exists()
     assert (REPO_ROOT / "tests/stages/duplicate_marking").is_dir()
+
+    _assert_split_n_cigar_private_layout()
 
 
 def _assert_wrong_checkout_rejected(

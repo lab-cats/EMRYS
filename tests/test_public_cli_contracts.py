@@ -47,10 +47,6 @@ PYTHON_ENTRYPOINT_PATHS = {
     "validate_artifact_contracts.py": Path(
         "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     ),
-    "validate_step_05_split_ncigar.py": Path(
-        "src/norad/stages/split_N_cigar_reads_with_GATK/"
-        "validate_step_05_split_ncigar.py"
-    ),
     "validate_step_06_orientation_outputs.py": Path(
         "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
         "validate_step_06_orientation_outputs.py"
@@ -78,7 +74,6 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
         "render_run_report_bundle.py",
         "step_09c_scientific_validation.py",
         "validate_artifact_contracts.py",
-        "validate_step_05_split_ncigar.py",
         "validate_step_06_orientation_outputs.py",
         "validate_step_07_mpileup_outputs.py",
         "validate_step_08_preprocessing_outputs.py",
@@ -115,6 +110,7 @@ NORAD_COMMANDS = (
         ("validate", "rseqc-orientation"),
         "usage: norad validate rseqc-orientation",
     ),
+    (("validate", "split-n-cigar"), "usage: norad validate split-n-cigar"),
     (("validate", "star-alignment"), "usage: norad validate star-alignment"),
     (("validate", "star-index"), "usage: norad validate star-index"),
 )
@@ -144,7 +140,7 @@ SHELL_ENTRYPOINT_PATHS = {
         "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh"
     ),
     "step_05_split_n_cigar_reads.sh": Path(
-        "src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh"
+        "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
     ),
     "step_06_split_bam_by_read_orientation.sh": Path(
         "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"

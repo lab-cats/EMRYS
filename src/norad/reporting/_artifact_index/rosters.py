@@ -117,9 +117,7 @@ STEP_PRODUCERS = {
         "step_03_infer_strandedness_and_orientation.sh"
     ),
     "04": "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
-    "05": (
-        "src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh"
-    ),
+    "05": ("src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"),
     "06": (
         "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
         "step_06_split_bam_by_read_orientation.sh"

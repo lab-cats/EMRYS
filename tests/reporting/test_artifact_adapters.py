@@ -80,8 +80,8 @@ EXPECTED_PRODUCER_EVIDENCE = {
         "568ce9536d4be309cbfeb258f7394d04f7acff6828d0fb4ff15f42dd316602da",
     ),
     "05": (
-        "src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh",
-        "e4d1b5f16bb42b670bfb617455f61e969fdd0b3012cccfe93344ea24a0b4e5e4",
+        "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
+        "a7ab36437d2ef85fcdb13591f420a693e6e91a95d6fcf0e44cb68fc2c2718121",
     ),
     "06": (
         "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"

@@ -89,7 +89,7 @@ CONTRACTS = {
         ),
     ),
     "step_05_split_n_cigar_reads.slurm": contract(
-        "src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh",
+        "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_calls=("list", "load samtools/1.19.2", "list"),
     ),

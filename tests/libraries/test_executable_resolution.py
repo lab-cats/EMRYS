@@ -20,8 +20,7 @@ CONSUMERS = {
         0o755,
         3,
     ),
-    ROOT / "src/norad/stages/split_N_cigar_reads_with_GATK/"
-    "step_05_split_n_cigar_reads.sh": (0o644, 3),
+    ROOT / "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh": (0o644, 3),
     ROOT / "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
     "step_06_split_bam_by_read_orientation.sh": (0o755, 1),
     ROOT / "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"

@@ -134,7 +134,7 @@ here.
 
 ## Consumers
 
-- The final [`split_N_cigar_reads_with_GATK`](../split_N_cigar_reads_with_GATK/README.md)
+- The final [`split_N_cigar_reads_with_GATK`](../split_n_cigar/README.md)
   owner consumes the FASTA and both sidecars before GATK `SplitNCigarReads`
   through explicit input paths.
 - Reference-provenance configuration names the `FAI` and `DICT` for hashing

@@ -12,8 +12,8 @@ diagrams. NORAD does not yet provide a single workflow orchestrator. Its
 explicitly installed, unreleased Python distribution provides an isolated,
 grouped module command for migrated owners, beginning with sample-manifest,
 STAR-index, FASTA-sidecar, STAR-alignment, canonical-BAM, canonical-BAM-QC,
-RSeQC-orientation, and duplicate-marking validation, plus GTF-to-BED12
-conversion/validation and named schema/report resources.
+RSeQC-orientation, duplicate-marking, and split-N-cigar validation, plus
+GTF-to-BED12 conversion/validation and named schema/report resources.
 
 ## Start here
 

@@ -27,6 +27,7 @@ from norad.stages.gtf_to_bed12 import (
     converter as gtf_to_bed12_command,
 )
 from norad.stages.gtf_to_bed12 import validator as bed12_validation_command
+from norad.stages.split_n_cigar import validator as split_n_cigar_validation_command
 from norad.stages.star_alignment import validator as star_alignment_validation_command
 from norad.stages.star_index import validator as star_index_validation_command
 
@@ -163,6 +164,15 @@ def build_parser() -> argparse.ArgumentParser:
     rseqc_orientation_validation_command.configure_parser(rseqc_orientation_parser)
     rseqc_orientation_parser.set_defaults(
         _command_handler=rseqc_orientation_validation_command.validate_from_args
+    )
+    split_n_cigar_parser = validation_parsers.add_parser(
+        "split-n-cigar",
+        help="Validate split-N-cigar BAM/BAI and reference sidecars.",
+        description=split_n_cigar_validation_command.DESCRIPTION,
+    )
+    split_n_cigar_validation_command.configure_parser(split_n_cigar_parser)
+    split_n_cigar_parser.set_defaults(
+        _command_handler=split_n_cigar_validation_command.validate_from_args
     )
     star_index_parser = validation_parsers.add_parser(
         "star-index",

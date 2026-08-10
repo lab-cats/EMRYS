@@ -5,8 +5,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh"
-JOB="$REPO_ROOT/src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.slurm"
+SCRIPT="$REPO_ROOT/src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
+JOB="$REPO_ROOT/src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2

@@ -92,7 +92,7 @@ public package or CLI identity.
 
 ## Consumers and protected evidence
 
-- The final [`split_N_cigar_reads_with_GATK`](../split_N_cigar_reads_with_GATK/README.md)
+- The final [`split_N_cigar_reads_with_GATK`](../split_n_cigar/README.md)
   owner consumes the marked BAM/BAI.
 - Artifact adapters register `step04_markdup_bam_v1`,
   `step04_markdup_bai_v1`, `step04_markdup_metrics_v1`, and

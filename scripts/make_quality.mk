@@ -18,7 +18,7 @@ SHELL_SYNTAX_PATHS := \
 	src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh \
 	src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh \
 	src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh \
-	src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh \
+	src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh \
 	src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh \
 	src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
 	src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh \
@@ -36,7 +36,7 @@ SLURM_SYNTAX_PATHS := \
 	src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.slurm \
 	src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.slurm \
 	src/norad/stages/duplicate_marking/step_04_mark_duplicates.slurm \
-	src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.slurm \
+	src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm \
 	src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.slurm \
 	src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm \
 	src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.slurm \
@@ -53,7 +53,7 @@ validation-shell-contracts:
 	bash tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh
 	bash tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh
 	bash tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh
-	bash tests/stages/split_N_cigar_reads_with_GATK/test_step_05_split_n_cigar_reads.sh
+	bash tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh
 	bash tests/stages/partition_BAM_by_mechanical_read_orientation/test_step_06_split_bam_by_read_orientation.sh
 	bash tests/stages/generate_partitioned_cohort_mpileup_VCFs/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
 	bash tests/stages/preprocess_and_annotate_cohort_candidates/test_step_08_vcf_preprocessing.sh
@@ -76,7 +76,7 @@ shell-test: validation-shell-contracts
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/canonical_bam_qc/test_validate_step_02b_bam_qc.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/rseqc_orientation/test_validate_step_03_rseqc_orientation.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/duplicate_marking/test_validate_step_04_mark_duplicates.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/split_N_cigar_reads_with_GATK/test_validate_step_05_split_ncigar.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/split_n_cigar/test_validate_step_05_split_ncigar.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/partition_BAM_by_mechanical_read_orientation/test_validate_step_06_orientation_outputs.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/generate_partitioned_cohort_mpileup_VCFs/test_validate_step_07_mpileup_outputs.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/preprocess_and_annotate_cohort_candidates/test_validate_step_08_preprocessing_outputs.py

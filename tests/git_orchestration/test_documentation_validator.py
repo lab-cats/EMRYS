@@ -51,7 +51,7 @@ SEMANTIC_OWNERS = (
     ("stage", "align_RNA_reads_with_STAR"),
     ("stage", "construct_canonical_BAM"),
     ("stage", "mark_BAM_duplicates_with_Picard"),
-    ("stage", "STAGE-07"),
+    ("stage", "split_N_cigar_reads_with_GATK"),
     ("stage", "STAGE-08"),
     ("stage", "STAGE-09"),
     ("stage", "STAGE-10"),
@@ -69,6 +69,7 @@ SOURCE_OWNER_DIRECTORIES = {
     ("stage", "construct_FASTA_sidecars"): "fasta_sidecars",
     ("stage", "convert_GTF_to_BED12"): "gtf_to_bed12",
     ("stage", "mark_BAM_duplicates_with_Picard"): "duplicate_marking",
+    ("stage", "split_N_cigar_reads_with_GATK"): "split_n_cigar",
 }
 CROSS_CUTTING_DOCS = (
     "src/norad/contracts/artifacts/README.md",
