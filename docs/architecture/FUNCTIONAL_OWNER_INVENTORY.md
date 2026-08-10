@@ -81,7 +81,6 @@ Only dispositions that remain deferred or exceptional are repeated here:
 
 | Exact current path | Disposition and owner boundary |
 | --- | --- |
-| `configs/{cluster_full.yaml.example,local_test.yaml}` | `DEFER`; inert illustrative profiles with no supported execution semantics until an orchestration owner exists. |
 | `tests/test_slurm_wrapper_contracts.py` | `RETAIN_ROOT`; permanent cross-owner protection for the owner-local scheduler wrappers. |
 | `tests/data_checks/validate_step05_outputs.sh` | `RETAIN_ROOT`; permanent repository-level Step `05` operational inspection utility with behavior distinct from the owner-local validator. |
 | `tests/pending/test_step_04_mark_duplicates.sh` | `RETAIN_ROOT`; intentional non-runnable pending-plan scaffold. |
