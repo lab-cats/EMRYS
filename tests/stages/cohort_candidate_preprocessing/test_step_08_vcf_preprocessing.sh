@@ -4,11 +4,21 @@ set -euo pipefail
 # Mocked-R coverage for Step 08 shell orchestration. Semantic VCF/GTF behavior
 # belongs to the separate real-R fixture suite when an R runtime is available.
 
+unset \
+    ANNOTATION_GTF COHORT_ID EXECUTE OUTPUT_ROOT PARTITION_MANIFEST QC_ROOT RSCRIPT_BIN_OVERRIDE SAMPLE_MANIFEST STEP07_ROOT TMPDIR \
+    SLURM_{JOB_ID,JOB_NAME,SUBMIT_DIR} STEP08_{RSCRIPT_BIN,R_PROGRAM,R_SCRIPT} \
+    FAKE_MV_BARRIER_{DEST_MATCH,MARKER,RELEASE} FAKE_MV_CORRUPT_{MARKER,ONCE_DEST_MATCH} \
+    FAKE_MV_FAIL_{MARKER,ONCE_DEST_MATCH} FAKE_MV_RECEIPT_FAIL_{DEST_MATCH,MARKER} \
+    FAKE_MV_SITES_RESTORE_FAIL_{DEST_MATCH,MARKER} FAKE_MV_LOG \
+    FAKE_RSCRIPT_BAD_{HEADER,INPUT_HASH,INPUT_ORDER,INPUT_PATH,RECONCILIATION,SUMMARY} \
+    FAKE_RSCRIPT_BARRIER_{MARKER,RELEASE} FAKE_RSCRIPT_{DUPLICATE_CANDIDATE,EXTRA_INPUT_FIELD,FAIL,HEADER_ONLY,LOG,MUTATE,OMIT_OUTPUT}
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 owner_path="src/norad/stages/cohort_candidate_preprocessing"
 script="$repo_root/$owner_path/step_08_vcf_preprocessing.sh"
 job="$repo_root/$owner_path/step_08_vcf_preprocessing.slurm"
 test_root="$(mktemp -d)"
+export TMPDIR="$test_root"
 trap 'rm -rf "$test_root"' EXIT
 
 fail() {
@@ -54,17 +64,16 @@ assert_file_equals() {
     local path="$1"
     local expected="$2"
     [[ -f "$path" ]] || fail "Expected file: $path"
-    [[ "$(<"$path")" == "$expected" ]] ||
+    cmp -s "$path" <(printf '%s\n' "$expected") ||
         fail "Unexpected content in: $path"
 }
 
-run_expect_failure() {
-    local stdout_path="$1"
-    local stderr_path="$2"
-    shift 2
-    if "$@" >"$stdout_path" 2>"$stderr_path"; then
-        fail "Command unexpectedly succeeded: $*"
-    fi
+run_expect_status() {
+    local expected_status="$1" stdout_path="$2" stderr_path="$3" status=0
+    shift 3
+    "$@" >"$stdout_path" 2>"$stderr_path" || status=$?
+    [[ "$status" -eq "$expected_status" ]] ||
+        fail "Expected exit $expected_status; got $status: $*"
 }
 
 wait_for_marker() {
@@ -526,7 +535,7 @@ run_invalid_fake_output_case() {
     (
         export PATH="$fake_bin:$PATH" SLURM_JOB_ID="${slug}08"
         export "$fake_setting"
-        run_expect_failure "$test_root/$slug.out" "$test_root/$slug.err" \
+        run_expect_status 1 "$test_root/$slug.out" "$test_root/$slug.err" \
             run_step08 "$case_root" "$cohort" --execute
     )
     assert_contains "$test_root/$slug.err" "$expected_error"
@@ -551,7 +560,7 @@ run_detected_input_mutation_case() {
     printf 'unrelated QC bytes\n' >"$case_root/qc/unrelated.txt"
     PATH="$fake_bin:$PATH" SLURM_JOB_ID="${slug}08" \
     FAKE_RSCRIPT_MUTATE="$mutation" \
-        run_expect_failure "$test_root/$slug.out" "$test_root/$slug.err" \
+        run_expect_status 1 "$test_root/$slug.out" "$test_root/$slug.err" \
             run_step08 "$case_root" "$cohort" --execute
     assert_contains "$test_root/$slug.err" "$expected_error"
     assert_not_exists "$case_root/output/$cohort/$cohort.step08_sites.tsv"
@@ -569,14 +578,14 @@ assert_contains "$help_output" "--annotation-gtf"
 assert_contains "$help_output" "--rscript-bin"
 assert_contains "$help_output" "legacy_provisional_v1"
 
-run_expect_failure "$test_root/missing.out" "$test_root/missing.err" \
+run_expect_status 1 "$test_root/missing.out" "$test_root/missing.err" \
     bash "$script" --sample-manifest "$fixture/samples.tsv"
 assert_contains "$test_root/missing.err" "Missing required argument: --cohort-id"
 
 printf 'Running R runtime and program preflight checks...\n'
 missing_rscript_fixture="$test_root/missing-rscript"
 create_fixture "$missing_rscript_fixture" cohort_missing_rscript
-STEP08_RSCRIPT_BIN="$missing_rscript_fixture/absent-Rscript" run_expect_failure \
+STEP08_RSCRIPT_BIN="$missing_rscript_fixture/absent-Rscript" run_expect_status 1 \
     "$test_root/missing-rscript.out" \
     "$test_root/missing-rscript.err" \
     run_step08 "$missing_rscript_fixture" cohort_missing_rscript
@@ -588,7 +597,7 @@ nonexec_rscript_fixture="$test_root/nonexec-rscript"
 create_fixture "$nonexec_rscript_fixture" cohort_nonexec_rscript
 printf '#!/usr/bin/env bash\nexit 0\n' >"$nonexec_rscript_fixture/nonexec-Rscript"
 chmod 0644 "$nonexec_rscript_fixture/nonexec-Rscript"
-STEP08_RSCRIPT_BIN="$nonexec_rscript_fixture/nonexec-Rscript" run_expect_failure \
+STEP08_RSCRIPT_BIN="$nonexec_rscript_fixture/nonexec-Rscript" run_expect_status 1 \
     "$test_root/nonexec-rscript.out" \
     "$test_root/nonexec-rscript.err" \
     run_step08 "$nonexec_rscript_fixture" cohort_nonexec_rscript
@@ -598,7 +607,7 @@ assert_not_exists "$nonexec_rscript_fixture/qc"
 
 missing_r_program_fixture="$test_root/missing-r-program"
 create_fixture "$missing_r_program_fixture" cohort_missing_r_program
-STEP08_R_PROGRAM="$missing_r_program_fixture/absent-step08.R" run_expect_failure \
+STEP08_R_PROGRAM="$missing_r_program_fixture/absent-step08.R" run_expect_status 1 \
     "$test_root/missing-r-program.out" \
     "$test_root/missing-r-program.err" \
     run_step08 "$missing_r_program_fixture" cohort_missing_r_program
@@ -646,7 +655,7 @@ printf 'Running missing declared input failure check...\n'
 missing_fixture="$test_root/missing-input"
 create_fixture "$missing_fixture" cohort_missing
 rm "$missing_fixture/step07/cohort_missing/p2/cohort_missing.p2.REV_like.mpileup.vcf"
-run_expect_failure "$test_root/missing-input.out" "$test_root/missing-input.err" \
+run_expect_status 1 "$test_root/missing-input.out" "$test_root/missing-input.err" \
     run_step08 "$missing_fixture" cohort_missing
 assert_contains "$test_root/missing-input.err" "Step 07 REV_like VCF for partition p2"
 assert_not_exists "$missing_fixture/output"
@@ -679,7 +688,7 @@ awk -F '\t' -v OFS='\t' '
     { print }
 ' "$sample_order_vcf" >"$sample_order_vcf.updated"
 mv "$sample_order_vcf.updated" "$sample_order_vcf"
-run_expect_failure \
+run_expect_status 1 \
     "$test_root/preflight-sample-order.out" \
     "$test_root/preflight-sample-order.err" \
     run_step08 "$sample_order_fixture" cohort_sample_order
@@ -695,7 +704,7 @@ awk -F '\t' -v OFS='\t' '
     { print }
 ' "$record_count_receipt" >"$record_count_receipt.updated"
 mv "$record_count_receipt.updated" "$record_count_receipt"
-run_expect_failure \
+run_expect_status 1 \
     "$test_root/preflight-record-count.out" \
     "$test_root/preflight-record-count.err" \
     run_step08 "$record_count_fixture" cohort_record_count
@@ -771,18 +780,7 @@ env \
     --execute >"$test_root/receipt-barrier.out" \
     2>"$test_root/receipt-barrier.err" &
 barrier_pid=$!
-barrier_seen=false
-for _ in {1..500}; do
-    if [[ -e "$barrier_marker" ]]; then
-        barrier_seen=true
-        break
-    fi
-    if ! kill -0 "$barrier_pid" 2>/dev/null; then
-        break
-    fi
-    sleep 0.01
-done
-if [[ "$barrier_seen" != true ]]; then
+if ! wait_for_marker "$barrier_marker" "$barrier_pid"; then
     : >"$barrier_release"
     wait "$barrier_pid" 2>/dev/null || true
     fail "Receipt-publication barrier was not reached"
@@ -885,7 +883,7 @@ printf 'Running R failure and owned cleanup check...\n'
 failure_fixture="$test_root/r-failure"
 create_fixture "$failure_fixture" cohort_failure
 PATH="$fake_bin:$PATH" SLURM_JOB_ID=fail08 FAKE_RSCRIPT_FAIL=1 \
-    run_expect_failure "$test_root/r-failure.out" "$test_root/r-failure.err" \
+    run_expect_status 1 "$test_root/r-failure.out" "$test_root/r-failure.err" \
         run_step08 "$failure_fixture" cohort_failure --execute
 assert_contains "$test_root/r-failure.err" "Step 08 R VCF preprocessing failed"
 assert_not_exists "$failure_fixture/output/cohort_failure/cohort_failure.step08_sites.tsv"
@@ -896,7 +894,7 @@ printf 'Running malformed/missing R output checks...\n'
 malformed_fixture="$test_root/malformed"
 create_fixture "$malformed_fixture" cohort_malformed
 PATH="$fake_bin:$PATH" SLURM_JOB_ID=bad08 FAKE_RSCRIPT_BAD_HEADER=inputs \
-    run_expect_failure "$test_root/malformed.out" "$test_root/malformed.err" \
+    run_expect_status 1 "$test_root/malformed.out" "$test_root/malformed.err" \
         run_step08 "$malformed_fixture" cohort_malformed --execute
 assert_contains "$test_root/malformed.err" "input receipt header is invalid"
 assert_no_step08_scratch "$malformed_fixture/output" "$malformed_fixture/qc"
@@ -904,7 +902,7 @@ assert_no_step08_scratch "$malformed_fixture/output" "$malformed_fixture/qc"
 omit_fixture="$test_root/omit"
 create_fixture "$omit_fixture" cohort_omit
 PATH="$fake_bin:$PATH" SLURM_JOB_ID=omit08 FAKE_RSCRIPT_OMIT_OUTPUT=summary \
-    run_expect_failure "$test_root/omit.out" "$test_root/omit.err" \
+    run_expect_status 1 "$test_root/omit.out" "$test_root/omit.err" \
         run_step08 "$omit_fixture" cohort_omit --execute
 assert_contains "$test_root/omit.err" "Step 08 summary does not exist or is empty"
 assert_no_step08_scratch "$omit_fixture/output" "$omit_fixture/qc"
@@ -1070,7 +1068,7 @@ create_fixture "$lock_fixture" cohort_lock
 lock_dir="$lock_fixture/output/cohort_lock/.cohort_lock.step08.lock"
 mkdir -p "$lock_dir"
 printf 'foreign owner\n' >"$lock_dir/owner"
-run_expect_failure "$test_root/lock.out" "$test_root/lock.err" \
+run_expect_status 1 "$test_root/lock.out" "$test_root/lock.err" \
     env \
     PATH="$fake_bin:$PATH" \
     SLURM_JOB_ID=lock08 \
@@ -1095,7 +1093,7 @@ stale_dir="$stale_fixture/output/cohort_stale"
 mkdir -p "$stale_dir"
 stale_path="$stale_dir/.cohort_stale.step08.stale08.sites.tmp.tsv"
 printf 'foreign scratch\n' >"$stale_path"
-run_expect_failure "$test_root/stale.out" "$test_root/stale.err" \
+run_expect_status 1 "$test_root/stale.out" "$test_root/stale.err" \
     env \
     PATH="$fake_bin:$PATH" \
     SLURM_JOB_ID=stale08 \
@@ -1120,7 +1118,7 @@ create_fixture "$partial_fixture" cohort_partial
 partial_dir="$partial_fixture/output/cohort_partial"
 mkdir -p "$partial_dir"
 printf 'existing sites\n' >"$partial_dir/cohort_partial.step08_sites.tsv"
-run_expect_failure "$test_root/partial.out" "$test_root/partial.err" \
+run_expect_status 1 "$test_root/partial.out" "$test_root/partial.err" \
     env \
     PATH="$fake_bin:$PATH" \
     SLURM_JOB_ID=partial08 \
@@ -1147,7 +1145,7 @@ mkdir -p "$rollback_dir" "$rollback_qc"
 printf 'previous sites\n' >"$rollback_dir/cohort_rollback.step08_sites.tsv"
 printf 'previous inputs\n' >"$rollback_dir/cohort_rollback.step08_inputs.tsv"
 printf 'previous summary\n' >"$rollback_qc/cohort_rollback.step08_summary.tsv"
-run_expect_failure "$test_root/rollback.out" "$test_root/rollback.err" \
+run_expect_status 91 "$test_root/rollback.out" "$test_root/rollback.err" \
     env \
     PATH="$fake_bin:$PATH" \
     SLURM_JOB_ID=rollback08 \
@@ -1298,7 +1296,7 @@ mkdir -p "$post_validation_dir" "$post_validation_qc"
 printf 'previous sites\n' >"$post_validation_dir/cohort_post.step08_sites.tsv"
 printf 'previous inputs\n' >"$post_validation_dir/cohort_post.step08_inputs.tsv"
 printf 'previous summary\n' >"$post_validation_qc/cohort_post.step08_summary.tsv"
-run_expect_failure \
+run_expect_status 1 \
     "$test_root/post-validation.out" \
     "$test_root/post-validation.err" \
     env \
@@ -1337,7 +1335,7 @@ assert_no_step08_scratch \
 printf 'Running first-publication partial cleanup check...\n'
 first_failure_fixture="$test_root/first-failure"
 create_fixture "$first_failure_fixture" cohort_first
-run_expect_failure "$test_root/first-failure.out" "$test_root/first-failure.err" \
+run_expect_status 91 "$test_root/first-failure.out" "$test_root/first-failure.err" \
     env \
     PATH="$fake_bin:$PATH" \
     SLURM_JOB_ID=first08 \
@@ -1421,7 +1419,7 @@ assert_exists "$wrapper_execute/qc/cohort_A.step08_summary.tsv"
 
 invalid_wrapper="$test_root/wrapper-invalid"
 mkdir -p "$invalid_wrapper"
-run_expect_failure "$test_root/wrapper-invalid.out" "$test_root/wrapper-invalid.err" \
+run_expect_status 1 "$test_root/wrapper-invalid.out" "$test_root/wrapper-invalid.err" \
     env \
     PATH="$fake_bin:$PATH" \
     SLURM_SUBMIT_DIR="$invalid_wrapper" \
@@ -1436,7 +1434,7 @@ cat >"$wrapper_missing/$owner_path/step_08_vcf_preprocessing.sh" <<'WRAPPER_STUB
 #!/usr/bin/env bash
 exit 0
 WRAPPER_STUB
-run_expect_failure "$test_root/wrapper-missing.out" "$test_root/wrapper-missing.err" \
+run_expect_status 1 "$test_root/wrapper-missing.out" "$test_root/wrapper-missing.err" \
     env \
     PATH="$fake_bin:$PATH" \
     SLURM_SUBMIT_DIR="$wrapper_missing" \
