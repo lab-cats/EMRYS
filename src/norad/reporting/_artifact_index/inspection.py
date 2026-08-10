@@ -8,6 +8,20 @@ from functools import partial
 from pathlib import Path
 from typing import Any
 
+from ._text_common import inspect_nonempty_text, iter_text_lines
+from ._text_genomic import (
+    inspect_bed12,
+    inspect_dict,
+    inspect_fai,
+    inspect_fasta,
+    inspect_picard_metrics,
+    inspect_star_sj,
+    inspect_vcf,
+)
+from ._text_tabular import (
+    inspect_tsv,
+    validate_native_run_anchors,
+)
 from .binary_readers import (
     inspect_bai_structure,
     inspect_bgzf_bam,
@@ -16,19 +30,6 @@ from .binary_readers import (
 from .contracts import contracts
 from .core import declared_contract_path, issue, stat_source
 from .models import ANCHOR_HASH_FIELDS, AdapterSpec, ArtifactIndexError, Inspection
-from .text_readers import (
-    inspect_bed12,
-    inspect_dict,
-    inspect_fai,
-    inspect_fasta,
-    inspect_nonempty_text,
-    inspect_picard_metrics,
-    inspect_star_sj,
-    inspect_tsv,
-    inspect_vcf,
-    iter_text_lines,
-    validate_native_run_anchors,
-)
 
 
 def inspect_source(

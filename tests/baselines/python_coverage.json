@@ -514,15 +514,6 @@
       "path": "src/norad/reporting/_artifact_index/rosters.py"
     },
     {
-      "branch_rate": "0.729885",
-      "covered_branches": 127,
-      "covered_lines": 255,
-      "line_rate": "0.794393",
-      "num_branches": 174,
-      "num_statements": 321,
-      "path": "src/norad/reporting/_artifact_index/text_readers.py"
-    },
-    {
       "branch_rate": "0.666667",
       "covered_branches": 48,
       "covered_lines": 90,
@@ -772,11 +763,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.737663",
-    "covered_branches": 3169,
-    "covered_lines": 9155,
-    "line_rate": "0.839754",
-    "num_branches": 4296,
-    "num_statements": 10902
+    "branch_rate": "0.737991",
+    "covered_branches": 3042,
+    "covered_lines": 8900,
+    "line_rate": "0.841130",
+    "num_branches": 4122,
+    "num_statements": 10581
   }
 }

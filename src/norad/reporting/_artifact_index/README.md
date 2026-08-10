@@ -13,12 +13,11 @@ published-transaction validation.
 Stage-specific rules remain in their named reconciliation modules; this
 package is not a generic stage framework.
 
-The 51-line [`text_readers.py`](text_readers.py) compatibility facade preserves
-all prior reader imports over three private responsibilities: 40-line UTF-8
-line admission, 226-line TSV/sample-block/native-anchor parsing, and 258-line
-VCF/reference/BED12/STAR/Picard inspection. All 13 extracted function bodies
-are AST-identical to the former 506-line mixed reader. The split adds no adapter
-kind, registry entry, schema, artifact state, or discovery behavior.
+Text inspection imports three private owners directly: `_text_common.py` owns
+UTF-8 line admission, `_text_tabular.py` owns TSV, sample-block, and native
+anchor parsing, and `_text_genomic.py` owns VCF, reference, BED12, STAR, and
+Picard inspection. The split adds no adapter kind, registry entry, schema,
+artifact state, or discovery behavior.
 
 [`publication.py`](publication.py) owns the transaction coordinator, rollback,
 recovery, and cleanup order. Lock, signal, filesystem, validation, and input
