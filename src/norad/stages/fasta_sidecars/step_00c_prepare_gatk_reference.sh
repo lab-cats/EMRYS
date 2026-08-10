@@ -193,8 +193,6 @@ tmp_fasta_fai="${tmp_fasta}.fai"
 tmp_fasta_base="$(basename "$tmp_fasta")"
 
 lock_acquired=false
-tmp_fai_created=false
-tmp_dict_created=false
 published_fai=false
 published_dict=false
 
@@ -335,13 +333,11 @@ if [[ "$need_fai" == true ]]; then
     )
     "${samtools_faidx_command[@]}"
     mv "$tmp_fasta_fai" "$tmp_fai"
-    tmp_fai_created=true
     validate_fai_file "$tmp_fai"
 fi
 
 if [[ "$need_dict" == true ]]; then
     "${gatk_dict_command[@]}"
-    tmp_dict_created=true
     validate_dict_file "$tmp_dict"
 fi
 
