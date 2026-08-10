@@ -92,8 +92,6 @@ Run the owner-focused local tests with:
 The artifact index records the producer's final path while preserving its
 implementation evidence identity and byte hash
 `5c69dabba9139598a9c67331b3200b8db8a29793334ff80f19850eb37ad57a04`.
-The migration added no wrapper, compatibility copy, symlink, package marker,
-import identity, descriptor, or schema. See [`CONTRACT.md`](CONTRACT.md) for
-the full behavior contract. Migration evidence is local fixture/mock and local
-coverage evidence only; it is not runtime, scheduler, production,
-scientific-review, or biological proof.
+See [`CONTRACT.md`](CONTRACT.md) for the full behavior contract. Available
+fixture/mock and coverage evidence is local only; it is not runtime, scheduler,
+production, scientific-review, or biological proof.
