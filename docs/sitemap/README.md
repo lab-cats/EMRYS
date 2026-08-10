@@ -8,10 +8,12 @@ the routes below explain the human boundaries.
 
 - [Architecture](../architecture/) — current and future structure, contracts,
   owner inventory, and diagrams.
-- [Design](../design/) — decisions, current plan, questions, audit routes, and
-  test policy.
+- [Design](../design/) — decisions, current plan, questions, application
+  contracts, and test policy.
 - [Operations](../operations/) — workflow, handoff, cross-cutting commands, and
   troubleshooting.
+- [Reference](../reference/) — terminology that routes back to canonical
+  subject owners.
 - [Tasks](../tasks/README.md) — compact actionable/proposal backlog and
   temporary JIT execution cards.
 - [Demonstrations](../demo/README.md) — reviewed presenter guides.

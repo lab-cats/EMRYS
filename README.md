@@ -84,7 +84,7 @@ scientific policy explicitly unlocks it.
 | [`configs/`](configs/README.md) | Public inputs, structural starters, selections, and reference tables; there is no universal config loader. |
 | [`scripts/`](scripts/README.md) | Explicit dependency lifecycle plus documentation and Git tooling. |
 | [`tests/`](tests/) | Active Python, shell, R, contract, and fixture protection, plus explicitly non-runnable future scaffolds under `tests/pending/`. |
-| [`docs/`](docs/sitemap/README.md) | Architecture, operations, design, task, history, and demonstration documentation. |
+| [`docs/`](docs/README.md) | Architecture, operations, design, task, history, reference, and demonstration documentation. |
 | [`data/`](data/README.md) and [`refs/`](refs/README.md) | Operator-managed input and reference workspaces; large or runtime children are ignored while safety guidance is tracked. |
 | [`results/`](results/README.md) and [`logs/`](logs/README.md) | Ignored generated outputs and scheduler streams; generated does not automatically mean disposable. |
 | [`renv/`](renv/README.md) and [root tool configuration](docs/operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration) | Explicit dependency activation plus conventional Python, R, pytest, and coverage configuration. |
