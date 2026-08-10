@@ -1,32 +1,35 @@
 import csv
 import hashlib
-import importlib.util
 import json
 import subprocess
 import sys
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 import pytest
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-SCRIPT = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "evidence"
-    / "runtime_preflight"
-    / "runtime_preflight.py"
+from norad import __main__ as norad_main
+from norad.evidence.runtime_availability import inspector
+from norad.evidence.runtime_availability._probes import run_checks
+from norad.evidence.runtime_availability._profile_contract import load_profile
+from norad.evidence.runtime_availability._result_contract import result_bytes
+from norad.evidence.runtime_availability._runtime_model import (
+    Check,
+    PreflightError,
+    Result,
 )
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
+COMMAND = (sys.executable, "-I", "-m", "norad", "inspect", "runtime-availability")
 EXAMPLE_PROFILE = REPO_ROOT / "configs" / "runtime_preflight.example.tsv"
-SPEC = importlib.util.spec_from_file_location("runtime_preflight", SCRIPT)
-assert SPEC and SPEC.loader
-PREFLIGHT = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = PREFLIGHT
-SPEC.loader.exec_module(PREFLIGHT)
+PROFILE_HEADER = (
+    "check_id\tcheck_type\truntime_context\trequired\ttarget\tprobe_args\t"
+    "expected\tdescription"
+)
 
 
 def write_profile(path: Path, rows: list[list[str]]) -> Path:
-    lines = ["\t".join(PREFLIGHT.PROFILE_HEADER)]
+    lines = [PROFILE_HEADER]
     lines.extend("\t".join(row) for row in rows)
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return path
@@ -58,8 +61,7 @@ def run_cli(
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
-            sys.executable,
-            str(SCRIPT),
+            *COMMAND,
             "--profile",
             str(profile),
             "--output",
@@ -82,26 +84,17 @@ def read_rows(path: Path) -> list[dict[str, str]]:
 
 def publication_values(
     tmp_path: Path,
-) -> tuple[Path, str, list[object], bytes]:
+) -> tuple[str, list[Check], bytes]:
     profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
-    profile_data, checks = PREFLIGHT.load_profile(profile)
+    profile_data, checks = load_profile(profile)
     digest = hashlib.sha256(profile_data).hexdigest()
-    results = PREFLIGHT.run_checks(checks, "local")
-    return (
-        profile,
-        digest,
-        checks,
-        PREFLIGHT.result_bytes(
-            digest,
-            "local",
-            results,
-        ),
-    )
+    results = run_checks(checks, "local")
+    return digest, checks, result_bytes(digest, "local", results)
 
 
 def test_help_and_dry_run_are_side_effect_free(tmp_path: Path) -> None:
     help_result = subprocess.run(
-        [sys.executable, str(SCRIPT), "--help"],
+        [*COMMAND, "--help"],
         text=True,
         capture_output=True,
         check=False,
@@ -128,8 +121,7 @@ def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path: Path) -> None:
     invocation = tmp_path / "invocation"
     invocation.mkdir()
     command = [
-        sys.executable,
-        str(SCRIPT),
+        *COMMAND,
         "--profile",
         str(profile),
         "--output",
@@ -174,8 +166,8 @@ def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path: Path) -> None:
 
 
 def test_tracked_example_profile_is_valid_and_locally_honest() -> None:
-    _, checks = PREFLIGHT.load_profile(EXAMPLE_PROFILE)
-    results = PREFLIGHT.run_checks(checks, "local")
+    _, checks = load_profile(EXAMPLE_PROFILE)
+    results = run_checks(checks, "local")
     statuses = {result.check.check_id: result.status for result in results}
     assert statuses["python_version"] == "pass"
     assert statuses["sha256_python"] == "pass"
@@ -384,21 +376,21 @@ def test_r_namespace_requires_package_name(tmp_path: Path) -> None:
 @pytest.mark.parametrize(
     ("mutator", "message"),
     [
-        (lambda rows: [], "at least one check"),
+        (lambda _rows: [], "at least one check"),
         (lambda rows: [rows[0], rows[0]], "duplicate check_id"),
         (
-            lambda rows: [rows[0][:-1] + [""]],
+            lambda rows: [[*rows[0][:-1], ""]],
             "description must be nonempty",
         ),
         (
-            lambda rows: [rows[0][:5] + ["not-json"] + rows[0][6:]],
+            lambda rows: [[*rows[0][:5], "not-json", *rows[0][6:]]],
             "not valid JSON",
         ),
     ],
 )
 def test_malformed_profiles_fail_without_output(
     tmp_path: Path,
-    mutator,
+    mutator: Callable[[list[list[str]]], list[list[str]]],
     message: str,
 ) -> None:
     rows = mutator([tool_row()])
@@ -421,17 +413,19 @@ def test_profile_symlink_and_changed_profile_fail_closed(
     assert linked.returncode == 2
     assert "symbolic link" in linked.stderr
 
-    original_run_checks = PREFLIGHT.run_checks
+    original_run_checks = inspector.run_checks
 
-    def mutate(checks, runtime_context):
+    def mutate(checks: Sequence[Check], runtime_context: str) -> list[Result]:
         results = original_run_checks(checks, runtime_context)
         profile.write_text(profile.read_text() + "\n", encoding="utf-8")
         return results
 
-    monkeypatch.setattr(PREFLIGHT, "run_checks", mutate)
+    monkeypatch.setattr(inspector, "run_checks", mutate)
     assert (
-        PREFLIGHT.main(
+        norad_main.main(
             [
+                "inspect",
+                "runtime-availability",
                 "--profile",
                 str(profile),
                 "--output",
@@ -508,26 +502,31 @@ def test_publish_failure_rolls_back_valid_prior(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     profile = write_profile(tmp_path / "profile.tsv", [tool_row()])
-    profile_data, checks = PREFLIGHT.load_profile(profile)
+    profile_data, checks = load_profile(profile)
     digest = hashlib.sha256(profile_data).hexdigest()
-    results = PREFLIGHT.run_checks(checks, "local")
-    previous = PREFLIGHT.result_bytes(digest, "local", results)
+    results = run_checks(checks, "local")
+    previous = result_bytes(digest, "local", results)
     output = tmp_path / "preflight.tsv"
     output.write_bytes(previous)
 
-    real_validate = PREFLIGHT.validate_result_bytes
+    real_validate = inspector.validate_result_bytes
     calls = 0
 
-    def fail_after_publish(data, profile_sha256, runtime_context, expected_checks):
+    def fail_after_publish(
+        data: bytes,
+        profile_sha256: str,
+        runtime_context: str,
+        expected_checks: Sequence[Check],
+    ) -> None:
         nonlocal calls
         calls += 1
         if calls == 3:
-            raise PREFLIGHT.PreflightError("injected validation failure")
-        return real_validate(data, profile_sha256, runtime_context, expected_checks)
+            raise PreflightError("injected validation failure")
+        real_validate(data, profile_sha256, runtime_context, expected_checks)
 
-    monkeypatch.setattr(PREFLIGHT, "validate_result_bytes", fail_after_publish)
-    with pytest.raises(PREFLIGHT.PreflightError, match="injected"):
-        PREFLIGHT.publish(output, previous, digest, "local", checks)
+    monkeypatch.setattr(inspector, "validate_result_bytes", fail_after_publish)
+    with pytest.raises(PreflightError, match="injected"):
+        inspector.publish(output, previous, digest, "local", checks)
     assert output.read_bytes() == previous
     assert not list(tmp_path.glob(".*.lock"))
     assert not list(tmp_path.glob(".*.tmp"))
@@ -538,9 +537,9 @@ def test_stage_fsync_failure_cleans_preflight_attempt(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _, digest, checks, data = publication_values(tmp_path)
+    digest, checks, data = publication_values(tmp_path)
     output = tmp_path / "preflight.tsv"
-    real_fsync = PREFLIGHT.os.fsync
+    real_fsync = inspector.os.fsync
     calls = 0
 
     def fail_second_fsync(descriptor: int) -> None:
@@ -551,9 +550,9 @@ def test_stage_fsync_failure_cleans_preflight_attempt(
         real_fsync(descriptor)
 
     # The first fsync commits lock ownership; the second belongs to the stage.
-    monkeypatch.setattr(PREFLIGHT.os, "fsync", fail_second_fsync)
+    monkeypatch.setattr(inspector.os, "fsync", fail_second_fsync)
     with pytest.raises(OSError, match="staged preflight fsync"):
-        PREFLIGHT.publish(output, data, digest, "local", checks)
+        inspector.publish(output, data, digest, "local", checks)
 
     assert calls == 2
     assert not output.exists()
@@ -565,11 +564,11 @@ def test_characterizes_preflight_lock_fsync_failure_gap(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _, digest, checks, data = publication_values(tmp_path)
+    digest, checks, data = publication_values(tmp_path)
     output = tmp_path / "preflight.tsv"
     lock = tmp_path / ".preflight.tsv.lock"
-    real_open = PREFLIGHT.os.open
-    real_close = PREFLIGHT.os.close
+    real_open = inspector.os.open
+    real_close = inspector.os.close
     real_unlink = Path.unlink
     opened: list[int] = []
 
@@ -578,13 +577,13 @@ def test_characterizes_preflight_lock_fsync_failure_gap(
         opened.append(descriptor)
         return descriptor
 
-    def fail_lock_fsync(descriptor: int) -> None:
+    def fail_lock_fsync(_descriptor: int) -> None:
         raise OSError("injected preflight lock fsync failure")
 
-    monkeypatch.setattr(PREFLIGHT.os, "open", track_open)
-    monkeypatch.setattr(PREFLIGHT.os, "fsync", fail_lock_fsync)
+    monkeypatch.setattr(inspector.os, "open", track_open)
+    monkeypatch.setattr(inspector.os, "fsync", fail_lock_fsync)
     with pytest.raises(OSError, match="lock fsync"):
-        PREFLIGHT.publish(output, data, digest, "local", checks)
+        inspector.publish(output, data, digest, "local", checks)
 
     # Known TG-02 gap: failure occurs before publish owns a descriptor in its
     # try/finally, so the lock and descriptor are left behind.
@@ -599,14 +598,14 @@ def test_characterizes_preflight_incomplete_rollback_gap(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _, digest, checks, prior = publication_values(tmp_path)
+    digest, checks, prior = publication_values(tmp_path)
     output = tmp_path / "preflight.tsv"
     output.write_bytes(prior)
-    real_replace = PREFLIGHT.os.replace
+    real_replace = inspector.os.replace
     publication_failed = False
     restoration_failed = False
 
-    def fail_publication_and_restoration(source, destination):
+    def fail_publication_and_restoration(source: Path, destination: Path) -> None:
         nonlocal publication_failed, restoration_failed
         source_path = Path(source)
         destination_path = Path(destination)
@@ -628,12 +627,12 @@ def test_characterizes_preflight_incomplete_rollback_gap(
         real_replace(source, destination)
 
     monkeypatch.setattr(
-        PREFLIGHT.os,
+        inspector.os,
         "replace",
         fail_publication_and_restoration,
     )
     with pytest.raises(OSError, match="preflight restoration"):
-        PREFLIGHT.publish(output, prior, digest, "local", checks)
+        inspector.publish(output, prior, digest, "local", checks)
 
     assert publication_failed and restoration_failed
     assert not output.exists()
@@ -648,7 +647,7 @@ def test_characterizes_preflight_lock_cleanup_failure(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    _, digest, checks, data = publication_values(tmp_path)
+    digest, checks, data = publication_values(tmp_path)
     output = tmp_path / "preflight.tsv"
     lock = tmp_path / ".preflight.tsv.lock"
     real_unlink = Path.unlink
@@ -663,7 +662,7 @@ def test_characterizes_preflight_lock_cleanup_failure(
         real_unlink(path_value, *args, **kwargs)
 
     monkeypatch.setattr(Path, "unlink", fail_lock_cleanup)
-    PREFLIGHT.publish(output, data, digest, "local", checks)
+    inspector.publish(output, data, digest, "local", checks)
 
     assert output.read_bytes() == data
     # Known TG-02 gap: lock cleanup errors are swallowed, so the caller sees

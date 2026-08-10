@@ -10,7 +10,7 @@ report projections, or neutral contracts.
 | [`collect_RSeQC_paired_orientation_evidence`](rseqc_orientation/README.md) | Numbered evidence operation `03`; collects paired-orientation evidence without selecting a biological strandedness policy. |
 | [`assemble_scientific_review_evidence_package`](scientific_review_package/README.md) | Numbered evidence operation `09c`, physically owned by `scientific_review_package`; validates and packages declared review evidence without granting scientific approval. |
 | [`reference_provenance`](reference_provenance/README.md) | Reconciles one explicitly declared reference bundle without repair. |
-| [`runtime_preflight`](runtime_preflight/README.md) | Records declared runtime-availability probes and owns the separate manual cluster module/tool smoke probe; neither installs software or executes the workflow. |
+| [`runtime_preflight`](runtime_availability/README.md) | Semantic runtime-preflight evidence, physically owned by `runtime_availability`; records declared availability probes and owns a separate manual cluster module/tool smoke probe. Neither installs software or executes the workflow. |
 | [`storage_inventory`](storage_inventory/README.md) | Measures declared storage roots and records retention-policy state without acting on it. |
 
 Each child owns its inputs, outputs, publication/recovery behavior, direct
@@ -32,6 +32,12 @@ Reference provenance exposes installed, read-only reconciliation as
 `python -I -m norad reconcile reference-provenance` through a private
 reconciler. Dry-run is the default; `--execute` publishes evidence without
 repairing references, and exit `0` does not mean the resulting summary passed.
+
+Runtime availability exposes installed inspection as
+`python -I -m norad inspect runtime-availability` through a private inspector.
+It retains the `runtime_preflight` profile, report, and lock vocabulary.
+Dry-run performs applicable probes without publication; `--execute` publishes
+the requested report, and exit `0` does not mean every probe passed.
 
 Use the [`RUNBOOK`](../../../docs/operations/RUNBOOK.md) for supported commands,
 [`TROUBLESHOOTING`](../../../docs/operations/TROUBLESHOOTING.md) for failure and

@@ -11,7 +11,7 @@ availability, inventory, and review-package owners.
   the semantic `assemble_scientific_review_evidence_package` Step `09c`
   evidence package and recovery boundary.
 - [`reference_provenance/`](reference_provenance/README.md),
-  [`runtime_preflight/`](runtime_preflight/README.md), and
+  [`runtime_availability/`](runtime_availability/README.md), and
   [`storage_inventory/`](storage_inventory/README.md) protect cross-cutting
   operational evidence tools.
 

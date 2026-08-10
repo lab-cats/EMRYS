@@ -38,7 +38,7 @@ not change that boundary.
 | Scientific-review evidence | Evidence owner `09c` | Explicit review plan, declared evidence, and Step `09` products | Versioned review package and review summary |
 | Reporting | `src/norad/reporting/` | Explicit artifact inventory, validated receipts, review summary, and table approvals | Artifact index, canonical run summary, HTML/PDF bundle, and report receipt |
 | Neutral contracts and libraries | `src/norad/contracts/` and `src/norad/libraries/` | Owner-declared records or values | Shared schemas, vocabularies, validation, and narrowly reviewed primitives |
-| Operational evidence | Runtime preflight, reference provenance, and storage inventory under `src/norad/evidence/` | Explicit profiles, reference inventories, storage roots, and retention declarations | Bounded operational observations and receipts |
+| Operational evidence | Runtime-availability inspection (`runtime_availability`), reference provenance, and storage inventory under `src/norad/evidence/` | Explicit profiles, reference inventories, storage roots, and retention declarations | Bounded operational observations and receipts |
 
 Exact files, scheduler wrappers, validators, and direct tests are linked from
 the [functional-owner inventory](FUNCTIONAL_OWNER_INVENTORY.md).

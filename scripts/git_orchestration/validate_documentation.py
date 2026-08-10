@@ -64,7 +64,7 @@ RETIRED_TASK_DIRECTORIES = ("TODO", "IN_PROGRESS", "INTEGRATION_REVIEW", "UNREFI
 CROSS_CUTTING_OWNER_DOCS = (
     "src/norad/contracts/artifacts/README.md",
     "src/norad/evidence/reference_provenance/README.md",
-    "src/norad/evidence/runtime_preflight/README.md",
+    "src/norad/evidence/runtime_availability/README.md",
     "src/norad/evidence/storage_inventory/README.md",
     "src/norad/ingestion/sample_manifest_admission/README.md",
     "src/norad/reporting/README.md",

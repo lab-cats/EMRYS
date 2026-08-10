@@ -39,10 +39,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 14,
-      "covered_lines": 102,
+      "covered_lines": 108,
       "line_rate": "1.000000",
       "num_branches": 14,
-      "num_statements": 102,
+      "num_statements": 108,
       "path": "src/norad/__main__.py"
     },
     {
@@ -424,13 +424,22 @@
       "path": "src/norad/evidence/rseqc_orientation/validator.py"
     },
     {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
+      "path": "src/norad/evidence/runtime_availability/__init__.py"
+    },
+    {
       "branch_rate": "0.676471",
       "covered_branches": 23,
       "covered_lines": 75,
       "line_rate": "0.852273",
       "num_branches": 34,
       "num_statements": 88,
-      "path": "src/norad/evidence/runtime_preflight/_probes.py"
+      "path": "src/norad/evidence/runtime_availability/_probes.py"
     },
     {
       "branch_rate": "0.680000",
@@ -439,7 +448,7 @@
       "line_rate": "0.800000",
       "num_branches": 50,
       "num_statements": 95,
-      "path": "src/norad/evidence/runtime_preflight/_profile_contract.py"
+      "path": "src/norad/evidence/runtime_availability/_profile_contract.py"
     },
     {
       "branch_rate": "0.727273",
@@ -448,7 +457,7 @@
       "line_rate": "0.789474",
       "num_branches": 22,
       "num_statements": 38,
-      "path": "src/norad/evidence/runtime_preflight/_result_contract.py"
+      "path": "src/norad/evidence/runtime_availability/_result_contract.py"
     },
     {
       "branch_rate": "1.000000",
@@ -457,16 +466,16 @@
       "line_rate": "1.000000",
       "num_branches": 0,
       "num_statements": 37,
-      "path": "src/norad/evidence/runtime_preflight/_runtime_model.py"
+      "path": "src/norad/evidence/runtime_availability/_runtime_model.py"
     },
     {
-      "branch_rate": "0.892857",
-      "covered_branches": 25,
-      "covered_lines": 109,
-      "line_rate": "0.964602",
-      "num_branches": 28,
-      "num_statements": 113,
-      "path": "src/norad/evidence/runtime_preflight/runtime_preflight.py"
+      "branch_rate": "0.884615",
+      "covered_branches": 23,
+      "covered_lines": 102,
+      "line_rate": "0.962264",
+      "num_branches": 26,
+      "num_statements": 106,
+      "path": "src/norad/evidence/runtime_availability/inspector.py"
     },
     {
       "branch_rate": "1.000000",
@@ -1600,11 +1609,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.748639",
-    "covered_branches": 3300,
-    "covered_lines": 10220,
-    "line_rate": "0.859980",
-    "num_branches": 4408,
-    "num_statements": 11884
+    "branch_rate": "0.748525",
+    "covered_branches": 3298,
+    "covered_lines": 10219,
+    "line_rate": "0.859968",
+    "num_branches": 4406,
+    "num_statements": 11883
   }
 }

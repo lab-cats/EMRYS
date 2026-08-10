@@ -21,6 +21,9 @@ from norad.evidence.reference_provenance import (
 from norad.evidence.rseqc_orientation import (
     validator as rseqc_orientation_validation_command,
 )
+from norad.evidence.runtime_availability import (
+    inspector as runtime_availability_inspection_command,
+)
 from norad.evidence.scientific_review_package import (
     publisher as scientific_review_package_command,
 )
@@ -173,6 +176,26 @@ def build_parser() -> argparse.ArgumentParser:
         _command_handler=(
             reference_provenance_reconciliation_command.reconcile_from_args
         )
+    )
+    inspect_parser = command_parsers.add_parser(
+        "inspect",
+        help="Inspect explicitly declared NORAD operational evidence.",
+    )
+    inspection_parsers = inspect_parser.add_subparsers(
+        dest="inspection",
+        metavar="SUBJECT",
+        required=True,
+    )
+    runtime_availability_parser = inspection_parsers.add_parser(
+        "runtime-availability",
+        help="Inspect declared runtime availability without installation or repair.",
+        description=runtime_availability_inspection_command.DESCRIPTION,
+    )
+    runtime_availability_inspection_command.configure_parser(
+        runtime_availability_parser
+    )
+    runtime_availability_parser.set_defaults(
+        _command_handler=runtime_availability_inspection_command.inspect_from_args
     )
     convert_parser = command_parsers.add_parser(
         "convert",

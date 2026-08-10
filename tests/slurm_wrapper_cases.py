@@ -154,7 +154,7 @@ JOB_PATHS.update(
             "src/norad/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm"
         ),
         "tool_check.slurm": Path(
-            "src/norad/evidence/runtime_preflight/tool_check.slurm"
+            "src/norad/evidence/runtime_availability/tool_check.slurm"
         ),
         "validate_manifest.slurm": Path(
             "src/norad/ingestion/sample_manifest_admission/validate_manifest.slurm"

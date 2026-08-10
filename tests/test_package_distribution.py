@@ -41,6 +41,12 @@ EVIDENCE_PACKAGE_PATHS = frozenset(
         "norad/evidence/reference_provenance/_reference_model.py",
         "norad/evidence/reference_provenance/_reference_render.py",
         "norad/evidence/reference_provenance/reconciler.py",
+        "norad/evidence/runtime_availability/__init__.py",
+        "norad/evidence/runtime_availability/_probes.py",
+        "norad/evidence/runtime_availability/_profile_contract.py",
+        "norad/evidence/runtime_availability/_result_contract.py",
+        "norad/evidence/runtime_availability/_runtime_model.py",
+        "norad/evidence/runtime_availability/inspector.py",
         "norad/evidence/scientific_review_package/__init__.py",
         "norad/evidence/scientific_review_package/_scientific_review/__init__.py",
         "norad/evidence/scientific_review_package/"
@@ -121,6 +127,16 @@ REFERENCE_PROVENANCE_ARTIFACTS = (
     ("star_names", "star_chr_name", "star/chrName.txt", b"1\n"),
     ("star_lengths", "star_chr_length", "star/chrLength.txt", b"4\n"),
     ("star_genome", "star_index_file", "star/Genome", b"index\n"),
+)
+RUNTIME_AVAILABILITY_PROFILE_HEADER = (
+    "check_id",
+    "check_type",
+    "runtime_context",
+    "required",
+    "target",
+    "probe_args",
+    "expected",
+    "description",
 )
 
 
@@ -501,6 +517,77 @@ def _assert_installed_reference_provenance_reconciliation(
     assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
         unrelated_state
     )
+
+
+def _assert_installed_runtime_availability_inspection(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    profile_path = working_directory / "runtime-availability-profile.tsv"
+    profile_path.write_text(
+        "\t".join(RUNTIME_AVAILABILITY_PROFILE_HEADER)
+        + "\n"
+        + "\t".join(
+            (
+                "wheel_python_sha256",
+                "hash_utility",
+                "any",
+                "true",
+                str(environment_python),
+                json.dumps(["python_hashlib"]),
+                "sha256",
+                "Installed-wheel Python hashlib",
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    profile_path.chmod(0o640)
+    profile_state = (profile_path.read_bytes(), profile_path.stat().st_mode)
+    unrelated_path = working_directory / "runtime-availability-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+    unrelated_path.chmod(0o600)
+    unrelated_state = (unrelated_path.read_bytes(), unrelated_path.stat().st_mode)
+    output_path = (
+        working_directory
+        / "runtime-availability-output"
+        / "wheel.runtime_preflight.tsv"
+    )
+
+    inspection = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "inspect",
+        "runtime-availability",
+        "--profile",
+        str(profile_path),
+        "--output",
+        str(output_path),
+        "--runtime-context",
+        "local",
+    )
+
+    profile_sha256 = hashlib.sha256(profile_path.read_bytes()).hexdigest()
+    payload_sha256 = hashlib.sha256(b"norad-runtime-preflight\n").hexdigest()
+    assert inspection.returncode == 0, inspection.stdout + inspection.stderr
+    assert inspection.stderr == ""
+    assert inspection.stdout.splitlines() == [
+        f"Runtime profile: {profile_path}",
+        f"Profile SHA-256: {profile_sha256}",
+        "Runtime context: local",
+        f"Output: {output_path}",
+        f"wheel_python_sha256: pass ({payload_sha256})",
+        "Evidence boundary: availability checks only; this is not runtime "
+        "validation or cluster proof.",
+        "Dry-run complete; no output was written.",
+    ]
+    assert (profile_path.read_bytes(), profile_path.stat().st_mode) == profile_state
+    assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
+        unrelated_state
+    )
+    assert not output_path.parent.exists()
 
 
 def _assert_validation_dry_run(
@@ -2005,6 +2092,11 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_runtime_availability_inspection(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_private_source_layout() -> None:
@@ -2106,6 +2198,14 @@ def _assert_private_source_layout() -> None:
     assert not (reference_provenance_source / "reference_provenance.py").exists()
     assert (reference_provenance_source / "reconciler.py").stat().st_mode & 0o111 == 0
     assert (REPO_ROOT / "tests/evidence/reference_provenance").is_dir()
+
+    runtime_availability_source = REPO_ROOT / "src/norad/evidence/runtime_availability"
+    assert not (REPO_ROOT / "src/norad/evidence/runtime_preflight").exists()
+    assert not (runtime_availability_source / "runtime_preflight.py").exists()
+    assert (runtime_availability_source / "inspector.py").stat().st_mode & 0o111 == 0
+    assert (runtime_availability_source / "tool_check.slurm").is_file()
+    assert not (REPO_ROOT / "tests/evidence/runtime_preflight").exists()
+    assert (REPO_ROOT / "tests/evidence/runtime_availability").is_dir()
 
 
 def _assert_wrong_checkout_rejected(

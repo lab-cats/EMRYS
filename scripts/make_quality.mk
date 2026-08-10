@@ -26,7 +26,7 @@ SHELL_SYNTAX_PATHS := \
 	src/norad/evidence/scientific_review_package/step_09c_scientific_validation.sh
 
 SLURM_SYNTAX_PATHS := \
-	src/norad/evidence/runtime_preflight/tool_check.slurm \
+	src/norad/evidence/runtime_availability/tool_check.slurm \
 	src/norad/ingestion/sample_manifest_admission/validate_manifest.slurm \
 	src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm \
 	src/norad/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm \
@@ -63,7 +63,7 @@ validation-shell-contracts:
 	bash tests/reporting/test_render_run_report.sh
 
 shell-test: validation-shell-contracts
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/runtime_preflight/test_runtime_preflight.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/runtime_availability/test_runtime_availability.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/reference_provenance/test_reference_provenance.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/libraries/test_reference_contigs.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/storage_inventory/test_storage_inventory.py

@@ -35,9 +35,9 @@ Detailed rationale:
   checks, no-clobber rules, rollback, recovery, and a receipt/summary last.
 - Preserve ambiguous locks, partials, backups, and recovery evidence; a
   characterized defect is not an approved contract.
-- Restore R and report dependencies explicitly. Runtime preflight, reference
-  reconciliation, and storage inventory observe declared state without repair
-  or mutation.
+- Restore R and report dependencies explicitly. Runtime-availability
+  inspection, reference reconciliation, and storage inventory observe declared
+  state without repair or mutation.
 - Keep implementation, runtime, cluster, scientific-review, and biological
   evidence distinct. Missing and failed expected evidence remains visible.
 - Reporting consumes explicit versioned artifacts and authorized tables; it

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Run explicit, read-only runtime availability checks.
 
 This command never installs software, loads modules, searches for inputs, or
@@ -18,96 +17,22 @@ import uuid
 from collections.abc import Sequence
 from pathlib import Path
 
-src_root = str(Path(__file__).resolve().parents[3])
-sys.path[:] = list(dict.fromkeys((src_root, *sys.path)))
-
-from norad.evidence.runtime_preflight._probes import (
-    PROBES,
-    _probe_hash_utility,
-    _probe_path_visibility,
-    _probe_r_namespace,
-    _probe_tool,
-    _resolve_executable,
-    _run_command,
-    run_checks,
-)
-from norad.evidence.runtime_preflight._profile_contract import (
-    _parse_probe_args,
-    _read_regular_file,
-    _validate_check_contract,
-    _validate_regex,
-    load_profile,
-)
-from norad.evidence.runtime_preflight._result_contract import (
+from ._probes import run_checks
+from ._profile_contract import _read_regular_file, load_profile
+from ._result_contract import (
     result_bytes,
     validate_result_bytes,
 )
-from norad.evidence.runtime_preflight._runtime_model import (
-    CHECK_TYPES,
-    HASH_EXPECTED,
-    HASH_PAYLOAD,
-    HASH_PROBES,
-    PROBE_TIMEOUT_SECONDS,
-    PROFILE_HEADER,
-    RESULT_HEADER,
-    RESULT_STATUSES,
-    RUNTIME_CONTEXTS,
-    SAFE_ID,
-    VERSION_TEXT_LIMIT,
-    VISIBILITY_PROBES,
-    Check,
-    PreflightError,
-    Result,
-    _fail,
-    _single_line,
+from ._runtime_model import Check, PreflightError, _fail
+
+DESCRIPTION = (
+    "Run explicit, read-only runtime checks and optionally publish "
+    "one deterministic TSV report."
 )
 
-__all__ = [
-    "CHECK_TYPES",
-    "HASH_EXPECTED",
-    "HASH_PAYLOAD",
-    "HASH_PROBES",
-    "PROBES",
-    "PROBE_TIMEOUT_SECONDS",
-    "PROFILE_HEADER",
-    "RESULT_HEADER",
-    "RESULT_STATUSES",
-    "RUNTIME_CONTEXTS",
-    "SAFE_ID",
-    "VERSION_TEXT_LIMIT",
-    "VISIBILITY_PROBES",
-    "Check",
-    "PreflightError",
-    "Result",
-    "_fail",
-    "_parse_probe_args",
-    "_probe_hash_utility",
-    "_probe_path_visibility",
-    "_probe_r_namespace",
-    "_probe_tool",
-    "_read_regular_file",
-    "_resolve_executable",
-    "_run_command",
-    "_single_line",
-    "_validate_check_contract",
-    "_validate_regex",
-    "load_profile",
-    "main",
-    "parse_args",
-    "publish",
-    "result_bytes",
-    "run_checks",
-    "validate_result_bytes",
-]
 
-
-def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Run explicit, read-only runtime checks and optionally publish "
-            "one deterministic TSV report."
-        )
-    )
+def configure_parser(parser: argparse.ArgumentParser) -> None:
+    """Add runtime-availability inspection arguments to ``parser``."""
     parser.add_argument("--profile", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument(
@@ -121,7 +46,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Atomically publish the validated TSV; dry-run is the default.",
     )
-    return parser.parse_args(argv)
 
 
 def _ensure_output_parent(output: Path) -> None:
@@ -207,8 +131,8 @@ def publish(
             lock.unlink()
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    args = parse_args(argv)
+def inspect_from_args(args: argparse.Namespace) -> int:
+    """Inspect declared runtime availability and optionally publish evidence."""
     try:
         profile_data, checks = load_profile(args.profile)
         profile_sha256 = hashlib.sha256(profile_data).hexdigest()
@@ -245,7 +169,3 @@ def main(argv: Sequence[str] | None = None) -> int:
     except PreflightError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

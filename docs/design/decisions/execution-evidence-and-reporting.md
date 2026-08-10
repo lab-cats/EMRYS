@@ -46,12 +46,14 @@ Quarto restoration is separate from rendering and testing. Installed identity,
 receipt, tree, and version validate before reuse; rendering never installs or
 repairs tooling.
 
-### Probe runtime availability from explicit profiles
+### Inspect runtime availability from explicit profiles
 
-Runtime preflight evaluates one exact profile in one explicitly declared
-context and installs or repairs nothing. Local or login-shell availability does
-not establish batch visibility. Even an all-pass batch report is availability
-evidence, not workflow runtime validation or cluster proof.
+The grouped route `python -I -m norad inspect runtime-availability` evaluates
+one exact profile in one explicitly declared context and installs or repairs
+nothing. It retains `runtime_preflight` artifact vocabulary. Local or
+login-shell availability does not establish batch visibility. Even an all-pass
+batch report is availability evidence, not workflow runtime validation or
+cluster proof.
 
 ### Reconcile references without repair
 

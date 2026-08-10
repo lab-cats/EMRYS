@@ -27,8 +27,9 @@ Before retry, deletion, restoration, or adoption of uncertain output:
    the questioned state. Diagnostic success is not production evidence.
 
 Git rollback changes tracked implementation only. It does not authenticate or
-restore runtime artifacts. Validator exit `0` can coexist with failed evidence
-rows; exit `2` means unsafe input, CLI, tool, or publication failure.
+restore runtime artifacts. A validator or evidence command can exit `0` while
+recording failed evidence rows; exit `2` means unsafe input, CLI, tool, or
+publication failure.
 
 ## Common environment and operation matrix
 
@@ -66,7 +67,7 @@ linked owner after applying the common rules.
 | [`preprocess_and_annotate_cohort_candidates`](../../src/norad/stages/cohort_candidate_preprocessing/README.md) | Cross-root rollback lacks a durable marker; receipt visibility precedes final validation and stale triples may pass existence checks. | Stop Step `09`; preserve both roots, all transactions and manifests, R environment, locks, backups, and streams. |
 | [`rank_cohort_candidates_with_paired_CMH`](../../src/norad/analyses/paired_cmh_candidate_ranking/README.md) | Scheduler success can accept stale six-file output; severe rollback and lock states remain. Production validation does not independently recompute CMH statistics. | Preserve all six outputs, upstream transaction, selected R program/runtime, streams, lock, backups, and scheduler identity; retain the separate test oracle evidence ceiling. |
 | [`assemble_scientific_review_evidence_package`](../../src/norad/evidence/scientific_review_package/README.md) | After replacement-summary publication, `SIGTERM` retains unvalidated finals plus predecessor backup/temp/lock without a notice, while `KeyboardInterrupt` removes those recovery paths but leaves the unvalidated finals; visible summary or absent lock is not commit proof. | Preserve every final and recovery path, rule out writers/readers, and reconstruct only from the exact owner contract; never infer commit, reviewer decisions, or biological readiness. |
-| [Runtime preflight](../../src/norad/evidence/runtime_preflight/README.md) | Exit `0` may contain `fail`, `blocked`, or `not_checked`; publisher recovery differs from other helpers. | Inspect every row and exact context; preserve report, lock, and run-token paths. |
+| [Runtime availability](../../src/norad/evidence/runtime_availability/README.md) | Exit `0` may contain `fail`, `blocked`, or `not_checked`. Lock acquisition can strand a lock; failed restoration leaves only a `.previous` file without a lock or marker; suppressed lock-cleanup failure can report success while retaining the lock. | Inspect every row and asserted context. Preserve the report and all lock, temporary, and previous paths; absence of the lock is not publication proof. |
 | [Reference provenance](../../src/norad/evidence/reference_provenance/README.md) | Hash/contig disagreement is observation only. | Correct declarations or regenerate through the upstream owner; never repair references in the evidence tool. |
 | [Storage inventory](../../src/norad/evidence/storage_inventory/README.md) | Measurement or policy state grants no retention authority; its three-file publication can remain ambiguous. | Preserve the transaction and approval state; never mutate storage content through this tool. |
 | [Artifact contracts and reporting](../../src/norad/reporting/README.md) | Schema, adapter, summary, Quarto, and report transactions have distinct locks, identities, receipts, and rollback boundaries. Completion markers do not promote evidence. | Recover within the exact owner transaction; never mix records, edit hashes/statuses, install from rendering, or call synthetic output production evidence. |

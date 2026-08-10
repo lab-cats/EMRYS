@@ -31,9 +31,6 @@ PYTHON_ENTRYPOINT_PATHS = {
         "src/norad/reporting/render_run_report_bundle.py"
     ),
     "restore_quarto.py": Path("scripts/restore_quarto.py"),
-    "runtime_preflight.py": Path(
-        "src/norad/evidence/runtime_preflight/runtime_preflight.py"
-    ),
     "storage_inventory.py": Path(
         "src/norad/evidence/storage_inventory/storage_inventory.py"
     ),
@@ -57,7 +54,6 @@ DIRECT_PYTHON_ENTRYPOINTS = frozenset(
         "build_run_summary.py",
         "render_run_report.py",
         "restore_quarto.py",
-        "runtime_preflight.py",
         "validate_artifact_contracts.py",
     }
 )
@@ -70,6 +66,10 @@ NORAD_COMMANDS = (
     (
         ("reconcile", "reference-provenance"),
         "usage: norad reconcile reference-provenance",
+    ),
+    (
+        ("inspect", "runtime-availability"),
+        "usage: norad inspect runtime-availability",
     ),
     (("convert", "gtf-to-bed12"), "usage: norad convert gtf-to-bed12"),
     (("validate", "bed12"), "usage: norad validate bed12"),
