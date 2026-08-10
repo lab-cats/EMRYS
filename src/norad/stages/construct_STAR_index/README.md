@@ -48,8 +48,7 @@ owner-focused local tests with:
 ```
 
 The artifact index intentionally records the job's final path while preserving
-its implementation evidence ID and frozen source hash. The migration added no
-wrapper, compatibility copy, symlink, package marker, import identity,
-descriptor, or schema. See [`CONTRACT.md`](CONTRACT.md) for behavior and known
-defects. Migration evidence is local fixture/mock evidence only; it is not
-runtime, scheduler, production, scientific-review, or biological proof.
+its implementation evidence ID and frozen source hash. See
+[`CONTRACT.md`](CONTRACT.md) for behavior and known defects. Available
+fixture/mock evidence is local only; it is not runtime, scheduler, production,
+scientific-review, or biological proof.
