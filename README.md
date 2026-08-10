@@ -77,10 +77,7 @@ scientific policy explicitly unlocks it.
 
 | Path | Purpose |
 | --- | --- |
-| [`src/norad/ingestion/`](src/norad/ingestion/README.md) | Bounded sample-manifest admission, paired-FASTQ diagnostics, and the manifest scheduler smoke check; no ingestion runner. |
-| [`src/norad/stages/`](src/norad/stages/README.md) | Transformation owners and their local producer, validator, scheduler, and contract routes. |
-| [`src/norad/analyses/`](src/norad/analyses/rank_cohort_candidates_with_paired_CMH/README.md), [`src/norad/evidence/`](src/norad/evidence/README.md), [`src/norad/reporting/`](src/norad/reporting/README.md) | Paired-CMH analysis, evidence operations, and report projection. |
-| [`src/norad/contracts/`](src/norad/contracts/) and [`src/norad/libraries/`](src/norad/libraries/README.md) | Neutral schemas, validators, topology maps, and explicitly shared libraries. |
+| [`src/`](src/README.md) | NORAD source domains, functional owners, neutral contracts, and shared libraries. |
 | [`configs/`](configs/README.md) | Public inputs, structural starters, selections, and reference tables; there is no universal config loader. |
 | [`scripts/`](scripts/README.md) | Explicit dependency lifecycle plus documentation and Git tooling. |
 | [`tests/`](tests/) | Active Python, shell, R, contract, and fixture protection, plus explicitly non-runnable future scaffolds under `tests/pending/`. |
