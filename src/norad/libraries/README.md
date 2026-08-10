@@ -4,28 +4,26 @@ This package owns neutral implementation shared by multiple functional owners.
 Stage-specific arguments, check rosters, evidence meaning, and scientific policy
 remain beside their stage or evidence owner.
 
-## Modules
+## Owners
 
-- `validation/` owns validation errors, input snapshots, report rows and schema
-  validation, transactional publication, and the shared dry-run/execute
-  lifecycle. Validators import the stable facade from
-  `norad.libraries.validation`.
-- `alignments/bam.py` owns only `run_tool` and `parse_header`, shared by the
-  Step `02`, `04`, and `05` validators.
-- `references/contigs.py` owns `ReferenceContigError` and the ordered
-  `parse_fasta`, `parse_fai`, and `parse_dict` APIs used by reference provenance
-  and the Step `00c` and `05` validators.
-- `input_contract.R` owns neutral named-argument, file, hash, and TSV mechanics
+- [`validation/`](validation/README.md) owns validation errors, snapshots,
+  report rows/schema, transactional publication, and shared runtime lifecycle.
+- [`alignments/`](alignments/) owns neutral BAM, BED12, mechanical-orientation,
+  and STAR-format helpers.
+- [`evidence/`](evidence/) owns neutral evidence-file parsers.
+- [`quality/`](quality/) owns neutral quality-metric parsers.
+- [`references/`](references/) owns ordered reference-contig parsers.
+- [`input_contract.R`](input_contract.R) owns neutral named-argument, file,
+  hash, and TSV mechanics
   shared by the Step `08` and Step `09` R programs; owner rosters and policies
   remain local.
-- `executable_resolution.sh` owns the three-argument
-  `resolve_executable_value(label, value, default_name)` Bash function used by
-  selected producers. It remains shell infrastructure rather than Python
-  package code.
+- Root shell assets own bounded argument, file, executable, orientation,
+  signal, and trap mechanics used by named consumers; they are not a general
+  utility framework.
 
-The extraction preserves characterized behavior, including known snapshot and
-publication-recovery gaps. It does not turn container, header, or report-shape
-checks into scientific or biological validation.
+Known snapshot and publication-recovery gaps remain characterized. Container,
+header, or report-shape checks do not become scientific or biological
+validation.
 
 Direct behavior tests live in:
 
@@ -33,3 +31,4 @@ Direct behavior tests live in:
 - [`test_bam_validation.py`](../../../tests/libraries/test_bam_validation.py)
 - [`test_reference_contigs.py`](../../../tests/libraries/test_reference_contigs.py)
 - [`test_executable_resolution.py`](../../../tests/libraries/test_executable_resolution.py)
+- [`test_shared_domain_helpers.py`](../../../tests/libraries/test_shared_domain_helpers.py)
