@@ -2,15 +2,59 @@
 
 This is the complete repository-development workflow. The root
 [`AGENTS.md`](../../AGENTS.md) supplies the safety and authority guard,
-[`TASK_START.md`](TASK_START.md) selects the smallest sufficient context, and a
-selected JIT card supplies scope and acceptance but never mutation authority.
+a selected JIT card supplies scope and acceptance but never mutation authority.
+
+## Context
+
+Start with the **smallest sufficient current context** for one bounded task.
+Context selection does not copy mutable project state or authorize changes.
+
+Load only:
+
+1. The exact current root [`AGENTS.md`](../../AGENTS.md).
+2. Live Git identity and state: repository root, branch, `HEAD`, worktree
+   changes, upstream relation, and any competing relevant worktree.
+3. The selected backlog item and its JIT card in full, or one explicitly
+   bounded objective when no card is needed. Backlog proposals are not
+   selectable.
+4. Directly affected functional owners: implementation, adjacent `README.md`
+   or `CONTRACT.md`, public callers and consumers, tests, and fixtures that
+   define or exercise the behavior.
+5. Only applicable canonical sections linked by the card or affected owners.
+   Use [HANDOFF](HANDOFF.md) for current evidence and blockers,
+   [PIPELINE_PLAN](../design/PIPELINE_PLAN.md) for roadmap and acceptance, and
+   the [architecture index](../architecture/README.md) for cross-owner identity
+   and dependency direction.
+
+Do not preload the full documentation corpus, history, unrelated backlog
+items, every owner, all tests, or entire canonical documents merely for
+orientation. Do not infer live state from memory, an agent identity, a
+conversation summary, an old test total, or a former branch.
+
+Prior context may replace a reread only when its exact revision is known, the
+live diff proves the relevant content unchanged, and the retained context is
+sufficient for the current decision. Otherwise read the current source.
+
+Broaden the packet only when targeted inspection reveals:
+
+- a contradiction, stale route, ownership change, or uncertain boundary;
+- a public CLI, path, schema, format, command, contract, or compatibility
+  change;
+- shared code, dependencies, configuration, generated inputs, or multiple
+  functional owners;
+- scientific method, evidence state, or biological interpretation;
+- safety, credentials, cluster or production execution, publication, locking,
+  rollback, recovery, cleanup, or destructive action; or
+- impact that cannot be bounded confidently from the selected task and its
+  direct owners and consumers.
+
+Correctness, recoverability, scientific meaning, and honest evidence claims
+always outrank context reduction.
 
 ## Start
 
-1. Follow [`TASK_START.md`](TASK_START.md) to assemble the smallest sufficient
-   current context for the bounded task.
-2. State the outcome, touched owners, exclusions, validation, evidence ceiling,
-   and stopping condition. Obtain approval before mutation.
+State the outcome, touched owners, exclusions, validation, evidence ceiling,
+and stopping condition. Obtain approval before mutation.
 
 ## Deliver
 

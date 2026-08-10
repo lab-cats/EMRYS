@@ -40,7 +40,6 @@ CANONICAL_H1S = {
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
     "docs/operations/HANDOFF.md": "# Project handoff",
     "docs/operations/RUNBOOK.md": "# Runbook",
-    "docs/operations/TASK_START.md": "# Task-start context",
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
     "docs/sitemap/DOCUMENTATION_OWNERSHIP.md": "# Documentation ownership",
