@@ -116,9 +116,7 @@ STEP_PRODUCERS = {
         "src/norad/evidence/rseqc_orientation/"
         "step_03_infer_strandedness_and_orientation.sh"
     ),
-    "04": (
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh"
-    ),
+    "04": "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
     "05": (
         "src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh"
     ),

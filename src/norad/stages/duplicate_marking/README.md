@@ -7,7 +7,8 @@ and evidence semantics.
 ## Entry points
 
 - producer: [`step_04_mark_duplicates.sh`](step_04_mark_duplicates.sh)
-- validator: [`validate_step_04_mark_duplicates.py`](validate_step_04_mark_duplicates.py)
+- grouped validator: `python -I -m norad validate duplicate-marking`, implemented
+  by private [`validator.py`](validator.py)
 - scheduler: [`step_04_mark_duplicates.slurm`](step_04_mark_duplicates.slurm)
 
 ## Operate
@@ -15,7 +16,7 @@ and evidence semantics.
 Invoke the mode-`0644` producer through Bash. This is a no-write dry run:
 
 ```bash
-TMPDIR=/tmp bash src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh \
+TMPDIR=/tmp bash src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh \
   --sample-id ABE_EV_2 \
   --input-bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
   --output-dir results/markdup/ABE_EV_2 \
@@ -32,7 +33,7 @@ rollback, or all-or-none publication; mixed attempts can remain.
 Validator dry-run:
 
 ```bash
-.venv/bin/python src/norad/stages/mark_BAM_duplicates_with_Picard/validate_step_04_mark_duplicates.py \
+.venv/bin/python -I -m norad validate duplicate-marking \
   --scope-id ABE_EV_2 \
   --bam results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam \
   --bai results/markdup/ABE_EV_2/ABE_EV_2.markdup.bam.bai \
@@ -48,7 +49,7 @@ publication; rows may still fail.
 cd /absolute/path/to/norad
 mkdir -p logs
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=ABE_EV_2,INPUT_BAM=/absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam,OUTPUT_DIR=/absolute/results/markdup/ABE_EV_2,METRICS_DIR=/absolute/results/qc/markdup \
-  src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.slurm
+  src/norad/stages/duplicate_marking/step_04_mark_duplicates.slurm
 ```
 
 Change only `EXECUTE=1` after review. The wrapper loads Picard `3.1.1` and
@@ -63,9 +64,9 @@ selected tools/versions, `TMPDIR`, checkout, and unrelated files. Rule out Step
 or delete a mixed final set.
 
 ```bash
-bash tests/stages/mark_BAM_duplicates_with_Picard/test_step_04_mark_duplicates.sh
+bash tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh
 .venv/bin/python -m pytest -q \
-  tests/stages/mark_BAM_duplicates_with_Picard/test_validate_step_04_mark_duplicates.py
+  tests/stages/duplicate_marking/test_validate_step_04_mark_duplicates.py
 .venv/bin/python -m pytest -q \
   tests/test_slurm_wrapper_contracts.py -k step_04_mark_duplicates
 ```

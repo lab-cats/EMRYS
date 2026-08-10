@@ -77,6 +77,7 @@ SOURCE_OWNER_DIRECTORY_NAMES = {
     ("stage", "construct_STAR_index"): "star_index",
     ("stage", "construct_FASTA_sidecars"): "fasta_sidecars",
     ("stage", "convert_GTF_to_BED12"): "gtf_to_bed12",
+    ("stage", "mark_BAM_duplicates_with_Picard"): "duplicate_marking",
 }
 
 

@@ -39,10 +39,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 14,
-      "covered_lines": 83,
+      "covered_lines": 87,
       "line_rate": "1.000000",
       "num_branches": 14,
-      "num_statements": 83,
+      "num_statements": 87,
       "path": "src/norad/__main__.py"
     },
     {
@@ -1393,6 +1393,24 @@
       "line_rate": "1.000000",
       "num_branches": 0,
       "num_statements": 0,
+      "path": "src/norad/stages/duplicate_marking/__init__.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 25,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 25,
+      "path": "src/norad/stages/duplicate_marking/validator.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
       "path": "src/norad/stages/fasta_sidecars/__init__.py"
     },
     {
@@ -1439,15 +1457,6 @@
       "num_branches": 2,
       "num_statements": 31,
       "path": "src/norad/stages/gtf_to_bed12/validator.py"
-    },
-    {
-      "branch_rate": "0.500000",
-      "covered_branches": 1,
-      "covered_lines": 33,
-      "line_rate": "1.000000",
-      "num_branches": 2,
-      "num_statements": 33,
-      "path": "src/norad/stages/mark_BAM_duplicates_with_Picard/validate_step_04_mark_duplicates.py"
     },
     {
       "branch_rate": "1.000000",
@@ -1546,11 +1555,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.748871",
-    "covered_branches": 3316,
-    "covered_lines": 10299,
-    "line_rate": "0.860761",
-    "num_branches": 4428,
-    "num_statements": 11965
+    "branch_rate": "0.748983",
+    "covered_branches": 3315,
+    "covered_lines": 10295,
+    "line_rate": "0.860714",
+    "num_branches": 4426,
+    "num_statements": 11961
   }
 }

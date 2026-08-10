@@ -76,8 +76,8 @@ EXPECTED_PRODUCER_EVIDENCE = {
         "a2df31db018a234a2162053e9f587ea74cca6798b88685b9d18c5ea063e20b70",
     ),
     "04": (
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh",
-        "d99ab505094595c233ba3a9b37a08a06d214d0501aa634b842f57f88217bf733",
+        "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
+        "92aeddd69a7f91e3cb361891a7a76655ba19ebda3fcdc624b9d81eb2af5c0cf2",
     ),
     "05": (
         "src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh",

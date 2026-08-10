@@ -28,10 +28,7 @@ VALIDATOR_PATHS = {
     "02": Path("src/norad/stages/canonical_bam/validator.py"),
     "02b": Path("src/norad/evidence/canonical_bam_qc/validator.py"),
     "03": Path("src/norad/evidence/rseqc_orientation/validator.py"),
-    "04": Path(
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
-        "validate_step_04_mark_duplicates.py"
-    ),
+    "04": Path("src/norad/stages/duplicate_marking/validator.py"),
     "05": Path(
         "src/norad/stages/split_N_cigar_reads_with_GATK/"
         "validate_step_05_split_ncigar.py"

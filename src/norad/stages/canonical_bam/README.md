@@ -68,7 +68,7 @@ bash tests/stages/canonical_bam/test_step_02_sort_index_bam.sh
 .venv/bin/python -m pytest -q \
   tests/stages/canonical_bam/test_validate_step_02_canonical_bam.py \
   tests/libraries/test_bam_validation.py \
-  tests/stages/mark_BAM_duplicates_with_Picard/test_validate_step_04_mark_duplicates.py \
+  tests/stages/duplicate_marking/test_validate_step_04_mark_duplicates.py \
   tests/stages/split_N_cigar_reads_with_GATK/test_validate_step_05_split_ncigar.py \
   tests/test_slurm_wrapper_contracts.py
 ```

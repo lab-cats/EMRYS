@@ -47,10 +47,6 @@ PYTHON_ENTRYPOINT_PATHS = {
     "validate_artifact_contracts.py": Path(
         "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     ),
-    "validate_step_04_mark_duplicates.py": Path(
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
-        "validate_step_04_mark_duplicates.py"
-    ),
     "validate_step_05_split_ncigar.py": Path(
         "src/norad/stages/split_N_cigar_reads_with_GATK/"
         "validate_step_05_split_ncigar.py"
@@ -82,7 +78,6 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
         "render_run_report_bundle.py",
         "step_09c_scientific_validation.py",
         "validate_artifact_contracts.py",
-        "validate_step_04_mark_duplicates.py",
         "validate_step_05_split_ncigar.py",
         "validate_step_06_orientation_outputs.py",
         "validate_step_07_mpileup_outputs.py",
@@ -109,6 +104,10 @@ NORAD_COMMANDS = (
     (
         ("validate", "canonical-bam-qc"),
         "usage: norad validate canonical-bam-qc",
+    ),
+    (
+        ("validate", "duplicate-marking"),
+        "usage: norad validate duplicate-marking",
     ),
     (("validate", "fasta-sidecars"), "usage: norad validate fasta-sidecars"),
     (("validate", "manifest"), "usage: norad validate manifest"),
@@ -142,7 +141,7 @@ SHELL_ENTRYPOINT_PATHS = {
         "step_03_infer_strandedness_and_orientation.sh"
     ),
     "step_04_mark_duplicates.sh": Path(
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh"
+        "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh"
     ),
     "step_05_split_n_cigar_reads.sh": Path(
         "src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh"

@@ -78,7 +78,7 @@ CONTRACTS = {
         default="dry_run_with_bash32_empty_array_defect",
     ),
     "step_04_mark_duplicates.slurm": contract(
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh",
+        "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_policy="strict_loads_tolerated_lists",
         module_calls=(

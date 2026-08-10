@@ -6,6 +6,6 @@ duplicate-marking policy, tool execution, validation rosters, or evidence
 claims.
 
 The Step `04`
-[`mark_BAM_duplicates_with_Picard`](../../stages/mark_BAM_duplicates_with_Picard/README.md)
+[`mark_BAM_duplicates_with_Picard`](../../stages/duplicate_marking/README.md)
 owner retains those semantics. Direct parser protection is in
 [`test_shared_domain_helpers.py`](../../../../tests/libraries/test_shared_domain_helpers.py).

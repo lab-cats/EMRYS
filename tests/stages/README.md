@@ -9,7 +9,7 @@ This directory mirrors the ten computational stage owners.
 - Sample processing:
   [`star_alignment/`](star_alignment/README.md),
   [`canonical_bam/`](canonical_bam/README.md),
-  [`mark_BAM_duplicates_with_Picard/`](mark_BAM_duplicates_with_Picard/README.md),
+  [`duplicate_marking/`](duplicate_marking/README.md),
   [`split_N_cigar_reads_with_GATK/`](split_N_cigar_reads_with_GATK/README.md),
   and
   [`partition_BAM_by_mechanical_read_orientation/`](partition_BAM_by_mechanical_read_orientation/README.md).

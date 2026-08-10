@@ -4,7 +4,8 @@ This is the observed contract of historical Step `04`, now implemented in this
 native owner directory. The
 exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug and owns the producer, validator, and scheduler assets.
+is the capability-oriented physical owner for that identity and owns the
+producer, validator, and scheduler assets.
 
 ## Responsibility and execution dependencies
 
@@ -61,10 +62,10 @@ created nothing.
 
 ## Validation interface
 
-[`validate_step_04_mark_duplicates.py`](validate_step_04_mark_duplicates.py)
-accepts explicit BAM, BAI, metrics, samtools, scope, and report paths. Dry-run
-prints the common seven-column TSV; `--execute` snapshot-rechecks inputs and
-publishes it through neutral private
+The grouped `python -I -m norad validate duplicate-marking` route, implemented
+by private [`validator.py`](validator.py), accepts explicit BAM, BAI, metrics,
+samtools, scope, and report paths. Dry-run prints the common seven-column TSV;
+`--execute` snapshot-rechecks inputs and publishes it through neutral private
 [`validation/report.py`](../../libraries/validation/report.py).
 
 Exact checks are:
@@ -97,10 +98,10 @@ public package or CLI identity.
   `step04_markdup_bai_v1`, `step04_markdup_metrics_v1`, and
   `step04_validation_report_v1`; summary/report code consumes those artifacts
   without rerunning Picard.
-- [`test_step_04_mark_duplicates.sh`](../../../../tests/stages/mark_BAM_duplicates_with_Picard/test_step_04_mark_duplicates.sh)
+- [`test_step_04_mark_duplicates.sh`](../../../../tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh)
   protects CLI, side-effect-free dry-run, exact Picard/samtools commands,
   output presence, missing inputs, and temp-directory failure with mocks.
-- [`test_validate_step_04_mark_duplicates.py`](../../../../tests/stages/mark_BAM_duplicates_with_Picard/test_validate_step_04_mark_duplicates.py),
+- [`test_validate_step_04_mark_duplicates.py`](../../../../tests/stages/duplicate_marking/test_validate_step_04_mark_duplicates.py),
   wrapper, roster, publication-fault, public-CLI, artifact, report, and coverage
   tests protect the recorded validation and projection boundaries.
 

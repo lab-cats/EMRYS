@@ -19,6 +19,9 @@ from norad.ingestion.sample_manifest_admission import (
     validator as manifest_command,
 )
 from norad.stages.canonical_bam import validator as canonical_bam_validation_command
+from norad.stages.duplicate_marking import (
+    validator as duplicate_marking_validation_command,
+)
 from norad.stages.fasta_sidecars import validator as fasta_sidecars_validation_command
 from norad.stages.gtf_to_bed12 import (
     converter as gtf_to_bed12_command,
@@ -133,6 +136,15 @@ def build_parser() -> argparse.ArgumentParser:
     canonical_bam_qc_validation_command.configure_parser(canonical_bam_qc_parser)
     canonical_bam_qc_parser.set_defaults(
         _command_handler=canonical_bam_qc_validation_command.validate_from_args
+    )
+    duplicate_marking_parser = validation_parsers.add_parser(
+        "duplicate-marking",
+        help="Validate duplicate-marked BAM/BAI and Picard metrics.",
+        description=duplicate_marking_validation_command.DESCRIPTION,
+    )
+    duplicate_marking_validation_command.configure_parser(duplicate_marking_parser)
+    duplicate_marking_parser.set_defaults(
+        _command_handler=duplicate_marking_validation_command.validate_from_args
     )
     fasta_sidecars_parser = validation_parsers.add_parser(
         "fasta-sidecars",
