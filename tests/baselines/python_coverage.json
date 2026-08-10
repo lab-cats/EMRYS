@@ -39,10 +39,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 14,
-      "covered_lines": 108,
+      "covered_lines": 114,
       "line_rate": "1.000000",
       "num_branches": 14,
-      "num_statements": 108,
+      "num_statements": 114,
       "path": "src/norad/__main__.py"
     },
     {
@@ -631,13 +631,13 @@
       "path": "src/norad/evidence/storage_inventory/_storage_publication.py"
     },
     {
-      "branch_rate": "0.800000",
-      "covered_branches": 8,
-      "covered_lines": 67,
-      "line_rate": "0.971014",
-      "num_branches": 10,
-      "num_statements": 69,
-      "path": "src/norad/evidence/storage_inventory/storage_inventory.py"
+      "branch_rate": "0.833333",
+      "covered_branches": 5,
+      "covered_lines": 37,
+      "line_rate": "0.973684",
+      "num_branches": 6,
+      "num_statements": 38,
+      "path": "src/norad/evidence/storage_inventory/inspector.py"
     },
     {
       "branch_rate": "1.000000",
@@ -1609,11 +1609,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.748525",
-    "covered_branches": 3298,
-    "covered_lines": 10219,
-    "line_rate": "0.859968",
-    "num_branches": 4406,
-    "num_statements": 11883
+    "branch_rate": "0.748523",
+    "covered_branches": 3295,
+    "covered_lines": 10195,
+    "line_rate": "0.859757",
+    "num_branches": 4402,
+    "num_statements": 11858
   }
 }

@@ -39,6 +39,12 @@ It retains the `runtime_preflight` profile, report, and lock vocabulary.
 Dry-run performs applicable probes without publication; `--execute` publishes
 the requested report, and exit `0` does not mean every probe passed.
 
+Storage inventory exposes installed inspection as
+`python -I -m norad inspect storage-inventory` through a private inspector.
+Dry-run measures declared roots and records retention-policy state without
+publication; `--execute` publishes evidence, and exit `0` neither means the
+summary passed nor grants authority to alter storage.
+
 Use the [`RUNBOOK`](../../../docs/operations/RUNBOOK.md) for supported commands,
 [`TROUBLESHOOTING`](../../../docs/operations/TROUBLESHOOTING.md) for failure and
 recovery routes, and

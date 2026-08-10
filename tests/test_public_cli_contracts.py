@@ -31,9 +31,6 @@ PYTHON_ENTRYPOINT_PATHS = {
         "src/norad/reporting/render_run_report_bundle.py"
     ),
     "restore_quarto.py": Path("scripts/restore_quarto.py"),
-    "storage_inventory.py": Path(
-        "src/norad/evidence/storage_inventory/storage_inventory.py"
-    ),
     "validate_artifact_contracts.py": Path(
         "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     ),
@@ -70,6 +67,10 @@ NORAD_COMMANDS = (
     (
         ("inspect", "runtime-availability"),
         "usage: norad inspect runtime-availability",
+    ),
+    (
+        ("inspect", "storage-inventory"),
+        "usage: norad inspect storage-inventory",
     ),
     (("convert", "gtf-to-bed12"), "usage: norad convert gtf-to-bed12"),
     (("validate", "bed12"), "usage: norad validate bed12"),

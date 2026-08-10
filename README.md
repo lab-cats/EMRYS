@@ -15,8 +15,9 @@ STAR-index, FASTA-sidecar, STAR-alignment, canonical-BAM, canonical-BAM-QC,
 RSeQC-orientation, duplicate-marking, split-N-cigar, mechanical-orientation,
 partitioned-cohort-mpileup, cohort-candidate-preprocessing, and
 paired-CMH-candidate-ranking validation, reference-provenance reconciliation,
-runtime-availability inspection, scientific-review-package assembly, plus
-GTF-to-BED12 conversion/validation and named schema/report resources.
+runtime-availability and storage-inventory inspection,
+scientific-review-package assembly, plus GTF-to-BED12 conversion/validation
+and named schema/report resources.
 
 ## Start here
 

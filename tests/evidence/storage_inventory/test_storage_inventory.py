@@ -1,28 +1,26 @@
 import csv
-import importlib.util
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
+import norad.evidence.storage_inventory._storage_contract as contract
+import norad.evidence.storage_inventory._storage_measurement as measurement
+import norad.evidence.storage_inventory._storage_publication as publication
+from norad import __main__ as norad_main
+
 ROOT = Path(__file__).resolve().parents[3]
-SCRIPT = (
-    ROOT / "src" / "norad" / "evidence" / "storage_inventory" / "storage_inventory.py"
-)
+COMMAND = (sys.executable, "-I", "-m", "norad", "inspect", "storage-inventory")
 ROOT_HEADER = "storage_id\tpath\trequired\tpurpose\tquota_bytes_expected\tnotes\n"
-POLICY_HEADER = "policy_id\tstorage_id\tartifact_class\taction\tretention_days\tapproval_status\tapproved_by\tapproved_at\tnotes\n"
-SPEC = importlib.util.spec_from_file_location(
-    "norad_storage_inventory_faults",
-    SCRIPT,
+POLICY_HEADER = (
+    "policy_id\tstorage_id\tartifact_class\taction\tretention_days\t"
+    "approval_status\tapproved_by\tapproved_at\tnotes\n"
 )
-assert SPEC and SPEC.loader
-STORAGE = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = STORAGE
-SPEC.loader.exec_module(STORAGE)
 
 
-def contracts(tmp_path: Path, *, approved: bool = True):
+def contracts(tmp_path: Path, *, approved: bool = True) -> tuple[Path, Path, Path]:
     storage = tmp_path / "storage"
     storage.mkdir(parents=True)
     (storage / "file").write_bytes(b"1234")
@@ -43,11 +41,15 @@ def contracts(tmp_path: Path, *, approved: bool = True):
     return roots, policy, storage
 
 
-def run(roots, policy, output, *extra):
+def run_cli(
+    roots: Path,
+    policy: Path,
+    output: Path,
+    *extra: str,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
-            sys.executable,
-            str(SCRIPT),
+            *COMMAND,
             "--roots",
             str(roots),
             "--retention-policy",
@@ -59,26 +61,22 @@ def run(roots, policy, output, *extra):
         cwd=ROOT,
         text=True,
         capture_output=True,
+        check=False,
     )
 
 
-def rows(path):
-    with path.open() as handle:
+def read_rows(path: Path) -> list[dict[str, str]]:
+    with path.open(newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle, delimiter="\t"))
 
 
 def publication_data(roots: Path, policy: Path) -> dict[str, bytes]:
-    roots_data, parsed_roots = STORAGE.load_roots(roots)
-    policy_data, parsed_policy = STORAGE.load_policy(
+    roots_data, parsed_roots = contract.load_roots(roots)
+    policy_data, parsed_policy = contract.load_policy(
         policy,
         {root.storage_id for root in parsed_roots},
     )
-    return STORAGE.outputs(
-        roots_data,
-        policy_data,
-        parsed_roots,
-        parsed_policy,
-    )
+    return measurement.outputs(roots_data, policy_data, parsed_roots, parsed_policy)
 
 
 def publication_paths(output: Path) -> dict[str, Path]:
@@ -89,23 +87,22 @@ def publication_paths(output: Path) -> dict[str, Path]:
     }
 
 
-def test_dry_run_is_side_effect_free(tmp_path):
+def test_dry_run_is_side_effect_free(tmp_path: Path) -> None:
     roots, policy, _ = contracts(tmp_path)
     output = tmp_path / "missing"
-    result = run(roots, policy, output)
+    result = run_cli(roots, policy, output)
     assert result.returncode == 0
     assert "no storage is altered" in result.stdout
     assert not output.exists()
 
 
-def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path):
+def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path: Path) -> None:
     roots, policy, storage = contracts(tmp_path)
     output = tmp_path / "out"
     invocation = tmp_path / "invocation"
     invocation.mkdir()
     command = [
-        sys.executable,
-        str(SCRIPT),
+        *COMMAND,
         "--roots",
         str(roots),
         "--retention-policy",
@@ -134,7 +131,7 @@ def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path):
         check=False,
     )
     assert first.returncode == 0, first.stderr
-    first_inventory = rows(output / "storage_inventory.tsv")[0]
+    first_inventory = read_rows(output / "storage_inventory.tsv")[0]
     first_policy = (output / "retention_policy.tsv").read_bytes()
     first_summary = (output / "storage_retention_summary.tsv").read_bytes()
 
@@ -146,7 +143,7 @@ def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path):
         check=False,
     )
     assert repeated.returncode == 0, repeated.stderr
-    second_inventory = rows(output / "storage_inventory.tsv")[0]
+    second_inventory = read_rows(output / "storage_inventory.tsv")[0]
     volatile_fields = {
         "filesystem_total_bytes",
         "filesystem_free_bytes",
@@ -175,14 +172,14 @@ def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path):
     ]
 
 
-def test_execute_measures_without_following_symlinks(tmp_path):
+def test_execute_measures_without_following_symlinks(tmp_path: Path) -> None:
     roots, policy, storage = contracts(tmp_path)
     output = tmp_path / "out"
     output.mkdir()
-    result = run(roots, policy, output, "--execute")
+    result = run_cli(roots, policy, output, "--execute")
     assert result.returncode == 0, result.stderr
-    inventory = rows(output / "storage_inventory.tsv")[0]
-    summary = rows(output / "storage_retention_summary.tsv")[0]
+    inventory = read_rows(output / "storage_inventory.tsv")[0]
+    summary = read_rows(output / "storage_retention_summary.tsv")[0]
     assert inventory["tree_bytes"] == "4"
     assert inventory["file_count"] == "1"
     assert inventory["symlink_count"] == "1"
@@ -190,50 +187,50 @@ def test_execute_measures_without_following_symlinks(tmp_path):
     assert (storage / "file").read_bytes() == b"1234"
     first_policy = (output / "retention_policy.tsv").read_bytes()
     first_summary = (output / "storage_retention_summary.tsv").read_bytes()
-    assert run(roots, policy, output, "--execute").returncode == 0
+    assert run_cli(roots, policy, output, "--execute").returncode == 0
     assert first_policy == (output / "retention_policy.tsv").read_bytes()
     assert first_summary == (output / "storage_retention_summary.tsv").read_bytes()
 
 
-def test_pending_policy_and_missing_required_are_reported(tmp_path):
+def test_pending_policy_and_missing_required_are_reported(tmp_path: Path) -> None:
     roots, policy, _ = contracts(tmp_path, approved=False)
     text = roots.read_text()
     roots.write_text(text.replace(str(tmp_path / "storage"), str(tmp_path / "missing")))
     output = tmp_path / "out"
     output.mkdir()
-    assert run(roots, policy, output, "--execute").returncode == 0
-    summary = rows(output / "storage_retention_summary.tsv")[0]
+    assert run_cli(roots, policy, output, "--execute").returncode == 0
+    summary = read_rows(output / "storage_retention_summary.tsv")[0]
     assert summary["missing_required_count"] == "1"
     assert summary["pending_policy_count"] == "1"
     assert summary["overall_status"] == "fail"
 
 
-def test_invalid_policy_and_relative_root_fail(tmp_path):
+def test_invalid_policy_and_relative_root_fail(tmp_path: Path) -> None:
     roots, policy, _ = contracts(tmp_path)
     roots.write_text(roots.read_text().replace(str(tmp_path / "storage"), "relative"))
     output = tmp_path / "out"
     output.mkdir()
-    assert run(roots, policy, output, "--execute").returncode == 2
+    assert run_cli(roots, policy, output, "--execute").returncode == 2
     roots, policy, _ = contracts(tmp_path / "second")
     policy.write_text(
         policy.read_text().replace("\tapproved\ttester\t", "\tapproved\tNA\t")
     )
-    assert run(roots, policy, output, "--execute").returncode == 2
+    assert run_cli(roots, policy, output, "--execute").returncode == 2
 
 
-def test_foreign_lock_and_partial_prior_are_preserved(tmp_path):
+def test_foreign_lock_and_partial_prior_are_preserved(tmp_path: Path) -> None:
     roots, policy, _ = contracts(tmp_path)
     output = tmp_path / "out"
     output.mkdir()
     lock = output / ".storage-inventory-retention.lock"
     lock.write_text("foreign\n")
-    result = run(roots, policy, output, "--execute")
+    result = run_cli(roots, policy, output, "--execute")
     assert result.returncode == 2
     assert lock.read_text() == "foreign\n"
     lock.unlink()
     partial = output / "storage_inventory.tsv"
     partial.write_text("foreign\n")
-    result = run(roots, policy, output, "--execute")
+    result = run_cli(roots, policy, output, "--execute")
     assert result.returncode == 2
     assert partial.read_text() == "foreign\n"
 
@@ -245,18 +242,23 @@ def test_contract_mutation_after_measurement_fails_before_publication(
     roots, policy, _ = contracts(tmp_path)
     output = tmp_path / "out"
     output.mkdir()
-    real_outputs = STORAGE.outputs
+    real_outputs = measurement.outputs
 
-    def render_then_mutate(*args, **kwargs):
-        generated = real_outputs(*args, **kwargs)
-        # Change the exact input bytes after measurement so the publication
-        # boundary must reject the stale generated transaction.
+    def render_then_mutate(
+        roots_data: bytes,
+        policy_data: bytes,
+        parsed_roots: Sequence[contract.Root],
+        parsed_policies: Sequence[contract.Policy],
+    ) -> dict[str, bytes]:
+        generated = real_outputs(roots_data, policy_data, parsed_roots, parsed_policies)
         roots.write_text(roots.read_text() + "\n")
         return generated
 
-    monkeypatch.setattr(STORAGE, "outputs", render_then_mutate)
-    status = STORAGE.main(
+    monkeypatch.setattr(measurement, "outputs", render_then_mutate)
+    status = norad_main.main(
         [
+            "inspect",
+            "storage-inventory",
             "--roots",
             str(roots),
             "--retention-policy",
@@ -279,13 +281,13 @@ def test_publication_failure_restores_complete_storage_predecessor(
     output = tmp_path / "out"
     output.mkdir()
     generated = publication_data(roots, policy)
-    STORAGE.publish(output, generated)
+    publication.publish(output, generated)
     finals = publication_paths(output)
     before = {key: path.read_bytes() for key, path in finals.items()}
-    real_replace = STORAGE.os.replace
+    real_replace = publication.os.replace
     failed = False
 
-    def fail_second_publication(source, destination):
+    def fail_second_publication(source: Path, destination: Path) -> None:
         nonlocal failed
         if (
             not failed
@@ -296,9 +298,9 @@ def test_publication_failure_restores_complete_storage_predecessor(
             raise OSError("injected storage publication failure")
         real_replace(source, destination)
 
-    monkeypatch.setattr(STORAGE.os, "replace", fail_second_publication)
+    monkeypatch.setattr(publication.os, "replace", fail_second_publication)
     with pytest.raises(OSError, match="storage publication"):
-        STORAGE.publish(output, generated)
+        publication.publish(output, generated)
 
     assert failed
     assert {key: path.read_bytes() for key, path in finals.items()} == before
@@ -313,13 +315,13 @@ def test_characterizes_storage_incomplete_rollback_gap(
     output = tmp_path / "out"
     output.mkdir()
     generated = publication_data(roots, policy)
-    STORAGE.publish(output, generated)
+    publication.publish(output, generated)
     finals = publication_paths(output)
-    real_replace = STORAGE.os.replace
+    real_replace = publication.os.replace
     publication_failed = False
     restoration_failed = False
 
-    def fail_publication_and_restoration(source, destination):
+    def fail_publication_and_restoration(source: Path, destination: Path) -> None:
         nonlocal publication_failed, restoration_failed
         source_path = Path(source)
         destination_path = Path(destination)
@@ -340,13 +342,9 @@ def test_characterizes_storage_incomplete_rollback_gap(
             raise OSError("injected storage restoration failure")
         real_replace(source, destination)
 
-    monkeypatch.setattr(
-        STORAGE.os,
-        "replace",
-        fail_publication_and_restoration,
-    )
+    monkeypatch.setattr(publication.os, "replace", fail_publication_and_restoration)
     with pytest.raises(OSError, match="storage restoration"):
-        STORAGE.publish(output, generated)
+        publication.publish(output, generated)
 
     assert publication_failed and restoration_failed
     assert len(list(output.glob(".*.previous"))) == 3

@@ -27,6 +27,9 @@ from norad.evidence.runtime_availability import (
 from norad.evidence.scientific_review_package import (
     publisher as scientific_review_package_command,
 )
+from norad.evidence.storage_inventory import (
+    inspector as storage_inventory_inspection_command,
+)
 from norad.ingestion.sample_manifest_admission import (
     validator as manifest_command,
 )
@@ -134,6 +137,20 @@ def _add_scientific_review_package_command(
     )
 
 
+def _add_storage_inventory_inspection_command(
+    inspection_parsers: _SubparserCollection,
+) -> None:
+    storage_parser = inspection_parsers.add_parser(
+        "storage-inventory",
+        help="Inspect declared storage and retention-policy state without mutation.",
+        description=storage_inventory_inspection_command.DESCRIPTION,
+    )
+    storage_inventory_inspection_command.configure_parser(storage_parser)
+    storage_parser.set_defaults(
+        _command_handler=storage_inventory_inspection_command.inspect_from_args
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the public parser from owner-supplied command definitions."""
     parser = argparse.ArgumentParser(
@@ -197,6 +214,7 @@ def build_parser() -> argparse.ArgumentParser:
     runtime_availability_parser.set_defaults(
         _command_handler=runtime_availability_inspection_command.inspect_from_args
     )
+    _add_storage_inventory_inspection_command(inspection_parsers)
     convert_parser = command_parsers.add_parser(
         "convert",
         help="Convert an explicitly selected NORAD input.",

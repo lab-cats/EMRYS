@@ -72,7 +72,7 @@ EVIDENCE_PACKAGE_PATHS = frozenset(
         "norad/evidence/storage_inventory/_storage_contract.py",
         "norad/evidence/storage_inventory/_storage_measurement.py",
         "norad/evidence/storage_inventory/_storage_publication.py",
-        "norad/evidence/storage_inventory/storage_inventory.py",
+        "norad/evidence/storage_inventory/inspector.py",
     }
 )
 STAR_INDEX_MEMBERS = (
@@ -588,6 +588,94 @@ def _assert_installed_runtime_availability_inspection(
         unrelated_state
     )
     assert not output_path.parent.exists()
+
+
+def _assert_installed_storage_inventory_inspection(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    fixture_root = working_directory / "storage-inventory-inputs"
+    storage_root = fixture_root / "storage"
+    storage_root.mkdir(parents=True)
+    storage_root.chmod(0o750)
+    stored_file = storage_root / "preserved.dat"
+    stored_file.write_bytes(b"wheel-storage-fixture\n")
+    stored_file.chmod(0o640)
+    stored_link = storage_root / "preserved.link"
+    stored_link.symlink_to(stored_file.name)
+
+    roots_path = fixture_root / "roots.tsv"
+    roots_path.write_text(
+        "storage_id\tpath\trequired\tpurpose\tquota_bytes_expected\tnotes\n"
+        f"wheel_storage\t{storage_root}\ttrue\twheel_fixture\tNA\t"
+        "Installed-wheel storage root\n",
+        encoding="utf-8",
+    )
+    roots_path.chmod(0o640)
+    policy_path = fixture_root / "retention-policy.tsv"
+    policy_path.write_text(
+        "policy_id\tstorage_id\tartifact_class\taction\tretention_days\t"
+        "approval_status\tapproved_by\tapproved_at\tnotes\n"
+        "wheel_policy\twheel_storage\twheel_artifact\tretain\tindefinite\t"
+        "approved\twheel_tester\t2020-01-01T00:00:00Z\t"
+        "Installed-wheel retention record\n",
+        encoding="utf-8",
+    )
+    policy_path.chmod(0o600)
+    unrelated_path = working_directory / "storage-inventory-unrelated.txt"
+    unrelated_path.write_bytes(b"preserve\n")
+    unrelated_path.chmod(0o600)
+
+    input_paths = (roots_path, policy_path, stored_file, unrelated_path)
+    input_states = tuple(
+        (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    )
+    storage_root_mode = storage_root.stat().st_mode
+    stored_link_state = (os.readlink(stored_link), stored_link.lstat().st_mode)
+    output_root = working_directory / "storage-inventory-output"
+
+    inspection = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "inspect",
+        "storage-inventory",
+        "--roots",
+        str(roots_path),
+        "--retention-policy",
+        str(policy_path),
+        "--output-root",
+        str(output_root),
+    )
+
+    assert inspection.returncode == 0, inspection.stdout + inspection.stderr
+    assert inspection.stderr == ""
+    assert inspection.stdout.splitlines() == [
+        f"Storage roots: {roots_path}",
+        f"Retention policy: {policy_path}",
+        f"Output root: {output_root}",
+        "Evidence boundary: read-only measurement and policy recording; "
+        "no storage is altered.",
+        "Dry-run complete; no output was written.",
+    ]
+    assert (
+        tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
+        == input_states
+    )
+    assert storage_root.stat().st_mode == storage_root_mode
+    assert stored_link.is_symlink()
+    assert (os.readlink(stored_link), stored_link.lstat().st_mode) == stored_link_state
+    assert not output_root.exists()
+    for output_name in (
+        "storage_inventory.tsv",
+        "retention_policy.tsv",
+        "storage_retention_summary.tsv",
+        ".storage-inventory-retention.lock",
+    ):
+        assert not (output_root / output_name).exists()
+    assert not tuple(output_root.glob(".*.tmp"))
+    assert not tuple(output_root.glob(".*.previous"))
 
 
 def _assert_validation_dry_run(
@@ -2097,6 +2185,11 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_storage_inventory_inspection(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_private_source_layout() -> None:
@@ -2206,6 +2299,10 @@ def _assert_private_source_layout() -> None:
     assert (runtime_availability_source / "tool_check.slurm").is_file()
     assert not (REPO_ROOT / "tests/evidence/runtime_preflight").exists()
     assert (REPO_ROOT / "tests/evidence/runtime_availability").is_dir()
+
+    storage_inventory_source = REPO_ROOT / "src/norad/evidence/storage_inventory"
+    assert not (storage_inventory_source / "storage_inventory.py").exists()
+    assert (storage_inventory_source / "inspector.py").stat().st_mode & 0o7777 == 0o644
 
 
 def _assert_wrong_checkout_rejected(
