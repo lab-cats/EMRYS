@@ -182,20 +182,7 @@ def build_context(
         step09_summary=step09_summary_table.rows[0],
         output_paths=output_paths,
     )
-    decisions, selected, adjudicated = validate_evidence_payloads(
-        arguments.review_id,
-        plan,
-        evidence_rows,
-        category_rows,
-        sample_ids,
-        sample_rows,
-        partition_table.rows,
-        step08_inputs.rows,
-        all_sites.rows,
-        step09_summary_table.rows[0],
-        step09_summary_table.path,
-        input_hashes,
-    )
+    decisions, selected, adjudicated = validate_evidence_payloads(context)
     summary_row = make_review_summary(
         context, decisions, selected, adjudicated, analysis_dir
     )

@@ -246,20 +246,12 @@ def validate_computational_evidence(
 
 
 def validate_evidence_payloads(
-    review_id: str,
-    plan: Mapping[str, str],
-    evidence_rows: Sequence[Mapping[str, str]],
-    category_rows: Mapping[str, list[dict[str, str]]],
-    sample_ids: Sequence[str],
-    sample_rows: Sequence[Mapping[str, str]],
-    partition_rows: Sequence[Mapping[str, str]],
-    step08_inputs: Sequence[Mapping[str, str]],
-    step09_all: Sequence[Mapping[str, str]],
-    step09_summary: Mapping[str, str],
-    primary_summary_path: Path,
-    input_hashes: dict[Path, str],
+    context: ReviewContext,
 ) -> tuple[dict[str, str], set[tuple[str, str]], set[tuple[str, str]]]:
-    candidates = {row["candidate_id"]: row for row in step09_all}
+    plan = context.plan
+    evidence_rows = context.evidence_rows
+    category_rows = context.category_rows
+    candidates = {row["candidate_id"]: row for row in context.step09_all_rows}
     evidence_ids = {row["evidence_id"] for row in evidence_rows}
     primary_analysis_id = plan["primary_analysis_id"]
     for category, rows in category_rows.items():
@@ -272,10 +264,10 @@ def validate_evidence_payloads(
                 )
     validate_orientation_evidence(
         category_rows["orientation_locus_audit"],
-        review_id,
+        context.review_id,
         candidates,
-        sample_rows,
-        {row["partition_id"] for row in partition_rows},
+        context.sample_rows,
+        {row["partition_id"] for row in context.partition_rows},
         plan,
         category_is_complete(evidence_rows, "orientation_locus_audit"),
     )
@@ -287,36 +279,36 @@ def validate_evidence_payloads(
     )
     validate_qc_funnel(
         category_rows["qc_funnel"],
-        review_id,
+        context.review_id,
         primary_analysis_id,
-        step08_inputs,
-        step09_all,
-        step09_summary["target_rna_change"],
+        context.step08_input_rows,
+        context.step09_all_rows,
+        context.step09_summary["target_rna_change"],
         category_is_complete(evidence_rows, "qc_funnel"),
     )
     validate_replicate_effects(
         category_rows["replicate_effects"],
         candidates,
-        sample_rows,
-        step09_summary,
+        context.sample_rows,
+        context.step09_summary,
         category_is_complete(evidence_rows, "replicate_effects"),
     )
     validate_sensitivity_matrix(
         category_rows["sensitivity_matrix"],
         plan,
-        primary_summary_path,
-        step09_summary,
-        input_hashes,
+        context.artifacts["step09_summary"].path,
+        context.step09_summary,
+        context.input_hashes,
         category_is_complete(evidence_rows, "sensitivity_matrix"),
     )
     validate_leave_one_pair_out(
         category_rows["leave_one_pair_out"],
         plan,
         candidates,
-        sample_rows,
-        sample_ids,
-        step09_summary,
-        input_hashes,
+        context.sample_rows,
+        context.sample_ids,
+        context.step09_summary,
+        context.input_hashes,
         category_is_complete(evidence_rows, "leave_one_pair_out"),
     )
     selected = validate_candidate_selection(
@@ -343,7 +335,7 @@ def validate_evidence_payloads(
         category_rows["computational_validation"],
         plan,
         evidence_rows,
-        input_hashes,
+        context.input_hashes,
     )
 
     if plan["overall_science_status"] == "science_review_complete_exploratory":
