@@ -149,7 +149,7 @@ cluster, scientific-review, or biological evidence.
 - Shared report publication remains in neutral
   [`validation/report.py`](../../libraries/validation/report.py), imported
   through `norad.libraries.validation`.
-- The producer sources only `resolve_executable_value` from neutral
+- The producer uses `resolve_overridable_executable` from neutral
   [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
   bcftools precedence, checks, and commands remain owned here.
 - Attempt identity, complete provenance, output hashes, and an automated

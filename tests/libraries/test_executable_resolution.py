@@ -39,7 +39,7 @@ CONSUMERS = {
         1,
     ),
     "stages/partitioned_cohort_mpileup/"
-    "step_07_bcftools_mpileup_by_chrom_and_strand.sh": (0o755, 1, 0, 1),
+    "step_07_bcftools_mpileup_by_chrom_and_strand.sh": (0o755, 0, 1, 1),
     "stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh": (
         0o755,
         1,

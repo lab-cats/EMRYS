@@ -6,6 +6,17 @@ script="$repo_root/src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_
 job="$repo_root/src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
 test_root="$(mktemp -d)"
 trap 'rm -rf "$test_root"' EXIT
+export TMPDIR="$test_root"
+
+unset BCFTOOLS_BIN_OVERRIDE SLURM_JOB_ID \
+    FAKE_BCFTOOLS_BARRIER_READY FAKE_BCFTOOLS_BARRIER_RELEASE \
+    FAKE_BCFTOOLS_FAIL_STAGE FAKE_BCFTOOLS_LOG \
+    FAKE_BCFTOOLS_MUTATE_ORIENTATION FAKE_BCFTOOLS_MUTATE_PATH \
+    FAKE_BCFTOOLS_SAMPLES FAKE_FAIL_FINAL_VALIDATION FAKE_HEADER_ONLY \
+    FAKE_MV_FAIL_FWD_RESTORE FAKE_MV_FAIL_RECEIPT_PUBLICATION FAKE_MV_LOG \
+    FAKE_MV_SEND_TERM_AFTER_RECEIPT FAKE_OBSERVE_PUBLISHED_FWD \
+    FAKE_OBSERVE_PUBLISHED_RECEIPT FAKE_OBSERVE_PUBLISHED_REV \
+    FAKE_PUBLICATION_OBSERVATION
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -33,15 +44,6 @@ assert_exists() {
     [[ -s "$1" ]] || fail "Expected non-empty file: $1"
 }
 
-run_expect_failure() {
-    local stdout_path="$1"
-    local stderr_path="$2"
-    shift 2
-    if "$@" >"$stdout_path" 2>"$stderr_path"; then
-        fail "Command unexpectedly succeeded: $*"
-    fi
-}
-
 run_expect_status() {
     local expected_status="$1"
     local stdout_path="$2"
@@ -57,13 +59,12 @@ run_expect_status() {
         fail "Expected exit $expected_status, got $observed_status: $*"
 }
 
-assert_text_equals() {
+assert_file_equals() {
     local path="$1"
     local expected="$2"
-    local observed
-    observed="$(<"$path")"
-    [[ "$observed" == "$expected" ]] ||
-        fail "Unexpected content in $path: $observed"
+    if ! printf '%s' "$expected" | cmp -s - "$path"; then
+        fail "Unexpected bytes in: $path"
+    fi
 }
 
 assert_no_owned_step07_paths() {
@@ -76,7 +77,6 @@ assert_no_owned_step07_paths() {
 }
 
 fake_bcftools="$test_root/fake-bcftools"
-apply_fake_path="$fake_bcftools"
 
 cat >"$fake_bcftools" <<'FAKE'
 #!/usr/bin/env bash
@@ -270,7 +270,7 @@ assert_contains "$help_output" "--sample-manifest"
 assert_contains "$help_output" "selector_type=regions_file"
 assert_contains "$help_output" "mechanical read-orientation labels"
 
-run_expect_failure "$test_root/missing.out" "$test_root/missing.err" \
+run_expect_status 1 "$test_root/missing.out" "$test_root/missing.err" \
     bash "$script"
 assert_contains "$test_root/missing.err" "Missing required argument: --cohort-id"
 
@@ -290,8 +290,8 @@ missing_bcftools="$test_root/does-not-exist/bcftools"
 run_expect_status 1 "$test_root/missing-bcftools.out" \
     "$test_root/missing-bcftools.err" \
     bash "$script" "${common_args[@]}" --bcftools-bin "$missing_bcftools" --execute
-assert_text_equals "$test_root/missing-bcftools.err" \
-    "ERROR: bcftools does not exist: $missing_bcftools"
+assert_file_equals "$test_root/missing-bcftools.err" \
+    "ERROR: bcftools does not exist: $missing_bcftools"$'\n'
 assert_not_exists "$fixture/output"
 
 nonexecutable_bcftools="$test_root/nonexecutable-bcftools"
@@ -301,8 +301,8 @@ run_expect_status 1 "$test_root/nonexecutable-bcftools.out" \
     "$test_root/nonexecutable-bcftools.err" \
     bash "$script" "${common_args[@]}" \
     --bcftools-bin "$nonexecutable_bcftools" --execute
-assert_text_equals "$test_root/nonexecutable-bcftools.err" \
-    "ERROR: bcftools exists but is not executable: $nonexecutable_bcftools"
+assert_file_equals "$test_root/nonexecutable-bcftools.err" \
+    "ERROR: bcftools exists but is not executable: $nonexecutable_bcftools"$'\n'
 assert_not_exists "$fixture/output"
 
 path_bcftools_dir="$test_root/path-bcftools"
@@ -468,7 +468,7 @@ invalid_regions_fixture="$test_root/invalid-regions"
 cp -R "$regions_fixture" "$invalid_regions_fixture"
 rm -rf "$invalid_regions_fixture/output"
 printf '1\t0\t5\n' >"$invalid_regions_fixture/target.bed"
-run_expect_failure "$test_root/invalid-regions.out" "$test_root/invalid-regions.err" \
+run_expect_status 1 "$test_root/invalid-regions.out" "$test_root/invalid-regions.err" \
     bash "$script" \
     --cohort-id bad_regions \
     --sample-manifest "$invalid_regions_fixture/samples.tsv" \
@@ -486,7 +486,7 @@ bad_sample_fixture="$test_root/bad-sample"
 cp -R "$fixture" "$bad_sample_fixture"
 rm -rf "$bad_sample_fixture/output"
 printf 'sample_id\tcondition\nsample_A\tEV\nsample_A\tPUM1\n' >"$bad_sample_fixture/samples.tsv"
-run_expect_failure "$test_root/bad-sample.out" "$test_root/bad-sample.err" \
+run_expect_status 1 "$test_root/bad-sample.out" "$test_root/bad-sample.err" \
     bash "$script" \
     --cohort-id bad \
     --sample-manifest "$bad_sample_fixture/samples.tsv" \
@@ -504,7 +504,7 @@ cp -R "$fixture" "$bad_partition_fixture"
 rm -rf "$bad_partition_fixture/output"
 printf 'partition_id\tselector_type\tselector_value\n1\tregion\t1\n1\tregion\t2\n' \
     >"$bad_partition_fixture/partitions.tsv"
-run_expect_failure "$test_root/bad-partition.out" "$test_root/bad-partition.err" \
+run_expect_status 1 "$test_root/bad-partition.out" "$test_root/bad-partition.err" \
     bash "$script" \
     --cohort-id bad \
     --sample-manifest "$bad_partition_fixture/samples.tsv" \
@@ -519,7 +519,7 @@ assert_contains "$test_root/bad-partition.err" "duplicate partition_id"
 missing_partition_fixture="$test_root/missing-partition"
 cp -R "$fixture" "$missing_partition_fixture"
 rm -rf "$missing_partition_fixture/output"
-run_expect_failure "$test_root/missing-partition.out" "$test_root/missing-partition.err" \
+run_expect_status 1 "$test_root/missing-partition.out" "$test_root/missing-partition.err" \
     bash "$script" \
     --cohort-id bad \
     --sample-manifest "$missing_partition_fixture/samples.tsv" \
@@ -536,7 +536,7 @@ missing_fai_fixture="$test_root/missing-fai"
 cp -R "$fixture" "$missing_fai_fixture"
 rm -rf "$missing_fai_fixture/output"
 rm "$missing_fai_fixture/reference.fa.fai"
-run_expect_failure "$test_root/missing-fai.out" "$test_root/missing-fai.err" \
+run_expect_status 1 "$test_root/missing-fai.out" "$test_root/missing-fai.err" \
     bash "$script" \
     --cohort-id bad \
     --sample-manifest "$missing_fai_fixture/samples.tsv" \
@@ -552,7 +552,7 @@ bad_fai_fixture="$test_root/bad-fai"
 cp -R "$fixture" "$bad_fai_fixture"
 rm -rf "$bad_fai_fixture/output"
 printf '1\t4\t3\t4\t5\n1\t4\t3\t4\t5\n' >"$bad_fai_fixture/reference.fa.fai"
-run_expect_failure "$test_root/bad-fai.out" "$test_root/bad-fai.err" \
+run_expect_status 1 "$test_root/bad-fai.out" "$test_root/bad-fai.err" \
     bash "$script" \
     --cohort-id bad \
     --sample-manifest "$bad_fai_fixture/samples.tsv" \
@@ -570,7 +570,7 @@ cp -R "$fixture" "$bad_selector_fixture"
 rm -rf "$bad_selector_fixture/output"
 printf 'partition_id\tselector_type\tselector_value\nbad\tregion\tchr1\n' \
     >"$bad_selector_fixture/partitions.tsv"
-run_expect_failure "$test_root/bad-selector.out" "$test_root/bad-selector.err" \
+run_expect_status 1 "$test_root/bad-selector.out" "$test_root/bad-selector.err" \
     bash "$script" \
     --cohort-id bad \
     --sample-manifest "$bad_selector_fixture/samples.tsv" \
@@ -587,7 +587,7 @@ missing_bai_fixture="$test_root/missing-bai"
 cp -R "$fixture" "$missing_bai_fixture"
 rm -rf "$missing_bai_fixture/output"
 rm "$missing_bai_fixture/orientation/sample_B/sample_B.REV_like.bam.bai"
-run_expect_failure "$test_root/missing-bai.out" "$test_root/missing-bai.err" \
+run_expect_status 1 "$test_root/missing-bai.out" "$test_root/missing-bai.err" \
     bash "$script" \
     --cohort-id bad \
     --sample-manifest "$missing_bai_fixture/samples.tsv" \
@@ -630,13 +630,13 @@ do
         env FAKE_BCFTOOLS_FAIL_STAGE="$failure_stage" \
         FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
         bash "$script" "${failure_args[@]}" --execute
-    assert_text_equals "$test_root/$failure_stage.err" \
-        "ERROR: $expected_failure_orientation bcftools mpileup/filter pipeline failed."
+    assert_file_equals "$test_root/$failure_stage.err" \
+        "ERROR: $expected_failure_orientation bcftools mpileup/filter pipeline failed."$'\n'
     assert_not_exists "$failure_output/cohort_failure.1.FWD_like.mpileup.vcf"
     assert_not_exists "$failure_output/cohort_failure.1.REV_like.mpileup.vcf"
     assert_not_exists "$failure_output/cohort_failure.1.step07_outputs.tsv"
     assert_not_exists "$failure_output/.cohort_failure.1.step07.lock"
-    assert_text_equals "$unrelated_path" "preserve unrelated bytes"
+    assert_file_equals "$unrelated_path" $'preserve unrelated bytes\n'
     assert_no_owned_step07_paths "$failure_output" \
         '.cohort_failure.1.step07.*'
 done
@@ -675,13 +675,13 @@ for manifest_kind in sample partition; do
         env FAKE_BCFTOOLS_MUTATE_PATH="$mutation_path" \
         FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
         bash "$script" "${mutation_args[@]}" --execute
-    assert_text_equals "$test_root/mutation-$manifest_kind.err" \
-        "ERROR: $expected_mutation_label changed during Step 07: $mutation_path"
+    assert_file_equals "$test_root/mutation-$manifest_kind.err" \
+        "ERROR: $expected_mutation_label changed during Step 07: $mutation_path"$'\n'
     assert_not_exists "$mutation_output/cohort_mutation.1.FWD_like.mpileup.vcf"
     assert_not_exists "$mutation_output/cohort_mutation.1.REV_like.mpileup.vcf"
     assert_not_exists "$mutation_output/cohort_mutation.1.step07_outputs.tsv"
     assert_not_exists "$mutation_output/.cohort_mutation.1.step07.lock"
-    assert_text_equals "$mutation_unrelated" "preserve mutation neighbor"
+    assert_file_equals "$mutation_unrelated" $'preserve mutation neighbor\n'
     assert_no_owned_step07_paths "$mutation_output" \
         '.cohort_mutation.1.step07.*'
 done
@@ -757,7 +757,7 @@ mismatch_args=(
     --output-root "$mismatch_fixture/output"
     --bcftools-bin "$fake_bcftools"
 )
-run_expect_failure "$test_root/mismatch.out" "$test_root/mismatch.err" \
+run_expect_status 1 "$test_root/mismatch.out" "$test_root/mismatch.err" \
     env FAKE_BCFTOOLS_SAMPLES=sample_B,sample_A \
     bash "$script" "${mismatch_args[@]}" --execute
 assert_contains "$test_root/mismatch.err" "sample order does not match"
@@ -770,7 +770,7 @@ stale_dir="$stale_fixture/output/cohort_stale/1"
 stale_path="$stale_dir/.cohort_stale.1.step07.unit07.FWD_like.tmp.vcf"
 mkdir -p "$stale_dir"
 printf 'foreign scratch\n' >"$stale_path"
-run_expect_failure "$test_root/stale.out" "$test_root/stale.err" \
+run_expect_status 1 "$test_root/stale.out" "$test_root/stale.err" \
     env SLURM_JOB_ID=unit07 FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
     bash "$script" \
     --cohort-id cohort_stale \
@@ -791,7 +791,7 @@ rm -rf "$lock_fixture/output"
 lock_dir="$lock_fixture/output/cohort_lock/1/.cohort_lock.1.step07.lock"
 mkdir -p "$lock_dir"
 printf 'foreign\n' >"$lock_dir/owner"
-run_expect_failure "$test_root/lock.out" "$test_root/lock.err" \
+run_expect_status 1 "$test_root/lock.out" "$test_root/lock.err" \
     env FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
     bash "$script" \
     --cohort-id cohort_lock \
@@ -842,8 +842,8 @@ expected_transaction_destinations="$(printf '%s\n%s\n%s' \
     "$transaction_fwd" "$transaction_rev" "$transaction_receipt")"
 [[ "$transaction_destinations" == "$expected_transaction_destinations" ]] ||
     fail "Step 07 final move order must be FWD, REV, receipt"
-assert_text_equals "$transaction_observation" \
-    "fwd-rev-receipt-visible-before-commit"
+assert_file_equals "$transaction_observation" \
+    $'fwd-rev-receipt-visible-before-commit\n'
 
 restore_failure_fixture="$test_root/restore-failure"
 cp -R "$fixture" "$restore_failure_fixture"
@@ -886,12 +886,12 @@ restore_failure_fwd_backup="$restore_failure_dir/.cohort_restore.1.step07.$resto
 restore_failure_rev_backup="$restore_failure_dir/.cohort_restore.1.step07.$restore_token.previous.REV_like.vcf"
 restore_failure_receipt_backup="$restore_failure_dir/.cohort_restore.1.step07.$restore_token.previous.outputs.tsv"
 assert_not_exists "$restore_failure_fwd"
-assert_text_equals "$restore_failure_fwd_backup" "prior fwd bytes"
-assert_text_equals "$restore_failure_rev" "prior rev bytes"
-assert_text_equals "$restore_failure_receipt" "prior receipt bytes"
+assert_file_equals "$restore_failure_fwd_backup" $'prior fwd bytes\n'
+assert_file_equals "$restore_failure_rev" $'prior rev bytes\n'
+assert_file_equals "$restore_failure_receipt" $'prior receipt bytes\n'
 assert_not_exists "$restore_failure_rev_backup"
 assert_not_exists "$restore_failure_receipt_backup"
-assert_text_equals "$restore_failure_unrelated" "preserve restore neighbor"
+assert_file_equals "$restore_failure_unrelated" $'preserve restore neighbor\n'
 assert_not_exists "$restore_failure_dir/.cohort_restore.1.step07.lock"
 assert_not_exists "$restore_failure_dir/.cohort_restore.1.step07.$restore_token.FWD_like.tmp.vcf"
 assert_not_exists "$restore_failure_dir/.cohort_restore.1.step07.$restore_token.REV_like.tmp.vcf"
@@ -940,10 +940,10 @@ run_expect_status 143 "$test_root/term.out" "$test_root/term.err" \
     FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
     SLURM_JOB_ID="$term_token" \
     bash "$script" "${term_args[@]}" --execute
-assert_text_equals "$term_fwd" "term prior fwd"
-assert_text_equals "$term_rev" "term prior rev"
-assert_text_equals "$term_receipt" "term prior receipt"
-assert_text_equals "$term_unrelated" "preserve term neighbor"
+assert_file_equals "$term_fwd" $'term prior fwd\n'
+assert_file_equals "$term_rev" $'term prior rev\n'
+assert_file_equals "$term_receipt" $'term prior receipt\n'
+assert_file_equals "$term_unrelated" $'preserve term neighbor\n'
 assert_not_exists "$term_dir/.cohort_term.1.step07.lock"
 assert_no_owned_step07_paths "$term_dir" \
     ".cohort_term.1.step07.$term_token.*"
@@ -993,8 +993,8 @@ run_expect_status 1 "$test_root/concurrency-second.out" \
     env FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
     bash "$script" "${concurrency_args[@]}" --execute
 concurrency_lock="$concurrency_fixture/output/cohort_concurrent/1/.cohort_concurrent.1.step07.lock"
-assert_text_equals "$test_root/concurrency-second.err" \
-    "ERROR: Step 07 lock already exists: $concurrency_lock"
+assert_file_equals "$test_root/concurrency-second.err" \
+    "ERROR: Step 07 lock already exists: $concurrency_lock"$'\n'
 : >"$concurrency_release"
 if wait "$concurrency_first_pid"; then
     concurrency_first_status=0
@@ -1031,7 +1031,7 @@ rollback_receipt="$rollback_dir/cohort_rollback.1.step07_outputs.tsv"
 printf 'previous fwd\n' >"$rollback_fwd"
 printf 'previous rev\n' >"$rollback_rev"
 printf 'previous receipt\n' >"$rollback_receipt"
-run_expect_failure "$test_root/rollback.out" "$test_root/rollback.err" \
+run_expect_status 1 "$test_root/rollback.out" "$test_root/rollback.err" \
     env FAKE_FAIL_FINAL_VALIDATION=1 FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
     bash "$script" "${rollback_args[@]}" --execute
 assert_contains "$test_root/rollback.err" "Published FWD_like VCF header validation failed"
@@ -1050,7 +1050,7 @@ rm -rf "$partial_fixture/output"
 partial_dir="$partial_fixture/output/cohort_partial/1"
 mkdir -p "$partial_dir"
 printf 'existing\n' >"$partial_dir/cohort_partial.1.FWD_like.mpileup.vcf"
-run_expect_failure "$test_root/partial.out" "$test_root/partial.err" \
+run_expect_status 1 "$test_root/partial.out" "$test_root/partial.err" \
     env FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
     bash "$script" \
     --cohort-id cohort_partial \
@@ -1133,7 +1133,7 @@ cat >"$wrapper_missing_owner/step_07_bcftools_mpileup_by_chrom_and_strand.sh" <<
 #!/usr/bin/env bash
 exit 0
 STUB
-run_expect_failure "$test_root/wrapper-missing.out" "$test_root/wrapper-missing.err" \
+run_expect_status 1 "$test_root/wrapper-missing.out" "$test_root/wrapper-missing.err" \
     env \
     PATH="$fake_bin:$PATH" \
     SLURM_SUBMIT_DIR="$wrapper_missing_root" \
@@ -1146,7 +1146,7 @@ assert_contains "$test_root/wrapper-missing.err" "Expected FWD_like VCF does not
 
 invalid_wrapper_root="$test_root/wrapper-invalid"
 mkdir -p "$invalid_wrapper_root"
-run_expect_failure "$test_root/wrapper-invalid.out" "$test_root/wrapper-invalid.err" \
+run_expect_status 1 "$test_root/wrapper-invalid.out" "$test_root/wrapper-invalid.err" \
     env PATH="$fake_bin:$PATH" SLURM_SUBMIT_DIR="$invalid_wrapper_root" EXECUTE=2 \
     bash "$job"
 assert_contains "$test_root/wrapper-invalid.err" "EXECUTE must be 0 or 1"

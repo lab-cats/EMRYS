@@ -69,14 +69,6 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/signal_traps.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
 
-resolve_bcftools() {
-    local value="${bcftools_bin_arg:-}"
-    if [[ -z "$value" && -n "${BCFTOOLS_BIN_OVERRIDE:-}" ]]; then
-        value="$BCFTOOLS_BIN_OVERRIDE"
-    fi
-    resolve_executable_value "bcftools" "$value" "bcftools"
-}
-
 confirm_input_manifest_hashes() {
     local current_sample_hash
     local current_partition_hash
@@ -341,7 +333,7 @@ validate_receipt() {
 declare_required_arguments \
     cohort_id sample_manifest partition_manifest partition_id \
     orientation_root reference_fasta output_root
-bcftools_bin_arg=""
+requested_bcftools_bin=""
 max_depth="10000000"
 filter_expression='INFO/AD[1-]>2 & MAX(FORMAT/DP)>20'
 execute=false
@@ -355,7 +347,7 @@ while [[ $# -gt 0 ]]; do
         --orientation-root) assign_option_value "$1" "${2:-}" orientation_root; shift 2 ;;
         --reference-fasta) assign_option_value "$1" "${2:-}" reference_fasta; shift 2 ;;
         --output-root) assign_option_value "$1" "${2:-}" output_root; shift 2 ;;
-        --bcftools-bin) assign_option_value "$1" "${2:-}" bcftools_bin_arg; shift 2 ;;
+        --bcftools-bin) assign_option_value "$1" "${2:-}" requested_bcftools_bin; shift 2 ;;
         --max-depth) assign_option_value "$1" "${2:-}" max_depth; shift 2 ;;
         --filter-expression) assign_option_value "$1" "${2:-}" filter_expression; shift 2 ;;
         *)
@@ -378,7 +370,10 @@ validate_nonempty_file "Reference FASTA" "$reference_fasta"
 validate_nonempty_file "Reference FASTA index" "$reference_fasta.fai"
 validate_fai_structure "$reference_fasta.fai"
 
-bcftools_bin="$(resolve_bcftools)"
+bcftools_bin="$(
+    resolve_overridable_executable \
+        "bcftools" "$requested_bcftools_bin" BCFTOOLS_BIN_OVERRIDE bcftools
+)"
 sample_manifest_sha256="$(sha256_file "$sample_manifest")"
 partition_manifest_sha256="$(sha256_file "$partition_manifest")"
 
