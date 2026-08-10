@@ -26,13 +26,6 @@ selection, implementation, or publication authority.
 - **Intent:** Classify every source file's module header, public docstrings, and non-obvious invariant comments as sufficient, update, defer, or exclude.
 - **Boundaries:** Preserve CLI help and byte-sensitive fixtures; do not turn inline comments into data, duplicate owner documentation, or execute a rollout.
 
-## COMPRESS-01 — Compress repository cognitive surface
-
-- **Kind:** actionable
-- **Blocked by:** None
-- **Intent:** Reduce repository cognitive surface by consolidating or removing unnecessary code, documentation, workflow, and ownership complexity while preserving required behavior and meaning.
-- **Boundaries:** Preserve public, scientific, evidence, transaction, recovery, and compatibility contracts; create no phase-specific backlog items or advance/future slice cards, and keep execution refinement just in time under this single campaign identity.
-
 ## DOC-README-03 — Establish directory README coverage
 
 - **Kind:** actionable
