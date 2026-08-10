@@ -23,7 +23,7 @@ SHELL_SYNTAX_PATHS := \
 	src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
 	src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
 	src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh \
-	src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh
+	src/norad/evidence/scientific_review_package/step_09c_scientific_validation.sh
 
 SLURM_SYNTAX_PATHS := \
 	src/norad/evidence/runtime_preflight/tool_check.slurm \
@@ -58,7 +58,7 @@ validation-shell-contracts:
 	bash tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
 	bash tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.sh
 	bash tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.sh
-	bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.sh
+	bash tests/evidence/scientific_review_package/test_step_09c_scientific_validation.sh
 	bash tests/shell/test_local_r_environment.sh
 	bash tests/reporting/test_render_run_report.sh
 

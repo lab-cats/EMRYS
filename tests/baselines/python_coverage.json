@@ -39,10 +39,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 14,
-      "covered_lines": 88,
+      "covered_lines": 96,
       "line_rate": "1.000000",
       "num_branches": 14,
-      "num_statements": 88,
+      "num_statements": 96,
       "path": "src/norad/__main__.py"
     },
     {
@@ -340,141 +340,6 @@
       "line_rate": "1.000000",
       "num_branches": 0,
       "num_statements": 0,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/__init__.py"
-    },
-    {
-      "branch_rate": "1.000000",
-      "covered_branches": 0,
-      "covered_lines": 0,
-      "line_rate": "1.000000",
-      "num_branches": 0,
-      "num_statements": 0,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/__init__.py"
-    },
-    {
-      "branch_rate": "0.761905",
-      "covered_branches": 32,
-      "covered_lines": 71,
-      "line_rate": "0.887500",
-      "num_branches": 42,
-      "num_statements": 80,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/_evidence_manifest.py"
-    },
-    {
-      "branch_rate": "1.000000",
-      "covered_branches": 0,
-      "covered_lines": 27,
-      "line_rate": "1.000000",
-      "num_branches": 0,
-      "num_statements": 27,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/_intake_models.py"
-    },
-    {
-      "branch_rate": "0.653846",
-      "covered_branches": 17,
-      "covered_lines": 57,
-      "line_rate": "0.850746",
-      "num_branches": 26,
-      "num_statements": 67,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/_intake_support.py"
-    },
-    {
-      "branch_rate": "0.705882",
-      "covered_branches": 24,
-      "covered_lines": 47,
-      "line_rate": "0.824561",
-      "num_branches": 34,
-      "num_statements": 57,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/_review_candidates.py"
-    },
-    {
-      "branch_rate": "0.694444",
-      "covered_branches": 25,
-      "covered_lines": 53,
-      "line_rate": "0.828125",
-      "num_branches": 36,
-      "num_statements": 64,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/_review_decisions.py"
-    },
-    {
-      "branch_rate": "0.714286",
-      "covered_branches": 20,
-      "covered_lines": 47,
-      "line_rate": "0.854545",
-      "num_branches": 28,
-      "num_statements": 55,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/_review_plan.py"
-    },
-    {
-      "branch_rate": "0.596154",
-      "covered_branches": 31,
-      "covered_lines": 67,
-      "line_rate": "0.761364",
-      "num_branches": 52,
-      "num_statements": 88,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/_review_sensitivity.py"
-    },
-    {
-      "branch_rate": "0.688679",
-      "covered_branches": 73,
-      "covered_lines": 132,
-      "line_rate": "0.800000",
-      "num_branches": 106,
-      "num_statements": 165,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/audits.py"
-    },
-    {
-      "branch_rate": "0.666667",
-      "covered_branches": 8,
-      "covered_lines": 59,
-      "line_rate": "0.936508",
-      "num_branches": 12,
-      "num_statements": 63,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/context.py"
-    },
-    {
-      "branch_rate": "0.500000",
-      "covered_branches": 2,
-      "covered_lines": 16,
-      "line_rate": "0.888889",
-      "num_branches": 4,
-      "num_statements": 18,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/contracts.py"
-    },
-    {
-      "branch_rate": "0.750000",
-      "covered_branches": 48,
-      "covered_lines": 104,
-      "line_rate": "0.873950",
-      "num_branches": 64,
-      "num_statements": 119,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/evidence.py"
-    },
-    {
-      "branch_rate": "1.000000",
-      "covered_branches": 0,
-      "covered_lines": 6,
-      "line_rate": "1.000000",
-      "num_branches": 0,
-      "num_statements": 6,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/_scientific_review/intake.py"
-    },
-    {
-      "branch_rate": "0.853659",
-      "covered_branches": 70,
-      "covered_lines": 242,
-      "line_rate": "0.864286",
-      "num_branches": 82,
-      "num_statements": 280,
-      "path": "src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.py"
-    },
-    {
-      "branch_rate": "1.000000",
-      "covered_branches": 0,
-      "covered_lines": 0,
-      "line_rate": "1.000000",
-      "num_branches": 0,
-      "num_statements": 0,
       "path": "src/norad/evidence/canonical_bam_qc/__init__.py"
     },
     {
@@ -593,6 +458,141 @@
       "num_branches": 28,
       "num_statements": 113,
       "path": "src/norad/evidence/runtime_preflight/runtime_preflight.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
+      "path": "src/norad/evidence/scientific_review_package/__init__.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
+      "path": "src/norad/evidence/scientific_review_package/_scientific_review/__init__.py"
+    },
+    {
+      "branch_rate": "0.761905",
+      "covered_branches": 32,
+      "covered_lines": 71,
+      "line_rate": "0.887500",
+      "num_branches": 42,
+      "num_statements": 80,
+      "path": "src/norad/evidence/scientific_review_package/_scientific_review/_evidence_manifest.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 27,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 27,
+      "path": "src/norad/evidence/scientific_review_package/_scientific_review/_intake_models.py"
+    },
+    {
+      "branch_rate": "0.653846",
+      "covered_branches": 17,
+      "covered_lines": 57,
+      "line_rate": "0.850746",
+      "num_branches": 26,
+      "num_statements": 67,
+      "path": "src/norad/evidence/scientific_review_package/_scientific_review/_intake_support.py"
+    },
+    {
+      "branch_rate": "0.705882",
+      "covered_branches": 24,
+      "covered_lines": 47,
+      "line_rate": "0.824561",
+      "num_branches": 34,
+      "num_statements": 57,
+      "path": "src/norad/evidence/scientific_review_package/_scientific_review/_review_candidates.py"
+    },
+    {
+      "branch_rate": "0.694444",
+      "covered_branches": 25,
+      "covered_lines": 53,
+      "line_rate": "0.828125",
+      "num_branches": 36,
+      "num_statements": 64,
+      "path": "src/norad/evidence/scientific_review_package/_scientific_review/_review_decisions.py"
+    },
+    {
+      "branch_rate": "0.714286",
+      "covered_branches": 20,
+      "covered_lines": 47,
+      "line_rate": "0.854545",
+      "num_branches": 28,
+      "num_statements": 55,
+      "path": "src/norad/evidence/scientific_review_package/_scientific_review/_review_plan.py"
+    },
+    {
+      "branch_rate": "0.596154",
+      "covered_branches": 31,
+      "covered_lines": 67,
+      "line_rate": "0.761364",
+      "num_branches": 52,
+      "num_statements": 88,
+      "path": "src/norad/evidence/scientific_review_package/_scientific_review/_review_sensitivity.py"
+    },
+    {
+      "branch_rate": "0.688679",
+      "covered_branches": 73,
+      "covered_lines": 132,
+      "line_rate": "0.800000",
+      "num_branches": 106,
+      "num_statements": 165,
+      "path": "src/norad/evidence/scientific_review_package/_scientific_review/audits.py"
+    },
+    {
+      "branch_rate": "0.666667",
+      "covered_branches": 8,
+      "covered_lines": 59,
+      "line_rate": "0.936508",
+      "num_branches": 12,
+      "num_statements": 63,
+      "path": "src/norad/evidence/scientific_review_package/_scientific_review/context.py"
+    },
+    {
+      "branch_rate": "0.500000",
+      "covered_branches": 2,
+      "covered_lines": 16,
+      "line_rate": "0.888889",
+      "num_branches": 4,
+      "num_statements": 18,
+      "path": "src/norad/evidence/scientific_review_package/_scientific_review/contracts.py"
+    },
+    {
+      "branch_rate": "0.750000",
+      "covered_branches": 48,
+      "covered_lines": 104,
+      "line_rate": "0.873950",
+      "num_branches": 64,
+      "num_statements": 119,
+      "path": "src/norad/evidence/scientific_review_package/_scientific_review/evidence.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 6,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 6,
+      "path": "src/norad/evidence/scientific_review_package/_scientific_review/intake.py"
+    },
+    {
+      "branch_rate": "0.850000",
+      "covered_branches": 68,
+      "covered_lines": 182,
+      "line_rate": "0.823529",
+      "num_branches": 80,
+      "num_statements": 221,
+      "path": "src/norad/evidence/scientific_review_package/publisher.py"
     },
     {
       "branch_rate": "1.000000",
@@ -1609,11 +1609,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.748867",
-    "covered_branches": 3304,
-    "covered_lines": 10281,
-    "line_rate": "0.860767",
-    "num_branches": 4412,
-    "num_statements": 11944
+    "branch_rate": "0.748753",
+    "covered_branches": 3302,
+    "covered_lines": 10229,
+    "line_rate": "0.860086",
+    "num_branches": 4410,
+    "num_statements": 11893
   }
 }

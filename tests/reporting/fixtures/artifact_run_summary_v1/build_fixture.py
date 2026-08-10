@@ -16,6 +16,15 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from norad.evidence.scientific_review_package import publisher as STEP09C_PUBLISHER
+from norad.evidence.scientific_review_package._scientific_review import (
+    context as STEP09C_CONTEXT,
+)
+from norad.evidence.scientific_review_package._scientific_review import (
+    contracts as STEP09C,
+)
+from tests.evidence.scientific_review_package import build_fixture as STEP09C_FIXTURE
+
 REPO_ROOT = Path(__file__).resolve().parents[4]
 ADAPTER_FIXTURE_PATH = (
     REPO_ROOT
@@ -23,13 +32,6 @@ ADAPTER_FIXTURE_PATH = (
     / "reporting"
     / "fixtures"
     / "artifact_adapters_v1"
-    / "build_fixture.py"
-)
-STEP09C_FIXTURE_PATH = (
-    REPO_ROOT
-    / "tests"
-    / "evidence"
-    / "assemble_scientific_review_evidence_package"
     / "build_fixture.py"
 )
 FIXED_EPOCH = "1700000000"
@@ -78,13 +80,8 @@ ADAPTER_FIXTURE = load_module(
     "norad_run_summary_adapter_fixture",
     ADAPTER_FIXTURE_PATH,
 )
-STEP09C_FIXTURE = load_module(
-    "norad_run_summary_step09c_fixture",
-    STEP09C_FIXTURE_PATH,
-)
 ADAPTER = ADAPTER_FIXTURE.ADAPTER
-STEP09C = STEP09C_FIXTURE.CONTRACT
-REVIEW_PACKAGE = STEP09C_FIXTURE.REVIEW_PACKAGE
+REVIEW_PACKAGE = STEP09C.review_package
 
 
 @dataclass(frozen=True)
@@ -893,9 +890,11 @@ def build_explicit_science_fixture(
             STEP09C.EVIDENCE_MANIFEST_HEADER,
             evidence_rows,
         )
-    arguments = STEP09C.parse_arguments([*step09c_fixture.command_args(), "--execute"])
-    context, output_tables = STEP09C.build_context(arguments)
-    STEP09C.publish_outputs(context, output_tables)
+    parser = argparse.ArgumentParser()
+    STEP09C_PUBLISHER.configure_parser(parser)
+    arguments = parser.parse_args([*step09c_fixture.command_args(), "--execute"])
+    context, output_tables = STEP09C_CONTEXT.build_context(arguments)
+    STEP09C_PUBLISHER._publish_outputs(context, output_tables)
 
     resolved_run_id = run_id or (
         "science_exploratory_run"

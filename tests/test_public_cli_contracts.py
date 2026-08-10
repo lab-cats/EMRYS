@@ -37,10 +37,6 @@ PYTHON_ENTRYPOINT_PATHS = {
     "runtime_preflight.py": Path(
         "src/norad/evidence/runtime_preflight/runtime_preflight.py"
     ),
-    "step_09c_scientific_validation.py": Path(
-        "src/norad/evidence/assemble_scientific_review_evidence_package/"
-        "step_09c_scientific_validation.py"
-    ),
     "storage_inventory.py": Path(
         "src/norad/evidence/storage_inventory/storage_inventory.py"
     ),
@@ -56,7 +52,6 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
         "reference_provenance.py",
         "render_run_report.py",
         "render_run_report_bundle.py",
-        "step_09c_scientific_validation.py",
         "validate_artifact_contracts.py",
     }
 )
@@ -73,6 +68,10 @@ DIRECT_PYTHON_ENTRYPOINTS = frozenset(
 )
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 NORAD_COMMANDS = (
+    (
+        ("assemble", "scientific-review-package"),
+        "usage: norad assemble scientific-review-package",
+    ),
     (("convert", "gtf-to-bed12"), "usage: norad convert gtf-to-bed12"),
     (("validate", "bed12"), "usage: norad validate bed12"),
     (("validate", "canonical-bam"), "usage: norad validate canonical-bam"),
@@ -154,7 +153,7 @@ SHELL_ENTRYPOINT_PATHS = {
         "step_09_cmh_editing_site_calling.sh"
     ),
     "step_09c_scientific_validation.sh": Path(
-        "src/norad/evidence/assemble_scientific_review_evidence_package/"
+        "src/norad/evidence/scientific_review_package/"
         "step_09c_scientific_validation.sh"
     ),
 }

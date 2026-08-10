@@ -49,7 +49,7 @@ project-storage temporary directory.
 | Sample admission | [`sample_manifest_admission`](../../src/norad/ingestion/sample_manifest_admission/README.md) |
 | Reference preparation and Steps `01`–`08` | [`stages`](../../src/norad/stages/README.md) |
 | Paired CMH ranking | [`rank_cohort_candidates_with_paired_CMH`](../../src/norad/analyses/paired_cmh_candidate_ranking/README.md) |
-| Scientific-review evidence | [`assemble_scientific_review_evidence_package`](../../src/norad/evidence/assemble_scientific_review_evidence_package/README.md) |
+| Scientific-review package assembly | [`assemble_scientific_review_evidence_package`](../../src/norad/evidence/scientific_review_package/README.md); installed route `python -I -m norad assemble scientific-review-package` |
 | Runtime, reference, storage, and QC evidence | [`evidence`](../../src/norad/evidence/README.md) |
 | Artifact schemas | [`artifact contracts`](../../src/norad/contracts/artifacts/README.md) |
 | Artifact index, run summary, and reports | [`reporting`](../../src/norad/reporting/README.md) |

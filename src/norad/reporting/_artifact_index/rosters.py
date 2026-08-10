@@ -134,7 +134,6 @@ STEP_PRODUCERS = {
         "step_09_cmh_editing_site_calling.sh"
     ),
     "09c": (
-        "src/norad/evidence/assemble_scientific_review_evidence_package/"
-        "step_09c_scientific_validation.py"
+        "src/norad/evidence/scientific_review_package/publisher.py"
     ),
 }

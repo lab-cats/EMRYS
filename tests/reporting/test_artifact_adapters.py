@@ -103,9 +103,8 @@ EXPECTED_PRODUCER_EVIDENCE = {
         "9311dc4a847e8f749c3fe033112070279b9d7beb0ff5dfaf69f67702b81f15bc",
     ),
     "09c": (
-        "src/norad/evidence/assemble_scientific_review_evidence_package/"
-        "step_09c_scientific_validation.py",
-        "5a70f72c187958aec9797bc5fdf6f75844f01d0e3436d856d500b9391960134f",
+        "src/norad/evidence/scientific_review_package/publisher.py",
+        "e11b83f3ee6c0c6344693077416ee916ccab8f4a82d3bee3acab234176e99c67",
     ),
 }
 VALIDATION_ARTIFACT_STEPS = {
@@ -296,7 +295,7 @@ def test_contract_modules_are_shared_package_identities() -> None:
 
 def test_artifact_index_has_no_private_step09c_dependency() -> None:
     source = Path(ADAPTER.__file__).read_text(encoding="utf-8")
-    assert "step_09c_scientific_validation.py" not in source
+    assert "norad.evidence.scientific_review_package" not in source
     assert not hasattr(ADAPTER, "step09c")
 
 

@@ -3,16 +3,21 @@
 Native owner of
 `norad.evidence.assemble_scientific_review_evidence_package.v1` (historical
 `09c`). [`CONTRACT.md`](CONTRACT.md) owns the exact thirteen-output,
-evidence-state, recovery, and consumer contract.
+evidence-state, recovery, and consumer contract. The shorter
+`scientific_review_package` name is the physical/package location; it does not
+replace the semantic slug or ID.
 
 ## Entry points
 
-- launcher: [`step_09c_scientific_validation.sh`](step_09c_scientific_validation.sh)
-- validation/publication owner: [`step_09c_scientific_validation.py`](step_09c_scientific_validation.py)
+- grouped assembly: `python -I -m norad assemble scientific-review-package`,
+  implemented by private [`publisher.py`](publisher.py)
+- repository launcher: [`step_09c_scientific_validation.sh`](step_09c_scientific_validation.sh)
 - private implementation seams: [`_scientific_review/`](_scientific_review/README.md)
 
-There is no scheduler wrapper, installed command, external package API, legacy
-path, or ambient `PYTHONPATH` contract.
+There is no scheduler wrapper, external Python API, retired-owner path, or
+ambient `PYTHONPATH` contract. `publisher.py` is private; invoke the grouped
+command from an installed distribution or the repository launcher from a
+checkout.
 
 ## Operate
 
@@ -22,12 +27,30 @@ and output root. It never discovers substitutes, reruns CMH, infers reviewer
 decisions, repairs evidence, or installs dependencies.
 
 The tracked example plans/manifests/schemas are structural references, not
-selected inputs or production evidence. Dry-run writes nothing:
+selected inputs or production evidence. The installed grouped command is the
+package-native route. Dry-run writes nothing:
+
+```bash
+python -I -m norad assemble scientific-review-package \
+  --review-id REVIEW_ID \
+  --sample-manifest /explicit/path/to/samples.tsv \
+  --partition-manifest /explicit/path/to/partitions.tsv \
+  --step08-sites /explicit/path/to/cohort.step08_sites.tsv \
+  --step08-inputs /explicit/path/to/cohort.step08_inputs.tsv \
+  --step08-summary /explicit/path/to/cohort.step08_summary.tsv \
+  --step09-analysis-dir /explicit/path/to/analysis \
+  --review-plan /explicit/path/to/review_plan.tsv \
+  --evidence-manifest /explicit/path/to/evidence_manifest.tsv \
+  --output-root /explicit/path/to/scientific_validation
+```
+
+The repository shell surface preserves its Python-selection and delegation
+contract:
 
 ```bash
 review=REVIEW_ID analysis=ANALYSIS_ID cohort=COHORT_ID
 PYTHON_BIN_OVERRIDE=.venv/bin/python \
-  src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh \
+  src/norad/evidence/scientific_review_package/step_09c_scientific_validation.sh \
   --review-id "$review" \
   --sample-manifest samples.tsv \
   --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
@@ -54,9 +77,10 @@ complete scientific review, validate editing sites, or establish biology.
 Execute locks one review, stages thirteen tables, requires all predecessors or
 none, publishes twelve payloads, then the summary, and rechecks all bound
 inputs. Summary visibility precedes final validation and does not prove commit.
-Failed restoration preserves the lock/backups/transaction/recovery notice.
-`TERM` and `KeyboardInterrupt` have characterized severe recovery defects; see
-the exact states in the contract before any recovery action.
+An incomplete ordinary restoration preserves the lock, transaction paths, and
+recovery notice. `TERM` and `KeyboardInterrupt` have different characterized
+severe recovery defects; see the exact states in the contract before any
+recovery action.
 
 ## Diagnose and verify
 
@@ -68,9 +92,9 @@ manufacture a member, delete a foreign/recovery lock, discard a backup, or
 reuse an ambiguous root.
 
 ```bash
-bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.sh
+bash tests/evidence/scientific_review_package/test_step_09c_scientific_validation.sh
 .venv/bin/python -m pytest -q \
-  tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py \
+  tests/evidence/scientific_review_package/test_step_09c_scientific_validation.py \
   tests/contracts/scientific_evidence/test_step08.py \
   tests/contracts/scientific_evidence/test_step09.py \
   tests/contracts/scientific_evidence/test_review_package.py \

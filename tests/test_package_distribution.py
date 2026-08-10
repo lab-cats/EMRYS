@@ -15,7 +15,10 @@ from pathlib import Path
 import pytest
 
 from norad import __main__ as norad_cli
-from norad.contracts.scientific_evidence import step08, step09
+from norad.contracts.scientific_evidence import review_package, step08, step09
+from tests.evidence.scientific_review_package import (
+    build_fixture as scientific_review_fixture,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI_USAGE_ERROR = 2
@@ -32,35 +35,26 @@ RESOURCE_PATHS = (
 EVIDENCE_PACKAGE_PATHS = frozenset(
     {
         "norad/evidence/__init__.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/__init__.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
-        "_scientific_review/__init__.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "norad/evidence/scientific_review_package/__init__.py",
+        "norad/evidence/scientific_review_package/_scientific_review/__init__.py",
+        "norad/evidence/scientific_review_package/"
         "_scientific_review/_evidence_manifest.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
-        "_scientific_review/_intake_models.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "norad/evidence/scientific_review_package/_scientific_review/_intake_models.py",
+        "norad/evidence/scientific_review_package/"
         "_scientific_review/_intake_support.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "norad/evidence/scientific_review_package/"
         "_scientific_review/_review_candidates.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "norad/evidence/scientific_review_package/"
         "_scientific_review/_review_decisions.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
-        "_scientific_review/_review_plan.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
+        "norad/evidence/scientific_review_package/_scientific_review/_review_plan.py",
+        "norad/evidence/scientific_review_package/"
         "_scientific_review/_review_sensitivity.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
-        "_scientific_review/audits.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
-        "_scientific_review/context.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
-        "_scientific_review/contracts.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
-        "_scientific_review/evidence.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
-        "_scientific_review/intake.py",
-        "norad/evidence/assemble_scientific_review_evidence_package/"
-        "step_09c_scientific_validation.py",
+        "norad/evidence/scientific_review_package/_scientific_review/audits.py",
+        "norad/evidence/scientific_review_package/_scientific_review/context.py",
+        "norad/evidence/scientific_review_package/_scientific_review/contracts.py",
+        "norad/evidence/scientific_review_package/_scientific_review/evidence.py",
+        "norad/evidence/scientific_review_package/_scientific_review/intake.py",
+        "norad/evidence/scientific_review_package/publisher.py",
         "norad/evidence/canonical_bam_qc/__init__.py",
         "norad/evidence/canonical_bam_qc/validator.py",
         "norad/evidence/rseqc_orientation/__init__.py",
@@ -1699,6 +1693,65 @@ def _assert_installed_paired_cmh_candidate_ranking_validation(
     )
 
 
+def _assert_installed_scientific_review_package_assembly(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    fixture = scientific_review_fixture.build_fixture(
+        working_directory / "scientific-review-package-inputs"
+    )
+    input_paths = tuple(
+        sorted(path for path in fixture.root.rglob("*") if path.is_file())
+    )
+    input_states = tuple(
+        (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    )
+    unrelated_path = working_directory / "scientific-review-package-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+    unrelated_state = (unrelated_path.read_bytes(), unrelated_path.stat().st_mode)
+
+    assembly = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "assemble",
+        "scientific-review-package",
+        *fixture.command_args(),
+    )
+
+    assert assembly.returncode == 0, assembly.stdout + assembly.stderr
+    assert assembly.stderr == ""
+    output_lines = assembly.stdout.splitlines()
+    assert output_lines[:5] == [
+        "Step 09c scientific-validation evidence package",
+        "Mode: dry-run",
+        f"Review ID: {fixture.review_id}",
+        f"Primary analysis ID: {scientific_review_fixture.PRIMARY_ANALYSIS_ID}",
+        "Overall science status: evidence_incomplete",
+    ]
+    output_marker = "Declared outputs (review summary is the final transaction marker):"
+    marker_index = output_lines.index(output_marker)
+    output_directory = fixture.output_root.resolve() / fixture.review_id
+    assert output_lines[marker_index + 1 : -1] == [
+        f"  {key}: {output_directory / f'{fixture.review_id}.{suffix}'}"
+        for key, suffix in review_package.OUTPUT_SUFFIXES
+    ]
+    assert output_lines[-1] == (
+        "Dry-run complete; no output directory or final files were created."
+    )
+    assert not fixture.output_root.exists()
+    assert not list(fixture.root.rglob("*.validation.tsv"))
+    assert not list(fixture.root.rglob(".*step09c*"))
+    assert (
+        tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
+        == input_states
+    )
+    assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
+        unrelated_state
+    )
+
+
 def _assert_installed_commands(
     environment_python: Path,
     working_directory: Path,
@@ -1811,6 +1864,11 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_scientific_review_package_assembly(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_private_source_layout() -> None:
@@ -1894,6 +1952,16 @@ def _assert_private_source_layout() -> None:
         assert (current_source / "validator.py").stat().st_mode & 0o111 == 0
         assert not (REPO_ROOT / "tests" / retired_relative).exists()
         assert (REPO_ROOT / "tests" / current_relative).is_dir()
+
+    scientific_review_source = (
+        REPO_ROOT / "src/norad/evidence/scientific_review_package"
+    )
+    retired_scientific_review = "evidence/assemble_scientific_review_evidence_package"
+    assert not (REPO_ROOT / "src/norad" / retired_scientific_review).exists()
+    assert not (scientific_review_source / "step_09c_scientific_validation.py").exists()
+    assert (scientific_review_source / "publisher.py").stat().st_mode & 0o111 == 0
+    assert not (REPO_ROOT / "tests" / retired_scientific_review).exists()
+    assert (REPO_ROOT / "tests/evidence/scientific_review_package").is_dir()
 
 
 def _assert_wrong_checkout_rejected(

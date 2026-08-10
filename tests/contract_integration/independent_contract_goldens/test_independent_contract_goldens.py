@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 import csv
 import importlib
-import importlib.util
 import json
 import sys
 from collections.abc import Callable, Mapping
@@ -16,6 +15,12 @@ from typing import Any
 import pytest
 from norad.analyses.paired_cmh_candidate_ranking import (
     validator as STEP09_VALIDATOR,
+)
+from norad.evidence.scientific_review_package._scientific_review import (
+    contracts as SCIENTIFIC_REVIEW,
+)
+from norad.evidence.scientific_review_package._scientific_review import (
+    intake as SCIENTIFIC_REVIEW_INTAKE,
 )
 from norad.stages.cohort_candidate_preprocessing import validator as STEP08_VALIDATOR
 
@@ -37,26 +42,6 @@ SHARED_SCIENCE = RUN_SUMMARY.science
 REVIEW_PACKAGE = ARTIFACT_INDEX.review_package
 
 
-def load_exact_test_module(name: str, path: Path) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(name, path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    try:
-        spec.loader.exec_module(module)
-    except BaseException:
-        if sys.modules.get(name) is module:
-            del sys.modules[name]
-        raise
-    return module
-
-
-SCIENTIFIC_REVIEW = load_exact_test_module(
-    "_independent_step09c_producer",
-    REPO_ROOT
-    / "src/norad/evidence/assemble_scientific_review_evidence_package"
-    / "step_09c_scientific_validation.py",
-)
 HEADER_MODULES: Mapping[str, ModuleType] = {
     "build_artifact_index": ARTIFACT_INDEX,
     "build_run_summary": RUN_SUMMARY,
@@ -285,7 +270,7 @@ def test_step09c_tsv_writer_matches_exact_independent_utf8_golden(
     header = values[0]
     rows = [dict(zip(header, row, strict=True)) for row in values[1:]]
     actual_path = tmp_path / "actual.tsv"
-    SCIENTIFIC_REVIEW.write_tsv(actual_path, header, rows)
+    SCIENTIFIC_REVIEW_INTAKE.write_tsv(actual_path, header, rows)
     assert actual_path.read_bytes() == expected_path.read_bytes()
 
 

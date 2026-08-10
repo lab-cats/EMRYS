@@ -7,8 +7,9 @@ availability, inventory, and review-package owners.
   and
   [`rseqc_orientation/`](rseqc_orientation/README.md)
   protect numbered mechanical-evidence operations.
-- [`assemble_scientific_review_evidence_package/`](assemble_scientific_review_evidence_package/README.md)
-  protects the Step 09c evidence package and recovery boundary.
+- [`scientific_review_package/`](scientific_review_package/README.md) protects
+  the semantic `assemble_scientific_review_evidence_package` Step `09c`
+  evidence package and recovery boundary.
 - [`reference_provenance/`](reference_provenance/README.md),
   [`runtime_preflight/`](runtime_preflight/README.md), and
   [`storage_inventory/`](storage_inventory/README.md) protect cross-cutting

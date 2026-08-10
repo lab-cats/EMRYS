@@ -8,7 +8,7 @@ report projections, or neutral contracts.
 | --- | --- |
 | [`collect_canonical_BAM_QC_evidence`](canonical_bam_qc/README.md) | Numbered evidence operation `02b`; collects and validates canonical-BAM QC evidence. |
 | [`collect_RSeQC_paired_orientation_evidence`](rseqc_orientation/README.md) | Numbered evidence operation `03`; collects paired-orientation evidence without selecting a biological strandedness policy. |
-| [`assemble_scientific_review_evidence_package`](assemble_scientific_review_evidence_package/README.md) | Numbered evidence operation `09c`; validates and packages declared review evidence without granting scientific approval. |
+| [`assemble_scientific_review_evidence_package`](scientific_review_package/README.md) | Numbered evidence operation `09c`, physically owned by `scientific_review_package`; validates and packages declared review evidence without granting scientific approval. |
 | [`reference_provenance`](reference_provenance/README.md) | Reconciles one explicitly declared reference bundle without repair. |
 | [`runtime_preflight`](runtime_preflight/README.md) | Records declared runtime-availability probes and owns the separate manual cluster module/tool smoke probe; neither installs software or executes the workflow. |
 | [`storage_inventory`](storage_inventory/README.md) | Measures declared storage roots and records retention-policy state without acting on it. |
@@ -22,6 +22,11 @@ Steps `02b` and `03` keep their shell producers and schedulers as
 repository-path interfaces while exposing their private validators as
 `python -I -m norad validate canonical-bam-qc` and
 `python -I -m norad validate rseqc-orientation`, respectively.
+Step `09c` keeps its repository
+[`step_09c_scientific_validation.sh`](scientific_review_package/step_09c_scientific_validation.sh)
+launcher and exposes installed assembly as
+`python -I -m norad assemble scientific-review-package` through a private
+publisher. It has no scheduler wrapper.
 
 Use the [`RUNBOOK`](../../../docs/operations/RUNBOOK.md) for supported commands,
 [`TROUBLESHOOTING`](../../../docs/operations/TROUBLESHOOTING.md) for failure and

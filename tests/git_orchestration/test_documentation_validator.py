@@ -58,7 +58,7 @@ SEMANTIC_OWNERS = (
     ("analysis", "rank_cohort_candidates_with_paired_CMH"),
     ("evidence", "collect_canonical_BAM_QC_evidence"),
     ("evidence", "collect_RSeQC_paired_orientation_evidence"),
-    ("evidence", "EVIDENCE-03"),
+    ("evidence", "assemble_scientific_review_evidence_package"),
 )
 SOURCE_OWNER_DIRECTORIES = {
     (
@@ -67,6 +67,10 @@ SOURCE_OWNER_DIRECTORIES = {
     ): "paired_cmh_candidate_ranking",
     ("evidence", "collect_canonical_BAM_QC_evidence"): "canonical_bam_qc",
     ("evidence", "collect_RSeQC_paired_orientation_evidence"): "rseqc_orientation",
+    (
+        "evidence",
+        "assemble_scientific_review_evidence_package",
+    ): "scientific_review_package",
     ("stage", "align_RNA_reads_with_STAR"): "star_alignment",
     ("stage", "construct_canonical_BAM"): "canonical_bam",
     ("stage", "construct_STAR_index"): "star_index",

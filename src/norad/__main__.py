@@ -18,6 +18,9 @@ from norad.evidence.canonical_bam_qc import (
 from norad.evidence.rseqc_orientation import (
     validator as rseqc_orientation_validation_command,
 )
+from norad.evidence.scientific_review_package import (
+    publisher as scientific_review_package_command,
+)
 from norad.ingestion.sample_manifest_admission import (
     validator as manifest_command,
 )
@@ -111,6 +114,20 @@ def _add_validation_command(
     subject_parser.set_defaults(_command_handler=command.validate_from_args)
 
 
+def _add_scientific_review_package_command(
+    assembly_parsers: _SubparserCollection,
+) -> None:
+    package_parser = assembly_parsers.add_parser(
+        "scientific-review-package",
+        help="Assemble one declared scientific-review evidence package.",
+        description=scientific_review_package_command.DESCRIPTION,
+    )
+    scientific_review_package_command.configure_parser(package_parser)
+    package_parser.set_defaults(
+        _command_handler=scientific_review_package_command.assemble_from_args
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the public parser from owner-supplied command definitions."""
     parser = argparse.ArgumentParser(
@@ -122,6 +139,16 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="COMMAND",
         required=True,
     )
+    assemble_parser = command_parsers.add_parser(
+        "assemble",
+        help="Assemble an explicitly declared NORAD evidence package.",
+    )
+    assembly_parsers = assemble_parser.add_subparsers(
+        dest="assembly",
+        metavar="SUBJECT",
+        required=True,
+    )
+    _add_scientific_review_package_command(assembly_parsers)
     convert_parser = command_parsers.add_parser(
         "convert",
         help="Convert an explicitly selected NORAD input.",

@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[3]
 OWNER = ROOT / "src/norad/contracts/scientific_evidence/step09.py"
 FIXTURE_BUILDER = (
     ROOT
-    / "tests/evidence/assemble_scientific_review_evidence_package"
+    / "tests/evidence/scientific_review_package"
     / "build_fixture.py"
 )
 MODULE_NAME = "_norad_step09_scientific_evidence_contract"
@@ -247,9 +247,9 @@ def test_public_api_fingerprint_matches_pre_extraction_oracle() -> None:
 
 
 def test_step08_contract_and_shared_type_identities_are_exact() -> None:
-    assert STEP09.step08 is FIXTURES.STEP08
-    assert STEP09.ContractError is FIXTURES.STEP08.ContractError
-    assert STEP09.Table is FIXTURES.STEP08.Table
+    assert STEP09.step08 is FIXTURES.step08
+    assert STEP09.ContractError is FIXTURES.step08.ContractError
+    assert STEP09.Table is FIXTURES.step08.Table
 
 
 def test_valid_fixture_passes_every_public_validator_with_exact_results(

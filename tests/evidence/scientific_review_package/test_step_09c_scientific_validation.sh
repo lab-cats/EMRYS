@@ -3,9 +3,9 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-owner_root="$repo_root/src/norad/evidence/assemble_scientific_review_evidence_package"
+owner_root="$repo_root/src/norad/evidence/scientific_review_package"
 script="$owner_root/step_09c_scientific_validation.sh"
-fixture_builder="$repo_root/tests/evidence/assemble_scientific_review_evidence_package/build_fixture.py"
+fixture_builder="$repo_root/tests/evidence/scientific_review_package/build_fixture.py"
 test_root="$(mktemp -d)"
 trap 'rm -rf "$test_root"' EXIT
 invocation_cwd="$test_root/invocation-cwd"
@@ -167,7 +167,11 @@ mock_args="$test_root/mock-args.txt"
 mock_expected_args="$test_root/mock-expected-args.txt"
 mock_output_root="$test_root/mock-output"
 printf '%s\n' \
-    "$owner_root/step_09c_scientific_validation.py" \
+    -I \
+    -m \
+    norad \
+    assemble \
+    scientific-review-package \
     "${input_args[@]}" \
     --output-root "$mock_output_root" \
     >"$mock_expected_args"
@@ -189,11 +193,11 @@ set -e
     fail "wrapper did not preserve child exit 23; got $mock_status"
 assert_contains "$(<"$test_root/mock.out")" "Python: $mock_python"
 assert_contains "$(<"$test_root/mock.out")" \
-    "Python implementation: $owner_root/step_09c_scientific_validation.py"
+    "NORAD command: assemble scientific-review-package"
 assert_contains "$(<"$test_root/mock.out")" "child stdout marker"
 assert_contains "$(<"$test_root/mock.err")" "child stderr marker"
 diff -u "$mock_expected_args" "$mock_args" ||
-    fail "wrapper did not delegate the exact sibling implementation and arguments"
+    fail "wrapper did not delegate the exact installed command and arguments"
 [[ ! -e "$mock_output_root" ]] ||
     fail "mock delegation unexpectedly created its output root"
 

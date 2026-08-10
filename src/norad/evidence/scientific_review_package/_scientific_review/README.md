@@ -1,8 +1,10 @@
 # Scientific-review internals
 
 This private package decomposes the Step `09c` implementation behind
-[`step_09c_scientific_validation.py`](../step_09c_scientific_validation.py).
-The public script remains the shared CLI and compatibility facade.
+[`publisher.py`](../publisher.py). The grouped
+`python -I -m norad assemble scientific-review-package` command and repository
+shell launcher are the public routes; the publisher and these modules are not
+additional public APIs.
 
 The modules retain explicit owner-local responsibilities: neutral-contract
 identity; intake models and support; review-plan validation; evidence-manifest
@@ -15,6 +17,7 @@ decision/limitation owners directly.
 These modules do not form a generic stage framework or a public library.
 
 Locking, staging, final rereads, stable-input checks, summary-last publication,
-rollback, and recovery remain in the facade. The facade imports this package
-through its normal `norad.evidence` identity, including when the public CLI
-bootstraps the repository `src` root.
+rollback, and recovery remain in the publisher. The 42-line `intake.py`
+compatibility facade remains intentionally retained for this packaging slice;
+its possible collapse is a later private-module micro-slice. The publisher
+imports this package through its normal `norad.evidence` identity.

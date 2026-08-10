@@ -5,7 +5,8 @@ scientific-evidence governance and review operation, not a computational
 transformation or analysis rerun. The exact public identity and historical
 alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug and is now the implemented source location.
+is the shorter physical/package owner; it does not change that semantic slug
+or ID.
 
 ## Responsibility and execution dependencies
 
@@ -90,23 +91,37 @@ for every primary input. It is published last as the native commit marker.
 `computational_validation` is retained through the evidence index and its
 external source; it has no dedicated normalized table among the 13 outputs.
 
-[`step_09c_scientific_validation.py`](step_09c_scientific_validation.py)
-owns all validation, normalization, state gating, locking, and publication.
-Dry-run validates fully but creates no output directory. Execute mode acquires
-an exclusive review lock, requires all 13 previous outputs or none, stages and
-rereads every table, rechecks input hashes, removes a predecessor summary
-marker first, publishes 12 payloads then the new summary, revalidates final
-content/hashes, and rechecks inputs.
+Private [`publisher.py`](publisher.py) owns validation, normalization, state
+gating, locking, and publication behind grouped
+`python -I -m norad assemble scientific-review-package`. Dry-run validates
+fully but creates no output directory. Execute mode acquires an exclusive
+review lock, requires all 13 previous outputs or none, stages and rereads every
+table, rechecks input hashes, removes a predecessor summary marker first,
+publishes 12 payloads then the new summary, revalidates final content/hashes,
+and rechecks inputs.
 
-Failure removes a partial first publication or restores a byte-identical
-predecessor with its summary last. Incomplete rollback retains the lock and
-recovery paths and writes a recovery notice. The summary still becomes visible
-before final post-publication checks and does not hash its 12 siblings; later
-consumers must validate the entire package rather than trust marker presence.
+For ordinary caught exceptions after publication starts, rollback removes a
+partial first publication or restores a byte-identical predecessor with its
+summary last. Incomplete rollback retains the lock and recovery paths and
+writes a recovery notice. Two signal/interrupt cases do not satisfy that
+ordinary guarantee:
+
+- `SIGTERM` after replacement-summary publication leaves the 13 unvalidated
+  replacement finals, the complete predecessor backup, an empty temporary
+  directory, and the lock, without a recovery notice.
+- `KeyboardInterrupt` after replacement-summary publication bypasses rollback;
+  final cleanup removes the predecessor backup, temporary directory, and lock
+  while leaving the 13 unvalidated replacement finals, again without a
+  recovery notice.
+
+The summary becomes visible before final post-publication checks and does not
+hash its 12 siblings; later consumers must validate the entire package rather
+than trust marker presence or lock absence.
 
 [`step_09c_scientific_validation.sh`](step_09c_scientific_validation.sh)
 is a thin public launcher. It validates CLI shape, resolves Python, delegates
-all behavior, and preserves the implementation's exit status.
+all behavior to the private publisher, and preserves the implementation's exit
+status. There is no Step `09c` scheduler wrapper.
 
 ## Consumers and protected evidence
 

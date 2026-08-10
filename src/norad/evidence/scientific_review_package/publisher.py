@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Validate and publish an explicit Step 09c scientific-review evidence set.
 
 This program is intentionally read-only with respect to Steps 08 and 09. It
@@ -17,97 +16,24 @@ import os
 import shutil
 import sys
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
 
-src_root = str(Path(__file__).resolve().parents[3])
-# Direct execution must prefer this checkout over an installed NORAD.
-sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
+from ._scientific_review.context import build_context
+from ._scientific_review.contracts import (
+    ContractError,
+    read_tsv,
+    review_package,
+    sha256_file,
+    step08,
+)
+from ._scientific_review.intake import ReviewContext, write_tsv
+
+DESCRIPTION = __doc__
 
 
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
-    audits as _audit_owner,
-)
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
-    context as _context_owner,
-)
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
-    contracts as _contract_owner,
-)
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
-    evidence as _evidence_owner,
-)
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
-    intake as _intake_owner,
-)
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
-    _review_candidates as _review_candidates_owner,
-)
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
-    _review_decisions as _review_decisions_owner,
-)
-from norad.evidence.assemble_scientific_review_evidence_package._scientific_review import (
-    _review_sensitivity as _review_sensitivity_owner,
-)
-
-step08 = _contract_owner.step08
-step09 = _contract_owner.step09
-review_package = _contract_owner.review_package
-ContractError = _contract_owner.ContractError
-NA_VALUE = _contract_owner.NA_VALUE
-COMPUTATIONAL_SCOPE_ROLES = _contract_owner.COMPUTATIONAL_SCOPE_ROLES
-COMPUTATIONAL_SCOPE_PLAN_FIELDS = _contract_owner.COMPUTATIONAL_SCOPE_PLAN_FIELDS
-EVIDENCE_MANIFEST_HEADER = _contract_owner.EVIDENCE_MANIFEST_HEADER
-COMPUTATIONAL_VALIDATION_HEADER = _contract_owner.COMPUTATIONAL_VALIDATION_HEADER
-COMPUTATIONAL_VALIDATION_STATUSES = _contract_owner.COMPUTATIONAL_VALIDATION_STATUSES
-Table = _contract_owner.Table
-values_close = _contract_owner.values_close
-sha256_file = _contract_owner.sha256_file
-read_tsv = _contract_owner.read_tsv
-resolve_recorded_path = _contract_owner.resolve_recorded_path
-
-Artifact = _intake_owner.Artifact
-ReviewContext = _intake_owner.ReviewContext
-validate_iso_date = _intake_owner.validate_iso_date
-complement_base = _intake_owner.complement_base
-split_ids = _intake_owner.split_ids
-require_directory = _intake_owner.require_directory
-write_tsv = _intake_owner.write_tsv
-artifact_from_table = _intake_owner.artifact_from_table
-artifact_from_binary = _intake_owner.artifact_from_binary
-resolve_declared_path = _intake_owner.resolve_declared_path
-register_artifact = _intake_owner.register_artifact
-step09_paths = _intake_owner.step09_paths
-validate_review_plan = _intake_owner.validate_review_plan
-validate_evidence_manifest = _intake_owner.validate_evidence_manifest
-validate_supporting_ids = _intake_owner.validate_supporting_ids
-category_is_complete = _intake_owner.category_is_complete
-validate_candidate_reference = _intake_owner.validate_candidate_reference
-
-validate_orientation_evidence = _audit_owner.validate_orientation_evidence
-validate_annotation_evidence = _audit_owner.validate_annotation_evidence
-expected_qc_rows = _audit_owner.expected_qc_rows
-validate_qc_funnel = _audit_owner.validate_qc_funnel
-validate_replicate_effects = _audit_owner.validate_replicate_effects
-
-validate_analysis_file_reference = (
-    _review_sensitivity_owner.validate_analysis_file_reference
-)
-validate_sensitivity_matrix = _review_sensitivity_owner.validate_sensitivity_matrix
-validate_leave_one_pair_out = _review_sensitivity_owner.validate_leave_one_pair_out
-validate_candidate_selection = _review_candidates_owner.validate_candidate_selection
-validate_candidate_adjudication = _review_candidates_owner.validate_candidate_adjudication
-validate_decisions = _review_decisions_owner.validate_decisions
-validate_limitations = _review_decisions_owner.validate_limitations
-
-validate_computational_evidence = _evidence_owner.validate_computational_evidence
-validate_evidence_payloads = _evidence_owner.validate_evidence_payloads
-make_review_summary = _evidence_owner.make_review_summary
-build_context = _context_owner.build_context
-
-
-def confirm_inputs_unchanged(input_hashes: Mapping[Path, str]) -> None:
+def _confirm_inputs_unchanged(input_hashes: Mapping[Path, str]) -> None:
     for path, expected_hash in input_hashes.items():
         if not path.is_file():
             step08.fail(f"An input disappeared before publication: {path}")
@@ -116,7 +42,7 @@ def confirm_inputs_unchanged(input_hashes: Mapping[Path, str]) -> None:
             step08.fail(f"An input changed before publication: {path}")
 
 
-def acquire_lock(lock_path: Path, review_id: str, run_token: str) -> None:
+def _acquire_lock(lock_path: Path, review_id: str, run_token: str) -> None:
     metadata = (
         f"review_id\t{review_id}\n"
         f"pid\t{os.getpid()}\n"
@@ -147,14 +73,14 @@ def acquire_lock(lock_path: Path, review_id: str, run_token: str) -> None:
         step08.fail(f"Could not write Step 09c lock metadata: {exc}")
 
 
-def remove_owned_path(path: Path) -> None:
+def _remove_owned_path(path: Path) -> None:
     if path.is_dir():
         shutil.rmtree(path)
     elif path.exists():
         path.unlink()
 
 
-def validate_staged_outputs(
+def _validate_staged_outputs(
     directory: Path,
     output_tables: Mapping[str, tuple[tuple[str, ...], list[dict[str, str]]]],
     output_paths: Mapping[str, Path],
@@ -169,7 +95,7 @@ def validate_staged_outputs(
     return hashes
 
 
-def rollback_publication(
+def _rollback_publication(
     output_paths: Mapping[str, Path],
     backup_dir: Path,
     had_previous: bool,
@@ -222,7 +148,7 @@ def rollback_publication(
     return failures
 
 
-def publish_outputs(
+def _publish_outputs(
     context: ReviewContext,
     output_tables: Mapping[str, tuple[tuple[str, ...], list[dict[str, str]]]],
 ) -> None:
@@ -238,7 +164,7 @@ def publish_outputs(
     run_token = f"{os.getpid()}-{uuid.uuid4().hex}"
     temp_dir = output_dir / f".{context.review_id}.step09c.{run_token}.tmp"
     backup_dir = output_dir / f".{context.review_id}.step09c.{run_token}.previous"
-    acquire_lock(lock_path, context.review_id, run_token)
+    _acquire_lock(lock_path, context.review_id, run_token)
     keep_recovery = False
     had_previous = False
     previous_hashes: dict[str, str] = {}
@@ -268,10 +194,10 @@ def publish_outputs(
 
         for key, (header, rows) in output_tables.items():
             write_tsv(temp_dir / context.output_paths[key].name, header, rows)
-        staged_hashes = validate_staged_outputs(
+        staged_hashes = _validate_staged_outputs(
             temp_dir, output_tables, context.output_paths
         )
-        confirm_inputs_unchanged(context.input_hashes)
+        _confirm_inputs_unchanged(context.input_hashes)
 
         if had_previous:
             summary_key = "review_summary"
@@ -310,10 +236,10 @@ def publish_outputs(
                 step08.fail(f"Published Step 09c {key} content is invalid.")
             if sha256_file(final.path) != staged_hashes[key]:
                 step08.fail(f"Published Step 09c {key} hash is invalid.")
-        confirm_inputs_unchanged(context.input_hashes)
+        _confirm_inputs_unchanged(context.input_hashes)
     except Exception as exc:
         if publication_started:
-            rollback_failures = rollback_publication(
+            rollback_failures = _rollback_publication(
                 context.output_paths,
                 backup_dir,
                 had_previous,
@@ -343,7 +269,7 @@ def publish_outputs(
             cleanup_failures: list[str] = []
             for owned in (temp_dir, backup_dir):
                 try:
-                    remove_owned_path(owned)
+                    _remove_owned_path(owned)
                 except OSError as exc:
                     cleanup_failures.append(f"remove {owned}: {exc}")
             try:
@@ -361,7 +287,7 @@ def publish_outputs(
                 )
 
 
-def print_resolved_context(context: ReviewContext, execute: bool) -> None:
+def _print_resolved_context(context: ReviewContext, execute: bool) -> None:
     print("Step 09c scientific-validation evidence package")
     print(f"Mode: {'execute' if execute else 'dry-run'}")
     print(f"Review ID: {context.review_id}")
@@ -389,13 +315,8 @@ def print_resolved_context(context: ReviewContext, execute: bool) -> None:
         print("Dry-run complete; no output directory or final files were created.")
 
 
-def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Validate and summarize explicit Step 09c scientific-review "
-            "evidence. Dry-run is the default."
-        )
-    )
+def configure_parser(parser: argparse.ArgumentParser) -> None:
+    """Configure the grouped scientific-review package command."""
     parser.add_argument("--review-id", required=True)
     parser.add_argument("--sample-manifest", required=True)
     parser.add_argument("--partition-manifest", required=True)
@@ -411,16 +332,15 @@ def parse_arguments(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Publish the validated 13-file transaction.",
     )
-    return parser.parse_args(argv)
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def assemble_from_args(arguments: argparse.Namespace) -> int:
+    """Validate and optionally publish one declared review package."""
     try:
-        arguments = parse_arguments(argv)
         context, output_tables = build_context(arguments)
-        print_resolved_context(context, arguments.execute)
+        _print_resolved_context(context, arguments.execute)
         if arguments.execute:
-            publish_outputs(context, output_tables)
+            _publish_outputs(context, output_tables)
             print(
                 "Step 09c publication complete; review summary published last: "
                 f"{context.output_paths['review_summary']}"
@@ -432,7 +352,3 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, UnicodeError, csv.Error) as exc:
         print(f"ERROR: Step 09c failed: {exc}", file=sys.stderr)
         return 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Build a deterministic synthetic Step 09c input/evidence package.
 
 The fixture imports the neutral Step 08, Step 09, and public review-package
@@ -12,19 +11,13 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
-import sys
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
-SRC_ROOT = REPO_ROOT / "src"
-if str(SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(SRC_ROOT))
-
 from norad.contracts.scientific_evidence import review_package, step08, step09
-from norad.evidence.assemble_scientific_review_evidence_package import (
-    step_09c_scientific_validation as contract,
+from norad.evidence.scientific_review_package._scientific_review import (
+    contracts as scientific_review_contracts,
 )
 
 REVIEW_ID = "review_fixture"
@@ -45,17 +38,13 @@ PAIRINGS = (
 )
 
 
-STEP08 = step08
-STEP09 = step09
-REVIEW_PACKAGE = review_package
-CONTRACT = contract
-if STEP09.step08 is not STEP08:
+if step09.step08 is not step08:
     raise RuntimeError("Step 09 fixture resolved a different Step 08 contract")
-if CONTRACT.step08 is not STEP08:
+if scientific_review_contracts.step08 is not step08:
     raise RuntimeError("Step 09c fixture resolved a different Step 08 contract")
-if CONTRACT.step09 is not STEP09:
+if scientific_review_contracts.step09 is not step09:
     raise RuntimeError("Step 09c fixture resolved a different Step 09 contract")
-if CONTRACT.review_package is not REVIEW_PACKAGE:
+if scientific_review_contracts.review_package is not review_package:
     raise RuntimeError("Step 09c fixture resolved a different review-package contract")
 
 
@@ -352,7 +341,7 @@ def step08_site_rows(header: Sequence[str]) -> list[dict[str, str]]:
 
 def step09_result_rows(header: Sequence[str]) -> list[dict[str, str]]:
     step08_header = (
-        tuple(STEP08.STEP08_METADATA_HEADER)
+        tuple(step08.STEP08_METADATA_HEADER)
         + tuple(f"DP__{sample}" for sample in SAMPLE_IDS)
         + tuple(f"AD__{sample}" for sample in SAMPLE_IDS)
         + tuple(f"AF__{sample}" for sample in SAMPLE_IDS)
@@ -364,7 +353,7 @@ def step09_result_rows(header: Sequence[str]) -> list[dict[str, str]]:
         mean_dp = sum(spec["dp"]) / len(spec["dp"])
         values = {
             "analysis_id": PRIMARY_ANALYSIS_ID,
-            **{column: source[column] for column in STEP08.STEP08_METADATA_HEADER},
+            **{column: source[column] for column in step08.STEP08_METADATA_HEADER},
             "control_condition": "EV",
             "treatment_condition": "PUM1",
             "target_rna_change": "A>G",
@@ -409,7 +398,7 @@ def write_step09_summary(
     absolute_difference_threshold: str = "0.005",
 ) -> None:
     row = table_row(
-        STEP09.STEP09_SUMMARY_HEADER,
+        step09.STEP09_SUMMARY_HEADER,
         analysis_id=analysis_id,
         cohort_id=COHORT_ID,
         control_condition="EV",
@@ -450,7 +439,7 @@ def write_step09_summary(
         continuity_correction="TRUE",
         orientation_policy="legacy_provisional_v1",
     )
-    write_tsv(path, STEP09.STEP09_SUMMARY_HEADER, [row])
+    write_tsv(path, step09.STEP09_SUMMARY_HEADER, [row])
 
 
 def write_evidence_tables(
@@ -465,7 +454,7 @@ def write_evidence_tables(
     orientation_path = evidence_dir / "orientation_locus_audit.tsv"
     orientation_rows = [
         evidence_row(
-            REVIEW_PACKAGE.ORIENTATION_HEADER,
+            review_package.ORIENTATION_HEADER,
             "e_orientation",
             locus_id="locus_plus",
             candidate_id="FWD_like|1|10|T>C",
@@ -494,7 +483,7 @@ def write_evidence_tables(
             detail="Synthetic plus-strand concordance.",
         ),
         evidence_row(
-            REVIEW_PACKAGE.ORIENTATION_HEADER,
+            review_package.ORIENTATION_HEADER,
             "e_orientation",
             locus_id="locus_minus",
             candidate_id="REV_like|1|20|A>G",
@@ -525,7 +514,7 @@ def write_evidence_tables(
     ]
     write_tsv(
         orientation_path,
-        REVIEW_PACKAGE.ORIENTATION_HEADER,
+        review_package.ORIENTATION_HEADER,
         orientation_rows,
     )
 
@@ -587,7 +576,7 @@ def write_evidence_tables(
         )
         annotation_rows.append(
             evidence_row(
-                REVIEW_PACKAGE.ANNOTATION_HEADER,
+                review_package.ANNOTATION_HEADER,
                 "e_annotation",
                 audit_id=audit_id,
                 candidate_id=candidate_id,
@@ -619,7 +608,7 @@ def write_evidence_tables(
                 detail=f"Synthetic {case_type} annotation audit.",
             )
         )
-    write_tsv(annotation_path, REVIEW_PACKAGE.ANNOTATION_HEADER, annotation_rows)
+    write_tsv(annotation_path, review_package.ANNOTATION_HEADER, annotation_rows)
 
     qc_path = evidence_dir / "qc_funnel.tsv"
     qc_specs = [
@@ -645,7 +634,7 @@ def write_evidence_tables(
     ) in qc_specs:
         qc_rows.append(
             evidence_row(
-                REVIEW_PACKAGE.QC_FUNNEL_HEADER,
+                review_package.QC_FUNNEL_HEADER,
                 "e_qc",
                 scope_type="partition_orientation",
                 partition_id=partition,
@@ -674,7 +663,7 @@ def write_evidence_tables(
                 detail="Synthetic partition-orientation reconciliation.",
             )
         )
-    write_tsv(qc_path, REVIEW_PACKAGE.QC_FUNNEL_HEADER, qc_rows)
+    write_tsv(qc_path, review_package.QC_FUNNEL_HEADER, qc_rows)
 
     replicate_path = evidence_dir / "replicate_effects.tsv"
     replicate_rows = []
@@ -697,7 +686,7 @@ def write_evidence_tables(
             difference = treatment_af - control_af
             replicate_rows.append(
                 evidence_row(
-                    REVIEW_PACKAGE.REPLICATE_EFFECTS_HEADER,
+                    review_package.REPLICATE_EFFECTS_HEADER,
                     "e_replicates",
                     candidate_id=candidate_id,
                     partition_id=str(candidate["partition_id"]),
@@ -720,7 +709,7 @@ def write_evidence_tables(
             )
     write_tsv(
         replicate_path,
-        REVIEW_PACKAGE.REPLICATE_EFFECTS_HEADER,
+        review_package.REPLICATE_EFFECTS_HEADER,
         replicate_rows,
     )
 
@@ -770,7 +759,7 @@ def write_evidence_tables(
     ) in sensitivity_specs:
         sensitivity_rows.append(
             evidence_row(
-                REVIEW_PACKAGE.SENSITIVITY_HEADER,
+                review_package.SENSITIVITY_HEADER,
                 "e_sensitivity",
                 analysis_id=analysis_id,
                 is_primary=is_primary,
@@ -795,7 +784,7 @@ def write_evidence_tables(
                 detail=f"Synthetic sensitivity set {parameter_id}.",
             )
         )
-    write_tsv(sensitivity_path, REVIEW_PACKAGE.SENSITIVITY_HEADER, sensitivity_rows)
+    write_tsv(sensitivity_path, review_package.SENSITIVITY_HEADER, sensitivity_rows)
 
     loo_path = evidence_dir / "leave_one_pair_out.tsv"
     loo_rows = []
@@ -818,7 +807,7 @@ def write_evidence_tables(
         ):
             loo_rows.append(
                 evidence_row(
-                    REVIEW_PACKAGE.LEAVE_ONE_OUT_HEADER,
+                    review_package.LEAVE_ONE_OUT_HEADER,
                     "e_loo",
                     primary_analysis_id=PRIMARY_ANALYSIS_ID,
                     omitted_replicate=replicate,
@@ -841,7 +830,7 @@ def write_evidence_tables(
                     detail="Synthetic leave-one-pair-out result.",
                 )
             )
-    write_tsv(loo_path, REVIEW_PACKAGE.LEAVE_ONE_OUT_HEADER, loo_rows)
+    write_tsv(loo_path, review_package.LEAVE_ONE_OUT_HEADER, loo_rows)
 
     selection_path = evidence_dir / "candidate_selection.tsv"
     selection_specs = [
@@ -889,7 +878,7 @@ def write_evidence_tables(
     ) in selection_specs:
         selection_rows.append(
             evidence_row(
-                REVIEW_PACKAGE.CANDIDATE_SELECTION_HEADER,
+                review_package.CANDIDATE_SELECTION_HEADER,
                 "e_selection",
                 selection_set=selection_set,
                 rank="1",
@@ -906,7 +895,7 @@ def write_evidence_tables(
         )
     write_tsv(
         selection_path,
-        REVIEW_PACKAGE.CANDIDATE_SELECTION_HEADER,
+        review_package.CANDIDATE_SELECTION_HEADER,
         selection_rows,
     )
 
@@ -915,7 +904,7 @@ def write_evidence_tables(
     for selection_set, candidate_id, *_ in selection_specs:
         adjudication_rows.append(
             evidence_row(
-                REVIEW_PACKAGE.CANDIDATE_ADJUDICATION_HEADER,
+                review_package.CANDIDATE_ADJUDICATION_HEADER,
                 "e_adjudication",
                 candidate_id=candidate_id,
                 selection_set=selection_set,
@@ -940,7 +929,7 @@ def write_evidence_tables(
         )
     write_tsv(
         adjudication_path,
-        REVIEW_PACKAGE.CANDIDATE_ADJUDICATION_HEADER,
+        review_package.CANDIDATE_ADJUDICATION_HEADER,
         adjudication_rows,
     )
 
@@ -955,10 +944,10 @@ def write_evidence_tables(
         "adjudication": "review_recorded",
     }
     decisions_rows = []
-    for dimension in REVIEW_PACKAGE.DECISION_DIMENSIONS:
+    for dimension in review_package.DECISION_DIMENSIONS:
         decisions_rows.append(
             evidence_row(
-                REVIEW_PACKAGE.DECISIONS_HEADER,
+                review_package.DECISIONS_HEADER,
                 "e_decisions",
                 decision_id=f"decision_{dimension}",
                 decision_dimension=dimension,
@@ -974,7 +963,7 @@ def write_evidence_tables(
                 rerun_scope="none",
             )
         )
-    write_tsv(decisions_path, REVIEW_PACKAGE.DECISIONS_HEADER, decisions_rows)
+    write_tsv(decisions_path, review_package.DECISIONS_HEADER, decisions_rows)
 
     limitations_path = evidence_dir / "limitations.tsv"
     limitation_rows = []
@@ -985,7 +974,7 @@ def write_evidence_tables(
     ):
         limitation_rows.append(
             evidence_row(
-                REVIEW_PACKAGE.LIMITATIONS_HEADER,
+                review_package.LIMITATIONS_HEADER,
                 "e_limitations",
                 limitation_id=limitation_id,
                 limitation_category=category,
@@ -998,12 +987,12 @@ def write_evidence_tables(
                 related_evidence_ids="e_decisions",
             )
         )
-    write_tsv(limitations_path, REVIEW_PACKAGE.LIMITATIONS_HEADER, limitation_rows)
+    write_tsv(limitations_path, review_package.LIMITATIONS_HEADER, limitation_rows)
 
     computational_path = evidence_dir / "computational_validation.tsv"
     computational_rows = [
         evidence_row(
-            CONTRACT.COMPUTATIONAL_VALIDATION_HEADER,
+            scientific_review_contracts.COMPUTATIONAL_VALIDATION_HEADER,
             "e_computational",
             validation_scope="local_fixture_tests",
             validation_status="passed",
@@ -1017,7 +1006,7 @@ def write_evidence_tables(
     ]
     write_tsv(
         computational_path,
-        CONTRACT.COMPUTATIONAL_VALIDATION_HEADER,
+        scientific_review_contracts.COMPUTATIONAL_VALIDATION_HEADER,
         computational_rows,
     )
 
@@ -1040,10 +1029,10 @@ def build_fixture(
     root: Path,
     science_status: str = "evidence_incomplete",
 ) -> FixturePaths:
-    if science_status not in REVIEW_PACKAGE.SCIENCE_STATUSES:
+    if science_status not in review_package.SCIENCE_STATUSES:
         raise ValueError(
             "science_status must be one of "
-            f"{', '.join(REVIEW_PACKAGE.SCIENCE_STATUSES)}"
+            f"{', '.join(review_package.SCIENCE_STATUSES)}"
         )
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=True)
@@ -1089,7 +1078,7 @@ def build_fixture(
     step08_inputs = step08_dir / "cohort.step08_inputs.tsv"
     step08_summary = step08_dir / "cohort.step08_summary.tsv"
     sites_header = (
-        tuple(STEP08.STEP08_METADATA_HEADER)
+        tuple(step08.STEP08_METADATA_HEADER)
         + tuple(f"DP__{sample}" for sample in SAMPLE_IDS)
         + tuple(f"AD__{sample}" for sample in SAMPLE_IDS)
         + tuple(f"AF__{sample}" for sample in SAMPLE_IDS)
@@ -1108,13 +1097,13 @@ def build_fixture(
         receipt = step07_dir / partition_id / f"{partition_id}.receipt.tsv"
         receipt.parent.mkdir(parents=True, exist_ok=True)
         receipt.write_text("synthetic receipt\n", encoding="utf-8")
-        for orientation in STEP08.ORIENTATIONS:
+        for orientation in step08.ORIENTATIONS:
             vcf = step07_dir / partition_id / f"{partition_id}.{orientation}.vcf"
             vcf.write_text("##fileformat=VCFv4.2\n", encoding="utf-8")
             count = input_counts[(partition_id, orientation)]
             input_rows.append(
                 table_row(
-                    STEP08.STEP08_INPUTS_HEADER,
+                    step08.STEP08_INPUTS_HEADER,
                     cohort_id=COHORT_ID,
                     partition_id=partition_id,
                     selector_type="region",
@@ -1139,13 +1128,13 @@ def build_fixture(
                     orientation_policy="legacy_provisional_v1",
                 )
             )
-    write_tsv(step08_inputs, STEP08.STEP08_INPUTS_HEADER, input_rows)
+    write_tsv(step08_inputs, step08.STEP08_INPUTS_HEADER, input_rows)
     write_tsv(
         step08_summary,
-        STEP08.STEP08_SUMMARY_HEADER,
+        step08.STEP08_SUMMARY_HEADER,
         [
             table_row(
-                STEP08.STEP08_SUMMARY_HEADER,
+                step08.STEP08_SUMMARY_HEADER,
                 cohort_id=COHORT_ID,
                 partition_count="2",
                 step07_receipt_count="2",
@@ -1169,7 +1158,7 @@ def build_fixture(
     step09_root = root / "step09"
     step09_analysis_dir = step09_root / PRIMARY_ANALYSIS_ID
     result_header = (
-        tuple(STEP09.STEP09_RESULT_HEADER)
+        tuple(step09.STEP09_RESULT_HEADER)
         + tuple(f"DP__{sample}" for sample in SAMPLE_IDS)
         + tuple(f"AD__{sample}" for sample in SAMPLE_IDS)
         + tuple(f"AF__{sample}" for sample in SAMPLE_IDS)
@@ -1200,7 +1189,7 @@ def build_fixture(
         step08_inputs,
     )
     mutation_rows = []
-    for mutation_type in STEP09.CANONICAL_MUTATIONS:
+    for mutation_type in step09.CANONICAL_MUTATIONS:
         count = (
             "5" if mutation_type == "A>G" else ("1" if mutation_type == "C>T" else "0")
         )
@@ -1211,7 +1200,7 @@ def build_fixture(
         )
         mutation_rows.append(
             table_row(
-                STEP09.STEP09_MUTATION_HEADER,
+                step09.STEP09_MUTATION_HEADER,
                 analysis_id=PRIMARY_ANALYSIS_ID,
                 rna_ref=mutation_type[0],
                 rna_alt=mutation_type[2],
@@ -1223,7 +1212,7 @@ def build_fixture(
                 significant_down_count=("1" if mutation_type == "A>G" else "0"),
             )
         )
-    write_tsv(mutation, STEP09.STEP09_MUTATION_HEADER, mutation_rows)
+    write_tsv(mutation, step09.STEP09_MUTATION_HEADER, mutation_rows)
     write_pdf(step09_analysis_dir / f"{PRIMARY_ANALYSIS_ID}.mutation_spectrum.pdf")
     write_pdf(step09_analysis_dir / f"{PRIMARY_ANALYSIS_ID}.depth_delta.pdf")
 
@@ -1282,7 +1271,7 @@ def build_fixture(
 
     review_plan = root / "review_plan.tsv"
     plan_row = table_row(
-        REVIEW_PACKAGE.REVIEW_PLAN_HEADER,
+        review_package.REVIEW_PLAN_HEADER,
         review_id=REVIEW_ID,
         primary_analysis_id=PRIMARY_ANALYSIS_ID,
         superseded_analysis_ids="NA",
@@ -1333,7 +1322,7 @@ def build_fixture(
         ),
         notes="Synthetic fixture; never production scientific evidence.",
     )
-    write_tsv(review_plan, REVIEW_PACKAGE.REVIEW_PLAN_HEADER, [plan_row])
+    write_tsv(review_plan, review_package.REVIEW_PLAN_HEADER, [plan_row])
 
     evidence_manifest = root / "evidence_manifest.tsv"
     evidence_ids = {
@@ -1350,15 +1339,13 @@ def build_fixture(
         "computational_validation": "e_computational",
     }
     evidence_rows = []
-    for category in tuple(REVIEW_PACKAGE.CATEGORY_ORDER) + (
-        "computational_validation",
-    ):
+    for category in (*review_package.CATEGORY_ORDER, "computational_validation"):
         source_path = evidence_paths[category]
         with source_path.open("r", encoding="utf-8", newline="") as stream:
             row_count = sum(1 for _ in csv.reader(stream, delimiter="\t")) - 1
         evidence_rows.append(
             table_row(
-                CONTRACT.EVIDENCE_MANIFEST_HEADER,
+                scientific_review_contracts.EVIDENCE_MANIFEST_HEADER,
                 evidence_id=evidence_ids[category],
                 evidence_category=category,
                 analysis_id=PRIMARY_ANALYSIS_ID,
@@ -1373,7 +1360,11 @@ def build_fixture(
                 policy_version=f"{category}_v1",
             )
         )
-    write_tsv(evidence_manifest, CONTRACT.EVIDENCE_MANIFEST_HEADER, evidence_rows)
+    write_tsv(
+        evidence_manifest,
+        scientific_review_contracts.EVIDENCE_MANIFEST_HEADER,
+        evidence_rows,
+    )
 
     return FixturePaths(
         root=root,
@@ -1397,7 +1388,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument(
         "--science-status",
-        choices=REVIEW_PACKAGE.SCIENCE_STATUSES,
+        choices=review_package.SCIENCE_STATUSES,
         default="evidence_incomplete",
     )
     return parser.parse_args()

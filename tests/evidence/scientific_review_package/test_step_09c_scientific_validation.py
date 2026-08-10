@@ -2,78 +2,60 @@
 
 from __future__ import annotations
 
+import argparse
 import csv
 import hashlib
-import importlib.util
 import multiprocessing
 import signal
 import subprocess
 import sys
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 
 import pytest
 
+from norad.__main__ import build_parser
+from norad.contracts.scientific_evidence import review_package, step08, step09
+from norad.evidence.scientific_review_package import publisher
+from norad.evidence.scientific_review_package._scientific_review import (
+    context as review_context,
+)
+from norad.evidence.scientific_review_package._scientific_review import (
+    contracts as scientific_review_contracts,
+)
+from norad.evidence.scientific_review_package._scientific_review import (
+    intake as review_intake,
+)
+from tests.evidence.scientific_review_package import build_fixture as fixture_builder
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
-OWNER_ROOT = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "evidence"
-    / "assemble_scientific_review_evidence_package"
-)
-SCRIPT = OWNER_ROOT / "step_09c_scientific_validation.py"
-FIXTURE_BUILDER = Path(__file__).with_name("build_fixture.py")
-STEP08_PATH = (
-    REPO_ROOT / "src" / "norad" / "contracts" / "scientific_evidence" / "step08.py"
-)
-STEP09_PATH = (
-    REPO_ROOT / "src" / "norad" / "contracts" / "scientific_evidence" / "step09.py"
-)
-REVIEW_PACKAGE_PATH = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "contracts"
-    / "scientific_evidence"
-    / "review_package.py"
-)
-
-
-def load_fixture_builder() -> ModuleType:
-    spec = importlib.util.spec_from_file_location(
-        "norad_step09c_fixture_builder", FIXTURE_BUILDER
-    )
-    if spec is None or spec.loader is None:
-        raise RuntimeError(
-            f"Could not load Step 09c fixture builder: {FIXTURE_BUILDER}"
-        )
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-FIXTURES = load_fixture_builder()
 
 
 def test_neutral_contract_identities_are_shared_with_step09c() -> None:
-    assert FIXTURES.CONTRACT.step08 is FIXTURES.STEP08
-    assert FIXTURES.CONTRACT.step09 is FIXTURES.STEP09
-    assert FIXTURES.CONTRACT.review_package is FIXTURES.REVIEW_PACKAGE
-    assert FIXTURES.CONTRACT.ContractError is FIXTURES.STEP08.ContractError
+    assert fixture_builder.step08 is step08
+    assert fixture_builder.step09 is step09
+    assert fixture_builder.review_package is review_package
+    assert scientific_review_contracts.step08 is step08
+    assert scientific_review_contracts.step09 is step09
+    assert scientific_review_contracts.review_package is review_package
+    assert scientific_review_contracts.ContractError is step08.ContractError
 
 
 def build_fixture(
     root: Path,
     science_status: str = "evidence_incomplete",
-) -> Any:
-    return FIXTURES.build_fixture(root, science_status)
+) -> fixture_builder.FixturePaths:
+    return fixture_builder.build_fixture(root, science_status)
+
+
+def parse_arguments(fixture: fixture_builder.FixturePaths) -> argparse.Namespace:
+    return build_parser().parse_args(
+        ["assemble", "scientific-review-package", *fixture.command_args()]
+    )
 
 
 def run_validator(
-    fixture: Any,
+    fixture: fixture_builder.FixturePaths,
     *,
     execute: bool = False,
     output_root: Path | None = None,
@@ -85,7 +67,15 @@ def run_validator(
     if execute:
         arguments.append("--execute")
     return subprocess.run(
-        [sys.executable, str(SCRIPT), *arguments],
+        [
+            sys.executable,
+            "-I",
+            "-m",
+            "norad",
+            "assemble",
+            "scientific-review-package",
+            *arguments,
+        ],
         cwd=REPO_ROOT,
         text=True,
         capture_output=True,
@@ -99,8 +89,7 @@ def publish_with_summary_barrier(
     ready: Any,
     release: Any,
 ) -> None:
-    contract = FIXTURES.CONTRACT
-    original_replace = contract.os.replace
+    original_replace = publisher.os.replace
     summary = context.output_paths["review_summary"]
     barrier_reached = False
 
@@ -119,8 +108,8 @@ def publish_with_summary_barrier(
             if not release.wait(20):
                 raise RuntimeError("summary barrier release timed out")
 
-    contract.os.replace = wait_after_summary
-    contract.publish_outputs(context, tables)
+    publisher.os.replace = wait_after_summary
+    publisher._publish_outputs(context, tables)
 
 
 def read_single_row(path: Path) -> dict[str, str]:
@@ -197,9 +186,7 @@ def refresh_evidence_source(
 
 
 def expected_output_names(review_id: str) -> set[str]:
-    return {
-        f"{review_id}.{suffix}" for _, suffix in FIXTURES.REVIEW_PACKAGE.OUTPUT_SUFFIXES
-    }
+    return {f"{review_id}.{suffix}" for _, suffix in review_package.OUTPUT_SUFFIXES}
 
 
 def expected_fixture_input_paths(fixture: Any) -> set[Path]:
@@ -277,50 +264,50 @@ def test_build_context_uses_live_private_evidence_owner(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
+    arguments = parse_arguments(fixture)
     reached_owner = False
 
     def reject_payload_validation(*_args: Any, **_kwargs: Any) -> None:
         nonlocal reached_owner
         reached_owner = True
-        raise FIXTURES.CONTRACT.ContractError("synthetic live evidence-owner failure")
+        raise step08.ContractError("synthetic live evidence-owner failure")
 
     monkeypatch.setattr(
-        FIXTURES.CONTRACT._context_owner,
+        review_context,
         "validate_evidence_payloads",
         reject_payload_validation,
     )
 
     with pytest.raises(
-        FIXTURES.CONTRACT.ContractError,
+        step08.ContractError,
         match="live evidence-owner failure",
     ):
-        FIXTURES.CONTRACT.build_context(arguments)
+        review_context.build_context(arguments)
 
     assert reached_owner
 
 
-def test_publication_uses_live_facade_writer(
+def test_publication_uses_live_publisher_writer(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
-    real_write_tsv = FIXTURES.CONTRACT.write_tsv
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
+    real_write_tsv = publisher.write_tsv
     written_names: list[str] = []
 
     def observe_write(path: Path, header: Any, rows: Any) -> None:
         written_names.append(path.name)
         real_write_tsv(path, header, rows)
 
-    monkeypatch.setattr(FIXTURES.CONTRACT, "write_tsv", observe_write)
+    monkeypatch.setattr(publisher, "write_tsv", observe_write)
 
-    FIXTURES.CONTRACT.publish_outputs(context, tables)
+    publisher._publish_outputs(context, tables)
 
     assert written_names == [
         context.output_paths[key].name
-        for key, _suffix in FIXTURES.REVIEW_PACKAGE.OUTPUT_SUFFIXES
+        for key, _suffix in review_package.OUTPUT_SUFFIXES
     ]
 
 
@@ -356,7 +343,7 @@ def test_complete_evidence_does_not_auto_upgrade_requested_incomplete_state(
     assert result.returncode == 0, result.stderr
     summary = read_single_row(summary_path(fixture.output_root, fixture.review_id))
     assert summary["overall_science_status"] == "evidence_incomplete"
-    for category in FIXTURES.REVIEW_PACKAGE.CATEGORY_ORDER:
+    for category in review_package.CATEGORY_ORDER:
         assert summary[f"{category}_status"] == "complete"
 
 
@@ -424,6 +411,22 @@ def test_declared_evidence_hash_mutation_is_rejected(tmp_path: Path) -> None:
     assert not fixture.output_root.exists()
 
 
+def test_invalid_utf8_input_fails_without_output(tmp_path: Path) -> None:
+    fixture = build_fixture(tmp_path / "fixture")
+    fixture.review_plan.write_bytes(b"\xff")
+
+    result = run_validator(fixture, execute=True)
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert result.stderr == (
+        "ERROR: Could not read Scientific review plan as UTF-8 TSV "
+        f"({fixture.review_plan}): 'utf-8' codec can't decode byte 0xff in "
+        "position 0: invalid start byte\n"
+    )
+    assert not fixture.output_root.exists()
+
+
 def test_source_backed_evidence_requires_evidence_date(tmp_path: Path) -> None:
     fixture = build_fixture(tmp_path / "fixture")
     rewrite_matching_row(
@@ -477,10 +480,10 @@ def test_human_reviewer_and_owner_names_are_preserved(tmp_path: Path) -> None:
     )
     orientation = next(
         row
-        for row in FIXTURES.CONTRACT.read_tsv(
+        for row in publisher.read_tsv(
             "published decisions",
             published_decisions,
-            FIXTURES.REVIEW_PACKAGE.DECISIONS_HEADER,
+            review_package.DECISIONS_HEADER,
         ).rows
         if row["decision_dimension"] == "orientation"
     )
@@ -696,7 +699,8 @@ def test_computational_evidence_accepts_multiple_distinct_roles(
         reader = csv.DictReader(handle, delimiter="\t")
         fieldnames = reader.fieldnames
         rows = list(reader)
-    assert fieldnames is not None and len(rows) == 1
+    assert fieldnames is not None
+    assert len(rows) == 1
     rows.append(
         {
             **rows[0],
@@ -738,7 +742,8 @@ def test_passed_runtime_requires_log_and_output_roles(tmp_path: Path) -> None:
         reader = csv.DictReader(handle, delimiter="\t")
         fieldnames = reader.fieldnames
         rows = list(reader)
-    assert fieldnames is not None and len(rows) == 1
+    assert fieldnames is not None
+    assert len(rows) == 1
     runtime_evidence = fixture.root / "runtime-output.tsv"
     runtime_evidence.write_text("synthetic runtime output\n")
     rows.append(
@@ -838,14 +843,14 @@ def test_exploratory_completion_requires_and_preserves_complete_evidence(
     assert summary["review_completed_date"] == "2026-01-10"
     assert summary["selected_candidate_count"] == "4"
     assert summary["adjudicated_candidate_count"] == "4"
-    for category in FIXTURES.REVIEW_PACKAGE.CATEGORY_ORDER:
+    for category in review_package.CATEGORY_ORDER:
         assert summary[f"{category}_status"] == "complete"
 
 
 def test_context_binds_exact_32_file_fixture_roster(tmp_path: Path) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, _ = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, _ = review_context.build_context(arguments)
 
     assert set(context.input_hashes) == expected_fixture_input_paths(fixture)
     assert len(context.input_hashes) == 32
@@ -879,8 +884,8 @@ def test_input_identity_change_aborts_before_publication_with_clean_owned_state(
     expected_error: str,
 ) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
     changed_input = fixture.root / relative_path
     assert changed_input.resolve() in context.input_hashes
     if action == "disappear":
@@ -893,8 +898,8 @@ def test_input_identity_change_aborts_before_publication_with_clean_owned_state(
     unrelated = final_dir / "unrelated.keep"
     unrelated.write_bytes(b"preserve unrelated bytes\n")
 
-    with pytest.raises(FIXTURES.CONTRACT.ContractError, match=expected_error):
-        FIXTURES.CONTRACT.publish_outputs(context, tables)
+    with pytest.raises(step08.ContractError, match=expected_error):
+        publisher._publish_outputs(context, tables)
 
     assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
     assert set(final_dir.iterdir()) == {unrelated}
@@ -904,8 +909,8 @@ def test_identical_byte_input_replacement_is_not_detected(
     tmp_path: Path,
 ) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
     target = (
         fixture.root
         / "step09"
@@ -918,8 +923,8 @@ def test_identical_byte_input_replacement_is_not_detected(
     target.write_bytes(original_bytes)
     assert target.stat().st_ino != retained_original.stat().st_ino
 
-    FIXTURES.CONTRACT.confirm_inputs_unchanged(context.input_hashes)
-    FIXTURES.CONTRACT.publish_outputs(context, tables)
+    publisher._confirm_inputs_unchanged(context.input_hashes)
+    publisher._publish_outputs(context, tables)
 
     final_dir = output_directory(fixture.output_root, fixture.review_id)
     assert {path.name for path in final_dir.iterdir()} == expected_output_names(
@@ -932,13 +937,13 @@ def test_first_publication_moves_twelve_payloads_then_summary(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
-    ordered_keys = [key for key, _ in FIXTURES.REVIEW_PACKAGE.OUTPUT_SUFFIXES]
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
+    ordered_keys = [key for key, _ in review_package.OUTPUT_SUFFIXES]
     final_by_path = {path: key for key, path in context.output_paths.items()}
-    original_replace = FIXTURES.CONTRACT.os.replace
-    original_read_tsv = FIXTURES.CONTRACT.read_tsv
-    original_confirm = FIXTURES.CONTRACT.confirm_inputs_unchanged
+    original_replace = publisher.os.replace
+    original_read_tsv = publisher.read_tsv
+    original_confirm = publisher._confirm_inputs_unchanged
     published_reads: list[str] = []
     confirm_count = 0
     publication_order: list[str] = []
@@ -985,15 +990,15 @@ def test_first_publication_moves_twelve_payloads_then_summary(
                 confirm_count=confirm_count,
             )
 
-    monkeypatch.setattr(FIXTURES.CONTRACT, "read_tsv", observe_read_tsv)
+    monkeypatch.setattr(publisher, "read_tsv", observe_read_tsv)
     monkeypatch.setattr(
-        FIXTURES.CONTRACT,
-        "confirm_inputs_unchanged",
+        publisher,
+        "_confirm_inputs_unchanged",
         observe_confirm,
     )
-    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", observe_replace)
+    monkeypatch.setattr(publisher.os, "replace", observe_replace)
 
-    FIXTURES.CONTRACT.publish_outputs(context, tables)
+    publisher._publish_outputs(context, tables)
 
     assert publication_order == ordered_keys
     assert barrier == {
@@ -1023,14 +1028,14 @@ def test_replacement_backs_up_summary_first_then_publishes_summary_last(
     unrelated = final_dir / "unrelated.keep"
     unrelated.write_bytes(b"preserve unrelated bytes\n")
     rewrite_field(fixture.review_plan, "notes", "Replacement publication order.")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
-    ordered_keys = [key for key, _ in FIXTURES.REVIEW_PACKAGE.OUTPUT_SUFFIXES]
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
+    ordered_keys = [key for key, _ in review_package.OUTPUT_SUFFIXES]
     key_by_name = {path.name: key for key, path in context.output_paths.items()}
     final_by_path = {path: key for key, path in context.output_paths.items()}
-    original_replace = FIXTURES.CONTRACT.os.replace
-    original_read_tsv = FIXTURES.CONTRACT.read_tsv
-    original_confirm = FIXTURES.CONTRACT.confirm_inputs_unchanged
+    original_replace = publisher.os.replace
+    original_read_tsv = publisher.read_tsv
+    original_confirm = publisher._confirm_inputs_unchanged
     operations: list[tuple[str, str]] = []
     published_reads: list[str] = []
     confirm_count = 0
@@ -1084,15 +1089,15 @@ def test_replacement_backs_up_summary_first_then_publishes_summary_last(
                 confirm_count=confirm_count,
             )
 
-    monkeypatch.setattr(FIXTURES.CONTRACT, "read_tsv", observe_read_tsv)
+    monkeypatch.setattr(publisher, "read_tsv", observe_read_tsv)
     monkeypatch.setattr(
-        FIXTURES.CONTRACT,
-        "confirm_inputs_unchanged",
+        publisher,
+        "_confirm_inputs_unchanged",
         observe_confirm,
     )
-    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", observe_replace)
+    monkeypatch.setattr(publisher.os, "replace", observe_replace)
 
-    FIXTURES.CONTRACT.publish_outputs(context, tables)
+    publisher._publish_outputs(context, tables)
 
     expected_operations = [("backup", "review_summary")]
     expected_operations.extend(
@@ -1126,11 +1131,11 @@ def test_late_input_mutation_after_summary_restores_predecessor(
     unrelated = final_dir / "unrelated.keep"
     unrelated.write_bytes(b"preserve unrelated bytes\n")
     rewrite_field(fixture.review_plan, "notes", "Late mutation replacement.")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
     summary = context.output_paths["review_summary"]
     changed_input = fixture.root / "evidence" / "orientation_locus_audit.tsv"
-    original_replace = FIXTURES.CONTRACT.os.replace
+    original_replace = publisher.os.replace
     barrier_observed = False
 
     def mutate_after_summary(source: Any, destination: Any) -> None:
@@ -1152,10 +1157,10 @@ def test_late_input_mutation_after_summary_restores_predecessor(
             assert (final_dir / f".{fixture.review_id}.step09c.lock").is_file()
             changed_input.write_bytes(changed_input.read_bytes() + b"changed\n")
 
-    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", mutate_after_summary)
+    monkeypatch.setattr(publisher.os, "replace", mutate_after_summary)
 
-    with pytest.raises(FIXTURES.CONTRACT.ContractError, match="changed"):
-        FIXTURES.CONTRACT.publish_outputs(context, tables)
+    with pytest.raises(step08.ContractError, match="changed"):
+        publisher._publish_outputs(context, tables)
 
     assert barrier_observed
     assert {
@@ -1172,13 +1177,13 @@ def test_post_summary_first_publication_failure_removes_all_owned_state(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
     final_dir = output_directory(fixture.output_root, fixture.review_id)
     final_dir.mkdir(parents=True)
     unrelated = final_dir / "unrelated.keep"
     unrelated.write_bytes(b"preserve unrelated bytes\n")
-    original_read_tsv = FIXTURES.CONTRACT.read_tsv
+    original_read_tsv = publisher.read_tsv
     observed_complete_new_set = False
 
     def fail_first_final_read(label: str, *args: Any, **kwargs: Any) -> Any:
@@ -1187,18 +1192,18 @@ def test_post_summary_first_publication_failure_removes_all_owned_state(
             observed_complete_new_set = all(
                 path.is_file() for path in context.output_paths.values()
             )
-            raise FIXTURES.CONTRACT.ContractError(
+            raise step08.ContractError(
                 "synthetic post-summary final validation failure"
             )
         return original_read_tsv(label, *args, **kwargs)
 
-    monkeypatch.setattr(FIXTURES.CONTRACT, "read_tsv", fail_first_final_read)
+    monkeypatch.setattr(publisher, "read_tsv", fail_first_final_read)
 
     with pytest.raises(
-        FIXTURES.CONTRACT.ContractError,
+        step08.ContractError,
         match="post-summary final validation failure",
     ):
-        FIXTURES.CONTRACT.publish_outputs(context, tables)
+        publisher._publish_outputs(context, tables)
 
     assert observed_complete_new_set
     assert unrelated.read_bytes() == b"preserve unrelated bytes\n"
@@ -1217,11 +1222,11 @@ def test_post_summary_replacement_failure_restores_all_predecessors_summary_last
     unrelated = final_dir / "unrelated.keep"
     unrelated.write_bytes(b"preserve unrelated bytes\n")
     rewrite_field(fixture.review_plan, "notes", "Post-summary rollback.")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
     key_by_name = {path.name: key for key, path in context.output_paths.items()}
-    original_read_tsv = FIXTURES.CONTRACT.read_tsv
-    original_replace = FIXTURES.CONTRACT.os.replace
+    original_read_tsv = publisher.read_tsv
+    original_replace = publisher.os.replace
     observed_complete_new_set = False
     restore_order: list[str] = []
 
@@ -1231,9 +1236,7 @@ def test_post_summary_replacement_failure_restores_all_predecessors_summary_last
             observed_complete_new_set = all(
                 path.is_file() for path in context.output_paths.values()
             )
-            raise FIXTURES.CONTRACT.ContractError(
-                "synthetic post-summary replacement failure"
-            )
+            raise step08.ContractError("synthetic post-summary replacement failure")
         return original_read_tsv(label, *args, **kwargs)
 
     def observe_restore(source: Any, destination: Any) -> None:
@@ -1243,20 +1246,18 @@ def test_post_summary_replacement_failure_restores_all_predecessors_summary_last
             restore_order.append(key_by_name[destination_path.name])
         original_replace(source, destination)
 
-    monkeypatch.setattr(FIXTURES.CONTRACT, "read_tsv", fail_first_final_read)
-    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", observe_restore)
+    monkeypatch.setattr(publisher, "read_tsv", fail_first_final_read)
+    monkeypatch.setattr(publisher.os, "replace", observe_restore)
 
     with pytest.raises(
-        FIXTURES.CONTRACT.ContractError,
+        step08.ContractError,
         match="post-summary replacement failure",
     ):
-        FIXTURES.CONTRACT.publish_outputs(context, tables)
+        publisher._publish_outputs(context, tables)
 
     assert observed_complete_new_set
     expected_restore_order = [
-        key
-        for key, _ in FIXTURES.REVIEW_PACKAGE.OUTPUT_SUFFIXES
-        if key != "review_summary"
+        key for key, _ in review_package.OUTPUT_SUFFIXES if key != "review_summary"
     ] + ["review_summary"]
     assert restore_order == expected_restore_order
     assert {
@@ -1280,12 +1281,12 @@ def test_incomplete_post_summary_restore_retains_exact_recovery_state(
     unrelated = final_dir / "unrelated.keep"
     unrelated.write_bytes(b"preserve unrelated bytes\n")
     rewrite_field(fixture.review_plan, "notes", "Incomplete restore.")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
     failed_key = "qc_funnel"
     failed_final = context.output_paths[failed_key]
-    original_read_tsv = FIXTURES.CONTRACT.read_tsv
-    original_replace = FIXTURES.CONTRACT.os.replace
+    original_read_tsv = publisher.read_tsv
+    original_replace = publisher.os.replace
     final_failure_injected = False
     restore_failure_injected = False
 
@@ -1293,7 +1294,7 @@ def test_incomplete_post_summary_restore_retains_exact_recovery_state(
         nonlocal final_failure_injected
         if label.startswith("Published Step 09c"):
             final_failure_injected = True
-            raise FIXTURES.CONTRACT.ContractError(
+            raise step08.ContractError(
                 "synthetic post-summary incomplete-restore trigger"
             )
         return original_read_tsv(label, *args, **kwargs)
@@ -1311,14 +1312,14 @@ def test_incomplete_post_summary_restore_retains_exact_recovery_state(
             raise OSError("synthetic predecessor restore failure")
         original_replace(source, destination)
 
-    monkeypatch.setattr(FIXTURES.CONTRACT, "read_tsv", fail_first_final_read)
-    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", fail_one_restore)
+    monkeypatch.setattr(publisher, "read_tsv", fail_first_final_read)
+    monkeypatch.setattr(publisher.os, "replace", fail_one_restore)
 
     with pytest.raises(
-        FIXTURES.CONTRACT.ContractError,
+        step08.ContractError,
         match="rollback was incomplete",
     ):
-        FIXTURES.CONTRACT.publish_outputs(context, tables)
+        publisher._publish_outputs(context, tables)
 
     assert final_failure_injected
     assert restore_failure_injected
@@ -1356,8 +1357,8 @@ def test_term_after_summary_retains_unvalidated_replacement_and_backups(
     unrelated = final_dir / "unrelated.keep"
     unrelated.write_bytes(b"preserve unrelated bytes\n")
     rewrite_field(fixture.review_plan, "notes", "TERM after summary.")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
     process_context = multiprocessing.get_context("fork")
     ready = process_context.Event()
     release = process_context.Event()
@@ -1409,10 +1410,10 @@ def test_keyboard_interrupt_after_summary_deletes_recovery_state_not_new_finals(
     unrelated.write_bytes(b"preserve unrelated bytes\n")
     replacement_notes = "KeyboardInterrupt after summary."
     rewrite_field(fixture.review_plan, "notes", replacement_notes)
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
     summary = context.output_paths["review_summary"]
-    original_replace = FIXTURES.CONTRACT.os.replace
+    original_replace = publisher.os.replace
     barrier: dict[str, Any] = {}
 
     def interrupt_after_summary(source: Any, destination: Any) -> None:
@@ -1437,10 +1438,10 @@ def test_keyboard_interrupt_after_summary_deletes_recovery_state_not_new_finals(
             )
             raise KeyboardInterrupt("synthetic post-summary interrupt")
 
-    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", interrupt_after_summary)
+    monkeypatch.setattr(publisher.os, "replace", interrupt_after_summary)
 
     with pytest.raises(KeyboardInterrupt, match="post-summary interrupt"):
-        FIXTURES.CONTRACT.publish_outputs(context, tables)
+        publisher._publish_outputs(context, tables)
 
     assert barrier == {"finals": 13, "backups": 13, "lock": True}
     assert {path.name for path in context.output_paths.values()} == (
@@ -1462,8 +1463,8 @@ def test_same_review_contender_waits_for_admitted_winner_to_release_lock(
     tmp_path: Path,
 ) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
     final_dir = output_directory(fixture.output_root, fixture.review_id)
     final_dir.mkdir(parents=True)
     unrelated = final_dir / "unrelated.keep"
@@ -1483,8 +1484,8 @@ def test_same_review_contender_waits_for_admitted_winner_to_release_lock(
             f"concurrency summary barrier was not reached; exit={winner.exitcode}"
         )
 
-    with pytest.raises(FIXTURES.CONTRACT.ContractError, match="locked"):
-        FIXTURES.CONTRACT.publish_outputs(context, tables)
+    with pytest.raises(step08.ContractError, match="locked"):
+        publisher._publish_outputs(context, tables)
     assert (final_dir / f".{fixture.review_id}.step09c.lock").is_file()
 
     release.set()
@@ -1504,9 +1505,9 @@ def test_first_publication_failure_removes_partial_outputs_and_owned_lock(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
-    original_replace = FIXTURES.CONTRACT.os.replace
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
+    original_replace = publisher.os.replace
     failed = False
 
     def fail_one_publish(source: Any, destination: Any) -> None:
@@ -1522,13 +1523,13 @@ def test_first_publication_failure_removes_partial_outputs_and_owned_lock(
             raise OSError("synthetic publication failure")
         original_replace(source, destination)
 
-    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", fail_one_publish)
+    monkeypatch.setattr(publisher.os, "replace", fail_one_publish)
 
     with pytest.raises(
-        FIXTURES.CONTRACT.ContractError,
+        step08.ContractError,
         match="synthetic publication failure",
     ):
-        FIXTURES.CONTRACT.publish_outputs(context, tables)
+        publisher._publish_outputs(context, tables)
 
     final_dir = output_directory(fixture.output_root, fixture.review_id)
     assert final_dir.is_dir()
@@ -1550,9 +1551,9 @@ def test_replacement_failure_restores_byte_identical_prior_transaction(
         "notes",
         "Synthetic replacement that must be rolled back.",
     )
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, tables = FIXTURES.CONTRACT.build_context(arguments)
-    original_replace = FIXTURES.CONTRACT.os.replace
+    arguments = parse_arguments(fixture)
+    context, tables = review_context.build_context(arguments)
+    original_replace = publisher.os.replace
     failed = False
 
     def fail_one_publish(source: Any, destination: Any) -> None:
@@ -1568,13 +1569,13 @@ def test_replacement_failure_restores_byte_identical_prior_transaction(
             raise OSError("synthetic replacement failure")
         original_replace(source, destination)
 
-    monkeypatch.setattr(FIXTURES.CONTRACT.os, "replace", fail_one_publish)
+    monkeypatch.setattr(publisher.os, "replace", fail_one_publish)
 
     with pytest.raises(
-        FIXTURES.CONTRACT.ContractError,
+        step08.ContractError,
         match="synthetic replacement failure",
     ):
-        FIXTURES.CONTRACT.publish_outputs(context, tables)
+        publisher._publish_outputs(context, tables)
 
     assert {
         path.name: path.read_bytes() for path in final_dir.iterdir()
@@ -1582,22 +1583,20 @@ def test_replacement_failure_restores_byte_identical_prior_transaction(
 
 
 def test_tracked_examples_and_schema_headers_match_public_contract() -> None:
-    contract = FIXTURES.CONTRACT
-    review_package = FIXTURES.REVIEW_PACKAGE
     plan_path = REPO_ROOT / "configs" / "step_09c_review_plan.example.tsv"
     manifest_path = REPO_ROOT / "configs" / "step_09c_evidence_manifest.example.tsv"
-    plan_table, plan, analyses = contract.validate_review_plan(
+    plan_table, plan, _analyses = review_intake.validate_review_plan(
         plan_path, "example_scientific_review"
     )
     assert plan_table.header == review_package.REVIEW_PLAN_HEADER
     assert plan["overall_science_status"] == "evidence_incomplete"
-    manifest, rows, payloads, _ = contract.validate_evidence_manifest(
+    manifest, rows, payloads, _ = review_intake.validate_evidence_manifest(
         manifest_path,
         "example_scientific_review",
         plan,
         {},
     )
-    assert manifest.header == contract.EVIDENCE_MANIFEST_HEADER
+    assert manifest.header == scientific_review_contracts.EVIDENCE_MANIFEST_HEADER
     assert [row["evidence_category"] for row in rows] == list(
         review_package.CATEGORY_ORDER
     )
@@ -1606,12 +1605,14 @@ def test_tracked_examples_and_schema_headers_match_public_contract() -> None:
     schema_root = REPO_ROOT / "configs" / "step_09c_evidence_schemas"
     expected_headers = {
         **review_package.CATEGORY_HEADERS,
-        "computational_validation": contract.COMPUTATIONAL_VALIDATION_HEADER,
+        "computational_validation": (
+            scientific_review_contracts.COMPUTATIONAL_VALIDATION_HEADER
+        ),
         "evidence_index": review_package.EVIDENCE_INDEX_HEADER,
         "review_summary": review_package.REVIEW_SUMMARY_HEADER,
     }
     for category, expected_header in expected_headers.items():
-        table = contract.read_tsv(
+        table = step08.read_tsv(
             f"{category} schema",
             schema_root / f"{category}.schema.tsv",
             expected_header,
@@ -1736,7 +1737,8 @@ def test_malformed_scientific_evidence_is_rejected(
         reader = csv.DictReader(handle, delimiter="\t")
         fieldnames = reader.fieldnames
         rows = list(reader)
-    assert fieldnames is not None and rows
+    assert fieldnames is not None
+    assert rows
     rows[0][column] = value
     with source.open("w", newline="") as handle:
         writer = csv.DictWriter(
@@ -1782,7 +1784,8 @@ def test_passed_computational_record_rejects_failed_scheduler_and_exit(
         reader = csv.DictReader(handle, delimiter="\t")
         fieldnames = reader.fieldnames
         rows = list(reader)
-    assert fieldnames is not None and len(rows) == 1
+    assert fieldnames is not None
+    assert len(rows) == 1
     rows[0]["scheduler_state"] = "FAILED"
     rows[0]["exit_code"] = "99"
     with source.open("w", newline="") as handle:
@@ -1805,15 +1808,15 @@ def test_step09_target_status_inconsistency_is_rejected_mechanically(
     tmp_path: Path,
 ) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, _ = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, _ = review_context.build_context(arguments)
     rows = [dict(row) for row in context.step09_all_rows]
     non_target = next(row for row in rows if row["rna_ref"] == "C")
     non_target["test_status"] = "tested"
     non_target["call_status"] = "effect_not_met"
 
-    with pytest.raises(FIXTURES.CONTRACT.ContractError, match="target change"):
-        FIXTURES.STEP09.validate_step09_result_semantics(
+    with pytest.raises(step08.ContractError, match="target change"):
+        step09.validate_step09_result_semantics(
             rows,
             context.step09_summary,
             context.sample_rows,
@@ -1827,10 +1830,10 @@ def test_step09_target_status_inconsistency_is_rejected_mechanically(
     target["test_status"] = "missing_counts"
     target["call_status"] = "not_tested"
     with pytest.raises(
-        FIXTURES.CONTRACT.ContractError,
+        step08.ContractError,
         match="availability/coverage",
     ):
-        FIXTURES.STEP09.validate_step09_result_semantics(
+        step09.validate_step09_result_semantics(
             rows,
             context.step09_summary,
             context.sample_rows,
@@ -1841,14 +1844,14 @@ def test_step09_reported_metrics_reconcile_with_immutable_counts(
     tmp_path: Path,
 ) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, _ = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, _ = review_context.build_context(arguments)
 
     wrong_depth = [dict(row) for row in context.step09_all_rows]
     tested = next(row for row in wrong_depth if row["test_status"] == "tested")
     tested["mean_analysis_dp"] = "999"
-    with pytest.raises(FIXTURES.CONTRACT.ContractError, match="depth metrics"):
-        FIXTURES.STEP09.validate_step09_result_semantics(
+    with pytest.raises(step08.ContractError, match="depth metrics"):
+        step09.validate_step09_result_semantics(
             wrong_depth,
             context.step09_summary,
             context.sample_rows,
@@ -1865,8 +1868,8 @@ def test_step09_reported_metrics_reconcile_with_immutable_counts(
             "common_odds_ratio": "2",
         }
     )
-    with pytest.raises(FIXTURES.CONTRACT.ContractError, match="must use"):
-        FIXTURES.STEP09.validate_step09_result_semantics(
+    with pytest.raises(step08.ContractError, match="must use"):
+        step09.validate_step09_result_semantics(
             false_cmh,
             context.step09_summary,
             context.sample_rows,
@@ -1890,8 +1893,8 @@ def test_step09_enabled_background_reconciles_from_immutable_counts(
     maximum: str,
 ) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, _ = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, _ = review_context.build_context(arguments)
     summary = dict(context.step09_summary)
     summary["background_condition"] = "BACKGROUND"
     background_sample = dict(context.sample_rows[0])
@@ -1917,14 +1920,14 @@ def test_step09_enabled_background_reconciles_from_immutable_counts(
         if row["test_status"] == "tested" and background_status != "pass":
             row["call_status"] = "background_not_passed"
 
-    FIXTURES.STEP09.validate_step09_result_semantics(rows, summary, sample_rows)
+    step09.validate_step09_result_semantics(rows, summary, sample_rows)
 
     rows[0]["max_background_af"] = "0.5" if maximum != "NA" else "0"
     with pytest.raises(
-        FIXTURES.CONTRACT.ContractError,
+        step08.ContractError,
         match="enabled-background",
     ):
-        FIXTURES.STEP09.validate_step09_result_semantics(rows, summary, sample_rows)
+        step09.validate_step09_result_semantics(rows, summary, sample_rows)
 
 
 @pytest.mark.parametrize(
@@ -1942,16 +1945,16 @@ def test_step09_native_threshold_boundaries_are_enforced(
     value: str,
 ) -> None:
     fixture = build_fixture(tmp_path / "fixture")
-    arguments = FIXTURES.CONTRACT.parse_arguments(fixture.command_args())
-    context, _ = FIXTURES.CONTRACT.build_context(arguments)
+    arguments = parse_arguments(fixture)
+    context, _ = review_context.build_context(arguments)
     summary = dict(context.step09_summary)
     summary[column] = value
 
     with pytest.raises(
-        FIXTURES.CONTRACT.ContractError,
+        step08.ContractError,
         match="thresholds",
     ):
-        FIXTURES.STEP09.validate_step09_result_semantics(
+        step09.validate_step09_result_semantics(
             context.step09_all_rows,
             summary,
             context.sample_rows,

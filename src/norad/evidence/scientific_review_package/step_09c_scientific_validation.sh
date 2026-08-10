@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
 # Thin public launcher for the Step 09c scientific-validation evidence package.
 #
-# The adjacent Python implementation owns input validation, dry-run behavior,
-# output generation, locking, and atomic publication. This wrapper only
-# validates the public command-line shape, resolves Python, prints the exact
-# delegated command, and preserves the implementation's exit status.
+# The installed NORAD package owns input validation, dry-run behavior, output
+# generation, locking, and atomic publication. This wrapper only validates the
+# public command-line shape, resolves Python, prints the exact delegated
+# command, and preserves the implementation's exit status.
 set -euo pipefail
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
     cat <<'USAGE'
 Usage:
-  src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh \
+  src/norad/evidence/scientific_review_package/step_09c_scientific_validation.sh \
     --review-id REVIEW_ID \
     --sample-manifest SAMPLE_MANIFEST \
     --partition-manifest PARTITION_MANIFEST \
@@ -90,10 +89,6 @@ do
         die "Missing required argument: --${required_name//_/-}."
 done
 
-python_script="$script_dir/step_09c_scientific_validation.py"
-[[ -f "$python_script" && -r "$python_script" ]] ||
-    die "Step 09c Python implementation does not exist or is not readable: $python_script"
-
 python_value="${PYTHON_BIN_OVERRIDE:-python3}"
 if [[ "$python_value" == */* ]]; then
     [[ -e "$python_value" ]] || die "Python executable does not exist: $python_value"
@@ -107,7 +102,9 @@ fi
 
 command_args=(
     "$python_bin"
-    "$python_script"
+    -I
+    -m norad
+    assemble scientific-review-package
     --review-id "$review_id"
     --sample-manifest "$sample_manifest"
     --partition-manifest "$partition_manifest"
@@ -127,7 +124,7 @@ printf 'Step 09c scientific-validation launcher:\n'
 printf '  Mode: %s\n' "$([[ "$execute" == true ]] && printf execute || printf dry-run)"
 printf '  Review ID: %s\n' "$review_id"
 printf '  Python: %s\n' "$python_bin"
-printf '  Python implementation: %s\n' "$python_script"
+printf '  NORAD command: assemble scientific-review-package\n'
 printf 'Delegated command:\n'
 print_command "${command_args[@]}"
 

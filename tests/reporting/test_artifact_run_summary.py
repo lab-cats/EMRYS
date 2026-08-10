@@ -92,7 +92,7 @@ def test_review_package_is_shared_across_summary_consumers() -> None:
 
 def test_run_summary_science_has_no_private_step09c_dependency() -> None:
     source = Path(SCIENCE.__file__).read_text(encoding="utf-8")
-    assert "step_09c_scientific_validation.py" not in source
+    assert "norad.evidence.scientific_review_package" not in source
     assert not hasattr(SCIENCE, "step09c")
 
 
@@ -847,7 +847,11 @@ def test_reporting_reader_does_not_reconstruct_step09c_sources(
     def reject_reconstruction(*_args: Any, **_kwargs: Any) -> Any:
         raise AssertionError("reporting attempted Step 09c reconstruction")
 
-    monkeypatch.setattr(FIXTURE.STEP09C, "build_context", reject_reconstruction)
+    monkeypatch.setattr(
+        FIXTURE.STEP09C_CONTEXT,
+        "build_context",
+        reject_reconstruction,
+    )
 
     context, tables = SCIENCE._read_committed_review_package(
         summary_path=fixture.science_review_summary,
