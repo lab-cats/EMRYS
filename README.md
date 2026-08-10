@@ -46,9 +46,10 @@ production references may remain operator- or cluster-local.
    [troubleshooting](docs/operations/TROUBLESHOOTING.md) for symptom-based
    diagnosis.
 
-For current implementation and evidence state, read
+For current evidence state and blockers, read
 [`HANDOFF.md`](docs/operations/HANDOFF.md). For planned work and acceptance
-boundaries, read [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md).
+boundaries, read [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md); the
+[architecture index](docs/architecture/README.md) owns implemented system views.
 
 To generate a synthetic presentation bundle, follow the
 [demo-report procedure](docs/demo/README.md),

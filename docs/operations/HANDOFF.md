@@ -1,8 +1,8 @@
 # Project handoff
 
-This file owns current implementation state, evidence ceilings, blockers, and
-live takeover facts that are not safely reconstructed from Git. Resolve branch,
-commit, upstream relation, and worktree contents directly from Git. Use
+This file owns current evidence ceilings, blockers, and live takeover facts
+that are not safely reconstructed from Git. Resolve branch, commit, upstream
+relation, and worktree contents directly from Git. Use
 [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) for open package families and
 acceptance, [`RUNBOOK.md`](RUNBOOK.md) for commands, and
 [`docs/history`](../history/) for frozen delivery records.
@@ -25,110 +25,21 @@ It does not prove every source passed or promote runtime, cluster, scientific,
 or biological state. Current test policy belongs to
 [`TEST_BASELINE.md`](../design/TEST_BASELINE.md).
 
-The reporting renderer now keeps its public shell and Python paths stable over
-a private, acyclic `_run_report` package. Models, input/context validation,
-HTML/PDF/receipt projection, pinned runtime execution, transaction primitives,
-and HTML versus receipt-last bundle publication have separate owners; no
-private module exceeds 445 lines. This is maintainability and local test
-evidence only and does not change the reporting evidence ceiling above.
+Completed maintainability decompositions span reporting, artifact and summary
+contracts, the neutral Step `08`/`09` contracts, Step `08`/`09` R owners,
+operational evidence tools, and Step `09c` review helpers. Current system shape
+and exact public routes belong to the [architecture index](../architecture/README.md)
+and [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md);
+Git and dated history preserve delivery detail and extraction measurements.
 
-Canonical run-summary assembly likewise keeps its public command and direct
-import bindings stable over bounded private owners for document assembly,
-receipt-last publication, transaction input, validation, projection, and
-scientific-review models, I/O, package reconstruction, and evidence
-normalization. The public coordinator is 381 lines, the science compatibility
-owner is 405 lines, and no new private module exceeds 442 lines. This is also
-maintainability and local test evidence only.
-
-Artifact indexing keeps its public command and fault-injection bindings over a
-private 302-line publication coordinator. Registry, inspection,
-reconciliation, record/context assembly, validation, and publication remain
-separate reporting-local owners; the public facade is 279 lines. This does not
-change schemas, discovery policy, evidence states, serialized bytes, or the
-receipt-last transaction boundary.
-
-Artifact-index text inspection now keeps its import surface over a 51-line
-compatibility facade and private UTF-8 admission, TSV/native-anchor, and
-genomic/Picard readers no larger than 258 lines. All 13 extracted function
-bodies are AST-identical. The independent frozen producer-byte evidence still
-passes; no producer, adapter registry, schema, discovery rule, or artifact
-state changed.
-
-Artifact-contract Python mechanics are separated behind the unchanged neutral
-facade: definitions/error identity, closed-registry schema I/O,
-path/run/attempt identity, computational evidence, run-summary reduction, and
-artifact/scientific-review/report-receipt semantics have distinct private
-owners, as does explicit inventory reconciliation. The public CLI and live
-document/semantic-dispatch hooks remain in a 192-line facade; the new private
-owners are no larger than 246 lines, and all 12 pre-split function bodies are
-AST-identical. The five schema resources are unchanged and remain one file per
-registered `$id`, using local `$defs`; this is maintainability evidence, not a
-schema version or evidence promotion.
-
-The neutral Step `08` scientific-evidence contract keeps direct-file loading,
-its complete public parsing surface, signatures, and shared error/table
-identities over private definition, support, manifest, and table-reconciliation
-owners. The public module is 56 lines, no private owner exceeds 271 lines, and
-all 19 extracted function bodies are AST-identical. Step `08` R computation,
-Step `09` consumers, review policy, publication, and artifact reconciliation
-were not changed; this adds no runtime, scientific-review, or biological
-evidence.
-
-The neutral Step `09` scientific-evidence contract keeps its public module,
-headers, signatures, and shared Step `08` identities over private definition,
-support, table-reconciliation, and cross-table-semantic owners. The public
-module is 47 lines and no private owner exceeds 373 lines. The Step `09`
-shell/R CMH method and independent oracle were not changed; this adds no
-runtime, scientific-review, or biological evidence.
-
-Step `08` R now retains a 402-line public coordinator over input-contract,
-annotation, Step `07` receipt, VCF/count, and candidate-processing modules no
-larger than 430 lines. All 23 pre-existing top-level function bodies are
-parse-identical to the committed monolith, including all ten functions in the
-VCF/count/candidate split. The complete owner remains about 1,900 lines;
-decomposition improves responsibility boundaries without disguising total
-complexity or promoting the 176-line external REMORA reference into a parity
-oracle.
-
-Step `09` R is already divided into a 179-line coordinator plus common,
-validation, evaluation, and output modules no larger than 279 lines. The five
-files total 1,101 lines. Its audit found no dead top-level function or safe
-owner-local collapse; independent validation and CMH-oracle boundaries remain
-separate.
-
-Runtime preflight keeps its executable, CLI, TSV bytes, probe behavior, and
-publication/fault-injection bindings stable over private model, profile,
-probe, and result-contract owners. The public compatibility/publication owner
-is 251 lines and no private module exceeds 167 lines. Known characterized
-publication gaps remain unchanged; this is maintainability and local test
-evidence, not CSU batch runtime or cluster proof.
-
-Storage inventory keeps its interpreter-only command, direct-import names,
-live `outputs` hook, TSV bytes, read-only measurement behavior, and
-receipt-last publication/fault-injection bindings over private contract,
-measurement/rendering, and publication owners. The public facade is 90 lines,
-no private module exceeds 212 lines, and all 12 pre-split function bodies are
-AST-identical. Focused storage/public-CLI tests passed; the full coverage gate
-was not rerun for this slice by explicit user direction. This adds no
-production storage inventory, approved retention policy, or retention action.
-
-Reference provenance keeps its executable, public names, CLI behavior, TSV
-bytes/order, contig reconciliation, stability recheck, and publication/fault-
-injection bindings over private contract, inventory, contig, and rendering
-owners. The public CLI/publication facade is 230 lines, no private module
-exceeds 135 lines, and all nine extracted function bodies are AST-identical to
-the committed monolith. The five implementation files total 693 lines; this is
-maintainability and local fixture evidence, not production reference proof.
-
-Step `09c` intake keeps its sibling-import surface over distinct data-model,
-support, review-plan, and evidence-manifest owners. Review analysis keeps the
-same surface over sensitivity/leave-one-pair-out, candidate
-selection/adjudication, and decision/limitation owners. The compatibility
-facades are 42 and 16 lines, the review-analysis owners are no larger than 190
-lines, and all seven extracted review-analysis function bodies are
-AST-identical. Review policy, manifest normalization/order, hashes, evidence
-states, and public Step `09c` publication remain unchanged; this adds no
-completed review or production evidence.
+Those changes preserved public paths, commands, direct-import bindings,
+schemas, serialized bytes, explicit inputs, transaction/recovery behavior,
+fault-injection boundaries, scientific methods, independent-oracle boundaries,
+and evidence semantics. The external REMORA reference is not a parity oracle.
+Known publication defects remain current blockers below. Focused storage and
+public-CLI tests passed, but that storage slice did not rerun the full coverage
+gate. These decompositions establish local maintainability evidence only; they
+add no runtime, cluster, scientific-review, or biological proof.
 
 ## Cohort and preserved scientific evidence
 

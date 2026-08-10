@@ -2,15 +2,15 @@
 
 This document owns open package families and package acceptance. Open intent
 and selected scope belong to the [task registry](../tasks/README.md), current
-implementation, evidence ceilings, and blockers to
-[`HANDOFF.md`](../operations/HANDOFF.md), commands to the
-[`RUNBOOK.md`](../operations/RUNBOOK.md), and rationale to
+evidence ceilings and blockers to [`HANDOFF.md`](../operations/HANDOFF.md),
+implemented system views to the [architecture index](../architecture/README.md),
+commands to the [`RUNBOOK.md`](../operations/RUNBOOK.md), and rationale to
 [`DECISIONS.md`](DECISIONS.md).
 
 ## Current state
 
-Current implementation and evidence are not restated here. Use the live
-[`HANDOFF.md`](../operations/HANDOFF.md); system structure and exact source
+Current evidence and blockers are not restated here. Use the live
+[`HANDOFF.md`](../operations/HANDOFF.md); implemented structure and exact source
 ownership remain with the [architecture index](../architecture/README.md) and
 its routed owners.
 
