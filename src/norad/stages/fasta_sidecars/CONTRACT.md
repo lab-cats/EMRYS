@@ -111,7 +111,10 @@ A parser-recognized malformed sidecar or content mismatch is represented by
 role-local `status=fail` rows and does not repair the reference or sidecars.
 Input rejected by snapshot validation, an invalid CLI/output contract, or an
 unsafe publication state exits with code `2` without publishing a new report.
-Characterized raw parser exceptions remain uncaught and also publish nothing.
+Parser I/O, encoding, and tabular-data exceptions are translated at the parser
+boundary, exit with code `2`, and publish nothing. Unexpected publication I/O
+errors retain their separate hard-error boundary rather than being normalized
+after report output or possible filesystem mutation.
 
 The validator imports FASTA, `FAI`, and `DICT` parsers from the neutral
 [`references/contigs.py`](../../libraries/references/contigs.py) owner and report

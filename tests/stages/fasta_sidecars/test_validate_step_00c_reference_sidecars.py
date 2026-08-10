@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import argparse
 import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+import pytest
+
+from norad.libraries.validation import runtime as validation_runtime
+from norad.stages.fasta_sidecars import validator
 from tests.stage_validator_test_support import load_roster_oracle
 from tests.stage_validator_test_support import read_tsv as report_rows
 
@@ -115,6 +120,49 @@ def test_malformed_sidecar_is_role_local_failed_evidence(tmp_path: Path) -> None
     assert rows_by_check["dict_structure"]["status"] == "pass"
     assert rows_by_check["fai_contig_agreement"]["status"] == "fail"
     assert rows_by_check["dict_contig_agreement"]["status"] == "pass"
+
+
+def test_invalid_encoding_fails_closed_without_traceback(tmp_path: Path) -> None:
+    reference = build_validation_fixture(tmp_path)
+    reference.fai.write_bytes(b"\xff")
+
+    result = run_validator(reference, "--execute")
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr.startswith("ERROR: ")
+    assert "can't decode byte 0xff" in result.stderr
+    assert "Traceback" not in result.stderr
+    assert not reference.output.exists()
+
+
+def test_unexpected_publication_oserror_remains_a_hard_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    reference = build_validation_fixture(tmp_path)
+    arguments = argparse.Namespace(
+        scope_id="novogene_ref",
+        reference_fasta=reference.fasta,
+        reference_fai=reference.fai,
+        reference_dict=reference.dictionary,
+        output=reference.output,
+        execute=True,
+    )
+
+    def fail_publication(*_arguments: object, **_keywords: object) -> None:
+        raise OSError("injected publication failure")
+
+    monkeypatch.setattr(validation_runtime, "publish", fail_publication)
+
+    with pytest.raises(OSError, match="injected publication failure"):
+        validator.validate_from_args(arguments)
+
+    captured = capsys.readouterr()
+    assert captured.out.startswith("step_id\tscope_id\tcheck_id\tstatus")
+    assert captured.err == ""
+    assert not reference.output.exists()
 
 
 def test_missing_input_and_wrong_output_fail_closed(tmp_path: Path) -> None:

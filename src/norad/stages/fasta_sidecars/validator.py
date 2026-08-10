@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 from collections.abc import Callable
 from pathlib import Path
 
@@ -18,6 +19,7 @@ from norad.libraries.validation import (
     add_output_arguments,
     build_report,
     clean,
+    fail,
     lexical_path,
     run_from_args,
     snapshots,
@@ -68,6 +70,8 @@ def build_validation_report(
             contigs_by_role[role] = parser(reference_paths[role])
         except ReferenceContigError as exc:
             parse_errors_by_role[role] = clean(exc)
+        except (OSError, UnicodeError, csv.Error) as exc:
+            fail(str(exc))
 
     checks: dict[str, ValidationCheck] = {}
     for role, _ in ROLE_PARSERS:
@@ -111,6 +115,5 @@ def validate_from_args(arguments: argparse.Namespace) -> int:
         build_validation_report,
         "00c",
         CHECK_IDS,
-        # Parser I/O and decoding failures intentionally remain hard errors.
         caught_errors=(ValidationError, ReferenceContigError),
     )

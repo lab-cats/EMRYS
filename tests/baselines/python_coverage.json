@@ -1380,10 +1380,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 6,
-      "covered_lines": 37,
+      "covered_lines": 40,
       "line_rate": "1.000000",
       "num_branches": 6,
-      "num_statements": 37,
+      "num_statements": 40,
       "path": "src/norad/stages/fasta_sidecars/validator.py"
     },
     {
@@ -1512,9 +1512,9 @@
   "totals": {
     "branch_rate": "0.748647",
     "covered_branches": 3321,
-    "covered_lines": 10303,
-    "line_rate": "0.860448",
+    "covered_lines": 10306,
+    "line_rate": "0.860483",
     "num_branches": 4436,
-    "num_statements": 11974
+    "num_statements": 11977
   }
 }
