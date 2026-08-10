@@ -1135,15 +1135,6 @@ def _assert_installed_commands(
     )
 
 
-def _assert_split_n_cigar_private_layout() -> None:
-    owner = REPO_ROOT / "src/norad/stages/split_n_cigar"
-    assert not (REPO_ROOT / "src/norad/stages/split_N_cigar_reads_with_GATK").exists()
-    assert not (owner / "validate_step_05_split_ncigar.py").exists()
-    assert (owner / "validator.py").stat().st_mode & 0o111 == 0
-    assert not (REPO_ROOT / "tests/stages/split_N_cigar_reads_with_GATK").exists()
-    assert (REPO_ROOT / "tests/stages/split_n_cigar").is_dir()
-
-
 def _assert_private_source_layout() -> None:
     manifest_owner = REPO_ROOT / "src/norad/ingestion/sample_manifest_admission"
     assert not (manifest_owner / "validate_manifest.py").exists()
@@ -1156,75 +1147,55 @@ def _assert_private_source_layout() -> None:
     for private_name in ("converter.py", "validator.py"):
         assert (stage_owner / private_name).stat().st_mode & 0o111 == 0
 
-    star_index_owner = REPO_ROOT / "src/norad/stages/star_index"
-    assert not (REPO_ROOT / "src/norad/stages/construct_STAR_index").exists()
-    assert not (star_index_owner / "validate_step_00a_star_index.py").exists()
-    assert (star_index_owner / "validator.py").stat().st_mode & 0o111 == 0
-
-    assert not (REPO_ROOT / "tests/stages/construct_STAR_index").exists()
-    assert (REPO_ROOT / "tests/stages/star_index").is_dir()
-
-    fasta_sidecars_owner = REPO_ROOT / "src/norad/stages/fasta_sidecars"
-    assert not (REPO_ROOT / "src/norad/stages/construct_FASTA_sidecars").exists()
-    assert not (
-        fasta_sidecars_owner / "validate_step_00c_reference_sidecars.py"
-    ).exists()
-    assert (fasta_sidecars_owner / "validator.py").stat().st_mode & 0o111 == 0
-
-    assert not (REPO_ROOT / "tests/stages/construct_FASTA_sidecars").exists()
-    assert (REPO_ROOT / "tests/stages/fasta_sidecars").is_dir()
-
-    star_alignment_owner = REPO_ROOT / "src/norad/stages/star_alignment"
-    assert not (REPO_ROOT / "src/norad/stages/align_RNA_reads_with_STAR").exists()
-    assert not (star_alignment_owner / "validate_step_01_star_alignment.py").exists()
-    assert (star_alignment_owner / "validator.py").stat().st_mode & 0o111 == 0
-
-    assert not (REPO_ROOT / "tests/stages/align_RNA_reads_with_STAR").exists()
-    assert (REPO_ROOT / "tests/stages/star_alignment").is_dir()
-
-    canonical_bam_owner = REPO_ROOT / "src/norad/stages/canonical_bam"
-    assert not (REPO_ROOT / "src/norad/stages/construct_canonical_BAM").exists()
-    assert not (canonical_bam_owner / "validate_step_02_canonical_bam.py").exists()
-    assert (canonical_bam_owner / "validator.py").stat().st_mode & 0o111 == 0
-
-    assert not (REPO_ROOT / "tests/stages/construct_canonical_BAM").exists()
-    assert (REPO_ROOT / "tests/stages/canonical_bam").is_dir()
-
-    canonical_bam_qc_owner = REPO_ROOT / "src/norad/evidence/canonical_bam_qc"
-    assert not (
-        REPO_ROOT / "src/norad/evidence/collect_canonical_BAM_QC_evidence"
-    ).exists()
-    assert not (canonical_bam_qc_owner / "validate_step_02b_bam_qc.py").exists()
-    assert (canonical_bam_qc_owner / "validator.py").stat().st_mode & 0o111 == 0
-
-    assert not (REPO_ROOT / "tests/evidence/collect_canonical_BAM_QC_evidence").exists()
-    assert (REPO_ROOT / "tests/evidence/canonical_bam_qc").is_dir()
-
-    rseqc_orientation_owner = REPO_ROOT / "src/norad/evidence/rseqc_orientation"
-    assert not (
-        REPO_ROOT / "src/norad/evidence/collect_RSeQC_paired_orientation_evidence"
-    ).exists()
-    assert not (
-        rseqc_orientation_owner / "validate_step_03_rseqc_orientation.py"
-    ).exists()
-    assert (rseqc_orientation_owner / "validator.py").stat().st_mode & 0o111 == 0
-
-    assert not (
-        REPO_ROOT / "tests/evidence/collect_RSeQC_paired_orientation_evidence"
-    ).exists()
-    assert (REPO_ROOT / "tests/evidence/rseqc_orientation").is_dir()
-
-    duplicate_marking_owner = REPO_ROOT / "src/norad/stages/duplicate_marking"
-    assert not (REPO_ROOT / "src/norad/stages/mark_BAM_duplicates_with_Picard").exists()
-    assert not (
-        duplicate_marking_owner / "validate_step_04_mark_duplicates.py"
-    ).exists()
-    assert (duplicate_marking_owner / "validator.py").stat().st_mode & 0o111 == 0
-
-    assert not (REPO_ROOT / "tests/stages/mark_BAM_duplicates_with_Picard").exists()
-    assert (REPO_ROOT / "tests/stages/duplicate_marking").is_dir()
-
-    _assert_split_n_cigar_private_layout()
+    normalized_owners = (
+        (
+            "stages/star_index",
+            "stages/construct_STAR_index",
+            "validate_step_00a_star_index.py",
+        ),
+        (
+            "stages/fasta_sidecars",
+            "stages/construct_FASTA_sidecars",
+            "validate_step_00c_reference_sidecars.py",
+        ),
+        (
+            "stages/star_alignment",
+            "stages/align_RNA_reads_with_STAR",
+            "validate_step_01_star_alignment.py",
+        ),
+        (
+            "stages/canonical_bam",
+            "stages/construct_canonical_BAM",
+            "validate_step_02_canonical_bam.py",
+        ),
+        (
+            "evidence/canonical_bam_qc",
+            "evidence/collect_canonical_BAM_QC_evidence",
+            "validate_step_02b_bam_qc.py",
+        ),
+        (
+            "evidence/rseqc_orientation",
+            "evidence/collect_RSeQC_paired_orientation_evidence",
+            "validate_step_03_rseqc_orientation.py",
+        ),
+        (
+            "stages/duplicate_marking",
+            "stages/mark_BAM_duplicates_with_Picard",
+            "validate_step_04_mark_duplicates.py",
+        ),
+        (
+            "stages/split_n_cigar",
+            "stages/split_N_cigar_reads_with_GATK",
+            "validate_step_05_split_ncigar.py",
+        ),
+    )
+    for current_relative, retired_relative, retired_validator in normalized_owners:
+        current_source = REPO_ROOT / "src/norad" / current_relative
+        assert not (REPO_ROOT / "src/norad" / retired_relative).exists()
+        assert not (current_source / retired_validator).exists()
+        assert (current_source / "validator.py").stat().st_mode & 0o111 == 0
+        assert not (REPO_ROOT / "tests" / retired_relative).exists()
+        assert (REPO_ROOT / "tests" / current_relative).is_dir()
 
 
 def _assert_wrong_checkout_rejected(
