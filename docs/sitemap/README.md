@@ -29,7 +29,7 @@ For task orientation and approved delivery, use
 | Operator | [Handoff](../operations/HANDOFF.md) | [Runbook](../operations/RUNBOOK.md), owner README, and [troubleshooting](../operations/TROUBLESHOOTING.md) |
 | Scientist/reviewer | [Architecture index](../architecture/README.md) | Stage map, owner contracts, questions, and test baseline |
 | Maintainer | [Safety guard](../../AGENTS.md) | [Workflow](../operations/WORKFLOW.md), selected card, and affected owners |
-| Auditor/historian | [History](../history/) | Refactor audit and test baseline recheck routes |
+| Auditor/historian | [History](../history/) | Dated evidence and test-baseline recheck routes |
 
 ## Canonical roles
 
