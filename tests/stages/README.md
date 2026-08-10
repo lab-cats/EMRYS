@@ -8,7 +8,7 @@ This directory mirrors the ten computational stage owners.
   [`fasta_sidecars/`](fasta_sidecars/README.md).
 - Sample processing:
   [`star_alignment/`](star_alignment/README.md),
-  [`construct_canonical_BAM/`](construct_canonical_BAM/README.md),
+  [`canonical_bam/`](canonical_bam/README.md),
   [`mark_BAM_duplicates_with_Picard/`](mark_BAM_duplicates_with_Picard/README.md),
   [`split_N_cigar_reads_with_GATK/`](split_N_cigar_reads_with_GATK/README.md),
   and

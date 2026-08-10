@@ -7,7 +7,8 @@ semantics.
 ## Entry points
 
 - producer: [`step_02_sort_index_bam.sh`](step_02_sort_index_bam.sh)
-- validator: [`validate_step_02_canonical_bam.py`](validate_step_02_canonical_bam.py)
+- validator: grouped route `python -I -m norad validate canonical-bam`,
+  implemented by private [`validator.py`](validator.py)
 - scheduler: [`step_02_sort_index_bam.slurm`](step_02_sort_index_bam.slurm)
 
 ## Operate
@@ -15,7 +16,7 @@ semantics.
 Producer dry-run resolves `samtools` from `PATH` and creates no output:
 
 ```bash
-src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh \
+src/norad/stages/canonical_bam/step_02_sort_index_bam.sh \
   --sample-id ABE_EV_2 \
   --input-alignment results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
   --output-dir results/bam/ABE_EV_2 \
@@ -29,7 +30,7 @@ can leave only the prior BAI and no lock, backup, or recovery marker.
 Validator dry-run:
 
 ```bash
-.venv/bin/python src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py \
+.venv/bin/python -I -m norad validate canonical-bam \
   --scope-id ABE_EV_2 \
   --bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
   --bai results/bam/ABE_EV_2/ABE_EV_2.sorted.bam.bai \
@@ -37,9 +38,10 @@ Validator dry-run:
   --output results/qc/validation/02/ABE_EV_2.validation.tsv
 ```
 
-Create the output parent and add `--execute`. Validator imports the neutral
-validation-report and BAM helpers; do not add `PYTHONPATH`, install a package,
-or restore a legacy helper path to bypass an import failure.
+Create the output parent and add `--execute`. The private validator imports the
+neutral validation-report and BAM helpers; do not execute `validator.py`
+directly, add `PYTHONPATH`, or restore the retired validator path to bypass an
+import failure.
 
 Submit from the checkout; change `EXECUTE=0` to `1` only after dry-run review:
 
@@ -49,7 +51,7 @@ mkdir -p logs
 SAMPLE_ID=ABE_EV_2 \
 INPUT_ALIGNMENT=/absolute/results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam \
 OUTPUT_DIR=/absolute/results/bam/ABE_EV_2 THREADS=8 EXECUTE=0 \
-  sbatch src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.slurm
+  sbatch src/norad/stages/canonical_bam/step_02_sort_index_bam.slurm
 ```
 
 The wrapper forces `TMPDIR=/tmp`, strictly loads samtools `1.19.2`, and checks
@@ -62,9 +64,9 @@ paths before recovery. Absence of a lock or backup does not authorize deletion,
 adoption, or retry. Follow [`TROUBLESHOOTING.md`](../../../../docs/operations/TROUBLESHOOTING.md).
 
 ```bash
-bash tests/stages/construct_canonical_BAM/test_step_02_sort_index_bam.sh
+bash tests/stages/canonical_bam/test_step_02_sort_index_bam.sh
 .venv/bin/python -m pytest -q \
-  tests/stages/construct_canonical_BAM/test_validate_step_02_canonical_bam.py \
+  tests/stages/canonical_bam/test_validate_step_02_canonical_bam.py \
   tests/libraries/test_bam_validation.py \
   tests/stages/mark_BAM_duplicates_with_Picard/test_validate_step_04_mark_duplicates.py \
   tests/stages/split_N_cigar_reads_with_GATK/test_validate_step_05_split_ncigar.py \

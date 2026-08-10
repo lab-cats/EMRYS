@@ -3,10 +3,11 @@
 This document records the observed current contract of historical Step `02`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug and is now the implemented native source owner. It is not
-a Python package. The adjacent [owner README](README.md) routes supported
-commands, diagnostics, and rollback; this contract remains the detailed
-behavior owner.
+is the lowercase physical owner for that frozen semantic identity. Its shell
+producer and scheduler remain repository-path interfaces, while its private
+Python validator is exposed only through the grouped package command. The
+adjacent [owner README](README.md) routes supported commands, diagnostics, and
+rollback; this contract remains the detailed behavior owner.
 
 ## Responsibility
 
@@ -111,9 +112,10 @@ preserved current contracts, not target behavior.
 
 ## Validation interface
 
-[`validate_step_02_canonical_bam.py`](validate_step_02_canonical_bam.py)
-accepts an explicit scope, BAM, BAI, samtools executable, and output path.
-Validation is dry-run by default; `--execute` publishes
+The grouped route `python -I -m norad validate canonical-bam`, implemented by
+private [`validator.py`](validator.py), accepts an explicit scope, BAM, BAI,
+samtools executable, and output path. Validation is dry-run by default;
+`--execute` publishes
 `<scope-id>.validation.tsv` using the common seven-field step-validation
 contract.
 
@@ -174,11 +176,11 @@ their functional ownership.
 
 ## Protected behavior and evidence
 
-- [`test_step_02_sort_index_bam.sh`](../../../../tests/stages/construct_canonical_BAM/test_step_02_sort_index_bam.sh)
+- [`test_step_02_sort_index_bam.sh`](../../../../tests/stages/canonical_bam/test_step_02_sort_index_bam.sh)
   protects the explicit CLI, side-effect-free producer dry-run, read-group and
   sort contract, locking, inconsistent-pair rejection, staged validation,
   cleanup, and rollback after backup, publication, and final-validation faults.
-- [`test_validate_step_02_canonical_bam.py`](../../../../tests/stages/construct_canonical_BAM/test_validate_step_02_canonical_bam.py)
+- [`test_validate_step_02_canonical_bam.py`](../../../../tests/stages/canonical_bam/test_validate_step_02_canonical_bam.py)
   protects dry-run, the five checks, mismatch evidence, fail-closed missing
   input, publication, and foreign-lock preservation.
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)

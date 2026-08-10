@@ -55,7 +55,7 @@ echo "Loaded modules after samtools load:"
 module list 2>&1 || true
 
 cmd=(
-    bash src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh
+    bash src/norad/stages/canonical_bam/step_02_sort_index_bam.sh
     --sample-id "$SAMPLE_ID"
     --input-alignment "$INPUT_ALIGNMENT"
     --output-dir "$OUTPUT_DIR"

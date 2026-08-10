@@ -173,6 +173,8 @@ def _assert_wheel_contents(wheel: Path) -> None:
             not in members
         )
         assert {member for member in members if member.startswith("norad/stages/")} == {
+            "norad/stages/canonical_bam/__init__.py",
+            "norad/stages/canonical_bam/validator.py",
             "norad/stages/fasta_sidecars/__init__.py",
             "norad/stages/fasta_sidecars/validator.py",
             "norad/stages/__init__.py",
@@ -570,6 +572,98 @@ def _assert_installed_star_alignment_validation(
     assert unrelated_path.read_text(encoding="utf-8") == "preserve\n"
 
 
+def _build_canonical_bam_fixture(
+    working_directory: Path,
+) -> tuple[Path, Path, Path, Path]:
+    input_directory = working_directory / "canonical-bam-inputs"
+    input_directory.mkdir()
+    bam_path = input_directory / "wheel_fixture.sorted.bam"
+    bam_path.write_bytes(b"BAM\x01synthetic")
+    bai_path = input_directory / "wheel_fixture.sorted.bam.bai"
+    bai_path.write_bytes(b"BAI\x01synthetic")
+    samtools_path = input_directory / "samtools"
+    samtools_path.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        'case "${1:-} ${2:-}" in\n'
+        "  'quickcheck -v') exit 0 ;;\n"
+        "  'view -H')\n"
+        "    printf '@HD\\tVN:1.6\\tSO:coordinate\\n"
+        "@RG\\tID:wheel_fixture\\tSM:wheel_fixture\\n' ;;\n"
+        "  'view -c') printf '10\\n' ;;\n"
+        "  *) exit 9 ;;\n"
+        "esac\n",
+        encoding="utf-8",
+    )
+    samtools_path.chmod(0o755)
+    validation_directory = working_directory / "canonical-bam-validation"
+    validation_directory.mkdir()
+    return (
+        bam_path,
+        bai_path,
+        samtools_path,
+        validation_directory / "wheel_fixture.validation.tsv",
+    )
+
+
+def _assert_installed_canonical_bam_validation(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    bam_path, bai_path, samtools_path, output_path = _build_canonical_bam_fixture(
+        working_directory
+    )
+    input_paths = (bam_path, bai_path, samtools_path)
+    input_states = tuple(
+        (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    )
+    unrelated_path = working_directory / "canonical-bam-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+
+    validation = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "canonical-bam",
+        "--scope-id",
+        "wheel_fixture",
+        "--bam",
+        str(bam_path),
+        "--bai",
+        str(bai_path),
+        "--samtools-bin",
+        str(samtools_path),
+        "--output",
+        str(output_path),
+    )
+    assert validation.returncode == 0, validation.stdout + validation.stderr
+    assert validation.stderr == ""
+    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
+    report_rows = [
+        line.split("\t")
+        for line in validation.stdout.splitlines()
+        if line.startswith("02\t")
+    ]
+    assert len(report_rows) == 5
+    assert {row[2] for row in report_rows} == {
+        "bam_bai_structure",
+        "samtools_quickcheck",
+        "coordinate_sorting",
+        "read_group_header",
+        "alignment_rg_tags",
+    }
+    assert {row[3] for row in report_rows} == {"pass"}
+    assert not output_path.exists()
+    assert not list(output_path.parent.glob(".*validation*"))
+    assert (
+        tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
+        == input_states
+    )
+    assert unrelated_path.read_text(encoding="utf-8") == "preserve\n"
+
+
 def _assert_installed_commands(
     environment_python: Path,
     working_directory: Path,
@@ -637,6 +731,11 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_canonical_bam_validation(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_private_source_layout() -> None:
@@ -676,6 +775,14 @@ def _assert_private_source_layout() -> None:
 
     assert not (REPO_ROOT / "tests/stages/align_RNA_reads_with_STAR").exists()
     assert (REPO_ROOT / "tests/stages/star_alignment").is_dir()
+
+    canonical_bam_owner = REPO_ROOT / "src/norad/stages/canonical_bam"
+    assert not (REPO_ROOT / "src/norad/stages/construct_canonical_BAM").exists()
+    assert not (canonical_bam_owner / "validate_step_02_canonical_bam.py").exists()
+    assert (canonical_bam_owner / "validator.py").stat().st_mode & 0o111 == 0
+
+    assert not (REPO_ROOT / "tests/stages/construct_canonical_BAM").exists()
+    assert (REPO_ROOT / "tests/stages/canonical_bam").is_dir()
 
 
 def _assert_wrong_checkout_rejected(

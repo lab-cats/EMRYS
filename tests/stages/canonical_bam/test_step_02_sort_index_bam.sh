@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh"
+SCRIPT="$REPO_ROOT/src/norad/stages/canonical_bam/step_02_sort_index_bam.sh"
 
 # Keep assertions small and shell-native so failures print the local fixture state.
 fail() {

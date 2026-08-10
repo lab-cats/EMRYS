@@ -12,6 +12,7 @@ from typing import cast
 from norad.ingestion.sample_manifest_admission import (
     validator as manifest_command,
 )
+from norad.stages.canonical_bam import validator as canonical_bam_validation_command
 from norad.stages.fasta_sidecars import validator as fasta_sidecars_validation_command
 from norad.stages.gtf_to_bed12 import (
     converter as gtf_to_bed12_command,
@@ -108,6 +109,15 @@ def build_parser() -> argparse.ArgumentParser:
     bed12_validation_command.configure_parser(bed12_parser)
     bed12_parser.set_defaults(
         _command_handler=bed12_validation_command.validate_from_args
+    )
+    canonical_bam_parser = validation_parsers.add_parser(
+        "canonical-bam",
+        help="Validate one canonical BAM/BAI pair.",
+        description=canonical_bam_validation_command.DESCRIPTION,
+    )
+    canonical_bam_validation_command.configure_parser(canonical_bam_parser)
+    canonical_bam_parser.set_defaults(
+        _command_handler=canonical_bam_validation_command.validate_from_args
     )
     fasta_sidecars_parser = validation_parsers.add_parser(
         "fasta-sidecars",

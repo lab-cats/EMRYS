@@ -12,7 +12,7 @@ grouped module interface.
 | `00b` | [`convert_GTF_to_BED12`](gtf_to_bed12/README.md) |
 | `00c` | [`construct_FASTA_sidecars`](fasta_sidecars/README.md) |
 | `01` | [`align_RNA_reads_with_STAR`](star_alignment/README.md) |
-| `02` | [`construct_canonical_BAM`](construct_canonical_BAM/README.md) |
+| `02` | [`construct_canonical_BAM`](canonical_bam/README.md) |
 | `04` | [`mark_BAM_duplicates_with_Picard`](mark_BAM_duplicates_with_Picard/README.md) |
 | `05` | [`split_N_cigar_reads_with_GATK`](split_N_cigar_reads_with_GATK/README.md) |
 | `06` | [`partition_BAM_by_mechanical_read_orientation`](partition_BAM_by_mechanical_read_orientation/README.md) |
@@ -42,10 +42,12 @@ its shell producer and scheduler as repository-path interfaces while exposing
 its validator as `python -I -m norad validate fasta-sidecars`. Step `01`
 likewise keeps its shell producer and scheduler as repository-path interfaces
 while exposing its private validator as
-`python -I -m norad validate star-alignment`. For `08`, the shell transaction
-owner delegates its scientific transform to the adjacent Rscript
-implementation. The remaining stage interfaces are still repository paths,
-not installed commands or import APIs.
+`python -I -m norad validate star-alignment`. Step `02` keeps its shell
+producer and scheduler as repository-path interfaces while exposing its
+private validator as `python -I -m norad validate canonical-bam`. For `08`,
+the shell transaction owner delegates its scientific transform to the
+adjacent Rscript implementation. The remaining stage interfaces are still
+repository paths, not installed commands or import APIs.
 
 Each owner declares and governs the outputs produced through its interfaces,
 normally under ignored `results/` or declared reference storage. A file,

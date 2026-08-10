@@ -10,7 +10,7 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh \
+  src/norad/stages/canonical_bam/step_02_sort_index_bam.sh \
     --sample-id SAMPLE_ID \
     --input-alignment INPUT_ALIGNMENT \
     --output-dir OUTPUT_DIR \

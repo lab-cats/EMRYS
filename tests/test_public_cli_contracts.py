@@ -47,9 +47,6 @@ PYTHON_ENTRYPOINT_PATHS = {
     "validate_artifact_contracts.py": Path(
         "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     ),
-    "validate_step_02_canonical_bam.py": Path(
-        "src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py"
-    ),
     "validate_step_02b_bam_qc.py": Path(
         "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
         "validate_step_02b_bam_qc.py"
@@ -93,7 +90,6 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
         "render_run_report_bundle.py",
         "step_09c_scientific_validation.py",
         "validate_artifact_contracts.py",
-        "validate_step_02_canonical_bam.py",
         "validate_step_02b_bam_qc.py",
         "validate_step_03_rseqc_orientation.py",
         "validate_step_04_mark_duplicates.py",
@@ -119,6 +115,7 @@ INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPO
 NORAD_COMMANDS = (
     (("convert", "gtf-to-bed12"), "usage: norad convert gtf-to-bed12"),
     (("validate", "bed12"), "usage: norad validate bed12"),
+    (("validate", "canonical-bam"), "usage: norad validate canonical-bam"),
     (("validate", "fasta-sidecars"), "usage: norad validate fasta-sidecars"),
     (("validate", "manifest"), "usage: norad validate manifest"),
     (("validate", "star-alignment"), "usage: norad validate star-alignment"),
@@ -137,7 +134,7 @@ SHELL_ENTRYPOINT_PATHS = {
         "src/norad/stages/star_alignment/step_01_star_align.sh"
     ),
     "step_02_sort_index_bam.sh": Path(
-        "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh"
+        "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh"
     ),
     "step_02b_bam_qc.sh": Path(
         "src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh"

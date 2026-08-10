@@ -59,7 +59,7 @@ CONTRACTS = {
         output_validation="delegate_only",
     ),
     "step_02_sort_index_bam.slurm": contract(
-        "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh",
+        "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh",
         default="dry_run_creates_output_directory_with_bash32_empty_array_defect",
         module_policy="strict_loads_tolerated_lists",
         module_calls=("list", "load samtools/1.19.2", "list"),
