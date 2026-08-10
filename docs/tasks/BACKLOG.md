@@ -26,17 +26,10 @@ selection, implementation, or publication authority.
 - **Intent:** Classify every source file's module header, public docstrings, and non-obvious invariant comments as sufficient, update, defer, or exclude.
 - **Boundaries:** Preserve CLI help and byte-sensitive fixtures; do not turn inline comments into data, duplicate owner documentation, or execute a rollout.
 
-## DOC-README-03 — Establish directory README coverage
-
-- **Kind:** actionable
-- **Blocked by:** None
-- **Intent:** Establish concise local orientation for every eligible durable directory and an explicit exclusion for directories that should not own a README.
-- **Boundaries:** Parent documents route; child documents own local facts; never duplicate mutable commands, state, contracts, or byte-sensitive content.
-
 ## DOC-SKILL-10 — Build documentation-health skill
 
 - **Kind:** actionable
-- **Blocked by:** `CODEDOC-05`, `DOC-README-03`, `REVIEW-UX-03`
+- **Blocked by:** `CODEDOC-05`, `REVIEW-UX-03`
 - **Intent:** Build and forward-test a read-only-first skill for deterministic and semantic NORAD documentation-health review after the practices are stable.
 - **Boundaries:** Use the supported skill workflow; require approval for mutation; detect broken links, owner drift, task integrity, README/glossary/header gaps, and seeded failures without replacing the documentation gate.
 
