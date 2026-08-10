@@ -166,11 +166,12 @@ validation-static: lint
 	$(STATIC_SHELL_CHECKS)
 	PYTHONDONTWRITEBYTECODE=1 \
 		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/norad tests
-	"$(REPORT_PYTHON_BIN)" src/norad/ingestion/sample_manifest_admission/validate_manifest.py \
+	"$(REPORT_PYTHON_BIN)" -I -m norad validate manifest \
 		--manifest configs/samples.example.tsv
 
 validate:
-	"$(REPORT_PYTHON_BIN)" src/norad/ingestion/sample_manifest_admission/validate_manifest.py --manifest configs/samples.example.tsv
+	"$(REPORT_PYTHON_BIN)" -I -m norad validate manifest \
+		--manifest configs/samples.example.tsv
 
 smoke:
 	$(STATIC_SHELL_CHECKS)

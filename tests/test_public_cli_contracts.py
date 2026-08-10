@@ -48,9 +48,6 @@ PYTHON_ENTRYPOINT_PATHS = {
     "validate_artifact_contracts.py": Path(
         "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     ),
-    "validate_manifest.py": Path(
-        "src/norad/ingestion/sample_manifest_admission/validate_manifest.py"
-    ),
     "validate_step_00a_star_index.py": Path(
         "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
     ),
@@ -135,10 +132,10 @@ DIRECT_PYTHON_ENTRYPOINTS = frozenset(
         "restore_quarto.py",
         "runtime_preflight.py",
         "validate_artifact_contracts.py",
-        "validate_manifest.py",
     }
 )
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
+NORAD_COMMANDS = (("validate", "manifest"),)
 
 SHELL_ENTRYPOINT_PATHS = {
     "check_fastq_pairs.sh": Path(
@@ -505,6 +502,65 @@ def test_python_help_and_parse_failure_are_cwd_independent_and_side_effect_free(
     assert parse_failure.returncode != 0
     assert "usage:" in parse_failure.stderr.lower()
     assert relative_snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("command", NORAD_COMMANDS)
+def test_installed_norad_commands_are_isolated_and_cwd_independent(
+    command: tuple[str, ...],
+    tmp_path: Path,
+) -> None:
+    foreign_root = tmp_path / "foreign"
+    foreign_package = foreign_root / "norad"
+    foreign_package.mkdir(parents=True)
+    (foreign_package / "__init__.py").write_text(
+        "raise RuntimeError('foreign norad package imported')\n",
+        encoding="utf-8",
+    )
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(foreign_root)
+    before = relative_snapshot(tmp_path)
+
+    help_result = run_command(
+        [sys.executable, "-I", "-m", "norad", *command, "--help"],
+        cwd=invocation_cwd,
+        env=environment,
+    )
+    parse_failure = run_command(
+        [
+            sys.executable,
+            "-I",
+            "-m",
+            "norad",
+            *command,
+            "--definitely-not-a-public-option",
+        ],
+        cwd=invocation_cwd,
+        env=environment,
+    )
+
+    assert help_result.returncode == 0, help_result.stderr
+    assert "usage: norad validate manifest" in help_result.stdout
+    assert parse_failure.returncode != 0
+    assert "usage: norad validate manifest" in parse_failure.stderr
+    assert "foreign norad package imported" not in help_result.stderr
+    assert relative_snapshot(tmp_path) == before
+
+
+@pytest.mark.parametrize("arguments", (("--help",), ("validate", "--help")))
+def test_installed_norad_command_routing_help(
+    arguments: tuple[str, ...],
+    tmp_path: Path,
+) -> None:
+    result = run_command(
+        [sys.executable, "-I", "-m", "norad", *arguments],
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "usage: norad" in result.stdout
+    assert relative_snapshot(tmp_path) == ()
 
 
 @pytest.mark.parametrize(

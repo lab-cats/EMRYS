@@ -47,7 +47,7 @@ The active policy:
   `src/norad`;
 - requires subprocess coverage for
   `src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py` and
-  `src/norad/ingestion/sample_manifest_admission/validate_manifest.py`;
+  `src/norad/ingestion/sample_manifest_admission/validator.py`;
 - rejects any exact-ratio decrease in global line or branch coverage;
 - rejects disappearance of a tracked baseline module;
 - requires each explicitly named new shared Python module to reach at least

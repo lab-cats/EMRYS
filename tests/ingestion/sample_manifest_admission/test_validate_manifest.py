@@ -3,14 +3,6 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SCRIPT = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "ingestion"
-    / "sample_manifest_admission"
-    / "validate_manifest.py"
-)
 
 
 def write_manifest(path: Path, header: list[str], rows: list[list[str]]) -> Path:
@@ -22,7 +14,7 @@ def write_manifest(path: Path, header: list[str], rows: list[list[str]]) -> Path
 
 def run_validator(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(SCRIPT), *args],
+        [sys.executable, "-I", "-m", "norad", "validate", "manifest", *args],
         cwd=REPO_ROOT,
         text=True,
         capture_output=True,

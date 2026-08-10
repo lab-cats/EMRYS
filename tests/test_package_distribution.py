@@ -11,6 +11,10 @@ import tomllib
 import zipfile
 from pathlib import Path
 
+import pytest
+
+from norad import __main__ as norad_cli
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RESOURCE_PATHS = (
     "norad/contracts/schemas/artifacts/v1/artifact_record.schema.json",
@@ -37,7 +41,7 @@ def run_command(arguments: list[str], *, cwd: Path) -> subprocess.CompletedProce
     )
 
 
-def test_package_metadata_is_an_unreleased_import_substrate() -> None:
+def test_package_metadata_is_an_unreleased_distribution() -> None:
     configuration = tomllib.loads(
         (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     )
@@ -49,6 +53,7 @@ def test_package_metadata_is_an_unreleased_import_substrate() -> None:
     assert configuration["project"]["name"] == "norad-rna-workflow"
     assert configuration["project"]["requires-python"] == ">=3.11"
     assert configuration["project"]["dependencies"] == []
+    assert "scripts" not in configuration["project"]
     assert (
         configuration["tool"]["setuptools"]["packages"]["find"]["namespaces"] is False
     )
@@ -60,6 +65,49 @@ def test_package_metadata_is_an_unreleased_import_substrate() -> None:
     assert "ruff==0.16.2" in development_requirements
     assert "vulture==2.16" in development_requirements
     assert not any(line.startswith("pylint") for line in development_requirements)
+
+
+@pytest.mark.parametrize(
+    "configuration",
+    ("[project\n", '[project]\nname = "another-project"\n'),
+)
+def test_checkout_detection_ignores_invalid_candidates(
+    tmp_path: Path,
+    configuration: str,
+) -> None:
+    checkout = tmp_path / "checkout"
+    nested_directory = checkout / "nested"
+    package = checkout / "src" / "norad"
+    nested_directory.mkdir(parents=True)
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (checkout / "pyproject.toml").write_text(configuration, encoding="utf-8")
+
+    assert norad_cli._find_checkout_root(nested_directory.resolve()) is None
+
+
+def test_cli_rejects_another_checkout_but_accepts_its_editable_owner(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    checkout = tmp_path / "checkout"
+    nested_directory = checkout / "nested"
+    package = checkout / "src" / "norad"
+    nested_directory.mkdir(parents=True)
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (checkout / "pyproject.toml").write_text(
+        '[project]\nname = "norad-rna-workflow"\n',
+        encoding="utf-8",
+    )
+
+    monkeypatch.chdir(nested_directory)
+    assert norad_cli.main(["--help"]) == 2
+    assert "not the current checkout" in capsys.readouterr().err
+
+    monkeypatch.chdir(REPO_ROOT)
+    assert norad_cli._checkout_mismatch() is None
 
 
 def test_wheel_contains_only_explicit_packages_and_exact_resources(
@@ -100,8 +148,15 @@ def test_wheel_contains_only_explicit_packages_and_exact_resources(
             for member in members
             if member.startswith("norad/") and not member.endswith(".py")
         } == set(RESOURCE_PATHS)
+        assert "norad/ingestion/__init__.py" in members
+        assert "norad/ingestion/sample_manifest_admission/__init__.py" in members
+        assert "norad/ingestion/sample_manifest_admission/validator.py" in members
+        assert (
+            "norad/ingestion/sample_manifest_admission/validate_manifest.py"
+            not in members
+        )
         assert not any(
-            member.startswith(("norad/analyses/", "norad/ingestion/", "norad/stages/"))
+            member.startswith(("norad/analyses/", "norad/stages/"))
             for member in members
         )
         assert not any(member.endswith((".R", ".sh", ".slurm")) for member in members)
@@ -170,3 +225,77 @@ def test_wheel_contains_only_explicit_packages_and_exact_resources(
         "scientific-review-record",
     ]
     assert all(Path(path).is_file() for path in observed["resources"])
+
+    environment_directory = tmp_path / "environment"
+    create_environment = run_command(
+        [sys.executable, "-m", "venv", str(environment_directory)],
+        cwd=tmp_path,
+    )
+    assert create_environment.returncode == 0, (
+        create_environment.stdout + create_environment.stderr
+    )
+    environment_python = environment_directory / "bin" / "python"
+    install_wheel = run_command(
+        [
+            str(environment_python),
+            "-m",
+            "pip",
+            "install",
+            "--no-compile",
+            "--no-deps",
+            "--no-index",
+            str(wheel),
+        ],
+        cwd=tmp_path,
+    )
+    assert install_wheel.returncode == 0, install_wheel.stdout + install_wheel.stderr
+
+    foreign_root = tmp_path / "foreign"
+    foreign_package = foreign_root / "norad"
+    foreign_package.mkdir(parents=True)
+    (foreign_package / "__init__.py").write_text(
+        "raise RuntimeError('foreign norad package imported')\n",
+        encoding="utf-8",
+    )
+    isolated_environment = os.environ.copy()
+    isolated_environment["PYTHONPATH"] = str(foreign_root)
+    command_probe = subprocess.run(
+        [
+            str(environment_python),
+            "-I",
+            "-m",
+            "norad",
+            "validate",
+            "manifest",
+            "--help",
+        ],
+        cwd=arbitrary_working_directory,
+        env=isolated_environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert command_probe.returncode == 0, command_probe.stdout + command_probe.stderr
+    assert "usage: norad validate manifest" in command_probe.stdout
+    retired_path = (
+        REPO_ROOT / "src/norad/ingestion/sample_manifest_admission/validate_manifest.py"
+    )
+    validator_path = (
+        REPO_ROOT / "src/norad/ingestion/sample_manifest_admission/validator.py"
+    )
+    assert not retired_path.exists()
+    assert validator_path.stat().st_mode & 0o111 == 0
+
+    nested_checkout_directory = project / "nested" / "work"
+    nested_checkout_directory.mkdir(parents=True)
+    for working_directory in (project, nested_checkout_directory):
+        wrong_checkout_probe = subprocess.run(
+            [str(environment_python), "-I", "-m", "norad", "--help"],
+            cwd=working_directory,
+            env=isolated_environment,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert wrong_checkout_probe.returncode == 2
+        assert "not the current checkout" in wrong_checkout_probe.stderr

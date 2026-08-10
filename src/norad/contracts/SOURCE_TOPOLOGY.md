@@ -96,7 +96,8 @@ downstream projection and never promotes computational or scientific state.
 Owner-specific public shell, Python, R, and SLURM entry points remain with their
 functional owner. The unreleased internal Python distribution packages only
 explicitly migrated import owners and their named resources; it does not imply
-portable repository-root semantics or create an installed CLI. There is no
+portable repository-root semantics. Its installed `python -I -m norad` module
+interface contains only explicitly migrated owner routes and is not an
 orchestration engine, scheduler abstraction, descriptor loader, universal
 transaction framework, or generic stage dispatcher. Those remain potential
 future capabilities, not current topology.

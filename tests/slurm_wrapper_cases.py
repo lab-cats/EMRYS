@@ -130,13 +130,13 @@ CONTRACTS = {
         exit_propagation="strict_except_optional_picard_probe",
     ),
     "validate_manifest.slurm": contract(
-        "src/norad/ingestion/sample_manifest_admission/validate_manifest.py",
+        "python -I -m norad validate manifest",
         default="lightweight_validation",
         execute="not_applicable",
         invalid_mode="not_applicable",
-        module_policy="strict",
-        module_calls=("load python39",),
-        submit_cwd="caller",
+        module_policy="preinstalled_python",
+        module_calls=(),
+        submit_cwd="fallback",
         output_validation="child_exit_only",
     ),
 }

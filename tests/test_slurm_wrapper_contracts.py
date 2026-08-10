@@ -316,7 +316,15 @@ def test_inventory_and_contract_decisions_cover_every_live_wrapper() -> None:
     assert all(job_path(name).is_file() for name in CONTRACTS)
     assert len(set(JOB_PATHS.values())) == len(CONTRACTS) == 15
     for contract in CONTRACTS.values():
-        assert all(getattr(contract, field.name) for field in fields(contract))
+        assert all(
+            getattr(contract, field.name)
+            for field in fields(contract)
+            if field.name != "module_calls"
+        )
+        if contract.module_policy == "preinstalled_python":
+            assert contract.module_calls == ()
+        else:
+            assert contract.module_calls
 
 
 @pytest.mark.parametrize("name", sorted(CONTRACTS))
@@ -1440,7 +1448,14 @@ def prepare_legacy_environment(tmp_path: Path) -> tuple[Path, Path, dict[str, st
     fake_bin.mkdir()
     install_module_fake(fake_bin)
     install_tool_fakes(fake_bin)
-    return submit, launch, base_environment(tmp_path, fake_bin)
+    environment = base_environment(tmp_path, fake_bin)
+    environment.update(
+        {
+            "NORAD_PYTHON_BIN": str(fake_bin / "python"),
+            "SLURM_SUBMIT_DIR": str(submit),
+        }
+    )
+    return submit, launch, environment
 
 
 UTILITY_JOBS = (
@@ -1457,7 +1472,7 @@ UTILITY_TOOL_CALLS = {
     ),
     "validate_manifest.slurm": (
         "python\t--version",
-        "python\tsrc/norad/ingestion/sample_manifest_admission/validate_manifest.py\t--manifest\tconfigs/samples.example.tsv\t--base-dir\t.",
+        "python\t-I\t-m\tnorad\tvalidate\tmanifest\t--manifest\tconfigs/samples.example.tsv\t--base-dir\t.",
     ),
 }
 
@@ -1511,7 +1526,13 @@ def test_utility_job_mocked_probe_arguments_modules_and_exit(
         capture_output=True,
         check=False,
     )
-    assert module_failed.returncode == 23
+    if CONTRACTS[name].module_calls:
+        assert module_failed.returncode == 23
+    else:
+        assert CONTRACTS[name].module_policy == "preinstalled_python"
+        assert module_failed.returncode == 0, (
+            module_failed.stdout + module_failed.stderr
+        )
 
 
 def test_tool_check_tolerates_only_its_optional_picard_version_probe(

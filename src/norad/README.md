@@ -6,9 +6,10 @@ canonical dependency rules live in
 [`SOURCE_TOPOLOGY.md`](contracts/SOURCE_TOPOLOGY.md).
 
 Root `pyproject.toml` installs the explicit internal packages and their named
-schema/report resources. It does not expose every source directory or create a
-command-line application; functional owners join that distribution during
-their own reviewed cutover.
+schema/report resources. The grouped `python -I -m norad` interface exposes
+only migrated owner routes; it does not expose every source directory
+automatically. Functional owners join the distribution during their own
+reviewed cutover.
 
 - [`contracts/`](contracts/) — semantic identities, schemas, artifact and
   scientific-evidence contracts, and allowed source topology.
