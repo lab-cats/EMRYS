@@ -205,5 +205,4 @@ biological interpretation policy or changing behavior.
 - Transaction, collision, and failure-artifact policy for the native report.
 - Whether this scientific-evidence operation remains separate from a future
   ingestion/manifest review workflow.
-- Any future compatibility surface or scheduler abstraction; this migration
-  added neither.
+- Any future compatibility surface or scheduler abstraction.
