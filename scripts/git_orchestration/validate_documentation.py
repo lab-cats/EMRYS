@@ -50,7 +50,6 @@ CANONICAL_DOCUMENTS = {
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
     "docs/sitemap/DOCUMENTATION_OWNERSHIP.md": "# Documentation ownership",
     "docs/sitemap/README.md": "# Documentation sitemap",
-    "docs/sitemap/TOP_LEVEL.md": "# Top-level documentation map",
     "src/norad/contracts/SOURCE_TOPOLOGY.md": (
         "# Source ownership and dependency direction"
     ),
