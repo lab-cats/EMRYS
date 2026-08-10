@@ -24,7 +24,10 @@ from norad.contracts.artifacts._artifact_contracts import (
     report_receipt as _report_receipt_owner,
 )
 from norad.contracts.artifacts._artifact_contracts import (
-    run_summary as _run_summary_owner,
+    run_summary_status as _run_summary_status_owner,
+)
+from norad.contracts.artifacts._artifact_contracts import (
+    run_summary_validation as _run_summary_validation_owner,
 )
 from norad.contracts.artifacts._artifact_contracts import (
     scientific_review as _scientific_review_owner,
@@ -66,13 +69,15 @@ validate_artifact_semantics = _artifact_owner.validate_artifact_semantics
 validate_scientific_review_semantics = (
     _scientific_review_owner.validate_scientific_review_semantics
 )
-artifact_rollup_state = _run_summary_owner.artifact_rollup_state
-aggregate_artifact_state = _run_summary_owner.aggregate_artifact_state
-artifact_status_dimensions = _run_summary_owner.artifact_status_dimensions
-validate_run_summary_semantics = _run_summary_owner.validate_run_summary_semantics
-aggregate_equal_or_mixed = _run_summary_owner.aggregate_equal_or_mixed
-RUN_SUMMARY_STATUS_FIELDS = _run_summary_owner.RUN_SUMMARY_STATUS_FIELDS
-scope_key = _run_summary_owner.scope_key
+artifact_rollup_state = _run_summary_status_owner.artifact_rollup_state
+aggregate_artifact_state = _run_summary_status_owner.aggregate_artifact_state
+artifact_status_dimensions = _run_summary_status_owner.artifact_status_dimensions
+validate_run_summary_semantics = (
+    _run_summary_validation_owner.validate_run_summary_semantics
+)
+aggregate_equal_or_mixed = _run_summary_status_owner.aggregate_equal_or_mixed
+RUN_SUMMARY_STATUS_FIELDS = _run_summary_status_owner.RUN_SUMMARY_STATUS_FIELDS
+scope_key = _run_summary_status_owner.scope_key
 SAFE_ID_COLUMNS = _inventory_owner.SAFE_ID_COLUMNS
 RECONCILE_FIELDS = _inventory_owner.RECONCILE_FIELDS
 validate_safe_id = _inventory_owner.validate_safe_id
@@ -92,7 +97,11 @@ validate_report_receipt_semantics = (
 if not (
     _artifact_owner.ContractValidationError is ContractValidationError
     and _scientific_review_owner.ContractValidationError is ContractValidationError
-    and _run_summary_owner.ContractValidationError is ContractValidationError
+    and _run_summary_status_owner.ContractValidationError is ContractValidationError
+    and (
+        _run_summary_validation_owner.ContractValidationError
+        is ContractValidationError
+    )
 ):
     raise ImportError(
         "artifact-contract private modules did not resolve one error owner"

@@ -16,7 +16,7 @@ from .core import (
     sha256_file,
     validate_resolved_path,
 )
-from .run_summary import scope_key
+from .run_summary_status import scope_key
 
 SAFE_ID_COLUMNS = INVENTORY_HEADER[:-2]
 RECONCILE_FIELDS = ("artifact_id", "scope", "adapter", "expectation")

@@ -74,8 +74,9 @@ def test_contract_facade_uses_the_packaged_owners() -> None:
     )
     assert (
         CONTRACT.validate_run_summary_semantics
-        is CONTRACT._run_summary_owner.validate_run_summary_semantics
+        is CONTRACT._run_summary_validation_owner.validate_run_summary_semantics
     )
+    assert CONTRACT.scope_key is CONTRACT._run_summary_status_owner.scope_key
 
 
 def test_validate_document_and_dispatcher_use_live_facade_hooks(

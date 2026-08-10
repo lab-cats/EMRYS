@@ -91,15 +91,6 @@
       "path": "src/norad/contracts/artifacts/_artifact_contracts/core.py"
     },
     {
-      "branch_rate": "0.764706",
-      "covered_branches": 104,
-      "covered_lines": 170,
-      "line_rate": "0.841584",
-      "num_branches": 136,
-      "num_statements": 202,
-      "path": "src/norad/contracts/artifacts/_artifact_contracts/run_summary.py"
-    },
-    {
       "branch_rate": "0.756757",
       "covered_branches": 56,
       "covered_lines": 97,
@@ -781,11 +772,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.738493",
-    "covered_branches": 3273,
-    "covered_lines": 9325,
-    "line_rate": "0.839787",
-    "num_branches": 4432,
-    "num_statements": 11104
+    "branch_rate": "0.737663",
+    "covered_branches": 3169,
+    "covered_lines": 9155,
+    "line_rate": "0.839754",
+    "num_branches": 4296,
+    "num_statements": 10902
   }
 }

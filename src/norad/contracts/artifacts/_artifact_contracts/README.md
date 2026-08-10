@@ -16,7 +16,6 @@ owner.
 | [`scientific_review.py`](scientific_review.py) | Scientific-review-record semantic validation. |
 | [`report_receipt.py`](report_receipt.py) | Report-receipt semantic validation. |
 | [`inventory.py`](inventory.py) | Explicit inventory admission and record/run-summary reconciliation. |
-| [`run_summary.py`](run_summary.py) | Compatibility owner for run-summary bindings. |
 | [`run_summary_status.py`](run_summary_status.py) | Run-summary status reduction. |
 | [`run_summary_validation.py`](run_summary_validation.py) | Run-summary semantic validation. |
 
