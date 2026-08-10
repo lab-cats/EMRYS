@@ -59,6 +59,7 @@ def test_interface_bounds_and_lane_partition(tmp_path: Path) -> None:
     assert tuple(lane.name for lane in parallel) == TOOL.LANE_NAMES
     assert "-n" not in serial[0].command[-1]
     assert "-n 4 --dist=loadfile" in parallel[0].command[-1]
+    assert "python-coverage-check" in serial[0].command
     assert "validation-shell-contracts" in serial[1].command
     assert "validation-guarded-r" in serial[2].command
     assert "validation-report-runtime" in serial[3].command
@@ -81,7 +82,7 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         encoding="utf-8"
     )
     for target in (
-        "validation-python-coverage:",
+        "python-coverage-check:",
         "validation-shell-contracts:",
         "validation-guarded-r:",
         "validation-static:",

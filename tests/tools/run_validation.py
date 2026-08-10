@@ -185,7 +185,7 @@ def build_lanes(
             (
                 "make",
                 "-s",
-                "validation-python-coverage",
+                "python-coverage-check",
                 *common,
                 make_assignment("PYTHON_COVERAGE_ROOT", coverage_root),
                 make_assignment("PYTHON_COVERAGE_PYTEST_ARGS", coverage_pytest_args),

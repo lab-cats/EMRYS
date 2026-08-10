@@ -16,7 +16,7 @@ REPORT_TEST_RESULT ?=
 DEMO_REPORT_ROOT ?= $(CURDIR)/results/demo-report
 DEMO_REPORT_FORMATS ?= all
 
-.PHONY: test documentation-check shell-test validation-shell-contracts real-r-test r-restore r-check local-real-r-test quarto-restore report-test validation-report-runtime demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validation-python-coverage validation-guarded-r validation-static validate smoke lint all-checks
+.PHONY: test documentation-check shell-test validation-shell-contracts real-r-test r-restore r-check local-real-r-test quarto-restore report-test validation-report-runtime demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validation-guarded-r validation-static validate smoke lint all-checks
 
 test:
 	"$(REPORT_PYTHON_BIN)" -m pytest

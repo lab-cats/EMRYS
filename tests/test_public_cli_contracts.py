@@ -239,7 +239,6 @@ MAKE_TARGET_DECISIONS = {
     "python-coverage-measure": "explicit_output",
     "python-coverage-check": "local_gate",
     "python-coverage-baseline-update": "operator_mutation",
-    "validation-python-coverage": "internal_lane",
     "validation-guarded-r": "internal_lane",
     "validation-static": "internal_lane",
     "validate": "local_gate",

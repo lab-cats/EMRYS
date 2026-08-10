@@ -151,8 +151,6 @@ python-coverage-check: python-coverage-measure
 python-coverage-baseline-update: python-coverage-measure
 	cp "$(PYTHON_COVERAGE_CURRENT)" "$(PYTHON_COVERAGE_BASELINE)"
 
-validation-python-coverage: python-coverage-check
-
 validation-guarded-r:
 	$(MAKE) -s r-check
 	$(MAKE) -s local-real-r-test
