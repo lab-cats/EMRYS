@@ -64,7 +64,7 @@ EXPECTED_PRODUCER_EVIDENCE = {
     ),
     "02": (
         "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh",
-        "d2f3dc4543a56321ebc596ac36d2358470044e46d53837e5bedb2ea257406dd7",
+        "a38ec7a8018bfda9dcd057b68290a1451bce0018b571fc938fa1a61c15988702",
     ),
     "02b": (
         "src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh",

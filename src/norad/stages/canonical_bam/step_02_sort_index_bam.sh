@@ -98,8 +98,6 @@ previous_pair_present=false
 backup_started=false
 bam_backed_up=false
 bai_backed_up=false
-published_bam=false
-published_bai=false
 final_publish_complete=false
 
 # Build tool commands as arrays to preserve argument boundaries in dry-run logs.
@@ -248,7 +246,7 @@ cleanup() {
     fi
 
     rm -f "$tmp_sorted_bam" "$tmp_rg_bam" "$tmp_rg_bai"
-    rm -f "$tmp_sorted_bam.bai" "$tmp_rg_bam.bai"
+    rm -f "$tmp_sorted_bam.bai"
 
     if [[ "$status" -eq 0 || "$backup_started" == true ]]; then
         rm -f "$backup_bam" "$backup_bai"
@@ -349,9 +347,7 @@ else
 fi
 
 mv "$tmp_rg_bam" "$output_bam"
-published_bam=true
 mv "$tmp_rg_bai" "$output_bai"
-published_bai=true
 
 # Revalidate after publish so a copied/moved pair is known-good at final paths.
 validate_bam_pair "$output_bam" "$output_bai" "Canonical"
