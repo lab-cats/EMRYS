@@ -72,11 +72,10 @@ assert_exits() {
 assert_file_equals() {
     local path="$1"
     local expected="$2"
-    local actual
 
     [[ -f "$path" ]] || fail "file does not exist: $path"
-    actual="$(cat "$path")"
-    [[ "$actual" == "$expected" ]] || fail "unexpected contents for $path: $actual"
+    printf '%s' "$expected" | cmp -s - "$path" ||
+        fail "unexpected contents for $path"
 }
 
 assert_no_step05_scratch() {
@@ -164,6 +163,13 @@ run_step05() {
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
+export TMPDIR="$tmp_dir"
+unset GATK_BIN_OVERRIDE SAMTOOLS_BIN_OVERRIDE JAVA_BIN_OVERRIDE JAVA_HOME \
+    SLURM_JOB_ID \
+    FAKE_GATK_FAIL FAKE_GATK_TERM_PARENT FAKE_INDEX_EMPTY FAKE_JAVA_MAJOR \
+    FAKE_MUTATE_ADMITTED_INPUTS FAKE_MV_FAIL_ONCE_DEST_MATCH \
+    FAKE_MV_FAIL_SOURCE_MATCH FAKE_QUICKCHECK_FAIL \
+    FAKE_QUICKCHECK_FAIL_FINAL FAKE_SAMPLE_ID FAKE_SORT_ORDER
 
 fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin"
@@ -171,7 +177,6 @@ mkdir -p "$fake_bin"
 gatk_log="$tmp_dir/gatk_invocations.log"
 samtools_log="$tmp_dir/samtools_invocations.log"
 java_log="$tmp_dir/java_invocations.log"
-mv_log="$tmp_dir/mv_invocations.log"
 
 # Fake tools write text BAM stand-ins with just enough header/count metadata for
 # the Step 05 validation paths to behave like real samtools/GATK calls.
@@ -277,22 +282,9 @@ case "\$subcommand" in
         fi
         {
             printf '@HD\\tVN:1.6\\tSO:%s\\n' "\${FAKE_SORT_ORDER:-coordinate}"
-            case "\${FAKE_RG_MODE:-valid}" in
-                valid)
-                    printf '@RG\\tID:%s\\tSM:%s\\tLB:%s\\tPL:ILLUMINA\\n' "\${FAKE_SAMPLE_ID:-sample_execute}" "\${FAKE_SAMPLE_ID:-sample_execute}" "\${FAKE_SAMPLE_ID:-sample_execute}"
-                    ;;
-                missing)
-                    ;;
-                malformed)
-                    printf '@RG\\tID:%s\\tSM:WRONG\\tLB:%s\\tPL:ILLUMINA\\n' "\${FAKE_SAMPLE_ID:-sample_execute}" "\${FAKE_SAMPLE_ID:-sample_execute}"
-                    ;;
-                extra)
-                    printf '@RG\\tID:%s\\tSM:%s\\tLB:%s\\tPL:ILLUMINA\\n' "\${FAKE_SAMPLE_ID:-sample_execute}" "\${FAKE_SAMPLE_ID:-sample_execute}" "\${FAKE_SAMPLE_ID:-sample_execute}"
-                    printf '@RG\\tID:extra\\tSM:extra\\tLB:extra\\tPL:ILLUMINA\\n'
-                    ;;
-            esac
-            printf 'TOTAL:%s\\n' "\${FAKE_TOTAL:-10}"
-            printf 'TAGGED:%s\\n' "\${FAKE_TAGGED:-10}"
+            printf '@RG\\tID:%s\\tSM:%s\\tLB:%s\\tPL:ILLUMINA\\n' "\${FAKE_SAMPLE_ID:-sample_execute}" "\${FAKE_SAMPLE_ID:-sample_execute}" "\${FAKE_SAMPLE_ID:-sample_execute}"
+            printf 'TOTAL:10\\n'
+            printf 'TAGGED:10\\n'
             printf 'fake split-n-cigar bam from %s with %s\\n' "\$input" "\$reference"
         } > "\$output"
         ;;
@@ -373,9 +365,6 @@ chmod +x "$fake_bin/samtools"
 cat >"$fake_bin/mv" <<EOF_MV
 #!/usr/bin/env bash
 set -euo pipefail
-
-printf 'mv invoked\\n' >> "$mv_log"
-printf '%s\\n' "\$@" >> "$mv_log"
 
 source=""
 dest=""
@@ -578,11 +567,11 @@ printf 'unrelated mutation bytes' >"$mutation_output_dir/unrelated.txt"
 mutation_output="$tmp_dir/mutation.out"
 FAKE_MUTATE_ADMITTED_INPUTS=1 FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=mutation001 \
     run_step05 ABE_EV_2 "$mutation_input_bam" "$mutation_reference_fasta" "$mutation_output_dir" --execute >"$mutation_output"
-assert_file_equals "$mutation_input_bam" $'fake step04 markdup bam\nmutated input bam'
-assert_file_equals "$mutation_input_bam.bai" $'fake step04 markdup bai\nmutated input bai'
-assert_file_equals "$mutation_reference_fasta" $'>chrA\nACGTAC\n>chrB\nTTAA\nmutated reference fasta'
-assert_file_equals "$mutation_reference_fasta.fai" $'chrA\t6\t0\t0\t0\nchrB\t4\t0\t0\t0\nmutated reference fai'
-assert_file_equals "$(dirname "$mutation_reference_fasta")/genome.dict" $'@HD\tVN:1.6\n@SQ\tSN:chrA\tLN:6\n@SQ\tSN:chrB\tLN:4\nmutated reference dict'
+assert_file_equals "$mutation_input_bam" $'fake step04 markdup bam\nmutated input bam\n'
+assert_file_equals "$mutation_input_bam.bai" $'fake step04 markdup bai\nmutated input bai\n'
+assert_file_equals "$mutation_reference_fasta" $'>chrA\nACGTAC\n>chrB\nTTAA\nmutated reference fasta\n'
+assert_file_equals "$mutation_reference_fasta.fai" $'chrA\t6\t0\t0\t0\nchrB\t4\t0\t0\t0\nmutated reference fai\n'
+assert_file_equals "$(dirname "$mutation_reference_fasta")/genome.dict" $'@HD\tVN:1.6\n@SQ\tSN:chrA\tLN:6\n@SQ\tSN:chrB\tLN:4\nmutated reference dict\n'
 [[ -s "$mutation_output_dir/ABE_EV_2.split_ncigar.bam" ]] || fail "input-mutation run did not publish BAM"
 [[ -s "$mutation_output_dir/ABE_EV_2.split_ncigar.bam.bai" ]] || fail "input-mutation run did not publish BAI"
 assert_file_equals "$mutation_output_dir/unrelated.txt" "unrelated mutation bytes"
@@ -841,7 +830,7 @@ if grep -F "sorted.md" "$SCRIPT" "$JOB" >"$stale_output"; then
     fail "Step 05 files should not use stale sorted.md paths"
 fi
 assert_not_contains "$execute_output" "sorted.md"
-assert_file_equals "$reference_fasta.fai" $'chrA\t6\t0\t0\t0\nchrB\t4\t0\t0\t0'
+assert_file_equals "$reference_fasta.fai" $'chrA\t6\t0\t0\t0\nchrB\t4\t0\t0\t0\n'
 assert_contains "$(dirname "$reference_fasta")/genome.dict" $'@SQ\tSN:chrA\tLN:6'
 
 printf 'All step_05 GATK SplitNCigarReads smoke tests passed.\n'

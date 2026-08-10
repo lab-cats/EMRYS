@@ -90,7 +90,7 @@ Package selection is owned by the grouped command; direct execution of private
 `validator.py`, ambient `PYTHONPATH` injection, compatibility imports, and
 peer-stage implementation dependencies are not supported interfaces.
 
-The producer sources only `resolve_executable_value` from neutral
+The producer uses `resolve_overridable_executable` from neutral
 [`executable_resolution.sh`](../../libraries/executable_resolution.sh).
 GATK, samtools, and Java precedence, version checks, and commands remain owned
 here.

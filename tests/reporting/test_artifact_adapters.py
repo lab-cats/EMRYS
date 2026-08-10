@@ -81,7 +81,7 @@ EXPECTED_PRODUCER_EVIDENCE = {
     ),
     "05": (
         "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
-        "a7ab36437d2ef85fcdb13591f420a693e6e91a95d6fcf0e44cb68fc2c2718121",
+        "6712d49a7e56cad709c13325859c7ba8306c02aa6e0f681e428f37d4d8c147b6",
     ),
     "06": (
         "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"

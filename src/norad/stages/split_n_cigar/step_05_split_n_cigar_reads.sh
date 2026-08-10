@@ -70,9 +70,9 @@ validate_reference_sidecar() {
 }
 
 declare_required_arguments sample_id input_bam reference_fasta output_dir
-gatk_bin_arg=""
-samtools_bin_arg=""
-java_bin_arg=""
+requested_gatk_bin=""
+requested_samtools_bin=""
+requested_java_bin=""
 execute=false
 
 while [[ $# -gt 0 ]]; do
@@ -81,9 +81,9 @@ while [[ $# -gt 0 ]]; do
         --input-bam) assign_option_value "$1" "${2:-}" input_bam; shift 2 ;;
         --reference-fasta) assign_option_value "$1" "${2:-}" reference_fasta; shift 2 ;;
         --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
-        --gatk-bin) assign_option_value "$1" "${2:-}" gatk_bin_arg; shift 2 ;;
-        --samtools-bin) assign_option_value "$1" "${2:-}" samtools_bin_arg; shift 2 ;;
-        --java-bin) assign_option_value "$1" "${2:-}" java_bin_arg; shift 2 ;;
+        --gatk-bin) assign_option_value "$1" "${2:-}" requested_gatk_bin; shift 2 ;;
+        --samtools-bin) assign_option_value "$1" "${2:-}" requested_samtools_bin; shift 2 ;;
+        --java-bin) assign_option_value "$1" "${2:-}" requested_java_bin; shift 2 ;;
         *)
             handle_execute_or_help "$1"
             shift
@@ -105,16 +105,12 @@ reference_dict="$reference_dir/${reference_stem}.dict"
 # Resolve tool paths once and print the selected values in both dry-run and
 # execute logs. Version checks are deferred until execute so dry-runs stay
 # side-effect-free and do not invoke Java/GATK.
-gatk_value="${gatk_bin_arg:-${GATK_BIN_OVERRIDE:-}}"
-samtools_value="${samtools_bin_arg:-${SAMTOOLS_BIN_OVERRIDE:-}}"
-java_value="${java_bin_arg:-${JAVA_BIN_OVERRIDE:-}}"
-if [[ -z "$java_value" && -n "${JAVA_HOME:-}" && -x "${JAVA_HOME}/bin/java" ]]; then
-    java_value="${JAVA_HOME}/bin/java"
-fi
-
-gatk_bin="$(resolve_executable_value "GATK" "$gatk_value" "gatk")"
-samtools_bin="$(resolve_executable_value "samtools" "$samtools_value" "samtools")"
-java_bin="$(resolve_executable_value "Java" "$java_value" "java")"
+gatk_bin="$(resolve_overridable_executable \
+    "GATK" "$requested_gatk_bin" GATK_BIN_OVERRIDE gatk)"
+samtools_bin="$(resolve_overridable_executable \
+    "samtools" "$requested_samtools_bin" SAMTOOLS_BIN_OVERRIDE samtools)"
+java_bin="$(resolve_overridable_executable \
+    "Java" "$requested_java_bin" JAVA_BIN_OVERRIDE java /bin/java)"
 
 run_token="${SLURM_JOB_ID:-$$}"
 
@@ -423,8 +419,6 @@ validate_bam_pair "$output_bam" "$output_bai" "Published"
 final_publish_complete=true
 
 rm -f "$backup_bam" "$backup_bai"
-bam_backed_up=false
-bai_backed_up=false
 
 printf 'GATK SplitNCigarReads output details:\n'
 ls -lh "$output_bam" "$output_bai"
