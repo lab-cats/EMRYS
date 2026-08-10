@@ -97,6 +97,24 @@ def test_snapshot_is_deterministic_and_ignores_coverage_metadata() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("field", "replacement", "message"),
+    (
+        ("schema_version", "wrong", "unsupported schema_version"),
+        ("tool", {"name": "other"}, "unexpected coverage tool identity"),
+        ("measurement", {"branch": False}, "unexpected measurement policy"),
+        ("policy", {}, "unexpected coverage policy"),
+    ),
+)
+def test_snapshot_contract_fields_are_enforced(
+    field: str, replacement: object, message: str
+) -> None:
+    snapshot = TOOL.build_snapshot(raw_document())
+    snapshot[field] = replacement
+    with pytest.raises(TOOL.SnapshotError, match=message):
+        TOOL.validate_snapshot(snapshot, "fixture")
+
+
 def test_snapshot_requires_branch_and_subprocess_coverage() -> None:
     no_branches = raw_document()
     no_branches["meta"]["branch_coverage"] = False
