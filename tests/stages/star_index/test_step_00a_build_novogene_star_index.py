@@ -13,7 +13,7 @@ JOB = (
     / "src"
     / "norad"
     / "stages"
-    / "construct_STAR_index"
+    / "star_index"
     / "step_00a_build_novogene_star_index.slurm"
 )
 EXPECTED_MODULE_CALLS = ("load star/2.7.11b", "list")

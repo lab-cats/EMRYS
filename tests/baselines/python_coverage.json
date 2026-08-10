@@ -39,10 +39,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 14,
-      "covered_lines": 59,
+      "covered_lines": 63,
       "line_rate": "1.000000",
       "num_branches": 14,
-      "num_statements": 59,
+      "num_statements": 63,
       "path": "src/norad/__main__.py"
     },
     {
@@ -1369,15 +1369,6 @@
       "path": "src/norad/stages/construct_FASTA_sidecars/validate_step_00c_reference_sidecars.py"
     },
     {
-      "branch_rate": "0.583333",
-      "covered_branches": 7,
-      "covered_lines": 62,
-      "line_rate": "0.885714",
-      "num_branches": 12,
-      "num_statements": 70,
-      "path": "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
-    },
-    {
       "branch_rate": "0.500000",
       "covered_branches": 1,
       "covered_lines": 34,
@@ -1457,6 +1448,24 @@
       "num_branches": 2,
       "num_statements": 45,
       "path": "src/norad/stages/split_N_cigar_reads_with_GATK/validate_step_05_split_ncigar.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
+      "path": "src/norad/stages/star_index/__init__.py"
+    },
+    {
+      "branch_rate": "0.600000",
+      "covered_branches": 6,
+      "covered_lines": 64,
+      "line_rate": "0.888889",
+      "num_branches": 10,
+      "num_statements": 72,
+      "path": "src/norad/stages/star_index/validator.py"
     }
   ],
   "measurement": {
@@ -1492,11 +1501,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.748423",
-    "covered_branches": 3323,
-    "covered_lines": 10297,
-    "line_rate": "0.860378",
-    "num_branches": 4440,
-    "num_statements": 11968
+    "branch_rate": "0.748535",
+    "covered_branches": 3322,
+    "covered_lines": 10303,
+    "line_rate": "0.860448",
+    "num_branches": 4438,
+    "num_statements": 11974
   }
 }

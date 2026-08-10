@@ -106,9 +106,7 @@ SCOPE_ADAPTER_ROSTERS: dict[str, Counter[str]] = {
 }
 
 STEP_PRODUCERS = {
-    "00a": (
-        "src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm"
-    ),
+    "00a": ("src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm"),
     "00b": "src/norad/stages/gtf_to_bed12/converter.py",
     "00c": (
         "src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh"

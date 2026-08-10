@@ -28,7 +28,7 @@ SHELL_SYNTAX_PATHS := \
 SLURM_SYNTAX_PATHS := \
 	src/norad/evidence/runtime_preflight/tool_check.slurm \
 	src/norad/ingestion/sample_manifest_admission/validate_manifest.slurm \
-	src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm \
+	src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm \
 	src/norad/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm \
 	src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.slurm \
 	src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm \
@@ -68,7 +68,7 @@ shell-test: validation-shell-contracts
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/libraries/test_reference_contigs.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/storage_inventory/test_storage_inventory.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/ingestion/sample_manifest_admission/test_check_fastq_pairs.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/star_index/test_validate_step_00a_star_index.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/gtf_to_bed12/test_validate_step_00b_bed12.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/construct_FASTA_sidecars/test_validate_step_00c_reference_sidecars.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/align_RNA_reads_with_STAR/test_validate_step_01_star_alignment.py

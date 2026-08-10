@@ -21,9 +21,7 @@ if str(SRC_ROOT) not in sys.path:
 from norad.libraries import validation as SHARED_REPORT_VALIDATOR
 
 VALIDATOR_PATHS = {
-    "00a": Path(
-        "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
-    ),
+    "00a": Path("src/norad/stages/star_index/validator.py"),
     "00b": Path("src/norad/stages/gtf_to_bed12/validator.py"),
     "00c": Path(
         "src/norad/stages/construct_FASTA_sidecars/"

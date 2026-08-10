@@ -26,6 +26,23 @@ RESOURCE_PATHS = (
     "norad/reporting/templates/run_report.qmd",
     "norad/reporting/templates/run_report_pdf.qmd",
 )
+STAR_INDEX_MEMBERS = (
+    "genomeParameters.txt",
+    "Genome",
+    "SA",
+    "SAindex",
+    "chrLength.txt",
+    "chrName.txt",
+    "chrNameLength.txt",
+    "chrStart.txt",
+    "exonGeTrInfo.tab",
+    "exonInfo.tab",
+    "geneInfo.tab",
+    "sjdbInfo.txt",
+    "sjdbList.fromGTF.out.tab",
+    "sjdbList.out.tab",
+    "transcriptInfo.tab",
+)
 
 
 def run_command(arguments: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -160,6 +177,8 @@ def _assert_wheel_contents(wheel: Path) -> None:
             "norad/stages/gtf_to_bed12/__init__.py",
             "norad/stages/gtf_to_bed12/converter.py",
             "norad/stages/gtf_to_bed12/validator.py",
+            "norad/stages/star_index/__init__.py",
+            "norad/stages/star_index/validator.py",
         }
         assert not any(member.startswith("norad/analyses/") for member in members)
         assert not any(member.endswith((".R", ".sh", ".slurm")) for member in members)
@@ -288,6 +307,94 @@ def _run_installed_norad(
     )
 
 
+def _build_star_index_fixture(
+    working_directory: Path,
+) -> tuple[Path, Path, Path, Path]:
+    reference_directory = working_directory / "star-reference"
+    reference_directory.mkdir()
+    fasta_path = reference_directory / "genome.fa"
+    fasta_path.write_text(">1\nACGT\n", encoding="utf-8")
+    gtf_path = reference_directory / "genome.gtf"
+    gtf_path.write_text(
+        '1\tfixture\tgene\t1\t4\t.\t+\t.\tgene_id "G1";\n',
+        encoding="utf-8",
+    )
+
+    index_directory = working_directory / "star-index"
+    index_directory.mkdir()
+    for member_name in STAR_INDEX_MEMBERS:
+        (index_directory / member_name).write_text("fixture\n", encoding="utf-8")
+    (index_directory / "chrName.txt").write_text("1\n", encoding="utf-8")
+    (index_directory / "chrLength.txt").write_text("4\n", encoding="utf-8")
+    (index_directory / "genomeParameters.txt").write_text(
+        f"genomeFastaFiles {fasta_path}\nsjdbGTFfile {gtf_path}\nsjdbOverhang 149\n",
+        encoding="utf-8",
+    )
+
+    output_directory = working_directory / "star-validation"
+    output_directory.mkdir()
+    return (
+        index_directory,
+        fasta_path,
+        gtf_path,
+        output_directory / "wheel_fixture.validation.tsv",
+    )
+
+
+def _assert_installed_star_index_validation(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    index_directory, fasta_path, gtf_path, output_path = _build_star_index_fixture(
+        working_directory
+    )
+    unrelated_path = working_directory / "star-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+
+    validation = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "star-index",
+        "--scope-id",
+        "wheel_fixture",
+        "--index-dir",
+        str(index_directory),
+        "--reference-fasta",
+        str(fasta_path),
+        "--reference-gtf",
+        str(gtf_path),
+        "--parameter-path-base",
+        str(working_directory),
+        "--expected-sjdb-overhang",
+        "149",
+        "--output",
+        str(output_path),
+    )
+    assert validation.returncode == 0, validation.stdout + validation.stderr
+    assert validation.stderr == ""
+    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
+    report_rows = [
+        line.split("\t")
+        for line in validation.stdout.splitlines()
+        if line.startswith("00a\t")
+    ]
+    assert len(report_rows) == 5
+    assert {row[2] for row in report_rows} == {
+        "index_members",
+        "fasta_identity",
+        "gtf_identity",
+        "contig_names_lengths",
+        "sjdb_overhang",
+    }
+    assert {row[3] for row in report_rows} == {"pass"}
+    assert not output_path.exists()
+    assert not list(output_path.parent.glob(".*validation*"))
+    assert unrelated_path.read_text(encoding="utf-8") == "preserve\n"
+
+
 def _assert_installed_commands(
     environment_python: Path,
     working_directory: Path,
@@ -340,6 +447,12 @@ def _assert_installed_commands(
     assert bed_path.read_bytes() == (b"chr1\t0\t4\ttx1|g1\t0\t+\t0\t4\t0\t1\t4,\t0,\n")
     assert unrelated_path.read_text(encoding="utf-8") == "preserve\n"
 
+    _assert_installed_star_index_validation(
+        environment_python,
+        working_directory,
+        environment,
+    )
+
 
 def _assert_private_source_layout() -> None:
     manifest_owner = REPO_ROOT / "src/norad/ingestion/sample_manifest_admission"
@@ -352,6 +465,14 @@ def _assert_private_source_layout() -> None:
         assert not (stage_owner / retired_name).exists()
     for private_name in ("converter.py", "validator.py"):
         assert (stage_owner / private_name).stat().st_mode & 0o111 == 0
+
+    star_index_owner = REPO_ROOT / "src/norad/stages/star_index"
+    assert not (REPO_ROOT / "src/norad/stages/construct_STAR_index").exists()
+    assert not (star_index_owner / "validate_step_00a_star_index.py").exists()
+    assert (star_index_owner / "validator.py").stat().st_mode & 0o111 == 0
+
+    assert not (REPO_ROOT / "tests/stages/construct_STAR_index").exists()
+    assert (REPO_ROOT / "tests/stages/star_index").is_dir()
 
 
 def _assert_wrong_checkout_rejected(

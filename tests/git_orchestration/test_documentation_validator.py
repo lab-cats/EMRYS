@@ -45,8 +45,8 @@ CANONICAL_H1S = {
     "src/norad/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
 }
 SEMANTIC_OWNERS = (
+    ("stage", "construct_STAR_index"),
     ("stage", "convert_GTF_to_BED12"),
-    ("stage", "STAGE-02"),
     ("stage", "STAGE-03"),
     ("stage", "STAGE-04"),
     ("stage", "STAGE-05"),
@@ -61,6 +61,7 @@ SEMANTIC_OWNERS = (
     ("evidence", "EVIDENCE-03"),
 )
 SOURCE_OWNER_DIRECTORIES = {
+    ("stage", "construct_STAR_index"): "star_index",
     ("stage", "convert_GTF_to_BED12"): "gtf_to_bed12",
 }
 CROSS_CUTTING_DOCS = (
@@ -215,7 +216,7 @@ def test_rejects_stage_map_and_owner_failures(tmp_path: Path) -> None:
         "| stage | Fixture | `STAGE-01` | `norad.stage.STAGE-01.v1` | `00` |\n",
         encoding="utf-8",
     )
-    (repository / "src/norad/stages/gtf_to_bed12/CONTRACT.md").unlink()
+    (repository / "src/norad/stages/star_index/CONTRACT.md").unlink()
     (repository / "src/norad/reporting/README.md").unlink()
 
     result = validate(repository, cwd=tmp_path)
@@ -227,13 +228,13 @@ def test_rejects_stage_map_and_owner_failures(tmp_path: Path) -> None:
 
 def test_rejects_missing_semantic_owner_after_valid_roster(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
-    (repository / "src/norad/stages/gtf_to_bed12/CONTRACT.md").unlink()
-    shutil.rmtree(repository / "tests/stages/STAGE-02")
+    (repository / "src/norad/stages/star_index/CONTRACT.md").unlink()
+    shutil.rmtree(repository / "tests/stages/gtf_to_bed12")
 
     result = validate(repository, cwd=tmp_path)
 
     assert "missing semantic-owner CONTRACT.md" in result.stderr
-    assert "missing mirrored test owner: tests/stages/STAGE-02" in result.stderr
+    assert "missing mirrored test owner: tests/stages/gtf_to_bed12" in result.stderr
 
 
 def test_rejects_returned_retired_docs_and_task_directories(tmp_path: Path) -> None:

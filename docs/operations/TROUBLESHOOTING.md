@@ -52,7 +52,7 @@ linked owner after applying the common rules.
 
 | Owner | Characterized defect or evidence limit | Required disposition |
 | --- | --- | --- |
-| [`construct_STAR_index`](../../src/norad/stages/construct_STAR_index/README.md) | Reference/index disagreement or ambiguous validation-report predecessor can survive around publication. | Preserve index, parameters, reference identities, report transaction, lock, and logs; rebuild only through the owner. |
+| [`construct_STAR_index`](../../src/norad/stages/star_index/README.md) | Reference/index disagreement or ambiguous validation-report predecessor can survive around publication. | Preserve index, parameters, reference identities, report transaction, lock, and logs; rebuild only through the owner. |
 | [`convert_GTF_to_BED12`](../../src/norad/stages/gtf_to_bed12/README.md) | Final/intermediate BED may disagree with deterministic GTF normalization. | Preserve both plus GTF and logs; never hand-edit BED12. |
 | [`construct_FASTA_sidecars`](../../src/norad/stages/construct_FASTA_sidecars/README.md) | FAI may publish before DICT failure; malformed or mismatched sidecars are not repaired. | Preserve FASTA, both sidecars, stage/backup/lock state, and provenance; recover through the owner. |
 | [`align_RNA_reads_with_STAR`](../../src/norad/stages/align_RNA_reads_with_STAR/README.md) | Five direct final outputs may be partial or mixed after failure. | Preserve the entire attempt and scheduler evidence; diagnose in an isolated root. |

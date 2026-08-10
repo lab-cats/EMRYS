@@ -3,8 +3,9 @@
 This document records the observed current contract of historical Step `00a`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is now the implemented native source owner for its scheduler job and validator;
-it is not a Python package and exposes no package import identity.
+is now the implemented native source owner for its scheduler job and validator.
+Its Python implementation is an installed owner package; its public Python
+surface is only the grouped validator route documented below.
 
 The adjacent [`README.md`](README.md) routes maintainers and operators to the
 implemented assets and exact supported commands.
@@ -98,10 +99,10 @@ interface.
 
 ## Validation interface
 
-[`validate_step_00a_star_index.py`](validate_step_00a_star_index.py)
-accepts explicit scope, index, FASTA, GTF, relative-parameter base, expected
-overhang, and output paths. Validation is dry-run by default; `--execute`
-publishes `<scope-id>.validation.tsv`.
+`python -I -m norad validate star-index`, implemented by the private
+[`validator.py`](validator.py) module, accepts explicit scope, index, FASTA,
+GTF, relative-parameter base, expected overhang, and output paths. Validation
+is dry-run by default; `--execute` publishes `<scope-id>.validation.tsv`.
 
 The TSV contract is tab-delimited and uses the ordered fields `step_id`,
 `scope_id`, `check_id`, `status`, `observed`, `expected`, and `detail`.
@@ -140,11 +141,11 @@ No downstream stage should depend on this stage's implementation module.
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
   protects the exact mixed-layout job roster, directives, mode, and generic
   scheduler boundaries.
-- [`test_step_00a_build_novogene_star_index.py`](../../../../tests/stages/construct_STAR_index/test_step_00a_build_novogene_star_index.py)
+- [`test_step_00a_build_novogene_star_index.py`](../../../../tests/stages/star_index/test_step_00a_build_novogene_star_index.py)
   protects the embedded STAR command, module handling, caller-working-directory
   behavior, default threads, reference reuse, side effects, and exit propagation
   with local mocks.
-- [`test_validate_step_00a_star_index.py`](../../../../tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py)
+- [`test_validate_step_00a_star_index.py`](../../../../tests/stages/star_index/test_validate_step_00a_star_index.py)
   protects dry-run, the five checks, mismatch reporting, repeat publication,
   contract failures, and preservation of foreign locks or invalid
   predecessors.

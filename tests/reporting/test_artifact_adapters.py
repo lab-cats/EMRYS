@@ -47,8 +47,7 @@ FIXTURE_BUILDER = (
 FIXED_EPOCH = "1700000000"
 EXPECTED_PRODUCER_EVIDENCE = {
     "00a": (
-        "src/norad/stages/construct_STAR_index/"
-        "step_00a_build_novogene_star_index.slurm",
+        "src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm",
         "f27924e80fee3b8f207a41fd7af472897ad51f06aa2e4c670973eb51f25b5fcc",
     ),
     "00b": (

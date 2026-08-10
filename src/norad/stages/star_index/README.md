@@ -2,20 +2,20 @@
 
 This directory is the implemented native owner for semantic stage
 `construct_STAR_index` (`norad.stage.construct_STAR_index.v1`, historical alias
-`00a`). Its current public assets are:
+`00a`). Its current public surfaces and direct protection are:
 
 - [`step_00a_build_novogene_star_index.slurm`](step_00a_build_novogene_star_index.slurm),
   the mode-`0644` scheduler entry point;
-- [`validate_step_00a_star_index.py`](validate_step_00a_star_index.py), the
-  mode-`0644` explicit-interpreter validator; and
-- the mirrored [validator](../../../../tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py)
-  and [mocked-job](../../../../tests/stages/construct_STAR_index/test_step_00a_build_novogene_star_index.py)
+- `python -I -m norad validate star-index`, implemented by the private
+  mode-`0644` [`validator.py`](validator.py) module; and
+- the mirrored [validator](../../../../tests/stages/star_index/test_validate_step_00a_star_index.py)
+  and [mocked-job](../../../../tests/stages/star_index/test_step_00a_build_novogene_star_index.py)
   tests.
 
 Submit the producer from the repository root with:
 
 ```bash
-sbatch src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm
+sbatch src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm
 ```
 
 The job executes implicitly on submission, has no dry-run mode, and resolves
@@ -27,7 +27,7 @@ Invoke the validator with the repository Python and explicit inputs. Omitting
 `--execute` is the no-write dry run; adding it publishes the declared output:
 
 ```bash
-.venv/bin/python src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py \
+.venv/bin/python -I -m norad validate star-index \
   --scope-id novogene_ref \
   --index-dir refs/novogene_star_index \
   --reference-fasta refs/novogene_ref/genome.fa \
@@ -37,14 +37,15 @@ Invoke the validator with the repository Python and explicit inputs. Omitting
   --output results/qc/validation/00a/novogene_ref.validation.tsv
 ```
 
-Unlike the job, the validator is arbitrary-CWD capable when its inputs are
-explicit. Create the output parent before an `--execute` invocation. Run the
-owner-focused local tests with:
+Unlike the job, the installed validator route is arbitrary-CWD capable when
+its inputs are explicit. Use the absolute path to the installed interpreter
+from another working directory. Create the output parent before an `--execute`
+invocation. Run the owner-focused local tests with:
 
 ```bash
 .venv/bin/python -m pytest -q \
-  tests/stages/construct_STAR_index/test_validate_step_00a_star_index.py \
-  tests/stages/construct_STAR_index/test_step_00a_build_novogene_star_index.py
+  tests/stages/star_index/test_validate_step_00a_star_index.py \
+  tests/stages/star_index/test_step_00a_build_novogene_star_index.py
 ```
 
 The artifact index intentionally records the job's final path while preserving

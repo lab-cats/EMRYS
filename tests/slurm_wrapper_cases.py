@@ -149,7 +149,7 @@ JOB_PATHS = {
 JOB_PATHS.update(
     {
         "step_00a_build_novogene_star_index.slurm": Path(
-            "src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm"
+            "src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm"
         ),
         "step_00b_gtf_to_bed12.slurm": Path(
             "src/norad/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm"

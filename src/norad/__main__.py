@@ -16,6 +16,7 @@ from norad.stages.gtf_to_bed12 import (
     converter as gtf_to_bed12_command,
 )
 from norad.stages.gtf_to_bed12 import validator as bed12_validation_command
+from norad.stages.star_index import validator as star_index_validation_command
 
 CommandHandler = Callable[[argparse.Namespace], int]
 
@@ -105,6 +106,15 @@ def build_parser() -> argparse.ArgumentParser:
     bed12_validation_command.configure_parser(bed12_parser)
     bed12_parser.set_defaults(
         _command_handler=bed12_validation_command.validate_from_args
+    )
+    star_index_parser = validation_parsers.add_parser(
+        "star-index",
+        help="Validate one STAR index against its references.",
+        description=star_index_validation_command.DESCRIPTION,
+    )
+    star_index_validation_command.configure_parser(star_index_parser)
+    star_index_parser.set_defaults(
+        _command_handler=star_index_validation_command.validate_from_args
     )
     return parser
 
