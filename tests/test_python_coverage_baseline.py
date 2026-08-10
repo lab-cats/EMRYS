@@ -3,6 +3,7 @@ import copy
 import importlib.util
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -48,6 +49,34 @@ def raw_document() -> dict[str, object]:
         "files": files,
         "totals": totals,
     }
+
+
+def reconcile_snapshot_totals(snapshot: dict[str, Any]) -> None:
+    aggregate = {
+        field: sum(item[field] for item in snapshot["files"])
+        for field in TOOL.COUNT_FIELDS
+    }
+    snapshot["totals"] = {
+        **aggregate,
+        "line_rate": TOOL.rate_text(
+            aggregate["covered_lines"], aggregate["num_statements"]
+        ),
+        "branch_rate": TOOL.rate_text(
+            aggregate["covered_branches"], aggregate["num_branches"]
+        ),
+    }
+
+
+def snapshot_with_shared_module(
+    lines: tuple[int, int], branches: tuple[int, int]
+) -> tuple[dict[str, Any], dict[str, Any], str]:
+    baseline = TOOL.build_snapshot(raw_document())
+    current = copy.deepcopy(baseline)
+    shared_path = "src/norad/libraries/validation/report.py"
+    current["files"].append(TOOL.measured_file(shared_path, summary(lines, branches)))
+    current["files"].sort(key=lambda item: item["path"])
+    reconcile_snapshot_totals(current)
+    return baseline, current, shared_path
 
 
 def test_snapshot_is_deterministic_and_ignores_coverage_metadata() -> None:
@@ -100,44 +129,14 @@ def test_check_rejects_global_regression(
     path = current["files"][0]["path"]
     counts = {field: current["files"][0][field] for field in TOOL.COUNT_FIELDS}
     current["files"][0] = TOOL.measured_file(path, counts)
-    aggregate = {
-        field: sum(item[field] for item in current["files"])
-        for field in TOOL.COUNT_FIELDS
-    }
-    current["totals"] = {
-        **aggregate,
-        "line_rate": TOOL.rate_text(
-            aggregate["covered_lines"], aggregate["num_statements"]
-        ),
-        "branch_rate": TOOL.rate_text(
-            aggregate["covered_branches"], aggregate["num_branches"]
-        ),
-    }
+    reconcile_snapshot_totals(current)
 
     with pytest.raises(TOOL.SnapshotError, match=message):
         TOOL.compare_snapshots(baseline, current)
 
 
 def test_new_shared_module_thresholds_are_explicit() -> None:
-    baseline = TOOL.build_snapshot(raw_document())
-    current = copy.deepcopy(baseline)
-    shared_path = "src/norad/libraries/validation/report.py"
-    new_module = TOOL.measured_file(shared_path, summary((95, 100), (18, 20)))
-    current["files"].append(new_module)
-    current["files"].sort(key=lambda item: item["path"])
-    aggregate = {
-        field: sum(item[field] for item in current["files"])
-        for field in TOOL.COUNT_FIELDS
-    }
-    current["totals"] = {
-        **aggregate,
-        "line_rate": TOOL.rate_text(
-            aggregate["covered_lines"], aggregate["num_statements"]
-        ),
-        "branch_rate": TOOL.rate_text(
-            aggregate["covered_branches"], aggregate["num_branches"]
-        ),
-    }
+    baseline, current, shared_path = snapshot_with_shared_module((95, 100), (18, 20))
 
     assert "passed" in TOOL.compare_snapshots(baseline, current, [shared_path])
     # The threshold remains enforceable after the reviewed snapshot promotes
@@ -146,47 +145,19 @@ def test_new_shared_module_thresholds_are_explicit() -> None:
         copy.deepcopy(current), current, [shared_path]
     )
 
-    shared_index = next(
-        index
-        for index, item in enumerate(current["files"])
-        if item["path"] == shared_path
-    )
-    current["files"][shared_index] = TOOL.measured_file(
-        shared_path, summary((89, 100), (16, 20))
-    )
-    aggregate = {
-        field: sum(item[field] for item in current["files"])
-        for field in TOOL.COUNT_FIELDS
-    }
-    current["totals"] = {
-        **aggregate,
-        "line_rate": TOOL.rate_text(
-            aggregate["covered_lines"], aggregate["num_statements"]
-        ),
-        "branch_rate": TOOL.rate_text(
-            aggregate["covered_branches"], aggregate["num_branches"]
-        ),
-    }
-    with pytest.raises(TOOL.SnapshotError, match="below 90%"):
-        TOOL.compare_snapshots(baseline, current, [shared_path])
 
-    current["files"][shared_index] = TOOL.measured_file(
-        shared_path, summary((95, 100), (16, 20))
-    )
-    aggregate = {
-        field: sum(item[field] for item in current["files"])
-        for field in TOOL.COUNT_FIELDS
-    }
-    current["totals"] = {
-        **aggregate,
-        "line_rate": TOOL.rate_text(
-            aggregate["covered_lines"], aggregate["num_statements"]
-        ),
-        "branch_rate": TOOL.rate_text(
-            aggregate["covered_branches"], aggregate["num_branches"]
-        ),
-    }
-    with pytest.raises(TOOL.SnapshotError, match="below 85%"):
+@pytest.mark.parametrize(
+    ("lines", "branches", "message"),
+    (
+        ((89, 100), (18, 20), "below 90%"),
+        ((95, 100), (16, 20), "below 85%"),
+    ),
+)
+def test_new_shared_module_threshold_failures_are_independent(
+    lines: tuple[int, int], branches: tuple[int, int], message: str
+) -> None:
+    baseline, current, shared_path = snapshot_with_shared_module(lines, branches)
+    with pytest.raises(TOOL.SnapshotError, match=message):
         TOOL.compare_snapshots(baseline, current, [shared_path])
 
 
