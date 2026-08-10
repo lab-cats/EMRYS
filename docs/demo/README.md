@@ -23,7 +23,7 @@ Before presenting, use the current
 limitations. Current reporting behavior and its
 evidence ceiling remain in the
 [`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md#publication-and-evidence-flow)
-and [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md#populated-demo-report).
+and [`HANDOFF.md`](../operations/HANDOFF.md#evidence-boundary).
 
 Only the two guides listed above are verified current presentation consumers.
 File presence does not activate later or otherwise unreviewed demo material.

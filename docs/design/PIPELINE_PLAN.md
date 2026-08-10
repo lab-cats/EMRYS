@@ -1,61 +1,18 @@
 # NORAD pipeline plan
 
-This document owns current pipeline evidence ceilings, open package families,
-and package acceptance. Open intent and selected scope belong to the [task
-registry](../tasks/README.md),
-current blockers to [`HANDOFF.md`](../operations/HANDOFF.md), commands to the
+This document owns open package families and package acceptance. Open intent
+and selected scope belong to the [task registry](../tasks/README.md), current
+implementation, evidence ceilings, and blockers to
+[`HANDOFF.md`](../operations/HANDOFF.md), commands to the
 [`RUNBOOK.md`](../operations/RUNBOOK.md), and rationale to
 [`DECISIONS.md`](DECISIONS.md).
 
-## Pipeline evidence
+## Current state
 
-| ID | Purpose | Current evidence ceiling |
-| --- | --- | --- |
-| `00a` | Build STAR index | cluster-proven before source relocation |
-| `00b` | Convert GTF to BED12 | cluster-proven before source relocation |
-| `00c` | Build FASTA sidecars | cluster-proven before source relocation |
-| `01` | STAR alignment | cluster-proven before source relocation |
-| `02` | Canonical BAM | cluster-proven before source relocation |
-| `02b` | BAM QC | cluster-proven evidence set before source relocation |
-| `03` | Infer library orientation | cluster-proven before source relocation |
-| `04` | Mark duplicates | cluster-proven before source relocation |
-| `05` | Split N cigars | cluster-proven before source relocation |
-| `06` | Split mechanical orientations | cluster-proven before source relocation |
-| `07` | Cohort mpileup | local mocked-runtime only |
-| `08` | Preprocess and annotate VCFs | local real-R fixtures only |
-| `09` | Paired CMH ranking | local real-R fixtures only |
-| `09c` | Scientific evidence review package | local synthetic fixtures only |
-
-Physical relocation created no new runtime or cluster proof. Step `09`
-produces CMH-ranked candidates, not validated editing sites. Step `09c`
-tooling does not constitute completed scientific review.
-
-## Implemented platform surfaces
-
-- Fourteen semantic DAG owners, neutral contracts and libraries, reporting, and
-  evidence tools occupy their allowed homes. Exact paths and dependency
-  direction belong to
-  [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
-- Artifact, review, run-summary, report, runtime-preflight, reference-
-  provenance, and storage contracts are implemented and locally fixture-tested.
-- Canonical run-summary assembly keeps its public command and compatibility
-  bindings over bounded private document, publication, transaction, validation,
-  projection, and scientific-review owners; no production summary exists.
-- Static HTML/PDF/TSV reporting and the populated demo are locally renderer-
-  tested with synthetic inputs. Public renderer paths are thin compatibility
-  facades over bounded private model, validation, projection, runtime,
-  transaction, and publication owners; no production report exists.
-- Current audit and non-regression routes are
-  [`REFACTOR_AUDIT.md`](REFACTOR_AUDIT.md) and
-  [`TEST_BASELINE.md`](TEST_BASELINE.md).
-- Dated implementation evidence remains in [`docs/history`](../history/) and
-  Git; it is not a second current roadmap.
-
-### Populated demo report
-
-`make demo-report` creates the complete synthetic HTML/PDF/TSV bundle from
-explicit fixture inputs. It remains provisional demonstration output, not
-production, cluster, scientific-review, or biological evidence.
+Current implementation and evidence are not restated here. Use the live
+[`HANDOFF.md`](../operations/HANDOFF.md); system structure and exact source
+ownership remain with the [architecture index](../architecture/README.md) and
+its routed owners.
 
 ## Open package families
 

@@ -1,9 +1,10 @@
 # Project handoff
 
-This file contains live takeover facts that are not safely reconstructed from
-Git. Resolve branch, commit, upstream relation, and worktree contents directly
-from Git. Use [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) for pipeline
-status, [`RUNBOOK.md`](RUNBOOK.md) for commands, and
+This file owns current implementation state, evidence ceilings, blockers, and
+live takeover facts that are not safely reconstructed from Git. Resolve branch,
+commit, upstream relation, and worktree contents directly from Git. Use
+[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) for open package families and
+acceptance, [`RUNBOOK.md`](RUNBOOK.md) for commands, and
 [`docs/history`](../history/) for frozen delivery records.
 
 No successor package is selected.
