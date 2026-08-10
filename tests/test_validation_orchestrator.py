@@ -67,8 +67,14 @@ def test_interface_bounds_and_lane_partition(tmp_path: Path) -> None:
 
 def test_dependency_and_make_wiring_are_explicit() -> None:
     requirements = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
+    development_requirements = (REPO_ROOT / "requirements-dev.txt").read_text(
+        encoding="utf-8"
+    )
     assert f"pytest-xdist=={TOOL.XDIST_VERSION}" in requirements.splitlines()
     assert f"execnet=={TOOL.EXECNET_VERSION}" in requirements.splitlines()
+    for requirement in ("ruff==0.16.2", "setuptools==80.9.0", "vulture==2.16"):
+        assert requirement in development_requirements.splitlines()
+    assert "pylint" not in development_requirements.lower()
 
     config = configparser.ConfigParser()
     config.read(REPO_ROOT / ".coveragerc", encoding="utf-8")
@@ -93,6 +99,13 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         assert target in reporting_makefile
     assert "tests/tools/run_validation.py" in quality_makefile
     assert "PYTHON_COVERAGE_PYTEST_ARGS" in root_makefile
+    assert "validation-static: lint" in quality_makefile
+    assert 'version("ruff")' in quality_makefile
+    assert 'version("vulture")' in quality_makefile
+    assert '"$(RUFF_BIN)" check --no-cache' in quality_makefile
+    assert '"$(VULTURE_BIN)"' in quality_makefile
+    assert "--exit-zero" not in quality_makefile
+    assert "skipping dead-code scan" not in quality_makefile
 
 
 def test_selected_environment_has_exact_parallel_dependencies() -> None:

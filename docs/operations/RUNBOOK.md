@@ -116,8 +116,9 @@ rendering, or scheduler code:
 ```bash
 .venv/bin/python -m pip install -r requirements.txt
 .venv/bin/python -m pip install -r requirements-dev.txt
+.venv/bin/python -m pip install --no-deps -e .
 RSCRIPT_BIN=/usr/local/bin/Rscript make r-restore
-make quality-dead-code   # optional: scan dead/unused/unreachable Python paths
+make lint
 make quarto-restore
 ```
 

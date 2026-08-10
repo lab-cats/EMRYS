@@ -84,7 +84,12 @@
     "./scripts/git_orchestration/validate_documentation.py --repo \"<REPO_ROOT>\""
   ],
   "lint": [
-    "\"<REPO_ROOT>/.venv/bin/python\" -m compileall scripts src/norad tests"
+    "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"ruff\"))')\" = \"0.16.2\"",
+    "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"vulture\"))')\" = \"2.16\"",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/norad tests",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
+    "\t\t--min-confidence 95 \\",
+    "\t\tscripts src/norad"
   ],
   "local-real-r-test": [
     "NORAD_USE_RENV=1 RENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
@@ -313,6 +318,12 @@
     "bash tests/reporting/test_render_run_report.sh"
   ],
   "validation-static": [
+    "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"ruff\"))')\" = \"0.16.2\"",
+    "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"vulture\"))')\" = \"2.16\"",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/norad tests",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
+    "\t\t--min-confidence 95 \\",
+    "\t\tscripts src/norad",
     "git diff --check",
     "bash -n src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/norad/reporting/render_run_report.sh src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.sh src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.sh src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh src/norad/evidence/assemble_scientific_review_evidence_package/step_09c_scientific_validation.sh",
     "bash -n src/norad/evidence/runtime_preflight/tool_check.slurm src/norad/ingestion/sample_manifest_admission/validate_manifest.slurm src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.slurm src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.slurm src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.slurm src/norad/evidence/collect_canonical_BAM_QC_evidence/step_02b_bam_qc.slurm src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.slurm src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.slurm src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.slurm src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.slurm src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm src/norad/stages/preprocess_and_annotate_cohort_candidates/step_08_vcf_preprocessing.slurm src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.slurm",

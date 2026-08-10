@@ -1,12 +1,13 @@
 PYTHON_COVERAGE_VERSION := 7.15.2
+RUFF_VERSION := 0.16.2
+VULTURE_VERSION := 2.16
 SHELLCHECK_BIN ?= shellcheck
 SHFMT_BIN ?= shfmt
 RUFF_BIN ?= ruff
 VULTURE_BIN ?= vulture
-PYLINT_BIN ?= pylint
 DEAD_CODE_PATHS ?= scripts src/norad
+PYTHON_LINT_PATHS ?= scripts src/norad tests
 VULTURE_MIN_CONFIDENCE ?= 95
-PYLINT_DISABLE_MESSAGES ?= W0101,W0611,W0612,W0613
 
 SHELL_SYNTAX_PATHS := \
 	src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh \
@@ -160,7 +161,7 @@ bash -n $(SHELL_SYNTAX_PATHS)
 bash -n $(SLURM_SYNTAX_PATHS)
 endef
 
-validation-static:
+validation-static: lint
 	git diff --check
 	$(STATIC_SHELL_CHECKS)
 	PYTHONDONTWRITEBYTECODE=1 \
@@ -175,23 +176,12 @@ smoke:
 	$(STATIC_SHELL_CHECKS)
 
 lint:
-	"$(REPORT_PYTHON_BIN)" -m compileall scripts src/norad tests
-
-quality-dead-code:
-	@if "$(REPORT_PYTHON_BIN)" -c "import $(VULTURE_BIN)" >/dev/null 2>&1; then \
-		"$(REPORT_PYTHON_BIN)" -m "$(VULTURE_BIN)" \
-			--min-confidence $(VULTURE_MIN_CONFIDENCE) \
-			$(DEAD_CODE_PATHS); \
-	else \
-		printf "warning: %s not installed in %s; skipping dead-code scan\n" "$(VULTURE_BIN)" "$(REPORT_PYTHON_BIN)"; \
-	fi
-	@if "$(REPORT_PYTHON_BIN)" -c "import $(PYLINT_BIN)" >/dev/null 2>&1; then \
-		"$(REPORT_PYTHON_BIN)" -m "$(PYLINT_BIN)" --exit-zero --disable=all \
-			--enable="$(PYLINT_DISABLE_MESSAGES)" --persistent=no \
-			$(DEAD_CODE_PATHS); \
-	else \
-		printf "warning: %s not installed in %s; skipping unreachable/unused scan\n" "$(PYLINT_BIN)" "$(REPORT_PYTHON_BIN)"; \
-	fi
+	test "$$("$(REPORT_PYTHON_BIN)" -c 'import importlib.metadata; print(importlib.metadata.version("ruff"))')" = "$(RUFF_VERSION)"
+	test "$$("$(REPORT_PYTHON_BIN)" -c 'import importlib.metadata; print(importlib.metadata.version("vulture"))')" = "$(VULTURE_VERSION)"
+	"$(REPORT_PYTHON_BIN)" -m "$(RUFF_BIN)" check --no-cache $(PYTHON_LINT_PATHS)
+	"$(REPORT_PYTHON_BIN)" -m "$(VULTURE_BIN)" \
+		--min-confidence $(VULTURE_MIN_CONFIDENCE) \
+		$(DEAD_CODE_PATHS)
 
 all-checks:
 	"$(REPORT_PYTHON_BIN)" tests/tools/run_validation.py \

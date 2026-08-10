@@ -699,8 +699,8 @@ def test_make_validation_targets_honor_report_python_bin(
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
     lines = result.stdout.splitlines()
-    assert len(lines) == 3
-    assert all(line.startswith('"/sentinel/python" ') for line in lines)
+    assert sum("/sentinel/python" in line for line in lines) == 6
+    assert not any(".venv/bin/python" in line for line in lines)
 
 
 def test_make_expansion_oracle_rejects_recipe_mutation(

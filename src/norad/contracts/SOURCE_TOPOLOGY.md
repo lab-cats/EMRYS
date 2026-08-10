@@ -94,7 +94,9 @@ downstream projection and never promotes computational or scientific state.
 ## Public-interface and future boundary
 
 Owner-specific public shell, Python, R, and SLURM entry points remain with their
-functional owner. There is no installed CLI, package distribution,
+functional owner. The unreleased internal Python distribution packages only
+explicitly migrated import owners and their named resources; it does not imply
+portable repository-root semantics or create an installed CLI. There is no
 orchestration engine, scheduler abstraction, descriptor loader, universal
 transaction framework, or generic stage dispatcher. Those remain potential
 future capabilities, not current topology.

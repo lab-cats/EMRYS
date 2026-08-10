@@ -110,14 +110,16 @@ neutral shared library.
 
 ## Repository dependency and test configuration
 
-Five retained root files are project/tool configuration surfaces, not workflow
+Seven retained root files are project/tool configuration surfaces, not workflow
 stages or miscellaneous application inputs:
 
 | Root file | Purpose and placement boundary |
 | --- | --- |
 | [`.Rprofile`](../../.Rprofile) | Guarded R startup hook. With the default `NORAD_USE_RENV=0`, startup is unchanged; `1` opts in and every other value fails. When opted in, the hook defaults sandboxing and automatic snapshots to disabled only when the caller has not set them; supported Make lanes set both controls false explicitly. It then sources the project `renv/activate.R`. Activation does not restore the lockfile, although the activator may bootstrap the pinned `renv` package itself if missing. R can discover this file at the project root, and Make also binds it by absolute path. |
 | [`renv.lock`](../../renv.lock) | Reviewed R and Bioconductor dependency snapshot used by guarded activation plus explicit restore and status checks. Root placement is the conventional and implemented `renv` project boundary; restored libraries and caches remain ignored. See [`renv/README.md`](../../renv/README.md). |
-| [`requirements.txt`](../../requirements.txt) | Fully pinned Python developer, validation, and report-environment input. No supported repository target installs it automatically; installation is an explicit operator action. Root placement is the conventional public bootstrap path bound by current operator docs and direct tests, not a technical pip requirement. It is not packaging metadata or proof that the selected Python environment matches. |
+| [`pyproject.toml`](../../pyproject.toml) | Build metadata for the unreleased internal `norad-rna-workflow` import distribution and the canonical Ruff configuration. It discovers only explicit packages, ships only named schemas/report resources, and defines no installed command or runtime dependency restoration. Unmigrated owner directories enter the distribution only through an owner-local cutover. |
+| [`requirements.txt`](../../requirements.txt) | Fully pinned Python developer, validation, and report-environment input. No supported repository target installs it automatically; installation is an explicit operator action. It remains the environment authority rather than package dependency metadata, and its presence does not prove that the selected Python environment matches. |
+| [`requirements-dev.txt`](../../requirements-dev.txt) | Exact build and quality-gate additions layered over `requirements.txt`. It pins the package backend, Ruff, and Vulture; none is restored or skipped automatically by repository code. |
 | [`.coveragerc`](../../.coveragerc) | Coverage.py measurement configuration for branch, parallel/subprocess, relative-path, and source-scope behavior. Make binds the root file and coverage also supports root discovery. Acceptance thresholds and evidence belong to [`TEST_BASELINE.md`](../design/TEST_BASELINE.md), not this file. |
 | [`pytest.ini`](../../pytest.ini) | Repository-wide pytest discovery metadata that registers the `report_runtime` marker. It does not install or select the real renderer; the applicable Make target performs selection. Moving it could change pytest root/config discovery because callers do not pass a replacement `-c` path. |
 

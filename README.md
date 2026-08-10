@@ -9,7 +9,9 @@ projection. See the [architecture index](docs/architecture/README.md) for the
 organized current-system authority, including the scientist-facing flow,
 system map, functional-owner inventory, source topology, stage map, and
 diagrams. NORAD does not yet provide a single workflow orchestrator or
-installed command-line application.
+installed command-line application. It does provide an explicitly installed,
+unreleased Python import distribution for migrated internal packages and their
+named schema/report resources.
 
 ## Start here
 

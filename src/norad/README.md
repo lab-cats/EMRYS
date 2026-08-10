@@ -5,6 +5,11 @@ ingestion, transformation, analysis, evidence, and reporting owners. The
 canonical dependency rules live in
 [`SOURCE_TOPOLOGY.md`](contracts/SOURCE_TOPOLOGY.md).
 
+Root `pyproject.toml` installs the explicit internal packages and their named
+schema/report resources. It does not expose every source directory or create a
+command-line application; functional owners join that distribution during
+their own reviewed cutover.
+
 - [`contracts/`](contracts/) — semantic identities, schemas, artifact and
   scientific-evidence contracts, and allowed source topology.
 - [`libraries/`](libraries/) — neutral mechanics shared by proven consumers.

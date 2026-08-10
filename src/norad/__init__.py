@@ -1,7 +1,9 @@
-"""NORAD internal Python package.
+"""NORAD's unreleased internal Python package.
 
 Public workflow entry points remain the owner-local scripts under ``stages``,
 ``analyses``, ``evidence``, ``ingestion``, and ``reporting``.  This package
-exists so those entry points can share narrow implementation modules without
-copying shared import machinery.
+provides an explicitly installed import surface for migrated owners without
+claiming a standalone command-line application or portable workflow runtime.
 """
+
+__version__ = "0.0.0"
