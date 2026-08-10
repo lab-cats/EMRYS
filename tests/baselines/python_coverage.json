@@ -1461,10 +1461,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 0,
-      "covered_lines": 30,
-      "line_rate": "0.882353",
+      "covered_lines": 33,
+      "line_rate": "1.000000",
       "num_branches": 0,
-      "num_statements": 34,
+      "num_statements": 33,
       "path": "src/norad/stages/star_alignment/validator.py"
     },
     {
@@ -1521,9 +1521,9 @@
   "totals": {
     "branch_rate": "0.748760",
     "covered_branches": 3320,
-    "covered_lines": 10302,
-    "line_rate": "0.860436",
+    "covered_lines": 10305,
+    "line_rate": "0.860758",
     "num_branches": 4434,
-    "num_statements": 11973
+    "num_statements": 11972
   }
 }

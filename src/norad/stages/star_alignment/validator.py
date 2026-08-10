@@ -13,10 +13,8 @@ from norad.libraries.alignments.star import (
 )
 from norad.libraries.validation import (
     Snapshot,
-    ValidationError,
     add_output_arguments,
     build_report,
-    clean,
     lexical_path,
     run_from_args,
     snapshots,
@@ -62,12 +60,12 @@ def build_validation_report(
     bam_structure_valid, bam_prefix = validate_bam_signature(artifact_paths["bam"])
     final_log_values: dict[str, str] = {}
     final_log_error = ""
+    final_log_text = stable_text(
+        artifact_paths["log_final"],
+        "STAR final log",
+    )[0]
     try:
-        final_log_values = parse_final_log(
-            stable_text(artifact_paths["log_final"], "STAR final log")[0]
-        )
-    except ValidationError as exc:
-        final_log_error = clean(exc)
+        final_log_values = parse_final_log(final_log_text)
     except ValueError as exc:
         final_log_error = str(exc)
     mapping_summary_valid, mapping_summary_observed = valid_mapping_summary(

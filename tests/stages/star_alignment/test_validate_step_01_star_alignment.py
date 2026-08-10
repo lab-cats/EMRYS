@@ -106,17 +106,32 @@ def test_execute_publishes_five_passes(tmp_path: Path) -> None:
     assert {row["status"] for row in rows} == {"pass"}
 
 
-def test_bad_mapping_summary_and_sj_are_failed_evidence(tmp_path: Path) -> None:
+def test_malformed_final_log_and_sj_are_failed_evidence(tmp_path: Path) -> None:
     alignment = build_validation_fixture(tmp_path)
     alignment.final_log.write_text(
-        "Uniquely mapped reads % | invalid\n",
+        "malformed row\n",
         encoding="utf-8",
     )
     alignment.splice_junctions.write_text("1\t2\n", encoding="utf-8")
     assert run_validator(alignment, "--execute").returncode == 0
     status = {row["check_id"]: row["status"] for row in report_rows(alignment.output)}
+    assert status["final_log_structure"] == "fail"
     assert status["mapping_summary"] == "fail"
     assert status["splice_junction_structure"] == "fail"
+
+
+def test_unreadable_final_log_fails_closed_without_report(tmp_path: Path) -> None:
+    alignment = build_validation_fixture(tmp_path)
+    alignment.final_log.write_bytes(b"\xff")
+
+    result = run_validator(alignment, "--execute")
+
+    assert result.returncode == 2
+    assert result.stdout == ""
+    assert result.stderr.startswith("ERROR: ")
+    assert "can't decode byte 0xff" in result.stderr
+    assert "Traceback" not in result.stderr
+    assert not alignment.output.exists()
 
 
 def test_missing_input_and_wrong_output_fail_closed(tmp_path: Path) -> None:
