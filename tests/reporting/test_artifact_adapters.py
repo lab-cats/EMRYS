@@ -107,7 +107,7 @@ EXPECTED_PRODUCER_EVIDENCE = {
     "09c": (
         "src/norad/evidence/assemble_scientific_review_evidence_package/"
         "step_09c_scientific_validation.py",
-        "83d32a5651bfa04adcf04c01aaeef2ccb0755263f0d983780e20b8c970bc3c66",
+        "cfb0da6323094cc5d02c007fb6e67dcbebfed68b7d852df895c23ae0d5073490",
     ),
 }
 VALIDATION_ARTIFACT_STEPS = {
