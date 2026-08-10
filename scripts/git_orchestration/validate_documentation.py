@@ -37,7 +37,6 @@ CANONICAL_DOCUMENTS = {
         "# Current functional-owner inventory"
     ),
     "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
-    "docs/architecture/PIPELINE_OVERVIEW.md": "# Current pipeline overview",
     "docs/design/DECISIONS.md": "# Durable decisions",
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
     "docs/design/PIPELINE_PLAN.md": "# NORAD pipeline plan",

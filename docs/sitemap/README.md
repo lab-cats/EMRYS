@@ -25,7 +25,7 @@ For task orientation and approved delivery, use
 
 | Audience | Start | Continue |
 | --- | --- | --- |
-| User | [Root README](../../README.md) | [Pipeline overview](../architecture/PIPELINE_OVERVIEW.md) |
+| User | [Root README](../../README.md) | [Scientist-facing workflow](../architecture/ARCHITECTURE.md#scientist-facing-workflow) |
 | Operator | [Handoff](../operations/HANDOFF.md) | [Runbook](../operations/RUNBOOK.md), owner README, and [troubleshooting](../operations/TROUBLESHOOTING.md) |
 | Scientist/reviewer | [Architecture index](../architecture/README.md) | Stage map, owner contracts, questions, and test baseline |
 | Maintainer | [Safety guard](../../AGENTS.md) | [Workflow](../operations/WORKFLOW.md), selected card, and affected owners |
