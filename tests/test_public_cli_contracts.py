@@ -678,12 +678,38 @@ def test_make_targets_have_side_effect_free_command_expansion(
     assert relative_snapshot(tmp_path) == before
 
 
+def test_make_validation_targets_honor_report_python_bin(
+    tmp_path: Path,
+) -> None:
+    result = run_command(
+        [
+            "make",
+            "-n",
+            "--no-print-directory",
+            "-C",
+            str(REPO_ROOT),
+            "REPORT_PYTHON_BIN=/sentinel/python",
+            "test",
+            "validate",
+            "lint",
+        ],
+        cwd=tmp_path,
+        env=canonical_make_environment(),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stderr == ""
+    lines = result.stdout.splitlines()
+    assert len(lines) == 3
+    assert all(line.startswith('"/sentinel/python" ') for line in lines)
+
+
 def test_make_expansion_oracle_rejects_recipe_mutation(
     tmp_path: Path,
 ) -> None:
     source = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
-    original = "test:\n\tpython -m pytest\n"
-    mutated = "test:\n\tpython -m pytest -q\n"
+    original = 'test:\n\t"$(REPORT_PYTHON_BIN)" -m pytest\n'
+    mutated = 'test:\n\t"$(REPORT_PYTHON_BIN)" -m pytest -q\n'
     assert original in source
     mutated_makefile = tmp_path / "Makefile"
     mutated_makefile.write_text(

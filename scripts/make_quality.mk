@@ -171,14 +171,14 @@ validation-static:
 		--manifest configs/samples.example.tsv
 
 validate:
-	python src/norad/ingestion/sample_manifest_admission/validate_manifest.py --manifest configs/samples.example.tsv
+	"$(REPORT_PYTHON_BIN)" src/norad/ingestion/sample_manifest_admission/validate_manifest.py --manifest configs/samples.example.tsv
 
 smoke:
 	bash -n $(SHELL_SYNTAX_PATHS)
 	bash -n $(SLURM_SYNTAX_PATHS)
 
 lint:
-	python -m compileall scripts src/norad tests
+	"$(REPORT_PYTHON_BIN)" -m compileall scripts src/norad tests
 
 quality-dead-code:
 	@if "$(REPORT_PYTHON_BIN)" -c "import $(VULTURE_BIN)" >/dev/null 2>&1; then \
