@@ -15,8 +15,10 @@ from pathlib import Path
 import pytest
 
 from norad import __main__ as norad_cli
+from norad.contracts.scientific_evidence import step08, step09
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+CLI_USAGE_ERROR = 2
 RESOURCE_PATHS = (
     "norad/contracts/schemas/artifacts/v1/artifact_record.schema.json",
     "norad/contracts/schemas/artifacts/v1/common.schema.json",
@@ -164,7 +166,7 @@ def test_cli_rejects_another_checkout_but_accepts_its_editable_owner(
     )
 
     monkeypatch.chdir(nested_directory)
-    assert norad_cli.main(["--help"]) == 2
+    assert norad_cli.main(["--help"]) == CLI_USAGE_ERROR
     assert "not the current checkout" in capsys.readouterr().err
 
     monkeypatch.chdir(REPO_ROOT)
@@ -243,7 +245,13 @@ def _assert_wheel_contents(wheel: Path) -> None:
             "norad/stages/star_alignment/__init__.py",
             "norad/stages/star_alignment/validator.py",
         }
-        assert not any(member.startswith("norad/analyses/") for member in members)
+        assert {
+            member for member in members if member.startswith("norad/analyses/")
+        } == {
+            "norad/analyses/__init__.py",
+            "norad/analyses/paired_cmh_candidate_ranking/__init__.py",
+            "norad/analyses/paired_cmh_candidate_ranking/validator.py",
+        }
         assert not any(member.endswith((".R", ".sh", ".slurm")) for member in members)
         for resource in RESOURCE_PATHS:
             source = REPO_ROOT / "src" / resource
@@ -1443,6 +1451,254 @@ def _assert_installed_cohort_candidate_preprocessing_validation(
     )
 
 
+def _write_paired_cmh_fixture_table(
+    path: Path,
+    header: tuple[str, ...],
+    rows: tuple[tuple[str, ...], ...] = (),
+) -> None:
+    lines = ["\t".join(header), *("\t".join(row) for row in rows)]
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def _build_paired_cmh_candidate_ranking_fixture(
+    working_directory: Path,
+) -> tuple[tuple[Path, ...], Path]:
+    input_directory = working_directory / "paired-cmh-candidate-ranking-inputs"
+    input_directory.mkdir()
+    analysis_id = "wheel_analysis"
+    cohort_id = "wheel_cohort"
+    sample_ids = ("C1", "T1", "C2", "T2")
+
+    sample_manifest_path = input_directory / "samples.tsv"
+    _write_paired_cmh_fixture_table(
+        sample_manifest_path,
+        step08.SAMPLE_MANIFEST_REQUIRED,
+        (
+            ("C1", "/C1_R1.fastq.gz", "/C1_R2.fastq.gz", "reverse", "control", "1"),
+            ("T1", "/T1_R1.fastq.gz", "/T1_R2.fastq.gz", "reverse", "treatment", "1"),
+            ("C2", "/C2_R1.fastq.gz", "/C2_R2.fastq.gz", "reverse", "control", "2"),
+            ("T2", "/T2_R1.fastq.gz", "/T2_R2.fastq.gz", "reverse", "treatment", "2"),
+        ),
+    )
+    partition_manifest_path = input_directory / "partitions.tsv"
+    _write_paired_cmh_fixture_table(
+        partition_manifest_path,
+        step08.PARTITION_MANIFEST_HEADER,
+        (("p1", "region", "1"),),
+    )
+    sample_sha256 = hashlib.sha256(sample_manifest_path.read_bytes()).hexdigest()
+    partition_sha256 = hashlib.sha256(partition_manifest_path.read_bytes()).hexdigest()
+
+    step08_inputs_path = input_directory / f"{cohort_id}.step08_inputs.tsv"
+    step08_input_rows = tuple(
+        (
+            cohort_id,
+            "p1",
+            "region",
+            "1",
+            orientation,
+            f"/step07/{orientation}.receipt.tsv",
+            "1" * 64,
+            f"/step07/{orientation}.vcf.gz",
+            "2" * 64,
+            sample_sha256,
+            partition_sha256,
+            "/annotation.gtf",
+            "3" * 64,
+            "4",
+            *(("0",) * 7),
+            "legacy_provisional_v1",
+        )
+        for orientation in ("FWD_like", "REV_like")
+    )
+    _write_paired_cmh_fixture_table(
+        step08_inputs_path,
+        step08.STEP08_INPUTS_HEADER,
+        step08_input_rows,
+    )
+
+    step08_sites_path = input_directory / f"{cohort_id}.step08_sites.tsv"
+    _write_paired_cmh_fixture_table(
+        step08_sites_path,
+        step08.sample_block_header(step08.STEP08_METADATA_HEADER, sample_ids),
+    )
+
+    result_header = step08.sample_block_header(step09.STEP09_RESULT_HEADER, sample_ids)
+    all_sites_path = input_directory / f"{analysis_id}.cmh_all_sites.tsv"
+    significant_sites_path = (
+        input_directory / f"{analysis_id}.cmh_significant_sites.tsv"
+    )
+    _write_paired_cmh_fixture_table(all_sites_path, result_header)
+    _write_paired_cmh_fixture_table(significant_sites_path, result_header)
+
+    summary_path = input_directory / f"{analysis_id}.cmh_summary.tsv"
+    summary_row = {
+        "analysis_id": analysis_id,
+        "cohort_id": cohort_id,
+        "control_condition": "control",
+        "treatment_condition": "treatment",
+        "background_condition": "NA",
+        "target_rna_change": "A>G",
+        "replicate_count": "2",
+        "sample_count": "4",
+        "sample_manifest_path": str(sample_manifest_path.resolve()),
+        "sample_manifest_sha256": sample_sha256,
+        "partition_manifest_path": str(partition_manifest_path.resolve()),
+        "partition_manifest_sha256": partition_sha256,
+        "step08_sites_path": str(step08_sites_path.resolve()),
+        "step08_sites_sha256": hashlib.sha256(
+            step08_sites_path.read_bytes()
+        ).hexdigest(),
+        "step08_inputs_path": str(step08_inputs_path.resolve()),
+        "step08_inputs_sha256": hashlib.sha256(
+            step08_inputs_path.read_bytes()
+        ).hexdigest(),
+        "min_sample_dp": "1",
+        "mean_dp_threshold": "50",
+        "fdr_threshold": "0.05",
+        "common_or_threshold": "1.2",
+        "absolute_difference_threshold": "0.005",
+        "background_max_fraction": "0.01",
+        "multiple_testing_method": "BH",
+        "cmh_alternative": "two.sided",
+        "continuity_correction": "TRUE",
+        "orientation_policy": "legacy_provisional_v1",
+    }
+    zero_count_fields = (
+        "candidate_count",
+        "target_candidate_count",
+        *(field for field, _, _ in step09.STEP09_STATUS_COUNT_FIELDS),
+    )
+    for count_field in zero_count_fields:
+        summary_row[count_field] = "0"
+    _write_paired_cmh_fixture_table(
+        summary_path,
+        step09.STEP09_SUMMARY_HEADER,
+        (tuple(summary_row[column] for column in step09.STEP09_SUMMARY_HEADER),),
+    )
+
+    mutation_path = input_directory / f"{analysis_id}.mutation_spectrum.tsv"
+    _write_paired_cmh_fixture_table(
+        mutation_path,
+        step09.STEP09_MUTATION_HEADER,
+        tuple(
+            (
+                analysis_id,
+                *mutation_type.split(">"),
+                mutation_type,
+                *(("0",) * 5),
+            )
+            for mutation_type in step09.CANONICAL_MUTATIONS
+        ),
+    )
+    mutation_pdf_path = input_directory / f"{analysis_id}.mutation_spectrum.pdf"
+    depth_pdf_path = input_directory / f"{analysis_id}.depth_delta.pdf"
+    for pdf_path in (mutation_pdf_path, depth_pdf_path):
+        pdf_path.write_bytes(b"%PDF-1.4\n%%EOF\n")
+
+    output_directory = working_directory / "paired-cmh-candidate-ranking-output"
+    output_directory.mkdir()
+    return (
+        (
+            sample_manifest_path,
+            partition_manifest_path,
+            step08_sites_path,
+            step08_inputs_path,
+            all_sites_path,
+            significant_sites_path,
+            summary_path,
+            mutation_path,
+            mutation_pdf_path,
+            depth_pdf_path,
+        ),
+        output_directory / f"{analysis_id}.validation.tsv",
+    )
+
+
+def _assert_installed_paired_cmh_candidate_ranking_validation(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    input_paths, output_path = _build_paired_cmh_candidate_ranking_fixture(
+        working_directory
+    )
+    (
+        sample_manifest_path,
+        partition_manifest_path,
+        step08_sites_path,
+        step08_inputs_path,
+        all_sites_path,
+        significant_sites_path,
+        summary_path,
+        mutation_path,
+        mutation_pdf_path,
+        depth_pdf_path,
+    ) = input_paths
+    input_states = tuple(
+        (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    )
+    unrelated_path = working_directory / "paired-cmh-candidate-ranking-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+    unrelated_state = (unrelated_path.read_bytes(), unrelated_path.stat().st_mode)
+
+    validation = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "paired-cmh-candidate-ranking",
+        "--analysis-id",
+        "wheel_analysis",
+        "--cohort-id",
+        "wheel_cohort",
+        "--sample-manifest",
+        str(sample_manifest_path),
+        "--partition-manifest",
+        str(partition_manifest_path),
+        "--step08-sites",
+        str(step08_sites_path),
+        "--step08-inputs",
+        str(step08_inputs_path),
+        "--all-sites",
+        str(all_sites_path),
+        "--significant-sites",
+        str(significant_sites_path),
+        "--summary",
+        str(summary_path),
+        "--mutation-spectrum",
+        str(mutation_path),
+        "--mutation-spectrum-pdf",
+        str(mutation_pdf_path),
+        "--depth-delta-pdf",
+        str(depth_pdf_path),
+        "--output",
+        str(output_path),
+    )
+    _assert_validation_dry_run(
+        validation,
+        output_path,
+        step_id="09",
+        expected_check_ids={
+            "output_transaction",
+            "upstream_identity_and_candidate_order",
+            "status_semantics",
+            "significant_subset",
+            "summary_count_reconciliation",
+            "mutation_spectrum_reconciliation",
+            "pdf_structure",
+        },
+    )
+    assert not any(output_path.parent.iterdir())
+    assert (
+        tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
+        == input_states
+    )
+    assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
+        unrelated_state
+    )
+
+
 def _assert_installed_commands(
     environment_python: Path,
     working_directory: Path,
@@ -1550,6 +1806,11 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_paired_cmh_candidate_ranking_validation(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_private_source_layout() -> None:
@@ -1620,6 +1881,11 @@ def _assert_private_source_layout() -> None:
             "stages/preprocess_and_annotate_cohort_candidates",
             "validate_step_08_preprocessing_outputs.py",
         ),
+        (
+            "analyses/paired_cmh_candidate_ranking",
+            "analyses/rank_cohort_candidates_with_paired_CMH",
+            "validate_step_09_cmh_outputs.py",
+        ),
     )
     for current_relative, retired_relative, retired_validator in normalized_owners:
         current_source = REPO_ROOT / "src/norad" / current_relative
@@ -1644,7 +1910,7 @@ def _assert_wrong_checkout_rejected(
             environment,
             "--help",
         )
-        assert probe.returncode == 2
+        assert probe.returncode == CLI_USAGE_ERROR
         assert "not the current checkout" in probe.stderr
 
 

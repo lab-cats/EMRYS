@@ -47,10 +47,6 @@ PYTHON_ENTRYPOINT_PATHS = {
     "validate_artifact_contracts.py": Path(
         "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     ),
-    "validate_step_09_cmh_outputs.py": Path(
-        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
-        "validate_step_09_cmh_outputs.py"
-    ),
 }
 PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
 REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
@@ -62,7 +58,6 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
         "render_run_report_bundle.py",
         "step_09c_scientific_validation.py",
         "validate_artifact_contracts.py",
-        "validate_step_09_cmh_outputs.py",
     }
 )
 PRIVATE_PYTHON_MODULES = frozenset()
@@ -98,6 +93,10 @@ NORAD_COMMANDS = (
     (
         ("validate", "mechanical-orientation"),
         "usage: norad validate mechanical-orientation",
+    ),
+    (
+        ("validate", "paired-cmh-candidate-ranking"),
+        "usage: norad validate paired-cmh-candidate-ranking",
     ),
     (
         ("validate", "partitioned-cohort-mpileup"),
@@ -151,7 +150,7 @@ SHELL_ENTRYPOINT_PATHS = {
         "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
     ),
     "step_09_cmh_editing_site_calling.sh": Path(
-        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh"
     ),
     "step_09c_scientific_validation.sh": Path(
@@ -176,7 +175,7 @@ R_ENTRYPOINT_PATHS = {
         "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
     ),
     "step_09_cmh_editing_site_calling.R": Path(
-        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.R"
     ),
 }

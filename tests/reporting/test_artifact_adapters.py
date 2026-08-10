@@ -98,7 +98,7 @@ EXPECTED_PRODUCER_EVIDENCE = {
         "d37a82e84dc8b98c261e1e40df5ea0ffb1c9ec550381d6f0297ee3290f489a4b",
     ),
     "09": (
-        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh",
         "9311dc4a847e8f749c3fe033112070279b9d7beb0ff5dfaf69f67702b81f15bc",
     ),

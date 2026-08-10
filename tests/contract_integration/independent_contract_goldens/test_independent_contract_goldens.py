@@ -14,6 +14,9 @@ from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
+from norad.analyses.paired_cmh_candidate_ranking import (
+    validator as STEP09_VALIDATOR,
+)
 from norad.stages.cohort_candidate_preprocessing import validator as STEP08_VALIDATOR
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -54,13 +57,6 @@ SCIENTIFIC_REVIEW = load_exact_test_module(
     / "src/norad/evidence/assemble_scientific_review_evidence_package"
     / "step_09c_scientific_validation.py",
 )
-STEP09_VALIDATOR = load_exact_test_module(
-    "_independent_step09_validator",
-    REPO_ROOT
-    / "src/norad/analyses/rank_cohort_candidates_with_paired_CMH"
-    / "validate_step_09_cmh_outputs.py",
-)
-
 HEADER_MODULES: Mapping[str, ModuleType] = {
     "build_artifact_index": ARTIFACT_INDEX,
     "build_run_summary": RUN_SUMMARY,

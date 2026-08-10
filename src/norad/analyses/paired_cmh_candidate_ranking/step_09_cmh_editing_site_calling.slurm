@@ -36,7 +36,7 @@ ABSOLUTE_DIFFERENCE_THRESHOLD="${ABSOLUTE_DIFFERENCE_THRESHOLD:-0.005}"
 BACKGROUND_CONDITION="${BACKGROUND_CONDITION:-}"
 BACKGROUND_MAX_FRACTION="${BACKGROUND_MAX_FRACTION:-0.01}"
 RSCRIPT_BIN="${RSCRIPT_BIN_OVERRIDE:-Rscript}"
-R_SCRIPT="${STEP09_R_SCRIPT:-src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R}"
+R_SCRIPT="${STEP09_R_SCRIPT:-src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R}"
 EXECUTE="${EXECUTE:-0}"
 
 case "$EXECUTE" in
@@ -75,7 +75,7 @@ printf 'Loaded modules before Step 09:\n'
 module list 2>&1 || true
 
 cmd=(
-    bash src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh
+    bash src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh
     --analysis-id "$ANALYSIS_ID"
     --cohort-id "$COHORT_ID"
     --sample-manifest "$SAMPLE_MANIFEST"

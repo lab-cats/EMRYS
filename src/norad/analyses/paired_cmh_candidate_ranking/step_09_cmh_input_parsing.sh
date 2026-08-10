@@ -4,7 +4,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 usage() {
     cat <<'USAGE'
 Usage:
-  src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh \
+  src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh \
     --analysis-id ANALYSIS_ID \
     --cohort-id COHORT_ID \
     --sample-manifest SAMPLE_MANIFEST \

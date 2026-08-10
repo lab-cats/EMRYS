@@ -81,7 +81,7 @@ REQUIRED_ARGUMENT_NAMES <- setdiff(ARGUMENT_NAMES, "background-condition")
 usage <- function() {
     cat(paste0(
         "Usage:\n",
-        "  Rscript src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R \\\n",
+        "  Rscript src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R \\\n",
         "    --analysis-id ID --cohort-id ID \\\n",
         "    --sample-manifest PATH --partition-manifest PATH \\\n",
         "    --sample-manifest-sha256 SHA256 \\\n",

@@ -7,8 +7,11 @@ import sys
 import tomllib
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import cast
+from typing import Protocol, cast
 
+from norad.analyses.paired_cmh_candidate_ranking import (
+    validator as paired_cmh_candidate_ranking_validation_command,
+)
 from norad.evidence.canonical_bam_qc import (
     validator as canonical_bam_qc_validation_command,
 )
@@ -43,6 +46,24 @@ from norad.stages.star_index import validator as star_index_validation_command
 CommandHandler = Callable[[argparse.Namespace], int]
 
 
+class _SubparserCollection(Protocol):
+    """Subset of argparse's subparser collection used by this dispatcher."""
+
+    def add_parser(
+        self,
+        name: str,
+        **_options: str,
+    ) -> argparse.ArgumentParser: ...
+
+
+class _ValidationCommand(Protocol):
+    """Owner module interface required by the grouped validation CLI."""
+
+    DESCRIPTION: str
+    configure_parser: Callable[[argparse.ArgumentParser], None]
+    validate_from_args: CommandHandler
+
+
 def _find_checkout_root(start: Path) -> Path | None:
     for candidate in (start, *start.parents):
         configuration_path = candidate / "pyproject.toml"
@@ -72,6 +93,22 @@ def _checkout_mismatch() -> str | None:
         f"selected interpreter imports NORAD from {imported_package}, "
         f"not the current checkout at {expected_package}"
     )
+
+
+def _add_validation_command(
+    validation_parsers: _SubparserCollection,
+    *,
+    name: str,
+    help_text: str,
+    command: _ValidationCommand,
+) -> None:
+    subject_parser = validation_parsers.add_parser(
+        name,
+        help=help_text,
+        description=command.DESCRIPTION,
+    )
+    command.configure_parser(subject_parser)
+    subject_parser.set_defaults(_command_handler=command.validate_from_args)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -113,130 +150,89 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="SUBJECT",
         required=True,
     )
-    manifest_parser = validation_parsers.add_parser(
-        "manifest",
-        help="Validate a sample manifest.",
-        description=manifest_command.DESCRIPTION,
+    _add_validation_command(
+        validation_parsers,
+        name="manifest",
+        help_text="Validate a sample manifest.",
+        command=manifest_command,
     )
-    manifest_command.configure_parser(manifest_parser)
-    manifest_parser.set_defaults(_command_handler=manifest_command.validate_from_args)
-    bed12_parser = validation_parsers.add_parser(
-        "bed12",
-        help="Validate one BED12 against its source GTF.",
-        description=bed12_validation_command.DESCRIPTION,
+    _add_validation_command(
+        validation_parsers,
+        name="bed12",
+        help_text="Validate one BED12 against its source GTF.",
+        command=bed12_validation_command,
     )
-    bed12_validation_command.configure_parser(bed12_parser)
-    bed12_parser.set_defaults(
-        _command_handler=bed12_validation_command.validate_from_args
+    _add_validation_command(
+        validation_parsers,
+        name="canonical-bam",
+        help_text="Validate one canonical BAM/BAI pair.",
+        command=canonical_bam_validation_command,
     )
-    canonical_bam_parser = validation_parsers.add_parser(
-        "canonical-bam",
-        help="Validate one canonical BAM/BAI pair.",
-        description=canonical_bam_validation_command.DESCRIPTION,
+    _add_validation_command(
+        validation_parsers,
+        name="canonical-bam-qc",
+        help_text="Validate canonical-BAM quickcheck and flagstat evidence.",
+        command=canonical_bam_qc_validation_command,
     )
-    canonical_bam_validation_command.configure_parser(canonical_bam_parser)
-    canonical_bam_parser.set_defaults(
-        _command_handler=canonical_bam_validation_command.validate_from_args
+    _add_validation_command(
+        validation_parsers,
+        name="cohort-candidate-preprocessing",
+        help_text="Validate one cohort candidate preprocessing transaction.",
+        command=cohort_candidate_preprocessing_validation_command,
     )
-    canonical_bam_qc_parser = validation_parsers.add_parser(
-        "canonical-bam-qc",
-        help="Validate canonical-BAM quickcheck and flagstat evidence.",
-        description=canonical_bam_qc_validation_command.DESCRIPTION,
+    _add_validation_command(
+        validation_parsers,
+        name="duplicate-marking",
+        help_text="Validate duplicate-marked BAM/BAI and Picard metrics.",
+        command=duplicate_marking_validation_command,
     )
-    canonical_bam_qc_validation_command.configure_parser(canonical_bam_qc_parser)
-    canonical_bam_qc_parser.set_defaults(
-        _command_handler=canonical_bam_qc_validation_command.validate_from_args
+    _add_validation_command(
+        validation_parsers,
+        name="fasta-sidecars",
+        help_text="Validate FASTA index and dictionary sidecars.",
+        command=fasta_sidecars_validation_command,
     )
-    cohort_candidate_preprocessing_parser = validation_parsers.add_parser(
-        "cohort-candidate-preprocessing",
-        help="Validate one cohort candidate preprocessing transaction.",
-        description=cohort_candidate_preprocessing_validation_command.DESCRIPTION,
+    _add_validation_command(
+        validation_parsers,
+        name="mechanical-orientation",
+        help_text="Validate mechanical-orientation BAM/BAI pairs and counts.",
+        command=mechanical_orientation_validation_command,
     )
-    cohort_candidate_preprocessing_validation_command.configure_parser(
-        cohort_candidate_preprocessing_parser
+    _add_validation_command(
+        validation_parsers,
+        name="paired-cmh-candidate-ranking",
+        help_text="Validate one paired-CMH candidate-ranking transaction.",
+        command=paired_cmh_candidate_ranking_validation_command,
     )
-    cohort_candidate_preprocessing_parser.set_defaults(
-        _command_handler=(
-            cohort_candidate_preprocessing_validation_command.validate_from_args
-        )
+    _add_validation_command(
+        validation_parsers,
+        name="partitioned-cohort-mpileup",
+        help_text="Validate one partitioned-cohort mpileup VCF transaction.",
+        command=partitioned_cohort_mpileup_validation_command,
     )
-    duplicate_marking_parser = validation_parsers.add_parser(
-        "duplicate-marking",
-        help="Validate duplicate-marked BAM/BAI and Picard metrics.",
-        description=duplicate_marking_validation_command.DESCRIPTION,
+    _add_validation_command(
+        validation_parsers,
+        name="rseqc-orientation",
+        help_text="Validate one RSeQC paired-orientation report.",
+        command=rseqc_orientation_validation_command,
     )
-    duplicate_marking_validation_command.configure_parser(duplicate_marking_parser)
-    duplicate_marking_parser.set_defaults(
-        _command_handler=duplicate_marking_validation_command.validate_from_args
+    _add_validation_command(
+        validation_parsers,
+        name="split-n-cigar",
+        help_text="Validate split-N-cigar BAM/BAI and reference sidecars.",
+        command=split_n_cigar_validation_command,
     )
-    fasta_sidecars_parser = validation_parsers.add_parser(
-        "fasta-sidecars",
-        help="Validate FASTA index and dictionary sidecars.",
-        description=fasta_sidecars_validation_command.DESCRIPTION,
+    _add_validation_command(
+        validation_parsers,
+        name="star-index",
+        help_text="Validate one STAR index against its references.",
+        command=star_index_validation_command,
     )
-    fasta_sidecars_validation_command.configure_parser(fasta_sidecars_parser)
-    fasta_sidecars_parser.set_defaults(
-        _command_handler=fasta_sidecars_validation_command.validate_from_args
-    )
-    mechanical_orientation_parser = validation_parsers.add_parser(
-        "mechanical-orientation",
-        help="Validate mechanical-orientation BAM/BAI pairs and counts.",
-        description=mechanical_orientation_validation_command.DESCRIPTION,
-    )
-    mechanical_orientation_validation_command.configure_parser(
-        mechanical_orientation_parser
-    )
-    mechanical_orientation_parser.set_defaults(
-        _command_handler=mechanical_orientation_validation_command.validate_from_args
-    )
-    partitioned_cohort_mpileup_parser = validation_parsers.add_parser(
-        "partitioned-cohort-mpileup",
-        help="Validate one partitioned-cohort mpileup VCF transaction.",
-        description=partitioned_cohort_mpileup_validation_command.DESCRIPTION,
-    )
-    partitioned_cohort_mpileup_validation_command.configure_parser(
-        partitioned_cohort_mpileup_parser
-    )
-    partitioned_cohort_mpileup_parser.set_defaults(
-        _command_handler=(
-            partitioned_cohort_mpileup_validation_command.validate_from_args
-        )
-    )
-    rseqc_orientation_parser = validation_parsers.add_parser(
-        "rseqc-orientation",
-        help="Validate one RSeQC paired-orientation report.",
-        description=rseqc_orientation_validation_command.DESCRIPTION,
-    )
-    rseqc_orientation_validation_command.configure_parser(rseqc_orientation_parser)
-    rseqc_orientation_parser.set_defaults(
-        _command_handler=rseqc_orientation_validation_command.validate_from_args
-    )
-    split_n_cigar_parser = validation_parsers.add_parser(
-        "split-n-cigar",
-        help="Validate split-N-cigar BAM/BAI and reference sidecars.",
-        description=split_n_cigar_validation_command.DESCRIPTION,
-    )
-    split_n_cigar_validation_command.configure_parser(split_n_cigar_parser)
-    split_n_cigar_parser.set_defaults(
-        _command_handler=split_n_cigar_validation_command.validate_from_args
-    )
-    star_index_parser = validation_parsers.add_parser(
-        "star-index",
-        help="Validate one STAR index against its references.",
-        description=star_index_validation_command.DESCRIPTION,
-    )
-    star_index_validation_command.configure_parser(star_index_parser)
-    star_index_parser.set_defaults(
-        _command_handler=star_index_validation_command.validate_from_args
-    )
-    star_alignment_parser = validation_parsers.add_parser(
-        "star-alignment",
-        help="Validate one STAR alignment output set.",
-        description=star_alignment_validation_command.DESCRIPTION,
-    )
-    star_alignment_validation_command.configure_parser(star_alignment_parser)
-    star_alignment_parser.set_defaults(
-        _command_handler=star_alignment_validation_command.validate_from_args
+    _add_validation_command(
+        validation_parsers,
+        name="star-alignment",
+        help_text="Validate one STAR alignment output set.",
+        command=star_alignment_validation_command,
     )
     return parser
 

@@ -130,7 +130,7 @@ STEP_PRODUCERS = {
         "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
     ),
     "09": (
-        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh"
     ),
     "09c": (

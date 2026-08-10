@@ -22,7 +22,7 @@ grouped module interface.
 The canonical identities and dependency edges live in
 [`STAGE_MAP.md`](../contracts/STAGE_MAP.md). Evidence operations `02b`, `03`,
 and `09c` live under [`evidence/`](../evidence/README.md); analysis `09` lives
-under [`analyses/`](../analyses/rank_cohort_candidates_with_paired_CMH/README.md).
+under [`analyses/`](../analyses/paired_cmh_candidate_ranking/README.md).
 
 ## Owner convention
 

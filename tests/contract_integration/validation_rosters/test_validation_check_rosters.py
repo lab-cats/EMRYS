@@ -33,10 +33,7 @@ VALIDATOR_PATHS = {
     "06": Path("src/norad/stages/mechanical_orientation/validator.py"),
     "07": Path("src/norad/stages/partitioned_cohort_mpileup/validator.py"),
     "08": Path("src/norad/stages/cohort_candidate_preprocessing/validator.py"),
-    "09": Path(
-        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
-        "validate_step_09_cmh_outputs.py"
-    ),
+    "09": Path("src/norad/analyses/paired_cmh_candidate_ranking/validator.py"),
 }
 VALIDATION_HEADER = (
     "step_id",

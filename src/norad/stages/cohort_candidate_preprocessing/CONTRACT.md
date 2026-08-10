@@ -19,8 +19,10 @@ analysis.
 Step `08` is a cohort barrier: it requires one upstream receipt and both VCFs for every
 partition in manifest order. It rejects overlaps across declared partitions,
 revalidates Step `07` receipts and VCF structure, and hashes the current
-receipts and VCFs into its own input receipt. Step `09` consumes the Step `08`
-sites table and input receipt, not the QC summary.
+receipts and VCFs into its own input receipt. The
+[`rank_cohort_candidates_with_paired_CMH`](../../analyses/paired_cmh_candidate_ranking/CONTRACT.md)
+analysis consumes the Step `08` sites table and input receipt, not the QC
+summary.
 
 ## Inputs and provisional policy
 

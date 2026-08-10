@@ -46,8 +46,12 @@ CONSUMERS = {
         1,
         1,
     ),
-    "analyses/rank_cohort_candidates_with_paired_CMH/"
-    "step_09_cmh_editing_site_calling.sh": (0o755, 1, 0, 2),
+    "analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh": (
+        0o755,
+        1,
+        0,
+        2,
+    ),
     "evidence/assemble_scientific_review_evidence_package/"
     "step_09c_scientific_validation.sh": (0o755, 0, 0, 1),
     "reporting/render_run_report.sh": (0o755, 1, 0, 1),

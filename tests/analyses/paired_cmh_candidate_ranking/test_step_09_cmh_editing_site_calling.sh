@@ -3,8 +3,8 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-script="$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh"
-job="$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.slurm"
+script="$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh"
+job="$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
@@ -547,7 +547,7 @@ base=(
     --step08-root "$tmp/step08"
     --output-root "$tmp/output"
     --rscript-bin "$fake_r"
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R"
 )
 
 run_step09() {
@@ -560,7 +560,7 @@ run_step09() {
         --step08-root "$fixture/step08" \
         --output-root "$fixture/output" \
         --rscript-bin "${STEP09_RSCRIPT_BIN:-$fake_r}" \
-        --r-script "${STEP09_R_PROGRAM:-$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R}" \
+        --r-script "${STEP09_R_PROGRAM:-$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R}" \
         "$@"
 }
 
@@ -601,7 +601,7 @@ expect_fail "Rscript does not exist: $missing_rscript/bin/missing-rscript" \
     --step08-root "$missing_rscript/step08" \
     --output-root "$missing_rscript/output" \
     --rscript-bin "$missing_rscript/bin/missing-rscript" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R"
 assert_preflight_preserved "$missing_rscript" missing-rscript
 
 nonexecutable_rscript="$tmp/nonexecutable-rscript"
@@ -617,7 +617,7 @@ expect_fail "Rscript exists but is not executable: $nonexecutable_rscript/bin/no
     --step08-root "$nonexecutable_rscript/step08" \
     --output-root "$nonexecutable_rscript/output" \
     --rscript-bin "$nonexecutable_rscript/bin/nonexecutable-rscript" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R"
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R"
 assert_preflight_preserved "$nonexecutable_rscript" nonexecutable-rscript
 
 missing_r_program="$tmp/missing-r-program"
@@ -649,7 +649,7 @@ basename_marker="$basename_rscript/fake-r.invoked"
         --step08-root "$basename_rscript/step08" \
         --output-root "$basename_rscript/output" \
         --rscript-bin fake-r-basename \
-        --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+        --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
         --execute > "$basename_rscript/execute.out"
 )
 [[ -e "$basename_marker" ]] || fail "PATH-basename Rscript was not invoked"
@@ -784,7 +784,7 @@ FAKE_R_ARGS_LOG="$background_args_log" \
     --background-condition NODOX \
     --background-max-fraction 0.009 \
     --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     --execute > "$background_valid/execute.out"
 [[ -e "$background_marker" ]] ||
     fail "valid explicit background did not invoke fake R"
@@ -1007,7 +1007,7 @@ run_input_mutation_case \
 
 r_script_mutation="$tmp/r-script-mutation"
 copy_fixture "$r_script_mutation"
-cp "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+cp "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     "$r_script_mutation/step09_impl.R"
 mkdir -p "$r_script_mutation/output/r-script-mutation"
 printf 'unrelated bytes\n' > \
@@ -1069,7 +1069,7 @@ expect_fail "Step 09 lock already exists" \
     --step08-root "$foreign_lock/step08" \
     --output-root "$foreign_lock/output" \
     --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     --execute
 assert_file_equals "$foreign_lock_dir/owner" "foreign owner"
 [[ ! -e "$foreign_lock/fake-r.invoked" ]] ||
@@ -1088,7 +1088,7 @@ if (
         --partition-manifest "$partition_manifest" \
         --step08-root "$tmp/step08" --output-root "$tmp/output" \
         --rscript-bin "$fake_r" \
-        --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+        --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
         --execute
 ) > "$tmp/owner-write-failure.out" 2> "$tmp/owner-write-failure.err"; then
     fail "owner metadata write failure unexpectedly succeeded"
@@ -1109,7 +1109,7 @@ FAKE_R_MARKER="$replacement_marker" \
     --step08-root "$replacement/step08" \
     --output-root "$replacement/output" \
     --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     --execute > "$replacement/execute.out"
 replacement_dir="$replacement/output/replacement"
 for replacement_path in "$replacement_dir"/replacement.*
@@ -1142,7 +1142,7 @@ env \
     --step08-root "$publication_order/step08" \
     --output-root "$publication_order/output" \
     --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     --execute > "$publication_order/execute.out" \
     2> "$publication_order/execute.err" &
 publication_order_pid=$!
@@ -1232,7 +1232,7 @@ env \
     --step08-root "$signal_replacement/step08" \
     --output-root "$signal_replacement/output" \
     --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     --execute > "$signal_replacement/execute.out" \
     2> "$signal_replacement/execute.err" &
 signal_replacement_pid=$!
@@ -1297,7 +1297,7 @@ env \
     --step08-root "$concurrency/step08" \
     --output-root "$concurrency/output" \
     --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     --execute > "$concurrency/winner.out" \
     2> "$concurrency/winner.err" &
 concurrency_winner_pid=$!
@@ -1335,7 +1335,7 @@ env \
     --step08-root "$concurrency/step08" \
     --output-root "$concurrency/output" \
     --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     --execute > "$concurrency/loser.out" \
     2> "$concurrency/loser.err"
 concurrency_loser_status=$?
@@ -1385,7 +1385,7 @@ expect_fail "forced fake mv failure" \
     --step08-root "$move_failure/step08" \
     --output-root "$move_failure/output" \
     --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     --execute
 move_failure_after="$(hash_output_set "$move_failure/output" move-failure)"
 [[ "$move_failure_after" == "$move_failure_before" ]] ||
@@ -1413,7 +1413,7 @@ if env \
     --step08-root "$restore_failure/step08" \
     --output-root "$restore_failure/output" \
     --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     --execute \
     > "$restore_failure/execute.out" \
     2> "$restore_failure/execute.err"
@@ -1475,7 +1475,7 @@ expect_fail "Published Step 09 output changed during publication" \
     --step08-root "$postvalidation/step08" \
     --output-root "$postvalidation/output" \
     --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     --execute
 postvalidation_after="$(hash_output_set "$postvalidation/output" postvalidation)"
 [[ "$postvalidation_after" == "$postvalidation_before" ]] ||
@@ -1498,7 +1498,7 @@ expect_fail "forced fake mv failure" \
     --step08-root "$first_publish_failure/step08" \
     --output-root "$first_publish_failure/output" \
     --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     --execute
 assert_no_finals "$first_publish_failure/output" first-publish-failure
 assert_no_scratch "$first_publish_failure/output" first-publish-failure
@@ -1519,7 +1519,7 @@ expect_fail "Refusing to reuse an existing Step 09 scratch path" \
     --step08-root "$stale_scratch/step08" \
     --output-root "$stale_scratch/output" \
     --rscript-bin "$fake_r" \
-    --r-script "$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     --execute
 assert_file_equals "$stale_scratch_path" "foreign scratch"
 [[ ! -e "$stale_scratch_dir/.stale-scratch.step09.lock" ]] ||
@@ -1553,7 +1553,7 @@ rm -rf "$out/.analysis.step09.lock"
 rm -f "$out/analysis.cmh_summary.tsv"
 expect_fail "incomplete" "${base[@]}" --execute
 
-grep -q 'bash src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh' "$job" ||
+grep -q 'bash src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh' "$job" ||
     fail "SLURM wrapper does not delegate to the Step 09 shell implementation"
 if grep -Eq 'mantelhaen[.]test|p[.]adjust|VariantAnnotation|read[.]table' "$job"; then
     fail "SLURM wrapper embeds analysis logic"
@@ -1561,8 +1561,8 @@ fi
 
 job_fixture="$tmp/job-wrapper"
 copy_fixture "$job_fixture"
-mkdir -p "$job_fixture/src/norad/analyses/rank_cohort_candidates_with_paired_CMH"
-cp "$script" "$job_fixture/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.sh"
+mkdir -p "$job_fixture/src/norad/analyses/paired_cmh_candidate_ranking"
+cp "$script" "$job_fixture/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh"
 job_output_root="$job_fixture/job-output"
 env \
     PATH="$tmp/bin:$PATH" \
@@ -1574,7 +1574,7 @@ env \
     STEP08_ROOT="$job_fixture/step08" \
     OUTPUT_ROOT="$job_output_root" \
     RSCRIPT_BIN_OVERRIDE="$fake_r" \
-    STEP09_R_SCRIPT="$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    STEP09_R_SCRIPT="$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     EXECUTE=0 \
     bash "$job" > "$job_fixture/dry.out"
 grep -q -- '--analysis-id job-dry' "$job_fixture/dry.out" ||
@@ -1604,7 +1604,7 @@ env \
     STEP08_ROOT="$job_fixture/step08" \
     OUTPUT_ROOT="$job_output_root" \
     RSCRIPT_BIN_OVERRIDE="$fake_r" \
-    STEP09_R_SCRIPT="$repo_root/src/norad/analyses/rank_cohort_candidates_with_paired_CMH/step_09_cmh_editing_site_calling.R" \
+    STEP09_R_SCRIPT="$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
     FAKE_R_MARKER="$job_marker" \
     FAKE_R_ARGS_LOG="$job_args" \
     EXECUTE=1 \

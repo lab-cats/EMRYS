@@ -108,7 +108,7 @@ CONTRACTS = {
         "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
     ),
     "step_09_cmh_editing_site_calling.slurm": contract(
-        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh"
     ),
     "tool_check.slurm": contract(

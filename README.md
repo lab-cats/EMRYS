@@ -13,8 +13,9 @@ explicitly installed, unreleased Python distribution provides an isolated,
 grouped module command for migrated owners, beginning with sample-manifest,
 STAR-index, FASTA-sidecar, STAR-alignment, canonical-BAM, canonical-BAM-QC,
 RSeQC-orientation, duplicate-marking, split-N-cigar, mechanical-orientation,
-partitioned-cohort-mpileup, and cohort-candidate-preprocessing validation, plus
-GTF-to-BED12 conversion/validation and named schema/report resources.
+partitioned-cohort-mpileup, cohort-candidate-preprocessing, and
+paired-CMH-candidate-ranking validation, plus GTF-to-BED12
+conversion/validation and named schema/report resources.
 
 ## Start here
 
@@ -39,7 +40,7 @@ production references may remain operator- or cluster-local.
 3. Choose the applicable owner through the
    [sample-manifest admission index](src/norad/ingestion/README.md),
    [transformation-stage index](src/norad/stages/README.md),
-   [analysis owner](src/norad/analyses/rank_cohort_candidates_with_paired_CMH/README.md),
+   [analysis owner](src/norad/analyses/paired_cmh_candidate_ranking/README.md),
    [evidence index](src/norad/evidence/README.md), or
    [reporting index](src/norad/reporting/README.md). Read the routed `README.md`
    and any adjacent `CONTRACT.md`, then follow that owner's validation and

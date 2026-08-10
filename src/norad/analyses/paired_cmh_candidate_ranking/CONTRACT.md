@@ -4,7 +4,8 @@ This is the observed contract of historical Step `09` for `ARCH-02A`. It is an
 analysis operation rather than another preprocessing stage. The exact public
 identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug and is now the implemented source location.
+retains that semantic identity while the physical/package owner uses the
+capability-oriented name `paired_cmh_candidate_ranking`.
 
 ## Responsibility and execution dependencies
 
@@ -98,10 +99,11 @@ script, the wrapper currently creates its `logs/` directory even in dry-run.
 
 ## Validation interface
 
-[`validate_step_09_cmh_outputs.py`](validate_step_09_cmh_outputs.py)
-accepts explicit manifests, Step `08` inputs, all six native outputs, analysis
-and cohort IDs, and report output. It does not invoke R. Dry-run prints the
-common report; `--execute` snapshot-rechecks inputs and uses Step `00a`'s shared
+The grouped `python -I -m norad validate paired-cmh-candidate-ranking` route,
+implemented by private [`validator.py`](validator.py), accepts explicit
+manifests, Step `08` inputs, all six native outputs, analysis and cohort IDs,
+and report output. It does not invoke R. Dry-run prints the common report;
+`--execute` snapshot-rechecks inputs and uses the neutral validation-report
 publisher.
 
 Exact checks are:
@@ -124,7 +126,9 @@ real-R corpus protect that method boundary without importing production
 implementation. Its current `status_semantics` expected-text nevertheless says
 “recomputed ... CMH,” which overstates the production validator's evidence.
 
-Content mismatches publish `status=fail`; unsafe structure or report-
+Content mismatches publish `status=fail`; this includes invalid UTF-8 inside an
+otherwise admitted native table, which is recorded as failed evidence rather
+than rejected as a runtime error. Unsafe filesystem structure or report-
 publication failures exit `2`.
 
 ## Consumers and protected evidence

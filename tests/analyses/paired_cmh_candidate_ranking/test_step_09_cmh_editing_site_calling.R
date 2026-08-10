@@ -13,7 +13,7 @@ repo_root <- normalizePath(
 )
 engine <- file.path(
     repo_root, "src", "norad", "analyses",
-    "rank_cohort_candidates_with_paired_CMH",
+    "paired_cmh_candidate_ranking",
     "step_09_cmh_editing_site_calling.R"
 )
 rscript_bin <- file.path(R.home("bin"), "Rscript")

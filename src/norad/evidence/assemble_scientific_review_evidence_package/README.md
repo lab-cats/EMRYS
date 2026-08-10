@@ -75,7 +75,7 @@ bash tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_sc
   tests/contracts/scientific_evidence/test_step09.py \
   tests/contracts/scientific_evidence/test_review_package.py \
   tests/stages/cohort_candidate_preprocessing/test_validate_step_08_preprocessing_outputs.py \
-  tests/analyses/rank_cohort_candidates_with_paired_CMH/test_validate_step_09_cmh_outputs.py
+  tests/analyses/paired_cmh_candidate_ranking/test_validate_step_09_cmh_outputs.py
 .venv/bin/python -m pytest -q \
   tests/reporting/test_artifact_adapters.py \
   tests/reporting/test_artifact_run_summary.py \

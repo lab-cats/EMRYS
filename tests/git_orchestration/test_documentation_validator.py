@@ -55,12 +55,16 @@ SEMANTIC_OWNERS = (
     ("stage", "partition_BAM_by_mechanical_read_orientation"),
     ("stage", "generate_partitioned_cohort_mpileup_VCFs"),
     ("stage", "preprocess_and_annotate_cohort_candidates"),
-    ("analysis", "ANALYSIS-01"),
+    ("analysis", "rank_cohort_candidates_with_paired_CMH"),
     ("evidence", "collect_canonical_BAM_QC_evidence"),
     ("evidence", "collect_RSeQC_paired_orientation_evidence"),
     ("evidence", "EVIDENCE-03"),
 )
 SOURCE_OWNER_DIRECTORIES = {
+    (
+        "analysis",
+        "rank_cohort_candidates_with_paired_CMH",
+    ): "paired_cmh_candidate_ranking",
     ("evidence", "collect_canonical_BAM_QC_evidence"): "canonical_bam_qc",
     ("evidence", "collect_RSeQC_paired_orientation_evidence"): "rseqc_orientation",
     ("stage", "align_RNA_reads_with_STAR"): "star_alignment",
