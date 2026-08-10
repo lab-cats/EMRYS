@@ -5,8 +5,8 @@ The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
 uses that public slug and is now the implemented native source owner. It is not
 a Python package. The adjacent [owner README](README.md) routes supported
-commands, diagnostics, migration evidence, and rollback; this contract remains
-the detailed behavior owner.
+commands, diagnostics, and rollback; this contract remains the detailed
+behavior owner.
 
 ## Responsibility
 

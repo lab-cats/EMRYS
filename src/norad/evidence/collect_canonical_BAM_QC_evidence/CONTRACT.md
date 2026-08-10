@@ -194,9 +194,6 @@ roadmap and handoff.
   `src/norad/libraries/validation/report.py`, while scheduler runtime bindings
   remain in the wrapper.
 
-The direct migration implemented this evidence owner without changing its
-public behavior, DAG edges, artifact schemas, or evidence status.
-
 ## Deferred decisions
 
 - Whether the unused BAI admission requirement remains part of the operation.
@@ -205,4 +202,4 @@ public behavior, DAG edges, artifact schemas, or evidence status.
   identity, and attempt.
 - Transaction, collision, and failure-artifact policy for the evidence pair.
 - Final separation of evidence execution, interpretation, and publication.
-- Migration order, compatibility wrappers, and scheduler-asset ownership.
+- Compatibility wrappers and scheduler-asset ownership.
