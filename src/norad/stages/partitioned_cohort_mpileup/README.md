@@ -2,12 +2,16 @@
 
 Native owner of `norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1`
 (historical `07`). [`CONTRACT.md`](CONTRACT.md) owns exact selector, output,
-transaction, retained-defect, and evidence semantics.
+transaction, retained-defect, and evidence semantics. The lowercase directory
+is the physical owner; the semantic identity, artifact names, and historical
+alias do not change with that layout.
 
 ## Entry points
 
 - producer: [`step_07_bcftools_mpileup_by_chrom_and_strand.sh`](step_07_bcftools_mpileup_by_chrom_and_strand.sh)
-- validator: [`validate_step_07_mpileup_outputs.py`](validate_step_07_mpileup_outputs.py)
+- validator: grouped route
+  `python -I -m norad validate partitioned-cohort-mpileup`, implemented by
+  private [`validator.py`](validator.py)
 - scheduler: [`step_07_bcftools_mpileup_by_chrom_and_strand.slurm`](step_07_bcftools_mpileup_by_chrom_and_strand.slurm)
 
 ## Operate
@@ -17,7 +21,7 @@ no-write:
 
 ```bash
 output_root="$(pwd)/results/mpileup"
-src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
+src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
   --cohort-id NORAD_EV_PUM1 \
   --sample-manifest samples.tsv \
   --partition-manifest configs/step_07_partitions.pilot.tsv \
@@ -42,7 +46,7 @@ Validator dry-run:
 ```bash
 cohort=NORAD_EV_PUM1 partition=pilot_1
 partition_dir="$(pwd)/results/mpileup/$cohort/$partition"
-.venv/bin/python src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/validate_step_07_mpileup_outputs.py \
+.venv/bin/python -I -m norad validate partitioned-cohort-mpileup \
   --cohort-id "$cohort" --partition-id "$partition" \
   --sample-manifest samples.tsv \
   --partition-manifest configs/step_07_partitions.pilot.tsv \
@@ -57,11 +61,14 @@ Create the parent and add `--execute`. Exit `0` permits failed rows. The five
 checks do not prove coordinate bounds, VCF semantics, filter compliance, tool
 or input identity, biological meaning, or publication attempt.
 
+Do not execute private `validator.py` directly, add `PYTHONPATH`, or restore the
+retired validator path to bypass package selection.
+
 ```bash
 cd /absolute/path/to/norad
 mkdir -p logs
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,PARTITION_MANIFEST=configs/step_07_partitions.pilot.tsv,PARTITION_ID=pilot_1 \
-  src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
+  src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
 ```
 
 Change only `EXECUTE=1` after review. Scheduler checks three nonempty paths;
@@ -79,9 +86,9 @@ Never combine attempts, trust receipt presence or counts, or delete a foreign
 lock. Use a fresh root for an authorized diagnostic retry.
 
 ```bash
-bash tests/stages/generate_partitioned_cohort_mpileup_VCFs/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
+bash tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
 .venv/bin/python -m pytest -q \
-  tests/stages/generate_partitioned_cohort_mpileup_VCFs/test_validate_step_07_mpileup_outputs.py
+  tests/stages/partitioned_cohort_mpileup/test_validate_step_07_mpileup_outputs.py
 .venv/bin/python -m pytest -q \
   tests/test_slurm_wrapper_contracts.py -k step_07_bcftools_mpileup
 ```

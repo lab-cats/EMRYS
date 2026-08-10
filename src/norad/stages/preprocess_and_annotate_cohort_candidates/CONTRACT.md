@@ -9,7 +9,7 @@ assets.
 ## Responsibility and execution dependencies
 
 Validate the complete declared
-[`generate_partitioned_cohort_mpileup_VCFs`](../generate_partitioned_cohort_mpileup_VCFs/CONTRACT.md)
+[`generate_partitioned_cohort_mpileup_VCFs`](../partitioned_cohort_mpileup/CONTRACT.md)
 partition-by-orientation VCF set,
 expand alternate alleles, retain supported SNVs, attach per-sample depth and
 allele measurements plus GTF overlaps, apply the fixed provisional legacy

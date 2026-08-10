@@ -39,10 +39,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 14,
-      "covered_lines": 95,
+      "covered_lines": 99,
       "line_rate": "1.000000",
       "num_branches": 14,
-      "num_statements": 95,
+      "num_statements": 99,
       "path": "src/norad/__main__.py"
     },
     {
@@ -1424,15 +1424,6 @@
     },
     {
       "branch_rate": "1.000000",
-      "covered_branches": 4,
-      "covered_lines": 47,
-      "line_rate": "1.000000",
-      "num_branches": 4,
-      "num_statements": 47,
-      "path": "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/validate_step_07_mpileup_outputs.py"
-    },
-    {
-      "branch_rate": "1.000000",
       "covered_branches": 0,
       "covered_lines": 0,
       "line_rate": "1.000000",
@@ -1475,6 +1466,24 @@
       "num_branches": 4,
       "num_statements": 37,
       "path": "src/norad/stages/mechanical_orientation/validator.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
+      "path": "src/norad/stages/partitioned_cohort_mpileup/__init__.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 2,
+      "covered_lines": 62,
+      "line_rate": "1.000000",
+      "num_branches": 2,
+      "num_statements": 62,
+      "path": "src/norad/stages/partitioned_cohort_mpileup/validator.py"
     },
     {
       "branch_rate": "0.888889",
@@ -1573,11 +1582,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.748982",
-    "covered_branches": 3312,
-    "covered_lines": 10287,
-    "line_rate": "0.860621",
-    "num_branches": 4422,
-    "num_statements": 11953
+    "branch_rate": "0.748869",
+    "covered_branches": 3310,
+    "covered_lines": 10306,
+    "line_rate": "0.860842",
+    "num_branches": 4420,
+    "num_statements": 11972
   }
 }

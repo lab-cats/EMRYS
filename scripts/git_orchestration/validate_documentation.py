@@ -82,6 +82,10 @@ SOURCE_OWNER_DIRECTORY_NAMES = {
         "stage",
         "partition_BAM_by_mechanical_read_orientation",
     ): "mechanical_orientation",
+    (
+        "stage",
+        "generate_partitioned_cohort_mpileup_VCFs",
+    ): "partitioned_cohort_mpileup",
     ("stage", "split_N_cigar_reads_with_GATK"): "split_n_cigar",
 }
 

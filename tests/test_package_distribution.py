@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -231,6 +232,8 @@ def _assert_wheel_contents(wheel: Path) -> None:
             "norad/stages/gtf_to_bed12/validator.py",
             "norad/stages/mechanical_orientation/__init__.py",
             "norad/stages/mechanical_orientation/validator.py",
+            "norad/stages/partitioned_cohort_mpileup/__init__.py",
+            "norad/stages/partitioned_cohort_mpileup/validator.py",
             "norad/stages/split_n_cigar/__init__.py",
             "norad/stages/split_n_cigar/validator.py",
             "norad/stages/star_index/__init__.py",
@@ -1145,6 +1148,139 @@ def _assert_installed_mechanical_orientation_validation(
     )
 
 
+def _build_partitioned_cohort_mpileup_fixture(
+    working_directory: Path,
+) -> tuple[Path, Path, Path, Path, Path, Path, Path]:
+    input_directory = working_directory / "partitioned-cohort-mpileup-inputs"
+    input_directory.mkdir()
+    sample_manifest_path = input_directory / "samples.tsv"
+    sample_manifest_path.write_text(
+        "sample_id\tcondition\nS1\tx\nS2\ty\n",
+        encoding="utf-8",
+    )
+    partition_manifest_path = input_directory / "partitions.tsv"
+    partition_manifest_path.write_text(
+        "partition_id\tselector_type\tselector_value\np1\tregion\t1:1-10\n",
+        encoding="utf-8",
+    )
+    reference_fai_path = input_directory / "genome.fa.fai"
+    reference_fai_path.write_text("1\t100\t0\t80\t81\n", encoding="utf-8")
+    vcf_header = (
+        "##fileformat=VCFv4.2\n"
+        "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tS1\tS2\n"
+    )
+    fwd_vcf_path = input_directory / "wheel_cohort.p1.FWD_like.mpileup.vcf"
+    fwd_vcf_path.write_text(
+        vcf_header + "1\t2\t.\tA\tG\t.\tPASS\t.\tGT\t0/1\t0/0\n",
+        encoding="utf-8",
+    )
+    rev_vcf_path = input_directory / "wheel_cohort.p1.REV_like.mpileup.vcf"
+    rev_vcf_path.write_text(vcf_header, encoding="utf-8")
+    sample_manifest_sha256 = hashlib.sha256(
+        sample_manifest_path.read_bytes()
+    ).hexdigest()
+    partition_manifest_sha256 = hashlib.sha256(
+        partition_manifest_path.read_bytes()
+    ).hexdigest()
+    receipt_path = input_directory / "wheel_cohort.p1.step07_outputs.tsv"
+    receipt_path.write_text(
+        "cohort_id\tpartition_id\tselector_type\tselector_value\torientation\t"
+        "vcf_path\tsample_manifest_sha256\tpartition_manifest_sha256\t"
+        "sample_count\tvcf_record_count\n"
+        f"wheel_cohort\tp1\tregion\t1:1-10\tFWD_like\t{fwd_vcf_path}\t"
+        f"{sample_manifest_sha256}\t{partition_manifest_sha256}\t2\t1\n"
+        f"wheel_cohort\tp1\tregion\t1:1-10\tREV_like\t{rev_vcf_path}\t"
+        f"{sample_manifest_sha256}\t{partition_manifest_sha256}\t2\t0\n",
+        encoding="utf-8",
+    )
+    validation_directory = working_directory / "partitioned-cohort-mpileup-validation"
+    validation_directory.mkdir()
+    return (
+        sample_manifest_path,
+        partition_manifest_path,
+        reference_fai_path,
+        fwd_vcf_path,
+        rev_vcf_path,
+        receipt_path,
+        validation_directory / "wheel_cohort__p1.validation.tsv",
+    )
+
+
+def _assert_installed_partitioned_cohort_mpileup_validation(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    (
+        sample_manifest_path,
+        partition_manifest_path,
+        reference_fai_path,
+        fwd_vcf_path,
+        rev_vcf_path,
+        receipt_path,
+        output_path,
+    ) = _build_partitioned_cohort_mpileup_fixture(working_directory)
+    input_paths = (
+        sample_manifest_path,
+        partition_manifest_path,
+        reference_fai_path,
+        fwd_vcf_path,
+        rev_vcf_path,
+        receipt_path,
+    )
+    input_states = tuple(
+        (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    )
+    unrelated_path = working_directory / "partitioned-cohort-mpileup-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+    unrelated_state = (unrelated_path.read_bytes(), unrelated_path.stat().st_mode)
+
+    validation = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "partitioned-cohort-mpileup",
+        "--cohort-id",
+        "wheel_cohort",
+        "--partition-id",
+        "p1",
+        "--sample-manifest",
+        str(sample_manifest_path),
+        "--partition-manifest",
+        str(partition_manifest_path),
+        "--reference-fai",
+        str(reference_fai_path),
+        "--fwd-vcf",
+        str(fwd_vcf_path),
+        "--rev-vcf",
+        str(rev_vcf_path),
+        "--receipt",
+        str(receipt_path),
+        "--output",
+        str(output_path),
+    )
+    _assert_validation_dry_run(
+        validation,
+        output_path,
+        step_id="07",
+        expected_check_ids={
+            "receipt_structure",
+            "vcf_structure",
+            "selector_reconciliation",
+            "manifest_identity_and_sample_order",
+            "vcf_record_counts",
+        },
+    )
+    assert (
+        tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
+        == input_states
+    )
+    assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
+        unrelated_state
+    )
+
+
 def _assert_installed_commands(
     environment_python: Path,
     working_directory: Path,
@@ -1242,6 +1378,11 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_partitioned_cohort_mpileup_validation(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_private_source_layout() -> None:
@@ -1301,6 +1442,11 @@ def _assert_private_source_layout() -> None:
             "stages/mechanical_orientation",
             "stages/partition_BAM_by_mechanical_read_orientation",
             "validate_step_06_orientation_outputs.py",
+        ),
+        (
+            "stages/partitioned_cohort_mpileup",
+            "stages/generate_partitioned_cohort_mpileup_VCFs",
+            "validate_step_07_mpileup_outputs.py",
         ),
     )
     for current_relative, retired_relative, retired_validator in normalized_owners:

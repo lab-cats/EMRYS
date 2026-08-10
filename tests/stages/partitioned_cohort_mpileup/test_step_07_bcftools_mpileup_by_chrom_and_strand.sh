@@ -2,8 +2,8 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-script="$repo_root/src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh"
-job="$repo_root/src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
+script="$repo_root/src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh"
+job="$repo_root/src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
 test_root="$(mktemp -d)"
 trap 'rm -rf "$test_root"' EXIT
 
@@ -1075,7 +1075,7 @@ assert_contains "$primary_partitions" $'MT\tregion\tMT'
     fail "Pilot manifest must contain exactly one partition plus its header"
 assert_contains "$pilot_partitions" $'pilot_1\tregion\t1:1-100000'
 wrapper_root="$test_root/wrapper"
-wrapper_owner="$wrapper_root/src/norad/stages/generate_partitioned_cohort_mpileup_VCFs"
+wrapper_owner="$wrapper_root/src/norad/stages/partitioned_cohort_mpileup"
 wrapper_libraries="$wrapper_root/src/norad/libraries"
 mkdir -p "$wrapper_owner" "$wrapper_libraries"
 cp "$script" "$wrapper_owner/"
@@ -1127,7 +1127,7 @@ assert_exists "$wrapper_root/execute-output/wrapper_exec/1/wrapper_exec.1.REV_li
 assert_exists "$wrapper_root/execute-output/wrapper_exec/1/wrapper_exec.1.step07_outputs.tsv"
 
 wrapper_missing_root="$test_root/wrapper-missing-output"
-wrapper_missing_owner="$wrapper_missing_root/src/norad/stages/generate_partitioned_cohort_mpileup_VCFs"
+wrapper_missing_owner="$wrapper_missing_root/src/norad/stages/partitioned_cohort_mpileup"
 mkdir -p "$wrapper_missing_owner"
 cat >"$wrapper_missing_owner/step_07_bcftools_mpileup_by_chrom_and_strand.sh" <<'STUB'
 #!/usr/bin/env bash

@@ -123,7 +123,7 @@ STEP_PRODUCERS = {
         "step_06_split_bam_by_read_orientation.sh"
     ),
     "07": (
-        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+        "src/norad/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
     "08": (

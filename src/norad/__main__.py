@@ -30,6 +30,9 @@ from norad.stages.gtf_to_bed12 import validator as bed12_validation_command
 from norad.stages.mechanical_orientation import (
     validator as mechanical_orientation_validation_command,
 )
+from norad.stages.partitioned_cohort_mpileup import (
+    validator as partitioned_cohort_mpileup_validation_command,
+)
 from norad.stages.split_n_cigar import validator as split_n_cigar_validation_command
 from norad.stages.star_alignment import validator as star_alignment_validation_command
 from norad.stages.star_index import validator as star_index_validation_command
@@ -169,6 +172,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     mechanical_orientation_parser.set_defaults(
         _command_handler=mechanical_orientation_validation_command.validate_from_args
+    )
+    partitioned_cohort_mpileup_parser = validation_parsers.add_parser(
+        "partitioned-cohort-mpileup",
+        help="Validate one partitioned-cohort mpileup VCF transaction.",
+        description=partitioned_cohort_mpileup_validation_command.DESCRIPTION,
+    )
+    partitioned_cohort_mpileup_validation_command.configure_parser(
+        partitioned_cohort_mpileup_parser
+    )
+    partitioned_cohort_mpileup_parser.set_defaults(
+        _command_handler=(
+            partitioned_cohort_mpileup_validation_command.validate_from_args
+        )
     )
     rseqc_orientation_parser = validation_parsers.add_parser(
         "rseqc-orientation",

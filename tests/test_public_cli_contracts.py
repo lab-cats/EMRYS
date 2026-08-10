@@ -47,10 +47,6 @@ PYTHON_ENTRYPOINT_PATHS = {
     "validate_artifact_contracts.py": Path(
         "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     ),
-    "validate_step_07_mpileup_outputs.py": Path(
-        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
-        "validate_step_07_mpileup_outputs.py"
-    ),
     "validate_step_08_preprocessing_outputs.py": Path(
         "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
         "validate_step_08_preprocessing_outputs.py"
@@ -70,7 +66,6 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
         "render_run_report_bundle.py",
         "step_09c_scientific_validation.py",
         "validate_artifact_contracts.py",
-        "validate_step_07_mpileup_outputs.py",
         "validate_step_08_preprocessing_outputs.py",
         "validate_step_09_cmh_outputs.py",
     }
@@ -104,6 +99,10 @@ NORAD_COMMANDS = (
     (
         ("validate", "mechanical-orientation"),
         "usage: norad validate mechanical-orientation",
+    ),
+    (
+        ("validate", "partitioned-cohort-mpileup"),
+        "usage: norad validate partitioned-cohort-mpileup",
     ),
     (
         ("validate", "rseqc-orientation"),
@@ -146,7 +145,7 @@ SHELL_ENTRYPOINT_PATHS = {
         "step_06_split_bam_by_read_orientation.sh"
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.sh": Path(
-        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+        "src/norad/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
     "step_08_vcf_preprocessing.sh": Path(

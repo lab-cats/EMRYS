@@ -14,7 +14,7 @@ This directory mirrors the ten computational stage owners.
   and
   [`mechanical_orientation/`](mechanical_orientation/README.md).
 - Cohort processing:
-  [`generate_partitioned_cohort_mpileup_VCFs/`](generate_partitioned_cohort_mpileup_VCFs/README.md)
+  [`partitioned_cohort_mpileup/`](partitioned_cohort_mpileup/README.md)
   and
   [`preprocess_and_annotate_cohort_candidates/`](preprocess_and_annotate_cohort_candidates/README.md).
 

@@ -100,7 +100,7 @@ CONTRACTS = {
         module_calls=("list", "load samtools/1.19.2", "list"),
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": contract(
-        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+        "src/norad/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
         module_calls=("list", "load CBI bcftools/1.21", "list"),
     ),

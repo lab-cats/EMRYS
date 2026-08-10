@@ -11,7 +11,7 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
+  src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
     --cohort-id COHORT_ID \
     --sample-manifest SAMPLE_MANIFEST \
     --partition-manifest PARTITION_MANIFEST \

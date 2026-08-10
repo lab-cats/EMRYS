@@ -4,7 +4,10 @@ This is the observed contract of historical Step `07`, now implemented in this
 native owner directory. The exact public identity and historical alias are
 owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug and owns the producer, validator, and scheduler assets.
+is the lowercase physical owner for that public slug and owns the producer,
+validator, and scheduler assets. Its Python validator is installed only through
+the grouped command; the shell producer and scheduler remain explicit
+repository-path interfaces.
 
 ## Responsibility and execution dependencies
 
@@ -85,11 +88,11 @@ path checks; it does not own pileup or publication logic.
 
 ## Validation interface
 
-[`validate_step_07_mpileup_outputs.py`](validate_step_07_mpileup_outputs.py)
-accepts explicit cohort, partition, manifests, FAI, both VCFs, receipt, and
-report output. It does not invoke bcftools. Dry-run prints the common report;
-`--execute` snapshot-rechecks inputs and uses the neutral validation-report
-publisher.
+The grouped `python -I -m norad validate partitioned-cohort-mpileup` route,
+implemented by private [`validator.py`](validator.py), accepts explicit cohort,
+partition, manifests, FAI, both VCFs, receipt, and report output. It does not
+invoke bcftools. Dry-run prints the common report; `--execute`
+snapshot-rechecks inputs and uses the neutral validation-report publisher.
 
 Exact checks are:
 
@@ -111,6 +114,13 @@ may not match the validator's resolved absolute VCF arguments.
 Content mismatches publish `status=fail`; unsafe structure or report-
 publication failures exit `2`.
 
+Package selection is owned by the grouped command; direct execution of private
+`validator.py`, ambient `PYTHONPATH` injection, compatibility imports, and
+peer-stage implementation dependencies are not supported interfaces. Receipt
+TSV parsing remains permissive: some missing-field shapes can currently escape
+as `KeyError` or `AttributeError` with a traceback and exit `1` rather than the
+controlled exit-`2` boundary.
+
 ## Consumers and protected evidence
 
 - The final
@@ -120,11 +130,11 @@ publication failures exit `2`.
 - Artifact adapters register both VCFs, the receipt, and
   `step07_validation_report_v1`; reports consume registered evidence without
   rerunning pileup.
-- [`test_step_07_bcftools_mpileup_by_chrom_and_strand.sh`](../../../../tests/stages/generate_partitioned_cohort_mpileup_VCFs/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh)
+- [`test_step_07_bcftools_mpileup_by_chrom_and_strand.sh`](../../../../tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh)
   protects selector modes, manifest order, commands, dry-run, publication,
   locking, stale paths, child failures, transaction ordering, replacement,
   rollback failures, signals, mutation gaps, and provenance omissions.
-- [`test_validate_step_07_mpileup_outputs.py`](../../../../tests/stages/generate_partitioned_cohort_mpileup_VCFs/test_validate_step_07_mpileup_outputs.py)
+- [`test_validate_step_07_mpileup_outputs.py`](../../../../tests/stages/partitioned_cohort_mpileup/test_validate_step_07_mpileup_outputs.py)
   plus wrapper, roster, publication-fault, public-CLI, artifact, report, and
   coverage tests protect the independent evidence boundary.
 
@@ -150,6 +160,10 @@ cluster, scientific-review, or biological evidence.
   asymmetric. The validator may publish failed rows with exit `0`, does not
   invoke bcftools, and does not prove selector-bound coordinates, VCF semantic
   fields, filter compliance, immutable inputs, or current-attempt identity.
+- The producer's partition-selector wrapper currently loses a nonzero manifest
+  callback status before applying its exact-one-row check, so some underlying
+  manifest failures can collapse into the retained not-found-exactly-once
+  diagnostic.
 - The scheduler retains warning-only unusable-tool preflight, submit-CWD and
   body-level log mutations, version-command failure, one-CPU defaults, and
   stale-three-file false success as characterized defects rather than
