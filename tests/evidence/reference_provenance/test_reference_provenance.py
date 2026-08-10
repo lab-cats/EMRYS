@@ -1,15 +1,20 @@
 import csv
 import hashlib
-import importlib.util
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[3]
-SCRIPT = ROOT / "src/norad/evidence/reference_provenance/reference_provenance.py"
-HEADER = [
+from norad import __main__ as norad_main
+from norad.evidence.reference_provenance import reconciler
+from norad.evidence.reference_provenance._reference_model import (
+    Item,
+    Observation,
+)
+
+INVENTORY_HEADER = (
     "reference_id",
     "artifact_id",
     "role",
@@ -19,15 +24,15 @@ HEADER = [
     "provenance_source",
     "provenance_release",
     "notes",
-]
-SPEC = importlib.util.spec_from_file_location(
-    "norad_reference_provenance_faults",
-    SCRIPT,
 )
-assert SPEC and SPEC.loader
-PROVENANCE = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = PROVENANCE
-SPEC.loader.exec_module(PROVENANCE)
+RECONCILE_COMMAND = (
+    sys.executable,
+    "-I",
+    "-m",
+    "norad",
+    "reconcile",
+    "reference-provenance",
+)
 
 
 def make_fixture(root: Path, *, mismatch: bool = False, missing: bool = False) -> Path:
@@ -137,38 +142,46 @@ def make_fixture(root: Path, *, mismatch: bool = False, missing: bool = False) -
         rows[-1][3] = "star/missing"
     inventory = root / "inventory.tsv"
     inventory.write_text(
-        "\t".join(HEADER) + "\n" + "\n".join("\t".join(row) for row in rows) + "\n"
+        "\t".join(INVENTORY_HEADER)
+        + "\n"
+        + "\n".join("\t".join(row) for row in rows)
+        + "\n"
     )
     return inventory
 
 
-def run(inventory: Path, output: Path, *args: str):
+def run_reconciliation(
+    inventory: Path,
+    output_root: Path,
+    *options: str,
+    cwd: Path | None = None,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
-            sys.executable,
-            str(SCRIPT),
+            *RECONCILE_COMMAND,
             "--inventory",
             str(inventory),
             "--base-dir",
             str(inventory.parent),
             "--output-root",
-            str(output),
-            *args,
+            str(output_root),
+            *options,
         ],
-        cwd=ROOT,
+        cwd=cwd or inventory.parent,
         text=True,
         capture_output=True,
+        check=False,
     )
 
 
-def rows(path: Path):
-    with path.open() as handle:
+def read_rows(path: Path) -> list[dict[str, str]]:
+    with path.open(encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle, delimiter="\t"))
 
 
 def publication_data(inventory: Path) -> dict[str, bytes]:
-    raw, items = PROVENANCE.load_inventory(inventory, inventory.parent)
-    return PROVENANCE.render(raw, PROVENANCE.observe(items))
+    raw, items = reconciler.load_inventory(inventory, inventory.parent)
+    return reconciler.render(raw, reconciler.observe(items))
 
 
 def publication_paths(output_root: Path) -> dict[str, Path]:
@@ -180,22 +193,26 @@ def publication_paths(output_root: Path) -> dict[str, Path]:
     }
 
 
-def test_help_and_dry_run_side_effect_free(tmp_path):
+def test_help_and_dry_run_side_effect_free(tmp_path: Path) -> None:
     assert (
         subprocess.run(
-            [sys.executable, str(SCRIPT), "--help"], capture_output=True, text=True
+            [*RECONCILE_COMMAND, "--help"],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            check=False,
         ).returncode
         == 0
     )
     inventory = make_fixture(tmp_path)
     output = tmp_path / "missing"
-    result = run(inventory, output)
+    result = run_reconciliation(inventory, output)
     assert result.returncode == 0
     assert "Dry-run complete" in result.stdout
     assert not output.exists()
 
 
-def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path):
+def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path: Path) -> None:
     fixture = tmp_path / "fixture"
     fixture.mkdir()
     inventory = make_fixture(fixture)
@@ -203,41 +220,15 @@ def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path):
     output.mkdir()
     invocation = tmp_path / "invocation"
     invocation.mkdir()
-    command = [
-        sys.executable,
-        str(SCRIPT),
-        "--inventory",
-        str(inventory),
-        "--base-dir",
-        str(fixture),
-        "--output-root",
-        str(output),
-    ]
-
-    dry_run = subprocess.run(
-        command,
-        cwd=invocation,
-        text=True,
-        capture_output=True,
-    )
+    dry_run = run_reconciliation(inventory, output, cwd=invocation)
     assert dry_run.returncode == 0, dry_run.stderr
     assert "Dry-run complete" in dry_run.stdout
     assert not (output / "ref1").exists()
 
-    first = subprocess.run(
-        [*command, "--execute"],
-        cwd=invocation,
-        text=True,
-        capture_output=True,
-    )
+    first = run_reconciliation(inventory, output, "--execute", cwd=invocation)
     assert first.returncode == 0, first.stderr
     before = {path.name: path.read_bytes() for path in (output / "ref1").iterdir()}
-    repeated = subprocess.run(
-        [*command, "--execute"],
-        cwd=invocation,
-        text=True,
-        capture_output=True,
-    )
+    repeated = run_reconciliation(inventory, output, "--execute", cwd=invocation)
     assert repeated.returncode == 0, repeated.stderr
     assert first.stdout == repeated.stdout
     assert first.stderr == repeated.stderr == ""
@@ -247,16 +238,16 @@ def test_dry_run_execute_and_repeat_are_cwd_independent(tmp_path):
     assert not any(invocation.iterdir())
 
 
-def test_execute_publishes_summary_last_contract(tmp_path):
+def test_execute_publishes_summary_last_contract(tmp_path: Path) -> None:
     inventory = make_fixture(tmp_path)
     output = tmp_path / "out"
     output.mkdir()
-    result = run(inventory, output, "--execute")
+    result = run_reconciliation(inventory, output, "--execute")
     assert result.returncode == 0, result.stderr
     directory = output / "ref1"
-    artifacts = rows(directory / "ref1.reference_artifacts.tsv")
-    contigs = rows(directory / "ref1.reference_contigs.tsv")
-    summary = rows(directory / "ref1.reference_summary.tsv")[0]
+    artifacts = read_rows(directory / "ref1.reference_artifacts.tsv")
+    contigs = read_rows(directory / "ref1.reference_contigs.tsv")
+    summary = read_rows(directory / "ref1.reference_summary.tsv")[0]
     assert len(artifacts) == 8
     assert {row["source_role"] for row in contigs} == {
         "fasta",
@@ -281,11 +272,13 @@ def test_execute_publishes_summary_last_contract(tmp_path):
     assert summary["overall_status"] == "pass"
     assert summary["star_agreement"] == "pass"
     original = {path.name: path.read_bytes() for path in directory.iterdir()}
-    assert run(inventory, output, "--execute").returncode == 0
+    assert run_reconciliation(inventory, output, "--execute").returncode == 0
     assert original == {path.name: path.read_bytes() for path in directory.iterdir()}
 
 
-def test_parser_error_is_role_local_and_preserves_other_contig_rows(tmp_path):
+def test_parser_error_is_role_local_and_preserves_other_contig_rows(
+    tmp_path: Path,
+) -> None:
     inventory = make_fixture(tmp_path)
     (tmp_path / "ref" / "genome.fa.fai").write_text("malformed\n")
     generated = publication_data(inventory)
@@ -313,7 +306,7 @@ def test_parser_error_is_role_local_and_preserves_other_contig_rows(tmp_path):
     }
 
 
-def test_reports_mismatch_missing_and_hash_mismatch(tmp_path):
+def test_reports_mismatch_missing_and_hash_mismatch(tmp_path: Path) -> None:
     inventory = make_fixture(tmp_path, mismatch=True, missing=True)
     text = inventory.read_text()
     digest = hashlib.sha256((tmp_path / "ref/genome.fa").read_bytes()).hexdigest()
@@ -326,12 +319,12 @@ def test_reports_mismatch_missing_and_hash_mismatch(tmp_path):
     )
     output = tmp_path / "out"
     output.mkdir()
-    assert run(inventory, output, "--execute").returncode == 0
+    assert run_reconciliation(inventory, output, "--execute").returncode == 0
     artifacts = {
         row["artifact_id"]: row
-        for row in rows(output / "ref1/ref1.reference_artifacts.tsv")
+        for row in read_rows(output / "ref1/ref1.reference_artifacts.tsv")
     }
-    summary = rows(output / "ref1/ref1.reference_summary.tsv")[0]
+    summary = read_rows(output / "ref1/ref1.reference_summary.tsv")[0]
     assert artifacts["fasta"]["status"] == "hash_mismatch"
     assert artifacts["fasta"]["observed_sha256"] == digest
     assert artifacts["genome"]["status"] == "missing_required"
@@ -339,7 +332,7 @@ def test_reports_mismatch_missing_and_hash_mismatch(tmp_path):
     assert summary["overall_status"] == "fail"
 
 
-def test_invalid_inventory_and_symlink_fail(tmp_path):
+def test_invalid_inventory_and_symlink_fail(tmp_path: Path) -> None:
     inventory = make_fixture(tmp_path)
     output = tmp_path / "out"
     output.mkdir()
@@ -351,28 +344,28 @@ def test_invalid_inventory_and_symlink_fail(tmp_path):
             1,
         )
     )
-    assert run(bad, output, "--execute").returncode == 2
+    assert run_reconciliation(bad, output, "--execute").returncode == 2
     link = tmp_path / "link.tsv"
     link.symlink_to(inventory)
-    result = run(link, output, "--execute")
+    result = run_reconciliation(link, output, "--execute")
     assert result.returncode == 2
     assert "non-symlink" in result.stderr
 
 
-def test_partial_prior_and_foreign_lock_are_preserved(tmp_path):
+def test_partial_prior_and_foreign_lock_are_preserved(tmp_path: Path) -> None:
     inventory = make_fixture(tmp_path)
     output = tmp_path / "out"
     directory = output / "ref1"
     directory.mkdir(parents=True)
     partial = directory / "ref1.reference_artifacts.tsv"
     partial.write_text("foreign\n")
-    result = run(inventory, output, "--execute")
+    result = run_reconciliation(inventory, output, "--execute")
     assert result.returncode == 2
     assert partial.read_text() == "foreign\n"
     partial.unlink()
     lock = directory / ".ref1.reference-provenance.lock"
     lock.write_text("foreign\n")
-    result = run(inventory, output, "--execute")
+    result = run_reconciliation(inventory, output, "--execute")
     assert result.returncode == 2
     assert lock.read_text() == "foreign\n"
 
@@ -385,10 +378,10 @@ def test_input_mutation_after_observation_fails_before_publication(
     output = tmp_path / "out"
     output.mkdir()
     fasta = tmp_path / "ref" / "genome.fa"
-    real_observe = PROVENANCE.observe
+    real_observe = reconciler.observe
     calls = 0
 
-    def observe_then_mutate(items):
+    def observe_then_mutate(items: Sequence[Item]) -> list[Observation]:
         nonlocal calls
         observations = real_observe(items)
         calls += 1
@@ -398,9 +391,11 @@ def test_input_mutation_after_observation_fails_before_publication(
             fasta.write_text(">1\nTGCA\n>MT\nAAA\n")
         return observations
 
-    monkeypatch.setattr(PROVENANCE, "observe", observe_then_mutate)
-    status = PROVENANCE.main(
+    monkeypatch.setattr(reconciler, "observe", observe_then_mutate)
+    status = norad_main.main(
         [
+            "reconcile",
+            "reference-provenance",
             "--inventory",
             str(inventory),
             "--base-dir",
@@ -424,13 +419,13 @@ def test_publication_failure_restores_complete_reference_predecessor(
     output = tmp_path / "out"
     output.mkdir()
     generated = publication_data(inventory)
-    PROVENANCE.publish(output, "ref1", generated)
+    reconciler.publish(output, "ref1", generated)
     finals = publication_paths(output)
     before = {key: path.read_bytes() for key, path in finals.items()}
-    real_replace = PROVENANCE.os.replace
+    real_replace = reconciler.os.replace
     failed = False
 
-    def fail_second_publication(source, destination):
+    def fail_second_publication(source: Path, destination: Path) -> None:
         nonlocal failed
         if (
             not failed
@@ -441,9 +436,9 @@ def test_publication_failure_restores_complete_reference_predecessor(
             raise OSError("injected reference publication failure")
         real_replace(source, destination)
 
-    monkeypatch.setattr(PROVENANCE.os, "replace", fail_second_publication)
+    monkeypatch.setattr(reconciler.os, "replace", fail_second_publication)
     with pytest.raises(OSError, match="reference publication"):
-        PROVENANCE.publish(output, "ref1", generated)
+        reconciler.publish(output, "ref1", generated)
 
     assert failed
     assert {key: path.read_bytes() for key, path in finals.items()} == before
@@ -460,13 +455,16 @@ def test_characterizes_reference_incomplete_rollback_gap(
     output = tmp_path / "out"
     output.mkdir()
     generated = publication_data(inventory)
-    PROVENANCE.publish(output, "ref1", generated)
+    reconciler.publish(output, "ref1", generated)
     finals = publication_paths(output)
-    real_replace = PROVENANCE.os.replace
+    real_replace = reconciler.os.replace
     publication_failed = False
     restoration_failed = False
 
-    def fail_publication_and_restoration(source, destination):
+    def fail_publication_and_restoration(
+        source: Path,
+        destination: Path,
+    ) -> None:
         nonlocal publication_failed, restoration_failed
         source_path = Path(source)
         destination_path = Path(destination)
@@ -488,12 +486,12 @@ def test_characterizes_reference_incomplete_rollback_gap(
         real_replace(source, destination)
 
     monkeypatch.setattr(
-        PROVENANCE.os,
+        reconciler.os,
         "replace",
         fail_publication_and_restoration,
     )
     with pytest.raises(OSError, match="reference restoration"):
-        PROVENANCE.publish(output, "ref1", generated)
+        reconciler.publish(output, "ref1", generated)
 
     directory = output / "ref1"
     assert publication_failed and restoration_failed

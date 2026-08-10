@@ -15,6 +15,9 @@ from norad.analyses.paired_cmh_candidate_ranking import (
 from norad.evidence.canonical_bam_qc import (
     validator as canonical_bam_qc_validation_command,
 )
+from norad.evidence.reference_provenance import (
+    reconciler as reference_provenance_reconciliation_command,
+)
 from norad.evidence.rseqc_orientation import (
     validator as rseqc_orientation_validation_command,
 )
@@ -149,6 +152,28 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
     )
     _add_scientific_review_package_command(assembly_parsers)
+    reconcile_parser = command_parsers.add_parser(
+        "reconcile",
+        help="Reconcile explicitly declared NORAD evidence.",
+    )
+    reconciliation_parsers = reconcile_parser.add_subparsers(
+        dest="reconciliation",
+        metavar="SUBJECT",
+        required=True,
+    )
+    reference_provenance_parser = reconciliation_parsers.add_parser(
+        "reference-provenance",
+        help="Reconcile one explicitly declared reference bundle without repair.",
+        description=reference_provenance_reconciliation_command.DESCRIPTION,
+    )
+    reference_provenance_reconciliation_command.configure_parser(
+        reference_provenance_parser
+    )
+    reference_provenance_parser.set_defaults(
+        _command_handler=(
+            reference_provenance_reconciliation_command.reconcile_from_args
+        )
+    )
     convert_parser = command_parsers.add_parser(
         "convert",
         help="Convert an explicitly selected NORAD input.",

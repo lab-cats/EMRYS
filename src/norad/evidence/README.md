@@ -28,6 +28,11 @@ launcher and exposes installed assembly as
 `python -I -m norad assemble scientific-review-package` through a private
 publisher. It has no scheduler wrapper.
 
+Reference provenance exposes installed, read-only reconciliation as
+`python -I -m norad reconcile reference-provenance` through a private
+reconciler. Dry-run is the default; `--execute` publishes evidence without
+repairing references, and exit `0` does not mean the resulting summary passed.
+
 Use the [`RUNBOOK`](../../../docs/operations/RUNBOOK.md) for supported commands,
 [`TROUBLESHOOTING`](../../../docs/operations/TROUBLESHOOTING.md) for failure and
 recovery routes, and

@@ -35,6 +35,12 @@ RESOURCE_PATHS = (
 EVIDENCE_PACKAGE_PATHS = frozenset(
     {
         "norad/evidence/__init__.py",
+        "norad/evidence/reference_provenance/__init__.py",
+        "norad/evidence/reference_provenance/_reference_contigs.py",
+        "norad/evidence/reference_provenance/_reference_inventory.py",
+        "norad/evidence/reference_provenance/_reference_model.py",
+        "norad/evidence/reference_provenance/_reference_render.py",
+        "norad/evidence/reference_provenance/reconciler.py",
         "norad/evidence/scientific_review_package/__init__.py",
         "norad/evidence/scientific_review_package/_scientific_review/__init__.py",
         "norad/evidence/scientific_review_package/"
@@ -79,6 +85,42 @@ STAR_INDEX_MEMBERS = (
     "sjdbList.fromGTF.out.tab",
     "sjdbList.out.tab",
     "transcriptInfo.tab",
+)
+REFERENCE_PROVENANCE_HEADER = (
+    "reference_id",
+    "artifact_id",
+    "role",
+    "path",
+    "required",
+    "expected_sha256",
+    "provenance_source",
+    "provenance_release",
+    "notes",
+)
+REFERENCE_PROVENANCE_ARTIFACTS = (
+    ("genome_fasta", "fasta", "reference/genome.fa", b">1\nACGT\n"),
+    ("genome_fai", "fai", "reference/genome.fa.fai", b"1\t4\t0\t4\t5\n"),
+    (
+        "genome_dict",
+        "dict",
+        "reference/genome.dict",
+        b"@HD\tVN:1.6\n@SQ\tSN:1\tLN:4\n",
+    ),
+    (
+        "genome_gtf",
+        "gtf",
+        "reference/genome.gtf",
+        b'1\tfixture\tgene\t1\t4\t.\t+\t.\tgene_id "g";\n',
+    ),
+    (
+        "genome_bed",
+        "bed12",
+        "reference/genome.bed",
+        b"1\t0\t4\tg\t0\t+\t0\t4\t0\t1\t4\t0\n",
+    ),
+    ("star_names", "star_chr_name", "star/chrName.txt", b"1\n"),
+    ("star_lengths", "star_chr_length", "star/chrLength.txt", b"4\n"),
+    ("star_genome", "star_index_file", "star/Genome", b"index\n"),
 )
 
 
@@ -366,6 +408,98 @@ def _run_installed_norad(
         text=True,
         capture_output=True,
         check=False,
+    )
+
+
+def _build_reference_provenance_fixture(
+    root: Path,
+) -> tuple[Path, tuple[Path, ...]]:
+    root.mkdir()
+    artifact_paths: list[Path] = []
+    inventory_rows: list[tuple[str, ...]] = []
+    for artifact_id, role, relative_path, content in REFERENCE_PROVENANCE_ARTIFACTS:
+        artifact_path = root / relative_path
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        artifact_path.write_bytes(content)
+        artifact_paths.append(artifact_path)
+        inventory_rows.append(
+            (
+                "wheel_reference",
+                artifact_id,
+                role,
+                relative_path,
+                "true",
+                "NA",
+                "wheel_fixture",
+                "release1",
+                artifact_id,
+            )
+        )
+    inventory_path = root / "reference_provenance.tsv"
+    inventory_path.write_text(
+        "\t".join(REFERENCE_PROVENANCE_HEADER)
+        + "\n"
+        + "\n".join("\t".join(row) for row in inventory_rows)
+        + "\n",
+        encoding="utf-8",
+    )
+    return inventory_path, (inventory_path, *artifact_paths)
+
+
+def _assert_installed_reference_provenance_reconciliation(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    fixture_root = working_directory / "reference-provenance-inputs"
+    inventory_path, input_paths = _build_reference_provenance_fixture(fixture_root)
+    input_states = tuple(
+        (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    )
+    unrelated_path = working_directory / "reference-provenance-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+    unrelated_path.chmod(0o640)
+    unrelated_state = (unrelated_path.read_bytes(), unrelated_path.stat().st_mode)
+    output_root = working_directory / "reference-provenance-output"
+
+    reconciliation = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "reconcile",
+        "reference-provenance",
+        "--inventory",
+        str(inventory_path),
+        "--base-dir",
+        str(fixture_root),
+        "--output-root",
+        str(output_root),
+    )
+
+    assert reconciliation.returncode == 0, reconciliation.stdout + reconciliation.stderr
+    assert reconciliation.stderr == ""
+    assert reconciliation.stdout.splitlines() == [
+        f"Reference inventory: {inventory_path}",
+        f"Reference base directory: {fixture_root}",
+        "Reference ID: wheel_reference",
+        f"Output root: {output_root}",
+        *(
+            f"{artifact_id}: present"
+            for artifact_id, _role, _relative_path, _content in (
+                REFERENCE_PROVENANCE_ARTIFACTS
+            )
+        ),
+        "Evidence boundary: read-only provenance reconciliation; "
+        "no files are repaired.",
+        "Dry-run complete; no output was written.",
+    ]
+    assert not output_root.exists()
+    assert (
+        tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
+        == input_states
+    )
+    assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
+        unrelated_state
     )
 
 
@@ -1866,6 +2000,11 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_reference_provenance_reconciliation(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_private_source_layout() -> None:
@@ -1962,6 +2101,11 @@ def _assert_private_source_layout() -> None:
     assert (scientific_review_source / "publisher.py").stat().st_mode & 0o111 == 0
     assert not (REPO_ROOT / "tests" / retired_scientific_review).exists()
     assert (REPO_ROOT / "tests/evidence/scientific_review_package").is_dir()
+
+    reference_provenance_source = REPO_ROOT / "src/norad/evidence/reference_provenance"
+    assert not (reference_provenance_source / "reference_provenance.py").exists()
+    assert (reference_provenance_source / "reconciler.py").stat().st_mode & 0o111 == 0
+    assert (REPO_ROOT / "tests/evidence/reference_provenance").is_dir()
 
 
 def _assert_wrong_checkout_rejected(

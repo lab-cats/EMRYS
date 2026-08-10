@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Inventory and reconcile one explicit reference bundle without repairing it."""
 
 from __future__ import annotations
@@ -9,75 +8,23 @@ import hashlib
 import os
 import sys
 import uuid
-from collections.abc import Sequence
 from pathlib import Path
 
-src_root = str(Path(__file__).resolve().parents[3])
-# Direct execution must prefer this checkout over an installed NORAD.
-sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
-from norad.evidence.reference_provenance._reference_contigs import (
-    agreement,
-    collect_contigs,
-    observe,
-    parse_names,
-    parse_star,
-    reference_contigs,
-    role_path,
-)
+from norad.evidence.reference_provenance._reference_contigs import observe
 from norad.evidence.reference_provenance._reference_inventory import load_inventory
 from norad.evidence.reference_provenance._reference_model import (
-    ARTIFACT_HEADER,
-    CONTIG_HEADER,
-    CONTIG_ROLES,
     OUTPUT_SPECS,
-    PROFILE_HEADER,
-    ROLES,
-    SAFE_ID,
-    SHA256,
-    SINGLETON_ROLES,
-    SUMMARY_HEADER,
-    Item,
-    Observation,
     ProvenanceError,
     fail,
 )
-from norad.evidence.reference_provenance._reference_render import render, tsv
+from norad.evidence.reference_provenance._reference_render import render
 from norad.libraries import validation as report
 
-__all__ = [
-    "ARTIFACT_HEADER",
-    "CONTIG_HEADER",
-    "CONTIG_ROLES",
-    "OUTPUT_SPECS",
-    "PROFILE_HEADER",
-    "ROLES",
-    "SAFE_ID",
-    "SHA256",
-    "SINGLETON_ROLES",
-    "SUMMARY_HEADER",
-    "Item",
-    "Observation",
-    "ProvenanceError",
-    "agreement",
-    "collect_contigs",
-    "fail",
-    "load_inventory",
-    "main",
-    "observe",
-    "parse_args",
-    "parse_names",
-    "parse_star",
-    "publish",
-    "reference_contigs",
-    "render",
-    "role_path",
-    "tsv",
-    "validate_output",
-]
+DESCRIPTION = __doc__
 
 
-def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+def configure_parser(parser: argparse.ArgumentParser) -> None:
+    """Configure the grouped reference-provenance reconciliation command."""
     parser.add_argument("--inventory", type=Path, required=True)
     parser.add_argument(
         "--base-dir",
@@ -87,7 +34,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--output-root", type=Path, required=True)
     parser.add_argument("--execute", action="store_true")
-    return parser.parse_args(argv)
 
 
 def validate_output(
@@ -180,30 +126,31 @@ def publish(output_root: Path, reference_id: str, outputs: dict[str, bytes]) -> 
             lock.unlink()
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    args = parse_args(argv)
+def reconcile_from_args(arguments: argparse.Namespace) -> int:
+    """Reconcile one declared reference bundle and optionally publish evidence."""
     try:
-        raw, items = load_inventory(args.inventory, args.base_dir)
+        raw, items = load_inventory(arguments.inventory, arguments.base_dir)
         observations = observe(items)
         outputs = render(raw, observations)
         for key, _filename, header, rows in OUTPUT_SPECS:
             validate_output(outputs[key], header, rows)
         reference_id = items[0].reference_id
-        print(f"Reference inventory: {args.inventory}")
-        print(f"Reference base directory: {args.base_dir}")
+        print(f"Reference inventory: {arguments.inventory}")
+        print(f"Reference base directory: {arguments.base_dir}")
         print(f"Reference ID: {reference_id}")
-        print(f"Output root: {args.output_root}")
+        print(f"Output root: {arguments.output_root}")
         for observation in observations:
             print(f"{observation.item.artifact_id}: {observation.status}")
         print(
-            "Evidence boundary: read-only provenance reconciliation; no files are repaired."
+            "Evidence boundary: read-only provenance reconciliation; "
+            "no files are repaired."
         )
-        if not args.execute:
+        if not arguments.execute:
             print("Dry-run complete; no output was written.")
             return 0
         if (
             hashlib.sha256(
-                report.read_bytes(args.inventory, "Reference inventory")
+                report.read_bytes(arguments.inventory, "Reference inventory")
             ).digest()
             != hashlib.sha256(raw).digest()
         ):
@@ -215,8 +162,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         ]
         if refreshed_snapshots != snapshots:
             fail("A reference artifact changed after inspection")
-        publish(args.output_root, reference_id, outputs)
-        print(f"Published reference provenance: {args.output_root / reference_id}")
+        publish(arguments.output_root, reference_id, outputs)
+        published_path = arguments.output_root / reference_id
+        print(f"Published reference provenance: {published_path}")
         return 0
     except ProvenanceError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
@@ -224,7 +172,3 @@ def main(argv: Sequence[str] | None = None) -> int:
     except report.ValidationError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

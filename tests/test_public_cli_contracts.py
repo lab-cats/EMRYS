@@ -26,9 +26,6 @@ MAKE_EXPANSION_GOLDEN = (
 PYTHON_ENTRYPOINT_PATHS = {
     "build_artifact_index.py": Path("src/norad/reporting/build_artifact_index.py"),
     "build_run_summary.py": Path("src/norad/reporting/build_run_summary.py"),
-    "reference_provenance.py": Path(
-        "src/norad/evidence/reference_provenance/reference_provenance.py"
-    ),
     "render_run_report.py": Path("src/norad/reporting/render_run_report.py"),
     "render_run_report_bundle.py": Path(
         "src/norad/reporting/render_run_report_bundle.py"
@@ -49,7 +46,6 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
     {
         "build_artifact_index.py",
         "build_run_summary.py",
-        "reference_provenance.py",
         "render_run_report.py",
         "render_run_report_bundle.py",
         "validate_artifact_contracts.py",
@@ -59,7 +55,6 @@ PRIVATE_PYTHON_MODULES = frozenset()
 DIRECT_PYTHON_ENTRYPOINTS = frozenset(
     {
         "build_run_summary.py",
-        "reference_provenance.py",
         "render_run_report.py",
         "restore_quarto.py",
         "runtime_preflight.py",
@@ -71,6 +66,10 @@ NORAD_COMMANDS = (
     (
         ("assemble", "scientific-review-package"),
         "usage: norad assemble scientific-review-package",
+    ),
+    (
+        ("reconcile", "reference-provenance"),
+        "usage: norad reconcile reference-provenance",
     ),
     (("convert", "gtf-to-bed12"), "usage: norad convert gtf-to-bed12"),
     (("validate", "bed12"), "usage: norad validate bed12"),
@@ -153,8 +152,7 @@ SHELL_ENTRYPOINT_PATHS = {
         "step_09_cmh_editing_site_calling.sh"
     ),
     "step_09c_scientific_validation.sh": Path(
-        "src/norad/evidence/scientific_review_package/"
-        "step_09c_scientific_validation.sh"
+        "src/norad/evidence/scientific_review_package/step_09c_scientific_validation.sh"
     ),
 }
 SHELL_ENTRYPOINTS = frozenset(SHELL_ENTRYPOINT_PATHS)

@@ -39,10 +39,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 14,
-      "covered_lines": 96,
+      "covered_lines": 102,
       "line_rate": "1.000000",
       "num_branches": 14,
-      "num_statements": 96,
+      "num_statements": 102,
       "path": "src/norad/__main__.py"
     },
     {
@@ -352,6 +352,15 @@
       "path": "src/norad/evidence/canonical_bam_qc/validator.py"
     },
     {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
+      "path": "src/norad/evidence/reference_provenance/__init__.py"
+    },
+    {
       "branch_rate": "0.687500",
       "covered_branches": 22,
       "covered_lines": 70,
@@ -388,13 +397,13 @@
       "path": "src/norad/evidence/reference_provenance/_reference_render.py"
     },
     {
-      "branch_rate": "0.839286",
-      "covered_branches": 47,
-      "covered_lines": 121,
-      "line_rate": "0.952756",
-      "num_branches": 56,
-      "num_statements": 127,
-      "path": "src/norad/evidence/reference_provenance/reference_provenance.py"
+      "branch_rate": "0.833333",
+      "covered_branches": 45,
+      "covered_lines": 114,
+      "line_rate": "0.950000",
+      "num_branches": 54,
+      "num_statements": 120,
+      "path": "src/norad/evidence/reference_provenance/reconciler.py"
     },
     {
       "branch_rate": "1.000000",
@@ -1591,11 +1600,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.748753",
-    "covered_branches": 3302,
-    "covered_lines": 10221,
-    "line_rate": "0.859992",
-    "num_branches": 4410,
-    "num_statements": 11885
+    "branch_rate": "0.748639",
+    "covered_branches": 3300,
+    "covered_lines": 10220,
+    "line_rate": "0.859980",
+    "num_branches": 4408,
+    "num_statements": 11884
   }
 }
