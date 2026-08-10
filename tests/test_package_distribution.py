@@ -363,6 +363,28 @@ def _run_installed_norad(
     )
 
 
+def _assert_validation_dry_run(
+    result: subprocess.CompletedProcess[str],
+    output_path: Path,
+    *,
+    step_id: str,
+    expected_check_ids: set[str],
+) -> None:
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stderr == ""
+    assert result.stdout.endswith("Dry-run complete; no output was written.\n")
+    report_rows = [
+        line.split("\t")
+        for line in result.stdout.splitlines()
+        if line.startswith(f"{step_id}\t")
+    ]
+    assert len(report_rows) == len(expected_check_ids)
+    assert {row[2] for row in report_rows} == expected_check_ids
+    assert {row[3] for row in report_rows} == {"pass"}
+    assert not output_path.exists()
+    assert not list(output_path.parent.glob(".*validation*"))
+
+
 def _build_star_index_fixture(
     working_directory: Path,
 ) -> tuple[Path, Path, Path, Path]:
@@ -429,25 +451,18 @@ def _assert_installed_star_index_validation(
         "--output",
         str(output_path),
     )
-    assert validation.returncode == 0, validation.stdout + validation.stderr
-    assert validation.stderr == ""
-    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
-    report_rows = [
-        line.split("\t")
-        for line in validation.stdout.splitlines()
-        if line.startswith("00a\t")
-    ]
-    assert len(report_rows) == 5
-    assert {row[2] for row in report_rows} == {
-        "index_members",
-        "fasta_identity",
-        "gtf_identity",
-        "contig_names_lengths",
-        "sjdb_overhang",
-    }
-    assert {row[3] for row in report_rows} == {"pass"}
-    assert not output_path.exists()
-    assert not list(output_path.parent.glob(".*validation*"))
+    _assert_validation_dry_run(
+        validation,
+        output_path,
+        step_id="00a",
+        expected_check_ids={
+            "index_members",
+            "fasta_identity",
+            "gtf_identity",
+            "contig_names_lengths",
+            "sjdb_overhang",
+        },
+    )
     assert unrelated_path.read_text(encoding="utf-8") == "preserve\n"
 
 
@@ -506,25 +521,18 @@ def _assert_installed_fasta_sidecars_validation(
         "--output",
         str(output_path),
     )
-    assert validation.returncode == 0, validation.stdout + validation.stderr
-    assert validation.stderr == ""
-    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
-    report_rows = [
-        line.split("\t")
-        for line in validation.stdout.splitlines()
-        if line.startswith("00c\t")
-    ]
-    assert len(report_rows) == 5
-    assert {row[2] for row in report_rows} == {
-        "fasta_structure",
-        "fai_structure",
-        "dict_structure",
-        "fai_contig_agreement",
-        "dict_contig_agreement",
-    }
-    assert {row[3] for row in report_rows} == {"pass"}
-    assert not output_path.exists()
-    assert not list(output_path.parent.glob(".*validation*"))
+    _assert_validation_dry_run(
+        validation,
+        output_path,
+        step_id="00c",
+        expected_check_ids={
+            "fasta_structure",
+            "fai_structure",
+            "dict_structure",
+            "fai_contig_agreement",
+            "dict_contig_agreement",
+        },
+    )
     assert (
         tuple(path.read_bytes() for path in (fasta_path, fai_path, dictionary_path))
         == input_bytes
@@ -599,25 +607,18 @@ def _assert_installed_star_alignment_validation(
         "--output",
         str(output_path),
     )
-    assert validation.returncode == 0, validation.stdout + validation.stderr
-    assert validation.stderr == ""
-    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
-    report_rows = [
-        line.split("\t")
-        for line in validation.stdout.splitlines()
-        if line.startswith("01\t")
-    ]
-    assert len(report_rows) == 5
-    assert {row[2] for row in report_rows} == {
-        "output_files",
-        "bam_structure",
-        "final_log_structure",
-        "mapping_summary",
-        "splice_junction_structure",
-    }
-    assert {row[3] for row in report_rows} == {"pass"}
-    assert not output_path.exists()
-    assert not list(output_path.parent.glob(".*validation*"))
+    _assert_validation_dry_run(
+        validation,
+        output_path,
+        step_id="01",
+        expected_check_ids={
+            "output_files",
+            "bam_structure",
+            "final_log_structure",
+            "mapping_summary",
+            "splice_junction_structure",
+        },
+    )
     assert tuple(path.read_bytes() for path in input_paths) == input_bytes
     assert unrelated_path.read_text(encoding="utf-8") == "preserve\n"
 
@@ -688,25 +689,18 @@ def _assert_installed_canonical_bam_validation(
         "--output",
         str(output_path),
     )
-    assert validation.returncode == 0, validation.stdout + validation.stderr
-    assert validation.stderr == ""
-    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
-    report_rows = [
-        line.split("\t")
-        for line in validation.stdout.splitlines()
-        if line.startswith("02\t")
-    ]
-    assert len(report_rows) == 5
-    assert {row[2] for row in report_rows} == {
-        "bam_bai_structure",
-        "samtools_quickcheck",
-        "coordinate_sorting",
-        "read_group_header",
-        "alignment_rg_tags",
-    }
-    assert {row[3] for row in report_rows} == {"pass"}
-    assert not output_path.exists()
-    assert not list(output_path.parent.glob(".*validation*"))
+    _assert_validation_dry_run(
+        validation,
+        output_path,
+        step_id="02",
+        expected_check_ids={
+            "bam_bai_structure",
+            "samtools_quickcheck",
+            "coordinate_sorting",
+            "read_group_header",
+            "alignment_rg_tags",
+        },
+    )
     assert (
         tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
         == input_states
@@ -770,25 +764,18 @@ def _assert_installed_canonical_bam_qc_validation(
         "--output",
         str(output_path),
     )
-    assert validation.returncode == 0, validation.stdout + validation.stderr
-    assert validation.stderr == ""
-    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
-    report_rows = [
-        line.split("\t")
-        for line in validation.stdout.splitlines()
-        if line.startswith("02b\t")
-    ]
-    assert len(report_rows) == 5
-    assert {row[2] for row in report_rows} == {
-        "quickcheck_structure",
-        "flagstat_structure",
-        "total_records",
-        "mapped_records",
-        "count_consistency",
-    }
-    assert {row[3] for row in report_rows} == {"pass"}
-    assert not output_path.exists()
-    assert not list(output_path.parent.glob(".*validation*"))
+    _assert_validation_dry_run(
+        validation,
+        output_path,
+        step_id="02b",
+        expected_check_ids={
+            "quickcheck_structure",
+            "flagstat_structure",
+            "total_records",
+            "mapped_records",
+            "count_consistency",
+        },
+    )
     assert (
         tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
         == input_states
@@ -839,25 +826,18 @@ def _assert_installed_rseqc_orientation_validation(
         "--output",
         str(output_path),
     )
-    assert validation.returncode == 0, validation.stdout + validation.stderr
-    assert validation.stderr == ""
-    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
-    report_rows = [
-        line.split("\t")
-        for line in validation.stdout.splitlines()
-        if line.startswith("03\t")
-    ]
-    assert len(report_rows) == 5
-    assert {row[2] for row in report_rows} == {
-        "report_structure",
-        "failed_fraction",
-        "paired_orientation_fraction_a",
-        "paired_orientation_fraction_b",
-        "fraction_sum",
-    }
-    assert {row[3] for row in report_rows} == {"pass"}
-    assert not output_path.exists()
-    assert not list(output_path.parent.glob(".*validation*"))
+    _assert_validation_dry_run(
+        validation,
+        output_path,
+        step_id="03",
+        expected_check_ids={
+            "report_structure",
+            "failed_fraction",
+            "paired_orientation_fraction_a",
+            "paired_orientation_fraction_b",
+            "fraction_sum",
+        },
+    )
     assert (report_path.read_bytes(), report_path.stat().st_mode) == input_state
     assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
         unrelated_state
@@ -938,25 +918,18 @@ def _assert_installed_duplicate_marking_validation(
         "--output",
         str(output_path),
     )
-    assert validation.returncode == 0, validation.stdout + validation.stderr
-    assert validation.stderr == ""
-    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
-    report_rows = [
-        line.split("\t")
-        for line in validation.stdout.splitlines()
-        if line.startswith("04\t")
-    ]
-    assert len(report_rows) == 5
-    assert {row[2] for row in report_rows} == {
-        "bam_bai_structure",
-        "samtools_quickcheck",
-        "coordinate_sorting",
-        "read_group_preservation",
-        "duplication_metrics",
-    }
-    assert {row[3] for row in report_rows} == {"pass"}
-    assert not output_path.exists()
-    assert not list(output_path.parent.glob(".*validation*"))
+    _assert_validation_dry_run(
+        validation,
+        output_path,
+        step_id="04",
+        expected_check_ids={
+            "bam_bai_structure",
+            "samtools_quickcheck",
+            "coordinate_sorting",
+            "read_group_preservation",
+            "duplication_metrics",
+        },
+    )
     assert (
         tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
         == input_states
@@ -1047,25 +1020,18 @@ def _assert_installed_split_n_cigar_validation(
         "--output",
         str(output_path),
     )
-    assert validation.returncode == 0, validation.stdout + validation.stderr
-    assert validation.stderr == ""
-    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
-    report_rows = [
-        line.split("\t")
-        for line in validation.stdout.splitlines()
-        if line.startswith("05\t")
-    ]
-    assert len(report_rows) == 5
-    assert {row[2] for row in report_rows} == {
-        "bam_bai_structure",
-        "samtools_quickcheck",
-        "coordinate_sorting",
-        "read_group_preservation",
-        "reference_sidecars",
-    }
-    assert {row[3] for row in report_rows} == {"pass"}
-    assert not output_path.exists()
-    assert not list(output_path.parent.glob(".*validation*"))
+    _assert_validation_dry_run(
+        validation,
+        output_path,
+        step_id="05",
+        expected_check_ids={
+            "bam_bai_structure",
+            "samtools_quickcheck",
+            "coordinate_sorting",
+            "read_group_preservation",
+            "reference_sidecars",
+        },
+    )
     assert (
         tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
         == input_states
