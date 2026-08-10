@@ -5,8 +5,6 @@ native owner directory. The
 exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
 uses that public slug and owns the producer, validator, and scheduler assets.
-Supported journeys and migration evidence are in the adjacent
-[`README.md`](README.md).
 
 ## Responsibility and execution dependencies
 
