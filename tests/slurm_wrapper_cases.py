@@ -73,7 +73,7 @@ CONTRACTS = {
         submit_cwd="required",
     ),
     "step_03_infer_strandedness_and_orientation.slurm": contract(
-        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
+        "src/norad/evidence/rseqc_orientation/"
         "step_03_infer_strandedness_and_orientation.sh",
         default="dry_run_with_bash32_empty_array_defect",
     ),

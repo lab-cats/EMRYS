@@ -7,15 +7,19 @@ mechanical-evidence boundary.
 ## Entry points
 
 - producer: [`step_03_infer_strandedness_and_orientation.sh`](step_03_infer_strandedness_and_orientation.sh)
-- validator: [`validate_step_03_rseqc_orientation.py`](validate_step_03_rseqc_orientation.py)
+- validator: grouped route `python -I -m norad validate rseqc-orientation`,
+  implemented by private [`validator.py`](validator.py)
 - scheduler: [`step_03_infer_strandedness_and_orientation.slurm`](step_03_infer_strandedness_and_orientation.slurm)
+
+The shell producer and scheduler remain repository-path interfaces.
+`validator.py` is not a direct repository entrypoint.
 
 ## Operate
 
 Invoke the mode-`0644` producer through Bash. Dry-run writes nothing:
 
 ```bash
-bash src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh \
+bash src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh \
   --sample-id ABE_EV_2 \
   --input-bam results/bam/ABE_EV_2/ABE_EV_2.sorted.bam \
   --bed12 refs/novogene_ref/genome.bed \
@@ -30,7 +34,7 @@ rollback; failure can replace a predecessor with partial or empty output.
 Validator dry-run:
 
 ```bash
-.venv/bin/python src/norad/evidence/collect_RSeQC_paired_orientation_evidence/validate_step_03_rseqc_orientation.py \
+.venv/bin/python -I -m norad validate rseqc-orientation \
   --scope-id ABE_EV_2 \
   --infer-report results/qc/strandedness/ABE_EV_2.infer_experiment.txt \
   --output results/qc/validation/03/ABE_EV_2.validation.tsv
@@ -42,7 +46,7 @@ publication succeeded; a row may still fail.
 ```bash
 cd /absolute/path/to/norad
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=ABE_EV_2,BAM=/absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam,BED12=/absolute/refs/genome.bed,OUTPUT_DIR=/absolute/results/qc/strandedness,INFER_EXPERIMENT_BIN=/absolute/path/to/norad/.venv/bin/infer_experiment.py \
-  src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.slurm
+  src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.slurm
 ```
 
 Change only `EXECUTE=1` after review. Stale nonempty output can make a
@@ -56,9 +60,9 @@ non-gating mechanical orientation evidence, not transcript strand,
 sense/antisense, or approved manifest policy.
 
 ```bash
-bash tests/evidence/collect_RSeQC_paired_orientation_evidence/test_step_03_infer_strandedness_and_orientation.sh
+bash tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh
 .venv/bin/python -m pytest -q \
-  tests/evidence/collect_RSeQC_paired_orientation_evidence/test_validate_step_03_rseqc_orientation.py
+  tests/evidence/rseqc_orientation/test_validate_step_03_rseqc_orientation.py
 .venv/bin/python -m pytest -q \
   tests/test_slurm_wrapper_contracts.py -k step_03_infer_strandedness_and_orientation
 ```

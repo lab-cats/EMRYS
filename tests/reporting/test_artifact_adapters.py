@@ -71,9 +71,9 @@ EXPECTED_PRODUCER_EVIDENCE = {
         "0f610a2334a707edcda46ca7f1fc467e21dcd4564286be7b6436c61855573b7a",
     ),
     "03": (
-        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
+        "src/norad/evidence/rseqc_orientation/"
         "step_03_infer_strandedness_and_orientation.sh",
-        "0ee478b58419ba1a1b535d8397fd107fc0f8610afb45e43adffc3b57dd2406c7",
+        "8127320104712d1b68f317e6505436ca058c0efe1291b0da019dd3a93ca6ff95",
     ),
     "04": (
         "src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh",

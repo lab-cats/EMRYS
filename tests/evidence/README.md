@@ -5,7 +5,7 @@ availability, inventory, and review-package owners.
 
 - [`canonical_bam_qc/`](canonical_bam_qc/README.md)
   and
-  [`collect_RSeQC_paired_orientation_evidence/`](collect_RSeQC_paired_orientation_evidence/README.md)
+  [`rseqc_orientation/`](rseqc_orientation/README.md)
   protect numbered mechanical-evidence operations.
 - [`assemble_scientific_review_evidence_package/`](assemble_scientific_review_evidence_package/README.md)
   protects the Step 09c evidence package and recovery boundary.

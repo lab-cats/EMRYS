@@ -47,10 +47,6 @@ PYTHON_ENTRYPOINT_PATHS = {
     "validate_artifact_contracts.py": Path(
         "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     ),
-    "validate_step_03_rseqc_orientation.py": Path(
-        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
-        "validate_step_03_rseqc_orientation.py"
-    ),
     "validate_step_04_mark_duplicates.py": Path(
         "src/norad/stages/mark_BAM_duplicates_with_Picard/"
         "validate_step_04_mark_duplicates.py"
@@ -86,7 +82,6 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
         "render_run_report_bundle.py",
         "step_09c_scientific_validation.py",
         "validate_artifact_contracts.py",
-        "validate_step_03_rseqc_orientation.py",
         "validate_step_04_mark_duplicates.py",
         "validate_step_05_split_ncigar.py",
         "validate_step_06_orientation_outputs.py",
@@ -117,6 +112,10 @@ NORAD_COMMANDS = (
     ),
     (("validate", "fasta-sidecars"), "usage: norad validate fasta-sidecars"),
     (("validate", "manifest"), "usage: norad validate manifest"),
+    (
+        ("validate", "rseqc-orientation"),
+        "usage: norad validate rseqc-orientation",
+    ),
     (("validate", "star-alignment"), "usage: norad validate star-alignment"),
     (("validate", "star-index"), "usage: norad validate star-index"),
 )
@@ -139,7 +138,7 @@ SHELL_ENTRYPOINT_PATHS = {
         "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
     ),
     "step_03_infer_strandedness_and_orientation.sh": Path(
-        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
+        "src/norad/evidence/rseqc_orientation/"
         "step_03_infer_strandedness_and_orientation.sh"
     ),
     "step_04_mark_duplicates.sh": Path(

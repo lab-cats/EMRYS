@@ -16,7 +16,7 @@ SHELL_SYNTAX_PATHS := \
 	src/norad/stages/star_alignment/step_01_star_align.sh \
 	src/norad/stages/canonical_bam/step_02_sort_index_bam.sh \
 	src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh \
-	src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh \
+	src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh \
 	src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.sh \
 	src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.sh \
 	src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh \
@@ -34,7 +34,7 @@ SLURM_SYNTAX_PATHS := \
 	src/norad/stages/star_alignment/step_01_star_align.slurm \
 	src/norad/stages/canonical_bam/step_02_sort_index_bam.slurm \
 	src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.slurm \
-	src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.slurm \
+	src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.slurm \
 	src/norad/stages/mark_BAM_duplicates_with_Picard/step_04_mark_duplicates.slurm \
 	src/norad/stages/split_N_cigar_reads_with_GATK/step_05_split_n_cigar_reads.slurm \
 	src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.slurm \
@@ -51,7 +51,7 @@ validation-shell-contracts:
 	bash tests/stages/star_alignment/test_step_01_star_align.sh
 	bash tests/stages/canonical_bam/test_step_02_sort_index_bam.sh
 	bash tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh
-	bash tests/evidence/collect_RSeQC_paired_orientation_evidence/test_step_03_infer_strandedness_and_orientation.sh
+	bash tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh
 	bash tests/stages/mark_BAM_duplicates_with_Picard/test_step_04_mark_duplicates.sh
 	bash tests/stages/split_N_cigar_reads_with_GATK/test_step_05_split_n_cigar_reads.sh
 	bash tests/stages/partition_BAM_by_mechanical_read_orientation/test_step_06_split_bam_by_read_orientation.sh
@@ -74,7 +74,7 @@ shell-test: validation-shell-contracts
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/star_alignment/test_validate_step_01_star_alignment.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/canonical_bam/test_validate_step_02_canonical_bam.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/canonical_bam_qc/test_validate_step_02b_bam_qc.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/collect_RSeQC_paired_orientation_evidence/test_validate_step_03_rseqc_orientation.py
+	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/rseqc_orientation/test_validate_step_03_rseqc_orientation.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/mark_BAM_duplicates_with_Picard/test_validate_step_04_mark_duplicates.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/split_N_cigar_reads_with_GATK/test_validate_step_05_split_ncigar.py
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/partition_BAM_by_mechanical_read_orientation/test_validate_step_06_orientation_outputs.py

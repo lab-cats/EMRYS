@@ -60,6 +60,8 @@ EVIDENCE_PACKAGE_PATHS = frozenset(
         "step_09c_scientific_validation.py",
         "norad/evidence/canonical_bam_qc/__init__.py",
         "norad/evidence/canonical_bam_qc/validator.py",
+        "norad/evidence/rseqc_orientation/__init__.py",
+        "norad/evidence/rseqc_orientation/validator.py",
         "norad/evidence/storage_inventory/__init__.py",
         "norad/evidence/storage_inventory/_storage_contract.py",
         "norad/evidence/storage_inventory/_storage_measurement.py",
@@ -792,6 +794,72 @@ def _assert_installed_canonical_bam_qc_validation(
     )
 
 
+def _build_rseqc_orientation_fixture(
+    working_directory: Path,
+) -> tuple[Path, Path]:
+    input_directory = working_directory / "rseqc-orientation-inputs"
+    input_directory.mkdir()
+    report_path = input_directory / "wheel_fixture.infer_experiment.txt"
+    report_path.write_text(
+        "Fraction of reads failed to determine: 0.01\n"
+        'Fraction of reads explained by "1++,1--,2+-,2-+": 0.97\n'
+        'Fraction of reads explained by "1+-,1-+,2++,2--": 0.02\n',
+        encoding="utf-8",
+    )
+    validation_directory = working_directory / "rseqc-orientation-validation"
+    validation_directory.mkdir()
+    return report_path, validation_directory / "wheel_fixture.validation.tsv"
+
+
+def _assert_installed_rseqc_orientation_validation(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    report_path, output_path = _build_rseqc_orientation_fixture(working_directory)
+    input_state = (report_path.read_bytes(), report_path.stat().st_mode)
+    unrelated_path = working_directory / "rseqc-orientation-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+    unrelated_state = (unrelated_path.read_bytes(), unrelated_path.stat().st_mode)
+
+    validation = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "rseqc-orientation",
+        "--scope-id",
+        "wheel_fixture",
+        "--infer-report",
+        str(report_path),
+        "--output",
+        str(output_path),
+    )
+    assert validation.returncode == 0, validation.stdout + validation.stderr
+    assert validation.stderr == ""
+    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
+    report_rows = [
+        line.split("\t")
+        for line in validation.stdout.splitlines()
+        if line.startswith("03\t")
+    ]
+    assert len(report_rows) == 5
+    assert {row[2] for row in report_rows} == {
+        "report_structure",
+        "failed_fraction",
+        "paired_orientation_fraction_a",
+        "paired_orientation_fraction_b",
+        "fraction_sum",
+    }
+    assert {row[3] for row in report_rows} == {"pass"}
+    assert not output_path.exists()
+    assert not list(output_path.parent.glob(".*validation*"))
+    assert (report_path.read_bytes(), report_path.stat().st_mode) == input_state
+    assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
+        unrelated_state
+    )
+
+
 def _assert_installed_commands(
     environment_python: Path,
     working_directory: Path,
@@ -869,6 +937,11 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_rseqc_orientation_validation(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_private_source_layout() -> None:
@@ -926,6 +999,20 @@ def _assert_private_source_layout() -> None:
 
     assert not (REPO_ROOT / "tests/evidence/collect_canonical_BAM_QC_evidence").exists()
     assert (REPO_ROOT / "tests/evidence/canonical_bam_qc").is_dir()
+
+    rseqc_orientation_owner = REPO_ROOT / "src/norad/evidence/rseqc_orientation"
+    assert not (
+        REPO_ROOT / "src/norad/evidence/collect_RSeQC_paired_orientation_evidence"
+    ).exists()
+    assert not (
+        rseqc_orientation_owner / "validate_step_03_rseqc_orientation.py"
+    ).exists()
+    assert (rseqc_orientation_owner / "validator.py").stat().st_mode & 0o111 == 0
+
+    assert not (
+        REPO_ROOT / "tests/evidence/collect_RSeQC_paired_orientation_evidence"
+    ).exists()
+    assert (REPO_ROOT / "tests/evidence/rseqc_orientation").is_dir()
 
 
 def _assert_wrong_checkout_rejected(

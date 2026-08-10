@@ -71,6 +71,7 @@ CROSS_CUTTING_OWNER_DOCS = (
 )
 SOURCE_OWNER_DIRECTORY_NAMES = {
     ("evidence", "collect_canonical_BAM_QC_evidence"): "canonical_bam_qc",
+    ("evidence", "collect_RSeQC_paired_orientation_evidence"): "rseqc_orientation",
     ("stage", "align_RNA_reads_with_STAR"): "star_alignment",
     ("stage", "construct_canonical_BAM"): "canonical_bam",
     ("stage", "construct_STAR_index"): "star_index",

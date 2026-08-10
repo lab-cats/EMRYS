@@ -8,7 +8,7 @@ publication.
 The
 [`canonical-BAM QC`](../../evidence/canonical_bam_qc/README.md)
 and
-[`RSeQC orientation`](../../evidence/collect_RSeQC_paired_orientation_evidence/README.md)
+[`RSeQC orientation`](../../evidence/rseqc_orientation/README.md)
 evidence owners consume these helpers and retain their own contracts. Direct
 neutral protection is in
 [`test_shared_domain_helpers.py`](../../../../tests/libraries/test_shared_domain_helpers.py).

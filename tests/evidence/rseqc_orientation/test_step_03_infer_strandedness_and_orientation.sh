@@ -3,7 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh"
+SCRIPT="$REPO_ROOT/src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
 
 # Keep this test self-contained and local-only. It uses placeholder BAM/BED
 # files plus a fake infer_experiment.py, so no real biological data or RSeQC
@@ -139,6 +139,7 @@ mkdir -p "$fixture_dir"
 # handing them to RSeQC, so tiny placeholders are enough for regression tests.
 bam="$fixture_dir/sample.sorted.bam"
 bam_dot_bai="$bam.bai"
+bam_stem_bai="${bam%.bam}.bai"
 bed12="$fixture_dir/genome.bed"
 missing_bam="$fixture_dir/missing.sorted.bam"
 missing_bed12="$fixture_dir/missing.bed"
@@ -189,6 +190,21 @@ assert_contains "$dry_output" "$bed12"
 assert_contains "$dry_output" "-i"
 assert_contains "$dry_output" "$bam"
 assert_contains "$dry_output" "Dry-run only"
+
+printf 'Running dry-run check with stem .bai index...\n'
+mv "$bam_dot_bai" "$bam_stem_bai"
+stem_index_output="$tmp_dir/stem_index.out"
+stem_index_output_dir="$tmp_dir/results/stem_index"
+bash "$SCRIPT" \
+    --sample-id sample_stem_index \
+    --input-bam "$bam" \
+    --bed12 "$bed12" \
+    --output-dir "$stem_index_output_dir" \
+    --infer-experiment-bin "$fake_bin/infer_experiment.py" \
+    >"$stem_index_output"
+assert_not_exists "$stem_index_output_dir"
+[[ ! -e "$infer_log" ]] || fail "stem-index dry-run invoked infer_experiment.py"
+assert_contains "$stem_index_output" "BAM index found: $bam_stem_bai"
 
 printf 'Running execute check with path-style binary...\n'
 execute_output="$tmp_dir/execute.out"

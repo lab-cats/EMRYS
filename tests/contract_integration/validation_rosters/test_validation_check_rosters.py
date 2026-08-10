@@ -27,10 +27,7 @@ VALIDATOR_PATHS = {
     "01": Path("src/norad/stages/star_alignment/validator.py"),
     "02": Path("src/norad/stages/canonical_bam/validator.py"),
     "02b": Path("src/norad/evidence/canonical_bam_qc/validator.py"),
-    "03": Path(
-        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
-        "validate_step_03_rseqc_orientation.py"
-    ),
+    "03": Path("src/norad/evidence/rseqc_orientation/validator.py"),
     "04": Path(
         "src/norad/stages/mark_BAM_duplicates_with_Picard/"
         "validate_step_04_mark_duplicates.py"

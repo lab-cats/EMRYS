@@ -13,7 +13,7 @@ set -euo pipefail
 usage() {
     cat <<'USAGE'
 Usage:
-  src/norad/evidence/collect_RSeQC_paired_orientation_evidence/step_03_infer_strandedness_and_orientation.sh \
+  src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh \
     --sample-id SAMPLE_ID \
     --input-bam INPUT_BAM \
     --bed12 BED12 \

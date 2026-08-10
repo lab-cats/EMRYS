@@ -3,8 +3,10 @@
 This document records the observed current contract of historical Step `03`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug and is now the implemented source location. It remains a
-plain functional-owner directory, not a Python package or public import API.
+is the lowercase physical source location for that frozen semantic identity.
+Its shell producer and scheduler remain repository-path interfaces; its Python
+package exists only to expose a private validator through the grouped command,
+not as a public import API.
 
 Step `03` is classified as an independently runnable scientific-evidence
 operation, not as a primary-data transformation or an implemented control-
@@ -97,10 +99,11 @@ argument array can prevent the default dry-run from reaching the producer.
 
 ## Validation interface
 
-[`validate_step_03_rseqc_orientation.py`](validate_step_03_rseqc_orientation.py)
-accepts an explicit scope, native report, sum tolerance, and output path. It
-does not receive the BAM, index, BED12, RSeQC identity, or attempt receipt.
-Validation is dry-run by default; `--execute` publishes
+The grouped route `python -I -m norad validate rseqc-orientation`, implemented
+by private [`validator.py`](validator.py), accepts an explicit scope, native
+report, sum tolerance, and output path. It does not receive the BAM, index,
+BED12, RSeQC identity, or attempt receipt. Validation is dry-run by default;
+`--execute` publishes
 `<scope-id>.validation.tsv` using the common seven-field step-validation
 contract.
 
@@ -150,11 +153,11 @@ own scientifically approved contract and evidence gate.
 
 ## Protected behavior and evidence
 
-- [`test_step_03_infer_strandedness_and_orientation.sh`](../../../../tests/evidence/collect_RSeQC_paired_orientation_evidence/test_step_03_infer_strandedness_and_orientation.sh)
+- [`test_step_03_infer_strandedness_and_orientation.sh`](../../../../tests/evidence/rseqc_orientation/test_step_03_infer_strandedness_and_orientation.sh)
   protects the public CLI, both executable-resolution paths, both BAI naming
   conventions, side-effect-free dry-run, exact RSeQC arguments, successful
   capture, missing-input failures, and empty-output rejection with local mocks.
-- [`test_validate_step_03_rseqc_orientation.py`](../../../../tests/evidence/collect_RSeQC_paired_orientation_evidence/test_validate_step_03_rseqc_orientation.py)
+- [`test_validate_step_03_rseqc_orientation.py`](../../../../tests/evidence/rseqc_orientation/test_validate_step_03_rseqc_orientation.py)
   protects dry-run, the five checks, fraction/range/sum failures, fail-closed
   missing input, publication, and foreign-lock preservation.
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)

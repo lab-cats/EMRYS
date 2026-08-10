@@ -113,7 +113,7 @@ STEP_PRODUCERS = {
     "02": ("src/norad/stages/canonical_bam/step_02_sort_index_bam.sh"),
     "02b": "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
     "03": (
-        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
+        "src/norad/evidence/rseqc_orientation/"
         "step_03_infer_strandedness_and_orientation.sh"
     ),
     "04": (

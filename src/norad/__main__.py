@@ -12,6 +12,9 @@ from typing import cast
 from norad.evidence.canonical_bam_qc import (
     validator as canonical_bam_qc_validation_command,
 )
+from norad.evidence.rseqc_orientation import (
+    validator as rseqc_orientation_validation_command,
+)
 from norad.ingestion.sample_manifest_admission import (
     validator as manifest_command,
 )
@@ -139,6 +142,15 @@ def build_parser() -> argparse.ArgumentParser:
     fasta_sidecars_validation_command.configure_parser(fasta_sidecars_parser)
     fasta_sidecars_parser.set_defaults(
         _command_handler=fasta_sidecars_validation_command.validate_from_args
+    )
+    rseqc_orientation_parser = validation_parsers.add_parser(
+        "rseqc-orientation",
+        help="Validate one RSeQC paired-orientation report.",
+        description=rseqc_orientation_validation_command.DESCRIPTION,
+    )
+    rseqc_orientation_validation_command.configure_parser(rseqc_orientation_parser)
+    rseqc_orientation_parser.set_defaults(
+        _command_handler=rseqc_orientation_validation_command.validate_from_args
     )
     star_index_parser = validation_parsers.add_parser(
         "star-index",
