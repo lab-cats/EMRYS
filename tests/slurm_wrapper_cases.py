@@ -152,7 +152,7 @@ JOB_PATHS.update(
             "src/norad/stages/construct_STAR_index/step_00a_build_novogene_star_index.slurm"
         ),
         "step_00b_gtf_to_bed12.slurm": Path(
-            "src/norad/stages/convert_GTF_to_BED12/step_00b_gtf_to_bed12.slurm"
+            "src/norad/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm"
         ),
         "tool_check.slurm": Path(
             "src/norad/evidence/runtime_preflight/tool_check.slurm"

@@ -1,23 +1,23 @@
-#!/usr/bin/env python3
 """Validate one explicit Step 00b BED12 against its source GTF."""
 
 from __future__ import annotations
 
 import argparse
-import io
-import sys
-from collections.abc import Sequence
 from pathlib import Path
 
-src_root = str(Path(__file__).resolve().parents[3])
-# Direct execution must prefer this checkout over an installed NORAD.
-sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
+from norad.libraries.alignments.bed import inspect_bed12_rows, parse_bed12
+from norad.libraries.validation import (
+    Snapshot,
+    add_output_arguments,
+    build_report,
+    fail,
+    lexical_path,
+    run_from_args,
+    stable_text,
+)
+from norad.stages.gtf_to_bed12 import converter
 
-import gtf_to_bed12
-
-from norad.libraries import validation as report
-from norad.libraries.alignments import bed as bed_report
-
+DESCRIPTION = __doc__
 CHECK_IDS = {
     "bed12_structure",
     "coordinate_sorting",
@@ -27,40 +27,44 @@ CHECK_IDS = {
 }
 
 
-def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__)
+def configure_parser(parser: argparse.ArgumentParser) -> None:
+    """Add the BED12 validator owner's arguments to a command parser."""
     parser.add_argument("--scope-id", required=True)
     parser.add_argument("--bed12", required=True, type=Path)
     parser.add_argument("--source-gtf", required=True, type=Path)
-    report.add_output_arguments(parser)
-    return parser.parse_args(argv)
+    add_output_arguments(parser)
 
 
-def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Snapshot]]:
-    if not args.scope_id or any(char.isspace() for char in args.scope_id):
-        report.fail("scope-id must be nonempty and contain no whitespace")
-    bed = report.lexical_path(args.bed12)
-    gtf = report.lexical_path(args.source_gtf)
-    rows, bed_snapshot = bed_report.parse_bed12(bed)
-    _, gtf_snapshot = report.stable_text(gtf, "Source GTF")
-    structural, sorted_rows, blocks_valid, unique_names = bed_report.inspect_bed12_rows(
-        rows
-    )
-    warnings = io.StringIO()
+def build_validation_report(
+    arguments: argparse.Namespace,
+) -> tuple[bytes, dict[Path, Snapshot]]:
+    if not arguments.scope_id or any(
+        character.isspace() for character in arguments.scope_id
+    ):
+        fail("scope-id must be nonempty and contain no whitespace")
+
+    bed_path = lexical_path(arguments.bed12)
+    gtf_path = lexical_path(arguments.source_gtf)
+    rows, bed_snapshot = parse_bed12(bed_path)
+    _, gtf_snapshot = stable_text(gtf_path, "Source GTF")
+    structural, sorted_rows, blocks_valid, unique_names = inspect_bed12_rows(rows)
     try:
-        transcripts = gtf_to_bed12.parse_gtf(
-            gtf, "exon", "transcript_id", "gene_id", warnings
+        expected_records = converter.normalize_gtf(
+            gtf_path,
+            "exon",
+            "transcript_id",
+            "gene_id",
         )
-        expected_records = gtf_to_bed12.build_bed_records(transcripts, warnings)
     except (OSError, ValueError) as exc:
-        report.fail(f"Source GTF cannot be normalized: {exc}")
+        fail(f"Source GTF cannot be normalized: {exc}")
+
     expected_lines = [record.to_line() for record in expected_records]
     observed_lines = ["\t".join(values) for values in rows]
     agreement = observed_lines == expected_lines
-    return report.build_report(
+    return build_report(
         "00b",
-        args.scope_id,
-        {bed: bed_snapshot, gtf: gtf_snapshot},
+        arguments.scope_id,
+        {bed_path: bed_snapshot, gtf_path: gtf_snapshot},
         CHECK_IDS,
         {
             "bed12_structure": (
@@ -97,10 +101,11 @@ def build_report(args: argparse.Namespace) -> tuple[bytes, dict[Path, report.Sna
     )
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    args = parse_args(argv)
-    return report.run_from_args(args, build_report, "00b", CHECK_IDS)
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+def validate_from_args(arguments: argparse.Namespace) -> int:
+    """Validate and report one parsed Step 00b BED12 request."""
+    return run_from_args(
+        arguments,
+        build_validation_report,
+        "00b",
+        CHECK_IDS,
+    )

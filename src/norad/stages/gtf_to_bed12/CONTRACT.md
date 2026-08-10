@@ -4,8 +4,8 @@ This document records the observed current contract of historical Step `00b`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
 is now the implemented native source owner for its producer, validator, and
-scheduler entry point; it is not a Python package and exposes no package import
-identity.
+scheduler entry point. Its Python implementation is an installed owner package;
+its public Python surfaces are only the grouped routes documented below.
 
 The adjacent [`README.md`](README.md) routes maintainers and operators to the
 implemented assets, supported commands, diagnostics, and recovery boundary.
@@ -73,12 +73,12 @@ responsibility rather than a proven functional requirement.
 
 ## Current execution surfaces
 
-[`gtf_to_bed12.py`](gtf_to_bed12.py) is the public
-conversion entrypoint. It accepts explicit input/output and GTF-selection
-arguments, creates the output parent directory, and writes immediately. It has
-no dry-run or transactional publication mode and silently replaces the
-declared output when that path already exists; replacement is a characterized
-defect, not an approved target behavior.
+`python -I -m norad convert gtf-to-bed12` is the public conversion route,
+implemented by [`converter.py`](converter.py). It accepts explicit input/output
+and GTF-selection arguments, creates the output parent directory, and writes
+immediately. It has no dry-run or transactional publication mode and silently
+replaces the declared output when that path already exists; replacement is a
+characterized defect, not an approved target behavior.
 
 [`step_00b_gtf_to_bed12.slurm`](step_00b_gtf_to_bed12.slurm)
 is the scheduler entrypoint. It:
@@ -97,10 +97,11 @@ interface.
 
 ## Validation interface
 
-[`validate_step_00b_bed12.py`](validate_step_00b_bed12.py)
-accepts explicit scope, BED12, source-GTF, and output paths. Validation is
-dry-run by default; `--execute` publishes `<scope-id>.validation.tsv` using the
-common seven-field step-validation contract.
+`python -I -m norad validate bed12`, implemented by
+[`validator.py`](validator.py), accepts explicit scope, BED12, source-GTF, and
+output paths. Validation is dry-run by default; `--execute` publishes
+`<scope-id>.validation.tsv` using the common seven-field step-validation
+contract.
 
 The report contains exactly these five check identities:
 
@@ -115,13 +116,14 @@ repair the BED12 or source GTF. Malformed input, an invalid CLI/output contract,
 or unsafe publication state exits with code `2` without publishing a new
 report.
 
-The GTF-agreement check imports the converter's parsing and BED-record builder,
-so it compares against the producer's normalization logic rather than an
-independent implementation. The producer is its same-owner sibling. Snapshot,
-rendering, validation, locking, and publication functions come from the neutral
-shared [`validation/report.py`](../../libraries/validation/report.py)
-owner through `norad.libraries.validation`. Neither dependency creates a
-cross-stage scientific implementation edge.
+The GTF-agreement check imports the converter's normalization function, so it
+compares reconstructed BED12 rows against the producer's normalization rather
+than an independent implementation. Its report retains the historical
+`BED12 bytes equal` detail label for byte compatibility. The producer is its
+same-owner sibling. Snapshot, rendering, validation, locking, and publication
+functions come from the neutral shared
+[`validation/`](../../libraries/validation/README.md) facade. Neither dependency
+creates a cross-stage scientific implementation edge.
 
 ## Consumers
 
@@ -139,14 +141,14 @@ No downstream stage should depend on this stage's implementation module.
 
 ## Protected behavior and evidence
 
-- [`test_gtf_to_bed12.py`](../../../../tests/stages/convert_GTF_to_BED12/test_gtf_to_bed12.py) protects the
-  public CLI, exact exon-to-block conversion, sorting, warnings, configurable
-  attributes, invalid-transcript handling, failure with no valid records, and
-  characterized output replacement.
-- [`test_validate_step_00b_bed12.py`](../../../../tests/stages/convert_GTF_to_BED12/test_validate_step_00b_bed12.py)
+- [`test_gtf_to_bed12.py`](../../../../tests/stages/gtf_to_bed12/test_gtf_to_bed12.py)
+  protects the public route, exact exon-to-block conversion, sorting, warnings,
+  configurable attributes, invalid-transcript handling, failure with no valid
+  records, and characterized output replacement.
+- [`test_validate_step_00b_bed12.py`](../../../../tests/stages/gtf_to_bed12/test_validate_step_00b_bed12.py)
   protects dry-run, the five checks, mismatch evidence, structural failures,
   and preservation of foreign locks or invalid predecessors.
-- [`test_step_00b_gtf_to_bed12.py`](../../../../tests/stages/convert_GTF_to_BED12/test_step_00b_gtf_to_bed12.py)
+- [`test_step_00b_gtf_to_bed12.py`](../../../../tests/stages/gtf_to_bed12/test_step_00b_gtf_to_bed12.py)
   protects success plus the isolated missing-submit-directory, colliding-output,
   missing-GTF, nonexecutable-Python, module-failure, converter-failure,
   bedtools-failure, and bad-field scheduler states and their exact residue.
@@ -174,8 +176,8 @@ Current evidence status remains owned by the canonical roadmap and handoff.
 - The validator reuses producer normalization code for its strongest agreement
   check.
 - Cross-cutting validation publication lives in the neutral shared
-  [`validation/report.py`](../../libraries/validation/report.py) owner and is
-  imported through the validation package facade.
+  [`validation/`](../../libraries/validation/README.md) owner and is imported
+  through its stable facade.
 
 This inventory records the remaining reference-materialization, duplicated-
 sorting, and oracle boundaries without choosing an unreviewed correction.
@@ -185,4 +187,4 @@ sorting, and oracle boundaries without choosing an unreviewed correction.
 - Final owner of reference materialization.
 - Whether the target contract retains one or both sorting operations.
 - Whether GTF-agreement validation requires a producer-independent oracle.
-- Whether a later descriptor, schema, or package contract is justified.
+- Whether a later descriptor or schema contract is justified.

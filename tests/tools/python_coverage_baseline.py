@@ -15,7 +15,7 @@ SCHEMA_VERSION = "1.0.0"
 COVERAGE_VERSION = "7.15.2"
 SOURCE_ROOTS = ("scripts", "src/norad")
 REQUIRED_SUBPROCESS_FILES = (
-    "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py",
+    "src/norad/stages/gtf_to_bed12/converter.py",
     "src/norad/ingestion/sample_manifest_admission/validator.py",
 )
 NEW_SHARED_LINE_MINIMUM = (90, 100)

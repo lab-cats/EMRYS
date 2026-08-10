@@ -1,20 +1,14 @@
 import subprocess
 import sys
+from argparse import Namespace
 from pathlib import Path
 
+from norad.stages.gtf_to_bed12 import validator
 from tests.stage_validator_test_support import load_roster_oracle
 from tests.stage_validator_test_support import read_tsv as rows
 
 ROOT = Path(__file__).resolve().parents[3]
 assert_exact_check_roster = load_roster_oracle(ROOT).assert_exact_check_roster
-SCRIPT = (
-    ROOT
-    / "src"
-    / "norad"
-    / "stages"
-    / "convert_GTF_to_BED12"
-    / "validate_step_00b_bed12.py"
-)
 
 
 def fixture(tmp_path: Path):
@@ -45,7 +39,11 @@ def run(
     return subprocess.run(
         [
             sys.executable,
-            str(SCRIPT),
+            "-I",
+            "-m",
+            "norad",
+            "validate",
+            "bed12",
             "--scope-id",
             "novogene_ref",
             "--bed12",
@@ -74,9 +72,43 @@ def test_execute_publishes_passing_report(tmp_path):
     bed, gtf, output = fixture(tmp_path)
     result = run(bed, gtf, output, "--execute")
     assert result.returncode == 0, result.stderr
-    assert_exact_check_roster(rows(output), "00b")
-    assert {row["step_id"] for row in rows(output)} == {"00b"}
-    assert {row["status"] for row in rows(output)} == {"pass"}
+    report_rows = rows(output)
+    assert_exact_check_roster(report_rows, "00b")
+    assert {row["step_id"] for row in report_rows} == {"00b"}
+    assert {row["status"] for row in report_rows} == {"pass"}
+    agreement = next(
+        row for row in report_rows if row["check_id"] == "gtf_transcript_agreement"
+    )
+    assert agreement["detail"] == (
+        "BED12 bytes equal deterministic normalization of explicit GTF"
+    )
+
+
+def test_normalization_value_error_fails_closed(
+    tmp_path: Path,
+    monkeypatch,
+    capsys,
+) -> None:
+    bed, gtf, output = fixture(tmp_path)
+
+    def reject_normalization(*_args, **_kwargs):
+        raise ValueError("synthetic normalization failure")
+
+    monkeypatch.setattr(validator.converter, "normalize_gtf", reject_normalization)
+    arguments = Namespace(
+        scope_id="novogene_ref",
+        bed12=bed,
+        source_gtf=gtf,
+        output=output,
+        execute=False,
+    )
+
+    assert validator.validate_from_args(arguments) == 2
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == (
+        "ERROR: Source GTF cannot be normalized: synthetic normalization failure\n"
+    )
 
 
 def test_sort_block_and_gtf_mismatches_are_evidence(tmp_path):

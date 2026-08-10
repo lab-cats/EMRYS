@@ -2,13 +2,14 @@
 
 This directory contains the ten final native owners for computational
 transformation stages. It is a routing layer, not a shared implementation
-package, dispatcher, import API, or complete list of numbered pipeline
-activities.
+package, generic dispatcher, or complete list of numbered pipeline activities.
+Only explicitly migrated children enter the installed Python distribution and
+grouped module interface.
 
 | Historical alias | Native owner |
 | --- | --- |
 | `00a` | [`construct_STAR_index`](construct_STAR_index/README.md) |
-| `00b` | [`convert_GTF_to_BED12`](convert_GTF_to_BED12/README.md) |
+| `00b` | [`convert_GTF_to_BED12`](gtf_to_bed12/README.md) |
 | `00c` | [`construct_FASTA_sidecars`](construct_FASTA_sidecars/README.md) |
 | `01` | [`align_RNA_reads_with_STAR`](align_RNA_reads_with_STAR/README.md) |
 | `02` | [`construct_canonical_BAM`](construct_canonical_BAM/README.md) |
@@ -36,7 +37,9 @@ ownership.
 For `00a`, the SLURM file embeds the producer rather than delegating to a
 separate shell or Python producer. For `08`, the shell transaction owner
 delegates its scientific transform to the adjacent Rscript implementation.
-These are repository-path interfaces, not installed commands or import APIs.
+Step `00b` exposes its migrated producer and validator through the grouped
+module interface. The remaining stage interfaces are still repository paths,
+not installed commands or import APIs.
 
 Each owner declares and governs the outputs produced through its interfaces,
 normally under ignored `results/` or declared reference storage. A file,

@@ -69,6 +69,9 @@ CROSS_CUTTING_OWNER_DOCS = (
     "src/norad/ingestion/sample_manifest_admission/README.md",
     "src/norad/reporting/README.md",
 )
+SOURCE_OWNER_DIRECTORY_NAMES = {
+    ("stage", "convert_GTF_to_BED12"): "gtf_to_bed12",
+}
 
 
 class DocumentationError(RuntimeError):
@@ -171,8 +174,9 @@ def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
     domain_by_kind = {"stage": "stages", "analysis": "analyses", "evidence": "evidence"}
     for kind, slug in identities:
         domain = domain_by_kind[kind]
-        owner = root / "src" / "norad" / domain / slug
-        tests = root / "tests" / domain / slug
+        owner_name = SOURCE_OWNER_DIRECTORY_NAMES.get((kind, slug), slug)
+        owner = root / "src" / "norad" / domain / owner_name
+        tests = root / "tests" / domain / owner_name
         for basename in ("README.md", "CONTRACT.md"):
             if not (owner / basename).is_file():
                 problems.append(

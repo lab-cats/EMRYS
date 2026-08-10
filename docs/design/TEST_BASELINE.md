@@ -46,7 +46,7 @@ The active policy:
 - measures branches and Python subprocesses over exactly `scripts` and
   `src/norad`;
 - requires subprocess coverage for
-  `src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py` and
+  `src/norad/stages/gtf_to_bed12/converter.py` and
   `src/norad/ingestion/sample_manifest_admission/validator.py`;
 - rejects any exact-ratio decrease in global line or branch coverage;
 - rejects disappearance of a tracked baseline module;

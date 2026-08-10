@@ -12,10 +12,10 @@
     {
       "branch_rate": "0.940678",
       "covered_branches": 111,
-      "covered_lines": 219,
-      "line_rate": "0.964758",
+      "covered_lines": 221,
+      "line_rate": "0.965066",
       "num_branches": 118,
-      "num_statements": 227,
+      "num_statements": 229,
       "path": "scripts/git_orchestration/validate_documentation.py"
     },
     {
@@ -39,10 +39,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 14,
-      "covered_lines": 49,
+      "covered_lines": 59,
       "line_rate": "1.000000",
       "num_branches": 14,
-      "num_statements": 49,
+      "num_statements": 59,
       "path": "src/norad/__main__.py"
     },
     {
@@ -1342,6 +1342,15 @@
       "path": "src/norad/reporting/render_run_report_bundle.py"
     },
     {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
+      "path": "src/norad/stages/__init__.py"
+    },
+    {
       "branch_rate": "0.500000",
       "covered_branches": 1,
       "covered_lines": 38,
@@ -1378,24 +1387,6 @@
       "path": "src/norad/stages/construct_canonical_BAM/validate_step_02_canonical_bam.py"
     },
     {
-      "branch_rate": "0.785714",
-      "covered_branches": 44,
-      "covered_lines": 151,
-      "line_rate": "0.904192",
-      "num_branches": 56,
-      "num_statements": 167,
-      "path": "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py"
-    },
-    {
-      "branch_rate": "0.500000",
-      "covered_branches": 2,
-      "covered_lines": 39,
-      "line_rate": "0.928571",
-      "num_branches": 4,
-      "num_statements": 42,
-      "path": "src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py"
-    },
-    {
       "branch_rate": "1.000000",
       "covered_branches": 4,
       "covered_lines": 47,
@@ -1403,6 +1394,33 @@
       "num_branches": 4,
       "num_statements": 47,
       "path": "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/validate_step_07_mpileup_outputs.py"
+    },
+    {
+      "branch_rate": "1.000000",
+      "covered_branches": 0,
+      "covered_lines": 0,
+      "line_rate": "1.000000",
+      "num_branches": 0,
+      "num_statements": 0,
+      "path": "src/norad/stages/gtf_to_bed12/__init__.py"
+    },
+    {
+      "branch_rate": "0.814815",
+      "covered_branches": 44,
+      "covered_lines": 166,
+      "line_rate": "0.943182",
+      "num_branches": 54,
+      "num_statements": 176,
+      "path": "src/norad/stages/gtf_to_bed12/converter.py"
+    },
+    {
+      "branch_rate": "0.500000",
+      "covered_branches": 1,
+      "covered_lines": 30,
+      "line_rate": "0.967742",
+      "num_branches": 2,
+      "num_statements": 31,
+      "path": "src/norad/stages/gtf_to_bed12/validator.py"
     },
     {
       "branch_rate": "0.500000",
@@ -1464,7 +1482,7 @@
       "line_rate": "0.900000"
     },
     "required_subprocess_coverage": [
-      "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py",
+      "src/norad/stages/gtf_to_bed12/converter.py",
       "src/norad/ingestion/sample_manifest_admission/validator.py"
     ]
   },
@@ -1474,11 +1492,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.747975",
-    "covered_branches": 3324,
-    "covered_lines": 10279,
-    "line_rate": "0.859592",
-    "num_branches": 4444,
-    "num_statements": 11958
+    "branch_rate": "0.748423",
+    "covered_branches": 3323,
+    "covered_lines": 10297,
+    "line_rate": "0.860378",
+    "num_branches": 4440,
+    "num_statements": 11968
   }
 }

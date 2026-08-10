@@ -52,8 +52,8 @@ EXPECTED_PRODUCER_EVIDENCE = {
         "f27924e80fee3b8f207a41fd7af472897ad51f06aa2e4c670973eb51f25b5fcc",
     ),
     "00b": (
-        "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py",
-        "ddca3b0f11bb690fdee60f99b8885be74b64000b02dd250d7740ab9db47a9a79",
+        "src/norad/stages/gtf_to_bed12/converter.py",
+        "b97e35fdb9b60e008f80897c9014dd3f38e2e38c0ba14b1a62c641cc4b8feaab",
     ),
     "00c": (
         "src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh",

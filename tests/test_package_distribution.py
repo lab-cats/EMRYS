@@ -110,9 +110,7 @@ def test_cli_rejects_another_checkout_but_accepts_its_editable_owner(
     assert norad_cli._checkout_mismatch() is None
 
 
-def test_wheel_contains_only_explicit_packages_and_exact_resources(
-    tmp_path: Path,
-) -> None:
+def _build_wheel(tmp_path: Path) -> tuple[Path, Path]:
     project = tmp_path / "project"
     project.mkdir()
     shutil.copy2(REPO_ROOT / "pyproject.toml", project / "pyproject.toml")
@@ -138,8 +136,10 @@ def test_wheel_contains_only_explicit_packages_and_exact_resources(
     assert build.returncode == 0, build.stdout + build.stderr
     wheels = list(wheel_directory.glob("*.whl"))
     assert len(wheels) == 1
-    wheel = wheels[0]
+    return project, wheels[0]
 
+
+def _assert_wheel_contents(wheel: Path) -> None:
     with zipfile.ZipFile(wheel) as archive:
         members = set(archive.namelist())
         assert set(RESOURCE_PATHS) <= members
@@ -155,15 +155,20 @@ def test_wheel_contains_only_explicit_packages_and_exact_resources(
             "norad/ingestion/sample_manifest_admission/validate_manifest.py"
             not in members
         )
-        assert not any(
-            member.startswith(("norad/analyses/", "norad/stages/"))
-            for member in members
-        )
+        assert {member for member in members if member.startswith("norad/stages/")} == {
+            "norad/stages/__init__.py",
+            "norad/stages/gtf_to_bed12/__init__.py",
+            "norad/stages/gtf_to_bed12/converter.py",
+            "norad/stages/gtf_to_bed12/validator.py",
+        }
+        assert not any(member.startswith("norad/analyses/") for member in members)
         assert not any(member.endswith((".R", ".sh", ".slurm")) for member in members)
         for resource in RESOURCE_PATHS:
             source = REPO_ROOT / "src" / resource
             assert archive.read(resource) == source.read_bytes()
 
+
+def _assert_target_install(wheel: Path, tmp_path: Path) -> Path:
     target = tmp_path / "installed"
     install = run_command(
         [
@@ -182,8 +187,8 @@ def test_wheel_contains_only_explicit_packages_and_exact_resources(
     )
     assert install.returncode == 0, install.stdout + install.stderr
 
-    arbitrary_working_directory = tmp_path / "arbitrary-cwd"
-    arbitrary_working_directory.mkdir()
+    working_directory = tmp_path / "arbitrary-cwd"
+    working_directory.mkdir()
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(target)
     probe = subprocess.run(
@@ -207,7 +212,7 @@ def test_wheel_contains_only_explicit_packages_and_exact_resources(
                 "str(PDF_TEMPLATE)]}))"
             ),
         ],
-        cwd=arbitrary_working_directory,
+        cwd=working_directory,
         env=environment,
         text=True,
         capture_output=True,
@@ -225,7 +230,10 @@ def test_wheel_contains_only_explicit_packages_and_exact_resources(
         "scientific-review-record",
     ]
     assert all(Path(path).is_file() for path in observed["resources"])
+    return working_directory
 
+
+def _install_wheel_in_environment(wheel: Path, tmp_path: Path) -> Path:
     environment_directory = tmp_path / "environment"
     create_environment = run_command(
         [sys.executable, "-m", "venv", str(environment_directory)],
@@ -249,53 +257,138 @@ def test_wheel_contains_only_explicit_packages_and_exact_resources(
         cwd=tmp_path,
     )
     assert install_wheel.returncode == 0, install_wheel.stdout + install_wheel.stderr
+    return environment_python
 
-    foreign_root = tmp_path / "foreign"
-    foreign_package = foreign_root / "norad"
+
+def _hostile_python_environment(tmp_path: Path) -> dict[str, str]:
+    foreign_package = tmp_path / "foreign" / "norad"
     foreign_package.mkdir(parents=True)
     (foreign_package / "__init__.py").write_text(
         "raise RuntimeError('foreign norad package imported')\n",
         encoding="utf-8",
     )
-    isolated_environment = os.environ.copy()
-    isolated_environment["PYTHONPATH"] = str(foreign_root)
-    command_probe = subprocess.run(
-        [
-            str(environment_python),
-            "-I",
-            "-m",
-            "norad",
-            "validate",
-            "manifest",
-            "--help",
-        ],
-        cwd=arbitrary_working_directory,
-        env=isolated_environment,
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(foreign_package.parent)
+    return environment
+
+
+def _run_installed_norad(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+    *arguments: str,
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [str(environment_python), "-I", "-m", "norad", *arguments],
+        cwd=working_directory,
+        env=environment,
         text=True,
         capture_output=True,
         check=False,
     )
-    assert command_probe.returncode == 0, command_probe.stdout + command_probe.stderr
-    assert "usage: norad validate manifest" in command_probe.stdout
-    retired_path = (
-        REPO_ROOT / "src/norad/ingestion/sample_manifest_admission/validate_manifest.py"
-    )
-    validator_path = (
-        REPO_ROOT / "src/norad/ingestion/sample_manifest_admission/validator.py"
-    )
-    assert not retired_path.exists()
-    assert validator_path.stat().st_mode & 0o111 == 0
 
+
+def _assert_installed_commands(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    manifest_help = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "manifest",
+        "--help",
+    )
+    assert manifest_help.returncode == 0, manifest_help.stdout + manifest_help.stderr
+    assert "usage: norad validate manifest" in manifest_help.stdout
+
+    bed12_help = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "bed12",
+        "--help",
+    )
+    assert bed12_help.returncode == 0, bed12_help.stdout + bed12_help.stderr
+    assert "usage: norad validate bed12" in bed12_help.stdout
+
+    gtf_path = working_directory / "input.gtf"
+    bed_path = working_directory / "output" / "models.bed"
+    unrelated_path = working_directory / "unrelated.txt"
+    gtf_path.write_text(
+        'chr1\tfixture\texon\t1\t4\t.\t+\t.\tgene_id "g1"; transcript_id "tx1";\n',
+        encoding="utf-8",
+    )
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+    conversion = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "convert",
+        "gtf-to-bed12",
+        "--gtf",
+        str(gtf_path),
+        "--bed",
+        str(bed_path),
+    )
+    assert conversion.returncode == 0, conversion.stdout + conversion.stderr
+    assert conversion.stderr == ""
+    assert conversion.stdout == f"Wrote 1 transcript BED12 record(s) to {bed_path}\n"
+    assert bed_path.read_bytes() == (b"chr1\t0\t4\ttx1|g1\t0\t+\t0\t4\t0\t1\t4,\t0,\n")
+    assert unrelated_path.read_text(encoding="utf-8") == "preserve\n"
+
+
+def _assert_private_source_layout() -> None:
+    manifest_owner = REPO_ROOT / "src/norad/ingestion/sample_manifest_admission"
+    assert not (manifest_owner / "validate_manifest.py").exists()
+    assert (manifest_owner / "validator.py").stat().st_mode & 0o111 == 0
+
+    stage_owner = REPO_ROOT / "src/norad/stages/gtf_to_bed12"
+    assert not (REPO_ROOT / "src/norad/stages/convert_GTF_to_BED12").exists()
+    for retired_name in ("gtf_to_bed12.py", "validate_step_00b_bed12.py"):
+        assert not (stage_owner / retired_name).exists()
+    for private_name in ("converter.py", "validator.py"):
+        assert (stage_owner / private_name).stat().st_mode & 0o111 == 0
+
+
+def _assert_wrong_checkout_rejected(
+    environment_python: Path,
+    project: Path,
+    environment: dict[str, str],
+) -> None:
     nested_checkout_directory = project / "nested" / "work"
     nested_checkout_directory.mkdir(parents=True)
     for working_directory in (project, nested_checkout_directory):
-        wrong_checkout_probe = subprocess.run(
-            [str(environment_python), "-I", "-m", "norad", "--help"],
-            cwd=working_directory,
-            env=isolated_environment,
-            text=True,
-            capture_output=True,
-            check=False,
+        probe = _run_installed_norad(
+            environment_python,
+            working_directory,
+            environment,
+            "--help",
         )
-        assert wrong_checkout_probe.returncode == 2
-        assert "not the current checkout" in wrong_checkout_probe.stderr
+        assert probe.returncode == 2
+        assert "not the current checkout" in probe.stderr
+
+
+def test_wheel_contains_only_explicit_packages_and_exact_resources(
+    tmp_path: Path,
+) -> None:
+    project, wheel = _build_wheel(tmp_path)
+
+    _assert_wheel_contents(wheel)
+    arbitrary_working_directory = _assert_target_install(wheel, tmp_path)
+    environment_python = _install_wheel_in_environment(wheel, tmp_path)
+    isolated_environment = _hostile_python_environment(tmp_path)
+    _assert_installed_commands(
+        environment_python,
+        arbitrary_working_directory,
+        isolated_environment,
+    )
+    _assert_private_source_layout()
+    _assert_wrong_checkout_rejected(
+        environment_python,
+        project,
+        isolated_environment,
+    )

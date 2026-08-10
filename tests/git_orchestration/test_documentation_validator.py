@@ -45,7 +45,7 @@ CANONICAL_H1S = {
     "src/norad/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
 }
 SEMANTIC_OWNERS = (
-    ("stage", "STAGE-01"),
+    ("stage", "convert_GTF_to_BED12"),
     ("stage", "STAGE-02"),
     ("stage", "STAGE-03"),
     ("stage", "STAGE-04"),
@@ -60,6 +60,9 @@ SEMANTIC_OWNERS = (
     ("evidence", "EVIDENCE-02"),
     ("evidence", "EVIDENCE-03"),
 )
+SOURCE_OWNER_DIRECTORIES = {
+    ("stage", "convert_GTF_to_BED12"): "gtf_to_bed12",
+}
 CROSS_CUTTING_DOCS = (
     "src/norad/contracts/artifacts/README.md",
     "src/norad/evidence/reference_provenance/README.md",
@@ -138,9 +141,14 @@ def write_fixture(root: Path) -> Path:
     domain_by_kind = {"stage": "stages", "analysis": "analyses", "evidence": "evidence"}
     for kind, slug in SEMANTIC_OWNERS:
         domain = domain_by_kind[kind]
-        files[f"src/norad/{domain}/{slug}/README.md"] = "# Owner\n"
-        files[f"src/norad/{domain}/{slug}/CONTRACT.md"] = "# Contract\n"
-        files[f"tests/{domain}/{slug}/.keep"] = "fixture\n"
+        source_directory = SOURCE_OWNER_DIRECTORIES.get((kind, slug), slug)
+        files[f"src/norad/{domain}/{source_directory}/README.md"] = (
+            f"# `{slug}` owner\n"
+        )
+        files[f"src/norad/{domain}/{source_directory}/CONTRACT.md"] = (
+            f"# `{slug}` {kind} contract\n"
+        )
+        files[f"tests/{domain}/{source_directory}/.keep"] = "fixture\n"
     for relative, text in files.items():
         path = repository / relative
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -207,7 +215,7 @@ def test_rejects_stage_map_and_owner_failures(tmp_path: Path) -> None:
         "| stage | Fixture | `STAGE-01` | `norad.stage.STAGE-01.v1` | `00` |\n",
         encoding="utf-8",
     )
-    (repository / "src/norad/stages/STAGE-01/CONTRACT.md").unlink()
+    (repository / "src/norad/stages/gtf_to_bed12/CONTRACT.md").unlink()
     (repository / "src/norad/reporting/README.md").unlink()
 
     result = validate(repository, cwd=tmp_path)
@@ -219,7 +227,7 @@ def test_rejects_stage_map_and_owner_failures(tmp_path: Path) -> None:
 
 def test_rejects_missing_semantic_owner_after_valid_roster(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
-    (repository / "src/norad/stages/STAGE-01/CONTRACT.md").unlink()
+    (repository / "src/norad/stages/gtf_to_bed12/CONTRACT.md").unlink()
     shutil.rmtree(repository / "tests/stages/STAGE-02")
 
     result = validate(repository, cwd=tmp_path)

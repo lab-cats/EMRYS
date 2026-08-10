@@ -26,7 +26,6 @@ MAKE_EXPANSION_GOLDEN = (
 PYTHON_ENTRYPOINT_PATHS = {
     "build_artifact_index.py": Path("src/norad/reporting/build_artifact_index.py"),
     "build_run_summary.py": Path("src/norad/reporting/build_run_summary.py"),
-    "gtf_to_bed12.py": Path("src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py"),
     "reference_provenance.py": Path(
         "src/norad/evidence/reference_provenance/reference_provenance.py"
     ),
@@ -50,9 +49,6 @@ PYTHON_ENTRYPOINT_PATHS = {
     ),
     "validate_step_00a_star_index.py": Path(
         "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
-    ),
-    "validate_step_00b_bed12.py": Path(
-        "src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py"
     ),
     "validate_step_00c_reference_sidecars.py": Path(
         "src/norad/stages/construct_FASTA_sidecars/"
@@ -108,7 +104,6 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
         "step_09c_scientific_validation.py",
         "validate_artifact_contracts.py",
         "validate_step_00a_star_index.py",
-        "validate_step_00b_bed12.py",
         "validate_step_00c_reference_sidecars.py",
         "validate_step_01_star_alignment.py",
         "validate_step_02_canonical_bam.py",
@@ -126,7 +121,6 @@ PRIVATE_PYTHON_MODULES = frozenset()
 DIRECT_PYTHON_ENTRYPOINTS = frozenset(
     {
         "build_run_summary.py",
-        "gtf_to_bed12.py",
         "reference_provenance.py",
         "render_run_report.py",
         "restore_quarto.py",
@@ -135,7 +129,11 @@ DIRECT_PYTHON_ENTRYPOINTS = frozenset(
     }
 )
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
-NORAD_COMMANDS = (("validate", "manifest"),)
+NORAD_COMMANDS = (
+    (("convert", "gtf-to-bed12"), "usage: norad convert gtf-to-bed12"),
+    (("validate", "bed12"), "usage: norad validate bed12"),
+    (("validate", "manifest"), "usage: norad validate manifest"),
+)
 
 SHELL_ENTRYPOINT_PATHS = {
     "check_fastq_pairs.sh": Path(
@@ -504,9 +502,10 @@ def test_python_help_and_parse_failure_are_cwd_independent_and_side_effect_free(
     assert relative_snapshot(tmp_path) == before
 
 
-@pytest.mark.parametrize("command", NORAD_COMMANDS)
+@pytest.mark.parametrize(("command", "expected_usage"), NORAD_COMMANDS)
 def test_installed_norad_commands_are_isolated_and_cwd_independent(
     command: tuple[str, ...],
+    expected_usage: str,
     tmp_path: Path,
 ) -> None:
     foreign_root = tmp_path / "foreign"
@@ -541,14 +540,17 @@ def test_installed_norad_commands_are_isolated_and_cwd_independent(
     )
 
     assert help_result.returncode == 0, help_result.stderr
-    assert "usage: norad validate manifest" in help_result.stdout
+    assert expected_usage in help_result.stdout
     assert parse_failure.returncode != 0
-    assert "usage: norad validate manifest" in parse_failure.stderr
+    assert expected_usage in parse_failure.stderr
     assert "foreign norad package imported" not in help_result.stderr
     assert relative_snapshot(tmp_path) == before
 
 
-@pytest.mark.parametrize("arguments", (("--help",), ("validate", "--help")))
+@pytest.mark.parametrize(
+    "arguments",
+    (("--help",), ("convert", "--help"), ("validate", "--help")),
+)
 def test_installed_norad_command_routing_help(
     arguments: tuple[str, ...],
     tmp_path: Path,

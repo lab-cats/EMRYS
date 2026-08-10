@@ -12,6 +12,10 @@ from typing import cast
 from norad.ingestion.sample_manifest_admission import (
     validator as manifest_command,
 )
+from norad.stages.gtf_to_bed12 import (
+    converter as gtf_to_bed12_command,
+)
+from norad.stages.gtf_to_bed12 import validator as bed12_validation_command
 
 CommandHandler = Callable[[argparse.Namespace], int]
 
@@ -58,6 +62,25 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="COMMAND",
         required=True,
     )
+    convert_parser = command_parsers.add_parser(
+        "convert",
+        help="Convert an explicitly selected NORAD input.",
+    )
+    conversion_parsers = convert_parser.add_subparsers(
+        dest="conversion",
+        metavar="SUBJECT",
+        required=True,
+    )
+    gtf_to_bed12_parser = conversion_parsers.add_parser(
+        "gtf-to-bed12",
+        help="Convert GTF transcript models to BED12.",
+        description=gtf_to_bed12_command.DESCRIPTION,
+    )
+    gtf_to_bed12_command.configure_parser(gtf_to_bed12_parser)
+    gtf_to_bed12_parser.set_defaults(
+        _command_handler=gtf_to_bed12_command.convert_from_args
+    )
+
     validate_parser = command_parsers.add_parser(
         "validate",
         help="Validate an explicitly selected NORAD input or artifact.",
@@ -74,6 +97,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     manifest_command.configure_parser(manifest_parser)
     manifest_parser.set_defaults(_command_handler=manifest_command.validate_from_args)
+    bed12_parser = validation_parsers.add_parser(
+        "bed12",
+        help="Validate one BED12 against its source GTF.",
+        description=bed12_validation_command.DESCRIPTION,
+    )
+    bed12_validation_command.configure_parser(bed12_parser)
+    bed12_parser.set_defaults(
+        _command_handler=bed12_validation_command.validate_from_args
+    )
     return parser
 
 
