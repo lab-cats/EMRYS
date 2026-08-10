@@ -10,7 +10,7 @@ grouped module interface.
 | --- | --- |
 | `00a` | [`construct_STAR_index`](star_index/README.md) |
 | `00b` | [`convert_GTF_to_BED12`](gtf_to_bed12/README.md) |
-| `00c` | [`construct_FASTA_sidecars`](construct_FASTA_sidecars/README.md) |
+| `00c` | [`construct_FASTA_sidecars`](fasta_sidecars/README.md) |
 | `01` | [`align_RNA_reads_with_STAR`](align_RNA_reads_with_STAR/README.md) |
 | `02` | [`construct_canonical_BAM`](construct_canonical_BAM/README.md) |
 | `04` | [`mark_BAM_duplicates_with_Picard`](mark_BAM_duplicates_with_Picard/README.md) |
@@ -37,7 +37,9 @@ ownership.
 For `00a`, the SLURM file embeds the producer rather than delegating to a
 separate shell or Python producer, while its validator is exposed as
 `python -I -m norad validate star-index`. Step `00b` exposes its migrated
-producer and validator through the grouped module interface. For `08`, the
+producer and validator through the grouped module interface. Step `00c` keeps
+its shell producer and scheduler as repository-path interfaces while exposing
+its validator as `python -I -m norad validate fasta-sidecars`. For `08`, the
 shell transaction owner delegates its scientific transform to the adjacent
 Rscript implementation. The remaining stage interfaces are still repository
 paths, not installed commands or import APIs.

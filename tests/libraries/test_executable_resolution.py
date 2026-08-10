@@ -16,8 +16,10 @@ SOURCE_LINE = (
     '../../libraries/executable_resolution.sh"'
 )
 CONSUMERS = {
-    ROOT / "src/norad/stages/construct_FASTA_sidecars/"
-    "step_00c_prepare_gatk_reference.sh": (0o755, 3),
+    ROOT / "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh": (
+        0o755,
+        3,
+    ),
     ROOT / "src/norad/stages/split_N_cigar_reads_with_GATK/"
     "step_05_split_n_cigar_reads.sh": (0o644, 3),
     ROOT / "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"

@@ -3,8 +3,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh"
-JOB="$REPO_ROOT/src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.slurm"
+SCRIPT="$REPO_ROOT/src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
+JOB="$REPO_ROOT/src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2

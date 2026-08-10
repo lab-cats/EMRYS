@@ -46,8 +46,8 @@ CANONICAL_H1S = {
 }
 SEMANTIC_OWNERS = (
     ("stage", "construct_STAR_index"),
+    ("stage", "construct_FASTA_sidecars"),
     ("stage", "convert_GTF_to_BED12"),
-    ("stage", "STAGE-03"),
     ("stage", "STAGE-04"),
     ("stage", "STAGE-05"),
     ("stage", "STAGE-06"),
@@ -62,6 +62,7 @@ SEMANTIC_OWNERS = (
 )
 SOURCE_OWNER_DIRECTORIES = {
     ("stage", "construct_STAR_index"): "star_index",
+    ("stage", "construct_FASTA_sidecars"): "fasta_sidecars",
     ("stage", "convert_GTF_to_BED12"): "gtf_to_bed12",
 }
 CROSS_CUTTING_DOCS = (

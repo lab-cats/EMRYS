@@ -6,16 +6,19 @@ evidence limits.
 
 ## Entry points
 
-- producer: [`step_00c_prepare_gatk_reference.sh`](step_00c_prepare_gatk_reference.sh)
-- validator: [`validate_step_00c_reference_sidecars.py`](validate_step_00c_reference_sidecars.py)
-- scheduler: [`step_00c_prepare_gatk_reference.slurm`](step_00c_prepare_gatk_reference.slurm)
+- repository producer:
+  [`step_00c_prepare_gatk_reference.sh`](step_00c_prepare_gatk_reference.sh)
+- grouped validator: `python -I -m norad validate fasta-sidecars`, implemented
+  by the private [`validator.py`](validator.py) module
+- repository scheduler:
+  [`step_00c_prepare_gatk_reference.slurm`](step_00c_prepare_gatk_reference.slurm)
 
 ## Operate
 
 Producer dry-run resolves every tool and writes nothing:
 
 ```bash
-src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh \
+src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh \
   --reference-fasta refs/novogene_ref/genome.fa \
   --samtools-bin /absolute/path/to/samtools \
   --gatk-bin /absolute/path/to/gatk \
@@ -29,7 +32,7 @@ after DICT failure and is incomplete-attempt evidence, not success.
 Validator dry-run:
 
 ```bash
-.venv/bin/python src/norad/stages/construct_FASTA_sidecars/validate_step_00c_reference_sidecars.py \
+.venv/bin/python -I -m norad validate fasta-sidecars \
   --scope-id novogene_ref \
   --reference-fasta refs/novogene_ref/genome.fa \
   --reference-fai refs/novogene_ref/genome.fa.fai \
@@ -37,9 +40,11 @@ Validator dry-run:
   --output results/qc/validation/00c/novogene_ref.validation.tsv
 ```
 
-Create the output parent and add `--execute` to publish. The validator shares
-the neutral contig parser with reference provenance and the Step `05`
-validator; each consumer retains its own evidence decision.
+Create the output parent and add `--execute` to publish. From another working
+directory, use the absolute path to the installed interpreter and explicit
+absolute input and output paths. The validator shares the neutral contig parser
+with reference provenance and the Step `05` validator; each consumer retains
+its own evidence decision.
 
 SLURM requires explicit final paths. Omit `EXECUTE=1` for dry-run:
 
@@ -51,7 +56,7 @@ SAMTOOLS_BIN_OVERRIDE=/absolute/path/to/samtools \
 GATK_BIN_OVERRIDE=/absolute/path/to/gatk \
 JAVA_BIN_OVERRIDE=/absolute/path/to/java TMPDIR=/absolute/path/to/tmp \
 EXECUTE=1 \
-  sbatch src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.slurm
+  sbatch src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm
 ```
 
 Site defaults are not portable. The wrapper checks only nonempty FAI and DICT;
@@ -65,9 +70,9 @@ After provenance and ownership are established, an authorized rerun may
 generate only the missing sidecar.
 
 ```bash
-bash tests/stages/construct_FASTA_sidecars/test_step_00c_prepare_gatk_reference.sh
+bash tests/stages/fasta_sidecars/test_step_00c_prepare_gatk_reference.sh
 .venv/bin/python -m pytest -q \
-  tests/stages/construct_FASTA_sidecars/test_validate_step_00c_reference_sidecars.py \
+  tests/stages/fasta_sidecars/test_validate_step_00c_reference_sidecars.py \
   tests/test_slurm_wrapper_contracts.py
 ```
 

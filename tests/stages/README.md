@@ -5,7 +5,7 @@ This directory mirrors the ten computational stage owners.
 - Reference building:
   [`star_index/`](star_index/README.md),
   [`gtf_to_bed12/`](gtf_to_bed12/README.md), and
-  [`construct_FASTA_sidecars/`](construct_FASTA_sidecars/README.md).
+  [`fasta_sidecars/`](fasta_sidecars/README.md).
 - Sample processing:
   [`align_RNA_reads_with_STAR/`](align_RNA_reads_with_STAR/README.md),
   [`construct_canonical_BAM/`](construct_canonical_BAM/README.md),

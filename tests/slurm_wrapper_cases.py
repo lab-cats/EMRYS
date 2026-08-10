@@ -46,7 +46,7 @@ CONTRACTS = {
         output_validation="bed12_field_count",
     ),
     "step_00c_prepare_gatk_reference.slurm": contract(
-        "src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh",
+        "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_calls=("list", "load samtools/1.19.2", "list"),
     ),

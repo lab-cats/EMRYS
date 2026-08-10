@@ -12,6 +12,7 @@ from typing import cast
 from norad.ingestion.sample_manifest_admission import (
     validator as manifest_command,
 )
+from norad.stages.fasta_sidecars import validator as fasta_sidecars_validation_command
 from norad.stages.gtf_to_bed12 import (
     converter as gtf_to_bed12_command,
 )
@@ -106,6 +107,15 @@ def build_parser() -> argparse.ArgumentParser:
     bed12_validation_command.configure_parser(bed12_parser)
     bed12_parser.set_defaults(
         _command_handler=bed12_validation_command.validate_from_args
+    )
+    fasta_sidecars_parser = validation_parsers.add_parser(
+        "fasta-sidecars",
+        help="Validate FASTA index and dictionary sidecars.",
+        description=fasta_sidecars_validation_command.DESCRIPTION,
+    )
+    fasta_sidecars_validation_command.configure_parser(fasta_sidecars_parser)
+    fasta_sidecars_parser.set_defaults(
+        _command_handler=fasta_sidecars_validation_command.validate_from_args
     )
     star_index_parser = validation_parsers.add_parser(
         "star-index",

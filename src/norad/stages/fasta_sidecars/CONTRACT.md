@@ -3,8 +3,10 @@
 This document records the observed current contract of historical Step `00c`.
 The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug and is now the implemented source owner. It is not a
-Python package and establishes no package import identity.
+is the lowercase physical source owner for that semantic identity. Its Python
+implementation is an installed owner package; its only public Python surface is
+the grouped validator route. The shell producer and scheduler remain explicit
+repository-path interfaces and are not installed commands.
 
 ## Responsibility
 
@@ -91,10 +93,11 @@ preserved for later correction rather than normalized in this inventory.
 
 ## Validation interface
 
-[`validate_step_00c_reference_sidecars.py`](validate_step_00c_reference_sidecars.py)
-accepts explicit scope, FASTA, `FAI`, `DICT`, and output paths. Validation is
-dry-run by default; `--execute` publishes `<scope-id>.validation.tsv` using the
-common seven-field step-validation contract.
+`python -I -m norad validate fasta-sidecars`, implemented by the private
+[`validator.py`](validator.py) module, accepts explicit scope, FASTA, `FAI`,
+`DICT`, and output paths. Validation is dry-run by default; `--execute`
+publishes `<scope-id>.validation.tsv` using the common seven-field
+step-validation contract.
 
 The report contains exactly these five check identities:
 
@@ -114,11 +117,12 @@ The validator imports FASTA, `FAI`, and `DICT` parsers from the neutral
 [`references/contigs.py`](../../libraries/references/contigs.py) owner and report
 rendering, locking, and publication from the neutral
 [`validation/report.py`](../../libraries/validation/report.py) owner. Both
-lookups resolve through the repository-local `norad` package independently of
-caller CWD; the validator promotes the checkout's `src` root ahead of ambient
-import paths. Reference provenance and the final Step `05` validator share the
-same parser module identity while this stage retains its per-role aggregation
-and agreement rows.
+lookups resolve through the installed `norad` package independently of caller
+CWD. The grouped command rejects a different installed checkout when invoked
+from a NORAD worktree, and isolated invocation excludes ambient `PYTHONPATH`.
+Reference provenance and the final Step `05` validator share the same parser
+module identity while this stage retains its per-role aggregation and
+agreement rows.
 
 The producer sources only `resolve_executable_value` from neutral
 [`executable_resolution.sh`](../../libraries/executable_resolution.sh).
@@ -143,15 +147,15 @@ No downstream stage should depend on this stage's implementation module.
 
 ## Protected behavior and evidence
 
-- [`test_step_00c_prepare_gatk_reference.sh`](../../../../tests/stages/construct_FASTA_sidecars/test_step_00c_prepare_gatk_reference.sh)
+- [`test_step_00c_prepare_gatk_reference.sh`](../../../../tests/stages/fasta_sidecars/test_step_00c_prepare_gatk_reference.sh)
   protects help and argument handling, side-effect-free dry-run, execution,
   reuse, generation of one missing sidecar, mismatch failures, Java failures,
   foreign-lock preservation, and the characterized retained-FAI state after
   final DICT publication fails.
-- [`test_validate_step_00c_reference_sidecars.py`](../../../../tests/stages/construct_FASTA_sidecars/test_validate_step_00c_reference_sidecars.py)
+- [`test_validate_step_00c_reference_sidecars.py`](../../../../tests/stages/fasta_sidecars/test_validate_step_00c_reference_sidecars.py)
   protects the five checks, ordered mismatch evidence, fail-closed structure,
   deterministic publication, lock handling, arbitrary-CWD repeatability, and
-  repository-package precedence over ambient import paths.
+  the grouped package route.
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
   protects the wrapper's delegation, execution control, tool resolution, and
   characterized Bash 3.2 dry-run behavior with local mocks.
@@ -173,9 +177,10 @@ Current evidence status remains owned by the canonical roadmap and handoff.
   creating an operational edge that is not intrinsic to sidecar construction.
 - The shell producer owns sidecar generation, validation, locking, reuse, and
   publication but does not publish an atomic two-output transaction.
-- The validator is colocated with this stage but reuses reference parsers from
-  the neutral `reference_contigs` owner and publication helpers from the
-  neutral validation-report owner through shared bridges.
+- The private validator module remains inside this installed stage package but
+  reuses reference parsers from the neutral `reference_contigs` owner and
+  publication helpers from the neutral validation-report owner through shared
+  bridges.
 - The scheduler wrapper owns cluster-specific tool and Java resolution around
   the parameterized shell entrypoint.
 

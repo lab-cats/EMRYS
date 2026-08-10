@@ -55,8 +55,8 @@ EXPECTED_PRODUCER_EVIDENCE = {
         "b97e35fdb9b60e008f80897c9014dd3f38e2e38c0ba14b1a62c641cc4b8feaab",
     ),
     "00c": (
-        "src/norad/stages/construct_FASTA_sidecars/step_00c_prepare_gatk_reference.sh",
-        "a78a5769d47a638e486d1ef82582331f91689baad99fef01962d16e6d3f991bf",
+        "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
+        "2e3dfbafdfa4367606253db6e1cfbdb4aff40b6524ae8db2d5991eb9caa4cd24",
     ),
     "01": (
         "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh",

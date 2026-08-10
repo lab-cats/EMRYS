@@ -173,6 +173,8 @@ def _assert_wheel_contents(wheel: Path) -> None:
             not in members
         )
         assert {member for member in members if member.startswith("norad/stages/")} == {
+            "norad/stages/fasta_sidecars/__init__.py",
+            "norad/stages/fasta_sidecars/validator.py",
             "norad/stages/__init__.py",
             "norad/stages/gtf_to_bed12/__init__.py",
             "norad/stages/gtf_to_bed12/converter.py",
@@ -395,6 +397,87 @@ def _assert_installed_star_index_validation(
     assert unrelated_path.read_text(encoding="utf-8") == "preserve\n"
 
 
+def _build_fasta_sidecars_fixture(
+    working_directory: Path,
+) -> tuple[Path, Path, Path, Path]:
+    reference_directory = working_directory / "fasta-sidecar-reference"
+    reference_directory.mkdir()
+    fasta_path = reference_directory / "genome.fa"
+    fasta_path.write_text(">1\nACGT\n", encoding="utf-8")
+    fai_path = reference_directory / "genome.fa.fai"
+    fai_path.write_text("1\t4\t3\t4\t5\n", encoding="utf-8")
+    dictionary_path = reference_directory / "genome.dict"
+    dictionary_path.write_text(
+        "@HD\tVN:1.6\n@SQ\tSN:1\tLN:4\n",
+        encoding="utf-8",
+    )
+    output_directory = working_directory / "fasta-sidecar-validation"
+    output_directory.mkdir()
+    return (
+        fasta_path,
+        fai_path,
+        dictionary_path,
+        output_directory / "wheel_fixture.validation.tsv",
+    )
+
+
+def _assert_installed_fasta_sidecars_validation(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    fasta_path, fai_path, dictionary_path, output_path = _build_fasta_sidecars_fixture(
+        working_directory
+    )
+    input_bytes = tuple(
+        path.read_bytes() for path in (fasta_path, fai_path, dictionary_path)
+    )
+    unrelated_path = working_directory / "fasta-sidecar-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+
+    validation = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "fasta-sidecars",
+        "--scope-id",
+        "wheel_fixture",
+        "--reference-fasta",
+        str(fasta_path),
+        "--reference-fai",
+        str(fai_path),
+        "--reference-dict",
+        str(dictionary_path),
+        "--output",
+        str(output_path),
+    )
+    assert validation.returncode == 0, validation.stdout + validation.stderr
+    assert validation.stderr == ""
+    assert validation.stdout.endswith("Dry-run complete; no output was written.\n")
+    report_rows = [
+        line.split("\t")
+        for line in validation.stdout.splitlines()
+        if line.startswith("00c\t")
+    ]
+    assert len(report_rows) == 5
+    assert {row[2] for row in report_rows} == {
+        "fasta_structure",
+        "fai_structure",
+        "dict_structure",
+        "fai_contig_agreement",
+        "dict_contig_agreement",
+    }
+    assert {row[3] for row in report_rows} == {"pass"}
+    assert not output_path.exists()
+    assert not list(output_path.parent.glob(".*validation*"))
+    assert (
+        tuple(path.read_bytes() for path in (fasta_path, fai_path, dictionary_path))
+        == input_bytes
+    )
+    assert unrelated_path.read_text(encoding="utf-8") == "preserve\n"
+
+
 def _assert_installed_commands(
     environment_python: Path,
     working_directory: Path,
@@ -452,6 +535,11 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_fasta_sidecars_validation(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_private_source_layout() -> None:
@@ -473,6 +561,16 @@ def _assert_private_source_layout() -> None:
 
     assert not (REPO_ROOT / "tests/stages/construct_STAR_index").exists()
     assert (REPO_ROOT / "tests/stages/star_index").is_dir()
+
+    fasta_sidecars_owner = REPO_ROOT / "src/norad/stages/fasta_sidecars"
+    assert not (REPO_ROOT / "src/norad/stages/construct_FASTA_sidecars").exists()
+    assert not (
+        fasta_sidecars_owner / "validate_step_00c_reference_sidecars.py"
+    ).exists()
+    assert (fasta_sidecars_owner / "validator.py").stat().st_mode & 0o111 == 0
+
+    assert not (REPO_ROOT / "tests/stages/construct_FASTA_sidecars").exists()
+    assert (REPO_ROOT / "tests/stages/fasta_sidecars").is_dir()
 
 
 def _assert_wrong_checkout_rejected(
