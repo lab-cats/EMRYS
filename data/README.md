@@ -8,7 +8,7 @@ data lifecycle.
 ## Contents
 
 - `raw/` and `full/` are ignored operator-managed locations for large inputs.
-- `test/` is the retained local fixture workspace named by the structural
+- [`test/`](test/) is the retained local fixture workspace named by the structural
   [`sample-manifest starter`](../configs/samples.example.tsv); no orchestrator
   wires that starter into a run. Independently, the
   [Step `01` scheduler owner](../src/norad/stages/align_RNA_reads_with_STAR/README.md)
