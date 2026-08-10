@@ -50,12 +50,10 @@ fi
 source "$script_dir/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/executable_resolution.sh
 source "$script_dir/../../libraries/executable_resolution.sh"
-# shellcheck source=../../libraries/file_checks.sh
-source "$script_dir/../../libraries/file_checks.sh"
 
 declare_required_arguments sample_id input_bam output_dir metrics_dir picard_jar
-java_bin_arg=""
-samtools_bin_arg=""
+requested_java_bin=""
+requested_samtools_bin=""
 execute=false
 
 while [[ $# -gt 0 ]]; do
@@ -65,8 +63,8 @@ while [[ $# -gt 0 ]]; do
         --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
         --metrics-dir) assign_option_value "$1" "${2:-}" metrics_dir; shift 2 ;;
         --picard-jar) assign_option_value "$1" "${2:-}" picard_jar; shift 2 ;;
-        --java-bin) assign_option_value "$1" "${2:-}" java_bin_arg; shift 2 ;;
-        --samtools-bin) assign_option_value "$1" "${2:-}" samtools_bin_arg; shift 2 ;;
+        --java-bin) assign_option_value "$1" "${2:-}" requested_java_bin; shift 2 ;;
+        --samtools-bin) assign_option_value "$1" "${2:-}" requested_samtools_bin; shift 2 ;;
         *)
             handle_execute_or_help "$1"
             shift
@@ -92,8 +90,8 @@ tmp_dir="${TMPDIR:-/tmp}"
 [[ -f "$input_bai" ]] || die "Input BAM index does not exist or is not a file: $input_bai"
 [[ -f "$picard_jar" ]] || die "Picard jar does not exist or is not a file: $picard_jar"
 [[ -r "$picard_jar" ]] || die "Picard jar is not readable: $picard_jar"
-java_bin="$(resolve_executable_value "Java" "$java_bin_arg" "java")"
-samtools_bin="$(resolve_executable_value "samtools" "$samtools_bin_arg" "samtools")"
+java_bin="$(resolve_executable_value "Java" "$requested_java_bin" "java")"
+samtools_bin="$(resolve_executable_value "samtools" "$requested_samtools_bin" "samtools")"
 
 [[ -d "$tmp_dir" ]] || die2 "TMP_DIR does not exist or is not a directory: $tmp_dir"
 [[ -w "$tmp_dir" ]] || die2 "TMP_DIR is not writable: $tmp_dir"
