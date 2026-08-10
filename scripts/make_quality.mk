@@ -157,14 +157,14 @@ validation-guarded-r:
 	$(MAKE) -s r-check
 	$(MAKE) -s local-real-r-test
 
-validation-static-shell-checks:
-	bash -n $(SHELL_SYNTAX_PATHS)
-	bash -n $(SLURM_SYNTAX_PATHS)
+define STATIC_SHELL_CHECKS
+bash -n $(SHELL_SYNTAX_PATHS)
+bash -n $(SLURM_SYNTAX_PATHS)
+endef
 
 validation-static:
 	git diff --check
-	bash -n $(SHELL_SYNTAX_PATHS)
-	bash -n $(SLURM_SYNTAX_PATHS)
+	$(STATIC_SHELL_CHECKS)
 	PYTHONDONTWRITEBYTECODE=1 \
 		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/norad tests
 	"$(REPORT_PYTHON_BIN)" src/norad/ingestion/sample_manifest_admission/validate_manifest.py \
@@ -174,8 +174,7 @@ validate:
 	"$(REPORT_PYTHON_BIN)" src/norad/ingestion/sample_manifest_admission/validate_manifest.py --manifest configs/samples.example.tsv
 
 smoke:
-	bash -n $(SHELL_SYNTAX_PATHS)
-	bash -n $(SLURM_SYNTAX_PATHS)
+	$(STATIC_SHELL_CHECKS)
 
 lint:
 	"$(REPORT_PYTHON_BIN)" -m compileall scripts src/norad tests
