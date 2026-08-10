@@ -4,8 +4,7 @@ This is the observed contract of historical Step `08`, now implemented in this
 native owner directory. The exact public identity and historical alias are owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
 uses that public slug and owns the shell/R producer, validator, and scheduler
-assets. Supported journeys and migration evidence are in the adjacent
-[`README.md`](README.md).
+assets.
 
 ## Responsibility and execution dependencies
 
