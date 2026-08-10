@@ -60,7 +60,6 @@ require_arguments
 
 [[ -f "$bam" ]] || die "BAM does not exist or is not a file: $bam"
 
-bam_index=""
 if [[ -f "$bam.bai" ]]; then
     bam_index="$bam.bai"
 elif [[ -f "${bam%.bam}.bai" ]]; then

@@ -148,6 +148,7 @@ EOF_SAMTOOLS
 chmod +x "$fake_bin/samtools"
 
 export PATH="$fake_bin:$PATH"
+unset FAKE_QUICKCHECK_MODE FAKE_FLAGSTAT_MODE
 
 fixture_dir="$tmp_dir/fixtures"
 mkdir -p "$fixture_dir"

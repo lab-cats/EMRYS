@@ -68,7 +68,7 @@ EXPECTED_PRODUCER_EVIDENCE = {
     ),
     "02b": (
         "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
-        "8ab25a216d3e8a3bbe574bb6b7b9160b7755102b01d5c36205f13ae79f5a2bc4",
+        "0f610a2334a707edcda46ca7f1fc467e21dcd4564286be7b6436c61855573b7a",
     ),
     "03": (
         "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
