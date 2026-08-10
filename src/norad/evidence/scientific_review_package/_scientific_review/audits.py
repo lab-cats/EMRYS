@@ -12,7 +12,6 @@ from .intake import complement_base, validate_candidate_reference, validate_iso_
 
 def validate_orientation_evidence(
     rows: Sequence[Mapping[str, str]],
-    review_id: str,
     candidates: Mapping[str, Mapping[str, str]],
     sample_rows: Sequence[Mapping[str, str]],
     partition_ids: set[str],
@@ -136,7 +135,6 @@ def validate_orientation_evidence(
         and observed_orientations != alignment_orientation.REQUIRED_ORIENTATIONS
     ):
         step08.fail("Complete orientation audit must cover both required orientations.")
-    del review_id
 
 
 def validate_annotation_evidence(
@@ -248,10 +246,7 @@ def validate_annotation_evidence(
             step08.fail("Complete annotation audit must cover both orientations.")
 
 
-def expected_qc_rows(
-    review_id: str,
-    evidence_id: str,
-    analysis_id: str,
+def _expected_qc_rows(
     step08_inputs: Sequence[Mapping[str, str]],
     all_rows: Sequence[Mapping[str, str]],
     target_rna_change: str,
@@ -272,9 +267,6 @@ def expected_qc_rows(
         ]
         result.append(
             {
-                "review_id": review_id,
-                "evidence_id": evidence_id,
-                "analysis_id": analysis_id,
                 "scope_type": "partition_orientation",
                 "partition_id": input_row["partition_id"],
                 "orientation": input_row["orientation"],
@@ -323,7 +315,6 @@ def expected_qc_rows(
                     step09.count_status(selected, "call_status", "significant_down")
                 ),
                 "reconciliation_status": "reconciled",
-                "detail": "Mechanically reconciled from declared Step 08/09 inputs.",
             }
         )
     return result
@@ -331,8 +322,6 @@ def expected_qc_rows(
 
 def validate_qc_funnel(
     rows: Sequence[Mapping[str, str]],
-    review_id: str,
-    analysis_id: str,
     step08_inputs: Sequence[Mapping[str, str]],
     all_rows: Sequence[Mapping[str, str]],
     target_rna_change: str,
@@ -341,10 +330,7 @@ def validate_qc_funnel(
     seen: set[tuple[str, str]] = set()
     expected_by_scope = {
         (row["partition_id"], row["orientation"]): row
-        for row in expected_qc_rows(
-            review_id,
-            rows[0]["evidence_id"] if rows else "unused",
-            analysis_id,
+        for row in _expected_qc_rows(
             step08_inputs,
             all_rows,
             target_rna_change,

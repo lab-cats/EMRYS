@@ -525,10 +525,10 @@
     {
       "branch_rate": "0.688679",
       "covered_branches": 73,
-      "covered_lines": 132,
-      "line_rate": "0.800000",
+      "covered_lines": 131,
+      "line_rate": "0.798780",
       "num_branches": 106,
-      "num_statements": 165,
+      "num_statements": 164,
       "path": "src/norad/evidence/scientific_review_package/_scientific_review/audits.py"
     },
     {
@@ -1593,9 +1593,9 @@
   "totals": {
     "branch_rate": "0.748753",
     "covered_branches": 3302,
-    "covered_lines": 10225,
-    "line_rate": "0.860039",
+    "covered_lines": 10224,
+    "line_rate": "0.860027",
     "num_branches": 4410,
-    "num_statements": 11889
+    "num_statements": 11888
   }
 }

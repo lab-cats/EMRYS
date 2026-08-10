@@ -264,7 +264,6 @@ def validate_evidence_payloads(
                 )
     validate_orientation_evidence(
         category_rows["orientation_locus_audit"],
-        context.review_id,
         candidates,
         context.sample_rows,
         {row["partition_id"] for row in context.partition_rows},
@@ -279,8 +278,6 @@ def validate_evidence_payloads(
     )
     validate_qc_funnel(
         category_rows["qc_funnel"],
-        context.review_id,
-        primary_analysis_id,
         context.step08_input_rows,
         context.step09_all_rows,
         context.step09_summary["target_rna_change"],
