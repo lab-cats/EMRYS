@@ -94,7 +94,7 @@ CONTRACTS = {
         module_calls=("list", "load samtools/1.19.2", "list"),
     ),
     "step_06_split_bam_by_read_orientation.slurm": contract(
-        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
+        "src/norad/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_calls=("list", "load samtools/1.19.2", "list"),

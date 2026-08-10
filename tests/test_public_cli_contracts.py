@@ -47,10 +47,6 @@ PYTHON_ENTRYPOINT_PATHS = {
     "validate_artifact_contracts.py": Path(
         "src/norad/contracts/artifacts/validate_artifact_contracts.py"
     ),
-    "validate_step_06_orientation_outputs.py": Path(
-        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
-        "validate_step_06_orientation_outputs.py"
-    ),
     "validate_step_07_mpileup_outputs.py": Path(
         "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
         "validate_step_07_mpileup_outputs.py"
@@ -74,7 +70,6 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
         "render_run_report_bundle.py",
         "step_09c_scientific_validation.py",
         "validate_artifact_contracts.py",
-        "validate_step_06_orientation_outputs.py",
         "validate_step_07_mpileup_outputs.py",
         "validate_step_08_preprocessing_outputs.py",
         "validate_step_09_cmh_outputs.py",
@@ -106,6 +101,10 @@ NORAD_COMMANDS = (
     ),
     (("validate", "fasta-sidecars"), "usage: norad validate fasta-sidecars"),
     (("validate", "manifest"), "usage: norad validate manifest"),
+    (
+        ("validate", "mechanical-orientation"),
+        "usage: norad validate mechanical-orientation",
+    ),
     (
         ("validate", "rseqc-orientation"),
         "usage: norad validate rseqc-orientation",
@@ -143,7 +142,7 @@ SHELL_ENTRYPOINT_PATHS = {
         "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
     ),
     "step_06_split_bam_by_read_orientation.sh": Path(
-        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
+        "src/norad/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh"
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.sh": Path(

@@ -52,7 +52,7 @@ SEMANTIC_OWNERS = (
     ("stage", "construct_canonical_BAM"),
     ("stage", "mark_BAM_duplicates_with_Picard"),
     ("stage", "split_N_cigar_reads_with_GATK"),
-    ("stage", "STAGE-08"),
+    ("stage", "partition_BAM_by_mechanical_read_orientation"),
     ("stage", "STAGE-09"),
     ("stage", "STAGE-10"),
     ("analysis", "ANALYSIS-01"),
@@ -69,6 +69,10 @@ SOURCE_OWNER_DIRECTORIES = {
     ("stage", "construct_FASTA_sidecars"): "fasta_sidecars",
     ("stage", "convert_GTF_to_BED12"): "gtf_to_bed12",
     ("stage", "mark_BAM_duplicates_with_Picard"): "duplicate_marking",
+    (
+        "stage",
+        "partition_BAM_by_mechanical_read_orientation",
+    ): "mechanical_orientation",
     ("stage", "split_N_cigar_reads_with_GATK"): "split_n_cigar",
 }
 CROSS_CUTTING_DOCS = (

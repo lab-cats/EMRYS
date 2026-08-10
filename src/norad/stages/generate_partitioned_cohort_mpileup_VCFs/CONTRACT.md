@@ -16,7 +16,7 @@ claim that variants or RNA-editing sites have been identified.
 
 Step `07` requires the complete BAM/BAI pair for both mechanical orientation
 groups of every declared sample from the final
-[`partition_BAM_by_mechanical_read_orientation`](../partition_BAM_by_mechanical_read_orientation/README.md)
+[`partition_BAM_by_mechanical_read_orientation`](../mechanical_orientation/README.md)
 owner, but only checks those files' presence and nonemptiness; it does not
 require Step `06` counts, validation evidence, or a native completion marker.
 Distinct partitions may run

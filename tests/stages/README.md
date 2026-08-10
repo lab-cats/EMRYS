@@ -12,7 +12,7 @@ This directory mirrors the ten computational stage owners.
   [`duplicate_marking/`](duplicate_marking/README.md),
   [`split_n_cigar/`](split_n_cigar/README.md),
   and
-  [`partition_BAM_by_mechanical_read_orientation/`](partition_BAM_by_mechanical_read_orientation/README.md).
+  [`mechanical_orientation/`](mechanical_orientation/README.md).
 - Cohort processing:
   [`generate_partitioned_cohort_mpileup_VCFs/`](generate_partitioned_cohort_mpileup_VCFs/README.md)
   and

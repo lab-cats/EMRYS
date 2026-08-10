@@ -84,9 +84,9 @@ EXPECTED_PRODUCER_EVIDENCE = {
         "6712d49a7e56cad709c13325859c7ba8306c02aa6e0f681e428f37d4d8c147b6",
     ),
     "06": (
-        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
+        "src/norad/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh",
-        "f3b4e11b65b469ab45bff0359b87ba87c5d6c6a68564c045426dc291cce9c6a0",
+        "57b88315cd7e39995b1410cb448f0efdf5cd525ad23e4d63d11e819334b0aaac",
     ),
     "07": (
         "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"

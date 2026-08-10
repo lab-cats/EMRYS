@@ -119,7 +119,7 @@ STEP_PRODUCERS = {
     "04": "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
     "05": ("src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"),
     "06": (
-        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
+        "src/norad/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh"
     ),
     "07": (

@@ -30,10 +30,7 @@ VALIDATOR_PATHS = {
     "03": Path("src/norad/evidence/rseqc_orientation/validator.py"),
     "04": Path("src/norad/stages/duplicate_marking/validator.py"),
     "05": Path("src/norad/stages/split_n_cigar/validator.py"),
-    "06": Path(
-        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
-        "validate_step_06_orientation_outputs.py"
-    ),
+    "06": Path("src/norad/stages/mechanical_orientation/validator.py"),
     "07": Path(
         "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
         "validate_step_07_mpileup_outputs.py"

@@ -229,6 +229,8 @@ def _assert_wheel_contents(wheel: Path) -> None:
             "norad/stages/gtf_to_bed12/__init__.py",
             "norad/stages/gtf_to_bed12/converter.py",
             "norad/stages/gtf_to_bed12/validator.py",
+            "norad/stages/mechanical_orientation/__init__.py",
+            "norad/stages/mechanical_orientation/validator.py",
             "norad/stages/split_n_cigar/__init__.py",
             "norad/stages/split_n_cigar/validator.py",
             "norad/stages/star_index/__init__.py",
@@ -1041,6 +1043,108 @@ def _assert_installed_split_n_cigar_validation(
     )
 
 
+def _build_mechanical_orientation_fixture(
+    working_directory: Path,
+) -> tuple[Path, Path, Path, Path, Path, Path]:
+    input_directory = working_directory / "mechanical-orientation-inputs"
+    input_directory.mkdir()
+    fwd_bam_path = input_directory / "wheel_fixture.FWD_like.bam"
+    fwd_bam_path.write_bytes(b"BAM\x01synthetic")
+    fwd_bai_path = input_directory / "wheel_fixture.FWD_like.bam.bai"
+    fwd_bai_path.write_bytes(b"BAI\x01synthetic")
+    rev_bam_path = input_directory / "wheel_fixture.REV_like.bam"
+    rev_bam_path.write_bytes(b"BAM\x01synthetic")
+    rev_bai_path = input_directory / "wheel_fixture.REV_like.bam.bai"
+    rev_bai_path.write_bytes(b"BAI\x01synthetic")
+    counts_path = input_directory / "wheel_fixture.orientation_counts.tsv"
+    counts_path.write_text(
+        "sample_id\tinput_records\tflag_99_records\tflag_147_records\t"
+        "flag_83_records\tflag_163_records\tfwd_like_records\trev_like_records\t"
+        "assigned_records\tunassigned_records\tassigned_fraction\n"
+        "wheel_fixture\t10\t3\t2\t2\t1\t5\t3\t8\t2\t0.800000\n",
+        encoding="utf-8",
+    )
+    validation_directory = working_directory / "mechanical-orientation-validation"
+    validation_directory.mkdir()
+    return (
+        fwd_bam_path,
+        fwd_bai_path,
+        rev_bam_path,
+        rev_bai_path,
+        counts_path,
+        validation_directory / "wheel_fixture.validation.tsv",
+    )
+
+
+def _assert_installed_mechanical_orientation_validation(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    (
+        fwd_bam_path,
+        fwd_bai_path,
+        rev_bam_path,
+        rev_bai_path,
+        counts_path,
+        output_path,
+    ) = _build_mechanical_orientation_fixture(working_directory)
+    input_paths = (
+        fwd_bam_path,
+        fwd_bai_path,
+        rev_bam_path,
+        rev_bai_path,
+        counts_path,
+    )
+    input_states = tuple(
+        (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    )
+    unrelated_path = working_directory / "mechanical-orientation-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+    unrelated_state = (unrelated_path.read_bytes(), unrelated_path.stat().st_mode)
+
+    validation = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "mechanical-orientation",
+        "--scope-id",
+        "wheel_fixture",
+        "--fwd-bam",
+        str(fwd_bam_path),
+        "--fwd-bai",
+        str(fwd_bai_path),
+        "--rev-bam",
+        str(rev_bam_path),
+        "--rev-bai",
+        str(rev_bai_path),
+        "--counts",
+        str(counts_path),
+        "--output",
+        str(output_path),
+    )
+    _assert_validation_dry_run(
+        validation,
+        output_path,
+        step_id="06",
+        expected_check_ids={
+            "output_containers",
+            "counts_structure",
+            "fwd_count_arithmetic",
+            "rev_count_arithmetic",
+            "assigned_count_arithmetic",
+        },
+    )
+    assert (
+        tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
+        == input_states
+    )
+    assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
+        unrelated_state
+    )
+
+
 def _assert_installed_commands(
     environment_python: Path,
     working_directory: Path,
@@ -1133,6 +1237,11 @@ def _assert_installed_commands(
         working_directory,
         environment,
     )
+    _assert_installed_mechanical_orientation_validation(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_private_source_layout() -> None:
@@ -1187,6 +1296,11 @@ def _assert_private_source_layout() -> None:
             "stages/split_n_cigar",
             "stages/split_N_cigar_reads_with_GATK",
             "validate_step_05_split_ncigar.py",
+        ),
+        (
+            "stages/mechanical_orientation",
+            "stages/partition_BAM_by_mechanical_read_orientation",
+            "validate_step_06_orientation_outputs.py",
         ),
     )
     for current_relative, retired_relative, retired_validator in normalized_owners:

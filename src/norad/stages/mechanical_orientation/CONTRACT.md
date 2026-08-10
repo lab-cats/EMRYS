@@ -4,7 +4,10 @@ This is the observed contract of historical Step `06`, now implemented in this
 native owner directory. The exact public identity and historical alias are
 owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-uses that public slug and owns the producer, validator, and scheduler assets.
+is the lowercase physical owner for that public slug and owns the producer,
+validator, and scheduler assets. Its Python validator is installed only
+through the grouped command; the shell producer and scheduler remain explicit
+repository-path interfaces.
 
 ## Responsibility and execution dependencies
 
@@ -72,10 +75,11 @@ defect.
 
 ## Validation interface
 
-[`validate_step_06_orientation_outputs.py`](validate_step_06_orientation_outputs.py)
-accepts the four explicit BAM/BAI paths, counts TSV, scope, and report output.
-It does not invoke samtools. Dry-run prints the common TSV; `--execute`
-snapshot-rechecks inputs and uses the neutral validation-report publisher.
+The grouped `python -I -m norad validate mechanical-orientation` route,
+implemented by private [`validator.py`](validator.py), accepts the four
+explicit BAM/BAI paths, counts TSV, scope, and report output. It does not invoke
+samtools. Dry-run prints the common TSV; `--execute` snapshot-rechecks inputs
+and uses the neutral validation-report publisher.
 
 Exact checks are:
 
@@ -92,6 +96,10 @@ not quickcheck BAMs, recount records, inspect flags, verify BAM/BAI
 correspondence, or validate sort/read-group metadata. Producer and independent
 validator therefore protect different evidence layers.
 
+Package selection is owned by the grouped command; direct execution of private
+`validator.py`, ambient `PYTHONPATH` injection, compatibility imports, and
+peer-stage implementation dependencies are not supported interfaces.
+
 Content mismatches publish `status=fail`; unsafe input or report-publication
 failures exit `2`.
 
@@ -104,10 +112,10 @@ failures exit `2`.
 - Artifact adapters register both pairs, counts, and
   `step06_validation_report_v1`; summaries/reports consume them without
   rerunning samtools.
-- [`test_step_06_split_bam_by_read_orientation.sh`](../../../../tests/stages/partition_BAM_by_mechanical_read_orientation/test_step_06_split_bam_by_read_orientation.sh)
+- [`test_step_06_split_bam_by_read_orientation.sh`](../../../../tests/stages/mechanical_orientation/test_step_06_split_bam_by_read_orientation.sh)
   protects flags, counts, dry-run, locks, stale paths, validation, zero-group
   failures, cleanup, complete-set replacement, and ordinary rollback.
-- [`test_validate_step_06_orientation_outputs.py`](../../../../tests/stages/partition_BAM_by_mechanical_read_orientation/test_validate_step_06_orientation_outputs.py),
+- [`test_validate_step_06_orientation_outputs.py`](../../../../tests/stages/mechanical_orientation/test_validate_step_06_orientation_outputs.py),
   wrapper, roster, publication-fault, public-CLI, artifact, report, and coverage
   tests protect the recorded independent evidence boundary.
 

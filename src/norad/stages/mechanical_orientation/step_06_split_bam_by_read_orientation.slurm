@@ -80,7 +80,7 @@ fi
 
 cmd=(
     bash
-    src/norad/stages/partition_BAM_by_mechanical_read_orientation/step_06_split_bam_by_read_orientation.sh
+    src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh
     --sample-id "$SAMPLE_ID"
     --input-bam "$INPUT_BAM"
     --output-dir "$OUTPUT_DIR"
