@@ -33,9 +33,10 @@ Supported selectors are `artifact-record`, `scientific-review-record`,
 
 ## Schema packaging boundary
 
-The schema directory keeps one file per registered public `$id`, plus the
-shared `common` resource. Large record schemas use local `$defs` to organize
-one document identity. Those definitions are not split into extra files merely
-to reduce line count: doing so would add registry resources and change schema
-distribution and reference-resolution contracts. A split requires a versioned
-schema-design change with explicit consumers, not a source-layout refactor.
+The [version `1` schema directory](../schemas/artifacts/v1/) keeps one file per
+registered public `$id`, plus the shared `common` resource. Large record
+schemas use local `$defs` to organize one document identity. Those definitions
+are not split into extra files merely to reduce line count: doing so would add
+registry resources and change schema distribution and reference-resolution
+contracts. A split requires a versioned schema-design change with explicit
+consumers, not a source-layout refactor.
