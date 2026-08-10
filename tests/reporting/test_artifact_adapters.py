@@ -95,7 +95,7 @@ EXPECTED_PRODUCER_EVIDENCE = {
     ),
     "08": (
         "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
-        "8a690763c1f5ee13013bca199b628429822a1a5f1e45e22f33d1b33dfc9d211a",
+        "d37a82e84dc8b98c261e1e40df5ea0ffb1c9ec550381d6f0297ee3290f489a4b",
     ),
     "09": (
         "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"

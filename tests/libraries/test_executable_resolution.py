@@ -42,8 +42,8 @@ CONSUMERS = {
     "step_07_bcftools_mpileup_by_chrom_and_strand.sh": (0o755, 0, 1, 1),
     "stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh": (
         0o755,
-        1,
         0,
+        1,
         1,
     ),
     "analyses/rank_cohort_candidates_with_paired_CMH/"

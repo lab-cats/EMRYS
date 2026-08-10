@@ -106,7 +106,6 @@ fake_bin="$test_root/fake-bin"
 mkdir -p "$fake_bin"
 
 fake_rscript="$fake_bin/Rscript"
-apply_fake_rscript="$fake_rscript"
 cat >"$fake_rscript" <<'FAKE_RSCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail

@@ -62,14 +62,6 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/signal_traps.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
 
-resolve_rscript() {
-    local value="${rscript_bin_arg:-}"
-    if [[ -z "$value" && -n "${RSCRIPT_BIN_OVERRIDE:-}" ]]; then
-        value="$RSCRIPT_BIN_OVERRIDE"
-    fi
-    resolve_executable_value "Rscript" "$value" "Rscript"
-}
-
 confirm_input_hashes() {
     local current_sample_hash
     local current_partition_hash
@@ -430,7 +422,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 declare_required_arguments \
     cohort_id sample_manifest partition_manifest step07_root \
     annotation_gtf output_root qc_root
-rscript_bin_arg=""
+requested_rscript_bin=""
 r_script="${STEP08_R_SCRIPT:-$script_dir/step_08_vcf_preprocessing.R}"
 execute=false
 
@@ -443,7 +435,7 @@ while [[ $# -gt 0 ]]; do
         --annotation-gtf) assign_option_value "$1" "${2:-}" annotation_gtf; shift 2 ;;
         --output-root) assign_option_value "$1" "${2:-}" output_root; shift 2 ;;
         --qc-root) assign_option_value "$1" "${2:-}" qc_root; shift 2 ;;
-        --rscript-bin) assign_option_value "$1" "${2:-}" rscript_bin_arg; shift 2 ;;
+        --rscript-bin) assign_option_value "$1" "${2:-}" requested_rscript_bin; shift 2 ;;
         --r-script) assign_option_value "$1" "${2:-}" r_script; shift 2 ;;
         *)
             handle_execute_or_help "$1"
@@ -459,7 +451,8 @@ validate_nonempty_file "Sample manifest" "$sample_manifest"
 validate_nonempty_file "Partition manifest" "$partition_manifest"
 validate_nonempty_file "Annotation GTF" "$annotation_gtf"
 validate_nonempty_file "Step 08 R script" "$r_script"
-rscript_bin="$(resolve_rscript)"
+rscript_bin="$(resolve_overridable_executable \
+    "Rscript" "$requested_rscript_bin" RSCRIPT_BIN_OVERRIDE Rscript)"
 
 sample_manifest_sha256="$(sha256_file "$sample_manifest")"
 partition_manifest_sha256="$(sha256_file "$partition_manifest")"

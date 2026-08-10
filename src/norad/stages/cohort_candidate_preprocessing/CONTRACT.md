@@ -168,9 +168,10 @@ production, cluster, scientific-review, or biological evidence.
   Step `09`, and artifact adapters. Shared report publication remains in
   neutral [`validation/report.py`](../../libraries/validation/report.py),
   imported through `norad.libraries.validation`.
-- The shell producer sources only `resolve_executable_value` from neutral
+- The shell producer uses `resolve_overridable_executable` from neutral
   [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
-  Rscript precedence, checks, and commands remain owned here.
+  argument → `RSCRIPT_BIN_OVERRIDE` → PATH precedence, checks, and commands
+  remain owned here.
 - Producer and validator disagree on the required breadth of sample-manifest
   columns, and the validator does not reopen the upstream Step `07` files to
   recompute their declared hashes.
