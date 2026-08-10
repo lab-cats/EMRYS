@@ -35,7 +35,6 @@ CANONICAL_H1S = {
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
     "docs/design/PIPELINE_PLAN.md": "# NORAD pipeline plan",
     "docs/design/QUESTIONS.md": "# Open questions",
-    "docs/design/REFACTOR_AUDIT.md": "# Refactor audit index and recheck triggers",
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
     "docs/operations/HANDOFF.md": "# Project handoff",
     "docs/operations/RUNBOOK.md": "# Runbook",
@@ -231,18 +230,22 @@ def test_rejects_missing_semantic_owner_after_valid_roster(tmp_path: Path) -> No
 
 def test_rejects_returned_retired_docs_and_task_directories(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
-    retired = repository / "docs/operations/TASK_DELIVERY.md"
-    retired.write_text("# Retired\n", encoding="utf-8")
+    retired_paths = (
+        "docs/design/REFACTOR_AUDIT.md",
+        "docs/operations/TASK_DELIVERY.md",
+    )
+    for relative in retired_paths:
+        retired = repository / relative
+        retired.parent.mkdir(parents=True, exist_ok=True)
+        retired.write_text("# Retired\n", encoding="utf-8")
     legacy = repository / "docs/tasks/TODO/OLD-01.md"
     legacy.parent.mkdir()
     legacy.write_text("# Old\n", encoding="utf-8")
 
     result = validate(repository, cwd=tmp_path)
 
-    assert (
-        "retired documentation owner returned: docs/operations/TASK_DELIVERY.md"
-        in result.stderr
-    )
+    for relative in retired_paths:
+        assert f"retired documentation owner returned: {relative}" in result.stderr
     assert "retired task directory contains Markdown: docs/tasks/TODO" in result.stderr
 
 

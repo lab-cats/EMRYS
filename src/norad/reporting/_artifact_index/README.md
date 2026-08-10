@@ -13,6 +13,14 @@ published-transaction validation.
 Stage-specific rules remain in their named reconciliation modules; this
 package is not a generic stage framework.
 
+Artifact inspection enforces common validation-report structure, safe unique
+check IDs, step, scope, and status, but does not yet enforce each producer's
+exact ordered check roster. A structurally plausible report with a missing,
+extra, substituted, duplicate, or reordered check can therefore enter the
+artifact graph; retain the independent roster expectations and
+artifact-adapter mutation tests until that separately reviewed defect is
+corrected.
+
 Text inspection imports three private owners directly: `_text_common.py` owns
 UTF-8 line admission, `_text_tabular.py` owns TSV, sample-block, and native
 anchor parsing, and `_text_genomic.py` owns VCF, reference, BED12, STAR, and

@@ -100,8 +100,9 @@ do not mutate the environment incidentally.
   late-foreign-final, incomplete-rollback, descriptor, and stale-lock failure
   states. Passing characterization does not approve them.
 
-Other live defects and recheck routes are indexed in
-[`REFACTOR_AUDIT.md`](../design/REFACTOR_AUDIT.md).
+Cross-cutting contract risks and recheck routes are indexed in
+[`TEST_BASELINE.md`](../design/TEST_BASELINE.md); exact defects remain with the
+applicable owner `README.md` or `CONTRACT.md`.
 
 ## Immediate resume point
 

@@ -41,7 +41,6 @@ CANONICAL_DOCUMENTS = {
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
     "docs/design/PIPELINE_PLAN.md": "# NORAD pipeline plan",
     "docs/design/QUESTIONS.md": "# Open questions",
-    "docs/design/REFACTOR_AUDIT.md": "# Refactor audit index and recheck triggers",
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
     "docs/operations/HANDOFF.md": "# Project handoff",
     "docs/operations/RUNBOOK.md": "# Runbook",
@@ -55,6 +54,7 @@ CANONICAL_DOCUMENTS = {
 }
 
 RETIRED_DOCUMENTS = (
+    "docs/design/REFACTOR_AUDIT.md",
     "docs/operations/CONCURRENT_WORK.md",
     "docs/operations/TASK_DELIVERY.md",
     "src/norad/contracts/MIGRATION_MECHANICS.md",

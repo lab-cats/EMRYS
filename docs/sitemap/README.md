@@ -42,7 +42,7 @@ For task orientation and approved delivery, use
 | System-view routing and exact architecture | [Architecture index](../architecture/README.md) and its named children |
 | Durable rationale and unresolved choices | [`DECISIONS.md`](../design/DECISIONS.md), its detail files, and [`QUESTIONS.md`](../design/QUESTIONS.md) |
 | Exact behavior, commands, defects, and tests | Applicable colocated owner `README.md` and `CONTRACT.md` |
-| Test policy and current recheck routes | [`TEST_BASELINE.md`](../design/TEST_BASELINE.md) and [`REFACTOR_AUDIT.md`](../design/REFACTOR_AUDIT.md) |
+| Test policy and cross-cutting recheck routes | [`TEST_BASELINE.md`](../design/TEST_BASELINE.md); exact defects remain with the applicable owner `README.md` or `CONTRACT.md` |
 | Actionable work, proposals, and dated records | Compact [`BACKLOG.md`](../tasks/BACKLOG.md), selected [`cards/`](../tasks/cards/), and [`docs/history`](../history/) respectively |
 
 JIT cards and history are not live subject-matter owners. Delete completed or
