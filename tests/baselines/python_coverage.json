@@ -487,24 +487,6 @@
       "path": "src/norad/evidence/scientific_review_package/_scientific_review/_evidence_manifest.py"
     },
     {
-      "branch_rate": "1.000000",
-      "covered_branches": 0,
-      "covered_lines": 27,
-      "line_rate": "1.000000",
-      "num_branches": 0,
-      "num_statements": 27,
-      "path": "src/norad/evidence/scientific_review_package/_scientific_review/_intake_models.py"
-    },
-    {
-      "branch_rate": "0.653846",
-      "covered_branches": 17,
-      "covered_lines": 57,
-      "line_rate": "0.850746",
-      "num_branches": 26,
-      "num_statements": 67,
-      "path": "src/norad/evidence/scientific_review_package/_scientific_review/_intake_support.py"
-    },
-    {
       "branch_rate": "0.705882",
       "covered_branches": 24,
       "covered_lines": 47,
@@ -552,10 +534,10 @@
     {
       "branch_rate": "0.666667",
       "covered_branches": 8,
-      "covered_lines": 59,
-      "line_rate": "0.936508",
+      "covered_lines": 61,
+      "line_rate": "0.938462",
       "num_branches": 12,
-      "num_statements": 63,
+      "num_statements": 65,
       "path": "src/norad/evidence/scientific_review_package/_scientific_review/context.py"
     },
     {
@@ -577,12 +559,12 @@
       "path": "src/norad/evidence/scientific_review_package/_scientific_review/evidence.py"
     },
     {
-      "branch_rate": "1.000000",
-      "covered_branches": 0,
-      "covered_lines": 6,
-      "line_rate": "1.000000",
-      "num_branches": 0,
-      "num_statements": 6,
+      "branch_rate": "0.653846",
+      "covered_branches": 17,
+      "covered_lines": 81,
+      "line_rate": "0.890110",
+      "num_branches": 26,
+      "num_statements": 91,
       "path": "src/norad/evidence/scientific_review_package/_scientific_review/intake.py"
     },
     {
@@ -1611,9 +1593,9 @@
   "totals": {
     "branch_rate": "0.748753",
     "covered_branches": 3302,
-    "covered_lines": 10229,
-    "line_rate": "0.860086",
+    "covered_lines": 10222,
+    "line_rate": "0.860003",
     "num_branches": 4410,
-    "num_statements": 11893
+    "num_statements": 11886
   }
 }

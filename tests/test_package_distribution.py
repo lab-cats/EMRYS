@@ -39,9 +39,6 @@ EVIDENCE_PACKAGE_PATHS = frozenset(
         "norad/evidence/scientific_review_package/_scientific_review/__init__.py",
         "norad/evidence/scientific_review_package/"
         "_scientific_review/_evidence_manifest.py",
-        "norad/evidence/scientific_review_package/_scientific_review/_intake_models.py",
-        "norad/evidence/scientific_review_package/"
-        "_scientific_review/_intake_support.py",
         "norad/evidence/scientific_review_package/"
         "_scientific_review/_review_candidates.py",
         "norad/evidence/scientific_review_package/"
@@ -1959,6 +1956,9 @@ def _assert_private_source_layout() -> None:
     retired_scientific_review = "evidence/assemble_scientific_review_evidence_package"
     assert not (REPO_ROOT / "src/norad" / retired_scientific_review).exists()
     assert not (scientific_review_source / "step_09c_scientific_validation.py").exists()
+    private_review_source = scientific_review_source / "_scientific_review"
+    for retired_module in ("_intake_models.py", "_intake_support.py"):
+        assert not (private_review_source / retired_module).exists()
     assert (scientific_review_source / "publisher.py").stat().st_mode & 0o111 == 0
     assert not (REPO_ROOT / "tests" / retired_scientific_review).exists()
     assert (REPO_ROOT / "tests/evidence/scientific_review_package").is_dir()

@@ -18,13 +18,16 @@ from norad.__main__ import build_parser
 from norad.contracts.scientific_evidence import review_package, step08, step09
 from norad.evidence.scientific_review_package import publisher
 from norad.evidence.scientific_review_package._scientific_review import (
+    _evidence_manifest as review_evidence_manifest,
+)
+from norad.evidence.scientific_review_package._scientific_review import (
+    _review_plan as review_plan,
+)
+from norad.evidence.scientific_review_package._scientific_review import (
     context as review_context,
 )
 from norad.evidence.scientific_review_package._scientific_review import (
     contracts as scientific_review_contracts,
-)
-from norad.evidence.scientific_review_package._scientific_review import (
-    intake as review_intake,
 )
 from tests.evidence.scientific_review_package import build_fixture as fixture_builder
 
@@ -1585,12 +1588,12 @@ def test_replacement_failure_restores_byte_identical_prior_transaction(
 def test_tracked_examples_and_schema_headers_match_public_contract() -> None:
     plan_path = REPO_ROOT / "configs" / "step_09c_review_plan.example.tsv"
     manifest_path = REPO_ROOT / "configs" / "step_09c_evidence_manifest.example.tsv"
-    plan_table, plan, _analyses = review_intake.validate_review_plan(
+    plan_table, plan, _analyses = review_plan.validate_review_plan(
         plan_path, "example_scientific_review"
     )
     assert plan_table.header == review_package.REVIEW_PLAN_HEADER
     assert plan["overall_science_status"] == "evidence_incomplete"
-    manifest, rows, payloads, _ = review_intake.validate_evidence_manifest(
+    manifest, rows, payloads, _ = review_evidence_manifest.validate_evidence_manifest(
         manifest_path,
         "example_scientific_review",
         plan,

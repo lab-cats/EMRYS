@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from ._intake_support import resolve_declared_path, split_ids, validate_iso_date
 from .contracts import (
     COMPUTATIONAL_VALIDATION_HEADER,
     EVIDENCE_MANIFEST_HEADER,
@@ -16,6 +15,7 @@ from .contracts import (
     sha256_file,
     step08,
 )
+from .intake import resolve_declared_path, split_ids, validate_iso_date
 
 
 def validate_evidence_manifest(

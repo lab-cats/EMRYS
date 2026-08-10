@@ -6,8 +6,8 @@ from pathlib import Path
 
 from norad.libraries.alignments import orientation as alignment_orientation
 
-from ._intake_support import split_ids, validate_iso_date
 from .contracts import NA_VALUE, Table, read_tsv, review_package, step08
+from .intake import split_ids, validate_iso_date
 
 
 def validate_review_plan(
