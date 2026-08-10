@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.metadata
 import json
 import os
 import shutil
@@ -23,6 +24,13 @@ from tests.evidence.scientific_review_package import (
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI_USAGE_ERROR = 2
 PRIVATE_FILE_MODE = 0o644
+ARTIFACT_RUNTIME_DEPENDENCIES = {
+    "attrs": ("26.1.0", "attrs"),
+    "jsonschema": ("4.26.0", "jsonschema"),
+    "jsonschema-specifications": ("2025.9.1", "jsonschema_specifications"),
+    "referencing": ("0.37.0", "referencing"),
+    "rpds-py": ("2026.6.3", "rpds"),
+}
 RESOURCE_PATHS = (
     "norad/contracts/schemas/artifacts/v1/artifact_record.schema.json",
     "norad/contracts/schemas/artifacts/v1/common.schema.json",
@@ -421,6 +429,120 @@ def _install_wheel_in_environment(wheel: Path, tmp_path: Path) -> Path:
     )
     assert install_wheel.returncode == 0, install_wheel.stdout + install_wheel.stderr
     return environment_python
+
+
+def _build_artifact_dependency_projection(tmp_path: Path) -> tuple[Path, Path]:
+    assert sys.version_info >= (3, 13), (
+        "Python 3.11-3.12 activate an unpinned typing-extensions dependency"
+    )
+    requirements = set(
+        (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8").splitlines()
+    )
+    assert {
+        f"{name}=={version}"
+        for name, (version, _module_name) in ARTIFACT_RUNTIME_DEPENDENCIES.items()
+    } <= requirements
+
+    projection = tmp_path / "artifact-contract-dependencies"
+    projection.mkdir()
+    source_purelib: Path | None = None
+    for name, (version, _module_name) in ARTIFACT_RUNTIME_DEPENDENCIES.items():
+        distribution = importlib.metadata.distribution(name)
+        assert distribution.version == version
+        selected_root = Path(distribution.locate_file("")).resolve()
+        assert selected_root.is_dir() and not selected_root.is_symlink()
+        if source_purelib is None:
+            source_purelib = selected_root
+        assert selected_root == source_purelib
+        files = distribution.files
+        assert files is not None
+        top_level_names = {
+            relative.parts[0]
+            for item in files
+            if ".." not in (relative := Path(str(item))).parts
+        }
+        assert top_level_names
+        for top_level_name in sorted(top_level_names):
+            source = selected_root / top_level_name
+            assert source.exists() and not source.is_symlink()
+            destination = projection / top_level_name
+            assert not destination.exists() and not destination.is_symlink()
+            destination.symlink_to(source, target_is_directory=source.is_dir())
+    assert source_purelib is not None
+    return projection, source_purelib
+
+
+def _assert_dependency_prepared_artifact_contracts(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+    tmp_path: Path,
+) -> None:
+    environment_root = environment_python.parents[1].resolve()
+    environment_site = (
+        environment_root
+        / "lib"
+        / f"python{sys.version_info.major}.{sys.version_info.minor}"
+        / "site-packages"
+    )
+    assert environment_site.is_dir()
+
+    projection, source_purelib = _build_artifact_dependency_projection(tmp_path)
+    projection_file = environment_site / "norad-artifact-dependencies.pth"
+    projection_file.write_text(f"{projection.resolve()}\n", encoding="utf-8")
+    probe = subprocess.run(
+        [
+            str(environment_python),
+            "-I",
+            "-c",
+            (
+                "import importlib, importlib.metadata, json, sys; "
+                "import norad; "
+                "from norad.contracts.artifacts import api; "
+                f"dependencies = {ARTIFACT_RUNTIME_DEPENDENCIES!r}; "
+                "schemas, _ = api.load_schema_registry(); "
+                "print(json.dumps({"
+                "'isolated': sys.flags.isolated, "
+                "'norad': norad.__file__, "
+                "'origins': {name: importlib.import_module(module).__file__ "
+                "for name, (_version, module) in dependencies.items()}, "
+                "'schemas': sorted(schemas), "
+                "'sys_path': sys.path, "
+                "'versions': {name: importlib.metadata.version(name) "
+                "for name in dependencies}}))"
+            ),
+        ],
+        cwd=working_directory,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert probe.returncode == 0, probe.stdout + probe.stderr
+    observed = json.loads(probe.stdout)
+    assert observed["isolated"] == 1
+    assert observed["versions"] == {
+        name: version
+        for name, (version, _module_name) in ARTIFACT_RUNTIME_DEPENDENCIES.items()
+    }
+    assert observed["schemas"] == [
+        "artifact-record",
+        "common",
+        "report-receipt",
+        "run-summary",
+        "scientific-review-record",
+    ]
+    assert Path(observed["norad"]).resolve().is_relative_to(environment_site)
+    origins = tuple(Path(origin) for origin in observed["origins"].values())
+    assert all(origin.is_relative_to(projection) for origin in origins)
+    assert all(origin.resolve().is_relative_to(source_purelib) for origin in origins)
+    observed_sys_path = {
+        str(Path(entry).resolve()) for entry in observed["sys_path"] if entry
+    }
+    assert str(projection.resolve()) in observed_sys_path
+    assert str((REPO_ROOT / "src").resolve()) not in observed_sys_path
+    assert str(Path(environment["PYTHONPATH"]).resolve()) not in observed_sys_path
+    assert str(source_purelib) not in observed_sys_path
 
 
 def _hostile_python_environment(tmp_path: Path) -> dict[str, str]:
@@ -2366,6 +2488,18 @@ def test_wheel_contains_only_explicit_packages_and_exact_resources(
         environment_python,
         arbitrary_working_directory,
         isolated_environment,
+    )
+    dependency_environment = tmp_path / "artifact-dependency-environment"
+    dependency_environment.mkdir()
+    dependency_environment_python = _install_wheel_in_environment(
+        wheel,
+        dependency_environment,
+    )
+    _assert_dependency_prepared_artifact_contracts(
+        dependency_environment_python,
+        arbitrary_working_directory,
+        isolated_environment,
+        dependency_environment,
     )
     _assert_private_source_layout()
     _assert_wrong_checkout_rejected(
