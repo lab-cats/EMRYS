@@ -49,7 +49,7 @@ test routes remain in [`TEST_BASELINE.md`](TEST_BASELINE.md).
 | `RA-025` | Steps `07`–`09` algorithm boundary | `retain`: local refactors may preserve and characterize these algorithms but may not change or validate scientific meaning beyond the named independent evidence. |
 | `RA-026` | Action-local safety and recovery | `retain`: recovery stays visible with the producer whose files, locks, transactions, and failure states it governs. |
 | `RA-027` | Evidence-state separation | `retain`: computational, transaction, local-test, runtime, cluster, scientific-review, and biological-readiness states remain distinct. |
-| `RA-028` | Unique documentation evidence preservation | `retain`: before deleting a live document, move each operative contract, safety rule, defect, and evidence ceiling to the owner declared by [`DOCUMENTATION_OWNERSHIP.md`](../sitemap/DOCUMENTATION_OWNERSHIP.md). |
+| `RA-028` | Unique documentation evidence preservation | `retain`: before deleting a live document, move each operative contract, safety rule, defect, and evidence ceiling to the owner declared by the [sitemap ownership rules](../sitemap/README.md#canonical-roles). |
 | `RA-029` | Locked R reproducibility versus mutable repository freshness | `resolved/recheck`: [`RUNBOOK.md`](../operations/RUNBOOK.md) makes restoration explicit and lock changes reviewed; a future upstream-metadata-only failure stops for policy review rather than silently refreshing the lock. |
 
 ## Active correction boundaries

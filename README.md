@@ -89,9 +89,7 @@ scientific policy explicitly unlocks it.
 | [`renv/`](renv/README.md) and [root tool configuration](docs/operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration) | Explicit dependency activation plus conventional Python, R, pytest, and coverage configuration. |
 
 Use the [documentation sitemap](docs/sitemap/README.md) for category-level
-navigation and the
-[ownership map](docs/sitemap/DOCUMENTATION_OWNERSHIP.md) for canonical
-responsibility boundaries.
+navigation and canonical responsibility boundaries.
 
 ## Data and repository safety
 

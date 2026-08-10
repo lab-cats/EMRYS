@@ -42,7 +42,6 @@ CANONICAL_H1S = {
     "docs/operations/RUNBOOK.md": "# Runbook",
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
-    "docs/sitemap/DOCUMENTATION_OWNERSHIP.md": "# Documentation ownership",
     "docs/sitemap/README.md": "# Documentation sitemap",
     "src/norad/contracts/SOURCE_TOPOLOGY.md": "# Source ownership and dependency direction",
     "src/norad/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
