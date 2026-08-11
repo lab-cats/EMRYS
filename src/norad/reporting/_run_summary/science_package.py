@@ -12,7 +12,6 @@ from norad.libraries.validation.tsv import tsv_bytes as _tsv_bytes
 
 from .science_io import (
     _read_tsv,
-    _require_contract_file,
     _require_regular_file,
     _resolve_recorded_path,
 )
@@ -49,10 +48,9 @@ def _validate_summary_artifact(
         if not isinstance(source_value, str):
             continue
         try:
-            source_path = _require_contract_file(
+            source_path = _require_regular_file(
                 "Indexed Step 09c review summary",
-                source_value,
-                source_root=source_root,
+                contracts.resolve_contract_path(source_value, source_root=source_root),
             )
         except RunSummaryScienceError:
             continue
@@ -140,10 +138,9 @@ def _validate_published_artifacts(
         source_value = source.get("path")
         if not isinstance(source_value, str):
             _fail(f"Indexed Step 09c artifact {adapter} has no source path.")
-        actual_path = _require_contract_file(
+        actual_path = _require_regular_file(
             f"Indexed Step 09c artifact {adapter}",
-            source_value,
-            source_root=source_root,
+            contracts.resolve_contract_path(source_value, source_root=source_root),
         )
         if actual_path != expected_path:
             _fail(

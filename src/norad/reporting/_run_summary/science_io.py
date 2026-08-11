@@ -32,18 +32,6 @@ def _require_regular_file(label: str, value: str | Path) -> Path:
         _fail(f"{label} cannot be resolved: {path}: {exc}")
 
 
-def _require_contract_file(
-    label: str,
-    value: str,
-    *,
-    source_root: Path,
-) -> Path:
-    return _require_regular_file(
-        label,
-        contracts.resolve_contract_path(value, source_root=source_root),
-    )
-
-
 def _read_tsv(
     label: str,
     value: str | Path,
