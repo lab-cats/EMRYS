@@ -20,13 +20,13 @@ src_root = str(Path(__file__).resolve().parents[2])
 # Direct execution must prefer this checkout over an installed NORAD.
 sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
 
-from norad.reporting import _run_summary_science as science
 from norad.reporting import build_artifact_index as adapter
 from norad.reporting._run_summary import document as _document
 from norad.reporting._run_summary import inputs as _inputs
 from norad.reporting._run_summary import models as _models
 from norad.reporting._run_summary import projection as _projection
 from norad.reporting._run_summary import publication as _publication
+from norad.reporting._run_summary import science_projection as science
 from norad.reporting._run_summary import transaction as _transaction
 from norad.reporting._run_summary.approvals import (
     _normalize_report_table_approvals,

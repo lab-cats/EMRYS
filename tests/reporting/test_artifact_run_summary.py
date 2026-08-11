@@ -20,6 +20,11 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
+from norad.reporting._run_summary import science_evidence as SCIENCE_EVIDENCE
+from norad.reporting._run_summary import science_models as SCIENCE_MODELS
+from norad.reporting._run_summary import science_package as SCIENCE_PACKAGE
+from norad.reporting._run_summary import science_projection as SCIENCE
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
 SCRIPT = REPORTING_ROOT / "build_run_summary.py"
@@ -50,7 +55,6 @@ FIXTURE = load_module(
 )
 RUN_SUMMARY = load_module("norad_artifact_run_summary", SCRIPT)
 CONTRACTS = RUN_SUMMARY.contracts
-SCIENCE = RUN_SUMMARY.science
 
 
 @pytest.fixture
@@ -84,10 +88,22 @@ def run_cli(
     )
 
 
-def test_review_package_is_shared_across_summary_consumers() -> None:
-    assert RUN_SUMMARY.adapter.review_package is SCIENCE.review_package
+def test_science_projection_uses_shared_owner_identities() -> None:
+    assert RUN_SUMMARY.science is RUN_SUMMARY._publication.science is SCIENCE
+    assert RUN_SUMMARY.contracts is SCIENCE.contracts is SCIENCE_PACKAGE.contracts
+    assert (
+        RUN_SUMMARY.adapter.review_package
+        is SCIENCE.review_package
+        is SCIENCE_PACKAGE.review_package
+    )
     assert FIXTURE.ADAPTER.review_package is SCIENCE.review_package
     assert FIXTURE.REVIEW_PACKAGE is SCIENCE.review_package
+    assert SCIENCE_EVIDENCE.contracts is SCIENCE.contracts
+    assert (
+        SCIENCE.RunSummaryScienceError
+        is SCIENCE_MODELS.RunSummaryScienceError
+        is SCIENCE_PACKAGE.RunSummaryScienceError
+    )
 
 
 def test_run_summary_science_has_no_private_step09c_dependency() -> None:
@@ -853,7 +869,7 @@ def test_reporting_reader_does_not_reconstruct_step09c_sources(
         reject_reconstruction,
     )
 
-    context, tables = SCIENCE._read_committed_review_package(
+    context, tables = SCIENCE_PACKAGE._read_committed_review_package(
         summary_path=fixture.science_review_summary,
         summary_row=summary_row,
     )
@@ -1935,7 +1951,7 @@ def test_alternate_indexed_science_path_spelling_is_preserved(
         science_status="evidence_incomplete",
     )
     summary_row = read_tsv(fixture.science_review_summary)[0]
-    context, _tables = RUN_SUMMARY.science._read_committed_review_package(
+    context, _tables = SCIENCE_PACKAGE._read_committed_review_package(
         summary_path=fixture.science_review_summary,
         summary_row=summary_row,
     )
@@ -1965,7 +1981,7 @@ def test_alternate_indexed_science_path_spelling_is_preserved(
     summary_artifact["expectation"]["source_path"] = alternate_summary
     run_contract = read_json(fixture.adapter_fixture.run_contract)
 
-    normalized = RUN_SUMMARY.science._normalize_input_artifacts(
+    normalized = SCIENCE_EVIDENCE._normalize_input_artifacts(
         context=context,
         artifacts=artifacts,
         review_id=summary_row["review_id"],
@@ -2035,7 +2051,7 @@ def test_pending_science_decision_with_evidence_fails_closed(
         science_status="evidence_incomplete",
     )
     summary_row = read_tsv(fixture.science_review_summary)[0]
-    context, _tables = RUN_SUMMARY.science._read_committed_review_package(
+    context, _tables = SCIENCE_PACKAGE._read_committed_review_package(
         summary_path=fixture.science_review_summary,
         summary_row=summary_row,
     )
@@ -2058,7 +2074,7 @@ def test_pending_science_decision_preserves_rationale_owner_and_policy(
         science_status="evidence_incomplete",
     )
     summary_row = read_tsv(fixture.science_review_summary)[0]
-    context, _tables = RUN_SUMMARY.science._read_committed_review_package(
+    context, _tables = SCIENCE_PACKAGE._read_committed_review_package(
         summary_path=fixture.science_review_summary,
         summary_row=summary_row,
     )

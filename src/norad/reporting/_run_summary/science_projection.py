@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Normalize one committed Step 09c package into its public science record."""
 
 from __future__ import annotations
@@ -9,42 +8,35 @@ from typing import Any
 
 from norad.contracts.artifacts import api as contracts
 from norad.contracts.scientific_evidence import review_package
-from norad.reporting._run_summary import science_evidence as _evidence
-from norad.reporting._run_summary import science_io as _io
-from norad.reporting._run_summary import science_models as _models
-from norad.reporting._run_summary import science_package as _package
-
-# Preserve the established direct-import bindings while the private modules
-# below this compatibility owner hold the extracted implementation.
-COMPUTATIONAL_SCOPE_PLAN_FIELDS = _models.COMPUTATIONAL_SCOPE_PLAN_FIELDS
-COMPUTATIONAL_SCOPE_ROLES = _models.COMPUTATIONAL_SCOPE_ROLES
-COMPUTATIONAL_VALIDATION_HEADER = _models.COMPUTATIONAL_VALIDATION_HEADER
-INPUT_ROLE_BY_STEP09C_KEY = _models.INPUT_ROLE_BY_STEP09C_KEY
-NA_VALUE = _models.NA_VALUE
-PRODUCER = _models.PRODUCER
-PRODUCER_VERSION = _models.PRODUCER_VERSION
-PUBLISHED_ADAPTERS = _models.PUBLISHED_ADAPTERS
-SCIENCE_SCHEMA_VERSION = _models.SCIENCE_SCHEMA_VERSION
-ReviewInput = _models.ReviewInput
-ReviewPackageContext = _models.ReviewPackageContext
-RunSummaryScienceError = _models.RunSummaryScienceError
-_artifact_scope = _models._artifact_scope
-_artifact_source = _models._artifact_source
-_fail = _models._fail
-_nullable = _models._nullable
-_parse_row_count = _models._parse_row_count
-_split_ids = _models._split_ids
-_confirm_inputs_unchanged = _io._confirm_inputs_unchanged
-_read_tsv = _io._read_tsv
-_require_contract_file = _io._require_contract_file
-_require_regular_file = _io._require_regular_file
-_resolve_recorded_path = _io._resolve_recorded_path
-_read_committed_review_package = _package._read_committed_review_package
-_validate_published_artifacts = _package._validate_published_artifacts
-_validate_summary_artifact = _package._validate_summary_artifact
-_match_upstream_artifact = _evidence._match_upstream_artifact
-_normalize_evidence = _evidence._normalize_evidence
-_normalize_input_artifacts = _evidence._normalize_input_artifacts
+from norad.reporting._run_summary.science_evidence import (
+    _normalize_evidence,
+    _normalize_input_artifacts,
+)
+from norad.reporting._run_summary.science_io import (
+    _confirm_inputs_unchanged,
+    _read_tsv,
+    _require_regular_file,
+    _resolve_recorded_path,
+)
+from norad.reporting._run_summary.science_models import (
+    COMPUTATIONAL_SCOPE_PLAN_FIELDS,
+    COMPUTATIONAL_SCOPE_ROLES,
+    NA_VALUE,
+    PRODUCER,
+    PRODUCER_VERSION,
+    SCIENCE_SCHEMA_VERSION,
+    ReviewPackageContext,
+    RunSummaryScienceError,
+    _artifact_source,
+    _fail,
+    _nullable,
+    _split_ids,
+)
+from norad.reporting._run_summary.science_package import (
+    _read_committed_review_package,
+    _validate_published_artifacts,
+    _validate_summary_artifact,
+)
 
 
 def _validate_computational_payload_status(

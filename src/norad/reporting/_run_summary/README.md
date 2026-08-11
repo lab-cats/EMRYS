@@ -19,8 +19,12 @@ deterministic helpers and publication beneath it.
 | [`science_io.py`](science_io.py) | Guarded scientific-review file intake and mutation checks. |
 | [`science_package.py`](science_package.py) | Committed public Step 09c package reconstruction and artifact binding. |
 | [`science_evidence.py`](science_evidence.py) | Indexed input-artifact and scientific-evidence normalization. |
+| [`science_projection.py`](science_projection.py) | Final scientific-review projection, schema and semantic validation, and one normalization error boundary. |
 
-The package is not an additional supported command surface. Compatibility
-bindings remain available from the public facade and
-[`_run_summary_science.py`](../_run_summary_science.py), and all modules reuse
-the same artifact adapter and contract owner.
+The package is not an additional supported command surface. The public facade
+and publication recheck share the one canonical `science_projection.py`
+module identity, and all modules reuse the same artifact adapter and contract
+owner. Science projection consumes the neutral review-package contract, the
+committed public thirteen-file package, explicitly referenced evidence, and
+validated index records. It does not load private Step `09c` inputs, own review
+policy, or promote computational or scientific state.

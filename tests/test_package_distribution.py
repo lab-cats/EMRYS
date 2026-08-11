@@ -292,6 +292,8 @@ def _assert_wheel_contents(wheel: Path) -> None:
             for member in members
             if member.startswith("norad/contracts/artifacts/")
         } == ARTIFACT_CONTRACT_PACKAGE_PATHS
+        assert "norad/reporting/_run_summary/science_projection.py" in members
+        assert "norad/reporting/_run_summary_science.py" not in members
         assert "norad/ingestion/__init__.py" in members
         assert "norad/ingestion/sample_manifest_admission/__init__.py" in members
         assert "norad/ingestion/sample_manifest_admission/validator.py" in members
@@ -2388,6 +2390,12 @@ def _assert_private_source_layout() -> None:
     ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
     assert (
         artifact_contract_source / "validator.py"
+    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
+
+    reporting_source = REPO_ROOT / "src/norad/reporting"
+    assert not (reporting_source / "_run_summary_science.py").exists()
+    assert (
+        reporting_source / "_run_summary/science_projection.py"
     ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
 
     manifest_owner = REPO_ROOT / "src/norad/ingestion/sample_manifest_admission"

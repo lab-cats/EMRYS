@@ -1306,6 +1306,15 @@
       "path": "src/norad/reporting/_run_summary/science_package.py"
     },
     {
+      "branch_rate": "0.761905",
+      "covered_branches": 32,
+      "covered_lines": 95,
+      "line_rate": "0.848214",
+      "num_branches": 42,
+      "num_statements": 112,
+      "path": "src/norad/reporting/_run_summary/science_projection.py"
+    },
+    {
       "branch_rate": "0.630435",
       "covered_branches": 29,
       "covered_lines": 103,
@@ -1322,15 +1331,6 @@
       "num_branches": 90,
       "num_statements": 126,
       "path": "src/norad/reporting/_run_summary/validation.py"
-    },
-    {
-      "branch_rate": "0.761905",
-      "covered_branches": 32,
-      "covered_lines": 124,
-      "line_rate": "0.879433",
-      "num_branches": 42,
-      "num_statements": 141,
-      "path": "src/norad/reporting/_run_summary_science.py"
     },
     {
       "branch_rate": "1.000000",
@@ -1611,9 +1611,9 @@
   "totals": {
     "branch_rate": "0.748636",
     "covered_branches": 3294,
-    "covered_lines": 10125,
-    "line_rate": "0.858997",
+    "covered_lines": 10096,
+    "line_rate": "0.858649",
     "num_branches": 4400,
-    "num_statements": 11787
+    "num_statements": 11758
   }
 }
