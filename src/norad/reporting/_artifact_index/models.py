@@ -174,14 +174,11 @@ class BuildContext:
     inventory_path: Path
     inventory_sha256: str
     inventory_rows: list[dict[str, str]]
-    output_root: Path
     output_dir: Path
     records_dir: Path
     artifacts_path: Path
     receipt_path: Path
     lock_path: Path
-    git_commit: str
-    producer_evidence: dict[str, dict[str, Any]]
     inspections: list[Inspection]
     records: list[dict[str, Any]]
     record_bytes: list[bytes]
@@ -189,7 +186,6 @@ class BuildContext:
     index_bytes: bytes
     receipt_row: dict[str, str]
     receipt_bytes: bytes
-    started_at: str
     attempt_id: str
     previous_attempt_id: str | None
     attempt_history: list[str]
