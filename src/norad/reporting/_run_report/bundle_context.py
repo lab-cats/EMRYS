@@ -93,7 +93,6 @@ def _validate_existing_bundle(
         return {present[0]: snapshot}
     document = _read_receipt_tsv(receipt_path)
     snapshots: dict[Path, html_report.FileSnapshot] = {}
-    declared: list[Path] = []
     for output in document["outputs"]:
         path = Path(output["path"])
         if path.parent != output_dir:
@@ -106,13 +105,12 @@ def _validate_existing_bundle(
             or snapshot.size_bytes != output["size_bytes"]
         ):
             _fail(f"Existing report output does not match its receipt: {path}")
-        declared.append(path)
         snapshots[path] = snapshot
     receipt_snapshot = html_report._snapshot_regular(
         receipt_path, "existing report receipt"
     )
     snapshots[receipt_path] = receipt_snapshot
-    unexpected = set(present) - set(declared) - {receipt_path}
+    unexpected = set(present) - set(snapshots)
     if unexpected:
         _fail(
             "Existing report directory contains known outputs not declared by "
@@ -138,14 +136,11 @@ def prepare_context(arguments: argparse.Namespace) -> BundleContext:
         PDF_TEMPLATE,
         "PDF report template",
     )
-    stable_paths = tuple(
-        path
-        for path in (
-            html_context.output_html,
-            output_pdf,
-            output_summary_tsv,
-            output_receipt,
-        )
+    stable_paths = (
+        html_context.output_html,
+        output_pdf,
+        output_summary_tsv,
+        output_receipt,
     )
     for path in (*stable_paths, bundle_lock):
         html_report._reject_symlink_components(path, "report bundle path")

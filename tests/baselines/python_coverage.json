@@ -1084,9 +1084,9 @@
       "branch_rate": "0.433333",
       "covered_branches": 13,
       "covered_lines": 64,
-      "line_rate": "0.640000",
+      "line_rate": "0.653061",
       "num_branches": 30,
-      "num_statements": 100,
+      "num_statements": 98,
       "path": "src/norad/reporting/_run_report/bundle_context.py"
     },
     {
@@ -1630,8 +1630,8 @@
     "branch_rate": "0.750000",
     "covered_branches": 3330,
     "covered_lines": 10195,
-    "line_rate": "0.858960",
+    "line_rate": "0.859105",
     "num_branches": 4440,
-    "num_statements": 11869
+    "num_statements": 11867
   }
 }
