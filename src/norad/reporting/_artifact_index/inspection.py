@@ -35,8 +35,13 @@ from .models import ANCHOR_HASH_FIELDS, AdapterSpec, ArtifactIndexError, Inspect
 def inspect_source(
     row: dict[str, str],
     spec: AdapterSpec,
+    *,
+    source_root: Path,
 ) -> Inspection:
-    resolved = declared_contract_path(row["source_path"])
+    resolved = declared_contract_path(
+        row["source_path"],
+        source_root=source_root,
+    )
     snapshot = stat_source(resolved)
     required = row["required"] == "true"
     artifact_id = row["artifact_id"]

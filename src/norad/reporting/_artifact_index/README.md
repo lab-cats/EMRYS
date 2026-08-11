@@ -13,9 +13,12 @@ inputs or builds a context. Admission requires one canonical, nonsymlink NORAD
 Git top level and exact bytes between the executing package and that checkout.
 Help and parser failures therefore remain available without checkout admission;
 after parsing succeeds, a checkout or package mismatch fails closed before an
-input diagnostic. The authority stores no Git commit and does not inspect the
-producer roster. Git `HEAD` resolution and producer existence and hashing stay
-at their established points in context construction, preserving their timing,
+input diagnostic. The admitted `SourceCheckout` remains on `BuildContext`
+through publication. Its root governs relative inventory and native-contract
+paths, Git `HEAD` resolution and producer existence and hashing, and
+predecessor, post-publish, and rollback record validation. The authority caches
+neither Git commit nor producer state: those observations stay at their
+established points in context construction, preserving their timing,
 diagnostics, and serialized evidence.
 
 The modules keep observed responsibilities separate: the curated run-summary

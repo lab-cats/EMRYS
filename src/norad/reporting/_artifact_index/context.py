@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from dataclasses import replace
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .contracts import contracts
 from .core import (
@@ -46,15 +46,25 @@ from .records import (
 from .registry import ADAPTER_REGISTRY
 from .validation import validate_existing_transaction
 
+if TYPE_CHECKING:
+    from .source_checkout import SourceCheckout
 
-def prepare_context(arguments: argparse.Namespace) -> BuildContext:
+
+def prepare_context(
+    arguments: argparse.Namespace,
+    *,
+    source_checkout: SourceCheckout,
+) -> BuildContext:
     if not contracts.SAFE_ID_RE.fullmatch(arguments.run_id):
         raise ArtifactIndexError("run_id must match [A-Za-z0-9][A-Za-z0-9._-]*")
     run_contract_path = arguments.run_contract.expanduser().resolve()
     inventory_path = arguments.inventory.expanduser().resolve()
     output_root = arguments.output_root.expanduser().resolve()
     run_contract, run_contract_file_sha256 = load_run_contract(run_contract_path)
-    inventory_rows = contracts.validate_inventory(inventory_path)
+    inventory_rows = contracts.validate_inventory(
+        inventory_path,
+        source_root=source_checkout.root,
+    )
     validate_inventory_registry(inventory_rows)
     inventory_sha256 = contracts.sha256_file(inventory_path)
     output_dir = output_root / arguments.run_id
@@ -79,7 +89,10 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
                 f"The {label} must not live inside its generated run directory"
             )
     for row in inventory_rows:
-        source = contracts.resolve_contract_path(row["source_path"])
+        source = contracts.resolve_contract_path(
+            row["source_path"],
+            source_root=source_checkout.root,
+        )
         if source == output_dir or output_dir in source.parents:
             raise ArtifactIndexError(
                 "Inventory source paths must not point inside the generated "
@@ -99,17 +112,26 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
             records_dir=records_dir,
             artifacts_path=artifacts_path,
             receipt_path=receipt_path,
+            source_root=source_checkout.root,
         )
 
     started_at = utc_now()
     attempt_id = new_attempt_id(started_at)
-    git_commit = get_git_commit()
-    evidence = producer_evidence(git_commit)
+    git_commit = get_git_commit(source_root=source_checkout.root)
+    evidence = producer_evidence(git_commit, source_root=source_checkout.root)
     inspections = [
-        inspect_source(row, ADAPTER_REGISTRY[row["adapter"]]) for row in inventory_rows
+        inspect_source(
+            row,
+            ADAPTER_REGISTRY[row["adapter"]],
+            source_root=source_checkout.root,
+        )
+        for row in inventory_rows
     ]
     apply_run_contract_checks(inspections, run_contract)
-    reconcile_native_transactions(inspections)
+    reconcile_native_transactions(
+        inspections,
+        source_root=source_checkout.root,
+    )
     reconcile_scope_transactions(inspections)
     scientific_states = resolve_scientific_states(inspections)
 
@@ -131,7 +153,12 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
             git_commit=git_commit,
             created_at=started_at,
         )
-        validate_record_in_memory(record, inventory_row, validator)
+        validate_record_in_memory(
+            record,
+            inventory_row,
+            validator,
+            source_root=source_checkout.root,
+        )
         records.append(record)
         record_bytes.append(canonical_json_bytes(record))
 
@@ -162,6 +189,7 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
     )
     receipt_bytes = tsv_bytes(ARTIFACT_RECEIPT_HEADER, [receipt_row])
     context = BuildContext(
+        source_checkout=source_checkout,
         run_id=arguments.run_id,
         run_contract_path=run_contract_path,
         run_contract=run_contract,

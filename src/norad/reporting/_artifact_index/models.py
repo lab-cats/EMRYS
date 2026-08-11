@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from norad.libraries.alignments import orientation as alignment_orientation
 from norad.libraries.alignments import star as star_alignment
@@ -13,6 +13,9 @@ from norad.libraries.validation import mpileup as mpileup_report
 from norad.libraries.validation import report as validation_report
 
 from .contracts import contracts, review_package
+
+if TYPE_CHECKING:
+    from .source_checkout import SourceCheckout
 
 PRODUCER = "build_artifact_index"
 PRODUCER_VERSION = "1.0.0"
@@ -163,6 +166,7 @@ class Inspection:
 
 @dataclass
 class BuildContext:
+    source_checkout: SourceCheckout
     run_id: str
     run_contract_path: Path
     run_contract: dict[str, Any]

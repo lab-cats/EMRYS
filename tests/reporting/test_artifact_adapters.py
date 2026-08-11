@@ -10,6 +10,7 @@ import json
 import os
 import subprocess
 import sys
+from collections import Counter
 from collections.abc import Mapping
 from pathlib import Path
 from types import ModuleType
@@ -140,6 +141,12 @@ def load_fixture_module() -> ModuleType:
 FIXTURE = load_fixture_module()
 ADAPTER = FIXTURE.ADAPTER
 ARTIFACT_CONTEXT = importlib.import_module("norad.reporting._artifact_index.context")
+ARTIFACT_NATIVE = importlib.import_module(
+    "norad.reporting._artifact_index.reconcile_native"
+)
+ARTIFACT_SOURCE_CHECKOUT = importlib.import_module(
+    "norad.reporting._artifact_index.source_checkout"
+)
 ARTIFACT_VALIDATION = importlib.import_module(
     "norad.reporting._artifact_index.validation"
 )
@@ -286,6 +293,78 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes() ->
         assert row["role"] == "implementation"
         assert row["path"] == expected_path
         assert row["sha256"] == expected_sha256
+
+
+def test_prepare_context_threads_one_explicit_source_checkout_root(
+    artifact_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Fixture sources are absolute; Git/producer spies delegate to the real
+    # checkout only after proving the synthetic root reached those seams.
+    authority = ARTIFACT_SOURCE_CHECKOUT.SourceCheckout(root=artifact_fixture.root)
+    root_calls: Counter[str] = Counter()
+    real_get_git_commit = ARTIFACT_CONTEXT.get_git_commit
+    real_producer_evidence = ARTIFACT_CONTEXT.producer_evidence
+    real_declared_contract_path = ARTIFACT_NATIVE.declared_contract_path
+    real_validate_artifact_semantics = ADAPTER.contracts.validate_artifact_semantics
+
+    def get_git_commit(*, source_root: Path) -> str:
+        assert source_root == authority.root
+        root_calls["git"] += 1
+        return real_get_git_commit()
+
+    def producer_evidence(
+        git_commit: str,
+        *,
+        source_root: Path,
+    ) -> dict[str, dict[str, Any]]:
+        assert source_root == authority.root
+        root_calls["producers"] += 1
+        return real_producer_evidence(git_commit)
+
+    def declared_contract_path(value: str, *, source_root: Path) -> Path:
+        assert source_root == authority.root
+        root_calls["native_references"] += 1
+        return real_declared_contract_path(value, source_root=source_root)
+
+    def validate_artifact_semantics(
+        document: dict[str, Any],
+        *,
+        source_root: Path,
+    ) -> None:
+        assert source_root == authority.root
+        root_calls["record_semantics"] += 1
+        real_validate_artifact_semantics(document, source_root=source_root)
+
+    monkeypatch.setattr(ARTIFACT_CONTEXT, "get_git_commit", get_git_commit)
+    monkeypatch.setattr(ARTIFACT_CONTEXT, "producer_evidence", producer_evidence)
+    monkeypatch.setattr(
+        ARTIFACT_NATIVE,
+        "declared_contract_path",
+        declared_contract_path,
+    )
+    monkeypatch.setattr(
+        ADAPTER.contracts,
+        "validate_artifact_semantics",
+        validate_artifact_semantics,
+    )
+
+    context = ADAPTER.prepare_context(
+        argparse.Namespace(
+            run_id=artifact_fixture.run_id,
+            run_contract=artifact_fixture.run_contract,
+            inventory=artifact_fixture.inventory,
+            output_root=artifact_fixture.output_root,
+            execute=False,
+        ),
+        source_checkout=authority,
+    )
+
+    assert context.source_checkout is authority
+    assert root_calls["git"] == 1
+    assert root_calls["producers"] == 1
+    assert root_calls["native_references"] > 0
+    assert root_calls["record_semantics"] == len(artifact_fixture.inventory_rows)
 
 
 def test_contract_modules_are_shared_package_identities() -> None:
@@ -1120,6 +1199,7 @@ def test_prepare_context_uses_live_predecessor_validation_owner(
 
     def fail_predecessor_validation(**kwargs: Any) -> None:
         nonlocal reached_predecessor
+        assert kwargs["source_root"] == REPO_ROOT
         if not kwargs["require_current_source_locations"]:
             reached_predecessor = True
             raise ADAPTER.ArtifactIndexError(
@@ -1154,6 +1234,7 @@ def test_post_publication_source_mutation_rolls_back(
 
     def mutate_after_validation(**kwargs: Any) -> None:
         nonlocal mutated
+        assert kwargs["source_root"] == context.source_checkout.root
         real_validate(**kwargs)
         if kwargs["require_current_source_locations"] and not mutated:
             source.write_text("mutated after publication\n", encoding="utf-8")
@@ -1358,6 +1439,7 @@ def test_failed_restored_transaction_validation_requarantines_receipt(
 
     def fail_new_and_restored_validation(**kwargs: Any) -> None:
         nonlocal prior_validation_count
+        assert kwargs["source_root"] == replacement.source_checkout.root
         if kwargs["require_current_source_locations"]:
             raise ADAPTER.ArtifactIndexError(
                 "injected new-transaction validation failure"

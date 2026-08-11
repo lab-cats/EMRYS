@@ -53,6 +53,7 @@ def validate_published_transaction(
     artifacts_path: Path,
     receipt_path: Path,
     require_current_source_locations: bool,
+    source_root: Path = contracts.REPO_ROOT,
 ) -> None:
     for label, path in (
         ("receipt", receipt_path),
@@ -203,7 +204,12 @@ def validate_published_transaction(
             expected_path,
             f"artifact record {inventory_row['artifact_id']}",
         )
-        validate_record_in_memory(record, inventory_row, validator)
+        validate_record_in_memory(
+            record,
+            inventory_row,
+            validator,
+            source_root=source_root,
+        )
         if record["run_id"] != run_id or record["run_contract"] != run_contract:
             raise ArtifactIndexError(
                 f"Published record has the wrong run identity: {expected_path}"
@@ -268,6 +274,7 @@ def validate_existing_transaction(
     records_dir: Path,
     artifacts_path: Path,
     receipt_path: Path,
+    source_root: Path,
 ) -> None:
     previous_inventory_rows = inventory_rows_from_published_index(artifacts_path)
     validate_published_transaction(
@@ -282,4 +289,5 @@ def validate_existing_transaction(
         artifacts_path=artifacts_path,
         receipt_path=receipt_path,
         require_current_source_locations=False,
+        source_root=source_root,
     )

@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .contracts import step08, step09
 from .models import ArtifactIndexError, Inspection
-from .reconcile_native import native_int, require_referenced_source
+from .reconcile_native import NativeSourceIndex, native_int, require_referenced_source
 
 
 def validate_significant_exact_subset(
@@ -136,7 +136,7 @@ def validate_step09_mutation_spectrum(
 
 def reconcile_step09(
     members: Sequence[Inspection],
-    source_lookup: Mapping[Path, Inspection],
+    sources: NativeSourceIndex,
 ) -> None:
     all_sites = next(
         member
@@ -233,7 +233,7 @@ def reconcile_step09(
             path_field=path_field,
             hash_field=hash_field,
             row_count_field=None,
-            source_lookup=source_lookup,
+            sources=sources,
         )
         if target.row["adapter"] != adapter_id:
             raise ArtifactIndexError(

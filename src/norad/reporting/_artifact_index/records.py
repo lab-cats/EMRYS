@@ -43,10 +43,14 @@ def record_manifest(
     ]
 
 
-def producer_evidence(git_commit: str) -> dict[str, dict[str, Any]]:
+def producer_evidence(
+    git_commit: str,
+    *,
+    source_root: Path = contracts.REPO_ROOT,
+) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
     for step_id, relative_path in STEP_PRODUCERS.items():
-        path = contracts.REPO_ROOT / relative_path
+        path = source_root / relative_path
         if not path.is_file():
             raise ArtifactIndexError(
                 f"Registered producer path is missing: {relative_path}"
@@ -132,6 +136,8 @@ def validate_record_in_memory(
     record: dict[str, Any],
     inventory_row: dict[str, str],
     validator: Draft202012Validator,
+    *,
+    source_root: Path,
 ) -> None:
     errors = sorted(
         validator.iter_errors(record),
@@ -146,7 +152,7 @@ def validate_record_in_memory(
             f"Generated artifact {record['artifact_id']!r} failed schema:\n{detail}"
         )
     try:
-        contracts.validate_artifact_semantics(record)
+        contracts.validate_artifact_semantics(record, source_root=source_root)
         contracts.reconcile_artifact_inventory_row(record, inventory_row)
     except contracts.ContractValidationError as exc:
         raise ArtifactIndexError(

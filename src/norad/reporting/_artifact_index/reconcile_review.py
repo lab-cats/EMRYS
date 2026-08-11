@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
-from pathlib import Path
 
 from .contracts import contracts, review_package, step08
 from .models import (
@@ -13,7 +12,7 @@ from .models import (
     ArtifactIndexError,
     Inspection,
 )
-from .reconcile_native import native_int, require_referenced_source
+from .reconcile_native import NativeSourceIndex, native_int, require_referenced_source
 
 
 def split_native_safe_ids(value: str, field_name: str) -> list[str]:
@@ -294,7 +293,7 @@ def step09c_candidate_keys(
 
 def reconcile_step09c(
     members: Sequence[Inspection],
-    source_lookup: Mapping[Path, Inspection],
+    sources: NativeSourceIndex,
 ) -> None:
     by_adapter = {member.row["adapter"]: member for member in members}
     plan = by_adapter["step09c_review_plan_v1"]
@@ -473,7 +472,7 @@ def reconcile_step09c(
             path_field=f"{prefix}_path",
             hash_field=f"{prefix}_sha256",
             row_count_field=f"{prefix}_row_count",
-            source_lookup=source_lookup,
+            sources=sources,
         )
         if target.row["adapter"] != adapter_id:
             raise ArtifactIndexError(

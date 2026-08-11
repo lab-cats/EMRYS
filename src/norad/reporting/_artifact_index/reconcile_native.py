@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
 from norad.libraries.alignments import orientation as alignment_orientation
@@ -12,6 +13,12 @@ from norad.libraries.alignments import orientation as alignment_orientation
 from .contracts import step08
 from .core import declared_contract_path, issue
 from .models import STEP06_COUNTS_HEADER, ArtifactIndexError, Inspection
+
+
+@dataclass(frozen=True)
+class NativeSourceIndex:
+    source_root: Path
+    by_path: Mapping[Path, Inspection]
 
 
 def infer_orient_from_path(path: Path) -> str:
@@ -70,12 +77,14 @@ def require_referenced_source(
     path_field: str,
     hash_field: str,
     row_count_field: str | None,
-    source_lookup: Mapping[Path, Inspection],
+    sources: NativeSourceIndex,
 ) -> Inspection:
     path_value = row.get(path_field, "")
     if not path_value:
         raise ArtifactIndexError(f"Native reference field {path_field} is empty")
-    target = source_lookup.get(declared_contract_path(path_value))
+    target = sources.by_path.get(
+        declared_contract_path(path_value, source_root=sources.source_root)
+    )
     if target is None:
         raise ArtifactIndexError(
             f"Native reference {path_field} is not declared by the inventory: "
@@ -175,7 +184,10 @@ def reconcile_step06(members: Sequence[Inspection]) -> None:
         )
 
 
-def reconcile_step07(members: Sequence[Inspection]) -> None:
+def reconcile_step07(
+    members: Sequence[Inspection],
+    sources: NativeSourceIndex,
+) -> None:
     vcfs = [
         member for member in members if member.row["adapter"] == "step07_mpileup_vcf_v1"
     ]
@@ -217,7 +229,10 @@ def reconcile_step07(members: Sequence[Inspection]) -> None:
     partition_id = next(iter(partition_ids))
     receipt_by_path: dict[Path, Mapping[str, str]] = {}
     for row in receipt_rows:
-        path = declared_contract_path(row["vcf_path"])
+        path = declared_contract_path(
+            row["vcf_path"],
+            source_root=sources.source_root,
+        )
         if path in receipt_by_path:
             raise ArtifactIndexError("Step 07 receipt repeats a VCF path")
         receipt_by_path[path] = row
@@ -255,7 +270,7 @@ def reconcile_step07(members: Sequence[Inspection]) -> None:
 
 def reconcile_step08(
     members: Sequence[Inspection],
-    source_lookup: Mapping[Path, Inspection],
+    sources: NativeSourceIndex,
 ) -> None:
     sites = next(
         member for member in members if member.row["adapter"] == "step08_sites_v1"
@@ -318,7 +333,7 @@ def reconcile_step08(
             path_field="vcf_path",
             hash_field="vcf_sha256",
             row_count_field=None,
-            source_lookup=source_lookup,
+            sources=sources,
         )
         expected_orientation = infer_orient_from_path(vcf.resolved_path)
         if (
@@ -343,7 +358,7 @@ def reconcile_step08(
             path_field="step07_receipt_path",
             hash_field="step07_receipt_sha256",
             row_count_field=None,
-            source_lookup=source_lookup,
+            sources=sources,
         )
         if receipt.row["scope_id"] != vcf.row["scope_id"]:
             raise ArtifactIndexError(
@@ -353,7 +368,11 @@ def reconcile_step08(
         matching_receipt_rows = [
             receipt_row
             for receipt_row in receipt_rows
-            if declared_contract_path(receipt_row["vcf_path"]) == vcf.resolved_path
+            if declared_contract_path(
+                receipt_row["vcf_path"],
+                source_root=sources.source_root,
+            )
+            == vcf.resolved_path
         ]
         if len(matching_receipt_rows) != 1:
             raise ArtifactIndexError(

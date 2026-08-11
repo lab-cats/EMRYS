@@ -948,10 +948,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 0,
-      "covered_lines": 100,
+      "covered_lines": 101,
       "line_rate": "1.000000",
       "num_branches": 0,
-      "num_statements": 100,
+      "num_statements": 101,
       "path": "src/norad/reporting/_artifact_index/models.py"
     },
     {
@@ -966,19 +966,19 @@
     {
       "branch_rate": "0.681034",
       "covered_branches": 79,
-      "covered_lines": 149,
-      "line_rate": "0.792553",
+      "covered_lines": 154,
+      "line_rate": "0.797927",
       "num_branches": 116,
-      "num_statements": 188,
+      "num_statements": 193,
       "path": "src/norad/reporting/_artifact_index/reconcile_native.py"
     },
     {
       "branch_rate": "0.652542",
       "covered_branches": 77,
-      "covered_lines": 138,
-      "line_rate": "0.770950",
+      "covered_lines": 137,
+      "line_rate": "0.769663",
       "num_branches": 118,
-      "num_statements": 179,
+      "num_statements": 178,
       "path": "src/norad/reporting/_artifact_index/reconcile_review.py"
     },
     {
@@ -1360,12 +1360,12 @@
       "path": "src/norad/reporting/_signals.py"
     },
     {
-      "branch_rate": "0.833333",
-      "covered_branches": 5,
-      "covered_lines": 86,
-      "line_rate": "0.988506",
-      "num_branches": 6,
-      "num_statements": 87,
+      "branch_rate": "1.000000",
+      "covered_branches": 4,
+      "covered_lines": 89,
+      "line_rate": "1.000000",
+      "num_branches": 4,
+      "num_statements": 89,
       "path": "src/norad/reporting/build_artifact_index.py"
     },
     {
@@ -1627,11 +1627,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.750000",
-    "covered_branches": 3333,
-    "covered_lines": 10204,
-    "line_rate": "0.858995",
-    "num_branches": 4444,
-    "num_statements": 11879
+    "branch_rate": "0.750113",
+    "covered_branches": 3332,
+    "covered_lines": 10212,
+    "line_rate": "0.859162",
+    "num_branches": 4442,
+    "num_statements": 11886
   }
 }

@@ -124,11 +124,11 @@ def new_attempt_id(timestamp: str) -> str:
     return f"artifact-index-{compact}-{uuid.uuid4().hex[:12]}"
 
 
-def get_git_commit() -> str:
+def get_git_commit(*, source_root: Path = contracts.REPO_ROOT) -> str:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--verify", "HEAD"],
-            cwd=contracts.REPO_ROOT,
+            cwd=source_root,
             check=True,
             capture_output=True,
             text=True,
@@ -262,10 +262,14 @@ def issue(code: str, message: str, artifact_id: str) -> dict[str, Any]:
     }
 
 
-def declared_contract_path(value: str) -> Path:
+def declared_contract_path(
+    value: str,
+    *,
+    source_root: Path,
+) -> Path:
     path = Path(value)
     if not path.is_absolute():
-        path = contracts.REPO_ROOT / path
+        path = source_root / path
     return Path(os.path.abspath(os.fspath(path)))
 
 

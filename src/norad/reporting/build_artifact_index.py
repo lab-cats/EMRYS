@@ -15,7 +15,7 @@ import sys
 import uuid as uuid
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 src_root = str(Path(__file__).resolve().parents[2])
 # Direct execution must prefer this checkout over an installed NORAD.
@@ -31,10 +31,8 @@ from norad.reporting._artifact_index import registry as _registry_owner
 from norad.reporting._artifact_index.binary_readers import (
     BGZF_EOF_BLOCK as BGZF_EOF_BLOCK,
 )
-from norad.reporting._artifact_index.context import (
-    prepare_context,
-    print_context,
-)
+from norad.reporting._artifact_index.context import prepare_context as _prepare_context
+from norad.reporting._artifact_index.context import print_context
 from norad.reporting._artifact_index.context import (
     recheck_inputs as recheck_inputs,
 )
@@ -49,6 +47,13 @@ from norad.reporting._artifact_index.source_checkout import (
 from norad.reporting._artifact_index.validation import (
     validate_published_transaction,
 )
+
+if TYPE_CHECKING:
+    import argparse as _argparse
+
+    from norad.reporting._artifact_index.source_checkout import (
+        SourceCheckout as _SourceCheckout,
+    )
 
 contracts = _api_owner.contracts
 step08 = _contract_owners.step08
@@ -117,6 +122,7 @@ def validate_existing_transaction(
     records_dir: Path,
     artifacts_path: Path,
     receipt_path: Path,
+    source_root: Path = contracts.REPO_ROOT,
 ) -> None:
     """Validate a predecessor through this facade's patchable validator."""
 
@@ -133,7 +139,22 @@ def validate_existing_transaction(
         artifacts_path=artifacts_path,
         receipt_path=receipt_path,
         require_current_source_locations=False,
+        source_root=source_root,
     )
+
+
+def prepare_context(
+    arguments: _argparse.Namespace,
+    *,
+    source_checkout: _SourceCheckout | None = None,
+) -> BuildContext:
+    """Build through an explicit authority while retaining facade compatibility."""
+
+    authority = source_checkout or admit_source_checkout(
+        root=Path(__file__).resolve().parents[3],
+        package_root=Path(_api_owner.__file__).resolve().parents[2],
+    )
+    return _prepare_context(arguments, source_checkout=authority)
 
 
 def publish_context(context: BuildContext) -> None:
@@ -152,12 +173,10 @@ def main() -> int:
             root=Path(__file__).resolve().parents[3],
             package_root=Path(_api_owner.__file__).resolve().parents[2],
         )
-        if source_checkout.root != contracts.REPO_ROOT.resolve(strict=True):
-            raise SourceCheckoutError(
-                "Artifact-contract repository root differs from the admitted "
-                f"source checkout: {contracts.REPO_ROOT}"
-            )
-        context = prepare_context(arguments)
+        context = prepare_context(
+            arguments,
+            source_checkout=source_checkout,
+        )
         print_context(context, arguments.execute)
         if arguments.execute:
             publish_context(context)

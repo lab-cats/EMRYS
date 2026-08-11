@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .contracts import contracts
 from .core import issue
 from .models import ArtifactIndexError, Inspection
 from .reconcile_native import (
+    NativeSourceIndex,
     mark_native_transaction_failed,
     reconcile_step00c,
     reconcile_step06,
@@ -18,6 +19,9 @@ from .reconcile_native import (
 )
 from .reconcile_review import reconcile_step09c
 from .reconcile_step09 import reconcile_step09
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _group_by_scope(
@@ -31,8 +35,13 @@ def _group_by_scope(
 
 def reconcile_native_transactions(
     inspections: Sequence[Inspection],
+    *,
+    source_root: Path,
 ) -> None:
-    source_lookup = {inspection.resolved_path: inspection for inspection in inspections}
+    sources = NativeSourceIndex(
+        source_root=source_root,
+        by_path={inspection.resolved_path: inspection for inspection in inspections},
+    )
     grouped = _group_by_scope(inspections)
     marker_adapters = {
         "00c": "step00c_reference_dict_v1",
@@ -45,10 +54,19 @@ def reconcile_native_transactions(
     validators = {
         "00c": lambda members: reconcile_step00c(members),
         "06": lambda members: reconcile_step06(members),
-        "07": lambda members: reconcile_step07(members),
-        "08": lambda members: reconcile_step08(members, source_lookup),
-        "09": lambda members: reconcile_step09(members, source_lookup),
-        "09c": lambda members: reconcile_step09c(members, source_lookup),
+        "07": lambda members: reconcile_step07(members, sources),
+        "08": lambda members: reconcile_step08(
+            members,
+            sources,
+        ),
+        "09": lambda members: reconcile_step09(
+            members,
+            sources,
+        ),
+        "09c": lambda members: reconcile_step09c(
+            members,
+            sources,
+        ),
     }
     dependency_order = {
         "00c": 0,

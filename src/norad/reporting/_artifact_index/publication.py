@@ -237,6 +237,7 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
                 records_dir=context.records_dir,
                 artifacts_path=context.artifacts_path,
                 receipt_path=context.receipt_path,
+                source_root=context.source_checkout.root,
             )
 
         temp_records.mkdir()
@@ -278,6 +279,7 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
             artifacts_path=context.artifacts_path,
             receipt_path=context.receipt_path,
             require_current_source_locations=True,
+            source_root=context.source_checkout.root,
         )
         facade.recheck_inputs(context)
         publication_committed = True
@@ -338,6 +340,7 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
                         records_dir=context.records_dir,
                         artifacts_path=context.artifacts_path,
                         receipt_path=context.receipt_path,
+                        source_root=context.source_checkout.root,
                     ),
                 )
                 if len(rollback_errors) > validation_error_count and (

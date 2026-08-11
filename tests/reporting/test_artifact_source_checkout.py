@@ -382,6 +382,96 @@ def test_cli_parse_termination_precedes_checkout_admission(
     assert caught.value.code == CLI_USAGE_ERROR
 
 
+def test_cli_threads_admitted_checkout_into_context(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments = argparse.Namespace(execute=False)
+    admitted = source_checkout.SourceCheckout(root=tmp_path)
+    context = object()
+    events: list[str] = []
+
+    def parsed_arguments() -> argparse.Namespace:
+        events.append("parse")
+        return arguments
+
+    def admit_checkout(
+        *,
+        root: Path,
+        package_root: Path,
+    ) -> source_checkout.SourceCheckout:
+        assert root.is_absolute()
+        assert package_root.is_absolute()
+        events.append("admit")
+        return admitted
+
+    def prepare_context(
+        observed_arguments: argparse.Namespace,
+        *,
+        source_checkout: source_checkout.SourceCheckout,
+    ) -> object:
+        assert observed_arguments is arguments
+        assert source_checkout is admitted
+        events.append("prepare")
+        return context
+
+    def print_context(observed_context: object, execute: object) -> None:
+        assert observed_context is context
+        assert execute is False
+        events.append("print")
+
+    monkeypatch.setattr(artifact_index_facade, "parse_args", parsed_arguments)
+    monkeypatch.setattr(
+        artifact_index_facade,
+        "admit_source_checkout",
+        admit_checkout,
+    )
+    monkeypatch.setattr(
+        artifact_index_facade,
+        "prepare_context",
+        prepare_context,
+    )
+    monkeypatch.setattr(artifact_index_facade, "print_context", print_context)
+
+    assert artifact_index_facade.main() == 0
+    assert events == ["parse", "admit", "prepare", "print"]
+
+
+def test_facade_prepare_context_admits_default_authority(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments = argparse.Namespace()
+    admitted = source_checkout.SourceCheckout(root=tmp_path)
+    context = object()
+    facade_path = Path(artifact_index_facade.__file__).resolve()
+
+    def admit_checkout(
+        *,
+        root: Path,
+        package_root: Path,
+    ) -> source_checkout.SourceCheckout:
+        assert root == facade_path.parents[3]
+        assert package_root == facade_path.parents[1]
+        assert root.is_absolute()
+        assert package_root.is_absolute()
+        return admitted
+
+    def build_context(
+        observed_arguments: argparse.Namespace,
+        *,
+        source_checkout: source_checkout.SourceCheckout,
+    ) -> object:
+        assert observed_arguments is arguments
+        assert source_checkout is admitted
+        return context
+
+    monkeypatch.setattr(artifact_index_facade, "admit_source_checkout", admit_checkout)
+    monkeypatch.setattr(artifact_index_facade, "_prepare_context", build_context)
+
+    assert artifact_index_facade.prepare_context(arguments) is context
+
+
 def test_cli_admission_failure_precedes_context_construction(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
