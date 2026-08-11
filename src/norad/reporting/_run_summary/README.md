@@ -23,8 +23,13 @@ deterministic helpers and publication beneath it.
 
 The package is not an additional supported command surface. The public facade
 and publication recheck share the one canonical `science_projection.py`
-module identity, and all modules reuse the same artifact adapter and contract
-owner. Science projection consumes the neutral review-package contract, the
-committed public thirteen-file package, explicitly referenced evidence, and
-validated index records. It does not load private Step `09c` inputs, own review
-policy, or promote computational or scientific state.
+module identity. Artifact-index parsing, validation, serialization, and shared
+transaction primitives enter through the narrow private
+[`_artifact_index/api.py`](../_artifact_index/api.py) boundary rather than the
+executable artifact-index facade; both reporting owners still reuse the same
+artifact contract and error identities. Science projection consumes the
+neutral review-package contract, the committed public thirteen-file package,
+explicitly referenced evidence, and validated index records. It does not load
+private Step `09c` inputs, own review policy, or promote computational or
+scientific state. The API separation changes no run-summary command, output,
+diagnostic, publication order, rollback, recovery, or evidence claim.

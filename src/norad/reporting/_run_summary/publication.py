@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from norad.reporting import build_artifact_index as adapter
+from norad.reporting._artifact_index import api as adapter
 from norad.reporting._run_summary import science_projection as science
 from norad.reporting._run_summary.inputs import (
     _fail,

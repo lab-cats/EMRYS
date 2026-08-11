@@ -20,7 +20,7 @@ src_root = str(Path(__file__).resolve().parents[2])
 # Direct execution must prefer this checkout over an installed NORAD.
 sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
 
-from norad.reporting import build_artifact_index as adapter
+from norad.reporting._artifact_index import api as adapter
 from norad.reporting._run_summary import document as _document
 from norad.reporting._run_summary import inputs as _inputs
 from norad.reporting._run_summary import models as _models

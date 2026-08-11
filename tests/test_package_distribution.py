@@ -292,6 +292,7 @@ def _assert_wheel_contents(wheel: Path) -> None:
             for member in members
             if member.startswith("norad/contracts/artifacts/")
         } == ARTIFACT_CONTRACT_PACKAGE_PATHS
+        assert "norad/reporting/_artifact_index/api.py" in members
         assert "norad/reporting/_run_summary/science_projection.py" in members
         assert "norad/reporting/_run_summary_science.py" not in members
         assert "norad/ingestion/__init__.py" in members
@@ -500,10 +501,14 @@ def _assert_dependency_prepared_artifact_contracts(
             (
                 "import importlib, importlib.metadata, json, sys; "
                 "import norad; "
-                "from norad.contracts.artifacts import api; "
+                "from norad.contracts.artifacts import api as artifact_contracts; "
+                "from norad.reporting._artifact_index import api as artifact_index; "
                 f"dependencies = {ARTIFACT_RUNTIME_DEPENDENCIES!r}; "
-                "schemas, _ = api.load_schema_registry(); "
+                "schemas, _ = artifact_contracts.load_schema_registry(); "
                 "print(json.dumps({"
+                "'artifact_index': artifact_index.__file__, "
+                "'artifact_index_facade_loaded': "
+                "'norad.reporting.build_artifact_index' in sys.modules, "
                 "'isolated': sys.flags.isolated, "
                 "'norad': norad.__file__, "
                 "'origins': {name: importlib.import_module(module).__file__ "
@@ -534,6 +539,8 @@ def _assert_dependency_prepared_artifact_contracts(
         "run-summary",
         "scientific-review-record",
     ]
+    assert Path(observed["artifact_index"]).resolve().is_relative_to(environment_site)
+    assert observed["artifact_index_facade_loaded"] is False
     assert Path(observed["norad"]).resolve().is_relative_to(environment_site)
     origins = tuple(Path(origin) for origin in observed["origins"].values())
     assert all(origin.is_relative_to(projection) for origin in origins)
@@ -2393,6 +2400,9 @@ def _assert_private_source_layout() -> None:
     ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
 
     reporting_source = REPO_ROOT / "src/norad/reporting"
+    assert (
+        reporting_source / "_artifact_index/api.py"
+    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
     assert not (reporting_source / "_run_summary_science.py").exists()
     assert (
         reporting_source / "_run_summary/science_projection.py"

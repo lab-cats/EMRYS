@@ -2,14 +2,15 @@
 
 This private package decomposes the artifact-index implementation behind
 [`build_artifact_index.py`](../build_artifact_index.py). The public script path
-remains the CLI and compatibility facade used by run-summary reporting and the
-artifact contract tests.
+remains the CLI and compatibility facade protected by the artifact contract
+tests. [`api.py`](api.py) is the narrow private import boundary used by
+run-summary reporting; it is not another command or public application API.
 
-The modules keep observed responsibilities separate: exact contract loading,
-models and rosters, explicit adapter registration, text and binary readers,
-inspection, named native/scientific reconciliation, record and receipt
-assembly, context construction, receipt-last publication, and
-published-transaction validation.
+The modules keep observed responsibilities separate: the curated run-summary
+API, exact contract loading, models and rosters, explicit adapter registration,
+text and binary readers, inspection, named native/scientific reconciliation,
+record and receipt assembly, context construction, receipt-last publication,
+and published-transaction validation.
 Stage-specific rules remain in their named reconciliation modules; this
 package is not a generic stage framework.
 
@@ -27,9 +28,10 @@ anchor parsing, and `_text_genomic.py` owns VCF, reference, BED12, STAR, and
 Picard inspection. The split adds no adapter kind, registry entry, schema,
 artifact state, or discovery behavior.
 
-[`publication.py`](publication.py) owns the transaction coordinator, rollback,
-recovery, and cleanup order. Lock, signal, filesystem, validation, and input
-recheck operations remain live bindings on the public facade; the coordinator
-calls through that facade so existing fault-injection and caller contracts stay
-patchable. These internals do not change artifact schemas, serialized bytes,
-source discovery policy, evidence states, or publication order.
+[`publication.py`](publication.py) owns the shared byte-write, durability-sync,
+lock, removal, and signal transaction primitives as well as the artifact-index
+coordinator, rollback, recovery, and cleanup order. The public facade re-exports
+the same primitives and remains the live artifact-index fault-injection surface;
+run-summary reporting reaches them through the private `api.py` boundary. These
+internals do not change artifact schemas, serialized bytes, source discovery
+policy, evidence states, diagnostics, or publication order.

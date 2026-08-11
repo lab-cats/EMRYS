@@ -3,10 +3,138 @@
 from __future__ import annotations
 
 import contextlib
+import os
+import shutil
 import sys
+from pathlib import Path
 from typing import Any
 
-from .models import ArtifactIndexError, BuildContext
+from norad.reporting import _signals
+
+from .models import ArtifactIndexError, BuildContext, LockOwnership
+
+
+def write_bytes_exclusive(path: Path, payload: bytes) -> None:
+    try:
+        with path.open("xb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except OSError as exc:
+        raise ArtifactIndexError(
+            f"Could not write temporary file {path}: {exc}"
+        ) from exc
+
+
+def fsync_directory(path: Path) -> None:
+    try:
+        descriptor = os.open(path, os.O_RDONLY)
+    except OSError as exc:
+        raise ArtifactIndexError(
+            f"Could not open directory for durability sync {path}: {exc}"
+        ) from exc
+    try:
+        os.fsync(descriptor)
+    except OSError as exc:
+        raise ArtifactIndexError(
+            f"Could not durability-sync directory {path}: {exc}"
+        ) from exc
+    finally:
+        os.close(descriptor)
+
+
+def acquire_lock(
+    lock_path: Path,
+    run_id: str,
+    run_token: str,
+) -> LockOwnership:
+    payload = (
+        f"run_id\t{run_id}\npid\t{os.getpid()}\nrun_token\t{run_token}\n"
+    ).encode()
+    try:
+        descriptor = os.open(
+            lock_path,
+            os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+            0o600,
+        )
+    except FileExistsError as exc:
+        raise ArtifactIndexError(
+            f"Artifact-index output is locked; inspect owner metadata: {lock_path}"
+        ) from exc
+    except OSError as exc:
+        raise ArtifactIndexError(f"Could not acquire lock {lock_path}: {exc}") from exc
+    stat_result = os.fstat(descriptor)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except OSError as exc:
+        try:
+            lock_path.unlink()
+        except OSError as cleanup_exc:
+            raise ArtifactIndexError(
+                "Could not write lock metadata and could not remove the "
+                f"incomplete owned lock {lock_path}: {exc}; {cleanup_exc}"
+            ) from exc
+        raise ArtifactIndexError(f"Could not write lock metadata: {exc}") from exc
+    return LockOwnership(
+        device=stat_result.st_dev,
+        inode=stat_result.st_ino,
+        run_token=run_token,
+    )
+
+
+def release_owned_lock(
+    lock_path: Path,
+    ownership: LockOwnership,
+) -> None:
+    try:
+        if lock_path.is_symlink():
+            raise ArtifactIndexError(
+                f"Owned lock was replaced by a symlink: {lock_path}"
+            )
+        with lock_path.open(encoding="utf-8") as stream:
+            stat_result = os.fstat(stream.fileno())
+            payload = stream.read()
+    except FileNotFoundError as exc:
+        raise ArtifactIndexError(
+            f"Owned lock disappeared before cleanup: {lock_path}"
+        ) from exc
+    except (OSError, UnicodeError) as exc:
+        raise ArtifactIndexError(
+            f"Could not verify owned lock before cleanup: {lock_path}: {exc}"
+        ) from exc
+    if (
+        stat_result.st_dev != ownership.device
+        or stat_result.st_ino != ownership.inode
+        or f"run_token\t{ownership.run_token}\n" not in payload
+    ):
+        raise ArtifactIndexError(
+            f"Owned lock identity changed before cleanup: {lock_path}"
+        )
+    try:
+        lock_path.unlink()
+    except OSError as exc:
+        raise ArtifactIndexError(
+            f"Could not remove verified owned lock {lock_path}: {exc}"
+        ) from exc
+
+
+def remove_owned(path: Path) -> None:
+    if not path.exists() and not path.is_symlink():
+        return
+    if path.is_dir() and not path.is_symlink():
+        shutil.rmtree(path)
+    else:
+        path.unlink()
+
+
+def install_publication_signal_handlers() -> dict[int, Any]:
+    return _signals.install(ArtifactIndexError, "Artifact-index", "publication")
+
+
+restore_signal_handlers = _signals.restore
 
 
 def publish_context(context: BuildContext, *, facade: Any) -> None:

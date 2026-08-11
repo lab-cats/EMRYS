@@ -20,6 +20,7 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
+from norad.reporting._artifact_index import api as ARTIFACT_INDEX_API
 from norad.reporting._run_summary import science_evidence as SCIENCE_EVIDENCE
 from norad.reporting._run_summary import science_models as SCIENCE_MODELS
 from norad.reporting._run_summary import science_package as SCIENCE_PACKAGE
@@ -88,11 +89,17 @@ def run_cli(
     )
 
 
-def test_science_projection_uses_shared_owner_identities() -> None:
+def test_run_summary_uses_shared_private_owner_identities() -> None:
+    assert (
+        RUN_SUMMARY.adapter
+        is RUN_SUMMARY._models.adapter
+        is RUN_SUMMARY._publication.adapter
+        is ARTIFACT_INDEX_API
+    )
     assert RUN_SUMMARY.science is RUN_SUMMARY._publication.science is SCIENCE
     assert RUN_SUMMARY.contracts is SCIENCE.contracts is SCIENCE_PACKAGE.contracts
     assert (
-        RUN_SUMMARY.adapter.review_package
+        RUN_SUMMARY._models.review_package
         is SCIENCE.review_package
         is SCIENCE_PACKAGE.review_package
     )
@@ -1368,7 +1375,7 @@ def test_partial_signal_handler_install_restores_original_handlers(
 ) -> None:
     watched = (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
     original_handlers = {signum: signal.getsignal(signum) for signum in watched}
-    real_signal = RUN_SUMMARY.adapter.signal.signal
+    real_signal = signal.signal
     call_count = 0
 
     def fail_second_install(signum: int, handler: Any) -> Any:
@@ -1380,11 +1387,7 @@ def test_partial_signal_handler_install_restores_original_handlers(
             )
         return real_signal(signum, handler)
 
-    monkeypatch.setattr(
-        RUN_SUMMARY.adapter.signal,
-        "signal",
-        fail_second_install,
-    )
+    monkeypatch.setattr(signal, "signal", fail_second_install)
 
     with pytest.raises(
         RUN_SUMMARY.adapter.ArtifactIndexError,

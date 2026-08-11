@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from norad.contracts.scientific_evidence import review_package
-from norad.reporting import build_artifact_index as adapter
+from norad.reporting._artifact_index import api as adapter
 from norad.reporting._files import FileSnapshot
 
 contracts = adapter.contracts
