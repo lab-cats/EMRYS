@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from .contracts import Table, read_tsv, review_package, sha256_file, step08, step09
+from norad.contracts.scientific_evidence import review_package, step08, step09
+from norad.contracts.scientific_evidence.step08 import Table, read_tsv, sha256_file
+
 from .intake import (
     split_ids,
     validate_candidate_reference,

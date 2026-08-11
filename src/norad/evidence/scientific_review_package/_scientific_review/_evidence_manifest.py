@@ -5,15 +5,20 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from .contracts import (
-    COMPUTATIONAL_VALIDATION_HEADER,
-    EVIDENCE_MANIFEST_HEADER,
+from norad.contracts.scientific_evidence import (
+    computational_validation,
+    review_package,
+    step08,
+)
+from norad.contracts.scientific_evidence.step08 import (
     NA_VALUE,
     Table,
     read_tsv,
-    review_package,
     sha256_file,
-    step08,
+)
+
+from .contracts import (
+    EVIDENCE_MANIFEST_HEADER,
 )
 from .intake import resolve_declared_path, split_ids, validate_iso_date
 
@@ -143,7 +148,7 @@ def validate_evidence_manifest(
             if observed_hash != row["source_sha256"]:
                 step08.fail(f"Evidence source hash differs for {row['evidence_id']}.")
             expected_header = (
-                COMPUTATIONAL_VALIDATION_HEADER
+                computational_validation.HEADER
                 if row["evidence_category"] == "computational_validation"
                 else review_package.CATEGORY_HEADERS[row["evidence_category"]]
             )

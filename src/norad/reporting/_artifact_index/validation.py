@@ -9,7 +9,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .contracts import contracts
+from norad.contracts.artifacts import api as contracts
+
 from .core import canonical_digest
 from .models import (
     ARTIFACT_INDEX_HEADER,

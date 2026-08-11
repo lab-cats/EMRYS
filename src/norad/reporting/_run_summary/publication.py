@@ -5,9 +5,12 @@ from __future__ import annotations
 import os
 import sys
 import uuid
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from norad.contracts.artifacts import api as contracts
 from norad.reporting._artifact_index import api as adapter
 from norad.reporting._run_summary import science_projection as science
 from norad.reporting._run_summary.inputs import (
@@ -29,16 +32,46 @@ from norad.reporting._run_summary.validation import (
     _validate_existing_summary,
 )
 
-contracts = adapter.contracts
+
+@dataclass(frozen=True)
+class RunSummaryPublicationOps:
+    """Explicit fault seams for one run-summary publication."""
+
+    replace: Callable[..., Any] = os.replace
+    write_bytes_exclusive: Callable[..., Any] = adapter.write_bytes_exclusive
+    fsync_directory: Callable[..., Any] = adapter.fsync_directory
+    acquire_lock: Callable[..., Any] = adapter.acquire_lock
+    release_owned_lock: Callable[..., Any] = adapter.release_owned_lock
+    remove_owned: Callable[..., Any] = adapter.remove_owned
+    install_signal_handlers: Callable[..., Any] = (
+        adapter.install_publication_signal_handlers
+    )
+    restore_signal_handlers: Callable[..., Any] = adapter.restore_signal_handlers
+    validate_artifact_transaction: Callable[..., Any] = (
+        adapter.validate_published_transaction
+    )
+    normalize_scientific_review: Callable[..., Any] = (
+        science.normalize_scientific_review
+    )
+    load_existing_summary_receipt: Callable[..., Any] = _load_existing_summary_receipt
+    validate_document: Callable[..., Any] = _validate_document
+    validate_existing_summary: Callable[..., Any] = _validate_existing_summary
 
 
-def _recheck_inputs(context: BuildContext) -> None:
+DEFAULT_RUN_SUMMARY_PUBLICATION_OPS = RunSummaryPublicationOps()
+
+
+def _recheck_inputs(
+    context: BuildContext,
+    *,
+    ops: RunSummaryPublicationOps = DEFAULT_RUN_SUMMARY_PUBLICATION_OPS,
+) -> None:
     _assert_output_directory_identity(context.paths)
     for snapshot in context.input_snapshots:
         _verify_file_snapshot("Artifact transaction input", snapshot)
     for snapshot in context.report_table_snapshots:
         _verify_report_table_snapshot(snapshot)
-    adapter.validate_published_transaction(
+    ops.validate_artifact_transaction(
         run_id=context.run_id,
         run_contract=context.run_contract,
         run_contract_path=context.run_contract_path,
@@ -61,7 +94,7 @@ def _recheck_inputs(context: BuildContext) -> None:
             context.science_review_summary_sha256
         ):
             _fail("The explicit science-review summary changed")
-        normalized = science.normalize_scientific_review(
+        normalized = ops.normalize_scientific_review(
             summary_path=context.science_review_summary_path,
             artifacts=context.artifacts,
             run_id=context.run_id,
@@ -86,7 +119,11 @@ def _recheck_inputs(context: BuildContext) -> None:
         _fail("The explicit report-table approval package changed")
 
 
-def validate_published_run_summary(context: BuildContext) -> None:
+def validate_published_run_summary(
+    context: BuildContext,
+    *,
+    ops: RunSummaryPublicationOps = DEFAULT_RUN_SUMMARY_PUBLICATION_OPS,
+) -> None:
     _assert_output_directory_identity(context.paths)
     for path in context.paths.ordered_outputs:
         if path.is_symlink() or not path.is_file():
@@ -111,13 +148,13 @@ def validate_published_run_summary(context: BuildContext) -> None:
     document = contracts.load_json_object(
         context.paths.summary_json, "published run summary"
     )
-    _validate_document(
+    ops.validate_document(
         document,
         context.inventory_rows,
         context.inventory_path,
         source_root=context.source_checkout.root,
     )
-    _validate_existing_summary(
+    ops.validate_existing_summary(
         paths=context.paths,
         receipt=receipt,
         expected_run_id=context.run_id,
@@ -136,7 +173,11 @@ def _write_recovery_marker(
         pass
 
 
-def publish_context(context: BuildContext) -> None:
+def publish_context(
+    context: BuildContext,
+    *,
+    ops: RunSummaryPublicationOps = DEFAULT_RUN_SUMMARY_PUBLICATION_OPS,
+) -> None:
     _assert_output_directory_identity(context.paths)
     run_token = f"{os.getpid()}-{uuid.uuid4().hex}"
     temp_paths = tuple(
@@ -156,14 +197,14 @@ def publish_context(context: BuildContext) -> None:
             _fail(f"Run-token scratch path already exists: {path}")
 
     try:
-        ownership = adapter.acquire_lock(context.paths.lock, context.run_id, run_token)
+        ownership = ops.acquire_lock(context.paths.lock, context.run_id, run_token)
     except adapter.ArtifactIndexError as exc:
         _fail(str(exc))
     try:
-        previous_signal_handlers = adapter.install_publication_signal_handlers()
+        previous_signal_handlers = ops.install_signal_handlers()
     except BaseException as exc:
         try:
-            adapter.release_owned_lock(context.paths.lock, ownership)
+            ops.release_owned_lock(context.paths.lock, ownership)
         except adapter.ArtifactIndexError as cleanup_exc:
             raise RunSummaryError(
                 "Could not install run-summary publication signal handlers "
@@ -183,7 +224,7 @@ def publish_context(context: BuildContext) -> None:
     output_identity_lost = False
     try:
         _assert_output_directory_identity(context.paths)
-        current_previous, current_previous_hash = _load_existing_summary_receipt(
+        current_previous, current_previous_hash = ops.load_existing_summary_receipt(
             context.paths
         )
         if current_previous != context.previous_receipt or (
@@ -194,14 +235,14 @@ def publish_context(context: BuildContext) -> None:
                 "prepare a fresh context"
             )
         if current_previous is not None:
-            _validate_existing_summary(
+            ops.validate_existing_summary(
                 paths=context.paths,
                 receipt=current_previous,
                 expected_run_id=context.run_id,
                 expected_run_contract=context.run_contract,
                 source_root=context.source_checkout.root,
             )
-        _recheck_inputs(context)
+        _recheck_inputs(context, ops=ops)
 
         payloads = (
             context.summary_json_bytes,
@@ -212,9 +253,9 @@ def publish_context(context: BuildContext) -> None:
         _assert_output_directory_identity(context.paths)
         for path, payload in zip(temp_paths, payloads, strict=True):
             _assert_output_directory_identity(context.paths)
-            adapter.write_bytes_exclusive(path, payload)
+            ops.write_bytes_exclusive(path, payload)
             _assert_output_directory_identity(context.paths)
-        adapter.fsync_directory(context.paths.output_dir)
+        ops.fsync_directory(context.paths.output_dir)
 
         if had_previous:
             _assert_output_directory_identity(context.paths)
@@ -225,7 +266,7 @@ def publish_context(context: BuildContext) -> None:
                 # Mark intent before rename so a handled signal immediately
                 # after the filesystem operation cannot hide the backup.
                 backed_up[index] = True
-                os.replace(
+                ops.replace(
                     context.paths.ordered_outputs[index],
                     backup_paths[index],
                 )
@@ -238,11 +279,11 @@ def publish_context(context: BuildContext) -> None:
             # As above, intent precedes the rename. Removal is idempotent if
             # the rename itself failed before changing the filesystem.
             published[index] = True
-            os.replace(temp_paths[index], context.paths.ordered_outputs[index])
+            ops.replace(temp_paths[index], context.paths.ordered_outputs[index])
             _assert_output_directory_identity(context.paths)
-        adapter.fsync_directory(context.paths.output_dir)
-        validate_published_run_summary(context)
-        _recheck_inputs(context)
+        ops.fsync_directory(context.paths.output_dir)
+        validate_published_run_summary(context, ops=ops)
+        _recheck_inputs(context, ops=ops)
         committed = True
     except Exception as exc:
         rollback_errors: list[str] = []
@@ -290,8 +331,8 @@ def publish_context(context: BuildContext) -> None:
             final_exists = final_path.exists() or final_path.is_symlink()
             if backup_exists:
                 if final_exists:
-                    adapter.remove_owned(final_path)
-                os.replace(backup_path, final_path)
+                    ops.remove_owned(final_path)
+                ops.replace(backup_path, final_path)
                 return
             if final_exists:
                 return
@@ -304,7 +345,7 @@ def publish_context(context: BuildContext) -> None:
             if published[index]:
                 rollback(
                     f"remove new {context.paths.ordered_outputs[index].name}",
-                    lambda index=index: adapter.remove_owned(
+                    lambda index=index: ops.remove_owned(
                         context.paths.ordered_outputs[index]
                     ),
                 )
@@ -325,7 +366,7 @@ def publish_context(context: BuildContext) -> None:
                 validation_error_count = len(rollback_errors)
 
                 def validate_restored_prior() -> None:
-                    restored, restored_sha256 = _load_existing_summary_receipt(
+                    restored, restored_sha256 = ops.load_existing_summary_receipt(
                         context.paths
                     )
                     if restored is None:
@@ -338,7 +379,7 @@ def publish_context(context: BuildContext) -> None:
                             "Restored prior run-summary receipt differs from "
                             "the validated predecessor"
                         )
-                    _validate_existing_summary(
+                    ops.validate_existing_summary(
                         paths=context.paths,
                         receipt=restored,
                         expected_run_id=context.run_id,
@@ -355,7 +396,7 @@ def publish_context(context: BuildContext) -> None:
                 ):
                     rollback(
                         "quarantine invalid restored run-summary receipt",
-                        lambda: os.replace(
+                        lambda: ops.replace(
                             context.paths.receipt,
                             backup_paths[3],
                         ),
@@ -363,7 +404,7 @@ def publish_context(context: BuildContext) -> None:
         if not rollback_errors:
             rollback(
                 "durability-sync rollback",
-                lambda: adapter.fsync_directory(context.paths.output_dir),
+                lambda: ops.fsync_directory(context.paths.output_dir),
             )
         if rollback_errors:
             rollback_failed = True
@@ -401,7 +442,7 @@ def publish_context(context: BuildContext) -> None:
                 for path in cleanup_paths:
                     try:
                         _assert_output_directory_identity(context.paths)
-                        adapter.remove_owned(path)
+                        ops.remove_owned(path)
                         _assert_output_directory_identity(context.paths)
                     except RunSummaryError as exc:
                         directory_identity_safe = False
@@ -412,7 +453,7 @@ def publish_context(context: BuildContext) -> None:
                 if not cleanup_errors:
                     try:
                         _assert_output_directory_identity(context.paths)
-                        adapter.release_owned_lock(context.paths.lock, ownership)
+                        ops.release_owned_lock(context.paths.lock, ownership)
                         _assert_output_directory_identity(context.paths)
                     except RunSummaryError as exc:
                         directory_identity_safe = False
@@ -423,7 +464,7 @@ def publish_context(context: BuildContext) -> None:
             cleanup_errors.append(f"publication cleanup was interrupted: {exc}")
         finally:
             try:
-                adapter.restore_signal_handlers(previous_signal_handlers)
+                ops.restore_signal_handlers(previous_signal_handlers)
             except (OSError, ValueError) as exc:
                 cleanup_errors.append(
                     f"could not restore publication signal handlers: {exc}"

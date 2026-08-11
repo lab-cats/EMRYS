@@ -6,6 +6,15 @@ import re
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from norad.contracts.scientific_evidence import review_package, step08, step09
+from norad.contracts.scientific_evidence.computational_validation import (
+    SCOPE_PLAN_FIELDS as COMPUTATIONAL_SCOPE_PLAN_FIELDS,
+)
+from norad.contracts.scientific_evidence.computational_validation import (
+    SCOPE_ROLES as COMPUTATIONAL_SCOPE_ROLES,
+)
+from norad.contracts.scientific_evidence.step08 import NA_VALUE, sha256_file
+
 from .audits import (
     validate_annotation_evidence,
     validate_orientation_evidence,
@@ -13,14 +22,7 @@ from .audits import (
     validate_replicate_effects,
 )
 from .contracts import (
-    COMPUTATIONAL_SCOPE_PLAN_FIELDS,
-    COMPUTATIONAL_SCOPE_ROLES,
     COMPUTATIONAL_VALIDATION_STATUSES,
-    NA_VALUE,
-    review_package,
-    sha256_file,
-    step08,
-    step09,
 )
 from .intake import ReviewContext, category_is_complete, validate_iso_date
 from ._review_candidates import (

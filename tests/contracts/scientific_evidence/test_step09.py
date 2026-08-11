@@ -183,6 +183,34 @@ def test_public_api_fingerprint_matches_pre_extraction_oracle() -> None:
     )
 
 
+def test_declared_public_api_matches_supported_owner_surface() -> None:
+    expected = {
+        "ContractError",
+        "Table",
+        "NA_VALUE",
+        "STEP09_RESULT_HEADER",
+        "STEP09_SUMMARY_HEADER",
+        "STEP09_MUTATION_HEADER",
+        "CANONICAL_MUTATIONS",
+        "STEP09_TEST_STATUSES",
+        "STEP09_CALL_STATUSES",
+        "STEP09_BACKGROUND_STATUSES",
+        "STEP09_STATUS_COUNT_FIELDS",
+        "count_status",
+        "paired_samples",
+        "resolve_recorded_path",
+        "validate_step09_results",
+        "validate_step09_summary",
+        "validate_step09_result_semantics",
+        "validate_significant_subset",
+        "validate_mutation_spectrum",
+        "validate_pdf",
+    }
+
+    assert set(STEP09.__all__) == expected
+    assert all(hasattr(STEP09, name) for name in STEP09.__all__)
+
+
 def test_valid_fixture_passes_every_public_validator_with_exact_results(
     valid: SimpleNamespace,
 ) -> None:

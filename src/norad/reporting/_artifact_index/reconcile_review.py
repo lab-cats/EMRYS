@@ -5,7 +5,9 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 
-from .contracts import contracts, review_package, step08
+from norad.contracts.artifacts import api as contracts
+from norad.contracts.scientific_evidence import review_package, step08
+
 from .models import (
     SHA256_RE,
     STEP09C_CATEGORY_ADAPTERS,

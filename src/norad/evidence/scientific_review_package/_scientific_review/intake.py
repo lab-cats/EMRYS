@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 
+from norad.contracts.scientific_evidence import review_package, step08
+from norad.contracts.scientific_evidence.step08 import NA_VALUE, Table, sha256_file
 from norad.libraries.validation.tsv import write_rows
-
-from .contracts import NA_VALUE, Table, review_package, sha256_file, step08
 
 
 @dataclass

@@ -6,12 +6,23 @@ import contextlib
 import os
 import shutil
 import sys
+import uuid
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from norad.reporting import _signals
+from norad.reporting._signals import install as _install_signal_handlers
+from norad.reporting._signals import restore as restore_signal_handlers
 
+from .context import recheck_inputs
 from .models import ArtifactIndexError, BuildContext, LockOwnership
+from .records import (
+    inventory_rows_from_published_index,
+    load_existing_receipt,
+    validate_existing_identity,
+)
+from .validation import validate_published_transaction
 
 
 def write_bytes_exclusive(path: Path, payload: bytes) -> None:
@@ -131,14 +142,64 @@ def remove_owned(path: Path) -> None:
 
 
 def install_publication_signal_handlers() -> dict[int, Any]:
-    return _signals.install(ArtifactIndexError, "Artifact-index", "publication")
+    return _install_signal_handlers(ArtifactIndexError, "Artifact-index", "publication")
 
 
-restore_signal_handlers = _signals.restore
+@dataclass(frozen=True)
+class ArtifactPublicationOps:
+    """Explicit fault seams for one artifact-index publication."""
+
+    replace: Callable[..., Any] = os.replace
+    write_bytes_exclusive: Callable[..., Any] = write_bytes_exclusive
+    fsync_directory: Callable[..., Any] = fsync_directory
+    acquire_lock: Callable[..., Any] = acquire_lock
+    release_owned_lock: Callable[..., Any] = release_owned_lock
+    remove_owned: Callable[..., Any] = remove_owned
+    install_signal_handlers: Callable[..., Any] = install_publication_signal_handlers
+    restore_signal_handlers: Callable[..., Any] = restore_signal_handlers
+    load_existing_receipt: Callable[..., Any] = load_existing_receipt
+    validate_existing_identity: Callable[..., Any] = validate_existing_identity
+    recheck_inputs: Callable[..., Any] = recheck_inputs
+    validate_published_transaction: Callable[..., Any] = validate_published_transaction
 
 
-def publish_context(context: BuildContext, *, facade: Any) -> None:
-    """Publish through the facade's live, fault-injectable operations."""
+DEFAULT_ARTIFACT_PUBLICATION_OPS = ArtifactPublicationOps()
+
+
+def _validate_existing_transaction(
+    *,
+    ops: ArtifactPublicationOps,
+    existing: dict[str, str],
+    run_id: str,
+    run_contract: dict[str, Any],
+    records_dir: Path,
+    artifacts_path: Path,
+    receipt_path: Path,
+    source_root: Path,
+) -> None:
+    previous_inventory_rows = inventory_rows_from_published_index(artifacts_path)
+    ops.validate_published_transaction(
+        run_id=run_id,
+        run_contract=run_contract,
+        run_contract_path=Path(existing["run_contract_path"]),
+        run_contract_file_sha256=existing["run_contract_file_sha256"],
+        inventory_path=Path(existing["inventory_path"]),
+        inventory_sha256=existing["inventory_sha256"],
+        inventory_rows=previous_inventory_rows,
+        records_dir=records_dir,
+        artifacts_path=artifacts_path,
+        receipt_path=receipt_path,
+        require_current_source_locations=False,
+        source_root=source_root,
+    )
+
+
+def publish_context(
+    context: BuildContext,
+    *,
+    ops: ArtifactPublicationOps = DEFAULT_ARTIFACT_PUBLICATION_OPS,
+) -> None:
+    """Publish with explicit immutable fault operations."""
 
     if context.output_dir.is_symlink():
         raise ArtifactIndexError(
@@ -154,7 +215,7 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
         raise ArtifactIndexError(
             f"Artifact-index output directory is unsafe: {context.output_dir}"
         )
-    run_token = f"{facade.os.getpid()}-{facade.uuid.uuid4().hex}"
+    run_token = f"{os.getpid()}-{uuid.uuid4().hex}"
     temp_records = context.output_dir / f".artifact-index.{run_token}.tmp.records"
     temp_index = context.output_dir / f".artifact-index.{run_token}.tmp.tsv"
     temp_receipt = context.output_dir / f".artifact-receipt.{run_token}.tmp.tsv"
@@ -178,16 +239,16 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
             raise ArtifactIndexError(
                 f"Run-token scratch path already exists; refusing: {path}"
             )
-    lock_ownership = facade.acquire_lock(
+    lock_ownership = ops.acquire_lock(
         context.lock_path,
         context.run_id,
         run_token,
     )
     try:
-        previous_signal_handlers = facade.install_publication_signal_handlers()
+        previous_signal_handlers = ops.install_signal_handlers()
     except BaseException as exc:
         try:
-            facade.release_owned_lock(context.lock_path, lock_ownership)
+            ops.release_owned_lock(context.lock_path, lock_ownership)
         except ArtifactIndexError as cleanup_exc:
             raise ArtifactIndexError(
                 "Could not install publication signal handlers and could "
@@ -208,14 +269,14 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
     publication_committed = False
     rollback_failed = False
     try:
-        existing = facade.load_existing_receipt(
+        existing = ops.load_existing_receipt(
             context.receipt_path,
             context.artifacts_path,
             context.records_dir,
         )
         had_previous = existing is not None
         locked_previous_attempt_id, locked_attempt_history = (
-            facade.validate_existing_identity(
+            ops.validate_existing_identity(
                 existing,
                 context.run_contract,
             )
@@ -230,7 +291,8 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
                 "retry from a fresh dry-run/context"
             )
         if existing is not None:
-            facade.validate_existing_transaction(
+            _validate_existing_transaction(
+                ops=ops,
                 existing=existing,
                 run_id=context.run_id,
                 run_contract=context.run_contract,
@@ -242,32 +304,32 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
 
         temp_records.mkdir()
         for record, payload in zip(context.records, context.record_bytes, strict=True):
-            facade.write_bytes_exclusive(
+            ops.write_bytes_exclusive(
                 temp_records / f"{record['artifact_id']}.json",
                 payload,
             )
-        facade.fsync_directory(temp_records)
-        facade.write_bytes_exclusive(temp_index, context.index_bytes)
+        ops.fsync_directory(temp_records)
+        ops.write_bytes_exclusive(temp_index, context.index_bytes)
         # Receipt is intentionally staged last.
-        facade.write_bytes_exclusive(temp_receipt, context.receipt_bytes)
-        facade.recheck_inputs(context)
+        ops.write_bytes_exclusive(temp_receipt, context.receipt_bytes)
+        ops.recheck_inputs(context)
 
         if had_previous:
-            facade.os.replace(context.receipt_path, backup_receipt)
+            ops.replace(context.receipt_path, backup_receipt)
             backed_up_receipt = True
-            facade.os.replace(context.artifacts_path, backup_index)
+            ops.replace(context.artifacts_path, backup_index)
             backed_up_index = True
-            facade.os.replace(context.records_dir, backup_records)
+            ops.replace(context.records_dir, backup_records)
             backed_up_records = True
-        facade.os.replace(temp_records, context.records_dir)
+        ops.replace(temp_records, context.records_dir)
         published_records = True
-        facade.os.replace(temp_index, context.artifacts_path)
+        ops.replace(temp_index, context.artifacts_path)
         published_index = True
-        facade.os.replace(temp_receipt, context.receipt_path)
+        ops.replace(temp_receipt, context.receipt_path)
         published_receipt = True
-        facade.fsync_directory(context.output_dir)
+        ops.fsync_directory(context.output_dir)
 
-        facade.validate_published_transaction(
+        ops.validate_published_transaction(
             run_id=context.run_id,
             run_contract=context.run_contract,
             run_contract_path=context.run_contract_path,
@@ -281,7 +343,7 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
             require_current_source_locations=True,
             source_root=context.source_checkout.root,
         )
-        facade.recheck_inputs(context)
+        ops.recheck_inputs(context)
         publication_committed = True
     except Exception as exc:
         rollback_errors: list[str] = []
@@ -295,41 +357,42 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
         if published_receipt:
             attempt_rollback(
                 "remove new receipt",
-                lambda: facade.remove_owned(context.receipt_path),
+                lambda: ops.remove_owned(context.receipt_path),
             )
         if published_index:
             attempt_rollback(
                 "remove new artifact index",
-                lambda: facade.remove_owned(context.artifacts_path),
+                lambda: ops.remove_owned(context.artifacts_path),
             )
         if published_records:
             attempt_rollback(
                 "remove new records directory",
-                lambda: facade.remove_owned(context.records_dir),
+                lambda: ops.remove_owned(context.records_dir),
             )
         if had_previous:
             if backed_up_records:
                 attempt_rollback(
                     "restore prior records directory",
-                    lambda: facade.os.replace(backup_records, context.records_dir),
+                    lambda: ops.replace(backup_records, context.records_dir),
                 )
             if backed_up_index:
                 attempt_rollback(
                     "restore prior artifact index",
-                    lambda: facade.os.replace(backup_index, context.artifacts_path),
+                    lambda: ops.replace(backup_index, context.artifacts_path),
                 )
             if backed_up_receipt and not rollback_errors:
                 # Restore the old receipt last.
                 attempt_rollback(
                     "restore prior receipt",
-                    lambda: facade.os.replace(backup_receipt, context.receipt_path),
+                    lambda: ops.replace(backup_receipt, context.receipt_path),
                 )
             if not rollback_errors:
                 validation_error_count = len(rollback_errors)
                 attempt_rollback(
                     "validate restored prior transaction",
-                    lambda: facade.validate_existing_transaction(
-                        existing=facade.load_existing_receipt(
+                    lambda: _validate_existing_transaction(
+                        ops=ops,
+                        existing=ops.load_existing_receipt(
                             context.receipt_path,
                             context.artifacts_path,
                             context.records_dir,
@@ -350,7 +413,7 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
                     # it again if the restored records/index do not validate.
                     attempt_rollback(
                         "quarantine invalid restored receipt",
-                        lambda: facade.os.replace(
+                        lambda: ops.replace(
                             context.receipt_path,
                             backup_receipt,
                         ),
@@ -358,7 +421,7 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
             if not rollback_errors:
                 attempt_rollback(
                     "durability-sync restored transaction",
-                    lambda: facade.fsync_directory(context.output_dir),
+                    lambda: ops.fsync_directory(context.output_dir),
                 )
         else:
             for label, path in (
@@ -373,7 +436,7 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
             if not rollback_errors:
                 attempt_rollback(
                     "durability-sync first-publication rollback",
-                    lambda: facade.fsync_directory(context.output_dir),
+                    lambda: ops.fsync_directory(context.output_dir),
                 )
         if rollback_errors:
             rollback_failed = True
@@ -397,17 +460,17 @@ def publish_context(context: BuildContext, *, facade: Any) -> None:
                 cleanup_paths.extend([backup_records, backup_index, backup_receipt])
             for path in cleanup_paths:
                 try:
-                    facade.remove_owned(path)
+                    ops.remove_owned(path)
                 except OSError as cleanup_exc:
                     cleanup_errors.append(f"{path}: {cleanup_exc}")
             if not cleanup_errors:
                 try:
-                    facade.release_owned_lock(context.lock_path, lock_ownership)
+                    ops.release_owned_lock(context.lock_path, lock_ownership)
                 except ArtifactIndexError as cleanup_exc:
                     cleanup_errors.append(str(cleanup_exc))
         active_error = sys.exc_info()[1]
         try:
-            facade.restore_signal_handlers(previous_signal_handlers)
+            ops.restore_signal_handlers(previous_signal_handlers)
         except (OSError, ValueError) as signal_exc:
             cleanup_errors.append(
                 f"could not restore publication signal handlers: {signal_exc}"

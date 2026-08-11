@@ -9,6 +9,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from norad.contracts.artifacts import api as contracts
+from norad.reporting._artifact_index import api as adapter
+
 from .inputs import (
     _capture_file_snapshot,
     _capture_report_table_snapshot,
@@ -24,8 +27,6 @@ from .models import (
     REPORT_TABLE_APPROVALS_HEADER,
     FileSnapshot,
     RunSummaryError,
-    adapter,
-    contracts,
 )
 
 

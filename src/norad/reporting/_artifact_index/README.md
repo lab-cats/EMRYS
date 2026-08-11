@@ -64,10 +64,12 @@ artifact state, or discovery behavior.
 
 [`publication.py`](publication.py) owns the shared byte-write, durability-sync,
 lock, removal, and signal transaction primitives as well as the artifact-index
-coordinator, rollback, recovery, and cleanup order. The private builder
-re-exports the same primitives and remains the live artifact-index
-fault-injection surface; run-summary reporting reaches them through the private
-`api.py` boundary, together with the shared checkout authority, without
-importing the builder. These internals do not change artifact schemas,
-serialized bytes, source discovery policy, evidence states, diagnostics, or
-publication order.
+coordinator, rollback, recovery, and cleanup order. Its frozen
+`ArtifactPublicationOps` record names only the transaction fault seams and is
+passed explicitly by tests; production uses the immutable default. The private
+builder owns only command coordination and exposes no publication or contract
+modules for patching. Run-summary reporting reaches deliberately shared
+primitives through the explicit private `api.py` boundary, together with the
+shared checkout authority, without importing the builder. These internals do
+not change artifact schemas, serialized bytes, source discovery policy,
+evidence states, diagnostics, or publication order.

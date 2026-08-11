@@ -10,142 +10,28 @@ rollback-protected transaction.
 from __future__ import annotations
 
 import sys
-import uuid as uuid
-from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from norad.reporting._artifact_index import api as _api_owner
-from norad.reporting._artifact_index import contracts as _contract_owners
-from norad.reporting._artifact_index import core as _core_owner
-from norad.reporting._artifact_index import models as _models_owner
-from norad.reporting._artifact_index import publication as _publication_owner
-from norad.reporting._artifact_index import records as _records_owner
-from norad.reporting._artifact_index import registry as _registry_owner
-from norad.reporting._artifact_index.binary_readers import (
-    BGZF_EOF_BLOCK as BGZF_EOF_BLOCK,
-)
-from norad.reporting._artifact_index.context import prepare_context as _prepare_context
-from norad.reporting._artifact_index.context import print_context
-from norad.reporting._artifact_index.context import (
-    recheck_inputs as recheck_inputs,
-)
-from norad.reporting._artifact_index.models import (
-    ArtifactIndexError,
-    BuildContext,
-)
-from norad.reporting._artifact_index.source_checkout import (
-    SourceCheckoutError,
-    admit_source_checkout,
-)
-from norad.reporting._artifact_index.validation import (
-    validate_published_transaction,
-)
+from norad.contracts.artifacts import api as contracts
+
+from .context import prepare_context, print_context
+from .models import ArtifactIndexError
+from .publication import publish_context
+from .source_checkout import SourceCheckoutError, admit_source_checkout
 
 if TYPE_CHECKING:
-    import argparse as _argparse
-
-    from norad.reporting._artifact_index.source_checkout import (
-        SourceCheckout as _SourceCheckout,
-    )
-
-contracts = _api_owner.contracts
-step08 = _contract_owners.step08
-step09 = _contract_owners.step09
-review_package = _contract_owners.review_package
-
-# Publication resolves these bindings from the private builder at call time so
-# focused fault injection continues to exercise the real transaction owner.
-ADAPTER_REGISTRY = _core_owner.ADAPTER_REGISTRY
-os = _publication_owner.os
-get_git_commit = _api_owner.get_git_commit
-canonical_json_bytes = _api_owner.canonical_json_bytes
-
-RUN_CONTRACT_FIELDS = _api_owner.RUN_CONTRACT_FIELDS
-VALIDATION_REPORT_HEADER = _models_owner.VALIDATION_REPORT_HEADER
-
-ARTIFACT_INDEX_HEADER = _api_owner.ARTIFACT_INDEX_HEADER
-ARTIFACT_RECEIPT_HEADER = _api_owner.ARTIFACT_RECEIPT_HEADER
-build_index_rows = _records_owner.build_index_rows
-build_receipt_row = _records_owner.build_receipt_row
-producer_evidence = _records_owner.producer_evidence
-STEP_PRODUCERS = _records_owner.STEP_PRODUCERS
-tsv_bytes = _api_owner.tsv_bytes
-inventory_rows_from_published_index = _records_owner.inventory_rows_from_published_index
-load_existing_receipt = _records_owner.load_existing_receipt
-validate_existing_identity = _records_owner.validate_existing_identity
-
-write_bytes_exclusive = _api_owner.write_bytes_exclusive
-fsync_directory = _api_owner.fsync_directory
-acquire_lock = _api_owner.acquire_lock
-release_owned_lock = _api_owner.release_owned_lock
-remove_owned = _api_owner.remove_owned
-install_publication_signal_handlers = _api_owner.install_publication_signal_handlers
-restore_signal_handlers = _api_owner.restore_signal_handlers
-
-STEP06_COUNTS_HEADER = _registry_owner.STEP06_COUNTS_HEADER
-STEP07_RECEIPT_HEADER = _registry_owner.STEP07_RECEIPT_HEADER
+    import argparse
 
 
-def validate_existing_transaction(
-    *,
-    existing: Mapping[str, str],
-    run_id: str,
-    run_contract: Mapping[str, Any],
-    records_dir: Path,
-    artifacts_path: Path,
-    receipt_path: Path,
-    source_root: Path = contracts.REPO_ROOT,
-) -> None:
-    """Validate a predecessor through this builder's patchable validator."""
-
-    previous_inventory_rows = inventory_rows_from_published_index(artifacts_path)
-    validate_published_transaction(
-        run_id=run_id,
-        run_contract=run_contract,
-        run_contract_path=Path(existing["run_contract_path"]),
-        run_contract_file_sha256=existing["run_contract_file_sha256"],
-        inventory_path=Path(existing["inventory_path"]),
-        inventory_sha256=existing["inventory_sha256"],
-        inventory_rows=previous_inventory_rows,
-        records_dir=records_dir,
-        artifacts_path=artifacts_path,
-        receipt_path=receipt_path,
-        require_current_source_locations=False,
-        source_root=source_root,
-    )
-
-
-def prepare_context(
-    arguments: _argparse.Namespace,
-    *,
-    source_checkout: _SourceCheckout,
-) -> BuildContext:
-    """Build through the explicitly admitted source authority."""
-
-    return _prepare_context(arguments, source_checkout=source_checkout)
-
-
-def publish_context(context: BuildContext) -> None:
-    """Delegate through this builder's live fault-injection bindings."""
-
-    _publication_owner.publish_context(
-        context,
-        facade=sys.modules[__name__],
-    )
-
-
-def build_from_args(arguments: _argparse.Namespace) -> int:
+def build_from_args(arguments: argparse.Namespace) -> int:
     """Build or publish one explicitly rooted artifact-index transaction."""
     try:
         source_checkout = admit_source_checkout(
             root=arguments.source_checkout,
             package_root=Path(__file__).resolve().parents[2],
         )
-        context = prepare_context(
-            arguments,
-            source_checkout=source_checkout,
-        )
+        context = prepare_context(arguments, source_checkout=source_checkout)
         print_context(context, arguments.execute)
         if arguments.execute:
             publish_context(context)

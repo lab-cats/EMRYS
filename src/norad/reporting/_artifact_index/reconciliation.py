@@ -7,7 +7,8 @@ from collections.abc import Sequence
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
-from .contracts import contracts
+from norad.contracts.artifacts import api as contracts
+
 from .core import issue
 from .models import ArtifactIndexError, Inspection
 from .reconcile_native import (

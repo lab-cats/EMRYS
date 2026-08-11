@@ -15,7 +15,12 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from norad.contracts.scientific_evidence import review_package, step08, step09
+from norad.contracts.scientific_evidence import (
+    computational_validation,
+    review_package,
+    step08,
+    step09,
+)
 from norad.evidence.scientific_review_package._scientific_review import (
     contracts as scientific_review_contracts,
 )
@@ -982,7 +987,7 @@ def write_evidence_tables(
     computational_path = evidence_dir / "computational_validation.tsv"
     computational_rows = [
         evidence_row(
-            scientific_review_contracts.COMPUTATIONAL_VALIDATION_HEADER,
+            computational_validation.HEADER,
             "e_computational",
             validation_scope="local_fixture_tests",
             validation_status="passed",
@@ -996,7 +1001,7 @@ def write_evidence_tables(
     ]
     write_tsv(
         computational_path,
-        scientific_review_contracts.COMPUTATIONAL_VALIDATION_HEADER,
+        computational_validation.HEADER,
         computational_rows,
     )
 

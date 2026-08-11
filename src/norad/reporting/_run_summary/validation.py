@@ -8,6 +8,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from norad.contracts.artifacts import api as contracts
+from norad.reporting._artifact_index import api as adapter
+
 from .inputs import _fail, _require_regular_file
 from .models import (
     LEGACY_PRODUCER_VERSION,
@@ -23,8 +26,6 @@ from .models import (
     RUN_SUMMARY_TSV_SCHEMA_VERSION,
     OutputPaths,
     RunSummaryError,
-    adapter,
-    contracts,
 )
 from .projection import _build_qc_rows, _build_summary_rows
 from .transaction import _parse_history, _receipt_int

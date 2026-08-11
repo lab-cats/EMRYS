@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import csv
+import dataclasses
 import hashlib
 import importlib
 import json
@@ -20,6 +21,8 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
 from norad import __main__ as norad_cli
+from norad.contracts.artifacts import api as CONTRACTS
+from norad.contracts.scientific_evidence import review_package
 from norad.reporting._artifact_index import api as ARTIFACT_INDEX_API
 from norad.reporting._run_summary import science_evidence as SCIENCE_EVIDENCE
 from norad.reporting._run_summary import science_package as SCIENCE_PACKAGE
@@ -34,8 +37,32 @@ FIXED_EPOCH = "1700000000"
 CLI_USAGE_ERROR = 2
 
 RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.builder")
-CONTRACTS = RUN_SUMMARY.contracts
-SOURCE_CHECKOUT = RUN_SUMMARY.adapter.SourceCheckout(root=REPO_ROOT)
+RUN_SUMMARY_DOCUMENT = importlib.import_module("norad.reporting._run_summary.document")
+RUN_SUMMARY_MODELS = importlib.import_module("norad.reporting._run_summary.models")
+RUN_SUMMARY_PROJECTION = importlib.import_module(
+    "norad.reporting._run_summary.projection"
+)
+RUN_SUMMARY_PUBLICATION = importlib.import_module(
+    "norad.reporting._run_summary.publication"
+)
+RUN_SUMMARY_TRANSACTION = importlib.import_module(
+    "norad.reporting._run_summary.transaction"
+)
+SOURCE_CHECKOUT = ARTIFACT_INDEX_API.SourceCheckout(root=REPO_ROOT)
+
+
+def build_deps(**overrides: Any) -> Any:
+    return dataclasses.replace(
+        RUN_SUMMARY.DEFAULT_RUN_SUMMARY_BUILD_DEPS,
+        **overrides,
+    )
+
+
+def publication_ops(**overrides: Any) -> Any:
+    return dataclasses.replace(
+        RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS,
+        **overrides,
+    )
 
 
 @pytest.fixture
@@ -159,7 +186,7 @@ def assert_no_summary_outputs(fixture: Any) -> None:
     )
 
 
-def context_for(fixture: Any) -> Any:
+def context_for(fixture: Any, *, deps: Any | None = None) -> Any:
     previous = os.environ.get("SOURCE_DATE_EPOCH")
     os.environ["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
     try:
@@ -167,6 +194,7 @@ def context_for(fixture: Any) -> Any:
         return RUN_SUMMARY.prepare_context(
             arguments,
             source_checkout=SOURCE_CHECKOUT,
+            **({} if deps is None else {"deps": deps}),
         )
     finally:
         if previous is None:
@@ -200,9 +228,9 @@ def test_grouped_builder_admits_before_loading_inputs_and_retains_token(
     """The grouped builder admits its checkout before reading run inputs."""
     admitted = ARTIFACT_INDEX_API.SourceCheckout(root=REPO_ROOT)
     expected_package_root = Path(RUN_SUMMARY.__file__).resolve().parents[2]
-    real_load_input_transaction = RUN_SUMMARY._load_input_transaction
+    real_load_input_transaction = RUN_SUMMARY_TRANSACTION._load_input_transaction
     events: list[str] = []
-    observed_contexts: list[RUN_SUMMARY.BuildContext] = []
+    observed_contexts: list[RUN_SUMMARY_MODELS.BuildContext] = []
 
     def admit_source_checkout(
         *,
@@ -222,27 +250,25 @@ def test_grouped_builder_admits_before_loading_inputs_and_retains_token(
             **kwargs,
         )
 
-    def observe_context(context: RUN_SUMMARY.BuildContext) -> None:
+    def observe_context(context: RUN_SUMMARY_MODELS.BuildContext) -> None:
         events.append("print")
         observed_contexts.append(context)
 
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     monkeypatch.setattr(
-        RUN_SUMMARY.adapter,
+        ARTIFACT_INDEX_API,
         "admit_source_checkout",
         admit_source_checkout,
-    )
-    monkeypatch.setattr(
-        RUN_SUMMARY,
-        "_load_input_transaction",
-        load_input_transaction,
     )
     monkeypatch.setattr(RUN_SUMMARY, "print_context", observe_context)
     arguments = _parse_run_summary_arguments(
         run_summary_fixture.command_args(execute=False),
     )
 
-    status = RUN_SUMMARY.build_from_args(arguments)
+    status = RUN_SUMMARY.build_from_args(
+        arguments,
+        deps=build_deps(load_input_transaction=load_input_transaction),
+    )
 
     assert status == 0
     assert events == ["admit", "load", "print"]
@@ -322,7 +348,7 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
     )
     authority = ARTIFACT_INDEX_API.SourceCheckout(root=fixture.root)
     root_calls: Counter[str] = Counter()
-    real_get_git_commit = RUN_SUMMARY.adapter.get_git_commit
+    real_get_git_commit = ARTIFACT_INDEX_API.get_git_commit
 
     def get_git_commit(
         *,
@@ -343,25 +369,14 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     monkeypatch.setenv("GIT_DIR", str(tmp_path / "foreign.git"))
     monkeypatch.setattr(
-        RUN_SUMMARY.adapter,
+        ARTIFACT_INDEX_API,
         "admit_source_checkout",
         unexpected_admission,
     )
-    monkeypatch.setattr(RUN_SUMMARY.adapter, "get_git_commit", get_git_commit)
+    monkeypatch.setattr(ARTIFACT_INDEX_API, "get_git_commit", get_git_commit)
     for owner, attribute, label in (
         (CONTRACTS, "validate_inventory", "inventory"),
-        (
-            RUN_SUMMARY.adapter,
-            "validate_published_transaction",
-            "published_transaction",
-        ),
         (CONTRACTS, "resolve_contract_path", "science_contract"),
-        (
-            RUN_SUMMARY.science,
-            "normalize_scientific_review",
-            "science_normalization",
-        ),
-        (RUN_SUMMARY, "_normalize_report_table_approvals", "approvals"),
         (CONTRACTS, "validate_run_summary_semantics", "document_semantics"),
         (CONTRACTS, "reconcile_document_inventory", "document_inventory"),
     ):
@@ -375,21 +390,53 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
                 label,
             ),
         )
+    validate_artifact_transaction = _source_root_spy(
+        RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.validate_artifact_transaction,
+        authority.root,
+        root_calls,
+        "published_transaction",
+    )
+    normalize_scientific_review = _source_root_spy(
+        RUN_SUMMARY.DEFAULT_RUN_SUMMARY_BUILD_DEPS.normalize_scientific_review,
+        authority.root,
+        root_calls,
+        "science_normalization",
+    )
+    normalize_report_table_approvals = _source_root_spy(
+        RUN_SUMMARY.DEFAULT_RUN_SUMMARY_BUILD_DEPS.normalize_report_table_approvals,
+        authority.root,
+        root_calls,
+        "approvals",
+    )
+    recheck_ops = publication_ops(
+        validate_artifact_transaction=validate_artifact_transaction,
+        normalize_scientific_review=normalize_scientific_review,
+    )
+
+    def recheck_inputs(context: Any) -> None:
+        RUN_SUMMARY_PUBLICATION._recheck_inputs(context, ops=recheck_ops)
+
     arguments = _parse_run_summary_arguments(fixture.command_args(execute=False))
 
     context = RUN_SUMMARY.prepare_context(
         arguments,
         source_checkout=authority,
+        deps=build_deps(
+            normalize_scientific_review=normalize_scientific_review,
+            normalize_report_table_approvals=normalize_report_table_approvals,
+            recheck_inputs=recheck_inputs,
+        ),
     )
 
     expected_single_calls = 1
-    expected_prepare_rechecks = 2
+    expected_prepare_rechecks = 1
+    expected_science_normalizations = 2
     assert context.source_checkout == authority
     assert root_calls["git"] == expected_single_calls
     assert root_calls["inventory"] == expected_single_calls
     assert root_calls["published_transaction"] == expected_prepare_rechecks
     assert root_calls["science_contract"] > 0
-    assert root_calls["science_normalization"] == expected_prepare_rechecks
+    assert root_calls["science_normalization"] == expected_science_normalizations
     assert root_calls["approvals"] == expected_single_calls
     assert root_calls["document_semantics"] == expected_single_calls
     assert root_calls["document_inventory"] == expected_single_calls
@@ -414,24 +461,39 @@ def test_explicit_checkout_root_reaches_predecessor_and_post_publish_rechecks(
     # A distinct sentinel makes any fallback to the module default observable.
     context.source_checkout = authority
     root_calls: Counter[str] = Counter()
-    for owner, attribute, label in (
-        (RUN_SUMMARY.adapter, "validate_published_transaction", "recheck"),
-        (RUN_SUMMARY._publication, "_validate_document", "post_publish_document"),
-        (RUN_SUMMARY._publication, "_validate_existing_summary", "predecessor"),
-        (CONTRACTS, "validate_run_summary_semantics", "semantic_validation"),
-    ):
-        monkeypatch.setattr(
-            owner,
-            attribute,
-            _source_root_spy(
-                getattr(owner, attribute),
-                authority.root,
-                root_calls,
-                label,
-            ),
-        )
+    monkeypatch.setattr(
+        CONTRACTS,
+        "validate_run_summary_semantics",
+        _source_root_spy(
+            CONTRACTS.validate_run_summary_semantics,
+            authority.root,
+            root_calls,
+            "semantic_validation",
+        ),
+    )
+    default_ops = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS
+    ops = publication_ops(
+        validate_artifact_transaction=_source_root_spy(
+            default_ops.validate_artifact_transaction,
+            authority.root,
+            root_calls,
+            "recheck",
+        ),
+        validate_document=_source_root_spy(
+            default_ops.validate_document,
+            authority.root,
+            root_calls,
+            "post_publish_document",
+        ),
+        validate_existing_summary=_source_root_spy(
+            default_ops.validate_existing_summary,
+            authority.root,
+            root_calls,
+            "predecessor",
+        ),
+    )
 
-    RUN_SUMMARY.publish_context(context)
+    RUN_SUMMARY_PUBLICATION.publish_context(context, ops=ops)
 
     expected_rechecks = 2
     expected_predecessor_and_published_checks = 2
@@ -462,7 +524,8 @@ def test_explicit_checkout_root_reaches_restored_rollback_validation(
     )
     # A distinct sentinel makes any fallback to the module default observable.
     context.source_checkout = authority
-    real_replace = RUN_SUMMARY.os.replace
+    default_ops = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS
+    real_replace = default_ops.replace
     root_calls: Counter[str] = Counter()
     failed = False
 
@@ -479,16 +542,6 @@ def test_explicit_checkout_root_reaches_restored_rollback_validation(
         real_replace(source, destination)
 
     monkeypatch.setattr(
-        RUN_SUMMARY._publication,
-        "_validate_existing_summary",
-        _source_root_spy(
-            RUN_SUMMARY._publication._validate_existing_summary,
-            authority.root,
-            root_calls,
-            "restored_predecessor",
-        ),
-    )
-    monkeypatch.setattr(
         CONTRACTS,
         "validate_run_summary_semantics",
         _source_root_spy(
@@ -498,13 +551,22 @@ def test_explicit_checkout_root_reaches_restored_rollback_validation(
             "restored_semantics",
         ),
     )
-    monkeypatch.setattr(RUN_SUMMARY.os, "replace", fail_qc_publication)
-
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="injected authority rollback failure",
     ):
-        RUN_SUMMARY.publish_context(context)
+        RUN_SUMMARY_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(
+                replace=fail_qc_publication,
+                validate_existing_summary=_source_root_spy(
+                    default_ops.validate_existing_summary,
+                    authority.root,
+                    root_calls,
+                    "restored_predecessor",
+                ),
+            ),
+        )
 
     expected_predecessor_and_restored_checks = 2
     assert failed
@@ -534,20 +596,11 @@ def test_source_checkout_admission_error_precedes_input_diagnostics(
         message = "injected run-summary checkout rejection"
         raise ARTIFACT_INDEX_API.SourceCheckoutError(message)
 
-    def unexpected_input_load(**_kwargs: Any) -> None:
-        pytest.fail("input diagnostics ran before admission")
-
     monkeypatch.setattr(
-        RUN_SUMMARY.adapter,
+        ARTIFACT_INDEX_API,
         "admit_source_checkout",
         reject_source_checkout,
     )
-    monkeypatch.setattr(
-        RUN_SUMMARY,
-        "_load_input_transaction",
-        unexpected_input_load,
-    )
-
     assert (
         norad_cli.main(
             [
@@ -630,14 +683,14 @@ def test_live_run_summary_header_owner_controls_serialized_bytes(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    original = RUN_SUMMARY.RUN_SUMMARY_HEADER
+    original = RUN_SUMMARY_MODELS.RUN_SUMMARY_HEADER
     mutated = (original[1], original[0], *original[2:])
-    monkeypatch.setattr(RUN_SUMMARY, "RUN_SUMMARY_HEADER", mutated)
+    monkeypatch.setattr(RUN_SUMMARY_MODELS, "RUN_SUMMARY_HEADER", mutated)
 
     context = context_for(run_summary_fixture)
 
     assert context.summary_tsv_bytes.splitlines()[0] == ("\t".join(mutated).encode())
-    assert context.summary_tsv_bytes != RUN_SUMMARY.adapter.tsv_bytes(
+    assert context.summary_tsv_bytes != ARTIFACT_INDEX_API.tsv_bytes(
         original,
         context.summary_rows,
     )
@@ -655,13 +708,13 @@ def test_execute_publishes_exact_canonical_schema_valid_transaction(
         canonical_json_bytes(document)
     )
     assert read_tsv_header(run_summary_fixture.summary_tsv_path) == tuple(
-        RUN_SUMMARY.RUN_SUMMARY_HEADER
+        RUN_SUMMARY_MODELS.RUN_SUMMARY_HEADER
     )
     assert read_tsv_header(run_summary_fixture.qc_summary_path) == tuple(
-        RUN_SUMMARY.QC_SUMMARY_HEADER
+        RUN_SUMMARY_MODELS.QC_SUMMARY_HEADER
     )
     assert read_tsv_header(run_summary_fixture.summary_receipt_path) == tuple(
-        RUN_SUMMARY.RUN_SUMMARY_RECEIPT_HEADER
+        RUN_SUMMARY_MODELS.RUN_SUMMARY_RECEIPT_HEADER
     )
     receipt_rows = read_tsv(run_summary_fixture.summary_receipt_path)
     assert len(receipt_rows) == 1
@@ -738,7 +791,7 @@ def test_explicit_report_table_approvals_are_normalized_and_provenanced(
         "media_type": "text/tab-separated-values",
     }
     receipt = read_tsv(fixture.summary_receipt_path)[0]
-    assert receipt["producer_version"] == RUN_SUMMARY.PRODUCER_VERSION
+    assert receipt["producer_version"] == RUN_SUMMARY_MODELS.PRODUCER_VERSION
     assert receipt["run_summary_json_sha256"] == sha256_file(fixture.summary_json_path)
     assert document["science_status"] == "evidence_incomplete"
     assert_no_summary_residue_after_success(fixture)
@@ -791,7 +844,7 @@ def test_report_table_approvals_fail_closed_on_identity_and_scalar_errors(
     rows[0][field] = value
     write_tsv(
         fixture.report_table_approvals,
-        RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER,
+        RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER,
         rows,
     )
 
@@ -811,7 +864,7 @@ def test_report_table_approvals_reject_empty_duplicate_and_decoy_inputs(
     )
     write_tsv(
         empty.report_table_approvals,
-        RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER,
+        RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER,
         [],
     )
     empty_result = run_cli(empty)
@@ -826,7 +879,7 @@ def test_report_table_approvals_reject_empty_duplicate_and_decoy_inputs(
     rows = read_tsv(duplicate.report_table_approvals)
     write_tsv(
         duplicate.report_table_approvals,
-        RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER,
+        RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER,
         [rows[0], rows[0]],
     )
     duplicate_result = run_cli(duplicate)
@@ -855,11 +908,11 @@ def test_report_table_approval_header_role_source_and_time_fail_closed(
     rows = read_tsv(bad_header.report_table_approvals)
     write_tsv(
         bad_header.report_table_approvals,
-        RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER[:-1],
+        RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER[:-1],
         [
             {
                 field: rows[0][field]
-                for field in RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER[:-1]
+                for field in RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER[:-1]
             }
         ],
     )
@@ -884,7 +937,7 @@ def test_report_table_approval_header_role_source_and_time_fail_closed(
         approval_rows[0][field] = value
         write_tsv(
             fixture.report_table_approvals,
-            RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER,
+            RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER,
             approval_rows,
         )
         result = run_cli(fixture)
@@ -969,7 +1022,7 @@ def test_changed_approval_policy_creates_a_new_summary_attempt(
     rows[0]["approval_policy_version"] = "synthetic_report_policy_v2"
     write_tsv(
         fixture.report_table_approvals,
-        RUN_SUMMARY.REPORT_TABLE_APPROVALS_HEADER,
+        RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER,
         rows,
     )
 
@@ -994,17 +1047,19 @@ def test_legacy_empty_approval_summary_can_be_safely_superseded(
     first = run_cli(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     document = read_json(run_summary_fixture.summary_json_path)
-    document["provenance"]["producer_version"] = RUN_SUMMARY.LEGACY_PRODUCER_VERSION
+    document["provenance"]["producer_version"] = (
+        RUN_SUMMARY_MODELS.LEGACY_PRODUCER_VERSION
+    )
     document["parameters"].pop("report_table_approvals")
     legacy_json = canonical_json_bytes(document)
     run_summary_fixture.summary_json_path.write_bytes(legacy_json)
     receipt = read_tsv(run_summary_fixture.summary_receipt_path)[0]
-    receipt["producer_version"] = RUN_SUMMARY.LEGACY_PRODUCER_VERSION
+    receipt["producer_version"] = RUN_SUMMARY_MODELS.LEGACY_PRODUCER_VERSION
     receipt["run_summary_json_sha256"] = hashlib.sha256(legacy_json).hexdigest()
     receipt["run_summary_json_size_bytes"] = str(len(legacy_json))
     write_tsv(
         run_summary_fixture.summary_receipt_path,
-        RUN_SUMMARY.RUN_SUMMARY_RECEIPT_HEADER,
+        RUN_SUMMARY_MODELS.RUN_SUMMARY_RECEIPT_HEADER,
         [receipt],
     )
 
@@ -1012,10 +1067,12 @@ def test_legacy_empty_approval_summary_can_be_safely_superseded(
 
     assert replacement.returncode == 0, replacement.stderr
     current = validate_summary_document(run_summary_fixture)
-    assert current["provenance"]["producer_version"] == (RUN_SUMMARY.PRODUCER_VERSION)
+    assert current["provenance"]["producer_version"] == (
+        RUN_SUMMARY_MODELS.PRODUCER_VERSION
+    )
     assert current["parameters"]["report_table_approvals"] is None
     current_receipt = read_tsv(run_summary_fixture.summary_receipt_path)[0]
-    assert current_receipt["producer_version"] == (RUN_SUMMARY.PRODUCER_VERSION)
+    assert current_receipt["producer_version"] == (RUN_SUMMARY_MODELS.PRODUCER_VERSION)
     assert (
         current_receipt["supersedes_run_summary_attempt_id"]
         == (receipt["run_summary_attempt_id"])
@@ -1034,10 +1091,10 @@ def test_report_table_approval_manifest_and_table_mutation_fail_closed(
         manifest_fixture.report_table_approvals.read_bytes() + b"\n"
     )
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="changed after its immutable snapshot",
     ):
-        RUN_SUMMARY.publish_context(manifest_context)
+        RUN_SUMMARY_PUBLICATION.publish_context(manifest_context)
     assert_no_summary_outputs(manifest_fixture)
 
     table_fixture = FIXTURE.build_approved_science_fixture(
@@ -1048,10 +1105,10 @@ def test_report_table_approval_manifest_and_table_mutation_fail_closed(
     table_path = Path(table_context.document["approved_report_tables"][0]["path"])
     table_path.write_bytes(table_path.read_bytes() + b"\n")
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="Approved report table",
     ):
-        RUN_SUMMARY.publish_context(table_context)
+        RUN_SUMMARY_PUBLICATION.publish_context(table_context)
     assert_no_summary_outputs(table_fixture)
 
 
@@ -1251,7 +1308,7 @@ def test_reporting_reader_does_not_reconstruct_step09c_sources(
 
     assert context.plan["review_id"] == fixture.step09c_fixture.review_id
     assert tuple(tables) == tuple(
-        key for key, _suffix in SCIENCE.review_package.OUTPUT_SUFFIXES
+        key for key, _suffix in review_package.OUTPUT_SUFFIXES
     )
 
 
@@ -1645,7 +1702,7 @@ def test_replacement_publication_failure_restores_prior_transaction(
     assert first.returncode == 0, first.stderr
     before = summary_snapshot(run_summary_fixture)
     context = context_for(run_summary_fixture)
-    real_replace = RUN_SUMMARY.os.replace
+    real_replace = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.replace
     failed = False
 
     def fail_qc_publication(source: Any, destination: Any) -> None:
@@ -1659,13 +1716,14 @@ def test_replacement_publication_failure_restores_prior_transaction(
             raise OSError("injected run-summary replacement failure")
         real_replace(source, destination)
 
-    monkeypatch.setattr(RUN_SUMMARY.os, "replace", fail_qc_publication)
-
     with pytest.raises(
         Exception,
         match="injected run-summary replacement failure",
     ):
-        RUN_SUMMARY.publish_context(context)
+        RUN_SUMMARY_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(replace=fail_qc_publication),
+        )
 
     assert failed
     assert summary_snapshot(run_summary_fixture) == before
@@ -1678,8 +1736,9 @@ def test_publication_installs_and_restores_signal_handlers(
 ) -> None:
     watched = (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
     original = {signum: signal.getsignal(signum) for signum in watched}
-    real_install = RUN_SUMMARY.adapter.install_publication_signal_handlers
-    real_restore = RUN_SUMMARY.adapter.restore_signal_handlers
+    default_ops = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS
+    real_install = default_ops.install_signal_handlers
+    real_restore = default_ops.restore_signal_handlers
     events: list[tuple[str, Any]] = []
 
     def track_install() -> dict[int, Any]:
@@ -1692,25 +1751,20 @@ def test_publication_installs_and_restores_signal_handlers(
         events.append(("restore", dict(handlers)))
         real_restore(handlers)
 
-    monkeypatch.setattr(
-        RUN_SUMMARY.adapter,
-        "install_publication_signal_handlers",
-        track_install,
-    )
-    monkeypatch.setattr(
-        RUN_SUMMARY.adapter,
-        "restore_signal_handlers",
-        track_restore,
-    )
-
     context = context_for(run_summary_fixture)
-    RUN_SUMMARY.publish_context(context)
+    RUN_SUMMARY_PUBLICATION.publish_context(
+        context,
+        ops=publication_ops(
+            install_signal_handlers=track_install,
+            restore_signal_handlers=track_restore,
+        ),
+    )
 
     assert [event[0] for event in events] == ["install", "restore"]
     assert events[0][1] == original
     assert events[1][1] == original
     assert {signum: signal.getsignal(signum) for signum in watched} == original
-    RUN_SUMMARY.validate_published_run_summary(context)
+    RUN_SUMMARY_PUBLICATION.validate_published_run_summary(context)
     assert_no_summary_residue_after_success(run_summary_fixture)
 
 
@@ -1723,17 +1777,14 @@ def test_signal_handler_install_failure_releases_owned_lock(
     def fail_install() -> dict[int, Any]:
         raise ValueError("injected signal-handler installation failure")
 
-    monkeypatch.setattr(
-        RUN_SUMMARY.adapter,
-        "install_publication_signal_handlers",
-        fail_install,
-    )
-
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="Could not install",
     ):
-        RUN_SUMMARY.publish_context(context)
+        RUN_SUMMARY_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(install_signal_handlers=fail_install),
+        )
 
     assert_no_summary_outputs(run_summary_fixture)
 
@@ -1750,7 +1801,7 @@ def test_partial_signal_handler_install_restores_original_handlers(
         nonlocal call_count
         call_count += 1
         if call_count == 2:
-            raise RUN_SUMMARY.adapter.ArtifactIndexError(
+            raise ARTIFACT_INDEX_API.ArtifactIndexError(
                 "injected partial signal install failure"
             )
         return real_signal(signum, handler)
@@ -1758,10 +1809,10 @@ def test_partial_signal_handler_install_restores_original_handlers(
     monkeypatch.setattr(signal, "signal", fail_second_install)
 
     with pytest.raises(
-        RUN_SUMMARY.adapter.ArtifactIndexError,
+        ARTIFACT_INDEX_API.ArtifactIndexError,
         match="injected partial",
     ):
-        RUN_SUMMARY.adapter.install_publication_signal_handlers()
+        ARTIFACT_INDEX_API.install_publication_signal_handlers()
 
     assert {signum: signal.getsignal(signum) for signum in watched} == original_handlers
 
@@ -1775,7 +1826,9 @@ def test_cleanup_signal_restores_handlers_and_retains_recovery_state(
         signum: signal.getsignal(signum)
         for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
     }
-    real_remove_owned = RUN_SUMMARY.adapter.remove_owned
+    real_remove_owned = (
+        RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.remove_owned
+    )
     interrupted = False
 
     def interrupt_first_temp_cleanup(path: Path) -> None:
@@ -1788,21 +1841,18 @@ def test_cleanup_signal_restores_handlers_and_retains_recovery_state(
             raise AssertionError("signal handler unexpectedly returned")
         real_remove_owned(path)
 
-    monkeypatch.setattr(
-        RUN_SUMMARY.adapter,
-        "remove_owned",
-        interrupt_first_temp_cleanup,
-    )
-
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="cleanup failed",
     ):
-        RUN_SUMMARY.publish_context(context)
+        RUN_SUMMARY_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(remove_owned=interrupt_first_temp_cleanup),
+        )
 
     assert interrupted
     assert all(path.is_file() for path in run_summary_fixture.summary_paths)
-    RUN_SUMMARY.validate_published_run_summary(context)
+    RUN_SUMMARY_PUBLICATION.validate_published_run_summary(context)
     assert run_summary_fixture.lock_path.is_file()
     assert any(
         path.name.endswith(".RECOVERY.txt")
@@ -1826,7 +1876,7 @@ def test_signal_after_receipt_backup_rename_restores_prior_transaction(
         for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
     }
     context = context_for(run_summary_fixture)
-    real_replace = RUN_SUMMARY.os.replace
+    real_replace = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.replace
     interrupted = False
 
     def interrupt_after_receipt_backup(source: Any, destination: Any) -> None:
@@ -1846,17 +1896,14 @@ def test_signal_after_receipt_backup_rename_restores_prior_transaction(
             raise AssertionError("signal handler unexpectedly returned")
         real_replace(source, destination)
 
-    monkeypatch.setattr(
-        RUN_SUMMARY.os,
-        "replace",
-        interrupt_after_receipt_backup,
-    )
-
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="interrupted by signal SIGTERM",
     ):
-        RUN_SUMMARY.publish_context(context)
+        RUN_SUMMARY_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(replace=interrupt_after_receipt_backup),
+        )
 
     assert interrupted
     assert summary_snapshot(run_summary_fixture) == before
@@ -1875,7 +1922,7 @@ def test_corrupted_restored_receipt_is_quarantined_and_retains_recovery(
     assert first.returncode == 0, first.stderr
     before = summary_snapshot(run_summary_fixture)
     context = context_for(run_summary_fixture)
-    real_replace = RUN_SUMMARY.os.replace
+    real_replace = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.replace
     publication_failed = False
     receipt_corrupted = False
 
@@ -1906,17 +1953,14 @@ def test_corrupted_restored_receipt_is_quarantined_and_retains_recovery(
             receipt_corrupted = True
         real_replace(source, destination)
 
-    monkeypatch.setattr(
-        RUN_SUMMARY.os,
-        "replace",
-        fail_then_corrupt_restored_receipt,
-    )
-
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="rollback was incomplete",
     ):
-        RUN_SUMMARY.publish_context(context)
+        RUN_SUMMARY_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(replace=fail_then_corrupt_restored_receipt),
+        )
 
     assert publication_failed
     assert receipt_corrupted
@@ -1939,7 +1983,7 @@ def test_first_publication_failure_removes_owned_outputs_and_lock(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     context = context_for(run_summary_fixture)
-    real_replace = RUN_SUMMARY.os.replace
+    real_replace = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.replace
     failed = False
 
     def fail_qc_publication(source: Any, destination: Any) -> None:
@@ -1953,13 +1997,14 @@ def test_first_publication_failure_removes_owned_outputs_and_lock(
             raise OSError("injected first run-summary publication failure")
         real_replace(source, destination)
 
-    monkeypatch.setattr(RUN_SUMMARY.os, "replace", fail_qc_publication)
-
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="injected first run-summary publication failure",
     ):
-        RUN_SUMMARY.publish_context(context)
+        RUN_SUMMARY_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(replace=fail_qc_publication),
+        )
 
     assert failed
     assert_no_summary_outputs(run_summary_fixture)
@@ -1972,7 +2017,7 @@ def test_incomplete_replacement_rollback_retains_lock_and_recovery_paths(
     first = run_cli(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     context = context_for(run_summary_fixture)
-    real_replace = RUN_SUMMARY.os.replace
+    real_replace = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.replace
     publication_failed = False
     restoration_failed = False
 
@@ -2000,17 +2045,14 @@ def test_incomplete_replacement_rollback_retains_lock_and_recovery_paths(
             raise OSError("injected prior-summary restoration failure")
         real_replace(source, destination)
 
-    monkeypatch.setattr(
-        RUN_SUMMARY.os,
-        "replace",
-        fail_publication_and_restoration,
-    )
-
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="rollback was incomplete",
     ):
-        RUN_SUMMARY.publish_context(context)
+        RUN_SUMMARY_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(replace=fail_publication_and_restoration),
+        )
 
     assert publication_failed
     assert restoration_failed
@@ -2036,8 +2078,9 @@ def test_mid_rollback_directory_replacement_skips_replacement_path_cleanup(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     context = context_for(run_summary_fixture)
-    real_replace = RUN_SUMMARY.os.replace
-    real_remove_owned = RUN_SUMMARY.adapter.remove_owned
+    default_ops = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS
+    real_replace = default_ops.replace
+    real_remove_owned = default_ops.remove_owned
     publication_failed = False
     directory_replaced = False
     displaced = (
@@ -2064,18 +2107,17 @@ def test_mid_rollback_directory_replacement_skips_replacement_path_cleanup(
             run_summary_fixture.output_dir.mkdir()
             directory_replaced = True
 
-    monkeypatch.setattr(RUN_SUMMARY.os, "replace", fail_qc_publication)
-    monkeypatch.setattr(
-        RUN_SUMMARY.adapter,
-        "remove_owned",
-        replace_directory_after_first_rollback_remove,
-    )
-
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="identity changed",
     ):
-        RUN_SUMMARY.publish_context(context)
+        RUN_SUMMARY_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(
+                replace=fail_qc_publication,
+                remove_owned=replace_directory_after_first_rollback_remove,
+            ),
+        )
 
     assert publication_failed
     assert directory_replaced
@@ -2091,7 +2133,9 @@ def test_post_commit_cleanup_failure_preserves_new_transaction_and_lock(
     first = run_cli(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     context = context_for(run_summary_fixture)
-    real_remove_owned = RUN_SUMMARY.adapter.remove_owned
+    real_remove_owned = (
+        RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.remove_owned
+    )
     cleanup_failed = False
 
     def fail_one_backup_cleanup(path: Path) -> None:
@@ -2105,21 +2149,18 @@ def test_post_commit_cleanup_failure_preserves_new_transaction_and_lock(
             raise OSError("injected run-summary backup cleanup failure")
         real_remove_owned(path)
 
-    monkeypatch.setattr(
-        RUN_SUMMARY.adapter,
-        "remove_owned",
-        fail_one_backup_cleanup,
-    )
-
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="cleanup failed",
     ):
-        RUN_SUMMARY.publish_context(context)
+        RUN_SUMMARY_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(remove_owned=fail_one_backup_cleanup),
+        )
 
     assert cleanup_failed
     assert all(path.is_file() for path in run_summary_fixture.summary_paths)
-    RUN_SUMMARY.validate_published_run_summary(context)
+    RUN_SUMMARY_PUBLICATION.validate_published_run_summary(context)
     receipt = read_tsv(run_summary_fixture.summary_receipt_path)[0]
     assert receipt["run_summary_attempt_id"] == context.attempt_id
     assert run_summary_fixture.lock_path.is_file()
@@ -2154,7 +2195,7 @@ def test_tampered_prior_receipt_provenance_is_rejected(
     write_tsv(run_summary_fixture.summary_receipt_path, header, rows)
 
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match=token,
     ):
         context_for(run_summary_fixture)
@@ -2169,7 +2210,7 @@ def test_artifact_receipt_mutation_after_prepare_aborts_before_publication(
     )
 
     with pytest.raises(Exception, match="[Cc]hanged|[Mm]utation"):
-        RUN_SUMMARY.publish_context(context)
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
 
     assert_no_summary_outputs(run_summary_fixture)
 
@@ -2178,7 +2219,7 @@ def test_prepared_snapshot_rejects_transaction_mutated_during_validation(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    real_validate = RUN_SUMMARY.adapter.validate_published_transaction
+    real_validate = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.validate_artifact_transaction
     mutated = False
 
     def validate_then_mutate(**kwargs: Any) -> None:
@@ -2190,22 +2231,25 @@ def test_prepared_snapshot_rejects_transaction_mutated_during_validation(
             )
             mutated = True
 
-    monkeypatch.setattr(
-        RUN_SUMMARY.adapter,
-        "validate_published_transaction",
-        validate_then_mutate,
+    recheck_ops = publication_ops(
+        validate_artifact_transaction=validate_then_mutate,
     )
+
+    def recheck_inputs(context: Any) -> None:
+        RUN_SUMMARY_PUBLICATION._recheck_inputs(context, ops=recheck_ops)
+
     arguments = _parse_run_summary_arguments(
         run_summary_fixture.command_args(execute=True)
     )
 
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="immutable snapshot",
     ):
         RUN_SUMMARY.prepare_context(
             arguments,
             source_checkout=SOURCE_CHECKOUT,
+            deps=build_deps(recheck_inputs=recheck_inputs),
         )
 
     assert mutated
@@ -2216,7 +2260,7 @@ def test_prepare_recheck_rejects_identical_byte_record_replacement(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    real_build_document = RUN_SUMMARY._build_document
+    real_build_document = RUN_SUMMARY_DOCUMENT._build_document
     replaced = False
 
     def build_then_replace_record(**kwargs: Any) -> Any:
@@ -2234,22 +2278,18 @@ def test_prepare_recheck_rejects_identical_byte_record_replacement(
             replaced = True
         return result
 
-    monkeypatch.setattr(
-        RUN_SUMMARY,
-        "_build_document",
-        build_then_replace_record,
-    )
     arguments = _parse_run_summary_arguments(
         run_summary_fixture.command_args(execute=True)
     )
 
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="immutable snapshot",
     ):
         RUN_SUMMARY.prepare_context(
             arguments,
             source_checkout=SOURCE_CHECKOUT,
+            deps=build_deps(build_document=build_then_replace_record),
         )
 
     assert replaced
@@ -2268,10 +2308,10 @@ def test_output_directory_inode_replacement_is_rejected(
     run_summary_fixture.output_dir.mkdir()
 
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="identity changed",
     ):
-        RUN_SUMMARY.publish_context(context)
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
 
     assert list(run_summary_fixture.output_dir.iterdir()) == []
 
@@ -2281,7 +2321,7 @@ def test_receipt_is_the_last_published_summary_output(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     context = context_for(run_summary_fixture)
-    real_replace = RUN_SUMMARY.os.replace
+    real_replace = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.replace
     final_paths = set(run_summary_fixture.summary_paths)
     publication_order: list[Path] = []
 
@@ -2291,13 +2331,14 @@ def test_receipt_is_the_last_published_summary_output(
             publication_order.append(destination_path)
         real_replace(source, destination)
 
-    monkeypatch.setattr(RUN_SUMMARY.os, "replace", track_publication)
-
-    RUN_SUMMARY.publish_context(context)
+    RUN_SUMMARY_PUBLICATION.publish_context(
+        context,
+        ops=publication_ops(replace=track_publication),
+    )
 
     assert publication_order == list(run_summary_fixture.summary_paths)
     assert publication_order[-1] == run_summary_fixture.summary_receipt_path
-    RUN_SUMMARY.validate_published_run_summary(context)
+    RUN_SUMMARY_PUBLICATION.validate_published_run_summary(context)
     assert_no_summary_residue_after_success(run_summary_fixture)
 
 
@@ -2366,7 +2407,7 @@ def test_alternate_indexed_science_path_spelling_is_preserved(
         run_contract=run_contract,
         source_root=REPO_ROOT,
     )
-    science_record = RUN_SUMMARY.science.normalize_scientific_review(
+    science_record = SCIENCE.normalize_scientific_review(
         summary_path=fixture.science_review_summary,
         artifacts=artifacts,
         run_id=fixture.run_id,
@@ -2394,27 +2435,37 @@ def test_alternate_science_summary_spelling_publishes_consistent_receipt(
     if not summary_text.startswith("/private/var/"):
         pytest.skip("No stable alternate /var spelling is available")
     alternate_summary = summary_text.removeprefix("/private")
-    real_normalize = RUN_SUMMARY.science.normalize_scientific_review
+    real_normalize = SCIENCE.normalize_scientific_review
 
     def normalize_with_indexed_spelling(**kwargs: Any) -> dict[str, Any]:
         record = copy.deepcopy(real_normalize(**kwargs))
         record["review_summary"]["path"] = alternate_summary
         return record
 
-    monkeypatch.setattr(
-        RUN_SUMMARY.science,
-        "normalize_scientific_review",
-        normalize_with_indexed_spelling,
+    ops = publication_ops(
+        normalize_scientific_review=normalize_with_indexed_spelling,
     )
 
-    context = context_for(fixture)
+    def recheck_inputs(context: Any) -> None:
+        RUN_SUMMARY_PUBLICATION._recheck_inputs(context, ops=ops)
+
+    context = context_for(
+        fixture,
+        deps=build_deps(
+            normalize_scientific_review=normalize_with_indexed_spelling,
+            recheck_inputs=recheck_inputs,
+        ),
+    )
     assert context.document["scientific_review"]["source"]["path"] == (
         alternate_summary
     )
     assert context.receipt_row["science_review_summary_path"] == (alternate_summary)
-    RUN_SUMMARY.publish_context(context)
+    RUN_SUMMARY_PUBLICATION.publish_context(
+        context,
+        ops=ops,
+    )
 
-    RUN_SUMMARY.validate_published_run_summary(context)
+    RUN_SUMMARY_PUBLICATION.validate_published_run_summary(context)
     receipt = read_tsv(fixture.summary_receipt_path)[0]
     document = read_json(fixture.summary_json_path)
     assert receipt["science_review_summary_path"] == alternate_summary
@@ -2440,10 +2491,10 @@ def test_pending_science_decision_with_evidence_fails_closed(
     pending["supporting_evidence_ids"] = "evidence.synthetic"
 
     with pytest.raises(
-        RUN_SUMMARY.science.RunSummaryScienceError,
+        SCIENCE.RunSummaryScienceError,
         match="Pending decision",
     ):
-        RUN_SUMMARY.science._normalize_decisions(context)
+        SCIENCE._normalize_decisions(context)
 
 
 def test_pending_science_decision_preserves_rationale_owner_and_policy(
@@ -2469,9 +2520,7 @@ def test_pending_science_decision_preserves_rationale_owner_and_policy(
         }
     )
 
-    normalized = RUN_SUMMARY.science._normalize_decisions(context)[
-        pending["decision_dimension"]
-    ]
+    normalized = SCIENCE._normalize_decisions(context)[pending["decision_dimension"]]
 
     assert normalized["status"] == "pending"
     assert normalized["detail"] == pending["rationale"]
@@ -2496,7 +2545,7 @@ def test_generated_limitation_id_is_collision_safe(tmp_path: Path) -> None:
         "evidence_ids": [],
     }
 
-    limitations = RUN_SUMMARY._build_limitations(
+    limitations = RUN_SUMMARY_PROJECTION._build_limitations(
         artifacts=[record],
         scientific_review={
             "record": {"limitations": [existing]},
@@ -2541,7 +2590,7 @@ def test_attempt_aggregation_preserves_independent_chains_and_rejects_conflicts(
         {"attempts": [independent, copy.deepcopy(retry)]},
     ]
 
-    attempts, superseded = RUN_SUMMARY._build_attempts(artifacts)
+    attempts, superseded = RUN_SUMMARY_PROJECTION._build_attempts(artifacts)
 
     assert [attempt["attempt_id"] for attempt in attempts] == [
         "attempt-a1",
@@ -2553,7 +2602,7 @@ def test_attempt_aggregation_preserves_independent_chains_and_rejects_conflicts(
     conflicting = copy.deepcopy(artifacts)
     conflicting[1]["attempts"][1]["finished_at"] = "2000-01-01T00:00:06Z"
     with pytest.raises(
-        RUN_SUMMARY.RunSummaryError,
+        RUN_SUMMARY_MODELS.RunSummaryError,
         match="conflicting definitions",
     ):
-        RUN_SUMMARY._build_attempts(conflicting)
+        RUN_SUMMARY_PROJECTION._build_attempts(conflicting)

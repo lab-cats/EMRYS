@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from .contracts import contracts
+from norad.contracts.artifacts import api as contracts
+
 from .core import (
     canonical_json_bytes,
     get_git_commit,

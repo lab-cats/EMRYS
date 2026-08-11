@@ -6,12 +6,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
+from norad.contracts.artifacts import api as contracts
 from norad.contracts.scientific_evidence import review_package
-from norad.reporting._artifact_index import api as adapter
+from norad.reporting._artifact_index.api import RUN_CONTRACT_FIELDS, SourceCheckout
 from norad.reporting._files import FileSnapshot
-
-contracts = adapter.contracts
-RUN_CONTRACT_FIELDS = adapter.RUN_CONTRACT_FIELDS
 
 PRODUCER = "build_run_summary"
 PRODUCER_VERSION = "1.1.0"
@@ -185,7 +183,7 @@ class BuildContext:
     git_commit: str
     receipt_row: dict[str, Any]
     receipt_bytes: bytes
-    source_checkout: adapter.SourceCheckout = field(
+    source_checkout: SourceCheckout = field(
         kw_only=True,
         compare=False,
         repr=False,

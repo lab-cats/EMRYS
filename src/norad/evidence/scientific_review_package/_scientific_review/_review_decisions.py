@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from .contracts import NA_VALUE, review_package, step08
+from norad.contracts.scientific_evidence import review_package, step08
+from norad.contracts.scientific_evidence.step08 import NA_VALUE
+
 from .intake import split_ids, validate_iso_date, validate_supporting_ids
 
 

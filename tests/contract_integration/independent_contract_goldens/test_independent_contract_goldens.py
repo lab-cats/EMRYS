@@ -12,6 +12,7 @@ from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
+from norad.contracts.scientific_evidence import review_package as REVIEW_PACKAGE
 from norad.evidence.scientific_review_package._scientific_review import (
     contracts as SCIENTIFIC_REVIEW,
 )
@@ -23,18 +24,21 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 GOLDENS = Path(__file__).resolve().parent
 SCHEMAS = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts" / "v1"
 
-ARTIFACT_INDEX = importlib.import_module("norad.reporting._artifact_index.builder")
-ARTIFACT_INDEX_CONTEXT = importlib.import_module(
-    "norad.reporting._artifact_index.context",
+ARTIFACT_INDEX_CORE = importlib.import_module(
+    "norad.reporting._artifact_index.core",
 )
-RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.builder")
+ARTIFACT_INDEX_MODELS = importlib.import_module(
+    "norad.reporting._artifact_index.models",
+)
+RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.models")
+SHARED_SCIENCE = importlib.import_module(
+    "norad.reporting._run_summary.science_projection"
+)
 REPORT_BUNDLE = importlib.import_module("norad.reporting.render_run_report_bundle")
-SHARED_SCIENCE = RUN_SUMMARY.science
-REVIEW_PACKAGE = ARTIFACT_INDEX.review_package
 
 
 HEADER_MODULES: Mapping[str, ModuleType] = {
-    "build_artifact_index": ARTIFACT_INDEX,
+    "build_artifact_index": ARTIFACT_INDEX_MODELS,
     "build_run_summary": RUN_SUMMARY,
     "render_run_report_bundle": REPORT_BUNDLE,
     "step_09c_scientific_validation": SCIENTIFIC_REVIEW,
@@ -42,11 +46,6 @@ HEADER_MODULES: Mapping[str, ModuleType] = {
 
 
 def header_module(module_name: str, constant_name: str) -> ModuleType:
-    if (
-        module_name == "build_artifact_index"
-        and constant_name == "ARTIFACT_INDEX_HEADER"
-    ):
-        return ARTIFACT_INDEX_CONTEXT
     if (
         module_name == "step_09c_scientific_validation"
         and constant_name == "REVIEW_PLAN_HEADER"
@@ -121,7 +120,7 @@ def assert_status_constants() -> None:
 
 
 def assert_canonical_json(
-    serializer: Callable[[Any], bytes] = ARTIFACT_INDEX.canonical_json_bytes,
+    serializer: Callable[[Any], bytes] = ARTIFACT_INDEX_CORE.canonical_json_bytes,
 ) -> None:
     expected = (GOLDENS / "canonical_object.json").read_bytes()
     value = json.loads(expected)
@@ -208,7 +207,7 @@ def test_canonical_json_matches_exact_independent_utf8_golden() -> None:
 
 def test_mutated_canonical_json_serialization_is_rejected() -> None:
     def mutated_serializer(value: Any) -> bytes:
-        return ARTIFACT_INDEX.canonical_json_bytes(value).replace(
+        return ARTIFACT_INDEX_CORE.canonical_json_bytes(value).replace(
             b'  "alpha"', b' "alpha"', 1
         )
 

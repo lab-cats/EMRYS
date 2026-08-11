@@ -13,6 +13,11 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
+from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
+from norad.contracts.scientific_evidence import (
+    computational_validation,
+    review_package as REVIEW_PACKAGE,
+)
 from norad.evidence.scientific_review_package import publisher as STEP09C_PUBLISHER
 from norad.evidence.scientific_review_package._scientific_review import (
     context as STEP09C_CONTEXT,
@@ -20,6 +25,13 @@ from norad.evidence.scientific_review_package._scientific_review import (
 from norad.evidence.scientific_review_package._scientific_review import (
     contracts as STEP09C,
 )
+from norad.reporting._artifact_index import api as ARTIFACT_API
+from norad.reporting._artifact_index import context as ARTIFACT_CONTEXT
+from norad.reporting._artifact_index import core as ARTIFACT_CORE
+from norad.reporting._artifact_index import models as ARTIFACT_MODELS
+from norad.reporting._artifact_index import publication as ARTIFACT_PUBLICATION
+from norad.reporting._artifact_index import records as ARTIFACT_RECORDS
+from norad.reporting._artifact_index import validation as ARTIFACT_VALIDATION
 from norad.reporting._artifact_index.source_checkout import SourceCheckout
 from tests.evidence.scientific_review_package import build_fixture as STEP09C_FIXTURE
 from tests.reporting.fixtures.artifact_adapters_v1 import (
@@ -57,10 +69,6 @@ FULL_SCIENCE_DEMO_ROLES = (
     "limitations",
     "evidence_index",
 )
-
-
-ADAPTER = ADAPTER_FIXTURE.builder
-REVIEW_PACKAGE = STEP09C.review_package
 
 
 @dataclass(frozen=True)
@@ -175,7 +183,7 @@ def restore_epoch(previous: str | None) -> None:
 def publish_adapter_fixture(fixture: Any) -> None:
     previous, _ = fixed_epoch()
     try:
-        context = ADAPTER.prepare_context(
+        context = ARTIFACT_CONTEXT.prepare_context(
             argparse.Namespace(
                 run_id=fixture.run_id,
                 run_contract=fixture.run_contract,
@@ -185,7 +193,7 @@ def publish_adapter_fixture(fixture: Any) -> None:
             ),
             source_checkout=SourceCheckout(root=REPO_ROOT),
         )
-        ADAPTER.publish_context(context)
+        ARTIFACT_PUBLICATION.publish_context(context)
     finally:
         restore_epoch(previous)
 
@@ -330,7 +338,7 @@ def explicit_science_inventory_rows(
     step08_validation.parent.mkdir(parents=True, exist_ok=True)
     write_tsv(
         step08_validation,
-        ADAPTER.VALIDATION_REPORT_HEADER,
+        ARTIFACT_MODELS.VALIDATION_REPORT_HEADER,
         [
             {
                 "step_id": "08",
@@ -442,7 +450,7 @@ def explicit_science_inventory_rows(
     )
     write_tsv(
         step09_validation,
-        ADAPTER.VALIDATION_REPORT_HEADER,
+        ARTIFACT_MODELS.VALIDATION_REPORT_HEADER,
         [
             {
                 "step_id": "09",
@@ -523,7 +531,7 @@ def normalize_explicit_science_transaction(
         record_path = (
             fixture.adapter_fixture.records_dir / f"{inventory_row['artifact_id']}.json"
         )
-        record = ADAPTER.contracts.load_json_object(
+        record = ARTIFACT_CONTRACTS.load_json_object(
             record_path,
             f"fixture artifact {inventory_row['artifact_id']}",
         )
@@ -533,17 +541,19 @@ def normalize_explicit_science_transaction(
         record["errors"] = []
         if record["scope"]["step_id"] == "09c":
             record["scientific_state"] = dict(science_state)
-        payload = ADAPTER.canonical_json_bytes(record)
+        payload = ARTIFACT_CORE.canonical_json_bytes(record)
         record_path.write_bytes(payload)
         records.append(record)
         record_bytes.append(payload)
 
-    index_rows = ADAPTER.build_index_rows(
+    index_rows = ARTIFACT_RECORDS.build_index_rows(
         records=records,
         record_bytes=record_bytes,
         records_dir=fixture.adapter_fixture.records_dir,
     )
-    index_bytes = ADAPTER.tsv_bytes(ADAPTER.ARTIFACT_INDEX_HEADER, index_rows)
+    index_bytes = ARTIFACT_RECORDS.tsv_bytes(
+        ARTIFACT_MODELS.ARTIFACT_INDEX_HEADER, index_rows
+    )
     fixture.adapter_fixture.artifacts_path.write_bytes(index_bytes)
 
     old_receipt_rows = read_tsv(fixture.adapter_fixture.receipt_path)
@@ -553,11 +563,11 @@ def normalize_explicit_science_transaction(
     attempt_history = old_receipt["adapter_attempt_history"].split(",")
     attempt_id = attempt_history[-1]
     previous_attempt_id = attempt_history[-2] if len(attempt_history) > 1 else None
-    run_contract = ADAPTER.contracts.load_json_object(
+    run_contract = ARTIFACT_CONTRACTS.load_json_object(
         fixture.adapter_fixture.run_contract,
         "explicit-science run contract",
     )
-    receipt_row = ADAPTER.build_receipt_row(
+    receipt_row = ARTIFACT_RECORDS.build_receipt_row(
         run_id=fixture.run_id,
         run_contract=run_contract,
         run_contract_path=fixture.adapter_fixture.run_contract,
@@ -576,9 +586,11 @@ def normalize_explicit_science_transaction(
         finished_at=old_receipt["finished_at"],
     )
     fixture.adapter_fixture.receipt_path.write_bytes(
-        ADAPTER.tsv_bytes(ADAPTER.ARTIFACT_RECEIPT_HEADER, [receipt_row])
+        ARTIFACT_RECORDS.tsv_bytes(
+            ARTIFACT_MODELS.ARTIFACT_RECEIPT_HEADER, [receipt_row]
+        )
     )
-    ADAPTER.validate_published_transaction(
+    ARTIFACT_VALIDATION.validate_published_transaction(
         run_id=fixture.run_id,
         run_contract=run_contract,
         run_contract_path=fixture.adapter_fixture.run_contract,
@@ -851,7 +863,7 @@ def build_explicit_science_fixture(
             )
         write_tsv(
             computational_path,
-            STEP09C.COMPUTATIONAL_VALIDATION_HEADER,
+            computational_validation.HEADER,
             bundled_rows,
         )
         computational_manifest = next(
@@ -888,7 +900,7 @@ def build_explicit_science_fixture(
     inventory = adapter_root / "artifact_inventory.tsv"
     run_contract = adapter_root / "run_contract.json"
     rows = explicit_science_inventory_rows(step09c_fixture)
-    write_tsv(inventory, ADAPTER.contracts.INVENTORY_HEADER, rows)
+    write_tsv(inventory, ARTIFACT_CONTRACTS.INVENTORY_HEADER, rows)
     write_run_contract(
         run_contract,
         sample_manifest_sha256=sha256_file(step09c_fixture.sample_manifest),
@@ -923,7 +935,7 @@ def build_explicit_science_fixture(
     )
     normalize_explicit_science_transaction(fixture)
     review_records = [
-        ADAPTER.contracts.load_json_object(
+        ARTIFACT_CONTRACTS.load_json_object(
             adapter_fixture.records_dir / f"{row['artifact_id']}.json",
             f"normalized fixture artifact {row['artifact_id']}",
         )
@@ -966,7 +978,7 @@ def add_report_table_approvals(
         if len(matching) != 1:
             raise RuntimeError(f"Expected one fixture artifact for {expected_adapter}")
         artifact_id = matching[0]["artifact_id"]
-        record = ADAPTER.contracts.load_json_object(
+        record = ARTIFACT_CONTRACTS.load_json_object(
             fixture.adapter_fixture.records_dir / f"{artifact_id}.json",
             f"approval fixture artifact {artifact_id}",
         )
@@ -1077,7 +1089,7 @@ def build_full_science_demo_fixture(root: Path) -> RunSummaryFixture:
     adapter_root.mkdir(parents=True, exist_ok=True)
     inventory = adapter_root / "artifact_inventory.tsv"
     run_contract = adapter_root / "run_contract.json"
-    write_tsv(inventory, ADAPTER.contracts.INVENTORY_HEADER, inventory_rows)
+    write_tsv(inventory, ARTIFACT_CONTRACTS.INVENTORY_HEADER, inventory_rows)
     write_run_contract(
         run_contract,
         sample_manifest_sha256=sha256_file(

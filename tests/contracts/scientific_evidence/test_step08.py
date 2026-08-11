@@ -237,6 +237,44 @@ def test_public_api_fingerprint_matches_pre_extraction_oracle() -> None:
     assert tuple(STEP08.Table.__dataclass_fields__) == ("header", "rows", "path")
 
 
+def test_declared_public_api_matches_supported_owner_surface() -> None:
+    expected = {
+        "ContractError",
+        "Table",
+        "NA_VALUE",
+        "ORIENTATIONS",
+        "STEP08_METADATA_HEADER",
+        "STEP08_INPUTS_HEADER",
+        "STEP08_SUMMARY_HEADER",
+        "STEP08_PARTITION_COUNT_FIELDS",
+        "SAMPLE_MANIFEST_REQUIRED",
+        "SAMPLE_MANIFEST_ALLOWED",
+        "PARTITION_MANIFEST_HEADER",
+        "attempt",
+        "ensure_unique",
+        "fail",
+        "parse_nonnegative_int",
+        "parse_number",
+        "read_tsv",
+        "require_file",
+        "require_text",
+        "sample_block_header",
+        "sha256_file",
+        "validate_enum",
+        "validate_hash",
+        "validate_sample_manifest",
+        "validate_partition_manifest",
+        "validate_safe_id",
+        "validate_step08_inputs",
+        "validate_step08_sites",
+        "validate_step08_summary",
+        "values_close",
+    }
+
+    assert set(STEP08.__all__) == expected
+    assert all(hasattr(STEP08, name) for name in STEP08.__all__)
+
+
 def test_valid_contract_preserves_exact_results_and_characterized_permissiveness(
     tmp_path: Path,
 ) -> None:

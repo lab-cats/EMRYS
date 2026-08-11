@@ -7,22 +7,25 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from norad.contracts.scientific_evidence import (
-    computational_validation,
-    review_package,
+from norad.contracts.scientific_evidence.computational_validation import (
+    HEADER as COMPUTATIONAL_VALIDATION_HEADER,
 )
+from norad.contracts.scientific_evidence.computational_validation import (
+    SCOPE_PLAN_FIELDS as COMPUTATIONAL_SCOPE_PLAN_FIELDS,
+)
+from norad.contracts.scientific_evidence.computational_validation import (
+    SCOPE_ROLES as COMPUTATIONAL_SCOPE_ROLES,
+)
+from norad.contracts.scientific_evidence.review_package import (
+    INPUT_ARTIFACT_ROLES as INPUT_ROLE_BY_STEP09C_KEY,
+)
+from norad.contracts.scientific_evidence.review_package import OUTPUT_SUFFIXES
 
 NA_VALUE = "NA"
-COMPUTATIONAL_SCOPE_ROLES = computational_validation.SCOPE_ROLES
-COMPUTATIONAL_SCOPE_PLAN_FIELDS = computational_validation.SCOPE_PLAN_FIELDS
-COMPUTATIONAL_VALIDATION_HEADER = computational_validation.HEADER
 SCIENCE_SCHEMA_VERSION = "1.1.0"
 PRODUCER = "build_run_summary"
 PRODUCER_VERSION = "1.0.0"
-PUBLISHED_ADAPTERS = {
-    key: f"step09c_{key}_v1" for key, _ in review_package.OUTPUT_SUFFIXES
-}
-INPUT_ROLE_BY_STEP09C_KEY = review_package.INPUT_ARTIFACT_ROLES
+PUBLISHED_ADAPTERS = {key: f"step09c_{key}_v1" for key, _ in OUTPUT_SUFFIXES}
 
 
 @dataclass(frozen=True)
