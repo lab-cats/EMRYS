@@ -180,7 +180,7 @@ def _normalize_evidence(
             if row["evidence_category"] == category
         ]
         status = review_package.aggregate_evidence_status(
-            context.evidence_rows, category
+            context.evidence_index_rows, category
         )
         reasons: list[str] = []
         if status == "not_applicable":

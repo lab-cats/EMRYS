@@ -39,12 +39,10 @@ class ReviewPackageContext:
     """The public package projection required by run-summary reporting."""
 
     plan: dict[str, str]
-    evidence_rows: list[dict[str, str]]
     category_rows: dict[str, list[dict[str, str]]]
     evidence_index_rows: list[dict[str, str]]
     artifacts: dict[str, ReviewInput]
     input_hashes: dict[Path, str]
-    output_paths: dict[str, Path]
 
 
 class RunSummaryScienceError(RuntimeError):

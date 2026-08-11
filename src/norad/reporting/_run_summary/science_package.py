@@ -299,13 +299,10 @@ def _read_committed_review_package(
                 remember_input(payload_path, payload_hash)
         category_rows["computational_validation"].extend(source_table.rows)
 
-    context = ReviewPackageContext(
+    return ReviewPackageContext(
         plan=dict(plan_rows[0]),
-        evidence_rows=[dict(row) for row in evidence_index_rows],
         category_rows=category_rows,
         evidence_index_rows=evidence_index_rows,
         artifacts=input_artifacts,
         input_hashes=input_hashes,
-        output_paths=output_paths,
-    )
-    return context, output_tables
+    ), output_tables
