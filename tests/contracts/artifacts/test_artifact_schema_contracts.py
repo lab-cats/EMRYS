@@ -1408,6 +1408,103 @@ def test_contract_paths_honor_an_explicit_source_root(tmp_path: Path) -> None:
             source_root=tmp_path,
         )
 
+    run_summary = read_json(FIXTURES["run-summary"])
+    run_summary["artifacts"] = [artifact_record]
+    with pytest.raises(
+        contracts.ContractValidationError,
+        match="cannot claim the absent expected source",
+    ):
+        contracts.validate_run_summary_semantics(
+            run_summary,
+            source_root=tmp_path,
+        )
+
+
+def test_run_summary_semantics_threads_the_explicit_source_root(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """Propagate one explicit root through every run-summary path seam."""
+    summary = read_json(FIXTURES["run-summary"])
+    artifact = summary["artifacts"][0]
+    review_record = read_json(FIXTURES["scientific-review-record"])
+    review_record["input_artifacts"] = []
+    review_source = dict(review_record["review_summary"])
+    artifact.update(
+        {
+            "availability_status": "available",
+            "completion_status": "complete",
+            "source": dict(review_source),
+            "members": [
+                {
+                    "member_id": "supplemental",
+                    "role": "supplemental",
+                    "path": "supplemental/member.tsv",
+                    "sha256": "d" * 64,
+                    "size_bytes": 1,
+                    "row_count": 1,
+                    "media_type": "text/tab-separated-values",
+                },
+            ],
+        },
+    )
+    summary["expected_scopes"][0]["aggregate_state"] = "complete"
+    summary["computational_rollup"].update(
+        {
+            "complete_artifact_count": 1,
+            "missing_artifact_count": 0,
+        },
+    )
+    summary["scientific_review"] = {
+        "record_state": "present",
+        "source": dict(review_source),
+        "record": review_record,
+        "overall_status": review_record["scientific_state"]["overall_status"],
+    }
+
+    semantic_roots: list[Path] = []
+    resolved_values: list[str] = []
+
+    def record_artifact_semantics(
+        _document: dict[str, Any],
+        *,
+        source_root: Path,
+    ) -> None:
+        semantic_roots.append(source_root)
+
+    def record_contract_path(value: str, *, source_root: Path) -> Path:
+        resolved_values.append(value)
+        assert source_root == tmp_path
+        return (source_root / value).resolve()
+
+    monkeypatch.setattr(
+        run_summary_validation,
+        "validate_artifact_semantics",
+        record_artifact_semantics,
+    )
+    monkeypatch.setattr(
+        run_summary_validation,
+        "resolve_contract_path",
+        record_contract_path,
+    )
+    monkeypatch.setattr(
+        run_summary_validation,
+        "validate_scientific_review_semantics",
+        lambda _document: None,
+    )
+
+    contracts.validate_run_summary_semantics(summary, source_root=tmp_path)
+
+    expected_path = artifact["expectation"]["source_path"]
+    assert semantic_roots == [tmp_path]
+    assert resolved_values == [
+        expected_path,
+        review_source["path"],
+        "supplemental/member.tsv",
+        review_source["path"],
+        review_record["review_summary"]["path"],
+    ]
+
 
 def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_09c() -> (
     None
@@ -1586,11 +1683,15 @@ def test_run_summary_reconciles_inventory_hash_order_and_scope(
 ) -> None:
     summary = read_json(FIXTURES["run-summary"])
     row = inventory_row_for_artifact(summary["artifacts"][0])
-    inventory = tmp_path / "inventory.tsv"
+    actual = tmp_path / "actual"
+    actual.mkdir()
+    alias = tmp_path / "alias"
+    alias.symlink_to(actual, target_is_directory=True)
+    inventory = actual / "inventory.tsv"
     write_inventory(inventory, list(contracts.INVENTORY_HEADER), [row])
     summary["inventory"].update(
         {
-            "path": str(inventory),
+            "path": "alias/inventory.tsv",
             "sha256": contracts.sha256_file(inventory),
             "size_bytes": inventory.stat().st_size,
             "row_count": 1,
@@ -1602,6 +1703,7 @@ def test_run_summary_reconciles_inventory_hash_order_and_scope(
         summary,
         [row],
         inventory,
+        source_root=tmp_path,
     )
 
     wrong_hash = copy.deepcopy(summary)
@@ -1612,6 +1714,7 @@ def test_run_summary_reconciles_inventory_hash_order_and_scope(
             wrong_hash,
             [row],
             inventory,
+            source_root=tmp_path,
         )
 
 

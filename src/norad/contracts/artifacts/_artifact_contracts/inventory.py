@@ -200,6 +200,8 @@ def reconcile_document_inventory(
     document: dict[str, Any],
     rows: list[dict[str, str]],
     inventory_path: Path,
+    *,
+    source_root: Path = REPO_ROOT,
 ) -> None:
     row_index = {row["artifact_id"]: row for row in rows}
     if name == "artifact-record":
@@ -215,7 +217,13 @@ def reconcile_document_inventory(
         )
 
     inventory_record = document["inventory"]
-    if resolve_contract_path(inventory_record["path"]) != inventory_path.resolve():
+    if (
+        resolve_contract_path(
+            inventory_record["path"],
+            source_root=source_root,
+        )
+        != inventory_path.resolve()
+    ):
         raise ContractValidationError(
             "run summary inventory path does not match the supplied inventory"
         )

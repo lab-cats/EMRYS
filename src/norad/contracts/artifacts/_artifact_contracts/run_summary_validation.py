@@ -9,6 +9,7 @@ from typing import Any
 
 from .artifact import validate_artifact_semantics
 from .definitions import (
+    REPO_ROOT,
     SCIENCE_UPSTREAM_ROLE_CONTRACTS,
     ContractValidationError,
 )
@@ -48,7 +49,11 @@ def _validate_scope_statuses(
             )
 
 
-def validate_run_summary_semantics(document: dict[str, Any]) -> None:
+def validate_run_summary_semantics(
+    document: dict[str, Any],
+    *,
+    source_root: Path = REPO_ROOT,
+) -> None:
     validate_run_contract(document["run_contract"], "run summary")
     validate_document_paths(document)
 
@@ -80,7 +85,7 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
     expected_source_artifacts: dict[Path, dict[str, Any]] = {}
     physical_path_records: dict[Path, tuple[Any, ...]] = {}
     for artifact in artifacts:
-        validate_artifact_semantics(artifact)
+        validate_artifact_semantics(artifact, source_root=source_root)
         if artifact["run_id"] != document["run_id"]:
             raise ContractValidationError(
                 f"artifact {artifact['artifact_id']!r} has a different run_id"
@@ -110,7 +115,10 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
             raise ContractValidationError(
                 f"artifact {artifact['artifact_id']!r} selects a superseded run attempt"
             )
-        expected_path = resolve_contract_path(artifact["expectation"]["source_path"])
+        expected_path = resolve_contract_path(
+            artifact["expectation"]["source_path"],
+            source_root=source_root,
+        )
         if expected_path in expected_source_artifacts:
             raise ContractValidationError(
                 f"run artifacts contain duplicate expected source path "
@@ -127,7 +135,10 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
                 record.get("row_count"),
                 record.get("media_type"),
             )
-            physical_path = resolve_contract_path(record["path"])
+            physical_path = resolve_contract_path(
+                record["path"],
+                source_root=source_root,
+            )
             prior = physical_path_records.get(physical_path)
             if prior is not None and prior != fingerprint:
                 raise ContractValidationError(
@@ -260,8 +271,14 @@ def validate_run_summary_semantics(document: dict[str, Any]) -> None:
             )
             and artifact["completion_status"] == "complete"
             and artifact["source"] is not None
-            and resolve_contract_path(artifact["source"]["path"])
-            == resolve_contract_path(record["review_summary"]["path"])
+            and resolve_contract_path(
+                artifact["source"]["path"],
+                source_root=source_root,
+            )
+            == resolve_contract_path(
+                record["review_summary"]["path"],
+                source_root=source_root,
+            )
             and artifact["source"]["sha256"] == record["review_summary"]["sha256"]
         ]
         if len(matching_review_artifacts) != 1:
