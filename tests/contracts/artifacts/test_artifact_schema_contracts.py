@@ -14,10 +14,9 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
+from norad import __main__ as norad_main
 from norad.contracts.artifacts import api as contracts
-from norad.contracts.artifacts import (
-    validate_artifact_contracts as contract_cli,
-)
+from norad.contracts.artifacts import validator as contract_validator
 from norad.contracts.artifacts._artifact_contracts import (
     artifact,
     definitions,
@@ -28,14 +27,6 @@ from norad.contracts.artifacts._artifact_contracts import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SCRIPT = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "contracts"
-    / "artifacts"
-    / "validate_artifact_contracts.py"
-)
 SCHEMA_ROOT = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts" / "v1"
 FIXTURE_ROOT = (
     REPO_ROOT
@@ -68,12 +59,23 @@ def test_contract_api_uses_the_packaged_owners() -> None:
         is run_summary_validation.validate_run_summary_semantics
     )
     assert contracts.scope_key is run_summary_status.scope_key
-    assert contract_cli.api is contracts
 
 
 def test_validate_document_and_dispatcher_use_live_api_hooks(
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
+    arguments = norad_main.build_parser().parse_args(
+        [
+            "validate",
+            "artifact-contracts",
+            "--schema",
+            "artifact-record",
+            "--document",
+            str(FIXTURES["artifact-record"]),
+        ]
+    )
+    assert arguments._command_handler is contract_validator.validate_from_args
     document_calls: list[tuple[str, dict[str, Any]]] = []
 
     def record_document(name: str, document: dict[str, Any]) -> None:
@@ -81,11 +83,15 @@ def test_validate_document_and_dispatcher_use_live_api_hooks(
 
     with monkeypatch.context() as patch:
         patch.setattr(contracts, "validate_document_semantics", record_document)
-        document = contract_cli.validate_document(
-            "artifact-record",
-            FIXTURES["artifact-record"],
-        )
+        result = contract_validator.validate_from_args(arguments)
 
+    assert result == 0
+    captured = capsys.readouterr()
+    assert captured.out == (
+        f"JSON document passed artifact-record: {FIXTURES['artifact-record']}\n"
+    )
+    assert not captured.err
+    document = read_json(FIXTURES["artifact-record"])
     assert document_calls == [("artifact-record", document)]
 
     artifact_calls: list[dict[str, Any]] = []
@@ -159,8 +165,16 @@ def assert_schema_invalid(
 
 def run_cli(*arguments: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(SCRIPT), *arguments],
-        cwd=REPO_ROOT,
+        [
+            sys.executable,
+            "-I",
+            "-m",
+            "norad",
+            "validate",
+            "artifact-contracts",
+            *arguments,
+        ],
+        cwd=REPO_ROOT.parent,
         text=True,
         capture_output=True,
         check=False,

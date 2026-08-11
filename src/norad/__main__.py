@@ -12,6 +12,9 @@ from typing import Protocol, cast
 from norad.analyses.paired_cmh_candidate_ranking import (
     validator as paired_cmh_candidate_ranking_validation_command,
 )
+from norad.contracts.artifacts import (
+    validator as artifact_contracts_validation_command,
+)
 from norad.evidence.canonical_bam_qc import (
     validator as canonical_bam_qc_validation_command,
 )
@@ -245,6 +248,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_validation_command(
         validation_parsers,
+        name="artifact-contracts",
+        help_text="Validate explicit artifact schemas, records, and inventories.",
+        command=artifact_contracts_validation_command,
+    )
+    _add_validation_command(
+        validation_parsers,
         name="manifest",
         help_text="Validate a sample manifest.",
         command=manifest_command,
@@ -335,7 +344,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if mismatch := _checkout_mismatch():
         print(f"norad: error: {mismatch}", file=sys.stderr)
         return 2
-    arguments = build_parser().parse_args(argv)
+    parser = build_parser()
+    arguments, unrecognized = parser.parse_known_args(argv)
+    if unrecognized:
+        error_parser = cast(
+            argparse.ArgumentParser,
+            getattr(arguments, "_command_parser", parser),
+        )
+        error_parser.error(f"unrecognized arguments: {' '.join(unrecognized)}")
     handler = cast(CommandHandler, arguments._command_handler)
     return handler(arguments)
 

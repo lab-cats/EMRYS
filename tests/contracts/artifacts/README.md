@@ -1,10 +1,10 @@
 # Artifact-contract tests
 
 This directory directly protects the curated artifact-contract reporting API,
-its shared import identity, the current CLI coordinator, schema registry,
-semantic validators, inventory compatibility, and CLI failure behavior. The
-detailed contract and supported validation command remain with the
-[artifact-contract owner](../../../src/norad/contracts/artifacts/README.md).
+its shared import identity, the grouped validation route and private
+coordinator, schema registry, semantic validators, inventory compatibility,
+and CLI failure behavior. The detailed contract and supported validation command
+remain with the [artifact-contract owner](../../../src/norad/contracts/artifacts/README.md).
 
 [`fixtures/`](fixtures/) contains the tracked valid example documents used by
 this suite. Fixture and schema bytes are contract inputs: do not regenerate or

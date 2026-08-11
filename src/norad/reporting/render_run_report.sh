@@ -105,9 +105,9 @@ repo_root="$(cd "$script_dir/../../.." && pwd)"
 python_script="$script_dir/render_run_report.py"
 [[ -f "$python_script" && -r "$python_script" ]] ||
     die "Report Python implementation is missing or unreadable: $python_script"
-artifact_contracts="$repo_root/src/norad/contracts/artifacts/validate_artifact_contracts.py"
-[[ -f "$artifact_contracts" && -r "$artifact_contracts" ]] ||
-    die "Artifact-contract validator is missing or unreadable: $artifact_contracts"
+artifact_contract_api="$repo_root/src/norad/contracts/artifacts/api.py"
+[[ -f "$artifact_contract_api" && -r "$artifact_contract_api" ]] ||
+    die "Artifact-contract API is missing or unreadable: $artifact_contract_api"
 
 if [[ "${PYTHON_BIN_OVERRIDE+x}" == "x" ]]; then
     [[ -n "$PYTHON_BIN_OVERRIDE" ]] ||
@@ -121,25 +121,19 @@ fi
 python_bin="$(resolve_executable_value "Python executable" "$python_value" "python3")"
 
 preflight_code='
-import importlib.util
 import sys
 import jsonschema
 import pypdf
 import yaml
-spec = importlib.util.spec_from_file_location(
-    "_norad_artifact_contracts_preflight", sys.argv[1]
-)
-if spec is None or spec.loader is None:
-    raise ImportError("unable to load artifact-contract validator")
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
+sys.path.insert(0, sys.argv[1])
+from norad.contracts.artifacts import api
 '
 if ! preflight_output="$(
-    "$python_bin" -c "$preflight_code" "$artifact_contracts" 2>&1
+    "$python_bin" -I -c "$preflight_code" "$repo_root/src" 2>&1
 )"; then
     printf '%s\n' \
         "ERROR: Selected Python cannot import required report dependencies" \
-        "       (jsonschema, pypdf, PyYAML, validate_artifact_contracts): $python_bin" \
+        "       (jsonschema, pypdf, PyYAML, artifact-contract API): $python_bin" \
         "       Use the repository .venv or set PYTHON_BIN_OVERRIDE to a compatible Python." \
         >&2
     if [[ -n "$preflight_output" ]]; then

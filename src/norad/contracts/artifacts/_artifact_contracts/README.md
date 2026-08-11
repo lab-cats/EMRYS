@@ -1,9 +1,10 @@
 # Artifact-contract validator implementation owners
 
-This private package supports the current
-[`validate_artifact_contracts.py`](../validate_artifact_contracts.py) command
-and the curated reporting [`api.py`](../api.py). The responsibility modules
-remain private to the artifact-contract owner.
+This private package supports the grouped
+`python -I -m norad validate artifact-contracts` route through private
+[`validator.py`](../validator.py) and the curated reporting
+[`api.py`](../api.py). The responsibility modules remain private to the
+artifact-contract owner.
 
 | Module | Owned responsibility |
 | --- | --- |
@@ -19,7 +20,7 @@ remain private to the artifact-contract owner.
 | [`run_summary_validation.py`](run_summary_validation.py) | Run-summary semantic validation. |
 
 The curated API imports exact function objects from these responsibility
-owners and owns the live semantic dispatcher used by the current CLI. The CLI
-retains argument selection and document orchestration. Private modules import
-the one `ContractValidationError` identity directly from `definitions.py`;
-there is no compatibility re-export layer.
+owners and owns the live semantic dispatcher used by the grouped validator.
+The private validator retains argument selection and document orchestration.
+Private modules import the one `ContractValidationError` identity directly
+from `definitions.py`; there is no compatibility re-export layer.

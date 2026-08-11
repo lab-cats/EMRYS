@@ -56,7 +56,7 @@ ARTIFACT_CONTRACT_PACKAGE_PATHS = frozenset(
         "norad/contracts/artifacts/_artifact_contracts/schema.py",
         "norad/contracts/artifacts/_artifact_contracts/scientific_review.py",
         "norad/contracts/artifacts/api.py",
-        "norad/contracts/artifacts/validate_artifact_contracts.py",
+        "norad/contracts/artifacts/validator.py",
     }
 )
 EVIDENCE_PACKAGE_PATHS = frozenset(
@@ -543,6 +543,33 @@ def _assert_dependency_prepared_artifact_contracts(
     assert str((REPO_ROOT / "src").resolve()) not in observed_sys_path
     assert str(Path(environment["PYTHONPATH"]).resolve()) not in observed_sys_path
     assert str(source_purelib) not in observed_sys_path
+
+    route_directory = working_directory / "artifact-contracts"
+    route_directory.mkdir()
+    sentinel = route_directory / "sentinel.txt"
+    sentinel.write_bytes(b"artifact contract sentinel\n")
+    sentinel.chmod(PRIVATE_FILE_MODE)
+    sentinel_state = (sentinel.read_bytes(), sentinel.stat().st_mode)
+    directory_entries = tuple(route_directory.iterdir())
+    validation = _run_installed_norad(
+        environment_python,
+        route_directory,
+        environment,
+        "validate",
+        "artifact-contracts",
+        "--check-schemas",
+    )
+    assert validation.returncode == 0, validation.stdout + validation.stderr
+    assert not validation.stderr
+    assert validation.stdout == (
+        "Schema passed Draft 2020-12 validation: common\n"
+        "Schema passed Draft 2020-12 validation: artifact-record\n"
+        "Schema passed Draft 2020-12 validation: scientific-review-record\n"
+        "Schema passed Draft 2020-12 validation: run-summary\n"
+        "Schema passed Draft 2020-12 validation: report-receipt\n"
+    )
+    assert tuple(route_directory.iterdir()) == directory_entries
+    assert (sentinel.read_bytes(), sentinel.stat().st_mode) == sentinel_state
 
 
 def _hostile_python_environment(tmp_path: Path) -> dict[str, str]:
@@ -2209,6 +2236,20 @@ def _assert_installed_commands(
     working_directory: Path,
     environment: dict[str, str],
 ) -> None:
+    artifact_contract_help = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "validate",
+        "artifact-contracts",
+        "--help",
+    )
+    assert artifact_contract_help.returncode == 0, (
+        artifact_contract_help.stdout + artifact_contract_help.stderr
+    )
+    assert not artifact_contract_help.stderr
+    assert "usage: norad validate artifact-contracts" in artifact_contract_help.stdout
+
     manifest_help = _run_installed_norad(
         environment_python,
         working_directory,
@@ -2341,8 +2382,12 @@ def _assert_installed_commands(
 def _assert_private_source_layout() -> None:
     artifact_contract_source = REPO_ROOT / "src/norad/contracts/artifacts"
     assert not (artifact_contract_source / "_artifact_contracts/core.py").exists()
+    assert not (artifact_contract_source / "validate_artifact_contracts.py").exists()
     assert (
         artifact_contract_source / "api.py"
+    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
+    assert (
+        artifact_contract_source / "validator.py"
     ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
 
     manifest_owner = REPO_ROOT / "src/norad/ingestion/sample_manifest_admission"

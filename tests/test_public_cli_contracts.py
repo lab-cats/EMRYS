@@ -31,9 +31,6 @@ PYTHON_ENTRYPOINT_PATHS = {
         "src/norad/reporting/render_run_report_bundle.py"
     ),
     "restore_quarto.py": Path("scripts/restore_quarto.py"),
-    "validate_artifact_contracts.py": Path(
-        "src/norad/contracts/artifacts/validate_artifact_contracts.py"
-    ),
 }
 PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
 REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
@@ -42,7 +39,6 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
         "build_run_summary.py",
         "render_run_report.py",
         "render_run_report_bundle.py",
-        "validate_artifact_contracts.py",
     }
 )
 PRIVATE_PYTHON_MODULES = frozenset()
@@ -51,11 +47,14 @@ DIRECT_PYTHON_ENTRYPOINTS = frozenset(
         "build_run_summary.py",
         "render_run_report.py",
         "restore_quarto.py",
-        "validate_artifact_contracts.py",
     }
 )
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 NORAD_COMMANDS = (
+    (
+        ("validate", "artifact-contracts"),
+        "usage: norad validate artifact-contracts",
+    ),
     (
         ("assemble", "scientific-review-package"),
         "usage: norad assemble scientific-review-package",
