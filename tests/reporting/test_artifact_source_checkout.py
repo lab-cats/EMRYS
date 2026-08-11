@@ -7,13 +7,16 @@ import subprocess
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
-from norad.reporting import build_artifact_index as artifact_index_facade
-from norad.reporting._artifact_index import (  # ruff: ignore[import-private-name]
-    source_checkout,
-)
+from norad import __main__ as norad_cli
+from norad.reporting._artifact_index import builder as artifact_index_builder
+from norad.reporting._artifact_index import source_checkout
+
+if TYPE_CHECKING:
+    import argparse
 
 PROJECT_NAME = "norad-rna-workflow"
 CLI_USAGE_ERROR = 2
@@ -118,6 +121,23 @@ def _admit(fixture: CheckoutFixture) -> source_checkout.SourceCheckout:
         root=fixture.root,
         package_root=fixture.package_root,
     )
+
+
+def _artifact_index_arguments(source_root: Path) -> list[str]:
+    return [
+        "build",
+        "artifact-index",
+        "--source-checkout",
+        str(source_root),
+        "--run-id",
+        "synthetic-run",
+        "--run-contract",
+        str(source_root / "run-contract.json"),
+        "--inventory",
+        str(source_root / "inventory.tsv"),
+        "--output-root",
+        str(source_root / "output"),
+    ]
 
 
 def _assert_rejected(
@@ -356,50 +376,37 @@ def test_git_probe_requests_only_the_checkout_top_level(
     assert "--verify" not in command
 
 
-def test_cli_parse_termination_precedes_checkout_admission(
+def test_grouped_help_precedes_artifact_builder_dispatch(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def terminate_parse() -> argparse.Namespace:
-        raise SystemExit(2)
-
-    def unexpected_admission(
-        *,
-        root: Path,
-        package_root: Path,
-    ) -> source_checkout.SourceCheckout:
-        pytest.fail(f"admission reached for {root} and {package_root}")
-
-    monkeypatch.setattr(artifact_index_facade, "parse_args", terminate_parse)
     monkeypatch.setattr(
-        artifact_index_facade,
-        "admit_source_checkout",
-        unexpected_admission,
+        norad_cli,
+        "_build_artifact_index_from_args",
+        lambda _arguments: pytest.fail("artifact-index builder was dispatched"),
     )
 
     with pytest.raises(SystemExit) as caught:
-        artifact_index_facade.main()
+        norad_cli.main(["build", "artifact-index", "--help"])
 
-    assert caught.value.code == CLI_USAGE_ERROR
+    assert caught.value.code == 0
 
 
-def test_cli_threads_admitted_checkout_into_context(
+def test_grouped_cli_threads_explicit_checkout_into_context(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    arguments = argparse.Namespace(execute=False)
     admitted = source_checkout.SourceCheckout(root=tmp_path)
     context = object()
     events: list[str] = []
-
-    def parsed_arguments() -> argparse.Namespace:
-        events.append("parse")
-        return arguments
+    expected_package_root = Path(artifact_index_builder.__file__).resolve().parents[2]
 
     def admit_checkout(
         *,
         root: Path,
         package_root: Path,
     ) -> source_checkout.SourceCheckout:
+        assert root == tmp_path
+        assert package_root == expected_package_root
         assert root.is_absolute()
         assert package_root.is_absolute()
         events.append("admit")
@@ -410,7 +417,9 @@ def test_cli_threads_admitted_checkout_into_context(
         *,
         source_checkout: source_checkout.SourceCheckout,
     ) -> object:
-        assert observed_arguments is arguments
+        assert observed_arguments.source_checkout == tmp_path
+        assert observed_arguments.run_id == "synthetic-run"
+        assert observed_arguments.execute is False
         assert source_checkout is admitted
         events.append("prepare")
         return context
@@ -420,94 +429,92 @@ def test_cli_threads_admitted_checkout_into_context(
         assert execute is False
         events.append("print")
 
-    monkeypatch.setattr(artifact_index_facade, "parse_args", parsed_arguments)
     monkeypatch.setattr(
-        artifact_index_facade,
+        artifact_index_builder,
         "admit_source_checkout",
         admit_checkout,
     )
     monkeypatch.setattr(
-        artifact_index_facade,
+        artifact_index_builder,
         "prepare_context",
         prepare_context,
     )
-    monkeypatch.setattr(artifact_index_facade, "print_context", print_context)
+    monkeypatch.setattr(artifact_index_builder, "print_context", print_context)
 
-    assert artifact_index_facade.main() == 0
-    assert events == ["parse", "admit", "prepare", "print"]
+    assert norad_cli.main(_artifact_index_arguments(tmp_path)) == 0
+    assert events == ["admit", "prepare", "print"]
 
 
-def test_facade_prepare_context_admits_default_authority(
+def test_grouped_cli_requires_explicit_source_checkout(
     tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    arguments = argparse.Namespace()
-    admitted = source_checkout.SourceCheckout(root=tmp_path)
-    context = object()
-    facade_path = Path(artifact_index_facade.__file__).resolve()
-
-    def admit_checkout(
-        *,
-        root: Path,
-        package_root: Path,
-    ) -> source_checkout.SourceCheckout:
-        assert root == facade_path.parents[3]
-        assert package_root == facade_path.parents[1]
-        assert root.is_absolute()
-        assert package_root.is_absolute()
-        return admitted
-
-    def build_context(
-        observed_arguments: argparse.Namespace,
-        *,
-        source_checkout: source_checkout.SourceCheckout,
-    ) -> object:
-        assert observed_arguments is arguments
-        assert source_checkout is admitted
-        return context
-
-    monkeypatch.setattr(artifact_index_facade, "admit_source_checkout", admit_checkout)
-    monkeypatch.setattr(artifact_index_facade, "_prepare_context", build_context)
-
-    assert artifact_index_facade.prepare_context(arguments) is context
-
-
-def test_cli_admission_failure_precedes_context_construction(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    arguments = argparse.Namespace(execute=False)
-    prepare_context_called = False
+    monkeypatch.setattr(
+        norad_cli,
+        "_build_artifact_index_from_args",
+        lambda _arguments: pytest.fail("artifact-index builder was dispatched"),
+    )
+    arguments = [
+        "build",
+        "artifact-index",
+        "--run-id",
+        "synthetic-run",
+        "--run-contract",
+        str(tmp_path / "run-contract.json"),
+        "--inventory",
+        str(tmp_path / "inventory.tsv"),
+        "--output-root",
+        str(tmp_path / "output"),
+    ]
 
-    def parsed_arguments() -> argparse.Namespace:
-        return arguments
+    with pytest.raises(SystemExit) as caught:
+        norad_cli.main(arguments)
+
+    assert caught.value.code == CLI_USAGE_ERROR
+    captured = capsys.readouterr()
+    assert not captured.out
+    assert "--source-checkout" in captured.err
+
+
+def test_builder_admission_failure_precedes_context_construction(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    prepare_context_called = False
+    expected_package_root = Path(artifact_index_builder.__file__).resolve().parents[2]
 
     def reject_checkout(
         *,
         root: Path,
         package_root: Path,
     ) -> source_checkout.SourceCheckout:
-        assert root.is_absolute()
-        assert package_root.is_absolute()
+        assert root == tmp_path
+        assert package_root == expected_package_root
         raise source_checkout.SourceCheckoutError("injected checkout rejection")
 
-    def unexpected_prepare_context(_arguments: argparse.Namespace) -> None:
+    def unexpected_prepare_context(
+        _arguments: argparse.Namespace,
+        *,
+        source_checkout: source_checkout.SourceCheckout,
+    ) -> None:
         nonlocal prepare_context_called
         prepare_context_called = True
+        pytest.fail(f"context constructed from {source_checkout.root}")
 
-    monkeypatch.setattr(artifact_index_facade, "parse_args", parsed_arguments)
     monkeypatch.setattr(
-        artifact_index_facade,
+        artifact_index_builder,
         "admit_source_checkout",
         reject_checkout,
     )
     monkeypatch.setattr(
-        artifact_index_facade,
+        artifact_index_builder,
         "prepare_context",
         unexpected_prepare_context,
     )
 
-    assert artifact_index_facade.main() == 1
+    assert norad_cli.main(_artifact_index_arguments(tmp_path)) == 1
     captured = capsys.readouterr()
     assert not captured.out
     assert captured.err == "ERROR: injected checkout rejection\n"

@@ -1,4 +1,4 @@
-"""Receipt-last publication workflow for the artifact-index facade."""
+"""Receipt-last publication workflow for the artifact-index builder."""
 
 from __future__ import annotations
 

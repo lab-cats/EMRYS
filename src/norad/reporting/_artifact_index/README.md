@@ -1,12 +1,17 @@
 # Artifact-index internals
 
-This private package decomposes the artifact-index implementation behind
-[`build_artifact_index.py`](../build_artifact_index.py). The public script path
-remains the CLI and compatibility facade protected by the artifact contract
-tests. [`api.py`](api.py) is the narrow private import boundary used by
-run-summary reporting; it is not another command or public application API.
+This private package implements the grouped
+`python -I -m norad build artifact-index` route through
+[`builder.py`](builder.py). The former direct script is retired without a
+compatibility shim. [`api.py`](api.py) is the narrow private import boundary
+used by run-summary reporting; it is not another command or public application
+API and does not import the command builder.
 
-After argument parsing, the public facade uses the root-only
+The grouped dispatcher owns the lightweight public parser and imports the
+private builder only after selecting this command. Help, parser failures, and
+unrelated installed commands therefore do not load artifact-index runtime
+dependencies. After argument parsing, the builder uses the required
+`--source-checkout` with the root-only
 [`source_checkout.py`](source_checkout.py) authority to admit the source
 checkout that owns the artifact-index implementation before it validates run
 inputs or builds a context. Admission requires one canonical, nonsymlink NORAD
@@ -46,8 +51,9 @@ artifact state, or discovery behavior.
 
 [`publication.py`](publication.py) owns the shared byte-write, durability-sync,
 lock, removal, and signal transaction primitives as well as the artifact-index
-coordinator, rollback, recovery, and cleanup order. The public facade re-exports
-the same primitives and remains the live artifact-index fault-injection surface;
-run-summary reporting reaches them through the private `api.py` boundary. These
-internals do not change artifact schemas, serialized bytes, source discovery
-policy, evidence states, diagnostics, or publication order.
+coordinator, rollback, recovery, and cleanup order. The private builder
+re-exports the same primitives and remains the live artifact-index
+fault-injection surface; run-summary reporting reaches them through the private
+`api.py` boundary without importing the builder. These internals do not change
+artifact schemas, serialized bytes, source discovery policy, evidence states,
+diagnostics, or publication order.

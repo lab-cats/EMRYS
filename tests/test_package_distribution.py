@@ -20,6 +20,9 @@ from norad.contracts.scientific_evidence import review_package, step08, step09
 from tests.evidence.scientific_review_package import (
     build_fixture as scientific_review_fixture,
 )
+from tests.reporting.fixtures.artifact_adapters_v1 import (
+    build_fixture as artifact_index_fixture,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI_USAGE_ERROR = 2
@@ -293,7 +296,9 @@ def _assert_wheel_contents(wheel: Path) -> None:
             if member.startswith("norad/contracts/artifacts/")
         } == ARTIFACT_CONTRACT_PACKAGE_PATHS
         assert "norad/reporting/_artifact_index/api.py" in members
+        assert "norad/reporting/_artifact_index/builder.py" in members
         assert "norad/reporting/_artifact_index/source_checkout.py" in members
+        assert "norad/reporting/build_artifact_index.py" not in members
         assert "norad/reporting/_run_summary/science_projection.py" in members
         assert "norad/reporting/_run_summary_science.py" not in members
         assert "norad/ingestion/__init__.py" in members
@@ -508,6 +513,8 @@ def _assert_dependency_prepared_artifact_contracts(
                 "schemas, _ = artifact_contracts.load_schema_registry(); "
                 "print(json.dumps({"
                 "'artifact_index': artifact_index.__file__, "
+                "'artifact_index_builder_loaded': "
+                "'norad.reporting._artifact_index.builder' in sys.modules, "
                 "'artifact_index_facade_loaded': "
                 "'norad.reporting.build_artifact_index' in sys.modules, "
                 "'isolated': sys.flags.isolated, "
@@ -541,6 +548,7 @@ def _assert_dependency_prepared_artifact_contracts(
         "scientific-review-record",
     ]
     assert Path(observed["artifact_index"]).resolve().is_relative_to(environment_site)
+    assert observed["artifact_index_builder_loaded"] is False
     assert observed["artifact_index_facade_loaded"] is False
     assert Path(observed["norad"]).resolve().is_relative_to(environment_site)
     origins = tuple(Path(origin) for origin in observed["origins"].values())
@@ -580,6 +588,57 @@ def _assert_dependency_prepared_artifact_contracts(
     )
     assert tuple(route_directory.iterdir()) == directory_entries
     assert (sentinel.read_bytes(), sentinel.stat().st_mode) == sentinel_state
+
+    _assert_installed_artifact_index_build(
+        environment_python,
+        working_directory,
+        environment,
+    )
+
+
+def _assert_installed_artifact_index_build(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    fixture = artifact_index_fixture.build_fixture(
+        working_directory / "artifact-index-inputs",
+    )
+    input_paths = tuple(
+        sorted(path for path in fixture.root.rglob("*") if path.is_file()),
+    )
+    input_states = tuple(
+        (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    )
+    unrelated_path = working_directory / "artifact-index-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+    unrelated_state = (unrelated_path.read_bytes(), unrelated_path.stat().st_mode)
+
+    build = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "build",
+        "artifact-index",
+        *fixture.command_args(),
+    )
+
+    assert build.returncode == 0, build.stdout + build.stderr
+    assert build.stderr == ""
+    assert "NORAD artifact-index context" in build.stdout
+    assert "Mode: dry-run" in build.stdout
+    assert "Inventory artifacts: 81" in build.stdout
+    assert "Availability: present=81" in build.stdout
+    assert "Completion: complete=81" in build.stdout
+    assert "Dry-run only" in build.stdout
+    assert not fixture.output_root.exists()
+    assert (
+        tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
+        == input_states
+    )
+    assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
+        unrelated_state
+    )
 
 
 def _hostile_python_environment(tmp_path: Path) -> dict[str, str]:
@@ -2334,6 +2393,29 @@ def _assert_installed_commands(
     working_directory: Path,
     environment: dict[str, str],
 ) -> None:
+    artifact_index_help = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "build",
+        "artifact-index",
+        "--help",
+    )
+    assert artifact_index_help.returncode == 0, (
+        artifact_index_help.stdout + artifact_index_help.stderr
+    )
+    assert not artifact_index_help.stderr
+    assert "usage: norad build artifact-index" in artifact_index_help.stdout
+    for option in (
+        "--source-checkout",
+        "--run-id",
+        "--run-contract",
+        "--inventory",
+        "--output-root",
+        "--execute",
+    ):
+        assert option in artifact_index_help.stdout
+
     artifact_contract_help = _run_installed_norad(
         environment_python,
         working_directory,
@@ -2493,8 +2575,12 @@ def _assert_private_source_layout() -> None:
         reporting_source / "_artifact_index/api.py"
     ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
     assert (
+        reporting_source / "_artifact_index/builder.py"
+    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
+    assert (
         reporting_source / "_artifact_index/source_checkout.py"
     ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
+    assert not (reporting_source / "build_artifact_index.py").exists()
     assert not (reporting_source / "_run_summary_science.py").exists()
     assert (
         reporting_source / "_run_summary/science_projection.py"

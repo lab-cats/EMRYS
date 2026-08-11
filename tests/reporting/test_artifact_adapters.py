@@ -20,7 +20,6 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
 ROSTER_ORACLE = (
     REPO_ROOT
     / "tests"
@@ -36,7 +35,6 @@ assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
 ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
 ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
 assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
-SCRIPT = REPORTING_ROOT / "build_artifact_index.py"
 FIXTURE_BUILDER = (
     REPO_ROOT
     / "tests"
@@ -149,7 +147,7 @@ def load_fixture_module() -> ModuleType:
 
 
 FIXTURE = load_fixture_module()
-ADAPTER = FIXTURE.ADAPTER
+ADAPTER = FIXTURE.builder
 ARTIFACT_CONTEXT = importlib.import_module("norad.reporting._artifact_index.context")
 ARTIFACT_CORE = importlib.import_module("norad.reporting._artifact_index.core")
 ARTIFACT_NATIVE = importlib.import_module(
@@ -179,7 +177,15 @@ def run_cli(
     if extra_env:
         environment.update(extra_env)
     return subprocess.run(
-        [sys.executable, str(SCRIPT), *fixture.command_args(execute=execute)],
+        [
+            sys.executable,
+            "-I",
+            "-m",
+            "norad",
+            "build",
+            "artifact-index",
+            *fixture.command_args(execute=execute),
+        ],
         cwd=REPO_ROOT,
         env=environment,
         text=True,
@@ -220,7 +226,8 @@ def context_for(fixture: Any) -> Any:
             inventory=fixture.inventory,
             output_root=fixture.output_root,
             execute=True,
-        )
+        ),
+        source_checkout=ARTIFACT_SOURCE_CHECKOUT.SourceCheckout(root=REPO_ROOT),
     )
 
 
@@ -449,7 +456,15 @@ def test_help_and_dry_run_validate_all_sources_without_writing(
     artifact_fixture: Any,
 ) -> None:
     help_result = subprocess.run(
-        [sys.executable, str(SCRIPT), "--help"],
+        [
+            sys.executable,
+            "-I",
+            "-m",
+            "norad",
+            "build",
+            "artifact-index",
+            "--help",
+        ],
         cwd=REPO_ROOT,
         text=True,
         capture_output=True,
@@ -459,6 +474,7 @@ def test_help_and_dry_run_validate_all_sources_without_writing(
 
     assert help_result.returncode == 0, help_result.stderr
     for option in (
+        "--source-checkout",
         "--run-id",
         "--run-contract",
         "--inventory",
@@ -1013,7 +1029,15 @@ def test_semantically_identical_moved_run_contract_can_retry(
     environment["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
 
     second = subprocess.run(
-        [sys.executable, str(SCRIPT), *arguments],
+        [
+            sys.executable,
+            "-I",
+            "-m",
+            "norad",
+            "build",
+            "artifact-index",
+            *arguments,
+        ],
         cwd=REPO_ROOT,
         env=environment,
         text=True,

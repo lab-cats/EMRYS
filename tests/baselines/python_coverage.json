@@ -39,10 +39,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 16,
-      "covered_lines": 120,
+      "covered_lines": 135,
       "line_rate": "1.000000",
       "num_branches": 16,
-      "num_statements": 120,
+      "num_statements": 135,
       "path": "src/norad/__main__.py"
     },
     {
@@ -910,6 +910,15 @@
       "path": "src/norad/reporting/_artifact_index/binary_readers.py"
     },
     {
+      "branch_rate": "1.000000",
+      "covered_branches": 2,
+      "covered_lines": 82,
+      "line_rate": "1.000000",
+      "num_branches": 2,
+      "num_statements": 82,
+      "path": "src/norad/reporting/_artifact_index/builder.py"
+    },
+    {
       "branch_rate": "0.815789",
       "covered_branches": 31,
       "covered_lines": 103,
@@ -930,10 +939,10 @@
     {
       "branch_rate": "0.695652",
       "covered_branches": 32,
-      "covered_lines": 130,
-      "line_rate": "0.802469",
+      "covered_lines": 121,
+      "line_rate": "0.790850",
       "num_branches": 46,
-      "num_statements": 162,
+      "num_statements": 153,
       "path": "src/norad/reporting/_artifact_index/core.py"
     },
     {
@@ -1360,15 +1369,6 @@
       "path": "src/norad/reporting/_signals.py"
     },
     {
-      "branch_rate": "1.000000",
-      "covered_branches": 4,
-      "covered_lines": 89,
-      "line_rate": "1.000000",
-      "num_branches": 4,
-      "num_statements": 89,
-      "path": "src/norad/reporting/build_artifact_index.py"
-    },
-    {
       "branch_rate": "0.888889",
       "covered_branches": 16,
       "covered_lines": 144,
@@ -1627,11 +1627,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.750113",
-    "covered_branches": 3332,
-    "covered_lines": 10213,
-    "line_rate": "0.859174",
-    "num_branches": 4442,
-    "num_statements": 11887
+    "branch_rate": "0.750000",
+    "covered_branches": 3330,
+    "covered_lines": 10212,
+    "line_rate": "0.859162",
+    "num_branches": 4440,
+    "num_statements": 11886
   }
 }

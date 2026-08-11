@@ -26,8 +26,8 @@ and publication recheck share the one canonical `science_projection.py`
 module identity. Artifact-index parsing, validation, serialization, and shared
 transaction primitives enter through the narrow private
 [`_artifact_index/api.py`](../_artifact_index/api.py) boundary rather than the
-executable artifact-index facade; both reporting owners still reuse the same
-artifact contract and error identities. Science projection consumes the
+private artifact-index command builder; both reporting owners still reuse the
+same artifact contract and error identities. Science projection consumes the
 neutral review-package contract, the committed public thirteen-file package,
 explicitly referenced evidence, and validated index records. It does not load
 private Step `09c` inputs, own review policy, or promote computational or

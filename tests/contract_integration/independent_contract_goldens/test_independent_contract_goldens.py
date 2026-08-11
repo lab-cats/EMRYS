@@ -33,8 +33,10 @@ SCHEMAS = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts" / 
 if str(REPORTING) not in sys.path:
     sys.path.insert(0, str(REPORTING))
 
-ARTIFACT_INDEX = importlib.import_module("build_artifact_index")
-ARTIFACT_INDEX_CONTEXT = importlib.import_module("_artifact_index.context")
+ARTIFACT_INDEX = importlib.import_module("norad.reporting._artifact_index.builder")
+ARTIFACT_INDEX_CONTEXT = importlib.import_module(
+    "norad.reporting._artifact_index.context",
+)
 RUN_SUMMARY = importlib.import_module("build_run_summary")
 REPORT_BUNDLE = importlib.import_module("render_run_report_bundle")
 STEP08_CONTRACT = ARTIFACT_INDEX.step08

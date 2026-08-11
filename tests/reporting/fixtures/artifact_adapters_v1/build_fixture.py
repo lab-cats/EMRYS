@@ -12,19 +12,16 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
-import importlib.util
 import json
 import struct
-import sys
 import zlib
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from types import ModuleType
+
+from norad.reporting._artifact_index import builder
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
-ADAPTER_SCRIPT = REPORTING_ROOT / "build_artifact_index.py"
 INVENTORY_TEMPLATE = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 INVENTORY_HEADER = (
     "artifact_id",
@@ -43,23 +40,6 @@ PRIMARY_ANALYSIS_ID = "synthetic_analysis"
 PRIMARY_ANALYSIS_POLICY_SHA256 = "4" * 64
 COHORT_ID = "synthetic_cohort"
 REVIEW_ID = "synthetic_review"
-
-
-def load_adapter_module() -> ModuleType:
-    sys.path.insert(0, str(REPORTING_ROOT))
-    spec = importlib.util.spec_from_file_location(
-        "norad_artifact_adapter_fixture_contract",
-        ADAPTER_SCRIPT,
-    )
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load artifact adapter: {ADAPTER_SCRIPT}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-ADAPTER = load_adapter_module()
 
 
 @dataclass(frozen=True)
@@ -97,6 +77,8 @@ class FixturePaths:
 
     def command_args(self, *, execute: bool = False) -> list[str]:
         arguments = [
+            "--source-checkout",
+            str(REPO_ROOT),
             "--run-id",
             self.run_id,
             "--run-contract",
@@ -200,7 +182,7 @@ def row_value(column: str) -> str:
         "partition_manifest_row_count": "2",
         "evidence_manifest_path": "/synthetic/evidence_manifest.tsv",
         "evidence_manifest_sha256": "6" * 64,
-        "evidence_manifest_row_count": str(len(ADAPTER.review_package.CATEGORY_ORDER)),
+        "evidence_manifest_row_count": str(len(builder.review_package.CATEGORY_ORDER)),
         "evidence_source_count": "0",
         "superseded_analysis_ids": "NA",
         "sensitivity_analysis_ids": "NA",
@@ -214,7 +196,7 @@ def row_value(column: str) -> str:
         "orientation_decision": "pending",
     }
     if column in {
-        f"{category}_status" for category in ADAPTER.review_package.CATEGORY_ORDER
+        f"{category}_status" for category in builder.review_package.CATEGORY_ORDER
     }:
         return "missing"
     if column.startswith("DP__"):
@@ -265,7 +247,7 @@ def minimal_bam_bytes() -> bytes:
         + header_text
         + struct.pack("<i", 0)
     )
-    return bgzf_block(payload) + ADAPTER.BGZF_EOF_BLOCK
+    return bgzf_block(payload) + builder.BGZF_EOF_BLOCK
 
 
 def minimal_bai_bytes() -> bytes:
@@ -372,7 +354,7 @@ def tsv_rows_for(
         "step09_cmh_all_sites_v1": 4,
         "step09_cmh_significant_sites_v1": 1,
         "step09_mutation_spectrum_tsv_v1": 12,
-        "step09c_evidence_index_v1": len(ADAPTER.review_package.CATEGORY_ORDER),
+        "step09c_evidence_index_v1": len(builder.review_package.CATEGORY_ORDER),
         "step09c_orientation_locus_audit_v1": 0,
         "step09c_annotation_audit_v1": 0,
         "step09c_qc_funnel_v1": 0,
@@ -677,7 +659,7 @@ def tsv_rows_for(
     elif adapter == "step09_mutation_spectrum_tsv_v1":
         for output_row, mutation_type in zip(
             rows,
-            ADAPTER.step09.CANONICAL_MUTATIONS,
+            builder.step09.CANONICAL_MUTATIONS,
             strict=True,
         ):
             ref, alt = mutation_type.split(">")
@@ -698,7 +680,7 @@ def tsv_rows_for(
     elif adapter == "step09c_evidence_index_v1":
         for output_row, category in zip(
             rows,
-            ADAPTER.review_package.CATEGORY_ORDER,
+            builder.review_package.CATEGORY_ORDER,
             strict=True,
         ):
             output_row.update(
@@ -730,7 +712,7 @@ def tsv_rows_for(
                 "orientation_status": "provisional",
                 "orientation_policy": "legacy_provisional_v1",
                 "evidence_record_count": str(
-                    len(ADAPTER.review_package.CATEGORY_ORDER)
+                    len(builder.review_package.CATEGORY_ORDER)
                 ),
                 "evidence_source_count": "0",
                 "selected_candidate_count": "0",
@@ -778,7 +760,7 @@ def write_adapter_source(
     row: Mapping[str, str],
     inventory_rows: Sequence[Mapping[str, str]],
 ) -> None:
-    spec = ADAPTER.ADAPTER_REGISTRY[row["adapter"]]
+    spec = builder.ADAPTER_REGISTRY[row["adapter"]]
     path.parent.mkdir(parents=True, exist_ok=True)
     if spec.kind == "star_index":
         if path.name in {"Genome", "SA", "SAindex"}:

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import errno
 import hashlib
 import json
@@ -30,43 +29,6 @@ from .models import (
 )
 from .registry import ADAPTER_REGISTRY
 from .rosters import SCOPE_ADAPTER_ROSTERS
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Build an explicit read-only NORAD artifact index. Dry-run is "
-            "the default; add --execute to publish the receipt-last "
-            "transaction."
-        )
-    )
-    parser.add_argument("--run-id", required=True, help="Immutable run ID.")
-    parser.add_argument(
-        "--run-contract",
-        required=True,
-        type=Path,
-        help=(
-            "Strict JSON file containing exactly the six-field canonical run contract."
-        ),
-    )
-    parser.add_argument(
-        "--inventory",
-        required=True,
-        type=Path,
-        help="Explicit expected-artifact inventory TSV.",
-    )
-    parser.add_argument(
-        "--output-root",
-        required=True,
-        type=Path,
-        help="Parent directory under which <run-id>/ is published.",
-    )
-    parser.add_argument(
-        "--execute",
-        action="store_true",
-        help="Publish records, index, and receipt. Default is dry-run.",
-    )
-    return parser.parse_args()
 
 
 def safe_tsv(value: Any) -> str:

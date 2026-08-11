@@ -154,6 +154,71 @@ def _add_storage_inventory_inspection_command(
     )
 
 
+def _build_artifact_index_from_args(arguments: argparse.Namespace) -> int:
+    from norad.reporting._artifact_index import builder  # noqa: PLC0415
+
+    return builder.build_from_args(arguments)
+
+
+def _add_artifact_index_build_command(
+    command_parsers: _SubparserCollection,
+) -> None:
+    build_parser = command_parsers.add_parser(
+        "build",
+        help="Build an explicitly declared NORAD output.",
+    )
+    build_parsers = build_parser.add_subparsers(
+        dest="build",
+        metavar="SUBJECT",
+        required=True,
+    )
+    artifact_parser = build_parsers.add_parser(
+        "artifact-index",
+        help="Build one explicit read-only artifact index.",
+        description=(
+            "Build an explicit read-only NORAD artifact index. Dry-run is "
+            "the default; add --execute to publish the receipt-last "
+            "transaction."
+        ),
+    )
+    artifact_parser.add_argument(
+        "--source-checkout",
+        required=True,
+        type=Path,
+        help="Absolute canonical NORAD source checkout owning producer evidence.",
+    )
+    artifact_parser.add_argument("--run-id", required=True, help="Immutable run ID.")
+    artifact_parser.add_argument(
+        "--run-contract",
+        required=True,
+        type=Path,
+        help=(
+            "Strict JSON file containing exactly the six-field canonical run contract."
+        ),
+    )
+    artifact_parser.add_argument(
+        "--inventory",
+        required=True,
+        type=Path,
+        help="Explicit expected-artifact inventory TSV.",
+    )
+    artifact_parser.add_argument(
+        "--output-root",
+        required=True,
+        type=Path,
+        help="Parent directory under which <run-id>/ is published.",
+    )
+    artifact_parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Publish records, index, and receipt. Default is dry-run.",
+    )
+    artifact_parser.set_defaults(
+        _command_handler=_build_artifact_index_from_args,
+        _command_parser=artifact_parser,
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the public parser from owner-supplied command definitions."""
     parser = argparse.ArgumentParser(
@@ -165,6 +230,7 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="COMMAND",
         required=True,
     )
+    _add_artifact_index_build_command(command_parsers)
     assemble_parser = command_parsers.add_parser(
         "assemble",
         help="Assemble an explicitly declared NORAD evidence package.",

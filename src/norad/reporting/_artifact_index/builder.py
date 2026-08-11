@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Build a read-only, explicit artifact index for one immutable NORAD run.
 
 The command never discovers pipeline inputs, invokes analysis software, or
@@ -16,10 +15,6 @@ import uuid as uuid
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-
-src_root = str(Path(__file__).resolve().parents[2])
-# Direct execution must prefer this checkout over an installed NORAD.
-sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
 
 from norad.reporting._artifact_index import api as _api_owner
 from norad.reporting._artifact_index import contracts as _contract_owners
@@ -60,10 +55,9 @@ step08 = _contract_owners.step08
 step09 = _contract_owners.step09
 review_package = _contract_owners.review_package
 
-# The exact script path remains the public CLI and compatibility facade. These
-# bindings intentionally preserve its established direct-import surface.
+# Publication resolves these bindings from the private builder at call time so
+# focused fault injection continues to exercise the real transaction owner.
 ADAPTER_REGISTRY = _core_owner.ADAPTER_REGISTRY
-parse_args = _core_owner.parse_args
 os = _publication_owner.os
 LockOwnership = _models_owner.LockOwnership
 get_git_commit = _api_owner.get_git_commit
@@ -101,7 +95,7 @@ STEP06_COUNTS_HEADER = _registry_owner.STEP06_COUNTS_HEADER
 STEP07_RECEIPT_HEADER = _registry_owner.STEP07_RECEIPT_HEADER
 
 
-class _LiveFacadeBindings:
+class _LiveBuilderBindings:
     """Resolve patchable operations from this exact loaded module instance."""
 
     def __getattr__(self, name: str) -> Any:
@@ -111,7 +105,7 @@ class _LiveFacadeBindings:
             raise AttributeError(name) from exc
 
 
-_PUBLICATION_BINDINGS = _LiveFacadeBindings()
+_PUBLICATION_BINDINGS = _LiveBuilderBindings()
 
 
 def validate_existing_transaction(
@@ -124,7 +118,7 @@ def validate_existing_transaction(
     receipt_path: Path,
     source_root: Path = contracts.REPO_ROOT,
 ) -> None:
-    """Validate a predecessor through this facade's patchable validator."""
+    """Validate a predecessor through this builder's patchable validator."""
 
     previous_inventory_rows = inventory_rows_from_published_index(artifacts_path)
     validate_published_transaction(
@@ -146,19 +140,15 @@ def validate_existing_transaction(
 def prepare_context(
     arguments: _argparse.Namespace,
     *,
-    source_checkout: _SourceCheckout | None = None,
+    source_checkout: _SourceCheckout,
 ) -> BuildContext:
-    """Build through an explicit authority while retaining facade compatibility."""
+    """Build through the explicitly admitted source authority."""
 
-    authority = source_checkout or admit_source_checkout(
-        root=Path(__file__).resolve().parents[3],
-        package_root=Path(_api_owner.__file__).resolve().parents[2],
-    )
-    return _prepare_context(arguments, source_checkout=authority)
+    return _prepare_context(arguments, source_checkout=source_checkout)
 
 
 def publish_context(context: BuildContext) -> None:
-    """Delegate through this module's live compatibility bindings."""
+    """Delegate through this builder's live fault-injection bindings."""
 
     _publication_owner.publish_context(
         context,
@@ -166,12 +156,12 @@ def publish_context(context: BuildContext) -> None:
     )
 
 
-def main() -> int:
-    arguments = parse_args()
+def build_from_args(arguments: _argparse.Namespace) -> int:
+    """Build or publish one explicitly rooted artifact-index transaction."""
     try:
         source_checkout = admit_source_checkout(
-            root=Path(__file__).resolve().parents[3],
-            package_root=Path(_api_owner.__file__).resolve().parents[2],
+            root=arguments.source_checkout,
+            package_root=Path(__file__).resolve().parents[2],
         )
         context = prepare_context(
             arguments,
@@ -190,7 +180,3 @@ def main() -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
     return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

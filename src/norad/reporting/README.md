@@ -8,7 +8,7 @@ rerun analysis, decide scientific validity, or promote evidence.
 
 | Interface | Responsibility |
 | --- | --- |
-| [`build_artifact_index.py`](build_artifact_index.py) | Reconciles declared workflow artifacts into an explicit artifact index. |
+| `python -I -m norad build artifact-index` | Reconciles declared workflow artifacts from an explicitly admitted source checkout into an artifact index. |
 | [`build_run_summary.py`](build_run_summary.py) | Projects declared run, artifact, validation, and science state into a run summary. |
 | [`render_run_report.sh`](render_run_report.sh) | Dry-run-by-default shell launcher for the report-bundle owner. |
 | [`render_run_report.py`](render_run_report.py) | Public compatibility command that dispatches selected HTML/PDF/all rendering while preserving established direct imports. |
@@ -33,12 +33,18 @@ Direct protection lives in [`tests/reporting/`](../../../tests/reporting/).
 Build an artifact index in dry-run mode, then repeat with `--execute`:
 
 ```bash
-.venv/bin/python src/norad/reporting/build_artifact_index.py \
+.venv/bin/python -I -m norad build artifact-index \
+  --source-checkout /absolute/canonical/path/to/norad \
   --run-id RUN_ID \
   --run-contract RUN_CONTRACT_JSON \
   --inventory INVENTORY_TSV \
   --output-root results/artifacts
 ```
+
+The source checkout must be the canonical NORAD Git top level and must match
+the executing package's Python and declared resource bytes. The grouped
+dispatcher keeps help and unrelated installed commands lightweight and loads
+the private artifact-index builder only after this route is selected.
 
 Build its canonical run summary from the committed adapter receipt:
 

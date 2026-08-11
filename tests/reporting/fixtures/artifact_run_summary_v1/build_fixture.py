@@ -23,6 +23,7 @@ from norad.evidence.scientific_review_package._scientific_review import (
 from norad.evidence.scientific_review_package._scientific_review import (
     contracts as STEP09C,
 )
+from norad.reporting._artifact_index.source_checkout import SourceCheckout
 from tests.evidence.scientific_review_package import build_fixture as STEP09C_FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -80,7 +81,7 @@ ADAPTER_FIXTURE = load_module(
     "norad_run_summary_adapter_fixture",
     ADAPTER_FIXTURE_PATH,
 )
-ADAPTER = ADAPTER_FIXTURE.ADAPTER
+ADAPTER = ADAPTER_FIXTURE.builder
 REVIEW_PACKAGE = STEP09C.review_package
 
 
@@ -201,7 +202,8 @@ def publish_adapter_fixture(fixture: Any) -> None:
                 inventory=fixture.inventory,
                 output_root=fixture.output_root,
                 execute=True,
-            )
+            ),
+            source_checkout=SourceCheckout(root=REPO_ROOT),
         )
         ADAPTER.publish_context(context)
     finally:

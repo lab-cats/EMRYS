@@ -24,7 +24,6 @@ MAKE_EXPANSION_GOLDEN = (
 )
 
 PYTHON_ENTRYPOINT_PATHS = {
-    "build_artifact_index.py": Path("src/norad/reporting/build_artifact_index.py"),
     "build_run_summary.py": Path("src/norad/reporting/build_run_summary.py"),
     "render_run_report.py": Path("src/norad/reporting/render_run_report.py"),
     "render_run_report_bundle.py": Path(
@@ -35,7 +34,6 @@ PYTHON_ENTRYPOINT_PATHS = {
 PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
 REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
     {
-        "build_artifact_index.py",
         "build_run_summary.py",
         "render_run_report.py",
         "render_run_report_bundle.py",
@@ -51,6 +49,10 @@ DIRECT_PYTHON_ENTRYPOINTS = frozenset(
 )
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 NORAD_COMMANDS = (
+    (
+        ("build", "artifact-index"),
+        "usage: norad build artifact-index",
+    ),
     (
         ("validate", "artifact-contracts"),
         "usage: norad validate artifact-contracts",
@@ -520,7 +522,12 @@ def test_installed_norad_commands_are_isolated_and_cwd_independent(
 
 @pytest.mark.parametrize(
     "arguments",
-    (("--help",), ("convert", "--help"), ("validate", "--help")),
+    (
+        ("--help",),
+        ("build", "--help"),
+        ("convert", "--help"),
+        ("validate", "--help"),
+    ),
 )
 def test_installed_norad_command_routing_help(
     arguments: tuple[str, ...],
