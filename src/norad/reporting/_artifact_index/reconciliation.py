@@ -68,14 +68,7 @@ def reconcile_native_transactions(
             sources,
         ),
     }
-    dependency_order = {
-        "00c": 0,
-        "06": 1,
-        "07": 2,
-        "08": 3,
-        "09": 4,
-        "09c": 5,
-    }
+    dependency_order = dict(zip(validators, range(len(validators)), strict=True))
     ordered_scopes = sorted(
         grouped,
         key=lambda scope: (
