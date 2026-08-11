@@ -117,7 +117,10 @@ def prepare_context(
 
     started_at = utc_now()
     attempt_id = new_attempt_id(started_at)
-    git_commit = get_git_commit(source_root=source_checkout.root)
+    git_commit = get_git_commit(
+        source_root=source_checkout.root,
+        sanitize_git_routing=True,
+    )
     evidence = producer_evidence(git_commit, source_root=source_checkout.root)
     inspections = [
         inspect_source(

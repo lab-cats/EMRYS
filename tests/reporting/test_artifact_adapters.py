@@ -46,6 +46,16 @@ FIXTURE_BUILDER = (
     / "build_fixture.py"
 )
 FIXED_EPOCH = "1700000000"
+GIT_ROUTING_VARIABLES = (
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CEILING_DIRECTORIES",
+    "GIT_COMMON_DIR",
+    "GIT_DIR",
+    "GIT_INDEX_FILE",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_WORK_TREE",
+    "GIT_FUTURE_ROUTING",
+)
 EXPECTED_PRODUCER_EVIDENCE = {
     "00a": (
         "src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm",
@@ -141,6 +151,7 @@ def load_fixture_module() -> ModuleType:
 FIXTURE = load_fixture_module()
 ADAPTER = FIXTURE.ADAPTER
 ARTIFACT_CONTEXT = importlib.import_module("norad.reporting._artifact_index.context")
+ARTIFACT_CORE = importlib.import_module("norad.reporting._artifact_index.core")
 ARTIFACT_NATIVE = importlib.import_module(
     "norad.reporting._artifact_index.reconcile_native"
 )
@@ -295,6 +306,57 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes() ->
         assert row["sha256"] == expected_sha256
 
 
+def test_git_commit_routing_sanitization_is_explicit_and_complete(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    commit = "a" * 40
+    calls: list[tuple[tuple[str, ...], dict[str, object]]] = []
+
+    def observe_run(
+        command: list[str],
+        **options: object,
+    ) -> subprocess.CompletedProcess[str]:
+        calls.append((tuple(command), options))
+        return subprocess.CompletedProcess(
+            args=command,
+            returncode=0,
+            stdout=f"{commit}\n",
+            stderr="",
+        )
+
+    for name in GIT_ROUTING_VARIABLES:
+        monkeypatch.setenv(name, f"hostile-{name}")
+    monkeypatch.setenv("NORAD_GIT_ENV_SENTINEL", "retained")
+    monkeypatch.setattr(ARTIFACT_CORE.subprocess, "run", observe_run)
+
+    assert ADAPTER.get_git_commit() == commit
+    assert (
+        ADAPTER.get_git_commit(
+            source_root=tmp_path,
+            sanitize_git_routing=True,
+        )
+        == commit
+    )
+
+    expected_call_count = 2
+    assert len(calls) == expected_call_count
+    default_command, default_options = calls[0]
+    assert default_command == ("git", "rev-parse", "--verify", "HEAD")
+    assert default_options["cwd"] == ADAPTER.contracts.REPO_ROOT
+    assert default_options["env"] is None
+    sanitized_command, sanitized_options = calls[1]
+    assert sanitized_command == default_command
+    assert sanitized_options["cwd"] == tmp_path
+    assert sanitized_options["check"] is True
+    assert sanitized_options["capture_output"] is True
+    assert sanitized_options["text"] is True
+    environment = sanitized_options["env"]
+    assert isinstance(environment, dict)
+    assert not any(name.startswith("GIT_") for name in environment)
+    assert environment["NORAD_GIT_ENV_SENTINEL"] == "retained"
+
+
 def test_prepare_context_threads_one_explicit_source_checkout_root(
     artifact_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
@@ -308,8 +370,13 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
     real_declared_contract_path = ARTIFACT_NATIVE.declared_contract_path
     real_validate_artifact_semantics = ADAPTER.contracts.validate_artifact_semantics
 
-    def get_git_commit(*, source_root: Path) -> str:
+    def get_git_commit(
+        *,
+        source_root: Path,
+        sanitize_git_routing: bool,
+    ) -> str:
         assert source_root == authority.root
+        assert sanitize_git_routing is True
         root_calls["git"] += 1
         return real_get_git_commit()
 

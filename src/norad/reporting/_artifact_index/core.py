@@ -124,11 +124,25 @@ def new_attempt_id(timestamp: str) -> str:
     return f"artifact-index-{compact}-{uuid.uuid4().hex[:12]}"
 
 
-def get_git_commit(*, source_root: Path = contracts.REPO_ROOT) -> str:
+def get_git_commit(
+    *,
+    source_root: Path = contracts.REPO_ROOT,
+    sanitize_git_routing: bool = False,
+) -> str:
+    environment = (
+        {
+            name: value
+            for name, value in os.environ.items()
+            if not name.startswith("GIT_")
+        }
+        if sanitize_git_routing
+        else None
+    )
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--verify", "HEAD"],
             cwd=source_root,
+            env=environment,
             check=True,
             capture_output=True,
             text=True,

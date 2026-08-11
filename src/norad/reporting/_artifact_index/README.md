@@ -17,9 +17,10 @@ input diagnostic. The admitted `SourceCheckout` remains on `BuildContext`
 through publication. Its root governs relative inventory and native-contract
 paths, Git `HEAD` resolution and producer existence and hashing, and
 predecessor, post-publish, and rollback record validation. The authority caches
-neither Git commit nor producer state: those observations stay at their
-established points in context construction, preserving their timing,
-diagnostics, and serialized evidence.
+neither Git commit nor producer state; the later `HEAD` probe ignores ambient
+`GIT_*` routing while preserving unrelated environment state. Those
+observations stay at their established points in context construction,
+preserving their timing, diagnostics, and serialized evidence.
 
 The modules keep observed responsibilities separate: the curated run-summary
 API, exact contract loading, models and rosters, explicit adapter registration,
