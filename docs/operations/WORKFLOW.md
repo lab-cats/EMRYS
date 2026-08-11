@@ -1,24 +1,60 @@
 # Workflow kernel
 
 This is the complete repository-development workflow. The root
-[`AGENTS.md`](../../AGENTS.md) supplies the safety and authority guard; a task
-card supplies scope and acceptance but never mutation authority.
+[`AGENTS.md`](../../AGENTS.md) supplies the safety and authority guard,
+a selected JIT card supplies scope and acceptance but never mutation authority.
+
+## Context
+
+Start with the **smallest sufficient current context** for one bounded task.
+Context selection does not copy mutable project state or authorize changes.
+
+Load only:
+
+1. The exact current root [`AGENTS.md`](../../AGENTS.md).
+2. Live Git identity and state: repository root, branch, `HEAD`, worktree
+   changes, upstream relation, and any competing relevant worktree.
+3. The selected backlog item and its JIT card in full, or one explicitly
+   bounded objective when no card is needed. Backlog proposals are not
+   selectable.
+4. Directly affected functional owners: implementation, adjacent `README.md`
+   or `CONTRACT.md`, public callers and consumers, tests, and fixtures that
+   define or exercise the behavior.
+5. Only applicable canonical sections linked by the card or affected owners.
+   Use [HANDOFF](HANDOFF.md) for current evidence and blockers,
+   [PIPELINE_PLAN](../design/PIPELINE_PLAN.md) for roadmap and acceptance, and
+   the [architecture index](../architecture/README.md) for cross-owner identity
+   and dependency direction.
+
+Do not preload the full documentation corpus, history, unrelated backlog
+items, every owner, all tests, or entire canonical documents merely for
+orientation. Do not infer live state from memory, an agent identity, a
+conversation summary, an old test total, or a former branch.
+
+Prior context may replace a reread only when its exact revision is known, the
+live diff proves the relevant content unchanged, and the retained context is
+sufficient for the current decision. Otherwise read the current source.
+
+Broaden the packet only when targeted inspection reveals:
+
+- a contradiction, stale route, ownership change, or uncertain boundary;
+- a public CLI, path, schema, format, command, contract, or compatibility
+  change;
+- shared code, dependencies, configuration, generated inputs, or multiple
+  functional owners;
+- scientific method, evidence state, or biological interpretation;
+- safety, credentials, cluster or production execution, publication, locking,
+  rollback, recovery, cleanup, or destructive action; or
+- impact that cannot be bounded confidently from the selected task and its
+  direct owners and consumers.
+
+Correctness, recoverability, scientific meaning, and honest evidence claims
+always outrank context reduction.
 
 ## Start
 
-1. Inspect the live branch, `HEAD`, worktree, upstream relation, and relevant
-   predecessor. Do not infer current state from memory or agent identity.
-2. Read the selected card, or state an explicit bounded objective when no card
-   is needed. `UNREFINED` proposals are not selectable.
-3. Inspect only the affected owners, contracts, callers, tests, fixtures, and
-   applicable canonical sections. Expand for contradictions, ownership
-   changes, public contracts, science, safety, publication, recovery, shared
-   code, dependencies, or unbounded impact.
-4. State the outcome, touched owners, exclusions, validation, evidence ceiling,
-   and stopping condition. Obtain approval before mutation.
-
-Exact unchanged context may be reused when its revision is known and the live
-diff proves it sufficient. Summaries and old test totals are orientation only.
+State the outcome, touched owners, exclusions, validation, evidence ceiling,
+and stopping condition. Obtain approval before mutation.
 
 ## Deliver
 
@@ -26,6 +62,10 @@ diff proves it sufficient. Summaries and old test totals are orientation only.
   to one outcome and one coherent owner boundary.
 - Change implementation, direct tests, contracts, and subject-affected
   documentation together. One semantic commit is the default.
+- For a physical ownership move, freeze the old public and fault boundary,
+  move the implementation, direct tests, affected callers, contracts, and
+  tooling together, and leave one live final owner. Do not accept a temporary
+  implementation shadow as completion.
 - Use focused checks as useful feedback. Review the complete final diff and run
   one de-duplicated applicable gate after the final state is assembled; rerun
   only evidence invalidated by later changes.
@@ -36,17 +76,20 @@ diff proves it sufficient. Summaries and old test totals are orientation only.
   missing required evidence, or an external decision. Do not turn an unrelated
   observation into current scope.
 
-## Documentation and cards
+## Documentation and task detail
 
 Update a canonical document only when its subject changes. Branch names,
 commits, routine progress, repeated test totals, and unchanged facts are not
 documentation triggers. Keep exact commands and defects with their functional
 owner; cross-cutting procedures and recovery rules stay in the operations docs.
 
-Cards retain their paths during selection, pause, review, and execution.
-Delete a card when its work is completed or retired; do not maintain a
-completed-card archive or repair surviving cards because former targets were
-deleted. History and `UNREFINED` are not live path-maintenance surfaces.
+The compact backlog retains stable identities, real open blockers, intent, and
+boundaries. Create a detailed card only for selected work and delete it when
+the execution package completes or pauses. Completing or retiring an item must
+also remove or replace every live dependent edge; missing blockers are errors,
+not implicit completion. Before deleting detail, move every durable contract,
+safety rule, defect, decision, and evidence ceiling to its canonical subject
+owner; then discard chronology, repeated totals, and superseded planning.
 
 ## Close and publish
 

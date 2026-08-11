@@ -8,15 +8,16 @@ rerun analysis, decide scientific validity, or promote evidence.
 
 | Interface | Responsibility |
 | --- | --- |
-| [`build_artifact_index.py`](build_artifact_index.py) | Reconciles declared workflow artifacts into an explicit artifact index. |
-| [`build_run_summary.py`](build_run_summary.py) | Projects declared run, artifact, validation, and science state into a run summary. |
+| `python -I -m norad build artifact-index` | Reconciles declared workflow artifacts from an explicitly admitted source checkout into an artifact index. |
+| `python -I -m norad build run-summary` | Projects declared run, artifact, validation, and science state from an explicitly admitted source checkout into a run summary. |
 | [`render_run_report.sh`](render_run_report.sh) | Dry-run-by-default shell launcher for the report-bundle owner. |
-| [`render_run_report.py`](render_run_report.py) | Provides the public Python bundle entry point and the internal self-contained HTML core used by the bundle coordinator; it consumes one canonical summary and only its authorized supplemental tables. |
-| [`render_run_report_bundle.py`](render_run_report_bundle.py) | Publishes a selected HTML/PDF/TSV/receipt bundle, with the receipt last. |
+| [`render_run_report.py`](render_run_report.py) | Public compatibility command that dispatches selected HTML/PDF/all rendering while preserving established direct imports. |
+| [`render_run_report_bundle.py`](render_run_report_bundle.py) | Public compatibility facade for selected HTML/PDF/TSV/receipt publication, with the receipt last. |
 
 [`_artifact_index/`](_artifact_index/README.md),
-[`_run_summary/`](_run_summary/README.md),
-[`_run_summary_science.py`](_run_summary_science.py),
+[`_run_summary/`](_run_summary/README.md), including its canonical
+[`science_projection.py`](_run_summary/science_projection.py) owner,
+[`_run_report/`](_run_report/README.md),
 [`templates/`](templates/README.md), and [`styles/`](styles/README.md) are
 private implementation assets, not additional public interfaces. Structural
 input starters live in
@@ -32,17 +33,24 @@ Direct protection lives in [`tests/reporting/`](../../../tests/reporting/).
 Build an artifact index in dry-run mode, then repeat with `--execute`:
 
 ```bash
-.venv/bin/python src/norad/reporting/build_artifact_index.py \
+.venv/bin/python -I -m norad build artifact-index \
+  --source-checkout /absolute/canonical/path/to/norad \
   --run-id RUN_ID \
   --run-contract RUN_CONTRACT_JSON \
   --inventory INVENTORY_TSV \
   --output-root results/artifacts
 ```
 
+The source checkout must be the canonical NORAD Git top level and must match
+the executing package's Python and declared resource bytes. The grouped
+dispatcher keeps help and unrelated installed commands lightweight and loads
+the private artifact-index builder only after this route is selected.
+
 Build its canonical run summary from the committed adapter receipt:
 
 ```bash
-.venv/bin/python src/norad/reporting/build_run_summary.py \
+.venv/bin/python -I -m norad build run-summary \
+  --source-checkout /absolute/canonical/path/to/norad \
   --run-id RUN_ID \
   --artifact-receipt results/artifacts/RUN_ID/RUN_ID.artifact_receipt.tsv \
   --output-root results/artifacts
@@ -50,6 +58,18 @@ Build its canonical run summary from the committed adapter receipt:
 
 Append `--science-review-summary` or `--report-table-approvals` only for exact
 inspected inputs. Execute by repeating with `--execute`.
+
+The required source checkout must be the canonical NORAD Git top level and
+must match the executing package's Python and declared resource bytes. The
+grouped dispatcher keeps help and unrelated installed commands lightweight and
+loads the private run-summary builder only after this route is selected. After
+argument parsing, the builder admits the explicit checkout before reading run
+inputs. The retained authority governs contract-relative artifact, science,
+and approval inputs and semantic, predecessor, post-publication, and rollback
+validation. Git admission and later `HEAD` resolution ignore ambient `GIT_*`
+routing while preserving unrelated environment state. This command cutover
+changes neither evidence meaning nor receipt-last publication and recovery
+behavior.
 
 After the separately authorized `make quarto-restore`, render in dry-run mode
 and then repeat with `--execute`:

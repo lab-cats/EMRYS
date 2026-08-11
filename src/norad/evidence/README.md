@@ -6,17 +6,44 @@ report projections, or neutral contracts.
 
 | Owner | Role |
 | --- | --- |
-| [`collect_canonical_BAM_QC_evidence`](collect_canonical_BAM_QC_evidence/README.md) | Numbered evidence operation `02b`; collects and validates canonical-BAM QC evidence. |
-| [`collect_RSeQC_paired_orientation_evidence`](collect_RSeQC_paired_orientation_evidence/README.md) | Numbered evidence operation `03`; collects paired-orientation evidence without selecting a biological strandedness policy. |
-| [`assemble_scientific_review_evidence_package`](assemble_scientific_review_evidence_package/README.md) | Numbered evidence operation `09c`; validates and packages declared review evidence without granting scientific approval. |
+| [`collect_canonical_BAM_QC_evidence`](canonical_bam_qc/README.md) | Numbered evidence operation `02b`; collects and validates canonical-BAM QC evidence. |
+| [`collect_RSeQC_paired_orientation_evidence`](rseqc_orientation/README.md) | Numbered evidence operation `03`; collects paired-orientation evidence without selecting a biological strandedness policy. |
+| [`assemble_scientific_review_evidence_package`](scientific_review_package/README.md) | Numbered evidence operation `09c`, physically owned by `scientific_review_package`; validates and packages declared review evidence without granting scientific approval. |
 | [`reference_provenance`](reference_provenance/README.md) | Reconciles one explicitly declared reference bundle without repair. |
-| [`runtime_preflight`](runtime_preflight/README.md) | Records declared runtime-availability probes and owns the separate manual cluster module/tool smoke probe; neither installs software or executes the workflow. |
+| [`runtime_preflight`](runtime_availability/README.md) | Semantic runtime-preflight evidence, physically owned by `runtime_availability`; records declared availability probes and owns a separate manual cluster module/tool smoke probe. Neither installs software or executes the workflow. |
 | [`storage_inventory`](storage_inventory/README.md) | Measures declared storage roots and records retention-policy state without acting on it. |
 
 Each child owns its inputs, outputs, publication/recovery behavior, direct
 tests, and evidence boundary. The three numbered operations participate in the
 canonical graph in [`STAGE_MAP.md`](../contracts/STAGE_MAP.md); the operational
 evidence tools are cross-cutting checks, not additional stages.
+
+Steps `02b` and `03` keep their shell producers and schedulers as
+repository-path interfaces while exposing their private validators as
+`python -I -m norad validate canonical-bam-qc` and
+`python -I -m norad validate rseqc-orientation`, respectively.
+Step `09c` keeps its repository
+[`step_09c_scientific_validation.sh`](scientific_review_package/step_09c_scientific_validation.sh)
+launcher and exposes installed assembly as
+`python -I -m norad assemble scientific-review-package` through a private
+publisher. It has no scheduler wrapper.
+
+Reference provenance exposes installed, read-only reconciliation as
+`python -I -m norad reconcile reference-provenance` through a private
+reconciler. Dry-run is the default; `--execute` publishes evidence without
+repairing references, and exit `0` does not mean the resulting summary passed.
+
+Runtime availability exposes installed inspection as
+`python -I -m norad inspect runtime-availability` through a private inspector.
+It retains the `runtime_preflight` profile, report, and lock vocabulary.
+Dry-run performs applicable probes without publication; `--execute` publishes
+the requested report, and exit `0` does not mean every probe passed.
+
+Storage inventory exposes installed inspection as
+`python -I -m norad inspect storage-inventory` through a private inspector.
+Dry-run measures declared roots and records retention-policy state without
+publication; `--execute` publishes evidence, and exit `0` neither means the
+summary passed nor grants authority to alter storage.
 
 Use the [`RUNBOOK`](../../../docs/operations/RUNBOOK.md) for supported commands,
 [`TROUBLESHOOTING`](../../../docs/operations/TROUBLESHOOTING.md) for failure and

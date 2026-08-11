@@ -5,74 +5,45 @@ from __future__ import annotations
 import copy
 import csv
 import importlib
-import importlib.util
 import json
 import sys
+from collections.abc import Callable, Mapping
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
-from typing import Any, Callable, Mapping
+from typing import Any
 
 import pytest
-
+from norad.analyses.paired_cmh_candidate_ranking import (
+    validator as STEP09_VALIDATOR,
+)
+from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
+from norad.evidence.scientific_review_package._scientific_review import (
+    contracts as SCIENTIFIC_REVIEW,
+)
+from norad.evidence.scientific_review_package._scientific_review import (
+    intake as SCIENTIFIC_REVIEW_INTAKE,
+)
+from norad.stages.cohort_candidate_preprocessing import validator as STEP08_VALIDATOR
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 REPORTING = REPO_ROOT / "src" / "norad" / "reporting"
 GOLDENS = Path(__file__).resolve().parent
-SCHEMAS = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "contracts"
-    / "schemas"
-    / "artifacts"
-    / "v1"
-)
+SCHEMAS = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts" / "v1"
 
 if str(REPORTING) not in sys.path:
     sys.path.insert(0, str(REPORTING))
 
-ARTIFACT_INDEX = importlib.import_module("build_artifact_index")
-ARTIFACT_INDEX_CONTEXT = importlib.import_module("_artifact_index.context")
-RUN_SUMMARY = importlib.import_module("build_run_summary")
+ARTIFACT_INDEX = importlib.import_module("norad.reporting._artifact_index.builder")
+ARTIFACT_INDEX_CONTEXT = importlib.import_module(
+    "norad.reporting._artifact_index.context",
+)
+RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.builder")
 REPORT_BUNDLE = importlib.import_module("render_run_report_bundle")
 STEP08_CONTRACT = ARTIFACT_INDEX.step08
 STEP09_CONTRACT = ARTIFACT_INDEX.step09
 SHARED_SCIENCE = RUN_SUMMARY.science
 REVIEW_PACKAGE = ARTIFACT_INDEX.review_package
 
-
-def load_exact_test_module(name: str, path: Path) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(name, path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    try:
-        spec.loader.exec_module(module)
-    except BaseException:
-        if sys.modules.get(name) is module:
-            del sys.modules[name]
-        raise
-    return module
-
-
-SCIENTIFIC_REVIEW = load_exact_test_module(
-    "_independent_step09c_producer",
-    REPO_ROOT
-    / "src/norad/evidence/assemble_scientific_review_evidence_package"
-    / "step_09c_scientific_validation.py",
-)
-STEP08_VALIDATOR = load_exact_test_module(
-    "_independent_step08_validator",
-    REPO_ROOT
-    / "src/norad/stages/preprocess_and_annotate_cohort_candidates"
-    / "validate_step_08_preprocessing_outputs.py",
-)
-STEP09_VALIDATOR = load_exact_test_module(
-    "_independent_step09_validator",
-    REPO_ROOT
-    / "src/norad/analyses/rank_cohort_candidates_with_paired_CMH"
-    / "validate_step_09_cmh_outputs.py",
-)
 
 HEADER_MODULES: Mapping[str, ModuleType] = {
     "build_artifact_index": ARTIFACT_INDEX,
@@ -120,314 +91,19 @@ REVIEW_PACKAGE_CONTRACT_LOADERS = (
 )
 
 
-def test_step08_contract_consumers_share_one_exact_ready_owner() -> None:
-    owner = STEP08_CONTRACT
-
-    assert SCIENTIFIC_REVIEW.step08 is owner
-    assert STEP08_VALIDATOR.step08 is owner
-    assert STEP09_VALIDATOR.step08 is owner
-    assert ARTIFACT_INDEX.step08 is owner
-    assert STEP09_CONTRACT.step08 is owner
+def test_contract_consumers_share_packaged_module_identities() -> None:
+    assert all(
+        loader.contracts is ARTIFACT_CONTRACTS for loader in ARTIFACT_CONTRACT_LOADERS
+    )
+    assert SCIENTIFIC_REVIEW.step08 is STEP08_CONTRACT
+    assert STEP08_VALIDATOR.step08 is STEP08_CONTRACT
+    assert STEP09_VALIDATOR.step08 is STEP08_CONTRACT
+    assert ARTIFACT_INDEX.step08 is STEP08_CONTRACT
+    assert STEP09_CONTRACT.step08 is STEP08_CONTRACT
     assert STEP09_VALIDATOR.step09 is STEP09_CONTRACT
-    assert SCIENTIFIC_REVIEW.ContractError is owner.ContractError
-    assert SCIENTIFIC_REVIEW.Table is owner.Table
-    assert sys.modules[ARTIFACT_INDEX._STEP08_MODULE_NAME] is owner
-    assert Path(owner.__file__).resolve() == ARTIFACT_INDEX._STEP08_MODULE_PATH
-    assert getattr(owner, ARTIFACT_INDEX._STEP08_READY_ATTRIBUTE) is True
-
-
-def test_review_package_consumers_share_one_exact_ready_owner() -> None:
-    owner = REVIEW_PACKAGE
-
-    assert ARTIFACT_INDEX.review_package is owner
-    assert SHARED_SCIENCE.review_package is owner
-    assert SCIENTIFIC_REVIEW.review_package is owner
-    assert sys.modules[ARTIFACT_INDEX._REVIEW_PACKAGE_MODULE_NAME] is owner
-    assert Path(owner.__file__).resolve() == (
-        ARTIFACT_INDEX._REVIEW_PACKAGE_MODULE_PATH
-    )
-    assert (
-        getattr(owner, ARTIFACT_INDEX._REVIEW_PACKAGE_READY_ATTRIBUTE) is True
-    )
-
-
-@pytest.mark.parametrize(
-    "loader_owner",
-    REVIEW_PACKAGE_CONTRACT_LOADERS,
-    ids=("step09c", "artifact-index", "run-summary-science"),
-)
-def test_review_package_loaders_reuse_owner_without_mutating_sys_path(
-    loader_owner: ModuleType,
-) -> None:
-    before_sys_path = list(sys.path)
-
-    loaded = loader_owner._load_review_package_contract()
-
-    assert loaded is REVIEW_PACKAGE
-    assert Path(loaded.__file__).resolve() == (
-        loader_owner._REVIEW_PACKAGE_MODULE_PATH
-    )
-    assert getattr(loaded, loader_owner._REVIEW_PACKAGE_READY_ATTRIBUTE) is True
-    assert sys.path == before_sys_path
-
-
-@pytest.mark.parametrize(
-    "loader_owner",
-    STEP08_CONTRACT_LOADERS,
-    ids=(
-        "step09",
-        "step09c",
-        "step08-validator",
-        "step09-validator",
-        "artifact-index",
-    ),
-)
-def test_step08_contract_loaders_reuse_owner_without_mutating_sys_path(
-    loader_owner: ModuleType,
-) -> None:
-    before_sys_path = list(sys.path)
-
-    loaded = loader_owner._load_step08_contract()
-
-    assert loaded is STEP08_CONTRACT
-    assert Path(loaded.__file__).resolve() == loader_owner._STEP08_MODULE_PATH
-    assert getattr(loaded, loader_owner._STEP08_READY_ATTRIBUTE) is True
-    assert sys.path == before_sys_path
-
-
-@pytest.mark.parametrize(
-    "loader_owner",
-    STEP08_CONTRACT_LOADERS,
-    ids=(
-        "step09",
-        "step09c",
-        "step08-validator",
-        "step09-validator",
-        "artifact-index",
-    ),
-)
-@pytest.mark.parametrize("cache_kind", ("foreign", "partial", "invalid-path"))
-def test_step08_contract_loaders_reject_invalid_cache(
-    loader_owner: ModuleType,
-    cache_kind: str,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    name = loader_owner._STEP08_MODULE_NAME
-    cached = ModuleType(name)
-    if cache_kind == "foreign":
-        cached.__file__ = str(tmp_path / "foreign_step08.py")
-        setattr(cached, loader_owner._STEP08_READY_ATTRIBUTE, True)
-        expected = "resolves to"
-    elif cache_kind == "partial":
-        cached.__file__ = str(loader_owner._STEP08_MODULE_PATH)
-        expected = "partially initialized"
-    else:
-        cached.__file__ = None
-        setattr(cached, loader_owner._STEP08_READY_ATTRIBUTE, True)
-        expected = "no valid file path"
-    monkeypatch.setitem(sys.modules, name, cached)
-
-    with pytest.raises(ImportError, match=expected):
-        loader_owner._load_step08_contract()
-
-
-def test_step09_contract_consumers_share_one_exact_ready_owner() -> None:
-    owner = STEP09_CONTRACT
-
-    assert SCIENTIFIC_REVIEW.step09 is owner
-    assert STEP09_VALIDATOR.step09 is owner
-    assert ARTIFACT_INDEX.step09 is owner
-    assert owner.step08 is STEP08_CONTRACT
-    assert owner.ContractError is STEP08_CONTRACT.ContractError
-    assert owner.Table is STEP08_CONTRACT.Table
-    assert SCIENTIFIC_REVIEW.resolve_recorded_path is owner.resolve_recorded_path
-    assert sys.modules[ARTIFACT_INDEX._STEP09_MODULE_NAME] is owner
-    assert Path(owner.__file__).resolve() == ARTIFACT_INDEX._STEP09_MODULE_PATH
-    assert getattr(owner, ARTIFACT_INDEX._STEP09_READY_ATTRIBUTE) is True
-
-
-@pytest.mark.parametrize(
-    "loader_owner",
-    STEP09_CONTRACT_LOADERS,
-    ids=("step09c", "step09-validator", "artifact-index"),
-)
-def test_step09_contract_loaders_reuse_owner_without_mutating_sys_path(
-    loader_owner: ModuleType,
-) -> None:
-    before_sys_path = list(sys.path)
-
-    loaded = loader_owner._load_step09_contract()
-
-    assert loaded is STEP09_CONTRACT
-    assert Path(loaded.__file__).resolve() == loader_owner._STEP09_MODULE_PATH
-    assert getattr(loaded, loader_owner._STEP09_READY_ATTRIBUTE) is True
-    assert sys.path == before_sys_path
-
-
-@pytest.mark.parametrize(
-    "loader_owner",
-    STEP09_CONTRACT_LOADERS,
-    ids=("step09c", "step09-validator", "artifact-index"),
-)
-@pytest.mark.parametrize("cache_kind", ("foreign", "partial", "invalid-path"))
-def test_step09_contract_loaders_reject_invalid_cache(
-    loader_owner: ModuleType,
-    cache_kind: str,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    name = loader_owner._STEP09_MODULE_NAME
-    cached = ModuleType(name)
-    if cache_kind == "foreign":
-        cached.__file__ = str(tmp_path / "foreign_step09.py")
-        setattr(cached, loader_owner._STEP09_READY_ATTRIBUTE, True)
-        expected = "resolves to"
-    elif cache_kind == "partial":
-        cached.__file__ = str(loader_owner._STEP09_MODULE_PATH)
-        expected = "partially initialized"
-    else:
-        cached.__file__ = None
-        setattr(cached, loader_owner._STEP09_READY_ATTRIBUTE, True)
-        expected = "no valid file path"
-    monkeypatch.setitem(sys.modules, name, cached)
-
-    with pytest.raises(ImportError, match=expected):
-        loader_owner._load_step09_contract()
-
-
-def test_artifact_contract_consumers_share_one_exact_ready_owner() -> None:
-    owner = ARTIFACT_INDEX.contracts
-
-    assert RUN_SUMMARY.contracts is owner
-    assert SHARED_SCIENCE.contracts is owner
-    assert REPORT_BUNDLE.contracts is owner
-    assert REPORT_BUNDLE.html_report.contracts is owner
-    assert sys.modules[ARTIFACT_INDEX._ARTIFACT_CONTRACTS_MODULE_NAME] is owner
-    assert Path(owner.__file__).resolve() == (
-        ARTIFACT_INDEX._ARTIFACT_CONTRACTS_MODULE_PATH
-    )
-    assert (
-        getattr(owner, ARTIFACT_INDEX._ARTIFACT_CONTRACTS_READY_ATTRIBUTE)
-        is True
-    )
-
-
-@pytest.mark.parametrize(
-    "loader_owner",
-    ARTIFACT_CONTRACT_LOADERS,
-    ids=("artifact-index", "run-summary-science", "report-renderer"),
-)
-def test_artifact_contract_loaders_use_exact_owner_without_mutating_sys_path(
-    loader_owner: ModuleType,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    name = loader_owner._ARTIFACT_CONTRACTS_MODULE_NAME
-    before_sys_path = list(sys.path)
-    monkeypatch.delitem(sys.modules, name, raising=False)
-
-    loaded = loader_owner._load_artifact_contracts()
-
-    assert Path(loaded.__file__).resolve() == (
-        loader_owner._ARTIFACT_CONTRACTS_MODULE_PATH
-    )
-    assert (
-        getattr(loaded, loader_owner._ARTIFACT_CONTRACTS_READY_ATTRIBUTE) is True
-    )
-    assert sys.modules[name] is loaded
-    assert sys.path == before_sys_path
-
-
-@pytest.mark.parametrize(
-    "loader_owner",
-    ARTIFACT_CONTRACT_LOADERS,
-    ids=("artifact-index", "run-summary-science", "report-renderer"),
-)
-@pytest.mark.parametrize("cache_kind", ("foreign", "partial", "invalid-path"))
-def test_artifact_contract_loaders_reject_invalid_cache(
-    loader_owner: ModuleType,
-    cache_kind: str,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    name = loader_owner._ARTIFACT_CONTRACTS_MODULE_NAME
-    cached = ModuleType(name)
-    if cache_kind == "foreign":
-        cached.__file__ = str(tmp_path / "foreign_artifact_contracts.py")
-        setattr(cached, loader_owner._ARTIFACT_CONTRACTS_READY_ATTRIBUTE, True)
-        expected = "resolves to"
-    elif cache_kind == "partial":
-        cached.__file__ = str(loader_owner._ARTIFACT_CONTRACTS_MODULE_PATH)
-        expected = "partially initialized"
-    else:
-        cached.__file__ = None
-        setattr(cached, loader_owner._ARTIFACT_CONTRACTS_READY_ATTRIBUTE, True)
-        expected = "no valid file path"
-    monkeypatch.setitem(sys.modules, name, cached)
-
-    with pytest.raises(ImportError, match=expected):
-        loader_owner._load_artifact_contracts()
-
-
-@pytest.mark.parametrize(
-    "loader_owner",
-    ARTIFACT_CONTRACT_LOADERS,
-    ids=("artifact-index", "run-summary-science", "report-renderer"),
-)
-@pytest.mark.parametrize(
-    "specification",
-    (None, SimpleNamespace(loader=None)),
-    ids=("missing-spec", "missing-loader"),
-)
-def test_artifact_contract_loaders_fail_without_usable_specification(
-    loader_owner: ModuleType,
-    specification: Any,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    name = loader_owner._ARTIFACT_CONTRACTS_MODULE_NAME
-    monkeypatch.delitem(sys.modules, name, raising=False)
-    monkeypatch.setattr(
-        loader_owner.importlib.util,
-        "spec_from_file_location",
-        lambda *_args, **_kwargs: specification,
-    )
-
-    with pytest.raises(ImportError, match="module specification"):
-        loader_owner._load_artifact_contracts()
-
-    assert name not in sys.modules
-
-
-@pytest.mark.parametrize(
-    "loader_owner",
-    ARTIFACT_CONTRACT_LOADERS,
-    ids=("artifact-index", "run-summary-science", "report-renderer"),
-)
-def test_artifact_contract_loaders_clean_owned_partial_after_execution_failure(
-    loader_owner: ModuleType,
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    name = loader_owner._ARTIFACT_CONTRACTS_MODULE_NAME
-    failing_owner = tmp_path / "validate_artifact_contracts.py"
-    failing_owner.write_text(
-        "raise RuntimeError('injected artifact-contract execution failure')\n",
-        encoding="utf-8",
-    )
-    monkeypatch.delitem(sys.modules, name, raising=False)
-    monkeypatch.setattr(
-        loader_owner,
-        "_ARTIFACT_CONTRACTS_MODULE_PATH",
-        failing_owner,
-    )
-
-    with pytest.raises(
-        RuntimeError,
-        match="injected artifact-contract execution failure",
-    ):
-        loader_owner._load_artifact_contracts()
-
-    assert name not in sys.modules
+    assert ARTIFACT_INDEX.review_package is REVIEW_PACKAGE
+    assert SHARED_SCIENCE.review_package is REVIEW_PACKAGE
+    assert SCIENTIFIC_REVIEW.review_package is REVIEW_PACKAGE
 
 
 def load_json(path: Path) -> Any:
@@ -490,13 +166,9 @@ def assert_status_constants() -> None:
         if isinstance(value, list):
             actual = list(actual)
         assert actual == value, (
-            f"review_package.{constant_name} differs from the "
-            "independent status oracle"
+            f"review_package.{constant_name} differs from the independent status oracle"
         )
-    assert (
-        REVIEW_PACKAGE.RESERVED_SCIENCE_STATUS
-        not in REVIEW_PACKAGE.SCIENCE_STATUSES
-    )
+    assert REVIEW_PACKAGE.RESERVED_SCIENCE_STATUS not in REVIEW_PACKAGE.SCIENCE_STATUSES
 
 
 def assert_canonical_json(
@@ -518,9 +190,7 @@ def assert_report_receipt(
 
 
 def assert_shared_science_policy() -> None:
-    policy = load_json(GOLDENS / "scientific_state_contracts.json")[
-        "shared_policy"
-    ]
+    policy = load_json(GOLDENS / "scientific_state_contracts.json")["shared_policy"]
     context = SimpleNamespace(
         category_rows={
             "decisions": copy.deepcopy(policy["decision_rows"]),
@@ -606,16 +276,14 @@ def test_step09c_tsv_writer_matches_exact_independent_utf8_golden(
     header = values[0]
     rows = [dict(zip(header, row, strict=True)) for row in values[1:]]
     actual_path = tmp_path / "actual.tsv"
-    SCIENTIFIC_REVIEW.write_tsv(actual_path, header, rows)
+    SCIENTIFIC_REVIEW_INTAKE.write_tsv(actual_path, header, rows)
     assert actual_path.read_bytes() == expected_path.read_bytes()
 
 
 def test_report_receipt_projection_matches_exact_independent_golden() -> None:
     assert_report_receipt()
     document = load_json(GOLDENS / "report_receipt_input.json")
-    with (GOLDENS / "report_receipt.tsv").open(
-        encoding="utf-8", newline=""
-    ) as stream:
+    with (GOLDENS / "report_receipt.tsv").open(encoding="utf-8", newline="") as stream:
         row = next(csv.DictReader(stream, delimiter="\t"))
     assert json.loads(row["report_receipt_json"]) == document
 

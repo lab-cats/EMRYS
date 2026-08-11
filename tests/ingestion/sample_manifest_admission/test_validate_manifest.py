@@ -2,16 +2,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SCRIPT = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "ingestion"
-    / "sample_manifest_admission"
-    / "validate_manifest.py"
-)
 
 
 def write_manifest(path: Path, header: list[str], rows: list[list[str]]) -> Path:
@@ -23,7 +14,7 @@ def write_manifest(path: Path, header: list[str], rows: list[list[str]]) -> Path
 
 def run_validator(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, str(SCRIPT), *args],
+        [sys.executable, "-I", "-m", "norad", "validate", "manifest", *args],
         cwd=REPO_ROOT,
         text=True,
         capture_output=True,
@@ -37,8 +28,20 @@ def valid_header() -> list[str]:
 
 def valid_rows() -> list[list[str]]:
     return [
-        ["sample_001", "reads/sample_001_R1.fastq.gz", "reads/sample_001_R2.fastq.gz", "reverse", "control"],
-        ["sample_002", "reads/sample_002_R1.fastq.gz", "reads/sample_002_R2.fastq.gz", "forward", "treatment"],
+        [
+            "sample_001",
+            "reads/sample_001_R1.fastq.gz",
+            "reads/sample_001_R2.fastq.gz",
+            "reverse",
+            "control",
+        ],
+        [
+            "sample_002",
+            "reads/sample_002_R1.fastq.gz",
+            "reads/sample_002_R2.fastq.gz",
+            "forward",
+            "treatment",
+        ],
     ]
 
 
@@ -122,7 +125,16 @@ def test_optional_notes_column_is_allowed(tmp_path: Path) -> None:
     manifest = write_manifest(
         tmp_path / "samples.tsv",
         valid_header() + ["notes"],
-        [["sample_001", "R1.fastq.gz", "R2.fastq.gz", "unknown", "control", "pilot sample"]],
+        [
+            [
+                "sample_001",
+                "R1.fastq.gz",
+                "R2.fastq.gz",
+                "unknown",
+                "control",
+                "pilot sample",
+            ]
+        ],
     )
 
     result = run_validator("--manifest", str(manifest))
@@ -170,7 +182,9 @@ def test_duplicate_sample_id_fails(tmp_path: Path) -> None:
     result = run_validator("--manifest", str(manifest))
 
     assert result.returncode != 0
-    assert "Row 3: duplicate sample_id 'sample_001' (first seen on row 2)" in result.stderr
+    assert (
+        "Row 3: duplicate sample_id 'sample_001' (first seen on row 2)" in result.stderr
+    )
 
 
 def test_empty_required_fields_fail(tmp_path: Path) -> None:

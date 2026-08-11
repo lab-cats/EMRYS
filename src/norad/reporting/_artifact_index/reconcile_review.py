@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from collections import Counter, defaultdict
-from pathlib import Path
-from typing import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 
 from .contracts import contracts, review_package, step08
 from .models import (
@@ -13,7 +12,8 @@ from .models import (
     ArtifactIndexError,
     Inspection,
 )
-from .reconcile_native import native_int, require_referenced_source
+from .reconcile_native import NativeSourceIndex, native_int, require_referenced_source
+
 
 def split_native_safe_ids(value: str, field_name: str) -> list[str]:
     if value == step08.NA_VALUE:
@@ -30,6 +30,32 @@ def split_native_safe_ids(value: str, field_name: str) -> list[str]:
     return values
 
 
+def _allowed_analysis_ids(plan_row: Mapping[str, str]) -> set[str]:
+    return {
+        plan_row["primary_analysis_id"],
+        *split_native_safe_ids(
+            plan_row["superseded_analysis_ids"], "superseded_analysis_ids"
+        ),
+        *split_native_safe_ids(
+            plan_row["sensitivity_analysis_ids"], "sensitivity_analysis_ids"
+        ),
+    }
+
+
+def _require_review_identity(
+    row: Mapping[str, str],
+    summary_row: Mapping[str, str],
+    allowed_analysis_ids: set[str],
+) -> None:
+    if (
+        row.get("review_id") != summary_row["review_id"]
+        or row.get("analysis_id") not in allowed_analysis_ids
+    ):
+        raise ArtifactIndexError(
+            "Step 09c review identity is outside the declared review"
+        )
+
+
 def validate_step09c_evidence_index(
     evidence_rows: Sequence[Mapping[str, str]],
     plan_row: Mapping[str, str],
@@ -37,17 +63,7 @@ def validate_step09c_evidence_index(
 ) -> dict[str, str]:
     if not evidence_rows:
         raise ArtifactIndexError("Step 09c evidence index is empty")
-    allowed_analyses = {
-        plan_row["primary_analysis_id"],
-        *split_native_safe_ids(
-            plan_row["superseded_analysis_ids"],
-            "superseded_analysis_ids",
-        ),
-        *split_native_safe_ids(
-            plan_row["sensitivity_analysis_ids"],
-            "sensitivity_analysis_ids",
-        ),
-    }
+    allowed_analysis_ids = _allowed_analysis_ids(plan_row)
     seen_evidence_ids: set[str] = set()
     category_order = {
         category: index
@@ -62,25 +78,15 @@ def validate_step09c_evidence_index(
             not contracts.SAFE_ID_RE.fullmatch(evidence_id)
             or evidence_id in seen_evidence_ids
         ):
-            raise ArtifactIndexError(
-                "Step 09c evidence IDs must be unique safe IDs"
-            )
+            raise ArtifactIndexError("Step 09c evidence IDs must be unique safe IDs")
         seen_evidence_ids.add(evidence_id)
         if category not in review_package.ALLOWED_EVIDENCE_CATEGORIES:
             raise ArtifactIndexError(
                 f"Step 09c evidence category is invalid: {category!r}"
             )
         if status not in review_package.EVIDENCE_STATUSES:
-            raise ArtifactIndexError(
-                f"Step 09c evidence status is invalid: {status!r}"
-            )
-        if (
-            row["review_id"] != summary_row["review_id"]
-            or row["analysis_id"] not in allowed_analyses
-        ):
-            raise ArtifactIndexError(
-                "Step 09c evidence identity is outside the declared review"
-            )
+            raise ArtifactIndexError(f"Step 09c evidence status is invalid: {status!r}")
+        _require_review_identity(row, summary_row, allowed_analysis_ids)
         observed_order.append((category_order[category], evidence_id))
         if status in {"missing", "not_applicable"}:
             if any(
@@ -98,8 +104,7 @@ def validate_step09c_evidence_index(
                     "for source path, hashes, and row counts"
                 )
             if (
-                status == "missing"
-                and row["not_applicable_reason"] != step08.NA_VALUE
+                status == "missing" and row["not_applicable_reason"] != step08.NA_VALUE
             ) or (
                 status == "not_applicable"
                 and row["not_applicable_reason"] in {"", step08.NA_VALUE}
@@ -120,10 +125,7 @@ def validate_step09c_evidence_index(
                     "Step 09c complete/incomplete evidence source metadata "
                     "does not reconcile"
                 )
-            if (
-                status == "complete"
-                and native_int(row, "observed_row_count") == 0
-            ):
+            if status == "complete" and native_int(row, "observed_row_count") == 0:
                 raise ArtifactIndexError(
                     "Step 09c complete evidence must contain at least one row; "
                     "use not_applicable for a justified empty category"
@@ -135,9 +137,7 @@ def validate_step09c_evidence_index(
     missing_categories = [
         category
         for category in review_package.CATEGORY_ORDER
-        if not any(
-            row["evidence_category"] == category for row in evidence_rows
-        )
+        if not any(row["evidence_category"] == category for row in evidence_rows)
     ]
     if missing_categories:
         raise ArtifactIndexError(
@@ -151,8 +151,7 @@ def validate_step09c_evidence_index(
                 f"Step 09c summary {category}_status disagrees with evidence"
             )
     expected_source_count = sum(
-        row["evidence_status"] in {"complete", "incomplete"}
-        for row in evidence_rows
+        row["evidence_status"] in {"complete", "incomplete"} for row in evidence_rows
     )
     if native_int(summary_row, "evidence_source_count") != expected_source_count:
         raise ArtifactIndexError(
@@ -171,17 +170,7 @@ def validate_step09c_payloads(
     plan_row: Mapping[str, str],
     summary_row: Mapping[str, str],
 ) -> None:
-    allowed_analysis_ids = {
-        plan_row["primary_analysis_id"],
-        *split_native_safe_ids(
-            plan_row["superseded_analysis_ids"],
-            "superseded_analysis_ids",
-        ),
-        *split_native_safe_ids(
-            plan_row["sensitivity_analysis_ids"],
-            "sensitivity_analysis_ids",
-        ),
-    }
+    allowed_analysis_ids = _allowed_analysis_ids(plan_row)
     evidence_by_category: dict[str, list[Mapping[str, str]]] = defaultdict(list)
     for row in evidence_rows:
         evidence_by_category[row["evidence_category"]].append(row)
@@ -213,15 +202,12 @@ def validate_step09c_payloads(
             )
         for row in payload_rows:
             evidence = indexed_by_id.get(row["evidence_id"])
-            if (
-                evidence is None
-                or row["review_id"] != summary_row["review_id"]
-                or row.get("analysis_id") not in allowed_analysis_ids
-            ):
+            if evidence is None:
                 raise ArtifactIndexError(
                     f"Step 09c {category} payload identity is not declared "
                     "by the review/evidence index"
                 )
+            _require_review_identity(row, summary_row, allowed_analysis_ids)
             if (
                 "primary_analysis_id" in row
                 and row["primary_analysis_id"] != plan_row["primary_analysis_id"]
@@ -253,10 +239,9 @@ def validate_step09c_decisions(
             )
         seen.add(dimension)
         if row["decision_status"] == "recorded":
-            if (
-                row["decision_value"] in {"", step08.NA_VALUE}
-                or row["decision_date"] in {"", step08.NA_VALUE}
-            ):
+            if row["decision_value"] in {"", step08.NA_VALUE} or row[
+                "decision_date"
+            ] in {"", step08.NA_VALUE}:
                 raise ArtifactIndexError(
                     "Step 09c recorded decision lacks a value or date"
                 )
@@ -308,7 +293,7 @@ def step09c_candidate_keys(
 
 def reconcile_step09c(
     members: Sequence[Inspection],
-    source_lookup: Mapping[Path, Inspection],
+    sources: NativeSourceIndex,
 ) -> None:
     by_adapter = {member.row["adapter"]: member for member in members}
     plan = by_adapter["step09c_review_plan_v1"]
@@ -323,13 +308,9 @@ def reconcile_step09c(
     if native_int(summary_row, "published_output_count") != len(
         review_package.OUTPUT_SUFFIXES
     ):
-        raise ArtifactIndexError(
-            "Step 09c published_output_count is inconsistent"
-        )
+        raise ArtifactIndexError("Step 09c published_output_count is inconsistent")
     if summary_row.get("transaction_state") != "complete":
-        raise ArtifactIndexError(
-            "Step 09c summary transaction_state is not complete"
-        )
+        raise ArtifactIndexError("Step 09c summary transaction_state is not complete")
     status_contracts = {
         "implementation_status": review_package.IMPLEMENTATION_STATUSES,
         "local_test_status": review_package.LOCAL_TEST_STATUSES,
@@ -340,28 +321,20 @@ def reconcile_step09c(
     }
     for field_name, allowed in status_contracts.items():
         if summary_row.get(field_name) not in allowed:
-            raise ArtifactIndexError(
-                f"Step 09c summary {field_name} is invalid"
-            )
+            raise ArtifactIndexError(f"Step 09c summary {field_name} is invalid")
     for category in review_package.CATEGORY_ORDER:
         field_name = f"{category}_status"
         if summary_row.get(field_name) not in review_package.EVIDENCE_STATUSES:
-            raise ArtifactIndexError(
-                f"Step 09c summary {field_name} is invalid"
-            )
+            raise ArtifactIndexError(f"Step 09c summary {field_name} is invalid")
     for prefix in (
         "sample_manifest",
         "partition_manifest",
         "evidence_manifest",
     ):
         if not summary_row.get(f"{prefix}_path"):
-            raise ArtifactIndexError(
-                f"Step 09c summary {prefix}_path is empty"
-            )
+            raise ArtifactIndexError(f"Step 09c summary {prefix}_path is empty")
         if not SHA256_RE.fullmatch(summary_row.get(f"{prefix}_sha256", "")):
-            raise ArtifactIndexError(
-                f"Step 09c summary {prefix}_sha256 is invalid"
-            )
+            raise ArtifactIndexError(f"Step 09c summary {prefix}_sha256 is invalid")
         native_int(summary_row, f"{prefix}_row_count")
     if native_int(summary_row, "evidence_source_count") > native_int(
         summary_row, "evidence_record_count"
@@ -392,16 +365,12 @@ def reconcile_step09c(
         if native_int(summary_row, field_name) != (
             member.source["row_count"] if member.source else None
         ):
-            raise ArtifactIndexError(
-                f"Step 09c summary {field_name} is inconsistent"
-            )
+            raise ArtifactIndexError(f"Step 09c summary {field_name} is inconsistent")
     evidence_rows = by_adapter["step09c_evidence_index_v1"].native.get(
         "rows",
         [],
     )
-    if native_int(summary_row, "evidence_manifest_row_count") != len(
-        evidence_rows
-    ):
+    if native_int(summary_row, "evidence_manifest_row_count") != len(evidence_rows):
         raise ArtifactIndexError(
             "Step 09c evidence manifest and evidence index row counts disagree"
         )
@@ -417,9 +386,7 @@ def reconcile_step09c(
         summary_row=summary_row,
     )
     overall_status = summary_row.get("overall_science_status", "")
-    exploratory_complete = (
-        overall_status == "science_review_complete_exploratory"
-    )
+    exploratory_complete = overall_status == "science_review_complete_exploratory"
     decisions = validate_step09c_decisions(
         by_adapter["step09c_decisions_v1"].native.get("rows", []),
         summary_row,
@@ -505,7 +472,7 @@ def reconcile_step09c(
             path_field=f"{prefix}_path",
             hash_field=f"{prefix}_sha256",
             row_count_field=f"{prefix}_row_count",
-            source_lookup=source_lookup,
+            sources=sources,
         )
         if target.row["adapter"] != adapter_id:
             raise ArtifactIndexError(

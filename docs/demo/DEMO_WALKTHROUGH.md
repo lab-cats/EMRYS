@@ -2,8 +2,7 @@
 
 This is the presenter run-of-show, not the audience handout, authoritative
 status ledger, report contract, or command owner. During a live demo, use the
-current [`HANDOFF.md`](../operations/HANDOFF.md) and
-[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md); run only the exact
+current [`HANDOFF.md`](../operations/HANDOFF.md); run only the exact
 [`README.md`](README.md) procedure.
 
 ## Narrative
@@ -27,12 +26,12 @@ current [`HANDOFF.md`](../operations/HANDOFF.md) and
 Before presenting, generate the local synthetic report through the
 [demo procedure](README.md).
 Its current implementation and evidence ceiling remain in the
-[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md#populated-demo-report).
+[`HANDOFF.md`](../operations/HANDOFF.md#evidence-boundary).
 
 Start in the open Overview category: the evidence banner, status, CMH-ranked
 candidates, adjudication, and limitations appear first. Then expand QC and
 orientation, Replicates and sensitivity, Review decisions, and Evidence and
-provenance. Use the linked plan and runbook for current rendering behavior.
+provenance. Use the linked handoff and runbook for current rendering behavior.
 
 ## Suggested inspection order
 

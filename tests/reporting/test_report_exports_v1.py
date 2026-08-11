@@ -16,7 +16,6 @@ from typing import Any
 import pytest
 from pypdf import PdfReader
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
 SCRIPT = REPORTING_ROOT / "render_run_report.py"
@@ -37,7 +36,6 @@ FIXTURE_BUILDER = (
     / "artifact_run_summary_v1"
     / "build_fixture.py"
 )
-RUN_SUMMARY_SCRIPT = REPORTING_ROOT / "build_run_summary.py"
 FIXED_EPOCH = "1700000000"
 
 
@@ -61,7 +59,11 @@ def publish_summary(fixture: Any) -> Path:
     result = subprocess.run(
         [
             sys.executable,
-            str(RUN_SUMMARY_SCRIPT),
+            "-I",
+            "-m",
+            "norad",
+            "build",
+            "run-summary",
             *fixture.command_args(execute=True),
         ],
         cwd=REPO_ROOT,
@@ -413,7 +415,11 @@ def test_real_all_bundle_is_valid_receipt_last_and_deterministic(
         ("sample.SYNTH_A.markdup_validation", "04", "sample SYNTH_A"),
         ("sample.SYNTH_A.split_validation", "05", "sample SYNTH_A"),
         ("sample.SYNTH_A.orientation_validation", "06", "sample SYNTH_A"),
-        ("cohort.synthetic.p1.validation", "07", "cohort_partition synthetic_cohort__p1"),
+        (
+            "cohort.synthetic.p1.validation",
+            "07",
+            "cohort_partition synthetic_cohort__p1",
+        ),
         ("cohort.synthetic.step08_validation", "08", "cohort synthetic_cohort"),
         ("analysis.synthetic.cmh_validation", "09", "analysis synthetic_analysis"),
     ],
@@ -448,9 +454,7 @@ def test_failed_validation_reaches_summary_html_and_pdf(
     summary = publish_summary(fixture)
     document = json.loads(summary.read_text(encoding="utf-8"))
     validation_artifact = next(
-        item
-        for item in document["artifacts"]
-        if item["artifact_id"] == artifact_id
+        item for item in document["artifacts"] if item["artifact_id"] == artifact_id
     )
     assert validation_artifact["completion_status"] == "failed"
 
@@ -476,13 +480,12 @@ def test_failed_validation_reaches_summary_html_and_pdf(
     )
     assert result.returncode == 0, result.stdout + result.stderr
     report_dir = output_root / adapter_fixture.run_id
-    html = (
-        report_dir / f"{adapter_fixture.run_id}.run_report.html"
-    ).read_text(encoding="utf-8")
+    html = (report_dir / f"{adapter_fixture.run_id}.run_report.html").read_text(
+        encoding="utf-8"
+    )
     pdf = report_dir / f"{adapter_fixture.run_id}.run_report.pdf"
     pdf_text = " ".join(
-        (page.extract_text() or "")
-        for page in PdfReader(pdf, strict=True).pages
+        (page.extract_text() or "") for page in PdfReader(pdf, strict=True).pages
     )
     assert artifact_id in html
     assert "failed" in html
@@ -531,7 +534,7 @@ def test_bundle_failure_restores_valid_html_only_predecessor(
         )
     )
     prior = context.html.output_html.read_bytes()
-    original_link = BUNDLE.os.link
+    original_link = BUNDLE._owner._publication.os.link
 
     def fail_summary_publication(
         source: str | os.PathLike[str],
@@ -543,7 +546,11 @@ def test_bundle_failure_restores_valid_html_only_predecessor(
             raise OSError("injected summary publication failure")
         original_link(source, destination, *args, **kwargs)
 
-    monkeypatch.setattr(BUNDLE.os, "link", fail_summary_publication)
+    monkeypatch.setattr(
+        BUNDLE._owner._publication.os,
+        "link",
+        fail_summary_publication,
+    )
     with pytest.raises(
         BUNDLE.html_report.ReportRenderError,
         match="injected summary publication failure",
@@ -588,9 +595,9 @@ def test_real_pdf_only_preserves_exploratory_banner_and_truncation(
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    run_id = json.loads(
-        exploratory_approved_summary.read_text(encoding="utf-8")
-    )["run_id"]
+    run_id = json.loads(exploratory_approved_summary.read_text(encoding="utf-8"))[
+        "run_id"
+    ]
     output_dir = output_root / run_id
     pdf = output_dir / f"{run_id}.run_report.pdf"
     receipt = output_dir / f"{run_id}.report_outputs.tsv"
@@ -610,12 +617,8 @@ def test_real_pdf_only_preserves_exploratory_banner_and_truncation(
     assert truncation["full_row_count"] > 1
     assert truncation["displayed_row_count"] == 1
     assert len(truncation["full_table_sha256"]) == 64
-    banner = BUNDLE.html_report.SCIENCE_BANNERS[
-        "science_review_complete_exploratory"
-    ]
+    banner = BUNDLE.html_report.SCIENCE_BANNERS["science_review_complete_exploratory"]
     reader = PdfReader(pdf, strict=True)
     texts = [page.extract_text() or "" for page in reader.pages]
-    assert all(
-        " ".join(banner.split()) in " ".join(text.split()) for text in texts
-    )
+    assert all(" ".join(banner.split()) in " ".join(text.split()) for text in texts)
     assert "CMH-ranked candidates" in "\n".join(texts)

@@ -39,13 +39,29 @@ and fixtures. `tests/contracts/` protects neutral contracts;
 artifacts; repository-wide scheduler, CLI, coverage, and validation-gate tests
 remain cross-owner development protection.
 
+## Owner cutovers
+
+A physical ownership move is one semantic package: final-owner implementation,
+mirrored direct tests, affected callers, contracts, owner documentation, and
+coverage or tooling configuration move together. Capture the old public
+boundary first, including faults, then prove the final path preserves declared
+bytes, streams, exits, modes, arbitrary-CWD behavior, side effects,
+transactions, recovery, and unrelated files.
+
+An accepted cutover leaves one live implementation. Remove the embedded or old
+helper in the same package; do not retain a temporary re-export, forwarding
+wrapper, duplicate test owner, or compatibility shadow unless that exact public
+surface is separately approved as a continuing contract. Rollback is the
+coherent semantic package, not a mixture of old and final owners.
+
 ## Approved shared seams
 
 | Seam | Neutral owner | Current consumers and boundary |
 | --- | --- | --- |
-| Validation-report publication | `libraries/validation_report.py` | Owner validators exact-load one private identity. Parsing/check rosters, evidence rows, CLI, and recovery remain owner-local. |
-| BAM validation | `libraries/bam_validation.py` | Step `02`, `04`, and `05` validators only. Stage-specific checks and evidence remain local. |
-| Reference contig parsing | `libraries/reference_contigs.py` | Reference provenance and Step `00c`/`05` validators. Agreement policy, reporting, and publication remain local. |
+| Validation-report publication | `libraries/validation/` | Owner validators import the shared facade; errors, snapshots, rows, publication, and runtime lifecycle have separate modules. Parsing/check rosters, evidence rows, and CLI remain owner-local. |
+| BAM validation | `libraries/alignments/bam.py` | Step `02`, `04`, and `05` validators only. Stage-specific checks and evidence remain local. |
+| Reference contig parsing | `libraries/references/contigs.py` | Reference provenance and Step `00c`/`05` validators. Agreement policy, reporting, and publication remain local. |
+| R input-contract mechanics | `libraries/input_contract.R` | Step `08` and `09` R programs share named-argument parsing, file/hash guards, and strict TSV loading. Argument rosters, defaults, table policy, and scientific algorithms remain owner-local. |
 | Executable-value resolution | `libraries/executable_resolution.sh` | Step `00c`, `05`, `06`, `07`, and `08` producers. Tool precedence, version policy, commands, and failures remain local. |
 | Step `08` contract | `contracts/scientific_evidence/step08.py` | Step `08`, Step `09`, Step `09c`, and artifact consumers share headers/vocabulary and input validation, not algorithms or publication. |
 | Step `09` contract | `contracts/scientific_evidence/step09.py` | Step `09`, Step `09c`, and artifact consumers share the public output contract, not CMH implementation or review policy. |
@@ -78,7 +94,10 @@ downstream projection and never promotes computational or scientific state.
 ## Public-interface and future boundary
 
 Owner-specific public shell, Python, R, and SLURM entry points remain with their
-functional owner. There is no installed CLI, package distribution,
+functional owner. The unreleased internal Python distribution packages only
+explicitly migrated import owners and their named resources; it does not imply
+portable repository-root semantics. Its installed `python -I -m norad` module
+interface contains only explicitly migrated owner routes and is not an
 orchestration engine, scheduler abstraction, descriptor loader, universal
 transaction framework, or generic stage dispatcher. Those remain potential
 future capabilities, not current topology.

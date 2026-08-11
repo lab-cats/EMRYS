@@ -39,42 +39,12 @@ Options:
 USAGE
 }
 
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 1
-}
+# shellcheck source=../libraries/executable_resolution.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../libraries/executable_resolution.sh"
+# shellcheck source=../libraries/argument_parsing.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../libraries/argument_parsing.sh"
 
-require_value() {
-    local option="$1"
-    local value="${2:-}"
-    [[ -n "$value" && "$value" != --* ]] || die "$option requires a value."
-}
-
-resolve_executable() {
-    local value="$1"
-    local resolved
-
-    if [[ "$value" == */* ]]; then
-        [[ -e "$value" ]] || die "Python executable does not exist: $value"
-        [[ -x "$value" ]] || die "Python path is not executable: $value"
-        printf '%s\n' "$value"
-        return
-    fi
-
-    resolved="$(command -v "$value" || true)"
-    [[ -n "$resolved" ]] ||
-        die "Python executable was not found on PATH: $value"
-    printf '%s\n' "$resolved"
-}
-
-print_command() {
-    printf '%q ' "$@"
-    printf '\n'
-}
-
-run_summary=""
-output_root=""
-quarto_bin=""
+declare_required_arguments run_summary output_root quarto_bin
 formats="all"
 formats_seen=false
 execute=false
@@ -126,9 +96,7 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-[[ -n "$run_summary" ]] || die "Missing required argument: --run-summary."
-[[ -n "$output_root" ]] || die "Missing required argument: --output-root."
-[[ -n "$quarto_bin" ]] || die "Missing required argument: --quarto-bin."
+require_arguments
 [[ "$formats" == "html" || "$formats" == "pdf" || "$formats" == "all" ]] ||
     die "--formats must be html, pdf, or all; observed: $formats"
 
@@ -137,9 +105,9 @@ repo_root="$(cd "$script_dir/../../.." && pwd)"
 python_script="$script_dir/render_run_report.py"
 [[ -f "$python_script" && -r "$python_script" ]] ||
     die "Report Python implementation is missing or unreadable: $python_script"
-artifact_contracts="$repo_root/src/norad/contracts/artifacts/validate_artifact_contracts.py"
-[[ -f "$artifact_contracts" && -r "$artifact_contracts" ]] ||
-    die "Artifact-contract validator is missing or unreadable: $artifact_contracts"
+artifact_contract_api="$repo_root/src/norad/contracts/artifacts/api.py"
+[[ -f "$artifact_contract_api" && -r "$artifact_contract_api" ]] ||
+    die "Artifact-contract API is missing or unreadable: $artifact_contract_api"
 
 if [[ "${PYTHON_BIN_OVERRIDE+x}" == "x" ]]; then
     [[ -n "$PYTHON_BIN_OVERRIDE" ]] ||
@@ -150,28 +118,22 @@ elif [[ -x "$repo_root/.venv/bin/python" ]]; then
 else
     python_value="python3"
 fi
-python_bin="$(resolve_executable "$python_value")"
+python_bin="$(resolve_executable_value "Python executable" "$python_value" "python3")"
 
 preflight_code='
-import importlib.util
 import sys
 import jsonschema
 import pypdf
 import yaml
-spec = importlib.util.spec_from_file_location(
-    "_norad_artifact_contracts_preflight", sys.argv[1]
-)
-if spec is None or spec.loader is None:
-    raise ImportError("unable to load artifact-contract validator")
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
+sys.path.insert(0, sys.argv[1])
+from norad.contracts.artifacts import api
 '
 if ! preflight_output="$(
-    "$python_bin" -c "$preflight_code" "$artifact_contracts" 2>&1
+    "$python_bin" -I -c "$preflight_code" "$repo_root/src" 2>&1
 )"; then
     printf '%s\n' \
         "ERROR: Selected Python cannot import required report dependencies" \
-        "       (jsonschema, pypdf, PyYAML, validate_artifact_contracts): $python_bin" \
+        "       (jsonschema, pypdf, PyYAML, artifact-contract API): $python_bin" \
         "       Use the repository .venv or set PYTHON_BIN_OVERRIDE to a compatible Python." \
         >&2
     if [[ -n "$preflight_output" ]]; then

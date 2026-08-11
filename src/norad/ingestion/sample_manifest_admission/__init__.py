@@ -1,0 +1,1 @@
+"""Sample-manifest admission owner."""

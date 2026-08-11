@@ -5,9 +5,17 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from .contracts import review_package
+from norad.libraries.alignments import orientation as alignment_orientation
+from norad.libraries.alignments import star as star_alignment
+from norad.libraries.validation import mpileup as mpileup_report
+from norad.libraries.validation import report as validation_report
+
+from .contracts import contracts, review_package
+
+if TYPE_CHECKING:
+    from .source_checkout import SourceCheckout
 
 PRODUCER = "build_artifact_index"
 PRODUCER_VERSION = "1.0.0"
@@ -15,33 +23,19 @@ ARTIFACT_SCHEMA_VERSION = "1.0.0"
 ARTIFACT_INDEX_SCHEMA_VERSION = "1.0.0"
 ARTIFACT_RECEIPT_SCHEMA_VERSION = "1.0.0"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
-RUN_CONTRACT_FIELDS = (
-    "run_contract_sha256",
-    "sample_manifest_sha256",
-    "reference_contract_sha256",
-    "partition_manifest_sha256",
-    "primary_analysis_id",
-    "primary_analysis_policy_sha256",
-)
+RUN_CONTRACT_FIELDS = ("run_contract_sha256", *contracts.RUN_CONTRACT_COMPONENT_FIELDS)
 ANCHOR_HASH_FIELDS = (
     "sample_manifest_sha256",
     "partition_manifest_sha256",
 )
 STEP09C_CATEGORY_ADAPTERS = {
-    category: f"step09c_{category}_v1"
-    for category in review_package.CATEGORY_ORDER
+    category: f"step09c_{category}_v1" for category in review_package.CATEGORY_ORDER
 }
 
 ARTIFACT_INDEX_HEADER = (
     "run_id",
     "run_contract_sha256",
-    "artifact_id",
-    "step_id",
-    "scope_type",
-    "scope_id",
-    "adapter",
-    "source_path",
-    "required",
+    *contracts.INVENTORY_HEADER,
     "availability_status",
     "completion_status",
     "attempt_provenance_status",
@@ -71,11 +65,7 @@ ARTIFACT_RECEIPT_HEADER = (
     "run_contract_sha256",
     "run_contract_path",
     "run_contract_file_sha256",
-    "sample_manifest_sha256",
-    "reference_contract_sha256",
-    "partition_manifest_sha256",
-    "primary_analysis_id",
-    "primary_analysis_policy_sha256",
+    *contracts.RUN_CONTRACT_COMPONENT_FIELDS,
     "inventory_path",
     "inventory_sha256",
     "inventory_row_count",
@@ -111,59 +101,10 @@ ARTIFACT_RECEIPT_HEADER = (
     "transaction_state",
 )
 
-STEP07_RECEIPT_HEADER = (
-    "cohort_id",
-    "partition_id",
-    "selector_type",
-    "selector_value",
-    "orientation",
-    "vcf_path",
-    "sample_manifest_sha256",
-    "partition_manifest_sha256",
-    "sample_count",
-    "vcf_record_count",
-)
-
-STEP06_COUNTS_HEADER = (
-    "sample_id",
-    "input_records",
-    "flag_99_records",
-    "flag_147_records",
-    "flag_83_records",
-    "flag_163_records",
-    "fwd_like_records",
-    "rev_like_records",
-    "assigned_records",
-    "unassigned_records",
-    "assigned_fraction",
-)
-
-STEP00A_BASENAMES = (
-    "genomeParameters.txt",
-    "Genome",
-    "SA",
-    "SAindex",
-    "chrLength.txt",
-    "chrName.txt",
-    "chrNameLength.txt",
-    "chrStart.txt",
-    "exonGeTrInfo.tab",
-    "exonInfo.tab",
-    "geneInfo.tab",
-    "sjdbInfo.txt",
-    "sjdbList.fromGTF.out.tab",
-    "sjdbList.out.tab",
-    "transcriptInfo.tab",
-)
-VALIDATION_REPORT_HEADER = (
-    "step_id",
-    "scope_id",
-    "check_id",
-    "status",
-    "observed",
-    "expected",
-    "detail",
-)
+STEP07_RECEIPT_HEADER = mpileup_report.RECEIPT_HEADER
+STEP06_COUNTS_HEADER = alignment_orientation.COUNTS_HEADER
+STEP00A_BASENAMES = star_alignment.REQUIRED_INDEX_MEMBERS
+VALIDATION_REPORT_HEADER = validation_report.HEADER
 
 
 class ArtifactIndexError(RuntimeError):
@@ -225,6 +166,7 @@ class Inspection:
 
 @dataclass
 class BuildContext:
+    source_checkout: SourceCheckout
     run_id: str
     run_contract_path: Path
     run_contract: dict[str, Any]
@@ -232,14 +174,11 @@ class BuildContext:
     inventory_path: Path
     inventory_sha256: str
     inventory_rows: list[dict[str, str]]
-    output_root: Path
     output_dir: Path
     records_dir: Path
     artifacts_path: Path
     receipt_path: Path
     lock_path: Path
-    git_commit: str
-    producer_evidence: dict[str, dict[str, Any]]
     inspections: list[Inspection]
     records: list[dict[str, Any]]
     record_bytes: list[bytes]
@@ -247,7 +186,6 @@ class BuildContext:
     index_bytes: bytes
     receipt_row: dict[str, str]
     receipt_bytes: bytes
-    started_at: str
     attempt_id: str
     previous_attempt_id: str | None
     attempt_history: list[str]

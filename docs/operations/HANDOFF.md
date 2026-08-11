@@ -1,9 +1,10 @@
 # Project handoff
 
-This file contains live takeover facts that are not safely reconstructed from
-Git. Resolve branch, commit, upstream relation, and worktree contents directly
-from Git. Use [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) for pipeline
-status, [`RUNBOOK.md`](RUNBOOK.md) for commands, and
+This file owns current evidence ceilings, blockers, and live takeover facts
+that are not safely reconstructed from Git. Resolve branch, commit, upstream
+relation, and worktree contents directly from Git. Use
+[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) for open package families and
+acceptance, [`RUNBOOK.md`](RUNBOOK.md) for commands, and
 [`docs/history`](../history/) for frozen delivery records.
 
 No successor package is selected.
@@ -23,6 +24,22 @@ A transaction proves only reconciliation of its declared inputs and outputs.
 It does not prove every source passed or promote runtime, cluster, scientific,
 or biological state. Current test policy belongs to
 [`TEST_BASELINE.md`](../design/TEST_BASELINE.md).
+
+Completed maintainability decompositions span reporting, artifact and summary
+contracts, the neutral Step `08`/`09` contracts, Step `08`/`09` R owners,
+operational evidence tools, and Step `09c` review helpers. Current system shape
+and exact public routes belong to the [architecture index](../architecture/README.md)
+and [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md);
+Git and dated history preserve delivery detail and extraction measurements.
+
+Those changes preserved public paths, commands, direct-import bindings,
+schemas, serialized bytes, explicit inputs, transaction/recovery behavior,
+fault-injection boundaries, scientific methods, independent-oracle boundaries,
+and evidence semantics. The external REMORA reference is not a parity oracle.
+Known publication defects remain current blockers below. Focused storage and
+public-CLI tests passed, but that storage slice did not rerun the full coverage
+gate. These decompositions establish local maintainability evidence only; they
+add no runtime, cluster, scientific-review, or biological proof.
 
 ## Cohort and preserved scientific evidence
 
@@ -83,8 +100,9 @@ do not mutate the environment incidentally.
   late-foreign-final, incomplete-rollback, descriptor, and stale-lock failure
   states. Passing characterization does not approve them.
 
-Other live defects and recheck routes are indexed in
-[`REFACTOR_AUDIT.md`](../design/REFACTOR_AUDIT.md).
+Cross-cutting contract risks and recheck routes are indexed in
+[`TEST_BASELINE.md`](../design/TEST_BASELINE.md); exact defects remain with the
+applicable owner `README.md` or `CONTRACT.md`.
 
 ## Immediate resume point
 

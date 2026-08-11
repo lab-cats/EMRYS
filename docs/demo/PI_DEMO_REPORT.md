@@ -42,7 +42,7 @@ evidence gate explicitly unlock it.
 The current conceptual reporting boundary belongs in the
 [`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md#publication-and-evidence-flow),
 with implementation and synthetic-demo status in the
-[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md#populated-demo-report). For this
+[`HANDOFF.md`](../operations/HANDOFF.md#evidence-boundary). For this
 discussion, the essential boundary is that a report presents declared
 evidence without creating new computational, cluster, scientific, or
 biological evidence. A synthetic demo must never be presented as production

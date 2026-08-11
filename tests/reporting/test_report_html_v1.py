@@ -13,12 +13,12 @@ import signal
 import subprocess
 import sys
 import time
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
@@ -31,7 +31,6 @@ SCRIPT = (
     / "report_html_v1"
     / "run_html_core.py"
 )
-RUN_SUMMARY_SCRIPT = REPORTING_ROOT / "build_run_summary.py"
 FIXTURE_BUILDER = (
     REPO_ROOT
     / "tests"
@@ -92,7 +91,11 @@ def publish_run_summary(fixture: Any) -> Path:
     result = subprocess.run(
         [
             sys.executable,
-            str(RUN_SUMMARY_SCRIPT),
+            "-I",
+            "-m",
+            "norad",
+            "build",
+            "run-summary",
             *fixture.command_args(execute=True),
         ],
         cwd=REPO_ROOT,
@@ -159,8 +162,7 @@ def attach_fixture_approval_provenance(
     manifest.write_text(
         "table_id\n"
         + "".join(
-            f"{record['table_id']}\n"
-            for record in document["approved_report_tables"]
+            f"{record['table_id']}\n" for record in document["approved_report_tables"]
         ),
         encoding="utf-8",
     )
@@ -258,12 +260,12 @@ payload = (
     "</head><body>" + body + "</body></html>\\n"
 )
 output.write_text(payload, encoding="utf-8")
-"""
-        .replace("__PYTHON__", str(Path(sys.executable).resolve()))
+""".replace("__PYTHON__", str(Path(sys.executable).resolve()))
         .replace("__LOG__", repr(str(log)))
-        .replace("__ENVIRONMENT_LOG__", repr(
-            str(environment_log) if environment_log is not None else None
-        ))
+        .replace(
+            "__ENVIRONMENT_LOG__",
+            repr(str(environment_log) if environment_log is not None else None),
+        )
         .replace("__VERSION__", repr(version))
         .replace("__MODE__", repr(mode))
         .replace(
@@ -428,7 +430,7 @@ def test_execute_invokes_only_quarto_and_publishes_exact_html(
     content = output.read_text(encoding="utf-8")
     assert RENDER.SCIENCE_BANNERS["evidence_incomplete"] in content
     assert RENDER.CANDIDATE_TERMINOLOGY in content
-    assert "<main id=\"norad-report\"" in content
+    assert '<main id="norad-report"' in content
     assert f'data-run-id="{read_summary(incomplete_summary)["run_id"]}"' in content
     assert f'data-renderer-version="{RENDER.PRODUCER_VERSION}"' in content
     assert f'data-quarto-version="{RENDER.QUARTO_VERSION}"' in content
@@ -453,9 +455,7 @@ def test_execute_invokes_only_quarto_and_publishes_exact_html(
             "restore_quarto",
         )
     )
-    assert not any(
-        child.name.endswith("_files") for child in output.parent.iterdir()
-    )
+    assert not any(child.name.endswith("_files") for child in output.parent.iterdir())
     assert not any(
         child.name.startswith(".run-report.") for child in output.parent.iterdir()
     )
@@ -565,11 +565,11 @@ def test_renderer_signal_terminates_complete_quarto_process_group(
             str(incomplete_summary),
             "--output-root",
             str(output_root),
-                "--quarto-bin",
-                str(quarto),
-                "--formats",
-                "html",
-                "--execute",
+            "--quarto-bin",
+            str(quarto),
+            "--formats",
+            "html",
+            "--execute",
         ],
         cwd=REPO_ROOT,
         text=True,
@@ -603,9 +603,7 @@ def test_exploratory_summary_preserves_science_metadata_and_banner(
     document = RENDER._load_run_summary(exploratory_summary)
     qmd = RENDER.build_qmd_bytes(document, ()).decode("utf-8")
 
-    assert RENDER.SCIENCE_BANNERS[
-        "science_review_complete_exploratory"
-    ] in qmd
+    assert RENDER.SCIENCE_BANNERS["science_review_complete_exploratory"] in qmd
     for expected in (
         "Scientific-review metadata",
         "Scientific-review policy versions",
@@ -727,18 +725,14 @@ def test_builder_approved_tables_render_end_to_end(
     assert summary.read_bytes() == untouched
     output = expected_output(output_root, summary)
     rendered = output.read_text(encoding="utf-8")
-    assert (
-        "EXPLORATORY / PROVISIONAL — NOT BIOLOGICALLY VALIDATED."
-        in rendered
-    )
+    assert "EXPLORATORY / PROVISIONAL — NOT BIOLOGICALLY VALIDATED." in rendered
     assert "CMH-ranked candidates: approved selection summary" in rendered
     assert "CMH-ranked candidates: approved adjudication summary" in rendered
     for approval in document["approved_report_tables"]:
         assert approval["path"] in rendered
         assert approval["sha256"] in rendered
-    assert (
-        str(fixture.report_table_approvals)
-        in json.dumps(document["parameters"], sort_keys=True)
+    assert str(fixture.report_table_approvals) in json.dumps(
+        document["parameters"], sort_keys=True
     )
 
 
@@ -910,9 +904,7 @@ def test_mutated_approved_table_hash_and_row_shape_fail_closed(
     ("mutation", "message"),
     [
         (
-            lambda document: document.update(
-                {"schema_version": "999.0.0"}
-            ),
+            lambda document: document.update({"schema_version": "999.0.0"}),
             "failed validation",
         ),
         (
@@ -1101,7 +1093,7 @@ def test_interrupt_immediately_after_backup_rename_restores_prior_report(
     RENDER.publish_report(first_context)
     prior = first_context.output_html.read_bytes()
     second_context = RENDER.prepare_context(arguments)
-    original_link = RENDER.os.link
+    original_link = RENDER._owner._publication.os.link
     interrupted = False
 
     def interrupt_after_backup(
@@ -1116,14 +1108,17 @@ def test_interrupt_immediately_after_backup_rename_restores_prior_report(
             destination,
             follow_symlinks=follow_symlinks,
         )
-        if (
-            Path(source) == second_context.output_html
-            and Path(destination).name.endswith(".previous")
-        ):
+        if Path(source) == second_context.output_html and Path(
+            destination
+        ).name.endswith(".previous"):
             interrupted = True
             raise KeyboardInterrupt("synthetic post-backup interrupt")
 
-    monkeypatch.setattr(RENDER.os, "link", interrupt_after_backup)
+    monkeypatch.setattr(
+        RENDER._owner._publication.os,
+        "link",
+        interrupt_after_backup,
+    )
     with pytest.raises(
         KeyboardInterrupt,
         match="synthetic post-backup interrupt",
@@ -1159,7 +1154,7 @@ def test_interrupt_during_lock_acquisition_cleans_lock_and_restores_handlers(
         ]
     )
     context = RENDER.prepare_context(arguments)
-    original_write = RENDER.os.write
+    original_write = RENDER._owner._transaction.os.write
     original_handlers = {
         signum: signal.getsignal(signum)
         for signum in (signal.SIGHUP, signal.SIGINT, signal.SIGTERM)
@@ -1174,7 +1169,11 @@ def test_interrupt_during_lock_acquisition_cleans_lock_and_restores_handlers(
             raise KeyboardInterrupt("synthetic lock-acquisition interrupt")
         return written
 
-    monkeypatch.setattr(RENDER.os, "write", interrupt_after_lock_write)
+    monkeypatch.setattr(
+        RENDER._owner._transaction.os,
+        "write",
+        interrupt_after_lock_write,
+    )
     with pytest.raises(
         KeyboardInterrupt,
         match="synthetic lock-acquisition interrupt",
@@ -1212,12 +1211,14 @@ def test_signal_handlers_remain_installed_through_lock_release(
 
     def inspect_release(ownership: Any) -> None:
         nonlocal observed_custom_handler
-        observed_custom_handler = (
-            signal.getsignal(signal.SIGTERM) != original_handler
-        )
+        observed_custom_handler = signal.getsignal(signal.SIGTERM) != original_handler
         original_release(ownership)
 
-    monkeypatch.setattr(RENDER, "_release_lock", inspect_release)
+    monkeypatch.setattr(
+        RENDER._owner._publication,
+        "_release_lock",
+        inspect_release,
+    )
     RENDER.publish_report(context)
 
     assert observed_custom_handler
@@ -1254,7 +1255,7 @@ def test_foreign_replacement_during_rollback_retains_lock_and_recovery(
     ) -> None:
         if Path(path) == context.output_html:
             Path(path).write_text(
-                "<!doctype html><html lang=\"en\"><body>foreign</body></html>",
+                '<!doctype html><html lang="en"><body>foreign</body></html>',
                 encoding="utf-8",
             )
             raise RENDER.ReportRenderError(
@@ -1267,7 +1268,7 @@ def test_foreign_replacement_during_rollback_retains_lock_and_recovery(
         )
 
     monkeypatch.setattr(
-        RENDER,
+        RENDER._owner._publication,
         "validate_rendered_html",
         replace_final_then_fail,
     )
@@ -1282,12 +1283,10 @@ def test_foreign_replacement_during_rollback_retains_lock_and_recovery(
     )
     assert context.lock_path.is_file()
     assert any(
-        child.name.endswith(".RECOVERY.txt")
-        for child in context.output_dir.iterdir()
+        child.name.endswith(".RECOVERY.txt") for child in context.output_dir.iterdir()
     )
     assert any(
-        child.name.startswith(".run-report.")
-        for child in context.output_dir.iterdir()
+        child.name.startswith(".run-report.") for child in context.output_dir.iterdir()
     )
 
 
@@ -1310,7 +1309,7 @@ def test_late_foreign_final_is_never_clobbered(
         ]
     )
     context = RENDER.prepare_context(arguments)
-    original_link = RENDER.os.link
+    original_link = RENDER._owner._publication.os.link
     foreign = b"late foreign final\n"
     injected = False
 
@@ -1330,7 +1329,11 @@ def test_late_foreign_final_is_never_clobbered(
             follow_symlinks=follow_symlinks,
         )
 
-    monkeypatch.setattr(RENDER.os, "link", inject_foreign_final)
+    monkeypatch.setattr(
+        RENDER._owner._publication.os,
+        "link",
+        inject_foreign_final,
+    )
     with pytest.raises(
         RENDER.ReportRenderError,
         match="rollback was incomplete",
@@ -1341,8 +1344,7 @@ def test_late_foreign_final_is_never_clobbered(
     assert context.output_html.read_bytes() == foreign
     assert context.lock_path.is_file()
     assert any(
-        child.name.endswith(".RECOVERY.txt")
-        for child in context.output_dir.iterdir()
+        child.name.endswith(".RECOVERY.txt") for child in context.output_dir.iterdir()
     )
 
 
@@ -1368,7 +1370,7 @@ def test_late_foreign_backup_is_never_clobbered(
     RENDER.publish_report(first_context)
     prior = first_context.output_html.read_bytes()
     context = RENDER.prepare_context(arguments)
-    original_link = RENDER.os.link
+    original_link = RENDER._owner._publication.os.link
     foreign = b"late foreign backup\n"
     foreign_backup: Path | None = None
 
@@ -1380,10 +1382,7 @@ def test_late_foreign_backup_is_never_clobbered(
     ) -> None:
         nonlocal foreign_backup
         destination_path = Path(destination)
-        if (
-            destination_path.name.endswith(".previous")
-            and foreign_backup is None
-        ):
+        if destination_path.name.endswith(".previous") and foreign_backup is None:
             destination_path.write_bytes(foreign)
             foreign_backup = destination_path
         original_link(
@@ -1392,7 +1391,11 @@ def test_late_foreign_backup_is_never_clobbered(
             follow_symlinks=follow_symlinks,
         )
 
-    monkeypatch.setattr(RENDER.os, "link", inject_foreign_backup)
+    monkeypatch.setattr(
+        RENDER._owner._publication.os,
+        "link",
+        inject_foreign_backup,
+    )
     with pytest.raises(
         RENDER.ReportRenderError,
         match="rollback was incomplete",
@@ -1404,8 +1407,7 @@ def test_late_foreign_backup_is_never_clobbered(
     assert foreign_backup.read_bytes() == foreign
     assert context.lock_path.is_file()
     assert any(
-        child.name.endswith(".RECOVERY.txt")
-        for child in context.output_dir.iterdir()
+        child.name.endswith(".RECOVERY.txt") for child in context.output_dir.iterdir()
     )
 
 
@@ -1441,7 +1443,11 @@ def test_post_commit_backup_cleanup_failure_preserves_new_report_and_lock(
                 raise OSError("synthetic post-commit backup cleanup failure")
         original_sync(path)
 
-    monkeypatch.setattr(RENDER, "_fsync_directory", fail_post_commit_backup_sync)
+    monkeypatch.setattr(
+        RENDER._owner._publication,
+        "_fsync_directory",
+        fail_post_commit_backup_sync,
+    )
     with pytest.raises(
         RENDER.ReportRenderError,
         match="cleanup failed",

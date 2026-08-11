@@ -12,7 +12,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
 GIT_ORCHESTRATION_ROOT = SCRIPTS_ROOT / "git_orchestration"
@@ -23,105 +22,96 @@ MAKE_EXPANSION_GOLDEN = (
     / "public_cli_contracts"
     / "make_target_expansions.json"
 )
+CLI_USAGE_ERROR = 2
 
 PYTHON_ENTRYPOINT_PATHS = {
-    "build_artifact_index.py": Path(
-        "src/norad/reporting/build_artifact_index.py"
-    ),
-    "build_run_summary.py": Path("src/norad/reporting/build_run_summary.py"),
-    "gtf_to_bed12.py": Path(
-        "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py"
-    ),
-    "reference_provenance.py": Path(
-        "src/norad/evidence/reference_provenance/reference_provenance.py"
-    ),
     "render_run_report.py": Path("src/norad/reporting/render_run_report.py"),
     "render_run_report_bundle.py": Path(
         "src/norad/reporting/render_run_report_bundle.py"
     ),
     "restore_quarto.py": Path("scripts/restore_quarto.py"),
-    "runtime_preflight.py": Path(
-        "src/norad/evidence/runtime_preflight/runtime_preflight.py"
-    ),
-    "step_09c_scientific_validation.py": Path(
-        "src/norad/evidence/assemble_scientific_review_evidence_package/"
-        "step_09c_scientific_validation.py"
-    ),
-    "storage_inventory.py": Path(
-        "src/norad/evidence/storage_inventory/storage_inventory.py"
-    ),
-    "validate_artifact_contracts.py": Path(
-        "src/norad/contracts/artifacts/validate_artifact_contracts.py"
-    ),
-    "validate_manifest.py": Path(
-        "src/norad/ingestion/sample_manifest_admission/validate_manifest.py"
-    ),
-    "validate_step_00a_star_index.py": Path(
-        "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
-    ),
-    "validate_step_00b_bed12.py": Path(
-        "src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py"
-    ),
-    "validate_step_00c_reference_sidecars.py": Path(
-        "src/norad/stages/construct_FASTA_sidecars/"
-        "validate_step_00c_reference_sidecars.py"
-    ),
-    "validate_step_01_star_alignment.py": Path(
-        "src/norad/stages/align_RNA_reads_with_STAR/"
-        "validate_step_01_star_alignment.py"
-    ),
-    "validate_step_02_canonical_bam.py": Path(
-        "src/norad/stages/construct_canonical_BAM/"
-        "validate_step_02_canonical_bam.py"
-    ),
-    "validate_step_02b_bam_qc.py": Path(
-        "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
-        "validate_step_02b_bam_qc.py"
-    ),
-    "validate_step_03_rseqc_orientation.py": Path(
-        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
-        "validate_step_03_rseqc_orientation.py"
-    ),
-    "validate_step_04_mark_duplicates.py": Path(
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
-        "validate_step_04_mark_duplicates.py"
-    ),
-    "validate_step_05_split_ncigar.py": Path(
-        "src/norad/stages/split_N_cigar_reads_with_GATK/"
-        "validate_step_05_split_ncigar.py"
-    ),
-    "validate_step_06_orientation_outputs.py": Path(
-        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
-        "validate_step_06_orientation_outputs.py"
-    ),
-    "validate_step_07_mpileup_outputs.py": Path(
-        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
-        "validate_step_07_mpileup_outputs.py"
-    ),
-    "validate_step_08_preprocessing_outputs.py": Path(
-        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
-        "validate_step_08_preprocessing_outputs.py"
-    ),
-    "validate_step_09_cmh_outputs.py": Path(
-        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
-        "validate_step_09_cmh_outputs.py"
-    ),
 }
 PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
+REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
+    {
+        "render_run_report.py",
+        "render_run_report_bundle.py",
+    }
+)
 PRIVATE_PYTHON_MODULES = frozenset()
 DIRECT_PYTHON_ENTRYPOINTS = frozenset(
     {
-        "build_run_summary.py",
-        "gtf_to_bed12.py",
-        "reference_provenance.py",
         "render_run_report.py",
         "restore_quarto.py",
-        "runtime_preflight.py",
-        "validate_artifact_contracts.py",
-        "validate_manifest.py",
     }
 )
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
+NORAD_COMMANDS = (
+    (
+        ("build", "artifact-index"),
+        "usage: norad build artifact-index",
+    ),
+    (
+        ("build", "run-summary"),
+        "usage: norad build run-summary",
+    ),
+    (
+        ("validate", "artifact-contracts"),
+        "usage: norad validate artifact-contracts",
+    ),
+    (
+        ("assemble", "scientific-review-package"),
+        "usage: norad assemble scientific-review-package",
+    ),
+    (
+        ("reconcile", "reference-provenance"),
+        "usage: norad reconcile reference-provenance",
+    ),
+    (
+        ("inspect", "runtime-availability"),
+        "usage: norad inspect runtime-availability",
+    ),
+    (
+        ("inspect", "storage-inventory"),
+        "usage: norad inspect storage-inventory",
+    ),
+    (("convert", "gtf-to-bed12"), "usage: norad convert gtf-to-bed12"),
+    (("validate", "bed12"), "usage: norad validate bed12"),
+    (("validate", "canonical-bam"), "usage: norad validate canonical-bam"),
+    (
+        ("validate", "canonical-bam-qc"),
+        "usage: norad validate canonical-bam-qc",
+    ),
+    (
+        ("validate", "cohort-candidate-preprocessing"),
+        "usage: norad validate cohort-candidate-preprocessing",
+    ),
+    (
+        ("validate", "duplicate-marking"),
+        "usage: norad validate duplicate-marking",
+    ),
+    (("validate", "fasta-sidecars"), "usage: norad validate fasta-sidecars"),
+    (("validate", "manifest"), "usage: norad validate manifest"),
+    (
+        ("validate", "mechanical-orientation"),
+        "usage: norad validate mechanical-orientation",
+    ),
+    (
+        ("validate", "paired-cmh-candidate-ranking"),
+        "usage: norad validate paired-cmh-candidate-ranking",
+    ),
+    (
+        ("validate", "partitioned-cohort-mpileup"),
+        "usage: norad validate partitioned-cohort-mpileup",
+    ),
+    (
+        ("validate", "rseqc-orientation"),
+        "usage: norad validate rseqc-orientation",
+    ),
+    (("validate", "split-n-cigar"), "usage: norad validate split-n-cigar"),
+    (("validate", "star-alignment"), "usage: norad validate star-alignment"),
+    (("validate", "star-index"), "usage: norad validate star-index"),
+)
 
 SHELL_ENTRYPOINT_PATHS = {
     "check_fastq_pairs.sh": Path(
@@ -129,50 +119,44 @@ SHELL_ENTRYPOINT_PATHS = {
     ),
     "render_run_report.sh": Path("src/norad/reporting/render_run_report.sh"),
     "step_00c_prepare_gatk_reference.sh": Path(
-        "src/norad/stages/construct_FASTA_sidecars/"
-        "step_00c_prepare_gatk_reference.sh"
+        "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
     ),
     "step_01_star_align.sh": Path(
-        "src/norad/stages/align_RNA_reads_with_STAR/step_01_star_align.sh"
+        "src/norad/stages/star_alignment/step_01_star_align.sh"
     ),
     "step_02_sort_index_bam.sh": Path(
-        "src/norad/stages/construct_canonical_BAM/step_02_sort_index_bam.sh"
+        "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh"
     ),
     "step_02b_bam_qc.sh": Path(
-        "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
-        "step_02b_bam_qc.sh"
+        "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
     ),
     "step_03_infer_strandedness_and_orientation.sh": Path(
-        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
+        "src/norad/evidence/rseqc_orientation/"
         "step_03_infer_strandedness_and_orientation.sh"
     ),
     "step_04_mark_duplicates.sh": Path(
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
-        "step_04_mark_duplicates.sh"
+        "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh"
     ),
     "step_05_split_n_cigar_reads.sh": Path(
-        "src/norad/stages/split_N_cigar_reads_with_GATK/"
-        "step_05_split_n_cigar_reads.sh"
+        "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
     ),
     "step_06_split_bam_by_read_orientation.sh": Path(
-        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
+        "src/norad/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh"
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.sh": Path(
-        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
+        "src/norad/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
     "step_08_vcf_preprocessing.sh": Path(
-        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
-        "step_08_vcf_preprocessing.sh"
+        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
     ),
     "step_09_cmh_editing_site_calling.sh": Path(
-        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh"
     ),
     "step_09c_scientific_validation.sh": Path(
-        "src/norad/evidence/assemble_scientific_review_evidence_package/"
-        "step_09c_scientific_validation.sh"
+        "src/norad/evidence/scientific_review_package/step_09c_scientific_validation.sh"
     ),
 }
 SHELL_ENTRYPOINTS = frozenset(SHELL_ENTRYPOINT_PATHS)
@@ -189,18 +173,15 @@ R_ENTRYPOINT_PATHS = {
     "check_r_environment.R": Path("scripts/check_r_environment.R"),
     "restore_r_environment.R": Path("scripts/restore_r_environment.R"),
     "step_08_vcf_preprocessing.R": Path(
-        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
-        "step_08_vcf_preprocessing.R"
+        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
     ),
     "step_09_cmh_editing_site_calling.R": Path(
-        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
+        "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.R"
     ),
 }
 R_ENTRYPOINTS = frozenset(R_ENTRYPOINT_PATHS)
-DIRECT_R_ENTRYPOINTS = frozenset(
-    {"check_r_environment.R", "restore_r_environment.R"}
-)
+DIRECT_R_ENTRYPOINTS = frozenset({"check_r_environment.R", "restore_r_environment.R"})
 RSCRIPT_ONLY_ENTRYPOINTS = R_ENTRYPOINTS - DIRECT_R_ENTRYPOINTS
 
 GIT_ORCHESTRATION_PYTHON_ENTRYPOINTS = frozenset(
@@ -228,21 +209,17 @@ MAKE_TARGET_DECISIONS = {
     "python-coverage-measure": "explicit_output",
     "python-coverage-check": "local_gate",
     "python-coverage-baseline-update": "operator_mutation",
-    "validation-python-coverage": "internal_lane",
     "validation-guarded-r": "internal_lane",
     "validation-static": "internal_lane",
     "validate": "local_gate",
     "smoke": "local_gate",
     "lint": "local_gate",
     "all-checks": "local_gate",
-    "demo-step03-dry-run": "cluster_deferred",
-    "demo-step03": "cluster_deferred",
 }
 MAKE_CONTEXT_VARIABLES = frozenset(
     {
         "DEMO_REPORT_FORMATS",
         "DEMO_REPORT_ROOT",
-        "DEMO_SAMPLE",
         "PYTHON_BIN",
         "PYTHON_COVERAGE_BASELINE",
         "PYTHON_COVERAGE_CURRENT",
@@ -317,10 +294,7 @@ def expected_make_expansions() -> dict[str, tuple[str, ...]]:
     """Load the independently reviewed literal Make expansion oracle."""
 
     document = json.loads(MAKE_EXPANSION_GOLDEN.read_text(encoding="utf-8"))
-    return {
-        target: tuple(lines)
-        for target, lines in document.items()
-    }
+    return {target: tuple(lines) for target, lines in document.items()}
 
 
 def canonical_make_environment() -> dict[str, str]:
@@ -389,8 +363,8 @@ def test_make_expansion_ignores_ambient_make_state(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
-    assert normalized_make_expansion(result.stdout) == (
-        expected_make_expansions()["test"]
+    assert (
+        normalized_make_expansion(result.stdout) == (expected_make_expansions()["test"])
     )
 
 
@@ -503,6 +477,144 @@ def test_python_help_and_parse_failure_are_cwd_independent_and_side_effect_free(
     assert relative_snapshot(tmp_path) == before
 
 
+@pytest.mark.parametrize(("command", "expected_usage"), NORAD_COMMANDS)
+def test_installed_norad_commands_are_isolated_and_cwd_independent(
+    command: tuple[str, ...],
+    expected_usage: str,
+    tmp_path: Path,
+) -> None:
+    foreign_root = tmp_path / "foreign"
+    foreign_package = foreign_root / "norad"
+    foreign_package.mkdir(parents=True)
+    (foreign_package / "__init__.py").write_text(
+        "raise RuntimeError('foreign norad package imported')\n",
+        encoding="utf-8",
+    )
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(foreign_root)
+    before = relative_snapshot(tmp_path)
+
+    help_result = run_command(
+        [sys.executable, "-I", "-m", "norad", *command, "--help"],
+        cwd=invocation_cwd,
+        env=environment,
+    )
+    parse_failure = run_command(
+        [
+            sys.executable,
+            "-I",
+            "-m",
+            "norad",
+            *command,
+            "--definitely-not-a-public-option",
+        ],
+        cwd=invocation_cwd,
+        env=environment,
+    )
+
+    assert help_result.returncode == 0, help_result.stderr
+    assert expected_usage in help_result.stdout
+    assert parse_failure.returncode != 0
+    assert expected_usage in parse_failure.stderr
+    assert "foreign norad package imported" not in help_result.stderr
+    assert relative_snapshot(tmp_path) == before
+
+
+def test_run_summary_help_and_parse_failure_do_not_import_builder(
+    tmp_path: Path,
+) -> None:
+    """Parser termination keeps the private run-summary builder lazy."""
+    program = """
+import json
+import sys
+
+from norad import __main__ as cli
+
+statuses = []
+for arguments in (["build", "run-summary", "--help"], ["build", "run-summary"]):
+    try:
+        cli.main(arguments)
+    except SystemExit as error:
+        statuses.append(error.code)
+print(json.dumps({
+    "builder_loaded": "norad.reporting._run_summary.builder" in sys.modules,
+    "statuses": statuses,
+}))
+"""
+    result = run_command(
+        [sys.executable, "-I", "-c", program],
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    observed = json.loads(result.stdout.splitlines()[-1])
+    assert observed == {
+        "builder_loaded": False,
+        "statuses": [0, CLI_USAGE_ERROR],
+    }
+    assert relative_snapshot(tmp_path) == ()
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        ("--help",),
+        ("build", "--help"),
+        ("convert", "--help"),
+        ("validate", "--help"),
+    ),
+)
+def test_installed_norad_command_routing_help(
+    arguments: tuple[str, ...],
+    tmp_path: Path,
+) -> None:
+    result = run_command(
+        [sys.executable, "-I", "-m", "norad", *arguments],
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "usage: norad" in result.stdout
+    assert relative_snapshot(tmp_path) == ()
+
+
+@pytest.mark.parametrize(
+    "entrypoint",
+    sorted(REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS),
+)
+def test_repository_package_bootstrap_precedes_ambient_pythonpath(
+    entrypoint: str,
+    tmp_path: Path,
+) -> None:
+    foreign_root = tmp_path / "foreign"
+    foreign_package = foreign_root / "norad"
+    foreign_package.mkdir(parents=True)
+    (foreign_package / "__init__.py").write_text(
+        "raise RuntimeError('foreign norad package imported')\n",
+        encoding="utf-8",
+    )
+    invocation_cwd = tmp_path / "invocation"
+    invocation_cwd.mkdir()
+    environment = os.environ.copy()
+    environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    environment["PYTHONPATH"] = os.pathsep.join(
+        (str(foreign_root), str(REPO_ROOT / "src"))
+    )
+    before = relative_snapshot(tmp_path)
+
+    result = run_command(
+        [sys.executable, str(python_entrypoint_path(entrypoint)), "--help"],
+        cwd=invocation_cwd,
+        env=environment,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "foreign norad package imported" not in result.stderr
+    assert relative_snapshot(tmp_path) == before
+
+
 @pytest.mark.parametrize("entrypoint", sorted(DIRECT_PYTHON_ENTRYPOINTS))
 def test_executable_python_help_uses_a_prepared_path_from_arbitrary_cwd(
     entrypoint: str,
@@ -513,7 +625,7 @@ def test_executable_python_help_uses_a_prepared_path_from_arbitrary_cwd(
     shim_dir.mkdir()
     python_shim = shim_dir / "python3"
     python_shim.write_text(
-        f"#!/bin/sh\nexec {str(Path(sys.executable))!r} \"$@\"\n",
+        f'#!/bin/sh\nexec {str(Path(sys.executable))!r} "$@"\n',
         encoding="utf-8",
     )
     python_shim.chmod(0o755)
@@ -588,23 +700,15 @@ def test_rscript_only_entrypoint_modes_are_explicit(entrypoint: str) -> None:
 
 
 def test_make_target_inventory_and_applicability_decisions_are_complete() -> None:
-    makefile_lines = (REPO_ROOT / "Makefile").read_text(
-        encoding="utf-8"
-    ).splitlines()
-    phony_line = next(
-        line
-        for line in makefile_lines
-        if line.startswith(".PHONY:")
-    )
+    makefile_lines = (REPO_ROOT / "Makefile").read_text(encoding="utf-8").splitlines()
+    phony_line = next(line for line in makefile_lines if line.startswith(".PHONY:"))
     live_targets = set(phony_line.partition(":")[2].split())
     configurable_variables = {
         match.group(1)
         for line in makefile_lines
         if (match := re.match(r"^([A-Z][A-Z0-9_]*)\s*\?=", line))
     }
-    include_lines = [
-        line for line in makefile_lines if line.startswith("include ")
-    ]
+    include_lines = [line for line in makefile_lines if line.startswith("include ")]
 
     assert live_targets == set(MAKE_TARGET_DECISIONS)
     assert configurable_variables == MAKE_CONTEXT_VARIABLES
@@ -615,10 +719,8 @@ def test_make_target_inventory_and_applicability_decisions_are_complete() -> Non
     assert include_lines == [
         "include $(NORAD_MAKE_ROOT)/scripts/make_quality.mk",
         "include $(NORAD_MAKE_ROOT)/scripts/make_reporting.mk",
-        "include $(NORAD_MAKE_ROOT)/scripts/make_cluster_demo.mk",
     ]
     assert set(MAKE_TARGET_DECISIONS.values()) == {
-        "cluster_deferred",
         "explicit_output",
         "internal_lane",
         "local_gate",
@@ -642,18 +744,44 @@ def test_make_targets_have_side_effect_free_command_expansion(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
-    assert normalized_make_expansion(result.stdout) == (
-        expected_make_expansions()[target]
+    assert (
+        normalized_make_expansion(result.stdout) == (expected_make_expansions()[target])
     )
     assert relative_snapshot(tmp_path) == before
+
+
+def test_make_validation_targets_honor_report_python_bin(
+    tmp_path: Path,
+) -> None:
+    result = run_command(
+        [
+            "make",
+            "-n",
+            "--no-print-directory",
+            "-C",
+            str(REPO_ROOT),
+            "REPORT_PYTHON_BIN=/sentinel/python",
+            "test",
+            "validate",
+            "lint",
+        ],
+        cwd=tmp_path,
+        env=canonical_make_environment(),
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stderr == ""
+    lines = result.stdout.splitlines()
+    assert sum("/sentinel/python" in line for line in lines) == 6
+    assert not any(".venv/bin/python" in line for line in lines)
 
 
 def test_make_expansion_oracle_rejects_recipe_mutation(
     tmp_path: Path,
 ) -> None:
     source = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
-    original = "test:\n\tpython -m pytest\n"
-    mutated = "test:\n\tpython -m pytest -q\n"
+    original = 'test:\n\t"$(REPORT_PYTHON_BIN)" -m pytest\n'
+    mutated = 'test:\n\t"$(REPORT_PYTHON_BIN)" -m pytest -q\n'
     assert original in source
     mutated_makefile = tmp_path / "Makefile"
     mutated_makefile.write_text(
@@ -678,6 +806,6 @@ def test_make_expansion_oracle_rejects_recipe_mutation(
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert normalized_make_expansion(result.stdout) != (
-        expected_make_expansions()["test"]
+    assert (
+        normalized_make_expansion(result.stdout) != (expected_make_expansions()["test"])
     )

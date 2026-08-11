@@ -10,11 +10,21 @@ import importlib.util
 import json
 import os
 import sys
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
+from norad.evidence.scientific_review_package import publisher as STEP09C_PUBLISHER
+from norad.evidence.scientific_review_package._scientific_review import (
+    context as STEP09C_CONTEXT,
+)
+from norad.evidence.scientific_review_package._scientific_review import (
+    contracts as STEP09C,
+)
+from norad.reporting._artifact_index.source_checkout import SourceCheckout
+from tests.evidence.scientific_review_package import build_fixture as STEP09C_FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 ADAPTER_FIXTURE_PATH = (
@@ -23,13 +33,6 @@ ADAPTER_FIXTURE_PATH = (
     / "reporting"
     / "fixtures"
     / "artifact_adapters_v1"
-    / "build_fixture.py"
-)
-STEP09C_FIXTURE_PATH = (
-    REPO_ROOT
-    / "tests"
-    / "evidence"
-    / "assemble_scientific_review_evidence_package"
     / "build_fixture.py"
 )
 FIXED_EPOCH = "1700000000"
@@ -78,13 +81,8 @@ ADAPTER_FIXTURE = load_module(
     "norad_run_summary_adapter_fixture",
     ADAPTER_FIXTURE_PATH,
 )
-STEP09C_FIXTURE = load_module(
-    "norad_run_summary_step09c_fixture",
-    STEP09C_FIXTURE_PATH,
-)
-ADAPTER = ADAPTER_FIXTURE.ADAPTER
-STEP09C = STEP09C_FIXTURE.CONTRACT
-REVIEW_PACKAGE = STEP09C_FIXTURE.REVIEW_PACKAGE
+ADAPTER = ADAPTER_FIXTURE.builder
+REVIEW_PACKAGE = STEP09C.review_package
 
 
 @dataclass(frozen=True)
@@ -141,6 +139,8 @@ class RunSummaryFixture:
         include_approvals: bool | None = None,
     ) -> list[str]:
         arguments = [
+            "--source-checkout",
+            str(REPO_ROOT),
             "--run-id",
             self.run_id,
             "--artifact-receipt",
@@ -204,7 +204,8 @@ def publish_adapter_fixture(fixture: Any) -> None:
                 inventory=fixture.inventory,
                 output_root=fixture.output_root,
                 execute=True,
-            )
+            ),
+            source_checkout=SourceCheckout(root=REPO_ROOT),
         )
         ADAPTER.publish_context(context)
     finally:
@@ -341,7 +342,11 @@ def explicit_science_inventory_rows(
     step09_dir = fixture.step09_analysis_dir
     review_dir = fixture.output_root / review_id
     step08_validation = (
-        fixture.root / "results" / "qc" / "validation" / "08"
+        fixture.root
+        / "results"
+        / "qc"
+        / "validation"
+        / "08"
         / f"{cohort_id}.validation.tsv"
     )
     step08_validation.parent.mkdir(parents=True, exist_ok=True)
@@ -450,7 +455,11 @@ def explicit_science_inventory_rows(
         for suffix, adapter, source in step09_sources
     )
     step09_validation = (
-        fixture.root / "results" / "qc" / "validation" / "09"
+        fixture.root
+        / "results"
+        / "qc"
+        / "validation"
+        / "09"
         / f"{analysis_id}.validation.tsv"
     )
     write_tsv(
@@ -534,8 +543,7 @@ def normalize_explicit_science_transaction(
     record_bytes: list[bytes] = []
     for inventory_row in fixture.adapter_fixture.inventory_rows:
         record_path = (
-            fixture.adapter_fixture.records_dir
-            / f"{inventory_row['artifact_id']}.json"
+            fixture.adapter_fixture.records_dir / f"{inventory_row['artifact_id']}.json"
         )
         record = ADAPTER.contracts.load_json_object(
             record_path,
@@ -566,9 +574,7 @@ def normalize_explicit_science_transaction(
     old_receipt = old_receipt_rows[0]
     attempt_history = old_receipt["adapter_attempt_history"].split(",")
     attempt_id = attempt_history[-1]
-    previous_attempt_id = (
-        attempt_history[-2] if len(attempt_history) > 1 else None
-    )
+    previous_attempt_id = attempt_history[-2] if len(attempt_history) > 1 else None
     run_contract = ADAPTER.contracts.load_json_object(
         fixture.adapter_fixture.run_contract,
         "explicit-science run contract",
@@ -577,9 +583,7 @@ def normalize_explicit_science_transaction(
         run_id=fixture.run_id,
         run_contract=run_contract,
         run_contract_path=fixture.adapter_fixture.run_contract,
-        run_contract_file_sha256=sha256_file(
-            fixture.adapter_fixture.run_contract
-        ),
+        run_contract_file_sha256=sha256_file(fixture.adapter_fixture.run_contract),
         inventory_path=fixture.adapter_fixture.inventory,
         inventory_sha256=sha256_file(fixture.adapter_fixture.inventory),
         inventory_row_count=len(fixture.adapter_fixture.inventory_rows),
@@ -600,9 +604,7 @@ def normalize_explicit_science_transaction(
         run_id=fixture.run_id,
         run_contract=run_contract,
         run_contract_path=fixture.adapter_fixture.run_contract,
-        run_contract_file_sha256=sha256_file(
-            fixture.adapter_fixture.run_contract
-        ),
+        run_contract_file_sha256=sha256_file(fixture.adapter_fixture.run_contract),
         inventory_path=fixture.adapter_fixture.inventory,
         inventory_sha256=sha256_file(fixture.adapter_fixture.inventory),
         inventory_rows=fixture.adapter_fixture.inventory_rows,
@@ -638,8 +640,7 @@ def build_explicit_science_fixture(
         )
     if computational_scope_bundle and mixed_computational:
         raise ValueError(
-            "computational_scope_bundle and mixed_computational are "
-            "mutually exclusive"
+            "computational_scope_bundle and mixed_computational are mutually exclusive"
         )
     if (
         missing_categories
@@ -650,9 +651,7 @@ def build_explicit_science_fixture(
         or empty_candidate_selection
     ):
         if science_status != "evidence_incomplete":
-            raise ValueError(
-                "incomplete evidence variants require evidence_incomplete"
-            )
+            raise ValueError("incomplete evidence variants require evidence_incomplete")
         with step09c_fixture.evidence_manifest.open(
             encoding="utf-8", newline=""
         ) as stream:
@@ -706,14 +705,10 @@ def build_explicit_science_fixture(
             ),
         )
         for category, evidence_id, header in empty_categories:
-            source_path = (
-                step09c_fixture.root / "evidence" / f"{category}.tsv"
-            )
+            source_path = step09c_fixture.root / "evidence" / f"{category}.tsv"
             write_tsv(source_path, header, [])
             manifest_row = next(
-                row
-                for row in evidence_rows
-                if row["evidence_id"] == evidence_id
+                row for row in evidence_rows if row["evidence_id"] == evidence_id
             )
             manifest_row["source_sha256"] = sha256_file(source_path)
             manifest_row["source_row_count"] = "0"
@@ -733,9 +728,7 @@ def build_explicit_science_fixture(
             )
     elif mixed_categories:
         complete = next(
-            row
-            for row in evidence_rows
-            if row["evidence_category"] == "qc_funnel"
+            row for row in evidence_rows if row["evidence_category"] == "qc_funnel"
         )
         missing = {
             **complete,
@@ -796,9 +789,7 @@ def build_explicit_science_fixture(
         for row in evidence_rows:
             row["reviewer"] = "Jane Doe"
             row["owner"] = "Scientific Review Team"
-        decisions_path = (
-            step09c_fixture.root / "evidence" / "decisions.tsv"
-        )
+        decisions_path = step09c_fixture.root / "evidence" / "decisions.tsv"
         decision_rows = read_tsv(decisions_path)
         for row in decision_rows:
             row["decision_owner"] = "Jane Doe"
@@ -814,15 +805,11 @@ def build_explicit_science_fixture(
         decisions_manifest["source_row_count"] = str(len(decision_rows))
     if computational_scope_bundle:
         computational_path = (
-            step09c_fixture.root
-            / "evidence"
-            / "computational_validation.tsv"
+            step09c_fixture.root / "evidence" / "computational_validation.tsv"
         )
         computational_rows = read_tsv(computational_path)
         if len(computational_rows) != 1:
-            raise RuntimeError(
-                "Expected one initial computational-validation row"
-            )
+            raise RuntimeError("Expected one initial computational-validation row")
         evidence_dir = step09c_fixture.root / "computational_evidence"
         evidence_dir.mkdir(parents=True, exist_ok=True)
         scope_specs = (
@@ -890,13 +877,9 @@ def build_explicit_science_fixture(
             bundled_rows,
         )
         computational_manifest = next(
-            row
-            for row in evidence_rows
-            if row["evidence_id"] == "e_computational"
+            row for row in evidence_rows if row["evidence_id"] == "e_computational"
         )
-        computational_manifest["source_sha256"] = sha256_file(
-            computational_path
-        )
+        computational_manifest["source_sha256"] = sha256_file(computational_path)
         computational_manifest["source_row_count"] = str(len(bundled_rows))
     if (
         missing_categories
@@ -911,11 +894,11 @@ def build_explicit_science_fixture(
             STEP09C.EVIDENCE_MANIFEST_HEADER,
             evidence_rows,
         )
-    arguments = STEP09C.parse_arguments(
-        [*step09c_fixture.command_args(), "--execute"]
-    )
-    context, output_tables = STEP09C.build_context(arguments)
-    STEP09C.publish_outputs(context, output_tables)
+    parser = argparse.ArgumentParser()
+    STEP09C_PUBLISHER.configure_parser(parser)
+    arguments = parser.parse_args([*step09c_fixture.command_args(), "--execute"])
+    context, output_tables = STEP09C_CONTEXT.build_context(arguments)
+    STEP09C_PUBLISHER._publish_outputs(context, output_tables)
 
     resolved_run_id = run_id or (
         "science_exploratory_run"
@@ -931,9 +914,7 @@ def build_explicit_science_fixture(
     write_run_contract(
         run_contract,
         sample_manifest_sha256=sha256_file(step09c_fixture.sample_manifest),
-        partition_manifest_sha256=sha256_file(
-            step09c_fixture.partition_manifest
-        ),
+        partition_manifest_sha256=sha256_file(step09c_fixture.partition_manifest),
         primary_analysis_id=STEP09C_FIXTURE.PRIMARY_ANALYSIS_ID,
     )
     output_root = root / "artifacts"
@@ -945,18 +926,13 @@ def build_explicit_science_fixture(
         source_root=step09c_fixture.root,
         output_root=output_root,
         inventory_rows=tuple(rows),
-        source_paths={
-            row["artifact_id"]: Path(row["source_path"]) for row in rows
-        },
+        source_paths={row["artifact_id"]: Path(row["source_path"]) for row in rows},
     )
     publish_adapter_fixture(adapter_fixture)
     science_review_summary = (
         step09c_fixture.output_root
         / step09c_fixture.review_id
-        / (
-            f"{step09c_fixture.review_id}."
-            "step09c_review_summary.tsv"
-        )
+        / (f"{step09c_fixture.review_id}.step09c_review_summary.tsv")
     )
     fixture = RunSummaryFixture(
         root=root,
@@ -977,8 +953,7 @@ def build_explicit_science_fixture(
         if row["step_id"] == "09c"
     ]
     if len(review_records) != 13 or any(
-        record["completion_status"] != "complete"
-        or record["scientific_state"] is None
+        record["completion_status"] != "complete" or record["scientific_state"] is None
         for record in review_records
     ):
         raise RuntimeError(
@@ -1011,9 +986,7 @@ def add_report_table_approvals(
             if row["adapter"] == expected_adapter
         ]
         if len(matching) != 1:
-            raise RuntimeError(
-                f"Expected one fixture artifact for {expected_adapter}"
-            )
+            raise RuntimeError(f"Expected one fixture artifact for {expected_adapter}")
         artifact_id = matching[0]["artifact_id"]
         record = ADAPTER.contracts.load_json_object(
             fixture.adapter_fixture.records_dir / f"{artifact_id}.json",
@@ -1033,9 +1006,7 @@ def add_report_table_approvals(
         rows.append(
             {
                 "run_id": fixture.run_id,
-                "run_contract_sha256": run_contract[
-                    "run_contract_sha256"
-                ],
+                "run_contract_sha256": run_contract["run_contract_sha256"],
                 "table_id": f"synthetic_{role}",
                 "artifact_id": artifact_id,
                 "role": role,
@@ -1080,13 +1051,9 @@ def build_approved_science_fixture(
         root,
         science_status=science_status,
         run_id=run_id,
-        empty_candidate_selection=(
-            "candidate_selection" in header_only_roles
-        ),
+        empty_candidate_selection=("candidate_selection" in header_only_roles),
     )
-    unsupported_header_only = set(header_only_roles) - {
-        "candidate_selection"
-    }
+    unsupported_header_only = set(header_only_roles) - {"candidate_selection"}
     if unsupported_header_only:
         raise ValueError(
             "Unsupported header-only fixture roles: "
@@ -1120,9 +1087,7 @@ def build_full_science_demo_fixture(root: Path) -> RunSummaryFixture:
         for row in base_fixture.inventory_rows
         if row["step_id"] not in {"08", "09", "09c"}
     ]
-    late_rows = [
-        dict(row) for row in science_fixture.adapter_fixture.inventory_rows
-    ]
+    late_rows = [dict(row) for row in science_fixture.adapter_fixture.inventory_rows]
     inventory_rows = [*early_rows, *late_rows]
     if len(inventory_rows) != 81:
         raise RuntimeError(
@@ -1155,8 +1120,7 @@ def build_full_science_demo_fixture(root: Path) -> RunSummaryFixture:
         output_root=output_root,
         inventory_rows=tuple(inventory_rows),
         source_paths={
-            row["artifact_id"]: Path(row["source_path"])
-            for row in inventory_rows
+            row["artifact_id"]: Path(row["source_path"]) for row in inventory_rows
         },
     )
     publish_adapter_fixture(adapter_fixture)
@@ -1196,9 +1160,7 @@ def main() -> int:
     )
     arguments = parser.parse_args()
     if arguments.full_science_demo and arguments.science_status != "none":
-        parser.error(
-            "--full-science-demo cannot be combined with --science-status"
-        )
+        parser.error("--full-science-demo cannot be combined with --science-status")
     if arguments.full_science_demo:
         fixture = build_full_science_demo_fixture(arguments.root)
     elif arguments.science_status == "none":

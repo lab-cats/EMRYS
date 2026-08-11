@@ -12,7 +12,14 @@
 # job lightweight enough for login-node-style debugging through SLURM.
 set -euo pipefail
 
-# Print job context before loading Python.
+# Resolve the submitted checkout before selecting its explicitly installed Python.
+cd "${SLURM_SUBMIT_DIR:-$PWD}"
+python_bin="${NORAD_PYTHON_BIN:-$PWD/.venv/bin/python}"
+if [[ ! -x "$python_bin" ]]; then
+  printf 'ERROR: NORAD Python is not executable: %s\n' "$python_bin" >&2
+  exit 2
+fi
+
 echo "Job ID: ${SLURM_JOB_ID:-none}"
 echo "Job name: ${SLURM_JOB_NAME:-none}"
 echo "Node: $(hostname)"
@@ -20,13 +27,10 @@ echo "Started: $(date)"
 echo "Working directory: $PWD"
 echo "TMPDIR: ${TMPDIR:-unset}"
 
-# Load Python inside the job so validation does not depend on the submit shell.
-module load python39
+"$python_bin" --version
 
-python --version
-
-# Run the manifest validator with repository-relative paths.
-python src/norad/ingestion/sample_manifest_admission/validate_manifest.py \
+# Isolated mode prevents an ambient PYTHONPATH from replacing the selected package.
+"$python_bin" -I -m norad validate manifest \
   --manifest configs/samples.example.tsv \
   --base-dir .
 

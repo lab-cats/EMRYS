@@ -9,12 +9,11 @@ import inspect
 import json
 import shutil
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Callable
 
 import pytest
-
 
 ROOT = Path(__file__).resolve().parents[3]
 OWNER = ROOT / "src/norad/contracts/scientific_evidence/step08.py"
@@ -243,8 +242,7 @@ def public_fingerprint(module) -> bytes:
     document = {
         "constants": {name: getattr(module, name) for name in constants},
         "functions": {
-            name: str(inspect.signature(getattr(module, name)))
-            for name in functions
+            name: str(inspect.signature(getattr(module, name))) for name in functions
         },
         "table_fields": list(module.Table.__dataclass_fields__),
         "error_base": [value.__name__ for value in module.ContractError.__mro__],
@@ -257,8 +255,7 @@ def test_public_api_fingerprint_matches_pre_extraction_oracle() -> None:
 
     assert len(payload) == 3316
     assert hashlib.sha256(payload).hexdigest() == (
-        "8824d7b30f3c45dddcb475d21d4382ac"
-        "52de2520031cdd89bab107fb2edc2bf1"
+        "8824d7b30f3c45dddcb475d21d4382ac52de2520031cdd89bab107fb2edc2bf1"
     )
     assert STEP08.ContractError.__mro__[:2] == (
         STEP08.ContractError,
@@ -299,9 +296,12 @@ def test_valid_contract_preserves_exact_results_and_characterized_permissiveness
     replace_cell(fixture.sites, 0, "DP__S", "NA")
     replace_cell(fixture.sites, 0, "AD__S", "NA")
     replace_cell(fixture.sites, 0, "AF__S", "NA")
-    assert STEP08.validate_step08_sites(
-        fixture.sites, sample_ids, partitions.rows, inputs.rows
-    ).rows[0]["DP__S"] == "NA"
+    assert (
+        STEP08.validate_step08_sites(
+            fixture.sites, sample_ids, partitions.rows, inputs.rows
+        ).rows[0]["DP__S"]
+        == "NA"
+    )
 
 
 def test_optional_manifest_and_allowed_vocabularies(tmp_path: Path) -> None:
@@ -439,7 +439,10 @@ def test_private_parsing_closure_preserves_exact_edges(tmp_path: Path) -> None:
             "inputs_annotation",
             "Step 08 input receipt contains inconsistent annotation provenance.",
         ),
-        ("inputs_policy", "Step 08 input receipt contains multiple orientation policies."),
+        (
+            "inputs_policy",
+            "Step 08 input receipt contains multiple orientation policies.",
+        ),
         ("sites_unknown_partition", "references an unknown partition"),
         ("sites_bad_orientation", "orientation must be one of FWD_like, REV_like"),
         (

@@ -1,9 +1,8 @@
 # Local STAR-index fixture path
 
-This directory preserves the local STAR-index path named by the deferred
-[`local profile`](../../configs/local_test.yaml) and the Step `01` dry-run
-contract. The profile is unconsumed, and the tracked README is not a valid STAR
-index; neither supplies runtime, cluster, scientific, or biological evidence.
+This directory preserves the local STAR-index path used by the Step `01`
+dry-run contract. The tracked README is not a valid STAR index and supplies no
+runtime, cluster, scientific, or biological evidence.
 
 The owning wrapper creates this empty directory and placeholder FASTQ inputs
 for its default dry run; it does not populate a STAR index. Execute mode rejects

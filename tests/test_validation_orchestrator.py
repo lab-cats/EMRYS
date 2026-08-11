@@ -2,14 +2,13 @@ import configparser
 import importlib.util
 import json
 import os
-from pathlib import Path
 import signal
 import sys
 import threading
 import time
+from pathlib import Path
 
 import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TOOL_PATH = REPO_ROOT / "tests" / "tools" / "run_validation.py"
@@ -60,6 +59,7 @@ def test_interface_bounds_and_lane_partition(tmp_path: Path) -> None:
     assert tuple(lane.name for lane in parallel) == TOOL.LANE_NAMES
     assert "-n" not in serial[0].command[-1]
     assert "-n 4 --dist=loadfile" in parallel[0].command[-1]
+    assert "python-coverage-check" in serial[0].command
     assert "validation-shell-contracts" in serial[1].command
     assert "validation-guarded-r" in serial[2].command
     assert "validation-report-runtime" in serial[3].command
@@ -67,22 +67,28 @@ def test_interface_bounds_and_lane_partition(tmp_path: Path) -> None:
 
 def test_dependency_and_make_wiring_are_explicit() -> None:
     requirements = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
+    development_requirements = (REPO_ROOT / "requirements-dev.txt").read_text(
+        encoding="utf-8"
+    )
     assert f"pytest-xdist=={TOOL.XDIST_VERSION}" in requirements.splitlines()
     assert f"execnet=={TOOL.EXECNET_VERSION}" in requirements.splitlines()
+    for requirement in ("ruff==0.16.2", "setuptools==80.9.0", "vulture==2.16"):
+        assert requirement in development_requirements.splitlines()
+    assert "pylint" not in development_requirements.lower()
 
     config = configparser.ConfigParser()
     config.read(REPO_ROOT / ".coveragerc", encoding="utf-8")
     assert config.getboolean("run", "parallel")
 
     root_makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
-    quality_makefile = (
-        REPO_ROOT / "scripts" / "make_quality.mk"
-    ).read_text(encoding="utf-8")
-    reporting_makefile = (
-        REPO_ROOT / "scripts" / "make_reporting.mk"
-    ).read_text(encoding="utf-8")
+    quality_makefile = (REPO_ROOT / "scripts" / "make_quality.mk").read_text(
+        encoding="utf-8"
+    )
+    reporting_makefile = (REPO_ROOT / "scripts" / "make_reporting.mk").read_text(
+        encoding="utf-8"
+    )
     for target in (
-        "validation-python-coverage:",
+        "python-coverage-check:",
         "validation-shell-contracts:",
         "validation-guarded-r:",
         "validation-static:",
@@ -93,18 +99,21 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         assert target in reporting_makefile
     assert "tests/tools/run_validation.py" in quality_makefile
     assert "PYTHON_COVERAGE_PYTEST_ARGS" in root_makefile
+    assert "validation-static: lint" in quality_makefile
+    assert 'version("ruff")' in quality_makefile
+    assert 'version("vulture")' in quality_makefile
+    assert '"$(RUFF_BIN)" check --no-cache' in quality_makefile
+    assert '"$(VULTURE_BIN)"' in quality_makefile
+    assert "--exit-zero" not in quality_makefile
+    assert "skipping dead-code scan" not in quality_makefile
 
 
 def test_selected_environment_has_exact_parallel_dependencies() -> None:
     TOOL.require_parallel_dependencies(Path(sys.executable))
     assert (
-        TOOL.package_version(Path(sys.executable), "pytest-xdist")
-        == TOOL.XDIST_VERSION
+        TOOL.package_version(Path(sys.executable), "pytest-xdist") == TOOL.XDIST_VERSION
     )
-    assert (
-        TOOL.package_version(Path(sys.executable), "execnet")
-        == TOOL.EXECNET_VERSION
-    )
+    assert TOOL.package_version(Path(sys.executable), "execnet") == TOOL.EXECNET_VERSION
 
 
 def test_executable_validation_preserves_virtualenv_symlink(
@@ -169,14 +178,13 @@ def test_first_failure_propagates_and_kills_child_process_group(
     slow_source = (
         "from pathlib import Path; import subprocess, sys, time; "
         "subprocess.Popen([sys.executable, '-c', "
-        f"\"from pathlib import Path; import time; time.sleep(1.0); "
+        f'"from pathlib import Path; import time; time.sleep(1.0); '
         f"Path({str(survived)!r}).write_text('survived')\"]); "
         f"Path({str(ready)!r}).write_text('ready'); "
         "time.sleep(10)"
     )
     failure_source = (
-        "import sys, time; time.sleep(0.5); "
-        "print('controlled failure'); sys.exit(7)"
+        "import sys, time; time.sleep(0.5); print('controlled failure'); sys.exit(7)"
     )
     outcome = TOOL.run_lanes(
         [
@@ -217,7 +225,7 @@ def test_sigint_cleans_process_tree_and_restores_handler(
     lane_source = (
         "from pathlib import Path; import subprocess, sys, time; "
         "subprocess.Popen([sys.executable, '-c', "
-        f"\"from pathlib import Path; import time; time.sleep(1.0); "
+        f'"from pathlib import Path; import time; time.sleep(1.0); '
         f"Path({str(survived)!r}).write_text('survived')\"]); "
         f"Path({str(ready)!r}).write_text('ready'); "
         "time.sleep(10)"

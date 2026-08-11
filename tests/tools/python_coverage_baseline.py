@@ -4,19 +4,19 @@
 from __future__ import annotations
 
 import argparse
-from decimal import Decimal, ROUND_HALF_UP
 import json
-from pathlib import Path
 import sys
-from typing import Any, Sequence
-
+from collections.abc import Sequence
+from decimal import ROUND_HALF_UP, Decimal
+from pathlib import Path
+from typing import Any
 
 SCHEMA_VERSION = "1.0.0"
 COVERAGE_VERSION = "7.15.2"
 SOURCE_ROOTS = ("scripts", "src/norad")
 REQUIRED_SUBPROCESS_FILES = (
-    "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py",
-    "src/norad/ingestion/sample_manifest_admission/validate_manifest.py",
+    "src/norad/stages/gtf_to_bed12/converter.py",
+    "src/norad/ingestion/sample_manifest_admission/validator.py",
 )
 NEW_SHARED_LINE_MINIMUM = (90, 100)
 NEW_SHARED_BRANCH_MINIMUM = (85, 100)
@@ -75,6 +75,30 @@ def rate_text(covered: int, total: int) -> str:
     return str(value.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP))
 
 
+def snapshot_contract() -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "tool": {
+            "name": "coverage.py",
+            "version": COVERAGE_VERSION,
+        },
+        "measurement": {
+            "branch": True,
+            "source": list(SOURCE_ROOTS),
+            "subprocess": True,
+            "test_command": [".venv/bin/python", "-m", "pytest"],
+        },
+        "policy": {
+            "global_non_regression": ["line_rate", "branch_rate"],
+            "new_shared_python_module_minimum": {
+                "line_rate": rate_text(*NEW_SHARED_LINE_MINIMUM),
+                "branch_rate": rate_text(*NEW_SHARED_BRANCH_MINIMUM),
+            },
+            "required_subprocess_coverage": list(REQUIRED_SUBPROCESS_FILES),
+        },
+    }
+
+
 def normalized_source_path(value: Any) -> str:
     if not isinstance(value, str) or not value:
         raise SnapshotError("Coverage source path must be a nonempty string")
@@ -82,9 +106,13 @@ def normalized_source_path(value: Any) -> str:
     if path.startswith("/") or path != str(Path(path).as_posix()):
         raise SnapshotError(f"Coverage source path is not normalized: {value}")
     if ".." in Path(path).parts or not path.endswith(".py"):
-        raise SnapshotError(f"Coverage source path is outside the Python policy: {value}")
+        raise SnapshotError(
+            f"Coverage source path is outside the Python policy: {value}"
+        )
     if not any(path.startswith(f"{root}/") for root in SOURCE_ROOTS):
-        raise SnapshotError(f"Coverage source path is outside configured roots: {value}")
+        raise SnapshotError(
+            f"Coverage source path is outside configured roots: {value}"
+        )
     return path
 
 
@@ -105,12 +133,8 @@ def measured_file(path: str, summary: Any) -> dict[str, Any]:
     return {
         "path": path,
         **counts,
-        "line_rate": rate_text(
-            counts["covered_lines"], counts["num_statements"]
-        ),
-        "branch_rate": rate_text(
-            counts["covered_branches"], counts["num_branches"]
-        ),
+        "line_rate": rate_text(counts["covered_lines"], counts["num_statements"]),
+        "branch_rate": rate_text(counts["covered_branches"], counts["num_branches"]),
     }
 
 
@@ -153,29 +177,11 @@ def build_snapshot(document: Any) -> dict[str, Any]:
     for required in REQUIRED_SUBPROCESS_FILES:
         if required not in file_map or file_map[required]["covered_lines"] == 0:
             raise SnapshotError(
-                "Subprocess coverage is missing for required file: " f"{required}"
+                f"Subprocess coverage is missing for required file: {required}"
             )
 
     return {
-        "schema_version": SCHEMA_VERSION,
-        "tool": {
-            "name": "coverage.py",
-            "version": COVERAGE_VERSION,
-        },
-        "measurement": {
-            "branch": True,
-            "source": list(SOURCE_ROOTS),
-            "subprocess": True,
-            "test_command": [".venv/bin/python", "-m", "pytest"],
-        },
-        "policy": {
-            "global_non_regression": ["line_rate", "branch_rate"],
-            "new_shared_python_module_minimum": {
-                "line_rate": rate_text(*NEW_SHARED_LINE_MINIMUM),
-                "branch_rate": rate_text(*NEW_SHARED_BRANCH_MINIMUM),
-            },
-            "required_subprocess_coverage": list(REQUIRED_SUBPROCESS_FILES),
-        },
+        **snapshot_contract(),
         "totals": {
             **aggregate,
             "line_rate": rate_text(
@@ -191,29 +197,15 @@ def build_snapshot(document: Any) -> dict[str, Any]:
 
 def validate_snapshot(document: Any, label: str) -> dict[str, Any]:
     payload = require_mapping(document, label)
-    if payload.get("schema_version") != SCHEMA_VERSION:
-        raise SnapshotError(f"{label} has an unsupported schema_version")
-    expected_tool = {"name": "coverage.py", "version": COVERAGE_VERSION}
-    if payload.get("tool") != expected_tool:
-        raise SnapshotError(f"{label} has an unexpected coverage tool identity")
-    expected_measurement = {
-        "branch": True,
-        "source": list(SOURCE_ROOTS),
-        "subprocess": True,
-        "test_command": [".venv/bin/python", "-m", "pytest"],
-    }
-    if payload.get("measurement") != expected_measurement:
-        raise SnapshotError(f"{label} has an unexpected measurement policy")
-    expected_policy = {
-        "global_non_regression": ["line_rate", "branch_rate"],
-        "new_shared_python_module_minimum": {
-            "line_rate": rate_text(*NEW_SHARED_LINE_MINIMUM),
-            "branch_rate": rate_text(*NEW_SHARED_BRANCH_MINIMUM),
-        },
-        "required_subprocess_coverage": list(REQUIRED_SUBPROCESS_FILES),
-    }
-    if payload.get("policy") != expected_policy:
-        raise SnapshotError(f"{label} has an unexpected coverage policy")
+    expected = snapshot_contract()
+    for field, problem in (
+        ("schema_version", "unsupported schema_version"),
+        ("tool", "unexpected coverage tool identity"),
+        ("measurement", "unexpected measurement policy"),
+        ("policy", "unexpected coverage policy"),
+    ):
+        if payload.get(field) != expected[field]:
+            raise SnapshotError(f"{label} has an {problem}")
 
     raw_files = payload.get("files")
     if not isinstance(raw_files, list) or not raw_files:
@@ -227,9 +219,7 @@ def validate_snapshot(document: Any, label: str) -> dict[str, Any]:
             raise SnapshotError(f"{label} repeats coverage file {path}")
         seen.add(path)
         counts = {
-            field: require_count(
-                entry.get(field), f"{label}.files[{index}].{field}"
-            )
+            field: require_count(entry.get(field), f"{label}.files[{index}].{field}")
             for field in COUNT_FIELDS
         }
         expected = measured_file(path, counts)
@@ -242,9 +232,7 @@ def validate_snapshot(document: Any, label: str) -> dict[str, Any]:
     aggregate = {field: sum(item[field] for item in files) for field in COUNT_FIELDS}
     expected_totals = {
         **aggregate,
-        "line_rate": rate_text(
-            aggregate["covered_lines"], aggregate["num_statements"]
-        ),
+        "line_rate": rate_text(aggregate["covered_lines"], aggregate["num_statements"]),
         "branch_rate": rate_text(
             aggregate["covered_branches"], aggregate["num_branches"]
         ),
@@ -307,9 +295,7 @@ def compare_snapshots(
             entry["num_statements"],
             *NEW_SHARED_LINE_MINIMUM,
         ):
-            raise SnapshotError(
-                f"New shared module line coverage is below 90%: {path}"
-            )
+            raise SnapshotError(f"New shared module line coverage is below 90%: {path}")
         if not ratio_is_at_least(
             entry["covered_branches"],
             entry["num_branches"],

@@ -5,7 +5,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = (
     REPO_ROOT
@@ -168,8 +167,7 @@ def test_unequal_read_counts_fail_after_reporting_both_counts(
         + "  R2 total reads: 3\n"
     )
     assert result.stderr == (
-        "Sample ID: unequal\n"
-        "FAIL: FASTQ read counts differ: R1=2 R2=3\n"
+        "Sample ID: unequal\nFAIL: FASTQ read counts differ: R1=2 R2=3\n"
     )
     assert tree_snapshot(tmp_path) == before
 
@@ -270,8 +268,7 @@ def test_non_four_line_input_fails_before_read_counts_are_reported(
         num_reads=1,
     )
     assert result.stderr == (
-        "Sample ID: malformed\n"
-        "FAIL: R1 FASTQ line count is not divisible by 4: 3\n"
+        "Sample ID: malformed\nFAIL: R1 FASTQ line count is not divisible by 4: 3\n"
     )
     assert tree_snapshot(tmp_path) == before
 
@@ -291,9 +288,7 @@ def test_gunzip_child_failure_propagates_without_checker_diagnostic(
     r1.write_bytes(b"not inspected by the failing child\n")
     r2 = write_fastq(tmp_path / "reads_R2.fastq", ["read_001"], 2)
     environment = os.environ.copy()
-    environment["PATH"] = os.pathsep.join(
-        (str(fake_bin), environment.get("PATH", ""))
-    )
+    environment["PATH"] = os.pathsep.join((str(fake_bin), environment.get("PATH", "")))
     before = tree_snapshot(tmp_path)
 
     result = run_checker(

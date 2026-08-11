@@ -1,0 +1,1 @@
+"""Partitioned cohort mpileup owner."""

@@ -4,57 +4,48 @@ from __future__ import annotations
 
 import json
 from collections import Counter, OrderedDict
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from .inputs import _fail
 from .models import contracts
 from .transaction import _stable_unique
 
+
 def _artifact_statuses(artifact: Mapping[str, Any]) -> dict[str, str]:
     return contracts.artifact_status_dimensions(dict(artifact))
+
+
+STATUS_FIELDS = contracts.RUN_SUMMARY_STATUS_FIELDS
+
+
+def _scope_statuses(scope_artifacts: list[dict[str, Any]]) -> dict[str, str]:
+    return {
+        field: contracts.aggregate_equal_or_mixed(
+            _artifact_statuses(artifact)[field] for artifact in scope_artifacts
+        )
+        for field in STATUS_FIELDS
+    }
 
 
 def _build_expected_scopes(
     artifacts: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    grouped: OrderedDict[
-        tuple[str, str, str], list[dict[str, Any]]
-    ] = OrderedDict()
+    grouped: OrderedDict[tuple[str, str, str], list[dict[str, Any]]] = OrderedDict()
     for artifact in artifacts:
-        scope = artifact["scope"]
-        key = (
-            scope["step_id"],
-            scope["scope_type"],
-            scope["scope_id"],
-        )
+        key = contracts.scope_key(artifact["scope"])
         grouped.setdefault(key, []).append(artifact)
 
     expected_scopes: list[dict[str, Any]] = []
     artifact_scope_order: dict[str, int] = {}
     for scope_order, (key, scope_artifacts) in enumerate(grouped.items(), 1):
         warnings = _stable_unique(
-            issue
-            for artifact in scope_artifacts
-            for issue in artifact["warnings"]
+            issue for artifact in scope_artifacts for issue in artifact["warnings"]
         )
         errors = _stable_unique(
-            issue
-            for artifact in scope_artifacts
-            for issue in artifact["errors"]
+            issue for artifact in scope_artifacts for issue in artifact["errors"]
         )
-        status_values = {
-            field: contracts.aggregate_equal_or_mixed(
-                _artifact_statuses(artifact)[field]
-                for artifact in scope_artifacts
-            )
-            for field in (
-                "implementation_status",
-                "local_test_status",
-                "runtime_validation_status",
-                "cluster_dry_run_status",
-                "cluster_proof_status",
-            )
-        }
+        status_values = _scope_statuses(scope_artifacts)
         expected_scopes.append(
             {
                 "scope": {
@@ -65,9 +56,7 @@ def _build_expected_scopes(
                 "artifact_ids": [
                     artifact["artifact_id"] for artifact in scope_artifacts
                 ],
-                "aggregate_state": contracts.aggregate_artifact_state(
-                    scope_artifacts
-                ),
+                "aggregate_state": contracts.aggregate_artifact_state(scope_artifacts),
                 **status_values,
                 "warnings": warnings,
                 "errors": errors,
@@ -91,8 +80,7 @@ def _build_attempts(
             if prior is not None:
                 if prior != attempt:
                     _fail(
-                        f"Artifact attempt {attempt_id!r} has conflicting "
-                        "definitions"
+                        f"Artifact attempt {attempt_id!r} has conflicting definitions"
                     )
                 continue
             copy = dict(attempt)
@@ -116,36 +104,22 @@ def _build_rollup(
         "missing_artifact_count": states["missing"],
         "incomplete_artifact_count": states["incomplete"],
         "failed_artifact_count": states["failed"],
-        "externally_unavailable_artifact_count": states[
-            "externally_unavailable"
-        ],
+        "externally_unavailable_artifact_count": states["externally_unavailable"],
     }
-    for field in (
-        "implementation_status",
-        "local_test_status",
-        "runtime_validation_status",
-        "cluster_dry_run_status",
-        "cluster_proof_status",
-    ):
-        result[field] = contracts.aggregate_equal_or_mixed(
-            _artifact_statuses(artifact)[field] for artifact in artifacts
-        )
+    for field, value in _scope_statuses(artifacts).items():
+        result[field] = value
     return result
 
 
 def _build_tools(artifacts: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return _stable_unique(
-        tool for artifact in artifacts for tool in artifact["tools"]
-    )
+    return _stable_unique(tool for artifact in artifacts for tool in artifact["tools"])
 
 
 def _build_qc_metrics(
     artifacts: list[dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], set[str]]:
     counts = Counter(
-        metric["metric_id"]
-        for artifact in artifacts
-        for metric in artifact["metrics"]
+        metric["metric_id"] for artifact in artifacts for metric in artifact["metrics"]
     )
     metrics = [
         dict(metric)
@@ -153,9 +127,7 @@ def _build_qc_metrics(
         for metric in artifact["metrics"]
         if counts[metric["metric_id"]] == 1
     ]
-    duplicate_ids = {
-        metric_id for metric_id, count in counts.items() if count > 1
-    }
+    duplicate_ids = {metric_id for metric_id, count in counts.items() if count > 1}
     return metrics, duplicate_ids
 
 
@@ -202,9 +174,7 @@ def _build_limitations(
             }
         ]
     )
-    used_ids = {
-        limitation["limitation_id"] for limitation in limitations
-    }
+    used_ids = {limitation["limitation_id"] for limitation in limitations}
     incomplete_required = [
         artifact["artifact_id"]
         for artifact in artifacts
@@ -241,10 +211,7 @@ def _issue_for_duplicate_metrics(
     related = [
         artifact["artifact_id"]
         for artifact in artifacts
-        if any(
-            metric["metric_id"] in duplicate_ids
-            for metric in artifact["metrics"]
-        )
+        if any(metric["metric_id"] in duplicate_ids for metric in artifact["metrics"])
     ]
     return {
         "code": "duplicate_qc_metric_ids_not_promoted",
@@ -256,6 +223,7 @@ def _issue_for_duplicate_metrics(
         "related_artifact_ids": related,
         "evidence": [],
     }
+
 
 def _metric_value_type(value: Any) -> str:
     if value is None:
@@ -280,15 +248,11 @@ def _build_summary_rows(
         rows.append(
             {
                 "run_id": document["run_id"],
-                "run_contract_sha256": document["run_contract"][
-                    "run_contract_sha256"
-                ],
+                "run_contract_sha256": document["run_contract"]["run_contract_sha256"],
                 "summary_state": document["summary_state"],
                 "science_status": document["science_status"],
                 "artifact_order": artifact_order,
-                "scope_order": artifact_scope_order[
-                    artifact["artifact_id"]
-                ],
+                "scope_order": artifact_scope_order[artifact["artifact_id"]],
                 "step_id": artifact["scope"]["step_id"],
                 "scope_type": artifact["scope"]["scope_type"],
                 "scope_id": artifact["scope"]["scope_id"],
@@ -342,9 +306,7 @@ def _build_qc_rows(document: Mapping[str, Any]) -> list[dict[str, Any]]:
                     "value_type": _metric_value_type(value),
                     "unit": metric["unit"] or "",
                     "status": metric["status"],
-                    "source_artifact_id": (
-                        metric["source_artifact_id"] or ""
-                    ),
+                    "source_artifact_id": (metric["source_artifact_id"] or ""),
                 }
             )
     return rows

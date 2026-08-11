@@ -8,8 +8,17 @@ candidate generation, paired CMH ranking, evidence assembly, and report
 projection. See the [architecture index](docs/architecture/README.md) for the
 organized current-system authority, including the scientist-facing flow,
 system map, functional-owner inventory, source topology, stage map, and
-diagrams. NORAD does not yet provide a single workflow orchestrator or
-installed command-line application.
+diagrams. NORAD does not yet provide a single workflow orchestrator. Its
+explicitly installed, unreleased Python distribution provides an isolated,
+grouped module command for migrated owners, beginning with sample-manifest,
+STAR-index, FASTA-sidecar, STAR-alignment, canonical-BAM, canonical-BAM-QC,
+RSeQC-orientation, duplicate-marking, split-N-cigar, mechanical-orientation,
+partitioned-cohort-mpileup, cohort-candidate-preprocessing, and
+paired-CMH-candidate-ranking, artifact-index and run-summary building,
+artifact-contract validation, reference-provenance reconciliation,
+runtime-availability and
+storage-inventory inspection, scientific-review-package assembly, plus
+GTF-to-BED12 conversion/validation and named schema/report resources.
 
 ## Start here
 
@@ -34,7 +43,7 @@ production references may remain operator- or cluster-local.
 3. Choose the applicable owner through the
    [sample-manifest admission index](src/norad/ingestion/README.md),
    [transformation-stage index](src/norad/stages/README.md),
-   [analysis owner](src/norad/analyses/rank_cohort_candidates_with_paired_CMH/README.md),
+   [analysis owner](src/norad/analyses/paired_cmh_candidate_ranking/README.md),
    [evidence index](src/norad/evidence/README.md), or
    [reporting index](src/norad/reporting/README.md). Read the routed `README.md`
    and any adjacent `CONTRACT.md`, then follow that owner's validation and
@@ -46,9 +55,10 @@ production references may remain operator- or cluster-local.
    [troubleshooting](docs/operations/TROUBLESHOOTING.md) for symptom-based
    diagnosis.
 
-For current implementation and evidence state, read
+For current evidence state and blockers, read
 [`HANDOFF.md`](docs/operations/HANDOFF.md). For planned work and acceptance
-boundaries, read [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md).
+boundaries, read [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md); the
+[architecture index](docs/architecture/README.md) owns implemented system views.
 
 To generate a synthetic presentation bundle, follow the
 [demo-report procedure](docs/demo/README.md),
@@ -76,22 +86,17 @@ scientific policy explicitly unlocks it.
 
 | Path | Purpose |
 | --- | --- |
-| [`src/norad/ingestion/`](src/norad/ingestion/README.md) | Bounded sample-manifest admission, paired-FASTQ diagnostics, and the manifest scheduler smoke check; no ingestion runner. |
-| [`src/norad/stages/`](src/norad/stages/README.md) | Transformation owners and their local producer, validator, scheduler, and contract routes. |
-| [`src/norad/analyses/`](src/norad/analyses/rank_cohort_candidates_with_paired_CMH/README.md), [`src/norad/evidence/`](src/norad/evidence/README.md), [`src/norad/reporting/`](src/norad/reporting/README.md) | Paired-CMH analysis, evidence operations, and report projection. |
-| [`src/norad/contracts/`](src/norad/contracts/) and [`src/norad/libraries/`](src/norad/libraries/README.md) | Neutral schemas, validators, topology maps, and explicitly shared libraries. |
+| [`src/`](src/README.md) | NORAD source domains, functional owners, neutral contracts, and shared libraries. |
 | [`configs/`](configs/README.md) | Public inputs, structural starters, selections, and reference tables; there is no universal config loader. |
 | [`scripts/`](scripts/README.md) | Explicit dependency lifecycle plus documentation and Git tooling. |
 | [`tests/`](tests/) | Active Python, shell, R, contract, and fixture protection, plus explicitly non-runnable future scaffolds under `tests/pending/`. |
-| [`docs/`](docs/sitemap/README.md) | Architecture, operations, design, task, history, and demonstration documentation. |
+| [`docs/`](docs/README.md) | Architecture, operations, design, task, history, reference, and demonstration documentation. |
 | [`data/`](data/README.md) and [`refs/`](refs/README.md) | Operator-managed input and reference workspaces; large or runtime children are ignored while safety guidance is tracked. |
 | [`results/`](results/README.md) and [`logs/`](logs/README.md) | Ignored generated outputs and scheduler streams; generated does not automatically mean disposable. |
 | [`renv/`](renv/README.md) and [root tool configuration](docs/operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration) | Explicit dependency activation plus conventional Python, R, pytest, and coverage configuration. |
 
 Use the [documentation sitemap](docs/sitemap/README.md) for category-level
-navigation and the
-[ownership map](docs/sitemap/DOCUMENTATION_OWNERSHIP.md) for canonical
-responsibility boundaries.
+navigation and canonical responsibility boundaries.
 
 ## Data and repository safety
 

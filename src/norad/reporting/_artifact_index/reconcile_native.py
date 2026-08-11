@@ -4,12 +4,31 @@ from __future__ import annotations
 
 import re
 from collections import Counter, defaultdict
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping, Sequence
+
+from norad.libraries.alignments import orientation as alignment_orientation
 
 from .contracts import step08
 from .core import declared_contract_path, issue
-from .models import ArtifactIndexError, Inspection, STEP06_COUNTS_HEADER
+from .models import STEP06_COUNTS_HEADER, ArtifactIndexError, Inspection
+
+
+@dataclass(frozen=True)
+class NativeSourceIndex:
+    source_root: Path
+    by_path: Mapping[Path, Inspection]
+
+
+def infer_orient_from_path(path: Path) -> str:
+    orientation = alignment_orientation.infer_orientation_from_path(path)
+    if orientation is None:
+        raise ArtifactIndexError(
+            f"Unable to infer mechanical orientation from filename: {path}"
+        )
+    return orientation
+
 
 def native_int(row: Mapping[str, str], field_name: str) -> int:
     value = row.get(field_name, "")
@@ -36,11 +55,7 @@ def mark_native_transaction_failed(
     )
     if marker is None:
         marker = next(
-            (
-                member
-                for member in members
-                if member.completion_status == "complete"
-            ),
+            (member for member in members if member.completion_status == "complete"),
             None,
         )
     if marker is None:
@@ -62,14 +77,14 @@ def require_referenced_source(
     path_field: str,
     hash_field: str,
     row_count_field: str | None,
-    source_lookup: Mapping[Path, Inspection],
+    sources: NativeSourceIndex,
 ) -> Inspection:
     path_value = row.get(path_field, "")
     if not path_value:
-        raise ArtifactIndexError(
-            f"Native reference field {path_field} is empty"
-        )
-    target = source_lookup.get(declared_contract_path(path_value))
+        raise ArtifactIndexError(f"Native reference field {path_field} is empty")
+    target = sources.by_path.get(
+        declared_contract_path(path_value, source_root=sources.source_root)
+    )
     if target is None:
         raise ArtifactIndexError(
             f"Native reference {path_field} is not declared by the inventory: "
@@ -136,14 +151,13 @@ def reconcile_step06(members: Sequence[Inspection]) -> None:
         raise ArtifactIndexError(
             "Step 06 count sample_id disagrees with inventory scope"
         )
-    if values["fwd_like_records"] != (
-        values["flag_99_records"] + values["flag_147_records"]
-    ):
-        raise ArtifactIndexError("Step 06 FWD_like count arithmetic is invalid")
-    if values["rev_like_records"] != (
-        values["flag_83_records"] + values["flag_163_records"]
-    ):
-        raise ArtifactIndexError("Step 06 REV_like count arithmetic is invalid")
+    for orientation in alignment_orientation.ORIENTATIONS:
+        if not alignment_orientation.mechanical_like_count_detail(values, orientation)[
+            0
+        ]:
+            raise ArtifactIndexError(
+                f"Step 06 {orientation} count arithmetic is invalid"
+            )
     if values["assigned_records"] != (
         values["fwd_like_records"] + values["rev_like_records"]
     ):
@@ -155,13 +169,9 @@ def reconcile_step06(members: Sequence[Inspection]) -> None:
     try:
         assigned_fraction = float(row.get("assigned_fraction", ""))
     except ValueError as exc:
-        raise ArtifactIndexError(
-            "Step 06 assigned_fraction is not numeric"
-        ) from exc
+        raise ArtifactIndexError("Step 06 assigned_fraction is not numeric") from exc
     if not 0.0 <= assigned_fraction <= 1.0:
-        raise ArtifactIndexError(
-            "Step 06 assigned_fraction is outside [0, 1]"
-        )
+        raise ArtifactIndexError("Step 06 assigned_fraction is outside [0, 1]")
     expected_fraction = (
         values["assigned_records"] / values["input_records"]
         if values["input_records"]
@@ -174,11 +184,12 @@ def reconcile_step06(members: Sequence[Inspection]) -> None:
         )
 
 
-def reconcile_step07(members: Sequence[Inspection]) -> None:
+def reconcile_step07(
+    members: Sequence[Inspection],
+    sources: NativeSourceIndex,
+) -> None:
     vcfs = [
-        member
-        for member in members
-        if member.row["adapter"] == "step07_mpileup_vcf_v1"
+        member for member in members if member.row["adapter"] == "step07_mpileup_vcf_v1"
     ]
     receipt = next(
         member
@@ -201,9 +212,7 @@ def reconcile_step07(members: Sequence[Inspection]) -> None:
     required_format_ids = {"DP", "AD", "ADF", "ADR", "SP"}
     required_info_ids = {"AD", "ADF", "ADR"}
     for vcf in vcfs:
-        missing_format = required_format_ids - set(
-            vcf.native.get("format_ids", [])
-        )
+        missing_format = required_format_ids - set(vcf.native.get("format_ids", []))
         missing_info = required_info_ids - set(vcf.native.get("info_ids", []))
         if missing_format or missing_info:
             raise ArtifactIndexError(
@@ -220,7 +229,10 @@ def reconcile_step07(members: Sequence[Inspection]) -> None:
     partition_id = next(iter(partition_ids))
     receipt_by_path: dict[Path, Mapping[str, str]] = {}
     for row in receipt_rows:
-        path = declared_contract_path(row["vcf_path"])
+        path = declared_contract_path(
+            row["vcf_path"],
+            source_root=sources.source_root,
+        )
         if path in receipt_by_path:
             raise ArtifactIndexError("Step 07 receipt repeats a VCF path")
         receipt_by_path[path] = row
@@ -231,11 +243,7 @@ def reconcile_step07(members: Sequence[Inspection]) -> None:
             raise ArtifactIndexError(
                 "Step 07 receipt does not declare every inventory VCF path"
             )
-        orientation = (
-            "FWD_like"
-            if ".FWD_like." in vcf.resolved_path.name
-            else "REV_like"
-        )
+        orientation = infer_orient_from_path(vcf.resolved_path)
         observed_orientations.add(orientation)
         if (
             row["cohort_id"] != cohort_id
@@ -256,15 +264,13 @@ def reconcile_step07(members: Sequence[Inspection]) -> None:
             raise ArtifactIndexError(
                 "Step 07 receipt record count disagrees with its VCF"
             )
-    if observed_orientations != {"FWD_like", "REV_like"}:
-        raise ArtifactIndexError(
-            "Step 07 transaction lacks one neutral orientation"
-        )
+    if observed_orientations != alignment_orientation.REQUIRED_ORIENTATIONS:
+        raise ArtifactIndexError("Step 07 transaction lacks one neutral orientation")
 
 
 def reconcile_step08(
     members: Sequence[Inspection],
-    source_lookup: Mapping[Path, Inspection],
+    sources: NativeSourceIndex,
 ) -> None:
     sites = next(
         member for member in members if member.row["adapter"] == "step08_sites_v1"
@@ -283,14 +289,7 @@ def reconcile_step08(
             "Step 08 inputs and sample-block sites must be non-empty"
         )
     partitions: dict[str, set[str]] = defaultdict(set)
-    sum_fields = (
-        "observed_vcf_record_count",
-        "observed_alt_allele_count",
-        "supported_snv_count",
-        "skipped_symbolic_count",
-        "skipped_non_snv_count",
-        "published_candidate_count",
-    )
+    sum_fields = step08.STEP08_PARTITION_COUNT_FIELDS
     observed_sums = Counter()
     receipt_paths: set[Path] = set()
     input_keys: set[tuple[str, str]] = set()
@@ -322,9 +321,7 @@ def reconcile_step08(
             + native_int(row, "skipped_symbolic_count")
             + native_int(row, "skipped_non_snv_count")
         ):
-            raise ArtifactIndexError(
-                "Step 08 alternate-allele counts do not reconcile"
-            )
+            raise ArtifactIndexError("Step 08 alternate-allele counts do not reconcile")
         if native_int(row, "published_candidate_count") != native_int(
             row, "supported_snv_count"
         ):
@@ -336,13 +333,9 @@ def reconcile_step08(
             path_field="vcf_path",
             hash_field="vcf_sha256",
             row_count_field=None,
-            source_lookup=source_lookup,
+            sources=sources,
         )
-        expected_orientation = (
-            "FWD_like"
-            if ".FWD_like." in vcf.resolved_path.name
-            else "REV_like"
-        )
+        expected_orientation = infer_orient_from_path(vcf.resolved_path)
         if (
             row["orientation"] != expected_orientation
             or vcf.native.get("samples") != samples
@@ -365,7 +358,7 @@ def reconcile_step08(
             path_field="step07_receipt_path",
             hash_field="step07_receipt_sha256",
             row_count_field=None,
-            source_lookup=source_lookup,
+            sources=sources,
         )
         if receipt.row["scope_id"] != vcf.row["scope_id"]:
             raise ArtifactIndexError(
@@ -375,7 +368,10 @@ def reconcile_step08(
         matching_receipt_rows = [
             receipt_row
             for receipt_row in receipt_rows
-            if declared_contract_path(receipt_row["vcf_path"])
+            if declared_contract_path(
+                receipt_row["vcf_path"],
+                source_root=sources.source_root,
+            )
             == vcf.resolved_path
         ]
         if len(matching_receipt_rows) != 1:
@@ -404,7 +400,7 @@ def reconcile_step08(
         for field_name in sum_fields:
             observed_sums[field_name] += native_int(row, field_name)
     if any(
-        orientations != {"FWD_like", "REV_like"}
+        orientations != alignment_orientation.REQUIRED_ORIENTATIONS
         for orientations in partitions.values()
     ) or len(input_rows) != 2 * len(partitions):
         raise ArtifactIndexError(
@@ -421,9 +417,7 @@ def reconcile_step08(
     }
     for field_name, expected in expected_scalars.items():
         if native_int(summary_row, field_name) != expected:
-            raise ArtifactIndexError(
-                f"Step 08 summary {field_name} is inconsistent"
-            )
+            raise ArtifactIndexError(f"Step 08 summary {field_name} is inconsistent")
     for field_name in sum_fields:
         if native_int(summary_row, field_name) != observed_sums[field_name]:
             raise ArtifactIndexError(

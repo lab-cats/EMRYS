@@ -4,11 +4,9 @@
 from __future__ import annotations
 
 import argparse
-from dataclasses import dataclass
 import hashlib
 import json
 import os
-from pathlib import Path
 import shlex
 import shutil
 import signal
@@ -16,9 +14,11 @@ import subprocess
 import sys
 import tempfile
 import time
-from typing import Any, Sequence
 import xml.etree.ElementTree as ET
-
+from collections.abc import Sequence
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 SCHEMA_VERSION = "1.0.0"
 XDIST_VERSION = "3.8.0"
@@ -175,9 +175,7 @@ def build_lanes(
         f"--junitxml={python_junit}",
     ]
     if python_workers > 1:
-        pytest_args.extend(
-            ["-n", str(python_workers), "--dist=loadfile"]
-        )
+        pytest_args.extend(["-n", str(python_workers), "--dist=loadfile"])
     coverage_pytest_args = " ".join(shlex.quote(value) for value in pytest_args)
 
     common = (make_assignment("REPORT_PYTHON_BIN", python_bin),)
@@ -187,12 +185,10 @@ def build_lanes(
             (
                 "make",
                 "-s",
-                "validation-python-coverage",
+                "python-coverage-check",
                 *common,
                 make_assignment("PYTHON_COVERAGE_ROOT", coverage_root),
-                make_assignment(
-                    "PYTHON_COVERAGE_PYTEST_ARGS", coverage_pytest_args
-                ),
+                make_assignment("PYTHON_COVERAGE_PYTEST_ARGS", coverage_pytest_args),
             ),
         ),
         Lane(
@@ -373,14 +369,8 @@ def run_lanes(
 
     try:
         while pending or running:
-            while (
-                pending
-                and len(running) < jobs
-                and interrupted_by is None
-            ):
-                running.append(
-                    start_lane(pending.pop(0), repo_root, run_root, verbose)
-                )
+            while pending and len(running) < jobs and interrupted_by is None:
+                running.append(start_lane(pending.pop(0), repo_root, run_root, verbose))
 
             if interrupted_by is not None:
                 terminate_running(running, signal.SIGTERM)
@@ -410,9 +400,7 @@ def run_lanes(
                     interrupted_by,
                 )
 
-            completed = [
-                item for item in running if item.process.poll() is not None
-            ]
+            completed = [item for item in running if item.process.poll() is not None]
             if not completed:
                 time.sleep(0.05)
                 continue
@@ -488,10 +476,7 @@ def junit_summary(path: Path) -> dict[str, int]:
         for name in ("tests", "failures", "errors", "skipped")
     }
     totals["passed"] = (
-        totals["tests"]
-        - totals["failures"]
-        - totals["errors"]
-        - totals["skipped"]
+        totals["tests"] - totals["failures"] - totals["errors"] - totals["skipped"]
     )
     return totals
 
@@ -504,7 +489,9 @@ def coverage_summary(path: Path) -> dict[str, Any]:
     try:
         document = json.loads(payload_bytes)
     except json.JSONDecodeError as exc:
-        raise ValidationError(f"Could not parse coverage snapshot {path}: {exc}") from exc
+        raise ValidationError(
+            f"Could not parse coverage snapshot {path}: {exc}"
+        ) from exc
     files = document.get("files")
     totals = document.get("totals")
     if not isinstance(files, list) or not isinstance(totals, dict):
@@ -567,9 +554,7 @@ def write_result(path: Path, document: dict[str, Any]) -> None:
     """Write one canonical result JSON without following symlinks."""
     parent = require_real_directory(path.parent, "result JSON parent")
     destination = parent / path.name
-    if destination.exists() and (
-        not destination.is_file() or destination.is_symlink()
-    ):
+    if destination.exists() and (not destination.is_file() or destination.is_symlink()):
         raise ValidationError(f"Refusing unsafe result JSON path: {destination}")
     payload = json.dumps(document, indent=2, sort_keys=True) + "\n"
     descriptor, temporary_name = tempfile.mkstemp(
@@ -626,9 +611,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             require_parallel_dependencies(python_bin)
 
         overall_started = time.monotonic()
-        with tempfile.TemporaryDirectory(
-            prefix="norad-validation-"
-        ) as temporary_root:
+        with tempfile.TemporaryDirectory(prefix="norad-validation-") as temporary_root:
             run_root = Path(temporary_root)
             preflight = run_lanes(
                 [build_preflight(repo_root, python_bin)],
@@ -661,16 +644,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                     lane_outcome.interrupted_by,
                 )
                 captured = (
-                    captured_results(run_root)
-                    if lane_outcome.status == 0
-                    else None
+                    captured_results(run_root) if lane_outcome.status == 0 else None
                 )
             elapsed = time.monotonic() - overall_started
-            mode = (
-                "serial"
-                if jobs == 1 and python_workers == 1
-                else "parallel"
-            )
+            mode = "serial" if jobs == 1 and python_workers == 1 else "parallel"
             document = outcome_document(
                 outcome,
                 mode=mode,

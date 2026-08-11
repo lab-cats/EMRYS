@@ -2,73 +2,38 @@
 
 from __future__ import annotations
 
-import importlib.util
 import sys
 from pathlib import Path
-from types import ModuleType
 
 import pytest
-
 from validation_roster_expectations import (
     EXPECTED_CHECK_ROSTERS,
     assert_exact_check_roster,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
-REPORT_LIBRARY = REPO_ROOT / "src" / "norad" / "libraries" / "validation_report.py"
+REPORT_LIBRARY = REPO_ROOT / "src" / "norad" / "libraries" / "validation/report.py"
+SRC_ROOT = REPO_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
+from norad.libraries import validation as SHARED_REPORT_VALIDATOR
+
 VALIDATOR_PATHS = {
-    "00a": Path(
-        "src/norad/stages/construct_STAR_index/validate_step_00a_star_index.py"
-    ),
-    "00b": Path(
-        "src/norad/stages/convert_GTF_to_BED12/validate_step_00b_bed12.py"
-    ),
-    "00c": Path(
-        "src/norad/stages/construct_FASTA_sidecars/"
-        "validate_step_00c_reference_sidecars.py"
-    ),
-    "01": Path(
-        "src/norad/stages/align_RNA_reads_with_STAR/"
-        "validate_step_01_star_alignment.py"
-    ),
-    "02": Path(
-        "src/norad/stages/construct_canonical_BAM/"
-        "validate_step_02_canonical_bam.py"
-    ),
-    "02b": Path(
-        "src/norad/evidence/collect_canonical_BAM_QC_evidence/"
-        "validate_step_02b_bam_qc.py"
-    ),
-    "03": Path(
-        "src/norad/evidence/collect_RSeQC_paired_orientation_evidence/"
-        "validate_step_03_rseqc_orientation.py"
-    ),
-    "04": Path(
-        "src/norad/stages/mark_BAM_duplicates_with_Picard/"
-        "validate_step_04_mark_duplicates.py"
-    ),
-    "05": Path(
-        "src/norad/stages/split_N_cigar_reads_with_GATK/"
-        "validate_step_05_split_ncigar.py"
-    ),
-    "06": Path(
-        "src/norad/stages/partition_BAM_by_mechanical_read_orientation/"
-        "validate_step_06_orientation_outputs.py"
-    ),
-    "07": Path(
-        "src/norad/stages/generate_partitioned_cohort_mpileup_VCFs/"
-        "validate_step_07_mpileup_outputs.py"
-    ),
-    "08": Path(
-        "src/norad/stages/preprocess_and_annotate_cohort_candidates/"
-        "validate_step_08_preprocessing_outputs.py"
-    ),
-    "09": Path(
-        "src/norad/analyses/rank_cohort_candidates_with_paired_CMH/"
-        "validate_step_09_cmh_outputs.py"
-    ),
+    "00a": Path("src/norad/stages/star_index/validator.py"),
+    "00b": Path("src/norad/stages/gtf_to_bed12/validator.py"),
+    "00c": Path("src/norad/stages/fasta_sidecars/validator.py"),
+    "01": Path("src/norad/stages/star_alignment/validator.py"),
+    "02": Path("src/norad/stages/canonical_bam/validator.py"),
+    "02b": Path("src/norad/evidence/canonical_bam_qc/validator.py"),
+    "03": Path("src/norad/evidence/rseqc_orientation/validator.py"),
+    "04": Path("src/norad/stages/duplicate_marking/validator.py"),
+    "05": Path("src/norad/stages/split_n_cigar/validator.py"),
+    "06": Path("src/norad/stages/mechanical_orientation/validator.py"),
+    "07": Path("src/norad/stages/partitioned_cohort_mpileup/validator.py"),
+    "08": Path("src/norad/stages/cohort_candidate_preprocessing/validator.py"),
+    "09": Path("src/norad/analyses/paired_cmh_candidate_ranking/validator.py"),
 }
 VALIDATION_HEADER = (
     "step_id",
@@ -79,20 +44,6 @@ VALIDATION_HEADER = (
     "expected",
     "detail",
 )
-
-
-def load_shared_report_validator() -> ModuleType:
-    path = REPORT_LIBRARY
-    spec = importlib.util.spec_from_file_location("shared_report_validator", path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load shared report validator: {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-SHARED_REPORT_VALIDATOR = load_shared_report_validator()
 
 
 def validation_report_bytes(step_id: str, check_ids: tuple[str, ...]) -> bytes:
@@ -128,8 +79,7 @@ def mutate_roster(expected: tuple[str, ...], mutation: str) -> tuple[str, ...]:
 
 def test_expectations_cover_exactly_the_live_validator_inventory() -> None:
     live_flat = {
-        Path("scripts") / path.name
-        for path in SCRIPTS_ROOT.glob("validate_step_*.py")
+        Path("scripts") / path.name for path in SCRIPTS_ROOT.glob("validate_step_*.py")
     }
     expected_flat = {
         path for path in VALIDATOR_PATHS.values() if path.parent == Path("scripts")

@@ -26,23 +26,15 @@ Options:
 USAGE
 }
 
-die() {
-    printf 'FAIL: %s\n' "$*" >&2
-    exit 1
-}
-
-require_value() {
-    local option="$1"
-    local value="${2:-}"
-
-    if [[ -z "$value" || "$value" == --* ]]; then
-        die "$option requires a value."
-    fi
-}
-
-is_gzip_path() {
-    [[ "$1" == *.gz ]]
-}
+# shellcheck source=../../libraries/argument_parsing.sh
+DIE_PREFIX="FAIL"
+script_dir="${BASH_SOURCE[0]%/*}"
+if [[ "$script_dir" == "$BASH_SOURCE[0]" ]]; then
+    script_dir="."
+fi
+source "$script_dir/../../libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/file_checks.sh
+source "$script_dir/../../libraries/file_checks.sh"
 
 fastq_stream() {
     local file="$1"
@@ -76,33 +68,16 @@ count_lines() {
     fastq_stream "$file" | wc -l | tr -d '[:space:]'
 }
 
-r1_fastq=""
-r2_fastq=""
+declare_required_arguments r1_fastq r2_fastq
 sample_id=""
 num_reads=20
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --r1-fastq)
-            require_value "$1" "${2:-}"
-            r1_fastq="$2"
-            shift 2
-            ;;
-        --r2-fastq)
-            require_value "$1" "${2:-}"
-            r2_fastq="$2"
-            shift 2
-            ;;
-        --sample-id)
-            require_value "$1" "${2:-}"
-            sample_id="$2"
-            shift 2
-            ;;
-        --num-reads)
-            require_value "$1" "${2:-}"
-            num_reads="$2"
-            shift 2
-            ;;
+        --r1-fastq) assign_option_value "$1" "${2:-}" r1_fastq; shift 2 ;;
+        --r2-fastq) assign_option_value "$1" "${2:-}" r2_fastq; shift 2 ;;
+        --sample-id) assign_option_value "$1" "${2:-}" sample_id; shift 2 ;;
+        --num-reads) assign_option_value "$1" "${2:-}" num_reads; shift 2 ;;
         -h|--help)
             usage
             exit 0
@@ -113,15 +88,12 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ -n "$r1_fastq" ]] || die "Missing required argument: --r1-fastq."
-[[ -n "$r2_fastq" ]] || die "Missing required argument: --r2-fastq."
+require_arguments
 
 [[ -f "$r1_fastq" ]] || die "R1 FASTQ does not exist or is not a file: $r1_fastq"
 [[ -f "$r2_fastq" ]] || die "R2 FASTQ does not exist or is not a file: $r2_fastq"
 
-if ! [[ "$num_reads" =~ ^[1-9][0-9]*$ ]]; then
-    die "--num-reads must be a positive integer; got: $num_reads"
-fi
+validate_positive_integer "--num-reads" "$num_reads"
 
 if is_gzip_path "$r1_fastq" || is_gzip_path "$r2_fastq"; then
     command -v gunzip >/dev/null 2>&1 || die "gunzip was not found on PATH but at least one FASTQ file ends in .gz."

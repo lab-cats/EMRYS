@@ -7,10 +7,6 @@ or evidence promotion.
 
 ## Topics
 
-- [Audits](audits/) — dated repository audits, findings, rejected approaches,
-  limitations, and recheck evidence.
-- [Operations](operations/) — dated delivery, branch-lineage, concurrency, and
-  takeover records that no longer belong in live state.
 - [Testing](testing/) — dated validation runs, baselines, risks, and gate
   provenance.
 

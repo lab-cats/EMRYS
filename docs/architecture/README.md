@@ -7,7 +7,7 @@ with the relevant child and functional owner.
 | Question | Authority |
 | --- | --- |
 | What system is implemented now? | [`ARCHITECTURE.md`](ARCHITECTURE.md) |
-| How does a scientist understand the workflow? | [`PIPELINE_OVERVIEW.md`](PIPELINE_OVERVIEW.md) and [`current_user_pipeline.mmd`](diagrams/current_user_pipeline.mmd) |
+| How does a scientist understand the workflow? | [Scientist-facing workflow](ARCHITECTURE.md#scientist-facing-workflow) and [`current_user_pipeline.mmd`](diagrams/current_user_pipeline.mmd) |
 | Which public programs, jobs, validators, and tests exist? | [`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md) |
 | What are the semantic identities and artifact edges? | [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) |
 | Which source dependencies and shared seams are allowed? | [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) |

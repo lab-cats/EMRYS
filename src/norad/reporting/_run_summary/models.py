@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-import build_artifact_index as adapter
-
+from norad.contracts.scientific_evidence import review_package
+from norad.reporting._artifact_index import api as adapter
+from norad.reporting._files import FileSnapshot
 
 contracts = adapter.contracts
+RUN_CONTRACT_FIELDS = adapter.RUN_CONTRACT_FIELDS
 
 PRODUCER = "build_run_summary"
 PRODUCER_VERSION = "1.1.0"
@@ -18,8 +20,6 @@ RUN_SUMMARY_SCHEMA_VERSION = "1.1.0"
 RUN_SUMMARY_TSV_SCHEMA_VERSION = "1.0.0"
 QC_SUMMARY_TSV_SCHEMA_VERSION = "1.0.0"
 RUN_SUMMARY_RECEIPT_SCHEMA_VERSION = "1.0.0"
-RUN_CONTRACT_FIELDS = adapter.RUN_CONTRACT_FIELDS
-
 REPORT_TABLE_APPROVALS_HEADER = (
     "run_id",
     "run_contract_sha256",
@@ -38,20 +38,7 @@ REPORT_TABLE_APPROVALS_HEADER = (
 )
 
 REPORT_ROLE_ADAPTERS = {
-    role: f"step09c_{role}_v1"
-    for role in (
-        "orientation_locus_audit",
-        "annotation_audit",
-        "qc_funnel",
-        "replicate_effects",
-        "sensitivity_matrix",
-        "leave_one_pair_out",
-        "candidate_selection",
-        "candidate_adjudication",
-        "decisions",
-        "evidence_index",
-        "limitations",
-    )
+    role: f"step09c_{role}_v1" for role in review_package.REPORT_TABLE_ROLES
 }
 
 RUN_SUMMARY_HEADER = (
@@ -70,11 +57,7 @@ RUN_SUMMARY_HEADER = (
     "availability_status",
     "completion_status",
     "rollup_state",
-    "implementation_status",
-    "local_test_status",
-    "runtime_validation_status",
-    "cluster_dry_run_status",
-    "cluster_proof_status",
+    *contracts.RUN_SUMMARY_STATUS_FIELDS,
     "source_path",
     "source_sha256",
     "source_row_count",
@@ -102,12 +85,7 @@ QC_SUMMARY_HEADER = (
 
 RUN_SUMMARY_RECEIPT_HEADER = (
     "run_id",
-    "run_contract_sha256",
-    "sample_manifest_sha256",
-    "reference_contract_sha256",
-    "partition_manifest_sha256",
-    "primary_analysis_id",
-    "primary_analysis_policy_sha256",
+    *RUN_CONTRACT_FIELDS,
     "artifact_receipt_path",
     "artifact_receipt_sha256",
     "artifact_adapter_attempt_id",
@@ -153,17 +131,6 @@ class RunSummaryError(RuntimeError):
 
 
 @dataclass(frozen=True)
-class FileSnapshot:
-    path: Path
-    sha256: str
-    device: int
-    inode: int
-    size_bytes: int
-    mtime_ns: int
-    ctime_ns: int
-
-
-@dataclass(frozen=True)
 class OutputPaths:
     output_dir: Path
     output_dir_device: int
@@ -189,7 +156,6 @@ class BuildContext:
     run_id: str
     execute: bool
     artifact_receipt_path: Path
-    artifact_receipt_sha256: str
     artifact_receipt: dict[str, str]
     run_contract_path: Path
     run_contract_file_sha256: str
@@ -198,11 +164,7 @@ class BuildContext:
     inventory_sha256: str
     inventory_rows: list[dict[str, str]]
     artifacts_path: Path
-    artifacts_sha256: str
     records_dir: Path
-    index_rows: list[dict[str, str]]
-    record_paths: list[Path]
-    record_hashes: list[str]
     input_snapshots: tuple[FileSnapshot, ...]
     artifacts: list[dict[str, Any]]
     science_review_summary_path: Path | None
@@ -214,16 +176,17 @@ class BuildContext:
     summary_json_bytes: bytes
     summary_rows: list[dict[str, Any]]
     summary_tsv_bytes: bytes
-    qc_rows: list[dict[str, Any]]
     qc_summary_bytes: bytes
     paths: OutputPaths
     previous_receipt: dict[str, str] | None
     previous_receipt_sha256: str | None
     previous_attempt_id: str | None
-    previous_attempt_history: list[str]
     attempt_id: str
     git_commit: str
-    started_at: str
-    finished_at: str
     receipt_row: dict[str, Any]
     receipt_bytes: bytes
+    source_checkout: adapter.SourceCheckout = field(
+        kw_only=True,
+        compare=False,
+        repr=False,
+    )

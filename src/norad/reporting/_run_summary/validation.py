@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Mapping, Sequence
-
-from jsonschema import Draft202012Validator, FormatChecker
+from typing import Any
 
 from .inputs import _fail, _require_regular_file
 from .models import (
@@ -30,34 +29,32 @@ from .models import (
 from .projection import _build_qc_rows, _build_summary_rows
 from .transaction import _parse_history, _receipt_int
 
+
 def _validate_document(
     document: dict[str, Any],
     inventory_rows: list[dict[str, str]],
     inventory_path: Path,
+    *,
+    source_root: Path,
 ) -> None:
-    schemas, registry = contracts.load_schema_registry()
-    validator = Draft202012Validator(
-        schemas["run-summary"],
-        registry=registry,
-        format_checker=FormatChecker(),
-    )
-    errors = sorted(
-        validator.iter_errors(document),
-        key=lambda error: tuple(
-            str(part) for part in error.absolute_path
-        ),
-    )
+    errors = contracts.schema_errors("run-summary", document)
     if errors:
         details = "\n".join(
-            f"- {contracts.format_json_path(error.absolute_path)}: "
-            f"{error.message}"
+            f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"
             for error in errors
         )
         _fail(f"Run summary failed Draft 2020-12 validation:\n{details}")
     try:
-        contracts.validate_run_summary_semantics(document)
+        contracts.validate_run_summary_semantics(
+            document,
+            source_root=source_root,
+        )
         contracts.reconcile_document_inventory(
-            "run-summary", document, inventory_rows, inventory_path
+            "run-summary",
+            document,
+            inventory_rows,
+            inventory_path,
+            source_root=source_root,
         )
     except contracts.ContractValidationError as exc:
         _fail(f"Run summary failed semantic validation: {exc}")
@@ -91,6 +88,7 @@ def _validate_existing_summary(
     receipt: Mapping[str, str],
     expected_run_id: str,
     expected_run_contract: Mapping[str, Any],
+    source_root: Path,
 ) -> dict[str, Any]:
     if receipt["run_id"] != expected_run_id:
         _fail("Existing run-summary receipt has the wrong run_id")
@@ -118,9 +116,7 @@ def _validate_existing_summary(
         LEGACY_PRODUCER_VERSION,
         PRODUCER_VERSION,
     }:
-        _fail(
-            "Existing run-summary receipt field is invalid: producer_version"
-        )
+        _fail("Existing run-summary receipt field is invalid: producer_version")
     _parse_history(
         receipt,
         id_field="run_summary_attempt_id",
@@ -159,28 +155,23 @@ def _validate_existing_summary(
         ("run_summary_tsv_path", "run_summary_tsv_sha256"),
         ("qc_summary_tsv_path", "qc_summary_tsv_sha256"),
     ):
-        path = _require_regular_file(
-            f"Existing {path_field}", receipt[path_field]
-        )
+        path = _require_regular_file(f"Existing {path_field}", receipt[path_field])
         if contracts.sha256_file(path) != receipt[hash_field]:
             _fail(f"Existing run-summary output hash differs: {path}")
 
-    document = contracts.load_json_object(
-        paths.summary_json, "existing run summary"
-    )
+    document = contracts.load_json_object(paths.summary_json, "existing run summary")
     if paths.summary_json.read_bytes() != adapter.canonical_json_bytes(document):
         _fail("Existing run-summary JSON is not canonical")
-    schemas, registry = contracts.load_schema_registry()
-    validator = Draft202012Validator(
-        schemas["run-summary"],
-        registry=registry,
-        format_checker=FormatChecker(),
+    schema_errors = list(
+        contracts.schema_validator("run-summary").iter_errors(document)
     )
-    schema_errors = list(validator.iter_errors(document))
     if schema_errors:
         _fail("Existing run-summary JSON fails its schema")
     try:
-        contracts.validate_run_summary_semantics(document)
+        contracts.validate_run_summary_semantics(
+            document,
+            source_root=source_root,
+        )
     except contracts.ContractValidationError as exc:
         _fail(f"Existing run-summary JSON is semantically invalid: {exc}")
     if receipt["git_commit"] != document["provenance"]["git_commit"]:
@@ -190,8 +181,7 @@ def _validate_existing_summary(
         )
     if (
         receipt["producer"] != document["provenance"]["producer"]
-        or receipt["producer_version"]
-        != document["provenance"]["producer_version"]
+        or receipt["producer_version"] != document["provenance"]["producer_version"]
     ):
         _fail(
             "Existing run-summary receipt producer differs from its "
@@ -210,9 +200,7 @@ def _validate_existing_summary(
         document,
         {
             artifact_id: scope_order
-            for scope_order, scope in enumerate(
-                document["expected_scopes"], 1
-            )
+            for scope_order, scope in enumerate(document["expected_scopes"], 1)
             for artifact_id in scope["artifact_ids"]
         },
     )
@@ -225,9 +213,7 @@ def _validate_existing_summary(
         QC_SUMMARY_HEADER, expected_qc_rows
     ):
         _fail("Existing QC summary TSV differs from its canonical JSON")
-    if receipt["run_summary_tsv_row_count"] != str(
-        len(expected_summary_rows)
-    ):
+    if receipt["run_summary_tsv_row_count"] != str(len(expected_summary_rows)):
         _fail("Existing run-summary TSV row count is invalid")
     if receipt["qc_summary_tsv_row_count"] != str(len(expected_qc_rows)):
         _fail("Existing QC summary TSV row count is invalid")
@@ -237,12 +223,11 @@ def _validate_existing_summary(
         paths.summary_json.stat().st_size
     ):
         _fail("Existing run-summary JSON byte size is invalid")
-    if _receipt_int(receipt, "artifact_record_count") != len(
-        document["artifacts"]
-    ):
+    if _receipt_int(receipt, "artifact_record_count") != len(document["artifacts"]):
         _fail("Existing run-summary artifact count is invalid")
-    if _receipt_int(receipt, "inventory_row_count") != (
-        document["inventory"]["row_count"]
+    if (
+        _receipt_int(receipt, "inventory_row_count")
+        != (document["inventory"]["row_count"])
     ):
         _fail("Existing run-summary inventory row count is invalid")
     if receipt["inventory_path"] != document["inventory"]["path"] or (
@@ -250,10 +235,8 @@ def _validate_existing_summary(
     ):
         _fail("Existing receipt inventory provenance differs from JSON")
     if (
-        receipt["artifact_receipt_path"]
-        != document["artifact_receipt"]["path"]
-        or receipt["artifact_receipt_sha256"]
-        != document["artifact_receipt"]["sha256"]
+        receipt["artifact_receipt_path"] != document["artifact_receipt"]["path"]
+        or receipt["artifact_receipt_sha256"] != document["artifact_receipt"]["sha256"]
     ):
         _fail("Existing adapter-receipt provenance differs from JSON")
     for field in (
@@ -270,30 +253,22 @@ def _validate_existing_summary(
     review = document["scientific_review"]
     if review["record_state"] == "present":
         if (
-            receipt["science_review_summary_path"]
-            != review["source"]["path"]
-            or receipt["science_review_summary_sha256"]
-            != review["source"]["sha256"]
+            receipt["science_review_summary_path"] != review["source"]["path"]
+            or receipt["science_review_summary_sha256"] != review["source"]["sha256"]
         ):
-            _fail(
-                "Existing science-review provenance differs between receipt "
-                "and JSON"
-            )
+            _fail("Existing science-review provenance differs between receipt and JSON")
     elif (
         receipt["science_review_summary_path"]
         or receipt["science_review_summary_sha256"]
     ):
-        _fail(
-            "Existing receipt claims a science summary while JSON has none"
-        )
+        _fail("Existing receipt claims a science summary while JSON has none")
     approval_source = document["parameters"].get(
         "report_table_approvals",
     )
     if receipt["producer_version"] == LEGACY_PRODUCER_VERSION:
         if approval_source is not None or document["approved_report_tables"]:
             _fail(
-                "Legacy run-summary predecessor must not claim report-table "
-                "approvals"
+                "Legacy run-summary predecessor must not claim report-table approvals"
             )
     elif "report_table_approvals" not in document["parameters"]:
         _fail(
@@ -303,12 +278,9 @@ def _validate_existing_summary(
     elif approval_source is None:
         if document["approved_report_tables"]:
             _fail(
-                "Existing run summary has approvals without their manifest "
-                "provenance"
+                "Existing run summary has approvals without their manifest provenance"
             )
-    elif approval_source["row_count"] != len(
-        document["approved_report_tables"]
-    ):
+    elif approval_source["row_count"] != len(document["approved_report_tables"]):
         _fail(
             "Existing report-table approval provenance row count differs "
             "from its canonical JSON records"
@@ -355,9 +327,7 @@ def _build_receipt_row(
         **{field: run_contract[field] for field in RUN_CONTRACT_FIELDS},
         "artifact_receipt_path": str(artifact_receipt_path),
         "artifact_receipt_sha256": artifact_receipt_sha256,
-        "artifact_adapter_attempt_id": artifact_receipt[
-            "adapter_attempt_id"
-        ],
+        "artifact_adapter_attempt_id": artifact_receipt["adapter_attempt_id"],
         "inventory_path": str(inventory_path),
         "inventory_sha256": inventory_sha256,
         "inventory_row_count": inventory_row_count,
@@ -368,9 +338,7 @@ def _build_receipt_row(
         "run_summary_schema_version": RUN_SUMMARY_SCHEMA_VERSION,
         "run_summary_tsv_schema_version": RUN_SUMMARY_TSV_SCHEMA_VERSION,
         "qc_summary_tsv_schema_version": QC_SUMMARY_TSV_SCHEMA_VERSION,
-        "run_summary_receipt_schema_version": (
-            RUN_SUMMARY_RECEIPT_SCHEMA_VERSION
-        ),
+        "run_summary_receipt_schema_version": (RUN_SUMMARY_RECEIPT_SCHEMA_VERSION),
         "run_summary_json_path": str(summary_json_path),
         "run_summary_json_sha256": adapter.sha256_bytes(summary_json_bytes),
         "run_summary_json_size_bytes": len(summary_json_bytes),
@@ -385,9 +353,7 @@ def _build_receipt_row(
             if science_review_summary_path is None
             else document["scientific_review"]["source"]["path"]
         ),
-        "science_review_summary_sha256": (
-            science_review_summary_sha256 or ""
-        ),
+        "science_review_summary_sha256": (science_review_summary_sha256 or ""),
         "summary_state": document["summary_state"],
         "science_status": document["science_status"],
         "published_output_count": 4,

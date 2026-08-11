@@ -3,9 +3,9 @@
 This directory owns the existing, deliberately narrow sample-manifest admission
 family. Its public assets are:
 
-- [`validate_manifest.py`](validate_manifest.py), the mode-`0755` Python CLI
-  that validates a TSV manifest and optionally checks that its declared FASTQ
-  paths exist;
+- `python -I -m norad validate manifest`, the installed module command
+  implemented by [`validator.py`](validator.py), which validates a TSV manifest
+  and optionally checks that its declared FASTQ paths exist;
 - [`check_fastq_pairs.sh`](check_fastq_pairs.sh), the mode-`0755` operator-run
   paired-FASTQ diagnostic; and
 - [`validate_manifest.slurm`](validate_manifest.slurm), the mode-`0644`
@@ -41,18 +41,18 @@ does not inspect FASTQ contents or invoke the paired-FASTQ checker.
 From the repository root:
 
 ```bash
-src/norad/ingestion/sample_manifest_admission/validate_manifest.py \
+.venv/bin/python -I -m norad validate manifest \
   --manifest configs/samples.example.tsv \
   --base-dir .
 ```
 
 Add `--check-files` only when the manifest's declared FASTQ paths are available
-under the selected base directory. From another working directory, make the
-validator, manifest, and base directory absolute:
+under the selected base directory. From another working directory, select the
+installed interpreter and make the manifest and base directory absolute:
 
 ```bash
 repo=/absolute/path/to/norad
-"$repo/src/norad/ingestion/sample_manifest_admission/validate_manifest.py" \
+"$repo/.venv/bin/python" -I -m norad validate manifest \
   --manifest "$repo/configs/samples.example.tsv" \
   --base-dir "$repo"
 ```
@@ -90,10 +90,12 @@ production readiness.
 
 ## Scheduler smoke check
 
-The scheduler wrapper uses repository-relative paths, loads `python39`, and
-validates the committed starter without `--check-files`. Submit it from the
-repository root. Create `logs/` before submission because SLURM opens the
-declared output and error paths before the job body runs:
+The scheduler wrapper changes to the submitted repository root and validates
+the committed starter without `--check-files`. It uses
+`$NORAD_PYTHON_BIN` when set, otherwise `.venv/bin/python` in that checkout;
+the selected environment must already contain the editable NORAD distribution.
+Create `logs/` before submission because SLURM opens the declared output and
+error paths before the job body runs:
 
 ```bash
 mkdir -p logs

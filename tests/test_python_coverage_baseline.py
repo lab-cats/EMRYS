@@ -3,9 +3,9 @@ import copy
 import importlib.util
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TOOL_PATH = REPO_ROOT / "tests" / "tools" / "python_coverage_baseline.py"
@@ -26,15 +26,13 @@ def summary(lines: tuple[int, int], branches: tuple[int, int]) -> dict[str, int]
 
 def raw_document() -> dict[str, object]:
     files = {
-        "src/norad/ingestion/sample_manifest_admission/validate_manifest.py": {
+        "src/norad/ingestion/sample_manifest_admission/validator.py": {
             "summary": summary((90, 100), (36, 40))
         },
-        "src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py": {
+        "src/norad/stages/gtf_to_bed12/converter.py": {
             "summary": summary((80, 100), (30, 40))
         },
-        "scripts/example.py": {
-            "summary": summary((30, 50), (10, 20))
-        },
+        "scripts/example.py": {"summary": summary((30, 50), (10, 20))},
     }
     totals = {
         field: sum(item["summary"][field] for item in files.values())
@@ -51,6 +49,34 @@ def raw_document() -> dict[str, object]:
         "files": files,
         "totals": totals,
     }
+
+
+def reconcile_snapshot_totals(snapshot: dict[str, Any]) -> None:
+    aggregate = {
+        field: sum(item[field] for item in snapshot["files"])
+        for field in TOOL.COUNT_FIELDS
+    }
+    snapshot["totals"] = {
+        **aggregate,
+        "line_rate": TOOL.rate_text(
+            aggregate["covered_lines"], aggregate["num_statements"]
+        ),
+        "branch_rate": TOOL.rate_text(
+            aggregate["covered_branches"], aggregate["num_branches"]
+        ),
+    }
+
+
+def snapshot_with_shared_module(
+    lines: tuple[int, int], branches: tuple[int, int]
+) -> tuple[dict[str, Any], dict[str, Any], str]:
+    baseline = TOOL.build_snapshot(raw_document())
+    current = copy.deepcopy(baseline)
+    shared_path = "src/norad/libraries/validation/report.py"
+    current["files"].append(TOOL.measured_file(shared_path, summary(lines, branches)))
+    current["files"].sort(key=lambda item: item["path"])
+    reconcile_snapshot_totals(current)
+    return baseline, current, shared_path
 
 
 def test_snapshot_is_deterministic_and_ignores_coverage_metadata() -> None:
@@ -71,6 +97,24 @@ def test_snapshot_is_deterministic_and_ignores_coverage_metadata() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("field", "replacement", "message"),
+    (
+        ("schema_version", "wrong", "unsupported schema_version"),
+        ("tool", {"name": "other"}, "unexpected coverage tool identity"),
+        ("measurement", {"branch": False}, "unexpected measurement policy"),
+        ("policy", {}, "unexpected coverage policy"),
+    ),
+)
+def test_snapshot_contract_fields_are_enforced(
+    field: str, replacement: object, message: str
+) -> None:
+    snapshot = TOOL.build_snapshot(raw_document())
+    snapshot[field] = replacement
+    with pytest.raises(TOOL.SnapshotError, match=message):
+        TOOL.validate_snapshot(snapshot, "fixture")
+
+
 def test_snapshot_requires_branch_and_subprocess_coverage() -> None:
     no_branches = raw_document()
     no_branches["meta"]["branch_coverage"] = False
@@ -79,7 +123,7 @@ def test_snapshot_requires_branch_and_subprocess_coverage() -> None:
 
     no_subprocess = raw_document()
     no_subprocess["files"][
-        "src/norad/ingestion/sample_manifest_admission/validate_manifest.py"
+        "src/norad/ingestion/sample_manifest_admission/validator.py"
     ]["summary"] = summary((0, 100), (0, 40))
     no_subprocess["totals"]["covered_lines"] -= 90
     no_subprocess["totals"]["covered_branches"] -= 36
@@ -101,101 +145,37 @@ def test_check_rejects_global_regression(
     current = copy.deepcopy(baseline)
     current["files"][0][covered_field] -= amount
     path = current["files"][0]["path"]
-    counts = {
-        field: current["files"][0][field] for field in TOOL.COUNT_FIELDS
-    }
+    counts = {field: current["files"][0][field] for field in TOOL.COUNT_FIELDS}
     current["files"][0] = TOOL.measured_file(path, counts)
-    aggregate = {
-        field: sum(item[field] for item in current["files"])
-        for field in TOOL.COUNT_FIELDS
-    }
-    current["totals"] = {
-        **aggregate,
-        "line_rate": TOOL.rate_text(
-            aggregate["covered_lines"], aggregate["num_statements"]
-        ),
-        "branch_rate": TOOL.rate_text(
-            aggregate["covered_branches"], aggregate["num_branches"]
-        ),
-    }
+    reconcile_snapshot_totals(current)
 
     with pytest.raises(TOOL.SnapshotError, match=message):
         TOOL.compare_snapshots(baseline, current)
 
 
 def test_new_shared_module_thresholds_are_explicit() -> None:
-    baseline = TOOL.build_snapshot(raw_document())
-    current = copy.deepcopy(baseline)
-    shared_path = "src/norad/libraries/validation_report.py"
-    new_module = TOOL.measured_file(
-        shared_path, summary((95, 100), (18, 20))
-    )
-    current["files"].append(new_module)
-    current["files"].sort(key=lambda item: item["path"])
-    aggregate = {
-        field: sum(item[field] for item in current["files"])
-        for field in TOOL.COUNT_FIELDS
-    }
-    current["totals"] = {
-        **aggregate,
-        "line_rate": TOOL.rate_text(
-            aggregate["covered_lines"], aggregate["num_statements"]
-        ),
-        "branch_rate": TOOL.rate_text(
-            aggregate["covered_branches"], aggregate["num_branches"]
-        ),
-    }
+    baseline, current, shared_path = snapshot_with_shared_module((95, 100), (18, 20))
 
-    assert "passed" in TOOL.compare_snapshots(
-        baseline, current, [shared_path]
-    )
+    assert "passed" in TOOL.compare_snapshots(baseline, current, [shared_path])
     # The threshold remains enforceable after the reviewed snapshot promotes
     # the new owner into the tracked baseline.
     assert "passed" in TOOL.compare_snapshots(
         copy.deepcopy(current), current, [shared_path]
     )
 
-    shared_index = next(
-        index
-        for index, item in enumerate(current["files"])
-        if item["path"] == shared_path
-    )
-    current["files"][shared_index] = TOOL.measured_file(
-        shared_path, summary((89, 100), (16, 20))
-    )
-    aggregate = {
-        field: sum(item[field] for item in current["files"])
-        for field in TOOL.COUNT_FIELDS
-    }
-    current["totals"] = {
-        **aggregate,
-        "line_rate": TOOL.rate_text(
-            aggregate["covered_lines"], aggregate["num_statements"]
-        ),
-        "branch_rate": TOOL.rate_text(
-            aggregate["covered_branches"], aggregate["num_branches"]
-        ),
-    }
-    with pytest.raises(TOOL.SnapshotError, match="below 90%"):
-        TOOL.compare_snapshots(baseline, current, [shared_path])
 
-    current["files"][shared_index] = TOOL.measured_file(
-        shared_path, summary((95, 100), (16, 20))
-    )
-    aggregate = {
-        field: sum(item[field] for item in current["files"])
-        for field in TOOL.COUNT_FIELDS
-    }
-    current["totals"] = {
-        **aggregate,
-        "line_rate": TOOL.rate_text(
-            aggregate["covered_lines"], aggregate["num_statements"]
-        ),
-        "branch_rate": TOOL.rate_text(
-            aggregate["covered_branches"], aggregate["num_branches"]
-        ),
-    }
-    with pytest.raises(TOOL.SnapshotError, match="below 85%"):
+@pytest.mark.parametrize(
+    ("lines", "branches", "message"),
+    (
+        ((89, 100), (18, 20), "below 90%"),
+        ((95, 100), (16, 20), "below 85%"),
+    ),
+)
+def test_new_shared_module_threshold_failures_are_independent(
+    lines: tuple[int, int], branches: tuple[int, int], message: str
+) -> None:
+    baseline, current, shared_path = snapshot_with_shared_module(lines, branches)
+    with pytest.raises(TOOL.SnapshotError, match=message):
         TOOL.compare_snapshots(baseline, current, [shared_path])
 
 
@@ -214,9 +194,7 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     ]
     assert config.get("run", "patch").split() == ["subprocess"]
 
-    makefile = (REPO_ROOT / "scripts" / "make_quality.mk").read_text(
-        encoding="utf-8"
-    )
+    makefile = (REPO_ROOT / "scripts" / "make_quality.mk").read_text(encoding="utf-8")
     assert "python-coverage-measure:" in makefile
     assert "python-coverage-check:" in makefile
     assert "python-coverage-baseline-update:" in makefile
@@ -233,9 +211,17 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
         "--new-shared-module "
         "src/norad/contracts/scientific_evidence/review_package.py" in makefile
     )
-    assert (
-        "--new-shared-module src/norad/libraries/validation_report.py" in makefile
-    )
+    assert "--new-shared-module src/norad/libraries/validation/report.py" in makefile
+    for shared_module in (
+        "errors.py",
+        "inputs.py",
+        "publication.py",
+        "runtime.py",
+    ):
+        assert (
+            "--new-shared-module "
+            f"src/norad/libraries/validation/{shared_module}" in makefile
+        )
     assert "compileall -q scripts src/norad tests" in makefile
 
 

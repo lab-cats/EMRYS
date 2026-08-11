@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Sequence
+from collections.abc import Sequence
+from functools import partial
+from typing import TYPE_CHECKING, Any
 
 from .contracts import contracts
 from .core import issue
 from .models import ArtifactIndexError, Inspection
 from .reconcile_native import (
+    NativeSourceIndex,
     mark_native_transaction_failed,
     reconcile_step00c,
     reconcile_step06,
@@ -18,18 +21,29 @@ from .reconcile_native import (
 from .reconcile_review import reconcile_step09c
 from .reconcile_step09 import reconcile_step09
 
-def reconcile_native_transactions(
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+def _group_by_scope(
     inspections: Sequence[Inspection],
-) -> None:
-    source_lookup = {
-        inspection.resolved_path: inspection for inspection in inspections
-    }
+) -> dict[tuple[str, str, str], list[Inspection]]:
     grouped: dict[tuple[str, str, str], list[Inspection]] = defaultdict(list)
     for inspection in inspections:
-        row = inspection.row
-        grouped[(row["step_id"], row["scope_type"], row["scope_id"])].append(
-            inspection
-        )
+        grouped[contracts.scope_key(inspection.row)].append(inspection)
+    return grouped
+
+
+def reconcile_native_transactions(
+    inspections: Sequence[Inspection],
+    *,
+    source_root: Path,
+) -> None:
+    sources = NativeSourceIndex(
+        source_root=source_root,
+        by_path={inspection.resolved_path: inspection for inspection in inspections},
+    )
+    grouped = _group_by_scope(inspections)
     marker_adapters = {
         "00c": "step00c_reference_dict_v1",
         "06": "step06_orientation_counts_v1",
@@ -39,21 +53,14 @@ def reconcile_native_transactions(
         "09c": "step09c_review_summary_v1",
     }
     validators = {
-        "00c": lambda members: reconcile_step00c(members),
-        "06": lambda members: reconcile_step06(members),
-        "07": lambda members: reconcile_step07(members),
-        "08": lambda members: reconcile_step08(members, source_lookup),
-        "09": lambda members: reconcile_step09(members, source_lookup),
-        "09c": lambda members: reconcile_step09c(members, source_lookup),
+        "00c": reconcile_step00c,
+        "06": reconcile_step06,
+        "07": partial(reconcile_step07, sources=sources),
+        "08": partial(reconcile_step08, sources=sources),
+        "09": partial(reconcile_step09, sources=sources),
+        "09c": partial(reconcile_step09c, sources=sources),
     }
-    dependency_order = {
-        "00c": 0,
-        "06": 1,
-        "07": 2,
-        "08": 3,
-        "09": 4,
-        "09c": 5,
-    }
+    dependency_order = dict(zip(validators, range(len(validators)), strict=True))
     ordered_scopes = sorted(
         grouped,
         key=lambda scope: (
@@ -66,8 +73,7 @@ def reconcile_native_transactions(
         step_id = scope[0]
         validator = validators.get(step_id)
         if validator is None or any(
-            member.row["required"] == "true"
-            and member.completion_status != "complete"
+            member.row["required"] == "true" and member.completion_status != "complete"
             for member in members
         ):
             continue
@@ -85,12 +91,7 @@ def reconcile_native_transactions(
 
 
 def reconcile_scope_transactions(inspections: Sequence[Inspection]) -> None:
-    grouped: dict[tuple[str, str, str], list[Inspection]] = defaultdict(list)
-    for inspection in inspections:
-        row = inspection.row
-        grouped[(row["step_id"], row["scope_type"], row["scope_id"])].append(
-            inspection
-        )
+    grouped = _group_by_scope(inspections)
     for scope, members in grouped.items():
         blocking = [
             member
@@ -105,9 +106,7 @@ def reconcile_scope_transactions(inspections: Sequence[Inspection]) -> None:
             if member.completion_status != "complete":
                 continue
             member.completion_status = "incomplete"
-            member.state_reason = (
-                "Logical scope transaction is incomplete or invalid."
-            )
+            member.state_reason = "Logical scope transaction is incomplete or invalid."
             member.warnings.append(
                 issue(
                     "scope_transaction_incomplete",
@@ -121,12 +120,7 @@ def reconcile_scope_transactions(inspections: Sequence[Inspection]) -> None:
 def resolve_scientific_states(
     inspections: Sequence[Inspection],
 ) -> dict[tuple[str, str, str], dict[str, Any]]:
-    grouped: dict[tuple[str, str, str], list[Inspection]] = defaultdict(list)
-    for inspection in inspections:
-        row = inspection.row
-        grouped[(row["step_id"], row["scope_type"], row["scope_id"])].append(
-            inspection
-        )
+    grouped = _group_by_scope(inspections)
     resolved: dict[tuple[str, str, str], dict[str, Any]] = {}
     for scope, members in grouped.items():
         if scope[0] != "09c" or any(

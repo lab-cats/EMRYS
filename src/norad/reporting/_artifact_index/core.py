@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import errno
 import hashlib
 import json
@@ -11,58 +10,25 @@ import re
 import subprocess
 import uuid
 from collections import Counter, defaultdict
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
+from norad.libraries.alignments import orientation as alignment_orientation
+from norad.reporting import _files
+
 from .contracts import contracts
 from .models import (
-    ArtifactIndexError,
     RUN_CONTRACT_FIELDS,
     STEP00A_BASENAMES,
+    ArtifactIndexError,
     SourceSnapshot,
 )
 from .registry import ADAPTER_REGISTRY
 from .rosters import SCOPE_ADAPTER_ROSTERS
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Build an explicit read-only NORAD artifact index. Dry-run is "
-            "the default; add --execute to publish the receipt-last "
-            "transaction."
-        )
-    )
-    parser.add_argument("--run-id", required=True, help="Immutable run ID.")
-    parser.add_argument(
-        "--run-contract",
-        required=True,
-        type=Path,
-        help=(
-            "Strict JSON file containing exactly the six-field canonical "
-            "run contract."
-        ),
-    )
-    parser.add_argument(
-        "--inventory",
-        required=True,
-        type=Path,
-        help="Explicit expected-artifact inventory TSV.",
-    )
-    parser.add_argument(
-        "--output-root",
-        required=True,
-        type=Path,
-        help="Parent directory under which <run-id>/ is published.",
-    )
-    parser.add_argument(
-        "--execute",
-        action="store_true",
-        help="Publish records, index, and receipt. Default is dry-run.",
-    )
-    return parser.parse_args()
 
 
 def safe_tsv(value: Any) -> str:
@@ -120,11 +86,25 @@ def new_attempt_id(timestamp: str) -> str:
     return f"artifact-index-{compact}-{uuid.uuid4().hex[:12]}"
 
 
-def get_git_commit() -> str:
+def get_git_commit(
+    *,
+    source_root: Path = contracts.REPO_ROOT,
+    sanitize_git_routing: bool = False,
+) -> str:
+    environment = (
+        {
+            name: value
+            for name, value in os.environ.items()
+            if not name.startswith("GIT_")
+        }
+        if sanitize_git_routing
+        else None
+    )
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--verify", "HEAD"],
-            cwd=contracts.REPO_ROOT,
+            cwd=source_root,
+            env=environment,
             check=True,
             capture_output=True,
             text=True,
@@ -165,8 +145,7 @@ def load_run_contract(path: Path) -> tuple[dict[str, Any], str]:
     )
     if errors:
         detail = "\n".join(
-            f"- {contracts.format_json_path(error.absolute_path)}: "
-            f"{error.message}"
+            f"- {contracts.format_json_path(error.absolute_path)}: {error.message}"
             for error in errors
         )
         raise ArtifactIndexError(f"Run contract failed validation:\n{detail}")
@@ -184,8 +163,7 @@ def validate_inventory_registry(rows: Sequence[dict[str, str]]) -> None:
         spec = ADAPTER_REGISTRY.get(adapter_id)
         if spec is None:
             raise ArtifactIndexError(
-                f"Inventory row {row_number}: unsupported adapter "
-                f"{adapter_id!r}"
+                f"Inventory row {row_number}: unsupported adapter {adapter_id!r}"
             )
         if row["step_id"] != spec.step_id:
             raise ArtifactIndexError(
@@ -208,8 +186,7 @@ def validate_inventory_registry(rows: Sequence[dict[str, str]]) -> None:
                 f"Inventory row {row_number}: adapter {adapter_id!r} does not "
                 f"accept source filename {source_name!r}"
             )
-        key = (row["step_id"], row["scope_type"], row["scope_id"])
-        grouped[key].append(row)
+        grouped[contracts.scope_key(row)].append(row)
 
     for scope, scope_rows in grouped.items():
         step_id = scope[0]
@@ -241,9 +218,11 @@ def validate_inventory_registry(rows: Sequence[dict[str, str]]) -> None:
                 for row in scope_rows
                 if row["adapter"] == "step07_mpileup_vcf_v1"
             ]
-            if sum(".FWD_like." in name for name in vcf_names) != 1 or sum(
-                ".REV_like." in name for name in vcf_names
-            ) != 1:
+            observed_orientations = {
+                alignment_orientation.infer_orientation_from_path(name)
+                for name in vcf_names
+            }
+            if observed_orientations != alignment_orientation.REQUIRED_ORIENTATIONS:
                 raise ArtifactIndexError(
                     f"Inventory scope {scope!r} must declare one FWD_like "
                     "and one REV_like Step 07 VCF"
@@ -259,10 +238,14 @@ def issue(code: str, message: str, artifact_id: str) -> dict[str, Any]:
     }
 
 
-def declared_contract_path(value: str) -> Path:
+def declared_contract_path(
+    value: str,
+    *,
+    source_root: Path,
+) -> Path:
     path = Path(value)
     if not path.is_absolute():
-        path = contracts.REPO_ROOT / path
+        path = source_root / path
     return Path(os.path.abspath(os.fspath(path)))
 
 
@@ -352,22 +335,8 @@ def stat_source(
                 "changed_during_hash",
                 link_target,
             )
-        before_identity = (
-            stat_result.st_dev,
-            stat_result.st_ino,
-            stat_result.st_size,
-            stat_result.st_mtime_ns,
-            stat_result.st_ctime_ns,
-            link_target,
-        )
-        after_identity = (
-            post_hash_stat.st_dev,
-            post_hash_stat.st_ino,
-            post_hash_stat.st_size,
-            post_hash_stat.st_mtime_ns,
-            post_hash_stat.st_ctime_ns,
-            post_hash_link,
-        )
+        before_identity = (*_files.stat_identity(stat_result), link_target)
+        after_identity = (*_files.stat_identity(post_hash_stat), post_hash_link)
         if before_identity != after_identity:
             return SourceSnapshot(
                 "unknown",

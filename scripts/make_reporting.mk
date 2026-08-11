@@ -77,7 +77,8 @@ demo-report:
 		--root "$(DEMO_REPORT_FIXTURE_ROOT)" \
 		--full-science-demo
 	SOURCE_DATE_EPOCH=1700000000 \
-		"$(REPORT_PYTHON_BIN)" src/norad/reporting/build_run_summary.py \
+		"$(REPORT_PYTHON_BIN)" -I -m norad build run-summary \
+		--source-checkout "$(CURDIR)" \
 		--run-id "$(DEMO_REPORT_RUN_ID)" \
 		--artifact-receipt \
 			"$(DEMO_REPORT_ARTIFACT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).artifact_receipt.tsv" \

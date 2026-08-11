@@ -3,9 +3,25 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping, Sequence
+from functools import partial
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
+from ._text_common import inspect_nonempty_text, iter_text_lines
+from ._text_genomic import (
+    inspect_bed12,
+    inspect_dict,
+    inspect_fai,
+    inspect_fasta,
+    inspect_picard_metrics,
+    inspect_star_sj,
+    inspect_vcf,
+)
+from ._text_tabular import (
+    inspect_tsv,
+    validate_native_run_anchors,
+)
 from .binary_readers import (
     inspect_bai_structure,
     inspect_bgzf_bam,
@@ -14,38 +30,36 @@ from .binary_readers import (
 from .contracts import contracts
 from .core import declared_contract_path, issue, stat_source
 from .models import ANCHOR_HASH_FIELDS, AdapterSpec, ArtifactIndexError, Inspection
-from .text_readers import (
-    inspect_bed12,
-    inspect_dict,
-    inspect_fai,
-    inspect_fasta,
-    inspect_nonempty_text,
-    inspect_picard_metrics,
-    inspect_star_sj,
-    inspect_tsv,
-    inspect_vcf,
-    iter_text_lines,
-    validate_native_run_anchors,
-)
+
 
 def inspect_source(
     row: dict[str, str],
     spec: AdapterSpec,
+    *,
+    source_root: Path,
 ) -> Inspection:
-    resolved = declared_contract_path(row["source_path"])
+    resolved = declared_contract_path(
+        row["source_path"],
+        source_root=source_root,
+    )
     snapshot = stat_source(resolved)
     required = row["required"] == "true"
     artifact_id = row["artifact_id"]
+    # All outcomes describe this same source identity; branches supply only state.
+    build_inspection = partial(
+        Inspection,
+        row=row,
+        spec=spec,
+        resolved_path=resolved,
+        attempt_provenance_status="unavailable",
+        snapshot=snapshot,
+    )
     if snapshot.status == "missing":
         if required:
-            return Inspection(
-                row=row,
-                spec=spec,
-                resolved_path=resolved,
+            return build_inspection(
                 availability_status="missing",
                 completion_status="incomplete",
                 state_reason="Required source is absent.",
-                attempt_provenance_status="unavailable",
                 source=None,
                 warnings=[
                     issue(
@@ -54,28 +68,19 @@ def inspect_source(
                         artifact_id,
                     )
                 ],
-                snapshot=snapshot,
             )
-        return Inspection(
-            row=row,
-            spec=spec,
-            resolved_path=resolved,
+        return build_inspection(
             availability_status="missing",
             completion_status="not_attempted",
             state_reason="Optional source is absent.",
             attempt_provenance_status="not_attempted",
             source=None,
-            snapshot=snapshot,
         )
     if snapshot.status == "externally_unavailable":
-        return Inspection(
-            row=row,
-            spec=spec,
-            resolved_path=resolved,
+        return build_inspection(
             availability_status="externally_unavailable",
             completion_status="incomplete",
             state_reason="Declared source cannot be accessed.",
-            attempt_provenance_status="unavailable",
             source=None,
             warnings=[
                 issue(
@@ -85,17 +90,12 @@ def inspect_source(
                     artifact_id,
                 )
             ],
-            snapshot=snapshot,
         )
     if snapshot.status == "unknown":
-        return Inspection(
-            row=row,
-            spec=spec,
-            resolved_path=resolved,
+        return build_inspection(
             availability_status="unknown",
             completion_status="failed",
             state_reason="Declared source is not a readable regular file.",
-            attempt_provenance_status="unavailable",
             source=None,
             errors=[
                 issue(
@@ -105,7 +105,6 @@ def inspect_source(
                     artifact_id,
                 )
             ],
-            snapshot=snapshot,
         )
 
     source = {
@@ -144,20 +143,13 @@ def inspect_source(
                 )
         validate_native_run_anchors(first_row, row)
         metrics = build_metrics(row, row_count, native_metrics)
-        if (
-            spec.kind == "validation_report"
-            and native_metrics.get("value_counts", {})
-            .get("status", {})
-            .get("fail", 0)
-        ):
-            return Inspection(
-                row=row,
-                spec=spec,
-                resolved_path=resolved,
+        if spec.kind == "validation_report" and native_metrics.get(
+            "value_counts", {}
+        ).get("status", {}).get("fail", 0):
+            return build_inspection(
                 availability_status="present",
                 completion_status="failed",
                 state_reason="Validation report contains failed checks.",
-                attempt_provenance_status="unavailable",
                 source=source,
                 parameters=parameters,
                 metrics=metrics,
@@ -170,32 +162,22 @@ def inspect_source(
                         artifact_id,
                     )
                 ],
-                snapshot=snapshot,
             )
-        return Inspection(
-            row=row,
-            spec=spec,
-            resolved_path=resolved,
+        return build_inspection(
             availability_status="present",
             completion_status="complete",
             state_reason=None,
-            attempt_provenance_status="unavailable",
             source=source,
             parameters=parameters,
             metrics=metrics,
             native=native_metrics,
             first_row=first_row,
-            snapshot=snapshot,
         )
     except ArtifactIndexError as exc:
-        return Inspection(
-            row=row,
-            spec=spec,
-            resolved_path=resolved,
+        return build_inspection(
             availability_status="present",
             completion_status="failed",
             state_reason="Present source failed its registered adapter.",
-            attempt_provenance_status="unavailable",
             source=source,
             errors=[
                 issue(
@@ -204,8 +186,8 @@ def inspect_source(
                     artifact_id,
                 )
             ],
-            snapshot=snapshot,
         )
+
 
 def inspect_present(
     path: Path,
@@ -245,11 +227,7 @@ def inspect_present(
         return None, None, {}, native
     if spec.kind == "quickcheck":
         expected = "PASS: samtools quickcheck completed with no errors."
-        observed = [
-            line
-            for _line_number, line in iter_text_lines(path)
-            if line
-        ]
+        observed = [line for _line_number, line in iter_text_lines(path) if line]
         if observed != [expected]:
             raise ArtifactIndexError("quickcheck output does not declare PASS")
         return 1, None, {}, {"quickcheck_pass": True}
@@ -260,9 +238,7 @@ def inspect_present(
             count += 1
             match = re.match(r"^([0-9]+) \+ ([0-9]+) (.+)$", line)
             if match is None:
-                raise ArtifactIndexError(
-                    f"flagstat line {line_number} is malformed"
-                )
+                raise ArtifactIndexError(f"flagstat line {line_number} is malformed")
             passed = int(match.group(1))
             failed = int(match.group(2))
             label = match.group(3)
@@ -300,9 +276,7 @@ def inspect_present(
             count += 1
             if "|" not in line:
                 continue
-            key_text, value_text = (
-                value.strip() for value in line.split("|", 1)
-            )
+            key_text, value_text = (value.strip() for value in line.split("|", 1))
             if not key_text or not value_text:
                 continue
             key_value_count += 1
@@ -346,6 +320,7 @@ def inspect_present(
         count, native = inspect_nonempty_text(path)
         return count, None, {}, native
     raise ArtifactIndexError(f"Adapter kind is not implemented: {spec.kind}")
+
 
 def build_metrics(
     row: Mapping[str, str],
@@ -404,8 +379,7 @@ def apply_run_contract_checks(
         if inspection.row["scope_type"] == "analysis":
             analysis_ids = anchor_values.get("analysis_id", [])
             if any(
-                value != run_contract["primary_analysis_id"]
-                for value in analysis_ids
+                value != run_contract["primary_analysis_id"] for value in analysis_ids
             ):
                 mismatches.append("primary_analysis_id")
         primary_analysis_ids = anchor_values.get("primary_analysis_id", [])

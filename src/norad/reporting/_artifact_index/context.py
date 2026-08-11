@@ -4,10 +4,8 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from pathlib import Path
-from typing import Any
-
-from jsonschema import Draft202012Validator, FormatChecker
+from dataclasses import replace
+from typing import TYPE_CHECKING, Any
 
 from .contracts import contracts
 from .core import (
@@ -27,7 +25,6 @@ from .models import (
     ARTIFACT_RECEIPT_HEADER,
     ArtifactIndexError,
     BuildContext,
-    SourceSnapshot,
 )
 from .reconciliation import (
     reconcile_native_transactions,
@@ -40,6 +37,7 @@ from .records import (
     build_receipt_row,
     load_existing_receipt,
     producer_evidence,
+    record_manifest,
     tsv_bytes,
     validate_existing_identity,
     validate_record_in_memory,
@@ -47,18 +45,25 @@ from .records import (
 from .registry import ADAPTER_REGISTRY
 from .validation import validate_existing_transaction
 
-def prepare_context(arguments: argparse.Namespace) -> BuildContext:
+if TYPE_CHECKING:
+    from .source_checkout import SourceCheckout
+
+
+def prepare_context(
+    arguments: argparse.Namespace,
+    *,
+    source_checkout: SourceCheckout,
+) -> BuildContext:
     if not contracts.SAFE_ID_RE.fullmatch(arguments.run_id):
-        raise ArtifactIndexError(
-            "run_id must match [A-Za-z0-9][A-Za-z0-9._-]*"
-        )
+        raise ArtifactIndexError("run_id must match [A-Za-z0-9][A-Za-z0-9._-]*")
     run_contract_path = arguments.run_contract.expanduser().resolve()
     inventory_path = arguments.inventory.expanduser().resolve()
     output_root = arguments.output_root.expanduser().resolve()
-    run_contract, run_contract_file_sha256 = load_run_contract(
-        run_contract_path
+    run_contract, run_contract_file_sha256 = load_run_contract(run_contract_path)
+    inventory_rows = contracts.validate_inventory(
+        inventory_path,
+        source_root=source_checkout.root,
     )
-    inventory_rows = contracts.validate_inventory(inventory_path)
     validate_inventory_registry(inventory_rows)
     inventory_sha256 = contracts.sha256_file(inventory_path)
     output_dir = output_root / arguments.run_id
@@ -83,7 +88,10 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
                 f"The {label} must not live inside its generated run directory"
             )
     for row in inventory_rows:
-        source = contracts.resolve_contract_path(row["source_path"])
+        source = contracts.resolve_contract_path(
+            row["source_path"],
+            source_root=source_checkout.root,
+        )
         if source == output_dir or output_dir in source.parents:
             raise ArtifactIndexError(
                 "Inventory source paths must not point inside the generated "
@@ -103,32 +111,36 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
             records_dir=records_dir,
             artifacts_path=artifacts_path,
             receipt_path=receipt_path,
+            source_root=source_checkout.root,
         )
 
     started_at = utc_now()
     attempt_id = new_attempt_id(started_at)
-    git_commit = get_git_commit()
-    evidence = producer_evidence(git_commit)
+    git_commit = get_git_commit(
+        source_root=source_checkout.root,
+        sanitize_git_routing=True,
+    )
+    evidence = producer_evidence(git_commit, source_root=source_checkout.root)
     inspections = [
-        inspect_source(row, ADAPTER_REGISTRY[row["adapter"]])
+        inspect_source(
+            row,
+            ADAPTER_REGISTRY[row["adapter"]],
+            source_root=source_checkout.root,
+        )
         for row in inventory_rows
     ]
     apply_run_contract_checks(inspections, run_contract)
-    reconcile_native_transactions(inspections)
+    reconcile_native_transactions(
+        inspections,
+        source_root=source_checkout.root,
+    )
     reconcile_scope_transactions(inspections)
     scientific_states = resolve_scientific_states(inspections)
 
-    schemas, registry = contracts.load_schema_registry()
-    validator = Draft202012Validator(
-        schemas["artifact-record"],
-        registry=registry,
-        format_checker=FormatChecker(),
-    )
+    validator = contracts.schema_validator("artifact-record")
     records: list[dict[str, Any]] = []
     record_bytes: list[bytes] = []
-    for inspection, inventory_row in zip(
-        inspections, inventory_rows, strict=True
-    ):
+    for inspection, inventory_row in zip(inspections, inventory_rows, strict=True):
         scope = (
             inventory_row["step_id"],
             inventory_row["scope_type"],
@@ -143,7 +155,12 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
             git_commit=git_commit,
             created_at=started_at,
         )
-        validate_record_in_memory(record, inventory_row, validator)
+        validate_record_in_memory(
+            record,
+            inventory_row,
+            validator,
+            source_root=source_checkout.root,
+        )
         records.append(record)
         record_bytes.append(canonical_json_bytes(record))
 
@@ -174,6 +191,7 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
     )
     receipt_bytes = tsv_bytes(ARTIFACT_RECEIPT_HEADER, [receipt_row])
     context = BuildContext(
+        source_checkout=source_checkout,
         run_id=arguments.run_id,
         run_contract_path=run_contract_path,
         run_contract=run_contract,
@@ -181,14 +199,11 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
         inventory_path=inventory_path,
         inventory_sha256=inventory_sha256,
         inventory_rows=inventory_rows,
-        output_root=output_root,
         output_dir=output_dir,
         records_dir=records_dir,
         artifacts_path=artifacts_path,
         receipt_path=receipt_path,
         lock_path=lock_path,
-        git_commit=git_commit,
-        producer_evidence=evidence,
         inspections=inspections,
         records=records,
         record_bytes=record_bytes,
@@ -196,7 +211,6 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
         index_bytes=index_bytes,
         receipt_row=receipt_row,
         receipt_bytes=receipt_bytes,
-        started_at=started_at,
         attempt_id=attempt_id,
         previous_attempt_id=previous_attempt_id,
         attempt_history=attempt_history,
@@ -217,52 +231,19 @@ def validate_context_in_memory(context: BuildContext) -> None:
         context.index_bytes
     ):
         raise ArtifactIndexError("Generated artifact index hash is inconsistent")
-    manifest = [
-        {
-            "artifact_id": row["artifact_id"],
-            "record_path": row["record_path"],
-            "record_sha256": row["record_sha256"],
-        }
-        for row in context.index_rows
-    ]
-    if context.receipt_row["record_set_sha256"] != canonical_digest(manifest):
+    if context.receipt_row["record_set_sha256"] != canonical_digest(
+        record_manifest(context.index_rows)
+    ):
         raise ArtifactIndexError("Generated record-set hash is inconsistent")
     if context.receipt_row["transaction_state"] != "complete":
         raise ArtifactIndexError("Generated receipt is not complete")
-
-
-def source_snapshot_matches(
-    expected: SourceSnapshot,
-    observed: SourceSnapshot,
-) -> bool:
-    return (
-        expected.status,
-        expected.size_bytes,
-        expected.file_type,
-        expected.link_target,
-        expected.device,
-        expected.inode,
-        expected.mtime_ns,
-        expected.ctime_ns,
-    ) == (
-        observed.status,
-        observed.size_bytes,
-        observed.file_type,
-        observed.link_target,
-        observed.device,
-        observed.inode,
-        observed.mtime_ns,
-        observed.ctime_ns,
-    )
 
 
 def recheck_inputs(context: BuildContext) -> None:
     if contracts.sha256_file(context.run_contract_path) != (
         context.run_contract_file_sha256
     ):
-        raise ArtifactIndexError(
-            "Run-contract file changed after initial validation"
-        )
+        raise ArtifactIndexError("Run-contract file changed after initial validation")
     if contracts.sha256_file(context.inventory_path) != context.inventory_sha256:
         raise ArtifactIndexError("Inventory changed after initial validation")
     for inspection in context.inspections:
@@ -273,8 +254,10 @@ def recheck_inputs(context: BuildContext) -> None:
                 and inspection.snapshot.file_type == "hash_read_error"
             ),
         )
-        if inspection.snapshot is None or not source_snapshot_matches(
-            inspection.snapshot, observed
+        expected_snapshot = inspection.snapshot
+        # Rechecks may skip hashing, but every filesystem identity field must match.
+        if expected_snapshot is None or not (
+            expected_snapshot == replace(observed, sha256=expected_snapshot.sha256)
         ):
             raise ArtifactIndexError(
                 "Declared source changed after initial inspection: "
@@ -292,10 +275,7 @@ def print_context(context: BuildContext, execute: bool) -> None:
     print("NORAD artifact-index context")
     print(f"  Mode: {'execute' if execute else 'dry-run'}")
     print(f"  Run ID: {context.run_id}")
-    print(
-        "  Run contract SHA-256: "
-        f"{context.run_contract['run_contract_sha256']}"
-    )
+    print(f"  Run contract SHA-256: {context.run_contract['run_contract_sha256']}")
     print(f"  Run contract: {context.run_contract_path}")
     print(f"  Inventory: {context.inventory_path}")
     print(f"  Inventory artifacts: {len(context.inventory_rows)}")
@@ -338,7 +318,4 @@ def print_context(context: BuildContext, execute: bool) -> None:
             f"source={inspection.row['source_path']}"
         )
     if not execute:
-        print(
-            "Dry-run only. Add --execute to publish the artifact-index "
-            "transaction."
-        )
+        print("Dry-run only. Add --execute to publish the artifact-index transaction.")

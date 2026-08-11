@@ -6,17 +6,15 @@ take priority over speed or convenience.
 
 ## Authority
 
-- Start new work in plan/review mode. Inspect the live checkout, affected
-  owners, contracts, callers, tests, and fixtures; obtain approval before
-  editing, branching, installing, executing, or publishing.
+- Use the [workflow kernel](docs/operations/WORKFLOW.md) to load the smallest
+  sufficient current context and deliver one approved bounded outcome.
 - Use one authoritative mutable worktree and branch. Other worktrees are
   read-only unless the user explicitly changes the authority boundary.
 - Implement only the approved outcome. Merging, rebasing, force-pushing,
   deleting branches, dependency installation, cluster execution, production
   mutation, destructive cleanup, scientific review, and evidence promotion
   require their own explicit authority.
-- Local commits do not authorize a push. Follow the short
-  [workflow kernel](docs/operations/WORKFLOW.md).
+- Local commits do not authorize a push.
 
 ## Repository, runtime, and data safety
 

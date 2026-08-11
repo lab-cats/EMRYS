@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Mapping, Sequence
 
-
 SCIENCE_STATUSES = (
     "evidence_incomplete",
     "science_review_complete_exploratory",
@@ -18,6 +17,9 @@ RUNTIME_VALIDATION_STATUSES = ("not_run", "blocked", "passed", "failed")
 CLUSTER_DRY_RUN_STATUSES = ("not_run", "passed", "failed")
 CLUSTER_PROOF_STATUSES = ("not_run", "proven", "failed")
 DECISION_STATUSES = ("pending", "recorded")
+EVIDENCE_RECORD_PREFIX = ("review_id", "evidence_id", "analysis_id")
+REVIEW_FIELDS = ("reviewer", "review_date")
+REVIEW_DETAIL_FIELDS = (*REVIEW_FIELDS, "detail")
 DECISION_DIMENSIONS = (
     "orientation",
     "annotation",
@@ -77,9 +79,7 @@ REVIEW_PLAN_HEADER = (
     "notes",
 )
 ORIENTATION_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "locus_id",
     "candidate_id",
     "partition_id",
@@ -104,15 +104,11 @@ ORIENTATION_HEADER = (
     "inverted_expected_rna_ref",
     "inverted_expected_rna_alt",
     "concordance_status",
-    "reviewer",
-    "review_date",
-    "detail",
+    *REVIEW_DETAIL_FIELDS,
 )
 
 ANNOTATION_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "audit_id",
     "candidate_id",
     "chromosome",
@@ -136,15 +132,11 @@ ANNOTATION_HEADER = (
     "expected_is_intron",
     "assignment_status",
     "ambiguity_status",
-    "reviewer",
-    "review_date",
-    "detail",
+    *REVIEW_DETAIL_FIELDS,
 )
 
 QC_FUNNEL_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "scope_type",
     "partition_id",
     "orientation",
@@ -173,9 +165,7 @@ QC_FUNNEL_HEADER = (
 )
 
 REPLICATE_EFFECTS_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "candidate_id",
     "partition_id",
     "orientation",
@@ -190,15 +180,11 @@ REPLICATE_EFFECTS_HEADER = (
     "treatment_af",
     "treatment_control_difference",
     "direction_status",
-    "reviewer",
-    "review_date",
-    "detail",
+    *REVIEW_DETAIL_FIELDS,
 )
 
 SENSITIVITY_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "is_primary",
     "analysis_summary_path",
     "analysis_summary_sha256",
@@ -216,10 +202,9 @@ SENSITIVITY_HEADER = (
     "significant_up_count",
     "significant_down_count",
     "comparison_status",
-    "reviewer",
-    "review_date",
-    "detail",
+    *REVIEW_DETAIL_FIELDS,
 )
+SENSITIVITY_SUMMARY_FIELDS = SENSITIVITY_HEADER[7:19]
 
 LEAVE_ONE_OUT_HEADER = (
     "review_id",
@@ -242,15 +227,11 @@ LEAVE_ONE_OUT_HEADER = (
     "primary_fdr",
     "leave_one_out_fdr",
     "direction_concordance",
-    "reviewer",
-    "review_date",
-    "detail",
+    *REVIEW_DETAIL_FIELDS,
 )
 
 CANDIDATE_SELECTION_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "selection_set",
     "rank",
     "candidate_id",
@@ -262,14 +243,11 @@ CANDIDATE_SELECTION_HEADER = (
     "source_fdr",
     "source_common_or",
     "source_delta",
-    "reviewer",
-    "review_date",
+    *REVIEW_FIELDS,
 )
 
 CANDIDATE_ADJUDICATION_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "candidate_id",
     "selection_set",
     "adjudication_status",
@@ -287,14 +265,12 @@ CANDIDATE_ADJUDICATION_HEADER = (
     "orthogonal_evidence_status",
     "reason",
     "supporting_evidence_ids",
-    "reviewer",
-    "review_date",
+    *REVIEW_FIELDS,
 )
+ADJUDICATION_COMPONENT_FIELDS = CANDIDATE_ADJUDICATION_HEADER[6:18]
 
 DECISIONS_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "decision_id",
     "decision_dimension",
     "evidence_status",
@@ -310,9 +286,7 @@ DECISIONS_HEADER = (
 )
 
 LIMITATIONS_HEADER = (
-    "review_id",
-    "evidence_id",
-    "analysis_id",
+    *EVIDENCE_RECORD_PREFIX,
     "limitation_id",
     "limitation_category",
     "limitation_status",
@@ -339,6 +313,8 @@ CATEGORY_HEADERS: dict[str, tuple[str, ...]] = {
 }
 CATEGORY_ORDER = tuple(CATEGORY_HEADERS)
 ALLOWED_EVIDENCE_CATEGORIES = CATEGORY_ORDER + ("computational_validation",)
+# Evidence index is reportable but is not itself an evidence category.
+REPORT_TABLE_ROLES = CATEGORY_ORDER[:-1] + ("evidence_index", CATEGORY_ORDER[-1])
 
 EVIDENCE_INDEX_HEADER = (
     "review_id",
@@ -358,37 +334,25 @@ EVIDENCE_INDEX_HEADER = (
     "policy_version",
 )
 
-OUTPUT_SUFFIXES = (
-    ("review_plan", "step09c_review_plan.tsv"),
-    ("evidence_index", "step09c_evidence_index.tsv"),
-    ("orientation_locus_audit", "step09c_orientation_locus_audit.tsv"),
-    ("annotation_audit", "step09c_annotation_audit.tsv"),
-    ("qc_funnel", "step09c_qc_funnel.tsv"),
-    ("replicate_effects", "step09c_replicate_effects.tsv"),
-    ("sensitivity_matrix", "step09c_sensitivity_matrix.tsv"),
-    ("leave_one_pair_out", "step09c_leave_one_pair_out.tsv"),
-    ("candidate_selection", "step09c_candidate_selection.tsv"),
-    ("candidate_adjudication", "step09c_candidate_adjudication.tsv"),
-    ("decisions", "step09c_decisions.tsv"),
-    ("limitations", "step09c_limitations.tsv"),
-    ("review_summary", "step09c_review_summary.tsv"),
-)
+OUTPUT_KEYS = ("review_plan", "evidence_index", *CATEGORY_ORDER, "review_summary")
+OUTPUT_SUFFIXES = tuple((key, f"step09c_{key}.tsv") for key in OUTPUT_KEYS)
 
-INPUT_ARTIFACT_KEYS = (
-    "sample_manifest",
-    "partition_manifest",
-    "step08_sites",
-    "step08_inputs",
-    "step08_summary",
-    "step09_all_sites",
-    "step09_significant_sites",
-    "step09_summary",
-    "step09_mutation_spectrum",
-    "step09_mutation_spectrum_pdf",
-    "step09_depth_delta_pdf",
-    "review_plan",
-    "evidence_manifest",
-)
+INPUT_ARTIFACT_ROLES = {
+    "sample_manifest": "sample_manifest",
+    "partition_manifest": "partition_manifest",
+    "step08_sites": "step08_sites",
+    "step08_inputs": "step08_inputs",
+    "step08_summary": "step08_summary",
+    "step09_all_sites": "step09_all_sites",
+    "step09_significant_sites": "step09_significant_sites",
+    "step09_summary": "step09_summary",
+    "step09_mutation_spectrum": "step09_mutation_spectrum_tsv",
+    "step09_mutation_spectrum_pdf": "step09_mutation_spectrum_pdf",
+    "step09_depth_delta_pdf": "step09_depth_delta_pdf",
+    "review_plan": "review_plan",
+    "evidence_manifest": "evidence_manifest",
+}
+INPUT_ARTIFACT_KEYS = tuple(INPUT_ARTIFACT_ROLES)
 
 REVIEW_SUMMARY_BASE_HEADER = (
     "review_id",
@@ -462,6 +426,13 @@ REVIEW_SUMMARY_HEADER = (
     + REVIEW_SUMMARY_ARTIFACT_HEADER
     + REVIEW_SUMMARY_TRAILING_HEADER
 )
+OUTPUT_HEADERS = {
+    "review_plan": REVIEW_PLAN_HEADER,
+    "evidence_index": EVIDENCE_INDEX_HEADER,
+    **CATEGORY_HEADERS,
+    "review_summary": REVIEW_SUMMARY_HEADER,
+}
+SINGLE_ROW_OUTPUTS = {"review_plan", "review_summary"}
 
 CONCORDANCE_STATUSES = (
     "concordant",
@@ -491,12 +462,8 @@ AUDIT_COMPONENT_STATUSES = (
 )
 
 
-def aggregate_evidence_status(
-    rows: Sequence[Mapping[str, str]], category: str
-) -> str:
-    category_rows = [
-        row for row in rows if row["evidence_category"] == category
-    ]
+def aggregate_evidence_status(rows: Sequence[Mapping[str, str]], category: str) -> str:
+    category_rows = [row for row in rows if row["evidence_category"] == category]
     if not category_rows:
         return "missing"
     statuses = [row["evidence_status"] for row in category_rows]

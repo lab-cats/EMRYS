@@ -46,8 +46,8 @@ The active policy:
 - measures branches and Python subprocesses over exactly `scripts` and
   `src/norad`;
 - requires subprocess coverage for
-  `src/norad/stages/convert_GTF_to_BED12/gtf_to_bed12.py` and
-  `src/norad/ingestion/sample_manifest_admission/validate_manifest.py`;
+  `src/norad/stages/gtf_to_bed12/converter.py` and
+  `src/norad/ingestion/sample_manifest_admission/validator.py`;
 - rejects any exact-ratio decrease in global line or branch coverage;
 - rejects disappearance of a tracked baseline module;
 - requires each explicitly named new shared Python module to reach at least
@@ -89,8 +89,8 @@ archived entry-point matrices.
 | Exact validation check rosters | [`validation_roster_expectations.py`](../../tests/contract_integration/validation_rosters/validation_roster_expectations.py) and [`test_validation_check_rosters.py`](../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py) |
 | Validation publication and neutral BAM/reference/executable-resolution helpers | [`test_validation_report.py`](../../tests/libraries/test_validation_report.py), [`test_bam_validation.py`](../../tests/libraries/test_bam_validation.py), [`test_reference_contigs.py`](../../tests/libraries/test_reference_contigs.py), [`test_executable_resolution.py`](../../tests/libraries/test_executable_resolution.py), and affected consumer transaction suites |
 | Public schemas, headers, deterministic bytes, statuses, and shared scientific-state transitions | Contract-owner tests under `tests/contracts/` plus [independent contract goldens](../../tests/contract_integration/independent_contract_goldens/README.md) and affected producer suites |
-| Step `09` statistic, p-value, odds-ratio, and estimability behavior | [independent CMH oracle](../../tests/analyses/rank_cohort_candidates_with_paired_CMH/test_step_09_cmh_oracle.py), fixed owner corpus, and guarded real-R comparison |
-| Step `09c` input, evidence policy, publication, signal, concurrency, and recovery behavior | [direct Python suite](../../tests/evidence/assemble_scientific_review_evidence_package/test_step_09c_scientific_validation.py), adjacent shell contract, fixture builder, and neutral [review-package tests](../../tests/contracts/scientific_evidence/test_review_package.py) |
+| Step `09` statistic, p-value, odds-ratio, and estimability behavior | [independent CMH oracle](../../tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_oracle.py), fixed owner corpus, and guarded real-R comparison |
+| Step `09c` input, evidence policy, publication, signal, concurrency, and recovery behavior | [publisher suite](../../tests/evidence/scientific_review_package/test_step_09c_scientific_validation.py), adjacent shell contract, fixture builder, grouped assembly route, and neutral [review-package tests](../../tests/contracts/scientific_evidence/test_review_package.py) |
 | Python non-regression measurement | Tracked snapshot, comparison implementation, and direct policy tests named above |
 
 Local mocks, wrapper stubs, guarded R fixtures, and pinned report rendering do

@@ -23,7 +23,7 @@ remain in [`HANDOFF.md`](../operations/HANDOFF.md); durable answers move to
 | `CHOICE-INTAKE-01` | V1 YAML fields, schemas, state directories, claim/promotion names, and run/attempt package. | `INTAKE-02E`, before `INTAKE-03A` planning. |
 | `CHOICE-REPORT-01`–`03` | Public profile names/selector, science field roster, and profile output/transaction boundary. | `RPT-02`, before `RPT-03` planning. |
 | `CHOICE-GATE-REC-01` | Validation catalog/receipt schema, subject identity, storage, retention, compatibility, privacy, and invalidation. | `GATE-REC-01`, before receipt implementation. |
-| `CHOICE-SKILL-01` | Supported documentation-health skill name, scope, and discovery/install location. | `DOC-SKILL-10`, before scaffolding. |
+| `CHOICE-SKILL-01` | Supported documentation-health skill name, scope, and discovery/install location. | [`DOC-SKILL-10`](../tasks/BACKLOG.md#doc-skill-10--build-documentation-health-skill), before scaffolding. |
 | `CHOICE-ANALYSIS-01` | Trust, registration, validation, provenance, dependencies, reports, and evidence for exploratory versus built-in analyses. | `FUT-ANALYSIS-01`, before a registry/prototype. |
 | `CHOICE-DATA-01` | First version-pinned NCBI reference and SRA read interfaces, cache, and resumable transfer. | `FUT-DATA-02`, before acquisition implementation. |
 | `CHOICE-CONTROL-01` | Public commands/APIs, non-Python assets, immutable job materialization, packaging, and versioning. | `FUT-CLI-03`, before an installable prototype. |

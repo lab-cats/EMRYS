@@ -6,8 +6,9 @@ import json
 import re
 import stat
 import uuid
+from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 from .inputs import (
     _capture_file_snapshot,
@@ -19,6 +20,7 @@ from .inputs import (
     _verify_file_snapshot,
 )
 from .models import FileSnapshot, OutputPaths, adapter, contracts
+
 
 def _assert_output_directory_identity(paths: OutputPaths) -> None:
     try:
@@ -121,6 +123,7 @@ def _load_input_transaction(
     run_id: str,
     artifact_receipt_value: Path,
     output_root_value: Path,
+    source_root: Path,
 ) -> tuple[
     Path,
     str,
@@ -133,10 +136,7 @@ def _load_input_transaction(
     list[dict[str, str]],
     Path,
     str,
-    list[dict[str, str]],
     Path,
-    list[Path],
-    list[str],
     tuple[FileSnapshot, ...],
     list[dict[str, Any]],
     OutputPaths,
@@ -177,11 +177,9 @@ def _load_input_transaction(
         output_dir = raw_output_dir.resolve(strict=True)
         output_dir_metadata = output_dir.lstat()
     except OSError as exc:
-        _fail(f"Artifact output directory cannot be resolved: {raw_output_dir}: "
-              f"{exc}")
-    if (
-        output_dir.parent != output_root
-        or not stat.S_ISDIR(output_dir_metadata.st_mode)
+        _fail(f"Artifact output directory cannot be resolved: {raw_output_dir}: {exc}")
+    if output_dir.parent != output_root or not stat.S_ISDIR(
+        output_dir_metadata.st_mode
     ):
         _fail(
             "Artifact output directory must resolve directly beneath the "
@@ -206,7 +204,10 @@ def _load_input_transaction(
         "Artifact inventory", receipt["inventory_path"]
     )
     inventory_sha256 = contracts.sha256_file(inventory_path)
-    inventory_rows = contracts.validate_inventory(inventory_path)
+    inventory_rows = contracts.validate_inventory(
+        inventory_path,
+        source_root=source_root,
+    )
     artifacts_path = _require_regular_file(
         "Artifact index", receipt["artifacts_index_path"]
     )
@@ -215,9 +216,7 @@ def _load_input_transaction(
     ):
         _fail("Artifact index path is outside the exact run output directory")
     records_dir = output_dir / "records"
-    index_rows = adapter.read_exact_tsv(
-        artifacts_path, adapter.ARTIFACT_INDEX_HEADER
-    )
+    index_rows = adapter.read_exact_tsv(artifacts_path, adapter.ARTIFACT_INDEX_HEADER)
 
     record_paths: list[Path] = []
     record_hashes: list[str] = []
@@ -238,13 +237,16 @@ def _load_input_transaction(
     receipt_payload, receipt_snapshot = _capture_file_snapshot(
         "Artifact receipt", artifact_receipt_path
     )
-    if _read_exact_tsv_bytes(
-        label="Artifact receipt",
-        path=artifact_receipt_path,
-        payload=receipt_payload,
-        header=adapter.ARTIFACT_RECEIPT_HEADER,
-        exact_rows=1,
-    )[0] != receipt:
+    if (
+        _read_exact_tsv_bytes(
+            label="Artifact receipt",
+            path=artifact_receipt_path,
+            payload=receipt_payload,
+            header=adapter.ARTIFACT_RECEIPT_HEADER,
+            exact_rows=1,
+        )[0]
+        != receipt
+    ):
         _fail("Artifact receipt changed between parsing and snapshot capture")
     snapshots.append(receipt_snapshot)
 
@@ -331,6 +333,7 @@ def _load_input_transaction(
         artifacts_path=artifacts_path,
         receipt_path=artifact_receipt_path,
         require_current_source_locations=True,
+        source_root=source_root,
     )
     for snapshot in snapshots:
         _verify_file_snapshot("Artifact transaction input", snapshot)
@@ -357,10 +360,7 @@ def _load_input_transaction(
         inventory_rows,
         artifacts_path,
         artifacts_snapshot.sha256,
-        index_rows,
         records_dir,
-        record_paths,
-        record_hashes,
         tuple(snapshots),
         artifacts,
         paths,

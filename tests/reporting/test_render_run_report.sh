@@ -23,7 +23,8 @@ trap 'rm -rf "$tmp"' EXIT
 artifact_root="$tmp/fixture/adapter_fixture/artifacts"
 artifact_receipt="$artifact_root/synthetic_run/synthetic_run.artifact_receipt.tsv"
 SOURCE_DATE_EPOCH=1700000000 "$python_bin" \
-    src/norad/reporting/build_run_summary.py \
+    -I -m norad build run-summary \
+    --source-checkout "$repo_root" \
     --run-id synthetic_run \
     --artifact-receipt "$artifact_receipt" \
     --output-root "$artifact_root" \
