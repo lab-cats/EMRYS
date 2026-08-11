@@ -90,13 +90,12 @@ def _validate_published_artifacts(
     artifacts: Sequence[Mapping[str, Any]],
     summary_artifact: Mapping[str, Any],
     output_tables: Mapping[str, tuple[tuple[str, ...], list[dict[str, str]]]],
-) -> dict[str, Mapping[str, Any]]:
+) -> None:
     review_id = summary_row["review_id"]
-    expected_scope = ("09c", "scientific_review", review_id)
     scoped = [
         artifact
         for artifact in artifacts
-        if _artifact_scope(artifact) == expected_scope
+        if _artifact_scope(artifact) == ("09c", "scientific_review", review_id)
     ]
     expected_adapters = set(PUBLISHED_ADAPTERS.values())
     observed_adapters = [artifact.get("adapter") for artifact in scoped]
@@ -122,7 +121,6 @@ def _validate_published_artifacts(
             "science state declared by its source row."
         )
 
-    by_key: dict[str, Mapping[str, Any]] = {}
     for key, suffix in review_package.OUTPUT_SUFFIXES:
         adapter = PUBLISHED_ADAPTERS[key]
         artifact = indexed[adapter]
@@ -179,8 +177,6 @@ def _validate_published_artifacts(
             _fail(f"Indexed Step 09c artifact {adapter} row count differs.")
         if source.get("media_type") != "text/tab-separated-values":
             _fail(f"Indexed Step 09c artifact {adapter} media type differs.")
-        by_key[key] = artifact
-    return by_key
 
 
 def _read_committed_review_package(
