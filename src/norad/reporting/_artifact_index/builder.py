@@ -9,7 +9,6 @@ rollback-protected transaction.
 
 from __future__ import annotations
 
-import signal as signal
 import sys
 import uuid as uuid
 from collections.abc import Mapping
@@ -59,16 +58,10 @@ review_package = _contract_owners.review_package
 # focused fault injection continues to exercise the real transaction owner.
 ADAPTER_REGISTRY = _core_owner.ADAPTER_REGISTRY
 os = _publication_owner.os
-LockOwnership = _models_owner.LockOwnership
 get_git_commit = _api_owner.get_git_commit
 canonical_json_bytes = _api_owner.canonical_json_bytes
-safe_tsv = _api_owner.safe_tsv
-utc_now = _api_owner.utc_now
-load_run_contract = _api_owner.load_run_contract
-sha256_bytes = _api_owner.sha256_bytes
 
 RUN_CONTRACT_FIELDS = _api_owner.RUN_CONTRACT_FIELDS
-SHA256_RE = _api_owner.SHA256_RE
 VALIDATION_REPORT_HEADER = _models_owner.VALIDATION_REPORT_HEADER
 
 ARTIFACT_INDEX_HEADER = _api_owner.ARTIFACT_INDEX_HEADER
@@ -77,7 +70,6 @@ build_index_rows = _records_owner.build_index_rows
 build_receipt_row = _records_owner.build_receipt_row
 producer_evidence = _records_owner.producer_evidence
 STEP_PRODUCERS = _records_owner.STEP_PRODUCERS
-read_exact_tsv = _api_owner.read_exact_tsv
 tsv_bytes = _api_owner.tsv_bytes
 inventory_rows_from_published_index = _records_owner.inventory_rows_from_published_index
 load_existing_receipt = _records_owner.load_existing_receipt
