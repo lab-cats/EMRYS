@@ -22,9 +22,20 @@ GTF-to-BED12 conversion/validation and named schema/report resources.
 
 ## Start here
 
-This entry path assumes pinned Python packages, the guarded R environment,
-pinned Quarto, and owner-required system tools are already configured. Activate
-the configured Python environment before using the Make target below.
+Python development requires Python `3.11` or newer and a separately provisioned
+`uv` executable. From the repository root, synchronize the reviewed lock and
+install the NORAD project itself:
+
+```sh
+uv sync --locked
+```
+
+Do not curl-install `uv` or restore dependencies from validation, rendering,
+compute, or scheduler commands. The guarded R environment remains owned by
+`renv`; pinned Quarto and owner-required system tools are separate prerequisites.
+After the explicit Python synchronization above, repository commands use the
+project `.venv`.
+
 Implemented owners collectively consume a sample manifest and paired RNA-seq
 reads, reference FASTA/GTF material, and any owner-specific selections or
 declarations described by their local contract. The full runtime manifest and
@@ -93,7 +104,7 @@ scientific policy explicitly unlocks it.
 | [`docs/`](docs/README.md) | Architecture, operations, design, task, history, reference, and demonstration documentation. |
 | [`data/`](data/README.md) and [`refs/`](refs/README.md) | Operator-managed input and reference workspaces; large or runtime children are ignored while safety guidance is tracked. |
 | [`results/`](results/README.md) and [`logs/`](logs/README.md) | Ignored generated outputs and scheduler streams; generated does not automatically mean disposable. |
-| [`renv/`](renv/README.md) and [root tool configuration](docs/operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration) | Explicit dependency activation plus conventional Python, R, pytest, and coverage configuration. |
+| [`uv.lock`](uv.lock), [`renv/`](renv/README.md), and [root tool configuration](docs/operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration) | Locked Python and R dependency authority plus pytest and coverage configuration. |
 
 Use the [documentation sitemap](docs/sitemap/README.md) for category-level
 navigation and canonical responsibility boundaries.

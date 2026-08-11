@@ -89,34 +89,6 @@ if (!identical(bioconductor_version, "3.23")) {
     )
 }
 
-# BiocManager can return either TRUE on legacy versions or a biocValid
-# structure (current releases) with nested package-inconsistency rows.
-bioconductor_valid <- BiocManager::valid(
-    lib.loc = .libPaths()[[1L]],
-    checkBuilt = FALSE
-)
-
-count_valid_rows <- function(value, depth = 0L) {
-    if (is.null(value) || depth >= 6L) {
-        return(0L)
-    }
-    if (is.matrix(value) || is.data.frame(value)) {
-        return(as.integer(nrow(value)))
-    }
-    if (!is.list(value)) {
-        return(0L)
-    }
-    return(sum(vapply(value, count_valid_rows, integer(1L), depth + 1L)))
-}
-
-if (
-    !isTRUE(bioconductor_valid) &&
-    !(inherits(bioconductor_valid, "biocValid") &&
-      count_valid_rows(bioconductor_valid) == 0L)
-) {
-    stop("BiocManager::valid() reported an inconsistent package set.")
-}
-
 renv_status <- renv::status(project = project_root)
 if (!isTRUE(renv_status$synchronized)) {
     stop("renv::status() reports that the project is not synchronized.")

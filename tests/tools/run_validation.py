@@ -15,14 +15,12 @@ import sys
 import tempfile
 import time
 import xml.etree.ElementTree as ET
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 SCHEMA_VERSION = "1.0.0"
-XDIST_VERSION = "3.8.0"
-EXECNET_VERSION = "2.1.2"
 LANE_NAMES = (
     "python-coverage",
     "shell-contracts",
@@ -102,41 +100,48 @@ def require_executable(path: Path, label: str) -> Path:
     return candidate.absolute()
 
 
-def package_version(python_bin: Path, package: str) -> str:
-    """Read one installed distribution version from the selected interpreter."""
-    script = (
-        "import importlib.metadata, sys; "
-        "name=sys.argv[1]; "
-        "print(importlib.metadata.version(name))"
+def require_locked_environment(
+    repo_root: Path,
+    python_bin: Path,
+    *,
+    uv_bin: str | None = None,
+    command_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> None:
+    """Require the selected environment to match the reviewed uv lock."""
+    selected_uv = uv_bin or shutil.which("uv")
+    if selected_uv is None:
+        raise ValidationError(
+            "uv is unavailable; provision it explicitly, then run uv sync --locked"
+        )
+    environment = os.environ.copy()
+    environment["VIRTUAL_ENV"] = str(python_bin.parent.parent)
+    command = (
+        selected_uv,
+        "sync",
+        "--locked",
+        "--check",
+        "--active",
+        "--offline",
+        "--no-python-downloads",
+        "--project",
+        str(repo_root),
+        "--python",
+        str(python_bin),
     )
-    result = subprocess.run(
-        [str(python_bin), "-c", script, package],
+    result = command_runner(
+        command,
+        cwd=repo_root,
+        env=environment,
         text=True,
         capture_output=True,
         check=False,
     )
     if result.returncode != 0:
+        detail = (result.stderr or result.stdout).strip()
         raise ValidationError(
-            f"{package} is unavailable in {python_bin}; "
-            "synchronize the tracked requirements explicitly"
-        )
-    return result.stdout.strip()
-
-
-def require_parallel_dependencies(python_bin: Path) -> None:
-    """Require the characterized xdist dependency identities."""
-    observed = {
-        "pytest-xdist": package_version(python_bin, "pytest-xdist"),
-        "execnet": package_version(python_bin, "execnet"),
-    }
-    expected = {
-        "pytest-xdist": XDIST_VERSION,
-        "execnet": EXECNET_VERSION,
-    }
-    if observed != expected:
-        raise ValidationError(
-            "Parallel dependency version mismatch: "
-            f"expected {expected}, observed {observed}"
+            f"selected Python environment does not match uv.lock: {python_bin}"
+            + (f"\n{detail}" if detail else "")
+            + "\nRun uv sync --locked explicitly before validation."
         )
 
 
@@ -492,15 +497,22 @@ def coverage_summary(path: Path) -> dict[str, Any]:
         raise ValidationError(
             f"Could not parse coverage snapshot {path}: {exc}"
         ) from exc
-    files = document.get("files")
+    critical_owners = document.get("critical_owners")
+    subprocess_routes = document.get("subprocess_routes")
     totals = document.get("totals")
-    if not isinstance(files, list) or not isinstance(totals, dict):
+    if (
+        not isinstance(critical_owners, list)
+        or not isinstance(subprocess_routes, list)
+        or not isinstance(totals, dict)
+    ):
         raise ValidationError(f"Coverage snapshot has an invalid shape: {path}")
     return {
         "sha256": hashlib.sha256(payload_bytes).hexdigest(),
-        "file_count": len(files),
+        "critical_owner_count": len(critical_owners),
+        "subprocess_route_count": len(subprocess_routes),
         "totals": totals,
-        "files": files,
+        "critical_owners": critical_owners,
+        "subprocess_routes": subprocess_routes,
     }
 
 
@@ -601,15 +613,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         arguments = parse_args(argv)
         repo_root = require_real_directory(arguments.repo_root, "repository root")
         python_bin = require_executable(arguments.python_bin, "Python interpreter")
+        require_locked_environment(repo_root, python_bin)
         jobs = 1 if arguments.serial else require_concurrency(arguments.jobs, "jobs")
         python_workers = (
             1
             if arguments.serial
             else require_concurrency(arguments.python_workers, "python workers")
         )
-        if python_workers > 1:
-            require_parallel_dependencies(python_bin)
-
         overall_started = time.monotonic()
         with tempfile.TemporaryDirectory(prefix="norad-validation-") as temporary_root:
             run_root = Path(temporary_root)

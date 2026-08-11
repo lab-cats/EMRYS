@@ -2,9 +2,11 @@ import configparser
 import json
 import os
 import signal
+import subprocess
 import sys
 import threading
 import time
+import tomllib
 from pathlib import Path
 
 import pytest
@@ -57,15 +59,25 @@ def test_interface_bounds_and_lane_partition(tmp_path: Path) -> None:
 
 
 def test_dependency_and_make_wiring_are_explicit() -> None:
-    requirements = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
-    development_requirements = (REPO_ROOT / "requirements-dev.txt").read_text(
-        encoding="utf-8"
+    configuration = tomllib.loads(
+        (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     )
-    assert f"pytest-xdist=={TOOL.XDIST_VERSION}" in requirements.splitlines()
-    assert f"execnet=={TOOL.EXECNET_VERSION}" in requirements.splitlines()
-    for requirement in ("ruff==0.16.2", "setuptools==80.9.0", "vulture==2.16"):
-        assert requirement in development_requirements.splitlines()
-    assert "pylint" not in development_requirements.lower()
+    assert set(configuration["project"]["dependencies"]) == {
+        "jsonschema",
+        "pypdf",
+        "PyYAML",
+        "referencing",
+    }
+    assert set(configuration["dependency-groups"]["dev"]) == {
+        "coverage==7.15.2",
+        "pytest",
+        "pytest-xdist",
+        "ruff",
+        "vulture",
+    }
+    assert configuration["build-system"]["requires"] == ["setuptools==80.9.0"]
+    assert not (REPO_ROOT / "requirements.txt").exists()
+    assert not (REPO_ROOT / "requirements-dev.txt").exists()
 
     config = configparser.ConfigParser()
     config.read(REPO_ROOT / ".coveragerc", encoding="utf-8")
@@ -91,20 +103,71 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     assert "tests/tools/run_validation.py" in quality_makefile
     assert "PYTHON_COVERAGE_PYTEST_ARGS" in root_makefile
     assert "validation-static: lint" in quality_makefile
-    assert 'version("ruff")' in quality_makefile
-    assert 'version("vulture")' in quality_makefile
+    assert 'version("ruff")' not in quality_makefile
+    assert 'version("vulture")' not in quality_makefile
     assert '"$(RUFF_BIN)" check --no-cache' in quality_makefile
     assert '"$(VULTURE_BIN)"' in quality_makefile
     assert "--exit-zero" not in quality_makefile
     assert "skipping dead-code scan" not in quality_makefile
 
 
-def test_selected_environment_has_exact_parallel_dependencies() -> None:
-    TOOL.require_parallel_dependencies(Path(sys.executable))
-    assert (
-        TOOL.package_version(Path(sys.executable), "pytest-xdist") == TOOL.XDIST_VERSION
+def test_selected_environment_lock_check_is_read_only_and_explicit() -> None:
+    observed: dict[str, object] = {}
+
+    def command_runner(
+        command: tuple[str, ...], **kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        observed["command"] = command
+        observed["kwargs"] = kwargs
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    python_bin = REPO_ROOT / ".venv" / "bin" / "python"
+    TOOL.require_locked_environment(
+        REPO_ROOT,
+        python_bin,
+        uv_bin="/explicit/uv",
+        command_runner=command_runner,
     )
-    assert TOOL.package_version(Path(sys.executable), "execnet") == TOOL.EXECNET_VERSION
+
+    assert observed["command"] == (
+        "/explicit/uv",
+        "sync",
+        "--locked",
+        "--check",
+        "--active",
+        "--offline",
+        "--no-python-downloads",
+        "--project",
+        str(REPO_ROOT),
+        "--python",
+        str(python_bin),
+    )
+    kwargs = observed["kwargs"]
+    assert isinstance(kwargs, dict)
+    assert kwargs["cwd"] == REPO_ROOT
+    assert kwargs["check"] is False
+    assert kwargs["env"]["VIRTUAL_ENV"] == str(python_bin.parent.parent)
+
+
+def test_selected_environment_lock_check_reports_uv_failure() -> None:
+    def command_runner(
+        command: tuple[str, ...], **_kwargs: object
+    ) -> subprocess.CompletedProcess[str]:
+        return subprocess.CompletedProcess(command, 2, "", "controlled mismatch")
+
+    with pytest.raises(
+        TOOL.ValidationError,
+        match=(
+            "(?s)selected Python environment does not match uv.lock.*"
+            "controlled mismatch"
+        ),
+    ):
+        TOOL.require_locked_environment(
+            REPO_ROOT,
+            REPO_ROOT / ".venv" / "bin" / "python",
+            uv_bin="/explicit/uv",
+            command_runner=command_runner,
+        )
 
 
 def test_executable_validation_preserves_virtualenv_symlink(
@@ -278,14 +341,16 @@ def test_machine_readable_summaries_and_safe_result_write(
                     "covered_branches": 3,
                     "num_branches": 4,
                 },
-                "files": [{"path": "scripts/example.py"}],
+                "critical_owners": [{"name": "example-owner"}],
+                "subprocess_routes": [{"name": "example-route"}],
             },
             sort_keys=True,
         ),
         encoding="utf-8",
     )
     summary = TOOL.coverage_summary(snapshot)
-    assert summary["file_count"] == 1
+    assert summary["critical_owner_count"] == 1
+    assert summary["subprocess_route_count"] == 1
     assert len(summary["sha256"]) == 64
 
     result = tmp_path / "result.json"

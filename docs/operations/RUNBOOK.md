@@ -81,6 +81,19 @@ Use focused tests during implementation:
 .venv/bin/python -m pytest -q --tb=short <focused-test-paths>
 ```
 
+For package metadata, wheel isolation, installed commands, and resources:
+
+```bash
+uv lock --check
+uv sync --locked --check
+.venv/bin/python -m pytest -q tests/test_package_distribution.py
+```
+
+The complete gate performs the same read-only environment check before starting
+its validation lanes. A mismatch stops with instructions to run the explicit
+`uv sync --locked` restoration command; validation never synchronizes the
+environment itself.
+
 Run the complete local gate once against a final executable state:
 
 ```bash
@@ -114,13 +127,17 @@ Restoration is an operator action and never occurs from compute, validation,
 rendering, or scheduler code:
 
 ```bash
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m pip install -r requirements-dev.txt
-.venv/bin/python -m pip install --no-deps -e .
+uv sync --locked
 RSCRIPT_BIN=/usr/local/bin/Rscript make r-restore
 make lint
 make quarto-restore
 ```
+
+`pyproject.toml` owns direct runtime and developer dependencies, and `uv.lock`
+owns their exact resolved graph. `uv sync --locked` includes the `dev` group and
+installs the project itself into `.venv`; a stale lock is an error rather than
+permission to relock. Provision `uv` separately—repository setup does not
+download or install it.
 
 Guarded local R checks are:
 
@@ -133,11 +150,12 @@ They opt into the repository library with `NORAD_USE_RENV=1`, disable automatic
 snapshots and the `renv` sandbox, and establish local configured-environment
 evidence only.
 
-An unchanged synchronized lock can still fail an online freshness check after
-upstream repository metadata changes. Do not restore, snapshot, or update the
-lock merely to turn that result green. Record the lock and repository evidence,
-then review a lock update or a separation of reproducibility and online
-freshness as its own authorized dependency-policy change.
+`r-check` treats the reviewed `renv.lock` as the reproducibility authority; it
+does not require every package to match the newest version advertised by an
+upstream repository. Run `BiocManager::valid(checkBuilt = FALSE)` separately
+from a guarded project R session when an explicitly authorized dependency
+maintenance review needs current online freshness evidence. Never restore,
+snapshot, or update the lock merely to turn a freshness result green.
 
 ## Manual job inspection
 

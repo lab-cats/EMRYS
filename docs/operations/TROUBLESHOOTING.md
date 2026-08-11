@@ -42,6 +42,10 @@ publication failure.
 | Tool/module appears on login but not in a job | Establish the exact executable in the approved batch context. Module names are not runtime proof. |
 | Picard `UnsupportedClassVersionError` | Step `04` requires the effective Java major version to be at least 17. Validate the selected executable, not `JAVA_HOME` alone. |
 | R or namespace unavailable | Use explicit guarded restoration/checks; local availability does not prove batch visibility. Never bootstrap from compute. |
+| `uv` is unavailable | Provision `uv` explicitly outside repository validation or runtime commands. Do not curl-install it from a NORAD script or weaken tests to use the source checkout. |
+| `uv sync --locked` reports a stale lock | Stop and review the `pyproject.toml`/`uv.lock` diff. Do not relock as an incidental setup side effect. |
+| Validation reports that the selected Python environment does not match `uv.lock` | Run `uv sync --locked` as an explicit setup action, then rerun validation. Do not let the validation command repair or relock the environment. |
+| Offline wheel installation cannot find a package | Prepare an approved local cache or wheelhouse for the complete locked runtime graph. Do not omit dependencies, add checkout paths, or enable network access inside the package test. |
 | Quiet local gate appears silent | Wait for the lane result or inspect retained failure/interruption logs; use serial or verbose mode for diagnosis. |
 | Coverage regression | Inspect the exact environment, subprocess data, module, and JSON diff. Never update the baseline merely to pass. |
 | Schema fixture or synthetic report passes | Report local contract evidence only; it is not production, cluster, scientific-review, or biological proof. |

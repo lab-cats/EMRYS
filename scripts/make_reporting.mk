@@ -72,8 +72,8 @@ demo-report:
 			exit 1; \
 			;; \
 	esac
-	"$(REPORT_PYTHON_BIN)" \
-		tests/reporting/fixtures/artifact_run_summary_v1/build_fixture.py \
+	"$(REPORT_PYTHON_BIN)" -m \
+		tests.reporting.fixtures.artifact_run_summary_v1.build_fixture \
 		--root "$(DEMO_REPORT_FIXTURE_ROOT)" \
 		--full-science-demo
 	SOURCE_DATE_EPOCH=1700000000 \

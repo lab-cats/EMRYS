@@ -17,7 +17,7 @@ tmp="$(mktemp -d "${TMPDIR:-/tmp}/norad-report-html-shell.XXXXXX")"
 tmp="$(cd "$tmp" && pwd -P)"
 trap 'rm -rf "$tmp"' EXIT
 
-"$python_bin" tests/reporting/fixtures/artifact_run_summary_v1/build_fixture.py \
+"$python_bin" -m tests.reporting.fixtures.artifact_run_summary_v1.build_fixture \
     --root "$tmp/fixture" >/dev/null
 
 artifact_root="$tmp/fixture/adapter_fixture/artifacts"

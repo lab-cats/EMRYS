@@ -1,6 +1,4 @@
 PYTHON_COVERAGE_VERSION := 7.15.2
-RUFF_VERSION := 0.16.2
-VULTURE_VERSION := 2.16
 SHELLCHECK_BIN ?= shellcheck
 SHFMT_BIN ?= shfmt
 RUFF_BIN ?= ruff
@@ -185,8 +183,6 @@ smoke:
 	$(STATIC_SHELL_CHECKS)
 
 lint:
-	test "$$("$(REPORT_PYTHON_BIN)" -c 'import importlib.metadata; print(importlib.metadata.version("ruff"))')" = "$(RUFF_VERSION)"
-	test "$$("$(REPORT_PYTHON_BIN)" -c 'import importlib.metadata; print(importlib.metadata.version("vulture"))')" = "$(VULTURE_VERSION)"
 	"$(REPORT_PYTHON_BIN)" -m "$(RUFF_BIN)" check --no-cache $(PYTHON_LINT_PATHS)
 	"$(REPORT_PYTHON_BIN)" -m "$(VULTURE_BIN)" \
 		--min-confidence $(VULTURE_MIN_CONFIDENCE) \

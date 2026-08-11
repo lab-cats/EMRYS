@@ -1756,16 +1756,3 @@ def test_nonstandard_json_numbers_are_rejected(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert "Non-standard JSON numeric constant" in result.stderr
-
-
-def test_requirements_pin_jsonschema_and_its_resolved_closure() -> None:
-    requirements = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
-
-    for pinned in (
-        "attrs==26.1.0",
-        "jsonschema==4.26.0",
-        "jsonschema-specifications==2025.9.1",
-        "referencing==0.37.0",
-        "rpds-py==2026.6.3",
-    ):
-        assert pinned in requirements.splitlines()

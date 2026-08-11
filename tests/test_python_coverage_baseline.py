@@ -1,5 +1,6 @@
 import configparser
 import copy
+import importlib.metadata
 import json
 from pathlib import Path
 from typing import Any
@@ -233,8 +234,7 @@ def test_new_shared_module_thresholds_remain_explicit(
 
 
 def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
-    requirements = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
-    assert f"coverage=={TOOL.COVERAGE_VERSION}" in requirements.splitlines()
+    assert importlib.metadata.version("coverage") == TOOL.COVERAGE_VERSION
 
     config = configparser.ConfigParser()
     config.read(REPO_ROOT / ".coveragerc", encoding="utf-8")

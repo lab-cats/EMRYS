@@ -1,6 +1,0 @@
--r requirements.txt
-
-# Dev-only tooling for local quality gates.
-ruff==0.16.2
-setuptools==80.9.0
-vulture==2.16

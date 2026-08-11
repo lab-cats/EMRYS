@@ -32,8 +32,8 @@
     "\t\t\texit 1; \\",
     "\t\t\t;; \\",
     "\tesac",
-    "\"<REPO_ROOT>/.venv/bin/python\" \\",
-    "\t\ttests/reporting/fixtures/artifact_run_summary_v1/build_fixture.py \\",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \\",
+    "\t\ttests.reporting.fixtures.artifact_run_summary_v1.build_fixture \\",
     "\t\t--root \"<REPO_ROOT>/results/demo-report/full-run-fixture\" \\",
     "\t\t--full-science-demo",
     "SOURCE_DATE_EPOCH=1700000000 \\",
@@ -85,8 +85,6 @@
     "./scripts/git_orchestration/validate_documentation.py --repo \"<REPO_ROOT>\""
   ],
   "lint": [
-    "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"ruff\"))')\" = \"0.16.2\"",
-    "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"vulture\"))')\" = \"2.16\"",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/norad tests",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
     "\t\t--min-confidence 95 \\",
@@ -352,8 +350,6 @@
     "bash tests/reporting/test_render_run_report.sh"
   ],
   "validation-static": [
-    "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"ruff\"))')\" = \"0.16.2\"",
-    "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"vulture\"))')\" = \"2.16\"",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/norad tests",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
     "\t\t--min-confidence 95 \\",

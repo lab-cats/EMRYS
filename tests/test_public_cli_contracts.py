@@ -522,6 +522,41 @@ def test_installed_norad_commands_are_isolated_and_cwd_independent(
     assert relative_snapshot(tmp_path) == before
 
 
+@pytest.mark.parametrize(
+    ("configuration", "expected_status"),
+    (
+        ("[project\n", 0),
+        ('[project]\nname = "another-project"\n', 0),
+        ('[project]\nname = "norad-rna-workflow"\n', CLI_USAGE_ERROR),
+    ),
+)
+def test_checkout_authority_ignores_nonowners_and_rejects_another_owner(
+    tmp_path: Path,
+    configuration: str,
+    expected_status: int,
+) -> None:
+    checkout = tmp_path / "checkout"
+    invocation_cwd = checkout / "nested"
+    package = checkout / "src" / "norad"
+    invocation_cwd.mkdir(parents=True)
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (checkout / "pyproject.toml").write_text(configuration, encoding="utf-8")
+    before = relative_snapshot(tmp_path)
+
+    result = run_command(
+        [sys.executable, "-I", "-m", "norad", "--help"],
+        cwd=invocation_cwd,
+    )
+
+    assert result.returncode == expected_status
+    if expected_status == 0:
+        assert "usage: norad" in result.stdout
+    else:
+        assert "not the current checkout" in result.stderr
+    assert relative_snapshot(tmp_path) == before
+
+
 def test_run_summary_help_and_parse_failure_are_side_effect_free(
     tmp_path: Path,
 ) -> None:
@@ -767,7 +802,7 @@ def test_make_validation_targets_honor_report_python_bin(
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
     lines = result.stdout.splitlines()
-    assert sum("/sentinel/python" in line for line in lines) == 6
+    assert sum("/sentinel/python" in line for line in lines) == 4
     assert not any(".venv/bin/python" in line for line in lines)
 
 
