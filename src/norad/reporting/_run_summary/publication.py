@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 import sys
 import uuid
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -87,18 +86,6 @@ def _recheck_inputs(context: BuildContext) -> None:
         _fail("The explicit report-table approval package changed")
 
 
-def _validate_receipt_against_context(
-    context: BuildContext,
-    receipt: Mapping[str, str],
-) -> None:
-    expected = {
-        field: adapter.safe_tsv(context.receipt_row[field])
-        for field in RUN_SUMMARY_RECEIPT_HEADER
-    }
-    if dict(receipt) != expected:
-        _fail("Published run-summary receipt differs from the prepared receipt")
-
-
 def validate_published_run_summary(context: BuildContext) -> None:
     _assert_output_directory_identity(context.paths)
     for path in context.paths.ordered_outputs:
@@ -115,7 +102,12 @@ def validate_published_run_summary(context: BuildContext) -> None:
         RUN_SUMMARY_RECEIPT_HEADER,
         exact_rows=1,
     )[0]
-    _validate_receipt_against_context(context, receipt)
+    expected = {
+        field: adapter.safe_tsv(context.receipt_row[field])
+        for field in RUN_SUMMARY_RECEIPT_HEADER
+    }
+    if dict(receipt) != expected:
+        _fail("Published run-summary receipt differs from the prepared receipt")
     document = contracts.load_json_object(
         context.paths.summary_json, "published run summary"
     )
