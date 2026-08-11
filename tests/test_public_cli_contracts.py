@@ -22,9 +22,9 @@ MAKE_EXPANSION_GOLDEN = (
     / "public_cli_contracts"
     / "make_target_expansions.json"
 )
+CLI_USAGE_ERROR = 2
 
 PYTHON_ENTRYPOINT_PATHS = {
-    "build_run_summary.py": Path("src/norad/reporting/build_run_summary.py"),
     "render_run_report.py": Path("src/norad/reporting/render_run_report.py"),
     "render_run_report_bundle.py": Path(
         "src/norad/reporting/render_run_report_bundle.py"
@@ -34,7 +34,6 @@ PYTHON_ENTRYPOINT_PATHS = {
 PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
 REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
     {
-        "build_run_summary.py",
         "render_run_report.py",
         "render_run_report_bundle.py",
     }
@@ -42,7 +41,6 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
 PRIVATE_PYTHON_MODULES = frozenset()
 DIRECT_PYTHON_ENTRYPOINTS = frozenset(
     {
-        "build_run_summary.py",
         "render_run_report.py",
         "restore_quarto.py",
     }
@@ -52,6 +50,10 @@ NORAD_COMMANDS = (
     (
         ("build", "artifact-index"),
         "usage: norad build artifact-index",
+    ),
+    (
+        ("build", "run-summary"),
+        "usage: norad build run-summary",
     ),
     (
         ("validate", "artifact-contracts"),
@@ -518,6 +520,41 @@ def test_installed_norad_commands_are_isolated_and_cwd_independent(
     assert expected_usage in parse_failure.stderr
     assert "foreign norad package imported" not in help_result.stderr
     assert relative_snapshot(tmp_path) == before
+
+
+def test_run_summary_help_and_parse_failure_do_not_import_builder(
+    tmp_path: Path,
+) -> None:
+    """Parser termination keeps the private run-summary builder lazy."""
+    program = """
+import json
+import sys
+
+from norad import __main__ as cli
+
+statuses = []
+for arguments in (["build", "run-summary", "--help"], ["build", "run-summary"]):
+    try:
+        cli.main(arguments)
+    except SystemExit as error:
+        statuses.append(error.code)
+print(json.dumps({
+    "builder_loaded": "norad.reporting._run_summary.builder" in sys.modules,
+    "statuses": statuses,
+}))
+"""
+    result = run_command(
+        [sys.executable, "-I", "-c", program],
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    observed = json.loads(result.stdout.splitlines()[-1])
+    assert observed == {
+        "builder_loaded": False,
+        "statuses": [0, CLI_USAGE_ERROR],
+    }
+    assert relative_snapshot(tmp_path) == ()
 
 
 @pytest.mark.parametrize(

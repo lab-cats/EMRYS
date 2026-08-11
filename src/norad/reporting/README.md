@@ -9,7 +9,7 @@ rerun analysis, decide scientific validity, or promote evidence.
 | Interface | Responsibility |
 | --- | --- |
 | `python -I -m norad build artifact-index` | Reconciles declared workflow artifacts from an explicitly admitted source checkout into an artifact index. |
-| [`build_run_summary.py`](build_run_summary.py) | Projects declared run, artifact, validation, and science state into a run summary after admitting its owning source checkout. |
+| `python -I -m norad build run-summary` | Projects declared run, artifact, validation, and science state from an explicitly admitted source checkout into a run summary. |
 | [`render_run_report.sh`](render_run_report.sh) | Dry-run-by-default shell launcher for the report-bundle owner. |
 | [`render_run_report.py`](render_run_report.py) | Public compatibility command that dispatches selected HTML/PDF/all rendering while preserving established direct imports. |
 | [`render_run_report_bundle.py`](render_run_report_bundle.py) | Public compatibility facade for selected HTML/PDF/TSV/receipt publication, with the receipt last. |
@@ -49,7 +49,8 @@ the private artifact-index builder only after this route is selected.
 Build its canonical run summary from the committed adapter receipt:
 
 ```bash
-.venv/bin/python src/norad/reporting/build_run_summary.py \
+.venv/bin/python -I -m norad build run-summary \
+  --source-checkout /absolute/canonical/path/to/norad \
   --run-id RUN_ID \
   --artifact-receipt results/artifacts/RUN_ID/RUN_ID.artifact_receipt.tsv \
   --output-root results/artifacts
@@ -58,17 +59,17 @@ Build its canonical run summary from the committed adapter receipt:
 Append `--science-review-summary` or `--report-table-approvals` only for exact
 inspected inputs. Execute by repeating with `--execute`.
 
-This direct facade remains the current public run-summary command; there is no
-grouped `python -I -m norad build run-summary` route or public
-`--source-checkout` option yet. After parsing succeeds, the facade self-admits
-the checkout that owns the executing package before reading run inputs. A
-programmatic context-preparation caller may instead supply an already admitted
-`SourceCheckout`. The retained authority governs contract-relative artifact,
-science, and approval inputs and semantic, predecessor, post-publication, and
-rollback validation. Its Git admission and later `HEAD` resolution ignore
-ambient `GIT_*` routing while preserving unrelated environment state. This
-authority threading changes neither evidence meaning nor receipt-last
-publication and recovery behavior.
+The required source checkout must be the canonical NORAD Git top level and
+must match the executing package's Python and declared resource bytes. The
+grouped dispatcher keeps help and unrelated installed commands lightweight and
+loads the private run-summary builder only after this route is selected. After
+argument parsing, the builder admits the explicit checkout before reading run
+inputs. The retained authority governs contract-relative artifact, science,
+and approval inputs and semantic, predecessor, post-publication, and rollback
+validation. Git admission and later `HEAD` resolution ignore ambient `GIT_*`
+routing while preserving unrelated environment state. This command cutover
+changes neither evidence meaning nor receipt-last publication and recovery
+behavior.
 
 After the separately authorized `make quarto-restore`, render in dry-run mode
 and then repeat with `--execute`:

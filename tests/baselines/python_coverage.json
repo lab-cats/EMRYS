@@ -39,10 +39,10 @@
     {
       "branch_rate": "1.000000",
       "covered_branches": 16,
-      "covered_lines": 135,
+      "covered_lines": 147,
       "line_rate": "1.000000",
       "num_branches": 16,
-      "num_statements": 135,
+      "num_statements": 147,
       "path": "src/norad/__main__.py"
     },
     {
@@ -1252,6 +1252,15 @@
       "path": "src/norad/reporting/_run_summary/approvals.py"
     },
     {
+      "branch_rate": "0.875000",
+      "covered_branches": 14,
+      "covered_lines": 139,
+      "line_rate": "0.985816",
+      "num_branches": 16,
+      "num_statements": 141,
+      "path": "src/norad/reporting/_run_summary/builder.py"
+    },
+    {
       "branch_rate": "0.750000",
       "covered_branches": 3,
       "covered_lines": 20,
@@ -1263,10 +1272,10 @@
     {
       "branch_rate": "0.613636",
       "covered_branches": 27,
-      "covered_lines": 137,
-      "line_rate": "0.796512",
+      "covered_lines": 127,
+      "line_rate": "0.783951",
       "num_branches": 44,
-      "num_statements": 172,
+      "num_statements": 162,
       "path": "src/norad/reporting/_run_summary/inputs.py"
     },
     {
@@ -1367,15 +1376,6 @@
       "num_branches": 4,
       "num_statements": 26,
       "path": "src/norad/reporting/_signals.py"
-    },
-    {
-      "branch_rate": "0.900000",
-      "covered_branches": 18,
-      "covered_lines": 147,
-      "line_rate": "0.986577",
-      "num_branches": 20,
-      "num_statements": 149,
-      "path": "src/norad/reporting/build_run_summary.py"
     },
     {
       "branch_rate": "1.000000",
@@ -1627,11 +1627,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.750225",
-    "covered_branches": 3331,
-    "covered_lines": 10198,
-    "line_rate": "0.859285",
-    "num_branches": 4440,
-    "num_statements": 11868
+    "branch_rate": "0.750000",
+    "covered_branches": 3327,
+    "covered_lines": 10192,
+    "line_rate": "0.859214",
+    "num_branches": 4436,
+    "num_statements": 11862
   }
 }

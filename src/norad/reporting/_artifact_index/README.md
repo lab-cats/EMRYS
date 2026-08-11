@@ -30,16 +30,15 @@ neither Git commit nor producer state; the later `HEAD` probe ignores ambient
 observations stay at their established points in context construction,
 preserving their timing, diagnostics, and serialized evidence.
 
-Run-summary reporting uses the same checkout authority through `api.py`, not
-through an additional command. Its existing direct facade parses the
-established arguments and then self-admits the checkout that owns the executing
-package before reading run inputs, unless a programmatic caller supplies an
-already admitted token. That token remains on the run-summary build context;
-its root governs contract-relative artifact, science, and approval paths and
-semantic, predecessor, post-publication, and rollback validation. Run-summary
-Git admission and later `HEAD` resolution also ignore ambient `GIT_*` routing
-while preserving unrelated environment state. This adds neither a grouped
-run-summary route nor a public `--source-checkout` option.
+The grouped `python -I -m norad build run-summary` route uses the same checkout
+authority through `api.py`, not through the artifact-index command builder.
+After lightweight parsing selects the route, the private run-summary builder
+admits its required `--source-checkout` before reading run inputs. That token
+remains on the run-summary build context; its root governs contract-relative
+artifact, science, and approval paths and semantic, predecessor,
+post-publication, and rollback validation. Run-summary Git admission and later
+`HEAD` resolution also ignore ambient `GIT_*` routing while preserving
+unrelated environment state.
 
 The modules keep observed responsibilities separate: the curated run-summary
 API, exact contract loading, models and rosters, explicit adapter registration,

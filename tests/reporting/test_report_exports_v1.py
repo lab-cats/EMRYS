@@ -36,7 +36,6 @@ FIXTURE_BUILDER = (
     / "artifact_run_summary_v1"
     / "build_fixture.py"
 )
-RUN_SUMMARY_SCRIPT = REPORTING_ROOT / "build_run_summary.py"
 FIXED_EPOCH = "1700000000"
 
 
@@ -60,7 +59,11 @@ def publish_summary(fixture: Any) -> Path:
     result = subprocess.run(
         [
             sys.executable,
-            str(RUN_SUMMARY_SCRIPT),
+            "-I",
+            "-m",
+            "norad",
+            "build",
+            "run-summary",
             *fixture.command_args(execute=True),
         ],
         cwd=REPO_ROOT,

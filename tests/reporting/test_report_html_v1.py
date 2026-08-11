@@ -31,7 +31,6 @@ SCRIPT = (
     / "report_html_v1"
     / "run_html_core.py"
 )
-RUN_SUMMARY_SCRIPT = REPORTING_ROOT / "build_run_summary.py"
 FIXTURE_BUILDER = (
     REPO_ROOT
     / "tests"
@@ -92,7 +91,11 @@ def publish_run_summary(fixture: Any) -> Path:
     result = subprocess.run(
         [
             sys.executable,
-            str(RUN_SUMMARY_SCRIPT),
+            "-I",
+            "-m",
+            "norad",
+            "build",
+            "run-summary",
             *fixture.command_args(execute=True),
         ],
         cwd=REPO_ROOT,

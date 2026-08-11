@@ -37,7 +37,7 @@ ARTIFACT_INDEX = importlib.import_module("norad.reporting._artifact_index.builde
 ARTIFACT_INDEX_CONTEXT = importlib.import_module(
     "norad.reporting._artifact_index.context",
 )
-RUN_SUMMARY = importlib.import_module("build_run_summary")
+RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.builder")
 REPORT_BUNDLE = importlib.import_module("render_run_report_bundle")
 STEP08_CONTRACT = ARTIFACT_INDEX.step08
 STEP09_CONTRACT = ARTIFACT_INDEX.step09

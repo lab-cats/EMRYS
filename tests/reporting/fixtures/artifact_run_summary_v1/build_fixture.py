@@ -139,6 +139,8 @@ class RunSummaryFixture:
         include_approvals: bool | None = None,
     ) -> list[str]:
         arguments = [
+            "--source-checkout",
+            str(REPO_ROOT),
             "--run-id",
             self.run_id,
             "--artifact-receipt",

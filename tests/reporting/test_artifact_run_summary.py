@@ -15,11 +15,12 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from types import ModuleType
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
+from norad import __main__ as norad_cli
 from norad.reporting._artifact_index import api as ARTIFACT_INDEX_API
 from norad.reporting._artifact_index import source_checkout as _source_checkout_owner
 from norad.reporting._run_summary import science_evidence as SCIENCE_EVIDENCE
@@ -27,9 +28,10 @@ from norad.reporting._run_summary import science_models as SCIENCE_MODELS
 from norad.reporting._run_summary import science_package as SCIENCE_PACKAGE
 from norad.reporting._run_summary import science_projection as SCIENCE
 
+if TYPE_CHECKING:
+    import argparse
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
-REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
-SCRIPT = REPORTING_ROOT / "build_run_summary.py"
 FIXTURE_BUILDER = (
     REPO_ROOT
     / "tests"
@@ -39,6 +41,7 @@ FIXTURE_BUILDER = (
     / "build_fixture.py"
 )
 FIXED_EPOCH = "1700000000"
+CLI_USAGE_ERROR = 2
 
 
 def load_module(name: str, path: Path) -> ModuleType:
@@ -55,7 +58,7 @@ FIXTURE = load_module(
     "norad_artifact_run_summary_fixture_builder",
     FIXTURE_BUILDER,
 )
-RUN_SUMMARY = load_module("norad_artifact_run_summary", SCRIPT)
+RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.builder")
 CONTRACTS = RUN_SUMMARY.contracts
 SOURCE_CHECKOUT = RUN_SUMMARY.adapter.SourceCheckout(root=REPO_ROOT)
 
@@ -82,12 +85,28 @@ def run_cli(
         else fixture.command_args(execute=execute)
     )
     return subprocess.run(
-        [sys.executable, str(SCRIPT), *cli_arguments],
+        [
+            sys.executable,
+            "-I",
+            "-m",
+            "norad",
+            "build",
+            "run-summary",
+            *cli_arguments,
+        ],
         cwd=REPO_ROOT,
         env=environment,
         text=True,
         capture_output=True,
         check=False,
+    )
+
+
+def _parse_run_summary_arguments(
+    arguments: Sequence[str],
+) -> argparse.Namespace:
+    return norad_cli.build_parser().parse_args(
+        ["build", "run-summary", *arguments],
     )
 
 
@@ -208,7 +227,7 @@ def context_for(fixture: Any) -> Any:
     previous = os.environ.get("SOURCE_DATE_EPOCH")
     os.environ["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
     try:
-        arguments = RUN_SUMMARY.parse_arguments(fixture.command_args(execute=True))
+        arguments = _parse_run_summary_arguments(fixture.command_args(execute=True))
         return RUN_SUMMARY.prepare_context(
             arguments,
             source_checkout=SOURCE_CHECKOUT,
@@ -238,22 +257,23 @@ def _source_root_spy(
     return rooted_call
 
 
-def test_prepare_context_self_admits_before_loading_inputs_and_retains_token(
+def test_grouped_builder_admits_before_loading_inputs_and_retains_token(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The direct facade admits its own checkout before reading run inputs."""
+    """The grouped builder admits its checkout before reading run inputs."""
     admitted = ARTIFACT_INDEX_API.SourceCheckout(root=REPO_ROOT)
-    expected_package_root = Path(ARTIFACT_INDEX_API.__file__).resolve().parents[2]
+    expected_package_root = Path(RUN_SUMMARY.__file__).resolve().parents[2]
     real_load_input_transaction = RUN_SUMMARY._load_input_transaction
     events: list[str] = []
+    observed_contexts: list[RUN_SUMMARY.BuildContext] = []
 
     def admit_source_checkout(
         *,
         root: Path,
         package_root: Path,
     ) -> ARTIFACT_INDEX_API.SourceCheckout:
-        assert root == CONTRACTS.REPO_ROOT
+        assert root == REPO_ROOT
         assert package_root == expected_package_root
         events.append("admit")
         return admitted
@@ -266,6 +286,10 @@ def test_prepare_context_self_admits_before_loading_inputs_and_retains_token(
             **kwargs,
         )
 
+    def observe_context(context: RUN_SUMMARY.BuildContext) -> None:
+        events.append("print")
+        observed_contexts.append(context)
+
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     monkeypatch.setattr(
         RUN_SUMMARY.adapter,
@@ -277,44 +301,78 @@ def test_prepare_context_self_admits_before_loading_inputs_and_retains_token(
         "_load_input_transaction",
         load_input_transaction,
     )
-    arguments = RUN_SUMMARY.parse_arguments(
+    monkeypatch.setattr(RUN_SUMMARY, "print_context", observe_context)
+    arguments = _parse_run_summary_arguments(
         run_summary_fixture.command_args(execute=False),
     )
 
-    context = RUN_SUMMARY.prepare_context(arguments)
+    status = RUN_SUMMARY.build_from_args(arguments)
 
-    assert events == ["admit", "load"]
-    assert context.source_checkout is admitted
+    assert status == 0
+    assert events == ["admit", "load", "print"]
+    assert len(observed_contexts) == 1
+    assert observed_contexts[0].source_checkout is admitted
 
 
 @pytest.mark.parametrize(
     ("arguments", "expected_status"),
     [(["--help"], 0), ([], 2)],
 )
-def test_parser_termination_precedes_source_checkout_admission(
+def test_parser_termination_precedes_lazy_run_summary_builder_import(
     arguments: list[str],
     expected_status: int,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Help and parse failures terminate before checkout admission."""
-    admission_attempted = False
+    """Help and parse failures terminate before the lazy builder handler."""
+    dispatch_attempted = False
 
-    def unexpected_admission(**_kwargs: Any) -> None:
-        nonlocal admission_attempted
-        admission_attempted = True
-        pytest.fail("source checkout admission ran before parsing terminated")
+    def unexpected_dispatch(_arguments: argparse.Namespace) -> int:
+        nonlocal dispatch_attempted
+        dispatch_attempted = True
+        pytest.fail("run-summary builder was imported before parsing terminated")
 
     monkeypatch.setattr(
-        RUN_SUMMARY.adapter,
-        "admit_source_checkout",
-        unexpected_admission,
+        norad_cli,
+        "_build_run_summary_from_args",
+        unexpected_dispatch,
     )
 
     with pytest.raises(SystemExit) as termination:
-        RUN_SUMMARY.main(arguments)
+        norad_cli.main(["build", "run-summary", *arguments])
 
-    assert not admission_attempted
+    assert not dispatch_attempted
     assert termination.value.code == expected_status
+
+
+def test_grouped_cli_requires_explicit_source_checkout(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Missing checkout authority fails parsing before builder dispatch."""
+    monkeypatch.setattr(
+        norad_cli,
+        "_build_run_summary_from_args",
+        lambda _arguments: pytest.fail("run-summary builder was dispatched"),
+    )
+    arguments = [
+        "build",
+        "run-summary",
+        "--run-id",
+        "synthetic-run",
+        "--artifact-receipt",
+        str(tmp_path / "artifact-receipt.tsv"),
+        "--output-root",
+        str(tmp_path / "output"),
+    ]
+
+    with pytest.raises(SystemExit) as termination:
+        norad_cli.main(arguments)
+
+    assert termination.value.code == CLI_USAGE_ERROR
+    captured = capsys.readouterr()
+    assert not captured.out
+    assert "--source-checkout" in captured.err
 
 
 def test_prepare_context_threads_one_explicit_source_checkout_root(
@@ -381,7 +439,7 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
                 label,
             ),
         )
-    arguments = RUN_SUMMARY.parse_arguments(fixture.command_args(execute=False))
+    arguments = _parse_run_summary_arguments(fixture.command_args(execute=False))
 
     context = RUN_SUMMARY.prepare_context(
         arguments,
@@ -410,7 +468,7 @@ def test_explicit_checkout_root_reaches_predecessor_and_post_publish_rechecks(
     assert first.returncode == 0, first.stderr
     authority = ARTIFACT_INDEX_API.SourceCheckout(root=run_summary_fixture.root)
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    arguments = RUN_SUMMARY.parse_arguments(
+    arguments = _parse_run_summary_arguments(
         run_summary_fixture.command_args(execute=True),
     )
     context = RUN_SUMMARY.prepare_context(
@@ -459,7 +517,7 @@ def test_explicit_checkout_root_reaches_restored_rollback_validation(
     before = summary_snapshot(run_summary_fixture)
     authority = ARTIFACT_INDEX_API.SourceCheckout(root=run_summary_fixture.root)
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    arguments = RUN_SUMMARY.parse_arguments(
+    arguments = _parse_run_summary_arguments(
         run_summary_fixture.command_args(execute=True),
     )
     context = RUN_SUMMARY.prepare_context(
@@ -527,15 +585,15 @@ def test_source_checkout_admission_error_precedes_input_diagnostics(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Facade admission failures are controlled before any input is loaded."""
-    expected_package_root = Path(ARTIFACT_INDEX_API.__file__).resolve().parents[2]
+    """Grouped admission failures are controlled before any input is loaded."""
+    expected_package_root = Path(RUN_SUMMARY.__file__).resolve().parents[2]
 
     def reject_source_checkout(
         *,
         root: Path,
         package_root: Path,
     ) -> ARTIFACT_INDEX_API.SourceCheckout:
-        assert root == CONTRACTS.REPO_ROOT
+        assert root == REPO_ROOT
         assert package_root == expected_package_root
         message = "injected run-summary checkout rejection"
         raise ARTIFACT_INDEX_API.SourceCheckoutError(message)
@@ -554,7 +612,16 @@ def test_source_checkout_admission_error_precedes_input_diagnostics(
         unexpected_input_load,
     )
 
-    assert RUN_SUMMARY.main(run_summary_fixture.command_args(execute=False)) == 1
+    assert (
+        norad_cli.main(
+            [
+                "build",
+                "run-summary",
+                *run_summary_fixture.command_args(execute=False),
+            ],
+        )
+        == 1
+    )
     captured = capsys.readouterr()
     assert not captured.out
     assert captured.err == "ERROR: injected run-summary checkout rejection\n"
@@ -589,7 +656,15 @@ def test_help_and_dry_run_validate_without_summary_writes(
     run_summary_fixture: Any,
 ) -> None:
     help_result = subprocess.run(
-        [sys.executable, str(SCRIPT), "--help"],
+        [
+            sys.executable,
+            "-I",
+            "-m",
+            "norad",
+            "build",
+            "run-summary",
+            "--help",
+        ],
         cwd=REPO_ROOT,
         text=True,
         capture_output=True,
@@ -599,6 +674,7 @@ def test_help_and_dry_run_validate_without_summary_writes(
 
     assert help_result.returncode == 0, help_result.stderr
     for option in (
+        "--source-checkout",
         "--run-id",
         "--artifact-receipt",
         "--output-root",
@@ -2183,7 +2259,7 @@ def test_prepared_snapshot_rejects_transaction_mutated_during_validation(
         "validate_published_transaction",
         validate_then_mutate,
     )
-    arguments = RUN_SUMMARY.parse_arguments(
+    arguments = _parse_run_summary_arguments(
         run_summary_fixture.command_args(execute=True)
     )
 
@@ -2227,7 +2303,7 @@ def test_prepare_recheck_rejects_identical_byte_record_replacement(
         "_build_document",
         build_then_replace_record,
     )
-    arguments = RUN_SUMMARY.parse_arguments(
+    arguments = _parse_run_summary_arguments(
         run_summary_fixture.command_args(execute=True)
     )
 

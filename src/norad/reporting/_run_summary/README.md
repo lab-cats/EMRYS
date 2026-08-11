@@ -1,15 +1,17 @@
 # Run-summary implementation owners
 
-This private package supports the public
-[`build_run_summary.py`](../build_run_summary.py) entry point. The facade owns
-CLI compatibility, checkout admission, and context preparation; these modules
-own bounded deterministic helpers and publication beneath it. There is no
-grouped run-summary route or public `--source-checkout` option yet.
+This private package implements the grouped
+`python -I -m norad build run-summary` route through [`builder.py`](builder.py).
+The former direct script is retired without a compatibility shim. The grouped
+dispatcher owns lightweight parsing and imports the builder only after this
+route is selected; these modules own bounded deterministic context,
+projection, and publication responsibilities beneath it.
 
 | Module | Owned responsibility |
 | --- | --- |
+| [`builder.py`](builder.py) | Checkout admission, context coordination, diagnostics, and optional publication for the grouped route. |
 | [`models.py`](models.py) | Constants, headers, errors, snapshots, paths, and build context. |
-| [`inputs.py`](inputs.py) | CLI parsing, explicit path guards, and immutable file snapshots. |
+| [`inputs.py`](inputs.py) | Explicit path guards and immutable file snapshots. |
 | [`approvals.py`](approvals.py) | Run-bound report-table approval normalization. |
 | [`transaction.py`](transaction.py) | Input transaction loading, history parsing, and stable value utilities. |
 | [`projection.py`](projection.py) | Status, science, summary-row, and QC-row projections. |
@@ -22,16 +24,15 @@ grouped run-summary route or public `--source-checkout` option yet.
 | [`science_evidence.py`](science_evidence.py) | Indexed input-artifact and scientific-evidence normalization. |
 | [`science_projection.py`](science_projection.py) | Final scientific-review projection, schema and semantic validation, and one normalization error boundary. |
 
-The package is not an additional supported command surface. The public facade
-and publication recheck share the one canonical `science_projection.py`
-module identity. Artifact-index parsing, validation, serialization, and shared
-transaction primitives enter through the narrow private
-[`_artifact_index/api.py`](../_artifact_index/api.py) boundary rather than the
-private artifact-index command builder. That API also supplies the shared
-`SourceCheckout` token, admission error, and admission function. After the
-existing direct parser succeeds, the facade self-admits the checkout that owns
-the executing package before it reads run inputs; a programmatic
-`prepare_context` caller may instead supply an already admitted token. Package
+The package is not an additional supported command surface. The private
+builder and publication recheck share the one canonical
+`science_projection.py` module identity. Artifact-index parsing, validation,
+serialization, and shared transaction primitives enter through the narrow
+private [`_artifact_index/api.py`](../_artifact_index/api.py) boundary rather
+than the private artifact-index command builder. That API also supplies the
+shared `SourceCheckout` token, admission error, and admission function. After
+grouped argument parsing succeeds, the builder admits the required explicit checkout
+before it reads run inputs and passes the token to context preparation. Package
 identity is checked during admission, and both admission and later Git `HEAD`
 resolution ignore ambient `GIT_*` routing while preserving unrelated
 environment state.

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Assemble one validated NORAD artifact transaction into a run summary.
 
 The command is explicit-input-only and dry-run-first. It never discovers
@@ -9,16 +8,13 @@ TSV views, and a receipt last as one rollback-protected transaction.
 
 from __future__ import annotations
 
-import argparse
 import os as os
 import sys
-from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-src_root = str(Path(__file__).resolve().parents[2])
-# Direct execution must prefer this checkout over an installed NORAD.
-sys.path[:] = [src_root, *(entry for entry in sys.path if entry != src_root)]
+if TYPE_CHECKING:
+    import argparse
 
 from norad.reporting._artifact_index import api as adapter
 from norad.reporting._run_summary import document as _document
@@ -36,7 +32,6 @@ from norad.reporting._run_summary.inputs import (
     _fail,
     _require_regular_file,
     _verify_file_snapshot,
-    parse_arguments,
 )
 from norad.reporting._run_summary.models import (
     QC_SUMMARY_HEADER,
@@ -103,13 +98,8 @@ if science.contracts is not adapter.contracts:
 def prepare_context(
     arguments: argparse.Namespace,
     *,
-    source_checkout: adapter.SourceCheckout | None = None,
+    source_checkout: adapter.SourceCheckout,
 ) -> BuildContext:
-    if source_checkout is None:
-        source_checkout = adapter.admit_source_checkout(
-            root=contracts.REPO_ROOT,
-            package_root=Path(adapter.__file__).resolve().parents[2],
-        )
     source_root = source_checkout.root
     (
         artifact_receipt_path,
@@ -378,10 +368,17 @@ def print_context(context: BuildContext) -> None:
         print("Dry-run complete; no run-summary files were written.")
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def build_from_args(arguments: argparse.Namespace) -> int:
+    """Build one run summary from grouped command arguments."""
     try:
-        arguments = parse_arguments(argv)
-        context = prepare_context(arguments)
+        source_checkout = adapter.admit_source_checkout(
+            root=arguments.source_checkout,
+            package_root=Path(__file__).resolve().parents[2],
+        )
+        context = prepare_context(
+            arguments,
+            source_checkout=source_checkout,
+        )
         print_context(context)
         if arguments.execute:
             publish_context(context)
@@ -399,7 +396,3 @@ def main(argv: Sequence[str] | None = None) -> int:
     ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())

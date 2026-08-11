@@ -160,7 +160,13 @@ def _build_artifact_index_from_args(arguments: argparse.Namespace) -> int:
     return builder.build_from_args(arguments)
 
 
-def _add_artifact_index_build_command(
+def _build_run_summary_from_args(arguments: argparse.Namespace) -> int:
+    from norad.reporting._run_summary import builder  # noqa: PLC0415
+
+    return builder.build_from_args(arguments)
+
+
+def _add_build_commands(
     command_parsers: _SubparserCollection,
 ) -> None:
     build_parser = command_parsers.add_parser(
@@ -218,6 +224,61 @@ def _add_artifact_index_build_command(
         _command_parser=artifact_parser,
     )
 
+    summary_parser = build_parsers.add_parser(
+        "run-summary",
+        help="Build one deterministic run summary.",
+        description=(
+            "Build a deterministic run summary from one complete NORAD "
+            "artifact-index receipt. Dry-run is the default; add --execute "
+            "to publish the receipt-last transaction."
+        ),
+    )
+    summary_parser.add_argument(
+        "--source-checkout",
+        required=True,
+        type=Path,
+        help="Absolute canonical NORAD source checkout owning recorded paths.",
+    )
+    summary_parser.add_argument("--run-id", required=True, help="Immutable run ID.")
+    summary_parser.add_argument(
+        "--artifact-receipt",
+        required=True,
+        type=Path,
+        help="Exact completed artifact-index receipt TSV.",
+    )
+    summary_parser.add_argument(
+        "--output-root",
+        required=True,
+        type=Path,
+        help="Artifact output root containing <run-id>/.",
+    )
+    summary_parser.add_argument(
+        "--science-review-summary",
+        type=Path,
+        help=(
+            "Optional exact committed Step 09c review-summary TSV. It is "
+            "never discovered automatically."
+        ),
+    )
+    summary_parser.add_argument(
+        "--report-table-approvals",
+        type=Path,
+        help=(
+            "Optional exact report-table approvals TSV. It is never "
+            "discovered automatically and must be bound to this run and its "
+            "explicit Step 09c scientific-review artifacts."
+        ),
+    )
+    summary_parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Publish the four-file transaction; otherwise only validate.",
+    )
+    summary_parser.set_defaults(
+        _command_handler=_build_run_summary_from_args,
+        _command_parser=summary_parser,
+    )
+
 
 def build_parser() -> argparse.ArgumentParser:
     """Build the public parser from owner-supplied command definitions."""
@@ -230,7 +291,7 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="COMMAND",
         required=True,
     )
-    _add_artifact_index_build_command(command_parsers)
+    _add_build_commands(command_parsers)
     assemble_parser = command_parsers.add_parser(
         "assemble",
         help="Assemble an explicitly declared NORAD evidence package.",

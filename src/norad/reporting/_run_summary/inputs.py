@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import csv
 import hashlib
 import io
@@ -15,53 +14,6 @@ from typing import Any
 
 from .. import _files
 from .models import FileSnapshot, RunSummaryError, adapter, contracts
-
-
-def parse_arguments(
-    argv: Sequence[str] | None = None,
-) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Build a deterministic run summary from one complete NORAD "
-            "artifact-adapter receipt. Dry-run is the default."
-        )
-    )
-    parser.add_argument("--run-id", required=True)
-    parser.add_argument(
-        "--artifact-receipt",
-        required=True,
-        type=Path,
-        help="Exact completed artifact-adapter receipt TSV.",
-    )
-    parser.add_argument(
-        "--output-root",
-        required=True,
-        type=Path,
-        help="Artifact output root containing <run_id>/.",
-    )
-    parser.add_argument(
-        "--science-review-summary",
-        type=Path,
-        help=(
-            "Optional exact committed Step 09c review-summary TSV. It is "
-            "never discovered automatically."
-        ),
-    )
-    parser.add_argument(
-        "--report-table-approvals",
-        type=Path,
-        help=(
-            "Optional exact report-table approvals TSV. It is never "
-            "discovered automatically and must be bound to this run and its "
-            "explicit Step 09c scientific-review artifacts."
-        ),
-    )
-    parser.add_argument(
-        "--execute",
-        action="store_true",
-        help="Publish the four-file transaction; otherwise only validate.",
-    )
-    return parser.parse_args(argv)
 
 
 def _fail(message: str) -> None:

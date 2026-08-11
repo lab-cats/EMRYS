@@ -23,6 +23,9 @@ from tests.evidence.scientific_review_package import (
 from tests.reporting.fixtures.artifact_adapters_v1 import (
     build_fixture as artifact_index_fixture,
 )
+from tests.reporting.fixtures.artifact_run_summary_v1 import (
+    build_fixture as run_summary_fixture,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLI_USAGE_ERROR = 2
@@ -299,7 +302,9 @@ def _assert_wheel_contents(wheel: Path) -> None:
         assert "norad/reporting/_artifact_index/builder.py" in members
         assert "norad/reporting/_artifact_index/source_checkout.py" in members
         assert "norad/reporting/build_artifact_index.py" not in members
+        assert "norad/reporting/_run_summary/builder.py" in members
         assert "norad/reporting/_run_summary/science_projection.py" in members
+        assert "norad/reporting/build_run_summary.py" not in members
         assert "norad/reporting/_run_summary_science.py" not in members
         assert "norad/ingestion/__init__.py" in members
         assert "norad/ingestion/sample_manifest_admission/__init__.py" in members
@@ -509,6 +514,8 @@ def _assert_dependency_prepared_artifact_contracts(
                 "import norad; "
                 "from norad.contracts.artifacts import api as artifact_contracts; "
                 "from norad.reporting._artifact_index import api as artifact_index; "
+                "from norad.reporting._run_summary import "
+                "builder as run_summary_builder; "
                 f"dependencies = {ARTIFACT_RUNTIME_DEPENDENCIES!r}; "
                 "schemas, _ = artifact_contracts.load_schema_registry(); "
                 "print(json.dumps({"
@@ -521,6 +528,9 @@ def _assert_dependency_prepared_artifact_contracts(
                 "'norad': norad.__file__, "
                 "'origins': {name: importlib.import_module(module).__file__ "
                 "for name, (_version, module) in dependencies.items()}, "
+                "'run_summary_builder': run_summary_builder.__file__, "
+                "'run_summary_facade_loaded': "
+                "'norad.reporting.build_run_summary' in sys.modules, "
                 "'schemas': sorted(schemas), "
                 "'sys_path': sys.path, "
                 "'versions': {name: importlib.metadata.version(name) "
@@ -550,6 +560,10 @@ def _assert_dependency_prepared_artifact_contracts(
     assert Path(observed["artifact_index"]).resolve().is_relative_to(environment_site)
     assert observed["artifact_index_builder_loaded"] is False
     assert observed["artifact_index_facade_loaded"] is False
+    assert (
+        Path(observed["run_summary_builder"]).resolve().is_relative_to(environment_site)
+    )
+    assert observed["run_summary_facade_loaded"] is False
     assert Path(observed["norad"]).resolve().is_relative_to(environment_site)
     origins = tuple(Path(origin) for origin in observed["origins"].values())
     assert all(origin.is_relative_to(projection) for origin in origins)
@@ -594,6 +608,11 @@ def _assert_dependency_prepared_artifact_contracts(
         working_directory,
         environment,
     )
+    _assert_installed_run_summary_build(
+        environment_python,
+        working_directory,
+        environment,
+    )
 
 
 def _assert_installed_artifact_index_build(
@@ -632,6 +651,67 @@ def _assert_installed_artifact_index_build(
     assert "Completion: complete=81" in build.stdout
     assert "Dry-run only" in build.stdout
     assert not fixture.output_root.exists()
+    assert (
+        tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
+        == input_states
+    )
+    assert (unrelated_path.read_bytes(), unrelated_path.stat().st_mode) == (
+        unrelated_state
+    )
+
+
+def _assert_installed_run_summary_build(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    fixture = run_summary_fixture.build_fixture(
+        working_directory / "run-summary-inputs",
+    )
+    input_paths = tuple(
+        sorted(path for path in fixture.root.rglob("*") if path.is_file()),
+    )
+    input_states = tuple(
+        (path.read_bytes(), path.stat().st_mode) for path in input_paths
+    )
+    output_entries = tuple(sorted(fixture.output_dir.iterdir()))
+    unrelated_path = working_directory / "run-summary-unrelated.txt"
+    unrelated_path.write_text("preserve\n", encoding="utf-8")
+    unrelated_path.chmod(PRIVATE_FILE_MODE)
+    unrelated_state = (unrelated_path.read_bytes(), unrelated_path.stat().st_mode)
+    recovery_pattern = f".{fixture.run_id}.run-summary.*.RECOVERY.txt"
+
+    assert not any(path.exists() for path in fixture.summary_paths)
+    assert not fixture.lock_path.exists()
+    assert not list(fixture.output_dir.glob(recovery_pattern))
+
+    build = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "build",
+        "run-summary",
+        *fixture.command_args(),
+    )
+
+    assert build.returncode == 0, build.stdout + build.stderr
+    assert build.stderr == ""
+    output_lines = build.stdout.splitlines()
+    for expected_line in (
+        "NORAD run-summary context",
+        "  Mode: dry-run",
+        "  Expected artifacts: 81",
+        "  Complete artifacts: 81",
+        "  Missing artifacts: 0",
+        "  Incomplete artifacts: 0",
+        "  Failed artifacts: 0",
+    ):
+        assert expected_line in output_lines
+    assert output_lines[-1] == ("Dry-run complete; no run-summary files were written.")
+    assert not any(path.exists() for path in fixture.summary_paths)
+    assert not fixture.lock_path.exists()
+    assert not list(fixture.output_dir.glob(recovery_pattern))
+    assert tuple(sorted(fixture.output_dir.iterdir())) == output_entries
     assert (
         tuple((path.read_bytes(), path.stat().st_mode) for path in input_paths)
         == input_states
@@ -2388,11 +2468,76 @@ def _assert_installed_scientific_review_package_assembly(
     )
 
 
+def _assert_installed_run_summary_help(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    run_summary_help = subprocess.run(  # noqa: S603 -- Fixed test-owned command.
+        [
+            str(environment_python),
+            "-I",
+            "-c",
+            (
+                "import json, sys\n"
+                "from norad import __main__ as norad_cli\n"
+                "try:\n"
+                "    norad_cli.main(['build', 'run-summary', '--help'])\n"
+                "except SystemExit as exc:\n"
+                "    exit_code = exc.code\n"
+                "else:\n"
+                "    exit_code = 0\n"
+                "print('__NORAD_MODULE_STATE__=' + json.dumps({"
+                "'artifact_index_api_loaded': "
+                "'norad.reporting._artifact_index.api' in sys.modules, "
+                "'artifact_index_builder_loaded': "
+                "'norad.reporting._artifact_index.builder' in sys.modules, "
+                "'run_summary_builder_loaded': "
+                "'norad.reporting._run_summary.builder' in sys.modules}))\n"
+                "raise SystemExit(exit_code)\n"
+            ),
+        ],
+        cwd=working_directory,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert run_summary_help.returncode == 0, (
+        run_summary_help.stdout + run_summary_help.stderr
+    )
+    assert not run_summary_help.stderr
+    run_summary_help_lines = run_summary_help.stdout.splitlines()
+    assert "usage: norad build run-summary" in run_summary_help.stdout
+    for option in (
+        "--source-checkout",
+        "--run-id",
+        "--artifact-receipt",
+        "--output-root",
+        "--science-review-summary",
+        "--report-table-approvals",
+        "--execute",
+    ):
+        assert option in run_summary_help.stdout
+    module_state_prefix = "__NORAD_MODULE_STATE__="
+    assert run_summary_help_lines[-1].startswith(module_state_prefix)
+    assert json.loads(run_summary_help_lines[-1].removeprefix(module_state_prefix)) == {
+        "artifact_index_api_loaded": False,
+        "artifact_index_builder_loaded": False,
+        "run_summary_builder_loaded": False,
+    }
+
+
 def _assert_installed_commands(
     environment_python: Path,
     working_directory: Path,
     environment: dict[str, str],
 ) -> None:
+    _assert_installed_run_summary_help(
+        environment_python,
+        working_directory,
+        environment,
+    )
     artifact_index_help = _run_installed_norad(
         environment_python,
         working_directory,
@@ -2559,6 +2704,13 @@ def _assert_installed_commands(
     )
 
 
+def _assert_run_summary_source_layout(reporting_source: Path) -> None:
+    assert (
+        reporting_source / "_run_summary/builder.py"
+    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
+    assert not (reporting_source / "build_run_summary.py").exists()
+
+
 def _assert_private_source_layout() -> None:
     artifact_contract_source = REPO_ROOT / "src/norad/contracts/artifacts"
     assert not (artifact_contract_source / "_artifact_contracts/core.py").exists()
@@ -2581,6 +2733,7 @@ def _assert_private_source_layout() -> None:
         reporting_source / "_artifact_index/source_checkout.py"
     ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
     assert not (reporting_source / "build_artifact_index.py").exists()
+    _assert_run_summary_source_layout(reporting_source)
     assert not (reporting_source / "_run_summary_science.py").exists()
     assert (
         reporting_source / "_run_summary/science_projection.py"
