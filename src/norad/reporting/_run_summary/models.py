@@ -156,7 +156,6 @@ class BuildContext:
     run_id: str
     execute: bool
     artifact_receipt_path: Path
-    artifact_receipt_sha256: str
     artifact_receipt: dict[str, str]
     run_contract_path: Path
     run_contract_file_sha256: str
@@ -165,11 +164,7 @@ class BuildContext:
     inventory_sha256: str
     inventory_rows: list[dict[str, str]]
     artifacts_path: Path
-    artifacts_sha256: str
     records_dir: Path
-    index_rows: list[dict[str, str]]
-    record_paths: list[Path]
-    record_hashes: list[str]
     input_snapshots: tuple[FileSnapshot, ...]
     artifacts: list[dict[str, Any]]
     science_review_summary_path: Path | None
@@ -181,17 +176,13 @@ class BuildContext:
     summary_json_bytes: bytes
     summary_rows: list[dict[str, Any]]
     summary_tsv_bytes: bytes
-    qc_rows: list[dict[str, Any]]
     qc_summary_bytes: bytes
     paths: OutputPaths
     previous_receipt: dict[str, str] | None
     previous_receipt_sha256: str | None
     previous_attempt_id: str | None
-    previous_attempt_history: list[str]
     attempt_id: str
     git_commit: str
-    started_at: str
-    finished_at: str
     receipt_row: dict[str, Any]
     receipt_bytes: bytes
     source_checkout: adapter.SourceCheckout = field(
