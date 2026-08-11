@@ -25,7 +25,6 @@ from .models import (
     ARTIFACT_RECEIPT_HEADER,
     ArtifactIndexError,
     BuildContext,
-    SourceSnapshot,
 )
 from .reconciliation import (
     reconcile_native_transactions,
@@ -240,14 +239,6 @@ def validate_context_in_memory(context: BuildContext) -> None:
         raise ArtifactIndexError("Generated receipt is not complete")
 
 
-def source_snapshot_matches(
-    expected: SourceSnapshot,
-    observed: SourceSnapshot,
-) -> bool:
-    # Rechecks may skip hashing, but every filesystem identity field must match.
-    return expected == replace(observed, sha256=expected.sha256)
-
-
 def recheck_inputs(context: BuildContext) -> None:
     if contracts.sha256_file(context.run_contract_path) != (
         context.run_contract_file_sha256
@@ -263,8 +254,10 @@ def recheck_inputs(context: BuildContext) -> None:
                 and inspection.snapshot.file_type == "hash_read_error"
             ),
         )
-        if inspection.snapshot is None or not source_snapshot_matches(
-            inspection.snapshot, observed
+        expected_snapshot = inspection.snapshot
+        # Rechecks may skip hashing, but every filesystem identity field must match.
+        if expected_snapshot is None or not (
+            expected_snapshot == replace(observed, sha256=expected_snapshot.sha256)
         ):
             raise ArtifactIndexError(
                 "Declared source changed after initial inspection: "

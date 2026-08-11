@@ -921,10 +921,10 @@
     {
       "branch_rate": "0.815789",
       "covered_branches": 31,
-      "covered_lines": 103,
-      "line_rate": "0.936364",
+      "covered_lines": 102,
+      "line_rate": "0.935780",
       "num_branches": 38,
-      "num_statements": 110,
+      "num_statements": 109,
       "path": "src/norad/reporting/_artifact_index/context.py"
     },
     {
@@ -1629,9 +1629,9 @@
   "totals": {
     "branch_rate": "0.750000",
     "covered_branches": 3327,
-    "covered_lines": 10165,
-    "line_rate": "0.858893",
+    "covered_lines": 10164,
+    "line_rate": "0.858881",
     "num_branches": 4436,
-    "num_statements": 11835
+    "num_statements": 11834
   }
 }
