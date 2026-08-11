@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
+from functools import partial
 from typing import TYPE_CHECKING, Any
 
 from .contracts import contracts
@@ -52,21 +53,12 @@ def reconcile_native_transactions(
         "09c": "step09c_review_summary_v1",
     }
     validators = {
-        "00c": lambda members: reconcile_step00c(members),
-        "06": lambda members: reconcile_step06(members),
-        "07": lambda members: reconcile_step07(members, sources),
-        "08": lambda members: reconcile_step08(
-            members,
-            sources,
-        ),
-        "09": lambda members: reconcile_step09(
-            members,
-            sources,
-        ),
-        "09c": lambda members: reconcile_step09c(
-            members,
-            sources,
-        ),
+        "00c": reconcile_step00c,
+        "06": reconcile_step06,
+        "07": partial(reconcile_step07, sources=sources),
+        "08": partial(reconcile_step08, sources=sources),
+        "09": partial(reconcile_step09, sources=sources),
+        "09c": partial(reconcile_step09c, sources=sources),
     }
     dependency_order = dict(zip(validators, range(len(validators)), strict=True))
     ordered_scopes = sorted(

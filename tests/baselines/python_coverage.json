@@ -1002,10 +1002,10 @@
     {
       "branch_rate": "0.884615",
       "covered_branches": 23,
-      "covered_lines": 68,
-      "line_rate": "0.860759",
+      "covered_lines": 69,
+      "line_rate": "0.862500",
       "num_branches": 26,
-      "num_statements": 79,
+      "num_statements": 80,
       "path": "src/norad/reporting/_artifact_index/reconciliation.py"
     },
     {
@@ -1629,9 +1629,9 @@
   "totals": {
     "branch_rate": "0.750000",
     "covered_branches": 3327,
-    "covered_lines": 10164,
-    "line_rate": "0.858881",
+    "covered_lines": 10165,
+    "line_rate": "0.858893",
     "num_branches": 4436,
-    "num_statements": 11834
+    "num_statements": 11835
   }
 }
