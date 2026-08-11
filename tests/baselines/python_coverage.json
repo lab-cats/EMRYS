@@ -102,10 +102,10 @@
     {
       "branch_rate": "0.714286",
       "covered_branches": 20,
-      "covered_lines": 44,
-      "line_rate": "0.880000",
+      "covered_lines": 45,
+      "line_rate": "0.882353",
       "num_branches": 28,
-      "num_statements": 50,
+      "num_statements": 51,
       "path": "src/norad/contracts/artifacts/_artifact_contracts/artifact.py"
     },
     {
@@ -136,10 +136,10 @@
       "path": "src/norad/contracts/artifacts/_artifact_contracts/identity.py"
     },
     {
-      "branch_rate": "0.750000",
-      "covered_branches": 45,
-      "covered_lines": 96,
-      "line_rate": "0.849558",
+      "branch_rate": "0.766667",
+      "covered_branches": 46,
+      "covered_lines": 97,
+      "line_rate": "0.858407",
       "num_branches": 60,
       "num_statements": 113,
       "path": "src/norad/contracts/artifacts/_artifact_contracts/inventory.py"
@@ -1627,11 +1627,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.749775",
-    "covered_branches": 3332,
-    "covered_lines": 10202,
-    "line_rate": "0.858899",
+    "branch_rate": "0.750000",
+    "covered_branches": 3333,
+    "covered_lines": 10204,
+    "line_rate": "0.858995",
     "num_branches": 4444,
-    "num_statements": 11878
+    "num_statements": 11879
   }
 }

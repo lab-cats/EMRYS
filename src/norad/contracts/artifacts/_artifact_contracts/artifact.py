@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
-from .definitions import ContractValidationError
+from .definitions import REPO_ROOT, ContractValidationError
 from .evidence import validate_computational_statuses
 from .identity import (
     require_unique_key,
@@ -22,7 +23,11 @@ _SELECTED_ATTEMPT_STATE_BY_COMPLETION = {
 _INCOMPLETE_SELECTED_ATTEMPT_STATES = {"failed", "cancelled", "blocked"}
 
 
-def validate_artifact_semantics(document: dict[str, Any]) -> None:
+def validate_artifact_semantics(
+    document: dict[str, Any],
+    *,
+    source_root: Path = REPO_ROOT,
+) -> None:
     artifact_label = f"artifact {document['artifact_id']!r}"
     validate_run_contract(
         document["run_contract"],
@@ -73,9 +78,13 @@ def validate_artifact_semantics(document: dict[str, Any]) -> None:
 
     members = document["members"]
     require_unique_key(members, "member_id", "artifact members")
-    expected_source_path = resolve_contract_path(document["expectation"]["source_path"])
+    expected_source_path = resolve_contract_path(
+        document["expectation"]["source_path"],
+        source_root=source_root,
+    )
     canonical_member_paths = {
-        resolve_contract_path(member["path"]) for member in members
+        resolve_contract_path(member["path"], source_root=source_root)
+        for member in members
     }
     if len(canonical_member_paths) != len(members):
         raise ContractValidationError("artifact members contain duplicate paths")
@@ -91,12 +100,19 @@ def validate_artifact_semantics(document: dict[str, Any]) -> None:
             "artifact member cannot claim the absent expected source path"
         )
     if source is not None:
-        source_path = resolve_contract_path(source["path"])
+        source_path = resolve_contract_path(
+            source["path"],
+            source_root=source_root,
+        )
         source_member = next(
             (
                 member
                 for member in members
-                if resolve_contract_path(member["path"]) == source_path
+                if resolve_contract_path(
+                    member["path"],
+                    source_root=source_root,
+                )
+                == source_path
             ),
             None,
         )

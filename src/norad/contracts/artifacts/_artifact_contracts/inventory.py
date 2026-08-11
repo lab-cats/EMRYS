@@ -9,6 +9,7 @@ from typing import Any
 from .definitions import (
     BOOLEAN_VALUES,
     INVENTORY_HEADER,
+    REPO_ROOT,
     SAFE_ID_RE,
     SCOPE_TYPES,
     ContractValidationError,
@@ -53,7 +54,11 @@ def _reject_duplicate_inventory_value(
     seen[value] = row_number
 
 
-def validate_inventory(path: Path) -> list[dict[str, str]]:
+def validate_inventory(
+    path: Path,
+    *,
+    source_root: Path = REPO_ROOT,
+) -> list[dict[str, str]]:
     if not path.exists():
         raise ContractValidationError(f"Inventory does not exist: {path}")
     if not path.is_file():
@@ -136,7 +141,10 @@ def validate_inventory(path: Path) -> list[dict[str, str]]:
         _reject_duplicate_inventory_value(
             row_number, "source_path", source_path, seen_source_paths
         )
-        canonical_source_path = resolve_contract_path(source_path)
+        canonical_source_path = resolve_contract_path(
+            source_path,
+            source_root=source_root,
+        )
         if canonical_source_path in seen_canonical_source_paths:
             raise ContractValidationError(
                 f"Inventory row {row_number}: source_path resolves to the "

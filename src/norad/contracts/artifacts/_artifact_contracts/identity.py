@@ -182,8 +182,12 @@ def validate_attempt_graph(
     return indexed
 
 
-def resolve_contract_path(value: str) -> Path:
+def resolve_contract_path(
+    value: str,
+    *,
+    source_root: Path = REPO_ROOT,
+) -> Path:
     path = Path(value)
     if not path.is_absolute():
-        path = REPO_ROOT / path
+        path = source_root / path
     return path.resolve()

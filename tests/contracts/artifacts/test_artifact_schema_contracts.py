@@ -1349,6 +1349,66 @@ def inventory_rows() -> tuple[list[str], list[dict[str, str]]]:
         return list(reader.fieldnames), list(reader)
 
 
+def test_contract_paths_honor_an_explicit_source_root(tmp_path: Path) -> None:
+    actual = tmp_path / "actual"
+    actual.mkdir()
+    alias = tmp_path / "alias"
+    alias.symlink_to(actual, target_is_directory=True)
+
+    explicit_path = contracts.resolve_contract_path(
+        "alias/source.tsv",
+        source_root=tmp_path,
+    )
+    assert explicit_path == (actual / "source.tsv").resolve()
+    assert explicit_path != contracts.resolve_contract_path("alias/source.tsv")
+
+    header, rows = inventory_rows()
+    alias_rows = copy.deepcopy(rows[:2])
+    alias_rows[0]["source_path"] = "actual/source.tsv"
+    alias_rows[1]["source_path"] = "alias/source.tsv"
+    inventory = tmp_path / "inventory.tsv"
+    write_inventory(inventory, header, alias_rows)
+    with pytest.raises(
+        contracts.ContractValidationError,
+        match="source_path resolves to the same physical path",
+    ):
+        contracts.validate_inventory(inventory, source_root=tmp_path)
+
+    artifact_record = read_json(FIXTURES["artifact-record"])
+    artifact_record.update(
+        {
+            "availability_status": "missing",
+            "completion_status": "incomplete",
+            "state_reason": "Synthetic incomplete artifact.",
+            "attempt_provenance_status": "unavailable",
+            "attempts": [],
+            "selected_attempt_id": None,
+            "source": None,
+        }
+    )
+    artifact_record["expectation"]["source_path"] = "actual/source.tsv"
+    artifact_record["members"] = [
+        {
+            "member_id": "contradictory_source_alias",
+            "role": "supplemental",
+            "path": "alias/source.tsv",
+            "sha256": "f" * 64,
+            "size_bytes": 10,
+            "row_count": 1,
+            "media_type": "text/tab-separated-values",
+        }
+    ]
+    assert_schema_valid("artifact-record", artifact_record)
+    with pytest.raises(
+        contracts.ContractValidationError,
+        match="cannot claim the absent expected source",
+    ):
+        contracts.validate_artifact_semantics(
+            artifact_record,
+            source_root=tmp_path,
+        )
+
+
 def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_09c() -> (
     None
 ):
