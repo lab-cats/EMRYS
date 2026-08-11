@@ -65,6 +65,7 @@ def _normalize_report_table_approvals(
     artifacts: Sequence[dict[str, Any]],
     scientific_review: Mapping[str, Any],
     build_started_at: str,
+    source_root: Path,
 ) -> tuple[
     Path,
     FileSnapshot,
@@ -224,6 +225,7 @@ def _normalize_report_table_approvals(
         source_path = _require_contract_regular_file(
             f"Approved report table {table_id!r}",
             declared_path,
+            source_root=source_root,
         )
         source_key = (str(source_path), declared_sha256)
         if source_key in observed_sources:

@@ -51,6 +51,7 @@ def _recheck_inputs(context: BuildContext) -> None:
         artifacts_path=context.artifacts_path,
         receipt_path=context.artifact_receipt_path,
         require_current_source_locations=True,
+        source_root=context.source_checkout.root,
     )
     for snapshot in context.input_snapshots:
         _verify_file_snapshot("Artifact transaction input", snapshot)
@@ -68,6 +69,7 @@ def _recheck_inputs(context: BuildContext) -> None:
             run_contract=context.run_contract,
             generated_at=context.document["generated_at"],
             git_commit=context.git_commit,
+            source_root=context.source_checkout.root,
         )
         if normalized != context.document["scientific_review"]["record"]:
             _fail("The explicit scientific-review package changed")
@@ -117,12 +119,18 @@ def validate_published_run_summary(context: BuildContext) -> None:
     document = contracts.load_json_object(
         context.paths.summary_json, "published run summary"
     )
-    _validate_document(document, context.inventory_rows, context.inventory_path)
+    _validate_document(
+        document,
+        context.inventory_rows,
+        context.inventory_path,
+        source_root=context.source_checkout.root,
+    )
     _validate_existing_summary(
         paths=context.paths,
         receipt=receipt,
         expected_run_id=context.run_id,
         expected_run_contract=context.run_contract,
+        source_root=context.source_checkout.root,
     )
 
 
@@ -199,6 +207,7 @@ def publish_context(context: BuildContext) -> None:
                 receipt=current_previous,
                 expected_run_id=context.run_id,
                 expected_run_contract=context.run_contract,
+                source_root=context.source_checkout.root,
             )
         _recheck_inputs(context)
 
@@ -342,6 +351,7 @@ def publish_context(context: BuildContext) -> None:
                         receipt=restored,
                         expected_run_id=context.run_id,
                         expected_run_contract=context.run_contract,
+                        source_root=context.source_checkout.root,
                     )
 
                 rollback(

@@ -2,8 +2,9 @@
 
 This private package supports the public
 [`build_run_summary.py`](../build_run_summary.py) entry point. The facade owns
-CLI compatibility and context preparation; these modules own bounded
-deterministic helpers and publication beneath it.
+CLI compatibility, checkout admission, and context preparation; these modules
+own bounded deterministic helpers and publication beneath it. There is no
+grouped run-summary route or public `--source-checkout` option yet.
 
 | Module | Owned responsibility |
 | --- | --- |
@@ -26,10 +27,27 @@ and publication recheck share the one canonical `science_projection.py`
 module identity. Artifact-index parsing, validation, serialization, and shared
 transaction primitives enter through the narrow private
 [`_artifact_index/api.py`](../_artifact_index/api.py) boundary rather than the
-private artifact-index command builder; both reporting owners still reuse the
-same artifact contract and error identities. Science projection consumes the
-neutral review-package contract, the committed public thirteen-file package,
-explicitly referenced evidence, and validated index records. It does not load
-private Step `09c` inputs, own review policy, or promote computational or
-scientific state. The API separation changes no run-summary command, output,
-diagnostic, publication order, rollback, recovery, or evidence claim.
+private artifact-index command builder. That API also supplies the shared
+`SourceCheckout` token, admission error, and admission function. After the
+existing direct parser succeeds, the facade self-admits the checkout that owns
+the executing package before it reads run inputs; a programmatic
+`prepare_context` caller may instead supply an already admitted token. Package
+identity is checked during admission, and both admission and later Git `HEAD`
+resolution ignore ambient `GIT_*` routing while preserving unrelated
+environment state.
+
+The admitted token remains on `BuildContext`. Its root governs
+contract-relative artifact intake, science-package and evidence intake,
+approval-table paths, and document-semantic and predecessor validation.
+Publication retains the same authority for input rechecks, science
+renormalization, locked predecessor checks, post-publication validation, and
+validation of a restored predecessor during rollback; it does not re-admit or
+infer a root. Receipt-last publication, observation order, diagnostics,
+serialized bytes, rollback, and recovery remain unchanged.
+
+Both reporting owners still reuse the same artifact contract and error
+identities. Science projection consumes the neutral review-package contract,
+the committed public thirteen-file package, explicitly referenced evidence,
+and validated index records. It does not load private Step `09c` inputs, own
+review policy, promote computational or scientific state, or change an
+evidence claim.

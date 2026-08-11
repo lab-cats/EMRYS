@@ -4,8 +4,11 @@ This private package implements the grouped
 `python -I -m norad build artifact-index` route through
 [`builder.py`](builder.py). The former direct script is retired without a
 compatibility shim. [`api.py`](api.py) is the narrow private import boundary
-used by run-summary reporting; it is not another command or public application
-API and does not import the command builder.
+used by run-summary reporting. In addition to artifact parsing, validation,
+serialization, and publication primitives, it exposes the shared
+`SourceCheckout` token, admission error, and admission function without
+importing the command builder. It is not another command or public application
+API.
 
 The grouped dispatcher owns the lightweight public parser and imports the
 private builder only after selecting this command. Help, parser failures, and
@@ -26,6 +29,17 @@ neither Git commit nor producer state; the later `HEAD` probe ignores ambient
 `GIT_*` routing while preserving unrelated environment state. Those
 observations stay at their established points in context construction,
 preserving their timing, diagnostics, and serialized evidence.
+
+Run-summary reporting uses the same checkout authority through `api.py`, not
+through an additional command. Its existing direct facade parses the
+established arguments and then self-admits the checkout that owns the executing
+package before reading run inputs, unless a programmatic caller supplies an
+already admitted token. That token remains on the run-summary build context;
+its root governs contract-relative artifact, science, and approval paths and
+semantic, predecessor, post-publication, and rollback validation. Run-summary
+Git admission and later `HEAD` resolution also ignore ambient `GIT_*` routing
+while preserving unrelated environment state. This adds neither a grouped
+run-summary route nor a public `--source-checkout` option.
 
 The modules keep observed responsibilities separate: the curated run-summary
 API, exact contract loading, models and rosters, explicit adapter registration,
@@ -54,6 +68,7 @@ lock, removal, and signal transaction primitives as well as the artifact-index
 coordinator, rollback, recovery, and cleanup order. The private builder
 re-exports the same primitives and remains the live artifact-index
 fault-injection surface; run-summary reporting reaches them through the private
-`api.py` boundary without importing the builder. These internals do not change
-artifact schemas, serialized bytes, source discovery policy, evidence states,
-diagnostics, or publication order.
+`api.py` boundary, together with the shared checkout authority, without
+importing the builder. These internals do not change artifact schemas,
+serialized bytes, source discovery policy, evidence states, diagnostics, or
+publication order.

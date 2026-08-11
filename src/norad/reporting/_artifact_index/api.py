@@ -28,6 +28,11 @@ from .publication import (
     write_bytes_exclusive,
 )
 from .records import read_exact_tsv, tsv_bytes
+from .source_checkout import (
+    SourceCheckout,
+    SourceCheckoutError,
+    admit_source_checkout,
+)
 from .validation import validate_published_transaction
 
 __all__ = (
@@ -36,7 +41,10 @@ __all__ = (
     "RUN_CONTRACT_FIELDS",
     "SHA256_RE",
     "ArtifactIndexError",
+    "SourceCheckout",
+    "SourceCheckoutError",
     "acquire_lock",
+    "admit_source_checkout",
     "canonical_json_bytes",
     "contracts",
     "fsync_directory",

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -194,3 +194,8 @@ class BuildContext:
     finished_at: str
     receipt_row: dict[str, Any]
     receipt_bytes: bytes
+    source_checkout: adapter.SourceCheckout = field(
+        kw_only=True,
+        compare=False,
+        repr=False,
+    )

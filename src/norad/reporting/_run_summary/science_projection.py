@@ -233,6 +233,7 @@ def normalize_scientific_review(
     run_contract: Mapping[str, Any],
     generated_at: str,
     git_commit: str,
+    source_root: Path = contracts.REPO_ROOT,
 ) -> dict[str, Any]:
     """Revalidate and normalize one explicit committed Step 09c transaction."""
 
@@ -279,24 +280,27 @@ def normalize_scientific_review(
             artifacts=artifacts,
             summary_row=summary_row,
             summary_sha256=summary_sha256,
+            source_root=source_root,
         )
 
         context, output_tables = _read_committed_review_package(
             summary_path=normalized_summary_path,
             summary_row=summary_row,
+            source_root=source_root,
         )
         _validate_published_artifacts(
             summary_path=normalized_summary_path,
-            summary_row=summary_row,
             artifacts=artifacts,
             summary_artifact=summary_artifact,
             output_tables=output_tables,
+            source_root=source_root,
         )
         input_artifacts = _normalize_input_artifacts(
             context=context,
             artifacts=artifacts,
             review_id=summary_row["review_id"],
             run_contract=run_contract,
+            source_root=source_root,
         )
         evidence_categories, evidence_records = _normalize_evidence(context)
         computational_evidence = _normalize_computational_evidence(

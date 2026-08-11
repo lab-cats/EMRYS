@@ -21,6 +21,7 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
 from norad.reporting._artifact_index import api as ARTIFACT_INDEX_API
+from norad.reporting._artifact_index import source_checkout as _source_checkout_owner
 from norad.reporting._run_summary import science_evidence as SCIENCE_EVIDENCE
 from norad.reporting._run_summary import science_models as SCIENCE_MODELS
 from norad.reporting._run_summary import science_package as SCIENCE_PACKAGE
@@ -56,6 +57,7 @@ FIXTURE = load_module(
 )
 RUN_SUMMARY = load_module("norad_artifact_run_summary", SCRIPT)
 CONTRACTS = RUN_SUMMARY.contracts
+SOURCE_CHECKOUT = RUN_SUMMARY.adapter.SourceCheckout(root=REPO_ROOT)
 
 
 @pytest.fixture
@@ -110,6 +112,15 @@ def test_run_summary_uses_shared_private_owner_identities() -> None:
         SCIENCE.RunSummaryScienceError
         is SCIENCE_MODELS.RunSummaryScienceError
         is SCIENCE_PACKAGE.RunSummaryScienceError
+    )
+    assert ARTIFACT_INDEX_API.SourceCheckout is _source_checkout_owner.SourceCheckout
+    assert (
+        ARTIFACT_INDEX_API.SourceCheckoutError
+        is _source_checkout_owner.SourceCheckoutError
+    )
+    assert (
+        ARTIFACT_INDEX_API.admit_source_checkout
+        is _source_checkout_owner.admit_source_checkout
     )
 
 
@@ -198,12 +209,356 @@ def context_for(fixture: Any) -> Any:
     os.environ["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
     try:
         arguments = RUN_SUMMARY.parse_arguments(fixture.command_args(execute=True))
-        return RUN_SUMMARY.prepare_context(arguments)
+        return RUN_SUMMARY.prepare_context(
+            arguments,
+            source_checkout=SOURCE_CHECKOUT,
+        )
     finally:
         if previous is None:
             os.environ.pop("SOURCE_DATE_EPOCH", None)
         else:
             os.environ["SOURCE_DATE_EPOCH"] = previous
+
+
+def _source_root_spy(
+    real_call: Any,
+    expected_root: Path,
+    calls: Counter[str],
+    label: str,
+) -> Any:
+    def rooted_call(
+        *args: Any,
+        source_root: Path,
+        **kwargs: Any,
+    ) -> Any:
+        assert source_root == expected_root
+        calls[label] += 1
+        return real_call(*args, source_root=source_root, **kwargs)
+
+    return rooted_call
+
+
+def test_prepare_context_self_admits_before_loading_inputs_and_retains_token(
+    run_summary_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The direct facade admits its own checkout before reading run inputs."""
+    admitted = ARTIFACT_INDEX_API.SourceCheckout(root=REPO_ROOT)
+    expected_package_root = Path(ARTIFACT_INDEX_API.__file__).resolve().parents[2]
+    real_load_input_transaction = RUN_SUMMARY._load_input_transaction
+    events: list[str] = []
+
+    def admit_source_checkout(
+        *,
+        root: Path,
+        package_root: Path,
+    ) -> ARTIFACT_INDEX_API.SourceCheckout:
+        assert root == CONTRACTS.REPO_ROOT
+        assert package_root == expected_package_root
+        events.append("admit")
+        return admitted
+
+    def load_input_transaction(*, source_root: Path, **kwargs: Any) -> object:
+        assert source_root == admitted.root
+        events.append("load")
+        return real_load_input_transaction(
+            source_root=source_root,
+            **kwargs,
+        )
+
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
+    monkeypatch.setattr(
+        RUN_SUMMARY.adapter,
+        "admit_source_checkout",
+        admit_source_checkout,
+    )
+    monkeypatch.setattr(
+        RUN_SUMMARY,
+        "_load_input_transaction",
+        load_input_transaction,
+    )
+    arguments = RUN_SUMMARY.parse_arguments(
+        run_summary_fixture.command_args(execute=False),
+    )
+
+    context = RUN_SUMMARY.prepare_context(arguments)
+
+    assert events == ["admit", "load"]
+    assert context.source_checkout is admitted
+
+
+@pytest.mark.parametrize(
+    ("arguments", "expected_status"),
+    [(["--help"], 0), ([], 2)],
+)
+def test_parser_termination_precedes_source_checkout_admission(
+    arguments: list[str],
+    expected_status: int,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Help and parse failures terminate before checkout admission."""
+    admission_attempted = False
+
+    def unexpected_admission(**_kwargs: Any) -> None:
+        nonlocal admission_attempted
+        admission_attempted = True
+        pytest.fail("source checkout admission ran before parsing terminated")
+
+    monkeypatch.setattr(
+        RUN_SUMMARY.adapter,
+        "admit_source_checkout",
+        unexpected_admission,
+    )
+
+    with pytest.raises(SystemExit) as termination:
+        RUN_SUMMARY.main(arguments)
+
+    assert not admission_attempted
+    assert termination.value.code == expected_status
+
+
+def test_prepare_context_threads_one_explicit_source_checkout_root(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One explicit root reaches preparation, science, and approval seams."""
+    fixture = FIXTURE.build_approved_science_fixture(
+        tmp_path / "authority",
+        roles=("candidate_selection",),
+    )
+    authority = ARTIFACT_INDEX_API.SourceCheckout(root=fixture.root)
+    root_calls: Counter[str] = Counter()
+    real_get_git_commit = RUN_SUMMARY.adapter.get_git_commit
+
+    def get_git_commit(
+        *,
+        source_root: Path,
+        sanitize_git_routing: bool,
+    ) -> str:
+        assert source_root == authority.root
+        assert sanitize_git_routing is True
+        root_calls["git"] += 1
+        return real_get_git_commit(
+            source_root=REPO_ROOT,
+            sanitize_git_routing=True,
+        )
+
+    def unexpected_admission(**_kwargs: Any) -> None:
+        pytest.fail("explicit SourceCheckout triggered a second admission")
+
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
+    monkeypatch.setenv("GIT_DIR", str(tmp_path / "foreign.git"))
+    monkeypatch.setattr(
+        RUN_SUMMARY.adapter,
+        "admit_source_checkout",
+        unexpected_admission,
+    )
+    monkeypatch.setattr(RUN_SUMMARY.adapter, "get_git_commit", get_git_commit)
+    for owner, attribute, label in (
+        (CONTRACTS, "validate_inventory", "inventory"),
+        (
+            RUN_SUMMARY.adapter,
+            "validate_published_transaction",
+            "published_transaction",
+        ),
+        (CONTRACTS, "resolve_contract_path", "science_contract"),
+        (
+            RUN_SUMMARY.science,
+            "normalize_scientific_review",
+            "science_normalization",
+        ),
+        (RUN_SUMMARY, "_normalize_report_table_approvals", "approvals"),
+        (CONTRACTS, "validate_run_summary_semantics", "document_semantics"),
+        (CONTRACTS, "reconcile_document_inventory", "document_inventory"),
+    ):
+        monkeypatch.setattr(
+            owner,
+            attribute,
+            _source_root_spy(
+                getattr(owner, attribute),
+                authority.root,
+                root_calls,
+                label,
+            ),
+        )
+    arguments = RUN_SUMMARY.parse_arguments(fixture.command_args(execute=False))
+
+    context = RUN_SUMMARY.prepare_context(
+        arguments,
+        source_checkout=authority,
+    )
+
+    expected_single_calls = 1
+    expected_prepare_rechecks = 2
+    assert context.source_checkout is authority
+    assert root_calls["git"] == expected_single_calls
+    assert root_calls["inventory"] == expected_single_calls
+    assert root_calls["published_transaction"] == expected_prepare_rechecks
+    assert root_calls["science_contract"] > 0
+    assert root_calls["science_normalization"] == expected_prepare_rechecks
+    assert root_calls["approvals"] == expected_single_calls
+    assert root_calls["document_semantics"] == expected_single_calls
+    assert root_calls["document_inventory"] == expected_single_calls
+
+
+def test_explicit_checkout_root_reaches_predecessor_and_post_publish_rechecks(
+    run_summary_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Publication retains the prepared authority through its success checks."""
+    first = run_cli(run_summary_fixture, execute=True)
+    assert first.returncode == 0, first.stderr
+    authority = ARTIFACT_INDEX_API.SourceCheckout(root=run_summary_fixture.root)
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
+    arguments = RUN_SUMMARY.parse_arguments(
+        run_summary_fixture.command_args(execute=True),
+    )
+    context = RUN_SUMMARY.prepare_context(
+        arguments,
+        source_checkout=SOURCE_CHECKOUT,
+    )
+    # A distinct sentinel makes any fallback to the module default observable.
+    context.source_checkout = authority
+    root_calls: Counter[str] = Counter()
+    for owner, attribute, label in (
+        (RUN_SUMMARY.adapter, "validate_published_transaction", "recheck"),
+        (RUN_SUMMARY._publication, "_validate_document", "post_publish_document"),
+        (RUN_SUMMARY._publication, "_validate_existing_summary", "predecessor"),
+        (CONTRACTS, "validate_run_summary_semantics", "semantic_validation"),
+    ):
+        monkeypatch.setattr(
+            owner,
+            attribute,
+            _source_root_spy(
+                getattr(owner, attribute),
+                authority.root,
+                root_calls,
+                label,
+            ),
+        )
+
+    RUN_SUMMARY.publish_context(context)
+
+    expected_rechecks = 2
+    expected_predecessor_and_published_checks = 2
+    expected_semantic_checks = 3
+    assert root_calls["recheck"] == expected_rechecks
+    assert root_calls["post_publish_document"] == 1
+    assert root_calls["predecessor"] == expected_predecessor_and_published_checks
+    assert root_calls["semantic_validation"] == expected_semantic_checks
+    assert_no_summary_residue_after_success(run_summary_fixture)
+
+
+def test_explicit_checkout_root_reaches_restored_rollback_validation(
+    run_summary_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rollback validates the restored predecessor with the retained root."""
+    first = run_cli(run_summary_fixture, execute=True)
+    assert first.returncode == 0, first.stderr
+    before = summary_snapshot(run_summary_fixture)
+    authority = ARTIFACT_INDEX_API.SourceCheckout(root=run_summary_fixture.root)
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
+    arguments = RUN_SUMMARY.parse_arguments(
+        run_summary_fixture.command_args(execute=True),
+    )
+    context = RUN_SUMMARY.prepare_context(
+        arguments,
+        source_checkout=SOURCE_CHECKOUT,
+    )
+    # A distinct sentinel makes any fallback to the module default observable.
+    context.source_checkout = authority
+    real_replace = RUN_SUMMARY.os.replace
+    root_calls: Counter[str] = Counter()
+    failed = False
+
+    def fail_qc_publication(source: Any, destination: Any) -> None:
+        nonlocal failed
+        if (
+            not failed
+            and Path(destination) == run_summary_fixture.qc_summary_path
+            and ".tmp" in Path(source).name
+        ):
+            failed = True
+            message = "injected authority rollback failure"
+            raise OSError(message)
+        real_replace(source, destination)
+
+    monkeypatch.setattr(
+        RUN_SUMMARY._publication,
+        "_validate_existing_summary",
+        _source_root_spy(
+            RUN_SUMMARY._publication._validate_existing_summary,
+            authority.root,
+            root_calls,
+            "restored_predecessor",
+        ),
+    )
+    monkeypatch.setattr(
+        CONTRACTS,
+        "validate_run_summary_semantics",
+        _source_root_spy(
+            CONTRACTS.validate_run_summary_semantics,
+            authority.root,
+            root_calls,
+            "restored_semantics",
+        ),
+    )
+    monkeypatch.setattr(RUN_SUMMARY.os, "replace", fail_qc_publication)
+
+    with pytest.raises(
+        RUN_SUMMARY.RunSummaryError,
+        match="injected authority rollback failure",
+    ):
+        RUN_SUMMARY.publish_context(context)
+
+    expected_predecessor_and_restored_checks = 2
+    assert failed
+    assert (
+        root_calls["restored_predecessor"] == expected_predecessor_and_restored_checks
+    )
+    assert root_calls["restored_semantics"] == expected_predecessor_and_restored_checks
+    assert summary_snapshot(run_summary_fixture) == before
+    assert_no_summary_residue_after_success(run_summary_fixture)
+
+
+def test_source_checkout_admission_error_precedes_input_diagnostics(
+    run_summary_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Facade admission failures are controlled before any input is loaded."""
+    expected_package_root = Path(ARTIFACT_INDEX_API.__file__).resolve().parents[2]
+
+    def reject_source_checkout(
+        *,
+        root: Path,
+        package_root: Path,
+    ) -> ARTIFACT_INDEX_API.SourceCheckout:
+        assert root == CONTRACTS.REPO_ROOT
+        assert package_root == expected_package_root
+        message = "injected run-summary checkout rejection"
+        raise ARTIFACT_INDEX_API.SourceCheckoutError(message)
+
+    def unexpected_input_load(**_kwargs: Any) -> None:
+        pytest.fail("input diagnostics ran before admission")
+
+    monkeypatch.setattr(
+        RUN_SUMMARY.adapter,
+        "admit_source_checkout",
+        reject_source_checkout,
+    )
+    monkeypatch.setattr(
+        RUN_SUMMARY,
+        "_load_input_transaction",
+        unexpected_input_load,
+    )
+
+    assert RUN_SUMMARY.main(run_summary_fixture.command_args(execute=False)) == 1
+    captured = capsys.readouterr()
+    assert not captured.out
+    assert captured.err == "ERROR: injected run-summary checkout rejection\n"
+    assert_no_summary_outputs(run_summary_fixture)
 
 
 def validate_summary_document(fixture: Any) -> dict[str, Any]:
@@ -879,6 +1234,7 @@ def test_reporting_reader_does_not_reconstruct_step09c_sources(
     context, tables = SCIENCE_PACKAGE._read_committed_review_package(
         summary_path=fixture.science_review_summary,
         summary_row=summary_row,
+        source_root=REPO_ROOT,
     )
 
     assert context.plan["review_id"] == fixture.step09c_fixture.review_id
@@ -1835,7 +2191,10 @@ def test_prepared_snapshot_rejects_transaction_mutated_during_validation(
         RUN_SUMMARY.RunSummaryError,
         match="immutable snapshot",
     ):
-        RUN_SUMMARY.prepare_context(arguments)
+        RUN_SUMMARY.prepare_context(
+            arguments,
+            source_checkout=SOURCE_CHECKOUT,
+        )
 
     assert mutated
     assert_no_summary_outputs(run_summary_fixture)
@@ -1876,7 +2235,10 @@ def test_prepare_recheck_rejects_identical_byte_record_replacement(
         RUN_SUMMARY.RunSummaryError,
         match="immutable snapshot",
     ):
-        RUN_SUMMARY.prepare_context(arguments)
+        RUN_SUMMARY.prepare_context(
+            arguments,
+            source_checkout=SOURCE_CHECKOUT,
+        )
 
     assert replaced
     assert_no_summary_outputs(run_summary_fixture)
@@ -1957,6 +2319,7 @@ def test_alternate_indexed_science_path_spelling_is_preserved(
     context, _tables = SCIENCE_PACKAGE._read_committed_review_package(
         summary_path=fixture.science_review_summary,
         summary_row=summary_row,
+        source_root=REPO_ROOT,
     )
     index_rows = read_tsv(fixture.adapter_fixture.artifacts_path)
     artifacts = [read_json(Path(row["record_path"])) for row in index_rows]
@@ -1989,6 +2352,7 @@ def test_alternate_indexed_science_path_spelling_is_preserved(
         artifacts=artifacts,
         review_id=summary_row["review_id"],
         run_contract=run_contract,
+        source_root=REPO_ROOT,
     )
     science_record = RUN_SUMMARY.science.normalize_scientific_review(
         summary_path=fixture.science_review_summary,
@@ -2057,6 +2421,7 @@ def test_pending_science_decision_with_evidence_fails_closed(
     context, _tables = SCIENCE_PACKAGE._read_committed_review_package(
         summary_path=fixture.science_review_summary,
         summary_row=summary_row,
+        source_root=REPO_ROOT,
     )
     pending = context.category_rows["decisions"][0]
     pending["decision_status"] = "pending"
@@ -2080,6 +2445,7 @@ def test_pending_science_decision_preserves_rationale_owner_and_policy(
     context, _tables = SCIENCE_PACKAGE._read_committed_review_package(
         summary_path=fixture.science_review_summary,
         summary_row=summary_row,
+        source_root=REPO_ROOT,
     )
     pending = context.category_rows["decisions"][0]
     pending.update(

@@ -28,6 +28,7 @@ def _match_upstream_artifact(
     role: str,
     step09c_artifact: ReviewInput,
     artifacts: Sequence[Mapping[str, Any]],
+    source_root: Path,
 ) -> Mapping[str, Any]:
     step_id, scope_type, adapter, suffix = contracts.SCIENCE_UPSTREAM_ROLE_CONTRACTS[
         role
@@ -53,7 +54,10 @@ def _match_upstream_artifact(
             continue
         if not Path(source_value).name.endswith(suffix):
             continue
-        indexed_path = contracts.resolve_contract_path(source_value)
+        indexed_path = contracts.resolve_contract_path(
+            source_value,
+            source_root=source_root,
+        )
         if indexed_path != step09c_artifact.path:
             continue
         if (
@@ -76,6 +80,7 @@ def _normalize_input_artifacts(
     artifacts: Sequence[Mapping[str, Any]],
     review_id: str,
     run_contract: Mapping[str, Any],
+    source_root: Path,
 ) -> list[dict[str, Any]]:
     result: list[dict[str, Any]] = []
     for key in review_package.INPUT_ARTIFACT_KEYS:
@@ -89,6 +94,7 @@ def _normalize_input_artifacts(
                 role=role,
                 step09c_artifact=source_artifact,
                 artifacts=artifacts,
+                source_root=source_root,
             )
             artifact_id = indexed.get("artifact_id")
             if not isinstance(artifact_id, str):

@@ -100,7 +100,17 @@ if science.contracts is not adapter.contracts:
     raise ImportError("artifact-contract consumers did not resolve one owner")
 
 
-def prepare_context(arguments: argparse.Namespace) -> BuildContext:
+def prepare_context(
+    arguments: argparse.Namespace,
+    *,
+    source_checkout: adapter.SourceCheckout | None = None,
+) -> BuildContext:
+    if source_checkout is None:
+        source_checkout = adapter.admit_source_checkout(
+            root=contracts.REPO_ROOT,
+            package_root=Path(adapter.__file__).resolve().parents[2],
+        )
+    source_root = source_checkout.root
     (
         artifact_receipt_path,
         artifact_receipt_sha256,
@@ -124,6 +134,7 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
         run_id=arguments.run_id,
         artifact_receipt_value=arguments.artifact_receipt,
         output_root_value=arguments.output_root,
+        source_root=source_root,
     )
     snapshot_by_path = {snapshot.path: snapshot for snapshot in input_snapshots}
     artifact_receipt_snapshot = snapshot_by_path[artifact_receipt_path]
@@ -134,7 +145,10 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
         supersedes_field="supersedes_adapter_attempt_id",
         history_field="adapter_attempt_history",
     )
-    git_commit = adapter.get_git_commit()
+    git_commit = adapter.get_git_commit(
+        source_root=source_root,
+        sanitize_git_routing=True,
+    )
     generated_at = artifact_receipt["finished_at"]
     started_at = adapter.utc_now()
     finished_at = started_at
@@ -158,6 +172,7 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
                 run_contract=run_contract,
                 generated_at=generated_at,
                 git_commit=git_commit,
+                source_root=source_root,
             )
         except science.RunSummaryScienceError as exc:
             _fail(str(exc))
@@ -189,6 +204,7 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
             artifacts=artifacts,
             scientific_review=scientific_review,
             build_started_at=started_at,
+            source_root=source_root,
         )
         approvals_sha256 = approvals_snapshot.sha256
         input_snapshots = (*input_snapshots, approvals_snapshot)
@@ -218,7 +234,12 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
         generated_at=generated_at,
         git_commit=git_commit,
     )
-    _validate_document(document, inventory_rows, inventory_path)
+    _validate_document(
+        document,
+        inventory_rows,
+        inventory_path,
+        source_root=source_root,
+    )
     summary_json_bytes = adapter.canonical_json_bytes(document)
     summary_rows = _build_summary_rows(document, artifact_scope_order)
     summary_tsv_bytes = adapter.tsv_bytes(RUN_SUMMARY_HEADER, summary_rows)
@@ -234,6 +255,7 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
             receipt=previous_receipt,
             expected_run_id=arguments.run_id,
             expected_run_contract=run_contract,
+            source_root=source_root,
         )
         previous_attempt_id, previous_attempt_history = _parse_history(
             previous_receipt,
@@ -315,6 +337,7 @@ def prepare_context(arguments: argparse.Namespace) -> BuildContext:
         finished_at=finished_at,
         receipt_row=receipt_row,
         receipt_bytes=receipt_bytes,
+        source_checkout=source_checkout,
     )
     _recheck_inputs(context)
     return context
@@ -368,6 +391,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (
         RunSummaryError,
         adapter.ArtifactIndexError,
+        adapter.SourceCheckoutError,
         contracts.ContractValidationError,
         science.RunSummaryScienceError,
         OSError,

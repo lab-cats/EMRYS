@@ -123,6 +123,7 @@ def _load_input_transaction(
     run_id: str,
     artifact_receipt_value: Path,
     output_root_value: Path,
+    source_root: Path,
 ) -> tuple[
     Path,
     str,
@@ -206,7 +207,10 @@ def _load_input_transaction(
         "Artifact inventory", receipt["inventory_path"]
     )
     inventory_sha256 = contracts.sha256_file(inventory_path)
-    inventory_rows = contracts.validate_inventory(inventory_path)
+    inventory_rows = contracts.validate_inventory(
+        inventory_path,
+        source_root=source_root,
+    )
     artifacts_path = _require_regular_file(
         "Artifact index", receipt["artifacts_index_path"]
     )
@@ -332,6 +336,7 @@ def _load_input_transaction(
         artifacts_path=artifacts_path,
         receipt_path=artifact_receipt_path,
         require_current_source_locations=True,
+        source_root=source_root,
     )
     for snapshot in snapshots:
         _verify_file_snapshot("Artifact transaction input", snapshot)

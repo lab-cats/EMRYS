@@ -34,6 +34,8 @@ def _validate_document(
     document: dict[str, Any],
     inventory_rows: list[dict[str, str]],
     inventory_path: Path,
+    *,
+    source_root: Path,
 ) -> None:
     errors = contracts.schema_errors("run-summary", document)
     if errors:
@@ -43,9 +45,16 @@ def _validate_document(
         )
         _fail(f"Run summary failed Draft 2020-12 validation:\n{details}")
     try:
-        contracts.validate_run_summary_semantics(document)
+        contracts.validate_run_summary_semantics(
+            document,
+            source_root=source_root,
+        )
         contracts.reconcile_document_inventory(
-            "run-summary", document, inventory_rows, inventory_path
+            "run-summary",
+            document,
+            inventory_rows,
+            inventory_path,
+            source_root=source_root,
         )
     except contracts.ContractValidationError as exc:
         _fail(f"Run summary failed semantic validation: {exc}")
@@ -79,6 +88,7 @@ def _validate_existing_summary(
     receipt: Mapping[str, str],
     expected_run_id: str,
     expected_run_contract: Mapping[str, Any],
+    source_root: Path,
 ) -> dict[str, Any]:
     if receipt["run_id"] != expected_run_id:
         _fail("Existing run-summary receipt has the wrong run_id")
@@ -158,7 +168,10 @@ def _validate_existing_summary(
     if schema_errors:
         _fail("Existing run-summary JSON fails its schema")
     try:
-        contracts.validate_run_summary_semantics(document)
+        contracts.validate_run_summary_semantics(
+            document,
+            source_root=source_root,
+        )
     except contracts.ContractValidationError as exc:
         _fail(f"Existing run-summary JSON is semantically invalid: {exc}")
     if receipt["git_commit"] != document["provenance"]["git_commit"]:

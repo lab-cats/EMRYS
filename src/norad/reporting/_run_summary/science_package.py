@@ -36,6 +36,7 @@ def _validate_summary_artifact(
     artifacts: Sequence[Mapping[str, Any]],
     summary_row: Mapping[str, str],
     summary_sha256: str,
+    source_root: Path,
 ) -> Mapping[str, Any]:
     matches: list[Mapping[str, Any]] = []
     for artifact in artifacts:
@@ -49,7 +50,9 @@ def _validate_summary_artifact(
             continue
         try:
             source_path = _require_contract_file(
-                "Indexed Step 09c review summary", source_value
+                "Indexed Step 09c review summary",
+                source_value,
+                source_root=source_root,
             )
         except RunSummaryScienceError:
             continue
@@ -86,16 +89,17 @@ def _validate_summary_artifact(
 def _validate_published_artifacts(
     *,
     summary_path: Path,
-    summary_row: Mapping[str, str],
     artifacts: Sequence[Mapping[str, Any]],
     summary_artifact: Mapping[str, Any],
     output_tables: Mapping[str, tuple[tuple[str, ...], list[dict[str, str]]]],
+    source_root: Path,
 ) -> None:
-    review_id = summary_row["review_id"]
+    summary_row = output_tables["review_summary"][1][0]
     scoped = [
         artifact
         for artifact in artifacts
-        if _artifact_scope(artifact) == ("09c", "scientific_review", review_id)
+        if _artifact_scope(artifact)
+        == ("09c", "scientific_review", summary_row["review_id"])
     ]
     expected_adapters = set(PUBLISHED_ADAPTERS.values())
     observed_adapters = [artifact.get("adapter") for artifact in scoped]
@@ -113,7 +117,7 @@ def _validate_published_artifacts(
         "overall_status": summary_row["overall_science_status"],
         "orientation_status": summary_row["orientation_status"],
         "orientation_policy": summary_row["orientation_policy"],
-        "review_id": review_id,
+        "review_id": summary_row["review_id"],
     }
     if summary_artifact.get("scientific_state") != expected_science:
         _fail(
@@ -131,13 +135,15 @@ def _validate_published_artifacts(
                 f"Indexed Step 09c artifact {adapter} has a mismatched "
                 "propagated science state."
             )
-        expected_path = summary_path.parent / f"{review_id}.{suffix}"
+        expected_path = summary_path.parent / f"{summary_row['review_id']}.{suffix}"
         source = _artifact_source(artifact, label=adapter)
         source_value = source.get("path")
         if not isinstance(source_value, str):
             _fail(f"Indexed Step 09c artifact {adapter} has no source path.")
         actual_path = _require_contract_file(
-            f"Indexed Step 09c artifact {adapter}", source_value
+            f"Indexed Step 09c artifact {adapter}",
+            source_value,
+            source_root=source_root,
         )
         if actual_path != expected_path:
             _fail(
@@ -183,6 +189,7 @@ def _read_committed_review_package(
     *,
     summary_path: Path,
     summary_row: Mapping[str, str],
+    source_root: Path,
 ) -> tuple[
     ReviewPackageContext,
     dict[str, tuple[tuple[str, ...], list[dict[str, str]]]],
@@ -234,7 +241,10 @@ def _read_committed_review_package(
     input_artifacts: dict[str, ReviewInput] = {}
     for key in review_package.INPUT_ARTIFACT_KEYS:
         input_artifacts[key] = ReviewInput(
-            path=contracts.resolve_contract_path(summary_row[f"{key}_path"]),
+            path=contracts.resolve_contract_path(
+                summary_row[f"{key}_path"],
+                source_root=source_root,
+            ),
             sha256=summary_row[f"{key}_sha256"],
             row_count=summary_row[f"{key}_row_count"],
         )
