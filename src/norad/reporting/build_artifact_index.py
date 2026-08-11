@@ -42,6 +42,10 @@ from norad.reporting._artifact_index.models import (
     ArtifactIndexError,
     BuildContext,
 )
+from norad.reporting._artifact_index.source_checkout import (
+    SourceCheckoutError,
+    admit_source_checkout,
+)
 from norad.reporting._artifact_index.validation import (
     validate_published_transaction,
 )
@@ -144,6 +148,15 @@ def publish_context(context: BuildContext) -> None:
 def main() -> int:
     arguments = parse_args()
     try:
+        source_checkout = admit_source_checkout(
+            root=Path(__file__).resolve().parents[3],
+            package_root=Path(_api_owner.__file__).resolve().parents[2],
+        )
+        if source_checkout.root != contracts.REPO_ROOT.resolve(strict=True):
+            raise SourceCheckoutError(
+                "Artifact-contract repository root differs from the admitted "
+                f"source checkout: {contracts.REPO_ROOT}"
+            )
         context = prepare_context(arguments)
         print_context(context, arguments.execute)
         if arguments.execute:
@@ -152,6 +165,7 @@ def main() -> int:
             print(f"Published receipt last: {context.receipt_path}")
     except (
         ArtifactIndexError,
+        SourceCheckoutError,
         contracts.ContractValidationError,
     ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)

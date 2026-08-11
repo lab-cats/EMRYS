@@ -1027,6 +1027,15 @@
       "path": "src/norad/reporting/_artifact_index/rosters.py"
     },
     {
+      "branch_rate": "0.880952",
+      "covered_branches": 37,
+      "covered_lines": 88,
+      "line_rate": "0.871287",
+      "num_branches": 42,
+      "num_statements": 101,
+      "path": "src/norad/reporting/_artifact_index/source_checkout.py"
+    },
+    {
       "branch_rate": "0.666667",
       "covered_branches": 48,
       "covered_lines": 87,
@@ -1351,12 +1360,12 @@
       "path": "src/norad/reporting/_signals.py"
     },
     {
-      "branch_rate": "1.000000",
-      "covered_branches": 4,
-      "covered_lines": 83,
-      "line_rate": "1.000000",
-      "num_branches": 4,
-      "num_statements": 83,
+      "branch_rate": "0.833333",
+      "covered_branches": 5,
+      "covered_lines": 86,
+      "line_rate": "0.988506",
+      "num_branches": 6,
+      "num_statements": 87,
       "path": "src/norad/reporting/build_artifact_index.py"
     },
     {
@@ -1618,11 +1627,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.748636",
-    "covered_branches": 3294,
-    "covered_lines": 10111,
-    "line_rate": "0.858830",
-    "num_branches": 4400,
-    "num_statements": 11773
+    "branch_rate": "0.749775",
+    "covered_branches": 3332,
+    "covered_lines": 10202,
+    "line_rate": "0.858899",
+    "num_branches": 4444,
+    "num_statements": 11878
   }
 }

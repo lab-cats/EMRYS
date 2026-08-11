@@ -293,6 +293,7 @@ def _assert_wheel_contents(wheel: Path) -> None:
             if member.startswith("norad/contracts/artifacts/")
         } == ARTIFACT_CONTRACT_PACKAGE_PATHS
         assert "norad/reporting/_artifact_index/api.py" in members
+        assert "norad/reporting/_artifact_index/source_checkout.py" in members
         assert "norad/reporting/_run_summary/science_projection.py" in members
         assert "norad/reporting/_run_summary_science.py" not in members
         assert "norad/ingestion/__init__.py" in members
@@ -591,6 +592,94 @@ def _hostile_python_environment(tmp_path: Path) -> dict[str, str]:
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(foreign_package.parent)
     return environment
+
+
+def _assert_installed_source_checkout_authority(
+    environment_python: Path,
+    working_directory: Path,
+    environment: dict[str, str],
+) -> None:
+    probe = subprocess.run(
+        [
+            str(environment_python),
+            "-I",
+            "-c",
+            (
+                "import importlib.util, json, sys; "
+                "from pathlib import Path; "
+                "import norad; "
+                "from norad.reporting._artifact_index.source_checkout "
+                "import admit_source_checkout; "
+                f"checkout_root = Path({str(REPO_ROOT)!r}); "
+                "checkout_package = checkout_root / 'src/norad'; "
+                "package_root = Path(norad.__file__).resolve().parent; "
+                "authority = admit_source_checkout("
+                "root=checkout_root, package_root=package_root); "
+                "package_files = tuple(path for path in package_root.rglob('*') "
+                "if path.is_file() and '__pycache__' not in path.parts "
+                "and path.suffix != '.pyc'); "
+                "package_bytes_match = all("
+                "(checkout_package / path.relative_to(package_root)).is_file() "
+                "and path.read_bytes() == (checkout_package / "
+                "path.relative_to(package_root)).read_bytes() "
+                "for path in package_files); "
+                "installed_python = {str(path.relative_to(package_root)) "
+                "for path in package_files if path.suffix == '.py'}; "
+                "checkout_python = {str(path.relative_to(checkout_package)) "
+                "for path in checkout_package.rglob('*.py')}; "
+                f"resources = {RESOURCE_PATHS!r}; "
+                "resource_bytes_match = all("
+                "(package_root / path.removeprefix('norad/')).read_bytes() == "
+                "(checkout_root / 'src' / path).read_bytes() "
+                "for path in resources); "
+                "print(json.dumps({"
+                "'api_loaded': 'norad.reporting._artifact_index.api' in sys.modules, "
+                "'builder_loaded': "
+                "'norad.reporting._artifact_index.builder' in sys.modules, "
+                "'facade_loaded': "
+                "'norad.reporting.build_artifact_index' in sys.modules, "
+                "'isolated': sys.flags.isolated, "
+                "'jsonschema_available': "
+                "importlib.util.find_spec('jsonschema') is not None, "
+                "'package_bytes_match': package_bytes_match, "
+                "'package_root': str(package_root), "
+                "'python_roster_match': installed_python == checkout_python, "
+                "'resource_bytes_match': resource_bytes_match, "
+                "'root': str(authority.root), "
+                "'sys_path': sys.path}))"
+            ),
+        ],
+        cwd=working_directory,
+        env=environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert probe.returncode == 0, probe.stdout + probe.stderr
+    assert not probe.stderr
+    observed = json.loads(probe.stdout)
+    assert observed["isolated"] == 1
+    assert observed["root"] == str(REPO_ROOT.resolve())
+    assert (
+        Path(observed["package_root"]).resolve() != (REPO_ROOT / "src/norad").resolve()
+    )
+    assert (
+        Path(observed["package_root"])
+        .resolve()
+        .is_relative_to(environment_python.parents[1].resolve())
+    )
+    assert observed["package_bytes_match"] is True
+    assert observed["python_roster_match"] is True
+    assert observed["resource_bytes_match"] is True
+    assert observed["jsonschema_available"] is False
+    assert observed["api_loaded"] is False
+    assert observed["builder_loaded"] is False
+    assert observed["facade_loaded"] is False
+    observed_sys_path = {
+        str(Path(entry).resolve()) for entry in observed["sys_path"] if entry
+    }
+    assert str((REPO_ROOT / "src").resolve()) not in observed_sys_path
+    assert str(Path(environment["PYTHONPATH"]).resolve()) not in observed_sys_path
 
 
 def _run_installed_norad(
@@ -2403,6 +2492,9 @@ def _assert_private_source_layout() -> None:
     assert (
         reporting_source / "_artifact_index/api.py"
     ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
+    assert (
+        reporting_source / "_artifact_index/source_checkout.py"
+    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
     assert not (reporting_source / "_run_summary_science.py").exists()
     assert (
         reporting_source / "_run_summary/science_projection.py"
@@ -2548,6 +2640,11 @@ def test_wheel_contains_only_explicit_packages_and_exact_resources(
     environment_python = _install_wheel_in_environment(wheel, tmp_path)
     isolated_environment = _hostile_python_environment(tmp_path)
     _assert_installed_commands(
+        environment_python,
+        arbitrary_working_directory,
+        isolated_environment,
+    )
+    _assert_installed_source_checkout_authority(
         environment_python,
         arbitrary_working_directory,
         isolated_environment,

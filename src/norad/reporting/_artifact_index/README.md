@@ -6,6 +6,18 @@ remains the CLI and compatibility facade protected by the artifact contract
 tests. [`api.py`](api.py) is the narrow private import boundary used by
 run-summary reporting; it is not another command or public application API.
 
+After argument parsing, the public facade uses the root-only
+[`source_checkout.py`](source_checkout.py) authority to admit the source
+checkout that owns the artifact-index implementation before it validates run
+inputs or builds a context. Admission requires one canonical, nonsymlink NORAD
+Git top level and exact bytes between the executing package and that checkout.
+Help and parser failures therefore remain available without checkout admission;
+after parsing succeeds, a checkout or package mismatch fails closed before an
+input diagnostic. The authority stores no Git commit and does not inspect the
+producer roster. Git `HEAD` resolution and producer existence and hashing stay
+at their established points in context construction, preserving their timing,
+diagnostics, and serialized evidence.
+
 The modules keep observed responsibilities separate: the curated run-summary
 API, exact contract loading, models and rosters, explicit adapter registration,
 text and binary readers, inspection, named native/scientific reconciliation,
