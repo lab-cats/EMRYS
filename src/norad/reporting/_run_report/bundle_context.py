@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import argparse
+import argparse  # noqa: TC003 -- Runtime import is required by get_type_hints.
 import csv
 import json
 import os
@@ -123,14 +123,7 @@ def _validate_existing_bundle(
 
 def prepare_context(arguments: argparse.Namespace) -> BundleContext:
     requested = ("html", "pdf") if arguments.formats == "all" else (arguments.formats,)
-    base_arguments = argparse.Namespace(
-        run_summary=arguments.run_summary,
-        output_root=arguments.output_root,
-        quarto_bin=arguments.quarto_bin,
-        formats="html",
-        execute=arguments.execute,
-    )
-    html_context = html_report.prepare_context(base_arguments)
+    html_context = html_report.prepare_context(arguments)
     run_id = html_context.summary["run_id"]
     output_pdf = html_context.output_dir / f"{run_id}.run_report.pdf"
     output_summary_tsv = html_context.output_dir / f"{run_id}.run_summary.tsv"
