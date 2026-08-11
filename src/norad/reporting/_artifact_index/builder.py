@@ -95,19 +95,6 @@ STEP06_COUNTS_HEADER = _registry_owner.STEP06_COUNTS_HEADER
 STEP07_RECEIPT_HEADER = _registry_owner.STEP07_RECEIPT_HEADER
 
 
-class _LiveBuilderBindings:
-    """Resolve patchable operations from this exact loaded module instance."""
-
-    def __getattr__(self, name: str) -> Any:
-        try:
-            return globals()[name]
-        except KeyError as exc:  # pragma: no cover - internal programming error
-            raise AttributeError(name) from exc
-
-
-_PUBLICATION_BINDINGS = _LiveBuilderBindings()
-
-
 def validate_existing_transaction(
     *,
     existing: Mapping[str, str],
@@ -152,7 +139,7 @@ def publish_context(context: BuildContext) -> None:
 
     _publication_owner.publish_context(
         context,
-        facade=_PUBLICATION_BINDINGS,
+        facade=sys.modules[__name__],
     )
 
 
