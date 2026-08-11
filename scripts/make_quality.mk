@@ -8,6 +8,14 @@ VULTURE_BIN ?= vulture
 DEAD_CODE_PATHS ?= scripts src/norad
 PYTHON_LINT_PATHS ?= scripts src/norad tests
 VULTURE_MIN_CONFIDENCE ?= 95
+PYTHON_COVERAGE_NEW_SHARED_MODULES ?=
+PYTHON_COVERAGE_NEW_SHARED_ARGS = $(foreach module,$(PYTHON_COVERAGE_NEW_SHARED_MODULES),--new-shared-module $(module))
+PYTHON_COVERAGE_NEW_SHARED_CHECK_ARGS = $(if $(strip $(PYTHON_COVERAGE_NEW_SHARED_MODULES)),--coverage-json "$(PYTHON_COVERAGE_RAW)" $(PYTHON_COVERAGE_NEW_SHARED_ARGS))
+PYTHON_SUBPROCESS_COVERAGE_DATA := $(PYTHON_COVERAGE_ROOT)/.coverage-subprocess
+PYTHON_SUBPROCESS_COVERAGE_RAW := $(PYTHON_COVERAGE_ROOT)/subprocess-coverage.json
+PYTHON_SUBPROCESS_COVERAGE_TESTS := \
+	tests/stages/gtf_to_bed12/test_gtf_to_bed12.py \
+	tests/ingestion/sample_manifest_admission/test_validate_manifest.py
 
 SHELL_SYNTAX_PATHS := \
 	src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh \
@@ -124,30 +132,30 @@ python-coverage-measure:
 		"$(REPORT_PYTHON_BIN)" -m coverage json \
 		--rcfile="$(CURDIR)/.coveragerc" \
 		-o "$(PYTHON_COVERAGE_RAW)"
+	COVERAGE_FILE="$(PYTHON_SUBPROCESS_COVERAGE_DATA)" \
+		"$(REPORT_PYTHON_BIN)" -m coverage erase
+	COVERAGE_FILE="$(PYTHON_SUBPROCESS_COVERAGE_DATA)" \
+		"$(REPORT_PYTHON_BIN)" -m coverage run \
+		--rcfile="$(CURDIR)/.coveragerc" \
+		--source=scripts,src/norad,tests -m pytest -q \
+		$(PYTHON_SUBPROCESS_COVERAGE_TESTS)
+	COVERAGE_FILE="$(PYTHON_SUBPROCESS_COVERAGE_DATA)" \
+		"$(REPORT_PYTHON_BIN)" -m coverage combine -q \
+		"$(PYTHON_COVERAGE_ROOT)"
+	COVERAGE_FILE="$(PYTHON_SUBPROCESS_COVERAGE_DATA)" \
+		"$(REPORT_PYTHON_BIN)" -m coverage json \
+		--rcfile="$(CURDIR)/.coveragerc" \
+		--include="scripts/*,src/norad/*" \
+		-o "$(PYTHON_SUBPROCESS_COVERAGE_RAW)"
 	"$(REPORT_PYTHON_BIN)" tests/tools/python_coverage_baseline.py build \
 		--coverage-json "$(PYTHON_COVERAGE_RAW)" \
+		--subprocess-coverage-json "$(PYTHON_SUBPROCESS_COVERAGE_RAW)" \
 		--output "$(PYTHON_COVERAGE_CURRENT)"
 
 python-coverage-check: python-coverage-measure
 	"$(REPORT_PYTHON_BIN)" tests/tools/python_coverage_baseline.py check \
 		--baseline "$(PYTHON_COVERAGE_BASELINE)" \
-		--current "$(PYTHON_COVERAGE_CURRENT)" \
-		--new-shared-module src/norad/contracts/scientific_evidence/step08.py \
-		--new-shared-module src/norad/contracts/scientific_evidence/step09.py \
-		--new-shared-module src/norad/contracts/scientific_evidence/review_package.py \
-		--new-shared-module src/norad/libraries/validation/errors.py \
-		--new-shared-module src/norad/libraries/validation/inputs.py \
-		--new-shared-module src/norad/libraries/validation/publication.py \
-		--new-shared-module src/norad/libraries/validation/report.py \
-		--new-shared-module src/norad/libraries/validation/runtime.py \
-		--new-shared-module src/norad/libraries/alignments/bam.py \
-		--new-shared-module src/norad/libraries/alignments/bed.py \
-		--new-shared-module src/norad/libraries/alignments/orientation.py \
-		--new-shared-module src/norad/libraries/alignments/star.py \
-		--new-shared-module src/norad/libraries/evidence/qc.py \
-		--new-shared-module src/norad/libraries/quality/picard.py \
-		--new-shared-module src/norad/libraries/validation/mpileup.py \
-		--new-shared-module src/norad/libraries/references/contigs.py
+		--current "$(PYTHON_COVERAGE_CURRENT)"$(if $(PYTHON_COVERAGE_NEW_SHARED_CHECK_ARGS), $(PYTHON_COVERAGE_NEW_SHARED_CHECK_ARGS))
 
 python-coverage-baseline-update: python-coverage-measure
 	cp "$(PYTHON_COVERAGE_CURRENT)" "$(PYTHON_COVERAGE_BASELINE)"

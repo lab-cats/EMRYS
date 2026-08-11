@@ -3,32 +3,17 @@
 from __future__ import annotations
 
 import hashlib
-import importlib.util
 import io
 import json
 import stat
 import sys
 import tarfile
 from pathlib import Path
-from types import ModuleType
 
 import pytest
+from scripts import restore_quarto as RESTORE
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-SCRIPT = REPO_ROOT / "scripts" / "restore_quarto.py"
-
-
-def load_module(name: str, path: Path) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load module: {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-RESTORE = load_module("norad_restore_quarto", SCRIPT)
 
 
 def sha256_file(path: Path) -> str:
@@ -106,9 +91,11 @@ def assert_no_restore_residue(install_root: Path) -> None:
     )
 
 
-def test_pinned_public_contract_matches_makefile_and_official_digest() -> None:
+def test_pinned_public_contract_matches_makefile_and_hardened_download(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
     makefile = (REPO_ROOT / "scripts" / "make_reporting.mk").read_text(encoding="utf-8")
-    source = SCRIPT.read_text(encoding="utf-8")
     assert RESTORE.QUARTO_VERSION == "1.9.38"
     assert RESTORE.QUARTO_SHA256 == (
         "47089a5020cfb41981ba0d4b46e110edfa608722aea45ef248e14efba6d6b18a"
@@ -117,16 +104,34 @@ def test_pinned_public_contract_matches_makefile_and_official_digest() -> None:
     assert f"QUARTO_VERSION := {RESTORE.QUARTO_VERSION}" in makefile
     assert f"QUARTO_SHA256 := {RESTORE.QUARTO_SHA256}" in makefile
     assert "quarto-restore:" in makefile
-    assert "--proto" in source and "=https" in source and "--tlsv1.2" in source
+
+    observed: list[list[str]] = []
+
+    def run_curl(arguments: list[str], **_kwargs: object):
+        observed.append(arguments)
+        return RESTORE.subprocess.CompletedProcess(arguments, 0, "", "")
+
+    monkeypatch.setattr(RESTORE.shutil, "which", lambda _name: "/usr/bin/curl")
+    monkeypatch.setattr(RESTORE.subprocess, "run", run_curl)
+    destination = tmp_path / "quarto.tar.gz"
+    RESTORE._download_archive(destination)
+
+    assert len(observed) == 1
+    arguments = observed[0]
+    assert arguments[0] == "/usr/bin/curl"
+    assert arguments[-2:] == [str(destination), RESTORE.QUARTO_URL]
     for hardening_flag in (
         "--disable",
+        "--proto",
+        "=https",
+        "--tlsv1.2",
         "--proto-redir",
         "--connect-timeout",
         "--max-time",
         "--max-filesize",
     ):
-        assert hardening_flag in source
-    assert "--expected-sha256" not in source
+        assert hardening_flag in arguments
+    assert "--expected-sha256" not in arguments
 
 
 def test_restore_accepts_official_shape_spaces_and_contained_symlink(

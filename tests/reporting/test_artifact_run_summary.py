@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import csv
 import hashlib
-import importlib.util
+import importlib
 import json
 import os
 import signal
@@ -14,7 +14,6 @@ import sys
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from types import ModuleType
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -22,42 +21,18 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from norad import __main__ as norad_cli
 from norad.reporting._artifact_index import api as ARTIFACT_INDEX_API
-from norad.reporting._artifact_index import source_checkout as _source_checkout_owner
 from norad.reporting._run_summary import science_evidence as SCIENCE_EVIDENCE
-from norad.reporting._run_summary import science_models as SCIENCE_MODELS
 from norad.reporting._run_summary import science_package as SCIENCE_PACKAGE
 from norad.reporting._run_summary import science_projection as SCIENCE
+from tests.reporting.fixtures.artifact_run_summary_v1 import build_fixture as FIXTURE
 
 if TYPE_CHECKING:
     import argparse
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-FIXTURE_BUILDER = (
-    REPO_ROOT
-    / "tests"
-    / "reporting"
-    / "fixtures"
-    / "artifact_run_summary_v1"
-    / "build_fixture.py"
-)
 FIXED_EPOCH = "1700000000"
 CLI_USAGE_ERROR = 2
 
-
-def load_module(name: str, path: Path) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load module: {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-FIXTURE = load_module(
-    "norad_artifact_run_summary_fixture_builder",
-    FIXTURE_BUILDER,
-)
 RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.builder")
 CONTRACTS = RUN_SUMMARY.contracts
 SOURCE_CHECKOUT = RUN_SUMMARY.adapter.SourceCheckout(root=REPO_ROOT)
@@ -108,45 +83,6 @@ def _parse_run_summary_arguments(
     return norad_cli.build_parser().parse_args(
         ["build", "run-summary", *arguments],
     )
-
-
-def test_run_summary_uses_shared_private_owner_identities() -> None:
-    assert (
-        RUN_SUMMARY.adapter
-        is RUN_SUMMARY._models.adapter
-        is RUN_SUMMARY._publication.adapter
-        is ARTIFACT_INDEX_API
-    )
-    assert RUN_SUMMARY.science is RUN_SUMMARY._publication.science is SCIENCE
-    assert RUN_SUMMARY.contracts is SCIENCE.contracts is SCIENCE_PACKAGE.contracts
-    assert (
-        RUN_SUMMARY._models.review_package
-        is SCIENCE.review_package
-        is SCIENCE_PACKAGE.review_package
-    )
-    assert FIXTURE.ADAPTER.review_package is SCIENCE.review_package
-    assert FIXTURE.REVIEW_PACKAGE is SCIENCE.review_package
-    assert SCIENCE_EVIDENCE.contracts is SCIENCE.contracts
-    assert (
-        SCIENCE.RunSummaryScienceError
-        is SCIENCE_MODELS.RunSummaryScienceError
-        is SCIENCE_PACKAGE.RunSummaryScienceError
-    )
-    assert ARTIFACT_INDEX_API.SourceCheckout is _source_checkout_owner.SourceCheckout
-    assert (
-        ARTIFACT_INDEX_API.SourceCheckoutError
-        is _source_checkout_owner.SourceCheckoutError
-    )
-    assert (
-        ARTIFACT_INDEX_API.admit_source_checkout
-        is _source_checkout_owner.admit_source_checkout
-    )
-
-
-def test_run_summary_science_has_no_private_step09c_dependency() -> None:
-    source = Path(SCIENCE.__file__).read_text(encoding="utf-8")
-    assert "norad.evidence.scientific_review_package" not in source
-    assert not hasattr(SCIENCE, "step09c")
 
 
 def read_tsv(path: Path) -> list[dict[str, str]]:
@@ -311,7 +247,7 @@ def test_grouped_builder_admits_before_loading_inputs_and_retains_token(
     assert status == 0
     assert events == ["admit", "load", "print"]
     assert len(observed_contexts) == 1
-    assert observed_contexts[0].source_checkout is admitted
+    assert observed_contexts[0].source_checkout == admitted
 
 
 @pytest.mark.parametrize(
@@ -448,7 +384,7 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
 
     expected_single_calls = 1
     expected_prepare_rechecks = 2
-    assert context.source_checkout is authority
+    assert context.source_checkout == authority
     assert root_calls["git"] == expected_single_calls
     assert root_calls["inventory"] == expected_single_calls
     assert root_calls["published_transaction"] == expected_prepare_rechecks

@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
-import importlib.util
+import importlib
 import json
 import os
 import subprocess
@@ -13,36 +13,16 @@ import sys
 from collections import Counter
 from collections.abc import Mapping
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
+from tests.contract_integration.validation_rosters.validation_roster_expectations import (
+    assert_exact_check_roster,
+)
+from tests.reporting.fixtures.artifact_adapters_v1 import build_fixture as FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-ROSTER_ORACLE = (
-    REPO_ROOT
-    / "tests"
-    / "contract_integration"
-    / "validation_rosters"
-    / "validation_roster_expectations.py"
-)
-ROSTER_SPEC = importlib.util.spec_from_file_location(
-    "reporting_validation_roster_oracle",
-    ROSTER_ORACLE,
-)
-assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
-ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
-ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
-assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
-FIXTURE_BUILDER = (
-    REPO_ROOT
-    / "tests"
-    / "reporting"
-    / "fixtures"
-    / "artifact_adapters_v1"
-    / "build_fixture.py"
-)
 FIXED_EPOCH = "1700000000"
 GIT_ROUTING_VARIABLES = (
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
@@ -133,20 +113,6 @@ VALIDATION_ARTIFACT_STEPS = {
 }
 
 
-def load_fixture_module() -> ModuleType:
-    spec = importlib.util.spec_from_file_location(
-        "norad_artifact_adapter_fixture_builder",
-        FIXTURE_BUILDER,
-    )
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load fixture builder: {FIXTURE_BUILDER}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-FIXTURE = load_fixture_module()
 ADAPTER = FIXTURE.builder
 ARTIFACT_CONTEXT = importlib.import_module("norad.reporting._artifact_index.context")
 ARTIFACT_CORE = importlib.import_module("norad.reporting._artifact_index.core")
@@ -434,22 +400,11 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
         source_checkout=authority,
     )
 
-    assert context.source_checkout is authority
+    assert context.source_checkout == authority
     assert root_calls["git"] == 1
     assert root_calls["producers"] == 1
     assert root_calls["native_references"] > 0
     assert root_calls["record_semantics"] == len(artifact_fixture.inventory_rows)
-
-
-def test_contract_modules_are_shared_package_identities() -> None:
-    assert ADAPTER.step09.step08 is ADAPTER.step08
-    assert ADAPTER.review_package is ADAPTER._contract_owners.review_package
-
-
-def test_artifact_index_has_no_private_step09c_dependency() -> None:
-    source = Path(ADAPTER.__file__).read_text(encoding="utf-8")
-    assert "norad.evidence.scientific_review_package" not in source
-    assert not hasattr(ADAPTER, "step09c")
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(

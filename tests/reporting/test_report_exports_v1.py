@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import argparse
 import csv
-import importlib.util
 import json
 import os
 import subprocess
 import sys
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 
 import pytest
 from pypdf import PdfReader
+from norad.reporting import render_run_report_bundle as BUNDLE
+from tests.reporting.fixtures.artifact_run_summary_v1 import build_fixture as FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
@@ -27,30 +27,7 @@ HTML_CORE_RUNNER = (
     / "report_html_v1"
     / "run_html_core.py"
 )
-BUNDLE_SCRIPT = REPORTING_ROOT / "render_run_report_bundle.py"
-FIXTURE_BUILDER = (
-    REPO_ROOT
-    / "tests"
-    / "reporting"
-    / "fixtures"
-    / "artifact_run_summary_v1"
-    / "build_fixture.py"
-)
 FIXED_EPOCH = "1700000000"
-
-
-def load_module(name: str, path: Path) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load module: {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-FIXTURE = load_module("norad_report_exports_fixture", FIXTURE_BUILDER)
-BUNDLE = load_module("norad_report_exports_bundle", BUNDLE_SCRIPT)
 
 
 def publish_summary(fixture: Any) -> Path:

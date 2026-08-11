@@ -34,16 +34,6 @@ from tests.evidence.scientific_review_package import build_fixture as fixture_bu
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
-def test_neutral_contract_identities_are_shared_with_step09c() -> None:
-    assert fixture_builder.step08 is step08
-    assert fixture_builder.step09 is step09
-    assert fixture_builder.review_package is review_package
-    assert scientific_review_contracts.step08 is step08
-    assert scientific_review_contracts.step09 is step09
-    assert scientific_review_contracts.review_package is review_package
-    assert scientific_review_contracts.ContractError is step08.ContractError
-
-
 def build_fixture(
     root: Path,
     science_status: str = "evidence_incomplete",

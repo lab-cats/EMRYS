@@ -36,24 +36,41 @@ git diff -- tests/baselines/python_coverage.json
 make python-coverage-check
 ```
 
-The snapshot records schema `1.0.0`, coverage.py `7.15.2`, per-file ratios,
-and exact repository totals. It remains authoritative after an accepted
-update; a rebase must reflect a reviewed source/test surface rather than hide
-new uncovered code.
+The compact snapshot records schema `2.0.0`, coverage.py `7.15.2`, exact
+repository totals, critical-owner aggregates, and route-specific subprocess
+evidence from a separate subprocess-only probe.
+It deliberately does not retain a private-module roster. It remains
+authoritative after an accepted update; a rebase must reflect a reviewed
+source/test surface rather than hide new uncovered code.
+
+The accepted exact floors are:
+
+| Coverage owner | Line floor | Branch floor |
+| --- | ---: | ---: |
+| Complete Python suite | `10161 / 11831` (`0.858845`) | `3327 / 4436` (`0.750000`) |
+| `norad.contracts.scientific_evidence` | `695 / 700` (`0.992857`) | `283 / 290` (`0.975862`) |
+| `norad.libraries.validation` | `339 / 341` (`0.994135`) | `105 / 108` (`0.972222`) |
+| Shared scientific validation primitives | `341 / 341` (`1.000000`) | `123 / 124` (`0.991935`) |
+| Report/publication and receipt validation | `5480 / 6691` (`0.819011`) | `1838 / 2614` (`0.703137`) |
+| Scientific-review publication | `860 / 1022` (`0.841487`) | `348 / 484` (`0.719008`) |
+| Paired-CMH analysis contracts | `85 / 85` (`1.000000`) | `16 / 18` (`0.888889`) |
+
+Comparisons cross-multiply the exact counts. Six-decimal rates are display
+values and never weaken the gate through rounding.
 
 The active policy:
 
-- measures branches and Python subprocesses over exactly `scripts` and
-  `src/norad`;
-- requires subprocess coverage for
-  `src/norad/stages/gtf_to_bed12/converter.py` and
-  `src/norad/ingestion/sample_manifest_admission/validator.py`;
+- measures branches over exactly `scripts` and `src/norad`, with subprocess
+  tracing enabled for the complete suite;
+- separately runs the subprocess-only GTF-to-BED12 and sample-manifest CLI
+  suites and requires coverage in their exact public route modules;
 - rejects any exact-ratio decrease in global line or branch coverage;
-- rejects disappearance of a tracked baseline module;
-- requires each explicitly named new shared Python module to reach at least
-  90% line and 85% branch coverage, including after reviewed promotion into
-  the baseline;
-- compares exact covered/total ratios, not rounded display values; and
+- rejects any exact-ratio decrease in the six critical-owner groups above;
+- allows private files to move, merge, or disappear when aggregate and owner
+  coverage remain non-regressive;
+- requires a genuinely new shared Python module named through
+  `PYTHON_COVERAGE_NEW_SHARED_MODULES` to reach at least 90% line and 85%
+  branch coverage during its reviewed introduction; and
 - permits baseline change only through an explicit reviewed update, never as an
   ordinary test side effect.
 

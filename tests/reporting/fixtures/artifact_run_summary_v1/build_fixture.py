@@ -6,14 +6,11 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
-import importlib.util
 import json
 import os
-import sys
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 
 from norad.evidence.scientific_review_package import publisher as STEP09C_PUBLISHER
@@ -25,16 +22,11 @@ from norad.evidence.scientific_review_package._scientific_review import (
 )
 from norad.reporting._artifact_index.source_checkout import SourceCheckout
 from tests.evidence.scientific_review_package import build_fixture as STEP09C_FIXTURE
+from tests.reporting.fixtures.artifact_adapters_v1 import (
+    build_fixture as ADAPTER_FIXTURE,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-ADAPTER_FIXTURE_PATH = (
-    REPO_ROOT
-    / "tests"
-    / "reporting"
-    / "fixtures"
-    / "artifact_adapters_v1"
-    / "build_fixture.py"
-)
 FIXED_EPOCH = "1700000000"
 REPORT_TABLE_APPROVALS_HEADER = (
     "run_id",
@@ -67,20 +59,6 @@ FULL_SCIENCE_DEMO_ROLES = (
 )
 
 
-def load_module(name: str, path: Path) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load fixture module: {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-ADAPTER_FIXTURE = load_module(
-    "norad_run_summary_adapter_fixture",
-    ADAPTER_FIXTURE_PATH,
-)
 ADAPTER = ADAPTER_FIXTURE.builder
 REVIEW_PACKAGE = STEP09C.review_package
 

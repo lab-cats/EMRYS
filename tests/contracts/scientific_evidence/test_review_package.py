@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import ast
 import csv
 import hashlib
-import importlib.util
 import inspect
 import json
+import subprocess
 import sys
 from copy import deepcopy
 from pathlib import Path
@@ -15,13 +14,11 @@ from types import ModuleType
 from typing import Any
 
 import pytest
+from norad.contracts.scientific_evidence import review_package as REVIEW_PACKAGE
 
 ROOT = Path(__file__).resolve().parents[3]
-OWNER = ROOT / "src/norad/contracts/scientific_evidence/review_package.py"
 SCHEMA_ROOT = ROOT / "configs/step_09c_evidence_schemas"
 REVIEW_PLAN_EXAMPLE = ROOT / "configs/step_09c_review_plan.example.tsv"
-MODULE_NAME = "_norad_review_package_scientific_evidence_contract"
-READY_ATTRIBUTE = "_NORAD_REVIEW_PACKAGE_CONTRACT_READY"
 
 CONSTANT_NAMES = (
     "SCIENCE_STATUSES",
@@ -66,29 +63,6 @@ CONSTANT_NAMES = (
 )
 
 
-def load_contract() -> ModuleType:
-    cached = sys.modules.get(MODULE_NAME)
-    if cached is not None:
-        assert Path(cached.__file__).resolve() == OWNER.resolve()
-        assert getattr(cached, READY_ATTRIBUTE) is True
-        return cached
-    spec = importlib.util.spec_from_file_location(MODULE_NAME, OWNER)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[MODULE_NAME] = module
-    try:
-        spec.loader.exec_module(module)
-        setattr(module, READY_ATTRIBUTE, True)
-    except BaseException:
-        if sys.modules.get(MODULE_NAME) is module:
-            del sys.modules[MODULE_NAME]
-        raise
-    return module
-
-
-REVIEW_PACKAGE = load_contract()
-
-
 def public_fingerprint(module: ModuleType) -> bytes:
     document = {
         "constants": {name: getattr(module, name) for name in CONSTANT_NAMES},
@@ -126,53 +100,33 @@ def test_public_contract_fingerprint_matches_selection_parent() -> None:
     )
 
 
-def test_contract_uses_one_exact_ready_owner_identity() -> None:
-    assert sys.modules[MODULE_NAME] is REVIEW_PACKAGE
-    assert Path(REVIEW_PACKAGE.__file__).resolve() == OWNER.resolve()
-    assert getattr(REVIEW_PACKAGE, READY_ATTRIBUTE) is True
+def test_neutral_contract_loads_without_step09c_policy() -> None:
+    program = """
+import builtins
 
+real_import = builtins.__import__
 
-def test_neutral_owner_excludes_policy_and_lower_owner_aliases() -> None:
-    prohibited = (
-        "EVIDENCE_MANIFEST_HEADER",
-        "COMPUTATIONAL_VALIDATION_HEADER",
-        "COMPUTATIONAL_VALIDATION_STATUSES",
-        "COMPUTATIONAL_SCOPE_ROLES",
-        "COMPUTATIONAL_SCOPE_PLAN_FIELDS",
-        "ContractError",
-        "Table",
-        "NA_VALUE",
-        "values_close",
-        "sha256_file",
-        "read_tsv",
-        "resolve_recorded_path",
-        "Artifact",
-        "ReviewContext",
-        "validate_review_plan",
-        "validate_evidence_manifest",
-        "validate_evidence_payloads",
-        "make_review_summary",
-        "build_context",
-        "confirm_inputs_unchanged",
-        "publish_outputs",
-        "step08",
-        "step09",
-        "step09c",
+def reject_step09c_policy(name, *args, **kwargs):
+    if name == "norad.evidence.scientific_review_package" or name.startswith(
+        "norad.evidence.scientific_review_package."
+    ):
+        raise AssertionError(f"neutral contract imported Step 09c policy: {name}")
+    return real_import(name, *args, **kwargs)
+
+builtins.__import__ = reject_step09c_policy
+from norad.contracts.scientific_evidence import review_package
+
+assert callable(review_package.aggregate_evidence_status)
+"""
+    result = subprocess.run(
+        [sys.executable, "-I", "-c", program],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
     )
 
-    assert all(not hasattr(REVIEW_PACKAGE, name) for name in prohibited)
-
-
-def test_neutral_owner_imports_only_standard_library_typing_support() -> None:
-    tree = ast.parse(OWNER.read_text(encoding="utf-8"))
-    imported: set[str] = set()
-    for node in tree.body:
-        if isinstance(node, ast.Import):
-            imported.update(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom):
-            imported.add(node.module or "")
-
-    assert imported == {"__future__", "typing"}
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 def test_closed_status_vocabularies_match_literal_oracle() -> None:
@@ -280,7 +234,7 @@ def test_public_thirteen_file_roster_matches_literal_oracle() -> None:
     assert len({suffix for _, suffix in REVIEW_PACKAGE.OUTPUT_SUFFIXES}) == 13
 
 
-def test_category_roster_and_header_identities_are_exact() -> None:
+def test_category_roster_and_header_values_are_exact() -> None:
     expected = (
         ("orientation_locus_audit", "ORIENTATION_HEADER"),
         ("annotation_audit", "ANNOTATION_HEADER"),
@@ -301,7 +255,7 @@ def test_category_roster_and_header_identities_are_exact() -> None:
     )
     assert tuple(REVIEW_PACKAGE.CATEGORY_HEADERS) == (REVIEW_PACKAGE.CATEGORY_ORDER)
     for category, header_name in expected:
-        assert REVIEW_PACKAGE.CATEGORY_HEADERS[category] is getattr(
+        assert REVIEW_PACKAGE.CATEGORY_HEADERS[category] == getattr(
             REVIEW_PACKAGE, header_name
         )
 

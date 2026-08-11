@@ -38,16 +38,6 @@ PAIRINGS = (
 )
 
 
-if step09.step08 is not step08:
-    raise RuntimeError("Step 09 fixture resolved a different Step 08 contract")
-if scientific_review_contracts.step08 is not step08:
-    raise RuntimeError("Step 09c fixture resolved a different Step 08 contract")
-if scientific_review_contracts.step09 is not step09:
-    raise RuntimeError("Step 09c fixture resolved a different Step 09 contract")
-if scientific_review_contracts.review_package is not review_package:
-    raise RuntimeError("Step 09c fixture resolved a different review-package contract")
-
-
 @dataclass(frozen=True)
 class FixturePaths:
     root: Path

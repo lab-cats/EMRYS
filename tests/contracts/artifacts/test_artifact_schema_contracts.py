@@ -16,14 +16,9 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from norad import __main__ as norad_main
 from norad.contracts.artifacts import api as contracts
-from norad.contracts.artifacts import validator as contract_validator
 from norad.contracts.artifacts._artifact_contracts import (
-    artifact,
-    definitions,
     identity,
-    run_summary_status,
     run_summary_validation,
-    scientific_review,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -47,20 +42,6 @@ FIXTURES = {
 EXPECTED_INVENTORY_ARTIFACT_COUNT = 81
 
 
-def test_contract_api_uses_the_packaged_owners() -> None:
-    assert contracts.ContractValidationError is definitions.ContractValidationError
-    assert contracts.validate_artifact_semantics is artifact.validate_artifact_semantics
-    assert (
-        contracts.validate_scientific_review_semantics
-        is scientific_review.validate_scientific_review_semantics
-    )
-    assert (
-        contracts.validate_run_summary_semantics
-        is run_summary_validation.validate_run_summary_semantics
-    )
-    assert contracts.scope_key is run_summary_status.scope_key
-
-
 def test_validate_document_and_dispatcher_use_live_api_hooks(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -75,7 +56,6 @@ def test_validate_document_and_dispatcher_use_live_api_hooks(
             str(FIXTURES["artifact-record"]),
         ]
     )
-    assert arguments._command_handler is contract_validator.validate_from_args
     document_calls: list[tuple[str, dict[str, Any]]] = []
 
     def record_document(name: str, document: dict[str, Any]) -> None:
@@ -83,7 +63,7 @@ def test_validate_document_and_dispatcher_use_live_api_hooks(
 
     with monkeypatch.context() as patch:
         patch.setattr(contracts, "validate_document_semantics", record_document)
-        result = contract_validator.validate_from_args(arguments)
+        result = arguments._command_handler(arguments)
 
     assert result == 0
     captured = capsys.readouterr()

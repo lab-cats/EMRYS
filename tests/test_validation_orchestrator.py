@@ -1,5 +1,4 @@
 import configparser
-import importlib.util
 import json
 import os
 import signal
@@ -9,17 +8,9 @@ import time
 from pathlib import Path
 
 import pytest
+from tests.tools import run_validation as TOOL
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-TOOL_PATH = REPO_ROOT / "tests" / "tools" / "run_validation.py"
-SPEC = importlib.util.spec_from_file_location(
-    "norad_validation_orchestrator",
-    TOOL_PATH,
-)
-assert SPEC is not None and SPEC.loader is not None
-TOOL = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = TOOL
-SPEC.loader.exec_module(TOOL)
 
 
 def python_lane(name: str, source: str) -> object:

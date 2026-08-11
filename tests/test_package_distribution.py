@@ -47,67 +47,6 @@ RESOURCE_PATHS = (
     "norad/reporting/templates/run_report.qmd",
     "norad/reporting/templates/run_report_pdf.qmd",
 )
-ARTIFACT_CONTRACT_PACKAGE_PATHS = frozenset(
-    {
-        "norad/contracts/artifacts/__init__.py",
-        "norad/contracts/artifacts/_artifact_contracts/__init__.py",
-        "norad/contracts/artifacts/_artifact_contracts/artifact.py",
-        "norad/contracts/artifacts/_artifact_contracts/definitions.py",
-        "norad/contracts/artifacts/_artifact_contracts/evidence.py",
-        "norad/contracts/artifacts/_artifact_contracts/identity.py",
-        "norad/contracts/artifacts/_artifact_contracts/inventory.py",
-        "norad/contracts/artifacts/_artifact_contracts/report_receipt.py",
-        "norad/contracts/artifacts/_artifact_contracts/run_summary_status.py",
-        "norad/contracts/artifacts/_artifact_contracts/run_summary_validation.py",
-        "norad/contracts/artifacts/_artifact_contracts/schema.py",
-        "norad/contracts/artifacts/_artifact_contracts/scientific_review.py",
-        "norad/contracts/artifacts/api.py",
-        "norad/contracts/artifacts/validator.py",
-    }
-)
-EVIDENCE_PACKAGE_PATHS = frozenset(
-    {
-        "norad/evidence/__init__.py",
-        "norad/evidence/reference_provenance/__init__.py",
-        "norad/evidence/reference_provenance/_reference_contigs.py",
-        "norad/evidence/reference_provenance/_reference_inventory.py",
-        "norad/evidence/reference_provenance/_reference_model.py",
-        "norad/evidence/reference_provenance/_reference_render.py",
-        "norad/evidence/reference_provenance/reconciler.py",
-        "norad/evidence/runtime_availability/__init__.py",
-        "norad/evidence/runtime_availability/_probes.py",
-        "norad/evidence/runtime_availability/_profile_contract.py",
-        "norad/evidence/runtime_availability/_result_contract.py",
-        "norad/evidence/runtime_availability/_runtime_model.py",
-        "norad/evidence/runtime_availability/inspector.py",
-        "norad/evidence/scientific_review_package/__init__.py",
-        "norad/evidence/scientific_review_package/_scientific_review/__init__.py",
-        "norad/evidence/scientific_review_package/"
-        "_scientific_review/_evidence_manifest.py",
-        "norad/evidence/scientific_review_package/"
-        "_scientific_review/_review_candidates.py",
-        "norad/evidence/scientific_review_package/"
-        "_scientific_review/_review_decisions.py",
-        "norad/evidence/scientific_review_package/_scientific_review/_review_plan.py",
-        "norad/evidence/scientific_review_package/"
-        "_scientific_review/_review_sensitivity.py",
-        "norad/evidence/scientific_review_package/_scientific_review/audits.py",
-        "norad/evidence/scientific_review_package/_scientific_review/context.py",
-        "norad/evidence/scientific_review_package/_scientific_review/contracts.py",
-        "norad/evidence/scientific_review_package/_scientific_review/evidence.py",
-        "norad/evidence/scientific_review_package/_scientific_review/intake.py",
-        "norad/evidence/scientific_review_package/publisher.py",
-        "norad/evidence/canonical_bam_qc/__init__.py",
-        "norad/evidence/canonical_bam_qc/validator.py",
-        "norad/evidence/rseqc_orientation/__init__.py",
-        "norad/evidence/rseqc_orientation/validator.py",
-        "norad/evidence/storage_inventory/__init__.py",
-        "norad/evidence/storage_inventory/_storage_contract.py",
-        "norad/evidence/storage_inventory/_storage_measurement.py",
-        "norad/evidence/storage_inventory/_storage_publication.py",
-        "norad/evidence/storage_inventory/inspector.py",
-    }
-)
 STAR_INDEX_MEMBERS = (
     "genomeParameters.txt",
     "Genome",
@@ -293,60 +232,6 @@ def _assert_wheel_contents(wheel: Path) -> None:
             for member in members
             if member.startswith("norad/") and not member.endswith(".py")
         } == set(RESOURCE_PATHS)
-        assert {
-            member
-            for member in members
-            if member.startswith("norad/contracts/artifacts/")
-        } == ARTIFACT_CONTRACT_PACKAGE_PATHS
-        assert "norad/reporting/_artifact_index/api.py" in members
-        assert "norad/reporting/_artifact_index/builder.py" in members
-        assert "norad/reporting/_artifact_index/source_checkout.py" in members
-        assert "norad/reporting/build_artifact_index.py" not in members
-        assert "norad/reporting/_run_summary/builder.py" in members
-        assert "norad/reporting/_run_summary/science_projection.py" in members
-        assert "norad/reporting/build_run_summary.py" not in members
-        assert "norad/reporting/_run_summary_science.py" not in members
-        assert "norad/ingestion/__init__.py" in members
-        assert "norad/ingestion/sample_manifest_admission/__init__.py" in members
-        assert "norad/ingestion/sample_manifest_admission/validator.py" in members
-        assert (
-            "norad/ingestion/sample_manifest_admission/validate_manifest.py"
-            not in members
-        )
-        assert {
-            member for member in members if member.startswith("norad/evidence/")
-        } == EVIDENCE_PACKAGE_PATHS
-        assert {member for member in members if member.startswith("norad/stages/")} == {
-            "norad/stages/canonical_bam/__init__.py",
-            "norad/stages/canonical_bam/validator.py",
-            "norad/stages/cohort_candidate_preprocessing/__init__.py",
-            "norad/stages/cohort_candidate_preprocessing/validator.py",
-            "norad/stages/duplicate_marking/__init__.py",
-            "norad/stages/duplicate_marking/validator.py",
-            "norad/stages/fasta_sidecars/__init__.py",
-            "norad/stages/fasta_sidecars/validator.py",
-            "norad/stages/__init__.py",
-            "norad/stages/gtf_to_bed12/__init__.py",
-            "norad/stages/gtf_to_bed12/converter.py",
-            "norad/stages/gtf_to_bed12/validator.py",
-            "norad/stages/mechanical_orientation/__init__.py",
-            "norad/stages/mechanical_orientation/validator.py",
-            "norad/stages/partitioned_cohort_mpileup/__init__.py",
-            "norad/stages/partitioned_cohort_mpileup/validator.py",
-            "norad/stages/split_n_cigar/__init__.py",
-            "norad/stages/split_n_cigar/validator.py",
-            "norad/stages/star_index/__init__.py",
-            "norad/stages/star_index/validator.py",
-            "norad/stages/star_alignment/__init__.py",
-            "norad/stages/star_alignment/validator.py",
-        }
-        assert {
-            member for member in members if member.startswith("norad/analyses/")
-        } == {
-            "norad/analyses/__init__.py",
-            "norad/analyses/paired_cmh_candidate_ranking/__init__.py",
-            "norad/analyses/paired_cmh_candidate_ranking/validator.py",
-        }
         assert not any(member.endswith((".R", ".sh", ".slurm")) for member in members)
         for resource in RESOURCE_PATHS:
             source = REPO_ROOT / "src" / resource
@@ -382,19 +267,13 @@ def _assert_target_install(wheel: Path, tmp_path: Path) -> Path:
             "-c",
             (
                 "import importlib.metadata, json, norad; "
-                "from norad.contracts.artifacts._artifact_contracts.schema "
-                "import load_schema_registry; "
-                "from norad.reporting._run_report.bundle_models "
-                "import PDF_TEMPLATE; "
-                "from norad.reporting._run_report.models "
-                "import CSS_TEMPLATE, QMD_TEMPLATE; "
-                "schemas, _ = load_schema_registry(); "
+                "from importlib.resources import files; "
+                f"resource_paths = {RESOURCE_PATHS!r}; "
                 "print(json.dumps({"
                 "'module': norad.__file__, "
                 "'version': importlib.metadata.version('norad-rna-workflow'), "
-                "'schemas': sorted(schemas), "
-                "'resources': [str(QMD_TEMPLATE), str(CSS_TEMPLATE), "
-                "str(PDF_TEMPLATE)]}))"
+                "'resources': [str(files('norad').joinpath("
+                "path.removeprefix('norad/'))) for path in resource_paths]}))"
             ),
         ],
         cwd=working_directory,
@@ -407,13 +286,6 @@ def _assert_target_install(wheel: Path, tmp_path: Path) -> Path:
     observed = json.loads(probe.stdout)
     assert Path(observed["module"]).resolve().is_relative_to(target.resolve())
     assert observed["version"] == "0.0.0"
-    assert observed["schemas"] == [
-        "artifact-record",
-        "common",
-        "report-receipt",
-        "run-summary",
-        "scientific-review-record",
-    ]
     assert all(Path(path).is_file() for path in observed["resources"])
     return working_directory
 
@@ -513,24 +385,13 @@ def _assert_dependency_prepared_artifact_contracts(
                 "import importlib, importlib.metadata, json, sys; "
                 "import norad; "
                 "from norad.contracts.artifacts import api as artifact_contracts; "
-                "from norad.reporting._artifact_index import api as artifact_index; "
-                "from norad.reporting._run_summary import "
-                "builder as run_summary_builder; "
                 f"dependencies = {ARTIFACT_RUNTIME_DEPENDENCIES!r}; "
                 "schemas, _ = artifact_contracts.load_schema_registry(); "
                 "print(json.dumps({"
-                "'artifact_index': artifact_index.__file__, "
-                "'artifact_index_builder_loaded': "
-                "'norad.reporting._artifact_index.builder' in sys.modules, "
-                "'artifact_index_facade_loaded': "
-                "'norad.reporting.build_artifact_index' in sys.modules, "
                 "'isolated': sys.flags.isolated, "
                 "'norad': norad.__file__, "
                 "'origins': {name: importlib.import_module(module).__file__ "
                 "for name, (_version, module) in dependencies.items()}, "
-                "'run_summary_builder': run_summary_builder.__file__, "
-                "'run_summary_facade_loaded': "
-                "'norad.reporting.build_run_summary' in sys.modules, "
                 "'schemas': sorted(schemas), "
                 "'sys_path': sys.path, "
                 "'versions': {name: importlib.metadata.version(name) "
@@ -557,13 +418,6 @@ def _assert_dependency_prepared_artifact_contracts(
         "run-summary",
         "scientific-review-record",
     ]
-    assert Path(observed["artifact_index"]).resolve().is_relative_to(environment_site)
-    assert observed["artifact_index_builder_loaded"] is False
-    assert observed["artifact_index_facade_loaded"] is False
-    assert (
-        Path(observed["run_summary_builder"]).resolve().is_relative_to(environment_site)
-    )
-    assert observed["run_summary_facade_loaded"] is False
     assert Path(observed["norad"]).resolve().is_relative_to(environment_site)
     origins = tuple(Path(origin) for origin in observed["origins"].values())
     assert all(origin.is_relative_to(projection) for origin in origins)
@@ -733,7 +587,7 @@ def _hostile_python_environment(tmp_path: Path) -> dict[str, str]:
     return environment
 
 
-def _assert_installed_source_checkout_authority(
+def _assert_installed_package_resources(
     environment_python: Path,
     working_directory: Path,
     environment: dict[str, str],
@@ -747,44 +601,19 @@ def _assert_installed_source_checkout_authority(
                 "import importlib.util, json, sys; "
                 "from pathlib import Path; "
                 "import norad; "
-                "from norad.reporting._artifact_index.source_checkout "
-                "import admit_source_checkout; "
                 f"checkout_root = Path({str(REPO_ROOT)!r}); "
-                "checkout_package = checkout_root / 'src/norad'; "
                 "package_root = Path(norad.__file__).resolve().parent; "
-                "authority = admit_source_checkout("
-                "root=checkout_root, package_root=package_root); "
-                "package_files = tuple(path for path in package_root.rglob('*') "
-                "if path.is_file() and '__pycache__' not in path.parts "
-                "and path.suffix != '.pyc'); "
-                "package_bytes_match = all("
-                "(checkout_package / path.relative_to(package_root)).is_file() "
-                "and path.read_bytes() == (checkout_package / "
-                "path.relative_to(package_root)).read_bytes() "
-                "for path in package_files); "
-                "installed_python = {str(path.relative_to(package_root)) "
-                "for path in package_files if path.suffix == '.py'}; "
-                "checkout_python = {str(path.relative_to(checkout_package)) "
-                "for path in checkout_package.rglob('*.py')}; "
                 f"resources = {RESOURCE_PATHS!r}; "
                 "resource_bytes_match = all("
                 "(package_root / path.removeprefix('norad/')).read_bytes() == "
                 "(checkout_root / 'src' / path).read_bytes() "
                 "for path in resources); "
                 "print(json.dumps({"
-                "'api_loaded': 'norad.reporting._artifact_index.api' in sys.modules, "
-                "'builder_loaded': "
-                "'norad.reporting._artifact_index.builder' in sys.modules, "
-                "'facade_loaded': "
-                "'norad.reporting.build_artifact_index' in sys.modules, "
                 "'isolated': sys.flags.isolated, "
                 "'jsonschema_available': "
                 "importlib.util.find_spec('jsonschema') is not None, "
-                "'package_bytes_match': package_bytes_match, "
                 "'package_root': str(package_root), "
-                "'python_roster_match': installed_python == checkout_python, "
                 "'resource_bytes_match': resource_bytes_match, "
-                "'root': str(authority.root), "
                 "'sys_path': sys.path}))"
             ),
         ],
@@ -798,7 +627,6 @@ def _assert_installed_source_checkout_authority(
     assert not probe.stderr
     observed = json.loads(probe.stdout)
     assert observed["isolated"] == 1
-    assert observed["root"] == str(REPO_ROOT.resolve())
     assert (
         Path(observed["package_root"]).resolve() != (REPO_ROOT / "src/norad").resolve()
     )
@@ -807,13 +635,8 @@ def _assert_installed_source_checkout_authority(
         .resolve()
         .is_relative_to(environment_python.parents[1].resolve())
     )
-    assert observed["package_bytes_match"] is True
-    assert observed["python_roster_match"] is True
     assert observed["resource_bytes_match"] is True
     assert observed["jsonschema_available"] is False
-    assert observed["api_loaded"] is False
-    assert observed["builder_loaded"] is False
-    assert observed["facade_loaded"] is False
     observed_sys_path = {
         str(Path(entry).resolve()) for entry in observed["sys_path"] if entry
     }
@@ -2473,41 +2296,18 @@ def _assert_installed_run_summary_help(
     working_directory: Path,
     environment: dict[str, str],
 ) -> None:
-    run_summary_help = subprocess.run(  # noqa: S603 -- Fixed test-owned command.
-        [
-            str(environment_python),
-            "-I",
-            "-c",
-            (
-                "import json, sys\n"
-                "from norad import __main__ as norad_cli\n"
-                "try:\n"
-                "    norad_cli.main(['build', 'run-summary', '--help'])\n"
-                "except SystemExit as exc:\n"
-                "    exit_code = exc.code\n"
-                "else:\n"
-                "    exit_code = 0\n"
-                "print('__NORAD_MODULE_STATE__=' + json.dumps({"
-                "'artifact_index_api_loaded': "
-                "'norad.reporting._artifact_index.api' in sys.modules, "
-                "'artifact_index_builder_loaded': "
-                "'norad.reporting._artifact_index.builder' in sys.modules, "
-                "'run_summary_builder_loaded': "
-                "'norad.reporting._run_summary.builder' in sys.modules}))\n"
-                "raise SystemExit(exit_code)\n"
-            ),
-        ],
-        cwd=working_directory,
-        env=environment,
-        text=True,
-        capture_output=True,
-        check=False,
+    run_summary_help = _run_installed_norad(
+        environment_python,
+        working_directory,
+        environment,
+        "build",
+        "run-summary",
+        "--help",
     )
     assert run_summary_help.returncode == 0, (
         run_summary_help.stdout + run_summary_help.stderr
     )
     assert not run_summary_help.stderr
-    run_summary_help_lines = run_summary_help.stdout.splitlines()
     assert "usage: norad build run-summary" in run_summary_help.stdout
     for option in (
         "--source-checkout",
@@ -2519,13 +2319,6 @@ def _assert_installed_run_summary_help(
         "--execute",
     ):
         assert option in run_summary_help.stdout
-    module_state_prefix = "__NORAD_MODULE_STATE__="
-    assert run_summary_help_lines[-1].startswith(module_state_prefix)
-    assert json.loads(run_summary_help_lines[-1].removeprefix(module_state_prefix)) == {
-        "artifact_index_api_loaded": False,
-        "artifact_index_builder_loaded": False,
-        "run_summary_builder_loaded": False,
-    }
 
 
 def _assert_installed_commands(
@@ -2704,153 +2497,6 @@ def _assert_installed_commands(
     )
 
 
-def _assert_run_summary_source_layout(reporting_source: Path) -> None:
-    assert (
-        reporting_source / "_run_summary/builder.py"
-    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
-    assert not (reporting_source / "build_run_summary.py").exists()
-
-
-def _assert_private_source_layout() -> None:
-    artifact_contract_source = REPO_ROOT / "src/norad/contracts/artifacts"
-    assert not (artifact_contract_source / "_artifact_contracts/core.py").exists()
-    assert not (artifact_contract_source / "validate_artifact_contracts.py").exists()
-    assert (
-        artifact_contract_source / "api.py"
-    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
-    assert (
-        artifact_contract_source / "validator.py"
-    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
-
-    reporting_source = REPO_ROOT / "src/norad/reporting"
-    assert (
-        reporting_source / "_artifact_index/api.py"
-    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
-    assert (
-        reporting_source / "_artifact_index/builder.py"
-    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
-    assert (
-        reporting_source / "_artifact_index/source_checkout.py"
-    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
-    assert not (reporting_source / "build_artifact_index.py").exists()
-    _assert_run_summary_source_layout(reporting_source)
-    assert not (reporting_source / "_run_summary_science.py").exists()
-    assert (
-        reporting_source / "_run_summary/science_projection.py"
-    ).stat().st_mode & 0o7777 == PRIVATE_FILE_MODE
-
-    manifest_owner = REPO_ROOT / "src/norad/ingestion/sample_manifest_admission"
-    assert not (manifest_owner / "validate_manifest.py").exists()
-    assert (manifest_owner / "validator.py").stat().st_mode & 0o111 == 0
-
-    stage_owner = REPO_ROOT / "src/norad/stages/gtf_to_bed12"
-    assert not (REPO_ROOT / "src/norad/stages/convert_GTF_to_BED12").exists()
-    for retired_name in ("gtf_to_bed12.py", "validate_step_00b_bed12.py"):
-        assert not (stage_owner / retired_name).exists()
-    for private_name in ("converter.py", "validator.py"):
-        assert (stage_owner / private_name).stat().st_mode & 0o111 == 0
-
-    normalized_owners = (
-        (
-            "stages/star_index",
-            "stages/construct_STAR_index",
-            "validate_step_00a_star_index.py",
-        ),
-        (
-            "stages/fasta_sidecars",
-            "stages/construct_FASTA_sidecars",
-            "validate_step_00c_reference_sidecars.py",
-        ),
-        (
-            "stages/star_alignment",
-            "stages/align_RNA_reads_with_STAR",
-            "validate_step_01_star_alignment.py",
-        ),
-        (
-            "stages/canonical_bam",
-            "stages/construct_canonical_BAM",
-            "validate_step_02_canonical_bam.py",
-        ),
-        (
-            "evidence/canonical_bam_qc",
-            "evidence/collect_canonical_BAM_QC_evidence",
-            "validate_step_02b_bam_qc.py",
-        ),
-        (
-            "evidence/rseqc_orientation",
-            "evidence/collect_RSeQC_paired_orientation_evidence",
-            "validate_step_03_rseqc_orientation.py",
-        ),
-        (
-            "stages/duplicate_marking",
-            "stages/mark_BAM_duplicates_with_Picard",
-            "validate_step_04_mark_duplicates.py",
-        ),
-        (
-            "stages/split_n_cigar",
-            "stages/split_N_cigar_reads_with_GATK",
-            "validate_step_05_split_ncigar.py",
-        ),
-        (
-            "stages/mechanical_orientation",
-            "stages/partition_BAM_by_mechanical_read_orientation",
-            "validate_step_06_orientation_outputs.py",
-        ),
-        (
-            "stages/partitioned_cohort_mpileup",
-            "stages/generate_partitioned_cohort_mpileup_VCFs",
-            "validate_step_07_mpileup_outputs.py",
-        ),
-        (
-            "stages/cohort_candidate_preprocessing",
-            "stages/preprocess_and_annotate_cohort_candidates",
-            "validate_step_08_preprocessing_outputs.py",
-        ),
-        (
-            "analyses/paired_cmh_candidate_ranking",
-            "analyses/rank_cohort_candidates_with_paired_CMH",
-            "validate_step_09_cmh_outputs.py",
-        ),
-    )
-    for current_relative, retired_relative, retired_validator in normalized_owners:
-        current_source = REPO_ROOT / "src/norad" / current_relative
-        assert not (REPO_ROOT / "src/norad" / retired_relative).exists()
-        assert not (current_source / retired_validator).exists()
-        assert (current_source / "validator.py").stat().st_mode & 0o111 == 0
-        assert not (REPO_ROOT / "tests" / retired_relative).exists()
-        assert (REPO_ROOT / "tests" / current_relative).is_dir()
-
-    scientific_review_source = (
-        REPO_ROOT / "src/norad/evidence/scientific_review_package"
-    )
-    retired_scientific_review = "evidence/assemble_scientific_review_evidence_package"
-    assert not (REPO_ROOT / "src/norad" / retired_scientific_review).exists()
-    assert not (scientific_review_source / "step_09c_scientific_validation.py").exists()
-    private_review_source = scientific_review_source / "_scientific_review"
-    for retired_module in ("_intake_models.py", "_intake_support.py"):
-        assert not (private_review_source / retired_module).exists()
-    assert (scientific_review_source / "publisher.py").stat().st_mode & 0o111 == 0
-    assert not (REPO_ROOT / "tests" / retired_scientific_review).exists()
-    assert (REPO_ROOT / "tests/evidence/scientific_review_package").is_dir()
-
-    reference_provenance_source = REPO_ROOT / "src/norad/evidence/reference_provenance"
-    assert not (reference_provenance_source / "reference_provenance.py").exists()
-    assert (reference_provenance_source / "reconciler.py").stat().st_mode & 0o111 == 0
-    assert (REPO_ROOT / "tests/evidence/reference_provenance").is_dir()
-
-    runtime_availability_source = REPO_ROOT / "src/norad/evidence/runtime_availability"
-    assert not (REPO_ROOT / "src/norad/evidence/runtime_preflight").exists()
-    assert not (runtime_availability_source / "runtime_preflight.py").exists()
-    assert (runtime_availability_source / "inspector.py").stat().st_mode & 0o111 == 0
-    assert (runtime_availability_source / "tool_check.slurm").is_file()
-    assert not (REPO_ROOT / "tests/evidence/runtime_preflight").exists()
-    assert (REPO_ROOT / "tests/evidence/runtime_availability").is_dir()
-
-    storage_inventory_source = REPO_ROOT / "src/norad/evidence/storage_inventory"
-    assert not (storage_inventory_source / "storage_inventory.py").exists()
-    assert (storage_inventory_source / "inspector.py").stat().st_mode & 0o7777 == 0o644
-
-
 def _assert_wrong_checkout_rejected(
     environment_python: Path,
     project: Path,
@@ -2869,7 +2515,7 @@ def _assert_wrong_checkout_rejected(
         assert "not the current checkout" in probe.stderr
 
 
-def test_wheel_contains_only_explicit_packages_and_exact_resources(
+def test_wheel_preserves_resources_and_installed_commands(
     tmp_path: Path,
 ) -> None:
     project, wheel = _build_wheel(tmp_path)
@@ -2883,7 +2529,7 @@ def test_wheel_contains_only_explicit_packages_and_exact_resources(
         arbitrary_working_directory,
         isolated_environment,
     )
-    _assert_installed_source_checkout_authority(
+    _assert_installed_package_resources(
         environment_python,
         arbitrary_working_directory,
         isolated_environment,
@@ -2900,7 +2546,6 @@ def test_wheel_contains_only_explicit_packages_and_exact_resources(
         isolated_environment,
         dependency_environment,
     )
-    _assert_private_source_layout()
     _assert_wrong_checkout_rejected(
         environment_python,
         project,

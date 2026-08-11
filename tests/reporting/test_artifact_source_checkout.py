@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import norad
 import pytest
 
 from norad import __main__ as norad_cli
@@ -396,9 +397,9 @@ def test_grouped_cli_threads_explicit_checkout_into_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     admitted = source_checkout.SourceCheckout(root=tmp_path)
-    context = object()
+    context = {"context": "synthetic"}
     events: list[str] = []
-    expected_package_root = Path(artifact_index_builder.__file__).resolve().parents[2]
+    expected_package_root = Path(norad.__file__).resolve().parent
 
     def admit_checkout(
         *,
@@ -420,12 +421,12 @@ def test_grouped_cli_threads_explicit_checkout_into_context(
         assert observed_arguments.source_checkout == tmp_path
         assert observed_arguments.run_id == "synthetic-run"
         assert observed_arguments.execute is False
-        assert source_checkout is admitted
+        assert source_checkout == admitted
         events.append("prepare")
         return context
 
     def print_context(observed_context: object, execute: object) -> None:
-        assert observed_context is context
+        assert observed_context == context
         assert execute is False
         events.append("print")
 

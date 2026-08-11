@@ -1,8 +1,8 @@
-import ast
+import builtins
 import csv
-import importlib.util
+import importlib
 import math
-import sys
+import runpy
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,11 +12,9 @@ ROOT = Path(__file__).resolve().parents[3]
 OWNER = ROOT / "tests/analyses/paired_cmh_candidate_ranking"
 ORACLE_PATH = OWNER / "step_09_cmh_oracle.py"
 CORPUS_PATH = OWNER / "step_09_cmh_oracle.tsv"
-SPEC = importlib.util.spec_from_file_location("step09_cmh_oracle", ORACLE_PATH)
-assert SPEC is not None and SPEC.loader is not None
-ORACLE = importlib.util.module_from_spec(SPEC)
-sys.modules[SPEC.name] = ORACLE
-SPEC.loader.exec_module(ORACLE)
+ORACLE = importlib.import_module(
+    "tests.analyses.paired_cmh_candidate_ranking.step_09_cmh_oracle"
+)
 
 CORPUS_HEADER = (
     "case_id",
@@ -107,17 +105,22 @@ def assert_number(actual: float, expected: float) -> None:
         assert math.isclose(actual, expected, rel_tol=1e-12, abs_tol=1e-15)
 
 
-def test_oracle_is_structurally_independent_of_production_modules() -> None:
-    tree = ast.parse(ORACLE_PATH.read_text(encoding="utf-8"))
-    imports = []
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Import):
-            imports.extend(alias.name for alias in node.names)
-        elif isinstance(node, ast.ImportFrom):
-            imports.append(node.module or "")
-    assert all(
-        not name.startswith(("scripts", "step_09", "step09")) for name in imports
-    )
+def test_oracle_executes_without_production_imports(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real_import = builtins.__import__
+
+    def reject_production_imports(name: str, *args, **kwargs):
+        if name.startswith(("norad", "scripts", "step_09", "step09")):
+            raise AssertionError(f"independent oracle imported production code: {name}")
+        return real_import(name, *args, **kwargs)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(builtins, "__import__", reject_production_imports)
+        namespace = runpy.run_path(
+            str(ORACLE_PATH), run_name="independent_oracle_probe"
+        )
+    assert callable(namespace["characterize_candidate"])
 
 
 def test_corpus_covers_every_required_characterization_boundary() -> None:

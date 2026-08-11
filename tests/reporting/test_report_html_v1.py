@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import copy
 import hashlib
-import importlib.util
 import json
 import os
 import shlex
@@ -15,14 +14,14 @@ import sys
 import time
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 
 import pytest
+from norad.reporting import render_run_report as RENDER
+from tests.reporting.fixtures.artifact_run_summary_v1 import build_fixture as FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTING_ROOT = REPO_ROOT / "src" / "norad" / "reporting"
-RENDER_SCRIPT = REPORTING_ROOT / "render_run_report.py"
 SCRIPT = (
     REPO_ROOT
     / "tests"
@@ -30,14 +29,6 @@ SCRIPT = (
     / "fixtures"
     / "report_html_v1"
     / "run_html_core.py"
-)
-FIXTURE_BUILDER = (
-    REPO_ROOT
-    / "tests"
-    / "reporting"
-    / "fixtures"
-    / "artifact_run_summary_v1"
-    / "build_fixture.py"
 )
 APPROVED_TABLE_FIXTURE = (
     REPO_ROOT
@@ -48,20 +39,6 @@ APPROVED_TABLE_FIXTURE = (
     / "approved_candidates.tsv"
 )
 FIXED_EPOCH = "1700000000"
-
-
-def load_module(name: str, path: Path) -> ModuleType:
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load module: {path}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-FIXTURE = load_module("norad_report_html_fixture_builder", FIXTURE_BUILDER)
-RENDER = load_module("norad_report_html_renderer", RENDER_SCRIPT)
 
 
 def canonical_json_bytes(value: Any) -> bytes:

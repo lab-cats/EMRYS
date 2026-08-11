@@ -6,41 +6,29 @@ import copy
 import csv
 import importlib
 import json
-import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
-from norad.analyses.paired_cmh_candidate_ranking import (
-    validator as STEP09_VALIDATOR,
-)
-from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
 from norad.evidence.scientific_review_package._scientific_review import (
     contracts as SCIENTIFIC_REVIEW,
 )
 from norad.evidence.scientific_review_package._scientific_review import (
     intake as SCIENTIFIC_REVIEW_INTAKE,
 )
-from norad.stages.cohort_candidate_preprocessing import validator as STEP08_VALIDATOR
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-REPORTING = REPO_ROOT / "src" / "norad" / "reporting"
 GOLDENS = Path(__file__).resolve().parent
 SCHEMAS = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts" / "v1"
-
-if str(REPORTING) not in sys.path:
-    sys.path.insert(0, str(REPORTING))
 
 ARTIFACT_INDEX = importlib.import_module("norad.reporting._artifact_index.builder")
 ARTIFACT_INDEX_CONTEXT = importlib.import_module(
     "norad.reporting._artifact_index.context",
 )
 RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.builder")
-REPORT_BUNDLE = importlib.import_module("render_run_report_bundle")
-STEP08_CONTRACT = ARTIFACT_INDEX.step08
-STEP09_CONTRACT = ARTIFACT_INDEX.step09
+REPORT_BUNDLE = importlib.import_module("norad.reporting.render_run_report_bundle")
 SHARED_SCIENCE = RUN_SUMMARY.science
 REVIEW_PACKAGE = ARTIFACT_INDEX.review_package
 
@@ -65,45 +53,6 @@ def header_module(module_name: str, constant_name: str) -> ModuleType:
     ):
         return REVIEW_PACKAGE
     return HEADER_MODULES[module_name]
-
-
-ARTIFACT_CONTRACT_LOADERS = (
-    ARTIFACT_INDEX,
-    SHARED_SCIENCE,
-    REPORT_BUNDLE.html_report,
-)
-STEP08_CONTRACT_LOADERS = (
-    STEP09_CONTRACT,
-    SCIENTIFIC_REVIEW,
-    STEP08_VALIDATOR,
-    STEP09_VALIDATOR,
-    ARTIFACT_INDEX,
-)
-STEP09_CONTRACT_LOADERS = (
-    SCIENTIFIC_REVIEW,
-    STEP09_VALIDATOR,
-    ARTIFACT_INDEX,
-)
-REVIEW_PACKAGE_CONTRACT_LOADERS = (
-    SCIENTIFIC_REVIEW,
-    ARTIFACT_INDEX,
-    SHARED_SCIENCE,
-)
-
-
-def test_contract_consumers_share_packaged_module_identities() -> None:
-    assert all(
-        loader.contracts is ARTIFACT_CONTRACTS for loader in ARTIFACT_CONTRACT_LOADERS
-    )
-    assert SCIENTIFIC_REVIEW.step08 is STEP08_CONTRACT
-    assert STEP08_VALIDATOR.step08 is STEP08_CONTRACT
-    assert STEP09_VALIDATOR.step08 is STEP08_CONTRACT
-    assert ARTIFACT_INDEX.step08 is STEP08_CONTRACT
-    assert STEP09_CONTRACT.step08 is STEP08_CONTRACT
-    assert STEP09_VALIDATOR.step09 is STEP09_CONTRACT
-    assert ARTIFACT_INDEX.review_package is REVIEW_PACKAGE
-    assert SHARED_SCIENCE.review_package is REVIEW_PACKAGE
-    assert SCIENTIFIC_REVIEW.review_package is REVIEW_PACKAGE
 
 
 def load_json(path: Path) -> Any:

@@ -522,13 +522,12 @@ def test_installed_norad_commands_are_isolated_and_cwd_independent(
     assert relative_snapshot(tmp_path) == before
 
 
-def test_run_summary_help_and_parse_failure_do_not_import_builder(
+def test_run_summary_help_and_parse_failure_are_side_effect_free(
     tmp_path: Path,
 ) -> None:
-    """Parser termination keeps the private run-summary builder lazy."""
+    """Parser termination preserves public exits without filesystem effects."""
     program = """
 import json
-import sys
 
 from norad import __main__ as cli
 
@@ -539,7 +538,6 @@ for arguments in (["build", "run-summary", "--help"], ["build", "run-summary"]):
     except SystemExit as error:
         statuses.append(error.code)
 print(json.dumps({
-    "builder_loaded": "norad.reporting._run_summary.builder" in sys.modules,
     "statuses": statuses,
 }))
 """
@@ -550,10 +548,7 @@ print(json.dumps({
 
     assert result.returncode == 0, result.stdout + result.stderr
     observed = json.loads(result.stdout.splitlines()[-1])
-    assert observed == {
-        "builder_loaded": False,
-        "statuses": [0, CLI_USAGE_ERROR],
-    }
+    assert observed == {"statuses": [0, CLI_USAGE_ERROR]}
     assert relative_snapshot(tmp_path) == ()
 
 

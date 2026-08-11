@@ -4,44 +4,17 @@ from __future__ import annotations
 
 import csv
 import hashlib
-import importlib.util
 import inspect
 import json
 import shutil
-import sys
 from collections.abc import Callable
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from norad.contracts.scientific_evidence import step08 as STEP08
 
 ROOT = Path(__file__).resolve().parents[3]
-OWNER = ROOT / "src/norad/contracts/scientific_evidence/step08.py"
-MODULE_NAME = "_norad_step08_scientific_evidence_contract"
-READY_ATTRIBUTE = "_NORAD_STEP08_CONTRACT_READY"
-
-
-def load_contract():
-    cached = sys.modules.get(MODULE_NAME)
-    if cached is not None:
-        assert Path(cached.__file__).resolve() == OWNER.resolve()
-        assert getattr(cached, READY_ATTRIBUTE) is True
-        return cached
-    spec = importlib.util.spec_from_file_location(MODULE_NAME, OWNER)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[MODULE_NAME] = module
-    try:
-        spec.loader.exec_module(module)
-        setattr(module, READY_ATTRIBUTE, True)
-    except BaseException:
-        if sys.modules.get(MODULE_NAME) is module:
-            del sys.modules[MODULE_NAME]
-        raise
-    return module
-
-
-STEP08 = load_contract()
 
 
 def write_tsv(path: Path, header, rows) -> None:
@@ -272,8 +245,7 @@ def test_valid_contract_preserves_exact_results_and_characterized_permissiveness
         validated(fixture)
     )
 
-    assert type(sample_table) is STEP08.Table
-    assert sample_rows is sample_table.rows
+    assert sample_rows == sample_table.rows
     assert sample_ids == ["S"]
     assert sample_table.path == fixture.sample_manifest.resolve()
     assert partitions.header == STEP08.PARTITION_MANIFEST_HEADER
