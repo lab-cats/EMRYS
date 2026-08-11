@@ -1117,12 +1117,12 @@
       "path": "src/norad/reporting/_run_report/context.py"
     },
     {
-      "branch_rate": "0.750000",
-      "covered_branches": 6,
-      "covered_lines": 154,
-      "line_rate": "0.980892",
-      "num_branches": 8,
-      "num_statements": 157,
+      "branch_rate": "0.833333",
+      "covered_branches": 5,
+      "covered_lines": 152,
+      "line_rate": "0.993464",
+      "num_branches": 6,
+      "num_statements": 153,
       "path": "src/norad/reporting/_run_report/html.py"
     },
     {
@@ -1627,11 +1627,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.750000",
-    "covered_branches": 3330,
-    "covered_lines": 10195,
-    "line_rate": "0.859105",
-    "num_branches": 4440,
-    "num_statements": 11867
+    "branch_rate": "0.750113",
+    "covered_branches": 3329,
+    "covered_lines": 10193,
+    "line_rate": "0.859226",
+    "num_branches": 4438,
+    "num_statements": 11863
   }
 }

@@ -219,13 +219,3 @@ def html_core_main(argv: Sequence[str] | None = None) -> int:
     except ReportRenderError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the owner-private HTML-only entry point."""
-
-    return html_core_main(argv)
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
