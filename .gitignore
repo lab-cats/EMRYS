@@ -43,3 +43,5 @@ renv/python/
 renv/sandbox/
 renv/staging/
 docs/CLUSTER_DISCOVERY.md
+.github/copilot-instructions.md
+.github/instructions/mermaid.instructions.md
