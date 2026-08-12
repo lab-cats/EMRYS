@@ -28,21 +28,21 @@ case "$EXECUTE" in
 esac
 
 case "$STEP" in
-  00a)
-    mkdir -p results/qc/validation/00a
+    00a)
+        mkdir -p results/qc/validation/00a
 
-    cmd=(
-      norad validate star-index
-      --scope-id novogene_ref
-      --index-dir refs/novogene_star_index
-      --reference-fasta refs/novogene_ref/genome.fa
-      --reference-gtf refs/novogene_ref/genome.gtf
-      --parameter-path-base .
-      --expected-sjdb-overhang 149
-      --output results/qc/validation/00a/novogene_ref.validation.tsv
-      "${execute_args[@]}"
-    )
-    ;;
+        cmd=(
+        norad validate star-index
+        --scope-id novogene_ref
+        --index-dir refs/novogene_star_index
+        --reference-fasta refs/novogene_ref/genome.fa
+        --reference-gtf refs/novogene_ref/genome.gtf
+        --parameter-path-base .
+        --expected-sjdb-overhang 149
+        --output results/qc/validation/00a/novogene_ref.validation.tsv
+        "${execute_args[@]}"
+        )
+        ;;
 
     00b)
         mkdir -p results/qc/validation/00b
@@ -56,11 +56,23 @@ case "$STEP" in
         "${execute_args[@]}"
         )
         ;;
+    00c)
+        mkdir -p results/qc/validation/00c
+        cmd=(
+            norad validate fasta-sidecars
+            --scope-id novogene_ref
+            --reference-fasta refs/novogene_ref/genome.fa
+            --reference-fai refs/novogene_ref/genome.fa.fai
+            --reference-dict refs/novogene_ref/genome.dict
+            --output results/qc/validation/00c/novogene_ref.validation.tsv
+            "${execute_args[@]}"
+        )
+        ;;
 
-  *)
-    echo "ERROR: unsupported validation step: $STEP" >&2
-    exit 2
-    ;;
+    *)
+        echo "ERROR: unsupported validation step: $STEP" >&2
+        exit 2
+        ;;
 esac
 
 echo "Job ID: ${SLURM_JOB_ID:-none}"

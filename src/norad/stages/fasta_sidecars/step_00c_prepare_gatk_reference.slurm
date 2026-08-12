@@ -12,13 +12,21 @@
 # Defaults run in dry-run mode. Set EXECUTE=1 explicitly after inspecting the
 # dry-run log to create missing shared reference sidecars.
 set -euo pipefail
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# shellcheck source=../../libraries/argument_parsing.sh
-source "$script_dir/../../libraries/argument_parsing.sh"
-
-export TMPDIR="${TMPDIR:-/tmp}"
 
 cd "${SLURM_SUBMIT_DIR:-$PWD}"
+
+# Resolve repository-owned helpers from the submitted checkout rather than the
+# SLURM spool copy of this script.
+# shellcheck source=../../libraries/argument_parsing.sh
+source "src/norad/libraries/argument_parsing.sh"
+
+# Load cluster-specific runtime names from the checkout's site configuration.
+# shellcheck disable=SC1091
+source "${NORAD_SITE_CONFIG:-configs/sites/csu.env}"
+
+: "${SAMTOOLS_MODULE:?SAMTOOLS_MODULE is required in the site config}"
+
+export TMPDIR="${NORAD_TMPDIR:-/tmp}"
 
 REFERENCE_FASTA="${REFERENCE_FASTA:-refs/novogene_ref/genome.fa}"
 SAMTOOLS_BIN="${SAMTOOLS_BIN_OVERRIDE:-/cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools}"
@@ -57,9 +65,8 @@ echo "Execute mode: $EXECUTE"
 echo "Loaded modules before reference-prep setup:"
 module list 2>&1 || true
 
-# Direct ADAM paths are passed to the script, but loading samtools keeps the
-# module context visible in logs when the module system is available.
-module load samtools/1.19.2 || true
+# Load the site-declared samtools runtime required by reference preparation.
+module load "$SAMTOOLS_MODULE"
 
 echo "Loaded modules after reference-prep setup:"
 module list 2>&1 || true

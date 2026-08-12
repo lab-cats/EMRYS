@@ -231,6 +231,12 @@ printf 'Running syntax checks...\n'
 bash -n "$SCRIPT"
 bash -n "$JOB"
 
+assert_contains "$JOB" 'export TMPDIR="${NORAD_TMPDIR:-/tmp}"'
+assert_not_contains "$JOB" 'export TMPDIR="${TMPDIR:-/tmp}"'
+assert_contains "$JOB" 'source "${NORAD_SITE_CONFIG:-configs/sites/csu.env}"'
+assert_contains "$JOB" 'module load "$SAMTOOLS_MODULE"'
+assert_not_contains "$JOB" 'module load "$JAVA_MODULE"'
+
 printf 'Running help check...\n'
 help_output="$tmp_dir/help.out"
 bash "$SCRIPT" --help >"$help_output"
@@ -445,6 +451,30 @@ assert_not_exists "$partial_dict.tmp.$partial_run_token"
 assert_not_exists "$partial_fasta.tmp.$partial_run_token.faidx_input"
 assert_not_exists "$partial_fasta.tmp.$partial_run_token.faidx_input.fai"
 assert_contains "$partial_output" "controlled final DICT publication failure"
+
+printf 'Running SLURM spool-copy wrapper check...\n'
+spool_dir="$tmp_dir/slurm-spool"
+mkdir -p "$spool_dir"
+spool_job="$spool_dir/slurm_script"
+cp "$JOB" "$spool_job"
+
+spool_output="$tmp_dir/slurm-spool.out"
+set +e
+SLURM_SUBMIT_DIR="$REPO_ROOT" \
+REFERENCE_FASTA="$reference_fasta" \
+SAMTOOLS_BIN_OVERRIDE="$fake_bin/samtools" \
+GATK_BIN_OVERRIDE="$fake_bin/gatk" \
+JAVA_BIN_OVERRIDE="$fake_bin/java" \
+bash "$spool_job" >"$spool_output" 2>&1
+spool_status=$?
+set -e
+
+if [[ "$spool_status" -ne 0 ]]; then
+    cat "$spool_output" >&2
+    fail "SLURM spool-copy wrapper exited $spool_status, expected 0"
+fi
+
+assert_contains "$spool_output" "Step 00c completed in dry-run mode"
 
 printf 'Running stale Step 05 path check...\n'
 stale_output="$tmp_dir/stale.out"
