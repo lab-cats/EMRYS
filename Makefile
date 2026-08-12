@@ -11,8 +11,24 @@ VALIDATION_JOBS ?= 3
 VALIDATION_PYTHON_WORKERS ?= 2
 VALIDATION_ARGS ?=
 DEMO_REPORT_ROOT ?= $(CURDIR)/results/demo-report-jinja
+VALIDATION_DIRS := \
+	results/qc/validation/00a \
+	results/qc/validation/00b \
+	results/qc/validation/00c \
+	results/qc/validation/01 \
+	results/qc/validation/02 \
+	results/qc/validation/03 \
+	results/qc/validation/04 \
+	results/qc/validation/05 \
+	results/qc/validation/06 \
+	results/qc/validation/07 \
+	results/qc/validation/08 \
+	results/qc/validation/09
 
-.PHONY: test documentation-check shell-test validation-shell-contracts validation-shell-slurm validation-wheel-smoke real-r-test r-restore r-check local-real-r-test report-test demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validation-guarded-r validation-static validate smoke lint all-checks
+.PHONY: setup test documentation-check shell-test validation-shell-contracts validation-shell-slurm validation-wheel-smoke real-r-test r-restore r-check local-real-r-test report-test demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validation-guarded-r validation-static validate smoke lint all-checks
+
+setup:
+	mkdir -p logs $(VALIDATION_DIRS)
 
 test:
 	"$(REPORT_PYTHON_BIN)" -m pytest
