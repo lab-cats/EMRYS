@@ -47,8 +47,37 @@ evidence. Dependency restoration, Git/documentation tooling, quality gates,
 and project environments remain repository controls rather than scientific
 workflow domains.
 
-Future YAML intake, orchestration, logging, report profiles, analysis modules,
-public acquisition, packaging, and optional-success policy remain designs, not
-current architecture. Their concise boundary is
+## Select a local-first orchestration boundary
+
+The first workflow control plane uses Snakemake's local executor because the
+existing semantic owners already expose the scientific operations and artifact
+edges that a general-purpose workflow engine should schedule. NORAD therefore
+does not build a second scheduler, stage registry, scientific implementation,
+or recovery system. One fixed profile is easier to inspect and prove than a
+generic extension surface before a second real workflow exists.
+
+Human YAML remains concise while ordered scientific records stay in TSV. A
+normalizer resolves and hashes explicit inputs into canonical JSON so formatting
+and caller working directory cannot determine run identity. The complete
+execution contract remains distinct from the existing reporting run contract:
+reporting is a downstream projection and cannot silently become lifecycle
+authority.
+
+Owner validation is evidence production rather than a process-level Boolean;
+several validators intentionally publish `status=fail` with exit zero. Each
+workflow task must consequently parse the persisted report and publish its own
+content-bound verified record only after every row passes. This record is a
+local scheduling/reuse boundary, not a scientific or cluster promotion.
+
+Local execution precedes site execution so workflow semantics can be proven
+without mixing CSU modules, storage, accounting, or scheduler policy into the
+scientific graph. SLURM and the possible Linux VM remain deferred rather than
+rejected. The decision-complete lifecycle and resume rules are in
+[`ORCHESTRATION_CONTRACT.md`](../ORCHESTRATION_CONTRACT.md); owner admission
+gaps remain in [`ORCHESTRATION_READINESS.md`](../ORCHESTRATION_READINESS.md).
+
+Logging, report profiles, analysis modules, public acquisition, packaging,
+site profiles, and optional-success policy remain designs, not current
+architecture. Their concise boundary is
 [`FUTURE_ARCHITECTURE.md`](../../architecture/FUTURE_ARCHITECTURE.md); unresolved
 choices remain in [`QUESTIONS.md`](../QUESTIONS.md).

@@ -7,12 +7,15 @@ relation, and worktree contents directly from Git. Use
 acceptance, [`RUNBOOK.md`](RUNBOOK.md) for commands, and
 [`docs/history`](../history/) for frozen delivery records.
 
-No successor package is selected.
+No Campaign B implementation package is selected. The local-first B0
+architecture is persisted in the design contract and readiness register; it
+adds no executable workflow or runtime evidence.
 
 ## Evidence boundary
 
 | Surface | Current evidence ceiling |
 | --- | --- |
+| Local-pilot orchestration | B0 defines the future source-checkout-bound Snakemake local-executor lifecycle and owner admission gaps. No request schema, normalizer, rule, state record, CLI, synthetic dataset, or science-tool run is implemented. |
 | Physical ownership | Pipeline stages, neutral contracts/libraries, reporting, and evidence helpers occupy their allowed homes. This is local/static topology evidence, not new runtime or cluster proof. |
 | Steps `00a`–`06` | Earlier production executions remain cluster-proven; that evidence predates physical relocation. |
 | Step `07` | Locally fixture/mock-bcftools tested; no real-bcftools or cluster proof. |
@@ -106,6 +109,7 @@ applicable owner `README.md` or `CONTRACT.md`.
 
 ## Immediate resume point
 
-Any new package requires fresh user direction. Dependency mutation,
-destructive cleanup, runtime or cluster execution, scientific review, evidence
+Review the B0 orchestration contract and owner-readiness dispositions before
+selecting one implementation package. Dependency mutation, destructive
+cleanup, real-runtime or cluster execution, scientific review, evidence
 promotion, and biological interpretation remain separate scopes.

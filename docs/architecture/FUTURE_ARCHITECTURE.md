@@ -1,8 +1,11 @@
 # Future architecture
 
 This file records unimplemented capability boundaries. It is a backlog guard,
-not current functionality, authorization, roadmap order, or evidence. Current
-system views are organized by the [architecture index](README.md); exact open
+not current functionality, authorization, roadmap order, or evidence. The
+accepted local-first design is now owned by the
+[`ORCHESTRATION_CONTRACT`](../design/ORCHESTRATION_CONTRACT.md) and its
+[readiness register](../design/ORCHESTRATION_READINESS.md); current system views
+are organized by the [architecture index](README.md), and exact remaining open
 choices remain in [`QUESTIONS.md`](../design/QUESTIONS.md).
 
 ## Principles
@@ -12,8 +15,8 @@ choices remain in [`QUESTIONS.md`](../design/QUESTIONS.md).
 - Functional owners remain independently understandable and testable; shared
   code follows the current dependency rules in
   [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
-- Run, attempt, scheduler, failure, rollback, and recovery state should remain
-  inspectable without a special service.
+- Run, workflow-attempt, task, failure, rollback, and recovery state remains
+  filesystem-first and inspectable without a special service.
 - Inputs, dependencies, cleanup, repair, publication, and evidence promotion
   are never implicit.
 - Local fixtures, real runtime, cluster execution, scientific review, and
@@ -25,8 +28,9 @@ choices remain in [`QUESTIONS.md`](../design/QUESTIONS.md).
 
 | Capability | Preserved boundary | Not decided or implemented |
 | --- | --- | --- |
-| YAML+TSV intake | A versioned request may reference the explicit sample TSV; changed inputs or policy create a new immutable run while retries create attempts. Raw inputs remain stationary. | Exact YAML fields, schemas, state paths, claim/promotion protocol, resume, archival, and optional-success rules. |
-| Orchestration | Coordinate only declared DAGs, contracts, state, scheduler submissions, resume, and requested reports. Do not own scientific algorithms or install dependencies. | Engine, state layout, scheduler adapter, profiles, and public interface. |
+| Local YAML+TSV lifecycle | The accepted contract uses one operator-authored YAML request, ordered TSV manifests, stationary content-hashed inputs, a canonical JSON execution contract, deterministic run identity, and immutable workflow attempts. | Machine schemas, normalizer, public commands, and runtime evidence are not implemented. There is no version 1 request queue or watcher. |
+| Local orchestration | Snakemake's local executor coordinates one fixed CMH profile over public owner commands. Owner validators plus semantic all-pass checks publish content-bound verified task records; Snakemake metadata is not NORAD state. | Workflow assets, executor profile, completion records, inspection, and lifecycle adapter are not implemented. |
+| Site execution | Local profile semantics must remain separate from executor/site configuration and cluster evidence. | SLURM, a local VM, CSU profile, accounting, storage, modules, and scheduler-specific recovery remain deferred choices. |
 | Report profiles | Preserve explicit inputs, format-neutral semantics, static deterministic rendering, transactional publication, and no evidence promotion. | Science/comprehensive names, selector, field roster, default, and multi-profile transaction. |
 | Logging | Keep concise human output distinct from durable diagnostics; never alter computation, publication, recovery, evidence, or exits based on verbosity. | Controls, event schema, storage layout, stream policy, redaction, and scheduler integration. |
 | Analysis extensions | Require typed inputs/outputs, dependencies, validation, provenance, failure semantics, and explicit trust level. | Profile/module schema, loader, registration, custom-analysis trust, and optional outcome policy. |
@@ -36,15 +40,15 @@ choices remain in [`QUESTIONS.md`](../design/QUESTIONS.md).
 
 ## Projections
 
-- [`future_manifest_config_contracts.mmd`](diagrams/future_manifest_config_contracts.mmd)
-  illustrates the request/run/attempt distinction.
+- [`local_pilot_orchestration.mmd`](diagrams/local_pilot_orchestration.mmd)
+  illustrates the accepted request/run/task/attempt and completion boundaries.
 - [`future_modular_pipeline.mmd`](diagrams/future_modular_pipeline.mmd)
   illustrates typed preprocessing and analysis extension.
 - [`future_reporting_layer.mmd`](diagrams/future_reporting_layer.mmd)
   illustrates shared semantics across future report profiles.
 
 These projections do not create a schema, directory, command, package,
-orchestrator, runtime, report profile, or evidence state.
+workflow, runtime, report profile, or evidence state.
 
 ## Safety boundary
 

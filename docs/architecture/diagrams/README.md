@@ -14,7 +14,8 @@ Current-system views:
 
 Future-design views:
 
-- [`future_manifest_config_contracts.mmd`](future_manifest_config_contracts.mmd)
+- [`local_pilot_orchestration.mmd`](local_pilot_orchestration.mmd) — accepted
+  local-first request, execution, validation, failure, and completion design.
 - [`future_modular_pipeline.mmd`](future_modular_pipeline.mmd)
 - [`future_reporting_layer.mmd`](future_reporting_layer.mmd)
 

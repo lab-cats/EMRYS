@@ -15,7 +15,7 @@ selection, implementation, or publication authority.
 ## CLI-03A — Implement local-pilot control plane
 
 - **Kind:** actionable
-- **Blocked by:** `INTAKE-03A`, `PROFILE-03A`, `SETUP-03A`
+- **Blocked by:** `PROFILE-03A`
 - **Intent:** Provide a thin local command surface that orchestrates the approved pilot profile, request lifecycle, resume, and state inspection.
 - **Boundaries:** Dry-run by default; no hidden installation, private imports, SLURM execution, scientific reimplementation, or implicit state authority.
 
@@ -82,19 +82,12 @@ selection, implementation, or publication authority.
 - **Intent:** Version a gate catalog and content-bound validation receipts that permit reuse only after subject, gate, input, and environment equivalence is proved.
 - **Boundaries:** Do not redesign gates, promote evidence, or create a new authority; receipts record schema, gate digest, command, Git/input/environment identity, timestamps, per-check exits, and logs.
 
-## INTAKE-02E — Define YAML plus TSV run lifecycle
-
-- **Kind:** actionable
-- **Blocked by:** None
-- **Intent:** Specify the request YAML, sample-manifest TSV, normalized identity, attempt, claim, completion, and recovery lifecycle.
-- **Boundaries:** Claim atomically; mark success only after required tasks, validators, evidence, and report complete; preserve raw inputs and explicit authority.
-
 ## INTAKE-03A — Implement YAML plus TSV run lifecycle
 
 - **Kind:** actionable
-- **Blocked by:** `INTAKE-02E`
-- **Intent:** Implement the approved request and manifest lifecycle across ingestion, contracts, and orchestration owners.
-- **Boundaries:** No filename inference, raw-data movement, cluster execution, hidden installation, or ownership collapse.
+- **Blocked by:** None
+- **Intent:** Implement the canonical execution contract, request normalizer, reporting projection, workflow-attempt records, verified task records, and inspection state defined by the local-pilot orchestration contract.
+- **Boundaries:** No request queue, filename inference, raw-data movement, cluster execution, hidden installation, automatic recovery, or ownership collapse.
 
 ## LOG-03 — Build two-sink logging foundation
 
@@ -117,12 +110,19 @@ selection, implementation, or publication authority.
 - **Intent:** Publish a concise researcher journey from setup and request creation through pilot execution, inspection, failure, and resume.
 - **Boundaries:** Link canonical commands and proof-matched outputs; state local, runtime, cluster, scientific, and biological evidence limits explicitly.
 
-## PROFILE-03A — Materialize local-pilot workflow profile
+## ORCH-03A — Establish orchestration-ready owner boundaries
 
 - **Kind:** actionable
 - **Blocked by:** None
-- **Intent:** Materialize the current CMH pilot as one declarative profile over existing semantic stages and public runners.
-- **Boundaries:** No generic registry, new orchestrator, scientific change, hidden discovery, or state authority.
+- **Intent:** Resolve the owner-by-owner `harden` dispositions in the local-pilot readiness register through small public-command, failure, and recovery packages before workflow admission.
+- **Boundaries:** One functional owner per slice; preserve scientific methods and public contracts unless explicitly replaced; no Snakemake rules, centralized recovery, dependency installation, SLURM/VM work, or evidence promotion.
+
+## PROFILE-03A — Materialize local-pilot workflow profile
+
+- **Kind:** actionable
+- **Blocked by:** `INTAKE-03A`, `ORCH-03A`, `SETUP-03A`
+- **Intent:** Materialize the current CMH pilot as one static Snakemake local-executor profile over admitted public owners and the canonical lifecycle contracts.
+- **Boundaries:** No generic registry, custom scheduler, private imports, scientific change, hidden discovery, SLURM execution, or Snakemake state authority.
 
 ## REVIEW-UX-03 — Review usability plan
 

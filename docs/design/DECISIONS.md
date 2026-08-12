@@ -72,8 +72,21 @@ Detailed rationale: [`platform-direction.md`](decisions/platform-direction.md).
   equivalent reuse is proved and only to the narrowest neutral owner.
 - Keep repository controls, public starter inputs, and runtime product domains
   distinct. Source placement alone creates no installed package or evidence.
+- Use Snakemake's local executor for the first fixed CMH profile; it schedules
+  public owner commands but does not own science, validation meaning, recovery,
+  or evidence promotion.
+- Normalize one explicit YAML request plus ordered TSV manifests into a
+  content-bound canonical JSON execution contract. Keep that identity distinct
+  from the narrower existing reporting run contract.
+- Treat an owner task as reusable only after producer success, complete native
+  outputs, owner validation, and an explicit all-pass check of every validation
+  row. Snakemake metadata and output presence are never completion authority.
+- Keep Step `09c`, SLURM/VM/site execution, installed workflow assets, and
+  scientific or biological promotion outside the first local profile.
 
-Future intake, orchestration, logging, report profiles, acquisition, analysis
-extensions, and installable control-plane ideas remain explicitly
-unimplemented in [`FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md)
-and [`QUESTIONS.md`](QUESTIONS.md).
+The accepted but unimplemented local lifecycle is defined by
+[`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md). Logging, report
+profiles, site execution, acquisition, analysis extensions, and installable
+control-plane ideas remain unimplemented in
+[`FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md) and
+[`QUESTIONS.md`](QUESTIONS.md).

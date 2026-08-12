@@ -1,0 +1,64 @@
+flowchart TB
+    operator["Operator-authored YAML request"]
+    samples["Ordered sample TSV"]
+    partitions["Ordered partition TSV"]
+    stationary["Stationary FASTQ, FASTA, and GTF inputs"]
+
+    normalize["Validate, resolve, hash, and normalize"]
+    contract["Immutable canonical execution contract"]
+    runid["Deterministic run ID"]
+    reporting_contract["Explicit reporting-contract projection"]
+    inventory["Precomputed run-specific artifact inventory\nincluding explicit missing Step 09c expectations"]
+
+    profile["Fixed local CMH profile\nchecked against STAGE_MAP"]
+    attempt["New immutable workflow-attempt record"]
+    engine["Snakemake local executor\nscheduling only"]
+
+    subgraph task["One functional-owner task and scope"]
+        preflight["Residue and input preflight"]
+        producer["Public owner producer"]
+        validator["Public owner validator"]
+        allpass{"Every validation row passes?"}
+        verified["Atomic verified task record"]
+        preserved["Preserved native outputs, report,\nlocks, backups, and recovery evidence"]
+        preflight --> producer --> validator --> allpass
+        allpass -->|yes| verified
+        allpass -->|no| preserved
+        preflight -.->|blocked| preserved
+        producer -.->|fails| preserved
+        validator -.->|fails| preserved
+    end
+
+    products["Artifact index and canonical run summary"]
+    barriers["Declared sample, partition, and profile barriers"]
+    report["Self-contained Jinja HTML report"]
+    complete["Workflow-attempt receipt published last\nlocal_pipeline_complete"]
+    resume{"Clean task boundary?"}
+    resumable["New workflow attempt may resume"]
+    blocked["Blocked for owner-local recovery"]
+
+    operator --> normalize
+    samples --> normalize
+    partitions --> normalize
+    stationary --> normalize
+    normalize --> contract --> runid
+    contract --> reporting_contract
+    contract --> inventory
+    contract --> profile
+    runid --> attempt
+    profile --> attempt --> engine --> preflight
+    verified --> barriers --> products
+    reporting_contract --> products
+    inventory --> products
+    products --> report --> complete
+    preserved --> resume
+    resume -->|yes| resumable --> attempt
+    resume -->|no or ambiguous| blocked
+
+    snakemake_state[".snakemake metadata\ndisposable, never NORAD authority"]
+    review["Step 09c scientific review\nseparate explicit post-run operation"]
+    slurm["SLURM, VM, and CSU profiles\nexplicitly deferred"]
+
+    engine -.-> snakemake_state
+    complete -.->|does not imply| review
+    engine -.->|not in version 1| slurm

@@ -11,7 +11,8 @@ with the relevant child and functional owner.
 | Which public programs, jobs, validators, and tests exist? | [`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md) |
 | What are the semantic identities and artifact edges? | [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) |
 | Which source dependencies and shared seams are allowed? | [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) |
-| What remains unimplemented? | [`FUTURE_ARCHITECTURE.md`](FUTURE_ARCHITECTURE.md) and its three future diagrams |
+| How is the unimplemented local pilot designed? | [`ORCHESTRATION_CONTRACT.md`](../design/ORCHESTRATION_CONTRACT.md), its [readiness register](../design/ORCHESTRATION_READINESS.md), and [`local_pilot_orchestration.mmd`](diagrams/local_pilot_orchestration.mmd) |
+| What else remains unimplemented? | [`FUTURE_ARCHITECTURE.md`](FUTURE_ARCHITECTURE.md) and its future diagrams |
 | What are the exact local interfaces and defects? | The applicable owner `README.md` and `CONTRACT.md` |
 
 The detailed current system, user pipeline, reliability, and future projections
