@@ -1,4 +1,4 @@
-"""Contract tests for artifact-schema-v1 schemas, fixtures, and inventory."""
+"""Contract tests for the version-spanning artifact schema registry."""
 
 from __future__ import annotations
 
