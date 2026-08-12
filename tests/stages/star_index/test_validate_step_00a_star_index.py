@@ -43,7 +43,11 @@ def build_validation_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
     (index / "chrName.txt").write_text("1\nMT\n", encoding="utf-8")
     (index / "chrLength.txt").write_text("4\n2\n", encoding="utf-8")
     (index / "genomeParameters.txt").write_text(
-        f"genomeFastaFiles {fasta}\nsjdbGTFfile {gtf}\nsjdbOverhang 149\n",
+        "### STAR --runMode genomeGenerate\n"
+        "### GstrandBit 32\n"
+        f"genomeFastaFiles {fasta}\n"
+        f"sjdbGTFfile {gtf}\n"
+        "sjdbOverhang 149\n",
         encoding="utf-8",
     )
     output_dir = tmp_path / "results"

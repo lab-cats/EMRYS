@@ -91,7 +91,7 @@ def parse_parameters(path: Path) -> tuple[dict[str, list[str]], report.Snapshot]
     parsed: dict[str, list[str]] = {}
     for number, raw in enumerate(text.splitlines(), 1):
         fields = raw.split()
-        if not fields:
+        if not fields or fields[0] == "###":
             continue
         if len(fields) < 2:
             raise ValueError(f"STAR genomeParameters line {number} has no value")
