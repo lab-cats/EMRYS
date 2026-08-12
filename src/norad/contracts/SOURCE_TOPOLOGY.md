@@ -19,6 +19,7 @@ owns exact public programs, jobs, validators, and tests.
 | `evidence/` | Operational/scientific evidence collection and review packaging that does not become peer computation. |
 | `reporting/` | Artifact adaptation, canonical run summaries, projections, templates, styles, and static rendering. |
 | `ingestion/` | External-input admission and diagnostics; no implemented orchestration runner. |
+| `orchestration/` | Local-pilot request normalization, reporting projection, and task/lifecycle application policy; no scientific implementation. |
 
 Native Python, shell, R, SLURM, schema, style, template, and fixture assets stay
 with the owner whose behavior they implement. Root `configs/` remains the
@@ -66,6 +67,7 @@ coherent semantic package, not a mixture of old and final owners.
 | Step `08` contract | `contracts/scientific_evidence/step08.py` | Step `08`, Step `09`, Step `09c`, and artifact consumers share headers/vocabulary and input validation, not algorithms or publication. |
 | Step `09` contract | `contracts/scientific_evidence/step09.py` | Step `09`, Step `09c`, and artifact consumers share the public output contract, not CMH implementation or review policy. |
 | Review-package contract | `contracts/scientific_evidence/review_package.py` | Step `09c`, artifact indexing, and run-summary science share the public package roster/state reducer, not private evidence policy or recovery. |
+| Orchestration records | `contracts/orchestration/` | The local-pilot application and tests share closed request, profile, execution, attempt, task, and verified-record schemas plus canonical JSON; functional owners do not import it. |
 
 These are the complete approved neutral implementation seams. Similar names or
 two local helpers do not create sharing authority. Keep the first use local;
@@ -84,6 +86,7 @@ imported across peers.
 | `libraries/` | `contracts/` and lower neutral libraries in an acyclic chain | none | functional/application owners |
 | `stages/`, `analyses/`, `evidence/` | `contracts/`, approved `libraries/`, owner-local code | owner-local tools and peer artifacts through contracts | peer implementation, ingestion, or reporting implementation |
 | `ingestion/` | `contracts/`, approved `libraries/`, ingestion-local code | external inputs; emitted validated declarations | functional-owner implementation or execution |
+| `orchestration/` | `contracts/`, approved `libraries/`, orchestration-local code | public owner commands and declared artifacts only | peer-private implementation or scientific logic |
 | `reporting/` | `contracts/`, approved `libraries/`, reporting-local code | explicit public artifacts and summaries | functional-owner implementation, input discovery, or analysis execution |
 
 Cross-owner data flow follows the explicit edges in `STAGE_MAP.md`. No owner
@@ -97,7 +100,8 @@ Owner-specific public shell, Python, R, and SLURM entry points remain with their
 functional owner. The unreleased internal Python distribution packages only
 explicitly migrated import owners and their named resources; it does not imply
 portable repository-root semantics. Its installed `python -I -m norad` module
-interface contains only explicitly migrated owner routes and is not an
-orchestration engine, scheduler abstraction, descriptor loader, universal
+interface contains only explicitly migrated owner routes and the read-only
+semantic all-pass check. It is not an orchestration engine, scheduler
+abstraction, descriptor loader, universal
 transaction framework, or generic stage dispatcher. Those remain potential
 future capabilities, not current topology.

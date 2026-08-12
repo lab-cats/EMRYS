@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:norad:schema:orchestration:workflow-attempt:v1",
+  "title": "NORAD workflow attempt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "execution_contract_sha256",
+    "profile_sha256",
+    "workflow_attempt_id",
+    "supersedes_workflow_attempt_id",
+    "operation",
+    "created_at",
+    "request",
+    "request_label",
+    "authored_paths",
+    "normalizer",
+    "workspace",
+    "scratch",
+    "source_checkout",
+    "executor",
+    "host",
+    "process_id",
+    "owner_token",
+    "cores",
+    "required_tools"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "norad.workflow-attempt.v1"
+    },
+    "run_id": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/run_id"
+    },
+    "execution_contract_sha256": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/sha256"
+    },
+    "profile_sha256": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/sha256"
+    },
+    "workflow_attempt_id": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/workflow_attempt_id"
+    },
+    "supersedes_workflow_attempt_id": {
+      "oneOf": [
+        {
+          "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/workflow_attempt_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "operation": {
+      "enum": [
+        "execute",
+        "resume"
+      ]
+    },
+    "created_at": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/timestamp"
+    },
+    "request": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/file_snapshot"
+    },
+    "request_label": {
+      "oneOf": [
+        {
+          "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/non_empty_string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authored_paths": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request",
+        "sample_manifest",
+        "partition_manifest",
+        "reference_fasta",
+        "reference_gtf",
+        "analysis_policy"
+      ],
+      "properties": {
+        "request": {
+          "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/absolute_path"
+        },
+        "sample_manifest": {
+          "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/authored_path"
+        },
+        "partition_manifest": {
+          "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/authored_path"
+        },
+        "reference_fasta": {
+          "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/authored_path"
+        },
+        "reference_gtf": {
+          "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/authored_path"
+        },
+        "analysis_policy": {
+          "oneOf": [
+            {
+              "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/authored_path"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "normalizer": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/tool_identity"
+    },
+    "workspace": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/absolute_path"
+    },
+    "scratch": {
+      "oneOf": [
+        {
+          "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/absolute_path"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source_checkout": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/source_checkout"
+    },
+    "executor": {
+      "const": "local"
+    },
+    "host": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/non_empty_string"
+    },
+    "process_id": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "owner_token": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/safe_id"
+    },
+    "cores": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "required_tools": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/tool_identity"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "operation": {
+            "const": "execute"
+          }
+        },
+        "required": [
+          "operation"
+        ]
+      },
+      "then": {
+        "properties": {
+          "supersedes_workflow_attempt_id": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "supersedes_workflow_attempt_id": {
+            "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/workflow_attempt_id"
+          }
+        }
+      }
+    }
+  ]
+}

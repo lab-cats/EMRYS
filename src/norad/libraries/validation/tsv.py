@@ -62,20 +62,36 @@ def read_strict_tsv(
 ) -> tuple[tuple[str, ...], list[dict[str, str]]]:
     """Parse a validated path with NORAD's strict tabular diagnostics."""
     try:
-        with path.open("r", encoding="utf-8", newline="") as stream:
-            raw_rows = list(csv.reader(stream, delimiter="\t", strict=True))
-    except (OSError, UnicodeError, csv.Error) as exc:
+        data = path.read_bytes()
+    except OSError as exc:
         fail(f"Could not read {label} as UTF-8 TSV ({path}): {exc}")
+    return parse_strict_tsv_bytes(label, data, path, expected_header, fail)
+
+
+def parse_strict_tsv_bytes(
+    label: str,
+    data: bytes,
+    source: str | Path,
+    expected_header: Sequence[str] | None,
+    fail: Callable[[str], NoReturn],
+) -> tuple[tuple[str, ...], list[dict[str, str]]]:
+    """Parse exact admitted UTF-8 TSV bytes without reopening their pathname."""
+    source_label = str(source)
+    try:
+        stream = StringIO(data.decode("utf-8"), newline="")
+        raw_rows = list(csv.reader(stream, delimiter="\t", strict=True))
+    except (UnicodeError, csv.Error) as exc:
+        fail(f"Could not read {label} as UTF-8 TSV ({source_label}): {exc}")
     if not raw_rows:
-        fail(f"{label} is empty: {path}")
+        fail(f"{label} is empty: {source_label}")
     header = tuple(raw_rows[0])
     if any(not column for column in header):
-        fail(f"{label} contains an empty header field: {path}")
+        fail(f"{label} contains an empty header field: {source_label}")
     if len(header) != len(set(header)):
-        fail(f"{label} contains duplicate header fields: {path}")
+        fail(f"{label} contains duplicate header fields: {source_label}")
     if expected_header is not None and header != tuple(expected_header):
         fail(
-            f"{label} header is invalid: {path}\n"
+            f"{label} header is invalid: {source_label}\n"
             f"Expected: {' | '.join(expected_header)}\n"
             f"Observed: {' | '.join(header)}"
         )
@@ -84,7 +100,7 @@ def read_strict_tsv(
         if len(values) != len(header):
             fail(
                 f"{label} row {index} has {len(values)} fields; "
-                f"expected {len(header)}: {path}"
+                f"expected {len(header)}: {source_label}"
             )
         rows.append(dict(zip(header, values, strict=True)))
     return header, rows

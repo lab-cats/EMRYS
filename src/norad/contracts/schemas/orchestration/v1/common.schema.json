@@ -1,0 +1,394 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:norad:schema:orchestration:common:v1",
+  "title": "NORAD orchestration common definitions v1",
+  "$defs": {
+    "safe_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "git_commit": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "non_empty_string": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!\\s)(?:.|\\n)*(?<!\\s)$"
+    },
+    "authored_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!\\s)(?!.*\\s$)(?!~)(?!.*//)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[$\\{\\}])(?!.*[*?\\[\\]\\u0000\\r\\n]).+$"
+    },
+    "absolute_path": {
+      "type": "string",
+      "minLength": 2,
+      "pattern": "^/(?!.*//)(?!.*\\\\)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[$\\{\\}])(?!.*[*?\\[\\]\\u0000\\r\\n]).+$"
+    },
+    "relative_contract_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!\\s)(?!.*\\s$)(?!/)(?!.*//)(?!.*\\/$)(?!\\.{1,2}(?:/|$))(?!.*\\/\\.{1,2}(?:/|$))(?!.*[$\\{\\}])(?!.*[*?\\[\\]\\\\\\u0000\\r\\n]).+$"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run-[0-9a-f]{64}$"
+    },
+    "workflow_attempt_id": {
+      "type": "string",
+      "pattern": "^workflow-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{32}$"
+    },
+    "task_attempt_id": {
+      "type": "string",
+      "pattern": "^task-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{32}$"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "file_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "size_bytes",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/absolute_path"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "record_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/relative_contract_path"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "profile_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "profile_version",
+        "profile_sha256"
+      ],
+      "properties": {
+        "profile_id": {
+          "$ref": "#/$defs/safe_id"
+        },
+        "profile_version": {
+          "$ref": "#/$defs/safe_id"
+        },
+        "profile_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sample_id",
+        "condition",
+        "replicate",
+        "strandedness",
+        "r1_fastq",
+        "r2_fastq"
+      ],
+      "properties": {
+        "sample_id": {
+          "$ref": "#/$defs/safe_id"
+        },
+        "condition": {
+          "$ref": "#/$defs/safe_id"
+        },
+        "replicate": {
+          "$ref": "#/$defs/safe_id"
+        },
+        "strandedness": {
+          "enum": [
+            "forward",
+            "reverse",
+            "unstranded",
+            "unknown"
+          ]
+        },
+        "r1_fastq": {
+          "$ref": "#/$defs/file_snapshot"
+        },
+        "r2_fastq": {
+          "$ref": "#/$defs/file_snapshot"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "sample_set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest",
+        "rows"
+      ],
+      "properties": {
+        "manifest": {
+          "$ref": "#/$defs/file_snapshot"
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/sample"
+          }
+        }
+      }
+    },
+    "partition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "partition_id",
+        "selector_type",
+        "selector_value",
+        "selector_file"
+      ],
+      "properties": {
+        "partition_id": {
+          "$ref": "#/$defs/safe_id"
+        },
+        "selector_type": {
+          "enum": [
+            "region",
+            "regions_file"
+          ]
+        },
+        "selector_value": {
+          "$ref": "#/$defs/non_empty_string"
+        },
+        "selector_file": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/file_snapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "selector_type": {
+                "const": "region"
+              }
+            },
+            "required": [
+              "selector_type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "selector_file": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "selector_file": {
+                "$ref": "#/$defs/file_snapshot"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "partition_set": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest",
+        "rows"
+      ],
+      "properties": {
+        "manifest": {
+          "$ref": "#/$defs/file_snapshot"
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/partition"
+          }
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope_type",
+        "scope_id"
+      ],
+      "properties": {
+        "scope_type": {
+          "enum": [
+            "reference",
+            "sample",
+            "cohort_partition",
+            "cohort",
+            "analysis",
+            "reporting"
+          ]
+        },
+        "scope_id": {
+          "$ref": "#/$defs/safe_id"
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "argv",
+        "exit_code"
+      ],
+      "properties": {
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/non_empty_string"
+          }
+        },
+        "exit_code": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        }
+      }
+    },
+    "successful_command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "argv",
+        "exit_code"
+      ],
+      "properties": {
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/non_empty_string"
+          }
+        },
+        "exit_code": {
+          "const": 0
+        }
+      }
+    },
+    "nullable_command": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/command"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "bound_file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "role",
+        "path",
+        "size_bytes",
+        "sha256"
+      ],
+      "properties": {
+        "role": {
+          "$ref": "#/$defs/safe_id"
+        },
+        "path": {
+          "$ref": "#/$defs/absolute_path"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "tool_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version",
+        "path"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/safe_id"
+        },
+        "version": {
+          "$ref": "#/$defs/non_empty_string"
+        },
+        "path": {
+          "$ref": "#/$defs/absolute_path"
+        }
+      }
+    },
+    "source_checkout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "commit",
+        "clean"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/absolute_path"
+        },
+        "commit": {
+          "$ref": "#/$defs/git_commit"
+        },
+        "clean": {
+          "const": true
+        }
+      }
+    }
+  }
+}

@@ -12,7 +12,7 @@ from typing import TypeVar
 
 from norad.libraries import validation as report
 from norad.libraries.alignments.orientation import ORIENTATIONS
-from norad.libraries.validation.tsv import read_strict_tsv
+from norad.libraries.validation.tsv import parse_strict_tsv_bytes, read_strict_tsv
 
 __all__ = (
     "ContractError",
@@ -39,7 +39,9 @@ __all__ = (
     "validate_enum",
     "validate_hash",
     "validate_sample_manifest",
+    "validate_sample_manifest_bytes",
     "validate_partition_manifest",
+    "validate_partition_manifest_bytes",
     "validate_safe_id",
     "validate_step08_inputs",
     "validate_step08_sites",
@@ -262,6 +264,22 @@ def validate_sample_manifest(
     value: str | Path,
 ) -> tuple[Table, list[str], list[dict[str, str]]]:
     table = read_tsv("Sample manifest", value)
+    return _validate_sample_manifest_table(table)
+
+
+def validate_sample_manifest_bytes(
+    data: bytes,
+    source: str | Path,
+) -> tuple[Table, list[str], list[dict[str, str]]]:
+    """Validate exact admitted sample-manifest bytes without reopening a path."""
+    path = Path(source)
+    header, rows = parse_strict_tsv_bytes("Sample manifest", data, path, None, fail)
+    return _validate_sample_manifest_table(Table(header=header, rows=rows, path=path))
+
+
+def _validate_sample_manifest_table(
+    table: Table,
+) -> tuple[Table, list[str], list[dict[str, str]]]:
     if table.header not in (SAMPLE_MANIFEST_REQUIRED, SAMPLE_MANIFEST_ALLOWED):
         fail(
             "Sample manifest must have the exact Step 09 schema, with optional "
@@ -290,6 +308,21 @@ def validate_sample_manifest(
 
 def validate_partition_manifest(value: str | Path) -> Table:
     table = read_tsv("Partition manifest", value, PARTITION_MANIFEST_HEADER)
+    return _validate_partition_manifest_table(table)
+
+
+def validate_partition_manifest_bytes(data: bytes, source: str | Path) -> Table:
+    """Validate exact admitted partition-manifest bytes without reopening a path."""
+    path = Path(source)
+    header, rows = parse_strict_tsv_bytes(
+        "Partition manifest", data, path, PARTITION_MANIFEST_HEADER, fail
+    )
+    return _validate_partition_manifest_table(
+        Table(header=header, rows=rows, path=path)
+    )
+
+
+def _validate_partition_manifest_table(table: Table) -> Table:
     if not table.rows:
         fail("Partition manifest contains no partition rows.")
     ensure_unique(table.rows, "partition_id", "Partition manifest")

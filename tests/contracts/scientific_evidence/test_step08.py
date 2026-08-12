@@ -263,7 +263,9 @@ def test_declared_public_api_matches_supported_owner_surface() -> None:
         "validate_enum",
         "validate_hash",
         "validate_sample_manifest",
+        "validate_sample_manifest_bytes",
         "validate_partition_manifest",
+        "validate_partition_manifest_bytes",
         "validate_safe_id",
         "validate_step08_inputs",
         "validate_step08_sites",
@@ -327,6 +329,44 @@ def test_optional_manifest_and_allowed_vocabularies(tmp_path: Path) -> None:
         STEP08.validate_sample_manifest(fixture.sample_manifest)
     replace_cell(fixture.partition_manifest, 0, "selector_type", "regions_file")
     STEP08.validate_partition_manifest(fixture.partition_manifest)
+
+
+def test_manifest_byte_apis_validate_exact_bytes_without_reopening_source(
+    tmp_path: Path,
+) -> None:
+    fixture = build_valid(tmp_path)
+    sample_bytes = fixture.sample_manifest.read_bytes()
+    partition_bytes = fixture.partition_manifest.read_bytes()
+    fixture.sample_manifest.unlink()
+    fixture.partition_manifest.write_bytes(b"not\ta\tpartition\n")
+
+    sample_table, sample_ids, rows = STEP08.validate_sample_manifest_bytes(
+        sample_bytes,
+        fixture.sample_manifest,
+    )
+    partition_table = STEP08.validate_partition_manifest_bytes(
+        partition_bytes,
+        fixture.partition_manifest,
+    )
+
+    assert sample_table.path == fixture.sample_manifest
+    assert sample_ids == ["S"]
+    assert rows == sample_table.rows
+    assert partition_table.path == fixture.partition_manifest
+    assert partition_table.rows == [
+        {
+            "partition_id": "p1",
+            "selector_type": "region",
+            "selector_value": "1",
+        }
+    ]
+
+
+def test_manifest_byte_apis_preserve_strict_utf8_diagnostics(tmp_path: Path) -> None:
+    source = tmp_path / "admitted.tsv"
+
+    with pytest.raises(STEP08.ContractError, match="Could not read Sample manifest"):
+        STEP08.validate_sample_manifest_bytes(b"\xff", source)
 
 
 def test_private_parsing_closure_preserves_exact_edges(tmp_path: Path) -> None:

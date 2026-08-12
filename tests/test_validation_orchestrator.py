@@ -63,6 +63,7 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     )
     assert set(configuration["project"]["dependencies"]) == {
         "Jinja2==3.1.6",
+        "PyYAML==6.0.3",
         "jsonschema>=4.18.0",
         "referencing>=0.28.4",
     }
@@ -73,6 +74,9 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         "ruff",
         "vulture",
     }
+    assert configuration["dependency-groups"]["workflow"] == [
+        "snakemake==9.25.1"
+    ]
     assert configuration["build-system"]["requires"] == ["setuptools==80.9.0"]
     assert not (REPO_ROOT / "requirements.txt").exists()
     assert not (REPO_ROOT / "requirements-dev.txt").exists()

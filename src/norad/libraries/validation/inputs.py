@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import errno
+import os
 import stat
 import subprocess
 from collections.abc import Mapping
@@ -51,16 +53,68 @@ def stable_text(path: Path, label: str) -> tuple[str, Snapshot]:
 
 
 def read_bytes(path: Path, label: str) -> bytes:
-    """Read file bytes while validating unchanged regular input snapshots."""
-    before = regular_snapshot(path, label)
+    """Read exact bytes through a stable, no-follow descriptor binding."""
+
+    no_follow = getattr(os, "O_NOFOLLOW", None)
+    if no_follow is None:
+        fail(f"{label} cannot be admitted without symbolic-link protection: {path}")
+    flags = os.O_RDONLY | no_follow | getattr(os, "O_NONBLOCK", 0)
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    descriptor: int | None = None
     try:
-        data = path.read_bytes()
+        descriptor = os.open(path, flags)
+        before = os.fstat(descriptor)
+        if stat.S_ISLNK(before.st_mode) or not stat.S_ISREG(before.st_mode):
+            fail(f"{label} must be a regular non-symlink file: {path}")
+        if before.st_size == 0:
+            fail(f"{label} must be nonempty: {path}")
+        _require_descriptor_path_binding(path, before, label)
+        chunks: list[bytes] = []
+        while chunk := os.read(descriptor, 1024 * 1024):
+            chunks.append(chunk)
+        after = os.fstat(descriptor)
+        _require_descriptor_path_binding(path, after, label)
     except OSError as exc:
+        if exc.errno == errno.ELOOP:
+            fail(f"{label} must be a regular non-symlink file: {path}")
         fail(f"{label} is unavailable: {path}: {exc}")
-    after = regular_snapshot(path, label)
-    if before != after:
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+    data = b"".join(chunks)
+    if (
+        _stable_file_state(before) != _stable_file_state(after)
+        or len(data) != before.st_size
+    ):
         fail(f"{label} changed while read: {path}")
     return data
+
+
+def _stable_file_state(value: os.stat_result) -> tuple[int, ...]:
+    return (
+        value.st_dev,
+        value.st_ino,
+        value.st_mode,
+        value.st_size,
+        value.st_mtime_ns,
+        value.st_ctime_ns,
+    )
+
+
+def _require_descriptor_path_binding(
+    path: Path,
+    descriptor_state: os.stat_result,
+    label: str,
+) -> None:
+    try:
+        path_state = os.stat(path, follow_symlinks=False)
+    except OSError as exc:
+        fail(f"{label} pathname changed while read: {path}: {exc}")
+    if stat.S_ISLNK(path_state.st_mode) or (
+        path_state.st_dev,
+        path_state.st_ino,
+    ) != (descriptor_state.st_dev, descriptor_state.st_ino):
+        fail(f"{label} pathname changed while read: {path}")
 
 
 def require_unchanged(snapshots: dict[Path, Snapshot]) -> None:

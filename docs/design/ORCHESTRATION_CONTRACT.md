@@ -1,10 +1,11 @@
 # Local-pilot orchestration contract
 
-This document is the binding design input for NORAD's first local Snakemake
-pilot. It defines lifecycle and authority before implementation; it does not
-claim that a request schema, workflow, state manager, or public run command
-exists. Current executable behavior remains with the applicable functional
-owner, and the exact semantic workflow identities and artifact edges remain in
+This document is the binding architecture for NORAD's first local Snakemake
+pilot. B2 implements its closed machine schemas, read-only request normalizer,
+reporting projection, and semantic all-pass checker. It does not claim that a
+fixed workflow profile, Snakemake graph, state publisher, lifecycle adapter, or
+public run command exists. Current executable behavior remains with the
+applicable functional owner, and exact semantic identities and artifact edges remain in
 [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md).
 
 The first implementation is deliberately source-checkout-bound and local. A
@@ -86,9 +87,9 @@ The authored YAML request carries only run intent and explicit references:
 - sample-manifest and partition-manifest paths;
 - reference FASTA and GTF paths;
 - cohort and primary-analysis identities; and
-- the complete Step `09` analysis policy or an explicit path to it.
+- the complete inline Step `09` analysis policy.
 
-Version 1 uses this closed top-level shape; B2 will encode it as JSON Schema
+Version 1 uses this closed top-level shape, encoded by the B2 request schema
 without adding discovery or extension fields:
 
 ```yaml
@@ -221,6 +222,14 @@ separately approved schema migration.
 The run-specific artifact inventory is also materialized deterministically
 from the admitted profile, samples, partitions, and declared output paths
 before compute. It is never discovered afterward by globbing the filesystem.
+Generated native-output paths are relative to the immutable run root. The
+stationary Step `00c` FASTA, FAI, and dictionary rows instead use normalized
+absolute external paths because that owner publishes sidecars beside the
+admitted FASTA. Reporting must therefore receive an explicit artifact source
+root distinct from the admitted source checkout: the run root resolves
+relative inventory paths, while checkout authority continues to bind producer
+and renderer code. A workflow may not force the operator workspace beneath the
+Git checkout to collapse those authorities.
 It retains the existing expected Step `09c` reporting rows even though Step
 `09c` is excluded from automatic execution. Their absent sources remain
 explicitly missing/incomplete in the artifact index, run summary, and report.
@@ -240,11 +249,16 @@ completion Boolean.
 | `execution_attempt_id` | Future application-log identity defined by [`LOGGING_CONTRACT.md`](LOGGING_CONTRACT.md) |
 | Scheduler job ID | Future executor correlation only |
 
+Workflow and task attempt IDs use
+`workflow-YYYYMMDDTHHMMSSZ-<32 lowercase hex>` and
+`task-YYYYMMDDTHHMMSSZ-<32 lowercase hex>` respectively. Their embedded UTC
+second matches the declared creation/start time and the suffix supplies 128
+random bits.
+
 These identities are never aliases. In particular, a workflow attempt is not
 an artifact attempt, owner run token, application-log attempt, PID, or future
-scheduler job. Workflow and task attempt IDs are opaque safe identifiers with
-UTC creation context plus at least 128 bits of randomness; they are never
-derived from a PID or used as scientific identity.
+scheduler job. They are never derived from a PID or used as scientific
+identity.
 
 ## Filesystem layout
 
@@ -255,7 +269,7 @@ One operator-selected workspace contains immutable run directories:
   contract/
     samples.tsv
     partitions.tsv
-    profile.yaml
+    profile.json
     normalized.json
     reference_contract.json
     primary_analysis_policy.json

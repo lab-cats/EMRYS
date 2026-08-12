@@ -47,6 +47,7 @@ NORAD_COMMANDS = (
         ("validate", "artifact-contracts"),
         "usage: norad validate artifact-contracts",
     ),
+    (("validate", "all-pass"), "usage: norad validate all-pass"),
     (
         ("assemble", "scientific-review-package"),
         "usage: norad assemble scientific-review-package",

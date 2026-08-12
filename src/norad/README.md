@@ -19,6 +19,8 @@ reviewed cutover.
 - [`evidence/`](evidence/) — evidence collection, reconciliation, and review
   packaging.
 - [`ingestion/`](ingestion/) — bounded external-input admission.
+- [`orchestration/`](orchestration/) — read-only local-pilot normalization,
+  reporting projection, and semantic all-pass admission.
 - [`reporting/`](reporting/) — artifact, run-summary, and static-report
   projections.
 

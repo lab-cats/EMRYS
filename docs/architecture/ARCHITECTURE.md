@@ -20,18 +20,21 @@ Current projections:
 
 All fourteen numbered workflow, analysis, and evidence owners occupy their
 functional homes under `src/norad/`. Sample-manifest admission, neutral
-contracts and libraries, reporting, and reference/runtime/storage evidence
-occupy separate cross-cutting owners. Numeric step labels are historical
-aliases rather than a complete execution order.
+contracts and libraries, reporting, local-pilot read-only intake, and
+reference/runtime/storage evidence occupy separate cross-cutting owners.
+Numeric step labels are historical aliases rather than a complete execution
+order.
 
-NORAD currently exposes owner-local commands and SLURM entry points; it has no
-implemented one-command pipeline orchestrator. Operators select the applicable
-entry point and supply its declared inputs. Deferred orchestration profiles do
-not change that boundary.
+NORAD currently exposes owner-local commands, SLURM entry points, and a
+read-only local-pilot normalizer/projection plus semantic validation command;
+it has no implemented one-command pipeline orchestrator. Operators select the
+applicable entry point and supply its declared inputs. Deferred orchestration
+profiles do not change that boundary.
 
 | Component group | Implemented owners | Principal inputs | Principal outputs |
 | --- | --- | --- | --- |
 | Input admission | `src/norad/ingestion/sample_manifest_admission/` | Explicit sample manifest and optional declared FASTQ paths | Schema/admission result and paired-FASTQ diagnostics |
+| Local-pilot intake | `src/norad/orchestration/local_pilot/` plus `src/norad/contracts/orchestration/` | Explicit YAML request, ordered TSV manifests, fixed-profile record, and declared input files | Canonical in-memory execution identity, deterministic reporting projection, and semantic all-pass evidence; no materialized run |
 | Reference preparation | Owners `00a`, `00b`, and `00c` under `src/norad/stages/` | Reference FASTA, GTF, and tool parameters | STAR index, BED12, and FASTA sidecars |
 | Per-sample processing and evidence | Owners `01`–`06` under `src/norad/stages/` plus evidence owners `02b` and `03` | Declared reads, references, and preceding owner artifacts | Aligned/canonical/duplicate-marked/split BAMs plus QC and orientation evidence |
 | Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owner `09` | Declared partitions, sample order, reference context, and upstream receipts | Cohort VCFs, annotated candidates, and paired-CMH ranked candidates |

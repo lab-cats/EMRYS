@@ -36,6 +36,7 @@ from norad.evidence.storage_inventory import (
 from norad.ingestion.sample_manifest_admission import (
     validator as manifest_command,
 )
+from norad.orchestration.local_pilot import all_pass as all_pass_validation_command
 from norad.stages.canonical_bam import validator as canonical_bam_validation_command
 from norad.stages.cohort_candidate_preprocessing import (
     validator as cohort_candidate_preprocessing_validation_command,
@@ -391,6 +392,12 @@ def build_parser() -> argparse.ArgumentParser:
         dest="validation",
         metavar="SUBJECT",
         required=True,
+    )
+    _add_validation_command(
+        validation_parsers,
+        name="all-pass",
+        help_text="Require every row in one owner-validation report to pass.",
+        command=all_pass_validation_command,
     )
     _add_validation_command(
         validation_parsers,

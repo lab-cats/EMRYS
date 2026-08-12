@@ -6,7 +6,7 @@ publication, or independent test oracles.
 
 | Public module | Responsibility |
 | --- | --- |
-| [`step08.py`](step08.py) | Direct owner of Step 08 headers, parsing, manifest validation, and table reconciliation. |
+| [`step08.py`](step08.py) | Direct owner of Step 08 headers, parsing, path- and exact-byte manifest validation, and table reconciliation. |
 | [`step09.py`](step09.py) | Direct owner of Step 09 headers, table reconciliation, scientific plot-PDF validation, and candidate/CMH-result semantics. |
 | [`review_package.py`](review_package.py) | Public Step 09c package roster, headers, vocabularies, and state reduction. |
 | [`computational_validation.py`](computational_validation.py) | Computational-validation evidence table contract. |
@@ -20,3 +20,7 @@ its API. Neither module imports or implements the Step 08 R algorithm or Step 09
 shell/R CMH algorithm, and independent oracle tests remain independent of
 production contract logic. Step 09 `validate_pdf` remains the
 scientific-analysis plot validator used by Step 09 validation and Step 09c.
+
+The `validate_sample_manifest_bytes` and `validate_partition_manifest_bytes`
+entry points validate already-admitted bytes and use the supplied path only as
+a diagnostic source label. They never reopen that pathname.

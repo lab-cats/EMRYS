@@ -17,10 +17,11 @@ from pathlib import Path
 from tests.reporting.fixtures.artifact_run_summary_v1 import build_fixture as FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-RUNTIME_DEPENDENCIES = {"jinja2", "jsonschema", "referencing"}
+RUNTIME_DEPENDENCIES = {"jinja2", "jsonschema", "pyyaml", "referencing"}
 RUNTIME_REQUIREMENT_SPECIFIERS = {
     "jinja2": "==3.1.6",
     "jsonschema": ">=4.18.0",
+    "pyyaml": "==6.0.3",
     "referencing": ">=0.28.4",
 }
 RESOURCE_PATHS = (
@@ -29,6 +30,16 @@ RESOURCE_PATHS = (
     "norad/contracts/schemas/artifacts/v2/report_receipt.schema.json",
     "norad/contracts/schemas/artifacts/v1/run_summary.schema.json",
     "norad/contracts/schemas/artifacts/v1/scientific_review_record.schema.json",
+    "norad/contracts/schemas/orchestration/v1/request.schema.json",
+    "norad/contracts/schemas/orchestration/v1/profile.schema.json",
+    "norad/contracts/schemas/orchestration/v1/execution.schema.json",
+    "norad/contracts/schemas/orchestration/v1/reference.schema.json",
+    "norad/contracts/schemas/orchestration/v1/policy.schema.json",
+    "norad/contracts/schemas/orchestration/v1/workflow_attempt.schema.json",
+    "norad/contracts/schemas/orchestration/v1/attempt_receipt.schema.json",
+    "norad/contracts/schemas/orchestration/v1/task_attempt.schema.json",
+    "norad/contracts/schemas/orchestration/v1/verified_task.schema.json",
+    "norad/contracts/schemas/orchestration/v1/common.schema.json",
     "norad/reporting/styles/run_report.css",
     "norad/reporting/templates/run_report.html.j2",
 )

@@ -21,7 +21,8 @@ paired-CMH-candidate-ranking, artifact-index, run-summary, and HTML-report build
 artifact-contract validation, reference-provenance reconciliation,
 runtime-availability and
 storage-inventory inspection, scientific-review-package assembly, plus
-GTF-to-BED12 conversion/validation and named schema/report resources.
+GTF-to-BED12 conversion/validation, semantic all-pass validation, and named
+schema/report resources.
 
 ## Start here
 

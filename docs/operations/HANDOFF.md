@@ -7,16 +7,18 @@ relation, and worktree contents directly from Git. Use
 acceptance, [`RUNBOOK.md`](RUNBOOK.md) for commands, and
 [`docs/history`](../history/) for frozen delivery records.
 
-Campaign B owner hardening (`B1a` through `B1c`) is implemented. The reference,
-sample, cohort, and analysis owners now expose explicit local, fail-closed
-workflow boundaries; no Snakemake rule or lifecycle contract is implemented
-yet.
+Campaign B owner hardening (`B1a` through `B1c`) and B2 intake/contracts are
+implemented. Owners expose explicit local, fail-closed workflow boundaries;
+the repository now has a locked workflow dependency group, closed machine
+schemas, read-only normalization/reporting projection, and a semantic all-pass
+command. No fixed profile, Snakemake rule, record publication, or lifecycle
+adapter is implemented yet.
 
 ## Evidence boundary
 
 | Surface | Current evidence ceiling |
 | --- | --- |
-| Local-pilot orchestration | B0 defines the source-checkout-bound Snakemake local-executor lifecycle. B1 adds direct public owner dry-run/no-clobber boundaries and focused fake-tool evidence. No request schema, normalizer, rule, state record, CLI, synthetic dataset, or real science-tool run is implemented. |
+| Local-pilot orchestration | B0 defines the source-checkout-bound lifecycle; B1 adds focused fake-tool owner boundaries; B2 adds schema-tested request/profile/execution/attempt/task records, deterministic read-only normalization/reporting projection, and semantic all-pass checking. No fixed profile, workflow rule, materialized state, public lifecycle CLI, synthetic science dataset, or real science-tool run exists. |
 | Physical ownership | Pipeline stages, neutral contracts/libraries, reporting, and evidence helpers occupy their allowed homes. This is local/static topology evidence, not new runtime or cluster proof. |
 | Steps `00a`–`06` | B1 owner boundaries are locally fake-tool/fixture tested; earlier production executions remain cluster-proven but predate physical relocation. No current real-tool local proof. |
 | Step `07` | B1 no-clobber and rollback boundaries are locally mock-bcftools tested; no real-bcftools or current cluster proof. |
@@ -112,9 +114,10 @@ applicable owner `README.md` or `CONTRACT.md`.
 
 ## Immediate resume point
 
-Implement B2 from the accepted orchestration contract: isolated `uv` workflow
-dependencies, versioned lifecycle schemas, deterministic request
-normalization/reporting projection, and the semantic all-pass checker. Do not
-add workflow rules until those boundaries pass independently. Destructive
-cleanup, real-runtime or cluster execution, scientific review, evidence
-promotion, and biological interpretation remain separate scopes.
+Implement B3 from the accepted orchestration contract: materialize the exact
+fixed local-CMH profile, prove its projection against `STAGE_MAP.md`, and use
+the pinned Snakemake CLI for dry-run plus reference, one-sample, and cohort
+test-double slices. Do not add the public lifecycle adapter or claim real
+science-tool execution. Destructive cleanup, real-runtime or cluster execution,
+scientific review, evidence promotion, and biological interpretation remain
+separate scopes.
