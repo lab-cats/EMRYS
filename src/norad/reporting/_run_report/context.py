@@ -9,6 +9,8 @@ import stat
 from importlib.resources import files
 from pathlib import Path
 
+from norad.reporting._artifact_index import api as artifact_index
+
 from .inputs import (
     _assert_snapshot,
     _explicit_path,
@@ -110,10 +112,15 @@ def _existing_outputs(
     return snapshots
 
 
-def prepare_context(arguments: argparse.Namespace) -> ReportContext:
+def prepare_context(
+    arguments: argparse.Namespace,
+    *,
+    source_checkout: artifact_index.SourceCheckout,
+) -> ReportContext:
+    source_root = source_checkout.root
     run_summary_path = _explicit_path(arguments.run_summary, "run-summary path")
     run_summary_snapshot = _snapshot_regular(run_summary_path, "run-summary document")
-    summary = _load_run_summary(run_summary_path)
+    summary = _load_run_summary(run_summary_path, source_root=source_root)
     _assert_snapshot(run_summary_snapshot, "run-summary document")
     run_id = summary["run_id"]
     expected_name = f"{run_id}.run_summary.json"
@@ -124,8 +131,27 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
         )
 
     tables = tuple(
-        _read_approved_table(record) for record in summary["approved_report_tables"]
+        _read_approved_table(record, source_root=source_root)
+        for record in summary["approved_report_tables"]
     )
+    try:
+        package_root = Path(__file__).resolve().parents[2]
+        producer_git_commit = (
+            artifact_index.get_git_commit(
+                source_root=source_root,
+                sanitize_git_routing=True,
+            )
+            if artifact_index.package_matches_checkout_head(
+                source_checkout=source_checkout,
+                package_root=package_root,
+            )
+            else "local_build"
+        )
+    except (
+        artifact_index.ArtifactIndexError,
+        artifact_index.SourceCheckoutError,
+    ) as exc:
+        _fail(str(exc))
     template_snapshot = _resource_snapshot(TEMPLATE_RESOURCE, "report Jinja template")
     css_snapshot = _resource_snapshot(CSS_RESOURCE, "report CSS resource")
     installed_jinja = importlib.metadata.version("Jinja2")
@@ -165,11 +191,13 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
         "css_path": f"norad.reporting/{CSS_RESOURCE}",
         "css_sha256": css_snapshot.sha256,
         "jinja_version": JINJA_VERSION,
+        "producer_git_commit": producer_git_commit,
         "renderer": PRODUCER,
         "renderer_version": PRODUCER_VERSION,
         "run_summary_path": str(run_summary_snapshot.path),
         "run_summary_sha256": run_summary_snapshot.sha256,
         "state_banner": SCIENCE_BANNERS[summary["science_status"]],
+        "source_checkout": str(source_root),
         "template_path": f"norad.reporting/{TEMPLATE_RESOURCE}",
         "template_sha256": template_snapshot.sha256,
     }
@@ -181,6 +209,8 @@ def prepare_context(arguments: argparse.Namespace) -> ReportContext:
     ):
         _assert_snapshot(snapshot, label)
     return ReportContext(
+        source_checkout=source_checkout,
+        producer_git_commit=producer_git_commit,
         run_summary_path=run_summary_path,
         run_summary_snapshot=run_summary_snapshot,
         summary=summary,

@@ -84,7 +84,7 @@ def _assert_snapshot(snapshot: FileSnapshot, label: str) -> None:
         _fail(f"{label} changed during report rendering: {snapshot.path}")
 
 
-def _load_run_summary(path: Path) -> dict[str, Any]:
+def _load_run_summary(path: Path, *, source_root: Path) -> dict[str, Any]:
     try:
         document = contracts.load_json_object(path, "run-summary document")
         errors = contracts.schema_errors("run-summary", document)
@@ -94,7 +94,7 @@ def _load_run_summary(path: Path) -> dict[str, Any]:
                 for error in errors
             )
             _fail(f"run-summary document failed validation: {path}\n{detail}")
-        contracts.validate_run_summary_semantics(document)
+        contracts.validate_run_summary_semantics(document, source_root=source_root)
     except contracts.ContractValidationError as exc:
         _fail(str(exc))
     if document["schema_version"] != RUN_SUMMARY_SCHEMA_VERSION:
@@ -112,27 +112,30 @@ def _load_run_summary(path: Path) -> dict[str, Any]:
     return document
 
 
-def _resolve_contract_file(value: str, label: str) -> Path:
+def _resolve_contract_file(value: str, label: str, *, source_root: Path) -> Path:
     try:
         contracts.validate_resolved_path(value, label)
     except contracts.ContractValidationError as exc:
         _fail(str(exc))
     declared = Path(value)
-    lexical = (
-        declared if declared.is_absolute() else contracts.REPO_ROOT / declared
-    ).absolute()
+    lexical = (declared if declared.is_absolute() else source_root / declared).absolute()
     _reject_symlink_components(lexical, label)
-    resolved = contracts.resolve_contract_path(value)
+    resolved = contracts.resolve_contract_path(value, source_root=source_root)
     if resolved != lexical:
         _fail(f"{label} must not traverse a symbolic link: {value}")
     return resolved
 
 
-def _read_approved_table(record: Mapping[str, Any]) -> ApprovedTable:
+def _read_approved_table(
+    record: Mapping[str, Any],
+    *,
+    source_root: Path,
+) -> ApprovedTable:
     table_id = record["table_id"]
     path = _resolve_contract_file(
         record["path"],
         f"approved report table {table_id!r}",
+        source_root=source_root,
     )
     snapshot = _snapshot_regular(
         path,

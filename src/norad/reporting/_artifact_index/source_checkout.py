@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import subprocess
 import tomllib
@@ -112,6 +113,84 @@ def _declared_resources(source_package: Path) -> dict[Path, Path]:
             )
         resources.update((path.relative_to(source_package), path) for path in matches)
     return resources
+
+
+def _is_package_identity_path(relative_path: Path) -> bool:
+    if relative_path.suffix == ".py" and "__pycache__" not in relative_path.parts:
+        return True
+    return any(
+        relative_path.match(str(package_directory / pattern))
+        for package_directory, pattern in _RESOURCE_PATTERNS
+    )
+
+
+def _git_environment() -> dict[str, str]:
+    return {
+        name: value for name, value in os.environ.items() if not name.startswith("GIT_")
+    }
+
+
+def package_matches_checkout_head(
+    *,
+    source_checkout: SourceCheckout,
+    package_root: Path,
+) -> bool:
+    """Return whether the executing package identity is exactly at checkout HEAD."""
+
+    canonical_package = _canonical_directory(
+        package_root,
+        "Executing NORAD package root",
+    )
+    package_files = _python_files(canonical_package)
+    package_files.update(_declared_resources(canonical_package))
+    environment = _git_environment()
+    try:
+        object_format = subprocess.run(
+            ["git", "rev-parse", "--show-object-format"],
+            cwd=source_checkout.root,
+            env=environment,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        tree = subprocess.run(
+            ["git", "ls-tree", "-r", "-z", "HEAD", "--", "src/norad"],
+            cwd=source_checkout.root,
+            env=environment,
+            check=True,
+            capture_output=True,
+        ).stdout
+    except (OSError, UnicodeError, subprocess.CalledProcessError) as exc:
+        raise SourceCheckoutError(
+            f"Could not compare the executing package with source checkout HEAD: {exc}"
+        ) from exc
+    if object_format not in hashlib.algorithms_available:
+        raise SourceCheckoutError(
+            f"Unsupported Git object format for package identity: {object_format!r}"
+        )
+    head_objects: dict[Path, str] = {}
+    prefix = Path("src/norad")
+    try:
+        entries = (entry for entry in tree.split(b"\0") if entry)
+        for entry in entries:
+            metadata, raw_path = entry.split(b"\t", 1)
+            _mode, object_type, object_id = metadata.decode("ascii").split()
+            relative_path = Path(os.fsdecode(raw_path)).relative_to(prefix)
+            if object_type == "blob" and _is_package_identity_path(relative_path):
+                head_objects[relative_path] = object_id
+    except (UnicodeError, ValueError) as exc:
+        raise SourceCheckoutError(
+            "Source checkout Git tree contains an invalid package identity"
+        ) from exc
+    if package_files.keys() != head_objects.keys():
+        return False
+    for relative_path, path in package_files.items():
+        payload = _read_identity_file(path, "package identity file")
+        header = f"blob {len(payload)}\0".encode("ascii")
+        digest = hashlib.new(object_format, header + payload).hexdigest()
+        if digest != head_objects[relative_path]:
+            return False
+    return True
 
 
 def _read_identity_file(path: Path, label: str) -> bytes:

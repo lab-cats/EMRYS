@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import csv
+import hashlib
 import importlib
 import json
 from collections.abc import Callable, Mapping
@@ -12,6 +13,7 @@ from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
+from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
 from norad.contracts.scientific_evidence import review_package as REVIEW_PACKAGE
 from norad.evidence.scientific_review_package._scientific_review import (
     contracts as SCIENTIFIC_REVIEW,
@@ -35,6 +37,10 @@ SHARED_SCIENCE = importlib.import_module(
     "norad.reporting._run_summary.science_projection"
 )
 REPORT = importlib.import_module("norad.reporting.report")
+REPORT_VALIDATION = importlib.import_module(
+    "norad.reporting._run_report.validation"
+)
+REPORT_VIEW = importlib.import_module("norad.reporting._run_report.view")
 
 
 HEADER_MODULES: Mapping[str, ModuleType] = {
@@ -142,6 +148,27 @@ def assert_report_receipt(
     assert serializer(document) == serializer(copy.deepcopy(document))
 
 
+def report_html_bytes(document: Mapping[str, Any]) -> bytes:
+    summary = load_json(REPO_ROOT / document["summary_fixture"])
+    assert not ARTIFACT_CONTRACTS.schema_errors("run-summary", summary)
+    ARTIFACT_CONTRACTS.validate_run_summary_semantics(
+        summary,
+        source_root=REPO_ROOT,
+    )
+    view = REPORT_VIEW.build_view(
+        summary,
+        (),
+        document["metadata"],
+    )
+    return REPORT_VALIDATION.render_html(view, document["css"])
+
+
+def assert_report_html(document: Mapping[str, Any]) -> None:
+    expected = (GOLDENS / "report_html.sha256").read_text(encoding="ascii").strip()
+    actual = hashlib.sha256(report_html_bytes(document)).hexdigest()
+    assert actual == expected, "rendered report HTML differs from the independent oracle"
+
+
 def assert_shared_science_policy() -> None:
     policy = load_json(GOLDENS / "scientific_state_contracts.json")["shared_policy"]
     context = SimpleNamespace(
@@ -247,6 +274,17 @@ def test_mutated_report_receipt_serialization_is_rejected() -> None:
 
     with pytest.raises(AssertionError):
         assert_report_receipt(mutated_serializer)
+
+
+def test_report_html_matches_exact_independent_sha256_golden() -> None:
+    assert_report_html(load_json(GOLDENS / "report_html_input.json"))
+
+
+def test_mutated_report_html_input_is_rejected() -> None:
+    mutated = load_json(GOLDENS / "report_html_input.json")
+    mutated["metadata"]["run_summary_sha256"] = "d" * 64
+    with pytest.raises(AssertionError, match="independent oracle"):
+        assert_report_html(mutated)
 
 
 def test_scientific_status_constants_match_literal_oracle() -> None:

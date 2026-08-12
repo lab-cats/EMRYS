@@ -172,7 +172,7 @@ def receipt_document(
         "provenance": {
             "producer": PRODUCER,
             "producer_version": PRODUCER_VERSION,
-            "git_commit": summary["provenance"]["git_commit"],
+            "git_commit": context.producer_git_commit,
             "created_at": summary["generated_at"],
         },
     }

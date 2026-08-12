@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import csv
 import json
 import os
 import re
@@ -17,6 +18,11 @@ from tests.reporting.fixtures.artifact_run_summary_v1 import build_fixture as FI
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_DEPENDENCIES = {"jinja2", "jsonschema", "referencing"}
+RUNTIME_REQUIREMENT_SPECIFIERS = {
+    "jinja2": "==3.1.6",
+    "jsonschema": ">=4.18.0",
+    "referencing": ">=0.28.4",
+}
 RESOURCE_PATHS = (
     "norad/contracts/schemas/artifacts/v1/artifact_record.schema.json",
     "norad/contracts/schemas/artifacts/v1/common.schema.json",
@@ -96,6 +102,15 @@ def normalized_requirement(requirement: str) -> str:
     return re.split(r"[ ;(<=>!~\[]", requirement, maxsplit=1)[0].lower()
 
 
+def declared_requirements(requirements: list[str]) -> dict[str, str]:
+    return {
+        normalized_requirement(requirement): requirement.split(";", 1)[0]
+        .strip()
+        .lower()
+        for requirement in requirements
+    }
+
+
 def inspect_wheel(wheel: Path) -> None:
     with zipfile.ZipFile(wheel) as archive:
         members = set(archive.namelist())
@@ -108,14 +123,15 @@ def inspect_wheel(wheel: Path) -> None:
             if member.endswith(".dist-info/entry_points.txt")
         )
         metadata = Parser().parsestr(archive.read(metadata_member).decode())
-        declared = {
-            normalized_requirement(requirement)
-            for requirement in metadata.get_all("Requires-Dist", [])
-        }
+        declared = declared_requirements(metadata.get_all("Requires-Dist", []))
 
         assert metadata["Name"] == "norad-rna-workflow"
         assert metadata["Version"] == "0.0.0"
-        assert declared == RUNTIME_DEPENDENCIES
+        assert set(declared) == RUNTIME_DEPENDENCIES
+        assert declared == {
+            name: f"{name}{specifier}"
+            for name, specifier in RUNTIME_REQUIREMENT_SPECIFIERS.items()
+        }
         entry_points = archive.read(entry_points_member).decode().splitlines()
         assert "norad = norad.__main__:main" in entry_points
         assert set(RESOURCE_PATHS) <= members
@@ -209,7 +225,12 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
 
 
 def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -> None:
-    fixture = FIXTURE.build_fixture(tmp_path / "report-fixture")
+    fixture = FIXTURE.build_approved_science_fixture(
+        tmp_path / "report-fixture",
+        science_status="science_review_complete_exploratory",
+        roles=("candidate_selection",),
+        display_limits={"candidate_selection": 1},
+    )
     summary_result = run_command(
         [
             sys.executable,
@@ -223,6 +244,11 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         cwd=REPO_ROOT,
     )
     require_success(summary_result)
+    relative_summary = FIXTURE.copy_summary_with_repo_relative_approved_table(
+        fixture.summary_json_path,
+        tmp_path / "wheel-report-input",
+        summary_git_commit="upstream-summary-commit",
+    )
     wheel = build_wheel(tmp_path)
     inspect_wheel(wheel)
     environment_python, console = install_locked_wheel(wheel, tmp_path)
@@ -233,9 +259,10 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     assert module.is_relative_to(environment_python.parents[1].resolve())
     assert not module.is_relative_to(REPO_ROOT.resolve())
     assert all(observed["resources"])
-    assert {
-        normalized_requirement(requirement) for requirement in observed["requirements"]
-    } == RUNTIME_DEPENDENCIES
+    assert declared_requirements(observed["requirements"]) == {
+        name: f"{name}{specifier}"
+        for name, specifier in RUNTIME_REQUIREMENT_SPECIFIERS.items()
+    }
     assert set(observed["installed"]) == RUNTIME_DEPENDENCIES
     assert all(observed["installed"].values())
     assert str((REPO_ROOT / "src").resolve()) not in {
@@ -281,6 +308,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         hostile_pythonpath=True,
     )
     require_success(report_help)
+    assert "--source-checkout" in report_help.stdout
     assert "--quarto-bin" not in report_help.stdout
     rendered = run_command(
         [
@@ -290,8 +318,10 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
             "norad",
             "build",
             "report",
+            "--source-checkout",
+            str(REPO_ROOT),
             "--run-summary",
-            str(fixture.summary_json_path),
+            str(relative_summary),
             "--output-root",
             str(report_output_root),
             "--execute",
@@ -310,6 +340,27 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     assert "Jinja2" in (report_directory / f"{run_id}.report_outputs.tsv").read_text(
         encoding="utf-8"
     )
+    assert "example_run" in (report_directory / f"{run_id}.run_report.html").read_text(
+        encoding="utf-8"
+    )
+    with (report_directory / f"{run_id}.report_outputs.tsv").open(
+        encoding="utf-8",
+        newline="",
+    ) as stream:
+        receipt_rows = list(csv.DictReader(stream, delimiter="\t"))
+    receipt_values = {row["report_receipt_json"] for row in receipt_rows}
+    assert len(receipt_values) == 1
+    receipt = json.loads(receipt_values.pop())
+    checkout_commit = run_command(
+        ["git", "rev-parse", "--verify", "HEAD"],
+        cwd=REPO_ROOT,
+    )
+    require_success(checkout_commit)
+    assert receipt["provenance"]["git_commit"] in {
+        "local_build",
+        checkout_commit.stdout.strip(),
+    }
+    assert receipt["provenance"]["git_commit"] != "upstream-summary-commit"
     wrong_checkout = run_command(
         [str(environment_python), "-I", "-m", "norad", "--help"],
         cwd=REPO_ROOT,

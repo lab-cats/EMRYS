@@ -220,6 +220,42 @@ def build_fixture(
     )
 
 
+def build_failed_fixture(
+    root: Path,
+    *,
+    run_id: str = "failed_validation_run",
+) -> RunSummaryFixture:
+    """Build a real adapter transaction with one failed Step 01 check."""
+
+    root = root.resolve()
+    adapter_fixture = ADAPTER_FIXTURE.build_fixture(
+        root / "adapter_fixture",
+        run_id=run_id,
+    )
+    validation_path = adapter_fixture.source_for("sample.SYNTH_A.star_validation")
+    validation_rows = read_tsv(validation_path)
+    validation_rows[0].update(
+        {
+            "status": "fail",
+            "observed": "mismatch",
+            "detail": "synthetic failed validation",
+        }
+    )
+    write_tsv(
+        validation_path,
+        ARTIFACT_MODELS.VALIDATION_REPORT_HEADER,
+        validation_rows,
+    )
+    publish_adapter_fixture(adapter_fixture)
+    return RunSummaryFixture(
+        root=root,
+        run_id=run_id,
+        artifact_receipt=adapter_fixture.receipt_path,
+        output_root=adapter_fixture.output_root,
+        adapter_fixture=adapter_fixture,
+    )
+
+
 def build_missing_fixture(
     root: Path,
     *,
@@ -283,6 +319,64 @@ def write_tsv(
 def read_tsv(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8", newline="") as stream:
         return list(csv.DictReader(stream, delimiter="\t"))
+
+
+def copy_summary_with_repo_relative_approved_table(
+    summary_path: Path,
+    output_root: Path,
+    *,
+    relative_table_path: str = "configs/report_table_approvals.example.tsv",
+    summary_git_commit: str | None = None,
+) -> Path:
+    """Copy a valid approved summary with one checkout-relative table source."""
+
+    document = json.loads(summary_path.read_text(encoding="utf-8"))
+    if summary_git_commit is not None:
+        document["provenance"]["git_commit"] = summary_git_commit
+    approved = document["approved_report_tables"]
+    if not approved:
+        raise ValueError("Run summary has no approved report table to rewrite")
+    table_path = REPO_ROOT / relative_table_path
+    table_rows = read_tsv(table_path)
+    table = approved[0]
+    table.update(
+        {
+            "path": relative_table_path,
+            "sha256": sha256_file(table_path),
+            "row_count": len(table_rows),
+        }
+    )
+    if table["display_row_limit"] is not None:
+        table["display_row_limit"] = min(
+            table["display_row_limit"],
+            len(table_rows),
+        )
+    artifact = next(
+        record
+        for record in document["artifacts"]
+        if record["artifact_id"] == table["artifact_id"]
+    )
+    artifact["expectation"]["source_path"] = relative_table_path
+    artifact["source"].update(
+        {
+            "path": relative_table_path,
+            "sha256": table["sha256"],
+            "size_bytes": table_path.stat().st_size,
+            "row_count": table["row_count"],
+        }
+    )
+    for metric in artifact["metrics"]:
+        if metric["metric_id"] == "source_row_count":
+            metric["value"] = table["row_count"]
+    run_id = document["run_id"]
+    output_dir = output_root / run_id
+    output_dir.mkdir(parents=True, exist_ok=True)
+    copied = output_dir / f"{run_id}.run_summary.json"
+    copied.write_text(
+        json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return copied
 
 
 def write_run_contract(

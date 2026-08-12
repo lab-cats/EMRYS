@@ -73,6 +73,40 @@ def _initialize_git(root: Path) -> None:
         raise RuntimeError(result.stderr)
 
 
+def _commit_package(fixture: CheckoutFixture) -> str:
+    subprocess.run(
+        ["git", "add", "pyproject.toml", "src/norad"],
+        cwd=fixture.root,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=NORAD Fixture",
+            "-c",
+            "user.email=norad-fixture@example.invalid",
+            "commit",
+            "--quiet",
+            "-m",
+            "fixture package",
+        ],
+        cwd=fixture.root,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return subprocess.run(
+        ["git", "rev-parse", "--verify", "HEAD"],
+        cwd=fixture.root,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout.strip()
+
+
 def _project_configuration(name: str = PROJECT_NAME) -> bytes:
     return (
         f'[project]\nname = "{name}"\n'
@@ -164,6 +198,45 @@ def test_admits_canonical_checkout_with_identical_package(
 
     assert isinstance(admitted, source_checkout.SourceCheckout)
     assert admitted.root == fixture.root
+
+
+def test_package_identity_matches_clean_checkout_head(tmp_path: Path) -> None:
+    fixture = _build_fixture(tmp_path)
+    _commit_package(fixture)
+    admitted = _admit(fixture)
+
+    assert source_checkout.package_matches_checkout_head(
+        source_checkout=admitted,
+        package_root=fixture.package_root,
+    )
+
+
+def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -> None:
+    fixture = _build_fixture(tmp_path)
+    _commit_package(fixture)
+    changed = b"VALUE = 2\n"
+    (fixture.checkout_package / "reporting" / "owner.py").write_bytes(changed)
+    (fixture.package_root / "reporting" / "owner.py").write_bytes(changed)
+    admitted = _admit(fixture)
+
+    assert not source_checkout.package_matches_checkout_head(
+        source_checkout=admitted,
+        package_root=fixture.package_root,
+    )
+
+
+def test_package_identity_rejects_untracked_package_file(tmp_path: Path) -> None:
+    fixture = _build_fixture(tmp_path)
+    _commit_package(fixture)
+    relative_path = Path("reporting/untracked_owner.py")
+    _write_files(fixture.checkout_package, {str(relative_path): b"VALUE = 2\n"})
+    _write_files(fixture.package_root, {str(relative_path): b"VALUE = 2\n"})
+    admitted = _admit(fixture)
+
+    assert not source_checkout.package_matches_checkout_head(
+        source_checkout=admitted,
+        package_root=fixture.package_root,
+    )
 
 
 def test_rejects_relative_checkout_root(

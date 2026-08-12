@@ -1,0 +1,17 @@
+{
+  "css": "body { color: #123456; }\n",
+  "metadata": {
+    "css_path": "norad.reporting/styles/run_report.css",
+    "css_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "jinja_version": "3.1.6",
+    "producer_git_commit": "goldencommit",
+    "renderer": "norad.reporting.report",
+    "renderer_version": "2.0.0",
+    "run_summary_path": "goldens/synthetic_run/synthetic_run.run_summary.json",
+    "run_summary_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "source_checkout": "/synthetic/norad",
+    "template_path": "norad.reporting/templates/run_report.html.j2",
+    "template_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "summary_fixture": "tests/contracts/artifacts/fixtures/artifact_schema_v1/valid/run_summary.json"
+}

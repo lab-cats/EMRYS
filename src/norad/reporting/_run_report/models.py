@@ -6,10 +6,13 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from norad.contracts.scientific_evidence import review_package
 from norad.reporting._files import FileSnapshot
+
+if TYPE_CHECKING:
+    from norad.reporting._artifact_index.api import SourceCheckout
 
 PRODUCER = "norad.reporting.report"
 PRODUCER_VERSION = "2.0.0"
@@ -142,6 +145,8 @@ class LockOwnership:
 
 @dataclass(frozen=True)
 class ReportContext:
+    source_checkout: SourceCheckout
+    producer_git_commit: str
     run_summary_path: Path
     run_summary_snapshot: FileSnapshot
     summary: dict[str, Any]

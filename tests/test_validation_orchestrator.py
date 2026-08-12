@@ -63,8 +63,8 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     )
     assert set(configuration["project"]["dependencies"]) == {
         "Jinja2==3.1.6",
-        "jsonschema",
-        "referencing",
+        "jsonschema>=4.18.0",
+        "referencing>=0.28.4",
     }
     assert set(configuration["dependency-groups"]["dev"]) == {
         "coverage==7.15.2",

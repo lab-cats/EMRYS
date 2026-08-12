@@ -26,18 +26,23 @@ GTF-to-BED12 conversion/validation and named schema/report resources.
 ## Start here
 
 Python development requires Python `3.11` or newer and a separately provisioned
-`uv` executable. From the repository root, synchronize the reviewed lock and
-install the NORAD project itself:
+`uv` executable. From the repository root, use this one Bash/Zsh command to
+synchronize the reviewed lock, install the NORAD project itself, and activate
+its environment in the current shell:
 
 ```sh
-uv sync --locked
+uv sync --locked && source .venv/bin/activate
 ```
+
+The `source` operation changes the current shell, so `python` and `norad` then
+resolve from the project `.venv`; activation lasts until that shell exits or
+you run `deactivate`. In a new shell, run `source .venv/bin/activate` before
+continuing. Bare `python` commands in the owner documentation assume this
+environment is active.
 
 Do not curl-install `uv` or restore dependencies from validation, rendering,
 compute, or scheduler commands. The guarded R environment remains owned by
 `renv`; owner-required system tools are separate prerequisites.
-After the explicit Python synchronization above, repository commands use the
-project `.venv`.
 
 Implemented owners collectively consume a sample manifest and paired RNA-seq
 reads, reference FASTA/GTF material, and any owner-specific selections or

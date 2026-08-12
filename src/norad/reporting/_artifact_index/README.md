@@ -4,7 +4,7 @@ This private package implements the grouped
 `python -I -m norad build artifact-index` route through
 [`builder.py`](builder.py). The former direct script is retired without a
 compatibility shim. [`api.py`](api.py) is the narrow private import boundary
-used by run-summary reporting. In addition to artifact parsing, validation,
+used by sibling reporting owners. In addition to artifact parsing, validation,
 serialization, and publication primitives, it exposes the shared
 `SourceCheckout` token, admission error, and admission function without
 importing the command builder. It is not another command or public application
@@ -68,8 +68,8 @@ coordinator, rollback, recovery, and cleanup order. Its frozen
 `ArtifactPublicationOps` record names only the transaction fault seams and is
 passed explicitly by tests; production uses the immutable default. The private
 builder owns only command coordination and exposes no publication or contract
-modules for patching. Run-summary reporting reaches deliberately shared
-primitives through the explicit private `api.py` boundary, together with the
-shared checkout authority, without importing the builder. These internals do
-not change artifact schemas, serialized bytes, source discovery policy,
-evidence states, diagnostics, or publication order.
+modules for patching. Run-summary assembly reaches deliberately shared
+transaction primitives through `api.py`; static reporting consumes only its
+checkout-admission and Git-identity boundary. Neither imports the command
+builder. These internals do not change artifact schemas, serialized bytes,
+source discovery policy, evidence states, diagnostics, or publication order.

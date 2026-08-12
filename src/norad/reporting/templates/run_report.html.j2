@@ -57,7 +57,7 @@
   {% for item in block.legend %}<li class="legend-{{ item.name | replace(' ', '-') }}">{{ item.name | title }}: {{ item.count }}</li>{% endfor %}
 </ul>
 {% elif block.kind == "notice_list" %}
-<div class="notice"><p><strong>{{ block.title }}</strong></p><ul>{% for item in block.items %}<li>{{ item }}</li>{% endfor %}</ul></div>
+<div class="notice"><p><strong>{{ block.title }}</strong></p><ul>{% for item in block["items"] %}<li>{{ item }}</li>{% endfor %}</ul></div>
 {% endif %}
 {%- endmacro %}
 

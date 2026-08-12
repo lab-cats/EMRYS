@@ -9,9 +9,12 @@ import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from norad.reporting._run_report.models import RECEIPT_HEADER
+from norad.reporting._run_report.models import RECEIPT_HEADER, ReportRenderError
+
+if TYPE_CHECKING:
+    from norad.reporting._artifact_index.api import SourceCheckout
 
 DESCRIPTION = (
     "Build one self-contained Jinja HTML report, deterministic run-summary TSV, "
@@ -42,6 +45,15 @@ class ReportPublicationOps:
 def configure_parser(parser: argparse.ArgumentParser) -> None:
     """Configure the installed ``norad build report`` route."""
 
+    parser.add_argument(
+        "--source-checkout",
+        required=True,
+        type=Path,
+        help=(
+            "Absolute canonical NORAD source checkout governing contract-relative "
+            "paths and renderer provenance."
+        ),
+    )
     parser.add_argument(
         "--run-summary",
         required=True,
@@ -81,12 +93,27 @@ def default_publication_ops() -> ReportPublicationOps:
     )
 
 
-def prepare_report(arguments: argparse.Namespace) -> Any:
+def _admit_source_checkout(arguments: argparse.Namespace) -> SourceCheckout:
+    from norad.reporting._artifact_index import api as artifact_index
+
+    try:
+        return artifact_index.admit_source_checkout(
+            root=arguments.source_checkout,
+            package_root=Path(__file__).resolve().parents[1],
+        )
+    except artifact_index.SourceCheckoutError as exc:
+        raise ReportRenderError(str(exc)) from exc
+
+
+def prepare_report(
+    arguments: argparse.Namespace,
+) -> Any:
     """Prepare and validate one side-effect-free report context."""
 
     from norad.reporting._run_report.context import prepare_context
 
-    return prepare_context(arguments)
+    admitted = _admit_source_checkout(arguments)
+    return prepare_context(arguments, source_checkout=admitted)
 
 
 def serialize_receipt(document: dict[str, Any]) -> bytes:
@@ -100,6 +127,8 @@ def serialize_receipt(document: dict[str, Any]) -> bytes:
 def print_plan(context: Any) -> None:
     print("NORAD static run-report plan:")
     print(f"  Mode: {'execute' if context.execute else 'dry-run'}")
+    print(f"  Source checkout: {context.source_checkout.root}")
+    print(f"  Renderer Git commit: {context.producer_git_commit}")
     print(f"  Run ID: {context.summary['run_id']}")
     print(f"  Run summary: {context.run_summary_path}")
     print(f"  Run-summary SHA-256: {context.run_summary_snapshot.sha256}")

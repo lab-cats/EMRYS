@@ -14,6 +14,13 @@ This private package supports the direct public
 | [`publication.py`](publication.py) | One receipt-last HTML transaction using injected immutable fault operations. |
 | [`transaction.py`](transaction.py) | Lock, snapshot, durability, staging, and recovery primitives. |
 
+The public owner admits the required absolute canonical source checkout before
+reading report inputs and passes that authority into this package explicitly.
+Its root governs repository-relative contract paths recorded in the run
+summary, including approved-table paths, plus renderer Git identity. Private
+owners neither infer a root from the working directory or run-summary location
+nor re-admit the checkout during publication.
+
 The transaction retains input rechecks, lock ownership, predecessor identity,
 backup/rollback, recovery markers, foreign-state preservation, staged
 validation, receipt-last publication, and characterized interruption behavior.

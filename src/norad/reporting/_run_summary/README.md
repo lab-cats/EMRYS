@@ -54,7 +54,7 @@ operations. Production uses immutable defaults; fault tests pass explicit
 modified values. The builder exposes no model, projection, adapter, or
 publication globals for compatibility patching.
 
-Both reporting owners still reuse the same artifact contract and error
+All three reporting build owners still reuse the same artifact contract and error
 identities. Science projection consumes the neutral review-package contract,
 the committed public thirteen-file package, explicitly referenced evidence,
 and validated index records. It does not load private Step `09c` inputs, own

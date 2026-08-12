@@ -33,6 +33,7 @@ from .source_checkout import (
     SourceCheckout,
     SourceCheckoutError,
     admit_source_checkout,
+    package_matches_checkout_head,
 )
 from .validation import validate_published_transaction
 
@@ -52,6 +53,7 @@ __all__ = (
     "get_git_commit",
     "install_publication_signal_handlers",
     "load_run_contract",
+    "package_matches_checkout_head",
     "read_exact_tsv",
     "release_owned_lock",
     "remove_owned",

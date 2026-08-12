@@ -66,10 +66,20 @@ def exploratory_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return publish_run_summary(fixture)
 
 
+@pytest.fixture(scope="module")
+def failed_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return publish_run_summary(
+        FIXTURE.build_failed_fixture(
+            tmp_path_factory.mktemp("report-v2-failed") / "fixture"
+        )
+    )
+
+
 def arguments(
     summary: Path, output_root: Path, *, execute: bool = False
 ) -> argparse.Namespace:
     return argparse.Namespace(
+        source_checkout=REPO_ROOT,
         run_summary=summary,
         output_root=output_root,
         execute=execute,
@@ -128,6 +138,7 @@ def test_grouped_help_exposes_only_direct_html_contract(tmp_path: Path) -> None:
     )
     assert result.returncode == 0
     assert "usage: norad build report" in result.stdout
+    assert "--source-checkout" in result.stdout
     assert "--run-summary" in result.stdout
     assert "--output-root" in result.stdout
     assert "--execute" in result.stdout
@@ -135,6 +146,26 @@ def test_grouped_help_exposes_only_direct_html_contract(tmp_path: Path) -> None:
     assert "--quarto-bin" not in result.stdout
     assert missing.returncode == 2
     assert "required" in missing.stderr
+
+
+def test_source_checkout_is_admitted_before_report_inputs(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    invalid_checkout = tmp_path / "not-norad"
+    invalid_checkout.mkdir()
+    result = REPORT.build_from_args(
+        argparse.Namespace(
+            source_checkout=invalid_checkout,
+            run_summary=tmp_path / "missing.json",
+            output_root=tmp_path / "reports",
+            execute=False,
+        )
+    )
+    captured = capsys.readouterr()
+    assert result == 1
+    assert "Source checkout project metadata is unavailable" in captured.err
+    assert "missing.json" not in captured.err
 
 
 def test_dry_run_is_side_effect_free(
@@ -184,6 +215,75 @@ def test_success_publishes_html_summary_and_v2_receipt_last(
     assert document["outputs"][0]["self_contained"] is True
     assert document["analysis_execution_performed"] is False
     assert document["validation_claimed"] is False
+
+
+def test_receipt_attributes_provenance_to_renderer_checkout(
+    incomplete_summary: Path,
+    tmp_path: Path,
+) -> None:
+    upstream_commit = "upstream-summary-commit"
+
+    def replace_upstream_commit(document: dict[str, Any]) -> None:
+        document["provenance"]["git_commit"] = upstream_commit
+
+    copied = write_summary_copy(
+        incomplete_summary,
+        tmp_path / "input",
+        replace_upstream_commit,
+    )
+    context = REPORT.prepare_report(
+        arguments(copied, tmp_path / "reports", execute=True)
+    )
+    publish(context)
+    document = receipt_document(context.output_receipt)
+    assert context.summary["provenance"]["git_commit"] == upstream_commit
+    assert context.producer_git_commit != upstream_commit
+    assert document["provenance"] == {
+        "producer": "norad.reporting.report",
+        "producer_version": "2.0.0",
+        "git_commit": context.producer_git_commit,
+        "created_at": context.summary["generated_at"],
+    }
+
+
+def test_checkout_relative_approved_table_resolves_against_explicit_authority(
+    exploratory_summary: Path,
+    tmp_path: Path,
+) -> None:
+    relative_summary = FIXTURE.copy_summary_with_repo_relative_approved_table(
+        exploratory_summary,
+        tmp_path / "input",
+    )
+    context = REPORT.prepare_report(
+        arguments(relative_summary, tmp_path / "reports", execute=True)
+    )
+    assert len(context.tables) == 1
+    assert context.tables[0].path == (
+        REPO_ROOT / "configs" / "report_table_approvals.example.tsv"
+    )
+    publish(context)
+    assert "example_run" in context.output_html.read_text(encoding="utf-8")
+
+
+def test_failed_expected_scope_renders_from_valid_pipeline_summary(
+    failed_summary: Path,
+    tmp_path: Path,
+) -> None:
+    context = REPORT.prepare_report(
+        arguments(failed_summary, tmp_path / "reports", execute=True)
+    )
+    failed_scopes = [
+        item
+        for item in context.summary["expected_scopes"]
+        if item["aggregate_state"] == "failed"
+    ]
+    assert [item["scope"] for item in failed_scopes] == [
+        {"step_id": "01", "scope_type": "sample", "scope_id": "SYNTH_A"}
+    ]
+    publish(context)
+    content = context.output_html.read_text(encoding="utf-8")
+    assert "Failed expected scopes" in content
+    assert "01 sample SYNTH_A failed" in content
 
 
 def test_identical_republication_is_byte_deterministic(

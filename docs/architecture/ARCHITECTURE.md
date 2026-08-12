@@ -36,7 +36,7 @@ not change that boundary.
 | Per-sample processing and evidence | Owners `01`–`06` under `src/norad/stages/` plus evidence owners `02b` and `03` | Declared reads, references, and preceding owner artifacts | Aligned/canonical/duplicate-marked/split BAMs plus QC and orientation evidence |
 | Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owner `09` | Declared partitions, sample order, reference context, and upstream receipts | Cohort VCFs, annotated candidates, and paired-CMH ranked candidates |
 | Scientific-review evidence | Evidence owner `09c` | Explicit review plan, declared evidence, and Step `09` products | Versioned review package and review summary |
-| Reporting | `src/norad/reporting/` | Explicit artifact inventory, validated receipts, review summary, and table approvals | Artifact index, canonical run summary, self-contained HTML report, summary TSV, and v2 report receipt |
+| Reporting | `src/norad/reporting/` | Admitted source checkout, explicit artifact inventory, validated receipts, review summary, and table approvals | Artifact index, canonical run summary, self-contained HTML report, summary TSV, and v2 report receipt |
 | Neutral contracts and libraries | `src/norad/contracts/` and `src/norad/libraries/` | Owner-declared records or values | Shared schemas, vocabularies, validation, and narrowly reviewed primitives |
 | Operational evidence | Runtime-availability inspection (`runtime_availability`), reference provenance, and storage inventory under `src/norad/evidence/` | Explicit profiles, reference inventories, storage roots, and retention declarations | Bounded operational observations and receipts |
 
@@ -123,8 +123,9 @@ layer.
 
 Static reporting follows that rule through the private
 [`_run_report/`](../../src/norad/reporting/_run_report/README.md) package.
-The single installed route, `python -I -m norad build report`, is owned directly
-by [`report.py`](../../src/norad/reporting/report.py). Private owners separate
+The installed `python -I -m norad build report` route is owned directly by
+[`report.py`](../../src/norad/reporting/report.py). Its required admitted
+checkout governs contract-relative paths and renderer identity. Private owners separate
 immutable models, explicit input/context validation, structured view data,
 Jinja rendering, v2 receipt projection, and one receipt-last transaction. The
 single packaged HTML template and CSS resource are the complete rendering
@@ -157,7 +158,8 @@ The downstream product flow is one-way:
    supplied scientific-review and report-table inputs and publishes canonical
    JSON with deterministic TSV projections.
 4. The static report owner consumes that canonical summary and authorized
-   supplemental tables to publish HTML, summary TSV, then the v2 receipt last.
+   supplemental tables under one admitted source-checkout authority, then
+   publishes HTML, summary TSV, and the v2 receipt last.
 
 Operational evidence owners sit beside this product flow. Runtime, reference,
 and storage observations can inform execution or review, but do not become
