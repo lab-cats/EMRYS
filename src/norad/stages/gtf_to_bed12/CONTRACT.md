@@ -49,8 +49,8 @@ attribute. Malformed or incomplete rows are warned about and skipped. A
 transcript with conflicting chromosome or strand observations is skipped as a
 whole. Conversion fails when no valid transcript records remain.
 
-The current scheduler entrypoint additionally requires a Python executable and
-bedtools `2.31.1`. Its repository-relative Novogene paths are current bindings,
+The current scheduler entrypoint additionally requires a Python executable.
+Its repository-relative Novogene paths are current bindings,
 not approved future defaults.
 
 ## Outputs
@@ -65,11 +65,9 @@ The converter writes one BED12 row per valid transcript. It:
   protected fixed values; and
 - orders records by chromosome, start, end, and name.
 
-The current scheduler job names the converter output as an intermediate
-`genome.unsorted.bed`, then runs `bedtools sort` into the final `genome.bed` and
-checks that every final row has exactly 12 fields. The converter already emits
-deterministically sorted records, so the second sort is an observed overlapping
-responsibility rather than a proven functional requirement.
+The current scheduler job writes the converter output directly to the final
+`genome.bed` and checks that every row has exactly 12 fields. Deterministic
+ordering is owned by the converter.
 
 ## Current execution surfaces
 
@@ -85,12 +83,11 @@ is the scheduler entrypoint. It:
 
 - executes implicitly and has no dry-run or explicit execute control;
 - requires `SLURM_SUBMIT_DIR` and changes into that directory;
-- permits environment overrides for the GTF, intermediate BED, final BED, and
-  Python executable;
+- permits environment overrides for the GTF, final BED, and Python executable;
 - creates log and output directories before conversion;
-- embeds conversion, bedtools sorting, and a final field-count check; and
-- publishes the intermediate and final files without an all-or-none
-  transaction, receipt, or no-clobber boundary.
+- embeds conversion and a final field-count check; and
+- publishes the final file without an all-or-none transaction, receipt, or
+  no-clobber boundary.
 
 These behaviors are preserved characterization, not endorsement of the target
 interface.
@@ -149,9 +146,9 @@ No downstream stage should depend on this stage's implementation module.
   protects dry-run, the five checks, mismatch evidence, structural failures,
   and preservation of foreign locks or invalid predecessors.
 - [`test_step_00b_gtf_to_bed12.py`](../../../../tests/stages/gtf_to_bed12/test_step_00b_gtf_to_bed12.py)
-  protects success plus the isolated missing-submit-directory, colliding-output,
-  missing-GTF, nonexecutable-Python, module-failure, converter-failure,
-  bedtools-failure, and bad-field scheduler states and their exact residue.
+  protects success plus the isolated missing-submit-directory, missing-GTF,
+  nonexecutable-Python, converter-failure, and bad-field scheduler states and
+  their exact residue.
 - [`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py)
   protects the exact mixed-layout job roster, directives, mode, and generic
   scheduler boundaries.
@@ -171,8 +168,6 @@ Current evidence status remains owned by the canonical roadmap and handoff.
 
 - Reference materialization currently belongs incidentally to Step `00a`,
   creating an operational edge that is not intrinsic to BED12 conversion.
-- Deterministic ordering occurs in both the Python converter and the scheduler
-  wrapper's bedtools command.
 - The validator reuses producer normalization code for its strongest agreement
   check.
 - Cross-cutting validation publication lives in the neutral shared
@@ -185,6 +180,5 @@ sorting, and oracle boundaries without choosing an unreviewed correction.
 ## Deferred decisions
 
 - Final owner of reference materialization.
-- Whether the target contract retains one or both sorting operations.
 - Whether GTF-agreement validation requires a producer-independent oracle.
 - Whether a later descriptor or schema contract is justified.

@@ -23,7 +23,7 @@ interpreter:
 ```bash
 .venv/bin/python -I -m norad convert gtf-to-bed12 \
   --gtf refs/novogene_ref/genome.gtf \
-  --bed refs/novogene_ref/genome.unsorted.bed
+  --bed refs/novogene_ref/genome.bed
 ```
 
 From another working directory, use the absolute path to the installed
@@ -59,19 +59,17 @@ sbatch src/norad/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm
 ```
 
 Submission executes implicitly and has no dry-run control. The job honors the
-existing `GTF`, `UNSORTED_BED`, `BED`, and `PYTHON_BIN` overrides. It creates
-directories before conversion and requires `PYTHON_BIN` to select an
-environment where this checkout is installed. It publishes the intermediate
-and final BED nontransactionally. Converter failure can leave directories,
-bedtools failure can leave the intermediate plus a redirect-created final, and
-a bad-field result can remain published after the existing contradictory
-success message. These scheduler defects are characterized and preserved, not
-approved.
+existing `GTF`, `BED`, and `PYTHON_BIN` overrides. It creates directories
+before conversion and requires `PYTHON_BIN` to select an environment where
+this checkout is installed. The converter writes the deterministic final BED
+directly, after which the wrapper checks that every row has exactly 12 fields.
+Publication remains nontransactional: converter failure can leave directories,
+and a failed field-count check can leave the produced BED in place.
 
 ## Diagnostics, recovery, and evidence
 
-Inspect scheduler stdout/stderr, the intermediate BED, the final BED, and their
-paths together. Preserve ambiguous or foreign residue; do not delete or replace
+Inspect scheduler stdout/stderr, the final BED, and its path together.
+Preserve ambiguous or foreign residue; do not delete or replace
 it merely because a local test characterizes the state. The next safe local
 action for an existing BED is the validator dry run above with the exact source
 GTF. Recovery or replacement of runtime artifacts remains an explicit operator
