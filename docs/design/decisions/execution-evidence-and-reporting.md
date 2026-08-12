@@ -40,11 +40,11 @@ Repository R activation is opt-in through `NORAD_USE_RENV=1`; normal startup is
 unchanged when it is disabled, and invalid values fail. Restoration is an
 explicit operator action. Compute and tests never bootstrap packages.
 
-### Restore report tooling explicitly
+### Keep report rendering inside the locked Python package
 
-Quarto restoration is separate from rendering and testing. Installed identity,
-receipt, tree, and version validate before reuse; rendering never installs or
-repairs tooling.
+The report owner uses the locked Jinja2 runtime and packaged template/CSS. It
+never installs or repairs tooling, invokes an external renderer, accesses the
+network, or creates report sidecars.
 
 ### Inspect runtime availability from explicit profiles
 
@@ -139,9 +139,10 @@ hand-edited.
 
 Reports are self-contained, script-free, accessible projections of one
 canonical summary. They preserve exact scientific-state language, disclose
-truncation with source identity, and keep HTML and PDF semantically aligned
-through one format-neutral projection. Publication is transactional and never
-installs dependencies or promotes evidence.
+truncation with source identity, and use one autoescaped strict Jinja template
+for HTML. Publication is transactional and never installs dependencies,
+accesses the network, creates sidecars, or promotes evidence. Scientific plot
+PDFs remain analysis artifacts rather than report formats.
 
 ## Operator output and durable logs
 

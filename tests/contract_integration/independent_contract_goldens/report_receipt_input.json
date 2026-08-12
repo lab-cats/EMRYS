@@ -1,24 +1,27 @@
 {
-  "attempt_id": "attempt-01",
+  "attempt_id": "attempt-02",
   "generated_at": "2026-01-02T03:04:05Z",
   "outputs": [
     {
       "kind": "html",
       "media_type": "text/html",
       "output_id": "run-report-html",
-      "page_count": null,
-      "path": "reports/run-report.html",
+      "path": "reports/run-01/run-01.run_report.html",
       "self_contained": true,
       "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-      "size_bytes": 321,
-      "state_banner_every_page": null
+      "size_bytes": 321
+    },
+    {
+      "kind": "run_summary_tsv",
+      "media_type": "text/tab-separated-values",
+      "output_id": "run-summary-tsv",
+      "path": "reports/run-01/run-01.run_summary.tsv",
+      "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "size_bytes": 123
     }
-  ],
-  "requested_formats": [
-    "html"
   ],
   "run_id": "run-01",
   "schema_name": "norad.report_receipt",
-  "schema_version": "1.1.0",
+  "schema_version": "2.0.0",
   "science_status": "evidence_incomplete"
 }

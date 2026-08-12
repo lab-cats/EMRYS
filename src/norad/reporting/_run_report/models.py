@@ -6,21 +6,21 @@ import re
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from norad.contracts.scientific_evidence import review_package
-from norad.reporting import _files
+from norad.reporting._files import FileSnapshot
 
-_MODULE_PATH = Path(__file__).resolve()
+if TYPE_CHECKING:
+    from norad.reporting._artifact_index.api import SourceCheckout
 
-PRODUCER = "render_run_report"
-PRODUCER_VERSION = "1.0.0"
+PRODUCER = "norad.reporting.report"
+PRODUCER_VERSION = "2.0.0"
 RUN_SUMMARY_SCHEMA_VERSION = "1.1.0"
-QUARTO_VERSION = "1.9.38"
-QMD_TEMPLATE = _MODULE_PATH.parent.parent / "templates" / "run_report.qmd"
-CSS_TEMPLATE = _MODULE_PATH.parent.parent / "styles" / "run_report.css"
-BODY_MARKER = "{{NORAD_REPORT_BODY}}"
-CSS_MARKER = "{{NORAD_REPORT_CSS}}"
+REPORT_RECEIPT_SCHEMA_VERSION = "2.0.0"
+JINJA_VERSION = "3.1.6"
+TEMPLATE_RESOURCE = "templates/run_report.html.j2"
+CSS_RESOURCE = "styles/run_report.css"
 CANDIDATE_TERMINOLOGY = "CMH-ranked candidates"
 COMPUTATIONAL_STATUS_FIELDS: tuple[tuple[str, str], ...] = (
     ("Implementation", "implementation_status"),
@@ -64,8 +64,6 @@ CSS_RESOURCE_RE = re.compile(
     r"|@import\s+(?:url\s*\(\s*)?(['\"])(.*?)\3",
     re.IGNORECASE,
 )
-EXECUTABLE_QMD_RE = re.compile(r"^\s*```\s*\{", re.MULTILINE)
-SAFE_STATUS_RE = re.compile(r"[^a-z0-9]+")
 REPORT_SECTION_IDS = {
     "run-identity-section",
     "status-section",
@@ -78,34 +76,37 @@ REPORT_SECTION_IDS = {
     "rerun-section",
     "evidence-methods-section",
 }
-EXPECTED_QMD_FRONTMATTER = {
-    "execute": {"enabled": False},
-    "format": {
-        "html": {
-            "anchor-sections": False,
-            "embed-resources": True,
-            "html-math-method": "plain",
-            "minimal": True,
-            "theme": "none",
-        }
-    },
-    "lang": "en",
-    "pagetitle": "NORAD consolidated run report",
-}
-EXPECTED_QMD_BODY = (
-    "\n\n<!-- This tracked view is static by contract. It contains no executable "
-    "cells. -->\n"
-    f"{CSS_MARKER}\n"
-    f"{BODY_MARKER}\n"
+RECEIPT_HEADER = (
+    "schema_name",
+    "schema_version",
+    "run_id",
+    "attempt_id",
+    "generated_at",
+    "science_status",
+    "output_id",
+    "kind",
+    "path",
+    "sha256",
+    "size_bytes",
+    "media_type",
+    "self_contained",
+    "report_receipt_json",
 )
-SAFE_RENDER_PATH = "/usr/bin:/bin:/usr/sbin:/sbin"
+SUMMARY_HEADER = (
+    "run_id",
+    "science_status",
+    "step_id",
+    "scope_type",
+    "scope_id",
+    "aggregate_state",
+    *(field for _, field in COMPUTATIONAL_STATUS_FIELDS),
+    "warning_count",
+    "error_count",
+)
 
 
 class ReportRenderError(RuntimeError):
     """Raised when a run report cannot be validated or safely published."""
-
-
-FileSnapshot = _files.FileSnapshot
 
 
 @dataclass(frozen=True)
@@ -143,22 +144,25 @@ class LockOwnership:
 
 
 @dataclass(frozen=True)
-class RenderContext:
+class ReportContext:
+    source_checkout: SourceCheckout
+    producer_git_commit: str
     run_summary_path: Path
     run_summary_snapshot: FileSnapshot
     summary: dict[str, Any]
     tables: tuple[ApprovedTable, ...]
     template_snapshot: FileSnapshot
     css_snapshot: FileSnapshot
-    quarto_path: Path
-    quarto_snapshot: FileSnapshot
     output_root: Path
     output_dir: Path
     output_html: Path
+    output_summary_tsv: Path
+    output_receipt: Path
     lock_path: Path
-    previous_output_snapshot: FileSnapshot | None
+    stable_paths: tuple[Path, ...]
+    previous_snapshots: Mapping[Path, FileSnapshot]
     render_metadata: Mapping[str, str]
-    qmd_bytes: bytes
+    html_bytes: bytes
     execute: bool
 
     @property
@@ -167,6 +171,5 @@ class RenderContext:
             self.run_summary_snapshot,
             self.template_snapshot,
             self.css_snapshot,
-            self.quarto_snapshot,
             *(table.snapshot for table in self.tables),
         )

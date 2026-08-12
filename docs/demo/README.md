@@ -1,32 +1,25 @@
-# Demonstration guides
+# Synthetic report demonstration
 
-This directory contains two reviewed presentation consumers. Neither guide
-owns current checkout state, report behavior, commands, or evidence promotion.
-
-| Guide | Consumer and role |
-| --- | --- |
-| [`DEMO_WALKTHROUGH.md`](DEMO_WALKTHROUGH.md) | Presenter run-of-show: inspection order, report tour, and action-point wording. |
-| [`PI_DEMO_REPORT.md`](PI_DEMO_REPORT.md) | PI/audience discussion guide: evidence-layer table, scientific cautions, and prompts. |
-
-Generate the deterministic ignored bundle after explicit Quarto setup:
+Generate the deterministic ignored HTML demonstration with the synchronized
+Python environment:
 
 ```bash
+uv sync --locked
 make demo-report
 ```
 
-Optional projections are `DEMO_REPORT_FORMATS=html`,
-`DEMO_REPORT_FORMATS=pdf`, and an explicit ignored `DEMO_REPORT_ROOT`. The
-default bundle is under `results/demo-report/reports/synthetic_full_run_demo/`.
+The target builds a synthetic artifact index and canonical run summary, prints
+a dry-run report plan, and then publishes HTML, summary TSV, and the v2 receipt
+last. The default output is under
+`results/demo-report-jinja/reports/synthetic_full_run_demo/`. An explicit
+ignored `DEMO_REPORT_ROOT` may select another fresh root.
 
-Before presenting, use the current
-[`HANDOFF.md`](../operations/HANDOFF.md) for status, cohort evidence, and
-limitations. Current reporting behavior and its
-evidence ceiling remain in the
-[`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md#publication-and-evidence-flow)
-and [`HANDOFF.md`](../operations/HANDOFF.md#evidence-boundary).
+Existing v1 report directories are not adopted or overwritten. The older
+ignored `results/demo-report/` tree, if present, remains untouched pending
+separate destructive-cleanup or migration authority.
 
-Only the two guides listed above are verified current presentation consumers.
-File presence does not activate later or otherwise unreviewed demo material.
-Dated presentation evidence belongs under the
-[`docs/history/`](../history/README.md) rules only when its date, source commit,
-and unique historical value are established.
+The fixture is synthetic and provisional. The report retains
+`EXPLORATORY / PROVISIONAL — NOT BIOLOGICALLY VALIDATED.` and
+`CMH-ranked candidates`; it does not establish production execution, runtime
+or cluster validation, completed production scientific review, validated
+editing sites, or biological readiness.

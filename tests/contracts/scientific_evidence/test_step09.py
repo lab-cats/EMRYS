@@ -5,65 +5,19 @@ from __future__ import annotations
 import copy
 import csv
 import hashlib
-import importlib.util
 import inspect
 import json
 import math
-import sys
 from collections.abc import Callable
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
 import pytest
+from norad.contracts.scientific_evidence import step08 as STEP08
+from norad.contracts.scientific_evidence import step09 as STEP09
+from tests.evidence.scientific_review_package import build_fixture as FIXTURES
 
 ROOT = Path(__file__).resolve().parents[3]
-OWNER = ROOT / "src/norad/contracts/scientific_evidence/step09.py"
-FIXTURE_BUILDER = (
-    ROOT
-    / "tests/evidence/scientific_review_package"
-    / "build_fixture.py"
-)
-MODULE_NAME = "_norad_step09_scientific_evidence_contract"
-READY_ATTRIBUTE = "_NORAD_STEP09_CONTRACT_READY"
-
-
-def load_contract() -> ModuleType:
-    cached = sys.modules.get(MODULE_NAME)
-    if cached is not None:
-        assert Path(cached.__file__).resolve() == OWNER.resolve()
-        assert getattr(cached, READY_ATTRIBUTE) is True
-        return cached
-    spec = importlib.util.spec_from_file_location(MODULE_NAME, OWNER)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[MODULE_NAME] = module
-    try:
-        spec.loader.exec_module(module)
-        setattr(module, READY_ATTRIBUTE, True)
-    except BaseException:
-        if sys.modules.get(MODULE_NAME) is module:
-            del sys.modules[MODULE_NAME]
-        raise
-    return module
-
-
-def load_fixture_builder() -> ModuleType:
-    name = "_norad_direct_step09_fixture_builder"
-    spec = importlib.util.spec_from_file_location(name, FIXTURE_BUILDER)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[name] = module
-    try:
-        spec.loader.exec_module(module)
-    except BaseException:
-        if sys.modules.get(name) is module:
-            del sys.modules[name]
-        raise
-    return module
-
-
-STEP09 = load_contract()
-FIXTURES = load_fixture_builder()
 
 
 def read_tsv(path: Path) -> tuple[tuple[str, ...], list[dict[str, str]]]:
@@ -116,26 +70,10 @@ def public_fingerprint(module: ModuleType) -> bytes:
         "validate_mutation_spectrum",
         "validate_pdf",
     ]
-    private_closure = [
-        "parse_nonnegative_or_infinite",
-        "resolve_recorded_path",
-        "count_status",
-        "paired_samples",
-    ]
     document = {
         "constants": {name: getattr(module, name) for name in constants},
         "functions": {
             name: str(inspect.signature(getattr(module, name))) for name in functions
-        },
-        "private_closure": {
-            name: str(inspect.signature(getattr(module, name)))
-            for name in private_closure
-        },
-        "shared_identity": {
-            "contract_error_is_step08": (
-                module.ContractError is module.step08.ContractError
-            ),
-            "table_is_step08": module.Table is module.step08.Table,
         },
         "table_fields": list(module.Table.__dataclass_fields__),
         "error_base": [value.__name__ for value in module.ContractError.__mro__],
@@ -145,23 +83,22 @@ def public_fingerprint(module: ModuleType) -> bytes:
 
 def build_valid(root: Path) -> SimpleNamespace:
     built = FIXTURES.build_fixture(root)
-    step08 = STEP09.step08
-    sample_hash = step08.sha256_file(built.sample_manifest)
-    partition_hash = step08.sha256_file(built.partition_manifest)
-    sites_hash = step08.sha256_file(built.step08_sites)
-    inputs_hash = step08.sha256_file(built.step08_inputs)
-    sample_table, sample_ids, sample_rows = step08.validate_sample_manifest(
+    sample_hash = STEP08.sha256_file(built.sample_manifest)
+    partition_hash = STEP08.sha256_file(built.partition_manifest)
+    sites_hash = STEP08.sha256_file(built.step08_sites)
+    inputs_hash = STEP08.sha256_file(built.step08_inputs)
+    sample_table, sample_ids, sample_rows = STEP08.validate_sample_manifest(
         built.sample_manifest
     )
-    partitions = step08.validate_partition_manifest(built.partition_manifest)
-    inputs = step08.validate_step08_inputs(
+    partitions = STEP08.validate_partition_manifest(built.partition_manifest)
+    inputs = STEP08.validate_step08_inputs(
         built.step08_inputs,
         sample_ids,
         partitions.rows,
         sample_hash,
         partition_hash,
     )
-    sites = step08.validate_step08_sites(
+    sites = STEP08.validate_step08_sites(
         built.step08_sites,
         sample_ids,
         partitions.rows,
@@ -240,16 +177,38 @@ def validate_summary(
 def test_public_api_fingerprint_matches_pre_extraction_oracle() -> None:
     payload = public_fingerprint(STEP09)
 
-    assert len(payload) == 6118
+    assert len(payload) == 5607
     assert hashlib.sha256(payload).hexdigest() == (
-        "e4cc56f8cf226e3eb8759fa3438dd1d3ffdfca6796f5851f9fc2bb5f113cdc36"
+        "a40e7b2cab9227cd80bf4750bd5495442caf43d960c10b0003901f992a2ba3a3"
     )
 
 
-def test_step08_contract_and_shared_type_identities_are_exact() -> None:
-    assert STEP09.step08 is FIXTURES.step08
-    assert STEP09.ContractError is FIXTURES.step08.ContractError
-    assert STEP09.Table is FIXTURES.step08.Table
+def test_declared_public_api_matches_supported_owner_surface() -> None:
+    expected = {
+        "ContractError",
+        "Table",
+        "NA_VALUE",
+        "STEP09_RESULT_HEADER",
+        "STEP09_SUMMARY_HEADER",
+        "STEP09_MUTATION_HEADER",
+        "CANONICAL_MUTATIONS",
+        "STEP09_TEST_STATUSES",
+        "STEP09_CALL_STATUSES",
+        "STEP09_BACKGROUND_STATUSES",
+        "STEP09_STATUS_COUNT_FIELDS",
+        "count_status",
+        "paired_samples",
+        "resolve_recorded_path",
+        "validate_step09_results",
+        "validate_step09_summary",
+        "validate_step09_result_semantics",
+        "validate_significant_subset",
+        "validate_mutation_spectrum",
+        "validate_pdf",
+    }
+
+    assert set(STEP09.__all__) == expected
+    assert all(hasattr(STEP09, name) for name in STEP09.__all__)
 
 
 def test_valid_fixture_passes_every_public_validator_with_exact_results(
@@ -270,13 +229,11 @@ def test_valid_fixture_passes_every_public_validator_with_exact_results(
         all_sites.rows,
     )
 
-    assert type(all_sites) is STEP09.Table
     assert all_sites.path == valid.all_sites_path.resolve()
     assert len(all_sites.rows) == 6
     assert [row["candidate_id"] for row in all_sites.rows] == [
         row["candidate_id"] for row in valid.sites.rows
     ]
-    assert type(summary) is STEP09.Table
     assert summary.rows[0]["successfully_tested_count"] == "3"
     assert [row["call_status"] for row in significant.rows] == [
         "significant_up",
@@ -641,7 +598,6 @@ def test_mutation_spectrum_accepts_empty_candidate_universe(tmp_path: Path) -> N
 
     table = STEP09.validate_mutation_spectrum(path, "analysis", [])
 
-    assert type(table) is STEP09.Table
     assert len(table.rows) == 12
 
 

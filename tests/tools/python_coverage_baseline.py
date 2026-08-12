@@ -1,23 +1,19 @@
 #!/usr/bin/env python3
-"""Build and check deterministic NORAD Python coverage snapshots."""
+"""Build and check compact NORAD Python coverage policies."""
 
 from __future__ import annotations
 
 import argparse
 import json
 import sys
-from collections.abc import Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = "1.0.0"
+SCHEMA_VERSION = "2.0.0"
 COVERAGE_VERSION = "7.15.2"
 SOURCE_ROOTS = ("scripts", "src/norad")
-REQUIRED_SUBPROCESS_FILES = (
-    "src/norad/stages/gtf_to_bed12/converter.py",
-    "src/norad/ingestion/sample_manifest_admission/validator.py",
-)
 NEW_SHARED_LINE_MINIMUM = (90, 100)
 NEW_SHARED_BRANCH_MINIMUM = (85, 100)
 COUNT_FIELDS = (
@@ -26,10 +22,44 @@ COUNT_FIELDS = (
     "covered_branches",
     "num_branches",
 )
+CRITICAL_OWNER_GROUPS: Mapping[str, tuple[str, ...]] = {
+    "norad.contracts.scientific_evidence": (
+        "src/norad/contracts/scientific_evidence/",
+    ),
+    "norad.libraries.validation": ("src/norad/libraries/validation/",),
+    "shared_scientific_validation_primitives": (
+        "src/norad/libraries/alignments/",
+        "src/norad/libraries/evidence/",
+        "src/norad/libraries/quality/",
+        "src/norad/libraries/references/",
+    ),
+    "report_publication_and_receipt_validation": (
+        "src/norad/contracts/artifacts/",
+        "src/norad/reporting/",
+    ),
+    "scientific_review_publication": ("src/norad/evidence/scientific_review_package/",),
+    "paired_cmh_analysis_contracts": (
+        "src/norad/analyses/paired_cmh_candidate_ranking/",
+    ),
+}
+REQUIRED_SUBPROCESS_ROUTES: Mapping[str, tuple[str, ...]] = {
+    "norad.convert.gtf_to_bed12": ("src/norad/stages/gtf_to_bed12/converter.py",),
+    "norad.validate.sample_manifest": (
+        "src/norad/ingestion/sample_manifest_admission/validator.py",
+    ),
+}
+SUBPROCESS_TEST_COMMAND = (
+    ".venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "tests/stages/gtf_to_bed12/test_gtf_to_bed12.py",
+    "tests/ingestion/sample_manifest_admission/test_validate_manifest.py",
+)
 
 
 class SnapshotError(ValueError):
-    """Raised when coverage input or a snapshot violates the baseline contract."""
+    """Raised when coverage input or a snapshot violates the policy."""
 
 
 def reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
@@ -75,6 +105,10 @@ def rate_text(covered: int, total: int) -> str:
     return str(value.quantize(Decimal("0.000001"), rounding=ROUND_HALF_UP))
 
 
+def policy_groups(groups: Mapping[str, tuple[str, ...]]) -> dict[str, list[str]]:
+    return {name: list(prefixes) for name, prefixes in groups.items()}
+
+
 def snapshot_contract() -> dict[str, Any]:
     return {
         "schema_version": SCHEMA_VERSION,
@@ -87,14 +121,16 @@ def snapshot_contract() -> dict[str, Any]:
             "source": list(SOURCE_ROOTS),
             "subprocess": True,
             "test_command": [".venv/bin/python", "-m", "pytest"],
+            "subprocess_test_command": list(SUBPROCESS_TEST_COMMAND),
         },
         "policy": {
             "global_non_regression": ["line_rate", "branch_rate"],
+            "critical_owner_non_regression": policy_groups(CRITICAL_OWNER_GROUPS),
             "new_shared_python_module_minimum": {
                 "line_rate": rate_text(*NEW_SHARED_LINE_MINIMUM),
                 "branch_rate": rate_text(*NEW_SHARED_BRANCH_MINIMUM),
             },
-            "required_subprocess_coverage": list(REQUIRED_SUBPROCESS_FILES),
+            "required_subprocess_coverage": policy_groups(REQUIRED_SUBPROCESS_ROUTES),
         },
     }
 
@@ -118,27 +154,26 @@ def normalized_source_path(value: Any) -> str:
 
 def counts_from_summary(summary: Any, label: str) -> dict[str, int]:
     payload = require_mapping(summary, label)
-    return {
+    counts = {
         field: require_count(payload.get(field), f"{label}.{field}")
         for field in COUNT_FIELDS
     }
-
-
-def measured_file(path: str, summary: Any) -> dict[str, Any]:
-    counts = counts_from_summary(summary, f"{path}.summary")
     if counts["covered_lines"] > counts["num_statements"]:
-        raise SnapshotError(f"{path} covered lines exceed statements")
+        raise SnapshotError(f"{label} covered lines exceed statements")
     if counts["covered_branches"] > counts["num_branches"]:
-        raise SnapshotError(f"{path} covered branches exceed branches")
+        raise SnapshotError(f"{label} covered branches exceed branches")
+    return counts
+
+
+def measurement(counts: Mapping[str, int]) -> dict[str, Any]:
     return {
-        "path": path,
         **counts,
         "line_rate": rate_text(counts["covered_lines"], counts["num_statements"]),
         "branch_rate": rate_text(counts["covered_branches"], counts["num_branches"]),
     }
 
 
-def build_snapshot(document: Any) -> dict[str, Any]:
+def measured_files(document: Any) -> dict[str, dict[str, int]]:
     payload = require_mapping(document, "coverage document")
     meta = require_mapping(payload.get("meta"), "coverage document.meta")
     if meta.get("version") != COVERAGE_VERSION:
@@ -150,20 +185,17 @@ def build_snapshot(document: Any) -> dict[str, Any]:
         raise SnapshotError("Coverage input must include branch coverage")
 
     raw_files = require_mapping(payload.get("files"), "coverage document.files")
-    files: list[dict[str, Any]] = []
-    seen: set[str] = set()
+    files: dict[str, dict[str, int]] = {}
     for raw_path, details in raw_files.items():
         path = normalized_source_path(raw_path)
-        if path in seen:
+        if path in files:
             raise SnapshotError(f"Duplicate normalized coverage path: {path}")
-        seen.add(path)
         summary = require_mapping(details, f"coverage file {path}").get("summary")
-        files.append(measured_file(path, summary))
-    files.sort(key=lambda item: item["path"])
+        files[path] = counts_from_summary(summary, f"{path}.summary")
     if not files:
         raise SnapshotError("Coverage input contains no configured Python source files")
 
-    aggregate = {field: sum(item[field] for item in files) for field in COUNT_FIELDS}
+    aggregate = aggregate_counts(files.values())
     declared_totals = counts_from_summary(
         payload.get("totals"), "coverage document.totals"
     )
@@ -172,73 +204,169 @@ def build_snapshot(document: Any) -> dict[str, Any]:
             "Coverage totals do not equal the sum of per-file counts: "
             f"declared={declared_totals}, calculated={aggregate}"
         )
+    return files
 
-    file_map = {item["path"]: item for item in files}
-    for required in REQUIRED_SUBPROCESS_FILES:
-        if required not in file_map or file_map[required]["covered_lines"] == 0:
-            raise SnapshotError(
-                f"Subprocess coverage is missing for required file: {required}"
-            )
 
+def aggregate_counts(entries: Iterable[Mapping[str, int]]) -> dict[str, int]:
+    return {field: sum(entry[field] for entry in entries) for field in COUNT_FIELDS}
+
+
+def files_for_prefixes(
+    files: Mapping[str, Mapping[str, int]], prefixes: Sequence[str]
+) -> list[Mapping[str, int]]:
+    return [
+        counts
+        for path, counts in files.items()
+        if any(path.startswith(prefix) for prefix in prefixes)
+    ]
+
+
+def group_measurement(
+    name: str,
+    prefixes: Sequence[str],
+    files: Mapping[str, Mapping[str, int]],
+) -> dict[str, Any]:
+    members = files_for_prefixes(files, prefixes)
+    if not members:
+        raise SnapshotError(f"Critical coverage owner has no measured files: {name}")
+    counts = aggregate_counts(members)
+    if counts["num_statements"] == 0:
+        raise SnapshotError(f"Critical coverage owner has no statements: {name}")
+    return {"name": name, "prefixes": list(prefixes), **measurement(counts)}
+
+
+def subprocess_measurement(
+    name: str,
+    paths: Sequence[str],
+    files: Mapping[str, Mapping[str, int]],
+) -> dict[str, Any]:
+    missing = [
+        path for path in paths if path not in files or files[path]["covered_lines"] == 0
+    ]
+    if missing:
+        raise SnapshotError(
+            f"Subprocess coverage is missing for route {name}: {', '.join(missing)}"
+        )
+    return {
+        "name": name,
+        "paths": list(paths),
+        "covered_lines": sum(files[path]["covered_lines"] for path in paths),
+    }
+
+
+def build_snapshot(document: Any, subprocess_document: Any) -> dict[str, Any]:
+    files = measured_files(document)
+    subprocess_files = measured_files(subprocess_document)
+    totals = measurement(aggregate_counts(files.values()))
     return {
         **snapshot_contract(),
-        "totals": {
-            **aggregate,
-            "line_rate": rate_text(
-                aggregate["covered_lines"], aggregate["num_statements"]
-            ),
-            "branch_rate": rate_text(
-                aggregate["covered_branches"], aggregate["num_branches"]
-            ),
-        },
-        "files": files,
+        "totals": totals,
+        "critical_owners": [
+            group_measurement(name, prefixes, files)
+            for name, prefixes in CRITICAL_OWNER_GROUPS.items()
+        ],
+        "subprocess_routes": [
+            subprocess_measurement(name, paths, subprocess_files)
+            for name, paths in REQUIRED_SUBPROCESS_ROUTES.items()
+        ],
     }
+
+
+def validate_measurement(value: Any, label: str) -> dict[str, Any]:
+    payload = require_mapping(value, label)
+    counts = counts_from_summary(payload, label)
+    expected = measurement(counts)
+    if payload != expected:
+        raise SnapshotError(f"{label} is not canonical")
+    return payload
+
+
+def validate_group_measurements(
+    value: Any,
+    label: str,
+    groups: Mapping[str, tuple[str, ...]],
+    totals: Mapping[str, int],
+) -> list[dict[str, Any]]:
+    if not isinstance(value, list) or len(value) != len(groups):
+        raise SnapshotError(f"{label} has an unexpected owner roster")
+    result: list[dict[str, Any]] = []
+    for index, (name, prefixes) in enumerate(groups.items()):
+        entry = require_mapping(value[index], f"{label}[{index}]")
+        identity = {"name": name, "prefixes": list(prefixes)}
+        if {key: entry.get(key) for key in identity} != identity:
+            raise SnapshotError(f"{label}[{index}] has an unexpected owner identity")
+        counts = validate_measurement(
+            {
+                key: entry.get(key)
+                for key in (*COUNT_FIELDS, "line_rate", "branch_rate")
+            },
+            f"{label}[{index}]",
+        )
+        if entry != {**identity, **counts}:
+            raise SnapshotError(f"{label}[{index}] is not canonical")
+        if counts["num_statements"] == 0:
+            raise SnapshotError(f"{label}[{index}] has no statements")
+        if any(counts[field] > totals[field] for field in COUNT_FIELDS):
+            raise SnapshotError(f"{label}[{index}] exceeds repository totals")
+        result.append(entry)
+    return result
+
+
+def validate_subprocess_measurements(value: Any, label: str) -> list[dict[str, Any]]:
+    if not isinstance(value, list) or len(value) != len(REQUIRED_SUBPROCESS_ROUTES):
+        raise SnapshotError(f"{label} has an unexpected owner roster")
+    result: list[dict[str, Any]] = []
+    for index, (name, paths) in enumerate(REQUIRED_SUBPROCESS_ROUTES.items()):
+        entry = require_mapping(value[index], f"{label}[{index}]")
+        expected = {
+            "name": name,
+            "paths": list(paths),
+            "covered_lines": require_count(
+                entry.get("covered_lines"), f"{label}[{index}].covered_lines"
+            ),
+        }
+        if entry != expected:
+            raise SnapshotError(f"{label}[{index}] is not canonical")
+        if entry["covered_lines"] == 0:
+            raise SnapshotError(f"{label}[{index}] has no covered lines")
+        result.append(entry)
+    return result
 
 
 def validate_snapshot(document: Any, label: str) -> dict[str, Any]:
     payload = require_mapping(document, label)
-    expected = snapshot_contract()
+    expected_contract = snapshot_contract()
+    expected_keys = {
+        *expected_contract,
+        "totals",
+        "critical_owners",
+        "subprocess_routes",
+    }
+    if set(payload) != expected_keys:
+        raise SnapshotError(f"{label} has unexpected top-level fields")
     for field, problem in (
         ("schema_version", "unsupported schema_version"),
         ("tool", "unexpected coverage tool identity"),
         ("measurement", "unexpected measurement policy"),
         ("policy", "unexpected coverage policy"),
     ):
-        if payload.get(field) != expected[field]:
+        if payload.get(field) != expected_contract[field]:
             raise SnapshotError(f"{label} has an {problem}")
 
-    raw_files = payload.get("files")
-    if not isinstance(raw_files, list) or not raw_files:
-        raise SnapshotError(f"{label}.files must be a nonempty array")
-    files: list[dict[str, Any]] = []
-    seen: set[str] = set()
-    for index, item in enumerate(raw_files):
-        entry = require_mapping(item, f"{label}.files[{index}]")
-        path = normalized_source_path(entry.get("path"))
-        if path in seen:
-            raise SnapshotError(f"{label} repeats coverage file {path}")
-        seen.add(path)
-        counts = {
-            field: require_count(entry.get(field), f"{label}.files[{index}].{field}")
-            for field in COUNT_FIELDS
-        }
-        expected = measured_file(path, counts)
-        if entry != expected:
-            raise SnapshotError(f"{label}.files[{index}] is not canonical")
-        files.append(entry)
-    if [item["path"] for item in files] != sorted(item["path"] for item in files):
-        raise SnapshotError(f"{label}.files must be sorted by path")
-
-    aggregate = {field: sum(item[field] for item in files) for field in COUNT_FIELDS}
-    expected_totals = {
-        **aggregate,
-        "line_rate": rate_text(aggregate["covered_lines"], aggregate["num_statements"]),
-        "branch_rate": rate_text(
-            aggregate["covered_branches"], aggregate["num_branches"]
-        ),
-    }
-    if payload.get("totals") != expected_totals:
-        raise SnapshotError(f"{label}.totals do not reconcile with files")
+    totals = validate_measurement(payload.get("totals"), f"{label}.totals")
+    validate_group_measurements(
+        payload.get("critical_owners"),
+        f"{label}.critical_owners",
+        CRITICAL_OWNER_GROUPS,
+        totals,
+    )
+    subprocess_routes = validate_subprocess_measurements(
+        payload.get("subprocess_routes"), f"{label}.subprocess_routes"
+    )
+    if any(
+        item["covered_lines"] > totals["covered_lines"] for item in subprocess_routes
+    ):
+        raise SnapshotError(f"{label}.subprocess_routes exceeds repository totals")
     return payload
 
 
@@ -250,67 +378,72 @@ def ratio_is_at_least(
     return covered * minimum_total >= minimum_covered * total
 
 
-def compare_snapshots(
-    baseline_document: Any,
-    current_document: Any,
-    new_shared_modules: Sequence[str] = (),
-) -> str:
-    baseline = validate_snapshot(baseline_document, "baseline")
-    current = validate_snapshot(current_document, "current")
-    baseline_files = {item["path"]: item for item in baseline["files"]}
-    current_files = {item["path"]: item for item in current["files"]}
-
-    removed = sorted(set(baseline_files) - set(current_files))
-    if removed:
-        raise SnapshotError(
-            "Measured Python source disappeared from the baseline: "
-            + ", ".join(removed)
-        )
-
-    baseline_totals = baseline["totals"]
-    current_totals = current["totals"]
-    for label, covered_field, total_field in (
+def require_non_regression(
+    label: str,
+    baseline: Mapping[str, int],
+    current: Mapping[str, int],
+) -> None:
+    for rate_name, covered_field, total_field in (
         ("line", "covered_lines", "num_statements"),
         ("branch", "covered_branches", "num_branches"),
     ):
         if not ratio_is_at_least(
-            current_totals[covered_field],
-            current_totals[total_field],
-            baseline_totals[covered_field],
-            baseline_totals[total_field],
+            current[covered_field],
+            current[total_field],
+            baseline[covered_field],
+            baseline[total_field],
         ):
             raise SnapshotError(
-                f"Global Python {label} coverage regressed: "
-                f"{current_totals[label + '_rate']} < "
-                f"{baseline_totals[label + '_rate']}"
+                f"{label} {rate_name} coverage regressed: "
+                f"{current[rate_name + '_rate']} < {baseline[rate_name + '_rate']}"
             )
 
-    for raw_path in new_shared_modules:
+
+def compare_snapshots(baseline_document: Any, current_document: Any) -> str:
+    baseline = validate_snapshot(baseline_document, "baseline")
+    current = validate_snapshot(current_document, "current")
+    require_non_regression("Global Python", baseline["totals"], current["totals"])
+
+    for baseline_group, current_group in zip(
+        baseline["critical_owners"], current["critical_owners"], strict=True
+    ):
+        require_non_regression(
+            f"Critical owner {baseline_group['name']}",
+            baseline_group,
+            current_group,
+        )
+
+    return (
+        "Python coverage check passed: "
+        f"line={current['totals']['line_rate']} "
+        f"branch={current['totals']['branch_rate']} "
+        f"critical_owners={len(current['critical_owners'])}"
+    )
+
+
+def validate_new_shared_modules(document: Any, raw_paths: Sequence[str]) -> None:
+    if not raw_paths:
+        return
+    files = measured_files(document)
+    for raw_path in raw_paths:
         path = normalized_source_path(raw_path)
-        if path not in current_files:
+        if path not in files:
             raise SnapshotError(f"New shared module is not measured: {path}")
-        entry = current_files[path]
+        counts = files[path]
         if not ratio_is_at_least(
-            entry["covered_lines"],
-            entry["num_statements"],
+            counts["covered_lines"],
+            counts["num_statements"],
             *NEW_SHARED_LINE_MINIMUM,
         ):
             raise SnapshotError(f"New shared module line coverage is below 90%: {path}")
         if not ratio_is_at_least(
-            entry["covered_branches"],
-            entry["num_branches"],
+            counts["covered_branches"],
+            counts["num_branches"],
             *NEW_SHARED_BRANCH_MINIMUM,
         ):
             raise SnapshotError(
                 f"New shared module branch coverage is below 85%: {path}"
             )
-
-    return (
-        "Python coverage check passed: "
-        f"line={current_totals['line_rate']} "
-        f"branch={current_totals['branch_rate']} "
-        f"files={len(current_files)}"
-    )
 
 
 def write_snapshot(path: Path, snapshot: dict[str, Any]) -> None:
@@ -327,16 +460,18 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     build = subparsers.add_parser(
-        "build", help="Build a deterministic snapshot from coverage JSON."
+        "build", help="Build a deterministic compact policy from coverage JSON."
     )
     build.add_argument("--coverage-json", required=True, type=Path)
+    build.add_argument("--subprocess-coverage-json", required=True, type=Path)
     build.add_argument("--output", required=True, type=Path)
 
     check = subparsers.add_parser(
-        "check", help="Check current coverage against the tracked baseline."
+        "check", help="Check current coverage against the tracked policy."
     )
     check.add_argument("--baseline", required=True, type=Path)
     check.add_argument("--current", required=True, type=Path)
+    check.add_argument("--coverage-json", type=Path)
     check.add_argument(
         "--new-shared-module",
         action="append",
@@ -350,23 +485,31 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(argv)
     try:
         if args.command == "build":
-            snapshot = build_snapshot(load_json(args.coverage_json))
+            snapshot = build_snapshot(
+                load_json(args.coverage_json),
+                load_json(args.subprocess_coverage_json),
+            )
             write_snapshot(args.output, snapshot)
-            totals = snapshot["totals"]
             print(
-                "Python coverage snapshot built: "
-                f"line={totals['line_rate']} "
-                f"branch={totals['branch_rate']} "
-                f"files={len(snapshot['files'])}"
+                "Python coverage policy built: "
+                f"line={snapshot['totals']['line_rate']} "
+                f"branch={snapshot['totals']['branch_rate']} "
+                f"critical_owners={len(snapshot['critical_owners'])}"
             )
         else:
-            print(
-                compare_snapshots(
-                    load_json(args.baseline),
-                    load_json(args.current),
-                    args.new_shared_module,
+            if args.new_shared_module and args.coverage_json is None:
+                raise SnapshotError(
+                    "--coverage-json is required with --new-shared-module"
                 )
+            message = compare_snapshots(
+                load_json(args.baseline),
+                load_json(args.current),
             )
+            if args.coverage_json is not None:
+                validate_new_shared_modules(
+                    load_json(args.coverage_json), args.new_shared_module
+                )
+            print(message)
     except SnapshotError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2

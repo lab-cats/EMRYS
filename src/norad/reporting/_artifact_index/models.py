@@ -7,12 +7,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from norad.libraries.alignments import orientation as alignment_orientation
-from norad.libraries.alignments import star as star_alignment
-from norad.libraries.validation import mpileup as mpileup_report
-from norad.libraries.validation import report as validation_report
-
-from .contracts import contracts, review_package
+from norad.contracts.artifacts import api as contracts
+from norad.contracts.scientific_evidence import review_package
+from norad.libraries.alignments.orientation import COUNTS_HEADER as STEP06_COUNTS_HEADER
+from norad.libraries.alignments.star import REQUIRED_INDEX_MEMBERS as STEP00A_BASENAMES
+from norad.libraries.validation.mpileup import RECEIPT_HEADER as STEP07_RECEIPT_HEADER
+from norad.libraries.validation.report import HEADER as VALIDATION_REPORT_HEADER
 
 if TYPE_CHECKING:
     from .source_checkout import SourceCheckout
@@ -100,11 +100,6 @@ ARTIFACT_RECEIPT_HEADER = (
     "finished_at",
     "transaction_state",
 )
-
-STEP07_RECEIPT_HEADER = mpileup_report.RECEIPT_HEADER
-STEP06_COUNTS_HEADER = alignment_orientation.COUNTS_HEADER
-STEP00A_BASENAMES = star_alignment.REQUIRED_INDEX_MEMBERS
-VALIDATION_REPORT_HEADER = validation_report.HEADER
 
 
 class ArtifactIndexError(RuntimeError):

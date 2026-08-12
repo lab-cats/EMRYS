@@ -7,7 +7,8 @@ from collections import Counter
 from dataclasses import replace
 from typing import TYPE_CHECKING, Any
 
-from .contracts import contracts
+from norad.contracts.artifacts import api as contracts
+
 from .core import (
     canonical_digest,
     canonical_json_bytes,

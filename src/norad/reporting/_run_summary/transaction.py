@@ -10,6 +10,9 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 from typing import Any
 
+from norad.contracts.artifacts import api as contracts
+from norad.reporting._artifact_index import api as adapter
+
 from .inputs import (
     _capture_file_snapshot,
     _fail,
@@ -19,7 +22,7 @@ from .inputs import (
     _resolved_path,
     _verify_file_snapshot,
 )
-from .models import FileSnapshot, OutputPaths, adapter, contracts
+from .models import FileSnapshot, OutputPaths
 
 
 def _assert_output_directory_identity(paths: OutputPaths) -> None:

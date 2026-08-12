@@ -19,7 +19,9 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from norad.reporting._artifact_index import builder
+from norad.contracts.scientific_evidence import review_package, step09
+from norad.reporting._artifact_index.binary_readers import BGZF_EOF_BLOCK
+from norad.reporting._artifact_index.registry import ADAPTER_REGISTRY
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 INVENTORY_TEMPLATE = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
@@ -182,7 +184,7 @@ def row_value(column: str) -> str:
         "partition_manifest_row_count": "2",
         "evidence_manifest_path": "/synthetic/evidence_manifest.tsv",
         "evidence_manifest_sha256": "6" * 64,
-        "evidence_manifest_row_count": str(len(builder.review_package.CATEGORY_ORDER)),
+        "evidence_manifest_row_count": str(len(review_package.CATEGORY_ORDER)),
         "evidence_source_count": "0",
         "superseded_analysis_ids": "NA",
         "sensitivity_analysis_ids": "NA",
@@ -195,9 +197,7 @@ def row_value(column: str) -> str:
         "adjudication_decision": "pending",
         "orientation_decision": "pending",
     }
-    if column in {
-        f"{category}_status" for category in builder.review_package.CATEGORY_ORDER
-    }:
+    if column in {f"{category}_status" for category in review_package.CATEGORY_ORDER}:
         return "missing"
     if column.startswith("DP__"):
         return "10"
@@ -247,7 +247,7 @@ def minimal_bam_bytes() -> bytes:
         + header_text
         + struct.pack("<i", 0)
     )
-    return bgzf_block(payload) + builder.BGZF_EOF_BLOCK
+    return bgzf_block(payload) + BGZF_EOF_BLOCK
 
 
 def minimal_bai_bytes() -> bytes:
@@ -354,7 +354,7 @@ def tsv_rows_for(
         "step09_cmh_all_sites_v1": 4,
         "step09_cmh_significant_sites_v1": 1,
         "step09_mutation_spectrum_tsv_v1": 12,
-        "step09c_evidence_index_v1": len(builder.review_package.CATEGORY_ORDER),
+        "step09c_evidence_index_v1": len(review_package.CATEGORY_ORDER),
         "step09c_orientation_locus_audit_v1": 0,
         "step09c_annotation_audit_v1": 0,
         "step09c_qc_funnel_v1": 0,
@@ -659,7 +659,7 @@ def tsv_rows_for(
     elif adapter == "step09_mutation_spectrum_tsv_v1":
         for output_row, mutation_type in zip(
             rows,
-            builder.step09.CANONICAL_MUTATIONS,
+            step09.CANONICAL_MUTATIONS,
             strict=True,
         ):
             ref, alt = mutation_type.split(">")
@@ -680,7 +680,7 @@ def tsv_rows_for(
     elif adapter == "step09c_evidence_index_v1":
         for output_row, category in zip(
             rows,
-            builder.review_package.CATEGORY_ORDER,
+            review_package.CATEGORY_ORDER,
             strict=True,
         ):
             output_row.update(
@@ -711,9 +711,7 @@ def tsv_rows_for(
                 "overall_science_status": "evidence_incomplete",
                 "orientation_status": "provisional",
                 "orientation_policy": "legacy_provisional_v1",
-                "evidence_record_count": str(
-                    len(builder.review_package.CATEGORY_ORDER)
-                ),
+                "evidence_record_count": str(len(review_package.CATEGORY_ORDER)),
                 "evidence_source_count": "0",
                 "selected_candidate_count": "0",
                 "adjudicated_candidate_count": "0",
@@ -760,7 +758,7 @@ def write_adapter_source(
     row: Mapping[str, str],
     inventory_rows: Sequence[Mapping[str, str]],
 ) -> None:
-    spec = builder.ADAPTER_REGISTRY[row["adapter"]]
+    spec = ADAPTER_REGISTRY[row["adapter"]]
     path.parent.mkdir(parents=True, exist_ok=True)
     if spec.kind == "star_index":
         if path.name in {"Genome", "SA", "SAindex"}:

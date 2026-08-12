@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import argparse
 import csv
+import dataclasses
 import hashlib
-import importlib.util
+import importlib
 import json
 import os
 import subprocess
@@ -13,36 +14,18 @@ import sys
 from collections import Counter
 from collections.abc import Mapping
 from pathlib import Path
-from types import ModuleType
 from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
+from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
+from norad.contracts.scientific_evidence import review_package, step08, step09
+from tests.contract_integration.validation_rosters.validation_roster_expectations import (
+    assert_exact_check_roster,
+)
+from tests.reporting.fixtures.artifact_adapters_v1 import build_fixture as FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-ROSTER_ORACLE = (
-    REPO_ROOT
-    / "tests"
-    / "contract_integration"
-    / "validation_rosters"
-    / "validation_roster_expectations.py"
-)
-ROSTER_SPEC = importlib.util.spec_from_file_location(
-    "reporting_validation_roster_oracle",
-    ROSTER_ORACLE,
-)
-assert ROSTER_SPEC is not None and ROSTER_SPEC.loader is not None
-ROSTER_MODULE = importlib.util.module_from_spec(ROSTER_SPEC)
-ROSTER_SPEC.loader.exec_module(ROSTER_MODULE)
-assert_exact_check_roster = ROSTER_MODULE.assert_exact_check_roster
-FIXTURE_BUILDER = (
-    REPO_ROOT
-    / "tests"
-    / "reporting"
-    / "fixtures"
-    / "artifact_adapters_v1"
-    / "build_fixture.py"
-)
 FIXED_EPOCH = "1700000000"
 GIT_ROUTING_VARIABLES = (
     "GIT_ALTERNATE_OBJECT_DIRECTORIES",
@@ -113,7 +96,7 @@ EXPECTED_PRODUCER_EVIDENCE = {
     ),
     "09c": (
         "src/norad/evidence/scientific_review_package/publisher.py",
-        "e11b83f3ee6c0c6344693077416ee916ccab8f4a82d3bee3acab234176e99c67",
+        "c5f7ddb41896790942340d91032de71bfd2221636df3d48726dc2bc9721f7e0f",
     ),
 }
 VALIDATION_ARTIFACT_STEPS = {
@@ -133,23 +116,15 @@ VALIDATION_ARTIFACT_STEPS = {
 }
 
 
-def load_fixture_module() -> ModuleType:
-    spec = importlib.util.spec_from_file_location(
-        "norad_artifact_adapter_fixture_builder",
-        FIXTURE_BUILDER,
-    )
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Could not load fixture builder: {FIXTURE_BUILDER}")
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[spec.name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-FIXTURE = load_fixture_module()
-ADAPTER = FIXTURE.builder
 ARTIFACT_CONTEXT = importlib.import_module("norad.reporting._artifact_index.context")
 ARTIFACT_CORE = importlib.import_module("norad.reporting._artifact_index.core")
+ARTIFACT_MODELS = importlib.import_module("norad.reporting._artifact_index.models")
+ARTIFACT_PUBLICATION = importlib.import_module(
+    "norad.reporting._artifact_index.publication"
+)
+ARTIFACT_RECORDS = importlib.import_module("norad.reporting._artifact_index.records")
+ARTIFACT_REGISTRY = importlib.import_module("norad.reporting._artifact_index.registry")
+ARTIFACT_ROSTERS = importlib.import_module("norad.reporting._artifact_index.rosters")
 ARTIFACT_NATIVE = importlib.import_module(
     "norad.reporting._artifact_index.reconcile_native"
 )
@@ -159,6 +134,13 @@ ARTIFACT_SOURCE_CHECKOUT = importlib.import_module(
 ARTIFACT_VALIDATION = importlib.import_module(
     "norad.reporting._artifact_index.validation"
 )
+
+
+def publication_ops(**overrides: Any) -> Any:
+    return dataclasses.replace(
+        ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS,
+        **overrides,
+    )
 
 
 @pytest.fixture
@@ -219,7 +201,7 @@ def record_for(fixture: Any, artifact_id: str) -> dict[str, Any]:
 
 
 def context_for(fixture: Any) -> Any:
-    return ADAPTER.prepare_context(
+    return ARTIFACT_CONTEXT.prepare_context(
         argparse.Namespace(
             run_id=fixture.run_id,
             run_contract=fixture.run_contract,
@@ -255,7 +237,7 @@ def assert_no_owned_outputs(fixture: Any) -> None:
 
 
 def schema_validator() -> Draft202012Validator:
-    schemas, registry = ADAPTER.contracts.load_schema_registry()
+    schemas, registry = ARTIFACT_CONTRACTS.load_schema_registry()
     return Draft202012Validator(
         schemas["artifact-record"],
         registry=registry,
@@ -270,12 +252,12 @@ def assert_published_records_are_valid(fixture: Any) -> None:
         record = read_json(path)
         errors = list(validator.iter_errors(record))
         assert errors == [], "\n".join(error.message for error in errors)
-        ADAPTER.contracts.validate_artifact_semantics(record)
-        ADAPTER.contracts.reconcile_artifact_inventory_row(
+        ARTIFACT_CONTRACTS.validate_artifact_semantics(record)
+        ARTIFACT_CONTRACTS.reconcile_artifact_inventory_row(
             record,
             rows_by_id[record["artifact_id"]],
         )
-        assert path.read_bytes() == ADAPTER.canonical_json_bytes(record)
+        assert path.read_bytes() == ARTIFACT_CORE.canonical_json_bytes(record)
 
 
 def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
@@ -287,7 +269,7 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
     assert [row["artifact_id"] for row in rows] == [
         row["artifact_id"] for row in FIXTURE.read_inventory_template()
     ]
-    assert {row["adapter"] for row in rows} == set(ADAPTER.ADAPTER_REGISTRY)
+    assert {row["adapter"] for row in rows} == set(ARTIFACT_REGISTRY.ADAPTER_REGISTRY)
     assert len(artifact_fixture.source_paths) == 81
     assert all(path.is_file() for path in artifact_fixture.source_paths.values())
     assert not artifact_fixture.output_root.exists()
@@ -296,10 +278,10 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
 def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes() -> None:
     git_commit = "a" * 40
 
-    evidence = ADAPTER.producer_evidence(git_commit)
+    evidence = ARTIFACT_RECORDS.producer_evidence(git_commit)
 
     assert tuple(evidence) == tuple(EXPECTED_PRODUCER_EVIDENCE)
-    assert tuple(ADAPTER.STEP_PRODUCERS) == tuple(EXPECTED_PRODUCER_EVIDENCE)
+    assert tuple(ARTIFACT_ROSTERS.STEP_PRODUCERS) == tuple(EXPECTED_PRODUCER_EVIDENCE)
     for step_id, (expected_path, expected_sha256) in EXPECTED_PRODUCER_EVIDENCE.items():
         record = evidence[step_id]
         assert record["status"] == "implemented"
@@ -337,9 +319,9 @@ def test_git_commit_routing_sanitization_is_explicit_and_complete(
     monkeypatch.setenv("NORAD_GIT_ENV_SENTINEL", "retained")
     monkeypatch.setattr(ARTIFACT_CORE.subprocess, "run", observe_run)
 
-    assert ADAPTER.get_git_commit() == commit
+    assert ARTIFACT_CORE.get_git_commit() == commit
     assert (
-        ADAPTER.get_git_commit(
+        ARTIFACT_CORE.get_git_commit(
             source_root=tmp_path,
             sanitize_git_routing=True,
         )
@@ -350,7 +332,7 @@ def test_git_commit_routing_sanitization_is_explicit_and_complete(
     assert len(calls) == expected_call_count
     default_command, default_options = calls[0]
     assert default_command == ("git", "rev-parse", "--verify", "HEAD")
-    assert default_options["cwd"] == ADAPTER.contracts.REPO_ROOT
+    assert default_options["cwd"] == ARTIFACT_CONTRACTS.REPO_ROOT
     assert default_options["env"] is None
     sanitized_command, sanitized_options = calls[1]
     assert sanitized_command == default_command
@@ -375,7 +357,7 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
     real_get_git_commit = ARTIFACT_CONTEXT.get_git_commit
     real_producer_evidence = ARTIFACT_CONTEXT.producer_evidence
     real_declared_contract_path = ARTIFACT_NATIVE.declared_contract_path
-    real_validate_artifact_semantics = ADAPTER.contracts.validate_artifact_semantics
+    real_validate_artifact_semantics = ARTIFACT_CONTRACTS.validate_artifact_semantics
 
     def get_git_commit(
         *,
@@ -418,12 +400,12 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
         declared_contract_path,
     )
     monkeypatch.setattr(
-        ADAPTER.contracts,
+        ARTIFACT_CONTRACTS,
         "validate_artifact_semantics",
         validate_artifact_semantics,
     )
 
-    context = ADAPTER.prepare_context(
+    context = ARTIFACT_CONTEXT.prepare_context(
         argparse.Namespace(
             run_id=artifact_fixture.run_id,
             run_contract=artifact_fixture.run_contract,
@@ -434,22 +416,11 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
         source_checkout=authority,
     )
 
-    assert context.source_checkout is authority
+    assert context.source_checkout == authority
     assert root_calls["git"] == 1
     assert root_calls["producers"] == 1
     assert root_calls["native_references"] > 0
     assert root_calls["record_semantics"] == len(artifact_fixture.inventory_rows)
-
-
-def test_contract_modules_are_shared_package_identities() -> None:
-    assert ADAPTER.step09.step08 is ADAPTER.step08
-    assert ADAPTER.review_package is ADAPTER._contract_owners.review_package
-
-
-def test_artifact_index_has_no_private_step09c_dependency() -> None:
-    source = Path(ADAPTER.__file__).read_text(encoding="utf-8")
-    assert "norad.evidence.scientific_review_package" not in source
-    assert not hasattr(ADAPTER, "step09c")
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(
@@ -503,7 +474,9 @@ def test_live_artifact_index_header_owner_controls_serialized_bytes(
     context = context_for(artifact_fixture)
 
     assert context.index_bytes.splitlines()[0] == "\t".join(mutated).encode()
-    assert context.index_bytes != ADAPTER.tsv_bytes(original, context.index_rows)
+    assert context.index_bytes != ARTIFACT_RECORDS.tsv_bytes(
+        original, context.index_rows
+    )
 
 
 def test_execute_publishes_inventory_ordered_schema_valid_transaction(
@@ -760,7 +733,9 @@ def test_same_run_id_rejects_changed_run_contract_without_touching_outputs(
         if field != "run_contract_sha256"
     }
     contract["run_contract_sha256"] = FIXTURE.canonical_run_contract_sha256(components)
-    ordered_contract = {field: contract[field] for field in ADAPTER.RUN_CONTRACT_FIELDS}
+    ordered_contract = {
+        field: contract[field] for field in ARTIFACT_MODELS.RUN_CONTRACT_FIELDS
+    }
     artifact_fixture.run_contract.write_text(
         json.dumps(ordered_contract, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
@@ -850,7 +825,7 @@ def test_first_publication_rename_failure_rolls_back_owned_outputs(
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     context = context_for(artifact_fixture)
-    real_replace = ADAPTER.os.replace
+    real_replace = ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS.replace
 
     def fail_index_publication(source: Any, destination: Any) -> None:
         if (
@@ -860,13 +835,14 @@ def test_first_publication_rename_failure_rolls_back_owned_outputs(
             raise OSError("injected index publication failure")
         real_replace(source, destination)
 
-    monkeypatch.setattr(ADAPTER.os, "replace", fail_index_publication)
-
     with pytest.raises(
-        ADAPTER.ArtifactIndexError,
+        ARTIFACT_MODELS.ArtifactIndexError,
         match="injected index publication failure",
     ):
-        ADAPTER.publish_context(context)
+        ARTIFACT_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(replace=fail_index_publication),
+        )
 
     assert_no_owned_outputs(artifact_fixture)
 
@@ -876,10 +852,10 @@ def test_replacement_rename_failure_restores_prior_transaction_byte_for_byte(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    ADAPTER.publish_context(context_for(artifact_fixture))
+    ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
     before = owned_snapshot(artifact_fixture)
     replacement = context_for(artifact_fixture)
-    real_replace = ADAPTER.os.replace
+    real_replace = ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS.replace
     failed = False
 
     def fail_replacement_index(source: Any, destination: Any) -> None:
@@ -893,13 +869,14 @@ def test_replacement_rename_failure_restores_prior_transaction_byte_for_byte(
             raise OSError("injected replacement index failure")
         real_replace(source, destination)
 
-    monkeypatch.setattr(ADAPTER.os, "replace", fail_replacement_index)
-
     with pytest.raises(
-        ADAPTER.ArtifactIndexError,
+        ARTIFACT_MODELS.ArtifactIndexError,
         match="injected replacement index failure",
     ):
-        ADAPTER.publish_context(replacement)
+        ARTIFACT_PUBLICATION.publish_context(
+            replacement,
+            ops=publication_ops(replace=fail_replacement_index),
+        )
 
     assert failed
     assert owned_snapshot(artifact_fixture) == before
@@ -922,10 +899,10 @@ def test_source_mutation_between_inspection_and_publication_aborts_cleanly(
     )
 
     with pytest.raises(
-        ADAPTER.ArtifactIndexError,
+        ARTIFACT_MODELS.ArtifactIndexError,
         match="changed after initial inspection",
     ):
-        ADAPTER.publish_context(context)
+        ARTIFACT_PUBLICATION.publish_context(context)
 
     assert_no_owned_outputs(artifact_fixture)
 
@@ -943,16 +920,18 @@ def test_recheck_inputs_uses_live_context_stat_owner(
         nonlocal reached_target
         if path.resolve() == target:
             reached_target = True
-            raise ADAPTER.ArtifactIndexError("injected live stat-source failure")
+            raise ARTIFACT_MODELS.ArtifactIndexError(
+                "injected live stat-source failure"
+            )
         return real_stat_source(path, hash_content=hash_content)
 
     monkeypatch.setattr(ARTIFACT_CONTEXT, "stat_source", fail_target_recheck)
 
     with pytest.raises(
-        ADAPTER.ArtifactIndexError,
+        ARTIFACT_MODELS.ArtifactIndexError,
         match="injected live stat-source failure",
     ):
-        ADAPTER.recheck_inputs(context)
+        ARTIFACT_CONTEXT.recheck_inputs(context)
 
     assert reached_target
 
@@ -1062,7 +1041,7 @@ def test_unknown_adapter_fails_before_any_output(
     rows[0]["adapter"] = "unknown_adapter_v1"
     FIXTURE.write_tsv(
         artifact_fixture.inventory,
-        ADAPTER.contracts.INVENTORY_HEADER,
+        ARTIFACT_CONTRACTS.INVENTORY_HEADER,
         rows,
     )
 
@@ -1121,10 +1100,10 @@ def test_declared_source_symlink_retarget_is_detected(
     source.symlink_to(target_two)
 
     with pytest.raises(
-        ADAPTER.ArtifactIndexError,
+        ARTIFACT_MODELS.ArtifactIndexError,
         match="changed after initial inspection",
     ):
-        ADAPTER.publish_context(context)
+        ARTIFACT_PUBLICATION.publish_context(context)
 
     assert_no_owned_outputs(artifact_fixture)
 
@@ -1135,7 +1114,7 @@ def test_native_receipt_mismatch_is_published_as_explicit_failure(
     receipt_path = artifact_fixture.source_for("cohort.synthetic.p1.receipt")
     rows = read_tsv(receipt_path)
     rows[0]["vcf_record_count"] = "2"
-    FIXTURE.write_tsv(receipt_path, ADAPTER.STEP07_RECEIPT_HEADER, rows)
+    FIXTURE.write_tsv(receipt_path, ARTIFACT_MODELS.STEP07_RECEIPT_HEADER, rows)
 
     result = run_cli(artifact_fixture, execute=True)
 
@@ -1182,9 +1161,9 @@ def test_reserved_biological_ready_state_is_rejected(
         rows = read_tsv(path)
         rows[0]["overall_science_status"] = "biological_interpretation_ready"
         header = (
-            ADAPTER.review_package.REVIEW_PLAN_HEADER
+            review_package.REVIEW_PLAN_HEADER
             if artifact_id.endswith("review_plan")
-            else ADAPTER.review_package.REVIEW_SUMMARY_HEADER
+            else review_package.REVIEW_SUMMARY_HEADER
         )
         FIXTURE.write_tsv(path, header, rows)
     review_summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
@@ -1194,7 +1173,7 @@ def test_reserved_biological_ready_state_is_rejected(
     )
     FIXTURE.write_tsv(
         review_summary_path,
-        ADAPTER.review_package.REVIEW_SUMMARY_HEADER,
+        review_package.REVIEW_SUMMARY_HEADER,
         review_summary_rows,
     )
 
@@ -1222,7 +1201,7 @@ def test_tampered_receipt_and_extra_record_entry_block_retry(
     rows[0]["complete_artifact_count"] = "0"
     FIXTURE.write_tsv(
         artifact_fixture.receipt_path,
-        ADAPTER.ARTIFACT_RECEIPT_HEADER,
+        ARTIFACT_MODELS.ARTIFACT_RECEIPT_HEADER,
         rows,
     )
 
@@ -1265,16 +1244,16 @@ def test_stale_predecessor_context_cannot_overwrite_newer_retry(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    ADAPTER.publish_context(context_for(artifact_fixture))
+    ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
     stale = context_for(artifact_fixture)
-    ADAPTER.publish_context(context_for(artifact_fixture))
+    ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
     before = owned_snapshot(artifact_fixture)
 
     with pytest.raises(
-        ADAPTER.ArtifactIndexError,
+        ARTIFACT_MODELS.ArtifactIndexError,
         match="predecessor changed",
     ):
-        ADAPTER.publish_context(stale)
+        ARTIFACT_PUBLICATION.publish_context(stale)
 
     assert owned_snapshot(artifact_fixture) == before
     assert not artifact_fixture.lock_path.exists()
@@ -1284,7 +1263,7 @@ def test_prepare_context_uses_live_predecessor_validation_owner(
     artifact_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    ADAPTER.publish_context(context_for(artifact_fixture))
+    ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
     real_validate = ARTIFACT_VALIDATION.validate_published_transaction
     reached_predecessor = False
 
@@ -1293,7 +1272,7 @@ def test_prepare_context_uses_live_predecessor_validation_owner(
         assert kwargs["source_root"] == REPO_ROOT
         if not kwargs["require_current_source_locations"]:
             reached_predecessor = True
-            raise ADAPTER.ArtifactIndexError(
+            raise ARTIFACT_MODELS.ArtifactIndexError(
                 "injected live predecessor-validation failure"
             )
         real_validate(**kwargs)
@@ -1305,7 +1284,7 @@ def test_prepare_context_uses_live_predecessor_validation_owner(
     )
 
     with pytest.raises(
-        ADAPTER.ArtifactIndexError,
+        ARTIFACT_MODELS.ArtifactIndexError,
         match="injected live predecessor-validation failure",
     ):
         context_for(artifact_fixture)
@@ -1319,7 +1298,7 @@ def test_post_publication_source_mutation_rolls_back(
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     context = context_for(artifact_fixture)
-    real_validate = ADAPTER.validate_published_transaction
+    real_validate = ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS.validate_published_transaction
     source = artifact_fixture.source_for("sample.SYNTH_A.star_log")
     mutated = False
 
@@ -1331,17 +1310,14 @@ def test_post_publication_source_mutation_rolls_back(
             source.write_text("mutated after publication\n", encoding="utf-8")
             mutated = True
 
-    monkeypatch.setattr(
-        ADAPTER,
-        "validate_published_transaction",
-        mutate_after_validation,
-    )
-
     with pytest.raises(
-        ADAPTER.ArtifactIndexError,
+        ARTIFACT_MODELS.ArtifactIndexError,
         match="changed after initial inspection",
     ):
-        ADAPTER.publish_context(context)
+        ARTIFACT_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(validate_published_transaction=mutate_after_validation),
+        )
 
     assert mutated
     assert_no_owned_outputs(artifact_fixture)
@@ -1352,10 +1328,12 @@ def test_post_commit_backup_cleanup_failure_preserves_new_transaction(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    ADAPTER.publish_context(context_for(artifact_fixture))
+    ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
     prior_receipt = read_tsv(artifact_fixture.receipt_path)[0]
     replacement = context_for(artifact_fixture)
-    real_remove_owned = ADAPTER.remove_owned
+    real_remove_owned = (
+        ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS.remove_owned
+    )
     injected = False
 
     def fail_backup_index_cleanup(path: Path) -> None:
@@ -1369,17 +1347,14 @@ def test_post_commit_backup_cleanup_failure_preserves_new_transaction(
             raise OSError("injected backup cleanup failure")
         real_remove_owned(path)
 
-    monkeypatch.setattr(
-        ADAPTER,
-        "remove_owned",
-        fail_backup_index_cleanup,
-    )
-
     with pytest.raises(
-        ADAPTER.ArtifactIndexError,
+        ARTIFACT_MODELS.ArtifactIndexError,
         match="cleanup failed",
     ):
-        ADAPTER.publish_context(replacement)
+        ARTIFACT_PUBLICATION.publish_context(
+            replacement,
+            ops=publication_ops(remove_owned=fail_backup_index_cleanup),
+        )
 
     assert injected
     current_receipt = read_tsv(artifact_fixture.receipt_path)[0]
@@ -1457,9 +1432,9 @@ def test_incomplete_replacement_rollback_retains_lock_and_recovery(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    ADAPTER.publish_context(context_for(artifact_fixture))
+    ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
     replacement = context_for(artifact_fixture)
-    real_replace = ADAPTER.os.replace
+    real_replace = ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS.replace
     publication_failed = False
     restoration_failed = False
 
@@ -1486,17 +1461,14 @@ def test_incomplete_replacement_rollback_retains_lock_and_recovery(
             raise OSError("injected prior-record restoration failure")
         real_replace(source, destination)
 
-    monkeypatch.setattr(
-        ADAPTER.os,
-        "replace",
-        fail_publication_and_restoration,
-    )
-
     with pytest.raises(
-        ADAPTER.ArtifactIndexError,
+        ARTIFACT_MODELS.ArtifactIndexError,
         match="rollback was incomplete",
     ):
-        ADAPTER.publish_context(replacement)
+        ARTIFACT_PUBLICATION.publish_context(
+            replacement,
+            ops=publication_ops(replace=fail_publication_and_restoration),
+        )
 
     assert publication_failed
     assert restoration_failed
@@ -1523,36 +1495,35 @@ def test_failed_restored_transaction_validation_requarantines_receipt(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    ADAPTER.publish_context(context_for(artifact_fixture))
+    ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
     replacement = context_for(artifact_fixture)
-    real_validate = ADAPTER.validate_published_transaction
+    real_validate = ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS.validate_published_transaction
     prior_validation_count = 0
 
     def fail_new_and_restored_validation(**kwargs: Any) -> None:
         nonlocal prior_validation_count
         assert kwargs["source_root"] == replacement.source_checkout.root
         if kwargs["require_current_source_locations"]:
-            raise ADAPTER.ArtifactIndexError(
+            raise ARTIFACT_MODELS.ArtifactIndexError(
                 "injected new-transaction validation failure"
             )
         prior_validation_count += 1
         if prior_validation_count == 2:
-            raise ADAPTER.ArtifactIndexError(
+            raise ARTIFACT_MODELS.ArtifactIndexError(
                 "injected restored-transaction validation failure"
             )
         real_validate(**kwargs)
 
-    monkeypatch.setattr(
-        ADAPTER,
-        "validate_published_transaction",
-        fail_new_and_restored_validation,
-    )
-
     with pytest.raises(
-        ADAPTER.ArtifactIndexError,
+        ARTIFACT_MODELS.ArtifactIndexError,
         match="rollback was incomplete",
     ):
-        ADAPTER.publish_context(replacement)
+        ARTIFACT_PUBLICATION.publish_context(
+            replacement,
+            ops=publication_ops(
+                validate_published_transaction=fail_new_and_restored_validation
+            ),
+        )
 
     assert prior_validation_count == 2
     assert not artifact_fixture.receipt_path.exists()
@@ -1613,14 +1584,14 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
         path = artifact_fixture.source_for("sample.SYNTH_A.orientation_counts")
         rows = read_tsv(path)
         rows[0]["fwd_like_records"] = "6"
-        FIXTURE.write_tsv(path, ADAPTER.STEP06_COUNTS_HEADER, rows)
+        FIXTURE.write_tsv(path, ARTIFACT_MODELS.STEP06_COUNTS_HEADER, rows)
     elif step_id == "08":
         path = artifact_fixture.source_for("cohort.synthetic.step08_summary")
         rows = read_tsv(path)
         rows[0]["published_candidate_count"] = "5"
         FIXTURE.write_tsv(
             path,
-            ADAPTER.step08.STEP08_SUMMARY_HEADER,
+            step08.STEP08_SUMMARY_HEADER,
             rows,
         )
     elif step_id == "09":
@@ -1629,7 +1600,7 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
         rows[0]["candidate_count"] = "5"
         FIXTURE.write_tsv(
             path,
-            ADAPTER.step09.STEP09_MUTATION_HEADER,
+            step09.STEP09_MUTATION_HEADER,
             rows,
         )
     else:
@@ -1638,7 +1609,7 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
         rows[0]["step09_summary_sha256"] = "9" * 64
         FIXTURE.write_tsv(
             path,
-            ADAPTER.review_package.REVIEW_SUMMARY_HEADER,
+            review_package.REVIEW_SUMMARY_HEADER,
             rows,
         )
 
@@ -1675,7 +1646,7 @@ def test_contract_and_inventory_mutation_after_context_is_rejected(
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     before: dict[str, bytes] | None = None
     if replacement:
-        ADAPTER.publish_context(context_for(artifact_fixture))
+        ARTIFACT_PUBLICATION.publish_context(context_for(artifact_fixture))
         before = owned_snapshot(artifact_fixture)
     context = context_for(artifact_fixture)
     path = (
@@ -1690,8 +1661,8 @@ def test_contract_and_inventory_mutation_after_context_is_rejected(
         if input_name == "run_contract"
         else "Inventory changed"
     )
-    with pytest.raises(ADAPTER.ArtifactIndexError, match=expected):
-        ADAPTER.publish_context(context)
+    with pytest.raises(ARTIFACT_MODELS.ArtifactIndexError, match=expected):
+        ARTIFACT_PUBLICATION.publish_context(context)
 
     if replacement:
         assert owned_snapshot(artifact_fixture) == before
@@ -1720,7 +1691,7 @@ def test_inventory_revision_creates_new_attempt_without_changing_run_identity(
     revised = [row for row in rows if row not in first_block] + first_block
     FIXTURE.write_tsv(
         artifact_fixture.inventory,
-        ADAPTER.contracts.INVENTORY_HEADER,
+        ARTIFACT_CONTRACTS.INVENTORY_HEADER,
         revised,
     )
 
@@ -1756,7 +1727,7 @@ def test_native_dependency_order_is_independent_of_inventory_scope_order(
     )
     FIXTURE.write_tsv(
         artifact_fixture.inventory,
-        ADAPTER.contracts.INVENTORY_HEADER,
+        ARTIFACT_CONTRACTS.INVENTORY_HEADER,
         reordered,
     )
     receipt_path = artifact_fixture.source_for("cohort.synthetic.p1.receipt")
@@ -1764,7 +1735,7 @@ def test_native_dependency_order_is_independent_of_inventory_scope_order(
     receipt_rows[0]["sample_count"] = "2"
     FIXTURE.write_tsv(
         receipt_path,
-        ADAPTER.STEP07_RECEIPT_HEADER,
+        ARTIFACT_MODELS.STEP07_RECEIPT_HEADER,
         receipt_rows,
     )
 
@@ -1855,7 +1826,7 @@ def test_step06_accepts_producer_six_decimal_fraction(
             "assigned_fraction": "0.333333",
         }
     )
-    FIXTURE.write_tsv(counts, ADAPTER.STEP06_COUNTS_HEADER, rows)
+    FIXTURE.write_tsv(counts, ARTIFACT_MODELS.STEP06_COUNTS_HEADER, rows)
 
     result = run_cli(artifact_fixture, execute=True)
 
@@ -1924,7 +1895,7 @@ def test_step09_rejects_unknown_status_and_pairwise_spectrum_mismatch(
         by_type["A>G"][field_name] = "0"
     FIXTURE.write_tsv(
         spectrum,
-        ADAPTER.step09.STEP09_MUTATION_HEADER,
+        step09.STEP09_MUTATION_HEADER,
         spectrum_rows,
     )
 
@@ -1949,7 +1920,7 @@ def test_step09c_cannot_self_declare_exploratory_completion(
     plan_rows[0]["review_completed_date"] = "2026-01-01"
     FIXTURE.write_tsv(
         plan_path,
-        ADAPTER.review_package.REVIEW_PLAN_HEADER,
+        review_package.REVIEW_PLAN_HEADER,
         plan_rows,
     )
     summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
@@ -1959,7 +1930,7 @@ def test_step09c_cannot_self_declare_exploratory_completion(
     summary_rows[0]["review_plan_sha256"] = sha256_file(plan_path)
     FIXTURE.write_tsv(
         summary_path,
-        ADAPTER.review_package.REVIEW_SUMMARY_HEADER,
+        review_package.REVIEW_SUMMARY_HEADER,
         summary_rows,
     )
 
@@ -1981,7 +1952,7 @@ def test_step09c_requires_every_explicit_evidence_category(
     evidence_rows = read_tsv(evidence_index)[:1]
     FIXTURE.write_tsv(
         evidence_index,
-        ADAPTER.review_package.EVIDENCE_INDEX_HEADER,
+        review_package.EVIDENCE_INDEX_HEADER,
         evidence_rows,
     )
     summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
@@ -1990,7 +1961,7 @@ def test_step09c_requires_every_explicit_evidence_category(
     summary_rows[0]["evidence_manifest_row_count"] = "1"
     FIXTURE.write_tsv(
         summary_path,
-        ADAPTER.review_package.REVIEW_SUMMARY_HEADER,
+        review_package.REVIEW_SUMMARY_HEADER,
         summary_rows,
     )
 
@@ -2025,7 +1996,7 @@ def test_step09c_complete_evidence_cannot_point_to_empty_payload(
     )
     FIXTURE.write_tsv(
         evidence_index,
-        ADAPTER.review_package.EVIDENCE_INDEX_HEADER,
+        review_package.EVIDENCE_INDEX_HEADER,
         evidence_rows,
     )
     summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
@@ -2034,7 +2005,7 @@ def test_step09c_complete_evidence_cannot_point_to_empty_payload(
     summary_rows[0]["evidence_source_count"] = "1"
     FIXTURE.write_tsv(
         summary_path,
-        ADAPTER.review_package.REVIEW_SUMMARY_HEADER,
+        review_package.REVIEW_SUMMARY_HEADER,
         summary_rows,
     )
 
@@ -2055,13 +2026,14 @@ def test_first_publication_rollback_fsync_failure_retains_recovery_lock(
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     context = context_for(artifact_fixture)
-    real_validate = ADAPTER.validate_published_transaction
-    real_fsync_directory = ADAPTER.fsync_directory
+    default_ops = ARTIFACT_PUBLICATION.DEFAULT_ARTIFACT_PUBLICATION_OPS
+    real_validate = default_ops.validate_published_transaction
+    real_fsync_directory = default_ops.fsync_directory
     output_sync_count = 0
 
     def fail_post_publication_validation(**kwargs: Any) -> None:
         if kwargs["require_current_source_locations"]:
-            raise ADAPTER.ArtifactIndexError(
+            raise ARTIFACT_MODELS.ArtifactIndexError(
                 "injected post-publication validation failure"
             )
         real_validate(**kwargs)
@@ -2074,18 +2046,17 @@ def test_first_publication_rollback_fsync_failure_retains_recovery_lock(
                 raise OSError("injected rollback directory fsync failure")
         real_fsync_directory(path)
 
-    monkeypatch.setattr(
-        ADAPTER,
-        "validate_published_transaction",
-        fail_post_publication_validation,
-    )
-    monkeypatch.setattr(ADAPTER, "fsync_directory", fail_rollback_sync)
-
     with pytest.raises(
-        ADAPTER.ArtifactIndexError,
+        ARTIFACT_MODELS.ArtifactIndexError,
         match="rollback was incomplete",
     ):
-        ADAPTER.publish_context(context)
+        ARTIFACT_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(
+                validate_published_transaction=fail_post_publication_validation,
+                fsync_directory=fail_rollback_sync,
+            ),
+        )
 
     assert output_sync_count == 2
     assert artifact_fixture.lock_path.is_file()
@@ -2102,7 +2073,7 @@ def test_publication_rechecks_sources_by_metadata_without_rehashing(
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     context = context_for(artifact_fixture)
     source_paths = {path.resolve() for path in artifact_fixture.source_paths.values()}
-    real_sha256_file = ADAPTER.contracts.sha256_file
+    real_sha256_file = ARTIFACT_CONTRACTS.sha256_file
     rehashed_sources: list[Path] = []
 
     def track_hash(path: Path) -> str:
@@ -2111,8 +2082,8 @@ def test_publication_rechecks_sources_by_metadata_without_rehashing(
             rehashed_sources.append(resolved)
         return real_sha256_file(path)
 
-    monkeypatch.setattr(ADAPTER.contracts, "sha256_file", track_hash)
+    monkeypatch.setattr(ARTIFACT_CONTRACTS, "sha256_file", track_hash)
 
-    ADAPTER.publish_context(context)
+    ARTIFACT_PUBLICATION.publish_context(context)
 
     assert rehashed_sources == []

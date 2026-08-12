@@ -5,9 +5,10 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from norad.contracts.scientific_evidence import review_package, step08, step09
+
 from ._evidence_manifest import validate_evidence_manifest
 from ._review_plan import validate_review_plan
-from .contracts import review_package, step08, step09
 from .evidence import make_review_summary, validate_evidence_payloads
 from .intake import (
     Artifact,

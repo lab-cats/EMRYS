@@ -4,106 +4,60 @@ from __future__ import annotations
 
 import copy
 import csv
+import hashlib
 import importlib
 import json
-import sys
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any
 
 import pytest
-from norad.analyses.paired_cmh_candidate_ranking import (
-    validator as STEP09_VALIDATOR,
-)
 from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
+from norad.contracts.scientific_evidence import review_package as REVIEW_PACKAGE
 from norad.evidence.scientific_review_package._scientific_review import (
     contracts as SCIENTIFIC_REVIEW,
 )
 from norad.evidence.scientific_review_package._scientific_review import (
     intake as SCIENTIFIC_REVIEW_INTAKE,
 )
-from norad.stages.cohort_candidate_preprocessing import validator as STEP08_VALIDATOR
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-REPORTING = REPO_ROOT / "src" / "norad" / "reporting"
 GOLDENS = Path(__file__).resolve().parent
-SCHEMAS = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts" / "v1"
+SCHEMAS = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts"
 
-if str(REPORTING) not in sys.path:
-    sys.path.insert(0, str(REPORTING))
-
-ARTIFACT_INDEX = importlib.import_module("norad.reporting._artifact_index.builder")
-ARTIFACT_INDEX_CONTEXT = importlib.import_module(
-    "norad.reporting._artifact_index.context",
+ARTIFACT_INDEX_CORE = importlib.import_module(
+    "norad.reporting._artifact_index.core",
 )
-RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.builder")
-REPORT_BUNDLE = importlib.import_module("render_run_report_bundle")
-STEP08_CONTRACT = ARTIFACT_INDEX.step08
-STEP09_CONTRACT = ARTIFACT_INDEX.step09
-SHARED_SCIENCE = RUN_SUMMARY.science
-REVIEW_PACKAGE = ARTIFACT_INDEX.review_package
+ARTIFACT_INDEX_MODELS = importlib.import_module(
+    "norad.reporting._artifact_index.models",
+)
+RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.models")
+SHARED_SCIENCE = importlib.import_module(
+    "norad.reporting._run_summary.science_projection"
+)
+REPORT = importlib.import_module("norad.reporting.report")
+REPORT_VALIDATION = importlib.import_module(
+    "norad.reporting._run_report.validation"
+)
+REPORT_VIEW = importlib.import_module("norad.reporting._run_report.view")
 
 
 HEADER_MODULES: Mapping[str, ModuleType] = {
-    "build_artifact_index": ARTIFACT_INDEX,
+    "build_artifact_index": ARTIFACT_INDEX_MODELS,
     "build_run_summary": RUN_SUMMARY,
-    "render_run_report_bundle": REPORT_BUNDLE,
+    "build_report": REPORT,
     "step_09c_scientific_validation": SCIENTIFIC_REVIEW,
 }
 
 
 def header_module(module_name: str, constant_name: str) -> ModuleType:
     if (
-        module_name == "build_artifact_index"
-        and constant_name == "ARTIFACT_INDEX_HEADER"
-    ):
-        return ARTIFACT_INDEX_CONTEXT
-    if (
         module_name == "step_09c_scientific_validation"
         and constant_name == "REVIEW_PLAN_HEADER"
     ):
         return REVIEW_PACKAGE
     return HEADER_MODULES[module_name]
-
-
-ARTIFACT_CONTRACT_LOADERS = (
-    ARTIFACT_INDEX,
-    SHARED_SCIENCE,
-    REPORT_BUNDLE.html_report,
-)
-STEP08_CONTRACT_LOADERS = (
-    STEP09_CONTRACT,
-    SCIENTIFIC_REVIEW,
-    STEP08_VALIDATOR,
-    STEP09_VALIDATOR,
-    ARTIFACT_INDEX,
-)
-STEP09_CONTRACT_LOADERS = (
-    SCIENTIFIC_REVIEW,
-    STEP09_VALIDATOR,
-    ARTIFACT_INDEX,
-)
-REVIEW_PACKAGE_CONTRACT_LOADERS = (
-    SCIENTIFIC_REVIEW,
-    ARTIFACT_INDEX,
-    SHARED_SCIENCE,
-)
-
-
-def test_contract_consumers_share_packaged_module_identities() -> None:
-    assert all(
-        loader.contracts is ARTIFACT_CONTRACTS for loader in ARTIFACT_CONTRACT_LOADERS
-    )
-    assert SCIENTIFIC_REVIEW.step08 is STEP08_CONTRACT
-    assert STEP08_VALIDATOR.step08 is STEP08_CONTRACT
-    assert STEP09_VALIDATOR.step08 is STEP08_CONTRACT
-    assert ARTIFACT_INDEX.step08 is STEP08_CONTRACT
-    assert STEP09_CONTRACT.step08 is STEP08_CONTRACT
-    assert STEP09_VALIDATOR.step09 is STEP09_CONTRACT
-    assert ARTIFACT_INDEX.review_package is REVIEW_PACKAGE
-    assert SHARED_SCIENCE.review_package is REVIEW_PACKAGE
-    assert SCIENTIFIC_REVIEW.review_package is REVIEW_PACKAGE
 
 
 def load_json(path: Path) -> Any:
@@ -133,7 +87,12 @@ def set_pointer(document: Any, pointer: str, value: Any) -> None:
 
 def schema_documents() -> dict[str, Any]:
     contracts = load_json(GOLDENS / "schema_contracts.json")
-    return {name: load_json(SCHEMAS / name) for name in contracts}
+    return {
+        name: load_json(
+            SCHEMAS / ("v2" if name == "report_receipt.schema.json" else "v1") / name
+        )
+        for name in contracts
+    }
 
 
 def assert_schema_contracts(documents: Mapping[str, Any]) -> None:
@@ -172,7 +131,7 @@ def assert_status_constants() -> None:
 
 
 def assert_canonical_json(
-    serializer: Callable[[Any], bytes] = ARTIFACT_INDEX.canonical_json_bytes,
+    serializer: Callable[[Any], bytes] = ARTIFACT_INDEX_CORE.canonical_json_bytes,
 ) -> None:
     expected = (GOLDENS / "canonical_object.json").read_bytes()
     value = json.loads(expected)
@@ -181,12 +140,33 @@ def assert_canonical_json(
 
 
 def assert_report_receipt(
-    serializer: Callable[[Mapping[str, Any]], bytes] = REPORT_BUNDLE._receipt_tsv_bytes,
+    serializer: Callable[[Mapping[str, Any]], bytes] = REPORT.serialize_receipt,
 ) -> None:
     document = load_json(GOLDENS / "report_receipt_input.json")
     expected = (GOLDENS / "report_receipt.tsv").read_bytes()
     assert serializer(document) == expected
     assert serializer(document) == serializer(copy.deepcopy(document))
+
+
+def report_html_bytes(document: Mapping[str, Any]) -> bytes:
+    summary = load_json(REPO_ROOT / document["summary_fixture"])
+    assert not ARTIFACT_CONTRACTS.schema_errors("run-summary", summary)
+    ARTIFACT_CONTRACTS.validate_run_summary_semantics(
+        summary,
+        source_root=REPO_ROOT,
+    )
+    view = REPORT_VIEW.build_view(
+        summary,
+        (),
+        document["metadata"],
+    )
+    return REPORT_VALIDATION.render_html(view, document["css"])
+
+
+def assert_report_html(document: Mapping[str, Any]) -> None:
+    expected = (GOLDENS / "report_html.sha256").read_text(encoding="ascii").strip()
+    actual = hashlib.sha256(report_html_bytes(document)).hexdigest()
+    assert actual == expected, "rendered report HTML differs from the independent oracle"
 
 
 def assert_shared_science_policy() -> None:
@@ -237,7 +217,7 @@ def test_representative_public_headers_match_literal_ordered_oracles() -> None:
     (
         ("build_artifact_index", "ARTIFACT_INDEX_HEADER"),
         ("build_run_summary", "RUN_SUMMARY_HEADER"),
-        ("render_run_report_bundle", "RECEIPT_HEADER"),
+        ("build_report", "RECEIPT_HEADER"),
         ("step_09c_scientific_validation", "REVIEW_PLAN_HEADER"),
     ),
 )
@@ -259,7 +239,7 @@ def test_canonical_json_matches_exact_independent_utf8_golden() -> None:
 
 def test_mutated_canonical_json_serialization_is_rejected() -> None:
     def mutated_serializer(value: Any) -> bytes:
-        return ARTIFACT_INDEX.canonical_json_bytes(value).replace(
+        return ARTIFACT_INDEX_CORE.canonical_json_bytes(value).replace(
             b'  "alpha"', b' "alpha"', 1
         )
 
@@ -290,12 +270,21 @@ def test_report_receipt_projection_matches_exact_independent_golden() -> None:
 
 def test_mutated_report_receipt_serialization_is_rejected() -> None:
     def mutated_serializer(document: Mapping[str, Any]) -> bytes:
-        return REPORT_BUNDLE._receipt_tsv_bytes(document).replace(
-            b"\ttrue\t", b"\tTRUE\t", 1
-        )
+        return REPORT.serialize_receipt(document).replace(b"\ttrue\t", b"\tTRUE\t", 1)
 
     with pytest.raises(AssertionError):
         assert_report_receipt(mutated_serializer)
+
+
+def test_report_html_matches_exact_independent_sha256_golden() -> None:
+    assert_report_html(load_json(GOLDENS / "report_html_input.json"))
+
+
+def test_mutated_report_html_input_is_rejected() -> None:
+    mutated = load_json(GOLDENS / "report_html_input.json")
+    mutated["metadata"]["run_summary_sha256"] = "d" * 64
+    with pytest.raises(AssertionError, match="independent oracle"):
+        assert_report_html(mutated)
 
 
 def test_scientific_status_constants_match_literal_oracle() -> None:

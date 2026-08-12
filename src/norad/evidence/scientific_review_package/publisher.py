@@ -20,14 +20,14 @@ from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
 
-from ._scientific_review.context import build_context
-from ._scientific_review.contracts import (
+from norad.contracts.scientific_evidence import review_package, step08
+from norad.contracts.scientific_evidence.step08 import (
     ContractError,
     read_tsv,
-    review_package,
     sha256_file,
-    step08,
 )
+
+from ._scientific_review.context import build_context
 from ._scientific_review.intake import ReviewContext, write_tsv
 
 DESCRIPTION = __doc__

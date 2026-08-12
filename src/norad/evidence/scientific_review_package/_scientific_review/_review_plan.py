@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from norad.contracts.scientific_evidence import review_package, step08
+from norad.contracts.scientific_evidence.step08 import NA_VALUE, Table, read_tsv
 from norad.libraries.alignments import orientation as alignment_orientation
 
-from .contracts import NA_VALUE, Table, read_tsv, review_package, step08
 from .intake import split_ids, validate_iso_date
 
 

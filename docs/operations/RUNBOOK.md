@@ -52,7 +52,7 @@ project-storage temporary directory.
 | Scientific-review package assembly | [`assemble_scientific_review_evidence_package`](../../src/norad/evidence/scientific_review_package/README.md); installed route `python -I -m norad assemble scientific-review-package` |
 | Runtime, reference, storage, and QC evidence | [`evidence`](../../src/norad/evidence/README.md); runtime inspection route `python -I -m norad inspect runtime-availability`; storage inspection route `python -I -m norad inspect storage-inventory`; reference reconciliation route `python -I -m norad reconcile reference-provenance` |
 | Artifact schemas | [`artifact contracts`](../../src/norad/contracts/artifacts/README.md); installed route `python -I -m norad validate artifact-contracts` |
-| Artifact index, run summary, and reports | [`reporting`](../../src/norad/reporting/README.md); installed routes `python -I -m norad build artifact-index --source-checkout ABSOLUTE_CANONICAL_CHECKOUT` and `python -I -m norad build run-summary --source-checkout ABSOLUTE_CANONICAL_CHECKOUT` |
+| Artifact index, run summary, and reports | [`reporting`](../../src/norad/reporting/README.md); each installed build route requires explicit `--source-checkout` authority |
 | Synthetic demonstration | [`demo`](../demo/README.md) |
 
 Each owner README supplies supported help, dry-run, execute, scheduler, focused
@@ -81,6 +81,25 @@ Use focused tests during implementation:
 .venv/bin/python -m pytest -q --tb=short <focused-test-paths>
 ```
 
+For package metadata, wheel isolation, installed commands, and resources:
+
+```bash
+uv lock --check
+uv sync --locked --check
+.venv/bin/python -m pytest -q tests/test_package_distribution.py
+```
+
+For shell and SLURM behavior without replaying Python validator suites:
+
+```bash
+make -s shell-test
+```
+
+The complete gate performs the same read-only environment check before starting
+its validation lanes. A mismatch stops with instructions to run the explicit
+`uv sync --locked` restoration command; validation never synchronizes the
+environment itself.
+
 Run the complete local gate once against a final executable state:
 
 ```bash
@@ -94,8 +113,23 @@ RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks VALIDATION_ARGS=--serial
 RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks VALIDATION_ARGS=--verbose
 ```
 
-The coverage lane already runs the complete Python suite. A standalone
-documentation package instead uses:
+The assembled gate has five evidence lanes. Static preflight runs first and
+owns configuration, documentation, syntax, compilation, and manifest checks.
+Python coverage then owns Python behavior, branch/subprocess coverage, and
+Jinja HTML reporting while excluding the isolated-wheel and SLURM-wrapper
+suites. The wheel lane owns installed-package integrity. The shell/SLURM lane
+owns shell behavior and scheduler-wrapper contracts. Guarded real R remains
+separate because Python and shell substitutes do not execute R semantics.
+Independent lanes run with bounded concurrency after preflight; `--serial`
+selects one top-level lane and one Python worker.
+
+Quiet successes discard their temporary logs. A failed, interrupted, or
+peer-cancelled lane retains its log and prints its location; first failure
+terminates the other running process groups and preserves the failing status.
+The gate emits a human summary only. It has no machine-result artifact because
+none had an active consumer.
+
+A standalone documentation package instead uses:
 
 ```bash
 git diff --check
@@ -108,19 +142,29 @@ The documentation gate checks local document structure, mechanically derived
 ownership, compact backlog dependencies, and JIT-card structure. It does not
 validate general Markdown links, anchors, or diagrams' inbound references.
 
+These checks establish local structural/test evidence only. Guarded R adds
+real local runtime evidence for its named fixtures. Neither result establishes
+CSU scheduler execution, production artifacts, scientific review, validated
+editing sites, or biological interpretation. Use focused checks per approved
+slice and run the assembled gate once after the final executable state is
+settled; rerun it only for a concrete failure-driven reason.
+
 ## Explicit dependency setup
 
 Restoration is an operator action and never occurs from compute, validation,
 rendering, or scheduler code:
 
 ```bash
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m pip install -r requirements-dev.txt
-.venv/bin/python -m pip install --no-deps -e .
+uv sync --locked
 RSCRIPT_BIN=/usr/local/bin/Rscript make r-restore
 make lint
-make quarto-restore
 ```
+
+`pyproject.toml` owns direct runtime and developer dependencies, and `uv.lock`
+owns their exact resolved graph. `uv sync --locked` includes the `dev` group and
+installs the project itself into `.venv`; a stale lock is an error rather than
+permission to relock. Provision `uv` separately—repository setup does not
+download or install it.
 
 Guarded local R checks are:
 
@@ -133,11 +177,12 @@ They opt into the repository library with `NORAD_USE_RENV=1`, disable automatic
 snapshots and the `renv` sandbox, and establish local configured-environment
 evidence only.
 
-An unchanged synchronized lock can still fail an online freshness check after
-upstream repository metadata changes. Do not restore, snapshot, or update the
-lock merely to turn that result green. Record the lock and repository evidence,
-then review a lock update or a separation of reproducibility and online
-freshness as its own authorized dependency-policy change.
+`r-check` treats the reviewed `renv.lock` as the reproducibility authority; it
+does not require every package to match the newest version advertised by an
+upstream repository. Run `BiocManager::valid(checkBuilt = FALSE)` separately
+from a guarded project R session when an explicitly authorized dependency
+maintenance review needs current online freshness evidence. Never restore,
+snapshot, or update the lock merely to turn a freshness result green.
 
 ## Manual job inspection
 

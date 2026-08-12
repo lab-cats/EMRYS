@@ -1,4 +1,4 @@
-"""Deterministic summary and receipt projection for report bundles."""
+"""Deterministic report-summary and v2 receipt projection."""
 
 from __future__ import annotations
 
@@ -10,25 +10,23 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
-from norad.reporting._run_report import html as html_report
+from norad.contracts.artifacts import api as contracts
 
-from .bundle_models import (
+from .inputs import _assert_snapshot, _fail, _snapshot_regular
+from .models import (
+    CSS_RESOURCE,
+    JINJA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
     RECEIPT_HEADER,
     REPORT_RECEIPT_SCHEMA_VERSION,
     SUMMARY_HEADER,
-    BundleContext,
+    TEMPLATE_RESOURCE,
+    ReportContext,
 )
 
-contracts = html_report.contracts
 
-
-def _fail(message: str) -> None:
-    raise html_report.ReportRenderError(message)
-
-
-def _validate_receipt(document: Mapping[str, Any]) -> None:
+def validate_receipt(document: Mapping[str, Any]) -> None:
     validator = contracts.schema_validator("report-receipt")
     errors = sorted(validator.iter_errors(document), key=lambda error: list(error.path))
     if errors:
@@ -41,9 +39,9 @@ def _validate_receipt(document: Mapping[str, Any]) -> None:
         _fail(f"Report receipt semantic validation failed: {exc}")
 
 
-def _summary_tsv_bytes(context: BundleContext) -> bytes:
+def summary_tsv_bytes(context: ReportContext) -> bytes:
     rows = []
-    summary = context.html.summary
+    summary = context.summary
     for item in summary["expected_scopes"]:
         scope = item["scope"]
         rows.append(
@@ -59,7 +57,6 @@ def _summary_tsv_bytes(context: BundleContext) -> bytes:
                 str(len(item["errors"])),
             )
         )
-
     stream = StringIO(newline="")
     writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
     writer.writerow(SUMMARY_HEADER)
@@ -67,21 +64,20 @@ def _summary_tsv_bytes(context: BundleContext) -> bytes:
     return stream.getvalue().encode("utf-8")
 
 
-def _validate_summary_tsv(path: Path, context: BundleContext) -> None:
-    snapshot = html_report._snapshot_regular(path, "exported run-summary TSV")
+def validate_summary_tsv(path: Path, context: ReportContext) -> None:
+    snapshot = _snapshot_regular(path, "exported run-summary TSV")
     with path.open("r", encoding="utf-8", newline="") as stream:
-        reader = csv.reader(stream, delimiter="\t")
-        rows = list(reader)
+        rows = list(csv.reader(stream, delimiter="\t"))
     if not rows or tuple(rows[0]) != SUMMARY_HEADER:
         _fail("Exported run-summary TSV has an unexpected header")
-    if len(rows) - 1 != len(context.html.summary["expected_scopes"]):
+    if len(rows) - 1 != len(context.summary["expected_scopes"]):
         _fail("Exported run-summary TSV row count does not match expected scopes")
     if any(len(row) != len(SUMMARY_HEADER) for row in rows[1:]):
         _fail("Exported run-summary TSV contains a malformed row")
-    html_report._assert_snapshot(snapshot, "exported run-summary TSV")
+    _assert_snapshot(snapshot, "exported run-summary TSV")
 
 
-def _truncations(context: BundleContext) -> list[dict[str, Any]]:
+def _truncations(context: ReportContext) -> list[dict[str, Any]]:
     return [
         {
             "table_id": table.table_id,
@@ -95,47 +91,44 @@ def _truncations(context: BundleContext) -> list[dict[str, Any]]:
             "full_row_count": table.row_count,
             "displayed_row_count": table.displayed_row_count,
         }
-        for table in context.html.tables
+        for table in context.tables
         if table.truncated
     ]
 
 
-def _receipt_document(
-    context: BundleContext,
-    staged_outputs: Sequence[tuple[str, str, Path, Path, int | None]],
+def receipt_document(
+    context: ReportContext,
+    staged_outputs: Sequence[tuple[str, str, Path, Path]],
 ) -> dict[str, Any]:
-    summary = context.html.summary
     descriptors = []
-    for output_id, kind, staged, final, page_count in staged_outputs:
-        snapshot = html_report._snapshot_regular(staged, f"staged {kind} output")
-        descriptors.append(
-            {
-                "output_id": output_id,
-                "kind": kind,
-                "path": str(final),
-                "sha256": snapshot.sha256,
-                "size_bytes": snapshot.size_bytes,
-                "media_type": {
-                    "html": "text/html",
-                    "pdf": "application/pdf",
-                    "run_summary_tsv": "text/tab-separated-values",
-                }[kind],
-                "self_contained": True if kind == "html" else None,
-                "page_count": page_count if kind == "pdf" else None,
-                "state_banner_every_page": True if kind == "pdf" else None,
-            }
-        )
+    for output_id, kind, staged, final in staged_outputs:
+        snapshot = _snapshot_regular(staged, f"staged {kind} output")
+        descriptor = {
+            "output_id": output_id,
+            "kind": kind,
+            "path": str(final),
+            "sha256": snapshot.sha256,
+            "size_bytes": snapshot.size_bytes,
+            "media_type": {
+                "html": "text/html",
+                "run_summary_tsv": "text/tab-separated-values",
+            }[kind],
+        }
+        if kind == "html":
+            descriptor["self_contained"] = True
+        descriptors.append(descriptor)
     identity = hashlib.sha256(
         (
-            context.html.run_summary_snapshot.sha256
+            context.run_summary_snapshot.sha256
             + "\0"
-            + ",".join(context.requested_formats)
+            + context.template_snapshot.sha256
             + "\0"
-            + context.html.template_snapshot.sha256
+            + context.css_snapshot.sha256
             + "\0"
-            + context.pdf_template_snapshot.sha256
+            + JINJA_VERSION
         ).encode("utf-8")
     ).hexdigest()[:20]
+    summary = context.summary
     document = {
         "schema_name": "norad.report_receipt",
         "schema_version": REPORT_RECEIPT_SCHEMA_VERSION,
@@ -148,39 +141,28 @@ def _receipt_document(
         "science_status": summary["science_status"],
         "readiness_authorization": None,
         "input_run_summary": {
-            "path": str(context.html.run_summary_path),
-            "sha256": context.html.run_summary_snapshot.sha256,
+            "path": str(context.run_summary_path),
+            "sha256": context.run_summary_snapshot.sha256,
             "schema_name": summary["schema_name"],
             "schema_version": summary["schema_version"],
         },
-        "requested_formats": list(context.requested_formats),
-        "renderer": {
-            "name": "quarto",
-            "version": html_report.QUARTO_VERSION,
-            "executable": str(context.html.quarto_path),
-            "pandoc_version": context.pandoc_version,
-            "pdf_engine": "typst" if "pdf" in context.requested_formats else None,
-        },
+        "renderer": {"name": "Jinja2", "version": JINJA_VERSION},
         "template": {
-            "path": str(
-                context.pdf_template_snapshot.path
-                if "pdf" in context.requested_formats
-                else context.html.template_snapshot.path
-            ),
-            "sha256": (
-                context.pdf_template_snapshot.sha256
-                if "pdf" in context.requested_formats
-                else context.html.template_snapshot.sha256
-            ),
+            "path": f"norad.reporting/{TEMPLATE_RESOURCE}",
+            "sha256": context.template_snapshot.sha256,
+        },
+        "stylesheet": {
+            "path": f"norad.reporting/{CSS_RESOURCE}",
+            "sha256": context.css_snapshot.sha256,
         },
         "outputs": descriptors,
-        "state_banner": html_report.SCIENCE_BANNERS[summary["science_status"]],
+        "state_banner": context.render_metadata["state_banner"],
         "truncations": _truncations(context),
         "schema_versions": {
             "artifact_record": "1.0.0",
             "scientific_review_record": "1.1.0",
             "run_summary": "1.1.0",
-            "report_receipt": "1.1.0",
+            "report_receipt": REPORT_RECEIPT_SCHEMA_VERSION,
         },
         "analysis_execution_performed": False,
         "external_network_assets_used": False,
@@ -190,16 +172,15 @@ def _receipt_document(
         "provenance": {
             "producer": PRODUCER,
             "producer_version": PRODUCER_VERSION,
-            "git_commit": summary["provenance"]["git_commit"],
+            "git_commit": context.producer_git_commit,
             "created_at": summary["generated_at"],
         },
     }
-    _validate_receipt(document)
+    validate_receipt(document)
     return document
 
 
-def _receipt_tsv_bytes(document: Mapping[str, Any]) -> bytes:
-
+def receipt_tsv_bytes(document: Mapping[str, Any]) -> bytes:
     canonical = json.dumps(
         document,
         ensure_ascii=False,
@@ -209,7 +190,6 @@ def _receipt_tsv_bytes(document: Mapping[str, Any]) -> bytes:
     stream = StringIO(newline="")
     writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
     writer.writerow(RECEIPT_HEADER)
-    formats = ",".join(document["requested_formats"])
     for output in document["outputs"]:
         writer.writerow(
             (
@@ -219,21 +199,47 @@ def _receipt_tsv_bytes(document: Mapping[str, Any]) -> bytes:
                 document["attempt_id"],
                 document["generated_at"],
                 document["science_status"],
-                formats,
                 output["output_id"],
                 output["kind"],
                 output["path"],
                 output["sha256"],
                 output["size_bytes"],
                 output["media_type"],
-                "NA"
-                if output["self_contained"] is None
-                else str(output["self_contained"]).lower(),
-                "NA" if output["page_count"] is None else output["page_count"],
-                "NA"
-                if output["state_banner_every_page"] is None
-                else str(output["state_banner_every_page"]).lower(),
+                "true" if output.get("self_contained") is True else "",
                 canonical,
             )
         )
     return stream.getvalue().encode("utf-8")
+
+
+def read_receipt_tsv(path: Path) -> dict[str, Any]:
+    snapshot = _snapshot_regular(path, "report output receipt")
+    try:
+        with path.open("r", encoding="utf-8", newline="") as stream:
+            reader = csv.DictReader(stream, delimiter="\t")
+            if tuple(reader.fieldnames or ()) != RECEIPT_HEADER:
+                _fail("Existing report receipt is not the v2 receipt header")
+            rows = list(reader)
+    except (OSError, UnicodeError, csv.Error) as exc:
+        _fail(f"Could not read existing report receipt: {exc}")
+    if not rows:
+        _fail("Existing report receipt must contain output rows")
+    values = {row["report_receipt_json"] for row in rows}
+    if len(values) != 1:
+        _fail("Existing report receipt rows disagree on canonical JSON")
+    try:
+        document = json.loads(values.pop())
+    except json.JSONDecodeError as exc:
+        _fail(f"Existing report receipt JSON is invalid: {exc}")
+    validate_receipt(document)
+    expected = receipt_tsv_bytes(document)
+    if (
+        snapshot.size_bytes != len(expected)
+        or snapshot.sha256 != hashlib.sha256(expected).hexdigest()
+    ):
+        _fail(
+            "Existing report receipt TSV columns differ from their canonical "
+            "JSON record"
+        )
+    _assert_snapshot(snapshot, "report output receipt")
+    return document

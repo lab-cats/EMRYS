@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
-from .contracts import review_package, step08
+from norad.contracts.scientific_evidence import review_package, step08
+
 from .intake import (
     validate_candidate_reference,
     validate_iso_date,

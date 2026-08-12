@@ -10,9 +10,9 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
+from norad.contracts.artifacts import api as contracts
 from norad.libraries.validation.tsv import tsv_bytes as render_tsv_bytes
 
-from .contracts import contracts
 from .core import canonical_digest, safe_tsv, sha256_bytes
 from .models import (
     ARTIFACT_INDEX_HEADER,

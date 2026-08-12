@@ -6,7 +6,8 @@ import csv
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
-from .contracts import step08, step09
+from norad.contracts.scientific_evidence import step08, step09
+
 from .models import ArtifactIndexError, Inspection
 from .reconcile_native import NativeSourceIndex, native_int, require_referenced_source
 

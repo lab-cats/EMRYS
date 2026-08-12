@@ -15,7 +15,12 @@ from typing import Any
 import pytest
 
 from norad.__main__ import build_parser
-from norad.contracts.scientific_evidence import review_package, step08, step09
+from norad.contracts.scientific_evidence import (
+    computational_validation,
+    review_package,
+    step08,
+    step09,
+)
 from norad.evidence.scientific_review_package import publisher
 from norad.evidence.scientific_review_package._scientific_review import (
     _evidence_manifest as review_evidence_manifest,
@@ -32,16 +37,6 @@ from norad.evidence.scientific_review_package._scientific_review import (
 from tests.evidence.scientific_review_package import build_fixture as fixture_builder
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-
-
-def test_neutral_contract_identities_are_shared_with_step09c() -> None:
-    assert fixture_builder.step08 is step08
-    assert fixture_builder.step09 is step09
-    assert fixture_builder.review_package is review_package
-    assert scientific_review_contracts.step08 is step08
-    assert scientific_review_contracts.step09 is step09
-    assert scientific_review_contracts.review_package is review_package
-    assert scientific_review_contracts.ContractError is step08.ContractError
 
 
 def build_fixture(
@@ -1608,9 +1603,7 @@ def test_tracked_examples_and_schema_headers_match_public_contract() -> None:
     schema_root = REPO_ROOT / "configs" / "step_09c_evidence_schemas"
     expected_headers = {
         **review_package.CATEGORY_HEADERS,
-        "computational_validation": (
-            scientific_review_contracts.COMPUTATIONAL_VALIDATION_HEADER
-        ),
+        "computational_validation": (computational_validation.HEADER),
         "evidence_index": review_package.EVIDENCE_INDEX_HEADER,
         "review_summary": review_package.REVIEW_SUMMARY_HEADER,
     }

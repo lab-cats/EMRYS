@@ -13,7 +13,7 @@ from norad.contracts.artifacts._artifact_contracts.definitions import (
 )
 
 DESCRIPTION = (
-    "Validate artifact-schema-v1 schemas, a named JSON record, "
+    "Validate the registered artifact-contract schemas, a named JSON record, "
     "and/or an explicit expected-artifact inventory."
 )
 
@@ -24,7 +24,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--check-schemas",
         action="store_true",
-        help="Validate all four tracked schemas against Draft 2020-12.",
+        help="Validate every registered schema resource against Draft 2020-12.",
     )
     parser.add_argument(
         "--schema",

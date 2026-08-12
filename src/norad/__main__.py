@@ -166,6 +166,12 @@ def _build_run_summary_from_args(arguments: argparse.Namespace) -> int:
     return builder.build_from_args(arguments)
 
 
+def _build_report_from_args(arguments: argparse.Namespace) -> int:
+    from norad.reporting import report  # noqa: PLC0415
+
+    return report.build_from_args(arguments)
+
+
 def _add_build_commands(
     command_parsers: _SubparserCollection,
 ) -> None:
@@ -277,6 +283,19 @@ def _add_build_commands(
     summary_parser.set_defaults(
         _command_handler=_build_run_summary_from_args,
         _command_parser=summary_parser,
+    )
+
+    from norad.reporting import report  # noqa: PLC0415
+
+    report_parser = build_parsers.add_parser(
+        "report",
+        help="Build one self-contained HTML report transaction.",
+        description=report.DESCRIPTION,
+    )
+    report.configure_parser(report_parser)
+    report_parser.set_defaults(
+        _command_handler=_build_report_from_args,
+        _command_parser=report_parser,
     )
 
 

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 
+from norad.contracts.scientific_evidence import review_package, step08, step09
+from norad.contracts.scientific_evidence.step08 import NA_VALUE, values_close
 from norad.libraries.alignments import orientation as alignment_orientation
 
-from .contracts import NA_VALUE, review_package, step08, step09, values_close
 from .intake import complement_base, validate_candidate_reference, validate_iso_date
 
 

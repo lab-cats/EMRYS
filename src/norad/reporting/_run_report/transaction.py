@@ -7,19 +7,21 @@ import os
 import shutil
 import stat
 from collections.abc import Sequence
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from norad.reporting import _signals
+from norad.reporting._signals import (
+    install as _install_signal_handlers,
+    restore as _restore_signal_handlers,
+)
 
-from .html_validation import validate_rendered_html
 from .inputs import (
-    _assert_snapshot,
     _fail,
     _reject_symlink_components,
     _snapshot_regular,
 )
-from .models import FileSnapshot, LockOwnership, RenderContext, ReportRenderError
+from .models import FileSnapshot, LockOwnership, ReportContext, ReportRenderError
 
 
 def _create_directories(path: Path) -> list[Path]:
@@ -58,9 +60,9 @@ def _remove_empty_created_directories(created: Sequence[Path]) -> None:
             break
 
 
-def _lock_payload(context: RenderContext, token: str) -> str:
+def _lock_payload(context: ReportContext, token: str) -> str:
     return (
-        "owner\tNORAD_REPORT_HTML\n"
+        "owner\tNORAD_REPORT\n"
         f"pid\t{os.getpid()}\n"
         f"token\t{token}\n"
         f"run_id\t{context.summary['run_id']}\n"
@@ -68,7 +70,11 @@ def _lock_payload(context: RenderContext, token: str) -> str:
     )
 
 
-def _acquire_lock(context: RenderContext, token: str) -> LockOwnership:
+def _acquire_lock(
+    context: ReportContext,
+    token: str,
+    write: Callable[[int, bytes], int] = os.write,
+) -> LockOwnership:
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
     try:
         descriptor = os.open(context.lock_path, flags, 0o600)
@@ -82,7 +88,7 @@ def _acquire_lock(context: RenderContext, token: str) -> LockOwnership:
         payload = _lock_payload(context, token).encode("utf-8")
         offset = 0
         while offset < len(payload):
-            offset += os.write(descriptor, payload[offset:])
+            offset += write(descriptor, payload[offset:])
         os.fsync(descriptor)
     except BaseException as original_exc:
         if metadata is None:
@@ -136,7 +142,11 @@ def _release_lock(ownership: LockOwnership) -> None:
 
 
 def _install_publication_signal_handlers() -> dict[int, Any]:
-    return _signals.install(ReportRenderError, "Report", "report publication")
+    return _install_signal_handlers(
+        ReportRenderError,
+        "Report",
+        "report publication",
+    )
 
 
 def _snapshot_at(snapshot: FileSnapshot, path: Path) -> FileSnapshot:
@@ -174,23 +184,6 @@ def _capture_moved_snapshot(
     if stable_identity != expected_identity:
         _fail(f"{label} changed identity or content during publication: {path}")
     return current
-
-
-def _assert_predecessor(context: RenderContext) -> None:
-    previous = context.previous_output_snapshot
-    if previous is None:
-        if os.path.lexists(context.output_html):
-            _fail(
-                "Report output appeared after initial validation; prepare a "
-                f"fresh render context: {context.output_html}"
-            )
-        return
-    _assert_snapshot(previous, "existing report output")
-    validate_rendered_html(
-        context.output_html,
-        expected_banner=None,
-    )
-    _assert_snapshot(previous, "existing report output")
 
 
 def _write_recovery_marker(path: Path, message: str) -> None:
@@ -243,18 +236,3 @@ def _remove_owned_stage(
     ):
         _fail(f"Refusing to remove unverified report staging path: {path}")
     shutil.rmtree(path)
-
-
-def _recheck_inputs(context: RenderContext) -> None:
-    labels = (
-        "run-summary document",
-        "report QMD template",
-        "report CSS template",
-        "Quarto executable",
-        *(f"approved report table {table.table_id!r}" for table in context.tables),
-    )
-    for snapshot, label in zip(context.input_snapshots, labels):
-        _assert_snapshot(snapshot, label)
-
-
-_restore_signal_handlers = _signals.restore

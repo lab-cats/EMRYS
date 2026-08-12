@@ -142,7 +142,7 @@ selection, implementation, or publication authority.
 
 - **Kind:** actionable
 - **Blocked by:** `RPT-01`
-- **Intent:** Define the versioned minimal scientist-facing field model, plain-language descriptions, profiles, missing states, and HTML/PDF semantic parity.
+- **Intent:** Define the versioned minimal scientist-facing field model, plain-language descriptions, profiles, missing states, and stable HTML semantics.
 - **Boundaries:** Every value has one authorized source; comprehensive remains available; no inner-panel horizontal scroll; outputs coexist immutably; independent science, usability, accessibility, architecture, transaction, and security review precedes implementation.
 
 ## RPT-03 — Build format-neutral report projection
@@ -156,8 +156,8 @@ selection, implementation, or publication authority.
 
 - **Kind:** actionable
 - **Blocked by:** `RPT-03`
-- **Intent:** Build accessible HTML and PDF presentations of the approved science projection with clear hierarchy and responsive/print behavior.
-- **Boundaries:** Do not change the field model in view code; preserve evidence banners and semantic parity; hide no contracted information to avoid scrolling.
+- **Intent:** Build an accessible self-contained HTML presentation of the approved science projection with clear hierarchy and responsive/print behavior.
+- **Boundaries:** Do not change the field model in view code; preserve evidence banners and contracted semantics; hide no contracted information to avoid scrolling; do not reintroduce a report PDF.
 
 ## RPT-06 — Make science report the default
 

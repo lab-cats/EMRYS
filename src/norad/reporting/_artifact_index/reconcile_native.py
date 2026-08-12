@@ -8,9 +8,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from norad.contracts.scientific_evidence import step08
 from norad.libraries.alignments import orientation as alignment_orientation
 
-from .contracts import step08
 from .core import declared_contract_path, issue
 from .models import STEP06_COUNTS_HEADER, ArtifactIndexError, Inspection
 

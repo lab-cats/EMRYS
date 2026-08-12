@@ -1,16 +1,16 @@
-"""Validated render-context preparation for one explicit run summary."""
+"""Validated context preparation for one explicit HTML report transaction."""
 
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import os
 import stat
+from importlib.resources import files
+from pathlib import Path
 
-from .html_validation import (
-    _validate_css_resources,
-    build_qmd_bytes,
-    validate_rendered_html,
-)
+from norad.reporting._artifact_index import api as artifact_index
+
 from .inputs import (
     _assert_snapshot,
     _explicit_path,
@@ -21,80 +21,38 @@ from .inputs import (
     _snapshot_regular,
 )
 from .models import (
-    CSS_TEMPLATE,
+    CSS_RESOURCE,
+    JINJA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
-    QMD_TEMPLATE,
-    QUARTO_VERSION,
+    SCIENCE_BANNERS,
+    TEMPLATE_RESOURCE,
     FileSnapshot,
-    RenderContext,
+    ReportContext,
 )
-from .runtime import _quarto_version
+from .receipt import read_receipt_tsv
+from .validation import render_html
+from .view import build_view
 
 
-def _expected_html_identity(context: RenderContext) -> dict[str, str]:
+def expected_html_identity(context: ReportContext) -> dict[str, str]:
     metadata = context.render_metadata
     return {
-        "data-css-sha256": metadata["css_template_sha256"],
-        "data-qmd-sha256": metadata["qmd_template_sha256"],
-        "data-quarto-version": metadata["quarto_version"],
+        "data-css-sha256": metadata["css_sha256"],
+        "data-jinja-version": metadata["jinja_version"],
         "data-renderer-version": metadata["renderer_version"],
         "data-run-id": context.summary["run_id"],
         "data-run-summary-sha256": metadata["run_summary_sha256"],
+        "data-template-sha256": metadata["template_sha256"],
     }
 
 
-def prepare_context(arguments: argparse.Namespace) -> RenderContext:
-    run_summary_path = _explicit_path(
-        arguments.run_summary,
-        "run-summary path",
-    )
-    run_summary_snapshot = _snapshot_regular(
-        run_summary_path,
-        "run-summary document",
-    )
-    summary = _load_run_summary(run_summary_path)
-    _assert_snapshot(run_summary_snapshot, "run-summary document")
-    run_id = summary["run_id"]
-    expected_name = f"{run_id}.run_summary.json"
-    if run_summary_path.name != expected_name or run_summary_path.parent.name != run_id:
-        _fail(
-            "Canonical run-summary input must use "
-            f"<run-id>/{expected_name}; observed {run_summary_path}"
-        )
+def _resource_snapshot(resource: str, label: str) -> FileSnapshot:
+    traversable = files("norad.reporting").joinpath(resource)
+    return _snapshot_regular(Path(str(traversable)), label)
 
-    tables = tuple(
-        _read_approved_table(record) for record in summary["approved_report_tables"]
-    )
-    template_snapshot = _snapshot_regular(
-        QMD_TEMPLATE,
-        "report QMD template",
-    )
-    css_snapshot = _snapshot_regular(
-        CSS_TEMPLATE,
-        "report CSS template",
-    )
-    quarto_path = _explicit_path(arguments.quarto_bin, "Quarto executable")
-    quarto_snapshot = _snapshot_regular(
-        quarto_path,
-        "Quarto executable",
-        executable=True,
-    )
-    _quarto_version(quarto_path)
-    _assert_snapshot(quarto_snapshot, "Quarto executable")
 
-    output_root = _explicit_path(arguments.output_root, "report output root")
-    _reject_symlink_components(output_root, "report output root")
-    output_dir = output_root / run_id
-    output_html = output_dir / f"{run_id}.run_report.html"
-    lock_path = output_dir / f".{run_id}.report-html.lock"
-    for path, label in (
-        (output_dir, "report output directory"),
-        (output_html, "report HTML output"),
-        (lock_path, "report lock"),
-    ):
-        _reject_symlink_components(path, label)
-
+def _validate_output_root(output_root: Path, output_dir: Path) -> None:
     if os.path.lexists(output_root):
         metadata = output_root.lstat()
         if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISDIR(metadata.st_mode):
@@ -109,78 +67,165 @@ def prepare_context(arguments: argparse.Namespace) -> RenderContext:
                 "Report output directory must be a non-symlink directory when "
                 f"it exists: {output_dir}"
             )
-    previous_output_snapshot: FileSnapshot | None = None
-    if os.path.lexists(output_html):
-        metadata = output_html.lstat()
-        if stat.S_ISLNK(metadata.st_mode) or not stat.S_ISREG(metadata.st_mode):
-            _fail(
-                "Existing report output must be a regular non-symlink file: "
-                f"{output_html}"
-            )
-        previous_output_snapshot = _snapshot_regular(
-            output_html,
-            "existing report output",
-        )
-        validate_rendered_html(
-            output_html,
-            expected_banner=None,
-        )
-        _assert_snapshot(
-            previous_output_snapshot,
-            "existing report output",
-        )
-    if os.path.lexists(lock_path):
-        _fail(f"Report render lock already exists: {lock_path}")
 
-    template_bytes = template_snapshot.path.read_bytes()
-    css_bytes = css_snapshot.path.read_bytes()
+
+def _existing_outputs(
+    output_dir: Path,
+    output_html: Path,
+    output_summary_tsv: Path,
+    output_receipt: Path,
+    legacy_pdf: Path,
+) -> dict[Path, FileSnapshot]:
+    known = (output_html, output_summary_tsv, output_receipt, legacy_pdf)
+    present = [path for path in known if os.path.lexists(path)]
+    if not present:
+        return {}
+    if legacy_pdf in present or not os.path.lexists(output_receipt):
+        _fail(
+            "Existing report outputs use the retired v1 contract or are "
+            "incomplete. Use a fresh output root or an explicitly approved migration; "
+            "the v2 publisher will not adopt or overwrite them."
+        )
     try:
-        css_text = css_bytes.decode("utf-8")
-    except UnicodeError as exc:
-        _fail(f"Report CSS template is not UTF-8: {exc}")
-    _validate_css_resources(css_text, "Report CSS template")
-    render_metadata = {
-        "css_template_path": str(css_snapshot.path),
-        "css_template_sha256": css_snapshot.sha256,
-        "qmd_template_path": str(template_snapshot.path),
-        "qmd_template_sha256": template_snapshot.sha256,
-        "quarto_path": str(quarto_snapshot.path),
-        "quarto_sha256": quarto_snapshot.sha256,
-        "quarto_version": QUARTO_VERSION,
+        document = read_receipt_tsv(output_receipt)
+    except Exception as exc:
+        _fail(
+            "Existing report receipt is not the active v2 contract. Use a fresh "
+            f"output root or an explicitly approved migration: {exc}"
+        )
+    snapshots: dict[Path, FileSnapshot] = {}
+    for output in document["outputs"]:
+        path = Path(output["path"])
+        if path.parent != output_dir:
+            _fail("Existing report receipt output is outside its run directory")
+        snapshot = _snapshot_regular(path, f"existing {output['kind']} output")
+        if (
+            snapshot.sha256 != output["sha256"]
+            or snapshot.size_bytes != output["size_bytes"]
+        ):
+            _fail(f"Existing report output does not match its receipt: {path}")
+        snapshots[path] = snapshot
+    receipt_snapshot = _snapshot_regular(output_receipt, "existing report receipt")
+    snapshots[output_receipt] = receipt_snapshot
+    if set(present) != set(snapshots):
+        _fail("Existing report outputs differ from the active v2 receipt")
+    return snapshots
+
+
+def prepare_context(
+    arguments: argparse.Namespace,
+    *,
+    source_checkout: artifact_index.SourceCheckout,
+) -> ReportContext:
+    source_root = source_checkout.root
+    run_summary_path = _explicit_path(arguments.run_summary, "run-summary path")
+    run_summary_snapshot = _snapshot_regular(run_summary_path, "run-summary document")
+    summary = _load_run_summary(run_summary_path, source_root=source_root)
+    _assert_snapshot(run_summary_snapshot, "run-summary document")
+    run_id = summary["run_id"]
+    expected_name = f"{run_id}.run_summary.json"
+    if run_summary_path.name != expected_name or run_summary_path.parent.name != run_id:
+        _fail(
+            "Canonical run-summary input must use "
+            f"<run-id>/{expected_name}; observed {run_summary_path}"
+        )
+
+    tables = tuple(
+        _read_approved_table(record, source_root=source_root)
+        for record in summary["approved_report_tables"]
+    )
+    try:
+        package_root = Path(__file__).resolve().parents[2]
+        producer_git_commit = (
+            artifact_index.get_git_commit(
+                source_root=source_root,
+                sanitize_git_routing=True,
+            )
+            if artifact_index.package_matches_checkout_head(
+                source_checkout=source_checkout,
+                package_root=package_root,
+            )
+            else "local_build"
+        )
+    except (
+        artifact_index.ArtifactIndexError,
+        artifact_index.SourceCheckoutError,
+    ) as exc:
+        _fail(str(exc))
+    template_snapshot = _resource_snapshot(TEMPLATE_RESOURCE, "report Jinja template")
+    css_snapshot = _resource_snapshot(CSS_RESOURCE, "report CSS resource")
+    installed_jinja = importlib.metadata.version("Jinja2")
+    if installed_jinja != JINJA_VERSION:
+        _fail(
+            f"Installed Jinja2 version must match the lock: observed "
+            f"{installed_jinja}; expected {JINJA_VERSION}"
+        )
+
+    output_root = _explicit_path(arguments.output_root, "report output root")
+    _reject_symlink_components(output_root, "report output root")
+    output_dir = output_root / run_id
+    output_html = output_dir / f"{run_id}.run_report.html"
+    output_summary_tsv = output_dir / f"{run_id}.run_summary.tsv"
+    output_receipt = output_dir / f"{run_id}.report_outputs.tsv"
+    legacy_pdf = output_dir / f"{run_id}.run_report.pdf"
+    lock_path = output_dir / f".{run_id}.report.lock"
+    stable_paths = (output_html, output_summary_tsv, output_receipt)
+    for path in (output_dir, *stable_paths, legacy_pdf, lock_path):
+        _reject_symlink_components(path, "report publication path")
+    _validate_output_root(output_root, output_dir)
+    if os.path.lexists(lock_path):
+        _fail(f"Report publication lock already exists: {lock_path}")
+    previous = _existing_outputs(
+        output_dir,
+        output_html,
+        output_summary_tsv,
+        output_receipt,
+        legacy_pdf,
+    )
+
+    try:
+        css = css_snapshot.path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        _fail(f"Could not read report CSS resource: {exc}")
+    metadata = {
+        "css_path": f"norad.reporting/{CSS_RESOURCE}",
+        "css_sha256": css_snapshot.sha256,
+        "jinja_version": JINJA_VERSION,
+        "producer_git_commit": producer_git_commit,
         "renderer": PRODUCER,
         "renderer_version": PRODUCER_VERSION,
         "run_summary_path": str(run_summary_snapshot.path),
         "run_summary_sha256": run_summary_snapshot.sha256,
+        "state_banner": SCIENCE_BANNERS[summary["science_status"]],
+        "source_checkout": str(source_root),
+        "template_path": f"norad.reporting/{TEMPLATE_RESOURCE}",
+        "template_sha256": template_snapshot.sha256,
     }
-    qmd_bytes = build_qmd_bytes(
-        summary,
-        tables,
-        template_bytes=template_bytes,
-        css_bytes=css_bytes,
-        render_metadata=render_metadata,
-    )
+    html_bytes = render_html(build_view(summary, tables, metadata), css)
     for snapshot, label in (
         (run_summary_snapshot, "run-summary document"),
-        (template_snapshot, "report QMD template"),
-        (css_snapshot, "report CSS template"),
-        (quarto_snapshot, "Quarto executable"),
+        (template_snapshot, "report Jinja template"),
+        (css_snapshot, "report CSS resource"),
     ):
         _assert_snapshot(snapshot, label)
-    return RenderContext(
+    return ReportContext(
+        source_checkout=source_checkout,
+        producer_git_commit=producer_git_commit,
         run_summary_path=run_summary_path,
         run_summary_snapshot=run_summary_snapshot,
         summary=summary,
         tables=tables,
         template_snapshot=template_snapshot,
         css_snapshot=css_snapshot,
-        quarto_path=quarto_path,
-        quarto_snapshot=quarto_snapshot,
         output_root=output_root,
         output_dir=output_dir,
         output_html=output_html,
+        output_summary_tsv=output_summary_tsv,
+        output_receipt=output_receipt,
         lock_path=lock_path,
-        previous_output_snapshot=previous_output_snapshot,
-        render_metadata=render_metadata,
-        qmd_bytes=qmd_bytes,
+        stable_paths=stable_paths,
+        previous_snapshots=previous,
+        render_metadata=metadata,
+        html_bytes=html_bytes,
         execute=arguments.execute,
     )

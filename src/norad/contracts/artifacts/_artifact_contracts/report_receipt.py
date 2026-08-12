@@ -19,15 +19,13 @@ def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
         raise ContractValidationError("report outputs contain duplicate kinds")
     if len(output_paths) != len(outputs):
         raise ContractValidationError("report outputs contain duplicate paths")
-    expected_kinds = set(document["requested_formats"]) | {"run_summary_tsv"}
+    expected_kinds = {"html", "run_summary_tsv"}
     if output_kinds != expected_kinds:
         raise ContractValidationError(
-            "report output kinds must exactly match requested formats plus "
-            "run_summary_tsv"
+            "report output kinds must be exactly html and run_summary_tsv"
         )
     expected_basenames = {
         "html": f"{document['run_id']}.run_report.html",
-        "pdf": f"{document['run_id']}.run_report.pdf",
         "run_summary_tsv": f"{document['run_id']}.run_summary.tsv",
     }
     output_parents: set[Path] = set()

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NORAD consolidated run report: {{ view.run_id }}</title>
+  <style id="norad-report-styles">
+{{ css | safe }}
+  </style>
+</head>
+<body>
+{% macro render_table(block) -%}
+<div class="norad-table-wrap{% if block.wide %} norad-table-wrap-wide{% endif %}"{% if block.wide %} tabindex="0" role="region" aria-label="{{ block.caption }}"{% endif %}>
+  <table class="norad-table" id="{{ block.id }}">
+    <caption>{{ block.caption }}</caption>
+    <thead><tr>{% for column in block.header %}<th scope="col">{{ column }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% if block.rows %}
+      {% for row in block.rows %}
+      <tr>{% for value in row %}{% if block.row_headers and loop.first %}<th scope="row">{{ value }}</th>{% else %}<td>{{ value }}</td>{% endif %}{% endfor %}</tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="{{ block.header | length }}">No rows are available.</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+</div>
+{%- endmacro %}
+
+{% macro render_block(block) -%}
+{% if block.kind == "table" %}
+{{ render_table(block) }}
+{% elif block.kind == "empty" %}
+<p class="empty-state">{{ block.message }}</p>
+{% elif block.kind == "note" %}
+<p class="{% if block.notice %}notice{% else %}provenance-note{% endif %}">{{ block.message }}</p>
+{% elif block.kind == "json" %}
+<h3>{{ block.title }}</h3>
+<pre aria-label="{{ block.title }}">{{ block.payload }}</pre>
+{% elif block.kind == "panel_grid" %}
+<div class="panel-grid">
+  {% for panel in block.panels %}
+  <div class="status-panel"><h3>{{ panel.title }}</h3>{{ render_block(panel.block) }}</div>
+  {% endfor %}
+</div>
+{% elif block.kind == "artifact_overview" %}
+<figure class="artifact-overview">
+  <svg viewBox="0 0 {{ block.width }} {{ block.height }}" role="img" aria-labelledby="artifact-overview-title artifact-overview-description">
+    <title id="artifact-overview-title">Expected artifact state overview</title>
+    <desc id="artifact-overview-description">{{ block.description }}</desc>
+    {% for segment in block.segments %}<rect x="{{ segment.x }}" y="18" width="{{ segment.width }}" height="30" fill="{{ segment.color }}"><title>{{ segment.name }}: {{ segment.count }}</title></rect>{% endfor %}
+    <text x="0" y="70" font-size="14" fill="#17202a">Expected artifacts: {{ block.total }}</text>
+  </svg>
+  <figcaption>Artifact availability is copied from the canonical run summary. This visualization is not validation evidence.</figcaption>
+</figure>
+<ul class="artifact-legend" aria-label="Artifact state legend">
+  {% for item in block.legend %}<li class="legend-{{ item.name | replace(' ', '-') }}">{{ item.name | title }}: {{ item.count }}</li>{% endfor %}
+</ul>
+{% elif block.kind == "notice_list" %}
+<div class="notice"><p><strong>{{ block.title }}</strong></p><ul>{% for item in block["items"] %}<li>{{ item }}</li>{% endfor %}</ul></div>
+{% endif %}
+{%- endmacro %}
+
+<main id="norad-report" tabindex="-1"
+  data-run-id="{{ view.run_id }}"
+  data-run-summary-sha256="{{ view.metadata.run_summary_sha256 }}"
+  data-renderer-version="{{ view.metadata.renderer_version }}"
+  data-jinja-version="{{ view.metadata.jinja_version }}"
+  data-template-sha256="{{ view.metadata.template_sha256 }}"
+  data-css-sha256="{{ view.metadata.css_sha256 }}">
+  <h1 id="norad-report-title">NORAD consolidated run report: {{ view.run_id }}</h1>
+  <div class="state-banner state-{{ view.science_class }}" role="status" aria-live="polite">{{ view.banner }}</div>
+  <p class="report-disclaimer">This report is a read-only view of declared evidence. Report generation is not evidence of local, runtime, cluster, scientific, or biological validation. Candidate rows are described only as {{ view.candidate_terminology }}.</p>
+  <div class="report-category-tabs" role="group" aria-label="Report categories">
+  {% for category in view.categories %}
+    <details id="{{ category.id }}" class="report-category" name="norad-report-categories"{% if category.open %} open{% endif %}>
+      <summary>{{ category.title }}</summary>
+      <div class="report-category-body">
+      {% for section in category.sections %}
+        <section id="{{ section.id }}" class="report-section" aria-labelledby="{{ section.id }}-heading">
+          <h2 id="{{ section.id }}-heading">{{ section.title }}</h2>
+          {% for block in section.blocks %}{{ render_block(block) }}{% endfor %}
+        </section>
+      {% endfor %}
+      </div>
+    </details>
+  {% endfor %}
+  </div>
+  <p class="report-disclaimer">End of report. {{ view.banner }} Report generation did not change any recorded status.</p>
+</main>
+</body>
+</html>

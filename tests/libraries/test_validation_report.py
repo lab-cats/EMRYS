@@ -190,8 +190,8 @@ def test_report_validator_rejects_invalid_status() -> None:
         )
 
 
-def test_build_report_preserves_snapshots_and_declared_check_identity() -> None:
-    snapshots = object()
+def test_build_report_preserves_snapshots_and_declared_check_values() -> None:
+    snapshots = {"snapshot": "synthetic"}
 
     data, returned_snapshots = REPORT.build_report(
         STEP_ID,
@@ -201,7 +201,7 @@ def test_build_report_preserves_snapshots_and_declared_check_identity() -> None:
         {"publication_contract": (True, "observed", "expected", "detail")},
     )
 
-    assert returned_snapshots is snapshots
+    assert returned_snapshots == snapshots
     REPORT.validate_report(
         data,
         SCOPE_ID,

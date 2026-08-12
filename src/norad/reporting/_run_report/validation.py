@@ -1,120 +1,67 @@
-"""Static QMD construction and rendered-HTML contract validation."""
+"""Jinja environment construction and static HTML contract validation."""
 
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 
-import yaml
+from jinja2 import (
+    Environment,
+    PackageLoader,
+    StrictUndefined,
+    TemplateError,
+    nodes,
+    select_autoescape,
+)
 
-from .html_projection import build_report_body
 from .inputs import _assert_snapshot, _fail, _snapshot_regular
 from .models import (
     ACTIVE_RESOURCE_ATTRIBUTES,
-    BODY_MARKER,
     CANDIDATE_TERMINOLOGY,
-    CSS_MARKER,
     CSS_RESOURCE_RE,
-    CSS_TEMPLATE,
-    EXECUTABLE_QMD_RE,
-    EXPECTED_QMD_BODY,
-    EXPECTED_QMD_FRONTMATTER,
-    QMD_TEMPLATE,
     REMOTE_URI_RE,
     REPORT_SECTION_IDS,
     SCIENCE_BANNERS,
-    ApprovedTable,
     ReportRenderError,
 )
 
 
-def build_qmd_bytes(
-    summary: Mapping[str, Any],
-    tables: Sequence[ApprovedTable],
-    *,
-    template_bytes: bytes | None = None,
-    css_bytes: bytes | None = None,
-    render_metadata: Mapping[str, str] | None = None,
-) -> bytes:
-    if template_bytes is None:
-        try:
-            template_bytes = QMD_TEMPLATE.read_bytes()
-        except OSError as exc:
-            _fail(f"Could not read report QMD template {QMD_TEMPLATE}: {exc}")
-    try:
-        template = template_bytes.decode("utf-8")
-    except UnicodeError as exc:
-        _fail(f"Report QMD template is not UTF-8: {exc}")
-    if css_bytes is None:
-        try:
-            css_bytes = CSS_TEMPLATE.read_bytes()
-        except OSError as exc:
-            _fail(f"Could not read report CSS template {CSS_TEMPLATE}: {exc}")
-    try:
-        css = css_bytes.decode("utf-8")
-    except UnicodeError as exc:
-        _fail(f"Report CSS template is not UTF-8: {exc}")
-    _validate_css_resources(css, "Report CSS template")
-    if re.search(r"</?style\b|<script\b", css, re.IGNORECASE):
-        _fail("Report CSS template contains an unsafe raw HTML boundary")
-    validate_qmd_template(template)
-    qmd = template.replace(
-        CSS_MARKER,
-        '<style id="norad-report-styles">\n' + css + "\n</style>",
-    ).replace(
-        BODY_MARKER,
-        build_report_body(summary, tables, render_metadata),
+def build_environment() -> Environment:
+    """Return the closed deterministic environment used by installed reports."""
+
+    return Environment(
+        loader=PackageLoader("norad.reporting", "templates"),
+        autoescape=select_autoescape(enabled_extensions=("html", "j2"), default=True),
+        undefined=StrictUndefined,
+        auto_reload=False,
+        cache_size=0,
+        keep_trailing_newline=True,
+        newline_sequence="\n",
     )
-    if EXECUTABLE_QMD_RE.search(qmd):
-        _fail("Generated QMD contains an executable fenced cell")
-    return qmd.encode("utf-8")
 
 
-def validate_qmd_template(template: str) -> None:
-    if template.count(BODY_MARKER) != 1:
-        _fail(f"Report QMD template must contain exactly one {BODY_MARKER!r} marker")
-    if template.count(CSS_MARKER) != 1:
-        _fail(f"Report QMD template must contain exactly one {CSS_MARKER!r} marker")
-    if EXECUTABLE_QMD_RE.search(template):
-        _fail("Report QMD template contains an executable fenced cell")
-    match = re.fullmatch(r"---\n(.*?)\n---(\n.*)", template, re.DOTALL)
-    if match is None:
-        _fail("Report QMD template must contain one closed YAML frontmatter block")
-
-    class UniqueKeyLoader(yaml.SafeLoader):
-        pass
-
-    def construct_unique_mapping(
-        loader: yaml.SafeLoader,
-        node: yaml.nodes.MappingNode,
-        deep: bool = False,
-    ) -> dict[Any, Any]:
-        mapping: dict[Any, Any] = {}
-        for key_node, value_node in node.value:
-            key = loader.construct_object(key_node, deep=deep)
-            if key in mapping:
-                raise yaml.YAMLError(f"duplicate YAML key: {key!r}")
-            mapping[key] = loader.construct_object(value_node, deep=deep)
-        return mapping
-
-    UniqueKeyLoader.add_constructor(
-        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-        construct_unique_mapping,
-    )
+def validate_template_source(source: str) -> None:
     try:
-        frontmatter = yaml.load(match.group(1), Loader=UniqueKeyLoader)
-    except (TypeError, yaml.YAMLError) as exc:
-        _fail(f"Report QMD frontmatter is invalid: {exc}")
-    if frontmatter != EXPECTED_QMD_FRONTMATTER:
-        _fail("Report QMD frontmatter differs from the closed static HTML allowlist")
-    if match.group(2) != EXPECTED_QMD_BODY:
-        _fail(
-            "Report QMD body must contain only the tracked static-contract "
-            "comment and the report-body marker"
-        )
+        syntax = Environment().parse(source)
+    except TemplateError as exc:
+        _fail(f"Report template is not valid Jinja: {exc}")
+    safe_filters = [
+        node for node in syntax.find_all(nodes.Filter) if node.name == "safe"
+    ]
+    if (
+        source.count("{{ css | safe }}") != 1
+        or len(safe_filters) != 1
+        or not isinstance(safe_filters[0].node, nodes.Name)
+        or safe_filters[0].node.name != "css"
+    ):
+        _fail("Report template may use |safe exactly once for the tracked CSS resource")
+    if re.search(r"<script\b|\{[%{]\s*(?:include|import|from|extends)\b", source, re.I):
+        _fail("Report template contains a script or external template dependency")
+    if re.search(r"(?:https?:)?//", source, re.I):
+        _fail("Report template contains a remote resource reference")
 
 
 def _validate_css_resources(css: str, label: str) -> None:
@@ -123,10 +70,24 @@ def _validate_css_resources(css: str, label: str) -> None:
         if resource.startswith(("data:", "#")):
             continue
         _fail(f"{label} contains a non-embedded CSS resource: {resource!r}")
+    if re.search(r"</?style\b|<script\b", css, re.IGNORECASE):
+        _fail(f"{label} contains an unsafe raw HTML boundary")
+
+
+def render_html(view: Mapping[str, Any], css: str) -> bytes:
+    environment = build_environment()
+    source, _, _ = environment.loader.get_source(environment, "run_report.html.j2")
+    validate_template_source(source)
+    _validate_css_resources(css, "Report CSS resource")
+    rendered = environment.get_template("run_report.html.j2").render(
+        view=view,
+        css=css,
+    )
+    return rendered.encode("utf-8")
 
 
 class ReportHTMLInspector(HTMLParser):
-    """Collect local structural and active-resource facts from rendered HTML."""
+    """Collect structural, accessibility, and active-resource facts."""
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -165,20 +126,12 @@ class ReportHTMLInspector(HTMLParser):
     def _resource_values(name: str, value: str) -> list[str]:
         if name != "srcset":
             return [value]
-        stripped_value = value.strip()
-        if stripped_value.startswith("data:"):
-            if re.fullmatch(
-                r"data:[^\s]+(?:\s+\d+(?:\.\d+)?[wx])?",
-                stripped_value,
-            ):
-                return [stripped_value.split()[0]]
+        stripped = value.strip()
+        if stripped.startswith("data:"):
+            if re.fullmatch(r"data:[^\s]+(?:\s+\d+(?:\.\d+)?[wx])?", stripped):
+                return [stripped.split()[0]]
             return ["invalid-or-multiple-data-srcset"]
-        values = []
-        for candidate in value.split(","):
-            stripped = candidate.strip()
-            if stripped:
-                values.append(stripped.split()[0])
-        return values
+        return [item.strip().split()[0] for item in value.split(",") if item.strip()]
 
     def handle_starttag(
         self,
@@ -196,20 +149,16 @@ class ReportHTMLInspector(HTMLParser):
         if tag == "base":
             self.base_count += 1
         if tag == "script":
-            self.active_resource_errors.append(
-                "<script> is not permitted in a static NORAD report"
-            )
+            self.active_resource_errors.append("<script> is not permitted")
         if tag in {"iframe", "object", "embed"}:
-            self.active_resource_errors.append(
-                f"<{tag}> is not permitted in a static NORAD report"
-            )
+            self.active_resource_errors.append(f"<{tag}> is not permitted")
         if tag == "img" and not (
             attributes.get("alt")
             or (
                 attributes.get("role") == "presentation" and attributes.get("alt") == ""
             )
         ):
-            self.image_errors.append("<img> lacks non-empty alternative text")
+            self.image_errors.append("<img> lacks alternative text")
         if tag == "meta" and (attributes.get("http-equiv") or "").lower() == "refresh":
             self.meta_refreshes.append(attributes.get("content") or "")
         element_id = attributes.get("id")
@@ -245,13 +194,11 @@ class ReportHTMLInspector(HTMLParser):
                 self.accessible_svgs += 1
         elif self.svg_depth:
             self.svg_depth += 1
-
         if "state-banner" in classes:
             self.banner_count += 1
             self.banner_depth = 1
         elif self.banner_depth:
             self.banner_depth += 1
-
         if tag == "style":
             self.style_depth = 1
         elif self.style_depth:
@@ -262,7 +209,6 @@ class ReportHTMLInspector(HTMLParser):
                 _validate_css_resources(inline_style, f"<{tag}> style")
             except ReportRenderError as exc:
                 self.active_resource_errors.append(str(exc))
-
         for name, value in attrs:
             if value is None or (tag, name) not in ACTIVE_RESOURCE_ATTRIBUTES:
                 continue
@@ -293,9 +239,7 @@ class ReportHTMLInspector(HTMLParser):
                 if not self.current_table_has_caption:
                     self.table_errors.append("NORAD table lacks a caption")
                 if self.current_table_bad_headers:
-                    self.table_errors.append(
-                        "NORAD table has header cells without scope"
-                    )
+                    self.table_errors.append("NORAD table has headers without scope")
         if self.svg_depth:
             self.svg_depth -= 1
         if self.banner_depth:
@@ -305,8 +249,7 @@ class ReportHTMLInspector(HTMLParser):
             if tag == "style" and self.style_depth == 0:
                 try:
                     _validate_css_resources(
-                        "".join(self.style_text),
-                        "rendered <style>",
+                        "".join(self.style_text), "rendered <style>"
                     )
                 except ReportRenderError as exc:
                     self.active_resource_errors.append(str(exc))
@@ -326,8 +269,8 @@ class ReportHTMLInspector(HTMLParser):
 def validate_rendered_html(
     path: Path,
     *,
-    expected_banner: str | None,
-    expected_identity: Mapping[str, str] | None = None,
+    expected_banner: str,
+    expected_identity: Mapping[str, str],
 ) -> None:
     snapshot = _snapshot_regular(path, "rendered HTML report")
     if snapshot.size_bytes == 0:
@@ -351,78 +294,56 @@ def validate_rendered_html(
         _fail("Rendered report must contain exactly one non-empty document title")
     if inspector.main_count != 1:
         _fail(
-            f"Rendered report must contain exactly one main landmark; found "
-            f"{inspector.main_count}"
+            f"Rendered report must contain exactly one main landmark; found {inspector.main_count}"
         )
     if not inspector.heading_levels or inspector.heading_levels[0] != 1:
         _fail("Rendered report must begin its main heading sequence with h1")
     for previous, current in zip(
-        inspector.heading_levels,
-        inspector.heading_levels[1:],
+        inspector.heading_levels, inspector.heading_levels[1:]
     ):
         if current > previous + 1:
             _fail(f"Rendered report heading order jumps from h{previous} to h{current}")
     if inspector.duplicate_ids:
         _fail(
-            "Rendered report contains duplicate element IDs: "
+            "Rendered report contains duplicate IDs: "
             + ", ".join(sorted(inspector.duplicate_ids))
         )
-    if inspector.base_count:
-        _fail("Rendered report must not contain a <base> element")
-    if inspector.meta_refreshes:
-        _fail("Rendered report must not contain meta refresh navigation")
+    if inspector.base_count or inspector.meta_refreshes:
+        _fail("Rendered report contains navigation-capable HTML")
     if inspector.active_resource_errors:
         _fail(
-            "Rendered report contains non-embedded active resources:\n- "
+            "Rendered report contains active resources:\n- "
             + "\n- ".join(inspector.active_resource_errors)
         )
     if inspector.image_errors:
         _fail(
-            "Rendered report image accessibility validation failed: "
+            "Rendered report image accessibility failed: "
             + "; ".join(inspector.image_errors)
         )
     if inspector.norad_tables == 0 or inspector.table_errors:
         _fail(
-            "Rendered report table accessibility validation failed: "
+            "Rendered report table accessibility failed: "
             + "; ".join(inspector.table_errors or ["no NORAD tables found"])
         )
     if inspector.accessible_svgs < 1:
         _fail("Rendered report lacks an accessible embedded figure")
     observed_banner = " ".join("".join(inspector.banner_text).split())
-    if inspector.banner_count != 1:
-        _fail("Rendered report must contain exactly one scientific-state banner")
-    if expected_banner is None:
-        allowed_banners = {
-            " ".join(value.split()) for value in SCIENCE_BANNERS.values()
-        }
-        if observed_banner not in allowed_banners:
-            _fail(
-                "Existing report does not contain exactly one recognized "
-                "scientific-state banner"
-            )
-    elif observed_banner != " ".join(expected_banner.split()):
+    if inspector.banner_count != 1 or observed_banner != " ".join(
+        expected_banner.split()
+    ):
         _fail(
-            f"Rendered report does not contain the required state banner: "
-            f"{expected_banner}"
+            f"Rendered report does not contain the required state banner: {expected_banner}"
         )
-    if expected_identity is not None:
-        missing_sections = REPORT_SECTION_IDS - inspector.ids
-        if missing_sections:
-            _fail(
-                "Rendered report lacks required report sections: "
-                + ", ".join(sorted(missing_sections))
-            )
-        if CANDIDATE_TERMINOLOGY not in content:
-            _fail(
-                "Rendered report lacks the fixed candidate terminology: "
-                f"{CANDIDATE_TERMINOLOGY}"
-            )
-        main_attributes = inspector.main_attributes[0]
-        for attribute, expected in expected_identity.items():
-            if main_attributes.get(attribute) != expected:
-                _fail(
-                    "Rendered report provenance binding differs from the "
-                    f"prepared context for {attribute}: observed "
-                    f"{main_attributes.get(attribute)!r}; expected {expected!r}"
-                )
+    missing_sections = REPORT_SECTION_IDS - inspector.ids
+    if missing_sections:
+        _fail(
+            "Rendered report lacks required sections: "
+            + ", ".join(sorted(missing_sections))
+        )
+    if CANDIDATE_TERMINOLOGY not in content:
+        _fail(f"Rendered report lacks fixed terminology: {CANDIDATE_TERMINOLOGY}")
+    main_attributes = inspector.main_attributes[0]
+    for attribute, expected in expected_identity.items():
+        if main_attributes.get(attribute) != expected:
+            _fail(f"Rendered report provenance differs for {attribute}")
     _assert_snapshot(snapshot, "rendered HTML report")

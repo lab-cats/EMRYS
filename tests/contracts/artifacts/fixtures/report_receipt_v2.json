@@ -1,6 +1,6 @@
 {
   "schema_name": "norad.report_receipt",
-  "schema_version": "1.1.0",
+  "schema_version": "2.0.0",
   "record_type": "report_receipt",
   "run_id": "run_fixture",
   "attempt_id": "report-attempt-001",
@@ -15,23 +15,17 @@
     "schema_name": "norad.run_summary",
     "schema_version": "1.1.0"
   },
-  "requested_formats": [
-    "html",
-    "pdf"
-  ],
   "renderer": {
-    "name": "quarto",
-    "version": "1.9.38",
-    "executable": ".tools/quarto/1.9.38/bin/quarto",
-    "pandoc_version": "3.synthetic",
-    "pdf_engine": "typst"
+    "name": "Jinja2",
+    "version": "3.1.6"
   },
   "template": {
-    "path": "src/norad/reporting/templates/run_report.qmd",
-    "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-    "size_bytes": 1024,
-    "row_count": null,
-    "media_type": "text/markdown"
+    "path": "norad.reporting/templates/run_report.html.j2",
+    "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "stylesheet": {
+    "path": "norad.reporting/styles/run_report.css",
+    "sha256": "abababababababababababababababababababababababababababababababab"
   },
   "outputs": [
     {
@@ -41,20 +35,7 @@
       "sha256": "1212121212121212121212121212121212121212121212121212121212121212",
       "size_bytes": 4096,
       "media_type": "text/html",
-      "self_contained": true,
-      "page_count": null,
-      "state_banner_every_page": null
-    },
-    {
-      "output_id": "run_report_pdf",
-      "kind": "pdf",
-      "path": "results/reports/run_fixture/run_fixture.run_report.pdf",
-      "sha256": "1313131313131313131313131313131313131313131313131313131313131313",
-      "size_bytes": 8192,
-      "media_type": "application/pdf",
-      "self_contained": null,
-      "page_count": 3,
-      "state_banner_every_page": true
+      "self_contained": true
     },
     {
       "output_id": "run_summary_tsv",
@@ -62,10 +43,7 @@
       "path": "results/reports/run_fixture/run_fixture.run_summary.tsv",
       "sha256": "1414141414141414141414141414141414141414141414141414141414141414",
       "size_bytes": 512,
-      "media_type": "text/tab-separated-values",
-      "self_contained": null,
-      "page_count": null,
-      "state_banner_every_page": null
+      "media_type": "text/tab-separated-values"
     }
   ],
   "state_banner": "SCIENTIFIC REVIEW INCOMPLETE — NO BIOLOGICAL INTERPRETATION.",
@@ -83,7 +61,7 @@
     "artifact_record": "1.0.0",
     "scientific_review_record": "1.1.0",
     "run_summary": "1.1.0",
-    "report_receipt": "1.1.0"
+    "report_receipt": "2.0.0"
   },
   "analysis_execution_performed": false,
   "external_network_assets_used": false,
@@ -99,7 +77,7 @@
   "errors": [],
   "provenance": {
     "producer": "artifact_schema_fixture",
-    "producer_version": "1.0.0",
+    "producer_version": "2.0.0",
     "git_commit": "fixturecommit",
     "created_at": "2000-01-01T00:00:05Z"
   }

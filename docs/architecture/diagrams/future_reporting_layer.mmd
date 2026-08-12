@@ -7,12 +7,8 @@ flowchart TD
     view --> science["Science profile<br/>future default"]
     view --> comprehensive["Comprehensive profile<br/>explicit retained view"]
     science --> sciencehtml["Accessible science HTML"]
-    science --> sciencepdf["Semantically equivalent science PDF"]
     comprehensive --> fullhtml["Comprehensive HTML"]
-    comprehensive --> fullpdf["Comprehensive PDF"]
     summary --> tsv["Deterministic summary TSV"]
     sciencehtml --> receipt["Profile-specific report receipt published last"]
-    sciencepdf --> receipt
     fullhtml --> receipt
-    fullpdf --> receipt
     tsv --> receipt

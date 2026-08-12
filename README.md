@@ -8,13 +8,16 @@ candidate generation, paired CMH ranking, evidence assembly, and report
 projection. See the [architecture index](docs/architecture/README.md) for the
 organized current-system authority, including the scientist-facing flow,
 system map, functional-owner inventory, source topology, stage map, and
-diagrams. NORAD does not yet provide a single workflow orchestrator. Its
-explicitly installed, unreleased Python distribution provides an isolated,
+diagrams. NORAD does not yet provide a single workflow orchestrator. Planned
+Snakemake orchestration is not implemented, and the fresh-clone, one-command
+full-pipeline onboarding path belongs to Campaign B rather than the current
+repository surface. Its explicitly installed, unreleased Python distribution
+provides an isolated,
 grouped module command for migrated owners, beginning with sample-manifest,
 STAR-index, FASTA-sidecar, STAR-alignment, canonical-BAM, canonical-BAM-QC,
 RSeQC-orientation, duplicate-marking, split-N-cigar, mechanical-orientation,
 partitioned-cohort-mpileup, cohort-candidate-preprocessing, and
-paired-CMH-candidate-ranking, artifact-index and run-summary building,
+paired-CMH-candidate-ranking, artifact-index, run-summary, and HTML-report building,
 artifact-contract validation, reference-provenance reconciliation,
 runtime-availability and
 storage-inventory inspection, scientific-review-package assembly, plus
@@ -22,9 +25,25 @@ GTF-to-BED12 conversion/validation and named schema/report resources.
 
 ## Start here
 
-This entry path assumes pinned Python packages, the guarded R environment,
-pinned Quarto, and owner-required system tools are already configured. Activate
-the configured Python environment before using the Make target below.
+Python development requires Python `3.11` or newer and a separately provisioned
+`uv` executable. From the repository root, use this one Bash/Zsh command to
+synchronize the reviewed lock, install the NORAD project itself, and activate
+its environment in the current shell:
+
+```sh
+uv sync --locked && source .venv/bin/activate
+```
+
+The `source` operation changes the current shell, so `python` and `norad` then
+resolve from the project `.venv`; activation lasts until that shell exits or
+you run `deactivate`. In a new shell, run `source .venv/bin/activate` before
+continuing. Bare `python` commands in the owner documentation assume this
+environment is active.
+
+Do not curl-install `uv` or restore dependencies from validation, rendering,
+compute, or scheduler commands. The guarded R environment remains owned by
+`renv`; owner-required system tools are separate prerequisites.
+
 Implemented owners collectively consume a sample manifest and paired RNA-seq
 reads, reference FASTA/GTF material, and any owner-specific selections or
 declarations described by their local contract. The full runtime manifest and
@@ -60,13 +79,15 @@ For current evidence state and blockers, read
 boundaries, read [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md); the
 [architecture index](docs/architecture/README.md) owns implemented system views.
 
-To generate a synthetic presentation bundle, follow the
+To generate a synthetic HTML report transaction, follow the
 [demo-report procedure](docs/demo/README.md),
-which creates or replaces ignored artifacts beneath `results/demo-report/`.
+which creates or replaces ignored artifacts beneath `results/demo-report-jinja/`.
 Use the reviewed [demo-guide index](docs/demo/README.md) to present them. The
 fixture is synthetic and provisional; it does not establish production
 execution, local or cluster runtime validation, completed production scientific
-review, or biological readiness.
+review, or biological readiness. Reporting is currently pure Python and
+HTML-only: the installed command uses packaged Jinja and CSS resources and does
+not require Quarto or produce a report PDF.
 
 ## Evidence boundary
 
@@ -93,7 +114,7 @@ scientific policy explicitly unlocks it.
 | [`docs/`](docs/README.md) | Architecture, operations, design, task, history, reference, and demonstration documentation. |
 | [`data/`](data/README.md) and [`refs/`](refs/README.md) | Operator-managed input and reference workspaces; large or runtime children are ignored while safety guidance is tracked. |
 | [`results/`](results/README.md) and [`logs/`](logs/README.md) | Ignored generated outputs and scheduler streams; generated does not automatically mean disposable. |
-| [`renv/`](renv/README.md) and [root tool configuration](docs/operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration) | Explicit dependency activation plus conventional Python, R, pytest, and coverage configuration. |
+| [`uv.lock`](uv.lock), [`renv/`](renv/README.md), and [root tool configuration](docs/operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration) | Locked Python and R dependency authority plus pytest and coverage configuration. |
 
 Use the [documentation sitemap](docs/sitemap/README.md) for category-level
 navigation and canonical responsibility boundaries.

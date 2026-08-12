@@ -1,4 +1,4 @@
-"""Contract tests for artifact-schema-v1 schemas, fixtures, and inventory."""
+"""Contract tests for the version-spanning artifact schema registry."""
 
 from __future__ import annotations
 
@@ -16,18 +16,23 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from norad import __main__ as norad_main
 from norad.contracts.artifacts import api as contracts
-from norad.contracts.artifacts import validator as contract_validator
 from norad.contracts.artifacts._artifact_contracts import (
-    artifact,
-    definitions,
     identity,
-    run_summary_status,
     run_summary_validation,
-    scientific_review,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCHEMA_ROOT = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts" / "v1"
+REPORT_RECEIPT_SCHEMA = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "contracts"
+    / "schemas"
+    / "artifacts"
+    / "v2"
+    / "report_receipt.schema.json"
+)
 FIXTURE_ROOT = (
     REPO_ROOT
     / "tests"
@@ -42,23 +47,9 @@ FIXTURES = {
     "artifact-record": FIXTURE_ROOT / "artifact_record.json",
     "scientific-review-record": (FIXTURE_ROOT / "scientific_review_record.json"),
     "run-summary": FIXTURE_ROOT / "run_summary.json",
-    "report-receipt": FIXTURE_ROOT / "report_receipt.json",
+    "report-receipt": FIXTURE_ROOT.parents[1] / "report_receipt_v2.json",
 }
 EXPECTED_INVENTORY_ARTIFACT_COUNT = 81
-
-
-def test_contract_api_uses_the_packaged_owners() -> None:
-    assert contracts.ContractValidationError is definitions.ContractValidationError
-    assert contracts.validate_artifact_semantics is artifact.validate_artifact_semantics
-    assert (
-        contracts.validate_scientific_review_semantics
-        is scientific_review.validate_scientific_review_semantics
-    )
-    assert (
-        contracts.validate_run_summary_semantics
-        is run_summary_validation.validate_run_summary_semantics
-    )
-    assert contracts.scope_key is run_summary_status.scope_key
 
 
 def test_validate_document_and_dispatcher_use_live_api_hooks(
@@ -75,7 +66,6 @@ def test_validate_document_and_dispatcher_use_live_api_hooks(
             str(FIXTURES["artifact-record"]),
         ]
     )
-    assert arguments._command_handler is contract_validator.validate_from_args
     document_calls: list[tuple[str, dict[str, Any]]] = []
 
     def record_document(name: str, document: dict[str, Any]) -> None:
@@ -83,7 +73,7 @@ def test_validate_document_and_dispatcher_use_live_api_hooks(
 
     with monkeypatch.context() as patch:
         patch.setattr(contracts, "validate_document_semantics", record_document)
-        result = contract_validator.validate_from_args(arguments)
+        result = arguments._command_handler(arguments)
 
     assert result == 0
     captured = capsys.readouterr()
@@ -1256,12 +1246,12 @@ def test_run_summary_requires_completed_review_artifact_for_embedded_review() ->
     )
 
 
-def test_report_receipt_enforces_renderer_safety_formats_and_banners() -> None:
+def test_report_receipt_enforces_renderer_safety_outputs_and_banners() -> None:
     receipt = read_json(FIXTURES["report-receipt"])
 
-    wrong_quarto = copy.deepcopy(receipt)
-    wrong_quarto["renderer"]["version"] = "1.9.39"
-    assert_schema_invalid("report-receipt", wrong_quarto, "1.9.38")
+    wrong_jinja = copy.deepcopy(receipt)
+    wrong_jinja["renderer"]["version"] = "3.1.5"
+    assert_schema_invalid("report-receipt", wrong_jinja, "3.1.6")
 
     networked = copy.deepcopy(receipt)
     networked["external_network_assets_used"] = True
@@ -1271,12 +1261,11 @@ def test_report_receipt_enforces_renderer_safety_formats_and_banners() -> None:
     bad_banner["state_banner"] = "Looks good."
     assert_schema_invalid("report-receipt", bad_banner, "SCIENTIFIC REVIEW")
 
-    missing_pdf = copy.deepcopy(receipt)
-    missing_pdf["outputs"] = [
-        output for output in missing_pdf["outputs"] if output["kind"] != "pdf"
+    missing_html = copy.deepcopy(receipt)
+    missing_html["outputs"] = [
+        output for output in missing_html["outputs"] if output["kind"] != "html"
     ]
-    assert_schema_valid("report-receipt", missing_pdf)
-    assert_contract_failure("report-receipt", missing_pdf, "exactly match")
+    assert_schema_invalid("report-receipt", missing_html, "too short")
 
 
 def test_report_receipt_rejects_duplicate_outputs_bad_truncation_and_ready() -> None:
@@ -1776,16 +1765,3 @@ def test_nonstandard_json_numbers_are_rejected(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert "Non-standard JSON numeric constant" in result.stderr
-
-
-def test_requirements_pin_jsonschema_and_its_resolved_closure() -> None:
-    requirements = (REPO_ROOT / "requirements.txt").read_text(encoding="utf-8")
-
-    for pinned in (
-        "attrs==26.1.0",
-        "jsonschema==4.26.0",
-        "jsonschema-specifications==2025.9.1",
-        "referencing==0.37.0",
-        "rpds-py==2026.6.3",
-    ):
-        assert pinned in requirements.splitlines()

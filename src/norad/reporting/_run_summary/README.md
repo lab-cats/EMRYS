@@ -46,7 +46,15 @@ validation of a restored predecessor during rollback; it does not re-admit or
 infer a root. Receipt-last publication, observation order, diagnostics,
 serialized bytes, rollback, and recovery remain unchanged.
 
-Both reporting owners still reuse the same artifact contract and error
+The frozen `RunSummaryBuildDeps` record names only the preparation seams for
+input loading, science and approval normalization, document construction, and
+the final input recheck. The frozen `RunSummaryPublicationOps` record names
+only publication replace, durability, locking, cleanup, signal, and validation
+operations. Production uses immutable defaults; fault tests pass explicit
+modified values. The builder exposes no model, projection, adapter, or
+publication globals for compatibility patching.
+
+All three reporting build owners still reuse the same artifact contract and error
 identities. Science projection consumes the neutral review-package contract,
 the committed public thirteen-file package, explicitly referenced evidence,
 and validated index records. It does not load private Step `09c` inputs, own

@@ -12,8 +12,11 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from norad.contracts.artifacts import api as contracts
+from norad.reporting._artifact_index import api as adapter
+
 from .. import _files
-from .models import FileSnapshot, RunSummaryError, adapter, contracts
+from .models import FileSnapshot, RunSummaryError
 
 
 def _fail(message: str) -> None:

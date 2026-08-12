@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import norad
 import pytest
 
 from norad import __main__ as norad_cli
@@ -28,8 +29,9 @@ PYTHON_FILES: Mapping[str, bytes] = {
 }
 RESOURCE_FILES: Mapping[str, bytes] = {
     "contracts/schemas/artifacts/v1/example.json": b'{"schema": true}\n',
+    "contracts/schemas/artifacts/v2/report_receipt.schema.json": b'{"schema": true}\n',
     "reporting/styles/example.css": b"body { color: black; }\n",
-    "reporting/templates/example.qmd": b"# Synthetic report\n",
+    "reporting/templates/example.html.j2": b"<!doctype html>\n",
     "runtime/data.bin": b"synthetic package data\n",
 }
 GIT_ROUTING_VARIABLES = (
@@ -71,6 +73,40 @@ def _initialize_git(root: Path) -> None:
         raise RuntimeError(result.stderr)
 
 
+def _commit_package(fixture: CheckoutFixture) -> str:
+    subprocess.run(
+        ["git", "add", "pyproject.toml", "src/norad"],
+        cwd=fixture.root,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=NORAD Fixture",
+            "-c",
+            "user.email=norad-fixture@example.invalid",
+            "commit",
+            "--quiet",
+            "-m",
+            "fixture package",
+        ],
+        cwd=fixture.root,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    return subprocess.run(
+        ["git", "rev-parse", "--verify", "HEAD"],
+        cwd=fixture.root,
+        text=True,
+        capture_output=True,
+        check=True,
+    ).stdout.strip()
+
+
 def _project_configuration(name: str = PROJECT_NAME) -> bytes:
     return (
         f'[project]\nname = "{name}"\n'
@@ -85,8 +121,8 @@ def _project_configuration(name: str = PROJECT_NAME) -> bytes:
         "namespaces = false\n"
         "\n"
         "[tool.setuptools.package-data]\n"
-        '"norad.contracts" = ["schemas/artifacts/v1/*.json"]\n'
-        '"norad.reporting" = ["styles/*.css", "templates/*.qmd"]\n'
+        '"norad.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json"]\n'
+        '"norad.reporting" = ["styles/*.css", "templates/*.html.j2"]\n'
     ).encode()
 
 
@@ -162,6 +198,45 @@ def test_admits_canonical_checkout_with_identical_package(
 
     assert isinstance(admitted, source_checkout.SourceCheckout)
     assert admitted.root == fixture.root
+
+
+def test_package_identity_matches_clean_checkout_head(tmp_path: Path) -> None:
+    fixture = _build_fixture(tmp_path)
+    _commit_package(fixture)
+    admitted = _admit(fixture)
+
+    assert source_checkout.package_matches_checkout_head(
+        source_checkout=admitted,
+        package_root=fixture.package_root,
+    )
+
+
+def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -> None:
+    fixture = _build_fixture(tmp_path)
+    _commit_package(fixture)
+    changed = b"VALUE = 2\n"
+    (fixture.checkout_package / "reporting" / "owner.py").write_bytes(changed)
+    (fixture.package_root / "reporting" / "owner.py").write_bytes(changed)
+    admitted = _admit(fixture)
+
+    assert not source_checkout.package_matches_checkout_head(
+        source_checkout=admitted,
+        package_root=fixture.package_root,
+    )
+
+
+def test_package_identity_rejects_untracked_package_file(tmp_path: Path) -> None:
+    fixture = _build_fixture(tmp_path)
+    _commit_package(fixture)
+    relative_path = Path("reporting/untracked_owner.py")
+    _write_files(fixture.checkout_package, {str(relative_path): b"VALUE = 2\n"})
+    _write_files(fixture.package_root, {str(relative_path): b"VALUE = 2\n"})
+    admitted = _admit(fixture)
+
+    assert not source_checkout.package_matches_checkout_head(
+        source_checkout=admitted,
+        package_root=fixture.package_root,
+    )
 
 
 def test_rejects_relative_checkout_root(
@@ -396,9 +471,9 @@ def test_grouped_cli_threads_explicit_checkout_into_context(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     admitted = source_checkout.SourceCheckout(root=tmp_path)
-    context = object()
+    context = {"context": "synthetic"}
     events: list[str] = []
-    expected_package_root = Path(artifact_index_builder.__file__).resolve().parents[2]
+    expected_package_root = Path(norad.__file__).resolve().parent
 
     def admit_checkout(
         *,
@@ -420,12 +495,12 @@ def test_grouped_cli_threads_explicit_checkout_into_context(
         assert observed_arguments.source_checkout == tmp_path
         assert observed_arguments.run_id == "synthetic-run"
         assert observed_arguments.execute is False
-        assert source_checkout is admitted
+        assert source_checkout == admitted
         events.append("prepare")
         return context
 
     def print_context(observed_context: object, execute: object) -> None:
-        assert observed_context is context
+        assert observed_context == context
         assert execute is False
         events.append("print")
 

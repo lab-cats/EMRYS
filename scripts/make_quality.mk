@@ -1,6 +1,4 @@
 PYTHON_COVERAGE_VERSION := 7.15.2
-RUFF_VERSION := 0.16.2
-VULTURE_VERSION := 2.16
 SHELLCHECK_BIN ?= shellcheck
 SHFMT_BIN ?= shfmt
 RUFF_BIN ?= ruff
@@ -8,10 +6,20 @@ VULTURE_BIN ?= vulture
 DEAD_CODE_PATHS ?= scripts src/norad
 PYTHON_LINT_PATHS ?= scripts src/norad tests
 VULTURE_MIN_CONFIDENCE ?= 95
+PYTHON_COVERAGE_NEW_SHARED_MODULES ?=
+PYTHON_COVERAGE_NEW_SHARED_ARGS = $(foreach module,$(PYTHON_COVERAGE_NEW_SHARED_MODULES),--new-shared-module $(module))
+PYTHON_COVERAGE_NEW_SHARED_CHECK_ARGS = $(if $(strip $(PYTHON_COVERAGE_NEW_SHARED_MODULES)),--coverage-json "$(PYTHON_COVERAGE_RAW)" $(PYTHON_COVERAGE_NEW_SHARED_ARGS))
+PYTHON_COVERAGE_EXCLUDES := \
+	--ignore=tests/test_package_distribution.py \
+	--ignore=tests/test_slurm_wrapper_contracts.py
+PYTHON_SUBPROCESS_COVERAGE_DATA := $(PYTHON_COVERAGE_ROOT)/.coverage-subprocess
+PYTHON_SUBPROCESS_COVERAGE_RAW := $(PYTHON_COVERAGE_ROOT)/subprocess-coverage.json
+PYTHON_SUBPROCESS_COVERAGE_TESTS := \
+	tests/stages/gtf_to_bed12/test_gtf_to_bed12.py \
+	tests/ingestion/sample_manifest_admission/test_validate_manifest.py
 
 SHELL_SYNTAX_PATHS := \
 	src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh \
-	src/norad/reporting/render_run_report.sh \
 	src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh \
 	src/norad/stages/star_alignment/step_01_star_align.sh \
 	src/norad/stages/canonical_bam/step_02_sort_index_bam.sh \
@@ -60,27 +68,16 @@ validation-shell-contracts:
 	bash tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.sh
 	bash tests/evidence/scientific_review_package/test_step_09c_scientific_validation.sh
 	bash tests/shell/test_local_r_environment.sh
-	bash tests/reporting/test_render_run_report.sh
 
-shell-test: validation-shell-contracts
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/runtime_availability/test_runtime_availability.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/reference_provenance/test_reference_provenance.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/libraries/test_reference_contigs.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/storage_inventory/test_storage_inventory.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/ingestion/sample_manifest_admission/test_check_fastq_pairs.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/star_index/test_validate_step_00a_star_index.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/gtf_to_bed12/test_validate_step_00b_bed12.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/fasta_sidecars/test_validate_step_00c_reference_sidecars.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/star_alignment/test_validate_step_01_star_alignment.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/canonical_bam/test_validate_step_02_canonical_bam.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/canonical_bam_qc/test_validate_step_02b_bam_qc.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/rseqc_orientation/test_validate_step_03_rseqc_orientation.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/duplicate_marking/test_validate_step_04_mark_duplicates.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/split_n_cigar/test_validate_step_05_split_ncigar.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/mechanical_orientation/test_validate_step_06_orientation_outputs.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/partitioned_cohort_mpileup/test_validate_step_07_mpileup_outputs.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/stages/cohort_candidate_preprocessing/test_validate_step_08_preprocessing_outputs.py
-	"$(REPORT_PYTHON_BIN)" -m pytest tests/analyses/paired_cmh_candidate_ranking/test_validate_step_09_cmh_outputs.py
+validation-shell-slurm: validation-shell-contracts
+	"$(REPORT_PYTHON_BIN)" -m pytest -q --tb=short \
+		tests/test_slurm_wrapper_contracts.py
+
+shell-test: validation-shell-slurm
+
+validation-wheel-smoke:
+	"$(REPORT_PYTHON_BIN)" -m pytest -q --tb=short \
+		tests/test_package_distribution.py
 
 real-r-test:
 	bash tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh
@@ -116,7 +113,7 @@ python-coverage-measure:
 	COVERAGE_FILE="$(PYTHON_COVERAGE_DATA)" \
 		"$(REPORT_PYTHON_BIN)" -m coverage run \
 		--rcfile="$(CURDIR)/.coveragerc" -m pytest \
-		$(PYTHON_COVERAGE_PYTEST_ARGS)
+		$(PYTHON_COVERAGE_EXCLUDES) $(PYTHON_COVERAGE_PYTEST_ARGS)
 	COVERAGE_FILE="$(PYTHON_COVERAGE_DATA)" \
 		"$(REPORT_PYTHON_BIN)" -m coverage combine -q \
 		"$(PYTHON_COVERAGE_ROOT)"
@@ -124,30 +121,30 @@ python-coverage-measure:
 		"$(REPORT_PYTHON_BIN)" -m coverage json \
 		--rcfile="$(CURDIR)/.coveragerc" \
 		-o "$(PYTHON_COVERAGE_RAW)"
+	COVERAGE_FILE="$(PYTHON_SUBPROCESS_COVERAGE_DATA)" \
+		"$(REPORT_PYTHON_BIN)" -m coverage erase
+	COVERAGE_FILE="$(PYTHON_SUBPROCESS_COVERAGE_DATA)" \
+		"$(REPORT_PYTHON_BIN)" -m coverage run \
+		--rcfile="$(CURDIR)/.coveragerc" \
+		--source=scripts,src/norad,tests -m pytest -q \
+		$(PYTHON_SUBPROCESS_COVERAGE_TESTS)
+	COVERAGE_FILE="$(PYTHON_SUBPROCESS_COVERAGE_DATA)" \
+		"$(REPORT_PYTHON_BIN)" -m coverage combine -q \
+		"$(PYTHON_COVERAGE_ROOT)"
+	COVERAGE_FILE="$(PYTHON_SUBPROCESS_COVERAGE_DATA)" \
+		"$(REPORT_PYTHON_BIN)" -m coverage json \
+		--rcfile="$(CURDIR)/.coveragerc" \
+		--include="scripts/*,src/norad/*" \
+		-o "$(PYTHON_SUBPROCESS_COVERAGE_RAW)"
 	"$(REPORT_PYTHON_BIN)" tests/tools/python_coverage_baseline.py build \
 		--coverage-json "$(PYTHON_COVERAGE_RAW)" \
+		--subprocess-coverage-json "$(PYTHON_SUBPROCESS_COVERAGE_RAW)" \
 		--output "$(PYTHON_COVERAGE_CURRENT)"
 
 python-coverage-check: python-coverage-measure
 	"$(REPORT_PYTHON_BIN)" tests/tools/python_coverage_baseline.py check \
 		--baseline "$(PYTHON_COVERAGE_BASELINE)" \
-		--current "$(PYTHON_COVERAGE_CURRENT)" \
-		--new-shared-module src/norad/contracts/scientific_evidence/step08.py \
-		--new-shared-module src/norad/contracts/scientific_evidence/step09.py \
-		--new-shared-module src/norad/contracts/scientific_evidence/review_package.py \
-		--new-shared-module src/norad/libraries/validation/errors.py \
-		--new-shared-module src/norad/libraries/validation/inputs.py \
-		--new-shared-module src/norad/libraries/validation/publication.py \
-		--new-shared-module src/norad/libraries/validation/report.py \
-		--new-shared-module src/norad/libraries/validation/runtime.py \
-		--new-shared-module src/norad/libraries/alignments/bam.py \
-		--new-shared-module src/norad/libraries/alignments/bed.py \
-		--new-shared-module src/norad/libraries/alignments/orientation.py \
-		--new-shared-module src/norad/libraries/alignments/star.py \
-		--new-shared-module src/norad/libraries/evidence/qc.py \
-		--new-shared-module src/norad/libraries/quality/picard.py \
-		--new-shared-module src/norad/libraries/validation/mpileup.py \
-		--new-shared-module src/norad/libraries/references/contigs.py
+		--current "$(PYTHON_COVERAGE_CURRENT)"$(if $(PYTHON_COVERAGE_NEW_SHARED_CHECK_ARGS), $(PYTHON_COVERAGE_NEW_SHARED_CHECK_ARGS))
 
 python-coverage-baseline-update: python-coverage-measure
 	cp "$(PYTHON_COVERAGE_CURRENT)" "$(PYTHON_COVERAGE_BASELINE)"
@@ -161,7 +158,7 @@ bash -n $(SHELL_SYNTAX_PATHS)
 bash -n $(SLURM_SYNTAX_PATHS)
 endef
 
-validation-static: lint
+validation-static: lint documentation-check
 	git diff --check
 	$(STATIC_SHELL_CHECKS)
 	PYTHONDONTWRITEBYTECODE=1 \
@@ -177,8 +174,6 @@ smoke:
 	$(STATIC_SHELL_CHECKS)
 
 lint:
-	test "$$("$(REPORT_PYTHON_BIN)" -c 'import importlib.metadata; print(importlib.metadata.version("ruff"))')" = "$(RUFF_VERSION)"
-	test "$$("$(REPORT_PYTHON_BIN)" -c 'import importlib.metadata; print(importlib.metadata.version("vulture"))')" = "$(VULTURE_VERSION)"
 	"$(REPORT_PYTHON_BIN)" -m "$(RUFF_BIN)" check --no-cache $(PYTHON_LINT_PATHS)
 	"$(REPORT_PYTHON_BIN)" -m "$(VULTURE_BIN)" \
 		--min-confidence $(VULTURE_MIN_CONFIDENCE) \

@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Sequence
 from functools import partial
 
+from norad.contracts.scientific_evidence import review_package, step08, step09
 from norad.libraries.alignments import orientation as alignment_orientation
 
-from .contracts import review_package, step08, step09
 from .models import (
     STEP00A_BASENAMES,
     STEP06_COUNTS_HEADER,

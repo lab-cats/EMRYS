@@ -7,8 +7,9 @@ from collections import Counter, OrderedDict
 from collections.abc import Mapping
 from typing import Any
 
+from norad.contracts.artifacts import api as contracts
+
 from .inputs import _fail
-from .models import contracts
 from .transaction import _stable_unique
 
 
@@ -16,15 +17,12 @@ def _artifact_statuses(artifact: Mapping[str, Any]) -> dict[str, str]:
     return contracts.artifact_status_dimensions(dict(artifact))
 
 
-STATUS_FIELDS = contracts.RUN_SUMMARY_STATUS_FIELDS
-
-
 def _scope_statuses(scope_artifacts: list[dict[str, Any]]) -> dict[str, str]:
     return {
         field: contracts.aggregate_equal_or_mixed(
             _artifact_statuses(artifact)[field] for artifact in scope_artifacts
         )
-        for field in STATUS_FIELDS
+        for field in contracts.RUN_SUMMARY_STATUS_FIELDS
     }
 
 

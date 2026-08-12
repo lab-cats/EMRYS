@@ -8,23 +8,24 @@ TSV views, and a receipt last as one rollback-protected transaction.
 
 from __future__ import annotations
 
-import os as os
 import sys
+from collections.abc import Callable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import argparse
 
+from norad.contracts.artifacts import api as contracts
 from norad.reporting._artifact_index import api as adapter
-from norad.reporting._run_summary import document as _document
-from norad.reporting._run_summary import models as _models
-from norad.reporting._run_summary import projection as _projection
-from norad.reporting._run_summary import publication as _publication
+from norad.reporting._run_summary import models
+from norad.reporting._run_summary import publication
 from norad.reporting._run_summary import science_projection as science
 from norad.reporting._run_summary.approvals import (
     _normalize_report_table_approvals,
 )
+from norad.reporting._run_summary.document import _build_document
 from norad.reporting._run_summary.inputs import (
     _capture_file_snapshot,
     _fail,
@@ -32,15 +33,9 @@ from norad.reporting._run_summary.inputs import (
     _verify_file_snapshot,
 )
 from norad.reporting._run_summary.models import (
-    QC_SUMMARY_HEADER,
-    RUN_SUMMARY_HEADER,
-    RUN_SUMMARY_RECEIPT_HEADER,
     BuildContext,
     FileSnapshot,
     RunSummaryError,
-)
-from norad.reporting._run_summary.models import (
-    adapter as _owner_adapter,
 )
 from norad.reporting._run_summary.projection import (
     _build_qc_rows,
@@ -60,32 +55,30 @@ from norad.reporting._run_summary.validation import (
     _validate_existing_summary,
 )
 
-contracts = adapter.contracts
 
-# These assignments intentionally preserve the established direct-import
-# compatibility surface while implementation ownership stays private.
-LEGACY_PRODUCER_VERSION = _models.LEGACY_PRODUCER_VERSION
-PRODUCER = _models.PRODUCER
-PRODUCER_VERSION = _models.PRODUCER_VERSION
-REPORT_TABLE_APPROVALS_HEADER = _models.REPORT_TABLE_APPROVALS_HEADER
-_build_document = _document._build_document
-_build_attempts = _projection._build_attempts
-_build_limitations = _projection._build_limitations
-_recheck_inputs = _publication._recheck_inputs
-publish_context = _publication.publish_context
-validate_published_run_summary = _publication.validate_published_run_summary
+@dataclass(frozen=True)
+class RunSummaryBuildDeps:
+    """Explicit build-time fault seams for run-summary preparation."""
+
+    load_input_transaction: Callable[..., Any] = _load_input_transaction
+    normalize_scientific_review: Callable[..., Any] = (
+        science.normalize_scientific_review
+    )
+    normalize_report_table_approvals: Callable[..., Any] = (
+        _normalize_report_table_approvals
+    )
+    build_document: Callable[..., Any] = _build_document
+    recheck_inputs: Callable[..., Any] = publication._recheck_inputs
 
 
-if adapter is not _owner_adapter or adapter.contracts is not contracts:
-    raise ImportError("run-summary modules did not resolve one adapter owner")
-if science.contracts is not adapter.contracts:
-    raise ImportError("artifact-contract consumers did not resolve one owner")
+DEFAULT_RUN_SUMMARY_BUILD_DEPS = RunSummaryBuildDeps()
 
 
 def prepare_context(
     arguments: argparse.Namespace,
     *,
     source_checkout: adapter.SourceCheckout,
+    deps: RunSummaryBuildDeps = DEFAULT_RUN_SUMMARY_BUILD_DEPS,
 ) -> BuildContext:
     source_root = source_checkout.root
     (
@@ -104,7 +97,7 @@ def prepare_context(
         input_snapshots,
         artifacts,
         paths,
-    ) = _load_input_transaction(
+    ) = deps.load_input_transaction(
         run_id=arguments.run_id,
         artifact_receipt_value=arguments.artifact_receipt,
         output_root_value=arguments.output_root,
@@ -139,7 +132,7 @@ def prepare_context(
         )
         science_sha256 = science_snapshot.sha256
         try:
-            record = science.normalize_scientific_review(
+            record = deps.normalize_scientific_review(
                 summary_path=science_path,
                 artifacts=artifacts,
                 run_id=arguments.run_id,
@@ -171,7 +164,7 @@ def prepare_context(
             approvals_snapshot,
             approval_records,
             approval_table_snapshots,
-        ) = _normalize_report_table_approvals(
+        ) = deps.normalize_report_table_approvals(
             manifest_value=arguments.report_table_approvals,
             run_id=arguments.run_id,
             run_contract=run_contract,
@@ -190,7 +183,7 @@ def prepare_context(
             media_type="text/tab-separated-values",
         )
 
-    document, artifact_scope_order = _build_document(
+    document, artifact_scope_order = deps.build_document(
         run_id=arguments.run_id,
         run_contract=run_contract,
         inventory_path=inventory_path,
@@ -216,9 +209,9 @@ def prepare_context(
     )
     summary_json_bytes = adapter.canonical_json_bytes(document)
     summary_rows = _build_summary_rows(document, artifact_scope_order)
-    summary_tsv_bytes = adapter.tsv_bytes(RUN_SUMMARY_HEADER, summary_rows)
+    summary_tsv_bytes = adapter.tsv_bytes(models.RUN_SUMMARY_HEADER, summary_rows)
     qc_rows = _build_qc_rows(document)
-    qc_summary_bytes = adapter.tsv_bytes(QC_SUMMARY_HEADER, qc_rows)
+    qc_summary_bytes = adapter.tsv_bytes(models.QC_SUMMARY_HEADER, qc_rows)
 
     previous_receipt, previous_receipt_sha256 = _load_existing_summary_receipt(paths)
     previous_attempt_id: str | None = None
@@ -268,7 +261,10 @@ def prepare_context(
         started_at=started_at,
         finished_at=finished_at,
     )
-    receipt_bytes = adapter.tsv_bytes(RUN_SUMMARY_RECEIPT_HEADER, [receipt_row])
+    receipt_bytes = adapter.tsv_bytes(
+        models.RUN_SUMMARY_RECEIPT_HEADER,
+        [receipt_row],
+    )
     context = BuildContext(
         run_id=arguments.run_id,
         execute=arguments.execute,
@@ -304,7 +300,7 @@ def prepare_context(
         receipt_bytes=receipt_bytes,
         source_checkout=source_checkout,
     )
-    _recheck_inputs(context)
+    deps.recheck_inputs(context)
     return context
 
 
@@ -343,7 +339,11 @@ def print_context(context: BuildContext) -> None:
         print("Dry-run complete; no run-summary files were written.")
 
 
-def build_from_args(arguments: argparse.Namespace) -> int:
+def build_from_args(
+    arguments: argparse.Namespace,
+    *,
+    deps: RunSummaryBuildDeps = DEFAULT_RUN_SUMMARY_BUILD_DEPS,
+) -> int:
     """Build one run summary from grouped command arguments."""
     try:
         source_checkout = adapter.admit_source_checkout(
@@ -353,10 +353,11 @@ def build_from_args(arguments: argparse.Namespace) -> int:
         context = prepare_context(
             arguments,
             source_checkout=source_checkout,
+            deps=deps,
         )
         print_context(context)
         if arguments.execute:
-            publish_context(context)
+            publication.publish_context(context)
             print(f"Published run summary: {context.paths.summary_json}")
             print(f"Published receipt last: {context.paths.receipt}")
         return 0

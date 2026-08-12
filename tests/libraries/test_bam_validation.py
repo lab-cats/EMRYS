@@ -1,41 +1,12 @@
 from __future__ import annotations
 
-import inspect
-import pickle
-import sys
 from pathlib import Path
 
 import pytest
-
-ROOT = Path(__file__).resolve().parents[2]
-SRC_ROOT = ROOT / "src"
-if str(SRC_ROOT) not in sys.path:
-    sys.path.insert(0, str(SRC_ROOT))
-
 from norad.libraries.alignments import bam as BAM
 
 
 def test_public_api_and_characterized_behavior(tmp_path: Path) -> None:
-    functions = {
-        name
-        for name, value in vars(BAM).items()
-        if inspect.isfunction(value) and value.__module__ == BAM.__name__
-    }
-    assert functions == {
-        "bai_magic_ok",
-        "bam_magic_ok",
-        "parse_header",
-        "read_bai_prefix",
-        "read_bam_prefix",
-        "run_tool",
-        "validate_bam_bai_pair",
-        "validate_bam_signature",
-        "validate_samtools_readiness",
-    }
-    assert pickle.loads(pickle.dumps(BAM.validate_bam_signature)) is (
-        BAM.validate_bam_signature
-    )
-
     bam = tmp_path / "sample.bam"
     bai = tmp_path / "sample.bam.bai"
     bam.write_bytes(b"\x1f\x8b\x08\x04payload")

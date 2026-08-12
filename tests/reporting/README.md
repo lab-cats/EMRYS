@@ -1,8 +1,8 @@
 # Reporting tests
 
 This directory protects artifact indexing, run-summary projection, report
-models and exports, shell delegation, publication transactions, and rendered
-HTML/PDF behavior. Shared builders and literal inputs are routed through
+models and exports, Jinja security, publication transactions, and rendered
+HTML behavior. Shared builders and literal inputs are routed through
 [`fixtures/`](fixtures/README.md).
 
 Public interfaces, supported commands, output ownership, and recovery routes

@@ -24,27 +24,11 @@ MAKE_EXPANSION_GOLDEN = (
 )
 CLI_USAGE_ERROR = 2
 
-PYTHON_ENTRYPOINT_PATHS = {
-    "render_run_report.py": Path("src/norad/reporting/render_run_report.py"),
-    "render_run_report_bundle.py": Path(
-        "src/norad/reporting/render_run_report_bundle.py"
-    ),
-    "restore_quarto.py": Path("scripts/restore_quarto.py"),
-}
+PYTHON_ENTRYPOINT_PATHS: dict[str, Path] = {}
 PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
-REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
-    {
-        "render_run_report.py",
-        "render_run_report_bundle.py",
-    }
-)
+REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset()
 PRIVATE_PYTHON_MODULES = frozenset()
-DIRECT_PYTHON_ENTRYPOINTS = frozenset(
-    {
-        "render_run_report.py",
-        "restore_quarto.py",
-    }
-)
+DIRECT_PYTHON_ENTRYPOINTS = frozenset()
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 NORAD_COMMANDS = (
     (
@@ -54,6 +38,10 @@ NORAD_COMMANDS = (
     (
         ("build", "run-summary"),
         "usage: norad build run-summary",
+    ),
+    (
+        ("build", "report"),
+        "usage: norad build report",
     ),
     (
         ("validate", "artifact-contracts"),
@@ -117,7 +105,6 @@ SHELL_ENTRYPOINT_PATHS = {
     "check_fastq_pairs.sh": Path(
         "src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh"
     ),
-    "render_run_report.sh": Path("src/norad/reporting/render_run_report.sh"),
     "step_00c_prepare_gatk_reference.sh": Path(
         "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
     ),
@@ -198,13 +185,13 @@ MAKE_TARGET_DECISIONS = {
     "documentation-check": "local_gate",
     "shell-test": "local_gate",
     "validation-shell-contracts": "local_gate",
+    "validation-shell-slurm": "internal_lane",
+    "validation-wheel-smoke": "internal_lane",
     "real-r-test": "local_gate",
     "r-restore": "operator_mutation",
     "r-check": "local_gate",
     "local-real-r-test": "local_gate",
-    "quarto-restore": "operator_mutation",
     "report-test": "local_gate",
-    "validation-report-runtime": "explicit_output",
     "demo-report": "explicit_output",
     "python-coverage-measure": "explicit_output",
     "python-coverage-check": "local_gate",
@@ -218,7 +205,6 @@ MAKE_TARGET_DECISIONS = {
 }
 MAKE_CONTEXT_VARIABLES = frozenset(
     {
-        "DEMO_REPORT_FORMATS",
         "DEMO_REPORT_ROOT",
         "PYTHON_BIN",
         "PYTHON_COVERAGE_BASELINE",
@@ -227,10 +213,7 @@ MAKE_CONTEXT_VARIABLES = frozenset(
         "PYTHON_COVERAGE_PYTEST_ARGS",
         "PYTHON_COVERAGE_RAW",
         "PYTHON_COVERAGE_ROOT",
-        "QUARTO_BIN",
-        "QUARTO_TOOLS_ROOT",
         "REPORT_PYTHON_BIN",
-        "REPORT_TEST_RESULT",
         "RSCRIPT_BIN",
         "VALIDATION_ARGS",
         "VALIDATION_JOBS",
@@ -522,13 +505,47 @@ def test_installed_norad_commands_are_isolated_and_cwd_independent(
     assert relative_snapshot(tmp_path) == before
 
 
-def test_run_summary_help_and_parse_failure_do_not_import_builder(
+@pytest.mark.parametrize(
+    ("configuration", "expected_status"),
+    (
+        ("[project\n", 0),
+        ('[project]\nname = "another-project"\n', 0),
+        ('[project]\nname = "norad-rna-workflow"\n', CLI_USAGE_ERROR),
+    ),
+)
+def test_checkout_authority_ignores_nonowners_and_rejects_another_owner(
+    tmp_path: Path,
+    configuration: str,
+    expected_status: int,
+) -> None:
+    checkout = tmp_path / "checkout"
+    invocation_cwd = checkout / "nested"
+    package = checkout / "src" / "norad"
+    invocation_cwd.mkdir(parents=True)
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (checkout / "pyproject.toml").write_text(configuration, encoding="utf-8")
+    before = relative_snapshot(tmp_path)
+
+    result = run_command(
+        [sys.executable, "-I", "-m", "norad", "--help"],
+        cwd=invocation_cwd,
+    )
+
+    assert result.returncode == expected_status
+    if expected_status == 0:
+        assert "usage: norad" in result.stdout
+    else:
+        assert "not the current checkout" in result.stderr
+    assert relative_snapshot(tmp_path) == before
+
+
+def test_run_summary_help_and_parse_failure_are_side_effect_free(
     tmp_path: Path,
 ) -> None:
-    """Parser termination keeps the private run-summary builder lazy."""
+    """Parser termination preserves public exits without filesystem effects."""
     program = """
 import json
-import sys
 
 from norad import __main__ as cli
 
@@ -539,7 +556,6 @@ for arguments in (["build", "run-summary", "--help"], ["build", "run-summary"]):
     except SystemExit as error:
         statuses.append(error.code)
 print(json.dumps({
-    "builder_loaded": "norad.reporting._run_summary.builder" in sys.modules,
     "statuses": statuses,
 }))
 """
@@ -550,10 +566,7 @@ print(json.dumps({
 
     assert result.returncode == 0, result.stdout + result.stderr
     observed = json.loads(result.stdout.splitlines()[-1])
-    assert observed == {
-        "builder_loaded": False,
-        "statuses": [0, CLI_USAGE_ERROR],
-    }
+    assert observed == {"statuses": [0, CLI_USAGE_ERROR]}
     assert relative_snapshot(tmp_path) == ()
 
 
@@ -772,7 +785,7 @@ def test_make_validation_targets_honor_report_python_bin(
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
     lines = result.stdout.splitlines()
-    assert sum("/sentinel/python" in line for line in lines) == 6
+    assert sum("/sentinel/python" in line for line in lines) == 4
     assert not any(".venv/bin/python" in line for line in lines)
 
 
