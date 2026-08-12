@@ -1,24 +1,15 @@
-# Reporting templates
+# Reporting template
 
-This directory contains private, static document sources owned by the
-[reporting projection owner](../README.md). They are renderer inputs, not
-public configuration, report requests, or independently supported entry
-points.
+[`run_report.html.j2`](run_report.html.j2) is the single packaged report
+template. It owns document structure, sections, tables, status panels,
+limitations, evidence presentation, approved-table display, and the embedded
+artifact-overview SVG. A bounded macro section avoids template fragments.
 
-- [`run_report.qmd`](run_report.qmd) is the HTML source. The renderer inserts
-  the owned CSS and prepared report body into its placeholders; it contains no
-  executable analysis cells.
-- [`run_report_pdf.qmd`](run_report_pdf.qmd) is the Typst/PDF source. The bundle
-  renderer inserts the prepared PDF body; it also contains no executable
-  analysis cells.
+The Jinja environment uses HTML autoescaping and `StrictUndefined`. Run-summary
+content, identifiers, paths, scientific text, issues, limitations, and table
+data never cross a `safe` boundary. The only trusted raw value is the tracked,
+validated packaged CSS. The template has no scripts, includes, remote assets,
+sidecars, or executable analysis.
 
-Placeholder and format behavior is owned by
-[`render_run_report.py`](../render_run_report.py) and
-[`render_run_report_bundle.py`](../render_run_report_bundle.py). Direct
-protection lives in
-[`test_report_html_v1.py`](../../../../tests/reporting/test_report_html_v1.py),
-[`test_report_exports_v1.py`](../../../../tests/reporting/test_report_exports_v1.py),
-and the shell-launcher contract
-[`test_render_run_report.sh`](../../../../tests/reporting/test_render_run_report.sh).
-A rendered template reflects only its declared inputs and does not establish
-scientific review or biological readiness.
+Protection lives in [`test_report.py`](../../../../tests/reporting/test_report.py)
+and the isolated-wheel render smoke.

@@ -23,6 +23,16 @@ from norad.contracts.artifacts._artifact_contracts import (
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCHEMA_ROOT = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts" / "v1"
+REPORT_RECEIPT_SCHEMA = (
+    REPO_ROOT
+    / "src"
+    / "norad"
+    / "contracts"
+    / "schemas"
+    / "artifacts"
+    / "v2"
+    / "report_receipt.schema.json"
+)
 FIXTURE_ROOT = (
     REPO_ROOT
     / "tests"
@@ -37,7 +47,7 @@ FIXTURES = {
     "artifact-record": FIXTURE_ROOT / "artifact_record.json",
     "scientific-review-record": (FIXTURE_ROOT / "scientific_review_record.json"),
     "run-summary": FIXTURE_ROOT / "run_summary.json",
-    "report-receipt": FIXTURE_ROOT / "report_receipt.json",
+    "report-receipt": FIXTURE_ROOT.parents[1] / "report_receipt_v2.json",
 }
 EXPECTED_INVENTORY_ARTIFACT_COUNT = 81
 
@@ -1236,12 +1246,12 @@ def test_run_summary_requires_completed_review_artifact_for_embedded_review() ->
     )
 
 
-def test_report_receipt_enforces_renderer_safety_formats_and_banners() -> None:
+def test_report_receipt_enforces_renderer_safety_outputs_and_banners() -> None:
     receipt = read_json(FIXTURES["report-receipt"])
 
-    wrong_quarto = copy.deepcopy(receipt)
-    wrong_quarto["renderer"]["version"] = "1.9.39"
-    assert_schema_invalid("report-receipt", wrong_quarto, "1.9.38")
+    wrong_jinja = copy.deepcopy(receipt)
+    wrong_jinja["renderer"]["version"] = "3.1.5"
+    assert_schema_invalid("report-receipt", wrong_jinja, "3.1.6")
 
     networked = copy.deepcopy(receipt)
     networked["external_network_assets_used"] = True
@@ -1251,12 +1261,11 @@ def test_report_receipt_enforces_renderer_safety_formats_and_banners() -> None:
     bad_banner["state_banner"] = "Looks good."
     assert_schema_invalid("report-receipt", bad_banner, "SCIENTIFIC REVIEW")
 
-    missing_pdf = copy.deepcopy(receipt)
-    missing_pdf["outputs"] = [
-        output for output in missing_pdf["outputs"] if output["kind"] != "pdf"
+    missing_html = copy.deepcopy(receipt)
+    missing_html["outputs"] = [
+        output for output in missing_html["outputs"] if output["kind"] != "html"
     ]
-    assert_schema_valid("report-receipt", missing_pdf)
-    assert_contract_failure("report-receipt", missing_pdf, "exactly match")
+    assert_schema_invalid("report-receipt", missing_html, "too short")
 
 
 def test_report_receipt_rejects_duplicate_outputs_bad_truncation_and_ready() -> None:

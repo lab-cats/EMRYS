@@ -79,11 +79,7 @@ def _snapshot_regular(
 
 
 def _assert_snapshot(snapshot: FileSnapshot, label: str) -> None:
-    current = _snapshot_regular(
-        snapshot.path,
-        label,
-        executable=(label == "Quarto executable"),
-    )
+    current = _snapshot_regular(snapshot.path, label)
     if current != snapshot:
         _fail(f"{label} changed during report rendering: {snapshot.path}")
 

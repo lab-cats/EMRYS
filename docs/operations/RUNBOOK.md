@@ -130,7 +130,6 @@ rendering, or scheduler code:
 uv sync --locked
 RSCRIPT_BIN=/usr/local/bin/Rscript make r-restore
 make lint
-make quarto-restore
 ```
 
 `pyproject.toml` owns direct runtime and developer dependencies, and `uv.lock`

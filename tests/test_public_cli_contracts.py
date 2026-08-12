@@ -24,27 +24,11 @@ MAKE_EXPANSION_GOLDEN = (
 )
 CLI_USAGE_ERROR = 2
 
-PYTHON_ENTRYPOINT_PATHS = {
-    "render_run_report.py": Path("src/norad/reporting/render_run_report.py"),
-    "render_run_report_bundle.py": Path(
-        "src/norad/reporting/render_run_report_bundle.py"
-    ),
-    "restore_quarto.py": Path("scripts/restore_quarto.py"),
-}
+PYTHON_ENTRYPOINT_PATHS: dict[str, Path] = {}
 PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
-REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset(
-    {
-        "render_run_report.py",
-        "render_run_report_bundle.py",
-    }
-)
+REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset()
 PRIVATE_PYTHON_MODULES = frozenset()
-DIRECT_PYTHON_ENTRYPOINTS = frozenset(
-    {
-        "render_run_report.py",
-        "restore_quarto.py",
-    }
-)
+DIRECT_PYTHON_ENTRYPOINTS = frozenset()
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 NORAD_COMMANDS = (
     (
@@ -54,6 +38,10 @@ NORAD_COMMANDS = (
     (
         ("build", "run-summary"),
         "usage: norad build run-summary",
+    ),
+    (
+        ("build", "report"),
+        "usage: norad build report",
     ),
     (
         ("validate", "artifact-contracts"),
@@ -117,7 +105,6 @@ SHELL_ENTRYPOINT_PATHS = {
     "check_fastq_pairs.sh": Path(
         "src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh"
     ),
-    "render_run_report.sh": Path("src/norad/reporting/render_run_report.sh"),
     "step_00c_prepare_gatk_reference.sh": Path(
         "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
     ),
@@ -202,9 +189,7 @@ MAKE_TARGET_DECISIONS = {
     "r-restore": "operator_mutation",
     "r-check": "local_gate",
     "local-real-r-test": "local_gate",
-    "quarto-restore": "operator_mutation",
     "report-test": "local_gate",
-    "validation-report-runtime": "explicit_output",
     "demo-report": "explicit_output",
     "python-coverage-measure": "explicit_output",
     "python-coverage-check": "local_gate",
@@ -218,7 +203,6 @@ MAKE_TARGET_DECISIONS = {
 }
 MAKE_CONTEXT_VARIABLES = frozenset(
     {
-        "DEMO_REPORT_FORMATS",
         "DEMO_REPORT_ROOT",
         "PYTHON_BIN",
         "PYTHON_COVERAGE_BASELINE",
@@ -227,10 +211,7 @@ MAKE_CONTEXT_VARIABLES = frozenset(
         "PYTHON_COVERAGE_PYTEST_ARGS",
         "PYTHON_COVERAGE_RAW",
         "PYTHON_COVERAGE_ROOT",
-        "QUARTO_BIN",
-        "QUARTO_TOOLS_ROOT",
         "REPORT_PYTHON_BIN",
-        "REPORT_TEST_RESULT",
         "RSCRIPT_BIN",
         "VALIDATION_ARGS",
         "VALIDATION_JOBS",

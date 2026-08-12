@@ -11,8 +11,9 @@ from pathlib import Path
 PROJECT_NAME = "norad-rna-workflow"
 _RESOURCE_PATTERNS = (
     (Path("contracts"), "schemas/artifacts/v1/*.json"),
+    (Path("contracts"), "schemas/artifacts/v2/*.json"),
     (Path("reporting"), "styles/*.css"),
-    (Path("reporting"), "templates/*.qmd"),
+    (Path("reporting"), "templates/*.html.j2"),
 )
 
 

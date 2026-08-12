@@ -29,8 +29,9 @@ PYTHON_FILES: Mapping[str, bytes] = {
 }
 RESOURCE_FILES: Mapping[str, bytes] = {
     "contracts/schemas/artifacts/v1/example.json": b'{"schema": true}\n',
+    "contracts/schemas/artifacts/v2/report_receipt.schema.json": b'{"schema": true}\n',
     "reporting/styles/example.css": b"body { color: black; }\n",
-    "reporting/templates/example.qmd": b"# Synthetic report\n",
+    "reporting/templates/example.html.j2": b"<!doctype html>\n",
     "runtime/data.bin": b"synthetic package data\n",
 }
 GIT_ROUTING_VARIABLES = (
@@ -86,8 +87,8 @@ def _project_configuration(name: str = PROJECT_NAME) -> bytes:
         "namespaces = false\n"
         "\n"
         "[tool.setuptools.package-data]\n"
-        '"norad.contracts" = ["schemas/artifacts/v1/*.json"]\n'
-        '"norad.reporting" = ["styles/*.css", "templates/*.qmd"]\n'
+        '"norad.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json"]\n'
+        '"norad.reporting" = ["styles/*.css", "templates/*.html.j2"]\n'
     ).encode()
 
 

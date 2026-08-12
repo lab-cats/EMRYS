@@ -66,12 +66,24 @@
   ],
   "report_receipt.schema.json": [
     {
+      "expected": "urn:norad:schema:artifacts:report-receipt:v2",
+      "pointer": "/$id"
+    },
+    {
       "expected": "norad.report_receipt",
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "1.1.0",
+      "expected": "2.0.0",
       "pointer": "/properties/schema_version/const"
+    },
+    {
+      "expected": "Jinja2",
+      "pointer": "/properties/renderer/properties/name/const"
+    },
+    {
+      "expected": "3.1.6",
+      "pointer": "/properties/renderer/properties/version/const"
     },
     {
       "expected": [

@@ -13,17 +13,18 @@ import zipfile
 from email.parser import Parser
 from pathlib import Path
 
+from tests.reporting.fixtures.artifact_run_summary_v1 import build_fixture as FIXTURE
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
-RUNTIME_DEPENDENCIES = {"jsonschema", "pypdf", "pyyaml", "referencing"}
+RUNTIME_DEPENDENCIES = {"jinja2", "jsonschema", "referencing"}
 RESOURCE_PATHS = (
     "norad/contracts/schemas/artifacts/v1/artifact_record.schema.json",
     "norad/contracts/schemas/artifacts/v1/common.schema.json",
-    "norad/contracts/schemas/artifacts/v1/report_receipt.schema.json",
+    "norad/contracts/schemas/artifacts/v2/report_receipt.schema.json",
     "norad/contracts/schemas/artifacts/v1/run_summary.schema.json",
     "norad/contracts/schemas/artifacts/v1/scientific_review_record.schema.json",
     "norad/reporting/styles/run_report.css",
-    "norad/reporting/templates/run_report.qmd",
-    "norad/reporting/templates/run_report_pdf.qmd",
+    "norad/reporting/templates/run_report.html.j2",
 )
 
 
@@ -75,7 +76,10 @@ def build_wheel(tmp_path: Path) -> Path:
         [
             uv_executable(),
             "build",
-            "--wheel", "--force-pep517", "--offline", "--no-python-downloads",
+            "--wheel",
+            "--force-pep517",
+            "--offline",
+            "--no-python-downloads",
             "--out-dir",
             str(wheel_directory),
             str(project),
@@ -95,8 +99,10 @@ def normalized_requirement(requirement: str) -> str:
 def inspect_wheel(wheel: Path) -> None:
     with zipfile.ZipFile(wheel) as archive:
         members = set(archive.namelist())
-        metadata_member, = (member for member in members if member.endswith(".dist-info/METADATA"))
-        entry_points_member, = (
+        (metadata_member,) = (
+            member for member in members if member.endswith(".dist-info/METADATA")
+        )
+        (entry_points_member,) = (
             member
             for member in members
             if member.endswith(".dist-info/entry_points.txt")
@@ -120,7 +126,9 @@ def inspect_wheel(wheel: Path) -> None:
 def install_locked_wheel(wheel: Path, tmp_path: Path) -> tuple[Path, Path]:
     locked = tomllib.loads((REPO_ROOT / "uv.lock").read_text(encoding="utf-8"))
     constraints = sorted(
-        f"{item['name']}=={item['version']}" for item in locked["package"] if "version" in item
+        f"{item['name']}=={item['version']}"
+        for item in locked["package"]
+        if "version" in item
     )
     installer = tmp_path / "installer"
     installer.mkdir()
@@ -138,17 +146,29 @@ def install_locked_wheel(wheel: Path, tmp_path: Path) -> tuple[Path, Path]:
     )
     lock = run_command(
         [
-            uv_executable(), "lock", "--offline", "--no-python-downloads",
-            "--project", str(installer),
+            uv_executable(),
+            "lock",
+            "--offline",
+            "--no-python-downloads",
+            "--project",
+            str(installer),
         ],
         cwd=tmp_path,
     )
     require_success(lock)
     sync = run_command(
         [
-            uv_executable(), "sync", "--locked", "--no-dev", "--no-install-project",
-            "--offline", "--no-python-downloads", "--python", sys.executable,
-            "--project", str(installer),
+            uv_executable(),
+            "sync",
+            "--locked",
+            "--no-dev",
+            "--no-install-project",
+            "--offline",
+            "--no-python-downloads",
+            "--python",
+            sys.executable,
+            "--project",
+            str(installer),
         ],
         cwd=tmp_path,
     )
@@ -189,6 +209,20 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
 
 
 def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -> None:
+    fixture = FIXTURE.build_fixture(tmp_path / "report-fixture")
+    summary_result = run_command(
+        [
+            sys.executable,
+            "-I",
+            "-m",
+            "norad",
+            "build",
+            "run-summary",
+            *fixture.command_args(execute=True),
+        ],
+        cwd=REPO_ROOT,
+    )
+    require_success(summary_result)
     wheel = build_wheel(tmp_path)
     inspect_wheel(wheel)
     environment_python, console = install_locked_wheel(wheel, tmp_path)
@@ -200,8 +234,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     assert not module.is_relative_to(REPO_ROOT.resolve())
     assert all(observed["resources"])
     assert {
-        normalized_requirement(requirement)
-        for requirement in observed["requirements"]
+        normalized_requirement(requirement) for requirement in observed["requirements"]
     } == RUNTIME_DEPENDENCIES
     assert set(observed["installed"]) == RUNTIME_DEPENDENCIES
     assert all(observed["installed"].values())
@@ -241,6 +274,42 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     require_success(validation)
     assert "Manifest validation passed." in validation.stdout
     assert "Samples: 1" in validation.stdout
+    report_output_root = arbitrary_cwd / "reports"
+    report_help = run_command(
+        [str(environment_python), "-I", "-m", "norad", "build", "report", "--help"],
+        cwd=arbitrary_cwd,
+        hostile_pythonpath=True,
+    )
+    require_success(report_help)
+    assert "--quarto-bin" not in report_help.stdout
+    rendered = run_command(
+        [
+            str(environment_python),
+            "-I",
+            "-m",
+            "norad",
+            "build",
+            "report",
+            "--run-summary",
+            str(fixture.summary_json_path),
+            "--output-root",
+            str(report_output_root),
+            "--execute",
+        ],
+        cwd=arbitrary_cwd,
+        hostile_pythonpath=True,
+    )
+    require_success(rendered)
+    run_id = fixture.run_id
+    report_directory = report_output_root / run_id
+    assert {path.name for path in report_directory.iterdir()} == {
+        f"{run_id}.run_report.html",
+        f"{run_id}.run_summary.tsv",
+        f"{run_id}.report_outputs.tsv",
+    }
+    assert "Jinja2" in (report_directory / f"{run_id}.report_outputs.tsv").read_text(
+        encoding="utf-8"
+    )
     wrong_checkout = run_command(
         [str(environment_python), "-I", "-m", "norad", "--help"],
         cwd=REPO_ROOT,

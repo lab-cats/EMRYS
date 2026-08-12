@@ -22,7 +22,7 @@ from norad.evidence.scientific_review_package._scientific_review import (
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 GOLDENS = Path(__file__).resolve().parent
-SCHEMAS = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts" / "v1"
+SCHEMAS = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts"
 
 ARTIFACT_INDEX_CORE = importlib.import_module(
     "norad.reporting._artifact_index.core",
@@ -34,13 +34,13 @@ RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.models")
 SHARED_SCIENCE = importlib.import_module(
     "norad.reporting._run_summary.science_projection"
 )
-REPORT_BUNDLE = importlib.import_module("norad.reporting.render_run_report_bundle")
+REPORT = importlib.import_module("norad.reporting.report")
 
 
 HEADER_MODULES: Mapping[str, ModuleType] = {
     "build_artifact_index": ARTIFACT_INDEX_MODELS,
     "build_run_summary": RUN_SUMMARY,
-    "render_run_report_bundle": REPORT_BUNDLE,
+    "build_report": REPORT,
     "step_09c_scientific_validation": SCIENTIFIC_REVIEW,
 }
 
@@ -81,7 +81,12 @@ def set_pointer(document: Any, pointer: str, value: Any) -> None:
 
 def schema_documents() -> dict[str, Any]:
     contracts = load_json(GOLDENS / "schema_contracts.json")
-    return {name: load_json(SCHEMAS / name) for name in contracts}
+    return {
+        name: load_json(
+            SCHEMAS / ("v2" if name == "report_receipt.schema.json" else "v1") / name
+        )
+        for name in contracts
+    }
 
 
 def assert_schema_contracts(documents: Mapping[str, Any]) -> None:
@@ -129,7 +134,7 @@ def assert_canonical_json(
 
 
 def assert_report_receipt(
-    serializer: Callable[[Mapping[str, Any]], bytes] = REPORT_BUNDLE._receipt_tsv_bytes,
+    serializer: Callable[[Mapping[str, Any]], bytes] = REPORT.serialize_receipt,
 ) -> None:
     document = load_json(GOLDENS / "report_receipt_input.json")
     expected = (GOLDENS / "report_receipt.tsv").read_bytes()
@@ -185,7 +190,7 @@ def test_representative_public_headers_match_literal_ordered_oracles() -> None:
     (
         ("build_artifact_index", "ARTIFACT_INDEX_HEADER"),
         ("build_run_summary", "RUN_SUMMARY_HEADER"),
-        ("render_run_report_bundle", "RECEIPT_HEADER"),
+        ("build_report", "RECEIPT_HEADER"),
         ("step_09c_scientific_validation", "REVIEW_PLAN_HEADER"),
     ),
 )
@@ -238,9 +243,7 @@ def test_report_receipt_projection_matches_exact_independent_golden() -> None:
 
 def test_mutated_report_receipt_serialization_is_rejected() -> None:
     def mutated_serializer(document: Mapping[str, Any]) -> bytes:
-        return REPORT_BUNDLE._receipt_tsv_bytes(document).replace(
-            b"\ttrue\t", b"\tTRUE\t", 1
-        )
+        return REPORT.serialize_receipt(document).replace(b"\ttrue\t", b"\tTRUE\t", 1)
 
     with pytest.raises(AssertionError):
         assert_report_receipt(mutated_serializer)

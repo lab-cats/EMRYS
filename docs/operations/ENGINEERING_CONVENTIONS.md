@@ -120,7 +120,6 @@ stages or miscellaneous application inputs:
 | [`pyproject.toml`](../../pyproject.toml) | Authoritative Python package metadata: build backend, distribution identity, direct runtime dependencies, the `dev` dependency group, package discovery/resources, Ruff configuration, and the installed `norad` console entry point. Migrated commands use the grouped interface through the selected installed interpreter in isolated mode; unmigrated owner directories and commands enter the distribution only through an owner-local cutover. |
 | [`uv.lock`](../../uv.lock) | Authoritative exact Python dependency graph resolved from `pyproject.toml`. `uv sync --locked` installs the project plus its default `dev` group into `.venv`; the complete gate first uses `uv sync --locked --check` as a read-only congruence check, while validation and runtime owners never mutate the lock or repair the environment. The lock contains transitive packages without making them direct project dependencies. |
 | [`.coveragerc`](../../.coveragerc) | Coverage.py measurement configuration for branch, parallel/subprocess, relative-path, and source-scope behavior. Make binds the root file and coverage also supports root discovery. Acceptance thresholds and evidence belong to [`TEST_BASELINE.md`](../design/TEST_BASELINE.md), not this file. |
-| [`pytest.ini`](../../pytest.ini) | Repository-wide pytest discovery metadata that registers the `report_runtime` marker. It does not install or select the real renderer; the applicable Make target performs selection. Moving it could change pytest root/config discovery because callers do not pass a replacement `-c` path. |
 
 Presence of these files establishes configuration only. It does not prove that
 dependencies were restored, tests passed, or a local, cluster, production,
@@ -130,7 +129,7 @@ contract test.
 
 Dependency restoration is an explicit operator action. Compute scripts,
 validators, SLURM jobs, report renderers, and tests must not bootstrap or
-install R, Quarto, system packages, or analysis dependencies.
+install R, system packages, or analysis dependencies.
 
 The repository-local R environment is opt-in only through
 `NORAD_USE_RENV=1`; `0` leaves normal startup unchanged and any other value

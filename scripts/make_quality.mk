@@ -17,7 +17,6 @@ PYTHON_SUBPROCESS_COVERAGE_TESTS := \
 
 SHELL_SYNTAX_PATHS := \
 	src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh \
-	src/norad/reporting/render_run_report.sh \
 	src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh \
 	src/norad/stages/star_alignment/step_01_star_align.sh \
 	src/norad/stages/canonical_bam/step_02_sort_index_bam.sh \
@@ -66,7 +65,6 @@ validation-shell-contracts:
 	bash tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.sh
 	bash tests/evidence/scientific_review_package/test_step_09c_scientific_validation.sh
 	bash tests/shell/test_local_r_environment.sh
-	bash tests/reporting/test_render_run_report.sh
 
 shell-test: validation-shell-contracts
 	"$(REPORT_PYTHON_BIN)" -m pytest tests/evidence/runtime_availability/test_runtime_availability.py

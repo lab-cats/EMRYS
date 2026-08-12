@@ -9,9 +9,8 @@ description = "Internal Python package for the NORAD RNA workflow"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "Jinja2==3.1.6",
     "jsonschema",
-    "pypdf",
-    "PyYAML",
     "referencing",
 ]
 
@@ -37,8 +36,8 @@ include = ["norad*"]
 namespaces = false
 
 [tool.setuptools.package-data]
-"norad.contracts" = ["schemas/artifacts/v1/*.json"]
-"norad.reporting" = ["styles/*.css", "templates/*.qmd"]
+"norad.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json"]
+"norad.reporting" = ["styles/*.css", "templates/*.html.j2"]
 
 [tool.setuptools.dynamic]
 version = { attr = "norad.__version__" }

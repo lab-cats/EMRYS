@@ -11,12 +11,19 @@ _MODULE_PATH = Path(__file__).resolve()
 
 REPO_ROOT = _MODULE_PATH.parents[5]
 SCHEMA_ROOT = _MODULE_PATH.parents[2] / "schemas" / "artifacts" / "v1"
+REPORT_RECEIPT_SCHEMA_PATH = (
+    _MODULE_PATH.parents[2]
+    / "schemas"
+    / "artifacts"
+    / "v2"
+    / "report_receipt.schema.json"
+)
 COMMON_SCHEMA_PATH = SCHEMA_ROOT / "common.schema.json"
 SCHEMA_FILES = {
     "artifact-record": SCHEMA_ROOT / "artifact_record.schema.json",
     "scientific-review-record": SCHEMA_ROOT / "scientific_review_record.schema.json",
     "run-summary": SCHEMA_ROOT / "run_summary.schema.json",
-    "report-receipt": SCHEMA_ROOT / "report_receipt.schema.json",
+    "report-receipt": REPORT_RECEIPT_SCHEMA_PATH,
 }
 INVENTORY_HEADER = (
     "artifact_id",

@@ -25,7 +25,6 @@ LANE_NAMES = (
     "python-coverage",
     "shell-contracts",
     "guarded-r",
-    "report-runtime",
 )
 MAX_CONCURRENCY = 4
 TERMINATION_GRACE_SECONDS = 5.0
@@ -170,10 +169,9 @@ def build_lanes(
     rscript_bin: str,
     python_workers: int,
 ) -> tuple[Lane, ...]:
-    """Build the four non-overlapping validation lanes."""
+    """Build the three non-overlapping validation lanes."""
     coverage_root = run_root / "coverage"
     python_junit = run_root / "python.junit.xml"
-    report_junit = run_root / "report.junit.xml"
     pytest_args = [
         "-q",
         "--tb=short",
@@ -212,16 +210,6 @@ def build_lanes(
                 "-s",
                 "validation-guarded-r",
                 make_assignment("RSCRIPT_BIN", rscript_bin),
-            ),
-        ),
-        Lane(
-            "report-runtime",
-            (
-                "make",
-                "-s",
-                "validation-report-runtime",
-                *common,
-                make_assignment("REPORT_TEST_RESULT", report_junit),
             ),
         ),
     )
@@ -517,16 +505,13 @@ def coverage_summary(path: Path) -> dict[str, Any]:
 
 
 def captured_results(run_root: Path) -> dict[str, Any]:
-    """Collect machine-readable Python and report results before cleanup."""
+    """Collect machine-readable Python results before cleanup."""
     return {
         "python": {
             "pytest": junit_summary(run_root / "python.junit.xml"),
             "coverage": coverage_summary(
                 run_root / "coverage" / "python_coverage.current.json"
             ),
-        },
-        "report_runtime": {
-            "pytest": junit_summary(run_root / "report.junit.xml"),
         },
     }
 

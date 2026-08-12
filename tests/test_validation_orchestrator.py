@@ -55,7 +55,6 @@ def test_interface_bounds_and_lane_partition(tmp_path: Path) -> None:
     assert "python-coverage-check" in serial[0].command
     assert "validation-shell-contracts" in serial[1].command
     assert "validation-guarded-r" in serial[2].command
-    assert "validation-report-runtime" in serial[3].command
 
 
 def test_dependency_and_make_wiring_are_explicit() -> None:
@@ -63,9 +62,8 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     )
     assert set(configuration["project"]["dependencies"]) == {
+        "Jinja2==3.1.6",
         "jsonschema",
-        "pypdf",
-        "PyYAML",
         "referencing",
     }
     assert set(configuration["dependency-groups"]["dev"]) == {
@@ -98,8 +96,9 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         "all-checks:",
     ):
         assert target in quality_makefile
-    for target in ("validation-report-runtime:", "demo-report:"):
+    for target in ("report-test:", "demo-report:"):
         assert target in reporting_makefile
+    assert "validation-report-runtime:" not in reporting_makefile
     assert "tests/tools/run_validation.py" in quality_makefile
     assert "PYTHON_COVERAGE_PYTEST_ARGS" in root_makefile
     assert "validation-static: lint" in quality_makefile

@@ -73,7 +73,7 @@
       "error_count"
     ]
   },
-  "render_run_report_bundle": {
+  "build_report": {
     "RECEIPT_HEADER": [
       "schema_name",
       "schema_version",
@@ -81,7 +81,6 @@
       "attempt_id",
       "generated_at",
       "science_status",
-      "requested_formats",
       "output_id",
       "kind",
       "path",
@@ -89,8 +88,6 @@
       "size_bytes",
       "media_type",
       "self_contained",
-      "page_count",
-      "state_banner_every_page",
       "report_receipt_json"
     ]
   },

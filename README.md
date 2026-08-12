@@ -14,7 +14,7 @@ grouped module command for migrated owners, beginning with sample-manifest,
 STAR-index, FASTA-sidecar, STAR-alignment, canonical-BAM, canonical-BAM-QC,
 RSeQC-orientation, duplicate-marking, split-N-cigar, mechanical-orientation,
 partitioned-cohort-mpileup, cohort-candidate-preprocessing, and
-paired-CMH-candidate-ranking, artifact-index and run-summary building,
+paired-CMH-candidate-ranking, artifact-index, run-summary, and HTML-report building,
 artifact-contract validation, reference-provenance reconciliation,
 runtime-availability and
 storage-inventory inspection, scientific-review-package assembly, plus
@@ -32,7 +32,7 @@ uv sync --locked
 
 Do not curl-install `uv` or restore dependencies from validation, rendering,
 compute, or scheduler commands. The guarded R environment remains owned by
-`renv`; pinned Quarto and owner-required system tools are separate prerequisites.
+`renv`; owner-required system tools are separate prerequisites.
 After the explicit Python synchronization above, repository commands use the
 project `.venv`.
 
@@ -71,9 +71,9 @@ For current evidence state and blockers, read
 boundaries, read [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md); the
 [architecture index](docs/architecture/README.md) owns implemented system views.
 
-To generate a synthetic presentation bundle, follow the
+To generate a synthetic HTML report transaction, follow the
 [demo-report procedure](docs/demo/README.md),
-which creates or replaces ignored artifacts beneath `results/demo-report/`.
+which creates or replaces ignored artifacts beneath `results/demo-report-jinja/`.
 Use the reviewed [demo-guide index](docs/demo/README.md) to present them. The
 fixture is synthetic and provisional; it does not establish production
 execution, local or cluster runtime validation, completed production scientific

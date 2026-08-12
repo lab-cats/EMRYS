@@ -36,7 +36,7 @@ not change that boundary.
 | Per-sample processing and evidence | Owners `01`–`06` under `src/norad/stages/` plus evidence owners `02b` and `03` | Declared reads, references, and preceding owner artifacts | Aligned/canonical/duplicate-marked/split BAMs plus QC and orientation evidence |
 | Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owner `09` | Declared partitions, sample order, reference context, and upstream receipts | Cohort VCFs, annotated candidates, and paired-CMH ranked candidates |
 | Scientific-review evidence | Evidence owner `09c` | Explicit review plan, declared evidence, and Step `09` products | Versioned review package and review summary |
-| Reporting | `src/norad/reporting/` | Explicit artifact inventory, validated receipts, review summary, and table approvals | Artifact index, canonical run summary, HTML/PDF bundle, and report receipt |
+| Reporting | `src/norad/reporting/` | Explicit artifact inventory, validated receipts, review summary, and table approvals | Artifact index, canonical run summary, self-contained HTML report, summary TSV, and v2 report receipt |
 | Neutral contracts and libraries | `src/norad/contracts/` and `src/norad/libraries/` | Owner-declared records or values | Shared schemas, vocabularies, validation, and narrowly reviewed primitives |
 | Operational evidence | Runtime-availability inspection (`runtime_availability`), reference provenance, and storage inventory under `src/norad/evidence/` | Explicit profiles, reference inventories, storage roots, and retention declarations | Bounded operational observations and receipts |
 
@@ -76,8 +76,8 @@ arrows mean data or contract dependency, not automatic execution. The
 
 Read-only artifact adapters and the canonical run-summary builder project
 explicit native outputs and validation records into reporting inputs. Static
-rendering is conditional on the selected HTML and/or PDF formats and publishes
-a deterministic summary TSV plus a validated, identity-bound receipt last.
+rendering publishes one self-contained HTML report and deterministic summary
+TSV plus a validated, identity-bound v2 receipt last.
 Reporting does not discover inputs, execute analysis, repair artifacts, or
 promote runtime, cluster, scientific-review, or biological evidence.
 
@@ -89,8 +89,8 @@ orientation partitioning. Manifest-declared samples and partitions then enter
 cohort mpileup; the exact VCF set is normalized and annotated before paired-
 CMH ranking. Complete candidate transactions can flow into the review-evidence
 package, while scientific review joins only when explicitly supplied.
-Read-only reporting may then publish selected static formats from a validated
-canonical summary.
+Read-only reporting may then publish the static HTML report transaction from a
+validated canonical summary.
 
 Computational completion is not a biological conclusion. `FWD_like` and
 `REV_like` are mechanical labels, `science_review_complete_exploratory` remains
@@ -123,12 +123,13 @@ layer.
 
 Static reporting follows that rule through the private
 [`_run_report/`](../../src/norad/reporting/_run_report/README.md) package.
-The two public Python renderer paths are compatibility facades; private owners
-separate immutable models, input/context validation, HTML/PDF/receipt
-projection, pinned runtime execution, transaction primitives, and HTML versus
-receipt-last bundle publication. Bundle dispatch imports the private HTML
-owner in one direction only, so reporting has no renderer import cycle and no
-new public command surface.
+The single installed route, `python -I -m norad build report`, is owned directly
+by [`report.py`](../../src/norad/reporting/report.py). Private owners separate
+immutable models, explicit input/context validation, structured view data,
+Jinja rendering, v2 receipt projection, and one receipt-last transaction. The
+single packaged HTML template and CSS resource are the complete rendering
+runtime; reporting has no PDF, external renderer, compatibility facade, shell
+wrapper, or format-selection surface.
 
 ## Identity, inputs, and outputs
 
@@ -155,8 +156,8 @@ The downstream product flow is one-way:
 3. The run-summary owner consumes one committed adapter receipt plus explicitly
    supplied scientific-review and report-table inputs and publishes canonical
    JSON with deterministic TSV projections.
-4. Static renderers consume that canonical summary and authorized supplemental
-   tables to publish selected report formats and a receipt.
+4. The static report owner consumes that canonical summary and authorized
+   supplemental tables to publish HTML, summary TSV, then the v2 receipt last.
 
 Operational evidence owners sit beside this product flow. Runtime, reference,
 and storage observations can inform execution or review, but do not become
