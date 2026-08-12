@@ -89,6 +89,12 @@ uv sync --locked --check
 .venv/bin/python -m pytest -q tests/test_package_distribution.py
 ```
 
+For shell and SLURM behavior without replaying Python validator suites:
+
+```bash
+make -s shell-test
+```
+
 The complete gate performs the same read-only environment check before starting
 its validation lanes. A mismatch stops with instructions to run the explicit
 `uv sync --locked` restoration command; validation never synchronizes the
@@ -107,8 +113,23 @@ RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks VALIDATION_ARGS=--serial
 RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks VALIDATION_ARGS=--verbose
 ```
 
-The coverage lane already runs the complete Python suite. A standalone
-documentation package instead uses:
+The assembled gate has five evidence lanes. Static preflight runs first and
+owns configuration, documentation, syntax, compilation, and manifest checks.
+Python coverage then owns Python behavior, branch/subprocess coverage, and
+Jinja HTML reporting while excluding the isolated-wheel and SLURM-wrapper
+suites. The wheel lane owns installed-package integrity. The shell/SLURM lane
+owns shell behavior and scheduler-wrapper contracts. Guarded real R remains
+separate because Python and shell substitutes do not execute R semantics.
+Independent lanes run with bounded concurrency after preflight; `--serial`
+selects one top-level lane and one Python worker.
+
+Quiet successes discard their temporary logs. A failed, interrupted, or
+peer-cancelled lane retains its log and prints its location; first failure
+terminates the other running process groups and preserves the failing status.
+The gate emits a human summary only. It has no machine-result artifact because
+none had an active consumer.
+
+A standalone documentation package instead uses:
 
 ```bash
 git diff --check
@@ -120,6 +141,13 @@ git diff --name-status
 The documentation gate checks local document structure, mechanically derived
 ownership, compact backlog dependencies, and JIT-card structure. It does not
 validate general Markdown links, anchors, or diagrams' inbound references.
+
+These checks establish local structural/test evidence only. Guarded R adds
+real local runtime evidence for its named fixtures. Neither result establishes
+CSU scheduler execution, production artifacts, scientific review, validated
+editing sites, or biological interpretation. Use focused checks per approved
+slice and run the assembled gate once after the final executable state is
+settled; rerun it only for a concrete failure-driven reason.
 
 ## Explicit dependency setup
 

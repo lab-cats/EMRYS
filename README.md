@@ -8,8 +8,11 @@ candidate generation, paired CMH ranking, evidence assembly, and report
 projection. See the [architecture index](docs/architecture/README.md) for the
 organized current-system authority, including the scientist-facing flow,
 system map, functional-owner inventory, source topology, stage map, and
-diagrams. NORAD does not yet provide a single workflow orchestrator. Its
-explicitly installed, unreleased Python distribution provides an isolated,
+diagrams. NORAD does not yet provide a single workflow orchestrator. Planned
+Snakemake orchestration is not implemented, and the fresh-clone, one-command
+full-pipeline onboarding path belongs to Campaign B rather than the current
+repository surface. Its explicitly installed, unreleased Python distribution
+provides an isolated,
 grouped module command for migrated owners, beginning with sample-manifest,
 STAR-index, FASTA-sidecar, STAR-alignment, canonical-BAM, canonical-BAM-QC,
 RSeQC-orientation, duplicate-marking, split-N-cigar, mechanical-orientation,
@@ -77,7 +80,9 @@ which creates or replaces ignored artifacts beneath `results/demo-report-jinja/`
 Use the reviewed [demo-guide index](docs/demo/README.md) to present them. The
 fixture is synthetic and provisional; it does not establish production
 execution, local or cluster runtime validation, completed production scientific
-review, or biological readiness.
+review, or biological readiness. Reporting is currently pure Python and
+HTML-only: the installed command uses packaged Jinja and CSS resources and does
+not require Quarto or produce a report PDF.
 
 ## Evidence boundary
 

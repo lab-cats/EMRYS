@@ -9,7 +9,7 @@ remain in the
 ## Evidence boundary
 
 Python coverage measures executed Python statements and branches during the
-complete Python suite, including traced subprocesses. It does not measure shell
+Python behavior lane, including traced subprocesses. It does not measure shell
 or R source coverage, prove expectation independence, or replace scenario,
 mutation, transaction, recovery, real-runtime, scheduler, or cluster tests.
 
@@ -47,13 +47,19 @@ The accepted exact floors are:
 
 | Coverage owner | Line floor | Branch floor |
 | --- | ---: | ---: |
-| Complete Python suite | `10161 / 11831` (`0.858845`) | `3327 / 4436` (`0.750000`) |
-| `norad.contracts.scientific_evidence` | `695 / 700` (`0.992857`) | `283 / 290` (`0.975862`) |
+| Python behavior lane | `9172 / 10431` (`0.879302`) | `3134 / 4084` (`0.767385`) |
+| `norad.contracts.scientific_evidence` | `580 / 585` (`0.991453`) | `283 / 290` (`0.975862`) |
 | `norad.libraries.validation` | `339 / 341` (`0.994135`) | `105 / 108` (`0.972222`) |
 | Shared scientific validation primitives | `341 / 341` (`1.000000`) | `123 / 124` (`0.991935`) |
-| Report/publication and receipt validation | `5480 / 6691` (`0.819011`) | `1838 / 2614` (`0.703137`) |
-| Scientific-review publication | `860 / 1022` (`0.841487`) | `348 / 484` (`0.719008`) |
+| Report/publication and receipt validation | `4920 / 5850` (`0.841026`) | `1733 / 2396` (`0.723289`) |
+| Scientific-review publication | `860 / 1020` (`0.843137`) | `346 / 480` (`0.720833`) |
 | Paired-CMH analysis contracts | `85 / 85` (`1.000000`) | `16 / 18` (`0.888889`) |
+
+The Campaign A rebase removed 115 covered compatibility/helper statements from
+`norad.contracts.scientific_evidence` while retaining its same five uncovered
+statements and identical `283 / 290` branch result. Its lower line ratio is a
+smaller-denominator effect, not lost behavior execution. Global and every
+other critical-owner rate are equal or improved.
 
 Comparisons cross-multiply the exact counts. Six-decimal rates are display
 values and never weaken the gate through rounding.
@@ -61,7 +67,7 @@ values and never weaken the gate through rounding.
 The active policy:
 
 - measures branches over exactly `scripts` and `src/norad`, with subprocess
-  tracing enabled for the complete suite;
+  tracing enabled for the Python behavior lane;
 - separately runs the subprocess-only GTF-to-BED12 and sample-manifest CLI
   suites and requires coverage in their exact public route modules;
 - rejects any exact-ratio decrease in global line or branch coverage;
@@ -114,6 +120,39 @@ Local mocks, wrapper stubs, guarded R fixtures, and pinned report rendering do
 not establish scheduler, production, scientific-review, or biological
 evidence. Real R remains a separate mandatory gate because Python coverage does
 not measure R source.
+
+## Local validation lane ownership
+
+`make all-checks` is the one assembled local gate. It first verifies that the
+selected `.venv` matches `uv.lock` without installing or repairing anything,
+then runs the static preflight serially. Only after preflight passes does the
+runner schedule four independent owner lanes, with `--serial` remaining the
+authoritative deterministic fallback:
+
+| Lane | What it validates | Deliberate exclusions |
+| --- | --- | --- |
+| Static preflight | Ruff and dead-code configuration, documentation structure, `git diff --check`, shell and SLURM syntax, Python compilation, and the example-manifest contract. | No behavior suite and no dependency restoration. |
+| Python coverage | The Python behavior suite with branch and traced-subprocess coverage, including pure-Python Jinja report rendering and publication. The two route-specific subprocess probes remain focused measurements inside this lane. | The isolated-wheel and SLURM-wrapper suites, which run in their owning lanes. |
+| Installed wheel | One offline wheel build, clean locked installation, packaged-schema/template/CSS checks, installed grouped CLI/resource probes, representative manifest validation, and installed Jinja rendering. | No replay of repository owner suites. |
+| Shell and SLURM | Shell behavior contracts, the repository-local R-selection shell contract, and SLURM wrapper directives, delegation, arguments, CWD, modules, outputs, and exits. | No general Python validator or reporting suite. |
+| Guarded real R | Locked-environment checks plus the Step `08` and Step `09` real-R contract suites. | No Python, reporting, shell, or wheel replay. |
+
+`report-test`, `shell-test`, the package-distribution test, and direct owner
+tests remain supported focused feedback routes; the assembled gate does not
+invoke those same suites through a second lane. Quiet successful lane logs are
+ephemeral. Failed, externally interrupted, and peer-cancelled lanes retain a
+diagnostic log, and the first failing lane's exact nonzero status remains the
+gate status. The former optional result-JSON aggregation had no active caller
+or documented consumer and is not a supported contract.
+
+Nox disposition: **REJECTED**. After native simplification,
+`tests/tools/run_validation.py` and its direct test total 876 maintained lines,
+down from 1,029. Nox parallel stop-on-error permits already-running sessions to
+finish, while NORAD's contract terminates their process groups and retains
+interruption diagnostics. Matching that behavior would require a substantial
+custom supervisor around Nox, failing the mandatory exact-cancellation/no-
+custom-orchestration criterion. `uv` remains the sole Python dependency and
+environment authority; Nox is not a dependency.
 
 ## LOG-01 current output and log inventory
 

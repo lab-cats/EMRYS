@@ -1,5 +1,4 @@
 import configparser
-import json
 import os
 import signal
 import subprocess
@@ -53,8 +52,9 @@ def test_interface_bounds_and_lane_partition(tmp_path: Path) -> None:
     assert "-n" not in serial[0].command[-1]
     assert "-n 4 --dist=loadfile" in parallel[0].command[-1]
     assert "python-coverage-check" in serial[0].command
-    assert "validation-shell-contracts" in serial[1].command
-    assert "validation-guarded-r" in serial[2].command
+    assert "validation-wheel-smoke" in serial[1].command
+    assert "validation-shell-slurm" in serial[2].command
+    assert "validation-guarded-r" in serial[3].command
 
 
 def test_dependency_and_make_wiring_are_explicit() -> None:
@@ -91,6 +91,8 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     for target in (
         "python-coverage-check:",
         "validation-shell-contracts:",
+        "validation-shell-slurm:",
+        "validation-wheel-smoke:",
         "validation-guarded-r:",
         "validation-static:",
         "all-checks:",
@@ -101,7 +103,11 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     assert "validation-report-runtime:" not in reporting_makefile
     assert "tests/tools/run_validation.py" in quality_makefile
     assert "PYTHON_COVERAGE_PYTEST_ARGS" in root_makefile
-    assert "validation-static: lint" in quality_makefile
+    assert "PYTHON_COVERAGE_EXCLUDES" in quality_makefile
+    assert "--ignore=tests/test_package_distribution.py" in quality_makefile
+    assert "--ignore=tests/test_slurm_wrapper_contracts.py" in quality_makefile
+    assert "shell-test: validation-shell-slurm" in quality_makefile
+    assert "validation-static: lint documentation-check" in quality_makefile
     assert 'version("ruff")' not in quality_makefile
     assert 'version("vulture")' not in quality_makefile
     assert '"$(RUFF_BIN)" check --no-cache' in quality_makefile
@@ -220,6 +226,88 @@ def test_verbose_mode_streams_child_output(
     assert "START verbose:" in captured.out
     assert "visible child output" in captured.out
     assert "PASS verbose" in captured.out
+    assert not list(tmp_path.glob("*.log"))
+
+
+def test_verbose_failure_streams_and_retains_log(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    outcome = TOOL.run_lanes(
+        [python_lane("verbose-failure", "print('durable diagnostic'); raise SystemExit(7)")],
+        REPO_ROOT,
+        tmp_path,
+        1,
+        True,
+    )
+
+    try:
+        result = outcome.results[0]
+        assert outcome.status == 7
+        assert result.retained_log is not None
+        assert "durable diagnostic" in Path(result.retained_log).read_text(
+            encoding="utf-8"
+        )
+        captured = capsys.readouterr()
+        assert "durable diagnostic" in captured.out
+        assert "FAIL verbose-failure status=7" in captured.err
+        assert not list(tmp_path.glob("*.log"))
+    finally:
+        remove_retained_logs(outcome)
+
+
+def test_verbose_peer_cancellation_streams_and_retains_both_logs(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    ready = tmp_path / "verbose-ready"
+    slow_source = (
+        "from pathlib import Path; import time; "
+        "print('slow diagnostic', flush=True); "
+        f"Path({str(ready)!r}).write_text('ready'); "
+        "time.sleep(10)"
+    )
+    failure_source = (
+        "from pathlib import Path; import sys, time; "
+        f"p = Path({str(ready)!r}); "
+        "deadline = time.monotonic() + 5; "
+        "\nwhile not p.exists() and time.monotonic() < deadline: time.sleep(0.01)\n"
+        "print('failing diagnostic', flush=True); sys.exit(9)"
+    )
+    outcome = TOOL.run_lanes(
+        [
+            python_lane("verbose-slow", slow_source),
+            python_lane("verbose-controlled", failure_source),
+        ],
+        REPO_ROOT,
+        tmp_path,
+        2,
+        True,
+    )
+
+    try:
+        failure = next(
+            result for result in outcome.results if result.name == "verbose-controlled"
+        )
+        cancelled = next(
+            result for result in outcome.results if result.name == "verbose-slow"
+        )
+        assert outcome.status == 9
+        assert failure.retained_log is not None
+        assert cancelled.retained_log is not None
+        assert "failing diagnostic" in Path(failure.retained_log).read_text(
+            encoding="utf-8"
+        )
+        assert "slow diagnostic" in Path(cancelled.retained_log).read_text(
+            encoding="utf-8"
+        )
+        captured = capsys.readouterr()
+        assert "failing diagnostic" in captured.out
+        assert "slow diagnostic" in captured.out
+        assert "CANCELLED verbose-slow" in captured.err
+        assert not list(tmp_path.glob("*.log"))
+    finally:
+        remove_retained_logs(outcome)
 
 
 def test_first_failure_propagates_and_kills_child_process_group(
@@ -258,25 +346,32 @@ def test_first_failure_propagates_and_kills_child_process_group(
         failure = next(
             result for result in outcome.results if result.name == "controlled"
         )
+        cancelled = next(result for result in outcome.results if result.name == "slow")
         assert failure.retained_log is not None
+        assert cancelled.status == 128 + signal.SIGTERM
+        assert cancelled.retained_log is not None
         assert "controlled failure" in Path(failure.retained_log).read_text(
             encoding="utf-8"
         )
         captured = capsys.readouterr()
         assert "FAIL controlled status=7" in captured.err
+        assert "CANCELLED slow" in captured.err
         assert "controlled failure" in captured.err
         assert not list(tmp_path.glob("*.log"))
     finally:
         remove_retained_logs(outcome)
 
 
+@pytest.mark.parametrize("verbose", [False, True])
 def test_sigint_cleans_process_tree_and_restores_handler(
     tmp_path: Path,
+    verbose: bool,
 ) -> None:
     ready = tmp_path / "interrupt-ready"
     survived = tmp_path / "interrupt-grandchild-survived"
     lane_source = (
         "from pathlib import Path; import subprocess, sys, time; "
+        "print('interrupt diagnostic', flush=True); "
         "subprocess.Popen([sys.executable, '-c', "
         f'"from pathlib import Path; import time; time.sleep(1.0); '
         f"Path({str(survived)!r}).write_text('survived')\"]); "
@@ -298,7 +393,7 @@ def test_sigint_cleans_process_tree_and_restores_handler(
         REPO_ROOT,
         tmp_path,
         1,
-        False,
+        verbose,
     )
     interrupter.join(timeout=5)
 
@@ -306,53 +401,13 @@ def test_sigint_cleans_process_tree_and_restores_handler(
         assert outcome.status == 130
         assert outcome.interrupted_by == signal.SIGINT
         assert signal.getsignal(signal.SIGINT) == prior_handler
+        interrupted = outcome.results[0]
+        assert interrupted.retained_log is not None
+        assert "interrupt diagnostic" in Path(interrupted.retained_log).read_text(
+            encoding="utf-8"
+        )
         time.sleep(1.2)
         assert not survived.exists()
         assert not list(tmp_path.glob("*.log"))
     finally:
         remove_retained_logs(outcome)
-
-
-def test_machine_readable_summaries_and_safe_result_write(
-    tmp_path: Path,
-) -> None:
-    junit = tmp_path / "pytest.xml"
-    junit.write_text(
-        '<testsuites><testsuite tests="5" failures="1" errors="0" '
-        'skipped="2"/></testsuites>',
-        encoding="utf-8",
-    )
-    assert TOOL.junit_summary(junit) == {
-        "tests": 5,
-        "failures": 1,
-        "errors": 0,
-        "skipped": 2,
-        "passed": 2,
-    }
-
-    snapshot = tmp_path / "coverage.json"
-    snapshot.write_text(
-        json.dumps(
-            {
-                "totals": {
-                    "covered_lines": 9,
-                    "num_statements": 10,
-                    "covered_branches": 3,
-                    "num_branches": 4,
-                },
-                "critical_owners": [{"name": "example-owner"}],
-                "subprocess_routes": [{"name": "example-route"}],
-            },
-            sort_keys=True,
-        ),
-        encoding="utf-8",
-    )
-    summary = TOOL.coverage_summary(snapshot)
-    assert summary["critical_owner_count"] == 1
-    assert summary["subprocess_route_count"] == 1
-    assert len(summary["sha256"]) == 64
-
-    result = tmp_path / "result.json"
-    TOOL.write_result(result, {"status": 0})
-    assert json.loads(result.read_text(encoding="utf-8")) == {"status": 0}
-    assert not list(tmp_path.glob("*.tmp"))

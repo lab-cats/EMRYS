@@ -3,11 +3,11 @@
     {
       "branch_rate": "0.975862",
       "covered_branches": 283,
-      "covered_lines": 695,
-      "line_rate": "0.992857",
+      "covered_lines": 580,
+      "line_rate": "0.991453",
       "name": "norad.contracts.scientific_evidence",
       "num_branches": 290,
-      "num_statements": 700,
+      "num_statements": 585,
       "prefixes": [
         "src/norad/contracts/scientific_evidence/"
       ]
@@ -40,26 +40,26 @@
       ]
     },
     {
-      "branch_rate": "0.703137",
-      "covered_branches": 1838,
-      "covered_lines": 5480,
-      "line_rate": "0.819011",
+      "branch_rate": "0.723289",
+      "covered_branches": 1733,
+      "covered_lines": 4920,
+      "line_rate": "0.841026",
       "name": "report_publication_and_receipt_validation",
-      "num_branches": 2614,
-      "num_statements": 6691,
+      "num_branches": 2396,
+      "num_statements": 5850,
       "prefixes": [
         "src/norad/contracts/artifacts/",
         "src/norad/reporting/"
       ]
     },
     {
-      "branch_rate": "0.719008",
-      "covered_branches": 348,
+      "branch_rate": "0.720833",
+      "covered_branches": 346,
       "covered_lines": 860,
-      "line_rate": "0.841487",
+      "line_rate": "0.843137",
       "name": "scientific_review_publication",
-      "num_branches": 484,
-      "num_statements": 1022,
+      "num_branches": 480,
+      "num_statements": 1020,
       "prefixes": [
         "src/norad/evidence/scientific_review_package/"
       ]
@@ -162,11 +162,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.750000",
-    "covered_branches": 3327,
-    "covered_lines": 10161,
-    "line_rate": "0.858845",
-    "num_branches": 4436,
-    "num_statements": 11831
+    "branch_rate": "0.767385",
+    "covered_branches": 3134,
+    "covered_lines": 9172,
+    "line_rate": "0.879302",
+    "num_branches": 4084,
+    "num_statements": 10431
   }
 }

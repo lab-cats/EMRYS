@@ -4,8 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
-import json
 import os
 import shlex
 import shutil
@@ -13,17 +11,17 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
-import xml.etree.ElementTree as ET
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = "1.0.0"
 LANE_NAMES = (
     "python-coverage",
-    "shell-contracts",
+    "wheel-smoke",
+    "shell-slurm",
     "guarded-r",
 )
 MAX_CONCURRENCY = 4
@@ -51,6 +49,8 @@ class RunningLane:
     started: float
     log_path: Path | None
     log_handle: Any | None
+    stream_stop: threading.Event | None = None
+    stream_thread: threading.Thread | None = None
 
 
 @dataclass(frozen=True)
@@ -169,14 +169,9 @@ def build_lanes(
     rscript_bin: str,
     python_workers: int,
 ) -> tuple[Lane, ...]:
-    """Build the three non-overlapping validation lanes."""
+    """Build the four non-overlapping validation lanes."""
     coverage_root = run_root / "coverage"
-    python_junit = run_root / "python.junit.xml"
-    pytest_args = [
-        "-q",
-        "--tb=short",
-        f"--junitxml={python_junit}",
-    ]
+    pytest_args = ["-q", "--tb=short"]
     if python_workers > 1:
         pytest_args.extend(["-n", str(python_workers), "--dist=loadfile"])
     coverage_pytest_args = " ".join(shlex.quote(value) for value in pytest_args)
@@ -195,11 +190,20 @@ def build_lanes(
             ),
         ),
         Lane(
-            "shell-contracts",
+            "wheel-smoke",
             (
                 "make",
                 "-s",
-                "validation-shell-contracts",
+                "validation-wheel-smoke",
+                *common,
+            ),
+        ),
+        Lane(
+            "shell-slurm",
+            (
+                "make",
+                "-s",
+                "validation-shell-slurm",
                 *common,
             ),
         ),
@@ -248,6 +252,23 @@ def print_log(log_path: Path | None) -> None:
         sys.stderr.write("\n")
 
 
+def stream_log(log_path: Path, stop: threading.Event) -> None:
+    """Mirror an active lane log to stdout until stopped, then drain it."""
+    with log_path.open("r", encoding="utf-8", errors="replace") as reader:
+        while True:
+            chunk = reader.read()
+            if chunk:
+                sys.stdout.write(chunk)
+                sys.stdout.flush()
+                continue
+            if stop.wait(0.02):
+                remainder = reader.read()
+                if remainder:
+                    sys.stdout.write(remainder)
+                    sys.stdout.flush()
+                return
+
+
 def start_lane(
     lane: Lane,
     repo_root: Path,
@@ -255,14 +276,9 @@ def start_lane(
     verbose: bool,
 ) -> RunningLane:
     """Start one lane in its own process group."""
-    log_path: Path | None = None
-    log_handle: Any | None = None
-    stdout: Any | None = None
-    if not verbose:
-        log_path = run_root / f"{lane.name}.log"
-        log_handle = log_path.open("w", encoding="utf-8")
-        stdout = log_handle
-    else:
+    log_path = run_root / f"{lane.name}.log"
+    log_handle = log_path.open("w", encoding="utf-8")
+    if verbose:
         print(f"START {lane.name}: {command_text(lane.command)}", flush=True)
 
     environment = os.environ.copy()
@@ -273,7 +289,7 @@ def start_lane(
             cwd=repo_root,
             env=environment,
             stdin=subprocess.DEVNULL,
-            stdout=stdout,
+            stdout=log_handle,
             stderr=subprocess.STDOUT,
             text=True,
             start_new_session=True,
@@ -282,19 +298,33 @@ def start_lane(
         if log_handle is not None:
             log_handle.close()
         raise
-    return RunningLane(
+    running = RunningLane(
         lane=lane,
         process=process,
         started=time.monotonic(),
         log_path=log_path,
         log_handle=log_handle,
     )
+    if verbose:
+        running.stream_stop = threading.Event()
+        running.stream_thread = threading.Thread(
+            target=stream_log,
+            args=(log_path, running.stream_stop),
+            name=f"norad-validation-{lane.name}-stream",
+            daemon=True,
+        )
+        running.stream_thread.start()
+    return running
 
 
 def close_running_lane(running: RunningLane) -> None:
-    """Close one lane's owned log handle."""
+    """Close one lane's log and finish any verbose stream."""
     if running.log_handle is not None and not running.log_handle.closed:
         running.log_handle.close()
+    if running.stream_stop is not None:
+        running.stream_stop.set()
+    if running.stream_thread is not None:
+        running.stream_thread.join()
 
 
 def normalized_status(returncode: int) -> int:
@@ -440,8 +470,23 @@ def run_lanes(
                 terminate_running(running, signal.SIGTERM)
                 for item in running:
                     close_running_lane(item)
+                    elapsed = time.monotonic() - item.started
+                    retained = retain_log(item.log_path, item.lane.name)
                     if item.log_path is not None:
                         item.log_path.unlink(missing_ok=True)
+                    print(
+                        f"CANCELLED {item.lane.name} elapsed={elapsed:.3f}s"
+                        + (f" retained_log={retained}" if retained else ""),
+                        file=sys.stderr,
+                    )
+                    results.append(
+                        LaneResult(
+                            item.lane.name,
+                            128 + signal.SIGTERM,
+                            elapsed,
+                            retained,
+                        )
+                    )
                 return RunOutcome(first_failure.status, tuple(results))
 
         return RunOutcome(0, tuple(results))
@@ -450,124 +495,6 @@ def run_lanes(
             signal.signal(signum, handler)
         for item in running:
             close_running_lane(item)
-
-
-def junit_summary(path: Path) -> dict[str, int]:
-    """Read aggregate pytest counts from a JUnit XML result."""
-    if not path.is_file() or path.is_symlink():
-        raise ValidationError(f"Expected a real JUnit XML result: {path}")
-    try:
-        root = ET.parse(path).getroot()
-    except (OSError, ET.ParseError) as exc:
-        raise ValidationError(f"Could not parse JUnit XML {path}: {exc}") from exc
-
-    suites = [root] if root.tag == "testsuite" else list(root.findall("testsuite"))
-    if not suites:
-        raise ValidationError(f"JUnit XML contains no test suites: {path}")
-    totals = {
-        name: sum(int(suite.attrib.get(name, "0")) for suite in suites)
-        for name in ("tests", "failures", "errors", "skipped")
-    }
-    totals["passed"] = (
-        totals["tests"] - totals["failures"] - totals["errors"] - totals["skipped"]
-    )
-    return totals
-
-
-def coverage_summary(path: Path) -> dict[str, Any]:
-    """Read and identify one deterministic coverage snapshot."""
-    if not path.is_file() or path.is_symlink():
-        raise ValidationError(f"Expected a real coverage snapshot: {path}")
-    payload_bytes = path.read_bytes()
-    try:
-        document = json.loads(payload_bytes)
-    except json.JSONDecodeError as exc:
-        raise ValidationError(
-            f"Could not parse coverage snapshot {path}: {exc}"
-        ) from exc
-    critical_owners = document.get("critical_owners")
-    subprocess_routes = document.get("subprocess_routes")
-    totals = document.get("totals")
-    if (
-        not isinstance(critical_owners, list)
-        or not isinstance(subprocess_routes, list)
-        or not isinstance(totals, dict)
-    ):
-        raise ValidationError(f"Coverage snapshot has an invalid shape: {path}")
-    return {
-        "sha256": hashlib.sha256(payload_bytes).hexdigest(),
-        "critical_owner_count": len(critical_owners),
-        "subprocess_route_count": len(subprocess_routes),
-        "totals": totals,
-        "critical_owners": critical_owners,
-        "subprocess_routes": subprocess_routes,
-    }
-
-
-def captured_results(run_root: Path) -> dict[str, Any]:
-    """Collect machine-readable Python results before cleanup."""
-    return {
-        "python": {
-            "pytest": junit_summary(run_root / "python.junit.xml"),
-            "coverage": coverage_summary(
-                run_root / "coverage" / "python_coverage.current.json"
-            ),
-        },
-    }
-
-
-def outcome_document(
-    outcome: RunOutcome,
-    *,
-    mode: str,
-    jobs: int,
-    python_workers: int,
-    elapsed_seconds: float,
-    results: dict[str, Any] | None,
-) -> dict[str, Any]:
-    """Build a machine-readable validation result."""
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "mode": mode,
-        "jobs": jobs,
-        "python_workers": python_workers,
-        "status": outcome.status,
-        "interrupted_by": outcome.interrupted_by,
-        "elapsed_seconds": round(elapsed_seconds, 6),
-        "lanes": [
-            {
-                "name": item.name,
-                "status": item.status,
-                "elapsed_seconds": round(item.elapsed_seconds, 6),
-                "retained_log": item.retained_log,
-            }
-            for item in outcome.results
-        ],
-        "results": results,
-    }
-
-
-def write_result(path: Path, document: dict[str, Any]) -> None:
-    """Write one canonical result JSON without following symlinks."""
-    parent = require_real_directory(path.parent, "result JSON parent")
-    destination = parent / path.name
-    if destination.exists() and (not destination.is_file() or destination.is_symlink()):
-        raise ValidationError(f"Refusing unsafe result JSON path: {destination}")
-    payload = json.dumps(document, indent=2, sort_keys=True) + "\n"
-    descriptor, temporary_name = tempfile.mkstemp(
-        prefix=f".{destination.name}.",
-        suffix=".tmp",
-        dir=parent,
-    )
-    temporary = Path(temporary_name)
-    try:
-        with os.fdopen(descriptor, "w", encoding="utf-8") as handle:
-            handle.write(payload)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temporary, destination)
-    finally:
-        temporary.unlink(missing_ok=True)
 
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
@@ -588,7 +515,6 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Stream complete lane output instead of capturing successful logs.",
     )
-    parser.add_argument("--result-json", type=Path)
     return parser.parse_args(argv)
 
 
@@ -617,7 +543,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             if preflight.status != 0:
                 outcome = preflight
-                captured: dict[str, Any] | None = None
             else:
                 lanes = build_lanes(
                     repo_root,
@@ -638,29 +563,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                     preflight.results + lane_outcome.results,
                     lane_outcome.interrupted_by,
                 )
-                captured = (
-                    captured_results(run_root) if lane_outcome.status == 0 else None
-                )
             elapsed = time.monotonic() - overall_started
             mode = "serial" if jobs == 1 and python_workers == 1 else "parallel"
-            document = outcome_document(
-                outcome,
-                mode=mode,
-                jobs=jobs,
-                python_workers=python_workers,
-                elapsed_seconds=elapsed,
-                results=captured,
-            )
 
         print(
-            f"SUMMARY status={outcome.status} mode={document['mode']} "
+            f"SUMMARY status={outcome.status} mode={mode} "
             f"jobs={jobs} python_workers={python_workers} "
             f"elapsed={elapsed:.3f}s",
             flush=True,
         )
-        if arguments.result_json is not None:
-            write_result(arguments.result_json, document)
-            print(f"RESULT {arguments.result_json.resolve()}", flush=True)
         return outcome.status
     except ValidationError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
