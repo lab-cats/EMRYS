@@ -9,12 +9,17 @@ import uuid
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+from norad.libraries.source_authority import (
+    ArtifactSourceRoot,
+    ArtifactSourceRootError,
+    SourceCheckout,
+    SourceCheckoutError,
+    admit_artifact_source_root,
+    admit_source_checkout,
+)
 from norad.reporting._run_report.models import RECEIPT_HEADER, ReportRenderError
-
-if TYPE_CHECKING:
-    from norad.reporting._artifact_index.api import SourceCheckout
 
 DESCRIPTION = (
     "Build one self-contained Jinja HTML report, deterministic run-summary TSV, "
@@ -50,8 +55,17 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
         required=True,
         type=Path,
         help=(
-            "Absolute canonical NORAD source checkout governing contract-relative "
-            "paths and renderer provenance."
+            "Absolute canonical NORAD source checkout governing executing-package "
+            "identity and renderer provenance."
+        ),
+    )
+    parser.add_argument(
+        "--artifact-source-root",
+        required=True,
+        type=Path,
+        help=(
+            "Absolute canonical root resolving contract-relative run-summary "
+            "and approved-table paths."
         ),
     )
     parser.add_argument(
@@ -93,15 +107,19 @@ def default_publication_ops() -> ReportPublicationOps:
     )
 
 
-def _admit_source_checkout(arguments: argparse.Namespace) -> SourceCheckout:
-    from norad.reporting._artifact_index import api as artifact_index
-
+def _admit_source_authorities(
+    arguments: argparse.Namespace,
+) -> tuple[SourceCheckout, ArtifactSourceRoot]:
     try:
-        return artifact_index.admit_source_checkout(
+        source_checkout = admit_source_checkout(
             root=arguments.source_checkout,
             package_root=Path(__file__).resolve().parents[1],
         )
-    except artifact_index.SourceCheckoutError as exc:
+        artifact_source_root = admit_artifact_source_root(
+            root=arguments.artifact_source_root,
+        )
+        return source_checkout, artifact_source_root
+    except (ArtifactSourceRootError, SourceCheckoutError) as exc:
         raise ReportRenderError(str(exc)) from exc
 
 
@@ -112,8 +130,12 @@ def prepare_report(
 
     from norad.reporting._run_report.context import prepare_context
 
-    admitted = _admit_source_checkout(arguments)
-    return prepare_context(arguments, source_checkout=admitted)
+    source_checkout, artifact_source_root = _admit_source_authorities(arguments)
+    return prepare_context(
+        arguments,
+        source_checkout=source_checkout,
+        artifact_source_root=artifact_source_root,
+    )
 
 
 def serialize_receipt(document: dict[str, Any]) -> bytes:
@@ -128,6 +150,7 @@ def print_plan(context: Any) -> None:
     print("NORAD static run-report plan:")
     print(f"  Mode: {'execute' if context.execute else 'dry-run'}")
     print(f"  Source checkout: {context.source_checkout.root}")
+    print(f"  Artifact source root: {context.artifact_source_root.root}")
     print(f"  Renderer Git commit: {context.producer_git_commit}")
     print(f"  Run ID: {context.summary['run_id']}")
     print(f"  Run summary: {context.run_summary_path}")

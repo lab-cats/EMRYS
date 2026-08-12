@@ -16,7 +16,13 @@ from typing import Any
 import pytest
 from jinja2 import StrictUndefined, UndefinedError
 
+from norad.libraries.source_authority import (
+    ArtifactSourceRoot,
+    SourceCheckout,
+    controlled_python_argv,
+)
 from norad.reporting import report as REPORT
+from norad.reporting._run_report import context as report_context
 from norad.reporting._run_report import publication, receipt, validation
 from norad.reporting._run_report.models import JINJA_VERSION, ReportRenderError
 from tests.reporting.fixtures.artifact_run_summary_v1 import build_fixture as FIXTURE
@@ -30,10 +36,7 @@ def publish_run_summary(fixture: Any) -> Path:
     environment["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
     result = subprocess.run(
         [
-            sys.executable,
-            "-I",
-            "-m",
-            "norad",
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "run-summary",
             *fixture.command_args(execute=True),
@@ -76,10 +79,19 @@ def failed_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 def arguments(
-    summary: Path, output_root: Path, *, execute: bool = False
+    summary: Path,
+    output_root: Path,
+    *,
+    execute: bool = False,
+    artifact_source_root: Path | None = None,
 ) -> argparse.Namespace:
     return argparse.Namespace(
         source_checkout=REPO_ROOT,
+        artifact_source_root=(
+            summary.parent.parent
+            if artifact_source_root is None
+            else artifact_source_root
+        ),
         run_summary=summary,
         output_root=output_root,
         execute=execute,
@@ -123,14 +135,23 @@ def publish(context: Any, ops: REPORT.ReportPublicationOps | None = None) -> Non
 
 def test_grouped_help_exposes_only_direct_html_contract(tmp_path: Path) -> None:
     result = subprocess.run(
-        [sys.executable, "-I", "-m", "norad", "build", "report", "--help"],
+        [
+            *controlled_python_argv(sys.executable, "-m", "norad"),
+            "build",
+            "report",
+            "--help",
+        ],
         cwd=tmp_path,
         text=True,
         capture_output=True,
         check=False,
     )
     missing = subprocess.run(
-        [sys.executable, "-I", "-m", "norad", "build", "report"],
+        [
+            *controlled_python_argv(sys.executable, "-m", "norad"),
+            "build",
+            "report",
+        ],
         cwd=tmp_path,
         text=True,
         capture_output=True,
@@ -139,6 +160,7 @@ def test_grouped_help_exposes_only_direct_html_contract(tmp_path: Path) -> None:
     assert result.returncode == 0
     assert "usage: norad build report" in result.stdout
     assert "--source-checkout" in result.stdout
+    assert "--artifact-source-root" in result.stdout
     assert "--run-summary" in result.stdout
     assert "--output-root" in result.stdout
     assert "--execute" in result.stdout
@@ -157,6 +179,7 @@ def test_source_checkout_is_admitted_before_report_inputs(
     result = REPORT.build_from_args(
         argparse.Namespace(
             source_checkout=invalid_checkout,
+            artifact_source_root=tmp_path,
             run_summary=tmp_path / "missing.json",
             output_root=tmp_path / "reports",
             execute=False,
@@ -166,6 +189,36 @@ def test_source_checkout_is_admitted_before_report_inputs(
     assert result == 1
     assert "Source checkout project metadata is unavailable" in captured.err
     assert "missing.json" not in captured.err
+
+
+def test_renderer_git_identity_uses_checkout_not_artifact_root(
+    incomplete_summary: Path,
+    tmp_path: Path,
+) -> None:
+    artifact_root = incomplete_summary.parent.parent.resolve(strict=True)
+    assert artifact_root != REPO_ROOT
+    observed: list[SourceCheckout] = []
+
+    def matching_commit(**kwargs: Any) -> str:
+        assert kwargs["source_checkout"] == SourceCheckout(root=REPO_ROOT)
+        observed.append(kwargs["source_checkout"])
+        return "a" * 40
+
+    context = report_context.prepare_context(
+        arguments(
+            incomplete_summary,
+            tmp_path / "reports",
+            artifact_source_root=artifact_root,
+        ),
+        source_checkout=SourceCheckout(root=REPO_ROOT),
+        artifact_source_root=ArtifactSourceRoot(root=artifact_root),
+        identity_ops=report_context.ReportIdentityOps(
+            matching_checkout_head_commit=matching_commit,
+        ),
+    )
+
+    assert context.producer_git_commit == "a" * 40
+    assert observed == [SourceCheckout(root=REPO_ROOT)]
 
 
 def test_dry_run_is_side_effect_free(
@@ -246,7 +299,7 @@ def test_receipt_attributes_provenance_to_renderer_checkout(
     }
 
 
-def test_checkout_relative_approved_table_resolves_against_explicit_authority(
+def test_relative_approved_table_resolves_against_artifact_authority(
     exploratory_summary: Path,
     tmp_path: Path,
 ) -> None:
@@ -255,7 +308,12 @@ def test_checkout_relative_approved_table_resolves_against_explicit_authority(
         tmp_path / "input",
     )
     context = REPORT.prepare_report(
-        arguments(relative_summary, tmp_path / "reports", execute=True)
+        arguments(
+            relative_summary,
+            tmp_path / "reports",
+            execute=True,
+            artifact_source_root=REPO_ROOT,
+        )
     )
     assert len(context.tables) == 1
     assert context.tables[0].path == (

@@ -21,6 +21,9 @@
     "scratch",
     "source_checkout",
     "executor",
+    "execution_mode",
+    "snakemake_argv",
+    "workflow_config",
     "host",
     "process_id",
     "owner_token",
@@ -135,6 +138,22 @@
     },
     "executor": {
       "const": "local"
+    },
+    "execution_mode": {
+      "enum": [
+        "test-double",
+        "local-science-tools"
+      ]
+    },
+    "snakemake_argv": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/non_empty_string"
+      }
+    },
+    "workflow_config": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
     },
     "host": {
       "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/non_empty_string"

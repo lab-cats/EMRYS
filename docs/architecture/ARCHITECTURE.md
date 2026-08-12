@@ -28,15 +28,20 @@ order.
 NORAD currently exposes owner-local commands, SLURM entry points, a read-only
 local-pilot normalizer/projection plus semantic validation command, and one
 fixed source-checkout-bound Snakemake graph for local development. The static
-graph invokes public owners through closed dispatch records and schedules only
-content-bound verified-task records. It is not a public one-command lifecycle:
-run materialization, attempt finalization, resume/inspection, real science-tool
-execution, and cluster execution remain outside the implemented boundary.
+graph invokes public owners through hash-bound closed dispatch records,
+schedules only content-bound verified-task records, and feeds the existing
+artifact-index, run-summary, and HTML-report transactions. An internal
+filesystem-first lifecycle owns the run lock, immutable workflow attempts,
+terminal receipts, durable producer-entry ledgers, between-task resume, and
+read-only state inspection. It is
+not a public one-command lifecycle: request-to-run materialization, the public
+adapter, real science-tool execution, and cluster execution remain outside the
+implemented boundary.
 
 | Component group | Implemented owners | Principal inputs | Principal outputs |
 | --- | --- | --- | --- |
 | Input admission | `src/norad/ingestion/sample_manifest_admission/` | Explicit sample manifest and optional declared FASTQ paths | Schema/admission result and paired-FASTQ diagnostics |
-| Local-pilot orchestration | `src/norad/orchestration/local_pilot/`, `src/norad/contracts/orchestration/`, and `workflow/` | Explicit YAML request, ordered TSV manifests, reviewed fixed-profile record, canonical execution snapshot, and closed task dispatches | Canonical execution/reporting identity, semantic all-pass evidence, task-attempt records, content-bound verified-task records, and static local Snakemake scheduling; no public lifecycle or real-tool proof |
+| Local-pilot orchestration | `src/norad/orchestration/local_pilot/`, `src/norad/contracts/orchestration/`, and `workflow/` | Explicit YAML request, ordered TSV manifests, reviewed fixed-profile record, canonical execution/config snapshots, hash-bound task dispatches, and an already materialized run | Canonical execution/reporting identity, semantic all-pass evidence, durable task/reporting start records, task-attempt and verified records, immutable workflow attempts, derived inspection state, and between-task resume; no public lifecycle CLI or real-tool proof |
 | Reference preparation | Owners `00a`, `00b`, and `00c` under `src/norad/stages/` | Reference FASTA, GTF, and tool parameters | STAR index, BED12, and FASTA sidecars |
 | Per-sample processing and evidence | Owners `01`–`06` under `src/norad/stages/` plus evidence owners `02b` and `03` | Declared reads, references, and preceding owner artifacts | Aligned/canonical/duplicate-marked/split BAMs plus QC and orientation evidence |
 | Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owner `09` | Declared partitions, sample order, reference context, and upstream receipts | Cohort VCFs, annotated candidates, and paired-CMH ranked candidates |
@@ -128,14 +133,25 @@ layer.
 
 Static reporting follows that rule through the private
 [`_run_report/`](../../src/norad/reporting/_run_report/README.md) package.
-The installed `python -I -m norad build report` route is owned directly by
-[`report.py`](../../src/norad/reporting/report.py). Its required admitted
-checkout governs contract-relative paths and renderer identity. Private owners separate
+The installed `python -X pycache_prefix=/dev/null -I -m norad build report` route is owned directly by
+[`report.py`](../../src/norad/reporting/report.py). Its admitted source checkout
+governs code and renderer identity, while the separately admitted artifact root
+governs contract-relative run inputs. Private owners separate
 immutable models, explicit input/context validation, structured view data,
 Jinja rendering, v2 receipt projection, and one receipt-last transaction. The
 single packaged HTML template and CSS resource are the complete rendering
 runtime; reporting has no PDF, external renderer, compatibility facade, shell
 wrapper, or format-selection surface.
+
+The local lifecycle consumes only the direct public reporting-transaction
+validator in `reporting/transaction_validation.py`; it does not import a
+reporting-private package or turn rendering into completion authority. Source
+checkout identity and the independent artifact-source root are admitted by the
+neutral `libraries/source_authority.py` seam. Completion is derived only after
+every required owner scope has a complete durable start-to-verification chain
+and all three reporting transactions are semantically revalidated through the
+same irreversible-entry policy. An entered but incomplete scope blocks
+automatic resume; an unentered scope remains pending.
 
 ## Identity, inputs, and outputs
 
@@ -163,8 +179,11 @@ The downstream product flow is one-way:
    supplied scientific-review and report-table inputs and publishes canonical
    JSON with deterministic TSV projections.
 4. The static report owner consumes that canonical summary and authorized
-   supplemental tables under one admitted source-checkout authority, then
+   supplemental tables under distinct admitted code and artifact roots, then
    publishes HTML, summary TSV, and the v2 receipt last.
+5. The local lifecycle independently re-admits the exact required task-start
+   and verified-task roster plus all three reporting start/completion chains,
+   then publishes the immutable workflow-attempt receipt last.
 
 Operational evidence owners sit beside this product flow. Runtime, reference,
 and storage observations can inform execution or review, but do not become

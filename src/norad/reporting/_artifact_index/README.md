@@ -1,44 +1,39 @@
 # Artifact-index internals
 
 This private package implements the grouped
-`python -I -m norad build artifact-index` route through
+`python -X pycache_prefix=/dev/null -I -m norad build artifact-index` route through
 [`builder.py`](builder.py). The former direct script is retired without a
 compatibility shim. [`api.py`](api.py) is the narrow private import boundary
-used by sibling reporting owners. In addition to artifact parsing, validation,
-serialization, and publication primitives, it exposes the shared
-`SourceCheckout` token, admission error, and admission function without
-importing the command builder. It is not another command or public application
-API.
+used by sibling reporting owners for deliberate artifact parsing, validation,
+serialization, and transaction primitives. It is not another command or
+public application API. Neutral filesystem authorities live directly in
+[`libraries/source_authority.py`](../../libraries/source_authority.py); this
+private package does not forward them.
 
 The grouped dispatcher owns the lightweight public parser and imports the
 private builder only after selecting this command. Help, parser failures, and
 unrelated installed commands therefore do not load artifact-index runtime
-dependencies. After argument parsing, the builder uses the required
-`--source-checkout` with the root-only
-[`source_checkout.py`](source_checkout.py) authority to admit the source
-checkout that owns the artifact-index implementation before it validates run
-inputs or builds a context. Admission requires one canonical, nonsymlink NORAD
-Git top level and exact bytes between the executing package and that checkout.
+dependencies. After argument parsing, the builder admits the required
+`--source-checkout` and independent `--artifact-source-root` before validating
+run inputs or building a context. Checkout admission requires one canonical,
+nonsymlink NORAD Git top level and exact bytes between the executing package
+and that checkout.
 Help and parser failures therefore remain available without checkout admission;
 after parsing succeeds, a checkout or package mismatch fails closed before an
-input diagnostic. The admitted `SourceCheckout` remains on `BuildContext`
-through publication. Its root governs relative inventory and native-contract
-paths, Git `HEAD` resolution and producer existence and hashing, and
-predecessor, post-publish, and rollback record validation. The authority caches
-neither Git commit nor producer state; the later `HEAD` probe ignores ambient
-`GIT_*` routing while preserving unrelated environment state. Those
+input diagnostic. Both admitted values remain on `BuildContext` through
+publication. The artifact root governs relative inventory and native-contract
+paths plus predecessor, post-publish, and rollback record validation. The
+checkout governs Git `HEAD` resolution and producer existence and hashing. The
+authority caches neither Git commit nor producer state; the later `HEAD` probe
+ignores ambient `GIT_*` routing while preserving unrelated environment state. Those
 observations stay at their established points in context construction,
 preserving their timing, diagnostics, and serialized evidence.
 
-The grouped `python -I -m norad build run-summary` route uses the same checkout
-authority through `api.py`, not through the artifact-index command builder.
-After lightweight parsing selects the route, the private run-summary builder
-admits its required `--source-checkout` before reading run inputs. That token
-remains on the run-summary build context; its root governs contract-relative
-artifact, science, and approval paths and semantic, predecessor,
-post-publication, and rollback validation. Run-summary Git admission and later
-`HEAD` resolution also ignore ambient `GIT_*` routing while preserving
-unrelated environment state.
+The grouped `python -X pycache_prefix=/dev/null -I -m norad build run-summary` route imports both neutral
+authorities directly, not through this package or the artifact-index command
+builder. Its checkout governs producer identity; its artifact root governs
+contract-relative artifact, science, and approval paths plus semantic,
+predecessor, post-publication, and rollback validation.
 
 The modules keep observed responsibilities separate: the curated run-summary
 API, exact contract loading, models and rosters, explicit adapter registration,
@@ -69,7 +64,7 @@ coordinator, rollback, recovery, and cleanup order. Its frozen
 passed explicitly by tests; production uses the immutable default. The private
 builder owns only command coordination and exposes no publication or contract
 modules for patching. Run-summary assembly reaches deliberately shared
-transaction primitives through `api.py`; static reporting consumes only its
-checkout-admission and Git-identity boundary. Neither imports the command
+transaction primitives through `api.py`; static reporting imports neutral
+checkout admission and Git identity directly. Neither imports the command
 builder. These internals do not change artifact schemas, serialized bytes,
 source discovery policy, evidence states, diagnostics, or publication order.

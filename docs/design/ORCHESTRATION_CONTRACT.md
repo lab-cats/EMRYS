@@ -3,13 +3,23 @@
 This document is the binding architecture for NORAD's first local Snakemake
 pilot. B2 implements its closed machine schemas, read-only request normalizer,
 reporting projection, and semantic all-pass checker. B3 implements the fixed
-local-CMH profile, static thirteen-rule Snakemake graph, local executor profile,
+local-CMH profile, static thirteen-scientific-owner-rule Snakemake graph, local executor profile,
 and generic task boundary that publishes task attempts and content-bound
-verified records. It does not claim that aggregate lifecycle finalization,
-reporting-tail scheduling, a public run/resume/inspect adapter, or real
-science-tool execution exists. Current scientific behavior remains with the
+verified records. B4 implements the three reporting rules and the
+internal durable producer-entry, immutable-attempt, terminal-receipt,
+between-task-resume, and
+read-only-inspection APIs for an already materialized run. It still adds no
+public run/resume/inspect adapter or real science-tool execution. Current
+scientific behavior remains with the
 applicable functional owner, and exact semantic identities and artifact edges remain in
 [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md).
+
+B4 assumes a single-user, cooperative local workspace. It rejects admitted
+symlink components, leaf substitution, late leaf collisions, and unstable
+bytes or closed rosters, but it is not a defense against a hostile process
+concurrently renaming ancestor directories or changing mount namespaces. Such
+interference invalidates the evidence boundary and requires external isolation
+and explicit reconciliation, never automatic repair.
 
 The first implementation is deliberately source-checkout-bound and local. A
 SLURM executor, a local Linux VM, CSU execution, and an installed standalone
@@ -191,6 +201,19 @@ source commit, profile digest, and observed required-tool versions; otherwise
 the run becomes blocked pending an explicit compatibility or new-profile
 decision.
 
+Each workflow attempt binds one canonical attempt-specific workflow-config
+snapshot by relative path and SHA-256. That config binds every owner/scope
+dispatch by absolute path and SHA-256, and the task runner admits the exact
+expected digest before parsing or invoking a producer. Request snapshot,
+attempt, config, dispatch, task-attempt, and verified-record identities therefore
+form one explicit chain; neither a pathname nor mutable Snakemake parameters can
+substitute for it.
+
+On resume, a completed task keeps the exact predecessor dispatch reference
+already bound in its verified record; only pending tasks receive new-attempt
+dispatches. Changing producer, validator, input, output, or other dispatch
+semantics invalidates reuse instead of asking Snakemake to infer compatibility.
+
 The same identity envelope maps idempotently to the same run. Non-identity
 admission metadata may differ without changing that mapping. A changed bound
 input, manifest order, reference, scientific policy, or profile digest creates
@@ -278,6 +301,8 @@ One operator-selected workspace contains immutable run directories:
     primary_analysis_policy.json
     reporting_run_contract.json
     artifact_inventory.tsv
+    workflow-configs/<workflow-attempt-id>.json
+    dispatch/<workflow-attempt-id>/<machine-key>/<scope-id>.json
   results/                       owner-native outputs and validation reports
   products/                      artifact index, run summary, and HTML report
   attempts/<workflow-attempt-id>/
@@ -287,8 +312,13 @@ One operator-selected workspace contains immutable run directories:
       task-attempt.json
       stdout.log
       stderr.log
+    released-run-lock.json       immutable evidence of outer-lock release
     attempt-receipt.json
+  state/task-starts/<machine-key>/<scope-id>.json
   state/verified/<machine-key>/<scope-id>.json
+  state/reporting/<transaction-kind>/
+    start.json
+    verified.json
   locks/run.lock
   .snakemake/
 ```
@@ -323,19 +353,37 @@ planning nor doctor invokes owner producers or validators.
 One Snakemake job owns one functional-owner scope. Producer and validator are
 not separate DAG nodes. A job performs, in order:
 
-1. owner residue and input preflight;
-2. the owner's public producer command;
-3. structural admission of the declared native output set;
-4. the owner's public validator in execute mode;
-5. a generic parser requiring the exact seven-column validation header, at
+1. immutable identity, dispatch, input, and declared-destination preflight;
+2. durable create-exclusive publication of the scope's task-start record;
+3. the owner's public producer command, including its owner-local no-clobber
+   and recovery-residue preflight;
+4. structural admission of the declared native output set;
+5. the owner's public validator in execute mode;
+6. a generic parser requiring the exact seven-column validation header, at
    least one declared row, and `status=pass` for every row;
-6. stable-input rechecks; and
-7. atomic publication of the verified task record.
+7. stable-input rechecks; and
+8. atomic publication of the verified task record.
 
 Validators may publish `status=fail` rows and still exit zero. Consequently,
 producer exit, validator exit, and semantic report status are three distinct
 facts. A job fails after preserving the validation report when any fact is not
 successful.
+
+The task-start record is published only after all read-only orchestration
+preflight succeeds and immediately before the first producer call. It binds
+the run, execution, profile, workflow attempt, workflow config, exact dispatch,
+task attempt, owner, scope, and owner run token. Once this boundary is crossed,
+the scope is considered entered: a missing, failed, interrupted, malformed, or
+otherwise incomplete post-entry chain is `blocked` and is never automatically
+retried in version 1. A scope with no start record remains pending and may be
+run by a later attempt.
+
+A failed read-only preflight may retain one attempt-local diagnostic record and
+its stdout/stderr captures with `task_start_record=null`, no command execution,
+and no native mutation claim. The terminal workflow receipt binds that exact
+pre-entry record so deleting it cannot erase history. Because no producer-entry
+record exists, a later attempt may retry the scope after the read-only blocker
+is corrected. This pre-entry shape is distinct from every post-entry failure.
 
 The verified task record is the rule's scheduling output. Native scientific
 outputs, validation reports, receipts, backups, and recovery evidence are not
@@ -370,9 +418,9 @@ The run state is derived rather than edited in place:
 | --- | --- |
 | `prepared` | Immutable contract exists; no workflow attempt has begun |
 | `running` | Exactly one nonterminal attempt demonstrably owns the run lock through a live lifecycle process |
-| `resume_available` | Latest attempt failed or was interrupted at a clean owner boundary; compatibility and residue checks pass |
-| `blocked` | Identity is incompatible or owner lock/partial/backup/staging/recovery state is ambiguous |
-| `local_pipeline_complete` | Latest attempt receipt binds every required verified task plus the validated artifact-index, run-summary, and HTML-report transactions |
+| `resume_available` | Latest attempt failed or was interrupted; every entered owner/reporting scope has a complete revalidated start-to-verification chain, every remaining scope has no start record, and compatibility checks pass |
+| `blocked` | Identity is incompatible; the lock, attempt, task-start, reporting-start, or completion roster is malformed; or any entered scope lacks complete verified evidence |
+| `local_pipeline_complete` | Latest attempt receipt binds every required task-start and verified task plus complete start-to-verification chains for the artifact-index, run-summary, and HTML-report transactions |
 
 A workflow attempt begins with an immutable `attempt.json` and ends with one
 receipt published last as `succeeded`, `failed`, `interrupted`, or `blocked`.
@@ -380,11 +428,15 @@ Attempts form a linear supersession chain. A terminal attempt is never reopened,
 and a completed run refuses another execute or resume operation.
 
 The lifecycle process handles an ordinary signal by stopping delegated work,
-preserving task and owner state, publishing an `interrupted` receipt when the
-clean boundary can be proved, and then releasing its run lock. A nonterminal
-attempt left by an unhandled crash or power loss is not guessed complete or
-automatically repaired. If live lock ownership and a clean boundary cannot be
-proved, inspection reports it as blocked for explicit reconciliation.
+preserving task and owner state, and proving a between-task boundary when
+possible. It
+atomically moves the owned public run lock to the attempt-local immutable
+`released-run-lock.json`, then publishes an `interrupted` receipt last and
+binds that release evidence. A nonterminal attempt left by an unhandled crash
+or power loss is not guessed complete or automatically repaired. If live lock
+ownership and an unentered-or-fully-verified boundary cannot be proved,
+inspection reports it as
+blocked for explicit reconciliation.
 
 Snakemake automatic retries are zero. NORAD version 1 does not expose automatic
 `--unlock`, `--cleanup-metadata`, `--forceall`, `--rerun-incomplete`, or blind
@@ -397,17 +449,37 @@ reused only after NORAD rechecks:
 
 - the execution contract and profile digest;
 - clean source-checkout and required-tool compatibility;
+- the exact closed task-start and reporting-start rosters;
+- the task-start, task-attempt, and verified-task identity chain;
 - the verified-record schema and complete hash bindings;
 - every declared native output and native receipt;
 - the persisted validation report and all-pass result; and
-- absence of owner locks, partials, backups, staging paths, and recovery
-  markers.
+- that every scope without verified completion has never published its durable
+  producer-entry record.
 
 Timestamp freshness and Snakemake completion metadata are insufficient. A
 failed or missing recheck never causes automatic deletion or rerun over an
 ambiguous output set. It yields `blocked` and routes to the applicable owner
-recovery instructions. Version 1 supports only clean task-boundary resume; it
-does not automate owner-internal transaction recovery.
+recovery instructions. Version 1 supports only between-task resume. Once an
+owner or reporting producer has crossed its durable start boundary, failure or
+interruption is not automatically recoverable even when no output appears to
+have been written. Version 1 does not automate owner-internal transaction
+recovery.
+
+This ledger is automatic-rerun authority, not a claim that inspection can
+globally prove the absence of every file a manual or foreign invocation might
+leave behind. Each pending owner still performs its existing no-clobber and
+recovery-residue preflight when it first enters. If that check refuses foreign
+state, the already-entered scope becomes blocked with preserved diagnostics;
+the orchestrator never deletes or bypasses the state.
+
+The internal resume invocation uses exactly `--rerun-triggers input` plus
+`--ignore-incomplete`, and only after the independent checks above succeed.
+Pinned Snakemake characterization requires the latter when an interrupted job
+left a fully NORAD-validated output marked incomplete in disposable engine
+metadata. This fixed internal flag does not admit an unverified output, erase
+metadata, force a rule, or become an operator-exposed recovery control. Initial
+execution never uses it.
 
 ## Lock ordering and ownership
 
@@ -423,21 +495,35 @@ owner locks keep their current authority. NORAD never breaks an owner lock,
 deletes recovery residue, or considers a lock stale because time elapsed.
 
 The run lock records run, workflow attempt, process, host, creation time, and an
-unpredictable owner token. On a blocked attempt, the outer lock may be released
-only after the immutable terminal record is synchronized; owner recovery state
-remains untouched.
+unpredictable owner token. Terminalization never conditionally unlinks its
+public pathname: it atomically renames the still-owned lock to the exact absent
+attempt-local `released-run-lock.json`, validates and synchronizes that retained
+evidence, and publishes the terminal receipt last. A foreign replacement at the
+public lock path is never removed. Every terminal receipt binds its released
+lock evidence; missing, moved, malformed, or mismatched evidence makes
+inspection report `blocked`. Owner recovery state remains untouched.
 
 ## Inspection and completion
 
-Inspection reads the normalized contract, attempt chain, verified task records,
-owner receipts and validation reports, and observable lock/recovery paths. It
-reports pending, running, verified, failed, resume-available, and blocked scopes,
-plus the exact evidence ceiling. It never infers NORAD state from `.snakemake/`
-or repairs what it observes.
+Inspection reads the normalized contract, exact attempt and task trees,
+task-start and verified-task records, reporting start/completion records, owner
+receipts and validation reports, and the aggregate run-lock evidence. It
+reports pending, entered, verified, failed, resume-available, and blocked
+scopes, plus the exact evidence ceiling. It never accepts a caller-supplied
+residue list, infers NORAD state from `.snakemake/`, or repairs what it
+observes.
 
-The final completion operation must recheck every required profile scope and
-the existing reporting transactions before publishing the workflow-attempt
-receipt. `local_pipeline_complete` means real or fixture local execution only as
+Each reporting transaction follows the same irreversible entry policy. Its
+normal read-only dry-run occurs before `start.json`; the start is then published
+before the execute command. `verified.json` is published only after the command
+returns, the native receipt and full transaction are semantically re-admitted,
+and the reporting owner's declared control namespace is clean. A reporting
+start without that completion evidence blocks resume.
+
+The final completion operation must recheck every required profile scope, bind
+the ordered pre-entry diagnostic and task-start rosters, and admit all three reporting
+start-to-verification chains before publishing the workflow-attempt receipt.
+`local_pipeline_complete` means real or fixture local execution only as
 identified by the admitted inputs. It does not establish CSU execution,
 production-scale behavior, completed Step `09c` scientific review, validated
 editing sites, or biological readiness.

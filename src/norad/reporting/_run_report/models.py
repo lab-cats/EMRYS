@@ -12,7 +12,7 @@ from norad.contracts.scientific_evidence import review_package
 from norad.reporting._files import FileSnapshot
 
 if TYPE_CHECKING:
-    from norad.reporting._artifact_index.api import SourceCheckout
+    from norad.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
 
 PRODUCER = "norad.reporting.report"
 PRODUCER_VERSION = "2.0.0"
@@ -146,6 +146,7 @@ class LockOwnership:
 @dataclass(frozen=True)
 class ReportContext:
     source_checkout: SourceCheckout
+    artifact_source_root: ArtifactSourceRoot
     producer_git_commit: str
     run_summary_path: Path
     run_summary_snapshot: FileSnapshot

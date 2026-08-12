@@ -68,6 +68,7 @@ coherent semantic package, not a mixture of old and final owners.
 | Step `09` contract | `contracts/scientific_evidence/step09.py` | Step `09`, Step `09c`, and artifact consumers share the public output contract, not CMH implementation or review policy. |
 | Review-package contract | `contracts/scientific_evidence/review_package.py` | Step `09c`, artifact indexing, and run-summary science share the public package roster/state reducer, not private evidence policy or recovery. |
 | Orchestration records | `contracts/orchestration/` | The local-pilot application and tests share closed request, profile, execution, attempt, task, and verified-record schemas plus canonical JSON; functional owners do not import it. |
+| Source and artifact-root authority | `libraries/source_authority.py` | Reporting and the local lifecycle share canonical source-checkout/package identity plus a distinct artifact-source root. Git cleanliness is lifecycle attempt policy, not a reporting-transaction success claim. |
 
 These are the complete approved neutral implementation seams. Similar names or
 two local helpers do not create sharing authority. Keep the first use local;
@@ -86,7 +87,7 @@ imported across peers.
 | `libraries/` | `contracts/` and lower neutral libraries in an acyclic chain | none | functional/application owners |
 | `stages/`, `analyses/`, `evidence/` | `contracts/`, approved `libraries/`, owner-local code | owner-local tools and peer artifacts through contracts | peer implementation, ingestion, or reporting implementation |
 | `ingestion/` | `contracts/`, approved `libraries/`, ingestion-local code | external inputs; emitted validated declarations | functional-owner implementation or execution |
-| `orchestration/` | `contracts/`, approved `libraries/`, orchestration-local code | public owner commands and declared artifacts only | peer-private implementation or scientific logic |
+| `orchestration/` | `contracts/`, approved `libraries/`, orchestration-local code, and the direct public `reporting.transaction_validation` completion API | public owner commands and declared artifacts only | peer-private implementation or scientific logic |
 | `reporting/` | `contracts/`, approved `libraries/`, reporting-local code | explicit public artifacts and summaries | functional-owner implementation, input discovery, or analysis execution |
 
 Cross-owner data flow follows the explicit edges in `STAGE_MAP.md`. No owner
@@ -104,3 +105,6 @@ interface contains explicitly migrated owner routes and the read-only semantic
 all-pass check. The packaged internal task module is invoked only by the fixed
 source-checkout workflow; it is not a public lifecycle command, scheduler
 abstraction, universal transaction framework, or generic stage dispatcher.
+The internal lifecycle consumes only reporting's direct semantic transaction
+validator; it does not import `_artifact_index`, `_run_summary`, or
+`_run_report` internals.

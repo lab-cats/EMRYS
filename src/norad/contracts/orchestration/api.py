@@ -7,12 +7,15 @@ import json
 import re
 from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime
+from functools import cache, lru_cache
 from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
 from referencing import Registry, Resource
+
+from norad.libraries.source_authority import controlled_python_argv
 
 SCHEMA_ROOT = Path(__file__).resolve().parents[1] / "schemas" / "orchestration" / "v1"
 SCHEMA_NAMES = (
@@ -21,10 +24,14 @@ SCHEMA_NAMES = (
     "execution",
     "reference",
     "policy",
+    "run-lock",
     "workflow-attempt",
     "attempt-receipt",
+    "task-start",
     "task-attempt",
     "verified-task",
+    "reporting-start",
+    "verified-reporting",
 )
 SCHEMA_PATHS = {
     "common": SCHEMA_ROOT / "common.schema.json",
@@ -62,6 +69,24 @@ def _reject_nonstandard_constant(value: str) -> None:
     )
 
 
+def load_json_object_bytes(data: bytes, label: str = "JSON record") -> dict[str, Any]:
+    """Parse admitted UTF-8 bytes without duplicate keys or numeric constants."""
+
+    try:
+        value = json.loads(
+            data.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_nonstandard_constant,
+        )
+    except ContractValidationError:
+        raise
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ContractValidationError(f"Could not parse {label}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ContractValidationError(f"{label} must contain one object")
+    return value
+
+
 def load_json_object(path: str | Path) -> dict[str, Any]:
     """Load one strict UTF-8 JSON object without accepting duplicate keys."""
 
@@ -69,23 +94,12 @@ def load_json_object(path: str | Path) -> dict[str, Any]:
     if not record_path.is_file():
         raise ContractValidationError(f"JSON record is not a file: {record_path}")
     try:
-        with record_path.open(encoding="utf-8") as stream:
-            value = json.load(
-                stream,
-                object_pairs_hook=_reject_duplicate_keys,
-                parse_constant=_reject_nonstandard_constant,
-            )
-    except ContractValidationError:
-        raise
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        data = record_path.read_bytes()
+    except OSError as exc:
         raise ContractValidationError(
-            f"Could not parse JSON record {record_path}: {exc}"
+            f"Could not read JSON record {record_path}: {exc}"
         ) from exc
-    if not isinstance(value, dict):
-        raise ContractValidationError(
-            f"JSON record must contain one object: {record_path}"
-        )
-    return value
+    return load_json_object_bytes(data, f"JSON record {record_path}")
 
 
 def canonical_json_bytes(value: Any) -> bytes:
@@ -141,6 +155,7 @@ def load_schema_registry() -> tuple[dict[str, dict[str, Any]], Registry]:
     return schemas, registry
 
 
+@cache
 def schema_validator(name: str) -> Draft202012Validator:
     """Return a validator for one public schema selector."""
 
@@ -411,7 +426,14 @@ def _validate_execution(record: Mapping[str, Any]) -> None:
 
 
 def _validate_identity_record(name: str, record: Mapping[str, Any]) -> None:
-    if name == "workflow-attempt":
+    if name == "run-lock":
+        _require_distinct_ids(record, "run_id", "workflow_attempt_id", "owner_token")
+        _require_attempt_time(
+            record["workflow_attempt_id"],
+            record["created_at"],
+            "workflow_attempt_id",
+        )
+    elif name == "workflow-attempt":
         _require_distinct_ids(record, "run_id", "workflow_attempt_id", "owner_token")
         if (
             record.get("supersedes_workflow_attempt_id")
@@ -426,9 +448,173 @@ def _validate_identity_record(name: str, record: Mapping[str, Any]) -> None:
         tool_names = [tool["name"] for tool in record["required_tools"]]
         if len(tool_names) != len(set(tool_names)):
             raise ContractValidationError("Workflow required tool names must be unique")
+        if tool_names != sorted(tool_names):
+            raise ContractValidationError(
+                "Workflow required tool identities must use normalized name order"
+            )
+        tools = {tool["name"]: tool for tool in record["required_tools"]}
+        if set(("python", "snakemake")) - tools.keys():
+            raise ContractValidationError(
+                "Workflow required tools must include python and snakemake"
+            )
+        runtime_path = record["normalizer"]["path"]
+        if (
+            tools["python"]["path"] != runtime_path
+            or tools["snakemake"]["path"] != runtime_path
+        ):
+            raise ContractValidationError(
+                "Workflow Python, Snakemake, and normalizer paths must be identical"
+            )
+        argv = list(record["snakemake_argv"])
+        expected_python_prefix = list(
+            controlled_python_argv(runtime_path, "-m", "snakemake")
+        )
+        if argv[: len(expected_python_prefix)] != expected_python_prefix:
+            raise ContractValidationError(
+                "Workflow Snakemake argv must launch the bound controlled Python module"
+            )
+        forbidden = {
+            "--unlock",
+            "--cleanup-metadata",
+            "--forceall",
+            "--rerun-incomplete",
+            "--force",
+        }
+        observed_forbidden = sorted(forbidden.intersection(argv))
+        if observed_forbidden:
+            raise ContractValidationError(
+                "Workflow Snakemake argv contains forbidden recovery controls: "
+                + ", ".join(observed_forbidden)
+            )
+        rerun_positions = [
+            index for index, value in enumerate(argv) if value == "--rerun-triggers"
+        ]
+        ignore_incomplete_positions = [
+            index for index, value in enumerate(argv) if value == "--ignore-incomplete"
+        ]
+        if record["operation"] == "execute":
+            if rerun_positions or ignore_incomplete_positions:
+                raise ContractValidationError(
+                    "Initial execution must use Snakemake's default incomplete-state "
+                    "and rerun behavior"
+                )
+        elif (
+            len(rerun_positions) != 1
+            or rerun_positions[0] + 1 >= len(argv)
+            or argv[rerun_positions[0] + 1] != "input"
+            or len(ignore_incomplete_positions) != 1
+            or ignore_incomplete_positions[0] != rerun_positions[0] + 2
+        ):
+            raise ContractValidationError(
+                "Resume must use exactly --rerun-triggers input and --ignore-incomplete"
+            )
     elif name == "attempt-receipt":
         _require_distinct_ids(record, "run_id", "workflow_attempt_id")
-    elif name in {"task-attempt", "verified-task"}:
+        status = record["status"]
+        exit_code = record["snakemake_exit_code"]
+        signal_number = record["termination_signal"]
+        blockers = list(record["blockers"])
+        message = record["message"]
+        task_identities = [
+            (
+                item["machine_key"],
+                item["scope"]["scope_type"],
+                item["scope"]["scope_id"],
+            )
+            for item in record["verified_tasks"]
+        ]
+        start_identities = [
+            (
+                item["machine_key"],
+                item["scope"]["scope_type"],
+                item["scope"]["scope_id"],
+            )
+            for item in record["task_start_records"]
+        ]
+        preentry_identities = [
+            (
+                item["workflow_attempt_id"],
+                item["machine_key"],
+                item["scope"]["scope_type"],
+                item["scope"]["scope_id"],
+            )
+            for item in record["preentry_task_attempt_records"]
+        ]
+        if preentry_identities != sorted(preentry_identities):
+            raise ContractValidationError(
+                "Attempt receipt preentry_task_attempt_records must use normalized "
+                "attempt-owner-scope order"
+            )
+        if len(preentry_identities) != len(set(preentry_identities)):
+            raise ContractValidationError(
+                "Attempt receipt preentry_task_attempt_records must be unique"
+            )
+        if start_identities != sorted(start_identities):
+            raise ContractValidationError(
+                "Attempt receipt task_start_records must use normalized owner-scope "
+                "order"
+            )
+        if len(start_identities) != len(set(start_identities)):
+            raise ContractValidationError(
+                "Attempt receipt task_start_records must have unique owner scopes"
+            )
+        if len(task_identities) != len(set(task_identities)):
+            raise ContractValidationError(
+                "Attempt receipt verified_tasks must have unique owner scopes"
+            )
+        if not set(task_identities).issubset(start_identities):
+            raise ContractValidationError(
+                "Attempt receipt verified_tasks must have corresponding task starts"
+            )
+        if status != "blocked" and set(task_identities) != set(start_identities):
+            raise ContractValidationError(
+                "Non-blocked attempt receipts require every task start to be verified"
+            )
+        for kind, reporting_state in record["reporting_completion_records"].items():
+            if (
+                reporting_state["verified"] is not None
+                and reporting_state["start"] is None
+            ):
+                raise ContractValidationError(
+                    f"Attempt receipt {kind} verified reporting requires a start"
+                )
+            if status != "blocked" and (
+                (reporting_state["start"] is None)
+                != (reporting_state["verified"] is None)
+            ):
+                raise ContractValidationError(
+                    f"Non-blocked attempt receipt has incomplete {kind} reporting"
+                )
+        if status == "succeeded" and (exit_code != 0 or signal_number is not None):
+            raise ContractValidationError(
+                "Successful attempt receipt requires exit 0 and no signal"
+            )
+        if status == "failed" and (exit_code is None or signal_number is not None):
+            raise ContractValidationError(
+                "Failed attempt receipt requires an observed exit and no signal"
+            )
+        if status == "interrupted" and (exit_code is not None or signal_number is None):
+            raise ContractValidationError(
+                "Interrupted attempt receipt requires a signal and no exit code"
+            )
+        if status == "blocked":
+            if not blockers:
+                raise ContractValidationError(
+                    "Blocked attempt receipt requires at least one blocker"
+                )
+            if exit_code is not None and signal_number is not None:
+                raise ContractValidationError(
+                    "Blocked attempt receipt may bind at most one exit or signal"
+                )
+        elif blockers:
+            raise ContractValidationError(
+                "Only blocked attempt receipts may retain blockers"
+            )
+        if status != "succeeded" and message is None:
+            raise ContractValidationError(
+                "Every non-success attempt receipt requires a message"
+            )
+    elif name in {"task-start", "task-attempt", "verified-task"}:
         _require_distinct_ids(
             record,
             "run_id",
@@ -442,16 +628,31 @@ def _validate_identity_record(name: str, record: Mapping[str, Any]) -> None:
                 record["started_at"],
                 "task_attempt_id",
             )
+    elif name in {"reporting-start", "verified-reporting"}:
+        _require_distinct_ids(record, "run_id", "origin_workflow_attempt_id")
 
 
-def validate_record(
+def _is_strict_json_value(value: Any) -> bool:
+    """Return whether canonical bytes preserve the value's Python JSON types."""
+
+    if value is None or type(value) in {str, int, float, bool}:
+        return True
+    if type(value) is list:
+        return all(_is_strict_json_value(item) for item in value)
+    if type(value) is dict:
+        return all(
+            type(key) is str and _is_strict_json_value(item)
+            for key, item in value.items()
+        )
+    return False
+
+
+def _validate_record_uncached(
     name: str,
     record: Any,
     *,
     profile: Mapping[str, Any] | None = None,
 ) -> None:
-    """Validate one record against its closed schema and B0 record semantics."""
-
     errors = schema_errors(name, record)
     if errors:
         raise ContractValidationError(f"Invalid {name} record:\n" + "\n".join(errors))
@@ -477,6 +678,49 @@ def validate_record(
     _validate_identity_record(name, record)
 
 
+@lru_cache(maxsize=2048)
+def _validate_canonical_record(
+    name: str,
+    record_data: bytes,
+    profile_data: bytes | None,
+) -> None:
+    """Cache only successful validation of exact canonical JSON content."""
+
+    record = load_json_object_bytes(record_data, f"canonical {name} record")
+    profile = (
+        None
+        if profile_data is None
+        else load_json_object_bytes(profile_data, "canonical profile record")
+    )
+    _validate_record_uncached(name, record, profile=profile)
+
+
+def validate_record(
+    name: str,
+    record: Any,
+    *,
+    profile: Mapping[str, Any] | None = None,
+) -> None:
+    """Validate one record against its closed schema and B0 record semantics.
+
+    Runtime records are strict JSON values. Their canonical bytes form a safe,
+    bounded memoization key for this pure validation step; filesystem and
+    source-authority admission remains uncached in the owning boundaries.
+    Non-JSON-native Python values retain the original direct validation path.
+    """
+
+    if _is_strict_json_value(record) and (
+        profile is None or _is_strict_json_value(profile)
+    ):
+        _validate_canonical_record(
+            name,
+            canonical_json_bytes(record),
+            None if profile is None else canonical_json_bytes(profile),
+        )
+        return
+    _validate_record_uncached(name, record, profile=profile)
+
+
 def load_record(
     path: str | Path,
     name: str,
@@ -498,6 +742,7 @@ __all__ = (
     "canonical_json_bytes",
     "canonical_sha256",
     "load_json_object",
+    "load_json_object_bytes",
     "load_record",
     "load_schema_registry",
     "schema_errors",

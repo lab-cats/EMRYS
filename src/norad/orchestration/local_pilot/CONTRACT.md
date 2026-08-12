@@ -44,10 +44,65 @@ verified-task record only on complete success. Only the exact Step `00c`
 FAI/dictionary pair may be stationary external outputs, and its FASTA and
 parent must be canonical before producer invocation.
 
+After identity and owner-native preflight, the task boundary durably publishes
+the fixed `state/task-starts/<machine>/<scope>.json` record immediately before
+producer invocation. A post-start task attempt must bind that exact record and
+must end in a succeeded task-attempt plus verified-task chain to be reusable.
+If admission fails before start publication, the exact failed task attempt and
+its two logs are retained as a bound pre-entry diagnostic; because the owner
+never entered, a later attempt may retry that scope without erasing the earlier
+record.
+
 Snakemake schedules only verified-task records. Native artifacts, validation
 reports, receipts, logs, and recovery evidence are never disposable workflow
 outputs. Existing verified records are reusable only after read-only schema,
 identity, content, attempt, receipt, and semantic-report revalidation.
+
+The internal lifecycle owns aggregate serialization before Snakemake. A
+create-exclusive run lock is acquired before an exact absent attempt directory
+is created. Lock release atomically renames the public lock to the exact absent
+attempt-local immutable `released-run-lock.json`; it never conditionally
+unlinks the moved pathname. The moved inode and bytes are re-admitted and bound
+by the terminal receipt published after it. A foreign public replacement is
+never unlinked, and a foreign moved inode remains visible as recovery evidence.
+The attempt binds canonical
+execution, profile, and attempt-local workflow-config bytes; the config
+transitively binds each dispatch. The executor argument binds the exact reviewed
+`workflow/Snakefile` and absolute checked-in local workflow profile beneath the
+declared clean checkout, preventing run-directory profile shadowing. It invokes
+Snakemake only as `<bound-python> -I -m snakemake`; the exact lexical venv
+launcher, its stable executable target, Python version, Snakemake module
+version, normalizer path, and config are admitted as one runtime identity.
+Runtime source checkout and required-tool identities are observed before
+mutation and again after the child exits. Ordinary success, failure,
+interruption, and diagnosed ambiguity first retain released-lock evidence and
+then publish the immutable terminal receipt last.
+
+If attempt establishment fails after the public lock is acquired but before a
+complete attempt record exists, lifecycle still atomically retains the lock as
+`locks/released-<workflow-attempt-id>-run-lock.json`. That aggregate recovery
+evidence is never auto-deleted; inspection treats it, the partial attempt
+directory, or both as blocked state requiring explicit reconciliation.
+
+Only failed/interrupted between-task boundaries are automatically resumable. Resume
+requires the same run, profile, execution, source commit, executor, execution
+mode, and ordered tool identities. The closed task-start ledger must prove that
+every entered scope has a succeeded task-attempt and verified-task chain; an
+unverified scope must have no start, though an exact receipt-bound pre-entry
+failure may remain in an earlier attempt. Each reporting start must likewise
+have its exact verified completion. Its fixed Snakemake arguments add
+`--rerun-triggers input --ignore-incomplete`; this accepts already-admitted
+NORAD evidence despite engine metadata, but does not rerun or repair incomplete
+owner state. Blocked attempts remain blocked: B4 defines no reconciliation
+record that can supersede their historical ambiguity.
+
+Inspection reads the complete linear attempt chain, attempt-bound configs,
+terminal receipts, the closed task-start and reporting ledgers, recursively
+closed attempt-local task trees, verified task content, reporting transactions,
+and the live owned lock. Receipt references make deletion a blocker rather than
+turning entered work back into pending state. It ignores `.snakemake/`, performs
+no repair, and does not consider timestamps or output presence to be completion
+evidence.
 
 These results are local structural/no-science workflow facts. They are not
 owner-native receipts, real runtime or cluster proof, completed scientific

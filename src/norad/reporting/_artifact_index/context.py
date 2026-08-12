@@ -4,15 +4,17 @@ from __future__ import annotations
 
 import argparse
 from collections import Counter
-from dataclasses import replace
+from collections.abc import Callable
+from dataclasses import dataclass, replace
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from norad.contracts.artifacts import api as contracts
+from norad.libraries.source_authority import matching_clean_checkout_head_commit
 
 from .core import (
     canonical_digest,
     canonical_json_bytes,
-    get_git_commit,
     load_run_contract,
     new_attempt_id,
     sha256_bytes,
@@ -47,14 +49,29 @@ from .registry import ADAPTER_REGISTRY
 from .validation import validate_existing_transaction
 
 if TYPE_CHECKING:
-    from .source_checkout import SourceCheckout
+    from norad.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
+
+
+@dataclass(frozen=True, slots=True)
+class ArtifactIdentityOps:
+    """Explicit source-provenance observation used throughout publication."""
+
+    matching_clean_checkout_head_commit: Callable[..., str | None] = (
+        matching_clean_checkout_head_commit
+    )
+
+
+DEFAULT_ARTIFACT_IDENTITY_OPS = ArtifactIdentityOps()
 
 
 def prepare_context(
     arguments: argparse.Namespace,
     *,
     source_checkout: SourceCheckout,
+    artifact_source_root: ArtifactSourceRoot,
+    identity_ops: ArtifactIdentityOps = DEFAULT_ARTIFACT_IDENTITY_OPS,
 ) -> BuildContext:
+    source_root = artifact_source_root.root
     if not contracts.SAFE_ID_RE.fullmatch(arguments.run_id):
         raise ArtifactIndexError("run_id must match [A-Za-z0-9][A-Za-z0-9._-]*")
     run_contract_path = arguments.run_contract.expanduser().resolve()
@@ -63,7 +80,7 @@ def prepare_context(
     run_contract, run_contract_file_sha256 = load_run_contract(run_contract_path)
     inventory_rows = contracts.validate_inventory(
         inventory_path,
-        source_root=source_checkout.root,
+        source_root=source_root,
     )
     validate_inventory_registry(inventory_rows)
     inventory_sha256 = contracts.sha256_file(inventory_path)
@@ -91,7 +108,7 @@ def prepare_context(
     for row in inventory_rows:
         source = contracts.resolve_contract_path(
             row["source_path"],
-            source_root=source_checkout.root,
+            source_root=source_root,
         )
         if source == output_dir or output_dir in source.parents:
             raise ArtifactIndexError(
@@ -112,28 +129,32 @@ def prepare_context(
             records_dir=records_dir,
             artifacts_path=artifacts_path,
             receipt_path=receipt_path,
-            source_root=source_checkout.root,
+            source_root=source_root,
         )
 
     started_at = utc_now()
     attempt_id = new_attempt_id(started_at)
-    git_commit = get_git_commit(
-        source_root=source_checkout.root,
-        sanitize_git_routing=True,
+    git_commit = identity_ops.matching_clean_checkout_head_commit(
+        source_checkout=source_checkout,
+        package_root=Path(__file__).resolve().parents[2],
     )
+    if git_commit is None:
+        raise ArtifactIndexError(
+            "Artifact-index provenance requires a stable clean source checkout"
+        )
     evidence = producer_evidence(git_commit, source_root=source_checkout.root)
     inspections = [
         inspect_source(
             row,
             ADAPTER_REGISTRY[row["adapter"]],
-            source_root=source_checkout.root,
+            source_root=source_root,
         )
         for row in inventory_rows
     ]
     apply_run_contract_checks(inspections, run_contract)
     reconcile_native_transactions(
         inspections,
-        source_root=source_checkout.root,
+        source_root=source_root,
     )
     reconcile_scope_transactions(inspections)
     scientific_states = resolve_scientific_states(inspections)
@@ -160,7 +181,7 @@ def prepare_context(
             record,
             inventory_row,
             validator,
-            source_root=source_checkout.root,
+            source_root=source_root,
         )
         records.append(record)
         record_bytes.append(canonical_json_bytes(record))
@@ -193,6 +214,7 @@ def prepare_context(
     receipt_bytes = tsv_bytes(ARTIFACT_RECEIPT_HEADER, [receipt_row])
     context = BuildContext(
         source_checkout=source_checkout,
+        artifact_source_root=artifact_source_root,
         run_id=arguments.run_id,
         run_contract_path=run_contract_path,
         run_contract=run_contract,
@@ -216,6 +238,7 @@ def prepare_context(
         previous_attempt_id=previous_attempt_id,
         attempt_history=attempt_history,
         previous_receipt=existing,
+        source_identity_observer=identity_ops.matching_clean_checkout_head_commit,
     )
     validate_context_in_memory(context)
     return context
@@ -264,6 +287,19 @@ def recheck_inputs(context: BuildContext) -> None:
                 "Declared source changed after initial inspection: "
                 f"{inspection.row['source_path']}"
             )
+
+
+def recheck_source_identity(context: BuildContext) -> None:
+    """Re-attest the exact clean producer checkout bound into the receipt."""
+
+    observed = context.source_identity_observer(
+        source_checkout=context.source_checkout,
+        package_root=Path(__file__).resolve().parents[2],
+    )
+    if observed != context.receipt_row["git_commit"]:
+        raise ArtifactIndexError(
+            "Artifact-index producer checkout changed after provenance attribution"
+        )
 
 
 def print_context(context: BuildContext, execute: bool) -> None:

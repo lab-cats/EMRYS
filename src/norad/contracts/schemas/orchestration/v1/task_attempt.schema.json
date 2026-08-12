@@ -14,6 +14,7 @@
     "machine_key",
     "scope",
     "owner_run_token",
+    "task_start_record",
     "status",
     "started_at",
     "finished_at",
@@ -53,6 +54,16 @@
     },
     "owner_run_token": {
       "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/safe_id"
+    },
+    "task_start_record": {
+      "oneOf": [
+        {
+          "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "status": {
       "enum": [
@@ -124,6 +135,9 @@
           "producer": {
             "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/successful_command"
           },
+          "task_start_record": {
+            "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+          },
           "validator": {
             "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/successful_command"
           },
@@ -138,6 +152,43 @@
           },
           "failure_message": {
             "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "task_start_record": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "task_start_record"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "const": "failed"
+          },
+          "producer": {
+            "type": "null"
+          },
+          "validator": {
+            "type": "null"
+          },
+          "semantic_all_pass": {
+            "type": "null"
+          },
+          "stable_inputs_rechecked": {
+            "const": false
+          },
+          "validation_report": {
+            "type": "null"
+          },
+          "failure_message": {
+            "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/non_empty_string"
           }
         }
       }

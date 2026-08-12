@@ -11,13 +11,10 @@ from pathlib import Path
 from typing import Any
 
 from norad.contracts.artifacts import api as contracts
+from norad.reporting import transaction_validation
 from norad.reporting._artifact_index import api as adapter
 from norad.reporting._run_summary import science_projection as science
-from norad.reporting._run_summary.inputs import (
-    _fail,
-    _verify_file_snapshot,
-    _verify_report_table_snapshot,
-)
+from norad.reporting._run_summary.inputs import _fail
 from norad.reporting._run_summary.models import (
     RUN_SUMMARY_RECEIPT_HEADER,
     BuildContext,
@@ -61,64 +58,6 @@ class RunSummaryPublicationOps:
 DEFAULT_RUN_SUMMARY_PUBLICATION_OPS = RunSummaryPublicationOps()
 
 
-def _recheck_inputs(
-    context: BuildContext,
-    *,
-    ops: RunSummaryPublicationOps = DEFAULT_RUN_SUMMARY_PUBLICATION_OPS,
-) -> None:
-    _assert_output_directory_identity(context.paths)
-    for snapshot in context.input_snapshots:
-        _verify_file_snapshot("Artifact transaction input", snapshot)
-    for snapshot in context.report_table_snapshots:
-        _verify_report_table_snapshot(snapshot)
-    ops.validate_artifact_transaction(
-        run_id=context.run_id,
-        run_contract=context.run_contract,
-        run_contract_path=context.run_contract_path,
-        run_contract_file_sha256=context.run_contract_file_sha256,
-        inventory_path=context.inventory_path,
-        inventory_sha256=context.inventory_sha256,
-        inventory_rows=context.inventory_rows,
-        records_dir=context.records_dir,
-        artifacts_path=context.artifacts_path,
-        receipt_path=context.artifact_receipt_path,
-        require_current_source_locations=True,
-        source_root=context.source_checkout.root,
-    )
-    for snapshot in context.input_snapshots:
-        _verify_file_snapshot("Artifact transaction input", snapshot)
-    for snapshot in context.report_table_snapshots:
-        _verify_report_table_snapshot(snapshot)
-    if context.science_review_summary_path is not None:
-        if contracts.sha256_file(context.science_review_summary_path) != (
-            context.science_review_summary_sha256
-        ):
-            _fail("The explicit science-review summary changed")
-        normalized = ops.normalize_scientific_review(
-            summary_path=context.science_review_summary_path,
-            artifacts=context.artifacts,
-            run_id=context.run_id,
-            run_contract=context.run_contract,
-            generated_at=context.document["generated_at"],
-            git_commit=context.git_commit,
-            source_root=context.source_checkout.root,
-        )
-        if normalized != context.document["scientific_review"]["record"]:
-            _fail("The explicit scientific-review package changed")
-    approval_source = context.document["parameters"]["report_table_approvals"]
-    if context.report_table_approvals_path is None:
-        if approval_source is not None or context.document["approved_report_tables"]:
-            _fail("Run-summary approval state changed after preparation")
-    elif (
-        approval_source is None
-        or approval_source["path"] != str(context.report_table_approvals_path)
-        or approval_source["sha256"] != context.report_table_approvals_sha256
-        or approval_source["row_count"]
-        != len(context.document["approved_report_tables"])
-    ):
-        _fail("The explicit report-table approval package changed")
-
-
 def validate_published_run_summary(
     context: BuildContext,
     *,
@@ -152,14 +91,14 @@ def validate_published_run_summary(
         document,
         context.inventory_rows,
         context.inventory_path,
-        source_root=context.source_checkout.root,
+        source_root=context.artifact_source_root.root,
     )
     ops.validate_existing_summary(
         paths=context.paths,
         receipt=receipt,
         expected_run_id=context.run_id,
         expected_run_contract=context.run_contract,
-        source_root=context.source_checkout.root,
+        source_root=context.artifact_source_root.root,
     )
 
 
@@ -240,9 +179,9 @@ def publish_context(
                 receipt=current_previous,
                 expected_run_id=context.run_id,
                 expected_run_contract=context.run_contract,
-                source_root=context.source_checkout.root,
+                source_root=context.artifact_source_root.root,
             )
-        _recheck_inputs(context, ops=ops)
+        transaction_validation.recheck_run_summary_inputs(context, ops=ops)
 
         payloads = (
             context.summary_json_bytes,
@@ -283,7 +222,7 @@ def publish_context(
             _assert_output_directory_identity(context.paths)
         ops.fsync_directory(context.paths.output_dir)
         validate_published_run_summary(context, ops=ops)
-        _recheck_inputs(context, ops=ops)
+        transaction_validation.recheck_run_summary_inputs(context, ops=ops)
         committed = True
     except Exception as exc:
         rollback_errors: list[str] = []
@@ -384,7 +323,7 @@ def publish_context(
                         receipt=restored,
                         expected_run_id=context.run_id,
                         expected_run_contract=context.run_contract,
-                        source_root=context.source_checkout.root,
+                        source_root=context.artifact_source_root.root,
                     )
 
                 rollback(

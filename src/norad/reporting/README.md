@@ -7,26 +7,29 @@ analysis, decide scientific validity, or promote evidence.
 
 | Interface | Responsibility |
 | --- | --- |
-| `python -I -m norad build artifact-index` | Reconcile one declared source checkout and inventory into a receipt-last artifact index. |
-| `python -I -m norad build run-summary` | Project one admitted artifact-index receipt into the canonical run summary. |
-| `python -I -m norad build report` | Render one canonical run summary under an admitted checkout authority into self-contained HTML, summary TSV, and a v2 receipt published last. |
+| `python -X pycache_prefix=/dev/null -I -m norad build artifact-index` | Reconcile one declared artifact root and inventory under an independent producer-checkout authority into a receipt-last artifact index. |
+| `python -X pycache_prefix=/dev/null -I -m norad build run-summary` | Project one admitted artifact-index receipt into the canonical run summary. |
+| `python -X pycache_prefix=/dev/null -I -m norad build report` | Render one canonical run summary under distinct code and artifact authorities into self-contained HTML, summary TSV, and a v2 receipt published last. |
 
-All three build routes require `--source-checkout
-ABSOLUTE_CANONICAL_CHECKOUT`. The report command is dry-run by default and
-accepts only explicit inputs:
+All three build routes require both `--source-checkout
+ABSOLUTE_CANONICAL_CHECKOUT` and `--artifact-source-root
+ABSOLUTE_CANONICAL_ARTIFACT_ROOT`. The report command is dry-run by default
+and accepts only explicit inputs:
 
 ```bash
-.venv/bin/python -I -m norad build report \
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad build report \
   --source-checkout /absolute/path/to/norad \
-  --run-summary results/artifacts/RUN_ID/RUN_ID.run_summary.json \
-  --output-root results/reports
+  --artifact-source-root /absolute/path/to/run-root \
+  --run-summary /absolute/path/to/run-root/products/artifact-summary/RUN_ID/RUN_ID.run_summary.json \
+  --output-root /absolute/path/to/run-root/products/report
 ```
 
-`--source-checkout` must name the absolute canonical NORAD Git top level whose
-Python and packaged-resource bytes match the executing package. The admitted
-root governs repository-relative paths in the run summary, including approved
-report tables, and renderer Git identity. Reporting does not infer this
-authority from the working directory or the run-summary location.
+`--source-checkout` names the absolute canonical NORAD Git top level whose
+Python and packaged-resource bytes match the executing package; it owns
+producer and renderer Git identity. `--artifact-source-root` independently
+resolves contract-relative inventory, native artifact, science, approval, and
+report-table paths. Reporting infers neither root from the working directory
+or the run-summary location.
 
 Repeat with `--execute` to publish exactly:
 
@@ -53,6 +56,19 @@ Focused protection is `make report-test`; `make demo-report` creates an ignored
 synthetic HTML-only demonstration beneath `results/demo-report-jinja/`.
 Recovery routes are in
 [`TROUBLESHOOTING`](../../../docs/operations/TROUBLESHOOTING.md).
+
+[`transaction_validation.py`](transaction_validation.py) is the public
+read-only completion owner used by local lifecycle and inspection. Its three
+specific validators and fixed-profile `validate_receipt(...)` dispatcher pin
+receipt identity by no-follow descriptor before and after semantic validation,
+then revalidate bound native sources, records, indexes, summaries, HTML, TSV,
+and receipts. A receipt path or hash alone is never completion evidence.
+
+This completion boundary assumes the same single-user, cooperative workspace
+as the local pilot. Pre-existing symlink components, leaf substitution,
+unstable bytes, and roster drift fail closed; hostile concurrent replacement
+of ancestor directories or mount namespaces requires external isolation and
+lies outside this local evidence claim.
 
 A rendered document or receipt reflects only its validated inputs and declared
 evidence state. It does not establish production execution, completed

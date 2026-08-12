@@ -36,6 +36,10 @@ from norad.evidence.storage_inventory import (
 from norad.ingestion.sample_manifest_admission import (
     validator as manifest_command,
 )
+from norad.libraries.source_authority import (
+    SourceCheckoutError,
+    require_controlled_python_runtime,
+)
 from norad.orchestration.local_pilot import all_pass as all_pass_validation_command
 from norad.stages.canonical_bam import validator as canonical_bam_validation_command
 from norad.stages.cohort_candidate_preprocessing import (
@@ -156,21 +160,36 @@ def _add_storage_inventory_inspection_command(
 
 
 def _build_artifact_index_from_args(arguments: argparse.Namespace) -> int:
+    if not _admit_reporting_build_runtime():
+        return 2
     from norad.reporting._artifact_index import builder  # noqa: PLC0415
 
     return builder.build_from_args(arguments)
 
 
 def _build_run_summary_from_args(arguments: argparse.Namespace) -> int:
+    if not _admit_reporting_build_runtime():
+        return 2
     from norad.reporting._run_summary import builder  # noqa: PLC0415
 
     return builder.build_from_args(arguments)
 
 
 def _build_report_from_args(arguments: argparse.Namespace) -> int:
+    if not _admit_reporting_build_runtime():
+        return 2
     from norad.reporting import report  # noqa: PLC0415
 
     return report.build_from_args(arguments)
+
+
+def _admit_reporting_build_runtime() -> bool:
+    try:
+        require_controlled_python_runtime()
+    except SourceCheckoutError as exc:
+        print(f"norad: error: {exc}", file=sys.stderr)
+        return False
+    return True
 
 
 def _add_build_commands(
@@ -199,6 +218,12 @@ def _add_build_commands(
         required=True,
         type=Path,
         help="Absolute canonical NORAD source checkout owning producer evidence.",
+    )
+    artifact_parser.add_argument(
+        "--artifact-source-root",
+        required=True,
+        type=Path,
+        help="Absolute canonical root resolving contract-relative artifacts.",
     )
     artifact_parser.add_argument("--run-id", required=True, help="Immutable run ID.")
     artifact_parser.add_argument(
@@ -244,7 +269,13 @@ def _add_build_commands(
         "--source-checkout",
         required=True,
         type=Path,
-        help="Absolute canonical NORAD source checkout owning recorded paths.",
+        help="Absolute canonical NORAD source checkout owning producer evidence.",
+    )
+    summary_parser.add_argument(
+        "--artifact-source-root",
+        required=True,
+        type=Path,
+        help="Absolute canonical root resolving contract-relative artifacts.",
     )
     summary_parser.add_argument("--run-id", required=True, help="Immutable run ID.")
     summary_parser.add_argument(

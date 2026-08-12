@@ -81,6 +81,8 @@ class FixturePaths:
         arguments = [
             "--source-checkout",
             str(REPO_ROOT),
+            "--artifact-source-root",
+            str(self.root),
             "--run-id",
             self.run_id,
             "--run-contract",

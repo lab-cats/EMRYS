@@ -8,7 +8,8 @@ from typing import Any
 
 from norad.contracts.artifacts import api as contracts
 from norad.contracts.scientific_evidence import review_package
-from norad.reporting._artifact_index.api import RUN_CONTRACT_FIELDS, SourceCheckout
+from norad.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
+from norad.reporting._artifact_index.api import RUN_CONTRACT_FIELDS
 from norad.reporting._files import FileSnapshot
 
 PRODUCER = "build_run_summary"
@@ -184,6 +185,11 @@ class BuildContext:
     receipt_row: dict[str, Any]
     receipt_bytes: bytes
     source_checkout: SourceCheckout = field(
+        kw_only=True,
+        compare=False,
+        repr=False,
+    )
+    artifact_source_root: ArtifactSourceRoot = field(
         kw_only=True,
         compare=False,
         repr=False,

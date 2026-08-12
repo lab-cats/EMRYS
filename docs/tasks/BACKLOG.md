@@ -15,7 +15,7 @@ selection, implementation, or publication authority.
 ## CLI-03A — Implement local-pilot control plane
 
 - **Kind:** actionable
-- **Blocked by:** `PROFILE-03A`
+- **Blocked by:** `SETUP-03A`
 - **Intent:** Provide a thin local command surface that orchestrates the approved pilot profile, request lifecycle, resume, and state inspection.
 - **Boundaries:** Dry-run by default; no hidden installation, private imports, SLURM execution, scientific reimplementation, or implicit state authority.
 
@@ -82,13 +82,6 @@ selection, implementation, or publication authority.
 - **Intent:** Version a gate catalog and content-bound validation receipts that permit reuse only after subject, gate, input, and environment equivalence is proved.
 - **Boundaries:** Do not redesign gates, promote evidence, or create a new authority; receipts record schema, gate digest, command, Git/input/environment identity, timestamps, per-check exits, and logs.
 
-## INTAKE-03A — Implement YAML plus TSV run lifecycle
-
-- **Kind:** actionable
-- **Blocked by:** None
-- **Intent:** Implement the canonical execution contract, request normalizer, reporting projection, workflow-attempt records, verified task records, and inspection state defined by the local-pilot orchestration contract.
-- **Boundaries:** No request queue, filename inference, raw-data movement, cluster execution, hidden installation, automatic recovery, or ownership collapse.
-
 ## LOG-03 — Build two-sink logging foundation
 
 - **Kind:** actionable
@@ -109,13 +102,6 @@ selection, implementation, or publication authority.
 - **Blocked by:** `E2E-03A`
 - **Intent:** Publish a concise researcher journey from setup and request creation through pilot execution, inspection, failure, and resume.
 - **Boundaries:** Link canonical commands and proof-matched outputs; state local, runtime, cluster, scientific, and biological evidence limits explicitly.
-
-## PROFILE-03A — Materialize local-pilot workflow profile
-
-- **Kind:** actionable
-- **Blocked by:** `INTAKE-03A`, `SETUP-03A`
-- **Intent:** Materialize the current CMH pilot as one static Snakemake local-executor profile over admitted public owners and the canonical lifecycle contracts.
-- **Boundaries:** No generic registry, custom scheduler, private imports, scientific change, hidden discovery, SLURM execution, or Snakemake state authority.
 
 ## REVIEW-UX-03 — Review usability plan
 

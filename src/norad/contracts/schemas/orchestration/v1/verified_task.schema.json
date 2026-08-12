@@ -12,6 +12,7 @@
     "workflow_attempt_id",
     "task_attempt_id",
     "task_attempt_record",
+    "task_start_record",
     "machine_key",
     "scope",
     "owner_run_token",
@@ -44,6 +45,9 @@
       "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/task_attempt_id"
     },
     "task_attempt_record": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+    },
+    "task_start_record": {
       "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
     },
     "machine_key": {

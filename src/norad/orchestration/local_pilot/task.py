@@ -24,6 +24,14 @@ from pathlib import Path
 from typing import Any
 
 from norad.contracts.orchestration import api as orchestration_contracts
+from norad.libraries.source_authority import (
+    SourceCheckoutError,
+    attest_source_checkout as _attest_source_checkout,
+    controlled_python_argv,
+    is_controlled_python_argv,
+    require_controlled_python_runtime,
+)
+from norad.orchestration.local_pilot import inspection
 
 DISPATCH_SCHEMA_VERSION = "norad.local-task-dispatch.v1"
 _DISPATCH_FIELDS = frozenset(
@@ -43,6 +51,7 @@ _DISPATCH_FIELDS = frozenset(
         "outputs",
         "validation_report_path",
         "native_receipt_path",
+        "task_start_path",
         "task_attempt_path",
         "verified_task_path",
         "stdout_path",
@@ -79,6 +88,7 @@ class TaskDispatch:
     """Closed materialized job description consumed by one task invocation."""
 
     path: Path
+    dispatch_sha256: str
     run_root: Path
     execution_path: Path
     profile_path: Path
@@ -92,6 +102,7 @@ class TaskDispatch:
     outputs: tuple[FileDeclaration, ...]
     validation_report_path: Path
     native_receipt_path: Path | None
+    task_start_path: Path
     task_attempt_path: Path
     verified_task_path: Path
     stdout_path: Path
@@ -115,6 +126,7 @@ class CommandResult:
 CommandRunner = Callable[[tuple[str, ...], Path], CommandResult]
 BytesPublisher = Callable[[Path, bytes], None]
 Clock = Callable[[], datetime]
+SourceCheckoutAttester = Callable[..., Any]
 
 
 @dataclass(frozen=True, slots=True)
@@ -125,6 +137,7 @@ class TaskOps:
     run_semantic_all_pass: CommandRunner
     publish_bytes: BytesPublisher
     now: Clock
+    attest_source_checkout: SourceCheckoutAttester = _attest_source_checkout
 
 
 @dataclass(frozen=True, slots=True)
@@ -184,7 +197,13 @@ def _command(value: Any, label: str) -> tuple[str, ...]:
         or any(not isinstance(part, str) or not part.strip() for part in value)
     ):
         raise TaskBoundaryError(f"{label} must be a nonempty string argv array")
-    return tuple(value)
+    command = tuple(value)
+    if command[0] == sys.executable and not is_controlled_python_argv(
+        command,
+        python_executable=sys.executable,
+    ):
+        raise TaskBoundaryError(f"{label} must use the controlled Python launch prefix")
+    return command
 
 
 def _declarations(value: Any, label: str) -> tuple[FileDeclaration, ...]:
@@ -240,11 +259,26 @@ def _safe_in_run_destination(path: Path, root: Path, label: str) -> None:
             raise TaskBoundaryError(f"{label} parent is not a directory: {cursor}")
 
 
-def load_dispatch(path: Path) -> TaskDispatch:
+def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
     """Load one strict, closed dispatch without performing task mutations."""
 
     dispatch_path = _absolute_path(str(path), "dispatch path")
-    raw = orchestration_contracts.load_json_object(dispatch_path)
+    if re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None:
+        raise TaskBoundaryError("expected dispatch SHA-256 must be 64 lowercase hex")
+    dispatch_data, _dispatch_state = _read_bound_file(dispatch_path, "task dispatch")
+    observed_sha256 = hashlib.sha256(dispatch_data).hexdigest()
+    if observed_sha256 != expected_sha256:
+        raise TaskBoundaryError("Task dispatch SHA-256 differs from workflow plan")
+    try:
+        raw = orchestration_contracts.load_json_object_bytes(
+            dispatch_data, f"task dispatch {dispatch_path}"
+        )
+    except orchestration_contracts.ContractValidationError as exc:
+        raise TaskBoundaryError(str(exc)) from exc
+    if orchestration_contracts.canonical_json_bytes(raw) != dispatch_data:
+        raise TaskBoundaryError(
+            f"task dispatch must use canonical JSON bytes: {dispatch_path}"
+        )
     record = _closed_object(raw, fields=_DISPATCH_FIELDS, label="task dispatch")
     if record["schema_version"] != DISPATCH_SCHEMA_VERSION:
         raise TaskBoundaryError(
@@ -271,6 +305,7 @@ def load_dispatch(path: Path) -> TaskDispatch:
     )
     result = TaskDispatch(
         path=dispatch_path,
+        dispatch_sha256=expected_sha256,
         run_root=run_root,
         execution_path=_absolute_path(record["execution_path"], "execution_path"),
         profile_path=_absolute_path(record["profile_path"], "profile_path"),
@@ -291,6 +326,7 @@ def load_dispatch(path: Path) -> TaskDispatch:
             record["validation_report_path"], "validation_report_path"
         ),
         native_receipt_path=native_receipt,
+        task_start_path=_absolute_path(record["task_start_path"], "task_start_path"),
         task_attempt_path=_absolute_path(
             record["task_attempt_path"], "task_attempt_path"
         ),
@@ -304,6 +340,7 @@ def load_dispatch(path: Path) -> TaskDispatch:
     mutable_paths = {
         *(item.path for item in result.outputs),
         result.validation_report_path,
+        result.task_start_path,
         result.task_attempt_path,
         result.verified_task_path,
         result.stdout_path,
@@ -312,7 +349,7 @@ def load_dispatch(path: Path) -> TaskDispatch:
     if result.native_receipt_path is not None:
         mutable_paths.add(result.native_receipt_path)
     expected_mutable_count = (
-        len(result.outputs) + 5 + (result.native_receipt_path is not None)
+        len(result.outputs) + 6 + (result.native_receipt_path is not None)
     )
     if len(mutable_paths) != expected_mutable_count:
         raise TaskBoundaryError("task dispatch aliases mutable destination paths")
@@ -336,6 +373,35 @@ def load_dispatch(path: Path) -> TaskDispatch:
     _safe_in_run_destination(
         result.profile_path, result.run_root, "workflow profile path"
     )
+    expected_task_start = (
+        result.run_root
+        / "state"
+        / "task-starts"
+        / result.machine_key
+        / f"{result.scope['scope_id']}.json"
+    )
+    if result.task_start_path != expected_task_start:
+        raise TaskBoundaryError(
+            "task_start_path does not match the exact owner/scope ledger path"
+        )
+    expected_task_root = (
+        result.run_root
+        / "attempts"
+        / result.workflow_attempt_id
+        / "tasks"
+        / result.machine_key
+        / result.scope["scope_id"]
+    )
+    expected_task_paths = {
+        "task_attempt_path": expected_task_root / "task-attempt.json",
+        "stdout_path": expected_task_root / "stdout.log",
+        "stderr_path": expected_task_root / "stderr.log",
+    }
+    for field, expected in expected_task_paths.items():
+        if getattr(result, field) != expected:
+            raise TaskBoundaryError(
+                f"{field} does not match the exact workflow-attempt task path"
+            )
     return result
 
 
@@ -504,6 +570,7 @@ def default_task_ops() -> TaskOps:
         run_semantic_all_pass=_default_run_command,
         publish_bytes=_publish_bytes,
         now=lambda: datetime.now(UTC),
+        attest_source_checkout=_attest_source_checkout,
     )
 
 
@@ -530,6 +597,74 @@ def _require_absent(path: Path, label: str) -> None:
     except OSError as exc:
         raise TaskBoundaryError(f"Could not inspect {label}: {path}: {exc}") from exc
     raise TaskBoundaryError(f"Refusing pre-existing {label}: {path}")
+
+
+def _require_real_directory(path: Path, label: str) -> None:
+    try:
+        state = path.lstat()
+    except OSError as exc:
+        raise TaskBoundaryError(f"Could not inspect {label}: {path}: {exc}") from exc
+    if stat.S_ISLNK(state.st_mode) or not stat.S_ISDIR(state.st_mode):
+        raise TaskBoundaryError(f"{label} is not a real directory: {path}")
+    try:
+        if path.resolve(strict=True) != path:
+            raise TaskBoundaryError(f"{label} is not canonical: {path}")
+    except OSError as exc:
+        raise TaskBoundaryError(f"Could not resolve {label}: {path}: {exc}") from exc
+
+
+def _sync_directory(path: Path, label: str) -> None:
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    except OSError as exc:
+        raise TaskBoundaryError(
+            f"Could not synchronize {label}: {path}: {exc}"
+        ) from exc
+
+
+def _materialize_task_scope(dispatch: TaskDispatch) -> None:
+    """Create only this attempt's exact task evidence directory."""
+
+    attempt_root = dispatch.run_root / "attempts" / dispatch.workflow_attempt_id
+    _require_real_directory(attempt_root, "workflow-attempt directory")
+    parents = (
+        (attempt_root / "tasks", "workflow-attempt tasks directory"),
+        (
+            attempt_root / "tasks" / dispatch.machine_key,
+            "workflow-attempt owner directory",
+        ),
+    )
+    for path, label in parents:
+        try:
+            path.mkdir(mode=0o700)
+        except FileExistsError:
+            _require_real_directory(path, label)
+        except OSError as exc:
+            raise TaskBoundaryError(f"Could not create {label}: {path}: {exc}") from exc
+        else:
+            _sync_directory(path, label)
+            _sync_directory(path.parent, f"{label} parent")
+
+    scope_root = parents[-1][0] / dispatch.scope["scope_id"]
+    try:
+        scope_root.mkdir(mode=0o700)
+    except FileExistsError as exc:
+        raise TaskBoundaryError(
+            f"Refusing pre-existing workflow-attempt task scope: {scope_root}"
+        ) from exc
+    except OSError as exc:
+        raise TaskBoundaryError(
+            f"Could not create workflow-attempt task scope: {scope_root}: {exc}"
+        ) from exc
+    _sync_directory(scope_root, "workflow-attempt task scope")
+    _sync_directory(scope_root.parent, "workflow-attempt owner directory")
 
 
 def _expected_scope_ids(
@@ -657,9 +792,8 @@ def _admit_identity(
 
 
 def _semantic_argv(dispatch: TaskDispatch, step_id: str) -> tuple[str, ...]:
-    return (
+    return controlled_python_argv(
         sys.executable,
-        "-I",
         "-m",
         "norad",
         "validate",
@@ -694,10 +828,242 @@ def _referenced_record(
         raise TaskBoundaryError(f"{label}.path must be a relative contract path")
     path = run_root / raw_path
     _safe_in_run_destination(path, run_root, label)
-    record, data = _load_bound_json(path, label)
+    data, _ = _read_bound_file(path, label)
     if hashlib.sha256(data).hexdigest() != reference.get("sha256"):
         raise TaskBoundaryError(f"{label} SHA-256 no longer matches")
+    try:
+        record = orchestration_contracts.load_json_object_bytes(data, label)
+    except orchestration_contracts.ContractValidationError as exc:
+        raise TaskBoundaryError(str(exc)) from exc
+    if orchestration_contracts.canonical_json_bytes(record) != data:
+        raise TaskBoundaryError(f"{label} must use canonical JSON bytes")
     return path, record
+
+
+def _dispatch_reference(dispatch: TaskDispatch) -> dict[str, str]:
+    return {
+        "path": _relative(dispatch.path, dispatch.run_root),
+        "sha256": dispatch.dispatch_sha256,
+    }
+
+
+def _admit_start_origins(
+    dispatch: TaskDispatch,
+    *,
+    execution: Mapping[str, Any],
+    execution_sha256: str,
+    profile_sha256: str,
+    require_active_attempt: bool,
+    attest_source: SourceCheckoutAttester = _attest_source_checkout,
+) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
+    """Admit the immutable workflow attempt and its bound dispatch plan."""
+
+    attempt_path = (
+        dispatch.run_root / "attempts" / dispatch.workflow_attempt_id / "attempt.json"
+    )
+    attempt, attempt_data = _load_bound_json(attempt_path, "workflow-attempt record")
+    orchestration_contracts.validate_record("workflow-attempt", attempt)
+    expected_identity = {
+        "run_id": execution["run_id"],
+        "execution_contract_sha256": execution_sha256,
+        "profile_sha256": profile_sha256,
+        "workflow_attempt_id": dispatch.workflow_attempt_id,
+    }
+    for field, expected in expected_identity.items():
+        if attempt[field] != expected:
+            raise TaskBoundaryError(f"Workflow attempt does not bind task {field}")
+
+    config_path, config = _referenced_record(
+        attempt["workflow_config"],
+        run_root=dispatch.run_root,
+        label="workflow config",
+    )
+    by_owner = config.get("dispatch_paths")
+    if not isinstance(by_owner, Mapping):
+        raise TaskBoundaryError("Workflow config has no dispatch_paths object")
+    by_scope = by_owner.get(dispatch.machine_key)
+    if not isinstance(by_scope, Mapping):
+        raise TaskBoundaryError("Workflow config has no dispatch owner scope map")
+    configured = by_scope.get(dispatch.scope["scope_id"])
+    if configured != {
+        "path": str(dispatch.path),
+        "sha256": dispatch.dispatch_sha256,
+    }:
+        raise TaskBoundaryError("Workflow config does not bind the exact task dispatch")
+    source_checkout = attempt["source_checkout"]
+    source_root = Path(str(source_checkout["path"]))
+    if config.get("source_checkout") != str(source_root):
+        raise TaskBoundaryError(
+            "Workflow config does not bind the attempt source checkout"
+        )
+    if require_active_attempt:
+        try:
+            attest_source(
+                root=source_root,
+                package_root=Path(__file__).resolve().parents[2],
+                expected_commit=str(source_checkout["commit"]),
+            )
+        except SourceCheckoutError as exc:
+            raise TaskBoundaryError(
+                f"Could not attest task child source checkout: {exc}"
+            ) from exc
+    config_after = _record_reference(config_path, dispatch.run_root)
+    if config_after != attempt["workflow_config"]:
+        raise TaskBoundaryError("Workflow config changed during task admission")
+    attempt_after = _record_reference(attempt_path, dispatch.run_root)
+    expected_attempt = {
+        "path": _relative(attempt_path, dispatch.run_root),
+        "sha256": hashlib.sha256(attempt_data).hexdigest(),
+    }
+    if attempt_after != expected_attempt:
+        raise TaskBoundaryError("Workflow attempt changed during task admission")
+    try:
+        run_lock_reference = inspection.admit_attempt_run_lock(
+            dispatch.run_root,
+            attempt,
+            require_active=require_active_attempt,
+        )
+    except inspection.InspectionError as exc:
+        raise TaskBoundaryError(f"Could not admit workflow run lock: {exc}") from exc
+    return expected_attempt, dict(attempt["workflow_config"]), run_lock_reference
+
+
+def _build_task_start(
+    dispatch: TaskDispatch,
+    *,
+    execution: Mapping[str, Any],
+    execution_sha256: str,
+    profile_sha256: str,
+    created_at: str,
+    attest_source: SourceCheckoutAttester,
+) -> tuple[dict[str, Any], bytes]:
+    attempt_reference, config_reference, run_lock_reference = _admit_start_origins(
+        dispatch,
+        execution=execution,
+        execution_sha256=execution_sha256,
+        profile_sha256=profile_sha256,
+        require_active_attempt=True,
+        attest_source=attest_source,
+    )
+    record = {
+        "schema_version": "norad.task-start.v1",
+        "run_id": execution["run_id"],
+        "execution_contract_sha256": execution_sha256,
+        "profile_sha256": profile_sha256,
+        "workflow_attempt_id": dispatch.workflow_attempt_id,
+        "task_attempt_id": dispatch.task_attempt_id,
+        "machine_key": dispatch.machine_key,
+        "scope": dict(dispatch.scope),
+        "owner_run_token": dispatch.owner_run_token,
+        "workflow_attempt_record": attempt_reference,
+        "workflow_config": config_reference,
+        "run_lock": run_lock_reference,
+        "task_dispatch_record": _dispatch_reference(dispatch),
+        "created_at": created_at,
+    }
+    orchestration_contracts.validate_record("task-start", record)
+    return record, orchestration_contracts.canonical_json_bytes(record)
+
+
+def validate_task_start(
+    path: Path,
+    *,
+    run_root: Path,
+    execution: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    machine_key: str,
+    scope: Mapping[str, str],
+) -> dict[str, Any]:
+    """Fail closed unless one producer-entry record remains content-bound."""
+
+    canonical_root = _absolute_path(str(run_root), "run_root")
+    if canonical_root.resolve(strict=True) != canonical_root:
+        raise TaskBoundaryError("run_root must already be canonical")
+    expected_scope = {
+        "scope_type": _safe_id(scope.get("scope_type"), "scope.scope_type"),
+        "scope_id": _safe_id(scope.get("scope_id"), "scope.scope_id"),
+    }
+    start_path = _absolute_path(str(path), "task-start path")
+    expected_path = (
+        canonical_root
+        / "state"
+        / "task-starts"
+        / _safe_id(machine_key, "machine_key")
+        / f"{expected_scope['scope_id']}.json"
+    )
+    if start_path != expected_path:
+        raise TaskBoundaryError("Task-start record is not at its exact ledger path")
+    _safe_in_run_destination(start_path, canonical_root, "task-start path")
+    orchestration_contracts.validate_record("profile", profile)
+    orchestration_contracts.validate_record("execution", execution, profile=profile)
+    record, start_data = _load_bound_json(start_path, "task-start record")
+    orchestration_contracts.validate_record("task-start", record)
+    identity = {
+        "run_id": execution["run_id"],
+        "execution_contract_sha256": hashlib.sha256(
+            orchestration_contracts.canonical_json_bytes(execution)
+        ).hexdigest(),
+        "profile_sha256": orchestration_contracts.canonical_sha256(profile),
+        "machine_key": machine_key,
+        "scope": expected_scope,
+    }
+    for field, expected in identity.items():
+        if record[field] != expected:
+            raise TaskBoundaryError(f"Task-start {field} does not match")
+
+    dispatch_path, dispatch_record = _referenced_record(
+        record["task_dispatch_record"],
+        run_root=canonical_root,
+        label="task dispatch record",
+    )
+    dispatch = load_dispatch(
+        dispatch_path,
+        expected_sha256=record["task_dispatch_record"]["sha256"],
+    )
+    loaded_profile, loaded_execution, execution_sha256, profile_sha256, _ = (
+        _admit_identity(dispatch)
+    )
+    if loaded_profile != dict(profile) or loaded_execution != dict(execution):
+        raise TaskBoundaryError("Task-start dispatch binds different run contracts")
+    for field in (
+        "workflow_attempt_id",
+        "task_attempt_id",
+        "machine_key",
+        "scope",
+        "owner_run_token",
+    ):
+        observed = getattr(dispatch, field)
+        if record[field] != observed:
+            raise TaskBoundaryError(f"Task-start and dispatch disagree on {field}")
+    if dispatch.task_start_path != start_path:
+        raise TaskBoundaryError("Task-start dispatch binds a different ledger path")
+    attempt_reference, config_reference, run_lock_reference = _admit_start_origins(
+        dispatch,
+        execution=loaded_execution,
+        execution_sha256=execution_sha256,
+        profile_sha256=profile_sha256,
+        require_active_attempt=False,
+    )
+    if record["workflow_attempt_record"] != attempt_reference:
+        raise TaskBoundaryError("Task-start workflow attempt reference differs")
+    if record["workflow_config"] != config_reference:
+        raise TaskBoundaryError("Task-start workflow config reference differs")
+    if record["run_lock"] != run_lock_reference:
+        raise TaskBoundaryError("Task-start run-lock reference differs")
+    if dispatch_record.get("task_start_path") != str(start_path):
+        raise TaskBoundaryError("Task dispatch content binds a different start path")
+    if (
+        _record_reference(dispatch_path, canonical_root)
+        != record["task_dispatch_record"]
+    ):
+        raise TaskBoundaryError("Task dispatch changed during start admission")
+    expected_start_reference = {
+        "path": _relative(start_path, canonical_root),
+        "sha256": hashlib.sha256(start_data).hexdigest(),
+    }
+    if _record_reference(start_path, canonical_root) != expected_start_reference:
+        raise TaskBoundaryError("Task-start record changed during admission")
+    return record
 
 
 def _verify_reference(
@@ -807,6 +1173,30 @@ def validate_verified_task(
             )
     if attempt["status"] != "succeeded" or attempt["failure_message"] is not None:
         raise TaskBoundaryError("Referenced task attempt is not successful")
+    if attempt["task_start_record"] != record["task_start_record"]:
+        raise TaskBoundaryError("Task attempt and verified task disagree on task start")
+    start_path = _verify_reference(
+        record["task_start_record"],
+        run_root=canonical_root,
+        label="task-start record",
+    )
+    start = validate_task_start(
+        start_path,
+        run_root=canonical_root,
+        execution=execution,
+        profile=profile,
+        machine_key=machine_key,
+        scope=expected_scope,
+    )
+    for field in (
+        "workflow_attempt_id",
+        "task_attempt_id",
+        "machine_key",
+        "scope",
+        "owner_run_token",
+    ):
+        if start[field] != record[field]:
+            raise TaskBoundaryError(f"Task start and verified task disagree on {field}")
     if attempt["producer"] != record["commands"]["producer"]:
         raise TaskBoundaryError("Producer command differs from task attempt")
     if attempt["validator"] != record["commands"]["validator"]:
@@ -865,6 +1255,7 @@ def _publish_attempt(
     validator: CommandResult | None,
     semantic: CommandResult | None,
     stable_inputs_rechecked: bool,
+    task_start_reference: Mapping[str, str] | None,
     failure_message: str | None,
     stdout: bytes,
     stderr: bytes,
@@ -872,13 +1263,14 @@ def _publish_attempt(
     ops.publish_bytes(dispatch.stdout_path, stdout)
     ops.publish_bytes(dispatch.stderr_path, stderr)
     report_reference = None
-    try:
-        report_reference = _record_reference(
-            dispatch.validation_report_path, dispatch.run_root
-        )
-    except TaskBoundaryError:
-        if failure_message is None:
-            raise
+    if task_start_reference is not None:
+        try:
+            report_reference = _record_reference(
+                dispatch.validation_report_path, dispatch.run_root
+            )
+        except TaskBoundaryError:
+            if failure_message is None:
+                raise
     status = "succeeded" if failure_message is None else "failed"
     attempt = {
         "schema_version": "norad.task-attempt.v1",
@@ -890,6 +1282,9 @@ def _publish_attempt(
         "machine_key": dispatch.machine_key,
         "scope": dict(dispatch.scope),
         "owner_run_token": dispatch.owner_run_token,
+        "task_start_record": (
+            None if task_start_reference is None else dict(task_start_reference)
+        ),
         "status": status,
         "started_at": started_at,
         "finished_at": _utc_timestamp(ops.now()),
@@ -928,11 +1323,14 @@ def run_task(
     validator: CommandResult | None = None
     semantic: CommandResult | None = None
     stable_inputs_rechecked = False
+    task_start_reference: dict[str, str] | None = None
+    task_scope_materialized = False
     stdout_parts: list[bytes] = []
     stderr_parts: list[bytes] = []
     failure: TaskBoundaryError | None = None
 
     protected = (
+        dispatch.task_start_path,
         dispatch.task_attempt_path,
         dispatch.verified_task_path,
         dispatch.stdout_path,
@@ -940,7 +1338,13 @@ def run_task(
     )
     for path, label in zip(
         protected,
-        ("task-attempt record", "verified-task record", "stdout log", "stderr log"),
+        (
+            "task-start record",
+            "task-attempt record",
+            "verified-task record",
+            "stdout log",
+            "stderr log",
+        ),
         strict=True,
     ):
         _require_absent(path, label)
@@ -949,6 +1353,16 @@ def run_task(
         profile, execution, execution_sha256, profile_sha256, step_id = _admit_identity(
             dispatch
         )
+        _admit_start_origins(
+            dispatch,
+            execution=execution,
+            execution_sha256=execution_sha256,
+            profile_sha256=profile_sha256,
+            require_active_attempt=True,
+            attest_source=ops.attest_source_checkout,
+        )
+        _materialize_task_scope(dispatch)
+        task_scope_materialized = True
         initial_inputs = tuple(
             _snapshot(item)
             for item in (
@@ -958,6 +1372,8 @@ def run_task(
                 *dispatch.inputs,
             )
         )
+        if initial_inputs[0]["sha256"] != dispatch.dispatch_sha256:
+            raise TaskBoundaryError("Task dispatch changed before producer execution")
         if len({item["role"] for item in initial_inputs}) != len(initial_inputs):
             raise TaskBoundaryError("Input roles collide with reserved contract roles")
 
@@ -968,6 +1384,59 @@ def run_task(
         for path in native_destinations:
             _require_absent(path, "native task destination")
 
+        entry_inputs = tuple(
+            _snapshot(item)
+            for item in (
+                FileDeclaration("task_dispatch", dispatch.path),
+                FileDeclaration("execution_contract", dispatch.execution_path),
+                FileDeclaration("workflow_profile", dispatch.profile_path),
+                *dispatch.inputs,
+            )
+        )
+        if entry_inputs != initial_inputs:
+            raise TaskBoundaryError("A stable task input changed before producer entry")
+
+        _task_start, task_start_bytes = _build_task_start(
+            dispatch,
+            execution=execution,
+            execution_sha256=execution_sha256,
+            profile_sha256=profile_sha256,
+            created_at=_utc_timestamp(ops.now()),
+            attest_source=ops.attest_source_checkout,
+        )
+        _attempt_ref, _config_ref, lock_reference_at_entry = _admit_start_origins(
+            dispatch,
+            execution=execution,
+            execution_sha256=execution_sha256,
+            profile_sha256=profile_sha256,
+            require_active_attempt=True,
+            attest_source=ops.attest_source_checkout,
+        )
+        if lock_reference_at_entry != _task_start["run_lock"]:
+            raise TaskBoundaryError("Workflow run lock changed before producer entry")
+        ops.publish_bytes(dispatch.task_start_path, task_start_bytes)
+        task_start_reference = _record_reference(
+            dispatch.task_start_path, dispatch.run_root
+        )
+        if task_start_reference != {
+            "path": _relative(dispatch.task_start_path, dispatch.run_root),
+            "sha256": hashlib.sha256(task_start_bytes).hexdigest(),
+        }:
+            raise TaskBoundaryError(
+                "Published task-start bytes changed before producer"
+            )
+        _attempt_ref, _config_ref, lock_reference_before_producer = (
+            _admit_start_origins(
+                dispatch,
+                execution=execution,
+                execution_sha256=execution_sha256,
+                profile_sha256=profile_sha256,
+                require_active_attempt=True,
+                attest_source=ops.attest_source_checkout,
+            )
+        )
+        if lock_reference_before_producer != _task_start["run_lock"]:
+            raise TaskBoundaryError("Workflow run lock changed before producer entry")
         producer = ops.run_command(backend.producer_argv, dispatch.run_root)
         stdout_parts.append(producer.stdout)
         stderr_parts.append(producer.stderr)
@@ -1041,7 +1510,7 @@ def run_task(
 
     if failure is not None:
         message = str(failure).strip() or type(failure).__name__
-        if not execution:
+        if not execution or not task_scope_materialized:
             raise TaskBoundaryError(message) from failure
         _publish_attempt(
             dispatch,
@@ -1054,6 +1523,7 @@ def run_task(
             validator=validator,
             semantic=semantic,
             stable_inputs_rechecked=stable_inputs_rechecked,
+            task_start_reference=task_start_reference,
             failure_message=message,
             stdout=b"".join(stdout_parts),
             stderr=b"".join(stderr_parts),
@@ -1071,11 +1541,13 @@ def run_task(
         validator=validator,
         semantic=semantic,
         stable_inputs_rechecked=True,
+        task_start_reference=task_start_reference,
         failure_message=None,
         stdout=b"".join(stdout_parts),
         stderr=b"".join(stderr_parts),
     )
     assert producer is not None and validator is not None and semantic is not None
+    assert task_start_reference is not None
     task_attempt_reference = {
         "path": _relative(dispatch.task_attempt_path, dispatch.run_root),
         "sha256": hashlib.sha256(attempt_bytes).hexdigest(),
@@ -1088,6 +1560,7 @@ def run_task(
         "workflow_attempt_id": dispatch.workflow_attempt_id,
         "task_attempt_id": dispatch.task_attempt_id,
         "task_attempt_record": task_attempt_reference,
+        "task_start_record": task_start_reference,
         "machine_key": dispatch.machine_key,
         "scope": dict(dispatch.scope),
         "owner_run_token": dispatch.owner_run_token,
@@ -1117,10 +1590,15 @@ def run_task(
     )
 
 
-def execute_dispatch(path: Path, *, ops: TaskOps | None = None) -> TaskOutcome:
+def execute_dispatch(
+    path: Path,
+    *,
+    expected_sha256: str,
+    ops: TaskOps | None = None,
+) -> TaskOutcome:
     """Load and execute one dispatch through its exact admitted backend."""
 
-    dispatch = load_dispatch(path)
+    dispatch = load_dispatch(path, expected_sha256=expected_sha256)
     selected_ops = default_task_ops() if ops is None else ops
     return run_task(dispatch, backend=dispatch.backend, ops=selected_ops)
 
@@ -1138,6 +1616,11 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
         type=Path,
         help="Absolute path to one materialized norad.local-task-dispatch.v1 JSON file.",
     )
+    parser.add_argument(
+        "--dispatch-sha256",
+        required=True,
+        help="Expected lowercase SHA-256 bound by the immutable workflow config.",
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -1145,9 +1628,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     configure_parser(parser)
     arguments = parser.parse_args(argv)
     try:
-        outcome = execute_dispatch(arguments.dispatch)
+        require_controlled_python_runtime()
+        outcome = execute_dispatch(
+            arguments.dispatch,
+            expected_sha256=arguments.dispatch_sha256,
+        )
     except (
         OSError,
+        SourceCheckoutError,
         orchestration_contracts.ContractValidationError,
         TaskBoundaryError,
     ) as exc:
@@ -1177,5 +1665,6 @@ __all__ = (
     "load_dispatch",
     "main",
     "run_task",
+    "validate_task_start",
     "validate_verified_task",
 )

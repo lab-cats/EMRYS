@@ -11,31 +11,48 @@ flowchart TB
     inventory["Precomputed run-specific artifact inventory\nincluding explicit missing Step 09c expectations"]
 
     profile["Fixed local CMH profile\nchecked against STAGE_MAP"]
-    attempt["New immutable workflow-attempt record"]
+    attempt["New immutable workflow-attempt record\nplus exact request snapshot"]
+    config["Attempt-specific canonical workflow config\npath + SHA-256"]
+    dispatch["Closed owner/scope dispatch records\npath + SHA-256; verified predecessor retained on reuse"]
     engine["Snakemake local executor\nscheduling only"]
 
     subgraph task["One functional-owner task and scope"]
-        preflight["Residue and input preflight"]
+        preflight["Identity, input, and declared-destination preflight"]
+        task_start["Durable create-exclusive task-start\nproducer-entry boundary"]
         producer["Public owner producer"]
         validator["Public owner validator"]
         allpass{"Every validation row passes?"}
         verified["Atomic verified task record"]
         preserved["Preserved native outputs, report,\nlocks, backups, and recovery evidence"]
-        preflight --> producer --> validator --> allpass
+        untouched["No task start\noptional bound preflight diagnostic; scope remains pending"]
+        preflight --> task_start --> producer --> validator --> allpass
         allpass -->|yes| verified
         allpass -->|no| preserved
-        preflight -.->|blocked| preserved
+        preflight -.->|fails before entry| untouched
         producer -.->|fails| preserved
         validator -.->|fails| preserved
     end
 
-    products["Artifact index and canonical run summary"]
+    reporting_plan["Three ordered reporting transactions\neach begins with a read-only dry-run"]
+    artifact_start["Artifact-index durable start"]
+    artifact_receipt["Artifact-index execute\nreceipt published last"]
+    artifact_gate["Semantic artifact-index revalidation"]
+    artifact_verified["Artifact-index verified record"]
+    summary_start["Run-summary durable start"]
+    summary_receipt["Run-summary execute\nreceipt published last"]
+    summary_gate["Semantic run-summary revalidation"]
+    summary_verified["Run-summary verified record"]
+    report_start["HTML-report durable start"]
     barriers["Declared sample, partition, and profile barriers"]
-    report["Self-contained Jinja HTML report"]
+    report["Self-contained Jinja HTML execute\nreceipt published last"]
+    report_gate["Semantic HTML-report revalidation"]
+    report_verified["HTML-report verified record"]
+    released_lock["Owned run lock atomically retained\nas immutable attempt-local release evidence"]
     complete["Workflow-attempt receipt published last\nlocal_pipeline_complete"]
-    resume{"Clean task boundary?"}
+    inspect["Read-only derived inspection\nNORAD records only"]
+    resume{"Every entered scope fully verified\nand every other scope unentered?"}
     resumable["New workflow attempt may resume"]
-    blocked["Blocked for owner-local recovery"]
+    blocked["Blocked pending explicit reconciliation"]
 
     operator --> normalize
     samples --> normalize
@@ -46,11 +63,26 @@ flowchart TB
     contract --> inventory
     contract --> profile
     runid --> attempt
-    profile --> attempt --> engine --> preflight
-    verified --> barriers --> products
-    reporting_contract --> products
-    inventory --> products
-    products --> report --> complete
+    profile --> attempt --> config --> engine --> preflight
+    config --> dispatch --> preflight
+    verified --> barriers --> reporting_plan
+    reporting_contract --> reporting_plan
+    inventory --> reporting_plan
+    reporting_plan --> artifact_start --> artifact_receipt --> artifact_gate --> artifact_verified
+    artifact_verified --> summary_start --> summary_receipt --> summary_gate --> summary_verified
+    summary_verified --> report_start --> report --> report_gate --> report_verified
+    report_verified --> released_lock --> complete
+    task_start --> inspect
+    verified --> inspect
+    attempt --> inspect
+    artifact_start --> inspect
+    artifact_verified --> inspect
+    summary_start --> inspect
+    summary_verified --> inspect
+    report_start --> inspect
+    report_verified --> inspect
+    complete --> inspect
+    untouched --> resume
     preserved --> resume
     resume -->|yes| resumable --> attempt
     resume -->|no or ambiguous| blocked
@@ -60,5 +92,6 @@ flowchart TB
     slurm["SLURM, VM, and CSU profiles\nexplicitly deferred"]
 
     engine -.-> snakemake_state
+    snakemake_state -.->|never authorizes reuse or completion| inspect
     complete -.->|does not imply| review
     engine -.->|not in version 1| slurm

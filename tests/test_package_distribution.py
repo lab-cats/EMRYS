@@ -37,8 +37,12 @@ RESOURCE_PATHS = (
     "norad/contracts/schemas/orchestration/v1/policy.schema.json",
     "norad/contracts/schemas/orchestration/v1/workflow_attempt.schema.json",
     "norad/contracts/schemas/orchestration/v1/attempt_receipt.schema.json",
+    "norad/contracts/schemas/orchestration/v1/run_lock.schema.json",
+    "norad/contracts/schemas/orchestration/v1/task_start.schema.json",
     "norad/contracts/schemas/orchestration/v1/task_attempt.schema.json",
     "norad/contracts/schemas/orchestration/v1/verified_task.schema.json",
+    "norad/contracts/schemas/orchestration/v1/reporting_start.schema.json",
+    "norad/contracts/schemas/orchestration/v1/verified_reporting.schema.json",
     "norad/contracts/schemas/orchestration/v1/common.schema.json",
     "norad/reporting/styles/run_report.css",
     "norad/reporting/templates/run_report.html.j2",
@@ -211,6 +215,8 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
     probe = run_command(
         [
             str(environment_python),
+            "-X",
+            "pycache_prefix=/dev/null",
             "-I",
             "-c",
             (
@@ -245,6 +251,8 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     summary_result = run_command(
         [
             sys.executable,
+            "-X",
+            "pycache_prefix=/dev/null",
             "-I",
             "-m",
             "norad",
@@ -255,9 +263,19 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         cwd=REPO_ROOT,
     )
     require_success(summary_result)
+    artifact_source_root = tmp_path / "wheel-artifact-source"
+    relative_table_path = "wheel-only/report_table_approvals.tsv"
+    approved_table = artifact_source_root / relative_table_path
+    approved_table.parent.mkdir(parents=True)
+    shutil.copy2(
+        REPO_ROOT / "configs/report_table_approvals.example.tsv",
+        approved_table,
+    )
     relative_summary = FIXTURE.copy_summary_with_repo_relative_approved_table(
         fixture.summary_json_path,
-        tmp_path / "wheel-report-input",
+        artifact_source_root,
+        relative_table_path=relative_table_path,
+        table_source_root=artifact_source_root,
         summary_git_commit="upstream-summary-commit",
     )
     wheel = build_wheel(tmp_path)
@@ -298,6 +316,8 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     validation = run_command(
         [
             str(environment_python),
+            "-X",
+            "pycache_prefix=/dev/null",
             "-I",
             "-m",
             "norad",
@@ -320,10 +340,13 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     )
     require_success(report_help)
     assert "--source-checkout" in report_help.stdout
+    assert "--artifact-source-root" in report_help.stdout
     assert "--quarto-bin" not in report_help.stdout
     rendered = run_command(
         [
             str(environment_python),
+            "-X",
+            "pycache_prefix=/dev/null",
             "-I",
             "-m",
             "norad",
@@ -331,6 +354,8 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
             "report",
             "--source-checkout",
             str(REPO_ROOT),
+            "--artifact-source-root",
+            str(artifact_source_root),
             "--run-summary",
             str(relative_summary),
             "--output-root",
@@ -341,6 +366,8 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         hostile_pythonpath=True,
     )
     require_success(rendered)
+    assert f"Source checkout: {REPO_ROOT}" in rendered.stdout
+    assert f"Artifact source root: {artifact_source_root}" in rendered.stdout
     run_id = fixture.run_id
     report_directory = report_output_root / run_id
     assert {path.name for path in report_directory.iterdir()} == {
@@ -367,6 +394,10 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         cwd=REPO_ROOT,
     )
     require_success(checkout_commit)
+    assert Path(receipt["input_run_summary"]["path"]).is_relative_to(
+        artifact_source_root
+    )
+    assert not Path(receipt["input_run_summary"]["path"]).is_relative_to(REPO_ROOT)
     assert receipt["provenance"]["git_commit"] in {
         "local_build",
         checkout_commit.stdout.strip(),

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -15,7 +16,7 @@ from norad.libraries.validation.mpileup import RECEIPT_HEADER as STEP07_RECEIPT_
 from norad.libraries.validation.report import HEADER as VALIDATION_REPORT_HEADER
 
 if TYPE_CHECKING:
-    from .source_checkout import SourceCheckout
+    from norad.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
 
 PRODUCER = "build_artifact_index"
 PRODUCER_VERSION = "1.0.0"
@@ -162,6 +163,7 @@ class Inspection:
 @dataclass
 class BuildContext:
     source_checkout: SourceCheckout
+    artifact_source_root: ArtifactSourceRoot
     run_id: str
     run_contract_path: Path
     run_contract: dict[str, Any]
@@ -185,3 +187,4 @@ class BuildContext:
     previous_attempt_id: str | None
     attempt_history: list[str]
     previous_receipt: dict[str, str] | None
+    source_identity_observer: Callable[..., str | None]

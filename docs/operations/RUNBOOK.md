@@ -52,7 +52,7 @@ project-storage temporary directory.
 | Scientific-review package assembly | [`assemble_scientific_review_evidence_package`](../../src/norad/evidence/scientific_review_package/README.md); installed route `python -I -m norad assemble scientific-review-package` |
 | Runtime, reference, storage, and QC evidence | [`evidence`](../../src/norad/evidence/README.md); runtime inspection route `python -I -m norad inspect runtime-availability`; storage inspection route `python -I -m norad inspect storage-inventory`; reference reconciliation route `python -I -m norad reconcile reference-provenance` |
 | Artifact schemas | [`artifact contracts`](../../src/norad/contracts/artifacts/README.md); installed route `python -I -m norad validate artifact-contracts` |
-| Artifact index, run summary, and reports | [`reporting`](../../src/norad/reporting/README.md); each installed build route requires explicit `--source-checkout` authority |
+| Artifact index, run summary, and reports | [`reporting`](../../src/norad/reporting/README.md); each installed build route requires explicit, distinct `--source-checkout` and `--artifact-source-root` authorities |
 | Synthetic demonstration | [`demo`](../demo/README.md) |
 
 Each owner README supplies supported help, dry-run, execute, scheduler, focused

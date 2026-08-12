@@ -23,6 +23,9 @@ from jsonschema import Draft202012Validator, FormatChecker
 from norad import __main__ as norad_cli
 from norad.contracts.artifacts import api as CONTRACTS
 from norad.contracts.scientific_evidence import review_package
+from norad.libraries import source_authority as SOURCE_AUTHORITY
+from norad.libraries.source_authority import controlled_python_argv
+from norad.reporting import transaction_validation as REPORTING_VALIDATION
 from norad.reporting._artifact_index import api as ARTIFACT_INDEX_API
 from norad.reporting._run_summary import science_evidence as SCIENCE_EVIDENCE
 from norad.reporting._run_summary import science_package as SCIENCE_PACKAGE
@@ -48,7 +51,7 @@ RUN_SUMMARY_PUBLICATION = importlib.import_module(
 RUN_SUMMARY_TRANSACTION = importlib.import_module(
     "norad.reporting._run_summary.transaction"
 )
-SOURCE_CHECKOUT = ARTIFACT_INDEX_API.SourceCheckout(root=REPO_ROOT)
+SOURCE_CHECKOUT = SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT)
 
 
 def build_deps(**overrides: Any) -> Any:
@@ -88,10 +91,7 @@ def run_cli(
     )
     return subprocess.run(
         [
-            sys.executable,
-            "-I",
-            "-m",
-            "norad",
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "run-summary",
             *cli_arguments,
@@ -194,6 +194,7 @@ def context_for(fixture: Any, *, deps: Any | None = None) -> Any:
         return RUN_SUMMARY.prepare_context(
             arguments,
             source_checkout=SOURCE_CHECKOUT,
+            artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(root=fixture.root),
             **({} if deps is None else {"deps": deps}),
         )
     finally:
@@ -226,7 +227,8 @@ def test_grouped_builder_admits_before_loading_inputs_and_retains_token(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The grouped builder admits its checkout before reading run inputs."""
-    admitted = ARTIFACT_INDEX_API.SourceCheckout(root=REPO_ROOT)
+    admitted = SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT)
+    artifact_root = SOURCE_AUTHORITY.ArtifactSourceRoot(root=run_summary_fixture.root)
     expected_package_root = Path(RUN_SUMMARY.__file__).resolve().parents[2]
     real_load_input_transaction = RUN_SUMMARY_TRANSACTION._load_input_transaction
     events: list[str] = []
@@ -236,14 +238,21 @@ def test_grouped_builder_admits_before_loading_inputs_and_retains_token(
         *,
         root: Path,
         package_root: Path,
-    ) -> ARTIFACT_INDEX_API.SourceCheckout:
+    ) -> SOURCE_AUTHORITY.SourceCheckout:
         assert root == REPO_ROOT
         assert package_root == expected_package_root
         events.append("admit")
         return admitted
 
+    def admit_artifact_source_root(
+        *, root: Path
+    ) -> SOURCE_AUTHORITY.ArtifactSourceRoot:
+        assert root == run_summary_fixture.root
+        events.append("admit-artifacts")
+        return artifact_root
+
     def load_input_transaction(*, source_root: Path, **kwargs: Any) -> object:
-        assert source_root == admitted.root
+        assert source_root == artifact_root.root
         events.append("load")
         return real_load_input_transaction(
             source_root=source_root,
@@ -256,9 +265,14 @@ def test_grouped_builder_admits_before_loading_inputs_and_retains_token(
 
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     monkeypatch.setattr(
-        ARTIFACT_INDEX_API,
+        RUN_SUMMARY,
         "admit_source_checkout",
         admit_source_checkout,
+    )
+    monkeypatch.setattr(
+        RUN_SUMMARY,
+        "admit_artifact_source_root",
+        admit_artifact_source_root,
     )
     monkeypatch.setattr(RUN_SUMMARY, "print_context", observe_context)
     arguments = _parse_run_summary_arguments(
@@ -271,9 +285,10 @@ def test_grouped_builder_admits_before_loading_inputs_and_retains_token(
     )
 
     assert status == 0
-    assert events == ["admit", "load", "print"]
+    assert events == ["admit", "admit-artifacts", "load", "print"]
     assert len(observed_contexts) == 1
     assert observed_contexts[0].source_checkout == admitted
+    assert observed_contexts[0].artifact_source_root == artifact_root
 
 
 @pytest.mark.parametrize(
@@ -337,7 +352,7 @@ def test_grouped_cli_requires_explicit_source_checkout(
     assert "--source-checkout" in captured.err
 
 
-def test_prepare_context_threads_one_explicit_source_checkout_root(
+def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -346,34 +361,26 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
         tmp_path / "authority",
         roles=("candidate_selection",),
     )
-    authority = ARTIFACT_INDEX_API.SourceCheckout(root=fixture.root)
+    source_checkout = SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT)
+    artifact_root = SOURCE_AUTHORITY.ArtifactSourceRoot(root=fixture.root)
     root_calls: Counter[str] = Counter()
     real_get_git_commit = ARTIFACT_INDEX_API.get_git_commit
 
-    def get_git_commit(
+    def matching_checkout_head_commit(
         *,
-        source_root: Path,
-        sanitize_git_routing: bool,
+        source_checkout: Any,
+        package_root: Path,
     ) -> str:
-        assert source_root == authority.root
-        assert sanitize_git_routing is True
+        assert source_checkout.root == REPO_ROOT
+        assert package_root == Path(RUN_SUMMARY.__file__).resolve().parents[2]
         root_calls["git"] += 1
         return real_get_git_commit(
             source_root=REPO_ROOT,
             sanitize_git_routing=True,
         )
 
-    def unexpected_admission(**_kwargs: Any) -> None:
-        pytest.fail("explicit SourceCheckout triggered a second admission")
-
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     monkeypatch.setenv("GIT_DIR", str(tmp_path / "foreign.git"))
-    monkeypatch.setattr(
-        ARTIFACT_INDEX_API,
-        "admit_source_checkout",
-        unexpected_admission,
-    )
-    monkeypatch.setattr(ARTIFACT_INDEX_API, "get_git_commit", get_git_commit)
     for owner, attribute, label in (
         (CONTRACTS, "validate_inventory", "inventory"),
         (CONTRACTS, "resolve_contract_path", "science_contract"),
@@ -385,26 +392,26 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
             attribute,
             _source_root_spy(
                 getattr(owner, attribute),
-                authority.root,
+                artifact_root.root,
                 root_calls,
                 label,
             ),
         )
     validate_artifact_transaction = _source_root_spy(
         RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.validate_artifact_transaction,
-        authority.root,
+        artifact_root.root,
         root_calls,
         "published_transaction",
     )
     normalize_scientific_review = _source_root_spy(
         RUN_SUMMARY.DEFAULT_RUN_SUMMARY_BUILD_DEPS.normalize_scientific_review,
-        authority.root,
+        artifact_root.root,
         root_calls,
         "science_normalization",
     )
     normalize_report_table_approvals = _source_root_spy(
         RUN_SUMMARY.DEFAULT_RUN_SUMMARY_BUILD_DEPS.normalize_report_table_approvals,
-        authority.root,
+        artifact_root.root,
         root_calls,
         "approvals",
     )
@@ -414,24 +421,27 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
     )
 
     def recheck_inputs(context: Any) -> None:
-        RUN_SUMMARY_PUBLICATION._recheck_inputs(context, ops=recheck_ops)
+        REPORTING_VALIDATION.recheck_run_summary_inputs(context, ops=recheck_ops)
 
     arguments = _parse_run_summary_arguments(fixture.command_args(execute=False))
 
     context = RUN_SUMMARY.prepare_context(
         arguments,
-        source_checkout=authority,
+        source_checkout=source_checkout,
+        artifact_source_root=artifact_root,
         deps=build_deps(
             normalize_scientific_review=normalize_scientific_review,
             normalize_report_table_approvals=normalize_report_table_approvals,
             recheck_inputs=recheck_inputs,
+            matching_checkout_head_commit=matching_checkout_head_commit,
         ),
     )
 
     expected_single_calls = 1
     expected_prepare_rechecks = 1
     expected_science_normalizations = 2
-    assert context.source_checkout == authority
+    assert context.source_checkout == source_checkout
+    assert context.artifact_source_root == artifact_root
     assert root_calls["git"] == expected_single_calls
     assert root_calls["inventory"] == expected_single_calls
     assert root_calls["published_transaction"] == expected_prepare_rechecks
@@ -442,14 +452,35 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
     assert root_calls["document_inventory"] == expected_single_calls
 
 
-def test_explicit_checkout_root_reaches_predecessor_and_post_publish_rechecks(
+def test_prepare_context_uses_local_build_for_unattributable_package(
+    run_summary_fixture: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
+    arguments = _parse_run_summary_arguments(
+        run_summary_fixture.command_args(execute=False)
+    )
+    context = RUN_SUMMARY.prepare_context(
+        arguments,
+        source_checkout=SOURCE_CHECKOUT,
+        artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(
+            root=run_summary_fixture.root
+        ),
+        deps=build_deps(matching_checkout_head_commit=lambda **_kwargs: None),
+    )
+
+    assert context.git_commit == "local_build"
+    assert context.document["provenance"]["git_commit"] == "local_build"
+
+
+def test_explicit_artifact_root_reaches_predecessor_and_post_publish_rechecks(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Publication retains the prepared authority through its success checks."""
     first = run_cli(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
-    authority = ARTIFACT_INDEX_API.SourceCheckout(root=run_summary_fixture.root)
+    authority = SOURCE_AUTHORITY.ArtifactSourceRoot(root=run_summary_fixture.root)
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     arguments = _parse_run_summary_arguments(
         run_summary_fixture.command_args(execute=True),
@@ -457,9 +488,8 @@ def test_explicit_checkout_root_reaches_predecessor_and_post_publish_rechecks(
     context = RUN_SUMMARY.prepare_context(
         arguments,
         source_checkout=SOURCE_CHECKOUT,
+        artifact_source_root=authority,
     )
-    # A distinct sentinel makes any fallback to the module default observable.
-    context.source_checkout = authority
     root_calls: Counter[str] = Counter()
     monkeypatch.setattr(
         CONTRACTS,
@@ -505,7 +535,7 @@ def test_explicit_checkout_root_reaches_predecessor_and_post_publish_rechecks(
     assert_no_summary_residue_after_success(run_summary_fixture)
 
 
-def test_explicit_checkout_root_reaches_restored_rollback_validation(
+def test_explicit_artifact_root_reaches_restored_rollback_validation(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -513,7 +543,7 @@ def test_explicit_checkout_root_reaches_restored_rollback_validation(
     first = run_cli(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     before = summary_snapshot(run_summary_fixture)
-    authority = ARTIFACT_INDEX_API.SourceCheckout(root=run_summary_fixture.root)
+    authority = SOURCE_AUTHORITY.ArtifactSourceRoot(root=run_summary_fixture.root)
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
     arguments = _parse_run_summary_arguments(
         run_summary_fixture.command_args(execute=True),
@@ -521,9 +551,8 @@ def test_explicit_checkout_root_reaches_restored_rollback_validation(
     context = RUN_SUMMARY.prepare_context(
         arguments,
         source_checkout=SOURCE_CHECKOUT,
+        artifact_source_root=authority,
     )
-    # A distinct sentinel makes any fallback to the module default observable.
-    context.source_checkout = authority
     default_ops = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS
     real_replace = default_ops.replace
     root_calls: Counter[str] = Counter()
@@ -590,17 +619,18 @@ def test_source_checkout_admission_error_precedes_input_diagnostics(
         *,
         root: Path,
         package_root: Path,
-    ) -> ARTIFACT_INDEX_API.SourceCheckout:
+    ) -> SOURCE_AUTHORITY.SourceCheckout:
         assert root == REPO_ROOT
         assert package_root == expected_package_root
         message = "injected run-summary checkout rejection"
-        raise ARTIFACT_INDEX_API.SourceCheckoutError(message)
+        raise SOURCE_AUTHORITY.SourceCheckoutError(message)
 
     monkeypatch.setattr(
-        ARTIFACT_INDEX_API,
+        RUN_SUMMARY,
         "admit_source_checkout",
         reject_source_checkout,
     )
+    monkeypatch.setattr(norad_cli, "require_controlled_python_runtime", lambda: None)
     assert (
         norad_cli.main(
             [
@@ -646,10 +676,7 @@ def test_help_and_dry_run_validate_without_summary_writes(
 ) -> None:
     help_result = subprocess.run(
         [
-            sys.executable,
-            "-I",
-            "-m",
-            "norad",
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "run-summary",
             "--help",
@@ -2236,7 +2263,7 @@ def test_prepared_snapshot_rejects_transaction_mutated_during_validation(
     )
 
     def recheck_inputs(context: Any) -> None:
-        RUN_SUMMARY_PUBLICATION._recheck_inputs(context, ops=recheck_ops)
+        REPORTING_VALIDATION.recheck_run_summary_inputs(context, ops=recheck_ops)
 
     arguments = _parse_run_summary_arguments(
         run_summary_fixture.command_args(execute=True)
@@ -2249,6 +2276,9 @@ def test_prepared_snapshot_rejects_transaction_mutated_during_validation(
         RUN_SUMMARY.prepare_context(
             arguments,
             source_checkout=SOURCE_CHECKOUT,
+            artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(
+                root=run_summary_fixture.root
+            ),
             deps=build_deps(recheck_inputs=recheck_inputs),
         )
 
@@ -2289,6 +2319,9 @@ def test_prepare_recheck_rejects_identical_byte_record_replacement(
         RUN_SUMMARY.prepare_context(
             arguments,
             source_checkout=SOURCE_CHECKOUT,
+            artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(
+                root=run_summary_fixture.root
+            ),
             deps=build_deps(build_document=build_then_replace_record),
         )
 
@@ -2447,7 +2480,7 @@ def test_alternate_science_summary_spelling_publishes_consistent_receipt(
     )
 
     def recheck_inputs(context: Any) -> None:
-        RUN_SUMMARY_PUBLICATION._recheck_inputs(context, ops=ops)
+        REPORTING_VALIDATION.recheck_run_summary_inputs(context, ops=ops)
 
     context = context_for(
         fixture,

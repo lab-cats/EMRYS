@@ -20,6 +20,7 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
 from norad.contracts.scientific_evidence import review_package, step08, step09
+from norad.libraries.source_authority import controlled_python_argv
 from tests.contract_integration.validation_rosters.validation_roster_expectations import (
     assert_exact_check_roster,
 )
@@ -128,9 +129,7 @@ ARTIFACT_ROSTERS = importlib.import_module("norad.reporting._artifact_index.rost
 ARTIFACT_NATIVE = importlib.import_module(
     "norad.reporting._artifact_index.reconcile_native"
 )
-ARTIFACT_SOURCE_CHECKOUT = importlib.import_module(
-    "norad.reporting._artifact_index.source_checkout"
-)
+SOURCE_AUTHORITY = importlib.import_module("norad.libraries.source_authority")
 ARTIFACT_VALIDATION = importlib.import_module(
     "norad.reporting._artifact_index.validation"
 )
@@ -160,10 +159,7 @@ def run_cli(
         environment.update(extra_env)
     return subprocess.run(
         [
-            sys.executable,
-            "-I",
-            "-m",
-            "norad",
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "artifact-index",
             *fixture.command_args(execute=execute),
@@ -209,7 +205,16 @@ def context_for(fixture: Any) -> Any:
             output_root=fixture.output_root,
             execute=True,
         ),
-        source_checkout=ARTIFACT_SOURCE_CHECKOUT.SourceCheckout(root=REPO_ROOT),
+        source_checkout=SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT),
+        artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(root=fixture.root),
+        identity_ops=ARTIFACT_CONTEXT.ArtifactIdentityOps(
+            matching_clean_checkout_head_commit=(
+                lambda **_kwargs: ARTIFACT_CORE.get_git_commit(
+                    source_root=REPO_ROOT,
+                    sanitize_git_routing=True,
+                )
+            )
+        ),
     )
 
 
@@ -346,40 +351,41 @@ def test_git_commit_routing_sanitization_is_explicit_and_complete(
     assert environment["NORAD_GIT_ENV_SENTINEL"] == "retained"
 
 
-def test_prepare_context_threads_one_explicit_source_checkout_root(
+def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
     artifact_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Fixture sources are absolute; Git/producer spies delegate to the real
-    # checkout only after proving the synthetic root reached those seams.
-    authority = ARTIFACT_SOURCE_CHECKOUT.SourceCheckout(root=artifact_fixture.root)
+    source_checkout = SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT)
+    artifact_source_root = SOURCE_AUTHORITY.ArtifactSourceRoot(
+        root=artifact_fixture.root
+    )
     root_calls: Counter[str] = Counter()
-    real_get_git_commit = ARTIFACT_CONTEXT.get_git_commit
+    real_get_git_commit = ARTIFACT_CORE.get_git_commit
     real_producer_evidence = ARTIFACT_CONTEXT.producer_evidence
     real_declared_contract_path = ARTIFACT_NATIVE.declared_contract_path
     real_validate_artifact_semantics = ARTIFACT_CONTRACTS.validate_artifact_semantics
 
-    def get_git_commit(
+    def matching_clean_checkout_head_commit(
         *,
-        source_root: Path,
-        sanitize_git_routing: bool,
+        source_checkout: Any,
+        package_root: Path,
     ) -> str:
-        assert source_root == authority.root
-        assert sanitize_git_routing is True
+        assert source_checkout.root == REPO_ROOT
+        assert package_root == Path(ARTIFACT_CONTEXT.__file__).resolve().parents[2]
         root_calls["git"] += 1
-        return real_get_git_commit()
+        return real_get_git_commit(source_root=REPO_ROOT, sanitize_git_routing=True)
 
     def producer_evidence(
         git_commit: str,
         *,
         source_root: Path,
     ) -> dict[str, dict[str, Any]]:
-        assert source_root == authority.root
+        assert source_root == source_checkout.root
         root_calls["producers"] += 1
-        return real_producer_evidence(git_commit)
+        return real_producer_evidence(git_commit, source_root=source_root)
 
     def declared_contract_path(value: str, *, source_root: Path) -> Path:
-        assert source_root == authority.root
+        assert source_root == artifact_source_root.root
         root_calls["native_references"] += 1
         return real_declared_contract_path(value, source_root=source_root)
 
@@ -388,11 +394,10 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
         *,
         source_root: Path,
     ) -> None:
-        assert source_root == authority.root
+        assert source_root == artifact_source_root.root
         root_calls["record_semantics"] += 1
         real_validate_artifact_semantics(document, source_root=source_root)
 
-    monkeypatch.setattr(ARTIFACT_CONTEXT, "get_git_commit", get_git_commit)
     monkeypatch.setattr(ARTIFACT_CONTEXT, "producer_evidence", producer_evidence)
     monkeypatch.setattr(
         ARTIFACT_NATIVE,
@@ -413,14 +418,66 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
             output_root=artifact_fixture.output_root,
             execute=False,
         ),
-        source_checkout=authority,
+        source_checkout=source_checkout,
+        artifact_source_root=artifact_source_root,
+        identity_ops=ARTIFACT_CONTEXT.ArtifactIdentityOps(
+            matching_clean_checkout_head_commit=(matching_clean_checkout_head_commit)
+        ),
     )
 
-    assert context.source_checkout == authority
+    assert context.source_checkout == source_checkout
+    assert context.artifact_source_root == artifact_source_root
     assert root_calls["git"] == 1
     assert root_calls["producers"] == 1
     assert root_calls["native_references"] > 0
     assert root_calls["record_semantics"] == len(artifact_fixture.inventory_rows)
+
+
+def test_prepare_context_rejects_unattributable_dirty_checkout(
+    artifact_fixture: Any,
+) -> None:
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError,
+        match="requires a stable clean source checkout",
+    ):
+        ARTIFACT_CONTEXT.prepare_context(
+            argparse.Namespace(
+                run_id=artifact_fixture.run_id,
+                run_contract=artifact_fixture.run_contract,
+                inventory=artifact_fixture.inventory,
+                output_root=artifact_fixture.output_root,
+                execute=False,
+            ),
+            source_checkout=SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT),
+            artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(
+                root=artifact_fixture.root
+            ),
+            identity_ops=ARTIFACT_CONTEXT.ArtifactIdentityOps(
+                matching_clean_checkout_head_commit=lambda **_kwargs: None
+            ),
+        )
+
+
+def test_publication_rechecks_source_identity_before_terminal_receipt(
+    artifact_fixture: Any,
+) -> None:
+    context = context_for(artifact_fixture)
+    calls = 0
+
+    def recheck_source_identity(_context: Any) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise ARTIFACT_MODELS.ArtifactIndexError("fixture source drift")
+
+    with pytest.raises(ARTIFACT_MODELS.ArtifactIndexError, match="source drift"):
+        ARTIFACT_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(recheck_source_identity=recheck_source_identity),
+        )
+
+    assert calls == 2
+    assert not context.receipt_path.exists()
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(
@@ -428,10 +485,7 @@ def test_help_and_dry_run_validate_all_sources_without_writing(
 ) -> None:
     help_result = subprocess.run(
         [
-            sys.executable,
-            "-I",
-            "-m",
-            "norad",
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "artifact-index",
             "--help",
@@ -446,6 +500,7 @@ def test_help_and_dry_run_validate_all_sources_without_writing(
     assert help_result.returncode == 0, help_result.stderr
     for option in (
         "--source-checkout",
+        "--artifact-source-root",
         "--run-id",
         "--run-contract",
         "--inventory",
@@ -460,6 +515,36 @@ def test_help_and_dry_run_validate_all_sources_without_writing(
     assert "complete=81" in result.stdout
     assert "Receipt (published last)" in result.stdout
     assert "Dry-run only" in result.stdout
+    assert not artifact_fixture.output_root.exists()
+
+
+@pytest.mark.parametrize(
+    "required_option",
+    ("--source-checkout", "--artifact-source-root"),
+)
+def test_public_cli_requires_both_source_authorities(
+    artifact_fixture: Any,
+    required_option: str,
+) -> None:
+    arguments = artifact_fixture.command_args(execute=False)
+    option_index = arguments.index(required_option)
+    del arguments[option_index : option_index + 2]
+
+    result = subprocess.run(
+        [
+            *controlled_python_argv(sys.executable, "-m", "norad"),
+            "build",
+            "artifact-index",
+            *arguments,
+        ],
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert required_option in result.stderr
     assert not artifact_fixture.output_root.exists()
 
 
@@ -1009,10 +1094,7 @@ def test_semantically_identical_moved_run_contract_can_retry(
 
     second = subprocess.run(
         [
-            sys.executable,
-            "-I",
-            "-m",
-            "norad",
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "artifact-index",
             *arguments,
@@ -1269,7 +1351,7 @@ def test_prepare_context_uses_live_predecessor_validation_owner(
 
     def fail_predecessor_validation(**kwargs: Any) -> None:
         nonlocal reached_predecessor
-        assert kwargs["source_root"] == REPO_ROOT
+        assert kwargs["source_root"] == artifact_fixture.root
         if not kwargs["require_current_source_locations"]:
             reached_predecessor = True
             raise ARTIFACT_MODELS.ArtifactIndexError(
@@ -1304,7 +1386,7 @@ def test_post_publication_source_mutation_rolls_back(
 
     def mutate_after_validation(**kwargs: Any) -> None:
         nonlocal mutated
-        assert kwargs["source_root"] == context.source_checkout.root
+        assert kwargs["source_root"] == context.artifact_source_root.root
         real_validate(**kwargs)
         if kwargs["require_current_source_locations"] and not mutated:
             source.write_text("mutated after publication\n", encoding="utf-8")
@@ -1502,7 +1584,7 @@ def test_failed_restored_transaction_validation_requarantines_receipt(
 
     def fail_new_and_restored_validation(**kwargs: Any) -> None:
         nonlocal prior_validation_count
-        assert kwargs["source_root"] == replacement.source_checkout.root
+        assert kwargs["source_root"] == replacement.artifact_source_root.root
         if kwargs["require_current_source_locations"]:
             raise ARTIFACT_MODELS.ArtifactIndexError(
                 "injected new-transaction validation failure"

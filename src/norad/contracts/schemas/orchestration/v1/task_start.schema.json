@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:norad:schema:orchestration:task-start:v1",
+  "title": "NORAD owner task entry ledger record v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "execution_contract_sha256",
+    "profile_sha256",
+    "workflow_attempt_id",
+    "task_attempt_id",
+    "machine_key",
+    "scope",
+    "owner_run_token",
+    "workflow_attempt_record",
+    "workflow_config",
+    "run_lock",
+    "task_dispatch_record",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "norad.task-start.v1"
+    },
+    "run_id": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/run_id"
+    },
+    "execution_contract_sha256": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/sha256"
+    },
+    "profile_sha256": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/sha256"
+    },
+    "workflow_attempt_id": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/workflow_attempt_id"
+    },
+    "task_attempt_id": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/task_attempt_id"
+    },
+    "machine_key": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/safe_id"
+    },
+    "scope": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/scope"
+    },
+    "owner_run_token": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/safe_id"
+    },
+    "workflow_attempt_record": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+    },
+    "workflow_config": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+    },
+    "run_lock": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+    },
+    "task_dispatch_record": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+    },
+    "created_at": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/timestamp"
+    }
+  }
+}

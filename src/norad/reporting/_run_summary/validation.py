@@ -124,7 +124,10 @@ def _validate_existing_summary(
         supersedes_field="supersedes_run_summary_attempt_id",
         history_field="run_summary_attempt_history",
     )
-    if not re.fullmatch(r"[0-9a-f]{40,64}", receipt["git_commit"]):
+    if not (
+        receipt["git_commit"] == "local_build"
+        or re.fullmatch(r"[0-9a-f]{40,64}", receipt["git_commit"])
+    ):
         _fail("Existing run-summary receipt Git commit is invalid")
     try:
         started_at = datetime.fromisoformat(

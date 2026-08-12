@@ -8,7 +8,8 @@ DEMO_REPORT_TABLE_APPROVALS := $(DEMO_REPORT_FIXTURE_ROOT)/report_table_approval
 report-test:
 	"$(REPORT_PYTHON_BIN)" -m pytest \
 		tests/reporting/test_artifact_run_summary.py \
-		tests/reporting/test_report.py
+		tests/reporting/test_report.py \
+		tests/reporting/test_transaction_validation.py
 
 demo-report:
 	command -v "$(REPORT_PYTHON_BIN)" >/dev/null 2>&1 || { \
@@ -27,8 +28,9 @@ demo-report:
 		--root "$(DEMO_REPORT_FIXTURE_ROOT)" \
 		--full-science-demo
 	SOURCE_DATE_EPOCH=1700000000 \
-		"$(REPORT_PYTHON_BIN)" -I -m norad build run-summary \
+		"$(REPORT_PYTHON_BIN)" -X pycache_prefix=/dev/null -I -m norad build run-summary \
 		--source-checkout "$(CURDIR)" \
+		--artifact-source-root "$(DEMO_REPORT_ROOT)/full-run-fixture" \
 		--run-id "$(DEMO_REPORT_RUN_ID)" \
 		--artifact-receipt \
 			"$(DEMO_REPORT_ARTIFACT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).artifact_receipt.tsv" \
@@ -37,14 +39,16 @@ demo-report:
 		--report-table-approvals "$(DEMO_REPORT_TABLE_APPROVALS)" \
 		--execute
 	SOURCE_DATE_EPOCH=1700000000 \
-		"$(REPORT_PYTHON_BIN)" -I -m norad build report \
+		"$(REPORT_PYTHON_BIN)" -X pycache_prefix=/dev/null -I -m norad build report \
 		--source-checkout "$(CURDIR)" \
+		--artifact-source-root "$(DEMO_REPORT_ROOT)/full-run-fixture" \
 		--run-summary \
 			"$(DEMO_REPORT_ARTIFACT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).run_summary.json" \
 		--output-root "$(DEMO_REPORT_OUTPUT_ROOT)"
 	SOURCE_DATE_EPOCH=1700000000 \
-		"$(REPORT_PYTHON_BIN)" -I -m norad build report \
+		"$(REPORT_PYTHON_BIN)" -X pycache_prefix=/dev/null -I -m norad build report \
 		--source-checkout "$(CURDIR)" \
+		--artifact-source-root "$(DEMO_REPORT_ROOT)/full-run-fixture" \
 		--run-summary \
 			"$(DEMO_REPORT_ARTIFACT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).run_summary.json" \
 		--output-root "$(DEMO_REPORT_OUTPUT_ROOT)" \

@@ -248,7 +248,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "normalizer": {
             "name": "norad",
             "version": "0.1.0",
-            "path": "/checkout/.venv/bin/norad",
+            "path": "/checkout/.venv/bin/python",
         },
         "workspace": "/workspace",
         "scratch": None,
@@ -258,6 +258,18 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
             "clean": True,
         },
         "executor": "local",
+        "execution_mode": "test-double",
+        "snakemake_argv": [
+            "/checkout/.venv/bin/python",
+            "-X",
+            "pycache_prefix=/dev/null",
+            "-I",
+            "-m",
+            "snakemake",
+            "--",
+            "local_pipeline_slice",
+        ],
+        "workflow_config": record_reference("contract/workflow-config.json"),
         "host": "localhost",
         "process_id": 42,
         "owner_token": "owner-token-1",
@@ -267,8 +279,38 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
                 "name": "python",
                 "version": "3.14.5",
                 "path": "/checkout/.venv/bin/python",
-            }
+            },
+            {
+                "name": "snakemake",
+                "version": "9.25.1",
+                "path": "/checkout/.venv/bin/python",
+            },
         ],
+    }
+    task_start_reference = record_reference(
+        "state/task-starts/star_alignment/EV-1.json"
+    )
+    task_start = {
+        "schema_version": "norad.task-start.v1",
+        "run_id": run_id,
+        "execution_contract_sha256": ZERO_HASH,
+        "profile_sha256": ONE_HASH,
+        "workflow_attempt_id": WORKFLOW_ATTEMPT_ID,
+        "task_attempt_id": TASK_ATTEMPT_ID,
+        "machine_key": "star_alignment",
+        "scope": scope,
+        "owner_run_token": "owner-run-1",
+        "workflow_attempt_record": record_reference(
+            f"attempts/{WORKFLOW_ATTEMPT_ID}/attempt.json"
+        ),
+        "workflow_config": record_reference("contract/workflow-config.json"),
+        "run_lock": record_reference(
+            f"attempts/{WORKFLOW_ATTEMPT_ID}/released-run-lock.json"
+        ),
+        "task_dispatch_record": record_reference(
+            f"contract/dispatch/{WORKFLOW_ATTEMPT_ID}/star_alignment/EV-1.json"
+        ),
+        "created_at": "2026-08-12T12:01:30Z",
     }
     task_attempt = {
         "schema_version": "norad.task-attempt.v1",
@@ -280,6 +322,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "machine_key": "star_alignment",
         "scope": scope,
         "owner_run_token": "owner-run-1",
+        "task_start_record": task_start_reference,
         "status": "succeeded",
         "started_at": "2026-08-12T12:01:00Z",
         "finished_at": "2026-08-12T12:02:00Z",
@@ -308,6 +351,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "task_attempt_record": record_reference(
             f"attempts/{WORKFLOW_ATTEMPT_ID}/tasks/star_alignment/EV-1/task-attempt.json"
         ),
+        "task_start_record": task_start_reference,
         "machine_key": "star_alignment",
         "scope": scope,
         "owner_run_token": "owner-run-1",
@@ -351,8 +395,23 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "attempt_record": record_reference(
             f"attempts/{WORKFLOW_ATTEMPT_ID}/attempt.json"
         ),
+        "released_run_lock": record_reference(
+            f"attempts/{WORKFLOW_ATTEMPT_ID}/released-run-lock.json"
+        ),
         "status": "succeeded",
         "finished_at": "2026-08-12T12:03:00Z",
+        "snakemake_exit_code": 0,
+        "termination_signal": None,
+        "preentry_task_attempt_records": [],
+        "task_start_records": [
+            {
+                "machine_key": "star_alignment",
+                "scope": scope,
+                "record": record_reference(
+                    "state/task-starts/star_alignment/EV-1.json"
+                ),
+            }
+        ],
         "verified_tasks": [
             {
                 "machine_key": "star_alignment",
@@ -360,10 +419,25 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
                 "record": record_reference("state/verified/star_alignment/EV-1.json"),
             }
         ],
-        "reporting_records": {
-            "artifact_index": record_reference("products/artifact-index.json"),
-            "run_summary": record_reference("products/run-summary.json"),
-            "html_report": record_reference("products/report.receipt.json"),
+        "reporting_completion_records": {
+            "artifact_index": {
+                "start": record_reference("state/reporting/artifact_index/start.json"),
+                "verified": record_reference(
+                    "state/reporting/artifact_index/verified.json"
+                ),
+            },
+            "run_summary": {
+                "start": record_reference("state/reporting/run_summary/start.json"),
+                "verified": record_reference(
+                    "state/reporting/run_summary/verified.json"
+                ),
+            },
+            "html_report": {
+                "start": record_reference("state/reporting/html_report/start.json"),
+                "verified": record_reference(
+                    "state/reporting/html_report/verified.json"
+                ),
+            },
         },
         "blockers": [],
         "message": None,
@@ -371,6 +445,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
     }
     return {
         "workflow-attempt": workflow_attempt,
+        "task-start": task_start,
         "task-attempt": task_attempt,
         "verified-task": verified_task,
         "attempt-receipt": attempt_receipt,
@@ -566,13 +641,104 @@ def test_successful_task_records_bind_all_three_commands() -> None:
     records = lifecycle_records()
     task_attempt = records["task-attempt"]
     task_attempt["semantic_all_pass"] = True
-    with pytest.raises(orchestration.ContractValidationError, match="not valid"):
+    with pytest.raises(orchestration.ContractValidationError, match="Invalid"):
         orchestration.validate_record("task-attempt", task_attempt)
 
     verified = records["verified-task"]
     verified["commands"].pop("semantic_all_pass")
     with pytest.raises(orchestration.ContractValidationError, match="required"):
         orchestration.validate_record("verified-task", verified)
+
+
+def test_task_attempt_distinguishes_preentry_failure_from_started_work() -> None:
+    successful = lifecycle_records()["task-attempt"]
+    successful["task_start_record"] = None
+    with pytest.raises(orchestration.ContractValidationError, match="Invalid"):
+        orchestration.validate_record("task-attempt", successful)
+
+    preentry = lifecycle_records()["task-attempt"]
+    preentry.update(
+        status="failed",
+        task_start_record=None,
+        producer=None,
+        validator=None,
+        semantic_all_pass=None,
+        stable_inputs_rechecked=False,
+        validation_report=None,
+        failure_message="declared destination already exists",
+    )
+    orchestration.validate_record("task-attempt", preentry)
+
+    preentry["producer"] = {"argv": ["must-not-run"], "exit_code": 1}
+    with pytest.raises(orchestration.ContractValidationError, match="Invalid"):
+        orchestration.validate_record("task-attempt", preentry)
+
+
+def test_attempt_receipt_terminal_semantics_and_unique_scope_references() -> None:
+    receipt = lifecycle_records()["attempt-receipt"]
+    receipt["verified_tasks"].append(copy.deepcopy(receipt["verified_tasks"][0]))
+    with pytest.raises(orchestration.ContractValidationError, match="unique owner"):
+        orchestration.validate_record("attempt-receipt", receipt)
+
+    receipt = lifecycle_records()["attempt-receipt"]
+    receipt["task_start_records"].append(
+        copy.deepcopy(receipt["task_start_records"][0])
+    )
+    with pytest.raises(orchestration.ContractValidationError, match="unique owner"):
+        orchestration.validate_record("attempt-receipt", receipt)
+
+    receipt = lifecycle_records()["attempt-receipt"]
+    receipt["task_start_records"] = []
+    with pytest.raises(
+        orchestration.ContractValidationError, match="corresponding task starts"
+    ):
+        orchestration.validate_record("attempt-receipt", receipt)
+
+    receipt = lifecycle_records()["attempt-receipt"]
+    receipt["verified_tasks"] = []
+    receipt.update(
+        status="failed",
+        snakemake_exit_code=0,
+        message="zero exit with incomplete task state",
+        local_pipeline_complete=False,
+    )
+    with pytest.raises(orchestration.ContractValidationError, match="every task start"):
+        orchestration.validate_record("attempt-receipt", receipt)
+
+    receipt = lifecycle_records()["attempt-receipt"]
+    receipt["reporting_completion_records"]["html_report"]["verified"] = None
+    receipt.update(
+        status="failed",
+        snakemake_exit_code=0,
+        message="zero exit without complete state",
+        local_pipeline_complete=False,
+    )
+    with pytest.raises(
+        orchestration.ContractValidationError, match="incomplete html_report"
+    ):
+        orchestration.validate_record("attempt-receipt", receipt)
+
+    receipt = lifecycle_records()["attempt-receipt"]
+    receipt.update(
+        status="blocked",
+        snakemake_exit_code=None,
+        blockers=[],
+        message="blocked without declared facts",
+        local_pipeline_complete=False,
+    )
+    with pytest.raises(orchestration.ContractValidationError, match="at least one"):
+        orchestration.validate_record("attempt-receipt", receipt)
+
+    receipt = lifecycle_records()["attempt-receipt"]
+    receipt.update(
+        status="failed",
+        snakemake_exit_code=0,
+        blockers=["ambiguous residue"],
+        message="not clean",
+        local_pipeline_complete=False,
+    )
+    with pytest.raises(orchestration.ContractValidationError, match="Only blocked"):
+        orchestration.validate_record("attempt-receipt", receipt)
 
 
 def test_workflow_attempt_requires_clean_checkout_and_named_tools() -> None:
@@ -587,6 +753,62 @@ def test_workflow_attempt_requires_clean_checkout_and_named_tools() -> None:
     attempt["required_tools"].append(copy.deepcopy(attempt["required_tools"][0]))
     with pytest.raises(orchestration.ContractValidationError, match="unique"):
         orchestration.validate_record("workflow-attempt", attempt)
+
+    attempt = lifecycle_records()["workflow-attempt"]
+    attempt["required_tools"].insert(
+        0,
+        {"name": "z-tool", "version": "1", "path": "/tools/z-tool"},
+    )
+    with pytest.raises(orchestration.ContractValidationError, match="normalized"):
+        orchestration.validate_record("workflow-attempt", attempt)
+
+
+def test_workflow_attempt_requires_exact_internal_resume_controls() -> None:
+    initial = lifecycle_records()["workflow-attempt"]
+    initial["snakemake_argv"].insert(-2, "--ignore-incomplete")
+    with pytest.raises(
+        orchestration.ContractValidationError,
+        match="Initial execution",
+    ):
+        orchestration.validate_record("workflow-attempt", initial)
+
+    resume = lifecycle_records()["workflow-attempt"]
+    resume.update(
+        workflow_attempt_id="workflow-20260812T130000Z-" + "c" * 32,
+        supersedes_workflow_attempt_id=WORKFLOW_ATTEMPT_ID,
+        operation="resume",
+        created_at="2026-08-12T13:00:00Z",
+        snakemake_argv=[
+            "/checkout/.venv/bin/python",
+            "-X",
+            "pycache_prefix=/dev/null",
+            "-I",
+            "-m",
+            "snakemake",
+            "--rerun-triggers",
+            "input",
+            "--ignore-incomplete",
+            "--",
+            "local_pipeline_slice",
+        ],
+    )
+    orchestration.validate_record("workflow-attempt", resume)
+
+    missing_ignore = copy.deepcopy(resume)
+    missing_ignore["snakemake_argv"].remove("--ignore-incomplete")
+    with pytest.raises(
+        orchestration.ContractValidationError,
+        match="Resume must use exactly",
+    ):
+        orchestration.validate_record("workflow-attempt", missing_ignore)
+
+    duplicate_ignore = copy.deepcopy(resume)
+    duplicate_ignore["snakemake_argv"].insert(6, "--ignore-incomplete")
+    with pytest.raises(
+        orchestration.ContractValidationError,
+        match="Resume must use exactly",
+    ):
+        orchestration.validate_record("workflow-attempt", duplicate_ignore)
 
 
 def test_attempt_ids_bind_utc_context_and_128_random_bits() -> None:

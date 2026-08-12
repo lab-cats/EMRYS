@@ -14,11 +14,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from norad.contracts.artifacts import api as contracts
+from norad.libraries.source_authority import (
+    ArtifactSourceRootError,
+    SourceCheckoutError,
+    admit_artifact_source_root,
+    admit_source_checkout,
+)
 
 from .context import prepare_context, print_context
 from .models import ArtifactIndexError
 from .publication import publish_context
-from .source_checkout import SourceCheckoutError, admit_source_checkout
 
 if TYPE_CHECKING:
     import argparse
@@ -31,7 +36,14 @@ def build_from_args(arguments: argparse.Namespace) -> int:
             root=arguments.source_checkout,
             package_root=Path(__file__).resolve().parents[2],
         )
-        context = prepare_context(arguments, source_checkout=source_checkout)
+        artifact_source_root = admit_artifact_source_root(
+            root=arguments.artifact_source_root,
+        )
+        context = prepare_context(
+            arguments,
+            source_checkout=source_checkout,
+            artifact_source_root=artifact_source_root,
+        )
         print_context(context, arguments.execute)
         if arguments.execute:
             publish_context(context)
@@ -39,6 +51,7 @@ def build_from_args(arguments: argparse.Namespace) -> int:
             print(f"Published receipt last: {context.receipt_path}")
     except (
         ArtifactIndexError,
+        ArtifactSourceRootError,
         SourceCheckoutError,
         contracts.ContractValidationError,
     ) as exc:

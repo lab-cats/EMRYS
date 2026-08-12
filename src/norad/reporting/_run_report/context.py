@@ -6,10 +6,17 @@ import argparse
 import importlib.metadata
 import os
 import stat
+from collections.abc import Callable
+from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
 
-from norad.reporting._artifact_index import api as artifact_index
+from norad.libraries.source_authority import (
+    ArtifactSourceRoot,
+    SourceCheckout,
+    SourceCheckoutError,
+    matching_checkout_head_commit,
+)
 
 from .inputs import (
     _assert_snapshot,
@@ -33,6 +40,18 @@ from .models import (
 from .receipt import read_receipt_tsv
 from .validation import render_html
 from .view import build_view
+
+
+@dataclass(frozen=True, slots=True)
+class ReportIdentityOps:
+    """Explicit source-provenance observations for focused routing tests."""
+
+    matching_checkout_head_commit: Callable[..., str | None]
+
+
+DEFAULT_REPORT_IDENTITY_OPS = ReportIdentityOps(
+    matching_checkout_head_commit=matching_checkout_head_commit,
+)
 
 
 def expected_html_identity(context: ReportContext) -> dict[str, str]:
@@ -115,9 +134,11 @@ def _existing_outputs(
 def prepare_context(
     arguments: argparse.Namespace,
     *,
-    source_checkout: artifact_index.SourceCheckout,
+    source_checkout: SourceCheckout,
+    artifact_source_root: ArtifactSourceRoot,
+    identity_ops: ReportIdentityOps = DEFAULT_REPORT_IDENTITY_OPS,
 ) -> ReportContext:
-    source_root = source_checkout.root
+    source_root = artifact_source_root.root
     run_summary_path = _explicit_path(arguments.run_summary, "run-summary path")
     run_summary_snapshot = _snapshot_regular(run_summary_path, "run-summary document")
     summary = _load_run_summary(run_summary_path, source_root=source_root)
@@ -137,20 +158,13 @@ def prepare_context(
     try:
         package_root = Path(__file__).resolve().parents[2]
         producer_git_commit = (
-            artifact_index.get_git_commit(
-                source_root=source_root,
-                sanitize_git_routing=True,
-            )
-            if artifact_index.package_matches_checkout_head(
+            identity_ops.matching_checkout_head_commit(
                 source_checkout=source_checkout,
                 package_root=package_root,
             )
-            else "local_build"
+            or "local_build"
         )
-    except (
-        artifact_index.ArtifactIndexError,
-        artifact_index.SourceCheckoutError,
-    ) as exc:
+    except SourceCheckoutError as exc:
         _fail(str(exc))
     template_snapshot = _resource_snapshot(TEMPLATE_RESOURCE, "report Jinja template")
     css_snapshot = _resource_snapshot(CSS_RESOURCE, "report CSS resource")
@@ -197,7 +211,8 @@ def prepare_context(
         "run_summary_path": str(run_summary_snapshot.path),
         "run_summary_sha256": run_summary_snapshot.sha256,
         "state_banner": SCIENCE_BANNERS[summary["science_status"]],
-        "source_checkout": str(source_root),
+        "source_checkout": str(source_checkout.root),
+        "artifact_source_root": str(artifact_source_root.root),
         "template_path": f"norad.reporting/{TEMPLATE_RESOURCE}",
         "template_sha256": template_snapshot.sha256,
     }
@@ -210,6 +225,7 @@ def prepare_context(
         _assert_snapshot(snapshot, label)
     return ReportContext(
         source_checkout=source_checkout,
+        artifact_source_root=artifact_source_root,
         producer_git_commit=producer_git_commit,
         run_summary_path=run_summary_path,
         run_summary_snapshot=run_summary_snapshot,

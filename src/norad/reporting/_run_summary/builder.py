@@ -18,6 +18,16 @@ if TYPE_CHECKING:
     import argparse
 
 from norad.contracts.artifacts import api as contracts
+from norad.libraries.source_authority import (
+    ArtifactSourceRoot,
+    ArtifactSourceRootError,
+    SourceCheckout,
+    SourceCheckoutError,
+    admit_artifact_source_root,
+    admit_source_checkout,
+    matching_checkout_head_commit,
+)
+from norad.reporting import transaction_validation
 from norad.reporting._artifact_index import api as adapter
 from norad.reporting._run_summary import models
 from norad.reporting._run_summary import publication
@@ -68,7 +78,12 @@ class RunSummaryBuildDeps:
         _normalize_report_table_approvals
     )
     build_document: Callable[..., Any] = _build_document
-    recheck_inputs: Callable[..., Any] = publication._recheck_inputs
+    recheck_inputs: Callable[..., Any] = (
+        transaction_validation.recheck_run_summary_inputs
+    )
+    matching_checkout_head_commit: Callable[..., str | None] = (
+        matching_checkout_head_commit
+    )
 
 
 DEFAULT_RUN_SUMMARY_BUILD_DEPS = RunSummaryBuildDeps()
@@ -77,10 +92,11 @@ DEFAULT_RUN_SUMMARY_BUILD_DEPS = RunSummaryBuildDeps()
 def prepare_context(
     arguments: argparse.Namespace,
     *,
-    source_checkout: adapter.SourceCheckout,
+    source_checkout: SourceCheckout,
+    artifact_source_root: ArtifactSourceRoot,
     deps: RunSummaryBuildDeps = DEFAULT_RUN_SUMMARY_BUILD_DEPS,
 ) -> BuildContext:
-    source_root = source_checkout.root
+    source_root = artifact_source_root.root
     (
         artifact_receipt_path,
         artifact_receipt_sha256,
@@ -112,9 +128,12 @@ def prepare_context(
         supersedes_field="supersedes_adapter_attempt_id",
         history_field="adapter_attempt_history",
     )
-    git_commit = adapter.get_git_commit(
-        source_root=source_root,
-        sanitize_git_routing=True,
+    git_commit = (
+        deps.matching_checkout_head_commit(
+            source_checkout=source_checkout,
+            package_root=Path(__file__).resolve().parents[2],
+        )
+        or "local_build"
     )
     generated_at = artifact_receipt["finished_at"]
     started_at = adapter.utc_now()
@@ -299,6 +318,7 @@ def prepare_context(
         receipt_row=receipt_row,
         receipt_bytes=receipt_bytes,
         source_checkout=source_checkout,
+        artifact_source_root=artifact_source_root,
     )
     deps.recheck_inputs(context)
     return context
@@ -346,13 +366,17 @@ def build_from_args(
 ) -> int:
     """Build one run summary from grouped command arguments."""
     try:
-        source_checkout = adapter.admit_source_checkout(
+        source_checkout = admit_source_checkout(
             root=arguments.source_checkout,
             package_root=Path(__file__).resolve().parents[2],
+        )
+        artifact_source_root = admit_artifact_source_root(
+            root=arguments.artifact_source_root,
         )
         context = prepare_context(
             arguments,
             source_checkout=source_checkout,
+            artifact_source_root=artifact_source_root,
             deps=deps,
         )
         print_context(context)
@@ -364,7 +388,8 @@ def build_from_args(
     except (
         RunSummaryError,
         adapter.ArtifactIndexError,
-        adapter.SourceCheckoutError,
+        ArtifactSourceRootError,
+        SourceCheckoutError,
         contracts.ContractValidationError,
         science.RunSummaryScienceError,
         OSError,

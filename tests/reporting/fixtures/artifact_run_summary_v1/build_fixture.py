@@ -25,6 +25,7 @@ from norad.evidence.scientific_review_package._scientific_review import (
 from norad.evidence.scientific_review_package._scientific_review import (
     contracts as STEP09C,
 )
+from norad.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
 from norad.reporting._artifact_index import api as ARTIFACT_API
 from norad.reporting._artifact_index import context as ARTIFACT_CONTEXT
 from norad.reporting._artifact_index import core as ARTIFACT_CORE
@@ -32,7 +33,6 @@ from norad.reporting._artifact_index import models as ARTIFACT_MODELS
 from norad.reporting._artifact_index import publication as ARTIFACT_PUBLICATION
 from norad.reporting._artifact_index import records as ARTIFACT_RECORDS
 from norad.reporting._artifact_index import validation as ARTIFACT_VALIDATION
-from norad.reporting._artifact_index.source_checkout import SourceCheckout
 from tests.evidence.scientific_review_package import build_fixture as STEP09C_FIXTURE
 from tests.reporting.fixtures.artifact_adapters_v1 import (
     build_fixture as ADAPTER_FIXTURE,
@@ -127,6 +127,8 @@ class RunSummaryFixture:
         arguments = [
             "--source-checkout",
             str(REPO_ROOT),
+            "--artifact-source-root",
+            str(self.root),
             "--run-id",
             self.run_id,
             "--artifact-receipt",
@@ -192,6 +194,15 @@ def publish_adapter_fixture(fixture: Any) -> None:
                 execute=True,
             ),
             source_checkout=SourceCheckout(root=REPO_ROOT),
+            artifact_source_root=ArtifactSourceRoot(root=fixture.root),
+            identity_ops=ARTIFACT_CONTEXT.ArtifactIdentityOps(
+                matching_clean_checkout_head_commit=(
+                    lambda **_kwargs: ARTIFACT_CORE.get_git_commit(
+                        source_root=REPO_ROOT,
+                        sanitize_git_routing=True,
+                    )
+                )
+            ),
         )
         ARTIFACT_PUBLICATION.publish_context(context)
     finally:
@@ -326,6 +337,7 @@ def copy_summary_with_repo_relative_approved_table(
     output_root: Path,
     *,
     relative_table_path: str = "configs/report_table_approvals.example.tsv",
+    table_source_root: Path = REPO_ROOT,
     summary_git_commit: str | None = None,
 ) -> Path:
     """Copy a valid approved summary with one checkout-relative table source."""
@@ -336,7 +348,7 @@ def copy_summary_with_repo_relative_approved_table(
     approved = document["approved_report_tables"]
     if not approved:
         raise ValueError("Run summary has no approved report table to rewrite")
-    table_path = REPO_ROOT / relative_table_path
+    table_path = table_source_root / relative_table_path
     table_rows = read_tsv(table_path)
     table = approved[0]
     table.update(
