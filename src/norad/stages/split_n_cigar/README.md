@@ -30,10 +30,12 @@ bash src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh \
 ```
 
 The exact BAM index, FAI, and same-directory DICT must exist; this owner never
-repairs sidecars. Add `--execute` after inspection. Execute requires Java 17,
-uses a directory-wide lock and project-storage GATK temp, stages the pair, and
-publishes BAM then BAI. Inputs are not snapshot-rechecked, there is no receipt,
-and failed restoration cleanup can erase the only recovery evidence.
+repairs sidecars. The orchestration-safe invocation adds `--no-clobber
+--execute`. That mode uses a per-sample lock, refuses either existing final,
+hashes and rechecks the BAM/BAI and FASTA/FAI/DICT set, and therefore never
+enters the legacy replacement/backup path. Execute without `--no-clobber`
+preserves the existing replaceable-pair transaction; failed restoration there
+can still erase recovery evidence. The native pair is not an attempt receipt.
 
 Validator dry-run:
 

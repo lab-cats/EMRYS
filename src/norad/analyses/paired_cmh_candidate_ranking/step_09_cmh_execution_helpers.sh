@@ -14,22 +14,62 @@ append_sample_columns() {
     printf '%s%s' "$base_header" "$appended_columns"
 }
 
+release_step09_lock() {
+    local unexpected
+
+    [[ "${lock_owned:-false}" == true ]] || return 0
+    if [[ "${lock_owner_written:-false}" != true ||
+          ! -f "$lock_path/owner" ]] ||
+       ! grep -Fqx $'run_token\t'"$run_token" "$lock_path/owner"; then
+        printf 'ERROR: Step 09 cannot prove lock ownership for release: %s\n' \
+            "$lock_path" >&2
+        return 1
+    fi
+    unexpected="$(
+        find "$lock_path" -mindepth 1 -maxdepth 1 \
+            ! -path "$lock_path/owner" -print -quit
+    )" || {
+        printf 'ERROR: Could not inspect Step 09 lock: %s\n' "$lock_path" >&2
+        return 1
+    }
+    if [[ -n "$unexpected" ]]; then
+        printf 'ERROR: Step 09 lock contains unexpected residue; preserving it: %s\n' \
+            "$unexpected" >&2
+        return 1
+    fi
+    rm -f "$lock_path/owner"
+    if ! rmdir "$lock_path" 2>/dev/null; then
+        if [[ ! -e "$lock_path/owner" && -d "$lock_path" ]]; then
+            (set -o noclobber; printf 'run_token\t%s\npid\t%s\n' "$run_token" "$$" > "$lock_path/owner") \
+                2>/dev/null || true
+        fi
+        printf 'ERROR: Could not remove Step 09 lock directory; preserving residue: %s\n' \
+            "$lock_path" >&2
+        return 1
+    fi
+    lock_owned=false
+}
+
 cleanup() {
     local status=$?
     local rollback_failed=false
     trap - EXIT HUP INT TERM
-    if [[ "$scratch_owned" == true ]]; then
-        for temp in "${temps[@]}"; do rm -f "$temp" || true; done
-    fi
     if [[ "$publication_started" == true && "$publication_committed" != true ]]; then
-        for index in "${!finals[@]}"; do
-            if [[ "$previous_set" != true ]]; then
+        if [[ "$no_clobber" == true ]]; then
+            for index in "${!finals[@]}"; do
+                remove_owned_published_file \
+                    "Step 09 output" "${temps[$index]}" "${finals[$index]}" || \
+                    rollback_failed=true
+            done
+        else
+            for index in "${!finals[@]}"; do
+                if [[ "$previous_set" != true ]]; then
                 if ! rm -f "${finals[$index]}"; then
                     printf 'ERROR: Could not remove partially published Step 09 output during rollback: %s\n' \
                         "${finals[$index]}" >&2
                     rollback_failed=true
                 fi
-            elif [[ -e "${backups[$index]}" ]]; then
+                elif [[ -e "${backups[$index]}" ]]; then
                 if ! rm -f "${finals[$index]}"; then
                     printf 'ERROR: Could not clear Step 09 output before restoring its backup: %s\n' \
                         "${finals[$index]}" >&2
@@ -39,36 +79,40 @@ cleanup() {
                         "${backups[$index]}" >&2
                     rollback_failed=true
                 fi
-            elif [[ ! -e "${finals[$index]}" ]]; then
+                elif [[ ! -e "${finals[$index]}" ]]; then
                 printf 'ERROR: Step 09 rollback found neither a final output nor its backup: %s\n' \
                     "${finals[$index]}" >&2
                 rollback_failed=true
-            fi
-        done
+                fi
+            done
+        fi
         if [[ "$rollback_failed" == true ]]; then
             [[ "$status" -ne 0 ]] || status=1
             printf 'ERROR: Step 09 rollback was incomplete; retaining the owned lock for operator recovery: %s\n' \
                 "$lock_path" >&2
         fi
     fi
+    if [[ "$scratch_owned" == true &&
+          ( "$rollback_failed" != true || "$no_clobber" != true ) ]]; then
+        for temp in "${temps[@]}"; do rm -f "$temp" || true; done
+    fi
     if [[ "$scratch_owned" == true && "$publication_committed" == true ]]; then
         for backup in "${backups[@]}"; do rm -f "$backup" || true; done
     fi
     if [[ "$rollback_failed" != true &&
           "${lock_owned:-false}" == true && -d "$lock_path" ]]; then
-        rm -f "$lock_owner_tmp" || true
         if [[ "${lock_owner_written:-false}" == true ]]; then
-            if [[ -f "$lock_path/owner" ]] &&
-               grep -Fqx $'run_token\t'"$run_token" "$lock_path/owner"; then
-                rm -f "$lock_path/owner" || true
-            fi
+            release_step09_lock || status=1
         elif [[ -f "$lock_path/owner" ]] &&
              grep -Fqx $'run_token\t'"$run_token" "$lock_path/owner"; then
             # mv may have completed immediately before an interrupt, before
             # lock_owner_written could be flipped to true.
-            rm -f "$lock_path/owner" || true
+            lock_owner_written=true
+            release_step09_lock || status=1
+        else
+            rm -f "$lock_owner_tmp" || true
+            rmdir "$lock_path" 2>/dev/null || status=1
         fi
-        rmdir "$lock_path" 2>/dev/null || true
     fi
     exit "$status"
 }

@@ -69,9 +69,31 @@ alignment again while adding a read group, validating it, indexing it, and
 publishing the canonical BAM/BAI pair; that stage is therefore not merely an
 alias for this output.
 
-The current producer writes STAR artifacts directly into the final directory.
-It does not declare a receipt, lock, no-clobber rule, staged transaction, or
-post-execution output validation.
+The historical direct execute mode writes STAR artifacts into the final
+directory and has no receipt, lock, staged transaction, or post-execution
+output validation. The orchestration-safe mode below is additive.
+
+## Orchestration-safe producer boundary
+
+`--no-clobber` is the required local-profile mode. It is dry-run-visible and
+side-effect-free until paired with `--execute`. Execute requires all five
+declared outputs to be absent, holds an owned per-sample lock, directs STAR to
+a run-token staging directory, requires every declared artifact to be nonempty,
+and rechecks the admitted FASTQ hashes before create-exclusive publication. It
+also admits every top-level STAR-index entry as one nonempty readable regular
+file: symbolic links, subdirectories, special files, empty files, and names
+containing tab/newline delimiters fail closed. The bytewise-name-ordered
+basename/SHA-256 snapshot must have identical membership and bytes immediately
+before STAR and again after STAR before publication. Each final is created as a
+hard link without replacement while the corresponding staged inode remains as
+an ownership anchor. The complete final set must still match those anchors
+before success removes staging and then the owned lock. A failure before
+publication removes only invocation-owned staging. During publication, rollback
+removes a final only while it remains the same regular-file inode as its staged
+anchor. A late or replaced foreign final is preserved with the lock and staging
+residue for operator recovery. Existing or foreign state is never adopted or
+deleted. `--star-bin` binds the executable path; tool version and final-output
+hashes remain workflow verified-record responsibilities.
 
 ## Current execution surfaces
 
@@ -80,15 +102,12 @@ public producer entrypoint. It:
 
 - validates explicit arguments and executable availability;
 - is dry-run by default and requires `--execute` to invoke STAR;
-- creates the output directory even in dry-run mode;
+- creates no output directory in dry-run mode;
 - rejects mixed compressed and uncompressed mate paths;
 - adds `--readFilesCommand gunzip -c` when both inputs end in `.gz`;
 - asks STAR for a coordinate-sorted BAM; and
-- returns STAR's exit status but does not validate or transactionally publish
-  the declared outputs after STAR exits.
-
-The output-directory creation is a protected current dry-run side effect, not
-an endorsement of the target dry-run contract.
+- retains historical direct-prefix execution unless `--no-clobber` selects the
+  orchestration-safe transaction above.
 
 [`step_01_star_align.slurm`](step_01_star_align.slurm) is the
 scheduler entrypoint. It delegates to the shell producer, maps `EXECUTE=0` to
@@ -150,10 +169,11 @@ No downstream stage should depend on this stage's implementation module.
 ## Protected behavior and evidence
 
 - [`test_step_01_star_align.sh`](../../../../tests/stages/star_alignment/test_step_01_star_align.sh)
-  protects the public CLI, command construction, current dry-run directory
-  side effect, execute invocation, compression handling, thread validation,
-  missing-input failures, and exact child-exit/output-directory residue with
-  local tool mocks.
+  protects the public CLI, command construction, side-effect-free dry-run,
+  execute invocation, compression handling, thread validation, missing-input
+  failures, deterministic STAR-index admission and mutation rejection, and
+  orchestration-safe staging/no-clobber behavior, including deterministic late
+  appearance and replacement races, with local tool mocks.
 - [`test_validate_step_01_star_alignment.py`](../../../../tests/stages/star_alignment/test_validate_step_01_star_alignment.py)
   protects dry-run, the five checks, failed mapping and splice-junction
   evidence, fail-closed missing inputs, publication, and foreign-lock
@@ -179,8 +199,8 @@ roadmap and handoff.
 
 - Sample and mate identity arrive as direct arguments; the producer does not
   consume or verify the manifest that canonically owns sample metadata.
-- STAR writes final-path artifacts directly, while the separate validator owns
-  the only explicit structural output checks.
+- Historical direct execute writes final-path artifacts directly; both execute
+  modes rely on the separate validator for structural output checks.
 - Coordinate sorting occurs in STAR and again inside the canonical-BAM stage,
   where the second operation is coupled to read-group tagging and publication.
 - Cross-cutting validation-publication code is owned by the neutral shared
@@ -194,7 +214,8 @@ This inventory records those current boundaries without changing behavior.
 
 - How the future run request and manifest bind sample/mate identity to this
   stage without filename inference.
-- Whether STAR output publication requires an atomic receipt or staging layer.
+- Whether the staged five-file transaction needs a native receipt; the future
+  verified-task record remains the wider input/output/tool binding authority.
 - Whether canonical-BAM construction can avoid redundant sorting while
   retaining read-group, validation, and recovery guarantees.
 - Whether a later scheduler package changes caller-CWD dependence, mutable

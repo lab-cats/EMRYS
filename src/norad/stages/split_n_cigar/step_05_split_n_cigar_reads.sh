@@ -19,6 +19,7 @@ Usage:
     [--gatk-bin GATK_BIN] \
     [--samtools-bin SAMTOOLS_BIN] \
     [--java-bin JAVA_BIN] \
+    [--no-clobber] \
     [--execute]
 
 Run GATK SplitNCigarReads on one duplicate-marked RNA-seq BAM.
@@ -40,6 +41,8 @@ Options:
                       argument, SAMTOOLS_BIN_OVERRIDE, PATH.
   --java-bin          Java executable or path. Resolution order:
                       argument, JAVA_BIN_OVERRIDE, JAVA_HOME/bin/java, PATH.
+  --no-clobber        Refuse an existing final pair and use a sample lock.
+                      Required by orchestration.
   --execute           Execute GATK and samtools after validation. Without this,
                       dry-run only.
   -h, --help          Show this help message and exit.
@@ -52,6 +55,8 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/executable_resolution.
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/signal_traps.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
+# shellcheck source=../../libraries/file_checks.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/file_checks.sh"
 
 validate_existing_file() {
     local label="$1"
@@ -74,6 +79,7 @@ requested_gatk_bin=""
 requested_samtools_bin=""
 requested_java_bin=""
 execute=false
+no_clobber=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -84,6 +90,7 @@ while [[ $# -gt 0 ]]; do
         --gatk-bin) assign_option_value "$1" "${2:-}" requested_gatk_bin; shift 2 ;;
         --samtools-bin) assign_option_value "$1" "${2:-}" requested_samtools_bin; shift 2 ;;
         --java-bin) assign_option_value "$1" "${2:-}" requested_java_bin; shift 2 ;;
+        --no-clobber) no_clobber=true; shift ;;
         *)
             handle_execute_or_help "$1"
             shift
@@ -113,12 +120,16 @@ java_bin="$(resolve_overridable_executable \
     "Java" "$requested_java_bin" JAVA_BIN_OVERRIDE java /bin/java)"
 
 run_token="${SLURM_JOB_ID:-$$}"
+validate_safe_id "Step 05 run token" "$run_token"
 
 # Final output names are stable downstream interfaces. Temp and backup names
 # include the run token so reruns and concurrent dry-run planning do not collide.
 output_bam="$output_dir/${sample_id}.split_ncigar.bam"
 output_bai="$output_bam.bai"
 lock_path="$output_dir/.step_05_split_n_cigar_reads.lock"
+if [[ "$no_clobber" == true ]]; then
+    lock_path="$output_dir/.${sample_id}.step05.lock"
+fi
 lock_owner_file="$lock_path/owner"
 
 tmp_bam="$output_dir/.${sample_id}.step05.${run_token}.split_ncigar.tmp.bam"
@@ -225,6 +236,13 @@ validate_bam_pair() {
 }
 
 confirm_final_pair_state() {
+    if [[ "$no_clobber" == true ]]; then
+        [[ ! -e "$output_bam" && ! -e "$output_bai" ]] ||
+            die "Step 05 --no-clobber requires both final outputs to be absent: $output_bam $output_bai"
+        previous_pair_present=false
+        return
+    fi
+
     # A lone BAM or BAI is unsafe: there would be no complete prior pair to
     # restore if publication failed midway.
     if [[ -e "$output_bam" && -e "$output_bai" ]]; then
@@ -242,6 +260,16 @@ rollback_publish() {
     fi
 
     printf 'Rolling back Step 05 split-N-cigar outputs...\n' >&2
+
+    if [[ "$no_clobber" == true ]]; then
+        local rollback_ok=true
+        remove_owned_published_file \
+            "Step 05 BAM" "$tmp_bam" "$output_bam" || rollback_ok=false
+        remove_owned_published_file \
+            "Step 05 BAI" "$tmp_bai" "$output_bai" || rollback_ok=false
+        [[ "$rollback_ok" == true ]]
+        return
+    fi
 
     if [[ "$previous_pair_present" == true ]]; then
         # Restore only files that this invocation actually moved to backup.
@@ -263,6 +291,7 @@ rollback_publish() {
 
 cleanup() {
     local status="$1"
+    local rollback_ok=true
 
     # Cleanup should be best-effort and must not mask the original failure.
     set +e
@@ -270,17 +299,22 @@ cleanup() {
     # Rollback must run before temp/backup cleanup so previous final files can
     # still be restored after a partial publish.
     if [[ "$status" -ne 0 ]]; then
-        rollback_publish
+        rollback_publish || rollback_ok=false
     fi
 
-    rm -f "$tmp_bam" "$tmp_bai" "$tmp_gatk_bai"
-    rm -rf "$gatk_tmp_dir"
+    if [[ "$rollback_ok" == true ]]; then
+        rm -f "$tmp_bam" "$tmp_bai" "$tmp_gatk_bai"
+        rm -rf "$gatk_tmp_dir"
 
-    if [[ "$status" -eq 0 || "$backup_started" == true ]]; then
-        rm -f "$backup_bam" "$backup_bai"
+        if [[ "$status" -eq 0 || "$backup_started" == true ]]; then
+            rm -f "$backup_bam" "$backup_bai"
+        fi
+
+        remove_owned_lock
+    else
+        printf 'ERROR: Step 05 no-clobber rollback was incomplete; retaining owned lock and residue: %s\n' \
+            "$lock_path" >&2
     fi
-
-    remove_owned_lock
 }
 
 validate_existing_file "Input BAM" "$input_bam"
@@ -288,6 +322,19 @@ validate_existing_file "Input BAI" "$input_bai"
 validate_existing_file "Reference FASTA" "$reference_fasta"
 validate_reference_sidecar "Reference FASTA index" "$reference_fai"
 validate_reference_sidecar "Reference sequence dictionary" "$reference_dict"
+input_bam_sha256="not-bound"
+input_bai_sha256="not-bound"
+reference_fasta_sha256="not-bound"
+reference_fai_sha256="not-bound"
+reference_dict_sha256="not-bound"
+if [[ "$no_clobber" == true ]]; then
+    validate_safe_id "--sample-id" "$sample_id"
+    input_bam_sha256="$(sha256_file "$input_bam")"
+    input_bai_sha256="$(sha256_file "$input_bai")"
+    reference_fasta_sha256="$(sha256_file "$reference_fasta")"
+    reference_fai_sha256="$(sha256_file "$reference_fai")"
+    reference_dict_sha256="$(sha256_file "$reference_dict")"
+fi
 
 mode="dry-run"
 if [[ "$execute" == true ]]; then
@@ -298,9 +345,14 @@ printf 'GATK SplitNCigarReads context\n'
 printf '  Sample ID: %s\n' "$sample_id"
 printf '  Input BAM: %s\n' "$input_bam"
 printf '  Input BAI: %s\n' "$input_bai"
+printf '  Input BAM SHA-256: %s\n' "$input_bam_sha256"
+printf '  Input BAI SHA-256: %s\n' "$input_bai_sha256"
 printf '  Reference FASTA: %s\n' "$reference_fasta"
 printf '  Reference FAI: %s\n' "$reference_fai"
 printf '  Reference DICT: %s\n' "$reference_dict"
+printf '  Reference FASTA SHA-256: %s\n' "$reference_fasta_sha256"
+printf '  Reference FAI SHA-256: %s\n' "$reference_fai_sha256"
+printf '  Reference DICT SHA-256: %s\n' "$reference_dict_sha256"
 printf '  Output directory: %s\n' "$output_dir"
 printf '  Output BAM: %s\n' "$output_bam"
 printf '  Output BAI: %s\n' "$output_bai"
@@ -317,6 +369,7 @@ printf '  Alternate GATK temporary BAI: %s\n' "$tmp_gatk_bai"
 printf '  GATK temp directory: %s\n' "$gatk_tmp_dir"
 printf '  Backup BAM: %s\n' "$backup_bam"
 printf '  Backup BAI: %s\n' "$backup_bai"
+printf '  No-clobber transaction: %s\n' "$no_clobber"
 printf '  Mode: %s\n' "$mode"
 
 printf 'Lock acquisition action:\n'
@@ -358,6 +411,12 @@ printf '  6. Index the temp BAM and validate quickcheck, coordinate sort, read g
 printf '  7. Publish final BAM/BAI only after validation succeeds.\n'
 printf '  8. Roll back previous final outputs if publication fails after backups begin.\n'
 
+if [[ "$no_clobber" == true ]]; then
+    require_no_owner_residue \
+        "Step 05" "$output_dir" ".${sample_id}.step05.*" \
+        '.step_05_split_n_cigar_reads.lock'
+fi
+
 if [[ "$execute" != true ]]; then
     # Dry-runs are intentionally side-effect-free so empty result directories or
     # locks are never mistaken for real Step 05 progress.
@@ -397,6 +456,14 @@ printf 'GATK version:\n'
 env TMPDIR="$gatk_tmp_dir" "${gatk_command[@]}"
 "${index_command[@]}"
 validate_bam_pair "$tmp_bam" "$tmp_bai" "Replacement"
+if [[ "$no_clobber" == true ]]; then
+    [[ "$(sha256_file "$input_bam")" == "$input_bam_sha256" ]] || die "Input BAM changed during Step 05."
+    [[ "$(sha256_file "$input_bai")" == "$input_bai_sha256" ]] || die "Input BAI changed during Step 05."
+    [[ "$(sha256_file "$reference_fasta")" == "$reference_fasta_sha256" ]] || die "Reference FASTA changed during Step 05."
+    [[ "$(sha256_file "$reference_fai")" == "$reference_fai_sha256" ]] || die "Reference FAI changed during Step 05."
+    [[ "$(sha256_file "$reference_dict")" == "$reference_dict_sha256" ]] || die "Reference DICT changed during Step 05."
+fi
+confirm_final_pair_state
 
 # Backups begin the rollback-protected region. From here until final validation,
 # cleanup will restore the previous complete pair or remove partial new finals.
@@ -410,15 +477,29 @@ else
     backup_started=true
 fi
 
-mv "$tmp_bam" "$output_bam"
-mv "$tmp_bai" "$output_bai"
+if [[ "$no_clobber" == true ]]; then
+    publish_file_create_exclusive "Step 05 BAM" "$tmp_bam" "$output_bam"
+    publish_file_create_exclusive "Step 05 BAI" "$tmp_bai" "$output_bai"
+else
+    mv "$tmp_bam" "$output_bam"
+    mv "$tmp_bai" "$output_bai"
+fi
 
 # Revalidate at final paths so downstream steps never consume a half-published
 # or path-specific bad BAM/BAI pair.
 validate_bam_pair "$output_bam" "$output_bai" "Published"
+if [[ "$no_clobber" == true ]]; then
+    require_owned_published_file "Step 05 BAM" "$tmp_bam" "$output_bam"
+    require_owned_published_file "Step 05 BAI" "$tmp_bai" "$output_bai"
+    rm -f -- "$tmp_bam" "$tmp_bai"
+    [[ ! -e "$tmp_bam" && ! -L "$tmp_bam" &&
+       ! -e "$tmp_bai" && ! -L "$tmp_bai" ]] ||
+        die "Step 05 could not remove owned publication anchors."
+fi
 final_publish_complete=true
 
 rm -f "$backup_bam" "$backup_bai"
+remove_owned_lock
 
 printf 'GATK SplitNCigarReads output details:\n'
 ls -lh "$output_bam" "$output_bai"

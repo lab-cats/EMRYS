@@ -87,6 +87,13 @@ scratch/backups, requires all six previous outputs or none, validates all
 temporaries, publishes the summary last as native commit marker, then
 revalidates contents and hashes. If rollback cannot restore a predecessor, it
 retains the owned lock and recovery evidence for operator intervention.
+`--no-clobber` is the orchestration-safe policy: while holding the owner lock,
+it rejects a complete predecessor set without invoking R or changing stable
+outputs. Direct invocations retain complete-set replacement unless the flag is
+supplied.
+First publication in that mode is create-exclusive and retains all six staging
+inode anchors through validation; ambiguous replacement preserves the owner
+lock and residue.
 
 The summary becomes visible before final post-publication checks and does not
 hash its five sibling outputs, so presence alone is not independent proof that
@@ -123,8 +130,8 @@ summary provenance/counts, canonical mutation spectrum, and PDF containers. It
 does not independently recompute CMH count-table estimability, statistic,
 p-value, or common odds ratio. The separate independent oracle and committed
 real-R corpus protect that method boundary without importing production
-implementation. Its current `status_semantics` expected-text nevertheless says
-“recomputed ... CMH,” which overstates the production validator's evidence.
+implementation. Its `status_semantics` evidence text explicitly states that
+CMH values are not independently recomputed.
 
 Content mismatches publish `status=fail`; this includes invalid UTF-8 inside an
 otherwise admitted native table, which is recorded as failed evidence rather

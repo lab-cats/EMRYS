@@ -18,6 +18,7 @@ Usage:
     --qc-dir QC_DIR \
     --threads THREADS \
     [--samtools-bin SAMTOOLS_BIN] \
+    [--no-clobber] \
     [--execute]
 
 Split one Step 05 split-N-cigar BAM into FWD_like and REV_like mechanical
@@ -37,6 +38,7 @@ Required arguments:
 Options:
   --samtools-bin   samtools executable or path. Resolution order:
                    argument, SAMTOOLS_BIN_OVERRIDE, PATH.
+  --no-clobber     Refuse an existing final output set. Required by orchestration.
   --execute        Execute samtools after validation. Without this, dry-run only.
   -h, --help       Show this help message and exit.
 
@@ -60,6 +62,7 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
 declare_required_arguments sample_id input_bam output_dir qc_dir threads
 requested_samtools_bin=""
 execute=false
+no_clobber=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -69,6 +72,7 @@ while [[ $# -gt 0 ]]; do
         --qc-dir) assign_option_value "$1" "${2:-}" qc_dir; shift 2 ;;
         --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
         --samtools-bin) assign_option_value "$1" "${2:-}" requested_samtools_bin; shift 2 ;;
+        --no-clobber) no_clobber=true; shift ;;
         *)
             handle_execute_or_help "$1"
             shift
@@ -86,6 +90,7 @@ input_bai="$input_bam.bai"
 samtools_bin="$(resolve_overridable_executable \
     "samtools" "$requested_samtools_bin" SAMTOOLS_BIN_OVERRIDE samtools)"
 run_token="${SLURM_JOB_ID:-$$}"
+validate_safe_id "Step 06 run token" "$run_token"
 
 # The four BAM/BAI outputs and counts TSV are a single downstream contract.
 # Treat them as one publication set so reruns never leave mixed generations.
@@ -270,6 +275,13 @@ confirm_final_set_state() {
     local final_count
 
     final_count="$(count_existing_final_outputs)"
+    if [[ "$no_clobber" == true ]]; then
+        [[ "$final_count" == "0" ]] ||
+            die "Step 06 --no-clobber requires all five final outputs to be absent; found: $final_count"
+        previous_final_set_present=false
+        return
+    fi
+
     if [[ "$final_count" == "5" ]]; then
         previous_final_set_present=true
     elif [[ "$final_count" == "0" ]]; then
@@ -285,6 +297,22 @@ rollback_publish() {
     fi
 
     printf 'Rolling back Step 06 read-orientation outputs...\n' >&2
+
+    if [[ "$no_clobber" == true ]]; then
+        local rollback_ok=true
+        remove_owned_published_file \
+            "Step 06 FWD BAM" "$tmp_fwd_bam" "$output_fwd_bam" || rollback_ok=false
+        remove_owned_published_file \
+            "Step 06 FWD BAI" "$tmp_fwd_bai" "$output_fwd_bai" || rollback_ok=false
+        remove_owned_published_file \
+            "Step 06 REV BAM" "$tmp_rev_bam" "$output_rev_bam" || rollback_ok=false
+        remove_owned_published_file \
+            "Step 06 REV BAI" "$tmp_rev_bai" "$output_rev_bai" || rollback_ok=false
+        remove_owned_published_file \
+            "Step 06 counts" "$tmp_counts_tsv" "$output_counts_tsv" || rollback_ok=false
+        [[ "$rollback_ok" == true ]]
+        return
+    fi
 
     if [[ "$previous_final_set_present" == true ]]; then
         # Restore only files this invocation actually moved to backup; this
@@ -327,25 +355,31 @@ rollback_publish() {
 
 cleanup() {
     local status="$1"
+    local rollback_ok=true
 
     set +e
 
     # Rollback must run before temp cleanup so backup files remain available.
     if [[ "$status" -ne 0 ]]; then
-        rollback_publish
+        rollback_publish || rollback_ok=false
     fi
 
-    rm -f "$tmp_99_bam" "$tmp_147_bam" "$tmp_83_bam" "$tmp_163_bam"
-    rm -f "$tmp_fwd_bam" "$tmp_fwd_bai" "$tmp_rev_bam" "$tmp_rev_bai"
-    rm -f "$tmp_counts_tsv"
+    if [[ "$rollback_ok" == true ]]; then
+        rm -f "$tmp_99_bam" "$tmp_147_bam" "$tmp_83_bam" "$tmp_163_bam"
+        rm -f "$tmp_fwd_bam" "$tmp_fwd_bai" "$tmp_rev_bam" "$tmp_rev_bai"
+        rm -f "$tmp_counts_tsv"
 
-    if [[ "$status" -eq 0 || "$backup_started" == true ]]; then
-        rm -f "$backup_fwd_bam" "$backup_fwd_bai"
-        rm -f "$backup_rev_bam" "$backup_rev_bai"
-        rm -f "$backup_counts_tsv"
+        if [[ "$status" -eq 0 || "$backup_started" == true ]]; then
+            rm -f "$backup_fwd_bam" "$backup_fwd_bai"
+            rm -f "$backup_rev_bam" "$backup_rev_bai"
+            rm -f "$backup_counts_tsv"
+        fi
+
+        remove_owned_lock
+    else
+        printf 'ERROR: Step 06 no-clobber rollback was incomplete; retaining owned lock and residue: %s\n' \
+            "$lock_path" >&2
     fi
-
-    remove_owned_lock
 }
 
 refuse_stale_paths() {
@@ -457,6 +491,13 @@ write_counts_tsv() {
 
 validate_nonempty_file "Input BAM" "$input_bam"
 validate_nonempty_file "Input BAI" "$input_bai"
+input_bam_sha256="not-bound"
+input_bai_sha256="not-bound"
+if [[ "$no_clobber" == true ]]; then
+    validate_safe_id "--sample-id" "$sample_id"
+    input_bam_sha256="$(sha256_file "$input_bam")"
+    input_bai_sha256="$(sha256_file "$input_bai")"
+fi
 
 mode="dry-run"
 if [[ "$execute" == true ]]; then
@@ -467,6 +508,8 @@ printf 'samtools read-orientation split context\n'
 printf '  Sample ID: %s\n' "$sample_id"
 printf '  Input BAM: %s\n' "$input_bam"
 printf '  Input BAI: %s\n' "$input_bai"
+printf '  Input BAM SHA-256: %s\n' "$input_bam_sha256"
+printf '  Input BAI SHA-256: %s\n' "$input_bai_sha256"
 printf '  Output directory: %s\n' "$output_dir"
 printf '  QC directory: %s\n' "$qc_dir"
 printf '  FWD_like BAM: %s\n' "$output_fwd_bam"
@@ -493,6 +536,7 @@ printf '  Backup FWD_like BAI: %s\n' "$backup_fwd_bai"
 printf '  Backup REV_like BAM: %s\n' "$backup_rev_bam"
 printf '  Backup REV_like BAI: %s\n' "$backup_rev_bai"
 printf '  Backup counts TSV: %s\n' "$backup_counts_tsv"
+printf '  No-clobber transaction: %s\n' "$no_clobber"
 printf '  Mode: %s\n' "$mode"
 
 printf 'Read-orientation grouping note:\n'
@@ -552,6 +596,13 @@ printf '  5. Remove backups and owned lock after successful final validation.\n'
 printf 'Rollback plan:\n'
 printf '  Restore backups before cleanup on failures after backup begins; remove new final files if no prior final set existed.\n'
 
+if [[ "$no_clobber" == true ]]; then
+    require_no_owner_residue \
+        "Step 06" "$output_dir" ".${sample_id}.step06.*"
+    require_no_owner_residue \
+        "Step 06" "$qc_dir" ".${sample_id}.step06.*"
+fi
+
 if [[ "$execute" != true ]]; then
     printf 'Dry-run only. Add --execute to run samtools and publish Step 06 outputs.\n'
     exit 0
@@ -574,6 +625,9 @@ on_exit() {
 trap on_exit EXIT HUP INT TERM
 
 acquire_lock "Step 06"
+if [[ "$no_clobber" == true ]]; then
+    confirm_final_set_state
+fi
 
 printf 'samtools version:\n'
 "$samtools_bin" --version
@@ -597,6 +651,11 @@ validate_orientation_outputs \
     "$tmp_counts_tsv" \
     "Replacement"
 
+if [[ "$no_clobber" == true ]]; then
+    [[ "$(sha256_file "$input_bam")" == "$input_bam_sha256" ]] || die "Input BAM changed during Step 06."
+    [[ "$(sha256_file "$input_bai")" == "$input_bai_sha256" ]] || die "Input BAI changed during Step 06."
+fi
+
 confirm_final_set_state
 
 # Backups begin the rollback-protected region. From here until final validation,
@@ -617,11 +676,24 @@ else
     backup_started=true
 fi
 
-mv "$tmp_fwd_bam" "$output_fwd_bam"
-mv "$tmp_fwd_bai" "$output_fwd_bai"
-mv "$tmp_rev_bam" "$output_rev_bam"
-mv "$tmp_rev_bai" "$output_rev_bai"
-mv "$tmp_counts_tsv" "$output_counts_tsv"
+if [[ "$no_clobber" == true ]]; then
+    publish_file_create_exclusive \
+        "Step 06 FWD BAM" "$tmp_fwd_bam" "$output_fwd_bam"
+    publish_file_create_exclusive \
+        "Step 06 FWD BAI" "$tmp_fwd_bai" "$output_fwd_bai"
+    publish_file_create_exclusive \
+        "Step 06 REV BAM" "$tmp_rev_bam" "$output_rev_bam"
+    publish_file_create_exclusive \
+        "Step 06 REV BAI" "$tmp_rev_bai" "$output_rev_bai"
+    publish_file_create_exclusive \
+        "Step 06 counts" "$tmp_counts_tsv" "$output_counts_tsv"
+else
+    mv "$tmp_fwd_bam" "$output_fwd_bam"
+    mv "$tmp_fwd_bai" "$output_fwd_bai"
+    mv "$tmp_rev_bam" "$output_rev_bam"
+    mv "$tmp_rev_bai" "$output_rev_bai"
+    mv "$tmp_counts_tsv" "$output_counts_tsv"
+fi
 
 # Revalidate at final paths so downstream steps consume only a complete,
 # readable BAM/BAI/TSV set.
@@ -633,11 +705,34 @@ validate_orientation_outputs \
     "$output_counts_tsv" \
     "Published"
 
+if [[ "$no_clobber" == true ]]; then
+    require_owned_published_file \
+        "Step 06 FWD BAM" "$tmp_fwd_bam" "$output_fwd_bam"
+    require_owned_published_file \
+        "Step 06 FWD BAI" "$tmp_fwd_bai" "$output_fwd_bai"
+    require_owned_published_file \
+        "Step 06 REV BAM" "$tmp_rev_bam" "$output_rev_bam"
+    require_owned_published_file \
+        "Step 06 REV BAI" "$tmp_rev_bai" "$output_rev_bai"
+    require_owned_published_file \
+        "Step 06 counts" "$tmp_counts_tsv" "$output_counts_tsv"
+    rm -f -- \
+        "$tmp_fwd_bam" "$tmp_fwd_bai" "$tmp_rev_bam" "$tmp_rev_bai" \
+        "$tmp_counts_tsv"
+    [[ ! -e "$tmp_fwd_bam" && ! -L "$tmp_fwd_bam" &&
+       ! -e "$tmp_fwd_bai" && ! -L "$tmp_fwd_bai" &&
+       ! -e "$tmp_rev_bam" && ! -L "$tmp_rev_bam" &&
+       ! -e "$tmp_rev_bai" && ! -L "$tmp_rev_bai" &&
+       ! -e "$tmp_counts_tsv" && ! -L "$tmp_counts_tsv" ]] ||
+        die "Step 06 could not remove owned publication anchors."
+fi
+
 final_publish_complete=true
 
 rm -f "$backup_fwd_bam" "$backup_fwd_bai"
 rm -f "$backup_rev_bam" "$backup_rev_bai"
 rm -f "$backup_counts_tsv"
+remove_owned_lock
 
 printf 'Step 06 read-orientation output details:\n'
 ls -lh "$output_fwd_bam" "$output_fwd_bai" "$output_rev_bam" "$output_rev_bai" "$output_counts_tsv"

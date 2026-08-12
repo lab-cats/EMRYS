@@ -36,10 +36,19 @@ Add `--execute` after inspecting sample order, partition selector, BAM/BAI and
 FASTA/FAI inputs, tool, depth, filter, lock, scratch, and rollback paths. The
 producer runs mpileup and filter, not `bcftools call`; `FWD_like`/`REV_like` are
 mechanical labels and outputs are not validated variants or editing sites.
+The orchestration-safe invocation also supplies `--no-clobber`, which rejects a complete
+prior set without running bcftools; direct use retains complete-set
+replacement unless that option is supplied. On a new output set, this mode
+hashes the exact manifests, reference FASTA/FAI pair, optional regions file,
+and every admitted orientation BAM/BAI before bcftools, then rechecks their
+membership and bytes before receipt construction and publication.
 
-Execute requires all three predecessors or none and publishes FWD VCF, REV
-VCF, then the two-row receipt. Only manifests are hash-bound and rechecked;
-receipt visibility is not immutable-input or current-attempt proof.
+Execute requires all three predecessors or none, publishes and revalidates the
+FWD and REV VCFs, then publishes the two-row receipt. Only manifests are
+durably hash-bound in that receipt; the additional `--no-clobber` hashes are
+in-attempt guards and are not receipt provenance. Receipt visibility is not
+current-attempt proof. An incomplete rollback retains the owned lock and backups
+for operator recovery.
 
 Validator dry-run:
 

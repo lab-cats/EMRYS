@@ -123,6 +123,7 @@ shift || true
 case "\$subcommand" in
     sort)
         output_bam=""
+        input_alignment=""
         while [[ \$# -gt 0 ]]; do
             case "\$1" in
                 -o)
@@ -133,6 +134,7 @@ case "\$subcommand" in
                     shift 2
                     ;;
                 *)
+                    input_alignment="\$1"
                     shift
                     ;;
             esac
@@ -140,6 +142,9 @@ case "\$subcommand" in
 
         [[ -n "\$output_bam" ]] || { printf 'fake samtools sort missing -o output\\n' >&2; exit 64; }
         printf 'fake sorted bam\\n' > "\$output_bam"
+        if [[ -n "\${FAKE_MUTATE_INPUT:-}" ]]; then
+            printf 'mutated input alignment\\n' >"\$input_alignment"
+        fi
         ;;
     addreplacerg)
         output_bam=""
@@ -365,6 +370,56 @@ assert_contains "$samtools_log" "PL:ILLUMINA"
 assert_contains "$execute_output" "Canonical Step 02 output details:"
 assert_not_exists "$execute_output_dir/.sample_execute.step02.lock"
 assert_no_step02_scratch "$execute_output_dir"
+
+printf 'Running orchestration-safe no-clobber checks...\n'
+safe_input="$tmp_dir/fixtures/safe_input.sam"
+printf '@HD\tVN:1.6\tSO:unsorted\n' >"$safe_input"
+residue_output_dir="$tmp_dir/results/residue"
+mkdir -p "$residue_output_dir"
+residue_path="$residue_output_dir/.sample_residue.step02.older-token.sorted.tmp.bam"
+printf 'preserve residue\n' >"$residue_path"
+residue_output="$tmp_dir/residue.out"
+assert_fails "$residue_output" env FAKE_SAMPLE_ID=sample_residue SLURM_JOB_ID=newer-token bash "$SCRIPT" \
+    --sample-id sample_residue \
+    --input-alignment "$safe_input" \
+    --output-dir "$residue_output_dir" \
+    --threads 2 \
+    --no-clobber \
+    --execute
+assert_contains "$residue_output" "residue requires operator inspection"
+assert_file_equals "$residue_path" "preserve residue"
+assert_not_exists "$residue_output_dir/.sample_residue.step02.lock"
+safe_output="$tmp_dir/safe.out"
+safe_output_dir="$tmp_dir/results/safe"
+SLURM_JOB_ID=safe001 run_step02 sample_safe "$safe_input" "$safe_output_dir" 2 --no-clobber --execute >"$safe_output"
+assert_contains "$safe_output" "No-clobber transaction: true"
+assert_not_exists "$safe_output_dir/.sample_safe.step02.lock"
+safe_repeat_output="$tmp_dir/safe_repeat.out"
+assert_fails "$safe_repeat_output" env FAKE_SAMPLE_ID=sample_safe SLURM_JOB_ID=safe002 bash "$SCRIPT" \
+    --sample-id sample_safe \
+    --input-alignment "$safe_input" \
+    --output-dir "$safe_output_dir" \
+    --threads 2 \
+    --no-clobber \
+    --execute
+assert_contains "$safe_repeat_output" "--no-clobber requires both canonical outputs to be absent"
+assert_file_equals "$safe_output_dir/sample_safe.sorted.bam.bai" "fake bam index"
+
+mutation_input="$tmp_dir/fixtures/mutation_input.sam"
+printf '@HD\tVN:1.6\tSO:unsorted\n' >"$mutation_input"
+mutation_output="$tmp_dir/mutation.out"
+mutation_output_dir="$tmp_dir/results/mutation"
+assert_fails "$mutation_output" env FAKE_MUTATE_INPUT=1 FAKE_SAMPLE_ID=sample_mutation SLURM_JOB_ID=mutation001 bash "$SCRIPT" \
+    --sample-id sample_mutation \
+    --input-alignment "$mutation_input" \
+    --output-dir "$mutation_output_dir" \
+    --threads 2 \
+    --no-clobber \
+    --execute
+assert_contains "$mutation_output" "Input alignment changed during Step 02"
+assert_not_exists "$mutation_output_dir/sample_mutation.sorted.bam"
+assert_not_exists "$mutation_output_dir/sample_mutation.sorted.bam.bai"
+assert_not_exists "$mutation_output_dir/.sample_mutation.step02.lock"
 
 printf 'Running existing lock failure check...\n'
 lock_output_dir="$tmp_dir/results/locked"

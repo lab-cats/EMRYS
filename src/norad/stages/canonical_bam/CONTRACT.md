@@ -72,6 +72,17 @@ BAI must be nonempty.
 The two files are published through backup and rollback attempts, but no
 receipt or summary marks transaction completion.
 
+## Orchestration-safe producer boundary
+
+`--no-clobber` is the required local-profile mode. It refuses either existing
+final before tool work and immediately before publication, pins the explicit
+samtools path, hashes and rechecks the input alignment, and uses the existing
+per-sample lock, staged pair validation, and final-path revalidation. Because
+replacement is forbidden, this path never creates or consumes backups and a
+failed attempt cannot damage a predecessor. It publishes create-exclusively
+and retains staging inode anchors through final validation. The historical execute route
+retains replaceable-pair behavior and its characterized restoration defect.
+
 ## Current execution surfaces
 
 [`step_02_sort_index_bam.sh`](step_02_sort_index_bam.sh) is

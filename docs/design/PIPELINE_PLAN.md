@@ -19,12 +19,12 @@ its routed owners.
 The accepted local-pilot architecture is defined by
 [`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md), and the canonical
 owner-admission dispositions are tracked in
-[`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md). The unselected
+[`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md). The remaining
 implementation dependency order is:
 
 ```text
-ORCH-03A + SETUP-03A + INTAKE-03A
-                  -> PROFILE-03A -> CLI-03A -> E2E-03A -> ONBOARD-03A
+SETUP-03A + INTAKE-03A
+        -> PROFILE-03A -> CLI-03A -> E2E-03A -> ONBOARD-03A
 ```
 
 These relationships do not select work. Backlog blockers record only
@@ -32,15 +32,14 @@ unavailable technical outputs.
 
 ## Local-pilot package order
 
-Campaign B proceeds in proof-sized packages. Each package ends with focused
-evidence; the full-pipeline gate waits until the assembled local profile
-exists.
+Campaign B proceeds in proof-sized packages. `B1a` through `B1c` are complete:
+the reference, sample, cohort, and analysis owners now expose fail-closed local
+workflow boundaries without adding Snakemake. Each remaining package ends with
+focused evidence; the full-pipeline gate waits until the assembled local
+profile exists.
 
 | Package | Outcome | Stop boundary |
 | --- | --- | --- |
-| `B1a` | Harden and prove the reference branch (`00a`, `00b`, `00c`) through direct public commands, without adding Snakemake. | Stop if reference materialization ownership or safe publication is unresolved. |
-| `B1b` | Harden one owner at a time through the one-sample `01`–`06` spine, then `02b` and `03`, using existing focused owner tests. | Stop at the first ambiguous partial/backup/lock state; do not centralize recovery or execute real tools. |
-| `B1c` | Harden cohort owners `07` and `08`; confirm `09` meets the shared admission proof without changing its scientific method. | Stop before Step `09c`, scientific review, or evidence promotion. |
 | `B2` | Add the isolated `uv` workflow dependency group, versioned machine contracts, request normalizer, reporting projection, and semantic all-pass checker. | Stop before workflow rules or dependency installation by runtime commands. |
 | `B3` | Materialize the static local profile and prove direct Snakemake dry-run, then a test-double walking skeleton in reference, one-sample, and cohort slices. | Stop before the public lifecycle CLI or real science-tool claims. |
 | `B4` | Add artifact-index, run-summary, and Jinja HTML-report rules, then prove failure, interruption, clean-boundary resume, and inspection. | Step `09c` remains explicit and absent; no SLURM/VM/CSU claim. |

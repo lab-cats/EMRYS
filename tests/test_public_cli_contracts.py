@@ -105,6 +105,9 @@ SHELL_ENTRYPOINT_PATHS = {
     "check_fastq_pairs.sh": Path(
         "src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh"
     ),
+    "step_00a_build_star_index.sh": Path(
+        "src/norad/stages/star_index/step_00a_build_star_index.sh"
+    ),
     "step_00c_prepare_gatk_reference.sh": Path(
         "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
     ),

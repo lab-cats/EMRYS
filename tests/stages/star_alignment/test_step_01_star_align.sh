@@ -49,13 +49,70 @@ trap 'rm -rf "$tmp_dir"' EXIT
 
 fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin"
+real_rm_bin="$(command -v rm)"
+real_ln_bin="$(command -v ln)"
+real_cp_bin="$(command -v cp)"
+
+cat >"$fake_bin/rm" <<'EOF_RM'
+#!/usr/bin/env bash
+set -euo pipefail
+
+for argument in "$@"; do
+    if [[ -n "${FAIL_RM_TARGET:-}" && "$argument" == "$FAIL_RM_TARGET" ]]; then
+        printf 'controlled cleanup removal failure: %s\n' "$argument" >&2
+        exit 79
+    fi
+done
+exec "$REAL_RM_BIN" "$@"
+EOF_RM
+chmod +x "$fake_bin/rm"
+export REAL_RM_BIN="$real_rm_bin"
+
+cat >"$fake_bin/ln" <<'EOF_LN'
+#!/usr/bin/env bash
+set -euo pipefail
+
+destination="${!#}"
+if [[ -n "${INJECT_LATE_FINAL_DESTINATION:-}" &&
+      "$destination" == "$INJECT_LATE_FINAL_DESTINATION" ]]; then
+    if [[ -n "${INJECT_REPLACE_DESTINATION:-}" ]]; then
+        "$REAL_RM_BIN" -f -- "$INJECT_REPLACE_DESTINATION"
+        "$REAL_CP_BIN" -- "$INJECT_REPLACE_SOURCE" "$INJECT_REPLACE_DESTINATION"
+    fi
+    "$REAL_CP_BIN" -- "$INJECT_LATE_FINAL_SOURCE" "$destination"
+    printf 'injected late foreign Step 01 output: %s\n' "$destination" >&2
+fi
+exec "$REAL_LN_BIN" "$@"
+EOF_LN
+chmod +x "$fake_bin/ln"
+export REAL_LN_BIN="$real_ln_bin"
+export REAL_CP_BIN="$real_cp_bin"
 
 star_log="$tmp_dir/star_invocations.log"
 cat >"$fake_bin/STAR" <<EOF_STAR
 #!/usr/bin/env bash
 printf 'STAR invoked\n' >> "$star_log"
 printf '%s\n' "\$@" >> "$star_log"
-exit "\${STAR_EXIT_CODE:-0}"
+status="\${STAR_EXIT_CODE:-0}"
+if [[ "\$status" -eq 0 ]]; then
+    prefix=""
+    while [[ \$# -gt 0 ]]; do
+        if [[ "\$1" == "--outFileNamePrefix" ]]; then
+            prefix="\$2"
+            break
+        fi
+        shift
+    done
+    [[ -n "\$prefix" ]] || exit 64
+    mkdir -p "\$(dirname "\$prefix")"
+    for suffix in Aligned.sortedByCoord.out.bam Log.final.out Log.out Log.progress.out SJ.out.tab; do
+        printf 'fake STAR %s\n' "\$suffix" >"\${prefix}\${suffix}"
+    done
+    if [[ -n "\${STAR_MUTATE_INDEX_FILE:-}" ]]; then
+        printf 'mutated during STAR\n' >>"\$STAR_MUTATE_INDEX_FILE"
+    fi
+fi
+exit "\$status"
 EOF_STAR
 chmod +x "$fake_bin/STAR"
 
@@ -71,6 +128,8 @@ export PATH="$fake_bin:$PATH"
 fixture_dir="$tmp_dir/fixtures"
 star_index="$fixture_dir/star_index"
 mkdir -p "$star_index"
+printf 'fake SA index bytes\n' >"$star_index/SA"
+printf 'fake Genome index bytes\n' >"$star_index/Genome"
 
 r1_fastq="$fixture_dir/sample_R1.fastq"
 r2_fastq="$fixture_dir/sample_R2.fastq"
@@ -103,7 +162,7 @@ bash "$SCRIPT" \
     --threads 4 \
     >"$dry_output"
 
-[[ -d "$dry_output_dir" ]] || fail "dry-run did not create output directory"
+[[ ! -e "$dry_output_dir" ]] || fail "dry-run created output directory"
 [[ ! -e "$star_log" ]] || fail "dry-run invoked STAR"
 assert_contains "$dry_output" "Mode: dry-run"
 assert_contains "$dry_output" "--outFileNamePrefix"
@@ -136,6 +195,237 @@ assert_contains "$star_log" "--outSAMtype"
 assert_contains "$star_log" "BAM"
 assert_contains "$star_log" "SortedByCoordinate"
 assert_contains "$execute_output" "Mode: execute"
+
+printf 'Running orchestration-safe no-clobber transaction check...\n'
+residue_output_dir="$tmp_dir/results/residue"
+mkdir -p "$residue_output_dir/.sample_residue.step01.older-token.staging"
+residue_marker="$residue_output_dir/.sample_residue.step01.older-token.staging/preserve"
+printf 'preserve residue\n' >"$residue_marker"
+residue_output="$tmp_dir/residue.out"
+assert_fails "$residue_output" env SLURM_JOB_ID=newer-token bash "$SCRIPT" \
+    --sample-id sample_residue \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$star_index" \
+    --output-dir "$residue_output_dir" \
+    --threads 2 \
+    --star-bin "$fake_bin/STAR" \
+    --no-clobber \
+    --execute
+assert_contains "$residue_output" "residue requires operator inspection"
+[[ "$(<"$residue_marker")" == "preserve residue" ]] || fail "Step 01 removed foreign residue"
+[[ ! -e "$residue_output_dir/.sample_residue.step01.lock" ]] || fail "Step 01 residue refusal created a lock"
+safe_output="$tmp_dir/safe.out"
+safe_output_dir="$tmp_dir/results/safe"
+bash "$SCRIPT" \
+    --sample-id sample_safe \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$star_index" \
+    --output-dir "$safe_output_dir" \
+    --threads 2 \
+    --star-bin "$fake_bin/STAR" \
+    --no-clobber \
+    --execute \
+    >"$safe_output"
+for suffix in Aligned.sortedByCoord.out.bam Log.final.out Log.out Log.progress.out SJ.out.tab; do
+    [[ -s "$safe_output_dir/sample_safe.$suffix" ]] || fail "missing declared no-clobber output: $suffix"
+done
+assert_contains "$safe_output" "No-clobber transaction: true"
+assert_contains "$safe_output" "STAR index member count: 2"
+assert_contains "$safe_output" $'STAR index member: Genome\t'
+assert_contains "$safe_output" $'STAR index member: SA\t'
+genome_snapshot_line="$(grep -n -F $'STAR index member: Genome\t' "$safe_output" | cut -d: -f1)"
+sa_snapshot_line="$(grep -n -F $'STAR index member: SA\t' "$safe_output" | cut -d: -f1)"
+[[ "$genome_snapshot_line" -lt "$sa_snapshot_line" ]] ||
+    fail "STAR index snapshot was not emitted in deterministic bytewise name order"
+[[ ! -e "$safe_output_dir/.sample_safe.step01.lock" ]] || fail "successful no-clobber run left lock"
+[[ -z "$(find "$safe_output_dir" -maxdepth 1 -name '.sample_safe.step01.*.staging' -print -quit)" ]] ||
+    fail "successful no-clobber run left staging residue"
+safe_repeat_output="$tmp_dir/safe_repeat.out"
+assert_fails "$safe_repeat_output" bash "$SCRIPT" \
+    --sample-id sample_safe \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$star_index" \
+    --output-dir "$safe_output_dir" \
+    --threads 2 \
+    --star-bin "$fake_bin/STAR" \
+    --no-clobber \
+    --execute
+assert_contains "$safe_repeat_output" "--no-clobber output already exists"
+
+printf 'Running no-clobber empty/ambiguous STAR-index admission checks...\n'
+empty_index="$tmp_dir/fixtures/empty_star_index"
+mkdir -p "$empty_index"
+empty_index_output="$tmp_dir/empty_index.out"
+assert_fails "$empty_index_output" bash "$SCRIPT" \
+    --sample-id sample_empty_index \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$empty_index" \
+    --output-dir "$tmp_dir/results/empty_index" \
+    --threads 2 \
+    --star-bin "$fake_bin/STAR" \
+    --no-clobber
+assert_contains "$empty_index_output" "STAR index contains no top-level files"
+
+ambiguous_index="$tmp_dir/fixtures/ambiguous_star_index"
+mkdir -p "$ambiguous_index"
+ln -s "$star_index/Genome" "$ambiguous_index/Genome"
+ambiguous_index_output="$tmp_dir/ambiguous_index.out"
+assert_fails "$ambiguous_index_output" bash "$SCRIPT" \
+    --sample-id sample_ambiguous_index \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$ambiguous_index" \
+    --output-dir "$tmp_dir/results/ambiguous_index" \
+    --threads 2 \
+    --star-bin "$fake_bin/STAR" \
+    --no-clobber
+assert_contains "$ambiguous_index_output" "STAR index top-level member is a symbolic link"
+
+printf 'Running no-clobber STAR-index mutation rejection check...\n'
+mutation_index="$tmp_dir/fixtures/mutation_star_index"
+mkdir -p "$mutation_index"
+printf 'mutation Genome index bytes\n' >"$mutation_index/Genome"
+printf 'mutation SA index bytes\n' >"$mutation_index/SA"
+mutation_index_file="$mutation_index/Genome"
+mutation_output="$tmp_dir/index_mutation.out"
+mutation_output_dir="$tmp_dir/results/index_mutation"
+mutation_token="index-mutation"
+assert_fails "$mutation_output" env \
+    STAR_MUTATE_INDEX_FILE="$mutation_index_file" \
+    SLURM_JOB_ID="$mutation_token" \
+    bash "$SCRIPT" \
+    --sample-id sample_index_mutation \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$mutation_index" \
+    --output-dir "$mutation_output_dir" \
+    --threads 2 \
+    --star-bin "$fake_bin/STAR" \
+    --no-clobber \
+    --execute
+assert_contains "$mutation_output" "STAR index membership or bytes changed during Step 01"
+assert_contains "$mutation_index_file" "mutated during STAR"
+for suffix in Aligned.sortedByCoord.out.bam Log.final.out Log.out Log.progress.out SJ.out.tab; do
+    [[ ! -e "$mutation_output_dir/sample_index_mutation.$suffix" ]] ||
+        fail "index mutation published a final STAR output: $suffix"
+done
+[[ ! -e "$mutation_output_dir/.sample_index_mutation.step01.$mutation_token.staging" ]] ||
+    fail "index mutation left owned staging residue"
+[[ ! -e "$mutation_output_dir/.sample_index_mutation.step01.lock" ]] ||
+    fail "index mutation left owned lock"
+
+printf 'Running no-clobber late-final publication race check...\n'
+late_sample="sample_late_final"
+late_token="late-final"
+late_output="$tmp_dir/late_final.out"
+late_output_dir="$tmp_dir/results/late_final"
+late_staging="$late_output_dir/.${late_sample}.step01.${late_token}.staging"
+late_lock="$late_output_dir/.${late_sample}.step01.lock"
+late_final="$late_output_dir/${late_sample}.Aligned.sortedByCoord.out.bam"
+late_foreign_source="$tmp_dir/late_final_foreign_source"
+printf 'late foreign BAM bytes\n' >"$late_foreign_source"
+assert_fails "$late_output" env \
+    INJECT_LATE_FINAL_DESTINATION="$late_final" \
+    INJECT_LATE_FINAL_SOURCE="$late_foreign_source" \
+    SLURM_JOB_ID="$late_token" \
+    bash "$SCRIPT" \
+    --sample-id "$late_sample" \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$star_index" \
+    --output-dir "$late_output_dir" \
+    --threads 2 \
+    --star-bin "$fake_bin/STAR" \
+    --no-clobber \
+    --execute
+cmp -s "$late_foreign_source" "$late_final" ||
+    fail "late foreign Step 01 final was overwritten or deleted"
+[[ -d "$late_staging" ]] || fail "late-final race did not preserve staging residue"
+[[ -d "$late_lock" ]] || fail "late-final race did not retain the owner lock"
+[[ -s "$late_staging/${late_sample}.Aligned.sortedByCoord.out.bam" ]] ||
+    fail "late-final race did not retain the staged ownership anchor"
+assert_contains "$late_lock/owner" "run_token=$late_token"
+assert_contains "$late_output" "injected late foreign Step 01 output"
+assert_contains "$late_output" "Refusing to replace a late or foreign Step 01 output"
+assert_contains "$late_output" "Step 01 no-clobber cleanup was incomplete"
+
+printf 'Running no-clobber replacement-after-publication race check...\n'
+replacement_sample="sample_replaced_final"
+replacement_token="replaced-final"
+replacement_output="$tmp_dir/replaced_final.out"
+replacement_output_dir="$tmp_dir/results/replaced_final"
+replacement_staging="$replacement_output_dir/.${replacement_sample}.step01.${replacement_token}.staging"
+replacement_lock="$replacement_output_dir/.${replacement_sample}.step01.lock"
+replacement_first_final="$replacement_output_dir/${replacement_sample}.Aligned.sortedByCoord.out.bam"
+replacement_second_final="$replacement_output_dir/${replacement_sample}.Log.final.out"
+replacement_first_source="$tmp_dir/replaced_first_foreign_source"
+replacement_second_source="$tmp_dir/replaced_second_foreign_source"
+printf 'replacement foreign BAM bytes\n' >"$replacement_first_source"
+printf 'late foreign Log.final bytes\n' >"$replacement_second_source"
+assert_fails "$replacement_output" env \
+    INJECT_LATE_FINAL_DESTINATION="$replacement_second_final" \
+    INJECT_LATE_FINAL_SOURCE="$replacement_second_source" \
+    INJECT_REPLACE_DESTINATION="$replacement_first_final" \
+    INJECT_REPLACE_SOURCE="$replacement_first_source" \
+    SLURM_JOB_ID="$replacement_token" \
+    bash "$SCRIPT" \
+    --sample-id "$replacement_sample" \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$star_index" \
+    --output-dir "$replacement_output_dir" \
+    --threads 2 \
+    --star-bin "$fake_bin/STAR" \
+    --no-clobber \
+    --execute
+cmp -s "$replacement_first_source" "$replacement_first_final" ||
+    fail "replacement race deleted or changed the foreign first final"
+cmp -s "$replacement_second_source" "$replacement_second_final" ||
+    fail "replacement race deleted or changed the late foreign second final"
+[[ -d "$replacement_staging" ]] || fail "replacement race did not preserve staging residue"
+[[ -d "$replacement_lock" ]] || fail "replacement race did not retain the owner lock"
+[[ -s "$replacement_staging/${replacement_sample}.Aligned.sortedByCoord.out.bam" ]] ||
+    fail "replacement race did not retain the first staged ownership anchor"
+[[ -s "$replacement_staging/${replacement_sample}.Log.final.out" ]] ||
+    fail "replacement race did not retain the second staged ownership anchor"
+assert_contains "$replacement_lock/owner" "run_token=$replacement_token"
+assert_contains "$replacement_output" "Published Step 01 output no longer belongs to this invocation"
+assert_contains "$replacement_output" "preserving the foreign path"
+assert_contains "$replacement_output" "Step 01 no-clobber cleanup was incomplete"
+
+printf 'Running no-clobber cleanup-failure preservation check...\n'
+cleanup_sample="sample_cleanup_failure"
+cleanup_token="cleanup-failure"
+cleanup_output="$tmp_dir/cleanup_failure.out"
+cleanup_output_dir="$tmp_dir/results/cleanup_failure"
+cleanup_staging="$cleanup_output_dir/.${cleanup_sample}.step01.${cleanup_token}.staging"
+cleanup_lock="$cleanup_output_dir/.${cleanup_sample}.step01.lock"
+set +e
+STAR_EXIT_CODE=37 \
+FAIL_RM_TARGET="$cleanup_staging" \
+SLURM_JOB_ID="$cleanup_token" \
+bash "$SCRIPT" \
+    --sample-id "$cleanup_sample" \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$star_index" \
+    --output-dir "$cleanup_output_dir" \
+    --threads 2 \
+    --star-bin "$fake_bin/STAR" \
+    --no-clobber \
+    --execute >"$cleanup_output" 2>&1
+cleanup_status=$?
+set -e
+[[ "$cleanup_status" -eq 37 ]] || fail "cleanup-failure run did not preserve STAR exit 37"
+[[ -d "$cleanup_staging" ]] || fail "cleanup failure did not preserve Step 01 staging residue"
+[[ -d "$cleanup_lock" ]] || fail "cleanup failure did not retain Step 01 owner lock"
+assert_contains "$cleanup_lock/owner" "run_token=$cleanup_token"
+assert_contains "$cleanup_output" "controlled cleanup removal failure"
+assert_contains "$cleanup_output" "Step 01 no-clobber cleanup was incomplete"
 
 printf 'Running child failure propagation check...\n'
 failure_output="$tmp_dir/failure.out"

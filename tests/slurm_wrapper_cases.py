@@ -26,14 +26,14 @@ def contract(delegation: str, **overrides: Any) -> WrapperContract:
 
 CONTRACTS = {
     "step_00a_build_novogene_star_index.slurm": contract(
-        "embedded_star",
+        "src/norad/stages/star_index/step_00a_build_star_index.sh",
         default="legacy_implicit_execute",
         execute="implicit_only",
         invalid_mode="not_applicable",
         module_policy="strict",
         module_calls=("load star/2.7.11b", "list"),
         submit_cwd="caller",
-        output_validation="none_after_child_success",
+        output_validation="producer_declared_members",
     ),
     "step_00b_gtf_to_bed12.slurm": contract(
         "embedded_python_and_bedtools",

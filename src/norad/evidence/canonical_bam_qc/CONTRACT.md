@@ -80,23 +80,35 @@ text is written to the second final path.
 No receipt binds these files to the BAM, BAI, sample identity, samtools
 version, or attempt.
 
+## Orchestration-safe producer boundary
+
+`--no-clobber` is the required local-profile mode. It binds an explicit
+samtools executable, hashes the BAM and admitted BAI, requires both finals to
+be absent, holds a per-sample owned lock, captures both commands into
+run-token temporary paths, requires both files to be nonempty, rechecks the
+inputs, and publishes the pair create-exclusively while retaining staging
+inode anchors through validation. Failure removes only still-owned finals;
+ambiguous replacement preserves the lock and residue. The native pair is not a receipt; the
+workflow verified record binds it to the run, attempt, and observed tool
+version. Execute without this option retains the direct-write contract below.
+
 ## Current execution surfaces
 
 [`step_02b_bam_qc.sh`](step_02b_bam_qc.sh) is the public
 producer entrypoint. It:
 
-- creates the output directory before deciding between dry-run and execute;
+- creates no output directory in dry-run mode;
 - validates path presence and samtools availability;
 - is dry-run by default and requires `--execute` to invoke samtools;
-- writes each command's stream directly to its final output path;
+- without `--no-clobber`, writes each command's stream directly to its final
+  output path;
 - silently truncates or replaces an existing same-named file; and
 - preserves quickcheck failure diagnostics as a final-path artifact.
 
-There is no lock, staged pair, no-clobber rule, rollback, stable-input recheck,
-receipt, or output-set validation. A quickcheck or flagstat failure can leave a
-partial or cross-attempt evidence set, especially when an older sibling file
-already exists. These are preserved current semantics, not a target
-publication design.
+That historical route has no lock, staged pair, stable-input recheck, receipt,
+or output-set validation. A quickcheck or flagstat failure can leave a partial
+or cross-attempt evidence set, especially when an older sibling file already
+exists.
 
 [`step_02b_bam_qc.slurm`](step_02b_bam_qc.slurm) requires and
 changes to `SLURM_SUBMIT_DIR`, creates log and output directories, loads the
@@ -158,9 +170,10 @@ make it a prerequisite for later computation.
 ## Protected behavior and evidence
 
 - [`test_step_02b_bam_qc.sh`](../../../../tests/evidence/canonical_bam_qc/test_step_02b_bam_qc.sh)
-  protects the public CLI, both index-name conventions, PATH absence, dry-run
-  directory side effect, exact paths, silent/nonempty success, and the two
-  predecessor-bearing mixed-attempt faults.
+  protects the public CLI, both index-name conventions, PATH absence,
+  side-effect-free dry-run, exact paths, silent/nonempty success, the two
+  predecessor-bearing legacy faults, and orchestration-safe staged pair
+  publication.
 - [`test_validate_step_02b_bam_qc.py`](../../../../tests/evidence/canonical_bam_qc/test_validate_step_02b_bam_qc.py)
   protects dry-run, five checks, marker/count mismatch evidence, arbitrary-CWD
   repeatability, post-build input mutation, publication, and foreign-lock
@@ -202,6 +215,7 @@ roadmap and handoff.
 - One authoritative quickcheck-success serialization.
 - Binding of native evidence to BAM/BAI identity, manifest sample, tool
   identity, and attempt.
-- Transaction, collision, and failure-artifact policy for the evidence pair.
+- A native receipt and wider verified-task binding for the staged no-clobber
+  pair; legacy direct execution retains its predecessor-bearing fault policy.
 - Final separation of evidence execution, interpretation, and publication.
 - Compatibility wrappers and scheduler-asset ownership.

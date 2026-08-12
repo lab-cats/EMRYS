@@ -75,10 +75,17 @@ responsibility rather than a proven functional requirement.
 
 `python -I -m norad convert gtf-to-bed12` is the public conversion route,
 implemented by [`converter.py`](converter.py). It accepts explicit input/output
-and GTF-selection arguments, creates the output parent directory, and writes
-immediately. It has no dry-run or transactional publication mode and silently
-replaces the declared output when that path already exists; replacement is a
-characterized defect, not an approved target behavior.
+and GTF-selection arguments. It renders complete deterministic BED12 bytes in
+memory and is dry-run by default. `--execute` acquires a create-exclusive lock,
+writes and fsyncs one owner-token staging file, publishes to an absent final
+path through an atomic hard link, retains that staged inode as the final's
+ownership anchor while removing the lock, and removes the anchor only after no
+fallible cleanup remains. Rollback deletes a final only when it is still the
+same regular-file inode as that anchor. A cleanup failure or foreign replacement
+fails closed with the remaining lock and/or staging residue. An existing
+output, lock, or staging residue blocks the operation and is never overwritten
+automatically. An unhandled interruption can leave both lock and staging
+evidence; a subsequent invocation preserves and reports that ambiguous state.
 
 [`step_00b_gtf_to_bed12.slurm`](step_00b_gtf_to_bed12.slurm)
 is the scheduler entrypoint. It:
@@ -89,11 +96,13 @@ is the scheduler entrypoint. It:
   Python executable;
 - creates log and output directories before conversion;
 - embeds conversion, bedtools sorting, and a final field-count check; and
-- publishes the intermediate and final files without an all-or-none
-  transaction, receipt, or no-clobber boundary.
+- invokes the converter with `--execute`, then publishes the later bedtools
+  final file without an all-or-none transaction, receipt, or no-clobber
+  boundary.
 
-These behaviors are preserved characterization, not endorsement of the target
-interface.
+The converter boundary is orchestration-safe. The separate scheduler-only
+bedtools finalization remains characterized and is not part of that public
+producer guarantee.
 
 ## Validation interface
 
@@ -144,7 +153,9 @@ No downstream stage should depend on this stage's implementation module.
 - [`test_gtf_to_bed12.py`](../../../../tests/stages/gtf_to_bed12/test_gtf_to_bed12.py)
   protects the public route, exact exon-to-block conversion, sorting, warnings,
   configurable attributes, invalid-transcript handling, failure with no valid
-  records, and characterized output replacement.
+  records, side-effect-free dry-run, arbitrary-CWD execution, create-exclusive
+  publication, ownership-checked rollback, cleanup-failure residue, foreign
+  final preservation, and interruption-residue blocking.
 - [`test_validate_step_00b_bed12.py`](../../../../tests/stages/gtf_to_bed12/test_validate_step_00b_bed12.py)
   protects dry-run, the five checks, mismatch evidence, structural failures,
   and preservation of foreign locks or invalid predecessors.

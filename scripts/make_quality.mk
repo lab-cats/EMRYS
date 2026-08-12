@@ -20,6 +20,7 @@ PYTHON_SUBPROCESS_COVERAGE_TESTS := \
 
 SHELL_SYNTAX_PATHS := \
 	src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh \
+	src/norad/stages/star_index/step_00a_build_star_index.sh \
 	src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh \
 	src/norad/stages/star_alignment/step_01_star_align.sh \
 	src/norad/stages/canonical_bam/step_02_sort_index_bam.sh \

@@ -42,15 +42,28 @@ files and samtools quickcheck success for the BAM, but does not parse metrics,
 verify duplicate flags, publish a receipt, or bind outputs to one input/tool
 attempt.
 
+## Orchestration-safe producer boundary
+
+`--no-clobber` is the required local-profile mode. It hashes the input BAM/BAI
+and Picard jar, refuses any existing final, holds a per-sample owned lock,
+directs Picard and samtools to run-token BAM/BAI/metrics paths, validates the
+complete triplet, rechecks the admitted hashes, and publishes only the new set.
+Publication is create-exclusive and keeps staging inode anchors through
+complete-set validation. Failure removes only still-owned new finals;
+ambiguous replacement preserves lock and residue. Java
+and samtools paths are explicit; observed tool versions and final hashes belong
+in the workflow verified record. Execute without this option retains the
+historical direct-final contract below.
+
 ## Current execution surfaces
 
 [`step_04_mark_duplicates.sh`](step_04_mark_duplicates.sh)
-is dry-run by default and creates no output directories in dry-run. In execute
-mode it writes Picard BAM and metrics directly to final paths, quickchecks the
-BAM, indexes it at the final path, then checks all three files for nonemptiness.
-There is no lock, staging, no-clobber rule, stable-input recheck, rollback, or
-all-or-none transaction. Re-execution replaces outputs, and a failure may leave
-a partial or cross-attempt set.
+is dry-run by default and creates no output directories in dry-run. Execute
+without `--no-clobber` writes Picard BAM and metrics directly to final paths,
+quickchecks the BAM, indexes it at the final path, then checks all three files
+for nonemptiness. That historical route has no lock, staging, stable-input
+recheck, rollback, or all-or-none transaction; failure may leave a partial or
+cross-attempt set.
 
 [`step_04_mark_duplicates.slurm`](step_04_mark_duplicates.slurm)
 resolves submit-directory defaults, modules, Picard, Java, and samtools before
@@ -112,10 +125,11 @@ scientific-review, or biological evidence.
 
 - Producer validation, independent validation, and artifact interpretation are
   not one identical contract.
-- Final-path multi-output publication lacks transactional ownership.
+- Legacy direct execution lacks transactional ownership; the no-clobber route
+  owns a staged three-file publication boundary.
 - Sample/library/platform metadata is hardcoded or scope-derived rather than
   manifest-bound.
 - The neutral BAM and report helpers remain private shared owners rather
   than installed or public package APIs.
-- Receipt/recovery policy, sample/tool identity binding, and safe multi-output
-  publication remain deferred.
+- A native receipt, manifest-level sample binding, and wider verified-task
+  tool/output identity remain deferred.

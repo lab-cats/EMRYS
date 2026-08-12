@@ -36,6 +36,9 @@ Add `--execute` after inspecting the complete Step `07` barrier, R program,
 locks, scratch, publication, and rollback. `legacy_provisional_v1` maps
 mechanical orientation labels for compatibility; it does not establish
 transcript strand, variants, editing sites, review, or biological readiness.
+The orchestration-safe invocation also supplies `--no-clobber`, which rejects a complete
+prior set without running R; direct use retains complete-set replacement
+unless that option is supplied.
 
 Execute publishes sites, cross-root summary, then the input receipt. Receipt
 visibility precedes final validation; it does not hash sibling outputs or the R
@@ -75,8 +78,8 @@ scheduler success.
 
 Preserve finals, both-root scratch/backups, lock, manifests, Step `07` inputs,
 GTF, R runtime/program/library, streams, job identity, and unrelated bytes.
-Never combine attempts or reuse ambiguous roots; failed restoration can lose
-its recovery marker.
+Never combine attempts or reuse ambiguous roots; incomplete restoration
+retains the owned lock and remaining backups for operator recovery.
 
 ```bash
 bash tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.sh

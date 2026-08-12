@@ -54,6 +54,84 @@ validate_nonnegative_integer() {
         die "$label must be a non-negative integer; got: $value"
 }
 
+require_no_owner_residue() {
+    local label="$1"
+    local directory="$2"
+    shift 2
+    local name_pattern
+    local match
+
+    [[ -d "$directory" ]] || return 0
+    for name_pattern in "$@"; do
+        match="$(
+            find "$directory" -mindepth 1 -maxdepth 1 \
+                -name "$name_pattern" -print -quit
+        )" || die "Could not inspect $label residue in: $directory"
+        [[ -z "$match" ]] ||
+            die "$label residue requires operator inspection: $match"
+    done
+}
+
+publish_file_create_exclusive() {
+    local label="$1"
+    local staged_path="$2"
+    local final_path="$3"
+
+    if [[ ! -f "$staged_path" || -L "$staged_path" || ! -s "$staged_path" ]]; then
+        die "$label staging file is missing, empty, or ambiguous: $staged_path"
+        return 1
+    fi
+    if [[ -e "$final_path" || -L "$final_path" ]]; then
+        die "$label final path already exists; refusing to replace: $final_path"
+        return 1
+    fi
+    if ! ln -- "$staged_path" "$final_path"; then
+        die "$label final path appeared during publication; refusing to replace: $final_path"
+    fi
+    if [[ ! -f "$final_path" || -L "$final_path" ||
+          ! "$final_path" -ef "$staged_path" ]]; then
+        die "$label create-exclusive publication did not preserve the staged inode: $final_path"
+        return 1
+    fi
+}
+
+remove_owned_published_file() {
+    local label="$1"
+    local staged_path="$2"
+    local final_path="$3"
+
+    if [[ ! -e "$final_path" && ! -L "$final_path" ]]; then
+        printf 'ERROR: %s final disappeared after publication; preserving staging and lock: %s\n' \
+            "$label" "$final_path" >&2
+        return 1
+    fi
+    if [[ ! -f "$staged_path" || -L "$staged_path" ||
+          ! -f "$final_path" || -L "$final_path" ||
+          ! "$final_path" -ef "$staged_path" ]]; then
+        printf 'ERROR: %s final is no longer provably owned; preserving final, staging, and lock: %s\n' \
+            "$label" "$final_path" >&2
+        return 1
+    fi
+    if ! rm -f -- "$final_path" || [[ -e "$final_path" || -L "$final_path" ]]; then
+        printf 'ERROR: Could not remove owned %s final during rollback: %s\n' \
+            "$label" "$final_path" >&2
+        return 1
+    fi
+}
+
+require_owned_published_file() {
+    local label="$1"
+    local staged_path="$2"
+    local final_path="$3"
+
+    if [[ ! -f "$staged_path" || -L "$staged_path" ||
+          ! -f "$final_path" || -L "$final_path" ||
+          ! "$final_path" -ef "$staged_path" ]]; then
+        die "$label final no longer matches its owned staging anchor: $final_path"
+        return 1
+    fi
+}
+
 validate_exact_header() {
     local label="$1"
     local path="$2"

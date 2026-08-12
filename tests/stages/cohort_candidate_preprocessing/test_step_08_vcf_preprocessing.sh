@@ -1091,12 +1091,12 @@ stale_fixture="$test_root/stale"
 create_fixture "$stale_fixture" cohort_stale
 stale_dir="$stale_fixture/output/cohort_stale"
 mkdir -p "$stale_dir"
-stale_path="$stale_dir/.cohort_stale.step08.stale08.sites.tmp.tsv"
+stale_path="$stale_dir/.cohort_stale.step08.older-token.sites.tmp.tsv"
 printf 'foreign scratch\n' >"$stale_path"
 run_expect_status 1 "$test_root/stale.out" "$test_root/stale.err" \
     env \
     PATH="$fake_bin:$PATH" \
-    SLURM_JOB_ID=stale08 \
+    SLURM_JOB_ID=newer-token \
     bash "$script" \
     --cohort-id cohort_stale \
     --sample-manifest "$stale_fixture/samples.tsv" \
@@ -1107,8 +1107,9 @@ run_expect_status 1 "$test_root/stale.out" "$test_root/stale.err" \
     --qc-root "$stale_fixture/qc" \
     --rscript-bin "$fake_rscript" \
     --r-script "$stale_fixture/step08_impl.R" \
+    --no-clobber \
     --execute
-assert_contains "$test_root/stale.err" "Refusing to reuse an existing Step 08 scratch path"
+assert_contains "$test_root/stale.err" "residue requires operator inspection"
 assert_file_equals "$stale_path" "foreign scratch"
 assert_not_exists "$stale_dir/.cohort_stale.step08.lock"
 
@@ -1230,8 +1231,11 @@ assert_not_exists \
     "$restore_failure_dir/.cohort_restore_failure.step08.$restore_failure_token.inputs.tmp.tsv"
 assert_not_exists \
     "$restore_failure_qc/.cohort_restore_failure.step08.$restore_failure_token.summary.tmp.tsv"
-assert_not_exists \
-    "$restore_failure_dir/.cohort_restore_failure.step08.lock"
+restore_failure_lock="$restore_failure_dir/.cohort_restore_failure.step08.lock"
+[[ -d "$restore_failure_lock" ]] ||
+    fail "Incomplete Step 08 rollback must retain its owned lock"
+assert_contains "$restore_failure_lock/owner" \
+    $'run_token\t'"$restore_failure_token"
 assert_file_equals \
     "$restore_failure_fixture/output/unrelated.txt" \
     "unrelated output bytes"
@@ -1242,6 +1246,8 @@ unexpected_restore_scratch="$(
     find "$restore_failure_fixture/output" "$restore_failure_qc" \
         -name '.*.step08.*' \
         ! -path "$restore_failure_sites_backup" \
+        ! -path "$restore_failure_lock" \
+        ! -path "$restore_failure_lock/owner" \
         -print -quit
 )"
 [[ -z "$unexpected_restore_scratch" ]] ||
@@ -1249,6 +1255,8 @@ unexpected_restore_scratch="$(
 assert_no_step08_recovery_marker \
     "$restore_failure_fixture/output" \
     "$restore_failure_qc"
+assert_contains "$test_root/restore-failure.err" \
+    "retaining the owned lock and backups for operator recovery"
 
 printf 'Running successful replacement of a previous complete output set...\n'
 replace_fixture="$test_root/replace"
@@ -1259,6 +1267,28 @@ mkdir -p "$replace_dir" "$replace_qc"
 printf 'previous sites\n' >"$replace_dir/cohort_replace.step08_sites.tsv"
 printf 'previous inputs\n' >"$replace_dir/cohort_replace.step08_inputs.tsv"
 printf 'previous summary\n' >"$replace_qc/cohort_replace.step08_summary.tsv"
+run_expect_status 1 \
+    "$test_root/no-clobber.out" \
+    "$test_root/no-clobber.err" \
+    env \
+    PATH="$fake_bin:$PATH" \
+    SLURM_JOB_ID=noclobber08 \
+    bash "$script" \
+    --cohort-id cohort_replace \
+    --sample-manifest "$replace_fixture/samples.tsv" \
+    --partition-manifest "$replace_fixture/partitions.tsv" \
+    --step07-root "$replace_fixture/step07" \
+    --annotation-gtf "$replace_fixture/annotation.gtf" \
+    --output-root "$replace_fixture/output" \
+    --qc-root "$replace_fixture/qc" \
+    --rscript-bin "$fake_rscript" \
+    --r-script "$replace_fixture/step08_impl.R" \
+    --no-clobber \
+    --execute
+assert_contains "$test_root/no-clobber.err" "under --no-clobber"
+assert_file_equals "$replace_dir/cohort_replace.step08_sites.tsv" "previous sites"
+assert_file_equals "$replace_dir/cohort_replace.step08_inputs.tsv" "previous inputs"
+assert_file_equals "$replace_qc/cohort_replace.step08_summary.tsv" "previous summary"
 env \
     PATH="$fake_bin:$PATH" \
     SLURM_JOB_ID=replace08 \

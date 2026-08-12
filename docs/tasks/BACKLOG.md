@@ -110,17 +110,10 @@ selection, implementation, or publication authority.
 - **Intent:** Publish a concise researcher journey from setup and request creation through pilot execution, inspection, failure, and resume.
 - **Boundaries:** Link canonical commands and proof-matched outputs; state local, runtime, cluster, scientific, and biological evidence limits explicitly.
 
-## ORCH-03A — Establish orchestration-ready owner boundaries
-
-- **Kind:** actionable
-- **Blocked by:** None
-- **Intent:** Resolve the owner-by-owner `harden` dispositions in the local-pilot readiness register through small public-command, failure, and recovery packages before workflow admission.
-- **Boundaries:** One functional owner per slice; preserve scientific methods and public contracts unless explicitly replaced; no Snakemake rules, centralized recovery, dependency installation, SLURM/VM work, or evidence promotion.
-
 ## PROFILE-03A — Materialize local-pilot workflow profile
 
 - **Kind:** actionable
-- **Blocked by:** `INTAKE-03A`, `ORCH-03A`, `SETUP-03A`
+- **Blocked by:** `INTAKE-03A`, `SETUP-03A`
 - **Intent:** Materialize the current CMH pilot as one static Snakemake local-executor profile over admitted public owners and the canonical lifecycle contracts.
 - **Boundaries:** No generic registry, custom scheduler, private imports, scientific change, hidden discovery, SLURM execution, or Snakemake state authority.
 

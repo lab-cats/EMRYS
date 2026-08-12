@@ -34,6 +34,9 @@ Add `--execute` after inspecting pairing, thresholds, inputs, R identity, lock,
 scratch, publication, and rollback. The method is two-sided continuity-
 corrected CMH with one global BH correction and fixed threshold classification.
 Outputs are ranked candidates, not validated editing sites or biological proof.
+The orchestration-safe invocation also supplies `--no-clobber`, which rejects a complete
+prior set without running R; direct use retains complete-set replacement
+unless that option is supplied.
 
 Execute publishes five payloads then the summary. Summary visibility precedes
 final checks and is not committed-attempt proof; the summary omits R

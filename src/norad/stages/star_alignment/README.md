@@ -24,10 +24,20 @@ src/norad/stages/star_alignment/step_01_star_align.sh \
   --threads 8
 ```
 
-`STAR` must be on `PATH`, including for dry-run. Add `--execute` only after
-inspection. Dry-run creates the output directory. STAR writes finals directly;
-failure may leave partial output without a receipt, lock, staging transaction,
-cleanup, no-clobber rule, or post-STAR validation.
+`STAR` must be on `PATH`, or bind it with `--star-bin`. Dry-run writes nothing.
+The orchestration-safe invocation adds `--no-clobber`: that mode hashes both
+FASTQs and every admitted top-level regular STAR-index file in deterministic
+name order, uses a per-sample owned lock and run-token staging directory,
+requires the five declared STAR outputs, rechecks FASTQ and index membership
+plus bytes, refuses any pre-existing declared output, and create-exclusively
+publishes each final while retaining its staged inode as an ownership anchor.
+Success validates the full final set against those anchors, removes staging,
+and then releases the lock. If a final appears late or replaces an owned final,
+the foreign path, lock, and staging residue remain for operator recovery. Empty,
+symbolic-link, nested, special, or delimiter-ambiguous index members block this
+mode. The historical `--execute` route without `--no-clobber` still writes
+STAR's prefix directly and retains its prior index-directory behavior. The
+workflow verified record remains the wider run/output/tool binding.
 
 Validator dry-run:
 

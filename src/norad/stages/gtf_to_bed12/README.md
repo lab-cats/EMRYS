@@ -27,9 +27,18 @@ interpreter:
 ```
 
 From another working directory, use the absolute path to the installed
-interpreter and explicit absolute input and output paths. The producer has no
-dry-run or transaction mode and silently replaces the declared BED path. That
-replacement is a characterized defect, not an approved safety guarantee.
+interpreter and explicit absolute input and output paths. The default invocation
+renders the deterministic BED12 bytes and prints the exact create-exclusive
+publication plan without creating the output parent, lock, staging file, or
+BED12. Add `--execute` only after inspection.
+
+Execute mode writes and fsyncs one owner-token staging file, links it to an
+absent final path without replacement, retains the staged inode as an ownership
+anchor through lock cleanup, then removes that anchor. Rollback removes a final
+only while it is still the same regular-file inode as the anchor. Lock/staging
+cleanup failure or a foreign final replacement fails closed with recovery
+residue. An existing output, lock, or staging residue is a blocker and is
+preserved.
 
 ## Validator
 
@@ -58,15 +67,15 @@ cd <checkout>
 sbatch src/norad/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm
 ```
 
-Submission executes implicitly and has no dry-run control. The job honors the
+Submission executes implicitly and supplies `--execute` to the producer. The job honors the
 existing `GTF`, `UNSORTED_BED`, `BED`, and `PYTHON_BIN` overrides. It creates
 directories before conversion and requires `PYTHON_BIN` to select an
 environment where this checkout is installed. It publishes the intermediate
-and final BED nontransactionally. Converter failure can leave directories,
-bedtools failure can leave the intermediate plus a redirect-created final, and
-a bad-field result can remain published after the existing contradictory
-success message. These scheduler defects are characterized and preserved, not
-approved.
+BED through the safe producer boundary, but the later bedtools final-BED sort
+remains nontransactional. Bedtools failure can leave the complete intermediate
+plus a redirect-created final, and a bad-field result can remain published
+after the existing contradictory success message. Those wrapper-final defects
+remain characterized rather than being hidden by the producer contract.
 
 ## Diagnostics, recovery, and evidence
 
@@ -87,8 +96,7 @@ Run the owner-focused local tests with:
 ```
 
 The artifact index records the producer's final path while preserving its
-implementation evidence identity and byte hash
-`b97e35fdb9b60e008f80897c9014dd3f38e2e38c0ba14b1a62c641cc4b8feaab`.
-See [`CONTRACT.md`](CONTRACT.md) for the full behavior contract. Available
+implementation evidence identity and byte hash. See
+[`CONTRACT.md`](CONTRACT.md) for the full behavior contract. Available
 fixture/mock and coverage evidence is local only; it is not runtime, scheduler,
 production, scientific-review, or biological proof.

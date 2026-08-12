@@ -75,6 +75,7 @@ convert
 gtf-to-bed12
 --gtf "$GTF"
 --bed "$UNSORTED_BED"
+--execute
 )
 
 printf 'Command:'

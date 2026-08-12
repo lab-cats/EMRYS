@@ -52,6 +52,18 @@ The exact one-row TSV records input, four flag-group, two merged-group,
 assigned, and unassigned counts plus a six-decimal assigned fraction. Input and
 both merged groups must be nonzero; assigned may not exceed input.
 
+## Orchestration-safe producer boundary
+
+`--no-clobber` is the required local-profile mode. It refuses any member of an
+existing five-file final set before tool work and before publication, hashes
+and rechecks the input BAM/BAI, and retains the existing per-sample owned lock,
+temporary-set validation, ordered publication, and final-path validation. It
+never creates predecessor backups, so interruption cannot enter the retained
+restoration-failure defect. Its finals are create-exclusive and staging inode
+anchors remain through complete-set validation. The counts TSV remains native evidence rather than
+a receipt; tool-version and final-set hashes belong in the workflow verified
+record. Execute without this option preserves replaceable-set behavior.
+
 ## Current execution surfaces
 
 [`step_06_split_bam_by_read_orientation.sh`](step_06_split_bam_by_read_orientation.sh)
@@ -62,8 +74,9 @@ to contain all five files or none, publishes the counts TSV last, and
 revalidates final paths. Failures restore a prior set or remove new partial
 finals.
 
-No stable-input recheck or receipt binds the set to its source/tool/attempt;
-the counts TSV is a final native output, not a cryptographic transaction
+The historical replacement route has no stable-input recheck, and neither
+route publishes a native receipt binding the set to its source/tool/attempt.
+The counts TSV is a final native output, not a cryptographic transaction
 receipt. Rollback restore moves are best-effort and cleanup can delete backups
 after a failed restoration, leaving the same unprotected recovery boundary as
 other BAM transactions.
@@ -133,9 +146,11 @@ scientific-review, or biological evidence.
   [`executable_resolution.sh`](../../libraries/executable_resolution.sh); the
   explicit argument, `SAMTOOLS_BIN_OVERRIDE`, and PATH selection policy,
   samtools checks, and commands remain owned here.
-- Native completion and transaction semantics lack attempt and input identity.
-  Restoration is best-effort, cleanup can erase recovery evidence, and the
-  output-directory lock does not serialize writers to a shared QC directory.
+- The legacy replacement route lacks stable-input identity; restoration is
+  best-effort and cleanup can erase recovery evidence. The no-clobber path
+  hash-rechecks BAM/BAI inputs and rejects any prior member, but native outputs
+  still lack attempt binding and the output-directory lock does not serialize
+  writers to a shared QC directory.
 - The producer does not reconcile flag-subcounts against merged-BAM counts;
   the independent validator may publish failed rows with exit `0` and neither
   quickchecks nor recounts BAM records.

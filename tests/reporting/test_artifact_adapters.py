@@ -39,60 +39,60 @@ GIT_ROUTING_VARIABLES = (
 )
 EXPECTED_PRODUCER_EVIDENCE = {
     "00a": (
-        "src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm",
-        "f27924e80fee3b8f207a41fd7af472897ad51f06aa2e4c670973eb51f25b5fcc",
+        "src/norad/stages/star_index/step_00a_build_star_index.sh",
+        "a712f91075502188deff7675c9c6955a1a88468d06d42bbcd62966da2e091f42",
     ),
     "00b": (
         "src/norad/stages/gtf_to_bed12/converter.py",
-        "b97e35fdb9b60e008f80897c9014dd3f38e2e38c0ba14b1a62c641cc4b8feaab",
+        "1251e1a61c08a041633f5212982d60cde8e50da8b56e72c6f739047567239ddf",
     ),
     "00c": (
         "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
-        "47fd09d6cf4c8c520ee39ec8491007f8e9a4dba37f2f428d56a4adfc762aefa1",
+        "1c2c15d0f544eba80f36b2dc47575827ef95fdf1b29751526eb9ba277fb7c4cd",
     ),
     "01": (
         "src/norad/stages/star_alignment/step_01_star_align.sh",
-        "b69c81666b4d1191404bba3693995b46649b6f57bc4393becf7972f55ee25431",
+        "3231ab1d5ae1fe2c564d849901da2025a0aa1b96626732a341c6965c37ed2192",
     ),
     "02": (
         "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh",
-        "a38ec7a8018bfda9dcd057b68290a1451bce0018b571fc938fa1a61c15988702",
+        "7b4776f0230390ae40999a3ee9d0dc77a78123ca4f5cf7072442dad0a0dda2a0",
     ),
     "02b": (
         "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
-        "0f610a2334a707edcda46ca7f1fc467e21dcd4564286be7b6436c61855573b7a",
+        "bc49d500dd81a71d8a32c232e5426a33642322014d9bbec9fa968c39adf45ff2",
     ),
     "03": (
         "src/norad/evidence/rseqc_orientation/"
         "step_03_infer_strandedness_and_orientation.sh",
-        "a2df31db018a234a2162053e9f587ea74cca6798b88685b9d18c5ea063e20b70",
+        "3ee1b60ab56fb901d565d62f3d73affec5e8da834aa8baa7ab74d4ef44340212",
     ),
     "04": (
         "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
-        "568ce9536d4be309cbfeb258f7394d04f7acff6828d0fb4ff15f42dd316602da",
+        "04633b71ca2f302e6a8bca3f4f0cfb280527bef93e4dfb35767fdfea933192bd",
     ),
     "05": (
         "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
-        "6712d49a7e56cad709c13325859c7ba8306c02aa6e0f681e428f37d4d8c147b6",
+        "a38c27b33187a889d82b57ec2d2c885bf9e604d1ebe78afcfd45ebff714749d5",
     ),
     "06": (
         "src/norad/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh",
-        "4cc744dd7b97e8688ed59b9786e1b1e48af6994ac6a234c626e0cd8f152a3cb3",
+        "50e9e573e2e54b13d8052008ae5965817a1f14cd6377e93263b11ea7c28c453b",
     ),
     "07": (
         "src/norad/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
-        "9cdb0034b94a1606a72764d5ec0be7ff202ce15990243b1d7e4b2a1f5fee0fb7",
+        "bbd4b5d922d7a0a073a08804b6cd95f399680f9c3523f943f1d1be452d4141d4",
     ),
     "08": (
         "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
-        "d37a82e84dc8b98c261e1e40df5ea0ffb1c9ec550381d6f0297ee3290f489a4b",
+        "669290ffdce60ff37cb52256ba38783fcf17f6ba8b5dd77a76d0119e7e418ed3",
     ),
     "09": (
         "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh",
-        "9311dc4a847e8f749c3fe033112070279b9d7beb0ff5dfaf69f67702b81f15bc",
+        "504a501eba1c72df047644229628575c85b27527aad697ebbf3c64817d433e43",
     ),
     "09c": (
         "src/norad/evidence/scientific_review_package/publisher.py",
@@ -1554,7 +1554,7 @@ def test_failed_restored_transaction_validation_requarantines_receipt(
         ),
         (
             "08",
-            "cohort.synthetic.step08_summary",
+            "cohort.synthetic.step08_inputs",
             "cohort.synthetic.step08_sites",
         ),
         (
@@ -1748,7 +1748,7 @@ def test_native_dependency_order_is_independent_of_inventory_scope_order(
     )
     step08 = record_for(
         artifact_fixture,
-        "cohort.synthetic.step08_summary",
+        "cohort.synthetic.step08_inputs",
     )
     assert step07["completion_status"] == "failed"
     assert step08["completion_status"] == "failed"

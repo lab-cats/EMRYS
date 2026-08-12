@@ -12,6 +12,8 @@
 # Inputs are the compressed reference FASTA/GTF under data/raw; outputs are the
 # uncompressed working reference and STAR index under refs/.
 set -euo pipefail
+script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+producer="$script_dir/step_00a_build_star_index.sh"
 
 # Print cluster context early so SLURM logs show where the job ran.
 echo "Job ID: ${SLURM_JOB_ID:-NA}"
@@ -30,8 +32,9 @@ THREADS="${SLURM_CPUS_PER_TASK:-8}"
 
 SJDB_OVERHANG=149
 
-# Create output locations before decompressing reference inputs.
-mkdir -p "$WORK_REF" "$STAR_INDEX"
+# Materialize the legacy wrapper-owned references before invoking the explicit
+# scheduler-independent STAR-index producer.
+mkdir -p "$WORK_REF"
 
 echo "Preparing uncompressed reference files..."
 
@@ -51,14 +54,23 @@ echo "STAR index dir:  $STAR_INDEX"
 echo "Threads:         $THREADS"
 echo "sjdbOverhang:    $SJDB_OVERHANG"
 
-# Run STAR genomeGenerate with the resolved reference paths and requested CPUs.
-STAR \
-  --runThreadN "$THREADS" \
-  --runMode genomeGenerate \
-  --genomeDir "$STAR_INDEX" \
-  --genomeFastaFiles "$WORK_REF/genome.fa" \
-  --sjdbGTFfile "$WORK_REF/genome.gtf" \
-  --sjdbOverhang "$SJDB_OVERHANG"
+# The public producer owns dry-run/execute, complete-member validation, locking,
+# no-clobber publication, and controlled-failure cleanup.
+producer_command=(
+  bash "$producer"
+  --reference-fasta "$WORK_REF/genome.fa"
+  --reference-gtf "$WORK_REF/genome.gtf"
+  --index-dir "$STAR_INDEX"
+  --threads "$THREADS"
+  --sjdb-overhang "$SJDB_OVERHANG"
+  --star-bin STAR
+  --execute
+)
+
+printf 'Producer command:'
+printf ' %q' "${producer_command[@]}"
+printf '\n'
+"${producer_command[@]}"
 
 echo "STAR index build complete."
 ls -lah "$STAR_INDEX"

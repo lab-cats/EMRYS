@@ -21,6 +21,7 @@ Usage:
     --qc-root QC_ROOT \
     [--rscript-bin RSCRIPT_BIN] \
     [--r-script R_SCRIPT] \
+    [--no-clobber] \
     [--execute]
 
 Preprocess the exact partition-manifest x {FWD_like, REV_like} Step 07 VCF
@@ -43,6 +44,7 @@ Options:
   --r-script           R implementation (default:
                        src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R; override with
                        STEP08_R_SCRIPT).
+  --no-clobber         Refuse to replace an existing complete output set.
   --execute            Run R and publish validated outputs.
   -h, --help           Show this help message and exit.
 
@@ -424,6 +426,7 @@ declare_required_arguments \
     annotation_gtf output_root qc_root
 requested_rscript_bin=""
 r_script="${STEP08_R_SCRIPT:-$script_dir/step_08_vcf_preprocessing.R}"
+no_clobber=false
 execute=false
 
 while [[ $# -gt 0 ]]; do
@@ -437,6 +440,7 @@ while [[ $# -gt 0 ]]; do
         --qc-root) assign_option_value "$1" "${2:-}" qc_root; shift 2 ;;
         --rscript-bin) assign_option_value "$1" "${2:-}" requested_rscript_bin; shift 2 ;;
         --r-script) assign_option_value "$1" "${2:-}" r_script; shift 2 ;;
+        --no-clobber) no_clobber=true; shift ;;
         *)
             handle_execute_or_help "$1"
             shift
@@ -615,6 +619,8 @@ printf '  R script: %s\n' "$r_script"
 printf '  Sites table: %s\n' "$final_sites"
 printf '  Input receipt: %s\n' "$final_inputs"
 printf '  QC summary: %s\n' "$final_summary"
+printf '  Existing-output policy: %s\n' \
+    "$([[ "$no_clobber" == true ]] && printf no-clobber || printf replace-complete-set)"
 printf '  Orientation policy: legacy_provisional_v1 (provisional; not biologically validated)\n'
 
 printf 'Declared Step 07 input set:\n'
@@ -642,6 +648,13 @@ printf '  Temporary summary: %s\n' "$tmp_summary"
 printf '  Publish sites, then summary, then the input receipt last as commit marker\n'
 printf '  Restore a previous complete set on failure after backup begins\n'
 
+if [[ "$no_clobber" == true ]]; then
+    require_no_owner_residue \
+        "Step 08" "$cohort_output_dir" ".${cohort_id}.step08.*"
+    require_no_owner_residue \
+        "Step 08" "$qc_root" ".${cohort_id}.step08.*"
+fi
+
 if [[ "$execute" != true ]]; then
     printf 'Dry-run complete; no directories or files were created and R was not invoked.\n'
     exit 0
@@ -657,33 +670,115 @@ backup_started=false
 publication_committed=false
 final_count=0
 
+release_owned_lock() {
+    local unexpected
+
+    [[ "$lock_acquired" == true ]] || return 0
+    if [[ "$lock_owner_written" != true || ! -f "$lock_owner_file" ]]; then
+        printf 'ERROR: Step 08 cannot prove lock ownership for release: %s\n' \
+            "$lock_path" >&2
+        return 1
+    fi
+    if ! grep -Fqx $'run_token\t'"$run_token" "$lock_owner_file"; then
+        printf 'ERROR: Step 08 lock owner changed; preserving lock: %s\n' \
+            "$lock_path" >&2
+        return 1
+    fi
+    unexpected="$(
+        find "$lock_path" -mindepth 1 -maxdepth 1 \
+            ! -path "$lock_owner_file" -print -quit
+    )" || {
+        printf 'ERROR: Could not inspect Step 08 lock: %s\n' "$lock_path" >&2
+        return 1
+    }
+    if [[ -n "$unexpected" ]]; then
+        printf 'ERROR: Step 08 lock contains unexpected residue; preserving it: %s\n' \
+            "$unexpected" >&2
+        return 1
+    fi
+    rm -f "$lock_owner_file"
+    if ! rmdir "$lock_path" 2>/dev/null; then
+        if [[ ! -e "$lock_owner_file" && -d "$lock_path" ]]; then
+            (set -o noclobber; printf 'run_token\t%s\npid\t%s\n' "$run_token" "$$" > "$lock_owner_file") \
+                2>/dev/null || true
+        fi
+        printf 'ERROR: Could not remove Step 08 lock directory; preserving residue: %s\n' \
+            "$lock_path" >&2
+        return 1
+    fi
+    lock_acquired=false
+}
+
 cleanup() {
     local status="$1"
+    local rollback_failed=false
 
     if [[ "$status" -ne 0 &&
           "$backup_started" == true &&
           "$publication_committed" != true ]]; then
-        if [[ "$previous_final_set_present" == true ]]; then
+        if [[ "$no_clobber" == true ]]; then
+            remove_owned_published_file \
+                "Step 08 sites" "$tmp_sites" "$final_sites" || rollback_failed=true
+            remove_owned_published_file \
+                "Step 08 summary" "$tmp_summary" "$final_summary" || rollback_failed=true
+            remove_owned_published_file \
+                "Step 08 input receipt" "$tmp_inputs" "$final_inputs" || rollback_failed=true
+        elif [[ "$previous_final_set_present" == true ]]; then
             if [[ -e "$backup_sites" ]]; then
-                rm -f "$final_sites" || true
-                mv "$backup_sites" "$final_sites" || true
+                if ! rm -f "$final_sites"; then
+                    printf 'ERROR: Could not clear Step 08 sites output before restore: %s\n' \
+                        "$final_sites" >&2
+                    rollback_failed=true
+                elif ! mv "$backup_sites" "$final_sites"; then
+                    printf 'ERROR: Could not restore Step 08 sites backup: %s\n' \
+                        "$backup_sites" >&2
+                    rollback_failed=true
+                fi
+            elif [[ ! -e "$final_sites" ]]; then
+                printf 'ERROR: Step 08 rollback found neither sites final nor backup.\n' >&2
+                rollback_failed=true
             fi
             if [[ -e "$backup_summary" ]]; then
-                rm -f "$final_summary" || true
-                mv "$backup_summary" "$final_summary" || true
+                if ! rm -f "$final_summary"; then
+                    printf 'ERROR: Could not clear Step 08 summary before restore: %s\n' \
+                        "$final_summary" >&2
+                    rollback_failed=true
+                elif ! mv "$backup_summary" "$final_summary"; then
+                    printf 'ERROR: Could not restore Step 08 summary backup: %s\n' \
+                        "$backup_summary" >&2
+                    rollback_failed=true
+                fi
+            elif [[ ! -e "$final_summary" ]]; then
+                printf 'ERROR: Step 08 rollback found neither summary final nor backup.\n' >&2
+                rollback_failed=true
             fi
             if [[ -e "$backup_inputs" ]]; then
-                rm -f "$final_inputs" || true
-                mv "$backup_inputs" "$final_inputs" || true
+                if ! rm -f "$final_inputs"; then
+                    printf 'ERROR: Could not clear Step 08 input receipt before restore: %s\n' \
+                        "$final_inputs" >&2
+                    rollback_failed=true
+                elif ! mv "$backup_inputs" "$final_inputs"; then
+                    printf 'ERROR: Could not restore Step 08 input-receipt backup: %s\n' \
+                        "$backup_inputs" >&2
+                    rollback_failed=true
+                fi
+            elif [[ ! -e "$final_inputs" ]]; then
+                printf 'ERROR: Step 08 rollback found neither input-receipt final nor backup.\n' >&2
+                rollback_failed=true
             fi
         else
-            rm -f "$final_sites" "$final_summary" "$final_inputs" || true
+            if ! rm -f "$final_sites" "$final_summary" "$final_inputs"; then
+                printf 'ERROR: Could not remove partially published Step 08 outputs.\n' >&2
+                rollback_failed=true
+            fi
         fi
     fi
 
-    if [[ "$scratch_owned" == true ]]; then
+    if [[ "$scratch_owned" == true &&
+          ( "$rollback_failed" != true || "$no_clobber" != true ) ]]; then
         rm -f "$tmp_sites" "$tmp_inputs" "$tmp_summary" || true
-        if [[ "$status" -eq 0 ||
+        if [[ "$rollback_failed" != true ]] &&
+           [[ "$status" -eq 0 ||
               "$backup_started" != true ||
               "$previous_final_set_present" != true ||
               "$publication_committed" == true ]]; then
@@ -691,13 +786,16 @@ cleanup() {
         fi
     fi
 
-    if [[ "$lock_acquired" == true ]]; then
-        if [[ "$lock_owner_written" == true ]] &&
-           [[ -f "$lock_owner_file" ]] &&
-           grep -Fqx $'run_token\t'"$run_token" "$lock_owner_file"; then
-            rm -f "$lock_owner_file" || true
-            rmdir "$lock_path" 2>/dev/null || true
-        elif [[ "$lock_owner_written" != true ]]; then
+    if [[ "$rollback_failed" == true ]]; then
+        printf 'ERROR: Step 08 rollback was incomplete; retaining the owned lock and backups for operator recovery: %s\n' \
+            "$lock_path" >&2
+    elif [[ "$lock_acquired" == true ]]; then
+        if [[ "$lock_owner_written" == true ]]; then
+            if ! release_owned_lock; then
+                printf 'ERROR: Step 08 lock release failed; preserving lock residue: %s\n' \
+                    "$lock_path" >&2
+            fi
+        else
             rm -f "$lock_owner_file" || true
             rmdir "$lock_path" 2>/dev/null || true
         fi
@@ -739,6 +837,9 @@ arm_signal_traps
 if [[ "$final_count" -ne 0 && "$final_count" -ne 3 ]]; then
     die "Existing Step 08 outputs are incomplete; expected all three or none for cohort: $cohort_id"
 fi
+if [[ "$final_count" -eq 3 && "$no_clobber" == true ]]; then
+    die "Refusing to replace an existing complete Step 08 output set under --no-clobber for cohort: $cohort_id"
+fi
 
 confirm_input_hashes
 if ! "${r_command[@]}"; then
@@ -761,10 +862,20 @@ else
     backup_started=true
 fi
 
-mv "$tmp_sites" "$final_sites"
-mv "$tmp_summary" "$final_summary"
-# The input receipt is the transaction commit marker and is deliberately last.
-mv "$tmp_inputs" "$final_inputs"
+if [[ "$no_clobber" == true ]]; then
+    publish_file_create_exclusive \
+        "Step 08 sites" "$tmp_sites" "$final_sites"
+    publish_file_create_exclusive \
+        "Step 08 summary" "$tmp_summary" "$final_summary"
+    # The input receipt is the transaction commit marker and is deliberately last.
+    publish_file_create_exclusive \
+        "Step 08 input receipt" "$tmp_inputs" "$final_inputs"
+else
+    mv "$tmp_sites" "$final_sites"
+    mv "$tmp_summary" "$final_summary"
+    # The input receipt is the transaction commit marker and is deliberately last.
+    mv "$tmp_inputs" "$final_inputs"
+fi
 
 validate_output_tables "$final_sites" "$final_inputs" "$final_summary"
 [[ "$(sha256_file "$final_sites")" == "$tmp_sites_sha256" ]] ||
@@ -775,8 +886,23 @@ validate_output_tables "$final_sites" "$final_inputs" "$final_summary"
     die "Published Step 08 summary changed during publication."
 confirm_input_hashes
 
+if [[ "$no_clobber" == true ]]; then
+    require_owned_published_file \
+        "Step 08 sites" "$tmp_sites" "$final_sites"
+    require_owned_published_file \
+        "Step 08 input receipt" "$tmp_inputs" "$final_inputs"
+    require_owned_published_file \
+        "Step 08 summary" "$tmp_summary" "$final_summary"
+    rm -f -- "$tmp_sites" "$tmp_inputs" "$tmp_summary"
+    [[ ! -e "$tmp_sites" && ! -L "$tmp_sites" &&
+       ! -e "$tmp_inputs" && ! -L "$tmp_inputs" &&
+       ! -e "$tmp_summary" && ! -L "$tmp_summary" ]] ||
+        die "Step 08 could not remove owned publication anchors."
+fi
+
 publication_committed=true
 rm -f "$backup_sites" "$backup_inputs" "$backup_summary"
+release_owned_lock
 
 printf 'Step 08 execute complete.\n'
 printf 'Published sites table: %s\n' "$final_sites"

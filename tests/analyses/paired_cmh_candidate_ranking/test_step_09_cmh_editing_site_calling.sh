@@ -1102,6 +1102,23 @@ replacement="$tmp/replacement"
 copy_fixture "$replacement"
 seed_prior_outputs "$replacement/output" replacement "previous replacement"
 replacement_marker="$replacement/fake-r.invoked"
+expect_fail "under --no-clobber" \
+    env FAKE_R_MARKER="$replacement_marker" \
+    "$script" --analysis-id replacement --cohort-id cohort \
+    --sample-manifest "$replacement/samples.tsv" \
+    --partition-manifest "$replacement/partitions.tsv" \
+    --step08-root "$replacement/step08" \
+    --output-root "$replacement/output" \
+    --rscript-bin "$fake_r" \
+    --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
+    --no-clobber --execute
+[[ ! -e "$replacement_marker" ]] ||
+    fail "--no-clobber invoked fake R"
+for replacement_path in "$replacement/output/replacement"/replacement.*
+do
+    grep -q "previous replacement" "$replacement_path" ||
+        fail "--no-clobber changed prior content: $replacement_path"
+done
 FAKE_R_MARKER="$replacement_marker" \
 "$script" --analysis-id replacement --cohort-id cohort \
     --sample-manifest "$replacement/samples.tsv" \
@@ -1506,12 +1523,12 @@ assert_no_scratch "$first_publish_failure/output" first-publish-failure
 stale_scratch="$tmp/stale-scratch"
 copy_fixture "$stale_scratch"
 stale_scratch_dir="$stale_scratch/output/stale-scratch"
-stale_scratch_path="$stale_scratch_dir/.stale-scratch.step09.stale09.all.tmp.tsv"
+stale_scratch_path="$stale_scratch_dir/.stale-scratch.step09.older-token.all.tmp.tsv"
 mkdir -p "$stale_scratch_dir"
 printf 'foreign scratch\n' > "$stale_scratch_path"
-expect_fail "Refusing to reuse an existing Step 09 scratch path" \
+expect_fail "residue requires operator inspection" \
     env \
-    SLURM_JOB_ID=stale09 \
+    SLURM_JOB_ID=newer-token \
     FAKE_R_MARKER="$stale_scratch/fake-r.invoked" \
     "$script" --analysis-id stale-scratch --cohort-id cohort \
     --sample-manifest "$stale_scratch/samples.tsv" \
@@ -1520,6 +1537,7 @@ expect_fail "Refusing to reuse an existing Step 09 scratch path" \
     --output-root "$stale_scratch/output" \
     --rscript-bin "$fake_r" \
     --r-script "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" \
+    --no-clobber \
     --execute
 assert_file_equals "$stale_scratch_path" "foreign scratch"
 [[ ! -e "$stale_scratch_dir/.stale-scratch.step09.lock" ]] ||

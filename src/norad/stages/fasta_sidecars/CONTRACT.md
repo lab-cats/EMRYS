@@ -73,16 +73,30 @@ is the public producer entrypoint. It:
 
 - validates its declared inputs and tools before generation;
 - is dry-run by default and requires `--execute` to publish;
-- uses an owned lock directory and run-token temporary files;
+- validates the inherited run token before deriving paths, uses an owned lock
+  directory and run-token temporary files, and rejects matching staging residue
+  from every prior token in both dry-run and execute mode;
 - reuses each existing valid sidecar and generates only a missing sidecar;
 - runs `samtools faidx` and GATK `CreateSequenceDictionary` as needed; and
+- hashes the reference FASTA before execute-mode tool work, rejects any byte
+  change after generation or during publication, and cleans owned unpublished
+  artifacts; and
 - validates both sidecars and their FASTA agreement after publication.
 
-When both sidecars are generated, the script moves the staged `FAI` into place
-before moving the staged `DICT`. If the second move fails, cleanup removes
-temporary files and the lock but does not restore the first predecessor or
-provide all-or-none publication. This is a characterized recovery defect, not
-an approved target transaction contract.
+When both sidecars are generated, the script create-exclusively hard-links the
+staged `FAI` into place before doing the same for the staged `DICT`; a sidecar
+that appears after the locked state check therefore blocks publication rather
+than being overwritten. The staged links remain as ownership anchors through
+final validation. A controlled failure removes a published final only while it
+is still the same regular-file inode as its invocation-owned anchor. A missing
+anchor, disappeared final, foreign replacement, or rollback-removal failure
+preserves the final path, lock, and staging residue as blocking recovery
+evidence. Existing and late foreign sidecars are never rollback targets.
+Unhandled process death can likewise leave residue for the orchestrator to
+classify as blocked; the producer never breaks or silently adopts it.
+Failure to remove any owned staging path or the owned lock is also a failed
+cleanup, not a clean retry boundary: the producer exits nonzero when necessary
+and retains the lock plus remaining residue for operator inspection.
 
 [`step_00c_prepare_gatk_reference.slurm`](step_00c_prepare_gatk_reference.slurm)
 delegates to the shell entrypoint, maps `EXECUTE=0` to dry-run and `EXECUTE=1`
@@ -153,8 +167,13 @@ No downstream stage should depend on this stage's implementation module.
 - [`test_step_00c_prepare_gatk_reference.sh`](../../../../tests/stages/fasta_sidecars/test_step_00c_prepare_gatk_reference.sh)
   protects help and argument handling, side-effect-free dry-run, execution,
   reuse, generation of one missing sidecar, mismatch failures, Java failures,
-  foreign-lock preservation, and the characterized retained-FAI state after
-  final DICT publication fails.
+  foreign-lock preservation, complete controlled rollback after final-DICT
+  publication failure, create-exclusive late-collision rejection, foreign-
+  replacement preservation, and lock/residue preservation when ownership or
+  rollback cannot be proved. It rejects unsafe run tokens and older-token
+  staging residue, and injects staging- and lock-removal failures to prove they
+  cannot report a clean boundary. It also deterministically mutates the
+  reference during fake GATK execution and proves no sidecar is published.
 - [`test_validate_step_00c_reference_sidecars.py`](../../../../tests/stages/fasta_sidecars/test_validate_step_00c_reference_sidecars.py)
   protects the five checks, ordered mismatch evidence, fail-closed structure,
   deterministic publication, lock handling, arbitrary-CWD repeatability, and
@@ -179,7 +198,8 @@ Current evidence status remains owned by the canonical roadmap and handoff.
 - Reference materialization currently belongs incidentally to Step `00a`,
   creating an operational edge that is not intrinsic to sidecar construction.
 - The shell producer owns sidecar generation, validation, locking, reuse, and
-  publication but does not publish an atomic two-output transaction.
+  rollback-aware multi-file publication. It does not publish a native receipt;
+  validators and the future verified-task layer remain separate authorities.
 - The private validator module remains inside this installed stage package but
   reuses reference parsers from the neutral `reference_contigs` owner and
   publication helpers from the neutral validation-report owner through shared
@@ -193,7 +213,7 @@ does not choose a transaction redesign or scheduler abstraction.
 ## Deferred decisions
 
 - Final owner of reference materialization.
-- Whether the two sidecars require one atomic publication receipt.
+- Whether the two sidecars require one native publication receipt.
 - Final ownership of scheduler templates beyond this colocated native asset.
 - Any reference-provenance transaction redesign; its physical owner home is
   already fixed separately.

@@ -80,12 +80,18 @@ input hash checks, prepublication validation, and rollback. It publishes sites,
 then summary, then the input receipt as the native commit marker, revalidates
 the visible set, verifies hashes and stable inputs, and only then marks the
 attempt committed.
+`--no-clobber` is the orchestration-safe policy: while holding the owner lock,
+it rejects a complete predecessor set without invoking R or changing stable
+outputs. Direct invocations retain complete-set replacement unless the flag is
+supplied.
+First publication in that mode is create-exclusive and retains all three
+staging inode anchors through validation; ambiguous replacement preserves the
+owner lock and residue.
 
 The receipt is therefore visible briefly before final post-publication checks;
 presence alone is not independent proof that the producer returned success.
-Failed restore moves preserve remaining backups, but no recovery marker or
-automated recovery interface exists, and cleanup releases the cohort lock even
-when restoration is incomplete.
+Failed restore moves preserve remaining backups and retain the cohort lock for
+operator recovery. No automated recovery interface exists.
 
 [`step_08_vcf_preprocessing.R`](step_08_vcf_preprocessing.R)
 owns semantic parsing, candidate construction, provisional orientation policy,
@@ -163,9 +169,8 @@ production, cluster, scientific-review, or biological evidence.
   [`step09.py`](../../contracts/scientific_evidence/step09.py), the Step `09`
   validator, Step `09c` implementation, and artifact index, preserving one
   `ContractError` and `Table` identity.
-- The producer declares the input receipt as its commit marker, while the
-  artifact adapter treats the summary as the native-transaction failure
-  marker; ownership must resolve this disagreement.
+- The producer and artifact adapter both treat the input receipt as the native
+  transaction marker.
 - Receipt and candidate checks remain duplicated across shell, R, Python,
   Step `09`, and artifact adapters. Shared report publication remains in
   neutral [`validation/report.py`](../../libraries/validation/report.py),

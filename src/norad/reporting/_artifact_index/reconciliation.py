@@ -49,7 +49,7 @@ def reconcile_native_transactions(
         "00c": "step00c_reference_dict_v1",
         "06": "step06_orientation_counts_v1",
         "07": "step07_mpileup_receipt_v1",
-        "08": "step08_summary_v1",
+        "08": "step08_inputs_v1",
         "09": "step09_cmh_summary_v1",
         "09c": "step09c_review_summary_v1",
     }

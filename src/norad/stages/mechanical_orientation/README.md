@@ -31,10 +31,12 @@ Add `--execute` after inspection. `FWD_like` combines flags 99 and 147;
 `REV_like` combines 83 and 163. These are mechanical groups, not transcript
 strand, strandedness, sense, or antisense, and reads may remain unassigned.
 
-Execute publishes two BAM/BAI pairs and an orientation-count TSV last. It
-requires an all-five-or-none predecessor, but does not snapshot-recheck input,
-the TSV is not a receipt, failed restoration may lose backups, and distinct
-output locks can race on one shared QC path.
+The orchestration-safe invocation adds `--no-clobber --execute`. That mode
+refuses any member of a pre-existing final set, hashes and rechecks the input
+BAM/BAI, retains the per-sample lock through validation, and publishes two
+BAM/BAI pairs plus the counts TSV last. Execute without `--no-clobber`
+preserves the existing replaceable-set transaction; failed restoration there
+can still lose backups. The TSV remains native QC evidence, not a receipt.
 
 Validator dry-run:
 

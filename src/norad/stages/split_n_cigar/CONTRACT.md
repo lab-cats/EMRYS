@@ -42,15 +42,27 @@ matching `ID`/`SM` read group, at least one alignment, all alignments tagged
 with that group, and a nonempty index. It does not publish a receipt or prove
 that CIGAR-N transformation semantics occurred.
 
+## Orchestration-safe producer boundary
+
+`--no-clobber` is the required local-profile mode. It changes lock scope from
+the output directory to the declared sample, refuses either existing final,
+hashes and rechecks the input BAM/BAI plus reference FASTA/FAI/DICT, and uses
+the existing staged validation and final-path revalidation. This path never
+creates predecessor backups; it publishes create-exclusively with staging
+inode anchors, so an interruption cannot enter the retained
+restoration-failure defect. Tool paths are explicit; observed GATK, samtools,
+and Java versions and output hashes belong in the workflow verified record.
+Execute without this option preserves the replacement transaction below.
+
 ## Current execution surfaces
 
 [`step_05_split_n_cigar_reads.sh`](step_05_split_n_cigar_reads.sh)
-is side-effect-free in dry-run. Execute mode uses run-token BAM, BAI, GATK temp,
-and backup paths; an owned output-directory lock; pre-publication validation;
-complete-pair predecessor checks; sequential final moves; final revalidation;
-and rollback to a prior pair or removal of a new partial pair. Existing valid
-pairs are replaceable. Inputs are not snapshot-rechecked before publication,
-and no receipt marks the completed attempt.
+is side-effect-free in dry-run. Historical execute mode uses run-token BAM,
+BAI, GATK temp, and backup paths; an owned output-directory lock;
+pre-publication validation; complete-pair predecessor checks; sequential final
+moves; final revalidation; and rollback to a prior pair or removal of a new
+partial pair. Existing valid pairs are replaceable. That route does not
+snapshot-recheck inputs, and neither route publishes a native attempt receipt.
 
 Rollback restoration moves are best-effort (`|| true`), after which cleanup
 can remove backups and the lock. Ordinary backup/publication rollback is
@@ -122,8 +134,10 @@ scientific-review, or biological evidence.
   neutral private libraries. Reference provenance remains a separate public
   cross-cutting evidence owner. This stage owns its three caller-local exact-
   file loaders, check roster, CLI, and transformation journey.
-- The native pair transaction lacks stable-input identity, receipt, and robust
-  rollback-failure recovery evidence.
+- The legacy replacement transaction lacks stable-input identity and robust
+  rollback-failure recovery evidence. The no-clobber path hash-rechecks its
+  admitted BAM, BAI, FASTA, FAI, and DICT but still lacks a native receipt and
+  wider verified-task binding.
 - Producer and validator prove structure but not the GATK-specific transform.
 - Scheduler Bash `3.2`, warning-only tool preflight, dry-run log mutation, and
   stale-pair success remain characterized defects rather than guarantees.

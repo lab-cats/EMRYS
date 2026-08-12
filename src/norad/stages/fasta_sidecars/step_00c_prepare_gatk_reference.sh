@@ -47,6 +47,8 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/executable_resolution.
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/signal_traps.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
+# shellcheck source=../../libraries/file_checks.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/file_checks.sh"
 
 read_fai_pairs() {
     local fai="$1"
@@ -164,6 +166,17 @@ done
 
 require_arguments
 [[ -s "$reference_fasta" ]] || die "Reference FASTA does not exist or is empty: $reference_fasta"
+reference_fasta_sha256="$(sha256_file "$reference_fasta")"
+
+confirm_reference_fasta_unchanged() {
+    local current_sha256
+
+    [[ -s "$reference_fasta" ]] ||
+        die "Reference FASTA disappeared or became empty during Step 00c: $reference_fasta"
+    current_sha256="$(sha256_file "$reference_fasta")"
+    [[ "$current_sha256" == "$reference_fasta_sha256" ]] ||
+        die "Reference FASTA changed during Step 00c: $reference_fasta"
+}
 
 samtools_value="${samtools_bin_arg:-${SAMTOOLS_BIN_OVERRIDE:-}}"
 gatk_value="${gatk_bin_arg:-${GATK_BIN_OVERRIDE:-}}"
@@ -184,6 +197,7 @@ dict_path="${reference_dir}/${reference_stem}.dict"
 
 tmp_dir="${TMPDIR:-/tmp}"
 run_token="${SLURM_JOB_ID:-$$}"
+validate_safe_id "Step 00c run token" "$run_token"
 lock_path="${reference_dir}/.step_00c_prepare_gatk_reference.lock"
 lock_owner_file="${lock_path}/owner"
 tmp_fai="${fai_path}.tmp.${run_token}"
@@ -192,9 +206,20 @@ tmp_fasta="${reference_fasta}.tmp.${run_token}.faidx_input"
 tmp_fasta_fai="${tmp_fasta}.fai"
 tmp_fasta_base="$(basename "$tmp_fasta")"
 
+require_no_step00c_residue() {
+    require_no_owner_residue \
+        "Step 00c" \
+        "$reference_dir" \
+        "${reference_base}.fai.tmp.*" \
+        "${reference_stem}.dict.tmp.*" \
+        "${reference_base}.tmp.*.faidx_input" \
+        "${reference_base}.tmp.*.faidx_input.fai"
+}
+
 lock_acquired=false
 published_fai=false
 published_dict=false
+publication_complete=false
 
 samtools_faidx_command=(
     "$samtools_bin"
@@ -209,9 +234,153 @@ gatk_dict_command=(
     -O "$tmp_dict"
 )
 
+publish_sidecar_no_replace() {
+    local label="$1"
+    local staged_path="$2"
+    local final_path="$3"
+    local status
+
+    # Staging and final paths share a directory. A hard link therefore makes
+    # publication create-exclusive, while the retained staged link remains an
+    # ownership anchor until the complete pair passes final validation.
+    if ln "$staged_path" "$final_path"; then
+        return 0
+    else
+        status=$?
+        printf 'ERROR: Refusing to replace a late or foreign %s at publication: %s\n' \
+            "$label" "$final_path" >&2
+        return "$status"
+    fi
+}
+
+remove_owned_published_sidecar() {
+    local label="$1"
+    local final_path="$2"
+    local ownership_anchor="$3"
+
+    # The publication flag is insufficient ownership proof: a foreign writer
+    # may have replaced the final path after this invocation linked it. Remove
+    # only a regular file that is still the same inode as the staging anchor.
+    if [[ ! -e "$ownership_anchor" ]]; then
+        printf 'ERROR: Cannot prove ownership of published %s; staging anchor is missing: %s\n' \
+            "$label" "$ownership_anchor" >&2
+        return 1
+    fi
+    if [[ ! -e "$final_path" ]]; then
+        printf 'ERROR: Published %s disappeared before rollback; preserving recovery state: %s\n' \
+            "$label" "$final_path" >&2
+        return 1
+    fi
+    if [[ -L "$final_path" || ! -f "$final_path" || ! "$final_path" -ef "$ownership_anchor" ]]; then
+        printf 'ERROR: Published %s no longer belongs to this invocation; preserving the foreign path: %s\n' \
+            "$label" "$final_path" >&2
+        return 1
+    fi
+    if ! rm -f -- "$final_path" || [[ -e "$final_path" || -L "$final_path" ]]; then
+        printf 'ERROR: Could not remove invocation-owned published %s during rollback: %s\n' \
+            "$label" "$final_path" >&2
+        return 1
+    fi
+}
+
+remove_owned_staging_path() {
+    local label="$1"
+    local path="$2"
+
+    if [[ ! -e "$path" && ! -L "$path" ]]; then
+        return 0
+    fi
+    if ! rm -f -- "$path" || [[ -e "$path" || -L "$path" ]]; then
+        printf 'ERROR: Could not remove owned Step 00c %s during cleanup: %s\n' \
+            "$label" "$path" >&2
+        return 1
+    fi
+}
+
+remove_step00c_owned_lock() {
+    if [[ "$lock_acquired" != true ]]; then
+        return 0
+    fi
+    if [[ ! -d "$lock_path" || -L "$lock_path" ||
+          ! -f "$lock_owner_file" || -L "$lock_owner_file" ||
+          "$(cat "$lock_owner_file")" != "run_token=$run_token" ]]; then
+        printf 'ERROR: Step 00c lock ownership is ambiguous; preserving the lock path: %s\n' \
+            "$lock_path" >&2
+        return 1
+    fi
+    if ! rm -f -- "$lock_owner_file" ||
+       [[ -e "$lock_owner_file" || -L "$lock_owner_file" ]]; then
+        printf 'ERROR: Could not remove the owned Step 00c lock metadata: %s\n' \
+            "$lock_owner_file" >&2
+        return 1
+    fi
+    if ! rmdir "$lock_path" 2>/dev/null; then
+        # Restore the ownership marker create-exclusively when the directory is
+        # still the original real directory. Even if restoration loses a race,
+        # the retained lock path remains blocking recovery evidence.
+        if [[ -d "$lock_path" && ! -L "$lock_path" &&
+              ! -e "$lock_owner_file" && ! -L "$lock_owner_file" ]]; then
+            (
+                set -o noclobber
+                printf '%s\n' "run_token=$run_token" > "$lock_owner_file"
+            ) 2>/dev/null || true
+        fi
+        printf 'ERROR: Could not remove the owned Step 00c lock directory; preserving it: %s\n' \
+            "$lock_path" >&2
+        return 1
+    fi
+    lock_acquired=false
+}
+
 cleanup() {
-    rm -f "$tmp_fai" "$tmp_dict" "$tmp_fasta" "$tmp_fasta_fai"
-    remove_owned_lock
+    local status="$1"
+    local cleanup_ok=true
+    set +e
+
+    # Only outputs published by this invocation are eligible for rollback.
+    # Existing valid sidecars are never moved, removed, or replaced.
+    if [[ "$status" -ne 0 && "$publication_complete" != true ]]; then
+        if [[ "$published_dict" == true ]]; then
+            if remove_owned_published_sidecar \
+                "sequence dictionary" "$dict_path" "$tmp_dict"; then
+                published_dict=false
+            else
+                cleanup_ok=false
+            fi
+        fi
+        if [[ "$published_fai" == true ]]; then
+            if remove_owned_published_sidecar \
+                "FASTA index" "$fai_path" "$tmp_fai"; then
+                published_fai=false
+            else
+                cleanup_ok=false
+            fi
+        fi
+    fi
+
+    if [[ "$cleanup_ok" == true ]]; then
+        remove_owned_staging_path "FASTA-index staging file" "$tmp_fai" || cleanup_ok=false
+    fi
+    if [[ "$cleanup_ok" == true ]]; then
+        remove_owned_staging_path "dictionary staging file" "$tmp_dict" || cleanup_ok=false
+    fi
+    if [[ "$cleanup_ok" == true ]]; then
+        remove_owned_staging_path "temporary FASTA symlink" "$tmp_fasta" || cleanup_ok=false
+    fi
+    if [[ "$cleanup_ok" == true ]]; then
+        remove_owned_staging_path "temporary FASTA-index file" "$tmp_fasta_fai" || cleanup_ok=false
+    fi
+    if [[ "$cleanup_ok" == true ]]; then
+        remove_step00c_owned_lock || cleanup_ok=false
+    fi
+
+    if [[ "$cleanup_ok" != true ]]; then
+        printf 'ERROR: Step 00c rollback or cleanup was incomplete; preserving lock and residue for inspection: %s\n' \
+            "$lock_path" >&2
+        if [[ "$status" -eq 0 ]]; then
+            exit 1
+        fi
+    fi
 }
 
 mode="dry-run"
@@ -248,6 +417,7 @@ fi
 
 printf 'GATK reference sidecar context\n'
 printf '  Reference FASTA: %s\n' "$reference_fasta"
+printf '  Reference FASTA SHA-256: %s\n' "$reference_fasta_sha256"
 printf '  FASTA index: %s\n' "$fai_path"
 printf '  Sequence dictionary: %s\n' "$dict_path"
 printf '  samtools bin: %s\n' "$samtools_bin"
@@ -279,8 +449,11 @@ printf '  1. Verify reference FASTA exists and is nonempty.\n'
 printf '  2. Resolve samtools, GATK, and Java executables.\n'
 printf '  3. Validate actual Java version is >=17 before execute-mode GATK use.\n'
 printf '  4. Generate only missing sidecars into run-token temp paths.\n'
-printf '  5. Validate FAI and DICT contig names and lengths agree before publishing.\n'
-printf '  6. Reuse existing valid sidecars without overwriting them.\n'
+printf '  5. Recheck the reference FASTA hash after tool work and before/through publication.\n'
+printf '  6. Validate FAI and DICT contig names and lengths agree before publishing.\n'
+printf '  7. Reuse existing valid sidecars without overwriting them.\n'
+
+require_no_step00c_residue
 
 if [[ "$execute" != true ]]; then
     printf 'Dry-run only. Add --execute to write missing sidecars.\n'
@@ -289,13 +462,10 @@ fi
 
 [[ -d "$tmp_dir" ]] || die2 "TMPDIR does not exist or is not a directory: $tmp_dir"
 [[ -w "$tmp_dir" ]] || die2 "TMPDIR is not writable: $tmp_dir"
-[[ ! -e "$tmp_fai" ]] || die "Temporary FASTA index path already exists: $tmp_fai"
-[[ ! -e "$tmp_dict" ]] || die "Temporary sequence dictionary path already exists: $tmp_dict"
-[[ ! -e "$tmp_fasta" ]] || die "Temporary FASTA symlink path already exists: $tmp_fasta"
-[[ ! -e "$tmp_fasta_fai" ]] || die "Temporary samtools FASTA index path already exists: $tmp_fasta_fai"
 
-trap cleanup EXIT
+set_exit_trap cleanup
 acquire_lock "Step 00c"
+require_no_step00c_residue
 
 validate_and_print_java \
     "GATK reference prep" \
@@ -321,7 +491,9 @@ if [[ ! -e "$dict_path" ]]; then
 fi
 
 if [[ "$need_fai" == false && "$need_dict" == false ]]; then
+    confirm_reference_fasta_unchanged
     validate_sidecar_agreement "$fai_path" "$dict_path"
+    publication_complete=true
     printf 'Existing GATK reference sidecars are already present and valid; nothing to regenerate.\n'
     exit 0
 fi
@@ -341,6 +513,8 @@ if [[ "$need_dict" == true ]]; then
     validate_dict_file "$tmp_dict"
 fi
 
+confirm_reference_fasta_unchanged
+
 validation_fai="$fai_path"
 validation_dict="$dict_path"
 
@@ -355,16 +529,26 @@ fi
 validate_sidecar_agreement "$validation_fai" "$validation_dict"
 
 if [[ "$need_fai" == true ]]; then
-    mv "$tmp_fai" "$fai_path"
+    publish_sidecar_no_replace "FASTA index" "$tmp_fai" "$fai_path"
     published_fai=true
+    confirm_reference_fasta_unchanged
 fi
 
 if [[ "$need_dict" == true ]]; then
-    mv "$tmp_dict" "$dict_path"
+    publish_sidecar_no_replace "sequence dictionary" "$tmp_dict" "$dict_path"
     published_dict=true
+    confirm_reference_fasta_unchanged
 fi
 
 validate_sidecar_agreement "$fai_path" "$dict_path"
+confirm_reference_fasta_unchanged
+if [[ "$published_fai" == true ]]; then
+    require_owned_published_file "Step 00c FASTA index" "$tmp_fai" "$fai_path"
+fi
+if [[ "$published_dict" == true ]]; then
+    require_owned_published_file "Step 00c sequence dictionary" "$tmp_dict" "$dict_path"
+fi
+publication_complete=true
 
 printf 'GATK reference sidecar output details:\n'
 ls -lh "$fai_path" "$dict_path"

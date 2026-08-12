@@ -1,7 +1,7 @@
 # `construct_FASTA_sidecars` owner
 
 Native owner of `norad.stage.construct_FASTA_sidecars.v1` (historical `00c`).
-[`CONTRACT.md`](CONTRACT.md) owns exact behavior, publication defects, and
+[`CONTRACT.md`](CONTRACT.md) owns exact behavior, recovery boundaries, and
 evidence limits.
 
 ## Entry points
@@ -26,8 +26,21 @@ src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh \
 ```
 
 Add `--execute` after inspection. A valid existing sidecar is reused and only a
-missing one is generated. Publication is not transactional: FAI may remain
-after DICT failure and is incomplete-attempt evidence, not success.
+missing one is generated. When both are absent, a controlled failure while
+publishing the second sidecar rolls the first back, leaving neither final.
+Execute mode hashes the FASTA before invoking tools and rechecks it after
+generation and through publication; a byte change rejects the attempt and
+publishes no new sidecar.
+Publication is create-exclusive: a FAI or DICT that appears after the locked
+state check is preserved and blocks the attempt. Existing or late foreign
+sidecars are never rollback targets. Cleanup removes a published final only
+while its retained staging anchor still proves invocation ownership; otherwise
+the producer preserves the lock and final/staged residue for explicit
+inspection rather than claiming a clean retry boundary.
+Run tokens must use the owner's safe identifier vocabulary. Any Step `00c`
+FAI, DICT, temporary-FASTA, or temporary-FAI staging path left by another token
+blocks both planning and execution. A failed staging or lock removal likewise
+returns failure and retains the lock plus remaining residue.
 
 Validator dry-run:
 
@@ -65,9 +78,12 @@ mocked scheduler tests do not prove site runtime.
 ## Diagnose and verify
 
 Preserve FASTA, FAI, DICT, validator report, scheduler streams, lock, and
-run-token paths before recovery. Never delete a partial pair automatically.
-After provenance and ownership are established, an authorized rerun may
-generate only the missing sidecar.
+run-token paths before recovery. A clean controlled failure removes only
+outputs created by its own attempt; ambiguous or failed-rollback residue is
+preserved. Failed staging/lock cleanup and older-token residue are blocking,
+not stale state to delete automatically. Never delete a partial pair
+automatically. After provenance and ownership are established, an authorized
+rerun may generate only the missing sidecar.
 
 ```bash
 bash tests/stages/fasta_sidecars/test_step_00c_prepare_gatk_reference.sh

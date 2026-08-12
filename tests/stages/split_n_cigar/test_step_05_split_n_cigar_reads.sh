@@ -556,6 +556,67 @@ assert_contains "$execute_output" "GATK SplitNCigarReads output details:"
 assert_not_exists "$execute_output_dir/.step_05_split_n_cigar_reads.lock"
 assert_no_step05_scratch "$execute_output_dir"
 
+printf 'Running orchestration-safe no-clobber checks...\n'
+residue_output_dir="$tmp_dir/results/residue"
+mkdir -p "$residue_output_dir"
+residue_path="$residue_output_dir/.ABE_EV_2.step05.older-token.split_ncigar.tmp.bam"
+printf 'preserve residue\n' >"$residue_path"
+residue_output="$tmp_dir/residue.out"
+assert_fails "$residue_output" env FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=newer-token bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$residue_output_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --no-clobber \
+    --execute
+assert_contains "$residue_output" "residue requires operator inspection"
+assert_file_equals "$residue_path" $'preserve residue\n'
+assert_not_exists "$residue_output_dir/.ABE_EV_2.step05.lock"
+safe_output="$tmp_dir/safe.out"
+safe_output_dir="$tmp_dir/results/safe"
+FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=safe001 \
+    run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$safe_output_dir" --no-clobber --execute >"$safe_output"
+assert_contains "$safe_output" "No-clobber transaction: true"
+assert_contains "$safe_output" "Lock directory: $safe_output_dir/.ABE_EV_2.step05.lock"
+assert_not_exists "$safe_output_dir/.ABE_EV_2.step05.lock"
+safe_repeat_output="$tmp_dir/safe_repeat.out"
+assert_fails "$safe_repeat_output" env FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=safe002 bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$safe_output_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --no-clobber \
+    --execute
+assert_contains "$safe_repeat_output" "--no-clobber requires both final outputs to be absent"
+
+safe_mutation_input_bam="$fixture_dir/safe_mutation/markdup/ABE_EV_2.markdup.bam"
+safe_mutation_reference="$fixture_dir/safe_mutation/ref/genome.fa"
+safe_mutation_dir="$tmp_dir/results/safe_mutation"
+write_input_bam_pair "$safe_mutation_input_bam"
+write_reference "$safe_mutation_reference"
+safe_mutation_output="$tmp_dir/safe_mutation.out"
+assert_fails "$safe_mutation_output" env FAKE_MUTATE_ADMITTED_INPUTS=1 FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=safemutation001 bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$safe_mutation_input_bam" \
+    --reference-fasta "$safe_mutation_reference" \
+    --output-dir "$safe_mutation_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --no-clobber \
+    --execute
+assert_contains "$safe_mutation_output" "Input BAM changed during Step 05"
+assert_not_exists "$safe_mutation_dir/ABE_EV_2.split_ncigar.bam"
+assert_not_exists "$safe_mutation_dir/ABE_EV_2.split_ncigar.bam.bai"
+assert_not_exists "$safe_mutation_dir/.ABE_EV_2.step05.lock"
+assert_no_step05_scratch "$safe_mutation_dir"
+
 printf 'Running admitted input mutation success check...\n'
 mutation_input_bam="$fixture_dir/mutation/markdup/ABE_EV_2.markdup.bam"
 mutation_reference_fasta="$fixture_dir/mutation/ref/genome.fa"

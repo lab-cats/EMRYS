@@ -323,7 +323,7 @@ def test_scheduler_execution_outcomes(
 
     producer_call = (
         f"python-step00b\t{PRODUCER_ARGUMENTS}\t"
-        f"--gtf\t{job.gtf}\t--bed\t{job.unsorted_bed}"
+        f"--gtf\t{job.gtf}\t--bed\t{job.unsorted_bed}\t--execute"
     )
     bedtools_calls = (
         (f"bedtools\tsort\t-i\t{job.unsorted_bed}",) if case.bedtools_called else ()

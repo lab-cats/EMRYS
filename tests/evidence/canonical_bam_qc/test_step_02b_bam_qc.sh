@@ -88,6 +88,22 @@ trap 'rm -rf "$tmp_dir"' EXIT
 
 fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin"
+real_rm_bin="$(command -v rm)"
+
+cat >"$fake_bin/rm" <<'EOF_RM'
+#!/usr/bin/env bash
+set -euo pipefail
+
+for argument in "$@"; do
+    if [[ -n "${FAIL_RM_TARGET:-}" && "$argument" == "$FAIL_RM_TARGET" ]]; then
+        printf 'controlled cleanup removal failure: %s\n' "$argument" >&2
+        exit 79
+    fi
+done
+exec "$REAL_RM_BIN" "$@"
+EOF_RM
+chmod +x "$fake_bin/rm"
+export REAL_RM_BIN="$real_rm_bin"
 
 samtools_log="$tmp_dir/samtools_invocations.log"
 cat >"$fake_bin/samtools" <<EOF_SAMTOOLS
@@ -122,6 +138,9 @@ case "\$subcommand" in
         esac
         ;;
     flagstat)
+        if [[ -n "\${FAKE_MUTATE_INPUT:-}" ]]; then
+            printf 'mutated bam during flagstat\n' >"\$1"
+        fi
         mode="\${FAKE_FLAGSTAT_MODE:-success}"
         case "\$mode" in
             success)
@@ -205,7 +224,7 @@ bash "$SCRIPT" \
     --output-dir "$dry_output_dir" \
     >"$dry_output"
 
-[[ -d "$dry_output_dir" ]] || fail "dry-run did not create output directory"
+[[ ! -e "$dry_output_dir" ]] || fail "dry-run created output directory"
 [[ ! -e "$samtools_log" ]] || fail "dry-run invoked samtools"
 assert_contains "$dry_output" "Mode: dry-run"
 assert_contains "$dry_output" "BAM index found: $bam_dot_bai"
@@ -264,6 +283,91 @@ assert_contains "$samtools_log" "$bam"
 assert_contains "$samtools_log" "flagstat"
 assert_contains "$execute_output" "samtools flagstat output:"
 assert_contains "$execute_output" "10 + 0 in total"
+
+printf 'Running orchestration-safe no-clobber transaction check...\n'
+residue_output_dir="$tmp_dir/results/residue"
+mkdir -p "$residue_output_dir"
+residue_path="$residue_output_dir/.sample_residue.step02b.older-token.quickcheck.tmp"
+printf 'preserve residue\n' >"$residue_path"
+residue_output="$tmp_dir/residue.out"
+assert_fails "$residue_output" env SLURM_JOB_ID=newer-token bash "$SCRIPT" \
+    --sample-id sample_residue \
+    --bam "$bam" \
+    --output-dir "$residue_output_dir" \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute
+assert_contains "$residue_output" "residue requires operator inspection"
+assert_file_equals "$residue_path" $'preserve residue\n'
+[[ ! -e "$residue_output_dir/.sample_residue.step02b.lock" ]] || fail "residue refusal created a lock"
+safe_output="$tmp_dir/safe.out"
+safe_output_dir="$tmp_dir/results/safe"
+bash "$SCRIPT" \
+    --sample-id sample_safe \
+    --bam "$bam" \
+    --output-dir "$safe_output_dir" \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute >"$safe_output"
+assert_file_equals "$safe_output_dir/sample_safe.quickcheck.txt" \
+    $'PASS: samtools quickcheck completed with no errors.\n'
+assert_contains "$safe_output_dir/sample_safe.flagstat.txt" "10 + 0 in total"
+assert_contains "$safe_output" "No-clobber transaction: true"
+[[ ! -e "$safe_output_dir/.sample_safe.step02b.lock" ]] || fail "successful no-clobber run left lock"
+safe_repeat_output="$tmp_dir/safe_repeat.out"
+assert_fails "$safe_repeat_output" bash "$SCRIPT" \
+    --sample-id sample_safe \
+    --bam "$bam" \
+    --output-dir "$safe_output_dir" \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute
+assert_contains "$safe_repeat_output" "requires both final outputs to be absent"
+
+printf 'Running no-clobber stable-input rejection check...\n'
+mutation_bam="$fixture_dir/mutation.sorted.bam"
+printf 'original bam\n' >"$mutation_bam"
+printf 'original bai\n' >"$mutation_bam.bai"
+mutation_output="$tmp_dir/mutation.out"
+mutation_output_dir="$tmp_dir/results/mutation"
+assert_fails "$mutation_output" env FAKE_MUTATE_INPUT=1 bash "$SCRIPT" \
+    --sample-id sample_mutation \
+    --bam "$mutation_bam" \
+    --output-dir "$mutation_output_dir" \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute
+assert_contains "$mutation_output" "BAM changed during Step 02b"
+[[ ! -e "$mutation_output_dir/sample_mutation.quickcheck.txt" ]] || fail "input mutation published quickcheck"
+[[ ! -e "$mutation_output_dir/sample_mutation.flagstat.txt" ]] || fail "input mutation published flagstat"
+[[ ! -e "$mutation_output_dir/.sample_mutation.step02b.lock" ]] || fail "input mutation left lock"
+
+printf 'Running no-clobber cleanup-failure preservation check...\n'
+cleanup_sample="sample_cleanup_failure"
+cleanup_token="cleanup-failure"
+cleanup_output="$tmp_dir/cleanup_failure.out"
+cleanup_output_dir="$tmp_dir/results/cleanup_failure"
+cleanup_tmp_quickcheck="$cleanup_output_dir/.${cleanup_sample}.step02b.${cleanup_token}.quickcheck.tmp"
+cleanup_lock="$cleanup_output_dir/.${cleanup_sample}.step02b.lock"
+set +e
+FAKE_FLAGSTAT_MODE=partial_fail \
+FAIL_RM_TARGET="$cleanup_tmp_quickcheck" \
+SLURM_JOB_ID="$cleanup_token" \
+bash "$SCRIPT" \
+    --sample-id "$cleanup_sample" \
+    --bam "$bam" \
+    --output-dir "$cleanup_output_dir" \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute >"$cleanup_output" 2>&1
+cleanup_status=$?
+set -e
+[[ "$cleanup_status" -eq 43 ]] || fail "cleanup-failure run did not preserve flagstat exit 43"
+[[ -e "$cleanup_tmp_quickcheck" ]] || fail "cleanup failure did not preserve Step 02b staging residue"
+[[ -d "$cleanup_lock" ]] || fail "cleanup failure did not retain Step 02b owner lock"
+assert_contains "$cleanup_lock/owner" "run_token=$cleanup_token"
+assert_contains "$cleanup_output" "controlled cleanup removal failure"
+assert_contains "$cleanup_output" "Step 02b no-clobber cleanup was incomplete"
 
 printf 'Running execute check with non-empty quickcheck success...\n'
 nonempty_output="$tmp_dir/nonempty.out"

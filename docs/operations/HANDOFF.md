@@ -7,19 +7,20 @@ relation, and worktree contents directly from Git. Use
 acceptance, [`RUNBOOK.md`](RUNBOOK.md) for commands, and
 [`docs/history`](../history/) for frozen delivery records.
 
-No Campaign B implementation package is selected. The local-first B0
-architecture is persisted in the design contract and readiness register; it
-adds no executable workflow or runtime evidence.
+Campaign B owner hardening (`B1a` through `B1c`) is implemented. The reference,
+sample, cohort, and analysis owners now expose explicit local, fail-closed
+workflow boundaries; no Snakemake rule or lifecycle contract is implemented
+yet.
 
 ## Evidence boundary
 
 | Surface | Current evidence ceiling |
 | --- | --- |
-| Local-pilot orchestration | B0 defines the future source-checkout-bound Snakemake local-executor lifecycle and owner admission gaps. No request schema, normalizer, rule, state record, CLI, synthetic dataset, or science-tool run is implemented. |
+| Local-pilot orchestration | B0 defines the source-checkout-bound Snakemake local-executor lifecycle. B1 adds direct public owner dry-run/no-clobber boundaries and focused fake-tool evidence. No request schema, normalizer, rule, state record, CLI, synthetic dataset, or real science-tool run is implemented. |
 | Physical ownership | Pipeline stages, neutral contracts/libraries, reporting, and evidence helpers occupy their allowed homes. This is local/static topology evidence, not new runtime or cluster proof. |
-| Steps `00a`–`06` | Earlier production executions remain cluster-proven; that evidence predates physical relocation. |
-| Step `07` | Locally fixture/mock-bcftools tested; no real-bcftools or cluster proof. |
-| Steps `08`–`09` | Locally shell/fake-R and guarded-real-R tested; no production or cluster proof. |
+| Steps `00a`–`06` | B1 owner boundaries are locally fake-tool/fixture tested; earlier production executions remain cluster-proven but predate physical relocation. No current real-tool local proof. |
+| Step `07` | B1 no-clobber and rollback boundaries are locally mock-bcftools tested; no real-bcftools or current cluster proof. |
+| Steps `08`–`09` | B1 no-clobber/recovery boundaries are locally shell/fake-R tested; prior guarded-real-R tests remain separate. No production or current cluster proof. |
 | Step `09c` and reporting | Synthetic-fixture and local-render tested; no production evidence package, completed scientific review, or production report. |
 | Operational helpers | Runtime, reference, storage, and structured validators have local fixture evidence; no CSU batch runtime report, production reference/storage report, or approved retention policy. |
 
@@ -101,7 +102,9 @@ do not mutate the environment incidentally.
   possible correction but did not change production validation.
 - Publication characterization retains known same-size rewrite,
   late-foreign-final, incomplete-rollback, descriptor, and stale-lock failure
-  states. Passing characterization does not approve them.
+  states on legacy replacement routes. The local profile will use the B1
+  fail-closed no-replace/reuse paths and must still block on any ambiguous
+  residue.
 
 Cross-cutting contract risks and recheck routes are indexed in
 [`TEST_BASELINE.md`](../design/TEST_BASELINE.md); exact defects remain with the
@@ -109,7 +112,9 @@ applicable owner `README.md` or `CONTRACT.md`.
 
 ## Immediate resume point
 
-Review the B0 orchestration contract and owner-readiness dispositions before
-selecting one implementation package. Dependency mutation, destructive
+Implement B2 from the accepted orchestration contract: isolated `uv` workflow
+dependencies, versioned lifecycle schemas, deterministic request
+normalization/reporting projection, and the semantic all-pass checker. Do not
+add workflow rules until those boundaries pass independently. Destructive
 cleanup, real-runtime or cluster execution, scientific review, evidence
 promotion, and biological interpretation remain separate scopes.

@@ -22,6 +22,7 @@ Usage:
     [--bcftools-bin BCFTOOLS_BIN] \
     [--max-depth MAX_DEPTH] \
     [--filter-expression EXPRESSION] \
+    [--no-clobber] \
     [--execute]
 
 Run a multi-sample mpileup for every sample in the canonical TSV sample
@@ -48,6 +49,7 @@ Options:
   --max-depth          Per-input-file mpileup depth cap (default: 10000000).
   --filter-expression  bcftools include expression (default:
                       INFO/AD[1-]>2 & MAX(FORMAT/DP)>20).
+  --no-clobber         Refuse to replace an existing complete output set.
   --execute            Run bcftools and publish validated outputs.
   -h, --help           Show this help message and exit.
 
@@ -79,6 +81,83 @@ confirm_input_manifest_hashes() {
         die "Sample manifest changed during Step 07: $sample_manifest"
     [[ "$current_partition_hash" == "$partition_manifest_sha256" ]] ||
         die "Partition manifest changed during Step 07: $partition_manifest"
+}
+
+capture_no_clobber_scientific_input() {
+    local label="$1"
+    local path="$2"
+    local digest
+
+    validate_nonempty_file "$label" "$path"
+    if ! digest="$(sha256_file "$path")"; then
+        die "Could not hash $label before Step 07 execution: $path"
+    fi
+    scientific_input_labels+=("$label")
+    scientific_input_paths+=("$path")
+    scientific_input_sha256+=("$digest")
+}
+
+capture_no_clobber_scientific_inputs() {
+    local index
+
+    [[ "$no_clobber" == true ]] || return 0
+
+    scientific_input_labels=()
+    scientific_input_paths=()
+    scientific_input_sha256=()
+
+    capture_no_clobber_scientific_input "Sample manifest" "$sample_manifest"
+    capture_no_clobber_scientific_input "Partition manifest" "$partition_manifest"
+    capture_no_clobber_scientific_input "Reference FASTA" "$reference_fasta"
+    capture_no_clobber_scientific_input \
+        "Reference FASTA index" "$reference_fasta.fai"
+    if [[ "$selector_type" == "regions_file" ]]; then
+        capture_no_clobber_scientific_input \
+            "Regions file for partition $partition_id" "$selector_resolved"
+    fi
+    for index in "${!sample_ids[@]}"; do
+        capture_no_clobber_scientific_input \
+            "${ORIENTATIONS[0]} BAM for ${sample_ids[$index]}" \
+            "${fwd_bams[$index]}"
+        capture_no_clobber_scientific_input \
+            "${ORIENTATIONS[0]} BAI for ${sample_ids[$index]}" \
+            "${fwd_bams[$index]}.bai"
+        capture_no_clobber_scientific_input \
+            "${ORIENTATIONS[1]} BAM for ${sample_ids[$index]}" \
+            "${rev_bams[$index]}"
+        capture_no_clobber_scientific_input \
+            "${ORIENTATIONS[1]} BAI for ${sample_ids[$index]}" \
+            "${rev_bams[$index]}.bai"
+    done
+
+    scientific_input_expected_count=$((4 + 4 * ${#sample_ids[@]}))
+    if [[ "$selector_type" == "regions_file" ]]; then
+        scientific_input_expected_count=$((scientific_input_expected_count + 1))
+    fi
+    [[ "${#scientific_input_paths[@]}" -eq "$scientific_input_expected_count" ]] ||
+        die "Internal error: Step 07 scientific-input membership snapshot is incomplete."
+}
+
+confirm_no_clobber_scientific_inputs() {
+    local current_sha256
+    local index
+
+    [[ "$no_clobber" == true ]] || return 0
+    [[ "${#scientific_input_labels[@]}" -eq "$scientific_input_expected_count" &&
+       "${#scientific_input_paths[@]}" -eq "$scientific_input_expected_count" &&
+       "${#scientific_input_sha256[@]}" -eq "$scientific_input_expected_count" ]] ||
+        die "Internal error: Step 07 scientific-input membership changed during execution."
+
+    for index in "${!scientific_input_paths[@]}"; do
+        validate_nonempty_file \
+            "${scientific_input_labels[$index]}" \
+            "${scientific_input_paths[$index]}"
+        if ! current_sha256="$(sha256_file "${scientific_input_paths[$index]}")"; then
+            die "Could not rehash ${scientific_input_labels[$index]} during Step 07: ${scientific_input_paths[$index]}"
+        fi
+        [[ "$current_sha256" == "${scientific_input_sha256[$index]}" ]] ||
+            die "${scientific_input_labels[$index]} changed during Step 07 --no-clobber execution: ${scientific_input_paths[$index]}"
+    done
 }
 
 validate_fai_structure() {
@@ -331,7 +410,12 @@ declare_required_arguments \
 requested_bcftools_bin=""
 max_depth="10000000"
 filter_expression='INFO/AD[1-]>2 & MAX(FORMAT/DP)>20'
+no_clobber=false
 execute=false
+scientific_input_labels=()
+scientific_input_paths=()
+scientific_input_sha256=()
+scientific_input_expected_count=0
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -345,6 +429,7 @@ while [[ $# -gt 0 ]]; do
         --bcftools-bin) assign_option_value "$1" "${2:-}" requested_bcftools_bin; shift 2 ;;
         --max-depth) assign_option_value "$1" "${2:-}" max_depth; shift 2 ;;
         --filter-expression) assign_option_value "$1" "${2:-}" filter_expression; shift 2 ;;
+        --no-clobber) no_clobber=true; shift ;;
         *)
             handle_execute_or_help "$1"
             shift
@@ -430,6 +515,7 @@ done
 confirm_input_manifest_hashes
 sample_count="${#sample_ids[@]}"
 run_token="${SLURM_JOB_ID:-$$}"
+validate_safe_id "Step 07 run token" "$run_token"
 
 partition_output_dir="$output_root/$cohort_id/$partition_id"
 final_fwd_vcf="$partition_output_dir/$cohort_id.$partition_id.${ORIENTATIONS[0]}.mpileup.vcf"
@@ -503,6 +589,8 @@ printf '  Receipt: %s\n' "$final_receipt"
 printf '  bcftools: %s\n' "$bcftools_bin"
 printf '  Maximum depth: %s\n' "$max_depth"
 printf '  Filter expression: %s\n' "$filter_expression"
+printf '  Existing-output policy: %s\n' \
+    "$([[ "$no_clobber" == true ]] && printf no-clobber || printf replace-complete-set)"
 printf '  Orientation policy: mechanical FWD_like/REV_like labels only\n'
 
 printf '%s pipeline:\n' "${ORIENTATIONS[0]}"
@@ -526,6 +614,12 @@ printf '  Temporary %s VCF: %s\n' "${ORIENTATIONS[1]}" "$tmp_rev_vcf"
 printf '  Temporary receipt: %s\n' "$tmp_receipt"
 printf '  Publish the validated VCF/VCF/receipt set with rollback protection\n'
 
+if [[ "$no_clobber" == true ]]; then
+    require_no_owner_residue \
+        "Step 07" "$partition_output_dir" \
+        ".${cohort_id}.${partition_id}.step07.*"
+fi
+
 if [[ "$execute" != true ]]; then
     printf 'Dry-run complete; no directories or files were created.\n'
     exit 0
@@ -541,36 +635,117 @@ backup_started=false
 publication_committed=false
 final_count=0
 
+release_owned_lock() {
+    local unexpected
+
+    [[ "$lock_acquired" == true ]] || return 0
+    if [[ "$lock_owner_written" != true || ! -f "$lock_owner_file" ]]; then
+        printf 'ERROR: Step 07 cannot prove lock ownership for release: %s\n' \
+            "$lock_path" >&2
+        return 1
+    fi
+    if ! grep -Fqx $'run_token\t'"$run_token" "$lock_owner_file"; then
+        printf 'ERROR: Step 07 lock owner changed; preserving lock: %s\n' \
+            "$lock_path" >&2
+        return 1
+    fi
+    unexpected="$(
+        find "$lock_path" -mindepth 1 -maxdepth 1 \
+            ! -path "$lock_owner_file" -print -quit
+    )" || {
+        printf 'ERROR: Could not inspect Step 07 lock: %s\n' "$lock_path" >&2
+        return 1
+    }
+    if [[ -n "$unexpected" ]]; then
+        printf 'ERROR: Step 07 lock contains unexpected residue; preserving it: %s\n' \
+            "$unexpected" >&2
+        return 1
+    fi
+    rm -f "$lock_owner_file"
+    if ! rmdir "$lock_path" 2>/dev/null; then
+        if [[ ! -e "$lock_owner_file" && -d "$lock_path" ]]; then
+            (set -o noclobber; printf 'run_token\t%s\npid\t%s\n' "$run_token" "$$" > "$lock_owner_file") \
+                2>/dev/null || true
+        fi
+        printf 'ERROR: Could not remove Step 07 lock directory; preserving residue: %s\n' \
+            "$lock_path" >&2
+        return 1
+    fi
+    lock_acquired=false
+}
+
 cleanup() {
     local status="$1"
+    local rollback_failed=false
 
     if [[ "$status" -ne 0 &&
           "$backup_started" == true &&
           "$publication_committed" != true ]]; then
-        if [[ "$previous_final_set_present" == true ]]; then
+        if [[ "$no_clobber" == true ]]; then
+            remove_owned_published_file \
+                "Step 07 FWD VCF" "$tmp_fwd_vcf" "$final_fwd_vcf" || rollback_failed=true
+            remove_owned_published_file \
+                "Step 07 REV VCF" "$tmp_rev_vcf" "$final_rev_vcf" || rollback_failed=true
+            remove_owned_published_file \
+                "Step 07 receipt" "$tmp_receipt" "$final_receipt" || rollback_failed=true
+        elif [[ "$previous_final_set_present" == true ]]; then
             if [[ -e "$backup_fwd_vcf" ]]; then
-                rm -f "$final_fwd_vcf" || true
-                mv "$backup_fwd_vcf" "$final_fwd_vcf" || true
+                if ! rm -f "$final_fwd_vcf"; then
+                    printf 'ERROR: Could not clear Step 07 FWD_like output before restore: %s\n' \
+                        "$final_fwd_vcf" >&2
+                    rollback_failed=true
+                elif ! mv "$backup_fwd_vcf" "$final_fwd_vcf"; then
+                    printf 'ERROR: Could not restore Step 07 FWD_like backup: %s\n' \
+                        "$backup_fwd_vcf" >&2
+                    rollback_failed=true
+                fi
+            elif [[ ! -e "$final_fwd_vcf" ]]; then
+                printf 'ERROR: Step 07 rollback found neither FWD_like final nor backup.\n' >&2
+                rollback_failed=true
             fi
             if [[ -e "$backup_rev_vcf" ]]; then
-                rm -f "$final_rev_vcf" || true
-                mv "$backup_rev_vcf" "$final_rev_vcf" || true
+                if ! rm -f "$final_rev_vcf"; then
+                    printf 'ERROR: Could not clear Step 07 REV_like output before restore: %s\n' \
+                        "$final_rev_vcf" >&2
+                    rollback_failed=true
+                elif ! mv "$backup_rev_vcf" "$final_rev_vcf"; then
+                    printf 'ERROR: Could not restore Step 07 REV_like backup: %s\n' \
+                        "$backup_rev_vcf" >&2
+                    rollback_failed=true
+                fi
+            elif [[ ! -e "$final_rev_vcf" ]]; then
+                printf 'ERROR: Step 07 rollback found neither REV_like final nor backup.\n' >&2
+                rollback_failed=true
             fi
             if [[ -e "$backup_receipt" ]]; then
-                rm -f "$final_receipt" || true
-                mv "$backup_receipt" "$final_receipt" || true
+                if ! rm -f "$final_receipt"; then
+                    printf 'ERROR: Could not clear Step 07 receipt before restore: %s\n' \
+                        "$final_receipt" >&2
+                    rollback_failed=true
+                elif ! mv "$backup_receipt" "$final_receipt"; then
+                    printf 'ERROR: Could not restore Step 07 receipt backup: %s\n' \
+                        "$backup_receipt" >&2
+                    rollback_failed=true
+                fi
+            elif [[ ! -e "$final_receipt" ]]; then
+                printf 'ERROR: Step 07 rollback found neither receipt final nor backup.\n' >&2
+                rollback_failed=true
             fi
         else
             # The final paths were confirmed absent before publication began,
             # so any of them present now belong to this failed invocation.
-            rm -f "$final_fwd_vcf" "$final_rev_vcf" || true
-            rm -f "$final_receipt" || true
+            if ! rm -f "$final_fwd_vcf" "$final_rev_vcf" "$final_receipt"; then
+                printf 'ERROR: Could not remove partially published Step 07 outputs.\n' >&2
+                rollback_failed=true
+            fi
         fi
     fi
 
-    if [[ "$scratch_owned" == true ]]; then
+    if [[ "$scratch_owned" == true &&
+          ( "$rollback_failed" != true || "$no_clobber" != true ) ]]; then
         rm -f "$tmp_fwd_vcf" "$tmp_rev_vcf" "$tmp_receipt" || true
-        if [[ "$status" -eq 0 ||
+        if [[ "$rollback_failed" != true ]] &&
+           [[ "$status" -eq 0 ||
               "$backup_started" != true ||
               "$previous_final_set_present" != true ||
               "$publication_committed" == true ]]; then
@@ -578,13 +753,16 @@ cleanup() {
         fi
     fi
 
-    if [[ "$lock_acquired" == true ]]; then
-        if [[ "$lock_owner_written" == true ]] &&
-           [[ -f "$lock_owner_file" ]] &&
-           grep -Fqx $'run_token\t'"$run_token" "$lock_owner_file"; then
-            rm -f "$lock_owner_file" || true
-            rmdir "$lock_path" 2>/dev/null || true
-        elif [[ "$lock_owner_written" != true ]]; then
+    if [[ "$rollback_failed" == true ]]; then
+        printf 'ERROR: Step 07 rollback was incomplete; retaining the owned lock and backups for operator recovery: %s\n' \
+            "$lock_path" >&2
+    elif [[ "$lock_acquired" == true ]]; then
+        if [[ "$lock_owner_written" == true ]]; then
+            if ! release_owned_lock; then
+                printf 'ERROR: Step 07 lock release failed; preserving lock residue: %s\n' \
+                    "$lock_path" >&2
+            fi
+        else
             rm -f "$lock_owner_file" || true
             rmdir "$lock_path" 2>/dev/null || true
         fi
@@ -624,6 +802,14 @@ arm_signal_traps
 if [[ "$final_count" -ne 0 && "$final_count" -ne 3 ]]; then
     die "Existing Step 07 outputs are incomplete; expected all three or none in: $partition_output_dir"
 fi
+if [[ "$final_count" -eq 3 && "$no_clobber" == true ]]; then
+    die "Refusing to replace an existing complete Step 07 output set under --no-clobber: $partition_output_dir"
+fi
+
+# Orchestration-safe execution binds the exact stationary scientific-input
+# roster and bytes immediately before either bcftools pipeline can consume it.
+confirm_input_manifest_hashes
+capture_no_clobber_scientific_inputs
 
 if ! "${fwd_mpileup_command[@]}" | "${fwd_filter_command[@]}"; then
     die "FWD_like bcftools mpileup/filter pipeline failed."
@@ -633,6 +819,7 @@ if ! "${rev_mpileup_command[@]}" | "${rev_filter_command[@]}"; then
 fi
 
 confirm_input_manifest_hashes
+confirm_no_clobber_scientific_inputs
 validate_vcf "Published ${ORIENTATIONS[0]} temporary" "$tmp_fwd_vcf" "$expected_samples"
 validate_vcf "Published ${ORIENTATIONS[1]} temporary" "$tmp_rev_vcf" "$expected_samples"
 tmp_fwd_count="$(vcf_record_count "$tmp_fwd_vcf")" ||
@@ -656,6 +843,8 @@ tmp_rev_count="$(vcf_record_count "$tmp_rev_vcf")" ||
         "$sample_count" "$tmp_rev_count"
 } > "$tmp_receipt"
 validate_receipt "$tmp_receipt"
+confirm_input_manifest_hashes
+confirm_no_clobber_scientific_inputs
 
 if [[ "$final_count" -eq 3 ]]; then
     previous_final_set_present=true
@@ -667,13 +856,18 @@ else
     backup_started=true
 fi
 
-mv "$tmp_fwd_vcf" "$final_fwd_vcf"
-mv "$tmp_rev_vcf" "$final_rev_vcf"
-mv "$tmp_receipt" "$final_receipt"
+if [[ "$no_clobber" == true ]]; then
+    publish_file_create_exclusive \
+        "Step 07 FWD VCF" "$tmp_fwd_vcf" "$final_fwd_vcf"
+    publish_file_create_exclusive \
+        "Step 07 REV VCF" "$tmp_rev_vcf" "$final_rev_vcf"
+else
+    mv "$tmp_fwd_vcf" "$final_fwd_vcf"
+    mv "$tmp_rev_vcf" "$final_rev_vcf"
+fi
 
 validate_vcf "Published ${ORIENTATIONS[0]}" "$final_fwd_vcf" "$expected_samples"
 validate_vcf "Published ${ORIENTATIONS[1]}" "$final_rev_vcf" "$expected_samples"
-validate_receipt "$final_receipt"
 published_fwd_count="$(vcf_record_count "$final_fwd_vcf")"
 published_rev_count="$(vcf_record_count "$final_rev_vcf")"
 [[ "$published_fwd_count" == "$tmp_fwd_count" ]] ||
@@ -681,11 +875,36 @@ published_rev_count="$(vcf_record_count "$final_rev_vcf")"
 [[ "$published_rev_count" == "$tmp_rev_count" ]] ||
     die "Published ${ORIENTATIONS[1]} VCF record count changed during publication."
 
+# Make the already-validated receipt visible only after both VCFs pass their
+# final structural/count checks. A later failure still enters owned rollback.
+if [[ "$no_clobber" == true ]]; then
+    publish_file_create_exclusive \
+        "Step 07 receipt" "$tmp_receipt" "$final_receipt"
+else
+    mv "$tmp_receipt" "$final_receipt"
+fi
+validate_receipt "$final_receipt"
+
+if [[ "$no_clobber" == true ]]; then
+    require_owned_published_file \
+        "Step 07 FWD VCF" "$tmp_fwd_vcf" "$final_fwd_vcf"
+    require_owned_published_file \
+        "Step 07 REV VCF" "$tmp_rev_vcf" "$final_rev_vcf"
+    require_owned_published_file \
+        "Step 07 receipt" "$tmp_receipt" "$final_receipt"
+    rm -f -- "$tmp_fwd_vcf" "$tmp_rev_vcf" "$tmp_receipt"
+    [[ ! -e "$tmp_fwd_vcf" && ! -L "$tmp_fwd_vcf" &&
+       ! -e "$tmp_rev_vcf" && ! -L "$tmp_rev_vcf" &&
+       ! -e "$tmp_receipt" && ! -L "$tmp_receipt" ]] ||
+        die "Step 07 could not remove owned publication anchors."
+fi
+
 # The receipt is published last and final validation marks the transaction
 # committed. Downstream stages must require the receipt rather than globbing
 # any VCFs that might be visible during the short multi-file rename window.
 publication_committed=true
 rm -f "$backup_fwd_vcf" "$backup_rev_vcf" "$backup_receipt"
+release_owned_lock
 
 printf 'Step 07 execute complete.\n'
 printf 'Published %s VCF: %s (%s records)\n' \

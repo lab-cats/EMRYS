@@ -26,9 +26,14 @@ TMPDIR=/tmp bash src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh \
   --samtools-bin /absolute/path/to/samtools
 ```
 
-Add `--execute` after inspection. BAM, metrics, and BAI write to final names
-without lock, stage, backup, no-clobber, stable-input recheck, receipt,
-rollback, or all-or-none publication; mixed attempts can remain.
+The orchestration-safe invocation adds `--no-clobber --execute`. That mode hashes
+the input BAM/BAI and Picard jar, directs Picard and samtools to run-token
+temporary paths, holds a per-sample owned lock, validates all three files,
+rechecks those identities, refuses any existing or newly appeared final, and
+publishes the triplet create-exclusively while retaining staging inode anchors
+through validation. Execute without `--no-clobber` preserves the historical
+direct-write route. Java and samtools executable paths are explicit; the
+workflow attempt records their observed versions.
 
 Validator dry-run:
 

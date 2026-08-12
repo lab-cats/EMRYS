@@ -69,9 +69,22 @@ RSeQC standard output is redirected directly to this final path. The producer
 requires only that the result be nonempty; the separate validator owns the
 three-fraction structural contract.
 
-There is no lock, staging path, no-clobber rule, receipt, stable-input recheck,
-or rollback. Re-execution truncates an existing path before RSeQC runs, and a
-tool failure or empty-success result can leave an empty or partial final file.
+The historical direct execute route has no lock, staging path, receipt,
+stable-input recheck, or rollback. Re-execution truncates an existing path
+before RSeQC runs, and a tool failure or empty-success result can leave an
+empty or partial final file.
+
+## Orchestration-safe producer boundary
+
+`--no-clobber` is the required local-profile mode. It hashes the BAM, admitted
+BAI, and BED12; refuses an existing final; holds a per-sample owned lock;
+captures RSeQC stdout into a run-token temporary file; requires nonempty
+output; rechecks all three inputs; and publishes create-exclusively while
+retaining a staging inode anchor through validation. Failure removes only a
+still-owned final; ambiguous replacement preserves lock and residue. The
+explicit resolved RSeQC executable path is printed; its observed version and
+the resulting report hash belong in the workflow verified record. Execute
+without this option retains historical direct redirection.
 
 ## Current execution surfaces
 
@@ -83,7 +96,8 @@ is the public producer entrypoint. It:
   file creation;
 - passes the BED12 with `-r` and BAM with `-i` to RSeQC;
 - creates the output directory only in execute mode;
-- writes RSeQC output directly to the final report path; and
+- without `--no-clobber`, writes RSeQC output directly to the final report
+  path; and
 - checks only that the final file is nonempty before previewing it.
 
 The file has a shell shebang but is not executable in the current tree; public
