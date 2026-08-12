@@ -8,10 +8,12 @@ candidate generation, paired CMH ranking, evidence assembly, and report
 projection. See the [architecture index](docs/architecture/README.md) for the
 organized current-system authority, including the scientist-facing flow,
 system map, functional-owner inventory, source topology, stage map, and
-diagrams. NORAD does not yet provide a single workflow orchestrator. Planned
-Snakemake orchestration is not implemented, and the fresh-clone, one-command
-full-pipeline onboarding path belongs to Campaign B rather than the current
-repository surface. Its explicitly installed, unreleased Python distribution
+diagrams. NORAD now has a fixed, source-checkout-bound Snakemake projection for
+local development: thirteen automatic owner rules can be reviewed or exercised
+with deterministic no-science test doubles. It does not yet provide the public
+run/resume/inspect lifecycle, a fresh-clone full-pipeline command, or a real
+science-tool local run. Those remain Campaign B work. Its explicitly installed,
+unreleased Python distribution
 provides an isolated,
 grouped module command for migrated owners, beginning with sample-manifest,
 STAR-index, FASTA-sidecar, STAR-alignment, canonical-BAM, canonical-BAM-QC,
@@ -44,6 +46,16 @@ environment is active.
 Do not curl-install `uv` or restore dependencies from validation, rendering,
 compute, or scheduler commands. The guarded R environment remains owned by
 `renv`; owner-required system tools are separate prerequisites.
+
+Maintainers exercising the static local workflow use the opt-in locked group:
+
+```sh
+uv sync --locked --group workflow
+```
+
+This installs pinned Snakemake for direct workflow development; it does not
+install STAR, GATK, Picard, RSeQC, bcftools, R, or SLURM. Exact static-profile
+commands and evidence limits are in [`workflow/README.md`](workflow/README.md).
 
 Implemented owners collectively consume a sample manifest and paired RNA-seq
 reads, reference FASTA/GTF material, and any owner-specific selections or
@@ -109,6 +121,7 @@ scientific policy explicitly unlocks it.
 | Path | Purpose |
 | --- | --- |
 | [`src/`](src/README.md) | NORAD source domains, functional owners, neutral contracts, and shared libraries. |
+| [`workflow/`](workflow/README.md) | Fixed local-CMH Snakemake projection, reviewed profile contract, and local executor profile; no public lifecycle adapter. |
 | [`configs/`](configs/README.md) | Public inputs, structural starters, selections, and reference tables; there is no universal config loader. |
 | [`scripts/`](scripts/README.md) | Explicit dependency lifecycle plus documentation and Git tooling. |
 | [`tests/`](tests/) | Active Python, shell, R, contract, and fixture protection, plus explicitly non-runnable future scaffolds under `tests/pending/`. |

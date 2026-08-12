@@ -1,0 +1,496 @@
+"""Static local-CMH projection of NORAD's public scientific owner graph."""
+
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+from norad.contracts.orchestration import api as orchestration_contracts
+from norad.orchestration.local_pilot.task import (
+    TaskBoundaryError,
+    validate_verified_task,
+)
+
+
+WORKFLOW_ROOT = Path(workflow.basedir).resolve()
+PROFILE_PATH = (WORKFLOW_ROOT / "contracts" / "local_cmh_v1.json").resolve()
+PROFILE = orchestration_contracts.load_json_object(PROFILE_PATH)
+orchestration_contracts.validate_record("profile", PROFILE)
+if set(config) != {"run_root", "execution_path", "profile_path", "dispatch_paths"}:
+    raise WorkflowError(
+        "Workflow config keys must be exactly run_root, execution_path, "
+        "profile_path, and dispatch_paths"
+    )
+
+
+def _absolute_config_path(key):
+    value = config.get(key)
+    if not isinstance(value, str) or not value:
+        raise WorkflowError(f"Workflow config {key!r} must be a nonempty string")
+    path = Path(value)
+    if not path.is_absolute():
+        raise WorkflowError(f"Workflow config {key!r} must be absolute: {value}")
+    return path
+
+
+RUN_ROOT = _absolute_config_path("run_root")
+EXECUTION_PATH = _absolute_config_path("execution_path")
+PROFILE_SNAPSHOT_PATH = _absolute_config_path("profile_path")
+EXECUTION = orchestration_contracts.load_json_object(EXECUTION_PATH)
+orchestration_contracts.validate_record("execution", EXECUTION, profile=PROFILE)
+PROFILE_SNAPSHOT = orchestration_contracts.load_json_object(PROFILE_SNAPSHOT_PATH)
+if PROFILE_SNAPSHOT != PROFILE:
+    raise WorkflowError("Run profile snapshot does not match the reviewed source profile")
+if PROFILE_SNAPSHOT_PATH.read_bytes() != orchestration_contracts.canonical_json_bytes(
+    PROFILE_SNAPSHOT
+):
+    raise WorkflowError("Run profile snapshot must use canonical JSON bytes")
+PYTHON = sys.executable
+
+REFERENCE_ID = EXECUTION["reference"]["reference_id"]
+SAMPLE_IDS = tuple(row["sample_id"] for row in EXECUTION["samples"]["rows"])
+COHORT_ID = EXECUTION["analysis"]["cohort_id"]
+PARTITION_SCOPES = tuple(
+    f"{COHORT_ID}__{row['partition_id']}"
+    for row in EXECUTION["partitions"]["rows"]
+)
+ANALYSIS_ID = EXECUTION["analysis"]["primary_analysis_id"]
+FIRST_SAMPLE_ID = SAMPLE_IDS[0]
+
+OWNER_TASKS = {
+    task["rule_name"]: task
+    for task in PROFILE["owner_tasks"]
+}
+AUTOMATIC_TASKS = {
+    "construct_STAR_index": (
+        "norad.stage.construct_STAR_index.v1",
+        "reference",
+        "reference",
+    ),
+    "convert_GTF_to_BED12": (
+        "norad.stage.convert_GTF_to_BED12.v1",
+        "reference",
+        "reference",
+    ),
+    "construct_FASTA_sidecars": (
+        "norad.stage.construct_FASTA_sidecars.v1",
+        "reference",
+        "reference",
+    ),
+    "align_RNA_reads_with_STAR": (
+        "norad.stage.align_RNA_reads_with_STAR.v1",
+        "sample",
+        "samples",
+    ),
+    "construct_canonical_BAM": (
+        "norad.stage.construct_canonical_BAM.v1",
+        "sample",
+        "samples",
+    ),
+    "collect_canonical_BAM_QC_evidence": (
+        "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
+        "sample",
+        "samples",
+    ),
+    "collect_RSeQC_paired_orientation_evidence": (
+        "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+        "sample",
+        "samples",
+    ),
+    "mark_BAM_duplicates_with_Picard": (
+        "norad.stage.mark_BAM_duplicates_with_Picard.v1",
+        "sample",
+        "samples",
+    ),
+    "split_N_cigar_reads_with_GATK": (
+        "norad.stage.split_N_cigar_reads_with_GATK.v1",
+        "sample",
+        "samples",
+    ),
+    "partition_BAM_by_mechanical_read_orientation": (
+        "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
+        "sample",
+        "samples",
+    ),
+    "generate_partitioned_cohort_mpileup_VCFs": (
+        "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+        "cohort_partition",
+        "partitions",
+    ),
+    "preprocess_and_annotate_cohort_candidates": (
+        "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
+        "cohort",
+        "cohort",
+    ),
+    "rank_cohort_candidates_with_paired_CMH": (
+        "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+        "analysis",
+        "analysis",
+    ),
+}
+
+
+def _require_profile_projection():
+    automatic_keys = {identity[0] for identity in AUTOMATIC_TASKS.values()}
+    if set(PROFILE["required_owner_keys"]) != automatic_keys:
+        raise WorkflowError(
+            "Fixed profile required_owner_keys do not match the static automatic graph"
+        )
+    expected_excluded = {"norad.evidence.assemble_scientific_review_evidence_package.v1"}
+    if set(PROFILE["excluded_owner_keys"]) != expected_excluded:
+        raise WorkflowError("Fixed profile must exclude only scientific review Step 09c")
+    if set(OWNER_TASKS) != {*AUTOMATIC_TASKS, "assemble_scientific_review_evidence_package"}:
+        raise WorkflowError("Fixed profile owner task roster does not match STAGE_MAP")
+    for rule_name, expected in AUTOMATIC_TASKS.items():
+        task = OWNER_TASKS[rule_name]
+        observed = (
+            task["machine_key"],
+            task["scope_type"],
+            task["scope_selector"],
+        )
+        if observed != expected:
+            raise WorkflowError(
+                f"Fixed profile task {rule_name!r} does not match the static graph"
+            )
+
+
+_require_profile_projection()
+
+DISPATCH_PATHS = config.get("dispatch_paths")
+if not isinstance(DISPATCH_PATHS, dict):
+    raise WorkflowError("Workflow config 'dispatch_paths' must be an object")
+
+
+def _expected_scopes(selector):
+    if selector == "reference":
+        return (REFERENCE_ID,)
+    if selector == "samples":
+        return SAMPLE_IDS
+    if selector == "partitions":
+        return PARTITION_SCOPES
+    if selector == "cohort":
+        return (COHORT_ID,)
+    if selector == "analysis":
+        return (ANALYSIS_ID,)
+    raise WorkflowError(f"Unsupported automatic scope selector: {selector}")
+
+
+def _require_closed_dispatch_map():
+    expected_owners = {
+        identity[0] for identity in AUTOMATIC_TASKS.values()
+    }
+    if set(DISPATCH_PATHS) != expected_owners:
+        raise WorkflowError(
+            "Workflow dispatch_paths owner keys do not exactly match the automatic profile"
+        )
+    for machine_key, _, selector in AUTOMATIC_TASKS.values():
+        by_scope = DISPATCH_PATHS[machine_key]
+        if not isinstance(by_scope, dict) or set(by_scope) != set(
+            _expected_scopes(selector)
+        ):
+            raise WorkflowError(
+                f"Dispatch scopes do not exactly match {machine_key}/{selector}"
+            )
+
+
+_require_closed_dispatch_map()
+
+
+def _strict_json(path, label):
+    try:
+        return orchestration_contracts.load_json_object(path)
+    except orchestration_contracts.ContractValidationError as exc:
+        raise WorkflowError(f"Invalid {label} {path}: {exc}") from exc
+
+
+def _verified(machine_key, scope_id):
+    return str(RUN_ROOT / "state" / "verified" / machine_key / f"{scope_id}.json")
+
+
+def _sample_verified(machine_key):
+    return _verified(machine_key, "{sample_id}")
+
+
+def _partition_verified(machine_key):
+    return _verified(machine_key, "{partition_scope}")
+
+
+def _dispatch(machine_key, scope_id):
+    by_scope = DISPATCH_PATHS.get(machine_key)
+    if not isinstance(by_scope, dict):
+        raise WorkflowError(f"Missing dispatch map for owner {machine_key}")
+    value = by_scope.get(scope_id)
+    if not isinstance(value, str) or not value:
+        raise WorkflowError(f"Missing dispatch path for {machine_key}/{scope_id}")
+    path = Path(value)
+    if not path.is_absolute():
+        raise WorkflowError(f"Dispatch path must be absolute: {value}")
+    record = _strict_json(path, "dispatch record")
+    expected = {
+        "run_root": str(RUN_ROOT),
+        "execution_path": str(EXECUTION_PATH),
+        "profile_path": str(PROFILE_SNAPSHOT_PATH),
+        "machine_key": machine_key,
+        "scope": {
+            "scope_type": next(
+                scope_type
+                for owner, scope_type, _ in AUTOMATIC_TASKS.values()
+                if owner == machine_key
+            ),
+            "scope_id": scope_id,
+        },
+        "verified_task_path": _verified(machine_key, scope_id),
+    }
+    for key, expected_value in expected.items():
+        if record.get(key) != expected_value:
+            raise WorkflowError(
+                f"Dispatch {path} does not bind expected {key} for {machine_key}/{scope_id}"
+            )
+    return str(path)
+
+
+def _sample_dispatch(machine_key):
+    return lambda wildcards: _dispatch(machine_key, wildcards.sample_id)
+
+
+def _partition_dispatch(machine_key):
+    return lambda wildcards: _dispatch(machine_key, wildcards.partition_scope)
+
+
+def _all_owner_outputs():
+    outputs = []
+    for rule_name, (machine_key, _, selector) in AUTOMATIC_TASKS.items():
+        if selector == "reference":
+            scopes = (REFERENCE_ID,)
+        elif selector == "samples":
+            scopes = SAMPLE_IDS
+        elif selector == "partitions":
+            scopes = PARTITION_SCOPES
+        elif selector == "cohort":
+            scopes = (COHORT_ID,)
+        else:
+            scopes = (ANALYSIS_ID,)
+        outputs.extend(_verified(machine_key, scope) for scope in scopes)
+    return outputs
+
+
+def _admit_reusable_markers():
+    for machine_key, scope_type, selector in AUTOMATIC_TASKS.values():
+        for scope_id in _expected_scopes(selector):
+            path = Path(_verified(machine_key, scope_id))
+            if path.exists() or path.is_symlink():
+                try:
+                    validate_verified_task(
+                        path,
+                        run_root=RUN_ROOT,
+                        execution=EXECUTION,
+                        profile=PROFILE,
+                        machine_key=machine_key,
+                        scope={"scope_type": scope_type, "scope_id": scope_id},
+                    )
+                except (
+                    OSError,
+                    orchestration_contracts.ContractValidationError,
+                    TaskBoundaryError,
+                ) as exc:
+                    raise WorkflowError(
+                        f"Could not admit reusable verified task {path}: {exc}"
+                    ) from exc
+
+
+_admit_reusable_markers()
+
+
+wildcard_constraints:
+    sample_id="(?:" + "|".join(re.escape(value) for value in SAMPLE_IDS) + ")",
+    partition_scope="(?:" + "|".join(re.escape(value) for value in PARTITION_SCOPES) + ")"
+
+
+rule reference_slice:
+    input:
+        _verified(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID),
+        _verified(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID),
+        _verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+
+
+rule one_sample_slice:
+    input:
+        _verified(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID),
+        _verified(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID),
+        _verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID),
+        _verified(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0], FIRST_SAMPLE_ID),
+        _verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0], FIRST_SAMPLE_ID),
+        _verified(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0], FIRST_SAMPLE_ID),
+        _verified(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0], FIRST_SAMPLE_ID),
+        _verified(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0], FIRST_SAMPLE_ID),
+        _verified(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0], FIRST_SAMPLE_ID),
+        _verified(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0], FIRST_SAMPLE_ID)
+
+
+rule cohort_slice:
+    input:
+        _all_owner_outputs()
+    default_target: True
+
+
+rule construct_STAR_index:
+    input:
+        dispatch=_dispatch(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID)
+    output:
+        _verified(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID)
+    params:
+        python=PYTHON
+    shell:
+        "{params.python:q} -I -m norad.orchestration.local_pilot.task --dispatch {input.dispatch:q}"
+
+
+rule convert_GTF_to_BED12:
+    input:
+        dispatch=_dispatch(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID)
+    output:
+        _verified(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID)
+    params:
+        python=PYTHON
+    shell:
+        "{params.python:q} -I -m norad.orchestration.local_pilot.task --dispatch {input.dispatch:q}"
+
+
+rule construct_FASTA_sidecars:
+    input:
+        dispatch=_dispatch(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+    output:
+        _verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+    params:
+        python=PYTHON
+    shell:
+        "{params.python:q} -I -m norad.orchestration.local_pilot.task --dispatch {input.dispatch:q}"
+
+
+rule align_RNA_reads_with_STAR:
+    input:
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0]),
+        star_index=_verified(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID)
+    output:
+        _sample_verified(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0])
+    params:
+        python=PYTHON
+    shell:
+        "{params.python:q} -I -m norad.orchestration.local_pilot.task --dispatch {input.dispatch:q}"
+
+
+rule construct_canonical_BAM:
+    input:
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["construct_canonical_BAM"][0]),
+        star_bam=_sample_verified(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0])
+    output:
+        _sample_verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0])
+    params:
+        python=PYTHON
+    shell:
+        "{params.python:q} -I -m norad.orchestration.local_pilot.task --dispatch {input.dispatch:q}"
+
+
+rule collect_canonical_BAM_QC_evidence:
+    input:
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0]),
+        canonical_bam=_sample_verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0])
+    output:
+        _sample_verified(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0])
+    params:
+        python=PYTHON
+    shell:
+        "{params.python:q} -I -m norad.orchestration.local_pilot.task --dispatch {input.dispatch:q}"
+
+
+rule collect_RSeQC_paired_orientation_evidence:
+    input:
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0]),
+        canonical_bam=_sample_verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0]),
+        bed12=_verified(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID)
+    output:
+        _sample_verified(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0])
+    params:
+        python=PYTHON
+    shell:
+        "{params.python:q} -I -m norad.orchestration.local_pilot.task --dispatch {input.dispatch:q}"
+
+
+rule mark_BAM_duplicates_with_Picard:
+    input:
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0]),
+        canonical_bam=_sample_verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0])
+    output:
+        _sample_verified(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0])
+    params:
+        python=PYTHON
+    shell:
+        "{params.python:q} -I -m norad.orchestration.local_pilot.task --dispatch {input.dispatch:q}"
+
+
+rule split_N_cigar_reads_with_GATK:
+    input:
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0]),
+        marked_bam=_sample_verified(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0]),
+        reference_sidecars=_verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+    output:
+        _sample_verified(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0])
+    params:
+        python=PYTHON
+    shell:
+        "{params.python:q} -I -m norad.orchestration.local_pilot.task --dispatch {input.dispatch:q}"
+
+
+rule partition_BAM_by_mechanical_read_orientation:
+    input:
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0]),
+        split_bam=_sample_verified(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0])
+    output:
+        _sample_verified(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0])
+    params:
+        python=PYTHON
+    shell:
+        "{params.python:q} -I -m norad.orchestration.local_pilot.task --dispatch {input.dispatch:q}"
+
+
+rule generate_partitioned_cohort_mpileup_VCFs:
+    input:
+        dispatch=_partition_dispatch(AUTOMATIC_TASKS["generate_partitioned_cohort_mpileup_VCFs"][0]),
+        partitioned_bams=expand(
+            _sample_verified(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0]),
+            sample_id=SAMPLE_IDS,
+        ),
+        reference_sidecars=_verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+    output:
+        _partition_verified(AUTOMATIC_TASKS["generate_partitioned_cohort_mpileup_VCFs"][0])
+    params:
+        python=PYTHON
+    shell:
+        "{params.python:q} -I -m norad.orchestration.local_pilot.task --dispatch {input.dispatch:q}"
+
+
+rule preprocess_and_annotate_cohort_candidates:
+    input:
+        dispatch=_dispatch(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID),
+        partition_vcfs=expand(
+            _partition_verified(AUTOMATIC_TASKS["generate_partitioned_cohort_mpileup_VCFs"][0]),
+            partition_scope=PARTITION_SCOPES,
+        )
+    output:
+        _verified(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID)
+    params:
+        python=PYTHON
+    shell:
+        "{params.python:q} -I -m norad.orchestration.local_pilot.task --dispatch {input.dispatch:q}"
+
+
+rule rank_cohort_candidates_with_paired_CMH:
+    input:
+        dispatch=_dispatch(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID),
+        cohort_candidates=_verified(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID)
+    output:
+        _verified(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID)
+    params:
+        python=PYTHON
+    shell:
+        "{params.python:q} -I -m norad.orchestration.local_pilot.task --dispatch {input.dispatch:q}"

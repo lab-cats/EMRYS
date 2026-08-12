@@ -32,16 +32,17 @@ unavailable technical outputs.
 
 ## Local-pilot package order
 
-Campaign B proceeds in proof-sized packages. `B1a` through `B1c` and `B2` are
-complete: functional owners expose fail-closed local workflow boundaries, and
-the dependency metadata, machine contracts, read-only normalizer, reporting
-projection, and semantic all-pass boundary now exist without adding a workflow
-graph. Each remaining package ends with focused evidence; the full-pipeline
-gate waits until the assembled local profile exists.
+Campaign B proceeds in proof-sized packages. `B1a` through `B3` are complete:
+functional owners expose fail-closed local workflow boundaries; dependency
+metadata, machine contracts, read-only normalization/reporting projection, and
+semantic all-pass checking exist; and the fixed local-CMH profile now has an
+exact static Snakemake projection with content-bound task records. Each
+remaining package ends with focused evidence; the fresh-clone full-pipeline
+gate waits for the lifecycle and reporting tail.
 
 | Package | Outcome | Stop boundary |
 | --- | --- | --- |
-| `B3` | Materialize the static local profile and prove direct Snakemake dry-run, then a test-double walking skeleton in reference, one-sample, and cohort slices. | Stop before the public lifecycle CLI or real science-tool claims. |
+| `B3` — complete | Materialize the static local profile and prove direct Snakemake dry-run, then a test-double walking skeleton in reference, one-sample, and cohort slices. | No public lifecycle CLI or real science-tool claim was added. |
 | `B4` | Add artifact-index, run-summary, and Jinja HTML-report rules, then prove failure, interruption, clean-boundary resume, and inspection. | Step `09c` remains explicit and absent; no SLURM/VM/CSU claim. |
 | `B5` | Add the thin public `run`, `resume`, and `inspect` adapter only after direct Snakemake operation and state semantics are stable. | The adapter owns intake/lifecycle policy only; no private imports or scientific logic. |
 | `B6` | Prove the fresh-clone local pilot, then rewrite root onboarding from the exact proven transcript. | One full assembled gate; no cluster, scientific-review, or biological claim. |

@@ -2,9 +2,12 @@
 
 This document is the binding architecture for NORAD's first local Snakemake
 pilot. B2 implements its closed machine schemas, read-only request normalizer,
-reporting projection, and semantic all-pass checker. It does not claim that a
-fixed workflow profile, Snakemake graph, state publisher, lifecycle adapter, or
-public run command exists. Current executable behavior remains with the
+reporting projection, and semantic all-pass checker. B3 implements the fixed
+local-CMH profile, static thirteen-rule Snakemake graph, local executor profile,
+and generic task boundary that publishes task attempts and content-bound
+verified records. It does not claim that aggregate lifecycle finalization,
+reporting-tail scheduling, a public run/resume/inspect adapter, or real
+science-tool execution exists. Current scientific behavior remains with the
 applicable functional owner, and exact semantic identities and artifact edges remain in
 [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md).
 

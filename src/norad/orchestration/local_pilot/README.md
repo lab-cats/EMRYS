@@ -1,4 +1,4 @@
-# Local-pilot orchestration intake
+# Local-pilot orchestration boundary
 
 This owner exposes two narrow, read-only B2 APIs:
 
@@ -28,9 +28,15 @@ It verifies report meaning after an owner validator has run, because
 validators may publish failed rows while exiting zero. It prints the report
 hash, row count, and ordered check IDs on success and creates no files.
 
+The internal `python -I -m norad.orchestration.local_pilot.task --dispatch ...`
+module is the B3 one-owner job boundary. It runs the exact admitted public
+producer and validator, performs semantic all-pass and stable-content checks,
+preserves failure evidence, and publishes a verified-task record only after
+complete success. The fixed profile and local Snakemake graph live under
+[`workflow/`](../../../../workflow/README.md).
+
 The adjacent neutral [machine contracts](../../contracts/orchestration/README.md)
 define request, profile, normalized execution, attempt, task, and verified
-record shapes. No fixed profile instance, Snakemake rule, run materializer,
-verified-record publisher, lifecycle command, scheduler adapter, inspection,
-or recovery mechanism is implemented here yet. See
-[`CONTRACT.md`](CONTRACT.md) for the exact boundary.
+record shapes. No run materializer, aggregate attempt finalizer, public
+lifecycle command, reporting tail, real-tool adapter, or recovery mechanism is
+implemented here yet. See [`CONTRACT.md`](CONTRACT.md) for the exact boundary.

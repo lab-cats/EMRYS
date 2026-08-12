@@ -51,9 +51,11 @@ zero.
 
 ## Cross-cutting prerequisites
 
-B2 satisfies prerequisite 1 and the machine-contract, normalizer, and
-projection portions of prerequisite 2. The fixed-profile projection and every
-runtime/publication prerequisite remain for B3 and later packages.
+B2 satisfies prerequisites 1 and 2. B3 satisfies the fixed-profile/DAG,
+closed-dispatch, verified-task, zero-retry local-executor, and no-science
+reference/one-sample/cohort slice requirements. Run-specific inventory
+materialization, explicit `renv` launch authority for real R owners, reporting
+tail, and aggregate failure/resume/interruption proof remain for later packages.
 
 Before the first executable rule is admitted:
 

@@ -35,7 +35,20 @@ empty, or nonpassing report exits `1`; argument-usage errors exit `2`. The
 checker publishes no receipt and does not infer success from validator exit,
 output presence, Snakemake metadata, or timestamps.
 
-These results are only read-only admission and semantic-validation facts for
-the future local workflow boundary. They materialize no run or record and are
-not owner receipts, runtime or cluster proof, scientific review, or biological
-validation.
+The internal task module consumes one closed, run-contained dispatch. It binds
+the canonical execution/profile snapshots and selected owner scope; captures
+the exact public producer, validator, and semantic commands; rechecks inputs,
+outputs, validation report, and native receipt; publishes an immutable task
+attempt on admitted success or failure; and publishes a create-exclusive
+verified-task record only on complete success. Only the exact Step `00c`
+FAI/dictionary pair may be stationary external outputs, and its FASTA and
+parent must be canonical before producer invocation.
+
+Snakemake schedules only verified-task records. Native artifacts, validation
+reports, receipts, logs, and recovery evidence are never disposable workflow
+outputs. Existing verified records are reusable only after read-only schema,
+identity, content, attempt, receipt, and semantic-report revalidation.
+
+These results are local structural/no-science workflow facts. They are not
+owner-native receipts, real runtime or cluster proof, completed scientific
+review, or biological validation.

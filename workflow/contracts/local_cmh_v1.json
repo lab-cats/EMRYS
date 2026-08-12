@@ -1,0 +1,930 @@
+{
+  "schema_version": "norad.profile.v1",
+  "profile_id": "norad.profile.local_cmh",
+  "profile_version": "v1",
+  "semantic_owner_keys": [
+    "norad.stage.construct_STAR_index.v1",
+    "norad.stage.convert_GTF_to_BED12.v1",
+    "norad.stage.construct_FASTA_sidecars.v1",
+    "norad.stage.align_RNA_reads_with_STAR.v1",
+    "norad.stage.construct_canonical_BAM.v1",
+    "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
+    "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+    "norad.stage.mark_BAM_duplicates_with_Picard.v1",
+    "norad.stage.split_N_cigar_reads_with_GATK.v1",
+    "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
+    "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+    "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
+    "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+    "norad.evidence.assemble_scientific_review_evidence_package.v1"
+  ],
+  "owner_tasks": [
+    {
+      "machine_key": "norad.stage.construct_STAR_index.v1",
+      "rule_name": "construct_STAR_index",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference"
+    },
+    {
+      "machine_key": "norad.stage.convert_GTF_to_BED12.v1",
+      "rule_name": "convert_GTF_to_BED12",
+      "step_id": "00b",
+      "scope_type": "reference",
+      "scope_selector": "reference"
+    },
+    {
+      "machine_key": "norad.stage.construct_FASTA_sidecars.v1",
+      "rule_name": "construct_FASTA_sidecars",
+      "step_id": "00c",
+      "scope_type": "reference",
+      "scope_selector": "reference"
+    },
+    {
+      "machine_key": "norad.stage.align_RNA_reads_with_STAR.v1",
+      "rule_name": "align_RNA_reads_with_STAR",
+      "step_id": "01",
+      "scope_type": "sample",
+      "scope_selector": "samples"
+    },
+    {
+      "machine_key": "norad.stage.construct_canonical_BAM.v1",
+      "rule_name": "construct_canonical_BAM",
+      "step_id": "02",
+      "scope_type": "sample",
+      "scope_selector": "samples"
+    },
+    {
+      "machine_key": "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
+      "rule_name": "collect_canonical_BAM_QC_evidence",
+      "step_id": "02b",
+      "scope_type": "sample",
+      "scope_selector": "samples"
+    },
+    {
+      "machine_key": "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+      "rule_name": "collect_RSeQC_paired_orientation_evidence",
+      "step_id": "03",
+      "scope_type": "sample",
+      "scope_selector": "samples"
+    },
+    {
+      "machine_key": "norad.stage.mark_BAM_duplicates_with_Picard.v1",
+      "rule_name": "mark_BAM_duplicates_with_Picard",
+      "step_id": "04",
+      "scope_type": "sample",
+      "scope_selector": "samples"
+    },
+    {
+      "machine_key": "norad.stage.split_N_cigar_reads_with_GATK.v1",
+      "rule_name": "split_N_cigar_reads_with_GATK",
+      "step_id": "05",
+      "scope_type": "sample",
+      "scope_selector": "samples"
+    },
+    {
+      "machine_key": "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
+      "rule_name": "partition_BAM_by_mechanical_read_orientation",
+      "step_id": "06",
+      "scope_type": "sample",
+      "scope_selector": "samples"
+    },
+    {
+      "machine_key": "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+      "rule_name": "generate_partitioned_cohort_mpileup_VCFs",
+      "step_id": "07",
+      "scope_type": "cohort_partition",
+      "scope_selector": "partitions"
+    },
+    {
+      "machine_key": "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
+      "rule_name": "preprocess_and_annotate_cohort_candidates",
+      "step_id": "08",
+      "scope_type": "cohort",
+      "scope_selector": "cohort"
+    },
+    {
+      "machine_key": "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+      "rule_name": "rank_cohort_candidates_with_paired_CMH",
+      "step_id": "09",
+      "scope_type": "analysis",
+      "scope_selector": "analysis"
+    },
+    {
+      "machine_key": "norad.evidence.assemble_scientific_review_evidence_package.v1",
+      "rule_name": "assemble_scientific_review_evidence_package",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review"
+    }
+  ],
+  "direct_edges": [
+    {
+      "producer": "norad.stage.construct_STAR_index.v1",
+      "consumer": "norad.stage.align_RNA_reads_with_STAR.v1",
+      "artifact": "STAR genome-index directory",
+      "semantics": "required artifact"
+    },
+    {
+      "producer": "norad.stage.align_RNA_reads_with_STAR.v1",
+      "consumer": "norad.stage.construct_canonical_BAM.v1",
+      "artifact": "coordinate-sorted STAR BAM",
+      "semantics": "required artifact"
+    },
+    {
+      "producer": "norad.stage.construct_canonical_BAM.v1",
+      "consumer": "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
+      "artifact": "canonical BAM/BAI pair",
+      "semantics": "required artifact; non-gating evidence branch"
+    },
+    {
+      "producer": "norad.stage.construct_canonical_BAM.v1",
+      "consumer": "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+      "artifact": "canonical BAM/BAI pair",
+      "semantics": "required artifact; fan-in; non-gating evidence branch"
+    },
+    {
+      "producer": "norad.stage.convert_GTF_to_BED12.v1",
+      "consumer": "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+      "artifact": "BED12 annotation",
+      "semantics": "required artifact; fan-in; non-gating evidence branch"
+    },
+    {
+      "producer": "norad.stage.construct_canonical_BAM.v1",
+      "consumer": "norad.stage.mark_BAM_duplicates_with_Picard.v1",
+      "artifact": "canonical BAM/BAI pair",
+      "semantics": "required artifact"
+    },
+    {
+      "producer": "norad.stage.mark_BAM_duplicates_with_Picard.v1",
+      "consumer": "norad.stage.split_N_cigar_reads_with_GATK.v1",
+      "artifact": "duplicate-marked BAM/BAI pair",
+      "semantics": "required artifact; fan-in"
+    },
+    {
+      "producer": "norad.stage.construct_FASTA_sidecars.v1",
+      "consumer": "norad.stage.split_N_cigar_reads_with_GATK.v1",
+      "artifact": "reference FAI and sequence dictionary",
+      "semantics": "required artifact; fan-in"
+    },
+    {
+      "producer": "norad.stage.split_N_cigar_reads_with_GATK.v1",
+      "consumer": "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
+      "artifact": "split-N-cigar BAM/BAI pair",
+      "semantics": "required artifact"
+    },
+    {
+      "producer": "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
+      "consumer": "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+      "artifact": "both orientation BAM/BAI pairs for every declared sample",
+      "semantics": "required artifact; declared-sample barrier; fan-in"
+    },
+    {
+      "producer": "norad.stage.construct_FASTA_sidecars.v1",
+      "consumer": "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+      "artifact": "reference FAI paired with the external reference FASTA",
+      "semantics": "required artifact; fan-in"
+    },
+    {
+      "producer": "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+      "consumer": "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
+      "artifact": "receipt and both orientation VCFs for every declared partition",
+      "semantics": "required artifact; declared-partition-and-orientation barrier"
+    },
+    {
+      "producer": "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
+      "consumer": "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+      "artifact": "sites table and Step 08 input receipt",
+      "semantics": "required artifact"
+    },
+    {
+      "producer": "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
+      "consumer": "norad.evidence.assemble_scientific_review_evidence_package.v1",
+      "artifact": "complete three-output Step 08 transaction",
+      "semantics": "required artifact; fan-in; direct review lineage"
+    },
+    {
+      "producer": "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+      "consumer": "norad.evidence.assemble_scientific_review_evidence_package.v1",
+      "artifact": "complete six-output Step 09 transaction",
+      "semantics": "required artifact; fan-in; direct review lineage"
+    }
+  ],
+  "required_owner_keys": [
+    "norad.stage.construct_STAR_index.v1",
+    "norad.stage.convert_GTF_to_BED12.v1",
+    "norad.stage.construct_FASTA_sidecars.v1",
+    "norad.stage.align_RNA_reads_with_STAR.v1",
+    "norad.stage.construct_canonical_BAM.v1",
+    "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
+    "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+    "norad.stage.mark_BAM_duplicates_with_Picard.v1",
+    "norad.stage.split_N_cigar_reads_with_GATK.v1",
+    "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
+    "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+    "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
+    "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1"
+  ],
+  "evidence_owner_keys": [
+    "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
+    "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1"
+  ],
+  "excluded_owner_keys": [
+    "norad.evidence.assemble_scientific_review_evidence_package.v1"
+  ],
+  "artifact_templates": [
+    {
+      "artifact_id_template": "ref.star_index.genome_parameters",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/genomeParameters.txt",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.genome",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/Genome",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.sa",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/SA",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.saindex",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/SAindex",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.chr_length",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/chrLength.txt",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.chr_name",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/chrName.txt",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.chr_name_length",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/chrNameLength.txt",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.chr_start",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/chrStart.txt",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.exon_getr_info",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/exonGeTrInfo.tab",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.exon_info",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/exonInfo.tab",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.gene_info",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/geneInfo.tab",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.sjdb_info",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/sjdbInfo.txt",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.sjdb_from_gtf",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/sjdbList.fromGTF.out.tab",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.sjdb_list",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/sjdbList.out.tab",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.transcript_info",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_star_index_v1",
+      "source_path_template": "results/star/{reference_id}/index/transcriptInfo.tab",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.star_index.validation",
+      "step_id": "00a",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00a_validation_report_v1",
+      "source_path_template": "results/qc/validation/00a/{reference_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.bed12",
+      "step_id": "00b",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00b_bed12_v1",
+      "source_path_template": "results/qc/reference/{reference_id}.bed",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.bed12.validation",
+      "step_id": "00b",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00b_validation_report_v1",
+      "source_path_template": "results/qc/validation/00b/{reference_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.fasta",
+      "step_id": "00c",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00c_reference_fasta_v1",
+      "source_path_template": "{reference_fasta_path}",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.fai",
+      "step_id": "00c",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00c_reference_fai_v1",
+      "source_path_template": "{reference_fasta_path}.fai",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.dict",
+      "step_id": "00c",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00c_reference_dict_v1",
+      "source_path_template": "{reference_dict_path}",
+      "required": true
+    },
+    {
+      "artifact_id_template": "ref.sidecars.validation",
+      "step_id": "00c",
+      "scope_type": "reference",
+      "scope_selector": "reference",
+      "adapter": "step00c_validation_report_v1",
+      "source_path_template": "results/qc/validation/00c/{reference_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.star_bam",
+      "step_id": "01",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step01_star_bam_v1",
+      "source_path_template": "results/star/{sample_id}/{sample_id}.Aligned.sortedByCoord.out.bam",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.star_log_final",
+      "step_id": "01",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step01_star_log_final_v1",
+      "source_path_template": "results/star/{sample_id}/{sample_id}.Log.final.out",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.star_log",
+      "step_id": "01",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step01_star_log_v1",
+      "source_path_template": "results/star/{sample_id}/{sample_id}.Log.out",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.star_log_progress",
+      "step_id": "01",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step01_star_log_progress_v1",
+      "source_path_template": "results/star/{sample_id}/{sample_id}.Log.progress.out",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.star_sj",
+      "step_id": "01",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step01_star_sj_v1",
+      "source_path_template": "results/star/{sample_id}/{sample_id}.SJ.out.tab",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.star_validation",
+      "step_id": "01",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step01_validation_report_v1",
+      "source_path_template": "results/qc/validation/01/{sample_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.canonical_bam",
+      "step_id": "02",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step02_canonical_bam_v1",
+      "source_path_template": "results/bam/{sample_id}/{sample_id}.sorted.bam",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.canonical_bai",
+      "step_id": "02",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step02_canonical_bai_v1",
+      "source_path_template": "results/bam/{sample_id}/{sample_id}.sorted.bam.bai",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.canonical_validation",
+      "step_id": "02",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step02_validation_report_v1",
+      "source_path_template": "results/qc/validation/02/{sample_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.quickcheck",
+      "step_id": "02b",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step02b_quickcheck_v1",
+      "source_path_template": "results/qc/bam/{sample_id}.quickcheck.txt",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.flagstat",
+      "step_id": "02b",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step02b_flagstat_v1",
+      "source_path_template": "results/qc/bam/{sample_id}.flagstat.txt",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.bam_qc_validation",
+      "step_id": "02b",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step02b_validation_report_v1",
+      "source_path_template": "results/qc/validation/02b/{sample_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.strand",
+      "step_id": "03",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step03_rseqc_infer_v1",
+      "source_path_template": "results/qc/strandedness/{sample_id}.infer_experiment.txt",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.strand_validation",
+      "step_id": "03",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step03_validation_report_v1",
+      "source_path_template": "results/qc/validation/03/{sample_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.markdup_bam",
+      "step_id": "04",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step04_markdup_bam_v1",
+      "source_path_template": "results/markdup/{sample_id}/{sample_id}.markdup.bam",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.markdup_bai",
+      "step_id": "04",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step04_markdup_bai_v1",
+      "source_path_template": "results/markdup/{sample_id}/{sample_id}.markdup.bam.bai",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.markdup_metrics",
+      "step_id": "04",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step04_markdup_metrics_v1",
+      "source_path_template": "results/qc/markdup/{sample_id}.markdup.metrics.txt",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.markdup_validation",
+      "step_id": "04",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step04_validation_report_v1",
+      "source_path_template": "results/qc/validation/04/{sample_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.split_bam",
+      "step_id": "05",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step05_split_bam_v1",
+      "source_path_template": "results/split_ncigar/{sample_id}/{sample_id}.split_ncigar.bam",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.split_bai",
+      "step_id": "05",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step05_split_bai_v1",
+      "source_path_template": "results/split_ncigar/{sample_id}/{sample_id}.split_ncigar.bam.bai",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.split_validation",
+      "step_id": "05",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step05_validation_report_v1",
+      "source_path_template": "results/qc/validation/05/{sample_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.fwd_bam",
+      "step_id": "06",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step06_fwd_bam_v1",
+      "source_path_template": "results/orientation/{sample_id}/{sample_id}.FWD_like.bam",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.fwd_bai",
+      "step_id": "06",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step06_fwd_bai_v1",
+      "source_path_template": "results/orientation/{sample_id}/{sample_id}.FWD_like.bam.bai",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.rev_bam",
+      "step_id": "06",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step06_rev_bam_v1",
+      "source_path_template": "results/orientation/{sample_id}/{sample_id}.REV_like.bam",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.rev_bai",
+      "step_id": "06",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step06_rev_bai_v1",
+      "source_path_template": "results/orientation/{sample_id}/{sample_id}.REV_like.bam.bai",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.orientation_counts",
+      "step_id": "06",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step06_orientation_counts_v1",
+      "source_path_template": "results/qc/orientation/{sample_id}.orientation_counts.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "sample.{sample_id}.orientation_validation",
+      "step_id": "06",
+      "scope_type": "sample",
+      "scope_selector": "samples",
+      "adapter": "step06_validation_report_v1",
+      "source_path_template": "results/qc/validation/06/{sample_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "cohort.{cohort_id}.{partition_id}.fwd_vcf",
+      "step_id": "07",
+      "scope_type": "cohort_partition",
+      "scope_selector": "partitions",
+      "adapter": "step07_mpileup_vcf_v1",
+      "source_path_template": "results/mpileup/{cohort_id}/{partition_id}/{cohort_id}.{partition_id}.FWD_like.mpileup.vcf",
+      "required": true
+    },
+    {
+      "artifact_id_template": "cohort.{cohort_id}.{partition_id}.rev_vcf",
+      "step_id": "07",
+      "scope_type": "cohort_partition",
+      "scope_selector": "partitions",
+      "adapter": "step07_mpileup_vcf_v1",
+      "source_path_template": "results/mpileup/{cohort_id}/{partition_id}/{cohort_id}.{partition_id}.REV_like.mpileup.vcf",
+      "required": true
+    },
+    {
+      "artifact_id_template": "cohort.{cohort_id}.{partition_id}.receipt",
+      "step_id": "07",
+      "scope_type": "cohort_partition",
+      "scope_selector": "partitions",
+      "adapter": "step07_mpileup_receipt_v1",
+      "source_path_template": "results/mpileup/{cohort_id}/{partition_id}/{cohort_id}.{partition_id}.step07_outputs.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "cohort.{cohort_id}.{partition_id}.validation",
+      "step_id": "07",
+      "scope_type": "cohort_partition",
+      "scope_selector": "partitions",
+      "adapter": "step07_validation_report_v1",
+      "source_path_template": "results/qc/validation/07/{cohort_id}__{partition_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "cohort.{cohort_id}.step08_sites",
+      "step_id": "08",
+      "scope_type": "cohort",
+      "scope_selector": "cohort",
+      "adapter": "step08_sites_v1",
+      "source_path_template": "results/vcf_preprocessed/{cohort_id}/{cohort_id}.step08_sites.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "cohort.{cohort_id}.step08_inputs",
+      "step_id": "08",
+      "scope_type": "cohort",
+      "scope_selector": "cohort",
+      "adapter": "step08_inputs_v1",
+      "source_path_template": "results/vcf_preprocessed/{cohort_id}/{cohort_id}.step08_inputs.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "cohort.{cohort_id}.step08_summary",
+      "step_id": "08",
+      "scope_type": "cohort",
+      "scope_selector": "cohort",
+      "adapter": "step08_summary_v1",
+      "source_path_template": "results/qc/vcf_preprocessing/{cohort_id}.step08_summary.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "cohort.{cohort_id}.step08_validation",
+      "step_id": "08",
+      "scope_type": "cohort",
+      "scope_selector": "cohort",
+      "adapter": "step08_validation_report_v1",
+      "source_path_template": "results/qc/validation/08/{cohort_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "analysis.{analysis_id}.cmh_all_sites",
+      "step_id": "09",
+      "scope_type": "analysis",
+      "scope_selector": "analysis",
+      "adapter": "step09_cmh_all_sites_v1",
+      "source_path_template": "results/editing/{analysis_id}/{analysis_id}.cmh_all_sites.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "analysis.{analysis_id}.cmh_significant_sites",
+      "step_id": "09",
+      "scope_type": "analysis",
+      "scope_selector": "analysis",
+      "adapter": "step09_cmh_significant_sites_v1",
+      "source_path_template": "results/editing/{analysis_id}/{analysis_id}.cmh_significant_sites.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "analysis.{analysis_id}.cmh_summary",
+      "step_id": "09",
+      "scope_type": "analysis",
+      "scope_selector": "analysis",
+      "adapter": "step09_cmh_summary_v1",
+      "source_path_template": "results/editing/{analysis_id}/{analysis_id}.cmh_summary.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "analysis.{analysis_id}.mutation_spectrum_tsv",
+      "step_id": "09",
+      "scope_type": "analysis",
+      "scope_selector": "analysis",
+      "adapter": "step09_mutation_spectrum_tsv_v1",
+      "source_path_template": "results/editing/{analysis_id}/{analysis_id}.mutation_spectrum.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "analysis.{analysis_id}.mutation_spectrum_pdf",
+      "step_id": "09",
+      "scope_type": "analysis",
+      "scope_selector": "analysis",
+      "adapter": "step09_mutation_spectrum_pdf_v1",
+      "source_path_template": "results/editing/{analysis_id}/{analysis_id}.mutation_spectrum.pdf",
+      "required": true
+    },
+    {
+      "artifact_id_template": "analysis.{analysis_id}.depth_delta_pdf",
+      "step_id": "09",
+      "scope_type": "analysis",
+      "scope_selector": "analysis",
+      "adapter": "step09_depth_delta_pdf_v1",
+      "source_path_template": "results/editing/{analysis_id}/{analysis_id}.depth_delta.pdf",
+      "required": true
+    },
+    {
+      "artifact_id_template": "analysis.{analysis_id}.cmh_validation",
+      "step_id": "09",
+      "scope_type": "analysis",
+      "scope_selector": "analysis",
+      "adapter": "step09_validation_report_v1",
+      "source_path_template": "results/qc/validation/09/{analysis_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "review.{analysis_id}.review_plan",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review",
+      "adapter": "step09c_review_plan_v1",
+      "source_path_template": "results/scientific_validation/{scope_id}/{scope_id}.step09c_review_plan.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "review.{analysis_id}.evidence_index",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review",
+      "adapter": "step09c_evidence_index_v1",
+      "source_path_template": "results/scientific_validation/{scope_id}/{scope_id}.step09c_evidence_index.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "review.{analysis_id}.orientation_locus_audit",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review",
+      "adapter": "step09c_orientation_locus_audit_v1",
+      "source_path_template": "results/scientific_validation/{scope_id}/{scope_id}.step09c_orientation_locus_audit.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "review.{analysis_id}.annotation_audit",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review",
+      "adapter": "step09c_annotation_audit_v1",
+      "source_path_template": "results/scientific_validation/{scope_id}/{scope_id}.step09c_annotation_audit.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "review.{analysis_id}.qc_funnel",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review",
+      "adapter": "step09c_qc_funnel_v1",
+      "source_path_template": "results/scientific_validation/{scope_id}/{scope_id}.step09c_qc_funnel.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "review.{analysis_id}.replicate_effects",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review",
+      "adapter": "step09c_replicate_effects_v1",
+      "source_path_template": "results/scientific_validation/{scope_id}/{scope_id}.step09c_replicate_effects.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "review.{analysis_id}.sensitivity_matrix",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review",
+      "adapter": "step09c_sensitivity_matrix_v1",
+      "source_path_template": "results/scientific_validation/{scope_id}/{scope_id}.step09c_sensitivity_matrix.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "review.{analysis_id}.leave_one_pair_out",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review",
+      "adapter": "step09c_leave_one_pair_out_v1",
+      "source_path_template": "results/scientific_validation/{scope_id}/{scope_id}.step09c_leave_one_pair_out.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "review.{analysis_id}.candidate_selection",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review",
+      "adapter": "step09c_candidate_selection_v1",
+      "source_path_template": "results/scientific_validation/{scope_id}/{scope_id}.step09c_candidate_selection.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "review.{analysis_id}.candidate_adjudication",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review",
+      "adapter": "step09c_candidate_adjudication_v1",
+      "source_path_template": "results/scientific_validation/{scope_id}/{scope_id}.step09c_candidate_adjudication.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "review.{analysis_id}.decisions",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review",
+      "adapter": "step09c_decisions_v1",
+      "source_path_template": "results/scientific_validation/{scope_id}/{scope_id}.step09c_decisions.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "review.{analysis_id}.limitations",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review",
+      "adapter": "step09c_limitations_v1",
+      "source_path_template": "results/scientific_validation/{scope_id}/{scope_id}.step09c_limitations.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "review.{analysis_id}.review_summary",
+      "step_id": "09c",
+      "scope_type": "scientific_review",
+      "scope_selector": "scientific_review",
+      "adapter": "step09c_review_summary_v1",
+      "source_path_template": "results/scientific_validation/{scope_id}/{scope_id}.step09c_review_summary.tsv",
+      "required": true
+    }
+  ]
+}

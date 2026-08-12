@@ -25,16 +25,18 @@ reference/runtime/storage evidence occupy separate cross-cutting owners.
 Numeric step labels are historical aliases rather than a complete execution
 order.
 
-NORAD currently exposes owner-local commands, SLURM entry points, and a
-read-only local-pilot normalizer/projection plus semantic validation command;
-it has no implemented one-command pipeline orchestrator. Operators select the
-applicable entry point and supply its declared inputs. Deferred orchestration
-profiles do not change that boundary.
+NORAD currently exposes owner-local commands, SLURM entry points, a read-only
+local-pilot normalizer/projection plus semantic validation command, and one
+fixed source-checkout-bound Snakemake graph for local development. The static
+graph invokes public owners through closed dispatch records and schedules only
+content-bound verified-task records. It is not a public one-command lifecycle:
+run materialization, attempt finalization, resume/inspection, real science-tool
+execution, and cluster execution remain outside the implemented boundary.
 
 | Component group | Implemented owners | Principal inputs | Principal outputs |
 | --- | --- | --- | --- |
 | Input admission | `src/norad/ingestion/sample_manifest_admission/` | Explicit sample manifest and optional declared FASTQ paths | Schema/admission result and paired-FASTQ diagnostics |
-| Local-pilot intake | `src/norad/orchestration/local_pilot/` plus `src/norad/contracts/orchestration/` | Explicit YAML request, ordered TSV manifests, fixed-profile record, and declared input files | Canonical in-memory execution identity, deterministic reporting projection, and semantic all-pass evidence; no materialized run |
+| Local-pilot orchestration | `src/norad/orchestration/local_pilot/`, `src/norad/contracts/orchestration/`, and `workflow/` | Explicit YAML request, ordered TSV manifests, reviewed fixed-profile record, canonical execution snapshot, and closed task dispatches | Canonical execution/reporting identity, semantic all-pass evidence, task-attempt records, content-bound verified-task records, and static local Snakemake scheduling; no public lifecycle or real-tool proof |
 | Reference preparation | Owners `00a`, `00b`, and `00c` under `src/norad/stages/` | Reference FASTA, GTF, and tool parameters | STAR index, BED12, and FASTA sidecars |
 | Per-sample processing and evidence | Owners `01`–`06` under `src/norad/stages/` plus evidence owners `02b` and `03` | Declared reads, references, and preceding owner artifacts | Aligned/canonical/duplicate-marked/split BAMs plus QC and orientation evidence |
 | Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owner `09` | Declared partitions, sample order, reference context, and upstream receipts | Cohort VCFs, annotated candidates, and paired-CMH ranked candidates |

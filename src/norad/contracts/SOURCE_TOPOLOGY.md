@@ -19,7 +19,7 @@ owns exact public programs, jobs, validators, and tests.
 | `evidence/` | Operational/scientific evidence collection and review packaging that does not become peer computation. |
 | `reporting/` | Artifact adaptation, canonical run summaries, projections, templates, styles, and static rendering. |
 | `ingestion/` | External-input admission and diagnostics; no implemented orchestration runner. |
-| `orchestration/` | Local-pilot request normalization, reporting projection, and task/lifecycle application policy; no scientific implementation. |
+| `orchestration/` | Local-pilot request normalization, reporting projection, content-bound task execution/reuse admission, and lifecycle application policy; no scientific implementation. Static scheduling assets live at root `workflow/`. |
 
 Native Python, shell, R, SLURM, schema, style, template, and fixture assets stay
 with the owner whose behavior they implement. Root `configs/` remains the
@@ -100,8 +100,7 @@ Owner-specific public shell, Python, R, and SLURM entry points remain with their
 functional owner. The unreleased internal Python distribution packages only
 explicitly migrated import owners and their named resources; it does not imply
 portable repository-root semantics. Its installed `python -I -m norad` module
-interface contains only explicitly migrated owner routes and the read-only
-semantic all-pass check. It is not an orchestration engine, scheduler
-abstraction, descriptor loader, universal
-transaction framework, or generic stage dispatcher. Those remain potential
-future capabilities, not current topology.
+interface contains explicitly migrated owner routes and the read-only semantic
+all-pass check. The packaged internal task module is invoked only by the fixed
+source-checkout workflow; it is not a public lifecycle command, scheduler
+abstraction, universal transaction framework, or generic stage dispatcher.
