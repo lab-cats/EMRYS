@@ -192,6 +192,15 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     )
     assert "--genome-sa-index-nbases" in step00a["producer_argv"]
     assert "--expected-genome-sa-index-nbases" in step00a["validator_argv"]
+    step00b = next(
+        record
+        for record in records
+        if record["machine_key"] == "norad.stage.convert_GTF_to_BED12.v1"
+    )
+    assert (
+        step00b["producer_argv"][step00b["producer_argv"].index("--run-token") + 1]
+        == step00b["owner_run_token"]
+    )
     step01 = next(
         record
         for record in records

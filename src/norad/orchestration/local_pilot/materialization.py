@@ -1027,6 +1027,8 @@ def _dispatches(
             f"{attempt_id}:{task.machine_key}:{task.scope_id}".encode()
         ).hexdigest()[:32]
         owner_run_token = f"owner-{suffix}"
+        if step_id == "00b":
+            producer = (*producer, "--run-token", owner_run_token)
         producer = _owner_environment_command(
             _runtime_path(runtime, "bash"),
             _runtime_path(runtime, "sha256_python"),
