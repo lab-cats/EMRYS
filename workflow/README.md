@@ -35,7 +35,7 @@ task attempt, validation report and fresh semantic all-pass result, native
 receipt, and every bound input/output size and SHA-256. A stale or copied JSON
 pathname therefore cannot unlock downstream work.
 
-After all 34 required owner results are verified, three non-scientific rules
+After all request-expanded owner results are verified, three non-scientific rules
 run in order: `build_artifact_index`, `build_run_summary`, and
 `build_html_report`. Each calls its grouped public `norad build` CLI once in
 dry-run mode, publishes an immutable reporting-start record, calls the builder

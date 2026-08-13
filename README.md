@@ -46,7 +46,8 @@ Copy the matched structural starters to an operator-managed directory:
 
 ```sh
 NORAD_INPUT_DIR=/absolute/path/to/norad-inputs
-mkdir -p "$NORAD_INPUT_DIR"
+test ! -e "$NORAD_INPUT_DIR"
+mkdir "$NORAD_INPUT_DIR"
 cp configs/local_pilot_request.example.yaml "$NORAD_INPUT_DIR/"
 cp configs/local_pilot_samples.example.tsv "$NORAD_INPUT_DIR/"
 cp configs/local_pilot_partitions.example.tsv "$NORAD_INPUT_DIR/"
@@ -64,8 +65,10 @@ Edit those copies before continuing:
 - In `local_pilot_partitions.example.tsv`, choose selectors that exist in the
   declared reference.
 - In `local_pilot_runtime.tsv`, replace every executable, Picard jar, Rscript,
-  `renv` project, and R-namespace probe placeholder with the exact selected
-  path. Module names alone are not executable identities.
+  controlled Python/Snakemake, Bash, gunzip, Picard jar, Rscript, `renv`
+  project/library, and R-namespace probe placeholder with the exact selected
+  path. Module names alone are not executable identities; admitted executable
+  and jar targets are bound by canonical path and SHA-256.
 
 Relative input paths are resolved from the request file's directory, not the
 shell's working directory. The tracked starters contain no reads or reference
@@ -74,7 +77,9 @@ and are not a runnable dataset. See the
 
 Set these shell variables to the edited files and a workspace outside the
 checkout. The workspace may already be a real writable directory or may not
-exist yet.
+exist yet. When it is absent, its immediate parent must already be a canonical,
+writable real directory; readiness does not recursively create missing parent
+directories.
 
 ```sh
 NORAD_REQUEST_PATH=/absolute/path/to/norad-inputs/local_pilot_request.example.yaml
@@ -87,7 +92,7 @@ NORAD_WORKSPACE_PATH=/absolute/path/to/norad-workspace
 Run the read-only doctor:
 
 ```sh
-.venv/bin/python -I -m norad doctor local-pilot \
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad doctor local-pilot \
   --request "$NORAD_REQUEST_PATH" \
   --workspace "$NORAD_WORKSPACE_PATH" \
   --runtime-profile "$NORAD_RUNTIME_PROFILE_PATH"

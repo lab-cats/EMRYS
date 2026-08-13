@@ -40,12 +40,13 @@ attempt; changing them is not recovery.
 The table spells out command intent compactly. Invoke every `run`, `resume`,
 and `inspect` route with the controlled checkout interpreter shown in the root
 journey: `.venv/bin/python -X pycache_prefix=/dev/null -I -m norad` followed by
-the displayed subcommand and arguments. The doctor uses its exact
-`.venv/bin/python -I -m norad doctor local-pilot ...` form.
+the displayed subcommand and arguments. The doctor uses the same controlled
+prefix: `.venv/bin/python -X pycache_prefix=/dev/null -I -m norad doctor
+local-pilot ...`.
 
 | Observed state or symptom | Public route and safe response |
 | --- | --- |
-| Doctor prints `NOT READY` | Read every `BLOCKER` and `REMEDIATION` from `.venv/bin/python -I -m norad doctor local-pilot ...`. Correct the declared input, checkout, workspace, or runtime outside the doctor, then rerun it. Do not start `norad run`. |
+| Doctor prints `NOT READY` | Read every `BLOCKER` and `REMEDIATION` from `.venv/bin/python -X pycache_prefix=/dev/null -I -m norad doctor local-pilot ...`. Correct the declared input, checkout, workspace, or runtime outside the doctor, then rerun it. Do not start `norad run`. |
 | Doctor exits `2` | The request, runtime profile, or path boundary is malformed or unsafe. Correct the authored file or path; do not bypass admission or edit a result to manufacture `READY`. |
 | Readiness passed, but execution has not started | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m norad run ...` without `--execute` and review the complete no-write plan. Add `--execute` only to the identical admitted request after review. |
 | An initial run fails or its state is uncertain | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m norad inspect local-pilot-run --run-root /absolute/run/root`. Do not submit another initial run against the existing run root. |
@@ -53,6 +54,7 @@ the displayed subcommand and arguments. The doctor uses its exact
 | Inspection prints `blocked` | Preserve the complete run root, attempt receipts, locks, task/reporting ledgers, logs, native artifacts, partials, backups, and recovery markers. No public command forces, unlocks, cleans, or automatically reconciles an owner that crossed producer entry without verified completion. Route the failing scope to its owner below. |
 | Inspection prints `local_pipeline_complete` | Resume refusal is expected. Use the validated products and receipts under the inspected run root; a new analysis requires a separately admitted request and run identity. |
 | `Run root already exists; inspect or resume it instead` | Use `.venv/bin/python -X pycache_prefix=/dev/null -I -m norad inspect local-pilot-run --run-root ...` on that exact root. Never delete or rename it merely to make an initial run start. |
+| Step `00c` cannot create or re-admit the reference FAI/dictionary | Stop before downstream work. Preserve the FASTA, `<reference-fasta>.fai`, `<reference-stem>.dict`, and every adjacent Step `00c` lock/staging path. Confirm that the declared external reference directory is the intended writable sidecar authority; do not copy, delete, or regenerate one member independently. |
 
 The B6 fresh-clone acceptance run used deterministic no-science owner doubles.
 These routes and recovery semantics are proven control-plane behavior, not real

@@ -72,7 +72,7 @@ After `uv sync --locked --group workflow` and the separately authorized science
 tool/R setup, inspect one request and workspace plan:
 
 ```bash
-.venv/bin/python -I -m norad doctor local-pilot \
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad doctor local-pilot \
   --request /absolute/path/to/request.yaml \
   --workspace /absolute/path/to/workspace \
   --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
@@ -101,6 +101,11 @@ producer/validator command:
 
 Review that output, then execute the identical admitted request by adding
 `--execute`:
+
+Before execution, confirm that the declared reference FASTA directory is the
+intended writable sidecar authority. Step `00c` deliberately creates or reuses
+`<reference-fasta>.fai` and `<reference-stem>.dict` beside that external FASTA;
+those two files are the only owner outputs outside the run root.
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m norad run \
