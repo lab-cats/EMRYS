@@ -141,7 +141,11 @@ def inspect_wheel(wheel: Path) -> None:
         declared = declared_requirements(metadata.get_all("Requires-Dist", []))
 
         assert metadata["Name"] == "norad-rna-workflow"
-        assert metadata["Version"] == "0.0.0"
+        assert metadata["Version"] == "0.1.0.dev0"
+        assert metadata["Project-URL"] == [
+            "Repository, https://github.com/lab-cats/norad",
+            "Issues, https://github.com/lab-cats/norad/issues",
+        ]
         assert set(declared) == RUNTIME_DEPENDENCIES
         assert declared == {
             name: f"{name}{specifier}"
