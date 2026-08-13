@@ -12,9 +12,16 @@
 # Defaults support a dry-run smoke test. Real cluster execution should pass
 # sample-specific paths through environment variables and set EXECUTE=1.
 set -euo pipefail
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Run from the submitted repository checkout so relative paths remain stable
+# when SLURM executes its spool copy of this script.
+: "${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
+cd "$SLURM_SUBMIT_DIR"
+
+# Resolve repository-owned helpers from the submitted checkout rather than the
+# SLURM spool copy of this script.
 # shellcheck source=../../libraries/argument_parsing.sh
-source "$script_dir/../../libraries/argument_parsing.sh"
+source "src/norad/libraries/argument_parsing.sh"
 
 # Defaults support a safe dry-run smoke test.
 SAMPLE_ID="${SAMPLE_ID:-sample_001}"

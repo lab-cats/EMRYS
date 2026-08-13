@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import stat
 import subprocess
 from dataclasses import dataclass, fields
@@ -356,6 +357,34 @@ def test_submit_directory_decision_is_literal(name: str) -> None:
     else:
         assert "SLURM_SUBMIT_DIR" not in source
 
+def test_step_01_runs_from_slurm_spool_copy(tmp_path: Path) -> None:
+    prepared = prepare_delegated("step_01_star_align.slurm", tmp_path)
+
+    helper = prepared.submit / "src/norad/libraries/argument_parsing.sh"
+    helper.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(
+        REPO_ROOT / "src/norad/libraries/argument_parsing.sh",
+        helper,
+    )
+
+    spool_dir = tmp_path / "slurm-spool"
+    spool_dir.mkdir()
+    spool_script = spool_dir / "slurm_script"
+    shutil.copy2(job_path("step_01_star_align.slurm"), spool_script)
+
+    result = subprocess.run(
+        ["/bin/bash", str(spool_script)],
+        cwd=prepared.launch,
+        env=prepared.environment,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert prepared.delegate_cwd_log.read_text(encoding="utf-8").strip() == str(
+        prepared.submit
+    )
 
 @pytest.mark.parametrize("name", sorted(NO_EXPLICIT_MODE_JOBS))
 def test_legacy_and_utility_jobs_have_no_execute_mode(name: str) -> None:

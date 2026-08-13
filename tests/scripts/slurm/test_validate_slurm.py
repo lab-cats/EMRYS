@@ -29,3 +29,16 @@ def test_step_00c_validates_reference_sidecars() -> None:
     assert "--reference-fai refs/novogene_ref/genome.fa.fai" in source
     assert "--reference-dict refs/novogene_ref/genome.dict" in source
     assert "--output results/qc/validation/00c/novogene_ref.validation.tsv" in source
+
+def test_step_01_validates_star_alignment() -> None:
+    source = VALIDATE_SLURM.read_text(encoding="utf-8")
+
+    assert "01)" in source
+    assert "validate star-alignment" in source
+    assert "--scope-id ABE_EV_2" in source
+    assert "--bam results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam" in source
+    assert "--log-final results/star/ABE_EV_2/ABE_EV_2.Log.final.out" in source
+    assert "--log-out results/star/ABE_EV_2/ABE_EV_2.Log.out" in source
+    assert "--log-progress results/star/ABE_EV_2/ABE_EV_2.Log.progress.out" in source
+    assert "--sj-out results/star/ABE_EV_2/ABE_EV_2.SJ.out.tab" in source
+    assert "--output results/qc/validation/01/ABE_EV_2.validation.tsv" in source
