@@ -356,7 +356,9 @@
       "required": [
         "name",
         "version",
-        "path"
+        "path",
+        "resolved_path",
+        "sha256"
       ],
       "properties": {
         "name": {
@@ -367,6 +369,19 @@
         },
         "path": {
           "$ref": "#/$defs/absolute_path"
+        },
+        "resolved_path": {
+          "$ref": "#/$defs/absolute_path"
+        },
+        "sha256": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },

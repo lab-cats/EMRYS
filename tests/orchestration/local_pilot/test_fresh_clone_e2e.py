@@ -110,6 +110,8 @@ def _write_runtime_profile(root: Path) -> Path:
     picard_jar.write_bytes(b"bounded no-science Picard fixture\n")
     rscript = root / "fixture-Rscript"
     shutil.copy2(tool, rscript)
+    renv_library = root / "fixture-renv-library"
+    renv_library.mkdir()
 
     rows: list[list[str]] = []
     for check_id, check_type in doctor.LOCAL_PILOT_RUNTIME_CHECKS:
@@ -122,10 +124,21 @@ def _write_runtime_profile(root: Path) -> Path:
         elif check_id == "python":
             target = sys.executable
             expected = "^Python 3[.]"
-        elif check_id == "snakemake":
+        elif check_id in {"snakemake", "sha256_python"}:
             target = sys.executable
-            probe_args = ["-m", "snakemake", "--version"]
-            expected = f"^{re.escape(doctor.SNAKEMAKE_VERSION)}$"
+            if check_id == "snakemake":
+                probe_args = [
+                    "-X",
+                    "pycache_prefix=/dev/null",
+                    "-I",
+                    "-m",
+                    "snakemake",
+                    "--version",
+                ]
+                expected = f"^{re.escape(doctor.SNAKEMAKE_VERSION)}$"
+            else:
+                probe_args = ["python_hashlib"]
+                expected = "sha256"
         elif check_id == "java":
             probe_args = ["-version"]
             expected = "^fixture-java$"
@@ -145,6 +158,10 @@ def _write_runtime_profile(root: Path) -> Path:
             target = str(rscript)
         elif check_id == "renv_project":
             target = str(REPO_ROOT)
+            probe_args = ["directory_readable"]
+            expected = "readable"
+        elif check_id == "renv_library":
+            target = str(renv_library)
             probe_args = ["directory_readable"]
             expected = "readable"
         elif check_type == "r_namespace":

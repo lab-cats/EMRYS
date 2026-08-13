@@ -23,8 +23,8 @@
     "semantic_all_pass",
     "stable_inputs_rechecked",
     "validation_report",
-    "stdout_path",
-    "stderr_path",
+    "stdout_log",
+    "stderr_log",
     "failure_message"
   ],
   "properties": {
@@ -101,11 +101,11 @@
         }
       ]
     },
-    "stdout_path": {
-      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/relative_contract_path"
+    "stdout_log": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
     },
-    "stderr_path": {
-      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/relative_contract_path"
+    "stderr_log": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
     },
     "failure_message": {
       "oneOf": [

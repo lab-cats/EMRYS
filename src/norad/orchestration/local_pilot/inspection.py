@@ -1565,13 +1565,21 @@ def inspect_attempt_task_trees(
                                 f"Attempt task state disagrees on {field}"
                             )
                     for field, child_name in (
-                        ("stdout_path", "stdout.log"),
-                        ("stderr_path", "stderr.log"),
+                        ("stdout_log", "stdout.log"),
+                        ("stderr_log", "stderr.log"),
                     ):
-                        expected_path = (
-                            children[child_name].relative_to(root).as_posix()
+                        log_path = children[child_name]
+                        log_data = _read_bytes(
+                            log_path,
+                            root,
+                            field.replace("_", " "),
                         )
-                        if record[field] != expected_path:
+                        expected_reference = _reference_for_bytes(
+                            log_path,
+                            root,
+                            log_data,
+                        )
+                        if record[field] != expected_reference:
                             raise InspectionError(
                                 f"Attempt task state binds different {field}"
                             )

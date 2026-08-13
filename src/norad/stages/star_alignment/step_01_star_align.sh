@@ -17,6 +17,7 @@ Usage:
     --output-dir OUTPUT_DIR \
     --threads THREADS \
     [--star-bin STAR_BIN] \
+    [--gunzip-bin PATH] \
     [--no-clobber] \
     [--execute]
 
@@ -35,6 +36,8 @@ Required arguments:
 
 Options:
   --star-bin      STAR executable or path. Defaults to STAR on PATH.
+  --gunzip-bin    gunzip executable or path used for paired .gz inputs.
+                  Defaults to gunzip on PATH and is ignored for uncompressed mates.
   --no-clobber    Require an absent declared output set and use an owned,
                   staged publication transaction. Required by orchestration.
   --execute       Execute STAR after validation. Without this, dry-run only.
@@ -60,6 +63,7 @@ declare_required_arguments sample_id r1_fastq r2_fastq star_index output_dir thr
 execute=false
 no_clobber=false
 requested_star_bin=""
+requested_gunzip_bin=""
 
 # Parse explicit paths and execution mode from the command line.
 while [[ $# -gt 0 ]]; do
@@ -71,6 +75,7 @@ while [[ $# -gt 0 ]]; do
         --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
         --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
         --star-bin) assign_option_value "$1" "${2:-}" requested_star_bin; shift 2 ;;
+        --gunzip-bin) assign_option_value "$1" "${2:-}" requested_gunzip_bin; shift 2 ;;
         --no-clobber) no_clobber=true; shift ;;
         *)
             handle_execute_or_help "$1"
@@ -103,8 +108,10 @@ if [[ "$r1_is_gz" != "$r2_is_gz" ]]; then
     die "Mixed FASTQ compression is not supported: R1 and R2 must both be .gz or both be uncompressed."
 fi
 
+gunzip_bin="not-required"
 if [[ "$r1_is_gz" == true ]]; then
-    command -v gunzip >/dev/null 2>&1 || die "gunzip was not found on PATH but both FASTQ files end in .gz."
+    gunzip_bin="$(resolve_executable_value \
+        "gunzip" "$requested_gunzip_bin" "gunzip")"
 fi
 
 snapshot_star_index() {
@@ -174,7 +181,7 @@ if [[ "$no_clobber" == true ]]; then
     star_index_snapshot="$(snapshot_star_index)"
     star_index_member_count="$(printf '%s\n' "$star_index_snapshot" | wc -l | tr -d ' ')"
 fi
-run_token="${SLURM_JOB_ID:-$$}"
+run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 01 run token" "$run_token"
 final_prefix="$output_dir/${sample_id}."
 staging_dir="$output_dir/.${sample_id}.step01.${run_token}.staging"
@@ -328,6 +335,7 @@ printf '  R1 FASTQ: %s\n' "$r1_fastq"
 printf '  R2 FASTQ: %s\n' "$r2_fastq"
 printf '  STAR index: %s\n' "$star_index"
 printf '  STAR bin: %s\n' "$star_bin"
+printf '  gunzip bin: %s\n' "$gunzip_bin"
 printf '  Output directory: %s\n' "$output_dir"
 printf '  Threads: %s\n' "$threads"
 printf '  R1 SHA-256: %s\n' "$r1_sha256"
@@ -340,6 +348,7 @@ if [[ "$no_clobber" == true ]]; then
 fi
 printf '  No-clobber transaction: %s\n' "$no_clobber"
 printf '  Lock directory: %s\n' "$lock_path"
+printf '  Run token: %s\n' "$run_token"
 printf '  Staging directory: %s\n' "$staging_dir"
 printf '  Mode: %s\n' "$mode"
 
@@ -358,7 +367,7 @@ star_command=(
 )
 
 if [[ "$r1_is_gz" == true ]]; then
-    star_command+=(--readFilesCommand gunzip -c)
+    star_command+=(--readFilesCommand "$gunzip_bin" -c)
 fi
 
 printf 'STAR command:\n'

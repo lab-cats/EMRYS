@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/norad/stages/star_alignment/step_01_star_align.sh"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -118,10 +120,19 @@ chmod +x "$fake_bin/STAR"
 
 cat >"$fake_bin/gunzip" <<'EOF_GUNZIP'
 #!/usr/bin/env bash
-printf 'fake gunzip should not be executed by smoke tests\n' >&2
+printf 'hostile PATH gunzip must not be selected when --gunzip-bin is explicit\n' >&2
 exit 99
 EOF_GUNZIP
 chmod +x "$fake_bin/gunzip"
+
+controlled_bin="$tmp_dir/controlled-bin"
+mkdir -p "$controlled_bin"
+bound_gunzip="$controlled_bin/gunzip"
+cat >"$bound_gunzip" <<'EOF_BOUND_GUNZIP'
+#!/usr/bin/env bash
+exec /usr/bin/gunzip "$@"
+EOF_BOUND_GUNZIP
+chmod +x "$bound_gunzip"
 
 export PATH="$fake_bin:$PATH"
 
@@ -148,23 +159,28 @@ printf 'Running help check...\n'
 help_output="$tmp_dir/help.out"
 bash "$SCRIPT" --help >"$help_output"
 assert_contains "$help_output" "Usage:"
+assert_contains "$help_output" "--gunzip-bin"
 assert_contains "$help_output" "--execute"
 
 printf 'Running dry-run check...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry"
-bash "$SCRIPT" \
+NORAD_RUN_TOKEN=explicit-owner-01 SLURM_JOB_ID=scheduler-01 bash "$SCRIPT" \
     --sample-id sample_001 \
     --r1-fastq "$r1_fastq" \
     --r2-fastq "$r2_fastq" \
     --star-index "$star_index" \
     --output-dir "$dry_output_dir" \
     --threads 4 \
+    --gunzip-bin "$bound_gunzip" \
     >"$dry_output"
 
 [[ ! -e "$dry_output_dir" ]] || fail "dry-run created output directory"
 [[ ! -e "$star_log" ]] || fail "dry-run invoked STAR"
 assert_contains "$dry_output" "Mode: dry-run"
+assert_contains "$dry_output" "Run token: explicit-owner-01"
+assert_contains "$dry_output" "gunzip bin: not-required"
+assert_contains "$dry_output" ".sample_001.step01.explicit-owner-01.staging"
 assert_contains "$dry_output" "--outFileNamePrefix"
 assert_contains "$dry_output" "$dry_output_dir/sample_001."
 assert_contains "$dry_output" "--outSAMtype"
@@ -177,11 +193,12 @@ execute_output="$tmp_dir/execute.out"
 execute_output_dir="$tmp_dir/results/execute"
 bash "$SCRIPT" \
     --sample-id sample_002 \
-    --r1-fastq "$r1_fastq" \
-    --r2-fastq "$r2_fastq" \
+    --r1-fastq "$r1_gz" \
+    --r2-fastq "$r2_gz" \
     --star-index "$star_index" \
     --output-dir "$execute_output_dir" \
     --threads 2 \
+    --gunzip-bin "$bound_gunzip" \
     --execute \
     >"$execute_output"
 
@@ -194,7 +211,11 @@ assert_contains "$star_log" "$execute_output_dir/sample_002."
 assert_contains "$star_log" "--outSAMtype"
 assert_contains "$star_log" "BAM"
 assert_contains "$star_log" "SortedByCoordinate"
+assert_contains "$star_log" "--readFilesCommand"
+assert_contains "$star_log" "$bound_gunzip"
+assert_not_contains "$star_log" "$fake_bin/gunzip"
 assert_contains "$execute_output" "Mode: execute"
+assert_contains "$execute_output" "gunzip bin: $bound_gunzip"
 
 printf 'Running orchestration-safe no-clobber transaction check...\n'
 residue_output_dir="$tmp_dir/results/residue"
@@ -462,11 +483,54 @@ bash "$SCRIPT" \
     --star-index "$star_index" \
     --output-dir "$tmp_dir/results/gzip" \
     --threads 1 \
+    --gunzip-bin "$bound_gunzip" \
     >"$gzip_output"
 
 assert_contains "$gzip_output" "--readFilesCommand"
-assert_contains "$gzip_output" "gunzip"
+assert_contains "$gzip_output" "$bound_gunzip"
+assert_not_contains "$gzip_output" "$fake_bin/gunzip"
 assert_contains "$gzip_output" "-c"
+
+printf 'Running uncompressed unused-gunzip check...\n'
+unused_gunzip_output="$tmp_dir/unused_gunzip.out"
+bash "$SCRIPT" \
+    --sample-id sample_unused_gunzip \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$star_index" \
+    --output-dir "$tmp_dir/results/unused_gunzip" \
+    --threads 1 \
+    --gunzip-bin "$tmp_dir/missing-gunzip" \
+    >"$unused_gunzip_output"
+assert_contains "$unused_gunzip_output" "gunzip bin: not-required"
+assert_not_contains "$unused_gunzip_output" "--readFilesCommand"
+
+printf 'Running missing explicit gunzip failure check...\n'
+missing_gunzip_output="$tmp_dir/missing_gunzip.out"
+assert_fails "$missing_gunzip_output" bash "$SCRIPT" \
+    --sample-id sample_missing_gunzip \
+    --r1-fastq "$r1_gz" \
+    --r2-fastq "$r2_gz" \
+    --star-index "$star_index" \
+    --output-dir "$tmp_dir/results/missing_gunzip" \
+    --threads 1 \
+    --gunzip-bin "$tmp_dir/missing-gunzip"
+assert_contains "$missing_gunzip_output" "gunzip does not exist"
+
+printf 'Running non-executable explicit gunzip failure check...\n'
+nonexec_gunzip="$tmp_dir/nonexec-gunzip"
+printf '#!/usr/bin/env bash\n' >"$nonexec_gunzip"
+chmod 0644 "$nonexec_gunzip"
+nonexec_gunzip_output="$tmp_dir/nonexec_gunzip.out"
+assert_fails "$nonexec_gunzip_output" bash "$SCRIPT" \
+    --sample-id sample_nonexec_gunzip \
+    --r1-fastq "$r1_gz" \
+    --r2-fastq "$r2_gz" \
+    --star-index "$star_index" \
+    --output-dir "$tmp_dir/results/nonexec_gunzip" \
+    --threads 1 \
+    --gunzip-bin "$nonexec_gunzip"
+assert_contains "$nonexec_gunzip_output" "gunzip exists but is not executable"
 
 printf 'Running mixed compression failure check...\n'
 mixed_output="$tmp_dir/mixed.out"

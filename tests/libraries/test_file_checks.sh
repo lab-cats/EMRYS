@@ -25,6 +25,20 @@ die() {
     return 1
 }
 
+hash_input="$test_root/hash-input.txt"
+printf 'bound hashing\n' >"$hash_input"
+unset NORAD_SHA256_PYTHON
+NORAD_REQUIRE_BOUND_SHA256=1
+expect_failure "missing SHA-256 Python binding" sha256_file "$hash_input"
+unset NORAD_REQUIRE_BOUND_SHA256
+NORAD_SHA256_PYTHON=python3
+expect_failure "relative SHA-256 Python binding" sha256_file "$hash_input"
+NORAD_SHA256_PYTHON="$(command -v python3)"
+[[ "$(sha256_file "$hash_input")" == \
+   "0c009bef8b5cd42114e0daf15a7ded967e9fd9041adaa491055fb90b8573bc4f" ]] ||
+    fail "bound Python did not produce the expected SHA-256 digest"
+export NORAD_SHA256_PYTHON
+
 source "$repo_root/src/norad/libraries/signal_traps.sh"
 
 valid_samples="$test_root/valid-samples.tsv"

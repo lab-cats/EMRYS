@@ -482,6 +482,69 @@ def _tool_version(argv: Sequence[str], label: str) -> str:
     return version[0].strip()
 
 
+def _admit_required_tool_identity(identity: Mapping[str, Any]) -> None:
+    """Re-admit one authored path against its canonical path and byte digest."""
+
+    name = str(identity["name"])
+    path = Path(str(identity["path"]))
+    resolved_path = Path(str(identity["resolved_path"]))
+    if not path.is_absolute() or not resolved_path.is_absolute():
+        raise LifecycleError(f"Required tool paths must be absolute: {name}")
+    try:
+        observed_resolved = path.resolve(strict=True)
+        resolved_state = resolved_path.lstat()
+    except OSError as exc:
+        raise LifecycleError(
+            f"Required tool path is unavailable: {name}: {path}"
+        ) from exc
+    if (
+        observed_resolved != resolved_path
+        or resolved_path.resolve(strict=True) != resolved_path
+    ):
+        raise LifecycleError(
+            f"Required tool canonical path differs from its binding: {name}"
+        )
+    digest = identity["sha256"]
+    if digest is None:
+        if (
+            name not in {"renv_project", "renv_library"}
+            or stat.S_ISLNK(resolved_state.st_mode)
+            or not stat.S_ISDIR(resolved_state.st_mode)
+            or not os.access(resolved_path, os.R_OK | os.X_OK)
+        ):
+            raise LifecycleError(
+                f"Required runtime directory is not admissible: {name}: {resolved_path}"
+            )
+        return
+    if stat.S_ISLNK(resolved_state.st_mode) or not stat.S_ISREG(resolved_state.st_mode):
+        raise LifecycleError(
+            f"Required tool canonical target is not a real file: {name}: {resolved_path}"
+        )
+    try:
+        data = resolved_path.read_bytes()
+        after = resolved_path.stat()
+    except OSError as exc:
+        raise LifecycleError(
+            f"Could not hash required tool canonical target: {name}: {resolved_path}"
+        ) from exc
+    if (
+        resolved_state.st_dev,
+        resolved_state.st_ino,
+        resolved_state.st_size,
+        resolved_state.st_mtime_ns,
+        resolved_state.st_ctime_ns,
+    ) != (
+        after.st_dev,
+        after.st_ino,
+        after.st_size,
+        after.st_mtime_ns,
+        after.st_ctime_ns,
+    ):
+        raise LifecycleError(f"Required tool changed while hashing: {name}")
+    if hashlib.sha256(data).hexdigest() != digest:
+        raise LifecycleError(f"Required tool byte digest differs: {name}")
+
+
 def _admit_runtime_context(
     attempt: Mapping[str, Any],
     request: LifecycleRequest,
@@ -508,6 +571,9 @@ def _admit_runtime_context(
     except ValueError as exc:
         raise LifecycleError("Snakefile is outside declared source checkout") from exc
     tools = {str(item["name"]): item for item in attempt["required_tools"]}
+    for identity in tools.values():
+        _admit_required_tool_identity(identity)
+    _admit_required_tool_identity(attempt["normalizer"])
     python = tools.get("python")
     snakemake = tools.get("snakemake")
     if python is None or snakemake is None:
@@ -518,6 +584,11 @@ def _admit_runtime_context(
         raise LifecycleError("Required Python path differs from workflow runtime")
     if Path(str(attempt["normalizer"]["path"])) != request.python_executable:
         raise LifecycleError("Normalizer does not bind the workflow Python runtime")
+    if (
+        attempt["normalizer"]["resolved_path"] != python["resolved_path"]
+        or attempt["normalizer"]["sha256"] != python["sha256"]
+    ):
+        raise LifecycleError("Normalizer does not bind the workflow Python bytes")
     observed_python_version = _tool_version((str(request.python_executable),), "python")
     expected_python_version = platform.python_version()
     if observed_python_version.split()[-1] != expected_python_version:
@@ -564,20 +635,29 @@ def _admit_runtime_context(
             "Local science attempt must bind its exact runtime profile"
         )
     profile_path = Path(str(runtime_profile["path"]))
-    if (
-        not profile_path.is_absolute()
-        or profile_path.is_symlink()
-        or not profile_path.is_file()
-        or profile_path.resolve(strict=True) != profile_path
-    ):
+    if profile_path != Path(str(runtime_profile["resolved_path"])):
         raise LifecycleError(
             f"Runtime profile must be an absolute canonical file: {profile_path}"
         )
     profile_sha256 = hashlib.sha256(profile_path.read_bytes()).hexdigest()
-    if runtime_profile["version"] != f"sha256:{profile_sha256}":
+    if (
+        runtime_profile["sha256"] != profile_sha256
+        or runtime_profile["version"] != f"sha256:{profile_sha256}"
+    ):
         raise LifecycleError("Required runtime profile digest differs from its bytes")
-    environment = dict(os.environ)
-    environment.update(doctor.runtime_environment(observed.root))
+    renv_project = tools.get("renv_project")
+    renv_library = tools.get("renv_library")
+    if renv_project is None or renv_library is None:
+        raise LifecycleError(
+            "Local science attempt must bind its renv project and library"
+        )
+    if Path(str(renv_project["resolved_path"])) != observed.root:
+        raise LifecycleError("Required renv project differs from the source checkout")
+    environment = doctor.runtime_environment(
+        observed.root,
+        Path(str(renv_library["resolved_path"])),
+        base_environment=os.environ,
+    )
     try:
         runtime_inspection = inspect_runtime_availability(
             profile_path,
@@ -598,8 +678,10 @@ def _admit_runtime_context(
         raise LifecycleError(f"Required local runtime probes failed: {failures}")
     expected_tools = doctor.required_tool_identities(
         runtime_inspection,
+        bindings=doctor.runtime_file_bindings(runtime_inspection),
         python_executable=request.python_executable,
         snakemake_version=observed_version,
+        runtime_profile_path=profile_path,
     )
     if tuple(attempt["required_tools"]) != expected_tools:
         raise LifecycleError(

@@ -249,6 +249,8 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
             "name": "norad",
             "version": "0.1.0",
             "path": "/checkout/.venv/bin/python",
+            "resolved_path": "/checkout/.venv/bin/python",
+            "sha256": ZERO_HASH,
         },
         "workspace": "/workspace",
         "scratch": None,
@@ -279,11 +281,15 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
                 "name": "python",
                 "version": "3.14.5",
                 "path": "/checkout/.venv/bin/python",
+                "resolved_path": "/checkout/.venv/bin/python",
+                "sha256": ZERO_HASH,
             },
             {
                 "name": "snakemake",
                 "version": "9.25.1",
                 "path": "/checkout/.venv/bin/python",
+                "resolved_path": "/checkout/.venv/bin/python",
+                "sha256": ZERO_HASH,
             },
         ],
     }
@@ -333,10 +339,10 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "validation_report": record_reference(
             f"attempts/{WORKFLOW_ATTEMPT_ID}/tasks/star_alignment/EV-1/validation.tsv"
         ),
-        "stdout_path": (
+        "stdout_log": record_reference(
             f"attempts/{WORKFLOW_ATTEMPT_ID}/tasks/star_alignment/EV-1/stdout.log"
         ),
-        "stderr_path": (
+        "stderr_log": record_reference(
             f"attempts/{WORKFLOW_ATTEMPT_ID}/tasks/star_alignment/EV-1/stderr.log"
         ),
         "failure_message": None,
@@ -674,6 +680,21 @@ def test_task_attempt_distinguishes_preentry_failure_from_started_work() -> None
         orchestration.validate_record("task-attempt", preentry)
 
 
+def test_task_attempt_logs_are_closed_content_references() -> None:
+    attempt = lifecycle_records()["task-attempt"]
+    attempt["stdout_path"] = attempt.pop("stdout_log")["path"]
+    with pytest.raises(
+        orchestration.ContractValidationError,
+        match="stdout_log.*required|stdout_path.*unexpected",
+    ):
+        orchestration.validate_record("task-attempt", attempt)
+
+    attempt = lifecycle_records()["task-attempt"]
+    attempt["stderr_log"].pop("sha256")
+    with pytest.raises(orchestration.ContractValidationError, match="sha256.*required"):
+        orchestration.validate_record("task-attempt", attempt)
+
+
 def test_attempt_receipt_terminal_semantics_and_unique_scope_references() -> None:
     receipt = lifecycle_records()["attempt-receipt"]
     receipt["verified_tasks"].append(copy.deepcopy(receipt["verified_tasks"][0]))
@@ -757,9 +778,45 @@ def test_workflow_attempt_requires_clean_checkout_and_named_tools() -> None:
     attempt = lifecycle_records()["workflow-attempt"]
     attempt["required_tools"].insert(
         0,
-        {"name": "z-tool", "version": "1", "path": "/tools/z-tool"},
+        {
+            "name": "z-tool",
+            "version": "1",
+            "path": "/tools/z-tool",
+            "resolved_path": "/tools/z-tool",
+            "sha256": ONE_HASH,
+        },
     )
     with pytest.raises(orchestration.ContractValidationError, match="normalized"):
+        orchestration.validate_record("workflow-attempt", attempt)
+
+    attempt = lifecycle_records()["workflow-attempt"]
+    attempt["required_tools"][1]["sha256"] = ONE_HASH
+    with pytest.raises(
+        orchestration.ContractValidationError, match="same executable bytes"
+    ):
+        orchestration.validate_record("workflow-attempt", attempt)
+
+    attempt = lifecycle_records()["workflow-attempt"]
+    attempt["execution_mode"] = "local-science-tools"
+    with pytest.raises(
+        orchestration.ContractValidationError, match="controlled Python SHA-256"
+    ):
+        orchestration.validate_record("workflow-attempt", attempt)
+
+    attempt = lifecycle_records()["workflow-attempt"]
+    attempt["required_tools"].insert(
+        1,
+        {
+            "name": "sha256_python",
+            "version": "sha256",
+            "path": "/checkout/.venv/bin/python",
+            "resolved_path": "/checkout/.venv/bin/python",
+            "sha256": ONE_HASH,
+        },
+    )
+    with pytest.raises(
+        orchestration.ContractValidationError, match="exact Python executable bytes"
+    ):
         orchestration.validate_record("workflow-attempt", attempt)
 
 

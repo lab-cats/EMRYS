@@ -336,8 +336,9 @@ metadata and is never a reporting input or NORAD completion record.
 
 Task stdout/stderr files are complete opaque command-stream captures for
 diagnosis. They are not the future structured application logs defined by
-`LOGGING_CONTRACT.md`, and their presence or content never establishes task
-success or evidence promotion.
+`LOGGING_CONTRACT.md`. Each task-attempt record binds both captures by canonical
+path and SHA-256; their presence or content never establishes task success or
+evidence promotion, but later mutation invalidates that task evidence.
 
 ## Planning and mutation boundary
 

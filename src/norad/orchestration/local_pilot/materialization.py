@@ -174,15 +174,52 @@ def _validator(
 def _r_owner_command(
     bash: str,
     source_root: Path,
+    renv_library: Path,
     script: Path,
     arguments: Sequence[str],
 ) -> tuple[str, ...]:
     bootstrap = (
+        "for norad_env_name in $(compgen -A variable); do "
+        'case "$norad_env_name" in '
+        'R_LIBS*|R_PROFILE*|R_ENVIRON*|RENV_*) unset "$norad_env_name";; '
+        "esac; done; "
         'export NORAD_USE_RENV=1 RENV_PROJECT="$1" '
         'R_PROFILE_USER="$1/.Rprofile" RENV_CONFIG_SANDBOX_ENABLED=FALSE '
-        'RENV_CONFIG_AUTO_SNAPSHOT=FALSE; shift; exec "$@"'
+        'RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PATHS_LIBRARY="$2"; '
+        'shift 2; exec "$@"'
     )
-    return (bash, "-c", bootstrap, "norad-r", str(source_root), str(script), *arguments)
+    return (
+        bash,
+        "-c",
+        bootstrap,
+        "norad-r",
+        str(source_root),
+        str(renv_library),
+        str(script),
+        *arguments,
+    )
+
+
+def _owner_environment_command(
+    bash: str,
+    sha256_python: str,
+    owner_run_token: str,
+    command: Sequence[str],
+) -> tuple[str, ...]:
+    bootstrap = (
+        'export NORAD_RUN_TOKEN="$1" NORAD_SHA256_PYTHON="$2" '
+        "NORAD_REQUIRE_BOUND_SHA256=1; "
+        'shift 2; exec "$@"'
+    )
+    return (
+        bash,
+        "-c",
+        bootstrap,
+        "norad-owner",
+        owner_run_token,
+        sha256_python,
+        *command,
+    )
 
 
 def _task_commands(
@@ -217,7 +254,9 @@ def _task_commands(
     picard_jar = _runtime_path(runtime, "picard_jar")
     bcftools = _runtime_path(runtime, "bcftools")
     infer_experiment = _runtime_path(runtime, "infer_experiment")
+    gunzip = _runtime_path(runtime, "gunzip")
     rscript = _runtime_path(runtime, "rscript")
+    renv_library = Path(_runtime_path(runtime, "renv_library"))
     validation = next(
         (
             path
@@ -378,6 +417,8 @@ def _task_commands(
                 "1",
                 "--star-bin",
                 star,
+                "--gunzip-bin",
+                gunzip,
                 "--no-clobber",
                 "--execute",
             )
@@ -774,6 +815,7 @@ def _task_commands(
         producer = _r_owner_command(
             bash,
             source_root,
+            renv_library,
             source_root
             / "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
             arguments,
@@ -863,6 +905,7 @@ def _task_commands(
         producer = _r_owner_command(
             bash,
             source_root,
+            renv_library,
             source_root
             / "src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh",
             arguments,
@@ -967,6 +1010,13 @@ def _dispatches(
         suffix = hashlib.sha256(
             f"{attempt_id}:{task.machine_key}:{task.scope_id}".encode()
         ).hexdigest()[:32]
+        owner_run_token = f"owner-{suffix}"
+        producer = _owner_environment_command(
+            _runtime_path(runtime, "bash"),
+            _runtime_path(runtime, "sha256_python"),
+            owner_run_token,
+            producer,
+        )
         task_id = f"task-{compact_time}-{suffix}"
         task_root = (
             run_root
@@ -991,7 +1041,7 @@ def _dispatches(
             "profile_path": str(run_root / "contract/profile.json"),
             "workflow_attempt_id": attempt_id,
             "task_attempt_id": task_id,
-            "owner_run_token": f"owner-{suffix}",
+            "owner_run_token": owner_run_token,
             "machine_key": task.machine_key,
             "scope": task.scope,
             "producer_argv": list(producer),
@@ -1065,6 +1115,10 @@ def build_attempt_plan(
         )
     if readiness.source_commit is None:
         raise MaterializationError("Doctor did not admit one exact source commit")
+    if readiness.runtime_profile_sha256 != readiness.inspection.profile_sha256:
+        raise MaterializationError(
+            "Doctor runtime profile digest differs from its inspected bytes"
+        )
     if operation == "execute" and supersedes_workflow_attempt_id is not None:
         raise MaterializationError("Initial execution may not supersede an attempt")
     if operation == "resume" and supersedes_workflow_attempt_id is None:
@@ -1086,9 +1140,16 @@ def build_attempt_plan(
     runtime_profile_path = run_root / "contract" / "runtime-profile.tsv"
     required_tools = doctor.required_tool_identities(
         readiness.inspection,
+        bindings=readiness.bindings,
         python_executable=Path(sys.executable),
         runtime_profile_path=runtime_profile_path,
     )
+    python_identity = next(item for item in required_tools if item["name"] == "python")
+    normalizer_identity = {
+        **python_identity,
+        "name": "norad",
+        "version": __version__,
+    }
     retained = {} if retained_dispatches is None else dict(retained_dispatches)
     dispatch_files, dispatch_references, dispatch_directories = _dispatches(
         normalized,
@@ -1192,7 +1253,7 @@ def build_attempt_plan(
             "reference_gtf": str(request["reference"]["gtf"]),
             "analysis_policy": None,
         },
-        "normalizer": {"name": "norad", "version": __version__, "path": sys.executable},
+        "normalizer": normalizer_identity,
         "workspace": str(workspace_path),
         "scratch": None,
         "source_checkout": {

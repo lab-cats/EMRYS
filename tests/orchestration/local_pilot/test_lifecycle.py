@@ -288,8 +288,8 @@ def _materialize_preentry_failure(
     task_attempt_path.parent.mkdir(parents=True, exist_ok=True)
     stdout = Path(dispatch["stdout_path"])
     stderr = Path(dispatch["stderr_path"])
-    stdout.write_bytes(b"")
-    stderr.write_bytes(b"")
+    stdout.write_bytes(b"fixture preentry stdout\n")
+    stderr.write_bytes(b"fixture preentry stderr\n")
     record = {
         "schema_version": "norad.task-attempt.v1",
         "run_id": built.execution["run_id"],
@@ -313,8 +313,8 @@ def _materialize_preentry_failure(
         "semantic_all_pass": None,
         "stable_inputs_rechecked": False,
         "validation_report": None,
-        "stdout_path": stdout.relative_to(built.run_root).as_posix(),
-        "stderr_path": stderr.relative_to(built.run_root).as_posix(),
+        "stdout_log": _record_reference(stdout, built.run_root),
+        "stderr_log": _record_reference(stderr, built.run_root),
         "failure_message": "fixture preentry admission failure",
     }
     orchestration_contracts.validate_record("task-attempt", record)
@@ -404,8 +404,8 @@ def _materialize_verified(
             task_start_path.write_bytes(start_bytes)
         task_start_reference = _record_reference(task_start_path, built.run_root)
         task_attempt_path = task_root / "task-attempt.json"
-        (task_root / "stdout.log").write_bytes(b"")
-        (task_root / "stderr.log").write_bytes(b"")
+        (task_root / "stdout.log").write_bytes(b"fixture owner stdout\n")
+        (task_root / "stderr.log").write_bytes(b"fixture owner stderr\n")
         report_reference = _record_reference(report_path, built.run_root)
         task_attempt = {
             "schema_version": "norad.task-attempt.v1",
@@ -426,12 +426,8 @@ def _materialize_verified(
             "semantic_all_pass": command,
             "stable_inputs_rechecked": True,
             "validation_report": report_reference,
-            "stdout_path": (task_root / "stdout.log")
-            .relative_to(built.run_root)
-            .as_posix(),
-            "stderr_path": (task_root / "stderr.log")
-            .relative_to(built.run_root)
-            .as_posix(),
+            "stdout_log": _record_reference(task_root / "stdout.log", built.run_root),
+            "stderr_log": _record_reference(task_root / "stderr.log", built.run_root),
             "failure_message": None,
         }
         orchestration_contracts.validate_record("task-attempt", task_attempt)
@@ -680,6 +676,10 @@ def _attempt(
             "name": "norad",
             "version": "0.1.0",
             "path": sys.executable,
+            "resolved_path": str(Path(sys.executable).resolve(strict=True)),
+            "sha256": hashlib.sha256(
+                Path(sys.executable).resolve(strict=True).read_bytes()
+            ).hexdigest(),
         },
         "workspace": str(built.run_root.parent.parent),
         "scratch": None,
@@ -704,11 +704,19 @@ def _attempt(
                 "name": "python",
                 "version": platform.python_version(),
                 "path": sys.executable,
+                "resolved_path": str(Path(sys.executable).resolve(strict=True)),
+                "sha256": hashlib.sha256(
+                    Path(sys.executable).resolve(strict=True).read_bytes()
+                ).hexdigest(),
             },
             {
                 "name": "snakemake",
                 "version": "9.25.1",
                 "path": sys.executable,
+                "resolved_path": str(Path(sys.executable).resolve(strict=True)),
+                "sha256": hashlib.sha256(
+                    Path(sys.executable).resolve(strict=True).read_bytes()
+                ).hexdigest(),
             },
         ],
     }
@@ -864,6 +872,27 @@ def test_foreign_python_runtime_is_rejected_before_mutation(tmp_path: Path) -> N
     with pytest.raises(lifecycle.LifecycleError, match="lexical sys.executable"):
         lifecycle.run_attempt(request, ops=built.ops())
     assert built.events == []
+
+
+def test_required_tool_same_path_and_version_rejects_byte_mutation(
+    tmp_path: Path,
+) -> None:
+    tool = tmp_path / "tool"
+    tool.write_bytes(b"first executable bytes\n")
+    tool.chmod(0o755)
+    identity = {
+        "name": "star",
+        "version": "2.7.11b",
+        "path": str(tool),
+        "resolved_path": str(tool),
+        "sha256": hashlib.sha256(tool.read_bytes()).hexdigest(),
+    }
+
+    lifecycle._admit_required_tool_identity(identity)
+    tool.write_bytes(b"different executable bytes\n")
+
+    with pytest.raises(lifecycle.LifecycleError, match="byte digest differs"):
+        lifecycle._admit_required_tool_identity(identity)
 
 
 def test_alternate_checkout_snakefile_is_rejected_before_mutation(
@@ -1609,6 +1638,76 @@ def test_historical_task_tree_is_recursively_closed(
     )
     assert observed.state == "blocked"
     assert any("task" in blocker.lower() for blocker in observed.blockers)
+
+
+@pytest.mark.parametrize("file_name", ["stdout.log", "stderr.log"])
+@pytest.mark.parametrize("tamper", ["append", "truncate"])
+def test_task_log_mutation_blocks_completed_run_inspection(
+    tmp_path: Path,
+    file_name: str,
+    tamper: str,
+) -> None:
+    built = _build_harness(tmp_path)
+    built.materialize_complete = True
+    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    task_root = outcome.attempt_path.parent / "tasks"
+    log_path = next(task_root.glob(f"*/*/{file_name}"))
+    if tamper == "append":
+        with log_path.open("ab") as stream:
+            stream.write(b"foreign log bytes\n")
+    else:
+        log_path.write_bytes(b"")
+
+    observed = inspection.inspect_run(
+        built.built.run_root,
+        ops=inspection.InspectionOps(
+            lambda: "fixture-host",
+            lambda _pid: True,
+            built.validate_reporting,
+        ),
+    )
+    assert observed.state == "blocked"
+    assert any(
+        "binds different" in blocker and file_name.split(".")[0] in blocker
+        for blocker in observed.blockers
+    )
+
+
+@pytest.mark.parametrize("file_name", ["stdout.log", "stderr.log"])
+@pytest.mark.parametrize("tamper", ["append", "truncate"])
+def test_preentry_task_log_mutation_blocks_resume(
+    tmp_path: Path,
+    file_name: str,
+    tamper: str,
+) -> None:
+    built = _build_harness(
+        tmp_path,
+        result=lifecycle.WorkflowResult(23, None, "preentry failure"),
+    )
+    built.materialize_preentry_failure = True
+    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    assert outcome.receipt["status"] == "failed"
+    log_path = next(outcome.attempt_path.parent.glob(f"tasks/*/*/{file_name}"))
+    if tamper == "append":
+        with log_path.open("ab") as stream:
+            stream.write(b"foreign log bytes\n")
+    else:
+        log_path.write_bytes(b"")
+
+    observed = inspection.inspect_run(
+        built.built.run_root,
+        ops=inspection.InspectionOps(
+            lambda: "fixture-host",
+            lambda _pid: True,
+            built.validate_reporting,
+        ),
+    )
+    assert observed.state == "blocked"
+    assert observed.resume_available is False
+    assert any(
+        "binds different" in blocker and file_name.split(".")[0] in blocker
+        for blocker in observed.blockers
+    )
 
 
 def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -> None:

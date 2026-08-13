@@ -20,6 +20,7 @@ from norad.evidence.runtime_availability.inspector import (
     RuntimeInspection,
     RuntimeObservation,
 )
+from norad.libraries.source_authority import controlled_python_argv
 from norad.orchestration.local_pilot import control, doctor, inspection, lifecycle
 from norad.orchestration.local_pilot.materialization import (
     MaterializationError,
@@ -55,15 +56,21 @@ def _readiness(
     tool.chmod(0o755)
     jar = tmp_path / "picard.jar"
     jar.write_bytes(b"jar\n")
+    renv_library = tmp_path / "renv-library"
+    renv_library.mkdir(exist_ok=True)
     observations: list[RuntimeObservation] = []
     rscript = str(tool)
     for check_id, check_type in doctor.LOCAL_PILOT_RUNTIME_CHECKS:
-        if check_id == "python":
+        if check_id in {"python", "sha256_python"}:
+            target = sys.executable
+        elif check_id == "snakemake":
             target = sys.executable
         elif check_id == "picard_jar":
             target = str(jar)
         elif check_id == "renv_project":
             target = str(source_root)
+        elif check_id == "renv_library":
+            target = str(renv_library)
         elif check_type == "r_namespace":
             target = next(
                 package
@@ -78,6 +85,14 @@ def _readiness(
             probe_args = ("file_readable",)
         elif check_id == "renv_project":
             probe_args = ("directory_readable",)
+        elif check_id == "renv_library":
+            probe_args = ("directory_readable",)
+        elif check_id == "snakemake":
+            probe_args = controlled_python_argv(
+                sys.executable, "-m", "snakemake", "--version"
+            )[1:]
+        elif check_id == "sha256_python":
+            probe_args = ("python_hashlib",)
         elif check_type == "r_namespace":
             probe_args = (rscript,)
         else:
@@ -112,6 +127,7 @@ def _readiness(
         rendered_bytes=b"test runtime report\n",
     )
     workspace = tmp_path / "workspace"
+    bindings = doctor.runtime_file_bindings(runtime_inspection)
     readiness = doctor.DoctorResult(
         request_path=request,
         run_id=normalized.run_id,
@@ -121,7 +137,7 @@ def _readiness(
         runtime_profile=runtime,
         runtime_profile_sha256=runtime_inspection.profile_sha256,
         inspection=runtime_inspection,
-        bindings=(),
+        bindings=bindings,
         blockers=(),
         remediations=(),
     )
@@ -172,16 +188,43 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     )
     assert "--genome-sa-index-nbases" in step00a["producer_argv"]
     assert "--expected-genome-sa-index-nbases" in step00a["validator_argv"]
+    step01 = next(
+        record
+        for record in records
+        if record["machine_key"] == "norad.stage.align_RNA_reads_with_STAR.v1"
+    )
+    assert "--gunzip-bin" in step01["producer_argv"]
+    assert step01["producer_argv"][
+        step01["producer_argv"].index("--gunzip-bin") + 1
+    ] == str(tmp_path / "tool")
     step08 = next(
         record
         for record in records
         if record["machine_key"]
         == "norad.stage.preprocess_and_annotate_cohort_candidates.v1"
     )
-    assert "NORAD_USE_RENV=1" in step08["producer_argv"][2]
+    producer = step08["producer_argv"]
+    assert producer[:4] == [
+        str(tmp_path / "tool"),
+        "-c",
+        (
+            'export NORAD_RUN_TOKEN="$1" NORAD_SHA256_PYTHON="$2" '
+            'NORAD_REQUIRE_BOUND_SHA256=1; shift 2; exec "$@"'
+        ),
+        "norad-owner",
+    ]
+    assert producer[4] == step08["owner_run_token"]
+    assert producer[5] == sys.executable
+    assert any("NORAD_USE_RENV=1" in item for item in producer)
+    assert any('RENV_PATHS_LIBRARY="$2"' in item for item in producer)
+    assert str(tmp_path / "renv-library") in producer
     assert plan.attempt_record["execution_mode"] == "local-science-tools"
     assert [item["name"] for item in plan.attempt_record["required_tools"]] == sorted(
         item["name"] for item in plan.attempt_record["required_tools"]
+    )
+    assert all(
+        set(item) == {"name", "version", "path", "resolved_path", "sha256"}
+        for item in plan.attempt_record["required_tools"]
     )
 
 

@@ -465,6 +465,47 @@ def _validate_identity_record(name: str, record: Mapping[str, Any]) -> None:
             raise ContractValidationError(
                 "Workflow Python, Snakemake, and normalizer paths must be identical"
             )
+        if (
+            record["normalizer"]["resolved_path"] != tools["python"]["resolved_path"]
+            or record["normalizer"]["sha256"] != tools["python"]["sha256"]
+        ):
+            raise ContractValidationError(
+                "Workflow normalizer must bind the exact Python executable bytes"
+            )
+        if (
+            tools["python"]["resolved_path"] != tools["snakemake"]["resolved_path"]
+            or tools["python"]["sha256"] != tools["snakemake"]["sha256"]
+            or tools["python"]["sha256"] is None
+        ):
+            raise ContractValidationError(
+                "Workflow Python and Snakemake must bind the same executable bytes"
+            )
+        sha256_python = tools.get("sha256_python")
+        if record["execution_mode"] == "local-science-tools" and sha256_python is None:
+            raise ContractValidationError(
+                "Local science workflow must bind controlled Python SHA-256"
+            )
+        if sha256_python is not None and any(
+            sha256_python[field] != tools["python"][field]
+            for field in ("path", "resolved_path", "sha256")
+        ):
+            raise ContractValidationError(
+                "Workflow SHA-256 Python must bind the exact Python executable bytes"
+            )
+        directory_tools = {"renv_project", "renv_library"}
+        for tool in record["required_tools"]:
+            if (tool["name"] in directory_tools) != (tool["sha256"] is None):
+                raise ContractValidationError(
+                    "Only required runtime directory identities may omit a byte digest"
+                )
+        runtime_profile = tools.get("runtime_profile")
+        if runtime_profile is not None and (
+            runtime_profile["sha256"] is None
+            or runtime_profile["version"] != f"sha256:{runtime_profile['sha256']}"
+        ):
+            raise ContractValidationError(
+                "Workflow runtime profile version must bind its exact byte digest"
+            )
         argv = list(record["snakemake_argv"])
         expected_python_prefix = list(
             controlled_python_argv(runtime_path, "-m", "snakemake")

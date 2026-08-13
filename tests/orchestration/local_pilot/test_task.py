@@ -205,6 +205,10 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
             "name": "norad",
             "version": "0.1.0",
             "path": sys.executable,
+            "resolved_path": str(Path(sys.executable).resolve(strict=True)),
+            "sha256": hashlib.sha256(
+                Path(sys.executable).resolve(strict=True).read_bytes()
+            ).hexdigest(),
         },
         "workspace": str(tmp_path.resolve()),
         "scratch": None,
@@ -233,8 +237,24 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
         "owner_token": "task-fixture-owner",
         "cores": 1,
         "required_tools": [
-            {"name": "python", "version": "3.14", "path": sys.executable},
-            {"name": "snakemake", "version": "9.25.1", "path": sys.executable},
+            {
+                "name": "python",
+                "version": "3.14",
+                "path": sys.executable,
+                "resolved_path": str(Path(sys.executable).resolve(strict=True)),
+                "sha256": hashlib.sha256(
+                    Path(sys.executable).resolve(strict=True).read_bytes()
+                ).hexdigest(),
+            },
+            {
+                "name": "snakemake",
+                "version": "9.25.1",
+                "path": sys.executable,
+                "resolved_path": str(Path(sys.executable).resolve(strict=True)),
+                "sha256": hashlib.sha256(
+                    Path(sys.executable).resolve(strict=True).read_bytes()
+                ).hexdigest(),
+            },
         ],
     }
     orchestration_contracts.validate_record("workflow-attempt", attempt)
@@ -417,6 +437,22 @@ def test_success_publishes_schema_valid_content_bound_records(tmp_path: Path) ->
         b"producer stderr complete\nvalidator stderr complete\n"
         in Path(built.dispatch["stderr_path"]).read_bytes()
     )
+    assert attempt["stdout_log"] == {
+        "path": Path(built.dispatch["stdout_path"])
+        .relative_to(built.run_root)
+        .as_posix(),
+        "sha256": hashlib.sha256(
+            Path(built.dispatch["stdout_path"]).read_bytes()
+        ).hexdigest(),
+    }
+    assert attempt["stderr_log"] == {
+        "path": Path(built.dispatch["stderr_path"])
+        .relative_to(built.run_root)
+        .as_posix(),
+        "sha256": hashlib.sha256(
+            Path(built.dispatch["stderr_path"]).read_bytes()
+        ).hexdigest(),
+    }
 
 
 def test_records_exact_public_commands_and_exit_codes(tmp_path: Path) -> None:
@@ -667,6 +703,43 @@ def test_task_start_publication_failure_after_link_never_enters_producer(
     assert attempt["producer"] is None
 
 
+@pytest.mark.parametrize(
+    ("field", "message"),
+    [
+        ("stdout_path", "Task stdout changed"),
+        ("stderr_path", "Task stderr changed"),
+    ],
+)
+def test_log_change_during_attempt_publication_blocks_verified_record(
+    tmp_path: Path,
+    field: str,
+    message: str,
+) -> None:
+    built = _task_fixture(tmp_path)
+    defaults = _fixed_ops()
+
+    def publish(path: Path, data: bytes) -> None:
+        defaults.publish_bytes(path, data)
+        if path == Path(built.dispatch["task_attempt_path"]):
+            with Path(built.dispatch[field]).open("ab") as stream:
+                stream.write(b"foreign log bytes\n")
+
+    with pytest.raises(task.TaskBoundaryError, match=message):
+        _execute_dispatch(
+            built.dispatch_path,
+            ops=task.TaskOps(
+                run_command=defaults.run_command,
+                run_semantic_all_pass=defaults.run_semantic_all_pass,
+                publish_bytes=publish,
+                now=defaults.now,
+                attest_source_checkout=defaults.attest_source_checkout,
+            ),
+        )
+
+    assert Path(built.dispatch["task_attempt_path"]).is_file()
+    assert not Path(built.dispatch["verified_task_path"]).exists()
+
+
 def test_internal_module_cli_is_isolated_and_not_a_public_lifecycle_command(
     tmp_path: Path,
 ) -> None:
@@ -761,6 +834,33 @@ def test_read_only_verified_admission_rechecks_every_content_binding(
             run_root=built.run_root,
             execution=execution,
             profile=profile,
+            machine_key=MACHINE_KEY,
+            scope=built.dispatch["scope"],
+        )
+
+
+@pytest.mark.parametrize("field", ["stdout_path", "stderr_path"])
+@pytest.mark.parametrize("tamper", ["append", "truncate"])
+def test_read_only_verified_admission_rechecks_task_log_hashes(
+    tmp_path: Path,
+    field: str,
+    tamper: str,
+) -> None:
+    built = _task_fixture(tmp_path)
+    _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
+    log_path = Path(built.dispatch[field])
+    if tamper == "append":
+        with log_path.open("ab") as stream:
+            stream.write(b"foreign log bytes\n")
+    else:
+        log_path.write_bytes(b"")
+
+    with pytest.raises(task.TaskBoundaryError, match="SHA-256 no longer matches"):
+        task.validate_verified_task(
+            Path(built.dispatch["verified_task_path"]),
+            run_root=built.run_root,
+            execution=_record(built.dispatch["execution_path"]),
+            profile=_record(built.dispatch["profile_path"]),
             machine_key=MACHINE_KEY,
             scope=built.dispatch["scope"],
         )

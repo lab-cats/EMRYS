@@ -90,7 +90,9 @@ must end in a succeeded task-attempt plus verified-task chain to be reusable.
 If admission fails before start publication, the exact failed task attempt and
 its two logs are retained as a bound pre-entry diagnostic; because the owner
 never entered, a later attempt may retry that scope without erasing the earlier
-record.
+record. Every task attempt binds the exact path and SHA-256 of both captured
+logs; inspection and verified-task reuse re-read those bytes, so later mutation
+or truncation blocks completion and resume.
 
 Snakemake schedules only verified-task records. Native artifacts, validation
 reports, receipts, logs, and recovery evidence are never disposable workflow

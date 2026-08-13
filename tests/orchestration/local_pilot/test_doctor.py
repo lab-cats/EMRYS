@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,7 @@ from norad.evidence.runtime_availability.inspector import (
 from norad.libraries.source_authority import (
     SourceCheckoutError,
     SourceCheckoutIdentity,
+    controlled_python_argv,
 )
 from norad.orchestration.local_pilot import doctor
 from norad.orchestration.local_pilot.normalization import normalize_request
@@ -63,11 +65,26 @@ def _inspection(tmp_path: Path, *, failing: str | None = None) -> RuntimeInspect
     tool.chmod(0o755)
     jar = tmp_path / "picard.jar"
     jar.write_bytes(b"jar\n")
+    renv_library = tmp_path / "renv-library"
+    renv_library.mkdir(exist_ok=True)
     rscript = str(tool)
     observations = [
         _check("bash", "tool_version", str(tool), probe_args=("--version",)),
         _check("python", "tool_version", sys.executable, probe_args=("--version",)),
-        _check("snakemake", "tool_version", str(tool), probe_args=("--version",)),
+        _check(
+            "snakemake",
+            "tool_version",
+            sys.executable,
+            probe_args=controlled_python_argv(
+                sys.executable, "-m", "snakemake", "--version"
+            )[1:],
+        ),
+        _check(
+            "sha256_python",
+            "hash_utility",
+            sys.executable,
+            probe_args=("python_hashlib",),
+        ),
         _check("star", "tool_version", str(tool), probe_args=("--version",)),
         _check("samtools", "tool_version", str(tool), probe_args=("--version",)),
         _check("java", "tool_version", str(tool), probe_args=("-version",)),
@@ -91,11 +108,18 @@ def _inspection(tmp_path: Path, *, failing: str | None = None) -> RuntimeInspect
             str(tool),
             probe_args=("--version",),
         ),
+        _check("gunzip", "tool_version", str(tool), probe_args=("--version",)),
         _check("rscript", "tool_version", rscript, probe_args=("--version",)),
         _check(
             "renv_project",
             "path_visibility",
             str(REPO_ROOT),
+            probe_args=("directory_readable",),
+        ),
+        _check(
+            "renv_library",
+            "path_visibility",
+            str(renv_library),
             probe_args=("directory_readable",),
         ),
     ]
@@ -153,10 +177,17 @@ def _ops(
         normalize=normalize_request,
         inspect_runtime=inspect_runtime,
         observe_snakemake=lambda _python: doctor.SNAKEMAKE_VERSION,
+        load_runtime_profile=lambda _path: (
+            inspection.profile_bytes,
+            tuple(item.check for item in inspection.observations),
+        ),
     )
 
 
-def test_ready_doctor_is_read_only_and_guards_renv(tmp_path: Path) -> None:
+def test_ready_doctor_is_read_only_and_guards_renv(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     request_root = tmp_path / "request"
     request_root.mkdir()
     request = build(request_root)
@@ -165,6 +196,12 @@ def test_ready_doctor_is_read_only_and_guards_renv(tmp_path: Path) -> None:
     runtime.write_text("placeholder\n", encoding="utf-8")
     environment_log: list[dict[str, str]] = []
     inspection = _inspection(tmp_path)
+    monkeypatch.setenv("R_LIBS_USER", "/ambient/r-library")
+    monkeypatch.setenv("R_LIBS_CUSTOM", "/ambient/custom-library")
+    monkeypatch.setenv("RENV_PATHS_CACHE", "/ambient/renv-cache")
+    monkeypatch.setenv("RENV_CONFIG_USER_PROFILE", "/ambient/profile")
+    monkeypatch.setenv("R_PROFILE_SITE", "/ambient/site-profile")
+    monkeypatch.setenv("R_ENVIRON_USER", "/ambient/environ")
     before = {
         path.relative_to(tmp_path): (path.stat().st_mode, path.read_bytes())
         for path in tmp_path.rglob("*")
@@ -184,15 +221,35 @@ def test_ready_doctor_is_read_only_and_guards_renv(tmp_path: Path) -> None:
     assert result.source_commit == "a" * 40
     assert not workspace.exists()
     assert environment_log == [
-        {
-            **os.environ,
-            "NORAD_USE_RENV": "1",
-            "RENV_PROJECT": str(REPO_ROOT),
-            "R_PROFILE_USER": str(REPO_ROOT / ".Rprofile"),
-            "RENV_CONFIG_SANDBOX_ENABLED": "FALSE",
-            "RENV_CONFIG_AUTO_SNAPSHOT": "FALSE",
-        }
+        doctor.runtime_environment(
+            REPO_ROOT,
+            tmp_path / "renv-library",
+            base_environment=os.environ,
+        )
     ]
+    assert not {
+        "R_LIBS_USER",
+        "R_LIBS_CUSTOM",
+        "RENV_PATHS_CACHE",
+        "RENV_CONFIG_USER_PROFILE",
+        "R_PROFILE_SITE",
+        "R_ENVIRON_USER",
+    }.intersection(environment_log[0])
+    identities = doctor.required_tool_identities(
+        result.inspection,
+        bindings=result.bindings,
+        python_executable=Path(sys.executable),
+    )
+    by_name = {item["name"]: item for item in identities}
+    assert by_name["python"]["sha256"] == by_name["snakemake"]["sha256"]
+    assert by_name["snakemake"]["path"] == sys.executable
+    assert by_name["renv_library"] == {
+        "name": "renv_library",
+        "version": "observed",
+        "path": str(tmp_path / "renv-library"),
+        "resolved_path": str(tmp_path / "renv-library"),
+        "sha256": None,
+    }
     after = {
         path.relative_to(tmp_path): (path.stat().st_mode, path.read_bytes())
         for path in tmp_path.rglob("*")
@@ -309,6 +366,7 @@ def test_malformed_runtime_profile_is_usage_error(tmp_path: Path) -> None:
         normalize=ops.normalize,
         inspect_runtime=reject_runtime,
         observe_snakemake=ops.observe_snakemake,
+        load_runtime_profile=ops.load_runtime_profile,
     )
     with pytest.raises(doctor.DoctorInputError, match="invalid runtime profile"):
         doctor.inspect_local_pilot(
@@ -317,6 +375,37 @@ def test_malformed_runtime_profile_is_usage_error(tmp_path: Path) -> None:
             runtime,
             source_root=REPO_ROOT,
             ops=rejecting,
+        )
+
+
+def test_renv_library_must_be_an_existing_canonical_real_directory(
+    tmp_path: Path,
+) -> None:
+    request = build(tmp_path)
+    runtime = tmp_path / "runtime.tsv"
+    runtime.write_text("placeholder\n", encoding="utf-8")
+    inspection = _inspection(tmp_path)
+    real_library = tmp_path / "renv-library"
+    linked_library = tmp_path / "linked-renv-library"
+    linked_library.symlink_to(real_library, target_is_directory=True)
+    observations = tuple(
+        replace(
+            item,
+            check=replace(item.check, target=str(linked_library)),
+        )
+        if item.check.check_id == "renv_library"
+        else item
+        for item in inspection.observations
+    )
+    linked_inspection = replace(inspection, observations=observations)
+
+    with pytest.raises(doctor.DoctorInputError, match="canonical real directory"):
+        doctor.inspect_local_pilot(
+            request,
+            tmp_path / "workspace",
+            runtime,
+            source_root=REPO_ROOT,
+            ops=_ops(linked_inspection),
         )
 
 
@@ -377,6 +466,7 @@ def test_cli_statuses_and_help(
             normalize=base_ops.normalize,
             inspect_runtime=reject_runtime,
             observe_snakemake=base_ops.observe_snakemake,
+            load_runtime_profile=base_ops.load_runtime_profile,
         ),
     )
     malformed_output = capsys.readouterr()
@@ -394,4 +484,15 @@ def test_tracked_runtime_starter_has_exact_contract() -> None:
     )
     assert all(row["required"] == "true" for row in rows)
     assert all(row["runtime_context"] == "local" for row in rows)
+    by_name = {row["check_id"]: row for row in rows}
+    assert by_name["snakemake"]["target"] == by_name["python"]["target"]
+    assert json.loads(by_name["snakemake"]["probe_args"]) == [
+        "-X",
+        "pycache_prefix=/dev/null",
+        "-I",
+        "-m",
+        "snakemake",
+        "--version",
+    ]
+    assert json.loads(by_name["renv_library"]["probe_args"]) == ["directory_readable"]
     assert json.loads(rows[-1]["probe_args"]) == ["/absolute/path/to/Rscript"]

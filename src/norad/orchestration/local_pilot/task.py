@@ -1279,6 +1279,22 @@ def validate_verified_task(
         raise TaskBoundaryError("Referenced task attempt is not successful")
     if attempt["task_start_record"] != record["task_start_record"]:
         raise TaskBoundaryError("Task attempt and verified task disagree on task start")
+    for field, file_name in (
+        ("stdout_log", "stdout.log"),
+        ("stderr_log", "stderr.log"),
+    ):
+        expected_log_path = attempt_path.with_name(file_name)
+        expected_log_reference = {
+            "path": _relative(expected_log_path, canonical_root),
+            "sha256": attempt[field]["sha256"],
+        }
+        if attempt[field] != expected_log_reference:
+            raise TaskBoundaryError(f"Task attempt binds a different {field}")
+        _verify_reference(
+            attempt[field],
+            run_root=canonical_root,
+            label=field.replace("_", " "),
+        )
     start_path = _verify_reference(
         record["task_start_record"],
         run_root=canonical_root,
@@ -1366,6 +1382,20 @@ def _publish_attempt(
 ) -> tuple[dict[str, Any], bytes]:
     ops.publish_bytes(dispatch.stdout_path, stdout)
     ops.publish_bytes(dispatch.stderr_path, stderr)
+    stdout_reference = _record_reference(dispatch.stdout_path, dispatch.run_root)
+    stderr_reference = _record_reference(dispatch.stderr_path, dispatch.run_root)
+    expected_stdout_reference = {
+        "path": _relative(dispatch.stdout_path, dispatch.run_root),
+        "sha256": hashlib.sha256(stdout).hexdigest(),
+    }
+    expected_stderr_reference = {
+        "path": _relative(dispatch.stderr_path, dispatch.run_root),
+        "sha256": hashlib.sha256(stderr).hexdigest(),
+    }
+    if stdout_reference != expected_stdout_reference:
+        raise TaskBoundaryError("Published task stdout bytes changed before admission")
+    if stderr_reference != expected_stderr_reference:
+        raise TaskBoundaryError("Published task stderr bytes changed before admission")
     report_reference = None
     if task_start_reference is not None:
         try:
@@ -1397,13 +1427,17 @@ def _publish_attempt(
         "semantic_all_pass": None if semantic is None else semantic.record,
         "stable_inputs_rechecked": stable_inputs_rechecked,
         "validation_report": report_reference,
-        "stdout_path": _relative(dispatch.stdout_path, dispatch.run_root),
-        "stderr_path": _relative(dispatch.stderr_path, dispatch.run_root),
+        "stdout_log": stdout_reference,
+        "stderr_log": stderr_reference,
         "failure_message": failure_message,
     }
     orchestration_contracts.validate_record("task-attempt", attempt)
     attempt_bytes = orchestration_contracts.canonical_json_bytes(attempt)
     ops.publish_bytes(dispatch.task_attempt_path, attempt_bytes)
+    if _record_reference(dispatch.stdout_path, dispatch.run_root) != stdout_reference:
+        raise TaskBoundaryError("Task stdout changed during attempt publication")
+    if _record_reference(dispatch.stderr_path, dispatch.run_root) != stderr_reference:
+        raise TaskBoundaryError("Task stderr changed during attempt publication")
     return attempt, attempt_bytes
 
 

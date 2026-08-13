@@ -41,8 +41,8 @@ The producer accepts:
 - one STAR genome-index directory;
 - one explicit output directory;
 - a positive thread count; and
-- an available STAR executable, plus `gunzip` when both FASTQ paths end in
-  `.gz`.
+- an available STAR executable, plus an explicitly selectable `gunzip`
+  executable when both FASTQ paths end in `.gz`.
 
 The current producer checks path types and matching compression suffixes but
 does not validate FASTQ content, index members, sample-identifier path safety,
@@ -92,8 +92,11 @@ publication removes only invocation-owned staging. During publication, rollback
 removes a final only while it remains the same regular-file inode as its staged
 anchor. A late or replaced foreign final is preserved with the lock and staging
 residue for operator recovery. Existing or foreign state is never adopted or
-deleted. `--star-bin` binds the executable path; tool version and final-output
-hashes remain workflow verified-record responsibilities.
+deleted. `--star-bin` binds the STAR executable path. `--gunzip-bin` binds the
+decompressor used by `--readFilesCommand` for paired `.gz` inputs; direct
+callers that omit it retain the `gunzip`-on-`PATH` default, and uncompressed
+mates do not resolve or validate it. Tool versions and final-output hashes
+remain workflow verified-record responsibilities.
 
 ## Current execution surfaces
 
@@ -104,7 +107,8 @@ public producer entrypoint. It:
 - is dry-run by default and requires `--execute` to invoke STAR;
 - creates no output directory in dry-run mode;
 - rejects mixed compressed and uncompressed mate paths;
-- adds `--readFilesCommand gunzip -c` when both inputs end in `.gz`;
+- resolves the selected `--gunzip-bin` only when both mates end in `.gz` and
+  passes that executable to `--readFilesCommand ... -c`;
 - asks STAR for a coordinate-sorted BAM; and
 - retains historical direct-prefix execution unless `--no-clobber` selects the
   orchestration-safe transaction above.

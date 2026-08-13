@@ -887,6 +887,10 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
             "name": "norad",
             "version": "0.1.0",
             "path": sys.executable,
+            "resolved_path": str(Path(sys.executable).resolve(strict=True)),
+            "sha256": hashlib.sha256(
+                Path(sys.executable).resolve(strict=True).read_bytes()
+            ).hexdigest(),
         },
         "workspace": str(root.resolve(strict=True)),
         "scratch": None,
@@ -907,8 +911,20 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
                 "name": "python",
                 "version": platform.python_version(),
                 "path": sys.executable,
+                "resolved_path": str(Path(sys.executable).resolve(strict=True)),
+                "sha256": hashlib.sha256(
+                    Path(sys.executable).resolve(strict=True).read_bytes()
+                ).hexdigest(),
             },
-            {"name": "snakemake", "version": "9.25.1", "path": sys.executable},
+            {
+                "name": "snakemake",
+                "version": "9.25.1",
+                "path": sys.executable,
+                "resolved_path": str(Path(sys.executable).resolve(strict=True)),
+                "sha256": hashlib.sha256(
+                    Path(sys.executable).resolve(strict=True).read_bytes()
+                ).hexdigest(),
+            },
         ],
     }
     dispatch_paths: dict[str, dict[str, str]] = {}

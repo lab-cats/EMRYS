@@ -21,10 +21,14 @@ src/norad/stages/star_alignment/step_01_star_align.sh \
   --r2-fastq data/ABE_EV_2_R2.fastq.gz \
   --star-index refs/novogene_star_index \
   --output-dir results/star/ABE_EV_2 \
-  --threads 8
+  --threads 8 \
+  --gunzip-bin /usr/bin/gunzip
 ```
 
-`STAR` must be on `PATH`, or bind it with `--star-bin`. Dry-run writes nothing.
+`STAR` must be on `PATH`, or bind it with `--star-bin`. When both mates end in
+`.gz`, bind the admitted decompressor explicitly with `--gunzip-bin`; direct
+callers that omit it retain the `gunzip`-on-`PATH` default. Uncompressed mates
+do not resolve or validate a decompressor. Dry-run writes nothing.
 The orchestration-safe invocation adds `--no-clobber`: that mode hashes both
 FASTQs and every admitted top-level regular STAR-index file in deterministic
 name order, uses a per-sample owned lock and run-token staging directory,

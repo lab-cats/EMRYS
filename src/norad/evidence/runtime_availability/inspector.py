@@ -134,6 +134,18 @@ def inspect_runtime_availability(
     )
 
 
+def load_runtime_profile_contract(
+    profile: Path,
+) -> tuple[bytes, tuple[RuntimeCheck, ...]]:
+    """Read and validate one profile without running any declared probes."""
+
+    try:
+        data, checks = load_profile(profile)
+    except PreflightError as exc:
+        raise RuntimeInspectionError(str(exc)) from exc
+    return data, tuple(_public_check(check) for check in checks)
+
+
 def configure_parser(parser: argparse.ArgumentParser) -> None:
     """Add runtime-availability inspection arguments to ``parser``."""
     parser.add_argument("--profile", required=True, type=Path)

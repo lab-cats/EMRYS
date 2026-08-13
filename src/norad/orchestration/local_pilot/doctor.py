@@ -15,9 +15,11 @@ from pathlib import Path
 
 from norad.contracts.orchestration import api as orchestration_contracts
 from norad.evidence.runtime_availability.inspector import (
+    RuntimeCheck,
     RuntimeInspection,
     RuntimeInspectionError,
     inspect_runtime_availability,
+    load_runtime_profile_contract,
 )
 from norad.libraries.source_authority import (
     SourceCheckoutError,
@@ -52,6 +54,7 @@ LOCAL_PILOT_RUNTIME_CHECKS = (
     ("bash", "tool_version"),
     ("python", "tool_version"),
     ("snakemake", "tool_version"),
+    ("sha256_python", "hash_utility"),
     ("star", "tool_version"),
     ("samtools", "tool_version"),
     ("java", "tool_version"),
@@ -60,10 +63,13 @@ LOCAL_PILOT_RUNTIME_CHECKS = (
     ("picard_jar", "path_visibility"),
     ("bcftools", "tool_version"),
     ("infer_experiment", "tool_version"),
+    ("gunzip", "tool_version"),
     ("rscript", "tool_version"),
     ("renv_project", "path_visibility"),
+    ("renv_library", "path_visibility"),
     *((check_id, "r_namespace") for check_id, _package in LOCAL_PILOT_R_PACKAGES),
 )
+_R_SELECTOR_PREFIXES = ("R_LIBS", "R_PROFILE", "R_ENVIRON", "RENV_")
 
 
 class DoctorInputError(RuntimeError):
@@ -102,35 +108,63 @@ class DoctorResult:
         return not self.blockers
 
 
-def runtime_environment(source_root: Path) -> dict[str, str]:
-    """Return the fixed guarded R environment used by doctor and workflow."""
+def runtime_environment(
+    source_root: Path,
+    renv_library: Path,
+    *,
+    base_environment: Mapping[str, str] | None = None,
+) -> dict[str, str]:
+    """Return the sanitized guarded R environment used by every runtime probe."""
 
-    return {
-        "NORAD_USE_RENV": "1",
-        "RENV_PROJECT": str(source_root),
-        "R_PROFILE_USER": str(source_root / ".Rprofile"),
-        "RENV_CONFIG_SANDBOX_ENABLED": "FALSE",
-        "RENV_CONFIG_AUTO_SNAPSHOT": "FALSE",
-    }
+    environment = dict(os.environ if base_environment is None else base_environment)
+    for name in tuple(environment):
+        if name.startswith(_R_SELECTOR_PREFIXES):
+            del environment[name]
+    environment.update(
+        {
+            "NORAD_USE_RENV": "1",
+            "RENV_PROJECT": str(source_root),
+            "R_PROFILE_USER": str(source_root / ".Rprofile"),
+            "RENV_PATHS_LIBRARY": str(renv_library),
+            "RENV_CONFIG_SANDBOX_ENABLED": "FALSE",
+            "RENV_CONFIG_AUTO_SNAPSHOT": "FALSE",
+        }
+    )
+    return environment
 
 
 def required_tool_identities(
     inspection: RuntimeInspection,
     *,
+    bindings: tuple[RuntimeBinding, ...],
     python_executable: Path,
     snakemake_version: str = SNAKEMAKE_VERSION,
     runtime_profile_path: Path | None = None,
-) -> tuple[dict[str, str], ...]:
+) -> tuple[dict[str, str | None], ...]:
     """Project exact attempt tool identities from one admitted runtime probe."""
 
-    observations = {item.check.check_id: item for item in inspection.observations}
-    rscript = observations["rscript"].check.target
-    identities: list[dict[str, str]] = [
-        {
-            "name": "python",
-            "version": platform.python_version(),
-            "path": str(python_executable),
-        },
+    bound = {item.check_id: item for item in bindings}
+    if len(bound) != len(bindings):
+        raise DoctorInputError("Runtime file bindings must use unique check IDs")
+
+    def file_identity(name: str, version: str) -> dict[str, str | None]:
+        try:
+            binding = bound[name]
+        except KeyError as exc:
+            raise DoctorInputError(f"Runtime file binding is absent: {name}") from exc
+        return {
+            "name": name,
+            "version": version,
+            "path": str(binding.path),
+            "resolved_path": str(binding.resolved_path),
+            "sha256": binding.sha256,
+        }
+
+    python_binding = file_identity("python", platform.python_version())
+    if Path(str(python_binding["path"])) != python_executable:
+        raise DoctorInputError("Runtime Python binding differs from this interpreter")
+    identities: list[dict[str, str | None]] = [
+        python_binding,
         {
             "name": "runtime_profile",
             "version": f"sha256:{inspection.profile_sha256}",
@@ -139,25 +173,34 @@ def required_tool_identities(
                 if runtime_profile_path is None
                 else runtime_profile_path
             ),
+            "resolved_path": str(
+                inspection.profile_path
+                if runtime_profile_path is None
+                else runtime_profile_path
+            ),
+            "sha256": inspection.profile_sha256,
         },
-        {
-            "name": "snakemake",
-            "version": snakemake_version,
-            "path": str(python_executable),
-        },
+        file_identity("snakemake", snakemake_version),
     ]
     for observation in inspection.observations:
         check = observation.check
+        if observation.status != "pass":
+            continue
         if check.check_id in {"python", "snakemake"}:
             continue
-        path = rscript if check.check_type == "r_namespace" else check.target
-        identities.append(
-            {
-                "name": check.check_id,
-                "version": observation.observed,
-                "path": path,
-            }
-        )
+        if check.check_id in {"renv_project", "renv_library"}:
+            path = Path(check.target)
+            identities.append(
+                {
+                    "name": check.check_id,
+                    "version": observation.observed,
+                    "path": str(path),
+                    "resolved_path": str(path.resolve(strict=True)),
+                    "sha256": None,
+                }
+            )
+            continue
+        identities.append(file_identity(check.check_id, observation.observed))
     return tuple(sorted(identities, key=lambda item: item["name"]))
 
 
@@ -171,6 +214,7 @@ class DoctorOps:
     ]
     inspect_runtime: Callable[[Path, str, Mapping[str, str]], RuntimeInspection]
     observe_snakemake: Callable[[Path], str]
+    load_runtime_profile: Callable[[Path], tuple[bytes, tuple[RuntimeCheck, ...]]]
 
 
 def _default_source_inspector(root: Path, package_root: Path) -> SourceCheckoutIdentity:
@@ -214,11 +258,19 @@ def _default_snakemake_observer(python_executable: Path) -> str:
     return observed
 
 
+def _default_profile_loader(profile: Path) -> tuple[bytes, tuple[RuntimeCheck, ...]]:
+    try:
+        return load_runtime_profile_contract(profile)
+    except RuntimeInspectionError as exc:
+        raise DoctorInputError(str(exc)) from exc
+
+
 DEFAULT_DOCTOR_OPS = DoctorOps(
     inspect_source=_default_source_inspector,
     normalize=normalize_request,
     inspect_runtime=_default_runtime_inspector,
     observe_snakemake=_default_snakemake_observer,
+    load_runtime_profile=_default_profile_loader,
 )
 
 
@@ -331,6 +383,25 @@ def validate_runtime_profile(inspection: RuntimeInspection, source_root: Path) -
         observation.check.check_id: observation.check
         for observation in inspection.observations
     }
+    expected_snakemake_args = controlled_python_argv(
+        checks["python"].target,
+        "-m",
+        "snakemake",
+        "--version",
+    )[1:]
+    if (
+        checks["snakemake"].target != checks["python"].target
+        or checks["snakemake"].probe_args != expected_snakemake_args
+    ):
+        raise DoctorInputError(
+            "Snakemake probing must use the declared controlled Python module invocation"
+        )
+    if checks["sha256_python"].target != checks["python"].target or checks[
+        "sha256_python"
+    ].probe_args != ("python_hashlib",):
+        raise DoctorInputError(
+            "SHA-256 probing must use the declared controlled Python runtime"
+        )
     picard_args = checks["picard"].probe_args
     expected_picard_args = (
         "-jar",
@@ -356,29 +427,107 @@ def validate_runtime_profile(inspection: RuntimeInspection, source_root: Path) -
         )
 
 
-def _bind_files(inspection: RuntimeInspection) -> tuple[RuntimeBinding, ...]:
+def _admit_runtime_directory(path: Path, label: str) -> Path:
+    if not path.is_absolute():
+        raise DoctorInputError(f"{label} must be absolute: {path}")
+    try:
+        state = path.lstat()
+        resolved = path.resolve(strict=True)
+    except OSError as exc:
+        raise DoctorInputError(f"Could not inspect {label} {path}: {exc}") from exc
+    if (
+        stat.S_ISLNK(state.st_mode)
+        or not stat.S_ISDIR(state.st_mode)
+        or resolved != path
+    ):
+        raise DoctorInputError(f"{label} must be a canonical real directory: {path}")
+    if not os.access(path, os.R_OK | os.X_OK):
+        raise DoctorInputError(f"{label} must be readable and searchable: {path}")
+    return resolved
+
+
+def _declared_renv_library(checks: tuple[RuntimeCheck, ...]) -> Path:
+    matches = [check for check in checks if check.check_id == "renv_library"]
+    if len(matches) != 1:
+        raise DoctorInputError(
+            "Runtime profile must declare exactly one renv_library check"
+        )
+    check = matches[0]
+    if check.check_type != "path_visibility" or check.probe_args != (
+        "directory_readable",
+    ):
+        raise DoctorInputError(
+            "renv_library must be one readable-directory visibility check"
+        )
+    return _admit_runtime_directory(Path(check.target), "renv_library")
+
+
+def runtime_file_bindings(
+    inspection: RuntimeInspection,
+) -> tuple[RuntimeBinding, ...]:
+    """Bind every executable, jar, and R namespace to immutable file bytes."""
+
     bindings: list[RuntimeBinding] = []
+    rscript = next(
+        item.check.target
+        for item in inspection.observations
+        if item.check.check_id == "rscript"
+    )
     for observation in inspection.observations:
-        if observation.check.check_type not in {"tool_version", "path_visibility"}:
+        check = observation.check
+        if observation.status != "pass":
             continue
-        if observation.check.check_id == "renv_project":
+        if check.check_id in {"renv_project", "renv_library"}:
             continue
-        path = Path(observation.check.target)
+        if check.check_type not in {
+            "tool_version",
+            "path_visibility",
+            "r_namespace",
+            "hash_utility",
+        }:
+            continue
+        path = Path(rscript if check.check_type == "r_namespace" else check.target)
         if not path.is_absolute():
             raise DoctorInputError(
-                f"Local-pilot runtime target must be absolute: {observation.check.check_id}"
+                f"Local-pilot runtime target must be absolute: {check.check_id}"
             )
         try:
             resolved = path.resolve(strict=True)
-            state = resolved.stat()
+            before = resolved.stat()
             data = resolved.read_bytes()
         except OSError as exc:
-            continue
-        if not stat.S_ISREG(state.st_mode):
-            continue
+            raise DoctorInputError(
+                f"Could not bind runtime file {check.check_id}: {path}: {exc}"
+            ) from exc
+        try:
+            after = resolved.stat()
+        except OSError as exc:
+            raise DoctorInputError(
+                f"Could not recheck runtime file {check.check_id}: {resolved}: {exc}"
+            ) from exc
+        if not stat.S_ISREG(before.st_mode):
+            raise DoctorInputError(
+                f"Runtime binding must resolve to a regular file: {check.check_id}: {resolved}"
+            )
+        if (
+            before.st_dev,
+            before.st_ino,
+            before.st_size,
+            before.st_mtime_ns,
+            before.st_ctime_ns,
+        ) != (
+            after.st_dev,
+            after.st_ino,
+            after.st_size,
+            after.st_mtime_ns,
+            after.st_ctime_ns,
+        ):
+            raise DoctorInputError(
+                f"Runtime file changed while it was being bound: {check.check_id}"
+            )
         bindings.append(
             RuntimeBinding(
-                check_id=observation.check.check_id,
+                check_id=check.check_id,
                 path=path,
                 resolved_path=resolved,
                 sha256=hashlib.sha256(data).hexdigest(),
@@ -415,13 +564,27 @@ def inspect_local_pilot(
         normalized = ops.normalize(request_path, root / PROFILE_RELATIVE_PATH)
     except (orchestration_contracts.ContractValidationError, OSError) as exc:
         raise DoctorInputError(str(exc)) from exc
-    environment = dict(os.environ)
-    environment.update(runtime_environment(root))
+    profile_bytes, declared_checks = ops.load_runtime_profile(profile_path)
+    renv_library = _declared_renv_library(declared_checks)
+    environment = runtime_environment(
+        root,
+        renv_library,
+        base_environment=os.environ,
+    )
     try:
         inspection = ops.inspect_runtime(profile_path, "local", environment)
     except RuntimeInspectionError as exc:
         raise DoctorInputError(str(exc)) from exc
+    if inspection.profile_bytes != profile_bytes:
+        raise DoctorInputError("Runtime profile changed while it was being inspected")
     validate_runtime_profile(inspection, root)
+    observed_renv_library = next(
+        Path(item.check.target)
+        for item in inspection.observations
+        if item.check.check_id == "renv_library"
+    )
+    if _admit_runtime_directory(observed_renv_library, "renv_library") != renv_library:
+        raise DoctorInputError("renv_library changed during runtime inspection")
     python_check = next(
         item for item in inspection.observations if item.check.check_id == "python"
     )
@@ -465,7 +628,7 @@ def inspect_local_pilot(
         runtime_profile=profile_path,
         runtime_profile_sha256=inspection.profile_sha256,
         inspection=inspection,
-        bindings=_bind_files(inspection),
+        bindings=runtime_file_bindings(inspection),
         blockers=tuple(blockers),
         remediations=tuple(dict.fromkeys(remediations)),
     )
@@ -529,6 +692,7 @@ __all__ = (
     "doctor_from_args",
     "inspect_local_pilot",
     "required_tool_identities",
+    "runtime_file_bindings",
     "runtime_environment",
     "validate_runtime_profile",
 )
