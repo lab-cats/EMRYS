@@ -76,7 +76,12 @@ outputs, validation report, and native receipt; publishes an immutable task
 attempt on admitted success or failure; and publishes a create-exclusive
 verified-task record only on complete success. Only the exact Step `00c`
 FAI/dictionary pair may be stationary external outputs, and its FASTA and
-parent must be canonical before producer invocation.
+parent must be canonical before producer invocation. That pair may be reused
+only when both files already exist as stable regular files; a partial pair is a
+pre-entry failure. Reused bytes and file identities are rechecked across
+producer execution, validation, semantic gating, and immediately before
+verified-task publication. Every other native destination remains
+create-absent.
 
 After identity and owner-native preflight, the task boundary durably publishes
 the fixed `state/task-starts/<machine>/<scope>.json` record immediately before

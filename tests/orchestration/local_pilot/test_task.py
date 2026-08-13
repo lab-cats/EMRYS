@@ -343,6 +343,27 @@ def _record(path: str | Path) -> dict[str, Any]:
     return orchestration_contracts.load_json_object(path)
 
 
+def _step00c_with_existing_sidecars(
+    tmp_path: Path,
+) -> tuple[
+    workflow_fixture.WorkflowFixture,
+    Path,
+    dict[str, Any],
+    tuple[Path, Path],
+]:
+    built = workflow_fixture.build(tmp_path)
+    workflow_fixture.materialize_active_run_lock(built)
+    machine_key = "norad.stage.construct_FASTA_sidecars.v1"
+    scope_id = str(built.execution["reference"]["reference_id"])
+    dispatch_path = Path(built.dispatch_paths[machine_key][scope_id])
+    record = orchestration_contracts.load_json_object(dispatch_path)
+    outputs = tuple(Path(item["path"]) for item in record["outputs"])
+    assert len(outputs) == 2
+    producer = _fixed_ops().run_command(tuple(record["producer_argv"]), built.run_root)
+    assert producer.exit_code == 0, producer.stderr.decode(errors="replace")
+    return built, dispatch_path, record, (outputs[0], outputs[1])
+
+
 def test_success_publishes_schema_valid_content_bound_records(tmp_path: Path) -> None:
     built = _task_fixture(tmp_path)
     task_scope = Path(built.dispatch["task_attempt_path"]).parent
@@ -1014,3 +1035,184 @@ def test_step00c_symlinked_stationary_reference_blocks_before_producer(
     assert calls == []
     assert not fai.exists()
     assert not sequence_dict.exists()
+
+
+def test_complete_step00c_sidecar_pair_is_reused_and_content_bound(
+    tmp_path: Path,
+) -> None:
+    built, dispatch_path, record, outputs = _step00c_with_existing_sidecars(
+        tmp_path / "workflow-fixture"
+    )
+    before = {
+        path: (path.read_bytes(), path.stat().st_dev, path.stat().st_ino)
+        for path in outputs
+    }
+    producer_argv = tuple(record["producer_argv"])
+    defaults = _fixed_ops()
+    calls: list[tuple[str, ...]] = []
+
+    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
+        calls.append(argv)
+        if argv == producer_argv:
+            return task.CommandResult(argv, 0, b"reused existing sidecars\n", b"")
+        return defaults.run_command(argv, cwd)
+
+    outcome = _execute_dispatch(
+        dispatch_path,
+        ops=task.TaskOps(
+            run_command=command,
+            run_semantic_all_pass=defaults.run_semantic_all_pass,
+            publish_bytes=defaults.publish_bytes,
+            now=defaults.now,
+            attest_source_checkout=defaults.attest_source_checkout,
+        ),
+    )
+
+    assert calls == [producer_argv, tuple(record["validator_argv"])]
+    verified = outcome.verified_task
+    assert verified["outputs"] == [
+        {
+            "role": declaration["role"],
+            "path": str(path),
+            "size_bytes": len(before[path][0]),
+            "sha256": hashlib.sha256(before[path][0]).hexdigest(),
+        }
+        for declaration, path in zip(record["outputs"], outputs, strict=True)
+    ]
+    for path in outputs:
+        assert (path.read_bytes(), path.stat().st_dev, path.stat().st_ino) == before[
+            path
+        ]
+
+
+def test_partial_step00c_sidecar_pair_blocks_before_producer(tmp_path: Path) -> None:
+    built, dispatch_path, record, outputs = _step00c_with_existing_sidecars(
+        tmp_path / "workflow-fixture"
+    )
+    outputs[1].unlink()
+    survivor = outputs[0].read_bytes()
+    calls: list[tuple[str, ...]] = []
+    defaults = _fixed_ops()
+
+    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
+        calls.append(argv)
+        return defaults.run_command(argv, cwd)
+
+    with pytest.raises(task.TaskBoundaryError, match="partial pre-existing Step 00c"):
+        _execute_dispatch(
+            dispatch_path,
+            ops=task.TaskOps(
+                run_command=command,
+                run_semantic_all_pass=defaults.run_semantic_all_pass,
+                publish_bytes=defaults.publish_bytes,
+                now=defaults.now,
+                attest_source_checkout=defaults.attest_source_checkout,
+            ),
+        )
+
+    assert calls == []
+    assert outputs[0].read_bytes() == survivor
+    assert not outputs[1].exists()
+    attempt = _record(record["task_attempt_path"])
+    assert attempt["task_start_record"] is None
+    assert attempt["producer"] is None
+
+
+def test_reused_step00c_sidecar_replacement_during_producer_fails_closed(
+    tmp_path: Path,
+) -> None:
+    built, dispatch_path, record, outputs = _step00c_with_existing_sidecars(
+        tmp_path / "workflow-fixture"
+    )
+    producer_argv = tuple(record["producer_argv"])
+    original = outputs[0].read_bytes()
+    defaults = _fixed_ops()
+
+    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
+        if argv == producer_argv:
+            replacement = outputs[0].with_name(f".{outputs[0].name}.replacement")
+            replacement.write_bytes(original)
+            replacement.replace(outputs[0])
+            return task.CommandResult(argv, 0, b"", b"")
+        raise AssertionError("validator must not run after sidecar replacement")
+
+    with pytest.raises(task.TaskBoundaryError, match="during producer execution"):
+        _execute_dispatch(
+            dispatch_path,
+            ops=task.TaskOps(
+                run_command=command,
+                run_semantic_all_pass=defaults.run_semantic_all_pass,
+                publish_bytes=defaults.publish_bytes,
+                now=defaults.now,
+                attest_source_checkout=defaults.attest_source_checkout,
+            ),
+        )
+    assert not Path(record["verified_task_path"]).exists()
+
+
+def test_reused_step00c_sidecar_mutation_during_validation_fails_closed(
+    tmp_path: Path,
+) -> None:
+    built, dispatch_path, record, outputs = _step00c_with_existing_sidecars(
+        tmp_path / "workflow-fixture"
+    )
+    producer_argv = tuple(record["producer_argv"])
+    defaults = _fixed_ops()
+
+    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
+        if argv == producer_argv:
+            return task.CommandResult(argv, 0, b"", b"")
+        result = defaults.run_command(argv, cwd)
+        with outputs[1].open("ab") as stream:
+            stream.write(b"foreign mutation\n")
+        return result
+
+    with pytest.raises(task.TaskBoundaryError, match="during validation"):
+        _execute_dispatch(
+            dispatch_path,
+            ops=task.TaskOps(
+                run_command=command,
+                run_semantic_all_pass=defaults.run_semantic_all_pass,
+                publish_bytes=defaults.publish_bytes,
+                now=defaults.now,
+                attest_source_checkout=defaults.attest_source_checkout,
+            ),
+        )
+    assert not Path(record["verified_task_path"]).exists()
+
+
+def test_reused_step00c_sidecar_rechecked_before_verified_publication(
+    tmp_path: Path,
+) -> None:
+    built, dispatch_path, record, outputs = _step00c_with_existing_sidecars(
+        tmp_path / "workflow-fixture"
+    )
+    producer_argv = tuple(record["producer_argv"])
+    original = outputs[0].read_bytes()
+    defaults = _fixed_ops()
+
+    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
+        if argv == producer_argv:
+            return task.CommandResult(argv, 0, b"", b"")
+        return defaults.run_command(argv, cwd)
+
+    def publish(path: Path, data: bytes) -> None:
+        defaults.publish_bytes(path, data)
+        if path == Path(record["task_attempt_path"]):
+            replacement = outputs[0].with_name(f".{outputs[0].name}.late-replacement")
+            replacement.write_bytes(original)
+            replacement.replace(outputs[0])
+
+    with pytest.raises(task.TaskBoundaryError, match="before verified publication"):
+        _execute_dispatch(
+            dispatch_path,
+            ops=task.TaskOps(
+                run_command=command,
+                run_semantic_all_pass=defaults.run_semantic_all_pass,
+                publish_bytes=publish,
+                now=defaults.now,
+                attest_source_checkout=defaults.attest_source_checkout,
+            ),
+        )
+    assert _record(record["task_attempt_path"])["status"] == "succeeded"
+    assert not Path(record["verified_task_path"]).exists()

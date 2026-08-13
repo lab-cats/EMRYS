@@ -76,6 +76,14 @@ class FileDeclaration:
 
 
 @dataclass(frozen=True, slots=True)
+class _BoundFileSnapshot:
+    """One content record plus the exact regular-file identity that supplied it."""
+
+    record: dict[str, Any]
+    identity: tuple[int, int, int, int, int]
+
+
+@dataclass(frozen=True, slots=True)
 class TaskBackend:
     """Exact public producer and validator commands for one owner invocation."""
 
@@ -464,14 +472,27 @@ def _read_bound_file(path: Path, label: str) -> tuple[bytes, os.stat_result]:
     return b"".join(chunks), after
 
 
-def _snapshot(declaration: FileDeclaration) -> dict[str, Any]:
+def _bound_snapshot(declaration: FileDeclaration) -> _BoundFileSnapshot:
     data, state = _read_bound_file(declaration.path, declaration.role)
-    return {
-        "role": declaration.role,
-        "path": str(declaration.path),
-        "size_bytes": state.st_size,
-        "sha256": hashlib.sha256(data).hexdigest(),
-    }
+    return _BoundFileSnapshot(
+        record={
+            "role": declaration.role,
+            "path": str(declaration.path),
+            "size_bytes": state.st_size,
+            "sha256": hashlib.sha256(data).hexdigest(),
+        },
+        identity=(
+            state.st_dev,
+            state.st_ino,
+            state.st_size,
+            state.st_mtime_ns,
+            state.st_ctime_ns,
+        ),
+    )
+
+
+def _snapshot(declaration: FileDeclaration) -> dict[str, Any]:
+    return _bound_snapshot(declaration).record
 
 
 def _record_reference(path: Path, run_root: Path) -> dict[str, str]:
@@ -740,6 +761,89 @@ def _admit_output_locations(
         if path.parent != fasta.parent:
             raise TaskBoundaryError(
                 f"Step 00c sidecar parent does not match stationary FASTA: {path}"
+            )
+
+
+def _step00c_external_outputs(
+    dispatch: TaskDispatch,
+    execution: Mapping[str, Any],
+) -> tuple[FileDeclaration, ...]:
+    """Return the exact stationary Step 00c pair, or no reusable outputs."""
+
+    if dispatch.machine_key != "norad.stage.construct_FASTA_sidecars.v1":
+        return ()
+    fasta = Path(str(execution["reference"]["fasta"]["path"]))
+    expected_paths = {
+        Path(f"{fasta}.fai"),
+        fasta.with_name(f"{fasta.stem}.dict"),
+    }
+    for path in expected_paths:
+        try:
+            path.relative_to(dispatch.run_root)
+        except ValueError:
+            continue
+        raise TaskBoundaryError(
+            "Step 00c reusable sidecars must be stationary external outputs"
+        )
+    outputs = tuple(
+        output for output in dispatch.outputs if output.path in expected_paths
+    )
+    if len(outputs) != 2 or {output.path for output in outputs} != expected_paths:
+        raise TaskBoundaryError(
+            "Step 00c dispatch must bind the exact stationary FAI/DICT pair"
+        )
+    return outputs
+
+
+def _admit_native_destinations(
+    dispatch: TaskDispatch,
+    execution: Mapping[str, Any],
+) -> dict[FileDeclaration, _BoundFileSnapshot]:
+    """Require create-absent outputs except an already-complete Step 00c pair."""
+
+    reusable = _step00c_external_outputs(dispatch, execution)
+    reusable_paths = {output.path for output in reusable}
+    observed_present: set[Path] = set()
+    for output in reusable:
+        try:
+            output.path.lstat()
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            raise TaskBoundaryError(
+                f"Could not inspect stationary Step 00c output: {output.path}: {exc}"
+            ) from exc
+        observed_present.add(output.path)
+    if observed_present and observed_present != reusable_paths:
+        raise TaskBoundaryError("Refusing partial pre-existing Step 00c FAI/DICT pair")
+
+    reused = (
+        {output: _bound_snapshot(output) for output in reusable}
+        if observed_present
+        else {}
+    )
+    for output in dispatch.outputs:
+        if output.path not in reusable_paths:
+            _require_absent(output.path, "native task destination")
+    _require_absent(dispatch.validation_report_path, "native task destination")
+    if dispatch.native_receipt_path is not None:
+        _require_absent(dispatch.native_receipt_path, "native task destination")
+    return reused
+
+
+def _recheck_reused_outputs(
+    reused: Mapping[FileDeclaration, _BoundFileSnapshot],
+    *,
+    phase: str,
+) -> None:
+    """Reject byte mutation or path replacement of an admitted Step 00c pair."""
+
+    for declaration, expected in reused.items():
+        observed = _bound_snapshot(declaration)
+        if observed != expected:
+            raise TaskBoundaryError(
+                f"A reused Step 00c sidecar changed or was replaced {phase}: "
+                f"{declaration.path}"
             )
 
 
@@ -1325,6 +1429,7 @@ def run_task(
     stable_inputs_rechecked = False
     task_start_reference: dict[str, str] | None = None
     task_scope_materialized = False
+    reused_outputs: dict[FileDeclaration, _BoundFileSnapshot] = {}
     stdout_parts: list[bytes] = []
     stderr_parts: list[bytes] = []
     failure: TaskBoundaryError | None = None
@@ -1377,12 +1482,7 @@ def run_task(
         if len({item["role"] for item in initial_inputs}) != len(initial_inputs):
             raise TaskBoundaryError("Input roles collide with reserved contract roles")
 
-        native_destinations = [item.path for item in dispatch.outputs]
-        native_destinations.append(dispatch.validation_report_path)
-        if dispatch.native_receipt_path is not None:
-            native_destinations.append(dispatch.native_receipt_path)
-        for path in native_destinations:
-            _require_absent(path, "native task destination")
+        reused_outputs = _admit_native_destinations(dispatch, execution)
 
         entry_inputs = tuple(
             _snapshot(item)
@@ -1395,6 +1495,7 @@ def run_task(
         )
         if entry_inputs != initial_inputs:
             raise TaskBoundaryError("A stable task input changed before producer entry")
+        _recheck_reused_outputs(reused_outputs, phase="before producer entry")
 
         _task_start, task_start_bytes = _build_task_start(
             dispatch,
@@ -1437,6 +1538,7 @@ def run_task(
         )
         if lock_reference_before_producer != _task_start["run_lock"]:
             raise TaskBoundaryError("Workflow run lock changed before producer entry")
+        _recheck_reused_outputs(reused_outputs, phase="before producer entry")
         producer = ops.run_command(backend.producer_argv, dispatch.run_root)
         stdout_parts.append(producer.stdout)
         stderr_parts.append(producer.stderr)
@@ -1444,6 +1546,7 @@ def run_task(
             raise TaskBoundaryError(
                 f"Producer command exited with status {producer.exit_code}"
             )
+        _recheck_reused_outputs(reused_outputs, phase="during producer execution")
         producer_outputs = tuple(_snapshot(output) for output in dispatch.outputs)
         producer_native_receipt = (
             None
@@ -1471,6 +1574,10 @@ def run_task(
             raise TaskBoundaryError(
                 f"Semantic all-pass command exited with status {semantic.exit_code}"
             )
+        _recheck_reused_outputs(
+            reused_outputs,
+            phase="during validation or semantic gating",
+        )
 
         final_inputs = tuple(
             _snapshot(item)
@@ -1578,6 +1685,9 @@ def run_task(
         "created_at": attempt["finished_at"],
     }
     orchestration_contracts.validate_record("verified-task", verified)
+    _recheck_reused_outputs(reused_outputs, phase="before verified publication")
+    if tuple(_snapshot(item) for item in dispatch.outputs) != outputs:
+        raise TaskBoundaryError("A producer output changed before verified publication")
     ops.publish_bytes(
         dispatch.verified_task_path,
         orchestration_contracts.canonical_json_bytes(verified),
