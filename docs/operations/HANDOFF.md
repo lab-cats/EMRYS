@@ -126,9 +126,11 @@ applicable owner `README.md` or `CONTRACT.md`.
 
 ## Immediate resume point
 
-Campaign B is complete at the fresh-clone no-science evidence ceiling. No
-follow-on capability is selected. The next decisions are whether and how to
-authorize a real-science-tool local pilot and, separately, a site/cluster
-execution profile and proof. Step `09c` remains explicitly absent. Destructive
-cleanup, real-runtime or cluster execution, scientific review, evidence
-promotion, and biological interpretation remain separate scopes.
+Campaign B is complete at the fresh-clone no-science evidence ceiling. The
+selected follow-up [`ORCH-04A`](../tasks/cards/ORCH-04A-local-pilot-adversarial-hardening.md)
+is closing adversarial control-plane gaps without broadening that evidence
+ceiling. After it closes, the next decisions remain whether and how to authorize
+a real-science-tool local pilot and, separately, a site/cluster execution
+profile and proof. Step `09c` remains explicitly absent. Destructive cleanup,
+real-runtime or cluster execution, scientific review, evidence promotion, and
+biological interpretation remain separate scopes.

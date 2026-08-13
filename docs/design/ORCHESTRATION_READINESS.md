@@ -61,7 +61,9 @@ derived-inspection requirements
 for the no-science test-double profile. B5 adds the exact runtime-profile-
 bound public command projection and lock-before-attempt materialization while
 retaining every disposition in this table. Explicit `renv` launch authority and
-real-tool behavior remain prerequisites for a later real-runtime proof.
+exact existing project-library selection are now admitted by the guarded local
+runtime boundary; real-tool behavior remains a prerequisite for a later
+real-runtime proof.
 
 The admitted profile retains these prerequisites:
 
@@ -77,8 +79,9 @@ The admitted profile retains these prerequisites:
    none relies on filesystem discovery.
 6. The local executor has automatic retries disabled and preserves task logs,
    validation reports, native receipts, and recovery evidence.
-7. Step `08` and `09` bind the repository `renv` project explicitly rather than
-   relying on job working directory.
+7. Step `08` and `09` bind the repository `renv` project and selected existing
+   canonical project library explicitly, while clearing ambient R/renv path
+   selectors rather than relying on job working directory.
 
 `ready` does not waive these shared prerequisites. `harden` does not require a
 generic transaction framework: change the smallest owner-local boundary that

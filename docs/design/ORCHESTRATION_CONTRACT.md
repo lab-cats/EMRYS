@@ -199,12 +199,14 @@ stored in the contract and the first implementation uses
 overwrites a run.
 
 Workspace, output root, source-checkout path and commit, executor, host,
-resources, scratch, observed tool versions, timestamps, PIDs, and future
-scheduler identifiers are attempt context. They do not change the scientific
-run identity. Version 1 automatic resume nevertheless requires the same clean
-source commit, profile digest, and observed required-tool versions; otherwise
-the run becomes blocked pending an explicit compatibility or new-profile
-decision.
+resources, scratch, exact required-tool identities, timestamps, PIDs, and
+future scheduler identifiers are attempt context. File-backed tool identities
+bind the authored path, canonical target, observed version, and SHA-256; admitted
+runtime directories bind their authored and canonical paths. These fields do
+not change the scientific run identity. Version 1 automatic resume nevertheless
+requires the same clean source commit, profile digest, and ordered exact
+required-tool identities, then re-admits those paths and bytes; otherwise the
+run becomes blocked pending an explicit compatibility or new-profile decision.
 
 Each workflow attempt binds one canonical attempt-specific workflow-config
 snapshot by relative path and SHA-256. That config binds every owner/scope
@@ -462,7 +464,8 @@ Resume always creates a new workflow attempt. A prior verified task may be
 reused only after NORAD rechecks:
 
 - the execution contract and profile digest;
-- clean source-checkout and required-tool compatibility;
+- the clean source checkout plus every exact required-tool authored path,
+  canonical target, version, and file digest or admitted directory identity;
 - the exact closed task-start and reporting-start rosters;
 - the task-start, task-attempt, and verified-task identity chain;
 - the verified-record schema and complete hash bindings;
