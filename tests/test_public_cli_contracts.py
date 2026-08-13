@@ -43,6 +43,7 @@ NORAD_COMMANDS = (
         ("build", "report"),
         "usage: norad build report",
     ),
+    (("doctor", "local-pilot"), "usage: norad doctor local-pilot"),
     (
         ("validate", "artifact-contracts"),
         "usage: norad validate artifact-contracts",

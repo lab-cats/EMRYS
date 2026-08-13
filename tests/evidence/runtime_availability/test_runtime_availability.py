@@ -1,6 +1,7 @@
 import csv
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from collections.abc import Callable, Sequence
@@ -350,6 +351,44 @@ def test_r_namespace_with_fake_rscript(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     observed = {row["check_id"]: row["status"] for row in read_rows(output)}
     assert observed == {"good": "pass", "missing": "fail"}
+
+
+def test_direct_inspection_uses_explicit_probe_environment(tmp_path: Path) -> None:
+    fake = tmp_path / "Rscript"
+    fake.write_text(
+        "#!/usr/bin/env bash\n"
+        "set -euo pipefail\n"
+        '[[ "${NORAD_DOCTOR_TEST:-}" == "guarded" ]] || exit 43\n'
+        "printf '1.2.3'\n",
+        encoding="utf-8",
+    )
+    fake.chmod(0o755)
+    profile = write_profile(
+        tmp_path / "profile.tsv",
+        [
+            [
+                "guarded_namespace",
+                "r_namespace",
+                "local",
+                "true",
+                "GuardedPackage",
+                json.dumps([str(fake)]),
+                r"^1[.]2[.]3$",
+                "Guarded R namespace",
+            ]
+        ],
+    )
+
+    inspection = inspector.inspect_runtime_availability(
+        profile,
+        "local",
+        environment={"NORAD_DOCTOR_TEST": "guarded", "PATH": os.environ["PATH"]},
+    )
+
+    assert inspection.required_ready
+    assert inspection.profile_bytes == profile.read_bytes()
+    assert inspection.observations[0].status == "pass"
+    assert inspection.observations[0].observed == "1.2.3"
 
 
 def test_r_namespace_requires_package_name(tmp_path: Path) -> None:

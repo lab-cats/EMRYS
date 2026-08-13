@@ -9,6 +9,17 @@ keys, globs, templates, environment/home interpolation, unknown fields, and
 ambiguous paths fail admission. Request formatting and the optional human label
 do not enter the execution identity.
 
+`doctor.inspect_local_pilot` and the grouped `norad doctor local-pilot` route
+are the read-only B5 setup boundary. They reuse normalization plus the runtime-
+availability owner's direct API, require the exact fixed local runtime roster,
+run R namespace probes with explicit guarded `renv` variables, compare the
+selected Python/Snakemake identity, bind admitted tool/jar bytes, and reject a
+workspace overlapping the source checkout. An absent workspace is planned but
+never created. The doctor neither installs nor repairs dependencies, loads
+modules, mutates a run, executes Snakemake/scientific owners, or promotes
+readiness into local-runtime, scheduler, cluster, scientific-review, or
+biological evidence.
+
 Every authored file path passes one lexical policy before access. Admission
 opens the file without following a final symbolic link, verifies that the open
 descriptor and pathname name the same inode before and after reading, and binds

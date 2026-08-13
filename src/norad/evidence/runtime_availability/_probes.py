@@ -7,7 +7,7 @@ import re
 import shutil
 import stat
 import subprocess
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
 from ._runtime_model import (
@@ -30,7 +30,11 @@ def _resolve_executable(target: str) -> str | None:
     return shutil.which(target)
 
 
-def _run_command(command: list[str], stdin: bytes | None = None) -> tuple[int, str]:
+def _run_command(
+    command: list[str],
+    stdin: bytes | None = None,
+    environment: Mapping[str, str] | None = None,
+) -> tuple[int, str]:
     try:
         completed = subprocess.run(
             command,
@@ -39,6 +43,7 @@ def _run_command(command: list[str], stdin: bytes | None = None) -> tuple[int, s
             stderr=subprocess.STDOUT,
             timeout=PROBE_TIMEOUT_SECONDS,
             check=False,
+            env=None if environment is None else dict(environment),
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         return 127, _single_line(str(exc))
@@ -46,11 +51,13 @@ def _run_command(command: list[str], stdin: bytes | None = None) -> tuple[int, s
     return completed.returncode, _single_line(output)
 
 
-def _probe_tool(check: Check) -> Result:
+def _probe_tool(check: Check, environment: Mapping[str, str] | None) -> Result:
     executable = _resolve_executable(check.target)
     if executable is None:
         return Result(check, "fail", "unavailable", "Executable was not found")
-    code, output = _run_command([executable, *check.probe_args])
+    code, output = _run_command(
+        [executable, *check.probe_args], environment=environment
+    )
     if code != 0:
         return Result(check, "fail", output or f"exit {code}", "Version probe failed")
     if re.search(check.expected, output) is None:
@@ -60,7 +67,7 @@ def _probe_tool(check: Check) -> Result:
     return Result(check, "pass", output, f"Resolved executable: {executable}")
 
 
-def _probe_r_namespace(check: Check) -> Result:
+def _probe_r_namespace(check: Check, environment: Mapping[str, str] | None) -> Result:
     rscript = _resolve_executable(check.probe_args[0])
     if rscript is None:
         return Result(check, "fail", "unavailable", "Rscript executable was not found")
@@ -69,7 +76,10 @@ def _probe_r_namespace(check: Check) -> Result:
         "if (!requireNamespace(p, quietly=TRUE)) quit(status=42); "
         "cat(as.character(utils::packageVersion(p)))"
     )
-    code, output = _run_command([rscript, "-e", expression, "--args", check.target])
+    code, output = _run_command(
+        [rscript, "-e", expression, "--args", check.target],
+        environment=environment,
+    )
     if code != 0:
         detail = (
             "R namespace is unavailable" if code == 42 else "R namespace probe failed"
@@ -85,7 +95,7 @@ def _probe_r_namespace(check: Check) -> Result:
     return Result(check, "pass", output, f"Resolved Rscript: {rscript}")
 
 
-def _probe_hash_utility(check: Check) -> Result:
+def _probe_hash_utility(check: Check, environment: Mapping[str, str] | None) -> Result:
     executable = _resolve_executable(check.target)
     if executable is None:
         return Result(check, "fail", "unavailable", "Hash executable was not found")
@@ -100,7 +110,7 @@ def _probe_hash_utility(check: Check) -> Result:
         command = [executable]
     else:
         command = [executable, "-a", "256"]
-    code, output = _run_command(command, HASH_PAYLOAD)
+    code, output = _run_command(command, HASH_PAYLOAD, environment)
     observed = output.split()[0].lower() if output else ""
     if code != 0:
         return Result(check, "fail", output or f"exit {code}", "SHA-256 probe failed")
@@ -109,7 +119,9 @@ def _probe_hash_utility(check: Check) -> Result:
     return Result(check, "pass", observed, f"Resolved executable: {executable}")
 
 
-def _probe_path_visibility(check: Check) -> Result:
+def _probe_path_visibility(
+    check: Check, _environment: Mapping[str, str] | None
+) -> Result:
     path = Path(check.target)
     mode = check.probe_args[0]
     try:
@@ -127,7 +139,7 @@ def _probe_path_visibility(check: Check) -> Result:
     return Result(check, "pass" if passed else "fail", observed, detail)
 
 
-PROBES: dict[str, Callable[[Check], Result]] = {
+PROBES: dict[str, Callable[[Check, Mapping[str, str] | None], Result]] = {
     "tool_version": _probe_tool,
     "r_namespace": _probe_r_namespace,
     "hash_utility": _probe_hash_utility,
@@ -135,7 +147,12 @@ PROBES: dict[str, Callable[[Check], Result]] = {
 }
 
 
-def run_checks(checks: Sequence[Check], runtime_context: str) -> list[Result]:
+def run_checks(
+    checks: Sequence[Check],
+    runtime_context: str,
+    *,
+    environment: Mapping[str, str] | None = None,
+) -> list[Result]:
     results: list[Result] = []
     for check in checks:
         if check.runtime_context not in {"any", runtime_context}:
@@ -149,7 +166,7 @@ def run_checks(checks: Sequence[Check], runtime_context: str) -> list[Result]:
                 )
             )
             continue
-        result = PROBES[check.check_type](check)
+        result = PROBES[check.check_type](check, environment)
         if result.status not in RESULT_STATUSES:
             _fail(f"Internal error: invalid result status {result.status}")
         results.append(result)

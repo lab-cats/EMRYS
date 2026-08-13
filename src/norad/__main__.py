@@ -41,6 +41,7 @@ from norad.libraries.source_authority import (
     require_controlled_python_runtime,
 )
 from norad.orchestration.local_pilot import all_pass as all_pass_validation_command
+from norad.orchestration.local_pilot import doctor as local_pilot_doctor_command
 from norad.stages.canonical_bam import validator as canonical_bam_validation_command
 from norad.stages.cohort_candidate_preprocessing import (
     validator as cohort_candidate_preprocessing_validation_command,
@@ -156,6 +157,20 @@ def _add_storage_inventory_inspection_command(
     storage_inventory_inspection_command.configure_parser(storage_parser)
     storage_parser.set_defaults(
         _command_handler=storage_inventory_inspection_command.inspect_from_args
+    )
+
+
+def _add_local_pilot_doctor_command(
+    doctor_parsers: _SubparserCollection,
+) -> None:
+    local_parser = doctor_parsers.add_parser(
+        "local-pilot",
+        help="Check fixed local-pilot readiness without installation or repair.",
+        description=local_pilot_doctor_command.DESCRIPTION,
+    )
+    local_pilot_doctor_command.configure_parser(local_parser)
+    local_parser.set_defaults(
+        _command_handler=local_pilot_doctor_command.doctor_from_args
     )
 
 
@@ -343,6 +358,16 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
     )
     _add_build_commands(command_parsers)
+    doctor_parser = command_parsers.add_parser(
+        "doctor",
+        help="Check readiness for an explicitly selected NORAD workflow.",
+    )
+    doctor_parsers = doctor_parser.add_subparsers(
+        dest="doctor",
+        metavar="SUBJECT",
+        required=True,
+    )
+    _add_local_pilot_doctor_command(doctor_parsers)
     assemble_parser = command_parsers.add_parser(
         "assemble",
         help="Assemble an explicitly declared NORAD evidence package.",

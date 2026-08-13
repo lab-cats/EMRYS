@@ -23,7 +23,7 @@ owner-admission dispositions are tracked in
 implementation dependency order is:
 
 ```text
-SETUP-03A -> CLI-03A -> E2E-03A -> ONBOARD-03A
+CLI-03A -> E2E-03A -> ONBOARD-03A
 ```
 
 These relationships do not select work. Backlog blockers record only
@@ -31,20 +31,24 @@ unavailable technical outputs.
 
 ## Local-pilot package order
 
-Campaign B proceeds in proof-sized packages. `B1a` through `B4` are complete:
+Campaign B proceeds in proof-sized packages. `B1a` through `B4` and the B5
+readiness prerequisite are complete:
 functional owners expose fail-closed local workflow boundaries; dependency
 metadata, machine contracts, read-only normalization/reporting projection, and
 semantic all-pass checking exist; and the fixed local-CMH profile now has an
 exact static Snakemake projection with content-bound task records, three
 semantically revalidated reporting transactions, and an internal immutable
-attempt/producer-entry/resume/inspection lifecycle. Each remaining package ends with focused
-evidence; the fresh-clone full-pipeline gate waits for the public adapter.
+attempt/producer-entry/resume/inspection lifecycle. The read-only doctor binds
+one normalized request, workspace plan, clean checkout, locked workflow engine,
+science tools, Picard jar, guarded `renv`, and Step `08` namespaces without
+installing or creating state. Each remaining package ends with focused evidence;
+the fresh-clone full-pipeline gate waits for the public adapter.
 
 | Package | Outcome | Stop boundary |
 | --- | --- | --- |
 | `B3` — complete | Materialize the static local profile and prove direct Snakemake dry-run, then a test-double walking skeleton in reference, one-sample, and cohort slices. | No public lifecycle CLI or real science-tool claim was added. |
 | `B4` — complete | Add artifact-index, run-summary, and Jinja HTML-report rules, durable producer-entry ledgers, then prove failure, interruption, between-task resume, and inspection. | Entered-but-incomplete scopes require future explicit reconciliation; Step `09c` remains explicit and absent; no public lifecycle CLI, real-tool, SLURM, VM, or CSU claim was added. |
-| `B5` | Add the thin public `run`, `resume`, and `inspect` adapter only after direct Snakemake operation and state semantics are stable. | The adapter owns intake/lifecycle policy only; no private imports or scientific logic. |
+| `B5` — in progress | The read-only local-pilot doctor is complete. Next add the thin public `run`, `resume`, and `inspect` adapter over the admitted request/runtime and proven lifecycle. | The adapter owns intake/lifecycle policy only; no private imports or scientific logic. |
 | `B6` | Prove the fresh-clone local pilot, then rewrite root onboarding from the exact proven transcript. | One full assembled gate; no cluster, scientific-review, or biological claim. |
 
 Real STAR/GATK/science-tool fixture execution is a separately authorized local

@@ -8,7 +8,8 @@ acceptance, [`RUNBOOK.md`](RUNBOOK.md) for commands, and
 [`docs/history`](../history/) for frozen delivery records.
 
 Campaign B owner hardening (`B1a` through `B1c`), B2 intake/contracts, B3's
-static local workflow, and B4's reporting/lifecycle tail are implemented.
+static local workflow, B4's reporting/lifecycle tail, and the B5 read-only
+local-pilot doctor are implemented.
 Owners expose explicit local, fail-closed workflow boundaries; the repository
 has a locked workflow group, closed machine schemas, read-only
 normalization/reporting projection, semantic all-pass checking, one fixed
@@ -16,8 +17,10 @@ local-CMH profile, thirteen automatic scientific owner rules, three receipt-last
 reporting transactions, content-bound task/verified records, and internal
 durable producer-entry ledgers, immutable attempt finalization, between-task
 resume, and read-only
-inspection. Run materialization and the public lifecycle adapter do not yet
-exist.
+inspection. The doctor now admits a request and disjoint workspace plan and
+checks the clean checkout, controlled Python/Snakemake, exact science tools,
+Picard jar, guarded `renv`, and Step `08` namespaces without mutation. Run
+materialization and the public lifecycle adapter do not yet exist.
 
 ## Evidence boundary
 
@@ -29,7 +32,7 @@ exist.
 | Step `07` | B1 no-clobber and rollback boundaries are locally mock-bcftools tested; no real-bcftools or current cluster proof. |
 | Steps `08`–`09` | B1 no-clobber/recovery boundaries are locally shell/fake-R tested; prior guarded-real-R tests remain separate. No production or current cluster proof. |
 | Step `09c` and reporting | The automatic local profile deliberately records Step `09c` as absent and publishes an evidence-incomplete artifact index, run summary, and HTML report. The reporting transactions and their independent semantic re-admission are synthetic-fixture/local-render tested; there is no production evidence package, completed scientific review, or production report. |
-| Operational helpers | Runtime, reference, storage, and structured validators have local fixture evidence; no CSU batch runtime report, production reference/storage report, or approved retention policy. |
+| Operational helpers | Runtime, reference, storage, and structured validators have local fixture evidence. The local-pilot doctor has no-write ready/not-ready/malformed fixture evidence and explicit runtime-profile binding; it has not yet passed against a complete real science-tool installation. There is no CSU batch runtime report, production reference/storage report, or approved retention policy. |
 
 A transaction proves only reconciliation of its declared inputs and outputs.
 It does not prove every source passed or promote runtime, cluster, scientific,
@@ -121,8 +124,8 @@ applicable owner `README.md` or `CONTRACT.md`.
 
 ## Immediate resume point
 
-Complete the read-only local-pilot doctor in `SETUP-03A`, then implement B5
-from the accepted orchestration contract: add run materialization and the thin
+Continue B5 from the completed read-only doctor and accepted orchestration
+contract: add run materialization and the thin
 public `run`, `resume`, and `inspect` adapter over B2 normalization/projection
 and the proven B4 internal lifecycle without importing private owners or
 exposing unsafe Snakemake recovery controls. Step `09c` remains explicitly

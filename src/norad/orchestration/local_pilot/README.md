@@ -1,6 +1,6 @@
 # Local-pilot orchestration boundary
 
-This owner exposes two narrow, read-only B2 APIs:
+This owner exposes three narrow, read-only public APIs:
 
 - `normalization.normalize_request(request_path, profile)` safely admits one
   YAML request plus its ordered TSV manifests and returns a canonical,
@@ -8,7 +8,25 @@ This owner exposes two narrow, read-only B2 APIs:
   descriptor-bound admission makes the exact read bytes the only parse and
   identity authority;
 - `all_pass.require_all_pass(...)` checks the meaning of one owner-validation
-  report rather than trusting its process exit.
+  report rather than trusting its process exit;
+- `doctor.inspect_local_pilot(...)` admits one request plus the fixed profile,
+  checks a disjoint workspace plan, exact clean source checkout, controlled
+  Python/Snakemake, science-tool paths and versions, Picard jar, guarded
+  `renv`, and Step `08` namespaces without creating or repairing anything.
+
+The doctor also has the grouped public command:
+
+```bash
+.venv/bin/python -I -m norad doctor local-pilot \
+  --request /absolute/path/to/request.yaml \
+  --workspace /absolute/path/to/workspace \
+  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
+```
+
+Exit `0` means every declared readiness check passed, exit `1` reports exact
+readiness blockers and remediation routes, and exit `2` identifies malformed
+or unsafe input. Even exit `0` is only local readiness evidence: no workflow,
+scientific tool, scheduler, or cluster job ran.
 
 The neutral
 `norad.contracts.orchestration.projection.project_reporting(...)` API
@@ -43,7 +61,7 @@ evidence, and publishes a verified-task record only after complete success.
 The fixed profile and local Snakemake graph live under
 [`workflow/`](../../../../workflow/README.md).
 
-B4 adds internal direct APIs, still without a public top-level command:
+B4 adds internal direct lifecycle APIs, still without a public lifecycle command:
 
 - `lifecycle.run_attempt(...)` owns one create-exclusive aggregate run lock,
   immutable attempt record, exact reviewed Snakefile and absolute workflow
@@ -85,6 +103,6 @@ blocks on that evidence and never repairs or removes it.
 The adjacent neutral [machine contracts](../../contracts/orchestration/README.md)
 define request, profile, normalized execution, lock, attempt, receipt,
 task-start/task-attempt/verified-task, and reporting-ledger record shapes. No
-run materializer, public lifecycle command, real-tool adapter, or automatic
-owner-recovery mechanism is implemented here.
+run materializer, public run/resume/inspection lifecycle command, real-tool
+execution adapter, or automatic owner-recovery mechanism is implemented here.
 See [`CONTRACT.md`](CONTRACT.md) for the exact boundary.

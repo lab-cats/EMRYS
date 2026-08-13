@@ -15,7 +15,7 @@ selection, implementation, or publication authority.
 ## CLI-03A — Implement local-pilot control plane
 
 - **Kind:** actionable
-- **Blocked by:** `SETUP-03A`
+- **Blocked by:** None
 - **Intent:** Provide a thin local command surface that orchestrates the approved pilot profile, request lifecycle, resume, and state inspection.
 - **Boundaries:** Dry-run by default; no hidden installation, private imports, SLURM execution, scientific reimplementation, or implicit state authority.
 
@@ -144,13 +144,6 @@ selection, implementation, or publication authority.
 - **Blocked by:** `RPT-04`
 - **Intent:** Change the public default to the approved science profile while keeping the protected comprehensive profile explicitly selectable.
 - **Boundaries:** Profile names follow the approved contract; bundles coexist without overwrite or reinterpretation; analysis, artifacts, and evidence meaning remain unchanged.
-
-## SETUP-03A — Implement local-pilot dependency profile and doctor
-
-- **Kind:** actionable
-- **Blocked by:** None
-- **Intent:** Define the local-pilot dependency profile and a read-only doctor that reports readiness and exact remediation routes.
-- **Boundaries:** No installation or repair; distinguish local configuration from CSU, batch, cluster, production, scientific-review, and biological readiness.
 
 ## SKILL-11 — Evaluate repository skill opportunities
 

@@ -59,6 +59,28 @@ Each owner README supplies supported help, dry-run, execute, scheduler, focused
 test, diagnostics, and recovery routes when those surfaces exist. Its adjacent
 `CONTRACT.md` owns exact inputs, outputs, checks, and evidence limits.
 
+## Local-pilot readiness
+
+Copy [`configs/local_pilot_runtime.example.tsv`](../../configs/local_pilot_runtime.example.tsv)
+outside the checkout or to an explicitly managed local path, then replace every
+placeholder with the exact local executable, jar, Rscript, and checkout paths.
+After `uv sync --locked --group workflow` and the separately authorized science
+tool/R setup, inspect one request and workspace plan:
+
+```bash
+.venv/bin/python -I -m norad doctor local-pilot \
+  --request /absolute/path/to/request.yaml \
+  --workspace /absolute/path/to/workspace \
+  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
+```
+
+The doctor is always read-only. It does not run `uv`, restore `renv`, load
+modules, create the workspace, or execute the workflow. Exit `0` means its
+exact local readiness roster passed; exit `1` prints readiness blockers and
+remediation; exit `2` means the request/profile/path boundary is malformed or
+unsafe. This does not establish real-tool, scheduler, cluster, scientific-
+review, or biological evidence.
+
 ## Task status
 
 The backlog is coarse and execution cards are created just in time. Inspect the

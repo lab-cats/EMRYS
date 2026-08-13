@@ -1,0 +1,21 @@
+check_id	check_type	runtime_context	required	target	probe_args	expected	description
+python	tool_version	local	true	/absolute/path/to/norad/.venv/bin/python	["--version"]	^Python 3[.](1[1-9]|[2-9][0-9])[.]	Exact uv-managed NORAD workflow Python
+snakemake	tool_version	local	true	/absolute/path/to/norad/.venv/bin/snakemake	["--version"]	^9[.]25[.]1$	Locked Snakemake workflow engine
+star	tool_version	local	true	/absolute/path/to/STAR	["--version"]	^2[.]7[.]11b$	STAR aligner and genome-index builder
+samtools	tool_version	local	true	/absolute/path/to/samtools	["--version"]	^samtools 1[.]19[.]2(\s|$)	Samtools BAM utility
+java	tool_version	local	true	/absolute/path/to/java	["-version"]	^(openjdk|java) version "(1[7-9]|[2-9][0-9])[.]	Java 17 or newer for Picard and GATK
+gatk	tool_version	local	true	/absolute/path/to/gatk	["--version"]	^The Genome Analysis Toolkit [(]GATK[)] v?4[.]6[.]1[.]0(\s|$)	GATK SplitNCigarReads and sequence-dictionary runtime
+picard	tool_version	local	true	/absolute/path/to/java	["-jar","/absolute/path/to/picard.jar","MarkDuplicates","--version"]	3[.]1[.]1	Picard MarkDuplicates 3.1.1 through the declared Java and jar
+picard_jar	path_visibility	local	true	/absolute/path/to/picard.jar	["file_readable"]	readable	Readable Picard 3.1.1 jar selected for duplicate marking
+bcftools	tool_version	local	true	/absolute/path/to/bcftools	["--version"]	^bcftools 1[.]21(\s|$)	Bcftools cohort mpileup runtime
+infer_experiment	tool_version	local	true	/absolute/path/to/infer_experiment.py	["--version"]	^[Rr][Ss]e[Qq][Cc].*[Vv]?[0-9]+	RSeQC infer_experiment runtime
+rscript	tool_version	local	true	/absolute/path/to/Rscript	["--version"]	^Rscript [(]R[)] version 4[.]6[.]1(\s|$)	R 4.6.1 runtime selected by the guarded renv project
+renv_project	path_visibility	local	true	/absolute/path/to/norad	["directory_readable"]	readable	NORAD renv project root containing renv.lock and .Rprofile
+r_variant_annotation	r_namespace	local	true	VariantAnnotation	["/absolute/path/to/Rscript"]	^1[.]58[.]0$	Step 08 VariantAnnotation namespace
+r_genomic_ranges	r_namespace	local	true	GenomicRanges	["/absolute/path/to/Rscript"]	^1[.]64[.]0$	Step 08 GenomicRanges namespace
+r_iranges	r_namespace	local	true	IRanges	["/absolute/path/to/Rscript"]	^2[.]46[.]0$	Step 08 IRanges namespace
+r_s4vectors	r_namespace	local	true	S4Vectors	["/absolute/path/to/Rscript"]	^0[.]50[.]1$	Step 08 S4Vectors namespace
+r_summarized_experiment	r_namespace	local	true	SummarizedExperiment	["/absolute/path/to/Rscript"]	^1[.]42[.]0$	Step 08 SummarizedExperiment namespace
+r_genome_info_db	r_namespace	local	true	GenomeInfoDb	["/absolute/path/to/Rscript"]	^1[.]48[.]0$	Step 08 GenomeInfoDb namespace
+r_bioc_generics	r_namespace	local	true	BiocGenerics	["/absolute/path/to/Rscript"]	^0[.]58[.]1$	Step 08 BiocGenerics namespace
+r_rtracklayer	r_namespace	local	true	rtracklayer	["/absolute/path/to/Rscript"]	^1[.]72[.]0$	Step 08 rtracklayer namespace
