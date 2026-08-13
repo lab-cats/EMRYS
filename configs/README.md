@@ -10,6 +10,7 @@ or executable orchestrator for the whole directory.
 | Area | Audience | Placement and ownership | State | Tracked inputs |
 | --- | --- | --- | --- | --- |
 | Sample-manifest starter | Operators | Public, single-owner input for [sample-manifest admission](../src/norad/ingestion/sample_manifest_admission/README.md) | Current structural starter; schema-checked without FASTQ existence checks, not a runnable fixture | [`samples.example.tsv`](samples.example.tsv) |
+| Fixed local-pilot starters | Researchers and operators | Matched public inputs for [local-pilot normalization and control](../src/norad/orchestration/local_pilot/README.md) | Structurally valid fixed-profile starter set with two explicit paired strata; relative read/reference paths are placeholders, so the tracked files are not a runnable fixture | [`local_pilot_request.example.yaml`](local_pilot_request.example.yaml), [`local_pilot_samples.example.tsv`](local_pilot_samples.example.tsv), [`local_pilot_partitions.example.tsv`](local_pilot_partitions.example.tsv) |
 | Artifact and report projection | Operators and report developers | Public reporting inputs; artifact indexing and run-summary assembly use `python -I -m norad build artifact-index` and `python -I -m norad build run-summary` with an explicit matching source checkout, and the inventory is also accepted by the [artifact-contract owner](../src/norad/contracts/artifacts/README.md) through `python -I -m norad validate artifact-contracts` | Current shared structural examples; not production inventory, run contract, approval, or report | [`artifact_inventory.example.tsv`](artifact_inventory.example.tsv), [`artifact_run_contract.example.json`](artifact_run_contract.example.json), [`report_table_approvals.example.tsv`](report_table_approvals.example.tsv) |
 | Reference provenance | Operators | Public, single-owner input for [reference-provenance evidence](../src/norad/evidence/reference_provenance/README.md) | Current structural starter; illustrative identity and hashes must be replaced | [`reference_provenance.example.tsv`](reference_provenance.example.tsv) |
 | Runtime availability | Operators | Public, single-owner input for [runtime-availability inspection](../src/norad/evidence/runtime_availability/README.md) through `python -I -m norad inspect runtime-availability`; the fixed local-pilot roster is consumed by `python -I -m norad doctor local-pilot` | Current structural starters; paths are placeholders and establish no availability until copied, completed, and checked | [`runtime_preflight.example.tsv`](runtime_preflight.example.tsv), [`local_pilot_runtime.example.tsv`](local_pilot_runtime.example.tsv) |
@@ -34,12 +35,20 @@ reference-only. Exact commands and preparation rules live in the
 public caller-supplied inputs is in
 [`SOURCE_TOPOLOGY.md`](../src/norad/contracts/SOURCE_TOPOLOGY.md).
 
+The three local-pilot starters are one matched set. Copy them to an explicitly
+managed input directory, replace every placeholder identity and file target,
+and retain explicit condition and replicate metadata. Their relative paths are
+resolved from the request file's directory, never from the caller's working
+directory. Pairing comes from matching `replicate` values with exactly one
+declared `control` and one declared `treatment` row in each of at least two
+strata; sample names do not establish pairing.
+
 Exact committed-file tests cover the artifact inventory, runtime-preflight
-example, Step `07` pilot and primary selections, both Step `09c` declaration
-examples, and all thirteen Step `09c` schema-reference tables. The other listed
-assets have no exact-file automated test. A linked owner may validate a
-supplied file; that does not prove every tracked starter or reference here is
-current or production-ready.
+example, the matched local-pilot starters, Step `07` pilot and primary
+selections, both Step `09c` declaration examples, and all thirteen Step `09c`
+schema-reference tables. The other listed assets have no exact-file automated
+test. A linked owner may validate a supplied file; that does not prove every
+tracked starter or reference here is current or production-ready.
 
 The repository static gate also schema-checks the tracked sample-manifest
 starter. It does not request FASTQ existence checks or turn the declared paths

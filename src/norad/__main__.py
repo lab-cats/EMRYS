@@ -6,6 +6,7 @@ import argparse
 import sys
 import tomllib
 from collections.abc import Callable, Sequence
+from functools import partial
 from pathlib import Path
 from typing import Protocol, cast
 
@@ -208,22 +209,40 @@ def _admit_controlled_runtime() -> bool:
     return True
 
 
-def _run_local_pilot_from_args(arguments: argparse.Namespace) -> int:
+def _run_local_pilot_from_args(
+    arguments: argparse.Namespace,
+    *,
+    ops: local_pilot_control_command.ControlOps = (
+        local_pilot_control_command.DEFAULT_CONTROL_OPS
+    ),
+) -> int:
     if not _admit_controlled_runtime():
         return 2
-    return local_pilot_control_command.run_from_args(arguments)
+    return local_pilot_control_command.run_from_args(arguments, ops=ops)
 
 
-def _resume_local_pilot_from_args(arguments: argparse.Namespace) -> int:
+def _resume_local_pilot_from_args(
+    arguments: argparse.Namespace,
+    *,
+    ops: local_pilot_control_command.ControlOps = (
+        local_pilot_control_command.DEFAULT_CONTROL_OPS
+    ),
+) -> int:
     if not _admit_controlled_runtime():
         return 2
-    return local_pilot_control_command.resume_from_args(arguments)
+    return local_pilot_control_command.resume_from_args(arguments, ops=ops)
 
 
-def _inspect_local_pilot_from_args(arguments: argparse.Namespace) -> int:
+def _inspect_local_pilot_from_args(
+    arguments: argparse.Namespace,
+    *,
+    ops: local_pilot_control_command.ControlOps = (
+        local_pilot_control_command.DEFAULT_CONTROL_OPS
+    ),
+) -> int:
     if not _admit_controlled_runtime():
         return 2
-    return local_pilot_control_command.inspect_from_args(arguments)
+    return local_pilot_control_command.inspect_from_args(arguments, ops=ops)
 
 
 def _add_build_commands(
@@ -365,7 +384,12 @@ def _add_build_commands(
     )
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser(
+    *,
+    local_pilot_control_ops: local_pilot_control_command.ControlOps = (
+        local_pilot_control_command.DEFAULT_CONTROL_OPS
+    ),
+) -> argparse.ArgumentParser:
     """Build the public parser from owner-supplied command definitions."""
     parser = argparse.ArgumentParser(
         prog="norad",
@@ -394,7 +418,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     local_pilot_control_command.configure_run_parser(run_parser)
     run_parser.set_defaults(
-        _command_handler=_run_local_pilot_from_args,
+        _command_handler=partial(
+            _run_local_pilot_from_args,
+            ops=local_pilot_control_ops,
+        ),
         _command_parser=run_parser,
     )
     resume_parser = command_parsers.add_parser(
@@ -404,7 +431,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     local_pilot_control_command.configure_resume_parser(resume_parser)
     resume_parser.set_defaults(
-        _command_handler=_resume_local_pilot_from_args,
+        _command_handler=partial(
+            _resume_local_pilot_from_args,
+            ops=local_pilot_control_ops,
+        ),
         _command_parser=resume_parser,
     )
     assemble_parser = command_parsers.add_parser(
@@ -467,7 +497,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     local_pilot_control_command.configure_inspect_parser(local_run_parser)
     local_run_parser.set_defaults(
-        _command_handler=_inspect_local_pilot_from_args,
+        _command_handler=partial(
+            _inspect_local_pilot_from_args,
+            ops=local_pilot_control_ops,
+        ),
         _command_parser=local_run_parser,
     )
     convert_parser = command_parsers.add_parser(
@@ -597,12 +630,18 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    local_pilot_control_ops: local_pilot_control_command.ControlOps = (
+        local_pilot_control_command.DEFAULT_CONTROL_OPS
+    ),
+) -> int:
     """Parse and dispatch one supported NORAD command."""
     if mismatch := _checkout_mismatch():
         print(f"norad: error: {mismatch}", file=sys.stderr)
         return 2
-    parser = build_parser()
+    parser = build_parser(local_pilot_control_ops=local_pilot_control_ops)
     arguments, unrecognized = parser.parse_known_args(argv)
     if unrecognized:
         error_parser = cast(
