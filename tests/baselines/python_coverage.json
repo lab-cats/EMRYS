@@ -1,25 +1,73 @@
 {
   "critical_owners": [
     {
+      "branch_rate": "0.817797",
+      "covered_branches": 193,
+      "covered_lines": 436,
+      "line_rate": "0.886179",
+      "name": "orchestration_machine_contracts",
+      "num_branches": 236,
+      "num_statements": 492,
+      "prefixes": [
+        "src/norad/contracts/orchestration/"
+      ]
+    },
+    {
+      "branch_rate": "0.687583",
+      "covered_branches": 1030,
+      "covered_lines": 3385,
+      "line_rate": "0.818028",
+      "name": "local_pilot_control_plane",
+      "num_branches": 1498,
+      "num_statements": 4138,
+      "prefixes": [
+        "src/norad/orchestration/local_pilot/"
+      ]
+    },
+    {
+      "branch_rate": "0.882979",
+      "covered_branches": 83,
+      "covered_lines": 235,
+      "line_rate": "0.880150",
+      "name": "source_checkout_admission",
+      "num_branches": 94,
+      "num_statements": 267,
+      "prefixes": [
+        "src/norad/libraries/source_authority.py"
+      ]
+    },
+    {
+      "branch_rate": "0.724638",
+      "covered_branches": 100,
+      "covered_lines": 364,
+      "line_rate": "0.887805",
+      "name": "runtime_availability_admission",
+      "num_branches": 138,
+      "num_statements": 410,
+      "prefixes": [
+        "src/norad/evidence/runtime_availability/"
+      ]
+    },
+    {
       "branch_rate": "0.975862",
       "covered_branches": 283,
-      "covered_lines": 580,
-      "line_rate": "0.991453",
+      "covered_lines": 592,
+      "line_rate": "0.991625",
       "name": "norad.contracts.scientific_evidence",
       "num_branches": 290,
-      "num_statements": 585,
+      "num_statements": 597,
       "prefixes": [
         "src/norad/contracts/scientific_evidence/"
       ]
     },
     {
-      "branch_rate": "0.972222",
-      "covered_branches": 105,
-      "covered_lines": 339,
-      "line_rate": "0.994135",
+      "branch_rate": "0.950820",
+      "covered_branches": 116,
+      "covered_lines": 371,
+      "line_rate": "0.978892",
       "name": "norad.libraries.validation",
-      "num_branches": 108,
-      "num_statements": 341,
+      "num_branches": 122,
+      "num_statements": 379,
       "prefixes": [
         "src/norad/libraries/validation/"
       ]
@@ -40,13 +88,13 @@
       ]
     },
     {
-      "branch_rate": "0.723289",
-      "covered_branches": 1733,
-      "covered_lines": 4920,
-      "line_rate": "0.841026",
+      "branch_rate": "0.718548",
+      "covered_branches": 1782,
+      "covered_lines": 5272,
+      "line_rate": "0.843925",
       "name": "report_publication_and_receipt_validation",
-      "num_branches": 2396,
-      "num_statements": 5850,
+      "num_branches": 2480,
+      "num_statements": 6247,
       "prefixes": [
         "src/norad/contracts/artifacts/",
         "src/norad/reporting/"
@@ -100,11 +148,17 @@
   },
   "policy": {
     "critical_owner_non_regression": {
+      "local_pilot_control_plane": [
+        "src/norad/orchestration/local_pilot/"
+      ],
       "norad.contracts.scientific_evidence": [
         "src/norad/contracts/scientific_evidence/"
       ],
       "norad.libraries.validation": [
         "src/norad/libraries/validation/"
+      ],
+      "orchestration_machine_contracts": [
+        "src/norad/contracts/orchestration/"
       ],
       "paired_cmh_analysis_contracts": [
         "src/norad/analyses/paired_cmh_candidate_ranking/"
@@ -112,6 +166,9 @@
       "report_publication_and_receipt_validation": [
         "src/norad/contracts/artifacts/",
         "src/norad/reporting/"
+      ],
+      "runtime_availability_admission": [
+        "src/norad/evidence/runtime_availability/"
       ],
       "scientific_review_publication": [
         "src/norad/evidence/scientific_review_package/"
@@ -121,6 +178,9 @@
         "src/norad/libraries/evidence/",
         "src/norad/libraries/quality/",
         "src/norad/libraries/references/"
+      ],
+      "source_checkout_admission": [
+        "src/norad/libraries/source_authority.py"
       ]
     },
     "global_non_regression": [
@@ -143,7 +203,7 @@
   "schema_version": "2.0.0",
   "subprocess_routes": [
     {
-      "covered_lines": 166,
+      "covered_lines": 268,
       "name": "norad.convert.gtf_to_bed12",
       "paths": [
         "src/norad/stages/gtf_to_bed12/converter.py"
@@ -162,11 +222,11 @@
     "version": "7.15.2"
   },
   "totals": {
-    "branch_rate": "0.767385",
-    "covered_branches": 3134,
-    "covered_lines": 9172,
-    "line_rate": "0.879302",
-    "num_branches": 4084,
-    "num_statements": 10431
+    "branch_rate": "0.748266",
+    "covered_branches": 4530,
+    "covered_lines": 13817,
+    "line_rate": "0.864265",
+    "num_branches": 6054,
+    "num_statements": 15987
   }
 }

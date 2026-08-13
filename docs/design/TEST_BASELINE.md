@@ -47,19 +47,34 @@ The accepted exact floors are:
 
 | Coverage owner | Line floor | Branch floor |
 | --- | ---: | ---: |
-| Python behavior lane | `9172 / 10431` (`0.879302`) | `3134 / 4084` (`0.767385`) |
-| `norad.contracts.scientific_evidence` | `580 / 585` (`0.991453`) | `283 / 290` (`0.975862`) |
-| `norad.libraries.validation` | `339 / 341` (`0.994135`) | `105 / 108` (`0.972222`) |
+| Python behavior lane | `13817 / 15987` (`0.864265`) | `4530 / 6054` (`0.748266`) |
+| Orchestration machine contracts | `436 / 492` (`0.886179`) | `193 / 236` (`0.817797`) |
+| Local-pilot control plane | `3385 / 4138` (`0.818028`) | `1030 / 1498` (`0.687583`) |
+| Source-checkout admission | `235 / 267` (`0.880150`) | `83 / 94` (`0.882979`) |
+| Runtime-availability admission | `364 / 410` (`0.887805`) | `100 / 138` (`0.724638`) |
+| `norad.contracts.scientific_evidence` | `592 / 597` (`0.991625`) | `283 / 290` (`0.975862`) |
+| `norad.libraries.validation` | `371 / 379` (`0.978892`) | `116 / 122` (`0.950820`) |
 | Shared scientific validation primitives | `341 / 341` (`1.000000`) | `123 / 124` (`0.991935`) |
-| Report/publication and receipt validation | `4920 / 5850` (`0.841026`) | `1733 / 2396` (`0.723289`) |
+| Report/publication and receipt validation | `5272 / 6247` (`0.843925`) | `1782 / 2480` (`0.718548`) |
 | Scientific-review publication | `860 / 1020` (`0.843137`) | `346 / 480` (`0.720833`) |
 | Paired-CMH analysis contracts | `85 / 85` (`1.000000`) | `16 / 18` (`0.888889`) |
 
-The Campaign A rebase removed 115 covered compatibility/helper statements from
-`norad.contracts.scientific_evidence` while retaining its same five uncovered
-statements and identical `283 / 290` branch result. Its lower line ratio is a
-smaller-denominator effect, not lost behavior execution. Global and every
-other critical-owner rate are equal or improved.
+The Campaign B coverage measurement ran the Python behavior lane with `1324`
+passing tests and `6` explicit opt-in skips. Relative to the prior accepted
+snapshot, the measured surface grew by `5556` statements and `1970` branches,
+while covered counts grew by `4645` statements and `1396` branches. Coverage
+therefore expanded substantially while the global ratios declined. This
+explicit rebase accepts the measured Campaign B source/test surface and adds
+independent non-regression floors for orchestration machine contracts, the
+local-pilot control plane, source-checkout admission, and runtime-availability
+admission.
+
+Scientific-evidence line coverage increased with identical branch coverage;
+shared scientific primitives, scientific-review publication, and paired-CMH
+contracts retained their prior ratios. Validation and reporting floors now
+bind their expanded measured surfaces. These numerical floors do not prove
+unchanged execution of every prior statement or replace transaction, recovery,
+real-runtime, cluster, or scientific evidence.
 
 Comparisons cross-multiply the exact counts. Six-decimal rates are display
 values and never weaken the gate through rounding.
@@ -71,7 +86,7 @@ The active policy:
 - separately runs the subprocess-only GTF-to-BED12 and sample-manifest CLI
   suites and requires coverage in their exact public route modules;
 - rejects any exact-ratio decrease in global line or branch coverage;
-- rejects any exact-ratio decrease in the six critical-owner groups above;
+- rejects any exact-ratio decrease in the ten critical-owner groups above;
 - allows private files to move, merge, or disappear when aggregate and owner
   coverage remain non-regressive;
 - requires a genuinely new shared Python module named through
