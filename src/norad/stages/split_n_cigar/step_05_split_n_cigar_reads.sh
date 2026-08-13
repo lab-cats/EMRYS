@@ -41,6 +41,9 @@ Options:
                       argument, SAMTOOLS_BIN_OVERRIDE, PATH.
   --java-bin          Java executable or path. Resolution order:
                       argument, JAVA_BIN_OVERRIDE, JAVA_HOME/bin/java, PATH.
+                      It must resolve to canonical <JAVA_HOME>/bin/java.
+                      Execute mode also requires absolute Python 3.11+ in
+                      NORAD_SHA256_PYTHON.
   --no-clobber        Refuse an existing final pair and use a sample lock.
                       Required by orchestration.
   --execute           Execute GATK and samtools after validation. Without this,
@@ -57,6 +60,8 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/file_checks.sh"
+# shellcheck source=../../libraries/gatk_invocation.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/gatk_invocation.sh"
 
 validate_existing_file() {
     local label="$1"
@@ -451,9 +456,11 @@ validate_and_print_java \
     "$java_bin"
 
 printf 'GATK version:\n'
-"$gatk_bin" --version 2>&1 || die2 "GATK version check failed: $gatk_bin"
+invoke_gatk_with_selected_java "$java_bin" "$gatk_bin" --version 2>&1 ||
+    die2 "GATK version check failed: $gatk_bin"
 
-env TMPDIR="$gatk_tmp_dir" "${gatk_command[@]}"
+TMPDIR="$gatk_tmp_dir" \
+    invoke_gatk_with_selected_java "$java_bin" "${gatk_command[@]}"
 "${index_command[@]}"
 validate_bam_pair "$tmp_bam" "$tmp_bai" "Replacement"
 if [[ "$no_clobber" == true ]]; then

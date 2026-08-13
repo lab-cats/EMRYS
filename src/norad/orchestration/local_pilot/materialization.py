@@ -20,6 +20,11 @@ from norad.contracts.orchestration.projection import build_reporting_bundle
 from norad.libraries.source_authority import controlled_python_argv
 from norad.orchestration.local_pilot import doctor, inspection, lifecycle
 from norad.orchestration.local_pilot.normalization import NormalizationBundle
+from norad.libraries.process_environment import (
+    R_SELECTOR_PREFIXES,
+    R_STARTUP_VARIABLES,
+    guarded_r_environment,
+)
 
 Operation = Literal["execute", "resume"]
 TARGET = "local_pipeline_slice"
@@ -194,23 +199,27 @@ def _r_owner_command(
     script: Path,
     arguments: Sequence[str],
 ) -> tuple[str, ...]:
+    selected = guarded_r_environment(source_root, renv_library, base_environment={})
+    names = tuple(selected)
+    assignments = " ".join(
+        f'{name}="${{{index}}}"' for index, name in enumerate(names, start=1)
+    )
+    patterns = "|".join(
+        (*(f"{prefix}*" for prefix in R_SELECTOR_PREFIXES), *R_STARTUP_VARIABLES)
+    )
     bootstrap = (
         "for norad_env_name in $(compgen -A variable); do "
-        'case "$norad_env_name" in '
-        'R_LIBS*|R_PROFILE*|R_ENVIRON*|RENV_*) unset "$norad_env_name";; '
-        "esac; done; "
-        'export NORAD_USE_RENV=1 RENV_PROJECT="$1" '
-        'R_PROFILE_USER="$1/.Rprofile" RENV_CONFIG_SANDBOX_ENABLED=FALSE '
-        'RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PATHS_LIBRARY="$2"; '
-        'shift 2; exec "$@"'
+        f'case "$norad_env_name" in {patterns}) unset "$norad_env_name";; esac; '
+        "done; "
+        f'export {assignments}; shift {len(names)}; exec "$@"'
     )
     return (
         bash,
         "-c",
         bootstrap,
         "norad-r",
-        str(source_root),
-        str(renv_library),
+        *(selected[name] for name in names),
+        bash,
         str(script),
         *arguments,
     )

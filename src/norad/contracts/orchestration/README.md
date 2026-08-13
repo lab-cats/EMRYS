@@ -24,6 +24,16 @@ identity records its name, observed version, authored path, canonical resolved
 path, and SHA-256; a null digest is allowed only for the specifically admitted
 canonical `renv` project/library directories. Lifecycle admission rechecks the
 same targets and bytes before execution, after execution, and before resume.
+Each fixed `r_*` identity instead binds its observed namespace version, exact
+canonical installed-package root, and a deterministic tree SHA-256 over sorted
+entry kind, relative path, permission mode, size, and regular-file bytes.
+Symbolic links and special entries are rejected; only the `renv_project` and
+`renv_library` directory identities retain null digests.
+Readiness also requires the existing selected R library to contain the pinned
+`renv` package before any R process starts. The shared guarded selector removes
+ambient shell and R startup hooks, disables `renv` autoloading, and checks that
+required namespaces resolve under that library; planning never restores,
+bootstraps, installs, or downloads dependencies.
 
 Owner tasks have a fixed producer-entry ledger beneath
 `state/task-starts/<machine-key>/<scope-id>.json`. Each create-exclusive
@@ -33,6 +43,13 @@ pre-entry failures with a null start reference; every post-entry attempt and
 verified task binds the published start record. Every task attempt also binds
 both captured streams as relative-path/SHA-256 record references; inspection
 and verified-task reuse re-read the exact log bytes.
+
+The only stationary output exception is the exact Step `00c` FASTA-sidecar
+pair. Readiness requires its FASTA to be canonical and readable and its real
+parent to be readable, writable, and searchable without creating an access
+probe. The task boundary rechecks that access immediately before publishing
+`task-start`; permission drift retains a failed pre-entry attempt and bound
+logs but enters no producer and creates no sidecar residue.
 
 Reporting producers have a separate fixed ledger beneath
 `state/reporting/<kind>/`: `start.json` binds the origin workflow attempt and

@@ -212,7 +212,11 @@ def prepare_delegated(name: str, tmp_path: Path) -> PreparedWrapper:
             "FAKE_SKIP_OUTPUTS": "0",
         }
     )
-    context = {"submit": str(submit), "fake_bin": str(fake_bin)}
+    context = {
+        "submit": str(submit),
+        "fake_bin": str(fake_bin),
+        "python": str(REPO_ROOT / ".venv" / "bin" / "python"),
+    }
     for fixture_path in case.paths:
         resolved = Path(fixture_path.template.format_map(context))
         if fixture_path.kind == "file":
@@ -862,7 +866,7 @@ def test_step_05_split_n_cigar_reads_rejects_unsupported_java_version_output(
     assert not prepared.delegate_log.exists()
 
 
-@pytest.mark.parametrize("tool", ("gatk", "samtools"))
+@pytest.mark.parametrize("tool", ("samtools",))
 def test_step_05_split_n_cigar_reads_propagates_tool_version_command_failure(
     tmp_path: Path,
     tool: str,
@@ -876,6 +880,68 @@ def test_step_05_split_n_cigar_reads_propagates_tool_version_command_failure(
     )
 
     assert result.returncode == 37, result.stdout + result.stderr
+    assert not prepared.delegate_log.exists()
+
+
+@pytest.mark.parametrize(
+    "name",
+    (
+        "step_00c_prepare_gatk_reference.slurm",
+        "step_05_split_n_cigar_reads.slurm",
+    ),
+)
+def test_gatk_wrappers_leave_version_probe_to_delegated_owner(
+    tmp_path: Path,
+    name: str,
+) -> None:
+    prepared = prepare_delegated(name, tmp_path)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_FAIL_TOOL": "gatk", "FAKE_TOOL_EXIT": "37"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+    assert all(
+        not line.startswith("gatk\t") for line in read_lines(tmp_path / "tool.log")
+    )
+
+
+@pytest.mark.parametrize(
+    "name",
+    (
+        "step_00c_prepare_gatk_reference.slurm",
+        "step_05_split_n_cigar_reads.slurm",
+    ),
+)
+@pytest.mark.parametrize("python_state", ("missing", "nonexecutable", "unsupported"))
+def test_gatk_wrappers_reject_unusable_controlled_python_before_delegation(
+    tmp_path: Path,
+    name: str,
+    python_state: str,
+) -> None:
+    prepared = prepare_delegated(name, tmp_path)
+    python = tmp_path / f"{python_state}-python"
+    if python_state == "nonexecutable":
+        touch(python, "not executable\n")
+    elif python_state == "unsupported":
+        write_executable(
+            python,
+            "#!/bin/bash\nprintf 'Python 3.10.0\\n' >&2\nexit 2\n",
+        )
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"NORAD_SHA256_PYTHON": str(python)},
+    )
+
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "NORAD_SHA256_PYTHON" in result.stderr
     assert not prepared.delegate_log.exists()
 
 

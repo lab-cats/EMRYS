@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 import copy
+import fcntl
 import hashlib
 import json
 import os
 import platform
+import signal
 import shutil
+import subprocess
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -17,6 +20,7 @@ from typing import Any
 import pytest
 
 from norad.contracts.orchestration import api as orchestration_contracts
+from norad.libraries.installed_package_identity import installed_package_tree_identity
 from norad.orchestration.local_pilot import inspection, lifecycle, reporting_boundary
 from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
 
@@ -211,6 +215,514 @@ def _record_reference(path: Path, root: Path) -> dict[str, str]:
         "path": path.relative_to(root).as_posix(),
         "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
     }
+
+
+def test_transaction_signal_controller_forwards_only_first_signal_once() -> None:
+    sent: list[tuple[int, int]] = []
+    controller: lifecycle.TransactionSignalController
+
+    def send(process_group_id: int, signum: int) -> None:
+        sent.append((process_group_id, signum))
+        controller.record(signal.SIGTERM)
+
+    process_ops = lifecycle.ProcessGroupOps(signal_group=send)
+    controller = lifecycle.TransactionSignalController(
+        lifecycle.DEFAULT_SIGNAL_OPS,
+        process_ops,
+    )
+
+    controller.register_process_group(9001)
+    controller.record(signal.SIGINT)
+
+    assert controller.first_signal == signal.SIGINT
+    assert sent == [(9001, signal.SIGINT)]
+
+
+def test_process_group_ambiguity_escalates_and_fails_closed() -> None:
+    class Process:
+        pid = 9002
+
+    ticks = iter((0.0, 0.0, 1.0, 1.0, 2.0, 2.0))
+    sent: list[int] = []
+    controller = lifecycle.TransactionSignalController(
+        lifecycle.DEFAULT_SIGNAL_OPS,
+        lifecycle.DEFAULT_PROCESS_GROUP_OPS,
+    )
+    ops = lifecycle.ProcessGroupOps(
+        spawn=lambda _argv, _cwd, _env: Process(),
+        poll=lambda _process: 0,
+        group_exists=lambda _pgid: True,
+        signal_group=lambda _pgid, signum: sent.append(signum),
+        monotonic=lambda: next(ticks),
+        sleep=lambda _seconds: None,
+        terminate_grace_seconds=0.0,
+        kill_grace_seconds=0.0,
+    )
+
+    with pytest.raises(lifecycle.ProcessGroupAmbiguity, match="proved quiescent"):
+        lifecycle._run_process_group(("fixture",), Path("/"), controller, ops=ops)
+
+    assert sent == [signal.SIGTERM, signal.SIGKILL]
+
+
+def test_process_group_poll_failure_still_forces_quiescence() -> None:
+    class Process:
+        pid = 9003
+
+    alive = True
+    poll_calls = 0
+    sent: list[int] = []
+
+    def poll(_process: Process) -> int:
+        nonlocal poll_calls
+        poll_calls += 1
+        if poll_calls == 1:
+            raise OSError("poll failed")
+        return 0
+
+    def send(_pgid: int, signum: int) -> None:
+        nonlocal alive
+        sent.append(signum)
+        if signum == signal.SIGTERM:
+            alive = False
+
+    controller = lifecycle.TransactionSignalController(
+        lifecycle.DEFAULT_SIGNAL_OPS,
+        lifecycle.DEFAULT_PROCESS_GROUP_OPS,
+    )
+    ops = lifecycle.ProcessGroupOps(
+        spawn=lambda _argv, _cwd, _env: Process(),
+        poll=poll,
+        group_exists=lambda _pgid: alive,
+        signal_group=send,
+        monotonic=lambda: 0.0,
+        sleep=lambda _seconds: None,
+    )
+
+    with pytest.raises(OSError, match="poll failed"):
+        lifecycle._run_process_group(("fixture",), Path("/"), controller, ops=ops)
+
+    assert sent == [signal.SIGTERM]
+
+
+@pytest.mark.parametrize(
+    "failure_point",
+    ["poll", "probe", "signal", "sleep", "base_exception"],
+)
+def test_process_group_quiescence_effect_failure_is_typed_ambiguity(
+    failure_point: str,
+) -> None:
+    class Process:
+        pid = 9005
+
+    controller = lifecycle.TransactionSignalController(
+        lifecycle.DEFAULT_SIGNAL_OPS,
+        lifecycle.DEFAULT_PROCESS_GROUP_OPS,
+    )
+
+    def fail(label: str) -> None:
+        if failure_point == "base_exception" and label == "probe":
+            raise KeyboardInterrupt("fixture group probe interruption")
+        if failure_point == label:
+            raise OSError(f"fixture group {label} failure")
+
+    def group_exists(_pgid: int) -> bool:
+        fail("probe")
+        return True
+
+    def poll(_process: Process) -> int:
+        fail("poll")
+        return 0
+
+    def send(_pgid: int, _signum: int) -> None:
+        fail("signal")
+
+    def sleep(_seconds: float) -> None:
+        fail("sleep")
+
+    ops = lifecycle.ProcessGroupOps(
+        spawn=lambda _argv, _cwd, _env: Process(),
+        poll=poll,
+        group_exists=group_exists,
+        signal_group=send,
+        monotonic=lambda: 0.0,
+        sleep=sleep,
+    )
+
+    with pytest.raises(
+        lifecycle.ProcessGroupAmbiguity,
+        match="quiesc",
+    ) as observed:
+        lifecycle._run_process_group(("fixture",), Path("/"), controller, ops=ops)
+    if failure_point == "base_exception":
+        assert isinstance(observed.value.__cause__, KeyboardInterrupt)
+
+
+def test_post_spawn_poll_failure_reaps_real_leader_before_propagating(
+    tmp_path: Path,
+) -> None:
+    processes: list[subprocess.Popen[bytes]] = []
+    poll_calls = 0
+
+    def spawn(
+        argv: tuple[str, ...], cwd: Path, environment: dict[str, str]
+    ) -> subprocess.Popen[bytes]:
+        process = subprocess.Popen(
+            argv,
+            cwd=cwd,
+            env=environment,
+            start_new_session=True,
+        )
+        processes.append(process)
+        return process
+
+    def poll(process: subprocess.Popen[bytes]) -> int | None:
+        nonlocal poll_calls
+        poll_calls += 1
+        if poll_calls == 1:
+            raise OSError("fixture post-spawn poll failure")
+        return process.poll()
+
+    controller = lifecycle.TransactionSignalController(
+        lifecycle.DEFAULT_SIGNAL_OPS,
+        lifecycle.DEFAULT_PROCESS_GROUP_OPS,
+    )
+    ops = lifecycle.ProcessGroupOps(
+        spawn=spawn,
+        poll=poll,
+        terminate_grace_seconds=0.5,
+        kill_grace_seconds=0.5,
+    )
+
+    with pytest.raises(OSError, match="post-spawn poll failure"):
+        try:
+            lifecycle._run_process_group(
+                (sys.executable, "-c", "import time; time.sleep(60)"),
+                tmp_path,
+                controller,
+                ops=ops,
+            )
+        finally:
+            for process in processes:
+                if process.poll() is None:
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    process.wait(timeout=1)
+
+    assert len(processes) == 1
+    process = processes[0]
+    assert process.returncode is not None
+    with pytest.raises(ProcessLookupError):
+        os.killpg(process.pid, 0)
+
+
+def test_process_group_ambiguity_retains_public_lock_without_receipt(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(tmp_path)
+
+    class Process:
+        pid = 9006
+
+    process_ops = lifecycle.ProcessGroupOps(
+        spawn=lambda _argv, _cwd, _env: Process(),
+        poll=lambda _process: 0,
+        group_exists=lambda _pgid: True,
+        signal_group=lambda _pgid, _signum: (_ for _ in ()).throw(
+            OSError("fixture group signal failure")
+        ),
+    )
+    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+
+    with pytest.raises(lifecycle.ProcessGroupAmbiguity):
+        lifecycle.run_attempt(
+            built.request,
+            ops=replace(
+                built.ops(),
+                run_workflow=None,
+                process_group_ops=process_ops,
+            ),
+        )
+
+    attempt_root = built.built.run_root / "attempts" / identifier
+    assert (built.built.run_root / "locks/run.lock").is_file()
+    assert (attempt_root / "attempt.json").is_file()
+    assert not (attempt_root / "released-run-lock.json").exists()
+    assert not (attempt_root / "attempt-receipt.json").exists()
+
+
+def test_signal_forwarding_failure_is_nonraising_then_fails_closed() -> None:
+    controller: lifecycle.TransactionSignalController
+    sent: list[int] = []
+
+    def fail(_pgid: int, signum: int) -> None:
+        sent.append(signum)
+        raise PermissionError("fixture forwarding denial")
+
+    controller = lifecycle.TransactionSignalController(
+        lifecycle.DEFAULT_SIGNAL_OPS,
+        lifecycle.ProcessGroupOps(signal_group=fail),
+    )
+    controller.register_process_group(9004)
+
+    controller.record(signal.SIGTERM)
+
+    assert sent == [signal.SIGTERM]
+    with pytest.raises(lifecycle.ProcessGroupAmbiguity, match="Could not forward"):
+        controller.raise_forwarding_error()
+
+
+@pytest.mark.parametrize("phase", ["before_mutex", "after_mutex", "before_run_lock"])
+def test_signal_before_run_lock_aborts_without_attempt_evidence(
+    tmp_path: Path,
+    phase: str,
+) -> None:
+    built = _build_harness(tmp_path)
+    previous = {
+        signum: signal.getsignal(signum) for signum in (signal.SIGINT, signal.SIGTERM)
+    }
+
+    def interrupt(observed: str) -> None:
+        if observed == phase:
+            os.kill(os.getpid(), signal.SIGTERM)
+
+    with pytest.raises(lifecycle.LifecycleError, match="interrupted"):
+        lifecycle.run_attempt(
+            built.request,
+            ops=replace(built.ops(), observe_phase=interrupt),
+        )
+
+    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    assert not (built.built.run_root / "locks/run.lock").exists()
+    assert not (built.built.run_root / "attempts" / identifier).exists()
+    assert not list((built.built.run_root / "locks").glob("released-*.json"))
+    assert {
+        signum: signal.getsignal(signum) for signum in (signal.SIGINT, signal.SIGTERM)
+    } == previous
+
+
+def test_signal_after_run_lock_retains_aggregate_recovery_evidence(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(tmp_path)
+
+    def interrupt(phase: str) -> None:
+        if phase == "after_run_lock":
+            os.kill(os.getpid(), signal.SIGINT)
+
+    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    with pytest.raises(lifecycle.LifecycleError, match="after run-lock"):
+        lifecycle.run_attempt(
+            built.request,
+            ops=replace(built.ops(), observe_phase=interrupt),
+        )
+
+    assert not (built.built.run_root / "locks/run.lock").exists()
+    assert (
+        built.built.run_root / "locks" / f"released-{identifier}-run-lock.json"
+    ).is_file()
+    assert not (built.built.run_root / "attempts" / identifier).exists()
+
+
+@pytest.mark.parametrize(
+    "phase",
+    [
+        "after_attempt_publication",
+        "after_workflow",
+        "before_lock_release",
+        "before_receipt_publication",
+    ],
+)
+def test_signal_after_attempt_terminalizes_interrupted_receipt(
+    tmp_path: Path,
+    phase: str,
+) -> None:
+    built = _build_harness(tmp_path)
+
+    def interrupt(observed: str) -> None:
+        if observed == phase:
+            os.kill(os.getpid(), signal.SIGTERM)
+
+    outcome = lifecycle.run_attempt(
+        built.request,
+        ops=replace(built.ops(), observe_phase=interrupt),
+    )
+
+    assert outcome.receipt["status"] == "interrupted"
+    assert outcome.receipt["termination_signal"] == signal.SIGTERM
+    assert outcome.receipt_path.is_file()
+    assert outcome.released_lock_path.is_file()
+    assert not outcome.lock_path.exists()
+
+
+def test_signal_during_receipt_commit_reaches_ambient_handler_after_commit(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(tmp_path)
+    defaults = built.ops()
+    ambient_observations: list[bool] = []
+    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    receipt_path = (
+        built.built.run_root / "attempts" / identifier / "attempt-receipt.json"
+    )
+    prior = signal.getsignal(signal.SIGTERM)
+
+    def ambient(_signum: int, _frame: object) -> None:
+        ambient_observations.append(receipt_path.is_file())
+
+    def publish(path: Path, data: bytes) -> None:
+        if path == receipt_path:
+            os.kill(os.getpid(), signal.SIGTERM)
+        defaults.publish_bytes(path, data)
+
+    signal.signal(signal.SIGTERM, ambient)
+    try:
+        outcome = lifecycle.run_attempt(
+            built.request,
+            ops=replace(defaults, publish_bytes=publish),
+        )
+    finally:
+        signal.signal(signal.SIGTERM, prior)
+
+    assert outcome.receipt["status"] == "failed"
+    assert ambient_observations == [True]
+    assert receipt_path.is_file()
+
+
+@pytest.mark.parametrize("mutex_phase", ["before_release", "after_release"])
+def test_signal_during_mutex_cleanup_is_delivered_after_unlock(
+    tmp_path: Path,
+    mutex_phase: str,
+) -> None:
+    built = _build_harness(tmp_path)
+    defaults = built.ops()
+    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    receipt_path = (
+        built.built.run_root / "attempts" / identifier / "attempt-receipt.json"
+    )
+    mutex_path = built.built.run_root / "locks/acquire.mutex"
+    observations: list[tuple[bool, bool]] = []
+    prior_handler = signal.getsignal(signal.SIGTERM)
+    prior_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+
+    def ambient(_signum: int, _frame: object) -> None:
+        descriptor = os.open(mutex_path, os.O_RDWR | os.O_NOFOLLOW)
+        lock_available = False
+        try:
+            fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            lock_available = True
+            fcntl.flock(descriptor, fcntl.LOCK_UN)
+        finally:
+            os.close(descriptor)
+        observations.append((receipt_path.is_file(), lock_available))
+
+    def observe(event: str, _path: Path) -> None:
+        if event == mutex_phase:
+            os.kill(os.getpid(), signal.SIGTERM)
+
+    signal.signal(signal.SIGTERM, ambient)
+    try:
+        outcome = lifecycle.run_attempt(
+            built.request,
+            ops=replace(defaults, observe_mutex=observe),
+        )
+    finally:
+        signal.signal(signal.SIGTERM, prior_handler)
+
+    assert outcome.receipt_path.is_file()
+    assert observations == [(True, True)]
+    assert signal.pthread_sigmask(signal.SIG_BLOCK, set()) == prior_mask
+
+
+def test_signal_and_failure_during_receipt_commit_restore_controller_state(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(tmp_path)
+    defaults = built.ops()
+    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    receipt_path = (
+        built.built.run_root / "attempts" / identifier / "attempt-receipt.json"
+    )
+    prior_handlers = {
+        signum: signal.getsignal(signum) for signum in (signal.SIGINT, signal.SIGTERM)
+    }
+    prior_mask = signal.pthread_sigmask(signal.SIG_BLOCK, set())
+
+    def publish(path: Path, data: bytes) -> None:
+        if path == receipt_path:
+            os.kill(os.getpid(), signal.SIGINT)
+            raise OSError("fixture receipt publication failure")
+        defaults.publish_bytes(path, data)
+
+    with pytest.raises(OSError, match="receipt publication failure"):
+        lifecycle.run_attempt(
+            built.request,
+            ops=replace(defaults, publish_bytes=publish),
+        )
+
+    assert not receipt_path.exists()
+    assert (
+        built.built.run_root / "attempts" / identifier / "released-run-lock.json"
+    ).is_file()
+    assert {
+        signum: signal.getsignal(signum) for signum in (signal.SIGINT, signal.SIGTERM)
+    } == prior_handlers
+    assert signal.pthread_sigmask(signal.SIG_BLOCK, set()) == prior_mask
+
+
+def test_preblocked_ordinary_signal_is_refused_without_run_evidence(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(tmp_path)
+    prior_mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGTERM})
+    try:
+        with pytest.raises(lifecycle.LifecycleError, match="ambient mask"):
+            lifecycle.run_attempt(built.request, ops=built.ops())
+        assert not (built.built.run_root / "locks/run.lock").exists()
+        assert not list((built.built.run_root / "attempts").iterdir())
+        assert signal.SIGTERM in signal.pthread_sigmask(signal.SIG_BLOCK, set())
+    finally:
+        signal.pthread_sigmask(signal.SIG_SETMASK, prior_mask)
+
+
+def test_process_group_leader_exit_still_quiesces_grandchild(tmp_path: Path) -> None:
+    pid_file = tmp_path / "grandchild.pid"
+    launcher = tmp_path / "launcher.py"
+    launcher.write_text(
+        "import os, pathlib, subprocess, sys\n"
+        "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
+        "pathlib.Path(sys.argv[1]).write_text(f'{os.getpgrp()} {child.pid}')\n",
+        encoding="utf-8",
+    )
+    signals = lifecycle.TransactionSignalController(
+        lifecycle.DEFAULT_SIGNAL_OPS,
+        lifecycle.DEFAULT_PROCESS_GROUP_OPS,
+    )
+
+    result = lifecycle._run_process_group(
+        (sys.executable, str(launcher), str(pid_file)),
+        tmp_path,
+        signals,
+        ops=lifecycle.ProcessGroupOps(
+            terminate_grace_seconds=0.2,
+            kill_grace_seconds=0.5,
+        ),
+    )
+
+    assert result == lifecycle.WorkflowResult(0, None, None)
+    process_group_id, grandchild_pid = (
+        int(value) for value in pid_file.read_text(encoding="utf-8").split()
+    )
+    try:
+        with pytest.raises(ProcessLookupError):
+            os.killpg(process_group_id, 0)
+    finally:
+        try:
+            os.kill(grandchild_pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
 
 
 def _bound(role: str, path: Path) -> dict[str, Any]:
@@ -895,6 +1407,135 @@ def test_required_tool_same_path_and_version_rejects_byte_mutation(
         lifecycle._admit_required_tool_identity(identity)
 
 
+def test_initial_and_post_child_runtime_environments_select_bound_java(
+    tmp_path: Path,
+) -> None:
+    selected_home = tmp_path / "selected-java"
+    selected_java = selected_home / "bin" / "java"
+    selected_java.parent.mkdir(parents=True)
+    poison_home = tmp_path / "poison-java"
+    poison_java = poison_home / "bin" / "java"
+    poison_java.parent.mkdir(parents=True)
+    selected_marker = tmp_path / "selected.marker"
+    poison_marker = tmp_path / "poison.marker"
+    gatk = tmp_path / "gatk"
+    renv_library = tmp_path / "renv-library"
+    renv_library.mkdir()
+
+    selected_java.write_text(
+        "#!/bin/sh\nprintf 'selected\\n' >> \"$SELECTED_MARKER\"\n",
+        encoding="utf-8",
+    )
+    poison_java.write_text(
+        "#!/bin/sh\nprintf 'poison\\n' >> \"$POISON_MARKER\"\n",
+        encoding="utf-8",
+    )
+    gatk.write_text(
+        '#!/bin/sh\nprintf \'%s|%s\\n\' "$JAVA_HOME" "$(command -v java)"\n'
+        "java -version\n",
+        encoding="utf-8",
+    )
+    for executable in (selected_java, poison_java, gatk):
+        executable.chmod(0o755)
+    hostile = {
+        "PATH": f"{poison_java.parent}{os.pathsep}{os.environ['PATH']}",
+        "JAVA_HOME": str(poison_home),
+        "SELECTED_MARKER": str(selected_marker),
+        "POISON_MARKER": str(poison_marker),
+        "BASH_ENV": str(tmp_path / "hostile-bash-startup"),
+        "CLASSPATH": "/ambient/classes",
+        "GATK_JAR": "/ambient/gatk.jar",
+        "GATK_LOCAL_JAR": "/ambient/local-gatk.jar",
+        "JAVA_OPTS": "-Dambient.java.opts=true",
+        "JAVA_TOOL_OPTIONS": "-Dambient.java.tool.options=true",
+        "JDK_JAVA_OPTIONS": "-Dambient.jdk.java.options=true",
+        "_JAVA_OPTIONS": "-Dambient.underscore.java.options=true",
+    }
+
+    observations = []
+    for _phase in ("initial", "post-child"):
+        environment = lifecycle._local_runtime_environment(
+            workflow_fixture.REPO_ROOT,
+            renv_library,
+            selected_java.resolve(),
+            base_environment=hostile,
+        )
+        completed = subprocess.run(
+            (str(gatk),),
+            check=True,
+            capture_output=True,
+            text=True,
+            env=environment,
+        )
+        observations.append(completed.stdout.strip())
+        assert "BASH_ENV" not in environment
+        assert not {
+            "CLASSPATH",
+            "GATK_JAR",
+            "GATK_LOCAL_JAR",
+            "JAVA_OPTS",
+            "JAVA_TOOL_OPTIONS",
+            "JDK_JAVA_OPTIONS",
+            "_JAVA_OPTIONS",
+        }.intersection(environment)
+
+    expected = f"{selected_home.resolve()}|{selected_java.resolve()}"
+    assert observations == [expected, expected]
+    assert selected_marker.read_text(encoding="utf-8").splitlines() == [
+        "selected",
+        "selected",
+    ]
+    assert not poison_marker.exists()
+
+
+def test_r_package_byte_mutation_before_workflow_retains_ambiguous_lock(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(tmp_path)
+    package = tmp_path / "renv-library" / "VariantAnnotation"
+    database = package / "R" / "VariantAnnotation.rdb"
+    database.parent.mkdir(parents=True)
+    database.write_bytes(b"package-db-v1\n")
+    (package / "DESCRIPTION").write_text(
+        "Package: VariantAnnotation\nVersion: 1.0.0\n",
+        encoding="utf-8",
+    )
+    package_identity = installed_package_tree_identity(package)
+    built.request.attempt_record["required_tools"].insert(
+        1,
+        {
+            "name": "r_variant_annotation",
+            "version": "1.0.0",
+            "path": str(package),
+            "resolved_path": str(package),
+            "sha256": package_identity.sha256,
+        },
+    )
+
+    def mutate(phase: str) -> None:
+        if phase == "before_workflow":
+            database.write_bytes(b"package-db-v2\n")
+
+    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    with pytest.raises(
+        lifecycle.LifecycleError,
+        match="runner failed without a terminal child observation",
+    ) as observed:
+        lifecycle.run_attempt(
+            built.request,
+            ops=replace(built.ops(), observe_phase=mutate),
+        )
+
+    assert isinstance(observed.value.__cause__, lifecycle.LifecycleError)
+    assert "R package tree digest differs" in str(observed.value.__cause__)
+    attempt_root = built.built.run_root / "attempts" / identifier
+    assert "workflow" not in built.events
+    assert (built.built.run_root / "locks/run.lock").is_file()
+    assert (attempt_root / "attempt.json").is_file()
+    assert not (attempt_root / "released-run-lock.json").exists()
+    assert not (attempt_root / "attempt-receipt.json").exists()
+
+
 def test_alternate_checkout_snakefile_is_rejected_before_mutation(
     tmp_path: Path,
 ) -> None:
@@ -1125,7 +1766,10 @@ def test_attempt_directory_sync_failure_precedes_child_record_publication(
     assert attempt_root.is_dir()
     assert not (attempt_root / "request.yaml").exists()
     assert not (attempt_root / "attempt.json").exists()
-    assert (attempt_root / "released-run-lock.json").is_file()
+    assert not (attempt_root / "released-run-lock.json").exists()
+    assert (
+        built.built.run_root / "locks" / f"released-{identifier}-run-lock.json"
+    ).is_file()
     assert not (attempt_root / "attempt-receipt.json").exists()
     assert built.events.index(f"sync:attempts/{identifier}") < built.events.index(
         "release"

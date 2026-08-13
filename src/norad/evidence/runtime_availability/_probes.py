@@ -10,6 +10,13 @@ import subprocess
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
+from norad.libraries.process_environment import (
+    ProcessEnvironmentError,
+    gatk_subprocess_environment,
+    guarded_rscript_argv,
+)
+from norad.libraries.source_authority import controlled_python_argv
+
 from ._runtime_model import (
     HASH_EXPECTED,
     HASH_PAYLOAD,
@@ -21,6 +28,10 @@ from ._runtime_model import (
     _fail,
     _single_line,
 )
+
+CommandRunner = Callable[
+    [list[str], bytes | None, Mapping[str, str] | None], tuple[int, str]
+]
 
 
 def _resolve_executable(target: str) -> str | None:
@@ -51,13 +62,22 @@ def _run_command(
     return completed.returncode, _single_line(output)
 
 
-def _probe_tool(check: Check, environment: Mapping[str, str] | None) -> Result:
+def _probe_tool(
+    check: Check,
+    environment: Mapping[str, str] | None,
+    run_command: CommandRunner,
+) -> Result:
     executable = _resolve_executable(check.target)
     if executable is None:
         return Result(check, "fail", "unavailable", "Executable was not found")
-    code, output = _run_command(
-        [executable, *check.probe_args], environment=environment
-    )
+    command = [executable, *check.probe_args]
+    if (
+        check.check_id == "rscript"
+        and environment is not None
+        and (environment.get("NORAD_LOCAL_PILOT_R") == "1")
+    ):
+        command = guarded_rscript_argv(executable, check.probe_args)
+    code, output = run_command(command, None, environment)
     if code != 0:
         return Result(check, "fail", output or f"exit {code}", "Version probe failed")
     if re.search(check.expected, output) is None:
@@ -67,23 +87,59 @@ def _probe_tool(check: Check, environment: Mapping[str, str] | None) -> Result:
     return Result(check, "pass", output, f"Resolved executable: {executable}")
 
 
-def _probe_r_namespace(check: Check, environment: Mapping[str, str] | None) -> Result:
+def _probe_r_namespace(
+    check: Check,
+    environment: Mapping[str, str] | None,
+    run_command: CommandRunner,
+) -> Result:
     rscript = _resolve_executable(check.probe_args[0])
     if rscript is None:
         return Result(check, "fail", "unavailable", "Rscript executable was not found")
-    expression = (
-        "p <- commandArgs(TRUE)[1]; "
-        "if (!requireNamespace(p, quietly=TRUE)) quit(status=42); "
-        "cat(as.character(utils::packageVersion(p)))"
-    )
-    code, output = _run_command(
-        [rscript, "-e", expression, "--args", check.target],
-        environment=environment,
-    )
-    if code != 0:
-        detail = (
-            "R namespace is unavailable" if code == 42 else "R namespace probe failed"
+    guarded = environment is not None and environment.get("NORAD_LOCAL_PILOT_R") == "1"
+    if guarded:
+        expression = (
+            "a <- commandArgs(TRUE); p <- a[1]; lib <- normalizePath(a[2], "
+            "winslash='/', mustWork=TRUE); "
+            "libs <- normalizePath(.libPaths(), winslash='/', mustWork=TRUE); "
+            "if (length(libs) < 1L || !identical(libs[[1L]], lib)) quit(status=43); "
+            "pkg <- tryCatch(find.package(p, lib.loc=lib, quiet=TRUE), "
+            "error=function(e) ''); if (!nzchar(pkg)) quit(status=42); "
+            "declared <- file.path(lib, p); "
+            "expected <- normalizePath(declared, winslash='/', "
+            "mustWork=TRUE); "
+            "if (!identical(expected, declared)) quit(status=44); "
+            "pkg <- normalizePath(pkg, winslash='/', mustWork=TRUE); "
+            "if (!identical(pkg, expected)) quit(status=44); "
+            "ns <- tryCatch(loadNamespace(p, lib.loc=lib), error=function(e) NULL); "
+            "if (is.null(ns)) quit(status=42); "
+            "where <- normalizePath(getNamespaceInfo(ns, 'path'), winslash='/', "
+            "mustWork=TRUE); "
+            "if (!identical(where, expected)) quit(status=44); "
+            "cat(as.character(utils::packageVersion(p, lib.loc=lib)))"
         )
+        arguments = guarded_rscript_argv(
+            rscript,
+            ("-e", expression, check.target, environment["NORAD_RENV_LIBRARY"]),
+        )
+    else:
+        expression = (
+            "p <- commandArgs(TRUE)[1]; "
+            "if (!requireNamespace(p, quietly=TRUE)) quit(status=42); "
+            "cat(as.character(utils::packageVersion(p)))"
+        )
+        arguments = [rscript, "-e", expression, check.target]
+    code, output = run_command(arguments, None, environment)
+    if code != 0:
+        details = (
+            {
+                42: "R namespace is unavailable in the selected library",
+                43: "R did not select the admitted library first",
+                44: "R namespace did not resolve to its exact selected package root",
+            }
+            if guarded
+            else {42: "R namespace is unavailable"}
+        )
+        detail = details.get(code, "R namespace probe failed")
         return Result(check, "fail", output or f"exit {code}", detail)
     if re.fullmatch(check.expected, output) is None:
         return Result(
@@ -92,25 +148,36 @@ def _probe_r_namespace(check: Check, environment: Mapping[str, str] | None) -> R
             output,
             "Namespace version did not match expected regex",
         )
-    return Result(check, "pass", output, f"Resolved Rscript: {rscript}")
+    detail = (
+        f"Resolved R package root: {Path(environment['NORAD_RENV_LIBRARY']) / check.target}"
+        if guarded and environment is not None
+        else f"Resolved Rscript: {rscript}"
+    )
+    return Result(check, "pass", output, detail)
 
 
-def _probe_hash_utility(check: Check, environment: Mapping[str, str] | None) -> Result:
+def _probe_hash_utility(
+    check: Check,
+    environment: Mapping[str, str] | None,
+    run_command: CommandRunner,
+) -> Result:
     executable = _resolve_executable(check.target)
     if executable is None:
         return Result(check, "fail", "unavailable", "Hash executable was not found")
     adapter = check.probe_args[0]
     if adapter == "python_hashlib":
-        command = [
-            executable,
-            "-c",
-            "import hashlib,sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())",
-        ]
+        command = list(
+            controlled_python_argv(
+                executable,
+                "-c",
+                "import hashlib,sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())",
+            )
+        )
     elif adapter == "sha256sum":
         command = [executable]
     else:
         command = [executable, "-a", "256"]
-    code, output = _run_command(command, HASH_PAYLOAD, environment)
+    code, output = run_command(command, HASH_PAYLOAD, environment)
     observed = output.split()[0].lower() if output else ""
     if code != 0:
         return Result(check, "fail", output or f"exit {code}", "SHA-256 probe failed")
@@ -120,7 +187,9 @@ def _probe_hash_utility(check: Check, environment: Mapping[str, str] | None) -> 
 
 
 def _probe_path_visibility(
-    check: Check, _environment: Mapping[str, str] | None
+    check: Check,
+    _environment: Mapping[str, str] | None,
+    _run_command: CommandRunner,
 ) -> Result:
     path = Path(check.target)
     mode = check.probe_args[0]
@@ -139,7 +208,10 @@ def _probe_path_visibility(
     return Result(check, "pass" if passed else "fail", observed, detail)
 
 
-PROBES: dict[str, Callable[[Check, Mapping[str, str] | None], Result]] = {
+PROBES: dict[
+    str,
+    Callable[[Check, Mapping[str, str] | None, CommandRunner], Result],
+] = {
     "tool_version": _probe_tool,
     "r_namespace": _probe_r_namespace,
     "hash_utility": _probe_hash_utility,
@@ -152,6 +224,7 @@ def run_checks(
     runtime_context: str,
     *,
     environment: Mapping[str, str] | None = None,
+    command_runner: CommandRunner = _run_command,
 ) -> list[Result]:
     results: list[Result] = []
     for check in checks:
@@ -166,7 +239,32 @@ def run_checks(
                 )
             )
             continue
-        result = PROBES[check.check_type](check, environment)
+        check_environment = environment
+        if check.check_id == "gatk":
+            java_targets = [item.target for item in checks if item.check_id == "java"]
+            if len(java_targets) != 1:
+                result = Result(
+                    check,
+                    "fail",
+                    "unavailable",
+                    "GATK probing requires exactly one declared Java launcher",
+                )
+                results.append(result)
+                continue
+            try:
+                check_environment = gatk_subprocess_environment(
+                    java_targets[0],
+                    base_environment=environment,
+                )
+            except ProcessEnvironmentError as exc:
+                result = Result(check, "fail", "unavailable", _single_line(str(exc)))
+                results.append(result)
+                continue
+        result = PROBES[check.check_type](
+            check,
+            check_environment,
+            command_runner,
+        )
         if result.status not in RESULT_STATUSES:
             _fail(f"Internal error: invalid result status {result.status}")
         results.append(result)

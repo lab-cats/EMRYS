@@ -12,10 +12,14 @@ label do not enter the execution identity.
 
 `doctor.inspect_local_pilot` and the grouped `norad doctor local-pilot` route
 are the read-only B5 setup boundary. They reuse normalization plus the runtime-
-availability owner's direct API, require the exact fixed local runtime roster,
-run R namespace probes with explicit guarded `renv` variables, compare the
-selected Python/Snakemake identity, bind admitted tool/jar bytes, and reject a
-workspace overlapping the source checkout. An absent workspace is admissible
+availability owner's direct API, require the exact fixed local runtime roster
+and policy fields before any probe, run R namespace probes with explicit
+guarded `renv` variables, compare the selected Python/Snakemake identity, bind
+admitted tool/jar bytes and installed R-package trees, and reject a workspace
+overlapping the source checkout. The Java path must resolve to canonical
+`<JAVA_HOME>/bin/java`; doctor, lifecycle, and GATK owner work share that
+selected launcher after ambient JVM/GATK selectors are removed. An absent
+workspace is admissible
 only as one missing leaf beneath an existing canonical, real,
 writable/searchable immediate parent; the doctor plans that leaf but never
 creates it. The doctor neither installs nor repairs dependencies, loads
@@ -111,10 +115,14 @@ revalidation and before an exact absent attempt directory is created. Lock
 release creates the exact absent attempt-local immutable
 `released-run-lock.json` as a no-replace hard link to the owned public lock,
 re-admits the shared inode and bytes, durably synchronizes the evidence, and
-then removes only the still-owned public name. A colliding evidence name
-preserves both it and the public lock and fails closed; no rename may overwrite
-foreign evidence. The retained inode and bytes are bound by the terminal
-receipt published after release.
+then rechecks and unlinks the public name while the advisory mutex remains
+held. A colliding evidence name preserves both it and the public lock and fails
+closed; no rename or replacement publication may overwrite foreign evidence.
+Correctness assumes every sanctioned lifecycle writer holds the mutex.
+Descriptor/path checks reject observed changes, but a hostile concurrent leaf
+replacement in the narrow post-link, pre-unlink interval is outside the threat
+model and invalidates the evidence. The retained inode and bytes are bound by
+the terminal receipt published after release.
 The attempt binds canonical
 execution, profile, and attempt-local workflow-config bytes; the config
 transitively binds each dispatch. The executor argument binds the exact reviewed
@@ -125,9 +133,22 @@ the exact lexical venv
 launcher, its stable executable target, Python version, Snakemake module
 version, normalizer path, and config are admitted as one runtime identity.
 Runtime source checkout and required-tool identities are observed before
-mutation and again after the child exits. Ordinary success, failure,
-interruption, and diagnosed ambiguity first retain released-lock evidence and
-then publish the immutable terminal receipt last.
+mutation and again after the child exits. The subprocess environment removes
+inherited noninteractive-shell startup hooks before Snakemake starts.
+SIGINT/SIGTERM is controlled from before mutex acquisition through durable
+receipt or recovery disposition and is forwarded at most once to the delegated
+process group. Terminal success, failure, interruption, or a diagnosed state
+blocker may release the lock and publish a receipt only after that group is
+proved absent. A missing terminal observation or inability to prove process-
+group quiescence retains the public run lock and publishes no resumable
+receipt. Bounded TERM then KILL escalation covers members that remain in the
+original process group after the leader exits; SIGKILL, power loss, and a
+descendant deliberately escaping the delegated session/group are excluded.
+
+This first implementation requires POSIX signal masking, working advisory
+`flock`, and same-filesystem hard links on a cooperative local filesystem.
+NFS, other network/distributed filesystems, and cluster filesystem locking are
+unproved and unsupported until separately site-validated.
 
 If attempt establishment fails after the public lock is acquired but before a
 complete attempt record exists, lifecycle still atomically retains the lock as

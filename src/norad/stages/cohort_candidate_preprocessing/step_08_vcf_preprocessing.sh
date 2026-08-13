@@ -583,8 +583,11 @@ backup_summary="$qc_root/.$cohort_id.step08.$run_token.previous.summary.tsv"
 lock_path="$cohort_output_dir/.$cohort_id.step08.lock"
 lock_owner_file="$lock_path/owner"
 
-r_command=(
-    "$rscript_bin"
+r_command=("$rscript_bin")
+if [[ "${NORAD_LOCAL_PILOT_R:-0}" == 1 ]]; then
+    r_command+=(--no-environ --no-site-file --no-restore --no-save)
+fi
+r_command+=(
     "$r_script"
     --cohort-id "$cohort_id"
     --sample-manifest "$sample_manifest"

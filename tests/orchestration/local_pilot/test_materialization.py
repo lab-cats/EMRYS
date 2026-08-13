@@ -5,12 +5,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import multiprocessing
 import os
 import shutil
 import subprocess
 import sys
 import threading
-from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,7 +23,13 @@ from norad.evidence.runtime_availability.inspector import (
     RuntimeObservation,
 )
 from norad.libraries.source_authority import controlled_python_argv
-from norad.orchestration.local_pilot import control, doctor, inspection, lifecycle
+from norad.orchestration.local_pilot import (
+    control,
+    doctor,
+    inspection,
+    lifecycle,
+    materialization,
+)
 from norad.orchestration.local_pilot.materialization import (
     MaterializationError,
     build_attempt_plan,
@@ -60,6 +66,17 @@ def _readiness(
     jar.write_bytes(b"jar\n")
     renv_library = tmp_path / "renv-library"
     renv_library.mkdir(exist_ok=True)
+    installed_renv = renv_library / "renv"
+    installed_renv.mkdir(exist_ok=True)
+    (installed_renv / "DESCRIPTION").write_text(
+        "Package: renv\nVersion: 1.2.3\n", encoding="utf-8"
+    )
+    for _check_id, package in doctor.LOCAL_PILOT_R_PACKAGES:
+        package_root = renv_library / package
+        package_root.mkdir()
+        (package_root / "DESCRIPTION").write_text(
+            f"Package: {package}\nVersion: 1.0.0\n", encoding="utf-8"
+        )
     observations: list[RuntimeObservation] = []
     rscript = str(tool)
     for check_id, check_type in doctor.LOCAL_PILOT_RUNTIME_CHECKS:
@@ -228,8 +245,12 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     ]
     assert producer[4] == step08["owner_run_token"]
     assert producer[5] == sys.executable
-    assert any("NORAD_USE_RENV=1" in item for item in producer)
-    assert any('RENV_PATHS_LIBRARY="$2"' in item for item in producer)
+    r_bootstrap = next(item for item in producer if "NORAD_LOCAL_PILOT_R" in item)
+    assert "R_LIBS*|R_PROFILE*|R_ENVIRON*|RENV_*|R_DEFAULT_PACKAGES" in r_bootstrap
+    assert "NORAD_USE_RENV" in r_bootstrap
+    assert "RENV_PATHS_LIBRARY" in r_bootstrap
+    assert "R_DEFAULT_PACKAGES" in r_bootstrap
+    assert "--no-environ" not in producer
     assert str(tmp_path / "renv-library") in producer
     assert plan.attempt_record["execution_mode"] == "local-science-tools"
     assert [item["name"] for item in plan.attempt_record["required_tools"]] == sorted(
@@ -239,6 +260,59 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         set(item) == {"name", "version", "path", "resolved_path", "sha256"}
         for item in plan.attempt_record["required_tools"]
     )
+
+
+def test_r_owner_bootstrap_clears_hostile_selectors_and_exports_exact_library(
+    tmp_path: Path,
+) -> None:
+    library = tmp_path / "renv-library"
+    library.mkdir()
+    hostile_path = tmp_path / "hostile-path"
+    hostile_path.mkdir()
+    probe = tmp_path / "probe.sh"
+    probe.write_text(
+        "#!/usr/bin/env bash\n"
+        "printf 'RENV_PATHS_LIBRARY=%s\\n' \"$RENV_PATHS_LIBRARY\"\n"
+        "printf 'R_LIBS=%s\\n' \"$R_LIBS\"\n"
+        "printf 'R_DEFAULT_PACKAGES=%s\\n' \"$R_DEFAULT_PACKAGES\"\n"
+        "printf 'R_PROFILE_USER=%s\\n' \"$R_PROFILE_USER\"\n"
+        "if [[ ${RENV_PATHS_CACHE+x} || ${R_LIBS_CUSTOM+x} ]]; then exit 91; fi\n",
+        encoding="utf-8",
+    )
+    command = materialization._r_owner_command(
+        "/bin/bash",
+        REPO_ROOT,
+        library,
+        probe,
+        (),
+    )
+    assert command[-2:] == ("/bin/bash", str(probe))
+    completed = subprocess.run(
+        command,
+        env={
+            **os.environ,
+            "PATH": str(hostile_path),
+            "RENV_PATHS_CACHE": "/hostile/cache",
+            "R_LIBS_CUSTOM": "/hostile/library",
+            "R_PROFILE_SITE": "/hostile/profile",
+            "R_ENVIRON_USER": "/hostile/environ",
+            "R_DEFAULT_PACKAGES": "hostilePackage",
+        },
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    observed = dict(
+        line.split("=", 1) for line in completed.stdout.splitlines() if "=" in line
+    )
+    assert "RENV_PATHS_CACHE" not in observed
+    assert "R_LIBS_CUSTOM" not in observed
+    assert observed["RENV_PATHS_LIBRARY"] == str(library)
+    assert observed["R_LIBS"] == str(library)
+    assert observed["R_DEFAULT_PACKAGES"] == "NULL"
+    assert observed["R_PROFILE_USER"] == str(REPO_ROOT / ".Rprofile")
 
 
 def test_every_projected_owner_command_is_accepted_by_public_help(
@@ -384,22 +458,32 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
 
     winner = resume_plan("2", 10)
     stale = resume_plan("3", 11)
-    winner_entered = threading.Event()
-    release_winner = threading.Event()
-    contender_entered_mutex = threading.Event()
+    context = multiprocessing.get_context("fork")
+    winner_entered = context.Event()
+    release_winner = context.Event()
+    winner_result = context.Queue()
+    contender_entered_mutex = False
     contender_acquired_mutex = threading.Event()
-    stale_materialized = threading.Event()
-    original_acquire = lifecycle._acquire_attempt_mutex
+    acquired_while_winner_held: list[bool] = []
+    release_threads: list[threading.Thread] = []
+    stale_materialized = False
 
-    @contextmanager
-    def observed_acquire(root: Path):
-        contender = threading.current_thread().name == "stale-resume"
-        if contender:
-            contender_entered_mutex.set()
-        with original_acquire(root) as path:
-            if contender:
-                contender_acquired_mutex.set()
-            yield path
+    def observed_mutex(event: str, _path: Path) -> None:
+        nonlocal contender_entered_mutex
+        if event == "before_wait":
+            contender_entered_mutex = True
+            releaser = threading.Thread(
+                target=lambda: (
+                    acquired_while_winner_held.append(
+                        contender_acquired_mutex.wait(timeout=0.1)
+                    ),
+                    release_winner.set(),
+                )
+            )
+            release_threads.append(releaser)
+            releaser.start()
+        elif event == "after_acquire":
+            contender_acquired_mutex.set()
 
     def wait_then_fail(_argv: tuple[str, ...], _cwd: Path) -> lifecycle.WorkflowResult:
         winner_entered.set()
@@ -410,63 +494,51 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
     winner_ops = replace(
         common_ops,
         run_workflow=wait_then_fail,
-        acquire_attempt_mutex=observed_acquire,
     )
-    stale_ops = replace(common_ops, acquire_attempt_mutex=observed_acquire)
-    winner_outcomes: list[lifecycle.LifecycleOutcome] = []
-    winner_errors: list[BaseException] = []
-    stale_errors: list[BaseException] = []
+    stale_ops = replace(common_ops, observe_mutex=observed_mutex)
 
     def run_winner() -> None:
         try:
-            winner_outcomes.append(
-                lifecycle.run_materialized_attempt(
-                    winner.preparation,
-                    lambda: publish_attempt(winner, ops=winner_ops),
-                    ops=winner_ops,
-                )
+            outcome = lifecycle.run_materialized_attempt(
+                winner.preparation,
+                lambda: publish_attempt(winner, ops=winner_ops),
+                ops=winner_ops,
             )
+            winner_result.put(("ok", outcome.receipt["status"]))
         except BaseException as exc:  # pragma: no cover - asserted below
-            winner_errors.append(exc)
+            winner_result.put(("error", repr(exc)))
 
-    def run_stale() -> None:
-        try:
-            lifecycle.run_materialized_attempt(
-                stale.preparation,
-                lambda: (
-                    stale_materialized.set(),
-                    publish_attempt(stale, ops=stale_ops),
-                )[1],
-                ops=stale_ops,
-            )
-        except BaseException as exc:
-            stale_errors.append(exc)
+    def materialize_stale() -> lifecycle.LifecycleRequest:
+        nonlocal stale_materialized
+        stale_materialized = True
+        return publish_attempt(stale, ops=stale_ops)
 
-    winner_thread = threading.Thread(target=run_winner, name="winner-resume")
-    stale_thread = threading.Thread(target=run_stale, name="stale-resume")
-    winner_thread.start()
+    winner_process = context.Process(target=run_winner)
+    winner_process.start()
     if not winner_entered.wait(timeout=10):
         release_winner.set()
-        winner_thread.join(timeout=10)
-        assert not winner_errors, winner_errors
+        winner_process.join(timeout=10)
         pytest.fail("serialized winner did not enter workflow")
-    stale_thread.start()
-    assert contender_entered_mutex.wait(timeout=10)
-    assert not contender_acquired_mutex.wait(timeout=0.1)
-    release_winner.set()
-    winner_thread.join(timeout=10)
-    stale_thread.join(timeout=10)
+    try:
+        with pytest.raises(lifecycle.LifecycleError) as stale_error:
+            lifecycle.run_materialized_attempt(
+                stale.preparation,
+                materialize_stale,
+                ops=stale_ops,
+            )
+    finally:
+        release_winner.set()
+        winner_process.join(timeout=10)
 
-    assert not winner_thread.is_alive()
-    assert not stale_thread.is_alive()
-    assert not winner_errors
-    assert winner_outcomes[0].receipt["status"] == "failed", winner_outcomes[0].receipt[
-        "blockers"
-    ]
-    assert len(stale_errors) == 1
-    assert isinstance(stale_errors[0], lifecycle.LifecycleError)
-    assert "exact latest workflow attempt" in str(stale_errors[0])
-    assert not stale_materialized.is_set()
+    assert not winner_process.is_alive()
+    assert winner_process.exitcode == 0
+    assert winner_result.get(timeout=1) == ("ok", "failed")
+    for releaser in release_threads:
+        releaser.join(timeout=1)
+    assert contender_entered_mutex
+    assert acquired_while_winner_held == [False]
+    assert "exact latest workflow attempt" in str(stale_error.value)
+    assert not stale_materialized
     assert not (stale.run_root / "locks" / "run.lock").exists()
     assert not (
         stale.run_root / "locks" / f"released-{stale.workflow_attempt_id}-run-lock.json"

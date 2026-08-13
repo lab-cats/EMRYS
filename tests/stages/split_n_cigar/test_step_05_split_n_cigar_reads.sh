@@ -175,6 +175,7 @@ unset GATK_BIN_OVERRIDE SAMTOOLS_BIN_OVERRIDE JAVA_BIN_OVERRIDE JAVA_HOME \
 
 fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin"
+canonical_fake_bin="$(cd "$fake_bin" && pwd -P)"
 
 gatk_log="$tmp_dir/gatk_invocations.log"
 samtools_log="$tmp_dir/samtools_invocations.log"
@@ -200,6 +201,9 @@ set -euo pipefail
 
 printf 'gatk invoked\\n' >> "$gatk_log"
 printf '%s\\n' "\$@" >> "$gatk_log"
+printf 'gatk JAVA_HOME=%s\\n' "\${JAVA_HOME:-<unset>}" >> "$gatk_log"
+printf 'gatk java on PATH=%s\\n' "\$(command -v java)" >> "$gatk_log"
+java -version >/dev/null 2>&1
 
 java_options=""
 while [[ \$# -gt 0 ]]; do
@@ -297,6 +301,17 @@ case "\$subcommand" in
 esac
 EOF_GATK
 chmod +x "$fake_bin/gatk"
+
+poison_java_home="$tmp_dir/poison-java-home"
+poison_java_log="$tmp_dir/poison-java-invocations.log"
+mkdir -p "$poison_java_home/bin"
+cat >"$poison_java_home/bin/java" <<EOF_POISON_JAVA
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'poison Java invoked\\n' >> "$poison_java_log"
+printf 'openjdk version "99.0.0" 2026-01-01\\n' >&2
+EOF_POISON_JAVA
+chmod +x "$poison_java_home/bin/java"
 
 cat >"$fake_bin/samtools" <<EOF_SAMTOOLS
 #!/usr/bin/env bash
@@ -532,7 +547,11 @@ printf 'Running successful execute check...\n'
 execute_output="$tmp_dir/execute.out"
 execute_output_dir="$tmp_dir/results/execute/split_ncigar/ABE_EV_2"
 rm -f "$gatk_log" "$samtools_log" "$java_log"
-FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=exec001 run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$execute_output_dir" --execute >"$execute_output"
+JAVA_HOME="$poison_java_home" \
+PATH="$poison_java_home/bin:$PATH" \
+FAKE_SAMPLE_ID=ABE_EV_2 \
+SLURM_JOB_ID=exec001 \
+    run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$execute_output_dir" --execute >"$execute_output"
 execute_bam="$execute_output_dir/ABE_EV_2.split_ncigar.bam"
 execute_bai="$execute_bam.bai"
 [[ -s "$execute_bam" ]] || fail "execute did not create non-empty split-N-cigar BAM"
@@ -551,10 +570,15 @@ assert_contains "$gatk_log" "$reference_fasta"
 assert_contains "$gatk_log" "-I"
 assert_contains "$gatk_log" "$input_bam"
 assert_contains "$gatk_log" "-O"
+assert_contains "$gatk_log" "gatk JAVA_HOME=$(dirname "$canonical_fake_bin")"
+assert_contains "$gatk_log" "gatk java on PATH=$canonical_fake_bin/java"
+[[ "$(grep -Fc "gatk java on PATH=$canonical_fake_bin/java" "$gatk_log")" -eq 2 ]] ||
+    fail "GATK version and work invocations did not both select the admitted Java"
 assert_contains "$samtools_log" "index"
 assert_contains "$samtools_log" "quickcheck"
 assert_contains "$samtools_log" "view"
 assert_contains "$java_log" "-version"
+assert_not_exists "$poison_java_log"
 assert_contains "$execute_output" "Mode: execute"
 assert_contains "$execute_output" "GATK SplitNCigarReads output details:"
 assert_not_exists "$execute_output_dir/.step_05_split_n_cigar_reads.lock"

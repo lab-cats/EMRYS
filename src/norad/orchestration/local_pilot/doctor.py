@@ -21,6 +21,17 @@ from norad.evidence.runtime_availability.inspector import (
     inspect_runtime_availability,
     load_runtime_profile_contract,
 )
+from norad.libraries.installed_package_identity import (
+    InstalledPackageIdentityError,
+    installed_package_tree_identity,
+)
+from norad.libraries.process_environment import (
+    ProcessEnvironmentError,
+    RENV_VERSION,
+    gatk_subprocess_environment,
+    guarded_r_environment,
+    sanitized_subprocess_environment,
+)
 from norad.libraries.source_authority import (
     SourceCheckoutError,
     SourceCheckoutIdentity,
@@ -69,7 +80,6 @@ LOCAL_PILOT_RUNTIME_CHECKS = (
     ("renv_library", "path_visibility"),
     *((check_id, "r_namespace") for check_id, _package in LOCAL_PILOT_R_PACKAGES),
 )
-_R_SELECTOR_PREFIXES = ("R_LIBS", "R_PROFILE", "R_ENVIRON", "RENV_")
 
 
 class DoctorInputError(RuntimeError):
@@ -78,7 +88,7 @@ class DoctorInputError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class RuntimeBinding:
-    """One exact file binding admitted from the local runtime profile."""
+    """One exact path-and-content binding admitted from the runtime profile."""
 
     check_id: str
     path: Path
@@ -116,21 +126,11 @@ def runtime_environment(
 ) -> dict[str, str]:
     """Return the sanitized guarded R environment used by every runtime probe."""
 
-    environment = dict(os.environ if base_environment is None else base_environment)
-    for name in tuple(environment):
-        if name.startswith(_R_SELECTOR_PREFIXES):
-            del environment[name]
-    environment.update(
-        {
-            "NORAD_USE_RENV": "1",
-            "RENV_PROJECT": str(source_root),
-            "R_PROFILE_USER": str(source_root / ".Rprofile"),
-            "RENV_PATHS_LIBRARY": str(renv_library),
-            "RENV_CONFIG_SANDBOX_ENABLED": "FALSE",
-            "RENV_CONFIG_AUTO_SNAPSHOT": "FALSE",
-        }
+    return guarded_r_environment(
+        source_root,
+        renv_library,
+        base_environment=base_environment,
     )
-    return environment
 
 
 def required_tool_identities(
@@ -215,6 +215,7 @@ class DoctorOps:
     inspect_runtime: Callable[[Path, str, Mapping[str, str]], RuntimeInspection]
     observe_snakemake: Callable[[Path], str]
     load_runtime_profile: Callable[[Path], tuple[bytes, tuple[RuntimeCheck, ...]]]
+    path_access: Callable[[Path, int], bool]
 
 
 def _default_source_inspector(root: Path, package_root: Path) -> SourceCheckoutIdentity:
@@ -246,6 +247,7 @@ def _default_snakemake_observer(python_executable: Path) -> str:
             capture_output=True,
             text=True,
             timeout=30,
+            env=sanitized_subprocess_environment(),
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise DoctorInputError(f"Could not inspect Snakemake: {exc}") from exc
@@ -271,6 +273,7 @@ DEFAULT_DOCTOR_OPS = DoctorOps(
     inspect_runtime=_default_runtime_inspector,
     observe_snakemake=_default_snakemake_observer,
     load_runtime_profile=_default_profile_loader,
+    path_access=os.access,
 )
 
 
@@ -353,24 +356,112 @@ def _workspace_blockers(
     return blockers, remediations
 
 
-def validate_runtime_profile(inspection: RuntimeInspection, source_root: Path) -> None:
-    observed_shape = tuple(
-        (observation.check.check_id, observation.check.check_type)
-        for observation in inspection.observations
+def _step00c_external_parent_blockers(
+    normalized: NormalizationBundle,
+    *,
+    path_access: Callable[[Path, int], bool],
+) -> tuple[list[str], list[str]]:
+    """Check the stationary FASTA parent needed for Step 00c sidecar publication."""
+
+    fasta = Path(str(normalized.execution_contract["reference"]["fasta"]["path"]))
+    parent = fasta.parent
+    try:
+        fasta_state = fasta.lstat()
+        parent_state = parent.lstat()
+        canonical_fasta = fasta.resolve(strict=True)
+        canonical_parent = parent.resolve(strict=True)
+    except OSError as exc:
+        raise DoctorInputError(
+            f"Could not admit Step 00c stationary FASTA and parent: {fasta}: {exc}"
+        ) from exc
+    blockers: list[str] = []
+    if (
+        stat.S_ISLNK(fasta_state.st_mode)
+        or not stat.S_ISREG(fasta_state.st_mode)
+        or canonical_fasta != fasta
+    ):
+        raise DoctorInputError(
+            f"Step 00c stationary FASTA must be a canonical real file: {fasta}"
+        )
+    elif not path_access(fasta, os.R_OK):
+        blockers.append(f"Step 00c stationary FASTA is not readable: {fasta}")
+    if (
+        stat.S_ISLNK(parent_state.st_mode)
+        or not stat.S_ISDIR(parent_state.st_mode)
+        or canonical_parent != parent
+    ):
+        raise DoctorInputError(
+            f"Step 00c stationary FASTA parent must be a canonical real directory: {parent}"
+        )
+    elif not path_access(parent, os.R_OK | os.W_OK | os.X_OK):
+        blockers.append(
+            "Step 00c stationary FASTA parent is not readable, writable, and "
+            f"searchable: {parent}"
+        )
+    remediations = (
+        []
+        if not blockers
+        else [
+            "Use a canonical readable FASTA in a readable, writable, searchable parent."
+        ]
     )
+    return blockers, remediations
+
+
+def validate_runtime_profile_contract(
+    checks: tuple[RuntimeCheck, ...], source_root: Path
+) -> None:
+    """Bind every editable runtime path to the tracked fixed probe policy."""
+
+    observed_shape = tuple((check.check_id, check.check_type) for check in checks)
     if observed_shape != LOCAL_PILOT_RUNTIME_CHECKS:
         expected = ", ".join(check_id for check_id, _kind in LOCAL_PILOT_RUNTIME_CHECKS)
         raise DoctorInputError(
             "Local-pilot runtime profile must contain the exact ordered check roster: "
             + expected
         )
+    try:
+        _policy_bytes, policy_checks = load_runtime_profile_contract(
+            source_root / "configs/local_pilot_runtime.example.tsv"
+        )
+    except RuntimeInspectionError as exc:
+        raise DoctorInputError(
+            f"Could not load the tracked local-pilot runtime policy: {exc}"
+        ) from exc
+    if tuple((check.check_id, check.check_type) for check in policy_checks) != (
+        LOCAL_PILOT_RUNTIME_CHECKS
+    ):
+        raise DoctorInputError(
+            "Tracked local-pilot runtime policy differs from the fixed roster"
+        )
+    policy_by_name = {check.check_id: check for check in policy_checks}
+    for check in checks:
+        policy = policy_by_name[check.check_id]
+        if (
+            check.check_type != policy.check_type
+            or check.runtime_context != policy.runtime_context
+            or check.required != policy.required
+            or check.expected != policy.expected
+            or check.description != policy.description
+        ):
+            raise DoctorInputError(
+                "Local-pilot runtime check changes fixed probe policy: "
+                f"{check.check_id}"
+            )
+        if check.check_type != "r_namespace" and not Path(check.target).is_absolute():
+            raise DoctorInputError(
+                f"Local-pilot runtime path must be absolute: {check.check_id}"
+            )
+        if check.check_type == "r_namespace" and check.target != policy.target:
+            raise DoctorInputError(
+                f"R namespace target differs from fixed policy: {check.check_id}"
+            )
+
     rscript_target = next(
-        observation.check.target
-        for observation in inspection.observations
-        if observation.check.check_id == "rscript"
+        check.target for check in checks if check.check_id == "rscript"
     )
-    for observation in inspection.observations:
-        check = observation.check
+    dynamic_probe_args = {"snakemake", "sha256_python", "picard"}
+    for check in checks:
         if not check.required or check.runtime_context not in {"local", "any"}:
             raise DoctorInputError(
                 f"Local-pilot runtime check must be required in local/any context: {check.check_id}"
@@ -379,10 +470,16 @@ def validate_runtime_profile(inspection: RuntimeInspection, source_root: Path) -
             raise DoctorInputError(
                 f"R namespace check must use the declared Rscript target: {check.check_id}"
             )
-    checks = {
-        observation.check.check_id: observation.check
-        for observation in inspection.observations
-    }
+        if (
+            not check.check_id.startswith("r_")
+            and check.check_id not in dynamic_probe_args
+            and check.probe_args != policy_by_name[check.check_id].probe_args
+        ):
+            raise DoctorInputError(
+                "Local-pilot runtime check changes fixed probe policy arguments: "
+                f"{check.check_id}"
+            )
+    checks = {check.check_id: check for check in checks}
     expected_snakemake_args = controlled_python_argv(
         checks["python"].target,
         "-m",
@@ -416,15 +513,20 @@ def validate_runtime_profile(inspection: RuntimeInspection, source_root: Path) -
         raise DoctorInputError(
             "Picard version probing must use the declared Java and Picard jar"
         )
-    renv = next(
-        observation.check.target
-        for observation in inspection.observations
-        if observation.check.check_id == "renv_project"
-    )
+    renv = checks["renv_project"].target
     if Path(renv) != source_root:
         raise DoctorInputError(
             f"renv_project must be the NORAD source checkout: expected {source_root}"
         )
+
+
+def validate_runtime_profile(inspection: RuntimeInspection, source_root: Path) -> None:
+    """Re-admit observed checks against the tracked fixed runtime policy."""
+
+    validate_runtime_profile_contract(
+        tuple(observation.check for observation in inspection.observations),
+        source_root,
+    )
 
 
 def _admit_runtime_directory(path: Path, label: str) -> Path:
@@ -459,20 +561,66 @@ def _declared_renv_library(checks: tuple[RuntimeCheck, ...]) -> Path:
         raise DoctorInputError(
             "renv_library must be one readable-directory visibility check"
         )
-    return _admit_runtime_directory(Path(check.target), "renv_library")
+    library = _admit_runtime_directory(Path(check.target), "renv_library")
+    description = library / "renv" / "DESCRIPTION"
+    try:
+        state = description.lstat()
+        data = description.read_bytes()
+        after = description.lstat()
+    except OSError as exc:
+        raise DoctorInputError(
+            f"Selected renv_library has no readable installed renv package: {exc}"
+        ) from exc
+    if not stat.S_ISREG(state.st_mode) or stat.S_ISLNK(state.st_mode):
+        raise DoctorInputError(
+            f"Installed renv DESCRIPTION must be a regular non-symlink file: {description}"
+        )
+    if (
+        state.st_dev,
+        state.st_ino,
+        state.st_size,
+        state.st_mtime_ns,
+        state.st_ctime_ns,
+    ) != (
+        after.st_dev,
+        after.st_ino,
+        after.st_size,
+        after.st_mtime_ns,
+        after.st_ctime_ns,
+    ):
+        raise DoctorInputError("Installed renv DESCRIPTION changed during admission")
+    try:
+        text = data.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise DoctorInputError("Installed renv DESCRIPTION is not UTF-8") from exc
+    versions = [
+        line.removeprefix("Version:").strip()
+        for line in text.splitlines()
+        if line.startswith("Version:")
+    ]
+    if versions != [RENV_VERSION]:
+        raise DoctorInputError(
+            f"Selected renv_library must contain installed renv {RENV_VERSION}"
+        )
+    return library
 
 
 def runtime_file_bindings(
     inspection: RuntimeInspection,
 ) -> tuple[RuntimeBinding, ...]:
-    """Bind every executable, jar, and R namespace to immutable file bytes."""
+    """Bind executable/jar bytes and exact installed R package trees."""
 
     bindings: list[RuntimeBinding] = []
-    rscript = next(
-        item.check.target
+    renv_libraries = [
+        Path(item.check.target)
         for item in inspection.observations
-        if item.check.check_id == "rscript"
-    )
+        if item.check.check_id == "renv_library"
+    ]
+    if len(renv_libraries) != 1:
+        raise DoctorInputError(
+            "Runtime inspection must contain exactly one renv_library binding"
+        )
+    renv_library = renv_libraries[0]
     for observation in inspection.observations:
         check = observation.check
         if observation.status != "pass":
@@ -486,7 +634,25 @@ def runtime_file_bindings(
             "hash_utility",
         }:
             continue
-        path = Path(rscript if check.check_type == "r_namespace" else check.target)
+        if check.check_type == "r_namespace":
+            path = renv_library / check.target
+            try:
+                identity = installed_package_tree_identity(path)
+            except InstalledPackageIdentityError as exc:
+                raise DoctorInputError(
+                    f"Could not bind installed R package {check.check_id}: {exc}"
+                ) from exc
+            bindings.append(
+                RuntimeBinding(
+                    check_id=check.check_id,
+                    path=identity.root,
+                    resolved_path=identity.root,
+                    sha256=identity.sha256,
+                    observed=observation.observed,
+                )
+            )
+            continue
+        path = Path(check.target)
         if not path.is_absolute():
             raise DoctorInputError(
                 f"Local-pilot runtime target must be absolute: {check.check_id}"
@@ -564,13 +730,32 @@ def inspect_local_pilot(
         normalized = ops.normalize(request_path, root / PROFILE_RELATIVE_PATH)
     except (orchestration_contracts.ContractValidationError, OSError) as exc:
         raise DoctorInputError(str(exc)) from exc
+    step00c_blockers, step00c_remediations = _step00c_external_parent_blockers(
+        normalized,
+        path_access=ops.path_access,
+    )
+    blockers.extend(step00c_blockers)
+    remediations.extend(step00c_remediations)
     profile_bytes, declared_checks = ops.load_runtime_profile(profile_path)
+    validate_runtime_profile_contract(declared_checks, root)
     renv_library = _declared_renv_library(declared_checks)
     environment = runtime_environment(
         root,
         renv_library,
         base_environment=os.environ,
     )
+    java_targets = [
+        check.target for check in declared_checks if check.check_id == "java"
+    ]
+    if len(java_targets) != 1:
+        raise DoctorInputError("Runtime profile must declare exactly one Java launcher")
+    try:
+        environment = gatk_subprocess_environment(
+            java_targets[0],
+            base_environment=environment,
+        )
+    except ProcessEnvironmentError as exc:
+        raise DoctorInputError(f"Could not admit Java for GATK: {exc}") from exc
     try:
         inspection = ops.inspect_runtime(profile_path, "local", environment)
     except RuntimeInspectionError as exc:

@@ -309,6 +309,7 @@ DELEGATED_FIXTURES = {
             ("SAMTOOLS_BIN_OVERRIDE", "{fake_bin}/samtools"),
             ("GATK_BIN_OVERRIDE", "{fake_bin}/gatk"),
             ("JAVA_BIN_OVERRIDE", "{fake_bin}/java"),
+            ("NORAD_SHA256_PYTHON", "{python}"),
         ),
         arguments=(
             ("--reference-fasta", "{fasta}"),
@@ -453,6 +454,7 @@ DELEGATED_FIXTURES = {
             ("GATK_BIN_OVERRIDE", "{fake_bin}/gatk"),
             ("SAMTOOLS_BIN_OVERRIDE", "{fake_bin}/samtools"),
             ("JAVA_BIN_OVERRIDE", "{fake_bin}/java"),
+            ("NORAD_SHA256_PYTHON", "{python}"),
         ),
         arguments=(
             ("--sample-id", "sample05"),

@@ -69,9 +69,13 @@ Copy [`configs/local_pilot_runtime.example.tsv`](../../configs/local_pilot_runti
 outside the checkout or to an explicitly managed local path, then replace every
 placeholder with the exact controlled Python/Snakemake and SHA-256 launcher,
 Bash, gunzip, scientific executable or jar, Rscript, canonical checkout/renv
-project, existing renv library, and R-namespace selection. File-backed runtime
+project, existing renv library, and fixed R-namespace selection. Edit only the
+declared path placeholders and coupled path arguments; roster, expected
+versions, ordinary probes, descriptions, and R package names are fixed. The
+Java path must resolve to canonical `<JAVA_HOME>/bin/java`. File-backed runtime
 identities are bound by authored path, canonical target, version, and SHA-256;
-do not fabricate a missing renv library.
+R namespaces bind their canonical installed-package trees. Do not fabricate a
+missing renv library.
 After `uv sync --locked --group workflow` and the separately authorized science
 tool/R setup, inspect one request and workspace plan:
 

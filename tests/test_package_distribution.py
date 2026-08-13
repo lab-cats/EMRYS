@@ -142,7 +142,7 @@ def inspect_wheel(wheel: Path) -> None:
 
         assert metadata["Name"] == "norad-rna-workflow"
         assert metadata["Version"] == "0.1.0.dev0"
-        assert metadata["Project-URL"] == [
+        assert metadata.get_all("Project-URL") == [
             "Repository, https://github.com/lab-cats/norad",
             "Issues, https://github.com/lab-cats/norad/issues",
         ]

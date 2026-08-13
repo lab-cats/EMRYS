@@ -15,10 +15,13 @@ from norad.evidence.runtime_availability._probes import run_checks
 from norad.evidence.runtime_availability._profile_contract import load_profile
 from norad.evidence.runtime_availability._result_contract import result_bytes
 from norad.evidence.runtime_availability._runtime_model import (
+    HASH_EXPECTED,
+    HASH_PAYLOAD,
     Check,
     PreflightError,
     Result,
 )
+from norad.libraries.source_authority import controlled_python_argv
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 COMMAND = (sys.executable, "-I", "-m", "norad", "inspect", "runtime-availability")
@@ -276,6 +279,48 @@ def test_hash_utility_and_path_visibility(tmp_path: Path) -> None:
     assert rows["missing"]["status"] == "fail"
 
 
+def test_python_hash_probe_uses_the_controlled_python_prefix() -> None:
+    check = Check(
+        check_id="sha256_python",
+        check_type="hash_utility",
+        runtime_context="local",
+        required=True,
+        target=sys.executable,
+        probe_args=("python_hashlib",),
+        expected="sha256",
+        description="controlled Python hashlib",
+    )
+    calls: list[tuple[list[str], bytes | None, dict[str, str] | None]] = []
+
+    def capture(
+        argv: list[str],
+        stdin: bytes | None,
+        environment: dict[str, str] | None,
+    ) -> tuple[int, str]:
+        calls.append((argv, stdin, environment))
+        return 0, HASH_EXPECTED
+
+    results = run_checks(
+        [check],
+        "local",
+        environment={"PATH": os.environ["PATH"]},
+        command_runner=capture,
+    )
+
+    assert results[0].status == "pass"
+    assert calls == [
+        (
+            [
+                *controlled_python_argv(sys.executable),
+                "-c",
+                "import hashlib,sys; print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())",
+            ],
+            HASH_PAYLOAD,
+            {"PATH": os.environ["PATH"]},
+        )
+    ]
+
+
 def test_executable_visibility_uses_absolute_target_and_matching_expectation(
     tmp_path: Path,
 ) -> None:
@@ -351,6 +396,109 @@ def test_r_namespace_with_fake_rscript(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stderr
     observed = {row["check_id"]: row["status"] for row in read_rows(output)}
     assert observed == {"good": "pass", "missing": "fail"}
+
+
+def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
+    tmp_path: Path,
+) -> None:
+    fake = tmp_path / "Rscript"
+    fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake.chmod(0o755)
+    library = tmp_path / "library"
+    library.mkdir()
+    check = Check(
+        check_id="r_guarded",
+        check_type="r_namespace",
+        runtime_context="local",
+        required=True,
+        target="GuardedPackage",
+        probe_args=(str(fake),),
+        expected=r"^1[.]2[.]3$",
+        description="guarded namespace",
+    )
+    calls: list[tuple[list[str], bytes | None, dict[str, str] | None]] = []
+    environment = {
+        "NORAD_LOCAL_PILOT_R": "1",
+        "NORAD_RENV_LIBRARY": str(library),
+    }
+
+    def capture(
+        argv: list[str],
+        stdin: bytes | None,
+        observed_environment: dict[str, str] | None,
+    ) -> tuple[int, str]:
+        calls.append((argv, stdin, observed_environment))
+        return 0, "1.2.3"
+
+    result = run_checks(
+        [check],
+        "local",
+        environment=environment,
+        command_runner=capture,
+    )[0]
+
+    assert result.status == "pass"
+    argv, stdin, observed_environment = calls[0]
+    assert argv[:5] == [
+        str(fake),
+        "--no-environ",
+        "--no-site-file",
+        "--no-restore",
+        "--no-save",
+    ]
+    assert argv[-2:] == ["GuardedPackage", str(library)]
+    assert "find.package" in argv[6]
+    assert "identical(expected, declared)" in argv[6]
+    assert "identical(pkg, expected)" in argv[6]
+    assert "identical(where, expected)" in argv[6]
+    assert stdin is None
+    assert observed_environment == environment
+    assert result.detail == f"Resolved R package root: {library / 'GuardedPackage'}"
+
+
+@pytest.mark.parametrize(
+    ("guarded", "expected_detail"),
+    [
+        (True, "R namespace is unavailable in the selected library"),
+        (False, "R namespace is unavailable"),
+    ],
+)
+def test_r_namespace_failure_detail_distinguishes_guarded_selection(
+    tmp_path: Path,
+    guarded: bool,
+    expected_detail: str,
+) -> None:
+    fake = tmp_path / "Rscript"
+    fake.write_text("#!/bin/sh\nexit 42\n", encoding="utf-8")
+    fake.chmod(0o755)
+    check = Check(
+        check_id="r_fixture",
+        check_type="r_namespace",
+        runtime_context="local",
+        required=True,
+        target="Fixture",
+        probe_args=(str(fake),),
+        expected=r"^1[.]0[.]0$",
+        description="fixture namespace",
+    )
+    environment = (
+        {
+            "NORAD_LOCAL_PILOT_R": "1",
+            "NORAD_RENV_LIBRARY": str(tmp_path / "library"),
+        }
+        if guarded
+        else None
+    )
+
+    result = run_checks(
+        [check],
+        "local",
+        environment=environment,
+        command_runner=lambda _argv, _stdin, _environment: (42, ""),
+    )[0]
+
+    assert result.status == "fail"
+    assert result.detail == expected_detail
 
 
 def test_direct_inspection_uses_explicit_probe_environment(tmp_path: Path) -> None:

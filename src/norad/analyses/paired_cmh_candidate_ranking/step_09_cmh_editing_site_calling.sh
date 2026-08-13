@@ -272,8 +272,12 @@ for final in "${finals[@]}"; do
 done
 lock_path="$analysis_dir/.$analysis_id.step09.lock"
 
-r_command=(
-    "$rscript_bin" "$r_script"
+r_command=("$rscript_bin")
+if [[ "${NORAD_LOCAL_PILOT_R:-0}" == 1 ]]; then
+    r_command+=(--no-environ --no-site-file --no-restore --no-save)
+fi
+r_command+=(
+    "$r_script"
     --analysis-id "$analysis_id"
     --cohort-id "$cohort_id"
     --sample-manifest "$sample_manifest"

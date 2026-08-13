@@ -33,10 +33,21 @@ expect_failure "missing SHA-256 Python binding" sha256_file "$hash_input"
 unset NORAD_REQUIRE_BOUND_SHA256
 NORAD_SHA256_PYTHON=python3
 expect_failure "relative SHA-256 Python binding" sha256_file "$hash_input"
-NORAD_SHA256_PYTHON="$(command -v python3)"
+export NORAD_TEST_REAL_PYTHON="$(command -v python3)"
+guarded_python="$test_root/guarded-python"
+printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'set -euo pipefail' \
+    '[[ "$#" -ge 4 ]] || exit 91' \
+    '[[ "$1" == -X && "$2" == pycache_prefix=/dev/null && "$3" == -I && "$4" == -c ]] || exit 92' \
+    'shift 4' \
+    'exec "$NORAD_TEST_REAL_PYTHON" -X pycache_prefix=/dev/null -I -c "$@"' \
+    >"$guarded_python"
+chmod 0755 "$guarded_python"
+NORAD_SHA256_PYTHON="$guarded_python"
 [[ "$(sha256_file "$hash_input")" == \
    "0c009bef8b5cd42114e0daf15a7ded967e9fd9041adaa491055fb90b8573bc4f" ]] ||
-    fail "bound Python did not produce the expected SHA-256 digest"
+    fail "bound Python did not use the controlled prefix and expected SHA-256 digest"
 export NORAD_SHA256_PYTHON
 
 source "$repo_root/src/norad/libraries/signal_traps.sh"

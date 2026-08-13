@@ -17,7 +17,7 @@ This owner exposes three narrow, read-only admission APIs:
 The doctor also has the grouped public command:
 
 ```bash
-.venv/bin/python -I -m norad doctor local-pilot \
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad doctor local-pilot \
   --request /absolute/path/to/request.yaml \
   --workspace /absolute/path/to/workspace \
   --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
@@ -25,8 +25,10 @@ The doctor also has the grouped public command:
 
 Exit `0` means every declared readiness check passed, exit `1` reports exact
 readiness blockers and remediation routes, and exit `2` identifies malformed
-or unsafe input. Even exit `0` is only local readiness evidence: no workflow,
-scientific tool, scheduler, or cluster job ran.
+or unsafe input. The doctor runs only bounded version, namespace, hash, and
+path probes. Even exit `0` is only local readiness evidence: no workflow or
+scientific-owner computation, scheduler, cluster job, scientific review, or
+biological validation ran.
 
 B5 adds the source-checkout-bound public control surface. Every mutating route
 requires the controlled Python runtime, is dry-run-first, and delegates owner
@@ -59,12 +61,16 @@ The neutral
 reproduces the exact legacy reporting contract and deterministic artifact
 inventory without depending on the local-pilot application owner.
 
-This local pilot assumes a single-user, cooperative workspace. Its no-follow
-and descriptor-bound checks reject admitted symlink components, leaf
-substitution, unstable bytes, and unexpected state rosters; they do not defend
-against a hostile process concurrently renaming ancestor directories or
-changing mount namespaces. That interference invalidates local evidence and
-requires external isolation, not automatic recovery.
+This local pilot assumes a single-user, cooperative workspace on a POSIX local
+filesystem that provides working advisory `flock` and same-filesystem hard
+links. Its no-follow and descriptor-bound checks reject admitted symlink
+components, observed leaf substitution, unstable bytes, and unexpected state
+rosters. All sanctioned lifecycle writers hold the acquisition mutex. A
+hostile process concurrently replacing a lock leaf in the narrow post-link,
+pre-unlink interval, renaming ancestor directories, or changing mount
+namespaces is outside this boundary and invalidates the evidence. NFS,
+network/distributed filesystems, and cluster locking semantics are not claimed
+until separately validated at the site.
 
 The semantic checker also has this grouped command:
 
@@ -95,7 +101,8 @@ B4 supplies the internal lifecycle authorities used by the B5 public adapter:
   immutable attempt record, exact reviewed Snakefile and absolute workflow
   profile, the same content-admitted Python runtime running
   `-X pycache_prefix=/dev/null -I -m snakemake`, new-process-group invocation,
-  clean signal forwarding,
+  transaction-wide SIGINT/SIGTERM deferral and one-time forwarding,
+  sanitized subprocess startup state, bounded process-group quiescence proof,
   semantic task/report transaction revalidation, retained released-lock
   evidence, exact producer-entry/reporting ledgers, recursively closed
   attempt-local task evidence, and the terminal attempt receipt published last;
@@ -128,6 +135,17 @@ future reconciliation record is required to turn historical ambiguity into a
 safe automatic boundary. A pre-attempt establishment failure retains its owned
 lock under `locks/released-<workflow-attempt-id>-run-lock.json`; inspection
 blocks on that evidence and never repairs or removes it.
+
+Ordinary SIGINT/SIGTERM is controlled from before mutex acquisition through a
+durable receipt or recovery disposition. A signal before `run.lock` leaves no
+attempt evidence; after `run.lock` but before `attempt.json`, it retains
+aggregate released-lock evidence and no receipt; after attempt publication, it
+is finalized as an interrupted attempt only after the delegated process group
+is proved absent. A leader exit is insufficient while a member remains in the
+original process group. NORAD uses bounded TERM/KILL escalation; inability to
+prove absence retains the public run lock and publishes no resumable receipt.
+SIGKILL, power loss, and descendants that deliberately escape the delegated
+session/process group remain outside automatic signal recovery.
 
 The adjacent neutral [machine contracts](../../contracts/orchestration/README.md)
 define request, profile, normalized execution, lock, attempt, receipt,

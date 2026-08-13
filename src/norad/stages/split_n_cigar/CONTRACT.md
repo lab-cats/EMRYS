@@ -102,10 +102,16 @@ Package selection is owned by the grouped command; direct execution of private
 `validator.py`, ambient `PYTHONPATH` injection, compatibility imports, and
 peer-stage implementation dependencies are not supported interfaces.
 
-The producer uses `resolve_overridable_executable` from neutral
-[`executable_resolution.sh`](../../libraries/executable_resolution.sh).
-GATK, samtools, and Java precedence, version checks, and commands remain owned
-here.
+The producer shares executable-value resolution through neutral
+[`executable_resolution.sh`](../../libraries/executable_resolution.sh) and the
+bound-Python selected-Java handoff through neutral
+[`gatk_invocation.sh`](../../libraries/gatk_invocation.sh) and
+[`process_environment.py`](../../libraries/process_environment.py). Execute
+mode requires absolute Python 3.11+ in `NORAD_SHA256_PYTHON`, requires Java to
+resolve to canonical `<JAVA_HOME>/bin/java`, and removes ambient JVM/GATK
+selectors before both the GATK version probe and work. This stage retains
+GATK/samtools/Java precedence, minimum versions, exact SplitNCigarReads
+arguments, transaction, validation, and output policy.
 
 Content mismatches publish `status=fail`; unsafe inputs, required tool-call
 failures, and report-publication failures exit `2`.

@@ -67,11 +67,15 @@ Edit those copies before continuing:
   strata, each with exactly one declared control and one declared treatment.
 - In `local_pilot_partitions.example.tsv`, choose selectors that exist in the
   declared reference.
-- In `local_pilot_runtime.tsv`, replace every executable, Picard jar, Rscript,
-  controlled Python/Snakemake, Bash, gunzip, Picard jar, Rscript, `renv`
-  project/library, and R-namespace probe placeholder with the exact selected
-  path. Module names alone are not executable identities; admitted executable
-  and jar targets are bound by canonical path and SHA-256.
+- In `local_pilot_runtime.tsv`, replace only the path placeholders for the
+  controlled Python/Snakemake, Bash, gunzip, scientific executables, Picard
+  jar, Rscript, and canonical `renv` project/library. Keep the fixed roster,
+  version expressions, ordinary probe arguments, descriptions, and R package
+  names unchanged. The Java path must resolve to canonical
+  `<JAVA_HOME>/bin/java`. Module names alone are not executable identities;
+  admitted executable and jar targets are bound by canonical path and SHA-256,
+  while each admitted R namespace is bound to its canonical installed-package
+  root and deterministic tree SHA-256.
 
 Relative input paths are resolved from the request file's directory, not the
 shell's working directory. The tracked starters contain no reads or reference

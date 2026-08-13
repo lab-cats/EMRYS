@@ -35,6 +35,9 @@ Options:
                      argument, GATK_BIN_OVERRIDE, PATH.
   --java-bin         Java executable or path. Resolution order:
                      argument, JAVA_BIN_OVERRIDE, JAVA_HOME/bin/java, PATH.
+                     It must resolve to canonical <JAVA_HOME>/bin/java.
+                     Execute mode also requires absolute Python 3.11+ in
+                     NORAD_SHA256_PYTHON.
   --execute          Execute sidecar generation after validation. Without this,
                      dry-run only.
   -h, --help         Show this help message and exit.
@@ -49,6 +52,8 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
 # shellcheck source=../../libraries/file_checks.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/file_checks.sh"
+# shellcheck source=../../libraries/gatk_invocation.sh
+source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/gatk_invocation.sh"
 
 read_fai_pairs() {
     local fai="$1"
@@ -477,7 +482,8 @@ validate_and_print_java \
     "$java_bin"
 
 printf 'GATK version:\n'
-"$gatk_bin" --version 2>&1 || die2 "GATK version check failed: $gatk_bin"
+invoke_gatk_with_selected_java "$java_bin" "$gatk_bin" --version 2>&1 ||
+    die2 "GATK version check failed: $gatk_bin"
 
 need_fai=false
 need_dict=false
@@ -509,7 +515,7 @@ if [[ "$need_fai" == true ]]; then
 fi
 
 if [[ "$need_dict" == true ]]; then
-    "${gatk_dict_command[@]}"
+    invoke_gatk_with_selected_java "$java_bin" "${gatk_dict_command[@]}"
     validate_dict_file "$tmp_dict"
 fi
 

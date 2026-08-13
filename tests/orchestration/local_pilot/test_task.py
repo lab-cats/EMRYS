@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -281,6 +283,30 @@ def _fixed_ops() -> task.TaskOps:
     )
 
 
+def test_default_command_runner_blocks_hostile_bash_startup(
+    tmp_path: Path,
+) -> None:
+    marker = tmp_path / "bash-env-marker"
+    startup = tmp_path / "hostile-bash-env"
+    startup.write_text(f"touch {marker}\n", encoding="utf-8")
+    result = task.default_task_ops().run_command(
+        ("/bin/bash", "-c", "true"),
+        tmp_path,
+        {
+            **os.environ,
+            "BASH_ENV": str(startup),
+            "ENV": str(startup),
+            "CDPATH": str(tmp_path),
+            "GLOBIGNORE": "*",
+            "BASH_FUNC_hostile%%": "() { touch hostile-function-marker; }",
+        },
+    )
+
+    assert result.exit_code == 0
+    assert not marker.exists()
+    assert not (tmp_path / "hostile-function-marker").exists()
+
+
 def _rewrite_dispatch(built: TaskFixture) -> None:
     built.dispatch_path.write_bytes(
         orchestration_contracts.canonical_json_bytes(built.dispatch)
@@ -379,7 +405,9 @@ def _step00c_with_existing_sidecars(
     record = orchestration_contracts.load_json_object(dispatch_path)
     outputs = tuple(Path(item["path"]) for item in record["outputs"])
     assert len(outputs) == 2
-    producer = _fixed_ops().run_command(tuple(record["producer_argv"]), built.run_root)
+    producer = _fixed_ops().run_command(
+        tuple(record["producer_argv"]), built.run_root, {}
+    )
     assert producer.exit_code == 0, producer.stderr.decode(errors="replace")
     return built, dispatch_path, record, (outputs[0], outputs[1])
 
@@ -645,7 +673,9 @@ def test_dispatch_hash_is_bound_before_parsing_or_producer_execution(
     _rewrite_dispatch(changed)
     calls: list[tuple[str, ...]] = []
 
-    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
+    def command(
+        argv: tuple[str, ...], cwd: Path, _environment: Mapping[str, str]
+    ) -> task.CommandResult:
         calls.append(argv)
         return task.CommandResult(argv, 0, b"", b"")
 
@@ -669,7 +699,9 @@ def test_task_start_publication_failure_after_link_never_enters_producer(
     calls: list[tuple[str, ...]] = []
     injected = False
 
-    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
+    def command(
+        argv: tuple[str, ...], cwd: Path, _environment: Mapping[str, str]
+    ) -> task.CommandResult:
         calls.append(argv)
         return task.CommandResult(argv, 0, b"", b"")
 
@@ -1030,8 +1062,10 @@ def test_semantic_gate_cannot_change_the_report_it_approves(tmp_path: Path) -> N
     built = _task_fixture(tmp_path)
     defaults = _fixed_ops()
 
-    def semantic(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
-        result = defaults.run_semantic_all_pass(argv, cwd)
+    def semantic(
+        argv: tuple[str, ...], cwd: Path, environment: Mapping[str, str]
+    ) -> task.CommandResult:
+        result = defaults.run_semantic_all_pass(argv, cwd, environment)
         with Path(built.dispatch["validation_report_path"]).open("ab") as stream:
             stream.write(b"post-gate mutation\n")
         return result
@@ -1052,8 +1086,10 @@ def test_validator_cannot_change_a_producer_output(tmp_path: Path) -> None:
     built = _task_fixture(tmp_path)
     defaults = _fixed_ops()
 
-    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
-        result = defaults.run_command(argv, cwd)
+    def command(
+        argv: tuple[str, ...], cwd: Path, environment: Mapping[str, str]
+    ) -> task.CommandResult:
+        result = defaults.run_command(argv, cwd, environment)
         if "validator" in argv:
             with Path(built.dispatch["outputs"][0]["path"]).open("ab") as stream:
                 stream.write(b"validator mutation\n")
@@ -1115,7 +1151,9 @@ def test_step00c_symlinked_stationary_reference_blocks_before_producer(
 
     calls: list[tuple[str, ...]] = []
 
-    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
+    def command(
+        argv: tuple[str, ...], cwd: Path, _environment: Mapping[str, str]
+    ) -> task.CommandResult:
         calls.append(argv)
         return task.CommandResult(argv, 0, b"", b"")
 
@@ -1137,6 +1175,72 @@ def test_step00c_symlinked_stationary_reference_blocks_before_producer(
     assert not sequence_dict.exists()
 
 
+def test_step00c_parent_permission_drift_blocks_before_task_start(
+    tmp_path: Path,
+) -> None:
+    built = workflow_fixture.build(tmp_path / "workflow-fixture")
+    workflow_fixture.materialize_active_run_lock(built)
+    machine_key = "norad.stage.construct_FASTA_sidecars.v1"
+    scope_id = str(built.execution["reference"]["reference_id"])
+    dispatch_path = Path(built.dispatch_paths[machine_key][scope_id])
+    record = orchestration_contracts.load_json_object(dispatch_path)
+    parent = Path(str(built.execution["reference"]["fasta"]["path"])).parent
+    calls: list[tuple[str, ...]] = []
+
+    def command(
+        argv: tuple[str, ...], cwd: Path, _environment: Mapping[str, str]
+    ) -> task.CommandResult:
+        calls.append(argv)
+        return task.CommandResult(argv, 0, b"", b"")
+
+    defaults = _fixed_ops()
+    parent_checks = 0
+
+    def permission_drift(path: Path, mode: int) -> bool:
+        nonlocal parent_checks
+        if path != parent:
+            return os.access(path, mode)
+        assert mode == os.R_OK | os.W_OK | os.X_OK
+        parent_checks += 1
+        return parent_checks == 1
+
+    with pytest.raises(task.TaskBoundaryError, match="not readable, writable"):
+        _execute_dispatch(
+            dispatch_path,
+            ops=task.TaskOps(
+                run_command=command,
+                run_semantic_all_pass=command,
+                publish_bytes=defaults.publish_bytes,
+                now=defaults.now,
+                attest_source_checkout=defaults.attest_source_checkout,
+                path_access=permission_drift,
+            ),
+        )
+
+    assert parent_checks == 2
+    assert calls == []
+    assert not Path(record["task_start_path"]).exists()
+    attempt_path = Path(record["task_attempt_path"])
+    attempt = orchestration_contracts.load_record(attempt_path, "task-attempt")
+    assert attempt["status"] == "failed"
+    assert attempt["task_start_record"] is None
+    assert attempt["producer"] is None
+    for field, path_field in (
+        ("stdout_log", "stdout_path"),
+        ("stderr_log", "stderr_path"),
+    ):
+        log_path = Path(record[path_field])
+        assert attempt[field] == {
+            "path": log_path.relative_to(built.run_root).as_posix(),
+            "sha256": hashlib.sha256(log_path.read_bytes()).hexdigest(),
+        }
+    fasta = Path(str(built.execution["reference"]["fasta"]["path"]))
+    assert not Path(f"{fasta}.fai").exists()
+    assert not fasta.with_name(f"{fasta.stem}.dict").exists()
+    assert not list(parent.glob(".*step00c*"))
+    assert not list(parent.glob("*.norad-stage"))
+
+
 def test_complete_step00c_sidecar_pair_is_reused_and_content_bound(
     tmp_path: Path,
 ) -> None:
@@ -1151,11 +1255,13 @@ def test_complete_step00c_sidecar_pair_is_reused_and_content_bound(
     defaults = _fixed_ops()
     calls: list[tuple[str, ...]] = []
 
-    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
+    def command(
+        argv: tuple[str, ...], cwd: Path, environment: Mapping[str, str]
+    ) -> task.CommandResult:
         calls.append(argv)
         if argv == producer_argv:
             return task.CommandResult(argv, 0, b"reused existing sidecars\n", b"")
-        return defaults.run_command(argv, cwd)
+        return defaults.run_command(argv, cwd, environment)
 
     outcome = _execute_dispatch(
         dispatch_path,
@@ -1194,9 +1300,11 @@ def test_partial_step00c_sidecar_pair_blocks_before_producer(tmp_path: Path) -> 
     calls: list[tuple[str, ...]] = []
     defaults = _fixed_ops()
 
-    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
+    def command(
+        argv: tuple[str, ...], cwd: Path, environment: Mapping[str, str]
+    ) -> task.CommandResult:
         calls.append(argv)
-        return defaults.run_command(argv, cwd)
+        return defaults.run_command(argv, cwd, environment)
 
     with pytest.raises(task.TaskBoundaryError, match="partial pre-existing Step 00c"):
         _execute_dispatch(
@@ -1228,7 +1336,9 @@ def test_reused_step00c_sidecar_replacement_during_producer_fails_closed(
     original = outputs[0].read_bytes()
     defaults = _fixed_ops()
 
-    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
+    def command(
+        argv: tuple[str, ...], cwd: Path, _environment: Mapping[str, str]
+    ) -> task.CommandResult:
         if argv == producer_argv:
             replacement = outputs[0].with_name(f".{outputs[0].name}.replacement")
             replacement.write_bytes(original)
@@ -1259,10 +1369,12 @@ def test_reused_step00c_sidecar_mutation_during_validation_fails_closed(
     producer_argv = tuple(record["producer_argv"])
     defaults = _fixed_ops()
 
-    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
+    def command(
+        argv: tuple[str, ...], cwd: Path, environment: Mapping[str, str]
+    ) -> task.CommandResult:
         if argv == producer_argv:
             return task.CommandResult(argv, 0, b"", b"")
-        result = defaults.run_command(argv, cwd)
+        result = defaults.run_command(argv, cwd, environment)
         with outputs[1].open("ab") as stream:
             stream.write(b"foreign mutation\n")
         return result
@@ -1291,10 +1403,12 @@ def test_reused_step00c_sidecar_rechecked_before_verified_publication(
     original = outputs[0].read_bytes()
     defaults = _fixed_ops()
 
-    def command(argv: tuple[str, ...], cwd: Path) -> task.CommandResult:
+    def command(
+        argv: tuple[str, ...], cwd: Path, environment: Mapping[str, str]
+    ) -> task.CommandResult:
         if argv == producer_argv:
             return task.CommandResult(argv, 0, b"", b"")
-        return defaults.run_command(argv, cwd)
+        return defaults.run_command(argv, cwd, environment)
 
     def publish(path: Path, data: bytes) -> None:
         defaults.publish_bytes(path, data)

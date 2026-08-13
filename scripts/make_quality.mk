@@ -19,6 +19,7 @@ PYTHON_SUBPROCESS_COVERAGE_TESTS := \
 	tests/ingestion/sample_manifest_admission/test_validate_manifest.py
 
 SHELL_SYNTAX_PATHS := \
+	src/norad/libraries/gatk_invocation.sh \
 	src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh \
 	src/norad/stages/star_index/step_00a_build_star_index.sh \
 	src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh \

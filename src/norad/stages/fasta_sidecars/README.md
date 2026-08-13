@@ -15,14 +15,19 @@ evidence limits.
 
 ## Operate
 
-Producer dry-run resolves every tool and writes nothing:
+Producer dry-run resolves every tool and writes nothing. Execute mode requires
+`NORAD_SHA256_PYTHON` to name one absolute Python 3.11+ launcher; the Java path
+must resolve to canonical `<JAVA_HOME>/bin/java`. The neutral bridge clears
+ambient JVM/GATK selectors and makes that selected Java authoritative for both
+the GATK version probe and dictionary generation:
 
 ```bash
-src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh \
+NORAD_SHA256_PYTHON=/absolute/path/to/python \
+bash src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh \
   --reference-fasta refs/novogene_ref/genome.fa \
   --samtools-bin /absolute/path/to/samtools \
   --gatk-bin /absolute/path/to/gatk \
-  --java-bin /absolute/path/to/java
+  --java-bin /absolute/java-home/bin/java
 ```
 
 Add `--execute` after inspection. A valid existing sidecar is reused and only a
@@ -67,13 +72,17 @@ mkdir -p logs
 REFERENCE_FASTA=/absolute/refs/genome.fa \
 SAMTOOLS_BIN_OVERRIDE=/absolute/path/to/samtools \
 GATK_BIN_OVERRIDE=/absolute/path/to/gatk \
-JAVA_BIN_OVERRIDE=/absolute/path/to/java TMPDIR=/absolute/path/to/tmp \
+JAVA_BIN_OVERRIDE=/absolute/java-home/bin/java \
+NORAD_SHA256_PYTHON=/absolute/path/to/python \
+TMPDIR=/absolute/path/to/tmp \
 EXECUTE=1 \
   sbatch src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm
 ```
 
-Site defaults are not portable. The wrapper checks only nonempty FAI and DICT;
-mocked scheduler tests do not prove site runtime.
+Site defaults are not portable. In execute mode the wrapper validates the
+controlled Python, then delegates the selected-Java GATK probe and work to the
+producer. It checks only nonempty FAI and DICT after delegation; mocked
+scheduler tests do not prove site runtime.
 
 ## Diagnose and verify
 

@@ -32,6 +32,9 @@ from norad.libraries.source_authority import (
     require_controlled_python_runtime,
 )
 from norad.orchestration.local_pilot import inspection
+from norad.libraries.process_environment import (
+    sanitized_subprocess_environment,
+)
 
 DISPATCH_SCHEMA_VERSION = "norad.local-task-dispatch.v1"
 _DISPATCH_FIELDS = frozenset(
@@ -131,10 +134,11 @@ class CommandResult:
         return {"argv": list(self.argv), "exit_code": self.exit_code}
 
 
-CommandRunner = Callable[[tuple[str, ...], Path], CommandResult]
+CommandRunner = Callable[[tuple[str, ...], Path, Mapping[str, str]], CommandResult]
 BytesPublisher = Callable[[Path, bytes], None]
 Clock = Callable[[], datetime]
 SourceCheckoutAttester = Callable[..., Any]
+PathAccess = Callable[[Path, int], bool]
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,6 +150,7 @@ class TaskOps:
     publish_bytes: BytesPublisher
     now: Clock
     attest_source_checkout: SourceCheckoutAttester = _attest_source_checkout
+    path_access: PathAccess = os.access
 
 
 @dataclass(frozen=True, slots=True)
@@ -516,7 +521,11 @@ def _load_bound_json(path: Path, label: str) -> tuple[dict[str, Any], bytes]:
     return value, data
 
 
-def _default_run_command(argv: tuple[str, ...], cwd: Path) -> CommandResult:
+def _default_run_command(
+    argv: tuple[str, ...],
+    cwd: Path,
+    environment: Mapping[str, str] | None = None,
+) -> CommandResult:
     try:
         completed = subprocess.run(
             argv,
@@ -524,6 +533,7 @@ def _default_run_command(argv: tuple[str, ...], cwd: Path) -> CommandResult:
             check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env=sanitized_subprocess_environment(environment),
         )
     except OSError as exc:
         message = f"Could not execute {argv[0]}: {exc}\n".encode(
@@ -762,6 +772,28 @@ def _admit_output_locations(
             raise TaskBoundaryError(
                 f"Step 00c sidecar parent does not match stationary FASTA: {path}"
             )
+
+
+def _admit_step00c_external_parent_access(
+    dispatch: TaskDispatch,
+    execution: Mapping[str, Any],
+    *,
+    path_access: PathAccess,
+) -> None:
+    """Require current-user Step 00c publication access before task entry."""
+
+    if dispatch.machine_key != "norad.stage.construct_FASTA_sidecars.v1":
+        return
+    fasta = Path(str(execution["reference"]["fasta"]["path"]))
+    if not path_access(fasta, os.R_OK):
+        raise TaskBoundaryError(
+            f"Step 00c stationary FASTA is not readable before task entry: {fasta}"
+        )
+    if not path_access(fasta.parent, os.R_OK | os.W_OK | os.X_OK):
+        raise TaskBoundaryError(
+            "Step 00c stationary FASTA parent is not readable, writable, and "
+            f"searchable before task entry: {fasta.parent}"
+        )
 
 
 def _step00c_external_outputs(
@@ -1492,6 +1524,11 @@ def run_task(
         profile, execution, execution_sha256, profile_sha256, step_id = _admit_identity(
             dispatch
         )
+        _admit_step00c_external_parent_access(
+            dispatch,
+            execution,
+            path_access=ops.path_access,
+        )
         _admit_start_origins(
             dispatch,
             execution=execution,
@@ -1530,6 +1567,11 @@ def run_task(
         if entry_inputs != initial_inputs:
             raise TaskBoundaryError("A stable task input changed before producer entry")
         _recheck_reused_outputs(reused_outputs, phase="before producer entry")
+        _admit_step00c_external_parent_access(
+            dispatch,
+            execution,
+            path_access=ops.path_access,
+        )
 
         _task_start, task_start_bytes = _build_task_start(
             dispatch,
@@ -1573,7 +1615,10 @@ def run_task(
         if lock_reference_before_producer != _task_start["run_lock"]:
             raise TaskBoundaryError("Workflow run lock changed before producer entry")
         _recheck_reused_outputs(reused_outputs, phase="before producer entry")
-        producer = ops.run_command(backend.producer_argv, dispatch.run_root)
+        command_environment = sanitized_subprocess_environment()
+        producer = ops.run_command(
+            backend.producer_argv, dispatch.run_root, command_environment
+        )
         stdout_parts.append(producer.stdout)
         stderr_parts.append(producer.stderr)
         if producer.exit_code != 0:
@@ -1588,7 +1633,9 @@ def run_task(
             else _record_reference(dispatch.native_receipt_path, dispatch.run_root)
         )
 
-        validator = ops.run_command(backend.validator_argv, dispatch.run_root)
+        validator = ops.run_command(
+            backend.validator_argv, dispatch.run_root, command_environment
+        )
         stdout_parts.append(validator.stdout)
         stderr_parts.append(validator.stderr)
         if validator.exit_code != 0:
@@ -1600,7 +1647,9 @@ def run_task(
             dispatch.validation_report_path, dispatch.run_root
         )
         semantic = ops.run_semantic_all_pass(
-            _semantic_argv(dispatch, step_id), dispatch.run_root
+            _semantic_argv(dispatch, step_id),
+            dispatch.run_root,
+            command_environment,
         )
         stdout_parts.append(semantic.stdout)
         stderr_parts.append(semantic.stderr)

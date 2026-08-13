@@ -48,9 +48,26 @@ the controlled Python/Snakemake launcher, the Python SHA-256 implementation,
 Bash, gunzip, every scientific executable or jar, Rscript, the canonical
 `renv` project and existing library, and required R namespaces. File-backed
 identities are admitted by authored path, canonical target, version, and
-SHA-256; the guarded R environment clears ambient R/renv path selectors and
-sets the selected project library explicitly. Never fabricate a missing
-`renv` library directory merely to make readiness pass.
+SHA-256. Before probing, the guarded R boundary requires the existing selected
+library to contain the lock-pinned `renv` version. Rscript then ignores ambient
+site/environment startup, uses only the reviewed project profile, disables the
+`renv` autoloader, and proves each required namespace resolves beneath the
+selected library. It never restores, bootstraps, installs, or downloads.
+Never fabricate a missing `renv` library directory merely to make readiness
+pass.
+
+Copy the fixed local-pilot runtime starter and replace only its declared path
+placeholders and coupled path arguments. The roster, check types, contexts,
+required flags, expected-version expressions, ordinary probe arguments,
+descriptions, and R package names are fixed profile policy and are rejected if
+edited. The Java row must resolve to canonical `<JAVA_HOME>/bin/java`; the same
+selected launcher is used for the GATK probe and owner work. After guarded R
+probing, every fixed `r_*` required-tool identity binds the observed namespace
+version, exact canonical installed-package root, and deterministic no-follow
+tree SHA-256 over sorted entry kind, relative path, permission mode, size, and
+regular-file bytes. Package-tree symlinks and special entries fail closed;
+only the canonical `renv` project/library directory identities have null
+digests.
 
 Exact committed-file tests cover the artifact inventory, runtime-preflight
 example, the matched local-pilot starters, Step `07` pilot and primary

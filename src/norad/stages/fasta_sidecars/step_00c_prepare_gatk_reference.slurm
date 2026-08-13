@@ -15,6 +15,8 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=../../libraries/argument_parsing.sh
 source "$script_dir/../../libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/gatk_invocation.sh
+source "$script_dir/../../libraries/gatk_invocation.sh"
 
 export TMPDIR="${TMPDIR:-/tmp}"
 
@@ -23,6 +25,7 @@ cd "${SLURM_SUBMIT_DIR:-$PWD}"
 REFERENCE_FASTA="${REFERENCE_FASTA:-refs/novogene_ref/genome.fa}"
 SAMTOOLS_BIN="${SAMTOOLS_BIN_OVERRIDE:-/cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools}"
 GATK_BIN="${GATK_BIN_OVERRIDE:-/cm/shared/apps/gatk/gatk-4.6.1.0/gatk}"
+NORAD_SHA256_PYTHON="${NORAD_SHA256_PYTHON:-$PWD/.venv/bin/python}"
 EXECUTE="${EXECUTE:-0}"
 REFERENCE_DIR="$(dirname "$REFERENCE_FASTA")"
 REFERENCE_BASE="$(basename "$REFERENCE_FASTA")"
@@ -52,6 +55,7 @@ echo "FASTA index: $REFERENCE_FASTA.fai"
 echo "Sequence dictionary: $DICT_PATH"
 echo "samtools: $SAMTOOLS_BIN"
 echo "GATK: $GATK_BIN"
+echo "Controlled Python: $NORAD_SHA256_PYTHON"
 echo "Execute mode: $EXECUTE"
 
 echo "Loaded modules before reference-prep setup:"
@@ -75,11 +79,12 @@ else
     echo "WARNING: samtools path is not executable before script validation: $SAMTOOLS_BIN"
 fi
 
-if [[ -x "$GATK_BIN" ]]; then
-    echo "GATK version:"
-    "$GATK_BIN" --version
-else
+if [[ ! -x "$GATK_BIN" ]]; then
     echo "WARNING: GATK path is not executable before script validation: $GATK_BIN"
+fi
+
+if [[ "$EXECUTE" == "1" ]]; then
+    admit_gatk_helper_python
 fi
 
 cmd=(
@@ -92,7 +97,8 @@ cmd=(
     "${execute_args[@]}"
 )
 
-# The script owns sidecar generation, validation, locking, and publication.
+# The script owns the selected-Java GATK probe, sidecar generation, validation,
+# locking, and publication.
 echo "Wrapper command:"
 print_command "${cmd[@]}"
 

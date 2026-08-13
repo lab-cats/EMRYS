@@ -94,36 +94,92 @@ def _assert_prepared_fresh_clone(source_root: Path) -> None:
 
 def _write_runtime_profile(root: Path) -> Path:
     root.mkdir()
-    tool = root / "fixture-tool"
-    tool.write_text(
+
+    def executable(name: str, output: str) -> Path:
+        path = root / name
+        path.write_text(
+            "#!/bin/sh\n" + f"printf '%s\\n' '{output}'\n",
+            encoding="utf-8",
+        )
+        path.chmod(0o755)
+        return path
+
+    tools = {
+        "star": executable("STAR", "2.7.11b"),
+        "samtools": executable("samtools", "samtools 1.19.2"),
+        "bcftools": executable("bcftools", "bcftools 1.21"),
+        "infer_experiment": executable("infer_experiment.py", "RSeQC v5.0.4"),
+        "gunzip": executable("gunzip", "gzip 1.13"),
+    }
+    java_home = root / "fixture-jdk"
+    java = java_home / "bin" / "java"
+    java.parent.mkdir(parents=True)
+    java.write_text(
         "#!/bin/sh\n"
-        'case "${1:-}" in\n'
-        "  -jar) printf 'fixture-picard\\n' ;;\n"
-        "  -version) printf 'fixture-java\\n' ;;\n"
-        "  -e) printf 'fixture-r-namespace\\n' ;;\n"
-        "  *) printf 'fixture\\n' ;;\n"
+        'case " $* " in\n'
+        "  *' -jar '*) printf '3.1.1\\n' ;;\n"
+        "  *) printf 'openjdk version \"17.0.1\"\\n' >&2 ;;\n"
         "esac\n",
         encoding="utf-8",
     )
-    tool.chmod(0o755)
+    java.chmod(0o755)
+    gatk = root / "gatk"
+    gatk.write_text(
+        "#!/bin/sh\n"
+        f"[ \"${{JAVA_HOME:-}}\" = '{java_home}' ] || exit 91\n"
+        f"[ \"$(command -v java)\" = '{java}' ] || exit 92\n"
+        "printf 'The Genome Analysis Toolkit (GATK) v4.6.1.0\\n'\n",
+        encoding="utf-8",
+    )
+    gatk.chmod(0o755)
     picard_jar = root / "fixture-picard.jar"
     picard_jar.write_bytes(b"bounded no-science Picard fixture\n")
     rscript = root / "fixture-Rscript"
-    shutil.copy2(tool, rscript)
     renv_library = root / "fixture-renv-library"
     renv_library.mkdir()
+    installed_renv = renv_library / "renv"
+    installed_renv.mkdir()
+    (installed_renv / "DESCRIPTION").write_text(
+        "Package: renv\nVersion: 1.2.3\n", encoding="utf-8"
+    )
+    starter = REPO_ROOT / "configs/local_pilot_runtime.example.tsv"
+    with starter.open(encoding="utf-8", newline="") as handle:
+        reader = csv.DictReader(handle, delimiter="\t")
+        assert reader.fieldnames is not None
+        header = tuple(reader.fieldnames)
+        rows = list(reader)
+    by_name = {row["check_id"]: row for row in rows}
+    package_versions: dict[str, str] = {}
+    for check_id, package in doctor.LOCAL_PILOT_R_PACKAGES:
+        exact = by_name[check_id]["expected"]
+        version = exact.removeprefix("^").removesuffix("$").replace("[.]", ".")
+        assert re.fullmatch(r"[0-9]+(?:[.][0-9]+)+", version)
+        package_versions[package] = version
+        package_root = renv_library / package
+        package_root.mkdir()
+        (package_root / "DESCRIPTION").write_text(
+            f"Package: {package}\nVersion: {version}\n", encoding="utf-8"
+        )
+    r_lines = [
+        "#!/bin/sh",
+        'case " $* " in',
+        "  *' --version '*) printf 'Rscript (R) version 4.6.1\\n' ;;",
+    ]
+    for package, version in package_versions.items():
+        r_lines.append(f"  *' {package} '*) printf '{version}\\n' ;;")
+    r_lines.extend(("  *) exit 42 ;;", "esac"))
+    rscript.write_text("\n".join(r_lines) + "\n", encoding="utf-8")
+    rscript.chmod(0o755)
 
-    rows: list[list[str]] = []
-    for check_id, check_type in doctor.LOCAL_PILOT_RUNTIME_CHECKS:
-        target = str(tool)
-        probe_args = ["--version"]
-        expected = "^fixture$"
+    for row in rows:
+        check_id = row["check_id"]
+        check_type = row["check_type"]
+        target = str(tools.get(check_id, root / check_id))
+        probe_args = json.loads(row["probe_args"])
         if check_id == "bash":
             target = "/bin/bash"
-            expected = ".*"
         elif check_id == "python":
             target = sys.executable
-            expected = "^Python 3[.]"
         elif check_id in {"snakemake", "sha256_python"}:
             target = sys.executable
             if check_id == "snakemake":
@@ -135,71 +191,39 @@ def _write_runtime_profile(root: Path) -> Path:
                     "snakemake",
                     "--version",
                 ]
-                expected = f"^{re.escape(doctor.SNAKEMAKE_VERSION)}$"
             else:
                 probe_args = ["python_hashlib"]
-                expected = "sha256"
         elif check_id == "java":
-            probe_args = ["-version"]
-            expected = "^fixture-java$"
+            target = str(java)
+        elif check_id == "gatk":
+            target = str(gatk)
         elif check_id == "picard":
+            target = str(java)
             probe_args = [
                 "-jar",
                 str(picard_jar),
                 "MarkDuplicates",
                 "--version",
             ]
-            expected = "^fixture-picard$"
         elif check_id == "picard_jar":
             target = str(picard_jar)
-            probe_args = ["file_readable"]
-            expected = "readable"
         elif check_id == "rscript":
             target = str(rscript)
         elif check_id == "renv_project":
             target = str(REPO_ROOT)
-            probe_args = ["directory_readable"]
-            expected = "readable"
         elif check_id == "renv_library":
             target = str(renv_library)
-            probe_args = ["directory_readable"]
-            expected = "readable"
         elif check_type == "r_namespace":
-            target = next(
-                package
-                for key, package in doctor.LOCAL_PILOT_R_PACKAGES
-                if key == check_id
-            )
             probe_args = [str(rscript)]
-            expected = "^fixture-r-namespace$"
-        rows.append(
-            [
-                check_id,
-                check_type,
-                "local",
-                "true",
-                target,
-                json.dumps(probe_args, separators=(",", ":")),
-                expected,
-                f"bounded no-science {check_id} availability fixture",
-            ]
-        )
+        row["target"] = target
+        row["probe_args"] = json.dumps(probe_args, separators=(",", ":"))
 
     profile = root / "runtime.tsv"
     with profile.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.writer(handle, delimiter="\t", lineterminator="\n")
-        writer.writerow(
-            (
-                "check_id",
-                "check_type",
-                "runtime_context",
-                "required",
-                "target",
-                "probe_args",
-                "expected",
-                "description",
-            )
+        writer = csv.DictWriter(
+            handle, fieldnames=header, delimiter="\t", lineterminator="\n"
         )
+        writer.writeheader()
         writer.writerows(rows)
     return profile
 

@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 import sys
 from dataclasses import replace
@@ -18,11 +19,17 @@ from norad.evidence.runtime_availability.inspector import (
     RuntimeInspection,
     RuntimeInspectionError,
     RuntimeObservation,
+    load_runtime_profile_contract,
 )
 from norad.libraries.source_authority import (
     SourceCheckoutError,
     SourceCheckoutIdentity,
     controlled_python_argv,
+)
+from norad.libraries.process_environment import (
+    gatk_subprocess_environment,
+    guarded_r_environment,
+    guarded_rscript_argv,
 )
 from norad.orchestration.local_pilot import doctor
 from norad.orchestration.local_pilot.normalization import normalize_request
@@ -42,6 +49,8 @@ def _check(
     probe_args: tuple[str, ...],
     status: str = "pass",
 ) -> RuntimeObservation:
+    _policy_bytes, policy_checks = load_runtime_profile_contract(EXAMPLE_RUNTIME)
+    policy = next(item for item in policy_checks if item.check_id == check_id)
     return RuntimeObservation(
         check=RuntimeCheck(
             check_id=check_id,
@@ -50,8 +59,8 @@ def _check(
             required=True,
             target=target,
             probe_args=probe_args,
-            expected="expected",
-            description=check_id,
+            expected=policy.expected,
+            description=policy.description,
         ),
         status=status,
         observed="9.25.1" if check_id == "snakemake" else "observed",
@@ -63,10 +72,25 @@ def _inspection(tmp_path: Path, *, failing: str | None = None) -> RuntimeInspect
     tool = tmp_path / "tool"
     tool.write_bytes(b"tool\n")
     tool.chmod(0o755)
+    java = tmp_path / "java-home" / "bin" / "java"
+    java.parent.mkdir(parents=True, exist_ok=True)
+    java.write_bytes(b"java\n")
+    java.chmod(0o755)
     jar = tmp_path / "picard.jar"
     jar.write_bytes(b"jar\n")
     renv_library = tmp_path / "renv-library"
     renv_library.mkdir(exist_ok=True)
+    installed_renv = renv_library / "renv"
+    installed_renv.mkdir(exist_ok=True)
+    (installed_renv / "DESCRIPTION").write_text(
+        "Package: renv\nVersion: 1.2.3\n", encoding="utf-8"
+    )
+    for _check_id, package in doctor.LOCAL_PILOT_R_PACKAGES:
+        package_root = renv_library / package
+        package_root.mkdir(exist_ok=True)
+        (package_root / "DESCRIPTION").write_text(
+            f"Package: {package}\nVersion: 1.0.0\n", encoding="utf-8"
+        )
     rscript = str(tool)
     observations = [
         _check("bash", "tool_version", str(tool), probe_args=("--version",)),
@@ -87,12 +111,12 @@ def _inspection(tmp_path: Path, *, failing: str | None = None) -> RuntimeInspect
         ),
         _check("star", "tool_version", str(tool), probe_args=("--version",)),
         _check("samtools", "tool_version", str(tool), probe_args=("--version",)),
-        _check("java", "tool_version", str(tool), probe_args=("-version",)),
+        _check("java", "tool_version", str(java), probe_args=("-version",)),
         _check("gatk", "tool_version", str(tool), probe_args=("--version",)),
         _check(
             "picard",
             "tool_version",
-            str(tool),
+            str(java),
             probe_args=("-jar", str(jar), "MarkDuplicates", "--version"),
         ),
         _check(
@@ -181,6 +205,7 @@ def _ops(
             inspection.profile_bytes,
             tuple(item.check for item in inspection.observations),
         ),
+        path_access=os.access,
     )
 
 
@@ -202,6 +227,12 @@ def test_ready_doctor_is_read_only_and_guards_renv(
     monkeypatch.setenv("RENV_CONFIG_USER_PROFILE", "/ambient/profile")
     monkeypatch.setenv("R_PROFILE_SITE", "/ambient/site-profile")
     monkeypatch.setenv("R_ENVIRON_USER", "/ambient/environ")
+    monkeypatch.setenv("R_DEFAULT_PACKAGES", "hostilePackage")
+    monkeypatch.setenv("BASH_ENV", "/ambient/bash-startup")
+    monkeypatch.setenv("ENV", "/ambient/posix-startup")
+    monkeypatch.setenv("CDPATH", "/ambient/cdpath")
+    monkeypatch.setenv("GLOBIGNORE", "*")
+    monkeypatch.setenv("BASH_FUNC_hostile%%", "() { false; }")
     before = {
         path.relative_to(tmp_path): (path.stat().st_mode, path.read_bytes())
         for path in tmp_path.rglob("*")
@@ -221,20 +252,32 @@ def test_ready_doctor_is_read_only_and_guards_renv(
     assert result.source_commit == "a" * 40
     assert not workspace.exists()
     assert environment_log == [
-        doctor.runtime_environment(
-            REPO_ROOT,
-            tmp_path / "renv-library",
-            base_environment=os.environ,
+        gatk_subprocess_environment(
+            tmp_path / "java-home" / "bin" / "java",
+            base_environment=doctor.runtime_environment(
+                REPO_ROOT,
+                tmp_path / "renv-library",
+                base_environment=os.environ,
+            ),
         )
     ]
     assert not {
-        "R_LIBS_USER",
         "R_LIBS_CUSTOM",
         "RENV_PATHS_CACHE",
-        "RENV_CONFIG_USER_PROFILE",
-        "R_PROFILE_SITE",
-        "R_ENVIRON_USER",
+        "BASH_ENV",
+        "ENV",
+        "CDPATH",
+        "GLOBIGNORE",
+        "BASH_FUNC_hostile%%",
     }.intersection(environment_log[0])
+    assert environment_log[0]["R_LIBS_USER"] == str(tmp_path / "renv-library")
+    assert environment_log[0]["R_PROFILE_SITE"] == os.devnull
+    assert environment_log[0]["R_ENVIRON_USER"] == os.devnull
+    assert environment_log[0]["RENV_CONFIG_USER_PROFILE"] == "FALSE"
+    assert environment_log[0]["R_DEFAULT_PACKAGES"] == "NULL"
+    assert environment_log[0]["RENV_CONFIG_AUTOLOADER_ENABLED"] == "FALSE"
+    assert environment_log[0]["RENV_AUTOLOADER_ENABLED"] == "FALSE"
+    assert environment_log[0]["RENV_ACTIVATE_PROJECT"] == "FALSE"
     identities = doctor.required_tool_identities(
         result.inspection,
         bindings=result.bindings,
@@ -256,6 +299,191 @@ def test_ready_doctor_is_read_only_and_guards_renv(
         if path.is_file()
     }
     assert after == before
+
+
+def test_guarded_r_startup_uses_reviewed_profile_without_activation_or_ambient_files(
+    tmp_path: Path,
+) -> None:
+    rscript = shutil.which("Rscript")
+    if rscript is None:
+        pytest.skip("Rscript is unavailable")
+    project = tmp_path / "project"
+    project.mkdir()
+    shutil.copy2(REPO_ROOT / ".Rprofile", project / ".Rprofile")
+    activation_marker = tmp_path / "activation-marker"
+    activation = project / "renv" / "activate.R"
+    activation.parent.mkdir()
+    activation.write_text(
+        f"writeLines('activated', {json.dumps(str(activation_marker))})\n",
+        encoding="utf-8",
+    )
+    library = tmp_path / "library"
+    installed_renv = library / "renv"
+    installed_renv.mkdir(parents=True)
+    (installed_renv / "DESCRIPTION").write_text(
+        "Package: renv\nVersion: 1.2.3\n", encoding="utf-8"
+    )
+    profile_marker = tmp_path / "hostile-profile-marker"
+    environ_marker = tmp_path / "hostile-environ-marker"
+    hostile_profile = tmp_path / "hostile.Rprofile"
+    hostile_profile.write_text(
+        f"writeLines('hostile', {json.dumps(str(profile_marker))})\n",
+        encoding="utf-8",
+    )
+    hostile_environ = tmp_path / "hostile.Renviron"
+    hostile_environ.write_text(
+        f"R_DEFAULT_PACKAGES=utils\nHOSTILE_MARKER={environ_marker}\n",
+        encoding="utf-8",
+    )
+    environment = guarded_r_environment(
+        project,
+        library,
+        base_environment={
+            "PATH": os.environ["PATH"],
+            "R_PROFILE_SITE": str(hostile_profile),
+            "R_PROFILE_USER": str(hostile_profile),
+            "R_ENVIRON_SITE": str(hostile_environ),
+            "R_ENVIRON_USER": str(hostile_environ),
+            "RENV_PATHS_CACHE": str(tmp_path / "hostile-cache"),
+            "R_DEFAULT_PACKAGES": "utils",
+        },
+    )
+    expression = (
+        "cat(normalizePath(.libPaths()[[1L]], winslash='/', mustWork=TRUE)); "
+        "if (nzchar(Sys.getenv('HOSTILE_MARKER'))) "
+        "writeLines('hostile', Sys.getenv('HOSTILE_MARKER'))"
+    )
+
+    completed = subprocess.run(
+        guarded_rscript_argv(rscript, ("-e", expression)),
+        env=environment,
+        cwd=tmp_path,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout == str(library)
+    assert not activation_marker.exists()
+    assert not profile_marker.exists()
+    assert not environ_marker.exists()
+
+
+def test_default_doctor_gatk_probe_uses_declared_java_not_ambient_java(
+    tmp_path: Path,
+) -> None:
+    selected_home = tmp_path / "selected-java"
+    selected_java = selected_home / "bin" / "java"
+    selected_java.parent.mkdir(parents=True)
+    poison_home = tmp_path / "poison-java"
+    poison_java = poison_home / "bin" / "java"
+    poison_java.parent.mkdir(parents=True)
+    gatk = tmp_path / "bin" / "gatk"
+    gatk.parent.mkdir()
+    selected_marker = tmp_path / "selected-java.marker"
+    poison_marker = tmp_path / "poison-java.marker"
+    gatk_environment_marker = tmp_path / "gatk-environment.marker"
+
+    selected_java.write_text(
+        "#!/bin/sh\n"
+        'printf \'%s\\n\' "$*" >> "$SELECTED_JAVA_MARKER"\n'
+        "printf 'openjdk version \"17.0.14\" 2026-01-01\\n' >&2\n",
+        encoding="utf-8",
+    )
+    poison_java.write_text(
+        "#!/bin/sh\n"
+        "printf 'poison\\n' >> \"$POISON_JAVA_MARKER\"\n"
+        "printf 'openjdk version \"99.0.0\" 2026-01-01\\n' >&2\n",
+        encoding="utf-8",
+    )
+    gatk.write_text(
+        "#!/bin/sh\n"
+        'printf \'%s|%s\\n\' "$JAVA_HOME" "$(command -v java)" '
+        '> "$GATK_ENVIRONMENT_MARKER"\n'
+        "for name in CLASSPATH GATK_JAR GATK_LOCAL_JAR JAVA_OPTS "
+        "JAVA_TOOL_OPTIONS JDK_JAVA_OPTIONS _JAVA_OPTIONS; do\n"
+        '    eval "value=\\${$name-unset}"\n'
+        '    printf \'%s=%s\\n\' "$name" "$value" >> "$GATK_ENVIRONMENT_MARKER"\n'
+        "done\n"
+        "java -version >/dev/null 2>&1\n"
+        "printf 'GATK 4.6.1.0\\n'\n",
+        encoding="utf-8",
+    )
+    for executable in (selected_java, poison_java, gatk):
+        executable.chmod(0o755)
+
+    profile = tmp_path / "runtime.tsv"
+    header = (
+        "check_id\tcheck_type\truntime_context\trequired\ttarget\tprobe_args\t"
+        "expected\tdescription"
+    )
+    profile.write_text(
+        "\n".join(
+            (
+                header,
+                "\t".join(
+                    (
+                        "java",
+                        "tool_version",
+                        "local",
+                        "true",
+                        str(selected_java),
+                        json.dumps(["-version"]),
+                        '^openjdk version "17[.]',
+                        "selected Java",
+                    )
+                ),
+                "\t".join(
+                    (
+                        "gatk",
+                        "tool_version",
+                        "local",
+                        "true",
+                        str(gatk),
+                        json.dumps(["--version"]),
+                        "^GATK 4[.]6[.]1[.]0$",
+                        "GATK probe",
+                    )
+                ),
+            )
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    environment = {
+        "PATH": f"{poison_java.parent}{os.pathsep}{os.environ['PATH']}",
+        "JAVA_HOME": str(poison_home),
+        "SELECTED_JAVA_MARKER": str(selected_marker),
+        "POISON_JAVA_MARKER": str(poison_marker),
+        "GATK_ENVIRONMENT_MARKER": str(gatk_environment_marker),
+        "CLASSPATH": "/ambient/classes",
+        "GATK_JAR": "/ambient/gatk.jar",
+        "GATK_LOCAL_JAR": "/ambient/local-gatk.jar",
+        "JAVA_OPTS": "-Dambient.java.opts=true",
+        "JAVA_TOOL_OPTIONS": "-Dambient.java.tool.options=true",
+        "JDK_JAVA_OPTIONS": "-Dambient.jdk.java.options=true",
+        "_JAVA_OPTIONS": "-Dambient.underscore.java.options=true",
+    }
+
+    inspection = doctor._default_runtime_inspector(profile, "local", environment)
+
+    assert [item.status for item in inspection.observations] == ["pass", "pass"]
+    assert selected_marker.read_text(encoding="utf-8").splitlines() == [
+        "-version",
+        "-version",
+    ]
+    assert not poison_marker.exists()
+    assert gatk_environment_marker.read_text(encoding="utf-8").splitlines() == [
+        f"{selected_home.resolve()}|{selected_java.resolve()}",
+        "CLASSPATH=unset",
+        "GATK_JAR=unset",
+        "GATK_LOCAL_JAR=unset",
+        "JAVA_OPTS=unset",
+        "JAVA_TOOL_OPTIONS=unset",
+        "JDK_JAVA_OPTIONS=unset",
+        "_JAVA_OPTIONS=unset",
+    ]
 
 
 def test_not_ready_has_exact_blocker_and_remediation(tmp_path: Path) -> None:
@@ -329,6 +557,52 @@ def test_nested_absent_workspace_is_not_ready_and_is_not_created(
     assert not workspace.parent.exists()
 
 
+def test_unwritable_step00c_fasta_parent_is_not_ready_without_mutation(
+    tmp_path: Path,
+) -> None:
+    request = build(tmp_path)
+    runtime = tmp_path / "runtime.tsv"
+    runtime.write_text("placeholder\n", encoding="utf-8")
+    inspection = _inspection(tmp_path)
+    reference_parent = tmp_path / "reference"
+    before = {
+        path.relative_to(tmp_path): path.read_bytes()
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    }
+    defaults = _ops(inspection)
+
+    def deny_reference_parent(path: Path, mode: int) -> bool:
+        if path == reference_parent:
+            assert mode == os.R_OK | os.W_OK | os.X_OK
+            return False
+        return os.access(path, mode)
+
+    result = doctor.inspect_local_pilot(
+        request,
+        tmp_path / "workspace",
+        runtime,
+        source_root=REPO_ROOT,
+        ops=replace(defaults, path_access=deny_reference_parent),
+    )
+
+    assert not result.ready
+    assert any(
+        "Step 00c stationary FASTA parent is not readable, writable, and searchable"
+        in blocker
+        for blocker in result.blockers
+    )
+    assert result.remediations == (
+        "Use a canonical readable FASTA in a readable, writable, searchable parent.",
+    )
+    after = {
+        path.relative_to(tmp_path): path.read_bytes()
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    }
+    assert after == before
+
+
 def test_workspace_rejects_symlink_immediate_parent(tmp_path: Path) -> None:
     request = build(tmp_path)
     runtime = tmp_path / "runtime.tsv"
@@ -346,6 +620,40 @@ def test_workspace_rejects_symlink_immediate_parent(tmp_path: Path) -> None:
             source_root=REPO_ROOT,
             ops=_ops(_inspection(tmp_path)),
         )
+
+
+def test_step00c_fasta_through_symlinked_parent_is_usage_error_without_mutation(
+    tmp_path: Path,
+) -> None:
+    request = build(tmp_path)
+    runtime = tmp_path / "runtime.tsv"
+    runtime.write_text("placeholder\n", encoding="utf-8")
+    reference = tmp_path / "reference"
+    real_reference = tmp_path / "reference-real"
+    reference.rename(real_reference)
+    reference.symlink_to(real_reference, target_is_directory=True)
+    inspection = _inspection(tmp_path)
+    before = {
+        path.relative_to(tmp_path): path.read_bytes()
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    }
+
+    with pytest.raises(doctor.DoctorInputError, match="canonical real file"):
+        doctor.inspect_local_pilot(
+            request,
+            tmp_path / "workspace",
+            runtime,
+            source_root=REPO_ROOT,
+            ops=_ops(inspection),
+        )
+
+    after = {
+        path.relative_to(tmp_path): path.read_bytes()
+        for path in tmp_path.rglob("*")
+        if path.is_file()
+    }
+    assert after == before
 
 
 def test_malformed_runtime_profile_is_usage_error(tmp_path: Path) -> None:
@@ -367,6 +675,7 @@ def test_malformed_runtime_profile_is_usage_error(tmp_path: Path) -> None:
         inspect_runtime=reject_runtime,
         observe_snakemake=ops.observe_snakemake,
         load_runtime_profile=ops.load_runtime_profile,
+        path_access=ops.path_access,
     )
     with pytest.raises(doctor.DoctorInputError, match="invalid runtime profile"):
         doctor.inspect_local_pilot(
@@ -375,6 +684,61 @@ def test_malformed_runtime_profile_is_usage_error(tmp_path: Path) -> None:
             runtime,
             source_root=REPO_ROOT,
             ops=rejecting,
+        )
+
+
+@pytest.mark.parametrize(
+    ("check_id", "change"),
+    (
+        ("star", "expected"),
+        ("star", "probe_args"),
+        ("r_variant_annotation", "target"),
+    ),
+)
+def test_runtime_profile_cannot_weaken_fixed_probe_policy_before_probing(
+    tmp_path: Path,
+    check_id: str,
+    change: str,
+) -> None:
+    request = build(tmp_path)
+    runtime = tmp_path / "runtime.tsv"
+    inspection = _inspection(tmp_path)
+    runtime.write_bytes(inspection.profile_bytes)
+    declared = [item.check for item in inspection.observations]
+    index = next(
+        index for index, check in enumerate(declared) if check.check_id == check_id
+    )
+    check = declared[index]
+    if change == "expected":
+        declared[index] = replace(check, expected=".*")
+    elif change == "probe_args":
+        declared[index] = replace(check, probe_args=("--help",))
+    else:
+        declared[index] = replace(check, target="IRanges")
+
+    def unexpected_probe(
+        _path: Path,
+        _context: str,
+        _environment: dict[str, str],
+    ) -> RuntimeInspection:
+        raise AssertionError("runtime probes must not run for weakened policy")
+
+    base = _ops(inspection)
+    ops = replace(
+        base,
+        inspect_runtime=unexpected_probe,
+        load_runtime_profile=lambda _path: (
+            inspection.profile_bytes,
+            tuple(declared),
+        ),
+    )
+    with pytest.raises(doctor.DoctorInputError, match="fixed.*policy"):
+        doctor.inspect_local_pilot(
+            request,
+            tmp_path / "workspace",
+            runtime,
+            source_root=REPO_ROOT,
+            ops=ops,
         )
 
 
@@ -407,6 +771,42 @@ def test_renv_library_must_be_an_existing_canonical_real_directory(
             source_root=REPO_ROOT,
             ops=_ops(linked_inspection),
         )
+
+
+def test_missing_installed_renv_fails_before_probe_without_bootstrap(
+    tmp_path: Path,
+) -> None:
+    request = build(tmp_path)
+    runtime = tmp_path / "runtime.tsv"
+    runtime.write_text("placeholder\n", encoding="utf-8")
+    inspection = _inspection(tmp_path)
+    description = tmp_path / "renv-library" / "renv" / "DESCRIPTION"
+    description.unlink()
+    (tmp_path / "renv-library" / "renv").rmdir()
+    before = sorted(path.relative_to(tmp_path) for path in tmp_path.rglob("*"))
+    calls = 0
+    defaults = _ops(inspection)
+
+    def forbidden_probe(
+        _path: Path,
+        _context: str,
+        _environment: dict[str, str],
+    ) -> RuntimeInspection:
+        nonlocal calls
+        calls += 1
+        raise AssertionError("runtime probe must not run without installed renv")
+
+    with pytest.raises(doctor.DoctorInputError, match="no readable installed renv"):
+        doctor.inspect_local_pilot(
+            request,
+            tmp_path / "workspace",
+            runtime,
+            source_root=REPO_ROOT,
+            ops=replace(defaults, inspect_runtime=forbidden_probe),
+        )
+
+    assert calls == 0
+    assert sorted(path.relative_to(tmp_path) for path in tmp_path.rglob("*")) == before
 
 
 def test_cli_statuses_and_help(
@@ -467,6 +867,7 @@ def test_cli_statuses_and_help(
             inspect_runtime=reject_runtime,
             observe_snakemake=base_ops.observe_snakemake,
             load_runtime_profile=base_ops.load_runtime_profile,
+            path_access=base_ops.path_access,
         ),
     )
     malformed_output = capsys.readouterr()

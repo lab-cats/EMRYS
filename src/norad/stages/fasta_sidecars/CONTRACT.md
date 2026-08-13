@@ -141,10 +141,16 @@ Reference provenance and the final Step `05` validator share the same parser
 module identity while this stage retains its per-role aggregation and
 agreement rows.
 
-The producer sources only `resolve_executable_value` from neutral
-[`executable_resolution.sh`](../../libraries/executable_resolution.sh).
-Samtools, GATK, and Java precedence, version checks, and commands remain owned
-here.
+The producer shares executable-value resolution through neutral
+[`executable_resolution.sh`](../../libraries/executable_resolution.sh) and the
+bound-Python selected-Java handoff through neutral
+[`gatk_invocation.sh`](../../libraries/gatk_invocation.sh) and
+[`process_environment.py`](../../libraries/process_environment.py). Execute
+mode requires absolute Python 3.11+ in `NORAD_SHA256_PYTHON`, requires Java to
+resolve to canonical `<JAVA_HOME>/bin/java`, and removes ambient JVM/GATK
+selectors before both the GATK version probe and work. This stage retains
+samtools/GATK/Java precedence, minimum versions, exact GATK arguments,
+transaction, validation, and sidecar policy.
 
 ## Consumers
 
@@ -204,8 +210,9 @@ Current evidence status remains owned by the canonical roadmap and handoff.
   reuses reference parsers from the neutral `reference_contigs` owner and
   publication helpers from the neutral validation-report owner through shared
   bridges.
-- The scheduler wrapper owns cluster-specific tool and Java resolution around
-  the parameterized shell entrypoint.
+- The scheduler wrapper owns cluster-specific path defaults and controlled-
+  Python admission around the parameterized shell entrypoint. The producer is
+  the sole GATK probe/work authority and owns selected-Java enforcement.
 
 The reference-parser extraction is complete through `LIB-02K`; this inventory
 does not choose a transaction redesign or scheduler abstraction.

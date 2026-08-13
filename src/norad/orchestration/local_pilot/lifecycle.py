@@ -10,6 +10,7 @@ authority.
 from __future__ import annotations
 
 import hashlib
+import errno
 import os
 import platform
 import re
@@ -18,9 +19,10 @@ import socket
 import stat
 import subprocess
 import sys
+import time
 import uuid
 from collections.abc import Callable, Mapping, Sequence
-from contextlib import AbstractContextManager, contextmanager
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -33,6 +35,15 @@ except ImportError:  # pragma: no cover - exercised only on unsupported platform
     _fcntl = None  # type: ignore[assignment]
 
 from norad.contracts.orchestration import api as orchestration_contracts
+from norad.libraries.installed_package_identity import (
+    InstalledPackageIdentityError,
+    installed_package_tree_identity,
+)
+from norad.libraries.process_environment import (
+    ProcessEnvironmentError,
+    gatk_subprocess_environment,
+    sanitized_subprocess_environment,
+)
 from norad.libraries.source_authority import controlled_python_argv
 from norad.orchestration.local_pilot import inspection, task
 
@@ -53,6 +64,10 @@ class LifecycleError(RuntimeError):
     """Raised when a workflow attempt cannot be safely started or finalized."""
 
 
+class ProcessGroupAmbiguity(LifecycleError):
+    """Raised when the delegated process group cannot be proved quiescent."""
+
+
 @dataclass(frozen=True, slots=True)
 class WorkflowResult:
     """Terminal observation of the delegated Snakemake process group."""
@@ -62,7 +77,6 @@ class WorkflowResult:
     message: str | None = None
 
 
-WorkflowRunner = Callable[[tuple[str, ...], Path], WorkflowResult]
 BytesPublisher = Callable[[Path, bytes], None]
 LockReleaser = Callable[[Path, Path, bytes, tuple[int, int]], None]
 LockEvidenceLinker = Callable[[Path, Path], None]
@@ -70,14 +84,292 @@ RuntimeContextAdmission = Callable[[Mapping[str, Any], "LifecycleRequest"], None
 DirectorySynchronizer = Callable[[Path, str], None]
 PythonLauncherIdentity = tuple[str, str, int, int]
 AttemptMaterializer = Callable[[], "LifecycleRequest"]
-AttemptMutexAcquirer = Callable[[Path], AbstractContextManager[Path]]
+MutexObserver = Callable[[str, Path], None]
+LifecyclePhaseObserver = Callable[[str], None]
+SignalHandler = Callable[[int, FrameType | None], None]
+SignalHandlerInstaller = Callable[
+    [SignalHandler], tuple[Mapping[int, Any], set[signal.Signals]]
+]
+SignalHandlerRestorer = Callable[[Mapping[int, Any], set[signal.Signals]], None]
+ProcessSpawner = Callable[[tuple[str, ...], Path, Mapping[str, str]], Any]
+ProcessPoller = Callable[[Any], int | None]
+ProcessGroupProbe = Callable[[int], bool]
+ProcessGroupSignaler = Callable[[int, int], None]
+
+
+def _ignore_mutex_event(_event: str, _path: Path) -> None:
+    return None
+
+
+def _ignore_lifecycle_phase(_phase: str) -> None:
+    return None
+
+
+def _install_transaction_signal_handlers(
+    handler: SignalHandler,
+) -> tuple[Mapping[int, Any], set[signal.Signals]]:
+    if not hasattr(signal, "pthread_sigmask") or not hasattr(signal, "SIG_BLOCK"):
+        raise LifecycleError(
+            "This platform lacks required POSIX lifecycle signal masking"
+        )
+    watched = {signal.SIGINT, signal.SIGTERM}
+    try:
+        previous_mask = signal.pthread_sigmask(signal.SIG_BLOCK, watched)
+    except (OSError, ValueError) as exc:
+        raise LifecycleError(
+            f"Could not block lifecycle signals during handler installation: {exc}"
+        ) from exc
+    if watched.intersection(previous_mask):
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+        raise LifecycleError(
+            "Lifecycle refuses an ambient mask that already blocks SIGINT or SIGTERM"
+        )
+    previous: dict[int, Any] = {}
+    try:
+        for signum in watched:
+            previous[signum] = signal.getsignal(signum)
+            signal.signal(signum, handler)
+    except (OSError, ValueError) as exc:
+        rollback_failures: list[str] = []
+        try:
+            for signum, prior in previous.items():
+                try:
+                    signal.signal(signum, prior)
+                except (OSError, ValueError) as rollback_exc:
+                    rollback_failures.append(f"{signum}: {rollback_exc}")
+        finally:
+            try:
+                signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+            except (OSError, ValueError) as mask_exc:
+                rollback_failures.append(f"mask: {mask_exc}")
+        raise LifecycleError(
+            f"Could not install lifecycle signal handlers: {exc}"
+            + (
+                "; rollback failures: " + "; ".join(rollback_failures)
+                if rollback_failures
+                else ""
+            )
+        ) from exc
+    try:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+    except (OSError, ValueError) as exc:
+        for signum, prior in previous.items():
+            signal.signal(signum, prior)
+        raise LifecycleError(
+            f"Could not restore signal mask after handler installation: {exc}"
+        ) from exc
+    return previous, set(previous_mask)
+
+
+def _restore_transaction_signal_handlers(
+    previous: Mapping[int, Any],
+    previous_mask: set[signal.Signals],
+) -> None:
+    watched = {signal.SIGINT, signal.SIGTERM}
+    try:
+        signal.pthread_sigmask(signal.SIG_BLOCK, watched)
+    except (OSError, ValueError) as exc:
+        raise LifecycleError(
+            f"Could not block lifecycle signals during handler restoration: {exc}"
+        ) from exc
+    failures: list[str] = []
+    for signum, handler in previous.items():
+        try:
+            signal.signal(signum, handler)
+        except (OSError, ValueError) as exc:
+            failures.append(f"{signum}: {exc}")
+    try:
+        signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+    except (OSError, ValueError) as exc:
+        failures.append(f"mask: {exc}")
+    if failures:
+        raise LifecycleError(
+            "Could not restore lifecycle signal handlers: " + "; ".join(failures)
+        )
+
+
+def _spawn_process_group(
+    argv: tuple[str, ...], cwd: Path, environment: Mapping[str, str]
+) -> subprocess.Popen[bytes]:
+    return subprocess.Popen(
+        argv,
+        cwd=cwd,
+        env=dict(environment),
+        start_new_session=True,
+    )
+
+
+def _poll_process(process: Any) -> int | None:
+    return process.poll()
+
+
+def _process_group_exists(process_group_id: int) -> bool:
+    try:
+        os.killpg(process_group_id, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _signal_process_group(process_group_id: int, signum: int) -> None:
+    try:
+        os.killpg(process_group_id, signum)
+    except ProcessLookupError:
+        pass
+
+
+@dataclass(frozen=True, slots=True)
+class TransactionSignalOps:
+    """Signal-handler effects admitted by one lifecycle transaction."""
+
+    install_handlers: SignalHandlerInstaller = _install_transaction_signal_handlers
+    restore_handlers: SignalHandlerRestorer = _restore_transaction_signal_handlers
+
+
+@dataclass(frozen=True, slots=True)
+class ProcessGroupOps:
+    """Explicit process-group effects used by execution and fault tests."""
+
+    spawn: ProcessSpawner = _spawn_process_group
+    poll: ProcessPoller = _poll_process
+    group_exists: ProcessGroupProbe = _process_group_exists
+    signal_group: ProcessGroupSignaler = _signal_process_group
+    monotonic: Callable[[], float] = time.monotonic
+    sleep: Callable[[float], None] = time.sleep
+    poll_interval_seconds: float = 0.02
+    terminate_grace_seconds: float = 1.0
+    kill_grace_seconds: float = 1.0
+
+
+DEFAULT_SIGNAL_OPS = TransactionSignalOps()
+DEFAULT_PROCESS_GROUP_OPS = ProcessGroupOps()
+
+
+class TransactionSignalController:
+    """Record one ordinary signal and forward it once to registered work."""
+
+    def __init__(
+        self,
+        signal_ops: TransactionSignalOps,
+        process_group_ops: ProcessGroupOps,
+    ) -> None:
+        self._signal_ops = signal_ops
+        self._process_group_ops = process_group_ops
+        self._previous: Mapping[int, Any] | None = None
+        self._previous_mask: set[signal.Signals] | None = None
+        self._process_group_id: int | None = None
+        self._forwarded = False
+        self._forwarding_error: BaseException | None = None
+        self._receipt_commit_blocked = False
+        self._receipt_committed = False
+        self.first_signal: int | None = None
+
+    def __enter__(self) -> "TransactionSignalController":
+        self._previous, self._previous_mask = self._signal_ops.install_handlers(
+            self.record
+        )
+        return self
+
+    def __exit__(
+        self,
+        _exc_type: type[BaseException] | None,
+        _exc: BaseException | None,
+        _traceback: Any,
+    ) -> None:
+        previous = self._previous
+        previous_mask = self._previous_mask
+        if (
+            self._receipt_commit_blocked
+            and not self._receipt_committed
+            and previous_mask is not None
+        ):
+            # No receipt committed. After mutex cleanup, first deliver any
+            # pending signal to this controller so publication failure remains
+            # a controlled lifecycle error rather than ambient termination.
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+            self._receipt_commit_blocked = False
+        if previous is not None and previous_mask is not None:
+            self._signal_ops.restore_handlers(previous, previous_mask)
+            self._previous = None
+            self._previous_mask = None
+        elif previous_mask is not None:
+            signal.pthread_sigmask(signal.SIG_SETMASK, previous_mask)
+            self._previous_mask = None
+        elif previous is not None:
+            raise LifecycleError(
+                "Lifecycle signal-handler state lost its prior signal mask"
+            )
+
+    def block_for_receipt_commit(self) -> None:
+        """Linearize receipt publication before restoring ambient handlers."""
+
+        if not hasattr(signal, "pthread_sigmask"):
+            raise LifecycleError(
+                "This platform lacks required POSIX receipt signal masking"
+            )
+        signal.pthread_sigmask(
+            signal.SIG_BLOCK,
+            {signal.SIGINT, signal.SIGTERM},
+        )
+        self._receipt_commit_blocked = True
+
+    def mark_receipt_committed(self) -> None:
+        if not self._receipt_commit_blocked:
+            raise LifecycleError("Receipt commit was not signal-masked")
+        self._receipt_committed = True
+
+    def record(self, signum: int, _frame: FrameType | None = None) -> None:
+        """Record only the first signal and forward it at most once."""
+
+        if signum not in {signal.SIGINT, signal.SIGTERM}:
+            raise LifecycleError(f"Unsupported lifecycle signal: {signum}")
+        if self.first_signal is None:
+            self.first_signal = signum
+        self._forward_if_possible()
+
+    def raise_forwarding_error(self) -> None:
+        if self._forwarding_error is not None:
+            raise ProcessGroupAmbiguity(
+                "Could not forward the lifecycle signal to the delegated process group"
+            ) from self._forwarding_error
+
+    def register_process_group(self, process_group_id: int) -> None:
+        if self._process_group_id is not None:
+            raise LifecycleError("A lifecycle process group is already registered")
+        self._process_group_id = process_group_id
+        self._forward_if_possible()
+
+    def clear_process_group(self, process_group_id: int) -> None:
+        if self._process_group_id != process_group_id:
+            raise LifecycleError("Lifecycle process-group identity changed")
+        self._process_group_id = None
+
+    def _forward_if_possible(self) -> None:
+        if (
+            self.first_signal is None
+            or self._process_group_id is None
+            or self._forwarded
+        ):
+            return
+        try:
+            self._forwarded = True
+            self._process_group_ops.signal_group(
+                self._process_group_id, self.first_signal
+            )
+        except BaseException as exc:  # signal handlers must never unwind transactions
+            self._forwarding_error = exc
+
+
+WorkflowRunner = Callable[[tuple[str, ...], Path], WorkflowResult]
 
 
 @dataclass(frozen=True, slots=True)
 class LifecycleOps:
     """Explicit mutation/process boundary used by lifecycle and fault tests."""
 
-    run_workflow: WorkflowRunner
+    run_workflow: WorkflowRunner | None
     publish_bytes: BytesPublisher
     release_lock: LockReleaser
     now: Callable[[], datetime]
@@ -87,7 +379,9 @@ class LifecycleOps:
     validate_reporting_receipt: inspection.ReportingReceiptValidator
     admit_runtime_context: RuntimeContextAdmission
     sync_directory: DirectorySynchronizer
-    acquire_attempt_mutex: AttemptMutexAcquirer | None = None
+    process_group_ops: ProcessGroupOps = DEFAULT_PROCESS_GROUP_OPS
+    observe_mutex: MutexObserver = _ignore_mutex_event
+    observe_phase: LifecyclePhaseObserver = _ignore_lifecycle_phase
 
 
 @dataclass(frozen=True, slots=True)
@@ -360,13 +654,19 @@ def _admit_mutex_descriptor(path: Path, descriptor: int) -> None:
 
 
 @contextmanager
-def _acquire_attempt_mutex(root: Path) -> Iterator[Path]:
+def _acquire_attempt_mutex(
+    root: Path,
+    *,
+    observe: MutexObserver = _ignore_mutex_event,
+    interrupted: Callable[[], bool] = lambda: False,
+) -> Iterator[Path]:
     """Serialize lifecycle admission without publishing run-state evidence."""
 
     if (
         _fcntl is None
         or not hasattr(_fcntl, "flock")
         or not hasattr(_fcntl, "LOCK_EX")
+        or not hasattr(_fcntl, "LOCK_NB")
         or not hasattr(_fcntl, "LOCK_UN")
     ):
         raise LifecycleError("This platform lacks required advisory file locking")
@@ -390,14 +690,25 @@ def _acquire_attempt_mutex(root: Path) -> Iterator[Path]:
         raise LifecycleError(f"Could not open lifecycle mutex: {path}: {exc}") from exc
     acquired = False
     try:
-        try:
-            _fcntl.flock(descriptor, _fcntl.LOCK_EX)
-        except OSError as exc:
-            raise LifecycleError(
-                f"Could not acquire required lifecycle mutex: {path}: {exc}"
-            ) from exc
+        observe("before_wait", path)
+        while True:
+            if interrupted():
+                raise LifecycleError(
+                    "Lifecycle interrupted while waiting for the acquisition mutex"
+                )
+            try:
+                _fcntl.flock(descriptor, _fcntl.LOCK_EX | _fcntl.LOCK_NB)
+            except OSError as exc:
+                if exc.errno not in {errno.EACCES, errno.EAGAIN}:
+                    raise LifecycleError(
+                        f"Could not acquire required lifecycle mutex: {path}: {exc}"
+                    ) from exc
+                time.sleep(0.02)
+                continue
+            break
         acquired = True
         _admit_mutex_descriptor(path, descriptor)
+        observe("after_acquire", path)
         try:
             os.fsync(descriptor)
             _sync_real_directory(locks_root, "aggregate lock directory")
@@ -405,15 +716,34 @@ def _acquire_attempt_mutex(root: Path) -> Iterator[Path]:
             raise LifecycleError(
                 f"Could not synchronize lifecycle mutex: {path}: {exc}"
             ) from exc
+        _admit_mutex_descriptor(path, descriptor)
         yield path
     finally:
+        observer_error: BaseException | None = None
         if acquired:
             try:
-                _fcntl.flock(descriptor, _fcntl.LOCK_UN)
-            except OSError:
-                # Closing the only descriptor still releases the advisory lock.
-                pass
-        os.close(descriptor)
+                observe("before_release", path)
+            except BaseException as exc:
+                observer_error = exc
+            finally:
+                try:
+                    _fcntl.flock(descriptor, _fcntl.LOCK_UN)
+                except OSError:
+                    # Closing the only descriptor still releases the advisory lock.
+                    pass
+        try:
+            os.close(descriptor)
+        except OSError as exc:
+            if observer_error is None:
+                observer_error = exc
+        if acquired:
+            try:
+                observe("after_release", path)
+            except BaseException as exc:
+                if observer_error is None:
+                    observer_error = exc
+        if observer_error is not None:
+            raise observer_error
 
 
 def _release_owned_lock(
@@ -537,34 +867,127 @@ def _release_owned_lock(
             os.close(descriptor)
 
 
-def _run_process_group(argv: tuple[str, ...], cwd: Path) -> WorkflowResult:
-    """Spawn a new process group and forward ordinary termination signals."""
+def _wait_for_group_absence(
+    process_group_id: int,
+    process: Any,
+    deadline: float,
+    ops: ProcessGroupOps,
+) -> bool:
+    while True:
+        leader_returncode = ops.poll(process)
+        group_present = ops.group_exists(process_group_id)
+        if leader_returncode is not None and not group_present:
+            return True
+        if ops.monotonic() >= deadline:
+            return False
+        ops.sleep(ops.poll_interval_seconds)
+
+
+def _quiesce_process_group(
+    process_group_id: int,
+    process: Any,
+    ops: ProcessGroupOps,
+) -> None:
+    """Prove a group empty, escalating bounded TERM then KILL when necessary."""
 
     try:
-        process = subprocess.Popen(argv, cwd=cwd, start_new_session=True)
+        leader_returncode = ops.poll(process)
+        group_present = ops.group_exists(process_group_id)
+        if leader_returncode is not None and not group_present:
+            return
+        ops.signal_group(process_group_id, signal.SIGTERM)
+        if _wait_for_group_absence(
+            process_group_id,
+            process,
+            ops.monotonic() + ops.terminate_grace_seconds,
+            ops,
+        ):
+            return
+        ops.signal_group(process_group_id, signal.SIGKILL)
+        if _wait_for_group_absence(
+            process_group_id,
+            process,
+            ops.monotonic() + ops.kill_grace_seconds,
+            ops,
+        ):
+            return
+    except ProcessGroupAmbiguity:
+        raise
+    except BaseException as exc:
+        raise ProcessGroupAmbiguity(
+            "Delegated workflow process-group quiescence proof failed"
+        ) from exc
+    raise ProcessGroupAmbiguity(
+        "Delegated workflow process group could not be proved quiescent"
+    )
+
+
+def _run_process_group(
+    argv: tuple[str, ...],
+    cwd: Path,
+    signals: TransactionSignalController,
+    *,
+    ops: ProcessGroupOps = DEFAULT_PROCESS_GROUP_OPS,
+) -> WorkflowResult:
+    """Spawn one sanitized process group and return only after quiescence proof."""
+
+    try:
+        process = ops.spawn(argv, cwd, sanitized_subprocess_environment())
     except OSError as exc:
         return WorkflowResult(127, None, f"Could not execute {argv[0]}: {exc}")
-    forwarded: list[int] = []
-    prior_handlers: dict[int, Any] = {}
-
-    def forward(signum: int, _frame: FrameType | None) -> None:
-        if not forwarded:
-            forwarded.append(signum)
-        try:
-            os.killpg(process.pid, signum)
-        except ProcessLookupError:
-            pass
-
+    process_group_id = int(process.pid)
+    return_code: int | None = None
+    kill_sent = False
+    interrupt_deadline: float | None = None
+    kill_deadline: float | None = None
+    registered = False
+    quiescence_attempted = False
     try:
-        for signum in (signal.SIGINT, signal.SIGTERM):
-            prior_handlers[signum] = signal.getsignal(signum)
-            signal.signal(signum, forward)
-        return_code = process.wait()
-    finally:
-        for signum, handler in prior_handlers.items():
-            signal.signal(signum, handler)
-    if forwarded:
-        return WorkflowResult(None, forwarded[0], "Lifecycle signal forwarded")
+        signals.register_process_group(process_group_id)
+        registered = True
+        signals.raise_forwarding_error()
+        while return_code is None:
+            return_code = ops.poll(process)
+            if return_code is not None:
+                break
+            if signals.first_signal is not None:
+                signals.raise_forwarding_error()
+                now = ops.monotonic()
+                if interrupt_deadline is None:
+                    interrupt_deadline = now + ops.terminate_grace_seconds
+                elif not kill_sent and now >= interrupt_deadline:
+                    ops.signal_group(process_group_id, signal.SIGKILL)
+                    kill_sent = True
+                    kill_deadline = now + ops.kill_grace_seconds
+                elif kill_sent and kill_deadline is not None and now >= kill_deadline:
+                    raise ProcessGroupAmbiguity(
+                        "Delegated workflow leader survived bounded signal escalation"
+                    )
+            ops.sleep(ops.poll_interval_seconds)
+        quiescence_attempted = True
+        _quiesce_process_group(process_group_id, process, ops)
+        signals.raise_forwarding_error()
+        signals.clear_process_group(process_group_id)
+        registered = False
+    except BaseException:
+        if quiescence_attempted:
+            raise
+        try:
+            _quiesce_process_group(process_group_id, process, ops)
+        except BaseException as cleanup_error:
+            raise ProcessGroupAmbiguity(
+                "Delegated workflow process group could not be proved quiescent "
+                "after an execution-boundary failure"
+            ) from cleanup_error
+        if registered:
+            signals.clear_process_group(process_group_id)
+        raise
+    if signals.first_signal is not None:
+        return WorkflowResult(
+            None,
+            signals.first_signal,
+            "Lifecycle signal forwarded to delegated workflow process group",
+        )
     if return_code < 0:
         return WorkflowResult(None, -return_code, "Workflow process was signaled")
     return WorkflowResult(return_code, None, None)
@@ -598,7 +1021,7 @@ def _tool_version(argv: Sequence[str], label: str) -> str:
 
 
 def _admit_required_tool_identity(identity: Mapping[str, Any]) -> None:
-    """Re-admit one authored path against its canonical path and byte digest."""
+    """Re-admit one authored path against its canonical content digest."""
 
     name = str(identity["name"])
     path = Path(str(identity["path"]))
@@ -630,6 +1053,20 @@ def _admit_required_tool_identity(identity: Mapping[str, Any]) -> None:
             raise LifecycleError(
                 f"Required runtime directory is not admissible: {name}: {resolved_path}"
             )
+        return
+    if name.startswith("r_"):
+        if path != resolved_path:
+            raise LifecycleError(
+                f"Required R package root is not its exact canonical path: {name}"
+            )
+        try:
+            package_identity = installed_package_tree_identity(resolved_path)
+        except InstalledPackageIdentityError as exc:
+            raise LifecycleError(
+                f"Required R package tree is not admissible: {name}: {resolved_path}"
+            ) from exc
+        if package_identity.sha256 != digest:
+            raise LifecycleError(f"Required R package tree digest differs: {name}")
         return
     if stat.S_ISLNK(resolved_state.st_mode) or not stat.S_ISREG(resolved_state.st_mode):
         raise LifecycleError(
@@ -762,15 +1199,17 @@ def _admit_runtime_context(
         raise LifecycleError("Required runtime profile digest differs from its bytes")
     renv_project = tools.get("renv_project")
     renv_library = tools.get("renv_library")
-    if renv_project is None or renv_library is None:
+    java = tools.get("java")
+    if renv_project is None or renv_library is None or java is None:
         raise LifecycleError(
-            "Local science attempt must bind its renv project and library"
+            "Local science attempt must bind its renv project, library, and Java launcher"
         )
     if Path(str(renv_project["resolved_path"])) != observed.root:
         raise LifecycleError("Required renv project differs from the source checkout")
-    environment = doctor.runtime_environment(
+    environment = _local_runtime_environment(
         observed.root,
         Path(str(renv_library["resolved_path"])),
+        Path(str(java["resolved_path"])),
         base_environment=os.environ,
     )
     try:
@@ -804,13 +1243,40 @@ def _admit_runtime_context(
         )
 
 
+def _local_runtime_environment(
+    source_root: Path,
+    renv_library: Path,
+    selected_java: Path,
+    *,
+    base_environment: Mapping[str, str],
+) -> dict[str, str]:
+    """Construct the one guarded R and selected-Java runtime environment."""
+
+    from norad.orchestration.local_pilot import doctor  # noqa: PLC0415
+
+    environment = doctor.runtime_environment(
+        source_root,
+        renv_library,
+        base_environment=base_environment,
+    )
+    try:
+        return gatk_subprocess_environment(
+            selected_java,
+            base_environment=environment,
+        )
+    except ProcessEnvironmentError as exc:
+        raise LifecycleError(
+            f"Could not admit Java for local GATK runtime: {exc}"
+        ) from exc
+
+
 def default_lifecycle_ops() -> LifecycleOps:
     """Construct production effects without mutable facade globals."""
 
     from norad.reporting import transaction_validation  # noqa: PLC0415
 
     return LifecycleOps(
-        run_workflow=_run_process_group,
+        run_workflow=None,
         publish_bytes=_publish_exclusive,
         release_lock=_release_owned_lock,
         now=lambda: datetime.now(UTC),
@@ -1379,26 +1845,32 @@ def _terminal_receipt(
     return receipt
 
 
-def run_attempt(
+def _observe_phase(
+    ops: LifecycleOps,
+    phase: str,
+) -> None:
+    ops.observe_phase(phase)
+
+
+def _refuse_pre_attempt_signal(
+    signals: TransactionSignalController,
+    phase: str,
+) -> None:
+    if signals.first_signal is not None:
+        raise LifecycleError(
+            f"Lifecycle interrupted by signal {signals.first_signal} {phase}; "
+            "no workflow attempt was published"
+        )
+
+
+def _run_attempt_locked(
     request: LifecycleRequest,
     *,
-    ops: LifecycleOps | None = None,
+    active_ops: LifecycleOps,
+    signals: TransactionSignalController,
     _owned_lock: _OwnedRunLock | None = None,
-    _mutex_held: bool = False,
 ) -> LifecycleOutcome:
-    """Execute one immutable local attempt and publish its receipt last."""
-
-    active_ops = default_lifecycle_ops() if ops is None else ops
-    if not _mutex_held:
-        root = _canonical_root(request.run_root)
-        acquire_mutex = active_ops.acquire_attempt_mutex or _acquire_attempt_mutex
-        with acquire_mutex(root):
-            return run_attempt(
-                request,
-                ops=active_ops,
-                _owned_lock=_owned_lock,
-                _mutex_held=True,
-            )
+    """Execute one immutable local attempt while the fixed mutex is held."""
     (
         root,
         profile,
@@ -1436,6 +1908,8 @@ def run_attempt(
     orchestration_contracts.validate_record("run-lock", lock_record)
     lock_bytes = orchestration_contracts.canonical_json_bytes(lock_record)
     if _owned_lock is None:
+        _observe_phase(active_ops, "before_run_lock")
+        _refuse_pre_attempt_signal(signals, "before run-lock publication")
         active_ops.publish_bytes(lock_path, lock_bytes)
         lock_state = lock_path.stat(follow_symlinks=False)
         lock_inode = (lock_state.st_dev, lock_state.st_ino)
@@ -1456,6 +1930,8 @@ def run_attempt(
             )
     attempt_root_created = False
     try:
+        _observe_phase(active_ops, "after_run_lock")
+        _refuse_pre_attempt_signal(signals, "after run-lock publication")
         _under_lock_attempt_preflight(request, root, attempt, active_ops)
         if (
             _reference(request.workflow_config_path, root, "workflow config")
@@ -1479,6 +1955,8 @@ def run_attempt(
         if request_source_after != request_source_data:
             raise LifecycleError("Authored request changed before attempt publication")
         _admit_python_launcher(request.python_executable)
+        _observe_phase(active_ops, "before_attempt_directory")
+        _refuse_pre_attempt_signal(signals, "before attempt publication")
         attempt_root.mkdir(mode=0o700)
         attempt_root_created = True
         if attempt_root.is_symlink() or not attempt_root.is_dir():
@@ -1490,10 +1968,11 @@ def run_attempt(
             attempt_path,
             orchestration_contracts.canonical_json_bytes(attempt),
         )
+        _observe_phase(active_ops, "after_attempt_publication")
     except Exception as exc:
         failure_evidence_path = (
             released_lock_path
-            if attempt_root_created
+            if attempt_path.exists() and not attempt_path.is_symlink()
             else locks_root / f"released-{identifier}-run-lock.json"
         )
         active_ops.release_lock(
@@ -1530,7 +2009,33 @@ def run_attempt(
     else:
         _admit_python_launcher(request.python_executable)
         try:
-            candidate = active_ops.run_workflow(argv, root)
+            _observe_phase(active_ops, "before_workflow")
+            for identity in attempt["required_tools"]:
+                _admit_required_tool_identity(identity)
+            if signals.first_signal is not None:
+                candidate = WorkflowResult(
+                    None,
+                    signals.first_signal,
+                    "Lifecycle interrupted before delegated workflow start",
+                )
+            elif active_ops.run_workflow is None:
+                candidate = _run_process_group(
+                    argv,
+                    root,
+                    signals,
+                    ops=active_ops.process_group_ops,
+                )
+            else:
+                candidate = active_ops.run_workflow(argv, root)
+            _observe_phase(active_ops, "after_workflow")
+            if signals.first_signal is not None:
+                candidate = WorkflowResult(
+                    None,
+                    signals.first_signal,
+                    "Lifecycle signal recorded during workflow transaction",
+                )
+        except ProcessGroupAmbiguity:
+            raise
         except Exception as exc:
             raise LifecycleError(
                 "Workflow runner failed without a terminal child observation; "
@@ -1679,6 +2184,16 @@ def run_attempt(
         status = "blocked"
         message = "Workflow termination left ambiguous aggregate state"
 
+    _observe_phase(active_ops, "before_lock_release")
+    if signals.first_signal is not None:
+        result = WorkflowResult(
+            None,
+            signals.first_signal,
+            "Lifecycle signal recorded during workflow transaction",
+        )
+        if not blockers:
+            status = "interrupted"
+            message = result.message
     active_ops.release_lock(lock_path, released_lock_path, lock_bytes, lock_inode)
     released_bytes, released_inode = _read_stable_with_identity(
         released_lock_path,
@@ -1697,6 +2212,16 @@ def run_attempt(
         blockers.extend(released_namespace_blockers)
         status = "blocked"
         message = "Workflow lock release left ambiguous aggregate state"
+    _observe_phase(active_ops, "before_receipt_publication")
+    if signals.first_signal is not None:
+        result = WorkflowResult(
+            None,
+            signals.first_signal,
+            "Lifecycle signal recorded during workflow transaction",
+        )
+        if not blockers and not released_namespace_blockers:
+            status = "interrupted"
+            message = result.message
     receipt = _terminal_receipt(
         root=root,
         attempt=attempt,
@@ -1713,10 +2238,39 @@ def run_attempt(
         message=message,
         now=active_ops.now(),
     )
-    active_ops.publish_bytes(
-        receipt_path,
-        orchestration_contracts.canonical_json_bytes(receipt),
-    )
+    signals.block_for_receipt_commit()
+    try:
+        if signals.first_signal is not None:
+            result = WorkflowResult(
+                None,
+                signals.first_signal,
+                "Lifecycle signal recorded during workflow transaction",
+            )
+            if not blockers and not released_namespace_blockers:
+                receipt = _terminal_receipt(
+                    root=root,
+                    attempt=attempt,
+                    attempt_path=attempt_path,
+                    released_lock_path=released_lock_path,
+                    lock_bytes=lock_bytes,
+                    status="interrupted",
+                    result=result,
+                    preentry_tasks=preentry_tasks,
+                    task_starts=task_starts,
+                    verified=verified,
+                    reporting=reporting,
+                    blockers=blockers,
+                    message=result.message,
+                    now=active_ops.now(),
+                )
+        active_ops.publish_bytes(
+            receipt_path,
+            orchestration_contracts.canonical_json_bytes(receipt),
+        )
+    except BaseException:
+        raise
+    signals.mark_receipt_committed()
+    _observe_phase(active_ops, "after_receipt_publication")
     return LifecycleOutcome(
         attempt_path=attempt_path,
         receipt_path=receipt_path,
@@ -1725,6 +2279,35 @@ def run_attempt(
         receipt=receipt,
         workflow_result=result,
     )
+
+
+def run_attempt(
+    request: LifecycleRequest,
+    *,
+    ops: LifecycleOps | None = None,
+) -> LifecycleOutcome:
+    """Execute through the fixed signal authority and advisory mutex."""
+
+    active_ops = default_lifecycle_ops() if ops is None else ops
+    with TransactionSignalController(
+        DEFAULT_SIGNAL_OPS,
+        active_ops.process_group_ops,
+    ) as signals:
+        root = _canonical_root(request.run_root)
+        _observe_phase(active_ops, "before_mutex")
+        _refuse_pre_attempt_signal(signals, "before mutex acquisition")
+        with _acquire_attempt_mutex(
+            root,
+            observe=active_ops.observe_mutex,
+            interrupted=lambda: signals.first_signal is not None,
+        ):
+            _observe_phase(active_ops, "after_mutex")
+            _refuse_pre_attempt_signal(signals, "at mutex acquisition")
+            return _run_attempt_locked(
+                request,
+                active_ops=active_ops,
+                signals=signals,
+            )
 
 
 def _admit_attempt_preparation(
@@ -1776,97 +2359,115 @@ def run_materialized_attempt(
     """Serialize admission before publishing lock or attempt-specific inputs."""
 
     active_ops = default_lifecycle_ops() if ops is None else ops
-    root = _canonical_root(preparation.run_root)
-    locks_root = root / "locks"
-    attempts_root = root / "attempts"
-    for directory in (locks_root, attempts_root):
-        if directory.is_symlink() or not directory.is_dir():
-            raise LifecycleError(
-                f"Lifecycle parent must be pre-materialized and real: {directory}"
-            )
-    prepared_attempt = _admit_attempt_preparation(preparation)
-    acquire_mutex = active_ops.acquire_attempt_mutex or _acquire_attempt_mutex
-    with acquire_mutex(root):
-        _operation_preflight(
-            preparation.operation,
+    with TransactionSignalController(
+        DEFAULT_SIGNAL_OPS,
+        active_ops.process_group_ops,
+    ) as signals:
+        root = _canonical_root(preparation.run_root)
+        locks_root = root / "locks"
+        attempts_root = root / "attempts"
+        for directory in (locks_root, attempts_root):
+            if directory.is_symlink() or not directory.is_dir():
+                raise LifecycleError(
+                    f"Lifecycle parent must be pre-materialized and real: {directory}"
+                )
+        prepared_attempt = _admit_attempt_preparation(preparation)
+        _observe_phase(active_ops, "before_mutex")
+        _refuse_pre_attempt_signal(signals, "before mutex acquisition")
+        with _acquire_attempt_mutex(
             root,
-            prepared_attempt,
-            active_ops,
-        )
-        lock_path = locks_root / "run.lock"
-        lock_record = {
-            "schema_version": "norad.run-lock.v1",
-            "run_id": preparation.run_id,
-            "workflow_attempt_id": preparation.workflow_attempt_id,
-            "attempt_record_path": (
-                f"attempts/{preparation.workflow_attempt_id}/attempt.json"
-            ),
-            "owner_token": preparation.owner_token,
-            "process_id": preparation.process_id,
-            "host": preparation.host,
-            "created_at": preparation.created_at,
-        }
-        orchestration_contracts.validate_record("run-lock", lock_record)
-        lock_bytes = orchestration_contracts.canonical_json_bytes(lock_record)
-        active_ops.publish_bytes(lock_path, lock_bytes)
-        lock_state = lock_path.stat(follow_symlinks=False)
-        owned = _OwnedRunLock(
-            path=lock_path,
-            record=lock_record,
-            data=lock_bytes,
-            inode=(lock_state.st_dev, lock_state.st_ino),
-        )
-        try:
-            request = materialize()
-            if request.run_root != root:
-                raise LifecycleError(
-                    "Materialized request changed the prepared run root"
-                )
-            if request.operation != preparation.operation:
-                raise LifecycleError(
-                    "Materialized request changed the prepared lifecycle operation"
-                )
+            observe=active_ops.observe_mutex,
+            interrupted=lambda: signals.first_signal is not None,
+        ):
+            _observe_phase(active_ops, "after_mutex")
+            _refuse_pre_attempt_signal(signals, "at mutex acquisition")
+            _operation_preflight(
+                preparation.operation,
+                root,
+                prepared_attempt,
+                active_ops,
+            )
+            _observe_phase(active_ops, "before_run_lock")
+            _refuse_pre_attempt_signal(signals, "before run-lock publication")
+            lock_path = locks_root / "run.lock"
+            lock_record = {
+                "schema_version": "norad.run-lock.v1",
+                "run_id": preparation.run_id,
+                "workflow_attempt_id": preparation.workflow_attempt_id,
+                "attempt_record_path": (
+                    f"attempts/{preparation.workflow_attempt_id}/attempt.json"
+                ),
+                "owner_token": preparation.owner_token,
+                "process_id": preparation.process_id,
+                "host": preparation.host,
+                "created_at": preparation.created_at,
+            }
+            orchestration_contracts.validate_record("run-lock", lock_record)
+            lock_bytes = orchestration_contracts.canonical_json_bytes(lock_record)
+            active_ops.publish_bytes(lock_path, lock_bytes)
+            lock_state = lock_path.stat(follow_symlinks=False)
+            owned = _OwnedRunLock(
+                path=lock_path,
+                record=lock_record,
+                data=lock_bytes,
+                inode=(lock_state.st_dev, lock_state.st_ino),
+            )
             try:
-                materialized_attempt_bytes = (
-                    orchestration_contracts.canonical_json_bytes(
-                        dict(request.attempt_record)
+                _observe_phase(active_ops, "after_run_lock")
+                _refuse_pre_attempt_signal(signals, "after run-lock publication")
+                _observe_phase(active_ops, "before_materialization")
+                _refuse_pre_attempt_signal(signals, "before materialization")
+                request = materialize()
+                _observe_phase(active_ops, "after_materialization")
+                _refuse_pre_attempt_signal(signals, "during materialization")
+                if request.run_root != root:
+                    raise LifecycleError(
+                        "Materialized request changed the prepared run root"
                     )
+                if request.operation != preparation.operation:
+                    raise LifecycleError(
+                        "Materialized request changed the prepared lifecycle operation"
+                    )
+                try:
+                    materialized_attempt_bytes = (
+                        orchestration_contracts.canonical_json_bytes(
+                            dict(request.attempt_record)
+                        )
+                    )
+                except (TypeError, ValueError) as exc:
+                    raise LifecycleError(
+                        "Materialized workflow attempt is not canonical JSON"
+                    ) from exc
+                if materialized_attempt_bytes != preparation.attempt_record_bytes:
+                    raise LifecycleError(
+                        "Materialized workflow attempt differs from prepared exact bytes"
+                    )
+                return _run_attempt_locked(
+                    request,
+                    active_ops=active_ops,
+                    signals=signals,
+                    _owned_lock=owned,
                 )
-            except (TypeError, ValueError) as exc:
+            except Exception as exc:
+                attempt_path = (
+                    attempts_root / preparation.workflow_attempt_id / "attempt.json"
+                )
+                if not attempt_path.exists() and not attempt_path.is_symlink():
+                    if lock_path.exists() and not lock_path.is_symlink():
+                        evidence = locks_root / (
+                            f"released-{preparation.workflow_attempt_id}-run-lock.json"
+                        )
+                        active_ops.release_lock(
+                            lock_path,
+                            evidence,
+                            lock_bytes,
+                            owned.inode,
+                        )
+                if isinstance(exc, LifecycleError):
+                    raise
                 raise LifecycleError(
-                    "Materialized workflow attempt is not canonical JSON"
+                    f"Could not materialize immutable workflow attempt: {exc}"
                 ) from exc
-            if materialized_attempt_bytes != preparation.attempt_record_bytes:
-                raise LifecycleError(
-                    "Materialized workflow attempt differs from prepared exact bytes"
-                )
-            return run_attempt(
-                request,
-                ops=active_ops,
-                _owned_lock=owned,
-                _mutex_held=True,
-            )
-        except Exception as exc:
-            attempt_path = (
-                attempts_root / preparation.workflow_attempt_id / "attempt.json"
-            )
-            if not attempt_path.exists() and not attempt_path.is_symlink():
-                if lock_path.exists() and not lock_path.is_symlink():
-                    evidence = (
-                        locks_root
-                        / f"released-{preparation.workflow_attempt_id}-run-lock.json"
-                    )
-                    active_ops.release_lock(
-                        lock_path,
-                        evidence,
-                        lock_bytes,
-                        owned.inode,
-                    )
-            if isinstance(exc, LifecycleError):
-                raise
-            raise LifecycleError(
-                f"Could not materialize immutable workflow attempt: {exc}"
-            ) from exc
 
 
 __all__ = (

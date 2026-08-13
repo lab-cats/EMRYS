@@ -16,12 +16,16 @@ scientific behavior remains with the
 applicable functional owner, and exact semantic identities and artifact edges remain in
 [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md).
 
-B4 assumes a single-user, cooperative local workspace. It rejects admitted
-symlink components, leaf substitution, late leaf collisions, and unstable
-bytes or closed rosters, but it is not a defense against a hostile process
-concurrently renaming ancestor directories or changing mount namespaces. Such
-interference invalidates the evidence boundary and requires external isolation
-and explicit reconciliation, never automatic repair.
+B4 assumes a single-user, cooperative POSIX local workspace with working
+advisory `flock` and same-filesystem hard links. It rejects admitted symlink
+components, observed leaf substitution, late leaf collisions, unstable bytes,
+and open rosters. All sanctioned lifecycle writers hold the acquisition mutex.
+It is not a defense against a hostile process replacing a lock leaf in the
+narrow post-link, pre-unlink interval, concurrently renaming ancestors, or
+changing mount namespaces. Such interference invalidates the evidence boundary
+and requires external isolation and explicit reconciliation, never automatic
+repair. NFS, network/distributed filesystems, and cluster filesystem semantics
+are unproved and unsupported until separate site validation.
 
 The first implementation is deliberately source-checkout-bound and local. A
 SLURM executor, a local Linux VM, CSU execution, and an installed standalone
@@ -201,9 +205,14 @@ overwrites a run.
 Workspace, output root, source-checkout path and commit, executor, host,
 resources, scratch, exact required-tool identities, timestamps, PIDs, and
 future scheduler identifiers are attempt context. File-backed tool identities
-bind the authored path, canonical target, observed version, and SHA-256; admitted
-runtime directories bind their authored and canonical paths. These fields do
-not change the scientific run identity. Version 1 automatic resume nevertheless
+bind the authored path, canonical target, observed version, and SHA-256;
+admitted runtime directories bind their authored and canonical paths. Each
+fixed `r_*` identity binds the observed namespace version, exact canonical
+installed-package root, and deterministic tree SHA-256 over sorted entry kind,
+relative path, permission mode, size, and regular-file bytes; symbolic links
+and special entries fail admission. Only the admitted `renv_project` and
+`renv_library` directory identities have null digests. These fields do not
+change the scientific run identity. Version 1 automatic resume nevertheless
 requires the same clean source commit, profile digest, and ordered exact
 required-tool identities, then re-admits those paths and bytes; otherwise the
 run becomes blocked pending an explicit compatibility or new-profile decision.
@@ -445,14 +454,18 @@ The lifecycle process handles an ordinary signal by stopping delegated work,
 preserving task and owner state, and proving a between-task boundary when
 possible. It publishes the attempt-local immutable
 `released-run-lock.json` with a create-exclusive hard link to the owned public
-run lock, verifies and synchronizes the shared inode and bytes, removes only
-the still-owned public name, then publishes an `interrupted` receipt last and
-binds that release evidence. A colliding evidence path is never overwritten. A
-nonterminal attempt left by an unhandled crash
-or power loss is not guessed complete or automatically repaired. If live lock
-ownership and an unentered-or-fully-verified boundary cannot be proved,
-inspection reports it as
-blocked for explicit reconciliation.
+run lock, verifies and synchronizes the shared inode and bytes, rechecks and
+unlinks the public name while the cooperative-writer mutex remains held, then
+publishes an `interrupted` receipt last and binds that release evidence. A
+colliding evidence path is never overwritten. Receipt publication is
+signal-masked as one POSIX commit boundary: a signal already recorded becomes
+part of the interrupted receipt, while a signal arriving during or after a
+successful receipt commit reaches the prior ambient handler only after the
+receipt is durable. A nonterminal attempt left by SIGKILL, power loss, or an
+unproved delegated process-group termination is not guessed complete or
+automatically repaired. Quiescence ambiguity retains the public run lock and
+publishes no resumable receipt; a proven-quiescent child plus diagnosed state
+blockers may instead release evidence and publish a blocked receipt.
 
 Snakemake automatic retries are zero. NORAD version 1 does not expose automatic
 `--unlock`, `--cleanup-metadata`, `--forceall`, `--rerun-incomplete`, or blind
@@ -502,9 +515,10 @@ execution never uses it.
 
 The fixed acquisition order is:
 
-1. NORAD run/workflow-attempt lock;
-2. Snakemake work-directory lock; and
-3. delegated owner-local publication lock.
+1. NORAD persistent advisory acquisition mutex;
+2. NORAD evidence-bearing run/workflow-attempt lock;
+3. Snakemake work-directory lock; and
+4. delegated owner-local publication lock.
 
 No path may acquire these in reverse order. The outer lifecycle process owns
 aggregate attempt state; jobs write only their task-local records. Existing
@@ -513,12 +527,16 @@ deletes recovery residue, or considers a lock stale because time elapsed.
 
 The run lock records run, workflow attempt, process, host, creation time, and an
 unpredictable owner token. Terminalization never conditionally unlinks its
-public pathname: it atomically renames the still-owned lock to the exact absent
-attempt-local `released-run-lock.json`, validates and synchronizes that retained
-evidence, and publishes the terminal receipt last. A foreign replacement at the
-public lock path is never removed. Every terminal receipt binds its released
-lock evidence; missing, moved, malformed, or mismatched evidence makes
-inspection report `blocked`. Owner recovery state remains untouched.
+public pathname before preserving evidence. It creates the exact absent
+attempt-local `released-run-lock.json` as a no-replace hard link, validates and
+synchronizes the shared inode and bytes, rechecks the public path, unlinks it
+under the cooperative-writer mutex, and publishes the terminal receipt last.
+A colliding evidence destination is never overwritten. Observed public-path
+changes fail closed, but hostile replacement in the narrow post-link,
+pre-unlink interval is outside the cooperative threat model. Every terminal
+receipt binds its released-lock evidence; missing, moved, malformed, or
+mismatched evidence makes inspection report `blocked`. Owner recovery state
+remains untouched.
 
 ## Inspection and completion
 

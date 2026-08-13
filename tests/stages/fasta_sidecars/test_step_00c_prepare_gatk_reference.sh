@@ -87,6 +87,7 @@ trap 'rm -rf "$tmp_dir"' EXIT
 
 fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin"
+canonical_fake_bin="$(cd "$fake_bin" && pwd -P)"
 
 samtools_log="$tmp_dir/samtools_invocations.log"
 gatk_log="$tmp_dir/gatk_invocations.log"
@@ -160,6 +161,9 @@ set -euo pipefail
 
 printf 'gatk invoked\\n' >> "$gatk_log"
 printf '%s\\n' "\$@" >> "$gatk_log"
+printf 'gatk JAVA_HOME=%s\\n' "\${JAVA_HOME:-<unset>}" >> "$gatk_log"
+printf 'gatk java on PATH=%s\\n' "\$(command -v java)" >> "$gatk_log"
+java -version >/dev/null 2>&1
 
 subcommand="\${1:-}"
 shift || true
@@ -225,6 +229,17 @@ case "\$subcommand" in
 esac
 EOF_GATK
 chmod +x "$fake_bin/gatk"
+
+poison_java_home="$tmp_dir/poison-java-home"
+poison_java_log="$tmp_dir/poison-java-invocations.log"
+mkdir -p "$poison_java_home/bin"
+cat >"$poison_java_home/bin/java" <<EOF_POISON_JAVA
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'poison Java invoked\\n' >> "$poison_java_log"
+printf 'openjdk version "99.0.0" 2026-01-01\\n' >&2
+EOF_POISON_JAVA
+chmod +x "$poison_java_home/bin/java"
 
 export PATH="$fake_bin:$PATH"
 
@@ -347,7 +362,7 @@ execute_dir="$tmp_dir/execute"
 execute_fasta="$execute_dir/genome.fa"
 write_fasta "$execute_fasta"
 execute_output="$tmp_dir/execute.out"
-bash "$SCRIPT" \
+JAVA_HOME="$poison_java_home" PATH="$poison_java_home/bin:$PATH" bash "$SCRIPT" \
     --reference-fasta "$execute_fasta" \
     --samtools-bin "$fake_bin/samtools" \
     --gatk-bin "$fake_bin/gatk" \
@@ -363,7 +378,12 @@ assert_contains "$gatk_log" "CreateSequenceDictionary"
 assert_contains "$gatk_log" "-R"
 assert_contains "$gatk_log" "$execute_fasta"
 assert_contains "$gatk_log" "-O"
+assert_contains "$gatk_log" "gatk JAVA_HOME=$(dirname "$canonical_fake_bin")"
+assert_contains "$gatk_log" "gatk java on PATH=$canonical_fake_bin/java"
+[[ "$(grep -Fc "gatk java on PATH=$canonical_fake_bin/java" "$gatk_log")" -eq 2 ]] ||
+    fail "GATK version and work invocations did not both select the admitted Java"
 assert_contains "$java_log" "-version"
+assert_not_exists "$poison_java_log"
 assert_contains "$execute_output" "Mode: execute"
 assert_contains "$execute_output" "GATK reference sidecar output details:"
 assert_contains "$execute_output" "Created missing Step 00c sidecars successfully."

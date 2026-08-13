@@ -5,9 +5,9 @@ snakemake	tool_version	local	true	/absolute/path/to/norad/.venv/bin/python	["-X"
 sha256_python	hash_utility	local	true	/absolute/path/to/norad/.venv/bin/python	["python_hashlib"]	sha256	Controlled workflow Python SHA-256 implementation used by owner transactions
 star	tool_version	local	true	/absolute/path/to/STAR	["--version"]	^2[.]7[.]11b$	STAR aligner and genome-index builder
 samtools	tool_version	local	true	/absolute/path/to/samtools	["--version"]	^samtools 1[.]19[.]2(\s|$)	Samtools BAM utility
-java	tool_version	local	true	/absolute/path/to/java	["-version"]	^(openjdk|java) version "(1[7-9]|[2-9][0-9])[.]	Java 17 or newer for Picard and GATK
+java	tool_version	local	true	/absolute/java-home/bin/java	["-version"]	^(openjdk|java) version "(1[7-9]|[2-9][0-9])[.]	Java 17 or newer for Picard and GATK
 gatk	tool_version	local	true	/absolute/path/to/gatk	["--version"]	^The Genome Analysis Toolkit [(]GATK[)] v?4[.]6[.]1[.]0(\s|$)	GATK SplitNCigarReads and sequence-dictionary runtime
-picard	tool_version	local	true	/absolute/path/to/java	["-jar","/absolute/path/to/picard.jar","MarkDuplicates","--version"]	3[.]1[.]1	Picard MarkDuplicates 3.1.1 through the declared Java and jar
+picard	tool_version	local	true	/absolute/java-home/bin/java	["-jar","/absolute/path/to/picard.jar","MarkDuplicates","--version"]	3[.]1[.]1	Picard MarkDuplicates 3.1.1 through the declared Java and jar
 picard_jar	path_visibility	local	true	/absolute/path/to/picard.jar	["file_readable"]	readable	Readable Picard 3.1.1 jar selected for duplicate marking
 bcftools	tool_version	local	true	/absolute/path/to/bcftools	["--version"]	^bcftools 1[.]21(\s|$)	Bcftools cohort mpileup runtime
 infer_experiment	tool_version	local	true	/absolute/path/to/infer_experiment.py	["--version"]	^[Rr][Ss]e[Qq][Cc].*[Vv]?[0-9]+	RSeQC infer_experiment runtime
