@@ -67,7 +67,11 @@ This section remains the compact operator command reference.
 
 Copy [`configs/local_pilot_runtime.example.tsv`](../../configs/local_pilot_runtime.example.tsv)
 outside the checkout or to an explicitly managed local path, then replace every
-placeholder with the exact local executable, jar, Rscript, and checkout paths.
+placeholder with the exact controlled Python/Snakemake and SHA-256 launcher,
+Bash, gunzip, scientific executable or jar, Rscript, canonical checkout/renv
+project, existing renv library, and R-namespace selection. File-backed runtime
+identities are bound by authored path, canonical target, version, and SHA-256;
+do not fabricate a missing renv library.
 After `uv sync --locked --group workflow` and the separately authorized science
 tool/R setup, inspect one request and workspace plan:
 

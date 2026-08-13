@@ -46,14 +46,17 @@ Copy the matched structural starters to an operator-managed directory:
 
 ```sh
 NORAD_INPUT_DIR=/absolute/path/to/norad-inputs
-test ! -e "$NORAD_INPUT_DIR"
-mkdir "$NORAD_INPUT_DIR"
-cp configs/local_pilot_request.example.yaml "$NORAD_INPUT_DIR/"
-cp configs/local_pilot_samples.example.tsv "$NORAD_INPUT_DIR/"
-cp configs/local_pilot_partitions.example.tsv "$NORAD_INPUT_DIR/"
+mkdir "$NORAD_INPUT_DIR" &&
+cp configs/local_pilot_request.example.yaml "$NORAD_INPUT_DIR/" &&
+cp configs/local_pilot_samples.example.tsv "$NORAD_INPUT_DIR/" &&
+cp configs/local_pilot_partitions.example.tsv "$NORAD_INPUT_DIR/" &&
 cp configs/local_pilot_runtime.example.tsv \
   "$NORAD_INPUT_DIR/local_pilot_runtime.tsv"
 ```
+
+The commands are deliberately chained: if the input directory already exists
+or any copy fails, the remaining copies do not run. Choose a new absent
+directory rather than overwriting a previously edited input set.
 
 Edit those copies before continuing:
 

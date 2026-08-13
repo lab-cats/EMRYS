@@ -20,9 +20,12 @@ The accepted local-pilot architecture is defined by
 [`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md), and the canonical
 owner-admission dispositions are tracked in
 [`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md). Campaign B has no
-remaining implementation dependency. Future real-runtime and site/cluster work
-requires separate selection and authorization; no such package is selected
-here.
+remaining implementation dependency. The selected follow-up package
+[`ORCH-04A`](../tasks/cards/ORCH-04A-local-pilot-adversarial-hardening.md)
+hardens the admitted local control plane against the latest adversarial review;
+it does not broaden scientific or execution scope. Future real-runtime and
+site/cluster work still requires separate selection and authorization; no such
+package is selected here.
 
 ## Local-pilot package order
 
