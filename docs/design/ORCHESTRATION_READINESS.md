@@ -35,8 +35,8 @@ zero.
 | --- | --- | --- | --- | --- |
 | [`construct_STAR_index`](../../src/norad/stages/star_index/CONTRACT.md), one reference | Explicit local producer plus compatibility SLURM wrapper; grouped public validator | B1 added dry-run-first, declared-member, locked no-clobber publication | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
 | [`convert_GTF_to_BED12`](../../src/norad/stages/gtf_to_bed12/CONTRACT.md), one reference | Grouped `norad convert gtf-to-bed12`; grouped validator | B1 added explicit execute plus atomic no-replace publication | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
-| [`construct_FASTA_sidecars`](../../src/norad/stages/fasta_sidecars/CONTRACT.md), one reference | Public shell producer; grouped validator | B1 made controlled rollback fail closed and preserve ambiguous residue | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
-| [`align_RNA_reads_with_STAR`](../../src/norad/stages/star_alignment/CONTRACT.md), per sample | Public shell producer; grouped validator | B1 added explicit tool selection and a staged no-clobber transaction | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
+| [`construct_FASTA_sidecars`](../../src/norad/stages/fasta_sidecars/CONTRACT.md), one reference | Public shell producer; grouped validator | B1 made controlled rollback fail closed and preserve ambiguous residue; ORCH-04A admits reuse only for one stable complete external FAI/DICT pair and rejects a partial pair pre-entry | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
+| [`align_RNA_reads_with_STAR`](../../src/norad/stages/star_alignment/CONTRACT.md), per sample | Public shell producer; grouped validator | B1 added explicit tool selection and a staged no-clobber transaction; ORCH-04A binds the selected gunzip executable for compressed FASTQs | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
 | [`construct_canonical_BAM`](../../src/norad/stages/canonical_bam/CONTRACT.md), per sample | Public shell producer; grouped validator | B1 added stable-input checks and no-clobber admission to the existing transaction | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
 | [`collect_canonical_BAM_QC_evidence`](../../src/norad/evidence/canonical_bam_qc/CONTRACT.md), per sample | Public shell producer; grouped validator | B1 added explicit samtools selection and staged no-clobber pair publication | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
 | [`collect_RSeQC_paired_orientation_evidence`](../../src/norad/evidence/rseqc_orientation/CONTRACT.md), per sample | Public shell producer; grouped validator | B1 added stable-input checks and staged no-clobber publication | `ready` | Pinned workflow dependency, validator all-pass, and verified-task binding remain required for continued rule admission and reuse |
@@ -77,8 +77,9 @@ The admitted profile retains these prerequisites:
 4. A run-specific artifact inventory is materialized before compute.
 5. Every admitted owner has explicit expected outputs and residue detection;
    none relies on filesystem discovery.
-6. The local executor has automatic retries disabled and preserves task logs,
-   validation reports, native receipts, and recovery evidence.
+6. The local executor has automatic retries disabled; it preserves and
+   content-binds both task logs by path and SHA-256, plus validation reports,
+   native receipts, and recovery evidence.
 7. Step `08` and `09` bind the repository `renv` project and selected existing
    canonical project library explicitly, while clearing ambient R/renv path
    selectors rather than relying on job working directory.

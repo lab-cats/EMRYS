@@ -110,6 +110,11 @@ Before execution, confirm that the declared reference FASTA directory is the
 intended writable sidecar authority. Step `00c` deliberately creates or reuses
 `<reference-fasta>.fai` and `<reference-stem>.dict` beside that external FASTA;
 those two files are the only owner outputs outside the run root.
+Even complete-pair reuse enters Step `00c` and transiently creates its adjacent
+owner lock; generation may also create adjacent run-token staging paths.
+Controlled success removes owned transient state. Retained lock/staging paths
+are blocking recovery evidence, and a partial pre-existing pair is rejected
+before producer entry.
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m norad run \

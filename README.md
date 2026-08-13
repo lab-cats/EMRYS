@@ -143,6 +143,11 @@ creates or reuses `<reference-fasta>.fai` and `<reference-stem>.dict` beside
 the external FASTA declared by the request. Before execution, confirm that
 reference location is the intended durable sidecar authority and is writable;
 do not point the request at a read-only or foreign-managed reference copy.
+Even complete-pair reuse enters Step `00c` and transiently creates its adjacent
+owner lock; generation may also create adjacent run-token staging paths.
+Controlled success removes owned transient state. A retained lock or staging
+path is blocking recovery evidence, and a partial pre-existing sidecar pair is
+rejected before producer entry.
 
 ## 6. Inspect state and outputs
 
