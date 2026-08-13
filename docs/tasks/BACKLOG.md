@@ -5,6 +5,13 @@ after their open blockers are gone and a reviewed JIT card exists under
 [`cards/`](cards/). Proposal entries preserve questions but confer no roadmap,
 selection, implementation, or publication authority.
 
+## ORCH-04A — Close local-pilot adversarial safety gaps
+
+- **Kind:** actionable
+- **Blocked by:** None
+- **Intent:** Reconcile the admitted Campaign B local-pilot control plane with the adversarial findings on entry, runtime identity, immutable evidence, serialization, interruption, and operator guidance.
+- **Boundaries:** Preserve the fixed scientific profile, public dry-run default, create-absent outputs, immutable records, conservative between-task resume, and existing evidence ceiling; no remote integration, cluster access, real-tool execution, scientific review, or biological claim.
+
 ## AUDIT-99 — Final refactor and documentation audit
 
 - **Kind:** actionable

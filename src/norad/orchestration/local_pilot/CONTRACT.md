@@ -3,19 +3,22 @@
 `normalization.normalize_request` is a read-only public Python boundary. It
 uses the closed safe YAML loader, resolves paths against the request directory,
 reuses the public Step `08`/`09` manifest contracts, requires at least two
-exact control/treatment strata, snapshots declared regular non-symlink inputs,
-and validates the canonical execution contract. Duplicate keys, custom tags, merge
+exact control/treatment strata, requires each paired FASTQ row to use one
+matching compression mode, snapshots declared regular non-symlink inputs, and
+validates the canonical execution contract. Duplicate keys, custom tags, merge
 keys, globs, templates, environment/home interpolation, unknown fields, and
-ambiguous paths fail admission. Request formatting and the optional human label
-do not enter the execution identity.
+ambiguous paths fail admission. Request formatting and the optional human
+label do not enter the execution identity.
 
 `doctor.inspect_local_pilot` and the grouped `norad doctor local-pilot` route
 are the read-only B5 setup boundary. They reuse normalization plus the runtime-
 availability owner's direct API, require the exact fixed local runtime roster,
 run R namespace probes with explicit guarded `renv` variables, compare the
 selected Python/Snakemake identity, bind admitted tool/jar bytes, and reject a
-workspace overlapping the source checkout. An absent workspace is planned but
-never created. The doctor neither installs nor repairs dependencies, loads
+workspace overlapping the source checkout. An absent workspace is admissible
+only as one missing leaf beneath an existing canonical, real,
+writable/searchable immediate parent; the doctor plans that leaf but never
+creates it. The doctor neither installs nor repairs dependencies, loads
 modules, mutates a run, executes Snakemake/scientific owners, or promotes
 readiness into local-runtime, scheduler, cluster, scientific-review, or
 biological evidence.

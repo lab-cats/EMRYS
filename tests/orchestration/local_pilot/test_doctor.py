@@ -245,7 +245,34 @@ def test_source_and_workspace_blockers_do_not_mutate(tmp_path: Path) -> None:
     assert not (REPO_ROOT / "nested-workspace").exists()
 
 
-def test_workspace_rejects_symlink_nearest_existing_ancestor(tmp_path: Path) -> None:
+def test_nested_absent_workspace_is_not_ready_and_is_not_created(
+    tmp_path: Path,
+) -> None:
+    request = build(tmp_path)
+    runtime = tmp_path / "runtime.tsv"
+    runtime.write_text("placeholder\n", encoding="utf-8")
+    workspace = tmp_path / "absent-parent" / "workspace"
+
+    result = doctor.inspect_local_pilot(
+        request,
+        workspace,
+        runtime,
+        source_root=REPO_ROOT,
+        ops=_ops(_inspection(tmp_path)),
+    )
+
+    assert not result.ready
+    assert result.blockers == (
+        f"workspace immediate parent does not exist: {workspace.parent}",
+    )
+    assert result.remediations == (
+        "Create the immediate parent as a canonical real directory first: "
+        f"{workspace.parent}",
+    )
+    assert not workspace.parent.exists()
+
+
+def test_workspace_rejects_symlink_immediate_parent(tmp_path: Path) -> None:
     request = build(tmp_path)
     runtime = tmp_path / "runtime.tsv"
     runtime.write_text("placeholder\n", encoding="utf-8")
@@ -257,7 +284,7 @@ def test_workspace_rejects_symlink_nearest_existing_ancestor(tmp_path: Path) -> 
     with pytest.raises(doctor.DoctorInputError, match="canonical real directory"):
         doctor.inspect_local_pilot(
             request,
-            link / "absent" / "workspace",
+            link / "workspace",
             runtime,
             source_root=REPO_ROOT,
             ops=_ops(_inspection(tmp_path)),

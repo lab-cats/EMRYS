@@ -123,6 +123,27 @@ def test_bound_input_change_creates_a_new_run(tmp_path: Path) -> None:
     assert after.normalized_bytes != before.normalized_bytes
 
 
+def test_mixed_fastq_compression_is_rejected_before_run_identity(
+    tmp_path: Path,
+) -> None:
+    request = fixture.build(tmp_path / "request-root")
+    manifest = request.parent / "samples.tsv"
+    compressed = request.parent / "reads" / "EV_1_R1.fastq.gz"
+    (request.parent / "reads" / "EV_1_R1.fastq").rename(compressed)
+    manifest.write_text(
+        manifest.read_text(encoding="utf-8").replace(
+            "reads/EV_1_R1.fastq", "reads/EV_1_R1.fastq.gz"
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        contracts.ContractValidationError,
+        match="EV_1 R1 and R2 FASTQs must use the same compression mode",
+    ):
+        normalize_request(request, fixture.profile())
+
+
 @pytest.mark.parametrize("replacement_kind", ("file", "symlink"))
 def test_admission_rejects_deterministic_pathname_replacement_after_open(
     tmp_path: Path,

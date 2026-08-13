@@ -309,6 +309,11 @@ def _normalize_samples(
             raise orchestration_contracts.ContractValidationError(
                 f"Sample {row['sample_id']} R1 and R2 FASTQs must be distinct"
             )
+        if r1_path.name.endswith(".gz") != r2_path.name.endswith(".gz"):
+            raise orchestration_contracts.ContractValidationError(
+                f"Sample {row['sample_id']} R1 and R2 FASTQs must use the same "
+                "compression mode"
+            )
         normalized = {
             "sample_id": row["sample_id"],
             "condition": row["condition"],

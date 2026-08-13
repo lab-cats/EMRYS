@@ -273,24 +273,31 @@ def _workspace_blockers(
                 f"Grant user access to the existing workspace: {workspace}"
             )
         return blockers, remediations
-    ancestor = workspace.parent
-    while not os.path.lexists(ancestor):
-        if ancestor == ancestor.parent:
-            raise DoctorInputError(f"Workspace has no existing parent: {workspace}")
-        ancestor = ancestor.parent
+    parent = workspace.parent
+    if not os.path.lexists(parent):
+        blockers.append(f"workspace immediate parent does not exist: {parent}")
+        remediations.append(
+            f"Create the immediate parent as a canonical real directory first: {parent}"
+        )
+        return blockers, remediations
+    try:
+        parent_state = parent.lstat()
+        resolved_parent = parent.resolve(strict=True)
+    except OSError as exc:
+        raise DoctorInputError(
+            f"Could not inspect workspace immediate parent {parent}: {exc}"
+        ) from exc
     if (
-        ancestor.is_symlink()
-        or not ancestor.is_dir()
-        or ancestor.resolve(strict=True) != ancestor
+        stat.S_ISLNK(parent_state.st_mode)
+        or not stat.S_ISDIR(parent_state.st_mode)
+        or resolved_parent != parent
     ):
         raise DoctorInputError(
-            f"Nearest existing workspace parent must be a canonical real directory: {ancestor}"
+            f"Workspace immediate parent must be a canonical real directory: {parent}"
         )
-    if not os.access(ancestor, os.W_OK | os.X_OK):
-        blockers.append(f"workspace parent is not writable and searchable: {ancestor}")
-        remediations.append(
-            f"Choose a writable workspace parent instead of: {ancestor}"
-        )
+    if not os.access(parent, os.W_OK | os.X_OK):
+        blockers.append(f"workspace parent is not writable and searchable: {parent}")
+        remediations.append(f"Choose a writable workspace parent instead of: {parent}")
     return blockers, remediations
 
 
