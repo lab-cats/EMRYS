@@ -69,19 +69,25 @@ case "$STEP" in
         )
             ;;
     01)
+        scope_id="${2:-}"
+        [[ -n "$scope_id" ]] || {
+            echo "ERROR: Step 01 requires a sample ID as the second argument." >&2
+            exit 2
+        }
+
         mkdir -p results/qc/validation/01
         cmd=(
             norad validate star-alignment
-            --scope-id ABE_EV_2
-            --bam results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam
-            --log-final results/star/ABE_EV_2/ABE_EV_2.Log.final.out
-            --log-out results/star/ABE_EV_2/ABE_EV_2.Log.out
-            --log-progress results/star/ABE_EV_2/ABE_EV_2.Log.progress.out
-            --sj-out results/star/ABE_EV_2/ABE_EV_2.SJ.out.tab
-            --output results/qc/validation/01/ABE_EV_2.validation.tsv
+            --scope-id "$scope_id"
+            --bam "results/star/$scope_id/$scope_id.Aligned.sortedByCoord.out.bam"
+            --log-final "results/star/$scope_id/$scope_id.Log.final.out"
+            --log-out "results/star/$scope_id/$scope_id.Log.out"
+            --log-progress "results/star/$scope_id/$scope_id.Log.progress.out"
+            --sj-out "results/star/$scope_id/$scope_id.SJ.out.tab"
+            --output "results/qc/validation/01/$scope_id.validation.tsv"
             "${execute_args[@]}"
         )
-        ;;
+    ;;
     *)
         echo "ERROR: unsupported validation step: $STEP" >&2
         exit 2

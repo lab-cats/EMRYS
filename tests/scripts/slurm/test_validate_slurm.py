@@ -35,10 +35,12 @@ def test_step_01_validates_star_alignment() -> None:
 
     assert "01)" in source
     assert "validate star-alignment" in source
-    assert "--scope-id ABE_EV_2" in source
-    assert "--bam results/star/ABE_EV_2/ABE_EV_2.Aligned.sortedByCoord.out.bam" in source
-    assert "--log-final results/star/ABE_EV_2/ABE_EV_2.Log.final.out" in source
-    assert "--log-out results/star/ABE_EV_2/ABE_EV_2.Log.out" in source
-    assert "--log-progress results/star/ABE_EV_2/ABE_EV_2.Log.progress.out" in source
-    assert "--sj-out results/star/ABE_EV_2/ABE_EV_2.SJ.out.tab" in source
-    assert "--output results/qc/validation/01/ABE_EV_2.validation.tsv" in source
+    assert 'scope_id="${2:-}"' in source
+    assert '[[ -n "$scope_id" ]]' in source
+    assert '--scope-id "$scope_id"' in source
+    assert '--bam "results/star/$scope_id/$scope_id.Aligned.sortedByCoord.out.bam"' in source
+    assert '--log-final "results/star/$scope_id/$scope_id.Log.final.out"' in source
+    assert '--log-out "results/star/$scope_id/$scope_id.Log.out"' in source
+    assert '--log-progress "results/star/$scope_id/$scope_id.Log.progress.out"' in source
+    assert '--sj-out "results/star/$scope_id/$scope_id.SJ.out.tab"' in source
+    assert '--output "results/qc/validation/01/$scope_id.validation.tsv"' in source
