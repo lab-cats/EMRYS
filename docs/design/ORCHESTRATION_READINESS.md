@@ -58,7 +58,9 @@ reference/one-sample/cohort slice requirements. B4 satisfies the run-specific
 inventory, reporting-tail, immutable attempt, aggregate
 failure/interruption/between-task-resume, durable producer-entry, and
 derived-inspection requirements
-for the no-science test-double profile. Explicit `renv` launch authority and
+for the no-science test-double profile. B5 adds the exact runtime-profile-
+bound public command projection and lock-before-attempt materialization while
+retaining every disposition in this table. Explicit `renv` launch authority and
 real-tool behavior remain prerequisites for a later real-runtime proof.
 
 The admitted profile retains these prerequisites:

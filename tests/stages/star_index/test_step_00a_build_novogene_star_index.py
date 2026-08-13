@@ -41,6 +41,7 @@ EXPECTED_STAR_CALL = (
     "\t--genomeFastaFiles\trefs/novogene_ref/genome.fa"
     "\t--sjdbGTFfile\trefs/novogene_ref/genome.gtf"
     "\t--sjdbOverhang\t149"
+    "\t--genomeSAindexNbases\t14"
 )
 
 
@@ -169,6 +170,8 @@ def run_producer(
         "2",
         "--sjdb-overhang",
         "149",
+        "--genome-sa-index-nbases",
+        "14",
         "--star-bin",
         "STAR",
     ]
@@ -338,9 +341,7 @@ def test_public_producer_execute_publishes_declared_members_without_replacement(
     assert {path.name for path in index.iterdir()} == REQUIRED_MEMBERS
     assert "STAR index publication complete" in result.stdout
     assert not (index.parent / ".star-index.step00a.lock").exists()
-    assert not (
-        index.parent / ".star-index.step00a.local-step00a-test.tmp"
-    ).exists()
+    assert not (index.parent / ".star-index.step00a.local-step00a-test.tmp").exists()
     assert list(invocation_cwd.iterdir()) == []
 
 
@@ -371,9 +372,7 @@ def test_public_producer_preserves_index_that_appears_during_generation(
     assert (index / "foreign-marker").read_bytes() == b"foreign index\n"
     assert {path.name for path in index.iterdir()} == {"foreign-marker"}
     assert not (index.parent / ".star-index.step00a.lock").exists()
-    assert not (
-        index.parent / ".star-index.step00a.local-step00a-test.tmp"
-    ).exists()
+    assert not (index.parent / ".star-index.step00a.local-step00a-test.tmp").exists()
 
 
 def test_public_producer_preserves_late_member_and_recovery_state(
@@ -519,9 +518,7 @@ def test_public_producer_incomplete_tool_success_rolls_back_owned_state(
     assert "STAR index member is missing" in result.stderr
     assert not index.exists()
     assert not (index.parent / ".star-index.step00a.lock").exists()
-    assert not (
-        index.parent / ".star-index.step00a.local-step00a-test.tmp"
-    ).exists()
+    assert not (index.parent / ".star-index.step00a.local-step00a-test.tmp").exists()
 
 
 def test_public_producer_preserves_foreign_lock(tmp_path: Path) -> None:

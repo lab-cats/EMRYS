@@ -81,6 +81,61 @@ remediation; exit `2` means the request/profile/path boundary is malformed or
 unsafe. This does not establish real-tool, scheduler, cluster, scientific-
 review, or biological evidence.
 
+## Local-pilot execution
+
+After the readiness command returns `READY`, plan the complete fixed profile.
+The default is a strict no-write dry-run that prints the deterministic run ID,
+run root, immutable attempt identity, Snakemake argv, and every public owner
+producer/validator command:
+
+```bash
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad run \
+  --request /absolute/path/to/request.yaml \
+  --workspace /absolute/path/to/workspace \
+  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
+```
+
+Review that output, then execute the identical admitted request by adding
+`--execute`:
+
+```bash
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad run \
+  --request /absolute/path/to/request.yaml \
+  --workspace /absolute/path/to/workspace \
+  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
+  --execute
+```
+
+Inspect state from NORAD evidence rather than `.snakemake` metadata:
+
+```bash
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad inspect \
+  local-pilot-run \
+  --run-root /absolute/path/to/workspace/runs/run-DIGEST
+```
+
+Only a failed or interrupted between-task boundary is automatically resumable.
+Plan resume first, then repeat with `--execute` after reviewing the commands:
+
+```bash
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad resume \
+  --run-root /absolute/path/to/workspace/runs/run-DIGEST \
+  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
+
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad resume \
+  --run-root /absolute/path/to/workspace/runs/run-DIGEST \
+  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
+  --execute
+```
+
+A scope that crossed producer entry without verified completion is blocked,
+not automatically retried or cleaned. A completed run refuses resume and a
+second initial run refuses the existing run root. The public commands expose no
+force, unlock, metadata-cleanup, alternate-profile, or raw engine options.
+Current execution is source-checkout-bound and local; this transcript has
+no-science integration evidence only until B6 and separately authorized
+real-tool/cluster validation are complete.
+
 ## Task status
 
 The backlog is coarse and execution cards are created just in time. Inspect the

@@ -65,6 +65,7 @@ def _inspection(tmp_path: Path, *, failing: str | None = None) -> RuntimeInspect
     jar.write_bytes(b"jar\n")
     rscript = str(tool)
     observations = [
+        _check("bash", "tool_version", str(tool), probe_args=("--version",)),
         _check("python", "tool_version", sys.executable, probe_args=("--version",)),
         _check("snakemake", "tool_version", str(tool), probe_args=("--version",)),
         _check("star", "tool_version", str(tool), probe_args=("--version",)),
@@ -242,6 +243,25 @@ def test_source_and_workspace_blockers_do_not_mutate(tmp_path: Path) -> None:
     assert any("workspace overlaps" in blocker for blocker in result.blockers)
     assert any("dirty checkout" in blocker for blocker in result.blockers)
     assert not (REPO_ROOT / "nested-workspace").exists()
+
+
+def test_workspace_rejects_symlink_nearest_existing_ancestor(tmp_path: Path) -> None:
+    request = build(tmp_path)
+    runtime = tmp_path / "runtime.tsv"
+    runtime.write_text("placeholder\n", encoding="utf-8")
+    target = tmp_path / "target"
+    target.mkdir()
+    link = tmp_path / "linked-parent"
+    link.symlink_to(target, target_is_directory=True)
+
+    with pytest.raises(doctor.DoctorInputError, match="canonical real directory"):
+        doctor.inspect_local_pilot(
+            request,
+            link / "absent" / "workspace",
+            runtime,
+            source_root=REPO_ROOT,
+            ops=_ops(_inspection(tmp_path)),
+        )
 
 
 def test_malformed_runtime_profile_is_usage_error(tmp_path: Path) -> None:

@@ -12,13 +12,6 @@ selection, implementation, or publication authority.
 - **Intent:** Audit only the implemented refactor program, rank residual code and documentation risk, and publish exact validation and evidence ceilings.
 - **Boundaries:** No new feature, runtime, scientific, cluster, or biological claim; local characterization and stale receipts never become broader proof.
 
-## CLI-03A — Implement local-pilot control plane
-
-- **Kind:** actionable
-- **Blocked by:** None
-- **Intent:** Provide a thin local command surface that orchestrates the approved pilot profile, request lifecycle, resume, and state inspection.
-- **Boundaries:** Dry-run by default; no hidden installation, private imports, SLURM execution, scientific reimplementation, or implicit state authority.
-
 ## CODEDOC-05 — Inventory code documentation
 
 - **Kind:** actionable
@@ -43,7 +36,7 @@ selection, implementation, or publication authority.
 ## E2E-03A — Prove fresh-clone local pilot
 
 - **Kind:** actionable
-- **Blocked by:** `CLI-03A`
+- **Blocked by:** None
 - **Intent:** Prove the approved local pilot from a fresh clone through failure, resume, and final inspectable outputs.
 - **Boundaries:** Bind exact fixture/data identity and hashes; distinguish fixture from real runtime; make no cluster, production, scientific-review, or biological claim.
 

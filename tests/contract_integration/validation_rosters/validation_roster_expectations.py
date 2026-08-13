@@ -9,6 +9,7 @@ EXPECTED_CHECK_ROSTERS: dict[str, tuple[str, ...]] = {
         "gtf_identity",
         "contig_names_lengths",
         "sjdb_overhang",
+        "genome_sa_index_nbases",
     ),
     "00b": (
         "bed12_structure",

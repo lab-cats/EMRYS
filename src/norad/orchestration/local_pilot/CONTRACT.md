@@ -20,6 +20,24 @@ modules, mutates a run, executes Snakemake/scientific owners, or promotes
 readiness into local-runtime, scheduler, cluster, scientific-review, or
 biological evidence.
 
+`control.plan_run` and `plan_resume` are the B5 dry-run public Python boundary;
+the grouped `norad run`, `norad resume`, and `norad inspect local-pilot-run`
+routes are the operator surface. `run` and `resume` require the controlled
+Python invocation and mutate nothing without `--execute`. Planning reruns the
+doctor, normalizes the authored request again, derives the deterministic run
+identity, and prints the exact 34-owner-job plus three-reporting-transaction
+plan. It exposes no raw Snakemake flags, force, unlock, cleanup, retry, plugin,
+or alternate-profile escape hatch.
+
+`materialization.build_attempt_plan` is the sole production projection from
+the fixed profile to owner commands, declared inputs/outputs, validation
+reports, immutable task dispatches, reporting projections, workflow config,
+and workflow-attempt record. Initial run skeleton creation is create-absent.
+The aggregate lifecycle lock is acquired before attempt-specific directories,
+dispatches, config, request snapshot, or attempt record are published. Resume
+retains only independently revalidated predecessor dispatches for verified
+scopes and materializes new dispatches for the unentered remainder.
+
 Every authored file path passes one lexical policy before access. Admission
 opens the file without following a final symbolic link, verifies that the open
 descriptor and pathname name the same inode before and after reading, and binds
@@ -81,7 +99,8 @@ execution, profile, and attempt-local workflow-config bytes; the config
 transitively binds each dispatch. The executor argument binds the exact reviewed
 `workflow/Snakefile` and absolute checked-in local workflow profile beneath the
 declared clean checkout, preventing run-directory profile shadowing. It invokes
-Snakemake only as `<bound-python> -I -m snakemake`; the exact lexical venv
+Snakemake only as `<bound-python> -X pycache_prefix=/dev/null -I -m snakemake`;
+the exact lexical venv
 launcher, its stable executable target, Python version, Snakemake module
 version, normalizer path, and config are admitted as one runtime identity.
 Runtime source checkout and required-tool identities are observed before
@@ -115,6 +134,7 @@ turning entered work back into pending state. It ignores `.snakemake/`, performs
 no repair, and does not consider timestamps or output presence to be completion
 evidence.
 
-These results are local structural/no-science workflow facts. They are not
-owner-native receipts, real runtime or cluster proof, completed scientific
-review, or biological validation.
+The B5 public adapter has a deterministic no-science failure/resume test over
+all 34 owner jobs and the three real reporting transactions. These results are
+local structural/no-science workflow facts. They are not real science-tool or
+cluster proof, completed scientific review, or biological validation.

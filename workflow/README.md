@@ -148,13 +148,16 @@ Install pinned Snakemake 9.25.1 from the locked workflow dependency group:
 uv sync --locked --group workflow
 ```
 
-B4 does not expose a supported manual invocation or public lifecycle command.
-The internal lifecycle binds an already materialized run, the exact Python
+B5 exposes the supported dry-run-first public `norad run`, `norad resume`, and
+`norad inspect local-pilot-run` commands documented in the
+[runbook](../docs/operations/RUNBOOK.md#local-pilot-execution). There remains no
+supported manual Snakemake invocation. The internal lifecycle binds a
+materialized run, the exact Python
 launcher, checked-in Snakefile, absolute profile file, attempt-specific config,
 run directory, and target in one admitted argv. Running bare `snakemake`, using
 a profile name relative to the current directory, or constructing an ad hoc
-config bypasses that boundary. Direct operator commands wait for the B5 public
-adapter and B6 fresh-clone transcript.
+config bypasses that boundary. The reproducible fresh-clone transcript and root
+README onboarding remain B6 work.
 
 Resume is a lifecycle-owned operation, not an ad hoc Snakemake recovery
 command. It uses exactly `--rerun-triggers input --ignore-incomplete` after

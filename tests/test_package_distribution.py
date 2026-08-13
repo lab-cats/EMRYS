@@ -304,6 +304,21 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     )
     require_success(module_help)
     assert "usage: norad" in module_help.stdout
+    for command, usage in (
+        (("run", "--help"), "usage: norad run"),
+        (("resume", "--help"), "usage: norad resume"),
+        (
+            ("inspect", "local-pilot-run", "--help"),
+            "usage: norad inspect local-pilot-run",
+        ),
+    ):
+        public_help = run_command(
+            [str(environment_python), "-I", "-m", "norad", *command],
+            cwd=arbitrary_cwd,
+            hostile_pythonpath=True,
+        )
+        require_success(public_help)
+        assert usage in public_help.stdout
     console_help = run_command([str(console), "--help"], cwd=arbitrary_cwd)
     require_success(console_help)
     assert "usage: norad" in console_help.stdout

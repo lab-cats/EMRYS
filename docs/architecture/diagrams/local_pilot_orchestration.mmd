@@ -4,6 +4,7 @@ flowchart TB
     partitions["Ordered partition TSV"]
     stationary["Stationary FASTQ, FASTA, and GTF inputs"]
 
+    doctor["Read-only doctor\nrequest + workspace + clean checkout + exact runtime"]
     normalize["Validate, resolve, hash, and normalize"]
     contract["Immutable canonical execution contract"]
     runid["Deterministic run ID"]
@@ -11,6 +12,9 @@ flowchart TB
     inventory["Precomputed run-specific artifact inventory\nincluding explicit missing Step 09c expectations"]
 
     profile["Fixed local CMH profile\nchecked against STAGE_MAP"]
+    control["Public dry-run-first run/resume control\nexact commands; no engine escape hatch"]
+    run_lock["Create-exclusive aggregate run lock"]
+    materialize["Fixed-profile materializer\ncanonical snapshots + dispatches + config"]
     attempt["New immutable workflow-attempt record\nplus exact request snapshot"]
     config["Attempt-specific canonical workflow config\npath + SHA-256"]
     dispatch["Closed owner/scope dispatch records\npath + SHA-256; verified predecessor retained on reuse"]
@@ -54,16 +58,17 @@ flowchart TB
     resumable["New workflow attempt may resume"]
     blocked["Blocked pending explicit reconciliation"]
 
-    operator --> normalize
-    samples --> normalize
-    partitions --> normalize
-    stationary --> normalize
+    operator --> doctor --> normalize
+    samples --> doctor
+    partitions --> doctor
+    stationary --> doctor
     normalize --> contract --> runid
     contract --> reporting_contract
     contract --> inventory
     contract --> profile
-    runid --> attempt
-    profile --> attempt --> config --> engine --> preflight
+    runid --> control
+    profile --> control --> run_lock --> materialize --> attempt
+    attempt --> config --> engine --> preflight
     config --> dispatch --> preflight
     verified --> barriers --> reporting_plan
     reporting_contract --> reporting_plan
@@ -84,7 +89,7 @@ flowchart TB
     complete --> inspect
     untouched --> resume
     preserved --> resume
-    resume -->|yes| resumable --> attempt
+    resume -->|yes| resumable --> control
     resume -->|no or ambiguous| blocked
 
     snakemake_state[".snakemake metadata\ndisposable, never NORAD authority"]

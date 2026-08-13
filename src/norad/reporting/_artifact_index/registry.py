@@ -104,7 +104,7 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
         "star_index",
         basenames=STEP00A_BASENAMES,
     )
-    add_validation_report(registry, "00a", "reference")
+    add_validation_report(registry, "00a", "reference", exact_data_rows=6)
     add_reference(
         "step00b_bed12_v1",
         "00b",

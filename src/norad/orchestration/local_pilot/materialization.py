@@ -1,0 +1,1348 @@
+"""Canonical production materializer for the fixed local CMH workflow."""
+
+from __future__ import annotations
+
+import hashlib
+import os
+import platform
+import socket
+import sys
+import uuid
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any, Literal
+
+from norad import __version__
+from norad.contracts.orchestration import api as orchestration_contracts
+from norad.contracts.orchestration.projection import build_reporting_bundle
+from norad.libraries.source_authority import controlled_python_argv
+from norad.orchestration.local_pilot import doctor, inspection, lifecycle
+from norad.orchestration.local_pilot.normalization import NormalizationBundle
+
+Operation = Literal["execute", "resume"]
+TARGET = "local_pipeline_slice"
+PROFILE_RELATIVE = Path("workflow/contracts/local_cmh_v1.json")
+SNAKEFILE_RELATIVE = Path("workflow/Snakefile")
+WORKFLOW_PROFILE_RELATIVE = Path("workflow/profiles/local/profile.v9+.yaml")
+
+
+class MaterializationError(RuntimeError):
+    """One fixed-profile attempt could not be planned or published safely."""
+
+
+@dataclass(frozen=True, slots=True)
+class PlannedFile:
+    """One create-exclusive file in an immutable attempt plan."""
+
+    path: Path
+    data: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class AttemptPlan:
+    """Pure, complete publication and command plan for one workflow attempt."""
+
+    normalized: NormalizationBundle
+    readiness: doctor.DoctorResult
+    operation: Operation
+    workspace: Path
+    run_root: Path
+    workflow_attempt_id: str
+    supersedes_workflow_attempt_id: str | None
+    preparation: lifecycle.AttemptPreparation
+    attempt_record: dict[str, Any]
+    fixed_files: tuple[PlannedFile, ...]
+    attempt_files: tuple[PlannedFile, ...]
+    directories: tuple[Path, ...]
+    dispatch_count: int
+
+    @property
+    def config_path(self) -> Path:
+        return self.run_root / str(self.attempt_record["workflow_config"]["path"])
+
+    @property
+    def execution_path(self) -> Path:
+        return self.run_root / "contract" / "normalized.json"
+
+    @property
+    def profile_path(self) -> Path:
+        return self.run_root / "contract" / "profile.json"
+
+    @property
+    def new_dispatch_files(self) -> tuple[PlannedFile, ...]:
+        """Return only task-dispatch records published by this attempt."""
+
+        dispatches: list[PlannedFile] = []
+        for item in self.attempt_files:
+            try:
+                record = orchestration_contracts.load_json_object_bytes(
+                    item.data, item.path
+                )
+            except orchestration_contracts.ContractValidationError:
+                continue
+            if record.get("schema_version") == "norad.local-task-dispatch.v1":
+                dispatches.append(item)
+        return tuple(dispatches)
+
+
+def _timestamp(value: datetime) -> tuple[str, str]:
+    if value.tzinfo is None:
+        raise MaterializationError("Attempt clock must be timezone-aware")
+    utc = value.astimezone(UTC).replace(microsecond=0)
+    return (
+        utc.strftime("%Y%m%dT%H%M%SZ"),
+        utc.isoformat(timespec="seconds").replace("+00:00", "Z"),
+    )
+
+
+def _sha256(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _absolute(path: Path) -> Path:
+    return Path(os.path.abspath(path))
+
+
+def _within(path: Path, root: Path, label: str) -> None:
+    try:
+        path.relative_to(root)
+    except ValueError as exc:
+        raise MaterializationError(f"{label} must be beneath run_root: {path}") from exc
+
+
+def _runtime_observations(
+    readiness: doctor.DoctorResult,
+) -> dict[str, Any]:
+    return {item.check.check_id: item for item in readiness.inspection.observations}
+
+
+def _runtime_path(observations: Mapping[str, Any], name: str) -> str:
+    try:
+        value = observations[name].check.target
+    except KeyError as exc:
+        raise MaterializationError(f"Runtime profile has no {name} binding") from exc
+    if not Path(value).is_absolute():
+        raise MaterializationError(f"Runtime binding must be absolute: {name}: {value}")
+    return str(value)
+
+
+def _resolved_inventory_path(run_root: Path, raw: str) -> Path:
+    path = Path(raw)
+    return path if path.is_absolute() else run_root / path
+
+
+def _artifact_rows(
+    normalized: NormalizationBundle,
+    run_root: Path,
+) -> dict[tuple[str, str], tuple[dict[str, Any], ...]]:
+    bundle = build_reporting_bundle(
+        normalized.execution_contract,
+        normalized.profile,
+    )
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for row in bundle.artifact_inventory_rows:
+        item = dict(row)
+        item["path"] = _resolved_inventory_path(run_root, str(row["source_path"]))
+        grouped.setdefault((str(row["step_id"]), str(row["scope_id"])), []).append(item)
+    return {key: tuple(value) for key, value in grouped.items()}
+
+
+def _one(paths: Mapping[str, list[Path]], adapter: str) -> Path:
+    values = paths.get(adapter, [])
+    if len(values) != 1:
+        raise MaterializationError(
+            f"Fixed profile expected one {adapter} path; observed {len(values)}"
+        )
+    return values[0]
+
+
+def _validator(
+    *arguments: str,
+) -> tuple[str, ...]:
+    return controlled_python_argv(
+        sys.executable,
+        "-m",
+        "norad",
+        "validate",
+        *arguments,
+        "--execute",
+    )
+
+
+def _r_owner_command(
+    bash: str,
+    source_root: Path,
+    script: Path,
+    arguments: Sequence[str],
+) -> tuple[str, ...]:
+    bootstrap = (
+        'export NORAD_USE_RENV=1 RENV_PROJECT="$1" '
+        'R_PROFILE_USER="$1/.Rprofile" RENV_CONFIG_SANDBOX_ENABLED=FALSE '
+        'RENV_CONFIG_AUTO_SNAPSHOT=FALSE; shift; exec "$@"'
+    )
+    return (bash, "-c", bootstrap, "norad-r", str(source_root), str(script), *arguments)
+
+
+def _task_commands(
+    *,
+    step_id: str,
+    scope_id: str,
+    paths: Mapping[str, list[Path]],
+    execution: Mapping[str, Any],
+    run_root: Path,
+    source_root: Path,
+    runtime: Mapping[str, Any],
+    all_paths: Mapping[tuple[str, str], Mapping[str, list[Path]]],
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[Path, ...]]:
+    sample_rows = {str(row["sample_id"]): row for row in execution["samples"]["rows"]}
+    partition_rows = {
+        str(row["partition_id"]): row for row in execution["partitions"]["rows"]
+    }
+    reference = execution["reference"]
+    analysis = execution["analysis"]
+    policy = analysis["policy"]
+    sample_manifest = Path(str(execution["samples"]["manifest"]["path"]))
+    partition_manifest = Path(str(execution["partitions"]["manifest"]["path"]))
+    fasta = Path(str(reference["fasta"]["path"]))
+    gtf = Path(str(reference["gtf"]["path"]))
+    reference_id = str(reference["reference_id"])
+    cohort_id = str(analysis["cohort_id"])
+    bash = _runtime_path(runtime, "bash")
+    star = _runtime_path(runtime, "star")
+    samtools = _runtime_path(runtime, "samtools")
+    java = _runtime_path(runtime, "java")
+    gatk = _runtime_path(runtime, "gatk")
+    picard_jar = _runtime_path(runtime, "picard_jar")
+    bcftools = _runtime_path(runtime, "bcftools")
+    infer_experiment = _runtime_path(runtime, "infer_experiment")
+    rscript = _runtime_path(runtime, "rscript")
+    validation = next(
+        (
+            path
+            for adapter, values in paths.items()
+            if adapter.endswith("_validation_report_v1")
+            for path in values
+        ),
+        None,
+    )
+    if validation is None:
+        raise MaterializationError(
+            f"No validation report for Step {step_id}/{scope_id}"
+        )
+
+    if step_id == "00a":
+        index_members = paths.get("step00a_star_index_v1", [])
+        if (
+            len(index_members) != 15
+            or len({path.parent for path in index_members}) != 1
+        ):
+            raise MaterializationError(
+                "Step 00a requires exactly 15 index members under one directory"
+            )
+        index_dir = index_members[0].parent
+        producer = (
+            bash,
+            str(
+                source_root / "src/norad/stages/star_index/step_00a_build_star_index.sh"
+            ),
+            "--reference-fasta",
+            str(fasta),
+            "--reference-gtf",
+            str(gtf),
+            "--index-dir",
+            str(index_dir),
+            "--threads",
+            "1",
+            "--sjdb-overhang",
+            str(reference["star_index"]["sjdb_overhang"]),
+            "--genome-sa-index-nbases",
+            str(reference["star_index"]["genome_sa_index_nbases"]),
+            "--star-bin",
+            star,
+            "--execute",
+        )
+        validator = _validator(
+            "star-index",
+            "--scope-id",
+            reference_id,
+            "--index-dir",
+            str(index_dir),
+            "--reference-fasta",
+            str(fasta),
+            "--reference-gtf",
+            str(gtf),
+            "--parameter-path-base",
+            str(run_root),
+            "--expected-sjdb-overhang",
+            str(reference["star_index"]["sjdb_overhang"]),
+            "--expected-genome-sa-index-nbases",
+            str(reference["star_index"]["genome_sa_index_nbases"]),
+            "--output",
+            str(validation),
+        )
+        return producer, validator, (fasta, gtf)
+
+    if step_id == "00b":
+        bed = _one(paths, "step00b_bed12_v1")
+        producer = controlled_python_argv(
+            sys.executable,
+            "-m",
+            "norad",
+            "convert",
+            "gtf-to-bed12",
+            "--gtf",
+            str(gtf),
+            "--bed",
+            str(bed),
+            "--execute",
+        )
+        validator = _validator(
+            "bed12",
+            "--scope-id",
+            reference_id,
+            "--bed12",
+            str(bed),
+            "--source-gtf",
+            str(gtf),
+            "--output",
+            str(validation),
+        )
+        return producer, validator, (gtf,)
+
+    if step_id == "00c":
+        fai = _one(paths, "step00c_reference_fai_v1")
+        dictionary = _one(paths, "step00c_reference_dict_v1")
+        producer = (
+            bash,
+            str(
+                source_root
+                / "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
+            ),
+            "--reference-fasta",
+            str(fasta),
+            "--samtools-bin",
+            samtools,
+            "--gatk-bin",
+            gatk,
+            "--java-bin",
+            java,
+            "--execute",
+        )
+        validator = _validator(
+            "fasta-sidecars",
+            "--scope-id",
+            reference_id,
+            "--reference-fasta",
+            str(fasta),
+            "--reference-fai",
+            str(fai),
+            "--reference-dict",
+            str(dictionary),
+            "--output",
+            str(validation),
+        )
+        return producer, validator, (fasta,)
+
+    if step_id in {"01", "02", "02b", "03", "04", "05", "06"}:
+        sample = sample_rows[scope_id]
+        star_bam = _one(all_paths["01", scope_id], "step01_star_bam_v1")
+        canonical_bam = _one(all_paths["02", scope_id], "step02_canonical_bam_v1")
+        canonical_bai = _one(all_paths["02", scope_id], "step02_canonical_bai_v1")
+        if step_id == "01":
+            index_paths = tuple(all_paths["00a", reference_id]["step00a_star_index_v1"])
+            index_dir = index_paths[0].parent
+            bam = _one(paths, "step01_star_bam_v1")
+            log_final = _one(paths, "step01_star_log_final_v1")
+            log_out = _one(paths, "step01_star_log_v1")
+            log_progress = _one(paths, "step01_star_log_progress_v1")
+            sj_out = _one(paths, "step01_star_sj_v1")
+            producer = (
+                bash,
+                str(
+                    source_root
+                    / "src/norad/stages/star_alignment/step_01_star_align.sh"
+                ),
+                "--sample-id",
+                scope_id,
+                "--r1-fastq",
+                str(sample["r1_fastq"]["path"]),
+                "--r2-fastq",
+                str(sample["r2_fastq"]["path"]),
+                "--star-index",
+                str(index_dir),
+                "--output-dir",
+                str(bam.parent),
+                "--threads",
+                "1",
+                "--star-bin",
+                star,
+                "--no-clobber",
+                "--execute",
+            )
+            validator = _validator(
+                "star-alignment",
+                "--scope-id",
+                scope_id,
+                "--bam",
+                str(bam),
+                "--log-final",
+                str(log_final),
+                "--log-out",
+                str(log_out),
+                "--log-progress",
+                str(log_progress),
+                "--sj-out",
+                str(sj_out),
+                "--output",
+                str(validation),
+            )
+            return (
+                producer,
+                validator,
+                (
+                    Path(str(sample["r1_fastq"]["path"])),
+                    Path(str(sample["r2_fastq"]["path"])),
+                    *index_paths,
+                ),
+            )
+        if step_id == "02":
+            bam = _one(paths, "step02_canonical_bam_v1")
+            bai = _one(paths, "step02_canonical_bai_v1")
+            producer = (
+                bash,
+                str(
+                    source_root
+                    / "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh"
+                ),
+                "--sample-id",
+                scope_id,
+                "--input-alignment",
+                str(star_bam),
+                "--output-dir",
+                str(bam.parent),
+                "--threads",
+                "1",
+                "--samtools-bin",
+                samtools,
+                "--no-clobber",
+                "--execute",
+            )
+            validator = _validator(
+                "canonical-bam",
+                "--scope-id",
+                scope_id,
+                "--bam",
+                str(bam),
+                "--bai",
+                str(bai),
+                "--samtools-bin",
+                samtools,
+                "--output",
+                str(validation),
+            )
+            return producer, validator, (star_bam,)
+        if step_id == "02b":
+            quickcheck = _one(paths, "step02b_quickcheck_v1")
+            flagstat = _one(paths, "step02b_flagstat_v1")
+            producer = (
+                bash,
+                str(
+                    source_root
+                    / "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
+                ),
+                "--sample-id",
+                scope_id,
+                "--bam",
+                str(canonical_bam),
+                "--output-dir",
+                str(quickcheck.parent),
+                "--samtools-bin",
+                samtools,
+                "--no-clobber",
+                "--execute",
+            )
+            validator = _validator(
+                "canonical-bam-qc",
+                "--scope-id",
+                scope_id,
+                "--quickcheck",
+                str(quickcheck),
+                "--flagstat",
+                str(flagstat),
+                "--output",
+                str(validation),
+            )
+            return producer, validator, (canonical_bam, canonical_bai)
+        if step_id == "03":
+            infer = _one(paths, "step03_rseqc_infer_v1")
+            bed = _one(all_paths["00b", reference_id], "step00b_bed12_v1")
+            producer = (
+                bash,
+                str(
+                    source_root
+                    / "src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
+                ),
+                "--sample-id",
+                scope_id,
+                "--input-bam",
+                str(canonical_bam),
+                "--bed12",
+                str(bed),
+                "--output-dir",
+                str(infer.parent),
+                "--infer-experiment-bin",
+                infer_experiment,
+                "--no-clobber",
+                "--execute",
+            )
+            validator = _validator(
+                "rseqc-orientation",
+                "--scope-id",
+                scope_id,
+                "--infer-report",
+                str(infer),
+                "--output",
+                str(validation),
+            )
+            return producer, validator, (canonical_bam, canonical_bai, bed)
+        if step_id == "04":
+            bam = _one(paths, "step04_markdup_bam_v1")
+            bai = _one(paths, "step04_markdup_bai_v1")
+            metrics = _one(paths, "step04_markdup_metrics_v1")
+            producer = (
+                bash,
+                str(
+                    source_root
+                    / "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh"
+                ),
+                "--sample-id",
+                scope_id,
+                "--input-bam",
+                str(canonical_bam),
+                "--output-dir",
+                str(bam.parent),
+                "--metrics-dir",
+                str(metrics.parent),
+                "--picard-jar",
+                picard_jar,
+                "--java-bin",
+                java,
+                "--samtools-bin",
+                samtools,
+                "--no-clobber",
+                "--execute",
+            )
+            validator = _validator(
+                "duplicate-marking",
+                "--scope-id",
+                scope_id,
+                "--bam",
+                str(bam),
+                "--bai",
+                str(bai),
+                "--metrics",
+                str(metrics),
+                "--samtools-bin",
+                samtools,
+                "--output",
+                str(validation),
+            )
+            return producer, validator, (canonical_bam, canonical_bai, Path(picard_jar))
+        if step_id == "05":
+            markdup_bam = _one(all_paths["04", scope_id], "step04_markdup_bam_v1")
+            markdup_bai = _one(all_paths["04", scope_id], "step04_markdup_bai_v1")
+            bam = _one(paths, "step05_split_bam_v1")
+            bai = _one(paths, "step05_split_bai_v1")
+            fai = _one(all_paths["00c", reference_id], "step00c_reference_fai_v1")
+            dictionary = _one(
+                all_paths["00c", reference_id], "step00c_reference_dict_v1"
+            )
+            producer = (
+                bash,
+                str(
+                    source_root
+                    / "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
+                ),
+                "--sample-id",
+                scope_id,
+                "--input-bam",
+                str(markdup_bam),
+                "--reference-fasta",
+                str(fasta),
+                "--output-dir",
+                str(bam.parent),
+                "--gatk-bin",
+                gatk,
+                "--samtools-bin",
+                samtools,
+                "--java-bin",
+                java,
+                "--no-clobber",
+                "--execute",
+            )
+            validator = _validator(
+                "split-n-cigar",
+                "--scope-id",
+                scope_id,
+                "--bam",
+                str(bam),
+                "--bai",
+                str(bai),
+                "--reference-fasta",
+                str(fasta),
+                "--reference-fai",
+                str(fai),
+                "--reference-dict",
+                str(dictionary),
+                "--samtools-bin",
+                samtools,
+                "--output",
+                str(validation),
+            )
+            return (
+                producer,
+                validator,
+                (markdup_bam, markdup_bai, fasta, fai, dictionary),
+            )
+        split_bam = _one(all_paths["05", scope_id], "step05_split_bam_v1")
+        split_bai = _one(all_paths["05", scope_id], "step05_split_bai_v1")
+        fwd = _one(paths, "step06_fwd_bam_v1")
+        fwd_bai = _one(paths, "step06_fwd_bai_v1")
+        rev = _one(paths, "step06_rev_bam_v1")
+        rev_bai = _one(paths, "step06_rev_bai_v1")
+        counts = _one(paths, "step06_orientation_counts_v1")
+        producer = (
+            bash,
+            str(
+                source_root
+                / "src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh"
+            ),
+            "--sample-id",
+            scope_id,
+            "--input-bam",
+            str(split_bam),
+            "--output-dir",
+            str(fwd.parent),
+            "--qc-dir",
+            str(counts.parent),
+            "--threads",
+            "1",
+            "--samtools-bin",
+            samtools,
+            "--no-clobber",
+            "--execute",
+        )
+        validator = _validator(
+            "mechanical-orientation",
+            "--scope-id",
+            scope_id,
+            "--fwd-bam",
+            str(fwd),
+            "--fwd-bai",
+            str(fwd_bai),
+            "--rev-bam",
+            str(rev),
+            "--rev-bai",
+            str(rev_bai),
+            "--counts",
+            str(counts),
+            "--output",
+            str(validation),
+        )
+        return producer, validator, (split_bam, split_bai)
+
+    if step_id == "07":
+        partition_id = scope_id.removeprefix(f"{cohort_id}__")
+        partition = partition_rows[partition_id]
+        vcf_paths = paths["step07_mpileup_vcf_v1"]
+        if len(vcf_paths) != 2:
+            raise MaterializationError("Step 07 requires exactly two orientation VCFs")
+        fwd, rev = vcf_paths
+        if "REV_like" in fwd.name:
+            fwd, rev = rev, fwd
+        receipt = _one(paths, "step07_mpileup_receipt_v1")
+        orientation_inputs: list[Path] = []
+        for sample_id in sample_rows:
+            orientation = all_paths["06", sample_id]
+            orientation_inputs.extend(
+                (
+                    _one(orientation, "step06_fwd_bam_v1"),
+                    _one(orientation, "step06_fwd_bai_v1"),
+                    _one(orientation, "step06_rev_bam_v1"),
+                    _one(orientation, "step06_rev_bai_v1"),
+                )
+            )
+        fai = _one(all_paths["00c", reference_id], "step00c_reference_fai_v1")
+        producer = (
+            bash,
+            str(
+                source_root
+                / "src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh"
+            ),
+            "--cohort-id",
+            cohort_id,
+            "--sample-manifest",
+            str(sample_manifest),
+            "--partition-manifest",
+            str(partition_manifest),
+            "--partition-id",
+            partition_id,
+            "--orientation-root",
+            str(run_root / "results/orientation"),
+            "--reference-fasta",
+            str(fasta),
+            "--output-root",
+            str(run_root / "results/mpileup"),
+            "--bcftools-bin",
+            bcftools,
+            "--no-clobber",
+            "--execute",
+        )
+        validator = _validator(
+            "partitioned-cohort-mpileup",
+            "--cohort-id",
+            cohort_id,
+            "--partition-id",
+            partition_id,
+            "--sample-manifest",
+            str(sample_manifest),
+            "--partition-manifest",
+            str(partition_manifest),
+            "--reference-fai",
+            str(fai),
+            "--fwd-vcf",
+            str(fwd),
+            "--rev-vcf",
+            str(rev),
+            "--receipt",
+            str(receipt),
+            "--output",
+            str(validation),
+        )
+        selector = partition.get("selector_file")
+        selector_inputs = () if selector is None else (Path(str(selector["path"])),)
+        return (
+            producer,
+            validator,
+            (
+                sample_manifest,
+                partition_manifest,
+                fasta,
+                fai,
+                *selector_inputs,
+                *orientation_inputs,
+            ),
+        )
+
+    if step_id == "08":
+        sites = _one(paths, "step08_sites_v1")
+        inputs = _one(paths, "step08_inputs_v1")
+        summary = _one(paths, "step08_summary_v1")
+        step07_inputs = tuple(
+            path
+            for partition_id in partition_rows
+            for adapter in ("step07_mpileup_vcf_v1", "step07_mpileup_receipt_v1")
+            for path in all_paths["07", f"{cohort_id}__{partition_id}"][adapter]
+        )
+        arguments = (
+            "--cohort-id",
+            cohort_id,
+            "--sample-manifest",
+            str(sample_manifest),
+            "--partition-manifest",
+            str(partition_manifest),
+            "--step07-root",
+            str(run_root / "results/mpileup"),
+            "--annotation-gtf",
+            str(gtf),
+            "--output-root",
+            str(run_root / "results/vcf_preprocessed"),
+            "--qc-root",
+            str(run_root / "results/qc/vcf_preprocessing"),
+            "--rscript-bin",
+            rscript,
+            "--r-script",
+            str(
+                source_root
+                / "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
+            ),
+            "--no-clobber",
+            "--execute",
+        )
+        producer = _r_owner_command(
+            bash,
+            source_root,
+            source_root
+            / "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
+            arguments,
+        )
+        validator = _validator(
+            "cohort-candidate-preprocessing",
+            "--cohort-id",
+            cohort_id,
+            "--sample-manifest",
+            str(sample_manifest),
+            "--partition-manifest",
+            str(partition_manifest),
+            "--annotation-gtf",
+            str(gtf),
+            "--sites",
+            str(sites),
+            "--inputs",
+            str(inputs),
+            "--summary",
+            str(summary),
+            "--output",
+            str(validation),
+        )
+        return (
+            producer,
+            validator,
+            (sample_manifest, partition_manifest, gtf, *step07_inputs),
+        )
+
+    if step_id == "09":
+        sites = _one(all_paths["08", cohort_id], "step08_sites_v1")
+        inputs = _one(all_paths["08", cohort_id], "step08_inputs_v1")
+        summary08 = _one(all_paths["08", cohort_id], "step08_summary_v1")
+        all_sites = _one(paths, "step09_cmh_all_sites_v1")
+        significant = _one(paths, "step09_cmh_significant_sites_v1")
+        summary = _one(paths, "step09_cmh_summary_v1")
+        mutation = _one(paths, "step09_mutation_spectrum_tsv_v1")
+        mutation_pdf = _one(paths, "step09_mutation_spectrum_pdf_v1")
+        depth_pdf = _one(paths, "step09_depth_delta_pdf_v1")
+        arguments = [
+            "--analysis-id",
+            str(analysis["primary_analysis_id"]),
+            "--cohort-id",
+            cohort_id,
+            "--sample-manifest",
+            str(sample_manifest),
+            "--partition-manifest",
+            str(partition_manifest),
+            "--step08-root",
+            str(run_root / "results/vcf_preprocessed"),
+            "--output-root",
+            str(run_root / "results/editing"),
+            "--control-condition",
+            str(policy["control_condition"]),
+            "--treatment-condition",
+            str(policy["treatment_condition"]),
+            "--rna-ref",
+            str(policy["rna_ref"]),
+            "--rna-alt",
+            str(policy["rna_alt"]),
+            "--min-sample-dp",
+            str(policy["min_sample_dp"]),
+            "--mean-dp-threshold",
+            str(policy["mean_dp_threshold"]),
+            "--fdr-threshold",
+            str(policy["fdr_threshold"]),
+            "--common-or-threshold",
+            str(policy["common_or_threshold"]),
+            "--absolute-difference-threshold",
+            str(policy["absolute_difference_threshold"]),
+            "--background-max-fraction",
+            str(policy["background_max_fraction"]),
+            "--rscript-bin",
+            rscript,
+            "--r-script",
+            str(
+                source_root
+                / "src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R"
+            ),
+            "--no-clobber",
+            "--execute",
+        ]
+        if policy["background_condition"] is not None:
+            arguments.extend(
+                ("--background-condition", str(policy["background_condition"]))
+            )
+        producer = _r_owner_command(
+            bash,
+            source_root,
+            source_root
+            / "src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh",
+            arguments,
+        )
+        validator = _validator(
+            "paired-cmh-candidate-ranking",
+            "--analysis-id",
+            str(analysis["primary_analysis_id"]),
+            "--cohort-id",
+            cohort_id,
+            "--sample-manifest",
+            str(sample_manifest),
+            "--partition-manifest",
+            str(partition_manifest),
+            "--step08-sites",
+            str(sites),
+            "--step08-inputs",
+            str(inputs),
+            "--all-sites",
+            str(all_sites),
+            "--significant-sites",
+            str(significant),
+            "--summary",
+            str(summary),
+            "--mutation-spectrum",
+            str(mutation),
+            "--mutation-spectrum-pdf",
+            str(mutation_pdf),
+            "--depth-delta-pdf",
+            str(depth_pdf),
+            "--output",
+            str(validation),
+        )
+        return (
+            producer,
+            validator,
+            (sample_manifest, partition_manifest, sites, inputs, summary08),
+        )
+
+    raise MaterializationError(f"Unsupported fixed-profile Step: {step_id}")
+
+
+def _dispatches(
+    normalized: NormalizationBundle,
+    readiness: doctor.DoctorResult,
+    run_root: Path,
+    attempt_id: str,
+    compact_time: str,
+    retained: Mapping[tuple[str, str], dict[str, str]],
+) -> tuple[
+    tuple[PlannedFile, ...], dict[str, dict[str, dict[str, str]]], tuple[Path, ...]
+]:
+    inventory = _artifact_rows(normalized, run_root)
+    paths_by_scope: dict[tuple[str, str], dict[str, list[Path]]] = {}
+    for key, rows in inventory.items():
+        adapters: dict[str, list[Path]] = {}
+        for row in rows:
+            adapters.setdefault(str(row["adapter"]), []).append(row["path"])
+        paths_by_scope[key] = adapters
+    runtime = _runtime_observations(readiness)
+    planned: list[PlannedFile] = []
+    references: dict[str, dict[str, dict[str, str]]] = {}
+    directories: set[Path] = set()
+    expected = inspection.expected_tasks(
+        normalized.execution_contract, normalized.profile
+    )
+    owners = {
+        str(item["machine_key"]): item for item in normalized.profile["owner_tasks"]
+    }
+    for index, task in enumerate(expected, start=1):
+        identity = (task.machine_key, task.scope_id)
+        references.setdefault(task.machine_key, {})
+        if identity in retained:
+            references[task.machine_key][task.scope_id] = dict(retained[identity])
+            continue
+        owner = owners[task.machine_key]
+        step_id = str(owner["step_id"])
+        adapters = paths_by_scope[step_id, task.scope_id]
+        validation = next(
+            path
+            for adapter, values in adapters.items()
+            if adapter.endswith("_validation_report_v1")
+            for path in values
+        )
+        outputs = tuple(
+            path
+            for adapter, values in adapters.items()
+            if not adapter.endswith("_validation_report_v1")
+            and adapter != "step00c_reference_fasta_v1"
+            for path in values
+        )
+        producer, validator, inputs = _task_commands(
+            step_id=step_id,
+            scope_id=task.scope_id,
+            paths=adapters,
+            execution=normalized.execution_contract,
+            run_root=run_root,
+            source_root=readiness.source_root,
+            runtime=runtime,
+            all_paths=paths_by_scope,
+        )
+        suffix = hashlib.sha256(
+            f"{attempt_id}:{task.machine_key}:{task.scope_id}".encode()
+        ).hexdigest()[:32]
+        task_id = f"task-{compact_time}-{suffix}"
+        task_root = (
+            run_root
+            / "attempts"
+            / attempt_id
+            / "tasks"
+            / task.machine_key
+            / task.scope_id
+        )
+        dispatch_path = (
+            run_root
+            / "contract"
+            / "dispatch"
+            / attempt_id
+            / task.machine_key
+            / f"{task.scope_id}.json"
+        )
+        record = {
+            "schema_version": "norad.local-task-dispatch.v1",
+            "run_root": str(run_root),
+            "execution_path": str(run_root / "contract/normalized.json"),
+            "profile_path": str(run_root / "contract/profile.json"),
+            "workflow_attempt_id": attempt_id,
+            "task_attempt_id": task_id,
+            "owner_run_token": f"owner-{suffix}",
+            "machine_key": task.machine_key,
+            "scope": task.scope,
+            "producer_argv": list(producer),
+            "validator_argv": list(validator),
+            "inputs": [
+                {"role": f"input_{input_index:03d}", "path": str(path)}
+                for input_index, path in enumerate(inputs, start=1)
+            ],
+            "outputs": [
+                {"role": f"output_{output_index:03d}", "path": str(path)}
+                for output_index, path in enumerate(outputs, start=1)
+            ],
+            "validation_report_path": str(validation),
+            "native_receipt_path": None,
+            "task_start_path": str(
+                run_root
+                / "state"
+                / "task-starts"
+                / task.machine_key
+                / f"{task.scope_id}.json"
+            ),
+            "task_attempt_path": str(task_root / "task-attempt.json"),
+            "verified_task_path": str(
+                run_root
+                / "state"
+                / "verified"
+                / task.machine_key
+                / f"{task.scope_id}.json"
+            ),
+            "stdout_path": str(task_root / "stdout.log"),
+            "stderr_path": str(task_root / "stderr.log"),
+        }
+        data = orchestration_contracts.canonical_json_bytes(record)
+        planned.append(PlannedFile(dispatch_path, data))
+        references[task.machine_key][task.scope_id] = {
+            "path": str(dispatch_path),
+            "sha256": _sha256(data),
+        }
+        directories.update(
+            {
+                dispatch_path.parent,
+                validation.parent,
+                *(path.parent for path in outputs if run_root in path.parents),
+                run_root / "state" / "task-starts" / task.machine_key,
+                run_root / "state" / "verified" / task.machine_key,
+            }
+        )
+    return tuple(planned), references, tuple(sorted(directories))
+
+
+def build_attempt_plan(
+    normalized: NormalizationBundle,
+    readiness: doctor.DoctorResult,
+    workspace: Path,
+    *,
+    operation: Operation,
+    now: datetime | None = None,
+    token: str | None = None,
+    host: str | None = None,
+    process_id: int | None = None,
+    supersedes_workflow_attempt_id: str | None = None,
+    retained_dispatches: Mapping[tuple[str, str], dict[str, str]] | None = None,
+) -> AttemptPlan:
+    """Build one complete attempt without touching the filesystem."""
+
+    if not readiness.ready:
+        raise MaterializationError("Local-pilot readiness has unresolved blockers")
+    if readiness.run_id != normalized.run_id:
+        raise MaterializationError(
+            "Doctor and normalization resolved different run IDs"
+        )
+    if readiness.source_commit is None:
+        raise MaterializationError("Doctor did not admit one exact source commit")
+    if operation == "execute" and supersedes_workflow_attempt_id is not None:
+        raise MaterializationError("Initial execution may not supersede an attempt")
+    if operation == "resume" and supersedes_workflow_attempt_id is None:
+        raise MaterializationError("Resume requires its exact predecessor attempt")
+    compact, created_at = _timestamp(datetime.now(UTC) if now is None else now)
+    suffix = (uuid.uuid4().hex if token is None else token).lower()
+    if len(suffix) != 32 or any(value not in "0123456789abcdef" for value in suffix):
+        raise MaterializationError(
+            "Attempt token must contain exactly 32 hex characters"
+        )
+    attempt_id = f"workflow-{compact}-{suffix}"
+    owner_token = f"workflow-owner-{suffix}"
+    workspace_path = _absolute(workspace)
+    run_root = workspace_path / "runs" / normalized.run_id
+    source_root = readiness.source_root
+    fixed_profile = source_root / PROFILE_RELATIVE
+    if normalized.profile != orchestration_contracts.load_json_object(fixed_profile):
+        raise MaterializationError("Normalization did not use the fixed source profile")
+    runtime_profile_path = run_root / "contract" / "runtime-profile.tsv"
+    required_tools = doctor.required_tool_identities(
+        readiness.inspection,
+        python_executable=Path(sys.executable),
+        runtime_profile_path=runtime_profile_path,
+    )
+    retained = {} if retained_dispatches is None else dict(retained_dispatches)
+    dispatch_files, dispatch_references, dispatch_directories = _dispatches(
+        normalized,
+        readiness,
+        run_root,
+        attempt_id,
+        compact,
+        retained,
+    )
+    reporting = build_reporting_bundle(
+        normalized.execution_contract, normalized.profile
+    )
+    projection_data = {
+        "reference_contract": reporting.reference_contract_bytes,
+        "primary_analysis_policy": reporting.primary_analysis_policy_bytes,
+        "reporting_run_contract": reporting.reporting_run_contract_bytes,
+        "artifact_inventory": reporting.artifact_inventory_bytes,
+    }
+    fixed_files = [
+        PlannedFile(run_root / "contract/normalized.json", normalized.normalized_bytes),
+        PlannedFile(
+            run_root / "contract/profile.json",
+            orchestration_contracts.canonical_json_bytes(normalized.profile),
+        ),
+        PlannedFile(runtime_profile_path, readiness.inspection.profile_bytes),
+    ]
+    for name, reference in normalized.execution_contract[
+        "reporting_projection"
+    ].items():
+        fixed_files.append(
+            PlannedFile(run_root / str(reference["path"]), projection_data[name])
+        )
+    config = {
+        "run_root": str(run_root),
+        "python_executable": sys.executable,
+        "execution_path": str(run_root / "contract/normalized.json"),
+        "profile_path": str(run_root / "contract/profile.json"),
+        "workflow_attempt_id": attempt_id,
+        "source_checkout": str(source_root),
+        "artifact_source_root": str(run_root),
+        "reference_contract_path": str(
+            run_root
+            / normalized.execution_contract["reporting_projection"][
+                "reference_contract"
+            ]["path"]
+        ),
+        "primary_analysis_policy_path": str(
+            run_root
+            / normalized.execution_contract["reporting_projection"][
+                "primary_analysis_policy"
+            ]["path"]
+        ),
+        "reporting_run_contract_path": str(
+            run_root
+            / normalized.execution_contract["reporting_projection"][
+                "reporting_run_contract"
+            ]["path"]
+        ),
+        "artifact_inventory_path": str(
+            run_root
+            / normalized.execution_contract["reporting_projection"][
+                "artifact_inventory"
+            ]["path"]
+        ),
+        "dispatch_paths": dispatch_references,
+    }
+    config_data = orchestration_contracts.canonical_json_bytes(config)
+    config_path = run_root / "contract" / "workflow-configs" / f"{attempt_id}.json"
+    attempt_argv = lifecycle.build_snakemake_argv(
+        python_executable=Path(sys.executable),
+        snakefile=source_root / SNAKEFILE_RELATIVE,
+        workflow_profile=source_root / WORKFLOW_PROFILE_RELATIVE,
+        configfile=config_path,
+        run_root=run_root,
+        target=TARGET,
+        operation=operation,
+    )
+    request = normalized.request
+    attempt = {
+        "schema_version": "norad.workflow-attempt.v1",
+        "run_id": normalized.run_id,
+        "execution_contract_sha256": _sha256(normalized.normalized_bytes),
+        "profile_sha256": _sha256(
+            orchestration_contracts.canonical_json_bytes(normalized.profile)
+        ),
+        "workflow_attempt_id": attempt_id,
+        "supersedes_workflow_attempt_id": supersedes_workflow_attempt_id,
+        "operation": operation,
+        "created_at": created_at,
+        "request": {
+            "path": str(run_root / "attempts" / attempt_id / "request.yaml"),
+            "size_bytes": len(normalized.request_bytes),
+            "sha256": normalized.request_sha256,
+        },
+        "request_label": request.get("label"),
+        "authored_paths": {
+            "request": str(normalized.request_path),
+            "sample_manifest": str(request["sample_manifest"]),
+            "partition_manifest": str(request["partition_manifest"]),
+            "reference_fasta": str(request["reference"]["fasta"]),
+            "reference_gtf": str(request["reference"]["gtf"]),
+            "analysis_policy": None,
+        },
+        "normalizer": {"name": "norad", "version": __version__, "path": sys.executable},
+        "workspace": str(workspace_path),
+        "scratch": None,
+        "source_checkout": {
+            "path": str(source_root),
+            "commit": readiness.source_commit,
+            "clean": True,
+        },
+        "executor": "local",
+        "execution_mode": "local-science-tools",
+        "snakemake_argv": list(attempt_argv),
+        "workflow_config": {
+            "path": config_path.relative_to(run_root).as_posix(),
+            "sha256": _sha256(config_data),
+        },
+        "host": socket.gethostname() if host is None else host,
+        "process_id": os.getpid() if process_id is None else process_id,
+        "owner_token": owner_token,
+        "cores": 1,
+        "required_tools": list(required_tools),
+    }
+    orchestration_contracts.validate_record("workflow-attempt", attempt)
+    attempt_files = (*dispatch_files, PlannedFile(config_path, config_data))
+    directories = {
+        run_root / "contract",
+        run_root / "contract" / "workflow-configs",
+        run_root / "contract" / "dispatch" / attempt_id,
+        run_root / "products" / "artifact-summary",
+        run_root / "products" / "report",
+        *dispatch_directories,
+        *(item.path.parent for item in fixed_files),
+        *(item.path.parent for item in attempt_files),
+    }
+    preparation = lifecycle.AttemptPreparation(
+        run_root=run_root,
+        run_id=normalized.run_id,
+        workflow_attempt_id=attempt_id,
+        owner_token=owner_token,
+        host=str(attempt["host"]),
+        process_id=int(attempt["process_id"]),
+        created_at=created_at,
+    )
+    return AttemptPlan(
+        normalized=normalized,
+        readiness=readiness,
+        operation=operation,
+        workspace=workspace_path,
+        run_root=run_root,
+        workflow_attempt_id=attempt_id,
+        supersedes_workflow_attempt_id=supersedes_workflow_attempt_id,
+        preparation=preparation,
+        attempt_record=attempt,
+        fixed_files=tuple(fixed_files),
+        attempt_files=tuple(attempt_files),
+        directories=tuple(sorted(directories)),
+        dispatch_count=len(
+            inspection.expected_tasks(normalized.execution_contract, normalized.profile)
+        ),
+    )
+
+
+def initialize_run(plan: AttemptPlan, *, ops: lifecycle.LifecycleOps) -> None:
+    """Create only the new aggregate run skeleton before lock acquisition."""
+
+    if plan.operation != "execute":
+        raise MaterializationError("Only an initial execution may initialize a run")
+    for directory in (plan.workspace, plan.workspace / "runs"):
+        try:
+            directory.mkdir(mode=0o700)
+        except FileExistsError:
+            if directory.is_symlink() or not directory.is_dir():
+                raise MaterializationError(
+                    f"Run parent is not a real directory: {directory}"
+                )
+    try:
+        plan.run_root.mkdir(mode=0o700)
+    except FileExistsError as exc:
+        raise MaterializationError(f"Run root already exists: {plan.run_root}") from exc
+    for directory in (
+        plan.run_root / "attempts",
+        plan.run_root / "locks",
+        plan.run_root / "state",
+    ):
+        directory.mkdir(mode=0o700)
+        ops.sync_directory(directory, "new run namespace")
+    ops.sync_directory(plan.run_root, "new run root")
+    ops.sync_directory(plan.run_root.parent, "workspace runs directory")
+
+
+def _create_directory(path: Path, run_root: Path, ops: lifecycle.LifecycleOps) -> None:
+    _within(path, run_root, "Materialized directory")
+    missing: list[Path] = []
+    cursor = path
+    while cursor != run_root and not cursor.exists() and not cursor.is_symlink():
+        missing.append(cursor)
+        cursor = cursor.parent
+    if cursor.is_symlink() or not cursor.is_dir():
+        raise MaterializationError(f"Directory ancestor is not real: {cursor}")
+    for directory in reversed(missing):
+        directory.mkdir(mode=0o700)
+        ops.sync_directory(directory, "materialized workflow directory")
+        ops.sync_directory(directory.parent, "materialized workflow parent")
+    if path.is_symlink() or not path.is_dir():
+        raise MaterializationError(f"Materialized path is not a real directory: {path}")
+
+
+def _verify_file(path: Path, expected: bytes) -> None:
+    if path.is_symlink() or not path.is_file() or path.read_bytes() != expected:
+        raise MaterializationError(f"Immutable run contract differs: {path}")
+
+
+def publish_attempt(
+    plan: AttemptPlan,
+    *,
+    ops: lifecycle.LifecycleOps,
+) -> lifecycle.LifecycleRequest:
+    """Publish the plan under an already-owned lifecycle run lock."""
+
+    for directory in plan.directories:
+        _create_directory(directory, plan.run_root, ops)
+    for item in plan.fixed_files:
+        if item.path.exists() or item.path.is_symlink():
+            _verify_file(item.path, item.data)
+        else:
+            ops.publish_bytes(item.path, item.data)
+    for item in plan.attempt_files:
+        if item.path.exists() or item.path.is_symlink():
+            raise MaterializationError(
+                f"Attempt-specific path already exists: {item.path}"
+            )
+        ops.publish_bytes(item.path, item.data)
+    return lifecycle.LifecycleRequest(
+        run_root=plan.run_root,
+        execution_path=plan.execution_path,
+        profile_path=plan.profile_path,
+        workflow_config_path=plan.config_path,
+        snakefile=plan.readiness.source_root / SNAKEFILE_RELATIVE,
+        python_executable=Path(sys.executable),
+        workflow_profile=plan.readiness.source_root / WORKFLOW_PROFILE_RELATIVE,
+        target=TARGET,
+        operation=plan.operation,
+        attempt_record=plan.attempt_record,
+        request_source_path=plan.normalized.request_path,
+    )
+
+
+__all__ = (
+    "AttemptPlan",
+    "MaterializationError",
+    "PlannedFile",
+    "build_attempt_plan",
+    "initialize_run",
+    "publish_attempt",
+)

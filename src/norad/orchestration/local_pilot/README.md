@@ -1,6 +1,6 @@
 # Local-pilot orchestration boundary
 
-This owner exposes three narrow, read-only public APIs:
+This owner exposes three narrow, read-only admission APIs:
 
 - `normalization.normalize_request(request_path, profile)` safely admits one
   YAML request plus its ordered TSV manifests and returns a canonical,
@@ -27,6 +27,32 @@ Exit `0` means every declared readiness check passed, exit `1` reports exact
 readiness blockers and remediation routes, and exit `2` identifies malformed
 or unsafe input. Even exit `0` is only local readiness evidence: no workflow,
 scientific tool, scheduler, or cluster job ran.
+
+B5 adds the source-checkout-bound public control surface. Every mutating route
+requires the controlled Python runtime, is dry-run-first, and delegates owner
+work only through the accepted fixed profile:
+
+```bash
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad run \
+  --request /absolute/path/to/request.yaml \
+  --workspace /absolute/path/to/workspace \
+  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
+
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad inspect \
+  local-pilot-run --run-root /absolute/path/to/workspace/runs/run-DIGEST
+
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad resume \
+  --run-root /absolute/path/to/workspace/runs/run-DIGEST \
+  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
+```
+
+`run` and `resume` print the exact owner and Snakemake plan and write nothing
+unless `--execute` is present. `inspect local-pilot-run` is always read-only.
+The direct public Python surface is `control.plan_run`, `plan_resume`, and
+`execute_plan`, backed by the single production owner
+`materialization.build_attempt_plan`; tests pass explicit collaborators rather
+than monkeypatching module globals. Exact setup and execution order lives in
+the [runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-execution).
 
 The neutral
 `norad.contracts.orchestration.projection.project_reporting(...)` API
@@ -61,12 +87,13 @@ evidence, and publishes a verified-task record only after complete success.
 The fixed profile and local Snakemake graph live under
 [`workflow/`](../../../../workflow/README.md).
 
-B4 adds internal direct lifecycle APIs, still without a public lifecycle command:
+B4 supplies the internal lifecycle authorities used by the B5 public adapter:
 
 - `lifecycle.run_attempt(...)` owns one create-exclusive aggregate run lock,
   immutable attempt record, exact reviewed Snakefile and absolute workflow
   profile, the same content-admitted Python runtime running
-  `-I -m snakemake`, new-process-group invocation, clean signal forwarding,
+  `-X pycache_prefix=/dev/null -I -m snakemake`, new-process-group invocation,
+  clean signal forwarding,
   semantic task/report transaction revalidation, retained released-lock
   evidence, exact producer-entry/reporting ledgers, recursively closed
   attempt-local task evidence, and the terminal attempt receipt published last;
@@ -103,6 +130,8 @@ blocks on that evidence and never repairs or removes it.
 The adjacent neutral [machine contracts](../../contracts/orchestration/README.md)
 define request, profile, normalized execution, lock, attempt, receipt,
 task-start/task-attempt/verified-task, and reporting-ledger record shapes. No
-run materializer, public run/resume/inspection lifecycle command, real-tool
-execution adapter, or automatic owner-recovery mechanism is implemented here.
+automatic owner-recovery mechanism is implemented. B5 materializes only the
+fixed source-checkout profile and public owner commands; the no-science
+failure/resume test proves this adapter, while real-tool, VM, SLURM, CSU,
+scientific-review, and biological evidence remain unclaimed.
 See [`CONTRACT.md`](CONTRACT.md) for the exact boundary.

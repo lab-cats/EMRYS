@@ -411,6 +411,7 @@ def tsv_rows_for(
                 "gtf_identity",
                 "contig_names_lengths",
                 "sjdb_overhang",
+                "genome_sa_index_nbases",
             )
             if adapter == "step00a_validation_report_v1"
             else (

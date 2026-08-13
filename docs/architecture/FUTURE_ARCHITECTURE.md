@@ -28,20 +28,18 @@ choices remain in [`QUESTIONS.md`](../design/QUESTIONS.md).
 
 | Capability | Preserved boundary | Not decided or implemented |
 | --- | --- | --- |
-| Local YAML+TSV lifecycle | B2 implements closed request/profile/execution/lifecycle schemas plus read-only safe-YAML normalization, content identity, and deterministic reporting projection. B4 implements immutable workflow-attempt publication/finalization and read-only derived inspection for already materialized runs. | Request-to-run materialization and public lifecycle commands are not implemented. There is no version 1 request queue or watcher. |
-| Local orchestration | B3 implements the fixed local-CMH profile, thirteen-scientific-owner-rule static Snakemake graph, local executor profile, hash-bound dispatch task boundary, task-attempt publication, and content-bound verified records. B4 adds durable producer-entry ledgers, three ordered reporting rules, internal failure/interruption handling, between-task resume, and semantic completion. Reference, one-sample, cohort, and reporting slices are proven with no-science test doubles. | The public lifecycle adapter, reconciliation after an entered scope fails, and real science-tool execution are not implemented. |
+| Local YAML+TSV lifecycle | B2 implements closed request/profile/execution/lifecycle schemas plus read-only safe-YAML normalization, content identity, and deterministic reporting projection. B4 implements immutable workflow-attempt publication/finalization and read-only derived inspection. B5 adds request-to-run materialization and public dry-run-first run/resume/inspection commands. | There is no version 1 request queue or watcher. Fresh-clone onboarding remains unproven. |
+| Local orchestration | B3 implements the fixed local-CMH profile, thirteen-scientific-owner-rule static Snakemake graph, local executor profile, hash-bound dispatch task boundary, task-attempt publication, and content-bound verified records. B4 adds durable producer-entry ledgers, three ordered reporting rules, internal failure/interruption handling, between-task resume, and semantic completion. B5 binds the production command projection and public adapter. Reference, one-sample, cohort, reporting, and public failure/resume slices are proven with no-science test doubles. | Reconciliation after an entered scope fails and real science-tool execution are not implemented. |
 | Site execution | Local profile semantics must remain separate from executor/site configuration and cluster evidence. | SLURM, a local VM, CSU profile, accounting, storage, modules, and scheduler-specific recovery remain deferred choices. |
 | Report profiles | Preserve explicit inputs, format-neutral semantics, static deterministic rendering, transactional publication, and no evidence promotion. | Science/comprehensive names, selector, field roster, default, and multi-profile transaction. |
 | Logging | Keep concise human output distinct from durable diagnostics; never alter computation, publication, recovery, evidence, or exits based on verbosity. | Controls, event schema, storage layout, stream policy, redaction, and scheduler integration. |
 | Analysis extensions | Require typed inputs/outputs, dependencies, validation, provenance, failure semantics, and explicit trust level. | Profile/module schema, loader, registration, custom-analysis trust, and optional outcome policy. |
 | Public acquisition | Keep reference and read acquisition separate; preserve accession/version, hashes, provenance, cache, retry, and storage identity. | Exact NCBI/SRA endpoints and later ENA/GEO/BAM scope. |
-| Installable control plane | Remain thin, filesystem-first, and dependency-noninstalling; materialize immutable run-bound scheduler assets. | Commands, APIs, package metadata, asset distribution, and versioning commitments. |
+| Standalone wheel control plane | Remain thin, filesystem-first, and dependency-noninstalling; retain immutable run-bound scheduler assets. | Workflow asset distribution, source-independent execution, and release-version commitments. |
 | Documentation automation | Keep owner-local context concise and mechanical checks read-only by default. | Skills, generated views, automated repair, and broader maintainer tooling. |
 
 ## Projections
 
-- [`local_pilot_orchestration.mmd`](diagrams/local_pilot_orchestration.mmd)
-  illustrates the accepted request/run/task/attempt and completion boundaries.
 - [`future_modular_pipeline.mmd`](diagrams/future_modular_pipeline.mmd)
   illustrates typed preprocessing and analysis extension.
 - [`future_reporting_layer.mmd`](diagrams/future_reporting_layer.mmd)

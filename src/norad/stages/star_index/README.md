@@ -23,6 +23,7 @@ bash src/norad/stages/star_index/step_00a_build_star_index.sh \
   --index-dir refs/novogene_star_index \
   --threads 8 \
   --sjdb-overhang 149 \
+  --genome-sa-index-nbases 14 \
   --star-bin /absolute/path/to/STAR
 ```
 
@@ -59,6 +60,7 @@ Invoke the validator with the repository Python and explicit inputs. Omitting
   --reference-gtf refs/novogene_ref/genome.gtf \
   --parameter-path-base . \
   --expected-sjdb-overhang 149 \
+  --expected-genome-sa-index-nbases 14 \
   --output results/qc/validation/00a/novogene_ref.validation.tsv
 ```
 

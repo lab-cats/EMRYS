@@ -44,6 +44,8 @@ NORAD_COMMANDS = (
         "usage: norad build report",
     ),
     (("doctor", "local-pilot"), "usage: norad doctor local-pilot"),
+    (("run",), "usage: norad run"),
+    (("resume",), "usage: norad resume"),
     (
         ("validate", "artifact-contracts"),
         "usage: norad validate artifact-contracts",
@@ -56,6 +58,10 @@ NORAD_COMMANDS = (
     (
         ("reconcile", "reference-provenance"),
         "usage: norad reconcile reference-provenance",
+    ),
+    (
+        ("inspect", "local-pilot-run"),
+        "usage: norad inspect local-pilot-run",
     ),
     (
         ("inspect", "runtime-availability"),

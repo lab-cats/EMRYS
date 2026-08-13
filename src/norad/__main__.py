@@ -42,6 +42,7 @@ from norad.libraries.source_authority import (
 )
 from norad.orchestration.local_pilot import all_pass as all_pass_validation_command
 from norad.orchestration.local_pilot import doctor as local_pilot_doctor_command
+from norad.orchestration.local_pilot import control as local_pilot_control_command
 from norad.stages.canonical_bam import validator as canonical_bam_validation_command
 from norad.stages.cohort_candidate_preprocessing import (
     validator as cohort_candidate_preprocessing_validation_command,
@@ -175,7 +176,7 @@ def _add_local_pilot_doctor_command(
 
 
 def _build_artifact_index_from_args(arguments: argparse.Namespace) -> int:
-    if not _admit_reporting_build_runtime():
+    if not _admit_controlled_runtime():
         return 2
     from norad.reporting._artifact_index import builder  # noqa: PLC0415
 
@@ -183,7 +184,7 @@ def _build_artifact_index_from_args(arguments: argparse.Namespace) -> int:
 
 
 def _build_run_summary_from_args(arguments: argparse.Namespace) -> int:
-    if not _admit_reporting_build_runtime():
+    if not _admit_controlled_runtime():
         return 2
     from norad.reporting._run_summary import builder  # noqa: PLC0415
 
@@ -191,20 +192,38 @@ def _build_run_summary_from_args(arguments: argparse.Namespace) -> int:
 
 
 def _build_report_from_args(arguments: argparse.Namespace) -> int:
-    if not _admit_reporting_build_runtime():
+    if not _admit_controlled_runtime():
         return 2
     from norad.reporting import report  # noqa: PLC0415
 
     return report.build_from_args(arguments)
 
 
-def _admit_reporting_build_runtime() -> bool:
+def _admit_controlled_runtime() -> bool:
     try:
         require_controlled_python_runtime()
     except SourceCheckoutError as exc:
         print(f"norad: error: {exc}", file=sys.stderr)
         return False
     return True
+
+
+def _run_local_pilot_from_args(arguments: argparse.Namespace) -> int:
+    if not _admit_controlled_runtime():
+        return 2
+    return local_pilot_control_command.run_from_args(arguments)
+
+
+def _resume_local_pilot_from_args(arguments: argparse.Namespace) -> int:
+    if not _admit_controlled_runtime():
+        return 2
+    return local_pilot_control_command.resume_from_args(arguments)
+
+
+def _inspect_local_pilot_from_args(arguments: argparse.Namespace) -> int:
+    if not _admit_controlled_runtime():
+        return 2
+    return local_pilot_control_command.inspect_from_args(arguments)
 
 
 def _add_build_commands(
@@ -368,6 +387,26 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
     )
     _add_local_pilot_doctor_command(doctor_parsers)
+    run_parser = command_parsers.add_parser(
+        "run",
+        help="Plan or execute the fixed local CMH pipeline.",
+        description=local_pilot_control_command.RUN_DESCRIPTION,
+    )
+    local_pilot_control_command.configure_run_parser(run_parser)
+    run_parser.set_defaults(
+        _command_handler=_run_local_pilot_from_args,
+        _command_parser=run_parser,
+    )
+    resume_parser = command_parsers.add_parser(
+        "resume",
+        help="Plan or resume one failed/interrupted local-pilot run.",
+        description=local_pilot_control_command.RESUME_DESCRIPTION,
+    )
+    local_pilot_control_command.configure_resume_parser(resume_parser)
+    resume_parser.set_defaults(
+        _command_handler=_resume_local_pilot_from_args,
+        _command_parser=resume_parser,
+    )
     assemble_parser = command_parsers.add_parser(
         "assemble",
         help="Assemble an explicitly declared NORAD evidence package.",
@@ -421,6 +460,16 @@ def build_parser() -> argparse.ArgumentParser:
         _command_handler=runtime_availability_inspection_command.inspect_from_args
     )
     _add_storage_inventory_inspection_command(inspection_parsers)
+    local_run_parser = inspection_parsers.add_parser(
+        "local-pilot-run",
+        help="Derive one local-pilot run state without repair.",
+        description=local_pilot_control_command.INSPECT_DESCRIPTION,
+    )
+    local_pilot_control_command.configure_inspect_parser(local_run_parser)
+    local_run_parser.set_defaults(
+        _command_handler=_inspect_local_pilot_from_args,
+        _command_parser=local_run_parser,
+    )
     convert_parser = command_parsers.add_parser(
         "convert",
         help="Convert an explicitly selected NORAD input.",

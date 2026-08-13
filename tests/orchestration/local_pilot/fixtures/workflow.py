@@ -385,7 +385,7 @@ def _generic_artifact_bytes(row: dict[str, str]) -> bytes:
     raise AssertionError(f"Dynamic artifact kind requires an explicit fixture: {spec}")
 
 
-def _artifact_payloads(
+def artifact_payloads(
     rows: tuple[dict[str, str], ...],
     execution: dict[str, Any],
 ) -> dict[str, bytes]:
@@ -850,7 +850,7 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
     fixture_input = run_root / "contract" / "fixture_input.txt"
     fixture_input.write_text("bounded no-science workflow fixture\n", encoding="utf-8")
     inventory_rows = tuple(dict(row) for row in reporting.artifact_inventory_rows)
-    payloads = _artifact_payloads(inventory_rows, execution)
+    payloads = artifact_payloads(inventory_rows, execution)
 
     workflow_attempt_id = "workflow-20260812T120000Z-" + "a" * 32
     workflow_attempt_path = run_root / "attempts" / workflow_attempt_id / "attempt.json"
@@ -1142,9 +1142,11 @@ def refresh_attempt(
 __all__ = (
     "PROFILE_PATH",
     "REPO_ROOT",
+    "OWNER_ARTIFACT_DOUBLE",
     "SNAKEFILE",
     "TASK_DOUBLE",
     "WorkflowFixture",
+    "artifact_payloads",
     "build",
     "materialize_active_run_lock",
     "refresh_attempt",

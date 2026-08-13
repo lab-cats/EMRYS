@@ -62,6 +62,7 @@ RuntimeContextAdmission = Callable[[Mapping[str, Any], "LifecycleRequest"], None
 LockEvidencePublisher = Callable[[Path, Path], None]
 DirectorySynchronizer = Callable[[Path, str], None]
 PythonLauncherIdentity = tuple[str, str, int, int]
+AttemptMaterializer = Callable[[], "LifecycleRequest"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,6 +96,27 @@ class LifecycleRequest:
     operation: Operation
     attempt_record: Mapping[str, Any]
     request_source_path: Path
+
+
+@dataclass(frozen=True, slots=True)
+class AttemptPreparation:
+    """Minimum immutable identity required to lock before materialization."""
+
+    run_root: Path
+    run_id: str
+    workflow_attempt_id: str
+    owner_token: str
+    host: str
+    process_id: int
+    created_at: str
+
+
+@dataclass(frozen=True, slots=True)
+class _OwnedRunLock:
+    path: Path
+    record: dict[str, Any]
+    data: bytes
+    inode: tuple[int, int]
 
 
 @dataclass(frozen=True, slots=True)
@@ -512,20 +534,76 @@ def _admit_runtime_context(
             "Required Snakemake version differs: "
             f"declared {snakemake['version']!r}; observed {observed_version!r}"
         )
-    for name, identity in tools.items():
-        path = Path(str(identity["path"]))
-        if name in {"python", "snakemake"}:
-            continue
-        if not path.is_absolute() or path.is_symlink() or not path.is_file():
-            raise LifecycleError(
-                f"Required tool path is not admissible: {name}: {path}"
-            )
-        observed = _tool_version((str(path),), name)
-        if observed != identity["version"]:
-            raise LifecycleError(
-                f"Required {name} version differs: declared "
-                f"{identity['version']!r}; observed {observed!r}"
-            )
+    if attempt["execution_mode"] == "test-double":
+        for name, identity in tools.items():
+            path = Path(str(identity["path"]))
+            if name in {"python", "snakemake"}:
+                continue
+            if not path.is_absolute() or path.is_symlink() or not path.is_file():
+                raise LifecycleError(
+                    f"Required tool path is not admissible: {name}: {path}"
+                )
+            observed = _tool_version((str(path),), name)
+            if observed != identity["version"]:
+                raise LifecycleError(
+                    f"Required {name} version differs: declared "
+                    f"{identity['version']!r}; observed {observed!r}"
+                )
+        return
+
+    from norad.evidence.runtime_availability.inspector import (  # noqa: PLC0415
+        RuntimeInspectionError,
+        inspect_runtime_availability,
+    )
+    from norad.orchestration.local_pilot import doctor  # noqa: PLC0415
+
+    runtime_profile = tools.get("runtime_profile")
+    if runtime_profile is None:
+        raise LifecycleError(
+            "Local science attempt must bind its exact runtime profile"
+        )
+    profile_path = Path(str(runtime_profile["path"]))
+    if (
+        not profile_path.is_absolute()
+        or profile_path.is_symlink()
+        or not profile_path.is_file()
+        or profile_path.resolve(strict=True) != profile_path
+    ):
+        raise LifecycleError(
+            f"Runtime profile must be an absolute canonical file: {profile_path}"
+        )
+    profile_sha256 = hashlib.sha256(profile_path.read_bytes()).hexdigest()
+    if runtime_profile["version"] != f"sha256:{profile_sha256}":
+        raise LifecycleError("Required runtime profile digest differs from its bytes")
+    environment = dict(os.environ)
+    environment.update(doctor.runtime_environment(observed.root))
+    try:
+        runtime_inspection = inspect_runtime_availability(
+            profile_path,
+            "local",
+            environment=environment,
+        )
+        doctor.validate_runtime_profile(runtime_inspection, observed.root)
+    except (RuntimeInspectionError, doctor.DoctorInputError) as exc:
+        raise LifecycleError(
+            f"Could not re-admit local runtime profile: {exc}"
+        ) from exc
+    if not runtime_inspection.required_ready:
+        failures = ", ".join(
+            item.check.check_id
+            for item in runtime_inspection.observations
+            if item.check.required and item.status != "pass"
+        )
+        raise LifecycleError(f"Required local runtime probes failed: {failures}")
+    expected_tools = doctor.required_tool_identities(
+        runtime_inspection,
+        python_executable=request.python_executable,
+        snakemake_version=observed_version,
+    )
+    if tuple(attempt["required_tools"]) != expected_tools:
+        raise LifecycleError(
+            "Workflow attempt required tools differ from the re-observed runtime profile"
+        )
 
 
 def default_lifecycle_ops() -> LifecycleOps:
@@ -1106,6 +1184,7 @@ def run_attempt(
     request: LifecycleRequest,
     *,
     ops: LifecycleOps | None = None,
+    _owned_lock: _OwnedRunLock | None = None,
 ) -> LifecycleOutcome:
     """Execute one immutable local attempt and publish its receipt last."""
 
@@ -1119,7 +1198,8 @@ def run_attempt(
         config_reference,
         request_source_data,
     ) = _admit_request(request, active_ops)
-    _operation_preflight(request, root, attempt, active_ops)
+    if _owned_lock is None:
+        _operation_preflight(request, root, attempt, active_ops)
     identifier = str(attempt["workflow_attempt_id"])
     attempt_root = root / "attempts" / identifier
     locks_root = root / "locks"
@@ -1145,9 +1225,25 @@ def run_attempt(
     }
     orchestration_contracts.validate_record("run-lock", lock_record)
     lock_bytes = orchestration_contracts.canonical_json_bytes(lock_record)
-    active_ops.publish_bytes(lock_path, lock_bytes)
-    lock_state = lock_path.stat(follow_symlinks=False)
-    lock_inode = (lock_state.st_dev, lock_state.st_ino)
+    if _owned_lock is None:
+        active_ops.publish_bytes(lock_path, lock_bytes)
+        lock_state = lock_path.stat(follow_symlinks=False)
+        lock_inode = (lock_state.st_dev, lock_state.st_ino)
+    else:
+        if (
+            _owned_lock.path != lock_path
+            or _owned_lock.record != lock_record
+            or _owned_lock.data != lock_bytes
+        ):
+            raise LifecycleError(
+                "Pre-materialization run lock does not bind the lifecycle request"
+            )
+        lock_state = lock_path.stat(follow_symlinks=False)
+        lock_inode = (lock_state.st_dev, lock_state.st_ino)
+        if lock_inode != _owned_lock.inode:
+            raise LifecycleError(
+                "Pre-materialization run lock identity changed before admission"
+            )
     attempt_root_created = False
     try:
         _under_lock_attempt_preflight(request, root, attempt, active_ops)
@@ -1421,7 +1517,87 @@ def run_attempt(
     )
 
 
+def run_materialized_attempt(
+    preparation: AttemptPreparation,
+    materialize: AttemptMaterializer,
+    *,
+    ops: LifecycleOps | None = None,
+) -> LifecycleOutcome:
+    """Acquire the aggregate lock before publishing attempt-specific inputs."""
+
+    active_ops = default_lifecycle_ops() if ops is None else ops
+    root = _canonical_root(preparation.run_root)
+    locks_root = root / "locks"
+    attempts_root = root / "attempts"
+    for directory in (locks_root, attempts_root):
+        if directory.is_symlink() or not directory.is_dir():
+            raise LifecycleError(
+                f"Lifecycle parent must be pre-materialized and real: {directory}"
+            )
+    lock_path = locks_root / "run.lock"
+    lock_record = {
+        "schema_version": "norad.run-lock.v1",
+        "run_id": preparation.run_id,
+        "workflow_attempt_id": preparation.workflow_attempt_id,
+        "attempt_record_path": (
+            f"attempts/{preparation.workflow_attempt_id}/attempt.json"
+        ),
+        "owner_token": preparation.owner_token,
+        "process_id": preparation.process_id,
+        "host": preparation.host,
+        "created_at": preparation.created_at,
+    }
+    orchestration_contracts.validate_record("run-lock", lock_record)
+    lock_bytes = orchestration_contracts.canonical_json_bytes(lock_record)
+    active_ops.publish_bytes(lock_path, lock_bytes)
+    lock_state = lock_path.stat(follow_symlinks=False)
+    owned = _OwnedRunLock(
+        path=lock_path,
+        record=lock_record,
+        data=lock_bytes,
+        inode=(lock_state.st_dev, lock_state.st_ino),
+    )
+    try:
+        request = materialize()
+        if request.run_root != root:
+            raise LifecycleError("Materialized request changed the prepared run root")
+        attempt = request.attempt_record
+        for field, expected in (
+            ("run_id", preparation.run_id),
+            ("workflow_attempt_id", preparation.workflow_attempt_id),
+            ("owner_token", preparation.owner_token),
+            ("host", preparation.host),
+            ("process_id", preparation.process_id),
+            ("created_at", preparation.created_at),
+        ):
+            if attempt.get(field) != expected:
+                raise LifecycleError(
+                    f"Materialized workflow attempt does not bind prepared {field}"
+                )
+        return run_attempt(request, ops=active_ops, _owned_lock=owned)
+    except Exception as exc:
+        attempt_path = attempts_root / preparation.workflow_attempt_id / "attempt.json"
+        if not attempt_path.exists() and not attempt_path.is_symlink():
+            if lock_path.exists() and not lock_path.is_symlink():
+                evidence = (
+                    locks_root
+                    / f"released-{preparation.workflow_attempt_id}-run-lock.json"
+                )
+                active_ops.release_lock(
+                    lock_path,
+                    evidence,
+                    lock_bytes,
+                    owned.inode,
+                )
+        if isinstance(exc, LifecycleError):
+            raise
+        raise LifecycleError(
+            f"Could not materialize immutable workflow attempt: {exc}"
+        ) from exc
+
+
 __all__ = (
+    "AttemptPreparation",
     "LifecycleError",
     "LifecycleOps",
     "LifecycleOutcome",
@@ -1431,4 +1607,5 @@ __all__ = (
     "build_snakemake_argv",
     "default_lifecycle_ops",
     "run_attempt",
+    "run_materialized_attempt",
 )

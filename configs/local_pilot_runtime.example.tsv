@@ -1,4 +1,5 @@
 check_id	check_type	runtime_context	required	target	probe_args	expected	description
+bash	tool_version	local	true	/bin/bash	["--version"]	^GNU bash, version (3[.]2|[4-9][.]|[1-9][0-9][.])	Bash runtime for owner-local shell producers
 python	tool_version	local	true	/absolute/path/to/norad/.venv/bin/python	["--version"]	^Python 3[.](1[1-9]|[2-9][0-9])[.]	Exact uv-managed NORAD workflow Python
 snakemake	tool_version	local	true	/absolute/path/to/norad/.venv/bin/snakemake	["--version"]	^9[.]25[.]1$	Locked Snakemake workflow engine
 star	tool_version	local	true	/absolute/path/to/STAR	["--version"]	^2[.]7[.]11b$	STAR aligner and genome-index builder

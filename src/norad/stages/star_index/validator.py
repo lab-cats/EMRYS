@@ -32,6 +32,7 @@ CHECK_IDS = {
     "gtf_identity",
     "contig_names_lengths",
     "sjdb_overhang",
+    "genome_sa_index_nbases",
 }
 
 
@@ -48,6 +49,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
         help="Explicit base for relative paths recorded in genomeParameters.txt.",
     )
     parser.add_argument("--expected-sjdb-overhang", required=True, type=int)
+    parser.add_argument("--expected-genome-sa-index-nbases", required=True, type=int)
     add_output_arguments(parser)
 
 
@@ -78,6 +80,8 @@ def build_validation_report(
         fail("scope-id must be nonempty and contain no whitespace")
     if arguments.expected_sjdb_overhang < 0:
         fail("expected-sjdb-overhang must be nonnegative")
+    if arguments.expected_genome_sa_index_nbases < 1:
+        fail("expected-genome-sa-index-nbases must be positive")
 
     index_dir = lexical_path(arguments.index_dir)
     if not index_dir.is_dir() or index_dir.is_symlink():
@@ -114,6 +118,7 @@ def build_validation_report(
     fasta_values = parameters.get("genomeFastaFiles", [])
     gtf_values = parameters.get("sjdbGTFfile", [])
     overhang_values = parameters.get("sjdbOverhang", [])
+    genome_sa_values = parameters.get("genomeSAindexNbases", [])
     fasta_match = (
         len(fasta_values) == 1
         and resolve_from_base(parameter_path_base, fasta_values[0]) == fasta_path
@@ -128,6 +133,12 @@ def build_validation_report(
         )
     except ValueError:
         observed_overhang = None
+    try:
+        observed_genome_sa = (
+            int(genome_sa_values[0]) if len(genome_sa_values) == 1 else None
+        )
+    except ValueError:
+        observed_genome_sa = None
     contigs_match = star_records == fasta_records
 
     return build_report(
@@ -169,6 +180,12 @@ def build_validation_report(
                 observed_overhang if observed_overhang is not None else "invalid",
                 arguments.expected_sjdb_overhang,
                 "configured STAR splice-junction overhang",
+            ),
+            "genome_sa_index_nbases": (
+                observed_genome_sa == arguments.expected_genome_sa_index_nbases,
+                observed_genome_sa if observed_genome_sa is not None else "invalid",
+                arguments.expected_genome_sa_index_nbases,
+                "configured STAR genome suffix-array index length",
             ),
         },
     )

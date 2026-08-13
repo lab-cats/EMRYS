@@ -41,7 +41,7 @@ GIT_ROUTING_VARIABLES = (
 EXPECTED_PRODUCER_EVIDENCE = {
     "00a": (
         "src/norad/stages/star_index/step_00a_build_star_index.sh",
-        "a712f91075502188deff7675c9c6955a1a88468d06d42bbcd62966da2e091f42",
+        "f236c627a385a8fea7b40cfc58ff847d8ec1adfd8e7bb7e0879f0783e600f9f5",
     ),
     "00b": (
         "src/norad/stages/gtf_to_bed12/converter.py",

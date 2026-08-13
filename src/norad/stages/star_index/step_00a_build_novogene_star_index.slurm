@@ -31,6 +31,7 @@ STAR_INDEX="refs/novogene_star_index"
 THREADS="${SLURM_CPUS_PER_TASK:-8}"
 
 SJDB_OVERHANG=149
+GENOME_SA_INDEX_NBASES=14
 
 # Materialize the legacy wrapper-owned references before invoking the explicit
 # scheduler-independent STAR-index producer.
@@ -53,6 +54,7 @@ echo "Reference GTF:   $WORK_REF/genome.gtf"
 echo "STAR index dir:  $STAR_INDEX"
 echo "Threads:         $THREADS"
 echo "sjdbOverhang:    $SJDB_OVERHANG"
+echo "genomeSAindexNbases: $GENOME_SA_INDEX_NBASES"
 
 # The public producer owns dry-run/execute, complete-member validation, locking,
 # no-clobber publication, and controlled-failure cleanup.
@@ -63,6 +65,7 @@ producer_command=(
   --index-dir "$STAR_INDEX"
   --threads "$THREADS"
   --sjdb-overhang "$SJDB_OVERHANG"
+  --genome-sa-index-nbases "$GENOME_SA_INDEX_NBASES"
   --star-bin STAR
   --execute
 )

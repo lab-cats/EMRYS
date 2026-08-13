@@ -8,8 +8,10 @@ and generic task boundary that publishes task attempts and content-bound
 verified records. B4 implements the three reporting rules and the
 internal durable producer-entry, immutable-attempt, terminal-receipt,
 between-task-resume, and
-read-only-inspection APIs for an already materialized run. It still adds no
-public run/resume/inspect adapter or real science-tool execution. Current
+read-only-inspection APIs for an already materialized run. B5 implements the
+read-only doctor, fixed-profile production materializer, and public dry-run-
+first `run`, `resume`, and `inspect local-pilot-run` adapter. No real science-
+tool execution has been proven. Current
 scientific behavior remains with the
 applicable functional owner, and exact semantic identities and artifact edges remain in
 [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md).
@@ -34,14 +36,17 @@ The local pilot has one explicit path:
 2. NORAD validates and normalizes those inputs into one immutable canonical
    JSON execution contract with an explicit identity envelope.
 3. The identity-envelope digest determines one immutable `run_id`.
-4. One fixed CMH workflow profile projects the semantic DAG into Snakemake.
-5. Each workflow task invokes one owner's public producer, that owner's public
+4. The public dry-run prints the complete fixed command plan without creating
+   the workspace; `--execute` acquires the aggregate lock and publishes the
+   immutable attempt/config/dispatch set.
+5. One fixed CMH workflow profile projects the semantic DAG into Snakemake.
+6. Each workflow task invokes one owner's public producer, that owner's public
    validator, and a generic semantic all-pass check.
-6. A content-bound verified task record is published only after all three
+7. A content-bound verified task record is published only after all three
    succeed.
-7. Required verified tasks feed the existing artifact-index, run-summary, and
+8. Required verified tasks feed the existing artifact-index, run-summary, and
    Jinja HTML-report owners.
-8. A workflow-attempt receipt is published last. Inspection derives state from
+9. A workflow-attempt receipt is published last. Inspection derives state from
    NORAD contracts and records, never from Snakemake metadata alone.
 
 There is no request inbox, watcher, database, service, plugin registry, or
@@ -336,17 +341,16 @@ success or evidence promotion.
 
 ## Planning and mutation boundary
 
-The eventual `run` and `resume` interfaces are read-only by default. Their plan
+The implemented `run` and `resume` interfaces are read-only by default. Their plan
 resolves and validates inputs, computes identity, reports the exact source and
 tool context, shows the fixed DAG/resources/commands, and lists blockers without
 creating the workspace, contract, attempt, logs, locks, or owner outputs.
 Execution requires one explicit `--execute` control.
 
-Before that thin adapter exists, development uses the normalizer explicitly and
-operates Snakemake directly: inspect the generated configuration, run the
-engine's dry-run, then separately authorize execution. A doctor is a distinct
-read-only readiness report and never installs or repairs dependencies. Neither
-planning nor doctor invokes owner producers or validators.
+The B5 adapter owns that exact planning and materialization boundary; direct
+manual Snakemake invocation is unsupported. A doctor is a distinct read-only
+readiness report and never installs or repairs dependencies. Neither planning
+nor doctor invokes owner producers or validators.
 
 ## Workflow task boundary
 
@@ -548,6 +552,6 @@ B0 makes no decision or implementation commitment for:
 
 Owner-admission dispositions and proof targets live in
 [`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md); proof-sized package
-order and acceptance live in [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md). Future
-implemented commands belong in the runbook and owner documentation only after
+order and acceptance live in [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md).
+Implemented commands belong in the runbook and owner documentation only after
 their exact behavior is proven.

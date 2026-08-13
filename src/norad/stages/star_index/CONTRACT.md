@@ -47,12 +47,13 @@ The functional inputs are:
 - one materialized reference FASTA;
 - one materialized reference GTF;
 - the STAR executable and runtime environment;
-- a thread count; and
-- the STAR splice-junction overhang value.
+- a thread count;
+- the STAR splice-junction overhang value; and
+- the STAR genome suffix-array index length (`genomeSAindexNbases`).
 
 The current scheduler entrypoint binds these inputs to repository-relative,
 Novogene-specific paths, STAR `2.7.11b`, the allocated CPU count with a default
-of eight threads, and `sjdbOverhang=149`. Those bindings describe current
+of eight threads, `sjdbOverhang=149`, and `genomeSAindexNbases=14`. Those bindings describe current
 behavior; they are not approved future interface defaults.
 
 ## Outputs
@@ -87,7 +88,7 @@ minimum, not a declaration that unrelated files are invalid.
 [`step_00a_build_star_index.sh`](step_00a_build_star_index.sh) is the public
 scheduler-independent producer. It:
 
-- accepts explicit materialized FASTA, GTF, index, thread, overhang, and STAR
+- accepts explicit materialized FASTA, GTF, index, thread, overhang, suffix-array length, and STAR
   executable inputs;
 - is dry-run by default and requires `--execute` to mutate;
 - writes the complete index into an owner-token sibling staging directory;
@@ -119,19 +120,21 @@ not a hidden requirement of the public producer.
 
 `python -I -m norad validate star-index`, implemented by the private
 [`validator.py`](validator.py) module, accepts explicit scope, index, FASTA,
-GTF, relative-parameter base, expected overhang, and output paths. Validation
+GTF, relative-parameter base, expected overhang, expected suffix-array length,
+and output paths. Validation
 is dry-run by default; `--execute` publishes `<scope-id>.validation.tsv`.
 
 The TSV contract is tab-delimited and uses the ordered fields `step_id`,
 `scope_id`, `check_id`, `status`, `observed`, `expected`, and `detail`.
 
-It contains exactly these five check identities:
+It contains exactly these six check identities:
 
 - `index_members`;
 - `fasta_identity`;
 - `gtf_identity`;
 - `contig_names_lengths`; and
-- `sjdb_overhang`.
+- `sjdb_overhang`; and
+- `genome_sa_index_nbases`.
 
 A validation mismatch is represented by a `status=fail` row and does not
 repair inputs or native outputs. Unsafe input structure, an invalid

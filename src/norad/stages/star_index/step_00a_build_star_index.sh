@@ -14,6 +14,7 @@ Usage:
     --index-dir INDEX_DIR \
     --threads THREADS \
     --sjdb-overhang SJDB_OVERHANG \
+    --genome-sa-index-nbases GENOME_SA_INDEX_NBASES \
     [--star-bin STAR_BIN] \
     [--execute]
 
@@ -29,6 +30,8 @@ Required arguments:
   --index-dir        Absent final STAR index directory.
   --threads          Positive STAR thread count.
   --sjdb-overhang    Non-negative STAR splice-junction overhang.
+  --genome-sa-index-nbases
+                     Positive STAR genome suffix-array index length.
 
 Options:
   --star-bin         STAR executable or path. Resolution order: argument,
@@ -52,7 +55,7 @@ source "$script_dir/../../libraries/file_checks.sh"
 source "$script_dir/../../libraries/signal_traps.sh"
 
 declare_required_arguments \
-    reference_fasta reference_gtf index_dir threads sjdb_overhang
+    reference_fasta reference_gtf index_dir threads sjdb_overhang genome_sa_index_nbases
 star_bin_arg=""
 execute=false
 
@@ -63,6 +66,7 @@ while [[ $# -gt 0 ]]; do
         --index-dir) assign_option_value "$1" "${2:-}" index_dir; shift 2 ;;
         --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
         --sjdb-overhang) assign_option_value "$1" "${2:-}" sjdb_overhang; shift 2 ;;
+        --genome-sa-index-nbases) assign_option_value "$1" "${2:-}" genome_sa_index_nbases; shift 2 ;;
         --star-bin) assign_option_value "$1" "${2:-}" star_bin_arg; shift 2 ;;
         *)
             handle_execute_or_help "$1"
@@ -78,6 +82,7 @@ require_arguments
     die "Reference GTF must be a nonempty regular file, not a symlink: $reference_gtf"
 validate_positive_integer "--threads" "$threads"
 validate_nonnegative_integer "--sjdb-overhang" "$sjdb_overhang"
+validate_positive_integer "--genome-sa-index-nbases" "$genome_sa_index_nbases"
 
 star_value="${star_bin_arg:-${STAR_BIN_OVERRIDE:-}}"
 star_bin="$(resolve_executable_value "STAR" "$star_value" "STAR")"
@@ -204,6 +209,7 @@ star_command=(
     --genomeFastaFiles "$reference_fasta"
     --sjdbGTFfile "$reference_gtf"
     --sjdbOverhang "$sjdb_overhang"
+    --genomeSAindexNbases "$genome_sa_index_nbases"
 )
 
 require_clean_boundary
@@ -224,6 +230,7 @@ printf '  Lock directory: %s\n' "$lock_path"
 printf '  STAR executable: %s\n' "$star_bin"
 printf '  Threads: %s\n' "$threads"
 printf '  sjdbOverhang: %s\n' "$sjdb_overhang"
+printf '  genomeSAindexNbases: %s\n' "$genome_sa_index_nbases"
 printf '  Run token: %s\n' "$run_token"
 printf '  Mode: %s\n' "$mode"
 

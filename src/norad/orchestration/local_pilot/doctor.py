@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import os
+import platform
 import stat
 import subprocess
 import sys
@@ -48,6 +49,7 @@ LOCAL_PILOT_R_PACKAGES = (
     ("r_rtracklayer", "rtracklayer"),
 )
 LOCAL_PILOT_RUNTIME_CHECKS = (
+    ("bash", "tool_version"),
     ("python", "tool_version"),
     ("snakemake", "tool_version"),
     ("star", "tool_version"),
@@ -98,6 +100,65 @@ class DoctorResult:
     @property
     def ready(self) -> bool:
         return not self.blockers
+
+
+def runtime_environment(source_root: Path) -> dict[str, str]:
+    """Return the fixed guarded R environment used by doctor and workflow."""
+
+    return {
+        "NORAD_USE_RENV": "1",
+        "RENV_PROJECT": str(source_root),
+        "R_PROFILE_USER": str(source_root / ".Rprofile"),
+        "RENV_CONFIG_SANDBOX_ENABLED": "FALSE",
+        "RENV_CONFIG_AUTO_SNAPSHOT": "FALSE",
+    }
+
+
+def required_tool_identities(
+    inspection: RuntimeInspection,
+    *,
+    python_executable: Path,
+    snakemake_version: str = SNAKEMAKE_VERSION,
+    runtime_profile_path: Path | None = None,
+) -> tuple[dict[str, str], ...]:
+    """Project exact attempt tool identities from one admitted runtime probe."""
+
+    observations = {item.check.check_id: item for item in inspection.observations}
+    rscript = observations["rscript"].check.target
+    identities: list[dict[str, str]] = [
+        {
+            "name": "python",
+            "version": platform.python_version(),
+            "path": str(python_executable),
+        },
+        {
+            "name": "runtime_profile",
+            "version": f"sha256:{inspection.profile_sha256}",
+            "path": str(
+                inspection.profile_path
+                if runtime_profile_path is None
+                else runtime_profile_path
+            ),
+        },
+        {
+            "name": "snakemake",
+            "version": snakemake_version,
+            "path": str(python_executable),
+        },
+    ]
+    for observation in inspection.observations:
+        check = observation.check
+        if check.check_id in {"python", "snakemake"}:
+            continue
+        path = rscript if check.check_type == "r_namespace" else check.target
+        identities.append(
+            {
+                "name": check.check_id,
+                "version": observation.observed,
+                "path": path,
+            }
+        )
+    return tuple(sorted(identities, key=lambda item: item["name"]))
 
 
 @dataclass(frozen=True, slots=True)
@@ -233,7 +294,7 @@ def _workspace_blockers(
     return blockers, remediations
 
 
-def _validate_profile_shape(inspection: RuntimeInspection, source_root: Path) -> None:
+def validate_runtime_profile(inspection: RuntimeInspection, source_root: Path) -> None:
     observed_shape = tuple(
         (observation.check.check_id, observation.check.check_type)
         for observation in inspection.observations
@@ -348,20 +409,12 @@ def inspect_local_pilot(
     except (orchestration_contracts.ContractValidationError, OSError) as exc:
         raise DoctorInputError(str(exc)) from exc
     environment = dict(os.environ)
-    environment.update(
-        {
-            "NORAD_USE_RENV": "1",
-            "RENV_PROJECT": str(root),
-            "R_PROFILE_USER": str(root / ".Rprofile"),
-            "RENV_CONFIG_SANDBOX_ENABLED": "FALSE",
-            "RENV_CONFIG_AUTO_SNAPSHOT": "FALSE",
-        }
-    )
+    environment.update(runtime_environment(root))
     try:
         inspection = ops.inspect_runtime(profile_path, "local", environment)
     except RuntimeInspectionError as exc:
         raise DoctorInputError(str(exc)) from exc
-    _validate_profile_shape(inspection, root)
+    validate_runtime_profile(inspection, root)
     python_check = next(
         item for item in inspection.observations if item.check.check_id == "python"
     )
@@ -468,4 +521,7 @@ __all__ = (
     "configure_parser",
     "doctor_from_args",
     "inspect_local_pilot",
+    "required_tool_identities",
+    "runtime_environment",
+    "validate_runtime_profile",
 )

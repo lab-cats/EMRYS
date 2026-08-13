@@ -101,9 +101,12 @@ Owner-specific public shell, Python, R, and SLURM entry points remain with their
 functional owner. The unreleased internal Python distribution packages only
 explicitly migrated import owners and their named resources; it does not imply
 portable repository-root semantics. Its installed `python -I -m norad` module
-interface contains explicitly migrated owner routes and the read-only semantic
-all-pass check. The packaged internal task module is invoked only by the fixed
-source-checkout workflow; it is not a public lifecycle command, scheduler
+interface contains explicitly migrated owner routes, the read-only semantic
+all-pass/readiness checks, and the source-checkout-bound fixed-profile control
+routes. `orchestration/local_pilot/control.py` and `materialization.py` are the
+single public application owner for that projection; they do not import peer-
+private implementations. The packaged internal task module is invoked only by
+the fixed source-checkout workflow; it is not a public lifecycle command, scheduler
 abstraction, universal transaction framework, or generic stage dispatcher.
 The internal lifecycle consumes only reporting's direct semantic transaction
 validator; it does not import `_artifact_index`, `_run_summary`, or

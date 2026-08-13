@@ -76,7 +76,13 @@ rejected. The decision-complete lifecycle and resume rules are in
 [`ORCHESTRATION_CONTRACT.md`](../ORCHESTRATION_CONTRACT.md); owner admission
 gaps remain in [`ORCHESTRATION_READINESS.md`](../ORCHESTRATION_READINESS.md).
 
-Logging, report profiles, analysis modules, public acquisition, packaging,
+The public control plane remains thin: it reruns read-only admission, prints an
+exact no-write plan by default, materializes only the fixed profile under the
+aggregate run lock, and delegates scientific work to public owners. It exposes
+no raw Snakemake flags or automatic owner recovery.
+
+Logging, report profiles, analysis modules, public acquisition, standalone
+workflow packaging,
 site profiles, and optional-success policy remain designs, not current
 architecture. Their concise boundary is
 [`FUTURE_ARCHITECTURE.md`](../../architecture/FUTURE_ARCHITECTURE.md); unresolved

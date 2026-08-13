@@ -81,12 +81,15 @@ Detailed rationale: [`platform-direction.md`](decisions/platform-direction.md).
 - Treat an owner task as reusable only after producer success, complete native
   outputs, owner validation, and an explicit all-pass check of every validation
   row. Snakemake metadata and output presence are never completion authority.
+- Expose the fixed local profile only through dry-run-first public run/resume/
+  inspection commands that materialize immutable attempt state under the
+  aggregate lock and expose no raw engine or recovery controls.
 - Keep Step `09c`, SLURM/VM/site execution, installed workflow assets, and
   scientific or biological promotion outside the first local profile.
 
-The accepted but unimplemented local lifecycle is defined by
+The implemented source-checkout local lifecycle is defined by
 [`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md). Logging, report
-profiles, site execution, acquisition, analysis extensions, and installable
-control-plane ideas remain unimplemented in
+profiles, site execution, acquisition, analysis extensions, and standalone
+wheel-control-plane ideas remain unimplemented in
 [`FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md) and
 [`QUESTIONS.md`](QUESTIONS.md).
