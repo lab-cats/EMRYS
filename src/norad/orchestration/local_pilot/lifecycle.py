@@ -20,11 +20,17 @@ import subprocess
 import sys
 import uuid
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from types import FrameType
-from typing import Any, Literal
+from typing import Any, Iterator, Literal
+
+try:
+    import fcntl as _fcntl
+except ImportError:  # pragma: no cover - exercised only on unsupported platforms
+    _fcntl = None  # type: ignore[assignment]
 
 from norad.contracts.orchestration import api as orchestration_contracts
 from norad.libraries.source_authority import controlled_python_argv
@@ -59,11 +65,12 @@ class WorkflowResult:
 WorkflowRunner = Callable[[tuple[str, ...], Path], WorkflowResult]
 BytesPublisher = Callable[[Path, bytes], None]
 LockReleaser = Callable[[Path, Path, bytes, tuple[int, int]], None]
+LockEvidenceLinker = Callable[[Path, Path], None]
 RuntimeContextAdmission = Callable[[Mapping[str, Any], "LifecycleRequest"], None]
-LockEvidencePublisher = Callable[[Path, Path], None]
 DirectorySynchronizer = Callable[[Path, str], None]
 PythonLauncherIdentity = tuple[str, str, int, int]
 AttemptMaterializer = Callable[[], "LifecycleRequest"]
+AttemptMutexAcquirer = Callable[[Path], AbstractContextManager[Path]]
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,6 +87,7 @@ class LifecycleOps:
     validate_reporting_receipt: inspection.ReportingReceiptValidator
     admit_runtime_context: RuntimeContextAdmission
     sync_directory: DirectorySynchronizer
+    acquire_attempt_mutex: AttemptMutexAcquirer | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,7 +109,7 @@ class LifecycleRequest:
 
 @dataclass(frozen=True, slots=True)
 class AttemptPreparation:
-    """Minimum immutable identity required to lock before materialization."""
+    """Immutable attempt identity admitted before any attempt publication."""
 
     run_root: Path
     run_id: str
@@ -110,6 +118,8 @@ class AttemptPreparation:
     host: str
     process_id: int
     created_at: str
+    operation: Operation
+    attempt_record_bytes: bytes
 
 
 @dataclass(frozen=True, slots=True)
@@ -326,14 +336,96 @@ def _sync_real_directory(path: Path, label: str) -> None:
         raise LifecycleError(f"Could not synchronize {label}: {path}: {exc}") from exc
 
 
+def _admit_mutex_descriptor(path: Path, descriptor: int) -> None:
+    """Bind the persistent mutex pathname to one empty regular-file descriptor."""
+
+    try:
+        descriptor_state = os.fstat(descriptor)
+        path_state = path.stat(follow_symlinks=False)
+        resolved = path.resolve(strict=True)
+    except OSError as exc:
+        raise LifecycleError(f"Could not admit lifecycle mutex: {path}: {exc}") from exc
+    if (
+        resolved != path
+        or not stat.S_ISREG(descriptor_state.st_mode)
+        or not stat.S_ISREG(path_state.st_mode)
+        or descriptor_state.st_size != 0
+        or path_state.st_size != 0
+        or (descriptor_state.st_dev, descriptor_state.st_ino)
+        != (path_state.st_dev, path_state.st_ino)
+    ):
+        raise LifecycleError(
+            f"Lifecycle mutex must be one canonical zero-byte regular file: {path}"
+        )
+
+
+@contextmanager
+def _acquire_attempt_mutex(root: Path) -> Iterator[Path]:
+    """Serialize lifecycle admission without publishing run-state evidence."""
+
+    if (
+        _fcntl is None
+        or not hasattr(_fcntl, "flock")
+        or not hasattr(_fcntl, "LOCK_EX")
+        or not hasattr(_fcntl, "LOCK_UN")
+    ):
+        raise LifecycleError("This platform lacks required advisory file locking")
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise LifecycleError("This platform lacks required O_NOFOLLOW mutex admission")
+    locks_root = root / "locks"
+    if (
+        locks_root.is_symlink()
+        or not locks_root.is_dir()
+        or locks_root.resolve(strict=True) != locks_root
+    ):
+        raise LifecycleError(
+            f"Aggregate lock directory must be canonical and real: {locks_root}"
+        )
+    path = locks_root / "acquire.mutex"
+    flags = os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    try:
+        descriptor = os.open(path, flags, 0o600)
+    except OSError as exc:
+        raise LifecycleError(f"Could not open lifecycle mutex: {path}: {exc}") from exc
+    acquired = False
+    try:
+        try:
+            _fcntl.flock(descriptor, _fcntl.LOCK_EX)
+        except OSError as exc:
+            raise LifecycleError(
+                f"Could not acquire required lifecycle mutex: {path}: {exc}"
+            ) from exc
+        acquired = True
+        _admit_mutex_descriptor(path, descriptor)
+        try:
+            os.fsync(descriptor)
+            _sync_real_directory(locks_root, "aggregate lock directory")
+        except OSError as exc:
+            raise LifecycleError(
+                f"Could not synchronize lifecycle mutex: {path}: {exc}"
+            ) from exc
+        yield path
+    finally:
+        if acquired:
+            try:
+                _fcntl.flock(descriptor, _fcntl.LOCK_UN)
+            except OSError:
+                # Closing the only descriptor still releases the advisory lock.
+                pass
+        os.close(descriptor)
+
+
 def _release_owned_lock(
     path: Path,
     evidence_path: Path,
     expected_bytes: bytes,
     expected_inode: tuple[int, int],
     *,
-    publish_evidence: LockEvidencePublisher | None = None,
+    publish_evidence: LockEvidenceLinker | None = None,
 ) -> None:
+    """Publish owned lock evidence without replacing any destination inode."""
+
     if not hasattr(os, "O_NOFOLLOW"):
         raise LifecycleError("This platform lacks required O_NOFOLLOW lock release")
     descriptor = -1
@@ -373,17 +465,23 @@ def _release_owned_lock(
         path_state = path.stat(follow_symlinks=False)
         if (path_state.st_dev, path_state.st_ino) != expected_inode:
             raise LifecycleError(f"Run lock pathname changed before release: {path}")
-        if evidence_path.exists() or evidence_path.is_symlink():
+        if publish_evidence is None:
+
+            def evidence_publisher(source: Path, destination: Path) -> None:
+                os.link(source, destination, follow_symlinks=False)
+        else:
+            evidence_publisher = publish_evidence
+        try:
+            evidence_publisher(path, evidence_path)
+        except FileExistsError as exc:
             raise LifecycleError(
                 f"Refusing to replace released-lock evidence: {evidence_path}"
-            )
-        evidence_publisher = os.rename if publish_evidence is None else publish_evidence
-        evidence_publisher(path, evidence_path)
+            ) from exc
         evidence_state = evidence_path.stat(follow_symlinks=False)
         if (evidence_state.st_dev, evidence_state.st_ino) != expected_inode:
             raise LifecycleError(
-                "Run lock ownership changed at atomic release boundary; "
-                f"evidence retained at {evidence_path}"
+                "Released run-lock evidence did not retain the owned inode: "
+                f"{evidence_path}"
             )
         os.lseek(descriptor, 0, os.SEEK_SET)
         retained_chunks: list[bytes] = []
@@ -409,12 +507,29 @@ def _release_owned_lock(
             raise LifecycleError(
                 f"Released run-lock evidence changed at publication: {evidence_path}"
             )
-        for parent in dict.fromkeys((path.parent, evidence_path.parent)):
-            directory = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-            try:
-                os.fsync(directory)
-            finally:
-                os.close(directory)
+        os.fsync(descriptor)
+        _sync_real_directory(evidence_path.parent, "released-lock evidence directory")
+        public_state = path.stat(follow_symlinks=False)
+        if (public_state.st_dev, public_state.st_ino) != expected_inode:
+            raise LifecycleError(
+                "Run lock pathname changed after evidence publication; "
+                f"owned evidence retained at {evidence_path}"
+            )
+        path.unlink()
+        if path.exists() or path.is_symlink():
+            raise LifecycleError(
+                f"Owned run lock remained after evidence publication: {path}"
+            )
+        evidence_after = evidence_path.stat(follow_symlinks=False)
+        if (evidence_after.st_dev, evidence_after.st_ino) != expected_inode:
+            raise LifecycleError(
+                f"Released run-lock evidence changed after unlink: {evidence_path}"
+            )
+        _sync_real_directory(path.parent, "aggregate lock directory")
+        if evidence_path.parent != path.parent:
+            _sync_real_directory(
+                evidence_path.parent, "released-lock evidence directory"
+            )
     except OSError as exc:
         raise LifecycleError(f"Could not release owned run lock {path}: {exc}") from exc
     finally:
@@ -1096,7 +1211,7 @@ def _admit_request(
 
 
 def _operation_preflight(
-    request: LifecycleRequest,
+    operation: Operation,
     root: Path,
     attempt: Mapping[str, Any],
     ops: LifecycleOps,
@@ -1115,7 +1230,7 @@ def _operation_preflight(
         raise LifecycleError(
             "Aggregate attempt state is not admissible: " + "; ".join(attempt_blockers)
         )
-    if request.operation == "execute":
+    if operation == "execute":
         if attempt_entries:
             raise LifecycleError("Initial execution refuses a run with prior attempts")
         if attempt["supersedes_workflow_attempt_id"] is not None:
@@ -1200,7 +1315,8 @@ def _under_lock_attempt_preflight(
         or observed.latest_receipt is None
     ):
         raise LifecycleError(
-            "Resume lost its revalidated between-task boundary under lock"
+            "Resume lost its revalidated between-task boundary under lock: "
+            + "; ".join(observed.blockers or (observed.state,))
         )
     if attempt["supersedes_workflow_attempt_id"] != observed.latest_attempt[
         "workflow_attempt_id"
@@ -1268,10 +1384,21 @@ def run_attempt(
     *,
     ops: LifecycleOps | None = None,
     _owned_lock: _OwnedRunLock | None = None,
+    _mutex_held: bool = False,
 ) -> LifecycleOutcome:
     """Execute one immutable local attempt and publish its receipt last."""
 
     active_ops = default_lifecycle_ops() if ops is None else ops
+    if not _mutex_held:
+        root = _canonical_root(request.run_root)
+        acquire_mutex = active_ops.acquire_attempt_mutex or _acquire_attempt_mutex
+        with acquire_mutex(root):
+            return run_attempt(
+                request,
+                ops=active_ops,
+                _owned_lock=_owned_lock,
+                _mutex_held=True,
+            )
     (
         root,
         profile,
@@ -1282,7 +1409,7 @@ def run_attempt(
         request_source_data,
     ) = _admit_request(request, active_ops)
     if _owned_lock is None:
-        _operation_preflight(request, root, attempt, active_ops)
+        _operation_preflight(request.operation, root, attempt, active_ops)
     identifier = str(attempt["workflow_attempt_id"])
     attempt_root = root / "attempts" / identifier
     locks_root = root / "locks"
@@ -1600,13 +1727,53 @@ def run_attempt(
     )
 
 
+def _admit_attempt_preparation(
+    preparation: AttemptPreparation,
+) -> dict[str, Any]:
+    """Admit the exact no-write attempt record used at the mutex boundary."""
+
+    if type(preparation.attempt_record_bytes) is not bytes:
+        raise LifecycleError("Prepared workflow attempt must be exact immutable bytes")
+    try:
+        attempt = orchestration_contracts.load_json_object_bytes(
+            preparation.attempt_record_bytes,
+            "prepared workflow attempt",
+        )
+        orchestration_contracts.validate_record("workflow-attempt", attempt)
+    except orchestration_contracts.ContractValidationError as exc:
+        raise LifecycleError(f"Invalid prepared workflow attempt: {exc}") from exc
+    if (
+        orchestration_contracts.canonical_json_bytes(attempt)
+        != preparation.attempt_record_bytes
+    ):
+        raise LifecycleError("Prepared workflow attempt must use canonical JSON bytes")
+    if preparation.operation not in {"execute", "resume"}:
+        raise LifecycleError(
+            f"Unsupported prepared lifecycle operation: {preparation.operation}"
+        )
+    for field, expected in (
+        ("run_id", preparation.run_id),
+        ("workflow_attempt_id", preparation.workflow_attempt_id),
+        ("owner_token", preparation.owner_token),
+        ("host", preparation.host),
+        ("process_id", preparation.process_id),
+        ("created_at", preparation.created_at),
+        ("operation", preparation.operation),
+    ):
+        if attempt.get(field) != expected:
+            raise LifecycleError(
+                f"Prepared workflow attempt does not bind prepared {field}"
+            )
+    return attempt
+
+
 def run_materialized_attempt(
     preparation: AttemptPreparation,
     materialize: AttemptMaterializer,
     *,
     ops: LifecycleOps | None = None,
 ) -> LifecycleOutcome:
-    """Acquire the aggregate lock before publishing attempt-specific inputs."""
+    """Serialize admission before publishing lock or attempt-specific inputs."""
 
     active_ops = default_lifecycle_ops() if ops is None else ops
     root = _canonical_root(preparation.run_root)
@@ -1617,66 +1784,89 @@ def run_materialized_attempt(
             raise LifecycleError(
                 f"Lifecycle parent must be pre-materialized and real: {directory}"
             )
-    lock_path = locks_root / "run.lock"
-    lock_record = {
-        "schema_version": "norad.run-lock.v1",
-        "run_id": preparation.run_id,
-        "workflow_attempt_id": preparation.workflow_attempt_id,
-        "attempt_record_path": (
-            f"attempts/{preparation.workflow_attempt_id}/attempt.json"
-        ),
-        "owner_token": preparation.owner_token,
-        "process_id": preparation.process_id,
-        "host": preparation.host,
-        "created_at": preparation.created_at,
-    }
-    orchestration_contracts.validate_record("run-lock", lock_record)
-    lock_bytes = orchestration_contracts.canonical_json_bytes(lock_record)
-    active_ops.publish_bytes(lock_path, lock_bytes)
-    lock_state = lock_path.stat(follow_symlinks=False)
-    owned = _OwnedRunLock(
-        path=lock_path,
-        record=lock_record,
-        data=lock_bytes,
-        inode=(lock_state.st_dev, lock_state.st_ino),
-    )
-    try:
-        request = materialize()
-        if request.run_root != root:
-            raise LifecycleError("Materialized request changed the prepared run root")
-        attempt = request.attempt_record
-        for field, expected in (
-            ("run_id", preparation.run_id),
-            ("workflow_attempt_id", preparation.workflow_attempt_id),
-            ("owner_token", preparation.owner_token),
-            ("host", preparation.host),
-            ("process_id", preparation.process_id),
-            ("created_at", preparation.created_at),
-        ):
-            if attempt.get(field) != expected:
+    prepared_attempt = _admit_attempt_preparation(preparation)
+    acquire_mutex = active_ops.acquire_attempt_mutex or _acquire_attempt_mutex
+    with acquire_mutex(root):
+        _operation_preflight(
+            preparation.operation,
+            root,
+            prepared_attempt,
+            active_ops,
+        )
+        lock_path = locks_root / "run.lock"
+        lock_record = {
+            "schema_version": "norad.run-lock.v1",
+            "run_id": preparation.run_id,
+            "workflow_attempt_id": preparation.workflow_attempt_id,
+            "attempt_record_path": (
+                f"attempts/{preparation.workflow_attempt_id}/attempt.json"
+            ),
+            "owner_token": preparation.owner_token,
+            "process_id": preparation.process_id,
+            "host": preparation.host,
+            "created_at": preparation.created_at,
+        }
+        orchestration_contracts.validate_record("run-lock", lock_record)
+        lock_bytes = orchestration_contracts.canonical_json_bytes(lock_record)
+        active_ops.publish_bytes(lock_path, lock_bytes)
+        lock_state = lock_path.stat(follow_symlinks=False)
+        owned = _OwnedRunLock(
+            path=lock_path,
+            record=lock_record,
+            data=lock_bytes,
+            inode=(lock_state.st_dev, lock_state.st_ino),
+        )
+        try:
+            request = materialize()
+            if request.run_root != root:
                 raise LifecycleError(
-                    f"Materialized workflow attempt does not bind prepared {field}"
+                    "Materialized request changed the prepared run root"
                 )
-        return run_attempt(request, ops=active_ops, _owned_lock=owned)
-    except Exception as exc:
-        attempt_path = attempts_root / preparation.workflow_attempt_id / "attempt.json"
-        if not attempt_path.exists() and not attempt_path.is_symlink():
-            if lock_path.exists() and not lock_path.is_symlink():
-                evidence = (
-                    locks_root
-                    / f"released-{preparation.workflow_attempt_id}-run-lock.json"
+            if request.operation != preparation.operation:
+                raise LifecycleError(
+                    "Materialized request changed the prepared lifecycle operation"
                 )
-                active_ops.release_lock(
-                    lock_path,
-                    evidence,
-                    lock_bytes,
-                    owned.inode,
+            try:
+                materialized_attempt_bytes = (
+                    orchestration_contracts.canonical_json_bytes(
+                        dict(request.attempt_record)
+                    )
                 )
-        if isinstance(exc, LifecycleError):
-            raise
-        raise LifecycleError(
-            f"Could not materialize immutable workflow attempt: {exc}"
-        ) from exc
+            except (TypeError, ValueError) as exc:
+                raise LifecycleError(
+                    "Materialized workflow attempt is not canonical JSON"
+                ) from exc
+            if materialized_attempt_bytes != preparation.attempt_record_bytes:
+                raise LifecycleError(
+                    "Materialized workflow attempt differs from prepared exact bytes"
+                )
+            return run_attempt(
+                request,
+                ops=active_ops,
+                _owned_lock=owned,
+                _mutex_held=True,
+            )
+        except Exception as exc:
+            attempt_path = (
+                attempts_root / preparation.workflow_attempt_id / "attempt.json"
+            )
+            if not attempt_path.exists() and not attempt_path.is_symlink():
+                if lock_path.exists() and not lock_path.is_symlink():
+                    evidence = (
+                        locks_root
+                        / f"released-{preparation.workflow_attempt_id}-run-lock.json"
+                    )
+                    active_ops.release_lock(
+                        lock_path,
+                        evidence,
+                        lock_bytes,
+                        owned.inode,
+                    )
+            if isinstance(exc, LifecycleError):
+                raise
+            raise LifecycleError(
+                f"Could not materialize immutable workflow attempt: {exc}"
+            ) from exc
 
 
 __all__ = (

@@ -442,11 +442,26 @@ def lock_tree_blockers(
         entries = _stable_directory_entries(locks_root, root, "aggregate locks root")
     except InspectionError as exc:
         return (str(exc),)
+    allowed = frozenset({"run.lock", "acquire.mutex"})
     blockers = [
         f"Unexpected retained aggregate lock state: {locks_root / name}"
         for name in entries
-        if name != "run.lock"
+        if name not in allowed
     ]
+    mutex_path = locks_root / "acquire.mutex"
+    if "acquire.mutex" in entries:
+        try:
+            mutex_data = _read_bytes(
+                mutex_path,
+                root,
+                "persistent lifecycle mutex",
+            )
+            if mutex_data:
+                blockers.append(
+                    f"Persistent lifecycle mutex must be zero bytes: {mutex_path}"
+                )
+        except InspectionError as exc:
+            blockers.append(str(exc))
     has_run_lock = "run.lock" in entries
     lock_path = locks_root / "run.lock"
     if expected_run_lock is True and not has_run_lock:

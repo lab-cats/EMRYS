@@ -432,12 +432,21 @@ receipt published last as `succeeded`, `failed`, `interrupted`, or `blocked`.
 Attempts form a linear supersession chain. A terminal attempt is never reopened,
 and a completed run refuses another execute or resume operation.
 
+Attempt admission is serialized by a persistent canonical zero-byte advisory
+mutex beneath `locks/`. That mutex is benign infrastructure, not attempt or
+recovery evidence. NORAD holds it while revalidating the exact prepared
+execute/resume request; only a still-current request may publish `run.lock` or
+attempt-specific state. A contender that waited behind a completing attempt
+therefore exits without contaminating the completed or resumable run.
+
 The lifecycle process handles an ordinary signal by stopping delegated work,
 preserving task and owner state, and proving a between-task boundary when
-possible. It
-atomically moves the owned public run lock to the attempt-local immutable
-`released-run-lock.json`, then publishes an `interrupted` receipt last and
-binds that release evidence. A nonterminal attempt left by an unhandled crash
+possible. It publishes the attempt-local immutable
+`released-run-lock.json` with a create-exclusive hard link to the owned public
+run lock, verifies and synchronizes the shared inode and bytes, removes only
+the still-owned public name, then publishes an `interrupted` receipt last and
+binds that release evidence. A colliding evidence path is never overwritten. A
+nonterminal attempt left by an unhandled crash
 or power loss is not guessed complete or automatically repaired. If live lock
 ownership and an unentered-or-fully-verified boundary cannot be proved,
 inspection reports it as

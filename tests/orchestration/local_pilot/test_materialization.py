@@ -9,6 +9,8 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
+from contextlib import contextmanager
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -168,6 +170,8 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     plan = _plan(tmp_path)
 
     assert not plan.workspace.exists()
+    assert plan.preparation.operation == "execute"
+    assert json.loads(plan.preparation.attempt_record_bytes) == plan.attempt_record
     assert plan.dispatch_count == 34
     records = _dispatch_records(plan)
     assert len(records) == 34
@@ -316,6 +320,155 @@ def test_lock_precedes_attempt_publication_failure_and_retains_evidence(
     assert not (plan.run_root / "attempts" / plan.workflow_attempt_id).exists()
     assert list((plan.run_root / "contract/dispatch").rglob("*.json"))
     assert inspection.inspect_run(plan.run_root).state == "blocked"
+
+
+def test_waiting_stale_resume_exits_before_attempt_materialization(
+    tmp_path: Path,
+) -> None:
+    readiness, normalized, _request, workspace = _readiness(tmp_path)
+    initial = build_attempt_plan(
+        normalized,
+        readiness,
+        workspace,
+        operation="execute",
+        now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
+        token="1" * 32,
+        host="test-host",
+        process_id=123,
+    )
+    base = lifecycle.default_lifecycle_ops()
+    common_ops = replace(
+        base,
+        run_workflow=lambda _argv, _cwd: lifecycle.WorkflowResult(9, None),
+        now=lambda: datetime(2026, 8, 12, 20, 30, tzinfo=UTC),
+        host_name=lambda: "test-host",
+        process_id=lambda: 123,
+        process_is_alive=lambda _pid: True,
+        admit_runtime_context=lambda _attempt, _request: None,
+    )
+    initial_ops = replace(
+        common_ops,
+        now=lambda: datetime(2026, 8, 12, 20, 5, tzinfo=UTC),
+    )
+    initialize_run(initial, ops=initial_ops)
+    first = lifecycle.run_materialized_attempt(
+        initial.preparation,
+        lambda: publish_attempt(initial, ops=initial_ops),
+        ops=initial_ops,
+    )
+    assert first.receipt["status"] == "failed"
+    assert inspection.inspect_run(initial.run_root).resume_available
+
+    def resume_plan(token: str, minute: int):
+        return build_attempt_plan(
+            normalized,
+            readiness,
+            workspace,
+            operation="resume",
+            now=datetime(2026, 8, 12, 20, minute, tzinfo=UTC),
+            token=token * 32,
+            host="test-host",
+            process_id=123,
+            supersedes_workflow_attempt_id=initial.workflow_attempt_id,
+            retained_dispatches={},
+        )
+
+    winner = resume_plan("2", 10)
+    stale = resume_plan("3", 11)
+    winner_entered = threading.Event()
+    release_winner = threading.Event()
+    contender_entered_mutex = threading.Event()
+    contender_acquired_mutex = threading.Event()
+    stale_materialized = threading.Event()
+    original_acquire = lifecycle._acquire_attempt_mutex
+
+    @contextmanager
+    def observed_acquire(root: Path):
+        contender = threading.current_thread().name == "stale-resume"
+        if contender:
+            contender_entered_mutex.set()
+        with original_acquire(root) as path:
+            if contender:
+                contender_acquired_mutex.set()
+            yield path
+
+    def wait_then_fail(_argv: tuple[str, ...], _cwd: Path) -> lifecycle.WorkflowResult:
+        winner_entered.set()
+        if not release_winner.wait(timeout=10):
+            raise AssertionError("fixture did not release serialized winner")
+        return lifecycle.WorkflowResult(9, None)
+
+    winner_ops = replace(
+        common_ops,
+        run_workflow=wait_then_fail,
+        acquire_attempt_mutex=observed_acquire,
+    )
+    stale_ops = replace(common_ops, acquire_attempt_mutex=observed_acquire)
+    winner_outcomes: list[lifecycle.LifecycleOutcome] = []
+    winner_errors: list[BaseException] = []
+    stale_errors: list[BaseException] = []
+
+    def run_winner() -> None:
+        try:
+            winner_outcomes.append(
+                lifecycle.run_materialized_attempt(
+                    winner.preparation,
+                    lambda: publish_attempt(winner, ops=winner_ops),
+                    ops=winner_ops,
+                )
+            )
+        except BaseException as exc:  # pragma: no cover - asserted below
+            winner_errors.append(exc)
+
+    def run_stale() -> None:
+        try:
+            lifecycle.run_materialized_attempt(
+                stale.preparation,
+                lambda: (
+                    stale_materialized.set(),
+                    publish_attempt(stale, ops=stale_ops),
+                )[1],
+                ops=stale_ops,
+            )
+        except BaseException as exc:
+            stale_errors.append(exc)
+
+    winner_thread = threading.Thread(target=run_winner, name="winner-resume")
+    stale_thread = threading.Thread(target=run_stale, name="stale-resume")
+    winner_thread.start()
+    if not winner_entered.wait(timeout=10):
+        release_winner.set()
+        winner_thread.join(timeout=10)
+        assert not winner_errors, winner_errors
+        pytest.fail("serialized winner did not enter workflow")
+    stale_thread.start()
+    assert contender_entered_mutex.wait(timeout=10)
+    assert not contender_acquired_mutex.wait(timeout=0.1)
+    release_winner.set()
+    winner_thread.join(timeout=10)
+    stale_thread.join(timeout=10)
+
+    assert not winner_thread.is_alive()
+    assert not stale_thread.is_alive()
+    assert not winner_errors
+    assert winner_outcomes[0].receipt["status"] == "failed", winner_outcomes[0].receipt[
+        "blockers"
+    ]
+    assert len(stale_errors) == 1
+    assert isinstance(stale_errors[0], lifecycle.LifecycleError)
+    assert "exact latest workflow attempt" in str(stale_errors[0])
+    assert not stale_materialized.is_set()
+    assert not (stale.run_root / "locks" / "run.lock").exists()
+    assert not (
+        stale.run_root / "locks" / f"released-{stale.workflow_attempt_id}-run-lock.json"
+    ).exists()
+    assert not (stale.run_root / "attempts" / stale.workflow_attempt_id).exists()
+    assert all(not item.path.exists() for item in stale.attempt_files)
+    mutex = stale.run_root / "locks" / "acquire.mutex"
+    assert mutex.is_file() and not mutex.is_symlink() and mutex.read_bytes() == b""
+    observed = inspection.inspect_run(stale.run_root)
+    assert observed.state == "resume_available", observed.blockers
+    assert observed.latest_workflow_attempt_id == winner.workflow_attempt_id
 
 
 def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:

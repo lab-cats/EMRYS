@@ -1184,6 +1184,44 @@ def test_existing_lock_serializes_attempt_creation(tmp_path: Path) -> None:
     assert not (built.built.run_root / "attempts" / identifier).exists()
 
 
+def test_persistent_zero_byte_mutex_is_benign_but_other_shapes_block(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(tmp_path)
+    mutex = built.built.run_root / "locks" / "acquire.mutex"
+    mutex.write_bytes(b"")
+
+    assert (
+        inspection.lock_tree_blockers(
+            built.built.run_root,
+            expected_run_lock=False,
+        )
+        == ()
+    )
+
+    mutex.write_bytes(b"foreign\n")
+    blockers = inspection.lock_tree_blockers(
+        built.built.run_root,
+        expected_run_lock=False,
+    )
+    assert any("must be zero bytes" in item for item in blockers)
+
+
+def test_advisory_mutex_unavailability_fails_before_mutex_publication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    built = _build_harness(tmp_path)
+    mutex = built.built.run_root / "locks" / "acquire.mutex"
+    monkeypatch.setattr(lifecycle, "_fcntl", None)
+
+    with pytest.raises(lifecycle.LifecycleError, match="advisory file locking"):
+        with lifecycle._acquire_attempt_mutex(built.built.run_root):
+            raise AssertionError("unsupported mutex unexpectedly acquired")
+
+    assert not mutex.exists()
+
+
 def test_foreign_aggregate_state_blocks_before_lock_acquisition(tmp_path: Path) -> None:
     built = _build_harness(tmp_path)
     (built.built.run_root / "state" / "foreign").mkdir()
@@ -1256,33 +1294,31 @@ def test_release_hook_cannot_substitute_equal_bytes_on_a_new_inode(
     ).exists()
 
 
-def test_owned_lock_release_retains_evidence_and_foreign_public_replacement(
+def test_owned_lock_release_retains_owned_inode_and_removes_public_name(
     tmp_path: Path,
 ) -> None:
     lock = tmp_path / "run.lock"
     expected = b"owned lock\n"
-    foreign = b"foreign replacement\n"
     lock.write_bytes(expected)
     state = lock.stat(follow_symlinks=False)
 
     evidence = tmp_path / "released-run-lock.json"
-
-    def replace_after_release(source: Path, destination: Path) -> None:
-        os.rename(source, destination)
-        source.write_bytes(foreign)
-
     lifecycle._release_owned_lock(
         lock,
         evidence,
         expected,
         (state.st_dev, state.st_ino),
-        publish_evidence=replace_after_release,
     )
-    assert lock.read_bytes() == foreign
+    evidence_state = evidence.stat(follow_symlinks=False)
+    assert not lock.exists()
+    assert (evidence_state.st_dev, evidence_state.st_ino) == (
+        state.st_dev,
+        state.st_ino,
+    )
     assert evidence.read_bytes() == expected
 
 
-def test_owned_lock_release_retains_foreign_moved_evidence(
+def test_owned_lock_release_collision_preserves_source_and_foreign_evidence(
     tmp_path: Path,
 ) -> None:
     lock = tmp_path / "run.lock"
@@ -1292,20 +1328,49 @@ def test_owned_lock_release_retains_foreign_moved_evidence(
     state = lock.stat(follow_symlinks=False)
 
     evidence = tmp_path / "released-run-lock.json"
+    evidence.write_bytes(foreign)
+    foreign_state = evidence.stat(follow_symlinks=False)
 
-    def move_foreign(source: Path, destination: Path) -> None:
-        source.unlink()
-        source.write_bytes(foreign)
-        os.rename(source, destination)
-
-    with pytest.raises(lifecycle.LifecycleError, match="evidence retained"):
+    with pytest.raises(lifecycle.LifecycleError, match="Refusing to replace"):
         lifecycle._release_owned_lock(
             lock,
             evidence,
             expected,
             (state.st_dev, state.st_ino),
-            publish_evidence=move_foreign,
         )
+    assert lock.read_bytes() == expected
+    assert evidence.read_bytes() == foreign
+    evidence_after = evidence.stat(follow_symlinks=False)
+    assert (evidence_after.st_dev, evidence_after.st_ino) == (
+        foreign_state.st_dev,
+        foreign_state.st_ino,
+    )
+
+
+def test_owned_lock_injected_destination_race_preserves_both_names(
+    tmp_path: Path,
+) -> None:
+    lock = tmp_path / "run.lock"
+    expected = b"owned lock\n"
+    foreign = b"foreign replacement\n"
+    lock.write_bytes(expected)
+    state = lock.stat(follow_symlinks=False)
+    evidence = tmp_path / "released-run-lock.json"
+
+    def collide(_source: Path, destination: Path) -> None:
+        destination.write_bytes(foreign)
+        raise FileExistsError(destination)
+
+    with pytest.raises(lifecycle.LifecycleError, match="Refusing to replace"):
+        lifecycle._release_owned_lock(
+            lock,
+            evidence,
+            expected,
+            (state.st_dev, state.st_ino),
+            publish_evidence=collide,
+        )
+
+    assert lock.read_bytes() == expected
     assert evidence.read_bytes() == foreign
 
 

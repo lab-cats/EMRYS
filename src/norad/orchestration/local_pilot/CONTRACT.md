@@ -38,8 +38,13 @@ unlock, cleanup, retry, plugin, or alternate-profile escape hatch.
 the fixed profile to owner commands, declared inputs/outputs, validation
 reports, immutable task dispatches, reporting projections, workflow config,
 and workflow-attempt record. Initial run skeleton creation is create-absent.
-The aggregate lifecycle lock is acquired before attempt-specific directories,
-dispatches, config, request snapshot, or attempt record are published. Resume
+Lifecycle first holds the persistent zero-byte `locks/acquire.mutex` advisory
+mutex and revalidates the exact prepared attempt under that serialization
+boundary. The mutex is infrastructure, not run evidence. Only an admissible
+current execute/resume then publishes the evidence-bearing aggregate run lock
+before attempt-specific directories, dispatches, config, request snapshot, or
+attempt record. A stale waiting contender exits before its materializer runs
+and leaves no attempt, dispatch, config, or released-lock residue. Resume
 retains only independently revalidated predecessor dispatches for verified
 scopes and materializes new dispatches for the unentered remainder.
 
@@ -99,13 +104,17 @@ reports, receipts, logs, and recovery evidence are never disposable workflow
 outputs. Existing verified records are reusable only after read-only schema,
 identity, content, attempt, receipt, and semantic-report revalidation.
 
-The internal lifecycle owns aggregate serialization before Snakemake. A
-create-exclusive run lock is acquired before an exact absent attempt directory
-is created. Lock release atomically renames the public lock to the exact absent
-attempt-local immutable `released-run-lock.json`; it never conditionally
-unlinks the moved pathname. The moved inode and bytes are re-admitted and bound
-by the terminal receipt published after it. A foreign public replacement is
-never unlinked, and a foreign moved inode remains visible as recovery evidence.
+The internal lifecycle owns aggregate serialization before Snakemake. It holds
+the admitted advisory mutex from stale-attempt revalidation through receipt or
+recovery publication. A create-exclusive run lock is acquired only after that
+revalidation and before an exact absent attempt directory is created. Lock
+release creates the exact absent attempt-local immutable
+`released-run-lock.json` as a no-replace hard link to the owned public lock,
+re-admits the shared inode and bytes, durably synchronizes the evidence, and
+then removes only the still-owned public name. A colliding evidence name
+preserves both it and the public lock and fails closed; no rename may overwrite
+foreign evidence. The retained inode and bytes are bound by the terminal
+receipt published after release.
 The attempt binds canonical
 execution, profile, and attempt-local workflow-config bytes; the config
 transitively binds each dispatch. The executor argument binds the exact reviewed

@@ -51,7 +51,6 @@ class AttemptPlan:
     run_root: Path
     workflow_attempt_id: str
     supersedes_workflow_attempt_id: str | None
-    preparation: lifecycle.AttemptPreparation
     attempt_record: dict[str, Any]
     fixed_files: tuple[PlannedFile, ...]
     attempt_files: tuple[PlannedFile, ...]
@@ -61,6 +60,23 @@ class AttemptPlan:
     @property
     def config_path(self) -> Path:
         return self.run_root / str(self.attempt_record["workflow_config"]["path"])
+
+    @property
+    def preparation(self) -> lifecycle.AttemptPreparation:
+        """Freeze the plan's current exact attempt record for serialized entry."""
+
+        attempt = self.attempt_record
+        return lifecycle.AttemptPreparation(
+            run_root=self.run_root,
+            run_id=str(attempt["run_id"]),
+            workflow_attempt_id=str(attempt["workflow_attempt_id"]),
+            owner_token=str(attempt["owner_token"]),
+            host=str(attempt["host"]),
+            process_id=int(attempt["process_id"]),
+            created_at=str(attempt["created_at"]),
+            operation=self.operation,
+            attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
+        )
 
     @property
     def execution_path(self) -> Path:
@@ -1286,15 +1302,6 @@ def build_attempt_plan(
         *(item.path.parent for item in fixed_files),
         *(item.path.parent for item in attempt_files),
     }
-    preparation = lifecycle.AttemptPreparation(
-        run_root=run_root,
-        run_id=normalized.run_id,
-        workflow_attempt_id=attempt_id,
-        owner_token=owner_token,
-        host=str(attempt["host"]),
-        process_id=int(attempt["process_id"]),
-        created_at=created_at,
-    )
     return AttemptPlan(
         normalized=normalized,
         readiness=readiness,
@@ -1303,7 +1310,6 @@ def build_attempt_plan(
         run_root=run_root,
         workflow_attempt_id=attempt_id,
         supersedes_workflow_attempt_id=supersedes_workflow_attempt_id,
-        preparation=preparation,
         attempt_record=attempt,
         fixed_files=tuple(fixed_files),
         attempt_files=tuple(attempt_files),

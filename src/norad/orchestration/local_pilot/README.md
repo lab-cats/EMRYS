@@ -89,7 +89,9 @@ The fixed profile and local Snakemake graph live under
 
 B4 supplies the internal lifecycle authorities used by the B5 public adapter:
 
-- `lifecycle.run_attempt(...)` owns one create-exclusive aggregate run lock,
+- `lifecycle.run_attempt(...)` owns the persistent benign advisory acquisition
+  mutex, under-mutex stale-attempt revalidation, one create-exclusive aggregate
+  run lock, no-replace hard-link release evidence,
   immutable attempt record, exact reviewed Snakefile and absolute workflow
   profile, the same content-admitted Python runtime running
   `-X pycache_prefix=/dev/null -I -m snakemake`, new-process-group invocation,
