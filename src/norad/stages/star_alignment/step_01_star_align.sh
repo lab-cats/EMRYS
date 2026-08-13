@@ -96,6 +96,14 @@ fi
 
 mkdir -p "$output_dir"
 
+# Treat any existing content in the dedicated sample output directory as a
+# prior or partial attempt. Dry-run reports the collision; execute refuses to
+# overwrite it.
+output_state="empty"
+if [[ -n "$(find "$output_dir" -mindepth 1 -maxdepth 1 -print -quit)" ]]; then
+    output_state="occupied"
+fi
+
 # Report the resolved run context so cluster logs are reproducible.
 mode="dry-run"
 if [[ "$execute" == true ]]; then
@@ -108,8 +116,38 @@ printf '  R1 FASTQ: %s\n' "$r1_fastq"
 printf '  R2 FASTQ: %s\n' "$r2_fastq"
 printf '  STAR index: %s\n' "$star_index"
 printf '  Output directory: %s\n' "$output_dir"
+printf '  Output state: %s\n' "$output_state"
 printf '  Threads: %s\n' "$threads"
 printf '  Mode: %s\n' "$mode"
+
+if [[ "$output_state" == "occupied" ]]; then
+    if [[ "$execute" == true ]]; then
+        die "Refusing to execute because output directory is not empty: $output_dir"
+    fi
+    printf 'Execute would refuse to overwrite existing output directory contents.\n'
+fi
+
+# Acquire an atomic sibling lock before an execute attempt. mkdir is atomic, so
+# concurrent jobs cannot both proceed after observing an empty output directory.
+attempt_lock="${output_dir}.step_01.lock"
+attempt_lock_acquired=false
+
+cleanup_attempt_lock() {
+    if [[ "$attempt_lock_acquired" == true ]]; then
+        rm -f "$attempt_lock/owner"
+        rmdir "$attempt_lock" 2>/dev/null || true
+    fi
+}
+
+if [[ "$execute" == true ]]; then
+    if ! mkdir "$attempt_lock" 2>/dev/null; then
+        die "Refusing to execute because Step 01 attempt lock already exists: $attempt_lock"
+    fi
+
+    attempt_lock_acquired=true
+    printf 'run_token=%s\n' "${SLURM_JOB_ID:-manual}" > "$attempt_lock/owner"
+    trap cleanup_attempt_lock EXIT
+fi
 
 # Write coordinate-sorted BAM directly to avoid large default SAM output.
 star_command=(

@@ -113,6 +113,67 @@ assert_contains "$dry_output" "BAM"
 assert_contains "$dry_output" "SortedByCoordinate"
 assert_not_contains "$dry_output" "--readFilesCommand"
 
+printf 'Running occupied output dry-run check...\n'
+occupied_output="$tmp_dir/occupied.out"
+occupied_output_dir="$tmp_dir/results/occupied"
+mkdir -p "$occupied_output_dir"
+printf 'preserve me\n' > "$occupied_output_dir/sample_occupied.Log.out"
+
+bash "$SCRIPT" \
+    --sample-id sample_occupied \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$star_index" \
+    --output-dir "$occupied_output_dir" \
+    --threads 2 \
+    >"$occupied_output"
+
+assert_contains "$occupied_output" "Output state: occupied"
+assert_contains "$occupied_output" "Execute would refuse to overwrite existing output directory contents."
+[[ "$(cat "$occupied_output_dir/sample_occupied.Log.out")" == "preserve me" ]] || \
+    fail "dry-run modified an existing output"
+[[ ! -e "$star_log" ]] || fail "occupied dry-run invoked STAR"
+
+printf 'Running occupied output execute refusal check...\n'
+occupied_execute_output="$tmp_dir/occupied_execute.out"
+assert_fails "$occupied_execute_output" bash "$SCRIPT" \
+    --sample-id sample_occupied \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$star_index" \
+    --output-dir "$occupied_output_dir" \
+    --threads 2 \
+    --execute
+
+assert_contains "$occupied_execute_output" \
+    "Refusing to execute because output directory is not empty"
+[[ "$(cat "$occupied_output_dir/sample_occupied.Log.out")" == "preserve me" ]] || \
+    fail "execute refusal modified an existing output"
+[[ ! -e "$star_log" ]] || fail "occupied execute invoked STAR"
+
+printf 'Running active attempt lock refusal check...\n'
+locked_output="$tmp_dir/locked.out"
+locked_output_dir="$tmp_dir/results/locked"
+locked_attempt_lock="${locked_output_dir}.step_01.lock"
+
+mkdir -p "$locked_attempt_lock"
+printf 'foreign lock\n' > "$locked_attempt_lock/owner"
+
+assert_fails "$locked_output" bash "$SCRIPT" \
+    --sample-id sample_locked \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$star_index" \
+    --output-dir "$locked_output_dir" \
+    --threads 2 \
+    --execute
+
+assert_contains "$locked_output" \
+    "Refusing to execute because Step 01 attempt lock already exists"
+[[ -f "$locked_attempt_lock/owner" ]] || \
+    fail "execute refusal removed a foreign attempt lock"
+[[ ! -e "$star_log" ]] || fail "locked execute invoked STAR"
+
 printf 'Running execute check...\n'
 execute_output="$tmp_dir/execute.out"
 execute_output_dir="$tmp_dir/results/execute"
@@ -137,6 +198,9 @@ assert_contains "$star_log" "BAM"
 assert_contains "$star_log" "SortedByCoordinate"
 assert_contains "$execute_output" "Mode: execute"
 
+[[ ! -e "${execute_output_dir}.step_01.lock" ]] || \
+    fail "successful execute left its attempt lock behind"
+
 printf 'Running child failure propagation check...\n'
 failure_output="$tmp_dir/failure.out"
 failure_stderr="$tmp_dir/failure.err"
@@ -159,6 +223,8 @@ set -e
 [[ -z "$(find "$failure_output_dir" -mindepth 1 -print -quit)" ]] || \
     fail "fake STAR child failure left unexpected output artifacts"
 [[ ! -s "$failure_stderr" ]] || fail "fake STAR child failure emitted stderr"
+[[ ! -e "${failure_output_dir}.step_01.lock" ]] || \
+    fail "failed STAR child left its attempt lock behind"
 assert_contains "$failure_output" "Mode: execute"
 assert_contains "$failure_output" "STAR command:"
 assert_contains "$star_log" "$failure_output_dir/sample_failure."
