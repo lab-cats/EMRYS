@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/norad/stages/canonical_bam/step_02_sort_index_bam.sh"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 # Keep assertions small and shell-native so failures print the local fixture state.
 fail() {
@@ -325,7 +327,8 @@ assert_contains "$threads_output" "--threads must be a positive integer"
 printf 'Running dry-run no-output check...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry"
-env FAKE_SAMPLE_ID=sample_dry SLURM_JOB_ID=drytoken bash "$SCRIPT" \
+env FAKE_SAMPLE_ID=sample_dry NORAD_RUN_TOKEN=explicit-owner-02 \
+    SLURM_JOB_ID=scheduler-02 bash "$SCRIPT" \
     --sample-id sample_dry \
     --input-alignment "$input_sam" \
     --output-dir "$dry_output_dir" \
@@ -336,10 +339,10 @@ dry_bam="$dry_output_dir/sample_dry.sorted.bam"
 assert_not_exists "$dry_output_dir"
 [[ ! -e "$samtools_log" ]] || fail "dry-run invoked samtools"
 assert_contains "$dry_output" "Mode: dry-run"
-assert_contains "$dry_output" "Run token: drytoken"
+assert_contains "$dry_output" "Run token: explicit-owner-02"
 assert_contains "$dry_output" "Lock directory: $dry_output_dir/.sample_dry.step02.lock"
-assert_contains "$dry_output" ".sample_dry.step02.drytoken.sorted.tmp.bam"
-assert_contains "$dry_output" ".sample_dry.step02.drytoken.rg.tmp.bam"
+assert_contains "$dry_output" ".sample_dry.step02.explicit-owner-02.sorted.tmp.bam"
+assert_contains "$dry_output" ".sample_dry.step02.explicit-owner-02.rg.tmp.bam"
 assert_contains "$dry_output" "addreplacerg"
 assert_contains "$dry_output" "-w"
 assert_contains "$dry_output" "ID:sample_dry"

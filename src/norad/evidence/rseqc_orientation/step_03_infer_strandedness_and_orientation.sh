@@ -122,7 +122,7 @@ if [[ "$no_clobber" == true ]]; then
 fi
 
 output_file="$output_dir/${sample_id}.infer_experiment.txt"
-run_token="${SLURM_JOB_ID:-$$}"
+run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 03 run token" "$run_token"
 tmp_output_file="$output_dir/.${sample_id}.step03.${run_token}.infer_experiment.tmp"
 lock_path="$output_dir/.${sample_id}.step03.lock"
@@ -191,6 +191,7 @@ printf '  infer_experiment.py: %s\n' "$requested_infer_experiment_bin"
 printf '  Resolved infer_experiment.py: %s\n' "$infer_experiment_bin"
 printf '  No-clobber transaction: %s\n' "$no_clobber"
 printf '  Lock directory: %s\n' "$lock_path"
+printf '  Run token: %s\n' "$run_token"
 printf '  Temporary output: %s\n' "$tmp_output_file"
 printf '  Mode: %s\n' "$mode"
 

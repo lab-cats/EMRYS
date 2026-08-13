@@ -119,7 +119,7 @@ samtools_bin="$(resolve_overridable_executable \
 java_bin="$(resolve_overridable_executable \
     "Java" "$requested_java_bin" JAVA_BIN_OVERRIDE java /bin/java)"
 
-run_token="${SLURM_JOB_ID:-$$}"
+run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 05 run token" "$run_token"
 
 # Final output names are stable downstream interfaces. Temp and backup names

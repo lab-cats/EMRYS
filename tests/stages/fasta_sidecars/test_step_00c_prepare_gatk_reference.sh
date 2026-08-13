@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
 JOB="$REPO_ROOT/src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -266,7 +268,7 @@ dry_dir="$tmp_dir/dry"
 dry_fasta="$dry_dir/genome.fa"
 write_fasta "$dry_fasta"
 dry_output="$tmp_dir/dry.out"
-bash "$SCRIPT" \
+NORAD_RUN_TOKEN=explicit-owner-00c SLURM_JOB_ID=scheduler-00c bash "$SCRIPT" \
     --reference-fasta "$dry_fasta" \
     --samtools-bin "$fake_bin/samtools" \
     --gatk-bin "$fake_bin/gatk" \
@@ -280,6 +282,7 @@ assert_not_exists "$samtools_log"
 assert_not_exists "$gatk_log"
 assert_not_exists "$java_log"
 assert_contains "$dry_output" "Mode: dry-run"
+assert_contains "$dry_output" "Run token: explicit-owner-00c"
 assert_contains "$dry_output" "Reference FASTA: $dry_fasta"
 assert_contains "$dry_output" "FASTA index: $dry_fasta.fai"
 assert_contains "$dry_output" "Sequence dictionary: $dry_dir/genome.dict"
@@ -297,7 +300,8 @@ unsafe_token_fasta="$unsafe_token_dir/genome.fa"
 write_fasta "$unsafe_token_fasta"
 unsafe_token_output="$tmp_dir/unsafe_token.out"
 set +e
-SLURM_JOB_ID='../unsafe-token' \
+NORAD_RUN_TOKEN='../unsafe-token' \
+SLURM_JOB_ID='safe-scheduler-token' \
 bash "$SCRIPT" \
     --reference-fasta "$unsafe_token_fasta" \
     --samtools-bin "$fake_bin/samtools" \

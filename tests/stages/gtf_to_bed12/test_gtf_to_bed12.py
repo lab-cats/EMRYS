@@ -8,6 +8,7 @@ import pytest
 from norad.stages.gtf_to_bed12.converter import (
     PublicationOperations,
     convert_from_args,
+    publish_bed,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -76,7 +77,46 @@ def test_help_interface() -> None:
     assert "--feature" in result.stdout
     assert "--name-attribute" in result.stdout
     assert "--gene-attribute" in result.stdout
+    assert "--run-token" in result.stdout
     assert "--execute" in result.stdout
+
+
+def test_unsafe_explicit_run_token_is_rejected_before_publication(
+    tmp_path: Path,
+) -> None:
+    gtf = write_gtf(
+        tmp_path / "input.gtf",
+        [gtf_row("chr1", (1, 4), "+", 'gene_id "g1"; transcript_id "tx1";')],
+    )
+    bed = tmp_path / "output" / "models.bed"
+
+    result = run_converter(
+        "--gtf",
+        str(gtf),
+        "--bed",
+        str(bed),
+        "--run-token",
+        "../unsafe-token",
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == ""
+    assert "Unsafe Step 00b publication token" in result.stderr
+    assert not bed.parent.exists()
+
+
+def test_empty_direct_api_run_token_does_not_fall_back(tmp_path: Path) -> None:
+    bed = tmp_path / "output" / "models.bed"
+
+    with pytest.raises(ValueError, match="Unsafe Step 00b publication token"):
+        publish_bed(
+            b"complete payload\n",
+            bed,
+            run_token="",
+            operations=PublicationOperations(token_factory=lambda: "fallback-token"),
+        )
+
+    assert not bed.parent.exists()
 
 
 def test_multi_exon_transcript_conversion_and_exon_sorting(tmp_path: Path) -> None:
@@ -90,9 +130,18 @@ def test_multi_exon_transcript_conversion_and_exon_sorting(tmp_path: Path) -> No
     )
     bed = tmp_path / "out" / "models.bed"
 
-    result = run_converter("--gtf", str(gtf), "--bed", str(bed), "--execute")
+    result = run_converter(
+        "--gtf",
+        str(gtf),
+        "--bed",
+        str(bed),
+        "--run-token",
+        "explicit-owner-00b",
+        "--execute",
+    )
 
     assert result.returncode == 0
+    assert "Run token: explicit-owner-00b" in result.stdout
     assert read_bed(bed) == [
         "chr1\t100\t250\ttxA|geneA\t0\t+\t100\t250\t0\t2\t50,50,\t0,100,"
     ]
@@ -572,6 +621,7 @@ def test_interruption_residue_is_preserved_and_blocks_retry(tmp_path: Path) -> N
         feature="exon",
         name_attribute="transcript_id",
         gene_attribute="gene_id",
+        run_token="explicit-interrupted",
         execute=True,
     )
 
@@ -582,15 +632,15 @@ def test_interruption_residue_is_preserved_and_blocks_retry(tmp_path: Path) -> N
         convert_from_args(
             arguments,
             publication_operations=PublicationOperations(
-                token_factory=lambda: "interrupted",
+                token_factory=lambda: "factory-token-must-not-win",
                 after_stage_write=interrupt_after_stage,
             ),
         )
 
     lock = bed.parent / ".models.bed.step00b.lock"
-    staged = bed.parent / ".models.bed.step00b.interrupted.tmp"
+    staged = bed.parent / ".models.bed.step00b.explicit-interrupted.tmp"
     assert not bed.exists()
-    assert lock.read_text(encoding="utf-8") == "run_token=interrupted\n"
+    assert lock.read_text(encoding="utf-8") == "run_token=explicit-interrupted\n"
     assert staged.is_file()
 
     retry = run_converter(

@@ -38,7 +38,9 @@ anchor through lock cleanup, then removes that anchor. Rollback removes a final
 only while it is still the same regular-file inode as the anchor. Lock/staging
 cleanup failure or a foreign final replacement fails closed with recovery
 residue. An existing output, lock, or staging residue is a blocker and is
-preserved.
+preserved. An orchestrator may bind the transaction to its own safe identifier
+with `--run-token`; omitting that option retains the private random-token
+fallback.
 
 ## Validator
 

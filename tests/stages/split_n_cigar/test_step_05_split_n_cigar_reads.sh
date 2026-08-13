@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
 JOB="$REPO_ROOT/src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -487,13 +489,15 @@ assert_no_step05_attempt_marker "$missing_samtools_dir"
 printf 'Running dry-run check...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry/split_ncigar/ABE_EV_2"
-SLURM_JOB_ID=dry001 run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$dry_output_dir" >"$dry_output"
+NORAD_RUN_TOKEN=explicit-owner-05 SLURM_JOB_ID=scheduler-05 \
+    run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$dry_output_dir" >"$dry_output"
 dry_bam="$dry_output_dir/ABE_EV_2.split_ncigar.bam"
 assert_not_exists "$dry_output_dir"
 [[ ! -e "$gatk_log" ]] || fail "dry-run invoked GATK"
 [[ ! -e "$samtools_log" ]] || fail "dry-run invoked samtools"
 [[ ! -e "$java_log" ]] || fail "dry-run invoked Java"
 assert_contains "$dry_output" "Mode: dry-run"
+assert_contains "$dry_output" "Run token: explicit-owner-05"
 assert_contains "$dry_output" "Sample ID: ABE_EV_2"
 assert_contains "$dry_output" "Input BAM: $input_bam"
 assert_contains "$dry_output" "Input BAI: $input_bam.bai"
@@ -503,10 +507,10 @@ assert_contains "$dry_output" "Reference DICT: $(dirname "$reference_fasta")/gen
 assert_contains "$dry_output" "Output BAM: $dry_bam"
 assert_contains "$dry_output" "Output BAI: $dry_bam.bai"
 assert_contains "$dry_output" "Lock directory: $dry_output_dir/.step_05_split_n_cigar_reads.lock"
-assert_contains "$dry_output" ".ABE_EV_2.step05.dry001.split_ncigar.tmp.bam"
+assert_contains "$dry_output" ".ABE_EV_2.step05.explicit-owner-05.split_ncigar.tmp.bam"
 assert_contains "$dry_output" "Alternate GATK temporary BAI:"
 assert_contains "$dry_output" "GATK temp directory:"
-assert_contains "$dry_output" ".ABE_EV_2.step05.dry001.gatk_tmp"
+assert_contains "$dry_output" ".ABE_EV_2.step05.explicit-owner-05.gatk_tmp"
 assert_contains "$dry_output" "--java-options"
 assert_contains "$dry_output" "-Djava.io.tmpdir="
 assert_contains "$dry_output" "--tmp-dir"

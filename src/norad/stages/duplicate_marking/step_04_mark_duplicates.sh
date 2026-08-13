@@ -111,7 +111,7 @@ if [[ "$no_clobber" == true ]]; then
     picard_jar_sha256="$(sha256_file "$picard_jar")"
 fi
 
-run_token="${SLURM_JOB_ID:-$$}"
+run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 04 run token" "$run_token"
 tmp_bam="$output_dir/.${sample_id}.step04.${run_token}.markdup.tmp.bam"
 tmp_bai="$tmp_bam.bai"
@@ -221,6 +221,7 @@ printf '  samtools bin: %s\n' "$samtools_bin"
 printf '  TMP_DIR: %s\n' "$tmp_dir"
 printf '  No-clobber transaction: %s\n' "$no_clobber"
 printf '  Lock directory: %s\n' "$lock_path"
+printf '  Run token: %s\n' "$run_token"
 printf '  Temporary BAM: %s\n' "$tmp_bam"
 printf '  Temporary BAI: %s\n' "$tmp_bai"
 printf '  Temporary metrics: %s\n' "$tmp_metrics"

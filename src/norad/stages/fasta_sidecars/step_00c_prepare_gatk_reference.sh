@@ -196,7 +196,7 @@ fai_path="${reference_fasta}.fai"
 dict_path="${reference_dir}/${reference_stem}.dict"
 
 tmp_dir="${TMPDIR:-/tmp}"
-run_token="${SLURM_JOB_ID:-$$}"
+run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 00c run token" "$run_token"
 lock_path="${reference_dir}/.step_00c_prepare_gatk_reference.lock"
 lock_owner_file="${lock_path}/owner"

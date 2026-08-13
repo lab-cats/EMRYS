@@ -257,7 +257,7 @@ final_mutation_pdf="$analysis_dir/$analysis_id.mutation_spectrum.pdf"
 final_depth_pdf="$analysis_dir/$analysis_id.depth_delta.pdf"
 finals=("$final_all" "$final_significant" "$final_mutation" "$final_mutation_pdf" "$final_depth_pdf" "$final_summary")
 
-run_token="${SLURM_JOB_ID:-$$}"
+run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "run token" "$run_token"
 tmp_all="$analysis_dir/.$analysis_id.step09.$run_token.all.tmp.tsv"
 tmp_significant="$analysis_dir/.$analysis_id.step09.$run_token.significant.tmp.tsv"
@@ -307,6 +307,7 @@ fi
 
 printf 'Step 09 paired CMH context:\n'
 printf '  Mode: %s\n' "$([[ "$execute" == true ]] && printf execute || printf dry-run)"
+printf '  Run token: %s\n' "$run_token"
 printf '  Analysis ID: %s\n' "$analysis_id"
 printf '  Cohort ID: %s\n' "$cohort_id"
 printf '  Samples / paired strata: %s / %s\n' "$sample_count" "$replicate_count"

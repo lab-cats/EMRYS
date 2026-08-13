@@ -5,6 +5,7 @@ from __future__ import annotations
 import gzip
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -110,6 +111,7 @@ def prepared_environment(tmp_path: Path) -> tuple[Path, dict[str, str]]:
         {
             "PATH": os.pathsep.join((str(fake_bin), "/usr/bin", "/bin")),
             "TMPDIR": str(runtime_tmp),
+            "NORAD_SHA256_PYTHON": sys.executable,
             "SLURM_JOB_ID": "local-step00a-test",
             "SLURM_JOB_NAME": "local-step00a-test",
             "SLURMD_NODENAME": "local-mock-node",
@@ -294,6 +296,8 @@ def test_public_producer_dry_run_is_side_effect_free_from_arbitrary_cwd(
     index = tmp_path / "outputs" / "star-index"
     invocation_cwd = tmp_path / "elsewhere"
     invocation_cwd.mkdir()
+    environment["NORAD_RUN_TOKEN"] = "explicit-owner-step00a"
+    environment["SLURM_JOB_ID"] = "scheduler-step00a"
 
     result = run_producer(
         fasta,
@@ -307,10 +311,42 @@ def test_public_producer_dry_run_is_side_effect_free_from_arbitrary_cwd(
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
     assert "Mode: dry-run" in result.stdout
+    assert "Run token: explicit-owner-step00a" in result.stdout
     assert "Dry-run only" in result.stdout
     assert "--runMode genomeGenerate" in result.stdout
     assert not index.parent.exists()
     assert read_lines(Path(environment["FAKE_TOOL_LOG"])) == ()
+    assert list(invocation_cwd.iterdir()) == []
+
+
+def test_public_producer_rejects_unsafe_explicit_run_token_before_mutation(
+    tmp_path: Path,
+) -> None:
+    _, environment = prepared_environment(tmp_path)
+    inputs = tmp_path / "inputs"
+    inputs.mkdir()
+    fasta = inputs / "genome.fa"
+    gtf = inputs / "genome.gtf"
+    fasta.write_text(">chr1\nACGT\n", encoding="utf-8")
+    gtf.write_text("fixture\n", encoding="utf-8")
+    index = tmp_path / "outputs" / "star-index"
+    invocation_cwd = tmp_path / "elsewhere"
+    invocation_cwd.mkdir()
+    environment["NORAD_RUN_TOKEN"] = "../unsafe-owner-token"
+    environment["SLURM_JOB_ID"] = "safe-scheduler-token"
+
+    result = run_producer(
+        fasta,
+        gtf,
+        index,
+        environment,
+        execute=False,
+        cwd=invocation_cwd,
+    )
+
+    assert result.returncode != 0
+    assert "STAR index run token must match" in result.stderr
+    assert not index.parent.exists()
     assert list(invocation_cwd.iterdir()) == []
 
 

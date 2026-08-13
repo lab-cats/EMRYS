@@ -136,6 +136,13 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
         help="GTF attribute used as the gene name. Defaults to gene_id.",
     )
     parser.add_argument(
+        "--run-token",
+        help=(
+            "Explicit safe publication token supplied by an orchestrator. "
+            "Defaults to a private random token."
+        ),
+    )
+    parser.add_argument(
         "--execute",
         action="store_true",
         help="Publish the BED12 output. Without this flag, plan only.",
@@ -377,6 +384,12 @@ def _publication_paths(bed_path: Path, token: str) -> tuple[Path, Path]:
     return lock_path, staged_path
 
 
+def _validate_publication_token(token: str) -> str:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", token):
+        raise ValueError(f"Unsafe Step 00b publication token: {token}")
+    return token
+
+
 def _residue_paths(bed_path: Path) -> tuple[Path, ...]:
     if not bed_path.parent.is_dir():
         return ()
@@ -416,17 +429,18 @@ def publish_bed(
     payload: bytes,
     bed_path: Path,
     *,
+    run_token: str | None = None,
     operations: PublicationOperations | None = None,
 ) -> None:
     """Publish complete BED12 bytes atomically without replacing a predecessor."""
     operations = operations or PublicationOperations()
+    token = _validate_publication_token(run_token) if run_token is not None else None
     require_publishable_output(bed_path)
     bed_path.parent.mkdir(parents=True, exist_ok=True)
     require_publishable_output(bed_path)
+    if token is None:
+        token = _validate_publication_token(operations.token_factory())
 
-    token = operations.token_factory()
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", token):
-        raise ValueError(f"Unsafe Step 00b publication token: {token}")
     lock_path, staged_path = _publication_paths(bed_path, token)
     lock_owned = False
     staged_written = False
@@ -513,6 +527,9 @@ def convert_from_args(
 ) -> int:
     """Convert and report one parsed GTF-to-BED12 request."""
     try:
+        run_token = getattr(arguments, "run_token", None)
+        if run_token is not None:
+            _validate_publication_token(run_token)
         records = normalize_gtf(
             arguments.gtf,
             arguments.feature,
@@ -531,6 +548,10 @@ def convert_from_args(
         print(f"  Output BED12: {arguments.bed}")
         print(f"  Transcript records: {len(records)}")
         print(f"  Mode: {'execute' if arguments.execute else 'dry-run'}")
+        print(
+            "  Run token: "
+            + (run_token if run_token is not None else "private random at publication")
+        )
         print("Publication plan:")
         print("  1. Render complete deterministic BED12 bytes in memory.")
         print("  2. Acquire the create-exclusive owner lock.")
@@ -545,6 +566,7 @@ def convert_from_args(
         publish_bed(
             payload,
             arguments.bed,
+            run_token=run_token,
             operations=publication_operations,
         )
     except (OSError, ValueError) as exc:

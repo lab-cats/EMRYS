@@ -4,6 +4,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 script="$repo_root/src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh"
 job="$repo_root/src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$repo_root/.venv/bin/python"
 test_root="$(mktemp -d)"
 trap 'rm -rf "$test_root"' EXIT
 export TMPDIR="$test_root"
@@ -274,9 +276,11 @@ run_expect_status 1 "$test_root/missing.out" "$test_root/missing.err" \
     bash "$script"
 assert_contains "$test_root/missing.err" "Missing required argument: --cohort-id"
 
-FAKE_BCFTOOLS_LOG="$test_root/dry-run.log" \
+NORAD_RUN_TOKEN=explicit-owner-07 SLURM_JOB_ID=scheduler-07 \
+    FAKE_BCFTOOLS_LOG="$test_root/dry-run.log" \
     bash "$script" "${common_args[@]}" >"$test_root/dry-run.out"
 assert_contains "$test_root/dry-run.out" "Mode: dry-run"
+assert_contains "$test_root/dry-run.out" "Run token: explicit-owner-07"
 assert_contains "$test_root/dry-run.out" "Sample count: 2"
 assert_contains "$test_root/dry-run.out" "FWD_like pipeline:"
 assert_contains "$test_root/dry-run.out" "FORMAT/DP"

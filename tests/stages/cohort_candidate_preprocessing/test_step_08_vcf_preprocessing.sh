@@ -14,6 +14,8 @@ unset \
     FAKE_RSCRIPT_BARRIER_{MARKER,RELEASE} FAKE_RSCRIPT_{DUPLICATE_CANDIDATE,EXTRA_INPUT_FIELD,FAIL,HEADER_ONLY,LOG,MUTATE,OMIT_OUTPUT}
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$repo_root/.venv/bin/python"
 owner_path="src/norad/stages/cohort_candidate_preprocessing"
 script="$repo_root/$owner_path/step_08_vcf_preprocessing.sh"
 job="$repo_root/$owner_path/step_08_vcf_preprocessing.slurm"
@@ -618,9 +620,11 @@ assert_not_exists "$missing_r_program_fixture/qc"
 printf 'Running Step 08 dry-run and exact-input enumeration checks...\n'
 printf 'unmanifested\n' >"$fixture/step07/cohort_A/p1/unmanifested.extra.vcf"
 dry_log="$test_root/dry-rscript.log"
-env SLURM_JOB_ID=dry08 FAKE_RSCRIPT_LOG="$dry_log" \
+env NORAD_RUN_TOKEN=explicit-owner-08 SLURM_JOB_ID=scheduler-08 \
+    FAKE_RSCRIPT_LOG="$dry_log" \
     bash "$script" "${common_args[@]}" >"$test_root/dry.out"
 assert_contains "$test_root/dry.out" "Mode: dry-run"
+assert_contains "$test_root/dry.out" "Run token: explicit-owner-08"
 assert_contains "$test_root/dry.out" "Partition count: 2"
 assert_contains "$test_root/dry.out" "Expected Step 07 VCF count: 4"
 assert_contains "$test_root/dry.out" "cohort_A.p1.FWD_like.mpileup.vcf"

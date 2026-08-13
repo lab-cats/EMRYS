@@ -564,7 +564,7 @@ done
 inputs_header='cohort_id	partition_id	selector_type	selector_value	orientation	step07_receipt_path	step07_receipt_sha256	vcf_path	vcf_sha256	sample_manifest_sha256	partition_manifest_sha256	annotation_gtf	annotation_gtf_sha256	sample_count	declared_vcf_record_count	observed_vcf_record_count	observed_alt_allele_count	supported_snv_count	skipped_symbolic_count	skipped_non_snv_count	published_candidate_count	orientation_policy'
 summary_header='cohort_id	partition_count	step07_receipt_count	input_vcf_count	sample_count	observed_vcf_record_count	observed_alt_allele_count	supported_snv_count	skipped_symbolic_count	skipped_non_snv_count	published_candidate_count	sample_manifest_sha256	partition_manifest_sha256	annotation_gtf	annotation_gtf_sha256	orientation_policy'
 
-run_token="${SLURM_JOB_ID:-$$}"
+run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "run token" "$run_token"
 cohort_output_dir="$output_root/$cohort_id"
 
@@ -601,6 +601,7 @@ r_command=(
 
 printf 'Step 08 VCF preprocessing context:\n'
 printf '  Mode: %s\n' "$([[ "$execute" == true ]] && printf execute || printf dry-run)"
+printf '  Run token: %s\n' "$run_token"
 printf '  Cohort ID: %s\n' "$cohort_id"
 printf '  Sample manifest: %s\n' "$sample_manifest"
 printf '  Sample manifest SHA-256: %s\n' "$sample_manifest_sha256"

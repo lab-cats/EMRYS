@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -218,7 +220,7 @@ printf 'Running dry-run check with BAM.bai index...\n'
 printf 'placeholder index\n' >"$bam_dot_bai"
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry"
-bash "$SCRIPT" \
+NORAD_RUN_TOKEN=explicit-owner-02b SLURM_JOB_ID=scheduler-02b bash "$SCRIPT" \
     --sample-id sample_dry \
     --bam "$bam" \
     --output-dir "$dry_output_dir" \
@@ -227,6 +229,8 @@ bash "$SCRIPT" \
 [[ ! -e "$dry_output_dir" ]] || fail "dry-run created output directory"
 [[ ! -e "$samtools_log" ]] || fail "dry-run invoked samtools"
 assert_contains "$dry_output" "Mode: dry-run"
+assert_contains "$dry_output" "Run token: explicit-owner-02b"
+assert_contains "$dry_output" ".sample_dry.step02b.explicit-owner-02b.quickcheck.tmp"
 assert_contains "$dry_output" "BAM index found: $bam_dot_bai"
 assert_contains "$dry_output" "Quickcheck output: $dry_output_dir/sample_dry.quickcheck.txt"
 assert_contains "$dry_output" "Flagstat output: $dry_output_dir/sample_dry.flagstat.txt"

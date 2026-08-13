@@ -514,7 +514,7 @@ done
 
 confirm_input_manifest_hashes
 sample_count="${#sample_ids[@]}"
-run_token="${SLURM_JOB_ID:-$$}"
+run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 07 run token" "$run_token"
 
 partition_output_dir="$output_root/$cohort_id/$partition_id"
@@ -568,6 +568,7 @@ rev_filter_command=(
 
 printf 'Step 07 cohort mpileup context:\n'
 printf '  Mode: %s\n' "$([[ "$execute" == true ]] && printf execute || printf dry-run)"
+printf '  Run token: %s\n' "$run_token"
 printf '  Cohort ID: %s\n' "$cohort_id"
 printf '  Sample manifest: %s\n' "$sample_manifest"
 printf '  Sample manifest SHA-256: %s\n' "$sample_manifest_sha256"

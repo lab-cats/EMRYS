@@ -87,7 +87,7 @@ if [[ "$no_clobber" == true ]]; then
     input_alignment_sha256="$(sha256_file "$input_alignment")"
 fi
 
-run_token="${SLURM_JOB_ID:-$$}"
+run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 02 run token" "$run_token"
 
 # Canonical output names are stable by design; downstream steps depend on them.

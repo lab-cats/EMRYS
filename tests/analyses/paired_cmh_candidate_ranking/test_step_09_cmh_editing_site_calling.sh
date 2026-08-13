@@ -5,6 +5,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 script="$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh"
 job="$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$repo_root/.venv/bin/python"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
@@ -669,9 +671,12 @@ assert_no_scratch "$basename_rscript/output" basename-rscript
     fail "PATH-basename execution mutated the arbitrary working directory"
 
 rm -f "$apply_marker"
-FAKE_R_MARKER="$apply_marker" "${base[@]}" > "$tmp/dry.out"
+NORAD_RUN_TOKEN=explicit-owner-09 SLURM_JOB_ID=scheduler-09 \
+    FAKE_R_MARKER="$apply_marker" "${base[@]}" > "$tmp/dry.out"
 [[ ! -e "$apply_marker" ]] || fail "dry-run invoked R"
 [[ ! -e "$tmp/output/analysis" ]] || fail "dry-run created output directory"
+grep -q 'Run token: explicit-owner-09' "$tmp/dry.out" ||
+    fail "explicit Step 09 owner token did not take precedence"
 grep -q -- '--background-max-fraction' "$tmp/dry.out" ||
     fail "dry-run omitted policy arguments"
 grep -q 'replicate=2 control=ABE_EV_2 treatment=ABE_PUM1_2' "$tmp/dry.out" ||

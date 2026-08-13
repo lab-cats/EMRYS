@@ -84,7 +84,9 @@ fallible cleanup remains. Rollback deletes a final only when it is still the
 same regular-file inode as that anchor. A cleanup failure or foreign replacement
 fails closed with the remaining lock and/or staging residue. An existing
 output, lock, or staging residue blocks the operation and is never overwritten
-automatically. An unhandled interruption can leave both lock and staging
+automatically. `--run-token` lets an orchestrator supply the safe identifier
+used by the lock and staging paths; without it, the producer generates a
+private random token. An unhandled interruption can leave both lock and staging
 evidence; a subsequent invocation preserves and reports that ambiguous state.
 
 [`step_00b_gtf_to_bed12.slurm`](step_00b_gtf_to_bed12.slurm)

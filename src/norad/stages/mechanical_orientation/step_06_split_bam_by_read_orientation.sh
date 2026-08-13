@@ -89,7 +89,7 @@ validate_positive_integer "--threads" "$threads"
 input_bai="$input_bam.bai"
 samtools_bin="$(resolve_overridable_executable \
     "samtools" "$requested_samtools_bin" SAMTOOLS_BIN_OVERRIDE samtools)"
-run_token="${SLURM_JOB_ID:-$$}"
+run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 06 run token" "$run_token"
 
 # The four BAM/BAI outputs and counts TSV are a single downstream contract.
