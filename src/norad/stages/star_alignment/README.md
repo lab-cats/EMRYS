@@ -25,9 +25,13 @@ src/norad/stages/star_alignment/step_01_star_align.sh \
 ```
 
 `STAR` must be on `PATH`, including for dry-run. Add `--execute` only after
-inspection. Dry-run creates the output directory. STAR writes finals directly;
-failure may leave partial output without a receipt, lock, staging transaction,
-cleanup, no-clobber rule, or post-STAR validation.
+inspection. Dry-run creates the output directory and reports whether it is
+empty or occupied. Execute mode refuses a nonempty output directory and
+atomically acquires a sibling `<output-dir>.step_01.lock` before invoking STAR;
+a foreign lock is preserved, while a lock owned by the current attempt is
+removed on exit. STAR still writes finals directly, so child failure may leave
+partial output; there is no staged publication transaction or post-STAR output
+validation.
 
 Validator dry-run:
 

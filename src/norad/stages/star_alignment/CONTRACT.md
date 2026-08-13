@@ -70,8 +70,13 @@ publishing the canonical BAM/BAI pair; that stage is therefore not merely an
 alias for this output.
 
 The current producer writes STAR artifacts directly into the final directory.
-It does not declare a receipt, lock, no-clobber rule, staged transaction, or
-post-execution output validation.
+Execute mode refuses any nonempty output directory and atomically acquires the
+sibling `<output-dir>.step_01.lock` before invoking STAR. A foreign lock is
+never removed; the current attempt records its run token and removes only its
+own lock on exit. These guards prevent ordinary clobbering and concurrent
+execute attempts, but publication is still not transactional: STAR failure may
+leave partial final-path artifacts, and the producer performs no post-execution
+output validation.
 
 ## Current execution surfaces
 
@@ -81,6 +86,10 @@ public producer entrypoint. It:
 - validates explicit arguments and executable availability;
 - is dry-run by default and requires `--execute` to invoke STAR;
 - creates the output directory even in dry-run mode;
+- reports whether that directory is empty or occupied;
+- refuses execute mode when the output directory contains any existing entry;
+- uses an atomic sibling attempt lock to prevent concurrent execute attempts
+  against the same output directory;
 - rejects mixed compressed and uncompressed mate paths;
 - adds `--readFilesCommand gunzip -c` when both inputs end in `.gz`;
 - asks STAR for a coordinate-sorted BAM; and
@@ -151,9 +160,10 @@ No downstream stage should depend on this stage's implementation module.
 
 - [`test_step_01_star_align.sh`](../../../../tests/stages/star_alignment/test_step_01_star_align.sh)
   protects the public CLI, command construction, current dry-run directory
-  side effect, execute invocation, compression handling, thread validation,
-  missing-input failures, and exact child-exit/output-directory residue with
-  local tool mocks.
+  side effect, occupied-output reporting, execute no-clobber behavior, atomic
+  attempt-lock refusal and cleanup, execute invocation, compression handling,
+  thread validation, missing-input failures, and exact child-exit/output-directory
+  residue with local tool mocks.
 - [`test_validate_step_01_star_alignment.py`](../../../../tests/stages/star_alignment/test_validate_step_01_star_alignment.py)
   protects dry-run, the five checks, failed mapping and splice-junction
   evidence, fail-closed missing inputs, publication, and foreign-lock
