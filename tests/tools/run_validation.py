@@ -120,6 +120,8 @@ def require_locked_environment(
         "--locked",
         "--check",
         "--active",
+        "--group",
+        "workflow",
         "--offline",
         "--no-python-downloads",
         "--project",

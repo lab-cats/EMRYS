@@ -8,8 +8,8 @@ acceptance, [`RUNBOOK.md`](RUNBOOK.md) for commands, and
 [`docs/history`](../history/) for frozen delivery records.
 
 Campaign B owner hardening (`B1a` through `B1c`), B2 intake/contracts, B3's
-static local workflow, B4's reporting/lifecycle tail, and the B5 readiness and
-public control plane are implemented.
+static local workflow, B4's reporting/lifecycle tail, B5 readiness and public
+control plane, and B6 fresh-clone proof and researcher onboarding are complete.
 Owners expose explicit local, fail-closed workflow boundaries; the repository
 has a locked workflow group, closed machine schemas, read-only
 normalization/reporting projection, semantic all-pass checking, one fixed
@@ -28,13 +28,13 @@ dry-run-first `norad run`, `norad resume`, and `norad inspect local-pilot-run`.
 
 | Surface | Current evidence ceiling |
 | --- | --- |
-| Local-pilot orchestration | B0 defines the source-checkout-bound lifecycle; B1 hardens owner boundaries; B2 adds intake/contracts; B3 adds an exact fixed profile, 13-scientific-owner-rule static graph, task attempts, and content-bound verified records; B4 adds three ordered reporting rules, durable task/reporting entry records, and the run-lock/attempt/receipt tail; B5 adds the exact fixed-profile materializer and public dry-run-first run/resume/inspection adapter. Real Snakemake 9.25.1 dry-runs and no-science test-double executions prove slices containing 3, 10, and 34 owner jobs, 43 direct owner edges, the three reporting transactions, public controlled failure, semantic inspection, and byte-preserving between-task resume. `.snakemake` is not completion authority. There is no reconciliation after an entered scope fails, fresh-clone transcript, synthetic science dataset, real science-tool run, VM, or SLURM proof. |
+| Local-pilot orchestration | B0 defines the source-checkout-bound lifecycle; B1 hardens owner boundaries; B2 adds intake/contracts; B3 adds an exact fixed profile, 13-scientific-owner-rule static graph, task attempts, and content-bound verified records; B4 adds three ordered reporting rules, durable task/reporting entry records, and the run-lock/attempt/receipt tail; B5 adds the exact fixed-profile materializer and public dry-run-first run/resume/inspection adapter; B6 adds matched structural starters, a clean-fresh-clone proof, and proof-matched onboarding. Real Snakemake 9.25.1 dry-runs and deterministic no-science executions prove slices containing 3, 10, and 34 owner jobs, 43 direct owner edges, the three reporting transactions, a separate clean completion, controlled between-task failure, semantic inspection, byte-preserving resume, and completed-run refusal. `.snakemake` is not completion authority. There is no reconciliation after an entered scope fails, real science-tool run, VM, SLURM, or current cluster proof. |
 | Physical ownership | Pipeline stages, neutral contracts/libraries, reporting, and evidence helpers occupy their allowed homes. This is local/static topology evidence, not new runtime or cluster proof. |
 | Steps `00a`–`06` | B1 owner boundaries are locally fake-tool/fixture tested; earlier production executions remain cluster-proven but predate physical relocation. No current real-tool local proof. |
 | Step `07` | B1 no-clobber and rollback boundaries are locally mock-bcftools tested; no real-bcftools or current cluster proof. |
 | Steps `08`–`09` | B1 no-clobber/recovery boundaries are locally shell/fake-R tested; prior guarded-real-R tests remain separate. No production or current cluster proof. |
 | Step `09c` and reporting | The automatic local profile deliberately records Step `09c` as absent and publishes an evidence-incomplete artifact index, run summary, and HTML report. The reporting transactions and their independent semantic re-admission are synthetic-fixture/local-render tested; there is no production evidence package, completed scientific review, or production report. |
-| Operational helpers | Runtime, reference, storage, and structured validators have local fixture evidence. The local-pilot doctor has no-write ready/not-ready/malformed fixture evidence and explicit runtime-profile binding; the B5 lifecycle re-admits that profile before and after execution. Neither has passed against a complete real science-tool installation. There is no CSU batch runtime report, production reference/storage report, or approved retention policy. |
+| Operational helpers | Runtime, reference, storage, and structured validators have local fixture evidence. The local-pilot doctor has no-write ready/not-ready/malformed fixture evidence and explicit runtime-profile binding; B6 exercises it from a clean clone with a declared no-science runtime fixture, and the lifecycle re-admits that profile before and after execution. Neither has passed against a complete real science-tool installation. There is no CSU batch runtime report, production reference/storage report, or approved retention policy. |
 
 A transaction proves only reconciliation of its declared inputs and outputs.
 It does not prove every source passed or promote runtime, cluster, scientific,
@@ -126,9 +126,9 @@ applicable owner `README.md` or `CONTRACT.md`.
 
 ## Immediate resume point
 
-Begin B6/E2E-03A from the completed B5 control plane: prove the exact public
-setup, dry-run, execution, controlled failure, resume, and inspection transcript
-from a fresh clone before rewriting root onboarding. Step `09c` remains
-explicitly absent. Destructive cleanup, real-runtime
-or cluster execution, scientific review, evidence promotion, and biological
-interpretation remain separate scopes.
+Campaign B is complete at the fresh-clone no-science evidence ceiling. No
+follow-on capability is selected. The next decisions are whether and how to
+authorize a real-science-tool local pilot and, separately, a site/cluster
+execution profile and proof. Step `09c` remains explicitly absent. Destructive
+cleanup, real-runtime or cluster execution, scientific review, evidence
+promotion, and biological interpretation remain separate scopes.

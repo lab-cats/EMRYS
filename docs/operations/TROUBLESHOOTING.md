@@ -31,6 +31,33 @@ restore runtime artifacts. A validator or evidence command can exit `0` while
 recording failed evidence rows; exit `2` means unsafe input, CLI, tool, or
 publication failure.
 
+## Public local-pilot diagnosis
+
+Begin with the root [researcher journey](../../README.md). Keep the exact
+request, runtime profile, run root, and clean source checkout selected for the
+attempt; changing them is not recovery.
+
+The table spells out command intent compactly. Invoke every `run`, `resume`,
+and `inspect` route with the controlled checkout interpreter shown in the root
+journey: `.venv/bin/python -X pycache_prefix=/dev/null -I -m norad` followed by
+the displayed subcommand and arguments. The doctor uses its exact
+`.venv/bin/python -I -m norad doctor local-pilot ...` form.
+
+| Observed state or symptom | Public route and safe response |
+| --- | --- |
+| Doctor prints `NOT READY` | Read every `BLOCKER` and `REMEDIATION` from `.venv/bin/python -I -m norad doctor local-pilot ...`. Correct the declared input, checkout, workspace, or runtime outside the doctor, then rerun it. Do not start `norad run`. |
+| Doctor exits `2` | The request, runtime profile, or path boundary is malformed or unsafe. Correct the authored file or path; do not bypass admission or edit a result to manufacture `READY`. |
+| Readiness passed, but execution has not started | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m norad run ...` without `--execute` and review the complete no-write plan. Add `--execute` only to the identical admitted request after review. |
+| An initial run fails or its state is uncertain | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m norad inspect local-pilot-run --run-root /absolute/run/root`. Do not submit another initial run against the existing run root. |
+| Inspection prints `resume_available` and `Resume available: yes` | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m norad resume --run-root ... --runtime-profile ...` without `--execute`; review reusable and pending jobs; then add `--execute` to that resume command. NORAD re-admits completed work before reuse. |
+| Inspection prints `blocked` | Preserve the complete run root, attempt receipts, locks, task/reporting ledgers, logs, native artifacts, partials, backups, and recovery markers. No public command forces, unlocks, cleans, or automatically reconciles an owner that crossed producer entry without verified completion. Route the failing scope to its owner below. |
+| Inspection prints `local_pipeline_complete` | Resume refusal is expected. Use the validated products and receipts under the inspected run root; a new analysis requires a separately admitted request and run identity. |
+| `Run root already exists; inspect or resume it instead` | Use `.venv/bin/python -X pycache_prefix=/dev/null -I -m norad inspect local-pilot-run --run-root ...` on that exact root. Never delete or rename it merely to make an initial run start. |
+
+The B6 fresh-clone acceptance run used deterministic no-science owner doubles.
+These routes and recovery semantics are proven control-plane behavior, not real
+science-tool, SLURM, CSU, production, scientific-review, or biological proof.
+
 ## Common environment and operation matrix
 
 | Symptom | Response |

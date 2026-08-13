@@ -1,9 +1,10 @@
 """Internal lifecycle owner for direct local Snakemake execution.
 
-This module intentionally has no top-level ``norad run/resume/inspect`` route.
-It is the direct API beneath that later adapter: it publishes immutable attempt
-state, owns the aggregate run lock, and treats Snakemake as an executor rather
-than as run-state authority.
+This module intentionally does not register the top-level
+``norad run/resume/inspect`` routes itself. It is the direct API beneath the
+public control adapter: it publishes immutable attempt state, owns the
+aggregate run lock, and treats Snakemake as an executor rather than as run-state
+authority.
 """
 
 from __future__ import annotations

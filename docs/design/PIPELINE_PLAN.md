@@ -19,19 +19,14 @@ its routed owners.
 The accepted local-pilot architecture is defined by
 [`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md), and the canonical
 owner-admission dispositions are tracked in
-[`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md). The remaining
-implementation dependency order is:
-
-```text
-E2E-03A -> ONBOARD-03A
-```
-
-These relationships do not select work. Backlog blockers record only
-unavailable technical outputs.
+[`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md). Campaign B has no
+remaining implementation dependency. Future real-runtime and site/cluster work
+requires separate selection and authorization; no such package is selected
+here.
 
 ## Local-pilot package order
 
-Campaign B proceeds in proof-sized packages. `B1a` through `B5` are complete:
+Campaign B proceeded in proof-sized packages. `B1a` through `B6` are complete:
 functional owners expose fail-closed local workflow boundaries; dependency
 metadata, machine contracts, read-only normalization/reporting projection, and
 semantic all-pass checking exist; and the fixed local-CMH profile now has an
@@ -40,21 +35,22 @@ semantically revalidated reporting transactions, and an internal immutable
 attempt/producer-entry/resume/inspection lifecycle. The read-only doctor binds
 one normalized request, workspace plan, clean checkout, locked workflow engine,
 science tools, Picard jar, guarded `renv`, and Step `08` namespaces without
-installing or creating state. The B5 adapter now materializes the fixed profile
+installing or creating state. The B5 adapter materializes the fixed profile
 under the run lock and exposes dry-run-first public run, resume, and inspection
-commands without raw engine controls. Each remaining package ends with focused
-evidence; the fresh-clone full-pipeline gate is B6.
+commands without raw engine controls. B6 proves the separate clean-success and
+controlled failure/resume journeys from a clean fresh clone with no-science
+collaborators and publishes onboarding from that observed path.
 
 | Package | Outcome | Stop boundary |
 | --- | --- | --- |
 | `B3` — complete | Materialize the static local profile and prove direct Snakemake dry-run, then a test-double walking skeleton in reference, one-sample, and cohort slices. | No public lifecycle CLI or real science-tool claim was added. |
 | `B4` — complete | Add artifact-index, run-summary, and Jinja HTML-report rules, durable producer-entry ledgers, then prove failure, interruption, between-task resume, and inspection. | Entered-but-incomplete scopes require future explicit reconciliation; Step `09c` remains explicit and absent; no public lifecycle CLI, real-tool, SLURM, VM, or CSU claim was added. |
 | `B5` — complete | Add the read-only doctor, fixed-profile production materializer, and thin public `run`, `resume`, and `inspect local-pilot-run` adapter over B2 intake and the B4 lifecycle. Prove dry-run no-write, locked attempt publication, controlled failure, byte-preserving between-task resume, complete refusal, and derived inspection with no-science owners. | The adapter owns intake/lifecycle policy only; it installs nothing, imports no private owner, exposes no raw engine controls, and adds no real-tool, SLURM, cluster, scientific-review, or biological claim. |
-| `B6` | Prove the fresh-clone local pilot, then rewrite root onboarding from the exact proven transcript. | One full assembled gate; no cluster, scientific-review, or biological claim. |
+| `B6` — complete | Prove the fresh-clone local pilot, then rewrite root onboarding from the exact proven transcript. | The proof uses deterministic no-science collaborators; it adds no real-tool, cluster, scientific-review, or biological claim. |
 
-Real STAR/GATK/science-tool fixture execution is a separately authorized local
-runtime proof after the structural/test-double profile is stable. SLURM and VM
-evaluation remains later still.
+Real STAR/GATK/science-tool fixture execution remains a separately authorized
+local-runtime decision. SLURM, VM, and site-profile evaluation are separate
+unselected decisions.
 
 Reporting remains split across characterization, contract, projection,
 usability, and default-profile cards; renderer decomposition is implemented.

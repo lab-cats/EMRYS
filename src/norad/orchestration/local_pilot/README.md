@@ -131,7 +131,11 @@ The adjacent neutral [machine contracts](../../contracts/orchestration/README.md
 define request, profile, normalized execution, lock, attempt, receipt,
 task-start/task-attempt/verified-task, and reporting-ledger record shapes. No
 automatic owner-recovery mechanism is implemented. B5 materializes only the
-fixed source-checkout profile and public owner commands; the no-science
-failure/resume test proves this adapter, while real-tool, VM, SLURM, CSU,
-scientific-review, and biological evidence remain unclaimed.
+fixed source-checkout profile and public owner commands. B6 adds matched public
+request, sample, and partition starters plus a clean fresh-clone no-science E2E
+covering readiness, no-write planning, separate clean success, controlled
+between-task failure, byte-preserving resume, inspection, reporting, and
+completed-run refusal. The E2E supplies explicit repository-only collaborators;
+the shipped command has no fake mode or engine escape hatch. Real-tool, VM,
+SLURM, CSU, scientific-review, and biological evidence remain unclaimed.
 See [`CONTRACT.md`](CONTRACT.md) for the exact boundary.

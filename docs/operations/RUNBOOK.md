@@ -61,6 +61,10 @@ test, diagnostics, and recovery routes when those surfaces exist. Its adjacent
 
 ## Local-pilot readiness
 
+For the first-time researcher journey from clone and matched starters through
+outputs and safe resume, begin with the root [`README`](../../README.md).
+This section remains the compact operator command reference.
+
 Copy [`configs/local_pilot_runtime.example.tsv`](../../configs/local_pilot_runtime.example.tsv)
 outside the checkout or to an explicitly managed local path, then replace every
 placeholder with the exact local executable, jar, Rscript, and checkout paths.
@@ -132,9 +136,10 @@ A scope that crossed producer entry without verified completion is blocked,
 not automatically retried or cleaned. A completed run refuses resume and a
 second initial run refuses the existing run root. The public commands expose no
 force, unlock, metadata-cleanup, alternate-profile, or raw engine options.
-Current execution is source-checkout-bound and local; this transcript has
-no-science integration evidence only until B6 and separately authorized
-real-tool/cluster validation are complete.
+Current execution is source-checkout-bound and local. The B6 fresh-clone proof
+exercised this sequence through real Snakemake, lifecycle, and reporting with
+deterministic no-science owner doubles. It did not run the real scientific
+tools or establish local real-tool or cluster evidence.
 
 ## Task status
 

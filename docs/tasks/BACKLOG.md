@@ -33,13 +33,6 @@ selection, implementation, or publication authority.
 - **Intent:** Review repository documentation for unowned future commitments and assign each match an explicit disposition.
 - **Boundaries:** Search results are not authority; do not create, prioritize, approve, or select work automatically.
 
-## E2E-03A — Prove fresh-clone local pilot
-
-- **Kind:** actionable
-- **Blocked by:** None
-- **Intent:** Prove the approved local pilot from a fresh clone through failure, resume, and final inspectable outputs.
-- **Boundaries:** Bind exact fixture/data identity and hashes; distinguish fixture from real runtime; make no cluster, production, scientific-review, or biological claim.
-
 ## FUT-ANALYSIS-01 — Preprocessing profiles and analysis modules
 
 - **Kind:** actionable
@@ -88,13 +81,6 @@ selection, implementation, or publication authority.
 - **Blocked by:** `LOG-03`
 - **Intent:** Activate the approved concise console default only after every applicable domain adopts the foundation with parity evidence.
 - **Boundaries:** Durable detail remains complete; artifacts, streams, exits, transactions, recovery, and evidence meaning do not change.
-
-## ONBOARD-03A — Publish researcher onboarding path
-
-- **Kind:** actionable
-- **Blocked by:** `E2E-03A`
-- **Intent:** Publish a concise researcher journey from setup and request creation through pilot execution, inspection, failure, and resume.
-- **Boundaries:** Link canonical commands and proof-matched outputs; state local, runtime, cluster, scientific, and biological evidence limits explicitly.
 
 ## REVIEW-UX-03 — Review usability plan
 

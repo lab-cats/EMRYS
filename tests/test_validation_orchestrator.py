@@ -144,6 +144,8 @@ def test_selected_environment_lock_check_is_read_only_and_explicit() -> None:
         "--locked",
         "--check",
         "--active",
+        "--group",
+        "workflow",
         "--offline",
         "--no-python-downloads",
         "--project",

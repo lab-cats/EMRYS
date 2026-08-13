@@ -150,14 +150,15 @@ uv sync --locked --group workflow
 
 B5 exposes the supported dry-run-first public `norad run`, `norad resume`, and
 `norad inspect local-pilot-run` commands documented in the
-[runbook](../docs/operations/RUNBOOK.md#local-pilot-execution). There remains no
+[runbook](../docs/operations/RUNBOOK.md#local-pilot-execution). B6 proves the
+fixed route from a clean fresh clone with the locked workflow environment and
+publishes root README onboarding from that observed path. There remains no
 supported manual Snakemake invocation. The internal lifecycle binds a
 materialized run, the exact Python
 launcher, checked-in Snakefile, absolute profile file, attempt-specific config,
 run directory, and target in one admitted argv. Running bare `snakemake`, using
 a profile name relative to the current directory, or constructing an ad hoc
-config bypasses that boundary. The reproducible fresh-clone transcript and root
-README onboarding remain B6 work.
+config bypasses that boundary.
 
 Resume is a lifecycle-owned operation, not an ad hoc Snakemake recovery
 command. It uses exactly `--rerun-triggers input --ignore-incomplete` after
@@ -168,5 +169,8 @@ does not use `--rerun-incomplete`, force, unlock, or metadata cleanup to bypass
 that boundary.
 
 Tests use a bounded no-science artifact producer to execute all 34 owner jobs
-and the real artifact-index, run-summary, and Jinja HTML transactions. They
-never call STAR, GATK, Picard, RSeQC, bcftools, R, or other scientific tools.
+and the real artifact-index, run-summary, and Jinja HTML transactions. The B6
+fresh-clone proof covers a separate clean completion and controlled between-task
+failure/resume while preserving predecessor verified bytes. It never calls
+STAR, GATK, Picard, RSeQC, bcftools, R, or other scientific tools and therefore
+adds no real-runtime or cluster evidence.
