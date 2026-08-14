@@ -104,12 +104,14 @@ The file has a shell shebang but is not executable in the current tree; public
 tests and the scheduler invoke it explicitly through Bash.
 
 [`step_03_infer_strandedness_and_orientation.slurm`](step_03_infer_strandedness_and_orientation.slurm)
-resolves repository-relative defaults from `SLURM_SUBMIT_DIR` with a current-
-directory fallback, optionally activates the repository virtual environment,
-selects the RSeQC executable, and delegates to the shell producer. It creates
-the scheduler log directory in dry-run mode but leaves the scientific output
-directory to the producer. On Bash 3.2, expansion of its empty execution-
-argument array can prevent the default dry-run from reaching the producer.
+requires literal `SLURM_SUBMIT_DIR` and changes into the submitted checkout
+before resolving its repository-owned helper, virtual environment, or producer.
+It optionally activates that checkout's virtual environment, selects the RSeQC
+executable, and delegates to the shell producer without treating SLURM's spool
+copy as checkout authority. It creates the scheduler log directory in dry-run
+mode but leaves the scientific output directory to the producer. On Bash 3.2,
+expansion of its empty execution-argument array can prevent the default dry-run
+from reaching the producer.
 
 ## Validation interface
 

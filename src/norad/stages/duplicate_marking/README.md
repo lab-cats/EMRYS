@@ -57,6 +57,10 @@ sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=ABE_EV_2,INPUT_BAM=/absolute
   src/norad/stages/duplicate_marking/step_04_mark_duplicates.slurm
 ```
 
+The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers or the producer; an executed spool copy does
+not become checkout authority.
+
 Change only `EXECUTE=1` after review. The wrapper loads Picard `3.1.1` and
 samtools `1.19.2`, enforces Java 17, and checks only the named final files;
 stale finals can produce false success.

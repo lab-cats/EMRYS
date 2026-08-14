@@ -117,9 +117,11 @@ delegates to the shell producer, maps `EXECUTE=0` to dry-run and `EXECUTE=1` to
 `--execute`, rejects other values, and checks the pair after execution. The
 wrapper creates its log and output directories even in dry-run mode. On Bash
 3.2, expansion of its empty execution-argument array can prevent the default
-dry-run from reaching the producer. It also relies on the caller's working
-directory rather than resolving `SLURM_SUBMIT_DIR`. These behaviors are
-preserved current contracts, not target behavior.
+dry-run from reaching the producer. It requires literal `SLURM_SUBMIT_DIR` and
+changes into the submitted checkout before resolving the repository-owned
+helper or producer, so SLURM's spool copy never becomes checkout authority. The
+dry-run directory creation and Bash 3.2 behavior remain characterized current
+contracts, not target behavior.
 
 ## Validation interface
 

@@ -64,6 +64,10 @@ sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=ABE_EV_2,INPUT_BAM=/absolute
   src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm
 ```
 
+The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers or the producer; an executed spool copy does
+not become checkout authority.
+
 Change only `EXECUTE=1` after review. A zero-output child can rediscover stale
 finals; scheduler success is not current-attempt proof.
 

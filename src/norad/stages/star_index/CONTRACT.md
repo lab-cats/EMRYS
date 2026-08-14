@@ -105,7 +105,10 @@ scheduler-independent producer. It:
 is the legacy scheduler entrypoint. It:
 
 - executes implicitly when invoked;
-- depends on the caller's working directory and hardcoded relative paths;
+- requires literal `SLURM_SUBMIT_DIR` and changes into that submitted checkout
+  before resolving the repository-owned producer or any relative input/output;
+- keeps its hardcoded Novogene paths relative to the submitted checkout even
+  when SLURM executes a spool copy of the wrapper;
 - retains Novogene reference decompression and STAR-module selection;
 - reuses existing nonempty uncompressed reference files;
 - delegates STAR computation and publication to the public producer with
@@ -135,6 +138,11 @@ It contains exactly these six check identities:
 - `contig_names_lengths`; and
 - `sjdb_overhang`; and
 - `genome_sa_index_nbases`.
+
+The `genomeParameters.txt` parser ignores STAR metadata rows whose first field
+is exactly `###`. Every non-metadata row retains missing-value and duplicate-key
+admission, and the validator still checks the exact declared overhang and
+suffix-array length.
 
 A validation mismatch is represented by a `status=fail` row and does not
 repair inputs or native outputs. Unsafe input structure, an invalid
@@ -168,7 +176,8 @@ No downstream stage should depend on this stage's implementation module.
   late-final and foreign-lock preservation, and scheduler delegation with
   local mocks.
 - [`test_validate_step_00a_star_index.py`](../../../../tests/stages/star_index/test_validate_step_00a_star_index.py)
-  protects dry-run, the five checks, mismatch reporting, repeat publication,
+  protects dry-run, the six checks, STAR metadata admission, mismatch reporting,
+  repeat publication,
   contract failures, and preservation of foreign locks or invalid
   predecessors.
 - [`test_validation_check_rosters.py`](../../../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py)

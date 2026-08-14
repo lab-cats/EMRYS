@@ -99,7 +99,9 @@ cleanup, not a clean retry boundary: the producer exits nonzero when necessary
 and retains the lock plus remaining residue for operator inspection.
 
 [`step_00c_prepare_gatk_reference.slurm`](step_00c_prepare_gatk_reference.slurm)
-delegates to the shell entrypoint, maps `EXECUTE=0` to dry-run and `EXECUTE=1`
+requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers or the shell entrypoint, so SLURM's spool
+copy is never checkout authority. It maps `EXECUTE=0` to dry-run and `EXECUTE=1`
 to `--execute`, rejects other values, resolves the current cluster tools, and
 checks the two outputs after execution. Its empty-array invocation on Bash 3.2
 can fail in the default dry-run path. That characterized wrapper defect is

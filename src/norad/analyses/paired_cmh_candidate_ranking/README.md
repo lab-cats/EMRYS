@@ -74,6 +74,10 @@ sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,RSCRIPT_BIN_OVERRIDE=/usr/local/bin/Rs
   src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm
 ```
 
+The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers, the producer, or its dependency environment;
+an executed spool copy does not become checkout authority.
+
 Change only `EXECUTE=1` after review. Six stale outputs can produce false
 scheduler success.
 

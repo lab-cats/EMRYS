@@ -80,6 +80,10 @@ sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,PARTITION_MANIFEST=configs/step_07_par
   src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
 ```
 
+The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers or the producer; an executed spool copy does
+not become checkout authority.
+
 Change only `EXECUTE=1` after review. Scheduler checks three nonempty paths;
 stale finals can produce false success.
 

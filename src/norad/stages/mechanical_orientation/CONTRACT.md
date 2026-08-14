@@ -82,9 +82,11 @@ after a failed restoration, leaving the same unprotected recovery boundary as
 other BAM transactions.
 
 [`step_06_split_bam_by_read_orientation.slurm`](step_06_split_bam_by_read_orientation.slurm)
-owns cluster defaults, samtools loading, execution gating, delegation, and
-post-execute path checks. It has the characterized Bash 3.2 empty-array dry-run
-defect.
+requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers or the producer, so SLURM's spool copy is
+never checkout authority. It owns cluster defaults, samtools loading, execution
+gating, delegation, and post-execute path checks. It has the characterized Bash
+3.2 empty-array dry-run defect.
 
 ## Validation interface
 

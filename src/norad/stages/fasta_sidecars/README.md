@@ -79,6 +79,10 @@ EXECUTE=1 \
   sbatch src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm
 ```
 
+The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers or the producer; an executed spool copy does
+not become checkout authority.
+
 Site defaults are not portable. In execute mode the wrapper validates the
 controlled Python, then delegates the selected-Java GATK probe and work to the
 producer. It checks only nonempty FAI and DICT after delegation; mocked

@@ -71,6 +71,10 @@ sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,RSCRIPT_BIN_OVERRIDE=/usr/local/bin/Rs
   src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm
 ```
 
+The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers, the producer, or its optional local R
+environment; an executed spool copy does not become checkout authority.
+
 Change only `EXECUTE=1` after review. Three stale finals can produce false
 scheduler success.
 

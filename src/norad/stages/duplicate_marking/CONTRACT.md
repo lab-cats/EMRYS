@@ -66,12 +66,14 @@ recheck, rollback, or all-or-none transaction; failure may leave a partial or
 cross-attempt set.
 
 [`step_04_mark_duplicates.slurm`](step_04_mark_duplicates.slurm)
-resolves submit-directory defaults, modules, Picard, Java, and samtools before
+requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving its repository-owned helper or producer, so SLURM's spool copy is
+never checkout authority. It resolves modules, Picard, Java, and samtools before
 delegation and checks the three outputs after execute. It creates `logs/` in
 dry-run. Its empty execution-argument array has the characterized Bash 3.2
-dry-run defect; an unset `JAVA_HOME` can abort at the later unguarded
-diagnostic, and a stale nonempty output triplet can mask a zero-exit child that
-created nothing.
+dry-run defect; an unset `JAVA_HOME` can abort at the later unguarded diagnostic,
+and a stale nonempty output triplet can mask a zero-exit child that created
+nothing.
 
 ## Validation interface
 

@@ -70,9 +70,12 @@ tested, but a failure inside restoration can lose predecessor and recovery
 evidence. The lock is output-directory-wide rather than sample-scoped.
 
 [`step_05_split_n_cigar_reads.slurm`](step_05_split_n_cigar_reads.slurm)
-owns cluster defaults, module/tool/Java resolution, delegation, and final
-existence checks. The shell entrypoint is currently interpreter-only, and the
-wrapper has the characterized Bash 3.2 empty-array dry-run defect.
+requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers or the producer, so SLURM's spool copy is
+never checkout authority. It owns cluster defaults, module/tool/Java resolution,
+delegation, and final existence checks. The shell entrypoint is currently
+interpreter-only, and the wrapper has the characterized Bash 3.2 empty-array
+dry-run defect.
 
 ## Validation interface
 

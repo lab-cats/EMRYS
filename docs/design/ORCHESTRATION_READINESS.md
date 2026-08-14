@@ -33,10 +33,10 @@ zero.
 
 | Owner and scope | Public producer / validator | Current admission state | Disposition | Retained admission invariant |
 | --- | --- | --- | --- | --- |
-| [`construct_STAR_index`](../../src/norad/stages/star_index/CONTRACT.md), one reference | Explicit local producer plus compatibility SLURM wrapper; grouped public validator | B1 added dry-run-first, declared-member, locked no-clobber publication | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
-| [`convert_GTF_to_BED12`](../../src/norad/stages/gtf_to_bed12/CONTRACT.md), one reference | Grouped `norad convert gtf-to-bed12`; grouped validator | B1 added explicit execute plus atomic no-replace publication | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
+| [`construct_STAR_index`](../../src/norad/stages/star_index/CONTRACT.md), one reference | Explicit local producer plus compatibility SLURM wrapper; grouped public validator | B1 added dry-run-first, declared-member, locked no-clobber publication; current validation also ignores STAR-emitted `###` metadata rows while retaining exact overhang and suffix-array checks | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
+| [`convert_GTF_to_BED12`](../../src/norad/stages/gtf_to_bed12/CONTRACT.md), one reference | Grouped `norad convert gtf-to-bed12`; grouped validator | B1 added explicit execute plus atomic no-replace publication; the scheduler wrapper now delegates the deterministic final BED directly through that transaction with explicit run-token and execute authority and no bedtools intermediate | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
 | [`construct_FASTA_sidecars`](../../src/norad/stages/fasta_sidecars/CONTRACT.md), one reference | Public shell producer; grouped validator | Controlled rollback fails closed and preserves ambiguous residue; task entry reuses only one stable complete external FAI/DICT pair and rejects a partial pair before producer entry | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
-| [`align_RNA_reads_with_STAR`](../../src/norad/stages/star_alignment/CONTRACT.md), per sample | Public shell producer; grouped validator | Explicit tool selection and a staged no-clobber transaction bind the selected gunzip executable for compressed FASTQs | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
+| [`align_RNA_reads_with_STAR`](../../src/norad/stages/star_alignment/CONTRACT.md), per sample | Public shell producer; grouped validator | Explicit tool selection and a staged create-exclusive no-clobber transaction bind the selected gunzip executable for compressed FASTQs; that transaction is now the default and the scheduler wrapper records it explicitly | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
 | [`construct_canonical_BAM`](../../src/norad/stages/canonical_bam/CONTRACT.md), per sample | Public shell producer; grouped validator | B1 added stable-input checks and no-clobber admission to the existing transaction | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
 | [`collect_canonical_BAM_QC_evidence`](../../src/norad/evidence/canonical_bam_qc/CONTRACT.md), per sample | Public shell producer; grouped validator | B1 added explicit samtools selection and staged no-clobber pair publication | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
 | [`collect_RSeQC_paired_orientation_evidence`](../../src/norad/evidence/rseqc_orientation/CONTRACT.md), per sample | Public shell producer; grouped validator | B1 added stable-input checks and staged no-clobber publication | `ready` | Pinned workflow dependency, validator all-pass, and verified-task binding remain required for continued rule admission and reuse |
@@ -71,6 +71,13 @@ logs; admits an attempt only under the fixed acquisition mutex; and publishes a
 terminal receipt only after durable lock disposition and process-group
 quiescence. These remain local cooperative-workspace guarantees, not NFS,
 distributed-filesystem, scheduler, or cluster proof.
+
+All thirteen repository-owning SLURM wrappers require literal
+`SLURM_SUBMIT_DIR` and enter the submitted checkout before resolving
+repository-owned helpers or delegates, so the scheduler spool copy is never
+checkout authority. This integrated-tree contract has local static and mocked
+spool-copy evidence only; it does not inherit source-branch cluster observations
+or establish scheduler or cluster proof.
 
 The admitted profile retains these prerequisites:
 

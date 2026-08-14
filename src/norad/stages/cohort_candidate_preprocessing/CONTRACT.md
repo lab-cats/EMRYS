@@ -107,8 +107,10 @@ diagnostics; they do not override private modules independently, so a
 replacement owns its complete implementation and dependency behavior.
 
 [`step_08_vcf_preprocessing.slurm`](step_08_vcf_preprocessing.slurm)
-owns cluster defaults, modules and optional repository-local R environment,
-execution gating, delegation, and final path checks.
+requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving its repository-owned helper, producer, or optional repository-local R
+environment, so SLURM's spool copy is never checkout authority. It owns cluster
+defaults, modules, execution gating, delegation, and final path checks.
 
 ## Validation interface
 

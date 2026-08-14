@@ -100,9 +100,12 @@ hash its five sibling outputs, so presence alone is not independent proof that
 the producer returned success or that the current set is immutable.
 
 [`step_09_cmh_editing_site_calling.slurm`](step_09_cmh_editing_site_calling.slurm)
-owns cluster defaults, dependency environment, execution gating, delegation,
-and final path checks; it does not own statistical behavior. Unlike the public
-script, the wrapper currently creates its `logs/` directory even in dry-run.
+requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving its repository-owned helper, producer, or dependency environment, so
+SLURM's spool copy is never checkout authority. It owns cluster defaults,
+execution gating, delegation, and final path checks; it does not own statistical
+behavior. Unlike the public script, the wrapper currently creates its `logs/`
+directory even in dry-run.
 
 ## Validation interface
 

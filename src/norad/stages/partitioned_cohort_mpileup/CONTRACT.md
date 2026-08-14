@@ -98,8 +98,11 @@ filter are not durable receipt provenance. The receipt also does not hash
 either output VCF.
 
 [`step_07_bcftools_mpileup_by_chrom_and_strand.slurm`](step_07_bcftools_mpileup_by_chrom_and_strand.slurm)
-owns cluster defaults, module loading, execution gating, delegation, and final
-path checks; it does not own pileup or publication logic.
+requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving its repository-owned helper or producer, so SLURM's spool copy is
+never checkout authority. It owns cluster defaults, module loading, execution
+gating, delegation, and final path checks; it does not own pileup or publication
+logic.
 
 ## Validation interface
 

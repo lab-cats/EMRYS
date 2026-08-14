@@ -69,6 +69,10 @@ sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,NORAD_SHA256_PYTHON=/absolute/path/to/
   src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm
 ```
 
+The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers or the producer; an executed spool copy does
+not become checkout authority.
+
 Change only `EXECUTE=1` after review. Use explicit tool overrides when needed.
 The wrapper validates controlled Python only for execute mode and delegates
 the GATK probe to the producer. Stale finals can make a zero-output child look

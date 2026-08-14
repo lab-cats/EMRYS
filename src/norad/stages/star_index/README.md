@@ -40,14 +40,20 @@ operator inspection.
 The legacy Novogene scheduler entry point remains:
 
 ```bash
+cd /absolute/path/to/norad
 sbatch src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm
 ```
 
-The job executes implicitly on submission, resolves its hardcoded compressed
-Novogene inputs and `refs/` outputs from the caller's working directory,
-materializes the legacy reference files, and then delegates index construction
-to the public producer with `--execute`. It is a scheduler input, not a directly
-executable file.
+The job executes implicitly on submission. It requires `SLURM_SUBMIT_DIR`,
+changes into that submitted checkout before resolving its repository-owned
+producer, and keeps the hardcoded compressed Novogene inputs and `refs/` outputs
+relative to that checkout even when SLURM executes a spool copy. It materializes
+the legacy reference files and then delegates index construction to the public
+producer with `--execute`. It is a scheduler input, not a directly executable
+file.
+
+The validator ignores `genomeParameters.txt` rows whose first field is exactly
+`###`; it still checks the exact overhang and `genomeSAindexNbases` values.
 
 Invoke the validator with the repository Python and explicit inputs. Omitting
 `--execute` is the no-write dry run; adding it publishes the declared output:
