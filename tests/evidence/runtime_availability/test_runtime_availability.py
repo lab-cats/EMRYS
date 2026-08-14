@@ -4,7 +4,8 @@ import json
 import os
 import subprocess
 import sys
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -415,6 +416,77 @@ def test_tool_probe_normalizes_launch_and_version_failures(
     assert mismatch.detail == "Version output did not match expected regex"
 
 
+def test_picard_version_probe_accepts_only_its_exact_exit_one_contract(
+    tmp_path: Path,
+) -> None:
+    java = tmp_path / "java-home" / "bin" / "java"
+    jar = tmp_path / "picard.jar"
+    java.parent.mkdir(parents=True)
+    java.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    java.chmod(0o755)
+    jar.write_bytes(b"bound picard jar")
+    picard = Check(
+        check_id="picard",
+        check_type="tool_version_exit_1",
+        runtime_context="local",
+        required=True,
+        target=str(java),
+        probe_args=("-jar", str(jar), "MarkDuplicates", "--version"),
+        expected=r"^Version:3[.]1[.]1$",
+        description="Picard runtime",
+    )
+
+    observed_argv: list[tuple[str, ...]] = []
+
+    def exact_picard_probe(
+        argv: Sequence[str],
+        _stdin: str | None,
+        _environment: Mapping[str, str] | None,
+    ) -> tuple[int, str]:
+        observed_argv.append(tuple(argv))
+        return 1, "Version:3.1.1"
+
+    passed = run_checks(
+        [picard],
+        "local",
+        command_runner=exact_picard_probe,
+    )[0]
+
+    assert passed.status == "pass"
+    assert passed.observed == "Version:3.1.1"
+    assert passed.detail == f"Resolved executable: {java}"
+    assert observed_argv == [
+        (str(java), "-jar", str(jar), "MarkDuplicates", "--version")
+    ]
+
+    for changed, code in (
+        (replace(picard, check_type="tool_version"), 1),
+        (picard, 0),
+        (picard, 2),
+    ):
+        rejected = run_checks(
+            [changed],
+            "local",
+            command_runner=lambda _argv, _stdin, _environment, c=code: (
+                c,
+                "Version:3.1.1",
+            ),
+        )[0]
+        assert rejected.status == "fail"
+        assert rejected.detail == "Version probe failed"
+
+    wrong_output = run_checks(
+        [picard],
+        "local",
+        command_runner=lambda _argv, _stdin, _environment: (
+            1,
+            "Version:3.1.1 extra",
+        ),
+    )[0]
+    assert wrong_output.status == "fail"
+    assert wrong_output.detail == "Version output did not match expected regex"
+
+
 @pytest.mark.parametrize(
     ("check_type", "probe_args", "expected_detail"),
     [
@@ -745,6 +817,24 @@ def test_r_namespace_requires_package_name(tmp_path: Path) -> None:
         (
             lambda rows: [[*rows[0][:5], "not-json", *rows[0][6:]]],
             "not valid JSON",
+        ),
+        (
+            lambda rows: [
+                [*rows[0][:1], "tool_version_exit_1", *rows[0][2:5], "[]", *rows[0][6:]]
+            ],
+            "tool_version_exit_1 needs probe_args",
+        ),
+        (
+            lambda rows: [
+                [
+                    *rows[0][:1],
+                    "tool_version_exit_1",
+                    *rows[0][2:6],
+                    "[",
+                    *rows[0][7:],
+                ]
+            ],
+            "expected regex is invalid",
         ),
     ],
 )

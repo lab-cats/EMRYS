@@ -78,7 +78,8 @@ def _probe_tool(
     ):
         command = guarded_rscript_argv(executable, check.probe_args)
     code, output = run_command(command, None, environment)
-    if code != 0:
+    expected_code = 1 if check.check_type == "tool_version_exit_1" else 0
+    if code != expected_code:
         return Result(check, "fail", output or f"exit {code}", "Version probe failed")
     if re.search(check.expected, output) is None:
         return Result(
@@ -213,6 +214,7 @@ PROBES: dict[
     Callable[[Check, Mapping[str, str] | None, CommandRunner], Result],
 ] = {
     "tool_version": _probe_tool,
+    "tool_version_exit_1": _probe_tool,
     "r_namespace": _probe_r_namespace,
     "hash_utility": _probe_hash_utility,
     "path_visibility": _probe_path_visibility,

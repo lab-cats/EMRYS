@@ -113,13 +113,22 @@ def _write_runtime_profile(root: Path) -> Path:
     }
     java_home = root / "fixture-jdk"
     java = java_home / "bin" / "java"
+    picard_jar = root / "fixture-picard.jar"
+    picard_jar.write_bytes(b"bounded no-science Picard fixture\n")
     java.parent.mkdir(parents=True)
     java.write_text(
         "#!/bin/sh\n"
-        'case " $* " in\n'
-        "  *' -jar '*) printf '3.1.1\\n' ;;\n"
-        "  *) printf 'openjdk version \"17.0.1\"\\n' >&2 ;;\n"
-        "esac\n",
+        f'[ "$#" -eq 4 ] && [ "$1" = -jar ] && '
+        f"[ \"$2\" = '{picard_jar}' ] && "
+        '[ "$3" = MarkDuplicates ] && [ "$4" = --version ] && {\n'
+        "    printf 'Version:3.1.1\\n' >&2\n"
+        "    exit 1\n"
+        "}\n"
+        '[ "$#" -eq 1 ] && [ "$1" = -version ] && {\n'
+        "    printf 'openjdk version \"17.0.1\"\\n' >&2\n"
+        "    exit 0\n"
+        "}\n"
+        "exit 2\n",
         encoding="utf-8",
     )
     java.chmod(0o755)
@@ -132,8 +141,6 @@ def _write_runtime_profile(root: Path) -> Path:
         encoding="utf-8",
     )
     gatk.chmod(0o755)
-    picard_jar = root / "fixture-picard.jar"
-    picard_jar.write_bytes(b"bounded no-science Picard fixture\n")
     rscript = root / "fixture-Rscript"
     renv_library = root / "fixture-renv-library"
     renv_library.mkdir()

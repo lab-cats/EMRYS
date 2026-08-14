@@ -70,7 +70,7 @@ LOCAL_PILOT_RUNTIME_CHECKS = (
     ("samtools", "tool_version"),
     ("java", "tool_version"),
     ("gatk", "tool_version"),
-    ("picard", "tool_version"),
+    ("picard", "tool_version_exit_1"),
     ("picard_jar", "path_visibility"),
     ("bcftools", "tool_version"),
     ("infer_experiment", "tool_version"),
@@ -629,6 +629,7 @@ def runtime_file_bindings(
             continue
         if check.check_type not in {
             "tool_version",
+            "tool_version_exit_1",
             "path_visibility",
             "r_namespace",
             "hash_utility",

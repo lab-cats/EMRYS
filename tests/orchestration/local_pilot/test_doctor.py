@@ -115,7 +115,7 @@ def _inspection(tmp_path: Path, *, failing: str | None = None) -> RuntimeInspect
         _check("gatk", "tool_version", str(tool), probe_args=("--version",)),
         _check(
             "picard",
-            "tool_version",
+            "tool_version_exit_1",
             str(java),
             probe_args=("-jar", str(jar), "MarkDuplicates", "--version"),
         ),
@@ -756,6 +756,82 @@ def test_runtime_profile_cannot_weaken_fixed_probe_policy_before_probing(
         )
 
 
+@pytest.mark.parametrize(
+    "change",
+    ("java_target", "jar_target", "subcommand", "version_flag"),
+)
+def test_picard_profile_requires_exact_java_jar_and_args_before_probing(
+    tmp_path: Path,
+    change: str,
+) -> None:
+    request = build(tmp_path)
+    runtime = tmp_path / "runtime.tsv"
+    inspection = _inspection(tmp_path)
+    runtime.write_bytes(inspection.profile_bytes)
+    declared = [item.check for item in inspection.observations]
+    index = next(
+        index for index, check in enumerate(declared) if check.check_id == "picard"
+    )
+    picard = declared[index]
+    if change == "java_target":
+        declared[index] = replace(picard, target=str(tmp_path / "other-java"))
+    elif change == "jar_target":
+        declared[index] = replace(
+            picard,
+            probe_args=(
+                "-jar",
+                str(tmp_path / "other-picard.jar"),
+                "MarkDuplicates",
+                "--version",
+            ),
+        )
+    elif change == "subcommand":
+        declared[index] = replace(
+            picard,
+            probe_args=(
+                picard.probe_args[0],
+                picard.probe_args[1],
+                "CollectInsertSizeMetrics",
+                picard.probe_args[3],
+            ),
+        )
+    else:
+        declared[index] = replace(
+            picard,
+            probe_args=(*picard.probe_args[:3], "--help"),
+        )
+
+    def unexpected_probe(
+        _path: Path,
+        _context: str,
+        _environment: dict[str, str],
+    ) -> RuntimeInspection:
+        raise AssertionError(
+            "runtime probes must not run for a mismatched Picard probe"
+        )
+
+    base = _ops(inspection)
+    ops = replace(
+        base,
+        inspect_runtime=unexpected_probe,
+        load_runtime_profile=lambda _path: (
+            inspection.profile_bytes,
+            tuple(declared),
+        ),
+    )
+    with pytest.raises(
+        doctor.DoctorInputError,
+        match="Picard version probing must use the declared Java and Picard jar",
+    ):
+        doctor.inspect_local_pilot(
+            request,
+            tmp_path / "workspace",
+            runtime,
+            source_root=REPO_ROOT,
+            ops=ops,
+        )
+
+
 def test_renv_library_must_be_an_existing_canonical_real_directory(
     tmp_path: Path,
 ) -> None:
@@ -909,5 +985,13 @@ def test_tracked_runtime_starter_has_exact_contract() -> None:
         "snakemake",
         "--version",
     ]
+    assert by_name["picard"]["target"] == by_name["java"]["target"]
+    assert json.loads(by_name["picard"]["probe_args"]) == [
+        "-jar",
+        by_name["picard_jar"]["target"],
+        "MarkDuplicates",
+        "--version",
+    ]
+    assert by_name["picard"]["expected"] == r"^Version:3[.]1[.]1$"
     assert json.loads(by_name["renv_library"]["probe_args"]) == ["directory_readable"]
     assert json.loads(rows[-1]["probe_args"]) == ["/absolute/path/to/Rscript"]

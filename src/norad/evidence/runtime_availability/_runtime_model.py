@@ -30,6 +30,7 @@ RESULT_HEADER = (
 )
 CHECK_TYPES = {
     "tool_version",
+    "tool_version_exit_1",
     "r_namespace",
     "hash_utility",
     "path_visibility",

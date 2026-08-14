@@ -24,6 +24,11 @@ absolute-path visibility. Rows report `pass`, `fail`, `blocked`, or
 `not_checked`. Dry run performs applicable read-only probes but publishes
 nothing; execute mode publishes the requested TSV. Exit zero means probing and
 any requested publication completed, not that every required probe passed.
+Ordinary `tool_version` probes require command status zero. The explicit
+`tool_version_exit_1` probe type requires status exactly 1 before applying its
+output regex; the fixed local-pilot profile uses it for Picard 3.1.1's exact
+`java -jar ... MarkDuplicates --version` behavior. Other nonzero tool probes
+remain failures.
 
 [`tool_check.slurm`](tool_check.slurm) is a separate manual cluster smoke
 probe. It attempts to load its declared CSU Python, STAR, samtools, and Picard

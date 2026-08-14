@@ -118,9 +118,11 @@ def _validate_regex(pattern: str, row_number: int) -> None:
 
 
 def _validate_check_contract(check: Check, row_number: int) -> None:
-    if check.check_type == "tool_version":
+    if check.check_type in {"tool_version", "tool_version_exit_1"}:
         if not check.probe_args:
-            _fail(f"Runtime profile row {row_number} tool_version needs probe_args")
+            _fail(
+                f"Runtime profile row {row_number} {check.check_type} needs probe_args"
+            )
         _validate_regex(check.expected, row_number)
     elif check.check_type == "r_namespace":
         if re.fullmatch(r"[A-Za-z][A-Za-z0-9.]*", check.target) is None:
