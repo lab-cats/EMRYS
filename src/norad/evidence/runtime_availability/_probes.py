@@ -111,7 +111,8 @@ def _probe_r_namespace(
             "if (!identical(expected, declared)) quit(status=44); "
             "pkg <- normalizePath(pkg, winslash='/', mustWork=TRUE); "
             "if (!identical(pkg, expected)) quit(status=44); "
-            "ns <- tryCatch(loadNamespace(p, lib.loc=lib), error=function(e) NULL); "
+            "ns <- tryCatch(suppressWarnings(loadNamespace(p, lib.loc=lib)), "
+            "error=function(e) NULL); "
             "if (is.null(ns)) quit(status=42); "
             "where <- normalizePath(getNamespaceInfo(ns, 'path'), winslash='/', "
             "mustWork=TRUE); "
@@ -125,7 +126,8 @@ def _probe_r_namespace(
     else:
         expression = (
             "p <- commandArgs(TRUE)[1]; "
-            "if (!requireNamespace(p, quietly=TRUE)) quit(status=42); "
+            "if (!suppressWarnings(requireNamespace(p, quietly=TRUE))) "
+            "quit(status=42); "
             "cat(as.character(utils::packageVersion(p)))"
         )
         arguments = [rscript, "-e", expression, check.target]

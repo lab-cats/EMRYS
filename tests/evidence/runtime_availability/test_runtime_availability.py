@@ -383,6 +383,67 @@ def test_gatk_probe_reports_an_invalid_declared_java_environment(
     assert "canonical <JAVA_HOME>/bin/java" in results[1].detail
 
 
+@pytest.mark.parametrize(
+    ("version", "exit_code", "expected_status"),
+    [
+        ("4.6.1.0", 0, "pass"),
+        ("4.6.1.1", 0, "fail"),
+        ("4.6.1.0", 2, "fail"),
+    ],
+)
+def test_tracked_gatk_policy_handles_official_launcher_prelude(
+    tmp_path: Path,
+    version: str,
+    exit_code: int,
+    expected_status: str,
+) -> None:
+    java = tmp_path / "java-home" / "bin" / "java"
+    java.parent.mkdir(parents=True)
+    java.write_text(
+        "#!/bin/sh\n"
+        '[ "$#" -eq 1 ] && [ "$1" = -version ] || exit 2\n'
+        "printf 'openjdk version \\\"17.0.1\\\"\\n' >&2\n",
+        encoding="utf-8",
+    )
+    java.chmod(0o755)
+    gatk = tmp_path / "gatk"
+    gatk.write_text(
+        "#!/bin/sh\n"
+        '[ "$#" -eq 1 ] && [ "$1" = --version ] || exit 96\n'
+        f"[ \"${{JAVA_HOME:-}}\" = '{java.parent.parent}' ] || exit 91\n"
+        f"[ \"$(command -v java)\" = '{java}' ] || exit 92\n"
+        "printf 'Using GATK jar fixture.jar\\nRunning:\\n' >&2\n"
+        "printf 'java -jar fixture.jar --version\\n' >&2\n"
+        f"printf 'The Genome Analysis Toolkit (GATK) v{version}\\n'\n"
+        f"exit {exit_code}\n",
+        encoding="utf-8",
+    )
+    gatk.chmod(0o755)
+    _, policy_checks = load_profile(
+        REPO_ROOT / "configs" / "local_pilot_runtime.example.tsv"
+    )
+    selected = {
+        check.check_id: check
+        for check in policy_checks
+        if check.check_id in {"java", "gatk"}
+    }
+    checks = [
+        replace(selected["java"], target=str(java)),
+        replace(selected["gatk"], target=str(gatk)),
+    ]
+
+    results = run_checks(
+        checks,
+        "local",
+        environment={"PATH": "/usr/bin:/bin"},
+    )
+
+    assert results[0].status == "pass"
+    assert results[1].status == expected_status
+    assert "Using GATK jar fixture.jar Running:" in results[1].observed
+    assert f"The Genome Analysis Toolkit (GATK) v{version}" in results[1].observed
+
+
 def test_tool_probe_normalizes_launch_and_version_failures(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -693,6 +754,10 @@ def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
     ]
     assert argv[-2:] == ["GuardedPackage", str(library)]
     assert "find.package" in argv[6]
+    assert (
+        "tryCatch(suppressWarnings(loadNamespace(p, lib.loc=lib)), "
+        "error=function(e) NULL)" in argv[6]
+    )
     assert "identical(expected, declared)" in argv[6]
     assert "identical(pkg, expected)" in argv[6]
     assert "identical(where, expected)" in argv[6]
@@ -701,16 +766,79 @@ def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
     assert result.detail == f"Resolved R package root: {library / 'GuardedPackage'}"
 
 
+def test_unguarded_r_namespace_probe_suppresses_only_load_warnings(
+    tmp_path: Path,
+) -> None:
+    fake = tmp_path / "Rscript"
+    fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake.chmod(0o755)
+    check = Check(
+        check_id="r_unguarded",
+        check_type="r_namespace",
+        runtime_context="local",
+        required=True,
+        target="FixturePackage",
+        probe_args=(str(fake),),
+        expected=r"^1[.]2[.]3$",
+        description="unguarded namespace",
+    )
+    calls: list[list[str]] = []
+
+    def capture(
+        argv: list[str],
+        _stdin: bytes | None,
+        _environment: dict[str, str] | None,
+    ) -> tuple[int, str]:
+        calls.append(argv)
+        return 0, "1.2.3"
+
+    result = run_checks([check], "local", command_runner=capture)[0]
+
+    assert result.status == "pass"
+    assert calls[0][-1] == "FixturePackage"
+    assert "suppressWarnings(requireNamespace(p, quietly=TRUE))" in calls[0][2]
+
+
+def test_r_namespace_keeps_strict_version_output_matching(tmp_path: Path) -> None:
+    fake = tmp_path / "Rscript"
+    fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake.chmod(0o755)
+    check = Check(
+        check_id="r_warning",
+        check_type="r_namespace",
+        runtime_context="local",
+        required=True,
+        target="FixturePackage",
+        probe_args=(str(fake),),
+        expected=r"^1[.]2[.]3$",
+        description="strict namespace",
+    )
+    contaminated = "Warning message: replacing previous import 1.2.3"
+
+    result = run_checks(
+        [check],
+        "local",
+        command_runner=lambda _argv, _stdin, _environment: (0, contaminated),
+    )[0]
+
+    assert result.status == "fail"
+    assert result.observed == contaminated
+    assert result.detail == "Namespace version did not match expected regex"
+
+
 @pytest.mark.parametrize(
-    ("guarded", "expected_detail"),
+    ("guarded", "code", "expected_detail"),
     [
-        (True, "R namespace is unavailable in the selected library"),
-        (False, "R namespace is unavailable"),
+        (True, 42, "R namespace is unavailable in the selected library"),
+        (True, 43, "R did not select the admitted library first"),
+        (True, 44, "R namespace did not resolve to its exact selected package root"),
+        (False, 42, "R namespace is unavailable"),
     ],
 )
 def test_r_namespace_failure_detail_distinguishes_guarded_selection(
     tmp_path: Path,
     guarded: bool,
+    code: int,
     expected_detail: str,
 ) -> None:
     fake = tmp_path / "Rscript"
@@ -739,7 +867,7 @@ def test_r_namespace_failure_detail_distinguishes_guarded_selection(
         [check],
         "local",
         environment=environment,
-        command_runner=lambda _argv, _stdin, _environment: (42, ""),
+        command_runner=lambda _argv, _stdin, _environment: (code, ""),
     )[0]
 
     assert result.status == "fail"

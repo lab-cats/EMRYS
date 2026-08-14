@@ -137,6 +137,7 @@ def _write_runtime_profile(root: Path) -> Path:
         "#!/bin/sh\n"
         f"[ \"${{JAVA_HOME:-}}\" = '{java_home}' ] || exit 91\n"
         f"[ \"$(command -v java)\" = '{java}' ] || exit 92\n"
+        "printf 'Using GATK jar fixture.jar\\nRunning:\\njava -jar fixture.jar --version\\n' >&2\n"
         "printf 'The Genome Analysis Toolkit (GATK) v4.6.1.0\\n'\n",
         encoding="utf-8",
     )

@@ -993,5 +993,9 @@ def test_tracked_runtime_starter_has_exact_contract() -> None:
         "--version",
     ]
     assert by_name["picard"]["expected"] == r"^Version:3[.]1[.]1$"
+    assert by_name["gatk"]["expected"] == (
+        r"(?:^|\s)The Genome Analysis Toolkit [(]GATK[)] "
+        r"v?4[.]6[.]1[.]0(?:\s|$)"
+    )
     assert json.loads(by_name["renv_library"]["probe_args"]) == ["directory_readable"]
     assert json.loads(rows[-1]["probe_args"]) == ["/absolute/path/to/Rscript"]
