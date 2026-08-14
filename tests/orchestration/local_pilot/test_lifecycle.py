@@ -28,6 +28,12 @@ WORKFLOW_TIME = datetime(2026, 8, 12, 14, 0, tzinfo=UTC)
 FINISHED_TIME = datetime(2026, 8, 12, 14, 5, tzinfo=UTC)
 
 
+def _raise_signal_on_lifecycle_thread(signum: int) -> None:
+    """Keep synthetic signals away from xdist's worker-control thread."""
+
+    signal.raise_signal(signum)
+
+
 @pytest.mark.parametrize(
     ("run_suffix", "source_suffix", "allowed"),
     [
@@ -574,7 +580,7 @@ def test_signal_during_receipt_commit_reaches_ambient_handler_after_commit(
 
     def publish(path: Path, data: bytes) -> None:
         if path == receipt_path:
-            os.kill(os.getpid(), signal.SIGTERM)
+            _raise_signal_on_lifecycle_thread(signal.SIGTERM)
         defaults.publish_bytes(path, data)
 
     signal.signal(signal.SIGTERM, ambient)
@@ -620,7 +626,7 @@ def test_signal_during_mutex_cleanup_is_delivered_after_unlock(
 
     def observe(event: str, _path: Path) -> None:
         if event == mutex_phase:
-            os.kill(os.getpid(), signal.SIGTERM)
+            _raise_signal_on_lifecycle_thread(signal.SIGTERM)
 
     signal.signal(signal.SIGTERM, ambient)
     try:

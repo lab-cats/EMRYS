@@ -45,55 +45,55 @@ EXPECTED_PRODUCER_EVIDENCE = {
     ),
     "00b": (
         "src/norad/stages/gtf_to_bed12/converter.py",
-        "1251e1a61c08a041633f5212982d60cde8e50da8b56e72c6f739047567239ddf",
+        "835e05e459cc58b3e242a0917bfc2d8d8965f6f386576bee79fd875501f08cdc",
     ),
     "00c": (
         "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
-        "1c2c15d0f544eba80f36b2dc47575827ef95fdf1b29751526eb9ba277fb7c4cd",
+        "74cba26b9bc033b05a94930ecbb22ca88dd147454feb0e831bb656f2951653f7",
     ),
     "01": (
         "src/norad/stages/star_alignment/step_01_star_align.sh",
-        "3231ab1d5ae1fe2c564d849901da2025a0aa1b96626732a341c6965c37ed2192",
+        "2f9150a1cf51fefe2c143c83cb206ec48ba9b38dcf0bf4f3ab30e0e36e0c4bf8",
     ),
     "02": (
         "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh",
-        "7b4776f0230390ae40999a3ee9d0dc77a78123ca4f5cf7072442dad0a0dda2a0",
+        "6aefda53a3f91766703ed12bb1c1c923e4de34146a5151cd2ddad51487761205",
     ),
     "02b": (
         "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
-        "bc49d500dd81a71d8a32c232e5426a33642322014d9bbec9fa968c39adf45ff2",
+        "f06e0008b8e38f3485a8bb9882a0bd09c6bf540e010d8f4d51121777159566ad",
     ),
     "03": (
         "src/norad/evidence/rseqc_orientation/"
         "step_03_infer_strandedness_and_orientation.sh",
-        "3ee1b60ab56fb901d565d62f3d73affec5e8da834aa8baa7ab74d4ef44340212",
+        "099c256ec196989df524e86d5dcb9ee36221eb28fd1c20dd21ecb62a0b674c19",
     ),
     "04": (
         "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
-        "04633b71ca2f302e6a8bca3f4f0cfb280527bef93e4dfb35767fdfea933192bd",
+        "ad67d6e4c6e5e5455dcb41c4f20ab92c7385cc22198b3c5002fb5d5d34b3ba5d",
     ),
     "05": (
         "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
-        "a38c27b33187a889d82b57ec2d2c885bf9e604d1ebe78afcfd45ebff714749d5",
+        "c2e1591b4d1ac03b5aa0a46b1f24ac4ef93cfe217313cccb39496be46dec0a65",
     ),
     "06": (
         "src/norad/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh",
-        "50e9e573e2e54b13d8052008ae5965817a1f14cd6377e93263b11ea7c28c453b",
+        "c14c14c8e11a25c4f5ca1287e2707ddb53c686cbf0e640395f3ebbcf46f9e51e",
     ),
     "07": (
         "src/norad/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
-        "bbd4b5d922d7a0a073a08804b6cd95f399680f9c3523f943f1d1be452d4141d4",
+        "a9de3547a259d608cb63a34078c007dd8004d87ad025eceaa70ce2f83aebc028",
     ),
     "08": (
         "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
-        "669290ffdce60ff37cb52256ba38783fcf17f6ba8b5dd77a76d0119e7e418ed3",
+        "a9f0369949ed00f319e6521707c7efd1b825ff3f149593c8836bb2cf940a3189",
     ),
     "09": (
         "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh",
-        "504a501eba1c72df047644229628575c85b27527aad697ebbf3c64817d433e43",
+        "5fb74325467541fa830e53ecd38f150d5c94511259d9915bc65074496c3be5c8",
     ),
     "09c": (
         "src/norad/evidence/scientific_review_package/publisher.py",
