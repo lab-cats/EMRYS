@@ -1584,8 +1584,12 @@ fi
 
 job_fixture="$tmp/job-wrapper"
 copy_fixture "$job_fixture"
-mkdir -p "$job_fixture/src/norad/analyses/paired_cmh_candidate_ranking"
+mkdir -p \
+    "$job_fixture/src/norad/analyses/paired_cmh_candidate_ranking" \
+    "$job_fixture/src/norad/libraries"
 cp "$script" "$job_fixture/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh"
+cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
+    "$job_fixture/src/norad/libraries/"
 job_output_root="$job_fixture/job-output"
 env \
     PATH="$tmp/bin:$PATH" \

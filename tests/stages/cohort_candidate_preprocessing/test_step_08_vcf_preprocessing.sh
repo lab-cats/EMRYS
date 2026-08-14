@@ -1452,7 +1452,10 @@ assert_exists "$wrapper_execute/output/cohort_A/cohort_A.step08_inputs.tsv"
 assert_exists "$wrapper_execute/qc/cohort_A.step08_summary.tsv"
 
 invalid_wrapper="$test_root/wrapper-invalid"
-mkdir -p "$invalid_wrapper"
+invalid_wrapper_libraries="$invalid_wrapper/src/norad/libraries"
+mkdir -p "$invalid_wrapper_libraries"
+cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
+    "$invalid_wrapper_libraries/"
 run_expect_status 1 "$test_root/wrapper-invalid.out" "$test_root/wrapper-invalid.err" \
     env \
     PATH="$fake_bin:$PATH" \
@@ -1463,7 +1466,10 @@ assert_contains "$test_root/wrapper-invalid.err" "EXECUTE must be 0 or 1"
 assert_not_exists "$invalid_wrapper/logs"
 
 wrapper_missing="$test_root/wrapper-missing"
-mkdir -p "$wrapper_missing/$owner_path"
+wrapper_missing_libraries="$wrapper_missing/src/norad/libraries"
+mkdir -p "$wrapper_missing/$owner_path" "$wrapper_missing_libraries"
+cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
+    "$wrapper_missing_libraries/"
 cat >"$wrapper_missing/$owner_path/step_08_vcf_preprocessing.sh" <<'WRAPPER_STUB'
 #!/usr/bin/env bash
 exit 0

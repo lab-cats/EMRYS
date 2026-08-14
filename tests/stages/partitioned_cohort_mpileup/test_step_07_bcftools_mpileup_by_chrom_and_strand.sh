@@ -1221,7 +1221,10 @@ assert_exists "$wrapper_root/execute-output/wrapper_exec/1/wrapper_exec.1.step07
 
 wrapper_missing_root="$test_root/wrapper-missing-output"
 wrapper_missing_owner="$wrapper_missing_root/src/norad/stages/partitioned_cohort_mpileup"
-mkdir -p "$wrapper_missing_owner"
+wrapper_missing_libraries="$wrapper_missing_root/src/norad/libraries"
+mkdir -p "$wrapper_missing_owner" "$wrapper_missing_libraries"
+cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
+    "$wrapper_missing_libraries/"
 cat >"$wrapper_missing_owner/step_07_bcftools_mpileup_by_chrom_and_strand.sh" <<'STUB'
 #!/usr/bin/env bash
 exit 0
@@ -1238,7 +1241,10 @@ run_expect_status 1 "$test_root/wrapper-missing.out" "$test_root/wrapper-missing
 assert_contains "$test_root/wrapper-missing.err" "Expected FWD_like VCF does not exist or is empty"
 
 invalid_wrapper_root="$test_root/wrapper-invalid"
-mkdir -p "$invalid_wrapper_root"
+invalid_wrapper_libraries="$invalid_wrapper_root/src/norad/libraries"
+mkdir -p "$invalid_wrapper_libraries"
+cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
+    "$invalid_wrapper_libraries/"
 run_expect_status 1 "$test_root/wrapper-invalid.out" "$test_root/wrapper-invalid.err" \
     env PATH="$fake_bin:$PATH" SLURM_SUBMIT_DIR="$invalid_wrapper_root" EXECUTE=2 \
     bash "$job"
