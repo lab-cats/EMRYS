@@ -301,6 +301,20 @@ def test_ready_doctor_is_read_only_and_guards_renv(
     assert after == before
 
 
+def test_required_tool_identities_reject_duplicate_runtime_binding_ids(
+    tmp_path: Path,
+) -> None:
+    inspection = _inspection(tmp_path)
+    binding = doctor.runtime_file_bindings(inspection)[0]
+
+    with pytest.raises(doctor.DoctorInputError, match="unique check IDs"):
+        doctor.required_tool_identities(
+            inspection,
+            bindings=(binding, binding),
+            python_executable=Path(sys.executable),
+        )
+
+
 def test_guarded_r_startup_uses_reviewed_profile_without_activation_or_ambient_files(
     tmp_path: Path,
 ) -> None:

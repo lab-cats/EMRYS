@@ -6,7 +6,9 @@ VULTURE_BIN ?= vulture
 DEAD_CODE_PATHS ?= scripts src/norad
 PYTHON_LINT_PATHS ?= scripts src/norad tests
 VULTURE_MIN_CONFIDENCE ?= 95
-PYTHON_COVERAGE_NEW_SHARED_MODULES ?=
+PYTHON_COVERAGE_NEW_SHARED_MODULES ?= \
+	src/norad/libraries/installed_package_identity.py \
+	src/norad/libraries/process_environment.py
 PYTHON_COVERAGE_NEW_SHARED_ARGS = $(foreach module,$(PYTHON_COVERAGE_NEW_SHARED_MODULES),--new-shared-module $(module))
 PYTHON_COVERAGE_NEW_SHARED_CHECK_ARGS = $(if $(strip $(PYTHON_COVERAGE_NEW_SHARED_MODULES)),--coverage-json "$(PYTHON_COVERAGE_RAW)" $(PYTHON_COVERAGE_NEW_SHARED_ARGS))
 PYTHON_COVERAGE_EXCLUDES := \

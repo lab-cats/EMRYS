@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -477,6 +478,24 @@ def test_registry_is_closed_and_every_schema_is_draft_2020_12() -> None:
                 stack.extend(value.values())
             elif isinstance(value, list):
                 stack.extend(value)
+
+
+def test_unknown_schema_selector_and_nonstandard_json_constant_are_rejected(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(
+        orchestration.ContractValidationError,
+        match="Unknown orchestration schema",
+    ):
+        orchestration.schema_validator("unknown")
+
+    record_path = tmp_path / "record.json"
+    record_path.write_bytes(b'{"value":NaN}')
+    with pytest.raises(
+        orchestration.ContractValidationError,
+        match="Non-standard JSON numeric constant",
+    ):
+        orchestration.load_json_object(record_path)
 
 
 def test_request_profile_reference_policy_and_execution_records_pass() -> None:

@@ -151,7 +151,7 @@
     "\t\t--output \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\"",
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/python_coverage_baseline.py check \\",
     "\t\t--baseline \"<REPO_ROOT>/tests/baselines/python_coverage.json\" \\",
-    "\t\t--current \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\""
+    "\t\t--current \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\" --coverage-json \"<REPO_ROOT>/.coverage-work/coverage.json\" --new-shared-module src/norad/libraries/installed_package_identity.py --new-shared-module src/norad/libraries/process_environment.py"
   ],
   "python-coverage-measure": [
     "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"coverage\"))')\" \\",

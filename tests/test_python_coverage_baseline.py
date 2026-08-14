@@ -282,7 +282,11 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     assert '--subprocess-coverage-json "$(PYTHON_SUBPROCESS_COVERAGE_RAW)"' in makefile
     for subprocess_test in TOOL.SUBPROCESS_TEST_COMMAND[4:]:
         assert subprocess_test in makefile
-    assert "--new-shared-module src/norad/" not in makefile
+    for shared_module in (
+        "src/norad/libraries/installed_package_identity.py",
+        "src/norad/libraries/process_environment.py",
+    ):
+        assert shared_module in makefile
     assert "compileall -q scripts src/norad tests" in makefile
 
 

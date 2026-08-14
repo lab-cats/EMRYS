@@ -321,6 +321,179 @@ def test_python_hash_probe_uses_the_controlled_python_prefix() -> None:
     ]
 
 
+def test_gatk_probe_requires_exactly_one_declared_java_launcher() -> None:
+    gatk = Check(
+        check_id="gatk",
+        check_type="tool_version",
+        runtime_context="local",
+        required=True,
+        target=sys.executable,
+        probe_args=("--version",),
+        expected=r"^GATK ",
+        description="GATK runtime",
+    )
+
+    result = run_checks([gatk], "local")[0]
+
+    assert result.status == "fail"
+    assert result.observed == "unavailable"
+    assert result.detail == "GATK probing requires exactly one declared Java launcher"
+
+
+def test_gatk_probe_reports_an_invalid_declared_java_environment(
+    tmp_path: Path,
+) -> None:
+    java_path = tmp_path / "java"
+    java_path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    java_path.chmod(0o755)
+    java = Check(
+        check_id="java",
+        check_type="tool_version",
+        runtime_context="local",
+        required=True,
+        target=str(java_path),
+        probe_args=("-version",),
+        expected=r"^openjdk version",
+        description="Java runtime",
+    )
+    gatk = Check(
+        check_id="gatk",
+        check_type="tool_version",
+        runtime_context="local",
+        required=True,
+        target=sys.executable,
+        probe_args=("--version",),
+        expected=r"^GATK ",
+        description="GATK runtime",
+    )
+
+    results = run_checks(
+        [java, gatk],
+        "local",
+        command_runner=lambda _argv, _stdin, _environment: (
+            0,
+            "openjdk version 17",
+        ),
+    )
+
+    assert results[0].status == "pass"
+    assert results[1].status == "fail"
+    assert results[1].observed == "unavailable"
+    assert "canonical <JAVA_HOME>/bin/java" in results[1].detail
+
+
+def test_tool_probe_normalizes_launch_and_version_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    check = Check(
+        check_id="tool",
+        check_type="tool_version",
+        runtime_context="local",
+        required=True,
+        target=sys.executable,
+        probe_args=("--version",),
+        expected=r"^Python 3[.]",
+        description="tool runtime",
+    )
+
+    def fail_launch(*_args: object, **_kwargs: object) -> None:
+        raise OSError("injected launch failure")
+
+    monkeypatch.setattr(subprocess, "run", fail_launch)
+    launch_failure = run_checks([check], "local")[0]
+    assert launch_failure.status == "fail"
+    assert launch_failure.observed == "injected launch failure"
+    assert launch_failure.detail == "Version probe failed"
+
+    mismatch = run_checks(
+        [check],
+        "local",
+        command_runner=lambda _argv, _stdin, _environment: (0, "unexpected"),
+    )[0]
+    assert mismatch.status == "fail"
+    assert mismatch.observed == "unexpected"
+    assert mismatch.detail == "Version output did not match expected regex"
+
+
+@pytest.mark.parametrize(
+    ("check_type", "probe_args", "expected_detail"),
+    [
+        ("r_namespace", ("missing-rscript",), "Rscript executable was not found"),
+        ("hash_utility", ("sha256sum",), "Hash executable was not found"),
+    ],
+)
+def test_namespace_and_hash_probes_reject_missing_executables_without_running(
+    check_type: str,
+    probe_args: tuple[str, ...],
+    expected_detail: str,
+) -> None:
+    check = Check(
+        check_id="missing",
+        check_type=check_type,
+        runtime_context="local",
+        required=True,
+        target="norad-runtime-tool-that-does-not-exist",
+        probe_args=probe_args,
+        expected=r".*",
+        description="missing runtime",
+    )
+
+    result = run_checks(
+        [check],
+        "local",
+        command_runner=lambda _argv, _stdin, _environment: pytest.fail(
+            "missing executable must stop before command execution"
+        ),
+    )[0]
+
+    assert result.status == "fail"
+    assert result.observed == "unavailable"
+    assert result.detail == expected_detail
+
+
+def test_hash_probe_binds_declared_adapter_and_reports_command_failure(
+    tmp_path: Path,
+) -> None:
+    executable = tmp_path / "sha256sum"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o755)
+    check = Check(
+        check_id="sha256",
+        check_type="hash_utility",
+        runtime_context="local",
+        required=True,
+        target=str(executable),
+        probe_args=("sha256sum",),
+        expected="sha256",
+        description="SHA-256 utility",
+    )
+    calls: list[tuple[list[str], bytes | None]] = []
+
+    def fail(
+        argv: list[str],
+        stdin: bytes | None,
+        _environment: dict[str, str] | None,
+    ) -> tuple[int, str]:
+        calls.append((argv, stdin))
+        return 23, ""
+
+    result = run_checks([check], "local", command_runner=fail)[0]
+
+    assert calls == [([str(executable)], HASH_PAYLOAD)]
+    assert result.status == "fail"
+    assert result.observed == "exit 23"
+    assert result.detail == "SHA-256 probe failed"
+
+    mismatch = run_checks(
+        [check],
+        "local",
+        command_runner=lambda _argv, _stdin, _environment: (0, "not-a-digest"),
+    )[0]
+    assert mismatch.status == "fail"
+    assert mismatch.observed == "not-a-digest"
+    assert mismatch.detail == "SHA-256 digest mismatch"
+
+
 def test_executable_visibility_uses_absolute_target_and_matching_expectation(
     tmp_path: Path,
 ) -> None:
