@@ -71,9 +71,14 @@ OUTPUT_DIR=/absolute/results/star/ABE_EV_2 EXECUTE=1 \
   sbatch src/norad/stages/star_alignment/step_01_star_align.slurm
 ```
 
-The wrapper requires `SLURM_SUBMIT_DIR`, changes to that submitted checkout
-before resolving repository paths, strictly loads STAR `2.7.11b`, passes
-explicit `--no-clobber`, and does not validate outputs.
+The wrapper requires `SLURM_SUBMIT_DIR` and changes to that submitted checkout
+before resolving repository paths. It defaults `NORAD_SHA256_PYTHON` to the
+absolute submitted-checkout `.venv/bin/python`; an operator may instead supply
+one explicit absolute executable. The wrapper requires that launcher to be
+executable, exports it with `NORAD_REQUIRE_BOUND_SHA256=1`, and the owner uses
+the controlled `-X pycache_prefix=/dev/null -I` path for every FASTQ and index
+hash. The wrapper strictly loads STAR `2.7.11b`, passes explicit
+`--no-clobber`, and does not independently validate outputs.
 
 ## Diagnose and verify
 
@@ -84,6 +89,7 @@ safe inspection and follow [`TROUBLESHOOTING.md`](../../../../docs/operations/TR
 ```bash
 bash tests/stages/star_alignment/test_step_01_star_align.sh
 .venv/bin/python -m pytest -q \
+  tests/stages/star_alignment/test_step_01_star_align_slurm.py \
   tests/stages/star_alignment/test_validate_step_01_star_alignment.py \
   tests/test_slurm_wrapper_contracts.py
 ```

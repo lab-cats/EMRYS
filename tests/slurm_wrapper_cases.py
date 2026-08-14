@@ -342,6 +342,7 @@ DELEGATED_FIXTURES = {
             ("R2_FASTQ", "{r2}"),
             ("STAR_INDEX", "{star_index}"),
             ("OUTPUT_DIR", "{output_dir}"),
+            ("NORAD_SHA256_PYTHON", "{python}"),
         ),
         arguments=(
             ("--sample-id", "sample-test"),

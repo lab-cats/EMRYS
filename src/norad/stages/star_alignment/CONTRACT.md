@@ -48,8 +48,9 @@ The current producer checks path types, matching compression suffixes,
 sample-identifier path safety, FASTQ byte stability, and a deterministic
 snapshot of every top-level STAR-index member. It does not validate FASTQ
 content or biological pairing. The current scheduler entrypoint supplies
-test-fixture defaults and loads STAR `2.7.11b`; those are current bindings, not
-approved future interface defaults.
+test-fixture defaults, loads STAR `2.7.11b`, and binds hashing to one admitted
+absolute Python executable; those are current bindings, not approved future
+interface defaults.
 
 ## Outputs
 
@@ -121,8 +122,13 @@ minimal nonempty index fixture before delegation and refuses execution with
 those placeholder bindings. Before any helper lookup, module load, fixture
 creation, or repository-relative path resolution, it requires
 `SLURM_SUBMIT_DIR` and changes to that submitted checkout rather than executing
-from SLURM's spool copy. It performs no independent output validation after
-delegation.
+from SLURM's spool copy. Immediately after helper binding it defaults
+`NORAD_SHA256_PYTHON` to the absolute submitted-checkout `.venv/bin/python`, or
+preserves one explicit absolute executable override; a relative or
+nonexecutable binding fails before modules or fixture mutation. The wrapper
+exports the selected launcher with `NORAD_REQUIRE_BOUND_SHA256=1`, so every
+owner hash uses controlled `-X pycache_prefix=/dev/null -I` execution. It
+performs no independent output validation after delegation.
 
 ## Validation interface
 
@@ -180,6 +186,10 @@ No downstream stage should depend on this stage's implementation module.
   failures, deterministic STAR-index admission and mutation rejection, and
   orchestration-safe staging/no-clobber behavior, including deterministic late
   appearance and replacement races, with local tool mocks.
+- [`test_step_01_star_align_slurm.py`](../../../../tests/stages/star_alignment/test_step_01_star_align_slurm.py)
+  protects submitted-checkout and explicit-override hash-launcher binding,
+  controlled real-owner hash invocation, and side-effect-free rejection of
+  relative or nonexecutable launchers through a local wrapper harness.
 - [`test_validate_step_01_star_alignment.py`](../../../../tests/stages/star_alignment/test_validate_step_01_star_alignment.py)
   protects dry-run, the five checks, failed mapping and splice-junction
   evidence, fail-closed missing inputs, publication, and foreign-lock

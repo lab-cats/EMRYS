@@ -20,6 +20,18 @@ cd "$SLURM_SUBMIT_DIR"
 # shellcheck source=../../libraries/argument_parsing.sh
 source "src/norad/libraries/argument_parsing.sh"
 
+# Bind every owner-side SHA-256 operation to the submitted checkout's admitted
+# Python unless the operator supplies an explicit absolute executable.
+NORAD_SHA256_PYTHON="${NORAD_SHA256_PYTHON:-$PWD/.venv/bin/python}"
+if [[ "$NORAD_SHA256_PYTHON" != /* ]]; then
+    die "NORAD_SHA256_PYTHON must be an absolute path: $NORAD_SHA256_PYTHON"
+fi
+if [[ ! -x "$NORAD_SHA256_PYTHON" ]]; then
+    die "NORAD_SHA256_PYTHON is not executable: $NORAD_SHA256_PYTHON"
+fi
+export NORAD_SHA256_PYTHON
+export NORAD_REQUIRE_BOUND_SHA256=1
+
 # Defaults support a safe dry-run smoke test.
 SAMPLE_ID="${SAMPLE_ID:-sample_001}"
 R1_FASTQ="${R1_FASTQ:-data/test/sample_001_R1.fastq.gz}"
@@ -61,6 +73,7 @@ echo "Node: $(hostname)"
 echo "Started: $(date)"
 echo "Working directory: $PWD"
 echo "TMPDIR: $TMPDIR"
+echo "Controlled SHA-256 Python: $NORAD_SHA256_PYTHON"
 
 echo "Loaded modules before STAR load:"
 module list 2>&1 || true
