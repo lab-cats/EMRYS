@@ -53,7 +53,7 @@ EXPECTED_PRODUCER_EVIDENCE = {
     ),
     "01": (
         "src/norad/stages/star_alignment/step_01_star_align.sh",
-        "2f9150a1cf51fefe2c143c83cb206ec48ba9b38dcf0bf4f3ab30e0e36e0c4bf8",
+        "15cea7e51d382e124011d2d77ea1627b3c1f41e3f06f695a7f8675c08f7475dc",
     ),
     "02": (
         "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh",
