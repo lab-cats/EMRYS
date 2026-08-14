@@ -10,7 +10,8 @@ acceptance, [`RUNBOOK.md`](RUNBOOK.md) for commands, and
 Campaign B owner hardening (`B1a` through `B1c`), B2 intake/contracts, B3's
 static local workflow, B4's reporting/lifecycle tail, B5 readiness and public
 control plane, B6 fresh-clone proof and researcher onboarding, and the
-adversarial local-pilot hardening follow-up are complete.
+adversarial local-pilot hardening and PORT-NC-01 semantic-replay follow-ups are
+complete.
 Owners expose explicit local, fail-closed workflow boundaries; the repository
 has a locked workflow group, closed machine schemas, read-only
 normalization/reporting projection, semantic all-pass checking, one fixed
@@ -30,6 +31,7 @@ dry-run-first `norad run`, `norad resume`, and `norad inspect local-pilot-run`.
 | Surface | Current evidence ceiling |
 | --- | --- |
 | Local-pilot orchestration | B0 defines the source-checkout-bound lifecycle; B1 hardens owner boundaries; B2 adds intake/contracts; B3 adds an exact fixed profile, 13-scientific-owner-rule static graph, task attempts, and content-bound verified records; B4 adds three ordered reporting rules, durable task/reporting entry records, and the run-lock/attempt/receipt tail; B5 adds the exact fixed-profile materializer and public dry-run-first run/resume/inspection adapter; B6 adds matched structural starters, a clean-fresh-clone proof, and proof-matched onboarding. The adversarial follow-up binds exact tool and installed-R-package bytes, task logs and owner tokens; admits only stable complete Step `00c` sidecar reuse; serializes stale contenders without residue; and terminalizes interruption only after process-group quiescence and durable lock disposition. Real Snakemake 9.25.1 dry-runs and deterministic no-science executions prove slices containing 3, 10, and 34 owner jobs, 43 direct owner edges, the three reporting transactions, a separate clean completion, controlled between-task failure, semantic inspection, byte-preserving resume, and completed-run refusal. `.snakemake` is not completion authority. There is no reconciliation after an entered scope fails, real science-tool run, VM, SLURM, or current cluster proof. |
+| PORT-NC-01 integration | Tests added on `fix/no-clobber` were reported as cluster-run and as validating that source branch's behavior. They informed, but do not validate, the differently implemented replay. Exact integrated candidate `ebc43b4a8342b676eafb6b56492989498886ab55` passed the unchanged assembled local gate: static preflight, installed-wheel smoke, guarded local R, shell/SLURM-wrapper contracts, and Python behavior/coverage. The replay preserves stronger current transactions and runtime authority while admitting STAR metadata rows, publishing the deterministic Step `00b` final through its converter transaction, binding all repository-owning wrappers to the submitted checkout, and making Step `01` staged no-clobber plus controlled hashing the scheduled default. This is local integration evidence only: the candidate was not run on a cluster, the wrapper lane did not submit Slurm jobs or exercise a distributed filesystem, and no fresh-clone or local-pilot E2E was part of this closeout. See the [dated record](../history/testing/2026-08-14-port-nc-01-no-clobber-replay.md). |
 | Physical ownership | Pipeline stages, neutral contracts/libraries, reporting, and evidence helpers occupy their allowed homes. This is local/static topology evidence, not new runtime or cluster proof. |
 | Steps `00a`–`06` | B1 owner boundaries are locally fake-tool/fixture tested; earlier production executions remain cluster-proven but predate physical relocation. No current real-tool local proof. |
 | Step `07` | B1 no-clobber and rollback boundaries are locally mock-bcftools tested; no real-bcftools or current cluster proof. |
@@ -127,12 +129,11 @@ applicable owner `README.md` or `CONTRACT.md`.
 
 ## Immediate resume point
 
-Campaign B and its adversarial local-pilot hardening follow-up are complete at
-the deterministic no-science evidence ceiling. The selected next package is the
-bounded semantic replay in
-[`PORT-NC-01`](../tasks/cards/PORT-NC-01-fix-no-clobber-integration.md); it does
-not broaden runtime or evidence scope. Later decisions remain whether and how to
-authorize a real-science-tool local pilot and, separately, a site/cluster
-execution profile and proof. Step `09c` remains explicitly absent. Destructive
-cleanup, real-runtime or cluster execution, scientific review, evidence
-promotion, and biological interpretation remain separate scopes.
+Campaign B, its adversarial local-pilot hardening follow-up, and PORT-NC-01 are
+complete at their stated local evidence ceilings. No next implementation
+package is selected. Later decisions remain whether and how to authorize a
+real-science-tool local pilot and, separately, a site/cluster execution profile
+and proof. Step `09c` remains explicitly absent. Backlog actionables and
+proposals confer no selection authority. Destructive cleanup, real-runtime or
+cluster execution, scientific review, evidence promotion, and biological
+interpretation remain separate scopes.

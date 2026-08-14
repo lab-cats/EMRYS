@@ -9,6 +9,7 @@ remain in [`TEST_BASELINE.md`](../../design/TEST_BASELINE.md).
 
 | Frozen date | Record | Provenance and boundary |
 | --- | --- | --- |
+| 2026-08-14 | [PORT-NC-01 no-clobber semantic replay](2026-08-14-port-nc-01-no-clobber-replay.md) | Source-branch tests were reported as cluster-confirmed for their own behavior; exact integrated candidate `ebc43b4` passed the assembled local gate. No cluster, Slurm submission, distributed-filesystem, local-pilot E2E, production, or scientific proof for the integrated candidate. |
 | 2026-08-14 | [Local-pilot adversarial hardening proof](2026-08-14-local-pilot-adversarial-hardening.md) | Assembled local gate at `e7ec294`; clean-clone no-science failure/resume proof at `6bded80`; unchanged coverage floors and explicit no-cluster/no-science-tool ceiling. |
 | 2026-08-13 | [Campaign B assembled local gate](2026-08-13-campaign-b-assembled-local-gate.md) | Exact revision `844920c`; static, wheel, shell/SLURM-contract, guarded-R, and Python-coverage lanes passed against the ten-owner Campaign B baseline. Local engineering evidence only. |
 | 2026-08-13 | [B6 fresh-clone local-pilot proof](2026-08-13-b6-fresh-clone-local-pilot.md) | Exact revision `cbea15b`, locked setup, fixture hashes, clean completion, controlled failure, byte-preserving resume, reporting outputs, and no-science evidence ceiling. |
