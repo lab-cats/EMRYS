@@ -214,6 +214,7 @@ def _write_runtime_profile(root: Path) -> Path:
         elif check_id == "renv_library":
             target = str(renv_library)
         elif check_type == "r_namespace":
+            target = row["target"]
             probe_args = [str(rscript)]
         row["target"] = target
         row["probe_args"] = json.dumps(probe_args, separators=(",", ":"))
