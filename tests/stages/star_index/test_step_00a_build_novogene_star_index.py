@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import gzip
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -18,6 +19,13 @@ JOB = (
     / "step_00a_build_novogene_star_index.slurm"
 )
 PRODUCER = JOB.with_name("step_00a_build_star_index.sh")
+CHECKOUT_IMPLEMENTATION = (
+    PRODUCER,
+    REPO_ROOT / "src/norad/libraries/argument_parsing.sh",
+    REPO_ROOT / "src/norad/libraries/executable_resolution.sh",
+    REPO_ROOT / "src/norad/libraries/file_checks.sh",
+    REPO_ROOT / "src/norad/libraries/signal_traps.sh",
+)
 REQUIRED_MEMBERS = {
     "genomeParameters.txt",
     "Genome",
@@ -106,6 +114,10 @@ def prepared_environment(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     fake_bin.mkdir()
     runtime_tmp.mkdir()
     install_fakes(fake_bin)
+    for source in CHECKOUT_IMPLEMENTATION:
+        destination = submit / source.relative_to(REPO_ROOT)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, destination)
     environment = os.environ.copy()
     environment.update(
         {
@@ -116,6 +128,7 @@ def prepared_environment(tmp_path: Path) -> tuple[Path, dict[str, str]]:
             "SLURM_JOB_NAME": "local-step00a-test",
             "SLURMD_NODENAME": "local-mock-node",
             "SLURM_CPUS_PER_TASK": "3",
+            "SLURM_SUBMIT_DIR": str(submit),
             "FAKE_MODULE_LOG": str(tmp_path / "module.log"),
             "FAKE_MODULE_EXIT": "0",
             "FAKE_TOOL_LOG": str(tmp_path / "tool.log"),
@@ -139,10 +152,13 @@ def write_compressed_inputs(submit: Path) -> None:
 def run_job(
     submit: Path,
     environment: dict[str, str],
+    *,
+    job: Path = JOB,
+    cwd: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["/bin/bash", str(JOB)],
-        cwd=submit,
+        ["/bin/bash", str(job)],
+        cwd=submit if cwd is None else cwd,
         env=environment,
         text=True,
         capture_output=True,
@@ -217,6 +233,49 @@ def test_mocked_star_success_delegates_and_publishes_complete_output(
     assert index_members == REQUIRED_MEMBERS
     assert not (submit / "refs/.novogene_star_index.step00a.lock").exists()
     assert "STAR index build complete." in result.stdout
+
+
+def test_slurm_spool_copy_uses_submitted_checkout_producer(tmp_path: Path) -> None:
+    submit, environment = prepared_environment(tmp_path)
+    write_compressed_inputs(submit)
+    launch = tmp_path / "alternate-launch"
+    spool = tmp_path / "slurm-spool"
+    launch.mkdir()
+    spool.mkdir()
+    spool_job = spool / "slurm_script"
+    shutil.copy2(JOB, spool_job)
+
+    result = run_job(
+        submit,
+        environment,
+        job=spool_job,
+        cwd=launch,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert f"Working dir: {submit}" in result.stdout
+    assert read_lines(Path(environment["FAKE_TOOL_LOG"])) == (
+        EXPECTED_STAR_CALL.format(threads="3"),
+    )
+    assert {path.name for path in (submit / "refs/novogene_star_index").iterdir()} == (
+        REQUIRED_MEMBERS
+    )
+    assert not (spool / "refs").exists()
+    assert not (launch / "refs").exists()
+
+
+def test_wrapper_requires_submit_directory_before_module_or_mutation(
+    tmp_path: Path,
+) -> None:
+    submit, environment = prepared_environment(tmp_path)
+    environment.pop("SLURM_SUBMIT_DIR")
+
+    result = run_job(submit, environment)
+
+    assert result.returncode != 0
+    assert "SLURM_SUBMIT_DIR is required" in result.stderr
+    assert read_lines(Path(environment["FAKE_MODULE_LOG"])) == ()
+    assert not (submit / "refs").exists()
 
 
 def test_existing_references_are_reused_byte_for_byte_with_default_threads(

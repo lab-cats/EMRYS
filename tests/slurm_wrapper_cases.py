@@ -32,30 +32,31 @@ CONTRACTS = {
         invalid_mode="not_applicable",
         module_policy="strict",
         module_calls=("load star/2.7.11b", "list"),
-        submit_cwd="caller",
+        submit_cwd="required",
         output_validation="producer_declared_members",
     ),
     "step_00b_gtf_to_bed12.slurm": contract(
-        "embedded_python_and_bedtools",
+        "python -I -m norad convert gtf-to-bed12",
         default="legacy_implicit_execute",
         execute="implicit_only",
         invalid_mode="not_applicable",
-        module_policy="strict_loads_tolerated_lists",
-        module_calls=("list", "load bedtools/2.31.1", "list"),
+        module_policy="tolerated",
+        module_calls=("list",),
         submit_cwd="required",
-        output_validation="bed12_field_count",
+        output_validation="nonempty_bed12_field_count",
     ),
     "step_00c_prepare_gatk_reference.slurm": contract(
         "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_calls=("list", "load samtools/1.19.2", "list"),
+        submit_cwd="required",
     ),
     "step_01_star_align.slurm": contract(
         "src/norad/stages/star_alignment/step_01_star_align.sh",
         default="dry_run_with_fixture_side_effects",
         module_policy="strict_loads_tolerated_lists",
         module_calls=("list", "load star/2.7.11b", "list"),
-        submit_cwd="caller",
+        submit_cwd="required",
         output_validation="delegate_only",
     ),
     "step_02_sort_index_bam.slurm": contract(
@@ -63,7 +64,7 @@ CONTRACTS = {
         default="dry_run_creates_output_directory_with_bash32_empty_array_defect",
         module_policy="strict_loads_tolerated_lists",
         module_calls=("list", "load samtools/1.19.2", "list"),
-        submit_cwd="caller",
+        submit_cwd="required",
     ),
     "step_02b_bam_qc.slurm": contract(
         "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
@@ -76,6 +77,7 @@ CONTRACTS = {
         "src/norad/evidence/rseqc_orientation/"
         "step_03_infer_strandedness_and_orientation.sh",
         default="dry_run_with_bash32_empty_array_defect",
+        submit_cwd="required",
     ),
     "step_04_mark_duplicates.slurm": contract(
         "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
@@ -87,29 +89,35 @@ CONTRACTS = {
             "load samtools/1.19.2",
             "list",
         ),
+        submit_cwd="required",
     ),
     "step_05_split_n_cigar_reads.slurm": contract(
         "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_calls=("list", "load samtools/1.19.2", "list"),
+        submit_cwd="required",
     ),
     "step_06_split_bam_by_read_orientation.slurm": contract(
         "src/norad/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_calls=("list", "load samtools/1.19.2", "list"),
+        submit_cwd="required",
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": contract(
         "src/norad/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
         module_calls=("list", "load CBI bcftools/1.21", "list"),
+        submit_cwd="required",
     ),
     "step_08_vcf_preprocessing.slurm": contract(
-        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
+        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
+        submit_cwd="required",
     ),
     "step_09_cmh_editing_site_calling.slurm": contract(
         "src/norad/analyses/paired_cmh_candidate_ranking/"
-        "step_09_cmh_editing_site_calling.sh"
+        "step_09_cmh_editing_site_calling.sh",
+        submit_cwd="required",
     ),
     "tool_check.slurm": contract(
         "tool_version_probes",
@@ -289,6 +297,7 @@ class DelegatedFixtureCase:
     paths: tuple[FixturePath, ...]
     environment: tuple[tuple[str, str], ...]
     arguments: tuple[tuple[str, str], ...]
+    flags: tuple[str, ...] = ()
     outputs: tuple[str, ...] = ()
     output_directories: tuple[str, ...] = ()
 
@@ -324,6 +333,7 @@ DELEGATED_FIXTURES = {
             FixturePath("r1", "{submit}/inputs/sample_R1.fastq.gz"),
             FixturePath("r2", "{submit}/inputs/sample_R2.fastq.gz"),
             directory("star_index", "{submit}/refs/star-index"),
+            FixturePath("star_genome", "{submit}/refs/star-index/Genome"),
             path("output_dir", "{submit}/outputs/step01"),
         ),
         environment=(
@@ -341,6 +351,7 @@ DELEGATED_FIXTURES = {
             ("--output-dir", "{output_dir}"),
             ("--threads", "3"),
         ),
+        flags=("--no-clobber",),
         output_directories=("{output_dir}",),
     ),
     "step_02_sort_index_bam.slurm": DelegatedFixtureCase(

@@ -13,12 +13,14 @@
 # Step 07 receipt/VCF set has been inspected and the supported Rscript runtime
 # and required Bioconductor packages are available.
 set -euo pipefail
-script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-source "$script_dir/../../libraries/argument_parsing.sh"
+
+# Run from the submitted repository checkout rather than SLURM's spool copy.
+: "${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
+cd "$SLURM_SUBMIT_DIR"
+
+source "src/norad/libraries/argument_parsing.sh"
 
 export TMPDIR="${TMPDIR:-/tmp}"
-
-cd "${SLURM_SUBMIT_DIR:-$PWD}"
 
 COHORT_ID="${COHORT_ID:-NORAD_EV_PUM1}"
 SAMPLE_MANIFEST="${SAMPLE_MANIFEST:-samples.tsv}"

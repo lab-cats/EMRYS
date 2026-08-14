@@ -11,9 +11,13 @@
 #
 # Defaults run in dry-run mode. Set EXECUTE=1 explicitly for real execution.
 set -euo pipefail
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Run from the submitted repository checkout rather than SLURM's spool copy.
+: "${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
+cd "$SLURM_SUBMIT_DIR"
+
 # shellcheck source=../../libraries/argument_parsing.sh
-source "$script_dir/../../libraries/argument_parsing.sh"
+source "src/norad/libraries/argument_parsing.sh"
 
 SAMPLE_ID="${SAMPLE_ID:-ABE_EV_2}"
 BAM="${BAM:-results/bam/${SAMPLE_ID}/${SAMPLE_ID}.sorted.bam}"
@@ -27,8 +31,6 @@ case "$EXECUTE" in
         die "EXECUTE must be 0 or 1; got: $EXECUTE"
         ;;
 esac
-
-cd "$SLURM_SUBMIT_DIR"
 
 mkdir -p logs "$OUTPUT_DIR"
 

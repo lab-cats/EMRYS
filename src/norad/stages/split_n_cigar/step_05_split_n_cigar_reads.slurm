@@ -12,15 +12,17 @@
 # Defaults run in dry-run mode. Set EXECUTE=1 explicitly after Step 04 has
 # produced duplicate-marked BAMs and Step 00c sidecars exist.
 set -euo pipefail
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Run from the submitted repository checkout rather than SLURM's spool copy.
+: "${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
+cd "$SLURM_SUBMIT_DIR"
+
 # shellcheck source=../../libraries/argument_parsing.sh
-source "$script_dir/../../libraries/argument_parsing.sh"
+source "src/norad/libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/gatk_invocation.sh
-source "$script_dir/../../libraries/gatk_invocation.sh"
+source "src/norad/libraries/gatk_invocation.sh"
 
 export TMPDIR="${TMPDIR:-/tmp}"
-
-cd "${SLURM_SUBMIT_DIR:-$PWD}"
 
 SAMPLE_ID="${SAMPLE_ID:-ABE_EV_2}"
 INPUT_BAM="${INPUT_BAM:-results/markdup/${SAMPLE_ID}/${SAMPLE_ID}.markdup.bam}"

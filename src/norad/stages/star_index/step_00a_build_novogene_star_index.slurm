@@ -12,8 +12,12 @@
 # Inputs are the compressed reference FASTA/GTF under data/raw; outputs are the
 # uncompressed working reference and STAR index under refs/.
 set -euo pipefail
-script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-producer="$script_dir/step_00a_build_star_index.sh"
+
+# Run from the submitted repository checkout rather than SLURM's spool copy.
+: "${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
+cd "$SLURM_SUBMIT_DIR"
+
+producer="src/norad/stages/star_index/step_00a_build_star_index.sh"
 
 # Print cluster context early so SLURM logs show where the job ran.
 echo "Job ID: ${SLURM_JOB_ID:-NA}"

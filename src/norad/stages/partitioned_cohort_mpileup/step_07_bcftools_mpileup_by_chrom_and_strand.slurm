@@ -13,11 +13,13 @@
 # produced every manifest sample's FWD_like and REV_like BAM/index pairs.
 set -euo pipefail
 
+# Run from the submitted repository checkout rather than SLURM's spool copy.
+: "${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
+cd "$SLURM_SUBMIT_DIR"
+
 export TMPDIR="${TMPDIR:-/tmp}"
 # shellcheck source=../../libraries/argument_parsing.sh
-source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
-
-cd "${SLURM_SUBMIT_DIR:-$PWD}"
+source "src/norad/libraries/argument_parsing.sh"
 
 COHORT_ID="${COHORT_ID:-NORAD_EV_PUM1}"
 SAMPLE_MANIFEST="${SAMPLE_MANIFEST:-samples.tsv}"

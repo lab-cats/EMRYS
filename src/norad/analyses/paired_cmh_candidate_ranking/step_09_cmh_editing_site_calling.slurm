@@ -11,12 +11,14 @@
 # installation is intentionally outside this job; provide an operator-validated
 # Rscript through RSCRIPT_BIN_OVERRIDE.
 set -euo pipefail
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Run from the submitted repository checkout rather than SLURM's spool copy.
+: "${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
+cd "$SLURM_SUBMIT_DIR"
+
 export TMPDIR="${TMPDIR:-/tmp}"
 # shellcheck source=../../libraries/argument_parsing.sh
-source "$script_dir/../../libraries/argument_parsing.sh"
-
-cd "${SLURM_SUBMIT_DIR:-$PWD}"
+source "src/norad/libraries/argument_parsing.sh"
 
 ANALYSIS_ID="${ANALYSIS_ID:-NORAD_EV_vs_PUM1}"
 COHORT_ID="${COHORT_ID:-NORAD_EV_PUM1}"
