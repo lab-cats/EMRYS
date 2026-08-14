@@ -5,12 +5,12 @@ after their open blockers are gone and a reviewed JIT card exists under
 [`cards/`](cards/). Proposal entries preserve questions but confer no roadmap,
 selection, implementation, or publication authority.
 
-## ORCH-04A — Close local-pilot adversarial safety gaps
+## PORT-NC-01 — Replay cluster-confirmed no-clobber fixes
 
 - **Kind:** actionable
 - **Blocked by:** None
-- **Intent:** Reconcile the admitted Campaign B local-pilot control plane with the adversarial findings on entry, runtime identity, immutable evidence, serialization, interruption, and operator guidance.
-- **Boundaries:** Preserve the fixed scientific profile, public dry-run default, create-absent outputs, immutable records, conservative between-task resume, and existing evidence ceiling; no remote integration, cluster access, real-tool execution, scientific review, or biological claim.
+- **Intent:** Re-author the current-compatible STAR metadata, deterministic Step 00b final, Slurm spool-checkout binding, and strong-default Step 01 no-clobber behavior from `fix/no-clobber` after the adversarial local-pilot hardening baseline.
+- **Boundaries:** Preserve current transactions, `--execute`, run-token, runtime-identity, validation, receipt, and evidence semantics; do not merge the source branch wholesale, restore discarded environment/site files, access the cluster, or inherit cluster proof from a different commit.
 
 ## AUDIT-99 — Final refactor and documentation audit
 

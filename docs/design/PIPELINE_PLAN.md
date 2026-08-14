@@ -19,13 +19,14 @@ its routed owners.
 The accepted local-pilot architecture is defined by
 [`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md), and the canonical
 owner-admission dispositions are tracked in
-[`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md). Campaign B has no
-remaining implementation dependency. The selected follow-up package
-[`ORCH-04A`](../tasks/cards/ORCH-04A-local-pilot-adversarial-hardening.md)
-hardens the admitted local control plane against the latest adversarial review;
-it does not broaden scientific or execution scope. Future real-runtime and
-site/cluster work still requires separate selection and authorization; no such
-package is selected here.
+[`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md). Campaign B and its
+adversarial local-pilot hardening follow-up have no remaining implementation
+dependency. The selected
+[`PORT-NC-01`](../tasks/cards/PORT-NC-01-fix-no-clobber-integration.md) package
+replays only current-compatible behavior from `fix/no-clobber`; it does not
+broaden scientific or execution scope. Future real-runtime and site/cluster work
+requires separate selection and authorization; no such package is selected
+here.
 
 ## Local-pilot package order
 
@@ -50,6 +51,7 @@ collaborators and publishes onboarding from that observed path.
 | `B4` — complete | Add artifact-index, run-summary, and Jinja HTML-report rules, durable producer-entry ledgers, then prove failure, interruption, between-task resume, and inspection. | Entered-but-incomplete scopes require future explicit reconciliation; Step `09c` remains explicit and absent; no public lifecycle CLI, real-tool, SLURM, VM, or CSU claim was added. |
 | `B5` — complete | Add the read-only doctor, fixed-profile production materializer, and thin public `run`, `resume`, and `inspect local-pilot-run` adapter over B2 intake and the B4 lifecycle. Prove dry-run no-write, locked attempt publication, controlled failure, byte-preserving between-task resume, complete refusal, and derived inspection with no-science owners. | The adapter owns intake/lifecycle policy only; it installs nothing, imports no private owner, exposes no raw engine controls, and adds no real-tool, SLURM, cluster, scientific-review, or biological claim. |
 | `B6` — complete | Prove the fresh-clone local pilot, then rewrite root onboarding from the exact proven transcript. | The proof uses deterministic no-science collaborators; it adds no real-tool, cluster, scientific-review, or biological claim. |
+| Adversarial local-pilot hardening — complete | Bind runtime and immutable evidence completely, admit safe external sidecar reuse, serialize attempt entry, and terminalize interruption only after child-process quiescence. | The proof remains local and deterministic; it adds no real-tool, distributed-filesystem, SLURM, cluster, scientific-review, or biological claim. |
 
 Real STAR/GATK/science-tool fixture execution remains a separately authorized
 local-runtime decision. SLURM, VM, and site-profile evaluation are separate

@@ -9,7 +9,8 @@ acceptance, [`RUNBOOK.md`](RUNBOOK.md) for commands, and
 
 Campaign B owner hardening (`B1a` through `B1c`), B2 intake/contracts, B3's
 static local workflow, B4's reporting/lifecycle tail, B5 readiness and public
-control plane, and B6 fresh-clone proof and researcher onboarding are complete.
+control plane, B6 fresh-clone proof and researcher onboarding, and the
+adversarial local-pilot hardening follow-up are complete.
 Owners expose explicit local, fail-closed workflow boundaries; the repository
 has a locked workflow group, closed machine schemas, read-only
 normalization/reporting projection, semantic all-pass checking, one fixed
@@ -28,7 +29,7 @@ dry-run-first `norad run`, `norad resume`, and `norad inspect local-pilot-run`.
 
 | Surface | Current evidence ceiling |
 | --- | --- |
-| Local-pilot orchestration | B0 defines the source-checkout-bound lifecycle; B1 hardens owner boundaries; B2 adds intake/contracts; B3 adds an exact fixed profile, 13-scientific-owner-rule static graph, task attempts, and content-bound verified records; B4 adds three ordered reporting rules, durable task/reporting entry records, and the run-lock/attempt/receipt tail; B5 adds the exact fixed-profile materializer and public dry-run-first run/resume/inspection adapter; B6 adds matched structural starters, a clean-fresh-clone proof, and proof-matched onboarding. Real Snakemake 9.25.1 dry-runs and deterministic no-science executions prove slices containing 3, 10, and 34 owner jobs, 43 direct owner edges, the three reporting transactions, a separate clean completion, controlled between-task failure, semantic inspection, byte-preserving resume, and completed-run refusal. `.snakemake` is not completion authority. There is no reconciliation after an entered scope fails, real science-tool run, VM, SLURM, or current cluster proof. |
+| Local-pilot orchestration | B0 defines the source-checkout-bound lifecycle; B1 hardens owner boundaries; B2 adds intake/contracts; B3 adds an exact fixed profile, 13-scientific-owner-rule static graph, task attempts, and content-bound verified records; B4 adds three ordered reporting rules, durable task/reporting entry records, and the run-lock/attempt/receipt tail; B5 adds the exact fixed-profile materializer and public dry-run-first run/resume/inspection adapter; B6 adds matched structural starters, a clean-fresh-clone proof, and proof-matched onboarding. The adversarial follow-up binds exact tool and installed-R-package bytes, task logs and owner tokens; admits only stable complete Step `00c` sidecar reuse; serializes stale contenders without residue; and terminalizes interruption only after process-group quiescence and durable lock disposition. Real Snakemake 9.25.1 dry-runs and deterministic no-science executions prove slices containing 3, 10, and 34 owner jobs, 43 direct owner edges, the three reporting transactions, a separate clean completion, controlled between-task failure, semantic inspection, byte-preserving resume, and completed-run refusal. `.snakemake` is not completion authority. There is no reconciliation after an entered scope fails, real science-tool run, VM, SLURM, or current cluster proof. |
 | Physical ownership | Pipeline stages, neutral contracts/libraries, reporting, and evidence helpers occupy their allowed homes. This is local/static topology evidence, not new runtime or cluster proof. |
 | Steps `00a`–`06` | B1 owner boundaries are locally fake-tool/fixture tested; earlier production executions remain cluster-proven but predate physical relocation. No current real-tool local proof. |
 | Step `07` | B1 no-clobber and rollback boundaries are locally mock-bcftools tested; no real-bcftools or current cluster proof. |
@@ -126,11 +127,12 @@ applicable owner `README.md` or `CONTRACT.md`.
 
 ## Immediate resume point
 
-Campaign B is complete at the fresh-clone no-science evidence ceiling. The
-selected follow-up [`ORCH-04A`](../tasks/cards/ORCH-04A-local-pilot-adversarial-hardening.md)
-is closing adversarial control-plane gaps without broadening that evidence
-ceiling. After it closes, the next decisions remain whether and how to authorize
-a real-science-tool local pilot and, separately, a site/cluster execution
-profile and proof. Step `09c` remains explicitly absent. Destructive cleanup,
-real-runtime or cluster execution, scientific review, evidence promotion, and
-biological interpretation remain separate scopes.
+Campaign B and its adversarial local-pilot hardening follow-up are complete at
+the deterministic no-science evidence ceiling. The selected next package is the
+bounded semantic replay in
+[`PORT-NC-01`](../tasks/cards/PORT-NC-01-fix-no-clobber-integration.md); it does
+not broaden runtime or evidence scope. Later decisions remain whether and how to
+authorize a real-science-tool local pilot and, separately, a site/cluster
+execution profile and proof. Step `09c` remains explicitly absent. Destructive
+cleanup, real-runtime or cluster execution, scientific review, evidence
+promotion, and biological interpretation remain separate scopes.
