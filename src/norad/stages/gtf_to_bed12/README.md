@@ -23,7 +23,7 @@ interpreter:
 ```bash
 .venv/bin/python -I -m norad convert gtf-to-bed12 \
   --gtf refs/novogene_ref/genome.gtf \
-  --bed refs/novogene_ref/genome.unsorted.bed
+  --bed refs/novogene_ref/genome.bed
 ```
 
 From another working directory, use the absolute path to the installed
@@ -69,24 +69,30 @@ cd <checkout>
 sbatch src/norad/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm
 ```
 
-Submission executes implicitly and supplies `--execute` to the producer. The job honors the
-existing `GTF`, `UNSORTED_BED`, `BED`, and `PYTHON_BIN` overrides. It creates
-directories before conversion and requires `PYTHON_BIN` to select an
-environment where this checkout is installed. It publishes the intermediate
-BED through the safe producer boundary, but the later bedtools final-BED sort
-remains nontransactional. Bedtools failure can leave the complete intermediate
-plus a redirect-created final, and a bad-field result can remain published
-after the existing contradictory success message. Those wrapper-final defects
-remain characterized rather than being hidden by the producer contract.
+Submission executes implicitly and supplies `--execute` plus one exact safe
+publication token to the producer. The job honors the existing `GTF`, `BED`,
+and `PYTHON_BIN` overrides. `NORAD_RUN_TOKEN` takes precedence when supplied;
+otherwise the job uses `SLURM_JOB_ID`, with the shell process ID retained only
+as a safe direct-execution/test fallback. The selected token must match the
+producer's safe-identifier contract.
+
+The job creates the log and final-output directories before conversion and
+requires `PYTHON_BIN` to select an environment where this checkout is
+installed. The transactional converter writes the deterministic final BED
+directly; there is no intermediate BED or second bedtools sort. The wrapper
+then requires at least one row and exactly 12 fields per row. A converter
+failure cannot replace an existing final. A failed postcheck exits nonzero and
+preserves the newly published final as explicit inspection evidence rather
+than printing the completion message.
 
 ## Diagnostics, recovery, and evidence
 
-Inspect scheduler stdout/stderr, the intermediate BED, the final BED, and their
-paths together. Preserve ambiguous or foreign residue; do not delete or replace
-it merely because a local test characterizes the state. The next safe local
-action for an existing BED is the validator dry run above with the exact source
-GTF. Recovery or replacement of runtime artifacts remains an explicit operator
-decision.
+Inspect scheduler stdout/stderr, the final BED, and its transaction-residue
+paths together. Preserve ambiguous or foreign residue; do not delete or
+replace it merely because a local test characterizes the state. The next safe
+local action for an existing BED is the validator dry run above with the exact
+source GTF. Recovery or replacement of runtime artifacts remains an explicit
+operator decision.
 
 Run the owner-focused local tests with:
 
