@@ -44,11 +44,12 @@ The producer accepts:
 - an available STAR executable, plus an explicitly selectable `gunzip`
   executable when both FASTQ paths end in `.gz`.
 
-The current producer checks path types and matching compression suffixes but
-does not validate FASTQ content, index members, sample-identifier path safety,
-or biological pairing. The current scheduler entrypoint supplies test-fixture
-defaults and loads STAR `2.7.11b`; those are current bindings, not approved
-future interface defaults.
+The current producer checks path types, matching compression suffixes,
+sample-identifier path safety, FASTQ byte stability, and a deterministic
+snapshot of every top-level STAR-index member. It does not validate FASTQ
+content or biological pairing. The current scheduler entrypoint supplies
+test-fixture defaults and loads STAR `2.7.11b`; those are current bindings, not
+approved future interface defaults.
 
 ## Outputs
 
@@ -69,14 +70,13 @@ alignment again while adding a read group, validating it, indexing it, and
 publishing the canonical BAM/BAI pair; that stage is therefore not merely an
 alias for this output.
 
-The historical direct execute mode writes STAR artifacts into the final
-directory and has no receipt, lock, staged transaction, or post-execution
-output validation. The orchestration-safe mode below is additive.
-
 ## Orchestration-safe producer boundary
 
-`--no-clobber` is the required local-profile mode. It is dry-run-visible and
-side-effect-free until paired with `--execute`. Execute requires all five
+Every direct and scheduled invocation uses the no-clobber transaction.
+`--no-clobber` remains an accepted explicit spelling so wrappers can record
+that invariant, but omitting it does not select a direct-final or overwrite
+path. The transaction is dry-run-visible and side-effect-free until paired
+with `--execute`. Execute requires all five
 declared outputs to be absent, holds an owned per-sample lock, directs STAR to
 a run-token staging directory, requires every declared artifact to be nonempty,
 and rechecks the admitted FASTQ hashes before create-exclusive publication. It
@@ -110,17 +110,19 @@ public producer entrypoint. It:
 - resolves the selected `--gunzip-bin` only when both mates end in `.gz` and
   passes that executable to `--readFilesCommand ... -c`;
 - asks STAR for a coordinate-sorted BAM; and
-- retains historical direct-prefix execution unless `--no-clobber` selects the
-  orchestration-safe transaction above.
+- always uses the staged create-exclusive transaction above.
 
 [`step_01_star_align.slurm`](step_01_star_align.slurm) is the
 scheduler entrypoint. It delegates to the shell producer, maps `EXECUTE=0` to
-dry-run and `EXECUTE=1` to `--execute`, rejects other values, loads the STAR
-module, and derives threads from the allocation. Its default dry-run mode
-creates placeholder FASTQ files and an index directory before delegation and
-refuses execution with those placeholder bindings. It relies on the caller's
-working directory for repository-relative paths and performs no independent
-output validation after delegation.
+dry-run and `EXECUTE=1` to `--execute`, always passes explicit `--no-clobber`,
+rejects other values, loads the STAR module, and derives threads from the
+allocation. Its default dry-run mode creates placeholder FASTQ files and a
+minimal nonempty index fixture before delegation and refuses execution with
+those placeholder bindings. Before any helper lookup, module load, fixture
+creation, or repository-relative path resolution, it requires
+`SLURM_SUBMIT_DIR` and changes to that submitted checkout rather than executing
+from SLURM's spool copy. It performs no independent output validation after
+delegation.
 
 ## Validation interface
 
@@ -203,8 +205,8 @@ roadmap and handoff.
 
 - Sample and mate identity arrive as direct arguments; the producer does not
   consume or verify the manifest that canonically owns sample metadata.
-- Historical direct execute writes final-path artifacts directly; both execute
-  modes rely on the separate validator for structural output checks.
+- The producer transaction protects the declared minimum output set; the
+  separate validator remains responsible for structural output checks.
 - Coordinate sorting occurs in STAR and again inside the canonical-BAM stage,
   where the second operation is coupled to read-group tagging and publication.
 - Cross-cutting validation-publication code is owned by the neutral shared

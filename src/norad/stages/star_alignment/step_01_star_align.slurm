@@ -12,9 +12,13 @@
 # Defaults support a dry-run smoke test. Real cluster execution should pass
 # sample-specific paths through environment variables and set EXECUTE=1.
 set -euo pipefail
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Run from the submitted repository checkout rather than SLURM's spool copy.
+: "${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
+cd "$SLURM_SUBMIT_DIR"
+
 # shellcheck source=../../libraries/argument_parsing.sh
-source "$script_dir/../../libraries/argument_parsing.sh"
+source "src/norad/libraries/argument_parsing.sh"
 
 # Defaults support a safe dry-run smoke test.
 SAMPLE_ID="${SAMPLE_ID:-sample_001}"
@@ -73,6 +77,9 @@ if [[ "$default_fixture_mode" == "1" && "$EXECUTE" == "0" ]]; then
     mkdir -p "$(dirname "$R1_FASTQ")" "$STAR_INDEX"
     [[ -f "$R1_FASTQ" ]] || : > "$R1_FASTQ"
     [[ -f "$R2_FASTQ" ]] || : > "$R2_FASTQ"
+    if [[ ! -s "$STAR_INDEX/Genome" ]]; then
+        printf 'dry-run STAR index fixture\n' > "$STAR_INDEX/Genome"
+    fi
 fi
 
 echo "Resolved STAR SLURM parameters:"
@@ -93,6 +100,7 @@ cmd=(
     --star-index "$STAR_INDEX"
     --output-dir "$OUTPUT_DIR"
     --threads "$threads"
+    --no-clobber
 )
 
 if [[ "$EXECUTE" == "1" ]]; then

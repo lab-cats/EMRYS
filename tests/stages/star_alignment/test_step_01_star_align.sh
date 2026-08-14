@@ -160,6 +160,7 @@ help_output="$tmp_dir/help.out"
 bash "$SCRIPT" --help >"$help_output"
 assert_contains "$help_output" "Usage:"
 assert_contains "$help_output" "--gunzip-bin"
+assert_contains "$help_output" "no clobbering execution mode."
 assert_contains "$help_output" "--execute"
 
 printf 'Running dry-run check...\n'
@@ -180,6 +181,7 @@ NORAD_RUN_TOKEN=explicit-owner-01 SLURM_JOB_ID=scheduler-01 bash "$SCRIPT" \
 assert_contains "$dry_output" "Mode: dry-run"
 assert_contains "$dry_output" "Run token: explicit-owner-01"
 assert_contains "$dry_output" "gunzip bin: not-required"
+assert_contains "$dry_output" "No-clobber transaction: true"
 assert_contains "$dry_output" ".sample_001.step01.explicit-owner-01.staging"
 assert_contains "$dry_output" "--outFileNamePrefix"
 assert_contains "$dry_output" "$dry_output_dir/sample_001."
@@ -187,6 +189,28 @@ assert_contains "$dry_output" "--outSAMtype"
 assert_contains "$dry_output" "BAM"
 assert_contains "$dry_output" "SortedByCoordinate"
 assert_not_contains "$dry_output" "--readFilesCommand"
+
+printf 'Running occupied output dry-run report check...\n'
+occupied_dry_output="$tmp_dir/occupied-dry.out"
+occupied_dry_output_dir="$tmp_dir/results/occupied-dry"
+occupied_dry_final="$occupied_dry_output_dir/sample_occupied.Log.out"
+mkdir -p "$occupied_dry_output_dir"
+printf 'preserve occupied bytes\n' >"$occupied_dry_final"
+bash "$SCRIPT" \
+    --sample-id sample_occupied \
+    --r1-fastq "$r1_fastq" \
+    --r2-fastq "$r2_fastq" \
+    --star-index "$star_index" \
+    --output-dir "$occupied_dry_output_dir" \
+    --threads 2 \
+    --star-bin "$fake_bin/STAR" \
+    >"$occupied_dry_output"
+assert_contains "$occupied_dry_output" "Existing declared output: $occupied_dry_final"
+assert_contains "$occupied_dry_output" \
+    "Execute would refuse to clobber the existing declared output set."
+[[ "$(<"$occupied_dry_final")" == "preserve occupied bytes" ]] ||
+    fail "occupied dry-run changed existing output bytes"
+[[ ! -e "$star_log" ]] || fail "occupied dry-run invoked STAR"
 
 printf 'Running execute check...\n'
 execute_output="$tmp_dir/execute.out"
@@ -207,7 +231,8 @@ bash "$SCRIPT" \
 assert_contains "$star_log" "STAR invoked"
 assert_contains "$star_log" "--runThreadN"
 assert_contains "$star_log" "2"
-assert_contains "$star_log" "$execute_output_dir/sample_002."
+assert_contains "$star_log" "$execute_output_dir/.sample_002.step01."
+assert_contains "$star_log" ".staging/sample_002."
 assert_contains "$star_log" "--outSAMtype"
 assert_contains "$star_log" "BAM"
 assert_contains "$star_log" "SortedByCoordinate"
@@ -216,6 +241,15 @@ assert_contains "$star_log" "$bound_gunzip"
 assert_not_contains "$star_log" "$fake_bin/gunzip"
 assert_contains "$execute_output" "Mode: execute"
 assert_contains "$execute_output" "gunzip bin: $bound_gunzip"
+assert_contains "$execute_output" "No-clobber transaction: true"
+for suffix in Aligned.sortedByCoord.out.bam Log.final.out Log.out Log.progress.out SJ.out.tab; do
+    [[ -s "$execute_output_dir/sample_002.$suffix" ]] ||
+        fail "default execute did not publish declared output: $suffix"
+done
+[[ ! -e "$execute_output_dir/.sample_002.step01.lock" ]] ||
+    fail "default execute left its Step 01 lock"
+[[ -z "$(find "$execute_output_dir" -maxdepth 1 -name '.sample_002.step01.*.staging' -print -quit)" ]] ||
+    fail "default execute left staging residue"
 
 printf 'Running orchestration-safe no-clobber transaction check...\n'
 residue_output_dir="$tmp_dir/results/residue"
@@ -231,7 +265,6 @@ assert_fails "$residue_output" env SLURM_JOB_ID=newer-token bash "$SCRIPT" \
     --output-dir "$residue_output_dir" \
     --threads 2 \
     --star-bin "$fake_bin/STAR" \
-    --no-clobber \
     --execute
 assert_contains "$residue_output" "residue requires operator inspection"
 [[ "$(<"$residue_marker")" == "preserve residue" ]] || fail "Step 01 removed foreign residue"
@@ -264,6 +297,12 @@ sa_snapshot_line="$(grep -n -F $'STAR index member: SA\t' "$safe_output" | cut -
 [[ -z "$(find "$safe_output_dir" -maxdepth 1 -name '.sample_safe.step01.*.staging' -print -quit)" ]] ||
     fail "successful no-clobber run left staging residue"
 safe_repeat_output="$tmp_dir/safe_repeat.out"
+safe_repeat_snapshot="$tmp_dir/safe-repeat-snapshot"
+mkdir "$safe_repeat_snapshot"
+for suffix in Aligned.sortedByCoord.out.bam Log.final.out Log.out Log.progress.out SJ.out.tab; do
+    cp "$safe_output_dir/sample_safe.$suffix" "$safe_repeat_snapshot/$suffix"
+done
+star_log_lines_before_repeat="$(wc -l < "$star_log" | tr -d ' ')"
 assert_fails "$safe_repeat_output" bash "$SCRIPT" \
     --sample-id sample_safe \
     --r1-fastq "$r1_fastq" \
@@ -272,9 +311,14 @@ assert_fails "$safe_repeat_output" bash "$SCRIPT" \
     --output-dir "$safe_output_dir" \
     --threads 2 \
     --star-bin "$fake_bin/STAR" \
-    --no-clobber \
     --execute
-assert_contains "$safe_repeat_output" "--no-clobber output already exists"
+assert_contains "$safe_repeat_output" "output already exists; refusing to clobber"
+[[ "$(wc -l < "$star_log" | tr -d ' ')" == "$star_log_lines_before_repeat" ]] ||
+    fail "pre-existing output refusal invoked STAR"
+for suffix in Aligned.sortedByCoord.out.bam Log.final.out Log.out Log.progress.out SJ.out.tab; do
+    cmp -s "$safe_repeat_snapshot/$suffix" "$safe_output_dir/sample_safe.$suffix" ||
+        fail "pre-existing output refusal changed declared bytes: $suffix"
+done
 
 printf 'Running no-clobber empty/ambiguous STAR-index admission checks...\n'
 empty_index="$tmp_dir/fixtures/empty_star_index"
@@ -472,7 +516,11 @@ set -e
 [[ ! -s "$failure_stderr" ]] || fail "fake STAR child failure emitted stderr"
 assert_contains "$failure_output" "Mode: execute"
 assert_contains "$failure_output" "STAR command:"
-assert_contains "$star_log" "$failure_output_dir/sample_failure."
+assert_contains "$star_log" "$failure_output_dir/.sample_failure.step01."
+[[ ! -e "$failure_output_dir/.sample_failure.step01.lock" ]] ||
+    fail "failed default transaction left its Step 01 lock"
+[[ -z "$(find "$failure_output_dir" -maxdepth 1 -name '.sample_failure.step01.*.staging' -print -quit)" ]] ||
+    fail "failed default transaction left staging residue"
 
 printf 'Running paired gzip dry-run check...\n'
 gzip_output="$tmp_dir/gzip.out"

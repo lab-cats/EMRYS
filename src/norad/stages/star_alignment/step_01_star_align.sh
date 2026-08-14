@@ -38,8 +38,9 @@ Options:
   --star-bin      STAR executable or path. Defaults to STAR on PATH.
   --gunzip-bin    gunzip executable or path used for paired .gz inputs.
                   Defaults to gunzip on PATH and is ignored for uncompressed mates.
-  --no-clobber    Require an absent declared output set and use an owned,
-                  staged publication transaction. Required by orchestration.
+  --no-clobber    Explicitly request the default owned, staged, create-exclusive
+                  publication transaction. Accepted for wrapper clarity; there
+                  is no clobbering execution mode.
   --execute       Execute STAR after validation. Without this, dry-run only.
   -h, --help      Show this help message and exit.
 USAGE
@@ -61,7 +62,6 @@ source "$script_dir/../../libraries/signal_traps.sh"
 # Defaults are empty so missing required arguments fail loudly below.
 declare_required_arguments sample_id r1_fastq r2_fastq star_index output_dir threads
 execute=false
-no_clobber=false
 requested_star_bin=""
 requested_gunzip_bin=""
 
@@ -76,7 +76,7 @@ while [[ $# -gt 0 ]]; do
         --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
         --star-bin) assign_option_value "$1" "${2:-}" requested_star_bin; shift 2 ;;
         --gunzip-bin) assign_option_value "$1" "${2:-}" requested_gunzip_bin; shift 2 ;;
-        --no-clobber) no_clobber=true; shift ;;
+        --no-clobber) shift ;;
         *)
             handle_execute_or_help "$1"
             shift
@@ -170,17 +170,11 @@ require_star_index_unchanged() {
         die "STAR index membership or bytes changed $boundary."
 }
 
-r1_sha256="not-bound"
-r2_sha256="not-bound"
-star_index_snapshot="not-bound"
-star_index_member_count="not-bound"
-if [[ "$no_clobber" == true ]]; then
-    validate_safe_id "--sample-id" "$sample_id"
-    r1_sha256="$(sha256_file "$r1_fastq")"
-    r2_sha256="$(sha256_file "$r2_fastq")"
-    star_index_snapshot="$(snapshot_star_index)"
-    star_index_member_count="$(printf '%s\n' "$star_index_snapshot" | wc -l | tr -d ' ')"
-fi
+validate_safe_id "--sample-id" "$sample_id"
+r1_sha256="$(sha256_file "$r1_fastq")"
+r2_sha256="$(sha256_file "$r2_fastq")"
+star_index_snapshot="$(snapshot_star_index)"
+star_index_member_count="$(printf '%s\n' "$star_index_snapshot" | wc -l | tr -d ' ')"
 run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 01 run token" "$run_token"
 final_prefix="$output_dir/${sample_id}."
@@ -203,9 +197,25 @@ publication_ambiguous=false
 require_absent_declared_outputs() {
     local suffix
     for suffix in "${declared_suffixes[@]}"; do
-        [[ ! -e "${final_prefix}${suffix}" ]] ||
-            die "Step 01 --no-clobber output already exists: ${final_prefix}${suffix}"
+        if [[ -e "${final_prefix}${suffix}" || -L "${final_prefix}${suffix}" ]]; then
+            die "Step 01 output already exists; refusing to clobber: ${final_prefix}${suffix}"
+        fi
     done
+}
+
+report_declared_output_collisions() {
+    local suffix
+    local collision=false
+
+    for suffix in "${declared_suffixes[@]}"; do
+        if [[ -e "${final_prefix}${suffix}" || -L "${final_prefix}${suffix}" ]]; then
+            printf '  Existing declared output: %s\n' "${final_prefix}${suffix}"
+            collision=true
+        fi
+    done
+    if [[ "$collision" == true ]]; then
+        printf 'Execute would refuse to clobber the existing declared output set.\n'
+    fi
 }
 
 publish_declared_output_no_replace() {
@@ -340,23 +350,18 @@ printf '  Output directory: %s\n' "$output_dir"
 printf '  Threads: %s\n' "$threads"
 printf '  R1 SHA-256: %s\n' "$r1_sha256"
 printf '  R2 SHA-256: %s\n' "$r2_sha256"
-if [[ "$no_clobber" == true ]]; then
-    printf '  STAR index member count: %s\n' "$star_index_member_count"
-    while IFS=$'\t' read -r member digest; do
-        printf '  STAR index member: %s\t%s\n' "$member" "$digest"
-    done <<<"$star_index_snapshot"
-fi
-printf '  No-clobber transaction: %s\n' "$no_clobber"
+printf '  STAR index member count: %s\n' "$star_index_member_count"
+while IFS=$'\t' read -r member digest; do
+    printf '  STAR index member: %s\t%s\n' "$member" "$digest"
+done <<<"$star_index_snapshot"
+printf '  No-clobber transaction: true\n'
 printf '  Lock directory: %s\n' "$lock_path"
 printf '  Run token: %s\n' "$run_token"
 printf '  Staging directory: %s\n' "$staging_dir"
 printf '  Mode: %s\n' "$mode"
 
 # Write coordinate-sorted BAM directly to avoid large default SAM output.
-command_prefix="$final_prefix"
-if [[ "$no_clobber" == true ]]; then
-    command_prefix="$staging_prefix"
-fi
+command_prefix="$staging_prefix"
 star_command=(
     "$star_bin"
     --runThreadN "$threads"
@@ -378,27 +383,19 @@ for suffix in "${declared_suffixes[@]}"; do
     printf '  %s\n' "${final_prefix}${suffix}"
 done
 
-if [[ "$no_clobber" == true ]]; then
-    require_no_owner_residue \
-        "Step 01" "$output_dir" ".${sample_id}.step01.*"
-fi
+require_no_owner_residue \
+    "Step 01" "$output_dir" ".${sample_id}.step01.*"
 
 # Dry-run mode is the default safety path for local development and wrapper tests.
 if [[ "$execute" != true ]]; then
+    report_declared_output_collisions
     printf 'Dry-run only. Add --execute to run STAR.\n'
     exit 0
 fi
 
+require_absent_declared_outputs
 mkdir -p "$output_dir"
 
-if [[ "$no_clobber" != true ]]; then
-    # Preserve the historical direct-write route for existing callers. The
-    # orchestration-safe invocation must use --no-clobber.
-    "${star_command[@]}"
-    exit 0
-fi
-
-require_absent_declared_outputs
 [[ ! -e "$staging_dir" ]] || die "Step 01 staging directory already exists: $staging_dir"
 set_exit_trap cleanup_no_clobber
 acquire_lock "Step 01"

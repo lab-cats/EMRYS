@@ -29,19 +29,20 @@ src/norad/stages/star_alignment/step_01_star_align.sh \
 `.gz`, bind the admitted decompressor explicitly with `--gunzip-bin`; direct
 callers that omit it retain the `gunzip`-on-`PATH` default. Uncompressed mates
 do not resolve or validate a decompressor. Dry-run writes nothing.
-The orchestration-safe invocation adds `--no-clobber`: that mode hashes both
-FASTQs and every admitted top-level regular STAR-index file in deterministic
-name order, uses a per-sample owned lock and run-token staging directory,
-requires the five declared STAR outputs, rechecks FASTQ and index membership
-plus bytes, refuses any pre-existing declared output, and create-exclusively
-publishes each final while retaining its staged inode as an ownership anchor.
+Every invocation uses the no-clobber transaction. The explicit `--no-clobber`
+flag remains accepted so wrappers can state that invariant, but omitting it
+does not enable overwrite or direct-final execution. The transaction hashes
+both FASTQs and every admitted top-level regular STAR-index file in
+deterministic name order, uses a per-sample owned lock and run-token staging
+directory, requires the five declared STAR outputs, rechecks FASTQ and index
+membership plus bytes, refuses any pre-existing declared output, and
+create-exclusively publishes each final while retaining its staged inode as an
+ownership anchor.
 Success validates the full final set against those anchors, removes staging,
 and then releases the lock. If a final appears late or replaces an owned final,
 the foreign path, lock, and staging residue remain for operator recovery. Empty,
 symbolic-link, nested, special, or delimiter-ambiguous index members block this
-mode. The historical `--execute` route without `--no-clobber` still writes
-STAR's prefix directly and retains its prior index-directory behavior. The
-workflow verified record remains the wider run/output/tool binding.
+mode. The workflow verified record remains the wider run/output/tool binding.
 
 Validator dry-run:
 
@@ -70,7 +71,9 @@ OUTPUT_DIR=/absolute/results/star/ABE_EV_2 EXECUTE=1 \
   sbatch src/norad/stages/star_alignment/step_01_star_align.slurm
 ```
 
-The wrapper strictly loads STAR `2.7.11b` and does not validate outputs.
+The wrapper requires `SLURM_SUBMIT_DIR`, changes to that submitted checkout
+before resolving repository paths, strictly loads STAR `2.7.11b`, passes
+explicit `--no-clobber`, and does not validate outputs.
 
 ## Diagnose and verify
 
