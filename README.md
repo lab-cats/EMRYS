@@ -1,32 +1,43 @@
 # NORAD: CSU HPC RNA-seq and RNA-editing workflow
 
-NORAD runs a fixed, source-checkout-bound RNA-seq and paired-CMH candidate-
-ranking pipeline. One public control path admits explicit reads, references,
-partitions, analysis policy, and tool identities; schedules thirteen automatic
-scientific owners through Snakemake's local executor; validates each owner;
-and publishes an artifact index, run summary, and self-contained Jinja HTML
-report.
+NORAD takes explicitly declared paired RNA-seq reads, a reference, cohort
+pairing, analysis policy, and scientific-tool identities through a fixed
+pipeline and produces validated owner outputs, a deterministic artifact index,
+a run summary, QC views, and a self-contained HTML report.
 
-The automatic profile stops after Step `09`. Step `09c` scientific review is a
-separate human-authorized activity, so an automatic pipeline report correctly
-records `evidence_incomplete`. NORAD reports **CMH-ranked candidates**, not
-validated editing sites.
+The public `norad run` command currently uses Snakemake's **single-host local
+executor with one core**. It does not submit SLURM jobs or distribute owners
+across compute nodes. You may launch that local process on an appropriately
+provisioned host or inside one allocation, but that does not turn it into
+public SLURM orchestration.
 
-## Prerequisites
+The automatic profile ends after Step `09`. Step `09c` is separate,
+human-authorized scientific review, so an otherwise successful automatic run
+correctly reports `evidence_incomplete`. NORAD reports **CMH-ranked
+candidates**, not validated RNA-editing sites or biological conclusions.
 
-You need:
+## Choose a starting point
 
-- Git, Python `3.11` or newer, and a separately installed `uv` executable;
-- GNU Bash, STAR, samtools, Java, GATK, Picard, bcftools, RSeQC, and R;
-- the guarded NORAD `renv` project and required Step `08` R namespaces; and
-- paired FASTQ files plus a reference FASTA and GTF.
+- **Run the complete pipeline on your data:** follow the quickstart below. It
+  covers intake, all automatic scientific owners, validation, artifact
+  indexing, summary generation, and the HTML report.
+- **Preview only the report:** after the locked install, run `make demo-report`
+  and follow [`docs/demo/README.md`](docs/demo/README.md). It uses bundled
+  reporting fixtures and does not run ingestion, STAR, GATK, Picard, RSeQC,
+  bcftools, R analysis, or the full pipeline.
 
-The exact accepted versions and probes are listed in
-[`configs/local_pilot_runtime.example.tsv`](configs/local_pilot_runtime.example.tsv).
-Setup does not install or repair scientific tools or R packages. This local
-pilot uses one local Snakemake core and does not require SLURM.
+Release validation may use a separately generated real-tool synthetic dataset
+outside the repository. It is not a hidden public mode or a checked-in
+production dataset. The exact evidence completed at the current commit is
+recorded in [`HANDOFF.md`](docs/operations/HANDOFF.md); do not infer a full
+scientific-tool run from this quickstart alone.
 
-## 1. Clone and install the locked workflow
+## Quickstart
+
+### 1. Install the locked Python workflow
+
+Prerequisites are Git, GNU Make, Python `3.11` or newer, and a separately
+installed `uv` executable:
 
 ```sh
 git clone https://github.com/lab-cats/norad.git
@@ -34,19 +45,85 @@ cd norad
 uv sync --locked --group workflow
 ```
 
-This installs NORAD and pinned Snakemake `9.25.1` into `.venv`. It does not
-install STAR, GATK, Picard, RSeQC, bcftools, R, or SLURM. Keep the checkout
-clean: the readiness check binds its exact Git commit and rejects tracked or
-untracked changes. Store runtime profiles, input declarations, reads,
-references, workspaces, and results outside the checkout.
+This installs NORAD and the locked Snakemake `9.25.1` into `.venv`. It does
+not install, download, repair, or load the scientific tools or R packages.
 
-## 2. Prepare one explicit request
-
-Copy the matched structural starters to an operator-managed directory:
+Define one controlled command for the current shell. Recreate it in each new
+terminal:
 
 ```sh
-NORAD_INPUT_DIR=/absolute/path/to/norad-inputs
-mkdir "$NORAD_INPUT_DIR" &&
+NORAD_PY="$(pwd -P)/.venv/bin/python"
+norad() {
+  "$NORAD_PY" -X pycache_prefix=/dev/null -I -m norad "$@"
+}
+norad --help
+```
+
+The function keeps Python caches out of the checkout and uses isolated module
+resolution. Keep local-pilot inputs, workspaces, scientific results, control
+logs, and unmanaged runtimes outside the repository: the doctor binds the
+exact Git commit and requires a clean checkout. The locked `.venv`, the
+ignored `renv/library`, and the ignored `results/demo-report-jinja` preview are
+the maintained setup/demo exceptions.
+
+### 2. Provide the scientific runtime
+
+Install or select these before continuing:
+
+- GNU Bash, gunzip, STAR, samtools, Java, GATK, Picard, bcftools, RSeQC, and R;
+- this exact source checkout as the guarded NORAD `renv` project, plus an
+  existing canonical `renv` library; and
+- the fixed Step `08` R namespaces at their lock-selected versions.
+
+The authoritative accepted versions, probes, and R namespace versions are in
+[`configs/local_pilot_runtime.example.tsv`](configs/local_pilot_runtime.example.tsv).
+Notable fixed identities include STAR `2.7.11b`, samtools `1.19.2`, GATK
+`4.6.1.0`, Picard `3.1.1`, bcftools `1.21`, R `4.6.1`, and the locked
+Snakemake version above. The Java launcher must be canonical
+`<JAVA_HOME>/bin/java` and Java `17` or newer. A module name is not sufficient:
+the runtime profile admits canonical executable or jar paths, versions, and
+SHA-256 identities. R namespaces are also bound to deterministic installed-
+package tree hashes.
+
+NORAD never installs a missing tool or restores `renv` during doctor or
+execution. On a module-based system, select the modules first and put the
+resulting absolute executable and jar targets in the runtime profile.
+
+For a fresh checkout, explicitly restore and check its lock-selected R library
+with the canonical Rscript you intend to admit:
+
+```sh
+RSCRIPT_BIN=/absolute/path/to/Rscript make r-restore
+RSCRIPT_BIN=/absolute/path/to/Rscript make r-check
+```
+
+Restoration is an operator-authorized network/package mutation; it is never
+performed by doctor or execution. If a canonical library was provisioned
+separately, skip restoration and select it explicitly when checking:
+
+```sh
+RENV_PATHS_LIBRARY=/absolute/path/to/canonical/library \
+  RSCRIPT_BIN=/absolute/path/to/Rscript make r-check
+```
+
+In `local_pilot_runtime.tsv`, `renv_project` must resolve to this exact clean
+checkout and `renv_library` to the exact library path that passed `r-check`.
+
+### 3. Create an external, create-absent input set
+
+Choose an existing writable operator directory outside the checkout. The input
+directory and workspace below must not already exist:
+
+```sh
+NORAD_OPERATOR_ROOT=/absolute/path/to/operator-managed-storage
+NORAD_INPUT_DIR="$NORAD_OPERATOR_ROOT/norad-inputs"
+NORAD_WORKSPACE_PATH="$NORAD_OPERATOR_ROOT/norad-workspace"
+
+test -d "$NORAD_OPERATOR_ROOT" &&
+test -w "$NORAD_OPERATOR_ROOT" &&
+test ! -e "$NORAD_INPUT_DIR" &&
+test ! -e "$NORAD_WORKSPACE_PATH" &&
+mkdir -m 700 "$NORAD_INPUT_DIR" &&
 cp configs/local_pilot_request.example.yaml "$NORAD_INPUT_DIR/" &&
 cp configs/local_pilot_samples.example.tsv "$NORAD_INPUT_DIR/" &&
 cp configs/local_pilot_partitions.example.tsv "$NORAD_INPUT_DIR/" &&
@@ -54,202 +131,248 @@ cp configs/local_pilot_runtime.example.tsv \
   "$NORAD_INPUT_DIR/local_pilot_runtime.tsv"
 ```
 
-The commands are deliberately chained: if the input directory already exists
-or any copy fails, the remaining copies do not run. Choose a new absent
-directory rather than overwriting a previously edited input set.
+If any command fails, stop and choose a new absent target; do not overwrite a
+previously prepared request or workspace.
 
-Edit those copies before continuing:
+Edit the copied files:
 
-- In `local_pilot_request.example.yaml`, replace the reference, cohort, and
+- `local_pilot_request.example.yaml`: replace the reference, cohort, and
   analysis IDs; FASTA/GTF paths; STAR-index parameters; and analysis policy.
-- In `local_pilot_samples.example.tsv`, declare every paired FASTQ, condition,
-  strandedness value, and replicate. The fixed profile requires at least two
-  strata, each with exactly one declared control and one declared treatment.
-- In `local_pilot_partitions.example.tsv`, choose selectors that exist in the
-  declared reference.
-- In `local_pilot_runtime.tsv`, replace only the path placeholders for the
-  controlled Python/Snakemake, Bash, gunzip, scientific executables, Picard
-  jar, Rscript, and canonical `renv` project/library. Keep the fixed roster,
-  version expressions, ordinary probe arguments, descriptions, and R package
-  names unchanged. The Java path must resolve to canonical
-  `<JAVA_HOME>/bin/java`. Module names alone are not executable identities;
-  admitted executable and jar targets are bound by canonical path and SHA-256,
-  while each admitted R namespace is bound to its canonical installed-package
-  root and deterministic tree SHA-256.
+- `local_pilot_samples.example.tsv`: declare every paired FASTQ, condition,
+  replicate, and strandedness value. The fixed profile requires at least two
+  strata, each with exactly one sample matching the request's
+  `analysis.control_condition` and one matching its
+  `analysis.treatment_condition`, sharing a replicate value.
+- `local_pilot_partitions.example.tsv`: select reference contigs that exist in
+  the declared FASTA.
+- `local_pilot_runtime.tsv`: replace only path placeholders and their coupled
+  path arguments. Do not change the roster, check types, required flags,
+  version expressions, ordinary probes, descriptions, or R package names.
 
-Relative input paths are resolved from the request file's directory, not the
-shell's working directory. The tracked starters contain no reads or reference
-and are not a runnable dataset. See the
-[`configs` catalog](configs/README.md) for their exact structural boundary.
+Relative paths in the request resolve from the request file's directory, not
+from the terminal's current directory. The tracked starters contain no reads
+or reference and are not runnable data.
 
-Set these shell variables to the edited files and a workspace outside the
-checkout. The workspace may already be a real writable directory or may not
-exist yet. When it is absent, its immediate parent must already be a canonical,
-writable real directory; readiness does not recursively create missing parent
-directories.
+Set the durable paths once:
 
 ```sh
-NORAD_REQUEST_PATH=/absolute/path/to/norad-inputs/local_pilot_request.example.yaml
-NORAD_RUNTIME_PROFILE_PATH=/absolute/path/to/norad-inputs/local_pilot_runtime.tsv
-NORAD_WORKSPACE_PATH=/absolute/path/to/norad-workspace
+NORAD_REQUEST_PATH="$NORAD_INPUT_DIR/local_pilot_request.example.yaml"
+NORAD_RUNTIME_PROFILE_PATH="$NORAD_INPUT_DIR/local_pilot_runtime.tsv"
 ```
 
-## 3. Check readiness
+Leave `NORAD_WORKSPACE_PATH` absent. Its immediate parent must remain a
+canonical, writable real directory; NORAD does not recursively create a
+missing parent.
 
-Run the read-only doctor:
+### 4. Require a ready result
+
+The doctor is read-only:
 
 ```sh
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad doctor local-pilot \
+norad doctor local-pilot \
   --request "$NORAD_REQUEST_PATH" \
   --workspace "$NORAD_WORKSPACE_PATH" \
   --runtime-profile "$NORAD_RUNTIME_PROFILE_PATH"
 ```
 
-Continue only after it prints `READY: local-pilot prerequisites passed.` Exit
-`1` prints actionable blockers; exit `2` means an input or path boundary is
-malformed or unsafe. The doctor does not create the workspace, run the
-workflow, load modules, or install or repair anything.
+Continue only after it prints:
 
-## 4. Review the no-write plan
+```text
+READY: local-pilot prerequisites passed.
+```
+
+Exit `1` prints actionable blockers and remediation; exit `2` means an input
+or path boundary is malformed or unsafe. Doctor does not create the workspace,
+run the workflow, load modules, or install or repair anything.
+
+`READY` is not a disk, memory, wall-time, or throughput estimate. Before
+execution, capacity-plan for the declared libraries and verify free storage
+and memory on the execution host. NORAD deliberately retains multiple BAM
+generations, scientific intermediates, immutable logs, and recovery evidence.
+
+### 5. Review the no-write plan
 
 `norad run` is a strict dry-run unless `--execute` is present:
 
 ```sh
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad run \
+norad run \
   --request "$NORAD_REQUEST_PATH" \
   --workspace "$NORAD_WORKSPACE_PATH" \
   --runtime-profile "$NORAD_RUNTIME_PROFILE_PATH"
 ```
 
-Review the printed deterministic run ID, run root, workflow attempt, owner-job
-count, three reporting transactions, Snakemake command, and exact public owner
-commands. The matched four-sample, one-partition starter shape expands to 34
-owner jobs. A successful dry-run ends with `no workspace state was written`.
+Review the deterministic run ID and run root, workflow-attempt identity,
+owner-job count, three reporting transactions, Snakemake command, and every
+public owner command. A four-sample, two-stratum, one-partition request expands
+to 34 owner jobs. A successful plan ends with `no workspace state was written`.
 
-## 5. Execute the admitted plan
-
-Run the same request with the explicit mutation flag:
-
-```sh
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad run \
-  --request "$NORAD_REQUEST_PATH" \
-  --workspace "$NORAD_WORKSPACE_PATH" \
-  --runtime-profile "$NORAD_RUNTIME_PROFILE_PATH" \
-  --execute
-```
-
-NORAD creates the printed run root only after admission. Do not launch a second
-initial run against an existing run root; inspect it and, when NORAD says it is
-safe, resume it instead.
-
-Step `00c` is the deliberate output exception to the run-root boundary: it
-creates or reuses `<reference-fasta>.fai` and `<reference-stem>.dict` beside
-the external FASTA declared by the request. Before execution, confirm that
-reference location is the intended durable sidecar authority and is writable;
-do not point the request at a read-only or foreign-managed reference copy.
-Even complete-pair reuse enters Step `00c` and transiently creates its adjacent
-owner lock; generation may also create adjacent run-token staging paths.
-Controlled success removes owned transient state. A retained lock or staging
-path is blocking recovery evidence, and a partial pre-existing sidecar pair is
-rejected before producer entry.
-
-## 6. Inspect state and outputs
-
-Copy the exact `Run root:` printed by `run`:
+Copy the exact printed run root now; it is also the path used for monitoring:
 
 ```sh
 NORAD_RUN_ROOT=/absolute/path/to/norad-workspace/runs/run-DIGEST
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad inspect \
-  local-pilot-run \
-  --run-root "$NORAD_RUN_ROOT"
 ```
 
-Inspection derives state from NORAD's immutable records, hashes, semantic
-receipts, and locks. It does not trust `.snakemake` metadata, timestamps, or
-mere output presence. A successful full run prints
-`State: local_pipeline_complete` and `Local pipeline complete: yes`.
+### 6. Execute once and retain the control stream
 
-For run ID `<run-id>`, the final reporting products are:
+Step `00c` creates or reuses `<reference-fasta>.fai` and
+`<reference-stem>.dict` beside the declared external FASTA. Confirm that this
+reference directory is the intended durable sidecar authority and is writable.
+A partial sidecar pair is rejected. Retained adjacent locks or staging paths
+are recovery evidence; do not remove them to make a run proceed.
 
-```text
-<run-root>/products/artifact-summary/<run-id>/<run-id>.artifacts.tsv
-<run-root>/products/artifact-summary/<run-id>/<run-id>.artifact_receipt.tsv
-<run-root>/products/artifact-summary/<run-id>/<run-id>.run_summary.json
-<run-root>/products/artifact-summary/<run-id>/<run-id>.run_summary_receipt.tsv
-<run-root>/products/report/<run-id>/<run-id>.run_report.html
-<run-root>/products/report/<run-id>/<run-id>.run_summary.tsv
-<run-root>/products/report/<run-id>/<run-id>.report_outputs.tsv
-```
-
-Each workflow attempt also retains its terminal receipt beneath
-`<run-root>/attempts/<workflow-attempt-id>/attempt-receipt.json`. Native owner
-outputs and validation evidence remain under the same run root except for the
-explicit Step `00c` FASTA sidecars described above; none becomes disposable
-merely because reporting products exist.
-
-## 7. Resume only an admitted boundary
-
-If inspection prints `State: resume_available` and `Resume available: yes`,
-plan the resume first:
+Write the live control stream inside a newly create-exclusive private
+directory and preserve the pipeline exit through the pipe:
 
 ```sh
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad resume \
+(
+  set -o pipefail
+  NORAD_CONTROL_DIR="$(mktemp -d "$NORAD_OPERATOR_ROOT/.norad-control.XXXXXX")" || exit 1
+  NORAD_CONTROL_LOG="$NORAD_CONTROL_DIR/norad-run-control.log"
+  printf 'Control log: %s\n' "$NORAD_CONTROL_LOG"
+  norad run \
+    --request "$NORAD_REQUEST_PATH" \
+    --workspace "$NORAD_WORKSPACE_PATH" \
+    --runtime-profile "$NORAD_RUNTIME_PROFILE_PATH" \
+    --execute 2>&1 | tee "$NORAD_CONTROL_LOG"
+)
+```
+
+Do not submit a second initial run against the same run root, even if the
+terminal disconnects or this command fails. Inspect the existing run first.
+
+### 7. Monitor from another terminal
+
+In a second terminal, follow the live top-level control stream:
+
+```sh
+tail -F /exact/control/log/path/printed/by/step-6
+```
+
+Inspection is read-only but intentionally re-admits completed task records and
+hashes their bound inputs and outputs. Run it occasionally—at a stage boundary,
+after a long quiet interval, or once the control command ends—not every few
+seconds:
+
+```sh
+NORAD_RUN_ROOT=/absolute/path/to/norad-workspace/runs/run-DIGEST
+norad inspect local-pilot-run --run-root "$NORAD_RUN_ROOT"
+```
+
+Owner task stdout and stderr are retained at
+`<run-root>/attempts/<workflow-attempt-id>/tasks/<machine-key>/<scope-id>/`.
+Those immutable task logs are published when that task reaches its terminal
+attempt boundary; they are not reliable live files to tail while that owner is
+still running. The retained `tee` stream is the continuous observation surface;
+occasional `norad inspect` is the authoritative state check.
+
+### 8. Confirm completion and open the report
+
+Run one final inspection:
+
+```sh
+norad inspect local-pilot-run --run-root "$NORAD_RUN_ROOT"
+```
+
+A successful automatic run prints `State: local_pipeline_complete` and
+`Local pipeline complete: yes`. Locate its self-contained report without
+searching the tree:
+
+```sh
+NORAD_RUN_ID="${NORAD_RUN_ROOT##*/}"
+NORAD_REPORT_PATH="$NORAD_RUN_ROOT/products/report/$NORAD_RUN_ID/$NORAD_RUN_ID.run_report.html"
+test -f "$NORAD_REPORT_PATH" && printf '%s\n' "$NORAD_REPORT_PATH"
+```
+
+Without separately supplied and approved Step `09c` review evidence, expect
+the report banner and run summary to say `evidence_incomplete`. That is the
+correct scientific state, not a pipeline-execution failure.
+
+## Output inventory
+
+Keep the entire run root. Output presence alone is not completion; NORAD
+inspection re-admits immutable records, hashes, semantic receipts, and locks.
+
+| Location | Durable contents |
+| --- | --- |
+| `<run-root>/contract/` | Canonical normalized request, fixed profile, admitted runtime-profile snapshot, reporting contracts/policy/inventory, attempt workflow configs, and per-task dispatch records. |
+| `<run-root>/attempts/<workflow-attempt-id>/` | Request and attempt records, per-owner task-attempt records plus terminal stdout/stderr logs, and `attempt-receipt.json` published last for the attempt. |
+| `<run-root>/state/task-starts/` | Immutable producer-entry records. |
+| `<run-root>/state/verified/` | Hash-bound successful owner-task records; a four-sample starter shape has 34 when complete. |
+| `<run-root>/state/reporting/` | Start and verified records for artifact-index, run-summary, and HTML-report transactions. |
+| `<run-root>/results/` | Native scientific outputs, validation reports, QC evidence, alignment/variant intermediates, and ranked-candidate products owned by Steps `00a`–`09`. |
+| `<run-root>/products/artifact-summary/<run-id>/records/` | One canonical JSON artifact record per inventory entry, including explicit unavailable or incomplete states. |
+| `<run-root>/products/artifact-summary/<run-id>/<run-id>.artifacts.tsv` | Deterministic artifact index. |
+| `<run-root>/products/artifact-summary/<run-id>/<run-id>.artifact_receipt.tsv` | Artifact-index receipt, published last for that transaction. |
+| `<run-root>/products/artifact-summary/<run-id>/<run-id>.run_summary.json` | Canonical machine-readable run summary. |
+| `<run-root>/products/artifact-summary/<run-id>/<run-id>.run_summary.tsv` | Tabular run-status summary. |
+| `<run-root>/products/artifact-summary/<run-id>/<run-id>.qc_summary.tsv` | Consolidated QC view. |
+| `<run-root>/products/artifact-summary/<run-id>/<run-id>.run_summary_receipt.tsv` | Run-summary receipt, published last for that transaction. |
+| `<run-root>/products/report/<run-id>/<run-id>.run_report.html` | Self-contained Jinja HTML report. |
+| `<run-root>/products/report/<run-id>/<run-id>.run_summary.tsv` | Report-renderer summary table. |
+| `<run-root>/products/report/<run-id>/<run-id>.report_outputs.tsv` | HTML-report output receipt, published last for that transaction. |
+| Beside the declared FASTA | The explicit Step `00c` `.fai` and `.dict` sidecars; these are the only owner outputs outside the run root. |
+
+Locks, released-lock evidence, partials, backups, task logs, and failed attempt
+records are not disposable merely because later outputs or a report exist.
+
+## Resume safely
+
+Resume only when inspection prints both `State: resume_available` and
+`Resume available: yes`. First review the no-write resume plan:
+
+```sh
+norad resume \
   --run-root "$NORAD_RUN_ROOT" \
   --runtime-profile "$NORAD_RUNTIME_PROFILE_PATH"
 ```
 
-Review the reusable and pending jobs, then execute the same safe plan:
+Then execute the exact admitted plan:
 
 ```sh
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad resume \
+norad resume \
   --run-root "$NORAD_RUN_ROOT" \
   --runtime-profile "$NORAD_RUNTIME_PROFILE_PATH" \
   --execute
 ```
 
-Only a failed or interrupted boundary between owner tasks is automatically
-resumable. If inspection reports `blocked`, preserve the run, receipts, locks,
-logs, partials, and backups and follow
-[`TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md). NORAD deliberately
-provides no force, unlock, automatic cleanup, or retry of an owner that crossed
-producer entry without verified completion.
+Only a verified failed or interrupted boundary between owner tasks is
+automatically resumable. A completed run refuses resume. If inspection says
+`blocked`, preserve the run root, receipts, locks, logs, partials, sidecars,
+and backups, then follow
+[`TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md). NORAD intentionally
+provides no force, unlock, metadata cleanup, or automatic retry after an owner
+crossed producer entry without verified completion.
 
-## What has been proven
+## Evidence and operating limits
 
-Campaign B's fresh-clone proof included locked `uv` setup, which the final test
-rechecked offline, plus the public doctor, dry-run, real Snakemake scheduling,
-lifecycle and reporting transactions, controlled failure, inspection,
-byte-preserving resume, and final outputs. Its scientific owners were
-deterministic **no-science test doubles**. That proves the local control plane
-and recovery boundary; it does not prove STAR, GATK, Picard, RSeQC, bcftools,
-R, SLURM, a production dataset, or CSU execution.
+- The public executor is source-checkout-bound, single-host, one-core, and
+  local. It is not a public SLURM scheduler, multi-node workflow, or validated
+  NFS/distributed-filesystem locking implementation.
+- The workspace assumes one cooperative user on a POSIX local filesystem with
+  working advisory `flock` and same-filesystem hard links.
+- `READY` proves the declared local prerequisites passed their bounded probes;
+  it does not prove a workflow or scientific result.
+- A completed run establishes the exact admitted tools and artifacts for that
+  run. Scheduler success, output presence, schema validity, or an HTML report
+  alone does not establish scientific review or biological interpretation.
+- `FWD_like` and `REV_like` are mechanical labels, not biological strand
+  claims. `biological_interpretation_ready` remains reserved for a separately
+  approved scientific policy and evidence package.
 
-A real execution uses the scientific tools declared in your admitted runtime
-profile, but its evidence must be reported separately. Scheduler success,
-generated files, or an HTML report alone does not establish scientific review
-or biological interpretation. `FWD_like` and `REV_like` are mechanical labels,
-not biological strand claims, and `biological_interpretation_ready` remains
-reserved.
+## Further guidance
 
-## Repository map
-
-| Path | Purpose |
+| Need | Canonical guide |
 | --- | --- |
-| [`configs/`](configs/README.md) | Matched local-pilot starters and other explicit public inputs. |
-| [`workflow/`](workflow/README.md) | Fixed Snakemake projection and local executor profile. |
-| [`src/norad/`](src/norad/README.md) | Installed command, scientific owners, contracts, evidence, and reporting code. |
-| [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md) | Cross-cutting operator and maintainer commands. |
-| [`docs/operations/TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) | Failure classification and evidence-preserving recovery routes. |
-| [`docs/architecture/`](docs/architecture/README.md) | Implemented system, ownership, and dependency views. |
-| [`tests/`](tests/README.md) | Local engineering and explicitly bounded runtime evidence. |
-| [`data/`](data/README.md), [`refs/`](refs/README.md), [`results/`](results/README.md), [`logs/`](logs/README.md) | Operator-managed inputs, references, generated results, and logs. |
-
-Current evidence and blockers are recorded in
-[`HANDOFF.md`](docs/operations/HANDOFF.md). Exact owner behavior belongs to the
-adjacent owner `README.md` and `CONTRACT.md`; the
-[`runbook`](docs/operations/RUNBOOK.md) routes cross-cutting operations.
+| Input and runtime-profile details | [`configs/README.md`](configs/README.md) |
+| Public local-pilot boundary | [`src/norad/orchestration/local_pilot/README.md`](src/norad/orchestration/local_pilot/README.md) |
+| Cross-cutting operator commands | [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md) |
+| Evidence-preserving diagnosis and recovery | [`docs/operations/TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) |
+| Reporting transactions and direct report commands | [`src/norad/reporting/README.md`](src/norad/reporting/README.md) |
+| Architecture and owner map | [`docs/architecture/README.md`](docs/architecture/README.md) |
+| Validation evidence and remaining gaps | [`docs/operations/HANDOFF.md`](docs/operations/HANDOFF.md) |
+| Local test routes | [`tests/README.md`](tests/README.md) |
 
 Do not commit FASTQ, BAM, CRAM, VCF, production result tables, runtime logs,
 credentials, restored runtimes, or environment caches. Before deleting ignored
-data, references, results, or logs, prove their owner, active consumers,
+inputs, references, results, or logs, prove their owner, active consumers,
 recovery state, and retention requirements.
