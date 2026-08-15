@@ -40,8 +40,14 @@ def build_validation_fixture(root: Path) -> DuplicateMarkingEvidence:
     metrics = root / "S.markdup.metrics.txt"
     metrics.write_text(
         "## METRICS CLASS picard.sam.DuplicationMetrics\n"
-        "LIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIR_DUPLICATES\tPERCENT_DUPLICATION\n"
-        "S\t10\t2\t0.2\n",
+        "LIBRARY\tREAD_PAIRS_EXAMINED\tREAD_PAIR_DUPLICATES\t"
+        "PERCENT_DUPLICATION\tESTIMATED_LIBRARY_SIZE\n"
+        "S\t10\t2\t0.2\t\n"
+        "\n"
+        "## HISTOGRAM\tjava.lang.Double\n"
+        "set_size\tall_sets\tnon_optical_sets\n"
+        "1.0\t8\t8\n"
+        "2.0\t2\t2\n",
         encoding="utf-8",
     )
     samtools = root / "samtools"

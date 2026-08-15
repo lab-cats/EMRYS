@@ -92,9 +92,11 @@ Exact checks are:
 - `duplication_metrics`.
 
 The validator checks BAM/BAI magic, quickcheck exit, coordinate order, one
-`@RG` whose `ID` and `SM` match scope, and exactly one Picard row with nonempty
-library, nonnegative pair counts, duplicates not exceeding examined pairs, and
-a finite `PERCENT_DUPLICATION` in `0..1`. It does not prove BAI/BAM
+`@RG` whose `ID` and `SM` match scope, and exactly one row in Picard's
+duplication-metrics table with nonempty library, nonnegative pair counts,
+duplicates not exceeding examined pairs, and a finite `PERCENT_DUPLICATION` in
+`0..1`. Later Picard tables such as the duplicate-set histogram are ignored. It
+does not prove BAI/BAM
 correspondence, duplicate flags, metrics/BAM correspondence, or the producer's
 `LB`/platform contract. A nonzero quickcheck becomes failed evidence even when
 diagnostics are nonempty.
