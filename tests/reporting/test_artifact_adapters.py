@@ -119,6 +119,9 @@ VALIDATION_ARTIFACT_STEPS = {
 
 ARTIFACT_CONTEXT = importlib.import_module("norad.reporting._artifact_index.context")
 ARTIFACT_CORE = importlib.import_module("norad.reporting._artifact_index.core")
+ARTIFACT_BINARY = importlib.import_module(
+    "norad.reporting._artifact_index.binary_readers"
+)
 ARTIFACT_MODELS = importlib.import_module("norad.reporting._artifact_index.models")
 ARTIFACT_INSPECTION = importlib.import_module(
     "norad.reporting._artifact_index.inspection"
@@ -1555,6 +1558,14 @@ def test_metric_projection_rejects_residual_nonfinite_values() -> None:
             None,
             {"unexpected": float("inf")},
         )
+
+
+def test_bgzf_eof_block_matches_the_independent_canonical_literal() -> None:
+    expected = bytes.fromhex("1f8b08040000000000ff0600424302001b0003000000000000000000")
+
+    assert len(expected) == 28
+    assert ARTIFACT_BINARY.BGZF_EOF_BLOCK == expected
+    assert FIXTURE.CANONICAL_BGZF_EOF_BLOCK == expected
 
 
 def test_all_missing_sources_publish_complete_index_transaction(

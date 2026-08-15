@@ -20,7 +20,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from norad.contracts.scientific_evidence import review_package, step09
-from norad.reporting._artifact_index.binary_readers import BGZF_EOF_BLOCK
 from norad.reporting._artifact_index.registry import ADAPTER_REGISTRY
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -42,6 +41,9 @@ PRIMARY_ANALYSIS_ID = "synthetic_analysis"
 PRIMARY_ANALYSIS_POLICY_SHA256 = "4" * 64
 COHORT_ID = "synthetic_cohort"
 REVIEW_ID = "synthetic_review"
+CANONICAL_BGZF_EOF_BLOCK = bytes.fromhex(
+    "1f8b08040000000000ff0600424302001b0003000000000000000000"
+)
 
 
 @dataclass(frozen=True)
@@ -249,7 +251,7 @@ def minimal_bam_bytes() -> bytes:
         + header_text
         + struct.pack("<i", 0)
     )
-    return bgzf_block(payload) + BGZF_EOF_BLOCK
+    return bgzf_block(payload) + CANONICAL_BGZF_EOF_BLOCK
 
 
 def minimal_bai_bytes() -> bytes:
