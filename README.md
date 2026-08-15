@@ -813,6 +813,22 @@ safe evidence preservation and every owner.
 | Current validation evidence and remaining gaps | [`docs/operations/HANDOFF.md`](docs/operations/HANDOFF.md) |
 | Local test routes | [`tests/README.md`](tests/README.md) |
 
+## License
+
+NORAD is **source-available**, not open-source software. You may use and modify
+NORAD without charge for academic, nonprofit, research, and internal commercial
+work. You may also commercialize the scientific data, results, reports,
+visualizations, interpretations, discoveries, and other outputs produced using
+NORAD, and you may charge for research, compute, or analysis services that
+deliver those outputs.
+
+You may not sell NORAD itself, including through paid rebranding, licensing, or
+sublicensing, or by offering NORAD or substantially equivalent NORAD
+functionality as a paid hosted or managed product or service. The complete
+terms in [`LICENSE`](LICENSE) control. Third-party software, tools, data, and
+references retain their own terms; see [`NOTICE`](NOTICE) and
+[`LICENSES/`](LICENSES/).
+
 Do not commit FASTQ, BAM, CRAM, VCF, production result tables, logs,
 credentials, restored tools/libraries, or caches. Before deleting ignored data,
 results, locks, or logs, establish their owner, active consumers, recovery

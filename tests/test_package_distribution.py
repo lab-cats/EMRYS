@@ -51,6 +51,12 @@ PUBLIC_ONBOARDING_MODULES = {
     "norad/orchestration/local_pilot/onboarding.py",
     "norad/orchestration/local_pilot/synthetic_fixture.py",
 }
+LICENSE_EXPRESSION = "LicenseRef-NORAD-Source-Available-1.0"
+LICENSE_FILES = {
+    "LICENSE": REPO_ROOT / "LICENSE",
+    "NOTICE": REPO_ROOT / "NOTICE",
+    "LICENSES/renv-MIT.txt": REPO_ROOT / "LICENSES" / "renv-MIT.txt",
+}
 
 
 def command_environment(*, hostile_pythonpath: bool = False) -> dict[str, str]:
@@ -88,8 +94,9 @@ def uv_executable() -> str:
 def build_wheel(tmp_path: Path) -> Path:
     project = tmp_path / "project"
     project.mkdir()
-    for name in ("pyproject.toml", "README.md"):
+    for name in ("pyproject.toml", "README.md", "LICENSE", "NOTICE"):
         shutil.copy2(REPO_ROOT / name, project / name)
+    shutil.copytree(REPO_ROOT / "LICENSES", project / "LICENSES")
     shutil.copytree(
         REPO_ROOT / "src",
         project / "src",
@@ -146,6 +153,12 @@ def inspect_wheel(wheel: Path) -> None:
 
         assert metadata["Name"] == "norad-rna-workflow"
         assert metadata["Version"] == "0.1.0.dev0"
+        assert metadata["License-Expression"] == LICENSE_EXPRESSION
+        assert set(metadata.get_all("License-File", [])) == set(LICENSE_FILES)
+        assert not any(
+            classifier.startswith("License ::")
+            for classifier in metadata.get_all("Classifier", [])
+        )
         assert metadata.get_all("Project-URL") == [
             "Repository, https://github.com/lab-cats/norad",
             "Issues, https://github.com/lab-cats/norad/issues",
@@ -161,6 +174,9 @@ def inspect_wheel(wheel: Path) -> None:
         assert PUBLIC_ONBOARDING_MODULES <= members
         for resource in RESOURCE_PATHS:
             assert archive.read(resource) == (REPO_ROOT / "src" / resource).read_bytes()
+        license_root = metadata_member.removesuffix("METADATA") + "licenses/"
+        for relative_path, source_path in LICENSE_FILES.items():
+            assert archive.read(license_root + relative_path) == source_path.read_bytes()
 
 
 def install_locked_wheel(wheel: Path, tmp_path: Path) -> tuple[Path, Path]:
