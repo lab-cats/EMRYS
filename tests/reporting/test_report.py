@@ -662,24 +662,46 @@ def test_step09_duplicate_candidates_fail_closed(
         REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
 
 
+@pytest.mark.parametrize(
+    ("corruption", "message"),
+    (
+        ("missing_row", "must contain exactly 7 check rows"),
+        ("wrong_step_scope", "wrong step/scope"),
+        ("ordered_check_swap", "wrong ordered check roster"),
+        ("non_pass", "owner-validation report is not all-pass"),
+    ),
+)
 def test_step09_owner_validation_must_be_exact_all_pass_before_rows_open(
     incomplete_summary: Path,
     tmp_path: Path,
+    corruption: str,
+    message: str,
 ) -> None:
     def mutate_sources(paths: dict[str, Path]) -> None:
-        def fail_status(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
-            rows[0]["status"] = "fail"
+        def corrupt_report(
+            _header: tuple[str, ...], rows: list[dict[str, str]]
+        ) -> None:
+            if corruption == "missing_row":
+                rows.pop()
+            elif corruption == "wrong_step_scope":
+                rows[0]["step_id"] = "08"
+                rows[0]["scope_id"] = "wrong-analysis"
+            elif corruption == "ordered_check_swap":
+                rows[0]["check_id"], rows[1]["check_id"] = (
+                    rows[1]["check_id"],
+                    rows[0]["check_id"],
+                )
+            else:
+                rows[0]["status"] = "fail"
 
-        rewrite_tsv(paths["step09_validation_report_v1"], fail_status)
+        rewrite_tsv(paths["step09_validation_report_v1"], corrupt_report)
 
     copied, _paths = copied_step09_summary(
         incomplete_summary,
         tmp_path / "input",
         mutate_sources=mutate_sources,
     )
-    with pytest.raises(
-        ReportRenderError, match="owner-validation report is not all-pass"
-    ):
+    with pytest.raises(ReportRenderError, match=message):
         REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
 
 

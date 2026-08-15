@@ -89,6 +89,26 @@ def test_init_refuses_predecessor_without_changing_it(tmp_path: Path) -> None:
     assert _tree_bytes(output) == {"owned.txt": b"preserve me\n"}
 
 
+def test_synthetic_init_is_dry_run_first_and_refuses_predecessor(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    output = tmp_path / "fixture"
+
+    assert synthetic_fixture.init_from_args(_namespace(output, execute=False)) == 0
+    assert not output.exists()
+    assert "Dry-run complete" in capsys.readouterr().out
+
+    output.mkdir()
+    predecessor = output / "owned.txt"
+    predecessor.write_bytes(b"preserve me\n")
+
+    assert synthetic_fixture.init_from_args(_namespace(output, execute=True)) == 2
+    captured = capsys.readouterr()
+    assert "output directory must be absent" in captured.err
+    assert _tree_bytes(output) == {"owned.txt": b"preserve me\n"}
+
+
 def test_publication_re_admits_every_member_after_completion(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -221,6 +241,18 @@ def test_request_validation_is_read_only(tmp_path: Path) -> None:
     )
 
     assert _tree_bytes(output) == before
+
+
+def test_request_validation_reports_invalid_request(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    missing_request = tmp_path / "missing-request.yaml"
+
+    assert (
+        onboarding.validate_from_args(argparse.Namespace(request=missing_request)) == 1
+    )
+    assert "ERROR:" in capsys.readouterr().err
 
 
 def test_public_cli_routes_synthetic_init_and_request_validation(
