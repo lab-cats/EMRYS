@@ -18,7 +18,9 @@ parse_named_arguments <- function(
     if (length(values) %% 2L != 0L) {
         abort("Arguments must be supplied as --name value pairs.")
     }
-    parsed <- setNames(vector("list", length(argument_names)), argument_names)
+    parsed <- stats::setNames(
+        vector("list", length(argument_names)), argument_names
+    )
     parsed[names(defaults)] <- defaults
     supplied <- character()
     index <- 1L
@@ -108,7 +110,7 @@ read_contract_tsv <- function(
         abort(label, " contains a blank data row: ", path)
     }
     table <- tryCatch(
-        read.delim(
+        utils::read.delim(
             path, header = TRUE, sep = "\t", quote = "", comment.char = "",
             check.names = FALSE, stringsAsFactors = FALSE,
             colClasses = "character", na.strings = na_strings, fill = FALSE

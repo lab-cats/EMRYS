@@ -47,7 +47,7 @@ SUMMARY_COLUMNS <- c(
 
 
 write_tsv <- function(table, path) {
-    write.table(
+    utils::write.table(
         table,
         file = path,
         sep = "\t",

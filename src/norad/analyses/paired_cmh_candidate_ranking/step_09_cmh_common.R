@@ -176,7 +176,7 @@ write_tsv <- function(table, path) {
     if (!dir.exists(parent)) {
         abort("Output parent directory does not exist: ", parent)
     }
-    write.table(
+    utils::write.table(
         table, file = path, sep = "\t", quote = FALSE, row.names = FALSE,
         col.names = TRUE, na = "NA", eol = "\n"
     )

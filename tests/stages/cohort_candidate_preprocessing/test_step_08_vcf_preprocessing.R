@@ -423,13 +423,16 @@ run_engine <- function(
 ) {
     invocation <- engine_arguments(case, output_dir)
     log <- file.path(output_dir, "engine.log")
-    command <- c(shQuote(engine), shQuote(invocation$args))
+    command <- c(
+        "--no-environ", "--no-site-file", "--no-restore", "--no-save",
+        shQuote(engine), shQuote(invocation$args)
+    )
     status <- system2(
         test_rscript_bin,
         args = command,
         stdout = log,
         stderr = log,
-        env = environment
+        env = c(environment, "R_DEFAULT_PACKAGES=NULL")
     )
     if (is.null(status)) {
         status <- 0L

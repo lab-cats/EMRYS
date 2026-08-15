@@ -544,8 +544,14 @@ run_engine <- function(fixture, output_dir, background = NULL,
     }
     log_path <- file.path(output_dir, "run.log")
     status <- system2(
-        rscript_bin, args = shQuote(c(engine, arguments)),
-        stdout = log_path, stderr = log_path
+        rscript_bin,
+        args = shQuote(c(
+            "--no-environ", "--no-site-file", "--no-restore", "--no-save",
+            engine, arguments
+        )),
+        stdout = log_path,
+        stderr = log_path,
+        env = "R_DEFAULT_PACKAGES=NULL"
     )
     status <- if (is.null(status)) 0L else status
     if (expect_success && status != 0L) {
