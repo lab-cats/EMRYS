@@ -120,6 +120,9 @@ VALIDATION_ARTIFACT_STEPS = {
 ARTIFACT_CONTEXT = importlib.import_module("norad.reporting._artifact_index.context")
 ARTIFACT_CORE = importlib.import_module("norad.reporting._artifact_index.core")
 ARTIFACT_MODELS = importlib.import_module("norad.reporting._artifact_index.models")
+ARTIFACT_INSPECTION = importlib.import_module(
+    "norad.reporting._artifact_index.inspection"
+)
 ARTIFACT_PUBLICATION = importlib.import_module(
     "norad.reporting._artifact_index.publication"
 )
@@ -1491,6 +1494,67 @@ def test_native_metrics_and_science_state_are_conservative(
     assert review["cluster_validation"]["proof_status"] == "not_run"
     assert review["attempts"] == []
     assert review["selected_attempt_id"] is None
+
+
+def test_star_final_log_preserves_infinite_mapping_speed_as_string(
+    artifact_fixture: Any,
+) -> None:
+    artifact_fixture.source_for("sample.SYNTH_A.star_log_final").write_text(
+        "Mapping speed, Million of reads per hour | inf\n"
+        "Number of input reads | 100\n"
+        "Uniquely mapped reads % | 95.00%\n",
+        encoding="utf-8",
+    )
+
+    context = context_for(artifact_fixture)
+    record = next(
+        record
+        for record in context.records
+        if record["artifact_id"] == "sample.SYNTH_A.star_log_final"
+    )
+    metrics = {metric["metric_id"]: metric for metric in record["metrics"]}
+    mapping_speed = metrics["mapping_speed__million_of_reads_per_hour"]
+    assert mapping_speed["value"] == "Inf"
+    assert mapping_speed["status"] == "not_assessed"
+    assert metrics["number_of_input_reads"]["value"] == 100.0
+    assert metrics["uniquely_mapped_reads"]["value"] == 95.0
+
+
+@pytest.mark.parametrize("token", ["-inf", "nan", "1e999"])
+def test_star_final_log_rejects_unapproved_nonfinite_metrics(
+    artifact_fixture: Any,
+    token: str,
+) -> None:
+    artifact_fixture.source_for("sample.SYNTH_A.star_log_final").write_text(
+        f"Mapping speed, Million of reads per hour | {token}\n"
+        "Number of input reads | 100\n",
+        encoding="utf-8",
+    )
+
+    context = context_for(artifact_fixture)
+    record = next(
+        record
+        for record in context.records
+        if record["artifact_id"] == "sample.SYNTH_A.star_log_final"
+    )
+    assert record["completion_status"] == "failed"
+    assert record["state_reason"] == "Present source failed its registered adapter."
+    assert [error["code"] for error in record["errors"]] == [
+        "adapter_validation_failed"
+    ]
+    assert "is non-finite" in record["errors"][0]["message"]
+
+
+def test_metric_projection_rejects_residual_nonfinite_values() -> None:
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError,
+        match="Native metric 'unexpected' is non-finite",
+    ):
+        ARTIFACT_INSPECTION.build_metrics(
+            {"artifact_id": "sample.SYNTH_A.unexpected"},
+            None,
+            {"unexpected": float("inf")},
+        )
 
 
 def test_all_missing_sources_publish_complete_index_transaction(

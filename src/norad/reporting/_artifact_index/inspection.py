@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import re
 from collections.abc import Mapping, Sequence
 from functools import partial
@@ -288,9 +289,20 @@ def inspect_present(
             ).strip("_")
             numeric = value_text.removesuffix("%").replace(",", "")
             try:
-                native[metric_key] = float(numeric)
+                parsed = float(numeric)
             except ValueError:
                 continue
+            if math.isfinite(parsed):
+                native[metric_key] = parsed
+            elif (
+                key_text == "Mapping speed, Million of reads per hour"
+                and numeric == "inf"
+            ):
+                native[metric_key] = "Inf"
+            else:
+                raise ArtifactIndexError(
+                    f"STAR final log metric {key_text!r} is non-finite"
+                )
         if key_value_count == 0:
             raise ArtifactIndexError("STAR final log has no key/value rows")
         return count, None, {}, native
@@ -344,6 +356,8 @@ def build_metrics(
         value = native[key]
         if value is None or isinstance(value, (dict, list, tuple)):
             continue
+        if isinstance(value, float) and not math.isfinite(value):
+            raise ArtifactIndexError(f"Native metric {key!r} is non-finite")
         metric_id = re.sub(r"[^A-Za-z0-9._-]", "_", key)
         if metric_id == "source_row_count":
             continue

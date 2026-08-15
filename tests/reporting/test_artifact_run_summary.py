@@ -1673,6 +1673,36 @@ def test_qc_view_keeps_all_repeated_metrics_but_json_ids_are_unique(
     )
 
 
+def test_qc_projection_preserves_domain_infinity_string() -> None:
+    metric = {
+        "metric_id": "mapping_speed__million_of_reads_per_hour",
+        "name": "Mapping Speed  Million Of Reads Per Hour",
+        "value": "Inf",
+        "unit": None,
+        "status": "not_assessed",
+        "source_artifact_id": "sample.SYNTH_A.star_log_final",
+    }
+    artifact = {
+        "artifact_id": "sample.SYNTH_A.star_log_final",
+        "scope": {
+            "step_id": "01",
+            "scope_type": "sample",
+            "scope_id": "SYNTH_A",
+        },
+        "metrics": [metric],
+    }
+
+    promoted, duplicate_ids = RUN_SUMMARY_PROJECTION._build_qc_metrics([artifact])
+    rows = RUN_SUMMARY_PROJECTION._build_qc_rows(
+        {"run_id": "synthetic_run", "artifacts": [artifact]}
+    )
+
+    assert promoted == [metric]
+    assert duplicate_ids == set()
+    assert rows[0]["value"] == '"Inf"'
+    assert rows[0]["value_type"] == "string"
+
+
 def test_complete_summary_preserves_required_missing_artifact_state(
     tmp_path: Path,
 ) -> None:
