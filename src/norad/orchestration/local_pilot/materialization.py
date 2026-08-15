@@ -1107,11 +1107,20 @@ def _dispatches(
             "path": str(dispatch_path),
             "sha256": _sha256(data),
         }
+        output_directories = {
+            path.parent for path in outputs if run_root in path.parents
+        }
+        if step_id == "00a":
+            if len(output_directories) != 1:
+                raise MaterializationError(
+                    "Step 00a requires one create-absent STAR index directory"
+                )
+            output_directories = {next(iter(output_directories)).parent}
         directories.update(
             {
                 dispatch_path.parent,
                 validation.parent,
-                *(path.parent for path in outputs if run_root in path.parents),
+                *output_directories,
                 run_root / "state" / "task-starts" / task.machine_key,
                 run_root / "state" / "verified" / task.machine_key,
             }

@@ -371,6 +371,53 @@ def test_locked_publication_terminalizes_failure_and_refuses_repeat(
         initialize_run(plan, ops=ops)
 
 
+def test_attempt_publication_leaves_star_index_directory_for_owner(
+    tmp_path: Path,
+) -> None:
+    plan = _plan(tmp_path)
+    step00a = next(
+        record
+        for record in _dispatch_records(plan)
+        if record["machine_key"] == "norad.stage.construct_STAR_index.v1"
+    )
+    outputs = tuple(Path(item["path"]) for item in step00a["outputs"])
+    index_directories = {path.parent for path in outputs}
+    assert len(outputs) == 15
+    assert len(index_directories) == 1
+    index_directory = next(iter(index_directories))
+    workflow_entry_checked = False
+
+    def inspect_workflow_entry(
+        _argv: tuple[str, ...], _cwd: Path
+    ) -> lifecycle.WorkflowResult:
+        nonlocal workflow_entry_checked
+        assert index_directory.parent.is_dir()
+        assert not index_directory.exists()
+        workflow_entry_checked = True
+        return lifecycle.WorkflowResult(9, None)
+
+    base = lifecycle.default_lifecycle_ops()
+    ops = replace(
+        base,
+        run_workflow=inspect_workflow_entry,
+        now=lambda: datetime(2026, 8, 12, 20, 5, tzinfo=UTC),
+        host_name=lambda: "test-host",
+        process_id=lambda: 123,
+        process_is_alive=lambda _pid: False,
+        admit_runtime_context=lambda _attempt, _request: None,
+    )
+
+    initialize_run(plan, ops=ops)
+    outcome = lifecycle.run_materialized_attempt(
+        plan.preparation,
+        lambda: publish_attempt(plan, ops=ops),
+        ops=ops,
+    )
+
+    assert workflow_entry_checked
+    assert outcome.receipt["status"] == "failed"
+
+
 def test_lock_precedes_attempt_publication_failure_and_retains_evidence(
     tmp_path: Path,
 ) -> None:
