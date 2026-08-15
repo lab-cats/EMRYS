@@ -302,17 +302,31 @@ def _validation_bytes(row: dict[str, str]) -> bytes:
     spec = ADAPTER_REGISTRY[str(row["adapter"])]
     assert spec.expected_header is not None
     count = spec.exact_data_rows or 1
+    check_ids = (
+        (
+            "output_transaction",
+            "upstream_identity_and_candidate_order",
+            "status_semantics",
+            "significant_subset",
+            "summary_count_reconciliation",
+            "mutation_spectrum_reconciliation",
+            "pdf_structure",
+        )
+        if row["adapter"] == "step09_validation_report_v1"
+        else tuple(f"fixture_check_{index}" for index in range(1, count + 1))
+    )
+    assert len(check_ids) == count
     rows = [
         {
             "step_id": str(row["step_id"]),
             "scope_id": str(row["scope_id"]),
-            "check_id": f"fixture_check_{index}",
+            "check_id": check_id,
             "status": "pass",
             "observed": "fixture",
             "expected": "fixture",
             "detail": "bounded no-science validation",
         }
-        for index in range(1, count + 1)
+        for check_id in check_ids
     ]
     return _tsv_bytes(tuple(spec.expected_header), rows)
 
