@@ -36,8 +36,8 @@ dry-run-first `norad run`, `norad resume`, and `norad inspect local-pilot-run`.
 | Steps `00a`–`06` | B1 owner boundaries retain their local fake-tool/fixture evidence. The production-like synthetic pilot additionally exercised these owners with the admitted real-tool runtime on one ARM64 Linux VM in a single-node Slurm allocation, using four paired-end libraries with 100,000 read pairs each and a deterministic 5 Mb reference. This is not CSU, distributed, production-data, or production-scale proof. |
 | Step `07` | B1 no-clobber and rollback boundaries retain their local mock-bcftools evidence. The production-like synthetic pilot exercised Step `07` with bcftools 1.21 and passed its owner validation and the end-to-end completion boundary. This is not CSU or production-data evidence. |
 | Steps `08`–`09` | B1 no-clobber/recovery boundaries retain local shell/fake-R and guarded-real-R evidence. The production-like synthetic pilot exercised the admitted real R 4.6.1 runtime through Step `09`; the output contained three CMH-ranked candidates, one passing the fixed significance contract, and the lab-owned independent Step `09` oracle matched. This remains synthetic single-node evidence, not completed scientific review, biological validation, or production-data proof. |
-| Step `09c` and reporting | The automatic local profile deliberately records the 13 Step `09c` human-review artifacts as absent. The production-like synthetic pilot nevertheless completed all three reporting transactions and published a self-contained HTML report; 145/158 artifacts were complete, so the correct report status remained `evidence_incomplete` with no biological interpretation authorized. The currently approved reporting tranche adds explicit, non-adjudicating computational-results tables derived from the preserved Step `09` artifacts; it does not rerun or promote the science. **CLOSEOUT REQUIRED:** replace this sentence with the derivative renderer commit, derivative report path, HTML hash, and semantic-receipt hash. Keep the original science authority identified separately as `2587126e7e471b504657c9a43789e870713f8bb6`. There is still no completed Step `09c` scientific review, production evidence package, or production-data report. |
-| Operational helpers | Runtime, reference, storage, and structured validators retain local fixture evidence. In the production-like synthetic pilot, all 24 runtime checks passed against the complete admitted VM installation before Slurm submission, and the lifecycle re-admitted the bound runtime profile. The currently approved onboarding tranche is adding zero-context starter generation, request validation, explicit runtime-profile rendering, and a generated Slurm wrapper; its final evidence must come from the assembled closeout gate. There is no CSU batch runtime report, production reference/storage report, or approved retention policy. |
+| Step `09c` and reporting | The automatic local profile deliberately records the 13 Step `09c` human-review artifacts as absent. The production-like synthetic pilot nevertheless completed all three reporting transactions and published a self-contained HTML report; 145/158 artifacts were complete, so the correct report status remained `evidence_incomplete` with no biological interpretation authorized. Renderer commit `441a7b0a36efb6d1c6baa43d2c4090f1f4957b3d` then published one separate receipt-last computational-results derivative from the preserved Job `91` sources without rerunning a scientific owner. The retained lab report is `runs/full-cohort-public-2587126e7e47-02-vm-computational-report-441a7b0a36ef/products/report/run-bb36785424aba063e336ebaecdde4e78d984a4470187b8e1421fd281d3afa04f/run-bb36785424aba063e336ebaecdde4e78d984a4470187b8e1421fd281d3afa04f.run_report.html`, with HTML SHA-256 `ba426da9a4bdc387172f749a28e7140ec0b7dc0201d0dd74b4f59bb492e0dc30` and semantic-receipt SHA-256 `105e552768acb755f92a032ba68bdf5f05321861ff4f9a2f9335cb30fd301cce`. It displays all three Step `09` computational candidates and the one threshold-passing candidate as not scientifically adjudicated. Original science authority remains `2587126e7e471b504657c9a43789e870713f8bb6`; there is still no completed Step `09c` scientific review, production evidence package, or production-data report. |
+| Operational helpers | Runtime, reference, storage, and structured validators retain local fixture evidence. In the production-like synthetic pilot, all 24 runtime checks passed against the complete admitted VM installation before Slurm submission, and the lifecycle re-admitted the bound runtime profile. Commit `441a7b0a36efb6d1c6baa43d2c4090f1f4957b3d` adds create-absent starter generation, request validation, explicit runtime-profile rendering, a proof-matched synthetic starter, and a generated one-allocation Slurm wrapper with log-tail commands. The exact commit passed the assembled local repository gate. This is onboarding and local engineering evidence, not a CSU batch runtime report, production reference/storage report, or approved retention policy. |
 
 A transaction proves only reconciliation of its declared inputs and outputs.
 It does not prove every source passed or promote runtime, cluster, scientific,
@@ -169,18 +169,20 @@ applicable owner `README.md` or `CONTRACT.md`.
 
 ## Immediate resume point
 
-Campaign B, its adversarial local-pilot hardening follow-up, PORT-NC-01, and the
-preserved production-like synthetic VM/Slurm pilot are complete at their stated
-evidence ceilings. The selected package is now the approved zero-context
-onboarding and explicit computational-results reporting tranche. Its closeout
-requires focused validation, one assembled repository gate, and a derivative
-report generated from the preserved pilot without rerunning science.
+Campaign B, its adversarial local-pilot hardening follow-up, PORT-NC-01, the
+preserved production-like synthetic VM/Slurm pilot, and the approved
+zero-context onboarding and explicit computational-results reporting tranche
+are complete at their stated evidence ceilings. Renderer commit
+`441a7b0a36efb6d1c6baa43d2c4090f1f4957b3d` passed the assembled repository
+gate. A fresh VM-side artifact-index, run-summary, and report projection then
+published and fully re-admitted the derivative identified above from the
+preserved Job `91` source artifacts. The source lane re-verified before and
+after; no Slurm job or scientific owner was run.
 
-At closeout, update the marked reporting-evidence sentence above with the new
-derivative renderer commit and report identity. That renderer remains distinct
-from preserved science commit
-`2587126e7e471b504657c9a43789e870713f8bb6` and cannot promote that run's
-evidence ceiling.
+The renderer authority remains distinct from preserved science commit
+`2587126e7e471b504657c9a43789e870713f8bb6`. This is one content-bound report
+publication, not a repeat-render comparison or a promotion of the source
+run's scientific evidence ceiling.
 
 After that closeout, later decisions remain whether and how to authorize CSU
 Viking or a distributed site execution profile and proof. Step `09c` remains
