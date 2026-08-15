@@ -75,6 +75,9 @@ def _probe_tool(
         check.check_id == "rscript"
         and environment is not None
         and (environment.get("NORAD_LOCAL_PILOT_R") == "1")
+        # Rscript's standalone information mode rejects startup guards as a
+        # missing script; executable R code remains guarded below.
+        and check.probe_args != ("--version",)
     ):
         command = guarded_rscript_argv(executable, check.probe_args)
     code, output = run_command(command, None, environment)

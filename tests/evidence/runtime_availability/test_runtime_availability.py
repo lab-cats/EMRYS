@@ -341,6 +341,41 @@ def test_gatk_probe_requires_exactly_one_declared_java_launcher() -> None:
     assert result.detail == "GATK probing requires exactly one declared Java launcher"
 
 
+def test_guarded_rscript_version_probe_uses_its_standalone_information_mode(
+    tmp_path: Path,
+) -> None:
+    rscript = tmp_path / "Rscript"
+    rscript.write_text(
+        "#!/bin/sh\n"
+        'if [ "$#" -ne 1 ] || [ "$1" != --version ]; then\n'
+        "    printf 'file name is missing\\n' >&2\n"
+        "    exit 1\n"
+        "fi\n"
+        "printf 'Rscript (R) version 4.6.1 (2026-06-24)\\n'\n",
+        encoding="utf-8",
+    )
+    rscript.chmod(0o755)
+    check = Check(
+        check_id="rscript",
+        check_type="tool_version",
+        runtime_context="local",
+        required=True,
+        target=str(rscript),
+        probe_args=("--version",),
+        expected=r"^Rscript [(]R[)] version 4[.]6[.]1(\s|$)",
+        description="Rscript runtime",
+    )
+
+    result = run_checks(
+        [check],
+        "local",
+        environment={"NORAD_LOCAL_PILOT_R": "1"},
+    )[0]
+
+    assert result.status == "pass"
+    assert result.observed == "Rscript (R) version 4.6.1 (2026-06-24)"
+
+
 def test_gatk_probe_reports_an_invalid_declared_java_environment(
     tmp_path: Path,
 ) -> None:
