@@ -36,7 +36,7 @@ dry-run-first `norad run`, `norad resume`, and `norad inspect local-pilot-run`.
 | Steps `00a`–`06` | B1 owner boundaries retain their local fake-tool/fixture evidence. The production-like synthetic pilot additionally exercised these owners with the admitted real-tool runtime on one ARM64 Linux VM in a single-node Slurm allocation, using four paired-end libraries with 100,000 read pairs each and a deterministic 5 Mb reference. This is not CSU, distributed, production-data, or production-scale proof. |
 | Step `07` | B1 no-clobber and rollback boundaries retain their local mock-bcftools evidence. The production-like synthetic pilot exercised Step `07` with bcftools 1.21 and passed its owner validation and the end-to-end completion boundary. This is not CSU or production-data evidence. |
 | Steps `08`–`09` | B1 no-clobber/recovery boundaries retain local shell/fake-R and guarded-real-R evidence. The production-like synthetic pilot exercised the admitted real R 4.6.1 runtime through Step `09`; the output contained three CMH-ranked candidates, one passing the fixed significance contract, and the lab-owned independent Step `09` oracle matched. This remains synthetic single-node evidence, not completed scientific review, biological validation, or production-data proof. |
-| Step `09c` and reporting | The automatic local profile deliberately records the 13 Step `09c` human-review artifacts as absent. The production-like synthetic pilot nevertheless completed all three reporting transactions and published a self-contained HTML report; 145/158 artifacts were complete, so the correct report status remained `evidence_incomplete` with no biological interpretation authorized. Renderer commit `441a7b0a36efb6d1c6baa43d2c4090f1f4957b3d` then published one separate receipt-last computational-results derivative from the preserved Job `91` sources without rerunning a scientific owner. The retained lab report is `runs/full-cohort-public-2587126e7e47-02-vm-computational-report-441a7b0a36ef/products/report/run-bb36785424aba063e336ebaecdde4e78d984a4470187b8e1421fd281d3afa04f/run-bb36785424aba063e336ebaecdde4e78d984a4470187b8e1421fd281d3afa04f.run_report.html`, with HTML SHA-256 `ba426da9a4bdc387172f749a28e7140ec0b7dc0201d0dd74b4f59bb492e0dc30` and semantic-receipt SHA-256 `105e552768acb755f92a032ba68bdf5f05321861ff4f9a2f9335cb30fd301cce`. It displays all three Step `09` computational candidates and the one threshold-passing candidate as not scientifically adjudicated. Original science authority remains `2587126e7e471b504657c9a43789e870713f8bb6`; there is still no completed Step `09c` scientific review, production evidence package, or production-data report. |
+| Reporting and external interpretation boundary | The production-like synthetic pilot completed all three reporting transactions and published a self-contained HTML report. Renderer commit `441a7b0a36efb6d1c6baa43d2c4090f1f4957b3d` later published one separate receipt-last computational-results derivative from the preserved Job `91` sources without rerunning a scientific owner. The retained lab report is `runs/full-cohort-public-2587126e7e47-02-vm-computational-report-441a7b0a36ef/products/report/run-bb36785424aba063e336ebaecdde4e78d984a4470187b8e1421fd281d3afa04f/run-bb36785424aba063e336ebaecdde4e78d984a4470187b8e1421fd281d3afa04f.run_report.html`, with HTML SHA-256 `ba426da9a4bdc387172f749a28e7140ec0b7dc0201d0dd74b4f59bb492e0dc30` and semantic-receipt SHA-256 `105e552768acb755f92a032ba68bdf5f05321861ff4f9a2f9335cb30fd301cce`. It displays all three Step `09` computational candidates and the one threshold-passing candidate as not scientifically adjudicated. Original science authority remains `2587126e7e471b504657c9a43789e870713f8bb6`; neither report is production-data evidence or an external review, adjudication, or biological-interpretation record. |
 | Operational helpers | Runtime, reference, storage, and structured validators retain local fixture evidence. In the production-like synthetic pilot, all 24 runtime checks passed against the complete admitted VM installation before Slurm submission, and the lifecycle re-admitted the bound runtime profile. Commit `441a7b0a36efb6d1c6baa43d2c4090f1f4957b3d` adds create-absent starter generation, request validation, explicit runtime-profile rendering, a proof-matched synthetic starter, and a generated one-allocation Slurm wrapper with log-tail commands. The exact commit passed the assembled local repository gate. This is onboarding and local engineering evidence, not a CSU batch runtime report, production reference/storage report, or approved retention policy. |
 
 A transaction proves only reconciliation of its declared inputs and outputs.
@@ -46,7 +46,7 @@ or biological state. Current test policy belongs to
 
 Completed maintainability decompositions span reporting, artifact and summary
 contracts, the neutral Step `08`/`09` contracts, Step `08`/`09` R owners,
-operational evidence tools, and Step `09c` review helpers. Current system shape
+and operational evidence tools. Current system shape
 and exact public routes belong to the [architecture index](../architecture/README.md)
 and [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md);
 Git and dated history preserve delivery detail and extraction measurements.
@@ -77,9 +77,8 @@ read pairs per library and a 5 Mb reference. The completed run verified all
 34 scientific owner task records across the 13 automatic owners, all three
 reporting transactions, and the 38-rule DAG. Step `09` published three
 CMH-ranked candidates, one passing the fixed significance contract; the
-lab-owned independent Step `09` oracle matched. The report remained correctly
-`evidence_incomplete` because the 13 human Step `09c` records were deliberately
-absent. The retained HTML is 214,102 bytes with SHA-256
+lab-owned independent Step `09` oracle matched. The retained legacy HTML is
+214,102 bytes with SHA-256
 `50d4cc7bd26cd706544283ce532000ee6a900f8a8195ccb29b021809670afef8`.
 
 The preserved completed lane was sealed without rerunning any scientific owner
@@ -126,9 +125,9 @@ remains a mapping outlier, not an established pipeline failure.
 `FWD_like` and `REV_like` are mechanical groupings;
 `legacy_provisional_v1` is not a validated biological strand model.
 
-`science_review_complete_exploratory` remains provisional, and
-`biological_interpretation_ready` remains reserved. No validated editing
-site or causal biological conclusion exists.
+No validated editing site or causal biological conclusion exists. Candidate
+review, adjudication, and biological interpretation remain external
+work-process records rather than pipeline states.
 
 ## Local recovery constraint
 
@@ -147,8 +146,7 @@ do not mutate the environment incidentally.
   replicate values, persistence, and hash require inspection.
 - Steps `07`–`09` now have production-like synthetic real-tool evidence from
   one VM single-node Slurm allocation, but they still lack CSU Viking,
-  distributed, production-data, and production-scale evidence. Step `09c`
-  remains absent and scientific review remains incomplete.
+  distributed, production-data, and production-scale evidence.
 - CSU batch-visible R/package availability, storage capacity and retention
   policy, and the exact Novogene annotation release remain unresolved.
 - The Step `09` production validator does not independently recompute CMH
@@ -185,7 +183,8 @@ publication, not a repeat-render comparison or a promotion of the source
 run's scientific evidence ceiling.
 
 After that closeout, later decisions remain whether and how to authorize CSU
-Viking or a distributed site execution profile and proof. Step `09c` remains
-explicitly absent. Backlog actionables and proposals confer no selection
-authority. Destructive cleanup, CSU or production execution, scientific review,
-evidence promotion, and biological interpretation remain separate scopes.
+Viking or a distributed site execution profile and proof. Backlog actionables
+and proposals confer no selection authority. Destructive cleanup and CSU or
+production execution remain separate scopes. Candidate review, adjudication,
+and biological interpretation are external work processes, not NORAD resume
+points or completion criteria.

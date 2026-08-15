@@ -40,8 +40,10 @@ SCHEMA_PATHS = {
         for name in SCHEMA_NAMES
     },
 }
+SCHEMA_PATHS["profile"] = SCHEMA_ROOT.parent / "v2" / "profile.schema.json"
 SCHEMA_IDS = {
-    name: f"urn:norad:schema:orchestration:{name}:v1" for name in SCHEMA_PATHS
+    name: f"urn:norad:schema:orchestration:{name}:{'v2' if name == 'profile' else 'v1'}"
+    for name in SCHEMA_PATHS
 }
 
 
@@ -290,8 +292,7 @@ def _validate_profile(record: Mapping[str, Any]) -> None:
         )
     required = set(record["required_owner_keys"])
     evidence = set(record["evidence_owner_keys"])
-    excluded = set(record["excluded_owner_keys"])
-    if not required <= owners or not evidence <= owners or not excluded <= owners:
+    if not required <= owners or not evidence <= owners:
         raise ContractValidationError(
             "Profile owner classifications must reference semantic_owner_keys"
         )
@@ -299,13 +300,9 @@ def _validate_profile(record: Mapping[str, Any]) -> None:
         raise ContractValidationError(
             "Every evidence owner must also be required for profile completion"
         )
-    if required & excluded:
+    if required != owners:
         raise ContractValidationError(
-            "Required and excluded profile owners must be disjoint"
-        )
-    if required | excluded != owners:
-        raise ContractValidationError(
-            "Every semantic owner must be classified as required or excluded"
+            "Every semantic owner must be required for profile completion"
         )
     rule_names = [task["rule_name"] for task in record["owner_tasks"]]
     if len(rule_names) != len(set(rule_names)):
@@ -324,7 +321,6 @@ def _validate_profile(record: Mapping[str, Any]) -> None:
         "cohort_partition": "partitions",
         "cohort": "cohort",
         "analysis": "analysis",
-        "scientific_review": "scientific_review",
     }
     for task in record["owner_tasks"]:
         expected_selector = scope_selectors[task["scope_type"]]

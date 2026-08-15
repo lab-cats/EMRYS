@@ -9,7 +9,7 @@ flowchart TB
     contract["Immutable canonical execution contract"]
     runid["Deterministic run ID"]
     reporting_contract["Explicit reporting-contract projection"]
-    inventory["Precomputed run-specific artifact inventory\nincluding explicit missing Step 09c expectations"]
+    inventory["Precomputed run-specific computational artifact inventory"]
 
     profile["Fixed local CMH profile\nchecked against STAGE_MAP"]
     control["Public dry-run-first run/resume control\nexact commands; no engine escape hatch"]
@@ -93,10 +93,8 @@ flowchart TB
     resume -->|no or ambiguous| blocked
 
     snakemake_state[".snakemake metadata\ndisposable, never NORAD authority"]
-    review["Step 09c scientific review\nseparate explicit post-run operation"]
     slurm["SLURM, VM, and CSU profiles\nexplicitly deferred"]
 
     engine -.-> snakemake_state
     snakemake_state -.->|never authorizes reuse or completion| inspect
-    complete -.->|does not imply| review
-    engine -.->|not in version 1| slurm
+    engine -.->|not in local profile| slurm

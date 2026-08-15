@@ -74,7 +74,7 @@ merge keys are rejected.
 | --- | --- | --- |
 | `schema_version` | Request contract version. | Keep `norad.request.v1`. |
 | `label` | Optional human label. It does not affect the run ID. | Use a short description for operators. |
-| `profile` | Fixed automatic workflow. | Keep `norad.profile.local_cmh.v1`. There is no public alternate profile. |
+| `profile` | Fixed automatic workflow. | Keep `norad.profile.local_cmh.v2`. There is no public alternate profile. |
 | `sample_manifest` | Sample TSV path. | Point to the matched sample manifest, normally beside the request. |
 | `partition_manifest` | Genomic partition TSV path. | Point to the matched partition manifest. |
 | `reference.id` | Stable reference-build identity. | Use a safe ID such as `grch38_gencode_v47`; do not use a filename as a substitute for provenance. |
@@ -294,13 +294,12 @@ their owner explicitly calls for them.
 | Area | Consumer | Tracked inputs |
 | --- | --- | --- |
 | Narrow sample-manifest admission | [Sample-manifest admission](../src/norad/ingestion/sample_manifest_admission/README.md) | [`samples.example.tsv`](samples.example.tsv) |
-| Artifact and report projection | [Reporting](../src/norad/reporting/README.md) and [artifact contracts](../src/norad/contracts/artifacts/README.md) | [`artifact_inventory.example.tsv`](artifact_inventory.example.tsv), [`artifact_run_contract.example.json`](artifact_run_contract.example.json), [`report_table_approvals.example.tsv`](report_table_approvals.example.tsv) |
+| Artifact and report projection | [Reporting](../src/norad/reporting/README.md) and [artifact contracts](../src/norad/contracts/artifacts/README.md) | [`artifact_inventory.example.tsv`](artifact_inventory.example.tsv), [`artifact_run_contract.example.json`](artifact_run_contract.example.json) |
 | Reference provenance | [Reference-provenance evidence](../src/norad/evidence/reference_provenance/README.md) | [`reference_provenance.example.tsv`](reference_provenance.example.tsv) |
 | Standalone runtime inspection | [Runtime-availability evidence](../src/norad/evidence/runtime_availability/README.md) | [`runtime_preflight.example.tsv`](runtime_preflight.example.tsv) |
 | Storage and retention | [Storage-inventory evidence](../src/norad/evidence/storage_inventory/README.md) | [`storage_roots.example.tsv`](storage_roots.example.tsv), [`retention_policy.example.tsv`](retention_policy.example.tsv) |
 | Step `07` selections | [Partitioned cohort mpileup](../src/norad/stages/partitioned_cohort_mpileup/README.md) | [`step_07_partitions.example.tsv`](step_07_partitions.example.tsv), [`step_07_partitions.pilot.tsv`](step_07_partitions.pilot.tsv), [`step_07_partitions.primary_contigs.tsv`](step_07_partitions.primary_contigs.tsv) |
 | Historical Step `09` pairing reference | [Paired CMH ranking](../src/norad/analyses/paired_cmh_candidate_ranking/README.md) | [`step_09_pairs.NORAD_EV_PUM1.tsv`](step_09_pairs.NORAD_EV_PUM1.tsv) |
-| Step `09c` human-review declarations | [Scientific-review package](../src/norad/evidence/scientific_review_package/README.md) | [`step_09c_review_plan.example.tsv`](step_09c_review_plan.example.tsv), [`step_09c_evidence_manifest.example.tsv`](step_09c_evidence_manifest.example.tsv), and [`step_09c_evidence_schemas/`](step_09c_evidence_schemas/) |
 
 An `.example` filename means structural starter, not production evidence.
 Never edit a tracked example to manufacture a passing status, approval,

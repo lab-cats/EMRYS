@@ -26,7 +26,7 @@ from norad.reporting import report as REPORT
 from norad.reporting._run_report import context as report_context
 from norad.reporting._run_report import publication, receipt, validation
 from norad.reporting._run_report.models import JINJA_VERSION, ReportRenderError
-from tests.reporting.fixtures.artifact_run_summary_v1 import build_fixture as FIXTURE
+from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXED_EPOCH = "1700000000"
@@ -53,28 +53,17 @@ def publish_run_summary(fixture: Any) -> Path:
 
 
 @pytest.fixture(scope="module")
-def incomplete_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
+def computational_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return publish_run_summary(
-        FIXTURE.build_fixture(tmp_path_factory.mktemp("report-v2") / "fixture")
+        FIXTURE.build_fixture(tmp_path_factory.mktemp("report-v3") / "fixture")
     )
-
-
-@pytest.fixture(scope="module")
-def exploratory_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
-    fixture = FIXTURE.build_approved_science_fixture(
-        tmp_path_factory.mktemp("report-v2-exploratory") / "fixture",
-        science_status="science_review_complete_exploratory",
-        roles=("candidate_selection",),
-        display_limits={"candidate_selection": 1},
-    )
-    return publish_run_summary(fixture)
 
 
 @pytest.fixture(scope="module")
 def failed_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return publish_run_summary(
         FIXTURE.build_failed_fixture(
-            tmp_path_factory.mktemp("report-v2-failed") / "fixture"
+            tmp_path_factory.mktemp("report-v3-failed") / "fixture"
         )
     )
 
@@ -274,10 +263,10 @@ def test_source_checkout_is_admitted_before_report_inputs(
 
 
 def test_renderer_git_identity_uses_checkout_not_artifact_root(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    artifact_root = incomplete_summary.parent.parent.resolve(strict=True)
+    artifact_root = computational_summary.parent.parent.resolve(strict=True)
     assert artifact_root != REPO_ROOT
     observed: list[SourceCheckout] = []
 
@@ -288,7 +277,7 @@ def test_renderer_git_identity_uses_checkout_not_artifact_root(
 
     context = report_context.prepare_context(
         arguments(
-            incomplete_summary,
+            computational_summary,
             tmp_path / "reports",
             artifact_source_root=artifact_root,
         ),
@@ -304,12 +293,12 @@ def test_renderer_git_identity_uses_checkout_not_artifact_root(
 
 
 def test_dry_run_is_side_effect_free(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     output_root = tmp_path / "reports"
-    result = REPORT.build_from_args(arguments(incomplete_summary, output_root))
+    result = REPORT.build_from_args(arguments(computational_summary, output_root))
     captured = capsys.readouterr()
     assert result == 0
     assert "Dry-run only" in captured.out
@@ -317,12 +306,12 @@ def test_dry_run_is_side_effect_free(
     assert not output_root.exists()
 
 
-def test_success_publishes_html_summary_and_v2_receipt_last(
-    incomplete_summary: Path,
+def test_success_publishes_html_summary_and_v3_receipt_last(
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     context = REPORT.prepare_report(
-        arguments(incomplete_summary, tmp_path / "reports", execute=True)
+        arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     links: list[Path] = []
     base = REPORT.default_publication_ops()
@@ -341,7 +330,10 @@ def test_success_publishes_html_summary_and_v2_receipt_last(
     ]
     assert not context.output_html.with_suffix(".pdf").exists()
     document = receipt_document(context.output_receipt)
-    assert document["schema_version"] == "2.0.0"
+    assert document["schema_version"] == "3.0.0"
+    assert document["interpretation_boundary"] == (
+        "computational_candidates_only_biological_validation_outside_norad"
+    )
     assert document["renderer"] == {"name": "Jinja2", "version": JINJA_VERSION}
     assert [item["kind"] for item in document["outputs"]] == [
         "html",
@@ -352,8 +344,112 @@ def test_success_publishes_html_summary_and_v2_receipt_last(
     assert document["validation_claimed"] is False
 
 
+def test_report_rejects_a_run_summary_without_the_computational_boundary(
+    computational_summary: Path,
+    tmp_path: Path,
+) -> None:
+    copied = write_summary_copy(
+        computational_summary,
+        tmp_path / "input",
+        lambda document: document.pop("interpretation_boundary"),
+    )
+
+    with pytest.raises(ReportRenderError, match="failed validation"):
+        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+
+
+def test_receipt_validation_reports_schema_and_semantic_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    with pytest.raises(ReportRenderError, match="schema validation failed"):
+        receipt.validate_receipt({})
+
+    class NoSchemaErrors:
+        def iter_errors(self, _document: object) -> tuple[()]:
+            return ()
+
+    monkeypatch.setattr(
+        receipt.contracts,
+        "schema_validator",
+        lambda _name: NoSchemaErrors(),
+    )
+
+    def reject_semantics(_document: dict[str, Any]) -> None:
+        raise receipt.contracts.ContractValidationError("synthetic semantic failure")
+
+    monkeypatch.setattr(
+        receipt.contracts,
+        "validate_report_receipt_semantics",
+        reject_semantics,
+    )
+    with pytest.raises(ReportRenderError, match="synthetic semantic failure"):
+        receipt.validate_receipt({})
+
+
+def test_summary_tsv_validation_rejects_shape_defects(
+    computational_summary: Path,
+    tmp_path: Path,
+) -> None:
+    context = REPORT.prepare_report(
+        arguments(computational_summary, tmp_path / "reports")
+    )
+    path = tmp_path / "summary.tsv"
+
+    path.write_text("wrong\n", encoding="utf-8")
+    with pytest.raises(ReportRenderError, match="unexpected header"):
+        receipt.validate_summary_tsv(path, context)
+
+    header = "\t".join(receipt.SUMMARY_HEADER) + "\n"
+    path.write_text(header, encoding="utf-8")
+    with pytest.raises(ReportRenderError, match="row count"):
+        receipt.validate_summary_tsv(path, context)
+
+    malformed_rows = "x\n" * len(context.summary["expected_scopes"])
+    path.write_text(header + malformed_rows, encoding="utf-8")
+    with pytest.raises(ReportRenderError, match="malformed row"):
+        receipt.validate_summary_tsv(path, context)
+
+
+def test_existing_receipt_reader_rejects_shape_and_json_defects(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "receipt.tsv"
+
+    def write_rows(rows: list[dict[str, str]]) -> None:
+        with path.open("w", encoding="utf-8", newline="") as stream:
+            writer = csv.DictWriter(
+                stream,
+                fieldnames=receipt.RECEIPT_HEADER,
+                delimiter="\t",
+                lineterminator="\n",
+            )
+            writer.writeheader()
+            writer.writerows(rows)
+
+    path.write_text("wrong\n", encoding="utf-8")
+    with pytest.raises(ReportRenderError, match="v3 receipt header"):
+        receipt.read_receipt_tsv(path)
+
+    write_rows([])
+    with pytest.raises(ReportRenderError, match="must contain output rows"):
+        receipt.read_receipt_tsv(path)
+
+    write_rows(
+        [
+            {"report_receipt_json": "{}"},
+            {"report_receipt_json": "[]"},
+        ]
+    )
+    with pytest.raises(ReportRenderError, match="disagree on canonical JSON"):
+        receipt.read_receipt_tsv(path)
+
+    write_rows([{"report_receipt_json": "not-json"}])
+    with pytest.raises(ReportRenderError, match="JSON is invalid"):
+        receipt.read_receipt_tsv(path)
+
+
 def test_receipt_attributes_provenance_to_renderer_checkout(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     upstream_commit = "upstream-summary-commit"
@@ -362,7 +458,7 @@ def test_receipt_attributes_provenance_to_renderer_checkout(
         document["provenance"]["git_commit"] = upstream_commit
 
     copied = write_summary_copy(
-        incomplete_summary,
+        computational_summary,
         tmp_path / "input",
         replace_upstream_commit,
     )
@@ -375,34 +471,10 @@ def test_receipt_attributes_provenance_to_renderer_checkout(
     assert context.producer_git_commit != upstream_commit
     assert document["provenance"] == {
         "producer": "norad.reporting.report",
-        "producer_version": "2.1.0",
+        "producer_version": "3.0.0",
         "git_commit": context.producer_git_commit,
         "created_at": context.summary["generated_at"],
     }
-
-
-def test_relative_approved_table_resolves_against_artifact_authority(
-    exploratory_summary: Path,
-    tmp_path: Path,
-) -> None:
-    relative_summary = FIXTURE.copy_summary_with_repo_relative_approved_table(
-        exploratory_summary,
-        tmp_path / "input",
-    )
-    context = REPORT.prepare_report(
-        arguments(
-            relative_summary,
-            tmp_path / "reports",
-            execute=True,
-            artifact_source_root=REPO_ROOT,
-        )
-    )
-    assert len(context.tables) == 1
-    assert context.tables[0].path == (
-        REPO_ROOT / "configs" / "report_table_approvals.example.tsv"
-    )
-    publish(context)
-    assert "example_run" in context.output_html.read_text(encoding="utf-8")
 
 
 def test_failed_expected_scope_renders_from_valid_pipeline_summary(
@@ -427,10 +499,12 @@ def test_failed_expected_scope_renders_from_valid_pipeline_summary(
 
 
 def test_identical_republication_is_byte_deterministic(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    arguments_value = arguments(incomplete_summary, tmp_path / "reports", execute=True)
+    arguments_value = arguments(
+        computational_summary, tmp_path / "reports", execute=True
+    )
     first_context = REPORT.prepare_report(arguments_value)
     publish(first_context)
     first = tuple(path.read_bytes() for path in output_paths(first_context))
@@ -441,7 +515,7 @@ def test_identical_republication_is_byte_deterministic(
 
 
 def test_jinja_is_strict_autoescaped_and_template_owns_markup(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     def add_untrusted(document: dict[str, Any]) -> None:
@@ -454,7 +528,9 @@ def test_jinja_is_strict_autoescaped_and_template_owns_markup(
             }
         )
 
-    copied = write_summary_copy(incomplete_summary, tmp_path / "input", add_untrusted)
+    copied = write_summary_copy(
+        computational_summary, tmp_path / "input", add_untrusted
+    )
     context = REPORT.prepare_report(
         arguments(copied, tmp_path / "reports", execute=True)
     )
@@ -487,15 +563,15 @@ def test_template_rejects_additional_or_untrusted_safe_boundaries() -> None:
 
 
 def test_semantic_html_preserves_banner_sections_and_terminology(
-    exploratory_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     context = REPORT.prepare_report(
-        arguments(exploratory_summary, tmp_path / "reports", execute=True)
+        arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     publish(context)
     content = context.output_html.read_text(encoding="utf-8")
-    assert "EXPLORATORY / PROVISIONAL — NOT BIOLOGICALLY VALIDATED." in content
+    assert "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE NORAD." in content
     assert "CMH-ranked candidates" in content
     assert "FWD_like" in content
     assert "biological strand" not in content
@@ -515,12 +591,12 @@ def test_semantic_html_preserves_banner_sections_and_terminology(
     )
 
 
-def test_incomplete_science_report_displays_exact_step09_results_and_key_qc(
-    incomplete_summary: Path,
+def test_report_displays_exact_step09_results_and_key_qc(
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     context = REPORT.prepare_report(
-        arguments(incomplete_summary, tmp_path / "reports", execute=True)
+        arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     assert context.computational_unavailable_reason is None
     assert context.computational_results is not None
@@ -528,14 +604,12 @@ def test_incomplete_science_report_displays_exact_step09_results_and_key_qc(
     assert context.computational_results.sample_ids == ("SYNTH_A",)
     assert context.computational_results.all_sites.row_count == 4
     assert context.computational_results.significant_sites.row_count == 1
-    assert context.tables == ()
     publish(context)
     content = context.output_html.read_text(encoding="utf-8")
     assert (
-        '<details id="computational-results-category" '
+        '<details id="computational-category" '
         'class="report-category" name="norad-report-categories" open>'
     ) in content
-    assert "Computational results — not scientifically adjudicated" in content
     assert "COMPUTATIONAL RESULTS — NOT SCIENTIFICALLY ADJUDICATED." in content
     assert 'id="computational_significant_sites"' in content
     assert 'id="computational_all_sites"' in content
@@ -543,7 +617,7 @@ def test_incomplete_science_report_displays_exact_step09_results_and_key_qc(
     assert "DP__SYNTH_A" in content
     assert "Mapped reads" in content
     assert "0.97" in content
-    assert "No Step 09c candidate-selection or adjudication" in content
+    assert "not validated RNA-editing sites" in content
 
 
 def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
@@ -566,23 +640,6 @@ def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
     assert 'id="computational_all_sites"' not in content
 
 
-def test_step09c_tables_remain_separate_from_computational_results(
-    exploratory_summary: Path,
-    tmp_path: Path,
-) -> None:
-    context = REPORT.prepare_report(
-        arguments(exploratory_summary, tmp_path / "reports", execute=True)
-    )
-    assert context.computational_results is not None
-    assert [table.role for table in context.tables] == ["candidate_selection"]
-    publish(context)
-    content = context.output_html.read_text(encoding="utf-8")
-    assert 'id="computational_all_sites"' in content
-    assert 'id="candidate-section"' in content
-    assert f'id="approved-table-{context.tables[0].table_id}"' in content
-    assert "Separate Step 09c selection and adjudication" in content
-
-
 @pytest.mark.parametrize(
     ("field", "replacement", "message"),
     (
@@ -592,7 +649,7 @@ def test_step09c_tables_remain_separate_from_computational_results(
     ),
 )
 def test_step09_source_identity_mismatches_fail_closed(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
     field: str,
     replacement: Any,
@@ -610,7 +667,7 @@ def test_step09_source_identity_mismatches_fail_closed(
                     metric["value"] = replacement
 
     copied, _paths = copied_step09_summary(
-        incomplete_summary,
+        computational_summary,
         tmp_path / "input",
         mutate_document=mutate_document,
     )
@@ -619,7 +676,7 @@ def test_step09_source_identity_mismatches_fail_closed(
 
 
 def test_step09_malformed_sample_blocks_fail_closed(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     def mutate_sources(paths: dict[str, Path]) -> None:
@@ -635,7 +692,7 @@ def test_step09_malformed_sample_blocks_fail_closed(
             )
 
     copied, _paths = copied_step09_summary(
-        incomplete_summary,
+        computational_summary,
         tmp_path / "input",
         mutate_sources=mutate_sources,
     )
@@ -644,7 +701,7 @@ def test_step09_malformed_sample_blocks_fail_closed(
 
 
 def test_step09_duplicate_candidates_fail_closed(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     def mutate_sources(paths: dict[str, Path]) -> None:
@@ -654,7 +711,7 @@ def test_step09_duplicate_candidates_fail_closed(
         rewrite_tsv(paths["step09_cmh_all_sites_v1"], duplicate)
 
     copied, _paths = copied_step09_summary(
-        incomplete_summary,
+        computational_summary,
         tmp_path / "input",
         mutate_sources=mutate_sources,
     )
@@ -687,7 +744,7 @@ def test_step09_duplicate_candidates_fail_closed(
     ),
 )
 def test_step09_sample_dp_ad_af_values_fail_closed(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
     sample_values: dict[str, str],
     message: str,
@@ -699,7 +756,7 @@ def test_step09_sample_dp_ad_af_values_fail_closed(
         rewrite_tsv(paths["step09_cmh_all_sites_v1"], invalidate)
 
     copied, _paths = copied_step09_summary(
-        incomplete_summary,
+        computational_summary,
         tmp_path / "input",
         mutate_sources=mutate_sources,
     )
@@ -717,7 +774,7 @@ def test_step09_sample_dp_ad_af_values_fail_closed(
     ),
 )
 def test_step09_owner_validation_must_be_exact_all_pass_before_rows_open(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
     corruption: str,
     message: str,
@@ -742,7 +799,7 @@ def test_step09_owner_validation_must_be_exact_all_pass_before_rows_open(
         rewrite_tsv(paths["step09_validation_report_v1"], corrupt_report)
 
     copied, _paths = copied_step09_summary(
-        incomplete_summary,
+        computational_summary,
         tmp_path / "input",
         mutate_sources=mutate_sources,
     )
@@ -751,7 +808,7 @@ def test_step09_owner_validation_must_be_exact_all_pass_before_rows_open(
 
 
 def test_step09_significant_subset_and_summary_counts_fail_closed(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     def mutate_subset(paths: dict[str, Path]) -> None:
@@ -763,7 +820,7 @@ def test_step09_significant_subset_and_summary_counts_fail_closed(
         rewrite_tsv(paths["step09_cmh_significant_sites_v1"], replace_candidate)
 
     subset_summary, _paths = copied_step09_summary(
-        incomplete_summary,
+        computational_summary,
         tmp_path / "subset",
         mutate_sources=mutate_subset,
     )
@@ -777,7 +834,7 @@ def test_step09_significant_subset_and_summary_counts_fail_closed(
         rewrite_tsv(paths["step09_cmh_summary_v1"], replace_count)
 
     count_summary, _paths = copied_step09_summary(
-        incomplete_summary,
+        computational_summary,
         tmp_path / "counts",
         mutate_sources=mutate_counts,
     )
@@ -786,7 +843,7 @@ def test_step09_significant_subset_and_summary_counts_fail_closed(
 
 
 def test_step09_invalid_thresholds_fail_closed(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     def mutate_sources(paths: dict[str, Path]) -> None:
@@ -796,7 +853,7 @@ def test_step09_invalid_thresholds_fail_closed(
         rewrite_tsv(paths["step09_cmh_summary_v1"], invalidate)
 
     copied, _paths = copied_step09_summary(
-        incomplete_summary,
+        computational_summary,
         tmp_path / "input",
         mutate_sources=mutate_sources,
     )
@@ -805,10 +862,10 @@ def test_step09_invalid_thresholds_fail_closed(
 
 
 def test_step09_input_mutation_aborts_before_publication(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    copied, paths = copied_step09_summary(incomplete_summary, tmp_path / "input")
+    copied, paths = copied_step09_summary(computational_summary, tmp_path / "input")
     context = REPORT.prepare_report(
         arguments(copied, tmp_path / "reports", execute=True)
     )
@@ -821,33 +878,8 @@ def test_step09_input_mutation_aborts_before_publication(
     assert not context.lock_path.exists()
 
 
-def test_approved_table_limit_and_truncation_are_disclosed(
-    exploratory_summary: Path,
-    tmp_path: Path,
-) -> None:
-    context = REPORT.prepare_report(
-        arguments(exploratory_summary, tmp_path / "reports", execute=True)
-    )
-    assert len(context.tables) == 1
-    assert context.tables[0].displayed_row_count == 1
-    assert context.tables[0].truncated is True
-    publish(context)
-    document = receipt_document(context.output_receipt)
-    assert document["truncations"] == [
-        {
-            "table_id": context.tables[0].table_id,
-            "report_section": "cmh-ranked-candidates",
-            "full_table_path": str(context.tables[0].path),
-            "full_table_sha256": context.tables[0].sha256,
-            "full_row_count": context.tables[0].row_count,
-            "displayed_row_count": 1,
-        }
-    ]
-    assert "Displayed 1 of" in context.output_html.read_text(encoding="utf-8")
-
-
 def test_computational_all_sites_limit_and_truncation_are_receipted(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     def expand_sources(paths: dict[str, Path]) -> None:
@@ -876,7 +908,7 @@ def test_computational_all_sites_limit_and_truncation_are_receipted(
         rewrite_tsv(paths["step09_cmh_summary_v1"], update_summary)
 
     copied, _paths = copied_step09_summary(
-        incomplete_summary,
+        computational_summary,
         tmp_path / "input",
         mutate_sources=expand_sources,
     )
@@ -904,11 +936,11 @@ def test_computational_all_sites_limit_and_truncation_are_receipted(
 
 
 def test_explicit_input_and_canonical_name_are_required(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     wrong = tmp_path / "wrong.json"
-    wrong.write_bytes(incomplete_summary.read_bytes())
+    wrong.write_bytes(computational_summary.read_bytes())
     with pytest.raises(ReportRenderError, match="Canonical run-summary"):
         REPORT.prepare_report(arguments(wrong, tmp_path / "reports"))
     with pytest.raises(ReportRenderError, match="Could not inspect"):
@@ -917,45 +949,56 @@ def test_explicit_input_and_canonical_name_are_required(
         )
 
 
-def test_v1_and_bare_html_predecessors_require_fresh_output_root(
-    incomplete_summary: Path,
+def test_report_rejects_a_non_directory_output_root(
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    run_id = json.loads(incomplete_summary.read_text(encoding="utf-8"))["run_id"]
+    output_root = tmp_path / "not-a-directory"
+    output_root.write_text("occupied\n", encoding="utf-8")
+
+    with pytest.raises(ReportRenderError, match="non-symlink directory"):
+        REPORT.prepare_report(arguments(computational_summary, output_root))
+
+
+def test_v1_and_bare_html_predecessors_require_fresh_output_root(
+    computational_summary: Path,
+    tmp_path: Path,
+) -> None:
+    run_id = json.loads(computational_summary.read_text(encoding="utf-8"))["run_id"]
     output_root = tmp_path / "reports"
     output_dir = output_root / run_id
     output_dir.mkdir(parents=True)
     (output_dir / f"{run_id}.run_report.html").write_text("legacy", encoding="utf-8")
     with pytest.raises(ReportRenderError, match="fresh output root"):
-        REPORT.prepare_report(arguments(incomplete_summary, output_root))
+        REPORT.prepare_report(arguments(computational_summary, output_root))
     (output_dir / f"{run_id}.report_outputs.tsv").write_text(
         "schema_name\tschema_version\trequested_formats\n",
         encoding="utf-8",
     )
     with pytest.raises(ReportRenderError, match="fresh output root"):
-        REPORT.prepare_report(arguments(incomplete_summary, output_root))
+        REPORT.prepare_report(arguments(computational_summary, output_root))
 
 
 def test_lock_collision_is_rejected_without_mutation(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    run_id = json.loads(incomplete_summary.read_text(encoding="utf-8"))["run_id"]
+    run_id = json.loads(computational_summary.read_text(encoding="utf-8"))["run_id"]
     output_root = tmp_path / "reports"
     output_dir = output_root / run_id
     output_dir.mkdir(parents=True)
     lock = output_dir / f".{run_id}.report.lock"
     lock.write_text("foreign\n", encoding="utf-8")
     with pytest.raises(ReportRenderError, match="lock already exists"):
-        REPORT.prepare_report(arguments(incomplete_summary, output_root))
+        REPORT.prepare_report(arguments(computational_summary, output_root))
     assert lock.read_text(encoding="utf-8") == "foreign\n"
 
 
 def test_input_mutation_aborts_and_removes_owned_state(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    copied = write_summary_copy(incomplete_summary, tmp_path / "input")
+    copied = write_summary_copy(computational_summary, tmp_path / "input")
     context = REPORT.prepare_report(
         arguments(copied, tmp_path / "reports", execute=True)
     )
@@ -967,11 +1010,11 @@ def test_input_mutation_aborts_and_removes_owned_state(
 
 
 def test_interrupted_lock_acquisition_cleans_owned_lock(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     context = REPORT.prepare_report(
-        arguments(incomplete_summary, tmp_path / "reports", execute=True)
+        arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     base = REPORT.default_publication_ops()
 
@@ -985,10 +1028,10 @@ def test_interrupted_lock_acquisition_cleans_owned_lock(
 
 
 def test_post_backup_failure_rolls_back_exact_predecessor(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    args = arguments(incomplete_summary, tmp_path / "reports", execute=True)
+    args = arguments(computational_summary, tmp_path / "reports", execute=True)
     first = REPORT.prepare_report(args)
     publish(first)
     before = {path: path.read_bytes() for path in output_paths(first)}
@@ -1011,11 +1054,11 @@ def test_post_backup_failure_rolls_back_exact_predecessor(
 
 
 def test_foreign_final_and_backup_are_preserved(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     empty_context = REPORT.prepare_report(
-        arguments(incomplete_summary, tmp_path / "foreign-final", execute=True)
+        arguments(computational_summary, tmp_path / "foreign-final", execute=True)
     )
     empty_context.output_dir.mkdir(parents=True)
     empty_context.output_html.write_text("foreign final\n", encoding="utf-8")
@@ -1023,7 +1066,7 @@ def test_foreign_final_and_backup_are_preserved(
         publish(empty_context)
     assert empty_context.output_html.read_text(encoding="utf-8") == "foreign final\n"
 
-    args = arguments(incomplete_summary, tmp_path / "foreign-backup", execute=True)
+    args = arguments(computational_summary, tmp_path / "foreign-backup", execute=True)
     initial = REPORT.prepare_report(args)
     publish(initial)
     context = REPORT.prepare_report(args)
@@ -1038,10 +1081,10 @@ def test_foreign_final_and_backup_are_preserved(
 
 
 def test_incomplete_rollback_preserves_lock_stage_and_recovery(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    args = arguments(incomplete_summary, tmp_path / "reports", execute=True)
+    args = arguments(computational_summary, tmp_path / "reports", execute=True)
     initial = REPORT.prepare_report(args)
     publish(initial)
     context = REPORT.prepare_report(args)
@@ -1062,11 +1105,11 @@ def test_incomplete_rollback_preserves_lock_stage_and_recovery(
 
 
 def test_post_commit_cleanup_failure_keeps_committed_outputs_and_evidence(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     context = REPORT.prepare_report(
-        arguments(incomplete_summary, tmp_path / "reports", execute=True)
+        arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     base = REPORT.default_publication_ops()
 
@@ -1083,11 +1126,11 @@ def test_post_commit_cleanup_failure_keeps_committed_outputs_and_evidence(
 
 
 def test_final_byte_corruption_never_commits_a_false_receipt(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     context = REPORT.prepare_report(
-        arguments(incomplete_summary, tmp_path / "reports", execute=True)
+        arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     base = REPORT.default_publication_ops()
     corrupted = False
@@ -1110,11 +1153,11 @@ def test_final_byte_corruption_never_commits_a_false_receipt(
 
 
 def test_signal_restoration_failure_is_controlled_recovery(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
     context = REPORT.prepare_report(
-        arguments(incomplete_summary, tmp_path / "reports", execute=True)
+        arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     base = REPORT.default_publication_ops()
 
@@ -1139,13 +1182,13 @@ def test_signal_restoration_failure_is_controlled_recovery(
     ),
 )
 def test_receipt_rows_must_match_canonical_json(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
     column: str,
     replacement: str,
 ) -> None:
     context = REPORT.prepare_report(
-        arguments(incomplete_summary, tmp_path / column, execute=True)
+        arguments(computational_summary, tmp_path / column, execute=True)
     )
     publish(context)
     with context.output_receipt.open(encoding="utf-8", newline="") as stream:
@@ -1168,10 +1211,12 @@ def test_receipt_rows_must_match_canonical_json(
 
 
 def test_summary_and_receipt_serializers_are_deterministic(
-    incomplete_summary: Path,
+    computational_summary: Path,
     tmp_path: Path,
 ) -> None:
-    context = REPORT.prepare_report(arguments(incomplete_summary, tmp_path / "reports"))
+    context = REPORT.prepare_report(
+        arguments(computational_summary, tmp_path / "reports")
+    )
     assert receipt.summary_tsv_bytes(context) == receipt.summary_tsv_bytes(context)
     stage = tmp_path / "stage"
     stage.mkdir()

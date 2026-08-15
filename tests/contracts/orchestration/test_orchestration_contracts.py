@@ -52,7 +52,7 @@ def request() -> dict[str, Any]:
     return {
         "schema_version": "norad.request.v1",
         "label": "tiny local run",
-        "profile": "norad.profile.local_cmh.v1",
+        "profile": "norad.profile.local_cmh.v2",
         "sample_manifest": "samples.tsv",
         "partition_manifest": "partitions.tsv",
         "reference": {
@@ -71,10 +71,10 @@ def request() -> dict[str, Any]:
 
 def profile() -> dict[str, Any]:
     return {
-        "schema_version": "norad.profile.v1",
+        "schema_version": "norad.profile.v2",
         "profile_id": "norad.profile.local_cmh",
-        "profile_version": "v1",
-        "semantic_owner_keys": ["star_index", "bam_qc", "scientific_review"],
+        "profile_version": "v2",
+        "semantic_owner_keys": ["star_index", "bam_qc"],
         "owner_tasks": [
             {
                 "machine_key": "star_index",
@@ -90,13 +90,6 @@ def profile() -> dict[str, Any]:
                 "scope_type": "sample",
                 "scope_selector": "samples",
             },
-            {
-                "machine_key": "scientific_review",
-                "rule_name": "assemble_scientific_review_evidence_package",
-                "step_id": "09c",
-                "scope_type": "scientific_review",
-                "scope_selector": "scientific_review",
-            },
         ],
         "direct_edges": [
             {
@@ -108,7 +101,6 @@ def profile() -> dict[str, Any]:
         ],
         "required_owner_keys": ["star_index", "bam_qc"],
         "evidence_owner_keys": ["bam_qc"],
-        "excluded_owner_keys": ["scientific_review"],
         "artifact_templates": [
             {
                 "artifact_id_template": "bam-qc.{sample_id}",
@@ -188,7 +180,7 @@ def execution() -> dict[str, Any]:
     }
     profile_identity = {
         "profile_id": "norad.profile.local_cmh",
-        "profile_version": "v1",
+        "profile_version": "v2",
         "profile_sha256": orchestration.canonical_sha256(profile()),
     }
     analysis = {
@@ -606,7 +598,7 @@ def test_profile_owner_task_projection_is_exact() -> None:
     record = profile()
     record["required_owner_keys"].remove("bam_qc")
     record["evidence_owner_keys"].clear()
-    with pytest.raises(orchestration.ContractValidationError, match="classified"):
+    with pytest.raises(orchestration.ContractValidationError, match="required"):
         orchestration.validate_record("profile", record)
 
     record = profile()

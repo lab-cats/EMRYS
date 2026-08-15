@@ -13,7 +13,7 @@ from norad.reporting._artifact_index import api as adapter
 
 from .inputs import _fail, _require_regular_file
 from .models import (
-    LEGACY_PRODUCER_VERSION,
+    INTERPRETATION_BOUNDARY,
     PRODUCER,
     PRODUCER_VERSION,
     QC_SUMMARY_HEADER,
@@ -113,10 +113,7 @@ def _validate_existing_summary(
     ):
         if receipt[field] != expected:
             _fail(f"Existing run-summary receipt field is invalid: {field}")
-    if receipt["producer_version"] not in {
-        LEGACY_PRODUCER_VERSION,
-        PRODUCER_VERSION,
-    }:
+    if receipt["producer_version"] != PRODUCER_VERSION:
         _fail("Existing run-summary receipt field is invalid: producer_version")
     _parse_history(
         receipt,
@@ -254,43 +251,8 @@ def _validate_existing_summary(
     ):
         if not adapter.SHA256_RE.fullmatch(receipt[field]):
             _fail(f"Existing run-summary receipt hash is invalid: {field}")
-    review = document["scientific_review"]
-    if review["record_state"] == "present":
-        if (
-            receipt["science_review_summary_path"] != review["source"]["path"]
-            or receipt["science_review_summary_sha256"] != review["source"]["sha256"]
-        ):
-            _fail("Existing science-review provenance differs between receipt and JSON")
-    elif (
-        receipt["science_review_summary_path"]
-        or receipt["science_review_summary_sha256"]
-    ):
-        _fail("Existing receipt claims a science summary while JSON has none")
-    approval_source = document["parameters"].get(
-        "report_table_approvals",
-    )
-    if receipt["producer_version"] == LEGACY_PRODUCER_VERSION:
-        if approval_source is not None or document["approved_report_tables"]:
-            _fail(
-                "Legacy run-summary predecessor must not claim report-table approvals"
-            )
-    elif "report_table_approvals" not in document["parameters"]:
-        _fail(
-            "Current run-summary predecessor is missing explicit "
-            "report-table approval provenance"
-        )
-    elif approval_source is None:
-        if document["approved_report_tables"]:
-            _fail(
-                "Existing run summary has approvals without their manifest provenance"
-            )
-    elif approval_source["row_count"] != len(document["approved_report_tables"]):
-        _fail(
-            "Existing report-table approval provenance row count differs "
-            "from its canonical JSON records"
-        )
     if receipt["summary_state"] != document["summary_state"] or (
-        receipt["science_status"] != document["science_status"]
+        receipt["interpretation_boundary"] != document["interpretation_boundary"]
     ):
         _fail("Existing run-summary receipt status differs from JSON")
     return document
@@ -316,8 +278,6 @@ def _build_receipt_row(
     qc_summary_path: Path,
     qc_summary_bytes: bytes,
     qc_summary_row_count: int,
-    science_review_summary_path: Path | None,
-    science_review_summary_sha256: str | None,
     document: Mapping[str, Any],
     attempt_id: str,
     previous_attempt_id: str | None,
@@ -352,14 +312,8 @@ def _build_receipt_row(
         "qc_summary_tsv_path": str(qc_summary_path),
         "qc_summary_tsv_sha256": adapter.sha256_bytes(qc_summary_bytes),
         "qc_summary_tsv_row_count": qc_summary_row_count,
-        "science_review_summary_path": (
-            ""
-            if science_review_summary_path is None
-            else document["scientific_review"]["source"]["path"]
-        ),
-        "science_review_summary_sha256": (science_review_summary_sha256 or ""),
         "summary_state": document["summary_state"],
-        "science_status": document["science_status"],
+        "interpretation_boundary": INTERPRETATION_BOUNDARY,
         "published_output_count": 4,
         "run_summary_attempt_id": attempt_id,
         "supersedes_run_summary_attempt_id": previous_attempt_id or "",

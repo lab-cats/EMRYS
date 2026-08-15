@@ -63,12 +63,8 @@ pre {
   z-index: 1000;
 }
 
-.state-evidence-incomplete {
+.state-computational-boundary {
   background: var(--science-incomplete-bg);
-}
-
-.state-science-review-complete-exploratory {
-  background: var(--science-exploratory-bg);
 }
 
 .report-disclaimer {

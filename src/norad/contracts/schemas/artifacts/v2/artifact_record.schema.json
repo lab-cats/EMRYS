@@ -1,0 +1,740 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:norad:schema:artifacts:artifact-record:v2",
+  "title": "NORAD artifact record v2",
+  "description": "One explicitly expected pipeline artifact and its independent implementation, testing, runtime, cluster, attempt, and provenance state.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_name",
+    "schema_version",
+    "record_type",
+    "run_id",
+    "run_contract",
+    "artifact_id",
+    "scope",
+    "adapter",
+    "expectation",
+    "availability_status",
+    "completion_status",
+    "state_reason",
+    "attempt_provenance_status",
+    "attempts",
+    "selected_attempt_id",
+    "implementation",
+    "local_testing",
+    "runtime_validation",
+    "cluster_validation",
+    "source",
+    "members",
+    "tools",
+    "parameters",
+    "metrics",
+    "warnings",
+    "errors",
+    "provenance"
+  ],
+  "properties": {
+    "schema_name": {
+      "const": "norad.artifact_record"
+    },
+    "schema_version": {
+      "const": "2.0.0"
+    },
+    "record_type": {
+      "const": "artifact_record"
+    },
+    "run_id": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+    },
+    "run_contract": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/run_contract"
+    },
+    "artifact_id": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+    },
+    "scope": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/scope"
+    },
+    "adapter": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+    },
+    "expectation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "source_path"
+      ],
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "source_path": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path"
+        }
+      }
+    },
+    "availability_status": {
+      "enum": [
+        "present",
+        "missing",
+        "externally_unavailable",
+        "unknown"
+      ]
+    },
+    "completion_status": {
+      "enum": [
+        "not_attempted",
+        "in_progress",
+        "complete",
+        "incomplete",
+        "failed"
+      ]
+    },
+    "state_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "attempt_provenance_status": {
+      "enum": [
+        "not_attempted",
+        "recorded",
+        "unavailable"
+      ]
+    },
+    "attempts": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/attempt"
+      }
+    },
+    "selected_attempt_id": {
+      "oneOf": [
+        {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "implementation": {
+      "$ref": "#/$defs/implementation_status"
+    },
+    "local_testing": {
+      "$ref": "#/$defs/local_test_status"
+    },
+    "runtime_validation": {
+      "$ref": "#/$defs/runtime_validation_status"
+    },
+    "cluster_validation": {
+      "$ref": "#/$defs/cluster_validation_status"
+    },
+    "source": {
+      "oneOf": [
+        {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path_hash"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "members": {
+      "description": "Supplemental observed components; this array is not the expected transaction roster and may be populated when the expected source is absent.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/artifact_member"
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/tool"
+      }
+    },
+    "parameters": {
+      "type": "object"
+    },
+    "metrics": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/metric"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/issue"
+      }
+    },
+    "errors": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/issue"
+      }
+    },
+    "provenance": {
+      "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/provenance"
+    }
+  },
+  "$defs": {
+    "implementation_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "git_commit",
+        "evidence"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not_implemented",
+            "implemented"
+          ]
+        },
+        "git_commit": {
+          "oneOf": [
+            {
+              "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/git_commit"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/evidence_reference"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "implemented"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "git_commit": {
+                "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/git_commit"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "local_test_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "evidence"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not_run",
+            "passed",
+            "failed"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/evidence_reference"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "passed",
+                  "failed"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "runtime_validation_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "detail",
+        "evidence"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "not_run",
+            "blocked",
+            "passed",
+            "failed"
+          ]
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/evidence_reference"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "passed",
+                  "failed"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "minItems": 1
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "blocked"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "detail": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "cluster_validation_status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dry_run_status",
+        "proof_status",
+        "evidence"
+      ],
+      "properties": {
+        "dry_run_status": {
+          "enum": [
+            "not_run",
+            "passed",
+            "failed"
+          ]
+        },
+        "proof_status": {
+          "enum": [
+            "not_run",
+            "proven",
+            "failed"
+          ]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/evidence_reference"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "proof_status": {
+                "const": "proven"
+              }
+            },
+            "required": [
+              "proof_status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "dry_run_status": {
+                "const": "passed"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "anyOf": [
+              {
+                "properties": {
+                  "dry_run_status": {
+                    "enum": [
+                      "passed",
+                      "failed"
+                    ]
+                  }
+                },
+                "required": [
+                  "dry_run_status"
+                ]
+              },
+              {
+                "properties": {
+                  "proof_status": {
+                    "enum": [
+                      "proven",
+                      "failed"
+                    ]
+                  }
+                },
+                "required": [
+                  "proof_status"
+                ]
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "evidence": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "artifact_member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "member_id",
+        "role",
+        "path",
+        "sha256",
+        "size_bytes",
+        "row_count",
+        "media_type"
+      ],
+      "properties": {
+        "member_id": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+        },
+        "role": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+        },
+        "path": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path"
+        },
+        "sha256": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/sha256"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "row_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "media_type": {
+          "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/non_empty_string"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "availability_status": {
+            "const": "present"
+          }
+        },
+        "required": [
+          "availability_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "source": {
+            "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/path_hash"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "source": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "completion_status": {
+            "const": "complete"
+          }
+        },
+        "required": [
+          "completion_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "state_reason": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "state_reason": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "completion_status": {
+            "const": "complete"
+          }
+        },
+        "required": [
+          "completion_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "availability_status": {
+            "const": "present"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "attempt_provenance_status": {
+            "const": "recorded"
+          }
+        },
+        "required": [
+          "attempt_provenance_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "attempts": {
+            "minItems": 1
+          },
+          "selected_attempt_id": {
+            "$ref": "urn:norad:schema:artifacts:common:v1#/$defs/safe_id"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "attempts": {
+            "maxItems": 0
+          },
+          "selected_attempt_id": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "attempt_provenance_status": {
+            "const": "not_attempted"
+          }
+        },
+        "required": [
+          "attempt_provenance_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "completion_status": {
+            "const": "not_attempted"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "completion_status": {
+            "const": "not_attempted"
+          }
+        },
+        "required": [
+          "completion_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "attempt_provenance_status": {
+            "const": "not_attempted"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "completion_status": {
+            "const": "complete"
+          },
+          "attempt_provenance_status": {
+            "const": "recorded"
+          }
+        },
+        "required": [
+          "completion_status",
+          "attempt_provenance_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "attempts": {
+            "contains": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "const": "succeeded"
+                }
+              },
+              "required": [
+                "state"
+              ]
+            },
+            "minContains": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "completion_status": {
+            "const": "in_progress"
+          },
+          "attempt_provenance_status": {
+            "const": "recorded"
+          }
+        },
+        "required": [
+          "completion_status",
+          "attempt_provenance_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "attempts": {
+            "contains": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "const": "running"
+                }
+              },
+              "required": [
+                "state"
+              ]
+            },
+            "minContains": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "completion_status": {
+            "const": "failed"
+          },
+          "attempt_provenance_status": {
+            "const": "recorded"
+          }
+        },
+        "required": [
+          "completion_status",
+          "attempt_provenance_status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "attempts": {
+            "contains": {
+              "type": "object",
+              "properties": {
+                "state": {
+                  "const": "failed"
+                }
+              },
+              "required": [
+                "state"
+              ]
+            },
+            "minContains": 1
+          }
+        }
+      }
+    }
+  ]
+}

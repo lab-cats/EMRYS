@@ -54,7 +54,7 @@ def _readiness(
     intake.mkdir()
     request = build(intake)
     normalized = normalize_request(
-        request, source_root / "workflow/contracts/local_cmh_v1.json"
+        request, source_root / "workflow/contracts/local_cmh_v2.json"
     )
     runtime = tmp_path / "runtime.tsv"
     runtime_bytes = b"fixed test runtime profile\n"

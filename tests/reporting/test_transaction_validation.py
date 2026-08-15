@@ -15,7 +15,7 @@ from norad.contracts.orchestration import api as orchestration_contracts
 from norad.libraries.source_authority import controlled_python_argv
 from norad.reporting import report, transaction_validation
 from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
-from tests.reporting.fixtures.artifact_run_summary_v1 import build_fixture as fixture
+from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXED_EPOCH = "1700000000"

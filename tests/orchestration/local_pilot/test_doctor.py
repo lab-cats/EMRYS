@@ -37,7 +37,7 @@ from norad.orchestration.local_pilot.normalization import normalize_request
 from tests.orchestration.local_pilot.fixture import build
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-PROFILE = REPO_ROOT / "workflow/contracts/local_cmh_v1.json"
+PROFILE = REPO_ROOT / "workflow/contracts/local_cmh_v2.json"
 EXAMPLE_RUNTIME = REPO_ROOT / "configs/local_pilot_runtime.example.tsv"
 
 

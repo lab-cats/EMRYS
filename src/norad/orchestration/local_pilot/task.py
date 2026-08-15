@@ -716,9 +716,6 @@ def _expected_scope_ids(
         return {str(execution["analysis"]["cohort_id"])}
     if selector == "analysis":
         return {str(execution["analysis"]["primary_analysis_id"])}
-    if selector == "scientific_review":
-        analysis = str(execution["analysis"]["primary_analysis_id"])
-        return {f"{analysis}.review"}
     raise TaskBoundaryError(f"Unsupported task scope selector: {selector}")
 
 

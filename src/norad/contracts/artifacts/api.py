@@ -10,7 +10,6 @@ from ._artifact_contracts.definitions import (
     REPO_ROOT,
     RUN_CONTRACT_COMPONENT_FIELDS,
     SAFE_ID_RE,
-    SCIENCE_UPSTREAM_ROLE_CONTRACTS,
     ContractValidationError,
 )
 from ._artifact_contracts.identity import (
@@ -47,9 +46,6 @@ from ._artifact_contracts.schema import (
     schema_validator,
     sha256_file,
 )
-from ._artifact_contracts.scientific_review import (
-    validate_scientific_review_semantics,
-)
 
 __all__ = (
     "INVENTORY_HEADER",
@@ -57,7 +53,6 @@ __all__ = (
     "RUN_CONTRACT_COMPONENT_FIELDS",
     "RUN_SUMMARY_STATUS_FIELDS",
     "SAFE_ID_RE",
-    "SCIENCE_UPSTREAM_ROLE_CONTRACTS",
     "ContractValidationError",
     "aggregate_artifact_state",
     "aggregate_equal_or_mixed",
@@ -82,7 +77,6 @@ __all__ = (
     "validate_resolved_path",
     "validate_run_contract",
     "validate_run_summary_semantics",
-    "validate_scientific_review_semantics",
 )
 
 
@@ -91,7 +85,6 @@ def validate_document_semantics(name: str, document: dict[str, Any]) -> None:
 
     validators = {
         "artifact-record": validate_artifact_semantics,
-        "scientific-review-record": validate_scientific_review_semantics,
         "run-summary": validate_run_summary_semantics,
         "report-receipt": validate_report_receipt_semantics,
     }

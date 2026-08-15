@@ -41,7 +41,6 @@ CRITICAL_OWNER_GROUPS: Mapping[str, tuple[str, ...]] = {
         "src/norad/contracts/artifacts/",
         "src/norad/reporting/",
     ),
-    "scientific_review_publication": ("src/norad/evidence/scientific_review_package/",),
     "paired_cmh_analysis_contracts": (
         "src/norad/analyses/paired_cmh_candidate_ranking/",
     ),

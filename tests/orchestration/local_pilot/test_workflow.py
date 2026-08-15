@@ -517,9 +517,11 @@ def test_real_local_pipeline_builds_valid_incomplete_evidence_html_tail(
         assert outcome.start_path == start
         assert outcome.verified_path == verified
     summary = json.loads(built.run_summary.read_text(encoding="utf-8"))
-    assert summary["science_status"] == "evidence_incomplete"
-    assert summary["scientific_review"]["record_state"] == "missing"
-    assert summary["scientific_review"]["record"] is None
+    assert summary["interpretation_boundary"] == (
+        "computational_candidates_only_biological_validation_outside_norad"
+    )
+    assert "science_status" not in summary
+    assert "scientific_review" not in summary
     assert completed.stdout.count("Mode: dry-run") == 3
     assert completed.stdout.count("Mode: execute") == 3
     assert completed.stdout.count("Reporting start:") == 3

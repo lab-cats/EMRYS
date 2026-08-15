@@ -24,7 +24,6 @@ from .models import (
     CSS_RESOURCE_RE,
     REMOTE_URI_RE,
     REPORT_SECTION_IDS,
-    SCIENCE_BANNERS,
     ReportRenderError,
 )
 

@@ -69,8 +69,8 @@
   data-template-sha256="{{ view.metadata.template_sha256 }}"
   data-css-sha256="{{ view.metadata.css_sha256 }}">
   <h1 id="norad-report-title">NORAD consolidated run report: {{ view.run_id }}</h1>
-  <div class="state-banner state-{{ view.science_class }}" role="status" aria-live="polite">{{ view.banner }}</div>
-  <p class="report-disclaimer">This report is a read-only view of declared evidence. Report generation is not evidence of local, runtime, cluster, scientific, or biological validation. Candidate rows are described only as {{ view.candidate_terminology }}.</p>
+  <div class="state-banner state-{{ view.boundary_class }}" role="status" aria-live="polite">{{ view.banner }}</div>
+  <p class="report-disclaimer">This report is a read-only view of computational evidence. Report generation is not evidence of local, runtime, cluster, scientific, or biological validation. Candidate rows are described only as {{ view.candidate_terminology }} and are not validated RNA-editing sites.</p>
   <div class="report-category-tabs" role="group" aria-label="Report categories">
   {% for category in view.categories %}
     <details id="{{ category.id }}" class="report-category" name="norad-report-categories"{% if category.open %} open{% endif %}>
@@ -86,7 +86,7 @@
     </details>
   {% endfor %}
   </div>
-  <p class="report-disclaimer">End of report. {{ view.banner }} Report generation did not change any recorded status.</p>
+  <p class="report-disclaimer">End of report. {{ view.banner }} Report generation did not change any computational status.</p>
 </main>
 </body>
 </html>

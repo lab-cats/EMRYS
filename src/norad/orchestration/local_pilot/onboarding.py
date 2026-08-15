@@ -32,7 +32,7 @@ DESCRIPTION = (
     "runtime. This command reads declared inputs, checks reference compatibility, "
     "and writes nothing."
 )
-PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v1.json")
+PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v2.json")
 STARTER_MANIFEST = "starter-set.manifest.tsv"
 SLURM_WRAPPER = "run-in-slurm.sh"
 RUNTIME_HEADER = (

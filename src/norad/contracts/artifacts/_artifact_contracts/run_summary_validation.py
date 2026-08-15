@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -10,7 +9,6 @@ from typing import Any
 from .artifact import validate_artifact_semantics
 from .definitions import (
     REPO_ROOT,
-    SCIENCE_UPSTREAM_ROLE_CONTRACTS,
     ContractValidationError,
 )
 from .identity import (
@@ -18,7 +16,6 @@ from .identity import (
     resolve_contract_path,
     validate_attempt_graph,
     validate_document_paths,
-    validate_resolved_path,
     validate_run_contract,
 )
 from .run_summary_status import (
@@ -30,7 +27,6 @@ from .run_summary_status import (
     artifact_status_dimensions,
     scope_key,
 )
-from .scientific_review import validate_scientific_review_semantics
 
 
 def _validate_scope_statuses(
@@ -232,181 +228,6 @@ def validate_run_summary_semantics(
                 f"computational_rollup {field} is {rollup[field]}, expected {observed_counts[state]}"
             )
     _validate_scope_statuses(rollup, artifacts, "computational_rollup")
-
-    review = document["scientific_review"]
-    if review["overall_status"] != document["science_status"]:
-        raise ContractValidationError(
-            "run summary science_status does not match scientific_review"
-        )
-    if (record := review["record"]) is not None:
-        validate_scientific_review_semantics(record)
-        if record["run_id"] != document["run_id"]:
-            raise ContractValidationError(
-                "scientific review record has a different run_id"
-            )
-        if record["run_contract"] != document["run_contract"]:
-            raise ContractValidationError(
-                "scientific review record has a different immutable run contract"
-            )
-        if record["scientific_state"]["overall_status"] != document["science_status"]:
-            raise ContractValidationError(
-                "scientific review record has a different overall science status"
-            )
-        if (
-            review["source"]["path"] != record["review_summary"]["path"]
-            or review["source"]["sha256"] != record["review_summary"]["sha256"]
-        ):
-            raise ContractValidationError(
-                "scientific review source path/hash does not match the "
-                "embedded review record"
-            )
-        matching_review_artifacts = [
-            artifact
-            for artifact in artifacts
-            if scope_key(artifact["scope"])
-            == (
-                "09c",
-                "scientific_review",
-                record["review_id"],
-            )
-            and artifact["completion_status"] == "complete"
-            and artifact["source"] is not None
-            and resolve_contract_path(
-                artifact["source"]["path"],
-                source_root=source_root,
-            )
-            == resolve_contract_path(
-                record["review_summary"]["path"],
-                source_root=source_root,
-            )
-            and artifact["source"]["sha256"] == record["review_summary"]["sha256"]
-        ]
-        if len(matching_review_artifacts) != 1:
-            raise ContractValidationError(
-                "embedded scientific review must match exactly one complete "
-                "scientific-review artifact source"
-            )
-        for input_artifact in record["input_artifacts"]:
-            role_contract = SCIENCE_UPSTREAM_ROLE_CONTRACTS.get(input_artifact["role"])
-            if role_contract is None:
-                continue
-            artifact_id = input_artifact["artifact_id"]
-            if artifact_id not in artifact_index:
-                raise ContractValidationError(
-                    f"scientific review input role "
-                    f"{input_artifact['role']!r} references artifact "
-                    f"{artifact_id!r} absent from the run summary"
-                )
-            upstream = artifact_index[artifact_id]
-            source = upstream["source"]
-            expected_step, expected_scope_type, expected_adapter, _ = role_contract
-            if (
-                upstream["completion_status"] != "complete"
-                or source is None
-                or upstream["scope"]["step_id"] != expected_step
-                or upstream["scope"]["scope_type"] != expected_scope_type
-                or upstream["adapter"] != expected_adapter
-                or source["path"] != input_artifact["path"]
-                or source["sha256"] != input_artifact["sha256"]
-                or source.get("row_count") != input_artifact["row_count"]
-            ):
-                raise ContractValidationError(
-                    f"scientific review input role "
-                    f"{input_artifact['role']!r} does not match one complete "
-                    "run artifact source"
-                )
-
-    report_tables = require_unique_key(
-        document["approved_report_tables"],
-        "table_id",
-        "approved report tables",
-    )
-    for table in report_tables.values():
-        artifact_id = table["artifact_id"]
-        if artifact_id not in artifact_index:
-            raise ContractValidationError(
-                f"report table {table['table_id']!r} references unknown "
-                f"artifact {artifact_id!r}"
-            )
-        artifact = artifact_index[artifact_id]
-        if artifact["completion_status"] != "complete":
-            raise ContractValidationError(
-                f"report table {table['table_id']!r} references a non-complete artifact"
-            )
-        report_sources = {
-            (member["path"], member["sha256"]): member for member in artifact["members"]
-        }
-        source = artifact["source"]
-        if source is not None:
-            report_sources[(source["path"], source["sha256"])] = source
-        source_record = report_sources.get((table["path"], table["sha256"]))
-        if source_record is None:
-            raise ContractValidationError(
-                f"report table {table['table_id']!r} path/hash does not match "
-                "its artifact source or members"
-            )
-        if source_record.get("row_count") != table["row_count"]:
-            raise ContractValidationError(
-                f"report table {table['table_id']!r} row_count does not match "
-                "its source artifact"
-            )
-        if source_record.get("media_type") != "text/tab-separated-values":
-            raise ContractValidationError(
-                f"report table {table['table_id']!r} must reference a TSV artifact"
-            )
-
-    if "report_table_approvals" in document["parameters"]:
-        approval_source = document["parameters"]["report_table_approvals"]
-        if approval_source is None:
-            if report_tables:
-                raise ContractValidationError(
-                    "approved report tables require explicit approval-manifest "
-                    "provenance"
-                )
-        else:
-            expected_fields = {
-                "path",
-                "sha256",
-                "size_bytes",
-                "row_count",
-                "media_type",
-            }
-            if (
-                not isinstance(approval_source, dict)
-                or set(approval_source) != expected_fields
-            ):
-                raise ContractValidationError(
-                    "report-table approval provenance has an invalid shape"
-                )
-            if not isinstance(approval_source["path"], str):
-                raise ContractValidationError(
-                    "report-table approval provenance path is invalid"
-                )
-            validate_resolved_path(
-                approval_source["path"],
-                "report-table approval provenance path",
-            )
-            if not isinstance(approval_source["sha256"], str) or not re.fullmatch(
-                r"[0-9a-f]{64}",
-                approval_source["sha256"],
-            ):
-                raise ContractValidationError(
-                    "report-table approval provenance SHA-256 is invalid"
-                )
-            if (
-                not isinstance(approval_source["size_bytes"], int)
-                or isinstance(approval_source["size_bytes"], bool)
-                or approval_source["size_bytes"] < 0
-                or not isinstance(approval_source["row_count"], int)
-                or isinstance(approval_source["row_count"], bool)
-                or approval_source["row_count"] < 1
-                or approval_source["row_count"] != len(report_tables)
-                or approval_source["media_type"] != "text/tab-separated-values"
-            ):
-                raise ContractValidationError(
-                    "report-table approval provenance does not reconcile with "
-                    "the approved records"
-                )
 
     qc_metrics = require_unique_key(
         document["qc_metrics"],

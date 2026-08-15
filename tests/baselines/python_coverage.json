@@ -101,18 +101,6 @@
       ]
     },
     {
-      "branch_rate": "0.720833",
-      "covered_branches": 346,
-      "covered_lines": 860,
-      "line_rate": "0.843137",
-      "name": "scientific_review_publication",
-      "num_branches": 480,
-      "num_statements": 1020,
-      "prefixes": [
-        "src/norad/evidence/scientific_review_package/"
-      ]
-    },
-    {
       "branch_rate": "0.888889",
       "covered_branches": 16,
       "covered_lines": 85,
@@ -169,9 +157,6 @@
       ],
       "runtime_availability_admission": [
         "src/norad/evidence/runtime_availability/"
-      ],
-      "scientific_review_publication": [
-        "src/norad/evidence/scientific_review_package/"
       ],
       "shared_scientific_validation_primitives": [
         "src/norad/libraries/alignments/",

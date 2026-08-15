@@ -11,8 +11,8 @@ publication policy, or operator state.
 - [`artifacts/`](artifacts/) owns public artifact schemas and validation.
 - [`orchestration/`](orchestration/) owns the closed local-pilot request,
   identity, attempt, task, and verified-record registry and canonical JSON API.
-- [`scientific_evidence/`](scientific_evidence/) owns neutral Step `08`, Step
-  `09`, and review-package contracts.
+- [`scientific_evidence/`](scientific_evidence/) owns neutral Step `08` and
+  Step `09` computational contracts.
 - [`schemas/`](schemas/) contains the versioned schema files registered by
   their contract owners.
 

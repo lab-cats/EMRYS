@@ -361,9 +361,11 @@ def _assert_complete_products(run_root: Path, run_id: str) -> None:
     assert (report_root / f"{run_id}.run_summary.tsv").is_file()
     assert (report_root / f"{run_id}.report_outputs.tsv").is_file()
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
-    assert summary["science_status"] == "evidence_incomplete"
-    assert summary["scientific_review"]["record_state"] == "missing"
-    assert summary["scientific_review"]["record"] is None
+    assert summary["interpretation_boundary"] == (
+        "computational_candidates_only_biological_validation_outside_norad"
+    )
+    assert "science_status" not in summary
+    assert "scientific_review" not in summary
 
 
 def test_public_cli_accepts_explicit_control_ops_and_harness_starts(
@@ -455,7 +457,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     environment = _command_environment(source_root, tmp_path)
     normalized = normalize_request(
         request,
-        REPO_ROOT / "workflow/contracts/local_cmh_v1.json",
+        REPO_ROOT / "workflow/contracts/local_cmh_v2.json",
     )
     run_root = workspace / "runs" / normalized.run_id
     common = [
@@ -622,7 +624,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     clean_request = build_intake_fixture(clean_intake_root)
     clean_normalized = normalize_request(
         clean_request,
-        REPO_ROOT / "workflow/contracts/local_cmh_v1.json",
+        REPO_ROOT / "workflow/contracts/local_cmh_v2.json",
     )
     clean_workspace = tmp_path / "clean-workspace"
     clean_common = [

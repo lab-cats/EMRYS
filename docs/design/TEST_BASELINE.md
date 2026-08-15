@@ -56,7 +56,6 @@ The accepted exact floors are:
 | `norad.libraries.validation` | `371 / 379` (`0.978892`) | `116 / 122` (`0.950820`) |
 | Shared scientific validation primitives | `341 / 341` (`1.000000`) | `123 / 124` (`0.991935`) |
 | Report/publication and receipt validation | `5272 / 6247` (`0.843925`) | `1782 / 2480` (`0.718548`) |
-| Scientific-review publication | `860 / 1020` (`0.843137`) | `346 / 480` (`0.720833`) |
 | Paired-CMH analysis contracts | `85 / 85` (`1.000000`) | `16 / 18` (`0.888889`) |
 
 The Campaign B coverage measurement ran the Python behavior lane with `1324`
@@ -70,8 +69,8 @@ local-pilot control plane, source-checkout admission, and runtime-availability
 admission.
 
 Scientific-evidence line coverage increased with identical branch coverage;
-shared scientific primitives, scientific-review publication, and paired-CMH
-contracts retained their prior ratios. Validation and reporting floors now
+shared scientific primitives and paired-CMH contracts retained their prior
+ratios. Validation and reporting floors now
 bind their expanded measured surfaces. These numerical floors do not prove
 unchanged execution of every prior statement or replace transaction, recovery,
 real-runtime, cluster, or scientific evidence.
@@ -86,7 +85,7 @@ The active policy:
 - separately runs the subprocess-only GTF-to-BED12 and sample-manifest CLI
   suites and requires coverage in their exact public route modules;
 - rejects any exact-ratio decrease in global line or branch coverage;
-- rejects any exact-ratio decrease in the ten critical-owner groups above;
+- rejects any exact-ratio decrease in the nine critical-owner groups above;
 - allows private files to move, merge, or disappear when aggregate and owner
   coverage remain non-regressive;
 - requires a genuinely new shared Python module named through
@@ -126,9 +125,8 @@ archived entry-point matrices.
 | SLURM directives, modes, modules, CWD, delegation, arguments, outputs, and exits | [`test_slurm_wrapper_contracts.py`](../../tests/test_slurm_wrapper_contracts.py) plus the delegated functional owner |
 | Exact validation check rosters | [`validation_roster_expectations.py`](../../tests/contract_integration/validation_rosters/validation_roster_expectations.py) and [`test_validation_check_rosters.py`](../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py) |
 | Validation publication and neutral BAM/reference/executable-resolution helpers | [`test_validation_report.py`](../../tests/libraries/test_validation_report.py), [`test_bam_validation.py`](../../tests/libraries/test_bam_validation.py), [`test_reference_contigs.py`](../../tests/libraries/test_reference_contigs.py), [`test_executable_resolution.py`](../../tests/libraries/test_executable_resolution.py), and affected consumer transaction suites |
-| Public schemas, headers, deterministic bytes, statuses, and shared scientific-state transitions | Contract-owner tests under `tests/contracts/` plus [independent contract goldens](../../tests/contract_integration/independent_contract_goldens/README.md) and affected producer suites |
+| Public schemas, headers, deterministic bytes, and computational statuses | Contract-owner tests under `tests/contracts/` plus [independent contract goldens](../../tests/contract_integration/independent_contract_goldens/README.md) and affected producer suites |
 | Step `09` statistic, p-value, odds-ratio, and estimability behavior | [independent CMH oracle](../../tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_oracle.py), fixed owner corpus, and guarded real-R comparison |
-| Step `09c` input, evidence policy, publication, signal, concurrency, and recovery behavior | [publisher suite](../../tests/evidence/scientific_review_package/test_step_09c_scientific_validation.py), adjacent shell contract, fixture builder, grouped assembly route, and neutral [review-package tests](../../tests/contracts/scientific_evidence/test_review_package.py) |
 | Python non-regression measurement | Tracked snapshot, comparison implementation, and direct policy tests named above |
 
 Local mocks, wrapper stubs, guarded R fixtures, and pinned report rendering do
@@ -202,10 +200,9 @@ Retained current boundaries:
 | Validation reports and exact check rosters | Preserve the literal seven-column report and ordered producer rosters through validator owners, roster agreement, and independent goldens. |
 | Schemas, headers, deterministic bytes, and statuses | Preserve independent canonical JSON/TSV/receipt expectations plus broader contract and producer tests; do not infer evidence promotion from a shared status word. |
 | Hashes, mutation, links, signals, and filesystem identity | Recheck stable-input detection, same-size/restored-mtime gaps, symlink/hardlink/directory substitution, cleanup, and recovery through the applicable fault-injection and transaction owner. |
-| Computational, scientific, and biological evidence states | Keep local, runtime, cluster, recorded, pending, absent, limitation, computational, review, and reserved-readiness meanings distinct. |
+| Computational and external interpretation boundaries | Keep local, runtime, cluster, and computational claims distinct; candidate review, adjudication, and biological interpretation remain external work-process records rather than test-owned pipeline states. |
 | Direct execution, arbitrary CWD, and SLURM | Preserve file-mode, Bash 3.2, dry-run side-effect, CWD, module, delegation, and output-check exceptions through public-CLI, wrapper, and owner suites; real scheduler/module behavior remains deferred. |
 | Step `09` CMH semantics | Preserve the independent count-derived oracle and guarded real-R comparison; production-validator non-recomputation remains a characterized defect. |
-| Step `09c` and shared science-policy projection | Preserve input/publication/recovery behavior and recorded/pending/absent/limitation/computational transitions through the direct evidence owner and neutral contract tests. |
 
 ## Fixture independence
 
@@ -214,9 +211,10 @@ producer-coupled fixtures. Recheck the applicable direct owner whenever a
 schema, header, serialized byte, status, transaction, scientific rule, or
 fixture builder changes.
 
-Real bcftools, CSU scheduler/modules, production-scale R, production scientific
-review, and production reports remain environment-deferred until separately
-inspected evidence exists.
+Real bcftools, CSU scheduler/modules, production-scale R, and production reports
+remain environment-deferred until separately inspected evidence exists.
+External scientific review or adjudication records are evaluated outside this
+test baseline.
 
 ## Evidence-derived characterization gaps
 

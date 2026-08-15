@@ -32,7 +32,6 @@ from .models import (
 from .reconciliation import (
     reconcile_native_transactions,
     reconcile_scope_transactions,
-    resolve_scientific_states,
 )
 from .records import (
     build_artifact_record,
@@ -157,23 +156,16 @@ def prepare_context(
         source_root=source_root,
     )
     reconcile_scope_transactions(inspections)
-    scientific_states = resolve_scientific_states(inspections)
 
     validator = contracts.schema_validator("artifact-record")
     records: list[dict[str, Any]] = []
     record_bytes: list[bytes] = []
     for inspection, inventory_row in zip(inspections, inventory_rows, strict=True):
-        scope = (
-            inventory_row["step_id"],
-            inventory_row["scope_type"],
-            inventory_row["scope_id"],
-        )
         record = build_artifact_record(
             run_id=arguments.run_id,
             run_contract=run_contract,
             inspection=inspection,
             implementation=evidence[inventory_row["step_id"]],
-            scientific_state=scientific_states.get(scope),
             git_commit=git_commit,
             created_at=started_at,
         )

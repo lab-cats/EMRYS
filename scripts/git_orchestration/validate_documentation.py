@@ -78,10 +78,6 @@ SOURCE_OWNER_DIRECTORY_NAMES = {
     ): "paired_cmh_candidate_ranking",
     ("evidence", "collect_canonical_BAM_QC_evidence"): "canonical_bam_qc",
     ("evidence", "collect_RSeQC_paired_orientation_evidence"): "rseqc_orientation",
-    (
-        "evidence",
-        "assemble_scientific_review_evidence_package",
-    ): "scientific_review_package",
     ("stage", "align_RNA_reads_with_STAR"): "star_alignment",
     ("stage", "construct_canonical_BAM"): "canonical_bam",
     ("stage", "construct_STAR_index"): "star_index",
@@ -198,8 +194,8 @@ def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
         flags=re.MULTILINE,
     )
     identities = identity_pattern.findall(stage_map.read_text(encoding="utf-8"))
-    if len(identities) != 14 or len({slug for _, slug in identities}) != 14:
-        problems.append("STAGE_MAP identity roster must contain 14 unique owners")
+    if len(identities) != 13 or len({slug for _, slug in identities}) != 13:
+        problems.append("STAGE_MAP identity roster must contain 13 unique owners")
         return
     domain_by_kind = {"stage": "stages", "analysis": "analyses", "evidence": "evidence"}
     for kind, slug in identities:

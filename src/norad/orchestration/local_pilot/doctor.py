@@ -49,7 +49,7 @@ DESCRIPTION = (
     "read-only and never installs, repairs, loads modules, or creates a workspace."
 )
 SNAKEMAKE_VERSION = "9.25.1"
-PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v1.json")
+PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v2.json")
 
 LOCAL_PILOT_R_PACKAGES = (
     ("r_variant_annotation", "VariantAnnotation"),

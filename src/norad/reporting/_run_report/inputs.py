@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import csv
 import hashlib
 import os
 import stat
-from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -15,9 +13,8 @@ from norad.reporting import _files
 
 from .models import (
     CANDIDATE_TERMINOLOGY,
+    INTERPRETATION_BOUNDARY,
     RUN_SUMMARY_SCHEMA_VERSION,
-    SCIENCE_BANNERS,
-    ApprovedTable,
     FileSnapshot,
     ReportRenderError,
 )
@@ -104,10 +101,10 @@ def _load_run_summary(path: Path, *, source_root: Path) -> dict[str, Any]:
             "Run summary does not use the required candidate terminology: "
             f"{CANDIDATE_TERMINOLOGY}"
         )
-    if document["science_status"] not in SCIENCE_BANNERS:
+    if document["interpretation_boundary"] != INTERPRETATION_BOUNDARY:
         _fail(
-            "Run summary uses an unauthorized scientific state: "
-            f"{document['science_status']!r}"
+            "Run summary uses an unsupported interpretation boundary: "
+            f"{document['interpretation_boundary']!r}"
         )
     return document
 
@@ -126,81 +123,3 @@ def _resolve_contract_file(value: str, label: str, *, source_root: Path) -> Path
     if resolved != lexical:
         _fail(f"{label} must not traverse a symbolic link: {value}")
     return resolved
-
-
-def _read_approved_table(
-    record: Mapping[str, Any],
-    *,
-    source_root: Path,
-) -> ApprovedTable:
-    table_id = record["table_id"]
-    path = _resolve_contract_file(
-        record["path"],
-        f"approved report table {table_id!r}",
-        source_root=source_root,
-    )
-    snapshot = _snapshot_regular(
-        path,
-        f"approved report table {table_id!r}",
-    )
-    if snapshot.sha256 != record["sha256"]:
-        _fail(
-            f"Approved report table {table_id!r} SHA-256 mismatch: observed "
-            f"{snapshot.sha256}; expected {record['sha256']}"
-        )
-
-    display_limit = record["display_row_limit"]
-    header: tuple[str, ...] | None = None
-    displayed: list[tuple[str, ...]] = []
-    row_count = 0
-    try:
-        with path.open(encoding="utf-8", newline="") as stream:
-            reader = csv.reader(stream, delimiter="\t", strict=True)
-            try:
-                raw_header = next(reader)
-            except StopIteration:
-                _fail(f"Approved report table {table_id!r} is empty: {path}")
-            if not raw_header or any(not column for column in raw_header):
-                _fail(f"Approved report table {table_id!r} has a blank header column")
-            if len(raw_header) != len(set(raw_header)):
-                _fail(
-                    f"Approved report table {table_id!r} has duplicate header columns"
-                )
-            header = tuple(raw_header)
-            for row_number, row in enumerate(reader, start=2):
-                if len(row) != len(header):
-                    _fail(
-                        f"Approved report table {table_id!r} row {row_number} "
-                        f"has {len(row)} fields; expected {len(header)}"
-                    )
-                row_count += 1
-                if display_limit is None or len(displayed) < display_limit:
-                    displayed.append(tuple(row))
-    except ReportRenderError:
-        raise
-    except (OSError, UnicodeError, csv.Error) as exc:
-        _fail(f"Could not parse approved report table {table_id!r}: {exc}")
-
-    if row_count != record["row_count"]:
-        _fail(
-            f"Approved report table {table_id!r} row-count mismatch: observed "
-            f"{row_count}; expected {record['row_count']}"
-        )
-    _assert_snapshot(snapshot, f"approved report table {table_id!r}")
-    assert header is not None
-    return ApprovedTable(
-        table_id=table_id,
-        artifact_id=record["artifact_id"],
-        role=record["role"],
-        title=record["title"],
-        path=path,
-        sha256=snapshot.sha256,
-        row_count=row_count,
-        display_row_limit=display_limit,
-        approval_policy_version=record["approval"]["policy_version"],
-        approved_by=record["approval"]["approved_by"],
-        approved_at=record["approval"]["approved_at"],
-        header=header,
-        display_rows=tuple(displayed),
-        snapshot=snapshot,
-    )

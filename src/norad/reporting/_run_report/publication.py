@@ -14,7 +14,7 @@ from norad.reporting.report import ReportPublicationOps
 from .context import expected_html_identity
 from .inputs import _assert_snapshot, _fail, _snapshot_regular
 from .models import (
-    SCIENCE_BANNERS,
+    BOUNDARY_BANNER,
     FileSnapshot,
     LockOwnership,
     ReportContext,
@@ -118,7 +118,7 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
         _assert_expected_bytes(staged_html, context.html_bytes, "staged HTML report")
         validate_rendered_html(
             staged_html,
-            expected_banner=SCIENCE_BANNERS[context.summary["science_status"]],
+            expected_banner=BOUNDARY_BANNER,
             expected_identity=expected_html_identity(context),
         )
         staged_summary = stage / context.output_summary_tsv.name
@@ -213,7 +213,7 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
         _assert_receipted_outputs(document)
         validate_rendered_html(
             context.output_html,
-            expected_banner=SCIENCE_BANNERS[context.summary["science_status"]],
+            expected_banner=BOUNDARY_BANNER,
             expected_identity=expected_html_identity(context),
         )
         validate_summary_tsv(context.output_summary_tsv, context)

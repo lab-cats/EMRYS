@@ -69,7 +69,7 @@ automatic recovery subsystem in version 1.
 | Reusable task completion | NORAD verified task record after owner validation and semantic all-pass gating | Process exit alone, output presence, timestamps, or `.snakemake/` metadata |
 | Reporting identity | Explicit projection from the execution contract into the existing artifact run contract | The reporting run contract as a complete execution identity |
 | Run state | Immutable workflow-attempt records, verified task records, owner receipts/reports, and observed recovery state | A mutable status cache, log, rendered report, or scheduler state |
-| Scientific review | Separately invoked Step `09c` owner and explicit reviewer declarations | Automatic orchestration or local computational completion |
+| Biological review and interpretation | External research work-process records | NORAD orchestration, reports, or local computational completion |
 
 Snakemake implements a checked projection of `STAGE_MAP.md`; it never becomes
 a second semantic DAG authority. An exact workflow-profile test must compare
@@ -87,11 +87,10 @@ The only selected profile is the current paired-CMH workflow:
   HTML report.
 
 The `02b` and `03` evidence branches do not gate downstream scientific compute,
-but the local profile requires them before workflow completion. Step `09c` is
-not automatic: the final report must show its evidence as absent or incomplete
-until a separately authorized review package is assembled. Step `09`'s two
-diagnostic PDFs remain native analysis artifacts; this does not reintroduce a
-PDF report format.
+but the local profile requires them before workflow completion. The profile
+ends at Step `09`; biological review and interpretation are not owner tasks,
+artifacts, or completion states. Step `09`'s two diagnostic PDFs remain native
+analysis artifacts; this does not reintroduce a PDF report format.
 
 The first pilot uses only public owner commands and a clean admitted source
 checkout. It imports no peer-private Python implementation. Repository shell
@@ -117,7 +116,7 @@ without adding discovery or extension fields:
 ```yaml
 schema_version: norad.request.v1
 label: optional-human-label
-profile: norad.profile.local_cmh.v1
+profile: norad.profile.local_cmh.v2
 sample_manifest: samples.tsv
 partition_manifest: partitions.tsv
 reference:
@@ -272,12 +271,10 @@ root distinct from the admitted source checkout: the run root resolves
 relative inventory paths, while checkout authority continues to bind producer
 and renderer code. A workflow may not force the operator workspace beneath the
 Git checkout to collapse those authorities.
-It retains the existing expected Step `09c` reporting rows even though Step
-`09c` is excluded from automatic execution. Their absent sources remain
-explicitly missing/incomplete in the artifact index, run summary, and report.
-Successful reporting transactions do not make those artifacts present, and
-the run-summary `summary_state` or required-missing count is not the workflow
-completion Boolean.
+The profile projects only current computational artifacts through Step `09`.
+Successful reporting transactions do not create biological evidence, and the
+run-summary state or required-missing count is not the workflow completion
+Boolean.
 
 ## Identity vocabulary
 
@@ -560,8 +557,7 @@ the ordered pre-entry diagnostic and task-start rosters, and admit all three rep
 start-to-verification chains before publishing the workflow-attempt receipt.
 `local_pipeline_complete` means real or fixture local execution only as
 identified by the admitted inputs. It does not establish CSU execution,
-production-scale behavior, completed Step `09c` scientific review, validated
-editing sites, or biological readiness.
+production-scale behavior, validated editing sites, or biological readiness.
 
 ## Explicit deferrals
 
@@ -572,8 +568,7 @@ B0 makes no decision or implementation commitment for:
 - synthetic-data generation or real science-tool execution;
 - a generic assay, stage, plugin, or analysis registry;
 - optional-stage and archival-success policy;
-- automatic Step `09c` execution or scientific-review completion;
-- biological-readiness policy;
+- in-code scientific approval or biological-readiness policy;
 - public acquisition or a general provenance subsystem;
 - application logging implementation or generic gate receipts;
 - automatic stale-lock cleanup or owner recovery;

@@ -309,7 +309,7 @@ def _sample_manifest() -> bytes:
 def _request() -> bytes:
     return b"""schema_version: norad.request.v1
 label: deterministic-science-smoke-v1
-profile: norad.profile.local_cmh.v1
+profile: norad.profile.local_cmh.v2
 sample_manifest: samples.tsv
 partition_manifest: partitions.tsv
 reference:

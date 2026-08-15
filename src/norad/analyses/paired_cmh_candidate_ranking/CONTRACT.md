@@ -20,9 +20,10 @@ validated RNA-editing sites.
 
 Step `09` requires that final owner's sites table and input receipt, the sample and
 partition manifests, and explicit analysis policy. It does not consume the
-Step `08` QC summary or standalone validation report. Step `09c` consumes the
-complete six-output transaction together with upstream evidence for scientific
-review.
+Step `08` QC summary or standalone validation report. Artifact indexing and
+reporting consume the validated six-output transaction without changing its
+computational meaning. External review or adjudication may reference these
+outputs and their provenance, but it is not a pipeline dependency.
 
 ## Pairing, method, and policy
 
@@ -143,19 +144,15 @@ publication failures exit `2`.
 
 ## Consumers and protected evidence
 
-- Step `09c` scientific review consumes the full native transaction, Step `08`
-  three-table transaction, manifests, declared review evidence, and review
-  policy. It independently validates native outputs but does not require the
-  standalone Step `09` validation report or rerun CMH analysis.
 - Artifact adapters register all six outputs and
-  `step09_validation_report_v1`; reporting consumes the later canonical review
-  package rather than treating raw significant rows as biological truth.
+  `step09_validation_report_v1`; reporting presents them as computational
+  candidates rather than treating threshold-passing rows as biological truth.
 - Direct shell/R/validator tests protect manifests and pairing, statuses,
   thresholds, method metadata, dry-run, transaction, rollback, plots, and the
   independent validation boundary.
 - Independent Python-oracle and real-R corpus comparisons protect CMH/BH
   behavior; wrapper, roster, publication-fault, public-CLI, artifact, report,
-  coverage, and Step `09c` tests protect cross-boundary behavior.
+  and coverage tests protect cross-boundary behavior.
 
 This is local fixture and guarded real-R/oracle evidence, not production,
 cluster, completed scientific review, or biological interpretation readiness.
@@ -164,15 +161,14 @@ cluster, completed scientific review, or biological interpretation readiness.
 
 - The Step `08` input contract now belongs to neutral
   [`step08.py`](../../contracts/scientific_evidence/step08.py), imported by
-  neutral Step `09`, this validator, Step `09c`, and the artifact index under one
+  neutral Step `09`, this validator, and the artifact index under one
   shared module/error/table identity.
 - Step `09` schemas and reusable validators now belong to neutral
   [`step09.py`](../../contracts/scientific_evidence/step09.py), imported by
-  this validator, Step `09c`, and artifact indexing under one shared ready-owner
-  identity. Review policy and publication remain with Step `09c`.
+  this validator and artifact indexing under one shared ready-owner identity.
 - Method/schema/status logic is duplicated across shell, R, Python, oracle,
-  artifact, and scientific-review surfaces; shared report publication belongs
-  to neutral [`validation/report.py`](../../libraries/validation/report.py).
+  artifact, and validation surfaces; shared report publication belongs to
+  neutral [`validation/report.py`](../../libraries/validation/report.py).
 - Producer-recorded relative paths are later interpreted from a consumer's
   working directory, and the summary omits implementation, runtime, R/package,
   attempt, and sibling-output identities.

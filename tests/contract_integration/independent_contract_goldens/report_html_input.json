@@ -6,12 +6,14 @@
     "jinja_version": "3.1.6",
     "producer_git_commit": "goldencommit",
     "renderer": "norad.reporting.report",
-    "renderer_version": "2.1.0",
+    "renderer_version": "3.0.0",
     "run_summary_path": "goldens/synthetic_run/synthetic_run.run_summary.json",
     "run_summary_sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "state_banner": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE NORAD.",
     "source_checkout": "/synthetic/norad",
+    "artifact_source_root": "/synthetic/artifacts",
     "template_path": "norad.reporting/templates/run_report.html.j2",
     "template_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
   },
-  "summary_fixture": "tests/contracts/artifacts/fixtures/artifact_schema_v1/valid/run_summary.json"
+  "summary_fixture": "tests/contracts/artifacts/fixtures/artifact_schema_v2/valid/run_summary.json"
 }

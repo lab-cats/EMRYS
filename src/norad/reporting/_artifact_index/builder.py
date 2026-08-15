@@ -1,7 +1,7 @@
 """Build a read-only, explicit artifact index for one immutable NORAD run.
 
 The command never discovers pipeline inputs, invokes analysis software, or
-changes native Step 00a-09c outputs. Every source comes from one validated
+changes native Step 00a-09 outputs. Every source comes from one validated
 inventory row. Dry-run is the default; execute mode publishes one JSON record
 per row, an inventory-ordered TSV index, and a receipt last as a
 rollback-protected transaction.

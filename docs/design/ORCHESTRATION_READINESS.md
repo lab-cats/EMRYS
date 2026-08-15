@@ -23,7 +23,6 @@ proof; do not copy this B0 assessment into workflow rules as new behavior.
 | --- | --- |
 | `ready` | Admitted to the fixed no-science local profile; the listed invariants remain mandatory for continued admission and reuse. |
 | `harden` | A bounded owner change or explicit recovery/no-clobber contract is required before unattended profile execution. |
-| `exclude` | The operation is intentionally outside the automatic version 1 profile. |
 
 The generic semantic all-pass gate is required for every validator regardless
 of disposition because current validators may publish failed rows with exit
@@ -46,9 +45,8 @@ zero.
 | [`generate_partitioned_cohort_mpileup_VCFs`](../../src/norad/stages/partitioned_cohort_mpileup/CONTRACT.md), per cohort/partition | Public shell producer; grouped validator | B1 added no-clobber admission, pre-receipt final validation, and failed-restore preservation | `ready` | Full input/output binding, validator all-pass, and verified-task binding remain required for continued rule admission and reuse |
 | [`preprocess_and_annotate_cohort_candidates`](../../src/norad/stages/cohort_candidate_preprocessing/CONTRACT.md), one cohort | Public shell/R producer; grouped validator | B1 added no-clobber admission and failed-restore preservation | `ready` | Explicit locked `renv`, validator all-pass, and verified-task sibling binding remain required for continued rule admission and reuse |
 | [`rank_cohort_candidates_with_paired_CMH`](../../src/norad/analyses/paired_cmh_candidate_ranking/CONTRACT.md), one analysis | Public shell/R producer; grouped validator | No owner redesign is known; shared semantic-gate and resume proof remain | `ready` | Explicit locked `renv`, paired-strata admission, complete transaction, semantic all-pass, retained independent test oracle, and failure/resume proof |
-| [`assemble_scientific_review_evidence_package`](../../src/norad/evidence/scientific_review_package/CONTRACT.md), one review | Grouped public assembler; publisher performs its own validation | Requires explicit human/reviewer declarations and must not be fabricated by computational orchestration | `exclude` | Separately authorized post-run review only; automatic profile reports review evidence absent/incomplete |
 | [Artifact index and run summary](../../src/norad/reporting/README.md), one run | Grouped public build routes | B4 schedules the deterministic projected inventory and re-admits both complete transactions through the direct reporting validator | `ready` | No-science fixed-profile proof exists; real owner artifacts and production evidence remain separate |
-| [Jinja HTML report](../../src/norad/reporting/README.md), one run | Grouped public report builder | B4 schedules and semantically re-admits the HTML/TSV/v2 receipt transaction under distinct source-code and artifact roots | `ready` | No-science fixed-profile proof shows absent Step `09c` honestly; production reporting remains separate |
+| [Jinja HTML report](../../src/norad/reporting/README.md), one run | Grouped public report builder | B4 schedules and semantically re-admits the HTML/TSV/v3 receipt transaction under distinct source-code and artifact roots | `ready` | The fixed profile reports computational evidence only; production reporting remains separate |
 
 ## Cross-cutting prerequisites
 

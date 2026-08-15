@@ -1,10 +1,9 @@
 flowchart TD
     native["Native step and module outputs"] --> adapters["Explicit read-only adapters"]
-    evidence["Validation and scientific evidence"] --> adapters
-    approvals["Exact table approvals"] --> summary["Canonical run summary"]
-    adapters --> summary
+    evidence["Owner-local validation evidence"] --> adapters
+    adapters --> summary["Canonical run summary"]
     summary --> view["Versioned format-neutral view model"]
-    view --> science["Science profile<br/>future default"]
+    view --> science["Focused computational profile<br/>future default"]
     view --> comprehensive["Comprehensive profile<br/>explicit retained view"]
     science --> sciencehtml["Accessible science HTML"]
     comprehensive --> fullhtml["Comprehensive HTML"]

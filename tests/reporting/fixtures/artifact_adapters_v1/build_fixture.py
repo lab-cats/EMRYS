@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build a complete, temporary artifact-adapters-v1 fixture.
+"""Build a complete, temporary artifact-adapters fixture.
 
 The tracked artifact inventory is the fixture's source of truth.  This builder
-rewrites its 81 explicit source paths into a caller-owned temporary directory
+rewrites its 68 explicit source paths into a caller-owned temporary directory
 and creates the smallest source accepted by each registered adapter.  Generated
 pipeline-like artifacts stay untracked.
 """
@@ -19,7 +19,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from norad.contracts.scientific_evidence import review_package, step09
+from norad.contracts.scientific_evidence import step09
 from norad.reporting._artifact_index.registry import ADAPTER_REGISTRY
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -40,7 +40,6 @@ PARTITION_MANIFEST_SHA256 = "3" * 64
 PRIMARY_ANALYSIS_ID = "synthetic_analysis"
 PRIMARY_ANALYSIS_POLICY_SHA256 = "4" * 64
 COHORT_ID = "synthetic_cohort"
-REVIEW_ID = "synthetic_review"
 CANONICAL_BGZF_EOF_BLOCK = bytes.fromhex(
     "1f8b08040000000000ff0600424302001b0003000000000000000000"
 )
@@ -132,9 +131,9 @@ def read_inventory_template() -> list[dict[str, str]]:
         if tuple(reader.fieldnames or ()) != INVENTORY_HEADER:
             raise RuntimeError("Tracked artifact inventory header changed")
         rows = list(reader)
-    if len(rows) != 81:
+    if len(rows) != 68:
         raise RuntimeError(
-            f"Expected 81 artifact rows in tracked inventory; found {len(rows)}"
+            f"Expected 68 artifact rows in tracked inventory; found {len(rows)}"
         )
     return rows
 
@@ -170,9 +169,6 @@ def row_value(column: str) -> str:
         "partition_manifest_sha256": PARTITION_MANIFEST_SHA256,
         "analysis_id": PRIMARY_ANALYSIS_ID,
         "primary_analysis_id": PRIMARY_ANALYSIS_ID,
-        "review_id": REVIEW_ID,
-        "overall_science_status": "evidence_incomplete",
-        "orientation_status": "provisional",
         "orientation_policy": "legacy_provisional_v1",
         "transaction_state": "complete",
         "sample_count": "1",
@@ -186,23 +182,7 @@ def row_value(column: str) -> str:
         "sample_manifest_row_count": "1",
         "partition_manifest_path": "/synthetic/partition_manifest.tsv",
         "partition_manifest_row_count": "2",
-        "evidence_manifest_path": "/synthetic/evidence_manifest.tsv",
-        "evidence_manifest_sha256": "6" * 64,
-        "evidence_manifest_row_count": str(len(review_package.CATEGORY_ORDER)),
-        "evidence_source_count": "0",
-        "superseded_analysis_ids": "NA",
-        "sensitivity_analysis_ids": "NA",
-        "review_completed_date": "NA",
-        "background_decision": "pending",
-        "matched_dna_decision": "pending",
-        "orthogonal_evidence_decision": "pending",
-        "annotation_decision": "pending",
-        "thresholds_decision": "pending",
-        "adjudication_decision": "pending",
-        "orientation_decision": "pending",
     }
-    if column in {f"{category}_status" for category in review_package.CATEGORY_ORDER}:
-        return "missing"
     if column.startswith("DP__"):
         return "10"
     if column.startswith("AD__"):
@@ -358,17 +338,6 @@ def tsv_rows_for(
         "step09_cmh_all_sites_v1": 4,
         "step09_cmh_significant_sites_v1": 1,
         "step09_mutation_spectrum_tsv_v1": 12,
-        "step09c_evidence_index_v1": len(review_package.CATEGORY_ORDER),
-        "step09c_orientation_locus_audit_v1": 0,
-        "step09c_annotation_audit_v1": 0,
-        "step09c_qc_funnel_v1": 0,
-        "step09c_replicate_effects_v1": 0,
-        "step09c_sensitivity_matrix_v1": 0,
-        "step09c_leave_one_pair_out_v1": 0,
-        "step09c_candidate_selection_v1": 0,
-        "step09c_candidate_adjudication_v1": 0,
-        "step09c_decisions_v1": 0,
-        "step09c_limitations_v1": 0,
     }
     count = count_overrides.get(
         adapter,
@@ -712,79 +681,6 @@ def tsv_rows_for(
                     "significant_down_count": "0",
                 }
             )
-    elif adapter == "step09c_evidence_index_v1":
-        for output_row, category in zip(
-            rows,
-            review_package.CATEGORY_ORDER,
-            strict=True,
-        ):
-            output_row.update(
-                {
-                    "review_id": REVIEW_ID,
-                    "evidence_id": f"evidence_{category}",
-                    "evidence_category": category,
-                    "analysis_id": PRIMARY_ANALYSIS_ID,
-                    "source_path": "NA",
-                    "declared_sha256": "NA",
-                    "observed_sha256": "NA",
-                    "declared_row_count": "NA",
-                    "observed_row_count": "NA",
-                    "evidence_status": "missing",
-                    "not_applicable_reason": "NA",
-                    "reviewer": "synthetic_reviewer",
-                    "owner": "synthetic_owner",
-                    "evidence_date": "NA",
-                    "policy_version": "synthetic_policy_v1",
-                }
-            )
-    elif adapter == "step09c_review_summary_v1":
-        plan = inventory_row(inventory_rows, "step09c_review_plan_v1")
-        rows[0].update(
-            {
-                "review_id": REVIEW_ID,
-                "primary_analysis_id": PRIMARY_ANALYSIS_ID,
-                "overall_science_status": "evidence_incomplete",
-                "orientation_status": "provisional",
-                "orientation_policy": "legacy_provisional_v1",
-                "evidence_record_count": str(len(review_package.CATEGORY_ORDER)),
-                "evidence_source_count": "0",
-                "selected_candidate_count": "0",
-                "adjudicated_candidate_count": "0",
-                "limitation_count": "0",
-                "published_output_count": "13",
-                "transaction_state": "complete",
-                "review_plan_path": plan["source_path"],
-                "review_plan_sha256": sha256_file(plan["source_path"]),
-                "review_plan_row_count": "1",
-            }
-        )
-        upstream = {
-            "step08_sites": "step08_sites_v1",
-            "step08_inputs": "step08_inputs_v1",
-            "step08_summary": "step08_summary_v1",
-            "step09_all_sites": "step09_cmh_all_sites_v1",
-            "step09_significant_sites": ("step09_cmh_significant_sites_v1"),
-            "step09_summary": "step09_cmh_summary_v1",
-            "step09_mutation_spectrum": ("step09_mutation_spectrum_tsv_v1"),
-            "step09_mutation_spectrum_pdf": ("step09_mutation_spectrum_pdf_v1"),
-            "step09_depth_delta_pdf": "step09_depth_delta_pdf_v1",
-        }
-        row_counts = {
-            "step08_sites": "4",
-            "step08_inputs": "4",
-            "step08_summary": "1",
-            "step09_all_sites": "4",
-            "step09_significant_sites": "1",
-            "step09_summary": "1",
-            "step09_mutation_spectrum": "12",
-            "step09_mutation_spectrum_pdf": "NA",
-            "step09_depth_delta_pdf": "NA",
-        }
-        for prefix, adapter_id in upstream.items():
-            upstream_row = inventory_row(inventory_rows, adapter_id)
-            rows[0][f"{prefix}_path"] = upstream_row["source_path"]
-            rows[0][f"{prefix}_sha256"] = sha256_file(upstream_row["source_path"])
-            rows[0][f"{prefix}_row_count"] = row_counts[prefix]
     return rows
 
 

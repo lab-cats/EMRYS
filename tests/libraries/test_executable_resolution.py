@@ -54,12 +54,6 @@ CONSUMERS = {
         0,
         2,
     ),
-    "evidence/scientific_review_package/step_09c_scientific_validation.sh": (
-        0o755,
-        0,
-        0,
-        1,
-    ),
 }
 
 

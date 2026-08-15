@@ -19,7 +19,7 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
-from norad.contracts.scientific_evidence import review_package, step08, step09
+from norad.contracts.scientific_evidence import step08, step09
 from norad.libraries.source_authority import controlled_python_argv
 from tests.contract_integration.validation_rosters.validation_roster_expectations import (
     assert_exact_check_roster,
@@ -94,10 +94,6 @@ EXPECTED_PRODUCER_EVIDENCE = {
         "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh",
         "5fb74325467541fa830e53ecd38f150d5c94511259d9915bc65074496c3be5c8",
-    ),
-    "09c": (
-        "src/norad/evidence/scientific_review_package/publisher.py",
-        "c5f7ddb41896790942340d91032de71bfd2221636df3d48726dc2bc9721f7e0f",
     ),
 }
 VALIDATION_ARTIFACT_STEPS = {
@@ -276,12 +272,12 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
 ) -> None:
     rows = artifact_fixture.inventory_rows
 
-    assert len(rows) == 81
+    assert len(rows) == 68
     assert [row["artifact_id"] for row in rows] == [
         row["artifact_id"] for row in FIXTURE.read_inventory_template()
     ]
     assert {row["adapter"] for row in rows} == set(ARTIFACT_REGISTRY.ADAPTER_REGISTRY)
-    assert len(artifact_fixture.source_paths) == 81
+    assert len(artifact_fixture.source_paths) == 68
     assert all(path.is_file() for path in artifact_fixture.source_paths.values())
     assert not artifact_fixture.output_root.exists()
 
@@ -516,9 +512,9 @@ def test_help_and_dry_run_validate_all_sources_without_writing(
         assert option in help_result.stdout
     assert result.returncode == 0, result.stderr
     assert "Mode: dry-run" in result.stdout
-    assert "Inventory artifacts: 81" in result.stdout
-    assert "present=81" in result.stdout
-    assert "complete=81" in result.stdout
+    assert "Inventory artifacts: 68" in result.stdout
+    assert "present=68" in result.stdout
+    assert "complete=68" in result.stdout
     assert "Receipt (published last)" in result.stdout
     assert "Dry-run only" in result.stdout
     assert not artifact_fixture.output_root.exists()
@@ -579,7 +575,7 @@ def test_execute_publishes_inventory_ordered_schema_valid_transaction(
     assert "Published receipt last" in result.stdout
     index_rows = read_tsv(artifact_fixture.artifacts_path)
     receipt_rows = read_tsv(artifact_fixture.receipt_path)
-    assert len(index_rows) == 81
+    assert len(index_rows) == 68
     assert len(receipt_rows) == 1
     receipt = receipt_rows[0]
     assert [row["artifact_id"] for row in index_rows] == [
@@ -587,19 +583,19 @@ def test_execute_publishes_inventory_ordered_schema_valid_transaction(
     ]
     assert {row["availability_status"] for row in index_rows} == {"present"}
     assert {row["completion_status"] for row in index_rows} == {"complete"}
-    assert receipt["inventory_row_count"] == "81"
-    assert receipt["artifact_record_count"] == "81"
-    assert receipt["present_artifact_count"] == "81"
-    assert receipt["complete_artifact_count"] == "81"
+    assert receipt["inventory_row_count"] == "68"
+    assert receipt["artifact_record_count"] == "68"
+    assert receipt["present_artifact_count"] == "68"
+    assert receipt["complete_artifact_count"] == "68"
     assert receipt["required_missing_artifact_count"] == "0"
     assert receipt["warning_count"] == "0"
     assert receipt["error_count"] == "0"
-    assert receipt["published_output_count"] == "83"
+    assert receipt["published_output_count"] == "70"
     assert receipt["transaction_state"] == "complete"
     assert receipt["artifacts_index_sha256"] == sha256_file(
         artifact_fixture.artifacts_path
     )
-    assert len(list(artifact_fixture.records_dir.glob("*.json"))) == 81
+    assert len(list(artifact_fixture.records_dir.glob("*.json"))) == 68
 
     for row in index_rows:
         record_path = Path(row["record_path"])
@@ -698,9 +694,9 @@ def test_missing_and_malformed_sources_are_explicit_and_scope_reconciled(
     assert malformed_sibling["completion_status"] == "incomplete"
 
     receipt = read_tsv(artifact_fixture.receipt_path)[0]
-    assert receipt["present_artifact_count"] == "80"
+    assert receipt["present_artifact_count"] == "67"
     assert receipt["missing_artifact_count"] == "1"
-    assert receipt["complete_artifact_count"] == "75"
+    assert receipt["complete_artifact_count"] == "62"
     assert receipt["incomplete_artifact_count"] == "5"
     assert receipt["failed_artifact_count"] == "1"
     assert receipt["required_missing_artifact_count"] == "1"
@@ -870,7 +866,7 @@ def test_undeclared_source_and_unrelated_run_outputs_are_ignored_and_preserved(
     assert second.returncode == 0, second.stderr
     assert unrelated.read_bytes() == unrelated_payload
     index_rows = read_tsv(artifact_fixture.artifacts_path)
-    assert len(index_rows) == 81
+    assert len(index_rows) == 68
     assert str(undeclared) not in {row["source_path"] for row in index_rows}
     assert not any(
         path.name.startswith("undeclared")
@@ -1238,47 +1234,6 @@ def test_dangling_declared_symlink_is_externally_unavailable(
     ]
 
 
-def test_reserved_biological_ready_state_is_rejected(
-    artifact_fixture: Any,
-) -> None:
-    for artifact_id in (
-        "review.synthetic.review_plan",
-        "review.synthetic.review_summary",
-    ):
-        path = artifact_fixture.source_for(artifact_id)
-        rows = read_tsv(path)
-        rows[0]["overall_science_status"] = "biological_interpretation_ready"
-        header = (
-            review_package.REVIEW_PLAN_HEADER
-            if artifact_id.endswith("review_plan")
-            else review_package.REVIEW_SUMMARY_HEADER
-        )
-        FIXTURE.write_tsv(path, header, rows)
-    review_summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
-    review_summary_rows = read_tsv(review_summary_path)
-    review_summary_rows[0]["review_plan_sha256"] = sha256_file(
-        artifact_fixture.source_for("review.synthetic.review_plan")
-    )
-    FIXTURE.write_tsv(
-        review_summary_path,
-        review_package.REVIEW_SUMMARY_HEADER,
-        review_summary_rows,
-    )
-
-    result = run_cli(artifact_fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    summary = record_for(artifact_fixture, "review.synthetic.review_summary")
-    assert summary["completion_status"] == "failed"
-    assert summary["scientific_state"] is None
-    assert [entry["code"] for entry in summary["errors"]] == ["science_status_invalid"]
-    assert all(
-        record_for(artifact_fixture, row["artifact_id"])["scientific_state"] is None
-        for row in artifact_fixture.inventory_rows
-        if row["step_id"] == "09c"
-    )
-
-
 def test_tampered_receipt_and_extra_record_entry_block_retry(
     artifact_fixture: Any,
 ) -> None:
@@ -1461,7 +1416,7 @@ def test_post_commit_backup_cleanup_failure_preserves_new_transaction(
     )
 
 
-def test_native_metrics_and_science_state_are_conservative(
+def test_native_metrics_and_artifact_state_are_conservative(
     artifact_fixture: Any,
 ) -> None:
     result = run_cli(artifact_fixture, execute=True)
@@ -1488,15 +1443,11 @@ def test_native_metrics_and_science_state_are_conservative(
     )
     genome = record_for(artifact_fixture, "ref.star_index.genome")
     assert genome["source"]["media_type"] == "application/octet-stream"
-    review = record_for(
-        artifact_fixture,
-        "review.synthetic.review_summary",
-    )
-    assert review["scientific_state"]["overall_status"] == ("evidence_incomplete")
-    assert review["runtime_validation"]["status"] == "not_run"
-    assert review["cluster_validation"]["proof_status"] == "not_run"
-    assert review["attempts"] == []
-    assert review["selected_attempt_id"] is None
+    assert "scientific_state" not in genome
+    assert genome["runtime_validation"]["status"] == "not_run"
+    assert genome["cluster_validation"]["proof_status"] == "not_run"
+    assert genome["attempts"] == []
+    assert genome["selected_attempt_id"] is None
 
 
 def test_star_final_log_preserves_infinite_mapping_speed_as_string(
@@ -1578,9 +1529,9 @@ def test_all_missing_sources_publish_complete_index_transaction(
 
     assert result.returncode == 0, result.stderr
     receipt = read_tsv(artifact_fixture.receipt_path)[0]
-    assert receipt["missing_artifact_count"] == "81"
-    assert receipt["incomplete_artifact_count"] == "81"
-    assert receipt["required_missing_artifact_count"] == "81"
+    assert receipt["missing_artifact_count"] == "68"
+    assert receipt["incomplete_artifact_count"] == "68"
+    assert receipt["required_missing_artifact_count"] == "68"
     assert receipt["transaction_state"] == "complete"
 
 
@@ -1719,11 +1670,6 @@ def test_failed_restored_transaction_validation_requarantines_receipt(
             "analysis.synthetic.cmh_summary",
             "analysis.synthetic.cmh_all_sites",
         ),
-        (
-            "09c",
-            "review.synthetic.review_summary",
-            "review.synthetic.review_plan",
-        ),
     ],
 )
 def test_native_transaction_reconciliation_rejects_internal_mismatch(
@@ -1761,14 +1707,7 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
             rows,
         )
     else:
-        path = artifact_fixture.source_for("review.synthetic.review_summary")
-        rows = read_tsv(path)
-        rows[0]["step09_summary_sha256"] = "9" * 64
-        FIXTURE.write_tsv(
-            path,
-            review_package.REVIEW_SUMMARY_HEADER,
-            rows,
-        )
+        raise AssertionError(f"Unhandled native transaction step: {step_id}")
 
     result = run_cli(artifact_fixture, execute=True)
 
@@ -1780,9 +1719,6 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
         "native_transaction_inconsistent"
     ]
     assert sibling["completion_status"] == "incomplete"
-    if step_id == "09c":
-        assert marker["scientific_state"] is None
-        assert sibling["scientific_state"] is None
 
 
 @pytest.mark.parametrize(
@@ -2066,115 +2002,6 @@ def test_step09_rejects_unknown_status_and_pairwise_spectrum_mismatch(
         )["completion_status"]
         == "failed"
     )
-
-
-def test_step09c_cannot_self_declare_exploratory_completion(
-    artifact_fixture: Any,
-) -> None:
-    plan_path = artifact_fixture.source_for("review.synthetic.review_plan")
-    plan_rows = read_tsv(plan_path)
-    plan_rows[0]["overall_science_status"] = "science_review_complete_exploratory"
-    plan_rows[0]["review_completed_date"] = "2026-01-01"
-    FIXTURE.write_tsv(
-        plan_path,
-        review_package.REVIEW_PLAN_HEADER,
-        plan_rows,
-    )
-    summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
-    summary_rows = read_tsv(summary_path)
-    summary_rows[0]["overall_science_status"] = "science_review_complete_exploratory"
-    summary_rows[0]["review_completed_date"] = "2026-01-01"
-    summary_rows[0]["review_plan_sha256"] = sha256_file(plan_path)
-    FIXTURE.write_tsv(
-        summary_path,
-        review_package.REVIEW_SUMMARY_HEADER,
-        summary_rows,
-    )
-
-    result = run_cli(artifact_fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    summary = record_for(
-        artifact_fixture,
-        "review.synthetic.review_summary",
-    )
-    assert summary["completion_status"] == "failed"
-    assert summary["scientific_state"] is None
-
-
-def test_step09c_requires_every_explicit_evidence_category(
-    artifact_fixture: Any,
-) -> None:
-    evidence_index = artifact_fixture.source_for("review.synthetic.evidence_index")
-    evidence_rows = read_tsv(evidence_index)[:1]
-    FIXTURE.write_tsv(
-        evidence_index,
-        review_package.EVIDENCE_INDEX_HEADER,
-        evidence_rows,
-    )
-    summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
-    summary_rows = read_tsv(summary_path)
-    summary_rows[0]["evidence_record_count"] = "1"
-    summary_rows[0]["evidence_manifest_row_count"] = "1"
-    FIXTURE.write_tsv(
-        summary_path,
-        review_package.REVIEW_SUMMARY_HEADER,
-        summary_rows,
-    )
-
-    result = run_cli(artifact_fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    summary = record_for(
-        artifact_fixture,
-        "review.synthetic.review_summary",
-    )
-    assert summary["completion_status"] == "failed"
-    assert summary["scientific_state"] is None
-
-
-def test_step09c_complete_evidence_cannot_point_to_empty_payload(
-    artifact_fixture: Any,
-) -> None:
-    evidence_index = artifact_fixture.source_for("review.synthetic.evidence_index")
-    evidence_rows = read_tsv(evidence_index)
-    orientation = evidence_rows[0]
-    assert orientation["evidence_category"] == "orientation_locus_audit"
-    orientation.update(
-        {
-            "source_path": "/synthetic/orientation.tsv",
-            "declared_sha256": "a" * 64,
-            "observed_sha256": "a" * 64,
-            "declared_row_count": "0",
-            "observed_row_count": "0",
-            "evidence_status": "complete",
-            "evidence_date": "2026-01-01",
-        }
-    )
-    FIXTURE.write_tsv(
-        evidence_index,
-        review_package.EVIDENCE_INDEX_HEADER,
-        evidence_rows,
-    )
-    summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
-    summary_rows = read_tsv(summary_path)
-    summary_rows[0]["orientation_locus_audit_status"] = "complete"
-    summary_rows[0]["evidence_source_count"] = "1"
-    FIXTURE.write_tsv(
-        summary_path,
-        review_package.REVIEW_SUMMARY_HEADER,
-        summary_rows,
-    )
-
-    result = run_cli(artifact_fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    summary = record_for(
-        artifact_fixture,
-        "review.synthetic.review_summary",
-    )
-    assert summary["completion_status"] == "failed"
-    assert summary["scientific_state"] is None
 
 
 def test_first_publication_rollback_fsync_failure_retains_recovery_lock(

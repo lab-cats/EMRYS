@@ -21,7 +21,7 @@
       "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/non_empty_string"
     },
     "profile": {
-      "const": "norad.profile.local_cmh.v1"
+      "const": "norad.profile.local_cmh.v2"
     },
     "sample_manifest": {
       "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/authored_path"

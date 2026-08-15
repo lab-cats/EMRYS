@@ -15,7 +15,7 @@ from tests.orchestration.local_pilot import fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CONFIG_ROOT = REPO_ROOT / "configs"
-LOCAL_PROFILE = REPO_ROOT / "workflow/contracts/local_cmh_v1.json"
+LOCAL_PROFILE = REPO_ROOT / "workflow/contracts/local_cmh_v2.json"
 LOCAL_PILOT_STARTERS = (
     "local_pilot_request.example.yaml",
     "local_pilot_samples.example.tsv",
@@ -59,7 +59,7 @@ def test_local_pilot_starters_normalize_after_explicit_paths_are_populated(
         "local_pilot_partitions.example.tsv"
     )
     assert normalized.profile["profile_id"] == "norad.profile.local_cmh"
-    assert normalized.profile["profile_version"] == "v1"
+    assert normalized.profile["profile_version"] == "v2"
     assert [
         (row["sample_id"], row["condition"], row["replicate"])
         for row in normalized.execution_contract["samples"]["rows"]

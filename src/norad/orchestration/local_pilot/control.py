@@ -112,7 +112,7 @@ def _normalize_after_doctor(
     try:
         normalized = ops.normalize(
             readiness.request_path,
-            readiness.source_root / "workflow/contracts/local_cmh_v1.json",
+            readiness.source_root / "workflow/contracts/local_cmh_v2.json",
         )
     except (OSError, orchestration_contracts.ContractValidationError) as exc:
         raise ControlError(str(exc)) from exc

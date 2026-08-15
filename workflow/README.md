@@ -8,11 +8,10 @@ scientific evidence.
 ## Implemented boundary
 
 [`Snakefile`](Snakefile) defines exactly thirteen executable owner rules from
-the automatic subset of
-[`STAGE_MAP.md`](../src/norad/contracts/STAGE_MAP.md). Step `09c` remains a
-separately authorized scientific-review owner and is deliberately absent. The
-`02b` and `03` evidence rules are required leaves of a complete run, but they
-never gate downstream scientific compute.
+the complete current owner graph in
+[`STAGE_MAP.md`](../src/norad/contracts/STAGE_MAP.md). The `02b` and `03`
+evidence rules are required leaves of a complete run, but they never gate
+downstream scientific compute.
 
 Every executable rule publishes only one path of this form:
 
@@ -35,7 +34,7 @@ task attempt, validation report and fresh semantic all-pass result, native
 receipt, and every bound input/output size and SHA-256. A stale or copied JSON
 pathname therefore cannot unlock downstream work.
 
-After all request-expanded owner results are verified, three non-scientific rules
+After all request-expanded owner results are verified, three reporting rules
 run in order: `build_artifact_index`, `build_run_summary`, and
 `build_html_report`. Each calls its grouped public `norad build` CLI once in
 dry-run mode, publishes an immutable reporting-start record, calls the builder
@@ -44,9 +43,9 @@ verified-reporting record after semantic receipt validation. Snakemake declares
 only the fixed `state/reporting/<kind>/verified.json` record for each rule;
 native receipts remain builder-owned semantic evidence passed as parameters.
 Downstream reporting rules consume verified records, and the default input-only
-`local_pipeline_slice` target ends at the HTML-report verified record. Step
-`09c` is still absent, so this local pipeline can correctly report
-`evidence_incomplete`; reporting never promotes scientific review.
+`local_pipeline_slice` target ends at the HTML-report verified record. The
+profile and its reporting inventory end at Step `09`; biological review and
+interpretation remain external work-process records.
 
 A pre-existing reporting result is reusable only when both its start and
 verified records exist and the public read-only validator reconstructs the
@@ -58,7 +57,7 @@ graph. A native receipt pathname alone never satisfies the workflow.
 ## Fixed inputs
 
 The workflow reads the reviewed profile at
-[`contracts/local_cmh_v1.json`](contracts/local_cmh_v1.json). A caller must
+[`contracts/local_cmh_v2.json`](contracts/local_cmh_v2.json). A caller must
 also provide an immutable, canonical-JSON, attempt-specific Snakemake config
 with this closed operational mapping:
 

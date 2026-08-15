@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from functools import partial
 
-from norad.contracts.scientific_evidence import review_package, step08, step09
+from norad.contracts.scientific_evidence import step08, step09
 from norad.libraries.alignments import orientation as alignment_orientation
 
 from .models import (
@@ -97,7 +97,6 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
     add_partition = partial(add_spec, registry, "cohort_partition")
     add_cohort = partial(add_spec, registry, "cohort")
     add_analysis = partial(add_spec, registry, "analysis")
-    add_review = partial(add_spec, registry, "scientific_review")
     add_reference(
         "step00a_star_index_v1",
         "00a",
@@ -301,17 +300,6 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
             suffixes=(suffix,),
         )
     add_validation_report(registry, "09", "analysis", exact_data_rows=7)
-    for key, suffix in review_package.OUTPUT_SUFFIXES:
-        exact_rows = 1 if key in review_package.SINGLE_ROW_OUTPUTS else None
-        add_review(
-            f"step09c_{key}_v1",
-            "09c",
-            "tsv",
-            suffixes=(f".{suffix}",),
-            expected_header=review_package.OUTPUT_HEADERS[key],
-            exact_data_rows=exact_rows,
-            allow_header_only=exact_rows is None,
-        )
     return registry
 
 

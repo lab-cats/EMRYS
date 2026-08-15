@@ -52,9 +52,6 @@ def fixture_files() -> dict[str, dict[str, dict[str, int]]]:
         "src/norad/reporting/private_publication.py": {
             "summary": summary((70, 100), (20, 40))
         },
-        "src/norad/evidence/scientific_review_package/private_publisher.py": {
-            "summary": summary((85, 100), (30, 40))
-        },
         "src/norad/analyses/paired_cmh_candidate_ranking/private_validator.py": {
             "summary": summary((90, 100), (32, 40))
         },

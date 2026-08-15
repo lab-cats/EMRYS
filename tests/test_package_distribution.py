@@ -14,7 +14,7 @@ import zipfile
 from email.parser import Parser
 from pathlib import Path
 
-from tests.reporting.fixtures.artifact_run_summary_v1 import build_fixture as FIXTURE
+from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_DEPENDENCIES = {"jinja2", "jsonschema", "pyyaml", "referencing"}
@@ -25,13 +25,12 @@ RUNTIME_REQUIREMENT_SPECIFIERS = {
     "referencing": ">=0.28.4",
 }
 RESOURCE_PATHS = (
-    "norad/contracts/schemas/artifacts/v1/artifact_record.schema.json",
+    "norad/contracts/schemas/artifacts/v2/artifact_record.schema.json",
     "norad/contracts/schemas/artifacts/v1/common.schema.json",
-    "norad/contracts/schemas/artifacts/v2/report_receipt.schema.json",
-    "norad/contracts/schemas/artifacts/v1/run_summary.schema.json",
-    "norad/contracts/schemas/artifacts/v1/scientific_review_record.schema.json",
+    "norad/contracts/schemas/artifacts/v2/run_summary.schema.json",
+    "norad/contracts/schemas/artifacts/v3/report_receipt.schema.json",
     "norad/contracts/schemas/orchestration/v1/request.schema.json",
-    "norad/contracts/schemas/orchestration/v1/profile.schema.json",
+    "norad/contracts/schemas/orchestration/v2/profile.schema.json",
     "norad/contracts/schemas/orchestration/v1/execution.schema.json",
     "norad/contracts/schemas/orchestration/v1/reference.schema.json",
     "norad/contracts/schemas/orchestration/v1/policy.schema.json",
@@ -176,7 +175,9 @@ def inspect_wheel(wheel: Path) -> None:
             assert archive.read(resource) == (REPO_ROOT / "src" / resource).read_bytes()
         license_root = metadata_member.removesuffix("METADATA") + "licenses/"
         for relative_path, source_path in LICENSE_FILES.items():
-            assert archive.read(license_root + relative_path) == source_path.read_bytes()
+            assert (
+                archive.read(license_root + relative_path) == source_path.read_bytes()
+            )
 
 
 def install_locked_wheel(wheel: Path, tmp_path: Path) -> tuple[Path, Path]:
@@ -267,12 +268,7 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
 
 
 def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -> None:
-    fixture = FIXTURE.build_approved_science_fixture(
-        tmp_path / "report-fixture",
-        science_status="science_review_complete_exploratory",
-        roles=("candidate_selection",),
-        display_limits={"candidate_selection": 1},
-    )
+    fixture = FIXTURE.build_fixture(tmp_path / "report-fixture")
     summary_result = run_command(
         [
             sys.executable,
@@ -288,20 +284,12 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         cwd=REPO_ROOT,
     )
     require_success(summary_result)
-    artifact_source_root = tmp_path / "wheel-artifact-source"
-    relative_table_path = "wheel-only/report_table_approvals.tsv"
-    approved_table = artifact_source_root / relative_table_path
-    approved_table.parent.mkdir(parents=True)
-    shutil.copy2(
-        REPO_ROOT / "configs/report_table_approvals.example.tsv",
-        approved_table,
-    )
-    relative_summary = FIXTURE.copy_summary_with_repo_relative_approved_table(
-        fixture.summary_json_path,
-        artifact_source_root,
-        relative_table_path=relative_table_path,
-        table_source_root=artifact_source_root,
-        summary_git_commit="upstream-summary-commit",
+    artifact_source_root = fixture.root
+    summary = json.loads(fixture.summary_json_path.read_text(encoding="utf-8"))
+    summary["provenance"]["git_commit"] = "upstream-summary-commit"
+    fixture.summary_json_path.write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
     )
     wheel = build_wheel(tmp_path)
     inspect_wheel(wheel)
@@ -413,7 +401,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
             "--artifact-source-root",
             str(artifact_source_root),
             "--run-summary",
-            str(relative_summary),
+            str(fixture.summary_json_path),
             "--output-root",
             str(report_output_root),
             "--execute",
@@ -434,9 +422,9 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     assert "Jinja2" in (report_directory / f"{run_id}.report_outputs.tsv").read_text(
         encoding="utf-8"
     )
-    assert "example_run" in (report_directory / f"{run_id}.run_report.html").read_text(
-        encoding="utf-8"
-    )
+    assert "CMH-ranked candidates" in (
+        report_directory / f"{run_id}.run_report.html"
+    ).read_text(encoding="utf-8")
     with (report_directory / f"{run_id}.report_outputs.tsv").open(
         encoding="utf-8",
         newline="",

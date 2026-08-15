@@ -1,7 +1,7 @@
 {
   "artifact_record.schema.json": [
     {
-      "expected": "urn:norad:schema:artifacts:artifact-record:v1",
+      "expected": "urn:norad:schema:artifacts:artifact-record:v2",
       "pointer": "/$id"
     },
     {
@@ -9,7 +9,7 @@
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "1.0.0",
+      "expected": "2.0.0",
       "pointer": "/properties/schema_version/const"
     },
     {
@@ -32,10 +32,19 @@
     },
     {
       "expected": [
-        "evidence_incomplete",
-        "science_review_complete_exploratory"
+        "not_run",
+        "passed",
+        "failed"
       ],
-      "pointer": "/$defs/scientific_state/properties/overall_status/enum"
+      "pointer": "/$defs/cluster_validation_status/properties/dry_run_status/enum"
+    },
+    {
+      "expected": [
+        "not_run",
+        "proven",
+        "failed"
+      ],
+      "pointer": "/$defs/cluster_validation_status/properties/proof_status/enum"
     }
   ],
   "common.schema.json": [
@@ -66,7 +75,7 @@
   ],
   "report_receipt.schema.json": [
     {
-      "expected": "urn:norad:schema:artifacts:report-receipt:v2",
+      "expected": "urn:norad:schema:artifacts:report-receipt:v3",
       "pointer": "/$id"
     },
     {
@@ -74,7 +83,7 @@
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "2.0.0",
+      "expected": "3.0.0",
       "pointer": "/properties/schema_version/const"
     },
     {
@@ -86,11 +95,12 @@
       "pointer": "/properties/renderer/properties/version/const"
     },
     {
-      "expected": [
-        "evidence_incomplete",
-        "science_review_complete_exploratory"
-      ],
-      "pointer": "/properties/science_status/enum"
+      "expected": "computational_candidates_only_biological_validation_outside_norad",
+      "pointer": "/properties/interpretation_boundary/const"
+    },
+    {
+      "expected": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE NORAD.",
+      "pointer": "/properties/state_banner/const"
     },
     {
       "expected": false,
@@ -99,23 +109,19 @@
     {
       "expected": false,
       "pointer": "/properties/validation_claimed/const"
-    },
-    {
-      "expected": "SCIENTIFIC REVIEW INCOMPLETE — NO BIOLOGICAL INTERPRETATION.",
-      "pointer": "/allOf/0/then/properties/state_banner/const"
-    },
-    {
-      "expected": "EXPLORATORY / PROVISIONAL — NOT BIOLOGICALLY VALIDATED.",
-      "pointer": "/allOf/1/then/properties/state_banner/const"
     }
   ],
   "run_summary.schema.json": [
+    {
+      "expected": "urn:norad:schema:artifacts:run-summary:v2",
+      "pointer": "/$id"
+    },
     {
       "expected": "norad.run_summary",
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "1.1.0",
+      "expected": "2.0.0",
       "pointer": "/properties/schema_version/const"
     },
     {
@@ -127,49 +133,12 @@
       "pointer": "/properties/summary_state/enum"
     },
     {
-      "expected": [
-        "evidence_incomplete",
-        "science_review_complete_exploratory"
-      ],
-      "pointer": "/properties/science_status/enum"
-    },
-    {
       "expected": "CMH-ranked candidates",
       "pointer": "/properties/candidate_terminology/const"
-    }
-  ],
-  "scientific_review_record.schema.json": [
-    {
-      "expected": "norad.scientific_review_record",
-      "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "1.1.0",
-      "pointer": "/properties/schema_version/const"
-    },
-    {
-      "expected": [
-        "evidence_incomplete",
-        "science_review_complete_exploratory"
-      ],
-      "pointer": "/properties/scientific_state/properties/overall_status/enum"
-    },
-    {
-      "expected": [
-        "missing",
-        "incomplete",
-        "complete",
-        "not_applicable"
-      ],
-      "pointer": "/$defs/evidence_category/properties/status/enum"
-    },
-    {
-      "expected": [
-        "not_run",
-        "proven",
-        "failed"
-      ],
-      "pointer": "/properties/computational_status/properties/cluster_proof_status/enum"
+      "expected": "computational_candidates_only_biological_validation_outside_norad",
+      "pointer": "/properties/interpretation_boundary/const"
     }
   ]
 }

@@ -53,7 +53,7 @@ T = TypeVar("T")
 
 
 class ContractError(RuntimeError):
-    """Raised when an explicit scientific-review contract is invalid."""
+    """Raised when an explicit computational-evidence contract is invalid."""
 
 
 SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")

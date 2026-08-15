@@ -120,26 +120,20 @@ class RunSummaryInputValidationOps(Protocol):
     """Explicit semantic dependencies accepted from preparation/publication."""
 
     validate_artifact_transaction: Any
-    normalize_scientific_review: Any
 
 
 @dataclass(frozen=True, slots=True)
 class _DefaultRunSummaryInputValidationOps:
     validate_artifact_transaction: Any
-    normalize_scientific_review: Any
 
 
 def _default_run_summary_input_ops() -> RunSummaryInputValidationOps:
     from norad.reporting._artifact_index.validation import (
         validate_published_transaction,
     )
-    from norad.reporting._run_summary.science_projection import (
-        normalize_scientific_review,
-    )
 
     return _DefaultRunSummaryInputValidationOps(
         validate_artifact_transaction=validate_published_transaction,
-        normalize_scientific_review=normalize_scientific_review,
     )
 
 
@@ -491,9 +485,7 @@ def recheck_run_summary_inputs(
     """Revalidate all bound run-summary inputs using explicit dependencies."""
 
     from norad.reporting._run_summary.inputs import (
-        _fail,
         _verify_file_snapshot,
-        _verify_report_table_snapshot,
     )
     from norad.reporting._run_summary.transaction import (
         _assert_output_directory_identity,
@@ -503,8 +495,6 @@ def recheck_run_summary_inputs(
     _assert_output_directory_identity(context.paths)
     for snapshot in context.input_snapshots:
         _verify_file_snapshot("Artifact transaction input", snapshot)
-    for snapshot in context.report_table_snapshots:
-        _verify_report_table_snapshot(snapshot)
     active_ops.validate_artifact_transaction(
         run_id=context.run_id,
         run_contract=context.run_contract,
@@ -521,36 +511,6 @@ def recheck_run_summary_inputs(
     )
     for snapshot in context.input_snapshots:
         _verify_file_snapshot("Artifact transaction input", snapshot)
-    for snapshot in context.report_table_snapshots:
-        _verify_report_table_snapshot(snapshot)
-    if context.science_review_summary_path is not None:
-        if artifact_contracts.sha256_file(context.science_review_summary_path) != (
-            context.science_review_summary_sha256
-        ):
-            _fail("The explicit science-review summary changed")
-        normalized = active_ops.normalize_scientific_review(
-            summary_path=context.science_review_summary_path,
-            artifacts=context.artifacts,
-            run_id=context.run_id,
-            run_contract=context.run_contract,
-            generated_at=context.document["generated_at"],
-            git_commit=context.git_commit,
-            source_root=context.artifact_source_root.root,
-        )
-        if normalized != context.document["scientific_review"]["record"]:
-            _fail("The explicit scientific-review package changed")
-    approval_source = context.document["parameters"]["report_table_approvals"]
-    if context.report_table_approvals_path is None:
-        if approval_source is not None or context.document["approved_report_tables"]:
-            _fail("Run-summary approval state changed after preparation")
-    elif (
-        approval_source is None
-        or approval_source["path"] != str(context.report_table_approvals_path)
-        or approval_source["sha256"] != context.report_table_approvals_sha256
-        or approval_source["row_count"]
-        != len(context.document["approved_report_tables"])
-    ):
-        _fail("The explicit report-table approval package changed")
 
 
 def _contract_path(value: str, root: Path) -> Path:
@@ -676,7 +636,6 @@ def _artifact_context_roster(context: Any) -> _BoundRosterSnapshot:
 def _summary_context_roster(context: Any) -> _BoundRosterSnapshot:
     files = {
         *(snapshot.path for snapshot in context.input_snapshots),
-        *(snapshot.path for snapshot in context.report_table_snapshots),
         context.paths.summary_json,
         context.paths.summary_tsv,
         context.paths.qc_summary,
@@ -735,12 +694,6 @@ def _report_context_roster(context: Any) -> _BoundRosterSnapshot:
             artifact_source_root=context.artifact_source_root.root,
         ),
     }
-    scientific_source = summary["scientific_review"].get("source")
-    if isinstance(scientific_source, Mapping):
-        files.add(Path(str(scientific_source["path"])))
-    approval_source = summary["parameters"].get("report_table_approvals")
-    if isinstance(approval_source, Mapping):
-        files.add(Path(str(approval_source["path"])))
     return _snapshot_bound_roster(
         files,
         (context.output_dir, records_dir, summary_dir),
@@ -882,8 +835,6 @@ def validate_run_summary_transaction(
     run_id: str,
     artifact_receipt: Path,
     output_root: Path,
-    science_review_summary: Path | None = None,
-    report_table_approvals: Path | None = None,
     receipt_ops: ReceiptValidationOps = DEFAULT_RECEIPT_VALIDATION_OPS,
 ) -> ValidatedTransaction:
     """Revalidate one run summary and its complete upstream artifact index."""
@@ -921,8 +872,6 @@ def validate_run_summary_transaction(
         run_id=run_id,
         artifact_receipt=artifact_receipt,
         output_root=output_root,
-        science_review_summary=science_review_summary,
-        report_table_approvals=report_table_approvals,
         execute=False,
     )
     context = summary_builder.prepare_context(

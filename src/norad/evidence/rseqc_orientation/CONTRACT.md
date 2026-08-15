@@ -164,8 +164,9 @@ locking, and publication are privately imported from neutral
   fractions and evidence state without rerunning RSeQC.
 
 No current computational stage consumes these outputs. Any future policy that
-turns orientation fractions into library-strandedness metadata requires its
-own scientifically approved contract and evidence gate.
+turns orientation fractions into library-strandedness metadata must be defined
+by an external assay-design and interpretation process. NORAD does not turn
+that process into a computational gate.
 
 ## Protected behavior and evidence
 
@@ -204,8 +205,8 @@ roadmap and handoff.
   are not bound into the native report or its validation interface.
 - Native report production and semantic validation are separate, and the
   producer checks only nonemptiness.
-- The manifest owns declared strandedness but no approved conversion owner
-  connects this evidence to that field.
+- The manifest owns declared strandedness, but no in-code conversion connects
+  this evidence to that field.
 - Cross-cutting validation-publication code remains owned by neutral
   `src/norad/libraries/validation/report.py`; scheduler environment selection
   remains in the wrapper.
@@ -215,8 +216,8 @@ biological interpretation policy or changing behavior.
 
 ## Deferred decisions
 
-- Scientifically approved mapping, if any, from RSeQC orientation groups to
-  declared library strandedness.
+- Whether a future computational contract should accept externally authored
+  strandedness metadata without inferring it from these fractions.
 - Whether the configurable `0.1` maximum sum tolerance is appropriate for the
   durable evidence contract.
 - Binding of native evidence to BAM/BAI, BED12, sample, tool, and attempt

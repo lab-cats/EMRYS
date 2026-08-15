@@ -24,7 +24,6 @@ from .inputs import (
     _explicit_path,
     _fail,
     _load_run_summary,
-    _read_approved_table,
     _reject_symlink_components,
     _snapshot_regular,
 )
@@ -33,7 +32,7 @@ from .models import (
     JINJA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
-    SCIENCE_BANNERS,
+    BOUNDARY_BANNER,
     TEMPLATE_RESOURCE,
     FileSnapshot,
     ReportContext,
@@ -104,13 +103,13 @@ def _existing_outputs(
         _fail(
             "Existing report outputs use the retired v1 contract or are "
             "incomplete. Use a fresh output root or an explicitly approved migration; "
-            "the v2 publisher will not adopt or overwrite them."
+            "the v3 publisher will not adopt or overwrite them."
         )
     try:
         document = read_receipt_tsv(output_receipt)
     except Exception as exc:
         _fail(
-            "Existing report receipt is not the active v2 contract. Use a fresh "
+            "Existing report receipt is not the active v3 contract. Use a fresh "
             f"output root or an explicitly approved migration: {exc}"
         )
     snapshots: dict[Path, FileSnapshot] = {}
@@ -128,7 +127,7 @@ def _existing_outputs(
     receipt_snapshot = _snapshot_regular(output_receipt, "existing report receipt")
     snapshots[output_receipt] = receipt_snapshot
     if set(present) != set(snapshots):
-        _fail("Existing report outputs differ from the active v2 receipt")
+        _fail("Existing report outputs differ from the active v3 receipt")
     return snapshots
 
 
@@ -152,10 +151,6 @@ def prepare_context(
             f"<run-id>/{expected_name}; observed {run_summary_path}"
         )
 
-    tables = tuple(
-        _read_approved_table(record, source_root=source_root)
-        for record in summary["approved_report_tables"]
-    )
     computational_results, computational_unavailable_reason = (
         admit_computational_results(summary, source_root=source_root)
     )
@@ -214,7 +209,7 @@ def prepare_context(
         "renderer_version": PRODUCER_VERSION,
         "run_summary_path": str(run_summary_snapshot.path),
         "run_summary_sha256": run_summary_snapshot.sha256,
-        "state_banner": SCIENCE_BANNERS[summary["science_status"]],
+        "state_banner": BOUNDARY_BANNER,
         "source_checkout": str(source_checkout.root),
         "artifact_source_root": str(artifact_source_root.root),
         "template_path": f"norad.reporting/{TEMPLATE_RESOURCE}",
@@ -223,7 +218,6 @@ def prepare_context(
     html_bytes = render_html(
         build_view(
             summary,
-            tables,
             metadata,
             computational_results=computational_results,
             computational_unavailable_reason=computational_unavailable_reason,
@@ -251,7 +245,6 @@ def prepare_context(
         run_summary_path=run_summary_path,
         run_summary_snapshot=run_summary_snapshot,
         summary=summary,
-        tables=tables,
         computational_results=computational_results,
         computational_unavailable_reason=computational_unavailable_reason,
         template_snapshot=template_snapshot,

@@ -28,7 +28,7 @@ from norad.libraries.process_environment import (
 
 Operation = Literal["execute", "resume"]
 TARGET = "local_pipeline_slice"
-PROFILE_RELATIVE = Path("workflow/contracts/local_cmh_v1.json")
+PROFILE_RELATIVE = Path("workflow/contracts/local_cmh_v2.json")
 SNAKEFILE_RELATIVE = Path("workflow/Snakefile")
 WORKFLOW_PROFILE_RELATIVE = Path("workflow/profiles/local/profile.v9+.yaml")
 

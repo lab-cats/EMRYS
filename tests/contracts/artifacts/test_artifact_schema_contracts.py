@@ -22,34 +22,22 @@ from norad.contracts.artifacts._artifact_contracts import (
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-SCHEMA_ROOT = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts" / "v1"
-REPORT_RECEIPT_SCHEMA = (
-    REPO_ROOT
-    / "src"
-    / "norad"
-    / "contracts"
-    / "schemas"
-    / "artifacts"
-    / "v2"
-    / "report_receipt.schema.json"
-)
 FIXTURE_ROOT = (
     REPO_ROOT
     / "tests"
     / "contracts"
     / "artifacts"
     / "fixtures"
-    / "artifact_schema_v1"
+    / "artifact_schema_v2"
     / "valid"
 )
 INVENTORY = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 FIXTURES = {
     "artifact-record": FIXTURE_ROOT / "artifact_record.json",
-    "scientific-review-record": (FIXTURE_ROOT / "scientific_review_record.json"),
     "run-summary": FIXTURE_ROOT / "run_summary.json",
-    "report-receipt": FIXTURE_ROOT.parents[1] / "report_receipt_v2.json",
+    "report-receipt": FIXTURE_ROOT.parents[1] / "report_receipt_v3.json",
 }
-EXPECTED_INVENTORY_ARTIFACT_COUNT = 81
+EXPECTED_INVENTORY_ARTIFACT_COUNT = 68
 
 
 def test_validate_document_and_dispatcher_use_live_api_hooks(
@@ -186,7 +174,6 @@ def test_all_tracked_schemas_are_valid_draft_2020_12_and_local_only() -> None:
     assert set(schemas) == {
         "common",
         "artifact-record",
-        "scientific-review-record",
         "run-summary",
         "report-receipt",
     }
@@ -223,7 +210,7 @@ def test_cli_checks_all_schemas_inventory_and_help() -> None:
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.count("Schema passed Draft 2020-12") == len(FIXTURES) + 1
-    assert "Artifacts: 81" in result.stdout
+    assert "Artifacts: 68" in result.stdout
     assert help_result.returncode == 0
     assert "--check-schemas" in help_result.stdout
     assert "--inventory" in help_result.stdout
@@ -244,8 +231,8 @@ def test_artifact_schema_rejects_version_extra_property_hash_and_glob() -> None:
     artifact = read_json(FIXTURES["artifact-record"])
 
     wrong_version = copy.deepcopy(artifact)
-    wrong_version["schema_version"] = "2.0.0"
-    assert_schema_invalid("artifact-record", wrong_version, "1.0.0")
+    wrong_version["schema_version"] = "1.0.0"
+    assert_schema_invalid("artifact-record", wrong_version, "2.0.0")
 
     extra = copy.deepcopy(artifact)
     extra["unexpected"] = True
@@ -573,424 +560,6 @@ def test_run_contract_digest_is_canonical_and_recomputed() -> None:
     )
 
 
-def test_scientific_review_schema_rejects_reserved_ready_state() -> None:
-    review = read_json(FIXTURES["scientific-review-record"])
-
-    ready = copy.deepcopy(review)
-    ready["scientific_state"]["overall_status"] = "biological_interpretation_ready"
-    assert_schema_invalid(
-        "scientific-review-record",
-        ready,
-        "not one of",
-    )
-
-
-def test_scientific_review_state_conditions_fail_closed() -> None:
-    review = read_json(FIXTURES["scientific-review-record"])
-
-    incomplete_with_date = copy.deepcopy(review)
-    incomplete_with_date["review_metadata"]["review_completed_date"] = "2000-01-02"
-    assert_schema_invalid(
-        "scientific-review-record",
-        incomplete_with_date,
-        "null",
-    )
-
-    not_applicable_without_reason = copy.deepcopy(review)
-    category = not_applicable_without_reason["evidence_categories"]["qc_funnel"]
-    category["status"] = "not_applicable"
-    assert_schema_invalid(
-        "scientific-review-record",
-        not_applicable_without_reason,
-        "string",
-    )
-
-    pending_with_value = copy.deepcopy(review)
-    pending_with_value["decisions"]["background"]["value"] = "disabled"
-    assert_schema_invalid(
-        "scientific-review-record",
-        pending_with_value,
-        "null",
-    )
-
-
-def test_scientific_review_source_free_evidence_allows_null_date() -> None:
-    review = read_json(FIXTURES["scientific-review-record"])
-    template = review["evidence_records"][0]
-
-    missing = copy.deepcopy(review)
-    missing_record = {
-        **template,
-        "evidence_id": "qc_missing",
-        "category": "qc_funnel",
-        "status": "missing",
-        "source": None,
-        "evidence_date": None,
-        "not_applicable_reason": None,
-    }
-    missing["evidence_records"].append(missing_record)
-    missing["evidence_categories"]["qc_funnel"].update(
-        {
-            "status": "missing",
-            "evidence_ids": ["qc_missing"],
-        }
-    )
-    assert_schema_valid("scientific-review-record", missing)
-    contracts.validate_document_semantics("scientific-review-record", missing)
-
-    not_applicable = copy.deepcopy(review)
-    not_applicable_record = {
-        **template,
-        "evidence_id": "qc_not_applicable",
-        "category": "qc_funnel",
-        "status": "not_applicable",
-        "source": None,
-        "evidence_date": None,
-        "not_applicable_reason": "Synthetic evidence is not applicable.",
-    }
-    not_applicable["evidence_records"].append(not_applicable_record)
-    not_applicable["evidence_categories"]["qc_funnel"].update(
-        {
-            "status": "not_applicable",
-            "evidence_ids": ["qc_not_applicable"],
-            "not_applicable_reason": ("Synthetic evidence is not applicable."),
-        }
-    )
-    assert_schema_valid("scientific-review-record", not_applicable)
-    contracts.validate_document_semantics("scientific-review-record", not_applicable)
-
-    complete_without_date = copy.deepcopy(review)
-    complete_without_date["evidence_records"][0]["evidence_date"] = None
-    assert_schema_invalid(
-        "scientific-review-record",
-        complete_without_date,
-        "string",
-    )
-
-
-def test_scientific_review_allows_human_names_but_rejects_unsafe_policy_ids() -> None:
-    review = read_json(FIXTURES["scientific-review-record"])
-    review["review_metadata"]["reviewer"] = "Jane Doe"
-    review["review_metadata"]["decision_owner"] = "Scientific Review Team"
-    review["evidence_records"][0]["reviewer"] = "Jane Doe"
-    review["evidence_records"][0]["owner"] = "Scientific Review Team"
-    assert_schema_valid("scientific-review-record", review)
-    contracts.validate_document_semantics("scientific-review-record", review)
-
-    unsafe_policy = copy.deepcopy(review)
-    unsafe_policy["evidence_records"][0]["policy_version"] = "policy v1"
-    assert_schema_invalid(
-        "scientific-review-record",
-        unsafe_policy,
-        "does not match",
-    )
-
-
-def test_scientific_review_reconciles_evidence_categories_and_input_roles() -> None:
-    review = read_json(FIXTURES["scientific-review-record"])
-
-    wrong_category = copy.deepcopy(review)
-    wrong_category["evidence_records"].append(
-        {
-            "evidence_id": "wrong_category",
-            "category": "limitations",
-            "analysis_id": "synthetic_analysis",
-            "status": "incomplete",
-            "source": {
-                "path": "tests/fixtures/artifact_schema_v1/source/evidence.tsv",
-                "sha256": "e" * 64,
-                "size_bytes": 10,
-                "row_count": 1,
-                "media_type": "text/tab-separated-values",
-            },
-            "reviewer": "synthetic_reviewer",
-            "owner": "synthetic_owner",
-            "evidence_date": "2000-01-01",
-            "policy_version": "synthetic_policy_v1",
-            "not_applicable_reason": None,
-        }
-    )
-    wrong_category["evidence_categories"]["qc_funnel"].update(
-        {
-            "status": "incomplete",
-            "evidence_ids": ["wrong_category"],
-        }
-    )
-    assert_schema_valid("scientific-review-record", wrong_category)
-    assert_contract_failure(
-        "scientific-review-record",
-        wrong_category,
-        "another category",
-    )
-
-    missing_role = copy.deepcopy(review)
-    missing_role["input_artifacts"].pop()
-    assert_schema_valid("scientific-review-record", missing_role)
-    assert_contract_failure(
-        "scientific-review-record",
-        missing_role,
-        "complete Step 09c provenance set",
-    )
-
-
-def test_scientific_review_recorded_decisions_require_evidence() -> None:
-    review = read_json(FIXTURES["scientific-review-record"])
-    decision = review["decisions"]["orientation"]
-    decision.update(
-        {
-            "status": "recorded",
-            "value": "retain_provisional",
-            "detail": "Synthetic decision without evidence.",
-            "reviewer": "Jane Doe",
-            "decision_date": "2000-01-01",
-        }
-    )
-    assert_schema_valid("scientific-review-record", review)
-    assert_contract_failure(
-        "scientific-review-record",
-        review,
-        "without supporting evidence",
-    )
-
-
-def test_scientific_review_pending_decision_can_preserve_review_context() -> None:
-    review = read_json(FIXTURES["scientific-review-record"])
-    decision = review["decisions"]["background"]
-    decision.update(
-        {
-            "detail": "Background evidence is still under review.",
-            "reviewer": "Scientific Review Team",
-            "decision_id": "decision_background",
-            "source_evidence_id": "step09c_fixture_test",
-            "evidence_status": "complete",
-            "policy_version": "background_policy_v1",
-            "rerun_required": False,
-        }
-    )
-
-    assert_schema_valid("scientific-review-record", review)
-    contracts.validate_document_semantics("scientific-review-record", review)
-
-
-def test_scientific_review_computational_references_can_name_payload_evidence() -> None:
-    review = read_json(FIXTURES["scientific-review-record"])
-    reference = review["computational_status"]["evidence"][0]
-    reference["path"] = "results/runtime/validated-runtime.log"
-    reference["sha256"] = "a" * 64
-    assert_schema_valid("scientific-review-record", review)
-    contracts.validate_document_semantics("scientific-review-record", review)
-
-    duplicate = copy.deepcopy(review)
-    duplicate_reference = copy.deepcopy(reference)
-    duplicate_reference["path"] = "results/runtime/second-runtime.log"
-    duplicate_reference["sha256"] = "b" * 64
-    duplicate["computational_status"]["evidence"].append(duplicate_reference)
-    assert_contract_failure(
-        "scientific-review-record",
-        duplicate,
-        "repeats evidence_id/role",
-    )
-
-
-def test_scientific_review_inputs_and_analysis_graph_are_identity_bound() -> None:
-    review = read_json(FIXTURES["scientific-review-record"])
-
-    duplicate_paths = copy.deepcopy(review)
-    shared_path = duplicate_paths["input_artifacts"][0]["path"]
-    for record in duplicate_paths["input_artifacts"]:
-        record["path"] = shared_path
-    assert_schema_valid("scientific-review-record", duplicate_paths)
-    assert_contract_failure(
-        "scientific-review-record",
-        duplicate_paths,
-        "paths must be unique",
-    )
-
-    wrong_manifest = copy.deepcopy(review)
-    for record in wrong_manifest["input_artifacts"]:
-        if record["role"] == "partition_manifest":
-            record["sha256"] = "f" * 64
-    assert_contract_failure(
-        "scientific-review-record",
-        wrong_manifest,
-        "partition_manifest input hash",
-    )
-
-    duplicate_analysis = copy.deepcopy(review)
-    duplicate_analysis["superseded_analysis_ids"] = ["synthetic_analysis"]
-    assert_contract_failure(
-        "scientific-review-record",
-        duplicate_analysis,
-        "cannot also be superseded",
-    )
-
-    swapped_roles = copy.deepcopy(review)
-    by_role = {record["role"]: record for record in swapped_roles["input_artifacts"]}
-    by_role["step08_sites"]["role"] = "step08_inputs"
-    by_role["step08_inputs"]["role"] = "step08_sites"
-    assert_schema_valid("scientific-review-record", swapped_roles)
-    assert_contract_failure(
-        "scientific-review-record",
-        swapped_roles,
-        "path must end with",
-    )
-
-
-def test_scientific_review_rejects_orphans_and_orientation_contradictions() -> None:
-    review = read_json(FIXTURES["scientific-review-record"])
-
-    orphan = copy.deepcopy(review)
-    orphan["evidence_records"].append(
-        {
-            "evidence_id": "orphan",
-            "category": "limitations",
-            "analysis_id": "synthetic_analysis",
-            "status": "complete",
-            "source": {
-                "path": "results/orphan.tsv",
-                "sha256": "f" * 64,
-                "size_bytes": 1,
-                "row_count": 1,
-                "media_type": "text/tab-separated-values",
-            },
-            "reviewer": "synthetic_reviewer",
-            "owner": "synthetic_owner",
-            "evidence_date": "2000-01-01",
-            "policy_version": "synthetic_policy_v1",
-            "not_applicable_reason": None,
-        }
-    )
-    assert_contract_failure(
-        "scientific-review-record",
-        orphan,
-        "must be referenced",
-    )
-
-    contradictory = copy.deepcopy(review)
-    contradictory["decisions"]["orientation"].update(
-        {
-            "status": "recorded",
-            "value": "replacement_required",
-            "detail": "Synthetic contradiction.",
-            "reviewer": "synthetic_reviewer",
-            "decision_date": "2000-01-01",
-            "evidence_ids": ["step09c_fixture_test"],
-        }
-    )
-    assert_contract_failure(
-        "scientific-review-record",
-        contradictory,
-        "must match scientific_state.orientation_status",
-    )
-
-
-def test_scientific_review_category_analysis_and_na_aggregation() -> None:
-    review = read_json(FIXTURES["scientific-review-record"])
-    review["sensitivity_analysis_ids"] = ["sensitivity_analysis"]
-    sensitivity_record = {
-        "evidence_id": "sensitivity_candidate",
-        "category": "candidate_selection",
-        "analysis_id": "sensitivity_analysis",
-        "status": "incomplete",
-        "source": {
-            "path": "results/sensitivity_candidate.tsv",
-            "sha256": "d" * 64,
-            "size_bytes": 10,
-            "row_count": 1,
-            "media_type": "text/tab-separated-values",
-        },
-        "reviewer": "synthetic_reviewer",
-        "owner": "synthetic_owner",
-        "evidence_date": "2000-01-01",
-        "policy_version": "synthetic_policy_v1",
-        "not_applicable_reason": None,
-    }
-    review["evidence_records"].append(sensitivity_record)
-    review["evidence_categories"]["candidate_selection"].update(
-        {
-            "status": "incomplete",
-            "evidence_ids": ["sensitivity_candidate"],
-        }
-    )
-    assert_schema_valid("scientific-review-record", review)
-    assert_contract_failure(
-        "scientific-review-record",
-        review,
-        "not allowed by that category",
-    )
-
-    mixed = read_json(FIXTURES["scientific-review-record"])
-    mixed["evidence_records"].extend(
-        [
-            {
-                "evidence_id": "qc_complete",
-                "category": "qc_funnel",
-                "analysis_id": "synthetic_analysis",
-                "status": "complete",
-                "source": {
-                    "path": "results/qc_complete.tsv",
-                    "sha256": "e" * 64,
-                    "size_bytes": 10,
-                    "row_count": 1,
-                    "media_type": "text/tab-separated-values",
-                },
-                "reviewer": "synthetic_reviewer",
-                "owner": "synthetic_owner",
-                "evidence_date": "2000-01-01",
-                "policy_version": "synthetic_policy_v1",
-                "not_applicable_reason": None,
-            },
-            {
-                "evidence_id": "qc_not_applicable",
-                "category": "qc_funnel",
-                "analysis_id": "synthetic_analysis",
-                "status": "not_applicable",
-                "source": None,
-                "reviewer": "synthetic_reviewer",
-                "owner": "synthetic_owner",
-                "evidence_date": "2000-01-01",
-                "policy_version": "synthetic_policy_v1",
-                "not_applicable_reason": "Synthetic non-applicable evidence.",
-            },
-        ]
-    )
-    mixed["evidence_categories"]["qc_funnel"].update(
-        {
-            "status": "complete",
-            "evidence_ids": ["qc_complete", "qc_not_applicable"],
-        }
-    )
-    assert_schema_valid("scientific-review-record", mixed)
-    contracts.validate_document_semantics("scientific-review-record", mixed)
-
-
-def test_exploratory_science_requires_selection_adjudication_and_decisions() -> None:
-    review = read_json(FIXTURES["scientific-review-record"])
-    review["scientific_state"]["overall_status"] = "science_review_complete_exploratory"
-    review["review_metadata"]["review_completed_date"] = "2000-01-02"
-    for category in review["evidence_categories"].values():
-        category.update(
-            {
-                "status": "not_applicable",
-                "not_applicable_reason": "Synthetic unsupported shortcut.",
-            }
-        )
-    for decision in review["decisions"].values():
-        decision.update(
-            {
-                "status": "recorded",
-                "value": "provisional",
-                "detail": "Synthetic unsupported shortcut.",
-                "reviewer": "synthetic_reviewer",
-                "decision_date": "2000-01-02",
-                "evidence_ids": ["step09c_fixture_test"],
-            }
-        )
-    review["decisions"]["orientation"]["value"] = "provisional"
-
-    assert_schema_invalid("scientific-review-record", review, "complete")
-
-
 def test_run_summary_reconciles_inventory_order_run_identity_and_rollups() -> None:
     summary = read_json(FIXTURES["run-summary"])
 
@@ -1010,11 +579,10 @@ def test_run_summary_reconciles_inventory_order_run_identity_and_rollups() -> No
 def test_run_summary_supports_multiple_physical_artifacts_per_scope() -> None:
     summary = read_json(FIXTURES["run-summary"])
     second = copy.deepcopy(summary["artifacts"][0])
-    second["artifact_id"] = "review.synthetic.limitations"
+    second["artifact_id"] = "analysis.synthetic.cmh_limitations"
     second["expectation"]["source_path"] = (
-        "tests/fixtures/artifact_schema_v1/source/results/"
-        "scientific_validation/synthetic_review/"
-        "synthetic_review.step09c_limitations.tsv"
+        "tests/fixtures/artifact_schema_v1/source/results/editing/"
+        "synthetic_analysis/synthetic_analysis.cmh_limitations.tsv"
     )
     second["warnings"][0]["related_artifact_ids"] = [second["artifact_id"]]
     summary["artifacts"].append(second)
@@ -1117,34 +685,12 @@ def test_run_summary_rejects_cross_artifact_physical_path_conflicts() -> None:
     )
 
 
-def test_run_summary_rejects_duplicate_ids_and_unapproved_report_sources() -> None:
+def test_run_summary_rejects_duplicate_artifact_ids() -> None:
     summary = read_json(FIXTURES["run-summary"])
 
     duplicate = copy.deepcopy(summary)
     duplicate["artifacts"].append(copy.deepcopy(duplicate["artifacts"][0]))
     assert_contract_failure("run-summary", duplicate, "duplicate artifact_id")
-
-    table = copy.deepcopy(summary)
-    table["approved_report_tables"] = [
-        {
-            "table_id": "missing_review_table",
-            "artifact_id": "review.synthetic.review_summary",
-            "role": "review_summary",
-            "title": "Missing review",
-            "path": "results/scientific_validation/missing.tsv",
-            "sha256": "15" * 32,
-            "row_count": 1,
-            "display_row_limit": None,
-            "approval": {
-                "status": "approved",
-                "policy_version": "synthetic_report_policy_v1",
-                "approved_by": "synthetic_owner",
-                "approved_at": "2000-01-01T00:00:00Z",
-            },
-        }
-    ]
-    assert_schema_valid("run-summary", table)
-    assert_contract_failure("run-summary", table, "non-complete artifact")
 
 
 def test_run_summary_rejects_computational_overclaims() -> None:
@@ -1170,30 +716,7 @@ def test_run_summary_rejects_computational_overclaims() -> None:
     )
 
 
-def test_run_summary_reconciles_report_tables_and_qc_sources() -> None:
-    summary = run_summary_with_complete_artifact()
-    artifact = summary["artifacts"][0]
-    summary["approved_report_tables"] = [
-        {
-            "table_id": "cmh_summary",
-            "artifact_id": artifact["artifact_id"],
-            "role": "cmh_summary",
-            "title": "CMH summary",
-            "path": artifact["source"]["path"],
-            "sha256": artifact["source"]["sha256"],
-            "row_count": 999,
-            "display_row_limit": None,
-            "approval": {
-                "status": "approved",
-                "policy_version": "synthetic_report_policy_v1",
-                "approved_by": "synthetic_owner",
-                "approved_at": "2000-01-01T00:00:00Z",
-            },
-        }
-    ]
-    assert_schema_valid("run-summary", summary)
-    assert_contract_failure("run-summary", summary, "row_count")
-
+def test_run_summary_reconciles_qc_sources() -> None:
     unknown_metric = run_summary_with_complete_artifact()
     unknown_metric["qc_metrics"] = [
         {
@@ -1228,24 +751,6 @@ def test_run_summary_reconciles_report_tables_and_qc_sources() -> None:
     )
 
 
-def test_run_summary_requires_completed_review_artifact_for_embedded_review() -> None:
-    summary = read_json(FIXTURES["run-summary"])
-    review = read_json(FIXTURES["scientific-review-record"])
-    summary["scientific_review"] = {
-        "record_state": "present",
-        "overall_status": "evidence_incomplete",
-        "source": copy.deepcopy(review["review_summary"]),
-        "record": review,
-    }
-
-    assert_schema_valid("run-summary", summary)
-    assert_contract_failure(
-        "run-summary",
-        summary,
-        "complete scientific-review artifact",
-    )
-
-
 def test_report_receipt_enforces_renderer_safety_outputs_and_banners() -> None:
     receipt = read_json(FIXTURES["report-receipt"])
 
@@ -1259,7 +764,7 @@ def test_report_receipt_enforces_renderer_safety_outputs_and_banners() -> None:
 
     bad_banner = copy.deepcopy(receipt)
     bad_banner["state_banner"] = "Looks good."
-    assert_schema_invalid("report-receipt", bad_banner, "SCIENTIFIC REVIEW")
+    assert_schema_invalid("report-receipt", bad_banner, "COMPUTATIONAL RESULTS")
 
     missing_html = copy.deepcopy(receipt)
     missing_html["outputs"] = [
@@ -1268,7 +773,7 @@ def test_report_receipt_enforces_renderer_safety_outputs_and_banners() -> None:
     assert_schema_invalid("report-receipt", missing_html, "too short")
 
 
-def test_report_receipt_rejects_duplicate_outputs_bad_truncation_and_ready() -> None:
+def test_report_receipt_rejects_duplicate_outputs_and_bad_truncation() -> None:
     receipt = read_json(FIXTURES["report-receipt"])
 
     duplicate = copy.deepcopy(receipt)
@@ -1284,10 +789,6 @@ def test_report_receipt_rejects_duplicate_outputs_bad_truncation_and_ready() -> 
         bad_truncation,
         "must display fewer",
     )
-
-    ready = copy.deepcopy(receipt)
-    ready["science_status"] = "biological_interpretation_ready"
-    assert_schema_invalid("report-receipt", ready, "not one of")
 
 
 def test_report_receipt_rejects_cross_run_paths() -> None:
@@ -1413,43 +914,35 @@ def test_run_summary_semantics_threads_the_explicit_source_root(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    """Propagate one explicit root through every run-summary path seam."""
+    """Propagate one explicit root through every run-summary artifact path seam."""
     summary = read_json(FIXTURES["run-summary"])
-    artifact = summary["artifacts"][0]
-    review_record = read_json(FIXTURES["scientific-review-record"])
-    review_record["input_artifacts"] = []
-    review_source = dict(review_record["review_summary"])
-    artifact.update(
+    artifact = read_json(FIXTURES["artifact-record"])
+    artifact["members"] = [
         {
-            "availability_status": "available",
-            "completion_status": "complete",
-            "source": dict(review_source),
-            "members": [
-                {
-                    "member_id": "supplemental",
-                    "role": "supplemental",
-                    "path": "supplemental/member.tsv",
-                    "sha256": "d" * 64,
-                    "size_bytes": 1,
-                    "row_count": 1,
-                    "media_type": "text/tab-separated-values",
-                },
-            ],
+            "member_id": "supplemental",
+            "role": "supplemental",
+            "path": "supplemental/member.tsv",
+            "sha256": "d" * 64,
+            "size_bytes": 1,
+            "row_count": 1,
+            "media_type": "text/tab-separated-values",
         },
+    ]
+    summary["artifacts"] = [artifact]
+    summary["attempts"] = copy.deepcopy(artifact["attempts"])
+    summary["expected_scopes"][0].update(
+        {
+            "scope": copy.deepcopy(artifact["scope"]),
+            "artifact_ids": [artifact["artifact_id"]],
+            "aggregate_state": "complete",
+        }
     )
-    summary["expected_scopes"][0]["aggregate_state"] = "complete"
     summary["computational_rollup"].update(
         {
             "complete_artifact_count": 1,
             "missing_artifact_count": 0,
         },
     )
-    summary["scientific_review"] = {
-        "record_state": "present",
-        "source": dict(review_source),
-        "record": review_record,
-        "overall_status": review_record["scientific_state"]["overall_status"],
-    }
 
     semantic_roots: list[Path] = []
     resolved_values: list[str] = []
@@ -1476,11 +969,6 @@ def test_run_summary_semantics_threads_the_explicit_source_root(
         "resolve_contract_path",
         record_contract_path,
     )
-    monkeypatch.setattr(
-        run_summary_validation,
-        "validate_scientific_review_semantics",
-        lambda _document: None,
-    )
 
     contracts.validate_run_summary_semantics(summary, source_root=tmp_path)
 
@@ -1488,16 +976,12 @@ def test_run_summary_semantics_threads_the_explicit_source_root(
     assert semantic_roots == [tmp_path]
     assert resolved_values == [
         expected_path,
-        review_source["path"],
+        artifact["source"]["path"],
         "supplemental/member.tsv",
-        review_source["path"],
-        review_record["review_summary"]["path"],
     ]
 
 
-def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_09c() -> (
-    None
-):
+def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_09() -> None:
     rows = contracts.validate_inventory(INVENTORY)
 
     assert Counter(row["step_id"] for row in rows) == {
@@ -1514,7 +998,6 @@ def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_09c()
         "07": 8,
         "08": 4,
         "09": 7,
-        "09c": 13,
     }
     assert all(row["required"] == "true" for row in rows)
     assert all(not any(token in row["source_path"] for token in "*?[]") for row in rows)
@@ -1718,7 +1201,7 @@ def test_inventory_header_order_and_unrelated_files_are_fail_closed(
     with pytest.raises(contracts.ContractValidationError, match="header"):
         contracts.validate_inventory(wrong_header)
 
-    unrelated = tmp_path / "unrelated.step09c_review_summary.tsv"
+    unrelated = tmp_path / "unrelated.pipeline_output.tsv"
     unrelated.write_text("must\tnot\nbe\tread\n", encoding="utf-8")
     assert (
         len(contracts.validate_inventory(INVENTORY))

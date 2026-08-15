@@ -40,7 +40,7 @@ Detailed rationale:
   state without repair or mutation.
 - Keep implementation, runtime, cluster, scientific-review, and biological
   evidence distinct. Missing and failed expected evidence remains visible.
-- Reporting consumes explicit versioned artifacts and authorized tables; it
+- Reporting consumes explicit versioned computational artifacts; it
   never discovers inputs, reruns analysis, installs tools, or promotes state.
 
 ## Scientific pipeline
@@ -84,8 +84,9 @@ Detailed rationale: [`platform-direction.md`](decisions/platform-direction.md).
 - Expose the fixed local profile only through dry-run-first public run/resume/
   inspection commands that materialize immutable attempt state under the
   aggregate lock and expose no raw engine or recovery controls.
-- Keep Step `09c`, SLURM/VM/site execution, installed workflow assets, and
-  scientific or biological promotion outside the first local profile.
+- Keep candidate review, adjudication, and biological interpretation outside
+  every computational profile. They are external work-process records, not
+  pipeline steps, gates, artifacts, or completion states.
 
 The implemented source-checkout local lifecycle is defined by
 [`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md). Logging, report

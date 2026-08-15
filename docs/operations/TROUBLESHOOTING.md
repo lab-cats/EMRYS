@@ -95,13 +95,13 @@ claim from this recovery guide.
 
 | Observation | Interpretation |
 | --- | --- |
-| Automatic run is complete but report says `evidence_incomplete` | Expected when separately authorized Step `09c` human review is absent. It is a scientific-evidence status, not an execution failure. |
+| Report labels results `not scientifically adjudicated` | Expected: NORAD reports computational candidates and provenance only. Keep external review, adjudication, or biological-interpretation records separate from the run. |
 | Significant computational rows are present | They passed the declared Step `09` depth, background, FDR, odds-ratio, and allele-fraction-change rules. They remain review candidates, not validated editing sites. |
 | Candidate table has rows but significant table is empty | Step `08` found candidate SNVs, but none passed every strict Step `09` call threshold. Inspect `test_status` and `call_status`; do not relax policy after seeing results without creating and justifying a new analysis request. |
 | Step `08`/`09` tables are header-only | Zero candidates can be valid when upstream receipts and all zero counts reconcile. Confirm owner validation and the run summary rather than assuming a crash. |
 | `Computational results` says its tables are unavailable | Confirm the exact run/report identity and inspect the primary-analysis Step `09` all-sites, significant-sites, summary, and owner-validation artifact records. The renderer requires a complete exact result trio plus an exact all-pass validation report and opens no candidate rows from an incomplete or nonpassing set. Preserve the renderer receipt and route a mismatch to the reporting owner. |
 | HTML shows fewer candidates than the source count | Each report candidate table is intentionally capped at 250 displayed rows. Read its explicit truncation note, exact source path/hash/size/full row count, then use the bound native TSV for the complete table. |
-| `FWD_like` and `REV_like` disagree with expected library strand | They are mechanical SAM-flag groups and do not claim biological strand, sense, or antisense. Use the separate RSeQC evidence and scientific review; do not relabel native artifacts. |
+| `FWD_like` and `REV_like` disagree with expected library strand | They are mechanical SAM-flag groups and do not claim biological strand, sense, or antisense. Use the separate RSeQC evidence in the external interpretation process; do not relabel native artifacts. |
 
 ## Common environment and operation matrix
 
@@ -142,7 +142,6 @@ linked owner after applying the common rules.
 | [`generate_partitioned_cohort_mpileup_VCFs`](../../src/norad/stages/partitioned_cohort_mpileup/README.md) | Receipt visibility precedes final validation; restoration can leave a prior final absent and wrapper checks can accept a stale set. | Preserve VCFs, receipt, manifests, input pairs, run-token paths, lock, selector, and tool identity. A header-only VCF is valid only when its zero count reconciles. |
 | [`preprocess_and_annotate_cohort_candidates`](../../src/norad/stages/cohort_candidate_preprocessing/README.md) | Cross-root rollback lacks a durable marker; receipt visibility precedes final validation and stale triples may pass existence checks. | Stop Step `09`; preserve both roots, all transactions and manifests, R environment, locks, backups, and streams. |
 | [`rank_cohort_candidates_with_paired_CMH`](../../src/norad/analyses/paired_cmh_candidate_ranking/README.md) | Scheduler success can accept stale six-file output; severe rollback and lock states remain. Production validation does not independently recompute CMH statistics. | Preserve all six outputs, upstream transaction, selected R program/runtime, streams, lock, backups, and scheduler identity; retain the separate test oracle evidence ceiling. |
-| [`assemble_scientific_review_evidence_package`](../../src/norad/evidence/scientific_review_package/README.md) | After replacement-summary publication, `SIGTERM` retains unvalidated finals plus predecessor backup/temp/lock without a notice, while `KeyboardInterrupt` removes those recovery paths but leaves the unvalidated finals; visible summary or absent lock is not commit proof. | Preserve every final and recovery path, rule out writers/readers, and reconstruct only from the exact owner contract; never infer commit, reviewer decisions, or biological readiness. |
 | [Runtime availability](../../src/norad/evidence/runtime_availability/README.md) | Exit `0` may contain `fail`, `blocked`, or `not_checked`. Lock acquisition can strand a lock; failed restoration leaves only a `.previous` file without a lock or marker; suppressed lock-cleanup failure can report success while retaining the lock. | Inspect every row and asserted context. Preserve the report and all lock, temporary, and previous paths; absence of the lock is not publication proof. |
 | [Reference provenance](../../src/norad/evidence/reference_provenance/README.md) | Hash/contig disagreement is observation only. | Correct declarations or regenerate through the upstream owner; never repair references in the evidence tool. |
 | [Storage inventory](../../src/norad/evidence/storage_inventory/README.md) | Measurement or policy state grants no retention authority; its three-file publication can remain ambiguous. | Preserve the transaction and approval state; never mutate storage content through this tool. |
@@ -151,7 +150,7 @@ linked owner after applying the common rules.
 ## Scientific and evidence ceiling
 
 `FWD_like` and `REV_like` remain mechanical groupings. Step `09` produces
-CMH-ranked candidates, not validated editing sites. A report, review package,
-application log, transaction receipt, or successful computation cannot promote
-scientific or biological state. `science_review_complete_exploratory` remains
-provisional; `biological_interpretation_ready` remains reserved.
+CMH-ranked candidates, not validated editing sites. A report, application log,
+transaction receipt, or successful computation cannot establish a scientific
+or biological conclusion. Candidate review, adjudication, and biological
+interpretation remain external work-process records, not pipeline states.

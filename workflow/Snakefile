@@ -38,7 +38,7 @@ except SourceCheckoutError as exc:
 
 
 WORKFLOW_ROOT = Path(workflow.basedir).resolve()
-PROFILE_PATH = (WORKFLOW_ROOT / "contracts" / "local_cmh_v1.json").resolve()
+PROFILE_PATH = (WORKFLOW_ROOT / "contracts" / "local_cmh_v2.json").resolve()
 PROFILE = orchestration_contracts.load_json_object(PROFILE_PATH)
 orchestration_contracts.validate_record("profile", PROFILE)
 CONFIG_KEYS = {
@@ -299,10 +299,7 @@ def _require_profile_projection():
         raise WorkflowError(
             "Fixed profile required_owner_keys do not match the static automatic graph"
         )
-    expected_excluded = {"norad.evidence.assemble_scientific_review_evidence_package.v1"}
-    if set(PROFILE["excluded_owner_keys"]) != expected_excluded:
-        raise WorkflowError("Fixed profile must exclude only scientific review Step 09c")
-    if set(OWNER_TASKS) != {*AUTOMATIC_TASKS, "assemble_scientific_review_evidence_package"}:
+    if set(OWNER_TASKS) != set(AUTOMATIC_TASKS):
         raise WorkflowError("Fixed profile owner task roster does not match STAGE_MAP")
     for rule_name, expected in AUTOMATIC_TASKS.items():
         task = OWNER_TASKS[rule_name]

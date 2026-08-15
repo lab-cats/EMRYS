@@ -10,12 +10,11 @@ def profile() -> dict[str, Any]:
     owners = (
         "norad.stage.construct_STAR_index.v1",
         "norad.stage.align_RNA_reads_with_STAR.v1",
-        "norad.evidence.assemble_scientific_review_evidence_package.v1",
     )
     return {
-        "schema_version": "norad.profile.v1",
+        "schema_version": "norad.profile.v2",
         "profile_id": "norad.profile.local_cmh",
-        "profile_version": "v1",
+        "profile_version": "v2",
         "semantic_owner_keys": list(owners),
         "owner_tasks": [
             {
@@ -32,13 +31,6 @@ def profile() -> dict[str, Any]:
                 "scope_type": "sample",
                 "scope_selector": "samples",
             },
-            {
-                "machine_key": owners[2],
-                "rule_name": "assemble_scientific_review_evidence_package",
-                "step_id": "09c",
-                "scope_type": "scientific_review",
-                "scope_selector": "scientific_review",
-            },
         ],
         "direct_edges": [
             {
@@ -48,9 +40,8 @@ def profile() -> dict[str, Any]:
                 "semantics": "required artifact",
             }
         ],
-        "required_owner_keys": [owners[0], owners[1]],
+        "required_owner_keys": list(owners),
         "evidence_owner_keys": [],
-        "excluded_owner_keys": [owners[2]],
         "artifact_templates": [
             {
                 "artifact_id_template": "ref.{reference_id}.index",
@@ -96,17 +87,6 @@ def profile() -> dict[str, Any]:
                 ),
                 "required": True,
             },
-            {
-                "artifact_id_template": "analysis.{analysis_id}.review_plan",
-                "step_id": "09c",
-                "scope_type": "scientific_review",
-                "scope_selector": "scientific_review",
-                "adapter": "step09c_review_plan_v1",
-                "source_path_template": (
-                    "results/review/{analysis_id}/{analysis_id}.step09c_review_plan.tsv"
-                ),
-                "required": True,
-            },
         ],
     }
 
@@ -146,7 +126,7 @@ def build(root: Path) -> Path:
     request.write_text(
         "schema_version: norad.request.v1\n"
         "label: first label\n"
-        "profile: norad.profile.local_cmh.v1\n"
+        "profile: norad.profile.local_cmh.v2\n"
         "sample_manifest: samples.tsv\n"
         "partition_manifest: partitions.tsv\n"
         "reference:\n"

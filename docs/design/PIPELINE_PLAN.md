@@ -45,7 +45,7 @@ collaborators and publishes onboarding from that observed path.
 | Package | Outcome | Stop boundary |
 | --- | --- | --- |
 | `B3` — complete | Materialize the static local profile and prove direct Snakemake dry-run, then a test-double walking skeleton in reference, one-sample, and cohort slices. | No public lifecycle CLI or real science-tool claim was added. |
-| `B4` — complete | Add artifact-index, run-summary, and Jinja HTML-report rules, durable producer-entry ledgers, then prove failure, interruption, between-task resume, and inspection. | Entered-but-incomplete scopes require future explicit reconciliation; Step `09c` remains explicit and absent; no public lifecycle CLI, real-tool, SLURM, VM, or CSU claim was added. |
+| `B4` — complete | Add artifact-index, run-summary, and Jinja HTML-report rules, durable producer-entry ledgers, then prove failure, interruption, between-task resume, and inspection. | Entered-but-incomplete scopes require future explicit reconciliation; external review or adjudication is not represented as a workflow scope; no public lifecycle CLI, real-tool, SLURM, VM, or CSU claim was added. |
 | `B5` — complete | Add the read-only doctor, fixed-profile production materializer, and thin public `run`, `resume`, and `inspect local-pilot-run` adapter over B2 intake and the B4 lifecycle. Prove dry-run no-write, locked attempt publication, controlled failure, byte-preserving between-task resume, complete refusal, and derived inspection with no-science owners. | The adapter owns intake/lifecycle policy only; it installs nothing, imports no private owner, exposes no raw engine controls, and adds no real-tool, SLURM, cluster, scientific-review, or biological claim. |
 | `B6` — complete | Prove the fresh-clone local pilot, then rewrite root onboarding from the exact proven transcript. | The proof uses deterministic no-science collaborators; it adds no real-tool, cluster, scientific-review, or biological claim. |
 | Adversarial local-pilot hardening — complete | Bind runtime and immutable evidence completely, admit safe external sidecar reuse, serialize attempt entry, and terminalize interruption only after child-process quiescence. | The proof remains local and deterministic; it adds no real-tool, distributed-filesystem, SLURM, cluster, scientific-review, or biological claim. |
@@ -103,9 +103,9 @@ The final assembled local profile additionally requires one failure/resume E2E
 and one clean E2E from a fresh clone. Neither promotes local evidence to
 cluster, scientific-review, or biological proof.
 
-## Scientific exit boundary
+## External interpretation boundary
 
-`science_review_complete_exploratory` remains provisional.
-`biological_interpretation_ready` is reserved until a separately approved
-scientific policy defines and satisfies its exit criteria. No local structural
-or reporting gate may promote either state.
+NORAD's computational exit is CMH-ranked candidates plus their provenance.
+Candidate review, adjudication, and biological interpretation are external
+work-process records. No local structural or reporting gate represents,
+requires, or promotes those activities as a NORAD completion state.

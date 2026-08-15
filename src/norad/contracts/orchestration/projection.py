@@ -104,8 +104,6 @@ def _template_contexts(
         return ({**shared, "scope_id": cohort_id},)
     if selector == "analysis":
         return ({**shared, "scope_id": analysis_id},)
-    if selector == "scientific_review":
-        return ({**shared, "scope_id": f"{analysis_id}.review"},)
     raise orchestration_contracts.ContractValidationError(
         f"Unsupported profile scope_selector: {selector}"
     )
@@ -175,7 +173,6 @@ def _artifact_inventory_rows(
         "partitions": "cohort_partition",
         "cohort": "cohort",
         "analysis": "analysis",
-        "scientific_review": "scientific_review",
     }
     templates_by_selector: dict[str, list[Mapping[str, Any]]] = {}
     selector_order: list[str] = []

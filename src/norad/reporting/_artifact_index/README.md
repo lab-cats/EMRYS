@@ -32,14 +32,14 @@ preserving their timing, diagnostics, and serialized evidence.
 The grouped `python -X pycache_prefix=/dev/null -I -m norad build run-summary` route imports both neutral
 authorities directly, not through this package or the artifact-index command
 builder. Its checkout governs producer identity; its artifact root governs
-contract-relative artifact, science, and approval paths plus semantic,
+contract-relative artifact paths plus semantic,
 predecessor, post-publication, and rollback validation.
 
 The modules keep observed responsibilities separate: the curated run-summary
 API, exact contract loading, models and rosters, explicit adapter registration,
-text and binary readers, inspection, named native/scientific reconciliation,
-record and receipt assembly, context construction, receipt-last publication,
-and published-transaction validation.
+text and binary readers, inspection, named native reconciliation, record and
+receipt assembly, context construction, receipt-last publication, and
+published-transaction validation.
 Stage-specific rules remain in their named reconciliation modules; this
 package is not a generic stage framework.
 

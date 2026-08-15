@@ -13,8 +13,8 @@ remain in [`HANDOFF.md`](../operations/HANDOFF.md); durable answers move to
 | CSU runtime | Batch-visible R/namespaces, hash utilities, exact tool paths, and Java 17 availability across eligible nodes. |
 | Storage | Home/project/scratch capacity, large temporary/intermediate placement, and approved native/derived retention. |
 | Reference | Exact Novogene annotation release and FASTA/FAI/DICT/GTF/BED/STAR contig agreement, including mitochondrial naming. |
-| Runtime promotion | Real-bcftools Step `07` parity, partition-scale resources, and required evidence before Steps `08`–`09c`. |
-| Scientific policy | Orthogonal orientation evidence and the annotation, statistical, replicate, sensitivity, adjudication, and limitation exits for any biological-readiness policy. |
+| Runtime promotion | Real-bcftools Step `07` parity, partition-scale resources, and required evidence before computational Steps `08`–`09`. |
+| External research process | Where researchers will keep orientation, annotation, sensitivity, replicate-consistency, candidate-adjudication, and limitation records outside NORAD. |
 
 ## Design choices
 

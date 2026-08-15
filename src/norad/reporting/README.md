@@ -9,7 +9,7 @@ analysis, decide scientific validity, or promote evidence.
 | --- | --- |
 | `python -X pycache_prefix=/dev/null -I -m norad build artifact-index` | Reconcile one declared artifact root and inventory under an independent producer-checkout authority into a receipt-last artifact index. |
 | `python -X pycache_prefix=/dev/null -I -m norad build run-summary` | Project one admitted artifact-index receipt into the canonical run summary. |
-| `python -X pycache_prefix=/dev/null -I -m norad build report` | Render one canonical run summary under distinct code and artifact authorities into self-contained HTML, summary TSV, and a v2 receipt published last. |
+| `python -X pycache_prefix=/dev/null -I -m norad build report` | Render one canonical run summary under distinct code and artifact authorities into self-contained HTML, summary TSV, and a v3 receipt published last. |
 
 All three build routes require both `--source-checkout
 ABSOLUTE_CANONICAL_CHECKOUT` and `--artifact-source-root
@@ -27,8 +27,8 @@ and accepts only explicit inputs:
 `--source-checkout` names the absolute canonical NORAD Git top level whose
 Python and packaged-resource bytes match the executing package; it owns
 producer and renderer Git identity. `--artifact-source-root` independently
-resolves contract-relative inventory, native artifact, science, approval, and
-report-table paths. Reporting infers neither root from the working directory
+resolves contract-relative inventory and native artifact paths. Reporting
+infers neither root from the working directory
 or the run-summary location.
 
 Repeat with `--execute` to publish exactly:
@@ -37,7 +37,7 @@ Repeat with `--execute` to publish exactly:
 - `RUN_ID.run_summary.tsv`
 - `RUN_ID.report_outputs.tsv`
 
-The last file is the `norad.report_receipt` v2 receipt. Existing v1 output
+The last file is the `norad.report_receipt` v3 receipt. Existing older output
 directories, bare HTML predecessors, and incomplete sets are rejected; use a
 fresh output root unless an explicit migration is separately approved.
 
@@ -55,10 +55,10 @@ Candidate tables display at most 250 rows each. The report discloses the exact
 full source and any truncation, and the existing receipt `truncations` records
 bind truncated displays. If the exact result trio or its all-pass owner
 validation is incomplete, the report says so and opens no candidate rows.
-These are explicitly **computational results — not
-scientifically adjudicated**; separately approved Step `09c` selection and
-adjudication remain in their own review section and are not inferred from
-threshold-passing rows.
+These are explicitly **computational results — not scientifically
+adjudicated**. Candidate review, adjudication, and biological interpretation
+are external research activities and are not inferred from threshold-passing
+rows.
 
 [`report.py`](report.py) is the one public report owner. The private
 [`_run_report/`](_run_report/README.md) package owns explicit input admission,
@@ -90,5 +90,5 @@ of ancestor directories or mount namespaces requires external isolation and
 lies outside this local evidence claim.
 
 A rendered document or receipt reflects only its validated inputs and declared
-evidence state. It does not establish production execution, completed
-scientific review, validated editing sites, or biological readiness.
+computational evidence. It does not establish production execution, validated
+editing sites, or biological readiness.

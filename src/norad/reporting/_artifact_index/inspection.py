@@ -403,11 +403,6 @@ def apply_run_contract_checks(
             for value in primary_analysis_ids
         ):
             mismatches.append("primary_analysis_id")
-        review_ids = anchor_values.get("review_id", [])
-        if inspection.row["scope_type"] == "scientific_review" and any(
-            value != inspection.row["scope_id"] for value in review_ids
-        ):
-            mismatches.append("review_id")
         cohort_ids = anchor_values.get("cohort_id", [])
         if inspection.row["scope_type"] == "cohort" and any(
             value != inspection.row["scope_id"] for value in cohort_ids

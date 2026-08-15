@@ -31,7 +31,7 @@ from tests.reporting.fixtures.artifact_adapters_v1.build_fixture import (
 from tests.orchestration.local_pilot.fixture import build as build_intake
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
-PROFILE_PATH = REPO_ROOT / "workflow" / "contracts" / "local_cmh_v1.json"
+PROFILE_PATH = REPO_ROOT / "workflow" / "contracts" / "local_cmh_v2.json"
 SNAKEFILE = REPO_ROOT / "workflow" / "Snakefile"
 WORKFLOW_PROFILE = REPO_ROOT / "workflow" / "profiles" / "local" / "profile.v9+.yaml"
 TASK_DOUBLE = Path(__file__).with_name("task_double.py").resolve()
@@ -415,7 +415,7 @@ def artifact_payloads(
     for row in rows:
         by_adapter.setdefault(str(row["adapter"]), []).append(row)
         adapter = str(row["adapter"])
-        if row["step_id"] == "09c" or adapter == "step00c_reference_fasta_v1":
+        if adapter == "step00c_reference_fasta_v1":
             continue
         if spec := ADAPTER_REGISTRY.get(adapter):
             if spec.kind == "validation_report":

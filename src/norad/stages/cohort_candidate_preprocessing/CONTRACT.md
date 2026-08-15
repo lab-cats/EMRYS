@@ -149,8 +149,6 @@ peer-stage implementation dependencies are not supported interfaces.
 - Step `09` requires exact Step `08` sites and input receipt paths, hashes and
   schemas, preserves the entire candidate order/universe in its all-sites
   output, and carries the provisional policy forward.
-- Step `09c` scientific review later requires all three Step `08` outputs; this
-  additional review dependency is not part of Step `09` computation.
 - Artifact adapters register all three outputs and
   `step08_validation_report_v1`; reporting consumes registered evidence
   without rerunning R.
@@ -169,7 +167,7 @@ production, cluster, scientific-review, or biological evidence.
   [`step08.py`](../../contracts/scientific_evidence/step08.py). The validator
   imports that package module, as do neutral
   [`step09.py`](../../contracts/scientific_evidence/step09.py), the Step `09`
-  validator, Step `09c` implementation, and artifact index, preserving one
+  validator, and artifact index, preserving one
   `ContractError` and `Table` identity.
 - The producer and artifact adapter both treat the input receipt as the native
   transaction marker.

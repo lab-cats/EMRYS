@@ -13,7 +13,6 @@ artifact-contract owner.
 | [`identity.py`](identity.py) | Run-contract hashing, explicit paths, unique identities, and attempt graphs. |
 | [`evidence.py`](evidence.py) | Computational status and evidence-reference semantics. |
 | [`artifact.py`](artifact.py) | Artifact-record semantic validation. |
-| [`scientific_review.py`](scientific_review.py) | Scientific-review-record semantic validation. |
 | [`report_receipt.py`](report_receipt.py) | Report-receipt semantic validation. |
 | [`inventory.py`](inventory.py) | Explicit inventory admission and record/run-summary reconciliation. |
 | [`run_summary_status.py`](run_summary_status.py) | Run-summary status reduction. |

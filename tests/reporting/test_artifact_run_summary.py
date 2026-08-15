@@ -22,15 +22,11 @@ from jsonschema import Draft202012Validator, FormatChecker
 
 from norad import __main__ as norad_cli
 from norad.contracts.artifacts import api as CONTRACTS
-from norad.contracts.scientific_evidence import review_package
 from norad.libraries import source_authority as SOURCE_AUTHORITY
 from norad.libraries.source_authority import controlled_python_argv
 from norad.reporting import transaction_validation as REPORTING_VALIDATION
 from norad.reporting._artifact_index import api as ARTIFACT_INDEX_API
-from norad.reporting._run_summary import science_evidence as SCIENCE_EVIDENCE
-from norad.reporting._run_summary import science_package as SCIENCE_PACKAGE
-from norad.reporting._run_summary import science_projection as SCIENCE
-from tests.reporting.fixtures.artifact_run_summary_v1 import build_fixture as FIXTURE
+from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
 
 if TYPE_CHECKING:
     import argparse
@@ -356,11 +352,8 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """One explicit root reaches preparation, science, and approval seams."""
-    fixture = FIXTURE.build_approved_science_fixture(
-        tmp_path / "authority",
-        roles=("candidate_selection",),
-    )
+    """The explicit roots reach their distinct computational authorities."""
+    fixture = FIXTURE.build_fixture(tmp_path / "authority")
     source_checkout = SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT)
     artifact_root = SOURCE_AUTHORITY.ArtifactSourceRoot(root=fixture.root)
     root_calls: Counter[str] = Counter()
@@ -383,7 +376,6 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
     monkeypatch.setenv("GIT_DIR", str(tmp_path / "foreign.git"))
     for owner, attribute, label in (
         (CONTRACTS, "validate_inventory", "inventory"),
-        (CONTRACTS, "resolve_contract_path", "science_contract"),
         (CONTRACTS, "validate_run_summary_semantics", "document_semantics"),
         (CONTRACTS, "reconcile_document_inventory", "document_inventory"),
     ):
@@ -403,21 +395,8 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
         root_calls,
         "published_transaction",
     )
-    normalize_scientific_review = _source_root_spy(
-        RUN_SUMMARY.DEFAULT_RUN_SUMMARY_BUILD_DEPS.normalize_scientific_review,
-        artifact_root.root,
-        root_calls,
-        "science_normalization",
-    )
-    normalize_report_table_approvals = _source_root_spy(
-        RUN_SUMMARY.DEFAULT_RUN_SUMMARY_BUILD_DEPS.normalize_report_table_approvals,
-        artifact_root.root,
-        root_calls,
-        "approvals",
-    )
     recheck_ops = publication_ops(
         validate_artifact_transaction=validate_artifact_transaction,
-        normalize_scientific_review=normalize_scientific_review,
     )
 
     def recheck_inputs(context: Any) -> None:
@@ -430,8 +409,6 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
         source_checkout=source_checkout,
         artifact_source_root=artifact_root,
         deps=build_deps(
-            normalize_scientific_review=normalize_scientific_review,
-            normalize_report_table_approvals=normalize_report_table_approvals,
             recheck_inputs=recheck_inputs,
             matching_checkout_head_commit=matching_checkout_head_commit,
         ),
@@ -439,15 +416,11 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
 
     expected_single_calls = 1
     expected_prepare_rechecks = 1
-    expected_science_normalizations = 2
     assert context.source_checkout == source_checkout
     assert context.artifact_source_root == artifact_root
     assert root_calls["git"] == expected_single_calls
     assert root_calls["inventory"] == expected_single_calls
     assert root_calls["published_transaction"] == expected_prepare_rechecks
-    assert root_calls["science_contract"] > 0
-    assert root_calls["science_normalization"] == expected_science_normalizations
-    assert root_calls["approvals"] == expected_single_calls
     assert root_calls["document_semantics"] == expected_single_calls
     assert root_calls["document_inventory"] == expected_single_calls
 
@@ -694,11 +667,11 @@ def test_help_and_dry_run_validate_without_summary_writes(
         "--run-id",
         "--artifact-receipt",
         "--output-root",
-        "--science-review-summary",
-        "--report-table-approvals",
         "--execute",
     ):
         assert option in help_result.stdout
+    assert "science-review" not in help_result.stdout
+    assert "report-table-approvals" not in help_result.stdout
     assert result.returncode == 0, result.stderr
     assert "dry-run" in result.stdout.lower()
     assert run_summary_fixture.run_id in result.stdout
@@ -759,384 +732,13 @@ def test_execute_publishes_exact_canonical_schema_valid_transaction(
         run_summary_fixture.qc_summary_path
     )
     assert document["summary_state"] == "complete"
-    assert document["approved_report_tables"] == []
-    assert document["parameters"]["report_table_approvals"] is None
+    assert document["interpretation_boundary"] == (
+        "computational_candidates_only_biological_validation_outside_norad"
+    )
+    assert "scientific_review" not in document
+    assert "science_status" not in document
+    assert "approved_report_tables" not in document
     assert_no_summary_residue_after_success(run_summary_fixture)
-
-
-def test_explicit_report_table_approvals_are_normalized_and_provenanced(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_approved_science_fixture(
-        tmp_path / "approved",
-        science_status="evidence_incomplete",
-    )
-
-    dry_run = run_cli(fixture)
-
-    assert dry_run.returncode == 0, dry_run.stderr
-    assert str(fixture.report_table_approvals) in dry_run.stdout
-    assert "Approved report tables: 2" in dry_run.stdout
-    assert_no_summary_outputs(fixture)
-
-    result = run_cli(fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    document = validate_summary_document(fixture)
-    approvals = document["approved_report_tables"]
-    assert [row["role"] for row in approvals] == [
-        "candidate_selection",
-        "candidate_adjudication",
-    ]
-    assert [row["table_id"] for row in approvals] == [
-        "synthetic_candidate_selection",
-        "synthetic_candidate_adjudication",
-    ]
-    assert all(row["approval"]["status"] == "approved" for row in approvals)
-    assert all(
-        row["approval"]["policy_version"] == "synthetic_report_policy_v1"
-        for row in approvals
-    )
-    assert all(
-        row["approval"]["approved_by"] == "synthetic_scientific_owner"
-        for row in approvals
-    )
-    artifact_index = {
-        artifact["artifact_id"]: artifact for artifact in document["artifacts"]
-    }
-    for approval in approvals:
-        source = artifact_index[approval["artifact_id"]]["source"]
-        assert approval["path"] == source["path"]
-        assert approval["sha256"] == source["sha256"]
-        assert approval["row_count"] == source["row_count"]
-    approval_source = document["parameters"]["report_table_approvals"]
-    assert approval_source == {
-        "path": str(fixture.report_table_approvals),
-        "sha256": sha256_file(fixture.report_table_approvals),
-        "size_bytes": fixture.report_table_approvals.stat().st_size,
-        "row_count": 2,
-        "media_type": "text/tab-separated-values",
-    }
-    receipt = read_tsv(fixture.summary_receipt_path)[0]
-    assert receipt["producer_version"] == RUN_SUMMARY_MODELS.PRODUCER_VERSION
-    assert receipt["run_summary_json_sha256"] == sha256_file(fixture.summary_json_path)
-    assert document["science_status"] == "evidence_incomplete"
-    assert_no_summary_residue_after_success(fixture)
-
-
-def test_header_only_report_table_is_a_valid_explicit_approval(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_approved_science_fixture(
-        tmp_path / "header-only",
-        roles=("candidate_selection",),
-        header_only_roles=("candidate_selection",),
-    )
-    rows = read_tsv(fixture.report_table_approvals)
-    assert rows[0]["row_count"] == "0"
-
-    result = run_cli(fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    approval = validate_summary_document(fixture)["approved_report_tables"][0]
-    assert approval["row_count"] == 0
-    assert approval["display_row_limit"] is None
-
-
-@pytest.mark.parametrize(
-    ("field", "value", "message"),
-    [
-        ("run_id", "wrong_run", "wrong run_id"),
-        (
-            "run_contract_sha256",
-            "f" * 64,
-            "wrong run_contract_sha256",
-        ),
-        ("approval_status", "pending", "approval_status"),
-        ("display_row_limit", "", "canonical non-negative"),
-        ("row_count", "00", "canonical non-negative"),
-    ],
-)
-def test_report_table_approvals_fail_closed_on_identity_and_scalar_errors(
-    tmp_path: Path,
-    field: str,
-    value: str,
-    message: str,
-) -> None:
-    fixture = FIXTURE.build_approved_science_fixture(
-        tmp_path / field,
-        roles=("candidate_selection",),
-    )
-    rows = read_tsv(fixture.report_table_approvals)
-    rows[0][field] = value
-    write_tsv(
-        fixture.report_table_approvals,
-        RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER,
-        rows,
-    )
-
-    result = run_cli(fixture)
-
-    assert result.returncode != 0
-    assert message in result.stderr
-    assert_no_summary_outputs(fixture)
-
-
-def test_report_table_approvals_reject_empty_duplicate_and_decoy_inputs(
-    tmp_path: Path,
-) -> None:
-    empty = FIXTURE.build_approved_science_fixture(
-        tmp_path / "empty",
-        roles=("candidate_selection",),
-    )
-    write_tsv(
-        empty.report_table_approvals,
-        RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER,
-        [],
-    )
-    empty_result = run_cli(empty)
-    assert empty_result.returncode != 0
-    assert "must contain at least one" in empty_result.stderr
-    assert_no_summary_outputs(empty)
-
-    duplicate = FIXTURE.build_approved_science_fixture(
-        tmp_path / "duplicate",
-        roles=("candidate_selection",),
-    )
-    rows = read_tsv(duplicate.report_table_approvals)
-    write_tsv(
-        duplicate.report_table_approvals,
-        RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER,
-        [rows[0], rows[0]],
-    )
-    duplicate_result = run_cli(duplicate)
-    assert duplicate_result.returncode != 0
-    assert "Duplicate" in duplicate_result.stderr
-    assert_no_summary_outputs(duplicate)
-
-    decoy = FIXTURE.build_explicit_science_fixture(tmp_path / "decoy")
-    decoy_path = decoy.output_dir / "report_table_approvals.tsv"
-    decoy_path.write_text("not\tdiscovered\n", encoding="utf-8")
-    omitted = run_cli(decoy, execute=True)
-    assert omitted.returncode == 0, omitted.stderr
-    document = validate_summary_document(decoy)
-    assert document["approved_report_tables"] == []
-    assert document["parameters"]["report_table_approvals"] is None
-    assert decoy_path.read_text(encoding="utf-8") == "not\tdiscovered\n"
-
-
-def test_report_table_approval_header_role_source_and_time_fail_closed(
-    tmp_path: Path,
-) -> None:
-    bad_header = FIXTURE.build_approved_science_fixture(
-        tmp_path / "header",
-        roles=("candidate_selection",),
-    )
-    rows = read_tsv(bad_header.report_table_approvals)
-    write_tsv(
-        bad_header.report_table_approvals,
-        RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER[:-1],
-        [
-            {
-                field: rows[0][field]
-                for field in RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER[:-1]
-            }
-        ],
-    )
-    header_result = run_cli(bad_header)
-    assert header_result.returncode != 0
-    assert "invalid TSV header" in header_result.stderr
-    assert_no_summary_outputs(bad_header)
-
-    mutations = (
-        ("role", "candidate_adjudication", "artifact contract"),
-        ("sha256", "0" * 64, "hash or row count"),
-        ("row_count", "999", "hash or row count"),
-        ("display_row_limit", "999", "must not exceed"),
-        ("approved_at", "2999-01-01T00:00:00Z", "must not be later"),
-    )
-    for index, (field, value, message) in enumerate(mutations):
-        fixture = FIXTURE.build_approved_science_fixture(
-            tmp_path / f"mutation-{index}",
-            roles=("candidate_selection",),
-        )
-        approval_rows = read_tsv(fixture.report_table_approvals)
-        approval_rows[0][field] = value
-        write_tsv(
-            fixture.report_table_approvals,
-            RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER,
-            approval_rows,
-        )
-        result = run_cli(fixture)
-        assert result.returncode != 0
-        assert message in result.stderr
-        assert_no_summary_outputs(fixture)
-
-
-def test_report_table_approvals_require_exact_science_and_non_symlink_manifest(
-    tmp_path: Path,
-) -> None:
-    no_science = FIXTURE.build_approved_science_fixture(
-        tmp_path / "no-science",
-        roles=("candidate_selection",),
-    )
-    arguments = no_science.command_args(
-        include_science=False,
-        include_approvals=True,
-    )
-    result = run_cli(no_science, arguments=arguments)
-    assert result.returncode != 0
-    assert "require the exact committed Step 09c" in result.stderr
-    assert_no_summary_outputs(no_science)
-
-    symlinked = FIXTURE.build_approved_science_fixture(
-        tmp_path / "symlinked",
-        roles=("candidate_selection",),
-    )
-    link = symlinked.root / "approval-link.tsv"
-    link.symlink_to(symlinked.report_table_approvals)
-    arguments = symlinked.command_args()
-    arguments[arguments.index("--report-table-approvals") + 1] = str(link)
-    result = run_cli(symlinked, arguments=arguments)
-    assert result.returncode != 0
-    assert "symbolic link" in result.stderr
-    assert_no_summary_outputs(symlinked)
-
-
-def test_fixed_approval_retry_is_deterministic_and_supersedes(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_approved_science_fixture(
-        tmp_path / "retry",
-        roles=("candidate_selection",),
-    )
-    first = run_cli(fixture, execute=True)
-    assert first.returncode == 0, first.stderr
-    before = {path.name: path.read_bytes() for path in fixture.summary_paths[:3]}
-    first_receipt = read_tsv(fixture.summary_receipt_path)[0]
-
-    second = run_cli(fixture, execute=True)
-
-    assert second.returncode == 0, second.stderr
-    assert {
-        path.name: path.read_bytes() for path in fixture.summary_paths[:3]
-    } == before
-    second_receipt = read_tsv(fixture.summary_receipt_path)[0]
-    assert (
-        second_receipt["supersedes_run_summary_attempt_id"]
-        == (first_receipt["run_summary_attempt_id"])
-    )
-    assert second_receipt["run_summary_attempt_history"].split(",") == [
-        first_receipt["run_summary_attempt_id"],
-        second_receipt["run_summary_attempt_id"],
-    ]
-    validate_summary_document(fixture)
-
-
-def test_changed_approval_policy_creates_a_new_summary_attempt(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_approved_science_fixture(
-        tmp_path / "changed",
-        roles=("candidate_selection",),
-    )
-    first = run_cli(fixture, execute=True)
-    assert first.returncode == 0, first.stderr
-    first_json = fixture.summary_json_path.read_bytes()
-    first_receipt = read_tsv(fixture.summary_receipt_path)[0]
-    rows = read_tsv(fixture.report_table_approvals)
-    rows[0]["display_row_limit"] = "1"
-    rows[0]["approval_policy_version"] = "synthetic_report_policy_v2"
-    write_tsv(
-        fixture.report_table_approvals,
-        RUN_SUMMARY_MODELS.REPORT_TABLE_APPROVALS_HEADER,
-        rows,
-    )
-
-    second = run_cli(fixture, execute=True)
-
-    assert second.returncode == 0, second.stderr
-    assert fixture.summary_json_path.read_bytes() != first_json
-    document = validate_summary_document(fixture)
-    approval = document["approved_report_tables"][0]
-    assert approval["display_row_limit"] == 1
-    assert approval["approval"]["policy_version"] == ("synthetic_report_policy_v2")
-    second_receipt = read_tsv(fixture.summary_receipt_path)[0]
-    assert (
-        second_receipt["supersedes_run_summary_attempt_id"]
-        == (first_receipt["run_summary_attempt_id"])
-    )
-
-
-def test_legacy_empty_approval_summary_can_be_safely_superseded(
-    run_summary_fixture: Any,
-) -> None:
-    first = run_cli(run_summary_fixture, execute=True)
-    assert first.returncode == 0, first.stderr
-    document = read_json(run_summary_fixture.summary_json_path)
-    document["provenance"]["producer_version"] = (
-        RUN_SUMMARY_MODELS.LEGACY_PRODUCER_VERSION
-    )
-    document["parameters"].pop("report_table_approvals")
-    legacy_json = canonical_json_bytes(document)
-    run_summary_fixture.summary_json_path.write_bytes(legacy_json)
-    receipt = read_tsv(run_summary_fixture.summary_receipt_path)[0]
-    receipt["producer_version"] = RUN_SUMMARY_MODELS.LEGACY_PRODUCER_VERSION
-    receipt["run_summary_json_sha256"] = hashlib.sha256(legacy_json).hexdigest()
-    receipt["run_summary_json_size_bytes"] = str(len(legacy_json))
-    write_tsv(
-        run_summary_fixture.summary_receipt_path,
-        RUN_SUMMARY_MODELS.RUN_SUMMARY_RECEIPT_HEADER,
-        [receipt],
-    )
-
-    replacement = run_cli(run_summary_fixture, execute=True)
-
-    assert replacement.returncode == 0, replacement.stderr
-    current = validate_summary_document(run_summary_fixture)
-    assert current["provenance"]["producer_version"] == (
-        RUN_SUMMARY_MODELS.PRODUCER_VERSION
-    )
-    assert current["parameters"]["report_table_approvals"] is None
-    current_receipt = read_tsv(run_summary_fixture.summary_receipt_path)[0]
-    assert current_receipt["producer_version"] == (RUN_SUMMARY_MODELS.PRODUCER_VERSION)
-    assert (
-        current_receipt["supersedes_run_summary_attempt_id"]
-        == (receipt["run_summary_attempt_id"])
-    )
-
-
-def test_report_table_approval_manifest_and_table_mutation_fail_closed(
-    tmp_path: Path,
-) -> None:
-    manifest_fixture = FIXTURE.build_approved_science_fixture(
-        tmp_path / "manifest-mutation",
-        roles=("candidate_selection",),
-    )
-    manifest_context = context_for(manifest_fixture)
-    manifest_fixture.report_table_approvals.write_bytes(
-        manifest_fixture.report_table_approvals.read_bytes() + b"\n"
-    )
-    with pytest.raises(
-        RUN_SUMMARY_MODELS.RunSummaryError,
-        match="changed after its immutable snapshot",
-    ):
-        RUN_SUMMARY_PUBLICATION.publish_context(manifest_context)
-    assert_no_summary_outputs(manifest_fixture)
-
-    table_fixture = FIXTURE.build_approved_science_fixture(
-        tmp_path / "table-mutation",
-        roles=("candidate_selection",),
-    )
-    table_context = context_for(table_fixture)
-    table_path = Path(table_context.document["approved_report_tables"][0]["path"])
-    table_path.write_bytes(table_path.read_bytes() + b"\n")
-    with pytest.raises(
-        RUN_SUMMARY_MODELS.RunSummaryError,
-        match="Approved report table",
-    ):
-        RUN_SUMMARY_PUBLICATION.publish_context(table_context)
-    assert_no_summary_outputs(table_fixture)
 
 
 def assert_no_summary_residue_after_success(fixture: Any) -> None:
@@ -1168,28 +770,25 @@ def test_fixed_epoch_rerender_keeps_json_and_views_byte_identical(
     validate_summary_document(run_summary_fixture)
 
 
-def test_unrelated_files_and_decoy_science_are_ignored_and_preserved(
+def test_unrelated_files_are_ignored_and_preserved(
     run_summary_fixture: Any,
 ) -> None:
     unrelated = run_summary_fixture.output_dir / "unrelated.run_summary.json"
     unrelated_payload = b'{"unrelated":true}\n'
     unrelated.write_bytes(unrelated_payload)
-    decoy = run_summary_fixture.output_dir / "decoy.step09c_review_summary.tsv"
-    decoy.write_text(
-        "overall_science_status\nscience_review_complete_exploratory\n",
-        encoding="utf-8",
-    )
+    decoy = run_summary_fixture.output_dir / "decoy.tsv"
+    decoy_payload = b"unrelated\nvalue\n"
+    decoy.write_bytes(decoy_payload)
 
     result = run_cli(run_summary_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     document = validate_summary_document(run_summary_fixture)
     assert unrelated.read_bytes() == unrelated_payload
-    assert decoy.is_file()
-    assert document["science_status"] == "evidence_incomplete"
-    assert document["scientific_review"]["record_state"] == "missing"
-    assert document["scientific_review"]["record"] is None
-    assert document["scientific_review"]["source"] is None
+    assert decoy.read_bytes() == decoy_payload
+    assert document["interpretation_boundary"].endswith(
+        "biological_validation_outside_norad"
+    )
 
 
 def test_run_id_mismatch_and_tampered_artifact_receipt_fail_closed(
@@ -1210,439 +809,6 @@ def test_run_id_mismatch_and_tampered_artifact_receipt_fail_closed(
     result = run_cli(tampered)
     assert result.returncode != 0
     assert_no_summary_outputs(tampered)
-
-
-@pytest.mark.parametrize(
-    "science_status",
-    [
-        "evidence_incomplete",
-        "science_review_complete_exploratory",
-    ],
-)
-def test_explicit_science_summary_is_normalized_and_identity_bound(
-    tmp_path: Path,
-    science_status: str,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / science_status,
-        science_status=science_status,
-    )
-
-    result = run_cli(fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    document = validate_summary_document(fixture)
-    review = document["scientific_review"]
-    assert document["science_status"] == science_status
-    assert review["overall_status"] == science_status
-    assert review["record_state"] == "present"
-    assert review["source"]["path"] == str(fixture.science_review_summary)
-    assert review["source"]["sha256"] == sha256_file(fixture.science_review_summary)
-    assert review["record"]["run_id"] == fixture.run_id
-    assert review["record"]["run_contract"] == document["run_contract"]
-    assert review["record"]["scientific_state"]["overall_status"] == (science_status)
-    assert review["record"]["review_id"] == fixture.step09c_fixture.review_id
-    limitation = review["record"]["limitations"][0]
-    assert limitation["category"]
-    assert limitation["severity"]
-    assert limitation["mitigation"]
-    assert limitation["owner"]
-    assert limitation["review_date"]
-
-
-def test_explicit_science_preserves_human_reviewer_names(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "human-names",
-        science_status="evidence_incomplete",
-        human_names=True,
-    )
-
-    result = run_cli(fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    record = validate_summary_document(fixture)["scientific_review"]["record"]
-    assert record["review_metadata"]["reviewer"] == "Jane Doe"
-    assert record["review_metadata"]["decision_owner"] == "Scientific Review Team"
-    assert record["review_metadata"]["git_commit"] == "local_build"
-    assert all(row["reviewer"] == "Jane Doe" for row in record["evidence_records"])
-    assert all(
-        row["owner"] == "Scientific Review Team" for row in record["evidence_records"]
-    )
-    assert all(
-        decision["reviewer"] == "Jane Doe"
-        for decision in record["decisions"].values()
-        if decision["status"] == "recorded"
-    )
-
-
-def test_multi_scope_computational_evidence_preserves_underlying_paths(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "computational-scope-bundle",
-        science_status="evidence_incomplete",
-        computational_scope_bundle=True,
-    )
-
-    result = run_cli(fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    record = validate_summary_document(fixture)["scientific_review"]["record"]
-    references = record["computational_status"]["evidence"]
-    assert [reference["role"] for reference in references] == [
-        "local_test",
-        "runtime_log",
-        "runtime_output",
-        "cluster_dry_run",
-        "cluster_scheduler",
-        "cluster_log",
-        "cluster_output",
-    ]
-    assert len({reference["path"] for reference in references}) == 7
-    for reference in references:
-        path = Path(reference["path"])
-        assert path.is_file()
-        assert reference["sha256"] == sha256_file(path)
-        assert "computational_evidence" in path.parts
-
-
-def test_reporting_reader_does_not_reconstruct_step09c_sources(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "no-reconstruction",
-        science_status="evidence_incomplete",
-    )
-    summary_row = read_tsv(fixture.science_review_summary)[0]
-
-    def reject_reconstruction(*_args: Any, **_kwargs: Any) -> Any:
-        raise AssertionError("reporting attempted Step 09c reconstruction")
-
-    monkeypatch.setattr(
-        FIXTURE.STEP09C_CONTEXT,
-        "build_context",
-        reject_reconstruction,
-    )
-
-    context, tables = SCIENCE_PACKAGE._read_committed_review_package(
-        summary_path=fixture.science_review_summary,
-        summary_row=summary_row,
-        source_root=REPO_ROOT,
-    )
-
-    assert context.plan["review_id"] == fixture.step09c_fixture.review_id
-    assert tuple(tables) == tuple(
-        key for key, _suffix in review_package.OUTPUT_SUFFIXES
-    )
-
-
-def test_science_normalization_does_not_require_private_step09c_inputs(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "private-inputs-removed",
-        science_status="evidence_incomplete",
-    )
-    artifacts = [
-        read_json(Path(row["record_path"]))
-        for row in read_tsv(fixture.adapter_fixture.artifacts_path)
-    ]
-    run_contract = read_json(fixture.adapter_fixture.run_contract)
-    arguments = {
-        "summary_path": fixture.science_review_summary,
-        "artifacts": artifacts,
-        "run_id": fixture.run_id,
-        "run_contract": run_contract,
-        "generated_at": "2020-01-01T00:00:00Z",
-        "git_commit": "a" * 40,
-    }
-    before = SCIENCE.normalize_scientific_review(**arguments)
-
-    private_inputs = (
-        fixture.step09c_fixture.review_plan,
-        fixture.step09c_fixture.evidence_manifest,
-        fixture.step09c_fixture.step08_sites,
-    )
-    for path in private_inputs:
-        path.unlink()
-
-    after = SCIENCE.normalize_scientific_review(**arguments)
-
-    assert all(not path.exists() for path in private_inputs)
-    assert canonical_json_bytes(after) == canonical_json_bytes(before)
-
-
-def test_science_normalization_requires_the_fixed_indexed_package_roster(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "missing-package-record",
-        science_status="evidence_incomplete",
-    )
-    artifacts = [
-        read_json(Path(row["record_path"]))
-        for row in read_tsv(fixture.adapter_fixture.artifacts_path)
-    ]
-    artifacts = [
-        artifact
-        for artifact in artifacts
-        if artifact["adapter"] != "step09c_decisions_v1"
-    ]
-
-    with pytest.raises(
-        SCIENCE.RunSummaryScienceError,
-        match="exactly the 13 fixed",
-    ):
-        SCIENCE.normalize_scientific_review(
-            summary_path=fixture.science_review_summary,
-            artifacts=artifacts,
-            run_id=fixture.run_id,
-            run_contract=read_json(fixture.adapter_fixture.run_contract),
-            generated_at="2020-01-01T00:00:00Z",
-            git_commit="a" * 40,
-        )
-
-
-@pytest.mark.parametrize(
-    ("mutation", "expected_error"),
-    (
-        ("scope", "exactly the 13 fixed"),
-        ("science-state", "mismatched propagated science state"),
-    ),
-)
-def test_science_normalization_rejects_wrong_package_identity_or_state(
-    tmp_path: Path,
-    mutation: str,
-    expected_error: str,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / mutation,
-        science_status="evidence_incomplete",
-    )
-    artifacts = [
-        read_json(Path(row["record_path"]))
-        for row in read_tsv(fixture.adapter_fixture.artifacts_path)
-    ]
-    target = next(
-        artifact
-        for artifact in artifacts
-        if artifact["adapter"] == "step09c_decisions_v1"
-    )
-    if mutation == "scope":
-        target["scope"]["scope_id"] = "foreign_review"
-    else:
-        target["scientific_state"]["review_id"] = "foreign_review"
-
-    with pytest.raises(
-        SCIENCE.RunSummaryScienceError,
-        match=expected_error,
-    ):
-        SCIENCE.normalize_scientific_review(
-            summary_path=fixture.science_review_summary,
-            artifacts=artifacts,
-            run_id=fixture.run_id,
-            run_contract=read_json(fixture.adapter_fixture.run_contract),
-            generated_at="2020-01-01T00:00:00Z",
-            git_commit="a" * 40,
-        )
-
-
-def test_committed_public_review_package_mutation_fails_closed(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "public-package-mutation",
-        science_status="evidence_incomplete",
-    )
-    decisions_path = fixture.science_review_summary.with_name(
-        f"{fixture.step09c_fixture.review_id}.step09c_decisions.tsv"
-    )
-    decisions = read_tsv(decisions_path)
-    decisions[0]["rationale"] += " mutated"
-    write_tsv(decisions_path, read_tsv_header(decisions_path), decisions)
-
-    result = run_cli(fixture)
-
-    assert result.returncode != 0
-    assert (
-        "Published Step 09c decisions rows differ from reconstruction." in result.stderr
-    )
-    assert_no_summary_outputs(fixture)
-
-
-def test_committed_public_review_package_change_during_normalization_fails_closed(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "public-package-in-flight-mutation",
-        science_status="evidence_incomplete",
-    )
-    artifacts = [
-        read_json(Path(row["record_path"]))
-        for row in read_tsv(fixture.adapter_fixture.artifacts_path)
-    ]
-    decisions_path = fixture.science_review_summary.with_name(
-        f"{fixture.step09c_fixture.review_id}.step09c_decisions.tsv"
-    )
-    real_normalize = SCIENCE._normalize_limitations
-    mutated = False
-
-    def normalize_then_mutate(
-        context: Any,
-    ) -> list[dict[str, Any]]:
-        nonlocal mutated
-        normalized = real_normalize(context)
-        decisions_path.write_bytes(decisions_path.read_bytes() + b"\n")
-        mutated = True
-        return normalized
-
-    monkeypatch.setattr(SCIENCE, "_normalize_limitations", normalize_then_mutate)
-
-    with pytest.raises(
-        SCIENCE.RunSummaryScienceError,
-        match="changed during normalization",
-    ):
-        SCIENCE.normalize_scientific_review(
-            summary_path=fixture.science_review_summary,
-            artifacts=artifacts,
-            run_id=fixture.run_id,
-            run_contract=read_json(fixture.adapter_fixture.run_contract),
-            generated_at="2020-01-01T00:00:00Z",
-            git_commit="a" * 40,
-        )
-
-    assert mutated
-
-
-@pytest.mark.parametrize("target_kind", ("wrapper", "nested-payload"))
-def test_referenced_computational_evidence_mutation_fails_closed(
-    tmp_path: Path,
-    target_kind: str,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / target_kind,
-        science_status="evidence_incomplete",
-        computational_scope_bundle=True,
-    )
-    evidence_index_path = fixture.science_review_summary.with_name(
-        f"{fixture.step09c_fixture.review_id}.step09c_evidence_index.tsv"
-    )
-    computational = next(
-        row
-        for row in read_tsv(evidence_index_path)
-        if row["evidence_category"] == "computational_validation"
-        and row["evidence_status"] == "complete"
-    )
-    wrapper_path = Path(computational["source_path"])
-    if target_kind == "wrapper":
-        target = wrapper_path
-    else:
-        payload = next(
-            row for row in read_tsv(wrapper_path) if row["evidence_path"] != "NA"
-        )
-        target = Path(payload["evidence_path"])
-    target.write_bytes(target.read_bytes() + b"mutated\n")
-
-    result = run_cli(fixture)
-
-    assert result.returncode != 0
-    assert "hash differs" in result.stderr
-    assert_no_summary_outputs(fixture)
-
-
-def test_explicit_missing_science_categories_remain_missing_without_invented_dates(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "missing_science",
-        science_status="evidence_incomplete",
-        missing_categories=True,
-    )
-
-    result = run_cli(fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    document = validate_summary_document(fixture)
-    record = document["scientific_review"]["record"]
-    assert record is not None
-    assert record["scientific_state"]["overall_status"] == "evidence_incomplete"
-    assert all(
-        category["status"] == "missing"
-        for category in record["evidence_categories"].values()
-    )
-    assert all(
-        len(category["evidence_ids"]) == 1
-        for category in record["evidence_categories"].values()
-    )
-    missing_records = [
-        evidence
-        for evidence in record["evidence_records"]
-        if evidence["category"] != "computational_validation"
-    ]
-    assert len(missing_records) == len(record["evidence_categories"])
-    assert all(evidence["status"] == "missing" for evidence in missing_records)
-    assert all(evidence["source"] is None for evidence in missing_records)
-    assert all(evidence["evidence_date"] is None for evidence in missing_records)
-
-
-def test_mixed_science_category_retains_source_free_evidence_provenance(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "mixed_science",
-        science_status="evidence_incomplete",
-        mixed_categories=True,
-        mixed_computational=True,
-    )
-
-    result = run_cli(fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    document = validate_summary_document(fixture)
-    record = document["scientific_review"]["record"]
-    category = record["evidence_categories"]["qc_funnel"]
-    assert category["status"] == "incomplete"
-    assert len(category["evidence_ids"]) == 3
-    evidence = {
-        row["evidence_id"]: row
-        for row in record["evidence_records"]
-        if row["category"] == "qc_funnel"
-    }
-    assert set(evidence) == set(category["evidence_ids"])
-    missing = evidence["e_qc_funnel_missing"]
-    assert missing["status"] == "missing"
-    assert missing["source"] is None
-    assert missing["evidence_date"] is None
-    assert missing["reviewer"]
-    assert missing["owner"]
-    assert missing["policy_version"]
-    not_applicable = evidence["e_qc_funnel_not_applicable"]
-    assert not_applicable["status"] == "not_applicable"
-    assert not_applicable["source"] is None
-    assert not_applicable["evidence_date"] is None
-    assert not_applicable["not_applicable_reason"] == (
-        "Synthetic evidence dimension is not applicable."
-    )
-    computational = {
-        row["evidence_id"]: row
-        for row in record["evidence_records"]
-        if row["category"] == "computational_validation"
-    }
-    assert set(computational) == {
-        "e_computational",
-        "e_computational_missing",
-        "e_computational_not_applicable",
-    }
-    assert computational["e_computational_missing"]["evidence_date"] is None
-    assert computational["e_computational_not_applicable"]["evidence_date"] is None
-    assert [
-        reference["evidence_id"]
-        for reference in record["computational_status"]["evidence"]
-    ] == ["e_computational"]
 
 
 def test_qc_view_keeps_all_repeated_metrics_but_json_ids_are_unique(
@@ -1703,6 +869,11 @@ def test_qc_projection_preserves_domain_infinity_string() -> None:
     assert rows[0]["value_type"] == "string"
 
 
+def test_projection_handles_no_duplicate_metrics_and_null_metric_values() -> None:
+    assert RUN_SUMMARY_PROJECTION._issue_for_duplicate_metrics(set(), []) is None
+    assert RUN_SUMMARY_PROJECTION._metric_value_type(None) == "null"
+
+
 def test_complete_summary_preserves_required_missing_artifact_state(
     tmp_path: Path,
 ) -> None:
@@ -1724,7 +895,9 @@ def test_complete_summary_preserves_required_missing_artifact_state(
         scope["aggregate_state"] in {"missing", "incomplete"}
         for scope in document["expected_scopes"]
     )
-    assert document["science_status"] == "evidence_incomplete"
+    assert document["interpretation_boundary"].endswith(
+        "biological_validation_outside_norad"
+    )
 
 
 def test_partial_prior_summary_and_foreign_lock_are_preserved(
@@ -2405,220 +1578,17 @@ def test_receipt_is_the_last_published_summary_output(
     assert_no_summary_residue_after_success(run_summary_fixture)
 
 
-def test_reserved_science_state_is_rejected_before_publication(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "reserved",
-        science_status="evidence_incomplete",
-    )
-    header = read_tsv_header(fixture.science_review_summary)
-    rows = read_tsv(fixture.science_review_summary)
-    rows[0]["overall_science_status"] = "biological_interpretation_ready"
-    write_tsv(fixture.science_review_summary, header, rows)
-
-    result = run_cli(fixture, execute=True)
-
-    assert result.returncode != 0
-    assert "reserved" in result.stderr.lower()
-    assert_no_summary_outputs(fixture)
-
-
-def test_alternate_indexed_science_path_spelling_is_preserved(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "relative-science",
-        science_status="evidence_incomplete",
-    )
-    summary_row = read_tsv(fixture.science_review_summary)[0]
-    context, _tables = SCIENCE_PACKAGE._read_committed_review_package(
-        summary_path=fixture.science_review_summary,
-        summary_row=summary_row,
-        source_root=REPO_ROOT,
-    )
-    index_rows = read_tsv(fixture.adapter_fixture.artifacts_path)
-    artifacts = [read_json(Path(row["record_path"])) for row in index_rows]
-    target = next(
-        artifact for artifact in artifacts if artifact["adapter"] == "step08_sites_v1"
-    )
-    absolute_source = CONTRACTS.resolve_contract_path(target["source"]["path"])
-    source_text = str(absolute_source)
-    if not source_text.startswith("/private/var/"):
-        pytest.skip("No stable alternate /var spelling is available")
-    alternate_source = source_text.removeprefix("/private")
-    assert Path(alternate_source).resolve() == absolute_source
-    target["source"]["path"] = alternate_source
-    target["expectation"]["source_path"] = alternate_source
-    summary_artifact = next(
-        artifact
-        for artifact in artifacts
-        if artifact["adapter"] == "step09c_review_summary_v1"
-    )
-    summary_text = str(fixture.science_review_summary)
-    assert summary_text.startswith("/private/var/")
-    alternate_summary = summary_text.removeprefix("/private")
-    assert Path(alternate_summary).resolve() == fixture.science_review_summary
-    summary_artifact["source"]["path"] = alternate_summary
-    summary_artifact["expectation"]["source_path"] = alternate_summary
-    run_contract = read_json(fixture.adapter_fixture.run_contract)
-
-    normalized = SCIENCE_EVIDENCE._normalize_input_artifacts(
-        context=context,
-        artifacts=artifacts,
-        review_id=summary_row["review_id"],
-        run_contract=run_contract,
-        source_root=REPO_ROOT,
-    )
-    science_record = SCIENCE.normalize_scientific_review(
-        summary_path=fixture.science_review_summary,
-        artifacts=artifacts,
-        run_id=fixture.run_id,
-        run_contract=run_contract,
-        generated_at="2020-01-01T00:00:00Z",
-        git_commit="a" * 40,
-    )
-
-    step08_sites = next(
-        record for record in normalized if record["role"] == "step08_sites"
-    )
-    assert step08_sites["path"] == alternate_source
-    assert science_record["review_summary"]["path"] == alternate_summary
-
-
-def test_alternate_science_summary_spelling_publishes_consistent_receipt(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "alternate-summary-publish",
-        science_status="evidence_incomplete",
-    )
-    summary_text = str(fixture.science_review_summary)
-    if not summary_text.startswith("/private/var/"):
-        pytest.skip("No stable alternate /var spelling is available")
-    alternate_summary = summary_text.removeprefix("/private")
-    real_normalize = SCIENCE.normalize_scientific_review
-
-    def normalize_with_indexed_spelling(**kwargs: Any) -> dict[str, Any]:
-        record = copy.deepcopy(real_normalize(**kwargs))
-        record["review_summary"]["path"] = alternate_summary
-        return record
-
-    ops = publication_ops(
-        normalize_scientific_review=normalize_with_indexed_spelling,
-    )
-
-    def recheck_inputs(context: Any) -> None:
-        REPORTING_VALIDATION.recheck_run_summary_inputs(context, ops=ops)
-
-    context = context_for(
-        fixture,
-        deps=build_deps(
-            normalize_scientific_review=normalize_with_indexed_spelling,
-            recheck_inputs=recheck_inputs,
-        ),
-    )
-    assert context.document["scientific_review"]["source"]["path"] == (
-        alternate_summary
-    )
-    assert context.receipt_row["science_review_summary_path"] == (alternate_summary)
-    RUN_SUMMARY_PUBLICATION.publish_context(
-        context,
-        ops=ops,
-    )
-
-    RUN_SUMMARY_PUBLICATION.validate_published_run_summary(context)
-    receipt = read_tsv(fixture.summary_receipt_path)[0]
-    document = read_json(fixture.summary_json_path)
-    assert receipt["science_review_summary_path"] == alternate_summary
-    assert document["scientific_review"]["source"]["path"] == alternate_summary
-    assert_no_summary_residue_after_success(fixture)
-
-
-def test_pending_science_decision_with_evidence_fails_closed(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "pending-decision",
-        science_status="evidence_incomplete",
-    )
-    summary_row = read_tsv(fixture.science_review_summary)[0]
-    context, _tables = SCIENCE_PACKAGE._read_committed_review_package(
-        summary_path=fixture.science_review_summary,
-        summary_row=summary_row,
-        source_root=REPO_ROOT,
-    )
-    pending = context.category_rows["decisions"][0]
-    pending["decision_status"] = "pending"
-    pending["supporting_evidence_ids"] = "evidence.synthetic"
-
-    with pytest.raises(
-        SCIENCE.RunSummaryScienceError,
-        match="Pending decision",
-    ):
-        SCIENCE._normalize_decisions(context)
-
-
-def test_pending_science_decision_preserves_rationale_owner_and_policy(
-    tmp_path: Path,
-) -> None:
-    fixture = FIXTURE.build_explicit_science_fixture(
-        tmp_path / "pending-decision-details",
-        science_status="evidence_incomplete",
-    )
-    summary_row = read_tsv(fixture.science_review_summary)[0]
-    context, _tables = SCIENCE_PACKAGE._read_committed_review_package(
-        summary_path=fixture.science_review_summary,
-        summary_row=summary_row,
-        source_root=REPO_ROOT,
-    )
-    pending = context.category_rows["decisions"][0]
-    pending.update(
-        {
-            "decision_status": "pending",
-            "decision_value": "NA",
-            "decision_date": "NA",
-            "supporting_evidence_ids": "NA",
-        }
-    )
-
-    normalized = SCIENCE._normalize_decisions(context)[pending["decision_dimension"]]
-
-    assert normalized["status"] == "pending"
-    assert normalized["detail"] == pending["rationale"]
-    assert normalized["reviewer"] == pending["decision_owner"]
-    assert normalized["decision_id"] == pending["decision_id"]
-    assert normalized["source_evidence_id"] == pending["evidence_id"]
-    assert normalized["evidence_status"] == pending["evidence_status"]
-    assert normalized["policy_version"] == pending["policy_version"]
-    assert normalized["rerun_required"] is False
-
-
-def test_generated_limitation_id_is_collision_safe(tmp_path: Path) -> None:
+def test_required_artifact_limitation_is_computational_only(tmp_path: Path) -> None:
     fixture = FIXTURE.build_missing_fixture(tmp_path / "collision")
     record = read_json(
         fixture.adapter_fixture.records_dir / "sample.SYNTH_A.canonical_bai.json"
     )
-    existing = {
-        "limitation_id": "required_artifacts_not_complete",
-        "status": "open",
-        "description": "Synthetic user-authored limitation.",
-        "impact": "Synthetic impact.",
-        "evidence_ids": [],
-    }
-
-    limitations = RUN_SUMMARY_PROJECTION._build_limitations(
-        artifacts=[record],
-        scientific_review={
-            "record": {"limitations": [existing]},
-        },
-    )
+    limitations = RUN_SUMMARY_PROJECTION._build_limitations(artifacts=[record])
 
     assert [row["limitation_id"] for row in limitations] == [
         "required_artifacts_not_complete",
-        "required_artifacts_not_complete.generated1",
     ]
+    assert "scientific" not in limitations[0]["description"].lower()
 
 
 def test_attempt_aggregation_preserves_independent_chains_and_rejects_conflicts() -> (

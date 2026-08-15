@@ -3,7 +3,6 @@ flowchart LR
         references["Materialized FASTA/GTF and declared reference artifacts"]
         reads["Paired FASTQ"]
         manifests["Sample and partition manifests"]
-        review_inputs["Review plan and declared scientific evidence"]
     end
 
     subgraph workflow["Current functional-owner workflow under src/norad/"]
@@ -12,7 +11,6 @@ flowchart LR
         evidence_branches["Non-gating QC/orientation evidence (02b/03)"]
         cohort_owners["Declared cohort preprocessing (07/08)"]
         analysis["First-class paired-CMH analysis (09)"]
-        review["Scientific-review evidence package (09c)"]
 
         reference_owners -->|"STAR index to 01; FAI/DICT to 05"| sample_owners
         reference_owners -.->|"BED12 to 03"| evidence_branches
@@ -20,8 +18,6 @@ flowchart LR
         sample_owners --> cohort_owners
         reference_owners -->|"FAI to 07"| cohort_owners
         cohort_owners --> analysis
-        cohort_owners -.->|"direct review lineage"| review
-        analysis -.->|"direct review lineage"| review
     end
 
     references --> reference_owners
@@ -30,8 +26,6 @@ flowchart LR
     reads --> sample_owners
     manifests --> cohort_owners
     manifests --> analysis
-    manifests --> review
-    review_inputs --> review
 
     registered["Declared artifacts plus owner-local validation evidence<br/>(grouped projection; exact edges live in STAGE_MAP)"]
     adapters["Read-only artifact indexing"]
@@ -43,8 +37,10 @@ flowchart LR
     evidence_branches --> registered
     cohort_owners --> registered
     analysis --> registered
-    review --> registered
     registered --> adapters --> summary --> report
+
+    external_process["External review, adjudication, and biological interpretation records<br/>(outside NORAD; never a pipeline gate)"]
+    report -.->|"research work process may reference outputs"| external_process
 
     runtime_profile["Explicit runtime profile"] --> runtime_preflight["Read-only runtime availability evidence"]
     reference_inventory["Explicit reference inventory"] --> reference_provenance["Read-only reference provenance evidence"]

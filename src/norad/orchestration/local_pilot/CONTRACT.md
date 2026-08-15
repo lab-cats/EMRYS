@@ -14,7 +14,7 @@ guesses site-specific scheduler/tool values. Failure after reservation leaves
 the partial directory for inspection with no claim that its manifest is valid.
 
 `norad validate local-pilot-request --request FILE` calls the canonical
-normalizer with the tracked `norad.profile.local_cmh.v1` contract, then reuses
+normalizer with the tracked `norad.profile.local_cmh.v2` contract, then reuses
 the reference-contig and GTF-to-BED12 owners to require nonempty FASTA contigs,
 usable exon transcript models, matching contig names, in-bounds transcript
 coordinates, and in-bounds `region` or `regions_file` partition selectors. It

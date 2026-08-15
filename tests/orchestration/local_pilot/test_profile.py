@@ -15,7 +15,7 @@ from norad.orchestration.local_pilot.normalization import normalize_request
 from tests.orchestration.local_pilot.fixture import build
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-PROFILE_PATH = REPO_ROOT / "workflow" / "contracts" / "local_cmh_v1.json"
+PROFILE_PATH = REPO_ROOT / "workflow" / "contracts" / "local_cmh_v2.json"
 STAGE_MAP_PATH = REPO_ROOT / "src" / "norad" / "contracts" / "STAGE_MAP.md"
 PUBLIC_INVENTORY_PATH = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 
@@ -111,13 +111,6 @@ EXPECTED_TASKS = (
         "analysis",
         "analysis",
     ),
-    (
-        "norad.evidence.assemble_scientific_review_evidence_package.v1",
-        "assemble_scientific_review_evidence_package",
-        "09c",
-        "scientific_review",
-        "scientific_review",
-    ),
 )
 
 # Independent compact representation of every exact public artifact template.
@@ -187,19 +180,6 @@ analysis.{analysis_id}.mutation_spectrum_tsv|09|analysis|analysis|step09_mutatio
 analysis.{analysis_id}.mutation_spectrum_pdf|09|analysis|analysis|step09_mutation_spectrum_pdf_v1|results/editing/{analysis_id}/{analysis_id}.mutation_spectrum.pdf|true
 analysis.{analysis_id}.depth_delta_pdf|09|analysis|analysis|step09_depth_delta_pdf_v1|results/editing/{analysis_id}/{analysis_id}.depth_delta.pdf|true
 analysis.{analysis_id}.cmh_validation|09|analysis|analysis|step09_validation_report_v1|results/qc/validation/09/{analysis_id}.validation.tsv|true
-review.{analysis_id}.review_plan|09c|scientific_review|scientific_review|step09c_review_plan_v1|results/scientific_validation/{scope_id}/{scope_id}.step09c_review_plan.tsv|true
-review.{analysis_id}.evidence_index|09c|scientific_review|scientific_review|step09c_evidence_index_v1|results/scientific_validation/{scope_id}/{scope_id}.step09c_evidence_index.tsv|true
-review.{analysis_id}.orientation_locus_audit|09c|scientific_review|scientific_review|step09c_orientation_locus_audit_v1|results/scientific_validation/{scope_id}/{scope_id}.step09c_orientation_locus_audit.tsv|true
-review.{analysis_id}.annotation_audit|09c|scientific_review|scientific_review|step09c_annotation_audit_v1|results/scientific_validation/{scope_id}/{scope_id}.step09c_annotation_audit.tsv|true
-review.{analysis_id}.qc_funnel|09c|scientific_review|scientific_review|step09c_qc_funnel_v1|results/scientific_validation/{scope_id}/{scope_id}.step09c_qc_funnel.tsv|true
-review.{analysis_id}.replicate_effects|09c|scientific_review|scientific_review|step09c_replicate_effects_v1|results/scientific_validation/{scope_id}/{scope_id}.step09c_replicate_effects.tsv|true
-review.{analysis_id}.sensitivity_matrix|09c|scientific_review|scientific_review|step09c_sensitivity_matrix_v1|results/scientific_validation/{scope_id}/{scope_id}.step09c_sensitivity_matrix.tsv|true
-review.{analysis_id}.leave_one_pair_out|09c|scientific_review|scientific_review|step09c_leave_one_pair_out_v1|results/scientific_validation/{scope_id}/{scope_id}.step09c_leave_one_pair_out.tsv|true
-review.{analysis_id}.candidate_selection|09c|scientific_review|scientific_review|step09c_candidate_selection_v1|results/scientific_validation/{scope_id}/{scope_id}.step09c_candidate_selection.tsv|true
-review.{analysis_id}.candidate_adjudication|09c|scientific_review|scientific_review|step09c_candidate_adjudication_v1|results/scientific_validation/{scope_id}/{scope_id}.step09c_candidate_adjudication.tsv|true
-review.{analysis_id}.decisions|09c|scientific_review|scientific_review|step09c_decisions_v1|results/scientific_validation/{scope_id}/{scope_id}.step09c_decisions.tsv|true
-review.{analysis_id}.limitations|09c|scientific_review|scientific_review|step09c_limitations_v1|results/scientific_validation/{scope_id}/{scope_id}.step09c_limitations.tsv|true
-review.{analysis_id}.review_summary|09c|scientific_review|scientific_review|step09c_review_summary_v1|results/scientific_validation/{scope_id}/{scope_id}.step09c_review_summary.tsv|true
 """.strip().splitlines()
 
 
@@ -289,9 +269,9 @@ def test_profile_is_schema_valid_and_exactly_matches_stage_map(
     assert profile["direct_edges"] == edges
 
 
-def test_profile_has_exact_77_artifact_templates(profile: dict[str, object]) -> None:
+def test_profile_has_exact_64_artifact_templates(profile: dict[str, object]) -> None:
     expected = _expected_templates()
-    assert len(expected) == 77
+    assert len(expected) == 64
     assert profile["artifact_templates"] == expected
 
 
@@ -303,7 +283,7 @@ def test_profile_covers_exact_public_adapter_roster_with_only_declared_reuse(
     with PUBLIC_INVENTORY_PATH.open(encoding="utf-8", newline="") as stream:
         public_rows = list(csv.DictReader(stream, delimiter="\t"))
     public_adapters = {row["adapter"] for row in public_rows}
-    assert len(counts) == 62
+    assert len(counts) == 49
     assert set(counts) == public_adapters
     assert {adapter: count for adapter, count in counts.items() if count > 1} == {
         "step00a_star_index_v1": 15,
@@ -321,7 +301,7 @@ def test_profile_expands_to_exact_formula_and_contiguous_scopes(
     rows = bundle.artifact_inventory_rows
     sample_count = len(execution["samples"]["rows"])
     partition_count = len(execution["partitions"]["rows"])
-    assert len(rows) == 46 + (27 * sample_count) + (4 * partition_count)
+    assert len(rows) == 33 + (27 * sample_count) + (4 * partition_count)
 
     inventory_path = tmp_path / "artifact_inventory.tsv"
     inventory_path.write_bytes(bundle.artifact_inventory_bytes)
@@ -340,19 +320,14 @@ def test_profile_expands_to_exact_formula_and_contiguous_scopes(
             active = scope
 
 
-def test_review_owner_is_absent_from_execution_but_expected_in_reporting(
+def test_every_profile_owner_is_required_without_an_exclusion_surface(
     profile: dict[str, object],
 ) -> None:
-    review_key = "norad.evidence.assemble_scientific_review_evidence_package.v1"
-    assert profile["excluded_owner_keys"] == [review_key]
-    assert review_key not in profile["required_owner_keys"]
-    review_templates = [
-        template
-        for template in profile["artifact_templates"]
-        if template["step_id"] == "09c"
-    ]
-    assert len(review_templates) == 13
-    assert all(template["required"] is True for template in review_templates)
+    assert "excluded_owner_keys" not in profile
+    assert profile["required_owner_keys"] == profile["semantic_owner_keys"]
+    assert all(
+        template["step_id"] != "09c" for template in profile["artifact_templates"]
+    )
 
 
 def test_only_stationary_step00c_native_artifacts_are_absolute_templates(

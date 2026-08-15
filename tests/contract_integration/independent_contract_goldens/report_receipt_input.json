@@ -1,6 +1,7 @@
 {
   "attempt_id": "attempt-02",
   "generated_at": "2026-01-02T03:04:05Z",
+  "interpretation_boundary": "computational_candidates_only_biological_validation_outside_norad",
   "outputs": [
     {
       "kind": "html",
@@ -22,6 +23,5 @@
   ],
   "run_id": "run-01",
   "schema_name": "norad.report_receipt",
-  "schema_version": "2.0.0",
-  "science_status": "evidence_incomplete"
+  "schema_version": "3.0.0"
 }

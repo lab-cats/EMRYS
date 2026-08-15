@@ -65,10 +65,6 @@ NORAD_COMMANDS = (
         "usage: norad validate local-pilot-request",
     ),
     (
-        ("assemble", "scientific-review-package"),
-        "usage: norad assemble scientific-review-package",
-    ),
-    (
         ("reconcile", "reference-provenance"),
         "usage: norad reconcile reference-provenance",
     ),
@@ -165,9 +161,6 @@ SHELL_ENTRYPOINT_PATHS = {
     "step_09_cmh_editing_site_calling.sh": Path(
         "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh"
-    ),
-    "step_09c_scientific_validation.sh": Path(
-        "src/norad/evidence/scientific_review_package/step_09c_scientific_validation.sh"
     ),
 }
 SHELL_ENTRYPOINTS = frozenset(SHELL_ENTRYPOINT_PATHS)

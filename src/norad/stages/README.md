@@ -20,9 +20,9 @@ grouped module interface.
 | `08` | [`preprocess_and_annotate_cohort_candidates`](cohort_candidate_preprocessing/README.md) |
 
 The canonical identities and dependency edges live in
-[`STAGE_MAP.md`](../contracts/STAGE_MAP.md). Evidence operations `02b`, `03`,
-and `09c` live under [`evidence/`](../evidence/README.md); analysis `09` lives
-under [`analyses/`](../analyses/paired_cmh_candidate_ranking/README.md).
+[`STAGE_MAP.md`](../contracts/STAGE_MAP.md). Evidence operations `02b` and `03`
+live under [`evidence/`](../evidence/README.md); analysis `09` lives under
+[`analyses/`](../analyses/paired_cmh_candidate_ranking/README.md).
 
 ## Owner convention
 

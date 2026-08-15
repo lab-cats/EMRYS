@@ -23,7 +23,7 @@ from norad.reporting._run_report.models import RECEIPT_HEADER, ReportRenderError
 
 DESCRIPTION = (
     "Build one self-contained Jinja HTML report, deterministic run-summary TSV, "
-    "and receipt-last v2 transaction from an explicit canonical run summary. "
+    "and receipt-last v3 transaction from an explicit canonical run summary. "
     "Dry-run is the default; rendering never runs analysis or promotes evidence."
 )
 
@@ -65,7 +65,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
         type=Path,
         help=(
             "Absolute canonical root resolving contract-relative run-summary "
-            "and approved-table paths."
+            "and computational-result paths."
         ),
     )
     parser.add_argument(
@@ -139,7 +139,7 @@ def prepare_report(
 
 
 def serialize_receipt(document: dict[str, Any]) -> bytes:
-    """Serialize the supported v2 receipt TSV deterministically."""
+    """Serialize the supported v3 receipt TSV deterministically."""
 
     from norad.reporting._run_report.receipt import receipt_tsv_bytes
 
@@ -155,8 +155,8 @@ def print_plan(context: Any) -> None:
     print(f"  Run ID: {context.summary['run_id']}")
     print(f"  Run summary: {context.run_summary_path}")
     print(f"  Run-summary SHA-256: {context.run_summary_snapshot.sha256}")
-    print(f"  Science status: {context.summary['science_status']}")
-    print(f"  State banner: {context.render_metadata['state_banner']}")
+    print(f"  Interpretation boundary: {context.summary['interpretation_boundary']}")
+    print(f"  Boundary banner: {context.render_metadata['state_banner']}")
     print(f"  Renderer: Jinja2 {context.render_metadata['jinja_version']}")
     print(f"  HTML output: {context.output_html}")
     print(f"  Summary TSV: {context.output_summary_tsv}")

@@ -6,3 +6,4 @@ documented in [`../../orchestration`](../../orchestration/README.md).
 
 - [`v1/`](v1/) — the closed first local-CMH request, identity, and lifecycle
   record family.
+- [`v2/`](v2/) — the closed current local-CMH profile resource.

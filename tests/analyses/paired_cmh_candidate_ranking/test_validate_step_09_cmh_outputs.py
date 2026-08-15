@@ -13,9 +13,7 @@ import pytest
 from norad.__main__ import main as norad_main
 from norad.analyses.paired_cmh_candidate_ranking import validator
 from norad.libraries.validation import Snapshot
-from tests.evidence.scientific_review_package import (
-    build_fixture as fixture_builder,
-)
+from tests import scientific_evidence_test_support as fixture_builder
 from tests.stage_validator_test_support import load_roster_oracle
 from tests.stage_validator_test_support import read_tsv as report_rows
 

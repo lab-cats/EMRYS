@@ -16,7 +16,7 @@ owns exact public programs, jobs, validators, and tests.
 | `libraries/` | Narrow shared implementation proven across named consumers; never a generic utility bucket. |
 | `stages/` | Preprocessing and transformation owners keyed by the slugs in `STAGE_MAP.md`. |
 | `analyses/` | Scientific analysis owners distinct from preprocessing stages. |
-| `evidence/` | Operational/scientific evidence collection and review packaging that does not become peer computation. |
+| `evidence/` | Operational and mechanical evidence collection that does not become peer computation. |
 | `reporting/` | Artifact adaptation, canonical run summaries, projections, templates, styles, and static rendering. |
 | `ingestion/` | External-input admission and diagnostics; no implemented orchestration runner. |
 | `orchestration/` | Local-pilot request normalization, reporting projection, content-bound task execution/reuse admission, and lifecycle application policy; no scientific implementation. Static scheduling assets live at root `workflow/`. |
@@ -64,9 +64,8 @@ coherent semantic package, not a mixture of old and final owners.
 | Reference contig parsing | `libraries/references/contigs.py` | Reference provenance and Step `00c`/`05` validators. Agreement policy, reporting, and publication remain local. |
 | R input-contract mechanics | `libraries/input_contract.R` | Step `08` and `09` R programs share named-argument parsing, file/hash guards, and strict TSV loading. Argument rosters, defaults, table policy, and scientific algorithms remain owner-local. |
 | Executable-value resolution | `libraries/executable_resolution.sh` | Step `00c`, `05`, `06`, `07`, and `08` producers. Tool precedence, version policy, commands, and failures remain local. |
-| Step `08` contract | `contracts/scientific_evidence/step08.py` | Step `08`, Step `09`, Step `09c`, and artifact consumers share headers/vocabulary and input validation, not algorithms or publication. |
-| Step `09` contract | `contracts/scientific_evidence/step09.py` | Step `09`, Step `09c`, and artifact consumers share the public output contract, not CMH implementation or review policy. |
-| Review-package contract | `contracts/scientific_evidence/review_package.py` | Step `09c`, artifact indexing, and run-summary science share the public package roster/state reducer, not private evidence policy or recovery. |
+| Step `08` contract | `contracts/scientific_evidence/step08.py` | Step `08`, Step `09`, and artifact consumers share headers/vocabulary and input validation, not algorithms or publication. |
+| Step `09` contract | `contracts/scientific_evidence/step09.py` | Step `09` and artifact consumers share the public output contract, not CMH implementation or external interpretation policy. |
 | Orchestration records | `contracts/orchestration/` | The local-pilot application and tests share closed request, profile, execution, attempt, task, and verified-record schemas plus canonical JSON; functional owners do not import it. |
 | Source and artifact-root authority | `libraries/source_authority.py` | Reporting and the local lifecycle share canonical source-checkout/package identity plus a distinct artifact-source root. Git cleanliness is lifecycle attempt policy, not a reporting-transaction success claim. |
 | Controlled child startup | `libraries/process_environment.py` | Runtime-availability evidence and local orchestration share removal of inherited shell startup hooks, exact guarded R startup/environment selectors, and the selected-Java environment used for GATK. The R seam selects an existing library and never installs, restores, bootstraps, or downloads dependencies; the Java seam selects canonical `<JAVA_HOME>/bin/java` and removes ambient JVM/GATK selectors without owning tool versions or scientific commands. |
@@ -96,7 +95,8 @@ imported across peers.
 Cross-owner data flow follows the explicit edges in `STAGE_MAP.md`. No owner
 infers dependency order from numeric aliases, filenames, globs, neighboring
 directories, validator imports, or historical execution order. Reporting is a
-downstream projection and never promotes computational or scientific state.
+downstream projection and never promotes computational candidates into an
+external scientific or biological claim.
 
 ## Public-interface and future boundary
 

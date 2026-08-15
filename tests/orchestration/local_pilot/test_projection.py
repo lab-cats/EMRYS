@@ -40,9 +40,8 @@ def test_reporting_projection_is_exact_deterministic_and_legacy_compatible(
         == normalized.execution_contract["reporting_projection"]
     )
     assert bundle.artifact_inventory_bytes.endswith(b"\n")
-    assert b"analysis.synthetic_analysis.review_plan\t09c\t" in (
-        bundle.artifact_inventory_bytes
-    )
+    assert b"\t09c\t" not in bundle.artifact_inventory_bytes
+    assert b"scientific_review" not in bundle.artifact_inventory_bytes
 
 
 def test_execution_rejects_profile_identity_that_only_matches_digest(

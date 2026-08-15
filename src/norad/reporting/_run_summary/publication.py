@@ -13,7 +13,6 @@ from typing import Any
 from norad.contracts.artifacts import api as contracts
 from norad.reporting import transaction_validation
 from norad.reporting._artifact_index import api as adapter
-from norad.reporting._run_summary import science_projection as science
 from norad.reporting._run_summary.inputs import _fail
 from norad.reporting._run_summary.models import (
     RUN_SUMMARY_RECEIPT_HEADER,
@@ -46,9 +45,6 @@ class RunSummaryPublicationOps:
     restore_signal_handlers: Callable[..., Any] = adapter.restore_signal_handlers
     validate_artifact_transaction: Callable[..., Any] = (
         adapter.validate_published_transaction
-    )
-    normalize_scientific_review: Callable[..., Any] = (
-        science.normalize_scientific_review
     )
     load_existing_summary_receipt: Callable[..., Any] = _load_existing_summary_receipt
     validate_document: Callable[..., Any] = _validate_document

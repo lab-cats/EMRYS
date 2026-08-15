@@ -16,10 +16,10 @@ Provide analysis-ready paired FASTQs and author the intended design explicitly.
 
 The automatic workflow produces **CMH-ranked computational candidates**. It
 does not prove that a candidate is an RNA-editing site, infer biological strand
-from the mechanical orientation labels, complete human scientific review, or
-make a biological conclusion. Step `09c` human review is deliberately separate;
-without it, a successful automatic run correctly ends with
-`evidence_incomplete`.
+from the mechanical orientation labels, or make a biological conclusion.
+Candidate review, adjudication, and biological interpretation are external
+work-process records. NORAD does not model them as pipeline steps, gates,
+artifacts, or completion states.
 
 ## What happens to the data
 
@@ -41,8 +41,8 @@ without it, a successful automatic run correctly ends with
 | Reporting | Run | Index artifacts, assemble the run summary, and render HTML. | Report plus receipt-last publication |
 
 Steps `02b` and `03` are required QC leaves but do not gate downstream
-scientific computation. Step `09c`, when separately authorized, packages human
-review evidence; it is not part of `norad run`.
+scientific computation. External review or adjudication may use NORAD's
+computational outputs and provenance, but it is not part of `norad run`.
 
 The fixed graph contains `3 + 7S + P + 2` scientific-owner jobs for `S`
 samples and `P` genomic partitions. The four-sample, one-partition starter
@@ -689,13 +689,11 @@ Use the run summary and report together:
   Benjamini-Hochberg adjustment; `common_odds_ratio` is the shared odds-ratio
   estimate across replicate strata.
 
-An automatic report without approved Step `09c` evidence must still say
-`evidence_incomplete`, even when it contains significant computational calls.
-Treat those rows as candidates for scientific review, not validated editing
-sites. `FWD_like` and `REV_like` are fixed SAM-flag group labels; they are not
-biological strand, sense, or antisense claims. Separate Step `09c` selection
-and adjudication remains under `Review decisions`; it never silently promotes
-the computational tables.
+Treat threshold-passing rows as computational candidates, not validated
+editing sites. `FWD_like` and `REV_like` are fixed SAM-flag group labels; they
+are not biological strand, sense, or antisense claims. Candidate review,
+adjudication, and biological interpretation remain external work-process
+records and never alter or promote NORAD's computational tables.
 
 The complete native tables remain under:
 
@@ -776,7 +774,7 @@ run root and follow [troubleshooting](docs/operations/TROUBLESHOOTING.md).
 | Reference sidecar pair is partial | Preserve FASTA, FAI, DICT, adjacent locks, and staging. Establish ownership before any recovery; do not regenerate one member ad hoc. |
 | SLURM log never appears | Create its parent before `sbatch`, then inspect `squeue`/`sacct` and the exact `%j` path. |
 | Inspection says `blocked` | Preserve all evidence and route the failing scope through the owner-specific recovery guide. Do not rerun the initial command. |
-| Report says `evidence_incomplete` | Automatic computation may be complete; separately authorized Step `09c` human review is absent or incomplete. Do not edit the status. |
+| Report labels results `not scientifically adjudicated` | Expected: the report presents computational candidates and provenance only. Keep any external review or interpretation records separate from the run. |
 
 The full [troubleshooting matrix](docs/operations/TROUBLESHOOTING.md) covers
 safe evidence preservation and every owner.
@@ -795,7 +793,7 @@ safe evidence preservation and every owner.
 | Common odds ratio | CMH effect estimate shared across the paired strata; values above `1` favor treatment enrichment and below `1` favor control, subject to the declared thresholds. |
 | `FWD_like`, `REV_like` | Legacy mechanical SAM-flag groups; not biological strand labels. |
 | Computational call | A Step `09` threshold classification such as `significant_up`; still pending scientific adjudication. |
-| Step `09c` | Separately authorized human scientific-review evidence packaging. It is outside the automatic run. |
+| External review or adjudication | A research work process that may reference NORAD outputs but is not a NORAD step, gate, artifact, or completion state. |
 | Create-absent / no-clobber | Publication that requires the destination not to exist and refuses replacement or adoption. |
 | Receipt-last | The transaction receipt is published only after its declared payload has been checked; the receipt still must be semantically re-admitted. |
 | Run root | The immutable/evidence-bearing directory for one deterministic normalized run ID. |
@@ -808,6 +806,7 @@ safe evidence preservation and every owner.
 | Public local-pilot boundary | [`src/norad/orchestration/local_pilot/README.md`](src/norad/orchestration/local_pilot/README.md) |
 | Compact operator commands | [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md) |
 | Evidence-preserving recovery | [`docs/operations/TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) |
+| Optional external scientific-evaluation checklist | [`docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md`](docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md) |
 | Reporting transactions and direct report build | [`src/norad/reporting/README.md`](src/norad/reporting/README.md) |
 | Architecture and complete owner DAG | [`docs/architecture/README.md`](docs/architecture/README.md) |
 | Current validation evidence and remaining gaps | [`docs/operations/HANDOFF.md`](docs/operations/HANDOFF.md) |

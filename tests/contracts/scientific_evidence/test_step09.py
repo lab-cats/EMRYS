@@ -15,7 +15,7 @@ from types import ModuleType, SimpleNamespace
 import pytest
 from norad.contracts.scientific_evidence import step08 as STEP08
 from norad.contracts.scientific_evidence import step09 as STEP09
-from tests.evidence.scientific_review_package import build_fixture as FIXTURES
+from tests import scientific_evidence_test_support as FIXTURES
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -351,6 +351,11 @@ def test_summary_contract_rejects_row_count_and_result_context(
     with pytest.raises(STEP09.ContractError, match="control_condition differs"):
         validate_summary(valid, changed)
 
+    changed = copy.deepcopy(all_rows)
+    changed[0]["orientation_policy"] = "other"
+    with pytest.raises(STEP09.ContractError, match="inconsistent orientation policy"):
+        validate_summary(valid, changed)
+
 
 def test_semantic_contract_rejects_core_state_mutations(valid: SimpleNamespace) -> None:
     all_rows = validate_results(valid).rows
@@ -385,8 +390,60 @@ def test_semantic_contract_rejects_core_state_mutations(valid: SimpleNamespace) 
         "depth metrics",
     )
     rejected(
+        lambda rows, _summary: rows[0].update(mean_control_af="0.9"),
+        "AF/delta metrics",
+    )
+    rejected(
+        lambda rows, _summary: rows[3].update(
+            {
+                f"DP__{valid.sample_ids[0]}": "NA",
+                f"AD__{valid.sample_ids[0]}": "NA",
+                "min_analysis_dp": "1",
+            }
+        ),
+        "must be NA when analysis counts are missing",
+    )
+    rejected(
+        lambda rows, _summary: rows[3].update(
+            {
+                **{
+                    f"{prefix}__{sample_id}": "0"
+                    for prefix in ("DP", "AD")
+                    for sample_id in valid.sample_ids
+                },
+                "min_analysis_dp": "0",
+                "mean_analysis_dp": "0",
+                "mean_control_af": "0",
+            }
+        ),
+        "must be NA with zero analysis depth",
+    )
+    rejected(
+        lambda rows, _summary: rows[0].update(
+            {
+                "test_status": "low_coverage",
+                "call_status": "not_tested",
+                **{
+                    column: "NA"
+                    for column in (
+                        "cmh_statistic",
+                        "cmh_degrees_freedom",
+                        "cmh_p_value",
+                        "cmh_fdr_bh",
+                        "common_odds_ratio",
+                    )
+                },
+            }
+        ),
+        "test_status conflicts",
+    )
+    rejected(
         lambda rows, _summary: rows[2].update(call_status="effect_not_met"),
         "untested Step 09 candidate",
+    )
+    rejected(
+        lambda rows, _summary: rows[2].update(cmh_p_value="0.5"),
+        "must use cmh_p_value=NA",
     )
     rejected(
         lambda rows, _summary: rows[0].update(call_status="not_tested"),
@@ -408,6 +465,21 @@ def test_semantic_contract_rejects_core_state_mutations(valid: SimpleNamespace) 
         lambda _rows, summary_row: summary_row.update(fdr_threshold="0"),
         "thresholds are outside",
     )
+
+
+def test_semantic_contract_rejects_enabled_background_without_samples(
+    valid: SimpleNamespace,
+) -> None:
+    rows = validate_results(valid).rows
+    summary = dict(validate_summary(valid, rows).rows[0])
+    summary["background_condition"] = "BACKGROUND"
+
+    with pytest.raises(STEP09.ContractError, match="enabled background has zero depth"):
+        STEP09.validate_step09_result_semantics(
+            rows,
+            summary,
+            valid.sample_rows,
+        )
 
 
 def test_semantic_contract_accepts_missing_counts_and_strict_threshold_edges(
