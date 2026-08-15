@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import os
 import subprocess
@@ -127,6 +128,87 @@ def write_summary_copy(
         encoding="utf-8",
     )
     return path
+
+
+STEP09_REPORT_ADAPTERS = (
+    "step09_validation_report_v1",
+    "step09_cmh_all_sites_v1",
+    "step09_cmh_significant_sites_v1",
+    "step09_cmh_summary_v1",
+)
+
+
+def copied_step09_summary(
+    source: Path,
+    root: Path,
+    *,
+    mutate_sources: Any | None = None,
+    mutate_document: Any | None = None,
+) -> tuple[Path, dict[str, Path]]:
+    document = json.loads(source.read_text(encoding="utf-8"))
+    records = {
+        artifact["adapter"]: artifact
+        for artifact in document["artifacts"]
+        if artifact["adapter"] in STEP09_REPORT_ADAPTERS
+        and artifact["scope"]["scope_id"]
+        == document["run_contract"]["primary_analysis_id"]
+    }
+    assert set(records) == set(STEP09_REPORT_ADAPTERS)
+    source_dir = root / "step09"
+    source_dir.mkdir(parents=True)
+    paths: dict[str, Path] = {}
+    for adapter, record in records.items():
+        original = Path(record["source"]["path"])
+        copied = source_dir / original.name
+        copied.write_bytes(original.read_bytes())
+        record["expectation"]["source_path"] = str(copied)
+        record["source"]["path"] = str(copied)
+        paths[adapter] = copied
+    if mutate_sources is not None:
+        mutate_sources(paths)
+    for adapter, record in records.items():
+        path = paths[adapter]
+        payload = path.read_bytes()
+        with path.open(encoding="utf-8", newline="") as stream:
+            row_count = sum(1 for _row in csv.reader(stream, delimiter="\t")) - 1
+        record["source"].update(
+            {
+                "sha256": hashlib.sha256(payload).hexdigest(),
+                "size_bytes": len(payload),
+                "row_count": row_count,
+            }
+        )
+        for metric in record["metrics"]:
+            if metric["metric_id"] == "source_row_count":
+                metric["value"] = row_count
+    if mutate_document is not None:
+        mutate_document(document, records)
+    run_id = document["run_id"]
+    summary_dir = root / "summary" / run_id
+    summary_dir.mkdir(parents=True)
+    summary = summary_dir / f"{run_id}.run_summary.json"
+    summary.write_text(
+        json.dumps(document, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return summary, paths
+
+
+def rewrite_tsv(path: Path, mutate: Any) -> None:
+    with path.open(encoding="utf-8", newline="") as stream:
+        reader = csv.DictReader(stream, delimiter="\t")
+        fieldnames = tuple(reader.fieldnames or ())
+        rows = list(reader)
+    mutate(fieldnames, rows)
+    with path.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(
+            stream,
+            fieldnames=fieldnames,
+            delimiter="\t",
+            lineterminator="\n",
+        )
+        writer.writeheader()
+        writer.writerows(rows)
 
 
 def publish(context: Any, ops: REPORT.ReportPublicationOps | None = None) -> None:
@@ -293,7 +375,7 @@ def test_receipt_attributes_provenance_to_renderer_checkout(
     assert context.producer_git_commit != upstream_commit
     assert document["provenance"] == {
         "producer": "norad.reporting.report",
-        "producer_version": "2.0.0",
+        "producer_version": "2.1.0",
         "git_commit": context.producer_git_commit,
         "created_at": context.summary["generated_at"],
     }
@@ -433,6 +515,245 @@ def test_semantic_html_preserves_banner_sections_and_terminology(
     )
 
 
+def test_incomplete_science_report_displays_exact_step09_results_and_key_qc(
+    incomplete_summary: Path,
+    tmp_path: Path,
+) -> None:
+    context = REPORT.prepare_report(
+        arguments(incomplete_summary, tmp_path / "reports", execute=True)
+    )
+    assert context.computational_unavailable_reason is None
+    assert context.computational_results is not None
+    assert context.computational_results.analysis_id == "synthetic_analysis"
+    assert context.computational_results.sample_ids == ("SYNTH_A",)
+    assert context.computational_results.all_sites.row_count == 4
+    assert context.computational_results.significant_sites.row_count == 1
+    assert context.tables == ()
+    publish(context)
+    content = context.output_html.read_text(encoding="utf-8")
+    assert (
+        '<details id="computational-results-category" '
+        'class="report-category" name="norad-report-categories" open>'
+    ) in content
+    assert "Computational results — not scientifically adjudicated" in content
+    assert "COMPUTATIONAL RESULTS — NOT SCIENTIFICALLY ADJUDICATED." in content
+    assert 'id="computational_significant_sites"' in content
+    assert 'id="computational_all_sites"' in content
+    assert "candidate_1" in content
+    assert "DP__SYNTH_A" in content
+    assert "Mapped reads" in content
+    assert "0.97" in content
+    assert "No Step 09c candidate-selection or adjudication" in content
+
+
+def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
+    tmp_path: Path,
+) -> None:
+    fixture = FIXTURE.build_missing_fixture(
+        tmp_path / "fixture",
+        artifact_id="analysis.synthetic.cmh_all_sites",
+    )
+    summary = publish_run_summary(fixture)
+    context = REPORT.prepare_report(
+        arguments(summary, tmp_path / "reports", execute=True)
+    )
+    assert context.computational_results is None
+    assert context.computational_unavailable_reason is not None
+    assert "not complete" in context.computational_unavailable_reason
+    publish(context)
+    content = context.output_html.read_text(encoding="utf-8")
+    assert "no computational candidate rows were opened or displayed" in content
+    assert 'id="computational_all_sites"' not in content
+
+
+def test_step09c_tables_remain_separate_from_computational_results(
+    exploratory_summary: Path,
+    tmp_path: Path,
+) -> None:
+    context = REPORT.prepare_report(
+        arguments(exploratory_summary, tmp_path / "reports", execute=True)
+    )
+    assert context.computational_results is not None
+    assert [table.role for table in context.tables] == ["candidate_selection"]
+    publish(context)
+    content = context.output_html.read_text(encoding="utf-8")
+    assert 'id="computational_all_sites"' in content
+    assert 'id="candidate-section"' in content
+    assert f'id="approved-table-{context.tables[0].table_id}"' in content
+    assert "Separate Step 09c selection and adjudication" in content
+
+
+@pytest.mark.parametrize(
+    ("field", "replacement", "message"),
+    (
+        ("sha256", "0" * 64, "SHA-256 mismatch"),
+        ("size_bytes", 1, "size mismatch"),
+        ("row_count", 99, "row-count mismatch"),
+    ),
+)
+def test_step09_source_identity_mismatches_fail_closed(
+    incomplete_summary: Path,
+    tmp_path: Path,
+    field: str,
+    replacement: Any,
+    message: str,
+) -> None:
+    def mutate_document(
+        _document: dict[str, Any],
+        records: dict[str, dict[str, Any]],
+    ) -> None:
+        record = records["step09_cmh_all_sites_v1"]
+        record["source"][field] = replacement
+        if field == "row_count":
+            for metric in record["metrics"]:
+                if metric["metric_id"] == "source_row_count":
+                    metric["value"] = replacement
+
+    copied, _paths = copied_step09_summary(
+        incomplete_summary,
+        tmp_path / "input",
+        mutate_document=mutate_document,
+    )
+    with pytest.raises(ReportRenderError, match=message):
+        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+
+
+def test_step09_malformed_sample_blocks_fail_closed(
+    incomplete_summary: Path,
+    tmp_path: Path,
+) -> None:
+    def mutate_sources(paths: dict[str, Path]) -> None:
+        for adapter in (
+            "step09_cmh_all_sites_v1",
+            "step09_cmh_significant_sites_v1",
+        ):
+            path = paths[adapter]
+            payload = path.read_text(encoding="utf-8")
+            path.write_text(
+                payload.replace("DP__SYNTH_A", "DP__BROKEN", 1),
+                encoding="utf-8",
+            )
+
+    copied, _paths = copied_step09_summary(
+        incomplete_summary,
+        tmp_path / "input",
+        mutate_sources=mutate_sources,
+    )
+    with pytest.raises(ReportRenderError, match="invalid AD__ sample block"):
+        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+
+
+def test_step09_duplicate_candidates_fail_closed(
+    incomplete_summary: Path,
+    tmp_path: Path,
+) -> None:
+    def mutate_sources(paths: dict[str, Path]) -> None:
+        def duplicate(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
+            rows[1]["candidate_id"] = rows[0]["candidate_id"]
+
+        rewrite_tsv(paths["step09_cmh_all_sites_v1"], duplicate)
+
+    copied, _paths = copied_step09_summary(
+        incomplete_summary,
+        tmp_path / "input",
+        mutate_sources=mutate_sources,
+    )
+    with pytest.raises(ReportRenderError, match="duplicate candidate_id"):
+        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+
+
+def test_step09_owner_validation_must_be_exact_all_pass_before_rows_open(
+    incomplete_summary: Path,
+    tmp_path: Path,
+) -> None:
+    def mutate_sources(paths: dict[str, Path]) -> None:
+        def fail_status(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
+            rows[0]["status"] = "fail"
+
+        rewrite_tsv(paths["step09_validation_report_v1"], fail_status)
+
+    copied, _paths = copied_step09_summary(
+        incomplete_summary,
+        tmp_path / "input",
+        mutate_sources=mutate_sources,
+    )
+    with pytest.raises(
+        ReportRenderError, match="owner-validation report is not all-pass"
+    ):
+        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+
+
+def test_step09_significant_subset_and_summary_counts_fail_closed(
+    incomplete_summary: Path,
+    tmp_path: Path,
+) -> None:
+    def mutate_subset(paths: dict[str, Path]) -> None:
+        def replace_candidate(
+            _header: tuple[str, ...], rows: list[dict[str, str]]
+        ) -> None:
+            rows[0]["candidate_id"] = "different_candidate"
+
+        rewrite_tsv(paths["step09_cmh_significant_sites_v1"], replace_candidate)
+
+    subset_summary, _paths = copied_step09_summary(
+        incomplete_summary,
+        tmp_path / "subset",
+        mutate_sources=mutate_subset,
+    )
+    with pytest.raises(ReportRenderError, match="exact ordered significant subset"):
+        REPORT.prepare_report(arguments(subset_summary, tmp_path / "subset-reports"))
+
+    def mutate_counts(paths: dict[str, Path]) -> None:
+        def replace_count(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
+            rows[0]["candidate_count"] = "99"
+
+        rewrite_tsv(paths["step09_cmh_summary_v1"], replace_count)
+
+    count_summary, _paths = copied_step09_summary(
+        incomplete_summary,
+        tmp_path / "counts",
+        mutate_sources=mutate_counts,
+    )
+    with pytest.raises(ReportRenderError, match="candidate_count disagrees"):
+        REPORT.prepare_report(arguments(count_summary, tmp_path / "count-reports"))
+
+
+def test_step09_invalid_thresholds_fail_closed(
+    incomplete_summary: Path,
+    tmp_path: Path,
+) -> None:
+    def mutate_sources(paths: dict[str, Path]) -> None:
+        def invalidate(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
+            rows[0]["fdr_threshold"] = "not-a-number"
+
+        rewrite_tsv(paths["step09_cmh_summary_v1"], invalidate)
+
+    copied, _paths = copied_step09_summary(
+        incomplete_summary,
+        tmp_path / "input",
+        mutate_sources=mutate_sources,
+    )
+    with pytest.raises(ReportRenderError, match="fdr_threshold must be numeric"):
+        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+
+
+def test_step09_input_mutation_aborts_before_publication(
+    incomplete_summary: Path,
+    tmp_path: Path,
+) -> None:
+    copied, paths = copied_step09_summary(incomplete_summary, tmp_path / "input")
+    context = REPORT.prepare_report(
+        arguments(copied, tmp_path / "reports", execute=True)
+    )
+    paths["step09_cmh_all_sites_v1"].write_bytes(
+        paths["step09_cmh_all_sites_v1"].read_bytes() + b" "
+    )
+    with pytest.raises(ReportRenderError, match="changed during report"):
+        publish(context)
+    assert not any(path.exists() for path in output_paths(context))
+    assert not context.lock_path.exists()
+
+
 def test_approved_table_limit_and_truncation_are_disclosed(
     exploratory_summary: Path,
     tmp_path: Path,
@@ -456,6 +777,63 @@ def test_approved_table_limit_and_truncation_are_disclosed(
         }
     ]
     assert "Displayed 1 of" in context.output_html.read_text(encoding="utf-8")
+
+
+def test_computational_all_sites_limit_and_truncation_are_receipted(
+    incomplete_summary: Path,
+    tmp_path: Path,
+) -> None:
+    def expand_sources(paths: dict[str, Path]) -> None:
+        def expand_all(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
+            significant = dict(rows[0])
+            nonsignificant = dict(rows[1])
+            rows[:] = [significant]
+            for index in range(1, 251):
+                row = dict(nonsignificant)
+                row["candidate_id"] = f"expanded_candidate_{index:03d}"
+                rows.append(row)
+
+        def update_summary(
+            _header: tuple[str, ...], rows: list[dict[str, str]]
+        ) -> None:
+            rows[0].update(
+                {
+                    "candidate_count": "251",
+                    "target_candidate_count": "251",
+                    "successfully_tested_count": "251",
+                    "effect_not_met_count": "250",
+                }
+            )
+
+        rewrite_tsv(paths["step09_cmh_all_sites_v1"], expand_all)
+        rewrite_tsv(paths["step09_cmh_summary_v1"], update_summary)
+
+    copied, _paths = copied_step09_summary(
+        incomplete_summary,
+        tmp_path / "input",
+        mutate_sources=expand_sources,
+    )
+    context = REPORT.prepare_report(
+        arguments(copied, tmp_path / "reports", execute=True)
+    )
+    assert context.computational_results is not None
+    all_sites = context.computational_results.all_sites
+    assert all_sites.row_count == 251
+    assert all_sites.displayed_row_count == 250
+    assert all_sites.truncated is True
+    publish(context)
+    document = receipt_document(context.output_receipt)
+    assert document["truncations"][0] == {
+        "table_id": "computational_all_sites",
+        "report_section": "computational-results",
+        "full_table_path": str(all_sites.path),
+        "full_table_sha256": all_sites.sha256,
+        "full_row_count": 251,
+        "displayed_row_count": 250,
+    }
+    assert "Displayed 250 of 251 rows" in context.output_html.read_text(
+        encoding="utf-8"
+    )
 
 
 def test_explicit_input_and_canonical_name_are_required(

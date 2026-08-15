@@ -13,6 +13,8 @@ from .models import (
     KNOWN_REPORT_ROLES,
     SCIENCE_BANNERS,
     ApprovedTable,
+    ComputationalResults,
+    ComputationalTable,
 )
 
 
@@ -122,6 +124,246 @@ def _tables_for_roles(
     if not selected:
         return [_empty(empty_message)]
     return [block for table in selected for block in _approved_table_blocks(table)]
+
+
+_COMPUTATIONAL_RESULT_COLUMNS = (
+    "candidate_id",
+    "partition_id",
+    "orientation",
+    "chromosome",
+    "position",
+    "genomic_ref",
+    "genomic_alt",
+    "rna_ref",
+    "rna_alt",
+    "gene_ids",
+    "test_status",
+    "call_status",
+    "min_analysis_dp",
+    "mean_analysis_dp",
+    "mean_control_af",
+    "mean_treatment_af",
+    "treatment_control_difference",
+    "cmh_p_value",
+    "cmh_fdr_bh",
+    "common_odds_ratio",
+)
+
+
+def _computational_source_note(table: ComputationalTable) -> dict[str, Any]:
+    qualifier = (
+        f"Displayed {table.displayed_row_count} of {table.row_count} rows."
+        if table.truncated
+        else f"Displayed all {table.row_count} rows."
+    )
+    return _note(
+        f"{qualifier} Exact completed artifact: {table.path}. SHA-256: "
+        f"{table.sha256}. Size: {table.size_bytes} bytes.",
+        notice=table.truncated,
+    )
+
+
+def _computational_result_table(table: ComputationalTable) -> dict[str, Any]:
+    columns = (
+        *_COMPUTATIONAL_RESULT_COLUMNS,
+        *(column for column in table.header if column.startswith("DP__")),
+        *(column for column in table.header if column.startswith("AD__")),
+        *(column for column in table.header if column.startswith("AF__")),
+    )
+    indices = tuple(table.header.index(column) for column in columns)
+    return _table(
+        table.table_id,
+        table.title,
+        columns,
+        (tuple(row[index] for index in indices) for row in table.display_rows),
+    )
+
+
+def _computational_result_blocks(
+    results: ComputationalResults | None,
+    unavailable_reason: str | None,
+) -> list[dict[str, Any]]:
+    boundary = _note(
+        "COMPUTATIONAL RESULTS — NOT SCIENTIFICALLY ADJUDICATED. "
+        "Threshold-passing rows are CMH-ranked candidates, not validated "
+        "RNA-editing sites or biological conclusions.",
+        notice=True,
+    )
+    if results is None:
+        return [
+            boundary,
+            _empty(
+                unavailable_reason
+                or (
+                    "The exact complete primary-analysis Step 09 result trio is "
+                    "not available. No computational candidate row was inferred."
+                )
+            ),
+        ]
+    summary_table = results.summary
+    summary = dict(
+        zip(summary_table.header, summary_table.display_rows[0], strict=True)
+    )
+    summary_fields = (
+        ("Analysis ID", "analysis_id"),
+        ("Control condition", "control_condition"),
+        ("Treatment condition", "treatment_condition"),
+        ("Target RNA change", "target_rna_change"),
+        ("Replicate count", "replicate_count"),
+        ("Sample count", "sample_count"),
+        ("All candidate rows", "candidate_count"),
+        ("Target-change rows", "target_candidate_count"),
+        ("Successfully tested rows", "successfully_tested_count"),
+        ("Significant-up rows", "significant_up_count"),
+        ("Significant-down rows", "significant_down_count"),
+        ("Minimum sample DP", "min_sample_dp"),
+        ("Mean DP threshold", "mean_dp_threshold"),
+        ("FDR threshold", "fdr_threshold"),
+        ("Common OR threshold", "common_or_threshold"),
+        ("Absolute AF-difference threshold", "absolute_difference_threshold"),
+        ("Background maximum fraction", "background_max_fraction"),
+        ("Multiple-testing method", "multiple_testing_method"),
+        ("CMH alternative", "cmh_alternative"),
+        ("Continuity correction", "continuity_correction"),
+        ("Orientation policy", "orientation_policy"),
+    )
+    return [
+        boundary,
+        _key_value_table(
+            "computational-analysis-summary",
+            "Step 09 counts, design, and declared thresholds",
+            ((label, summary[field]) for label, field in summary_fields),
+        ),
+        _computational_source_note(summary_table),
+        _computational_result_table(results.significant_sites),
+        _computational_source_note(results.significant_sites),
+        _computational_result_table(results.all_sites),
+        _computational_source_note(results.all_sites),
+    ]
+
+
+def _key_qc(summary: Mapping[str, Any]) -> dict[str, Any]:
+    adapters = {
+        "step01_star_log_final_v1",
+        "step02b_flagstat_v1",
+        "step03_rseqc_infer_v1",
+        "step04_markdup_metrics_v1",
+    }
+    by_sample: dict[str, dict[str, Mapping[str, Any]]] = defaultdict(dict)
+    ambiguous: set[tuple[str, str]] = set()
+    seen: set[tuple[str, str]] = set()
+    sample_order: list[str] = []
+    for artifact in summary["artifacts"]:
+        adapter = artifact["adapter"]
+        scope = artifact["scope"]
+        if adapter not in adapters or scope["scope_type"] != "sample":
+            continue
+        sample_id = scope["scope_id"]
+        if sample_id not in sample_order:
+            sample_order.append(sample_id)
+        key = (sample_id, adapter)
+        if key in seen:
+            ambiguous.add(key)
+            by_sample[sample_id].pop(adapter, None)
+            continue
+        seen.add(key)
+        if not (
+            artifact["availability_status"] == "present"
+            and artifact["completion_status"] == "complete"
+        ):
+            continue
+        metric_ids = [metric["metric_id"] for metric in artifact["metrics"]]
+        if len(metric_ids) != len(set(metric_ids)):
+            ambiguous.add(key)
+            continue
+        by_sample[sample_id][adapter] = {
+            metric["metric_id"]: metric["value"] for metric in artifact["metrics"]
+        }
+    for sample_id, adapter in ambiguous:
+        by_sample[sample_id].pop(adapter, None)
+
+    def metric(sample_id: str, adapter: str, metric_id: str) -> Any:
+        return by_sample.get(sample_id, {}).get(adapter, {}).get(metric_id)
+
+    if not sample_order:
+        return _empty(
+            "No complete sample-level STAR, flagstat, RSeQC, or Picard metrics "
+            "are available in the canonical run summary."
+        )
+    return _table(
+        "key-sample-qc",
+        (
+            "Selected exact artifact metrics copied from the canonical run "
+            "summary; missing or ambiguous values are not inferred"
+        ),
+        (
+            "Sample",
+            "Input reads",
+            "Mapped reads",
+            "Unique mapped reads",
+            "Unique mapping (%)",
+            "Orientation fraction A",
+            "Orientation fraction B",
+            "Undetermined fraction",
+            "Read pairs examined",
+            "Duplicate pairs",
+            "Duplicate fraction",
+            "Estimated library size",
+        ),
+        (
+            (
+                sample_id,
+                metric(sample_id, "step01_star_log_final_v1", "number_of_input_reads"),
+                metric(sample_id, "step02b_flagstat_v1", "mapped_reads"),
+                metric(
+                    sample_id,
+                    "step01_star_log_final_v1",
+                    "uniquely_mapped_reads_number",
+                ),
+                metric(
+                    sample_id,
+                    "step01_star_log_final_v1",
+                    "uniquely_mapped_reads",
+                ),
+                metric(
+                    sample_id,
+                    "step03_rseqc_infer_v1",
+                    "fraction_explained_by__1_-_1-__2___2--",
+                ),
+                metric(
+                    sample_id,
+                    "step03_rseqc_infer_v1",
+                    "fraction_explained_by__1___1--_2_-_2-",
+                ),
+                metric(
+                    sample_id,
+                    "step03_rseqc_infer_v1",
+                    "fraction_failed_to_determine",
+                ),
+                metric(
+                    sample_id,
+                    "step04_markdup_metrics_v1",
+                    "read_pairs_examined",
+                ),
+                metric(
+                    sample_id,
+                    "step04_markdup_metrics_v1",
+                    "read_pair_duplicates",
+                ),
+                metric(
+                    sample_id,
+                    "step04_markdup_metrics_v1",
+                    "percent_duplication",
+                ),
+                metric(
+                    sample_id,
+                    "step04_markdup_metrics_v1",
+                    "estimated_library_size",
+                ),
+            )
+            for sample_id in sample_order
+        ),
+    )
 
 
 def _scientific_record(summary: Mapping[str, Any]) -> Mapping[str, Any] | None:
@@ -792,6 +1034,9 @@ def build_view(
     summary: Mapping[str, Any],
     tables: Sequence[ApprovedTable],
     metadata: Mapping[str, str],
+    *,
+    computational_results: ComputationalResults | None = None,
+    computational_unavailable_reason: str | None = None,
 ) -> dict[str, Any]:
     """Build deterministic data only; the Jinja template owns all markup."""
 
@@ -857,29 +1102,36 @@ def build_view(
         "metadata": dict(metadata),
         "categories": (
             {
+                "id": "computational-results-category",
+                "title": "Computational results",
+                "open": True,
+                "sections": (
+                    {
+                        "id": "computational-results-section",
+                        "title": (
+                            "Computational results — not scientifically adjudicated"
+                        ),
+                        "blocks": _computational_result_blocks(
+                            computational_results,
+                            computational_unavailable_reason,
+                        ),
+                    },
+                    {
+                        "id": "key-qc-section",
+                        "title": "Key per-sample QC",
+                        "blocks": [_key_qc(summary)],
+                    },
+                ),
+            },
+            {
                 "id": "overview-category",
                 "title": "Overview",
-                "open": True,
+                "open": False,
                 "sections": (
                     {
                         "id": "status-section",
                         "title": "Computational and scientific status",
                         "blocks": _status_blocks(summary),
-                    },
-                    {
-                        "id": "candidate-section",
-                        "title": (
-                            f"{CANDIDATE_TERMINOLOGY} and adjudication summaries"
-                        ),
-                        "blocks": _tables_for_roles(
-                            tables_by_role,
-                            ("candidate_selection", "candidate_adjudication"),
-                            (
-                                "No candidate-selection or adjudication table was "
-                                "explicitly approved. No candidate row is displayed "
-                                "or inferred."
-                            ),
-                        ),
                     },
                     {
                         "id": "limitations-section",
@@ -953,6 +1205,26 @@ def build_view(
                 "title": "Review decisions",
                 "open": False,
                 "sections": (
+                    {
+                        "id": "candidate-section",
+                        "title": "Separate Step 09c selection and adjudication",
+                        "blocks": [
+                            _note(
+                                "These tables exist only when separately supplied "
+                                "Step 09c review approvals are present. They do not "
+                                "alter the computational tables above.",
+                                notice=True,
+                            ),
+                            *_tables_for_roles(
+                                tables_by_role,
+                                ("candidate_selection", "candidate_adjudication"),
+                                (
+                                    "No Step 09c candidate-selection or adjudication "
+                                    "table was explicitly approved."
+                                ),
+                            ),
+                        ],
+                    },
                     {
                         "id": "decisions-section",
                         "title": (

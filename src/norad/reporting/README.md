@@ -41,6 +41,25 @@ The last file is the `norad.report_receipt` v2 receipt. Existing v1 output
 directories, bare HTML predecessors, and incomplete sets are rejected; use a
 fresh output root unless an explicit migration is separately approved.
 
+The HTML opens on **Computational results**. For the primary analysis, it
+admits only the exact complete Step `09` all-sites, significant-sites, summary,
+and all-pass owner-validation artifacts recorded by the run summary. It shows summary counts and
+thresholds, the significant subset, all CMH-ranked candidates, raw per-sample
+DP/AD/AF, and selected sample QC already recorded by STAR, flagstat, RSeQC, and
+Picard artifact metrics. Every computational source is checked by path,
+SHA-256, byte size, row count, header, sample blocks, candidate identity,
+significant-subset identity, and summary reconciliation. The renderer never
+discovers native output by filename.
+
+Candidate tables display at most 250 rows each. The report discloses the exact
+full source and any truncation, and the existing receipt `truncations` records
+bind truncated displays. If the exact result trio or its all-pass owner
+validation is incomplete, the report says so and opens no candidate rows.
+These are explicitly **computational results — not
+scientifically adjudicated**; separately approved Step `09c` selection and
+adjudication remain in their own review section and are not inferred from
+threshold-passing rows.
+
 [`report.py`](report.py) is the one public report owner. The private
 [`_run_report/`](_run_report/README.md) package owns explicit input admission,
 checkout-rooted semantic and table validation, structured view data, Jinja

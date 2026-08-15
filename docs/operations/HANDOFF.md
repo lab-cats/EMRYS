@@ -30,14 +30,14 @@ dry-run-first `norad run`, `norad resume`, and `norad inspect local-pilot-run`.
 
 | Surface | Current evidence ceiling |
 | --- | --- |
-| Local-pilot orchestration | B0 defines the source-checkout-bound lifecycle; B1 hardens owner boundaries; B2 adds intake/contracts; B3 adds an exact fixed profile, 13-scientific-owner-rule static graph, task attempts, and content-bound verified records; B4 adds three ordered reporting rules, durable task/reporting entry records, and the run-lock/attempt/receipt tail; B5 adds the exact fixed-profile materializer and public dry-run-first run/resume/inspection adapter; B6 adds matched structural starters, a clean-fresh-clone proof, and proof-matched onboarding. The adversarial follow-up binds exact tool and installed-R-package bytes, task logs and owner tokens; admits only stable complete Step `00c` sidecar reuse; serializes stale contenders without residue; and terminalizes interruption only after process-group quiescence and durable lock disposition. Real Snakemake 9.25.1 dry-runs and deterministic no-science executions prove slices containing 3, 10, and 34 owner jobs, 43 direct owner edges, the three reporting transactions, a separate clean completion, controlled between-task failure, semantic inspection, byte-preserving resume, and completed-run refusal. `.snakemake` is not completion authority. There is no reconciliation after an entered scope fails, real science-tool run, VM, SLURM, or current cluster proof. |
-| PORT-NC-01 integration | Tests added on `fix/no-clobber` were reported as cluster-run and as validating that source branch's behavior. They informed, but do not validate, the differently implemented replay. Exact integrated candidate `ebc43b4a8342b676eafb6b56492989498886ab55` passed the unchanged assembled local gate: static preflight, installed-wheel smoke, guarded local R, shell/SLURM-wrapper contracts, and Python behavior/coverage. The replay preserves stronger current transactions and runtime authority while admitting STAR metadata rows, publishing the deterministic Step `00b` final through its converter transaction, binding all repository-owning wrappers to the submitted checkout, and making Step `01` staged no-clobber plus controlled hashing the scheduled default. This is local integration evidence only: the candidate was not run on a cluster, the wrapper lane did not submit Slurm jobs or exercise a distributed filesystem, and no fresh-clone or local-pilot E2E was part of this closeout. See the [dated record](../history/testing/2026-08-14-port-nc-01-no-clobber-replay.md). |
+| Local-pilot orchestration | B0 defines the source-checkout-bound lifecycle; B1 hardens owner boundaries; B2 adds intake/contracts; B3 adds an exact fixed profile, 13-scientific-owner-rule static graph, task attempts, and content-bound verified records; B4 adds three ordered reporting rules, durable task/reporting entry records, and the run-lock/attempt/receipt tail; B5 adds the exact fixed-profile materializer and public dry-run-first run/resume/inspection adapter; B6 adds matched structural starters, a clean-fresh-clone proof, and proof-matched onboarding. The adversarial follow-up binds exact tool and installed-R-package bytes, task logs and owner tokens; admits only stable complete Step `00c` sidecar reuse; serializes stale contenders without residue; and terminalizes interruption only after process-group quiescence and durable lock disposition. In addition to real Snakemake 9.25.1 dry-runs and deterministic no-science slices, NORAD science commit `2587126e7e471b504657c9a43789e870713f8bb6` completed a production-like synthetic ingestion-to-report run on one native ARM64 Ubuntu VM in one real single-node Slurm allocation. The lane verified 34/34 owner tasks across 13 automatic owners, 3/3 reporting transactions, and a 38/38 DAG. `.snakemake` is not completion authority. There is still no reconciliation after an entered scope fails, CSU Viking execution, distributed Slurm executor, multi-node proof, production-data proof, or current production-cluster proof. |
+| PORT-NC-01 integration | Tests added on `fix/no-clobber` were reported as cluster-run and as validating that source branch's behavior. They informed, but do not validate, the differently implemented replay. Exact integrated candidate `ebc43b4a8342b676eafb6b56492989498886ab55` passed the unchanged assembled local gate: static preflight, installed-wheel smoke, guarded local R, shell/SLURM-wrapper contracts, and Python behavior/coverage. The replay preserves stronger current transactions and runtime authority while admitting STAR metadata rows, publishing the deterministic Step `00b` final through its converter transaction, binding all repository-owning wrappers to the submitted checkout, and making Step `01` staged no-clobber plus controlled hashing the scheduled default. That replay closeout itself was local integration evidence only: its wrapper lane did not submit Slurm jobs or exercise a distributed filesystem, and no fresh-clone or local-pilot E2E was part of that closeout. The later production-like pilot on science commit `2587126e7e471b504657c9a43789e870713f8bb6` exercised the integrated public path with real tools in a VM Slurm allocation, but does not retroactively supply CSU, distributed-filesystem, or production-data evidence. See the [dated replay record](../history/testing/2026-08-14-port-nc-01-no-clobber-replay.md). |
 | Physical ownership | Pipeline stages, neutral contracts/libraries, reporting, and evidence helpers occupy their allowed homes. This is local/static topology evidence, not new runtime or cluster proof. |
-| Steps `00a`–`06` | B1 owner boundaries are locally fake-tool/fixture tested; earlier production executions remain cluster-proven but predate physical relocation. No current real-tool local proof. |
-| Step `07` | B1 no-clobber and rollback boundaries are locally mock-bcftools tested; no real-bcftools or current cluster proof. |
-| Steps `08`–`09` | B1 no-clobber/recovery boundaries are locally shell/fake-R tested; prior guarded-real-R tests remain separate. No production or current cluster proof. |
-| Step `09c` and reporting | The automatic local profile deliberately records Step `09c` as absent and publishes an evidence-incomplete artifact index, run summary, and HTML report. The reporting transactions and their independent semantic re-admission are synthetic-fixture/local-render tested; there is no production evidence package, completed scientific review, or production report. |
-| Operational helpers | Runtime, reference, storage, and structured validators have local fixture evidence. The local-pilot doctor has no-write ready/not-ready/malformed fixture evidence and explicit runtime-profile binding; B6 exercises it from a clean clone with a declared no-science runtime fixture, and the lifecycle re-admits that profile before and after execution. Neither has passed against a complete real science-tool installation. There is no CSU batch runtime report, production reference/storage report, or approved retention policy. |
+| Steps `00a`–`06` | B1 owner boundaries retain their local fake-tool/fixture evidence. The production-like synthetic pilot additionally exercised these owners with the admitted real-tool runtime on one ARM64 Linux VM in a single-node Slurm allocation, using four paired-end libraries with 100,000 read pairs each and a deterministic 5 Mb reference. This is not CSU, distributed, production-data, or production-scale proof. |
+| Step `07` | B1 no-clobber and rollback boundaries retain their local mock-bcftools evidence. The production-like synthetic pilot exercised Step `07` with bcftools 1.21 and passed its owner validation and the end-to-end completion boundary. This is not CSU or production-data evidence. |
+| Steps `08`–`09` | B1 no-clobber/recovery boundaries retain local shell/fake-R and guarded-real-R evidence. The production-like synthetic pilot exercised the admitted real R 4.6.1 runtime through Step `09`; the output contained three CMH-ranked candidates, one passing the fixed significance contract, and the lab-owned independent Step `09` oracle matched. This remains synthetic single-node evidence, not completed scientific review, biological validation, or production-data proof. |
+| Step `09c` and reporting | The automatic local profile deliberately records the 13 Step `09c` human-review artifacts as absent. The production-like synthetic pilot nevertheless completed all three reporting transactions and published a self-contained HTML report; 145/158 artifacts were complete, so the correct report status remained `evidence_incomplete` with no biological interpretation authorized. The currently approved reporting tranche adds explicit, non-adjudicating computational-results tables derived from the preserved Step `09` artifacts; it does not rerun or promote the science. **CLOSEOUT REQUIRED:** replace this sentence with the derivative renderer commit, derivative report path, HTML hash, and semantic-receipt hash. Keep the original science authority identified separately as `2587126e7e471b504657c9a43789e870713f8bb6`. There is still no completed Step `09c` scientific review, production evidence package, or production-data report. |
+| Operational helpers | Runtime, reference, storage, and structured validators retain local fixture evidence. In the production-like synthetic pilot, all 24 runtime checks passed against the complete admitted VM installation before Slurm submission, and the lifecycle re-admitted the bound runtime profile. The currently approved onboarding tranche is adding zero-context starter generation, request validation, explicit runtime-profile rendering, and a generated Slurm wrapper; its final evidence must come from the assembled closeout gate. There is no CSU batch runtime report, production reference/storage report, or approved retention policy. |
 
 A transaction proves only reconciliation of its declared inputs and outputs.
 It does not prove every source passed or promote runtime, cluster, scientific,
@@ -57,8 +57,45 @@ fault-injection boundaries, scientific methods, independent-oracle boundaries,
 and evidence semantics. The external REMORA reference is not a parity oracle.
 Known publication defects remain current blockers below. Focused storage and
 public-CLI tests passed, but that storage slice did not rerun the full coverage
-gate. These decompositions establish local maintainability evidence only; they
-add no runtime, cluster, scientific-review, or biological proof.
+gate. These decompositions establish local maintainability evidence only. The
+later production-like pilot below separately adds exact synthetic real-runtime
+and single-node VM Slurm evidence; neither evidence source establishes CSU,
+production-data, scientific-review, or biological proof.
+
+## Production-like synthetic VM evidence
+
+NORAD science commit
+`2587126e7e471b504657c9a43789e870713f8bb6` completed the public path from
+admitted FASTQ intake through deterministic HTML report generation in lab lane
+`full-cohort-public-2587126e7e47-02`. Slurm job `91` ran for `00:05:14` in one
+single-node, two-CPU, 6 GiB allocation on a native ARM64 Ubuntu VM and reached
+`COMPLETED/0:0`. The exact NORAD run was
+`run-bb36785424aba063e336ebaecdde4e78d984a4470187b8e1421fd281d3afa04f`.
+
+The deterministic fixture contained four paired-end libraries with 100,000
+read pairs per library and a 5 Mb reference. The completed run verified all
+34 scientific owner task records across the 13 automatic owners, all three
+reporting transactions, and the 38-rule DAG. Step `09` published three
+CMH-ranked candidates, one passing the fixed significance contract; the
+lab-owned independent Step `09` oracle matched. The report remained correctly
+`evidence_incomplete` because the 13 human Step `09c` records were deliberately
+absent. The retained HTML is 214,102 bytes with SHA-256
+`50d4cc7bd26cd706544283ce532000ee6a900f8a8195ccb29b021809670afef8`.
+
+The preserved completed lane was sealed without rerunning any scientific owner
+or reporting transaction. Its portable manifest contains 861 records, 206
+directories, 655 files, and 210,401,447 regular bytes. Guest, private host, and
+final create-absent host collection re-admission passed; the collected tree is
+retained as `runs/full-cohort-public-2587126e7e47-02` in the Linux validation
+lab. The guest seal SHA-256 is
+`8c1816748725087ee7a23b7713f7853258442de4ec9d0de62199eccce5f81e72`;
+the adjacent verified host-collection receipt SHA-256 is
+`abd12efdf707ac54bfb66ac72479c9da6a289d0d5d9834a33bccad378c63ab8e`.
+This evidence is production-like synthetic, real-tool, one-VM,
+single-node Slurm evidence only. It is not CSU Viking execution, distributed or
+multi-node execution, production-scale performance, production-data evidence,
+completed scientific review, biological validation, or permission to draw a
+biological conclusion.
 
 ## Cohort and preserved scientific evidence
 
@@ -108,13 +145,16 @@ do not mutate the environment incidentally.
 
 - The production `samples.tsv` is not in this checkout; its cluster identity,
   replicate values, persistence, and hash require inspection.
-- Step `07` lacks real-bcftools and cluster evidence. Steps `08`, `09`,
-  and `09c` lack production/cluster evidence and completed scientific review.
+- Steps `07`–`09` now have production-like synthetic real-tool evidence from
+  one VM single-node Slurm allocation, but they still lack CSU Viking,
+  distributed, production-data, and production-scale evidence. Step `09c`
+  remains absent and scientific review remains incomplete.
 - CSU batch-visible R/package availability, storage capacity and retention
   policy, and the exact Novogene annotation release remain unresolved.
 - The Step `09` production validator does not independently recompute CMH
-  statistics from DP/AD counts. The independent test oracle characterizes a
-  possible correction but did not change production validation.
+  statistics from DP/AD counts. The lab-owned independent oracle matched the
+  preserved production-like synthetic pilot, but did not change the production
+  validator or establish production-data correctness.
 - Publication characterization retains known same-size rewrite,
   late-foreign-final, incomplete-rollback, descriptor, and stale-lock failure
   states on legacy replacement routes. The local profile will use the B1
@@ -129,11 +169,21 @@ applicable owner `README.md` or `CONTRACT.md`.
 
 ## Immediate resume point
 
-Campaign B, its adversarial local-pilot hardening follow-up, and PORT-NC-01 are
-complete at their stated local evidence ceilings. No next implementation
-package is selected. Later decisions remain whether and how to authorize a
-real-science-tool local pilot and, separately, a site/cluster execution profile
-and proof. Step `09c` remains explicitly absent. Backlog actionables and
-proposals confer no selection authority. Destructive cleanup, real-runtime or
-cluster execution, scientific review, evidence promotion, and biological
-interpretation remain separate scopes.
+Campaign B, its adversarial local-pilot hardening follow-up, PORT-NC-01, and the
+preserved production-like synthetic VM/Slurm pilot are complete at their stated
+evidence ceilings. The selected package is now the approved zero-context
+onboarding and explicit computational-results reporting tranche. Its closeout
+requires focused validation, one assembled repository gate, and a derivative
+report generated from the preserved pilot without rerunning science.
+
+At closeout, update the marked reporting-evidence sentence above with the new
+derivative renderer commit and report identity. That renderer remains distinct
+from preserved science commit
+`2587126e7e471b504657c9a43789e870713f8bb6` and cannot promote that run's
+evidence ceiling.
+
+After that closeout, later decisions remain whether and how to authorize CSU
+Viking or a distributed site execution profile and proof. Step `09c` remains
+explicitly absent. Backlog actionables and proposals confer no selection
+authority. Destructive cleanup, CSU or production execution, scientific review,
+evidence promotion, and biological interpretation remain separate scopes.

@@ -47,6 +47,10 @@ RESOURCE_PATHS = (
     "norad/reporting/styles/run_report.css",
     "norad/reporting/templates/run_report.html.j2",
 )
+PUBLIC_ONBOARDING_MODULES = {
+    "norad/orchestration/local_pilot/onboarding.py",
+    "norad/orchestration/local_pilot/synthetic_fixture.py",
+}
 
 
 def command_environment(*, hostile_pythonpath: bool = False) -> dict[str, str]:
@@ -154,6 +158,7 @@ def inspect_wheel(wheel: Path) -> None:
         entry_points = archive.read(entry_points_member).decode().splitlines()
         assert "norad = norad.__main__:main" in entry_points
         assert set(RESOURCE_PATHS) <= members
+        assert PUBLIC_ONBOARDING_MODULES <= members
         for resource in RESOURCE_PATHS:
             assert archive.read(resource) == (REPO_ROOT / "src" / resource).read_bytes()
 
@@ -309,6 +314,22 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     require_success(module_help)
     assert "usage: norad" in module_help.stdout
     for command, usage in (
+        (
+            ("init", "local-pilot", "--help"),
+            "usage: norad init local-pilot",
+        ),
+        (
+            ("init", "synthetic-local-pilot", "--help"),
+            "usage: norad init synthetic-local-pilot",
+        ),
+        (
+            ("prepare", "local-pilot-runtime", "--help"),
+            "usage: norad prepare local-pilot-runtime",
+        ),
+        (
+            ("validate", "local-pilot-request", "--help"),
+            "usage: norad validate local-pilot-request",
+        ),
         (("run", "--help"), "usage: norad run"),
         (("resume", "--help"), "usage: norad resume"),
         (

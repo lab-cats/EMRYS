@@ -123,6 +123,38 @@ def test_bound_input_change_creates_a_new_run(tmp_path: Path) -> None:
     assert after.normalized_bytes != before.normalized_bytes
 
 
+def test_large_input_identities_are_streamed_without_byte_capture(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    request = fixture.build(tmp_path / "request-root")
+    byte_capture = normalization._regular_file
+    captured_labels: list[str] = []
+
+    def reject_large_byte_capture(path: Path, label: str) -> tuple[Path, bytes]:
+        captured_labels.append(label)
+        assert "FASTQ" not in label
+        assert label not in {"Reference FASTA", "Reference GTF"}
+        assert "regions file" not in label
+        return byte_capture(path, label)
+
+    monkeypatch.setattr(normalization, "_regular_file", reject_large_byte_capture)
+
+    normalized = normalize_request(request, fixture.profile())
+
+    assert captured_labels == ["Request", "Sample manifest", "Partition manifest"]
+    reference = normalized.execution_contract["reference"]
+    for key in ("fasta", "gtf"):
+        path = Path(reference[key]["path"])
+        assert reference[key]["size_bytes"] == path.stat().st_size
+        assert reference[key]["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    for row in normalized.execution_contract["samples"]["rows"]:
+        for key in ("r1_fastq", "r2_fastq"):
+            path = Path(row[key]["path"])
+            assert row[key]["size_bytes"] == path.stat().st_size
+            assert row[key]["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+
+
 def test_mixed_fastq_compression_is_rejected_before_run_identity(
     tmp_path: Path,
 ) -> None:

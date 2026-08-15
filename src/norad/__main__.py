@@ -44,6 +44,10 @@ from norad.libraries.source_authority import (
 from norad.orchestration.local_pilot import all_pass as all_pass_validation_command
 from norad.orchestration.local_pilot import doctor as local_pilot_doctor_command
 from norad.orchestration.local_pilot import control as local_pilot_control_command
+from norad.orchestration.local_pilot import onboarding as local_pilot_onboarding_command
+from norad.orchestration.local_pilot import (
+    synthetic_fixture as local_pilot_synthetic_fixture_command,
+)
 from norad.stages.canonical_bam import validator as canonical_bam_validation_command
 from norad.stages.cohort_candidate_preprocessing import (
     validator as cohort_candidate_preprocessing_validation_command,
@@ -173,6 +177,63 @@ def _add_local_pilot_doctor_command(
     local_pilot_doctor_command.configure_parser(local_parser)
     local_parser.set_defaults(
         _command_handler=local_pilot_doctor_command.doctor_from_args
+    )
+
+
+def _add_onboarding_commands(command_parsers: _SubparserCollection) -> None:
+    init_parser = command_parsers.add_parser(
+        "init",
+        help="Initialize one explicit create-absent NORAD input set.",
+    )
+    init_parsers = init_parser.add_subparsers(
+        dest="initialization",
+        metavar="SUBJECT",
+        required=True,
+    )
+    local_parser = init_parsers.add_parser(
+        "local-pilot",
+        help="Create a matched local-pilot starter set without replacing files.",
+        description=(
+            "Plan or publish one matched request, sample, partition, runtime, "
+            "and single-allocation Slurm starter set. The output directory "
+            "must be absent and outside the NORAD checkout."
+        ),
+    )
+    local_pilot_onboarding_command.configure_init_parser(local_parser)
+    local_parser.set_defaults(
+        _command_handler=local_pilot_onboarding_command.init_from_args
+    )
+    synthetic_parser = init_parsers.add_parser(
+        "synthetic-local-pilot",
+        help="Create a tiny deterministic four-library science fixture.",
+        description=local_pilot_synthetic_fixture_command.DESCRIPTION,
+    )
+    local_pilot_synthetic_fixture_command.configure_parser(synthetic_parser)
+    synthetic_parser.set_defaults(
+        _command_handler=local_pilot_synthetic_fixture_command.init_from_args
+    )
+
+    prepare_parser = command_parsers.add_parser(
+        "prepare",
+        help="Prepare explicit NORAD configuration bytes without installation.",
+    )
+    prepare_parsers = prepare_parser.add_subparsers(
+        dest="preparation",
+        metavar="SUBJECT",
+        required=True,
+    )
+    runtime_parser = prepare_parsers.add_parser(
+        "local-pilot-runtime",
+        help="Render a fixed-policy local-pilot runtime profile to stdout.",
+        description=(
+            "Render a complete fixed-policy runtime TSV to standard output. "
+            "This command writes nothing, installs nothing, runs no version "
+            "probes, and accepts PATH tools only when resolution is unambiguous."
+        ),
+    )
+    local_pilot_onboarding_command.configure_runtime_parser(runtime_parser)
+    runtime_parser.set_defaults(
+        _command_handler=local_pilot_onboarding_command.prepare_runtime_from_args
     )
 
 
@@ -400,6 +461,7 @@ def build_parser(
         metavar="COMMAND",
         required=True,
     )
+    _add_onboarding_commands(command_parsers)
     _add_build_commands(command_parsers)
     doctor_parser = command_parsers.add_parser(
         "doctor",
@@ -536,6 +598,15 @@ def build_parser(
         name="all-pass",
         help_text="Require every row in one owner-validation report to pass.",
         command=all_pass_validation_command,
+    )
+    local_request_parser = validation_parsers.add_parser(
+        "local-pilot-request",
+        help="Validate local-pilot inputs before requiring scientific tools.",
+        description=local_pilot_onboarding_command.DESCRIPTION,
+    )
+    local_pilot_onboarding_command.configure_validation_parser(local_request_parser)
+    local_request_parser.set_defaults(
+        _command_handler=local_pilot_onboarding_command.validate_from_args
     )
     _add_validation_command(
         validation_parsers,

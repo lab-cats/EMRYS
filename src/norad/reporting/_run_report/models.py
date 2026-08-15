@@ -15,13 +15,15 @@ if TYPE_CHECKING:
     from norad.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
 
 PRODUCER = "norad.reporting.report"
-PRODUCER_VERSION = "2.0.0"
+PRODUCER_VERSION = "2.1.0"
 RUN_SUMMARY_SCHEMA_VERSION = "1.1.0"
 REPORT_RECEIPT_SCHEMA_VERSION = "2.0.0"
 JINJA_VERSION = "3.1.6"
 TEMPLATE_RESOURCE = "templates/run_report.html.j2"
 CSS_RESOURCE = "styles/run_report.css"
 CANDIDATE_TERMINOLOGY = "CMH-ranked candidates"
+COMPUTATIONAL_ALL_SITES_DISPLAY_LIMIT = 250
+COMPUTATIONAL_SIGNIFICANT_DISPLAY_LIMIT = 250
 COMPUTATIONAL_STATUS_FIELDS: tuple[tuple[str, str], ...] = (
     ("Implementation", "implementation_status"),
     ("Local testing", "local_test_status"),
@@ -65,6 +67,8 @@ CSS_RESOURCE_RE = re.compile(
     re.IGNORECASE,
 )
 REPORT_SECTION_IDS = {
+    "computational-results-section",
+    "key-qc-section",
     "run-identity-section",
     "status-section",
     "limitations-section",
@@ -136,6 +140,44 @@ class ApprovedTable:
 
 
 @dataclass(frozen=True)
+class ComputationalTable:
+    role: str
+    table_id: str
+    artifact_id: str
+    title: str
+    path: Path
+    sha256: str
+    size_bytes: int
+    row_count: int
+    display_row_limit: int
+    header: tuple[str, ...]
+    display_rows: tuple[tuple[str, ...], ...]
+    snapshot: FileSnapshot
+
+    @property
+    def displayed_row_count(self) -> int:
+        return len(self.display_rows)
+
+    @property
+    def truncated(self) -> bool:
+        return self.displayed_row_count < self.row_count
+
+
+@dataclass(frozen=True)
+class ComputationalResults:
+    analysis_id: str
+    sample_ids: tuple[str, ...]
+    validation: ComputationalTable
+    all_sites: ComputationalTable
+    significant_sites: ComputationalTable
+    summary: ComputationalTable
+
+    @property
+    def tables(self) -> tuple[ComputationalTable, ...]:
+        return (self.validation, self.all_sites, self.significant_sites, self.summary)
+
+
+@dataclass(frozen=True)
 class LockOwnership:
     path: Path
     token: str
@@ -152,6 +194,8 @@ class ReportContext:
     run_summary_snapshot: FileSnapshot
     summary: dict[str, Any]
     tables: tuple[ApprovedTable, ...]
+    computational_results: ComputationalResults | None
+    computational_unavailable_reason: str | None
     template_snapshot: FileSnapshot
     css_snapshot: FileSnapshot
     output_root: Path
@@ -168,9 +212,30 @@ class ReportContext:
 
     @property
     def input_snapshots(self) -> tuple[FileSnapshot, ...]:
+        computational = (
+            self.computational_results.tables
+            if self.computational_results is not None
+            else ()
+        )
         return (
             self.run_summary_snapshot,
             self.template_snapshot,
             self.css_snapshot,
+            *(table.snapshot for table in computational),
             *(table.snapshot for table in self.tables),
+        )
+
+    @property
+    def input_snapshot_labels(self) -> tuple[str, ...]:
+        computational = (
+            self.computational_results.tables
+            if self.computational_results is not None
+            else ()
+        )
+        return (
+            "run-summary document",
+            "report Jinja template",
+            "report CSS resource",
+            *(f"computational result {table.artifact_id!r}" for table in computational),
+            *(f"approved report table {table.table_id!r}" for table in self.tables),
         )

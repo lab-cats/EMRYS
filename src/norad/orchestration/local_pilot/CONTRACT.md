@@ -1,5 +1,61 @@
 # Local-pilot intake contract
 
+## Public onboarding boundary
+
+`norad init local-pilot --output-dir ABSENT` is dry-run-first and publishes one
+external create-absent starter tree only with `--execute`. The parent must
+already be a canonical real writable/searchable directory and the target must
+not overlap the selected checkout. The owner reserves the output directory,
+writes the matched request, sample, partition, runtime, and single-allocation
+Slurm-wrapper members create-exclusively, publishes the manifest last, and
+then re-admits exact membership, regular-file types, modes, sizes, and bytes.
+It never overwrites, adopts, installs, restores, selects reference data, or
+guesses site-specific scheduler/tool values. Failure after reservation leaves
+the partial directory for inspection with no claim that its manifest is valid.
+
+`norad validate local-pilot-request --request FILE` calls the canonical
+normalizer with the tracked `norad.profile.local_cmh.v1` contract, then reuses
+the reference-contig and GTF-to-BED12 owners to require nonempty FASTA contigs,
+usable exon transcript models, matching contig names, in-bounds transcript
+coordinates, and in-bounds `region` or `regions_file` partition selectors. It
+rechecks every reference/selector content snapshot after compatibility parsing.
+It writes nothing and invokes no external tool. Success is input/configuration
+compatibility evidence only, not readiness, execution, or scientific evidence.
+
+`norad prepare local-pilot-runtime` renders the tracked fixed runtime policy to
+standard output without writing a file, probing a version, loading a module,
+or installing software. Java, Picard jar, Rscript, and the `renv` library must
+be explicit paths resolving to canonical real files/directories. The ordinary
+command-line tools may be explicit;
+an omitted tool is accepted only when the existing absolute PATH entries yield
+one distinct resolved executable. Zero or multiple identities fail closed.
+The helper changes editable paths and their dependent Picard/R-namespace probe
+arguments only; the tracked check roster, expected versions, contexts,
+required flags, and descriptions remain unchanged. Doctor owns the later
+content binding and actual version/readiness probes.
+
+`norad init synthetic-local-pilot` uses the same external, dry-run-first,
+create-absent publication policy. It writes a deterministic tiny reference,
+annotation, four paired libraries, and matched manifests, validates its own
+request before publishing `fixture.manifest.json` last, and then re-admits the
+complete transaction. Its two paired control/treatment strata and engineered
+reads are suitable for a fast real-tool workflow smoke. The metadata's expected
+three computational candidates and one significant candidate are deterministic
+fixture expectations, not scientific review or biological interpretation.
+
+The generated `run-in-slurm.sh` is a submit-or-batch template, not a scheduler
+inside NORAD. With no `SLURM_JOB_ID`, it validates all required explicit
+`NORAD_*` settings and calls `sbatch` for exactly one node/task/allocation; it
+does not run the doctor or workflow. In the batch allocation it sources the
+explicit module initializer, validates and loads each exact declared module,
+runs request compatibility and doctor checks, and then delegates the entire
+single-host local pilot. `NORAD_EXECUTE=0` plans; `1` adds the public
+`--execute` gate. The wrapper does not claim login-node computation, per-owner
+Slurm jobs, multi-node scheduling, scheduler success as workflow completion,
+or site portability before site validation.
+
+## Normalization and execution
+
 `normalization.normalize_request` is a read-only public Python boundary. It
 uses the closed safe YAML loader, resolves paths against the request directory,
 reuses the public Step `08`/`09` manifest contracts, requires at least two

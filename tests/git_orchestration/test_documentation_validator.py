@@ -26,7 +26,7 @@ JIT_SECTIONS = (
 )
 CANONICAL_H1S = {
     "AGENTS.md": "# NORAD safety guard",
-    "README.md": "# NORAD: CSU HPC RNA-seq and RNA-editing workflow",
+    "README.md": "# NORAD: evidence-bound RNA-seq candidate workflow",
     "docs/architecture/README.md": "# Architecture index",
     "docs/architecture/ARCHITECTURE.md": "# Current architecture",
     "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": "# Current functional-owner inventory",

@@ -31,6 +31,15 @@ PRIVATE_PYTHON_MODULES = frozenset()
 DIRECT_PYTHON_ENTRYPOINTS = frozenset()
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 NORAD_COMMANDS = (
+    (("init", "local-pilot"), "usage: norad init local-pilot"),
+    (
+        ("init", "synthetic-local-pilot"),
+        "usage: norad init synthetic-local-pilot",
+    ),
+    (
+        ("prepare", "local-pilot-runtime"),
+        "usage: norad prepare local-pilot-runtime",
+    ),
     (
         ("build", "artifact-index"),
         "usage: norad build artifact-index",
@@ -51,6 +60,10 @@ NORAD_COMMANDS = (
         "usage: norad validate artifact-contracts",
     ),
     (("validate", "all-pass"), "usage: norad validate all-pass"),
+    (
+        ("validate", "local-pilot-request"),
+        "usage: norad validate local-pilot-request",
+    ),
     (
         ("assemble", "scientific-review-package"),
         "usage: norad assemble scientific-review-package",
@@ -585,6 +598,8 @@ print(json.dumps({
     "arguments",
     (
         ("--help",),
+        ("init", "--help"),
+        ("prepare", "--help"),
         ("build", "--help"),
         ("convert", "--help"),
         ("validate", "--help"),

@@ -118,7 +118,9 @@ def _resolve_contract_file(value: str, label: str, *, source_root: Path) -> Path
     except contracts.ContractValidationError as exc:
         _fail(str(exc))
     declared = Path(value)
-    lexical = (declared if declared.is_absolute() else source_root / declared).absolute()
+    lexical = (
+        declared if declared.is_absolute() else source_root / declared
+    ).absolute()
     _reject_symlink_components(lexical, label)
     resolved = contracts.resolve_contract_path(value, source_root=source_root)
     if resolved != lexical:

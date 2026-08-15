@@ -36,13 +36,11 @@ from .validation import validate_rendered_html
 
 
 def _recheck_inputs(context: ReportContext) -> None:
-    labels = (
-        "run-summary document",
-        "report Jinja template",
-        "report CSS resource",
-        *(f"approved report table {table.table_id!r}" for table in context.tables),
-    )
-    for snapshot, label in zip(context.input_snapshots, labels, strict=True):
+    for snapshot, label in zip(
+        context.input_snapshots,
+        context.input_snapshot_labels,
+        strict=True,
+    ):
         _assert_snapshot(snapshot, label)
 
 

@@ -30,7 +30,7 @@ BLOCKER_LIST_PATTERN = re.compile(r"`([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)`(?:, |$)")
 
 CANONICAL_DOCUMENTS = {
     "AGENTS.md": "# NORAD safety guard",
-    "README.md": "# NORAD: CSU HPC RNA-seq and RNA-editing workflow",
+    "README.md": "# NORAD: evidence-bound RNA-seq candidate workflow",
     "docs/architecture/README.md": "# Architecture index",
     "docs/architecture/ARCHITECTURE.md": "# Current architecture",
     "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": (

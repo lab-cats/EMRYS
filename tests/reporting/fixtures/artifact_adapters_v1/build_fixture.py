@@ -624,15 +624,31 @@ def tsv_rows_for(
     }:
         for index, output_row in enumerate(rows, start=1):
             output_row.update(candidate_values(index))
+            significant = adapter == "step09_cmh_significant_sites_v1" or index == 1
             output_row.update(
                 {
                     "analysis_id": PRIMARY_ANALYSIS_ID,
+                    "control_condition": "control",
+                    "treatment_condition": "treatment",
+                    "target_rna_change": "A>G",
+                    "replicate_count": "1",
                     "test_status": "tested",
-                    "call_status": (
-                        "significant_up"
-                        if adapter == "step09_cmh_significant_sites_v1" or index == 1
-                        else "effect_not_met"
-                    ),
+                    "call_status": "significant_up"
+                    if significant
+                    else "effect_not_met",
+                    "background_condition": "NA",
+                    "background_status": "disabled",
+                    "min_analysis_dp": "10",
+                    "mean_analysis_dp": "10",
+                    "mean_control_af": "0.1",
+                    "mean_treatment_af": "0.2" if significant else "0.1",
+                    "treatment_control_difference": "0.1" if significant else "0",
+                    "max_background_af": "NA",
+                    "cmh_statistic": "6" if significant else "0",
+                    "cmh_degrees_freedom": "1",
+                    "cmh_p_value": "0.01" if significant else "0.5",
+                    "cmh_fdr_bh": "0.04" if significant else "0.5",
+                    "common_odds_ratio": "2" if significant else "1",
                     "orientation_policy": "legacy_provisional_v1",
                 }
             )
@@ -645,6 +661,11 @@ def tsv_rows_for(
             {
                 "analysis_id": PRIMARY_ANALYSIS_ID,
                 "cohort_id": COHORT_ID,
+                "control_condition": "control",
+                "treatment_condition": "treatment",
+                "background_condition": "NA",
+                "target_rna_change": "A>G",
+                "replicate_count": "1",
                 "sample_count": "1",
                 "candidate_count": "4",
                 "target_candidate_count": "4",
@@ -658,6 +679,15 @@ def tsv_rows_for(
                 "step08_sites_sha256": sha256_file(sites["source_path"]),
                 "step08_inputs_path": inputs["source_path"],
                 "step08_inputs_sha256": sha256_file(inputs["source_path"]),
+                "min_sample_dp": "1",
+                "mean_dp_threshold": "0",
+                "fdr_threshold": "0.05",
+                "common_or_threshold": "1.2",
+                "absolute_difference_threshold": "0.005",
+                "background_max_fraction": "0.01",
+                "multiple_testing_method": "BH",
+                "cmh_alternative": "two.sided",
+                "continuity_correction": "TRUE",
                 "orientation_policy": "legacy_provisional_v1",
             }
         )

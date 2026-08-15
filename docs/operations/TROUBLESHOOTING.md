@@ -56,9 +56,52 @@ local-pilot ...`.
 | `Run root already exists; inspect or resume it instead` | Use `.venv/bin/python -X pycache_prefix=/dev/null -I -m norad inspect local-pilot-run --run-root ...` on that exact root. Never delete or rename it merely to make an initial run start. |
 | Step `00c` cannot create or re-admit the reference FAI/dictionary | Stop before downstream work. Preserve the FASTA, `<reference-fasta>.fai`, `<reference-stem>.dict`, and every adjacent Step `00c` lock/staging path. Confirm that the declared external reference directory is the intended writable sidecar authority; do not copy, delete, or regenerate one member independently. |
 
-The B6 fresh-clone acceptance run used deterministic no-science owner doubles.
-These routes and recovery semantics are proven control-plane behavior, not real
-science-tool, SLURM, CSU, production, scientific-review, or biological proof.
+Control-plane fixtures, real-tool demonstrations, and scheduled runs establish
+different evidence. Consult [`HANDOFF.md`](HANDOFF.md) for the exact current
+commit, commands, artifacts, and ceiling; do not infer a current execution
+claim from this recovery guide.
+
+## First-run admission blockers
+
+| Symptom or message | What it means | Safe next action |
+| --- | --- | --- |
+| Shell prints `permission denied` or `is a directory` for a path | A directory or nonexecutable data file was entered as though it were a command. | Use `cd /absolute/path/to/norad` for the checkout and invoke NORAD through its selected `.venv/bin/python`; pass data paths only as command arguments. |
+| `No module named norad` | The selected Python does not contain this checkout's installed package. | From the clean checkout, perform the explicit locked setup with `uv sync --locked --group workflow`, then use that checkout's `.venv/bin/python -X pycache_prefix=/dev/null -I -m norad`. Do not add `PYTHONPATH`. |
+| Selected interpreter imports another checkout | The Python/package authority differs from the current Git tree. | Stop, bind `NORAD_PY` to the intended checkout's `.venv/bin/python`, and rerun help. Do not copy package files between environments. |
+| Doctor says the checkout is dirty | Runtime identity cannot bind an uncommitted implementation. | Inspect `git status --short`; preserve and resolve the changes through the approved development workflow. Do not stash or discard unrelated work merely to make doctor pass. |
+| Request contains an unknown/duplicate field or YAML merge | The request schema is intentionally closed and merge expansion is disabled. | Start from the matched starter and author each literal supported field once. Do not use anchors, templates, or environment interpolation. |
+| FASTQ, manifest, partition, FASTA, or GTF path is rejected | Paths resolve from the request directory and must name stable regular files using the explicit path vocabulary. | Correct the authored path. Remove `~`, `$VAR`, globs, redundant separators, and `.`/`..` components; do not create a symlink workaround. |
+| Control/treatment pairing is rejected | `replicate` is the pairing authority and the two analysis conditions do not define identical paired strata. | For at least two replicate IDs, provide exactly one control row and one treatment row with the same replicate value. Do not rely on row order or sample-name patterns. |
+| R1 and R2 are identical or compression differs | One paired library must have two distinct files with the same plain/gzip mode. | Correct the manifest or upstream staging; do not rename the same file twice. |
+| Partition or contig later fails owner validation | The declared selector does not reconcile with the FASTA/FAI or partitions overlap. | Preserve the attempt. Correct reference/partition preparation for a new admitted request; do not hand-edit VCFs or receipts. |
+| Workspace already exists | Initial publication is create-absent and refuses adoption. | Inspect it if it is a NORAD workspace. Otherwise choose a different absent child under an existing writable parent; do not delete an uncertain directory. |
+| Workspace is on NFS/network storage | Current lock and hard-link semantics are not site-validated there. | Use a supported POSIX local filesystem or stop for explicit site validation. Scheduler availability does not make the filesystem supported. |
+
+## Runtime and scheduler blockers
+
+| Symptom or message | What it means | Safe next action |
+| --- | --- | --- |
+| Tool is visible on the login node but absent in a job | Login and batch module environments differ. | Submit a small batch probe to the intended compute node, load modules in that job, and author the resulting canonical executable paths. Do not treat the head-node result as runtime evidence. |
+| `module avail` lists a tool but doctor cannot run it | A module name is not a selected executable identity. | Load the module in the execution context, resolve the actual command/jar, confirm its version, and put the absolute target in the runtime profile. |
+| `module purge` emits unload errors | The site has default modules whose unload metadata is incomplete. | Preserve the output and use the site's supported module initialization/selection. Do not infer that requested scientific modules failed solely from purge warnings; inspect `module list` and actual probes. |
+| Java module name and `java -version` disagree | The site module may expose the system launcher or only supporting variables. | Author the canonical executable that actually reports Java 17 or newer. Picard and GATK use that same selected launcher. |
+| Picard sets `PICARD`, not `PICARD_JAR` | The site module's environment name differs from a generic probe. | Put the actual readable Picard 3.1.1 jar path in the `picard_jar` row and its coupled `-jar` argument. NORAD does not depend on either environment-variable name. |
+| `srun` or `sbatch` reports an unsatisfied memory/node configuration | The requested resources do not match any eligible node in the selected partition/QOS. | Inspect `sinfo` and account associations, then request a supported batch allocation sized for the data. Do not lower memory blindly merely to enter a node. |
+| `invalid partition specified` | A literal placeholder or unavailable partition was submitted. | Use a partition authorized for the account, verified by `sinfo`/site policy. Do not submit `YOUR_PARTITION` or another documentation placeholder. |
+| `tail` says the SLURM log does not exist | The job is pending or SLURM has not opened the declared stream; the parent may also have been absent at submission. | Ensure the log parent existed before `sbatch`, inspect `squeue`/`sacct`, wait until both exact `%j` paths exist, then use `tail -n +1 -F`. |
+| `TMPDIR [/local/tmp] is not writeable` | The site's inherited temporary directory is unusable and SLURM may fall back to `/tmp`. | Confirm the effective batch `TMPDIR` and capacity. Use the Step `05` project-storage scratch route for GATK spill; do not assume a warning is harmless for a full run. |
+
+## Result and report questions
+
+| Observation | Interpretation |
+| --- | --- |
+| Automatic run is complete but report says `evidence_incomplete` | Expected when separately authorized Step `09c` human review is absent. It is a scientific-evidence status, not an execution failure. |
+| Significant computational rows are present | They passed the declared Step `09` depth, background, FDR, odds-ratio, and allele-fraction-change rules. They remain review candidates, not validated editing sites. |
+| Candidate table has rows but significant table is empty | Step `08` found candidate SNVs, but none passed every strict Step `09` call threshold. Inspect `test_status` and `call_status`; do not relax policy after seeing results without creating and justifying a new analysis request. |
+| Step `08`/`09` tables are header-only | Zero candidates can be valid when upstream receipts and all zero counts reconcile. Confirm owner validation and the run summary rather than assuming a crash. |
+| `Computational results` says its tables are unavailable | Confirm the exact run/report identity and inspect the primary-analysis Step `09` all-sites, significant-sites, summary, and owner-validation artifact records. The renderer requires a complete exact result trio plus an exact all-pass validation report and opens no candidate rows from an incomplete or nonpassing set. Preserve the renderer receipt and route a mismatch to the reporting owner. |
+| HTML shows fewer candidates than the source count | Each report candidate table is intentionally capped at 250 displayed rows. Read its explicit truncation note, exact source path/hash/size/full row count, then use the bound native TSV for the complete table. |
+| `FWD_like` and `REV_like` disagree with expected library strand | They are mechanical SAM-flag groups and do not claim biological strand, sense, or antisense. Use the separate RSeQC evidence and scientific review; do not relabel native artifacts. |
 
 ## Common environment and operation matrix
 

@@ -78,7 +78,7 @@ def validate_summary_tsv(path: Path, context: ReportContext) -> None:
 
 
 def _truncations(context: ReportContext) -> list[dict[str, Any]]:
-    return [
+    approved = [
         {
             "table_id": table.table_id,
             "report_section": (
@@ -94,6 +94,24 @@ def _truncations(context: ReportContext) -> list[dict[str, Any]]:
         for table in context.tables
         if table.truncated
     ]
+    computational_tables = (
+        context.computational_results.tables
+        if context.computational_results is not None
+        else ()
+    )
+    computational = [
+        {
+            "table_id": table.table_id,
+            "report_section": "computational-results",
+            "full_table_path": str(table.path),
+            "full_table_sha256": table.sha256,
+            "full_row_count": table.row_count,
+            "displayed_row_count": table.displayed_row_count,
+        }
+        for table in computational_tables
+        if table.truncated
+    ]
+    return computational + approved
 
 
 def receipt_document(
@@ -119,13 +137,11 @@ def receipt_document(
         descriptors.append(descriptor)
     identity = hashlib.sha256(
         (
-            context.run_summary_snapshot.sha256
-            + "\0"
-            + context.template_snapshot.sha256
-            + "\0"
-            + context.css_snapshot.sha256
+            "\0".join(snapshot.sha256 for snapshot in context.input_snapshots)
             + "\0"
             + JINJA_VERSION
+            + "\0"
+            + PRODUCER_VERSION
         ).encode("utf-8")
     ).hexdigest()[:20]
     summary = context.summary

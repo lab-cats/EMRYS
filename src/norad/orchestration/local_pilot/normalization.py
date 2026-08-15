@@ -172,6 +172,66 @@ def _regular_file(path: Path, label: str) -> tuple[Path, bytes]:
     return admitted_path, data
 
 
+def _regular_file_snapshot(path: Path, label: str) -> tuple[Path, dict[str, Any]]:
+    """Admit one large input by streaming its identity without retaining bytes."""
+
+    admitted_path = Path(os.path.abspath(path))
+    no_follow = getattr(os, "O_NOFOLLOW", None)
+    if no_follow is None:
+        raise orchestration_contracts.ContractValidationError(
+            "This platform cannot admit files without following symbolic links"
+        )
+    flags = os.O_RDONLY | no_follow | getattr(os, "O_NONBLOCK", 0)
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    descriptor: int | None = None
+    digest = hashlib.sha256()
+    observed_size = 0
+    try:
+        descriptor = os.open(admitted_path, flags)
+        before = os.fstat(descriptor)
+        if not stat.S_ISREG(before.st_mode):
+            raise orchestration_contracts.ContractValidationError(
+                f"{label} is not a regular file: {admitted_path}"
+            )
+        _require_descriptor_path_binding(admitted_path, before, label)
+        while chunk := os.read(descriptor, _READ_CHUNK_BYTES):
+            digest.update(chunk)
+            observed_size += len(chunk)
+        after = os.fstat(descriptor)
+        _require_descriptor_path_binding(admitted_path, after, label)
+    except FileNotFoundError as exc:
+        raise orchestration_contracts.ContractValidationError(
+            f"{label} does not exist: {admitted_path}"
+        ) from exc
+    except OSError as exc:
+        if exc.errno == errno.ELOOP:
+            raise orchestration_contracts.ContractValidationError(
+                f"{label} must not be a symlink: {admitted_path}"
+            ) from exc
+        raise orchestration_contracts.ContractValidationError(
+            f"Could not read {label} {admitted_path}: {exc}"
+        ) from exc
+    finally:
+        if descriptor is not None:
+            os.close(descriptor)
+    if observed_size == 0:
+        raise orchestration_contracts.ContractValidationError(
+            f"{label} must be nonempty: {admitted_path}"
+        )
+    if (
+        _stable_file_state(before) != _stable_file_state(after)
+        or observed_size != before.st_size
+    ):
+        raise orchestration_contracts.ContractValidationError(
+            f"{label} changed while it was being admitted: {admitted_path}"
+        )
+    return admitted_path, {
+        "path": str(admitted_path),
+        "size_bytes": observed_size,
+        "sha256": digest.hexdigest(),
+    }
+
+
 def _validate_authored_path(value: str, label: str) -> None:
     if not value or value != value.strip():
         raise orchestration_contracts.ContractValidationError(
@@ -210,6 +270,18 @@ def _resolve_authored_path(value: str, base: Path, label: str) -> tuple[Path, by
     if not candidate.is_absolute():
         candidate = base / candidate
     return _regular_file(candidate, label)
+
+
+def _resolve_authored_snapshot(
+    value: str,
+    base: Path,
+    label: str,
+) -> tuple[Path, dict[str, Any]]:
+    _validate_authored_path(value, label)
+    candidate = Path(value)
+    if not candidate.is_absolute():
+        candidate = base / candidate
+    return _regular_file_snapshot(candidate, label)
 
 
 def _snapshot(path: Path, data: bytes) -> dict[str, Any]:
@@ -299,10 +371,10 @@ def _normalize_samples(
         raise orchestration_contracts.ContractValidationError(str(exc)) from exc
     normalized_rows: list[dict[str, Any]] = []
     for index, row in enumerate(rows, start=2):
-        r1_path, r1_data = _resolve_authored_path(
+        r1_path, r1_snapshot = _resolve_authored_snapshot(
             row["r1_fastq"], request_dir, f"Sample manifest row {index} R1 FASTQ"
         )
-        r2_path, r2_data = _resolve_authored_path(
+        r2_path, r2_snapshot = _resolve_authored_snapshot(
             row["r2_fastq"], request_dir, f"Sample manifest row {index} R2 FASTQ"
         )
         if r1_path == r2_path:
@@ -319,8 +391,8 @@ def _normalize_samples(
             "condition": row["condition"],
             "replicate": row["replicate"],
             "strandedness": row["strandedness"],
-            "r1_fastq": _snapshot(r1_path, r1_data),
-            "r2_fastq": _snapshot(r2_path, r2_data),
+            "r1_fastq": r1_snapshot,
+            "r2_fastq": r2_snapshot,
         }
         if "notes" in table.header:
             normalized["notes"] = row["notes"]
@@ -345,13 +417,12 @@ def _normalize_partitions(
         selector_value = row["selector_value"]
         selector_file = None
         if row["selector_type"] == "regions_file":
-            path, data = _resolve_authored_path(
+            path, selector_file = _resolve_authored_snapshot(
                 selector_value,
                 request_dir,
                 f"Partition manifest row {index} regions file",
             )
             selector_value = str(path)
-            selector_file = _snapshot(path, data)
         normalized_rows.append(
             {
                 "partition_id": row["partition_id"],
@@ -436,17 +507,17 @@ def normalize_request(
             f"Declared background_condition has no sample rows: {background_condition}"
         )
 
-    fasta_path, fasta_data = _resolve_authored_path(
+    _fasta_path, fasta_snapshot = _resolve_authored_snapshot(
         request["reference"]["fasta"], request_dir, "Reference FASTA"
     )
-    gtf_path, gtf_data = _resolve_authored_path(
+    _gtf_path, gtf_snapshot = _resolve_authored_snapshot(
         request["reference"]["gtf"], request_dir, "Reference GTF"
     )
     reference = {
         "schema_version": "norad.reference.v1",
         "reference_id": request["reference"]["id"],
-        "fasta": _snapshot(fasta_path, fasta_data),
-        "gtf": _snapshot(gtf_path, gtf_data),
+        "fasta": fasta_snapshot,
+        "gtf": gtf_snapshot,
         "star_index": dict(request["reference"]["star_index"]),
     }
     orchestration_contracts.validate_record("reference", reference)

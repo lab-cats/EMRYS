@@ -1,6 +1,68 @@
 # Local-pilot orchestration boundary
 
-This owner exposes three narrow, read-only admission APIs:
+This owner exposes the fixed local-pilot admission, onboarding, and lifecycle
+surface. The zero-context entry points are:
+
+```bash
+# Plan first; add --execute to create one absent starter directory.
+norad init local-pilot --output-dir /absolute/outside-checkout/starter
+
+# Generate a tiny deterministic four-library science fixture the same way.
+norad init synthetic-local-pilot \
+  --output-dir /absolute/outside-checkout/synthetic-smoke
+
+# Validate all declared inputs without requiring or probing science tools.
+norad validate local-pilot-request \
+  --request /absolute/path/to/request.yaml
+
+# Print a fixed-policy runtime TSV to stdout; this command writes nothing.
+norad prepare local-pilot-runtime \
+  --java /canonical/java-home/bin/java \
+  --picard-jar /canonical/path/picard.jar \
+  --rscript /canonical/path/Rscript \
+  --renv-library /canonical/path/to/renv/library \
+  > /new/absent/path/runtime.ready.tsv
+```
+
+`init local-pilot` publishes `request.yaml`, `samples.tsv`, `partitions.tsv`,
+`runtime.tsv`, and executable `run-in-slurm.sh`, then writes
+`starter-set.manifest.tsv` last and re-admits every path, mode, size, and byte.
+It neither fills unknown science-tool paths nor installs anything. The runtime
+preparer requires explicit Java, Picard-jar, Rscript, and `renv`-library paths.
+For Bash, STAR, samtools, GATK, bcftools, RSeQC `infer_experiment.py`, and
+gunzip, omission of the corresponding optional path is allowed only when PATH
+contains exactly one distinct resolved executable. It preserves the tracked
+version policy and performs no version probe; the doctor remains the readiness
+authority.
+
+`run-in-slurm.sh` has two explicit modes. Outside an allocation it only calls
+`sbatch` after account, partition, QoS, CPU, memory, time, log directory,
+module initializer, module roster, request, runtime, workspace, checkout, and
+Python are provided through its named `NORAD_*` variables. It prints the job ID
+and exact stdout/stderr tail paths. Inside an allocation it requires
+`SLURM_JOB_ID`, sources the explicit module initializer, loads the exact
+colon-delimited module roster, validates the request, runs the doctor, and then
+plans or executes the whole single-host local pilot. It never runs analysis or
+large-input validation on a login node and does not claim per-owner Slurm
+scheduling or multi-node execution.
+
+`init synthetic-local-pilot` publishes a deterministic 100-kb reference, GTF,
+four paired 130-read libraries across two control/treatment strata, matched
+request/manifests, and metadata. `fixture.manifest.json` is written last after
+the generated request passes the same normalizer and reference-compatibility
+checks. The engineered smoke expectation is three Step 09 computational rows
+and one significant row; it is not scientific adjudication or biological
+evidence.
+
+Focused protection is:
+
+```bash
+.venv/bin/python -m pytest -q \
+  tests/orchestration/local_pilot/test_onboarding.py \
+  tests/test_public_cli_contracts.py
+```
+
+The underlying narrow read-only admission APIs are:
 
 - `normalization.normalize_request(request_path, profile)` safely admits one
   YAML request plus its ordered TSV manifests and returns a canonical,

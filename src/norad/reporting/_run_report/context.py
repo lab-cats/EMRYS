@@ -18,6 +18,7 @@ from norad.libraries.source_authority import (
     matching_checkout_head_commit,
 )
 
+from .computational import admit_computational_results
 from .inputs import (
     _assert_snapshot,
     _explicit_path,
@@ -155,6 +156,9 @@ def prepare_context(
         _read_approved_table(record, source_root=source_root)
         for record in summary["approved_report_tables"]
     )
+    computational_results, computational_unavailable_reason = (
+        admit_computational_results(summary, source_root=source_root)
+    )
     try:
         package_root = Path(__file__).resolve().parents[2]
         producer_git_commit = (
@@ -216,12 +220,29 @@ def prepare_context(
         "template_path": f"norad.reporting/{TEMPLATE_RESOURCE}",
         "template_sha256": template_snapshot.sha256,
     }
-    html_bytes = render_html(build_view(summary, tables, metadata), css)
-    for snapshot, label in (
+    html_bytes = render_html(
+        build_view(
+            summary,
+            tables,
+            metadata,
+            computational_results=computational_results,
+            computational_unavailable_reason=computational_unavailable_reason,
+        ),
+        css,
+    )
+    computational_tables = (
+        computational_results.tables if computational_results is not None else ()
+    )
+    snapshots_and_labels = (
         (run_summary_snapshot, "run-summary document"),
         (template_snapshot, "report Jinja template"),
         (css_snapshot, "report CSS resource"),
-    ):
+        *(
+            (table.snapshot, f"computational result {table.artifact_id!r}")
+            for table in computational_tables
+        ),
+    )
+    for snapshot, label in snapshots_and_labels:
         _assert_snapshot(snapshot, label)
     return ReportContext(
         source_checkout=source_checkout,
@@ -231,6 +252,8 @@ def prepare_context(
         run_summary_snapshot=run_summary_snapshot,
         summary=summary,
         tables=tables,
+        computational_results=computational_results,
+        computational_unavailable_reason=computational_unavailable_reason,
         template_snapshot=template_snapshot,
         css_snapshot=css_snapshot,
         output_root=output_root,

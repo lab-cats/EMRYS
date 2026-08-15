@@ -22,9 +22,9 @@ git rev-parse HEAD
 git status --short
 ```
 
-Known CSU checkout locations are `~/norad` and
-`/mnt/stor-pool-01/users/2609214/norad`. Verify site paths in the intended login
-or batch context; never treat a remembered path as current evidence.
+Resolve the checkout and every data/runtime path in the intended login or
+batch context. Never treat a remembered path, shell alias, module name, or
+login-node `PATH` as current compute-node evidence.
 
 Before scheduler work:
 
@@ -38,9 +38,11 @@ mkdir -p logs
 ```
 
 The login node is for Git, small transfers, editing, inspection, submission,
-and small smoke checks. Heavy work belongs in owner-local `.slurm` entry points.
-Ordinary wrappers use `TMPDIR=/tmp`; the Step `05` owner requires its documented
-project-storage temporary directory.
+and small smoke checks. Never run `norad run --execute`, STAR, BAM processing,
+mpileup, or R analysis there. The public local pilot runs inside one approved
+compute-node allocation; individual owner operations may instead use the
+owner-local `.slurm` entry points. Ordinary wrappers use `TMPDIR=/tmp`; the
+Step `05` owner requires its documented project-storage temporary directory.
 
 ## Owner command routes
 
@@ -65,19 +67,48 @@ For the first-time researcher journey from clone and matched starters through
 outputs and safe resume, begin with the root [`README`](../../README.md).
 This section remains the compact operator command reference.
 
-Copy [`configs/local_pilot_runtime.example.tsv`](../../configs/local_pilot_runtime.example.tsv)
-outside the checkout or to an explicitly managed local path, then replace every
-placeholder with the exact controlled Python/Snakemake and SHA-256 launcher,
-Bash, gunzip, scientific executable or jar, Rscript, canonical checkout/renv
-project, existing renv library, and fixed R-namespace selection. Edit only the
-declared path placeholders and coupled path arguments; roster, expected
-versions, ordinary probes, descriptions, and R package names are fixed. The
-Java path must resolve to canonical `<JAVA_HOME>/bin/java`. File-backed runtime
-identities are bound by authored path, canonical target, version, and SHA-256;
-R namespaces bind their canonical installed-package trees. Do not fabricate a
-missing renv library.
-After `uv sync --locked --group workflow` and the separately authorized science
-tool/R setup, inspect one request and workspace plan:
+Create the matched request/manifests/runtime/wrapper set in operator-managed
+storage outside the checkout. Initialization is dry-run-first and the selected
+output directory must be absent:
+
+```bash
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad init local-pilot \
+  --output-dir /absolute/absent/input-directory
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad init local-pilot \
+  --output-dir /absolute/absent/input-directory \
+  --execute
+```
+
+The execute form publishes `request.yaml`, `samples.tsv`, `partitions.tsv`,
+`runtime.tsv`, executable `run-in-slurm.sh`, then
+`starter-set.manifest.tsv` last. [`configs/README.md`](../../configs/README.md)
+owns every field and preparation rule. For a real-tool smoke fixture, use the
+equivalent dry-run/execute pair with `init synthetic-local-pilot`; it publishes
+its deterministic request/data and `fixture.manifest.json` last.
+
+Before runtime probes, validate the selected input set without writing:
+
+```bash
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad validate \
+  local-pilot-request --request /absolute/path/to/request.yaml
+```
+
+This streams file hashes, validates paired strata, reconciles FASTA/GTF
+contigs/bounds, and checks partition-selector bounds. It runs no scientific
+tool. Use it on the intended compute host, not a login node for a large input
+set.
+
+Prepare a fixed runtime profile to a new absent file with
+`norad prepare local-pilot-runtime`. It requires explicit canonical Java,
+Picard-jar, Rscript, and `renv`-library paths and accepts explicit `--bash`,
+`--star`, `--samtools`, `--gatk`, `--bcftools`, `--infer-experiment`, and
+`--gunzip` paths. Omitted ordinary tools are accepted only when `PATH` resolves
+one distinct executable. The command prints TSV to stdout and performs no
+version probe, file write, install, or repair; never redirect it over the
+generated `runtime.tsv`.
+
+After `uv sync --locked --group workflow`, separately authorized science-tool/R
+setup, and runtime-profile preparation, inspect one request and workspace plan:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m norad doctor local-pilot \
@@ -90,8 +121,9 @@ The doctor is always read-only. It does not run `uv`, restore `renv`, load
 modules, create the workspace, or execute the workflow. Exit `0` means its
 exact local readiness roster passed; exit `1` prints readiness blockers and
 remediation; exit `2` means the request/profile/path boundary is malformed or
-unsafe. This does not establish real-tool, scheduler, cluster, scientific-
-review, or biological evidence.
+unsafe. A `READY` result establishes only those bounded probes in that exact
+context; it does not establish workflow completion, sufficient capacity,
+scientific review, or biological evidence.
 
 ## Local-pilot execution
 
@@ -128,6 +160,62 @@ before producer entry.
   --execute
 ```
 
+On a workstation or interactive compute allocation, retain the continuous
+control stream and its true pipeline exit:
+
+```bash
+set -o pipefail
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad run \
+  --request /absolute/path/to/request.yaml \
+  --workspace /absolute/path/to/workspace \
+  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
+  --execute 2>&1 | tee /absolute/path/to/private/norad-control.log
+```
+
+For scheduled execution, use the executable `run-in-slurm.sh` generated by
+`norad init local-pilot`; do not maintain an untested copy of its job body. Bind
+its required `NORAD_SLURM_ACCOUNT`, `NORAD_SLURM_PARTITION`,
+`NORAD_SLURM_QOS`, `NORAD_SLURM_CPUS=1`, `NORAD_SLURM_MEMORY`,
+`NORAD_SLURM_TIME`, existing `NORAD_LOG_DIR`, checkout/Python/request/workspace/
+runtime-profile paths, real module-init file, and colon-separated module list.
+Submit first with `NORAD_EXECUTE=0`. Inside that allocation the generated body
+loads modules, validates the request, runs doctor, and prints the no-write plan
+in that order. Confirm the job, streams, and plan, then resubmit the same values
+with `NORAD_EXECUTE=1`.
+
+This is one local process inside an allocation, not distributed NORAD or public
+SLURM orchestration. Create the declared log directory before invoking the
+wrapper; SLURM opens its streams before the job body runs. The wrapper prints
+the exact job ID and
+`$NORAD_LOG_DIR/norad-local-pilot-$job_id.{out,err}` paths.
+Shared scheduler streams may be suitable for head-node tailing without making
+the NORAD workspace safe. The workspace and Step `00c` reference-sidecar
+transaction root still require durable local POSIX `flock` and same-filesystem
+hard-link semantics. If only unvalidated NFS/distributed storage is available
+for those mutation roots, stop; job allocation is not filesystem validation.
+
+From the login node, wait until both `%j` streams exist, then tail them:
+
+```bash
+job_id=123456
+NORAD_LOG_DIR=/absolute/path/to/norad-slurm-logs
+while [[ ! -e "$NORAD_LOG_DIR/norad-local-pilot-$job_id.out" ||
+         ! -e "$NORAD_LOG_DIR/norad-local-pilot-$job_id.err" ]]; do
+  squeue -j "$job_id"
+  sleep 2
+done
+tail -n +1 -F \
+  "$NORAD_LOG_DIR/norad-local-pilot-$job_id.out" \
+  "$NORAD_LOG_DIR/norad-local-pilot-$job_id.err"
+```
+
+Control-C stops `tail` but does not cancel the job. Confirm state independently
+with `squeue`, `sacct`, and NORAD inspection. Run NORAD inspection only where
+the exact workspace path is available under the supported filesystem contract;
+shared scheduler logs alone do not expose a node-local workspace, and the
+generated wrapper performs no result transfer. Owner task logs publish at their
+terminal task boundary; the retained top-level stream is the live-tail surface.
+
 Inspect state from NORAD evidence rather than `.snakemake` metadata:
 
 ```bash
@@ -155,9 +243,9 @@ not automatically retried or cleaned. A completed run refuses resume and a
 second initial run refuses the existing run root. The public commands expose no
 force, unlock, metadata-cleanup, alternate-profile, or raw engine options.
 Current execution is source-checkout-bound and local. The B6 fresh-clone proof
-exercised this sequence through real Snakemake, lifecycle, and reporting with
-deterministic no-science owner doubles. It did not run the real scientific
-tools or establish local real-tool or cluster evidence.
+and any later real-tool or batch demonstrations have different evidence
+ceilings. Consult [`HANDOFF.md`](HANDOFF.md) for the exact current commit,
+commands, artifacts, and evidence; do not infer them from this runbook.
 
 ## Task status
 
