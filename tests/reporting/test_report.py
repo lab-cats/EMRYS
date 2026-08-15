@@ -663,6 +663,51 @@ def test_step09_duplicate_candidates_fail_closed(
 
 
 @pytest.mark.parametrize(
+    ("sample_values", "message"),
+    (
+        ({"DP__SYNTH_A": "NA"}, "one-sided DP/AD missingness"),
+        (
+            {"DP__SYNTH_A": "NA", "AD__SYNTH_A": "NA"},
+            "AF without DP/AD",
+        ),
+        (
+            {"DP__SYNTH_A": "10", "AD__SYNTH_A": "11"},
+            "AD greater than DP",
+        ),
+        (
+            {
+                "DP__SYNTH_A": "0",
+                "AD__SYNTH_A": "0",
+                "AF__SYNTH_A": "0",
+            },
+            "invalid zero-depth DP/AD/AF values",
+        ),
+        ({"AF__SYNTH_A": "not-a-number"}, "AF must be numeric"),
+        ({"AF__SYNTH_A": "0.2"}, "AF does not reconcile with AD/DP"),
+    ),
+)
+def test_step09_sample_dp_ad_af_values_fail_closed(
+    incomplete_summary: Path,
+    tmp_path: Path,
+    sample_values: dict[str, str],
+    message: str,
+) -> None:
+    def mutate_sources(paths: dict[str, Path]) -> None:
+        def invalidate(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
+            rows[0].update(sample_values)
+
+        rewrite_tsv(paths["step09_cmh_all_sites_v1"], invalidate)
+
+    copied, _paths = copied_step09_summary(
+        incomplete_summary,
+        tmp_path / "input",
+        mutate_sources=mutate_sources,
+    )
+    with pytest.raises(ReportRenderError, match=message):
+        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+
+
+@pytest.mark.parametrize(
     ("corruption", "message"),
     (
         ("missing_row", "must contain exactly 7 check rows"),
