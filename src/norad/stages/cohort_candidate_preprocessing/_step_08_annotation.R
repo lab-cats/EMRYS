@@ -168,6 +168,7 @@ read_annotation_model <- function(path) {
         )
     }
     transcript_rows <- vector("list", length(transcript_ids))
+    transcript_count <- 0L
     exon_rows <- list()
     intron_rows <- list()
     cds_rows <- list()
@@ -185,10 +186,13 @@ read_annotation_model <- function(path) {
         gene_id <- unique(as.character(tx_exons_raw$gene_id))
         if (length(chromosome) != 1L || length(strand) != 1L ||
             length(gene_id) != 1L) {
-            abort(
-                "Transcript ", transcript_id,
-                " does not map to exactly one chromosome, strand, and gene."
+            warning(
+                "Skipping transcript ", transcript_id,
+                " because it does not map to exactly one chromosome, ",
+                "strand, and gene.",
+                call. = FALSE
             )
+            next
         }
         tx_features <- table[
             relevant & table$transcript_id == transcript_id, , drop = FALSE
@@ -196,10 +200,13 @@ read_annotation_model <- function(path) {
         if (any(as.character(tx_features$seqnames) != chromosome) ||
             any(as.character(tx_features$strand) != strand) ||
             any(as.character(tx_features$gene_id) != gene_id)) {
-            abort(
-                "Transcript ", transcript_id,
-                " has inconsistent chromosome, strand, or gene annotations."
+            warning(
+                "Skipping transcript ", transcript_id,
+                " because it has inconsistent chromosome, strand, or gene ",
+                "annotations.",
+                call. = FALSE
             )
+            next
         }
         merged <- merge_simple_intervals(tx_exons_raw$start, tx_exons_raw$end)
         tx_exons <- data.frame(
@@ -211,7 +218,8 @@ read_annotation_model <- function(path) {
             transcript_id = transcript_id,
             stringsAsFactors = FALSE
         )
-        transcript_rows[[index]] <- data.frame(
+        transcript_count <- transcript_count + 1L
+        transcript_rows[[transcript_count]] <- data.frame(
             seqnames = chromosome,
             start = min(merged$start),
             end = max(merged$end),
@@ -325,6 +333,13 @@ read_annotation_model <- function(path) {
         }
     }
 
+    if (transcript_count == 0L) {
+        abort(
+            "Annotation GTF contains no internally consistent transcripts: ",
+            path
+        )
+    }
+
     bind_or_empty <- function(rows, count) {
         if (count == 0L) {
             return(data.frame(
@@ -337,7 +352,9 @@ read_annotation_model <- function(path) {
     }
 
     list(
-        transcripts = feature_ranges(do.call(rbind, transcript_rows)),
+        transcripts = feature_ranges(do.call(
+            rbind, transcript_rows[seq_len(transcript_count)]
+        )),
         exon = feature_ranges(bind_or_empty(exon_rows, exon_count)),
         intron = feature_ranges(bind_or_empty(intron_rows, intron_count)),
         cds = feature_ranges(bind_or_empty(cds_rows, cds_count)),
@@ -427,4 +444,3 @@ annotate_candidates <- function(candidates, model) {
     candidates$is_intron <- annotation_flag(query, model$intron)
     candidates
 }
-

@@ -185,6 +185,8 @@ default_rev_rows <- function() {
 annotation_lines <- function() {
     attributes_plus <- 'gene_id "gene_plus"; transcript_id "tx_plus";'
     attributes_minus <- 'gene_id "gene_minus"; transcript_id "tx_minus";'
+    attributes_conflict <-
+        'gene_id "gene_conflict"; transcript_id "tx_conflict";'
     rows <- list(
         c("1", "fixture", "exon", "10", "30", ".", "+", ".", attributes_plus),
         c("1", "fixture", "exon", "50", "80", ".", "+", ".", attributes_plus),
@@ -221,6 +223,14 @@ annotation_lines <- function() {
         c(
             "1", "fixture", "three_prime_UTR", "200", "219", ".", "-", ".",
             attributes_minus
+        ),
+        c(
+            "2", "fixture", "exon", "10", "30", ".", "+", ".",
+            attributes_conflict
+        ),
+        c(
+            "2", "fixture", "exon", "50", "80", ".", "-", ".",
+            attributes_conflict
         )
     )
     vapply(rows, paste, character(1), collapse = "\t")
@@ -769,6 +779,20 @@ first_paths <- run_engine(
     positive_case,
     file.path(test_root, "positive-output-1"),
     expect_success = TRUE
+)
+assert_true(
+    any(grepl(
+        paste0(
+            "Skipping transcript tx_conflict because it does not map to ",
+            "exactly one chromosome, strand, and gene."
+        ),
+        readLines(
+            file.path(test_root, "positive-output-1", "engine.log"),
+            warn = FALSE
+        ),
+        fixed = TRUE
+    )),
+    "an internally inconsistent transcript must be warned about and skipped"
 )
 assert_positive_outputs(first_paths)
 second_paths <- run_engine(
