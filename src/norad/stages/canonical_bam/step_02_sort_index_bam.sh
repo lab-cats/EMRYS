@@ -198,7 +198,7 @@ validate_bam_pair() {
     [[ "$rg_line" == *"SM:$sample_id"* ]] || die "$label @RG line is missing SM:$sample_id"
     [[ "$rg_line" == *"LB:$sample_id"* ]] || die "$label @RG line is missing LB:$sample_id"
     [[ "$rg_line" == *"PL:ILLUMINA"* ]] || die "$label @RG line is missing PL:ILLUMINA"
-    printf '%s\n' "$header" | grep -q '^@HD.*SO:coordinate' || die "$label BAM header is not coordinate sorted"
+    grep -q '^@HD.*SO:coordinate' <<< "$header" || die "$label BAM header is not coordinate sorted"
 
     total_records="$("$samtools_bin" view -c "$bam")"
     [[ "$total_records" =~ ^[0-9]+$ ]] || die "$label total alignment count is not numeric: $total_records"
