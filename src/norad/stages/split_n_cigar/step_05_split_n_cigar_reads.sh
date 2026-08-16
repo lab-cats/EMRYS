@@ -219,7 +219,7 @@ validate_bam_pair() {
     "$samtools_bin" quickcheck "$bam" || die "$label BAM failed samtools quickcheck: $bam"
 
     header="$("$samtools_bin" view -H "$bam")"
-    printf '%s\n' "$header" | grep -q '^@HD.*SO:coordinate' || die "$label BAM header is not coordinate sorted"
+    grep -q '^@HD.*SO:coordinate' <<< "$header" || die "$label BAM header is not coordinate sorted"
 
     rg_lines="$(printf '%s\n' "$header" | grep '^@RG' || true)"
     rg_count="$(printf '%s\n' "$rg_lines" | sed '/^$/d' | wc -l | tr -d ' ')"
