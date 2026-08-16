@@ -5,8 +5,10 @@
 ARGUMENT_NAMES <- c(
     "cohort-id", "sample-manifest", "partition-manifest", "step07-root",
     "annotation-gtf", "sample-manifest-sha256", "partition-manifest-sha256",
-    "annotation-gtf-sha256", "sites-output", "inputs-output", "summary-output"
+    "annotation-gtf-sha256", "threads", "sites-output", "inputs-output",
+    "summary-output"
 )
+REQUIRED_ARGUMENT_NAMES <- setdiff(ARGUMENT_NAMES, "threads")
 
 usage <- function() {
     cat(paste0(
@@ -20,6 +22,7 @@ usage <- function() {
         "    --sample-manifest-sha256 SHA256 \\\n",
         "    --partition-manifest-sha256 SHA256 \\\n",
         "    --annotation-gtf-sha256 SHA256 \\\n",
+        "    [--threads THREADS] \\\n",
         "    --sites-output PATH \\\n",
         "    --inputs-output PATH \\\n",
         "    --summary-output PATH\n"
@@ -27,7 +30,13 @@ usage <- function() {
 }
 
 parse_arguments <- function(values) {
-    parse_named_arguments(values, ARGUMENT_NAMES, usage_function = usage)
+    parse_named_arguments(
+        values,
+        ARGUMENT_NAMES,
+        required_names = REQUIRED_ARGUMENT_NAMES,
+        defaults = list(threads = "1"),
+        usage_function = usage
+    )
 }
 
 require_packages <- function() {
@@ -85,6 +94,14 @@ parse_nonnegative_integer <- function(label, value) {
         abort(label, " exceeds the supported integer range: ", value)
     }
     as.integer(numeric_value)
+}
+
+parse_positive_integer <- function(label, value) {
+    result <- parse_nonnegative_integer(label, value)
+    if (result == 0L) {
+        abort(label, " must be a positive integer; got: ", value)
+    }
+    result
 }
 
 read_sample_manifest <- function(path) {

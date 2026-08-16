@@ -31,6 +31,7 @@ OUTPUT_ROOT="${OUTPUT_ROOT:-results/vcf_preprocessed}"
 QC_ROOT="${QC_ROOT:-results/qc/vcf_preprocessing}"
 RSCRIPT_BIN="${RSCRIPT_BIN_OVERRIDE:-Rscript}"
 R_SCRIPT="${STEP08_R_SCRIPT:-src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R}"
+THREADS="${THREADS:-${SLURM_CPUS_PER_TASK:-1}}"
 EXECUTE="${EXECUTE:-0}"
 
 case "$EXECUTE" in
@@ -65,6 +66,7 @@ printf 'Input receipt: %s\n' "$INPUTS_OUTPUT"
 printf 'QC summary: %s\n' "$SUMMARY_OUTPUT"
 printf 'Rscript: %s\n' "$RSCRIPT_BIN"
 printf 'R script: %s\n' "$R_SCRIPT"
+printf 'Threads: %s\n' "$THREADS"
 printf 'Execute mode: %s\n' "$EXECUTE"
 printf 'Orientation policy: legacy_provisional_v1 (provisional; not biologically validated)\n'
 
@@ -97,6 +99,7 @@ cmd=(
     --annotation-gtf "$ANNOTATION_GTF"
     --output-root "$OUTPUT_ROOT"
     --qc-root "$QC_ROOT"
+    --threads "$THREADS"
     --rscript-bin "$RSCRIPT_BIN"
     --r-script "$R_SCRIPT"
 )

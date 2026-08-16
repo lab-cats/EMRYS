@@ -143,6 +143,7 @@ annotation_gtf=""
 sample_hash=""
 partition_hash=""
 annotation_hash=""
+threads=""
 sites_output=""
 inputs_output=""
 summary_output=""
@@ -157,6 +158,7 @@ while [[ $# -gt 0 ]]; do
         --sample-manifest-sha256) sample_hash="$2"; shift 2 ;;
         --partition-manifest-sha256) partition_hash="$2"; shift 2 ;;
         --annotation-gtf-sha256) annotation_hash="$2"; shift 2 ;;
+        --threads) threads="$2"; shift 2 ;;
         --sites-output) sites_output="$2"; shift 2 ;;
         --inputs-output) inputs_output="$2"; shift 2 ;;
         --summary-output) summary_output="$2"; shift 2 ;;
@@ -167,7 +169,7 @@ done
 for value in \
     "$cohort_id" "$sample_manifest" "$partition_manifest" "$step07_root" \
     "$annotation_gtf" "$sample_hash" "$partition_hash" "$annotation_hash" \
-    "$sites_output" "$inputs_output" "$summary_output"
+    "$threads" "$sites_output" "$inputs_output" "$summary_output"
 do
     [[ -n "$value" ]] || exit 72
 done
@@ -578,6 +580,7 @@ assert_contains "$help_output" "Usage:"
 assert_contains "$help_output" "--step07-root"
 assert_contains "$help_output" "--annotation-gtf"
 assert_contains "$help_output" "--rscript-bin"
+assert_contains "$help_output" "--threads"
 assert_contains "$help_output" "legacy_provisional_v1"
 
 run_expect_status 1 "$test_root/missing.out" "$test_root/missing.err" \
@@ -736,6 +739,7 @@ assert_contains "$execute_log" "$fixture/step08_impl.R"
 assert_contains "$execute_log" "--sites-output"
 assert_contains "$execute_log" "--inputs-output"
 assert_contains "$execute_log" "--summary-output"
+assert_contains "$execute_log" "--threads 1"
 assert_contains "$(<"$sites")" $'DP__sample_A\tDP__sample_B\tAD__sample_A\tAD__sample_B\tAF__sample_A\tAF__sample_B'
 [[ "$(awk 'END { print NR - 1 }' "$inputs")" == "4" ]] ||
     fail "Expected four manifest x orientation input rows"

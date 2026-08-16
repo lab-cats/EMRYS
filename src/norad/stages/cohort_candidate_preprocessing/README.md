@@ -29,6 +29,7 @@ src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
   --annotation-gtf refs/novogene_ref/genome.gtf \
   --output-root results/vcf_preprocessed \
   --qc-root results/qc/vcf_preprocessing \
+  --threads 4 \
   --rscript-bin /usr/local/bin/Rscript
 ```
 
@@ -39,6 +40,12 @@ transcript strand, variants, editing sites, review, or biological readiness.
 The orchestration-safe invocation also supplies `--no-clobber`, which rejects a complete
 prior set without running R; direct use retains complete-set replacement
 unless that option is supplied.
+
+`--threads` bounds independent partition/orientation VCF workers. The owner
+builds the annotation model once, returns worker results in manifest then
+`FWD_like`, `REV_like` order, and retains one deterministic validation and
+publication transaction. It defaults to `1`; Windows direct execution falls
+back to one worker because the implementation uses Unix process forking.
 
 Execute publishes sites, cross-root summary, then the input receipt. Receipt
 visibility precedes final validation; it does not hash sibling outputs or the R

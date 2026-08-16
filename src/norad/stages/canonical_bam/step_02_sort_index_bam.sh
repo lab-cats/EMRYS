@@ -115,6 +115,13 @@ bai_backed_up=false
 final_publish_complete=false
 
 # Build tool commands as arrays to preserve argument boundaries in dry-run logs.
+input_header_command=(
+    "$samtools_bin"
+    view
+    -H
+    "$input_alignment"
+)
+
 sort_command=(
     "$samtools_bin"
     sort
@@ -209,6 +216,29 @@ validate_bam_pair() {
     [[ "$tagged_records" -eq "$total_records" ]] || die "$label BAM has $tagged_records of $total_records records tagged RG:$sample_id"
 
     [[ -s "$bai" ]] || die "$label BAI is missing or empty: $bai"
+}
+
+input_has_canonical_bam_contract() {
+    local header="$1"
+    local rg_lines
+    local rg_count
+    local total_records
+    local tagged_records
+
+    grep -q '^@HD.*SO:coordinate' <<< "$header" || return 1
+    rg_lines="$(printf '%s\n' "$header" | grep '^@RG' || true)"
+    rg_count="$(printf '%s\n' "$rg_lines" | sed '/^$/d' | wc -l | tr -d ' ')"
+    [[ "$rg_count" == "1" ]] || return 1
+    [[ "$rg_lines" == *"ID:$sample_id"* ]] || return 1
+    [[ "$rg_lines" == *"SM:$sample_id"* ]] || return 1
+    [[ "$rg_lines" == *"LB:$sample_id"* ]] || return 1
+    [[ "$rg_lines" == *"PL:ILLUMINA"* ]] || return 1
+
+    total_records="$("$samtools_bin" view -c "$input_alignment")" || return 1
+    [[ "$total_records" =~ ^[0-9]+$ && "$total_records" -gt 0 ]] || return 1
+    tagged_records="$("$samtools_bin" view -c -d "RG:$sample_id" "$input_alignment")" || return 1
+    [[ "$tagged_records" =~ ^[0-9]+$ ]] || return 1
+    [[ "$tagged_records" -eq "$total_records" ]]
 }
 
 confirm_canonical_pair_state() {
@@ -325,6 +355,12 @@ printf 'printf %q %q %q\n' '%s\n' "run_token=$run_token" "$lock_owner_file"
 
 printf 'samtools sort command:\n'
 print_command "${sort_command[@]}"
+printf '  The sort is skipped when the admitted input header already declares SO:coordinate.\n'
+
+printf 'Canonical input reuse action:\n'
+printf 'ln -- %q %q\n' "$input_alignment" "$tmp_rg_bam"
+printf '  This hard link is used only when sort order, the exact read group, and all record tags are already canonical.\n'
+printf '  If the input is noncanonical or hard linking is unavailable, samtools rewrites the staged BAM.\n'
 
 printf 'samtools addreplacerg command:\n'
 print_command "${addreplacerg_command[@]}"
@@ -375,8 +411,27 @@ if [[ "$no_clobber" == true ]]; then
 fi
 
 # Build and validate the replacement completely before touching canonical paths.
-"${sort_command[@]}"
-"${addreplacerg_command[@]}"
+input_header="$("${input_header_command[@]}")" ||
+    die "Could not inspect input alignment header: $input_alignment"
+if grep -q '^@HD.*SO:coordinate' <<< "$input_header"; then
+    canonical_source="$input_alignment"
+    printf 'Input alignment is already coordinate sorted; skipping redundant samtools sort.\n'
+else
+    "${sort_command[@]}"
+    canonical_source="$tmp_sorted_bam"
+fi
+if input_has_canonical_bam_contract "$input_header"; then
+    if ln -- "$input_alignment" "$tmp_rg_bam"; then
+        printf 'Input alignment already satisfies the canonical BAM contract; reusing its bytes without rewriting.\n'
+    else
+        printf 'Could not hard-link the canonical input; falling back to samtools addreplacerg.\n' >&2
+        addreplacerg_command[${#addreplacerg_command[@]}-1]="$canonical_source"
+        "${addreplacerg_command[@]}"
+    fi
+else
+    addreplacerg_command[${#addreplacerg_command[@]}-1]="$canonical_source"
+    "${addreplacerg_command[@]}"
+fi
 [[ -s "$tmp_rg_bam" ]] || die "Temporary read-group BAM is missing or empty: $tmp_rg_bam"
 "${index_command[@]}"
 validate_bam_pair "$tmp_rg_bam" "$tmp_rg_bai" "Replacement"

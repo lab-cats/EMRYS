@@ -19,6 +19,7 @@ Usage:
     --annotation-gtf ANNOTATION_GTF \
     --output-root OUTPUT_ROOT \
     --qc-root QC_ROOT \
+    [--threads THREADS] \
     [--rscript-bin RSCRIPT_BIN] \
     [--r-script R_SCRIPT] \
     [--no-clobber] \
@@ -39,6 +40,8 @@ Required arguments:
   --qc-root            Root for the cohort preprocessing summary.
 
 Options:
+  --threads            Maximum concurrent partition/orientation workers;
+                       positive integer (default: 1).
   --rscript-bin        Rscript executable/path. Resolution order: argument,
                        RSCRIPT_BIN_OVERRIDE, PATH.
   --r-script           R implementation (default:
@@ -426,6 +429,7 @@ declare_required_arguments \
     annotation_gtf output_root qc_root
 requested_rscript_bin=""
 r_script="${STEP08_R_SCRIPT:-$script_dir/step_08_vcf_preprocessing.R}"
+threads=1
 no_clobber=false
 execute=false
 
@@ -438,6 +442,7 @@ while [[ $# -gt 0 ]]; do
         --annotation-gtf) assign_option_value "$1" "${2:-}" annotation_gtf; shift 2 ;;
         --output-root) assign_option_value "$1" "${2:-}" output_root; shift 2 ;;
         --qc-root) assign_option_value "$1" "${2:-}" qc_root; shift 2 ;;
+        --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
         --rscript-bin) assign_option_value "$1" "${2:-}" requested_rscript_bin; shift 2 ;;
         --r-script) assign_option_value "$1" "${2:-}" r_script; shift 2 ;;
         --no-clobber) no_clobber=true; shift ;;
@@ -455,6 +460,7 @@ validate_nonempty_file "Sample manifest" "$sample_manifest"
 validate_nonempty_file "Partition manifest" "$partition_manifest"
 validate_nonempty_file "Annotation GTF" "$annotation_gtf"
 validate_nonempty_file "Step 08 R script" "$r_script"
+validate_positive_integer "--threads" "$threads"
 rscript_bin="$(resolve_overridable_executable \
     "Rscript" "$requested_rscript_bin" RSCRIPT_BIN_OVERRIDE Rscript)"
 
@@ -597,6 +603,7 @@ r_command+=(
     --sample-manifest-sha256 "$sample_manifest_sha256"
     --partition-manifest-sha256 "$partition_manifest_sha256"
     --annotation-gtf-sha256 "$annotation_gtf_sha256"
+    --threads "$threads"
     --sites-output "$tmp_sites"
     --inputs-output "$tmp_inputs"
     --summary-output "$tmp_summary"
@@ -618,6 +625,7 @@ printf '  Expected Step 07 VCF count: %s\n' "$expected_input_count"
 printf '  Step 07 root: %s\n' "$step07_root"
 printf '  Annotation GTF: %s\n' "$annotation_gtf"
 printf '  Annotation GTF SHA-256: %s\n' "$annotation_gtf_sha256"
+printf '  Threads: %s\n' "$threads"
 printf '  Rscript: %s\n' "$rscript_bin"
 printf '  R script: %s\n' "$r_script"
 printf '  Sites table: %s\n' "$final_sites"

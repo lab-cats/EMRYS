@@ -374,6 +374,52 @@ assert_contains "$execute_output" "Canonical Step 02 output details:"
 assert_not_exists "$execute_output_dir/.sample_execute.step02.lock"
 assert_no_step02_scratch "$execute_output_dir"
 
+printf 'Running coordinate-sorted input bypass check...\n'
+coordinate_input="$tmp_dir/fixtures/coordinate_input.sam"
+printf '@HD\tVN:1.6\tSO:coordinate\n' >"$coordinate_input"
+coordinate_output="$tmp_dir/coordinate.out"
+coordinate_output_dir="$tmp_dir/results/coordinate"
+sort_count_before="$(grep -c '^sort$' "$samtools_log" || true)"
+SLURM_JOB_ID=coordinate001 run_step02 \
+    sample_coordinate "$coordinate_input" "$coordinate_output_dir" 2 --execute \
+    >"$coordinate_output"
+sort_count_after="$(grep -c '^sort$' "$samtools_log" || true)"
+[[ "$sort_count_after" == "$sort_count_before" ]] ||
+    fail "coordinate-sorted input unexpectedly invoked samtools sort"
+assert_contains "$coordinate_output" \
+    "Input alignment is already coordinate sorted; skipping redundant samtools sort."
+[[ -s "$coordinate_output_dir/sample_coordinate.sorted.bam" ]] ||
+    fail "coordinate-sorted bypass did not publish canonical BAM"
+assert_no_step02_scratch "$coordinate_output_dir"
+
+printf 'Running canonical input zero-copy reuse check...\n'
+canonical_input="$tmp_dir/fixtures/canonical_input.bam"
+{
+    printf '@HD\tVN:1.6\tSO:coordinate\n'
+    printf '@RG\tID:sample_canonical\tSM:sample_canonical\tLB:sample_canonical\tPL:ILLUMINA\n'
+    printf 'TOTAL:10\n'
+    printf 'TAGGED:10\n'
+} >"$canonical_input"
+canonical_output="$tmp_dir/canonical.out"
+canonical_output_dir="$tmp_dir/results/canonical"
+sort_count_before="$(grep -c '^sort$' "$samtools_log" || true)"
+addreplacerg_count_before="$(grep -c '^addreplacerg$' "$samtools_log" || true)"
+SLURM_JOB_ID=canonical001 run_step02 \
+    sample_canonical "$canonical_input" "$canonical_output_dir" 2 --no-clobber --execute \
+    >"$canonical_output"
+sort_count_after="$(grep -c '^sort$' "$samtools_log" || true)"
+addreplacerg_count_after="$(grep -c '^addreplacerg$' "$samtools_log" || true)"
+[[ "$sort_count_after" == "$sort_count_before" ]] ||
+    fail "canonical input unexpectedly invoked samtools sort"
+[[ "$addreplacerg_count_after" == "$addreplacerg_count_before" ]] ||
+    fail "canonical input unexpectedly invoked samtools addreplacerg"
+canonical_bam="$canonical_output_dir/sample_canonical.sorted.bam"
+[[ "$canonical_bam" -ef "$canonical_input" ]] ||
+    fail "canonical output does not reuse the admitted input inode"
+assert_contains "$canonical_output" \
+    "Input alignment already satisfies the canonical BAM contract; reusing its bytes without rewriting."
+assert_no_step02_scratch "$canonical_output_dir"
+
 printf 'Running orchestration-safe no-clobber checks...\n'
 safe_input="$tmp_dir/fixtures/safe_input.sam"
 printf '@HD\tVN:1.6\tSO:unsorted\n' >"$safe_input"

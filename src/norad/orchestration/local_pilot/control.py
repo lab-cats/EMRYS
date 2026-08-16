@@ -139,6 +139,8 @@ def plan_run(
     runtime_profile: Path,
     *,
     threads: int = 1,
+    workflow_cores: int | None = None,
+    sample_concurrency: int = 1,
     ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> AttemptPlan:
     """Plan a new run without writing any workspace state."""
@@ -154,6 +156,8 @@ def plan_run(
                 _absolute(workspace),
                 operation="execute",
                 threads=threads,
+                workflow_cores=workflow_cores,
+                sample_concurrency=sample_concurrency,
                 now=ops.now(),
                 token=ops.token(),
             )
@@ -223,6 +227,8 @@ def plan_resume(
     runtime_profile: Path,
     *,
     threads: int = 1,
+    workflow_cores: int | None = None,
+    sample_concurrency: int = 1,
     ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> AttemptPlan:
     """Plan a safe between-task resume without writing run state."""
@@ -262,6 +268,8 @@ def plan_resume(
                 workspace,
                 operation="resume",
                 threads=threads,
+                workflow_cores=workflow_cores,
+                sample_concurrency=sample_concurrency,
                 now=ops.now(),
                 token=ops.token(),
                 supersedes_workflow_attempt_id=str(previous["workflow_attempt_id"]),
@@ -311,6 +319,8 @@ def _print_plan(plan: AttemptPlan) -> None:
     print(f"Workflow attempt: {plan.workflow_attempt_id}")
     print(f"Owner jobs: {plan.dispatch_count}")
     print(f"Threads per thread-capable tool: {plan.threads}")
+    print(f"Total workflow cores: {plan.workflow_cores}")
+    print(f"Maximum concurrent sample tasks: {plan.sample_concurrency}")
     print("Reporting transactions: 3")
     print(f"Reusable completed owner jobs: {reused}")
     print(f"Pending owner jobs: {plan.dispatch_count - reused}")
@@ -340,7 +350,18 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
         "--threads",
         default=1,
         type=_positive_integer,
-        help="Threads passed to each thread-capable tool; tasks remain serial.",
+        help="Threads passed to each thread-capable tool.",
+    )
+    parser.add_argument(
+        "--workflow-cores",
+        type=_positive_integer,
+        help="Total CPU capacity for workflow scheduling (default: --threads).",
+    )
+    parser.add_argument(
+        "--sample-concurrency",
+        default=1,
+        type=_positive_integer,
+        help="Maximum concurrent sample-scoped tasks (default: 1).",
     )
     parser.add_argument(
         "--execute",
@@ -356,7 +377,18 @@ def configure_resume_parser(parser: argparse.ArgumentParser) -> None:
         "--threads",
         default=1,
         type=_positive_integer,
-        help="Threads passed to each pending thread-capable tool; tasks remain serial.",
+        help="Threads passed to each pending thread-capable tool.",
+    )
+    parser.add_argument(
+        "--workflow-cores",
+        type=_positive_integer,
+        help="Total CPU capacity for workflow scheduling (default: --threads).",
+    )
+    parser.add_argument(
+        "--sample-concurrency",
+        default=1,
+        type=_positive_integer,
+        help="Maximum concurrent sample-scoped tasks (default: 1).",
     )
     parser.add_argument(
         "--execute",
@@ -380,6 +412,8 @@ def run_from_args(
             arguments.workspace,
             arguments.runtime_profile,
             threads=arguments.threads,
+            workflow_cores=getattr(arguments, "workflow_cores", None),
+            sample_concurrency=getattr(arguments, "sample_concurrency", 1),
             ops=ops,
         )
         _print_plan(plan)
@@ -402,6 +436,8 @@ def resume_from_args(
             arguments.run_root,
             arguments.runtime_profile,
             threads=arguments.threads,
+            workflow_cores=getattr(arguments, "workflow_cores", None),
+            sample_concurrency=getattr(arguments, "sample_concurrency", 1),
             ops=ops,
         )
         _print_plan(plan)

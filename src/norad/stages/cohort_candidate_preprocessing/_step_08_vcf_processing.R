@@ -259,3 +259,90 @@ process_vcf <- function(
         skipped_non_snv = skipped_non_snv
     )
 }
+
+process_vcf_job <- function(job, sample_ids, annotation_model) {
+    vcf_hash_before <- sha256_file(job$vcf_path)
+    result <- process_vcf(
+        job$vcf_path,
+        job$partition_id,
+        job$orientation,
+        job$declared_count,
+        sample_ids,
+        annotation_model
+    )
+    vcf_hash_after <- sha256_file(job$vcf_path)
+    if (!identical(vcf_hash_before, vcf_hash_after)) {
+        abort(
+            "Step 07 VCF changed during semantic processing: ",
+            job$vcf_path
+        )
+    }
+    list(result = result, vcf_sha256 = vcf_hash_before)
+}
+
+process_vcf_jobs <- function(jobs, threads, sample_ids, annotation_model) {
+    worker_count <- min(threads, length(jobs))
+    if (.Platform$OS.type == "windows") {
+        worker_count <- 1L
+    }
+    message(
+        "Step 08 VCF workers: ", worker_count,
+        " for ", length(jobs), " ordered input job(s)."
+    )
+    if (worker_count == 1L) {
+        return(lapply(
+            jobs,
+            process_vcf_job,
+            sample_ids = sample_ids,
+            annotation_model = annotation_model
+        ))
+    }
+
+    process_safely <- function(job) {
+        tryCatch(
+            list(
+                ok = TRUE,
+                value = process_vcf_job(job, sample_ids, annotation_model)
+            ),
+            error = function(error) {
+                list(ok = FALSE, message = conditionMessage(error))
+            }
+        )
+    }
+    outcomes <- parallel::mclapply(
+        jobs,
+        process_safely,
+        mc.cores = worker_count,
+        mc.preschedule = TRUE,
+        mc.set.seed = FALSE
+    )
+    valid_outcome <- vapply(
+        outcomes,
+        function(outcome) {
+            is.list(outcome) && length(outcome$ok) == 1L &&
+                !is.na(outcome$ok) && is.logical(outcome$ok)
+        },
+        logical(1)
+    )
+    if (any(!valid_outcome)) {
+        abort(
+            "Step 08 parallel worker did not return a valid result for input ",
+            which(!valid_outcome)[[1L]], "."
+        )
+    }
+    failed <- which(!vapply(
+        outcomes,
+        function(outcome) outcome$ok,
+        logical(1)
+    ))
+    if (length(failed) > 0L) {
+        index <- failed[[1L]]
+        job <- jobs[[index]]
+        abort(
+            "Step 08 input processing failed for partition ",
+            job$partition_id, " ", job$orientation, ": ",
+            outcomes[[index]]$message
+        )
+    }
+    lapply(outcomes, function(outcome) outcome$value)
+}

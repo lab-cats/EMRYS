@@ -402,7 +402,7 @@ build_case <- function(root, mode = "positive") {
     )
 }
 
-engine_arguments <- function(case, output_dir) {
+engine_arguments <- function(case, output_dir, threads = "1") {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
     paths <- list(
         sites = file.path(output_dir, "sites.tsv"),
@@ -419,6 +419,7 @@ engine_arguments <- function(case, output_dir) {
             "--sample-manifest-sha256", case$sample_hash,
             "--partition-manifest-sha256", case$partition_hash,
             "--annotation-gtf-sha256", case$annotation_hash,
+            "--threads", threads,
             "--sites-output", paths$sites,
             "--inputs-output", paths$inputs,
             "--summary-output", paths$summary
@@ -429,9 +430,9 @@ engine_arguments <- function(case, output_dir) {
 
 run_engine <- function(
     engine, case, output_dir, expect_success, environment = character(),
-    expected_error = NULL
+    expected_error = NULL, threads = "1"
 ) {
-    invocation <- engine_arguments(case, output_dir)
+    invocation <- engine_arguments(case, output_dir, threads)
     log <- file.path(output_dir, "engine.log")
     command <- c(
         "--no-environ", "--no-site-file", "--no-restore", "--no-save",
@@ -799,7 +800,8 @@ second_paths <- run_engine(
     engine,
     positive_case,
     file.path(test_root, "positive-output-2"),
-    expect_success = TRUE
+    expect_success = TRUE,
+    threads = "2"
 )
 for (name in c("sites", "inputs", "summary")) {
     assert_true(

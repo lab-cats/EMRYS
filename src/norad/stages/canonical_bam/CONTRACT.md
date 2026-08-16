@@ -89,8 +89,12 @@ retains replaceable-pair behavior and its characterized restoration defect.
 the public producer entrypoint. It:
 
 - is dry-run by default and keeps its own dry-run side-effect-free;
-- sorts the input with samtools, replaces all read groups with one declared
-  sample group, and indexes the staged BAM;
+- inspects input sort order, skips a redundant sort when the admitted header
+  already declares `SO:coordinate`, otherwise sorts with samtools;
+- reuses a coordinate-sorted input inode when its single read group and every
+  record tag already satisfy the canonical contract, otherwise replaces all
+  read groups with one declared sample group;
+- indexes the staged canonical BAM;
 - validates the staged BAM/BAI before touching canonical paths;
 - acquires an owned per-sample lock;
 - requires an existing canonical state to contain both BAM and BAI or neither;
@@ -216,9 +220,10 @@ roadmap and handoff.
 
 ## Observed ownership boundaries
 
-- Step `01` already requests coordinate sorting, while this stage sorts again
-  as part of a broader canonicalization, read-group, validation, and
-  publication transaction.
+- Step `01` now requests coordinate sorting and the canonical sample read
+  group. This stage reuses those bytes through a hard link while retaining
+  validation, indexing, and publication; noncanonical inputs still take the
+  sort and/or read-group replacement paths.
 - Sample identity arrives as a direct argument rather than a verified manifest
   row and is used in filenames and read-group metadata.
 - The producer and validator disagree on zero-record, library, and platform
@@ -234,7 +239,8 @@ changing behavior.
 ## Deferred decisions
 
 - Whether the target keeps a distinct canonicalization stage when STAR already
-  emits coordinate-sorted BAM.
+  emits a canonical BAM, beyond its remaining validation, indexing, and
+  transaction ownership.
 - How manifest identity supplies sample, library, and platform metadata.
 - One authoritative producer/validator contract for empty BAMs and read-group
   fields.

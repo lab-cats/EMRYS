@@ -156,9 +156,10 @@ read_annotation_model <- function(path) {
     if (nrow(exons) == 0L) {
         abort("Annotation GTF contains no exon features: ", path)
     }
+    relevant_table <- table[relevant, , drop = FALSE]
     transcript_ids <- sort(unique(exons$transcript_id), method = "radix")
     orphan_feature_transcripts <- setdiff(
-        unique(table$transcript_id[relevant]),
+        unique(relevant_table$transcript_id),
         transcript_ids
     )
     if (length(orphan_feature_transcripts) > 0L) {
@@ -167,6 +168,14 @@ read_annotation_model <- function(path) {
             sort(orphan_feature_transcripts, method = "radix")[[1L]]
         )
     }
+    exon_rows_by_transcript <- split(
+        seq_len(nrow(exons)), exons$transcript_id, drop = TRUE
+    )
+    feature_rows_by_transcript <- split(
+        seq_len(nrow(relevant_table)),
+        relevant_table$transcript_id,
+        drop = TRUE
+    )
     transcript_rows <- vector("list", length(transcript_ids))
     transcript_count <- 0L
     exon_rows <- list()
@@ -179,7 +188,7 @@ read_annotation_model <- function(path) {
     for (index in seq_along(transcript_ids)) {
         transcript_id <- transcript_ids[[index]]
         tx_exons_raw <- exons[
-            exons$transcript_id == transcript_id, , drop = FALSE
+            exon_rows_by_transcript[[transcript_id]], , drop = FALSE
         ]
         chromosome <- unique(as.character(tx_exons_raw$seqnames))
         strand <- unique(as.character(tx_exons_raw$strand))
@@ -194,8 +203,8 @@ read_annotation_model <- function(path) {
             )
             next
         }
-        tx_features <- table[
-            relevant & table$transcript_id == transcript_id, , drop = FALSE
+        tx_features <- relevant_table[
+            feature_rows_by_transcript[[transcript_id]], , drop = FALSE
         ]
         if (any(as.character(tx_features$seqnames) != chromosome) ||
             any(as.character(tx_features$strand) != strand) ||
@@ -247,9 +256,8 @@ read_annotation_model <- function(path) {
             }
         }
 
-        tx_cds_raw <- table[
-            table$type_normalized == "cds" &
-            table$transcript_id == transcript_id, , drop = FALSE
+        tx_cds_raw <- tx_features[
+            tx_features$type_normalized == "cds", , drop = FALSE
         ]
         if (nrow(tx_cds_raw) > 0L) {
             merged_cds <- merge_simple_intervals(
@@ -273,17 +281,16 @@ read_annotation_model <- function(path) {
 
             explicit_five_types <- c("five_prime_utr", "5utr", "5_utr")
             explicit_three_types <- c("three_prime_utr", "3utr", "3_utr")
-            explicit_five <- table[
-                table$transcript_id == transcript_id &
-                table$type_normalized %in% explicit_five_types, , drop = FALSE
+            explicit_five <- tx_features[
+                tx_features$type_normalized %in% explicit_five_types,
+                , drop = FALSE
             ]
-            explicit_three <- table[
-                table$transcript_id == transcript_id &
-                table$type_normalized %in% explicit_three_types, , drop = FALSE
+            explicit_three <- tx_features[
+                tx_features$type_normalized %in% explicit_three_types,
+                , drop = FALSE
             ]
-            generic_utr <- table[
-                table$transcript_id == transcript_id &
-                table$type_normalized == "utr", , drop = FALSE
+            generic_utr <- tx_features[
+                tx_features$type_normalized == "utr", , drop = FALSE
             ]
             make_explicit <- function(rows) {
                 data.frame(

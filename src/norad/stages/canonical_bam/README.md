@@ -30,6 +30,11 @@ lock through validation and publication, and never enters the legacy
 replacement/backup path. Execute without `--no-clobber` preserves the existing
 replaceable-pair behavior; its rollback is not failure-atomic.
 
+When the admitted input is already coordinate sorted and every alignment has
+the exact canonical sample read group, the producer hard-links those BAM bytes
+into the canonical transaction and creates only the BAI. Noncanonical inputs
+retain the generic samtools sort/read-group fallback.
+
 Validator dry-run:
 
 ```bash

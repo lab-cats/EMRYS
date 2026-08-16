@@ -66,10 +66,12 @@ set is:
 ```
 
 STAR may produce additional files. The BAM is requested directly as
-coordinate-sorted output. Historical Step `02` nevertheless sorts the
-alignment again while adding a read group, validating it, indexing it, and
-publishing the canonical BAM/BAI pair; that stage is therefore not merely an
-alias for this output.
+coordinate-sorted output with one read group whose `ID`, `SM`, and `LB` equal
+the sample identifier and whose platform is `ILLUMINA`. Historical Step `02`
+validates that canonical content, indexes it, and publishes the canonical
+BAM/BAI pair without rewriting the BAM when a same-filesystem hard link is
+available. Its generic-input fallback still sorts and/or retags noncanonical
+alignments.
 
 ## Orchestration-safe producer boundary
 
@@ -217,8 +219,10 @@ roadmap and handoff.
   consume or verify the manifest that canonically owns sample metadata.
 - The producer transaction protects the declared minimum output set; the
   separate validator remains responsible for structural output checks.
-- Coordinate sorting occurs in STAR and again inside the canonical-BAM stage,
-  where the second operation is coupled to read-group tagging and publication.
+- STAR emits coordinate-sorted BAMs with the canonical sample read group. The
+  canonical-BAM stage validates and publishes those bytes without rewriting
+  when hard linking is available; its direct-input fallback still sorts and/or
+  retags noncanonical inputs.
 - Cross-cutting validation-publication code is owned by the neutral shared
   library under `src/norad/libraries/`.
 - The scheduler wrapper owns cluster module loading and mutable local fixture
@@ -232,7 +236,7 @@ This inventory records those current boundaries without changing behavior.
   stage without filename inference.
 - Whether the staged five-file transaction needs a native receipt; the future
   verified-task record remains the wider input/output/tool binding authority.
-- Whether canonical-BAM construction can avoid redundant sorting while
-  retaining read-group, validation, and recovery guarantees.
+- Whether canonical-BAM construction remains a distinct stage when its
+  remaining ownership is validation, indexing, publication, and recovery.
 - Whether a later scheduler package changes caller-CWD dependence, mutable
   placeholder setup, module policy, or delegate-only output validation.

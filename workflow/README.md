@@ -121,9 +121,11 @@ The checked-in local workflow profile is
 [`profiles/local/profile.v9+.yaml`](profiles/local/profile.v9+.yaml). It uses
 Snakemake's local executor with one core, the greedy scheduler, zero retries,
 incomplete-output preservation, printed shell commands, and failed-log
-display. The one-core workflow scheduler keeps owners serial; the public
-`--threads` option independently controls the thread count passed to each
-thread-capable owner.
+display. Public run/resume arguments override the profile's capacity for an
+immutable attempt: `--workflow-cores` sets total CPU capacity, `--threads`
+sets the declared and dispatched thread count for thread-capable rules, and
+`--sample-concurrency` supplies a `sample_slots` resource cap. The concurrency
+cap defaults to `1` and can be raised without changing the workflow source.
 
 ## Reviewable slices
 

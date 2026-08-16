@@ -418,7 +418,11 @@ def load_dispatch(path: Path, *, expected_sha256: str) -> TaskDispatch:
     return result
 
 
-def _read_bound_file(path: Path, label: str) -> tuple[bytes, os.stat_result]:
+def _consume_bound_file(
+    path: Path,
+    label: str,
+    consume: Callable[[bytes], object],
+) -> os.stat_result:
     if not hasattr(os, "O_NOFOLLOW"):
         raise TaskBoundaryError("This platform lacks required O_NOFOLLOW admission")
     try:
@@ -438,12 +442,11 @@ def _read_bound_file(path: Path, label: str) -> tuple[bytes, os.stat_result]:
         before = os.fstat(descriptor)
         if not stat.S_ISREG(before.st_mode):
             raise TaskBoundaryError(f"{label} is not a regular file: {path}")
-        chunks: list[bytes] = []
         while True:
             chunk = os.read(descriptor, 1024 * 1024)
             if not chunk:
                 break
-            chunks.append(chunk)
+            consume(chunk)
         after = os.fstat(descriptor)
     finally:
         os.close(descriptor)
@@ -474,17 +477,29 @@ def _read_bound_file(path: Path, label: str) -> tuple[bytes, os.stat_result]:
         path_state.st_ctime_ns,
     ):
         raise TaskBoundaryError(f"{label} path changed while it was read: {path}")
-    return b"".join(chunks), after
+    return after
+
+
+def _read_bound_file(path: Path, label: str) -> tuple[bytes, os.stat_result]:
+    data = bytearray()
+    state = _consume_bound_file(path, label, data.extend)
+    return bytes(data), state
+
+
+def _hash_bound_file(path: Path, label: str) -> tuple[str, os.stat_result]:
+    digest = hashlib.sha256()
+    state = _consume_bound_file(path, label, digest.update)
+    return digest.hexdigest(), state
 
 
 def _bound_snapshot(declaration: FileDeclaration) -> _BoundFileSnapshot:
-    data, state = _read_bound_file(declaration.path, declaration.role)
+    digest, state = _hash_bound_file(declaration.path, declaration.role)
     return _BoundFileSnapshot(
         record={
             "role": declaration.role,
             "path": str(declaration.path),
             "size_bytes": state.st_size,
-            "sha256": hashlib.sha256(data).hexdigest(),
+            "sha256": digest,
         },
         identity=(
             state.st_dev,

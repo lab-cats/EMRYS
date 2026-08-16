@@ -163,7 +163,13 @@ def _readiness(
     return readiness, normalized, request, workspace
 
 
-def _plan(tmp_path: Path, *, threads: int = 1):
+def _plan(
+    tmp_path: Path,
+    *,
+    threads: int = 1,
+    workflow_cores: int | None = None,
+    sample_concurrency: int = 1,
+):
     readiness, normalized, _request, workspace = _readiness(tmp_path)
     return build_attempt_plan(
         normalized,
@@ -171,6 +177,8 @@ def _plan(tmp_path: Path, *, threads: int = 1):
         workspace,
         operation="execute",
         threads=threads,
+        workflow_cores=workflow_cores,
+        sample_concurrency=sample_concurrency,
         now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
         token="1" * 32,
         host="test-host",
@@ -271,6 +279,7 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
         "norad.stage.align_RNA_reads_with_STAR.v1",
         "norad.stage.construct_canonical_BAM.v1",
         "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
+        "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
     }
 
     assert plan.threads == 4
@@ -282,10 +291,53 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
             assert "--threads" not in producer
 
 
+def test_plan_records_configurable_sample_concurrency(tmp_path: Path) -> None:
+    plan = _plan(
+        tmp_path,
+        threads=2,
+        workflow_cores=4,
+        sample_concurrency=2,
+    )
+    argv = plan.attempt_record["snakemake_argv"]
+    config = json.loads(
+        next(item.data for item in plan.attempt_files if item.path == plan.config_path)
+    )
+
+    assert plan.workflow_cores == 4
+    assert plan.sample_concurrency == 2
+    assert plan.attempt_record["cores"] == 4
+    assert argv[argv.index("--cores") + 1] == "4"
+    assert argv[argv.index("--resources") + 1] == "sample_slots=2"
+    assert config["tool_threads"] == 2
+    assert config["sample_concurrency"] == 2
+
+
 @pytest.mark.parametrize("threads", (0, -1, True))
 def test_plan_rejects_invalid_tool_threads(tmp_path: Path, threads: object) -> None:
     with pytest.raises(MaterializationError, match="positive integer"):
         _plan(tmp_path, threads=threads)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    ("workflow_cores", "sample_concurrency"),
+    ((0, 1), (2, 0), (2, 3), (True, 1), (2, True)),
+)
+def test_plan_rejects_invalid_concurrency(
+    tmp_path: Path,
+    workflow_cores: object,
+    sample_concurrency: object,
+) -> None:
+    with pytest.raises(MaterializationError):
+        _plan(
+            tmp_path,
+            workflow_cores=workflow_cores,  # type: ignore[arg-type]
+            sample_concurrency=sample_concurrency,  # type: ignore[arg-type]
+        )
+
+
+def test_plan_rejects_tool_threads_above_workflow_capacity(tmp_path: Path) -> None:
+    with pytest.raises(MaterializationError, match="Tool threads"):
+        _plan(tmp_path, threads=4, workflow_cores=2)
 
 
 def test_r_owner_bootstrap_clears_hostile_selectors_and_exports_exact_library(

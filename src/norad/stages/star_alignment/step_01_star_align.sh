@@ -369,6 +369,11 @@ star_command=(
     --readFilesIn "$r1_fastq" "$r2_fastq"
     --outFileNamePrefix "$command_prefix"
     --outSAMtype BAM SortedByCoordinate
+    --outSAMattrRGline
+    "ID:$sample_id"
+    "SM:$sample_id"
+    "LB:$sample_id"
+    "PL:ILLUMINA"
 )
 
 if [[ "$r1_is_gz" == true ]]; then

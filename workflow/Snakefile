@@ -53,6 +53,8 @@ CONFIG_KEYS = {
     "primary_analysis_policy_path",
     "reporting_run_contract_path",
     "artifact_inventory_path",
+    "tool_threads",
+    "sample_concurrency",
     "dispatch_paths",
 }
 if set(config) != CONFIG_KEYS:
@@ -71,12 +73,21 @@ def _absolute_config_path(key):
     return path
 
 
+def _positive_config_integer(key):
+    value = config.get(key)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise WorkflowError(f"Workflow config {key!r} must be a positive integer")
+    return value
+
+
 RUN_ROOT = _absolute_config_path("run_root")
 CONFIGURED_PYTHON = _absolute_config_path("python_executable")
 EXECUTION_PATH = _absolute_config_path("execution_path")
 PROFILE_SNAPSHOT_PATH = _absolute_config_path("profile_path")
 SOURCE_CHECKOUT = _absolute_config_path("source_checkout")
 ARTIFACT_SOURCE_ROOT = _absolute_config_path("artifact_source_root")
+TOOL_THREADS = _positive_config_integer("tool_threads")
+SAMPLE_CONCURRENCY = _positive_config_integer("sample_concurrency")
 WORKFLOW_ATTEMPT_ID = config.get("workflow_attempt_id")
 if not isinstance(WORKFLOW_ATTEMPT_ID, str) or re.fullmatch(
     r"workflow-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{32}", WORKFLOW_ATTEMPT_ID
@@ -834,6 +845,8 @@ rule construct_STAR_index:
         python=PYTHON,
         dispatch=_dispatch(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID),
         dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID)
+    threads:
+        TOOL_THREADS
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -869,6 +882,10 @@ rule align_RNA_reads_with_STAR:
         python=PYTHON,
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0])
+    threads:
+        TOOL_THREADS
+    resources:
+        sample_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -882,6 +899,10 @@ rule construct_canonical_BAM:
         python=PYTHON,
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["construct_canonical_BAM"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["construct_canonical_BAM"][0])
+    threads:
+        TOOL_THREADS
+    resources:
+        sample_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -895,6 +916,8 @@ rule collect_canonical_BAM_QC_evidence:
         python=PYTHON,
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0])
+    resources:
+        sample_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -909,6 +932,8 @@ rule collect_RSeQC_paired_orientation_evidence:
         python=PYTHON,
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0])
+    resources:
+        sample_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -922,6 +947,8 @@ rule mark_BAM_duplicates_with_Picard:
         python=PYTHON,
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0])
+    resources:
+        sample_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -936,6 +963,8 @@ rule split_N_cigar_reads_with_GATK:
         python=PYTHON,
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0])
+    resources:
+        sample_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -949,6 +978,10 @@ rule partition_BAM_by_mechanical_read_orientation:
         python=PYTHON,
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0])
+    threads:
+        TOOL_THREADS
+    resources:
+        sample_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -982,6 +1015,8 @@ rule preprocess_and_annotate_cohort_candidates:
         python=PYTHON,
         dispatch=_dispatch(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID),
         dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID)
+    threads:
+        TOOL_THREADS
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 

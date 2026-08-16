@@ -573,6 +573,7 @@ DELEGATED_FIXTURES = {
             ("QC_ROOT", "{qc_root}"),
             ("RSCRIPT_BIN_OVERRIDE", "{fake_bin}/Rscript"),
             ("STEP08_R_SCRIPT", "{r_script}"),
+            ("THREADS", "3"),
         ),
         arguments=(
             ("--cohort-id", "cohort08"),
@@ -582,6 +583,7 @@ DELEGATED_FIXTURES = {
             ("--annotation-gtf", "{annotation}"),
             ("--output-root", "{output_root}"),
             ("--qc-root", "{qc_root}"),
+            ("--threads", "3"),
             ("--rscript-bin", "{fake_bin}/Rscript"),
             ("--r-script", "{r_script}"),
         ),

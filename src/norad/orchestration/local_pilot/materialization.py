@@ -56,6 +56,8 @@ class AttemptPlan:
     run_root: Path
     workflow_attempt_id: str
     threads: int
+    workflow_cores: int
+    sample_concurrency: int
     supersedes_workflow_attempt_id: str | None
     attempt_record: dict[str, Any]
     fixed_files: tuple[PlannedFile, ...]
@@ -829,6 +831,8 @@ def _task_commands(
             str(run_root / "results/vcf_preprocessed"),
             "--qc-root",
             str(run_root / "results/qc/vcf_preprocessing"),
+            "--threads",
+            str(threads),
             "--rscript-bin",
             rscript,
             "--r-script",
@@ -1143,6 +1147,8 @@ def build_attempt_plan(
     host: str | None = None,
     process_id: int | None = None,
     threads: int = 1,
+    workflow_cores: int | None = None,
+    sample_concurrency: int = 1,
     supersedes_workflow_attempt_id: str | None = None,
     retained_dispatches: Mapping[tuple[str, str], dict[str, str]] | None = None,
 ) -> AttemptPlan:
@@ -1152,6 +1158,28 @@ def build_attempt_plan(
         raise MaterializationError("Local-pilot readiness has unresolved blockers")
     if isinstance(threads, bool) or not isinstance(threads, int) or threads < 1:
         raise MaterializationError("Tool threads must be a positive integer")
+    if workflow_cores is None:
+        workflow_cores = threads
+    if (
+        isinstance(workflow_cores, bool)
+        or not isinstance(workflow_cores, int)
+        or workflow_cores < 1
+    ):
+        raise MaterializationError("Workflow cores must be a positive integer")
+    if (
+        isinstance(sample_concurrency, bool)
+        or not isinstance(sample_concurrency, int)
+        or sample_concurrency < 1
+    ):
+        raise MaterializationError("Sample concurrency must be a positive integer")
+    if sample_concurrency > workflow_cores:
+        raise MaterializationError(
+            "Sample concurrency cannot exceed total workflow cores"
+        )
+    if threads > workflow_cores:
+        raise MaterializationError(
+            "Tool threads cannot exceed total workflow cores"
+        )
     if readiness.run_id != normalized.run_id:
         raise MaterializationError(
             "Doctor and normalization resolved different run IDs"
@@ -1258,6 +1286,8 @@ def build_attempt_plan(
                 "artifact_inventory"
             ]["path"]
         ),
+        "tool_threads": threads,
+        "sample_concurrency": sample_concurrency,
         "dispatch_paths": dispatch_references,
     }
     config_data = orchestration_contracts.canonical_json_bytes(config)
@@ -1270,6 +1300,8 @@ def build_attempt_plan(
         run_root=run_root,
         target=TARGET,
         operation=operation,
+        cores=workflow_cores,
+        sample_concurrency=sample_concurrency,
     )
     request = normalized.request
     attempt = {
@@ -1315,7 +1347,7 @@ def build_attempt_plan(
         "host": socket.gethostname() if host is None else host,
         "process_id": os.getpid() if process_id is None else process_id,
         "owner_token": owner_token,
-        "cores": 1,
+        "cores": workflow_cores,
         "required_tools": list(required_tools),
     }
     orchestration_contracts.validate_record("workflow-attempt", attempt)
@@ -1338,6 +1370,8 @@ def build_attempt_plan(
         run_root=run_root,
         workflow_attempt_id=attempt_id,
         threads=threads,
+        workflow_cores=workflow_cores,
+        sample_concurrency=sample_concurrency,
         supersedes_workflow_attempt_id=supersedes_workflow_attempt_id,
         attempt_record=attempt,
         fixed_files=tuple(fixed_files),

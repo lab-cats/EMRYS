@@ -43,8 +43,10 @@ and exact stdout/stderr tail paths. Inside an allocation it requires
 `SLURM_JOB_ID`, sources the explicit module initializer, loads the exact
 colon-delimited module roster, validates the request, runs the doctor, and then
 plans or executes the whole single-host local pilot. The requested
-`NORAD_SLURM_CPUS` value is passed to every thread-capable owner while the
-workflow continues to schedule owners serially. It never runs analysis or
+`NORAD_SLURM_CPUS` value declares total workflow capacity,
+`NORAD_TOOL_THREADS` controls each thread-capable owner, and the optional
+`NORAD_SAMPLE_CONCURRENCY` value caps concurrent sample tasks (default `1`).
+It never runs analysis or
 large-input validation on a login node and does not claim per-owner Slurm
 scheduling or multi-node execution.
 

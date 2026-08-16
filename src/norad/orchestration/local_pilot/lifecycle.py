@@ -524,6 +524,8 @@ def build_snakemake_argv(
     run_root: Path,
     target: str,
     operation: Operation,
+    cores: int = 1,
+    sample_concurrency: int = 1,
 ) -> tuple[str, ...]:
     """Construct the fixed direct invocation and reject recovery bypasses."""
 
@@ -540,6 +542,16 @@ def build_snakemake_argv(
         )
     if operation not in {"execute", "resume"}:
         raise LifecycleError(f"Unsupported lifecycle operation: {operation}")
+    if isinstance(cores, bool) or not isinstance(cores, int) or cores < 1:
+        raise LifecycleError("Workflow cores must be a positive integer")
+    if (
+        isinstance(sample_concurrency, bool)
+        or not isinstance(sample_concurrency, int)
+        or sample_concurrency < 1
+    ):
+        raise LifecycleError("Sample concurrency must be a positive integer")
+    if sample_concurrency > cores:
+        raise LifecycleError("Sample concurrency cannot exceed workflow cores")
     argv = [
         *controlled_python_argv(python_executable),
         "-m",
@@ -552,6 +564,10 @@ def build_snakemake_argv(
         str(configfile),
         "--directory",
         str(run_root),
+        "--cores",
+        str(cores),
+        "--resources",
+        f"sample_slots={sample_concurrency}",
         "--nocolor",
     ]
     if operation == "resume":
@@ -1587,6 +1603,8 @@ def _admit_request(
         "path": config_path.relative_to(root).as_posix(),
         "sha256": hashlib.sha256(config_data).hexdigest(),
     }
+    attempt = dict(request.attempt_record)
+    orchestration_contracts.validate_record("workflow-attempt", attempt)
     argv = build_snakemake_argv(
         python_executable=python_executable,
         snakefile=snakefile,
@@ -1595,9 +1613,9 @@ def _admit_request(
         run_root=root,
         target=request.target,
         operation=request.operation,
+        cores=int(attempt["cores"]),
+        sample_concurrency=config_document.get("sample_concurrency", 1),
     )
-    attempt = dict(request.attempt_record)
-    orchestration_contracts.validate_record("workflow-attempt", attempt)
     identifier = str(attempt["workflow_attempt_id"])
     source_root = Path(str(attempt["source_checkout"]["path"]))
     _require_disjoint_roots(root, source_root)

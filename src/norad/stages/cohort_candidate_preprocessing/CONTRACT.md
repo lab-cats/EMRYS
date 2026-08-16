@@ -32,6 +32,13 @@ roots, and explicit Rscript/R-program resolution. Required VCF definitions
 include FORMAT DP/AD/ADF/ADR/SP and INFO AD/ADF/ADR; sample columns must match
 the sample manifest exactly.
 
+The optional positive `--threads` value defaults to `1` and bounds independent
+partition/orientation VCF workers. On Unix, worker results are returned in the
+declared manifest/orientation order before deterministic aggregation; Windows
+direct execution falls back to one worker. Annotation import/model construction,
+aggregate reconciliation, serialization, validation, and publication remain
+single-owner operations.
+
 The fixed `legacy_provisional_v1` compatibility policy maps:
 
 ```text
