@@ -55,6 +55,7 @@ class AttemptPlan:
     workspace: Path
     run_root: Path
     workflow_attempt_id: str
+    threads: int
     supersedes_workflow_attempt_id: str | None
     attempt_record: dict[str, Any]
     fixed_files: tuple[PlannedFile, ...]
@@ -257,6 +258,7 @@ def _task_commands(
     source_root: Path,
     runtime: Mapping[str, Any],
     all_paths: Mapping[tuple[str, str], Mapping[str, list[Path]]],
+    threads: int,
 ) -> tuple[tuple[str, ...], tuple[str, ...], tuple[Path, ...]]:
     sample_rows = {str(row["sample_id"]): row for row in execution["samples"]["rows"]}
     partition_rows = {
@@ -318,7 +320,7 @@ def _task_commands(
             "--index-dir",
             str(index_dir),
             "--threads",
-            "1",
+            str(threads),
             "--sjdb-overhang",
             str(reference["star_index"]["sjdb_overhang"]),
             "--genome-sa-index-nbases",
@@ -439,7 +441,7 @@ def _task_commands(
                 "--output-dir",
                 str(bam.parent),
                 "--threads",
-                "1",
+                str(threads),
                 "--star-bin",
                 star,
                 "--gunzip-bin",
@@ -489,7 +491,7 @@ def _task_commands(
                 "--output-dir",
                 str(bam.parent),
                 "--threads",
-                "1",
+                str(threads),
                 "--samtools-bin",
                 samtools,
                 "--no-clobber",
@@ -694,7 +696,7 @@ def _task_commands(
             "--qc-dir",
             str(counts.parent),
             "--threads",
-            "1",
+            str(threads),
             "--samtools-bin",
             samtools,
             "--no-clobber",
@@ -980,6 +982,7 @@ def _dispatches(
     attempt_id: str,
     compact_time: str,
     retained: Mapping[tuple[str, str], dict[str, str]],
+    threads: int,
 ) -> tuple[
     tuple[PlannedFile, ...], dict[str, dict[str, dict[str, str]]], tuple[Path, ...]
 ]:
@@ -1031,6 +1034,7 @@ def _dispatches(
             source_root=readiness.source_root,
             runtime=runtime,
             all_paths=paths_by_scope,
+            threads=threads,
         )
         suffix = hashlib.sha256(
             f"{attempt_id}:{task.machine_key}:{task.scope_id}".encode()
@@ -1138,6 +1142,7 @@ def build_attempt_plan(
     token: str | None = None,
     host: str | None = None,
     process_id: int | None = None,
+    threads: int = 1,
     supersedes_workflow_attempt_id: str | None = None,
     retained_dispatches: Mapping[tuple[str, str], dict[str, str]] | None = None,
 ) -> AttemptPlan:
@@ -1145,6 +1150,8 @@ def build_attempt_plan(
 
     if not readiness.ready:
         raise MaterializationError("Local-pilot readiness has unresolved blockers")
+    if isinstance(threads, bool) or not isinstance(threads, int) or threads < 1:
+        raise MaterializationError("Tool threads must be a positive integer")
     if readiness.run_id != normalized.run_id:
         raise MaterializationError(
             "Doctor and normalization resolved different run IDs"
@@ -1194,6 +1201,7 @@ def build_attempt_plan(
         attempt_id,
         compact,
         retained,
+        threads,
     )
     reporting = build_reporting_bundle(
         normalized.execution_contract, normalized.profile
@@ -1329,6 +1337,7 @@ def build_attempt_plan(
         workspace=workspace_path,
         run_root=run_root,
         workflow_attempt_id=attempt_id,
+        threads=threads,
         supersedes_workflow_attempt_id=supersedes_workflow_attempt_id,
         attempt_record=attempt,
         fixed_files=tuple(fixed_files),

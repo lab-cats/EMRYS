@@ -54,9 +54,10 @@ Read this before installing:
 
 - The public runtime target is a Linux/POSIX host with Python `3.11` or newer,
   Git, GNU Make, `uv`, and the scientific runtime listed below.
-- The workflow uses Snakemake's **single-host local executor with one core**.
-  Its current owner commands use one thread. It neither submits SLURM jobs nor
-  distributes work across nodes.
+- The workflow uses Snakemake's **single-host local executor** and schedules one
+  owner at a time. `--threads` controls each thread-capable owner without
+  enabling concurrent owners. NORAD neither submits SLURM jobs nor distributes
+  work across nodes.
 - Run it on a suitably provisioned Linux workstation, or run the same local
   process inside **one** batch allocation on **one** compute node. Never run the
   scientific workflow on a cluster login/head node; use that node only to
@@ -489,7 +490,7 @@ test ! -e "$NORAD_LOG_DIR" && mkdir -m 700 "$NORAD_LOG_DIR"
 NORAD_SLURM_ACCOUNT=replace-with-site-account
 NORAD_SLURM_PARTITION=replace-with-site-partition
 NORAD_SLURM_QOS=replace-with-site-qos
-NORAD_SLURM_CPUS=1
+NORAD_SLURM_CPUS=4
 NORAD_SLURM_MEMORY=replace-with-reviewed-memory
 NORAD_SLURM_TIME=replace-with-reviewed-walltime
 NORAD_SOURCE_CHECKOUT="$NORAD_REPO"
@@ -512,7 +513,9 @@ export NORAD_RUNTIME_PROFILE NORAD_MODULE_INIT NORAD_MODULES NORAD_EXECUTE
 `NORAD_MODULES` is a colon-separated list of the exact site modules required
 to expose the authored runtime. `NORAD_MODULE_INIT` must be the site's real,
 nonsymlink module initialization file. The wrapper rejects commas/newlines and
-unsafe module identifiers; it never installs a missing module or tool.
+unsafe module identifiers; it never installs a missing module or tool. The
+wrapper passes `NORAD_SLURM_CPUS` to each thread-capable owner while keeping
+owner execution serial.
 
 The first submission uses `NORAD_EXECUTE=0`: it performs compute-context
 preflight and prints the complete no-write workflow plan in the job log. Copy

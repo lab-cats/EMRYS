@@ -99,6 +99,16 @@ def _absolute(path: Path) -> Path:
     return Path(os.path.abspath(path))
 
 
+def _positive_integer(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a positive integer") from exc
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return parsed
+
+
 def _require_ready(result: doctor.DoctorResult) -> None:
     if result.ready:
         return
@@ -128,6 +138,7 @@ def plan_run(
     workspace: Path,
     runtime_profile: Path,
     *,
+    threads: int = 1,
     ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> AttemptPlan:
     """Plan a new run without writing any workspace state."""
@@ -142,6 +153,7 @@ def plan_run(
                 readiness,
                 _absolute(workspace),
                 operation="execute",
+                threads=threads,
                 now=ops.now(),
                 token=ops.token(),
             )
@@ -210,6 +222,7 @@ def plan_resume(
     run_root: Path,
     runtime_profile: Path,
     *,
+    threads: int = 1,
     ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> AttemptPlan:
     """Plan a safe between-task resume without writing run state."""
@@ -248,6 +261,7 @@ def plan_resume(
                 readiness,
                 workspace,
                 operation="resume",
+                threads=threads,
                 now=ops.now(),
                 token=ops.token(),
                 supersedes_workflow_attempt_id=str(previous["workflow_attempt_id"]),
@@ -296,6 +310,7 @@ def _print_plan(plan: AttemptPlan) -> None:
     print(f"Run root: {plan.run_root}")
     print(f"Workflow attempt: {plan.workflow_attempt_id}")
     print(f"Owner jobs: {plan.dispatch_count}")
+    print(f"Threads per thread-capable tool: {plan.threads}")
     print("Reporting transactions: 3")
     print(f"Reusable completed owner jobs: {reused}")
     print(f"Pending owner jobs: {plan.dispatch_count - reused}")
@@ -322,6 +337,12 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--workspace", required=True, type=Path)
     parser.add_argument("--runtime-profile", required=True, type=Path)
     parser.add_argument(
+        "--threads",
+        default=1,
+        type=_positive_integer,
+        help="Threads passed to each thread-capable tool; tasks remain serial.",
+    )
+    parser.add_argument(
         "--execute",
         action="store_true",
         help="Create and execute the planned run. Without this flag, write nothing.",
@@ -331,6 +352,12 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
 def configure_resume_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--run-root", required=True, type=Path)
     parser.add_argument("--runtime-profile", required=True, type=Path)
+    parser.add_argument(
+        "--threads",
+        default=1,
+        type=_positive_integer,
+        help="Threads passed to each pending thread-capable tool; tasks remain serial.",
+    )
     parser.add_argument(
         "--execute",
         action="store_true",
@@ -352,6 +379,7 @@ def run_from_args(
             arguments.request,
             arguments.workspace,
             arguments.runtime_profile,
+            threads=arguments.threads,
             ops=ops,
         )
         _print_plan(plan)
@@ -373,6 +401,7 @@ def resume_from_args(
         plan = plan_resume(
             arguments.run_root,
             arguments.runtime_profile,
+            threads=arguments.threads,
             ops=ops,
         )
         _print_plan(plan)

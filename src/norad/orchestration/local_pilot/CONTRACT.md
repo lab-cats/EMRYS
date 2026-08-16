@@ -52,7 +52,10 @@ runs request compatibility and doctor checks, and then delegates the entire
 single-host local pilot. `NORAD_EXECUTE=0` plans; `1` adds the public
 `--execute` gate. The wrapper does not claim login-node computation, per-owner
 Slurm jobs, multi-node scheduling, scheduler success as workflow completion,
-or site portability before site validation.
+or site portability before site validation. Its admitted CPU allocation is
+passed to `norad run --threads`; Snakemake still schedules one owner at a time,
+so thread-capable owners use the allocation without concurrent-owner
+oversubscription.
 
 ## Normalization and execution
 

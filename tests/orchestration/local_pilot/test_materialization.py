@@ -163,13 +163,14 @@ def _readiness(
     return readiness, normalized, request, workspace
 
 
-def _plan(tmp_path: Path):
+def _plan(tmp_path: Path, *, threads: int = 1):
     readiness, normalized, _request, workspace = _readiness(tmp_path)
     return build_attempt_plan(
         normalized,
         readiness,
         workspace,
         operation="execute",
+        threads=threads,
         now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
         token="1" * 32,
         host="test-host",
@@ -260,6 +261,31 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         set(item) == {"name", "version", "path", "resolved_path", "sha256"}
         for item in plan.attempt_record["required_tools"]
     )
+
+
+def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> None:
+    plan = _plan(tmp_path, threads=4)
+    records = _dispatch_records(plan)
+    threaded_owners = {
+        "norad.stage.construct_STAR_index.v1",
+        "norad.stage.align_RNA_reads_with_STAR.v1",
+        "norad.stage.construct_canonical_BAM.v1",
+        "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
+    }
+
+    assert plan.threads == 4
+    for record in records:
+        producer = record["producer_argv"]
+        if record["machine_key"] in threaded_owners:
+            assert producer[producer.index("--threads") + 1] == "4"
+        else:
+            assert "--threads" not in producer
+
+
+@pytest.mark.parametrize("threads", (0, -1, True))
+def test_plan_rejects_invalid_tool_threads(tmp_path: Path, threads: object) -> None:
+    with pytest.raises(MaterializationError, match="positive integer"):
+        _plan(tmp_path, threads=threads)  # type: ignore[arg-type]
 
 
 def test_r_owner_bootstrap_clears_hostile_selectors_and_exports_exact_library(
@@ -616,6 +642,7 @@ def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
         request=request,
         workspace=workspace,
         runtime_profile=runtime,
+        threads=1,
         execute=False,
     )
 
@@ -755,6 +782,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         request=request,
         workspace=workspace,
         runtime_profile=readiness.runtime_profile,
+        threads=1,
         execute=True,
     )
 
@@ -778,6 +806,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     resume_arguments = argparse.Namespace(
         run_root=run_root,
         runtime_profile=readiness.runtime_profile,
+        threads=1,
         execute=False,
     )
     assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 0

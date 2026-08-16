@@ -121,7 +121,9 @@ The checked-in local workflow profile is
 [`profiles/local/profile.v9+.yaml`](profiles/local/profile.v9+.yaml). It uses
 Snakemake's local executor with one core, the greedy scheduler, zero retries,
 incomplete-output preservation, printed shell commands, and failed-log
-display.
+display. The one-core workflow scheduler keeps owners serial; the public
+`--threads` option independently controls the thread count passed to each
+thread-capable owner.
 
 ## Reviewable slices
 
