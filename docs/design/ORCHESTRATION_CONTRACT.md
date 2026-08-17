@@ -134,9 +134,9 @@ resources:
   step_threads:
     "00a": 4
     "01": 4
-    "02": 4
-    "06": 2
-    "08": 4
+    "02": 1
+    "06": 4
+    "08": 1
 analysis:
   id: declared-analysis-id
   control_condition: EV
