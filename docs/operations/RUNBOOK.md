@@ -295,7 +295,7 @@ compute host:
   --execute
 ```
 
-Each trial records exact logs, producer wall time, GNU `time` peak RSS, and
+Each trial records exact logs, producer wall time, child-process peak RSS, and
 validator status. `summary.tsv` marks the smallest resource value within five
 percent of the fastest successful median. Apply that result only to the tested
 dataset scale, runtime, machine, memory, and storage system; preserve the raw

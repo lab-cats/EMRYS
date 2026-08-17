@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import csv
 import os
+import resource
 import shlex
 import statistics
 import subprocess
@@ -170,19 +171,35 @@ def _run(argv: Sequence[str], *, stdout: Path, stderr: Path) -> int:
     return completed.returncode
 
 
-def _max_rss(path: Path) -> int | None:
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return None
-    prefix = "Maximum resident set size (kbytes):"
-    for line in lines:
-        if line.strip().startswith(prefix):
-            try:
-                return int(line.split(":", maxsplit=1)[1].strip())
-            except ValueError:
-                return None
-    return None
+def _run_timed(
+    argv: Sequence[str], *, stdout: Path, stderr: Path, usage: Path
+) -> tuple[int, float, int]:
+    if not hasattr(os, "wait4"):
+        raise BenchmarkError("Execution requires os.wait4 child-resource accounting")
+    with stdout.open("xb") as stdout_handle, stderr.open("xb") as stderr_handle:
+        started = time.monotonic()
+        process = subprocess.Popen(
+            argv,
+            stdin=subprocess.DEVNULL,
+            stdout=stdout_handle,
+            stderr=stderr_handle,
+        )
+        try:
+            _, wait_status, child_usage = os.wait4(process.pid, 0)
+        except BaseException:
+            process.kill()
+            process.wait()
+            raise
+        process.returncode = os.waitstatus_to_exitcode(wait_status)
+        wall_seconds = time.monotonic() - started
+    max_rss_kib = int(child_usage.ru_maxrss)
+    if sys.platform == "darwin":
+        max_rss_kib //= 1024
+    usage.write_text(
+        f"wall_seconds\t{wall_seconds:.6f}\nmax_rss_kib\t{max_rss_kib}\n",
+        encoding="utf-8",
+    )
+    return process.returncode, wall_seconds, max_rss_kib
 
 
 def _write_summary(results: Sequence[dict[str, Any]], path: Path) -> None:
@@ -229,9 +246,6 @@ def _write_summary(results: Sequence[dict[str, Any]], path: Path) -> None:
 
 def run(manifest: Path, output: Path, *, execute: bool) -> int:
     cases = _load_manifest(manifest)
-    time_bin = Path("/usr/bin/time")
-    if execute and (not time_bin.is_file() or not os.access(time_bin, os.X_OK)):
-        raise BenchmarkError("Execution requires GNU /usr/bin/time")
     if output.exists() or output.is_symlink():
         raise BenchmarkError(f"Output directory must be absent: {output}")
     if not output.parent.is_dir() or output.parent.is_symlink():
@@ -271,18 +285,18 @@ def run(manifest: Path, output: Path, *, execute: bool) -> int:
                     producer_code = -1
                     validator_code = -1
                     wall_seconds = 0.0
+                    max_rss_kib: int | str = ""
                     usage_path = trial / "producer.time.txt"
                     if setup_code == 0:
                         producer = _expand(
                             case.producer_argv, value=value, trial_dir=trial
                         )
-                        started = time.monotonic()
-                        producer_code = _run(
-                            (str(time_bin), "-v", "-o", str(usage_path), "--", *producer),
+                        producer_code, wall_seconds, max_rss_kib = _run_timed(
+                            producer,
                             stdout=trial / "producer.stdout.log",
                             stderr=trial / "producer.stderr.log",
+                            usage=usage_path,
                         )
-                        wall_seconds = time.monotonic() - started
                     if producer_code == 0:
                         validator_code = _run(
                             _expand(case.validator_argv, value=value, trial_dir=trial),
@@ -304,7 +318,7 @@ def run(manifest: Path, output: Path, *, execute: bool) -> int:
                         "producer_exit_code": producer_code,
                         "validator_exit_code": validator_code,
                         "producer_wall_seconds": f"{wall_seconds:.6f}",
-                        "producer_max_rss_kib": _max_rss(usage_path) or "",
+                        "producer_max_rss_kib": max_rss_kib,
                         "trial_dir": str(trial),
                     }
                     results.append(row)

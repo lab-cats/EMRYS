@@ -12,7 +12,7 @@ Repository-level utilities that do not belong to one scientific owner:
 Exact invocations belong in the [runbook](../docs/operations/RUNBOOK.md).
 The resource benchmark is opt-in and manifest-driven. It runs only exact argv
 arrays supplied by the operator, writes one create-absent result tree, records
-producer wall time and GNU `time` peak RSS, validates every trial, and recommends
+producer wall time and child-process peak RSS, validates every trial, and recommends
 the smallest value within five percent of the fastest successful median. It is
 not part of normal validation and its recommendation applies only to the tested
 dataset, machine, runtime, and storage system.
