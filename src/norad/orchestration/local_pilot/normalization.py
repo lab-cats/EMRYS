@@ -19,6 +19,8 @@ from norad.contracts.orchestration import api as orchestration_contracts
 from norad.contracts.orchestration.projection import build_reporting_bundle
 from norad.contracts.scientific_evidence import step08, step09
 
+THREAD_CAPABLE_STEP_IDS = ("00a", "01", "02", "06", "08")
+
 
 class _ClosedSafeLoader(yaml.SafeLoader):
     """Safe YAML loader that also closes keys and merge behavior."""
@@ -53,6 +55,28 @@ class _ClosedSafeLoader(yaml.SafeLoader):
 
 
 @dataclass(frozen=True, slots=True)
+class ResourcePlan:
+    """Attempt-level scheduling and per-owner thread allocation."""
+
+    workflow_cores: int
+    sample_concurrency: int
+    step_threads: tuple[tuple[str, int], ...]
+
+    def threads_for(self, step_id: str) -> int:
+        """Return the declared thread count for one thread-capable owner."""
+
+        for declared_step, threads in self.step_threads:
+            if declared_step == step_id:
+                return threads
+        raise KeyError(step_id)
+
+    def thread_map(self) -> dict[str, int]:
+        """Return a JSON-ready copy of the closed per-step mapping."""
+
+        return dict(self.step_threads)
+
+
+@dataclass(frozen=True, slots=True)
 class NormalizationBundle:
     """Read-only normalization result plus non-identity admission evidence."""
 
@@ -63,6 +87,7 @@ class NormalizationBundle:
     profile: dict[str, Any]
     execution_contract: dict[str, Any]
     normalized_bytes: bytes
+    resources: ResourcePlan
 
     @property
     def run_id(self) -> str:
@@ -458,6 +483,33 @@ def _policy(request: Mapping[str, Any]) -> dict[str, Any]:
     return value
 
 
+def _resource_plan(request: Mapping[str, Any]) -> ResourcePlan:
+    resources = request["resources"]
+    workflow_cores = int(resources["workflow_cores"])
+    sample_concurrency = int(resources["sample_concurrency"])
+    step_threads = tuple(
+        (step_id, int(resources["step_threads"][step_id]))
+        for step_id in THREAD_CAPABLE_STEP_IDS
+    )
+    if sample_concurrency > workflow_cores:
+        raise orchestration_contracts.ContractValidationError(
+            "resources.sample_concurrency cannot exceed resources.workflow_cores"
+        )
+    oversized = [
+        step_id for step_id, threads in step_threads if threads > workflow_cores
+    ]
+    if oversized:
+        raise orchestration_contracts.ContractValidationError(
+            "resources.step_threads cannot exceed resources.workflow_cores: "
+            + ", ".join(oversized)
+        )
+    return ResourcePlan(
+        workflow_cores=workflow_cores,
+        sample_concurrency=sample_concurrency,
+        step_threads=step_threads,
+    )
+
+
 def normalize_request(
     request_path: str | Path,
     profile: Mapping[str, Any] | str | Path,
@@ -472,6 +524,7 @@ def normalize_request(
     resolved_request, request_data = _regular_file(authored_request, "Request")
     request = _load_yaml_object(request_data, resolved_request)
     _schema_validate("request", request)
+    resources = _resource_plan(request)
     profile_record = _load_profile(profile)
     expected_profile = (
         f"{profile_record['profile_id']}.{profile_record['profile_version']}"
@@ -568,7 +621,13 @@ def normalize_request(
         profile=profile_record,
         execution_contract=execution,
         normalized_bytes=normalized_bytes,
+        resources=resources,
     )
 
 
-__all__ = ("NormalizationBundle", "normalize_request")
+__all__ = (
+    "NormalizationBundle",
+    "ResourcePlan",
+    "THREAD_CAPABLE_STEP_IDS",
+    "normalize_request",
+)

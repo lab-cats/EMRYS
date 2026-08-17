@@ -16,6 +16,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+import yaml
 
 from norad.evidence.runtime_availability.inspector import (
     RuntimeCheck,
@@ -48,11 +49,25 @@ def _readiness(
     *,
     source_root: Path = REPO_ROOT,
     source_commit: str = "a" * 40,
+    workflow_cores: int = 1,
+    sample_concurrency: int = 1,
+    step_threads: dict[str, int] | None = None,
 ) -> tuple[doctor.DoctorResult, object, Path, Path]:
     tmp_path.mkdir(parents=True, exist_ok=True)
     intake = tmp_path / "intake"
     intake.mkdir()
     request = build(intake)
+    request_document = yaml.safe_load(request.read_text(encoding="utf-8"))
+    request_document["resources"] = {
+        "workflow_cores": workflow_cores,
+        "sample_concurrency": sample_concurrency,
+        "step_threads": (
+            {"00a": 1, "01": 1, "02": 1, "06": 1, "08": 1}
+            if step_threads is None
+            else step_threads
+        ),
+    }
+    request.write_text(yaml.safe_dump(request_document, sort_keys=False), encoding="utf-8")
     normalized = normalize_request(
         request, source_root / "workflow/contracts/local_cmh_v2.json"
     )
@@ -166,19 +181,21 @@ def _readiness(
 def _plan(
     tmp_path: Path,
     *,
-    threads: int = 1,
-    workflow_cores: int | None = None,
+    step_threads: dict[str, int] | None = None,
+    workflow_cores: int = 1,
     sample_concurrency: int = 1,
 ):
-    readiness, normalized, _request, workspace = _readiness(tmp_path)
+    readiness, normalized, _request, workspace = _readiness(
+        tmp_path,
+        workflow_cores=workflow_cores,
+        sample_concurrency=sample_concurrency,
+        step_threads=step_threads,
+    )
     return build_attempt_plan(
         normalized,
         readiness,
         workspace,
         operation="execute",
-        threads=threads,
-        workflow_cores=workflow_cores,
-        sample_concurrency=sample_concurrency,
         now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
         token="1" * 32,
         host="test-host",
@@ -272,7 +289,8 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
 
 
 def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> None:
-    plan = _plan(tmp_path, threads=4)
+    allocation = {"00a": 1, "01": 2, "02": 3, "06": 4, "08": 2}
+    plan = _plan(tmp_path, workflow_cores=4, step_threads=allocation)
     records = _dispatch_records(plan)
     threaded_owners = {
         "norad.stage.construct_STAR_index.v1",
@@ -282,11 +300,21 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
         "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
     }
 
-    assert plan.threads == 4
+    assert dict(plan.step_threads) == allocation
+    owner_steps = {
+        "norad.stage.construct_STAR_index.v1": "00a",
+        "norad.stage.align_RNA_reads_with_STAR.v1": "01",
+        "norad.stage.construct_canonical_BAM.v1": "02",
+        "norad.stage.partition_BAM_by_mechanical_read_orientation.v1": "06",
+        "norad.stage.preprocess_and_annotate_cohort_candidates.v1": "08",
+    }
     for record in records:
         producer = record["producer_argv"]
         if record["machine_key"] in threaded_owners:
-            assert producer[producer.index("--threads") + 1] == "4"
+            step_id = owner_steps[record["machine_key"]]
+            assert producer[producer.index("--threads") + 1] == str(
+                allocation[step_id]
+            )
         else:
             assert "--threads" not in producer
 
@@ -294,9 +322,9 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
 def test_plan_records_configurable_sample_concurrency(tmp_path: Path) -> None:
     plan = _plan(
         tmp_path,
-        threads=2,
         workflow_cores=4,
         sample_concurrency=2,
+        step_threads={"00a": 4, "01": 4, "02": 2, "06": 2, "08": 4},
     )
     argv = plan.attempt_record["snakemake_argv"]
     config = json.loads(
@@ -308,36 +336,14 @@ def test_plan_records_configurable_sample_concurrency(tmp_path: Path) -> None:
     assert plan.attempt_record["cores"] == 4
     assert argv[argv.index("--cores") + 1] == "4"
     assert argv[argv.index("--resources") + 1] == "sample_slots=2"
-    assert config["tool_threads"] == 2
+    assert config["step_threads"] == {
+        "00a": 4,
+        "01": 4,
+        "02": 2,
+        "06": 2,
+        "08": 4,
+    }
     assert config["sample_concurrency"] == 2
-
-
-@pytest.mark.parametrize("threads", (0, -1, True))
-def test_plan_rejects_invalid_tool_threads(tmp_path: Path, threads: object) -> None:
-    with pytest.raises(MaterializationError, match="positive integer"):
-        _plan(tmp_path, threads=threads)  # type: ignore[arg-type]
-
-
-@pytest.mark.parametrize(
-    ("workflow_cores", "sample_concurrency"),
-    ((0, 1), (2, 0), (2, 3), (True, 1), (2, True)),
-)
-def test_plan_rejects_invalid_concurrency(
-    tmp_path: Path,
-    workflow_cores: object,
-    sample_concurrency: object,
-) -> None:
-    with pytest.raises(MaterializationError):
-        _plan(
-            tmp_path,
-            workflow_cores=workflow_cores,  # type: ignore[arg-type]
-            sample_concurrency=sample_concurrency,  # type: ignore[arg-type]
-        )
-
-
-def test_plan_rejects_tool_threads_above_workflow_capacity(tmp_path: Path) -> None:
-    with pytest.raises(MaterializationError, match="Tool threads"):
-        _plan(tmp_path, threads=4, workflow_cores=2)
 
 
 def test_r_owner_bootstrap_clears_hostile_selectors_and_exports_exact_library(
@@ -694,7 +700,7 @@ def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
         request=request,
         workspace=workspace,
         runtime_profile=runtime,
-        threads=1,
+        allocated_cores=1,
         execute=False,
     )
 
@@ -834,7 +840,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         request=request,
         workspace=workspace,
         runtime_profile=readiness.runtime_profile,
-        threads=1,
+        allocated_cores=1,
         execute=True,
     )
 
@@ -858,7 +864,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     resume_arguments = argparse.Namespace(
         run_root=run_root,
         runtime_profile=readiness.runtime_profile,
-        threads=1,
+        allocated_cores=1,
         execute=False,
     )
     assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 0

@@ -442,8 +442,6 @@ def _wrapper_environment(
         "NORAD_SLURM_PARTITION": "short",
         "NORAD_SLURM_QOS": "normal",
         "NORAD_SLURM_CPUS": "4",
-        "NORAD_TOOL_THREADS": "2",
-        "NORAD_SAMPLE_CONCURRENCY": "2",
         "NORAD_SLURM_MEMORY": "8G",
         "NORAD_SLURM_TIME": "00:30:00",
         "NORAD_LOG_DIR": str(log_dir),
@@ -506,8 +504,8 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(tmp_path: Path) ->
     assert any(
         argument.startswith("--export=")
         and "NORAD_SLURM_CPUS=4" in argument
-        and "NORAD_TOOL_THREADS=2" in argument
-        and "NORAD_SAMPLE_CONCURRENCY=2" in argument
+        and "NORAD_TOOL_THREADS" not in argument
+        and "NORAD_SAMPLE_CONCURRENCY" not in argument
         for argument in arguments
     )
     assert str(wrapper) == arguments[-1]
@@ -589,7 +587,8 @@ def test_slurm_wrapper_batch_mode_loads_exact_modules_then_doctors_and_runs(
     assert "-m norad validate local-pilot-request" in invocations[0]
     assert "-m norad doctor local-pilot" in invocations[1]
     assert "-m norad run" in invocations[2]
-    assert "--threads 2" in invocations[2]
-    assert "--workflow-cores 4" in invocations[2]
-    assert "--sample-concurrency 2" in invocations[2]
+    assert "--allocated-cores 4" in invocations[2]
+    assert "--threads" not in invocations[2]
+    assert "--workflow-cores" not in invocations[2]
+    assert "--sample-concurrency" not in invocations[2]
     assert invocations[2].endswith("--execute")

@@ -50,7 +50,7 @@ def request() -> dict[str, Any]:
     result["id"] = result.pop("analysis_id")
     result.pop("schema_version")
     return {
-        "schema_version": "norad.request.v1",
+        "schema_version": "norad.request.v2",
         "label": "tiny local run",
         "profile": "norad.profile.local_cmh.v2",
         "sample_manifest": "samples.tsv",
@@ -65,6 +65,11 @@ def request() -> dict[str, Any]:
             },
         },
         "cohort_id": "cohort-1",
+        "resources": {
+            "workflow_cores": 4,
+            "sample_concurrency": 1,
+            "step_threads": {"00a": 4, "01": 4, "02": 4, "06": 2, "08": 4},
+        },
         "analysis": result,
     }
 

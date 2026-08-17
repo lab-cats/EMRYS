@@ -53,7 +53,7 @@ CONFIG_KEYS = {
     "primary_analysis_policy_path",
     "reporting_run_contract_path",
     "artifact_inventory_path",
-    "tool_threads",
+    "step_threads",
     "sample_concurrency",
     "dispatch_paths",
 }
@@ -86,7 +86,18 @@ EXECUTION_PATH = _absolute_config_path("execution_path")
 PROFILE_SNAPSHOT_PATH = _absolute_config_path("profile_path")
 SOURCE_CHECKOUT = _absolute_config_path("source_checkout")
 ARTIFACT_SOURCE_ROOT = _absolute_config_path("artifact_source_root")
-TOOL_THREADS = _positive_config_integer("tool_threads")
+THREAD_CAPABLE_STEP_IDS = {"00a", "01", "02", "06", "08"}
+STEP_THREADS = config.get("step_threads")
+if not isinstance(STEP_THREADS, dict) or set(STEP_THREADS) != THREAD_CAPABLE_STEP_IDS:
+    raise WorkflowError(
+        "Workflow config step_threads keys must be exactly "
+        + ", ".join(sorted(THREAD_CAPABLE_STEP_IDS))
+    )
+for step_id, value in STEP_THREADS.items():
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise WorkflowError(
+            f"Workflow config step_threads[{step_id!r}] must be a positive integer"
+        )
 SAMPLE_CONCURRENCY = _positive_config_integer("sample_concurrency")
 WORKFLOW_ATTEMPT_ID = config.get("workflow_attempt_id")
 if not isinstance(WORKFLOW_ATTEMPT_ID, str) or re.fullmatch(
@@ -846,7 +857,7 @@ rule construct_STAR_index:
         dispatch=_dispatch(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID),
         dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID)
     threads:
-        TOOL_THREADS
+        STEP_THREADS["00a"]
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -883,7 +894,7 @@ rule align_RNA_reads_with_STAR:
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0])
     threads:
-        TOOL_THREADS
+        STEP_THREADS["01"]
     resources:
         sample_slots=1
     shell:
@@ -900,7 +911,7 @@ rule construct_canonical_BAM:
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["construct_canonical_BAM"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["construct_canonical_BAM"][0])
     threads:
-        TOOL_THREADS
+        STEP_THREADS["02"]
     resources:
         sample_slots=1
     shell:
@@ -979,7 +990,7 @@ rule partition_BAM_by_mechanical_read_orientation:
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0])
     threads:
-        TOOL_THREADS
+        STEP_THREADS["06"]
     resources:
         sample_slots=1
     shell:
@@ -1016,7 +1027,7 @@ rule preprocess_and_annotate_cohort_candidates:
         dispatch=_dispatch(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID),
         dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID)
     threads:
-        TOOL_THREADS
+        STEP_THREADS["08"]
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 

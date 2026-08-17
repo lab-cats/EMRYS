@@ -124,7 +124,7 @@ def build(root: Path) -> Path:
     )
     request = root / "request.yaml"
     request.write_text(
-        "schema_version: norad.request.v1\n"
+        "schema_version: norad.request.v2\n"
         "label: first label\n"
         "profile: norad.profile.local_cmh.v2\n"
         "sample_manifest: samples.tsv\n"
@@ -137,6 +137,15 @@ def build(root: Path) -> Path:
         "    sjdb_overhang: 74\n"
         "    genome_sa_index_nbases: 3\n"
         "cohort_id: synthetic_cohort\n"
+        "resources:\n"
+        "  workflow_cores: 1\n"
+        "  sample_concurrency: 1\n"
+        "  step_threads:\n"
+        '    "00a": 1\n'
+        '    "01": 1\n'
+        '    "02": 1\n'
+        '    "06": 1\n'
+        '    "08": 1\n'
         "analysis:\n"
         "  id: synthetic_analysis\n"
         "  control_condition: EV\n"

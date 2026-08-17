@@ -41,8 +41,13 @@ SCHEMA_PATHS = {
     },
 }
 SCHEMA_PATHS["profile"] = SCHEMA_ROOT.parent / "v2" / "profile.schema.json"
+SCHEMA_PATHS["request"] = SCHEMA_ROOT.parent / "v2" / "request.schema.json"
 SCHEMA_IDS = {
-    name: f"urn:norad:schema:orchestration:{name}:{'v2' if name == 'profile' else 'v1'}"
+    name: (
+        f"urn:norad:schema:orchestration:{name}:v2"
+        if name in {"profile", "request"}
+        else f"urn:norad:schema:orchestration:{name}:v1"
+    )
     for name in SCHEMA_PATHS
 }
 

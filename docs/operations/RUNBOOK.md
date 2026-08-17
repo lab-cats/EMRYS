@@ -246,6 +246,61 @@ and any later real-tool or batch demonstrations have different evidence
 ceilings. Consult [`HANDOFF.md`](HANDOFF.md) for the exact current commit,
 commands, artifacts, and evidence; do not infer them from this runbook.
 
+## Resource benchmarking
+
+[`scripts/benchmark_stage_resources.py`](../../scripts/benchmark_stage_resources.py)
+is an opt-in harness for comparing resource values on representative data. It
+does not invent stage commands or discover inputs. Provide a closed manifest
+containing exact setup, producer, and public validator argv arrays; use only
+the placeholders `{value}` and `{trial_dir}` where the candidate value and
+create-absent trial directory belong:
+
+```yaml
+schema_version: norad.resource-benchmark.v1
+cases:
+  - name: step01_threads
+    values: [1, 2, 4]
+    repetitions: 3
+    setup_argv: null
+    producer_argv:
+      - /absolute/path/to/step_01_star_align.sh
+      - --threads
+      - "{value}"
+      - --output-dir
+      - "{trial_dir}/output"
+      # include every other required owner argument explicitly
+    validator_argv:
+      - /absolute/path/to/python
+      - -X
+      - pycache_prefix=/dev/null
+      - -I
+      - -m
+      - norad
+      - validate
+      - star-alignment
+      # include exact trial output and validation arguments explicitly
+```
+
+Review the expanded commands without writing, then execute on the intended
+compute host:
+
+```bash
+./scripts/benchmark_stage_resources.py \
+  --manifest /absolute/path/to/benchmark.yaml \
+  --output /absolute/path/to/absent-benchmark-results
+
+./scripts/benchmark_stage_resources.py \
+  --manifest /absolute/path/to/benchmark.yaml \
+  --output /absolute/path/to/absent-benchmark-results \
+  --execute
+```
+
+Each trial records exact logs, producer wall time, GNU `time` peak RSS, and
+validator status. `summary.tsv` marks the smallest resource value within five
+percent of the fastest successful median. Apply that result only to the tested
+dataset scale, runtime, machine, memory, and storage system; preserve the raw
+trial tree with the resulting request resource plan.
+
 ## Task status
 
 The backlog is coarse and execution cards are created just in time. Inspect the

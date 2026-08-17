@@ -63,7 +63,7 @@ automatic recovery subsystem in version 1.
 | Scientific owner identity and direct artifact edges | [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) | Snakemake rule names, filenames, numeric aliases, and narrative order |
 | Producer, validator, output, transaction, and recovery behavior | Applicable owner `README.md` and `CONTRACT.md` | Workflow rules and lifecycle records |
 | Operator intent | Admitted YAML request plus referenced ordered TSV manifests | Caller working directory, environment discovery, filename inference, and globs |
-| Immutable local-run identity | Canonical normalized execution contract and its SHA-256 digest | Request formatting, human label, workspace, executor, host, or Snakemake state |
+| Immutable local-run identity | Canonical normalized execution contract and its SHA-256 digest | Request formatting, human label, attempt-level resources, workspace, executor, host, or Snakemake state |
 | Fixed pilot membership and scope expansion | Versioned local CMH workflow profile | A generic registry or automatic owner discovery |
 | Scheduling | Snakemake's local executor and static rule graph | Scientific completion, recovery authority, or evidence promotion |
 | Reusable task completion | NORAD verified task record after owner validation and semantic all-pass gating | Process exit alone, output presence, timestamps, or `.snakemake/` metadata |
@@ -107,14 +107,15 @@ The authored YAML request carries only run intent and explicit references:
 - fixed workflow profile identity;
 - sample-manifest and partition-manifest paths;
 - reference FASTA and GTF paths;
-- cohort and primary-analysis identities; and
+- cohort and primary-analysis identities;
+- attempt-level workflow and per-step resources; and
 - the complete inline Step `09` analysis policy.
 
-Version 1 uses this closed top-level shape, encoded by the B2 request schema
+Version 2 uses this closed top-level shape, encoded by the request schema
 without adding discovery or extension fields:
 
 ```yaml
-schema_version: norad.request.v1
+schema_version: norad.request.v2
 label: optional-human-label
 profile: norad.profile.local_cmh.v2
 sample_manifest: samples.tsv
@@ -127,6 +128,15 @@ reference:
     sjdb_overhang: 149
     genome_sa_index_nbases: 14
 cohort_id: declared-cohort-id
+resources:
+  workflow_cores: 4
+  sample_concurrency: 1
+  step_threads:
+    "00a": 4
+    "01": 4
+    "02": 4
+    "06": 2
+    "08": 4
 analysis:
   id: declared-analysis-id
   control_condition: EV
@@ -189,11 +199,11 @@ The canonical JSON contract contains at least:
 
 `normalized.json` contains only deterministic normalized run content and its
 explicit identity envelope. Non-identity admission metadata—the original
-request hash and bytes, human label, authored path strings, and normalization
-tool identity—belongs to the immutable workflow-attempt record. Reformatting
-an otherwise equivalent request or changing its label therefore does not
-create a new scientific run or demand different bytes at the same canonical
-contract path.
+request hash and bytes, human label, authored path strings, attempt-level
+resource plan, and normalization tool identity—belongs to the immutable
+workflow-attempt/config records. Reformatting an otherwise equivalent request,
+changing its label, or tuning resources therefore does not create a new
+scientific run or demand different bytes at the same canonical contract path.
 
 Canonical identity-envelope serialization uses UTF-8 JSON, sorted object keys,
 no insignificant whitespace, no NaN/infinity, and SHA-256. The full digest is

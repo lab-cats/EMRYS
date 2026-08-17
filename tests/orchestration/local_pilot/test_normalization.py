@@ -112,6 +112,66 @@ def test_normalization_is_deterministic_and_independent_of_cwd_and_label(
     )
 
 
+def test_resource_plan_is_attempt_level_and_does_not_change_run_identity(
+    tmp_path: Path,
+) -> None:
+    request = fixture.build(tmp_path / "request-root")
+    baseline = normalize_request(request, fixture.profile())
+    request.write_text(
+        request.read_text(encoding="utf-8")
+        .replace("  workflow_cores: 1\n", "  workflow_cores: 4\n")
+        .replace("  sample_concurrency: 1\n", "  sample_concurrency: 2\n")
+        .replace('    "00a": 1\n', '    "00a": 4\n')
+        .replace('    "01": 1\n', '    "01": 4\n')
+        .replace('    "02": 1\n', '    "02": 2\n')
+        .replace('    "06": 1\n', '    "06": 2\n')
+        .replace('    "08": 1\n', '    "08": 4\n'),
+        encoding="utf-8",
+    )
+
+    tuned = normalize_request(request, fixture.profile())
+
+    assert tuned.request_sha256 != baseline.request_sha256
+    assert tuned.run_id == baseline.run_id
+    assert tuned.normalized_bytes == baseline.normalized_bytes
+    assert tuned.resources.workflow_cores == 4
+    assert tuned.resources.sample_concurrency == 2
+    assert tuned.resources.thread_map() == {
+        "00a": 4,
+        "01": 4,
+        "02": 2,
+        "06": 2,
+        "08": 4,
+    }
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    (
+        (
+            "  sample_concurrency: 1\n",
+            "  sample_concurrency: 2\n",
+            "sample_concurrency cannot exceed",
+        ),
+        ('    "00a": 1\n', '    "00a": 2\n', "step_threads cannot exceed"),
+    ),
+)
+def test_resource_plan_rejects_capacity_oversubscription(
+    tmp_path: Path,
+    old: str,
+    new: str,
+    message: str,
+) -> None:
+    request = fixture.build(tmp_path / "request-root")
+    request.write_text(
+        request.read_text(encoding="utf-8").replace(old, new),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(contracts.ContractValidationError, match=message):
+        normalize_request(request, fixture.profile())
+
+
 def test_bound_input_change_creates_a_new_run(tmp_path: Path) -> None:
     request = fixture.build(tmp_path / "request-root")
     before = normalize_request(request, fixture.profile())
@@ -357,14 +417,14 @@ def test_normalization_rejects_step09_threshold_boundaries(
     ("replacement", "message"),
     [
         (
-            "schema_version: norad.request.v1\nschema_version: norad.request.v1\n",
+            "schema_version: norad.request.v2\nschema_version: norad.request.v2\n",
             "Duplicate YAML mapping key",
         ),
         (
             "defaults: &defaults\n  id: synthetic_ref\nreference:\n  <<: *defaults\n",
             "merge keys are not allowed",
         ),
-        ("schema_version: !custom norad.request.v1\n", "could not determine"),
+        ("schema_version: !custom norad.request.v2\n", "could not determine"),
     ],
 )
 def test_yaml_extensions_are_rejected(

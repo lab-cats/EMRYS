@@ -24,6 +24,7 @@ RESOURCE_FILES: Mapping[str, bytes] = {
     "contracts/schemas/artifacts/v1/example.json": b'{"schema": true}\n',
     "contracts/schemas/artifacts/v2/report_receipt.schema.json": b'{"schema": true}\n',
     "contracts/schemas/orchestration/v1/common.schema.json": b'{"schema": true}\n',
+    "contracts/schemas/orchestration/v2/request.schema.json": b'{"schema": true}\n',
     "reporting/styles/example.css": b"body { color: black; }\n",
     "reporting/templates/example.html.j2": b"<!doctype html>\n",
     "runtime/data.bin": b"synthetic package data\n",
@@ -115,7 +116,7 @@ def _project_configuration(name: str = PROJECT_NAME) -> bytes:
         "namespaces = false\n"
         "\n"
         "[tool.setuptools.package-data]\n"
-        '"norad.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/orchestration/v1/*.json"]\n'
+        '"norad.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json"]\n'
         '"norad.reporting" = ["styles/*.css", "templates/*.html.j2"]\n'
     ).encode()
 

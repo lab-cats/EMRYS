@@ -138,9 +138,6 @@ def plan_run(
     workspace: Path,
     runtime_profile: Path,
     *,
-    threads: int = 1,
-    workflow_cores: int | None = None,
-    sample_concurrency: int = 1,
     ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> AttemptPlan:
     """Plan a new run without writing any workspace state."""
@@ -155,9 +152,6 @@ def plan_run(
                 readiness,
                 _absolute(workspace),
                 operation="execute",
-                threads=threads,
-                workflow_cores=workflow_cores,
-                sample_concurrency=sample_concurrency,
                 now=ops.now(),
                 token=ops.token(),
             )
@@ -226,9 +220,6 @@ def plan_resume(
     run_root: Path,
     runtime_profile: Path,
     *,
-    threads: int = 1,
-    workflow_cores: int | None = None,
-    sample_concurrency: int = 1,
     ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> AttemptPlan:
     """Plan a safe between-task resume without writing run state."""
@@ -267,9 +258,6 @@ def plan_resume(
                 readiness,
                 workspace,
                 operation="resume",
-                threads=threads,
-                workflow_cores=workflow_cores,
-                sample_concurrency=sample_concurrency,
                 now=ops.now(),
                 token=ops.token(),
                 supersedes_workflow_attempt_id=str(previous["workflow_attempt_id"]),
@@ -318,7 +306,9 @@ def _print_plan(plan: AttemptPlan) -> None:
     print(f"Run root: {plan.run_root}")
     print(f"Workflow attempt: {plan.workflow_attempt_id}")
     print(f"Owner jobs: {plan.dispatch_count}")
-    print(f"Threads per thread-capable tool: {plan.threads}")
+    print("Step thread allocations:")
+    for step_id, threads in plan.step_threads:
+        print(f"  Step {step_id}: {threads}")
     print(f"Total workflow cores: {plan.workflow_cores}")
     print(f"Maximum concurrent sample tasks: {plan.sample_concurrency}")
     print("Reporting transactions: 3")
@@ -347,21 +337,12 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--workspace", required=True, type=Path)
     parser.add_argument("--runtime-profile", required=True, type=Path)
     parser.add_argument(
-        "--threads",
-        default=1,
+        "--allocated-cores",
         type=_positive_integer,
-        help="Threads passed to each thread-capable tool.",
-    )
-    parser.add_argument(
-        "--workflow-cores",
-        type=_positive_integer,
-        help="Total CPU capacity for workflow scheduling (default: --threads).",
-    )
-    parser.add_argument(
-        "--sample-concurrency",
-        default=1,
-        type=_positive_integer,
-        help="Maximum concurrent sample-scoped tasks (default: 1).",
+        help=(
+            "Optional scheduler-allocation assertion; fails if the request's "
+            "workflow_cores exceeds this value."
+        ),
     )
     parser.add_argument(
         "--execute",
@@ -374,21 +355,12 @@ def configure_resume_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--run-root", required=True, type=Path)
     parser.add_argument("--runtime-profile", required=True, type=Path)
     parser.add_argument(
-        "--threads",
-        default=1,
+        "--allocated-cores",
         type=_positive_integer,
-        help="Threads passed to each pending thread-capable tool.",
-    )
-    parser.add_argument(
-        "--workflow-cores",
-        type=_positive_integer,
-        help="Total CPU capacity for workflow scheduling (default: --threads).",
-    )
-    parser.add_argument(
-        "--sample-concurrency",
-        default=1,
-        type=_positive_integer,
-        help="Maximum concurrent sample-scoped tasks (default: 1).",
+        help=(
+            "Optional scheduler-allocation assertion; fails if the request's "
+            "workflow_cores exceeds this value."
+        ),
     )
     parser.add_argument(
         "--execute",
@@ -411,11 +383,14 @@ def run_from_args(
             arguments.request,
             arguments.workspace,
             arguments.runtime_profile,
-            threads=arguments.threads,
-            workflow_cores=getattr(arguments, "workflow_cores", None),
-            sample_concurrency=getattr(arguments, "sample_concurrency", 1),
             ops=ops,
         )
+        allocated_cores = getattr(arguments, "allocated_cores", None)
+        if allocated_cores is not None and plan.workflow_cores > allocated_cores:
+            raise ControlError(
+                "Request workflow_cores exceeds the declared scheduler allocation: "
+                f"{plan.workflow_cores} > {allocated_cores}"
+            )
         _print_plan(plan)
         if not arguments.execute:
             print("Dry-run complete; no workspace state was written.")
@@ -435,11 +410,14 @@ def resume_from_args(
         plan = plan_resume(
             arguments.run_root,
             arguments.runtime_profile,
-            threads=arguments.threads,
-            workflow_cores=getattr(arguments, "workflow_cores", None),
-            sample_concurrency=getattr(arguments, "sample_concurrency", 1),
             ops=ops,
         )
+        allocated_cores = getattr(arguments, "allocated_cores", None)
+        if allocated_cores is not None and plan.workflow_cores > allocated_cores:
+            raise ControlError(
+                "Request workflow_cores exceeds the declared scheduler allocation: "
+                f"{plan.workflow_cores} > {allocated_cores}"
+            )
         _print_plan(plan)
         if not arguments.execute:
             print("Dry-run complete; no resume state was written.")

@@ -307,7 +307,7 @@ def _sample_manifest() -> bytes:
 
 
 def _request() -> bytes:
-    return b"""schema_version: norad.request.v1
+    return b"""schema_version: norad.request.v2
 label: deterministic-science-smoke-v1
 profile: norad.profile.local_cmh.v2
 sample_manifest: samples.tsv
@@ -320,6 +320,15 @@ reference:
     sjdb_overhang: 74
     genome_sa_index_nbases: 3
 cohort_id: synthetic-smoke-v1
+resources:
+  workflow_cores: 1
+  sample_concurrency: 1
+  step_threads:
+    "00a": 1
+    "01": 1
+    "02": 1
+    "06": 1
+    "08": 1
 analysis:
   id: synthetic-smoke-cmh-v1
   control_condition: control

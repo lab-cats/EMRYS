@@ -24,11 +24,13 @@ MAKE_EXPANSION_GOLDEN = (
 )
 CLI_USAGE_ERROR = 2
 
-PYTHON_ENTRYPOINT_PATHS: dict[str, Path] = {}
+PYTHON_ENTRYPOINT_PATHS: dict[str, Path] = {
+    "benchmark_stage_resources.py": Path("scripts/benchmark_stage_resources.py"),
+}
 PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
 REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset()
 PRIVATE_PYTHON_MODULES = frozenset()
-DIRECT_PYTHON_ENTRYPOINTS = frozenset()
+DIRECT_PYTHON_ENTRYPOINTS = frozenset({"benchmark_stage_resources.py"})
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 NORAD_COMMANDS = (
     (("init", "local-pilot"), "usage: norad init local-pilot"),

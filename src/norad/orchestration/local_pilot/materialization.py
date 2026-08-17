@@ -19,7 +19,11 @@ from norad.contracts.orchestration import api as orchestration_contracts
 from norad.contracts.orchestration.projection import build_reporting_bundle
 from norad.libraries.source_authority import controlled_python_argv
 from norad.orchestration.local_pilot import doctor, inspection, lifecycle
-from norad.orchestration.local_pilot.normalization import NormalizationBundle
+from norad.orchestration.local_pilot.normalization import (
+    THREAD_CAPABLE_STEP_IDS,
+    NormalizationBundle,
+    ResourcePlan,
+)
 from norad.libraries.process_environment import (
     R_SELECTOR_PREFIXES,
     R_STARTUP_VARIABLES,
@@ -55,7 +59,7 @@ class AttemptPlan:
     workspace: Path
     run_root: Path
     workflow_attempt_id: str
-    threads: int
+    step_threads: tuple[tuple[str, int], ...]
     workflow_cores: int
     sample_concurrency: int
     supersedes_workflow_attempt_id: str | None
@@ -260,7 +264,7 @@ def _task_commands(
     source_root: Path,
     runtime: Mapping[str, Any],
     all_paths: Mapping[tuple[str, str], Mapping[str, list[Path]]],
-    threads: int,
+    threads: int | None,
 ) -> tuple[tuple[str, ...], tuple[str, ...], tuple[Path, ...]]:
     sample_rows = {str(row["sample_id"]): row for row in execution["samples"]["rows"]}
     partition_rows = {
@@ -300,6 +304,13 @@ def _task_commands(
             f"No validation report for Step {step_id}/{scope_id}"
         )
 
+    def declared_threads() -> int:
+        if threads is None:
+            raise MaterializationError(
+                f"Step {step_id} has no declared thread allocation"
+            )
+        return threads
+
     if step_id == "00a":
         index_members = paths.get("step00a_star_index_v1", [])
         if (
@@ -322,7 +333,7 @@ def _task_commands(
             "--index-dir",
             str(index_dir),
             "--threads",
-            str(threads),
+            str(declared_threads()),
             "--sjdb-overhang",
             str(reference["star_index"]["sjdb_overhang"]),
             "--genome-sa-index-nbases",
@@ -443,7 +454,7 @@ def _task_commands(
                 "--output-dir",
                 str(bam.parent),
                 "--threads",
-                str(threads),
+                str(declared_threads()),
                 "--star-bin",
                 star,
                 "--gunzip-bin",
@@ -493,7 +504,7 @@ def _task_commands(
                 "--output-dir",
                 str(bam.parent),
                 "--threads",
-                str(threads),
+                str(declared_threads()),
                 "--samtools-bin",
                 samtools,
                 "--no-clobber",
@@ -698,7 +709,7 @@ def _task_commands(
             "--qc-dir",
             str(counts.parent),
             "--threads",
-            str(threads),
+            str(declared_threads()),
             "--samtools-bin",
             samtools,
             "--no-clobber",
@@ -832,7 +843,7 @@ def _task_commands(
             "--qc-root",
             str(run_root / "results/qc/vcf_preprocessing"),
             "--threads",
-            str(threads),
+            str(declared_threads()),
             "--rscript-bin",
             rscript,
             "--r-script",
@@ -986,7 +997,7 @@ def _dispatches(
     attempt_id: str,
     compact_time: str,
     retained: Mapping[tuple[str, str], dict[str, str]],
-    threads: int,
+    resources: ResourcePlan,
 ) -> tuple[
     tuple[PlannedFile, ...], dict[str, dict[str, dict[str, str]]], tuple[Path, ...]
 ]:
@@ -1038,7 +1049,11 @@ def _dispatches(
             source_root=readiness.source_root,
             runtime=runtime,
             all_paths=paths_by_scope,
-            threads=threads,
+            threads=(
+                resources.threads_for(step_id)
+                if step_id in THREAD_CAPABLE_STEP_IDS
+                else None
+            ),
         )
         suffix = hashlib.sha256(
             f"{attempt_id}:{task.machine_key}:{task.scope_id}".encode()
@@ -1146,9 +1161,6 @@ def build_attempt_plan(
     token: str | None = None,
     host: str | None = None,
     process_id: int | None = None,
-    threads: int = 1,
-    workflow_cores: int | None = None,
-    sample_concurrency: int = 1,
     supersedes_workflow_attempt_id: str | None = None,
     retained_dispatches: Mapping[tuple[str, str], dict[str, str]] | None = None,
 ) -> AttemptPlan:
@@ -1156,30 +1168,9 @@ def build_attempt_plan(
 
     if not readiness.ready:
         raise MaterializationError("Local-pilot readiness has unresolved blockers")
-    if isinstance(threads, bool) or not isinstance(threads, int) or threads < 1:
-        raise MaterializationError("Tool threads must be a positive integer")
-    if workflow_cores is None:
-        workflow_cores = threads
-    if (
-        isinstance(workflow_cores, bool)
-        or not isinstance(workflow_cores, int)
-        or workflow_cores < 1
-    ):
-        raise MaterializationError("Workflow cores must be a positive integer")
-    if (
-        isinstance(sample_concurrency, bool)
-        or not isinstance(sample_concurrency, int)
-        or sample_concurrency < 1
-    ):
-        raise MaterializationError("Sample concurrency must be a positive integer")
-    if sample_concurrency > workflow_cores:
-        raise MaterializationError(
-            "Sample concurrency cannot exceed total workflow cores"
-        )
-    if threads > workflow_cores:
-        raise MaterializationError(
-            "Tool threads cannot exceed total workflow cores"
-        )
+    resources = normalized.resources
+    workflow_cores = resources.workflow_cores
+    sample_concurrency = resources.sample_concurrency
     if readiness.run_id != normalized.run_id:
         raise MaterializationError(
             "Doctor and normalization resolved different run IDs"
@@ -1229,7 +1220,7 @@ def build_attempt_plan(
         attempt_id,
         compact,
         retained,
-        threads,
+        resources,
     )
     reporting = build_reporting_bundle(
         normalized.execution_contract, normalized.profile
@@ -1286,7 +1277,7 @@ def build_attempt_plan(
                 "artifact_inventory"
             ]["path"]
         ),
-        "tool_threads": threads,
+        "step_threads": resources.thread_map(),
         "sample_concurrency": sample_concurrency,
         "dispatch_paths": dispatch_references,
     }
@@ -1369,7 +1360,7 @@ def build_attempt_plan(
         workspace=workspace_path,
         run_root=run_root,
         workflow_attempt_id=attempt_id,
-        threads=threads,
+        step_threads=resources.step_threads,
         workflow_cores=workflow_cores,
         sample_concurrency=sample_concurrency,
         supersedes_workflow_attempt_id=supersedes_workflow_attempt_id,

@@ -55,10 +55,10 @@ Read this before installing:
 - The public runtime target is a Linux/POSIX host with Python `3.11` or newer,
   Git, GNU Make, `uv`, and the scientific runtime listed below.
 - The workflow uses Snakemake's **single-host local executor**. It defaults to
-  one sample-scoped owner at a time; `--sample-concurrency` raises that explicit
-  cap, `--workflow-cores` declares total CPU capacity, and `--threads` controls
-  each thread-capable owner. NORAD neither submits SLURM jobs nor distributes
-  work across nodes.
+  the request's explicit resource plan: `workflow_cores` declares total CPU
+  capacity, `sample_concurrency` bounds concurrent sample owners, and
+  `step_threads` assigns threads only to Steps `00a`, `01`, `02`, `06`, and
+  `08`. NORAD neither submits SLURM jobs nor distributes work across nodes.
 - Run it on a suitably provisioned Linux workstation, or run the same local
   process inside **one** batch allocation on **one** compute node. Never run the
   scientific workflow on a cluster login/head node; use that node only to
@@ -468,9 +468,6 @@ the pipeline's true exit status:
     --request "$NORAD_REQUEST_PATH" \
     --workspace "$NORAD_WORKSPACE_PATH" \
     --runtime-profile "$NORAD_RUNTIME_PROFILE_PATH" \
-    --workflow-cores 4 \
-    --threads 4 \
-    --sample-concurrency 2 \
     --execute 2>&1 | tee "$NORAD_CONTROL_LOG"
 )
 ```
@@ -495,8 +492,6 @@ NORAD_SLURM_ACCOUNT=replace-with-site-account
 NORAD_SLURM_PARTITION=replace-with-site-partition
 NORAD_SLURM_QOS=replace-with-site-qos
 NORAD_SLURM_CPUS=4
-NORAD_TOOL_THREADS=4
-NORAD_SAMPLE_CONCURRENCY=2
 NORAD_SLURM_MEMORY=replace-with-reviewed-memory
 NORAD_SLURM_TIME=replace-with-reviewed-walltime
 NORAD_SOURCE_CHECKOUT="$NORAD_REPO"
@@ -509,7 +504,7 @@ NORAD_MODULES=module/name:second/module:third/module
 NORAD_EXECUTE=0
 
 export NORAD_SLURM_ACCOUNT NORAD_SLURM_PARTITION NORAD_SLURM_QOS
-export NORAD_SLURM_CPUS NORAD_TOOL_THREADS NORAD_SAMPLE_CONCURRENCY
+export NORAD_SLURM_CPUS
 export NORAD_SLURM_MEMORY NORAD_SLURM_TIME NORAD_LOG_DIR
 export NORAD_SOURCE_CHECKOUT NORAD_PYTHON NORAD_REQUEST NORAD_WORKSPACE
 export NORAD_RUNTIME_PROFILE NORAD_MODULE_INIT NORAD_MODULES NORAD_EXECUTE
@@ -521,11 +516,9 @@ export NORAD_RUNTIME_PROFILE NORAD_MODULE_INIT NORAD_MODULES NORAD_EXECUTE
 to expose the authored runtime. `NORAD_MODULE_INIT` must be the site's real,
 nonsymlink module initialization file. The wrapper rejects commas/newlines and
 unsafe module identifiers; it never installs a missing module or tool. The
-wrapper passes `NORAD_SLURM_CPUS` as total workflow capacity,
-`NORAD_TOOL_THREADS` to each thread-capable owner, and
-`NORAD_SAMPLE_CONCURRENCY` as the sample-task cap. The latter defaults to `1`
-when omitted; set it to a bounded value supported by the allocation's memory
-and storage throughput.
+wrapper passes `NORAD_SLURM_CPUS` only as an allocation assertion. The request
+remains the sole resource-plan authority, and execution fails if its
+`workflow_cores` exceeds the scheduler allocation.
 
 The first submission uses `NORAD_EXECUTE=0`: it performs compute-context
 preflight and prints the complete no-write workflow plan in the job log. Copy

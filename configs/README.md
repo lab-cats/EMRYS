@@ -72,7 +72,7 @@ merge keys are rejected.
 
 | Field | Meaning | How to choose it |
 | --- | --- | --- |
-| `schema_version` | Request contract version. | Keep `norad.request.v1`. |
+| `schema_version` | Request contract version. | Keep `norad.request.v2`. |
 | `label` | Optional human label. It does not affect the run ID. | Use a short description for operators. |
 | `profile` | Fixed automatic workflow. | Keep `norad.profile.local_cmh.v2`. There is no public alternate profile. |
 | `sample_manifest` | Sample TSV path. | Point to the matched sample manifest, normally beside the request. |
@@ -83,6 +83,22 @@ merge keys are rejected.
 | `reference.star_index.sjdb_overhang` | STAR splice-junction overhang. | Select deliberately for the read design; a common choice is maximum read length minus one. The value is recorded and later validated. |
 | `reference.star_index.genome_sa_index_nbases` | STAR suffix-array index parameter. | Select for the reference size according to the admitted STAR release; `14` is appropriate for many mammalian references but is not universal. |
 | `cohort_id` | Identity shared by the samples entering cohort processing. | Use a stable safe ID, not an analysis conclusion. |
+
+### Resource fields
+
+The closed `resources` block is attempt-level configuration. Changing it does
+not change the scientific run ID, but every attempt snapshots the exact request
+and materialized workflow configuration.
+
+| Field | Meaning |
+| --- | --- |
+| `resources.workflow_cores` | Total CPU capacity made available to Snakemake. It must not exceed the host or scheduler allocation. |
+| `resources.sample_concurrency` | Maximum simultaneous sample-scoped owners. It must not exceed `workflow_cores`; memory and storage throughput often make `1` preferable. |
+| `resources.step_threads` | Closed mapping for Steps `00a`, `01`, `02`, `06`, and `08`. Every value is required, positive, and no greater than `workflow_cores`. |
+
+Use [`scripts/benchmark_stage_resources.py`](../scripts/benchmark_stage_resources.py)
+with representative data on each materially different environment before
+raising these values. Benchmark recommendations are environment-specific.
 
 Safe IDs begin with an ASCII letter or digit and then contain only letters,
 digits, `.`, `_`, or `-`.

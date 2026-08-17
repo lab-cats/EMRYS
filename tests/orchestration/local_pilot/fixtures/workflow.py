@@ -995,7 +995,7 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
         ),
         "reporting_run_contract_path": str(projection_paths["reporting_run_contract"]),
         "artifact_inventory_path": str(projection_paths["artifact_inventory"]),
-        "tool_threads": 1,
+        "step_threads": {"00a": 1, "01": 1, "02": 1, "06": 1, "08": 1},
         "sample_concurrency": 1,
         "dispatch_paths": dispatch_references,
     }
