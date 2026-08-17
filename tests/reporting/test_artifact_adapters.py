@@ -53,11 +53,11 @@ EXPECTED_PRODUCER_EVIDENCE = {
     ),
     "01": (
         "src/norad/stages/star_alignment/step_01_star_align.sh",
-        "15cea7e51d382e124011d2d77ea1627b3c1f41e3f06f695a7f8675c08f7475dc",
+        "85c8f25315340899d3d58df886c3b5ea6c6c727281ef1e59a982e3154148f22e",
     ),
     "02": (
         "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh",
-        "6aefda53a3f91766703ed12bb1c1c923e4de34146a5151cd2ddad51487761205",
+        "86ffe540175ac58214c91ec3e16bb584dc945221534276a300881435c90e5a41",
     ),
     "02b": (
         "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
@@ -74,7 +74,7 @@ EXPECTED_PRODUCER_EVIDENCE = {
     ),
     "05": (
         "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
-        "c2e1591b4d1ac03b5aa0a46b1f24ac4ef93cfe217313cccb39496be46dec0a65",
+        "67e08352a328b710c8e6ba81ce116fef4acd077e27a5d7370678e7962b172fc5",
     ),
     "06": (
         "src/norad/stages/mechanical_orientation/"
@@ -88,7 +88,7 @@ EXPECTED_PRODUCER_EVIDENCE = {
     ),
     "08": (
         "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
-        "a9f0369949ed00f319e6521707c7efd1b825ff3f149593c8836bb2cf940a3189",
+        "7327e013dab2591a58628af744c9e04a60368f32e042f85b65ca6e0313555f74",
     ),
     "09": (
         "src/norad/analyses/paired_cmh_candidate_ranking/"
