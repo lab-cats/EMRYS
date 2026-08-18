@@ -184,8 +184,8 @@ Retained current boundaries:
 - receipts, reports, QC, metrics, and manifests are durable artifacts, not
   complete console logs;
 - the permanent Step `05` operator checker remains directly owned at
-  `tests/data_checks/validate_step05_outputs.sh`; duplicate truncating `tee`
-  writers and silent snapshot replacement remain characterized defects; and
+  `tests/data_checks/validate_step05_outputs.sh`; silent snapshot replacement
+  remains a characterized defect; and
 - paths, arguments, environment/tool diagnostics, URLs, and arbitrary child
   output may contain sensitive material and have no general redaction promise.
 

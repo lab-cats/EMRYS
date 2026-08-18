@@ -72,8 +72,6 @@ if [[ -z "$OUTPUT_TSV" ]]; then
   exit 1
 fi
 
-mkdir -p "$(dirname "$OUTPUT_TSV")"
-
 output_dir="$(dirname "$OUTPUT_TSV")"
 mkdir -p "$output_dir" || {
   echo "ERROR: could not create output directory: $output_dir" >&2
@@ -91,8 +89,6 @@ if ! : > "$tmp_output_check"; then
   exit 1
 fi
 rm -f "$tmp_output_check"
-
-exec > >(tee "$OUTPUT_TSV")
 
 # Keep stdout visible while also saving a durable TSV snapshot.
 exec > >(tee "$OUTPUT_TSV")
