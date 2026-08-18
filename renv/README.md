@@ -16,3 +16,16 @@ rather than editing the library, activation script, settings, or lockfile to
 silence drift. Do not blanket-clean `renv/library/` or other ignored dependency
 state: it may be required for local validation and can be expensive to restore.
 Local environment checks do not establish cluster or production runtime proof.
+
+The repository policy is fixed: Bioconductor 3.23 packages are resolved through
+`https://bioc-release.r-universe.dev`, CRAN packages through
+`https://cloud.r-project.org`, and installed Bioconductor package metadata is
+locked with the canonical `Bioconductor 3.23` repository label.
+
+`make r-restore` is the only route allowed to bootstrap or install. Point
+`RENV_PATHS_LIBRARY` at an operator-owned library root and run it with the
+explicit R 4.6.1 executable. After restoration, pass the exact existing
+platform library as `RENV_LIBRARY` to `make r-check`. The check selects that
+library without running the renv autoloader, changes no dependencies, and fails
+on any lock, version, or library-identity drift.
+
