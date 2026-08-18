@@ -21,16 +21,18 @@ export TMPDIR="${TMPDIR:-/tmp}"
 # shellcheck source=../../libraries/argument_parsing.sh
 source "src/norad/libraries/argument_parsing.sh"
 
-COHORT_ID="${COHORT_ID:-NORAD_EV_PUM1}"
-SAMPLE_MANIFEST="${SAMPLE_MANIFEST:-samples.tsv}"
-PARTITION_MANIFEST="${PARTITION_MANIFEST:-configs/step_07_partitions.primary_contigs.tsv}"
-PARTITION_ID="${PARTITION_ID:-1}"
-ORIENTATION_ROOT="${ORIENTATION_ROOT:-results/orientation}"
-REFERENCE_FASTA="${REFERENCE_FASTA:-refs/novogene_ref/genome.fa}"
-OUTPUT_ROOT="${OUTPUT_ROOT:-results/mpileup}"
+: "${COHORT_ID:?COHORT_ID is required}"
+: "${SAMPLE_MANIFEST:?SAMPLE_MANIFEST is required}"
+: "${PARTITION_MANIFEST:?PARTITION_MANIFEST is required}"
+: "${PARTITION_ID:?PARTITION_ID is required}"
+: "${ORIENTATION_ROOT:?ORIENTATION_ROOT is required}"
+: "${REFERENCE_FASTA:?REFERENCE_FASTA is required}"
+: "${OUTPUT_ROOT:?OUTPUT_ROOT is required}"
+: "${BCFTOOLS_BIN_OVERRIDE:?BCFTOOLS_BIN_OVERRIDE is required}"
+
 MAX_DEPTH="${MAX_DEPTH:-10000000}"
 FILTER_EXPRESSION="${FILTER_EXPRESSION:-INFO/AD[1-]>2 & MAX(FORMAT/DP)>20}"
-BCFTOOLS_BIN="${BCFTOOLS_BIN_OVERRIDE:-/cm/shared/apps/cbi-soft/bcftools-1.21/bin/bcftools}"
+BCFTOOLS_BIN="$BCFTOOLS_BIN_OVERRIDE"
 EXECUTE="${EXECUTE:-0}"
 
 # Keep the SLURM execution gate narrow and explicit. The script receives
@@ -71,15 +73,12 @@ echo "Filter expression: $FILTER_EXPRESSION"
 echo "bcftools: $BCFTOOLS_BIN"
 echo "Execute mode: $EXECUTE"
 
-echo "Loaded modules before Step 07 setup:"
-module list 2>&1 || true
-
-# The confirmed direct executable remains authoritative; loading the module
-# records useful cluster context without making PATH resolution a prerequisite.
-module load CBI bcftools/1.21 || true
-
-echo "Loaded modules after Step 07 setup:"
-module list 2>&1 || true
+echo "Loaded modules for Step 07:"
+if command -v module >/dev/null 2>&1; then
+    module list 2>&1 || true
+else
+    echo "module command unavailable; using the explicit bcftools path"
+fi
 
 if [[ -x "$BCFTOOLS_BIN" ]]; then
     echo "bcftools version:"

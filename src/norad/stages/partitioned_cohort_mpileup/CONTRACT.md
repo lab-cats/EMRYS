@@ -100,8 +100,8 @@ either output VCF.
 [`step_07_bcftools_mpileup_by_chrom_and_strand.slurm`](step_07_bcftools_mpileup_by_chrom_and_strand.slurm)
 requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
 resolving its repository-owned helper or producer, so SLURM's spool copy is
-never checkout authority. It owns cluster defaults, module loading, execution
-gating, delegation, and final path checks; it does not own pileup or publication
+never checkout authority. It owns explicit dataset/tool binding, execution
+gating, delegation, module-state logging, and final path checks; it does not own pileup or publication
 logic.
 
 ## Validation interface
@@ -122,12 +122,11 @@ Exact checks are:
 
 The validator enforces receipt shape and row order, VCF header/data-row shape,
 numeric positions, selector declarations against the FAI, manifest hashes,
-exact VCF sample order, explicit VCF paths, and record counts. It does not
+exact VCF sample order, physical VCF identity, and record counts. It does not
 verify that data coordinates remain inside the selector, validate REF/ALT or
 FORMAT annotation semantics, rerun the filter, or bind input BAM, reference,
-tool, policy, or output content identities. Producer and validator also differ
-for `regions_file` detail, and a receipt written from a relative output root
-may not match the validator's resolved absolute VCF arguments.
+tool, policy, or output content identities. Producer and validator still differ
+for `regions_file` detail.
 
 Content mismatches publish `status=fail`; unsafe structure or report-
 publication failures exit `2`.
@@ -175,8 +174,8 @@ cluster, scientific-review, or biological evidence.
   `--no-clobber` adds in-attempt byte stability for all stationary scientific
   inputs without extending that receipt. Incomplete restoration now retains
   the owned lock and backups.
-- Producer/validator selector detail and relative-path semantics remain
-  asymmetric. The validator may publish failed rows with exit `0`, does not
+- Producer/validator selector detail remains asymmetric. The validator may
+  publish failed rows with exit `0`, does not
   invoke bcftools, and does not prove selector-bound coordinates, VCF semantic
   fields, filter compliance, immutable inputs, or current-attempt identity.
 - The scheduler retains warning-only unusable-tool preflight, submit-CWD and

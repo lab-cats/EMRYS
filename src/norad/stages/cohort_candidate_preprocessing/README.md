@@ -21,16 +21,17 @@ not additional commands or package APIs.
 Producer no-write dry-run:
 
 ```bash
+: "${NORAD_RSCRIPT_BIN:?export the admitted Rscript executable path}"
 src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
   --cohort-id NORAD_EV_PUM1 \
-  --sample-manifest samples.tsv \
+  --sample-manifest data/raw/samples.paired.tsv \
   --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
   --step07-root results/mpileup \
   --annotation-gtf refs/novogene_ref/genome.gtf \
   --output-root results/vcf_preprocessed \
   --qc-root results/qc/vcf_preprocessing \
-  --threads 4 \
-  --rscript-bin /usr/local/bin/Rscript
+  --threads 1 \
+  --rscript-bin "$NORAD_RSCRIPT_BIN"
 ```
 
 The sample manifest must use the exact paired local-CMH header:
@@ -56,30 +57,19 @@ Execute publishes sites, cross-root summary, then the input receipt. Receipt
 visibility precedes final validation; it does not hash sibling outputs or the R
 program/runtime and is not immutable-input or current-attempt proof.
 
-Validator dry-run:
+The producer prints the exact post-execution validator command using its bound
+paths, followed by the exact `norad validate all-pass` command. Run both after
+the owner succeeds. The validator may exit `0` while publishing `fail` rows;
+`all-pass` is the semantic gate. Private `validator.py` is not a direct
+repository command or supported import surface. The validator does not rerun
+R/annotation, recompute candidate IDs/order, or reopen Step `07` inputs to
+establish scientific correctness.
 
 ```bash
-cohort=NORAD_EV_PUM1
-python -I -m norad validate cohort-candidate-preprocessing \
-  --cohort-id "$cohort" \
-  --sample-manifest samples.tsv \
-  --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
-  --annotation-gtf refs/novogene_ref/genome.gtf \
-  --sites "results/vcf_preprocessed/$cohort/$cohort.step08_sites.tsv" \
-  --inputs "results/vcf_preprocessed/$cohort/$cohort.step08_inputs.tsv" \
-  --summary "results/qc/vcf_preprocessing/$cohort.step08_summary.tsv" \
-  --output "results/qc/validation/08/$cohort.validation.tsv"
-```
-
-Create the parent and add `--execute`. Exit `0` permits failed rows. Private
-`validator.py` is not a direct repository command or supported import surface.
-The validator does not rerun R/annotation, recompute candidate IDs/order, or
-reopen Step `07` inputs to establish scientific correctness.
-
-```bash
-cd /absolute/path/to/norad
+: "${NORAD_RSCRIPT_BIN:?export the admitted Rscript executable path}"
 mkdir -p logs
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,RSCRIPT_BIN_OVERRIDE=/usr/local/bin/Rscript \
+sbatch \
+  --export=ALL,TMPDIR=/tmp,EXECUTE=0,COHORT_ID=NORAD_EV_PUM1,SAMPLE_MANIFEST=data/raw/samples.paired.tsv,PARTITION_MANIFEST=configs/step_07_partitions.primary_contigs.tsv,STEP07_ROOT=results/mpileup,ANNOTATION_GTF=refs/novogene_ref/genome.gtf,OUTPUT_ROOT=results/vcf_preprocessed,QC_ROOT=results/qc/vcf_preprocessing,RSCRIPT_BIN_OVERRIDE="$NORAD_RSCRIPT_BIN",THREADS=1 \
   src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm
 ```
 
@@ -87,8 +77,9 @@ The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
 resolving repository-owned helpers, the producer, or its optional local R
 environment; an executed spool copy does not become checkout authority.
 
-Change only `EXECUTE=1` after review. Three stale finals can produce false
-scheduler success.
+Change only `EXECUTE=1` after review. The wrapper fails before creating logs
+or outputs when any required dataset, root, or Rscript binding is missing.
+Three stale finals can still produce false scheduler success.
 
 ## Diagnose and verify
 

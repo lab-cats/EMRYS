@@ -529,6 +529,28 @@ backup_rev_vcf="$partition_output_dir/.$cohort_id.$partition_id.step07.$run_toke
 backup_receipt="$partition_output_dir/.$cohort_id.$partition_id.step07.$run_token.previous.outputs.tsv"
 lock_path="$partition_output_dir/.$cohort_id.$partition_id.step07.lock"
 lock_owner_file="$lock_path/owner"
+validation_report="$partition_output_dir/$cohort_id.$partition_id.step07_validation.tsv"
+validator_command=(
+    .venv/bin/python -X pycache_prefix=/dev/null -I -m norad
+    validate partitioned-cohort-mpileup
+    --cohort-id "$cohort_id"
+    --partition-id "$partition_id"
+    --sample-manifest "$sample_manifest"
+    --partition-manifest "$partition_manifest"
+    --reference-fai "$reference_fasta.fai"
+    --fwd-vcf "$final_fwd_vcf"
+    --rev-vcf "$final_rev_vcf"
+    --receipt "$final_receipt"
+    --output "$validation_report"
+    --execute
+)
+all_pass_command=(
+    .venv/bin/python -X pycache_prefix=/dev/null -I -m norad
+    validate all-pass
+    --report "$validation_report"
+    --step-id 07
+    --scope-id "${cohort_id}__${partition_id}"
+)
 
 annotations='FORMAT/DP,FORMAT/AD,FORMAT/ADF,FORMAT/ADR,FORMAT/SP,INFO/AD,INFO/ADF,INFO/ADR'
 fwd_mpileup_command=(
@@ -614,6 +636,10 @@ printf '  Temporary %s VCF: %s\n' "${ORIENTATIONS[0]}" "$tmp_fwd_vcf"
 printf '  Temporary %s VCF: %s\n' "${ORIENTATIONS[1]}" "$tmp_rev_vcf"
 printf '  Temporary receipt: %s\n' "$tmp_receipt"
 printf '  Publish the validated VCF/VCF/receipt set with rollback protection\n'
+printf 'Post-execution validator command:\n'
+print_command "${validator_command[@]}"
+printf 'Semantic all-pass gate:\n'
+print_command "${all_pass_command[@]}"
 
 if [[ "$no_clobber" == true ]]; then
     require_no_owner_residue \

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import hashlib
+import os
 import subprocess
 import sys
 from dataclasses import dataclass, replace
@@ -209,6 +210,40 @@ def test_execute_publishes_five_passes(tmp_path: Path) -> None:
     rows = report_rows(evidence.output)
     assert_exact_check_roster(rows, "07")
     assert {row["status"] for row in rows} == {"pass"}
+
+
+def test_relative_receipt_paths_match_absolute_admitted_vcfs(tmp_path: Path) -> None:
+    evidence = build_validation_fixture(tmp_path / "fixture")
+    write_receipt(
+        evidence,
+        ReceiptOverrides(
+            fwd_path=os.path.relpath(evidence.fwd_vcf, ROOT),
+            rev_path=os.path.relpath(evidence.rev_vcf, ROOT),
+        ),
+    )
+
+    result = run_validator(evidence, "--execute")
+
+    assert result.returncode == 0, result.stderr
+    assert {row["status"] for row in report_rows(evidence.output)} == {"pass"}
+
+
+def test_different_vcf_file_fails_physical_identity(tmp_path: Path) -> None:
+    evidence = build_validation_fixture(tmp_path / "fixture")
+    different_vcf = tmp_path / "different.vcf"
+    different_vcf.write_bytes(evidence.fwd_vcf.read_bytes())
+    write_receipt(
+        evidence,
+        ReceiptOverrides(fwd_path=str(different_vcf.resolve())),
+    )
+
+    result = run_validator(evidence, "--execute")
+
+    assert result.returncode == 0, result.stderr
+    rows = report_rows(evidence.output)
+    assert next(
+        row["status"] for row in rows if row["check_id"] == "vcf_record_counts"
+    ) == "fail"
 
 
 def test_arbitrary_cwd_dry_run_execute_and_repeat_are_byte_identical(

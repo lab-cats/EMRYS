@@ -120,8 +120,9 @@ replacement owns its complete implementation and dependency behavior.
 [`step_08_vcf_preprocessing.slurm`](step_08_vcf_preprocessing.slurm)
 requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
 resolving its repository-owned helper, producer, or optional repository-local R
-environment, so SLURM's spool copy is never checkout authority. It owns cluster
-defaults, modules, execution gating, delegation, and final path checks.
+environment, so SLURM's spool copy is never checkout authority. It owns
+explicit dataset/runtime binding, module-state logging, execution gating,
+delegation, and final path checks.
 
 ## Validation interface
 

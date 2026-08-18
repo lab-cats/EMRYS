@@ -286,6 +286,11 @@ assert_contains "$test_root/dry-run.out" "FWD_like pipeline:"
 assert_contains "$test_root/dry-run.out" "FORMAT/DP"
 assert_contains "$test_root/dry-run.out" "INFO/ADR"
 assert_contains "$test_root/dry-run.out" "Filter expression: INFO/AD[1-]>2 & MAX(FORMAT/DP)>20"
+assert_contains "$test_root/dry-run.out" "Post-execution validator command:"
+assert_contains "$test_root/dry-run.out" "validate partitioned-cohort-mpileup"
+assert_contains "$test_root/dry-run.out" "--fwd-vcf"
+assert_contains "$test_root/dry-run.out" "Semantic all-pass gate:"
+assert_contains "$test_root/dry-run.out" "validate all-pass"
 assert_contains "$test_root/dry-run.out" "Dry-run complete; no directories or files were created."
 assert_not_exists "$fixture/output"
 assert_not_exists "$test_root/dry-run.log"
@@ -1235,6 +1240,11 @@ run_expect_status 1 "$test_root/wrapper-missing.out" "$test_root/wrapper-missing
     SLURM_SUBMIT_DIR="$wrapper_missing_root" \
     EXECUTE=1 \
     COHORT_ID=wrapper_missing \
+    SAMPLE_MANIFEST="$fixture/samples.tsv" \
+    PARTITION_MANIFEST="$fixture/partitions.tsv" \
+    PARTITION_ID=1 \
+    ORIENTATION_ROOT="$fixture/orientation" \
+    REFERENCE_FASTA="$fixture/reference.fa" \
     OUTPUT_ROOT="$wrapper_missing_root/output" \
     BCFTOOLS_BIN_OVERRIDE="$fake_bcftools" \
     bash "$job"
@@ -1247,6 +1257,10 @@ cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
     "$invalid_wrapper_libraries/"
 run_expect_status 1 "$test_root/wrapper-invalid.out" "$test_root/wrapper-invalid.err" \
     env PATH="$fake_bin:$PATH" SLURM_SUBMIT_DIR="$invalid_wrapper_root" EXECUTE=2 \
+    COHORT_ID=wrapper_invalid SAMPLE_MANIFEST="$fixture/samples.tsv" \
+    PARTITION_MANIFEST="$fixture/partitions.tsv" PARTITION_ID=1 \
+    ORIENTATION_ROOT="$fixture/orientation" REFERENCE_FASTA="$fixture/reference.fa" \
+    OUTPUT_ROOT="$invalid_wrapper_root/output" BCFTOOLS_BIN_OVERRIDE="$fake_bcftools" \
     bash "$job"
 assert_contains "$test_root/wrapper-invalid.err" "EXECUTE must be 0 or 1"
 assert_not_exists "$invalid_wrapper_root/logs"

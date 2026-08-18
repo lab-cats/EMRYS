@@ -109,6 +109,13 @@ def _read_evidence(
     )
 
 
+def _same_physical_file(recorded_path: str, admitted_path: Path) -> bool:
+    try:
+        return Path(recorded_path).samefile(admitted_path)
+    except OSError:
+        return False
+
+
 def _build_checks(
     arguments: argparse.Namespace,
     input_paths: dict[str, Path],
@@ -151,7 +158,7 @@ def _build_checks(
     )
     record_counts_valid = receipt_structure_valid and all(
         row["orientation"] == reading.orientation
-        and row["vcf_path"] == str(reading.path)
+        and _same_physical_file(row["vcf_path"], reading.path)
         and row["vcf_record_count"].isdigit()
         and int(row["vcf_record_count"]) == reading.record_count
         for row, reading in zip(

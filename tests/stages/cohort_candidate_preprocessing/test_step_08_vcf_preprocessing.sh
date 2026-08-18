@@ -657,6 +657,11 @@ assert_contains "$test_root/dry.out" "cohort_A.p2.REV_like.mpileup.vcf"
 assert_contains "$test_root/dry.out" "--sample-manifest-sha256"
 assert_contains "$test_root/dry.out" "--annotation-gtf-sha256"
 assert_contains "$test_root/dry.out" "input receipt last as commit marker"
+assert_contains "$test_root/dry.out" "Post-execution validator command:"
+assert_contains "$test_root/dry.out" "validate cohort-candidate-preprocessing"
+assert_contains "$test_root/dry.out" "--sites"
+assert_contains "$test_root/dry.out" "Semantic all-pass gate:"
+assert_contains "$test_root/dry.out" "validate all-pass"
 assert_contains "$test_root/dry.out" "R was not invoked"
 assert_not_contains "$test_root/dry.out" "unmanifested.extra.vcf"
 assert_not_exists "$dry_log"
@@ -1487,6 +1492,14 @@ run_expect_status 1 "$test_root/wrapper-invalid.out" "$test_root/wrapper-invalid
     PATH="$fake_bin:$PATH" \
     SLURM_SUBMIT_DIR="$invalid_wrapper" \
     EXECUTE=2 \
+    COHORT_ID=cohort_invalid_wrapper \
+    SAMPLE_MANIFEST="$fixture/samples.tsv" \
+    PARTITION_MANIFEST="$fixture/partitions.tsv" \
+    STEP07_ROOT="$fixture/step07" \
+    ANNOTATION_GTF="$fixture/annotation.gtf" \
+    OUTPUT_ROOT="$invalid_wrapper/output" \
+    QC_ROOT="$invalid_wrapper/qc" \
+    RSCRIPT_BIN_OVERRIDE="$fake_rscript" \
     bash "$job"
 assert_contains "$test_root/wrapper-invalid.err" "EXECUTE must be 0 or 1"
 assert_not_exists "$invalid_wrapper/logs"
@@ -1506,6 +1519,10 @@ run_expect_status 1 "$test_root/wrapper-missing.out" "$test_root/wrapper-missing
     SLURM_SUBMIT_DIR="$wrapper_missing" \
     EXECUTE=1 \
     COHORT_ID=cohort_missing_wrapper \
+    SAMPLE_MANIFEST="$fixture/samples.tsv" \
+    PARTITION_MANIFEST="$fixture/partitions.tsv" \
+    STEP07_ROOT="$fixture/step07" \
+    ANNOTATION_GTF="$fixture/annotation.gtf" \
     OUTPUT_ROOT="$wrapper_missing/output" \
     QC_ROOT="$wrapper_missing/qc" \
     RSCRIPT_BIN_OVERRIDE="$fake_rscript" \

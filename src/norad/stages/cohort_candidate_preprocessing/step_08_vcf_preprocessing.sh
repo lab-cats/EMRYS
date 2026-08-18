@@ -664,6 +664,27 @@ backup_summary="$qc_root/.$cohort_id.step08.$run_token.previous.summary.tsv"
 
 lock_path="$cohort_output_dir/.$cohort_id.step08.lock"
 lock_owner_file="$lock_path/owner"
+validation_report="$qc_root/$cohort_id.step08_validation.tsv"
+validator_command=(
+    .venv/bin/python -X pycache_prefix=/dev/null -I -m norad
+    validate cohort-candidate-preprocessing
+    --cohort-id "$cohort_id"
+    --sample-manifest "$sample_manifest"
+    --partition-manifest "$partition_manifest"
+    --annotation-gtf "$annotation_gtf"
+    --sites "$final_sites"
+    --inputs "$final_inputs"
+    --summary "$final_summary"
+    --output "$validation_report"
+    --execute
+)
+all_pass_command=(
+    .venv/bin/python -X pycache_prefix=/dev/null -I -m norad
+    validate all-pass
+    --report "$validation_report"
+    --step-id 08
+    --scope-id "$cohort_id"
+)
 
 r_command=("$rscript_bin")
 if [[ "${NORAD_LOCAL_PILOT_R:-0}" == 1 ]]; then
@@ -735,6 +756,10 @@ printf '  Temporary input receipt: %s\n' "$tmp_inputs"
 printf '  Temporary summary: %s\n' "$tmp_summary"
 printf '  Publish sites, then summary, then the input receipt last as commit marker\n'
 printf '  Restore a previous complete set on failure after backup begins\n'
+printf 'Post-execution validator command:\n'
+print_command "${validator_command[@]}"
+printf 'Semantic all-pass gate:\n'
+print_command "${all_pass_command[@]}"
 
 if [[ "$no_clobber" == true ]]; then
     require_no_owner_residue \

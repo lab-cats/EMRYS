@@ -107,7 +107,7 @@ CONTRACTS = {
     "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": contract(
         "src/norad/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
-        module_calls=("list", "load CBI bcftools/1.21", "list"),
+        module_calls=("list",),
         submit_cwd="required",
     ),
     "step_08_vcf_preprocessing.slurm": contract(

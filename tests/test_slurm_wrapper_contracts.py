@@ -418,6 +418,33 @@ def test_legacy_and_utility_jobs_have_no_execute_mode(name: str) -> None:
     assert CONTRACTS[name].invalid_mode == "not_applicable"
 
 
+@pytest.mark.parametrize(
+    ("name", "missing_variable"),
+    (
+        ("step_07_bcftools_mpileup_by_chrom_and_strand.slurm", "SAMPLE_MANIFEST"),
+        ("step_08_vcf_preprocessing.slurm", "STEP07_ROOT"),
+    ),
+)
+def test_late_stage_requires_explicit_dataset_bindings_before_outputs(
+    name: str,
+    missing_variable: str,
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(name, tmp_path)
+
+    result = run_prepared(
+        prepared,
+        environment_removals=(missing_variable,),
+    )
+
+    assert result.returncode != 0
+    assert f"{missing_variable} is required" in result.stderr
+    assert not prepared.delegate_log.exists()
+    assert not prepared.module_log.exists()
+    assert all(not output.exists() for output in prepared.outputs)
+    assert all(not directory.exists() for directory in prepared.output_directories)
+
+
 @pytest.mark.parametrize("name", sorted(DELEGATED_JOBS))
 def test_delegated_default_is_mocked_dry_run_with_exact_contract(
     name: str,
