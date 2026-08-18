@@ -675,32 +675,7 @@ def test_step09_source_identity_mismatches_fail_closed(
         REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
 
 
-def test_step09_malformed_sample_blocks_fail_closed(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    def mutate_sources(paths: dict[str, Path]) -> None:
-        for adapter in (
-            "step09_cmh_all_sites_v1",
-            "step09_cmh_significant_sites_v1",
-        ):
-            path = paths[adapter]
-            payload = path.read_text(encoding="utf-8")
-            path.write_text(
-                payload.replace("DP__SYNTH_A", "DP__BROKEN", 1),
-                encoding="utf-8",
-            )
-
-    copied, _paths = copied_step09_summary(
-        computational_summary,
-        tmp_path / "input",
-        mutate_sources=mutate_sources,
-    )
-    with pytest.raises(ReportRenderError, match="invalid AD__ sample block"):
-        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
-
-
-def test_step09_duplicate_candidates_fail_closed(
+def test_report_translates_canonical_step09_projection_rejection(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
@@ -715,52 +690,10 @@ def test_step09_duplicate_candidates_fail_closed(
         tmp_path / "input",
         mutate_sources=mutate_sources,
     )
-    with pytest.raises(ReportRenderError, match="duplicate candidate_id"):
-        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
-
-
-@pytest.mark.parametrize(
-    ("sample_values", "message"),
-    (
-        ({"DP__SYNTH_A": "NA"}, "one-sided DP/AD missingness"),
-        (
-            {"DP__SYNTH_A": "NA", "AD__SYNTH_A": "NA"},
-            "AF without DP/AD",
-        ),
-        (
-            {"DP__SYNTH_A": "10", "AD__SYNTH_A": "11"},
-            "AD greater than DP",
-        ),
-        (
-            {
-                "DP__SYNTH_A": "0",
-                "AD__SYNTH_A": "0",
-                "AF__SYNTH_A": "0",
-            },
-            "invalid zero-depth DP/AD/AF values",
-        ),
-        ({"AF__SYNTH_A": "not-a-number"}, "AF must be numeric"),
-        ({"AF__SYNTH_A": "0.2"}, "AF does not reconcile with AD/DP"),
-    ),
-)
-def test_step09_sample_dp_ad_af_values_fail_closed(
-    computational_summary: Path,
-    tmp_path: Path,
-    sample_values: dict[str, str],
-    message: str,
-) -> None:
-    def mutate_sources(paths: dict[str, Path]) -> None:
-        def invalidate(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
-            rows[0].update(sample_values)
-
-        rewrite_tsv(paths["step09_cmh_all_sites_v1"], invalidate)
-
-    copied, _paths = copied_step09_summary(
-        computational_summary,
-        tmp_path / "input",
-        mutate_sources=mutate_sources,
-    )
-    with pytest.raises(ReportRenderError, match=message):
+    with pytest.raises(
+        ReportRenderError,
+        match="Primary Step 09 projection failed validation",
+    ):
         REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
 
 
@@ -804,60 +737,6 @@ def test_step09_owner_validation_must_be_exact_all_pass_before_rows_open(
         mutate_sources=mutate_sources,
     )
     with pytest.raises(ReportRenderError, match=message):
-        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
-
-
-def test_step09_significant_subset_and_summary_counts_fail_closed(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    def mutate_subset(paths: dict[str, Path]) -> None:
-        def replace_candidate(
-            _header: tuple[str, ...], rows: list[dict[str, str]]
-        ) -> None:
-            rows[0]["candidate_id"] = "different_candidate"
-
-        rewrite_tsv(paths["step09_cmh_significant_sites_v1"], replace_candidate)
-
-    subset_summary, _paths = copied_step09_summary(
-        computational_summary,
-        tmp_path / "subset",
-        mutate_sources=mutate_subset,
-    )
-    with pytest.raises(ReportRenderError, match="exact ordered significant subset"):
-        REPORT.prepare_report(arguments(subset_summary, tmp_path / "subset-reports"))
-
-    def mutate_counts(paths: dict[str, Path]) -> None:
-        def replace_count(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
-            rows[0]["candidate_count"] = "99"
-
-        rewrite_tsv(paths["step09_cmh_summary_v1"], replace_count)
-
-    count_summary, _paths = copied_step09_summary(
-        computational_summary,
-        tmp_path / "counts",
-        mutate_sources=mutate_counts,
-    )
-    with pytest.raises(ReportRenderError, match="candidate_count disagrees"):
-        REPORT.prepare_report(arguments(count_summary, tmp_path / "count-reports"))
-
-
-def test_step09_invalid_thresholds_fail_closed(
-    computational_summary: Path,
-    tmp_path: Path,
-) -> None:
-    def mutate_sources(paths: dict[str, Path]) -> None:
-        def invalidate(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
-            rows[0]["fdr_threshold"] = "not-a-number"
-
-        rewrite_tsv(paths["step09_cmh_summary_v1"], invalidate)
-
-    copied, _paths = copied_step09_summary(
-        computational_summary,
-        tmp_path / "input",
-        mutate_sources=mutate_sources,
-    )
-    with pytest.raises(ReportRenderError, match="fdr_threshold must be numeric"):
         REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
 
 

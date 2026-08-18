@@ -26,9 +26,7 @@ def inspect_tsv(
     capture_rows = spec.exact_data_rows is not None or spec.adapter_id in {
         "step07_mpileup_receipt_v1",
         "step08_inputs_v1",
-        "step09_mutation_spectrum_tsv_v1",
     }
-    mutation_pair_counts: dict[str, Counter[str]] = defaultdict(Counter)
     try:
         with path.open(encoding="utf-8", newline="") as stream:
             reader = csv.reader(stream, delimiter="\t")
@@ -71,29 +69,6 @@ def inspect_tsv(
                 ):
                     if field_name in row:
                         anchor_values[field_name].add(row[field_name])
-                if spec.adapter_id in {
-                    "step09_cmh_all_sites_v1",
-                    "step09_cmh_significant_sites_v1",
-                }:
-                    for field_name in (
-                        "test_status",
-                        "call_status",
-                        "rna_ref",
-                        "rna_alt",
-                    ):
-                        value_counts[field_name][row[field_name]] += 1
-                    mutation_type = f"{row['rna_ref']}>{row['rna_alt']}"
-                    mutation_pair_counts[mutation_type]["candidate_count"] += 1
-                    if row["test_status"] == "tested":
-                        mutation_pair_counts[mutation_type][
-                            "successfully_tested_count"
-                        ] += 1
-                    if row["call_status"] == "significant_up":
-                        mutation_pair_counts[mutation_type]["significant_up_count"] += 1
-                    if row["call_status"] == "significant_down":
-                        mutation_pair_counts[mutation_type][
-                            "significant_down_count"
-                        ] += 1
                 if spec.kind == "validation_report":
                     value_counts["status"][row["status"]] += 1
                 if capture_rows:
@@ -132,11 +107,6 @@ def inspect_tsv(
         native["value_counts"] = {
             field_name: dict(sorted(counts.items()))
             for field_name, counts in sorted(value_counts.items())
-        }
-    if mutation_pair_counts:
-        native["mutation_pair_counts"] = {
-            mutation_type: dict(sorted(counts.items()))
-            for mutation_type, counts in sorted(mutation_pair_counts.items())
         }
     return count, first_row, parameters, native
 

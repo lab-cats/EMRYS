@@ -43,6 +43,14 @@ published-transaction validation.
 Stage-specific rules remain in their named reconciliation modules; this
 package is not a generic stage framework.
 
+[`reconcile_step09.py`](reconcile_step09.py) delegates intrinsic admission of
+the exact result trio and mutation-spectrum reconciliation to
+`step09.validate_step09_projection`. Artifact indexing retains
+adapter/inventory selection, native source identity, the referenced Step 08
+path/hash/adapter/sample-order graph, and artifact-state failure propagation;
+it does not replay upstream, paired-sample CMH, global BH, PDF, R-producer, or
+independent-oracle work.
+
 Artifact inspection enforces common validation-report structure, safe unique
 check IDs, step, scope, and status, but does not yet enforce each producer's
 exact ordered check roster. A structurally plausible report with a missing,

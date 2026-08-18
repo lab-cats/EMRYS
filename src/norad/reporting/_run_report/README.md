@@ -7,7 +7,7 @@ This private package supports the direct public
 | --- | --- |
 | [`models.py`](models.py) | Immutable contract constants and context values. |
 | [`inputs.py`](inputs.py) | Explicit run-summary admission with stable snapshots. |
-| [`computational.py`](computational.py) | Exact primary-analysis Step 09 result-trio plus all-pass owner-validation admission, semantic reconciliation, bounded display rows, and stable snapshots. |
+| [`computational.py`](computational.py) | Exact primary-analysis Step 09 trio and all-pass owner-validation selection, source identity/snapshots, canonical trio admission, and bounded display rows. |
 | [`context.py`](context.py) | Side-effect-free resource, output, and predecessor preparation. |
 | [`view.py`](view.py) | Structured report view data without HTML construction. |
 | [`validation.py`](validation.py) | Autoescaped strict Jinja environment plus CSS, security, semantic HTML, and accessibility validation. |
@@ -23,15 +23,19 @@ checkout governs renderer Git identity. Private owners infer neither root from
 the working directory or run-summary location and do not re-admit during
 publication.
 
-When the canonical run summary declares a complete primary-analysis Step 09
-`cmh_all_sites`, `cmh_significant_sites`, and `cmh_summary` trio plus its exact
-all-pass owner-validation report, the report opens only those exact
-artifact-record paths. Admission rechecks SHA-256, byte
-size, row count, exact headers, ordered DP/AD/AF sample blocks, sample counts,
-candidate uniqueness, statuses, summary counts and thresholds, and the exact
-ordered significant subset. It never searches for native outputs. An
-incomplete trio is reported as unavailable and no candidate row is opened or
-inferred.
+When the canonical run summary declares a complete primary Step 09 trio
+(`cmh_all_sites`, `cmh_significant_sites`, and `cmh_summary`) and its exact
+all-pass owner-validation report, reporting opens only those artifact-record
+paths. It retains primary-analysis/adapter selection; artifact-root, media type,
+expected path, SHA-256, size, and row-count checks; roster admission; stable
+snapshots; unavailable handling; and display limits. It delegates intrinsic
+trio admission to `step09.validate_step09_projection` and never searches for
+native outputs.
+
+The all-pass owner-validation artifact, not rendering, carries upstream Step
+08, paired-sample CMH, global BH, mutation-spectrum, PDF, and publication
+checks. Reporting reimplements neither shell/R producer nor independent oracle;
+it discloses an incomplete trio without opening or inferring candidate rows.
 
 The first open report category labels these rows **computational results — not
 scientifically adjudicated**. It displays the significant subset before the
