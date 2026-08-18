@@ -51,9 +51,9 @@ Step `05` owner requires its documented project-storage temporary directory.
 | Sample admission | [`sample_manifest_admission`](../../src/norad/ingestion/sample_manifest_admission/README.md) |
 | Reference preparation and Steps `01`–`08` | [`stages`](../../src/norad/stages/README.md) |
 | Paired CMH ranking | [`rank_cohort_candidates_with_paired_CMH`](../../src/norad/analyses/paired_cmh_candidate_ranking/README.md) |
-| Runtime, reference, storage, and QC evidence | [`evidence`](../../src/norad/evidence/README.md); runtime inspection route `python -I -m norad inspect runtime-availability`; storage inspection route `python -I -m norad inspect storage-inventory`; reference reconciliation route `python -I -m norad reconcile reference-provenance` |
+| Runtime, reference, storage, and QC evidence | [`evidence`](../../src/norad/evidence/README.md); runtime `inspect runtime-availability`; storage `inspect storage-inventory` and `inspect storage-qualification`; reference `reconcile reference-provenance` |
 | Artifact schemas | [`artifact contracts`](../../src/norad/contracts/artifacts/README.md); installed route `python -I -m norad validate artifact-contracts` |
-| Artifact index, run summary, and reports | [`reporting`](../../src/norad/reporting/README.md); each installed build route requires explicit, distinct `--source-checkout` and `--artifact-source-root` authorities |
+| Artifact index, run summary, and reports | [`reporting`](../../src/norad/reporting/README.md); standalone wrappers stop at native outputs/validation, `norad run` builds all reporting products, and `norad build report` only rebuilds an existing canonical summary |
 | Synthetic demonstration | [`demo`](../demo/README.md) |
 
 Each owner README supplies supported help, dry-run, execute, scheduler, focused
@@ -97,17 +97,26 @@ contigs/bounds, and checks partition-selector bounds. It runs no scientific
 tool. Use it on the intended compute host, not a login node for a large input
 set.
 
+Before profile preparation, resolve runtime paths inside the intended compute
+allocation. Record `hostname`, `command -v` for every tool, effective Java/R
+versions, Picard jar, and the canonical `renv` library. Login-node paths and
+module names are not compute evidence; provision missing tools outside NORAD.
+
 Prepare a fixed runtime profile to a new absent file with
 `norad prepare local-pilot-runtime`. It requires explicit canonical Java,
 Picard-jar, Rscript, and `renv`-library paths and accepts explicit `--bash`,
 `--star`, `--samtools`, `--gatk`, `--bcftools`, `--infer-experiment`, and
 `--gunzip` paths. Omitted ordinary tools are accepted only when `PATH` resolves
-one distinct executable. The command prints TSV to stdout and performs no
-version probe, file write, install, or repair; never redirect it over the
-generated `runtime.tsv`.
+one distinct executable. It performs no probe, file write, install, or repair.
 
-After `uv sync --locked --group workflow`, separately authorized science-tool/R
-setup, and runtime-profile preparation, inspect one request and workspace plan:
+Run `norad inspect storage-qualification` dry-run then execute with
+`--phase compute` inside the allocation for the exact workspace/reference
+pair. After that allocation ends, run the same route with `--phase finalize`.
+Doctor admits only the matching final receipt; it does not qualify storage.
+
+After locked Python synchronization, separately authorized runtime setup,
+profile preparation, and final storage qualification, inspect one request and
+workspace plan:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m norad doctor local-pilot \
@@ -393,26 +402,30 @@ settled; rerun it only for a concrete failure-driven reason.
 
 ## Explicit dependency setup
 
-Restoration is an operator action and never occurs from compute, validation,
-rendering, or scheduler code:
+Restoration is an explicit operator action and never occurs from workflow,
+validation, rendering, or generated scheduler code. If `uv` is absent, use the
+[official user-level installer](https://docs.astral.sh/uv/getting-started/installation/)
+outside NORAD, then run:
 
 ```bash
-uv sync --locked
-RSCRIPT_BIN=/usr/local/bin/Rscript make r-restore
-make lint
+uv --version
+uv sync --locked --group workflow
+RENV_LIBRARY=/absolute/path/to/canonical/renv-library \
+  RSCRIPT_BIN=/absolute/path/to/Rscript make r-restore
 ```
 
-`pyproject.toml` owns direct runtime and developer dependencies, and `uv.lock`
-owns their exact resolved graph. `uv sync --locked` includes the `dev` group and
-installs the project itself into `.venv`; a stale lock is an error rather than
-permission to relock. Provision `uv` separately—repository setup does not
-download or install it.
+`pyproject.toml` owns direct dependencies and `uv.lock` owns the exact graph.
+A stale lock is an error, not permission to relock. The workflow sync installs
+the project and locked workflow environment into `.venv`; developer setup may
+select its additional groups separately.
 
 Guarded local R checks are:
 
 ```bash
-RSCRIPT_BIN=/usr/local/bin/Rscript make r-check
-RSCRIPT_BIN=/usr/local/bin/Rscript make local-real-r-test
+RENV_LIBRARY=/absolute/path/to/canonical/renv-library \
+  RSCRIPT_BIN=/absolute/path/to/Rscript make r-check
+RENV_LIBRARY=/absolute/path/to/canonical/renv-library \
+  RSCRIPT_BIN=/absolute/path/to/Rscript make local-real-r-test
 ```
 
 They opt into the repository library with `NORAD_USE_RENV=1`, disable automatic

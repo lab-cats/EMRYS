@@ -63,11 +63,10 @@ Read this before installing:
   process inside **one** batch allocation on **one** compute node. Never run the
   scientific workflow on a cluster login/head node; use that node only to
   clone, edit, transfer small files, submit, inspect, and tail logs.
-- One cooperative user and a POSIX local filesystem with working advisory
-  `flock` and same-filesystem hard links are required for the workspace and
-  reference-sidecar transactions. NFS and other network/distributed-filesystem
-  locking semantics are not currently supported or claimed, even when a site
-  happens to provide them.
+- One cooperative user is required. The exact workspace parent and Step `00c`
+  reference-sidecar parent must pass NORAD's two-phase site qualification for
+  hard links, `flock`, rename/visibility, fsync, UID/access, and post-allocation
+  durability. No filesystem family—including NFS—is admitted by name alone.
 - Local-pilot inputs, workspace, control logs, and results stay outside the Git
   checkout. The locked ignored `.venv/`, the default ignored `renv/library/`,
   and the report-only demo's ignored `results/demo-report-jinja/` are sanctioned
@@ -145,14 +144,23 @@ printed commit against that record before execution. NORAD's receipts bind the
 commit you actually selected either way, so a no-context user can begin without
 an invented tag while a governed project can impose a stricter release rule.
 
-Install that ref's locked Python workflow:
+Install `uv` as an explicit user-level prerequisite when it is absent, then
+verify it and synchronize the immutable lock. The installer is the
+[official uv standalone installer](https://docs.astral.sh/uv/getting-started/installation/);
+review site policy before downloading it.
 
 ```sh
+if ! command -v uv >/dev/null 2>&1; then
+  curl -LsSf https://astral.sh/uv/install.sh |
+    env UV_INSTALL_DIR="$HOME/.local/bin" UV_NO_MODIFY_PATH=1 sh
+  export PATH="$HOME/.local/bin:$PATH"
+fi
+uv --version
 uv sync --locked --group workflow
 ```
 
 This installs NORAD and locked Snakemake `9.25.1` into `.venv`. It does not
-install the scientific tools or R packages.
+install scientific tools, R, or R packages, and it never relocks the project.
 
 The onboarding commands in this guide intentionally use templates and policy
 from this exact source checkout. Run them through this checkout's editable
@@ -196,10 +204,23 @@ Install or select these exact accepted identities before continuing:
 | R namespaces | Exact lock-selected versions in `local_pilot_runtime.example.tsv` |
 
 The runtime profile binds canonical executable or jar paths, versions, and
-SHA-256 identities. An environment-module name is not sufficient. On a
-cluster, load the selected modules inside the batch job and ensure the same
-absolute targets are visible there; head-node availability does not establish
-compute-node availability.
+SHA-256 identities. An environment-module name is not sufficient. On a cluster,
+discover the runtime inside the intended compute allocation before preparing
+the profile; head-node visibility is not evidence.
+
+```sh
+hostname
+for tool in STAR samtools gatk bcftools infer_experiment.py gunzip Rscript java; do
+  printf '%-24s' "$tool"
+  command -v "$tool" || printf 'MISSING\n'
+done
+java -version 2>&1 || true
+Rscript --version 2>&1 || true
+```
+
+Load only the site's approved modules in that allocation, record the canonical
+targets actually observed there, and provision missing tools outside NORAD
+before continuing.
 
 The exact clean checkout is also the guarded `renv` project. It requires an
 existing canonical R library with the lock-selected `renv` and Step `08`
@@ -207,14 +228,16 @@ namespaces. Explicitly restoring packages is a separate operator-authorized
 mutation:
 
 ```sh
-RSCRIPT_BIN=/absolute/path/to/Rscript make r-restore
-RSCRIPT_BIN=/absolute/path/to/Rscript make r-check
+RENV_LIBRARY=/absolute/path/to/canonical/renv-library \
+  RSCRIPT_BIN=/absolute/path/to/Rscript make r-restore
+RENV_LIBRARY=/absolute/path/to/canonical/renv-library \
+  RSCRIPT_BIN=/absolute/path/to/Rscript make r-check
 ```
 
 If an approved canonical library already exists, do not restore another one:
 
 ```sh
-RENV_PATHS_LIBRARY=/absolute/path/to/canonical/renv-library \
+RENV_LIBRARY=/absolute/path/to/canonical/renv-library \
   RSCRIPT_BIN=/absolute/path/to/Rscript make r-check
 ```
 
@@ -395,6 +418,27 @@ bounds, and checks region or regions-file bounds. FASTQ hashing streams in
 bounded chunks, but time and I/O still scale with the declared read bytes. No
 scientific executable is probed and no output is written.
 
+Qualify the exact workspace and Step `00c` reference-sidecar storage before
+doctor. Run the compute phase inside a short allocation on the intended compute
+node, let that allocation end, then run the finalize phase from the durable
+control context:
+
+```sh
+NORAD_REFERENCE_FASTA=/absolute/path/from/request/to/reference.fa
+norad inspect storage-qualification \
+  --workspace "$NORAD_WORKSPACE_PATH" \
+  --reference-fasta "$NORAD_REFERENCE_FASTA" --phase compute
+# Repeat the same command with --execute inside the allocation.
+norad inspect storage-qualification \
+  --workspace "$NORAD_WORKSPACE_PATH" \
+  --reference-fasta "$NORAD_REFERENCE_FASTA" --phase finalize
+# Repeat the same command with --execute after the allocation has ended.
+```
+
+Doctor rejects missing, failed, stale, or mismatched final qualification. A
+node-local workspace is not supported unless the same qualification establishes
+its durable retention path.
+
 ### 6. Require full runtime `READY`
 
 The doctor safely re-admits the request and source files plus the workspace
@@ -481,8 +525,8 @@ mode validates every required value, requests one node/task, publishes exact
 modules, enters the selected checkout, runs input/runtime preflight, and then
 uses the public local executor.
 
-Bind the site's **actual** account, partition, QOS, memory, time, module-init
-file, and module names. There are no portable defaults for these values:
+Bind the site's **actual** scheduler values, module mode, and writable compute
+scratch parent. There are no portable defaults:
 
 ```sh
 NORAD_LOG_DIR="$NORAD_OPERATOR_ROOT/norad-slurm-logs"
@@ -492,30 +536,36 @@ NORAD_SLURM_ACCOUNT=replace-with-site-account
 NORAD_SLURM_PARTITION=replace-with-site-partition
 NORAD_SLURM_QOS=replace-with-site-qos
 NORAD_SLURM_CPUS=4
-NORAD_SLURM_MEMORY=replace-with-reviewed-memory
+NORAD_SLURM_MEMORY=site-default
 NORAD_SLURM_TIME=replace-with-reviewed-walltime
 NORAD_SOURCE_CHECKOUT="$NORAD_REPO"
 NORAD_PYTHON="$NORAD_PY"
 NORAD_REQUEST="$NORAD_REQUEST_PATH"
 NORAD_WORKSPACE="$NORAD_WORKSPACE_PATH"
 NORAD_RUNTIME_PROFILE="$NORAD_RUNTIME_PROFILE_PATH"
-NORAD_MODULE_INIT=/absolute/real/path/to/modules-init.sh
-NORAD_MODULES=module/name:second/module:third/module
+NORAD_MODULE_MODE=none
+NORAD_MODULE_INIT=
+NORAD_MODULES=
+NORAD_SCRATCH_PARENT=/absolute/writable/compute-scratch-parent
 NORAD_EXECUTE=0
 
 export NORAD_SLURM_ACCOUNT NORAD_SLURM_PARTITION NORAD_SLURM_QOS
 export NORAD_SLURM_CPUS
 export NORAD_SLURM_MEMORY NORAD_SLURM_TIME NORAD_LOG_DIR
 export NORAD_SOURCE_CHECKOUT NORAD_PYTHON NORAD_REQUEST NORAD_WORKSPACE
-export NORAD_RUNTIME_PROFILE NORAD_MODULE_INIT NORAD_MODULES NORAD_EXECUTE
+export NORAD_RUNTIME_PROFILE NORAD_MODULE_MODE NORAD_MODULE_INIT NORAD_MODULES
+export NORAD_SCRATCH_PARENT NORAD_EXECUTE
 
 "$NORAD_SLURM_WRAPPER"
 ```
 
-`NORAD_MODULES` is a colon-separated list of the exact site modules required
-to expose the authored runtime. `NORAD_MODULE_INIT` must be the site's real,
-nonsymlink module initialization file. The wrapper rejects commas/newlines and
-unsafe module identifiers; it never installs a missing module or tool. The
+`NORAD_SLURM_MEMORY=site-default` emits no `--mem`; an explicit Slurm size
+is passed exactly once. `NORAD_MODULE_MODE=none` requires empty module values
+and uses the absolute runtime paths unchanged. Use `exact` only with a real
+nonsymlink module-init file and a colon-separated exact module list.
+`NORAD_SCRATCH_PARENT` must already be a real writable compute-node directory;
+the job creates a private mode-`700` child, exports it as `TMPDIR`, logs its
+filesystem/capacity, and removes it at exit. The wrapper installs nothing. The
 wrapper passes `NORAD_SLURM_CPUS` only as an allocation assertion. The request
 remains the sole resource-plan authority, and execution fails if its
 `workflow_cores` exceeds the scheduler allocation.
@@ -548,15 +598,12 @@ export NORAD_EXECUTE
 Submitting one allocation does not make this distributed workflow execution;
 configured concurrent owners still run on that one compute node.
 
-The scheduler's stdout/stderr directory may use the site's supported shared
-storage so it can be tailed from the login node. That does **not** qualify the
-NORAD workspace or the reference-sidecar directory for network-filesystem
-locking. Those mutation roots must satisfy the local POSIX `flock` and
-same-filesystem hard-link boundary above, remain durable for the complete run,
-and retain their absolute paths. If the cluster offers only unvalidated
-NFS/distributed storage for those roots, the public local pilot is not yet a
-supported execution path there; stop rather than treating a successful
-allocation as filesystem proof.
+The scheduler's stdout/stderr directory may use site-supported shared storage
+for login-node inspection. That does **not** qualify the workspace or reference
+sidecars. Those exact mutation roots need the final two-phase qualification
+above and stable absolute paths. A passing receipt admits only that tested
+site/path pair; an unqualified NFS, distributed, or node-local arrangement
+remains unsupported.
 
 ## Observe the run from another terminal
 
@@ -637,7 +684,14 @@ disconnect or uncertain exit. Inspect the existing run first.
 
 ## Confirm completion and find the report
 
-Run a final inspection:
+| Route | Result |
+| --- | --- |
+| Standalone stage wrappers | Native stage outputs and validation TSVs; no orchestration report or adoption |
+| `norad run` | Attempts, verified records, artifact index, run summary, and automatic HTML report |
+| `norad build report` | Rebuild from an existing canonical run summary; never adopt standalone outputs |
+
+The reporting sequence is part of the orchestrated workflow. Run a final
+inspection:
 
 ```sh
 norad inspect local-pilot-run --run-root "$NORAD_RUN_ROOT"
@@ -766,24 +820,19 @@ producer entry without verified completion is blocked; NORAD exposes no force,
 unlock, cleanup, metadata-repair, or automatic owner retry. Preserve the whole
 run root and follow [troubleshooting](docs/operations/TROUBLESHOOTING.md).
 
-## First-run blocker map
+## First-run stop/go checklist
 
-| Symptom | Meaning and next action |
-| --- | --- |
-| `norad` imports from another path | Recreate `NORAD_PY` from this checkout and use the isolated invocation. Do not add `PYTHONPATH`. |
-| Checkout is dirty | Review and finish or move tracked edits; doctor binds an exact clean commit. Do not hide relevant changes. |
-| Runtime tool is absent or wrong | Install/select it outside NORAD, load modules in the execution context, then update the explicit runtime path. Do not weaken the expected version. |
-| Tool exists on login but doctor fails in batch | Probe and author the compute-node-visible canonical path inside the same module environment used by the batch job. |
-| R namespace or `renv` library is missing | Perform separately authorized `renv` restoration or select an existing checked canonical library; doctor will not bootstrap it. |
-| Request path or TSV is rejected | Correct exact field names, tabs, safe IDs, explicit paths, pairing, and conditions using the [configuration guide](configs/README.md). |
-| Workspace parent is rejected | Use an existing canonical writable parent and a single absent child leaf outside the checkout. |
-| Reference sidecar pair is partial | Preserve FASTA, FAI, DICT, adjacent locks, and staging. Establish ownership before any recovery; do not regenerate one member ad hoc. |
-| SLURM log never appears | Create its parent before `sbatch`, then inspect `squeue`/`sacct` and the exact `%j` path. |
-| Inspection says `blocked` | Preserve all evidence and route the failing scope through the owner-specific recovery guide. Do not rerun the initial command. |
-| Report labels results `not scientifically adjudicated` | Expected: the report presents computational candidates and provenance only. Keep any external review or interpretation records separate from the run. |
+| Gate | GO | STOP |
+| --- | --- | --- |
+| Source and Python | Exact clean commit; `uv --version` works; `uv sync --locked --group workflow` succeeds | Wrong checkout, dirty tree, missing `uv`, or stale lock |
+| Compute runtime | Canonical tools are observed on the intended compute node; guarded `r-check` passes | Login-only path, guessed module, wrong Java/R, or missing namespace |
+| Storage | Final qualification covers the workspace and Step `00c` sidecar parents | Missing, failed, stale, or mismatched qualification |
+| Inputs and plan | Request validation passes, doctor prints `READY`, and the generated no-write plan is reviewed | Any blocker, malformed input/profile, or hand-edited generated wrapper |
+| Execution | Only `--execute` changes on the reviewed command or generated wrapper | Manual output adoption, head-node science work, or an uncertain existing run root |
 
-The full [troubleshooting matrix](docs/operations/TROUBLESHOOTING.md) covers
-safe evidence preservation and every owner.
+The full [troubleshooting matrix](docs/operations/TROUBLESHOOTING.md) owns
+recovery detail. Standalone stages remain supported, but they do not create the
+immutable run state required by automatic reporting.
 
 ## Glossary
 

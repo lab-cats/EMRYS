@@ -75,7 +75,7 @@ claim from this recovery guide.
 | R1 and R2 are identical or compression differs | One paired library must have two distinct files with the same plain/gzip mode. | Correct the manifest or upstream staging; do not rename the same file twice. |
 | Partition or contig later fails owner validation | The declared selector does not reconcile with the FASTA/FAI or partitions overlap. | Preserve the attempt. Correct reference/partition preparation for a new admitted request; do not hand-edit VCFs or receipts. |
 | Workspace already exists | Initial publication is create-absent and refuses adoption. | Inspect it if it is a NORAD workspace. Otherwise choose a different absent child under an existing writable parent; do not delete an uncertain directory. |
-| Workspace is on NFS/network storage | Current lock and hard-link semantics are not site-validated there. | Use a supported POSIX local filesystem or stop for explicit site validation. Scheduler availability does not make the filesystem supported. |
+| Workspace or reference sidecars are on unqualified storage | Locking, hard-link, rename, visibility, durability, or head/compute access is not admitted. | Run both phases of `norad inspect storage-qualification` for the exact workspace/reference pair. Stop if it fails; scheduler availability is not storage support. |
 
 ## Runtime and scheduler blockers
 
@@ -86,15 +86,16 @@ claim from this recovery guide.
 | `module purge` emits unload errors | The site has default modules whose unload metadata is incomplete. | Preserve the output and use the site's supported module initialization/selection. Do not infer that requested scientific modules failed solely from purge warnings; inspect `module list` and actual probes. |
 | Java module name and `java -version` disagree | The site module may expose the system launcher or only supporting variables. | Author the canonical executable that actually reports Java 17 or newer. Picard and GATK use that same selected launcher. |
 | Picard sets `PICARD`, not `PICARD_JAR` | The site module's environment name differs from a generic probe. | Put the actual readable Picard 3.1.1 jar path in the `picard_jar` row and its coupled `-jar` argument. NORAD does not depend on either environment-variable name. |
-| `srun` or `sbatch` reports an unsatisfied memory/node configuration | The requested resources do not match any eligible node in the selected partition/QOS. | Inspect `sinfo` and account associations, then request a supported batch allocation sized for the data. Do not lower memory blindly merely to enter a node. |
+| `srun` or `sbatch` reports an unsatisfied memory/node configuration | The requested resources do not match an eligible node or the site rejects explicit memory. | Inspect `sinfo` and account policy. Use `NORAD_SLURM_MEMORY=site-default` only when the site supplies memory and rejects `--mem`; otherwise keep an explicit reviewed size. |
 | `invalid partition specified` | A literal placeholder or unavailable partition was submitted. | Use a partition authorized for the account, verified by `sinfo`/site policy. Do not submit `YOUR_PARTITION` or another documentation placeholder. |
 | `tail` says the SLURM log does not exist | The job is pending or SLURM has not opened the declared stream; the parent may also have been absent at submission. | Ensure the log parent existed before `sbatch`, inspect `squeue`/`sacct`, wait until both exact `%j` paths exist, then use `tail -n +1 -F`. |
-| `TMPDIR [/local/tmp] is not writeable` | The site's inherited temporary directory is unusable and SLURM may fall back to `/tmp`. | Confirm the effective batch `TMPDIR` and capacity. Use the Step `05` project-storage scratch route for GATK spill; do not assume a warning is harmless for a full run. |
+| `TMPDIR [/local/tmp] is not writeable` | The inherited temporary directory is unusable. | Set generated-wrapper `NORAD_SCRATCH_PARENT` to an existing writable compute path. Confirm the logged private `TMPDIR`, filesystem, and capacity; do not rely on fallback `/tmp`. |
 
 ## Result and report questions
 
 | Observation | Interpretation |
 | --- | --- |
+| Standalone Steps `07`–`09` passed but no HTML report exists | Expected: standalone wrappers publish native outputs and validation TSVs only. They are not adopted into orchestration state. Use `norad run` for automatic reporting; `norad build report` requires an existing canonical run summary. |
 | Report labels results `not scientifically adjudicated` | Expected: NORAD reports computational candidates and provenance only. Keep external review, adjudication, or biological-interpretation records separate from the run. |
 | Significant computational rows are present | They passed the declared Step `09` depth, background, FDR, odds-ratio, and allele-fraction-change rules. They remain review candidates, not validated editing sites. |
 | Candidate table has rows but significant table is empty | Step `08` found candidate SNVs, but none passed every strict Step `09` call threshold. Inspect `test_status` and `call_status`; do not relax policy after seeing results without creating and justifying a new analysis request. |
@@ -110,11 +111,11 @@ claim from this recovery guide.
 | `logs/...: No such file or directory` at submission | Create `logs/` before `sbatch`; SLURM opens streams before the job body. |
 | Empty `.err` or `COMPLETED 0:0` | Inspect both streams, accounting, outputs, and owner validation; neither is proof alone. |
 | Wrong log prefix | Locate the job's actual files; do not borrow a prefix from another owner. |
-| `/local/tmp` is unwritable | Confirm the effective writable `TMPDIR`; use the Step `05` project-storage route for large GATK spill. |
+| `/local/tmp` is unwritable | Set the generated wrapper's explicit writable scratch parent and inspect its logged private `TMPDIR` capacity. |
 | Tool/module appears on login but not in a job | Establish the exact executable in the approved batch context. Module names are not runtime proof. |
 | Picard `UnsupportedClassVersionError` | Step `04` requires the effective Java major version to be at least 17. Validate the selected executable, not `JAVA_HOME` alone. |
-| R or namespace unavailable | Use explicit guarded restoration/checks; local availability does not prove batch visibility. Never bootstrap from compute. |
-| `uv` is unavailable | Provision `uv` explicitly outside repository validation or runtime commands. Do not curl-install it from a NORAD script or weaken tests to use the source checkout. |
+| R or namespace unavailable | Restore only as a separate operator action into the declared library, then run strict non-mutating `r-check` in the compute context. The workflow and generated wrapper never install. |
+| `uv` is unavailable | Use the [official user-level installer](https://docs.astral.sh/uv/getting-started/installation/) as an explicit setup action, run `uv --version`, then `uv sync --locked --group workflow`. NORAD commands never install it. |
 | `uv sync --locked` reports a stale lock | Stop and review the `pyproject.toml`/`uv.lock` diff. Do not relock as an incidental setup side effect. |
 | Validation reports that the selected Python environment does not match `uv.lock` | Run `uv sync --locked` as an explicit setup action, then rerun validation. Do not let the validation command repair or relock the environment. |
 | Offline wheel installation cannot find a package | Prepare an approved local cache or wheelhouse for the complete locked runtime graph. Do not omit dependencies, add checkout paths, or enable network access inside the package test. |
