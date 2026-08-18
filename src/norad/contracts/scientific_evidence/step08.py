@@ -282,8 +282,8 @@ def _validate_sample_manifest_table(
 ) -> tuple[Table, list[str], list[dict[str, str]]]:
     if table.header not in (SAMPLE_MANIFEST_REQUIRED, SAMPLE_MANIFEST_ALLOWED):
         fail(
-            "Sample manifest must have the exact Step 09 schema, with optional "
-            "notes as the final column."
+            "Sample manifest must have the exact paired local-CMH schema, "
+            "with optional notes as the final column."
         )
     if not table.rows:
         fail("Sample manifest contains no sample rows.")

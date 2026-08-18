@@ -26,11 +26,15 @@ summary.
 
 ## Inputs and provisional policy
 
-Inputs are a safe cohort ID, ordered sample manifest, complete nonoverlapping
-partition manifest, Step `07` root, nonempty annotation GTF, output and QC
-roots, and explicit Rscript/R-program resolution. Required VCF definitions
-include FORMAT DP/AD/ADF/ADR/SP and INFO AD/ADF/ADR; sample columns must match
-the sample manifest exactly.
+Inputs are a safe cohort ID, an ordered paired local-CMH sample manifest,
+complete nonoverlapping partition manifest, Step `07` root, nonempty
+annotation GTF, output and QC roots, and explicit Rscript/R-program resolution.
+The sample header is exactly `sample_id, r1_fastq, r2_fastq, strandedness,
+condition, replicate`, with optional `notes` last. Required values are
+nonempty, sample and replicate IDs are safe, strandedness uses the closed
+vocabulary, and sample IDs are unique. Required VCF definitions include FORMAT
+DP/AD/ADF/ADR/SP and INFO AD/ADF/ADR; sample columns must match the sample
+manifest exactly.
 
 The optional positive `--threads` value defaults to `1` and bounds independent
 partition/orientation VCF workers. On Unix, worker results are returned in the
@@ -186,9 +190,8 @@ production, cluster, scientific-review, or biological evidence.
   [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
   argument → `RSCRIPT_BIN_OVERRIDE` → PATH precedence, checks, and commands
   remain owned here.
-- Producer and validator disagree on the required breadth of sample-manifest
-  columns, and the validator does not reopen the upstream Step `07` files to
-  recompute their declared hashes.
+- The validator does not reopen the upstream Step `07` files to recompute
+  their declared hashes.
 - The producer preserves the supplied annotation path spelling, while the
   validator compares it with a resolved absolute path; equivalent relative
   paths can therefore yield failed annotation-identity evidence.

@@ -105,20 +105,51 @@ parse_positive_integer <- function(label, value) {
 }
 
 read_sample_manifest <- function(path) {
+    required_columns <- c(
+        "sample_id", "r1_fastq", "r2_fastq", "strandedness",
+        "condition", "replicate"
+    )
+    allowed_columns <- c(required_columns, "notes")
     manifest <- read_tsv("Sample manifest", path)
-    if (!("sample_id" %in% names(manifest))) {
-        abort("Sample manifest is missing the required sample_id column: ", path)
+    if (!identical(names(manifest), required_columns) &&
+        !identical(names(manifest), allowed_columns)) {
+        abort(
+            "Sample manifest must have the exact paired local-CMH schema, ",
+            "with optional notes as the final column."
+        )
     }
     if (nrow(manifest) == 0L) {
         abort("Sample manifest contains no sample rows: ", path)
     }
-    sample_ids <- manifest$sample_id
-    if (any(is.na(sample_ids) | !nzchar(sample_ids))) {
-        abort("Sample manifest contains an empty sample_id: ", path)
+    required_values <- as.matrix(
+        manifest[, required_columns, drop = FALSE]
+    )
+    if (any(is.na(required_values) | !nzchar(required_values) |
+        required_values == "NA")) {
+        abort("Sample manifest contains an empty required value: ", path)
     }
+
+    sample_ids <- manifest$sample_id
     invisible(lapply(sample_ids, function(id) {
         validate_safe_id("sample_id", id)
     }))
+    invisible(lapply(manifest$replicate, function(id) {
+        validate_safe_id("replicate", id)
+    }))
+    allowed_strandedness <- c(
+        "forward", "reverse", "unstranded", "unknown"
+    )
+    invalid_strandedness <- which(
+        !(manifest$strandedness %in% allowed_strandedness)
+    )
+    if (length(invalid_strandedness) > 0L) {
+        row_number <- invalid_strandedness[[1L]] + 1L
+        abort(
+            "Sample manifest row ", row_number,
+            " has invalid strandedness: ",
+            manifest$strandedness[[invalid_strandedness[[1L]]]]
+        )
+    }
     duplicate <- unique(sample_ids[duplicated(sample_ids)])
     if (length(duplicate) > 0L) {
         abort("Sample manifest contains duplicate sample_id: ", duplicate[[1L]])

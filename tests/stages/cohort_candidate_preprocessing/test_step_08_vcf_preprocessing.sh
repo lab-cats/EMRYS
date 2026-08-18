@@ -458,7 +458,9 @@ create_fixture() {
     local vcf
 
     mkdir -p "$root/step07/$cohort/p1" "$root/step07/$cohort/p2"
-    printf 'sample_id\tcondition\nsample_A\tEV\nsample_B\tPUM1\n' >"$root/samples.tsv"
+    printf 'sample_id\tr1_fastq\tr2_fastq\tstrandedness\tcondition\treplicate\n' >"$root/samples.tsv"
+    printf 'sample_A\t/reads/A_R1.fastq.gz\t/reads/A_R2.fastq.gz\tunknown\tEV\t1\n' >>"$root/samples.tsv"
+    printf 'sample_B\t/reads/B_R1.fastq.gz\t/reads/B_R2.fastq.gz\tunknown\tPUM1\t2\n' >>"$root/samples.tsv"
     printf 'partition_id\tselector_type\tselector_value\np1\tregion\t1\np2\tregion\t2\n' >"$root/partitions.tsv"
     printf '1\tsource\ttranscript\t1\t100\t.\t+\t.\tgene_id "gene1"; transcript_id "tx1";\n' >"$root/annotation.gtf"
     printf '# fake R implementation placeholder\n' >"$root/step08_impl.R"
@@ -586,6 +588,26 @@ assert_contains "$help_output" "legacy_provisional_v1"
 run_expect_status 1 "$test_root/missing.out" "$test_root/missing.err" \
     bash "$script" --sample-manifest "$fixture/samples.tsv"
 assert_contains "$test_root/missing.err" "Missing required argument: --cohort-id"
+
+printf 'Running paired sample-manifest admission checks...\n'
+missing_replicate_fixture="$test_root/missing-replicate"
+create_fixture "$missing_replicate_fixture" cohort_missing_replicate
+printf 'sample_id\tr1_fastq\tr2_fastq\tstrandedness\tcondition\n' \
+    >"$missing_replicate_fixture/samples.tsv"
+printf 'sample_A\t/reads/A_R1.fastq.gz\t/reads/A_R2.fastq.gz\tunknown\tEV\n' \
+    >>"$missing_replicate_fixture/samples.tsv"
+missing_replicate_log="$test_root/missing-replicate-rscript.log"
+PATH="$fake_bin:$PATH" FAKE_RSCRIPT_LOG="$missing_replicate_log" \
+    run_expect_status 1 \
+    "$test_root/missing-replicate.out" \
+    "$test_root/missing-replicate.err" \
+    run_step08 "$missing_replicate_fixture" cohort_missing_replicate
+assert_contains \
+    "$test_root/missing-replicate.err" \
+    "Sample manifest must have the exact paired local-CMH schema"
+assert_not_exists "$missing_replicate_log"
+assert_not_exists "$missing_replicate_fixture/output"
+assert_not_exists "$missing_replicate_fixture/qc"
 
 printf 'Running R runtime and program preflight checks...\n'
 missing_rscript_fixture="$test_root/missing-rscript"

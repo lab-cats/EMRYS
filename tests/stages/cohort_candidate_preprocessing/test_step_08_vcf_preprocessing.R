@@ -250,9 +250,16 @@ build_case <- function(root, mode = "positive") {
 
     samples <- data.frame(
         sample_id = c("sample_A", "sample_B"),
+        r1_fastq = c("/reads/sample_A_R1.fastq.gz", "/reads/sample_B_R1.fastq.gz"),
+        r2_fastq = c("/reads/sample_A_R2.fastq.gz", "/reads/sample_B_R2.fastq.gz"),
+        strandedness = c("unknown", "unknown"),
         condition = c("EV", "PUM1"),
+        replicate = c("1", "2"),
         stringsAsFactors = FALSE
     )
+    if (mode == "missing_replicate") {
+        samples$replicate <- NULL
+    }
     write_tsv(samples, sample_manifest)
     selector_relative <- file.path("selectors", "p2.regions.tsv")
     selector_path <- file.path(dirname(partition_manifest), selector_relative)
@@ -818,6 +825,7 @@ for (name in c("sites", "inputs", "summary")) {
 }
 
 negative_modes <- c(
+    "missing_replicate",
     "overlap",
     "mixed_regions_file",
     "receipt_hash_mismatch",
@@ -835,6 +843,10 @@ negative_modes <- c(
     "declared_count_mismatch"
 )
 expected_negative_errors <- list(
+    missing_replicate = paste0(
+        "Sample manifest must have the exact paired local-CMH schema, ",
+        "with optional notes as the final column."
+    ),
     overlap = "Partition selectors overlap",
     malformed_count = "FORMAT/AD must contain",
     malformed_dp_count = "FORMAT/DP must contain",

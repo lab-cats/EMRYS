@@ -440,7 +440,7 @@ def test_private_parsing_closure_preserves_exact_edges(tmp_path: Path) -> None:
     (
         (
             "sample_bad_header",
-            "Sample manifest must have the exact Step 09 schema, with optional notes as the final column.",
+            "Sample manifest must have the exact paired local-CMH schema, with optional notes as the final column.",
         ),
         ("sample_empty", "Sample manifest contains no sample rows."),
         ("sample_duplicate", "Sample manifest contains duplicate sample_id: S"),

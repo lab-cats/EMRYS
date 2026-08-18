@@ -33,6 +33,11 @@ src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
   --rscript-bin /usr/local/bin/Rscript
 ```
 
+The sample manifest must use the exact paired local-CMH header:
+`sample_id, r1_fastq, r2_fastq, strandedness, condition, replicate`, with
+optional `notes` as the final column. The producer dry-run and independent
+validator enforce the same admission contract.
+
 Add `--execute` after inspecting the complete Step `07` barrier, R program,
 locks, scratch, publication, and rollback. `legacy_provisional_v1` maps
 mechanical orientation labels for compatibility; it does not establish

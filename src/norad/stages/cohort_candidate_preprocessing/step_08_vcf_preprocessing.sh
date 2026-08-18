@@ -31,7 +31,8 @@ used.
 
 Required arguments:
   --cohort-id          Filename-safe cohort identifier.
-  --sample-manifest    TSV containing a unique, non-empty sample_id column.
+  --sample-manifest    Paired local-CMH TSV: sample_id, r1_fastq, r2_fastq,
+                       strandedness, condition, replicate[, notes].
   --partition-manifest Step 07 TSV with partition_id, selector_type,
                        selector_value.
   --step07-root        Root containing <cohort>/<partition>/ Step 07 outputs.
@@ -66,6 +67,80 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/orientation.sh"
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/signal_traps.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
+
+validate_paired_sample_manifest() {
+    local path="$1"
+    local header
+    local required_header
+    local allowed_header
+    local expected_fields
+
+    required_header=$'sample_id\tr1_fastq\tr2_fastq\tstrandedness\tcondition\treplicate'
+    allowed_header="$required_header"$'\tnotes'
+    IFS= read -r header <"$path" ||
+        die "Sample manifest has no readable header: $path"
+    case "$header" in
+        "$required_header") expected_fields=6 ;;
+        "$allowed_header") expected_fields=7 ;;
+        *)
+            die "Sample manifest must have the exact paired local-CMH schema, with optional notes as the final column."
+            ;;
+    esac
+
+    awk -F '\t' -v expected_fields="$expected_fields" '
+        NR == 1 { next }
+        {
+            if (NF != expected_fields) {
+                printf "Sample manifest row %d has %d fields; expected %d.\n",
+                    NR, NF, expected_fields > "/dev/stderr"
+                failed = 1
+                exit
+            }
+            for (field = 1; field <= 6; field++) {
+                if ($field == "" || $field == "NA") {
+                    printf "Sample manifest row %d has an empty required value.\n",
+                        NR > "/dev/stderr"
+                    failed = 1
+                    exit
+                }
+            }
+            if ($1 !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) {
+                printf "sample_id must match [A-Za-z0-9][A-Za-z0-9._-]*; got: %s\n",
+                    $1 > "/dev/stderr"
+                failed = 1
+                exit
+            }
+            if ($6 !~ /^[A-Za-z0-9][A-Za-z0-9._-]*$/) {
+                printf "replicate must match [A-Za-z0-9][A-Za-z0-9._-]*; got: %s\n",
+                    $6 > "/dev/stderr"
+                failed = 1
+                exit
+            }
+            if ($4 != "forward" && $4 != "reverse" &&
+                $4 != "unstranded" && $4 != "unknown") {
+                printf "Sample manifest row %d has invalid strandedness: %s\n",
+                    NR, $4 > "/dev/stderr"
+                failed = 1
+                exit
+            }
+            if (seen[$1]++) {
+                printf "Sample manifest contains duplicate sample_id: %s\n",
+                    $1 > "/dev/stderr"
+                failed = 1
+                exit
+            }
+            rows++
+        }
+        END {
+            if (failed) exit 1
+            if (rows == 0) {
+                print "Sample manifest contains no sample rows." > "/dev/stderr"
+                exit 1
+            }
+        }
+    ' "$path" ||
+        die "Sample manifest validation failed: $path"
+}
 
 confirm_input_hashes() {
     local current_sample_hash
@@ -457,6 +532,7 @@ require_arguments
 
 validate_safe_id "--cohort-id" "$cohort_id"
 validate_nonempty_file "Sample manifest" "$sample_manifest"
+validate_paired_sample_manifest "$sample_manifest"
 validate_nonempty_file "Partition manifest" "$partition_manifest"
 validate_nonempty_file "Annotation GTF" "$annotation_gtf"
 validate_nonempty_file "Step 08 R script" "$r_script"
