@@ -46,15 +46,23 @@ fixture expectations, not scientific review or biological interpretation.
 The generated `run-in-slurm.sh` is a submit-or-batch template, not a scheduler
 inside NORAD. With no `SLURM_JOB_ID`, it validates all required explicit
 `NORAD_*` settings and calls `sbatch` for exactly one node/task/allocation; it
-does not run the doctor or workflow. In the batch allocation it sources the
-explicit module initializer, validates and loads each exact declared module,
-runs request compatibility and doctor checks, and then delegates the entire
-single-host local pilot. `NORAD_EXECUTE=0` plans; `1` adds the public
-`--execute` gate. The wrapper does not claim login-node computation, per-owner
-Slurm jobs, multi-node scheduling, scheduler success as workflow completion,
-or site portability before site validation. Its admitted CPU allocation is
-passed as a capacity assertion; the request's resource block is the sole
-authority for workflow cores, sample concurrency, and per-step threads.
+does not run the doctor or workflow. `NORAD_SLURM_MEMORY=site-default` emits no
+`--mem`; a positive explicit Slurm size is emitted exactly once.
+`NORAD_MODULE_MODE` is closed to `exact` or `none`: exact mode requires the
+initializer and module roster, while none mode requires both to be explicitly
+empty and never sources the module system.
+
+In the batch allocation the wrapper creates a private mode-`0700` directory
+below the required real writable `NORAD_SCRATCH_PARENT`, exports it as
+`TMPDIR`, records the effective path and `df -PT` filesystem/capacity
+output, and removes that private directory on exit. It then runs request
+compatibility and doctor checks before delegating the entire single-host local
+pilot. `NORAD_EXECUTE=0` plans; `1` adds the public `--execute` gate. The
+wrapper does not claim login-node computation, per-owner Slurm jobs, multi-node
+scheduling, scheduler success as workflow completion, or site portability
+before site validation. Its admitted CPU allocation is a capacity assertion;
+the request's resource block remains the sole authority for workflow cores,
+sample concurrency, and per-step threads.
 
 ## Normalization and execution
 

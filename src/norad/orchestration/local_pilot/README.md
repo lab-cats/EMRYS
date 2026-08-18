@@ -36,19 +36,23 @@ version policy and performs no version probe; the doctor remains the readiness
 authority.
 
 `run-in-slurm.sh` has two explicit modes. Outside an allocation it only calls
-`sbatch` after account, partition, QoS, CPU, memory, time, log directory,
-module initializer, module roster, request, runtime, workspace, checkout, and
-Python are provided through its named `NORAD_*` variables. It prints the job ID
-and exact stdout/stderr tail paths. Inside an allocation it requires
-`SLURM_JOB_ID`, sources the explicit module initializer, loads the exact
-colon-delimited module roster, validates the request, runs the doctor, and then
-plans or executes the whole single-host local pilot. The requested
-`NORAD_SLURM_CPUS` value is an allocation assertion. The request's closed
-`resources` block declares total workflow capacity, concurrent sample tasks,
-and the thread count for each thread-capable owner.
-It never runs analysis or
-large-input validation on a login node and does not claim per-owner Slurm
-scheduling or multi-node execution.
+`sbatch` after its named `NORAD_*` scheduler, input, runtime, module, and
+scratch settings are provided. `NORAD_SLURM_MEMORY=site-default` omits
+`--mem`; a positive explicit Slurm size is passed exactly once.
+`NORAD_MODULE_MODE=exact` requires and loads the declared initializer and
+colon-delimited roster, while `none` requires both module values to be
+explicitly empty and loads nothing. It prints the job ID and exact
+stdout/stderr tail paths.
+
+Inside an allocation the wrapper creates one mode-`0700` job directory below
+the declared `NORAD_SCRATCH_PARENT`, exports it as `TMPDIR`, logs its
+canonical path plus `df -PT` filesystem/capacity evidence, and removes it on
+exit. It then validates the request, runs the doctor, and plans or executes the
+whole single-host local pilot. `NORAD_SLURM_CPUS` is an allocation assertion;
+the request's closed `resources` block remains the authority for workflow
+capacity, concurrent samples, and owner threads. The wrapper never runs
+analysis or large-input validation on a login node and does not claim
+per-owner Slurm scheduling or multi-node execution.
 
 `init synthetic-local-pilot` publishes a deterministic 100-kb reference, GTF,
 four paired 130-read libraries across two control/treatment strata, matched

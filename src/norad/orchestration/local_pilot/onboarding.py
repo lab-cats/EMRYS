@@ -278,32 +278,66 @@ die() {
     exit 2
 }
 
-require_value() {
+require_export_value() {
     local name="$1"
-    [[ -n "${!name:-}" ]] || die "$name must be explicitly set"
+    declare -p "$name" >/dev/null 2>&1 || \
+        die "$name must be explicitly set"
     [[ "${!name}" != *$'\n'* && "${!name}" != *','* ]] || \
         die "$name contains a newline or comma"
+}
+
+require_value() {
+    local name="$1"
+    require_export_value "$name"
+    [[ -n "${!name}" ]] || die "$name must be nonempty"
+}
+
+validate_module_settings() {
+    case "$NORAD_MODULE_MODE" in
+        exact)
+            require_value NORAD_MODULE_INIT
+            require_value NORAD_MODULES
+            ;;
+        none)
+            [[ -z "$NORAD_MODULE_INIT" && -z "$NORAD_MODULES" ]] || \
+                die "NORAD_MODULE_INIT and NORAD_MODULES must be empty when NORAD_MODULE_MODE=none"
+            ;;
+        *)
+            die "NORAD_MODULE_MODE must be exact or none"
+            ;;
+    esac
 }
 
 if [[ -z "${SLURM_JOB_ID:-}" ]]; then
     for name in NORAD_SLURM_ACCOUNT NORAD_SLURM_PARTITION NORAD_SLURM_QOS \
         NORAD_SLURM_CPUS NORAD_SLURM_MEMORY NORAD_SLURM_TIME NORAD_LOG_DIR \
         NORAD_SOURCE_CHECKOUT NORAD_PYTHON NORAD_REQUEST NORAD_WORKSPACE \
-        NORAD_RUNTIME_PROFILE NORAD_MODULE_INIT NORAD_MODULES NORAD_EXECUTE; do
+        NORAD_RUNTIME_PROFILE NORAD_MODULE_MODE NORAD_SCRATCH_PARENT \
+        NORAD_EXECUTE; do
         require_value "$name"
     done
+    for name in NORAD_MODULE_INIT NORAD_MODULES; do
+        require_export_value "$name"
+    done
+    validate_module_settings
     [[ "$NORAD_SLURM_CPUS" =~ ^[1-9][0-9]*$ ]] || die "NORAD_SLURM_CPUS must be a positive integer"
     [[ "$NORAD_EXECUTE" == 0 || "$NORAD_EXECUTE" == 1 ]] || die "NORAD_EXECUTE must be 0 or 1"
+    slurm_memory_arguments=()
+    if [[ "$NORAD_SLURM_MEMORY" != site-default ]]; then
+        [[ "$NORAD_SLURM_MEMORY" =~ ^[1-9][0-9]*[KMGTP]?$ ]] || \
+            die "NORAD_SLURM_MEMORY must be site-default or a positive Slurm size"
+        slurm_memory_arguments=(--mem="$NORAD_SLURM_MEMORY")
+    fi
     [[ -d "$NORAD_LOG_DIR" && ! -L "$NORAD_LOG_DIR" ]] || \
         die "NORAD_LOG_DIR must be an existing real directory"
     command -v sbatch >/dev/null 2>&1 || die "sbatch is unavailable on this host"
-    export_spec="NORAD_SLURM_CPUS=$NORAD_SLURM_CPUS,NORAD_SOURCE_CHECKOUT=$NORAD_SOURCE_CHECKOUT,NORAD_PYTHON=$NORAD_PYTHON,NORAD_REQUEST=$NORAD_REQUEST,NORAD_WORKSPACE=$NORAD_WORKSPACE,NORAD_RUNTIME_PROFILE=$NORAD_RUNTIME_PROFILE,NORAD_MODULE_INIT=$NORAD_MODULE_INIT,NORAD_MODULES=$NORAD_MODULES,NORAD_EXECUTE=$NORAD_EXECUTE"
+    export_spec="NORAD_SLURM_CPUS=$NORAD_SLURM_CPUS,NORAD_SOURCE_CHECKOUT=$NORAD_SOURCE_CHECKOUT,NORAD_PYTHON=$NORAD_PYTHON,NORAD_REQUEST=$NORAD_REQUEST,NORAD_WORKSPACE=$NORAD_WORKSPACE,NORAD_RUNTIME_PROFILE=$NORAD_RUNTIME_PROFILE,NORAD_MODULE_MODE=$NORAD_MODULE_MODE,NORAD_MODULE_INIT=$NORAD_MODULE_INIT,NORAD_MODULES=$NORAD_MODULES,NORAD_SCRATCH_PARENT=$NORAD_SCRATCH_PARENT,NORAD_EXECUTE=$NORAD_EXECUTE"
     job_id="$(sbatch --parsable \
         --account="$NORAD_SLURM_ACCOUNT" \
         --partition="$NORAD_SLURM_PARTITION" \
         --qos="$NORAD_SLURM_QOS" \
         --nodes=1 --ntasks=1 --cpus-per-task="$NORAD_SLURM_CPUS" \
-        --mem="$NORAD_SLURM_MEMORY" --time="$NORAD_SLURM_TIME" \
+        "${slurm_memory_arguments[@]}" --time="$NORAD_SLURM_TIME" \
         --job-name=norad-local-pilot \
         --output="$NORAD_LOG_DIR/norad-local-pilot-%j.out" \
         --error="$NORAD_LOG_DIR/norad-local-pilot-%j.err" \
@@ -323,26 +357,48 @@ fi
 
 for name in NORAD_SLURM_CPUS \
     NORAD_SOURCE_CHECKOUT NORAD_PYTHON NORAD_REQUEST NORAD_WORKSPACE \
-    NORAD_RUNTIME_PROFILE NORAD_MODULE_INIT NORAD_MODULES NORAD_EXECUTE; do
+    NORAD_RUNTIME_PROFILE NORAD_MODULE_MODE NORAD_SCRATCH_PARENT \
+    NORAD_EXECUTE; do
     require_value "$name"
+done
+for name in NORAD_MODULE_INIT NORAD_MODULES; do
+    require_export_value "$name"
 done
 [[ "$NORAD_SLURM_CPUS" =~ ^[1-9][0-9]*$ ]] || die "NORAD_SLURM_CPUS must be a positive integer"
 [[ "$NORAD_EXECUTE" == 0 || "$NORAD_EXECUTE" == 1 ]] || die "NORAD_EXECUTE must be 0 or 1"
-[[ -f "$NORAD_MODULE_INIT" && ! -L "$NORAD_MODULE_INIT" ]] || \
-    die "NORAD_MODULE_INIT must be an explicit real file"
-# shellcheck disable=SC1090
-source "$NORAD_MODULE_INIT"
-command -v module >/dev/null 2>&1 || die "module command is unavailable after NORAD_MODULE_INIT"
-IFS=: read -r -a requested_modules <<< "$NORAD_MODULES"
-(( ${#requested_modules[@]} > 0 )) || die "NORAD_MODULES is empty"
-for module_name in "${requested_modules[@]}"; do
-    [[ "$module_name" =~ ^[A-Za-z0-9][A-Za-z0-9._+/-]*$ ]] || \
-        die "unsafe module identifier: $module_name"
-    module load "$module_name"
-done
+validate_module_settings
+if [[ "$NORAD_MODULE_MODE" == exact ]]; then
+    [[ -f "$NORAD_MODULE_INIT" && ! -L "$NORAD_MODULE_INIT" ]] || \
+        die "NORAD_MODULE_INIT must be an explicit real file"
+    # shellcheck disable=SC1090
+    source "$NORAD_MODULE_INIT"
+    command -v module >/dev/null 2>&1 || die "module command is unavailable after NORAD_MODULE_INIT"
+    IFS=: read -r -a requested_modules <<< "$NORAD_MODULES"
+    (( ${#requested_modules[@]} > 0 )) || die "NORAD_MODULES is empty"
+    for module_name in "${requested_modules[@]}"; do
+        [[ "$module_name" =~ ^[A-Za-z0-9][A-Za-z0-9._+/-]*$ ]] || \
+            die "unsafe module identifier: $module_name"
+        module load "$module_name"
+    done
+fi
 [[ -d "$NORAD_SOURCE_CHECKOUT" && ! -L "$NORAD_SOURCE_CHECKOUT" ]] || \
     die "NORAD_SOURCE_CHECKOUT must be an existing real directory"
 [[ -x "$NORAD_PYTHON" ]] || die "NORAD_PYTHON must be an explicit executable"
+[[ -d "$NORAD_SCRATCH_PARENT" && ! -L "$NORAD_SCRATCH_PARENT" && \
+    -w "$NORAD_SCRATCH_PARENT" && -x "$NORAD_SCRATCH_PARENT" ]] || \
+    die "NORAD_SCRATCH_PARENT must be an existing real writable directory"
+command -v mktemp >/dev/null 2>&1 || die "mktemp is unavailable in the allocation"
+command -v df >/dev/null 2>&1 || die "df is unavailable in the allocation"
+scratch_parent="$(cd -P "$NORAD_SCRATCH_PARENT" && pwd)"
+job_tmpdir="$(mktemp -d "$scratch_parent/norad-${SLURM_JOB_ID}.XXXXXX")" || \
+    die "unable to create private compute scratch directory"
+trap 'rm -rf --one-file-system -- "$job_tmpdir"' EXIT
+chmod 700 "$job_tmpdir"
+export TMPDIR="$job_tmpdir"
+printf 'NORAD_SCRATCH_PARENT=%s\n' "$scratch_parent"
+printf 'TMPDIR=%s\n' "$TMPDIR"
+printf 'TMPDIR filesystem and capacity:\n'
+df -PT "$TMPDIR"
 cd "$NORAD_SOURCE_CHECKOUT"
 "$NORAD_PYTHON" -X pycache_prefix=/dev/null -I -m norad validate \
     local-pilot-request --request "$NORAD_REQUEST"

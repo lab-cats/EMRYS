@@ -436,6 +436,8 @@ def _wrapper_environment(
 ) -> dict[str, str]:
     log_dir = tmp_path / "logs"
     log_dir.mkdir(exist_ok=True)
+    scratch_parent = tmp_path / "scratch"
+    scratch_parent.mkdir(exist_ok=True)
     return {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
         "NORAD_SLURM_ACCOUNT": "viking-users",
@@ -450,13 +452,23 @@ def _wrapper_environment(
         "NORAD_REQUEST": str(tmp_path / "request.yaml"),
         "NORAD_WORKSPACE": str(tmp_path / "workspace"),
         "NORAD_RUNTIME_PROFILE": str(tmp_path / "runtime.tsv"),
+        "NORAD_MODULE_MODE": "exact",
         "NORAD_MODULE_INIT": str(module_init),
         "NORAD_MODULES": "java/17.0.10:star/2.7.11b:samtools/1.19.2",
+        "NORAD_SCRATCH_PARENT": str(scratch_parent),
         "NORAD_EXECUTE": "1",
     }
 
 
-def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("memory", "expected_memory_argument"),
+    (("8G", "--mem=8G"), ("site-default", None)),
+)
+def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
+    tmp_path: Path,
+    memory: str,
+    expected_memory_argument: str | None,
+) -> None:
     members = onboarding.starter_members(root=REPO_ROOT)
     wrapper = tmp_path / "run-in-slurm.sh"
     wrapper.write_bytes(members["run-in-slurm.sh"][0])
@@ -474,6 +486,7 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(tmp_path: Path) ->
     module_init.write_text('touch "$MODULE_INIT_RAN"\n', encoding="utf-8")
     (tmp_path / "checkout").mkdir()
     environment = _wrapper_environment(tmp_path, fake_python, module_init)
+    environment["NORAD_SLURM_MEMORY"] = memory
     environment["PATH"] = f"{bin_dir}:{environment['PATH']}"
     environment["SBATCH_CAPTURE"] = str(capture)
     environment["PYTHON_RAN"] = str(tmp_path / "python-ran")
@@ -501,9 +514,17 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(tmp_path: Path) ->
     assert "--qos=normal" in arguments
     assert "--nodes=1" in arguments
     assert "--ntasks=1" in arguments
+    memory_arguments = [
+        argument for argument in arguments if argument.startswith("--mem=")
+    ]
+    assert memory_arguments == (
+        [] if expected_memory_argument is None else [expected_memory_argument]
+    )
     assert any(
         argument.startswith("--export=")
         and "NORAD_SLURM_CPUS=4" in argument
+        and "NORAD_MODULE_MODE=exact" in argument
+        and f"NORAD_SCRATCH_PARENT={tmp_path / 'scratch'}" in argument
         and "NORAD_TOOL_THREADS" not in argument
         and "NORAD_SAMPLE_CONCURRENCY" not in argument
         for argument in arguments
@@ -539,8 +560,56 @@ def test_slurm_wrapper_rejects_unsafe_export_values(
     assert "newline or comma" in result.stderr
 
 
-def test_slurm_wrapper_batch_mode_loads_exact_modules_then_doctors_and_runs(
+@pytest.mark.parametrize(
+    ("name", "value"),
+    (
+        ("NORAD_MODULE_MODE", None),
+        ("NORAD_MODULE_MODE", "excat"),
+        ("NORAD_SLURM_MEMORY", "site-defualt"),
+    ),
+)
+def test_slurm_wrapper_rejects_missing_or_invalid_portability_modes(
     tmp_path: Path,
+    name: str,
+    value: str | None,
+) -> None:
+    wrapper = tmp_path / "run-in-slurm.sh"
+    wrapper.write_bytes(
+        onboarding.starter_members(root=REPO_ROOT)["run-in-slurm.sh"][0]
+    )
+    wrapper.chmod(0o755)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    submitted = tmp_path / "submitted"
+    _executable(bin_dir / "sbatch", '#!/bin/sh\ntouch "$SUBMITTED"\n')
+    fake_python = _executable(tmp_path / "python")
+    module_init = tmp_path / "modules.sh"
+    module_init.write_text("module() { :; }\n", encoding="utf-8")
+    (tmp_path / "checkout").mkdir()
+    environment = _wrapper_environment(tmp_path, fake_python, module_init)
+    environment["PATH"] = f"{bin_dir}:{environment['PATH']}"
+    environment["SUBMITTED"] = str(submitted)
+    if value is None:
+        environment.pop(name)
+    else:
+        environment[name] = value
+
+    result = subprocess.run(
+        [str(wrapper)],
+        text=True,
+        capture_output=True,
+        check=False,
+        env=environment,
+    )
+
+    assert result.returncode == 2
+    assert not submitted.exists()
+
+
+@pytest.mark.parametrize("module_mode", ("exact", "none"))
+def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
+    tmp_path: Path,
+    module_mode: str,
 ) -> None:
     wrapper = tmp_path / "run-in-slurm.sh"
     wrapper.write_bytes(
@@ -551,6 +620,7 @@ def test_slurm_wrapper_batch_mode_loads_exact_modules_then_doctors_and_runs(
     python_capture = tmp_path / "python.log"
     module_init = tmp_path / "modules.sh"
     module_init.write_text(
+        'printf \'source\\n\' >> "$MODULE_CAPTURE"\n'
         'module() { printf \'%s\\n\' "$*" >> "$MODULE_CAPTURE"; }\n',
         encoding="utf-8",
     )
@@ -567,6 +637,14 @@ def test_slurm_wrapper_batch_mode_loads_exact_modules_then_doctors_and_runs(
             "PYTHON_CAPTURE": str(python_capture),
         }
     )
+    if module_mode == "none":
+        environment.update(
+            {
+                "NORAD_MODULE_MODE": "none",
+                "NORAD_MODULE_INIT": "",
+                "NORAD_MODULES": "",
+            }
+        )
 
     result = subprocess.run(
         [str(wrapper)],
@@ -577,11 +655,26 @@ def test_slurm_wrapper_batch_mode_loads_exact_modules_then_doctors_and_runs(
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert module_capture.read_text(encoding="utf-8").splitlines() == [
-        "load java/17.0.10",
-        "load star/2.7.11b",
-        "load samtools/1.19.2",
-    ]
+    observed_modules = (
+        module_capture.read_text(encoding="utf-8").splitlines()
+        if module_capture.exists()
+        else []
+    )
+    expected_modules = (
+        [
+            "source",
+            "load java/17.0.10",
+            "load star/2.7.11b",
+            "load samtools/1.19.2",
+        ]
+        if module_mode == "exact"
+        else []
+    )
+    assert observed_modules == expected_modules
+    assert f"NORAD_SCRATCH_PARENT={tmp_path / 'scratch'}" in result.stdout
+    assert f"TMPDIR={tmp_path / 'scratch'}/norad-700123." in result.stdout
+    assert "TMPDIR filesystem and capacity:" in result.stdout
+    assert list((tmp_path / "scratch").iterdir()) == []
     invocations = python_capture.read_text(encoding="utf-8").splitlines()
     assert len(invocations) == 3
     assert "-m norad validate local-pilot-request" in invocations[0]
