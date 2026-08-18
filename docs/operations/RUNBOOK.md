@@ -53,178 +53,39 @@ Step `05` owner requires its documented project-storage temporary directory.
 | Paired CMH ranking | [`rank_cohort_candidates_with_paired_CMH`](../../src/norad/analyses/paired_cmh_candidate_ranking/README.md) |
 | Runtime, reference, storage, and QC evidence | [`evidence`](../../src/norad/evidence/README.md); runtime `inspect runtime-availability`; storage `inspect storage-inventory` and `inspect storage-qualification`; reference `reconcile reference-provenance` |
 | Artifact schemas | [`artifact contracts`](../../src/norad/contracts/artifacts/README.md); installed route `python -I -m norad validate artifact-contracts` |
-| Artifact index, run summary, and reports | [`reporting`](../../src/norad/reporting/README.md); standalone wrappers stop at native outputs/validation, `norad run` builds all reporting products, and `norad build report` only rebuilds an existing canonical summary |
+| Artifact index, run summary, and reports | [`reporting`](../../src/norad/reporting/README.md); `artifact-index` and `run-summary` are workflow-owned transaction commands, while `build report` is the operator-facing standalone rebuild |
 | Synthetic demonstration | [`demo`](../demo/README.md) |
 
 Each owner README supplies supported help, dry-run, execute, scheduler, focused
 test, diagnostics, and recovery routes when those surfaces exist. Its adjacent
 `CONTRACT.md` owns exact inputs, outputs, checks, and evidence limits.
 
-## Local-pilot readiness
+## Local-pilot lifecycle routes
 
-For the first-time researcher journey from clone and matched starters through
-outputs and safe resume, begin with the root [`README`](../../README.md).
-This section remains the compact operator command reference.
+The complete first-run journey belongs to the
+[Quickstart](../../quickstart.md). This runbook retains recurring operator
+routes without duplicating its initialization, admission, and execution
+walkthrough.
 
-Create the matched request/manifests/runtime/wrapper set in operator-managed
-storage outside the checkout. Initialization is dry-run-first and the selected
-output directory must be absent:
+| Need | Canonical route |
+| --- | --- |
+| Create matched starters and choose synthetic or real inputs | [Quickstart: initialize and ingest](../../quickstart.md#3-initialize-and-ingest-synthetic-or-real-inputs) |
+| Prepare the explicit runtime profile | [Quickstart: runtime profile](../../quickstart.md#4-prepare-one-explicit-runtime-profile) and [`configs/README.md`](../../configs/README.md) |
+| Qualify storage and obtain runtime `READY` | [Quickstart: compatibility](../../quickstart.md#5-validate-data-compatibility-without-scientific-tools) and [runtime readiness](../../quickstart.md#6-require-full-runtime-ready) |
+| Review and execute the fixed workflow | [Quickstart: plan and execution](../../quickstart.md#7-review-the-strict-no-write-plan) |
+| Inspect run state or plan a supported resume | Commands below and the [local-pilot owner](../../src/norad/orchestration/local_pilot/README.md) |
+| Diagnose blocked, partial, locked, or uncertain state | [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) |
 
-```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad init local-pilot \
-  --output-dir /absolute/absent/input-directory
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad init local-pilot \
-  --output-dir /absolute/absent/input-directory \
-  --execute
-```
+The lifecycle-generated `run-in-slurm.sh` is the supported whole-run
+single-allocation launcher. It runs NORAD's one-host local workflow inside one
+approved compute-node allocation; it is not a distributed executor.
+Owner-local `.slurm` files are separate supported scheduler entry points for
+running one stage. They publish only that owner's native outputs and
+validation evidence and never create or adopt an orchestrated run root.
 
-The execute form publishes `request.yaml`, `samples.tsv`, `partitions.tsv`,
-`runtime.tsv`, executable `run-in-slurm.sh`, then
-`starter-set.manifest.tsv` last. [`configs/README.md`](../../configs/README.md)
-owns every field and preparation rule. For a real-tool smoke fixture, use the
-equivalent dry-run/execute pair with `init synthetic-local-pilot`; it publishes
-its deterministic request/data and `fixture.manifest.json` last.
+### Recurring inspection and resume
 
-Before runtime probes, validate the selected input set without writing:
-
-```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad validate \
-  local-pilot-request --request /absolute/path/to/request.yaml
-```
-
-This streams file hashes, validates paired strata, reconciles FASTA/GTF
-contigs/bounds, and checks partition-selector bounds. It runs no scientific
-tool. Use it on the intended compute host, not a login node for a large input
-set.
-
-Before profile preparation, resolve runtime paths inside the intended compute
-allocation. Record `hostname`, `command -v` for every tool, effective Java/R
-versions, Picard jar, and the canonical `renv` library. Login-node paths and
-module names are not compute evidence; provision missing tools outside NORAD.
-
-Prepare a fixed runtime profile to a new absent file with
-`norad prepare local-pilot-runtime`. It requires explicit canonical Java,
-Picard-jar, Rscript, and `renv`-library paths and accepts explicit `--bash`,
-`--star`, `--samtools`, `--gatk`, `--bcftools`, `--infer-experiment`, and
-`--gunzip` paths. Omitted ordinary tools are accepted only when `PATH` resolves
-one distinct executable. It performs no probe, file write, install, or repair.
-
-Run `norad inspect storage-qualification` dry-run then execute with
-`--phase compute` inside the allocation for the exact workspace/reference
-pair. After that allocation ends, run the same route with `--phase finalize`.
-Doctor admits only the matching final receipt; it does not qualify storage.
-
-After locked Python synchronization, separately authorized runtime setup,
-profile preparation, and final storage qualification, inspect one request and
-workspace plan:
-
-```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad doctor local-pilot \
-  --request /absolute/path/to/request.yaml \
-  --workspace /absolute/path/to/workspace \
-  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
-```
-
-The doctor is always read-only. It does not run `uv`, restore `renv`, load
-modules, create the workspace, or execute the workflow. Exit `0` means its
-exact local readiness roster passed; exit `1` prints readiness blockers and
-remediation; exit `2` means the request/profile/path boundary is malformed or
-unsafe. A `READY` result establishes only those bounded probes in that exact
-context; it does not establish workflow completion, sufficient capacity,
-scientific review, or biological evidence.
-
-## Local-pilot execution
-
-After the readiness command returns `READY`, plan the complete fixed profile.
-The default is a strict no-write dry-run that prints the deterministic run ID,
-run root, immutable attempt identity, Snakemake argv, and every public owner
-producer/validator command:
-
-```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad run \
-  --request /absolute/path/to/request.yaml \
-  --workspace /absolute/path/to/workspace \
-  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
-```
-
-Review that output, then execute the identical admitted request by adding
-`--execute`:
-
-Before execution, confirm that the declared reference FASTA directory is the
-intended writable sidecar authority. Step `00c` deliberately creates or reuses
-`<reference-fasta>.fai` and `<reference-stem>.dict` beside that external FASTA;
-those two files are the only owner outputs outside the run root.
-Even complete-pair reuse enters Step `00c` and transiently creates its adjacent
-owner lock; generation may also create adjacent run-token staging paths.
-Controlled success removes owned transient state. Retained lock/staging paths
-are blocking recovery evidence, and a partial pre-existing pair is rejected
-before producer entry.
-
-```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad run \
-  --request /absolute/path/to/request.yaml \
-  --workspace /absolute/path/to/workspace \
-  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
-  --execute
-```
-
-On a workstation or interactive compute allocation, retain the continuous
-control stream and its true pipeline exit:
-
-```bash
-set -o pipefail
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad run \
-  --request /absolute/path/to/request.yaml \
-  --workspace /absolute/path/to/workspace \
-  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
-  --execute 2>&1 | tee /absolute/path/to/private/norad-control.log
-```
-
-For scheduled execution, use the executable `run-in-slurm.sh` generated by
-`norad init local-pilot`; do not maintain an untested copy of its job body. Bind
-its required `NORAD_SLURM_ACCOUNT`, `NORAD_SLURM_PARTITION`,
-`NORAD_SLURM_QOS`, a positive `NORAD_SLURM_CPUS`, `NORAD_SLURM_MEMORY`,
-`NORAD_SLURM_TIME`, existing `NORAD_LOG_DIR`, checkout/Python/request/workspace/
-runtime-profile paths, real module-init file, and colon-separated module list.
-Submit first with `NORAD_EXECUTE=0`. Inside that allocation the generated body
-loads modules, validates the request, runs doctor, and prints the no-write plan
-in that order. Confirm the job, streams, and plan, then resubmit the same values
-with `NORAD_EXECUTE=1`.
-
-This is one local process inside an allocation, not distributed NORAD or public
-SLURM orchestration. Create the declared log directory before invoking the
-wrapper; SLURM opens its streams before the job body runs. The wrapper prints
-the exact job ID and
-`$NORAD_LOG_DIR/norad-local-pilot-$job_id.{out,err}` paths.
-Shared scheduler streams may be suitable for head-node tailing without making
-the NORAD workspace safe. The workspace and Step `00c` reference-sidecar
-transaction root still require durable local POSIX `flock` and same-filesystem
-hard-link semantics. If only unvalidated NFS/distributed storage is available
-for those mutation roots, stop; job allocation is not filesystem validation.
-
-From the login node, wait until both `%j` streams exist, then tail them:
-
-```bash
-job_id=123456
-NORAD_LOG_DIR=/absolute/path/to/norad-slurm-logs
-while [[ ! -e "$NORAD_LOG_DIR/norad-local-pilot-$job_id.out" ||
-         ! -e "$NORAD_LOG_DIR/norad-local-pilot-$job_id.err" ]]; do
-  squeue -j "$job_id"
-  sleep 2
-done
-tail -n +1 -F \
-  "$NORAD_LOG_DIR/norad-local-pilot-$job_id.out" \
-  "$NORAD_LOG_DIR/norad-local-pilot-$job_id.err"
-```
-
-Control-C stops `tail` but does not cancel the job. Confirm state independently
-with `squeue`, `sacct`, and NORAD inspection. Run NORAD inspection only where
-the exact workspace path is available under the supported filesystem contract;
-shared scheduler logs alone do not expose a node-local workspace, and the
-generated wrapper performs no result transfer. Owner task logs publish at their
-terminal task boundary; the retained top-level stream is the live-tail surface.
-
-Inspect state from NORAD evidence rather than `.snakemake` metadata:
+Inspect state from NORAD's admitted records rather than `.snakemake` metadata:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m norad inspect \
@@ -232,28 +93,22 @@ Inspect state from NORAD evidence rather than `.snakemake` metadata:
   --run-root /absolute/path/to/workspace/runs/run-DIGEST
 ```
 
-Only a failed or interrupted between-task boundary is automatically resumable.
-Plan resume first, then repeat with `--execute` after reviewing the commands:
+Inspection is read-only. Rehashing bound evidence can be expensive, so run it
+at meaningful boundaries rather than in a tight polling loop.
+
+Resume is supported only when inspection reports both `State:
+resume_available` and `Resume available: yes`. Review the no-write plan first:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m norad resume \
   --run-root /absolute/path/to/workspace/runs/run-DIGEST \
   --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
-
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad resume \
-  --run-root /absolute/path/to/workspace/runs/run-DIGEST \
-  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
-  --execute
 ```
 
-A scope that crossed producer entry without verified completion is blocked,
-not automatically retried or cleaned. A completed run refuses resume and a
-second initial run refuses the existing run root. The public commands expose no
-force, unlock, metadata-cleanup, alternate-profile, or raw engine options.
-Current execution is source-checkout-bound and local. The B6 fresh-clone proof
-and any later real-tool or batch demonstrations have different evidence
-ceilings. Consult [`HANDOFF.md`](HANDOFF.md) for the exact current commit,
-commands, artifacts, and evidence; do not infer them from this runbook.
+Add `--execute` only after reviewing that exact plan. A scope that crossed
+producer entry without verified completion remains blocked rather than being
+retried or cleaned. A complete run refuses resume, and the public lifecycle
+exposes no force, unlock, metadata-cleanup, or raw-engine bypass.
 
 ## Resource benchmarking
 
@@ -400,26 +255,18 @@ editing sites, or biological interpretation. Use focused checks per approved
 slice and run the assembled gate once after the final executable state is
 settled; rerun it only for a concrete failure-driven reason.
 
-## Explicit dependency setup
+## Dependency maintenance
 
-Restoration is an explicit operator action and never occurs from workflow,
-validation, rendering, or generated scheduler code. If `uv` is absent, use the
-[official user-level installer](https://docs.astral.sh/uv/getting-started/installation/)
-outside NORAD, then run:
+The [Quickstart setup](../../quickstart.md#1-clone-and-install-the-locked-python-workflow)
+owns first installation, and its
+[runtime section](../../quickstart.md#2-provide-the-scientific-runtime) owns
+initial scientific dependency preparation. Restoration or version changes are
+explicit operator actions and never occur from workflow, validation,
+rendering, or generated scheduler code.
 
-```bash
-uv --version
-uv sync --locked --group workflow
-RENV_LIBRARY=/absolute/path/to/canonical/renv-library \
-  RSCRIPT_BIN=/absolute/path/to/Rscript make r-restore
-```
-
-`pyproject.toml` owns direct dependencies and `uv.lock` owns the exact graph.
-A stale lock is an error, not permission to relock. The workflow sync installs
-the project and locked workflow environment into `.venv`; developer setup may
-select its additional groups separately.
-
-Guarded local R checks are:
+`pyproject.toml` owns direct Python dependencies and `uv.lock` owns the exact
+graph. A stale lock is an error, not permission to relock. Guarded local R
+checks for an already selected canonical library are:
 
 ```bash
 RENV_LIBRARY=/absolute/path/to/canonical/renv-library \
@@ -428,32 +275,61 @@ RENV_LIBRARY=/absolute/path/to/canonical/renv-library \
   RSCRIPT_BIN=/absolute/path/to/Rscript make local-real-r-test
 ```
 
-They opt into the repository library with `NORAD_USE_RENV=1`, disable automatic
-snapshots and the `renv` sandbox, and establish local configured-environment
-evidence only.
-
-`r-check` treats the reviewed `renv.lock` as the reproducibility authority; it
-does not require every package to match the newest version advertised by an
-upstream repository. Run `BiocManager::valid(checkBuilt = FALSE)` separately
-from a guarded project R session when an explicitly authorized dependency
-maintenance review needs current online freshness evidence. Never restore,
-snapshot, or update the lock merely to turn a freshness result green.
+They establish local configured-environment evidence only. Run
+`BiocManager::valid(checkBuilt = FALSE)` separately from a guarded project R
+session only when an explicitly approved dependency-maintenance review needs
+current online freshness evidence. Never restore, snapshot, update, or relock
+merely to turn a freshness result green.
 
 ## Manual job inspection
 
+For a lifecycle-generated one-allocation job, use the exact job ID and log
+directory printed at submission. Wait for both `%j` streams, but stop waiting
+if accounting shows a terminal allocation:
+
 ```bash
-ls -ltr logs | tail
-squeue -u "$USER"
-squeue -j <JOBID>
-sacct -j <JOBID> --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
-tail -120 logs/<log-prefix>-<JOBID>.out
-tail -120 logs/<log-prefix>-<JOBID>.err
+job_id=replace-with-printed-job-id
+NORAD_LOG_DIR=/absolute/path/to/norad-slurm-logs
+stdout="$NORAD_LOG_DIR/norad-local-pilot-$job_id.out"
+stderr="$NORAD_LOG_DIR/norad-local-pilot-$job_id.err"
+
+while [[ ! -e "$stdout" || ! -e "$stderr" ]]; do
+  state="$(sacct -X -n -P -j "$job_id" --format=State 2>/dev/null |
+    awk -F'|' 'NF {print $1; exit}')"
+  case "$state" in
+    BOOT_FAIL|CANCELLED|COMPLETED|DEADLINE|FAILED|NODE_FAIL|OUT_OF_MEMORY|PREEMPTED|REVOKED|SPECIAL_EXIT|TIMEOUT)
+      printf 'Job %s became %s before both log streams appeared.\n' \
+        "$job_id" "$state" >&2
+      break
+      ;;
+  esac
+  squeue -j "$job_id"
+  sleep 2
+done
+
+if [[ -e "$stdout" && -e "$stderr" ]]; then
+  tail -n +1 -F "$stdout" "$stderr"
+else
+  sacct -X -j "$job_id" \
+    --format=JobID,JobName,State,ExitCode,Elapsed,NodeList
+  false
+fi
 ```
 
-While a job runs, inspect only its declared output root. Bind the checkout,
-command, inputs, job ID, accounting, stdout/stderr, outputs, validation record,
-and evidence ceiling to the same attempt. Empty stderr, `COMPLETED 0:0`, or
-visible output alone is not validation.
+Control-C stops `tail`; it does not cancel the job. Inspect final scheduler
+state separately:
+
+```bash
+squeue -j "$job_id"
+sacct -X -j "$job_id" \
+  --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
+```
+
+Owner-local stage scheduler entry points use their owner-documented stream
+paths rather than the whole-run naming above. In every case, bind checkout,
+command, inputs, job ID, accounting, streams, native outputs, validation
+record, and evidence ceiling to the same attempt. Empty stderr, `COMPLETED
+0:0`, or visible output alone is not validation.
 
 ## Cluster execution and promotion
 

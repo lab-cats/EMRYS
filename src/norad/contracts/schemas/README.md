@@ -6,6 +6,10 @@ validation interface.
 
 - [`artifacts/`](artifacts/) — artifact, run-summary, and report-receipt schema
   resources.
+- [`orchestration/`](orchestration/) — request, profile, execution, attempt,
+  task, and reporting-ledger resources.
 
-The owning [`artifacts` contract](../artifacts/README.md) defines selectors,
-registration, validation commands, compatibility, and direct tests.
+The owning [`artifacts`](../artifacts/README.md) and
+[`orchestration`](../orchestration/README.md) contracts define their selectors,
+registries, canonical validation APIs, compatibility, and direct tests. This
+directory publishes no output and exposes no independent validation interface.

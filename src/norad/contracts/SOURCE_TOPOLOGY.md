@@ -60,7 +60,9 @@ coherent semantic package, not a mixture of old and final owners.
 | Seam | Neutral owner | Current consumers and boundary |
 | --- | --- | --- |
 | Validation-report publication | `libraries/validation/` | Owner validators import the shared facade; errors, snapshots, rows, publication, and runtime lifecycle have separate modules. Parsing/check rosters, evidence rows, and CLI remain owner-local. |
-| BAM validation | `libraries/alignments/bam.py` | Step `02`, `04`, and `05` validators only. Stage-specific checks and evidence remain local. |
+| BAM validation | `libraries/alignments/bam.py` | Step `01`, `02`, `04`, `05`, and `06` validators. Stage-specific checks and evidence remain local. |
+| STAR output parsing | `libraries/alignments/star.py` | Step `00a` and `01` validators plus artifact indexing share structural parsing and declared STAR member names. Owner checks and reporting evidence remain local. |
+| Mechanical-orientation formats | `libraries/alignments/orientation.py` | Step `08`/`09` contracts, Step `06`–`09` validators, and artifact indexing share fixed labels, policy admission, and count parsing. Scientific interpretation and publication remain owner-local. |
 | Reference contig parsing | `libraries/references/contigs.py` | Reference provenance and Step `00c`/`05` validators. Agreement policy, reporting, and publication remain local. |
 | R input-contract mechanics | `libraries/input_contract.R` | Step `08` and `09` R programs share named-argument parsing, file/hash guards, and strict TSV loading. Argument rosters, defaults, table policy, and scientific algorithms remain owner-local. |
 | Executable-value resolution | `libraries/executable_resolution.sh` | Step `00c`, `05`, `06`, `07`, and `08` producers. Tool precedence, version policy, commands, and failures remain local. |
@@ -76,6 +78,11 @@ These are the complete approved neutral implementation seams. Similar names or
 two local helpers do not create sharing authority. Keep the first use local;
 extract only proven equivalent behavior into the narrowest neutral owner with
 independent API and consumer tests.
+
+`libraries/alignments/bed.py` currently serves only the Step `00b` validator and
+is not an approved cross-owner seam. Its present placement does not authorize a
+second consumer or generic BED API; any relocation or reuse requires a bounded
+consolidation decision.
 
 ## Dependency direction
 

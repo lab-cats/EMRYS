@@ -1,9 +1,11 @@
 # Local-pilot orchestration schemas v1
 
-These thirteen Draft 2020-12 resources define the closed B0 request,
-normalized execution identity, reference, analysis-policy, run-lock,
-workflow-attempt, attempt-receipt, task-start, task-attempt, verified-task,
-reporting-start, and verified-reporting records plus their common definitions.
-The current profile resource is version 2 under [`../v2/`](../v2/).
-The registry and public validation API live in
-[`../../../orchestration`](../../../orchestration/README.md).
+This directory contains shared definitions plus eleven registered Draft
+2020-12 v1 resources for normalized execution identity, reference and analysis
+policy, run locks, workflow attempts and receipts, task entry/attempt/verified
+records, and reporting entry/verified records.
+
+The registered request and workflow-profile resources are v2 siblings. The
+canonical registry, JSON bytes, and validation API live in
+[`contracts/orchestration`](../../../orchestration/README.md); this directory
+is packaged schema storage and produces no independent output.

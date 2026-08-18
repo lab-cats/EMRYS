@@ -18,6 +18,22 @@ tests, and evidence boundary. The two numbered operations participate in the
 canonical graph in [`STAGE_MAP.md`](../contracts/STAGE_MAP.md); the operational
 evidence tools are cross-cutting checks, not additional stages.
 
+## Operational role classification
+
+- **Pipeline evidence owners:** Steps `02b` and `03` are required graph
+  operations and remain owner-local producers, validators, and scheduler entry
+  points.
+- **Required readiness:** the local-pilot doctor consumes the direct admitted
+  runtime inspection result and the final two-phase storage-qualification
+  receipt. These protect execution authority without becoming workflow jobs.
+- **Optional operator diagnostics:** reference-provenance reconciliation,
+  standalone runtime-availability publication, storage inventory, and the
+  manual module/tool probe remain available for inspection. Their results do
+  not by themselves grant doctor readiness or workflow completion.
+
+One physical owner may expose both a required direct API and an optional
+operator route; those roles do not make their evidence states interchangeable.
+
 Steps `02b` and `03` keep their shell producers and schedulers as
 repository-path interfaces while exposing their private validators as
 `python -I -m norad validate canonical-bam-qc` and

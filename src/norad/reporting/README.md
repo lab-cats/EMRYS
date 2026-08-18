@@ -3,13 +3,19 @@
 Reporting consumes explicit validated inputs. It does not discover or rerun
 analysis, decide scientific validity, or promote evidence.
 
-## Public entry points
+## Supported command boundaries
 
-| Interface | Responsibility |
-| --- | --- |
-| `python -X pycache_prefix=/dev/null -I -m norad build artifact-index` | Reconcile one declared artifact root and inventory under an independent producer-checkout authority into a receipt-last artifact index. |
-| `python -X pycache_prefix=/dev/null -I -m norad build run-summary` | Project one admitted artifact-index receipt into the canonical run summary. |
-| `python -X pycache_prefix=/dev/null -I -m norad build report` | Render one canonical run summary under distinct code and artifact authorities into self-contained HTML, summary TSV, and a v3 receipt published last. |
+| Interface | Supported role | Responsibility |
+| --- | --- | --- |
+| `python -X pycache_prefix=/dev/null -I -m norad build report` | Operator-facing standalone rebuild | Render one canonical run summary under distinct code and artifact authorities into self-contained HTML, summary TSV, and a v3 receipt published last. |
+| `python -X pycache_prefix=/dev/null -I -m norad build artifact-index` | Workflow-owned transaction; advanced diagnosis/recovery | Reconcile one declared artifact root and inventory under an independent producer-checkout authority into a receipt-last artifact index. |
+| `python -X pycache_prefix=/dev/null -I -m norad build run-summary` | Workflow-owned transaction; advanced diagnosis/recovery | Project one admitted artifact-index receipt into the canonical run summary. |
+
+The normal researcher path is `norad run`, which invokes all three transactions
+in order. `build report` is also a supported direct operator route for an
+existing canonical summary. The two intermediate commands remain stable and
+documented for workflow execution and bounded diagnosis or recovery; they are
+not a general invitation to assemble or adopt reporting state manually.
 
 All three build routes require both `--source-checkout
 ABSOLUTE_CANONICAL_CHECKOUT` and `--artifact-source-root

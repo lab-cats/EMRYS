@@ -112,12 +112,6 @@ The exact validation evidence at the current commit is recorded in
 successful job, or report must not be promoted beyond the evidence it actually
 establishes.
 
-## Quickstart
-
-Follow [`quickstart.md`](quickstart.md) for the complete fresh-checkout path
-through runtime setup, data ingestion, storage/runtime admission, processing,
-inspection, resume, and the automatic report.
-
 ## Glossary
 
 | Term | Meaning in NORAD |
@@ -143,10 +137,10 @@ inspection, resume, and the automatic report.
 | --- | --- |
 | Every input and runtime-profile field | [`configs/README.md`](configs/README.md) |
 | Public local-pilot boundary | [`src/norad/orchestration/local_pilot/README.md`](src/norad/orchestration/local_pilot/README.md) |
-| Compact operator commands | [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md) |
+| Recurring operations, scheduler inspection, and recovery | [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md) |
 | Evidence-preserving recovery | [`docs/operations/TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) |
 | Optional external scientific-evaluation checklist | [`docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md`](docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md) |
-| Reporting transactions and direct report build | [`src/norad/reporting/README.md`](src/norad/reporting/README.md) |
+| Operator report build and workflow-owned reporting transactions | [`src/norad/reporting/README.md`](src/norad/reporting/README.md) |
 | Architecture and complete owner DAG | [`docs/architecture/README.md`](docs/architecture/README.md) |
 | Current validation evidence and remaining gaps | [`docs/operations/HANDOFF.md`](docs/operations/HANDOFF.md) |
 | Local test routes | [`tests/README.md`](tests/README.md) |

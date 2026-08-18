@@ -1,18 +1,18 @@
 # Documentation history
 
-This tree indexes frozen, dated evidence views. Historical records preserve
-what was observed, attempted, rejected, or concluded at a known point; they do
-not own current checkout state, roadmap order, executable commands, contracts,
-or evidence promotion.
+This tree is reserved for frozen, dated evidence views whose durable value is
+not already carried by current subject owners and Git history. Historical
+records never own current checkout state, roadmap order, executable commands,
+contracts, or evidence promotion.
 
-## Topics
+## Current index
 
-- [Testing](testing/) — dated validation runs, baselines, risks, and gate
-  provenance.
+No historical child record is currently indexed. Testing transcripts, obsolete
+matrices, superseded baselines, and completed gate narratives remain available
+through Git history rather than the live documentation tree.
 
-No demo snapshot is currently indexed. Create a `demos/` child only when a
-snapshot has repository-backed date/provenance and unique historical value;
-until then, it is not an evidence route.
+Create a topic child only when a dated record has repository-backed provenance,
+unique ongoing value, and no adequate current subject owner or Git record.
 
 ## Record rules
 

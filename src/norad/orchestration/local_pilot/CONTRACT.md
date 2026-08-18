@@ -246,6 +246,35 @@ turning entered work back into pending state. It ignores `.snakemake/`, performs
 no repair, and does not consider timestamps or output presence to be completion
 evidence.
 
+## Run-root output contract
+
+The run root is one durable, content-bound execution history. Preserve it as a
+unit; a copied result or report without its bound records is not adopted as a
+completed NORAD run.
+
+| Location | Durable contents |
+| --- | --- |
+| `contract/` | Normalized request, fixed profile, admitted runtime snapshot, reporting inputs, workflow configs, and task dispatches. |
+| `attempts/<workflow-attempt-id>/` | Attempt record, owner-task attempts and terminal logs, and the attempt receipt published last. |
+| `state/task-starts/` | Immutable producer-entry records. |
+| `state/verified/` | Hash-bound successful owner-task records. |
+| `state/reporting/` | Start and verified records for artifact index, run summary, and report publication. |
+| `results/` | Native scientific outputs, QC evidence, intermediates, and ranked-candidate products. |
+| `products/artifact-summary/<run-id>/records/` | Canonical records for every declared artifact, including explicit incomplete or unavailable state. |
+| `products/artifact-summary/<run-id>/<run-id>.artifacts.tsv` | Deterministic artifact index. |
+| `products/artifact-summary/<run-id>/<run-id>.artifact_receipt.tsv` | Artifact-index receipt, published last for that transaction. |
+| `products/artifact-summary/<run-id>/<run-id>.run_summary.json` | Canonical machine-readable run summary. |
+| `products/artifact-summary/<run-id>/<run-id>.run_summary.tsv` | Tabular run-status summary. |
+| `products/artifact-summary/<run-id>/<run-id>.qc_summary.tsv` | Consolidated QC projection. |
+| `products/artifact-summary/<run-id>/<run-id>.run_summary_receipt.tsv` | Run-summary receipt, published last. |
+| `products/report/<run-id>/` | Self-contained human report output, renderer summary TSV, and the report receipt published last. |
+| Beside the declared FASTA | Step `00c` `.fai` and `.dict`, the only owner outputs outside the run root. |
+
+Locks, released-lock evidence, partials, backups, task logs, and failed attempts
+are not disposable merely because a later output exists. Exact report-bundle
+members and their receipt semantics belong to the
+[`reporting` owner](../../reporting/README.md).
+
 The B6 proof extends the B5 adapter evidence to a clean fresh clone with the
 locked workflow environment. It exercises the top-level parser using explicit
 repository-only no-science collaborators and leaves the shipped command default

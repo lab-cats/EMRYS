@@ -218,4 +218,3 @@ roadmap and handoff.
 - A native receipt and wider verified-task binding for the staged no-clobber
   pair; legacy direct execution retains its predecessor-bearing fault policy.
 - Final separation of evidence execution, interpretation, and publication.
-- Compatibility wrappers and scheduler-asset ownership.

@@ -1,8 +1,16 @@
 # Orchestration contract tests
 
-These focused tests protect the closed schema registry, representative valid
-records, strict unknown-field rejection, canonical identity bytes and digest,
-fixed-profile cross references, paired-strata admission, workspace-independent
-reporting projection, terminal attempt semantics, and verified-task all-pass
-requirements. They do not prove normalization, workflow execution, resume, or
-the public lifecycle adapter.
+This directory directly protects the neutral
+[`contracts/orchestration`](../../../src/norad/contracts/orchestration/README.md)
+owner. It tests shared record and projection semantics, not lifecycle execution
+or recovery.
+
+- `test_orchestration_contracts.py` covers the closed schema registry,
+  canonical bytes and digests, cross-record invariants, paired-strata admission,
+  terminal attempt/task semantics, and workspace-independent projection.
+- `test_reporting_ledger_contracts.py` covers reporting start and verified
+  record identity and admission.
+
+Local-pilot execution, resume, inspection, and recovery remain protected under
+`tests/orchestration/local_pilot/`. These fixtures establish local contract
+behavior only.

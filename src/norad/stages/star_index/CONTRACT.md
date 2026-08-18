@@ -18,14 +18,15 @@ annotation, then allow that index to be checked without modifying the native
 reference or STAR outputs.
 
 The scheduler-independent producer consumes already materialized references.
-The legacy Novogene job also decompresses delivered FASTA and GTF into a shared
+The owner-local Novogene scheduler entry point also decompresses delivered
+FASTA and GTF into a shared
 working-reference directory before delegating. Whether that materialization
 belongs in this stage or a separate reference-preparation owner is unresolved.
 
 ## Execution dependencies
 
 The functional producer's hard data prerequisites are one materialized FASTA
-and GTF. The legacy scheduler wrapper additionally requires the delivered
+and GTF. The owner-local Novogene scheduler entry point additionally requires the delivered
 compressed FASTA and GTF. This stage does not consume BED12, FASTA sidecars,
 reads, or outputs from another computational stage.
 
@@ -58,8 +59,9 @@ behavior; they are not approved future interface defaults.
 
 ## Outputs
 
-The producer writes one STAR genome-index directory. The legacy wrapper also
-materializes uncompressed `genome.fa` and `genome.gtf`. Both producer admission
+The producer writes one STAR genome-index directory. The owner-local Novogene
+scheduler entry point also materializes uncompressed `genome.fa` and
+`genome.gtf`. Both producer admission
 and the validator require these 15 nonempty regular index members:
 
 ```text
@@ -102,7 +104,7 @@ scheduler-independent producer. It:
   lock, and staging residue as a blocker rather than risking foreign bytes.
 
 [`step_00a_build_novogene_star_index.slurm`](step_00a_build_novogene_star_index.slurm)
-is the legacy scheduler entrypoint. It:
+is the current owner-local scheduler entry point. It:
 
 - executes implicitly when invoked;
 - requires literal `SLURM_SUBMIT_DIR` and changes into that submitted checkout

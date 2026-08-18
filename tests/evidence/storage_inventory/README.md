@@ -1,10 +1,14 @@
-# Storage-inventory tests
+# Storage inventory and qualification tests
 
-This directory directly protects declared-root admission, read-only
-measurement, retention-policy recording, deterministic outputs, publication,
-rollback, and CLI failure behavior for the
+This directory protects both optional storage inventory and required
+two-phase storage qualification for the
 [storage-inventory owner](../../../src/norad/evidence/storage_inventory/README.md)
-and its grouped route `python -I -m norad inspect storage-inventory`.
+and its grouped routes. Inventory records caller-declared roots, measurements,
+and retention-policy state for operator diagnosis. Qualification performs the
+compute/finalize site checks whose final receipt is consumed by local-pilot
+doctor.
 
-Synthetic filesystem cases do not authorize retention action, verify a
-production inventory, or establish an approved production retention policy.
+The suite covers admission, deterministic outputs, publication, rollback, and
+CLI failures for both roles. Synthetic filesystem cases do not authorize
+retention action, verify a production inventory, qualify a production storage
+path, or establish an approved production retention policy.

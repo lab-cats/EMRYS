@@ -1,10 +1,9 @@
 # Test baseline and contract-risk index
 
 This document owns the current Python non-regression policy, evidence
-vocabulary, contract-risk checklist, and direct regression routes. Dated
-counts, timings, matrices, gate narratives, and characterization completions
-remain in the
-[`2026-08-01 testing snapshot`](../history/testing/2026-08-01-test-baseline-and-public-contract-traceability.md).
+vocabulary, contract-risk checklist, and direct regression routes. The tracked
+machine baselines and current owner tests are authoritative; Git history retains
+superseded counts, timings, matrices, and gate narratives.
 
 ## Evidence boundary
 
@@ -167,13 +166,12 @@ custom supervisor around Nox, failing the mandatory exact-cancellation/no-
 custom-orchestration criterion. `uv` remains the sole Python dependency and
 environment authority; Nox is not a dependency.
 
-## LOG-01 current output and log inventory
+## Current output and log boundaries
 
-The complete commit-bound profiles, crosswalk, exposure inventory, and future
-logging candidates remain in the
-[`LOG-01` snapshot](../history/testing/2026-08-01-test-baseline-and-public-contract-traceability.md#log-01-current-output-and-log-inventory).
 Current output behavior belongs to each implementation, contract, and direct
-test; future guarantees belong to the logging architecture.
+test; future guarantees belong to the
+[`logging contract`](LOGGING_CONTRACT.md). Git history retains the superseded
+commit-bound crosswalk and exposure inventory.
 
 Retained current boundaries:
 

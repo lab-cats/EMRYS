@@ -525,46 +525,11 @@ printed when execution began:
 tail -n +1 -F /exact/path/to/norad-run-control.log
 ```
 
-For a submitted SLURM job, run this from the login/head node. Wait for SLURM to
-create both streams before tailing them. The loop also stops if the allocation
-becomes terminal without publishing both paths, instead of waiting forever:
-
-```sh
-job_id=replace-with-printed-job-id
-NORAD_LOG_DIR=/absolute/path/to/norad-slurm-logs
-
-stdout="$NORAD_LOG_DIR/norad-local-pilot-$job_id.out"
-stderr="$NORAD_LOG_DIR/norad-local-pilot-$job_id.err"
-while [[ ! -e "$stdout" || ! -e "$stderr" ]]; do
-  state="$(sacct -X -n -P -j "$job_id" --format=State 2>/dev/null |
-    awk -F'|' 'NF {print $1; exit}')"
-  case "$state" in
-    BOOT_FAIL|CANCELLED|COMPLETED|DEADLINE|FAILED|NODE_FAIL|OUT_OF_MEMORY|PREEMPTED|REVOKED|SPECIAL_EXIT|TIMEOUT)
-      printf 'Job %s became %s before both log streams appeared.\n' \
-        "$job_id" "$state" >&2
-      break
-      ;;
-  esac
-  squeue -j "$job_id"
-  sleep 2
-done
-if [[ -e "$stdout" && -e "$stderr" ]]; then
-  tail -n +1 -F "$stdout" "$stderr"
-else
-  sacct -X -j "$job_id" \
-    --format=JobID,JobName,State,ExitCode,Elapsed,NodeList
-  false
-fi
-```
-
-Press Control-C to stop `tail`; that does not cancel the job. Check scheduler
-state separately:
-
-```sh
-squeue -j "$job_id"
-sacct -X -j "$job_id" \
-  --format=JobID,JobName,State,ExitCode,Elapsed,MaxRSS,NodeList
-```
+For a submitted SLURM job, use the exact job ID and `%j` stream paths printed
+by the generated wrapper. The Runbook owns the reusable
+[stream-wait and accounting procedure](docs/operations/RUNBOOK.md#manual-job-inspection).
+Control-C stops a local `tail`; it does not cancel the allocation. Confirm
+scheduler state separately from NORAD completion evidence.
 
 NORAD inspection is read-only and derives state from immutable records rather
 than `.snakemake` metadata. Run it only on a host where the exact workspace path
@@ -597,7 +562,7 @@ disconnect or uncertain exit. Inspect the existing run first.
 
 | Route | Result |
 | --- | --- |
-| Standalone stage wrappers | Native stage outputs and validation TSVs; no orchestration report or adoption |
+| Owner-local stage scheduler entry points | Native stage outputs and validation TSVs; no orchestration report or adoption |
 | `norad run` | Attempts, verified records, artifact index, run summary, and automatic HTML report |
 | `norad build report` | Rebuild from an existing canonical run summary; never adopt standalone outputs |
 
@@ -629,107 +594,38 @@ the admitted run; its presence alone is not completion proof.
 
 ### Read the computational results
 
-The report opens by default to `Computational results`, headed
-`Computational results — not scientifically adjudicated`, with a prominent
-matching notice. It shows Step `09` counts and thresholds, significant
-candidates first, all candidates second, and then `Key per-sample QC`.
+The report presents the admitted computational results and their evidence
+boundary; it does not turn a threshold-passing row into a validated editing
+site. The [reporting owner](src/norad/reporting/README.md) defines the report
+views, source admission, display limits, and direct build transaction. The
+[Step 09 owner](src/norad/analyses/paired_cmh_candidate_ranking/README.md)
+defines the complete native scientific tables and field semantics.
 
-Both candidate views display at most 250 rows so a large run remains usable.
-Each view states its full source row count and whether it was truncated, plus
-the exact source path, SHA-256, and byte size. The native TSV is the complete
-table. The renderer accepts only the exact complete primary-analysis Step `09`
-all-sites/significant-sites/summary trio named by run-summary artifact records,
-and only after re-admitting the exact all-pass Step `09` owner-validation
-report. It does not search for a plausible filename, infer validation, or
-recompute a missing result.
-
-Use the run summary and report together:
-
-- `candidate_count` is the Step `08` SNV universe that reached Step `09`.
-- `successfully_tested_count` counts target-change candidates with usable
-  paired counts and a nondegenerate CMH table.
-- `call_status` explains each result: `not_tested`, `below_mean_dp`,
-  `background_not_passed`, `fdr_not_met`, `effect_not_met`,
-  `significant_up`, or `significant_down`.
-- `DP__sample`, `AD__sample`, and `AF__sample` are per-sample depth, alternate
-  depth, and alternate fraction.
-- `mean_control_af`, `mean_treatment_af`, and
-  `treatment_control_difference` show the direction and size of the observed
-  mean allele-fraction change.
-- `cmh_p_value` is the paired CMH p-value; `cmh_fdr_bh` is its global
-  Benjamini-Hochberg adjustment; `common_odds_ratio` is the shared odds-ratio
-  estimate across replicate strata.
-
-Treat threshold-passing rows as computational candidates, not validated
-editing sites. `FWD_like` and `REV_like` are fixed SAM-flag group labels; they
-are not biological strand, sense, or antisense claims. Candidate review,
-adjudication, and biological interpretation remain external work-process
-records and never alter or promote NORAD's computational tables.
-
-The complete native tables remain under:
-
-```text
-<run-root>/results/editing/<analysis-id>/<analysis-id>.cmh_all_sites.tsv
-<run-root>/results/editing/<analysis-id>/<analysis-id>.cmh_significant_sites.tsv
-<run-root>/results/editing/<analysis-id>/<analysis-id>.cmh_summary.tsv
-<run-root>/results/editing/<analysis-id>/<analysis-id>.mutation_spectrum.tsv
-<run-root>/results/editing/<analysis-id>/<analysis-id>.mutation_spectrum.pdf
-<run-root>/results/editing/<analysis-id>/<analysis-id>.depth_delta.pdf
-```
+Use those native TSVs for complete machine-readable results. Candidate review,
+adjudication, and biological interpretation remain external research work and
+never alter or promote NORAD's computational tables.
 
 ## 11. Keep the whole run root
 
-Output presence is not the completion authority. Inspection re-admits records,
-hashes, receipts, locks, task attempts, and semantic validation.
+Output presence is not completion authority. Preserve the entire run root:
+contracts, attempts, owner logs, task/reporting records, native results,
+products, locks, partials, backups, and recovery evidence belong to one
+content-bound execution history.
 
-| Location | Durable contents |
-| --- | --- |
-| `<run-root>/contract/` | Normalized request, fixed profile, admitted runtime snapshot, reporting contracts/policy/inventory, workflow configs, and task dispatches. |
-| `<run-root>/attempts/<workflow-attempt-id>/` | Attempt record, per-owner task attempts and terminal logs, and the attempt receipt published last. |
-| `<run-root>/state/task-starts/` | Immutable producer-entry records. |
-| `<run-root>/state/verified/` | Hash-bound successful owner-task records. |
-| `<run-root>/state/reporting/` | Start and verified records for artifact index, run summary, and HTML report. |
-| `<run-root>/results/` | Native scientific outputs, QC evidence, intermediates, and ranked-candidate products. |
-| `<run-root>/products/artifact-summary/<run-id>/records/` | One canonical record per declared artifact, including explicit incomplete/unavailable states. |
-| `<run-root>/products/artifact-summary/<run-id>/<run-id>.artifacts.tsv` | Deterministic artifact index. |
-| `<run-root>/products/artifact-summary/<run-id>/<run-id>.artifact_receipt.tsv` | Artifact-index receipt, published last for that transaction. |
-| `<run-root>/products/artifact-summary/<run-id>/<run-id>.run_summary.json` | Canonical machine-readable run summary. |
-| `<run-root>/products/artifact-summary/<run-id>/<run-id>.run_summary.tsv` | Tabular run-status summary. |
-| `<run-root>/products/artifact-summary/<run-id>/<run-id>.qc_summary.tsv` | Consolidated QC view. |
-| `<run-root>/products/artifact-summary/<run-id>/<run-id>.run_summary_receipt.tsv` | Run-summary receipt, published last. |
-| `<run-root>/products/report/<run-id>/<run-id>.run_report.html` | Self-contained Jinja HTML report. |
-| `<run-root>/products/report/<run-id>/<run-id>.run_summary.tsv` | Report-renderer summary table. |
-| `<run-root>/products/report/<run-id>/<run-id>.report_outputs.tsv` | HTML-report output receipt, published last. |
-| Beside the declared FASTA | Step `00c` `.fai` and `.dict`; the only owner outputs outside the run root. |
+The local-pilot
+[contract](src/norad/orchestration/local_pilot/CONTRACT.md#run-root-output-contract)
+owns the durable directory and product roster. Do not copy a report or result
+table and then discard its run evidence.
 
-Locks, released-lock evidence, partials, backups, task logs, and failed attempts
-are not disposable just because later outputs exist.
+## 12. Stop safely after an incomplete run
 
-## 12. Resume safely
-
-Resume only when inspection prints both `State: resume_available` and
-`Resume available: yes`. Review the no-write resume plan:
-
-```sh
-norad resume \
-  --run-root "$NORAD_RUN_ROOT" \
-  --runtime-profile "$NORAD_RUNTIME_PROFILE_PATH"
-```
-
-Then execute that admitted plan:
-
-```sh
-norad resume \
-  --run-root "$NORAD_RUN_ROOT" \
-  --runtime-profile "$NORAD_RUNTIME_PROFILE_PATH" \
-  --execute
-```
-
-Only a verified failure or interruption **between** owner tasks is
-automatically resumable. A completed run refuses resume. A scope that crossed
-producer entry without verified completion is blocked; NORAD exposes no force,
-unlock, cleanup, metadata-repair, or automatic owner retry. Preserve the whole
-run root and follow [troubleshooting](docs/operations/TROUBLESHOOTING.md).
+Do not launch a second initial run, delete a lock, or repair output after a
+disconnect, terminal scheduler state, or uncertain exit. Preserve the run root
+and inspect it first. If inspection reports a supported between-task resume,
+follow the Runbook's
+[dry-run-first resume procedure](docs/operations/RUNBOOK.md#recurring-inspection-and-resume).
+All other blocked states belong to
+[troubleshooting](docs/operations/TROUBLESHOOTING.md).
 
 ## Final stop/go checklist
 

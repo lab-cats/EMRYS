@@ -56,6 +56,15 @@ always outrank context reduction.
 State the outcome, touched owners, exclusions, validation, evidence ceiling,
 and stopping condition. Obtain approval before mutation.
 
+Repository surface growth requires explicit approval. Surface includes a new
+public command or option, supported path, schema or serialized record, receipt
+or output, evidence state, functional owner or shared seam, tracked directory,
+workflow rule or starter, dependency, scheduler entry point, and recovery or
+transaction mechanism. Tests, contracts, and reader-orienting documentation
+required to support an already approved surface are part of that approval.
+Moving or splitting an existing concept without retiring its former owner is
+surface growth, not maintainability progress.
+
 ## Deliver
 
 - Work sequentially in one authoritative worktree. Keep each package or slice
@@ -82,6 +91,13 @@ Update a canonical document only when its subject changes. Branch names,
 commits, routine progress, repeated test totals, and unchanged facts are not
 documentation triggers. Keep exact commands and defects with their functional
 owner; cross-cutting procedures and recovery rules stay in the operations docs.
+
+Audit a small owner README as `sufficient`, `revise`, or `missing`; size alone
+is never a reason to remove it. A reader who opens the directory should learn
+its purpose, pipeline role, high-level capability, principal entry point and
+output, important non-goals, and where the exact contract lives without needing
+project history or substantial outside context. The README orients maintainers;
+the adjacent contract owns exact inputs, outputs, checks, and failure semantics.
 
 The compact backlog retains stable identities, real open blockers, intent, and
 boundaries. Create a detailed card only for selected work and delete it when

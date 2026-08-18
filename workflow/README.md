@@ -1,178 +1,88 @@
 # Local CMH workflow projection
 
 This directory contains NORAD's fixed, source-checkout-bound Snakemake
-projection. It schedules public owner tasks; it does not own scientific
-behavior, infer a workflow from filenames, or promote Snakemake metadata to
-scientific evidence.
+projection. It schedules public functional owners; it does not implement their
+science, infer work from filenames, or treat Snakemake metadata as completion
+evidence.
 
-## Implemented boundary
+## Directory map
 
-[`Snakefile`](Snakefile) defines exactly thirteen executable owner rules from
-the complete current owner graph in
-[`STAGE_MAP.md`](../src/norad/contracts/STAGE_MAP.md). The `02b` and `03`
-evidence rules are required leaves of a complete run, but they never gate
-downstream scientific compute.
+| Path | Purpose |
+| --- | --- |
+| [`Snakefile`](Snakefile) | Static scheduling projection for the supported local CMH graph and its reporting tail. |
+| [`contracts/`](contracts/README.md) | Reviewed workflow-projection instances that select owners, scopes, edges, and reportable artifacts. |
+| [`profiles/`](profiles/README.md) | Snakemake engine settings selected by NORAD's lifecycle. |
 
-Every executable rule publishes only one path of this form:
+The canonical semantic owner identities and artifact edges live in
+[`STAGE_MAP.md`](../src/norad/contracts/STAGE_MAP.md). Exact workflow-profile
+validation belongs to the
+[`contracts/orchestration`](../src/norad/contracts/orchestration/README.md)
+owner. Functional behavior, native outputs, validation, and recovery remain
+with each stage, analysis, or evidence owner.
+
+## How execution enters
+
+The supported flow is:
 
 ```text
-<run-root>/state/verified/<machine-key>/<scope-id>.json
+norad run / norad resume
+  -> request admission and lifecycle materialization
+  -> fixed Snakefile plus checkout-bound local engine profile
+  -> public owner producers and validators
+  -> artifact index, run summary, and report bundle
 ```
 
-The generic task runner owns production, owner validation, semantic all-pass
-checking, and publication of that verified record. The Snakefile invokes it as
-`python -X pycache_prefix=/dev/null -I -m
-norad.orchestration.local_pilot.task --dispatch <absolute-json>
---dispatch-sha256 <expected-sha256>`. The immutable attempt-specific config
-binds each dispatch path and digest before the runner stable-reads those exact
-bytes again at execution time.
-There are no native scientific outputs, directories, temporary outputs,
-checkpoints, retries, or dynamic/glob discovery in the Snakemake output model.
-Pre-existing verified-task markers are reusable only after NORAD revalidates
-their canonical record, exact run/profile/owner/scope identity, referenced
-task attempt, validation report and fresh semantic all-pass result, native
-receipt, and every bound input/output size and SHA-256. A stale or copied JSON
-pathname therefore cannot unlock downstream work.
+The lifecycle materializes an immutable attempt-specific configuration and
+dispatch for every expected owner/scope pair. The Snakefile invokes those
+bound public owners and declares only their verified records. Native scientific
+outputs, locks, receipts, and rollback remain owner-controlled rather than
+becoming generic Snakemake outputs.
 
-After all request-expanded owner results are verified, three reporting rules
-run in order: `build_artifact_index`, `build_run_summary`, and
-`build_html_report`. Each calls its grouped public `norad build` CLI once in
-dry-run mode, publishes an immutable reporting-start record, calls the builder
-with the identical arguments plus `--execute`, and finally publishes a
-verified-reporting record after semantic receipt validation. Snakemake declares
-only the fixed `state/reporting/<kind>/verified.json` record for each rule;
-native receipts remain builder-owned semantic evidence passed as parameters.
-Downstream reporting rules consume verified records, and the default input-only
-`local_pipeline_slice` target ends at the HTML-report verified record. The
-profile and its reporting inventory end at Step `09`; biological review and
-interpretation remain external work-process records.
+Verified task and reporting records are reusable only after NORAD re-admits
+their canonical identities, bound evidence, and semantic transactions. A path,
+timestamp, process exit, `.snakemake` entry, or receipt name alone is not
+completion authority. The local-pilot
+[`README`](../src/norad/orchestration/local_pilot/README.md) and
+[`CONTRACT`](../src/norad/orchestration/local_pilot/CONTRACT.md) own the exact
+state, recovery, and resume rules.
 
-A pre-existing reporting result is reusable only when both its start and
-verified records exist and the public read-only validator reconstructs the
-origin attempt and complete semantic transaction. Neither record means the
-scope is pending. A lone start is entered-but-incomplete, a lone verified
-record is orphaned, and either state fails closed before Snakemake admits the
-graph. A native receipt pathname alone never satisfies the workflow.
+## Fixed projection
 
-## Fixed inputs
+The Snakefile projects thirteen executable scientific and evidence owners.
+Steps `02b` and `03` are required evidence leaves of a complete run but do not
+gate downstream scientific computation. After the owner graph completes, the
+workflow runs the artifact-index, run-summary, and report transactions in
+order. Reporting consumes only explicit admitted inputs and never reruns an
+analysis.
 
-The workflow reads the reviewed profile at
-[`contracts/local_cmh_v2.json`](contracts/local_cmh_v2.json). A caller must
-also provide an immutable, canonical-JSON, attempt-specific Snakemake config
-with this closed operational mapping:
+The checked-in projection instance is
+[`contracts/local_cmh_v2.json`](contracts/local_cmh_v2.json). The lifecycle
+binds its exact canonical bytes into the run and expands its declared scopes;
+the Snakefile separately checks that it matches the supported static graph.
 
-```json
-{
-  "artifact_inventory_path": "/absolute/run/contract/artifact_inventory.tsv",
-  "artifact_source_root": "/absolute/run",
-  "dispatch_paths": {
-    "norad.stage.construct_STAR_index.v1": {
-      "reference-id": {
-        "path": "/absolute/run/contract/dispatch/workflow-.../00a.json",
-        "sha256": "<64 lowercase hex>"
-      }
-    }
-  },
-  "execution_path": "/absolute/run/contract/normalized.json",
-  "python_executable": "/absolute/run-environment/bin/python",
-  "primary_analysis_policy_path": "/absolute/run/contract/primary_analysis_policy.json",
-  "profile_path": "/absolute/run/contract/profile.json",
-  "reference_contract_path": "/absolute/run/contract/reference_contract.json",
-  "reporting_run_contract_path": "/absolute/run/contract/reporting_run_contract.json",
-  "run_root": "/absolute/run",
-  "source_checkout": "/absolute/norad-checkout",
-  "workflow_attempt_id": "workflow-YYYYMMDDTHHMMSSZ-<32 lowercase hex>"
-}
-```
+## Reviewable targets
 
-The attempt ID resolves to
-`<run-root>/attempts/<workflow-attempt-id>/attempt.json`. That immutable record
-binds the attempt-specific workflow-config path and SHA-256, the normalized
-execution and profile, and the source checkout. The four reporting projection
-paths must exactly match the normalized execution's path and digest references.
-`artifact_source_root` is the run root; `source_checkout` is the executing
-canonical NORAD Git checkout. `dispatch_paths` is closed over every automatic
-owner/scope pair and transitively binds the exact producer, validator, inputs,
-and outputs through each dispatch digest. A completed task keeps the exact
-predecessor dispatch reference already bound in its verified record; a resume
-attempt materializes new dispatches only for pending tasks. Every pending
-dispatch must bind the current workflow-attempt ID, and every dispatch must
-place task evidence at
-`attempts/<dispatch-attempt-id>/tasks/<machine-key>/<scope-id>/{task-attempt.json,stdout.log,stderr.log}`.
-Replacing a completed task's dispatch with semantically different argv is a
-hard admission failure, even if Snakemake would otherwise consider the output
-current.
-The configured absolute Python launcher must be the exact lexical executable
-running Snakemake (a virtual-environment symlink is permitted) and must match
-the attempt's normalizer plus both the Python and Snakemake required-tool
-identities. Before admitting the graph, the child also attests that its loaded
-NORAD package bytes equal the declared checkout working tree and that the
-checkout HEAD still equals the attempt's declared commit. It refuses the graph
-before any rule if those identities disagree.
+Three bounded review slices expose smaller input-only closures without changing
+owner dependencies:
 
-`state/verified` is a closed filesystem roster. If it exists, it may contain
-only expected real owner directories and exact regular JSON marker files;
-unexpected files, directories, symlinks, and deeper paths fail before the DAG
-is admitted. `state/reporting` is likewise closed over exactly
-`artifact_index`, `run_summary`, and `html_report`, with only `start.json` and
-`verified.json` permitted in each real ledger directory.
+- `reference_slice`: reference preparation;
+- `one_sample_slice`: reference preparation plus one declared sample; and
+- `cohort_slice`: the complete scientific/evidence owner graph.
 
-The checked-in local workflow profile is
-[`profiles/local/profile.v9+.yaml`](profiles/local/profile.v9+.yaml). It uses
-Snakemake's local executor with one core, the greedy scheduler, zero retries,
-incomplete-output preservation, printed shell commands, and failed-log
-display. The request's attempt-level resource block overrides profile capacity:
-`workflow_cores` sets total CPU capacity, `step_threads` supplies exact counts
-for thread-capable rules, and `sample_concurrency` supplies the `sample_slots`
-resource cap. Resource tuning does not change the scientific run identity.
+The default `local_pipeline_slice` adds the ordered reporting tail. These
+targets support review and deterministic tests; they are not alternate
+scientific profiles.
 
-## Reviewable slices
+## Execution boundary
 
-The three input-only targets expose bounded closures without changing owner
-dependencies:
+[`profiles/local/profile.v9+.yaml`](profiles/local/profile.v9+.yaml) runs every
+Snakemake job on one host. The admitted request supplies total workflow cores,
+sample concurrency, and owner thread counts. A workstation or one allocated
+Slurm node may be that host, but this is not a distributed or Slurm-executor
+profile.
 
-- `reference_slice`: the three reference-scoped owners (`3` owner jobs).
-- `one_sample_slice`: reference preparation plus the first manifest sample
-  through `02b`, `03`, and `06` (`10` owner jobs).
-- `cohort_slice`: the full automatic profile (`3 + 7S + P + 2` owner
-  jobs for `S` samples and `P` partitions).
-- `local_pipeline_slice`: the default full automatic profile plus the three
-  ordered reporting transactions.
-
-For the canonical four-sample, one-partition fixture, `cohort_slice` has 34
-owner jobs. Its direct owner-job edges total
-`9S + S*P + 2P + 1`, or 43 for that fixture. Input-only target edges and
-external dispatch files are not scientific DAG edges.
-
-Install pinned Snakemake 9.25.1 from the locked workflow dependency group:
-
-```bash
-uv sync --locked --group workflow
-```
-
-B5 exposes the supported dry-run-first public `norad run`, `norad resume`, and
-`norad inspect local-pilot-run` commands documented in the
-[runbook](../docs/operations/RUNBOOK.md#local-pilot-execution). B6 proves the
-fixed route from a clean fresh clone with the locked workflow environment and
-publishes root README onboarding from that observed path. There remains no
-supported manual Snakemake invocation. The internal lifecycle binds a
-materialized run, the exact Python
-launcher, checked-in Snakefile, absolute profile file, attempt-specific config,
-run directory, and target in one admitted argv. Running bare `snakemake`, using
-a profile name relative to the current directory, or constructing an ad hoc
-config bypasses that boundary.
-
-Resume is a lifecycle-owned operation, not an ad hoc Snakemake recovery
-command. It uses exactly `--rerun-triggers input --ignore-incomplete` after
-NORAD has re-admitted verified and reporting records. The second flag is
-required by pinned Snakemake 9.25.1 when engine metadata still marks an output
-incomplete even though NORAD's semantic validator proves it complete. NORAD
-does not use `--rerun-incomplete`, force, unlock, or metadata cleanup to bypass
-that boundary.
-
-Tests use a bounded no-science artifact producer to execute all 34 owner jobs
-and the real artifact-index, run-summary, and Jinja HTML transactions. The B6
-fresh-clone proof covers a separate clean completion and controlled between-task
-failure/resume while preserving predecessor verified bytes. It never calls
-STAR, GATK, Picard, RSeQC, bcftools, R, or other scientific tools and therefore
-adds no real-runtime or cluster evidence.
+Operators use `norad run` and `norad resume`; bare Snakemake invocation and ad
+hoc configs are unsupported. Standalone stage execution remains supported
+through each functional owner's direct command and owner-local scheduler entry
+point. See the [Runbook](../docs/operations/RUNBOOK.md) for cross-cutting
+operator routes.

@@ -5,6 +5,9 @@ across workflow owners.
 
 - [`artifacts/`](artifacts/README.md) protects versioned artifact schemas,
   semantic validation, fixtures, and inventory compatibility.
+- [`orchestration/`](orchestration/README.md) protects versioned request,
+  profile, execution, attempt, task, and reporting-ledger records plus canonical
+  JSON and projection behavior.
 - [`scientific_evidence/`](scientific_evidence/README.md) protects neutral Step
   08 and Step 09 computational APIs and behavior.
 

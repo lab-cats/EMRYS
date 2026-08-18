@@ -4,6 +4,10 @@ This directory stores versioned machine resources for the neutral local-pilot
 orchestration contract owner. The supported registry and validation API are
 documented in [`../../orchestration`](../../orchestration/README.md).
 
-- [`v1/`](v1/) — the closed first local-CMH request, identity, and lifecycle
-  record family.
-- [`v2/`](v2/) — the closed current local-CMH profile resource.
+- [`v1/`](v1/) — shared definitions plus active execution, reference, policy,
+  attempt, task, lock, receipt, and reporting-ledger records.
+- [`v2/`](v2/) — the active local-CMH request and workflow-profile resources.
+
+[`contracts/orchestration/api.py`](../../orchestration/api.py) selects and
+validates this mixed-version registry and owns canonical JSON. These directories
+are packaged resources, not separate public validators.

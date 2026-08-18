@@ -37,7 +37,7 @@ residue blocks the invocation and is never replaced automatically. A failure
 after final reservation preserves the partial final, lock, and residue for
 operator inspection.
 
-The legacy Novogene scheduler entry point remains:
+The current owner-local Novogene scheduler entry point remains supported:
 
 ```bash
 cd /absolute/path/to/norad
