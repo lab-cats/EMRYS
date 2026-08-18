@@ -30,12 +30,12 @@ dry-run-first `norad run`, `norad resume`, and `norad inspect local-pilot-run`.
 
 | Surface | Current evidence ceiling |
 | --- | --- |
-| Local-pilot orchestration | B0 defines the source-checkout-bound lifecycle; B1 hardens owner boundaries; B2 adds intake/contracts; B3 adds an exact fixed profile, 13-scientific-owner-rule static graph, task attempts, and content-bound verified records; B4 adds three ordered reporting rules, durable task/reporting entry records, and the run-lock/attempt/receipt tail; B5 adds the exact fixed-profile materializer and public dry-run-first run/resume/inspection adapter; B6 adds matched structural starters, a clean-fresh-clone proof, and proof-matched onboarding. The adversarial follow-up binds exact tool and installed-R-package bytes, task logs and owner tokens; admits only stable complete Step `00c` sidecar reuse; serializes stale contenders without residue; and terminalizes interruption only after process-group quiescence and durable lock disposition. In addition to real Snakemake 9.25.1 dry-runs and deterministic no-science slices, NORAD science commit `2587126e7e471b504657c9a43789e870713f8bb6` completed a production-like synthetic ingestion-to-report run on one native ARM64 Ubuntu VM in one real single-node Slurm allocation. The lane verified 34/34 owner tasks across 13 automatic owners, 3/3 reporting transactions, and a 38/38 DAG. `.snakemake` is not completion authority. There is still no reconciliation after an entered scope fails, CSU Viking execution, distributed Slurm executor, multi-node proof, production-data proof, or current production-cluster proof. |
+| Local-pilot orchestration | B0 defines the source-checkout-bound lifecycle; B1 hardens owner boundaries; B2 adds intake/contracts; B3 adds an exact fixed profile, 13-scientific-owner-rule static graph, task attempts, and content-bound verified records; B4 adds three ordered reporting rules, durable task/reporting entry records, and the run-lock/attempt/receipt tail; B5 adds the exact fixed-profile materializer and public dry-run-first run/resume/inspection adapter; B6 adds matched structural starters, a clean-fresh-clone proof, and proof-matched onboarding. The adversarial follow-up binds exact tool and installed-R-package bytes, task logs and owner tokens; admits only stable complete Step `00c` sidecar reuse; serializes stale contenders without residue; and terminalizes interruption only after process-group quiescence and durable lock disposition. In addition to real Snakemake 9.25.1 dry-runs and deterministic no-science slices, NORAD science commit `2587126e7e471b504657c9a43789e870713f8bb6` completed a production-like synthetic ingestion-to-report run on one native ARM64 Ubuntu VM in one real single-node Slurm allocation. The lane verified 34/34 owner tasks across 13 automatic owners, 3/3 reporting transactions, and a 38/38 DAG. `.snakemake` is not completion authority. There is still no reconciliation after an entered scope fails, CSU Viking `norad run` execution, distributed Slurm executor, multi-node proof, or current full production-cluster proof. The manual CSU Viking Step `07`–`09` evidence recorded below does not cross those boundaries. |
 | PORT-NC-01 integration | Tests added on `fix/no-clobber` were reported as cluster-run and as validating that source branch's behavior. They informed, but do not validate, the differently implemented replay. Exact integrated candidate `ebc43b4a8342b676eafb6b56492989498886ab55` passed the unchanged assembled local gate: static preflight, installed-wheel smoke, guarded local R, shell/SLURM-wrapper contracts, and Python behavior/coverage. The replay preserves stronger current transactions and runtime authority while admitting STAR metadata rows, publishing the deterministic Step `00b` final through its converter transaction, binding all repository-owning wrappers to the submitted checkout, and making Step `01` staged no-clobber plus controlled hashing the scheduled default. That replay closeout itself was local integration evidence only: its wrapper lane did not submit Slurm jobs or exercise a distributed filesystem, and no fresh-clone or local-pilot E2E was part of that closeout. The later production-like pilot on science commit `2587126e7e471b504657c9a43789e870713f8bb6` exercised the integrated public path with real tools in a VM Slurm allocation, but does not retroactively supply CSU, distributed-filesystem, or production-data evidence. See the [dated replay record](../history/testing/2026-08-14-port-nc-01-no-clobber-replay.md). |
 | Physical ownership | Pipeline stages, neutral contracts/libraries, reporting, and evidence helpers occupy their allowed homes. This is local/static topology evidence, not new runtime or cluster proof. |
 | Steps `00a`–`06` | B1 owner boundaries retain their local fake-tool/fixture evidence. The production-like synthetic pilot additionally exercised these owners with the admitted real-tool runtime on one ARM64 Linux VM in a single-node Slurm allocation, using four paired-end libraries with 100,000 read pairs each and a deterministic 5 Mb reference. This is not CSU, distributed, production-data, or production-scale proof. |
-| Step `07` | B1 no-clobber and rollback boundaries retain their local mock-bcftools evidence. The production-like synthetic pilot exercised Step `07` with bcftools 1.21 and passed its owner validation and the end-to-end completion boundary. This is not CSU or production-data evidence. |
-| Steps `08`–`09` | B1 no-clobber/recovery boundaries retain local shell/fake-R and guarded-real-R evidence. The production-like synthetic pilot exercised the admitted real R 4.6.1 runtime through Step `09`; the output contained three CMH-ranked candidates, one passing the fixed significance contract, and the lab-owned independent Step `09` oracle matched. This remains synthetic single-node evidence, not completed scientific review, biological validation, or production-data proof. |
+| Step `07` | B1 no-clobber and rollback boundaries retain their local mock-bcftools evidence. The production-like synthetic pilot exercised Step `07` with bcftools 1.21 and passed its owner validation and the end-to-end completion boundary. On CSU Viking, the paired-cohort manual Step `07` outputs were subsequently validated by Slurm array `605174_[1-25]`: all 25 jobs completed, `REPORT_COUNT=25`, and `FAILED_CHECK_COUNT=0`. This is standalone-stage evidence, not `norad run`, resume, automatic-report, or full-cluster evidence. |
+| Steps `08`–`09` | B1 no-clobber/recovery boundaries retain local shell/fake-R and guarded-real-R evidence. The production-like synthetic pilot exercised the admitted real R 4.6.1 runtime through Step `09`; the output contained three CMH-ranked candidates, one passing the fixed significance contract, and the lab-owned independent Step `09` oracle matched. On CSU Viking, manual paired-cohort jobs `605171` and `605173` completed and their native validation reports passed, as reconciled below. This is standalone-stage evidence, not `norad run`, resume, automatic-report, full-cluster evidence, completed scientific review, or biological validation. |
 | Reporting and external interpretation boundary | The production-like synthetic pilot completed all three reporting transactions and published a self-contained HTML report. Renderer commit `441a7b0a36efb6d1c6baa43d2c4090f1f4957b3d` later published one separate receipt-last computational-results derivative from the preserved Job `91` sources without rerunning a scientific owner. The retained lab report is `runs/full-cohort-public-2587126e7e47-02-vm-computational-report-441a7b0a36ef/products/report/run-bb36785424aba063e336ebaecdde4e78d984a4470187b8e1421fd281d3afa04f/run-bb36785424aba063e336ebaecdde4e78d984a4470187b8e1421fd281d3afa04f.run_report.html`, with HTML SHA-256 `ba426da9a4bdc387172f749a28e7140ec0b7dc0201d0dd74b4f59bb492e0dc30` and semantic-receipt SHA-256 `105e552768acb755f92a032ba68bdf5f05321861ff4f9a2f9335cb30fd301cce`. It displays all three Step `09` computational candidates and the one threshold-passing candidate as not scientifically adjudicated. Original science authority remains `2587126e7e471b504657c9a43789e870713f8bb6`; neither report is production-data evidence or an external review, adjudication, or biological-interpretation record. |
 | Operational helpers | Runtime, reference, storage, and structured validators retain local fixture evidence. In the production-like synthetic pilot, all 24 runtime checks passed against the complete admitted VM installation before Slurm submission, and the lifecycle re-admitted the bound runtime profile. Commit `441a7b0a36efb6d1c6baa43d2c4090f1f4957b3d` adds create-absent starter generation, request validation, explicit runtime-profile rendering, a proof-matched synthetic starter, and a generated one-allocation Slurm wrapper with log-tail commands. The exact commit passed the assembled local repository gate. This is onboarding and local engineering evidence, not a CSU batch runtime report, production reference/storage report, or approved retention policy. |
 
@@ -96,6 +96,31 @@ multi-node execution, production-scale performance, production-data evidence,
 completed scientific review, biological validation, or permission to draw a
 biological conclusion.
 
+## CSU Viking manual Step 07–09 evidence
+
+The following evidence was produced manually on CSU Viking from branch
+`codex/license-and-retire-step09c` at exact NORAD commit
+`64b14a11bf2b2371a3b8ef32ebbb642154a77b66`. The retained input identities
+were:
+
+| Input | Retained identity |
+| --- | --- |
+| Paired sample manifest | `data/raw/samples.paired.tsv`; SHA-256 `b7e42c8ecc8c8202b5c3647dd84c9096780d7db19765b9c1935f11bfbd1fc126` |
+| Step `07` partition manifest | `configs/step_07_partitions.primary_contigs.tsv`; SHA-256 `4346cefc23cb695aa653f2cc9c14e9ebc40f2bd09454bb5894ad0eb5f4879b6b` |
+| Step `08` annotation | `refs/novogene_ref/genome.gtf`; SHA-256 `3b502426b9605a5afd433bbc69694e782221e62f7c39563323934540d70e3b07` |
+
+| Stage | Retained execution and validation evidence |
+| --- | --- |
+| Step `07` | The 25-partition paired output set is under `results/mpileup-paired/NORAD_EV_PUM1`. Retained Slurm accounting for validator array `605174_[1-25]` records 25/25 `COMPLETED/0:0` jobs; the aggregate check reported `REPORT_COUNT=25` and `FAILED_CHECK_COUNT=0`. |
+| Step `08` | Job `605171` completed `0:0` in `00:30:03` with four workers and `MaxRSS=27437560K` (about 27 GiB). The retained logs are `logs/norad-vcf-preprocess-605171.out` and `logs/norad-vcf-preprocess-605171.err`. They record 50 VCF inputs and 357,637 supported SNV candidates. The published sites and input-receipt SHA-256 values are `81f061b66364ad82a4a2755f48b00ef131fa4fe4e0b566417524f618c06f9f2a` and `ba7c377a7674ff2c8935f47b5d77c49ddde00cad528f8756925711678fa58dac`. The native validation report is `results/qc/validation/08-paired/NORAD_EV_PUM1.validation.tsv`; all five checks passed. |
+| Step `09` | Job `605173` completed `0:0` in `00:00:49`. The retained logs are `logs/norad-cmh-605173.out` and `logs/norad-cmh-605173.err`; they record 357,637 candidates, 30,816 successfully tested candidates, and 65 significant sites. The six-output transaction is under `results/editing-paired/NORAD_EV_vs_PUM1`. The native validation report is `results/qc/validation/09-paired/NORAD_EV_vs_PUM1.validation.tsv`; all seven checks passed. |
+
+These records establish manual standalone Step `07`–`09` completion and
+native validation on Viking for the declared inputs. They do **not** establish
+a `norad run`, `norad resume`, automatic report generation, execution of
+Steps `00a`–`06` in the same attempt, distributed or multi-node behavior,
+full-cluster qualification, scientific adjudication, or biological validation.
+
 ## Cohort and preserved scientific evidence
 
 The operational cohort has three explicit paired strata:
@@ -142,13 +167,18 @@ do not mutate the environment incidentally.
 
 ## Current blockers
 
-- The production `samples.tsv` is not in this checkout; its cluster identity,
-  replicate values, persistence, and hash require inspection.
-- Steps `07`–`09` now have production-like synthetic real-tool evidence from
-  one VM single-node Slurm allocation, but they still lack CSU Viking,
-  distributed, production-data, and production-scale evidence.
-- CSU batch-visible R/package availability, storage capacity and retention
-  policy, and the exact Novogene annotation release remain unresolved.
+- The manual Viking Step `07`–`09` run used the external paired manifest
+  `data/raw/samples.paired.tsv`, whose retained SHA-256 is
+  `b7e42c8ecc8c8202b5c3647dd84c9096780d7db19765b9c1935f11bfbd1fc126`.
+  Its durability and admission into a generated full-run request remain open.
+- Steps `07`–`09` now have manual CSU Viking owner and native-validator
+  evidence, but there is still no CSU Viking `norad run`, resume proof,
+  automatic report, distributed or multi-node proof, or full-cluster
+  qualification.
+- A complete CSU compute-node runtime profile and doctor admission remain
+  unresolved, including Java 17+ for Picard/GATK. The exact workflow workspace
+  and Step `00c` sidecar storage tier also remain unqualified for the required
+  transactional semantics and durable retention boundary.
 - The Step `09` production validator does not independently recompute CMH
   statistics from DP/AD counts. The lab-owned independent oracle matched the
   preserved production-like synthetic pilot, but did not change the production
@@ -182,8 +212,11 @@ The renderer authority remains distinct from preserved science commit
 publication, not a repeat-render comparison or a promotion of the source
 run's scientific evidence ceiling.
 
-After that closeout, later decisions remain whether and how to authorize CSU
-Viking or a distributed site execution profile and proof. Backlog actionables
+After that closeout, the manual Viking Step `07`–`09` evidence above was
+reconciled at commit
+`64b14a11bf2b2371a3b8ef32ebbb642154a77b66`. The next implementation and
+qualification work is to admit the Viking scheduler, runtime, and storage
+contracts before attempting the first CSU `norad run`. Backlog actionables
 and proposals confer no selection authority. Destructive cleanup and CSU or
 production execution remain separate scopes. Candidate review, adjudication,
 and biological interpretation are external work processes, not NORAD resume
