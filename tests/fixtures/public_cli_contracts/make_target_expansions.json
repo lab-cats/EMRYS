@@ -49,8 +49,9 @@
     "\t\t--execute",
     "printf 'Demo report transaction: %s\\n' \\",
     "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run\"",
-    "printf '  HTML: %s\\n  Summary: %s\\n  Receipt: %s\\n' \\",
-    "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run/synthetic_run.run_report.html\" \\",
+    "printf '  Scientific HTML: %s\\n  Evidence HTML: %s\\n  Summary: %s\\n  Receipt: %s\\n' \\",
+    "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run/synthetic_run.scientific_report.html\" \\",
+    "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run/synthetic_run.evidence_report.html\" \\",
     "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run/synthetic_run.run_summary.tsv\" \\",
     "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run/synthetic_run.report_outputs.tsv\""
   ],

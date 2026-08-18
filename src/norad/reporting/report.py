@@ -1,4 +1,4 @@
-"""Build one deterministic, self-contained NORAD HTML report transaction."""
+"""Build one deterministic, self-contained NORAD two-view report transaction."""
 
 from __future__ import annotations
 
@@ -22,8 +22,9 @@ from norad.libraries.source_authority import (
 from norad.reporting._run_report.models import RECEIPT_HEADER, ReportRenderError
 
 DESCRIPTION = (
-    "Build one self-contained Jinja HTML report, deterministic run-summary TSV, "
-    "and receipt-last v3 transaction from an explicit canonical run summary. "
+    "Build self-contained scientific and evidence Jinja HTML reports, a "
+    "deterministic run-summary TSV, and one receipt-last v4 transaction from an "
+    "explicit canonical run summary. "
     "Dry-run is the default; rendering never runs analysis or promotes evidence."
 )
 
@@ -83,7 +84,7 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--execute",
         action="store_true",
-        help="Publish HTML, summary TSV, and receipt. Omit for dry-run.",
+        help="Publish both HTML views, summary TSV, and receipt. Omit for dry-run.",
     )
 
 
@@ -139,7 +140,7 @@ def prepare_report(
 
 
 def serialize_receipt(document: dict[str, Any]) -> bytes:
-    """Serialize the supported v3 receipt TSV deterministically."""
+    """Serialize the supported v4 receipt TSV deterministically."""
 
     from norad.reporting._run_report.receipt import receipt_tsv_bytes
 
@@ -158,7 +159,8 @@ def print_plan(context: Any) -> None:
     print(f"  Interpretation boundary: {context.summary['interpretation_boundary']}")
     print(f"  Boundary banner: {context.render_metadata['state_banner']}")
     print(f"  Renderer: Jinja2 {context.render_metadata['jinja_version']}")
-    print(f"  HTML output: {context.output_html}")
+    print(f"  Scientific HTML: {context.output_scientific_html}")
+    print(f"  Evidence HTML: {context.output_evidence_html}")
     print(f"  Summary TSV: {context.output_summary_tsv}")
     print(f"  Receipt (published last): {context.output_receipt}")
     print("  Report meaning: rendering does not establish validation.")

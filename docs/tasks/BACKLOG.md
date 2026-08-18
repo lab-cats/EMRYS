@@ -8,7 +8,7 @@ selection, implementation, or publication authority.
 ## AUDIT-99 — Final refactor and documentation audit
 
 - **Kind:** actionable
-- **Blocked by:** `DOC-SKILL-10`, `LOG-05`, `RPT-06`
+- **Blocked by:** `DOC-SKILL-10`, `LOG-05`
 - **Intent:** Audit only the implemented refactor program, rank residual code and documentation risk, and publish exact validation and evidence ceilings.
 - **Boundaries:** No new feature, runtime, scientific, cluster, or biological claim; local characterization and stale receipts never become broader proof.
 
@@ -89,40 +89,12 @@ selection, implementation, or publication authority.
 - **Intent:** Independently review scientist, operator, maintainer, and automation journeys before report, logging, onboarding, and documentation-skill implementation.
 - **Boundaries:** Review findability, terminology, cognitive load, accessibility, failure recovery, console/report hierarchy, intake state, and local context without implementing or changing scientific meaning.
 
-## RPT-01 — Characterize comprehensive report
+## RPT-05 — Decide scientific report figures
 
 - **Kind:** actionable
 - **Blocked by:** None
-- **Intent:** Freeze the current comprehensive report's fields, provenance, interaction, format, transaction, and known-defect behavior with test-supported evidence.
-- **Boundaries:** Retain the comprehensive view; characterize rather than fix; reporting projects validated canonical inputs and never generates or promotes evidence.
-
-## RPT-02 — Define science-report contract
-
-- **Kind:** actionable
-- **Blocked by:** `RPT-01`
-- **Intent:** Define the versioned minimal scientist-facing field model, plain-language descriptions, profiles, missing states, and stable HTML semantics.
-- **Boundaries:** Every value has one authorized source; comprehensive remains available; no inner-panel horizontal scroll; outputs coexist immutably; independent science, usability, accessibility, architecture, transaction, and security review precedes implementation.
-
-## RPT-03 — Build format-neutral report projection
-
-- **Kind:** actionable
-- **Blocked by:** `REVIEW-UX-03`, `RPT-02`
-- **Intent:** Implement a deterministic renderer-independent science projection derived only from the approved canonical summary and authorized tables.
-- **Boundaries:** No file discovery, computation, evidence promotion, format-specific scientific field, default change, or comprehensive-field deletion.
-
-## RPT-04 — Implement science-report usability
-
-- **Kind:** actionable
-- **Blocked by:** `RPT-03`
-- **Intent:** Build an accessible self-contained HTML presentation of the approved science projection with clear hierarchy and responsive/print behavior.
-- **Boundaries:** Do not change the field model in view code; preserve evidence banners and contracted semantics; hide no contracted information to avoid scrolling; do not reintroduce a report PDF.
-
-## RPT-06 — Make science report the default
-
-- **Kind:** actionable
-- **Blocked by:** `RPT-04`
-- **Intent:** Change the public default to the approved science profile while keeping the protected comprehensive profile explicitly selectable.
-- **Boundaries:** Profile names follow the approved contract; bundles coexist without overwrite or reinterpretation; analysis, artifacts, and evidence meaning remain unchanged.
+- **Intent:** Decide which scientifically useful figures belong in the scientific report and whether their canonical renderer should use an existing Python dependency or an R owner.
+- **Boundaries:** This is a separate approval decision. Do not add placeholder graphics, a plotting dependency, an R rendering step, another report command, or evidence/provenance content to the scientific view meanwhile.
 
 ## SKILL-11 — Evaluate repository skill opportunities
 

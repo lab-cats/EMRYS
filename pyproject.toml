@@ -58,6 +58,7 @@ namespaces = false
     "schemas/artifacts/v1/*.json",
     "schemas/artifacts/v2/*.json",
     "schemas/artifacts/v3/*.json",
+    "schemas/artifacts/v4/*.json",
     "schemas/orchestration/v1/*.json",
     "schemas/orchestration/v2/*.json",
 ]

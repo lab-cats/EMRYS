@@ -2,7 +2,7 @@
 
 This directory owns one accepted JSON example for each v2 record schema: an
 artifact record and run summary. The active
-[report-receipt fixture](../../report_receipt_v3.json) is version 3. The direct
+[report-receipt fixture](../../report_receipt_v4.json) is version 4. The direct
 [artifact-contract test](../../../test_artifact_schema_contracts.py) validates
 their schema and semantic behavior.
 

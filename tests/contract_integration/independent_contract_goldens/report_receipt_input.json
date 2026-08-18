@@ -4,13 +4,22 @@
   "interpretation_boundary": "computational_candidates_only_biological_validation_outside_norad",
   "outputs": [
     {
-      "kind": "html",
+      "kind": "scientific_html",
       "media_type": "text/html",
-      "output_id": "run-report-html",
-      "path": "reports/run-01/run-01.run_report.html",
+      "output_id": "scientific-report-html",
+      "path": "reports/run-01/run-01.scientific_report.html",
       "self_contained": true,
       "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "size_bytes": 321
+    },
+    {
+      "kind": "evidence_html",
+      "media_type": "text/html",
+      "output_id": "evidence-report-html",
+      "path": "reports/run-01/run-01.evidence_report.html",
+      "self_contained": true,
+      "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "size_bytes": 222
     },
     {
       "kind": "run_summary_tsv",
@@ -23,5 +32,5 @@
   ],
   "run_id": "run-01",
   "schema_name": "norad.report_receipt",
-  "schema_version": "3.0.0"
+  "schema_version": "4.0.0"
 }

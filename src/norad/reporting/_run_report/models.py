@@ -14,9 +14,9 @@ if TYPE_CHECKING:
     from norad.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
 
 PRODUCER = "norad.reporting.report"
-PRODUCER_VERSION = "3.0.0"
+PRODUCER_VERSION = "4.0.0"
 RUN_SUMMARY_SCHEMA_VERSION = "2.0.0"
-REPORT_RECEIPT_SCHEMA_VERSION = "3.0.0"
+REPORT_RECEIPT_SCHEMA_VERSION = "4.0.0"
 JINJA_VERSION = "3.1.6"
 TEMPLATE_RESOURCE = "templates/run_report.html.j2"
 CSS_RESOURCE = "styles/run_report.css"
@@ -60,18 +60,25 @@ CSS_RESOURCE_RE = re.compile(
     r"|@import\s+(?:url\s*\(\s*)?(['\"])(.*?)\3",
     re.IGNORECASE,
 )
-REPORT_SECTION_IDS = {
+SCIENTIFIC_REPORT_SECTION_IDS = {
     "computational-results-section",
     "key-qc-section",
+}
+EVIDENCE_REPORT_SECTION_IDS = {
     "run-identity-section",
     "status-section",
     "limitations-section",
     "scope-matrix-section",
+    "step09-sources-section",
     "qc-metrics-section",
     "attempt-lineage-section",
     "artifact-appendix-section",
     "tools-issues-section",
     "report-provenance-section",
+}
+REPORT_SECTION_IDS_BY_VIEW = {
+    "scientific": SCIENTIFIC_REPORT_SECTION_IDS,
+    "evidence": EVIDENCE_REPORT_SECTION_IDS,
 }
 RECEIPT_HEADER = (
     "schema_name",
@@ -166,14 +173,16 @@ class ReportContext:
     css_snapshot: FileSnapshot
     output_root: Path
     output_dir: Path
-    output_html: Path
+    output_scientific_html: Path
+    output_evidence_html: Path
     output_summary_tsv: Path
     output_receipt: Path
     lock_path: Path
     stable_paths: tuple[Path, ...]
     previous_snapshots: Mapping[Path, FileSnapshot]
     render_metadata: Mapping[str, str]
-    html_bytes: bytes
+    scientific_html_bytes: bytes
+    evidence_html_bytes: bytes
     execute: bool
 
     @property

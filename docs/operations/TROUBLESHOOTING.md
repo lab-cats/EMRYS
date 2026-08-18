@@ -95,7 +95,7 @@ claim from this recovery guide.
 
 | Observation | Interpretation |
 | --- | --- |
-| Standalone Steps `07`–`09` passed but no HTML report exists | Expected: standalone wrappers publish native outputs and validation TSVs only. They are not adopted into orchestration state. Use `norad run` for automatic reporting; `norad build report` requires an existing canonical run summary. |
+| Standalone Steps `07`–`09` passed but no HTML reports exist | Expected: standalone wrappers publish native outputs and validation TSVs only. They are not adopted into orchestration state. Use `norad run` for automatic reporting; `norad build report` requires an existing canonical run summary. |
 | Report labels results `not scientifically adjudicated` | Expected: NORAD reports computational candidates and provenance only. Keep external review, adjudication, or biological-interpretation records separate from the run. |
 | Significant computational rows are present | They passed the declared Step `09` depth, background, FDR, odds-ratio, and allele-fraction-change rules. They remain review candidates, not validated editing sites. |
 | Candidate table has rows but significant table is empty | Step `08` found candidate SNVs, but none passed every strict Step `09` call threshold. Inspect `test_status` and `call_status`; do not relax policy after seeing results without creating and justifying a new analysis request. |

@@ -20,7 +20,7 @@ remain in [`HANDOFF.md`](../operations/HANDOFF.md); durable answers move to
 
 | Choice | Decision needed | Owner/deadline |
 | --- | --- | --- |
-| `CHOICE-REPORT-01`–`03` | Public profile names/selector, science field roster, and profile output/transaction boundary. | `RPT-02`, before `RPT-03` planning. |
+| `CHOICE-REPORT-FIGURES` | Which scientifically useful figures belong in the scientific report, and whether Python or an R owner should render them. | [`RPT-05`](../tasks/BACKLOG.md#rpt-05--decide-scientific-report-figures), before figure implementation. |
 | `CHOICE-GATE-REC-01` | Validation catalog/receipt schema, subject identity, storage, retention, compatibility, privacy, and invalidation. | `GATE-REC-01`, before receipt implementation. |
 | `CHOICE-SITE-01` | Whether scheduler proof should begin on CSU or in a reproducible single-node Linux VM, plus the exact SLURM executor, accounting, storage, module, and recovery profile. | `FUT-SITE-01`, only after the local pilot is proven. |
 | `CHOICE-SKILL-01` | Supported documentation-health skill name, scope, and discovery/install location. | [`DOC-SKILL-10`](../tasks/BACKLOG.md#doc-skill-10--build-documentation-health-skill), before scaffolding. |

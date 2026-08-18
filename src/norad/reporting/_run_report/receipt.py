@@ -1,4 +1,4 @@
-"""Deterministic report-summary and v3 receipt projection."""
+"""Deterministic report-summary and v4 receipt projection."""
 
 from __future__ import annotations
 
@@ -87,7 +87,7 @@ def _truncations(context: ReportContext) -> list[dict[str, Any]]:
     computational = [
         {
             "table_id": table.table_id,
-            "report_section": "computational-results",
+            "report_section": "computational-results-section",
             "full_table_path": str(table.path),
             "full_table_sha256": table.sha256,
             "full_row_count": table.row_count,
@@ -113,11 +113,12 @@ def receipt_document(
             "sha256": snapshot.sha256,
             "size_bytes": snapshot.size_bytes,
             "media_type": {
-                "html": "text/html",
+                "scientific_html": "text/html",
+                "evidence_html": "text/html",
                 "run_summary_tsv": "text/tab-separated-values",
             }[kind],
         }
-        if kind == "html":
+        if kind in {"scientific_html", "evidence_html"}:
             descriptor["self_contained"] = True
         descriptors.append(descriptor)
     identity = hashlib.sha256(
@@ -217,7 +218,7 @@ def read_receipt_tsv(path: Path) -> dict[str, Any]:
         with path.open("r", encoding="utf-8", newline="") as stream:
             reader = csv.DictReader(stream, delimiter="\t")
             if tuple(reader.fieldnames or ()) != RECEIPT_HEADER:
-                _fail("Existing report receipt is not the v3 receipt header")
+                _fail("Existing report receipt is not the v4 receipt header")
             rows = list(reader)
     except (OSError, UnicodeError, csv.Error) as exc:
         _fail(f"Could not read existing report receipt: {exc}")

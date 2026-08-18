@@ -2,7 +2,7 @@
 
 This is the single supported first-run sequence for taking either a deterministic
 synthetic fixture or paired FASTQ data from a fresh checkout through runtime
-admission, data ingestion, processing, inspection, and the automatic report.
+admission, data ingestion, processing, inspection, and the automatic reports.
 Run scientific work only on the intended compute host. Every dry-run, doctor
 result, scheduler job, and report has the evidence ceiling stated below.
 
@@ -18,7 +18,7 @@ result, scheduler job, and report has the evidence ceiling stated below.
 | 6. Readiness | Run doctor in the execution context | Exact `READY` result |
 | 7. Plan | Run the full no-write workflow plan | Reviewed deterministic run ID, run root, and owner commands |
 | 8. Process | Submit the generated single-allocation wrapper first with `NORAD_EXECUTE=0`, then unchanged with `1` | Terminal scheduler success plus verified NORAD task records |
-| 9. Results | Inspect the run and retain its complete evidence tree | `local_pipeline_complete` and automatic HTML report |
+| 9. Results | Inspect the run and retain its complete evidence tree | `local_pipeline_complete` and automatic scientific/evidence HTML reports |
 
 Do not skip a gate, hand-edit the generated scheduler wrapper, adopt outputs from
 standalone stages into an orchestrated run, or interpret computational
@@ -563,7 +563,7 @@ disconnect or uncertain exit. Inspect the existing run first.
 | Route | Result |
 | --- | --- |
 | Owner-local stage scheduler entry points | Native stage outputs and validation TSVs; no orchestration report or adoption |
-| `norad run` | Attempts, verified records, artifact index, run summary, and automatic HTML report |
+| `norad run` | Attempts, verified records, artifact index, run summary, and automatic scientific and evidence HTML reports |
 | `norad build report` | Rebuild from an existing canonical run summary; never adopt standalone outputs |
 
 The reporting sequence is part of the orchestrated workflow. Run a final
@@ -580,24 +580,28 @@ State: local_pipeline_complete
 Local pipeline complete: yes
 ```
 
-Compute the exact report path without searching the tree:
+Compute the exact report paths without searching the tree:
 
 ```sh
 NORAD_RUN_ID="${NORAD_RUN_ROOT##*/}"
-NORAD_REPORT_PATH="$NORAD_RUN_ROOT/products/report/$NORAD_RUN_ID/$NORAD_RUN_ID.run_report.html"
-test -f "$NORAD_REPORT_PATH" && printf '%s\n' "$NORAD_REPORT_PATH"
+NORAD_SCIENTIFIC_REPORT_PATH="$NORAD_RUN_ROOT/products/report/$NORAD_RUN_ID/$NORAD_RUN_ID.scientific_report.html"
+NORAD_EVIDENCE_REPORT_PATH="$NORAD_RUN_ROOT/products/report/$NORAD_RUN_ID/$NORAD_RUN_ID.evidence_report.html"
+test -f "$NORAD_SCIENTIFIC_REPORT_PATH" && printf '%s\n' "$NORAD_SCIENTIFIC_REPORT_PATH"
+test -f "$NORAD_EVIDENCE_REPORT_PATH" && printf '%s\n' "$NORAD_EVIDENCE_REPORT_PATH"
 ```
 
-Copy the self-contained HTML to a trusted workstation or open it with the
-local browser allowed by your environment. The report is an evidence view of
-the admitted run; its presence alone is not completion proof.
+Copy either self-contained HTML file to a trusted workstation or open it with
+the local browser allowed by your environment. The scientific report presents
+the admitted scientifically relevant computational results; the evidence
+report presents run status and provenance. Their presence alone is not
+completion proof.
 
 ### Read the computational results
 
-The report presents the admitted computational results and their evidence
-boundary; it does not turn a threshold-passing row into a validated editing
-site. The [reporting owner](src/norad/reporting/README.md) defines the report
-views, source admission, display limits, and direct build transaction. The
+The scientific report presents the admitted computational results and their
+evidence boundary; it does not turn a threshold-passing row into a validated
+editing site. The [reporting owner](src/norad/reporting/README.md) defines the
+two views, source admission, display limits, and direct build transaction. The
 [Step 09 owner](src/norad/analyses/paired_cmh_candidate_ranking/README.md)
 defines the complete native scientific tables and field semantics.
 
@@ -640,4 +644,3 @@ All other blocked states belong to
 The full [troubleshooting matrix](docs/operations/TROUBLESHOOTING.md) owns
 recovery detail. Standalone stages remain supported, but they do not create the
 immutable run state required by automatic reporting.
-

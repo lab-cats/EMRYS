@@ -1,4 +1,4 @@
-"""Computational-only view projection for the static Jinja report."""
+"""Scientific and operational-evidence projections for static HTML reports."""
 
 from __future__ import annotations
 
@@ -67,7 +67,6 @@ def _note(message: str, *, notice: bool = False) -> dict[str, Any]:
 
 _COMPUTATIONAL_RESULT_COLUMNS = (
     "candidate_id",
-    "partition_id",
     "orientation",
     "chromosome",
     "position",
@@ -89,17 +88,14 @@ _COMPUTATIONAL_RESULT_COLUMNS = (
 )
 
 
-def _computational_source_note(table: ComputationalTable) -> dict[str, Any]:
-    qualifier = (
-        f"Displayed {table.displayed_row_count} of {table.row_count} rows."
-        if table.truncated
-        else f"Displayed all {table.row_count} rows."
-    )
-    return _note(
-        f"{qualifier} Exact completed artifact: {table.path}. SHA-256: "
-        f"{table.sha256}. Size: {table.size_bytes} bytes.",
-        notice=table.truncated,
-    )
+def _computational_display_note(table: ComputationalTable) -> dict[str, Any]:
+    if table.truncated:
+        return _note(
+            f"Displayed the first {table.displayed_row_count} of {table.row_count} "
+            "rows; remaining rows are omitted from this scientific view.",
+            notice=True,
+        )
+    return _note(f"Displayed all {table.row_count} rows.")
 
 
 def _computational_result_table(table: ComputationalTable) -> dict[str, Any]:
@@ -118,13 +114,13 @@ def _computational_result_table(table: ComputationalTable) -> dict[str, Any]:
     )
 
 
-def _computational_result_blocks(
+def _scientific_result_blocks(
     results: ComputationalResults | None,
     unavailable_reason: str | None,
 ) -> list[dict[str, Any]]:
     boundary = _note(
         "COMPUTATIONAL RESULTS — NOT SCIENTIFICALLY ADJUDICATED. "
-        "Threshold-passing rows are CMH-ranked candidates, not validated "
+        f"Threshold-passing rows are {CANDIDATE_TERMINOLOGY}, not validated "
         "RNA-editing sites or biological conclusions.",
         notice=True,
     )
@@ -145,8 +141,10 @@ def _computational_result_blocks(
     )
     summary_fields = (
         ("Analysis ID", "analysis_id"),
+        ("Cohort ID", "cohort_id"),
         ("Control condition", "control_condition"),
         ("Treatment condition", "treatment_condition"),
+        ("Background condition", "background_condition"),
         ("Target RNA change", "target_rna_change"),
         ("Replicate count", "replicate_count"),
         ("Sample count", "sample_count"),
@@ -173,11 +171,10 @@ def _computational_result_blocks(
             "Step 09 counts, design, and declared thresholds",
             ((label, summary[field]) for label, field in summary_fields),
         ),
-        _computational_source_note(summary_table),
         _computational_result_table(results.significant_sites),
-        _computational_source_note(results.significant_sites),
+        _computational_display_note(results.significant_sites),
         _computational_result_table(results.all_sites),
-        _computational_source_note(results.all_sites),
+        _computational_display_note(results.all_sites),
     ]
 
 
@@ -190,6 +187,15 @@ _KEY_QC_METRICS = (
     ("Duplicate pairs", "read_pair_duplicates"),
     ("Duplicate fraction", "percent_duplication"),
     ("Estimated library size", "estimated_library_size"),
+    (
+        "FWD-like orientation support",
+        "fraction_explained_by__1___1--_2_-_2-",
+    ),
+    (
+        "REV-like orientation support",
+        "fraction_explained_by__1_-_1-__2___2--",
+    ),
+    ("Unresolved orientation fraction", "fraction_failed_to_determine"),
 )
 
 
@@ -202,13 +208,13 @@ def _key_qc(summary: Mapping[str, Any]) -> dict[str, Any]:
         if scope["scope_type"] != "sample":
             continue
         sample_id = scope["scope_id"]
-        if sample_id not in sample_order:
-            sample_order.append(sample_id)
         if not (
             artifact["availability_status"] == "present"
             and artifact["completion_status"] == "complete"
         ):
             continue
+        if sample_id not in sample_order:
+            sample_order.append(sample_id)
         for metric in artifact["metrics"]:
             metric_id = metric["metric_id"]
             key = sample_id, metric_id
@@ -225,7 +231,8 @@ def _key_qc(summary: Mapping[str, Any]) -> dict[str, Any]:
         )
     return _table(
         "key-sample-qc",
-        "Selected exact sample-level metrics; missing or ambiguous values are not inferred",
+        "Selected values from exact completed sample artifacts; missing or "
+        "ambiguous values are not inferred",
         ("Sample", *(label for label, _ in _KEY_QC_METRICS)),
         (
             (
@@ -233,6 +240,33 @@ def _key_qc(summary: Mapping[str, Any]) -> dict[str, Any]:
                 *(values[sample_id].get(metric_id) for _, metric_id in _KEY_QC_METRICS),
             )
             for sample_id in sample_order
+        ),
+    )
+
+
+def _step09_sources(
+    results: ComputationalResults | None,
+    unavailable_reason: str | None,
+) -> dict[str, Any]:
+    if results is None:
+        return _empty(
+            unavailable_reason
+            or "The exact complete primary-analysis Step 09 source set is unavailable."
+        )
+    return _table(
+        "step09-source-records",
+        "Exact completed Step 09 sources admitted for report generation",
+        ("Role", "Artifact ID", "Source path", "SHA-256", "Bytes", "Rows"),
+        (
+            (
+                table.role,
+                table.artifact_id,
+                table.path,
+                table.sha256,
+                table.size_bytes,
+                table.row_count,
+            )
+            for table in results.tables
         ),
     )
 
@@ -618,47 +652,114 @@ def _report_provenance(metadata: Mapping[str, str]) -> dict[str, Any]:
     )
 
 
-def build_view(
+def _document_view(
+    summary: Mapping[str, Any],
+    metadata: Mapping[str, str],
+    *,
+    report_view: str,
+    document_title: str,
+    heading: str,
+    banner: str,
+    boundary_class: str,
+    introduction: str,
+    end_note: str,
+    categories: tuple[dict[str, Any], ...],
+) -> dict[str, Any]:
+    return {
+        "report_view": report_view,
+        "document_title": document_title,
+        "heading": heading,
+        "run_id": summary["run_id"],
+        "boundary_class": boundary_class,
+        "banner": banner,
+        "introduction": introduction,
+        "end_note": end_note,
+        "metadata": dict(metadata),
+        "categories": categories,
+    }
+
+
+def build_scientific_view(
     summary: Mapping[str, Any],
     metadata: Mapping[str, str],
     *,
     computational_results: ComputationalResults | None = None,
     computational_unavailable_reason: str | None = None,
 ) -> dict[str, Any]:
-    """Build the complete deterministic computational report view."""
+    """Build the scientific interpretation view without operational provenance."""
 
-    return {
-        "run_id": summary["run_id"],
-        "candidate_terminology": CANDIDATE_TERMINOLOGY,
-        "interpretation_boundary": summary["interpretation_boundary"],
-        "boundary_class": "computational-boundary",
-        "banner": BOUNDARY_BANNER,
-        "metadata": dict(metadata),
-        "categories": (
+    return _document_view(
+        summary,
+        metadata,
+        report_view="scientific",
+        document_title=f"NORAD scientific report: {summary['run_id']}",
+        heading=f"NORAD scientific report: {summary['run_id']}",
+        banner=BOUNDARY_BANNER,
+        boundary_class="scientific-boundary",
+        introduction=(
+            "This read-only scientific view reports the completed Step 09 "
+            f"analysis as {CANDIDATE_TERMINOLOGY}. It does not claim biological "
+            "validation or validated RNA-editing sites."
+        ),
+        end_note=(
+            "End of scientific report. Biological validation remains outside NORAD."
+        ),
+        categories=(
             {
-                "id": "computational-category",
-                "title": "Computational results",
+                "id": "scientific-category",
+                "title": "Scientific results",
                 "open": True,
                 "sections": (
                     {
                         "id": "computational-results-section",
-                        "title": "Step 09 computational candidates",
-                        "blocks": _computational_result_blocks(
+                        "title": "Step 09 design, method, and computational results",
+                        "blocks": _scientific_result_blocks(
                             computational_results,
                             computational_unavailable_reason,
                         ),
                     },
                     {
                         "id": "key-qc-section",
-                        "title": "Key sample QC",
+                        "title": "Selected exact sample QC",
                         "blocks": (_key_qc(summary),),
                     },
                 ),
             },
+        ),
+    )
+
+
+def build_evidence_view(
+    summary: Mapping[str, Any],
+    metadata: Mapping[str, str],
+    *,
+    computational_results: ComputationalResults | None = None,
+    computational_unavailable_reason: str | None = None,
+) -> dict[str, Any]:
+    """Build the operational evidence and provenance view without candidate rows."""
+
+    return _document_view(
+        summary,
+        metadata,
+        report_view="evidence",
+        document_title=f"NORAD operational evidence report: {summary['run_id']}",
+        heading=f"NORAD operational evidence report: {summary['run_id']}",
+        banner=BOUNDARY_BANNER,
+        boundary_class="evidence-boundary",
+        introduction=(
+            "This read-only view records operational status, evidence, and "
+            "provenance. It does not display Step 09 candidate rows and does not "
+            "provide scientific or biological interpretation."
+        ),
+        end_note=(
+            "End of operational evidence report. Report generation did not change "
+            "any computational status."
+        ),
+        categories=(
             {
                 "id": "overview-category",
                 "title": "Run overview",
-                "open": False,
+                "open": True,
                 "sections": (
                     {
                         "id": "run-identity-section",
@@ -687,6 +788,16 @@ def build_view(
                 "title": "QC and evidence",
                 "open": False,
                 "sections": (
+                    {
+                        "id": "step09-sources-section",
+                        "title": "Step 09 report sources",
+                        "blocks": (
+                            _step09_sources(
+                                computational_results,
+                                computational_unavailable_reason,
+                            ),
+                        ),
+                    },
                     {
                         "id": "qc-metrics-section",
                         "title": "QC metrics",
@@ -722,4 +833,4 @@ def build_view(
                 ),
             },
         ),
-    }
+    )

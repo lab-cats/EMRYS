@@ -22,7 +22,9 @@ PYTHON_FILES: Mapping[str, bytes] = {
 }
 RESOURCE_FILES: Mapping[str, bytes] = {
     "contracts/schemas/artifacts/v1/example.json": b'{"schema": true}\n',
-    "contracts/schemas/artifacts/v2/report_receipt.schema.json": b'{"schema": true}\n',
+    "contracts/schemas/artifacts/v2/artifact_record.schema.json": b'{"schema": true}\n',
+    "contracts/schemas/artifacts/v3/report_receipt.schema.json": b'{"schema": 3}\n',
+    "contracts/schemas/artifacts/v4/report_receipt.schema.json": b'{"schema": 4}\n',
     "contracts/schemas/orchestration/v1/common.schema.json": b'{"schema": true}\n',
     "contracts/schemas/orchestration/v2/request.schema.json": b'{"schema": true}\n',
     "reporting/styles/example.css": b"body { color: black; }\n",
@@ -116,7 +118,7 @@ def _project_configuration(name: str = PROJECT_NAME) -> bytes:
         "namespaces = false\n"
         "\n"
         "[tool.setuptools.package-data]\n"
-        '"norad.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json"]\n'
+        '"norad.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/artifacts/v3/*.json", "schemas/artifacts/v4/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json"]\n'
         '"norad.reporting" = ["styles/*.css", "templates/*.html.j2"]\n'
     ).encode()
 
@@ -385,11 +387,21 @@ def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -
     )
 
 
-def test_package_identity_includes_orchestration_schema_bytes(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "relative",
+    (
+        Path("contracts/schemas/artifacts/v3/report_receipt.schema.json"),
+        Path("contracts/schemas/artifacts/v4/report_receipt.schema.json"),
+        Path("contracts/schemas/orchestration/v1/common.schema.json"),
+    ),
+)
+def test_package_identity_includes_declared_resource_bytes(
+    tmp_path: Path,
+    relative: Path,
+) -> None:
     fixture = _build_fixture(tmp_path)
     _commit_package(fixture)
     changed = b'{"schema": "changed"}\n'
-    relative = Path("contracts/schemas/orchestration/v1/common.schema.json")
     (fixture.checkout_package / relative).write_bytes(changed)
     (fixture.package_root / relative).write_bytes(changed)
     admitted = _admit(fixture)

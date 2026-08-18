@@ -5,14 +5,14 @@ This private package supports the direct public
 
 | Module | Responsibility |
 | --- | --- |
-| [`models.py`](models.py) | Immutable contract constants and context values. |
+| [`models.py`](models.py) | Immutable v4 contract constants and two-view context values. |
 | [`inputs.py`](inputs.py) | Explicit run-summary admission with stable snapshots. |
 | [`computational.py`](computational.py) | Exact primary-analysis Step 09 trio and all-pass owner-validation selection, source identity/snapshots, canonical trio admission, and bounded display rows. |
 | [`context.py`](context.py) | Side-effect-free resource, output, and predecessor preparation. |
-| [`view.py`](view.py) | Structured report view data without HTML construction. |
-| [`validation.py`](validation.py) | Autoescaped strict Jinja environment plus CSS, security, semantic HTML, and accessibility validation. |
-| [`receipt.py`](receipt.py) | Deterministic summary TSV and v3 receipt projection/validation. |
-| [`publication.py`](publication.py) | One receipt-last HTML transaction using injected immutable fault operations. |
+| [`view.py`](view.py) | Separate structured scientific and operational-evidence projections without HTML construction. |
+| [`validation.py`](validation.py) | Autoescaped strict Jinja environment plus CSS, security, per-view semantic HTML, and accessibility validation. |
+| [`receipt.py`](receipt.py) | Deterministic summary TSV and v4 two-view receipt projection/validation. |
+| [`publication.py`](publication.py) | One receipt-last two-HTML transaction using injected immutable fault operations. |
 | [`transaction.py`](transaction.py) | Lock, snapshot, durability, staging, and recovery primitives. |
 
 The public owner admits the required absolute canonical source checkout and
@@ -37,18 +37,27 @@ The all-pass owner-validation artifact, not rendering, carries upstream Step
 checks. Reporting reimplements neither shell/R producer nor independent oracle;
 it discloses an incomplete trio without opening or inferring candidate rows.
 
-The first open report category labels these rows **computational results — not
-scientifically adjudicated**. It displays the significant subset before the
-all-sites table, includes raw per-sample DP/AD/AF, and caps each candidate table
-at 250 rows. Exact source identity and full row count remain visible; any
-truncation uses the v3 receipt truncation contract. Candidate review,
-adjudication, and biological interpretation remain external research
-activities. Selected sample QC is copied only from exact complete metrics
-already present in the run summary.
+The scientific view labels these rows **computational results — not
+scientifically adjudicated**. It presents Step 09 design, contrast, counts,
+thresholds and method; displays the significant subset before the all-sites
+table; includes raw per-sample DP/AD/AF; and caps each candidate table at 250
+rows. Selected sample QC is copied only from exact complete metrics already in
+the run summary. Paths, hashes, attempts, artifacts, tools, renderer provenance,
+and the artifact-availability figure are excluded from this view.
+
+The operational-evidence view contains no candidate rows. It retains run and
+execution status, limitations, expected scopes, artifact QC, attempt lineage,
+the artifact appendix, tools and issues, renderer provenance, and the accessible
+artifact-availability figure. Its compact four-record Step 09 source table
+preserves exact path, hash, size, and row-count orientation for the validation,
+all-sites, significant-sites, and summary inputs. Any scientific-table
+truncation uses the v4 receipt contract to bind the displayed prefix to its full
+source. Candidate review, adjudication, and biological interpretation remain
+external research activities.
 
 The transaction retains input rechecks, lock ownership, predecessor identity,
 backup/rollback, recovery markers, foreign-state preservation, staged
 validation, receipt-last publication, and characterized interruption behavior.
 Tests inject a frozen `ReportPublicationOps` value rather than patching module
-globals. The renderer producer is `3.0.0`; run-summary `2.0.0` and
-report-receipt `3.0.0` are clean breaking contracts with no compatibility shim.
+globals. The renderer producer is `4.0.0`; run-summary `2.0.0` and
+report-receipt `4.0.0` are clean breaking contracts with no compatibility shim.

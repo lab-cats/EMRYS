@@ -75,7 +75,7 @@
   ],
   "report_receipt.schema.json": [
     {
-      "expected": "urn:norad:schema:artifacts:report-receipt:v3",
+      "expected": "urn:norad:schema:artifacts:report-receipt:v4",
       "pointer": "/$id"
     },
     {
@@ -83,8 +83,24 @@
       "pointer": "/properties/schema_name/const"
     },
     {
-      "expected": "3.0.0",
+      "expected": "4.0.0",
       "pointer": "/properties/schema_version/const"
+    },
+    {
+      "expected": 3,
+      "pointer": "/properties/outputs/minItems"
+    },
+    {
+      "expected": 3,
+      "pointer": "/properties/outputs/maxItems"
+    },
+    {
+      "expected": [
+        "scientific_html",
+        "evidence_html",
+        "run_summary_tsv"
+      ],
+      "pointer": "/$defs/report_output/properties/kind/enum"
     },
     {
       "expected": "Jinja2",

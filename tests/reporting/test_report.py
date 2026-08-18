@@ -1,4 +1,4 @@
-"""Behavior, security, receipt, and recovery tests for direct HTML reporting."""
+"""Behavior, security, receipt, and recovery tests for two-view reporting."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ from norad.libraries.source_authority import (
 )
 from norad.reporting import report as REPORT
 from norad.reporting._run_report import context as report_context
-from norad.reporting._run_report import publication, receipt, validation
+from norad.reporting._run_report import publication, receipt, validation, view
 from norad.reporting._run_report.models import JINJA_VERSION, ReportRenderError
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
 
@@ -55,7 +55,7 @@ def publish_run_summary(fixture: Any) -> Path:
 @pytest.fixture(scope="module")
 def computational_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return publish_run_summary(
-        FIXTURE.build_fixture(tmp_path_factory.mktemp("report-v3") / "fixture")
+        FIXTURE.build_fixture(tmp_path_factory.mktemp("report-v4") / "fixture")
     )
 
 
@@ -63,7 +63,7 @@ def computational_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
 def failed_summary(tmp_path_factory: pytest.TempPathFactory) -> Path:
     return publish_run_summary(
         FIXTURE.build_failed_fixture(
-            tmp_path_factory.mktemp("report-v3-failed") / "fixture"
+            tmp_path_factory.mktemp("report-v4-failed") / "fixture"
         )
     )
 
@@ -88,8 +88,13 @@ def arguments(
     )
 
 
-def output_paths(context: Any) -> tuple[Path, Path, Path]:
-    return context.output_html, context.output_summary_tsv, context.output_receipt
+def output_paths(context: Any) -> tuple[Path, Path, Path, Path]:
+    return (
+        context.output_scientific_html,
+        context.output_evidence_html,
+        context.output_summary_tsv,
+        context.output_receipt,
+    )
 
 
 def receipt_document(path: Path) -> dict[str, Any]:
@@ -306,7 +311,7 @@ def test_dry_run_is_side_effect_free(
     assert not output_root.exists()
 
 
-def test_success_publishes_html_summary_and_v3_receipt_last(
+def test_success_publishes_two_html_views_summary_and_v4_receipt_last(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
@@ -323,23 +328,27 @@ def test_success_publishes_html_summary_and_v3_receipt_last(
     publish(context, replace(base, link=record_link))
     assert output_paths(context) == tuple(path for path in context.stable_paths)
     assert all(path.is_file() for path in output_paths(context))
-    assert [path.name for path in links[-3:]] == [
-        context.output_html.name,
+    assert [path.name for path in links[-4:]] == [
+        context.output_scientific_html.name,
+        context.output_evidence_html.name,
         context.output_summary_tsv.name,
         context.output_receipt.name,
     ]
-    assert not context.output_html.with_suffix(".pdf").exists()
+    assert not (context.output_dir / f"{context.summary['run_id']}.run_report.html").exists()
+    assert not (context.output_dir / f"{context.summary['run_id']}.run_report.pdf").exists()
     document = receipt_document(context.output_receipt)
-    assert document["schema_version"] == "3.0.0"
+    assert document["schema_version"] == "4.0.0"
     assert document["interpretation_boundary"] == (
         "computational_candidates_only_biological_validation_outside_norad"
     )
     assert document["renderer"] == {"name": "Jinja2", "version": JINJA_VERSION}
     assert [item["kind"] for item in document["outputs"]] == [
-        "html",
+        "scientific_html",
+        "evidence_html",
         "run_summary_tsv",
     ]
     assert document["outputs"][0]["self_contained"] is True
+    assert document["outputs"][1]["self_contained"] is True
     assert document["analysis_execution_performed"] is False
     assert document["validation_claimed"] is False
 
@@ -427,7 +436,7 @@ def test_existing_receipt_reader_rejects_shape_and_json_defects(
             writer.writerows(rows)
 
     path.write_text("wrong\n", encoding="utf-8")
-    with pytest.raises(ReportRenderError, match="v3 receipt header"):
+    with pytest.raises(ReportRenderError, match="v4 receipt header"):
         receipt.read_receipt_tsv(path)
 
     write_rows([])
@@ -471,7 +480,7 @@ def test_receipt_attributes_provenance_to_renderer_checkout(
     assert context.producer_git_commit != upstream_commit
     assert document["provenance"] == {
         "producer": "norad.reporting.report",
-        "producer_version": "3.0.0",
+        "producer_version": "4.0.0",
         "git_commit": context.producer_git_commit,
         "created_at": context.summary["generated_at"],
     }
@@ -493,7 +502,7 @@ def test_failed_expected_scope_renders_from_valid_pipeline_summary(
         {"step_id": "01", "scope_type": "sample", "scope_id": "SYNTH_A"}
     ]
     publish(context)
-    content = context.output_html.read_text(encoding="utf-8")
+    content = context.output_evidence_html.read_text(encoding="utf-8")
     assert "Failed expected scopes" in content
     assert "01 sample SYNTH_A failed" in content
 
@@ -535,7 +544,7 @@ def test_jinja_is_strict_autoescaped_and_template_owns_markup(
         arguments(copied, tmp_path / "reports", execute=True)
     )
     publish(context)
-    content = context.output_html.read_text(encoding="utf-8")
+    content = context.output_evidence_html.read_text(encoding="utf-8")
     environment = validation.build_environment()
     assert environment.undefined is StrictUndefined
     assert environment.autoescape("run_report.html.j2") is True
@@ -562,7 +571,7 @@ def test_template_rejects_additional_or_untrusted_safe_boundaries() -> None:
         )
 
 
-def test_semantic_html_preserves_banner_sections_and_terminology(
+def test_two_html_views_separate_science_from_operational_evidence(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
@@ -570,19 +579,65 @@ def test_semantic_html_preserves_banner_sections_and_terminology(
         arguments(computational_summary, tmp_path / "reports", execute=True)
     )
     publish(context)
-    content = context.output_html.read_text(encoding="utf-8")
-    assert "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE NORAD." in content
-    assert "CMH-ranked candidates" in content
-    assert "FWD_like" in content
-    assert "biological strand" not in content
-    assert "<script" not in content.lower()
-    assert "http://" not in content and "https://" not in content
+    scientific = context.output_scientific_html.read_text(encoding="utf-8")
+    evidence = context.output_evidence_html.read_text(encoding="utf-8")
+    banner = "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE NORAD."
+
+    assert banner in scientific and banner in evidence
+    assert 'data-report-view="scientific"' in scientific
+    assert 'data-report-view="evidence"' in evidence
+    assert "CMH-ranked candidates" in scientific
+    assert "FWD_like" in scientific
+    assert 'id="computational_significant_sites"' in scientific
+    assert 'id="computational_all_sites"' in scientific
+    assert "candidate_1" in scientific
+    assert "Selected exact sample QC" in scientific
+    assert "Attempt lineage" not in scientific
+    assert "Artifact appendix" not in scientific
+    assert "Tools and issues" not in scientific
+    assert "Report provenance" not in scientific
+    assert "<svg" not in scientific
+    assert 'id="step09-source-records"' in evidence
+    assert 'id="computational_significant_sites"' not in evidence
+    assert 'id="computational_all_sites"' not in evidence
+    assert "candidate_1" not in evidence
+    assert "Attempt lineage" in evidence
+    assert "Artifact appendix" in evidence
+    assert "Report provenance" in evidence
+    assert "<svg" in evidence
+    assert context.computational_results is not None
+    for table in context.computational_results.tables:
+        assert str(table.path) not in scientific
+        assert table.sha256 not in scientific
+        assert str(table.path) in evidence
+        assert table.sha256 in evidence
+    for metadata_field in (
+        "css_sha256",
+        "run_summary_sha256",
+        "template_sha256",
+    ):
+        assert context.render_metadata[metadata_field] not in scientific
+        assert context.render_metadata[metadata_field] in evidence
+    for content in (scientific, evidence):
+        assert "biological strand" not in content
+        assert "<script" not in content.lower()
+        assert "http://" not in content and "https://" not in content
+
     validation.validate_rendered_html(
-        context.output_html,
+        context.output_scientific_html,
+        expected_banner=context.render_metadata["state_banner"],
+        expected_identity={
+            "data-report-view": "scientific",
+            "data-run-id": context.summary["run_id"],
+        },
+    )
+    validation.validate_rendered_html(
+        context.output_evidence_html,
         expected_banner=context.render_metadata["state_banner"],
         expected_identity={
             "data-css-sha256": context.render_metadata["css_sha256"],
             "data-jinja-version": JINJA_VERSION,
+            "data-report-view": "evidence",
             "data-renderer-version": context.render_metadata["renderer_version"],
             "data-run-id": context.summary["run_id"],
             "data-run-summary-sha256": context.render_metadata["run_summary_sha256"],
@@ -605,9 +660,9 @@ def test_report_displays_exact_step09_results_and_key_qc(
     assert context.computational_results.all_sites.row_count == 4
     assert context.computational_results.significant_sites.row_count == 1
     publish(context)
-    content = context.output_html.read_text(encoding="utf-8")
+    content = context.output_scientific_html.read_text(encoding="utf-8")
     assert (
-        '<details id="computational-category" '
+        '<details id="scientific-category" '
         'class="report-category" name="norad-report-categories" open>'
     ) in content
     assert "COMPUTATIONAL RESULTS — NOT SCIENTIFICALLY ADJUDICATED." in content
@@ -618,6 +673,33 @@ def test_report_displays_exact_step09_results_and_key_qc(
     assert "Mapped reads" in content
     assert "0.97" in content
     assert "not validated RNA-editing sites" in content
+    evidence_view = view.build_evidence_view(
+        context.summary,
+        context.render_metadata,
+        computational_results=context.computational_results,
+        computational_unavailable_reason=context.computational_unavailable_reason,
+    )
+    source_section = next(
+        section
+        for category in evidence_view["categories"]
+        for section in category["sections"]
+        if section["id"] == "step09-sources-section"
+    )
+    source_table = source_section["blocks"][0]
+    assert source_table["header"] == (
+        "Role",
+        "Artifact ID",
+        "Source path",
+        "SHA-256",
+        "Bytes",
+        "Rows",
+    )
+    assert tuple(row[0] for row in source_table["rows"]) == (
+        "validation",
+        "all_sites",
+        "significant_sites",
+        "summary",
+    )
 
 
 def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
@@ -635,9 +717,12 @@ def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
     assert context.computational_unavailable_reason is not None
     assert "not complete" in context.computational_unavailable_reason
     publish(context)
-    content = context.output_html.read_text(encoding="utf-8")
-    assert "no computational candidate rows were opened or displayed" in content
-    assert 'id="computational_all_sites"' not in content
+    scientific = context.output_scientific_html.read_text(encoding="utf-8")
+    evidence = context.output_evidence_html.read_text(encoding="utf-8")
+    assert "no computational candidate rows were opened or displayed" in scientific
+    assert 'id="computational_all_sites"' not in scientific
+    assert "no computational candidate rows were opened or displayed" in evidence
+    assert 'id="step09-source-records"' not in evidence
 
 
 @pytest.mark.parametrize(
@@ -803,14 +888,14 @@ def test_computational_all_sites_limit_and_truncation_are_receipted(
     document = receipt_document(context.output_receipt)
     assert document["truncations"][0] == {
         "table_id": "computational_all_sites",
-        "report_section": "computational-results",
+        "report_section": "computational-results-section",
         "full_table_path": str(all_sites.path),
         "full_table_sha256": all_sites.sha256,
         "full_row_count": 251,
         "displayed_row_count": 250,
     }
-    assert "Displayed 250 of 251 rows" in context.output_html.read_text(
-        encoding="utf-8"
+    assert "Displayed the first 250 of 251 rows" in (
+        context.output_scientific_html.read_text(encoding="utf-8")
     )
 
 
@@ -839,7 +924,22 @@ def test_report_rejects_a_non_directory_output_root(
         REPORT.prepare_report(arguments(computational_summary, output_root))
 
 
-def test_v1_and_bare_html_predecessors_require_fresh_output_root(
+@pytest.mark.parametrize("suffix", ("run_report.html", "run_report.pdf"))
+def test_retired_single_report_predecessors_require_fresh_output_root(
+    computational_summary: Path,
+    tmp_path: Path,
+    suffix: str,
+) -> None:
+    run_id = json.loads(computational_summary.read_text(encoding="utf-8"))["run_id"]
+    output_root = tmp_path / "reports"
+    output_dir = output_root / run_id
+    output_dir.mkdir(parents=True)
+    (output_dir / f"{run_id}.{suffix}").write_text("retired", encoding="utf-8")
+    with pytest.raises(ReportRenderError, match="fresh output root"):
+        REPORT.prepare_report(arguments(computational_summary, output_root))
+
+
+def test_bare_v4_output_requires_fresh_output_root(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
@@ -847,14 +947,32 @@ def test_v1_and_bare_html_predecessors_require_fresh_output_root(
     output_root = tmp_path / "reports"
     output_dir = output_root / run_id
     output_dir.mkdir(parents=True)
-    (output_dir / f"{run_id}.run_report.html").write_text("legacy", encoding="utf-8")
-    with pytest.raises(ReportRenderError, match="fresh output root"):
-        REPORT.prepare_report(arguments(computational_summary, output_root))
-    (output_dir / f"{run_id}.report_outputs.tsv").write_text(
-        "schema_name\tschema_version\trequested_formats\n",
+    (output_dir / f"{run_id}.scientific_report.html").write_text(
+        "bare",
         encoding="utf-8",
     )
     with pytest.raises(ReportRenderError, match="fresh output root"):
+        REPORT.prepare_report(arguments(computational_summary, output_root))
+
+
+def test_v3_receipt_requires_fresh_output_root(
+    computational_summary: Path,
+    tmp_path: Path,
+) -> None:
+    run_id = json.loads(computational_summary.read_text(encoding="utf-8"))["run_id"]
+    output_root = tmp_path / "reports"
+    output_dir = output_root / run_id
+    output_dir.mkdir(parents=True)
+    v3 = json.loads(
+        (
+            REPO_ROOT
+            / "tests/contracts/artifacts/fixtures/report_receipt_v3.json"
+        ).read_text(encoding="utf-8")
+    )
+    (output_dir / f"{run_id}.report_outputs.tsv").write_bytes(
+        receipt.receipt_tsv_bytes(v3)
+    )
+    with pytest.raises(ReportRenderError, match="active v4 contract"):
         REPORT.prepare_report(arguments(computational_summary, output_root))
 
 
@@ -940,17 +1058,26 @@ def test_foreign_final_and_backup_are_preserved(
         arguments(computational_summary, tmp_path / "foreign-final", execute=True)
     )
     empty_context.output_dir.mkdir(parents=True)
-    empty_context.output_html.write_text("foreign final\n", encoding="utf-8")
+    empty_context.output_scientific_html.write_text(
+        "foreign final\n",
+        encoding="utf-8",
+    )
     with pytest.raises(ReportRenderError, match="appeared after preflight"):
         publish(empty_context)
-    assert empty_context.output_html.read_text(encoding="utf-8") == "foreign final\n"
+    assert (
+        empty_context.output_scientific_html.read_text(encoding="utf-8")
+        == "foreign final\n"
+    )
 
     args = arguments(computational_summary, tmp_path / "foreign-backup", execute=True)
     initial = REPORT.prepare_report(args)
     publish(initial)
     context = REPORT.prepare_report(args)
     token = "fixed-foreign-token"
-    backup = context.output_dir / f".{context.output_html.name}.{token}.previous"
+    backup = (
+        context.output_dir
+        / f".{context.output_scientific_html.name}.{token}.previous"
+    )
     backup.write_text("foreign backup\n", encoding="utf-8")
     ops = replace(REPORT.default_publication_ops(), make_token=lambda: token)
     with pytest.raises(ReportRenderError, match="backup path unexpectedly exists"):
@@ -970,7 +1097,10 @@ def test_incomplete_rollback_preserves_lock_stage_and_recovery(
     base = REPORT.default_publication_ops()
 
     def fail_publication_and_restore(source: Path, target: Path) -> None:
-        if ".run-report." in source.parent.name and target == context.output_html:
+        if (
+            ".run-report." in source.parent.name
+            and target == context.output_scientific_html
+        ):
             raise OSError("synthetic publication failure")
         if source.name.endswith(".previous"):
             raise OSError("synthetic rollback failure")
@@ -1099,14 +1229,27 @@ def test_summary_and_receipt_serializers_are_deterministic(
     assert receipt.summary_tsv_bytes(context) == receipt.summary_tsv_bytes(context)
     stage = tmp_path / "stage"
     stage.mkdir()
-    html = stage / context.output_html.name
+    scientific_html = stage / context.output_scientific_html.name
+    evidence_html = stage / context.output_evidence_html.name
     summary = stage / context.output_summary_tsv.name
-    html.write_bytes(context.html_bytes)
+    scientific_html.write_bytes(context.scientific_html_bytes)
+    evidence_html.write_bytes(context.evidence_html_bytes)
     summary.write_bytes(receipt.summary_tsv_bytes(context))
     document = receipt.receipt_document(
         context,
         (
-            ("run-report-html", "html", html, context.output_html),
+            (
+                "scientific-report-html",
+                "scientific_html",
+                scientific_html,
+                context.output_scientific_html,
+            ),
+            (
+                "evidence-report-html",
+                "evidence_html",
+                evidence_html,
+                context.output_evidence_html,
+            ),
             ("run-summary-tsv", "run_summary_tsv", summary, context.output_summary_tsv),
         ),
     )

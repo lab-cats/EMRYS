@@ -30,6 +30,8 @@ CONTROLLED_PYTHON_OPTIONS = (
 _RESOURCE_PATTERNS = (
     (Path("contracts"), "schemas/artifacts/v1/*.json"),
     (Path("contracts"), "schemas/artifacts/v2/*.json"),
+    (Path("contracts"), "schemas/artifacts/v3/*.json"),
+    (Path("contracts"), "schemas/artifacts/v4/*.json"),
     (Path("contracts"), "schemas/orchestration/v1/*.json"),
     (Path("contracts"), "schemas/orchestration/v2/*.json"),
     (Path("reporting"), "styles/*.css"),

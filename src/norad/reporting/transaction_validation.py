@@ -677,7 +677,8 @@ def _report_context_roster(context: Any) -> _BoundRosterSnapshot:
     summary_dir = context.run_summary_path.parent
     files = {
         *(snapshot.path for snapshot in context.input_snapshots),
-        context.output_html,
+        context.output_scientific_html,
+        context.output_evidence_html,
         context.output_summary_tsv,
         context.output_receipt,
         summary_dir / f"{run_id}.run_summary.tsv",
@@ -931,16 +932,18 @@ def validate_report_transaction(
     output_root: Path,
     receipt_ops: ReceiptValidationOps = DEFAULT_RECEIPT_VALIDATION_OPS,
 ) -> ValidatedTransaction:
-    """Revalidate self-contained HTML, TSV, receipt, and all upstream inputs."""
+    """Revalidate both HTML views, TSV, receipt, and all upstream inputs."""
 
     from norad.reporting import report
+    from norad.reporting._run_report import context as report_context
     from norad.reporting._run_report import receipt, validation
 
     summary = artifact_contracts.load_json_object(run_summary, "run summary")
     run_id = str(summary.get("run_id", ""))
     output_dir = output_root / run_id
     output_names = (
-        f"{run_id}.run_report.html",
+        f"{run_id}.scientific_report.html",
+        f"{run_id}.evidence_report.html",
         f"{run_id}.run_summary.tsv",
         f"{run_id}.report_outputs.tsv",
     )
@@ -995,9 +998,18 @@ def validate_report_transaction(
         raise ReportingTransactionError(
             "Report semantic validation admitted a different receipt"
         )
-    if context.output_html.read_bytes() != context.html_bytes:
+    if (
+        context.output_scientific_html.read_bytes()
+        != context.scientific_html_bytes
+    ):
         raise ReportingTransactionError(
-            "Published HTML differs from the current deterministic projection"
+            "Published scientific HTML differs from the current deterministic "
+            "projection"
+        )
+    if context.output_evidence_html.read_bytes() != context.evidence_html_bytes:
+        raise ReportingTransactionError(
+            "Published evidence HTML differs from the current deterministic "
+            "projection"
         )
     expected_summary = receipt.summary_tsv_bytes(context)
     if context.output_summary_tsv.read_bytes() != expected_summary:
@@ -1009,10 +1021,16 @@ def validate_report_transaction(
         context,
         (
             (
-                "run-report-html",
-                "html",
-                context.output_html,
-                context.output_html,
+                "scientific-report-html",
+                "scientific_html",
+                context.output_scientific_html,
+                context.output_scientific_html,
+            ),
+            (
+                "evidence-report-html",
+                "evidence_html",
+                context.output_evidence_html,
+                context.output_evidence_html,
             ),
             (
                 "run-summary-tsv",
@@ -1027,16 +1045,17 @@ def validate_report_transaction(
             "Published report receipt differs from the current projection"
         )
     validation.validate_rendered_html(
-        context.output_html,
+        context.output_scientific_html,
         expected_banner=context.render_metadata["state_banner"],
-        expected_identity={
-            "data-css-sha256": context.render_metadata["css_sha256"],
-            "data-jinja-version": context.render_metadata["jinja_version"],
-            "data-renderer-version": context.render_metadata["renderer_version"],
-            "data-run-id": context.summary["run_id"],
-            "data-run-summary-sha256": context.render_metadata["run_summary_sha256"],
-            "data-template-sha256": context.render_metadata["template_sha256"],
-        },
+        expected_identity=report_context.expected_html_identity(
+            context,
+            "scientific",
+        ),
+    )
+    validation.validate_rendered_html(
+        context.output_evidence_html,
+        expected_banner=context.render_metadata["state_banner"],
+        expected_identity=report_context.expected_html_identity(context, "evidence"),
     )
     receipt.validate_summary_tsv(context.output_summary_tsv, context)
     if context.output_receipt != receipt_snapshot.path:

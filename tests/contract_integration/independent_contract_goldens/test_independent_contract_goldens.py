@@ -75,7 +75,7 @@ def schema_documents() -> dict[str, Any]:
     schema_versions = {
         "artifact_record.schema.json": "v2",
         "common.schema.json": "v1",
-        "report_receipt.schema.json": "v3",
+        "report_receipt.schema.json": "v4",
         "run_summary.schema.json": "v2",
     }
     return {
@@ -124,26 +124,41 @@ def assert_report_receipt(
     assert serializer(document) == serializer(copy.deepcopy(document))
 
 
-def report_html_bytes(document: Mapping[str, Any]) -> bytes:
+def report_html_bytes(document: Mapping[str, Any]) -> dict[str, bytes]:
     summary = load_json(REPO_ROOT / document["summary_fixture"])
     assert not ARTIFACT_CONTRACTS.schema_errors("run-summary", summary)
     ARTIFACT_CONTRACTS.validate_run_summary_semantics(
         summary,
         source_root=REPO_ROOT,
     )
-    view = REPORT_VIEW.build_view(
-        summary,
-        document["metadata"],
+    return {
+        "scientific": REPORT_VALIDATION.render_html(
+            REPORT_VIEW.build_scientific_view(summary, document["metadata"]),
+            document["css"],
+        ),
+        "evidence": REPORT_VALIDATION.render_html(
+            REPORT_VIEW.build_evidence_view(summary, document["metadata"]),
+            document["css"],
+        ),
+    }
+
+
+def assert_report_html(document: Mapping[str, Any]) -> dict[str, bytes]:
+    expected = dict(
+        line.split(maxsplit=1)
+        for line in (GOLDENS / "report_html.sha256")
+        .read_text(encoding="ascii")
+        .splitlines()
     )
-    return REPORT_VALIDATION.render_html(view, document["css"])
-
-
-def assert_report_html(document: Mapping[str, Any]) -> None:
-    expected = (GOLDENS / "report_html.sha256").read_text(encoding="ascii").strip()
-    actual = hashlib.sha256(report_html_bytes(document)).hexdigest()
+    rendered = report_html_bytes(document)
+    actual = {
+        report_view: hashlib.sha256(content).hexdigest()
+        for report_view, content in rendered.items()
+    }
     assert actual == expected, (
-        "rendered report HTML differs from the independent oracle"
+        "rendered report HTML views differ from the independent oracle"
     )
+    return rendered
 
 
 def test_representative_public_schema_contracts_match_literal_oracles() -> None:
@@ -225,8 +240,16 @@ def test_mutated_report_receipt_serialization_is_rejected() -> None:
         assert_report_receipt(mutated_serializer)
 
 
-def test_report_html_matches_exact_independent_sha256_golden() -> None:
-    assert_report_html(load_json(GOLDENS / "report_html_input.json"))
+def test_report_html_views_match_exact_independent_sha256_goldens() -> None:
+    rendered = assert_report_html(load_json(GOLDENS / "report_html_input.json"))
+    scientific = rendered["scientific"]
+    evidence = rendered["evidence"]
+
+    assert scientific != evidence
+    assert b"computational-results-section" in scientific
+    assert b"computational-results-section" not in evidence
+    assert b"artifact-appendix-section" in evidence
+    assert b"artifact-appendix-section" not in scientific
 
 
 def test_mutated_report_html_input_is_rejected() -> None:

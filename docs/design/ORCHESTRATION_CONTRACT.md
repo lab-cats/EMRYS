@@ -83,8 +83,8 @@ The only selected profile is the current paired-CMH workflow:
 - per-sample compute through `01`, `02`, `04`, `05`, and `06`;
 - automatic per-sample evidence `02b` and `03`;
 - cohort/analysis work through `07`, `08`, and `09`;
-- artifact indexing, canonical run-summary assembly, and one self-contained
-  HTML report.
+- artifact indexing, canonical run-summary assembly, and separate
+  self-contained scientific and evidence HTML reports.
 
 The `02b` and `03` evidence branches do not gate downstream scientific compute,
 but the local profile requires them before workflow completion. The profile
@@ -327,7 +327,7 @@ One operator-selected workspace contains immutable run directories:
     workflow-configs/<workflow-attempt-id>.json
     dispatch/<workflow-attempt-id>/<machine-key>/<scope-id>.json
   results/                       owner-native outputs and validation reports
-  products/                      artifact index, run summary, and HTML report
+  products/                      artifact index, run summary, and two HTML reports
   attempts/<workflow-attempt-id>/
     request.yaml                 exact authored request for this invocation
     attempt.json

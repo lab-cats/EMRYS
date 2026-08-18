@@ -6,7 +6,8 @@ and paired CMH ranking. You provide declared reads, a matching FASTA/GTF
 reference, paired experimental strata, genomic partitions, analysis thresholds,
 and exact scientific-tool identities. NORAD produces validated native outputs,
 an immutable task history, a deterministic artifact index, a machine-readable
-run summary, QC tables, and a self-contained HTML report.
+run summary, QC tables, and separate self-contained scientific and
+evidence/provenance HTML views.
 
 NORAD is alpha research software, not a clinical or diagnostic system. It is
 not a general RNA-seq expression workflow: it does not demultiplex, trim or
@@ -38,7 +39,7 @@ artifacts, or completion states.
 | `07` | Each partition | Run cohort bcftools mpileup for both mechanical groups. | Two VCFs and a bound receipt |
 | `08` | Cohort | Normalize SNV candidates, attach per-sample counts and GTF overlaps. | Candidate, input-receipt, and QC tables |
 | `09` | Analysis | Perform paired two-sided CMH tests and global BH correction. | All-sites, significant-sites, summary, spectrum, and plots |
-| Reporting | Run | Index artifacts, assemble the run summary, and render HTML. | Report plus receipt-last publication |
+| Reporting | Run | Index artifacts, assemble the run summary, and render both report views. | Scientific HTML, evidence/provenance HTML, summary TSV, and receipt-last publication |
 
 Steps `02b` and `03` are required QC leaves but do not gate downstream
 scientific computation. External review or adjudication may use NORAD's

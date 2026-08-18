@@ -19,22 +19,44 @@ def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
         raise ContractValidationError("report outputs contain duplicate kinds")
     if len(output_paths) != len(outputs):
         raise ContractValidationError("report outputs contain duplicate paths")
-    expected_kinds = {"html", "run_summary_tsv"}
-    if output_kinds != expected_kinds:
-        raise ContractValidationError(
-            "report output kinds must be exactly html and run_summary_tsv"
-        )
-    expected_basenames = {
-        "html": f"{document['run_id']}.run_report.html",
-        "run_summary_tsv": f"{document['run_id']}.run_summary.tsv",
+    run_id = document["run_id"]
+    expected_output_ids = (
+        "scientific-report-html",
+        "evidence-report-html",
+        "run-summary-tsv",
+    )
+    expected_outputs = {
+        "scientific-report-html": (
+            "scientific_html",
+            f"{run_id}.scientific_report.html",
+        ),
+        "evidence-report-html": (
+            "evidence_html",
+            f"{run_id}.evidence_report.html",
+        ),
+        "run-summary-tsv": ("run_summary_tsv", f"{run_id}.run_summary.tsv"),
     }
+    if {output["output_id"] for output in outputs} != set(expected_output_ids):
+        raise ContractValidationError(
+            "report output IDs must be exactly scientific-report-html, "
+            "evidence-report-html, and run-summary-tsv"
+        )
+    if tuple(output["output_id"] for output in outputs) != expected_output_ids:
+        raise ContractValidationError(
+            "report outputs must be ordered scientific-report-html, "
+            "evidence-report-html, then run-summary-tsv"
+        )
     output_parents: set[Path] = set()
     for output in outputs:
         path = Path(output["path"])
-        if path.name != expected_basenames[output["kind"]]:
+        expected_kind, expected_basename = expected_outputs[output["output_id"]]
+        if output["kind"] != expected_kind:
             raise ContractValidationError(
-                f"report {output['kind']} output basename must be "
-                f"{expected_basenames[output['kind']]!r}"
+                f"report output {output['output_id']!r} must use kind {expected_kind!r}"
+            )
+        if path.name != expected_basename:
+            raise ContractValidationError(
+                f"report {output['kind']} output basename must be {expected_basename!r}"
             )
         output_parents.add(path.parent)
     if len(output_parents) != 1:
@@ -42,17 +64,17 @@ def validate_report_receipt_semantics(document: dict[str, Any]) -> None:
             "all report outputs must share one publication directory"
         )
     output_parent = next(iter(output_parents))
-    if output_parent.name != document["run_id"]:
+    if output_parent.name != run_id:
         raise ContractValidationError(
             "report publication directory name must equal run_id"
         )
     if (input_run_summary_path := Path(document["input_run_summary"]["path"])).name != (
-        f"{document['run_id']}.run_summary.json"
+        f"{run_id}.run_summary.json"
     ):
         raise ContractValidationError(
             "report receipt input run-summary basename does not match run_id"
         )
-    if input_run_summary_path.parent.name != document["run_id"]:
+    if input_run_summary_path.parent.name != run_id:
         raise ContractValidationError(
             "report receipt input run-summary directory name must equal run_id"
         )

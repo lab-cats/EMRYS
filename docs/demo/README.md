@@ -9,12 +9,13 @@ make demo-report
 ```
 
 The target builds a synthetic artifact index and canonical run summary, prints
-a dry-run report plan, and then publishes HTML, summary TSV, and the v3 receipt
-last. The default output is under
+a dry-run report plan, and then publishes separate scientific and
+evidence/provenance HTML views, summary TSV, and the v4 receipt last. The
+default output is under
 `results/demo-report-jinja/reports/synthetic_full_run_demo/`. An explicit
 ignored `DEMO_REPORT_ROOT` may select another fresh root.
 
-Existing v1 report directories are not adopted or overwritten. The older
+Existing pre-v4 report directories are not adopted or overwritten. The older
 ignored `results/demo-report/` tree, if present, remains untouched pending
 separate destructive-cleanup or migration authority.
 

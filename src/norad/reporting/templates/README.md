@@ -1,9 +1,12 @@
 # Reporting template
 
 [`run_report.html.j2`](run_report.html.j2) is the single packaged report
-template. It owns document structure, sections, tables, status panels,
-limitations, computational-result presentation, and the embedded
-artifact-overview SVG. A bounded macro section avoids template fragments.
+template shared by the scientific and operational-evidence HTML views. The
+Python view builders select each document's title, banner context, introduction,
+sections, and end note; this template owns their common accessible structure,
+tables, and block rendering. The artifact-availability SVG is emitted only when
+the evidence view supplies that block. A bounded macro section avoids template
+fragments.
 
 The Jinja environment uses HTML autoescaping and `StrictUndefined`. Run-summary
 content, identifiers, paths, computational text, issues, limitations, and table

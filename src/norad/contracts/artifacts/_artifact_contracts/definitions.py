@@ -13,7 +13,7 @@ COMMON_SCHEMA_PATH = SCHEMA_ROOT / "v1" / "common.schema.json"
 SCHEMA_FILES = {
     "artifact-record": SCHEMA_ROOT / "v2" / "artifact_record.schema.json",
     "run-summary": SCHEMA_ROOT / "v2" / "run_summary.schema.json",
-    "report-receipt": SCHEMA_ROOT / "v3" / "report_receipt.schema.json",
+    "report-receipt": SCHEMA_ROOT / "v4" / "report_receipt.schema.json",
 }
 INVENTORY_HEADER = (
     "artifact_id",

@@ -35,7 +35,7 @@ INVENTORY = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 FIXTURES = {
     "artifact-record": FIXTURE_ROOT / "artifact_record.json",
     "run-summary": FIXTURE_ROOT / "run_summary.json",
-    "report-receipt": FIXTURE_ROOT.parents[1] / "report_receipt_v3.json",
+    "report-receipt": FIXTURE_ROOT.parents[1] / "report_receipt_v4.json",
 }
 EXPECTED_INVENTORY_ARTIFACT_COUNT = 68
 
@@ -191,6 +191,15 @@ def test_all_tracked_schemas_are_valid_draft_2020_12_and_local_only() -> None:
                 stack.extend(value.values())
             elif isinstance(value, list):
                 stack.extend(value)
+
+    report_schema = schemas["report-receipt"]
+    assert report_schema["$id"] == "urn:norad:schema:artifacts:report-receipt:v4"
+    assert report_schema["properties"]["schema_version"]["const"] == "4.0.0"
+    historical = read_json(
+        REPO_ROOT
+        / "src/norad/contracts/schemas/artifacts/v3/report_receipt.schema.json"
+    )
+    assert historical["properties"]["schema_version"]["const"] == "3.0.0"
 
 
 @pytest.mark.parametrize(("name", "path"), FIXTURES.items())
@@ -766,11 +775,27 @@ def test_report_receipt_enforces_renderer_safety_outputs_and_banners() -> None:
     bad_banner["state_banner"] = "Looks good."
     assert_schema_invalid("report-receipt", bad_banner, "COMPUTATIONAL RESULTS")
 
-    missing_html = copy.deepcopy(receipt)
-    missing_html["outputs"] = [
-        output for output in missing_html["outputs"] if output["kind"] != "html"
+    missing_scientific = copy.deepcopy(receipt)
+    missing_scientific["outputs"] = [
+        output
+        for output in missing_scientific["outputs"]
+        if output["kind"] != "scientific_html"
     ]
-    assert_schema_invalid("report-receipt", missing_html, "too short")
+    assert_schema_invalid("report-receipt", missing_scientific, "too short")
+
+    for kind in ("scientific_html", "evidence_html"):
+        unsafe_html = copy.deepcopy(receipt)
+        output = next(item for item in unsafe_html["outputs"] if item["kind"] == kind)
+        output["self_contained"] = False
+        assert_schema_invalid("report-receipt", unsafe_html, "true")
+
+    wrong_section = copy.deepcopy(receipt)
+    wrong_section["truncations"][0]["report_section"] = "evidence-section"
+    assert_schema_invalid(
+        "report-receipt",
+        wrong_section,
+        "computational-results-section",
+    )
 
 
 def test_report_receipt_rejects_duplicate_outputs_and_bad_truncation() -> None:
@@ -778,9 +803,30 @@ def test_report_receipt_rejects_duplicate_outputs_and_bad_truncation() -> None:
 
     duplicate = copy.deepcopy(receipt)
     duplicate_output = copy.deepcopy(duplicate["outputs"][0])
-    duplicate_output["output_id"] = "second_html"
+    duplicate_output["output_id"] = "second-html"
     duplicate["outputs"].append(duplicate_output)
     assert_contract_failure("report-receipt", duplicate, "duplicate kinds")
+
+    alias = copy.deepcopy(receipt)
+    alias["outputs"][0]["output_id"] = "run-report-html"
+    assert_schema_valid("report-receipt", alias)
+    assert_contract_failure("report-receipt", alias, "output IDs must be exactly")
+
+    wrong_kind = copy.deepcopy(receipt)
+    wrong_kind["outputs"][0]["kind"], wrong_kind["outputs"][1]["kind"] = (
+        wrong_kind["outputs"][1]["kind"],
+        wrong_kind["outputs"][0]["kind"],
+    )
+    assert_schema_valid("report-receipt", wrong_kind)
+    assert_contract_failure("report-receipt", wrong_kind, "must use kind")
+
+    reordered = copy.deepcopy(receipt)
+    reordered["outputs"][0], reordered["outputs"][1] = (
+        reordered["outputs"][1],
+        reordered["outputs"][0],
+    )
+    assert_schema_valid("report-receipt", reordered)
+    assert_contract_failure("report-receipt", reordered, "must be ordered")
 
     bad_truncation = copy.deepcopy(receipt)
     bad_truncation["truncations"][0]["displayed_row_count"] = 100
@@ -794,7 +840,7 @@ def test_report_receipt_rejects_duplicate_outputs_and_bad_truncation() -> None:
 def test_report_receipt_rejects_cross_run_paths() -> None:
     receipt = read_json(FIXTURES["report-receipt"])
     receipt["outputs"][0]["path"] = (
-        "results/reports/another_run/another_run.run_report.html"
+        "results/reports/another_run/another_run.scientific_report.html"
     )
 
     assert_schema_valid("report-receipt", receipt)

@@ -148,11 +148,16 @@ def test_artifact_validator_rejects_native_source_mutation(
         )
 
 
-def test_report_validator_rejects_receipted_html_mutation(
+@pytest.mark.parametrize(
+    "report_name",
+    ("scientific_report.html", "evidence_report.html"),
+)
+def test_report_validator_rejects_each_receipted_html_mutation(
     complete_reporting: tuple[Any, Path],
+    report_name: str,
 ) -> None:
     built, report_root = complete_reporting
-    output = report_root / built.run_id / f"{built.run_id}.run_report.html"
+    output = report_root / built.run_id / f"{built.run_id}.{report_name}"
     output.write_bytes(output.read_bytes() + b"\n")
 
     with pytest.raises(
@@ -202,7 +207,12 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
 ) -> None:
     built, report_root = complete_reporting
     native_source = built.adapter_fixture.source_for("sample.SYNTH_A.star_log")
-    report_html = report_root / built.run_id / f"{built.run_id}.run_report.html"
+    scientific_html = (
+        report_root / built.run_id / f"{built.run_id}.scientific_report.html"
+    )
+    evidence_html = (
+        report_root / built.run_id / f"{built.run_id}.evidence_report.html"
+    )
 
     def validate_artifact(ops: transaction_validation.ReceiptValidationOps) -> None:
         transaction_validation.validate_artifact_index_transaction(
@@ -239,7 +249,8 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
         (validate_artifact, native_source),
         (validate_summary, built.summary_tsv_path),
         (validate_summary, native_source),
-        (validate_report, report_html),
+        (validate_report, scientific_html),
+        (validate_report, evidence_html),
         (validate_report, native_source),
     )
     for validator, target in cases:

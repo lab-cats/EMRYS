@@ -9,7 +9,7 @@
   --failed: #b42318;
   --external: #6b5ca5;
   --science-incomplete-bg: #7f1d1d;
-  --science-exploratory-bg: #7c2d12;
+  --evidence-bg: #334155;
 }
 
 html {
@@ -63,8 +63,12 @@ pre {
   z-index: 1000;
 }
 
-.state-computational-boundary {
+.state-scientific-boundary {
   background: var(--science-incomplete-bg);
+}
+
+.state-evidence-boundary {
+  background: var(--evidence-bg);
 }
 
 .report-disclaimer {

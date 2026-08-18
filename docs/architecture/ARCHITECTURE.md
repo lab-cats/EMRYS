@@ -45,7 +45,7 @@ remain outside the proven boundary.
 | Reference preparation | Owners `00a`, `00b`, and `00c` under `src/norad/stages/` | Reference FASTA, GTF, and tool parameters | STAR index, BED12, and FASTA sidecars |
 | Per-sample processing and evidence | Owners `01`–`06` under `src/norad/stages/` plus evidence owners `02b` and `03` | Declared reads, references, and preceding owner artifacts | Aligned/canonical/duplicate-marked/split BAMs plus QC and orientation evidence |
 | Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owner `09` | Declared partitions, sample order, reference context, and upstream receipts | Cohort VCFs, annotated candidates, and paired-CMH ranked candidates |
-| Reporting | `src/norad/reporting/` | Admitted source checkout, explicit artifact inventory, and validated computational receipts | Artifact index, canonical run summary, self-contained HTML report, summary TSV, and v3 report receipt |
+| Reporting | `src/norad/reporting/` | Admitted source checkout, explicit artifact inventory, and validated computational receipts | Artifact index, canonical run summary, separate self-contained scientific and evidence HTML views, summary TSV, and v4 report receipt |
 | Neutral contracts and libraries | `src/norad/contracts/` and `src/norad/libraries/` | Owner-declared records or values | Shared schemas, vocabularies, validation, and narrowly reviewed primitives |
 | Operational evidence | Runtime-availability inspection (`runtime_availability`), reference provenance, and storage inventory under `src/norad/evidence/` | Explicit profiles, reference inventories, storage roots, and retention declarations | Bounded operational observations and receipts |
 
@@ -84,8 +84,9 @@ arrows mean data or contract dependency, not automatic execution. The
 
 Read-only artifact adapters and the canonical run-summary builder project
 explicit native outputs and validation records into reporting inputs. Static
-rendering publishes one self-contained HTML report and deterministic summary
-TSV plus a validated, identity-bound v3 receipt last.
+rendering publishes separate self-contained scientific and operational
+evidence/provenance HTML views plus a deterministic summary TSV and a
+validated, identity-bound v4 receipt last.
 Reporting does not discover inputs, execute analysis, repair artifacts, or
 promote runtime, cluster, scientific-review, or biological evidence.
 
@@ -95,8 +96,8 @@ orientation evidence branch from that boundary while the main BAM continues
 through duplicate marking, RNA-aware splitting, and neutral mechanical-
 orientation partitioning. Manifest-declared samples and partitions then enter
 cohort mpileup; the exact VCF set is normalized and annotated before paired-
-CMH ranking. Read-only reporting may then publish the static HTML report
-transaction from a validated canonical summary.
+CMH ranking. Read-only reporting may then publish the static scientific and
+evidence HTML report transaction from a validated canonical summary.
 
 ### Scientific boundary
 
@@ -136,8 +137,9 @@ The installed `python -X pycache_prefix=/dev/null -I -m norad build report` rout
 [`report.py`](../../src/norad/reporting/report.py). Its admitted source checkout
 governs code and renderer identity, while the separately admitted artifact root
 governs contract-relative run inputs. Private owners separate
-immutable models, explicit input/context validation, structured view data,
-Jinja rendering, v3 receipt projection, and one receipt-last transaction. The
+immutable models, explicit input/context validation, two structured view
+projections, Jinja rendering, v4 receipt projection, and one receipt-last
+transaction. The
 single packaged HTML template and CSS resource are the complete rendering
 runtime; reporting has no PDF, external renderer, compatibility facade, shell
 wrapper, or format-selection surface.
@@ -177,8 +179,8 @@ The downstream product flow is one-way:
 3. The run-summary owner consumes one committed adapter receipt and publishes
    canonical JSON with deterministic TSV projections.
 4. The static report owner consumes that canonical summary under distinct
-   admitted code and artifact roots, then publishes HTML, summary TSV, and the
-   v3 receipt last.
+   admitted code and artifact roots, then publishes scientific HTML,
+   evidence/provenance HTML, summary TSV, and the v4 receipt last.
 5. The local lifecycle independently re-admits the exact required task-start
    and verified-task roster plus all three reporting start/completion chains,
    then publishes the immutable workflow-attempt receipt last.

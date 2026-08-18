@@ -418,7 +418,7 @@ def _add_build_commands(
 
     report_parser = build_parsers.add_parser(
         "report",
-        help="Build one self-contained HTML report transaction.",
+        help="Build one self-contained scientific/evidence report transaction.",
         description=report.DESCRIPTION,
     )
     report.configure_parser(report_parser)

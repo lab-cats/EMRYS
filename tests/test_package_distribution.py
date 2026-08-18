@@ -29,6 +29,7 @@ RESOURCE_PATHS = (
     "norad/contracts/schemas/artifacts/v1/common.schema.json",
     "norad/contracts/schemas/artifacts/v2/run_summary.schema.json",
     "norad/contracts/schemas/artifacts/v3/report_receipt.schema.json",
+    "norad/contracts/schemas/artifacts/v4/report_receipt.schema.json",
     "norad/contracts/schemas/orchestration/v2/profile.schema.json",
     "norad/contracts/schemas/orchestration/v2/request.schema.json",
     "norad/contracts/schemas/orchestration/v1/execution.schema.json",
@@ -415,7 +416,8 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     run_id = fixture.run_id
     report_directory = report_output_root / run_id
     assert {path.name for path in report_directory.iterdir()} == {
-        f"{run_id}.run_report.html",
+        f"{run_id}.scientific_report.html",
+        f"{run_id}.evidence_report.html",
         f"{run_id}.run_summary.tsv",
         f"{run_id}.report_outputs.tsv",
     }
@@ -423,7 +425,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         encoding="utf-8"
     )
     assert "CMH-ranked candidates" in (
-        report_directory / f"{run_id}.run_report.html"
+        report_directory / f"{run_id}.scientific_report.html"
     ).read_text(encoding="utf-8")
     with (report_directory / f"{run_id}.report_outputs.tsv").open(
         encoding="utf-8",

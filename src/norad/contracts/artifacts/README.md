@@ -41,11 +41,14 @@ Supported selectors are `artifact-record`, `run-summary`, and
 
 ## Schema packaging boundary
 
-The closed registry spans the [version `1`](../schemas/artifacts/v1/),
-[version `2`](../schemas/artifacts/v2/), and
-[version `3`](../schemas/artifacts/v3/) directories. Version `1` owns the
-shared `common` resource, version `2` owns the artifact-record and run-summary
-schemas, and version `3` owns the active report-receipt schema.
+Packaged resources span [version `1`](../schemas/artifacts/v1/),
+[version `2`](../schemas/artifacts/v2/),
+[version `3`](../schemas/artifacts/v3/), and
+[version `4`](../schemas/artifacts/v4/). Version `1` owns the shared `common`
+resource, version `2` owns the active artifact-record and run-summary schemas,
+version `3` retains the frozen historical single-HTML receipt, and version `4`
+owns the active three-output report-receipt schema. The closed active registry
+does not alias or migrate v3 receipts.
 Each registered public `$id` remains one packaged file. Large record schemas
 use local `$defs` to organize one document identity. Those definitions are not
 split into extra files merely to reduce line count: doing so would add registry

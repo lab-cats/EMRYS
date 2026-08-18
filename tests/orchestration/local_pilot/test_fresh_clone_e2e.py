@@ -357,7 +357,8 @@ def _assert_complete_products(run_root: Path, run_id: str) -> None:
     summary_path = summary_root / f"{run_id}.run_summary.json"
     assert summary_path.is_file()
     assert (summary_root / f"{run_id}.run_summary_receipt.tsv").is_file()
-    assert (report_root / f"{run_id}.run_report.html").is_file()
+    assert (report_root / f"{run_id}.scientific_report.html").is_file()
+    assert (report_root / f"{run_id}.evidence_report.html").is_file()
     assert (report_root / f"{run_id}.run_summary.tsv").is_file()
     assert (report_root / f"{run_id}.report_outputs.tsv").is_file()
     summary = json.loads(summary_path.read_text(encoding="utf-8"))

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>NORAD consolidated run report: {{ view.run_id }}</title>
+  <title>{{ view.document_title }}</title>
   <style id="norad-report-styles">
 {{ css | safe }}
   </style>
@@ -63,14 +63,17 @@
 
 <main id="norad-report" tabindex="-1"
   data-run-id="{{ view.run_id }}"
+  data-report-view="{{ view.report_view }}"
+{% if view.report_view == "evidence" %}
   data-run-summary-sha256="{{ view.metadata.run_summary_sha256 }}"
   data-renderer-version="{{ view.metadata.renderer_version }}"
   data-jinja-version="{{ view.metadata.jinja_version }}"
   data-template-sha256="{{ view.metadata.template_sha256 }}"
-  data-css-sha256="{{ view.metadata.css_sha256 }}">
-  <h1 id="norad-report-title">NORAD consolidated run report: {{ view.run_id }}</h1>
+  data-css-sha256="{{ view.metadata.css_sha256 }}"
+{% endif %}>
+  <h1 id="norad-report-title">{{ view.heading }}</h1>
   <div class="state-banner state-{{ view.boundary_class }}" role="status" aria-live="polite">{{ view.banner }}</div>
-  <p class="report-disclaimer">This report is a read-only view of computational evidence. Report generation is not evidence of local, runtime, cluster, scientific, or biological validation. Candidate rows are described only as {{ view.candidate_terminology }} and are not validated RNA-editing sites.</p>
+  <p class="report-disclaimer">{{ view.introduction }}</p>
   <div class="report-category-tabs" role="group" aria-label="Report categories">
   {% for category in view.categories %}
     <details id="{{ category.id }}" class="report-category" name="norad-report-categories"{% if category.open %} open{% endif %}>
@@ -86,7 +89,7 @@
     </details>
   {% endfor %}
   </div>
-  <p class="report-disclaimer">End of report. {{ view.banner }} Report generation did not change any computational status.</p>
+  <p class="report-disclaimer">{{ view.end_note }}</p>
 </main>
 </body>
 </html>

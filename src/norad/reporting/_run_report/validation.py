@@ -23,7 +23,7 @@ from .models import (
     CANDIDATE_TERMINOLOGY,
     CSS_RESOURCE_RE,
     REMOTE_URI_RE,
-    REPORT_SECTION_IDS,
+    REPORT_SECTION_IDS_BY_VIEW,
     ReportRenderError,
 )
 
@@ -271,6 +271,9 @@ def validate_rendered_html(
     expected_banner: str,
     expected_identity: Mapping[str, str],
 ) -> None:
+    report_view = expected_identity.get("data-report-view")
+    if report_view not in REPORT_SECTION_IDS_BY_VIEW:
+        _fail(f"Rendered report has an unknown expected view: {report_view!r}")
     snapshot = _snapshot_regular(path, "rendered HTML report")
     if snapshot.size_bytes == 0:
         _fail(f"Rendered HTML report is empty: {path}")
@@ -319,12 +322,14 @@ def validate_rendered_html(
             "Rendered report image accessibility failed: "
             + "; ".join(inspector.image_errors)
         )
-    if inspector.norad_tables == 0 or inspector.table_errors:
+    if inspector.table_errors or (
+        report_view == "evidence" and inspector.norad_tables == 0
+    ):
         _fail(
             "Rendered report table accessibility failed: "
             + "; ".join(inspector.table_errors or ["no NORAD tables found"])
         )
-    if inspector.accessible_svgs < 1:
+    if report_view == "evidence" and inspector.accessible_svgs < 1:
         _fail("Rendered report lacks an accessible embedded figure")
     observed_banner = " ".join("".join(inspector.banner_text).split())
     if inspector.banner_count != 1 or observed_banner != " ".join(
@@ -333,15 +338,43 @@ def validate_rendered_html(
         _fail(
             f"Rendered report does not contain the required state banner: {expected_banner}"
         )
-    missing_sections = REPORT_SECTION_IDS - inspector.ids
+    required_sections = REPORT_SECTION_IDS_BY_VIEW[report_view]
+    missing_sections = required_sections - inspector.ids
     if missing_sections:
         _fail(
             "Rendered report lacks required sections: "
             + ", ".join(sorted(missing_sections))
         )
-    if CANDIDATE_TERMINOLOGY not in content:
+    other_sections = set().union(
+        *(
+            section_ids
+            for view_name, section_ids in REPORT_SECTION_IDS_BY_VIEW.items()
+            if view_name != report_view
+        )
+    )
+    unexpected_sections = other_sections & inspector.ids
+    if unexpected_sections:
+        _fail(
+            f"Rendered {report_view} report contains sections owned by another "
+            "view: " + ", ".join(sorted(unexpected_sections))
+        )
+    if report_view == "scientific" and CANDIDATE_TERMINOLOGY not in content:
         _fail(f"Rendered report lacks fixed terminology: {CANDIDATE_TERMINOLOGY}")
     main_attributes = inspector.main_attributes[0]
+    scientific_forbidden_attributes = {
+        "data-css-sha256",
+        "data-jinja-version",
+        "data-renderer-version",
+        "data-run-summary-sha256",
+        "data-template-sha256",
+    }
+    if report_view == "scientific":
+        observed_forbidden = scientific_forbidden_attributes & main_attributes.keys()
+        if observed_forbidden:
+            _fail(
+                "Rendered scientific report exposes renderer provenance: "
+                + ", ".join(sorted(observed_forbidden))
+            )
     for attribute, expected in expected_identity.items():
         if main_attributes.get(attribute) != expected:
             _fail(f"Rendered report provenance differs for {attribute}")
