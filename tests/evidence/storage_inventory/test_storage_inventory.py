@@ -1,3 +1,4 @@
+import argparse
 import csv
 import subprocess
 import sys
@@ -10,6 +11,7 @@ import norad.evidence.storage_inventory._storage_contract as contract
 import norad.evidence.storage_inventory._storage_measurement as measurement
 import norad.evidence.storage_inventory._storage_publication as publication
 from norad import __main__ as norad_main
+from norad.evidence.storage_inventory import qualification
 
 ROOT = Path(__file__).resolve().parents[3]
 COMMAND = (sys.executable, "-I", "-m", "norad", "inspect", "storage-inventory")
@@ -352,3 +354,67 @@ def test_characterizes_storage_incomplete_rollback_gap(
     # lock and any explicit recovery marker are removed.
     assert not (output / ".storage-inventory-retention.lock").exists()
     assert not list(output.glob("*.RECOVERY.txt"))
+
+
+def test_two_phase_storage_qualification_is_durable_and_read_only_to_doctor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = tmp_path / "workspace"
+    reference_root = tmp_path / "reference"
+    reference_root.mkdir()
+    reference_fasta = reference_root / "genome.fa"
+    reference_fasta.write_text(">1\nA\n", encoding="utf-8")
+    arguments = argparse.Namespace(
+        workspace=workspace,
+        reference_fasta=reference_fasta,
+        phase="compute",
+        execute=False,
+    )
+    monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+
+    assert qualification.qualify_from_args(arguments) == 0
+    assert not (tmp_path / qualification.EVIDENCE_DIRECTORY).exists()
+
+    arguments.execute = True
+    monkeypatch.setenv("SLURM_JOB_ID", "700123")
+    assert qualification.qualify_from_args(arguments) == 0
+    monkeypatch.delenv("SLURM_JOB_ID")
+    arguments.phase = "finalize"
+    assert qualification.qualify_from_args(arguments) == 0
+
+    admitted = qualification.admit_final_qualification(
+        workspace,
+        reference_fasta,
+    )
+    assert admitted.receipt_path.is_file()
+    assert len(admitted.receipt_sha256) == 64
+    assert not list(tmp_path.glob(".norad-storage-probe-*"))
+    assert not list(reference_root.glob(".norad-storage-probe-*"))
+
+
+def test_storage_finalize_refuses_missing_post_allocation_probe(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace = tmp_path / "workspace"
+    reference_root = tmp_path / "reference"
+    reference_root.mkdir()
+    reference_fasta = reference_root / "genome.fa"
+    reference_fasta.write_text(">1\nA\n", encoding="utf-8")
+    arguments = argparse.Namespace(
+        workspace=workspace,
+        reference_fasta=reference_fasta,
+        phase="compute",
+        execute=True,
+    )
+    monkeypatch.setenv("SLURM_JOB_ID", "700124")
+    assert qualification.qualify_from_args(arguments) == 0
+    retained = next(tmp_path.glob(".norad-storage-probe-*/visible.bin"))
+    retained.unlink()
+
+    monkeypatch.delenv("SLURM_JOB_ID")
+    arguments.phase = "finalize"
+    assert qualification.qualify_from_args(arguments) == 2
+    evidence_root = tmp_path / qualification.EVIDENCE_DIRECTORY
+    assert not list(evidence_root.glob("*.qualified.json"))

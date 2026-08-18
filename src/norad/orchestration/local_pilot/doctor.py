@@ -21,6 +21,7 @@ from norad.evidence.runtime_availability.inspector import (
     inspect_runtime_availability,
     load_runtime_profile_contract,
 )
+from norad.evidence.storage_inventory import qualification as storage_qualification
 from norad.libraries.installed_package_identity import (
     InstalledPackageIdentityError,
     installed_package_tree_identity,
@@ -44,9 +45,10 @@ from norad.orchestration.local_pilot.normalization import (
 )
 
 DESCRIPTION = (
-    "Check whether one explicit request, workspace, source checkout, and "
-    "runtime profile are ready for the fixed local pilot. This command is "
-    "read-only and never installs, repairs, loads modules, or creates a workspace."
+    "Check whether one explicit request, workspace, source checkout, runtime "
+    "profile, and final storage qualification are ready for the fixed local "
+    "pilot. This command is read-only and never installs, repairs, loads "
+    "modules, or creates a workspace."
 )
 SNAKEMAKE_VERSION = "9.25.1"
 PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v2.json")
@@ -201,6 +203,13 @@ def required_tool_identities(
             )
             continue
         identities.append(file_identity(check.check_id, observation.observed))
+    if "storage_qualification" in bound:
+        identities.append(
+            file_identity(
+                "storage_qualification",
+                bound["storage_qualification"].observed,
+            )
+        )
     return tuple(sorted(identities, key=lambda item: item["name"]))
 
 
@@ -216,6 +225,10 @@ class DoctorOps:
     observe_snakemake: Callable[[Path], str]
     load_runtime_profile: Callable[[Path], tuple[bytes, tuple[RuntimeCheck, ...]]]
     path_access: Callable[[Path, int], bool]
+    inspect_storage: Callable[
+        [Path, Path],
+        storage_qualification.QualifiedStorage,
+    ] = storage_qualification.admit_final_qualification
 
 
 def _default_source_inspector(root: Path, package_root: Path) -> SourceCheckoutIdentity:
@@ -274,6 +287,7 @@ DEFAULT_DOCTOR_OPS = DoctorOps(
     observe_snakemake=_default_snakemake_observer,
     load_runtime_profile=_default_profile_loader,
     path_access=os.access,
+    inspect_storage=storage_qualification.admit_final_qualification,
 )
 
 
@@ -737,6 +751,27 @@ def inspect_local_pilot(
     )
     blockers.extend(step00c_blockers)
     remediations.extend(step00c_remediations)
+    reference_fasta = Path(
+        str(normalized.execution_contract["reference"]["fasta"]["path"])
+    )
+    qualification_binding: RuntimeBinding | None = None
+    try:
+        qualified_storage = ops.inspect_storage(workspace_path, reference_fasta)
+    except storage_qualification.StorageQualificationError as exc:
+        blockers.append(f"storage is not site-qualified: {exc}")
+        remediations.append(
+            "Run the compute and post-allocation finalize phases of "
+            "`norad inspect storage-qualification` for workspace "
+            f"{workspace_path} and reference FASTA {reference_fasta}."
+        )
+    else:
+        qualification_binding = RuntimeBinding(
+            check_id="storage_qualification",
+            path=qualified_storage.receipt_path,
+            resolved_path=qualified_storage.receipt_path.resolve(strict=True),
+            sha256=qualified_storage.receipt_sha256,
+            observed=qualified_storage.qualification_id,
+        )
     profile_bytes, declared_checks = ops.load_runtime_profile(profile_path)
     validate_runtime_profile_contract(declared_checks, root)
     renv_library = _declared_renv_library(declared_checks)
@@ -814,7 +849,11 @@ def inspect_local_pilot(
         runtime_profile=profile_path,
         runtime_profile_sha256=inspection.profile_sha256,
         inspection=inspection,
-        bindings=runtime_file_bindings(inspection),
+        bindings=(
+            runtime_file_bindings(inspection)
+            if qualification_binding is None
+            else (*runtime_file_bindings(inspection), qualification_binding)
+        ),
         blockers=tuple(blockers),
         remediations=tuple(dict.fromkeys(remediations)),
     )
@@ -849,6 +888,17 @@ def doctor_from_args(
     print(f"Source checkout: {result.source_root}")
     print(f"Source commit: {result.source_commit or 'not admitted'}")
     print(f"Runtime profile SHA-256: {result.runtime_profile_sha256}")
+    storage_binding = next(
+        (
+            binding
+            for binding in result.bindings
+            if binding.check_id == "storage_qualification"
+        ),
+        None,
+    )
+    if storage_binding is not None:
+        print(f"Storage qualification: {storage_binding.path}")
+        print(f"Storage qualification SHA-256: {storage_binding.sha256}")
     for observation in result.inspection.observations:
         print(
             f"{observation.check.check_id}: {observation.status} "

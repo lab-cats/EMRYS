@@ -211,10 +211,14 @@ receipt. Bounded TERM then KILL escalation covers members that remain in the
 original process group after the leader exits; SIGKILL, power loss, and a
 descendant deliberately escaping the delegated session/group are excluded.
 
-This first implementation requires POSIX signal masking, working advisory
-`flock`, and same-filesystem hard links on a cooperative local filesystem.
-NFS, other network/distributed filesystems, and cluster filesystem locking are
-unproved and unsupported until separately site-validated.
+This implementation requires POSIX signal masking and a doctor-admitted final
+storage-qualification receipt for the workflow parent and Step `00c` sidecar
+parent. The two-phase compute/head probe must reconcile same-filesystem hard
+links, advisory `flock` contention, atomic rename visibility, write/fsync,
+numeric UID/GID access, mount identity, and post-allocation durability.
+Network/distributed storage remains unsupported until that exact receipt
+finalizes. A node-local root invisible after the allocation cannot qualify;
+there is no implicit stage-in/stage-out or copy exception.
 
 If attempt establishment fails after the public lock is acquired but before a
 complete attempt record exists, lifecycle still atomically retains the lock as

@@ -31,6 +31,9 @@ from norad.evidence.runtime_availability import (
 from norad.evidence.storage_inventory import (
     inspector as storage_inventory_inspection_command,
 )
+from norad.evidence.storage_inventory import (
+    qualification as storage_qualification_inspection_command,
+)
 from norad.ingestion.sample_manifest_admission import (
     validator as manifest_command,
 )
@@ -146,6 +149,20 @@ def _add_storage_inventory_inspection_command(
     storage_inventory_inspection_command.configure_parser(storage_parser)
     storage_parser.set_defaults(
         _command_handler=storage_inventory_inspection_command.inspect_from_args
+    )
+
+
+def _add_storage_qualification_inspection_command(
+    inspection_parsers: _SubparserCollection,
+) -> None:
+    storage_parser = inspection_parsers.add_parser(
+        "storage-qualification",
+        help="Qualify workflow storage across compute and head nodes.",
+        description=storage_qualification_inspection_command.__doc__,
+    )
+    storage_qualification_inspection_command.configure_parser(storage_parser)
+    storage_parser.set_defaults(
+        _command_handler=storage_qualification_inspection_command.qualify_from_args
     )
 
 
@@ -508,6 +525,7 @@ def build_parser(
         _command_handler=runtime_availability_inspection_command.inspect_from_args
     )
     _add_storage_inventory_inspection_command(inspection_parsers)
+    _add_storage_qualification_inspection_command(inspection_parsers)
     local_run_parser = inspection_parsers.add_parser(
         "local-pilot-run",
         help="Derive one local-pilot run state without repair.",

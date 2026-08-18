@@ -8,11 +8,24 @@ private [`inspector.py`](inspector.py) coordinates private owners for:
 - [`_storage_contract.py`](_storage_contract.py), input models and root/policy
   admission;
 - [`_storage_measurement.py`](_storage_measurement.py), read-only measurement
-  and deterministic evidence rendering; and
+  and deterministic evidence rendering;
 - [`_storage_publication.py`](_storage_publication.py), locked receipt-last
-  publication and rollback.
+  publication and rollback; and
+- [`qualification.py`](qualification.py), two-phase site-semantic probing and
+  final receipt admission.
 
-The inspector is private and adds no second command or retention action. The
+The sibling grouped command
+`python -I -m norad inspect storage-qualification` owns the narrow,
+two-phase site check consumed by the local-pilot doctor. Its compute phase
+creates private probes in the workflow parent and Step `00c` sidecar parent;
+its head-node finalize phase re-admits those probes after the allocation,
+publishes one content-bound qualification receipt, and removes only the exact
+private probe directories. It tests hard links, advisory `flock` contention,
+atomic rename visibility, write/fsync, numeric UID/GID consistency, mount
+identity/capacity, and post-allocation durability. A failed or interrupted
+phase publishes no final qualification and leaves evidence for inspection.
+
+The inventory inspector is private and performs no retention action. Its
 inspection is read-only with respect to measured storage: it never deletes,
 moves, archives, compresses, cleans, repairs, or executes a retention decision.
 
@@ -38,6 +51,28 @@ are structural starters requiring real roots, optional quota expectations,
 retention decisions, and approval records. Direct protection lives in
 [`test_storage_inventory.py`](../../../../tests/evidence/storage_inventory/test_storage_inventory.py).
 
+
+Site qualification is dry-run-first. Run the compute phase inside the selected
+allocation, then run finalize on the head node only after that allocation ends:
+
+```bash
+python -I -m norad inspect storage-qualification \
+  --workspace /absolute/path/to/future-workspace \
+  --reference-fasta /absolute/path/to/reference.fa \
+  --phase compute --execute
+
+python -I -m norad inspect storage-qualification \
+  --workspace /absolute/path/to/future-workspace \
+  --reference-fasta /absolute/path/to/reference.fa \
+  --phase finalize --execute
+```
+
+The receipt path is derived from the two canonical storage roots, so doctor
+needs no ambient selector. Network storage is supported only after this exact
+check passes. Node-local storage that is not visible and durable on the head
+node cannot finalize and therefore cannot report ready; this owner does not
+copy or stage data around that failure.
+
 Dry-run, execute, and focused test are:
 
 ```bash
@@ -58,6 +93,6 @@ mkdir -p results/qc/storage
 ```
 
 Use [`TROUBLESHOOTING`](../../../../docs/operations/TROUBLESHOOTING.md) for
-root, measurement, policy, or transaction-lock failures. Current evidence is
-local fixture evidence only; no production inventory or approved production
-retention policy exists.
+root, measurement, policy, or transaction-lock failures. Current evidence is local fixture evidence only; no Viking site qualification,
+production inventory, or approved production retention policy is claimed until
+its retained receipt is produced and admitted.

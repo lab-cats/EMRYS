@@ -11,7 +11,7 @@ adjudication, biological interpretation, or neutral contracts.
 | [`collect_RSeQC_paired_orientation_evidence`](rseqc_orientation/README.md) | Numbered evidence operation `03`; collects paired-orientation evidence without selecting a biological strandedness policy. |
 | [`reference_provenance`](reference_provenance/README.md) | Reconciles one explicitly declared reference bundle without repair. |
 | [`runtime_preflight`](runtime_availability/README.md) | Semantic runtime-preflight evidence, physically owned by `runtime_availability`; records declared availability probes and owns a separate manual cluster module/tool smoke probe. Neither installs software or executes the workflow. |
-| [`storage_inventory`](storage_inventory/README.md) | Measures declared storage roots and records retention-policy state without acting on it. |
+| [`storage_inventory`](storage_inventory/README.md) | Measures declared roots, records retention policy, and owns two-phase site qualification without staging data. |
 
 Each child owns its inputs, outputs, publication/recovery behavior, direct
 tests, and evidence boundary. The two numbered operations participate in the
@@ -34,11 +34,10 @@ It retains the `runtime_preflight` profile, report, and lock vocabulary.
 Dry-run performs applicable probes without publication; `--execute` publishes
 the requested report, and exit `0` does not mean every probe passed.
 
-Storage inventory exposes installed inspection as
-`python -I -m norad inspect storage-inventory` through a private inspector.
-Dry-run measures declared roots and records retention-policy state without
-publication; `--execute` publishes evidence, and exit `0` neither means the
-summary passed nor grants authority to alter storage.
+Storage inventory exposes `norad inspect storage-inventory` for read-only
+measurement and `norad inspect storage-qualification` for an explicit
+compute/head durability probe. The latter publishes a final receipt only after
+both declared roots pass and never supplies an ad hoc stage-copy path.
 
 Use the [`RUNBOOK`](../../../docs/operations/RUNBOOK.md) for supported commands,
 [`TROUBLESHOOTING`](../../../docs/operations/TROUBLESHOOTING.md) for failure and

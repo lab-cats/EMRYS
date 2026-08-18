@@ -21,6 +21,7 @@ from norad.evidence.runtime_availability.inspector import (
     RuntimeObservation,
     load_runtime_profile_contract,
 )
+from norad.evidence.storage_inventory import qualification as storage_qualification
 from norad.libraries.source_authority import (
     SourceCheckoutError,
     SourceCheckoutIdentity,
@@ -180,6 +181,7 @@ def _ops(
     *,
     source_error: SourceCheckoutError | None = None,
     environment_log: list[dict[str, str]] | None = None,
+    storage_error: storage_qualification.StorageQualificationError | None = None,
 ) -> doctor.DoctorOps:
     def inspect_source(root: Path, _package: Path) -> SourceCheckoutIdentity:
         if source_error is not None:
@@ -196,6 +198,19 @@ def _ops(
             environment_log.append(dict(environment))
         return inspection
 
+    def inspect_storage(
+        _workspace: Path,
+        _reference_fasta: Path,
+    ) -> storage_qualification.QualifiedStorage:
+        if storage_error is not None:
+            raise storage_error
+        receipt = Path(inspection.observations[0].check.target)
+        return storage_qualification.QualifiedStorage(
+            receipt_path=receipt,
+            receipt_sha256=hashlib.sha256(receipt.read_bytes()).hexdigest(),
+            qualification_id="b" * 64,
+        )
+
     return doctor.DoctorOps(
         inspect_source=inspect_source,
         normalize=normalize_request,
@@ -206,6 +221,7 @@ def _ops(
             tuple(item.check for item in inspection.observations),
         ),
         path_access=os.access,
+        inspect_storage=inspect_storage,
     )
 
 
@@ -286,6 +302,7 @@ def test_ready_doctor_is_read_only_and_guards_renv(
     by_name = {item["name"]: item for item in identities}
     assert by_name["python"]["sha256"] == by_name["snakemake"]["sha256"]
     assert by_name["snakemake"]["path"] == sys.executable
+    assert by_name["storage_qualification"]["version"] == "b" * 64
     assert by_name["renv_library"] == {
         "name": "renv_library",
         "version": "observed",
@@ -313,6 +330,29 @@ def test_required_tool_identities_reject_duplicate_runtime_binding_ids(
             bindings=(binding, binding),
             python_executable=Path(sys.executable),
         )
+
+
+def test_doctor_blocks_when_storage_is_not_site_qualified(
+    tmp_path: Path,
+) -> None:
+    request = build(tmp_path)
+    runtime = tmp_path / "runtime.tsv"
+    runtime.write_text("placeholder\n", encoding="utf-8")
+    result = doctor.inspect_local_pilot(
+        request,
+        tmp_path / "workspace",
+        runtime,
+        source_root=REPO_ROOT,
+        ops=_ops(
+            _inspection(tmp_path),
+            storage_error=storage_qualification.StorageQualificationError(
+                "final receipt is absent"
+            ),
+        ),
+    )
+
+    assert not result.ready
+    assert any("storage is not site-qualified" in item for item in result.blockers)
 
 
 def test_guarded_r_startup_uses_reviewed_profile_without_activation_or_ambient_files(
@@ -690,6 +730,7 @@ def test_malformed_runtime_profile_is_usage_error(tmp_path: Path) -> None:
         observe_snakemake=ops.observe_snakemake,
         load_runtime_profile=ops.load_runtime_profile,
         path_access=ops.path_access,
+        inspect_storage=ops.inspect_storage,
     )
     with pytest.raises(doctor.DoctorInputError, match="invalid runtime profile"):
         doctor.inspect_local_pilot(
@@ -958,6 +999,7 @@ def test_cli_statuses_and_help(
             observe_snakemake=base_ops.observe_snakemake,
             load_runtime_profile=base_ops.load_runtime_profile,
             path_access=base_ops.path_access,
+            inspect_storage=base_ops.inspect_storage,
         ),
     )
     malformed_output = capsys.readouterr()

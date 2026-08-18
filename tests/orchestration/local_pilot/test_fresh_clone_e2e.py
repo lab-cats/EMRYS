@@ -473,6 +473,33 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert help_result.returncode == 0, help_result.stdout + help_result.stderr
     assert "usage: norad" in help_result.stdout
 
+    qualification_common = [
+        "inspect",
+        "storage-qualification",
+        "--workspace",
+        str(workspace),
+        "--reference-fasta",
+        str(normalized.execution_contract["reference"]["fasta"]["path"]),
+    ]
+    compute_environment = dict(environment)
+    compute_environment["SLURM_JOB_ID"] = "fresh-clone-fixture"
+    compute_qualification = _public_command(
+        [*qualification_common, "--phase", "compute", "--execute"],
+        environment=compute_environment,
+    )
+    assert compute_qualification.returncode == 0, (
+        compute_qualification.stdout + compute_qualification.stderr
+    )
+    final_environment = dict(environment)
+    final_environment.pop("SLURM_JOB_ID", None)
+    final_qualification = _public_command(
+        [*qualification_common, "--phase", "finalize", "--execute"],
+        environment=final_environment,
+    )
+    assert final_qualification.returncode == 0, (
+        final_qualification.stdout + final_qualification.stderr
+    )
+
     readiness = _public_command(
         ["doctor", "local-pilot", *common],
         environment=environment,

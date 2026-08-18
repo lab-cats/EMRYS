@@ -82,6 +82,10 @@ NORAD_COMMANDS = (
         ("inspect", "storage-inventory"),
         "usage: norad inspect storage-inventory",
     ),
+    (
+        ("inspect", "storage-qualification"),
+        "usage: norad inspect storage-qualification",
+    ),
     (("convert", "gtf-to-bed12"), "usage: norad convert gtf-to-bed12"),
     (("validate", "bed12"), "usage: norad validate bed12"),
     (("validate", "canonical-bam"), "usage: norad validate canonical-bam"),

@@ -131,16 +131,20 @@ The neutral
 reproduces the exact legacy reporting contract and deterministic artifact
 inventory without depending on the local-pilot application owner.
 
-This local pilot assumes a single-user, cooperative workspace on a POSIX local
-filesystem that provides working advisory `flock` and same-filesystem hard
-links. Its no-follow and descriptor-bound checks reject admitted symlink
-components, observed leaf substitution, unstable bytes, and unexpected state
-rosters. All sanctioned lifecycle writers hold the acquisition mutex. A
-hostile process concurrently replacing a lock leaf in the narrow post-link,
-pre-unlink interval, renaming ancestor directories, or changing mount
-namespaces is outside this boundary and invalidates the evidence. NFS,
-network/distributed filesystems, and cluster locking semantics are not claimed
-until separately validated at the site.
+This local pilot requires one final two-phase storage-qualification receipt for
+the workflow parent and Step `00c` sidecar parent before doctor can report
+ready. The receipt proves the required hard-link, advisory-`flock`, atomic
+rename, fsync, numeric-identity, mount, cross-node visibility, and
+post-allocation durability checks for those exact roots. NFS and other
+network/distributed filesystems remain unsupported until that site check
+finalizes; node-local storage that is not durably visible to the head node
+cannot finalize. The qualification owner never stages or copies data.
+
+After admission, the no-follow and descriptor-bound lifecycle checks still
+reject symlink components, observed leaf substitution, unstable bytes, and
+unexpected state rosters. All sanctioned lifecycle writers hold the
+acquisition mutex. Hostile concurrent lock replacement, ancestor renames, or
+mount-namespace changes remain outside the boundary and invalidate evidence.
 
 The semantic checker also has this grouped command:
 
