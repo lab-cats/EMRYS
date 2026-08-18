@@ -11,6 +11,7 @@ import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from typing import Any, Literal, Protocol, cast
 
@@ -24,6 +25,7 @@ from norad.libraries.source_authority import (
 from norad.orchestration.local_pilot.inspection import (
     InspectionError,
     admit_attempt_run_lock,
+    admit_canonical_record,
 )
 
 ReportingKind = Literal["artifact_index", "run_summary", "html_report"]
@@ -268,22 +270,11 @@ def _read_bound(path: Path, root: Path, label: str) -> bytes:
     return data
 
 
-def _load_record(
-    path: Path,
-    root: Path,
-    name: str,
-    *,
-    profile: Mapping[str, Any] | None = None,
-) -> tuple[dict[str, Any], bytes]:
-    data = _read_bound(path, root, name)
-    try:
-        record = orchestration_contracts.load_json_object_bytes(data, f"{name} {path}")
-        orchestration_contracts.validate_record(name, record, profile=profile)
-    except orchestration_contracts.ContractValidationError as exc:
-        raise ReportingBoundaryError(f"Invalid {name} at {path}: {exc}") from exc
-    if data != orchestration_contracts.canonical_json_bytes(record):
-        raise ReportingBoundaryError(f"{name} must use canonical JSON bytes: {path}")
-    return record, data
+_admit_record = partial(
+    admit_canonical_record,
+    read_bytes=_read_bound,
+    error_type=ReportingBoundaryError,
+)
 
 
 def _load_canonical_object(
@@ -486,14 +477,14 @@ def _admit_identity(
         raise ReportingBoundaryError(
             "Reporting identity must use the fixed execution/profile contract paths"
         )
-    profile, profile_data = _load_record(profile_path, root, "profile")
-    execution, execution_data = _load_record(
+    profile, profile_data = _admit_record(profile_path, root, "profile")
+    execution, execution_data = _admit_record(
         execution_path,
         root,
         "execution",
         profile=profile,
     )
-    attempt, attempt_data = _load_record(
+    attempt, attempt_data = _admit_record(
         workflow_attempt_path,
         root,
         "workflow-attempt",
@@ -686,7 +677,7 @@ def _expected_start(
 ) -> tuple[dict[str, Any], dict[str, str]]:
     paths = ledger_paths(identity.root, kind)
     _admit_ledger_root(paths)
-    record, data = _load_record(paths.start, identity.root, "reporting-start")
+    record, data = _admit_record(paths.start, identity.root, "reporting-start")
     expected = {
         **_identity_record(identity, kind),
         "workflow_attempt": identity.attempt_reference,
@@ -820,10 +811,10 @@ def _identity_from_origin(
     root = _canonical_root(run_root)
     paths = ledger_paths(root, kind)
     _admit_ledger_root(paths)
-    start, start_data = _load_record(paths.start, root, "reporting-start")
+    start, start_data = _admit_record(paths.start, root, "reporting-start")
     origin = str(start["origin_workflow_attempt_id"])
     attempt_path = root / "attempts" / origin / "attempt.json"
-    attempt, _attempt_data = _load_record(attempt_path, root, "workflow-attempt")
+    attempt, _attempt_data = _admit_record(attempt_path, root, "workflow-attempt")
     config_path = root / str(attempt["workflow_config"]["path"])
     identity = _admit_identity(
         run_root=root,
@@ -891,7 +882,7 @@ def validate_verified(
         profile,
     )
     paths = ledger_paths(identity.root, admitted_kind)
-    verified, verified_data = _load_record(
+    verified, verified_data = _admit_record(
         paths.verified,
         identity.root,
         "verified-reporting",
@@ -949,7 +940,7 @@ def validate_verified(
         raise ReportingBoundaryError(
             "Reporting identity or start marker changed during semantic validation"
         )
-    verified_after, verified_after_data = _load_record(
+    verified_after, verified_after_data = _admit_record(
         paths.verified,
         identity.root,
         "verified-reporting",

@@ -155,6 +155,21 @@ def _publish_complete_artifact_ledger(
     return ops
 
 
+def test_shared_record_admission_preserves_reporting_error_boundary(
+    tmp_path: Path,
+) -> None:
+    built = _build(tmp_path / "fixture")
+    profile_path = built.run_root / "contract" / "profile.json"
+    profile_path.write_bytes(b" " + profile_path.read_bytes())
+
+    with pytest.raises(reporting_boundary.ReportingBoundaryError):
+        reporting_boundary.publish_start(
+            kind="artifact_index",
+            **_identity_paths(built),
+            ops=_ops(lambda *_arguments: _semantic_result(built.artifact_receipt)),
+        )
+
+
 def test_start_and_completion_publish_fixed_closed_records(
     tmp_path: Path,
 ) -> None:

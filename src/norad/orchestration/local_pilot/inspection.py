@@ -255,21 +255,25 @@ def _stable_directory_entries(path: Path, root: Path, label: str) -> tuple[str, 
     return entries
 
 
-def _load_canonical_record(
+def admit_canonical_record(
     path: Path,
     root: Path,
     name: str,
     *,
     profile: Mapping[str, Any] | None = None,
+    read_bytes: Callable[[Path, Path, str], bytes] = _read_bytes,
+    error_type: type[RuntimeError] = InspectionError,
 ) -> tuple[dict[str, Any], bytes]:
-    data = _read_bytes(path, root, name)
+    """Admit one stable schema-named record and its exact canonical bytes."""
+
+    data = read_bytes(path, root, name)
     try:
         record = orchestration_contracts.load_json_object_bytes(data, f"{name} {path}")
         orchestration_contracts.validate_record(name, record, profile=profile)
     except orchestration_contracts.ContractValidationError as exc:
-        raise InspectionError(f"Invalid {name} at {path}: {exc}") from exc
+        raise error_type(f"Invalid {name} at {path}: {exc}") from exc
     if data != orchestration_contracts.canonical_json_bytes(record):
-        raise InspectionError(f"{name} must use canonical JSON bytes: {path}")
+        raise error_type(f"{name} must use canonical JSON bytes: {path}")
     return record, data
 
 
@@ -512,8 +516,8 @@ def admit_attempt_run_lock(
         "created_at": attempt["created_at"],
     }
     if terminal_exists and not require_active:
-        receipt, _ = _load_canonical_record(terminal_path, root, "attempt-receipt")
-        released, released_data = _load_canonical_record(
+        receipt, _ = admit_canonical_record(terminal_path, root, "attempt-receipt")
+        released, released_data = admit_canonical_record(
             released_path, root, "run-lock"
         )
         released_reference = _reference_for_bytes(released_path, root, released_data)
@@ -549,7 +553,7 @@ def admit_attempt_run_lock(
         if namespace_blockers:
             raise InspectionError("; ".join(namespace_blockers))
         active_path = root / "locks" / "run.lock"
-        lock_record, lock_data = _load_canonical_record(active_path, root, "run-lock")
+        lock_record, lock_data = admit_canonical_record(active_path, root, "run-lock")
         reference = {
             "path": released_path.relative_to(root).as_posix(),
             "sha256": hashlib.sha256(lock_data).hexdigest(),
@@ -677,7 +681,7 @@ def inspect_reporting_ledger(
             start_outcome = reporting_boundary.validate_start(
                 kind, root, execution, profile
             )
-            start, start_data = _load_canonical_record(
+            start, start_data = admit_canonical_record(
                 start_path, root, "reporting-start"
             )
             start_reference = _reference_for_bytes(start_path, root, start_data)
@@ -696,7 +700,7 @@ def inspect_reporting_ledger(
                 profile,
                 semantic_validator=validator,
             )
-            verified, verified_data = _load_canonical_record(
+            verified, verified_data = admit_canonical_record(
                 verified_path, root, "verified-reporting"
             )
             verified_reference = _reference_for_bytes(
@@ -837,7 +841,7 @@ def inspect_attempt_chain(
         receipt_path = attempt_path.with_name("attempt-receipt.json")
         if receipt_path.exists() or receipt_path.is_symlink():
             try:
-                receipt, _ = _load_canonical_record(
+                receipt, _ = admit_canonical_record(
                     receipt_path, root, "attempt-receipt"
                 )
             except InspectionError as exc:
@@ -1035,7 +1039,7 @@ def inspect_attempt_chain(
             )
         released_lock_path = attempt_path.with_name("released-run-lock.json")
         try:
-            released_lock, released_lock_data = _load_canonical_record(
+            released_lock, released_lock_data = admit_canonical_record(
                 released_lock_path, root, "run-lock"
             )
         except InspectionError as exc:
@@ -1094,7 +1098,7 @@ def inspect_attempt_chain(
                 continue
             record_path = root / raw_path
             try:
-                preentry_record, preentry_data = _load_canonical_record(
+                preentry_record, preentry_data = admit_canonical_record(
                     record_path, root, "task-attempt"
                 )
             except InspectionError as exc:
@@ -1156,7 +1160,7 @@ def inspect_attempt_chain(
                 continue
             record_path = root / raw_path
             try:
-                start_record, start_data = _load_canonical_record(
+                start_record, start_data = admit_canonical_record(
                     record_path, root, "task-start"
                 )
             except InspectionError as exc:
@@ -1209,7 +1213,7 @@ def inspect_attempt_chain(
                 continue
             record_path = root / raw_path
             try:
-                verified_record, record_data = _load_canonical_record(
+                verified_record, record_data = admit_canonical_record(
                     record_path, root, "verified-task"
                 )
             except InspectionError as exc:
@@ -1266,7 +1270,7 @@ def inspect_attempt_chain(
                     continue
                 ledger_path = root / expected_path
                 try:
-                    ledger_record, ledger_data = _load_canonical_record(
+                    ledger_record, ledger_data = admit_canonical_record(
                         ledger_path, root, schema_name
                     )
                 except InspectionError as exc:
@@ -1559,7 +1563,7 @@ def inspect_attempt_task_trees(
                     continue
                 record_path = children["task-attempt.json"]
                 try:
-                    record, record_data = _load_canonical_record(
+                    record, record_data = admit_canonical_record(
                         record_path, root, "task-attempt"
                     )
                     identity = {
@@ -1744,7 +1748,7 @@ def _historical_receipt_evidence_blockers(
                 if reference is None:
                     continue
                 try:
-                    record, _ = _load_canonical_record(
+                    record, _ = admit_canonical_record(
                         root / reference["path"], root, schema_name
                     )
                 except InspectionError:
@@ -1774,7 +1778,7 @@ def _inspect_lock(
     if not path.exists() and not path.is_symlink():
         return False, blockers
     try:
-        record, _ = _load_canonical_record(path, root, "run-lock")
+        record, _ = admit_canonical_record(path, root, "run-lock")
     except InspectionError as exc:
         return False, [str(exc)]
     if latest is None:
@@ -1834,10 +1838,10 @@ def inspect_run(
 
     root = _canonical_root(run_root)
     active_ops = default_inspection_ops() if ops is None else ops
-    profile, profile_data = _load_canonical_record(
+    profile, profile_data = admit_canonical_record(
         root / "contract" / "profile.json", root, "profile"
     )
-    execution, execution_data = _load_canonical_record(
+    execution, execution_data = admit_canonical_record(
         root / "contract" / "normalized.json",
         root,
         "execution",
@@ -2016,6 +2020,7 @@ __all__ = (
     "TaskInspection",
     "TaskLedgerInspection",
     "ValidatedReportingReceipt",
+    "admit_canonical_record",
     "admit_attempt_run_lock",
     "default_inspection_ops",
     "expected_tasks",

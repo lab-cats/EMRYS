@@ -140,11 +140,10 @@ network/distributed filesystems remain unsupported until that site check
 finalizes; node-local storage that is not durably visible to the head node
 cannot finalize. The qualification owner never stages or copies data.
 
-After admission, the no-follow and descriptor-bound lifecycle checks still
-reject symlink components, observed leaf substitution, unstable bytes, and
-unexpected state rosters. All sanctioned lifecycle writers hold the
-acquisition mutex. Hostile concurrent lock replacement, ancestor renames, or
-mount-namespace changes remain outside the boundary and invalidate evidence.
+Inspection's shared read-side admission rejects symlinks, unstable or
+noncanonical records, and unexpected state rosters. Lifecycle, task, and
+reporting reuse it only for equivalent immutable-record reads. Writers hold the
+mutex; hostile replacement or namespace changes invalidate evidence.
 
 The semantic checker also has this grouped command:
 
@@ -169,25 +168,13 @@ The fixed profile and local Snakemake graph live under
 
 B4 supplies the internal lifecycle authorities used by the B5 public adapter:
 
-- `lifecycle.run_attempt(...)` owns the persistent benign advisory acquisition
-  mutex, under-mutex stale-attempt revalidation, one create-exclusive aggregate
-  run lock, no-replace hard-link release evidence,
-  immutable attempt record, exact reviewed Snakefile and absolute workflow
-  profile, the same content-admitted Python runtime running
-  `-X pycache_prefix=/dev/null -I -m snakemake`, new-process-group invocation,
-  transaction-wide SIGINT/SIGTERM deferral and one-time forwarding,
-  sanitized subprocess startup state, bounded process-group quiescence proof,
-  semantic task/report transaction revalidation, retained released-lock
-  evidence, exact producer-entry/reporting ledgers, recursively closed
-  attempt-local task evidence, and the terminal attempt receipt published last;
-- `inspection.inspect_run(...)` derives prepared, running,
-  resume-available, blocked, or complete state from NORAD contracts and
-  receipts, never from `.snakemake/` metadata;
-- `reporting_boundary.publish_start(...)` and `publish_verified(...)` own the
-  irreversible entry and semantic-completion records for each of the three
-  reporting transactions; `validate_start(...)` and `validate_verified(...)`
-  are their read-only admission surface. Its grouped module CLI is internal to
-  the fixed workflow, not a user lifecycle command.
+- `lifecycle.run_attempt(...)` owns serialization, locks, attempts, receipts,
+  processes, recovery policy, and state transitions while consuming admitted
+  state;
+- `inspection.admit_canonical_record(...)` owns immutable-record admission;
+  `inspect_run(...)` derives state without `.snakemake/` metadata;
+- `reporting_boundary` owns reporting transaction publication and semantic
+  validation. Its grouped module CLI is internal to the fixed workflow.
 
 Each science scope publishes
 `state/task-starts/<machine>/<scope>.json` immediately before producer entry.

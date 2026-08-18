@@ -238,13 +238,13 @@ NORAD evidence despite engine metadata, but does not rerun or repair incomplete
 owner state. Blocked attempts remain blocked: B4 defines no reconciliation
 record that can supersede their historical ambiguity.
 
-Inspection reads the complete linear attempt chain, attempt-bound configs,
-terminal receipts, the closed task-start and reporting ledgers, recursively
-closed attempt-local task trees, verified task content, reporting transactions,
-and the live owned lock. Receipt references make deletion a blocker rather than
-turning entered work back into pending state. It ignores `.snakemake/`, performs
-no repair, and does not consider timestamps or output presence to be completion
-evidence.
+The contract package owns JSON parsing, validation, and canonical bytes;
+inspection owns application-local read admission for immutable orchestration
+records. It reads the attempt chain, bound configs and receipts, closed task
+and reporting ledgers, verified content, and the live lock. Lifecycle, task,
+and reporting retain mutation and owner-specific semantics. Inspection ignores
+`.snakemake/`, performs no repair, and treats deletion as a blocker rather than
+inferring state from timestamps or output presence.
 
 ## Run-root output contract
 
