@@ -141,9 +141,9 @@ finalizes; node-local storage that is not durably visible to the head node
 cannot finalize. The qualification owner never stages or copies data.
 
 Inspection's shared read-side admission rejects symlinks, unstable or
-noncanonical records, and unexpected state rosters. Lifecycle, task, and
-reporting reuse it only for equivalent immutable-record reads. Writers hold the
-mutex; hostile replacement or namespace changes invalidate evidence.
+noncanonical schema records. Lifecycle, task, and reporting reuse it for
+equivalent direct-path reads. Hash-bound, schema-free, in-memory, writer, and
+state-roster semantics remain owner-local; hostile replacement invalidates evidence.
 
 The semantic checker also has this grouped command:
 
@@ -171,7 +171,7 @@ B4 supplies the internal lifecycle authorities used by the B5 public adapter:
 - `lifecycle.run_attempt(...)` owns serialization, locks, attempts, receipts,
   processes, recovery policy, and state transitions while consuming admitted
   state;
-- `inspection.admit_canonical_record(...)` owns immutable-record admission;
+- `inspection.admit_canonical_record(...)` owns direct-path schema admission;
   `inspect_run(...)` derives state without `.snakemake/` metadata;
 - `reporting_boundary` owns reporting transaction publication and semantic
   validation. Its grouped module CLI is internal to the fixed workflow.

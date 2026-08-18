@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import errno
 import hashlib
-import json
 import os
 import re
 import stat
@@ -20,6 +19,7 @@ import uuid
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -486,6 +486,18 @@ def _read_bound_file(path: Path, label: str) -> tuple[bytes, os.stat_result]:
     return bytes(data), state
 
 
+def _read_bound_record(path: Path, root: Path, label: str) -> bytes:
+    _safe_in_run_destination(path, root, label)
+    return _read_bound_file(path, label)[0]
+
+
+_admit_record = partial(
+    inspection.admit_canonical_record,
+    read_bytes=_read_bound_record,
+    error_type=TaskBoundaryError,
+)
+
+
 def _hash_bound_file(path: Path, label: str) -> tuple[str, os.stat_result]:
     digest = hashlib.sha256()
     state = _consume_bound_file(path, label, digest.update)
@@ -521,19 +533,6 @@ def _record_reference(path: Path, run_root: Path) -> dict[str, str]:
         "path": path.relative_to(run_root).as_posix(),
         "sha256": hashlib.sha256(data).hexdigest(),
     }
-
-
-def _load_bound_json(path: Path, label: str) -> tuple[dict[str, Any], bytes]:
-    data, _ = _read_bound_file(path, label)
-    try:
-        value = json.loads(data)
-    except (UnicodeError, json.JSONDecodeError) as exc:
-        raise TaskBoundaryError(f"Could not parse {label}: {path}: {exc}") from exc
-    if not isinstance(value, dict):
-        raise TaskBoundaryError(f"{label} must contain one JSON object: {path}")
-    if orchestration_contracts.canonical_json_bytes(value) != data:
-        raise TaskBoundaryError(f"{label} must use canonical JSON bytes: {path}")
-    return value, data
 
 
 def _default_run_command(
@@ -894,16 +893,16 @@ def _recheck_reused_outputs(
 def _admit_identity(
     dispatch: TaskDispatch,
 ) -> tuple[dict[str, Any], dict[str, Any], str, str, str]:
-    profile = orchestration_contracts.load_record(dispatch.profile_path, "profile")
-    execution = orchestration_contracts.load_record(
+    profile, profile_data = _admit_record(
+        dispatch.profile_path, dispatch.run_root, "profile"
+    )
+    execution, execution_data = _admit_record(
         dispatch.execution_path,
+        dispatch.run_root,
         "execution",
         profile=profile,
     )
-    profile_sha256 = orchestration_contracts.canonical_sha256(profile)
-    profile_data, _ = _read_bound_file(dispatch.profile_path, "workflow profile")
-    if profile_data != orchestration_contracts.canonical_json_bytes(profile):
-        raise TaskBoundaryError("Workflow profile must use canonical JSON bytes")
+    profile_sha256 = hashlib.sha256(profile_data).hexdigest()
     if execution["profile"]["profile_sha256"] != profile_sha256:
         raise TaskBoundaryError("Execution does not bind the admitted profile")
     tasks = [
@@ -926,10 +925,6 @@ def _admit_identity(
         raise TaskBoundaryError("Dispatch scope_id is not selected by the execution")
     _admit_output_locations(dispatch, execution)
 
-    execution_data, _ = _read_bound_file(dispatch.execution_path, "execution contract")
-    canonical_execution = orchestration_contracts.canonical_json_bytes(execution)
-    if execution_data != canonical_execution:
-        raise TaskBoundaryError("Execution contract must use canonical JSON bytes")
     return (
         profile,
         execution,
@@ -1009,8 +1004,9 @@ def _admit_start_origins(
     attempt_path = (
         dispatch.run_root / "attempts" / dispatch.workflow_attempt_id / "attempt.json"
     )
-    attempt, attempt_data = _load_bound_json(attempt_path, "workflow-attempt record")
-    orchestration_contracts.validate_record("workflow-attempt", attempt)
+    attempt, attempt_data = _admit_record(
+        attempt_path, dispatch.run_root, "workflow-attempt"
+    )
     expected_identity = {
         "run_id": execution["run_id"],
         "execution_contract_sha256": execution_sha256,
@@ -1144,8 +1140,7 @@ def validate_task_start(
     _safe_in_run_destination(start_path, canonical_root, "task-start path")
     orchestration_contracts.validate_record("profile", profile)
     orchestration_contracts.validate_record("execution", execution, profile=profile)
-    record, start_data = _load_bound_json(start_path, "task-start record")
-    orchestration_contracts.validate_record("task-start", record)
+    record, start_data = _admit_record(start_path, canonical_root, "task-start")
     identity = {
         "run_id": execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(
@@ -1253,8 +1248,7 @@ def validate_verified_task(
     _safe_in_run_destination(verified_path, canonical_root, "verified task path")
     orchestration_contracts.validate_record("profile", profile)
     orchestration_contracts.validate_record("execution", execution, profile=profile)
-    record, _ = _load_bound_json(verified_path, "verified task record")
-    orchestration_contracts.validate_record("verified-task", record)
+    record, _ = _admit_record(verified_path, canonical_root, "verified-task")
 
     expected_scope = {
         "scope_type": _safe_id(scope.get("scope_type"), "scope.scope_type"),

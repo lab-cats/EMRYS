@@ -239,12 +239,12 @@ owner state. Blocked attempts remain blocked: B4 defines no reconciliation
 record that can supersede their historical ambiguity.
 
 The contract package owns JSON parsing, validation, and canonical bytes;
-inspection owns application-local read admission for immutable orchestration
-records. It reads the attempt chain, bound configs and receipts, closed task
-and reporting ledgers, verified content, and the live lock. Lifecycle, task,
-and reporting retain mutation and owner-specific semantics. Inspection ignores
-`.snakemake/`, performs no repair, and treats deletion as a blocker rather than
-inferring state from timestamps or output presence.
+inspection owns reusable direct-path admission for schema-named immutable
+orchestration records. It reads the attempt chain, bound configs and receipts,
+closed ledgers, verified content, and the live lock. Hash-bound, schema-free,
+in-memory, mutation, and owner-specific semantics remain owner-local. Inspection
+ignores `.snakemake/`, performs no repair, and treats deletion as a blocker
+rather than inferring state from timestamps or output presence.
 
 ## Run-root output contract
 

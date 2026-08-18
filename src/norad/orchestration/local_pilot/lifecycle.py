@@ -25,6 +25,7 @@ from collections.abc import Callable, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from types import FrameType
 from typing import Any, Iterator, Literal
@@ -1356,6 +1357,13 @@ def _read_stable(path: Path, root: Path, label: str) -> bytes:
     return _read_stable_with_identity(path, root, label)[0]
 
 
+_admit_record = partial(
+    inspection.admit_canonical_record,
+    read_bytes=_read_stable,
+    error_type=LifecycleError,
+)
+
+
 def _read_external_stable(path: Path, label: str) -> bytes:
     """Read one canonical external regular file through a no-follow descriptor."""
 
@@ -1572,30 +1580,20 @@ def _admit_request(
     workflow_profile = _canonical_file(request.workflow_profile, "workflow profile")
     python_executable = request.python_executable
     _admit_python_launcher(python_executable)
-    profile_data = _read_stable(profile_path, root, "profile snapshot")
-    execution_data = _read_stable(execution_path, root, "execution contract")
+    profile, profile_data = _admit_record(profile_path, root, "profile")
+    execution, execution_data = _admit_record(
+        execution_path, root, "execution", profile=profile
+    )
     config_data = _read_stable(config_path, root, "workflow config")
     request_source_data = _read_external_stable(
         request_source_path, "authored request source"
     )
     try:
-        profile = orchestration_contracts.load_json_object_bytes(
-            profile_data, f"profile snapshot {profile_path}"
-        )
-        orchestration_contracts.validate_record("profile", profile)
-        execution = orchestration_contracts.load_json_object_bytes(
-            execution_data, f"execution contract {execution_path}"
-        )
-        orchestration_contracts.validate_record("execution", execution, profile=profile)
         config_document = orchestration_contracts.load_json_object_bytes(
             config_data, f"workflow config {config_path}"
         )
     except orchestration_contracts.ContractValidationError as exc:
         raise LifecycleError(f"Could not admit immutable run contracts: {exc}") from exc
-    if profile_data != orchestration_contracts.canonical_json_bytes(profile):
-        raise LifecycleError("Profile snapshot must use canonical JSON bytes")
-    if execution_data != orchestration_contracts.canonical_json_bytes(execution):
-        raise LifecycleError("Execution contract must use canonical JSON bytes")
     canonical_config = orchestration_contracts.canonical_json_bytes(config_document)
     if config_data != canonical_config:
         raise LifecycleError("Workflow config must use canonical JSON bytes")
