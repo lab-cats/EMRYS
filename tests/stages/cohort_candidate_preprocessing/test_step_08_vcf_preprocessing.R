@@ -69,7 +69,9 @@ sha256_file <- function(path) {
     tolower(regmatches(paste(output, collapse = "\n"), match))
 }
 
-vcf_header <- function(samples, omit_ad_definition = FALSE) {
+vcf_header <- function(
+    samples, omit_ad_definition = FALSE, contig = "1"
+) {
     header <- c(
         "##fileformat=VCFv4.2",
         "##FILTER=<ID=PASS,Description=\"All filters passed\">",
@@ -81,7 +83,7 @@ vcf_header <- function(samples, omit_ad_definition = FALSE) {
         "##FORMAT=<ID=ADF,Number=R,Type=Integer,Description=\"Forward depths\">",
         "##FORMAT=<ID=ADR,Number=R,Type=Integer,Description=\"Reverse depths\">",
         "##FORMAT=<ID=SP,Number=1,Type=Integer,Description=\"Strand bias\">",
-        "##contig=<ID=1,length=1000>"
+        paste0("##contig=<ID=", contig, ",length=1000>")
     )
     if (!omit_ad_definition) {
         header <- append(
@@ -263,11 +265,18 @@ build_case <- function(root, mode = "positive") {
     write_tsv(samples, sample_manifest)
     selector_relative <- file.path("selectors", "p2.regions.tsv")
     selector_path <- file.path(dirname(partition_manifest), selector_relative)
+    selector_chromosome <- if (mode == "disjoint_annotation") "3" else "1"
     if (mode == "mixed_regions_file") {
         write_lines(c("1\t200", "1\t250\t400"), selector_path)
     } else {
         # Generic Step 07 interval mode accepts three or more columns.
-        write_lines("1\t200\t400\tfixture_interval", selector_path)
+        write_lines(
+            paste(
+                selector_chromosome, "200", "400", "fixture_interval",
+                sep = "\t"
+            ),
+            selector_path
+        )
     }
     partitions <- data.frame(
         partition_id = c("p1", "p2"),
@@ -287,6 +296,9 @@ build_case <- function(root, mode = "positive") {
 
     p1_fwd <- default_fwd_rows()
     p2_rev <- default_rev_rows()
+    if (mode == "disjoint_annotation") {
+        p2_rev <- sub("^1\\t", "3\\t", p2_rev)
+    }
     p1_samples <- c("sample_A", "sample_B")
     omit_ad_definition <- FALSE
     if (mode == "sample_order") {
@@ -349,9 +361,21 @@ build_case <- function(root, mode = "positive") {
             )
             write_lines(vcf_header(c("sample_A", "sample_B")), rev_path)
         } else {
-            write_lines(vcf_header(c("sample_A", "sample_B")), fwd_path)
             write_lines(
-                c(vcf_header(c("sample_A", "sample_B")), p2_rev),
+                vcf_header(
+                    c("sample_A", "sample_B"),
+                    contig = selector_chromosome
+                ),
+                fwd_path
+            )
+            write_lines(
+                c(
+                    vcf_header(
+                        c("sample_A", "sample_B"),
+                        contig = selector_chromosome
+                    ),
+                    p2_rev
+                ),
                 rev_path
             )
         }
@@ -803,26 +827,69 @@ assert_true(
     "an internally inconsistent transcript must be warned about and skipped"
 )
 assert_positive_outputs(first_paths)
-second_paths <- run_engine(
-    engine,
-    positive_case,
-    file.path(test_root, "positive-output-2"),
-    expect_success = TRUE,
-    threads = "2"
-)
-for (name in c("sites", "inputs", "summary")) {
+for (threads in c("2", "4")) {
+    output_dir <- file.path(test_root, paste0("positive-output-", threads))
+    compared_paths <- run_engine(
+        engine,
+        positive_case,
+        output_dir,
+        expect_success = TRUE,
+        threads = threads
+    )
+    for (name in c("sites", "inputs", "summary")) {
+        assert_true(
+            identical(
+                readBin(first_paths[[name]], "raw", n = file.info(
+                    first_paths[[name]]
+                )$size),
+                readBin(compared_paths[[name]], "raw", n = file.info(
+                    compared_paths[[name]]
+                )$size)
+            ),
+            paste0(
+                name, " output must be byte-deterministic at ",
+                threads, " workers"
+            )
+        )
+    }
+    worker_log <- readLines(file.path(output_dir, "engine.log"), warn = FALSE)
     assert_true(
-        identical(
-            readBin(first_paths[[name]], "raw", n = file.info(
-                first_paths[[name]]
-            )$size),
-            readBin(second_paths[[name]], "raw", n = file.info(
-                second_paths[[name]]
-            )$size)
-        ),
-        paste0(name, " output must be byte-deterministic")
+        any(grepl("Step 08 worker load:", worker_log, fixed = TRUE)),
+        paste0(threads, "-worker execution must report worker load")
     )
 }
+
+disjoint_case <- build_case(
+    file.path(test_root, "disjoint-annotation"),
+    mode = "disjoint_annotation"
+)
+disjoint_output <- file.path(test_root, "disjoint-annotation-output")
+disjoint_paths <- run_engine(
+    engine,
+    disjoint_case,
+    disjoint_output,
+    expect_success = TRUE
+)
+disjoint_log <- readLines(
+    file.path(disjoint_output, "engine.log"), warn = FALSE
+)
+assert_true(
+    !any(grepl(".merge_two_Seqinfo_objects", disjoint_log, fixed = TRUE)),
+    "disjoint annotation seqlevels must be handled without a merge warning"
+)
+disjoint_sites <- read_result(disjoint_paths$sites)
+disjoint_rows <- disjoint_sites$chromosome == "3"
+assert_true(
+    sum(disjoint_rows) == 4L &&
+        all(is.na(disjoint_sites$gene_ids[disjoint_rows])) &&
+        all(is.na(disjoint_sites$transcript_ids[disjoint_rows])) &&
+        !any(disjoint_sites$is_cds[disjoint_rows]) &&
+        !any(disjoint_sites$is_five_prime_utr[disjoint_rows]) &&
+        !any(disjoint_sites$is_three_prime_utr[disjoint_rows]) &&
+        !any(disjoint_sites$is_exon[disjoint_rows]) &&
+        !any(disjoint_sites$is_intron[disjoint_rows]),
+    "disjoint annotation seqlevels must retain candidates as unannotated"
+)
 
 negative_modes <- c(
     "missing_replicate",

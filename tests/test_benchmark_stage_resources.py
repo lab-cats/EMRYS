@@ -60,7 +60,7 @@ def _read_tsv(path: Path) -> list[dict[str, str]]:
 @pytest.mark.parametrize(
     ("document", "message"),
     (
-        ({"schema_version": BENCHMARK.SCHEMA_VERSION}, "keys must be"),
+        ({"schema_version": BENCHMARK.SCHEMA_VERSION}, "keys must include"),
         ({"schema_version": "wrong", "cases": [_case()]}, "schema_version must be"),
         (
             {"schema_version": BENCHMARK.SCHEMA_VERSION, "cases": []},
@@ -91,6 +91,13 @@ def _read_tsv(path: Path) -> list[dict[str, str]]:
                 "cases": [_case(producer_argv=[])],
             },
             "nonempty argv string array",
+        ),
+        (
+            {
+                "schema_version": BENCHMARK.SCHEMA_VERSION,
+                "cases": [_case(artifact_paths=["outside.tsv"])],
+            },
+            "paths containing",
         ),
     ),
 )
@@ -166,6 +173,7 @@ def test_execute_records_successful_trial_and_summary(tmp_path: Path) -> None:
                     "{trial_dir}/product.txt",
                     "{value}",
                 ],
+                artifact_paths=["{trial_dir}/product.txt"],
             )
         ],
     )
@@ -178,12 +186,21 @@ def test_execute_records_successful_trial_and_summary(tmp_path: Path) -> None:
     assert trial_rows[0]["status"] == "pass"
     assert trial_rows[0]["producer_exit_code"] == "0"
     assert float(trial_rows[0]["producer_wall_seconds"]) > 0
+    assert float(trial_rows[0]["producer_cpu_seconds"]) >= 0
     assert int(trial_rows[0]["producer_max_rss_kib"]) > 0
+    assert int(trial_rows[0]["producer_input_blocks"]) >= 0
+    assert int(trial_rows[0]["producer_output_blocks"]) >= 0
+    assert len(trial_rows[0]["artifact_set_sha256"]) == 64
+    assert trial_rows[0]["artifact_match_baseline"] == "yes"
     trial = Path(trial_rows[0]["trial_dir"])
     assert (trial / "product.txt").read_text(encoding="utf-8") == "2"
     assert (trial / "producer.time.txt").read_text(encoding="utf-8").startswith(
         "wall_seconds\t"
     )
+    artifact_rows = _read_tsv(trial / "producer.artifacts.tsv")
+    assert len(artifact_rows) == 1
+    assert artifact_rows[0]["path"] == str((trial / "product.txt").resolve())
+    assert len(artifact_rows[0]["sha256"]) == 64
 
     assert _read_tsv(output / "summary.tsv") == [
         {
@@ -191,7 +208,10 @@ def test_execute_records_successful_trial_and_summary(tmp_path: Path) -> None:
             "value": "2",
             "successful_repetitions": "1",
             "median_wall_seconds": trial_rows[0]["producer_wall_seconds"],
+            "median_cpu_seconds": trial_rows[0]["producer_cpu_seconds"],
             "median_max_rss_kib": trial_rows[0]["producer_max_rss_kib"],
+            "median_input_blocks": trial_rows[0]["producer_input_blocks"],
+            "median_output_blocks": trial_rows[0]["producer_output_blocks"],
             "recommended": "yes",
         }
     ]
@@ -235,21 +255,30 @@ def test_summary_recommends_smallest_value_within_five_percent(tmp_path: Path) -
             "value": 1,
             "status": "pass",
             "producer_wall_seconds": "103.0",
+            "producer_cpu_seconds": "90.0",
             "producer_max_rss_kib": "",
+            "producer_input_blocks": "10",
+            "producer_output_blocks": "20",
         },
         {
             "case": "threads",
             "value": 2,
             "status": "pass",
             "producer_wall_seconds": "100.0",
+            "producer_cpu_seconds": "95.0",
             "producer_max_rss_kib": "200",
+            "producer_input_blocks": "12",
+            "producer_output_blocks": "22",
         },
         {
             "case": "threads",
             "value": 4,
             "status": "fail",
             "producer_wall_seconds": "90.0",
+            "producer_cpu_seconds": "80.0",
             "producer_max_rss_kib": "100",
+            "producer_input_blocks": "8",
+            "producer_output_blocks": "18",
         },
     ]
     summary = tmp_path / "summary.tsv"
@@ -260,6 +289,39 @@ def test_summary_recommends_smallest_value_within_five_percent(tmp_path: Path) -
     assert [row["value"] for row in rows] == ["1", "2"]
     assert [row["recommended"] for row in rows] == ["yes", "no"]
     assert rows[0]["median_max_rss_kib"] == ""
+    assert rows[0]["median_cpu_seconds"] == "90.000000"
+    assert rows[0]["median_input_blocks"] == "10"
+    assert rows[0]["median_output_blocks"] == "20"
+
+
+def test_artifact_identity_marks_changed_output_as_failed(tmp_path: Path) -> None:
+    manifest = _write_manifest(
+        tmp_path / "benchmark.yaml",
+        [
+            _case(
+                values=[1, 2],
+                producer_argv=[
+                    sys.executable,
+                    "-c",
+                    (
+                        "from pathlib import Path; import sys; "
+                        "Path(sys.argv[1]).write_text(sys.argv[2])"
+                    ),
+                    "{trial_dir}/product.txt",
+                    "{value}",
+                ],
+                artifact_paths=["{trial_dir}/product.txt"],
+            )
+        ],
+    )
+    output = tmp_path / "results"
+
+    assert BENCHMARK.run(manifest, output, execute=True) == 1
+
+    rows = _read_tsv(output / "trials.tsv")
+    assert [row["status"] for row in rows] == ["pass", "fail"]
+    assert [row["artifact_match_baseline"] for row in rows] == ["yes", "no"]
+    assert rows[0]["artifact_set_sha256"] != rows[1]["artifact_set_sha256"]
 
 
 def test_run_rejects_existing_output_and_nonreal_parent(tmp_path: Path) -> None:

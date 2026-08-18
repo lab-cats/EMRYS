@@ -21,6 +21,13 @@ feature_ranges <- function(table) {
     ranges
 }
 
+has_shared_seqlevel <- function(query, subject) {
+    length(intersect(
+        as.character(GenomeInfoDb::seqlevels(query)),
+        as.character(GenomeInfoDb::seqlevels(subject))
+    )) > 0L
+}
+
 normalize_feature_type <- function(value) {
     gsub(
         "_+$", "",
@@ -376,7 +383,10 @@ read_annotation_model <- function(path) {
 
 annotation_flag <- function(query, subject) {
     result <- rep(FALSE, length(query))
-    if (length(query) == 0L || length(subject) == 0L) {
+    if (
+        length(query) == 0L || length(subject) == 0L ||
+        !has_shared_seqlevel(query, subject)
+    ) {
         return(result)
     }
     hits <- GenomicRanges::findOverlaps(
@@ -407,7 +417,10 @@ annotate_candidates <- function(candidates, model) {
     )
     gene_ids <- rep(NA_character_, count)
     transcript_ids <- rep(NA_character_, count)
-    if (length(model$transcripts) > 0L) {
+    if (
+        length(model$transcripts) > 0L &&
+        has_shared_seqlevel(query, model$transcripts)
+    ) {
         hits <- GenomicRanges::findOverlaps(
             query, model$transcripts, ignore.strand = FALSE
         )

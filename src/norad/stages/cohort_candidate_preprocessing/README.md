@@ -52,6 +52,16 @@ builds the annotation model once, returns worker results in manifest then
 `FWD_like`, `REV_like` order, and retains one deterministic validation and
 publication transaction. It defaults to `1`; Windows direct execution falls
 back to one worker because the implementation uses Unix process forking.
+Each execution logs assigned job count and cumulative job seconds per worker.
+
+For a site qualification, use the existing
+`scripts/benchmark_stage_resources.py` utility with values `1, 2, 4`,
+identical inputs, and the three trial-local outputs declared as
+`artifact_paths`. It records wall/CPU time, peak RSS, block I/O, and an
+artifact-set SHA-256; any byte or row-order change fails artifact parity.
+Keep manifests and results outside the repository. The default remains one
+worker unless retained site measurements show a material improvement within
+the admitted memory limit.
 
 Execute publishes sites, cross-root summary, then the input receipt. Receipt
 visibility precedes final validation; it does not hash sibling outputs or the R

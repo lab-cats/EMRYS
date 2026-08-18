@@ -43,6 +43,13 @@ hashes the exact manifests, reference FASTA/FAI pair, optional regions file,
 and every admitted orientation BAM/BAI before bcftools, then rechecks their
 membership and bytes before receipt construction and publication.
 
+Do not tune `--max-depth` from the bcftools warning alone. First retain a
+representative-partition benchmark with elapsed/CPU time, peak RSS, block I/O,
+validator success, and byte hashes. The existing
+`scripts/benchmark_stage_resources.py` records those measures; Slurm
+`sacct` may supplement them. Keep benchmark manifests/results outside the
+repository and leave the default unchanged until site evidence supports a cut.
+
 Execute requires all three predecessors or none, publishes and revalidates the
 FWD and REV VCFs, then publishes the two-row receipt. Only manifests are
 durably hash-bound in that receipt; the additional `--no-clobber` hashes are

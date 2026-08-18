@@ -4,12 +4,15 @@
 This opt-in operator utility is deliberately outside the normal test suite.  It
 does not discover inputs or construct scientific commands: a reviewed manifest
 provides exact argv arrays for setup, producer, and validator commands.
+Optional trial-local artifacts are hashed and compared byte-for-byte across
+resource values; generated benchmark state belongs outside the repository.
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import os
 import resource
 import shlex
@@ -26,7 +29,7 @@ from typing import Any
 import yaml
 
 SCHEMA_VERSION = "norad.resource-benchmark.v1"
-CASE_FIELDS = {
+REQUIRED_CASE_FIELDS = {
     "name",
     "values",
     "repetitions",
@@ -34,6 +37,7 @@ CASE_FIELDS = {
     "producer_argv",
     "validator_argv",
 }
+OPTIONAL_CASE_FIELDS = {"artifact_paths"}
 RESULT_FIELDS = (
     "case",
     "value",
@@ -43,7 +47,12 @@ RESULT_FIELDS = (
     "producer_exit_code",
     "validator_exit_code",
     "producer_wall_seconds",
+    "producer_cpu_seconds",
     "producer_max_rss_kib",
+    "producer_input_blocks",
+    "producer_output_blocks",
+    "artifact_set_sha256",
+    "artifact_match_baseline",
     "trial_dir",
 )
 SUMMARY_FIELDS = (
@@ -51,7 +60,10 @@ SUMMARY_FIELDS = (
     "value",
     "successful_repetitions",
     "median_wall_seconds",
+    "median_cpu_seconds",
     "median_max_rss_kib",
+    "median_input_blocks",
+    "median_output_blocks",
     "recommended",
 )
 
@@ -70,6 +82,7 @@ class BenchmarkCase:
     setup_argv: tuple[str, ...] | None
     producer_argv: tuple[str, ...]
     validator_argv: tuple[str, ...]
+    artifact_paths: tuple[str, ...]
 
 
 def _argv(value: Any, label: str, *, optional: bool = False) -> tuple[str, ...] | None:
@@ -81,6 +94,26 @@ def _argv(value: Any, label: str, *, optional: bool = False) -> tuple[str, ...] 
         or any(not isinstance(part, str) or not part for part in value)
     ):
         raise BenchmarkError(f"{label} must be a nonempty argv string array")
+    return tuple(value)
+
+
+def _artifact_paths(value: Any, label: str) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if (
+        not isinstance(value, list)
+        or not value
+        or any(
+            not isinstance(path, str)
+            or not path
+            or "{trial_dir}" not in path
+            for path in value
+        )
+        or len(value) != len(set(value))
+    ):
+        raise BenchmarkError(
+            f"{label} must be null or distinct paths containing {{trial_dir}}"
+        )
     return tuple(value)
 
 
@@ -102,9 +135,17 @@ def _load_manifest(path: Path) -> tuple[BenchmarkCase, ...]:
     cases: list[BenchmarkCase] = []
     names: set[str] = set()
     for index, raw in enumerate(raw_cases):
-        if not isinstance(raw, Mapping) or set(raw) != CASE_FIELDS:
+        if (
+            not isinstance(raw, Mapping)
+            or not REQUIRED_CASE_FIELDS.issubset(raw)
+            or not set(raw).issubset(REQUIRED_CASE_FIELDS | OPTIONAL_CASE_FIELDS)
+        ):
+            allowed = REQUIRED_CASE_FIELDS | OPTIONAL_CASE_FIELDS
             raise BenchmarkError(
-                f"cases[{index}] keys must be exactly {', '.join(sorted(CASE_FIELDS))}"
+                f"cases[{index}] keys must include "
+                f"{', '.join(sorted(REQUIRED_CASE_FIELDS))} and may include "
+                f"{', '.join(sorted(OPTIONAL_CASE_FIELDS))}; "
+                f"allowed keys are {', '.join(sorted(allowed))}"
             )
         name = raw["name"]
         if (
@@ -144,6 +185,9 @@ def _load_manifest(path: Path) -> tuple[BenchmarkCase, ...]:
                 ),
                 producer_argv=producer,
                 validator_argv=validator,
+                artifact_paths=_artifact_paths(
+                    raw.get("artifact_paths"), f"cases[{index}].artifact_paths"
+                ),
             )
         )
     return tuple(cases)
@@ -173,7 +217,7 @@ def _run(argv: Sequence[str], *, stdout: Path, stderr: Path) -> int:
 
 def _run_timed(
     argv: Sequence[str], *, stdout: Path, stderr: Path, usage: Path
-) -> tuple[int, float, int]:
+) -> tuple[int, float, float, int, int, int]:
     if not hasattr(os, "wait4"):
         raise BenchmarkError("Execution requires os.wait4 child-resource accounting")
     with stdout.open("xb") as stdout_handle, stderr.open("xb") as stderr_handle:
@@ -192,14 +236,82 @@ def _run_timed(
             raise
         process.returncode = os.waitstatus_to_exitcode(wait_status)
         wall_seconds = time.monotonic() - started
+    cpu_seconds = float(child_usage.ru_utime + child_usage.ru_stime)
     max_rss_kib = int(child_usage.ru_maxrss)
     if sys.platform == "darwin":
         max_rss_kib //= 1024
+    input_blocks = int(child_usage.ru_inblock)
+    output_blocks = int(child_usage.ru_oublock)
     usage.write_text(
-        f"wall_seconds\t{wall_seconds:.6f}\nmax_rss_kib\t{max_rss_kib}\n",
+        (
+            f"wall_seconds\t{wall_seconds:.6f}\n"
+            f"cpu_seconds\t{cpu_seconds:.6f}\n"
+            f"max_rss_kib\t{max_rss_kib}\n"
+            f"input_blocks\t{input_blocks}\n"
+            f"output_blocks\t{output_blocks}\n"
+        ),
         encoding="utf-8",
     )
-    return process.returncode, wall_seconds, max_rss_kib
+    return (
+        process.returncode,
+        wall_seconds,
+        cpu_seconds,
+        max_rss_kib,
+        input_blocks,
+        output_blocks,
+    )
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def _record_artifacts(
+    templates: Sequence[str], *, value: int, trial: Path
+) -> str:
+    if not templates:
+        return ""
+    trial_root = trial.resolve(strict=True)
+    rows: list[dict[str, Any]] = []
+    bundle = hashlib.sha256()
+    for ordinal, template in enumerate(templates, start=1):
+        expanded = _expand((template,), value=value, trial_dir=trial)[0]
+        path = Path(expanded)
+        resolved = path.resolve(strict=True)
+        if (
+            path.is_symlink()
+            or not resolved.is_file()
+            or not resolved.is_relative_to(trial_root)
+        ):
+            raise BenchmarkError(
+                f"Artifact {ordinal} must be a real file inside its trial: {path}"
+            )
+        size = resolved.stat().st_size
+        digest = _sha256(resolved)
+        bundle.update(f"{ordinal}\0{size}\0{digest}\n".encode())
+        rows.append(
+            {
+                "ordinal": ordinal,
+                "path": str(resolved),
+                "bytes": size,
+                "sha256": digest,
+            }
+        )
+    with (trial / "producer.artifacts.tsv").open(
+        "x", encoding="utf-8", newline=""
+    ) as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=("ordinal", "path", "bytes", "sha256"),
+            dialect="excel-tab",
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+    return bundle.hexdigest()
 
 
 def _write_summary(results: Sequence[dict[str, Any]], path: Path) -> None:
@@ -218,10 +330,17 @@ def _write_summary(results: Sequence[dict[str, Any]], path: Path) -> None:
         writer.writeheader()
         for case_name, value in sorted(grouped):
             rows = grouped[case_name, value]
+            cpu_values = [float(row["producer_cpu_seconds"]) for row in rows]
             rss_values = [
                 int(row["producer_max_rss_kib"])
                 for row in rows
                 if row["producer_max_rss_kib"] != ""
+            ]
+            input_blocks = [
+                int(row["producer_input_blocks"]) for row in rows
+            ]
+            output_blocks = [
+                int(row["producer_output_blocks"]) for row in rows
             ]
             recommended_values = [
                 candidate
@@ -234,8 +353,15 @@ def _write_summary(results: Sequence[dict[str, Any]], path: Path) -> None:
                     "value": value,
                     "successful_repetitions": len(rows),
                     "median_wall_seconds": f"{medians[case_name, value]:.6f}",
+                    "median_cpu_seconds": f"{statistics.median(cpu_values):.6f}",
                     "median_max_rss_kib": (
                         f"{statistics.median(rss_values):.0f}" if rss_values else ""
+                    ),
+                    "median_input_blocks": (
+                        f"{statistics.median(input_blocks):.0f}"
+                    ),
+                    "median_output_blocks": (
+                        f"{statistics.median(output_blocks):.0f}"
                     ),
                     "recommended": (
                         "yes" if value == min(recommended_values) else "no"
@@ -266,6 +392,7 @@ def run(manifest: Path, output: Path, *, execute: bool) -> int:
     output.mkdir(mode=0o700)
     results_path = output / "trials.tsv"
     results: list[dict[str, Any]] = []
+    artifact_baselines: dict[str, str] = {}
     failed = False
     with results_path.open("x", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=RESULT_FIELDS, dialect="excel-tab")
@@ -285,13 +412,25 @@ def run(manifest: Path, output: Path, *, execute: bool) -> int:
                     producer_code = -1
                     validator_code = -1
                     wall_seconds = 0.0
+                    cpu_seconds = 0.0
                     max_rss_kib: int | str = ""
+                    input_blocks = 0
+                    output_blocks = 0
+                    artifact_set_sha256 = ""
+                    artifact_match_baseline = ""
                     usage_path = trial / "producer.time.txt"
                     if setup_code == 0:
                         producer = _expand(
                             case.producer_argv, value=value, trial_dir=trial
                         )
-                        producer_code, wall_seconds, max_rss_kib = _run_timed(
+                        (
+                            producer_code,
+                            wall_seconds,
+                            cpu_seconds,
+                            max_rss_kib,
+                            input_blocks,
+                            output_blocks,
+                        ) = _run_timed(
                             producer,
                             stdout=trial / "producer.stdout.log",
                             stderr=trial / "producer.stderr.log",
@@ -303,9 +442,20 @@ def run(manifest: Path, output: Path, *, execute: bool) -> int:
                             stdout=trial / "validator.stdout.log",
                             stderr=trial / "validator.stderr.log",
                         )
+                    if producer_code == validator_code == 0 and case.artifact_paths:
+                        artifact_set_sha256 = _record_artifacts(
+                            case.artifact_paths, value=value, trial=trial
+                        )
+                        baseline = artifact_baselines.setdefault(
+                            case.name, artifact_set_sha256
+                        )
+                        artifact_match_baseline = (
+                            "yes" if artifact_set_sha256 == baseline else "no"
+                        )
                     status = (
                         "pass"
                         if setup_code == producer_code == validator_code == 0
+                        and artifact_match_baseline != "no"
                         else "fail"
                     )
                     failed = failed or status == "fail"
@@ -318,7 +468,12 @@ def run(manifest: Path, output: Path, *, execute: bool) -> int:
                         "producer_exit_code": producer_code,
                         "validator_exit_code": validator_code,
                         "producer_wall_seconds": f"{wall_seconds:.6f}",
+                        "producer_cpu_seconds": f"{cpu_seconds:.6f}",
                         "producer_max_rss_kib": max_rss_kib,
+                        "producer_input_blocks": input_blocks,
+                        "producer_output_blocks": output_blocks,
+                        "artifact_set_sha256": artifact_set_sha256,
+                        "artifact_match_baseline": artifact_match_baseline,
                         "trial_dir": str(trial),
                     }
                     results.append(row)
