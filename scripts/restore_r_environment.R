@@ -10,6 +10,9 @@ if (length(arguments) != 0L) {
 if (!identical(Sys.getenv("NORAD_USE_RENV", unset = "0"), "1")) {
     stop("Set NORAD_USE_RENV=1 before restoring the NORAD R environment.")
 }
+if (!identical(Sys.getenv("NORAD_LOCAL_PILOT_R", unset = "0"), "0")) {
+    stop("R restoration must run in bootstrap-capable operator mode.")
+}
 
 bioconductor_mirror <- "https://bioconductor.posit.co"
 bioconductor_binary_repository <- "https://bioc-release.r-universe.dev"
@@ -78,4 +81,13 @@ renv::restore(
     prompt = FALSE
 )
 
+restore_status <- renv::status(project = project_root)
+if (!isTRUE(restore_status$synchronized)) {
+    stop(
+        "The restored library does not match renv.lock; ",
+        "r-restore will not attest an out-of-sync environment."
+    )
+}
+
 message("NORAD R environment restore complete.")
+message("  project library: ", .libPaths()[[1L]])

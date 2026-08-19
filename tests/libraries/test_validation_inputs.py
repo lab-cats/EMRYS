@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -33,10 +34,10 @@ def test_read_bytes_rejects_unreadable_file(
     source = tmp_path / "input.txt"
     source.write_text("fixture")
 
-    def fail_read_bytes(self: Path) -> bytes:
+    def fail_open(*_args: object, **_kwargs: object) -> int:
         raise OSError("inject unreadable input")
 
-    monkeypatch.setattr(Path, "read_bytes", fail_read_bytes)
+    monkeypatch.setattr(INPUTS.os, "open", fail_open)
 
     with pytest.raises(REPORT.ValidationError, match="is unavailable"):
         INPUTS.read_bytes(source, "Unreadable file")
@@ -47,22 +48,54 @@ def test_read_bytes_rejects_mutated_source(
 ) -> None:
     source = tmp_path / "input.txt"
     source.write_text("fixture")
-    before = INPUTS.regular_snapshot(source, "Mutable fixture")
-    after = INPUTS.Snapshot(
-        before.device,
-        before.inode,
-        before.size + 1,
-        before.mtime_ns + 1,
-    )
-    snapshots = iter((before, after))
-    monkeypatch.setattr(
-        INPUTS,
-        "regular_snapshot",
-        lambda *_args, **_kwargs: next(snapshots),
-    )
+    real_read = INPUTS.os.read
+    mutated = False
+
+    def read_then_mutate(descriptor: int, size: int) -> bytes:
+        nonlocal mutated
+        data = real_read(descriptor, size)
+        if data and not mutated:
+            mutated = True
+            source.write_bytes(b"mutated fixture")
+        return data
+
+    monkeypatch.setattr(INPUTS.os, "read", read_then_mutate)
 
     with pytest.raises(REPORT.ValidationError, match="changed while read"):
         INPUTS.read_bytes(source, "Mutable fixture")
+
+
+def test_read_bytes_rejects_path_replacement_after_open(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "input.txt"
+    held = tmp_path / "held.txt"
+    replacement = tmp_path / "replacement.txt"
+    source.write_text("admitted")
+    replacement.write_text("foreign")
+    real_open = INPUTS.os.open
+    replaced = False
+
+    def open_then_replace(
+        path: str | bytes | os.PathLike[str],
+        flags: int,
+    ) -> int:
+        nonlocal replaced
+        descriptor = real_open(path, flags)
+        if Path(path) == source and not replaced:
+            replaced = True
+            source.rename(held)
+            replacement.rename(source)
+        return descriptor
+
+    monkeypatch.setattr(INPUTS.os, "open", open_then_replace)
+
+    with pytest.raises(
+        REPORT.ValidationError,
+        match="pathname changed while read",
+    ):
+        INPUTS.read_bytes(source, "Replaced fixture")
 
 
 def test_integer_stdout_rejects_failed_process() -> None:

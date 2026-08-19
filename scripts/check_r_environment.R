@@ -10,6 +10,16 @@ if (length(arguments) != 0L) {
 if (!identical(Sys.getenv("NORAD_USE_RENV", unset = "0"), "1")) {
     stop("Set NORAD_USE_RENV=1 before checking the NORAD R environment.")
 }
+if (!identical(Sys.getenv("NORAD_LOCAL_PILOT_R", unset = "0"), "1")) {
+    stop(
+        "R checks require non-bootstrapping local-pilot library selection."
+    )
+}
+selected_library_request <- Sys.getenv("NORAD_RENV_LIBRARY", unset = "")
+expected_renv_version <- Sys.getenv("NORAD_RENV_VERSION", unset = "")
+if (!nzchar(selected_library_request) || !nzchar(expected_renv_version)) {
+    stop("NORAD_RENV_LIBRARY and NORAD_RENV_VERSION are required.")
+}
 
 bioconductor_mirror <- "https://bioconductor.posit.co"
 bioconductor_binary_repository <- "https://bioc-release.r-universe.dev"
@@ -41,6 +51,8 @@ required_packages <- c(
     "VariantAnnotation",
     "GenomicRanges",
     "IRanges",
+    "Biostrings",
+    "Rsamtools",
     "S4Vectors",
     "SummarizedExperiment",
     "GenomeInfoDb",
@@ -67,17 +79,33 @@ project_root <- normalizePath(
     winslash = "/",
     mustWork = TRUE
 )
-active_project <- normalizePath(
-    renv::project(),
+active_project <- renv::project()
+if (!is.null(active_project)) {
+    stop(
+        "The non-bootstrapping R check unexpectedly activated an renv project: ",
+        active_project
+    )
+}
+
+selected_library <- normalizePath(
+    selected_library_request,
     winslash = "/",
     mustWork = TRUE
 )
-if (!identical(active_project, project_root)) {
+active_library <- normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE)
+if (!identical(active_library, selected_library)) {
     stop(
-        "The active renv project does not match RENV_PROJECT: active=",
-        active_project,
+        "The active R library does not match NORAD_RENV_LIBRARY: active=",
+        active_library,
         "; requested=",
-        project_root
+        selected_library
+    )
+}
+installed_renv_version <- as.character(utils::packageVersion("renv"))
+if (!identical(installed_renv_version, expected_renv_version)) {
+    stop(
+        "The selected R library has renv ", installed_renv_version,
+        "; expected ", expected_renv_version
     )
 }
 

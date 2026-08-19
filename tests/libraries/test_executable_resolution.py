@@ -21,7 +21,9 @@ ARGUMENT_SOURCE_STATEMENT = re.compile(
 DIRECT_RESOLVER_CALL = re.compile(r"\bresolve_executable_value\s")
 OVERRIDABLE_RESOLVER_CALL = re.compile(r"\bresolve_overridable_executable\s")
 CONSUMERS = {
+    "stages/star_index/step_00a_build_star_index.sh": (0o755, 1, 0, 1),
     "stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh": (0o755, 3, 0, 1),
+    "stages/star_alignment/step_01_star_align.sh": (0o755, 2, 0, 1),
     "stages/canonical_bam/step_02_sort_index_bam.sh": (0o755, 1, 0, 1),
     "evidence/canonical_bam_qc/step_02b_bam_qc.sh": (0o755, 1, 0, 1),
     "evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh": (
@@ -52,9 +54,9 @@ CONSUMERS = {
         0,
         2,
     ),
-    "evidence/scientific_review_package/step_09c_scientific_validation.sh": (
+    "analyses/scientific_context_projection/scientific_context_projection.sh": (
         0o755,
-        0,
+        1,
         0,
         1,
     ),

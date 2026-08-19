@@ -3,24 +3,24 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from norad.contracts.artifacts import api as contracts
-from norad.contracts.scientific_evidence import review_package
 from norad.libraries.alignments.orientation import COUNTS_HEADER as STEP06_COUNTS_HEADER
 from norad.libraries.alignments.star import REQUIRED_INDEX_MEMBERS as STEP00A_BASENAMES
 from norad.libraries.validation.mpileup import RECEIPT_HEADER as STEP07_RECEIPT_HEADER
 from norad.libraries.validation.report import HEADER as VALIDATION_REPORT_HEADER
 
 if TYPE_CHECKING:
-    from .source_checkout import SourceCheckout
+    from norad.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
 
 PRODUCER = "build_artifact_index"
-PRODUCER_VERSION = "1.0.0"
-ARTIFACT_SCHEMA_VERSION = "1.0.0"
-ARTIFACT_INDEX_SCHEMA_VERSION = "1.0.0"
+PRODUCER_VERSION = "2.0.0"
+ARTIFACT_SCHEMA_VERSION = "2.0.0"
+ARTIFACT_INDEX_SCHEMA_VERSION = "2.0.0"
 ARTIFACT_RECEIPT_SCHEMA_VERSION = "1.0.0"
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 RUN_CONTRACT_FIELDS = ("run_contract_sha256", *contracts.RUN_CONTRACT_COMPONENT_FIELDS)
@@ -28,10 +28,6 @@ ANCHOR_HASH_FIELDS = (
     "sample_manifest_sha256",
     "partition_manifest_sha256",
 )
-STEP09C_CATEGORY_ADAPTERS = {
-    category: f"step09c_{category}_v1" for category in review_package.CATEGORY_ORDER
-}
-
 ARTIFACT_INDEX_HEADER = (
     "run_id",
     "run_contract_sha256",
@@ -45,10 +41,6 @@ ARTIFACT_INDEX_HEADER = (
     "runtime_validation_status",
     "cluster_dry_run_status",
     "cluster_proof_status",
-    "science_status",
-    "orientation_status",
-    "orientation_policy",
-    "review_id",
     "source_sha256",
     "source_size_bytes",
     "source_row_count",
@@ -162,6 +154,7 @@ class Inspection:
 @dataclass
 class BuildContext:
     source_checkout: SourceCheckout
+    artifact_source_root: ArtifactSourceRoot
     run_id: str
     run_contract_path: Path
     run_contract: dict[str, Any]
@@ -185,3 +178,4 @@ class BuildContext:
     previous_attempt_id: str | None
     attempt_history: list[str]
     previous_receipt: dict[str, str] | None
+    source_identity_observer: Callable[..., str | None]

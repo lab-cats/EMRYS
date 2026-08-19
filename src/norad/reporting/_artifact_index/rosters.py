@@ -88,25 +88,18 @@ SCOPE_ADAPTER_ROSTERS: dict[str, Counter[str]] = {
         "step09_depth_delta_pdf_v1",
         "step09_validation_report_v1",
     ),
-    "09c": roster(
-        "step09c_review_plan_v1",
-        "step09c_evidence_index_v1",
-        "step09c_orientation_locus_audit_v1",
-        "step09c_annotation_audit_v1",
-        "step09c_qc_funnel_v1",
-        "step09c_replicate_effects_v1",
-        "step09c_sensitivity_matrix_v1",
-        "step09c_leave_one_pair_out_v1",
-        "step09c_candidate_selection_v1",
-        "step09c_candidate_adjudication_v1",
-        "step09c_decisions_v1",
-        "step09c_limitations_v1",
-        "step09c_review_summary_v1",
+    "10": roster(
+        "step10_candidate_context_v1",
+        "step10_motif_hits_v1",
+        "step10_sequence_logo_v1",
+        "step10_motif_statistics_v1",
+        "step10_context_receipt_v1",
+        "step10_validation_report_v1",
     ),
 }
 
 STEP_PRODUCERS = {
-    "00a": ("src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm"),
+    "00a": "src/norad/stages/star_index/step_00a_build_star_index.sh",
     "00b": "src/norad/stages/gtf_to_bed12/converter.py",
     "00c": ("src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"),
     "01": ("src/norad/stages/star_alignment/step_01_star_align.sh"),
@@ -133,7 +126,8 @@ STEP_PRODUCERS = {
         "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh"
     ),
-    "09c": (
-        "src/norad/evidence/scientific_review_package/publisher.py"
+    "10": (
+        "src/norad/analyses/scientific_context_projection/"
+        "scientific_context_projection.sh"
     ),
 }

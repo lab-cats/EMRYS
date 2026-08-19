@@ -43,7 +43,12 @@ def build_validation_fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
     (index / "chrName.txt").write_text("1\nMT\n", encoding="utf-8")
     (index / "chrLength.txt").write_text("4\n2\n", encoding="utf-8")
     (index / "genomeParameters.txt").write_text(
-        f"genomeFastaFiles {fasta}\nsjdbGTFfile {gtf}\nsjdbOverhang 149\n",
+        "### STAR --runMode genomeGenerate\n"
+        "### GstrandBit 32\n"
+        f"genomeFastaFiles {fasta}\n"
+        f"sjdbGTFfile {gtf}\n"
+        "sjdbOverhang 149\n"
+        "genomeSAindexNbases 14\n",
         encoding="utf-8",
     )
     output_dir = tmp_path / "results"
@@ -80,6 +85,8 @@ def run_validator(
             str(index.parent),
             "--expected-sjdb-overhang",
             "149",
+            "--expected-genome-sa-index-nbases",
+            "14",
             "--output",
             str(output),
             *extra,
@@ -154,7 +161,9 @@ def test_scientific_mismatches_are_reported_not_repaired(tmp_path: Path) -> None
     (index / "chrLength.txt").write_text("4\n3\n", encoding="utf-8")
     parameters = (index / "genomeParameters.txt").read_text(encoding="utf-8")
     (index / "genomeParameters.txt").write_text(
-        parameters.replace("sjdbOverhang 149", "sjdbOverhang 99"),
+        parameters.replace("sjdbOverhang 149", "sjdbOverhang 99").replace(
+            "genomeSAindexNbases 14", "genomeSAindexNbases 7"
+        ),
         encoding="utf-8",
     )
     result = run_validator(index, fasta, gtf, output, "--execute")
@@ -162,6 +171,7 @@ def test_scientific_mismatches_are_reported_not_repaired(tmp_path: Path) -> None
     statuses = {row["check_id"]: row["status"] for row in report_rows(output)}
     assert statuses["contig_names_lengths"] == "fail"
     assert statuses["sjdb_overhang"] == "fail"
+    assert statuses["genome_sa_index_nbases"] == "fail"
     assert fasta.read_text(encoding="utf-8") == ">1\nACGT\n>MT\nAA\n"
 
 

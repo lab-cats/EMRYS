@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from norad.reporting._run_summary.models import (
+    INTERPRETATION_BOUNDARY,
     PRODUCER,
     PRODUCER_VERSION,
     RUN_SUMMARY_SCHEMA_VERSION,
@@ -35,9 +36,6 @@ def _build_document(
     artifact_receipt_size_bytes: int,
     artifact_receipt: dict[str, str],
     artifacts: list[dict[str, Any]],
-    scientific_review: dict[str, Any],
-    approved_report_tables: list[dict[str, Any]],
-    report_table_approvals_source: dict[str, Any] | None,
     generated_at: str,
     git_commit: str,
 ) -> tuple[dict[str, Any], dict[str, int]]:
@@ -50,18 +48,6 @@ def _build_document(
     duplicate_warning = _issue_for_duplicate_metrics(duplicate_metric_ids, artifacts)
     if duplicate_warning is not None:
         warnings.append(duplicate_warning)
-    if scientific_review["record_state"] != "present":
-        warnings.append(
-            {
-                "code": "scientific_review_not_supplied",
-                "message": (
-                    "No explicit committed Step 09c review was normalized; "
-                    "science status remains evidence_incomplete."
-                ),
-                "related_artifact_ids": [],
-                "evidence": [],
-            }
-        )
     errors = _stable_unique(
         issue for artifact in artifacts for issue in artifact["errors"]
     )
@@ -85,7 +71,6 @@ def _build_document(
                 if value
             ],
         },
-        "report_table_approvals": report_table_approvals_source,
     }
     document = {
         "schema_name": "norad.run_summary",
@@ -114,17 +99,12 @@ def _build_document(
         "expected_scopes": expected_scopes,
         "artifacts": artifacts,
         "computational_rollup": _build_rollup(artifacts),
-        "scientific_review": scientific_review,
-        "science_status": scientific_review["overall_status"],
         "tools": _build_tools(artifacts),
         "parameters": parameters,
         "qc_metrics": qc_metrics,
-        "limitations": _build_limitations(
-            artifacts=artifacts,
-            scientific_review=scientific_review,
-        ),
-        "approved_report_tables": approved_report_tables,
+        "limitations": _build_limitations(artifacts=artifacts),
         "candidate_terminology": "CMH-ranked candidates",
+        "interpretation_boundary": INTERPRETATION_BOUNDARY,
         "warnings": _stable_unique(warnings),
         "errors": errors,
         "provenance": {

@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import csv
 import math
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 
 from norad.contracts.scientific_evidence.step08 import (
@@ -22,6 +25,7 @@ from norad.contracts.scientific_evidence.step08 import (
     validate_enum,
     validate_hash,
     validate_safe_id,
+    validate_step08_carried_location,
     values_close,
 )
 from norad.libraries.alignments.orientation import (
@@ -46,6 +50,7 @@ __all__ = (
     "count_status",
     "paired_samples",
     "resolve_recorded_path",
+    "validate_step09_projection",
     "validate_step09_results",
     "validate_step09_summary",
     "validate_step09_result_semantics",
@@ -186,6 +191,45 @@ STEP09_STATUS_COUNT_FIELDS = (
     ("significant_down_count", "call_status", "significant_down"),
 )
 
+_PROJECTION_CONTEXT_FIELDS = (
+    "control_condition",
+    "treatment_condition",
+    "target_rna_change",
+    "replicate_count",
+    "background_condition",
+    "orientation_policy",
+)
+
+_PROJECTION_STATISTICAL_FIELDS = (
+    "cmh_statistic",
+    "cmh_degrees_freedom",
+    "cmh_p_value",
+    "cmh_fdr_bh",
+    "common_odds_ratio",
+)
+
+_MUTATION_COUNT_FIELDS = (
+    "candidate_count",
+    "successfully_tested_count",
+    "significant_up_count",
+    "significant_down_count",
+)
+_SIGNIFICANT_CALLS = frozenset(("significant_up", "significant_down"))
+_SIGNIFICANT_SUBSET_ERROR = (
+    "Step 09 significant-sites table is not the exact ordered significant subset "
+    "of all-sites."
+)
+_SIGNIFICANT_STATUS_ERROR = (
+    "Step 09 significant-sites contains a non-significant call status."
+)
+
+
+@dataclass(frozen=True, slots=True)
+class _ProjectionTable:
+    path: Path
+    header: tuple[str, ...]
+    row_count: int
+
 
 def parse_nonnegative_or_infinite(label: str, value: str) -> float:
     try:
@@ -266,6 +310,497 @@ def paired_samples(
     return replicates, pairs
 
 
+def _projection_sample_ids(
+    header: Sequence[str],
+    label: str,
+) -> tuple[str, ...]:
+    prefix = STEP09_RESULT_HEADER
+    if tuple(header[: len(prefix)]) != prefix:
+        fail(f"{label} has an invalid fixed Step 09 header.")
+    remainder = tuple(header[len(prefix) :])
+    if not remainder or len(remainder) % 3:
+        fail(f"{label} must have equal non-empty DP__, AD__, and AF__ blocks.")
+    count = len(remainder) // 3
+    dp = remainder[:count]
+    ad = remainder[count : count * 2]
+    af = remainder[count * 2 :]
+    sample_ids = tuple(value.removeprefix("DP__") for value in dp)
+    if any(
+        not value.startswith("DP__") or not sample_id
+        for value, sample_id in zip(dp, sample_ids, strict=True)
+    ) or len(sample_ids) != len(set(sample_ids)):
+        fail(f"{label} has an invalid DP__ sample block.")
+    if ad != tuple(f"AD__{sample_id}" for sample_id in sample_ids):
+        fail(f"{label} has an invalid AD__ sample block.")
+    if af != tuple(f"AF__{sample_id}" for sample_id in sample_ids):
+        fail(f"{label} has an invalid AF__ sample block.")
+    return sample_ids
+
+
+def _validate_projection_result_identity(
+    table: Table,
+    label: str,
+    analysis_id: str,
+    sample_ids: Sequence[str],
+) -> None:
+    expected_header = sample_block_header(STEP09_RESULT_HEADER, sample_ids)
+    if table.header != expected_header:
+        fail(f"{label} header is invalid: {table.path}")
+    ensure_unique(table.rows, "candidate_id", label)
+    for row_number, row in enumerate(table.rows, start=2):
+        _validate_projection_result_row_identity(
+            row,
+            label,
+            row_number,
+            analysis_id,
+        )
+
+
+def _validate_projection_result_row_identity(
+    row: Mapping[str, str],
+    label: str,
+    row_number: int,
+    analysis_id: str,
+) -> None:
+    if all(value == "" for value in row.values()):
+        fail(f"{label} row {row_number} is blank.")
+    if row["analysis_id"] != analysis_id:
+        fail(f"{label} row {row_number} has the wrong analysis_id.")
+    validate_step08_carried_location(row, f"{label} row {row_number}")
+    validate_enum(
+        f"{label} row {row_number} test_status",
+        row["test_status"],
+        STEP09_TEST_STATUSES,
+    )
+    validate_enum(
+        f"{label} row {row_number} call_status",
+        row["call_status"],
+        STEP09_CALL_STATUSES,
+    )
+    parse_nonnegative_int(
+        f"{label} row {row_number} replicate_count",
+        row["replicate_count"],
+    )
+
+
+def _projection_number(
+    label: str,
+    value: str,
+    *,
+    allow_na: bool = False,
+    minimum: float | None = None,
+    maximum: float | None = None,
+) -> float | None:
+    parsed = parse_number(label, value, allow_na=allow_na)
+    if parsed is None:
+        return None
+    if minimum is not None and parsed < minimum:
+        fail(f"{label} must be at least {minimum}; got: {value}")
+    if maximum is not None and parsed > maximum:
+        fail(f"{label} must be at most {maximum}; got: {value}")
+    return parsed
+
+
+def _validate_projection_sample_values(
+    row: Mapping[str, str],
+    sample_ids: Sequence[str],
+    label: str,
+) -> None:
+    for sample_id in sample_ids:
+        sample_label = f"{label} sample {sample_id}"
+        dp_text = row[f"DP__{sample_id}"]
+        ad_text = row[f"AD__{sample_id}"]
+        af_text = row[f"AF__{sample_id}"]
+        if (dp_text == NA_VALUE) != (ad_text == NA_VALUE):
+            fail(f"{sample_label} has one-sided DP/AD missingness.")
+        if dp_text == NA_VALUE:
+            if af_text != NA_VALUE:
+                fail(f"{sample_label} has AF without DP/AD.")
+            continue
+        dp = parse_nonnegative_int(f"{sample_label} DP", dp_text)
+        ad = parse_nonnegative_int(f"{sample_label} AD", ad_text)
+        if ad > dp:
+            fail(f"{sample_label} has AD greater than DP.")
+        if dp == 0:
+            if ad != 0 or af_text != NA_VALUE:
+                fail(f"{sample_label} has invalid zero-depth DP/AD/AF values.")
+            continue
+        af = _projection_number(
+            f"{sample_label} AF",
+            af_text,
+            minimum=0,
+            maximum=1,
+        )
+        if not values_close(af, ad / dp):
+            fail(f"{sample_label} AF does not reconcile with AD/DP.")
+
+
+def _validate_projection_result_row_values(
+    row: Mapping[str, str],
+    sample_ids: Sequence[str],
+    label: str,
+    row_number: int,
+) -> None:
+    row_label = f"{label} row {row_number}"
+    _validate_projection_sample_values(row, sample_ids, row_label)
+    parse_nonnegative_int(f"{row_label} position", row["position"])
+    if parse_nonnegative_int(f"{row_label} alt_index", row["alt_index"]) < 1:
+        fail(f"{row_label} alt_index must be at least 1.")
+    degrees = None
+    for field, minimum, maximum in (
+        ("min_analysis_dp", 0, None),
+        ("mean_analysis_dp", 0, None),
+        ("mean_control_af", 0, 1),
+        ("mean_treatment_af", 0, 1),
+        ("treatment_control_difference", -1, 1),
+        ("max_background_af", 0, 1),
+        ("cmh_statistic", 0, None),
+        ("cmh_degrees_freedom", 0, None),
+        ("cmh_p_value", 0, 1),
+        ("cmh_fdr_bh", 0, 1),
+    ):
+        parsed = _projection_number(
+            f"{row_label} {field}",
+            row[field],
+            allow_na=True,
+            minimum=minimum,
+            maximum=maximum,
+        )
+        if field == "cmh_degrees_freedom":
+            degrees = parsed
+    if row["common_odds_ratio"] != NA_VALUE:
+        parse_nonnegative_or_infinite(
+            f"{row_label} common_odds_ratio",
+            row["common_odds_ratio"],
+        )
+    if row["test_status"] == "tested":
+        if row["call_status"] == "not_tested" or any(
+            row[field] == NA_VALUE for field in _PROJECTION_STATISTICAL_FIELDS
+        ):
+            fail(f"{row_label} tested row lacks complete CMH statistics.")
+        if degrees != 1:
+            fail(f"{row_label} tested row must use one CMH degree of freedom.")
+    elif row["call_status"] != "not_tested" or any(
+        row[field] != NA_VALUE for field in _PROJECTION_STATISTICAL_FIELDS
+    ):
+        fail(f"{row_label} untested row contains a computational call.")
+
+
+def _validate_projection_thresholds(
+    summary: Mapping[str, str],
+) -> tuple[int, float, float, float, float, float]:
+    min_sample_dp = parse_nonnegative_int(
+        "Step 09 min_sample_dp", summary["min_sample_dp"]
+    )
+    mean_dp_threshold = _projection_number(
+        "Step 09 mean_dp_threshold",
+        summary["mean_dp_threshold"],
+        minimum=0,
+    )
+    fdr_threshold = _projection_number(
+        "Step 09 fdr_threshold",
+        summary["fdr_threshold"],
+        minimum=0,
+        maximum=1,
+    )
+    odds_threshold = _projection_number(
+        "Step 09 common_or_threshold",
+        summary["common_or_threshold"],
+        minimum=0,
+    )
+    difference_threshold = _projection_number(
+        "Step 09 absolute_difference_threshold",
+        summary["absolute_difference_threshold"],
+        minimum=0,
+        maximum=1,
+    )
+    background_threshold = _projection_number(
+        "Step 09 background_max_fraction",
+        summary["background_max_fraction"],
+        minimum=0,
+        maximum=1,
+    )
+    if (
+        min_sample_dp < 1
+        or mean_dp_threshold is None
+        or fdr_threshold is None
+        or not 0 < fdr_threshold <= 1
+        or odds_threshold is None
+        or odds_threshold <= 1
+        or difference_threshold is None
+        or background_threshold is None
+        or not 0 < background_threshold < 1
+    ):
+        fail("Step 09 summary thresholds are outside the supported contract.")
+    return (
+        min_sample_dp,
+        mean_dp_threshold,
+        fdr_threshold,
+        odds_threshold,
+        difference_threshold,
+        background_threshold,
+    )
+
+
+def _read_projection_summary(
+    value: str | Path,
+    analysis_id: str,
+) -> Table:
+    table = read_tsv("Step 09 summary", value, STEP09_SUMMARY_HEADER)
+    if len(table.rows) != 1:
+        fail("Step 09 summary must contain exactly one data row.")
+    row = table.rows[0]
+    if row["analysis_id"] != analysis_id:
+        fail("Step 09 summary analysis_id differs from its directory.")
+    return table
+
+
+def _validate_projection_summary_fields(row: Mapping[str, str]) -> None:
+    for field in (
+        "replicate_count",
+        "sample_count",
+        "candidate_count",
+        "target_candidate_count",
+        *(field for field, _column, _status in STEP09_STATUS_COUNT_FIELDS),
+    ):
+        parse_nonnegative_int(f"Step 09 summary {field}", row[field])
+    _validate_projection_thresholds(row)
+    _validate_projection_method(row)
+
+
+def _validate_projection_method(row: Mapping[str, str]) -> None:
+    if (
+        row["multiple_testing_method"] != "BH"
+        or row["cmh_alternative"] != "two.sided"
+        or row["continuity_correction"] != "TRUE"
+    ):
+        fail("Step 09 summary does not declare the approved CMH contract.")
+    if not re.fullmatch(r"[ACGT]>[ACGT]", row["target_rna_change"]):
+        fail("Step 09 summary target_rna_change must be a canonical SNV.")
+
+
+@contextmanager
+def _stream_projection_tsv(
+    label: str,
+    value: str | Path,
+) -> Iterator[tuple[Path, tuple[str, ...], Iterator[tuple[int, dict[str, str]]]]]:
+    path = require_file(label, value)
+    try:
+        with path.open(encoding="utf-8", newline="") as stream:
+            reader = csv.reader(stream, delimiter="\t", strict=True)
+            try:
+                header = tuple(next(reader))
+            except StopIteration:
+                fail(f"{label} is empty: {path}")
+            if any(not column for column in header):
+                fail(f"{label} contains an empty header field: {path}")
+            if len(header) != len(set(header)):
+                fail(f"{label} contains duplicate header fields: {path}")
+
+            def rows() -> Iterator[tuple[int, dict[str, str]]]:
+                for row_number, values in enumerate(reader, start=2):
+                    if len(values) != len(header):
+                        fail(
+                            f"{label} row {row_number} has {len(values)} fields; "
+                            f"expected {len(header)}: {path}"
+                        )
+                    yield row_number, dict(zip(header, values, strict=True))
+
+            yield path, header, rows()
+    except (OSError, UnicodeError, csv.Error) as exc:
+        fail(f"Could not read {label} as UTF-8 TSV ({path}): {exc}")
+
+
+def _new_mutation_counts() -> dict[str, dict[str, int]]:
+    return {
+        mutation: {field: 0 for field in _MUTATION_COUNT_FIELDS}
+        for mutation in CANONICAL_MUTATIONS
+    }
+
+
+def _accumulate_mutation_counts(
+    row: Mapping[str, str],
+    mutation_counts: dict[str, dict[str, int]],
+) -> None:
+    counts = mutation_counts.get(f"{row['rna_ref']}>{row['rna_alt']}")
+    if counts is None:
+        return
+    counts["candidate_count"] += 1
+    if row["test_status"] == "tested":
+        counts["successfully_tested_count"] += 1
+    if row["call_status"] == "significant_up":
+        counts["significant_up_count"] += 1
+    if row["call_status"] == "significant_down":
+        counts["significant_down_count"] += 1
+
+
+def _reconcile_projection_counts(
+    summary: Mapping[str, str],
+    sample_ids: Sequence[str],
+    all_row_count: int,
+    significant_row_count: int,
+    status_counts: Mapping[str, int],
+    target_count: int,
+) -> None:
+    if (
+        int(summary["significant_up_count"]) + int(summary["significant_down_count"])
+        != significant_row_count
+    ):
+        fail("Step 09 summary significant counts disagree with significant-sites rows.")
+    expected_counts = {
+        "sample_count": len(sample_ids),
+        "candidate_count": all_row_count,
+        "target_candidate_count": target_count,
+        **status_counts,
+    }
+    for field, expected in expected_counts.items():
+        if int(summary[field]) != expected:
+            owner = {
+                "sample_count": "result columns",
+                "candidate_count": "all-sites rows",
+            }.get(field, "all-sites")
+            fail(f"Step 09 summary {field} disagrees with {owner}.")
+
+
+def validate_step09_projection(
+    all_sites: str | Path,
+    significant_sites: str | Path,
+    summary: str | Path,
+    analysis_id: str,
+    *,
+    mutation_spectrum: str | Path | None = None,
+) -> tuple[_ProjectionTable, _ProjectionTable, Table, tuple[str, ...]]:
+    """Admit the intrinsic Step 09 result trio used by read-only projections.
+
+    This deliberately excludes upstream Step 08 identity, paired-sample CMH
+    semantics, global BH reconciliation, and publication state. Mutation-spectrum
+    reconciliation is included when its optional path is supplied.
+    """
+
+    summary_table = _read_projection_summary(summary, analysis_id)
+    summary_row = summary_table.rows[0]
+    _validate_projection_summary_fields(summary_row)
+
+    all_candidate_ids: set[str] = set()
+    status_counts = {
+        summary_field: 0
+        for summary_field, _column, _status in STEP09_STATUS_COUNT_FIELDS
+    }
+    mutation_counts = _new_mutation_counts()
+    all_row_count = 0
+    significant_row_count = 0
+    target_count = 0
+
+    with (
+        _stream_projection_tsv("Step 09 all-sites", all_sites) as (
+            all_path,
+            all_header,
+            all_rows,
+        ),
+        _stream_projection_tsv("Step 09 significant-sites", significant_sites) as (
+            significant_path,
+            significant_header,
+            significant_rows,
+        ),
+    ):
+        all_sample_ids = _projection_sample_ids(all_header, "Step 09 all-sites")
+        significant_sample_ids = _projection_sample_ids(
+            significant_header,
+            "Step 09 significant-sites",
+        )
+        if all_sample_ids != significant_sample_ids:
+            fail("Step 09 result-table sample blocks disagree.")
+
+        for all_row_number, all_row in all_rows:
+            candidate_id = all_row["candidate_id"]
+            if not candidate_id:
+                fail(
+                    f"Step 09 all-sites row {all_row_number} has an empty candidate_id."
+                )
+            if candidate_id in all_candidate_ids:
+                fail(
+                    f"Step 09 all-sites contains duplicate candidate_id: {candidate_id}"
+                )
+            all_candidate_ids.add(candidate_id)
+            _validate_projection_result_row_identity(
+                all_row,
+                "Step 09 all-sites",
+                all_row_number,
+                analysis_id,
+            )
+            _validate_projection_result_row_values(
+                all_row,
+                all_sample_ids,
+                "Step 09 all-sites",
+                all_row_number,
+            )
+            all_row_count += 1
+            for summary_field, column, status in STEP09_STATUS_COUNT_FIELDS:
+                if all_row[column] == status:
+                    status_counts[summary_field] += 1
+            for field in _PROJECTION_CONTEXT_FIELDS:
+                if all_row[field] != summary_row[field]:
+                    fail(f"Step 09 all-sites {field} disagrees with the summary.")
+            if (
+                f"{all_row['rna_ref']}>{all_row['rna_alt']}"
+                == summary_row["target_rna_change"]
+            ):
+                target_count += 1
+            _accumulate_mutation_counts(all_row, mutation_counts)
+
+            if all_row["call_status"] not in _SIGNIFICANT_CALLS:
+                continue
+            try:
+                _, significant_row = next(significant_rows)
+            except StopIteration:
+                fail(_SIGNIFICANT_SUBSET_ERROR)
+            if significant_row["call_status"] not in _SIGNIFICANT_CALLS:
+                fail(_SIGNIFICANT_STATUS_ERROR)
+            if significant_row != all_row:
+                fail(_SIGNIFICANT_SUBSET_ERROR)
+            significant_row_count += 1
+
+        try:
+            _, extra_significant = next(significant_rows)
+        except StopIteration:
+            extra_significant = None
+        if extra_significant is not None:
+            if extra_significant["call_status"] not in _SIGNIFICANT_CALLS:
+                fail(_SIGNIFICANT_STATUS_ERROR)
+            fail(_SIGNIFICANT_SUBSET_ERROR)
+
+    _reconcile_projection_counts(
+        summary_row,
+        all_sample_ids,
+        all_row_count,
+        significant_row_count,
+        status_counts,
+        target_count,
+    )
+    if mutation_spectrum is not None:
+        _validate_mutation_spectrum_counts(
+            mutation_spectrum,
+            analysis_id,
+            mutation_counts,
+            {
+                "candidate_count": all_row_count,
+                "successfully_tested_count": status_counts["successfully_tested_count"],
+                "significant_up_count": status_counts["significant_up_count"],
+                "significant_down_count": status_counts["significant_down_count"],
+            },
+        )
+    return (
+        _ProjectionTable(all_path, all_header, all_row_count),
+        _ProjectionTable(
+            significant_path,
+            significant_header,
+            significant_row_count,
+        ),
+        summary_table,
+        all_sample_ids,
+    )
+
+
 def validate_step09_results(
     label: str,
     value: str | Path,
@@ -275,13 +810,16 @@ def validate_step09_results(
 ) -> Table:
     expected_header = sample_block_header(STEP09_RESULT_HEADER, sample_ids)
     table = read_tsv(label, value, expected_header)
-    ensure_unique(table.rows, "candidate_id", label)
+    _validate_projection_result_identity(
+        table,
+        label,
+        analysis_id,
+        sample_ids,
+    )
     sites_by_id = {row["candidate_id"]: row for row in step08_sites}
     metadata_columns = STEP08_METADATA_HEADER
     sample_columns = sample_block_header((), sample_ids)
     for row_number, row in enumerate(table.rows, start=2):
-        if row["analysis_id"] != analysis_id:
-            fail(f"{label} row {row_number} has the wrong analysis_id.")
         site = sites_by_id.get(row["candidate_id"])
         if site is None:
             fail(f"{label} references an unknown Step 08 candidate.")
@@ -291,20 +829,6 @@ def validate_step09_results(
                     f"{label} row {row_number} {column} differs from "
                     "the Step 08 candidate."
                 )
-        validate_enum(
-            f"{label} row {row_number} test_status",
-            row["test_status"],
-            STEP09_TEST_STATUSES,
-        )
-        validate_enum(
-            f"{label} row {row_number} call_status",
-            row["call_status"],
-            STEP09_CALL_STATUSES,
-        )
-        parse_nonnegative_int(
-            f"{label} row {row_number} replicate_count",
-            row["replicate_count"],
-        )
     return table
 
 
@@ -327,24 +851,15 @@ def validate_step09_summary(
 ) -> Table:
     validate_safe_id("analysis_id", analysis_id)
     validate_safe_id("cohort_id", cohort_id)
-    table = read_tsv("Step 09 summary", value, STEP09_SUMMARY_HEADER)
-    if len(table.rows) != 1:
-        fail("Step 09 summary must contain exactly one data row.")
+    table = _read_projection_summary(value, analysis_id)
     row = table.rows[0]
-    if row["analysis_id"] != analysis_id:
-        fail("Step 09 summary analysis_id differs from its directory.")
     if row["cohort_id"] != cohort_id:
         fail("Step 09 summary cohort_id differs from the Step 08 receipt.")
     validate_safe_id("control_condition", row["control_condition"])
     validate_safe_id("treatment_condition", row["treatment_condition"])
     if row["background_condition"] != NA_VALUE:
         validate_safe_id("background_condition", row["background_condition"])
-    if (
-        row["multiple_testing_method"] != "BH"
-        or row["cmh_alternative"] != "two.sided"
-        or row["continuity_correction"] != "TRUE"
-    ):
-        fail("Step 09 summary does not declare the approved CMH contract.")
+    _validate_projection_method(row)
     expected_paths = {
         "sample_manifest_path": sample_manifest,
         "partition_manifest_path": partition_manifest,
@@ -441,15 +956,17 @@ def validate_step09_summary(
     return table
 
 
-def validate_mutation_spectrum(
+def _validate_mutation_spectrum_counts(
     value: str | Path,
     analysis_id: str,
-    all_rows: Sequence[Mapping[str, str]],
+    mutation_counts: Mapping[str, Mapping[str, int]],
+    aggregate_expected: Mapping[str, int],
 ) -> Table:
     table = read_tsv("Step 09 mutation spectrum", value, STEP09_MUTATION_HEADER)
     if [row["mutation_type"] for row in table.rows] != list(CANONICAL_MUTATIONS):
         fail("Step 09 mutation spectrum must contain the canonical 12 SNVs.")
-    total = len(all_rows)
+    total = aggregate_expected["candidate_count"]
+    aggregate_observed = {field: 0 for field in _MUTATION_COUNT_FIELDS}
     for row in table.rows:
         mutation_type = row["mutation_type"]
         ref, alt = mutation_type.split(">")
@@ -459,44 +976,56 @@ def validate_mutation_spectrum(
             or row["rna_alt"] != alt
         ):
             fail("Step 09 mutation spectrum identity columns do not reconcile.")
-        selected = [
-            result
-            for result in all_rows
-            if result["rna_ref"] == ref and result["rna_alt"] == alt
-        ]
-        expected_counts = {
-            "candidate_count": len(selected),
-            "successfully_tested_count": count_status(
-                selected, "test_status", "tested"
-            ),
-            "significant_up_count": count_status(
-                selected, "call_status", "significant_up"
-            ),
-            "significant_down_count": count_status(
-                selected, "call_status", "significant_down"
-            ),
-        }
-        for column, expected in expected_counts.items():
-            if (
-                parse_nonnegative_int(
-                    f"Step 09 mutation spectrum {column}", row[column]
-                )
-                != expected
-            ):
+        expected_counts = mutation_counts[mutation_type]
+        for column in _MUTATION_COUNT_FIELDS:
+            observed = parse_nonnegative_int(
+                f"Step 09 mutation spectrum {column}", row[column]
+            )
+            aggregate_observed[column] += observed
+            if observed != expected_counts[column]:
                 fail(f"Step 09 mutation spectrum {column} does not reconcile.")
         fraction = parse_number(
             "Step 09 mutation spectrum candidate_fraction",
             row["candidate_fraction"],
             nonnegative=True,
         )
-        expected_fraction = 0.0 if total == 0 else len(selected) / total
+        expected_fraction = (
+            0.0 if total == 0 else expected_counts["candidate_count"] / total
+        )
         if (
             fraction is None
             or fraction > 1
             or not values_close(fraction, expected_fraction)
         ):
             fail("Step 09 mutation spectrum candidate_fraction is invalid.")
+    for column, expected in aggregate_expected.items():
+        if aggregate_observed[column] != expected:
+            fail(f"Step 09 mutation spectrum aggregate {column} does not reconcile.")
     return table
+
+
+def validate_mutation_spectrum(
+    value: str | Path,
+    analysis_id: str,
+    all_rows: Sequence[Mapping[str, str]],
+) -> Table:
+    mutation_counts = _new_mutation_counts()
+    aggregate_expected = {field: 0 for field in _MUTATION_COUNT_FIELDS}
+    for row in all_rows:
+        aggregate_expected["candidate_count"] += 1
+        if row["test_status"] == "tested":
+            aggregate_expected["successfully_tested_count"] += 1
+        if row["call_status"] == "significant_up":
+            aggregate_expected["significant_up_count"] += 1
+        if row["call_status"] == "significant_down":
+            aggregate_expected["significant_down_count"] += 1
+        _accumulate_mutation_counts(row, mutation_counts)
+    return _validate_mutation_spectrum_counts(
+        value,
+        analysis_id,
+        mutation_counts,
+        aggregate_expected,
+    )
 
 
 def validate_step09_result_semantics(
@@ -505,45 +1034,14 @@ def validate_step09_result_semantics(
     sample_rows: Sequence[Mapping[str, str]],
 ) -> None:
     target_ref, target_alt = summary["target_rna_change"].split(">")
-    min_sample_dp = parse_nonnegative_int(
-        "Step 09 min_sample_dp", summary["min_sample_dp"]
-    )
-    mean_dp_threshold = parse_number(
-        "Step 09 mean_dp_threshold",
-        summary["mean_dp_threshold"],
-        nonnegative=True,
-    )
-    fdr_threshold = parse_number(
-        "Step 09 fdr_threshold", summary["fdr_threshold"], nonnegative=True
-    )
-    odds_threshold = parse_number(
-        "Step 09 common_or_threshold",
-        summary["common_or_threshold"],
-        nonnegative=True,
-    )
-    difference_threshold = parse_number(
-        "Step 09 absolute_difference_threshold",
-        summary["absolute_difference_threshold"],
-        nonnegative=True,
-    )
-    background_threshold = parse_number(
-        "Step 09 background_max_fraction",
-        summary["background_max_fraction"],
-        nonnegative=True,
-    )
-    if (
-        min_sample_dp < 1
-        or mean_dp_threshold is None
-        or fdr_threshold is None
-        or not 0 < fdr_threshold <= 1
-        or odds_threshold is None
-        or odds_threshold <= 1
-        or difference_threshold is None
-        or difference_threshold > 1
-        or background_threshold is None
-        or not 0 < background_threshold < 1
-    ):
-        fail("Step 09 summary thresholds are outside the supported contract.")
+    (
+        min_sample_dp,
+        mean_dp_threshold,
+        fdr_threshold,
+        odds_threshold,
+        difference_threshold,
+        background_threshold,
+    ) = _validate_projection_thresholds(summary)
     _, pairs = paired_samples(
         sample_rows,
         summary["control_condition"],

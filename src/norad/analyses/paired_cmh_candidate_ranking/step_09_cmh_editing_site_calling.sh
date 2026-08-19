@@ -85,6 +85,7 @@ background_condition=""
 background_max_fraction="0.01"
 rscript_bin_arg=""
 r_script="${STEP09_R_SCRIPT:-$script_dir/step_09_cmh_editing_site_calling.R}"
+no_clobber=false
 execute=false
 
 while [[ "$#" -gt 0 ]]; do
@@ -108,6 +109,7 @@ while [[ "$#" -gt 0 ]]; do
         --background-max-fraction) require_value "$1" "${2:-}"; background_max_fraction="$2"; shift 2 ;;
         --rscript-bin) require_value "$1" "${2:-}"; rscript_bin_arg="$2"; shift 2 ;;
         --r-script) require_value "$1" "${2:-}"; r_script="$2"; shift 2 ;;
+        --no-clobber) no_clobber=true; shift ;;
         --execute) execute=true; shift ;;
         -h|--help) usage; exit 0 ;;
         *) die "Unknown argument: $1" ;;
@@ -255,7 +257,7 @@ final_mutation_pdf="$analysis_dir/$analysis_id.mutation_spectrum.pdf"
 final_depth_pdf="$analysis_dir/$analysis_id.depth_delta.pdf"
 finals=("$final_all" "$final_significant" "$final_mutation" "$final_mutation_pdf" "$final_depth_pdf" "$final_summary")
 
-run_token="${SLURM_JOB_ID:-$$}"
+run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "run token" "$run_token"
 tmp_all="$analysis_dir/.$analysis_id.step09.$run_token.all.tmp.tsv"
 tmp_significant="$analysis_dir/.$analysis_id.step09.$run_token.significant.tmp.tsv"
@@ -270,8 +272,12 @@ for final in "${finals[@]}"; do
 done
 lock_path="$analysis_dir/.$analysis_id.step09.lock"
 
-r_command=(
-    "$rscript_bin" "$r_script"
+r_command=("$rscript_bin")
+if [[ "${NORAD_LOCAL_PILOT_R:-0}" == 1 ]]; then
+    r_command+=(--no-environ --no-site-file --no-restore --no-save)
+fi
+r_command+=(
+    "$r_script"
     --analysis-id "$analysis_id"
     --cohort-id "$cohort_id"
     --sample-manifest "$sample_manifest"
@@ -305,6 +311,7 @@ fi
 
 printf 'Step 09 paired CMH context:\n'
 printf '  Mode: %s\n' "$([[ "$execute" == true ]] && printf execute || printf dry-run)"
+printf '  Run token: %s\n' "$run_token"
 printf '  Analysis ID: %s\n' "$analysis_id"
 printf '  Cohort ID: %s\n' "$cohort_id"
 printf '  Samples / paired strata: %s / %s\n' "$sample_count" "$replicate_count"
@@ -316,9 +323,16 @@ printf '  Step 08 sites: %s\n' "$step08_sites"
 printf '  Step 08 inputs: %s\n' "$step08_inputs"
 printf '  Output directory: %s\n' "$analysis_dir"
 printf '  Background condition: %s\n' "${background_condition:-disabled}"
+printf '  Existing-output policy: %s\n' \
+    "$([[ "$no_clobber" == true ]] && printf no-clobber || printf replace-complete-set)"
 printf '  Orientation policy: legacy_provisional_v1 (provisional; not biologically validated)\n'
 printf 'R command:\n'
 print_command "${r_command[@]}"
+
+if [[ "$no_clobber" == true ]]; then
+    require_no_owner_residue \
+        "Step 09" "$analysis_dir" ".${analysis_id}.*"
+fi
 
 if [[ "$execute" != true ]]; then
     printf 'Dry-run only. No R process was invoked and no output path was created.\n'
@@ -369,6 +383,9 @@ final_count=0
 for final in "${finals[@]}"; do [[ -e "$final" ]] && final_count=$((final_count + 1)); done
 [[ "$final_count" -eq 0 || "$final_count" -eq 6 ]] ||
     die "Existing Step 09 outputs are incomplete; expected all six or none for analysis: $analysis_id"
+if [[ "$final_count" -eq 6 && "$no_clobber" == true ]]; then
+    die "Refusing to replace an existing complete Step 09 output set under --no-clobber for analysis: $analysis_id"
+fi
 [[ "$final_count" -eq 6 ]] && previous_set=true
 
 confirm_inputs_unchanged
@@ -385,8 +402,17 @@ if [[ "$previous_set" == true ]]; then
     for index in "${!finals[@]}"; do mv "${finals[$index]}" "${backups[$index]}"; done
 fi
 # The summary is the commit marker and is deliberately published last.
-for index in 0 1 2 3 4; do mv "${temps[$index]}" "${finals[$index]}"; done
-mv "$tmp_summary" "$final_summary"
+if [[ "$no_clobber" == true ]]; then
+    for index in 0 1 2 3 4; do
+        publish_file_create_exclusive \
+            "Step 09 output" "${temps[$index]}" "${finals[$index]}"
+    done
+    publish_file_create_exclusive \
+        "Step 09 summary" "$tmp_summary" "$final_summary"
+else
+    for index in 0 1 2 3 4; do mv "${temps[$index]}" "${finals[$index]}"; done
+    mv "$tmp_summary" "$final_summary"
+fi
 validate_outputs \
     "$final_all" "$final_significant" "$final_summary" "$final_mutation" \
     "$final_mutation_pdf" "$final_depth_pdf"
@@ -394,8 +420,20 @@ for index in "${!finals[@]}"; do
     [[ "$(sha256_file "${finals[$index]}")" == "${tmp_hashes[$index]}" ]] ||
         die "Published Step 09 output changed during publication: ${finals[$index]}"
 done
+if [[ "$no_clobber" == true ]]; then
+    for index in "${!finals[@]}"; do
+        require_owned_published_file \
+            "Step 09 output" "${temps[$index]}" "${finals[$index]}"
+    done
+    for temp in "${temps[@]}"; do rm -f -- "$temp"; done
+    for temp in "${temps[@]}"; do
+        [[ ! -e "$temp" && ! -L "$temp" ]] ||
+            die "Step 09 could not remove owned publication anchor: $temp"
+    done
+fi
 publication_committed=true
 for backup in "${backups[@]}"; do rm -f "$backup"; done
+release_step09_lock
 
 printf 'Step 09 execute complete. Published six-output transaction:\n'
 printf '  %s\n' "${finals[@]}"

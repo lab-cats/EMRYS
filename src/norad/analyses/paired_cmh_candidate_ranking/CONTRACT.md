@@ -20,9 +20,10 @@ validated RNA-editing sites.
 
 Step `09` requires that final owner's sites table and input receipt, the sample and
 partition manifests, and explicit analysis policy. It does not consume the
-Step `08` QC summary or standalone validation report. Step `09c` consumes the
-complete six-output transaction together with upstream evidence for scientific
-review.
+Step `08` QC summary or standalone validation report. Artifact indexing and
+reporting consume the validated six-output transaction without changing its
+computational meaning. External review or adjudication may reference these
+outputs and their provenance, but it is not a pipeline dependency.
 
 ## Pairing, method, and policy
 
@@ -87,15 +88,25 @@ scratch/backups, requires all six previous outputs or none, validates all
 temporaries, publishes the summary last as native commit marker, then
 revalidates contents and hashes. If rollback cannot restore a predecessor, it
 retains the owned lock and recovery evidence for operator intervention.
+`--no-clobber` is the orchestration-safe policy: while holding the owner lock,
+it rejects a complete predecessor set without invoking R or changing stable
+outputs. Direct invocations retain complete-set replacement unless the flag is
+supplied.
+First publication in that mode is create-exclusive and retains all six staging
+inode anchors through validation; ambiguous replacement preserves the owner
+lock and residue.
 
 The summary becomes visible before final post-publication checks and does not
 hash its five sibling outputs, so presence alone is not independent proof that
 the producer returned success or that the current set is immutable.
 
 [`step_09_cmh_editing_site_calling.slurm`](step_09_cmh_editing_site_calling.slurm)
-owns cluster defaults, dependency environment, execution gating, delegation,
-and final path checks; it does not own statistical behavior. Unlike the public
-script, the wrapper currently creates its `logs/` directory even in dry-run.
+requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving its repository-owned helper, producer, or dependency environment, so
+SLURM's spool copy is never checkout authority. It owns cluster defaults,
+execution gating, delegation, and final path checks; it does not own statistical
+behavior. Unlike the public script, the wrapper currently creates its `logs/`
+directory even in dry-run.
 
 ## Validation interface
 
@@ -123,8 +134,8 @@ summary provenance/counts, canonical mutation spectrum, and PDF containers. It
 does not independently recompute CMH count-table estimability, statistic,
 p-value, or common odds ratio. The separate independent oracle and committed
 real-R corpus protect that method boundary without importing production
-implementation. Its current `status_semantics` expected-text nevertheless says
-“recomputed ... CMH,” which overstates the production validator's evidence.
+implementation. Its `status_semantics` evidence text explicitly states that
+CMH values are not independently recomputed.
 
 Content mismatches publish `status=fail`; this includes invalid UTF-8 inside an
 otherwise admitted native table, which is recorded as failed evidence rather
@@ -133,19 +144,15 @@ publication failures exit `2`.
 
 ## Consumers and protected evidence
 
-- Step `09c` scientific review consumes the full native transaction, Step `08`
-  three-table transaction, manifests, declared review evidence, and review
-  policy. It independently validates native outputs but does not require the
-  standalone Step `09` validation report or rerun CMH analysis.
 - Artifact adapters register all six outputs and
-  `step09_validation_report_v1`; reporting consumes the later canonical review
-  package rather than treating raw significant rows as biological truth.
+  `step09_validation_report_v1`; reporting presents them as computational
+  candidates rather than treating threshold-passing rows as biological truth.
 - Direct shell/R/validator tests protect manifests and pairing, statuses,
   thresholds, method metadata, dry-run, transaction, rollback, plots, and the
   independent validation boundary.
 - Independent Python-oracle and real-R corpus comparisons protect CMH/BH
   behavior; wrapper, roster, publication-fault, public-CLI, artifact, report,
-  coverage, and Step `09c` tests protect cross-boundary behavior.
+  and coverage tests protect cross-boundary behavior.
 
 This is local fixture and guarded real-R/oracle evidence, not production,
 cluster, completed scientific review, or biological interpretation readiness.
@@ -154,15 +161,14 @@ cluster, completed scientific review, or biological interpretation readiness.
 
 - The Step `08` input contract now belongs to neutral
   [`step08.py`](../../contracts/scientific_evidence/step08.py), imported by
-  neutral Step `09`, this validator, Step `09c`, and the artifact index under one
+  neutral Step `09`, this validator, and the artifact index under one
   shared module/error/table identity.
 - Step `09` schemas and reusable validators now belong to neutral
   [`step09.py`](../../contracts/scientific_evidence/step09.py), imported by
-  this validator, Step `09c`, and artifact indexing under one shared ready-owner
-  identity. Review policy and publication remain with Step `09c`.
+  this validator and artifact indexing under one shared ready-owner identity.
 - Method/schema/status logic is duplicated across shell, R, Python, oracle,
-  artifact, and scientific-review surfaces; shared report publication belongs
-  to neutral [`validation/report.py`](../../libraries/validation/report.py).
+  artifact, and validation surfaces; shared report publication belongs to
+  neutral [`validation/report.py`](../../libraries/validation/report.py).
 - Producer-recorded relative paths are later interpreted from a consumer's
   working directory, and the summary omits implementation, runtime, R/package,
   attempt, and sibling-output identities.

@@ -4,6 +4,10 @@ This directory directly protects runtime-profile admission, read-only probes,
 deterministic results, publication, rollback, and CLI failure behavior for the
 [runtime-availability owner](../../../src/norad/evidence/runtime_availability/README.md)
 and its grouped route `python -I -m norad inspect runtime-availability`.
+The local-pilot doctor separately consumes the owner's direct admitted
+inspection result as required readiness. The standalone inspector remains an
+operator diagnostic, and the repository-only `tool_check.slurm` is a distinct
+manual cluster probe whose wrapper contract is tested centrally.
 Fault-injection cases retain the known lock-acquisition, incomplete-restoration,
 and suppressed lock-cleanup boundaries rather than approving them.
 

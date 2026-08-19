@@ -5,8 +5,10 @@
 ARGUMENT_NAMES <- c(
     "cohort-id", "sample-manifest", "partition-manifest", "step07-root",
     "annotation-gtf", "sample-manifest-sha256", "partition-manifest-sha256",
-    "annotation-gtf-sha256", "sites-output", "inputs-output", "summary-output"
+    "annotation-gtf-sha256", "threads", "sites-output", "inputs-output",
+    "summary-output"
 )
+REQUIRED_ARGUMENT_NAMES <- setdiff(ARGUMENT_NAMES, "threads")
 
 usage <- function() {
     cat(paste0(
@@ -20,6 +22,7 @@ usage <- function() {
         "    --sample-manifest-sha256 SHA256 \\\n",
         "    --partition-manifest-sha256 SHA256 \\\n",
         "    --annotation-gtf-sha256 SHA256 \\\n",
+        "    [--threads THREADS] \\\n",
         "    --sites-output PATH \\\n",
         "    --inputs-output PATH \\\n",
         "    --summary-output PATH\n"
@@ -27,7 +30,13 @@ usage <- function() {
 }
 
 parse_arguments <- function(values) {
-    parse_named_arguments(values, ARGUMENT_NAMES, usage_function = usage)
+    parse_named_arguments(
+        values,
+        ARGUMENT_NAMES,
+        required_names = REQUIRED_ARGUMENT_NAMES,
+        defaults = list(threads = "1"),
+        usage_function = usage
+    )
 }
 
 require_packages <- function() {
@@ -87,21 +96,60 @@ parse_nonnegative_integer <- function(label, value) {
     as.integer(numeric_value)
 }
 
+parse_positive_integer <- function(label, value) {
+    result <- parse_nonnegative_integer(label, value)
+    if (result == 0L) {
+        abort(label, " must be a positive integer; got: ", value)
+    }
+    result
+}
+
 read_sample_manifest <- function(path) {
+    required_columns <- c(
+        "sample_id", "r1_fastq", "r2_fastq", "strandedness",
+        "condition", "replicate"
+    )
+    allowed_columns <- c(required_columns, "notes")
     manifest <- read_tsv("Sample manifest", path)
-    if (!("sample_id" %in% names(manifest))) {
-        abort("Sample manifest is missing the required sample_id column: ", path)
+    if (!identical(names(manifest), required_columns) &&
+        !identical(names(manifest), allowed_columns)) {
+        abort(
+            "Sample manifest must have the exact paired local-CMH schema, ",
+            "with optional notes as the final column."
+        )
     }
     if (nrow(manifest) == 0L) {
         abort("Sample manifest contains no sample rows: ", path)
     }
-    sample_ids <- manifest$sample_id
-    if (any(is.na(sample_ids) | !nzchar(sample_ids))) {
-        abort("Sample manifest contains an empty sample_id: ", path)
+    required_values <- as.matrix(
+        manifest[, required_columns, drop = FALSE]
+    )
+    if (any(is.na(required_values) | !nzchar(required_values) |
+        required_values == "NA")) {
+        abort("Sample manifest contains an empty required value: ", path)
     }
+
+    sample_ids <- manifest$sample_id
     invisible(lapply(sample_ids, function(id) {
         validate_safe_id("sample_id", id)
     }))
+    invisible(lapply(manifest$replicate, function(id) {
+        validate_safe_id("replicate", id)
+    }))
+    allowed_strandedness <- c(
+        "forward", "reverse", "unstranded", "unknown"
+    )
+    invalid_strandedness <- which(
+        !(manifest$strandedness %in% allowed_strandedness)
+    )
+    if (length(invalid_strandedness) > 0L) {
+        row_number <- invalid_strandedness[[1L]] + 1L
+        abort(
+            "Sample manifest row ", row_number,
+            " has invalid strandedness: ",
+            manifest$strandedness[[invalid_strandedness[[1L]]]]
+        )
+    }
     duplicate <- unique(sample_ids[duplicated(sample_ids)])
     if (length(duplicate) > 0L) {
         abort("Sample manifest contains duplicate sample_id: ", duplicate[[1L]])

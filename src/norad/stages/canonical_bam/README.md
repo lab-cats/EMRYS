@@ -23,9 +23,17 @@ src/norad/stages/canonical_bam/step_02_sort_index_bam.sh \
   --threads 8
 ```
 
-Add `--execute` after inspection. Replacement is staged and validated, but
-rollback is not failure-atomic: failed BAI publication plus failed BAM restore
-can leave only the prior BAI and no lock, backup, or recovery marker.
+The orchestration-safe invocation binds `samtools` explicitly and adds
+`--no-clobber --execute`. In that mode the producer refuses either existing
+final, hashes and rechecks the input alignment, retains the per-sample owned
+lock through validation and publication, and never enters the legacy
+replacement/backup path. Execute without `--no-clobber` preserves the existing
+replaceable-pair behavior; its rollback is not failure-atomic.
+
+When the admitted input is already coordinate sorted and every alignment has
+the exact canonical sample read group, the producer hard-links those BAM bytes
+into the canonical transaction and creates only the BAI. Noncanonical inputs
+retain the generic samtools sort/read-group fallback.
 
 Validator dry-run:
 

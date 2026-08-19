@@ -1,4 +1,4 @@
-"""Status, science, and deterministic tabular run-summary projections."""
+"""Status and deterministic tabular run-summary projections."""
 
 from __future__ import annotations
 
@@ -129,19 +129,9 @@ def _build_qc_metrics(
     return metrics, duplicate_ids
 
 
-def _default_scientific_review() -> dict[str, Any]:
-    return {
-        "record_state": "missing",
-        "source": None,
-        "record": None,
-        "overall_status": "evidence_incomplete",
-    }
-
-
 def _build_limitations(
     *,
     artifacts: list[dict[str, Any]],
-    scientific_review: Mapping[str, Any],
 ) -> list[dict[str, Any]]:
     def generated_id(base: str, existing: set[str]) -> str:
         candidate = base
@@ -152,26 +142,7 @@ def _build_limitations(
         existing.add(candidate)
         return candidate
 
-    record = scientific_review.get("record")
-    limitations = (
-        [dict(item) for item in record["limitations"]]
-        if isinstance(record, Mapping)
-        else [
-            {
-                "limitation_id": "scientific_review_not_supplied",
-                "status": "open",
-                "description": (
-                    "No explicit committed Step 09c review summary was "
-                    "supplied to the run-summary builder."
-                ),
-                "impact": (
-                    "Scientific review remains incomplete and biological "
-                    "interpretation is not permitted."
-                ),
-                "evidence_ids": [],
-            }
-        ]
-    )
+    limitations: list[dict[str, Any]] = []
     used_ids = {limitation["limitation_id"] for limitation in limitations}
     incomplete_required = [
         artifact["artifact_id"]
@@ -248,7 +219,6 @@ def _build_summary_rows(
                 "run_id": document["run_id"],
                 "run_contract_sha256": document["run_contract"]["run_contract_sha256"],
                 "summary_state": document["summary_state"],
-                "science_status": document["science_status"],
                 "artifact_order": artifact_order,
                 "scope_order": artifact_scope_order[artifact["artifact_id"]],
                 "step_id": artifact["scope"]["step_id"],

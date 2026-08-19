@@ -42,15 +42,27 @@ matching `ID`/`SM` read group, at least one alignment, all alignments tagged
 with that group, and a nonempty index. It does not publish a receipt or prove
 that CIGAR-N transformation semantics occurred.
 
+## Orchestration-safe producer boundary
+
+`--no-clobber` is the required local-profile mode. It changes lock scope from
+the output directory to the declared sample, refuses either existing final,
+hashes and rechecks the input BAM/BAI plus reference FASTA/FAI/DICT, and uses
+the existing staged validation and final-path revalidation. This path never
+creates predecessor backups; it publishes create-exclusively with staging
+inode anchors, so an interruption cannot enter the retained
+restoration-failure defect. Tool paths are explicit; observed GATK, samtools,
+and Java versions and output hashes belong in the workflow verified record.
+Execute without this option preserves the replacement transaction below.
+
 ## Current execution surfaces
 
 [`step_05_split_n_cigar_reads.sh`](step_05_split_n_cigar_reads.sh)
-is side-effect-free in dry-run. Execute mode uses run-token BAM, BAI, GATK temp,
-and backup paths; an owned output-directory lock; pre-publication validation;
-complete-pair predecessor checks; sequential final moves; final revalidation;
-and rollback to a prior pair or removal of a new partial pair. Existing valid
-pairs are replaceable. Inputs are not snapshot-rechecked before publication,
-and no receipt marks the completed attempt.
+is side-effect-free in dry-run. Historical execute mode uses run-token BAM,
+BAI, GATK temp, and backup paths; an owned output-directory lock;
+pre-publication validation; complete-pair predecessor checks; sequential final
+moves; final revalidation; and rollback to a prior pair or removal of a new
+partial pair. Existing valid pairs are replaceable. That route does not
+snapshot-recheck inputs, and neither route publishes a native attempt receipt.
 
 Rollback restoration moves are best-effort (`|| true`), after which cleanup
 can remove backups and the lock. Ordinary backup/publication rollback is
@@ -58,9 +70,12 @@ tested, but a failure inside restoration can lose predecessor and recovery
 evidence. The lock is output-directory-wide rather than sample-scoped.
 
 [`step_05_split_n_cigar_reads.slurm`](step_05_split_n_cigar_reads.slurm)
-owns cluster defaults, module/tool/Java resolution, delegation, and final
-existence checks. The shell entrypoint is currently interpreter-only, and the
-wrapper has the characterized Bash 3.2 empty-array dry-run defect.
+requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers or the producer, so SLURM's spool copy is
+never checkout authority. It owns cluster defaults, module/tool/Java resolution,
+delegation, and final existence checks. The shell entrypoint is currently
+interpreter-only, and the wrapper has the characterized Bash 3.2 empty-array
+dry-run defect.
 
 ## Validation interface
 
@@ -90,10 +105,16 @@ Package selection is owned by the grouped command; direct execution of private
 `validator.py`, ambient `PYTHONPATH` injection, compatibility imports, and
 peer-stage implementation dependencies are not supported interfaces.
 
-The producer uses `resolve_overridable_executable` from neutral
-[`executable_resolution.sh`](../../libraries/executable_resolution.sh).
-GATK, samtools, and Java precedence, version checks, and commands remain owned
-here.
+The producer shares executable-value resolution through neutral
+[`executable_resolution.sh`](../../libraries/executable_resolution.sh) and the
+bound-Python selected-Java handoff through neutral
+[`gatk_invocation.sh`](../../libraries/gatk_invocation.sh) and
+[`process_environment.py`](../../libraries/process_environment.py). Execute
+mode requires absolute Python 3.11+ in `NORAD_SHA256_PYTHON`, requires Java to
+resolve to canonical `<JAVA_HOME>/bin/java`, and removes ambient JVM/GATK
+selectors before both the GATK version probe and work. This stage retains
+GATK/samtools/Java precedence, minimum versions, exact SplitNCigarReads
+arguments, transaction, validation, and output policy.
 
 Content mismatches publish `status=fail`; unsafe inputs, required tool-call
 failures, and report-publication failures exit `2`.
@@ -122,8 +143,10 @@ scientific-review, or biological evidence.
   neutral private libraries. Reference provenance remains a separate public
   cross-cutting evidence owner. This stage owns its three caller-local exact-
   file loaders, check roster, CLI, and transformation journey.
-- The native pair transaction lacks stable-input identity, receipt, and robust
-  rollback-failure recovery evidence.
+- The legacy replacement transaction lacks stable-input identity and robust
+  rollback-failure recovery evidence. The no-clobber path hash-rechecks its
+  admitted BAM, BAI, FASTA, FAI, and DICT but still lacks a native receipt and
+  wider verified-task binding.
 - Producer and validator prove structure but not the GATK-specific transform.
 - Scheduler Bash `3.2`, warning-only tool preflight, dry-run log mutation, and
   stale-pair success remain characterized defects rather than guarantees.

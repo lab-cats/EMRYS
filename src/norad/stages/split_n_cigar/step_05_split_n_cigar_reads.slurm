@@ -12,13 +12,17 @@
 # Defaults run in dry-run mode. Set EXECUTE=1 explicitly after Step 04 has
 # produced duplicate-marked BAMs and Step 00c sidecars exist.
 set -euo pipefail
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Run from the submitted repository checkout rather than SLURM's spool copy.
+: "${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
+cd "$SLURM_SUBMIT_DIR"
+
 # shellcheck source=../../libraries/argument_parsing.sh
-source "$script_dir/../../libraries/argument_parsing.sh"
+source "src/norad/libraries/argument_parsing.sh"
+# shellcheck source=../../libraries/gatk_invocation.sh
+source "src/norad/libraries/gatk_invocation.sh"
 
 export TMPDIR="${TMPDIR:-/tmp}"
-
-cd "${SLURM_SUBMIT_DIR:-$PWD}"
 
 SAMPLE_ID="${SAMPLE_ID:-ABE_EV_2}"
 INPUT_BAM="${INPUT_BAM:-results/markdup/${SAMPLE_ID}/${SAMPLE_ID}.markdup.bam}"
@@ -26,6 +30,7 @@ REFERENCE_FASTA="${REFERENCE_FASTA:-refs/novogene_ref/genome.fa}"
 OUTPUT_DIR="${OUTPUT_DIR:-results/split_ncigar/${SAMPLE_ID}}"
 GATK_BIN="${GATK_BIN_OVERRIDE:-/cm/shared/apps/gatk/gatk-4.6.1.0/gatk}"
 SAMTOOLS_BIN="${SAMTOOLS_BIN_OVERRIDE:-/cm/shared/apps/csu-soft-install/samtools/samtools_install/bin/samtools}"
+NORAD_SHA256_PYTHON="${NORAD_SHA256_PYTHON:-$PWD/.venv/bin/python}"
 EXECUTE="${EXECUTE:-0}"
 
 # Keep the wrapper's execution gate narrow and explicit; the script receives
@@ -59,6 +64,7 @@ echo "Output BAM: $OUTPUT_DIR/${SAMPLE_ID}.split_ncigar.bam"
 echo "Output BAI: $OUTPUT_DIR/${SAMPLE_ID}.split_ncigar.bam.bai"
 echo "GATK: $GATK_BIN"
 echo "samtools: $SAMTOOLS_BIN"
+echo "Controlled Python: $NORAD_SHA256_PYTHON"
 echo "Execute mode: $EXECUTE"
 
 echo "Loaded modules before Step 05 setup:"
@@ -82,11 +88,12 @@ else
     echo "WARNING: samtools path is not executable before script validation: $SAMTOOLS_BIN"
 fi
 
-if [[ -x "$GATK_BIN" ]]; then
-    echo "GATK version:"
-    "$GATK_BIN" --version
-else
+if [[ ! -x "$GATK_BIN" ]]; then
     echo "WARNING: GATK path is not executable before script validation: $GATK_BIN"
+fi
+
+if [[ "$EXECUTE" == "1" ]]; then
+    admit_gatk_helper_python
 fi
 
 cmd=(
@@ -102,8 +109,9 @@ cmd=(
     "${execute_args[@]}"
 )
 
-# The script owns GATK/samtools command construction, validation, locking, and
-# final BAM/BAI publication. This wrapper supplies cluster defaults only.
+# The script owns the selected-Java GATK probe, GATK/samtools command
+# construction, validation, locking, and final BAM/BAI publication. This
+# wrapper supplies cluster defaults only.
 echo "Wrapper command:"
 print_command "${cmd[@]}"
 

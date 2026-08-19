@@ -6,11 +6,15 @@ import argparse
 import sys
 import tomllib
 from collections.abc import Callable, Sequence
+from functools import partial
 from pathlib import Path
 from typing import Protocol, cast
 
 from norad.analyses.paired_cmh_candidate_ranking import (
     validator as paired_cmh_candidate_ranking_validation_command,
+)
+from norad.analyses.scientific_context_projection import (
+    validator as scientific_context_projection_validation_command,
 )
 from norad.contracts.artifacts import (
     validator as artifact_contracts_validation_command,
@@ -27,14 +31,25 @@ from norad.evidence.rseqc_orientation import (
 from norad.evidence.runtime_availability import (
     inspector as runtime_availability_inspection_command,
 )
-from norad.evidence.scientific_review_package import (
-    publisher as scientific_review_package_command,
-)
 from norad.evidence.storage_inventory import (
     inspector as storage_inventory_inspection_command,
 )
+from norad.evidence.storage_inventory import (
+    qualification as storage_qualification_inspection_command,
+)
 from norad.ingestion.sample_manifest_admission import (
     validator as manifest_command,
+)
+from norad.libraries.source_authority import (
+    SourceCheckoutError,
+    require_controlled_python_runtime,
+)
+from norad.orchestration.local_pilot import all_pass as all_pass_validation_command
+from norad.orchestration.local_pilot import doctor as local_pilot_doctor_command
+from norad.orchestration.local_pilot import control as local_pilot_control_command
+from norad.orchestration.local_pilot import onboarding as local_pilot_onboarding_command
+from norad.orchestration.local_pilot import (
+    synthetic_fixture as local_pilot_synthetic_fixture_command,
 )
 from norad.stages.canonical_bam import validator as canonical_bam_validation_command
 from norad.stages.cohort_candidate_preprocessing import (
@@ -126,20 +141,6 @@ def _add_validation_command(
     subject_parser.set_defaults(_command_handler=command.validate_from_args)
 
 
-def _add_scientific_review_package_command(
-    assembly_parsers: _SubparserCollection,
-) -> None:
-    package_parser = assembly_parsers.add_parser(
-        "scientific-review-package",
-        help="Assemble one declared scientific-review evidence package.",
-        description=scientific_review_package_command.DESCRIPTION,
-    )
-    scientific_review_package_command.configure_parser(package_parser)
-    package_parser.set_defaults(
-        _command_handler=scientific_review_package_command.assemble_from_args
-    )
-
-
 def _add_storage_inventory_inspection_command(
     inspection_parsers: _SubparserCollection,
 ) -> None:
@@ -154,22 +155,158 @@ def _add_storage_inventory_inspection_command(
     )
 
 
+def _add_storage_qualification_inspection_command(
+    inspection_parsers: _SubparserCollection,
+) -> None:
+    storage_parser = inspection_parsers.add_parser(
+        "storage-qualification",
+        help="Qualify workflow storage across compute and head nodes.",
+        description=storage_qualification_inspection_command.__doc__,
+    )
+    storage_qualification_inspection_command.configure_parser(storage_parser)
+    storage_parser.set_defaults(
+        _command_handler=storage_qualification_inspection_command.qualify_from_args
+    )
+
+
+def _add_local_pilot_doctor_command(
+    doctor_parsers: _SubparserCollection,
+) -> None:
+    local_parser = doctor_parsers.add_parser(
+        "local-pilot",
+        help="Check fixed local-pilot readiness without installation or repair.",
+        description=local_pilot_doctor_command.DESCRIPTION,
+    )
+    local_pilot_doctor_command.configure_parser(local_parser)
+    local_parser.set_defaults(
+        _command_handler=local_pilot_doctor_command.doctor_from_args
+    )
+
+
+def _add_onboarding_commands(command_parsers: _SubparserCollection) -> None:
+    init_parser = command_parsers.add_parser(
+        "init",
+        help="Initialize one explicit create-absent NORAD input set.",
+    )
+    init_parsers = init_parser.add_subparsers(
+        dest="initialization",
+        metavar="SUBJECT",
+        required=True,
+    )
+    local_parser = init_parsers.add_parser(
+        "local-pilot",
+        help="Create a matched local-pilot starter set without replacing files.",
+        description=(
+            "Plan or publish one matched request, sample, partition, runtime, "
+            "and single-allocation Slurm starter set. The output directory "
+            "must be absent and outside the NORAD checkout."
+        ),
+    )
+    local_pilot_onboarding_command.configure_init_parser(local_parser)
+    local_parser.set_defaults(
+        _command_handler=local_pilot_onboarding_command.init_from_args
+    )
+    synthetic_parser = init_parsers.add_parser(
+        "synthetic-local-pilot",
+        help="Create a tiny deterministic four-library science fixture.",
+        description=local_pilot_synthetic_fixture_command.DESCRIPTION,
+    )
+    local_pilot_synthetic_fixture_command.configure_parser(synthetic_parser)
+    synthetic_parser.set_defaults(
+        _command_handler=local_pilot_synthetic_fixture_command.init_from_args
+    )
+
+    prepare_parser = command_parsers.add_parser(
+        "prepare",
+        help="Prepare explicit NORAD configuration bytes without installation.",
+    )
+    prepare_parsers = prepare_parser.add_subparsers(
+        dest="preparation",
+        metavar="SUBJECT",
+        required=True,
+    )
+    runtime_parser = prepare_parsers.add_parser(
+        "local-pilot-runtime",
+        help="Render a fixed-policy local-pilot runtime profile to stdout.",
+        description=(
+            "Render a complete fixed-policy runtime TSV to standard output. "
+            "This command writes nothing, installs nothing, runs no version "
+            "probes, and accepts PATH tools only when resolution is unambiguous."
+        ),
+    )
+    local_pilot_onboarding_command.configure_runtime_parser(runtime_parser)
+    runtime_parser.set_defaults(
+        _command_handler=local_pilot_onboarding_command.prepare_runtime_from_args
+    )
+
+
 def _build_artifact_index_from_args(arguments: argparse.Namespace) -> int:
+    if not _admit_controlled_runtime():
+        return 2
     from norad.reporting._artifact_index import builder  # noqa: PLC0415
 
     return builder.build_from_args(arguments)
 
 
 def _build_run_summary_from_args(arguments: argparse.Namespace) -> int:
+    if not _admit_controlled_runtime():
+        return 2
     from norad.reporting._run_summary import builder  # noqa: PLC0415
 
     return builder.build_from_args(arguments)
 
 
 def _build_report_from_args(arguments: argparse.Namespace) -> int:
+    if not _admit_controlled_runtime():
+        return 2
     from norad.reporting import report  # noqa: PLC0415
 
     return report.build_from_args(arguments)
+
+
+def _admit_controlled_runtime() -> bool:
+    try:
+        require_controlled_python_runtime()
+    except SourceCheckoutError as exc:
+        print(f"norad: error: {exc}", file=sys.stderr)
+        return False
+    return True
+
+
+def _run_local_pilot_from_args(
+    arguments: argparse.Namespace,
+    *,
+    ops: local_pilot_control_command.ControlOps = (
+        local_pilot_control_command.DEFAULT_CONTROL_OPS
+    ),
+) -> int:
+    if not _admit_controlled_runtime():
+        return 2
+    return local_pilot_control_command.run_from_args(arguments, ops=ops)
+
+
+def _resume_local_pilot_from_args(
+    arguments: argparse.Namespace,
+    *,
+    ops: local_pilot_control_command.ControlOps = (
+        local_pilot_control_command.DEFAULT_CONTROL_OPS
+    ),
+) -> int:
+    if not _admit_controlled_runtime():
+        return 2
+    return local_pilot_control_command.resume_from_args(arguments, ops=ops)
+
+
+def _inspect_local_pilot_from_args(
+    arguments: argparse.Namespace,
+    *,
+    ops: local_pilot_control_command.ControlOps = (
+        local_pilot_control_command.DEFAULT_CONTROL_OPS
+    ),
+) -> int:
+    if not _admit_controlled_runtime():
+        return 2
+    return local_pilot_control_command.inspect_from_args(arguments, ops=ops)
 
 
 def _add_build_commands(
@@ -198,6 +335,12 @@ def _add_build_commands(
         required=True,
         type=Path,
         help="Absolute canonical NORAD source checkout owning producer evidence.",
+    )
+    artifact_parser.add_argument(
+        "--artifact-source-root",
+        required=True,
+        type=Path,
+        help="Absolute canonical root resolving contract-relative artifacts.",
     )
     artifact_parser.add_argument("--run-id", required=True, help="Immutable run ID.")
     artifact_parser.add_argument(
@@ -243,7 +386,13 @@ def _add_build_commands(
         "--source-checkout",
         required=True,
         type=Path,
-        help="Absolute canonical NORAD source checkout owning recorded paths.",
+        help="Absolute canonical NORAD source checkout owning producer evidence.",
+    )
+    summary_parser.add_argument(
+        "--artifact-source-root",
+        required=True,
+        type=Path,
+        help="Absolute canonical root resolving contract-relative artifacts.",
     )
     summary_parser.add_argument("--run-id", required=True, help="Immutable run ID.")
     summary_parser.add_argument(
@@ -259,23 +408,6 @@ def _add_build_commands(
         help="Artifact output root containing <run-id>/.",
     )
     summary_parser.add_argument(
-        "--science-review-summary",
-        type=Path,
-        help=(
-            "Optional exact committed Step 09c review-summary TSV. It is "
-            "never discovered automatically."
-        ),
-    )
-    summary_parser.add_argument(
-        "--report-table-approvals",
-        type=Path,
-        help=(
-            "Optional exact report-table approvals TSV. It is never "
-            "discovered automatically and must be bound to this run and its "
-            "explicit Step 09c scientific-review artifacts."
-        ),
-    )
-    summary_parser.add_argument(
         "--execute",
         action="store_true",
         help="Publish the four-file transaction; otherwise only validate.",
@@ -289,7 +421,7 @@ def _add_build_commands(
 
     report_parser = build_parsers.add_parser(
         "report",
-        help="Build one self-contained HTML report transaction.",
+        help="Build one self-contained scientific/evidence report transaction.",
         description=report.DESCRIPTION,
     )
     report.configure_parser(report_parser)
@@ -299,7 +431,12 @@ def _add_build_commands(
     )
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_parser(
+    *,
+    local_pilot_control_ops: local_pilot_control_command.ControlOps = (
+        local_pilot_control_command.DEFAULT_CONTROL_OPS
+    ),
+) -> argparse.ArgumentParser:
     """Build the public parser from owner-supplied command definitions."""
     parser = argparse.ArgumentParser(
         prog="norad",
@@ -310,17 +447,44 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="COMMAND",
         required=True,
     )
+    _add_onboarding_commands(command_parsers)
     _add_build_commands(command_parsers)
-    assemble_parser = command_parsers.add_parser(
-        "assemble",
-        help="Assemble an explicitly declared NORAD evidence package.",
+    doctor_parser = command_parsers.add_parser(
+        "doctor",
+        help="Check readiness for an explicitly selected NORAD workflow.",
     )
-    assembly_parsers = assemble_parser.add_subparsers(
-        dest="assembly",
+    doctor_parsers = doctor_parser.add_subparsers(
+        dest="doctor",
         metavar="SUBJECT",
         required=True,
     )
-    _add_scientific_review_package_command(assembly_parsers)
+    _add_local_pilot_doctor_command(doctor_parsers)
+    run_parser = command_parsers.add_parser(
+        "run",
+        help="Plan or execute the fixed local CMH pipeline.",
+        description=local_pilot_control_command.RUN_DESCRIPTION,
+    )
+    local_pilot_control_command.configure_run_parser(run_parser)
+    run_parser.set_defaults(
+        _command_handler=partial(
+            _run_local_pilot_from_args,
+            ops=local_pilot_control_ops,
+        ),
+        _command_parser=run_parser,
+    )
+    resume_parser = command_parsers.add_parser(
+        "resume",
+        help="Plan or resume one failed/interrupted local-pilot run.",
+        description=local_pilot_control_command.RESUME_DESCRIPTION,
+    )
+    local_pilot_control_command.configure_resume_parser(resume_parser)
+    resume_parser.set_defaults(
+        _command_handler=partial(
+            _resume_local_pilot_from_args,
+            ops=local_pilot_control_ops,
+        ),
+        _command_parser=resume_parser,
+    )
     reconcile_parser = command_parsers.add_parser(
         "reconcile",
         help="Reconcile explicitly declared NORAD evidence.",
@@ -364,6 +528,20 @@ def build_parser() -> argparse.ArgumentParser:
         _command_handler=runtime_availability_inspection_command.inspect_from_args
     )
     _add_storage_inventory_inspection_command(inspection_parsers)
+    _add_storage_qualification_inspection_command(inspection_parsers)
+    local_run_parser = inspection_parsers.add_parser(
+        "local-pilot-run",
+        help="Derive one local-pilot run state without repair.",
+        description=local_pilot_control_command.INSPECT_DESCRIPTION,
+    )
+    local_pilot_control_command.configure_inspect_parser(local_run_parser)
+    local_run_parser.set_defaults(
+        _command_handler=partial(
+            _inspect_local_pilot_from_args,
+            ops=local_pilot_control_ops,
+        ),
+        _command_parser=local_run_parser,
+    )
     convert_parser = command_parsers.add_parser(
         "convert",
         help="Convert an explicitly selected NORAD input.",
@@ -391,6 +569,21 @@ def build_parser() -> argparse.ArgumentParser:
         dest="validation",
         metavar="SUBJECT",
         required=True,
+    )
+    _add_validation_command(
+        validation_parsers,
+        name="all-pass",
+        help_text="Require every row in one owner-validation report to pass.",
+        command=all_pass_validation_command,
+    )
+    local_request_parser = validation_parsers.add_parser(
+        "local-pilot-request",
+        help="Validate local-pilot inputs before requiring scientific tools.",
+        description=local_pilot_onboarding_command.DESCRIPTION,
+    )
+    local_pilot_onboarding_command.configure_validation_parser(local_request_parser)
+    local_request_parser.set_defaults(
+        _command_handler=local_pilot_onboarding_command.validate_from_args
     )
     _add_validation_command(
         validation_parsers,
@@ -454,6 +647,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_validation_command(
         validation_parsers,
+        name="scientific-context-projection",
+        help_text="Validate one scientific-context projection transaction.",
+        command=scientific_context_projection_validation_command,
+    )
+    _add_validation_command(
+        validation_parsers,
         name="partitioned-cohort-mpileup",
         help_text="Validate one partitioned-cohort mpileup VCF transaction.",
         command=partitioned_cohort_mpileup_validation_command,
@@ -485,12 +684,18 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Sequence[str] | None = None) -> int:
+def main(
+    argv: Sequence[str] | None = None,
+    *,
+    local_pilot_control_ops: local_pilot_control_command.ControlOps = (
+        local_pilot_control_command.DEFAULT_CONTROL_OPS
+    ),
+) -> int:
     """Parse and dispatch one supported NORAD command."""
     if mismatch := _checkout_mismatch():
         print(f"norad: error: {mismatch}", file=sys.stderr)
         return 2
-    parser = build_parser()
+    parser = build_parser(local_pilot_control_ops=local_pilot_control_ops)
     arguments, unrecognized = parser.parse_known_args(argv)
     if unrecognized:
         error_parser = cast(

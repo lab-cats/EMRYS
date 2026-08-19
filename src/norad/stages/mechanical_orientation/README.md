@@ -31,10 +31,12 @@ Add `--execute` after inspection. `FWD_like` combines flags 99 and 147;
 `REV_like` combines 83 and 163. These are mechanical groups, not transcript
 strand, strandedness, sense, or antisense, and reads may remain unassigned.
 
-Execute publishes two BAM/BAI pairs and an orientation-count TSV last. It
-requires an all-five-or-none predecessor, but does not snapshot-recheck input,
-the TSV is not a receipt, failed restoration may lose backups, and distinct
-output locks can race on one shared QC path.
+The orchestration-safe invocation adds `--no-clobber --execute`. That mode
+refuses any member of a pre-existing final set, hashes and rechecks the input
+BAM/BAI, retains the per-sample lock through validation, and publishes two
+BAM/BAI pairs plus the counts TSV last. Execute without `--no-clobber`
+preserves the existing replaceable-set transaction; failed restoration there
+can still lose backups. The TSV remains native QC evidence, not a receipt.
 
 Validator dry-run:
 
@@ -61,6 +63,10 @@ mkdir -p logs
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=ABE_EV_2,INPUT_BAM=/absolute/results/split_ncigar/ABE_EV_2/ABE_EV_2.split_ncigar.bam,OUTPUT_DIR=/absolute/results/orientation/ABE_EV_2,QC_DIR=/absolute/results/qc/orientation,THREADS=1 \
   src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm
 ```
+
+The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers or the producer; an executed spool copy does
+not become checkout authority.
 
 Change only `EXECUTE=1` after review. A zero-output child can rediscover stale
 finals; scheduler success is not current-attempt proof.

@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh"
 JOB="$REPO_ROOT/src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 unset \
     FAKE_COUNT_FAIL_MATCH FAKE_COUNT_FAIL_STATUS \
@@ -554,7 +556,8 @@ dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry/orientation/ABE_EV_2"
 dry_qc_dir="$tmp_dir/results/dry/qc/orientation"
 rm -f "$samtools_log"
-SLURM_JOB_ID=dry001 run_step06 ABE_EV_2 "$input_bam" "$dry_output_dir" "$dry_qc_dir" >"$dry_output"
+NORAD_RUN_TOKEN=explicit-owner-06 SLURM_JOB_ID=scheduler-06 \
+    run_step06 ABE_EV_2 "$input_bam" "$dry_output_dir" "$dry_qc_dir" >"$dry_output"
 dry_fwd_bam="$dry_output_dir/ABE_EV_2.FWD_like.bam"
 dry_rev_bam="$dry_output_dir/ABE_EV_2.REV_like.bam"
 dry_counts="$dry_qc_dir/ABE_EV_2.orientation_counts.tsv"
@@ -567,14 +570,15 @@ assert_not_exists "$dry_rev_bam.bai"
 assert_not_exists "$dry_counts"
 [[ ! -e "$samtools_log" ]] || fail "dry-run invoked samtools"
 assert_contains "$dry_output" "Mode: dry-run"
+assert_contains "$dry_output" "Run token: explicit-owner-06"
 assert_contains "$dry_output" "Sample ID: ABE_EV_2"
 assert_contains "$dry_output" "Input BAM: $input_bam"
 assert_contains "$dry_output" "Input BAI: $input_bam.bai"
 assert_contains "$dry_output" "FWD_like BAM: $dry_fwd_bam"
 assert_contains "$dry_output" "REV_like BAM: $dry_rev_bam"
 assert_contains "$dry_output" "Counts TSV: $dry_counts"
-assert_contains "$dry_output" "Temporary 99 BAM: $dry_output_dir/.ABE_EV_2.step06.dry001.99.tmp.bam"
-assert_contains "$dry_output" "Temporary counts TSV: $dry_qc_dir/.ABE_EV_2.step06.dry001.orientation_counts.tmp.tsv"
+assert_contains "$dry_output" "Temporary 99 BAM: $dry_output_dir/.ABE_EV_2.step06.explicit-owner-06.99.tmp.bam"
+assert_contains "$dry_output" "Temporary counts TSV: $dry_qc_dir/.ABE_EV_2.step06.explicit-owner-06.orientation_counts.tmp.tsv"
 assert_contains "$dry_output" "samtools view -f 99 command:"
 assert_contains "$dry_output" "-f 99"
 assert_contains "$dry_output" "samtools view -f 147 command:"
@@ -634,6 +638,48 @@ assert_contains "$execute_output" "Mode: execute"
 assert_contains "$execute_output" "Step 06 read-orientation output details:"
 assert_not_exists "$execute_output_dir/.ABE_EV_2.step06.lock"
 assert_no_step06_scratch "$execute_output_dir" "$execute_qc_dir"
+
+printf 'Running orchestration-safe no-clobber checks...\n'
+safe_output="$tmp_dir/safe.out"
+safe_output_dir="$tmp_dir/results/safe/orientation/ABE_EV_2"
+safe_qc_dir="$tmp_dir/results/safe/qc/orientation"
+SLURM_JOB_ID=safe001 run_step06 ABE_EV_2 "$input_bam" "$safe_output_dir" "$safe_qc_dir" --no-clobber --execute >"$safe_output"
+assert_contains "$safe_output" "No-clobber transaction: true"
+assert_not_exists "$safe_output_dir/.ABE_EV_2.step06.lock"
+safe_repeat_output="$tmp_dir/safe_repeat.out"
+assert_fails "$safe_repeat_output" env SLURM_JOB_ID=safe002 bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$safe_output_dir" \
+    --qc-dir "$safe_qc_dir" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute
+assert_contains "$safe_repeat_output" "--no-clobber requires all five final outputs to be absent"
+
+safe_mutation_input="$fixture_dir/safe_mutation/ABE_EV_2.split_ncigar.bam"
+write_input_bam_pair "$safe_mutation_input"
+safe_mutation_output="$tmp_dir/safe_mutation.out"
+safe_mutation_dir="$tmp_dir/results/safe_mutation/orientation/ABE_EV_2"
+safe_mutation_qc="$tmp_dir/results/safe_mutation/qc/orientation"
+assert_fails "$safe_mutation_output" env FAKE_MUTATE_ADMITTED_INPUTS=1 SLURM_JOB_ID=safemutation001 bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$safe_mutation_input" \
+    --output-dir "$safe_mutation_dir" \
+    --qc-dir "$safe_mutation_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute
+assert_contains "$safe_mutation_output" "Input BAM changed during Step 06"
+assert_not_exists "$safe_mutation_dir/ABE_EV_2.FWD_like.bam"
+assert_not_exists "$safe_mutation_dir/ABE_EV_2.FWD_like.bam.bai"
+assert_not_exists "$safe_mutation_dir/ABE_EV_2.REV_like.bam"
+assert_not_exists "$safe_mutation_dir/ABE_EV_2.REV_like.bam.bai"
+assert_not_exists "$safe_mutation_qc/ABE_EV_2.orientation_counts.tsv"
+assert_not_exists "$safe_mutation_dir/.ABE_EV_2.step06.lock"
+assert_no_step06_scratch "$safe_mutation_dir" "$safe_mutation_qc"
 
 printf 'Running basename/PATH execute from arbitrary CWD check...\n'
 arbitrary_cwd="$tmp_dir/arbitrary_cwd"
@@ -847,20 +893,21 @@ printf 'Running stale temp path failure check...\n'
 stale_dir="$tmp_dir/results/stale/orientation/ABE_EV_2"
 stale_qc="$tmp_dir/results/stale/qc/orientation"
 mkdir -p "$stale_dir" "$stale_qc"
-printf 'stale temp\n' >"$stale_dir/.ABE_EV_2.step06.stale001.99.tmp.bam"
+printf 'stale temp\n' >"$stale_dir/.ABE_EV_2.step06.older-token.99.tmp.bam"
 stale_output="$tmp_dir/stale.out"
-# Pre-existing scratch with the same run token must be refused and preserved for
-# manual inspection; the script should not clean it as owned temp.
-assert_fails "$stale_output" env SLURM_JOB_ID=stale001 bash "$SCRIPT" \
+# Pre-existing scratch from any run token must be refused and preserved for
+# manual inspection; the script must not clean it as owned temp.
+assert_fails "$stale_output" env SLURM_JOB_ID=newer-token bash "$SCRIPT" \
     --sample-id ABE_EV_2 \
     --input-bam "$input_bam" \
     --output-dir "$stale_dir" \
     --qc-dir "$stale_qc" \
     --threads 2 \
     --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
     --execute
-assert_contains "$stale_output" "Refusing to reuse stale Step 06 path"
-assert_file_equals "$stale_dir/.ABE_EV_2.step06.stale001.99.tmp.bam" $'stale temp\n'
+assert_contains "$stale_output" "residue requires operator inspection"
+assert_file_equals "$stale_dir/.ABE_EV_2.step06.older-token.99.tmp.bam" $'stale temp\n'
 assert_not_exists "$stale_dir/.ABE_EV_2.step06.lock"
 
 printf 'Running rollback preserves previous final outputs check...\n'

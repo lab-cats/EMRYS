@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import csv
-import hashlib
 import io
 import json
 import os
@@ -176,78 +175,3 @@ def _require_contract_regular_file(
     if resolved != lexical:
         _fail(f"{label} must not traverse a symbolic link: {value}")
     return resolved
-
-
-def _capture_report_table_snapshot(
-    label: str,
-    path: Path,
-) -> tuple[FileSnapshot, int]:
-    descriptor: int | None = None
-    try:
-        flags = os.O_RDONLY
-        if hasattr(os, "O_NOFOLLOW"):
-            flags |= os.O_NOFOLLOW
-        descriptor = os.open(path, flags)
-        with os.fdopen(descriptor, "rb") as stream:
-            descriptor = None
-            before = os.fstat(stream.fileno())
-            if not stat.S_ISREG(before.st_mode):
-                _fail(f"{label} is not a regular file: {path}")
-            digest = hashlib.sha256()
-            for block in iter(lambda: stream.read(1024 * 1024), b""):
-                digest.update(block)
-            stream.seek(0)
-            wrapper = io.TextIOWrapper(
-                stream,
-                encoding="utf-8",
-                newline="",
-            )
-            try:
-                reader = csv.reader(wrapper, delimiter="\t", strict=True)
-                try:
-                    header = next(reader)
-                except StopIteration:
-                    _fail(f"{label} is empty: {path}")
-                if not header or any(not column for column in header):
-                    _fail(f"{label} has a blank TSV header column: {path}")
-                if len(header) != len(set(header)):
-                    _fail(f"{label} has duplicate TSV header columns: {path}")
-                row_count = 0
-                for row_number, row in enumerate(reader, start=2):
-                    if len(row) != len(header):
-                        _fail(
-                            f"{label} row {row_number} has {len(row)} fields; "
-                            f"expected {len(header)}: {path}"
-                        )
-                    row_count += 1
-            finally:
-                wrapper.detach()
-            after = os.fstat(stream.fileno())
-        current = path.lstat()
-    except RunSummaryError:
-        raise
-    except (OSError, UnicodeError, csv.Error) as exc:
-        _fail(f"Could not inspect {label} {path}: {exc}")
-    finally:
-        if descriptor is not None:
-            os.close(descriptor)
-    sha256 = digest.hexdigest()
-    states = before, after, current
-    message = f"{label} changed while it was inspected: {path}"
-    snapshot = _files.stable_snapshot(path, sha256, states, _fail, message)
-    return (
-        snapshot,
-        row_count,
-    )
-
-
-def _verify_report_table_snapshot(expected: FileSnapshot) -> None:
-    observed, _row_count = _capture_report_table_snapshot(
-        "Approved report table",
-        expected.path,
-    )
-    if observed != expected:
-        _fail(
-            "Approved report table changed after its immutable snapshot was "
-            f"captured: {expected.path}"
-        )

@@ -72,14 +72,29 @@ BAI must be nonempty.
 The two files are published through backup and rollback attempts, but no
 receipt or summary marks transaction completion.
 
+## Orchestration-safe producer boundary
+
+`--no-clobber` is the required local-profile mode. It refuses either existing
+final before tool work and immediately before publication, pins the explicit
+samtools path, hashes and rechecks the input alignment, and uses the existing
+per-sample lock, staged pair validation, and final-path revalidation. Because
+replacement is forbidden, this path never creates or consumes backups and a
+failed attempt cannot damage a predecessor. It publishes create-exclusively
+and retains staging inode anchors through final validation. The historical execute route
+retains replaceable-pair behavior and its characterized restoration defect.
+
 ## Current execution surfaces
 
 [`step_02_sort_index_bam.sh`](step_02_sort_index_bam.sh) is
 the public producer entrypoint. It:
 
 - is dry-run by default and keeps its own dry-run side-effect-free;
-- sorts the input with samtools, replaces all read groups with one declared
-  sample group, and indexes the staged BAM;
+- inspects input sort order, skips a redundant sort when the admitted header
+  already declares `SO:coordinate`, otherwise sorts with samtools;
+- reuses a coordinate-sorted input inode when its single read group and every
+  record tag already satisfy the canonical contract, otherwise replaces all
+  read groups with one declared sample group;
+- indexes the staged canonical BAM;
 - validates the staged BAM/BAI before touching canonical paths;
 - acquires an owned per-sample lock;
 - requires an existing canonical state to contain both BAM and BAI or neither;
@@ -106,9 +121,11 @@ delegates to the shell producer, maps `EXECUTE=0` to dry-run and `EXECUTE=1` to
 `--execute`, rejects other values, and checks the pair after execution. The
 wrapper creates its log and output directories even in dry-run mode. On Bash
 3.2, expansion of its empty execution-argument array can prevent the default
-dry-run from reaching the producer. It also relies on the caller's working
-directory rather than resolving `SLURM_SUBMIT_DIR`. These behaviors are
-preserved current contracts, not target behavior.
+dry-run from reaching the producer. It requires literal `SLURM_SUBMIT_DIR` and
+changes into the submitted checkout before resolving the repository-owned
+helper or producer, so SLURM's spool copy never becomes checkout authority. The
+dry-run directory creation and Bash 3.2 behavior remain characterized current
+contracts, not target behavior.
 
 ## Validation interface
 
@@ -203,9 +220,10 @@ roadmap and handoff.
 
 ## Observed ownership boundaries
 
-- Step `01` already requests coordinate sorting, while this stage sorts again
-  as part of a broader canonicalization, read-group, validation, and
-  publication transaction.
+- Step `01` now requests coordinate sorting and the canonical sample read
+  group. This stage reuses those bytes through a hard link while retaining
+  validation, indexing, and publication; noncanonical inputs still take the
+  sort and/or read-group replacement paths.
 - Sample identity arrives as a direct argument rather than a verified manifest
   row and is used in filenames and read-group metadata.
 - The producer and validator disagree on zero-record, library, and platform
@@ -221,7 +239,8 @@ changing behavior.
 ## Deferred decisions
 
 - Whether the target keeps a distinct canonicalization stage when STAR already
-  emits coordinate-sorted BAM.
+  emits a canonical BAM, beyond its remaining validation, indexing, and
+  transaction ownership.
 - How manifest identity supplies sample, library, and platform metadata.
 - One authoritative producer/validator contract for empty BAMs and read-group
   fields.

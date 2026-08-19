@@ -13,9 +13,7 @@ import pytest
 from norad.__main__ import main as norad_main
 from norad.analyses.paired_cmh_candidate_ranking import validator
 from norad.libraries.validation import Snapshot
-from tests.evidence.scientific_review_package import (
-    build_fixture as fixture_builder,
-)
+from tests import scientific_evidence_test_support as fixture_builder
 from tests.stage_validator_test_support import load_roster_oracle
 from tests.stage_validator_test_support import read_tsv as report_rows
 
@@ -45,8 +43,9 @@ EXPECTED_PASS_REPORT = (
     b"all=validated; significant=validated\tsafe analysis/cohort; provisional "
     b"policy; complete ordered Step 08 candidate universe\tids=validated; "
     b"sample=validated; partition=validated; inputs=validated; sites=validated\n"
-    b"09\tanalysis_primary\tstatus_semantics\tpass\tvalidated\trecomputed "
-    b"target/test/call, depth, AF, background, CMH, and BH\t"
+    b"09\tanalysis_primary\tstatus_semantics\tpass\tvalidated\treconciled "
+    b"target/test/call, depth, AF, background, and BH; CMH values not "
+    b"independently recomputed\t"
     b"native Step 09 statistical-state contract\n"
     b"09\tanalysis_primary\tsignificant_subset\tpass\tvalidated\t"
     b"exact ordered significant subset\tall-sites versus significant-sites\n"
@@ -331,7 +330,8 @@ def test_fabricated_cmh_statistics_pvalues_bh_and_odds_ratios_all_pass(
     assert status_row["status"] == "pass", status_row
     assert {row["status"] for row in rows} == {"pass"}, by_check
     assert status_row["expected"] == (
-        "recomputed target/test/call, depth, AF, background, CMH, and BH"
+        "reconciled target/test/call, depth, AF, background, and BH; CMH "
+        "values not independently recomputed"
     )
 
 

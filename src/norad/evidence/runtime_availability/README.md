@@ -1,6 +1,7 @@
 # Runtime-availability inspection owner
 
-The private [`inspector.py`](inspector.py) implements
+[`inspector.py`](inspector.py) directly owns the immutable
+`inspect_runtime_availability(...)` API and implements
 `python -I -m norad inspect runtime-availability`. It performs read-only
 availability probes declared in an explicit profile and retains the
 `runtime_preflight` profile, report, and publication vocabulary. It records
@@ -8,7 +9,11 @@ observations for an asserted `local` or `cluster_batch` context; it does not
 infer the context, install dependencies, load modules, execute a workflow,
 validate production inputs, or repair a runtime.
 
-The grouped command is the only public Python route. Private modules separate
+The direct API returns the admitted profile bytes and SHA-256, normalized
+checks, observations, deterministic result bytes, and required-readiness
+summary without publication. The local-pilot doctor consumes that result with
+an explicit guarded R environment; it does not parse CLI output or import the
+private probe/model modules. Private modules separate
 literal data/error contracts (`_runtime_model.py`), profile parsing
 (`_profile_contract.py`), read-only probes (`_probes.py`), and deterministic
 result rendering/validation (`_result_contract.py`). They add no public command
@@ -19,6 +24,11 @@ absolute-path visibility. Rows report `pass`, `fail`, `blocked`, or
 `not_checked`. Dry run performs applicable read-only probes but publishes
 nothing; execute mode publishes the requested TSV. Exit zero means probing and
 any requested publication completed, not that every required probe passed.
+Ordinary `tool_version` probes require command status zero. The explicit
+`tool_version_exit_1` probe type requires status exactly 1 before applying its
+output regex; the fixed local-pilot profile uses it for Picard 3.1.1's exact
+`java -jar ... MarkDuplicates --version` behavior. Other nonzero tool probes
+remain failures.
 
 [`tool_check.slurm`](tool_check.slurm) is a separate manual cluster smoke
 probe. It attempts to load its declared CSU Python, STAR, samtools, and Picard
@@ -35,6 +45,10 @@ The committed
 is a structural starter requiring site-specific paths and expectations. Direct
 protection lives in
 [`test_runtime_availability.py`](../../../../tests/evidence/runtime_availability/test_runtime_availability.py).
+The stricter fixed-pilot roster is a separate public starter at
+[`local_pilot_runtime.example.tsv`](../../../../configs/local_pilot_runtime.example.tsv)
+and is admitted by the local-pilot owner rather than changing this generic
+profile contract.
 
 Dry-run, execute, focused test, and the separate scheduler probe are:
 

@@ -23,13 +23,24 @@ interpreter:
 ```bash
 .venv/bin/python -I -m norad convert gtf-to-bed12 \
   --gtf refs/novogene_ref/genome.gtf \
-  --bed refs/novogene_ref/genome.unsorted.bed
+  --bed refs/novogene_ref/genome.bed
 ```
 
 From another working directory, use the absolute path to the installed
-interpreter and explicit absolute input and output paths. The producer has no
-dry-run or transaction mode and silently replaces the declared BED path. That
-replacement is a characterized defect, not an approved safety guarantee.
+interpreter and explicit absolute input and output paths. The default invocation
+renders the deterministic BED12 bytes and prints the exact create-exclusive
+publication plan without creating the output parent, lock, staging file, or
+BED12. Add `--execute` only after inspection.
+
+Execute mode writes and fsyncs one owner-token staging file, links it to an
+absent final path without replacement, retains the staged inode as an ownership
+anchor through lock cleanup, then removes that anchor. Rollback removes a final
+only while it is still the same regular-file inode as the anchor. Lock/staging
+cleanup failure or a foreign final replacement fails closed with recovery
+residue. An existing output, lock, or staging residue is a blocker and is
+preserved. An orchestrator may bind the transaction to its own safe identifier
+with `--run-token`; omitting that option retains the private random-token
+fallback.
 
 ## Validator
 
@@ -58,24 +69,30 @@ cd <checkout>
 sbatch src/norad/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm
 ```
 
-Submission executes implicitly and has no dry-run control. The job honors the
-existing `GTF`, `UNSORTED_BED`, `BED`, and `PYTHON_BIN` overrides. It creates
-directories before conversion and requires `PYTHON_BIN` to select an
-environment where this checkout is installed. It publishes the intermediate
-and final BED nontransactionally. Converter failure can leave directories,
-bedtools failure can leave the intermediate plus a redirect-created final, and
-a bad-field result can remain published after the existing contradictory
-success message. These scheduler defects are characterized and preserved, not
-approved.
+Submission executes implicitly and supplies `--execute` plus one exact safe
+publication token to the producer. The job honors the existing `GTF`, `BED`,
+and `PYTHON_BIN` overrides. `NORAD_RUN_TOKEN` takes precedence when supplied;
+otherwise the job uses `SLURM_JOB_ID`, with the shell process ID retained only
+as a safe direct-execution/test fallback. The selected token must match the
+producer's safe-identifier contract.
+
+The job creates the log and final-output directories before conversion and
+requires `PYTHON_BIN` to select an environment where this checkout is
+installed. The transactional converter writes the deterministic final BED
+directly; there is no intermediate BED or second bedtools sort. The wrapper
+then requires at least one row and exactly 12 fields per row. A converter
+failure cannot replace an existing final. A failed postcheck exits nonzero and
+preserves the newly published final as explicit inspection evidence rather
+than printing the completion message.
 
 ## Diagnostics, recovery, and evidence
 
-Inspect scheduler stdout/stderr, the intermediate BED, the final BED, and their
-paths together. Preserve ambiguous or foreign residue; do not delete or replace
-it merely because a local test characterizes the state. The next safe local
-action for an existing BED is the validator dry run above with the exact source
-GTF. Recovery or replacement of runtime artifacts remains an explicit operator
-decision.
+Inspect scheduler stdout/stderr, the final BED, and its transaction-residue
+paths together. Preserve ambiguous or foreign residue; do not delete or
+replace it merely because a local test characterizes the state. The next safe
+local action for an existing BED is the validator dry run above with the exact
+source GTF. Recovery or replacement of runtime artifacts remains an explicit
+operator decision.
 
 Run the owner-focused local tests with:
 
@@ -87,8 +104,7 @@ Run the owner-focused local tests with:
 ```
 
 The artifact index records the producer's final path while preserving its
-implementation evidence identity and byte hash
-`b97e35fdb9b60e008f80897c9014dd3f38e2e38c0ba14b1a62c641cc4b8feaab`.
-See [`CONTRACT.md`](CONTRACT.md) for the full behavior contract. Available
+implementation evidence identity and byte hash. See
+[`CONTRACT.md`](CONTRACT.md) for the full behavior contract. Available
 fixture/mock and coverage evidence is local only; it is not runtime, scheduler,
 production, scientific-review, or biological proof.

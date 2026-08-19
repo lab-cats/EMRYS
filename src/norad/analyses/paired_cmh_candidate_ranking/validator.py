@@ -311,7 +311,7 @@ def build_validation_report(
             "status_semantics": (
                 semantic_valid,
                 semantic_detail,
-                "recomputed target/test/call, depth, AF, background, CMH, and BH",
+                "reconciled target/test/call, depth, AF, background, and BH; CMH values not independently recomputed",
                 "native Step 09 statistical-state contract",
             ),
             "significant_subset": (

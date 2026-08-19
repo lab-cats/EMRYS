@@ -14,6 +14,8 @@ unset \
     FAKE_RSCRIPT_BARRIER_{MARKER,RELEASE} FAKE_RSCRIPT_{DUPLICATE_CANDIDATE,EXTRA_INPUT_FIELD,FAIL,HEADER_ONLY,LOG,MUTATE,OMIT_OUTPUT}
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$repo_root/.venv/bin/python"
 owner_path="src/norad/stages/cohort_candidate_preprocessing"
 script="$repo_root/$owner_path/step_08_vcf_preprocessing.sh"
 job="$repo_root/$owner_path/step_08_vcf_preprocessing.slurm"
@@ -141,6 +143,7 @@ annotation_gtf=""
 sample_hash=""
 partition_hash=""
 annotation_hash=""
+threads=""
 sites_output=""
 inputs_output=""
 summary_output=""
@@ -155,6 +158,7 @@ while [[ $# -gt 0 ]]; do
         --sample-manifest-sha256) sample_hash="$2"; shift 2 ;;
         --partition-manifest-sha256) partition_hash="$2"; shift 2 ;;
         --annotation-gtf-sha256) annotation_hash="$2"; shift 2 ;;
+        --threads) threads="$2"; shift 2 ;;
         --sites-output) sites_output="$2"; shift 2 ;;
         --inputs-output) inputs_output="$2"; shift 2 ;;
         --summary-output) summary_output="$2"; shift 2 ;;
@@ -165,7 +169,7 @@ done
 for value in \
     "$cohort_id" "$sample_manifest" "$partition_manifest" "$step07_root" \
     "$annotation_gtf" "$sample_hash" "$partition_hash" "$annotation_hash" \
-    "$sites_output" "$inputs_output" "$summary_output"
+    "$threads" "$sites_output" "$inputs_output" "$summary_output"
 do
     [[ -n "$value" ]] || exit 72
 done
@@ -454,7 +458,9 @@ create_fixture() {
     local vcf
 
     mkdir -p "$root/step07/$cohort/p1" "$root/step07/$cohort/p2"
-    printf 'sample_id\tcondition\nsample_A\tEV\nsample_B\tPUM1\n' >"$root/samples.tsv"
+    printf 'sample_id\tr1_fastq\tr2_fastq\tstrandedness\tcondition\treplicate\n' >"$root/samples.tsv"
+    printf 'sample_A\t/reads/A_R1.fastq.gz\t/reads/A_R2.fastq.gz\tunknown\tEV\t1\n' >>"$root/samples.tsv"
+    printf 'sample_B\t/reads/B_R1.fastq.gz\t/reads/B_R2.fastq.gz\tunknown\tPUM1\t2\n' >>"$root/samples.tsv"
     printf 'partition_id\tselector_type\tselector_value\np1\tregion\t1\np2\tregion\t2\n' >"$root/partitions.tsv"
     printf '1\tsource\ttranscript\t1\t100\t.\t+\t.\tgene_id "gene1"; transcript_id "tx1";\n' >"$root/annotation.gtf"
     printf '# fake R implementation placeholder\n' >"$root/step08_impl.R"
@@ -576,11 +582,32 @@ assert_contains "$help_output" "Usage:"
 assert_contains "$help_output" "--step07-root"
 assert_contains "$help_output" "--annotation-gtf"
 assert_contains "$help_output" "--rscript-bin"
+assert_contains "$help_output" "--threads"
 assert_contains "$help_output" "legacy_provisional_v1"
 
 run_expect_status 1 "$test_root/missing.out" "$test_root/missing.err" \
     bash "$script" --sample-manifest "$fixture/samples.tsv"
 assert_contains "$test_root/missing.err" "Missing required argument: --cohort-id"
+
+printf 'Running paired sample-manifest admission checks...\n'
+missing_replicate_fixture="$test_root/missing-replicate"
+create_fixture "$missing_replicate_fixture" cohort_missing_replicate
+printf 'sample_id\tr1_fastq\tr2_fastq\tstrandedness\tcondition\n' \
+    >"$missing_replicate_fixture/samples.tsv"
+printf 'sample_A\t/reads/A_R1.fastq.gz\t/reads/A_R2.fastq.gz\tunknown\tEV\n' \
+    >>"$missing_replicate_fixture/samples.tsv"
+missing_replicate_log="$test_root/missing-replicate-rscript.log"
+PATH="$fake_bin:$PATH" FAKE_RSCRIPT_LOG="$missing_replicate_log" \
+    run_expect_status 1 \
+    "$test_root/missing-replicate.out" \
+    "$test_root/missing-replicate.err" \
+    run_step08 "$missing_replicate_fixture" cohort_missing_replicate
+assert_contains \
+    "$test_root/missing-replicate.err" \
+    "Sample manifest must have the exact paired local-CMH schema"
+assert_not_exists "$missing_replicate_log"
+assert_not_exists "$missing_replicate_fixture/output"
+assert_not_exists "$missing_replicate_fixture/qc"
 
 printf 'Running R runtime and program preflight checks...\n'
 missing_rscript_fixture="$test_root/missing-rscript"
@@ -618,9 +645,11 @@ assert_not_exists "$missing_r_program_fixture/qc"
 printf 'Running Step 08 dry-run and exact-input enumeration checks...\n'
 printf 'unmanifested\n' >"$fixture/step07/cohort_A/p1/unmanifested.extra.vcf"
 dry_log="$test_root/dry-rscript.log"
-env SLURM_JOB_ID=dry08 FAKE_RSCRIPT_LOG="$dry_log" \
+env NORAD_RUN_TOKEN=explicit-owner-08 SLURM_JOB_ID=scheduler-08 \
+    FAKE_RSCRIPT_LOG="$dry_log" \
     bash "$script" "${common_args[@]}" >"$test_root/dry.out"
 assert_contains "$test_root/dry.out" "Mode: dry-run"
+assert_contains "$test_root/dry.out" "Run token: explicit-owner-08"
 assert_contains "$test_root/dry.out" "Partition count: 2"
 assert_contains "$test_root/dry.out" "Expected Step 07 VCF count: 4"
 assert_contains "$test_root/dry.out" "cohort_A.p1.FWD_like.mpileup.vcf"
@@ -628,6 +657,11 @@ assert_contains "$test_root/dry.out" "cohort_A.p2.REV_like.mpileup.vcf"
 assert_contains "$test_root/dry.out" "--sample-manifest-sha256"
 assert_contains "$test_root/dry.out" "--annotation-gtf-sha256"
 assert_contains "$test_root/dry.out" "input receipt last as commit marker"
+assert_contains "$test_root/dry.out" "Post-execution validator command:"
+assert_contains "$test_root/dry.out" "validate cohort-candidate-preprocessing"
+assert_contains "$test_root/dry.out" "--sites"
+assert_contains "$test_root/dry.out" "Semantic all-pass gate:"
+assert_contains "$test_root/dry.out" "validate all-pass"
 assert_contains "$test_root/dry.out" "R was not invoked"
 assert_not_contains "$test_root/dry.out" "unmanifested.extra.vcf"
 assert_not_exists "$dry_log"
@@ -732,6 +766,7 @@ assert_contains "$execute_log" "$fixture/step08_impl.R"
 assert_contains "$execute_log" "--sites-output"
 assert_contains "$execute_log" "--inputs-output"
 assert_contains "$execute_log" "--summary-output"
+assert_contains "$execute_log" "--threads 1"
 assert_contains "$(<"$sites")" $'DP__sample_A\tDP__sample_B\tAD__sample_A\tAD__sample_B\tAF__sample_A\tAF__sample_B'
 [[ "$(awk 'END { print NR - 1 }' "$inputs")" == "4" ]] ||
     fail "Expected four manifest x orientation input rows"
@@ -1091,12 +1126,12 @@ stale_fixture="$test_root/stale"
 create_fixture "$stale_fixture" cohort_stale
 stale_dir="$stale_fixture/output/cohort_stale"
 mkdir -p "$stale_dir"
-stale_path="$stale_dir/.cohort_stale.step08.stale08.sites.tmp.tsv"
+stale_path="$stale_dir/.cohort_stale.step08.older-token.sites.tmp.tsv"
 printf 'foreign scratch\n' >"$stale_path"
 run_expect_status 1 "$test_root/stale.out" "$test_root/stale.err" \
     env \
     PATH="$fake_bin:$PATH" \
-    SLURM_JOB_ID=stale08 \
+    SLURM_JOB_ID=newer-token \
     bash "$script" \
     --cohort-id cohort_stale \
     --sample-manifest "$stale_fixture/samples.tsv" \
@@ -1107,8 +1142,9 @@ run_expect_status 1 "$test_root/stale.out" "$test_root/stale.err" \
     --qc-root "$stale_fixture/qc" \
     --rscript-bin "$fake_rscript" \
     --r-script "$stale_fixture/step08_impl.R" \
+    --no-clobber \
     --execute
-assert_contains "$test_root/stale.err" "Refusing to reuse an existing Step 08 scratch path"
+assert_contains "$test_root/stale.err" "residue requires operator inspection"
 assert_file_equals "$stale_path" "foreign scratch"
 assert_not_exists "$stale_dir/.cohort_stale.step08.lock"
 
@@ -1230,8 +1266,11 @@ assert_not_exists \
     "$restore_failure_dir/.cohort_restore_failure.step08.$restore_failure_token.inputs.tmp.tsv"
 assert_not_exists \
     "$restore_failure_qc/.cohort_restore_failure.step08.$restore_failure_token.summary.tmp.tsv"
-assert_not_exists \
-    "$restore_failure_dir/.cohort_restore_failure.step08.lock"
+restore_failure_lock="$restore_failure_dir/.cohort_restore_failure.step08.lock"
+[[ -d "$restore_failure_lock" ]] ||
+    fail "Incomplete Step 08 rollback must retain its owned lock"
+assert_contains "$restore_failure_lock/owner" \
+    $'run_token\t'"$restore_failure_token"
 assert_file_equals \
     "$restore_failure_fixture/output/unrelated.txt" \
     "unrelated output bytes"
@@ -1242,6 +1281,8 @@ unexpected_restore_scratch="$(
     find "$restore_failure_fixture/output" "$restore_failure_qc" \
         -name '.*.step08.*' \
         ! -path "$restore_failure_sites_backup" \
+        ! -path "$restore_failure_lock" \
+        ! -path "$restore_failure_lock/owner" \
         -print -quit
 )"
 [[ -z "$unexpected_restore_scratch" ]] ||
@@ -1249,6 +1290,8 @@ unexpected_restore_scratch="$(
 assert_no_step08_recovery_marker \
     "$restore_failure_fixture/output" \
     "$restore_failure_qc"
+assert_contains "$test_root/restore-failure.err" \
+    "retaining the owned lock and backups for operator recovery"
 
 printf 'Running successful replacement of a previous complete output set...\n'
 replace_fixture="$test_root/replace"
@@ -1259,6 +1302,28 @@ mkdir -p "$replace_dir" "$replace_qc"
 printf 'previous sites\n' >"$replace_dir/cohort_replace.step08_sites.tsv"
 printf 'previous inputs\n' >"$replace_dir/cohort_replace.step08_inputs.tsv"
 printf 'previous summary\n' >"$replace_qc/cohort_replace.step08_summary.tsv"
+run_expect_status 1 \
+    "$test_root/no-clobber.out" \
+    "$test_root/no-clobber.err" \
+    env \
+    PATH="$fake_bin:$PATH" \
+    SLURM_JOB_ID=noclobber08 \
+    bash "$script" \
+    --cohort-id cohort_replace \
+    --sample-manifest "$replace_fixture/samples.tsv" \
+    --partition-manifest "$replace_fixture/partitions.tsv" \
+    --step07-root "$replace_fixture/step07" \
+    --annotation-gtf "$replace_fixture/annotation.gtf" \
+    --output-root "$replace_fixture/output" \
+    --qc-root "$replace_fixture/qc" \
+    --rscript-bin "$fake_rscript" \
+    --r-script "$replace_fixture/step08_impl.R" \
+    --no-clobber \
+    --execute
+assert_contains "$test_root/no-clobber.err" "under --no-clobber"
+assert_file_equals "$replace_dir/cohort_replace.step08_sites.tsv" "previous sites"
+assert_file_equals "$replace_dir/cohort_replace.step08_inputs.tsv" "previous inputs"
+assert_file_equals "$replace_qc/cohort_replace.step08_summary.tsv" "previous summary"
 env \
     PATH="$fake_bin:$PATH" \
     SLURM_JOB_ID=replace08 \
@@ -1418,18 +1483,32 @@ assert_exists "$wrapper_execute/output/cohort_A/cohort_A.step08_inputs.tsv"
 assert_exists "$wrapper_execute/qc/cohort_A.step08_summary.tsv"
 
 invalid_wrapper="$test_root/wrapper-invalid"
-mkdir -p "$invalid_wrapper"
+invalid_wrapper_libraries="$invalid_wrapper/src/norad/libraries"
+mkdir -p "$invalid_wrapper_libraries"
+cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
+    "$invalid_wrapper_libraries/"
 run_expect_status 1 "$test_root/wrapper-invalid.out" "$test_root/wrapper-invalid.err" \
     env \
     PATH="$fake_bin:$PATH" \
     SLURM_SUBMIT_DIR="$invalid_wrapper" \
     EXECUTE=2 \
+    COHORT_ID=cohort_invalid_wrapper \
+    SAMPLE_MANIFEST="$fixture/samples.tsv" \
+    PARTITION_MANIFEST="$fixture/partitions.tsv" \
+    STEP07_ROOT="$fixture/step07" \
+    ANNOTATION_GTF="$fixture/annotation.gtf" \
+    OUTPUT_ROOT="$invalid_wrapper/output" \
+    QC_ROOT="$invalid_wrapper/qc" \
+    RSCRIPT_BIN_OVERRIDE="$fake_rscript" \
     bash "$job"
 assert_contains "$test_root/wrapper-invalid.err" "EXECUTE must be 0 or 1"
 assert_not_exists "$invalid_wrapper/logs"
 
 wrapper_missing="$test_root/wrapper-missing"
-mkdir -p "$wrapper_missing/$owner_path"
+wrapper_missing_libraries="$wrapper_missing/src/norad/libraries"
+mkdir -p "$wrapper_missing/$owner_path" "$wrapper_missing_libraries"
+cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
+    "$wrapper_missing_libraries/"
 cat >"$wrapper_missing/$owner_path/step_08_vcf_preprocessing.sh" <<'WRAPPER_STUB'
 #!/usr/bin/env bash
 exit 0
@@ -1440,6 +1519,10 @@ run_expect_status 1 "$test_root/wrapper-missing.out" "$test_root/wrapper-missing
     SLURM_SUBMIT_DIR="$wrapper_missing" \
     EXECUTE=1 \
     COHORT_ID=cohort_missing_wrapper \
+    SAMPLE_MANIFEST="$fixture/samples.tsv" \
+    PARTITION_MANIFEST="$fixture/partitions.tsv" \
+    STEP07_ROOT="$fixture/step07" \
+    ANNOTATION_GTF="$fixture/annotation.gtf" \
     OUTPUT_ROOT="$wrapper_missing/output" \
     QC_ROOT="$wrapper_missing/qc" \
     RSCRIPT_BIN_OVERRIDE="$fake_rscript" \

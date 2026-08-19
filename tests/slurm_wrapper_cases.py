@@ -26,36 +26,37 @@ def contract(delegation: str, **overrides: Any) -> WrapperContract:
 
 CONTRACTS = {
     "step_00a_build_novogene_star_index.slurm": contract(
-        "embedded_star",
+        "src/norad/stages/star_index/step_00a_build_star_index.sh",
         default="legacy_implicit_execute",
         execute="implicit_only",
         invalid_mode="not_applicable",
         module_policy="strict",
         module_calls=("load star/2.7.11b", "list"),
-        submit_cwd="caller",
-        output_validation="none_after_child_success",
+        submit_cwd="required",
+        output_validation="producer_declared_members",
     ),
     "step_00b_gtf_to_bed12.slurm": contract(
-        "embedded_python_and_bedtools",
+        "python -I -m norad convert gtf-to-bed12",
         default="legacy_implicit_execute",
         execute="implicit_only",
         invalid_mode="not_applicable",
-        module_policy="strict_loads_tolerated_lists",
-        module_calls=("list", "load bedtools/2.31.1", "list"),
+        module_policy="tolerated",
+        module_calls=("list",),
         submit_cwd="required",
-        output_validation="bed12_field_count",
+        output_validation="nonempty_bed12_field_count",
     ),
     "step_00c_prepare_gatk_reference.slurm": contract(
         "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_calls=("list", "load samtools/1.19.2", "list"),
+        submit_cwd="required",
     ),
     "step_01_star_align.slurm": contract(
         "src/norad/stages/star_alignment/step_01_star_align.sh",
         default="dry_run_with_fixture_side_effects",
         module_policy="strict_loads_tolerated_lists",
         module_calls=("list", "load star/2.7.11b", "list"),
-        submit_cwd="caller",
+        submit_cwd="required",
         output_validation="delegate_only",
     ),
     "step_02_sort_index_bam.slurm": contract(
@@ -63,7 +64,7 @@ CONTRACTS = {
         default="dry_run_creates_output_directory_with_bash32_empty_array_defect",
         module_policy="strict_loads_tolerated_lists",
         module_calls=("list", "load samtools/1.19.2", "list"),
-        submit_cwd="caller",
+        submit_cwd="required",
     ),
     "step_02b_bam_qc.slurm": contract(
         "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
@@ -76,6 +77,7 @@ CONTRACTS = {
         "src/norad/evidence/rseqc_orientation/"
         "step_03_infer_strandedness_and_orientation.sh",
         default="dry_run_with_bash32_empty_array_defect",
+        submit_cwd="required",
     ),
     "step_04_mark_duplicates.slurm": contract(
         "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
@@ -87,29 +89,40 @@ CONTRACTS = {
             "load samtools/1.19.2",
             "list",
         ),
+        submit_cwd="required",
     ),
     "step_05_split_n_cigar_reads.slurm": contract(
         "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_calls=("list", "load samtools/1.19.2", "list"),
+        submit_cwd="required",
     ),
     "step_06_split_bam_by_read_orientation.slurm": contract(
         "src/norad/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_calls=("list", "load samtools/1.19.2", "list"),
+        submit_cwd="required",
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": contract(
         "src/norad/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
-        module_calls=("list", "load CBI bcftools/1.21", "list"),
+        module_calls=("list",),
+        submit_cwd="required",
     ),
     "step_08_vcf_preprocessing.slurm": contract(
-        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
+        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
+        submit_cwd="required",
     ),
     "step_09_cmh_editing_site_calling.slurm": contract(
         "src/norad/analyses/paired_cmh_candidate_ranking/"
-        "step_09_cmh_editing_site_calling.sh"
+        "step_09_cmh_editing_site_calling.sh",
+        submit_cwd="required",
+    ),
+    "scientific_context_projection.slurm": contract(
+        "src/norad/analyses/scientific_context_projection/"
+        "scientific_context_projection.sh",
+        submit_cwd="required",
     ),
     "tool_check.slurm": contract(
         "tool_version_probes",
@@ -237,6 +250,9 @@ SBATCH_DIRECTIVES = {
     "step_09_cmh_editing_site_calling.slurm": directives(
         "norad-cmh", "08:00:00", partition="long"
     ),
+    "scientific_context_projection.slurm": directives(
+        "norad-scientific-context", "02:00:00", partition="long"
+    ),
     "tool_check.slurm": directives("norad-tool-check", "00:05:00", streams_first=True),
     "validate_manifest.slurm": directives(
         "norad-validate-manifest", "00:05:00", streams_first=True
@@ -255,6 +271,7 @@ EXECUTABLE_JOBS = frozenset(
         "step_00c_prepare_gatk_reference.slurm",
         "step_06_split_bam_by_read_orientation.slurm",
         "step_09_cmh_editing_site_calling.slurm",
+        "scientific_context_projection.slurm",
     }
 )
 DELEGATED_JOBS = tuple(
@@ -289,6 +306,7 @@ class DelegatedFixtureCase:
     paths: tuple[FixturePath, ...]
     environment: tuple[tuple[str, str], ...]
     arguments: tuple[tuple[str, str], ...]
+    flags: tuple[str, ...] = ()
     outputs: tuple[str, ...] = ()
     output_directories: tuple[str, ...] = ()
 
@@ -309,6 +327,7 @@ DELEGATED_FIXTURES = {
             ("SAMTOOLS_BIN_OVERRIDE", "{fake_bin}/samtools"),
             ("GATK_BIN_OVERRIDE", "{fake_bin}/gatk"),
             ("JAVA_BIN_OVERRIDE", "{fake_bin}/java"),
+            ("NORAD_SHA256_PYTHON", "{python}"),
         ),
         arguments=(
             ("--reference-fasta", "{fasta}"),
@@ -323,6 +342,7 @@ DELEGATED_FIXTURES = {
             FixturePath("r1", "{submit}/inputs/sample_R1.fastq.gz"),
             FixturePath("r2", "{submit}/inputs/sample_R2.fastq.gz"),
             directory("star_index", "{submit}/refs/star-index"),
+            FixturePath("star_genome", "{submit}/refs/star-index/Genome"),
             path("output_dir", "{submit}/outputs/step01"),
         ),
         environment=(
@@ -331,6 +351,7 @@ DELEGATED_FIXTURES = {
             ("R2_FASTQ", "{r2}"),
             ("STAR_INDEX", "{star_index}"),
             ("OUTPUT_DIR", "{output_dir}"),
+            ("NORAD_SHA256_PYTHON", "{python}"),
         ),
         arguments=(
             ("--sample-id", "sample-test"),
@@ -340,6 +361,7 @@ DELEGATED_FIXTURES = {
             ("--output-dir", "{output_dir}"),
             ("--threads", "3"),
         ),
+        flags=("--no-clobber",),
         output_directories=("{output_dir}",),
     ),
     "step_02_sort_index_bam.slurm": DelegatedFixtureCase(
@@ -453,6 +475,7 @@ DELEGATED_FIXTURES = {
             ("GATK_BIN_OVERRIDE", "{fake_bin}/gatk"),
             ("SAMTOOLS_BIN_OVERRIDE", "{fake_bin}/samtools"),
             ("JAVA_BIN_OVERRIDE", "{fake_bin}/java"),
+            ("NORAD_SHA256_PYTHON", "{python}"),
         ),
         arguments=(
             ("--sample-id", "sample05"),
@@ -559,6 +582,7 @@ DELEGATED_FIXTURES = {
             ("QC_ROOT", "{qc_root}"),
             ("RSCRIPT_BIN_OVERRIDE", "{fake_bin}/Rscript"),
             ("STEP08_R_SCRIPT", "{r_script}"),
+            ("THREADS", "3"),
         ),
         arguments=(
             ("--cohort-id", "cohort08"),
@@ -568,6 +592,7 @@ DELEGATED_FIXTURES = {
             ("--annotation-gtf", "{annotation}"),
             ("--output-root", "{output_root}"),
             ("--qc-root", "{qc_root}"),
+            ("--threads", "3"),
             ("--rscript-bin", "{fake_bin}/Rscript"),
             ("--r-script", "{r_script}"),
         ),
@@ -640,5 +665,61 @@ DELEGATED_FIXTURES = {
             )
         ),
         output_directories=("{output_root}/analysis09",),
+    ),
+    "scientific_context_projection.slurm": DelegatedFixtureCase(
+        paths=(
+            FixturePath("all_sites", "{submit}/inputs/analysis10.cmh_all_sites.tsv"),
+            FixturePath(
+                "significant_sites",
+                "{submit}/inputs/analysis10.cmh_significant_sites.tsv",
+            ),
+            FixturePath("summary", "{submit}/inputs/analysis10.cmh_summary.tsv"),
+            FixturePath("reference", "{submit}/refs/genome.fa", ">1\nA\n"),
+            FixturePath("fai", "{submit}/refs/genome.fa.fai", "1\t1\t3\t1\t2\n"),
+            FixturePath(
+                "motif_catalog",
+                "{submit}/inputs/pum_motifs_v1.tsv",
+                "motif_id\trna_consensus\tdna_consensus\n"
+                "PUM_UGUANA\tUGUANA\tTGTANA\n",
+            ),
+            path("output_root", "{submit}/outputs/step10"),
+            FixturePath("r_script", "{submit}/implementation/scientific_context.R"),
+        ),
+        environment=(
+            ("ANALYSIS_ID", "analysis10"),
+            ("STEP09_ALL_SITES", "{all_sites}"),
+            ("STEP09_SIGNIFICANT_SITES", "{significant_sites}"),
+            ("STEP09_SUMMARY", "{summary}"),
+            ("REFERENCE_FASTA", "{reference}"),
+            ("REFERENCE_FAI", "{fai}"),
+            ("MOTIF_CATALOG", "{motif_catalog}"),
+            ("OUTPUT_ROOT", "{output_root}"),
+            ("RSCRIPT_BIN_OVERRIDE", "{fake_bin}/Rscript"),
+            ("SCIENTIFIC_CONTEXT_R_SCRIPT", "{r_script}"),
+        ),
+        arguments=(
+            ("--analysis-id", "analysis10"),
+            ("--step09-all-sites", "{all_sites}"),
+            ("--step09-significant-sites", "{significant_sites}"),
+            ("--step09-summary", "{summary}"),
+            ("--reference-fasta", "{reference}"),
+            ("--reference-fai", "{fai}"),
+            ("--output-root", "{output_root}"),
+            ("--motif-catalog", "{motif_catalog}"),
+            ("--rscript-bin", "{fake_bin}/Rscript"),
+            ("--r-script", "{r_script}"),
+        ),
+        flags=("--no-clobber",),
+        outputs=tuple(
+            "{output_root}/analysis10/analysis10." + suffix
+            for suffix in (
+                "candidate_context.tsv",
+                "motif_hits.tsv",
+                "sequence_logo.tsv",
+                "motif_statistics.tsv",
+                "context_receipt.tsv",
+            )
+        ),
+        output_directories=("{output_root}/analysis10",),
     ),
 }

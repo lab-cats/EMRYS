@@ -13,22 +13,27 @@
 # Step 07 receipt/VCF set has been inspected and the supported Rscript runtime
 # and required Bioconductor packages are available.
 set -euo pipefail
-script_dir="$(cd "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-source "$script_dir/../../libraries/argument_parsing.sh"
+
+# Run from the submitted repository checkout rather than SLURM's spool copy.
+: "${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
+cd "$SLURM_SUBMIT_DIR"
+
+source "src/norad/libraries/argument_parsing.sh"
 
 export TMPDIR="${TMPDIR:-/tmp}"
 
-cd "${SLURM_SUBMIT_DIR:-$PWD}"
+: "${COHORT_ID:?COHORT_ID is required}"
+: "${SAMPLE_MANIFEST:?SAMPLE_MANIFEST is required}"
+: "${PARTITION_MANIFEST:?PARTITION_MANIFEST is required}"
+: "${STEP07_ROOT:?STEP07_ROOT is required}"
+: "${ANNOTATION_GTF:?ANNOTATION_GTF is required}"
+: "${OUTPUT_ROOT:?OUTPUT_ROOT is required}"
+: "${QC_ROOT:?QC_ROOT is required}"
+: "${RSCRIPT_BIN_OVERRIDE:?RSCRIPT_BIN_OVERRIDE is required}"
 
-COHORT_ID="${COHORT_ID:-NORAD_EV_PUM1}"
-SAMPLE_MANIFEST="${SAMPLE_MANIFEST:-samples.tsv}"
-PARTITION_MANIFEST="${PARTITION_MANIFEST:-configs/step_07_partitions.primary_contigs.tsv}"
-STEP07_ROOT="${STEP07_ROOT:-results/mpileup}"
-ANNOTATION_GTF="${ANNOTATION_GTF:-refs/novogene_ref/genome.gtf}"
-OUTPUT_ROOT="${OUTPUT_ROOT:-results/vcf_preprocessed}"
-QC_ROOT="${QC_ROOT:-results/qc/vcf_preprocessing}"
-RSCRIPT_BIN="${RSCRIPT_BIN_OVERRIDE:-Rscript}"
+RSCRIPT_BIN="$RSCRIPT_BIN_OVERRIDE"
 R_SCRIPT="${STEP08_R_SCRIPT:-src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R}"
+THREADS="${THREADS:-${SLURM_CPUS_PER_TASK:-1}}"
 EXECUTE="${EXECUTE:-0}"
 
 case "$EXECUTE" in
@@ -63,6 +68,7 @@ printf 'Input receipt: %s\n' "$INPUTS_OUTPUT"
 printf 'QC summary: %s\n' "$SUMMARY_OUTPUT"
 printf 'Rscript: %s\n' "$RSCRIPT_BIN"
 printf 'R script: %s\n' "$R_SCRIPT"
+printf 'Threads: %s\n' "$THREADS"
 printf 'Execute mode: %s\n' "$EXECUTE"
 printf 'Orientation policy: legacy_provisional_v1 (provisional; not biologically validated)\n'
 
@@ -95,6 +101,7 @@ cmd=(
     --annotation-gtf "$ANNOTATION_GTF"
     --output-root "$OUTPUT_ROOT"
     --qc-root "$QC_ROOT"
+    --threads "$THREADS"
     --rscript-bin "$RSCRIPT_BIN"
     --r-script "$R_SCRIPT"
 )

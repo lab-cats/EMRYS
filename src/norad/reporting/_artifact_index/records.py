@@ -76,7 +76,6 @@ def build_artifact_record(
     run_contract: dict[str, Any],
     inspection: Inspection,
     implementation: dict[str, Any],
-    scientific_state: dict[str, Any] | None,
     git_commit: str,
     created_at: str,
 ) -> dict[str, Any]:
@@ -120,7 +119,6 @@ def build_artifact_record(
         "tools": [],
         "parameters": inspection.parameters,
         "metrics": inspection.metrics,
-        "scientific_state": scientific_state,
         "warnings": inspection.warnings,
         "errors": inspection.errors,
         "provenance": {
@@ -170,7 +168,6 @@ def build_index_rows(
     rows: list[dict[str, str]] = []
     for record, payload in zip(records, record_bytes, strict=True):
         source = record["source"] or {}
-        science = record["scientific_state"] or {}
         rows.append(
             {
                 "run_id": record["run_id"],
@@ -187,10 +184,6 @@ def build_index_rows(
                 "attempt_provenance_status": record["attempt_provenance_status"],
                 "selected_attempt_id": safe_tsv(record["selected_attempt_id"]),
                 **contracts.artifact_status_dimensions(record),
-                "science_status": safe_tsv(science.get("overall_status")),
-                "orientation_status": safe_tsv(science.get("orientation_status")),
-                "orientation_policy": safe_tsv(science.get("orientation_policy")),
-                "review_id": safe_tsv(science.get("review_id")),
                 "source_sha256": safe_tsv(source.get("sha256")),
                 "source_size_bytes": safe_tsv(source.get("size_bytes")),
                 "source_row_count": safe_tsv(source.get("row_count")),

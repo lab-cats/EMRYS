@@ -21,13 +21,28 @@ src/norad/stages/star_alignment/step_01_star_align.sh \
   --r2-fastq data/ABE_EV_2_R2.fastq.gz \
   --star-index refs/novogene_star_index \
   --output-dir results/star/ABE_EV_2 \
-  --threads 8
+  --threads 8 \
+  --gunzip-bin /usr/bin/gunzip
 ```
 
-`STAR` must be on `PATH`, including for dry-run. Add `--execute` only after
-inspection. Dry-run creates the output directory. STAR writes finals directly;
-failure may leave partial output without a receipt, lock, staging transaction,
-cleanup, no-clobber rule, or post-STAR validation.
+`STAR` must be on `PATH`, or bind it with `--star-bin`. When both mates end in
+`.gz`, bind the admitted decompressor explicitly with `--gunzip-bin`; direct
+callers that omit it retain the `gunzip`-on-`PATH` default. Uncompressed mates
+do not resolve or validate a decompressor. Dry-run writes nothing.
+Every invocation uses the no-clobber transaction. The explicit `--no-clobber`
+flag remains accepted so wrappers can state that invariant, but omitting it
+does not enable overwrite or direct-final execution. The transaction hashes
+both FASTQs and every admitted top-level regular STAR-index file in
+deterministic name order, uses a per-sample owned lock and run-token staging
+directory, requires the five declared STAR outputs, rechecks FASTQ and index
+membership plus bytes, refuses any pre-existing declared output, and
+create-exclusively publishes each final while retaining its staged inode as an
+ownership anchor.
+Success validates the full final set against those anchors, removes staging,
+and then releases the lock. If a final appears late or replaces an owned final,
+the foreign path, lock, and staging residue remain for operator recovery. Empty,
+symbolic-link, nested, special, or delimiter-ambiguous index members block this
+mode. The workflow verified record remains the wider run/output/tool binding.
 
 Validator dry-run:
 
@@ -56,7 +71,14 @@ OUTPUT_DIR=/absolute/results/star/ABE_EV_2 EXECUTE=1 \
   sbatch src/norad/stages/star_alignment/step_01_star_align.slurm
 ```
 
-The wrapper strictly loads STAR `2.7.11b` and does not validate outputs.
+The wrapper requires `SLURM_SUBMIT_DIR` and changes to that submitted checkout
+before resolving repository paths. It defaults `NORAD_SHA256_PYTHON` to the
+absolute submitted-checkout `.venv/bin/python`; an operator may instead supply
+one explicit absolute executable. The wrapper requires that launcher to be
+executable, exports it with `NORAD_REQUIRE_BOUND_SHA256=1`, and the owner uses
+the controlled `-X pycache_prefix=/dev/null -I` path for every FASTQ and index
+hash. The wrapper strictly loads STAR `2.7.11b`, passes explicit
+`--no-clobber`, and does not independently validate outputs.
 
 ## Diagnose and verify
 
@@ -67,6 +89,7 @@ safe inspection and follow [`TROUBLESHOOTING.md`](../../../../docs/operations/TR
 ```bash
 bash tests/stages/star_alignment/test_step_01_star_align.sh
 .venv/bin/python -m pytest -q \
+  tests/stages/star_alignment/test_step_01_star_align_slurm.py \
   tests/stages/star_alignment/test_validate_step_01_star_alignment.py \
   tests/test_slurm_wrapper_contracts.py
 ```

@@ -47,7 +47,7 @@ SUMMARY_COLUMNS <- c(
 
 
 write_tsv <- function(table, path) {
-    write.table(
+    utils::write.table(
         table,
         file = path,
         sep = "\t",
@@ -69,6 +69,7 @@ main <- function() {
     partition_manifest <- arguments[["partition-manifest"]]
     step07_root <- arguments[["step07-root"]]
     annotation_gtf <- arguments[["annotation-gtf"]]
+    threads <- parse_positive_integer("threads", arguments[["threads"]])
     validate_nonempty_file("Sample manifest", sample_manifest)
     validate_nonempty_file("Partition manifest", partition_manifest)
     validate_nonempty_file("Annotation GTF", annotation_gtf)
@@ -128,10 +129,9 @@ main <- function() {
     validate_partition_nonoverlap(partitions, partition_manifest)
     annotation_model <- read_annotation_model(annotation_gtf)
 
-    all_sites <- list()
-    input_rows <- list()
-    site_count <- 0L
-    input_count <- 0L
+    jobs <- list()
+    receipt_checks <- vector("list", nrow(partitions))
+    job_count <- 0L
     for (partition_index in seq_len(nrow(partitions))) {
         partition <- partitions[partition_index, , drop = FALSE]
         receipt_path <- file.path(
@@ -151,6 +151,10 @@ main <- function() {
             partition_hash,
             step07_root
         )
+        receipt_checks[[partition_index]] <- list(
+            path = receipt_path,
+            sha256 = receipt_hash_before
+        )
 
         for (orientation_index in seq_along(ORIENTATIONS)) {
             orientation <- ORIENTATIONS[[orientation_index]]
@@ -161,62 +165,71 @@ main <- function() {
                     ".mpileup.vcf"
                 )
             )
-            vcf_hash_before <- sha256_file(vcf_path)
-            result <- process_vcf(
-                vcf_path,
-                partition$partition_id,
-                orientation,
-                receipt_data$declared_counts[[orientation_index]],
-                sample_ids,
-                annotation_model
-            )
-            vcf_hash_after <- sha256_file(vcf_path)
-            if (!identical(vcf_hash_before, vcf_hash_after)) {
-                abort(
-                    "Step 07 VCF changed during semantic processing: ",
-                    vcf_path
-                )
-            }
-            if (nrow(result$sites) > 0L) {
-                site_count <- site_count + 1L
-                all_sites[[site_count]] <- result$sites
-            }
-            input_count <- input_count + 1L
-            input_rows[[input_count]] <- data.frame(
-                cohort_id = cohort_id,
+            job_count <- job_count + 1L
+            jobs[[job_count]] <- list(
                 partition_id = partition$partition_id,
                 selector_type = partition$selector_type,
                 selector_value = partition$selector_value,
                 orientation = orientation,
-                step07_receipt_path = receipt_path,
-                step07_receipt_sha256 = receipt_hash_before,
+                receipt_path = receipt_path,
+                receipt_sha256 = receipt_hash_before,
                 vcf_path = vcf_path,
-                vcf_sha256 = vcf_hash_before,
-                sample_manifest_sha256 = sample_hash,
-                partition_manifest_sha256 = partition_hash,
-                annotation_gtf = annotation_gtf,
-                annotation_gtf_sha256 = annotation_hash,
-                sample_count = length(sample_ids),
-                declared_vcf_record_count =
-                    receipt_data$declared_counts[[orientation_index]],
-                observed_vcf_record_count = result$observed_records,
-                observed_alt_allele_count = result$observed_alt_alleles,
-                supported_snv_count = result$supported_snvs,
-                skipped_symbolic_count = result$skipped_symbolic,
-                skipped_non_snv_count = result$skipped_non_snv,
-                published_candidate_count = nrow(result$sites),
-                orientation_policy = ORIENTATION_POLICY,
-                stringsAsFactors = FALSE,
-                check.names = FALSE
+                declared_count =
+                    receipt_data$declared_counts[[orientation_index]]
             )
         }
-        receipt_hash_after <- sha256_file(receipt_path)
-        if (!identical(receipt_hash_before, receipt_hash_after)) {
+    }
+
+    job_results <- process_vcf_jobs(
+        jobs, threads, sample_ids, annotation_model
+    )
+    for (receipt_check in receipt_checks) {
+        receipt_hash_after <- sha256_file(receipt_check$path)
+        if (!identical(receipt_check$sha256, receipt_hash_after)) {
             abort(
                 "Step 07 receipt changed during semantic processing: ",
-                receipt_path
+                receipt_check$path
             )
         }
+    }
+
+    all_sites <- list()
+    input_rows <- vector("list", length(jobs))
+    site_count <- 0L
+    for (job_index in seq_along(jobs)) {
+        job <- jobs[[job_index]]
+        job_result <- job_results[[job_index]]
+        result <- job_result$result
+        if (nrow(result$sites) > 0L) {
+            site_count <- site_count + 1L
+            all_sites[[site_count]] <- result$sites
+        }
+        input_rows[[job_index]] <- data.frame(
+            cohort_id = cohort_id,
+            partition_id = job$partition_id,
+            selector_type = job$selector_type,
+            selector_value = job$selector_value,
+            orientation = job$orientation,
+            step07_receipt_path = job$receipt_path,
+            step07_receipt_sha256 = job$receipt_sha256,
+            vcf_path = job$vcf_path,
+            vcf_sha256 = job_result$vcf_sha256,
+            sample_manifest_sha256 = sample_hash,
+            partition_manifest_sha256 = partition_hash,
+            annotation_gtf = annotation_gtf,
+            annotation_gtf_sha256 = annotation_hash,
+            sample_count = length(sample_ids),
+            declared_vcf_record_count = job$declared_count,
+            observed_vcf_record_count = result$observed_records,
+            observed_alt_allele_count = result$observed_alt_alleles,
+            supported_snv_count = result$supported_snvs,
+            skipped_symbolic_count = result$skipped_symbolic,
+            skipped_non_snv_count = result$skipped_non_snv,
+            published_candidate_count = nrow(result$sites),
+            orientation_policy = ORIENTATION_POLICY,
+            stringsAsFactors = FALSE,
+            check.names = FALSE
+        )
     }
 
     sites <- if (site_count == 0L) {

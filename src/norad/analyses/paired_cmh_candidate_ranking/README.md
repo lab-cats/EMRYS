@@ -34,6 +34,9 @@ Add `--execute` after inspecting pairing, thresholds, inputs, R identity, lock,
 scratch, publication, and rollback. The method is two-sided continuity-
 corrected CMH with one global BH correction and fixed threshold classification.
 Outputs are ranked candidates, not validated editing sites or biological proof.
+The orchestration-safe invocation also supplies `--no-clobber`, which rejects a complete
+prior set without running R; direct use retains complete-set replacement
+unless that option is supplied.
 
 Execute publishes five payloads then the summary. Summary visibility precedes
 final checks and is not committed-attempt proof; the summary omits R
@@ -70,6 +73,10 @@ mkdir -p logs
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,RSCRIPT_BIN_OVERRIDE=/usr/local/bin/Rscript \
   src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm
 ```
+
+The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers, the producer, or its dependency environment;
+an executed spool copy does not become checkout authority.
 
 Change only `EXECUTE=1` after review. Six stale outputs can produce false
 scheduler success.

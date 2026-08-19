@@ -16,63 +16,72 @@ alias do not change with that layout.
 
 ## Operate
 
-Use an absolute output root so receipt and validator paths agree. Dry-run is
-no-write:
+Dataset, root, partition, and tool bindings are explicit. Dry-run is no-write:
 
 ```bash
+: "${NORAD_BCFTOOLS_BIN:?export the admitted bcftools executable path}"
 output_root="$(pwd)/results/mpileup"
 src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
   --cohort-id NORAD_EV_PUM1 \
-  --sample-manifest samples.tsv \
-  --partition-manifest configs/step_07_partitions.pilot.tsv \
-  --partition-id pilot_1 \
+  --sample-manifest data/raw/samples.paired.tsv \
+  --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
+  --partition-id 1 \
   --orientation-root results/orientation \
   --reference-fasta refs/novogene_ref/genome.fa \
   --output-root "$output_root" \
-  --bcftools-bin /absolute/path/to/bcftools
+  --bcftools-bin "$NORAD_BCFTOOLS_BIN"
 ```
 
 Add `--execute` after inspecting sample order, partition selector, BAM/BAI and
 FASTA/FAI inputs, tool, depth, filter, lock, scratch, and rollback paths. The
 producer runs mpileup and filter, not `bcftools call`; `FWD_like`/`REV_like` are
 mechanical labels and outputs are not validated variants or editing sites.
+The orchestration-safe invocation also supplies `--no-clobber`, which rejects a complete
+prior set without running bcftools; direct use retains complete-set
+replacement unless that option is supplied. On a new output set, this mode
+hashes the exact manifests, reference FASTA/FAI pair, optional regions file,
+and every admitted orientation BAM/BAI before bcftools, then rechecks their
+membership and bytes before receipt construction and publication.
 
-Execute requires all three predecessors or none and publishes FWD VCF, REV
-VCF, then the two-row receipt. Only manifests are hash-bound and rechecked;
-receipt visibility is not immutable-input or current-attempt proof.
+Do not tune `--max-depth` from the bcftools warning alone. First retain a
+representative-partition benchmark with elapsed/CPU time, peak RSS, block I/O,
+validator success, and byte hashes. The existing
+`scripts/benchmark_stage_resources.py` records those measures; Slurm
+`sacct` may supplement them. Keep benchmark manifests/results outside the
+repository and leave the default unchanged until site evidence supports a cut.
 
-Validator dry-run:
+Execute requires all three predecessors or none, publishes and revalidates the
+FWD and REV VCFs, then publishes the two-row receipt. Only manifests are
+durably hash-bound in that receipt; the additional `--no-clobber` hashes are
+in-attempt guards and are not receipt provenance. Receipt visibility is not
+current-attempt proof. An incomplete rollback retains the owned lock and backups
+for operator recovery.
 
-```bash
-cohort=NORAD_EV_PUM1 partition=pilot_1
-partition_dir="$(pwd)/results/mpileup/$cohort/$partition"
-.venv/bin/python -I -m norad validate partitioned-cohort-mpileup \
-  --cohort-id "$cohort" --partition-id "$partition" \
-  --sample-manifest samples.tsv \
-  --partition-manifest configs/step_07_partitions.pilot.tsv \
-  --reference-fai refs/novogene_ref/genome.fa.fai \
-  --fwd-vcf "$partition_dir/$cohort.$partition.FWD_like.mpileup.vcf" \
-  --rev-vcf "$partition_dir/$cohort.$partition.REV_like.mpileup.vcf" \
-  --receipt "$partition_dir/$cohort.$partition.step07_outputs.tsv" \
-  --output "results/qc/validation/07/${cohort}__${partition}.validation.tsv"
-```
-
-Create the parent and add `--execute`. Exit `0` permits failed rows. The five
-checks do not prove coordinate bounds, VCF semantics, filter compliance, tool
-or input identity, biological meaning, or publication attempt.
+The producer prints the exact post-execution validator command using its bound
+paths, followed by the exact `norad validate all-pass` command. Run both after
+the owner succeeds. The validator may exit `0` while publishing `fail` rows;
+`all-pass` is the semantic gate. The five checks do not prove coordinate
+bounds, VCF semantics, filter compliance, tool or input identity, biological
+meaning, or publication attempt.
 
 Do not execute private `validator.py` directly, add `PYTHONPATH`, or restore the
 retired validator path to bypass package selection.
 
 ```bash
-cd /absolute/path/to/norad
+: "${NORAD_BCFTOOLS_BIN:?export the admitted bcftools executable path}"
 mkdir -p logs
-sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,PARTITION_MANIFEST=configs/step_07_partitions.pilot.tsv,PARTITION_ID=pilot_1 \
+sbatch \
+  --export=ALL,TMPDIR=/tmp,EXECUTE=0,COHORT_ID=NORAD_EV_PUM1,SAMPLE_MANIFEST=data/raw/samples.paired.tsv,PARTITION_MANIFEST=configs/step_07_partitions.primary_contigs.tsv,PARTITION_ID=1,ORIENTATION_ROOT=results/orientation,REFERENCE_FASTA=refs/novogene_ref/genome.fa,OUTPUT_ROOT=results/mpileup,BCFTOOLS_BIN_OVERRIDE="$NORAD_BCFTOOLS_BIN" \
   src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm
 ```
 
-Change only `EXECUTE=1` after review. Scheduler checks three nonempty paths;
-stale finals can produce false success.
+The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers or the producer; an executed spool copy does
+not become checkout authority.
+
+Change only `EXECUTE=1` after review. The wrapper fails before creating logs
+or outputs when any required dataset, root, partition, or bcftools binding is
+missing. Stale finals can still produce false scheduler success.
 
 ## Promote, diagnose, and verify
 

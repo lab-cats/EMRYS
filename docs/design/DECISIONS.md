@@ -40,8 +40,12 @@ Detailed rationale:
   state without repair or mutation.
 - Keep implementation, runtime, cluster, scientific-review, and biological
   evidence distinct. Missing and failed expected evidence remains visible.
-- Reporting consumes explicit versioned artifacts and authorized tables; it
+- Reporting consumes explicit versioned computational artifacts; it
   never discovers inputs, reruns analysis, installs tools, or promotes state.
+- Scientific HTML figures use the locked private Matplotlib/Logomaker renderer
+  only for deterministic presentation of admitted scientific records. Figure
+  provenance stays in the evidence HTML; existing owner-generated scientific
+  PDFs remain native analysis artifacts.
 
 ## Scientific pipeline
 
@@ -59,6 +63,13 @@ Detailed rationale: [`scientific-pipeline.md`](decisions/scientific-pipeline.md)
 - Pair Step `09` only through explicit replicate metadata and use the declared
   paired CMH method with one global BH family. Results are CMH-ranked
   candidates, not validated editing sites.
+- Project report-ready sequence and known-motif context in one bounded
+  post-Step09 owner. Version 1 uses mechanically RNA-change-oriented continuous
+  genomic windows, one registered `PUM_UGUANA`/`TGTANA` model, significant-up
+  foreground, tested non-significant background, two-sided Fisher enrichment,
+  no single-model BH value, and upstream-owned deterministic top-eight display
+  ranks. These are context projections, not editing, binding, or biological
+  validation.
 
 ## Architecture
 
@@ -72,8 +83,25 @@ Detailed rationale: [`platform-direction.md`](decisions/platform-direction.md).
   equivalent reuse is proved and only to the narrowest neutral owner.
 - Keep repository controls, public starter inputs, and runtime product domains
   distinct. Source placement alone creates no installed package or evidence.
+- Use Snakemake's local executor for the first fixed CMH profile; it schedules
+  public owner commands but does not own science, validation meaning, recovery,
+  or evidence promotion.
+- Normalize one explicit YAML request plus ordered TSV manifests into a
+  content-bound canonical JSON execution contract. Keep that identity distinct
+  from the narrower existing reporting run contract.
+- Treat an owner task as reusable only after producer success, complete native
+  outputs, owner validation, and an explicit all-pass check of every validation
+  row. Snakemake metadata and output presence are never completion authority.
+- Expose the fixed local profile only through dry-run-first public run/resume/
+  inspection commands that materialize immutable attempt state under the
+  aggregate lock and expose no raw engine or recovery controls.
+- Keep candidate review, adjudication, and biological interpretation outside
+  every computational profile. They are external work-process records, not
+  pipeline steps, gates, artifacts, or completion states.
 
-Future intake, orchestration, logging, report profiles, acquisition, analysis
-extensions, and installable control-plane ideas remain explicitly
-unimplemented in [`FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md)
-and [`QUESTIONS.md`](QUESTIONS.md).
+The implemented source-checkout local lifecycle is defined by
+[`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md). Logging, report
+profiles, site execution, acquisition, analysis extensions, and standalone
+wheel-control-plane ideas remain unimplemented in
+[`FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md) and
+[`QUESTIONS.md`](QUESTIONS.md).

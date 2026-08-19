@@ -1,10 +1,9 @@
 # Test baseline and contract-risk index
 
 This document owns the current Python non-regression policy, evidence
-vocabulary, contract-risk checklist, and direct regression routes. Dated
-counts, timings, matrices, gate narratives, and characterization completions
-remain in the
-[`2026-08-01 testing snapshot`](../history/testing/2026-08-01-test-baseline-and-public-contract-traceability.md).
+vocabulary, contract-risk checklist, and direct regression routes. The tracked
+machine baselines and current owner tests are authoritative; Git history retains
+superseded counts, timings, matrices, and gate narratives.
 
 ## Evidence boundary
 
@@ -47,19 +46,33 @@ The accepted exact floors are:
 
 | Coverage owner | Line floor | Branch floor |
 | --- | ---: | ---: |
-| Python behavior lane | `9172 / 10431` (`0.879302`) | `3134 / 4084` (`0.767385`) |
-| `norad.contracts.scientific_evidence` | `580 / 585` (`0.991453`) | `283 / 290` (`0.975862`) |
-| `norad.libraries.validation` | `339 / 341` (`0.994135`) | `105 / 108` (`0.972222`) |
+| Python behavior lane | `13817 / 15987` (`0.864265`) | `4530 / 6054` (`0.748266`) |
+| Orchestration machine contracts | `436 / 492` (`0.886179`) | `193 / 236` (`0.817797`) |
+| Local-pilot control plane | `3385 / 4138` (`0.818028`) | `1030 / 1498` (`0.687583`) |
+| Source-checkout admission | `235 / 267` (`0.880150`) | `83 / 94` (`0.882979`) |
+| Runtime-availability admission | `364 / 410` (`0.887805`) | `100 / 138` (`0.724638`) |
+| `norad.contracts.scientific_evidence` | `592 / 597` (`0.991625`) | `283 / 290` (`0.975862`) |
+| `norad.libraries.validation` | `371 / 379` (`0.978892`) | `116 / 122` (`0.950820`) |
 | Shared scientific validation primitives | `341 / 341` (`1.000000`) | `123 / 124` (`0.991935`) |
-| Report/publication and receipt validation | `4920 / 5850` (`0.841026`) | `1733 / 2396` (`0.723289`) |
-| Scientific-review publication | `860 / 1020` (`0.843137`) | `346 / 480` (`0.720833`) |
+| Report/publication and receipt validation | `5272 / 6247` (`0.843925`) | `1782 / 2480` (`0.718548`) |
 | Paired-CMH analysis contracts | `85 / 85` (`1.000000`) | `16 / 18` (`0.888889`) |
 
-The Campaign A rebase removed 115 covered compatibility/helper statements from
-`norad.contracts.scientific_evidence` while retaining its same five uncovered
-statements and identical `283 / 290` branch result. Its lower line ratio is a
-smaller-denominator effect, not lost behavior execution. Global and every
-other critical-owner rate are equal or improved.
+The Campaign B coverage measurement ran the Python behavior lane with `1324`
+passing tests and `6` explicit opt-in skips. Relative to the prior accepted
+snapshot, the measured surface grew by `5556` statements and `1970` branches,
+while covered counts grew by `4645` statements and `1396` branches. Coverage
+therefore expanded substantially while the global ratios declined. This
+explicit rebase accepts the measured Campaign B source/test surface and adds
+independent non-regression floors for orchestration machine contracts, the
+local-pilot control plane, source-checkout admission, and runtime-availability
+admission.
+
+Scientific-evidence line coverage increased with identical branch coverage;
+shared scientific primitives and paired-CMH contracts retained their prior
+ratios. Validation and reporting floors now
+bind their expanded measured surfaces. These numerical floors do not prove
+unchanged execution of every prior statement or replace transaction, recovery,
+real-runtime, cluster, or scientific evidence.
 
 Comparisons cross-multiply the exact counts. Six-decimal rates are display
 values and never weaken the gate through rounding.
@@ -71,7 +84,7 @@ The active policy:
 - separately runs the subprocess-only GTF-to-BED12 and sample-manifest CLI
   suites and requires coverage in their exact public route modules;
 - rejects any exact-ratio decrease in global line or branch coverage;
-- rejects any exact-ratio decrease in the six critical-owner groups above;
+- rejects any exact-ratio decrease in the nine critical-owner groups above;
 - allows private files to move, merge, or disappear when aggregate and owner
   coverage remain non-regressive;
 - requires a genuinely new shared Python module named through
@@ -111,9 +124,8 @@ archived entry-point matrices.
 | SLURM directives, modes, modules, CWD, delegation, arguments, outputs, and exits | [`test_slurm_wrapper_contracts.py`](../../tests/test_slurm_wrapper_contracts.py) plus the delegated functional owner |
 | Exact validation check rosters | [`validation_roster_expectations.py`](../../tests/contract_integration/validation_rosters/validation_roster_expectations.py) and [`test_validation_check_rosters.py`](../../tests/contract_integration/validation_rosters/test_validation_check_rosters.py) |
 | Validation publication and neutral BAM/reference/executable-resolution helpers | [`test_validation_report.py`](../../tests/libraries/test_validation_report.py), [`test_bam_validation.py`](../../tests/libraries/test_bam_validation.py), [`test_reference_contigs.py`](../../tests/libraries/test_reference_contigs.py), [`test_executable_resolution.py`](../../tests/libraries/test_executable_resolution.py), and affected consumer transaction suites |
-| Public schemas, headers, deterministic bytes, statuses, and shared scientific-state transitions | Contract-owner tests under `tests/contracts/` plus [independent contract goldens](../../tests/contract_integration/independent_contract_goldens/README.md) and affected producer suites |
+| Public schemas, headers, deterministic bytes, and computational statuses | Contract-owner tests under `tests/contracts/` plus [independent contract goldens](../../tests/contract_integration/independent_contract_goldens/README.md) and affected producer suites |
 | Step `09` statistic, p-value, odds-ratio, and estimability behavior | [independent CMH oracle](../../tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_oracle.py), fixed owner corpus, and guarded real-R comparison |
-| Step `09c` input, evidence policy, publication, signal, concurrency, and recovery behavior | [publisher suite](../../tests/evidence/scientific_review_package/test_step_09c_scientific_validation.py), adjacent shell contract, fixture builder, grouped assembly route, and neutral [review-package tests](../../tests/contracts/scientific_evidence/test_review_package.py) |
 | Python non-regression measurement | Tracked snapshot, comparison implementation, and direct policy tests named above |
 
 Local mocks, wrapper stubs, guarded R fixtures, and pinned report rendering do
@@ -154,13 +166,12 @@ custom supervisor around Nox, failing the mandatory exact-cancellation/no-
 custom-orchestration criterion. `uv` remains the sole Python dependency and
 environment authority; Nox is not a dependency.
 
-## LOG-01 current output and log inventory
+## Current output and log boundaries
 
-The complete commit-bound profiles, crosswalk, exposure inventory, and future
-logging candidates remain in the
-[`LOG-01` snapshot](../history/testing/2026-08-01-test-baseline-and-public-contract-traceability.md#log-01-current-output-and-log-inventory).
 Current output behavior belongs to each implementation, contract, and direct
-test; future guarantees belong to the logging architecture.
+test; future guarantees belong to the
+[`logging contract`](LOGGING_CONTRACT.md). Git history retains the superseded
+commit-bound crosswalk and exposure inventory.
 
 Retained current boundaries:
 
@@ -173,8 +184,8 @@ Retained current boundaries:
 - receipts, reports, QC, metrics, and manifests are durable artifacts, not
   complete console logs;
 - the permanent Step `05` operator checker remains directly owned at
-  `tests/data_checks/validate_step05_outputs.sh`; duplicate truncating `tee`
-  writers and silent snapshot replacement remain characterized defects; and
+  `tests/data_checks/validate_step05_outputs.sh`; silent snapshot replacement
+  remains a characterized defect; and
 - paths, arguments, environment/tool diagnostics, URLs, and arbitrary child
   output may contain sensitive material and have no general redaction promise.
 
@@ -187,10 +198,9 @@ Retained current boundaries:
 | Validation reports and exact check rosters | Preserve the literal seven-column report and ordered producer rosters through validator owners, roster agreement, and independent goldens. |
 | Schemas, headers, deterministic bytes, and statuses | Preserve independent canonical JSON/TSV/receipt expectations plus broader contract and producer tests; do not infer evidence promotion from a shared status word. |
 | Hashes, mutation, links, signals, and filesystem identity | Recheck stable-input detection, same-size/restored-mtime gaps, symlink/hardlink/directory substitution, cleanup, and recovery through the applicable fault-injection and transaction owner. |
-| Computational, scientific, and biological evidence states | Keep local, runtime, cluster, recorded, pending, absent, limitation, computational, review, and reserved-readiness meanings distinct. |
+| Computational and external interpretation boundaries | Keep local, runtime, cluster, and computational claims distinct; candidate review, adjudication, and biological interpretation remain external work-process records rather than test-owned pipeline states. |
 | Direct execution, arbitrary CWD, and SLURM | Preserve file-mode, Bash 3.2, dry-run side-effect, CWD, module, delegation, and output-check exceptions through public-CLI, wrapper, and owner suites; real scheduler/module behavior remains deferred. |
 | Step `09` CMH semantics | Preserve the independent count-derived oracle and guarded real-R comparison; production-validator non-recomputation remains a characterized defect. |
-| Step `09c` and shared science-policy projection | Preserve input/publication/recovery behavior and recorded/pending/absent/limitation/computational transitions through the direct evidence owner and neutral contract tests. |
 
 ## Fixture independence
 
@@ -199,9 +209,10 @@ producer-coupled fixtures. Recheck the applicable direct owner whenever a
 schema, header, serialized byte, status, transaction, scientific rule, or
 fixture builder changes.
 
-Real bcftools, CSU scheduler/modules, production-scale R, production scientific
-review, and production reports remain environment-deferred until separately
-inspected evidence exists.
+Real bcftools, CSU scheduler/modules, production-scale R, and production reports
+remain environment-deferred until separately inspected evidence exists.
+External scientific review or adjudication records are evaluated outside this
+test baseline.
 
 ## Evidence-derived characterization gaps
 

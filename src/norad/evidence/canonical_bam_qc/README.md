@@ -14,7 +14,7 @@ evidence meaning.
 ## Operate
 
 Producer dry-run requires the BAM, an admitted adjacent BAI, and `samtools` on
-`PATH`; it creates the output directory:
+`PATH`; it writes nothing:
 
 ```bash
 src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh \
@@ -23,9 +23,15 @@ src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh \
   --output-dir results/qc/bam
 ```
 
-Add `--execute` after inspection. Quickcheck and flagstat write directly to
-final names without lock, staging, backup, receipt, stable-input recheck,
-rollback, or complete-set validation; mixed-attempt files can remain.
+The orchestration-safe invocation binds `samtools` with `--samtools-bin` and adds
+`--no-clobber --execute`. That mode hashes the BAM/BAI pair, stages both
+streams behind one per-sample owned lock, requires both nonempty, rechecks the
+inputs, refuses a pre-existing or newly appeared final, and publishes the pair.
+Publication is create-exclusive and retains staging inode anchors until the
+complete pair is verified.
+Execute without `--no-clobber` preserves the historical direct-write route.
+The workflow verified record, not either native text file, binds the evidence
+to the wider run and tool-version context.
 
 Validator dry-run:
 

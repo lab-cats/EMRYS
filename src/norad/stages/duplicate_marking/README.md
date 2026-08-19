@@ -26,9 +26,14 @@ TMPDIR=/tmp bash src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh \
   --samtools-bin /absolute/path/to/samtools
 ```
 
-Add `--execute` after inspection. BAM, metrics, and BAI write to final names
-without lock, stage, backup, no-clobber, stable-input recheck, receipt,
-rollback, or all-or-none publication; mixed attempts can remain.
+The orchestration-safe invocation adds `--no-clobber --execute`. That mode hashes
+the input BAM/BAI and Picard jar, directs Picard and samtools to run-token
+temporary paths, holds a per-sample owned lock, validates all three files,
+rechecks those identities, refuses any existing or newly appeared final, and
+publishes the triplet create-exclusively while retaining staging inode anchors
+through validation. Execute without `--no-clobber` preserves the historical
+direct-write route. Java and samtools executable paths are explicit; the
+workflow attempt records their observed versions.
 
 Validator dry-run:
 
@@ -51,6 +56,10 @@ mkdir -p logs
 sbatch --export=ALL,TMPDIR=/tmp,EXECUTE=0,SAMPLE_ID=ABE_EV_2,INPUT_BAM=/absolute/results/bam/ABE_EV_2/ABE_EV_2.sorted.bam,OUTPUT_DIR=/absolute/results/markdup/ABE_EV_2,METRICS_DIR=/absolute/results/qc/markdup \
   src/norad/stages/duplicate_marking/step_04_mark_duplicates.slurm
 ```
+
+The wrapper requires `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving repository-owned helpers or the producer; an executed spool copy does
+not become checkout authority.
 
 Change only `EXECUTE=1` after review. The wrapper loads Picard `3.1.1` and
 samtools `1.19.2`, enforces Java 17, and checks only the named final files;

@@ -1,4 +1,4 @@
-"""Receipt-last atomic publication for the single HTML report transaction."""
+"""Receipt-last atomic publication for the two-view report transaction."""
 
 from __future__ import annotations
 
@@ -12,9 +12,9 @@ from typing import Any
 from norad.reporting.report import ReportPublicationOps
 
 from .context import expected_html_identity
-from .inputs import _assert_snapshot, _fail, _snapshot_regular
+from .inputs import _assert_input_recheck, _assert_snapshot, _fail, _snapshot_regular
 from .models import (
-    SCIENCE_BANNERS,
+    BOUNDARY_BANNER,
     FileSnapshot,
     LockOwnership,
     ReportContext,
@@ -36,14 +36,8 @@ from .validation import validate_rendered_html
 
 
 def _recheck_inputs(context: ReportContext) -> None:
-    labels = (
-        "run-summary document",
-        "report Jinja template",
-        "report CSS resource",
-        *(f"approved report table {table.table_id!r}" for table in context.tables),
-    )
-    for snapshot, label in zip(context.input_snapshots, labels, strict=True):
-        _assert_snapshot(snapshot, label)
+    for recheck in context.input_rechecks:
+        _assert_input_recheck(*recheck)
 
 
 def _assert_predecessors(context: ReportContext) -> None:
@@ -115,13 +109,29 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
         stage_identity = (metadata.st_dev, metadata.st_ino)
         _recheck_inputs(context)
 
-        staged_html = stage / context.output_html.name
-        ops.write_owned_file(staged_html, context.html_bytes)
-        _assert_expected_bytes(staged_html, context.html_bytes, "staged HTML report")
+        staged_scientific_html = stage / context.output_scientific_html.name
+        ops.write_owned_file(staged_scientific_html, context.scientific_html_bytes)
+        _assert_expected_bytes(
+            staged_scientific_html,
+            context.scientific_html_bytes,
+            "staged scientific HTML report",
+        )
         validate_rendered_html(
-            staged_html,
-            expected_banner=SCIENCE_BANNERS[context.summary["science_status"]],
-            expected_identity=expected_html_identity(context),
+            staged_scientific_html,
+            expected_banner=BOUNDARY_BANNER,
+            expected_identity=expected_html_identity(context, "scientific"),
+        )
+        staged_evidence_html = stage / context.output_evidence_html.name
+        ops.write_owned_file(staged_evidence_html, context.evidence_html_bytes)
+        _assert_expected_bytes(
+            staged_evidence_html,
+            context.evidence_html_bytes,
+            "staged evidence HTML report",
+        )
+        validate_rendered_html(
+            staged_evidence_html,
+            expected_banner=BOUNDARY_BANNER,
+            expected_identity=expected_html_identity(context, "evidence"),
         )
         staged_summary = stage / context.output_summary_tsv.name
         summary_bytes = summary_tsv_bytes(context)
@@ -129,7 +139,18 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
         _assert_expected_bytes(staged_summary, summary_bytes, "staged run-summary TSV")
         validate_summary_tsv(staged_summary, context)
         staged_outputs = (
-            ("run-report-html", "html", staged_html, context.output_html),
+            (
+                "scientific-report-html",
+                "scientific_html",
+                staged_scientific_html,
+                context.output_scientific_html,
+            ),
+            (
+                "evidence-report-html",
+                "evidence_html",
+                staged_evidence_html,
+                context.output_evidence_html,
+            ),
             (
                 "run-summary-tsv",
                 "run_summary_tsv",
@@ -198,7 +219,14 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
             ops.fsync_directory(context.output_dir)
 
         _assert_expected_bytes(
-            context.output_html, context.html_bytes, "published HTML report"
+            context.output_scientific_html,
+            context.scientific_html_bytes,
+            "published scientific HTML report",
+        )
+        _assert_expected_bytes(
+            context.output_evidence_html,
+            context.evidence_html_bytes,
+            "published evidence HTML report",
         )
         _assert_expected_bytes(
             context.output_summary_tsv,
@@ -214,9 +242,14 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
             _fail("Published report receipt differs from its staged document")
         _assert_receipted_outputs(document)
         validate_rendered_html(
-            context.output_html,
-            expected_banner=SCIENCE_BANNERS[context.summary["science_status"]],
-            expected_identity=expected_html_identity(context),
+            context.output_scientific_html,
+            expected_banner=BOUNDARY_BANNER,
+            expected_identity=expected_html_identity(context, "scientific"),
+        )
+        validate_rendered_html(
+            context.output_evidence_html,
+            expected_banner=BOUNDARY_BANNER,
+            expected_identity=expected_html_identity(context, "evidence"),
         )
         validate_summary_tsv(context.output_summary_tsv, context)
         _recheck_inputs(context)

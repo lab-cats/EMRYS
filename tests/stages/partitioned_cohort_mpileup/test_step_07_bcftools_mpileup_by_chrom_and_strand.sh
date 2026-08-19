@@ -4,6 +4,8 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 script="$repo_root/src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh"
 job="$repo_root/src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$repo_root/.venv/bin/python"
 test_root="$(mktemp -d)"
 trap 'rm -rf "$test_root"' EXIT
 export TMPDIR="$test_root"
@@ -168,8 +170,8 @@ case "$command_name" in
         if [[ -n "${FAKE_OBSERVE_PUBLISHED_FWD:-}" &&
               "$mode" == "-h" && "$path" == "$FAKE_OBSERVE_PUBLISHED_FWD" ]]; then
             [[ -s "${FAKE_OBSERVE_PUBLISHED_REV:-}" ]] || exit 50
-            [[ -s "${FAKE_OBSERVE_PUBLISHED_RECEIPT:-}" ]] || exit 51
-            printf 'fwd-rev-receipt-visible-before-commit\n' \
+            [[ ! -e "${FAKE_OBSERVE_PUBLISHED_RECEIPT:-}" ]] || exit 51
+            printf 'fwd-rev-validated-before-receipt\n' \
                 >"${FAKE_PUBLICATION_OBSERVATION:-/dev/null}"
         fi
         if [[ "${FAKE_FAIL_FINAL_VALIDATION:-0}" == "1" &&
@@ -274,14 +276,21 @@ run_expect_status 1 "$test_root/missing.out" "$test_root/missing.err" \
     bash "$script"
 assert_contains "$test_root/missing.err" "Missing required argument: --cohort-id"
 
-FAKE_BCFTOOLS_LOG="$test_root/dry-run.log" \
+NORAD_RUN_TOKEN=explicit-owner-07 SLURM_JOB_ID=scheduler-07 \
+    FAKE_BCFTOOLS_LOG="$test_root/dry-run.log" \
     bash "$script" "${common_args[@]}" >"$test_root/dry-run.out"
 assert_contains "$test_root/dry-run.out" "Mode: dry-run"
+assert_contains "$test_root/dry-run.out" "Run token: explicit-owner-07"
 assert_contains "$test_root/dry-run.out" "Sample count: 2"
 assert_contains "$test_root/dry-run.out" "FWD_like pipeline:"
 assert_contains "$test_root/dry-run.out" "FORMAT/DP"
 assert_contains "$test_root/dry-run.out" "INFO/ADR"
 assert_contains "$test_root/dry-run.out" "Filter expression: INFO/AD[1-]>2 & MAX(FORMAT/DP)>20"
+assert_contains "$test_root/dry-run.out" "Post-execution validator command:"
+assert_contains "$test_root/dry-run.out" "validate partitioned-cohort-mpileup"
+assert_contains "$test_root/dry-run.out" "--fwd-vcf"
+assert_contains "$test_root/dry-run.out" "Semantic all-pass gate:"
+assert_contains "$test_root/dry-run.out" "validate all-pass"
 assert_contains "$test_root/dry-run.out" "Dry-run complete; no directories or files were created."
 assert_not_exists "$fixture/output"
 assert_not_exists "$test_root/dry-run.log"
@@ -401,7 +410,7 @@ header_args=(
     --bcftools-bin "$fake_bcftools"
 )
 FAKE_HEADER_ONLY=1 FAKE_BCFTOOLS_SAMPLES="sample_A,sample_B" \
-    bash "$script" "${header_args[@]}" --execute >/dev/null
+    bash "$script" "${header_args[@]}" --no-clobber --execute >/dev/null
 header_receipt="$header_fixture/output/cohort_empty/1/cohort_empty.1.step07_outputs.tsv"
 [[ "$(awk -F '\t' 'NR > 1 { total += $10 } END { print total + 0 }' "$header_receipt")" == "0" ]] ||
     fail "Header-only VCF receipt should record zero records"
@@ -731,6 +740,72 @@ for stability_input in bam bai fasta fai regions_file; do
     assert_not_exists "$stability_output/.cohort_stability.target.step07.lock"
 done
 
+for stability_input in bam bai fasta fai regions_file; do
+    strict_fixture="$test_root/no-clobber-stability-$stability_input"
+    cp -R "$fixture" "$strict_fixture"
+    rm -rf "$strict_fixture/output"
+    printf '1\t0\t4\n' >"$strict_fixture/target.bed"
+    printf 'partition_id\tselector_type\tselector_value\ntarget\tregions_file\ttarget.bed\n' \
+        >"$strict_fixture/partitions.tsv"
+    case "$stability_input" in
+        bam)
+            strict_mutation_label="FWD_like BAM for sample_A"
+            strict_mutation_path="$strict_fixture/orientation/sample_A/sample_A.FWD_like.bam"
+            ;;
+        bai)
+            strict_mutation_label="FWD_like BAI for sample_A"
+            strict_mutation_path="$strict_fixture/orientation/sample_A/sample_A.FWD_like.bam.bai"
+            ;;
+        fasta)
+            strict_mutation_label="Reference FASTA"
+            strict_mutation_path="$strict_fixture/reference.fa"
+            ;;
+        fai)
+            strict_mutation_label="Reference FASTA index"
+            strict_mutation_path="$strict_fixture/reference.fa.fai"
+            ;;
+        regions_file)
+            strict_mutation_label="Regions file for partition target"
+            strict_mutation_path="$strict_fixture/target.bed"
+            ;;
+        *) fail "Unhandled no-clobber stability input: $stability_input" ;;
+    esac
+    strict_reported_mutation_path="$strict_mutation_path"
+    if [[ "$stability_input" == "regions_file" ]]; then
+        strict_reported_mutation_path="$(
+            cd "$(dirname "$strict_mutation_path")" && pwd -P
+        )/$(basename "$strict_mutation_path")"
+    fi
+    strict_args=(
+        --cohort-id cohort_strict
+        --sample-manifest "$strict_fixture/samples.tsv"
+        --partition-manifest "$strict_fixture/partitions.tsv"
+        --partition-id target
+        --orientation-root "$strict_fixture/orientation"
+        --reference-fasta "$strict_fixture/reference.fa"
+        --output-root "$strict_fixture/output"
+        --bcftools-bin "$fake_bcftools"
+        --no-clobber
+    )
+    run_expect_status 1 \
+        "$test_root/no-clobber-stability-$stability_input.out" \
+        "$test_root/no-clobber-stability-$stability_input.err" \
+        env FAKE_BCFTOOLS_MUTATE_PATH="$strict_mutation_path" \
+        FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
+        bash "$script" "${strict_args[@]}" --execute
+    assert_file_equals \
+        "$test_root/no-clobber-stability-$stability_input.err" \
+        "ERROR: $strict_mutation_label changed during Step 07 --no-clobber execution: $strict_reported_mutation_path"$'\n'
+    strict_output="$strict_fixture/output/cohort_strict/target"
+    assert_not_exists "$strict_output/cohort_strict.target.FWD_like.mpileup.vcf"
+    assert_not_exists "$strict_output/cohort_strict.target.REV_like.mpileup.vcf"
+    assert_not_exists "$strict_output/cohort_strict.target.step07_outputs.tsv"
+    assert_not_exists "$strict_output/.cohort_strict.target.step07.lock"
+    assert_contains "$strict_mutation_path" "# controlled mutation"
+    assert_no_owned_step07_paths "$strict_output" \
+        '.cohort_strict.target.step07.*'
+done
+
 IFS= read -r stability_receipt_header <"$stability_receipt"
 expected_stability_receipt_header=$'cohort_id\tpartition_id\tselector_type\tselector_value\torientation\tvcf_path\tsample_manifest_sha256\tpartition_manifest_sha256\tsample_count\tvcf_record_count'
 [[ "$stability_receipt_header" == "$expected_stability_receipt_header" ]] ||
@@ -771,11 +846,11 @@ stale_fixture="$test_root/stale"
 cp -R "$fixture" "$stale_fixture"
 rm -rf "$stale_fixture/output"
 stale_dir="$stale_fixture/output/cohort_stale/1"
-stale_path="$stale_dir/.cohort_stale.1.step07.unit07.FWD_like.tmp.vcf"
+stale_path="$stale_dir/.cohort_stale.1.step07.older-token.FWD_like.tmp.vcf"
 mkdir -p "$stale_dir"
 printf 'foreign scratch\n' >"$stale_path"
 run_expect_status 1 "$test_root/stale.out" "$test_root/stale.err" \
-    env SLURM_JOB_ID=unit07 FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
+    env SLURM_JOB_ID=newer-token FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
     bash "$script" \
     --cohort-id cohort_stale \
     --sample-manifest "$stale_fixture/samples.tsv" \
@@ -785,8 +860,9 @@ run_expect_status 1 "$test_root/stale.out" "$test_root/stale.err" \
     --reference-fasta "$stale_fixture/reference.fa" \
     --output-root "$stale_fixture/output" \
     --bcftools-bin "$fake_bcftools" \
+    --no-clobber \
     --execute
-assert_contains "$test_root/stale.err" "Refusing to reuse an existing Step 07 scratch path"
+assert_contains "$test_root/stale.err" "residue requires operator inspection"
 assert_contains "$stale_path" "foreign scratch"
 
 lock_fixture="$test_root/lock"
@@ -847,7 +923,7 @@ expected_transaction_destinations="$(printf '%s\n%s\n%s' \
 [[ "$transaction_destinations" == "$expected_transaction_destinations" ]] ||
     fail "Step 07 final move order must be FWD, REV, receipt"
 assert_file_equals "$transaction_observation" \
-    $'fwd-rev-receipt-visible-before-commit\n'
+    $'fwd-rev-validated-before-receipt\n'
 
 restore_failure_fixture="$test_root/restore-failure"
 cp -R "$fixture" "$restore_failure_fixture"
@@ -896,7 +972,10 @@ assert_file_equals "$restore_failure_receipt" $'prior receipt bytes\n'
 assert_not_exists "$restore_failure_rev_backup"
 assert_not_exists "$restore_failure_receipt_backup"
 assert_file_equals "$restore_failure_unrelated" $'preserve restore neighbor\n'
-assert_not_exists "$restore_failure_dir/.cohort_restore.1.step07.lock"
+restore_failure_lock="$restore_failure_dir/.cohort_restore.1.step07.lock"
+[[ -d "$restore_failure_lock" ]] ||
+    fail "Incomplete Step 07 rollback must retain its owned lock"
+assert_contains "$restore_failure_lock/owner" $'run_token\t'"$restore_token"
 assert_not_exists "$restore_failure_dir/.cohort_restore.1.step07.$restore_token.FWD_like.tmp.vcf"
 assert_not_exists "$restore_failure_dir/.cohort_restore.1.step07.$restore_token.REV_like.tmp.vcf"
 assert_not_exists "$restore_failure_dir/.cohort_restore.1.step07.$restore_token.outputs.tmp.tsv"
@@ -908,6 +987,8 @@ if find "$restore_failure_dir" -maxdepth 1 -iname '*recover*' -print -quit |
     grep -q .; then
     fail "Restoration failure must not be represented as a durable recovery marker"
 fi
+assert_contains "$test_root/restore-failure.err" \
+    "retaining the owned lock and backups for operator recovery"
 
 term_fixture="$test_root/term-signal"
 cp -R "$fixture" "$term_fixture"
@@ -1032,6 +1113,19 @@ rollback_dir="$rollback_fixture/output/cohort_rollback/1"
 rollback_fwd="$rollback_dir/cohort_rollback.1.FWD_like.mpileup.vcf"
 rollback_rev="$rollback_dir/cohort_rollback.1.REV_like.mpileup.vcf"
 rollback_receipt="$rollback_dir/cohort_rollback.1.step07_outputs.tsv"
+rollback_fwd_hash="$(shasum -a 256 "$rollback_fwd" | awk '{print $1}')"
+rollback_rev_hash="$(shasum -a 256 "$rollback_rev" | awk '{print $1}')"
+rollback_receipt_hash="$(shasum -a 256 "$rollback_receipt" | awk '{print $1}')"
+run_expect_status 1 "$test_root/no-clobber.out" "$test_root/no-clobber.err" \
+    env FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
+    bash "$script" "${rollback_args[@]}" --no-clobber --execute
+assert_contains "$test_root/no-clobber.err" "under --no-clobber"
+[[ "$(shasum -a 256 "$rollback_fwd" | awk '{print $1}')" == "$rollback_fwd_hash" ]] ||
+    fail "--no-clobber changed the FWD_like output"
+[[ "$(shasum -a 256 "$rollback_rev" | awk '{print $1}')" == "$rollback_rev_hash" ]] ||
+    fail "--no-clobber changed the REV_like output"
+[[ "$(shasum -a 256 "$rollback_receipt" | awk '{print $1}')" == "$rollback_receipt_hash" ]] ||
+    fail "--no-clobber changed the receipt"
 printf 'previous fwd\n' >"$rollback_fwd"
 printf 'previous rev\n' >"$rollback_rev"
 printf 'previous receipt\n' >"$rollback_receipt"
@@ -1071,7 +1165,7 @@ assert_contains "$partial_dir/cohort_partial.1.FWD_like.mpileup.vcf" "existing"
 
 primary_partitions="$repo_root/configs/step_07_partitions.primary_contigs.tsv"
 pilot_partitions="$repo_root/configs/step_07_partitions.pilot.tsv"
-assert_contains "$job" "configs/step_07_partitions.primary_contigs.tsv"
+assert_contains "$job" ': "${PARTITION_MANIFEST:?PARTITION_MANIFEST is required}"'
 [[ "$(awk 'END { print NR }' "$primary_partitions")" == "26" ]] ||
     fail "Primary-contig manifest must declare 25 partitions plus its header"
 assert_contains "$primary_partitions" $'MT\tregion\tMT'
@@ -1132,7 +1226,10 @@ assert_exists "$wrapper_root/execute-output/wrapper_exec/1/wrapper_exec.1.step07
 
 wrapper_missing_root="$test_root/wrapper-missing-output"
 wrapper_missing_owner="$wrapper_missing_root/src/norad/stages/partitioned_cohort_mpileup"
-mkdir -p "$wrapper_missing_owner"
+wrapper_missing_libraries="$wrapper_missing_root/src/norad/libraries"
+mkdir -p "$wrapper_missing_owner" "$wrapper_missing_libraries"
+cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
+    "$wrapper_missing_libraries/"
 cat >"$wrapper_missing_owner/step_07_bcftools_mpileup_by_chrom_and_strand.sh" <<'STUB'
 #!/usr/bin/env bash
 exit 0
@@ -1143,15 +1240,27 @@ run_expect_status 1 "$test_root/wrapper-missing.out" "$test_root/wrapper-missing
     SLURM_SUBMIT_DIR="$wrapper_missing_root" \
     EXECUTE=1 \
     COHORT_ID=wrapper_missing \
+    SAMPLE_MANIFEST="$fixture/samples.tsv" \
+    PARTITION_MANIFEST="$fixture/partitions.tsv" \
+    PARTITION_ID=1 \
+    ORIENTATION_ROOT="$fixture/orientation" \
+    REFERENCE_FASTA="$fixture/reference.fa" \
     OUTPUT_ROOT="$wrapper_missing_root/output" \
     BCFTOOLS_BIN_OVERRIDE="$fake_bcftools" \
     bash "$job"
 assert_contains "$test_root/wrapper-missing.err" "Expected FWD_like VCF does not exist or is empty"
 
 invalid_wrapper_root="$test_root/wrapper-invalid"
-mkdir -p "$invalid_wrapper_root"
+invalid_wrapper_libraries="$invalid_wrapper_root/src/norad/libraries"
+mkdir -p "$invalid_wrapper_libraries"
+cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
+    "$invalid_wrapper_libraries/"
 run_expect_status 1 "$test_root/wrapper-invalid.out" "$test_root/wrapper-invalid.err" \
     env PATH="$fake_bin:$PATH" SLURM_SUBMIT_DIR="$invalid_wrapper_root" EXECUTE=2 \
+    COHORT_ID=wrapper_invalid SAMPLE_MANIFEST="$fixture/samples.tsv" \
+    PARTITION_MANIFEST="$fixture/partitions.tsv" PARTITION_ID=1 \
+    ORIENTATION_ROOT="$fixture/orientation" REFERENCE_FASTA="$fixture/reference.fa" \
+    OUTPUT_ROOT="$invalid_wrapper_root/output" BCFTOOLS_BIN_OVERRIDE="$fake_bcftools" \
     bash "$job"
 assert_contains "$test_root/wrapper-invalid.err" "EXECUTE must be 0 or 1"
 assert_not_exists "$invalid_wrapper_root/logs"

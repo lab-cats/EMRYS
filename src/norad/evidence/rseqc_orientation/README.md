@@ -27,9 +27,13 @@ bash src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orienta
   --infer-experiment-bin .venv/bin/infer_experiment.py
 ```
 
-Add `--execute` after inspection. RSeQC stdout writes directly to the final
-report. There is no lock, stage, backup, receipt, stable-input recheck, or
-rollback; failure can replace a predecessor with partial or empty output.
+The orchestration-safe invocation adds `--no-clobber --execute`. That mode hashes
+the BAM, admitted BAI, and BED12, captures RSeQC stdout to a run-token temporary
+file behind a per-sample owned lock, requires nonempty output, rechecks all
+three inputs, refuses an existing or newly appeared final, and publishes
+create-exclusively with an ownership anchor. Execute without `--no-clobber`
+preserves the historical direct-write
+route. The native report is evidence, not an attempt receipt.
 
 Validator dry-run:
 

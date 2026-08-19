@@ -1,0 +1,7 @@
+executor: local
+cores: 1
+scheduler: greedy
+retries: 0
+keep-incomplete: true
+printshellcmds: true
+show-failed-logs: true

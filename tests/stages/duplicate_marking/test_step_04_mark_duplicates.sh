@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -113,6 +115,21 @@ unset FAKE_JAVA_MODE FAKE_JAVA_MUTATE_INPUTS \
 
 fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin"
+real_rm_bin="$(command -v rm)"
+
+cat >"$fake_bin/rm" <<'EOF_RM'
+#!/usr/bin/env bash
+set -euo pipefail
+
+for argument in "$@"; do
+    if [[ -n "${FAIL_RM_TARGET:-}" && "$argument" == "$FAIL_RM_TARGET" ]]; then
+        printf 'controlled cleanup removal failure: %s\n' "$argument" >&2
+        exit 79
+    fi
+done
+exec "$REAL_RM_BIN" "$@"
+EOF_RM
+chmod +x "$fake_bin/rm"
 
 java_log="$tmp_dir/java_invocations.log"
 samtools_log="$tmp_dir/samtools_invocations.log"
@@ -268,7 +285,7 @@ printf 'Running dry-run check...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry/markdup"
 dry_metrics_dir="$tmp_dir/results/dry/qc"
-bash "$SCRIPT" \
+NORAD_RUN_TOKEN=explicit-owner-04 SLURM_JOB_ID=scheduler-04 bash "$SCRIPT" \
     --sample-id sample_dry \
     --input-bam "$input_bam" \
     --output-dir "$dry_output_dir" \
@@ -289,6 +306,8 @@ assert_not_exists "$dry_metrics"
 [[ ! -e "$java_log" ]] || fail "dry-run invoked java"
 [[ ! -e "$samtools_log" ]] || fail "dry-run invoked samtools"
 assert_contains "$dry_output" "Mode: dry-run"
+assert_contains "$dry_output" "Run token: explicit-owner-04"
+assert_contains "$dry_output" ".sample_dry.step04.explicit-owner-04.markdup.tmp.bam"
 assert_contains "$dry_output" "Input BAM: $input_bam"
 assert_contains "$dry_output" "Input BAI: $input_bai"
 assert_contains "$dry_output" "Output BAM: $dry_bam"
@@ -344,6 +363,110 @@ assert_contains "$samtools_log" "$execute_bam"
 assert_contains "$samtools_log" "index"
 assert_contains "$execute_output" "Mode: execute"
 assert_contains "$execute_output" "Picard MarkDuplicates output details:"
+
+printf 'Running orchestration-safe no-clobber transaction check...\n'
+residue_output_dir="$tmp_dir/results/residue/markdup"
+residue_metrics_dir="$tmp_dir/results/residue/qc"
+mkdir -p "$residue_output_dir" "$residue_metrics_dir"
+residue_path="$residue_metrics_dir/.sample_residue.step04.older-token.metrics.tmp"
+printf 'preserve residue\n' >"$residue_path"
+residue_output="$tmp_dir/residue.out"
+assert_exit "$residue_output" 1 env SLURM_JOB_ID=newer-token bash "$SCRIPT" \
+    --sample-id sample_residue \
+    --input-bam "$input_bam" \
+    --output-dir "$residue_output_dir" \
+    --metrics-dir "$residue_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute
+assert_contains "$residue_output" "residue requires operator inspection"
+assert_file_content "$residue_path" $'preserve residue\n'
+assert_not_exists "$residue_output_dir/.sample_residue.step04.lock"
+safe_output="$tmp_dir/safe.out"
+safe_output_dir="$tmp_dir/results/safe/markdup"
+safe_metrics_dir="$tmp_dir/results/safe/qc"
+bash "$SCRIPT" \
+    --sample-id sample_safe \
+    --input-bam "$input_bam" \
+    --output-dir "$safe_output_dir" \
+    --metrics-dir "$safe_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute >"$safe_output"
+assert_file_content "$safe_output_dir/sample_safe.markdup.bam" $'fake duplicate-marked bam\n'
+assert_file_content "$safe_output_dir/sample_safe.markdup.bam.bai" $'fake bam index\n'
+assert_file_content "$safe_metrics_dir/sample_safe.markdup.metrics.txt" $'fake picard metrics\n'
+assert_contains "$safe_output" "No-clobber transaction: true"
+assert_not_exists "$safe_output_dir/.sample_safe.step04.lock"
+safe_repeat_output="$tmp_dir/safe_repeat.out"
+assert_exit "$safe_repeat_output" 1 bash "$SCRIPT" \
+    --sample-id sample_safe \
+    --input-bam "$input_bam" \
+    --output-dir "$safe_output_dir" \
+    --metrics-dir "$safe_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute
+assert_contains "$safe_repeat_output" "requires all final outputs to be absent"
+
+printf 'Running no-clobber stable-input rejection check...\n'
+safe_mutation_bam="$fixture_dir/safe_mutation.sorted.bam"
+printf 'original admitted input bam\n' >"$safe_mutation_bam"
+printf 'original admitted input bai\n' >"$safe_mutation_bam.bai"
+safe_mutation_output="$tmp_dir/safe_mutation.out"
+safe_mutation_output_dir="$tmp_dir/results/safe_mutation/markdup"
+safe_mutation_metrics_dir="$tmp_dir/results/safe_mutation/qc"
+assert_exit "$safe_mutation_output" 1 env FAKE_JAVA_MUTATE_INPUTS=1 bash "$SCRIPT" \
+    --sample-id sample_safe_mutation \
+    --input-bam "$safe_mutation_bam" \
+    --output-dir "$safe_mutation_output_dir" \
+    --metrics-dir "$safe_mutation_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute
+assert_contains "$safe_mutation_output" "Input BAM changed during Step 04"
+assert_not_exists "$safe_mutation_output_dir/sample_safe_mutation.markdup.bam"
+assert_not_exists "$safe_mutation_output_dir/sample_safe_mutation.markdup.bam.bai"
+assert_not_exists "$safe_mutation_metrics_dir/sample_safe_mutation.markdup.metrics.txt"
+assert_not_exists "$safe_mutation_output_dir/.sample_safe_mutation.step04.lock"
+
+printf 'Running no-clobber cleanup-failure preservation check...\n'
+cleanup_sample="sample_cleanup_failure"
+cleanup_token="cleanup-failure"
+cleanup_output="$tmp_dir/cleanup_failure.out"
+cleanup_output_dir="$tmp_dir/results/cleanup_failure/markdup"
+cleanup_metrics_dir="$tmp_dir/results/cleanup_failure/qc"
+cleanup_tmp_bam="$cleanup_output_dir/.${cleanup_sample}.step04.${cleanup_token}.markdup.tmp.bam"
+cleanup_lock="$cleanup_output_dir/.${cleanup_sample}.step04.lock"
+assert_exit "$cleanup_output" 42 env \
+    PATH="$fake_bin:$PATH" \
+    REAL_RM_BIN="$real_rm_bin" \
+    FAIL_RM_TARGET="$cleanup_tmp_bam" \
+    SLURM_JOB_ID="$cleanup_token" \
+    FAKE_JAVA_MODE=partial_failure \
+    bash "$SCRIPT" \
+    --sample-id "$cleanup_sample" \
+    --input-bam "$input_bam" \
+    --output-dir "$cleanup_output_dir" \
+    --metrics-dir "$cleanup_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute
+[[ -e "$cleanup_tmp_bam" ]] || fail "cleanup failure did not preserve Step 04 staging residue"
+[[ -d "$cleanup_lock" ]] || fail "cleanup failure did not retain Step 04 owner lock"
+assert_contains "$cleanup_lock/owner" "run_token=$cleanup_token"
+assert_contains "$cleanup_output" "controlled cleanup removal failure"
+assert_contains "$cleanup_output" "Step 04 no-clobber cleanup was incomplete"
 
 printf 'Running missing BAM failure check...\n'
 missing_bam_output="$tmp_dir/missing_bam.out"

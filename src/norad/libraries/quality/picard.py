@@ -6,11 +6,18 @@ from math import isfinite
 
 
 def parse_duplication_metrics(text: str) -> tuple[bool, str]:
-    lines = [line for line in text.splitlines() if line and not line.startswith("#")]
-    if len(lines) < 2:
+    table: list[str] = []
+    for line in text.splitlines():
+        if not line or line.startswith("#"):
+            if table:
+                break
+            continue
+        table.append(line)
+
+    if len(table) < 2:
         return False, "missing metrics header/data row"
-    header = lines[0].split("\t")
-    rows = [line.split("\t") for line in lines[1:]]
+    header = table[0].split("\t")
+    rows = [line.split("\t") for line in table[1:]]
     required = {
         "LIBRARY",
         "READ_PAIRS_EXAMINED",

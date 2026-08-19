@@ -14,12 +14,12 @@ current [`HANDOFF.md`](../operations/HANDOFF.md); run only the exact
    groups with biological strand.
 4. Cohort mpileup, deterministic preprocessing, and paired CMH analysis retain
    every candidate with explicit status.
-5. Scientific-review tooling records evidence and limitations separately from
-   computation.
-6. Read-only artifact adapters and a canonical run summary make missing and
+5. Read-only artifact adapters and a canonical run summary make missing and
    failed evidence visible.
-7. Static reports project that summary without running analysis or promoting
+6. Static reports project that summary without running analysis or promoting
    state.
+7. Review, adjudication, and biological interpretation remain external
+   work-process records and never gate the NORAD run.
 
 ## Populated synthetic report
 
@@ -28,10 +28,12 @@ Before presenting, generate the local synthetic report through the
 Its current implementation and evidence ceiling remain in the
 [`HANDOFF.md`](../operations/HANDOFF.md#evidence-boundary).
 
-Start in the open Overview category: the evidence banner, status, CMH-ranked
-candidates, adjudication, and limitations appear first. Then expand QC and
-orientation, Replicates and sensitivity, Review decisions, and Evidence and
-provenance. Use the linked handoff and runbook for current rendering behavior.
+Start in the open `Computational results` category. Show the
+not-scientifically-adjudicated notice, the significant subset, the complete
+candidate view, and key per-sample QC. Emphasize that the source TSVs and
+provenance remain authoritative and that the report contains no review or
+approval gate. Use the linked handoff and runbook for current rendering
+behavior.
 
 ## Suggested inspection order
 
@@ -52,13 +54,14 @@ Say:
 - CMH-ranked candidates;
 - implemented, locally tested, real-runtime tested, or cluster-proven only
   when the handoff supports that exact state;
-- exploratory/provisional when scientific review remains non-final.
+- external review or adjudication record only when that separate work product
+  actually exists.
 
 Do not say:
 
 - validated editing sites;
 - biologically proven orientation;
-- production review completed from fixture evidence;
+- review or biological interpretation completed from fixture evidence;
 - report generation validated the computation;
 - cluster-proven based on a tool probe or local test.
 

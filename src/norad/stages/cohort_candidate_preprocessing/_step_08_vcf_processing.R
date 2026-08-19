@@ -259,3 +259,118 @@ process_vcf <- function(
         skipped_non_snv = skipped_non_snv
     )
 }
+
+process_vcf_job <- function(job, sample_ids, annotation_model) {
+    vcf_hash_before <- sha256_file(job$vcf_path)
+    result <- process_vcf(
+        job$vcf_path,
+        job$partition_id,
+        job$orientation,
+        job$declared_count,
+        sample_ids,
+        annotation_model
+    )
+    vcf_hash_after <- sha256_file(job$vcf_path)
+    if (!identical(vcf_hash_before, vcf_hash_after)) {
+        abort(
+            "Step 07 VCF changed during semantic processing: ",
+            job$vcf_path
+        )
+    }
+    list(result = result, vcf_sha256 = vcf_hash_before)
+}
+
+process_vcf_jobs <- function(jobs, threads, sample_ids, annotation_model) {
+    worker_count <- min(threads, length(jobs))
+    if (.Platform$OS.type == "windows") {
+        worker_count <- 1L
+    }
+    message(
+        "Step 08 VCF workers: ", worker_count,
+        " for ", length(jobs), " ordered input job(s)."
+    )
+
+    process_timed <- function(job) {
+        started <- proc.time()[["elapsed"]]
+        value <- process_vcf_job(job, sample_ids, annotation_model)
+        list(
+            value = value,
+            worker_pid = as.integer(Sys.getpid()),
+            elapsed_seconds = as.numeric(proc.time()[["elapsed"]] - started)
+        )
+    }
+    report_worker_load <- function(outcomes) {
+        worker_pid <- vapply(
+            outcomes, function(outcome) outcome$worker_pid, integer(1)
+        )
+        for (pid in sort(unique(worker_pid), method = "radix")) {
+            assigned <- which(worker_pid == pid)
+            elapsed <- sum(vapply(
+                outcomes[assigned],
+                function(outcome) outcome$elapsed_seconds,
+                numeric(1)
+            ))
+            message(
+                "Step 08 worker load: pid=", pid,
+                " jobs=", length(assigned),
+                " cumulative_job_seconds=", sprintf("%.3f", elapsed)
+            )
+        }
+    }
+
+    if (worker_count == 1L) {
+        outcomes <- lapply(jobs, process_timed)
+        report_worker_load(outcomes)
+        return(lapply(outcomes, function(outcome) outcome$value))
+    }
+
+    process_safely <- function(job) {
+        tryCatch(
+            list(
+                ok = TRUE,
+                value = process_timed(job)
+            ),
+            error = function(error) {
+                list(ok = FALSE, message = conditionMessage(error))
+            }
+        )
+    }
+    results <- parallel::mclapply(
+        jobs,
+        process_safely,
+        mc.cores = worker_count,
+        mc.preschedule = TRUE,
+        mc.set.seed = FALSE
+    )
+    valid_outcome <- vapply(
+        results,
+        function(outcome) {
+            is.list(outcome) && length(outcome$ok) == 1L &&
+                !is.na(outcome$ok) && is.logical(outcome$ok)
+        },
+        logical(1)
+    )
+    if (any(!valid_outcome)) {
+        abort(
+            "Step 08 parallel worker did not return a valid result for input ",
+            which(!valid_outcome)[[1L]], "."
+        )
+    }
+    failed <- which(!vapply(
+        results,
+        function(outcome) outcome$ok,
+        logical(1)
+    ))
+    if (length(failed) > 0L) {
+        index <- failed[[1L]]
+        job <- jobs[[index]]
+        abort(
+            "Step 08 input processing failed for partition ",
+            job$partition_id, " ", job$orientation, ": ",
+            results[[index]]$message
+        )
+    }
+    outcomes <- lapply(results, function(outcome) outcome$value)
+    report_worker_load(outcomes)
+    lapply(outcomes, function(outcome) outcome$value)
+}

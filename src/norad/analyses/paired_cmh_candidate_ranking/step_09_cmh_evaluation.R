@@ -56,7 +56,7 @@ evaluate_candidates <- function(sites, counts, manifest_contract, target_ref,
     background_status <- if (
         length(manifest_contract$background_samples) == 0L
     ) rep("disabled", row_count) else rep("pass", row_count)
-    numeric_result <- setNames(
+    numeric_result <- stats::setNames(
         replicate(11L, rep(NA_real_, row_count), simplify = FALSE),
         c(
             "min_analysis_dp", "mean_analysis_dp", "mean_control_af",

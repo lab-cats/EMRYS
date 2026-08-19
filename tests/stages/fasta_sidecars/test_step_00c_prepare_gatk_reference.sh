@@ -5,6 +5,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
 JOB="$REPO_ROOT/src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -85,6 +87,7 @@ trap 'rm -rf "$tmp_dir"' EXIT
 
 fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin"
+canonical_fake_bin="$(cd "$fake_bin" && pwd -P)"
 
 samtools_log="$tmp_dir/samtools_invocations.log"
 gatk_log="$tmp_dir/gatk_invocations.log"
@@ -158,6 +161,9 @@ set -euo pipefail
 
 printf 'gatk invoked\\n' >> "$gatk_log"
 printf '%s\\n' "\$@" >> "$gatk_log"
+printf 'gatk JAVA_HOME=%s\\n' "\${JAVA_HOME:-<unset>}" >> "$gatk_log"
+printf 'gatk java on PATH=%s\\n' "\$(command -v java)" >> "$gatk_log"
+java -version >/dev/null 2>&1
 
 subcommand="\${1:-}"
 shift || true
@@ -188,6 +194,9 @@ case "\$subcommand" in
         if [[ -z "\$fasta" || -z "\$output" ]]; then
             printf 'fake gatk missing -R or -O\\n' >&2
             exit 64
+        fi
+        if [[ -n "\${FAKE_MUTATE_REFERENCE_FASTA:-}" ]]; then
+            printf '>chrA\\nMUTATED\\n' >"\$fasta"
         fi
         {
             printf '@HD\\tVN:1.6\\n'
@@ -220,6 +229,17 @@ case "\$subcommand" in
 esac
 EOF_GATK
 chmod +x "$fake_bin/gatk"
+
+poison_java_home="$tmp_dir/poison-java-home"
+poison_java_log="$tmp_dir/poison-java-invocations.log"
+mkdir -p "$poison_java_home/bin"
+cat >"$poison_java_home/bin/java" <<EOF_POISON_JAVA
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'poison Java invoked\\n' >> "$poison_java_log"
+printf 'openjdk version "99.0.0" 2026-01-01\\n' >&2
+EOF_POISON_JAVA
+chmod +x "$poison_java_home/bin/java"
 
 export PATH="$fake_bin:$PATH"
 
@@ -263,7 +283,7 @@ dry_dir="$tmp_dir/dry"
 dry_fasta="$dry_dir/genome.fa"
 write_fasta "$dry_fasta"
 dry_output="$tmp_dir/dry.out"
-bash "$SCRIPT" \
+NORAD_RUN_TOKEN=explicit-owner-00c SLURM_JOB_ID=scheduler-00c bash "$SCRIPT" \
     --reference-fasta "$dry_fasta" \
     --samtools-bin "$fake_bin/samtools" \
     --gatk-bin "$fake_bin/gatk" \
@@ -277,6 +297,7 @@ assert_not_exists "$samtools_log"
 assert_not_exists "$gatk_log"
 assert_not_exists "$java_log"
 assert_contains "$dry_output" "Mode: dry-run"
+assert_contains "$dry_output" "Run token: explicit-owner-00c"
 assert_contains "$dry_output" "Reference FASTA: $dry_fasta"
 assert_contains "$dry_output" "FASTA index: $dry_fasta.fai"
 assert_contains "$dry_output" "Sequence dictionary: $dry_dir/genome.dict"
@@ -288,12 +309,60 @@ assert_contains "$dry_output" "CreateSequenceDictionary"
 assert_contains "$dry_output" "Validation plan:"
 assert_contains "$dry_output" "Dry-run only"
 
+printf 'Running unsafe run-token rejection check...\n'
+unsafe_token_dir="$tmp_dir/unsafe_token"
+unsafe_token_fasta="$unsafe_token_dir/genome.fa"
+write_fasta "$unsafe_token_fasta"
+unsafe_token_output="$tmp_dir/unsafe_token.out"
+set +e
+NORAD_RUN_TOKEN='../unsafe-token' \
+SLURM_JOB_ID='safe-scheduler-token' \
+bash "$SCRIPT" \
+    --reference-fasta "$unsafe_token_fasta" \
+    --samtools-bin "$fake_bin/samtools" \
+    --gatk-bin "$fake_bin/gatk" \
+    --java-bin "$fake_bin/java" \
+    >"$unsafe_token_output" 2>&1
+unsafe_token_status=$?
+set -e
+
+[[ "$unsafe_token_status" -ne 0 ]] || fail "unsafe Step 00c run token unexpectedly succeeded"
+assert_contains "$unsafe_token_output" "Step 00c run token must match"
+assert_not_exists "$unsafe_token_fasta.fai"
+assert_not_exists "$unsafe_token_dir/genome.dict"
+assert_not_exists "$unsafe_token_dir/.step_00c_prepare_gatk_reference.lock"
+
+printf 'Running older-attempt staging-residue rejection check...\n'
+older_residue_dir="$tmp_dir/older_residue"
+older_residue_fasta="$older_residue_dir/genome.fa"
+older_residue_path="$older_residue_fasta.fai.tmp.older-attempt"
+write_fasta "$older_residue_fasta"
+printf 'preserve older Step 00c residue\n' >"$older_residue_path"
+older_residue_output="$tmp_dir/older_residue.out"
+set +e
+SLURM_JOB_ID='current-attempt' \
+bash "$SCRIPT" \
+    --reference-fasta "$older_residue_fasta" \
+    --samtools-bin "$fake_bin/samtools" \
+    --gatk-bin "$fake_bin/gatk" \
+    --java-bin "$fake_bin/java" \
+    >"$older_residue_output" 2>&1
+older_residue_status=$?
+set -e
+
+[[ "$older_residue_status" -ne 0 ]] || fail "older Step 00c residue unexpectedly allowed a plan"
+assert_contains "$older_residue_output" "Step 00c residue requires operator inspection"
+assert_contains "$older_residue_path" "preserve older Step 00c residue"
+assert_not_exists "$older_residue_fasta.fai"
+assert_not_exists "$older_residue_dir/genome.dict"
+assert_not_exists "$older_residue_dir/.step_00c_prepare_gatk_reference.lock"
+
 printf 'Running execute creation check...\n'
 execute_dir="$tmp_dir/execute"
 execute_fasta="$execute_dir/genome.fa"
 write_fasta "$execute_fasta"
 execute_output="$tmp_dir/execute.out"
-bash "$SCRIPT" \
+JAVA_HOME="$poison_java_home" PATH="$poison_java_home/bin:$PATH" bash "$SCRIPT" \
     --reference-fasta "$execute_fasta" \
     --samtools-bin "$fake_bin/samtools" \
     --gatk-bin "$fake_bin/gatk" \
@@ -309,10 +378,44 @@ assert_contains "$gatk_log" "CreateSequenceDictionary"
 assert_contains "$gatk_log" "-R"
 assert_contains "$gatk_log" "$execute_fasta"
 assert_contains "$gatk_log" "-O"
+assert_contains "$gatk_log" "gatk JAVA_HOME=$(dirname "$canonical_fake_bin")"
+assert_contains "$gatk_log" "gatk java on PATH=$canonical_fake_bin/java"
+[[ "$(grep -Fc "gatk java on PATH=$canonical_fake_bin/java" "$gatk_log")" -eq 2 ]] ||
+    fail "GATK version and work invocations did not both select the admitted Java"
 assert_contains "$java_log" "-version"
+assert_not_exists "$poison_java_log"
 assert_contains "$execute_output" "Mode: execute"
 assert_contains "$execute_output" "GATK reference sidecar output details:"
 assert_contains "$execute_output" "Created missing Step 00c sidecars successfully."
+
+printf 'Running reference FASTA mutation rejection check...\n'
+mutation_dir="$tmp_dir/reference_mutation"
+mutation_fasta="$mutation_dir/genome.fa"
+mutation_lock="$mutation_dir/.step_00c_prepare_gatk_reference.lock"
+mutation_run_token="reference-mutation"
+write_fasta "$mutation_fasta"
+mutation_output="$tmp_dir/reference_mutation.out"
+set +e
+FAKE_MUTATE_REFERENCE_FASTA=1 \
+SLURM_JOB_ID="$mutation_run_token" \
+bash "$SCRIPT" \
+    --reference-fasta "$mutation_fasta" \
+    --samtools-bin "$fake_bin/samtools" \
+    --gatk-bin "$fake_bin/gatk" \
+    --java-bin "$fake_bin/java" \
+    --execute >"$mutation_output" 2>&1
+mutation_status=$?
+set -e
+
+[[ "$mutation_status" -ne 0 ]] || fail "reference mutation unexpectedly succeeded"
+assert_contains "$mutation_output" "Reference FASTA changed during Step 00c"
+assert_not_exists "$mutation_fasta.fai"
+assert_not_exists "$mutation_dir/genome.dict"
+assert_not_exists "$mutation_lock"
+assert_not_exists "$mutation_fasta.fai.tmp.$mutation_run_token"
+assert_not_exists "$mutation_dir/genome.dict.tmp.$mutation_run_token"
+assert_not_exists "$mutation_fasta.tmp.$mutation_run_token.faidx_input"
+assert_not_exists "$mutation_fasta.tmp.$mutation_run_token.faidx_input.fai"
 
 printf 'Running existing valid sidecar reuse check...\n'
 reuse_dir="$tmp_dir/reuse"
@@ -403,19 +506,30 @@ assert_not_exists "$lock_fasta.fai"
 assert_not_exists "$lock_dir/genome.dict"
 
 printf 'Running partial final publication failure check...\n'
-real_mv_bin="$(command -v mv)"
-cat >"$fake_bin/mv" <<'EOF_MV'
+real_ln_bin="$(command -v ln)"
+real_cp_bin="$(command -v cp)"
+real_rm_bin="$(command -v rm)"
+cat >"$fake_bin/ln" <<'EOF_LN'
 #!/usr/bin/env bash
 set -euo pipefail
 
 destination="${!#}"
-if [[ -n "${FAIL_MV_DESTINATION:-}" && "$destination" == "$FAIL_MV_DESTINATION" ]]; then
+if [[ -n "${INJECT_LATE_FINAL_DESTINATION:-}" &&
+      "$destination" == "$INJECT_LATE_FINAL_DESTINATION" ]]; then
+    if [[ -n "${INJECT_REPLACE_DESTINATION:-}" ]]; then
+        "$REAL_RM_BIN" -f "$INJECT_REPLACE_DESTINATION"
+        "$REAL_CP_BIN" "$INJECT_REPLACE_SOURCE" "$INJECT_REPLACE_DESTINATION"
+    fi
+    "$REAL_CP_BIN" "$INJECT_LATE_FINAL_SOURCE" "$destination"
+    printf 'injected late foreign sidecar: %s\n' "$destination" >&2
+fi
+if [[ -n "${FAIL_LN_DESTINATION:-}" && "$destination" == "$FAIL_LN_DESTINATION" ]]; then
     printf 'controlled final DICT publication failure: %s\n' "$destination" >&2
     exit 73
 fi
-exec "$REAL_MV_BIN" "$@"
-EOF_MV
-chmod +x "$fake_bin/mv"
+exec "$REAL_LN_BIN" "$@"
+EOF_LN
+chmod +x "$fake_bin/ln"
 
 partial_dir="$tmp_dir/partial_publication"
 partial_fasta="$partial_dir/genome.fa"
@@ -424,8 +538,8 @@ partial_run_token="partial-publication"
 write_fasta "$partial_fasta"
 partial_output="$tmp_dir/partial_publication.out"
 set +e
-REAL_MV_BIN="$real_mv_bin" \
-FAIL_MV_DESTINATION="$partial_dict" \
+REAL_LN_BIN="$real_ln_bin" \
+FAIL_LN_DESTINATION="$partial_dict" \
 SLURM_JOB_ID="$partial_run_token" \
 bash "$SCRIPT" \
     --reference-fasta "$partial_fasta" \
@@ -437,7 +551,7 @@ partial_status=$?
 set -e
 
 [[ "$partial_status" -eq 73 ]] || fail "partial publication exit was $partial_status, expected 73"
-[[ -s "$partial_fasta.fai" ]] || fail "partial publication did not retain final FAI"
+assert_not_exists "$partial_fasta.fai"
 assert_not_exists "$partial_dict"
 assert_not_exists "$partial_dir/.step_00c_prepare_gatk_reference.lock"
 assert_not_exists "$partial_fasta.fai.tmp.$partial_run_token"
@@ -445,6 +559,197 @@ assert_not_exists "$partial_dict.tmp.$partial_run_token"
 assert_not_exists "$partial_fasta.tmp.$partial_run_token.faidx_input"
 assert_not_exists "$partial_fasta.tmp.$partial_run_token.faidx_input.fai"
 assert_contains "$partial_output" "controlled final DICT publication failure"
+
+printf 'Running late foreign FAI collision check...\n'
+late_fai_dir="$tmp_dir/late_foreign_fai"
+late_fai_fasta="$late_fai_dir/genome.fa"
+late_fai_final="$late_fai_fasta.fai"
+late_fai_dict="$late_fai_dir/genome.dict"
+late_fai_source="$tmp_dir/foreign.fai"
+late_fai_run_token="late-foreign-fai"
+printf 'foreign-fai-bytes\n' >"$late_fai_source"
+write_fasta "$late_fai_fasta"
+late_fai_output="$tmp_dir/late_foreign_fai.out"
+set +e
+REAL_LN_BIN="$real_ln_bin" \
+REAL_CP_BIN="$real_cp_bin" \
+REAL_RM_BIN="$real_rm_bin" \
+INJECT_LATE_FINAL_DESTINATION="$late_fai_final" \
+INJECT_LATE_FINAL_SOURCE="$late_fai_source" \
+SLURM_JOB_ID="$late_fai_run_token" \
+bash "$SCRIPT" \
+    --reference-fasta "$late_fai_fasta" \
+    --samtools-bin "$fake_bin/samtools" \
+    --gatk-bin "$fake_bin/gatk" \
+    --java-bin "$fake_bin/java" \
+    --execute >"$late_fai_output" 2>&1
+late_fai_status=$?
+set -e
+
+[[ "$late_fai_status" -ne 0 ]] || fail "late foreign FAI collision unexpectedly succeeded"
+cmp -s "$late_fai_source" "$late_fai_final" || fail "late foreign FAI was overwritten or removed"
+assert_not_exists "$late_fai_dict"
+assert_not_exists "$late_fai_dir/.step_00c_prepare_gatk_reference.lock"
+assert_not_exists "$late_fai_final.tmp.$late_fai_run_token"
+assert_contains "$late_fai_output" "injected late foreign sidecar"
+assert_contains "$late_fai_output" "Refusing to replace a late or foreign FASTA index"
+
+printf 'Running cleanup-time foreign sidecar preservation check...\n'
+late_pair_dir="$tmp_dir/late_foreign_pair"
+late_pair_fasta="$late_pair_dir/genome.fa"
+late_pair_fai="$late_pair_fasta.fai"
+late_pair_dict="$late_pair_dir/genome.dict"
+late_pair_foreign_fai="$tmp_dir/replacement-foreign.fai"
+late_pair_foreign_dict="$tmp_dir/foreign.dict"
+late_pair_run_token="late-foreign-pair"
+late_pair_lock="$late_pair_dir/.step_00c_prepare_gatk_reference.lock"
+printf 'replacement-foreign-fai-bytes\n' >"$late_pair_foreign_fai"
+printf 'replacement-foreign-dict-bytes\n' >"$late_pair_foreign_dict"
+write_fasta "$late_pair_fasta"
+late_pair_output="$tmp_dir/late_foreign_pair.out"
+set +e
+REAL_LN_BIN="$real_ln_bin" \
+REAL_CP_BIN="$real_cp_bin" \
+REAL_RM_BIN="$real_rm_bin" \
+INJECT_LATE_FINAL_DESTINATION="$late_pair_dict" \
+INJECT_LATE_FINAL_SOURCE="$late_pair_foreign_dict" \
+INJECT_REPLACE_DESTINATION="$late_pair_fai" \
+INJECT_REPLACE_SOURCE="$late_pair_foreign_fai" \
+SLURM_JOB_ID="$late_pair_run_token" \
+bash "$SCRIPT" \
+    --reference-fasta "$late_pair_fasta" \
+    --samtools-bin "$fake_bin/samtools" \
+    --gatk-bin "$fake_bin/gatk" \
+    --java-bin "$fake_bin/java" \
+    --execute >"$late_pair_output" 2>&1
+late_pair_status=$?
+set -e
+
+[[ "$late_pair_status" -ne 0 ]] || fail "late foreign pair collision unexpectedly succeeded"
+cmp -s "$late_pair_foreign_fai" "$late_pair_fai" || fail "cleanup removed or changed the foreign FAI"
+cmp -s "$late_pair_foreign_dict" "$late_pair_dict" || fail "cleanup removed or changed the foreign DICT"
+[[ -d "$late_pair_lock" ]] || fail "foreign replacement did not retain the owner lock"
+assert_contains "$late_pair_lock/owner" "run_token=$late_pair_run_token"
+[[ -s "$late_pair_fai.tmp.$late_pair_run_token" ]] || fail "foreign replacement did not preserve the FAI ownership anchor"
+[[ -s "$late_pair_dict.tmp.$late_pair_run_token" ]] || fail "foreign replacement did not preserve the staged DICT"
+assert_contains "$late_pair_output" "no longer belongs to this invocation"
+assert_contains "$late_pair_output" "preserving lock and residue for inspection"
+
+printf 'Running failed rollback preservation check...\n'
+cat >"$fake_bin/rm" <<'EOF_RM'
+#!/usr/bin/env bash
+set -euo pipefail
+
+for argument in "$@"; do
+    if [[ -n "${FAIL_RM_TARGET:-}" && "$argument" == "$FAIL_RM_TARGET" ]]; then
+        printf 'controlled rollback removal failure: %s\n' "$argument" >&2
+        exit 79
+    fi
+done
+exec "$REAL_RM_BIN" "$@"
+EOF_RM
+chmod +x "$fake_bin/rm"
+
+rollback_dir="$tmp_dir/rollback_failure"
+rollback_fasta="$rollback_dir/genome.fa"
+rollback_dict="$rollback_dir/genome.dict"
+rollback_run_token="rollback-failure"
+rollback_lock="$rollback_dir/.step_00c_prepare_gatk_reference.lock"
+write_fasta "$rollback_fasta"
+rollback_output="$tmp_dir/rollback_failure.out"
+set +e
+REAL_LN_BIN="$real_ln_bin" \
+FAIL_LN_DESTINATION="$rollback_dict" \
+REAL_RM_BIN="$real_rm_bin" \
+FAIL_RM_TARGET="$rollback_fasta.fai" \
+SLURM_JOB_ID="$rollback_run_token" \
+bash "$SCRIPT" \
+    --reference-fasta "$rollback_fasta" \
+    --samtools-bin "$fake_bin/samtools" \
+    --gatk-bin "$fake_bin/gatk" \
+    --java-bin "$fake_bin/java" \
+    --execute >"$rollback_output" 2>&1
+rollback_status=$?
+set -e
+
+[[ "$rollback_status" -eq 73 ]] || fail "failed rollback exit was $rollback_status, expected 73"
+[[ -s "$rollback_fasta.fai" ]] || fail "failed rollback did not preserve published FAI"
+[[ -d "$rollback_lock" ]] || fail "failed rollback did not preserve owner lock"
+assert_contains "$rollback_lock/owner" "run_token=$rollback_run_token"
+[[ -s "$rollback_dict.tmp.$rollback_run_token" ]] || fail "failed rollback did not preserve staged DICT"
+assert_contains "$rollback_output" "controlled rollback removal failure"
+assert_contains "$rollback_output" "preserving lock and residue for inspection"
+
+printf 'Running failed staging-cleanup preservation check...\n'
+staging_cleanup_dir="$tmp_dir/staging_cleanup_failure"
+staging_cleanup_fasta="$staging_cleanup_dir/genome.fa"
+staging_cleanup_dict="$staging_cleanup_dir/genome.dict"
+staging_cleanup_run_token="staging-cleanup-failure"
+staging_cleanup_lock="$staging_cleanup_dir/.step_00c_prepare_gatk_reference.lock"
+staging_cleanup_tmp_fai="$staging_cleanup_fasta.fai.tmp.$staging_cleanup_run_token"
+staging_cleanup_tmp_dict="$staging_cleanup_dict.tmp.$staging_cleanup_run_token"
+staging_cleanup_tmp_fasta="$staging_cleanup_fasta.tmp.$staging_cleanup_run_token.faidx_input"
+write_fasta "$staging_cleanup_fasta"
+staging_cleanup_output="$tmp_dir/staging_cleanup_failure.out"
+set +e
+FAKE_MUTATE_REFERENCE_FASTA=1 \
+REAL_LN_BIN="$real_ln_bin" \
+REAL_RM_BIN="$real_rm_bin" \
+FAIL_RM_TARGET="$staging_cleanup_tmp_fai" \
+SLURM_JOB_ID="$staging_cleanup_run_token" \
+bash "$SCRIPT" \
+    --reference-fasta "$staging_cleanup_fasta" \
+    --samtools-bin "$fake_bin/samtools" \
+    --gatk-bin "$fake_bin/gatk" \
+    --java-bin "$fake_bin/java" \
+    --execute >"$staging_cleanup_output" 2>&1
+staging_cleanup_status=$?
+set -e
+
+[[ "$staging_cleanup_status" -ne 0 ]] || fail "failed staging cleanup unexpectedly succeeded"
+assert_not_exists "$staging_cleanup_fasta.fai"
+assert_not_exists "$staging_cleanup_dict"
+[[ -s "$staging_cleanup_tmp_fai" ]] || fail "failed staging cleanup did not retain its FAI residue"
+[[ -s "$staging_cleanup_tmp_dict" ]] || fail "failed staging cleanup did not retain its DICT residue"
+[[ -L "$staging_cleanup_tmp_fasta" ]] || fail "failed staging cleanup did not retain its FASTA symlink residue"
+[[ -d "$staging_cleanup_lock" ]] || fail "failed staging cleanup did not retain the owner lock"
+assert_contains "$staging_cleanup_lock/owner" "run_token=$staging_cleanup_run_token"
+assert_contains "$staging_cleanup_output" "controlled rollback removal failure"
+assert_contains "$staging_cleanup_output" "rollback or cleanup was incomplete"
+
+printf 'Running failed lock-cleanup preservation check...\n'
+lock_cleanup_dir="$tmp_dir/lock_cleanup_failure"
+lock_cleanup_fasta="$lock_cleanup_dir/genome.fa"
+lock_cleanup_dict="$lock_cleanup_dir/genome.dict"
+lock_cleanup_run_token="lock-cleanup-failure"
+lock_cleanup_lock="$lock_cleanup_dir/.step_00c_prepare_gatk_reference.lock"
+write_fasta "$lock_cleanup_fasta"
+lock_cleanup_output="$tmp_dir/lock_cleanup_failure.out"
+set +e
+REAL_LN_BIN="$real_ln_bin" \
+REAL_RM_BIN="$real_rm_bin" \
+FAIL_RM_TARGET="$lock_cleanup_lock/owner" \
+SLURM_JOB_ID="$lock_cleanup_run_token" \
+bash "$SCRIPT" \
+    --reference-fasta "$lock_cleanup_fasta" \
+    --samtools-bin "$fake_bin/samtools" \
+    --gatk-bin "$fake_bin/gatk" \
+    --java-bin "$fake_bin/java" \
+    --execute >"$lock_cleanup_output" 2>&1
+lock_cleanup_status=$?
+set -e
+
+[[ "$lock_cleanup_status" -ne 0 ]] || fail "failed lock cleanup incorrectly reported success"
+[[ -s "$lock_cleanup_fasta.fai" ]] || fail "failed lock cleanup lost the published FAI"
+[[ -s "$lock_cleanup_dict" ]] || fail "failed lock cleanup lost the published DICT"
+[[ -d "$lock_cleanup_lock" ]] || fail "failed lock cleanup did not retain the owner lock"
+assert_contains "$lock_cleanup_lock/owner" "run_token=$lock_cleanup_run_token"
+assert_not_exists "$lock_cleanup_fasta.fai.tmp.$lock_cleanup_run_token"
+assert_not_exists "$lock_cleanup_dict.tmp.$lock_cleanup_run_token"
+assert_not_exists "$lock_cleanup_fasta.tmp.$lock_cleanup_run_token.faidx_input"
+assert_not_exists "$lock_cleanup_fasta.tmp.$lock_cleanup_run_token.faidx_input.fai"
+assert_contains "$lock_cleanup_output" "Could not remove the owned Step 00c lock metadata"
+assert_contains "$lock_cleanup_output" "rollback or cleanup was incomplete"
 
 printf 'Running stale Step 05 path check...\n'
 stale_output="$tmp_dir/stale.out"

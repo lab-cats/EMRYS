@@ -8,16 +8,9 @@ selection, implementation, or publication authority.
 ## AUDIT-99 — Final refactor and documentation audit
 
 - **Kind:** actionable
-- **Blocked by:** `DOC-SKILL-10`, `LOG-05`, `RPT-06`
+- **Blocked by:** `DOC-SKILL-10`, `LOG-05`
 - **Intent:** Audit only the implemented refactor program, rank residual code and documentation risk, and publish exact validation and evidence ceilings.
 - **Boundaries:** No new feature, runtime, scientific, cluster, or biological claim; local characterization and stale receipts never become broader proof.
-
-## CLI-03A — Implement local-pilot control plane
-
-- **Kind:** actionable
-- **Blocked by:** `INTAKE-03A`, `PROFILE-03A`, `SETUP-03A`
-- **Intent:** Provide a thin local command surface that orchestrates the approved pilot profile, request lifecycle, resume, and state inspection.
-- **Boundaries:** Dry-run by default; no hidden installation, private imports, SLURM execution, scientific reimplementation, or implicit state authority.
 
 ## CODEDOC-05 — Inventory code documentation
 
@@ -39,13 +32,6 @@ selection, implementation, or publication authority.
 - **Blocked by:** None
 - **Intent:** Review repository documentation for unowned future commitments and assign each match an explicit disposition.
 - **Boundaries:** Search results are not authority; do not create, prioritize, approve, or select work automatically.
-
-## E2E-03A — Prove fresh-clone local pilot
-
-- **Kind:** actionable
-- **Blocked by:** `CLI-03A`
-- **Intent:** Prove the approved local pilot from a fresh clone through failure, resume, and final inspectable outputs.
-- **Boundaries:** Bind exact fixture/data identity and hashes; distinguish fixture from real runtime; make no cluster, production, scientific-review, or biological claim.
 
 ## FUT-ANALYSIS-01 — Preprocessing profiles and analysis modules
 
@@ -82,20 +68,6 @@ selection, implementation, or publication authority.
 - **Intent:** Version a gate catalog and content-bound validation receipts that permit reuse only after subject, gate, input, and environment equivalence is proved.
 - **Boundaries:** Do not redesign gates, promote evidence, or create a new authority; receipts record schema, gate digest, command, Git/input/environment identity, timestamps, per-check exits, and logs.
 
-## INTAKE-02E — Define YAML plus TSV run lifecycle
-
-- **Kind:** actionable
-- **Blocked by:** None
-- **Intent:** Specify the request YAML, sample-manifest TSV, normalized identity, attempt, claim, completion, and recovery lifecycle.
-- **Boundaries:** Claim atomically; mark success only after required tasks, validators, evidence, and report complete; preserve raw inputs and explicit authority.
-
-## INTAKE-03A — Implement YAML plus TSV run lifecycle
-
-- **Kind:** actionable
-- **Blocked by:** `INTAKE-02E`
-- **Intent:** Implement the approved request and manifest lifecycle across ingestion, contracts, and orchestration owners.
-- **Boundaries:** No filename inference, raw-data movement, cluster execution, hidden installation, or ownership collapse.
-
 ## LOG-03 — Build two-sink logging foundation
 
 - **Kind:** actionable
@@ -110,68 +82,12 @@ selection, implementation, or publication authority.
 - **Intent:** Activate the approved concise console default only after every applicable domain adopts the foundation with parity evidence.
 - **Boundaries:** Durable detail remains complete; artifacts, streams, exits, transactions, recovery, and evidence meaning do not change.
 
-## ONBOARD-03A — Publish researcher onboarding path
-
-- **Kind:** actionable
-- **Blocked by:** `E2E-03A`
-- **Intent:** Publish a concise researcher journey from setup and request creation through pilot execution, inspection, failure, and resume.
-- **Boundaries:** Link canonical commands and proof-matched outputs; state local, runtime, cluster, scientific, and biological evidence limits explicitly.
-
-## PROFILE-03A — Materialize local-pilot workflow profile
-
-- **Kind:** actionable
-- **Blocked by:** None
-- **Intent:** Materialize the current CMH pilot as one declarative profile over existing semantic stages and public runners.
-- **Boundaries:** No generic registry, new orchestrator, scientific change, hidden discovery, or state authority.
-
 ## REVIEW-UX-03 — Review usability plan
 
 - **Kind:** actionable
 - **Blocked by:** None
 - **Intent:** Independently review scientist, operator, maintainer, and automation journeys before report, logging, onboarding, and documentation-skill implementation.
 - **Boundaries:** Review findability, terminology, cognitive load, accessibility, failure recovery, console/report hierarchy, intake state, and local context without implementing or changing scientific meaning.
-
-## RPT-01 — Characterize comprehensive report
-
-- **Kind:** actionable
-- **Blocked by:** None
-- **Intent:** Freeze the current comprehensive report's fields, provenance, interaction, format, transaction, and known-defect behavior with test-supported evidence.
-- **Boundaries:** Retain the comprehensive view; characterize rather than fix; reporting projects validated canonical inputs and never generates or promotes evidence.
-
-## RPT-02 — Define science-report contract
-
-- **Kind:** actionable
-- **Blocked by:** `RPT-01`
-- **Intent:** Define the versioned minimal scientist-facing field model, plain-language descriptions, profiles, missing states, and stable HTML semantics.
-- **Boundaries:** Every value has one authorized source; comprehensive remains available; no inner-panel horizontal scroll; outputs coexist immutably; independent science, usability, accessibility, architecture, transaction, and security review precedes implementation.
-
-## RPT-03 — Build format-neutral report projection
-
-- **Kind:** actionable
-- **Blocked by:** `REVIEW-UX-03`, `RPT-02`
-- **Intent:** Implement a deterministic renderer-independent science projection derived only from the approved canonical summary and authorized tables.
-- **Boundaries:** No file discovery, computation, evidence promotion, format-specific scientific field, default change, or comprehensive-field deletion.
-
-## RPT-04 — Implement science-report usability
-
-- **Kind:** actionable
-- **Blocked by:** `RPT-03`
-- **Intent:** Build an accessible self-contained HTML presentation of the approved science projection with clear hierarchy and responsive/print behavior.
-- **Boundaries:** Do not change the field model in view code; preserve evidence banners and contracted semantics; hide no contracted information to avoid scrolling; do not reintroduce a report PDF.
-
-## RPT-06 — Make science report the default
-
-- **Kind:** actionable
-- **Blocked by:** `RPT-04`
-- **Intent:** Change the public default to the approved science profile while keeping the protected comprehensive profile explicitly selectable.
-- **Boundaries:** Profile names follow the approved contract; bundles coexist without overwrite or reinterpretation; analysis, artifacts, and evidence meaning remain unchanged.
-
-## SETUP-03A — Implement local-pilot dependency profile and doctor
-
-- **Kind:** actionable
-- **Blocked by:** None
-- **Intent:** Define the local-pilot dependency profile and a read-only doctor that reports readiness and exact remediation routes.
-- **Boundaries:** No installation or repair; distinguish local configuration from CSU, batch, cluster, production, scientific-review, and biological readiness.
 
 ## SKILL-11 — Evaluate repository skill opportunities
 

@@ -13,13 +13,15 @@
 # produced split-N-cigar BAMs and indexes.
 set -euo pipefail
 
+# Run from the submitted repository checkout rather than SLURM's spool copy.
+: "${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"
+cd "$SLURM_SUBMIT_DIR"
+
 export TMPDIR="${TMPDIR:-/tmp}"
 # shellcheck source=../../libraries/argument_parsing.sh
-source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
+source "src/norad/libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/orientation.sh
-source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/orientation.sh"
-
-cd "${SLURM_SUBMIT_DIR:-$PWD}"
+source "src/norad/libraries/orientation.sh"
 
 SAMPLE_ID="${SAMPLE_ID:-ABE_EV_2}"
 INPUT_BAM="${INPUT_BAM:-results/split_ncigar/${SAMPLE_ID}/${SAMPLE_ID}.split_ncigar.bam}"

@@ -11,7 +11,6 @@ from typing import Any
 from .models import (
     ANCHOR_HASH_FIELDS,
     SHA256_RE,
-    STEP09C_CATEGORY_ADAPTERS,
     AdapterSpec,
     ArtifactIndexError,
 )
@@ -24,18 +23,10 @@ def inspect_tsv(
     captured_rows: list[dict[str, str]] = []
     anchor_values: dict[str, set[str]] = defaultdict(set)
     value_counts: dict[str, Counter[str]] = defaultdict(Counter)
-    capture_rows = (
-        spec.exact_data_rows is not None
-        or spec.adapter_id in set(STEP09C_CATEGORY_ADAPTERS.values())
-        or spec.adapter_id
-        in {
-            "step07_mpileup_receipt_v1",
-            "step08_inputs_v1",
-            "step09_mutation_spectrum_tsv_v1",
-            "step09c_evidence_index_v1",
-        }
-    )
-    mutation_pair_counts: dict[str, Counter[str]] = defaultdict(Counter)
+    capture_rows = spec.exact_data_rows is not None or spec.adapter_id in {
+        "step07_mpileup_receipt_v1",
+        "step08_inputs_v1",
+    }
     try:
         with path.open(encoding="utf-8", newline="") as stream:
             reader = csv.reader(stream, delimiter="\t")
@@ -73,35 +64,11 @@ def inspect_tsv(
                     "partition_manifest_sha256",
                     "analysis_id",
                     "primary_analysis_id",
-                    "review_id",
                     "cohort_id",
                     "orientation_policy",
                 ):
                     if field_name in row:
                         anchor_values[field_name].add(row[field_name])
-                if spec.adapter_id in {
-                    "step09_cmh_all_sites_v1",
-                    "step09_cmh_significant_sites_v1",
-                }:
-                    for field_name in (
-                        "test_status",
-                        "call_status",
-                        "rna_ref",
-                        "rna_alt",
-                    ):
-                        value_counts[field_name][row[field_name]] += 1
-                    mutation_type = f"{row['rna_ref']}>{row['rna_alt']}"
-                    mutation_pair_counts[mutation_type]["candidate_count"] += 1
-                    if row["test_status"] == "tested":
-                        mutation_pair_counts[mutation_type][
-                            "successfully_tested_count"
-                        ] += 1
-                    if row["call_status"] == "significant_up":
-                        mutation_pair_counts[mutation_type]["significant_up_count"] += 1
-                    if row["call_status"] == "significant_down":
-                        mutation_pair_counts[mutation_type][
-                            "significant_down_count"
-                        ] += 1
                 if spec.kind == "validation_report":
                     value_counts["status"][row["status"]] += 1
                 if capture_rows:
@@ -140,11 +107,6 @@ def inspect_tsv(
         native["value_counts"] = {
             field_name: dict(sorted(counts.items()))
             for field_name, counts in sorted(value_counts.items())
-        }
-    if mutation_pair_counts:
-        native["mutation_pair_counts"] = {
-            mutation_type: dict(sorted(counts.items()))
-            for mutation_type, counts in sorted(mutation_pair_counts.items())
         }
     return count, first_row, parameters, native
 
@@ -191,11 +153,8 @@ def extract_parameters(row: Mapping[str, str] | None) -> dict[str, Any]:
         "selector_value",
         "orientation",
         "analysis_id",
-        "review_id",
         "primary_analysis_id",
         "orientation_policy",
-        "overall_science_status",
-        "orientation_status",
         "transaction_state",
     )
     return {field: row[field] for field in fields if field in row}
@@ -218,9 +177,4 @@ def validate_native_run_anchors(
         if row["analysis_id"] != inventory_row["scope_id"]:
             raise ArtifactIndexError(
                 "Native analysis_id does not match the explicit inventory scope"
-            )
-    if "review_id" in row and inventory_row.get("scope_type") == "scientific_review":  # noqa: SIM102
-        if row["review_id"] != inventory_row["scope_id"]:
-            raise ArtifactIndexError(
-                "Native review_id does not match the explicit inventory scope"
             )

@@ -1,17 +1,23 @@
 # Alignment libraries
 
-This package contains neutral parsers and validator helpers for alignment and
+This package contains narrow parsers and admission helpers for alignment and
 alignment-adjacent formats:
 
-- [`bam.py`](bam.py) — BAM/BAI admission, samtools readiness, and SAM-header
-  inspection.
-- [`bed.py`](bed.py) — BED12 parsing and structural checks.
-- [`orientation.py`](orientation.py) — mechanical orientation labels, policy,
-  and count parsing.
-- [`star.py`](star.py) — STAR log, junction, parameter, and contig parsing.
+- [`bam.py`](bam.py) — shared BAM/BAI and SAM-header admission used by Steps
+  `01`, `02`, `04`, `05`, and `06` validators.
+- [`bed.py`](bed.py) — BED12 parsing currently used only by the Step `00b`
+  validator; it is not authority for a broader shared seam.
+- [`orientation.py`](orientation.py) — shared mechanical-orientation labels and
+  count parsing used by scientific contracts, owner validators, and artifact
+  indexing.
+- [`star.py`](star.py) — shared STAR output parsing used by Steps `00a` and
+  `01` validation plus artifact indexing.
 
-Stage, analysis, evidence, and reporting consumers retain their own check
-rosters and meaning. Direct neutral protection lives in
+These helpers return in-memory admitted data. They do not run scientific tools,
+write native outputs, publish validation, or decide stage or biological
+meaning. Consumers retain their own check rosters and evidence semantics. The
+approved dependency boundaries live in
+[`SOURCE_TOPOLOGY.md`](../../contracts/SOURCE_TOPOLOGY.md). Direct protection lives in
 [`test_bam_validation.py`](../../../../tests/libraries/test_bam_validation.py)
 and
 [`test_shared_domain_helpers.py`](../../../../tests/libraries/test_shared_domain_helpers.py).

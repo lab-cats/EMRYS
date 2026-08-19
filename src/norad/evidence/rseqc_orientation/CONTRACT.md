@@ -69,9 +69,22 @@ RSeQC standard output is redirected directly to this final path. The producer
 requires only that the result be nonempty; the separate validator owns the
 three-fraction structural contract.
 
-There is no lock, staging path, no-clobber rule, receipt, stable-input recheck,
-or rollback. Re-execution truncates an existing path before RSeQC runs, and a
-tool failure or empty-success result can leave an empty or partial final file.
+The historical direct execute route has no lock, staging path, receipt,
+stable-input recheck, or rollback. Re-execution truncates an existing path
+before RSeQC runs, and a tool failure or empty-success result can leave an
+empty or partial final file.
+
+## Orchestration-safe producer boundary
+
+`--no-clobber` is the required local-profile mode. It hashes the BAM, admitted
+BAI, and BED12; refuses an existing final; holds a per-sample owned lock;
+captures RSeQC stdout into a run-token temporary file; requires nonempty
+output; rechecks all three inputs; and publishes create-exclusively while
+retaining a staging inode anchor through validation. Failure removes only a
+still-owned final; ambiguous replacement preserves lock and residue. The
+explicit resolved RSeQC executable path is printed; its observed version and
+the resulting report hash belong in the workflow verified record. Execute
+without this option retains historical direct redirection.
 
 ## Current execution surfaces
 
@@ -83,19 +96,22 @@ is the public producer entrypoint. It:
   file creation;
 - passes the BED12 with `-r` and BAM with `-i` to RSeQC;
 - creates the output directory only in execute mode;
-- writes RSeQC output directly to the final report path; and
+- without `--no-clobber`, writes RSeQC output directly to the final report
+  path; and
 - checks only that the final file is nonempty before previewing it.
 
 The file has a shell shebang but is not executable in the current tree; public
 tests and the scheduler invoke it explicitly through Bash.
 
 [`step_03_infer_strandedness_and_orientation.slurm`](step_03_infer_strandedness_and_orientation.slurm)
-resolves repository-relative defaults from `SLURM_SUBMIT_DIR` with a current-
-directory fallback, optionally activates the repository virtual environment,
-selects the RSeQC executable, and delegates to the shell producer. It creates
-the scheduler log directory in dry-run mode but leaves the scientific output
-directory to the producer. On Bash 3.2, expansion of its empty execution-
-argument array can prevent the default dry-run from reaching the producer.
+requires literal `SLURM_SUBMIT_DIR` and changes into the submitted checkout
+before resolving its repository-owned helper, virtual environment, or producer.
+It optionally activates that checkout's virtual environment, selects the RSeQC
+executable, and delegates to the shell producer without treating SLURM's spool
+copy as checkout authority. It creates the scheduler log directory in dry-run
+mode but leaves the scientific output directory to the producer. On Bash 3.2,
+expansion of its empty execution-argument array can prevent the default dry-run
+from reaching the producer.
 
 ## Validation interface
 
@@ -148,8 +164,9 @@ locking, and publication are privately imported from neutral
   fractions and evidence state without rerunning RSeQC.
 
 No current computational stage consumes these outputs. Any future policy that
-turns orientation fractions into library-strandedness metadata requires its
-own scientifically approved contract and evidence gate.
+turns orientation fractions into library-strandedness metadata must be defined
+by an external assay-design and interpretation process. NORAD does not turn
+that process into a computational gate.
 
 ## Protected behavior and evidence
 
@@ -188,8 +205,8 @@ roadmap and handoff.
   are not bound into the native report or its validation interface.
 - Native report production and semantic validation are separate, and the
   producer checks only nonemptiness.
-- The manifest owns declared strandedness but no approved conversion owner
-  connects this evidence to that field.
+- The manifest owns declared strandedness, but no in-code conversion connects
+  this evidence to that field.
 - Cross-cutting validation-publication code remains owned by neutral
   `src/norad/libraries/validation/report.py`; scheduler environment selection
   remains in the wrapper.
@@ -199,8 +216,8 @@ biological interpretation policy or changing behavior.
 
 ## Deferred decisions
 
-- Scientifically approved mapping, if any, from RSeQC orientation groups to
-  declared library strandedness.
+- Whether a future computational contract should accept externally authored
+  strandedness metadata without inferring it from these fractions.
 - Whether the configurable `0.1` maximum sum tolerance is appropriate for the
   durable evidence contract.
 - Binding of native evidence to BAM/BAI, BED12, sample, tool, and attempt

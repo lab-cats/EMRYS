@@ -9,18 +9,11 @@ import importlib
 import json
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from types import ModuleType, SimpleNamespace
+from types import ModuleType
 from typing import Any
 
 import pytest
 from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
-from norad.contracts.scientific_evidence import review_package as REVIEW_PACKAGE
-from norad.evidence.scientific_review_package._scientific_review import (
-    contracts as SCIENTIFIC_REVIEW,
-)
-from norad.evidence.scientific_review_package._scientific_review import (
-    intake as SCIENTIFIC_REVIEW_INTAKE,
-)
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 GOLDENS = Path(__file__).resolve().parent
@@ -32,14 +25,13 @@ ARTIFACT_INDEX_CORE = importlib.import_module(
 ARTIFACT_INDEX_MODELS = importlib.import_module(
     "norad.reporting._artifact_index.models",
 )
+ARTIFACT_INDEX_RECORDS = importlib.import_module(
+    "norad.reporting._artifact_index.records",
+)
 RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.models")
-SHARED_SCIENCE = importlib.import_module(
-    "norad.reporting._run_summary.science_projection"
-)
 REPORT = importlib.import_module("norad.reporting.report")
-REPORT_VALIDATION = importlib.import_module(
-    "norad.reporting._run_report.validation"
-)
+REPORT_FIGURES = importlib.import_module("norad.reporting._run_report.figures")
+REPORT_VALIDATION = importlib.import_module("norad.reporting._run_report.validation")
 REPORT_VIEW = importlib.import_module("norad.reporting._run_report.view")
 
 
@@ -47,16 +39,10 @@ HEADER_MODULES: Mapping[str, ModuleType] = {
     "build_artifact_index": ARTIFACT_INDEX_MODELS,
     "build_run_summary": RUN_SUMMARY,
     "build_report": REPORT,
-    "step_09c_scientific_validation": SCIENTIFIC_REVIEW,
 }
 
 
 def header_module(module_name: str, constant_name: str) -> ModuleType:
-    if (
-        module_name == "step_09c_scientific_validation"
-        and constant_name == "REVIEW_PLAN_HEADER"
-    ):
-        return REVIEW_PACKAGE
     return HEADER_MODULES[module_name]
 
 
@@ -87,11 +73,14 @@ def set_pointer(document: Any, pointer: str, value: Any) -> None:
 
 def schema_documents() -> dict[str, Any]:
     contracts = load_json(GOLDENS / "schema_contracts.json")
+    schema_versions = {
+        "artifact_record.schema.json": "v2",
+        "common.schema.json": "v1",
+        "report_receipt.schema.json": "v4",
+        "run_summary.schema.json": "v2",
+    }
     return {
-        name: load_json(
-            SCHEMAS / ("v2" if name == "report_receipt.schema.json" else "v1") / name
-        )
-        for name in contracts
+        name: load_json(SCHEMAS / schema_versions[name] / name) for name in contracts
     }
 
 
@@ -118,18 +107,6 @@ def assert_header_contracts() -> None:
             )
 
 
-def assert_status_constants() -> None:
-    expected = load_json(GOLDENS / "scientific_state_contracts.json")["constants"]
-    for constant_name, value in expected.items():
-        actual = getattr(REVIEW_PACKAGE, constant_name)
-        if isinstance(value, list):
-            actual = list(actual)
-        assert actual == value, (
-            f"review_package.{constant_name} differs from the independent status oracle"
-        )
-    assert REVIEW_PACKAGE.RESERVED_SCIENCE_STATUS not in REVIEW_PACKAGE.SCIENCE_STATUSES
-
-
 def assert_canonical_json(
     serializer: Callable[[Any], bytes] = ARTIFACT_INDEX_CORE.canonical_json_bytes,
 ) -> None:
@@ -148,48 +125,50 @@ def assert_report_receipt(
     assert serializer(document) == serializer(copy.deepcopy(document))
 
 
-def report_html_bytes(document: Mapping[str, Any]) -> bytes:
+def report_html_bytes(document: Mapping[str, Any]) -> dict[str, bytes]:
     summary = load_json(REPO_ROOT / document["summary_fixture"])
     assert not ARTIFACT_CONTRACTS.schema_errors("run-summary", summary)
     ARTIFACT_CONTRACTS.validate_run_summary_semantics(
         summary,
         source_root=REPO_ROOT,
     )
-    view = REPORT_VIEW.build_view(
-        summary,
-        (),
-        document["metadata"],
+    scientific_figures = REPORT_FIGURES.build_scientific_figures(None, None)
+    return {
+        "scientific": REPORT_VALIDATION.render_html(
+            REPORT_VIEW.build_scientific_view(
+                summary,
+                document["metadata"],
+                scientific_figures=scientific_figures,
+            ),
+            document["css"],
+        ),
+        "evidence": REPORT_VALIDATION.render_html(
+            REPORT_VIEW.build_evidence_view(
+                summary,
+                document["metadata"],
+                scientific_figures=scientific_figures,
+            ),
+            document["css"],
+        ),
+    }
+
+
+def assert_report_html(document: Mapping[str, Any]) -> dict[str, bytes]:
+    expected = dict(
+        line.split(maxsplit=1)
+        for line in (GOLDENS / "report_html.sha256")
+        .read_text(encoding="ascii")
+        .splitlines()
     )
-    return REPORT_VALIDATION.render_html(view, document["css"])
-
-
-def assert_report_html(document: Mapping[str, Any]) -> None:
-    expected = (GOLDENS / "report_html.sha256").read_text(encoding="ascii").strip()
-    actual = hashlib.sha256(report_html_bytes(document)).hexdigest()
-    assert actual == expected, "rendered report HTML differs from the independent oracle"
-
-
-def assert_shared_science_policy() -> None:
-    policy = load_json(GOLDENS / "scientific_state_contracts.json")["shared_policy"]
-    context = SimpleNamespace(
-        category_rows={
-            "decisions": copy.deepcopy(policy["decision_rows"]),
-            "limitations": [copy.deepcopy(policy["limitation_row"])],
-        }
+    rendered = report_html_bytes(document)
+    actual = {
+        report_view: hashlib.sha256(content).hexdigest()
+        for report_view, content in rendered.items()
+    }
+    assert actual == expected, (
+        "rendered report HTML views differ from the independent oracle"
     )
-    decisions = SHARED_SCIENCE._normalize_decisions(context)
-    for dimension, expected in policy["decision_expected"].items():
-        assert decisions[dimension] == expected, dimension
-    assert SHARED_SCIENCE._normalize_limitations(context) == [
-        policy["limitation_expected"]
-    ]
-    for case in policy["computational_status_cases"]:
-        SHARED_SCIENCE._validate_computational_payload_status(
-            evidence_id=case["evidence_id"],
-            validation_scope=case["validation_scope"],
-            validation_status=case["validation_status"],
-            plan=case["plan"],
-        )
+    return rendered
 
 
 def test_representative_public_schema_contracts_match_literal_oracles() -> None:
@@ -218,7 +197,6 @@ def test_representative_public_headers_match_literal_ordered_oracles() -> None:
         ("build_artifact_index", "ARTIFACT_INDEX_HEADER"),
         ("build_run_summary", "RUN_SUMMARY_HEADER"),
         ("build_report", "RECEIPT_HEADER"),
-        ("step_09c_scientific_validation", "REVIEW_PLAN_HEADER"),
     ),
 )
 def test_mutated_named_header_constant_is_rejected(
@@ -247,17 +225,13 @@ def test_mutated_canonical_json_serialization_is_rejected() -> None:
         assert_canonical_json(mutated_serializer)
 
 
-def test_step09c_tsv_writer_matches_exact_independent_utf8_golden(
-    tmp_path: Path,
-) -> None:
+def test_artifact_tsv_writer_matches_exact_independent_utf8_golden() -> None:
     expected_path = GOLDENS / "small_table.tsv"
     with expected_path.open(encoding="utf-8", newline="") as stream:
         values = list(csv.reader(stream, delimiter="\t"))
     header = values[0]
     rows = [dict(zip(header, row, strict=True)) for row in values[1:]]
-    actual_path = tmp_path / "actual.tsv"
-    SCIENTIFIC_REVIEW_INTAKE.write_tsv(actual_path, header, rows)
-    assert actual_path.read_bytes() == expected_path.read_bytes()
+    assert ARTIFACT_INDEX_RECORDS.tsv_bytes(header, rows) == expected_path.read_bytes()
 
 
 def test_report_receipt_projection_matches_exact_independent_golden() -> None:
@@ -276,8 +250,16 @@ def test_mutated_report_receipt_serialization_is_rejected() -> None:
         assert_report_receipt(mutated_serializer)
 
 
-def test_report_html_matches_exact_independent_sha256_golden() -> None:
-    assert_report_html(load_json(GOLDENS / "report_html_input.json"))
+def test_report_html_views_match_exact_independent_sha256_goldens() -> None:
+    rendered = assert_report_html(load_json(GOLDENS / "report_html_input.json"))
+    scientific = rendered["scientific"]
+    evidence = rendered["evidence"]
+
+    assert scientific != evidence
+    assert b"computational-results-section" in scientific
+    assert b"computational-results-section" not in evidence
+    assert b"artifact-appendix-section" in evidence
+    assert b"artifact-appendix-section" not in scientific
 
 
 def test_mutated_report_html_input_is_rejected() -> None:
@@ -285,72 +267,3 @@ def test_mutated_report_html_input_is_rejected() -> None:
     mutated["metadata"]["run_summary_sha256"] = "d" * 64
     with pytest.raises(AssertionError, match="independent oracle"):
         assert_report_html(mutated)
-
-
-def test_scientific_status_constants_match_literal_oracle() -> None:
-    assert_status_constants()
-
-
-@pytest.mark.parametrize(
-    "constant_name",
-    (
-        "SCIENCE_STATUSES",
-        "RESERVED_SCIENCE_STATUS",
-        "EVIDENCE_STATUSES",
-        "RUNTIME_VALIDATION_STATUSES",
-        "CLUSTER_PROOF_STATUSES",
-    ),
-)
-def test_mutated_named_status_constant_is_rejected(
-    monkeypatch: pytest.MonkeyPatch,
-    constant_name: str,
-) -> None:
-    original = getattr(REVIEW_PACKAGE, constant_name)
-    mutated: Any
-    if isinstance(original, tuple):
-        mutated = (*original[:-1], "mutated_status")
-    else:
-        mutated = "mutated_status"
-    monkeypatch.setattr(REVIEW_PACKAGE, constant_name, mutated)
-    with pytest.raises(AssertionError, match=constant_name):
-        assert_status_constants()
-
-
-def test_evidence_status_aggregation_matches_literal_transition_cases() -> None:
-    contracts = load_json(GOLDENS / "scientific_state_contracts.json")
-    for case in contracts["aggregations"]:
-        actual = REVIEW_PACKAGE.aggregate_evidence_status(
-            case["rows"], case["category"]
-        )
-        assert actual == case["expected"], case["name"]
-
-
-def test_shared_science_policy_matches_independent_transition_oracle() -> None:
-    assert_shared_science_policy()
-
-
-def test_mutated_shared_decision_dimension_constant_is_rejected(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    original = REVIEW_PACKAGE.DECISION_DIMENSIONS
-    monkeypatch.setattr(
-        REVIEW_PACKAGE,
-        "DECISION_DIMENSIONS",
-        ("mutated_dimension", *original[1:]),
-    )
-    with pytest.raises((AssertionError, KeyError)):
-        assert_shared_science_policy()
-
-
-def test_mutated_computational_scope_policy_constant_is_rejected(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    mutated = dict(SHARED_SCIENCE.COMPUTATIONAL_SCOPE_PLAN_FIELDS)
-    mutated["local_fixture_tests"] = "cluster_proof_status"
-    monkeypatch.setattr(
-        SHARED_SCIENCE,
-        "COMPUTATIONAL_SCOPE_PLAN_FIELDS",
-        mutated,
-    )
-    with pytest.raises(SHARED_SCIENCE.RunSummaryScienceError):
-        assert_shared_science_policy()

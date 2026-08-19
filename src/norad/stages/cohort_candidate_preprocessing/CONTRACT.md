@@ -26,11 +26,22 @@ summary.
 
 ## Inputs and provisional policy
 
-Inputs are a safe cohort ID, ordered sample manifest, complete nonoverlapping
-partition manifest, Step `07` root, nonempty annotation GTF, output and QC
-roots, and explicit Rscript/R-program resolution. Required VCF definitions
-include FORMAT DP/AD/ADF/ADR/SP and INFO AD/ADF/ADR; sample columns must match
-the sample manifest exactly.
+Inputs are a safe cohort ID, an ordered paired local-CMH sample manifest,
+complete nonoverlapping partition manifest, Step `07` root, nonempty
+annotation GTF, output and QC roots, and explicit Rscript/R-program resolution.
+The sample header is exactly `sample_id, r1_fastq, r2_fastq, strandedness,
+condition, replicate`, with optional `notes` last. Required values are
+nonempty, sample and replicate IDs are safe, strandedness uses the closed
+vocabulary, and sample IDs are unique. Required VCF definitions include FORMAT
+DP/AD/ADF/ADR/SP and INFO AD/ADF/ADR; sample columns must match the sample
+manifest exactly.
+
+The optional positive `--threads` value defaults to `1` and bounds independent
+partition/orientation VCF workers. On Unix, worker results are returned in the
+declared manifest/orientation order before deterministic aggregation; Windows
+direct execution falls back to one worker. Annotation import/model construction,
+aggregate reconciliation, serialization, validation, and publication remain
+single-owner operations.
 
 The fixed `legacy_provisional_v1` compatibility policy maps:
 
@@ -80,12 +91,18 @@ input hash checks, prepublication validation, and rollback. It publishes sites,
 then summary, then the input receipt as the native commit marker, revalidates
 the visible set, verifies hashes and stable inputs, and only then marks the
 attempt committed.
+`--no-clobber` is the orchestration-safe policy: while holding the owner lock,
+it rejects a complete predecessor set without invoking R or changing stable
+outputs. Direct invocations retain complete-set replacement unless the flag is
+supplied.
+First publication in that mode is create-exclusive and retains all three
+staging inode anchors through validation; ambiguous replacement preserves the
+owner lock and residue.
 
 The receipt is therefore visible briefly before final post-publication checks;
 presence alone is not independent proof that the producer returned success.
-Failed restore moves preserve remaining backups, but no recovery marker or
-automated recovery interface exists, and cleanup releases the cohort lock even
-when restoration is incomplete.
+Failed restore moves preserve remaining backups and retain the cohort lock for
+operator recovery. No automated recovery interface exists.
 
 [`step_08_vcf_preprocessing.R`](step_08_vcf_preprocessing.R)
 owns semantic parsing, candidate construction, provisional orientation policy,
@@ -101,8 +118,11 @@ diagnostics; they do not override private modules independently, so a
 replacement owns its complete implementation and dependency behavior.
 
 [`step_08_vcf_preprocessing.slurm`](step_08_vcf_preprocessing.slurm)
-owns cluster defaults, modules and optional repository-local R environment,
-execution gating, delegation, and final path checks.
+requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving its repository-owned helper, producer, or optional repository-local R
+environment, so SLURM's spool copy is never checkout authority. It owns
+explicit dataset/runtime binding, module-state logging, execution gating,
+delegation, and final path checks.
 
 ## Validation interface
 
@@ -123,6 +143,7 @@ Exact checks are:
 The validator enforces exact dynamic headers, complete ordered
 partition/orientation rows, manifest and annotation identities, typed
 per-input arithmetic, unique candidate IDs, sample DP/AD/AF consistency,
+lexically valid carried annotation identifiers and independent overlap flags,
 per-scope candidate counts, and aggregate summary reconciliation. It validates
 the published tables' internal contract; it does not rerun VariantAnnotation,
 GTF overlap, allele expansion, provisional complementation, or upstream VCF
@@ -141,8 +162,6 @@ peer-stage implementation dependencies are not supported interfaces.
 - Step `09` requires exact Step `08` sites and input receipt paths, hashes and
   schemas, preserves the entire candidate order/universe in its all-sites
   output, and carries the provisional policy forward.
-- Step `09c` scientific review later requires all three Step `08` outputs; this
-  additional review dependency is not part of Step `09` computation.
 - Artifact adapters register all three outputs and
   `step08_validation_report_v1`; reporting consumes registered evidence
   without rerunning R.
@@ -161,11 +180,10 @@ production, cluster, scientific-review, or biological evidence.
   [`step08.py`](../../contracts/scientific_evidence/step08.py). The validator
   imports that package module, as do neutral
   [`step09.py`](../../contracts/scientific_evidence/step09.py), the Step `09`
-  validator, Step `09c` implementation, and artifact index, preserving one
+  validator, and artifact index, preserving one
   `ContractError` and `Table` identity.
-- The producer declares the input receipt as its commit marker, while the
-  artifact adapter treats the summary as the native-transaction failure
-  marker; ownership must resolve this disagreement.
+- The producer and artifact adapter both treat the input receipt as the native
+  transaction marker.
 - Receipt and candidate checks remain duplicated across shell, R, Python,
   Step `09`, and artifact adapters. Shared report publication remains in
   neutral [`validation/report.py`](../../libraries/validation/report.py),
@@ -174,9 +192,8 @@ production, cluster, scientific-review, or biological evidence.
   [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
   argument → `RSCRIPT_BIN_OVERRIDE` → PATH precedence, checks, and commands
   remain owned here.
-- Producer and validator disagree on the required breadth of sample-manifest
-  columns, and the validator does not reopen the upstream Step `07` files to
-  recompute their declared hashes.
+- The validator does not reopen the upstream Step `07` files to recompute
+  their declared hashes.
 - The producer preserves the supplied annotation path spelling, while the
   validator compares it with a resolved absolute path; equivalent relative
   paths can therefore yield failed annotation-identity evidence.

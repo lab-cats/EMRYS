@@ -24,6 +24,7 @@ Usage:
     [--background-max-fraction 0.01] \
     [--rscript-bin RSCRIPT_BIN] \
     [--r-script R_SCRIPT] \
+    [--no-clobber] \
     [--execute]
 
 The sample manifest is the only pairing source. It must contain sample_id,
@@ -32,6 +33,9 @@ one treatment sample, both conditions must have identical replicate sets, and
 at least two strata are required. Pairing is never inferred from sample names.
 
 Dry-run is the default and writes nothing.
+Use --no-clobber for orchestration so an existing complete six-file result is
+never replaced implicitly. Direct executions retain replacement behavior unless
+that flag is supplied.
 USAGE
 }
 

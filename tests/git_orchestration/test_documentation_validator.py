@@ -26,13 +26,15 @@ JIT_SECTIONS = (
 )
 CANONICAL_H1S = {
     "AGENTS.md": "# NORAD safety guard",
-    "README.md": "# NORAD: CSU HPC RNA-seq and RNA-editing workflow",
+    "README.md": "# NORAD: evidence-bound RNA-seq candidate workflow",
     "docs/architecture/README.md": "# Architecture index",
     "docs/architecture/ARCHITECTURE.md": "# Current architecture",
     "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": "# Current functional-owner inventory",
     "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
     "docs/design/DECISIONS.md": "# Durable decisions",
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
+    "docs/design/ORCHESTRATION_CONTRACT.md": "# Local-pilot orchestration contract",
+    "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
     "docs/design/PIPELINE_PLAN.md": "# NORAD pipeline plan",
     "docs/design/QUESTIONS.md": "# Open questions",
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
@@ -56,21 +58,21 @@ SEMANTIC_OWNERS = (
     ("stage", "generate_partitioned_cohort_mpileup_VCFs"),
     ("stage", "preprocess_and_annotate_cohort_candidates"),
     ("analysis", "rank_cohort_candidates_with_paired_CMH"),
+    ("analysis", "project_candidate_scientific_context"),
     ("evidence", "collect_canonical_BAM_QC_evidence"),
     ("evidence", "collect_RSeQC_paired_orientation_evidence"),
-    ("evidence", "assemble_scientific_review_evidence_package"),
 )
 SOURCE_OWNER_DIRECTORIES = {
     (
         "analysis",
         "rank_cohort_candidates_with_paired_CMH",
     ): "paired_cmh_candidate_ranking",
+    (
+        "analysis",
+        "project_candidate_scientific_context",
+    ): "scientific_context_projection",
     ("evidence", "collect_canonical_BAM_QC_evidence"): "canonical_bam_qc",
     ("evidence", "collect_RSeQC_paired_orientation_evidence"): "rseqc_orientation",
-    (
-        "evidence",
-        "assemble_scientific_review_evidence_package",
-    ): "scientific_review_package",
     ("stage", "align_RNA_reads_with_STAR"): "star_alignment",
     ("stage", "construct_canonical_BAM"): "canonical_bam",
     ("stage", "construct_STAR_index"): "star_index",

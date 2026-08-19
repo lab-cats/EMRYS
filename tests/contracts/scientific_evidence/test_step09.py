@@ -15,7 +15,7 @@ from types import ModuleType, SimpleNamespace
 import pytest
 from norad.contracts.scientific_evidence import step08 as STEP08
 from norad.contracts.scientific_evidence import step09 as STEP09
-from tests.evidence.scientific_review_package import build_fixture as FIXTURES
+from tests import scientific_evidence_test_support as FIXTURES
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -174,6 +174,20 @@ def validate_summary(
     )
 
 
+def validate_projection(
+    valid: SimpleNamespace,
+    *,
+    mutation_spectrum: bool = False,
+):
+    return STEP09.validate_step09_projection(
+        valid.all_sites_path,
+        valid.significant_path,
+        valid.summary_path,
+        valid.analysis_id,
+        mutation_spectrum=valid.mutation_path if mutation_spectrum else None,
+    )
+
+
 def test_public_api_fingerprint_matches_pre_extraction_oracle() -> None:
     payload = public_fingerprint(STEP09)
 
@@ -199,6 +213,7 @@ def test_declared_public_api_matches_supported_owner_surface() -> None:
         "count_status",
         "paired_samples",
         "resolve_recorded_path",
+        "validate_step09_projection",
         "validate_step09_results",
         "validate_step09_summary",
         "validate_step09_result_semantics",
@@ -209,6 +224,149 @@ def test_declared_public_api_matches_supported_owner_surface() -> None:
 
     assert set(STEP09.__all__) == expected
     assert all(hasattr(STEP09, name) for name in STEP09.__all__)
+
+
+@pytest.mark.parametrize(
+    ("guard_materialization", "mutation_spectrum"),
+    ((False, False), (True, False), (False, True)),
+)
+def test_projection_streams_and_admits_the_intrinsic_result_set(
+    valid: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    guard_materialization: bool,
+    mutation_spectrum: bool,
+) -> None:
+    original_read_tsv = STEP09.read_tsv
+    candidate_paths = {
+        valid.all_sites_path.resolve(),
+        valid.significant_path.resolve(),
+    }
+
+    def bounded_read_tsv(
+        label: str,
+        value: str | Path,
+        expected_header: tuple[str, ...] | None = None,
+    ):
+        if Path(value).expanduser().resolve() in candidate_paths:
+            pytest.fail(f"candidate table was materialized by read_tsv: {label}")
+        return original_read_tsv(label, value, expected_header)
+
+    if guard_materialization:
+        monkeypatch.setattr(STEP09, "read_tsv", bounded_read_tsv)
+    all_table, significant_table, summary_table, sample_ids = validate_projection(
+        valid, mutation_spectrum=mutation_spectrum
+    )
+
+    assert all_table.path == valid.all_sites_path.resolve()
+    assert significant_table.path == valid.significant_path.resolve()
+    assert summary_table.path == valid.summary_path.resolve()
+    assert sample_ids == tuple(valid.sample_ids)
+    assert all_table.row_count == 6
+    assert significant_table.row_count == 2
+    assert all_table.header == significant_table.header
+    assert not hasattr(all_table, "rows")
+    assert not hasattr(significant_table, "rows")
+    assert len(summary_table.rows) == 1
+
+
+def test_projection_rejects_pairwise_mutation_spectrum_corruption(
+    valid: SimpleNamespace,
+) -> None:
+    header, rows = read_tsv(valid.mutation_path)
+    rows[0]["candidate_count"] = str(int(rows[0]["candidate_count"]) + 1)
+    write_tsv(valid.mutation_path, header, rows)
+
+    with pytest.raises(
+        STEP09.ContractError, match="candidate_count does not reconcile"
+    ):
+        validate_projection(valid, mutation_spectrum=True)
+
+
+def test_projection_rejects_aggregate_mutation_spectrum_corruption(
+    valid: SimpleNamespace,
+) -> None:
+    all_header, all_rows = read_tsv(valid.all_sites_path)
+    all_rows[2]["rna_alt"] = all_rows[2]["rna_ref"]
+    write_tsv(valid.all_sites_path, all_header, all_rows)
+
+    mutation_header, mutation_rows = read_tsv(valid.mutation_path)
+    mutation_row = next(row for row in mutation_rows if row["mutation_type"] == "C>T")
+    mutation_row.update(candidate_count="0", candidate_fraction="0")
+    write_tsv(valid.mutation_path, mutation_header, mutation_rows)
+
+    with pytest.raises(
+        STEP09.ContractError,
+        match="aggregate candidate_count does not reconcile",
+    ):
+        validate_projection(valid, mutation_spectrum=True)
+
+
+@pytest.mark.parametrize(
+    ("source", "column", "value", "expected"),
+    (
+        ("all", "analysis_id", "other", "wrong analysis_id"),
+        ("all", "test_status", "unknown", "must be one of"),
+        ("all", "replicate_count", "01", "non-negative integer"),
+        ("all", "annotation_strand", ".", "annotation_strand must be one of"),
+        ("all", "is_intron", "true", "is_intron must be one of TRUE, FALSE"),
+        ("all", "transcript_ids", "tx1; tx2", "semicolon-delimited list"),
+        ("all", "DP__FIRST", "NA", "one-sided DP/AD missingness"),
+        ("all", "AD__FIRST", "101", "AD greater than DP"),
+        ("all", "cmh_degrees_freedom", "2", "one CMH degree of freedom"),
+        ("all", "cmh_p_value", "NA", "lacks complete CMH statistics"),
+        ("summary", "multiple_testing_method", "BY", "approved CMH contract"),
+        ("summary", "fdr_threshold", "not-a-number", "must be numeric"),
+        ("summary", "candidate_count", "999", "candidate_count disagrees"),
+        (
+            "summary",
+            "target_candidate_count",
+            "999",
+            "target_candidate_count disagrees",
+        ),
+        ("summary", "control_condition", "OTHER", "control_condition disagrees"),
+    ),
+)
+def test_projection_rejects_intrinsic_mutations(
+    valid: SimpleNamespace,
+    source: str,
+    column: str,
+    value: str,
+    expected: str,
+) -> None:
+    if column.endswith("__FIRST"):
+        column = f"{column.removesuffix('__FIRST')}__{valid.sample_ids[0]}"
+    path = valid.summary_path if source == "summary" else valid.all_sites_path
+    replace_cell(path, 0, column, value)
+
+    with pytest.raises(STEP09.ContractError, match=expected):
+        validate_projection(valid)
+
+
+def test_projection_rejects_header_duplicates_and_subset_drift(
+    valid: SimpleNamespace,
+) -> None:
+    header, rows = read_tsv(valid.all_sites_path)
+    write_tsv(valid.all_sites_path, header, [rows[0], rows[0], *rows[2:]])
+    with pytest.raises(STEP09.ContractError, match="duplicate candidate_id"):
+        validate_projection(valid)
+
+    write_tsv(valid.all_sites_path, header, rows)
+    significant_header, significant_rows = read_tsv(valid.significant_path)
+    significant_rows[0]["qual"] = "61"
+    write_tsv(valid.significant_path, significant_header, significant_rows)
+    with pytest.raises(STEP09.ContractError, match="exact ordered"):
+        validate_projection(valid)
+
+    significant_rows[0]["qual"] = rows[0]["qual"]
+    write_tsv(valid.significant_path, significant_header, significant_rows)
+    bad_header = (*header[:-1], "AF__BROKEN")
+    bad_rows = [
+        {new: row.get(old, "NA") for new, old in zip(bad_header, header, strict=True)}
+        for row in rows
+    ]
+    write_tsv(valid.all_sites_path, bad_header, bad_rows)
+    with pytest.raises(STEP09.ContractError, match="invalid AF__ sample block"):
+        validate_projection(valid)
 
 
 def test_valid_fixture_passes_every_public_validator_with_exact_results(
@@ -351,6 +509,11 @@ def test_summary_contract_rejects_row_count_and_result_context(
     with pytest.raises(STEP09.ContractError, match="control_condition differs"):
         validate_summary(valid, changed)
 
+    changed = copy.deepcopy(all_rows)
+    changed[0]["orientation_policy"] = "other"
+    with pytest.raises(STEP09.ContractError, match="inconsistent orientation policy"):
+        validate_summary(valid, changed)
+
 
 def test_semantic_contract_rejects_core_state_mutations(valid: SimpleNamespace) -> None:
     all_rows = validate_results(valid).rows
@@ -385,8 +548,60 @@ def test_semantic_contract_rejects_core_state_mutations(valid: SimpleNamespace) 
         "depth metrics",
     )
     rejected(
+        lambda rows, _summary: rows[0].update(mean_control_af="0.9"),
+        "AF/delta metrics",
+    )
+    rejected(
+        lambda rows, _summary: rows[3].update(
+            {
+                f"DP__{valid.sample_ids[0]}": "NA",
+                f"AD__{valid.sample_ids[0]}": "NA",
+                "min_analysis_dp": "1",
+            }
+        ),
+        "must be NA when analysis counts are missing",
+    )
+    rejected(
+        lambda rows, _summary: rows[3].update(
+            {
+                **{
+                    f"{prefix}__{sample_id}": "0"
+                    for prefix in ("DP", "AD")
+                    for sample_id in valid.sample_ids
+                },
+                "min_analysis_dp": "0",
+                "mean_analysis_dp": "0",
+                "mean_control_af": "0",
+            }
+        ),
+        "must be NA with zero analysis depth",
+    )
+    rejected(
+        lambda rows, _summary: rows[0].update(
+            {
+                "test_status": "low_coverage",
+                "call_status": "not_tested",
+                **{
+                    column: "NA"
+                    for column in (
+                        "cmh_statistic",
+                        "cmh_degrees_freedom",
+                        "cmh_p_value",
+                        "cmh_fdr_bh",
+                        "common_odds_ratio",
+                    )
+                },
+            }
+        ),
+        "test_status conflicts",
+    )
+    rejected(
         lambda rows, _summary: rows[2].update(call_status="effect_not_met"),
         "untested Step 09 candidate",
+    )
+    rejected(
+        lambda rows, _summary: rows[2].update(cmh_p_value="0.5"),
+        "must use cmh_p_value=NA",
     )
     rejected(
         lambda rows, _summary: rows[0].update(call_status="not_tested"),
@@ -408,6 +623,21 @@ def test_semantic_contract_rejects_core_state_mutations(valid: SimpleNamespace) 
         lambda _rows, summary_row: summary_row.update(fdr_threshold="0"),
         "thresholds are outside",
     )
+
+
+def test_semantic_contract_rejects_enabled_background_without_samples(
+    valid: SimpleNamespace,
+) -> None:
+    rows = validate_results(valid).rows
+    summary = dict(validate_summary(valid, rows).rows[0])
+    summary["background_condition"] = "BACKGROUND"
+
+    with pytest.raises(STEP09.ContractError, match="enabled background has zero depth"):
+        STEP09.validate_step09_result_semantics(
+            rows,
+            summary,
+            valid.sample_rows,
+        )
 
 
 def test_semantic_contract_accepts_missing_counts_and_strict_threshold_edges(

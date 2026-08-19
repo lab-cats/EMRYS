@@ -47,16 +47,47 @@ set_exit_trap() {
 }
 
 remove_owned_lock() {
+    local owner="run_token=$run_token"
+    local unexpected
+
     if [[ "${lock_acquired:-false}" != true ]]; then
         return
     fi
 
     if [[ -f "$lock_owner_file" ]] &&
-       [[ "$(cat "$lock_owner_file")" == "run_token=$run_token" ]]; then
-        rm -f "$lock_owner_file"
-        rmdir "$lock_path" 2>/dev/null || true
+       [[ "$(cat "$lock_owner_file")" == "$owner" ]]; then
+        unexpected="$(
+            find "$lock_path" -mindepth 1 -maxdepth 1 \
+                ! -path "$lock_owner_file" -print -quit
+        )" || {
+            printf 'ERROR: Could not inspect owned lock directory: %s\n' \
+                "$lock_path" >&2
+            return 1
+        }
+        if [[ -n "$unexpected" ]]; then
+            printf 'ERROR: Owned lock contains unexpected residue; preserving it: %s\n' \
+                "$unexpected" >&2
+            return 1
+        fi
+        if ! rm -f "$lock_owner_file"; then
+            printf 'ERROR: Could not remove owned lock metadata: %s\n' \
+                "$lock_owner_file" >&2
+            return 1
+        fi
+        if ! rmdir "$lock_path" 2>/dev/null; then
+            if [[ ! -e "$lock_owner_file" && -d "$lock_path" ]]; then
+                (set -o noclobber; printf '%s\n' "$owner" > "$lock_owner_file") \
+                    2>/dev/null || true
+            fi
+            printf 'ERROR: Could not remove owned lock directory; preserving residue: %s\n' \
+                "$lock_path" >&2
+            return 1
+        fi
         lock_acquired=false
+        return 0
     fi
+    printf 'ERROR: Could not prove lock ownership for removal: %s\n' "$lock_path" >&2
+    return 1
 }
 
 __norad_run_exit_trap() {

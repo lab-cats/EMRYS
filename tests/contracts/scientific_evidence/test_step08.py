@@ -202,12 +202,14 @@ def public_fingerprint(module) -> bytes:
         "STEP08_METADATA_HEADER",
         "STEP08_INPUTS_HEADER",
         "STEP08_SUMMARY_HEADER",
+        "STEP08_LOCATION_FLAG_FIELDS",
     ]
     functions = [
         "validate_safe_id",
         "sha256_file",
         "validate_sample_manifest",
         "validate_partition_manifest",
+        "validate_step08_carried_location",
         "validate_step08_inputs",
         "validate_step08_sites",
         "validate_step08_summary",
@@ -226,9 +228,9 @@ def public_fingerprint(module) -> bytes:
 def test_public_api_fingerprint_matches_pre_extraction_oracle() -> None:
     payload = public_fingerprint(STEP08)
 
-    assert len(payload) == 3316
+    assert len(payload) == 3560
     assert hashlib.sha256(payload).hexdigest() == (
-        "8824d7b30f3c45dddcb475d21d4382ac52de2520031cdd89bab107fb2edc2bf1"
+        "bf115a84d31b5c8843f6c42bdab5965fa399e16e77df920c22336ad78b4072af"
     )
     assert STEP08.ContractError.__mro__[:2] == (
         STEP08.ContractError,
@@ -247,6 +249,7 @@ def test_declared_public_api_matches_supported_owner_surface() -> None:
         "STEP08_INPUTS_HEADER",
         "STEP08_SUMMARY_HEADER",
         "STEP08_PARTITION_COUNT_FIELDS",
+        "STEP08_LOCATION_FLAG_FIELDS",
         "SAMPLE_MANIFEST_REQUIRED",
         "SAMPLE_MANIFEST_ALLOWED",
         "PARTITION_MANIFEST_HEADER",
@@ -263,8 +266,11 @@ def test_declared_public_api_matches_supported_owner_surface() -> None:
         "validate_enum",
         "validate_hash",
         "validate_sample_manifest",
+        "validate_sample_manifest_bytes",
         "validate_partition_manifest",
+        "validate_partition_manifest_bytes",
         "validate_safe_id",
+        "validate_step08_carried_location",
         "validate_step08_inputs",
         "validate_step08_sites",
         "validate_step08_summary",
@@ -327,6 +333,44 @@ def test_optional_manifest_and_allowed_vocabularies(tmp_path: Path) -> None:
         STEP08.validate_sample_manifest(fixture.sample_manifest)
     replace_cell(fixture.partition_manifest, 0, "selector_type", "regions_file")
     STEP08.validate_partition_manifest(fixture.partition_manifest)
+
+
+def test_manifest_byte_apis_validate_exact_bytes_without_reopening_source(
+    tmp_path: Path,
+) -> None:
+    fixture = build_valid(tmp_path)
+    sample_bytes = fixture.sample_manifest.read_bytes()
+    partition_bytes = fixture.partition_manifest.read_bytes()
+    fixture.sample_manifest.unlink()
+    fixture.partition_manifest.write_bytes(b"not\ta\tpartition\n")
+
+    sample_table, sample_ids, rows = STEP08.validate_sample_manifest_bytes(
+        sample_bytes,
+        fixture.sample_manifest,
+    )
+    partition_table = STEP08.validate_partition_manifest_bytes(
+        partition_bytes,
+        fixture.partition_manifest,
+    )
+
+    assert sample_table.path == fixture.sample_manifest
+    assert sample_ids == ["S"]
+    assert rows == sample_table.rows
+    assert partition_table.path == fixture.partition_manifest
+    assert partition_table.rows == [
+        {
+            "partition_id": "p1",
+            "selector_type": "region",
+            "selector_value": "1",
+        }
+    ]
+
+
+def test_manifest_byte_apis_preserve_strict_utf8_diagnostics(tmp_path: Path) -> None:
+    source = tmp_path / "admitted.tsv"
+
+    with pytest.raises(STEP08.ContractError, match="Could not read Sample manifest"):
+        STEP08.validate_sample_manifest_bytes(b"\xff", source)
 
 
 def test_private_parsing_closure_preserves_exact_edges(tmp_path: Path) -> None:
@@ -400,7 +444,7 @@ def test_private_parsing_closure_preserves_exact_edges(tmp_path: Path) -> None:
     (
         (
             "sample_bad_header",
-            "Sample manifest must have the exact Step 09 schema, with optional notes as the final column.",
+            "Sample manifest must have the exact paired local-CMH schema, with optional notes as the final column.",
         ),
         ("sample_empty", "Sample manifest contains no sample rows."),
         ("sample_duplicate", "Sample manifest contains duplicate sample_id: S"),
@@ -459,6 +503,10 @@ def test_private_parsing_closure_preserves_exact_edges(tmp_path: Path) -> None:
             "sites_policy",
             "Step 08 sites table orientation policy differs from its receipt.",
         ),
+        ("sites_bad_annotation_strand", "annotation_strand must be one of +, -"),
+        ("sites_bad_location_flag", "is_cds must be one of TRUE, FALSE"),
+        ("sites_bad_location_ids", "gene_ids must be NA or a semicolon-delimited"),
+        ("sites_duplicate_location_ids", "gene_ids contains a duplicate identifier"),
         ("sites_bad_position", "must be a non-negative integer; got: -1"),
         ("sites_alt_zero", "Step 08 alt_index must be at least 1."),
         ("sites_one_sided", "has one-sided DP/AD missingness"),
@@ -572,6 +620,14 @@ def test_exact_rejection_contract(case: str, expected: str, tmp_path: Path) -> N
             replace_cell(target, 0, "orientation", "SIDE")
         elif case == "sites_policy":
             replace_cell(target, 0, "orientation_policy", "other")
+        elif case == "sites_bad_annotation_strand":
+            replace_cell(target, 0, "annotation_strand", ".")
+        elif case == "sites_bad_location_flag":
+            replace_cell(target, 0, "is_cds", "true")
+        elif case == "sites_bad_location_ids":
+            replace_cell(target, 0, "gene_ids", "gene; other")
+        elif case == "sites_duplicate_location_ids":
+            replace_cell(target, 0, "gene_ids", "gene;gene")
         elif case == "sites_bad_position":
             replace_cell(target, 0, "position", "-1")
         elif case == "sites_alt_zero":

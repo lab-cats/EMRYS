@@ -1,7 +1,7 @@
 # Artifact-contract owner
 
 The installed `python -I -m norad validate artifact-contracts` route validates
-the closed artifact, scientific-review, run-summary, and report-receipt schemas.
+the closed artifact, run-summary, and report-receipt schemas.
 It does not discover artifacts, build indexes, render reports, repair inputs,
 or promote evidence. The route is coordinated by private
 [`validator.py`](validator.py), with responsibility modules under
@@ -31,8 +31,8 @@ python -I -m norad validate artifact-contracts \
   --inventory /explicit/path/to/artifact_inventory.tsv
 ```
 
-Supported selectors are `artifact-record`, `scientific-review-record`,
-`run-summary`, and `report-receipt`. Direct protection is:
+Supported selectors are `artifact-record`, `run-summary`, and
+`report-receipt`. Direct protection is:
 
 ```sh
 .venv/bin/python -m pytest -q \
@@ -41,10 +41,14 @@ Supported selectors are `artifact-record`, `scientific-review-record`,
 
 ## Schema packaging boundary
 
-The closed registry spans the [version `1`](../schemas/artifacts/v1/) and
-[version `2`](../schemas/artifacts/v2/) directories. Version `1` owns the
-shared `common` resource plus the artifact-record, scientific-review-record,
-and run-summary schemas; version `2` owns the active report-receipt schema.
+Packaged resources span [version `1`](../schemas/artifacts/v1/),
+[version `2`](../schemas/artifacts/v2/),
+[version `3`](../schemas/artifacts/v3/), and
+[version `4`](../schemas/artifacts/v4/). Version `1` owns the shared `common`
+resource, version `2` owns the active artifact-record and run-summary schemas,
+version `3` retains the frozen historical single-HTML receipt, and version `4`
+owns the active three-output report-receipt schema. The closed active registry
+does not alias or migrate v3 receipts.
 Each registered public `$id` remains one packaged file. Large record schemas
 use local `$defs` to organize one document identity. Those definitions are not
 split into extra files merely to reduce line count: doing so would add registry

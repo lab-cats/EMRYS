@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import argparse
+import os
 import re
+import secrets
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -16,6 +18,22 @@ DESCRIPTION = (
 )
 
 WarningHandler = Callable[[str], None]
+PathAction = Callable[[Path], None]
+LinkAction = Callable[[Path, Path], None]
+
+
+def _no_publication_hook(_staged: Path, _output: Path) -> None:
+    """Default no-op hook for the explicit owner-local fault boundary."""
+
+
+@dataclass(frozen=True, slots=True)
+class PublicationOperations:
+    """Explicit filesystem dependencies for BED12 publication tests."""
+
+    token_factory: Callable[[], str] = lambda: secrets.token_hex(16)
+    link: LinkAction = os.link
+    after_stage_write: LinkAction = _no_publication_hook
+    unlink: PathAction = Path.unlink
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +134,18 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
         "--gene-attribute",
         default="gene_id",
         help="GTF attribute used as the gene name. Defaults to gene_id.",
+    )
+    parser.add_argument(
+        "--run-token",
+        help=(
+            "Explicit safe publication token supplied by an orchestrator. "
+            "Defaults to a private random token."
+        ),
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Publish the BED12 output. Without this flag, plan only.",
     )
 
 
@@ -342,20 +372,164 @@ def normalize_gtf(
     return _project_bed_records(transcripts, on_warning)
 
 
-def write_bed(records: Sequence[BedRecord], bed_path: Path) -> None:
+def render_bed(records: Sequence[BedRecord]) -> bytes:
+    """Render deterministic BED12 bytes before publication starts."""
+    return "".join(f"{record.to_line()}\n" for record in records).encode("utf-8")
+
+
+def _publication_paths(bed_path: Path, token: str) -> tuple[Path, Path]:
+    parent = bed_path.parent
+    lock_path = parent / f".{bed_path.name}.step00b.lock"
+    staged_path = parent / f".{bed_path.name}.step00b.{token}.tmp"
+    return lock_path, staged_path
+
+
+def _validate_publication_token(token: str) -> str:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", token):
+        raise ValueError(f"Unsafe Step 00b publication token: {token}")
+    return token
+
+
+def _residue_paths(bed_path: Path) -> tuple[Path, ...]:
+    if not bed_path.parent.is_dir():
+        return ()
+    return tuple(sorted(bed_path.parent.glob(f".{bed_path.name}.step00b.*.tmp")))
+
+
+def require_publishable_output(bed_path: Path) -> None:
+    """Reject outputs or owner residue that make a new publish ambiguous."""
+    lock_path, _ = _publication_paths(bed_path, "unused")
+    if bed_path.exists() or bed_path.is_symlink():
+        raise FileExistsError(f"BED12 output already exists; refusing to replace: {bed_path}")
+    if lock_path.exists() or lock_path.is_symlink():
+        raise FileExistsError(f"Step 00b publication lock already exists: {lock_path}")
+    residue = _residue_paths(bed_path)
+    if residue:
+        raise FileExistsError(
+            "Step 00b staging residue requires inspection: "
+            + ", ".join(str(path) for path in residue)
+        )
+
+
+def _is_owned_published_file(staged_path: Path, bed_path: Path) -> bool:
+    """Return whether both paths are regular links to the same staged inode."""
+    try:
+        return (
+            staged_path.is_file()
+            and not staged_path.is_symlink()
+            and bed_path.is_file()
+            and not bed_path.is_symlink()
+            and staged_path.samefile(bed_path)
+        )
+    except OSError:
+        return False
+
+
+def publish_bed(
+    payload: bytes,
+    bed_path: Path,
+    *,
+    run_token: str | None = None,
+    operations: PublicationOperations | None = None,
+) -> None:
+    """Publish complete BED12 bytes atomically without replacing a predecessor."""
+    operations = operations or PublicationOperations()
+    token = _validate_publication_token(run_token) if run_token is not None else None
+    require_publishable_output(bed_path)
     bed_path.parent.mkdir(parents=True, exist_ok=True)
-    with bed_path.open("w", encoding="utf-8") as handle:
-        for record in records:
-            handle.write(f"{record.to_line()}\n")
+    require_publishable_output(bed_path)
+    if token is None:
+        token = _validate_publication_token(operations.token_factory())
+
+    lock_path, staged_path = _publication_paths(bed_path, token)
+    lock_owned = False
+    staged_written = False
+    output_linked = False
+    publication_attempted = False
+    cleanup_started = False
+
+    try:
+        with lock_path.open("xb") as lock:
+            lock.write(f"run_token={token}\n".encode("utf-8"))
+            lock.flush()
+            os.fsync(lock.fileno())
+        lock_owned = True
+
+        with staged_path.open("xb") as staged:
+            staged.write(payload)
+            staged.flush()
+            os.fsync(staged.fileno())
+        staged_written = True
+
+        # Tests inject failures here directly; production supplies a no-op.
+        # BaseException intentionally leaves lock and staging residue, matching
+        # an unhandled process interruption that orchestration must block on.
+        operations.after_stage_write(staged_path, bed_path)
+
+        publication_attempted = True
+        operations.link(staged_path, bed_path)
+        output_linked = True
+        if not _is_owned_published_file(staged_path, bed_path):
+            raise OSError(
+                "Step 00b published output no longer matches its staging anchor: "
+                f"{bed_path}"
+            )
+
+        # Keep the staged inode anchor until lock cleanup has succeeded. If
+        # either cleanup action fails, rollback can remove the final only while
+        # that path still names this invocation's staged inode.
+        cleanup_started = True
+        operations.unlink(lock_path)
+        lock_owned = False
+        operations.unlink(staged_path)
+        staged_written = False
+    except Exception:
+        rollback_ok = True
+        if publication_attempted:
+            if _is_owned_published_file(staged_path, bed_path):
+                try:
+                    operations.unlink(bed_path)
+                    output_linked = False
+                except OSError:
+                    rollback_ok = False
+            elif output_linked or bed_path.exists() or bed_path.is_symlink():
+                # A missing anchor or different final inode makes deletion
+                # unsafe. Preserve final, staging, and any remaining lock.
+                rollback_ok = False
+
+        # A cleanup failure is itself recovery evidence. Do not erase its
+        # remaining staging/lock paths even after an owned final was rolled
+        # back; the next invocation must stop for operator inspection.
+        if staged_written and rollback_ok and not cleanup_started:
+            try:
+                operations.unlink(staged_path)
+                staged_written = False
+            except OSError:
+                rollback_ok = False
+        if lock_owned and rollback_ok and not cleanup_started:
+            try:
+                if lock_path.read_text(encoding="utf-8") == f"run_token={token}\n":
+                    operations.unlink(lock_path)
+                    lock_owned = False
+            except OSError:
+                pass
+        raise
 
 
 def _stderr_warning(message: str) -> None:
     print(f"WARNING: {message}", file=sys.stderr)
 
 
-def convert_from_args(arguments: argparse.Namespace) -> int:
+def convert_from_args(
+    arguments: argparse.Namespace,
+    *,
+    publication_operations: PublicationOperations | None = None,
+) -> int:
     """Convert and report one parsed GTF-to-BED12 request."""
     try:
+        run_token = getattr(arguments, "run_token", None)
+        if run_token is not None:
+            _validate_publication_token(run_token)
         records = normalize_gtf(
             arguments.gtf,
             arguments.feature,
@@ -366,8 +540,36 @@ def convert_from_args(arguments: argparse.Namespace) -> int:
         if not records:
             print("ERROR: no transcripts were written.", file=sys.stderr)
             return 1
-        write_bed(records, arguments.bed)
-    except OSError as exc:
+        payload = render_bed(records)
+        require_publishable_output(arguments.bed)
+
+        print("GTF to BED12 context")
+        print(f"  Source GTF: {arguments.gtf}")
+        print(f"  Output BED12: {arguments.bed}")
+        print(f"  Transcript records: {len(records)}")
+        print(f"  Mode: {'execute' if arguments.execute else 'dry-run'}")
+        print(
+            "  Run token: "
+            + (run_token if run_token is not None else "private random at publication")
+        )
+        print("Publication plan:")
+        print("  1. Render complete deterministic BED12 bytes in memory.")
+        print("  2. Acquire the create-exclusive owner lock.")
+        print("  3. Write and fsync one owner-token staging file.")
+        print("  4. Link the complete staging file to the absent final path.")
+        print("  5. Remove owned staging and lock files after publication.")
+
+        if not arguments.execute:
+            print("Dry-run only. Add --execute to publish the BED12 output.")
+            return 0
+
+        publish_bed(
+            payload,
+            arguments.bed,
+            run_token=run_token,
+            operations=publication_operations,
+        )
+    except (OSError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 

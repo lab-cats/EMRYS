@@ -1,4 +1,4 @@
-"""Deterministic report-summary and v2 receipt projection."""
+"""Deterministic report-summary and v4 receipt projection."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from norad.contracts.artifacts import api as contracts
 from .inputs import _assert_snapshot, _fail, _snapshot_regular
 from .models import (
     CSS_RESOURCE,
+    INTERPRETATION_BOUNDARY,
     JINJA_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
@@ -47,7 +48,7 @@ def summary_tsv_bytes(context: ReportContext) -> bytes:
         rows.append(
             (
                 summary["run_id"],
-                summary["science_status"],
+                summary["interpretation_boundary"],
                 scope["step_id"],
                 scope["scope_type"],
                 scope["scope_id"],
@@ -78,22 +79,24 @@ def validate_summary_tsv(path: Path, context: ReportContext) -> None:
 
 
 def _truncations(context: ReportContext) -> list[dict[str, Any]]:
-    return [
+    computational_tables = (
+        context.computational_results.tables
+        if context.computational_results is not None
+        else ()
+    )
+    computational = [
         {
             "table_id": table.table_id,
-            "report_section": (
-                "cmh-ranked-candidates"
-                if table.role in {"candidate_selection", "candidate_adjudication"}
-                else table.role.replace("_", "-")
-            ),
+            "report_section": "computational-results-section",
             "full_table_path": str(table.path),
             "full_table_sha256": table.sha256,
             "full_row_count": table.row_count,
             "displayed_row_count": table.displayed_row_count,
         }
-        for table in context.tables
+        for table in computational_tables
         if table.truncated
     ]
+    return computational
 
 
 def receipt_document(
@@ -110,22 +113,27 @@ def receipt_document(
             "sha256": snapshot.sha256,
             "size_bytes": snapshot.size_bytes,
             "media_type": {
-                "html": "text/html",
+                "scientific_html": "text/html",
+                "evidence_html": "text/html",
                 "run_summary_tsv": "text/tab-separated-values",
             }[kind],
         }
-        if kind == "html":
+        if kind in {"scientific_html", "evidence_html"}:
             descriptor["self_contained"] = True
         descriptors.append(descriptor)
     identity = hashlib.sha256(
         (
-            context.run_summary_snapshot.sha256
-            + "\0"
-            + context.template_snapshot.sha256
-            + "\0"
-            + context.css_snapshot.sha256
+            "\0".join(snapshot.sha256 for snapshot in context.input_snapshots)
             + "\0"
             + JINJA_VERSION
+            + "\0"
+            + context.render_metadata["figure_renderer_version"]
+            + "\0"
+            + context.render_metadata["logo_renderer_version"]
+            + "\0"
+            + context.render_metadata["figure_policy_version"]
+            + "\0"
+            + PRODUCER_VERSION
         ).encode("utf-8")
     ).hexdigest()[:20]
     summary = context.summary
@@ -138,8 +146,7 @@ def receipt_document(
         "generated_at": summary["generated_at"],
         "publication_state": "complete",
         "transaction_state": "complete",
-        "science_status": summary["science_status"],
-        "readiness_authorization": None,
+        "interpretation_boundary": INTERPRETATION_BOUNDARY,
         "input_run_summary": {
             "path": str(context.run_summary_path),
             "sha256": context.run_summary_snapshot.sha256,
@@ -159,9 +166,8 @@ def receipt_document(
         "state_banner": context.render_metadata["state_banner"],
         "truncations": _truncations(context),
         "schema_versions": {
-            "artifact_record": "1.0.0",
-            "scientific_review_record": "1.1.0",
-            "run_summary": "1.1.0",
+            "artifact_record": "2.0.0",
+            "run_summary": "2.0.0",
             "report_receipt": REPORT_RECEIPT_SCHEMA_VERSION,
         },
         "analysis_execution_performed": False,
@@ -198,7 +204,7 @@ def receipt_tsv_bytes(document: Mapping[str, Any]) -> bytes:
                 document["run_id"],
                 document["attempt_id"],
                 document["generated_at"],
-                document["science_status"],
+                document["interpretation_boundary"],
                 output["output_id"],
                 output["kind"],
                 output["path"],
@@ -218,7 +224,7 @@ def read_receipt_tsv(path: Path) -> dict[str, Any]:
         with path.open("r", encoding="utf-8", newline="") as stream:
             reader = csv.DictReader(stream, delimiter="\t")
             if tuple(reader.fieldnames or ()) != RECEIPT_HEADER:
-                _fail("Existing report receipt is not the v2 receipt header")
+                _fail("Existing report receipt is not the v4 receipt header")
             rows = list(reader)
     except (OSError, UnicodeError, csv.Error) as exc:
         _fail(f"Could not read existing report receipt: {exc}")

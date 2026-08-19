@@ -222,6 +222,45 @@ def test_evidence_and_picard_parser_failure_branches() -> None:
     )
 
 
+def test_picard_parser_ignores_the_following_histogram_table() -> None:
+    metrics = (
+        "## METRICS CLASS\tpicard.sam.DuplicationMetrics\n"
+        "LIBRARY\tUNPAIRED_READS_EXAMINED\tREAD_PAIRS_EXAMINED\t"
+        "SECONDARY_OR_SUPPLEMENTARY_RDS\tUNMAPPED_READS\t"
+        "UNPAIRED_READ_DUPLICATES\tREAD_PAIR_DUPLICATES\t"
+        "READ_PAIR_OPTICAL_DUPLICATES\tPERCENT_DUPLICATION\t"
+        "ESTIMATED_LIBRARY_SIZE\n"
+        "control_pair_01\t0\t130\t0\t0\t0\t0\t0\t0\t\n"
+        "\n"
+        "## HISTOGRAM\tjava.lang.Double\n"
+        "set_size\tall_sets\tnon_optical_sets\n"
+        "1.0\t130\t130\n"
+    )
+
+    assert picard.parse_duplication_metrics(metrics) == (
+        True,
+        "library=control_pair_01 pairs=130 duplicates=0 fraction=0",
+    )
+
+
+def test_picard_parser_preserves_header_order_and_prefix_validation() -> None:
+    reordered = (
+        "PERCENT_DUPLICATION\tLIBRARY\tREAD_PAIR_DUPLICATES\t"
+        "READ_PAIRS_EXAMINED\n"
+        "0.2\tS\t2\t10\n"
+    )
+    assert picard.parse_duplication_metrics(reordered) == (
+        True,
+        "library=S pairs=10 duplicates=2 fraction=0.2",
+    )
+
+    prefixed = "unexpected\n" + reordered
+    assert picard.parse_duplication_metrics(prefixed) == (
+        False,
+        "expected one row with required Picard columns",
+    )
+
+
 def test_mpileup_manifest_and_selector_failure_branches(tmp_path: Path) -> None:
     sample_manifest = tmp_path / "samples.tsv"
     write_tsv(sample_manifest, ("other",), [("S",)])

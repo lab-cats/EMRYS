@@ -23,6 +23,10 @@ COUNT_FIELDS = (
     "num_branches",
 )
 CRITICAL_OWNER_GROUPS: Mapping[str, tuple[str, ...]] = {
+    "orchestration_machine_contracts": ("src/norad/contracts/orchestration/",),
+    "local_pilot_control_plane": ("src/norad/orchestration/local_pilot/",),
+    "source_checkout_admission": ("src/norad/libraries/source_authority.py",),
+    "runtime_availability_admission": ("src/norad/evidence/runtime_availability/",),
     "norad.contracts.scientific_evidence": (
         "src/norad/contracts/scientific_evidence/",
     ),
@@ -37,7 +41,6 @@ CRITICAL_OWNER_GROUPS: Mapping[str, tuple[str, ...]] = {
         "src/norad/contracts/artifacts/",
         "src/norad/reporting/",
     ),
-    "scientific_review_publication": ("src/norad/evidence/scientific_review_package/",),
     "paired_cmh_analysis_contracts": (
         "src/norad/analyses/paired_cmh_candidate_ranking/",
     ),

@@ -11,10 +11,12 @@ Current-system views:
 - [`pipeline.mmd`](pipeline.mmd) — grouped implemented-system projection.
 - [`reliability.mmd`](reliability.mmd) — validation, publication, and recovery
   flow.
+- [`local_pilot_orchestration.mmd`](local_pilot_orchestration.mmd) — implemented
+  local-first request, readiness, public control, execution, validation,
+  failure, resume, and completion flow.
 
 Future-design views:
 
-- [`future_manifest_config_contracts.mmd`](future_manifest_config_contracts.mmd)
 - [`future_modular_pipeline.mmd`](future_modular_pipeline.mmd)
 - [`future_reporting_layer.mmd`](future_reporting_layer.mmd)
 

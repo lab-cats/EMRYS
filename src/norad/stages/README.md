@@ -20,14 +20,14 @@ grouped module interface.
 | `08` | [`preprocess_and_annotate_cohort_candidates`](cohort_candidate_preprocessing/README.md) |
 
 The canonical identities and dependency edges live in
-[`STAGE_MAP.md`](../contracts/STAGE_MAP.md). Evidence operations `02b`, `03`,
-and `09c` live under [`evidence/`](../evidence/README.md); analysis `09` lives
-under [`analyses/`](../analyses/paired_cmh_candidate_ranking/README.md).
+[`STAGE_MAP.md`](../contracts/STAGE_MAP.md). Evidence operations `02b` and `03`
+live under [`evidence/`](../evidence/README.md); analysis `09` lives under
+[`analyses/`](../analyses/paired_cmh_candidate_ranking/README.md).
 
 ## Owner convention
 
-Each child directory owns its declared producer, scheduler wrapper when one
-exists, validator, native outputs, publication/recovery behavior, and known
+Each child directory owns its declared producer, owner-local scheduler entry
+point when one exists, validator, native outputs, publication/recovery behavior, and known
 limitations. Its adjacent `CONTRACT.md` is the canonical interface and
 evidence boundary; its `README.md` provides local operator orientation. Direct
 tests mirror the owner under [`tests/stages/`](../../../tests/stages/), while

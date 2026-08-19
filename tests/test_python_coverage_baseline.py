@@ -25,6 +25,18 @@ def summary(lines: tuple[int, int], branches: tuple[int, int]) -> dict[str, int]
 
 def fixture_files() -> dict[str, dict[str, dict[str, int]]]:
     return {
+        "src/norad/contracts/orchestration/private_contract.py": {
+            "summary": summary((90, 100), (34, 40))
+        },
+        "src/norad/orchestration/local_pilot/private_control.py": {
+            "summary": summary((80, 100), (28, 40))
+        },
+        "src/norad/libraries/source_authority.py": {
+            "summary": summary((88, 100), (34, 40))
+        },
+        "src/norad/evidence/runtime_availability/private_admission.py": {
+            "summary": summary((88, 100), (30, 40))
+        },
         MANIFEST_VALIDATOR_PATH: {"summary": summary((90, 100), (36, 40))},
         CONVERTER_PATH: {"summary": summary((80, 100), (30, 40))},
         PRIVATE_CONTRACT_PATH: {"summary": summary((99, 100), (39, 40))},
@@ -39,9 +51,6 @@ def fixture_files() -> dict[str, dict[str, dict[str, int]]]:
         },
         "src/norad/reporting/private_publication.py": {
             "summary": summary((70, 100), (20, 40))
-        },
-        "src/norad/evidence/scientific_review_package/private_publisher.py": {
-            "summary": summary((85, 100), (30, 40))
         },
         "src/norad/analyses/paired_cmh_candidate_ranking/private_validator.py": {
             "summary": summary((90, 100), (32, 40))
@@ -103,7 +112,24 @@ def test_policy_is_deterministic_compact_and_ignores_coverage_metadata() -> None
     assert tuple(item["name"] for item in first_snapshot["subprocess_routes"]) == tuple(
         TOOL.REQUIRED_SUBPROCESS_ROUTES
     )
-    assert len(json.dumps(first_snapshot, indent=2).splitlines()) < 200
+    assert len(json.dumps(first_snapshot, indent=2).splitlines()) < 240
+
+
+def test_campaign_b_critical_owner_floors_are_independent() -> None:
+    assert {
+        name: TOOL.CRITICAL_OWNER_GROUPS[name]
+        for name in (
+            "orchestration_machine_contracts",
+            "local_pilot_control_plane",
+            "source_checkout_admission",
+            "runtime_availability_admission",
+        )
+    } == {
+        "orchestration_machine_contracts": ("src/norad/contracts/orchestration/",),
+        "local_pilot_control_plane": ("src/norad/orchestration/local_pilot/",),
+        "source_checkout_admission": ("src/norad/libraries/source_authority.py",),
+        "runtime_availability_admission": ("src/norad/evidence/runtime_availability/",),
+    }
 
 
 @pytest.mark.parametrize(
@@ -253,7 +279,11 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     assert '--subprocess-coverage-json "$(PYTHON_SUBPROCESS_COVERAGE_RAW)"' in makefile
     for subprocess_test in TOOL.SUBPROCESS_TEST_COMMAND[4:]:
         assert subprocess_test in makefile
-    assert "--new-shared-module src/norad/" not in makefile
+    for shared_module in (
+        "src/norad/libraries/installed_package_identity.py",
+        "src/norad/libraries/process_environment.py",
+    ):
+        assert shared_module in makefile
     assert "compileall -q scripts src/norad tests" in makefile
 
 

@@ -17,8 +17,11 @@ fake_log="$tmp/rscript.log"
 cat >"$fake_rscript" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'NORAD_USE_RENV=%s\tRENV_SANDBOX=%s\tRENV_AUTO_SNAPSHOT=%s\tRENV_PROJECT=%s\tR_PROFILE_USER=%s\targs=' \
+printf 'NORAD_USE_RENV=%s\tNORAD_LOCAL_PILOT_R=%s\tNORAD_RENV_LIBRARY=%s\tNORAD_RENV_VERSION=%s\tRENV_SANDBOX=%s\tRENV_AUTO_SNAPSHOT=%s\tRENV_PROJECT=%s\tR_PROFILE_USER=%s\targs=' \
     "${NORAD_USE_RENV:-<unset>}" \
+    "${NORAD_LOCAL_PILOT_R:-<unset>}" \
+    "${NORAD_RENV_LIBRARY:-<unset>}" \
+    "${NORAD_RENV_VERSION:-<unset>}" \
     "${RENV_CONFIG_SANDBOX_ENABLED:-<unset>}" \
     "${RENV_CONFIG_AUTO_SNAPSHOT:-<unset>}" \
     "${RENV_PROJECT:-<unset>}" \
@@ -35,6 +38,11 @@ case "$*" in
 esac
 EOF
 chmod +x "$fake_rscript"
+
+fake_renv_library="$tmp/renv-library"
+mkdir -p "$fake_renv_library/renv"
+printf 'Package: renv\nVersion: 1.2.3\n' \
+    >"$fake_renv_library/renv/DESCRIPTION"
 
 grep -Fq 'identical(use_renv, "1")' .Rprofile ||
     fail ".Rprofile does not guard renv activation"
@@ -53,7 +61,7 @@ grep -Fq '"Version": "4.6.1"' renv.lock ||
 grep -Fq '"Version": "3.23"' renv.lock ||
     fail "renv lockfile does not record Bioconductor 3.23"
 for package_name in \
-    VariantAnnotation GenomicRanges IRanges S4Vectors \
+    VariantAnnotation Biostrings GenomicRanges IRanges Rsamtools S4Vectors \
     SummarizedExperiment GenomeInfoDb BiocGenerics rtracklayer; do
     grep -Fq "\"$package_name\":" renv.lock ||
         fail "renv lockfile is missing $package_name"
@@ -65,10 +73,37 @@ for ignored_path in \
         fail ".gitignore is missing $ignored_path"
 done
 
-grep -Fq 'https://bioc-release.r-universe.dev' renv.lock ||
-    fail "renv lockfile does not record the Bioconductor release binary source"
+python_bin="${PYTHON_BIN:-python3}"
+"$python_bin" - "$repo_root/renv.lock" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as stream:
+    lock = json.load(stream)
+
+expected_repositories = [
+    {"Name": "BioC", "URL": "https://bioc-release.r-universe.dev"},
+    {"Name": "CRAN", "URL": "https://cloud.r-project.org"},
+]
+if lock["R"]["Repositories"] != expected_repositories:
+    raise SystemExit("renv.lock repository policy is not canonical")
+
+bad = sorted(
+    name
+    for name, package in lock["Packages"].items()
+    if package.get("Source") == "Bioconductor"
+    and package.get("Repository") != "Bioconductor 3.23"
+)
+if bad:
+    raise SystemExit(
+        "Bioconductor package repository labels are not canonical: "
+        + ", ".join(bad)
+    )
+PY
 grep -Fq '"BiocVersion":' renv.lock ||
     fail "renv lockfile does not include the Bioconductor release marker"
+grep -Fq 'restore_status <- renv::status' scripts/restore_r_environment.R ||
+    fail "r-restore does not attest the restored library"
 
 for r_entrypoint in \
     scripts/check_r_environment.R scripts/restore_r_environment.R; do
@@ -77,6 +112,14 @@ for r_entrypoint in \
     grep -Fq 'does not accept positional arguments.' "$r_entrypoint" ||
         fail "$r_entrypoint no longer rejects every positional argument"
 done
+
+grep -Fq 'NORAD_LOCAL_PILOT_R", unset = "0"), "1"' \
+    scripts/check_r_environment.R ||
+    fail "r-check does not require non-bootstrapping library selection"
+if grep -Eq 'renv::(restore|install|hydrate|snapshot)' \
+    scripts/check_r_environment.R; then
+    fail "r-check contains a dependency-mutating renv operation"
+fi
 
 rscript_bin="${RSCRIPT_BIN:-Rscript}"
 if resolved_rscript="$(command -v "$rscript_bin" 2>/dev/null)"; then
@@ -117,13 +160,19 @@ else
 fi
 
 FAKE_R_LOG="$fake_log" make RSCRIPT_BIN="$fake_rscript" r-restore >/dev/null
-FAKE_R_LOG="$fake_log" make RSCRIPT_BIN="$fake_rscript" r-check >/dev/null
-FAKE_R_LOG="$fake_log" make RSCRIPT_BIN="$fake_rscript" local-real-r-test \
-    >/dev/null
+FAKE_R_LOG="$fake_log" make \
+    RSCRIPT_BIN="$fake_rscript" \
+    RENV_LIBRARY="$fake_renv_library" \
+    r-check >/dev/null
+FAKE_R_LOG="$fake_log" make \
+    RSCRIPT_BIN="$fake_rscript" \
+    RENV_LIBRARY="$fake_renv_library" \
+    NORAD_TEST_FAKE_SCIENTIFIC_CONTEXT_R=1 \
+    local-real-r-test >/dev/null
 
 line_count="$(wc -l <"$fake_log" | tr -d ' ')"
-[[ "$line_count" -eq 7 ]] ||
-    fail "expected seven guarded fake-R invocations, found $line_count"
+[[ "$line_count" -eq 8 ]] ||
+    fail "expected eight guarded fake-R invocations, found $line_count"
 
 while IFS= read -r line; do
     [[ "$line" == NORAD_USE_RENV=1$'\t'* ]] ||
@@ -138,6 +187,19 @@ while IFS= read -r line; do
         fail "Make target invoked R without the guarded profile: $line"
 done <"$fake_log"
 
+restore_line="$(sed -n '1p' "$fake_log")"
+[[ "$restore_line" == *$'\tNORAD_LOCAL_PILOT_R=0\t'* ]] ||
+    fail "r-restore did not select bootstrap-capable operator mode"
+
+tail -n +2 "$fake_log" | while IFS= read -r line; do
+    [[ "$line" == *$'\tNORAD_LOCAL_PILOT_R=1\t'* ]] ||
+        fail "R check/test did not select non-bootstrapping mode: $line"
+    [[ "$line" == *$'\tNORAD_RENV_LIBRARY='"$fake_renv_library"$'\t'* ]] ||
+        fail "R check/test did not bind the exact existing library: $line"
+    [[ "$line" == *$'\tNORAD_RENV_VERSION=1.2.3\t'* ]] ||
+        fail "R check/test did not bind the exact renv version: $line"
+done
+
 grep -Fq 'scripts/restore_r_environment.R' "$fake_log" ||
     fail "r-restore did not invoke the restore script"
 grep -Fq 'scripts/check_r_environment.R' "$fake_log" ||
@@ -146,9 +208,19 @@ grep -Fq 'tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preproces
     fail "local-real-r-test did not run Step 08 fixtures"
 grep -Fq 'tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.R' "$fake_log" ||
     fail "local-real-r-test did not run Step 09 fixtures"
+[[ "$(grep -Fc 'scientific_context_projection.R --help' "$fake_log")" -eq 1 ]] ||
+    fail "local-real-r-test did not log exactly one Step 10 R invocation"
 
-if make RSCRIPT_BIN="$tmp/missing-rscript" r-check >"$tmp/missing.out" 2>&1; then
+if make \
+    RSCRIPT_BIN="$tmp/missing-rscript" \
+    RENV_LIBRARY="$fake_renv_library" \
+    r-check >"$tmp/missing.out" 2>&1; then
     fail "r-check accepted a missing explicit Rscript executable"
+fi
+
+if make RSCRIPT_BIN="$fake_rscript" RENV_LIBRARY= \
+    r-check >"$tmp/missing-library.out" 2>&1; then
+    fail "r-check accepted a missing explicit RENV_LIBRARY"
 fi
 
 printf 'PASS: guarded local R environment contract\n'

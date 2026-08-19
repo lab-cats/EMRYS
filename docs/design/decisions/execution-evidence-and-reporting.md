@@ -42,9 +42,12 @@ explicit operator action. Compute and tests never bootstrap packages.
 
 ### Keep report rendering inside the locked Python package
 
-The report owner uses the locked Jinja2 runtime and packaged template/CSS. It
-never installs or repairs tooling, invokes an external renderer, accesses the
-network, or creates report sidecars.
+The report owner uses the locked Jinja2, Matplotlib, and Logomaker runtimes plus
+packaged template/CSS. Matplotlib initializes through one private temporary
+cache that is removed before rendering continues and never writes durable
+report state; Logomaker operates inside that already controlled renderer
+boundary. The owner never installs or repairs tooling, invokes an external
+renderer, accesses the network, or creates report sidecars.
 
 ### Inspect runtime availability from explicit profiles
 
@@ -67,20 +70,22 @@ Storage evidence measures declared roots and records retention-policy approval
 separately. Observation never authorizes deletion, movement, archival,
 compression, or any other data mutation.
 
-## Evidence and scientific state
+## Evidence and external interpretation
 
 ### Separate computational proof and scientific interpretation
 
-Implementation, fixture testing, real-runtime testing, cluster dry-run, cluster
-proof, scientific review, and biological readiness are separate claims.
-Cluster proof requires inspected scheduler, log, command, and output evidence;
-report generation is not validation.
+Implementation, fixture testing, real-runtime testing, cluster dry-run, and
+cluster proof are separate computational claims. Cluster proof requires
+inspected scheduler, log, command, and output evidence; report generation is
+not validation. Candidate review, adjudication, and biological interpretation
+are external work-process records and are not NORAD evidence states.
 
-### Preserve two post-review states
+### Keep external interpretation outside the pipeline
 
-`science_review_complete_exploratory` records completed but provisional review.
-`biological_interpretation_ready` remains reserved for stricter, separately
-approved exits. Current tools reject an unauthorized ready state.
+NORAD produces CMH-ranked computational candidates and provenance. It does not
+encode an approver, adjudication gate, biological-readiness gate, or scientific
+completion status. External research records may reference immutable NORAD
+outputs without becoming inputs to pipeline completion.
 
 ### Require explicit evidence relationships
 
@@ -98,7 +103,7 @@ rerun analysis.
 
 ### Use versioned closed schemas
 
-Public artifact, scientific-review, run-summary, and report-receipt documents
+Public artifact, run-summary, and report-receipt documents
 use explicit versions and closed shapes. Incompatible changes require a version
 increment rather than a silent field change.
 
@@ -127,22 +132,19 @@ expected-scope states through summaries and reports. A published validation
 report records only its explicit checks and creates no cluster, scientific, or
 biological promotion.
 
-### Authorize supplemental report tables explicitly
-
-A supplemental table enters the canonical summary only through a nonempty
-approval bound to the run contract and active scientific review. Its exact
-path, hash, row count, role, display limit, policy, approver, and time must
-reconcile. Omission authorizes nothing, and canonical summaries are not
-hand-edited.
-
 ### Render deterministic, static reports
 
 Reports are self-contained, script-free, accessible projections of one
-canonical summary. They preserve exact scientific-state language, disclose
-truncation with source identity, and use one autoescaped strict Jinja template
-for HTML. Publication is transactional and never installs dependencies,
-accesses the network, creates sidecars, or promotes evidence. Scientific plot
-PDFs remain analysis artifacts rather than report formats.
+canonical summary. They label computational candidates as not scientifically
+adjudicated, disclose truncation with source identity, and use one autoescaped
+strict Jinja template for HTML. Publication is transactional and never installs
+dependencies, accesses the network, creates sidecars, or promotes evidence.
+The fixed scientific SVG roster is rendered only from canonically admitted
+values and embedded as validated data URIs; reporting owns mappings and
+presentation, not scientific calculation. Exact figure inputs, policies,
+renderer versions, hashes, and availability are disclosed in the evidence
+HTML. Scientific plot PDFs remain analysis artifacts rather than report
+formats.
 
 ## Operator output and durable logs
 

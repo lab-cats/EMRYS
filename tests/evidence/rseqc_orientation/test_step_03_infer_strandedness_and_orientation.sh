@@ -4,6 +4,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 # Keep this test self-contained and local-only. It uses placeholder BAM/BED
 # files plus a fake infer_experiment.py, so no real biological data or RSeQC
@@ -86,6 +88,22 @@ trap 'rm -rf "$tmp_dir"' EXIT
 
 fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin"
+real_rm_bin="$(command -v rm)"
+
+cat >"$fake_bin/rm" <<'EOF_RM'
+#!/usr/bin/env bash
+set -euo pipefail
+
+for argument in "$@"; do
+    if [[ -n "${FAIL_RM_TARGET:-}" && "$argument" == "$FAIL_RM_TARGET" ]]; then
+        printf 'controlled cleanup removal failure: %s\n' "$argument" >&2
+        exit 79
+    fi
+done
+exec "$REAL_RM_BIN" "$@"
+EOF_RM
+chmod +x "$fake_bin/rm"
+export REAL_RM_BIN="$real_rm_bin"
 
 infer_log="$tmp_dir/infer_experiment_invocations.log"
 # Fake enough of RSeQC to prove the wrapper builds the correct command and
@@ -97,6 +115,16 @@ set -euo pipefail
 
 printf 'infer_experiment.py invoked\\n' >> "$infer_log"
 printf '%s\\n' "\$@" >> "$infer_log"
+
+if [[ -n "\${FAKE_MUTATE_BAM:-}" ]]; then
+    while [[ \$# -gt 0 ]]; do
+        if [[ "\$1" == "-i" ]]; then
+            printf 'mutated bam during RSeQC\\n' >"\$2"
+            break
+        fi
+        shift
+    done
+fi
 
 mode="\${FAKE_INFER_MODE:-success}"
 case "\$mode" in
@@ -166,7 +194,7 @@ assert_contains "$help_output" "--execute"
 printf 'Running dry-run check with path-style binary...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry"
-bash "$SCRIPT" \
+NORAD_RUN_TOKEN=explicit-owner-03 SLURM_JOB_ID=scheduler-03 bash "$SCRIPT" \
     --sample-id sample_dry \
     --input-bam "$bam" \
     --bed12 "$bed12" \
@@ -181,6 +209,8 @@ assert_not_exists "$dry_output_dir"
 assert_not_exists "$dry_output_file"
 [[ ! -e "$infer_log" ]] || fail "dry-run invoked infer_experiment.py"
 assert_contains "$dry_output" "Mode: dry-run"
+assert_contains "$dry_output" "Run token: explicit-owner-03"
+assert_contains "$dry_output" ".sample_dry.step03.explicit-owner-03.infer_experiment.tmp"
 assert_contains "$dry_output" "Input BAM: $bam"
 assert_contains "$dry_output" "BAM index found: $bam_dot_bai"
 assert_contains "$dry_output" "BED12 annotation: $bed12"
@@ -231,6 +261,94 @@ assert_contains "$infer_log" "$bam"
 assert_contains "$execute_output" "Mode: execute"
 assert_contains "$execute_output" "RSeQC infer_experiment output preview:"
 assert_contains "$execute_output" "This is PairEnd Data"
+
+printf 'Running orchestration-safe no-clobber transaction check...\n'
+residue_output_dir="$tmp_dir/results/residue"
+mkdir -p "$residue_output_dir"
+residue_path="$residue_output_dir/.sample_residue.step03.older-token.infer_experiment.tmp"
+printf 'preserve residue\n' >"$residue_path"
+residue_output="$tmp_dir/residue.out"
+assert_fails "$residue_output" env SLURM_JOB_ID=newer-token bash "$SCRIPT" \
+    --sample-id sample_residue \
+    --input-bam "$bam" \
+    --bed12 "$bed12" \
+    --output-dir "$residue_output_dir" \
+    --infer-experiment-bin "$fake_bin/infer_experiment.py" \
+    --no-clobber \
+    --execute
+assert_contains "$residue_output" "residue requires operator inspection"
+assert_file_equals "$residue_path" $'preserve residue\n'
+assert_not_exists "$residue_output_dir/.sample_residue.step03.lock"
+safe_output="$tmp_dir/safe.out"
+safe_output_dir="$tmp_dir/results/safe"
+bash "$SCRIPT" \
+    --sample-id sample_safe \
+    --input-bam "$bam" \
+    --bed12 "$bed12" \
+    --output-dir "$safe_output_dir" \
+    --infer-experiment-bin "$fake_bin/infer_experiment.py" \
+    --no-clobber \
+    --execute >"$safe_output"
+safe_report="$safe_output_dir/sample_safe.infer_experiment.txt"
+[[ -s "$safe_report" ]] || fail "no-clobber run did not publish report"
+assert_contains "$safe_output" "No-clobber transaction: true"
+assert_not_exists "$safe_output_dir/.sample_safe.step03.lock"
+safe_repeat_output="$tmp_dir/safe_repeat.out"
+assert_fails "$safe_repeat_output" bash "$SCRIPT" \
+    --sample-id sample_safe \
+    --input-bam "$bam" \
+    --bed12 "$bed12" \
+    --output-dir "$safe_output_dir" \
+    --infer-experiment-bin "$fake_bin/infer_experiment.py" \
+    --no-clobber \
+    --execute
+assert_contains "$safe_repeat_output" "--no-clobber output already exists"
+
+printf 'Running no-clobber stable-input rejection check...\n'
+mutation_bam="$fixture_dir/mutation.sorted.bam"
+printf 'original bam\n' >"$mutation_bam"
+printf 'original bai\n' >"$mutation_bam.bai"
+mutation_output="$tmp_dir/mutation.out"
+mutation_output_dir="$tmp_dir/results/mutation"
+assert_fails "$mutation_output" env FAKE_MUTATE_BAM=1 bash "$SCRIPT" \
+    --sample-id sample_mutation \
+    --input-bam "$mutation_bam" \
+    --bed12 "$bed12" \
+    --output-dir "$mutation_output_dir" \
+    --infer-experiment-bin "$fake_bin/infer_experiment.py" \
+    --no-clobber \
+    --execute
+assert_contains "$mutation_output" "BAM changed during Step 03"
+assert_not_exists "$mutation_output_dir/sample_mutation.infer_experiment.txt"
+assert_not_exists "$mutation_output_dir/.sample_mutation.step03.lock"
+
+printf 'Running no-clobber cleanup-failure preservation check...\n'
+cleanup_sample="sample_cleanup_failure"
+cleanup_token="cleanup-failure"
+cleanup_output="$tmp_dir/cleanup_failure.out"
+cleanup_output_dir="$tmp_dir/results/cleanup_failure"
+cleanup_tmp="$cleanup_output_dir/.${cleanup_sample}.step03.${cleanup_token}.infer_experiment.tmp"
+cleanup_lock="$cleanup_output_dir/.${cleanup_sample}.step03.lock"
+set +e
+FAKE_INFER_MODE=empty_success \
+FAIL_RM_TARGET="$cleanup_tmp" \
+SLURM_JOB_ID="$cleanup_token" \
+bash "$SCRIPT" \
+    --sample-id "$cleanup_sample" \
+    --input-bam "$bam" \
+    --bed12 "$bed12" \
+    --output-dir "$cleanup_output_dir" \
+    --infer-experiment-bin "$fake_bin/infer_experiment.py" \
+    --no-clobber \
+    --execute >"$cleanup_output" 2>&1
+cleanup_status=$?
+set -e
+[[ "$cleanup_status" -ne 0 ]] || fail "cleanup-failure run unexpectedly succeeded"
+[[ -e "$cleanup_tmp" ]] || fail "cleanup failure did not preserve Step 03 staging residue"
+[[ -d "$cleanup_lock" ]] || fail "cleanup failure did not retain Step 03 owner lock"
+assert_contains "$cleanup_lock/owner" "run_token=$cleanup_token"
+assert_contains "$cleanup_output" "controlled cleanup removal failure"
+assert_contains "$cleanup_output" "Step 03 no-clobber cleanup was incomplete"
 
 printf 'Running command-name binary lookup check...\n'
 # Exercise the PATH-resolution branch separately from the explicit path branch.

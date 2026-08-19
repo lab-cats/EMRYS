@@ -20,23 +20,32 @@ Current projections:
 
 All fourteen numbered workflow, analysis, and evidence owners occupy their
 functional homes under `src/norad/`. Sample-manifest admission, neutral
-contracts and libraries, reporting, and reference/runtime/storage evidence
-occupy separate cross-cutting owners. Numeric step labels are historical
-aliases rather than a complete execution order.
+contracts and libraries, reporting, local-pilot intake/control, and
+reference/runtime/storage evidence occupy separate cross-cutting owners.
+Numeric step labels are historical aliases rather than a complete execution
+order.
 
-NORAD currently exposes owner-local commands and SLURM entry points; it has no
-implemented one-command pipeline orchestrator. Operators select the applicable
-entry point and supply its declared inputs. Deferred orchestration profiles do
-not change that boundary.
+NORAD currently exposes owner-local commands, SLURM entry points, read-only
+local-pilot admission, dry-run-first public run/resume/inspection commands, and
+one fixed source-checkout-bound Snakemake graph for local execution. The static
+graph invokes public owners through hash-bound closed dispatch records,
+schedules only content-bound verified-task records, and feeds the existing
+artifact-index, run-summary, and HTML-report transactions. An internal
+filesystem-first lifecycle owns the run lock, immutable workflow attempts,
+terminal receipts, durable producer-entry ledgers, between-task resume, and
+read-only state inspection. The production materializer projects the fixed
+profile to the exact public owner commands and publishes attempt state only
+under the aggregate lifecycle lock. Real science-tool and cluster execution
+remain outside the proven boundary.
 
 | Component group | Implemented owners | Principal inputs | Principal outputs |
 | --- | --- | --- | --- |
 | Input admission | `src/norad/ingestion/sample_manifest_admission/` | Explicit sample manifest and optional declared FASTQ paths | Schema/admission result and paired-FASTQ diagnostics |
+| Local-pilot orchestration | `src/norad/orchestration/local_pilot/`, `src/norad/contracts/orchestration/`, and `workflow/` | Explicit YAML request, ordered TSV manifests, exact runtime profile, reviewed fixed-profile record, canonical execution/config snapshots, and hash-bound task dispatches | Dry-run plans, create-absent run/attempt materialization, canonical execution/reporting identity, semantic all-pass evidence, durable task/reporting start records, task-attempt and verified records, immutable workflow attempts, public derived inspection, and between-task resume; no real-tool or cluster proof |
 | Reference preparation | Owners `00a`, `00b`, and `00c` under `src/norad/stages/` | Reference FASTA, GTF, and tool parameters | STAR index, BED12, and FASTA sidecars |
 | Per-sample processing and evidence | Owners `01`–`06` under `src/norad/stages/` plus evidence owners `02b` and `03` | Declared reads, references, and preceding owner artifacts | Aligned/canonical/duplicate-marked/split BAMs plus QC and orientation evidence |
-| Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owner `09` | Declared partitions, sample order, reference context, and upstream receipts | Cohort VCFs, annotated candidates, and paired-CMH ranked candidates |
-| Scientific-review evidence | Evidence owner `09c` | Explicit review plan, declared evidence, and Step `09` products | Versioned review package and review summary |
-| Reporting | `src/norad/reporting/` | Admitted source checkout, explicit artifact inventory, validated receipts, review summary, and table approvals | Artifact index, canonical run summary, self-contained HTML report, summary TSV, and v2 report receipt |
+| Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owners `09` and `10` | Declared partitions, sample order, reference context, registered PUM motif, and upstream receipts | Cohort VCFs, annotated candidates, paired-CMH ranked candidates, and hash-bound sequence/motif context projections |
+| Reporting | `src/norad/reporting/` | Admitted source checkout, explicit artifact inventory, and validated computational receipts | Artifact index, canonical run summary, separate self-contained scientific and evidence HTML views, summary TSV, and v4 report receipt |
 | Neutral contracts and libraries | `src/norad/contracts/` and `src/norad/libraries/` | Owner-declared records or values | Shared schemas, vocabularies, validation, and narrowly reviewed primitives |
 | Operational evidence | Runtime-availability inspection (`runtime_availability`), reference provenance, and storage inventory under `src/norad/evidence/` | Explicit profiles, reference inventories, storage roots, and retention declarations | Bounded operational observations and receipts |
 
@@ -61,23 +70,24 @@ arrows mean data or contract dependency, not automatic execution. The
 | Observe the cohort | `generate_partitioned_cohort_mpileup_VCFs` | Count bases across every declared sample, partition, and mechanical orientation while preserving manifest order. | Receipt-last partitioned multi-sample VCF transactions. |
 | Normalize and annotate candidates | `preprocess_and_annotate_cohort_candidates` | Validate the declared VCF set, expand alternate alleles, apply the provisional orientation conversion, annotate candidates, and publish deterministic TSVs before statistical comparison. | Sites TSV, exact input receipt, and QC summary TSV; unsupported non-SNV alleles are counted and excluded. |
 | Rank paired candidates | `rank_cohort_candidates_with_paired_CMH` | Compare declared RNA reference/alternate counts across manifest-defined replicate strata, applying depth, statistical, and effect thresholds plus one global BH adjustment. An independently declared background cohort is optional. | Six-output transaction with all candidates, significant subset, summaries, spectrum, and plots. Outputs are **CMH-ranked candidates**, not validated editing sites. |
-| Assemble review evidence | `assemble_scientific_review_evidence_package` | Combine the complete Step `08` and Step `09` transactions with explicit manifests and any separately supplied review evidence without rerunning analysis. | Deterministic review-evidence package with recorded, pending, absent, or limitation states. Explicit scientific review is optional and does not unlock biological readiness. |
+| Project scientific context | `project_candidate_scientific_context` | Attach mechanically oriented continuous genomic windows and one registered PUM motif analysis after Step `09`, without reopening alignments, changing calls, discovering motifs, or inferring biological strand. | Receipt-last candidate-context, exact motif-hit, logo-frequency, and motif-statistic tables for bounded report presentation. |
 
 ### Exact continuing inputs
 
 | Input or artifact contract | Where it continues to be consumed |
 | --- | --- |
-| Reference FASTA and its FAI | Reference preparation, split-N-cigar handling, and cohort observation. |
+| Reference FASTA and its FAI | Reference preparation, split-N-cigar handling, cohort observation, and Step `10` scientific-context projection. |
 | Reference GTF | STAR-index construction, BED12 conversion, and Step `08` annotation. |
 | BED12 | RSeQC paired-orientation inference. |
-| Sample manifest | Steps `07`, `08`, and `09`, plus review-evidence assembly. |
-| Partition manifest | Steps `07`, `08`, and `09`, plus review-evidence assembly. |
-| Analysis/review declarations | Step `09` thresholds and optional background inputs; review plans and declared evidence enter only the review-evidence owner. |
+| Sample manifest | Steps `07`, `08`, and `09`. |
+| Partition manifest | Steps `07`, `08`, and `09`. |
+| Analysis declarations | Step `09` thresholds and optional background inputs. |
 
 Read-only artifact adapters and the canonical run-summary builder project
 explicit native outputs and validation records into reporting inputs. Static
-rendering publishes one self-contained HTML report and deterministic summary
-TSV plus a validated, identity-bound v2 receipt last.
+rendering publishes separate self-contained scientific and operational
+evidence/provenance HTML views plus a deterministic summary TSV and a
+validated, identity-bound v4 receipt last.
 Reporting does not discover inputs, execute analysis, repair artifacts, or
 promote runtime, cluster, scientific-review, or biological evidence.
 
@@ -87,15 +97,18 @@ orientation evidence branch from that boundary while the main BAM continues
 through duplicate marking, RNA-aware splitting, and neutral mechanical-
 orientation partitioning. Manifest-declared samples and partitions then enter
 cohort mpileup; the exact VCF set is normalized and annotated before paired-
-CMH ranking. Complete candidate transactions can flow into the review-evidence
-package, while scientific review joins only when explicitly supplied.
-Read-only reporting may then publish the static HTML report transaction from a
+CMH ranking. The bounded context owner then projects those fixed calls onto one
+exact indexed reference and registered PUM motif. Read-only reporting may then
+publish the static scientific and evidence HTML report transaction from a
 validated canonical summary.
 
+### Scientific boundary
+
 Computational completion is not a biological conclusion. `FWD_like` and
-`REV_like` are mechanical labels, `science_review_complete_exploratory` remains
-provisional, and `biological_interpretation_ready` remains reserved pending a
-separately authorized policy.
+`REV_like` are mechanical labels. NORAD produces CMH-ranked computational
+candidates and provenance; candidate review, adjudication, and biological
+interpretation are external work-process records, not pipeline steps, gates,
+artifacts, or completion states.
 
 ## Ownership and dependency direction
 
@@ -114,8 +127,9 @@ caller inputs
 
 Approved shared seams remain narrow: validation-report publication, BAM
 validation, reference-contig parsing, executable-value resolution, artifact
-contracts, and the neutral Step `08`, Step `09`, and review-package
-contracts. Their exact consumer rosters and allowed dependency directions live
+contracts, and the neutral Step `08`, Step `09`, and scientific-context
+contracts. Their exact
+consumer rosters and allowed dependency directions live
 in [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
 Private bridges and colocated helper packages remain part of their public
 owner; they do not create additional pipeline components or a generic utility
@@ -123,28 +137,40 @@ layer.
 
 Static reporting follows that rule through the private
 [`_run_report/`](../../src/norad/reporting/_run_report/README.md) package.
-The installed `python -I -m norad build report` route is owned directly by
-[`report.py`](../../src/norad/reporting/report.py). Its required admitted
-checkout governs contract-relative paths and renderer identity. Private owners separate
-immutable models, explicit input/context validation, structured view data,
-Jinja rendering, v2 receipt projection, and one receipt-last transaction. The
-single packaged HTML template and CSS resource are the complete rendering
-runtime; reporting has no PDF, external renderer, compatibility facade, shell
-wrapper, or format-selection surface.
+The installed `python -X pycache_prefix=/dev/null -I -m norad build report` route is owned directly by
+[`report.py`](../../src/norad/reporting/report.py). Its admitted source checkout
+governs code and renderer identity, while the separately admitted artifact root
+governs contract-relative run inputs. Private owners separate
+immutable models, explicit input/context validation, two structured view
+projections, fixed Matplotlib/Logomaker SVG figures, Jinja rendering, v4
+receipt projection, and one receipt-last transaction. The locked Python
+renderer plus the single packaged HTML template and CSS resource are the
+complete rendering runtime; reporting has no PDF, external renderer,
+compatibility facade, shell wrapper, or format-selection surface.
+
+The local lifecycle consumes only the direct public reporting-transaction
+validator in `reporting/transaction_validation.py`; it does not import a
+reporting-private package or turn rendering into completion authority. Source
+checkout identity and the independent artifact-source root are admitted by the
+neutral `libraries/source_authority.py` seam. Completion is derived only after
+every required owner scope has a complete durable start-to-verification chain
+and all three reporting transactions are semantically revalidated through the
+same irreversible-entry policy. An entered but incomplete scope blocks
+automatic resume; an unentered scope remains pending.
 
 ## Identity, inputs, and outputs
 
 Sample identity, condition, order, and replicate pairing come from the
 declared sample manifest. Partition selection, reference identity, analysis
-pairing, review plans, evidence attachments, and report-table approvals are
-also explicit inputs. Owners consume declared paths, artifacts, and receipts
+pairing, and thresholds are also explicit inputs. Owners consume declared
+paths, artifacts, and receipts
 rather than infer them from filenames, globs, neighboring source directories,
 or numeric step order.
 
 Native owner outputs and validation artifacts remain authoritative for their
 own stage or evidence boundary. Downstream consumers reference those outputs
 through declared contracts; reporting does not become the owner of upstream
-computation or review evidence.
+computation or external interpretation.
 
 ## Publication and evidence flow
 
@@ -154,12 +180,14 @@ The downstream product flow is one-way:
    evidence.
 2. Read-only adapters inspect an explicit inventory and publish versioned
    artifact records, an ordered index, and a receipt.
-3. The run-summary owner consumes one committed adapter receipt plus explicitly
-   supplied scientific-review and report-table inputs and publishes canonical
-   JSON with deterministic TSV projections.
-4. The static report owner consumes that canonical summary and authorized
-   supplemental tables under one admitted source-checkout authority, then
-   publishes HTML, summary TSV, and the v2 receipt last.
+3. The run-summary owner consumes one committed adapter receipt and publishes
+   canonical JSON with deterministic TSV projections.
+4. The static report owner consumes that canonical summary under distinct
+   admitted code and artifact roots, then publishes scientific HTML,
+   evidence/provenance HTML, summary TSV, and the v4 receipt last.
+5. The local lifecycle independently re-admits the exact required task-start
+   and verified-task roster plus all three reporting start/completion chains,
+   then publishes the immutable workflow-attempt receipt last.
 
 Operational evidence owners sit beside this product flow. Runtime, reference,
 and storage observations can inform execution or review, but do not become

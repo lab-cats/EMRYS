@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import stat
 import subprocess
 from dataclasses import dataclass, fields
@@ -23,6 +24,30 @@ from slurm_wrapper_cases import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 JOBS_ROOT = REPO_ROOT / "jobs"
+REPOSITORY_OWNING_JOBS = frozenset(
+    {
+        "step_00a_build_novogene_star_index.slurm",
+        "step_00b_gtf_to_bed12.slurm",
+        "step_00c_prepare_gatk_reference.slurm",
+        "step_01_star_align.slurm",
+        "step_02_sort_index_bam.slurm",
+        "step_02b_bam_qc.slurm",
+        "step_03_infer_strandedness_and_orientation.slurm",
+        "step_04_mark_duplicates.slurm",
+        "step_05_split_n_cigar_reads.slurm",
+        "step_06_split_bam_by_read_orientation.slurm",
+        "step_07_bcftools_mpileup_by_chrom_and_strand.slurm",
+        "step_08_vcf_preprocessing.slurm",
+        "step_09_cmh_editing_site_calling.slurm",
+        "scientific_context_projection.slurm",
+    }
+)
+CHECKOUT_HELPERS = (
+    Path("src/norad/libraries/argument_parsing.sh"),
+    Path("src/norad/libraries/gatk_invocation.sh"),
+    Path("src/norad/libraries/orientation.sh"),
+    Path("src/norad/libraries/process_environment.py"),
+)
 
 
 def job_path(name: str) -> Path:
@@ -159,6 +184,13 @@ fi
     )
 
 
+def install_checkout_helpers(submit: Path) -> None:
+    for relative in CHECKOUT_HELPERS:
+        destination = submit / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(REPO_ROOT / relative, destination)
+
+
 def base_environment(root: Path, fake_bin: Path) -> dict[str, str]:
     runtime_tmp = root / "runtime-tmp"
     runtime_tmp.mkdir(parents=True, exist_ok=True)
@@ -200,6 +232,7 @@ def prepare_delegated(name: str, tmp_path: Path) -> PreparedWrapper:
     fake_bin.mkdir()
     install_module_fake(fake_bin)
     install_tool_fakes(fake_bin)
+    install_checkout_helpers(submit)
     install_delegate_stub(submit / contract.delegation)
 
     environment = base_environment(tmp_path, fake_bin)
@@ -212,7 +245,11 @@ def prepare_delegated(name: str, tmp_path: Path) -> PreparedWrapper:
             "FAKE_SKIP_OUTPUTS": "0",
         }
     )
-    context = {"submit": str(submit), "fake_bin": str(fake_bin)}
+    context = {
+        "submit": str(submit),
+        "fake_bin": str(fake_bin),
+        "python": str(REPO_ROOT / ".venv" / "bin" / "python"),
+    }
     for fixture_path in case.paths:
         resolved = Path(fixture_path.template.format_map(context))
         if fixture_path.kind == "file":
@@ -226,10 +263,13 @@ def prepare_delegated(name: str, tmp_path: Path) -> PreparedWrapper:
     environment.update(
         {key: value.format_map(context) for key, value in case.environment}
     )
-    expected_args = tuple(
-        item
-        for flag, value in case.arguments
-        for item in (flag, value.format_map(context))
+    expected_args = (
+        tuple(
+            item
+            for flag, value in case.arguments
+            for item in (flag, value.format_map(context))
+        )
+        + case.flags
     )
     outputs = tuple(Path(value.format_map(context)) for value in case.outputs)
     output_directories = tuple(
@@ -262,6 +302,7 @@ def run_prepared(
     environment_updates: dict[str, str] | None = None,
     environment_removals: tuple[str, ...] = (),
     cwd: Path | None = None,
+    job: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     environment = prepared.environment.copy()
     if execute is None:
@@ -275,8 +316,10 @@ def run_prepared(
     contract = CONTRACTS[prepared.name]
     if cwd is None:
         cwd = prepared.submit if contract.submit_cwd == "caller" else prepared.launch
+    if job is None:
+        job = job_path(prepared.name)
     return subprocess.run(
-        ["/bin/bash", str(job_path(prepared.name))],
+        ["/bin/bash", str(job)],
         cwd=cwd,
         env=environment,
         text=True,
@@ -314,7 +357,12 @@ def test_inventory_and_contract_decisions_cover_every_live_wrapper() -> None:
     assert live_flat_jobs == expected_flat_jobs
     assert set(JOB_PATHS) == set(CONTRACTS) == set(SBATCH_DIRECTIVES)
     assert all(job_path(name).is_file() for name in CONTRACTS)
-    assert len(set(JOB_PATHS.values())) == len(CONTRACTS) == 15
+    assert len(set(JOB_PATHS.values())) == len(CONTRACTS) == 16
+    assert {
+        name
+        for name, contract in CONTRACTS.items()
+        if contract.submit_cwd == "required"
+    } == REPOSITORY_OWNING_JOBS
     for contract in CONTRACTS.values():
         assert all(
             getattr(contract, field.name)
@@ -349,8 +397,14 @@ def test_submit_directory_decision_is_literal(name: str) -> None:
     decision = CONTRACTS[name].submit_cwd
 
     if decision == "required":
+        guard = ': "${SLURM_SUBMIT_DIR:?SLURM_SUBMIT_DIR is required}"'
+        change_directory = 'cd "$SLURM_SUBMIT_DIR"'
+        assert guard in source
         assert 'cd "$SLURM_SUBMIT_DIR"' in source
         assert 'cd "${SLURM_SUBMIT_DIR:-$PWD}"' not in source
+        assert "BASH_SOURCE" not in source
+        assert source.index(guard) < source.index(change_directory)
+        assert source.index(change_directory) < source.index("src/norad/")
     elif decision == "fallback":
         assert 'cd "${SLURM_SUBMIT_DIR:-$PWD}"' in source
     else:
@@ -363,6 +417,33 @@ def test_legacy_and_utility_jobs_have_no_execute_mode(name: str) -> None:
 
     assert "EXECUTE" not in source
     assert CONTRACTS[name].invalid_mode == "not_applicable"
+
+
+@pytest.mark.parametrize(
+    ("name", "missing_variable"),
+    (
+        ("step_07_bcftools_mpileup_by_chrom_and_strand.slurm", "SAMPLE_MANIFEST"),
+        ("step_08_vcf_preprocessing.slurm", "STEP07_ROOT"),
+    ),
+)
+def test_late_stage_requires_explicit_dataset_bindings_before_outputs(
+    name: str,
+    missing_variable: str,
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(name, tmp_path)
+
+    result = run_prepared(
+        prepared,
+        environment_removals=(missing_variable,),
+    )
+
+    assert result.returncode != 0
+    assert f"{missing_variable} is required" in result.stderr
+    assert not prepared.delegate_log.exists()
+    assert not prepared.module_log.exists()
+    assert all(not output.exists() for output in prepared.outputs)
+    assert all(not directory.exists() for directory in prepared.output_directories)
 
 
 @pytest.mark.parametrize("name", sorted(DELEGATED_JOBS))
@@ -462,6 +543,35 @@ def test_delegated_output_validation_decision_is_observable(
     else:
         assert CONTRACTS[name].output_validation == "delegate_only"
         assert result.returncode == 0, result.stdout + result.stderr
+
+
+@pytest.mark.parametrize("name", sorted(DELEGATED_JOBS))
+def test_delegated_runs_from_external_slurm_spool_copy(
+    name: str,
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated(name, tmp_path)
+    spool = tmp_path / "slurm-spool"
+    spool.mkdir()
+    spool_job = spool / "slurm_script"
+    shutil.copy2(job_path(name), spool_job)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        cwd=prepared.launch,
+        job=spool_job,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+    assert prepared.delegate_cwd_log.read_text(encoding="utf-8").strip() == str(
+        prepared.submit
+    )
+    assert not (spool / "logs").exists()
+    assert not (prepared.launch / "logs").exists()
 
 
 def test_step_02b_bam_qc_stale_named_outputs_mask_missing_child_outputs(
@@ -862,7 +972,7 @@ def test_step_05_split_n_cigar_reads_rejects_unsupported_java_version_output(
     assert not prepared.delegate_log.exists()
 
 
-@pytest.mark.parametrize("tool", ("gatk", "samtools"))
+@pytest.mark.parametrize("tool", ("samtools",))
 def test_step_05_split_n_cigar_reads_propagates_tool_version_command_failure(
     tmp_path: Path,
     tool: str,
@@ -876,6 +986,68 @@ def test_step_05_split_n_cigar_reads_propagates_tool_version_command_failure(
     )
 
     assert result.returncode == 37, result.stdout + result.stderr
+    assert not prepared.delegate_log.exists()
+
+
+@pytest.mark.parametrize(
+    "name",
+    (
+        "step_00c_prepare_gatk_reference.slurm",
+        "step_05_split_n_cigar_reads.slurm",
+    ),
+)
+def test_gatk_wrappers_leave_version_probe_to_delegated_owner(
+    tmp_path: Path,
+    name: str,
+) -> None:
+    prepared = prepare_delegated(name, tmp_path)
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"FAKE_FAIL_TOOL": "gatk", "FAKE_TOOL_EXIT": "37"},
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
+        "--execute",
+    )
+    assert all(
+        not line.startswith("gatk\t") for line in read_lines(tmp_path / "tool.log")
+    )
+
+
+@pytest.mark.parametrize(
+    "name",
+    (
+        "step_00c_prepare_gatk_reference.slurm",
+        "step_05_split_n_cigar_reads.slurm",
+    ),
+)
+@pytest.mark.parametrize("python_state", ("missing", "nonexecutable", "unsupported"))
+def test_gatk_wrappers_reject_unusable_controlled_python_before_delegation(
+    tmp_path: Path,
+    name: str,
+    python_state: str,
+) -> None:
+    prepared = prepare_delegated(name, tmp_path)
+    python = tmp_path / f"{python_state}-python"
+    if python_state == "nonexecutable":
+        touch(python, "not executable\n")
+    elif python_state == "unsupported":
+        write_executable(
+            python,
+            "#!/bin/bash\nprintf 'Python 3.10.0\\n' >&2\nexit 2\n",
+        )
+
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_updates={"NORAD_SHA256_PYTHON": str(python)},
+    )
+
+    assert result.returncode == 2, result.stdout + result.stderr
+    assert "NORAD_SHA256_PYTHON" in result.stderr
     assert not prepared.delegate_log.exists()
 
 
@@ -910,29 +1082,6 @@ def test_step_05_split_n_cigar_reads_warns_and_delegates_unusable_tool(
     assert all(
         output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
     )
-
-
-def test_step_05_split_n_cigar_reads_uses_dynamic_cwd_without_submit_directory(
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated("step_05_split_n_cigar_reads.slurm", tmp_path)
-    install_delegate_stub(prepared.launch / CONTRACTS[prepared.name].delegation)
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_removals=("SLURM_SUBMIT_DIR",),
-        cwd=prepared.launch,
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
-        "--execute",
-    )
-    assert prepared.delegate_cwd_log.read_text(encoding="utf-8").strip() == str(
-        prepared.launch
-    )
-    assert (prepared.launch / "logs").is_dir()
 
 
 def test_step_05_split_n_cigar_reads_dry_run_creates_logs_only(
@@ -1135,39 +1284,6 @@ def test_late_stage_forwards_path_tool_basename(
     assert all(
         output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
     )
-
-
-@pytest.mark.parametrize(
-    "name",
-    (
-        "step_06_split_bam_by_read_orientation.slurm",
-        "step_07_bcftools_mpileup_by_chrom_and_strand.slurm",
-        "step_08_vcf_preprocessing.slurm",
-        "step_09_cmh_editing_site_calling.slurm",
-    ),
-)
-def test_late_stage_uses_dynamic_cwd_without_submit_directory(
-    name: str,
-    tmp_path: Path,
-) -> None:
-    prepared = prepare_delegated(name, tmp_path)
-    install_delegate_stub(prepared.launch / CONTRACTS[prepared.name].delegation)
-
-    result = run_prepared(
-        prepared,
-        execute="1",
-        environment_removals=("SLURM_SUBMIT_DIR",),
-        cwd=prepared.launch,
-    )
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert read_nul_args(prepared.delegate_log) == prepared.expected_args + (
-        "--execute",
-    )
-    assert prepared.delegate_cwd_log.read_text(encoding="utf-8").strip() == str(
-        prepared.launch
-    )
-    assert (prepared.launch / "logs").is_dir()
 
 
 def test_step_06_split_bam_by_read_orientation_dry_run_creates_logs_only(
@@ -1394,19 +1510,23 @@ def test_delegated_module_failure_policy_is_observable(
         assert not prepared.delegate_log.exists()
 
 
-@pytest.mark.parametrize(
-    "name",
-    ("step_01_star_align.slurm", "step_02_sort_index_bam.slurm"),
-)
-def test_caller_cwd_wrappers_do_not_honor_submit_directory(
+@pytest.mark.parametrize("name", sorted(DELEGATED_JOBS))
+def test_delegated_requires_submit_directory_before_modules_or_child(
     name: str,
     tmp_path: Path,
 ) -> None:
     prepared = prepare_delegated(name, tmp_path)
 
-    result = run_prepared(prepared, execute="1", cwd=prepared.launch)
+    result = run_prepared(
+        prepared,
+        execute="1",
+        environment_removals=("SLURM_SUBMIT_DIR",),
+        cwd=prepared.launch,
+    )
 
     assert result.returncode != 0
+    assert "SLURM_SUBMIT_DIR is required" in result.stderr
+    assert not prepared.module_log.exists()
     assert not prepared.delegate_log.exists()
 
 
@@ -1436,7 +1556,11 @@ def test_step01_default_fixture_mode_creates_its_current_dry_run_placeholders(
         "results/test/sample_001/star",
         "--threads",
         "3",
+        "--no-clobber",
     )
+    assert (
+        prepared.submit / "refs/test_star_index/Genome"
+    ).read_bytes() == b"dry-run STAR index fixture\n"
 
 
 def prepare_legacy_environment(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:

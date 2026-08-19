@@ -5,25 +5,15 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from norad.contracts.scientific_evidence import review_package
-
 _MODULE_PATH = Path(__file__).resolve()
 
 REPO_ROOT = _MODULE_PATH.parents[5]
-SCHEMA_ROOT = _MODULE_PATH.parents[2] / "schemas" / "artifacts" / "v1"
-REPORT_RECEIPT_SCHEMA_PATH = (
-    _MODULE_PATH.parents[2]
-    / "schemas"
-    / "artifacts"
-    / "v2"
-    / "report_receipt.schema.json"
-)
-COMMON_SCHEMA_PATH = SCHEMA_ROOT / "common.schema.json"
+SCHEMA_ROOT = _MODULE_PATH.parents[2] / "schemas" / "artifacts"
+COMMON_SCHEMA_PATH = SCHEMA_ROOT / "v1" / "common.schema.json"
 SCHEMA_FILES = {
-    "artifact-record": SCHEMA_ROOT / "artifact_record.schema.json",
-    "scientific-review-record": SCHEMA_ROOT / "scientific_review_record.schema.json",
-    "run-summary": SCHEMA_ROOT / "run_summary.schema.json",
-    "report-receipt": REPORT_RECEIPT_SCHEMA_PATH,
+    "artifact-record": SCHEMA_ROOT / "v2" / "artifact_record.schema.json",
+    "run-summary": SCHEMA_ROOT / "v2" / "run_summary.schema.json",
+    "report-receipt": SCHEMA_ROOT / "v4" / "report_receipt.schema.json",
 }
 INVENTORY_HEADER = (
     "artifact_id",
@@ -42,54 +32,6 @@ SCOPE_TYPES = {
     "cohort_partition",
     "cohort",
     "analysis",
-    "scientific_review",
-}
-SCIENCE_INPUT_ROLES = set(review_package.INPUT_ARTIFACT_ROLES.values())
-SCIENCE_UPSTREAM_ROLE_CONTRACTS = {
-    "step08_sites": ("08", "cohort", "step08_sites_v1", ".step08_sites.tsv"),
-    "step08_inputs": ("08", "cohort", "step08_inputs_v1", ".step08_inputs.tsv"),
-    "step08_summary": (
-        "08",
-        "cohort",
-        "step08_summary_v1",
-        ".step08_summary.tsv",
-    ),
-    "step09_all_sites": (
-        "09",
-        "analysis",
-        "step09_cmh_all_sites_v1",
-        ".cmh_all_sites.tsv",
-    ),
-    "step09_significant_sites": (
-        "09",
-        "analysis",
-        "step09_cmh_significant_sites_v1",
-        ".cmh_significant_sites.tsv",
-    ),
-    "step09_summary": (
-        "09",
-        "analysis",
-        "step09_cmh_summary_v1",
-        ".cmh_summary.tsv",
-    ),
-    "step09_mutation_spectrum_tsv": (
-        "09",
-        "analysis",
-        "step09_mutation_spectrum_tsv_v1",
-        ".mutation_spectrum.tsv",
-    ),
-    "step09_mutation_spectrum_pdf": (
-        "09",
-        "analysis",
-        "step09_mutation_spectrum_pdf_v1",
-        ".mutation_spectrum.pdf",
-    ),
-    "step09_depth_delta_pdf": (
-        "09",
-        "analysis",
-        "step09_depth_delta_pdf_v1",
-        ".depth_delta.pdf",
-    ),
 }
 RUN_CONTRACT_COMPONENT_FIELDS = (
     "sample_manifest_sha256",

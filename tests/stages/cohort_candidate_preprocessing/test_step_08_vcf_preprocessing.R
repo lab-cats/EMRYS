@@ -69,7 +69,9 @@ sha256_file <- function(path) {
     tolower(regmatches(paste(output, collapse = "\n"), match))
 }
 
-vcf_header <- function(samples, omit_ad_definition = FALSE) {
+vcf_header <- function(
+    samples, omit_ad_definition = FALSE, contig = "1"
+) {
     header <- c(
         "##fileformat=VCFv4.2",
         "##FILTER=<ID=PASS,Description=\"All filters passed\">",
@@ -81,7 +83,7 @@ vcf_header <- function(samples, omit_ad_definition = FALSE) {
         "##FORMAT=<ID=ADF,Number=R,Type=Integer,Description=\"Forward depths\">",
         "##FORMAT=<ID=ADR,Number=R,Type=Integer,Description=\"Reverse depths\">",
         "##FORMAT=<ID=SP,Number=1,Type=Integer,Description=\"Strand bias\">",
-        "##contig=<ID=1,length=1000>"
+        paste0("##contig=<ID=", contig, ",length=1000>")
     )
     if (!omit_ad_definition) {
         header <- append(
@@ -185,6 +187,8 @@ default_rev_rows <- function() {
 annotation_lines <- function() {
     attributes_plus <- 'gene_id "gene_plus"; transcript_id "tx_plus";'
     attributes_minus <- 'gene_id "gene_minus"; transcript_id "tx_minus";'
+    attributes_conflict <-
+        'gene_id "gene_conflict"; transcript_id "tx_conflict";'
     rows <- list(
         c("1", "fixture", "exon", "10", "30", ".", "+", ".", attributes_plus),
         c("1", "fixture", "exon", "50", "80", ".", "+", ".", attributes_plus),
@@ -221,6 +225,14 @@ annotation_lines <- function() {
         c(
             "1", "fixture", "three_prime_UTR", "200", "219", ".", "-", ".",
             attributes_minus
+        ),
+        c(
+            "2", "fixture", "exon", "10", "30", ".", "+", ".",
+            attributes_conflict
+        ),
+        c(
+            "2", "fixture", "exon", "50", "80", ".", "-", ".",
+            attributes_conflict
         )
     )
     vapply(rows, paste, character(1), collapse = "\t")
@@ -240,17 +252,31 @@ build_case <- function(root, mode = "positive") {
 
     samples <- data.frame(
         sample_id = c("sample_A", "sample_B"),
+        r1_fastq = c("/reads/sample_A_R1.fastq.gz", "/reads/sample_B_R1.fastq.gz"),
+        r2_fastq = c("/reads/sample_A_R2.fastq.gz", "/reads/sample_B_R2.fastq.gz"),
+        strandedness = c("unknown", "unknown"),
         condition = c("EV", "PUM1"),
+        replicate = c("1", "2"),
         stringsAsFactors = FALSE
     )
+    if (mode == "missing_replicate") {
+        samples$replicate <- NULL
+    }
     write_tsv(samples, sample_manifest)
     selector_relative <- file.path("selectors", "p2.regions.tsv")
     selector_path <- file.path(dirname(partition_manifest), selector_relative)
+    selector_chromosome <- if (mode == "disjoint_annotation") "3" else "1"
     if (mode == "mixed_regions_file") {
         write_lines(c("1\t200", "1\t250\t400"), selector_path)
     } else {
         # Generic Step 07 interval mode accepts three or more columns.
-        write_lines("1\t200\t400\tfixture_interval", selector_path)
+        write_lines(
+            paste(
+                selector_chromosome, "200", "400", "fixture_interval",
+                sep = "\t"
+            ),
+            selector_path
+        )
     }
     partitions <- data.frame(
         partition_id = c("p1", "p2"),
@@ -270,6 +296,9 @@ build_case <- function(root, mode = "positive") {
 
     p1_fwd <- default_fwd_rows()
     p2_rev <- default_rev_rows()
+    if (mode == "disjoint_annotation") {
+        p2_rev <- sub("^1", "3", p2_rev)
+    }
     p1_samples <- c("sample_A", "sample_B")
     omit_ad_definition <- FALSE
     if (mode == "sample_order") {
@@ -332,9 +361,21 @@ build_case <- function(root, mode = "positive") {
             )
             write_lines(vcf_header(c("sample_A", "sample_B")), rev_path)
         } else {
-            write_lines(vcf_header(c("sample_A", "sample_B")), fwd_path)
             write_lines(
-                c(vcf_header(c("sample_A", "sample_B")), p2_rev),
+                vcf_header(
+                    c("sample_A", "sample_B"),
+                    contig = selector_chromosome
+                ),
+                fwd_path
+            )
+            write_lines(
+                c(
+                    vcf_header(
+                        c("sample_A", "sample_B"),
+                        contig = selector_chromosome
+                    ),
+                    p2_rev
+                ),
                 rev_path
             )
         }
@@ -392,7 +433,7 @@ build_case <- function(root, mode = "positive") {
     )
 }
 
-engine_arguments <- function(case, output_dir) {
+engine_arguments <- function(case, output_dir, threads = "1") {
     dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
     paths <- list(
         sites = file.path(output_dir, "sites.tsv"),
@@ -409,6 +450,7 @@ engine_arguments <- function(case, output_dir) {
             "--sample-manifest-sha256", case$sample_hash,
             "--partition-manifest-sha256", case$partition_hash,
             "--annotation-gtf-sha256", case$annotation_hash,
+            "--threads", threads,
             "--sites-output", paths$sites,
             "--inputs-output", paths$inputs,
             "--summary-output", paths$summary
@@ -419,17 +461,20 @@ engine_arguments <- function(case, output_dir) {
 
 run_engine <- function(
     engine, case, output_dir, expect_success, environment = character(),
-    expected_error = NULL
+    expected_error = NULL, threads = "1"
 ) {
-    invocation <- engine_arguments(case, output_dir)
+    invocation <- engine_arguments(case, output_dir, threads)
     log <- file.path(output_dir, "engine.log")
-    command <- c(shQuote(engine), shQuote(invocation$args))
+    command <- c(
+        "--no-environ", "--no-site-file", "--no-restore", "--no-save",
+        shQuote(engine), shQuote(invocation$args)
+    )
     status <- system2(
         test_rscript_bin,
         args = command,
         stdout = log,
         stderr = log,
-        env = environment
+        env = c(environment, "R_DEFAULT_PACKAGES=NULL")
     )
     if (is.null(status)) {
         status <- 0L
@@ -767,28 +812,87 @@ first_paths <- run_engine(
     file.path(test_root, "positive-output-1"),
     expect_success = TRUE
 )
-assert_positive_outputs(first_paths)
-second_paths <- run_engine(
-    engine,
-    positive_case,
-    file.path(test_root, "positive-output-2"),
-    expect_success = TRUE
-)
-for (name in c("sites", "inputs", "summary")) {
-    assert_true(
-        identical(
-            readBin(first_paths[[name]], "raw", n = file.info(
-                first_paths[[name]]
-            )$size),
-            readBin(second_paths[[name]], "raw", n = file.info(
-                second_paths[[name]]
-            )$size)
+assert_true(
+    any(grepl(
+        paste0(
+            "Skipping transcript tx_conflict because it does not map to ",
+            "exactly one chromosome, strand, and gene."
         ),
-        paste0(name, " output must be byte-deterministic")
+        readLines(
+            file.path(test_root, "positive-output-1", "engine.log"),
+            warn = FALSE
+        ),
+        fixed = TRUE
+    )),
+    "an internally inconsistent transcript must be warned about and skipped"
+)
+assert_positive_outputs(first_paths)
+for (threads in c("2", "4")) {
+    output_dir <- file.path(test_root, paste0("positive-output-", threads))
+    compared_paths <- run_engine(
+        engine,
+        positive_case,
+        output_dir,
+        expect_success = TRUE,
+        threads = threads
+    )
+    for (name in c("sites", "inputs", "summary")) {
+        assert_true(
+            identical(
+                readBin(first_paths[[name]], "raw", n = file.info(
+                    first_paths[[name]]
+                )$size),
+                readBin(compared_paths[[name]], "raw", n = file.info(
+                    compared_paths[[name]]
+                )$size)
+            ),
+            paste0(
+                name, " output must be byte-deterministic at ",
+                threads, " workers"
+            )
+        )
+    }
+    worker_log <- readLines(file.path(output_dir, "engine.log"), warn = FALSE)
+    assert_true(
+        any(grepl("Step 08 worker load:", worker_log, fixed = TRUE)),
+        paste0(threads, "-worker execution must report worker load")
     )
 }
 
+disjoint_case <- build_case(
+    file.path(test_root, "disjoint-annotation"),
+    mode = "disjoint_annotation"
+)
+disjoint_output <- file.path(test_root, "disjoint-annotation-output")
+disjoint_paths <- run_engine(
+    engine,
+    disjoint_case,
+    disjoint_output,
+    expect_success = TRUE
+)
+disjoint_log <- readLines(
+    file.path(disjoint_output, "engine.log"), warn = FALSE
+)
+assert_true(
+    !any(grepl(".merge_two_Seqinfo_objects", disjoint_log, fixed = TRUE)),
+    "disjoint annotation seqlevels must be handled without a merge warning"
+)
+disjoint_sites <- read_result(disjoint_paths$sites)
+disjoint_rows <- disjoint_sites$chromosome == "3"
+assert_true(
+    sum(disjoint_rows) == 4L &&
+        all(is.na(disjoint_sites$gene_ids[disjoint_rows])) &&
+        all(is.na(disjoint_sites$transcript_ids[disjoint_rows])) &&
+        !any(disjoint_sites$is_cds[disjoint_rows]) &&
+        !any(disjoint_sites$is_five_prime_utr[disjoint_rows]) &&
+        !any(disjoint_sites$is_three_prime_utr[disjoint_rows]) &&
+        !any(disjoint_sites$is_exon[disjoint_rows]) &&
+        !any(disjoint_sites$is_intron[disjoint_rows]),
+    "disjoint annotation seqlevels must retain candidates as unannotated"
+)
+
 negative_modes <- c(
+    "missing_replicate",
     "overlap",
     "mixed_regions_file",
     "receipt_hash_mismatch",
@@ -806,6 +910,10 @@ negative_modes <- c(
     "declared_count_mismatch"
 )
 expected_negative_errors <- list(
+    missing_replicate = paste0(
+        "Sample manifest must have the exact paired local-CMH schema, ",
+        "with optional notes as the final column."
+    ),
     overlap = "Partition selectors overlap",
     malformed_count = "FORMAT/AD must contain",
     malformed_dp_count = "FORMAT/DP must contain",

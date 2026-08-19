@@ -1,0 +1,1064 @@
+"""Static local-CMH projection of NORAD's public scientific owner graph."""
+
+from __future__ import annotations
+
+import hashlib
+import re
+import sys
+from pathlib import Path
+
+import norad
+from norad.contracts.orchestration import api as orchestration_contracts
+from norad.libraries.source_authority import (
+    SourceCheckoutError,
+    attest_source_checkout,
+    require_controlled_python_runtime,
+)
+from norad.orchestration.local_pilot.task import (
+    TaskBoundaryError,
+    validate_task_start,
+    validate_verified_task,
+)
+from norad.orchestration.local_pilot.inspection import (
+    expected_tasks,
+    state_tree_blockers,
+    task_start_tree_blockers,
+)
+from norad.orchestration.local_pilot.reporting_boundary import (
+    REPORTING_KINDS,
+    ReportingBoundaryError,
+    ledger_paths,
+    validate_verified,
+)
+
+try:
+    require_controlled_python_runtime()
+except SourceCheckoutError as exc:
+    raise WorkflowError(f"Uncontrolled workflow Python runtime: {exc}") from exc
+
+
+WORKFLOW_ROOT = Path(workflow.basedir).resolve()
+PROFILE_PATH = (WORKFLOW_ROOT / "contracts" / "local_cmh_v2.json").resolve()
+PROFILE = orchestration_contracts.load_json_object(PROFILE_PATH)
+orchestration_contracts.validate_record("profile", PROFILE)
+CONFIG_KEYS = {
+    "run_root",
+    "python_executable",
+    "execution_path",
+    "profile_path",
+    "workflow_attempt_id",
+    "source_checkout",
+    "artifact_source_root",
+    "reference_contract_path",
+    "primary_analysis_policy_path",
+    "reporting_run_contract_path",
+    "artifact_inventory_path",
+    "step_threads",
+    "sample_concurrency",
+    "dispatch_paths",
+}
+if set(config) != CONFIG_KEYS:
+    raise WorkflowError(
+        "Workflow config keys must be exactly " + ", ".join(sorted(CONFIG_KEYS))
+    )
+
+
+def _absolute_config_path(key):
+    value = config.get(key)
+    if not isinstance(value, str) or not value:
+        raise WorkflowError(f"Workflow config {key!r} must be a nonempty string")
+    path = Path(value)
+    if not path.is_absolute():
+        raise WorkflowError(f"Workflow config {key!r} must be absolute: {value}")
+    return path
+
+
+def _positive_config_integer(key):
+    value = config.get(key)
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise WorkflowError(f"Workflow config {key!r} must be a positive integer")
+    return value
+
+
+RUN_ROOT = _absolute_config_path("run_root")
+CONFIGURED_PYTHON = _absolute_config_path("python_executable")
+EXECUTION_PATH = _absolute_config_path("execution_path")
+PROFILE_SNAPSHOT_PATH = _absolute_config_path("profile_path")
+SOURCE_CHECKOUT = _absolute_config_path("source_checkout")
+ARTIFACT_SOURCE_ROOT = _absolute_config_path("artifact_source_root")
+THREAD_CAPABLE_STEP_IDS = {"00a", "01", "02", "06", "08"}
+STEP_THREADS = config.get("step_threads")
+if not isinstance(STEP_THREADS, dict) or set(STEP_THREADS) != THREAD_CAPABLE_STEP_IDS:
+    raise WorkflowError(
+        "Workflow config step_threads keys must be exactly "
+        + ", ".join(sorted(THREAD_CAPABLE_STEP_IDS))
+    )
+for step_id, value in STEP_THREADS.items():
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise WorkflowError(
+            f"Workflow config step_threads[{step_id!r}] must be a positive integer"
+        )
+SAMPLE_CONCURRENCY = _positive_config_integer("sample_concurrency")
+WORKFLOW_ATTEMPT_ID = config.get("workflow_attempt_id")
+if not isinstance(WORKFLOW_ATTEMPT_ID, str) or re.fullmatch(
+    r"workflow-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{32}", WORKFLOW_ATTEMPT_ID
+) is None:
+    raise WorkflowError("workflow_attempt_id is not one valid immutable attempt ID")
+WORKFLOW_ATTEMPT_PATH = (
+    RUN_ROOT / "attempts" / WORKFLOW_ATTEMPT_ID / "attempt.json"
+)
+EXECUTION = orchestration_contracts.load_json_object(EXECUTION_PATH)
+orchestration_contracts.validate_record("execution", EXECUTION, profile=PROFILE)
+PROFILE_SNAPSHOT = orchestration_contracts.load_json_object(PROFILE_SNAPSHOT_PATH)
+if PROFILE_SNAPSHOT != PROFILE:
+    raise WorkflowError("Run profile snapshot does not match the reviewed source profile")
+if PROFILE_SNAPSHOT_PATH.read_bytes() != orchestration_contracts.canonical_json_bytes(
+    PROFILE_SNAPSHOT
+):
+    raise WorkflowError("Run profile snapshot must use canonical JSON bytes")
+if ARTIFACT_SOURCE_ROOT != RUN_ROOT:
+    raise WorkflowError("Fixed local workflow artifact_source_root must equal run_root")
+if not SOURCE_CHECKOUT.is_dir() or SOURCE_CHECKOUT.is_symlink():
+    raise WorkflowError(f"source_checkout must be a real directory: {SOURCE_CHECKOUT}")
+
+
+def _require_run_file(path, label):
+    try:
+        path.relative_to(RUN_ROOT)
+    except ValueError as exc:
+        raise WorkflowError(f"{label} must be beneath run_root: {path}") from exc
+    if path.is_symlink() or not path.is_file() or path.resolve(strict=True) != path:
+        raise WorkflowError(f"{label} must be an absolute canonical file: {path}")
+
+
+_require_run_file(EXECUTION_PATH, "execution_path")
+_require_run_file(PROFILE_SNAPSHOT_PATH, "profile_path")
+_require_run_file(WORKFLOW_ATTEMPT_PATH, "workflow_attempt_path")
+
+PROJECTION_CONFIG = {
+    "reference_contract": "reference_contract_path",
+    "primary_analysis_policy": "primary_analysis_policy_path",
+    "reporting_run_contract": "reporting_run_contract_path",
+    "artifact_inventory": "artifact_inventory_path",
+}
+PROJECTION_PATHS = {}
+for projection_name, config_key in PROJECTION_CONFIG.items():
+    projection_path = _absolute_config_path(config_key)
+    reference = EXECUTION["reporting_projection"][projection_name]
+    expected_path = RUN_ROOT / reference["path"]
+    if projection_path != expected_path:
+        raise WorkflowError(
+            f"{config_key} does not match normalized reporting projection"
+        )
+    _require_run_file(projection_path, config_key)
+    payload = projection_path.read_bytes()
+    if hashlib.sha256(payload).hexdigest() != reference["sha256"]:
+        raise WorkflowError(f"{config_key} does not match its projected SHA-256")
+    if projection_path.suffix == ".json":
+        document = orchestration_contracts.load_json_object(projection_path)
+        if payload != orchestration_contracts.canonical_json_bytes(document):
+            raise WorkflowError(f"{config_key} must use canonical JSON bytes")
+    PROJECTION_PATHS[projection_name] = projection_path
+
+WORKFLOW_ATTEMPT = orchestration_contracts.load_json_object(WORKFLOW_ATTEMPT_PATH)
+orchestration_contracts.validate_record("workflow-attempt", WORKFLOW_ATTEMPT)
+if WORKFLOW_ATTEMPT["workflow_attempt_id"] != WORKFLOW_ATTEMPT_ID:
+    raise WorkflowError("workflow attempt record does not match workflow_attempt_id")
+WORKFLOW_CONFIG_PATH = RUN_ROOT / WORKFLOW_ATTEMPT["workflow_config"]["path"]
+_require_run_file(WORKFLOW_CONFIG_PATH, "workflow config snapshot")
+WORKFLOW_CONFIG_BYTES = WORKFLOW_CONFIG_PATH.read_bytes()
+if WORKFLOW_CONFIG_BYTES != orchestration_contracts.canonical_json_bytes(dict(config)):
+    raise WorkflowError("Workflow config snapshot must use exact canonical JSON bytes")
+if WORKFLOW_ATTEMPT["workflow_config"] != {
+    "path": WORKFLOW_CONFIG_PATH.relative_to(RUN_ROOT).as_posix(),
+    "sha256": hashlib.sha256(WORKFLOW_CONFIG_BYTES).hexdigest(),
+}:
+    raise WorkflowError("workflow attempt does not bind exact workflow config bytes")
+EXECUTION_SHA256 = hashlib.sha256(
+    orchestration_contracts.canonical_json_bytes(EXECUTION)
+).hexdigest()
+PROFILE_SHA256 = hashlib.sha256(
+    orchestration_contracts.canonical_json_bytes(PROFILE)
+).hexdigest()
+for attempt_field, expected_value in (
+    ("run_id", EXECUTION["run_id"]),
+    ("execution_contract_sha256", EXECUTION_SHA256),
+    ("profile_sha256", PROFILE_SHA256),
+):
+    if WORKFLOW_ATTEMPT[attempt_field] != expected_value:
+        raise WorkflowError(
+            f"workflow_attempt_path does not bind normalized {attempt_field}"
+        )
+if Path(WORKFLOW_ATTEMPT["source_checkout"]["path"]) != SOURCE_CHECKOUT:
+    raise WorkflowError("workflow attempt does not bind configured source_checkout")
+try:
+    SOURCE_ATTESTATION = attest_source_checkout(
+        root=SOURCE_CHECKOUT,
+        package_root=Path(norad.__file__).resolve().parent,
+        expected_commit=WORKFLOW_ATTEMPT["source_checkout"]["commit"],
+    )
+except SourceCheckoutError as exc:
+    raise WorkflowError(f"Could not attest workflow child source identity: {exc}") from exc
+PYTHON = sys.executable
+if Path(sys.executable) != CONFIGURED_PYTHON:
+    raise WorkflowError("Snakemake child Python differs from configured executable")
+if not CONFIGURED_PYTHON.is_file():
+    raise WorkflowError("python_executable must resolve to a regular file")
+if Path(WORKFLOW_ATTEMPT["normalizer"]["path"]) != CONFIGURED_PYTHON:
+    raise WorkflowError("workflow attempt normalizer does not bind python_executable")
+REQUIRED_TOOLS = {
+    tool["name"]: Path(tool["path"]) for tool in WORKFLOW_ATTEMPT["required_tools"]
+}
+if (
+    REQUIRED_TOOLS.get("python") != CONFIGURED_PYTHON
+    or REQUIRED_TOOLS.get("snakemake") != CONFIGURED_PYTHON
+):
+    raise WorkflowError("workflow attempt required tools do not bind python_executable")
+
+REFERENCE_ID = EXECUTION["reference"]["reference_id"]
+SAMPLE_IDS = tuple(row["sample_id"] for row in EXECUTION["samples"]["rows"])
+COHORT_ID = EXECUTION["analysis"]["cohort_id"]
+PARTITION_SCOPES = tuple(
+    f"{COHORT_ID}__{row['partition_id']}"
+    for row in EXECUTION["partitions"]["rows"]
+)
+ANALYSIS_ID = EXECUTION["analysis"]["primary_analysis_id"]
+FIRST_SAMPLE_ID = SAMPLE_IDS[0]
+RUN_ID = EXECUTION["run_id"]
+ARTIFACT_OUTPUT_ROOT = RUN_ROOT / "products" / "artifact-summary"
+ARTIFACT_RECEIPT = (
+    ARTIFACT_OUTPUT_ROOT / RUN_ID / f"{RUN_ID}.artifact_receipt.tsv"
+)
+RUN_SUMMARY = ARTIFACT_OUTPUT_ROOT / RUN_ID / f"{RUN_ID}.run_summary.json"
+RUN_SUMMARY_RECEIPT = (
+    ARTIFACT_OUTPUT_ROOT / RUN_ID / f"{RUN_ID}.run_summary_receipt.tsv"
+)
+REPORT_OUTPUT_ROOT = RUN_ROOT / "products" / "report"
+REPORT_RECEIPT = REPORT_OUTPUT_ROOT / RUN_ID / f"{RUN_ID}.report_outputs.tsv"
+REPORTING_LEDGERS = {
+    kind: ledger_paths(RUN_ROOT, kind) for kind in REPORTING_KINDS
+}
+ARTIFACT_INDEX_VERIFIED = REPORTING_LEDGERS["artifact_index"].verified
+RUN_SUMMARY_VERIFIED = REPORTING_LEDGERS["run_summary"].verified
+HTML_REPORT_VERIFIED = REPORTING_LEDGERS["html_report"].verified
+
+OWNER_TASKS = {
+    task["rule_name"]: task
+    for task in PROFILE["owner_tasks"]
+}
+AUTOMATIC_TASKS = {
+    "construct_STAR_index": (
+        "norad.stage.construct_STAR_index.v1",
+        "reference",
+        "reference",
+    ),
+    "convert_GTF_to_BED12": (
+        "norad.stage.convert_GTF_to_BED12.v1",
+        "reference",
+        "reference",
+    ),
+    "construct_FASTA_sidecars": (
+        "norad.stage.construct_FASTA_sidecars.v1",
+        "reference",
+        "reference",
+    ),
+    "align_RNA_reads_with_STAR": (
+        "norad.stage.align_RNA_reads_with_STAR.v1",
+        "sample",
+        "samples",
+    ),
+    "construct_canonical_BAM": (
+        "norad.stage.construct_canonical_BAM.v1",
+        "sample",
+        "samples",
+    ),
+    "collect_canonical_BAM_QC_evidence": (
+        "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
+        "sample",
+        "samples",
+    ),
+    "collect_RSeQC_paired_orientation_evidence": (
+        "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+        "sample",
+        "samples",
+    ),
+    "mark_BAM_duplicates_with_Picard": (
+        "norad.stage.mark_BAM_duplicates_with_Picard.v1",
+        "sample",
+        "samples",
+    ),
+    "split_N_cigar_reads_with_GATK": (
+        "norad.stage.split_N_cigar_reads_with_GATK.v1",
+        "sample",
+        "samples",
+    ),
+    "partition_BAM_by_mechanical_read_orientation": (
+        "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
+        "sample",
+        "samples",
+    ),
+    "generate_partitioned_cohort_mpileup_VCFs": (
+        "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+        "cohort_partition",
+        "partitions",
+    ),
+    "preprocess_and_annotate_cohort_candidates": (
+        "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
+        "cohort",
+        "cohort",
+    ),
+    "rank_cohort_candidates_with_paired_CMH": (
+        "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+        "analysis",
+        "analysis",
+    ),
+    "project_candidate_scientific_context": (
+        "norad.analysis.project_candidate_scientific_context.v1",
+        "analysis",
+        "analysis",
+    ),
+}
+
+
+def _require_profile_projection():
+    automatic_keys = {identity[0] for identity in AUTOMATIC_TASKS.values()}
+    if set(PROFILE["required_owner_keys"]) != automatic_keys:
+        raise WorkflowError(
+            "Fixed profile required_owner_keys do not match the static automatic graph"
+        )
+    if set(OWNER_TASKS) != set(AUTOMATIC_TASKS):
+        raise WorkflowError("Fixed profile owner task roster does not match STAGE_MAP")
+    for rule_name, expected in AUTOMATIC_TASKS.items():
+        task = OWNER_TASKS[rule_name]
+        observed = (
+            task["machine_key"],
+            task["scope_type"],
+            task["scope_selector"],
+        )
+        if observed != expected:
+            raise WorkflowError(
+                f"Fixed profile task {rule_name!r} does not match the static graph"
+            )
+
+
+_require_profile_projection()
+
+DISPATCH_PATHS = config.get("dispatch_paths")
+if not isinstance(DISPATCH_PATHS, dict):
+    raise WorkflowError("Workflow config 'dispatch_paths' must be an object")
+
+
+def _expected_scopes(selector):
+    if selector == "reference":
+        return (REFERENCE_ID,)
+    if selector == "samples":
+        return SAMPLE_IDS
+    if selector == "partitions":
+        return PARTITION_SCOPES
+    if selector == "cohort":
+        return (COHORT_ID,)
+    if selector == "analysis":
+        return (ANALYSIS_ID,)
+    raise WorkflowError(f"Unsupported automatic scope selector: {selector}")
+
+
+def _require_closed_dispatch_map():
+    expected_owners = {
+        identity[0] for identity in AUTOMATIC_TASKS.values()
+    }
+    if set(DISPATCH_PATHS) != expected_owners:
+        raise WorkflowError(
+            "Workflow dispatch_paths owner keys do not exactly match the automatic profile"
+        )
+    for machine_key, _, selector in AUTOMATIC_TASKS.values():
+        by_scope = DISPATCH_PATHS[machine_key]
+        if not isinstance(by_scope, dict) or set(by_scope) != set(
+            _expected_scopes(selector)
+        ):
+            raise WorkflowError(
+                f"Dispatch scopes do not exactly match {machine_key}/{selector}"
+            )
+
+
+_require_closed_dispatch_map()
+
+_DISPATCH_CACHE = {}
+
+
+def _verified(machine_key, scope_id):
+    return str(RUN_ROOT / "state" / "verified" / machine_key / f"{scope_id}.json")
+
+
+def _sample_verified(machine_key):
+    return _verified(machine_key, "{sample_id}")
+
+
+def _partition_verified(machine_key):
+    return _verified(machine_key, "{partition_scope}")
+
+
+def _dispatch_reference(machine_key, scope_id):
+    cache_key = (machine_key, scope_id)
+    if cache_key in _DISPATCH_CACHE:
+        return _DISPATCH_CACHE[cache_key]
+    by_scope = DISPATCH_PATHS.get(machine_key)
+    if not isinstance(by_scope, dict):
+        raise WorkflowError(f"Missing dispatch map for owner {machine_key}")
+    reference = by_scope.get(scope_id)
+    if not isinstance(reference, dict) or set(reference) != {"path", "sha256"}:
+        raise WorkflowError(
+            f"Dispatch reference must contain only path and sha256 for "
+            f"{machine_key}/{scope_id}"
+        )
+    value = reference["path"]
+    digest = reference["sha256"]
+    if not isinstance(value, str) or not value:
+        raise WorkflowError(f"Missing dispatch path for {machine_key}/{scope_id}")
+    if not isinstance(digest, str) or re.fullmatch(r"[0-9a-f]{64}", digest) is None:
+        raise WorkflowError(f"Invalid dispatch SHA-256 for {machine_key}/{scope_id}")
+    path = Path(value)
+    if not path.is_absolute():
+        raise WorkflowError(f"Dispatch path must be absolute: {value}")
+    _require_run_file(path, "dispatch record")
+    payload = path.read_bytes()
+    if hashlib.sha256(payload).hexdigest() != digest:
+        raise WorkflowError(
+            f"Dispatch bytes do not match configured SHA-256 for {machine_key}/{scope_id}"
+        )
+    try:
+        record = orchestration_contracts.load_json_object_bytes(
+            payload, f"dispatch record {path}"
+        )
+    except orchestration_contracts.ContractValidationError as exc:
+        raise WorkflowError(f"Invalid dispatch record {path}: {exc}") from exc
+    if payload != orchestration_contracts.canonical_json_bytes(record):
+        raise WorkflowError(f"Dispatch must use canonical JSON bytes: {path}")
+    expected = {
+        "run_root": str(RUN_ROOT),
+        "execution_path": str(EXECUTION_PATH),
+        "profile_path": str(PROFILE_SNAPSHOT_PATH),
+        "machine_key": machine_key,
+        "scope": {
+            "scope_type": next(
+                scope_type
+                for owner, scope_type, _ in AUTOMATIC_TASKS.values()
+                if owner == machine_key
+            ),
+            "scope_id": scope_id,
+        },
+        "verified_task_path": _verified(machine_key, scope_id),
+        "task_start_path": str(
+            RUN_ROOT / "state" / "task-starts" / machine_key / f"{scope_id}.json"
+        ),
+    }
+    for key, expected_value in expected.items():
+        if record.get(key) != expected_value:
+            raise WorkflowError(
+                f"Dispatch {path} does not bind expected {key} for {machine_key}/{scope_id}"
+            )
+    dispatch_attempt_id = record.get("workflow_attempt_id")
+    if not isinstance(dispatch_attempt_id, str) or re.fullmatch(
+        r"workflow-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{32}", dispatch_attempt_id
+    ) is None:
+        raise WorkflowError(f"Dispatch {path} has an invalid workflow_attempt_id")
+    task_root = (
+        RUN_ROOT
+        / "attempts"
+        / dispatch_attempt_id
+        / "tasks"
+        / machine_key
+        / scope_id
+    )
+    expected_task_paths = {
+        "task_attempt_path": str(task_root / "task-attempt.json"),
+        "stdout_path": str(task_root / "stdout.log"),
+        "stderr_path": str(task_root / "stderr.log"),
+    }
+    for key, expected_value in expected_task_paths.items():
+        if record.get(key) != expected_value:
+            raise WorkflowError(
+                f"Dispatch {path} does not bind exact {key} for {machine_key}/{scope_id}"
+            )
+    result = (str(path), digest, dispatch_attempt_id)
+    _DISPATCH_CACHE[cache_key] = result
+    return result
+
+
+def _dispatch(machine_key, scope_id):
+    return _dispatch_reference(machine_key, scope_id)[0]
+
+
+def _dispatch_sha256(machine_key, scope_id):
+    return _dispatch_reference(machine_key, scope_id)[1]
+
+
+def _sample_dispatch(machine_key):
+    return lambda wildcards: _dispatch(machine_key, wildcards.sample_id)
+
+
+def _sample_dispatch_sha256(machine_key):
+    return lambda wildcards: _dispatch_sha256(machine_key, wildcards.sample_id)
+
+
+def _partition_dispatch(machine_key):
+    return lambda wildcards: _dispatch(machine_key, wildcards.partition_scope)
+
+
+def _partition_dispatch_sha256(machine_key):
+    return lambda wildcards: _dispatch_sha256(machine_key, wildcards.partition_scope)
+
+
+def _all_owner_outputs():
+    outputs = []
+    for rule_name, (machine_key, _, selector) in AUTOMATIC_TASKS.items():
+        if selector == "reference":
+            scopes = (REFERENCE_ID,)
+        elif selector == "samples":
+            scopes = SAMPLE_IDS
+        elif selector == "partitions":
+            scopes = PARTITION_SCOPES
+        elif selector == "cohort":
+            scopes = (COHORT_ID,)
+        else:
+            scopes = (ANALYSIS_ID,)
+        outputs.extend(_verified(machine_key, scope) for scope in scopes)
+    return outputs
+
+
+def _admit_reusable_markers():
+    verified_root = RUN_ROOT / "state" / "verified"
+    expected = {
+        Path(_verified(machine_key, scope_id))
+        for machine_key, _, selector in AUTOMATIC_TASKS.values()
+        for scope_id in _expected_scopes(selector)
+    }
+    if verified_root.exists() or verified_root.is_symlink():
+        if verified_root.is_symlink() or not verified_root.is_dir():
+            raise WorkflowError(
+                f"Verified-task root must be a real directory: {verified_root}"
+            )
+        expected_directories = {path.parent for path in expected}
+        observed_directories = set()
+        observed_files = set()
+        for owner_path in verified_root.iterdir():
+            if owner_path.is_symlink() or not owner_path.is_dir():
+                raise WorkflowError(
+                    f"Unexpected verified-task root entry: {owner_path}"
+                )
+            observed_directories.add(owner_path)
+            for marker in owner_path.iterdir():
+                if marker.is_symlink() or not marker.is_file():
+                    raise WorkflowError(
+                        f"Unexpected verified-task owner entry: {marker}"
+                    )
+                observed_files.add(marker)
+        if not observed_directories.issubset(expected_directories):
+            unexpected = sorted(observed_directories - expected_directories)[0]
+            raise WorkflowError(f"Unexpected verified-task owner directory: {unexpected}")
+        if not observed_files.issubset(expected):
+            unexpected = sorted(observed_files - expected)[0]
+            raise WorkflowError(f"Unexpected verified-task marker: {unexpected}")
+    for machine_key, scope_type, selector in AUTOMATIC_TASKS.values():
+        for scope_id in _expected_scopes(selector):
+            path = Path(_verified(machine_key, scope_id))
+            if path.exists() or path.is_symlink():
+                try:
+                    record = validate_verified_task(
+                        path,
+                        run_root=RUN_ROOT,
+                        execution=EXECUTION,
+                        profile=PROFILE,
+                        machine_key=machine_key,
+                        scope={"scope_type": scope_type, "scope_id": scope_id},
+                    )
+                    expected_dispatch = _dispatch_reference(machine_key, scope_id)
+                    bound_dispatches = [
+                        item
+                        for item in record["inputs"]
+                        if item["role"] == "task_dispatch"
+                    ]
+                    if len(bound_dispatches) != 1 or bound_dispatches[0] != {
+                        "role": "task_dispatch",
+                        "path": expected_dispatch[0],
+                        "size_bytes": Path(expected_dispatch[0]).stat().st_size,
+                        "sha256": expected_dispatch[1],
+                    }:
+                        raise TaskBoundaryError(
+                            "Verified task dispatch does not match current workflow config"
+                        )
+                except (
+                    OSError,
+                    orchestration_contracts.ContractValidationError,
+                    TaskBoundaryError,
+                ) as exc:
+                    raise WorkflowError(
+                        f"Could not admit reusable verified task {path}: {exc}"
+                    ) from exc
+            elif _dispatch_reference(machine_key, scope_id)[2] != WORKFLOW_ATTEMPT_ID:
+                raise WorkflowError(
+                    f"Pending dispatch for {machine_key}/{scope_id} does not bind "
+                    "the current workflow attempt"
+                )
+
+
+def _admit_state_namespace():
+    expected = expected_tasks(EXECUTION, PROFILE)
+    blockers = [
+        *state_tree_blockers(RUN_ROOT),
+        *task_start_tree_blockers(RUN_ROOT, expected),
+    ]
+    if blockers:
+        raise WorkflowError("Could not close NORAD state namespace: " + "; ".join(blockers))
+    for item in expected:
+        start_path = (
+            RUN_ROOT
+            / "state"
+            / "task-starts"
+            / item.machine_key
+            / f"{item.scope_id}.json"
+        )
+        if not start_path.exists() and not start_path.is_symlink():
+            continue
+        try:
+            validate_task_start(
+                start_path,
+                run_root=RUN_ROOT,
+                execution=EXECUTION,
+                profile=PROFILE,
+                machine_key=item.machine_key,
+                scope=item.scope,
+            )
+        except (OSError, TaskBoundaryError) as exc:
+            raise WorkflowError(
+                f"Could not admit task-start state {start_path}: {exc}"
+            ) from exc
+        verified_path = Path(_verified(item.machine_key, item.scope_id))
+        if not verified_path.exists() and not verified_path.is_symlink():
+            raise WorkflowError(
+                f"Task-start state is entered but incomplete: {start_path}"
+            )
+
+
+_admit_state_namespace()
+_admit_reusable_markers()
+
+
+def _admit_reusable_reporting():
+    reporting_root = RUN_ROOT / "state" / "reporting"
+    if reporting_root.exists() or reporting_root.is_symlink():
+        if reporting_root.is_symlink() or not reporting_root.is_dir():
+            raise WorkflowError(
+                f"Reporting state root must be a real directory: {reporting_root}"
+            )
+        for kind_path in reporting_root.iterdir():
+            if (
+                kind_path.name not in REPORTING_KINDS
+                or kind_path.is_symlink()
+                or not kind_path.is_dir()
+            ):
+                raise WorkflowError(
+                    f"Unexpected reporting state entry: {kind_path}"
+                )
+            expected = {
+                REPORTING_LEDGERS[kind_path.name].start,
+                REPORTING_LEDGERS[kind_path.name].verified,
+            }
+            observed = set(kind_path.iterdir())
+            unexpected = observed - expected
+            if unexpected:
+                raise WorkflowError(
+                    "Unexpected reporting ledger entry: "
+                    + str(sorted(unexpected)[0])
+                )
+            for entry in observed:
+                if entry.is_symlink() or not entry.is_file():
+                    raise WorkflowError(
+                        f"Reporting ledger entry must be a real file: {entry}"
+                    )
+    for kind in REPORTING_KINDS:
+        paths = REPORTING_LEDGERS[kind]
+        has_start = paths.start.exists() or paths.start.is_symlink()
+        has_verified = paths.verified.exists() or paths.verified.is_symlink()
+        if has_start != has_verified:
+            state = "entered but incomplete" if has_start else "orphan completion"
+            raise WorkflowError(f"Reporting ledger {kind} is {state}")
+        if has_verified:
+            try:
+                validate_verified(kind, RUN_ROOT, EXECUTION, PROFILE)
+            except (OSError, ReportingBoundaryError) as exc:
+                raise WorkflowError(
+                    f"Could not admit reusable {kind} reporting ledger: {exc}"
+                ) from exc
+
+
+_admit_reusable_reporting()
+
+
+wildcard_constraints:
+    sample_id="(?:" + "|".join(re.escape(value) for value in SAMPLE_IDS) + ")",
+    partition_scope="(?:" + "|".join(re.escape(value) for value in PARTITION_SCOPES) + ")"
+
+
+rule reference_slice:
+    input:
+        _verified(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID),
+        _verified(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID),
+        _verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+
+
+rule one_sample_slice:
+    input:
+        _verified(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID),
+        _verified(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID),
+        _verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID),
+        _verified(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0], FIRST_SAMPLE_ID),
+        _verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0], FIRST_SAMPLE_ID),
+        _verified(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0], FIRST_SAMPLE_ID),
+        _verified(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0], FIRST_SAMPLE_ID),
+        _verified(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0], FIRST_SAMPLE_ID),
+        _verified(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0], FIRST_SAMPLE_ID),
+        _verified(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0], FIRST_SAMPLE_ID)
+
+
+rule cohort_slice:
+    input:
+        _all_owner_outputs()
+
+
+rule local_pipeline_slice:
+    input:
+        str(HTML_REPORT_VERIFIED)
+    default_target: True
+
+
+rule build_artifact_index:
+    input:
+        verified=_all_owner_outputs(),
+        run_contract=str(PROJECTION_PATHS["reporting_run_contract"]),
+        inventory=str(PROJECTION_PATHS["artifact_inventory"])
+    output:
+        str(ARTIFACT_INDEX_VERIFIED)
+    params:
+        python=PYTHON,
+        source_checkout=str(SOURCE_CHECKOUT),
+        artifact_source_root=str(ARTIFACT_SOURCE_ROOT),
+        run_id=RUN_ID,
+        output_root=str(ARTIFACT_OUTPUT_ROOT),
+        run_root=str(RUN_ROOT),
+        execution=str(EXECUTION_PATH),
+        profile=str(PROFILE_SNAPSHOT_PATH),
+        workflow_attempt=str(WORKFLOW_ATTEMPT_PATH),
+        workflow_config=str(WORKFLOW_CONFIG_PATH),
+        receipt=str(ARTIFACT_RECEIPT)
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad build artifact-index "
+        "--source-checkout {params.source_checkout:q} "
+        "--artifact-source-root {params.artifact_source_root:q} "
+        "--run-id {params.run_id:q} --run-contract {input.run_contract:q} "
+        "--inventory {input.inventory:q} --output-root {params.output_root:q} && "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.reporting_boundary start "
+        "--kind artifact_index --run-root {params.run_root:q} "
+        "--execution {params.execution:q} --profile {params.profile:q} "
+        "--workflow-attempt {params.workflow_attempt:q} "
+        "--workflow-config {params.workflow_config:q} && "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad build artifact-index "
+        "--source-checkout {params.source_checkout:q} "
+        "--artifact-source-root {params.artifact_source_root:q} "
+        "--run-id {params.run_id:q} --run-contract {input.run_contract:q} "
+        "--inventory {input.inventory:q} --output-root {params.output_root:q} "
+        "--execute && "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.reporting_boundary complete "
+        "--kind artifact_index --run-root {params.run_root:q} "
+        "--execution {params.execution:q} --profile {params.profile:q} "
+        "--workflow-attempt {params.workflow_attempt:q} "
+        "--workflow-config {params.workflow_config:q} --receipt {params.receipt:q}"
+
+
+rule build_run_summary:
+    input:
+        artifact_index_verified=str(ARTIFACT_INDEX_VERIFIED)
+    output:
+        str(RUN_SUMMARY_VERIFIED)
+    params:
+        python=PYTHON,
+        source_checkout=str(SOURCE_CHECKOUT),
+        artifact_source_root=str(ARTIFACT_SOURCE_ROOT),
+        run_id=RUN_ID,
+        artifact_receipt=str(ARTIFACT_RECEIPT),
+        output_root=str(ARTIFACT_OUTPUT_ROOT),
+        run_root=str(RUN_ROOT),
+        execution=str(EXECUTION_PATH),
+        profile=str(PROFILE_SNAPSHOT_PATH),
+        workflow_attempt=str(WORKFLOW_ATTEMPT_PATH),
+        workflow_config=str(WORKFLOW_CONFIG_PATH),
+        receipt=str(RUN_SUMMARY_RECEIPT)
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad build run-summary "
+        "--source-checkout {params.source_checkout:q} "
+        "--artifact-source-root {params.artifact_source_root:q} "
+        "--run-id {params.run_id:q} --artifact-receipt {params.artifact_receipt:q} "
+        "--output-root {params.output_root:q} && "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.reporting_boundary start "
+        "--kind run_summary --run-root {params.run_root:q} "
+        "--execution {params.execution:q} --profile {params.profile:q} "
+        "--workflow-attempt {params.workflow_attempt:q} "
+        "--workflow-config {params.workflow_config:q} && "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad build run-summary "
+        "--source-checkout {params.source_checkout:q} "
+        "--artifact-source-root {params.artifact_source_root:q} "
+        "--run-id {params.run_id:q} --artifact-receipt {params.artifact_receipt:q} "
+        "--output-root {params.output_root:q} --execute && "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.reporting_boundary complete "
+        "--kind run_summary --run-root {params.run_root:q} "
+        "--execution {params.execution:q} --profile {params.profile:q} "
+        "--workflow-attempt {params.workflow_attempt:q} "
+        "--workflow-config {params.workflow_config:q} --receipt {params.receipt:q}"
+
+
+rule build_html_report:
+    input:
+        run_summary_verified=str(RUN_SUMMARY_VERIFIED)
+    output:
+        str(HTML_REPORT_VERIFIED)
+    params:
+        python=PYTHON,
+        source_checkout=str(SOURCE_CHECKOUT),
+        artifact_source_root=str(ARTIFACT_SOURCE_ROOT),
+        run_summary=str(RUN_SUMMARY),
+        output_root=str(REPORT_OUTPUT_ROOT),
+        run_root=str(RUN_ROOT),
+        execution=str(EXECUTION_PATH),
+        profile=str(PROFILE_SNAPSHOT_PATH),
+        workflow_attempt=str(WORKFLOW_ATTEMPT_PATH),
+        workflow_config=str(WORKFLOW_CONFIG_PATH),
+        receipt=str(REPORT_RECEIPT)
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad build report "
+        "--source-checkout {params.source_checkout:q} "
+        "--artifact-source-root {params.artifact_source_root:q} "
+        "--run-summary {params.run_summary:q} --output-root {params.output_root:q} && "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.reporting_boundary start "
+        "--kind html_report --run-root {params.run_root:q} "
+        "--execution {params.execution:q} --profile {params.profile:q} "
+        "--workflow-attempt {params.workflow_attempt:q} "
+        "--workflow-config {params.workflow_config:q} && "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad build report "
+        "--source-checkout {params.source_checkout:q} "
+        "--artifact-source-root {params.artifact_source_root:q} "
+        "--run-summary {params.run_summary:q} --output-root {params.output_root:q} "
+        "--execute && "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.reporting_boundary complete "
+        "--kind html_report --run-root {params.run_root:q} "
+        "--execution {params.execution:q} --profile {params.profile:q} "
+        "--workflow-attempt {params.workflow_attempt:q} "
+        "--workflow-config {params.workflow_config:q} --receipt {params.receipt:q}"
+
+
+rule construct_STAR_index:
+    output:
+        _verified(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID)
+    params:
+        python=PYTHON,
+        dispatch=_dispatch(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID),
+        dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID)
+    threads:
+        STEP_THREADS["00a"]
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule convert_GTF_to_BED12:
+    output:
+        _verified(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID)
+    params:
+        python=PYTHON,
+        dispatch=_dispatch(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID),
+        dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID)
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule construct_FASTA_sidecars:
+    output:
+        _verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+    params:
+        python=PYTHON,
+        dispatch=_dispatch(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID),
+        dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule align_RNA_reads_with_STAR:
+    input:
+        star_index=_verified(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID)
+    output:
+        _sample_verified(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0])
+    params:
+        python=PYTHON,
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0]),
+        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0])
+    threads:
+        STEP_THREADS["01"]
+    resources:
+        sample_slots=1
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule construct_canonical_BAM:
+    input:
+        star_bam=_sample_verified(AUTOMATIC_TASKS["align_RNA_reads_with_STAR"][0])
+    output:
+        _sample_verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0])
+    params:
+        python=PYTHON,
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["construct_canonical_BAM"][0]),
+        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["construct_canonical_BAM"][0])
+    threads:
+        STEP_THREADS["02"]
+    resources:
+        sample_slots=1
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule collect_canonical_BAM_QC_evidence:
+    input:
+        canonical_bam=_sample_verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0])
+    output:
+        _sample_verified(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0])
+    params:
+        python=PYTHON,
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0]),
+        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0])
+    resources:
+        sample_slots=1
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule collect_RSeQC_paired_orientation_evidence:
+    input:
+        canonical_bam=_sample_verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0]),
+        bed12=_verified(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID)
+    output:
+        _sample_verified(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0])
+    params:
+        python=PYTHON,
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0]),
+        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0])
+    resources:
+        sample_slots=1
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule mark_BAM_duplicates_with_Picard:
+    input:
+        canonical_bam=_sample_verified(AUTOMATIC_TASKS["construct_canonical_BAM"][0])
+    output:
+        _sample_verified(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0])
+    params:
+        python=PYTHON,
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0]),
+        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0])
+    resources:
+        sample_slots=1
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule split_N_cigar_reads_with_GATK:
+    input:
+        marked_bam=_sample_verified(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0]),
+        reference_sidecars=_verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+    output:
+        _sample_verified(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0])
+    params:
+        python=PYTHON,
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0]),
+        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0])
+    resources:
+        sample_slots=1
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule partition_BAM_by_mechanical_read_orientation:
+    input:
+        split_bam=_sample_verified(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0])
+    output:
+        _sample_verified(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0])
+    params:
+        python=PYTHON,
+        dispatch=_sample_dispatch(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0]),
+        dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0])
+    threads:
+        STEP_THREADS["06"]
+    resources:
+        sample_slots=1
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule generate_partitioned_cohort_mpileup_VCFs:
+    input:
+        partitioned_bams=expand(
+            _sample_verified(AUTOMATIC_TASKS["partition_BAM_by_mechanical_read_orientation"][0]),
+            sample_id=SAMPLE_IDS,
+        ),
+        reference_sidecars=_verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+    output:
+        _partition_verified(AUTOMATIC_TASKS["generate_partitioned_cohort_mpileup_VCFs"][0])
+    params:
+        python=PYTHON,
+        dispatch=_partition_dispatch(AUTOMATIC_TASKS["generate_partitioned_cohort_mpileup_VCFs"][0]),
+        dispatch_sha256=_partition_dispatch_sha256(AUTOMATIC_TASKS["generate_partitioned_cohort_mpileup_VCFs"][0])
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule preprocess_and_annotate_cohort_candidates:
+    input:
+        partition_vcfs=expand(
+            _partition_verified(AUTOMATIC_TASKS["generate_partitioned_cohort_mpileup_VCFs"][0]),
+            partition_scope=PARTITION_SCOPES,
+        )
+    output:
+        _verified(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID)
+    params:
+        python=PYTHON,
+        dispatch=_dispatch(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID),
+        dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID)
+    threads:
+        STEP_THREADS["08"]
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule rank_cohort_candidates_with_paired_CMH:
+    input:
+        cohort_candidates=_verified(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID)
+    output:
+        _verified(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID)
+    params:
+        python=PYTHON,
+        dispatch=_dispatch(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID),
+        dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID)
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule project_candidate_scientific_context:
+    input:
+        candidate_ranking=_verified(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID),
+        reference_sidecars=_verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+    output:
+        _verified(AUTOMATIC_TASKS["project_candidate_scientific_context"][0], ANALYSIS_ID)
+    params:
+        python=PYTHON,
+        dispatch=_dispatch(AUTOMATIC_TASKS["project_candidate_scientific_context"][0], ANALYSIS_ID),
+        dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["project_candidate_scientific_context"][0], ANALYSIS_ID)
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"

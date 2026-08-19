@@ -39,10 +39,10 @@ Scheduler success, output presence, schema validity, a receipt, or a report is
 not proof of a higher layer.
 
 Use **CMH-ranked candidates**, not validated editing sites. `FWD_like` and
-`REV_like` are mechanical labels, not biological strand claims.
-`science_review_complete_exploratory` remains provisional, and
-`biological_interpretation_ready` remains reserved until a separately approved
-scientific policy defines and satisfies its exit.
+`REV_like` are mechanical labels, not biological strand claims. NORAD ends
+with computational candidates and provenance. Candidate review, adjudication,
+and biological interpretation are external work-process records, not pipeline
+steps, gates, artifacts, or completion states.
 
 ## Owner rule
 

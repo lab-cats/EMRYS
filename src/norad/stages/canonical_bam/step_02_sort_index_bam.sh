@@ -15,6 +15,8 @@ Usage:
     --input-alignment INPUT_ALIGNMENT \
     --output-dir OUTPUT_DIR \
     --threads THREADS \
+    [--samtools-bin SAMTOOLS_BIN] \
+    [--no-clobber] \
     [--execute]
 
 Sort, read-group tag, validate, index, and publish one canonical BAM.
@@ -30,6 +32,8 @@ Required arguments:
   --threads          Number of threads for samtools; must be a positive integer.
 
 Options:
+  --samtools-bin     samtools executable or path. Defaults to samtools on PATH.
+  --no-clobber       Refuse an existing canonical pair. Required by orchestration.
   --execute          Execute samtools after validation. Without this, dry-run only.
   -h, --help         Show this help message and exit.
 USAGE
@@ -51,6 +55,8 @@ source "$script_dir/../../libraries/file_checks.sh"
 # Defaults are empty so missing required arguments fail loudly below.
 declare_required_arguments sample_id input_alignment output_dir threads
 execute=false
+no_clobber=false
+requested_samtools_bin=""
 
 # Keep the CLI explicit so the same script works locally and under SLURM.
 while [[ $# -gt 0 ]]; do
@@ -59,6 +65,8 @@ while [[ $# -gt 0 ]]; do
         --input-alignment) assign_option_value "$1" "${2:-}" input_alignment; shift 2 ;;
         --output-dir) assign_option_value "$1" "${2:-}" output_dir; shift 2 ;;
         --threads) assign_option_value "$1" "${2:-}" threads; shift 2 ;;
+        --samtools-bin) assign_option_value "$1" "${2:-}" requested_samtools_bin; shift 2 ;;
+        --no-clobber) no_clobber=true; shift ;;
         *)
             handle_execute_or_help "$1"
             shift
@@ -70,11 +78,17 @@ require_arguments
 
 [[ -f "$input_alignment" ]] || die "Input alignment does not exist or is not a file: $input_alignment"
 
-samtools_bin="$(resolve_executable_value "samtools" "" "samtools")"
+samtools_bin="$(resolve_executable_value "samtools" "$requested_samtools_bin" "samtools")"
 
 validate_positive_integer "--threads" "$threads"
+input_alignment_sha256="not-bound"
+if [[ "$no_clobber" == true ]]; then
+    validate_safe_id "--sample-id" "$sample_id"
+    input_alignment_sha256="$(sha256_file "$input_alignment")"
+fi
 
-run_token="${SLURM_JOB_ID:-$$}"
+run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
+validate_safe_id "Step 02 run token" "$run_token"
 
 # Canonical output names are stable by design; downstream steps depend on them.
 output_bam="$output_dir/${sample_id}.sorted.bam"
@@ -101,6 +115,13 @@ bai_backed_up=false
 final_publish_complete=false
 
 # Build tool commands as arrays to preserve argument boundaries in dry-run logs.
+input_header_command=(
+    "$samtools_bin"
+    view
+    -H
+    "$input_alignment"
+)
+
 sort_command=(
     "$samtools_bin"
     sort
@@ -184,7 +205,7 @@ validate_bam_pair() {
     [[ "$rg_line" == *"SM:$sample_id"* ]] || die "$label @RG line is missing SM:$sample_id"
     [[ "$rg_line" == *"LB:$sample_id"* ]] || die "$label @RG line is missing LB:$sample_id"
     [[ "$rg_line" == *"PL:ILLUMINA"* ]] || die "$label @RG line is missing PL:ILLUMINA"
-    printf '%s\n' "$header" | grep -q '^@HD.*SO:coordinate' || die "$label BAM header is not coordinate sorted"
+    grep -q '^@HD.*SO:coordinate' <<< "$header" || die "$label BAM header is not coordinate sorted"
 
     total_records="$("$samtools_bin" view -c "$bam")"
     [[ "$total_records" =~ ^[0-9]+$ ]] || die "$label total alignment count is not numeric: $total_records"
@@ -197,7 +218,37 @@ validate_bam_pair() {
     [[ -s "$bai" ]] || die "$label BAI is missing or empty: $bai"
 }
 
+input_has_canonical_bam_contract() {
+    local header="$1"
+    local rg_lines
+    local rg_count
+    local total_records
+    local tagged_records
+
+    grep -q '^@HD.*SO:coordinate' <<< "$header" || return 1
+    rg_lines="$(printf '%s\n' "$header" | grep '^@RG' || true)"
+    rg_count="$(printf '%s\n' "$rg_lines" | sed '/^$/d' | wc -l | tr -d ' ')"
+    [[ "$rg_count" == "1" ]] || return 1
+    [[ "$rg_lines" == *"ID:$sample_id"* ]] || return 1
+    [[ "$rg_lines" == *"SM:$sample_id"* ]] || return 1
+    [[ "$rg_lines" == *"LB:$sample_id"* ]] || return 1
+    [[ "$rg_lines" == *"PL:ILLUMINA"* ]] || return 1
+
+    total_records="$("$samtools_bin" view -c "$input_alignment")" || return 1
+    [[ "$total_records" =~ ^[0-9]+$ && "$total_records" -gt 0 ]] || return 1
+    tagged_records="$("$samtools_bin" view -c -d "RG:$sample_id" "$input_alignment")" || return 1
+    [[ "$tagged_records" =~ ^[0-9]+$ ]] || return 1
+    [[ "$tagged_records" -eq "$total_records" ]]
+}
+
 confirm_canonical_pair_state() {
+    if [[ "$no_clobber" == true ]]; then
+        [[ ! -e "$output_bam" && ! -e "$output_bai" ]] ||
+            die "Step 02 --no-clobber requires both canonical outputs to be absent: $output_bam $output_bai"
+        previous_pair_present=false
+        return
+    fi
+
     # A single existing file is unsafe: there would be no complete rollback target.
     if [[ -e "$output_bam" && -e "$output_bai" ]]; then
         previous_pair_present=true
@@ -214,6 +265,16 @@ rollback_publish() {
     fi
 
     printf 'Rolling back Step 02 canonical outputs...\n' >&2
+
+    if [[ "$no_clobber" == true ]]; then
+        local rollback_ok=true
+        remove_owned_published_file \
+            "Step 02 BAM" "$tmp_rg_bam" "$output_bam" || rollback_ok=false
+        remove_owned_published_file \
+            "Step 02 BAI" "$tmp_rg_bai" "$output_bai" || rollback_ok=false
+        [[ "$rollback_ok" == true ]]
+        return
+    fi
 
     if [[ "$previous_pair_present" == true ]]; then
         # Restore only the files that were actually moved to backup.
@@ -236,23 +297,29 @@ rollback_publish() {
 
 cleanup() {
     local status="$1"
+    local rollback_ok=true
 
     # Cleanup should be best-effort and must not mask the original failure.
     set +e
 
     # Rollback must run before backup cleanup so prior canonical files are usable.
     if [[ "$status" -ne 0 ]]; then
-        rollback_publish
+        rollback_publish || rollback_ok=false
     fi
 
-    rm -f "$tmp_sorted_bam" "$tmp_rg_bam" "$tmp_rg_bai"
-    rm -f "$tmp_sorted_bam.bai"
+    if [[ "$rollback_ok" == true ]]; then
+        rm -f "$tmp_sorted_bam" "$tmp_rg_bam" "$tmp_rg_bai"
+        rm -f "$tmp_sorted_bam.bai"
 
-    if [[ "$status" -eq 0 || "$backup_started" == true ]]; then
-        rm -f "$backup_bam" "$backup_bai"
+        if [[ "$status" -eq 0 || "$backup_started" == true ]]; then
+            rm -f "$backup_bam" "$backup_bai"
+        fi
+
+        remove_owned_lock
+    else
+        printf 'ERROR: Step 02 no-clobber rollback was incomplete; retaining owned lock and residue: %s\n' \
+            "$lock_path" >&2
     fi
-
-    remove_owned_lock
 }
 
 mode="dry-run"
@@ -263,6 +330,8 @@ fi
 printf 'samtools canonical BAM context\n'
 printf '  Sample ID: %s\n' "$sample_id"
 printf '  Input alignment: %s\n' "$input_alignment"
+printf '  Input alignment SHA-256: %s\n' "$input_alignment_sha256"
+printf '  samtools bin: %s\n' "$samtools_bin"
 printf '  Output directory: %s\n' "$output_dir"
 printf '  Output BAM: %s\n' "$output_bam"
 printf '  Output BAI: %s\n' "$output_bai"
@@ -276,6 +345,7 @@ printf '  Temporary read-group BAI: %s\n' "$tmp_rg_bai"
 printf '  Backup BAM: %s\n' "$backup_bam"
 printf '  Backup BAI: %s\n' "$backup_bai"
 printf '  Read group: ID=%s SM=%s LB=%s PL=ILLUMINA\n' "$sample_id" "$sample_id" "$sample_id"
+printf '  No-clobber transaction: %s\n' "$no_clobber"
 printf '  Mode: %s\n' "$mode"
 
 printf 'Lock acquisition action:\n'
@@ -285,6 +355,12 @@ printf 'printf %q %q %q\n' '%s\n' "run_token=$run_token" "$lock_owner_file"
 
 printf 'samtools sort command:\n'
 print_command "${sort_command[@]}"
+printf '  The sort is skipped when the admitted input header already declares SO:coordinate.\n'
+
+printf 'Canonical input reuse action:\n'
+printf 'ln -- %q %q\n' "$input_alignment" "$tmp_rg_bam"
+printf '  This hard link is used only when sort order, the exact read group, and all record tags are already canonical.\n'
+printf '  If the input is noncanonical or hard linking is unavailable, samtools rewrites the staged BAM.\n'
 
 printf 'samtools addreplacerg command:\n'
 print_command "${addreplacerg_command[@]}"
@@ -315,6 +391,11 @@ printf '  7. Remove backups and owned lock after successful final validation.\n'
 printf 'Rollback plan:\n'
 printf '  Restore backups before cleanup on failures after backup begins; remove new canonical files if no prior pair existed.\n'
 
+if [[ "$no_clobber" == true ]]; then
+    require_no_owner_residue \
+        "Step 02" "$output_dir" ".${sample_id}.step02.*"
+fi
+
 if [[ "$execute" != true ]]; then
     # Dry-runs are intentionally side-effect-free: no output directory or lock.
     printf 'Dry-run only. Add --execute to run samtools and publish canonical outputs.\n'
@@ -325,13 +406,39 @@ mkdir -p "$output_dir"
 
 set_exit_trap cleanup
 acquire_lock "Step 02"
+if [[ "$no_clobber" == true ]]; then
+    confirm_canonical_pair_state
+fi
 
 # Build and validate the replacement completely before touching canonical paths.
-"${sort_command[@]}"
-"${addreplacerg_command[@]}"
+input_header="$("${input_header_command[@]}")" ||
+    die "Could not inspect input alignment header: $input_alignment"
+if grep -q '^@HD.*SO:coordinate' <<< "$input_header"; then
+    canonical_source="$input_alignment"
+    printf 'Input alignment is already coordinate sorted; skipping redundant samtools sort.\n'
+else
+    "${sort_command[@]}"
+    canonical_source="$tmp_sorted_bam"
+fi
+if input_has_canonical_bam_contract "$input_header"; then
+    if ln -- "$input_alignment" "$tmp_rg_bam"; then
+        printf 'Input alignment already satisfies the canonical BAM contract; reusing its bytes without rewriting.\n'
+    else
+        printf 'Could not hard-link the canonical input; falling back to samtools addreplacerg.\n' >&2
+        addreplacerg_command[${#addreplacerg_command[@]}-1]="$canonical_source"
+        "${addreplacerg_command[@]}"
+    fi
+else
+    addreplacerg_command[${#addreplacerg_command[@]}-1]="$canonical_source"
+    "${addreplacerg_command[@]}"
+fi
 [[ -s "$tmp_rg_bam" ]] || die "Temporary read-group BAM is missing or empty: $tmp_rg_bam"
 "${index_command[@]}"
 validate_bam_pair "$tmp_rg_bam" "$tmp_rg_bai" "Replacement"
+if [[ "$no_clobber" == true ]]; then
+    [[ "$(sha256_file "$input_alignment")" == "$input_alignment_sha256" ]] ||
+        die "Input alignment changed during Step 02."
+fi
 
 confirm_canonical_pair_state
 
@@ -346,16 +453,30 @@ else
     backup_started=true
 fi
 
-mv "$tmp_rg_bam" "$output_bam"
-mv "$tmp_rg_bai" "$output_bai"
+if [[ "$no_clobber" == true ]]; then
+    publish_file_create_exclusive "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
+    publish_file_create_exclusive "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
+else
+    mv "$tmp_rg_bam" "$output_bam"
+    mv "$tmp_rg_bai" "$output_bai"
+fi
 
 # Revalidate after publish so a copied/moved pair is known-good at final paths.
 validate_bam_pair "$output_bam" "$output_bai" "Canonical"
+if [[ "$no_clobber" == true ]]; then
+    require_owned_published_file "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
+    require_owned_published_file "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
+    rm -f -- "$tmp_rg_bam" "$tmp_rg_bai"
+    [[ ! -e "$tmp_rg_bam" && ! -L "$tmp_rg_bam" &&
+       ! -e "$tmp_rg_bai" && ! -L "$tmp_rg_bai" ]] ||
+        die "Step 02 could not remove owned publication anchors."
+fi
 final_publish_complete=true
 
 rm -f "$backup_bam" "$backup_bai"
 bam_backed_up=false
 bai_backed_up=false
+remove_owned_lock
 
 printf 'Canonical Step 02 output details:\n'
 ls -lh "$output_bam" "$output_bai"

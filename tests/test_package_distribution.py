@@ -14,24 +14,58 @@ import zipfile
 from email.parser import Parser
 from pathlib import Path
 
-from tests.reporting.fixtures.artifact_run_summary_v1 import build_fixture as FIXTURE
+from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-RUNTIME_DEPENDENCIES = {"jinja2", "jsonschema", "referencing"}
+RUNTIME_DEPENDENCIES = {
+    "jinja2",
+    "jsonschema",
+    "logomaker",
+    "matplotlib",
+    "pyyaml",
+    "referencing",
+}
 RUNTIME_REQUIREMENT_SPECIFIERS = {
     "jinja2": "==3.1.6",
     "jsonschema": ">=4.18.0",
+    "logomaker": "==0.8.7",
+    "matplotlib": "==3.11.1",
+    "pyyaml": "==6.0.3",
     "referencing": ">=0.28.4",
 }
 RESOURCE_PATHS = (
-    "norad/contracts/schemas/artifacts/v1/artifact_record.schema.json",
+    "norad/contracts/schemas/artifacts/v2/artifact_record.schema.json",
     "norad/contracts/schemas/artifacts/v1/common.schema.json",
-    "norad/contracts/schemas/artifacts/v2/report_receipt.schema.json",
-    "norad/contracts/schemas/artifacts/v1/run_summary.schema.json",
-    "norad/contracts/schemas/artifacts/v1/scientific_review_record.schema.json",
+    "norad/contracts/schemas/artifacts/v2/run_summary.schema.json",
+    "norad/contracts/schemas/artifacts/v3/report_receipt.schema.json",
+    "norad/contracts/schemas/artifacts/v4/report_receipt.schema.json",
+    "norad/contracts/schemas/orchestration/v2/profile.schema.json",
+    "norad/contracts/schemas/orchestration/v2/request.schema.json",
+    "norad/contracts/schemas/orchestration/v1/execution.schema.json",
+    "norad/contracts/schemas/orchestration/v1/reference.schema.json",
+    "norad/contracts/schemas/orchestration/v1/policy.schema.json",
+    "norad/contracts/schemas/orchestration/v1/workflow_attempt.schema.json",
+    "norad/contracts/schemas/orchestration/v1/attempt_receipt.schema.json",
+    "norad/contracts/schemas/orchestration/v1/run_lock.schema.json",
+    "norad/contracts/schemas/orchestration/v1/task_start.schema.json",
+    "norad/contracts/schemas/orchestration/v1/task_attempt.schema.json",
+    "norad/contracts/schemas/orchestration/v1/verified_task.schema.json",
+    "norad/contracts/schemas/orchestration/v1/reporting_start.schema.json",
+    "norad/contracts/schemas/orchestration/v1/verified_reporting.schema.json",
+    "norad/contracts/schemas/orchestration/v1/common.schema.json",
     "norad/reporting/styles/run_report.css",
     "norad/reporting/templates/run_report.html.j2",
 )
+PUBLIC_ONBOARDING_MODULES = {
+    "norad/orchestration/local_pilot/onboarding.py",
+    "norad/orchestration/local_pilot/synthetic_fixture.py",
+}
+LICENSE_EXPRESSION = "LicenseRef-NORAD-Source-Available-1.0"
+LICENSE_FILES = {
+    "LICENSE": REPO_ROOT / "LICENSE",
+    "NOTICE": REPO_ROOT / "NOTICE",
+    "LICENSES/renv-MIT.txt": REPO_ROOT / "LICENSES" / "renv-MIT.txt",
+}
 
 
 def command_environment(*, hostile_pythonpath: bool = False) -> dict[str, str]:
@@ -69,8 +103,9 @@ def uv_executable() -> str:
 def build_wheel(tmp_path: Path) -> Path:
     project = tmp_path / "project"
     project.mkdir()
-    for name in ("pyproject.toml", "README.md"):
+    for name in ("pyproject.toml", "README.md", "LICENSE", "NOTICE"):
         shutil.copy2(REPO_ROOT / name, project / name)
+    shutil.copytree(REPO_ROOT / "LICENSES", project / "LICENSES")
     shutil.copytree(
         REPO_ROOT / "src",
         project / "src",
@@ -126,7 +161,17 @@ def inspect_wheel(wheel: Path) -> None:
         declared = declared_requirements(metadata.get_all("Requires-Dist", []))
 
         assert metadata["Name"] == "norad-rna-workflow"
-        assert metadata["Version"] == "0.0.0"
+        assert metadata["Version"] == "0.1.0.dev0"
+        assert metadata["License-Expression"] == LICENSE_EXPRESSION
+        assert set(metadata.get_all("License-File", [])) == set(LICENSE_FILES)
+        assert not any(
+            classifier.startswith("License ::")
+            for classifier in metadata.get_all("Classifier", [])
+        )
+        assert metadata.get_all("Project-URL") == [
+            "Repository, https://github.com/lab-cats/norad",
+            "Issues, https://github.com/lab-cats/norad/issues",
+        ]
         assert set(declared) == RUNTIME_DEPENDENCIES
         assert declared == {
             name: f"{name}{specifier}"
@@ -135,17 +180,28 @@ def inspect_wheel(wheel: Path) -> None:
         entry_points = archive.read(entry_points_member).decode().splitlines()
         assert "norad = norad.__main__:main" in entry_points
         assert set(RESOURCE_PATHS) <= members
+        assert PUBLIC_ONBOARDING_MODULES <= members
         for resource in RESOURCE_PATHS:
             assert archive.read(resource) == (REPO_ROOT / "src" / resource).read_bytes()
+        license_root = metadata_member.removesuffix("METADATA") + "licenses/"
+        for relative_path, source_path in LICENSE_FILES.items():
+            assert (
+                archive.read(license_root + relative_path) == source_path.read_bytes()
+            )
 
 
 def install_locked_wheel(wheel: Path, tmp_path: Path) -> tuple[Path, Path]:
     locked = tomllib.loads((REPO_ROOT / "uv.lock").read_text(encoding="utf-8"))
-    constraints = sorted(
-        f"{item['name']}=={item['version']}"
-        for item in locked["package"]
-        if "version" in item
-    )
+    constraints = []
+    for item in locked["package"]:
+        if "version" not in item:
+            continue
+        requirement = f"{item['name']}=={item['version']}"
+        markers = item.get("resolution-markers", ())
+        if markers:
+            requirement += "; " + " or ".join(f"({marker})" for marker in markers)
+        constraints.append(requirement)
+    constraints.sort()
     installer = tmp_path / "installer"
     installer.mkdir()
     (installer / "pyproject.toml").write_text(
@@ -200,6 +256,8 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
     probe = run_command(
         [
             str(environment_python),
+            "-X",
+            "pycache_prefix=/dev/null",
             "-I",
             "-c",
             (
@@ -225,15 +283,12 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
 
 
 def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -> None:
-    fixture = FIXTURE.build_approved_science_fixture(
-        tmp_path / "report-fixture",
-        science_status="science_review_complete_exploratory",
-        roles=("candidate_selection",),
-        display_limits={"candidate_selection": 1},
-    )
+    fixture = FIXTURE.build_fixture(tmp_path / "report-fixture")
     summary_result = run_command(
         [
             sys.executable,
+            "-X",
+            "pycache_prefix=/dev/null",
             "-I",
             "-m",
             "norad",
@@ -244,10 +299,12 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         cwd=REPO_ROOT,
     )
     require_success(summary_result)
-    relative_summary = FIXTURE.copy_summary_with_repo_relative_approved_table(
-        fixture.summary_json_path,
-        tmp_path / "wheel-report-input",
-        summary_git_commit="upstream-summary-commit",
+    artifact_source_root = fixture.root
+    summary = json.loads(fixture.summary_json_path.read_text(encoding="utf-8"))
+    summary["provenance"]["git_commit"] = "upstream-summary-commit"
+    fixture.summary_json_path.write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
     )
     wheel = build_wheel(tmp_path)
     inspect_wheel(wheel)
@@ -275,6 +332,37 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     )
     require_success(module_help)
     assert "usage: norad" in module_help.stdout
+    for command, usage in (
+        (
+            ("init", "local-pilot", "--help"),
+            "usage: norad init local-pilot",
+        ),
+        (
+            ("init", "synthetic-local-pilot", "--help"),
+            "usage: norad init synthetic-local-pilot",
+        ),
+        (
+            ("prepare", "local-pilot-runtime", "--help"),
+            "usage: norad prepare local-pilot-runtime",
+        ),
+        (
+            ("validate", "local-pilot-request", "--help"),
+            "usage: norad validate local-pilot-request",
+        ),
+        (("run", "--help"), "usage: norad run"),
+        (("resume", "--help"), "usage: norad resume"),
+        (
+            ("inspect", "local-pilot-run", "--help"),
+            "usage: norad inspect local-pilot-run",
+        ),
+    ):
+        public_help = run_command(
+            [str(environment_python), "-I", "-m", "norad", *command],
+            cwd=arbitrary_cwd,
+            hostile_pythonpath=True,
+        )
+        require_success(public_help)
+        assert usage in public_help.stdout
     console_help = run_command([str(console), "--help"], cwd=arbitrary_cwd)
     require_success(console_help)
     assert "usage: norad" in console_help.stdout
@@ -287,6 +375,8 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     validation = run_command(
         [
             str(environment_python),
+            "-X",
+            "pycache_prefix=/dev/null",
             "-I",
             "-m",
             "norad",
@@ -309,10 +399,13 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     )
     require_success(report_help)
     assert "--source-checkout" in report_help.stdout
+    assert "--artifact-source-root" in report_help.stdout
     assert "--quarto-bin" not in report_help.stdout
     rendered = run_command(
         [
             str(environment_python),
+            "-X",
+            "pycache_prefix=/dev/null",
             "-I",
             "-m",
             "norad",
@@ -320,8 +413,10 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
             "report",
             "--source-checkout",
             str(REPO_ROOT),
+            "--artifact-source-root",
+            str(artifact_source_root),
             "--run-summary",
-            str(relative_summary),
+            str(fixture.summary_json_path),
             "--output-root",
             str(report_output_root),
             "--execute",
@@ -330,19 +425,37 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         hostile_pythonpath=True,
     )
     require_success(rendered)
+    assert f"Source checkout: {REPO_ROOT}" in rendered.stdout
+    assert f"Artifact source root: {artifact_source_root}" in rendered.stdout
     run_id = fixture.run_id
     report_directory = report_output_root / run_id
     assert {path.name for path in report_directory.iterdir()} == {
-        f"{run_id}.run_report.html",
+        f"{run_id}.scientific_report.html",
+        f"{run_id}.evidence_report.html",
         f"{run_id}.run_summary.tsv",
         f"{run_id}.report_outputs.tsv",
     }
     assert "Jinja2" in (report_directory / f"{run_id}.report_outputs.tsv").read_text(
         encoding="utf-8"
     )
-    assert "example_run" in (report_directory / f"{run_id}.run_report.html").read_text(
+    scientific_html = (report_directory / f"{run_id}.scientific_report.html").read_text(
         encoding="utf-8"
     )
+    evidence_html = (report_directory / f"{run_id}.evidence_report.html").read_text(
+        encoding="utf-8"
+    )
+    assert "CMH-ranked candidates" in scientific_html
+    assert 'id="candidate-landscape-figure"' in scientific_html
+    assert 'id="mutation-spectrum-figure"' in scientific_html
+    assert 'id="condition-concordance-figure"' in scientific_html
+    assert 'id="paired-sample-profile-figure"' in scientific_html
+    assert 'id="location-membership-figure"' in scientific_html
+    assert 'id="sequence-context-logo-figure"' in scientific_html
+    assert 'id="motif-context-enrichment-figure"' in scientific_html
+    assert 'id="selected-context-track-figure"' in scientific_html
+    assert scientific_html.count("data:image/svg+xml;base64,") == 7
+    assert "Matplotlib 3.11.1" in evidence_html
+    assert "Logomaker 0.8.7" in evidence_html
     with (report_directory / f"{run_id}.report_outputs.tsv").open(
         encoding="utf-8",
         newline="",
@@ -356,6 +469,10 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         cwd=REPO_ROOT,
     )
     require_success(checkout_commit)
+    assert Path(receipt["input_run_summary"]["path"]).is_relative_to(
+        artifact_source_root
+    )
+    assert not Path(receipt["input_run_summary"]["path"]).is_relative_to(REPO_ROOT)
     assert receipt["provenance"]["git_commit"] in {
         "local_build",
         checkout_commit.stdout.strip(),

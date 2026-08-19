@@ -15,7 +15,7 @@ from typing import Any
 from norad.reporting._signals import install as _install_signal_handlers
 from norad.reporting._signals import restore as restore_signal_handlers
 
-from .context import recheck_inputs
+from .context import recheck_inputs, recheck_source_identity
 from .models import ArtifactIndexError, BuildContext, LockOwnership
 from .records import (
     inventory_rows_from_published_index,
@@ -160,6 +160,7 @@ class ArtifactPublicationOps:
     load_existing_receipt: Callable[..., Any] = load_existing_receipt
     validate_existing_identity: Callable[..., Any] = validate_existing_identity
     recheck_inputs: Callable[..., Any] = recheck_inputs
+    recheck_source_identity: Callable[..., Any] = recheck_source_identity
     validate_published_transaction: Callable[..., Any] = validate_published_transaction
 
 
@@ -299,7 +300,7 @@ def publish_context(
                 records_dir=context.records_dir,
                 artifacts_path=context.artifacts_path,
                 receipt_path=context.receipt_path,
-                source_root=context.source_checkout.root,
+                source_root=context.artifact_source_root.root,
             )
 
         temp_records.mkdir()
@@ -313,6 +314,7 @@ def publish_context(
         # Receipt is intentionally staged last.
         ops.write_bytes_exclusive(temp_receipt, context.receipt_bytes)
         ops.recheck_inputs(context)
+        ops.recheck_source_identity(context)
 
         if had_previous:
             ops.replace(context.receipt_path, backup_receipt)
@@ -325,6 +327,9 @@ def publish_context(
         published_records = True
         ops.replace(temp_index, context.artifacts_path)
         published_index = True
+        # Provenance is an execution claim: re-attest immediately before the
+        # receipt makes the new transaction terminal and reusable.
+        ops.recheck_source_identity(context)
         ops.replace(temp_receipt, context.receipt_path)
         published_receipt = True
         ops.fsync_directory(context.output_dir)
@@ -341,9 +346,10 @@ def publish_context(
             artifacts_path=context.artifacts_path,
             receipt_path=context.receipt_path,
             require_current_source_locations=True,
-            source_root=context.source_checkout.root,
+            source_root=context.artifact_source_root.root,
         )
         ops.recheck_inputs(context)
+        ops.recheck_source_identity(context)
         publication_committed = True
     except Exception as exc:
         rollback_errors: list[str] = []
@@ -403,7 +409,7 @@ def publish_context(
                         records_dir=context.records_dir,
                         artifacts_path=context.artifacts_path,
                         receipt_path=context.receipt_path,
-                        source_root=context.source_checkout.root,
+                        source_root=context.artifact_source_root.root,
                     ),
                 )
                 if len(rollback_errors) > validation_error_count and (

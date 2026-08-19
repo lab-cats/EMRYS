@@ -18,35 +18,32 @@ if TYPE_CHECKING:
     import argparse
 
 from norad.contracts.artifacts import api as contracts
+from norad.libraries.source_authority import (
+    ArtifactSourceRoot,
+    ArtifactSourceRootError,
+    SourceCheckout,
+    SourceCheckoutError,
+    admit_artifact_source_root,
+    admit_source_checkout,
+    matching_checkout_head_commit,
+)
+from norad.reporting import transaction_validation
 from norad.reporting._artifact_index import api as adapter
 from norad.reporting._run_summary import models
 from norad.reporting._run_summary import publication
-from norad.reporting._run_summary import science_projection as science
-from norad.reporting._run_summary.approvals import (
-    _normalize_report_table_approvals,
-)
 from norad.reporting._run_summary.document import _build_document
-from norad.reporting._run_summary.inputs import (
-    _capture_file_snapshot,
-    _fail,
-    _require_regular_file,
-    _verify_file_snapshot,
-)
 from norad.reporting._run_summary.models import (
     BuildContext,
-    FileSnapshot,
     RunSummaryError,
 )
 from norad.reporting._run_summary.projection import (
     _build_qc_rows,
     _build_summary_rows,
-    _default_scientific_review,
 )
 from norad.reporting._run_summary.transaction import (
     _load_input_transaction,
     _new_attempt_id,
     _parse_history,
-    _path_hash,
 )
 from norad.reporting._run_summary.validation import (
     _build_receipt_row,
@@ -61,14 +58,13 @@ class RunSummaryBuildDeps:
     """Explicit build-time fault seams for run-summary preparation."""
 
     load_input_transaction: Callable[..., Any] = _load_input_transaction
-    normalize_scientific_review: Callable[..., Any] = (
-        science.normalize_scientific_review
-    )
-    normalize_report_table_approvals: Callable[..., Any] = (
-        _normalize_report_table_approvals
-    )
     build_document: Callable[..., Any] = _build_document
-    recheck_inputs: Callable[..., Any] = publication._recheck_inputs
+    recheck_inputs: Callable[..., Any] = (
+        transaction_validation.recheck_run_summary_inputs
+    )
+    matching_checkout_head_commit: Callable[..., str | None] = (
+        matching_checkout_head_commit
+    )
 
 
 DEFAULT_RUN_SUMMARY_BUILD_DEPS = RunSummaryBuildDeps()
@@ -77,10 +73,11 @@ DEFAULT_RUN_SUMMARY_BUILD_DEPS = RunSummaryBuildDeps()
 def prepare_context(
     arguments: argparse.Namespace,
     *,
-    source_checkout: adapter.SourceCheckout,
+    source_checkout: SourceCheckout,
+    artifact_source_root: ArtifactSourceRoot,
     deps: RunSummaryBuildDeps = DEFAULT_RUN_SUMMARY_BUILD_DEPS,
 ) -> BuildContext:
-    source_root = source_checkout.root
+    source_root = artifact_source_root.root
     (
         artifact_receipt_path,
         artifact_receipt_sha256,
@@ -112,76 +109,16 @@ def prepare_context(
         supersedes_field="supersedes_adapter_attempt_id",
         history_field="adapter_attempt_history",
     )
-    git_commit = adapter.get_git_commit(
-        source_root=source_root,
-        sanitize_git_routing=True,
+    git_commit = (
+        deps.matching_checkout_head_commit(
+            source_checkout=source_checkout,
+            package_root=Path(__file__).resolve().parents[2],
+        )
+        or "local_build"
     )
     generated_at = artifact_receipt["finished_at"]
     started_at = adapter.utc_now()
     finished_at = started_at
-
-    science_path: Path | None = None
-    science_sha256: str | None = None
-    scientific_review = _default_scientific_review()
-    if arguments.science_review_summary is not None:
-        science_path = _require_regular_file(
-            "Science-review summary", arguments.science_review_summary
-        )
-        _science_payload, science_snapshot = _capture_file_snapshot(
-            "Science-review summary", science_path
-        )
-        science_sha256 = science_snapshot.sha256
-        try:
-            record = deps.normalize_scientific_review(
-                summary_path=science_path,
-                artifacts=artifacts,
-                run_id=arguments.run_id,
-                run_contract=run_contract,
-                generated_at=generated_at,
-                git_commit=git_commit,
-                source_root=source_root,
-            )
-        except science.RunSummaryScienceError as exc:
-            _fail(str(exc))
-        _verify_file_snapshot("Science-review summary", science_snapshot)
-        input_snapshots = (*input_snapshots, science_snapshot)
-        source = record["review_summary"]
-        scientific_review = {
-            "record_state": "present",
-            "source": dict(source),
-            "record": record,
-            "overall_status": record["scientific_state"]["overall_status"],
-        }
-
-    approvals_path: Path | None = None
-    approvals_sha256: str | None = None
-    approval_records: list[dict[str, Any]] = []
-    approval_table_snapshots: tuple[FileSnapshot, ...] = ()
-    approval_source: dict[str, Any] | None = None
-    if arguments.report_table_approvals is not None:
-        (
-            approvals_path,
-            approvals_snapshot,
-            approval_records,
-            approval_table_snapshots,
-        ) = deps.normalize_report_table_approvals(
-            manifest_value=arguments.report_table_approvals,
-            run_id=arguments.run_id,
-            run_contract=run_contract,
-            artifacts=artifacts,
-            scientific_review=scientific_review,
-            build_started_at=started_at,
-            source_root=source_root,
-        )
-        approvals_sha256 = approvals_snapshot.sha256
-        input_snapshots = (*input_snapshots, approvals_snapshot)
-        approval_source = _path_hash(
-            approvals_path,
-            sha256=approvals_snapshot.sha256,
-            size_bytes=approvals_snapshot.size_bytes,
-            row_count=len(approval_records),
-            media_type="text/tab-separated-values",
-        )
 
     document, artifact_scope_order = deps.build_document(
         run_id=arguments.run_id,
@@ -195,9 +132,6 @@ def prepare_context(
         artifact_receipt_size_bytes=artifact_receipt_snapshot.size_bytes,
         artifact_receipt=artifact_receipt,
         artifacts=artifacts,
-        scientific_review=scientific_review,
-        approved_report_tables=approval_records,
-        report_table_approvals_source=approval_source,
         generated_at=generated_at,
         git_commit=git_commit,
     )
@@ -251,8 +185,6 @@ def prepare_context(
         qc_summary_path=paths.qc_summary,
         qc_summary_bytes=qc_summary_bytes,
         qc_summary_row_count=len(qc_rows),
-        science_review_summary_path=science_path,
-        science_review_summary_sha256=science_sha256,
         document=document,
         attempt_id=attempt_id,
         previous_attempt_id=previous_attempt_id,
@@ -280,11 +212,6 @@ def prepare_context(
         records_dir=records_dir,
         input_snapshots=input_snapshots,
         artifacts=artifacts,
-        science_review_summary_path=science_path,
-        science_review_summary_sha256=science_sha256,
-        report_table_approvals_path=approvals_path,
-        report_table_approvals_sha256=approvals_sha256,
-        report_table_snapshots=approval_table_snapshots,
         document=document,
         summary_json_bytes=summary_json_bytes,
         summary_rows=summary_rows,
@@ -299,6 +226,7 @@ def prepare_context(
         receipt_row=receipt_row,
         receipt_bytes=receipt_bytes,
         source_checkout=source_checkout,
+        artifact_source_root=artifact_source_root,
     )
     deps.recheck_inputs(context)
     return context
@@ -322,14 +250,7 @@ def print_context(context: BuildContext) -> None:
         "  Externally unavailable artifacts: "
         f"{rollup['externally_unavailable_artifact_count']}"
     )
-    print(f"  Science status: {context.document['science_status']}")
-    if context.report_table_approvals_path is None:
-        print("  Report-table approvals: not supplied")
-    else:
-        print(f"  Report-table approvals: {context.report_table_approvals_path}")
-    print(
-        f"  Approved report tables: {len(context.document['approved_report_tables'])}"
-    )
+    print(f"  Interpretation boundary: {context.document['interpretation_boundary']}")
     print(f"  Output JSON: {context.paths.summary_json}")
     print(f"  Output TSV: {context.paths.summary_tsv}")
     print(f"  QC TSV: {context.paths.qc_summary}")
@@ -346,13 +267,17 @@ def build_from_args(
 ) -> int:
     """Build one run summary from grouped command arguments."""
     try:
-        source_checkout = adapter.admit_source_checkout(
+        source_checkout = admit_source_checkout(
             root=arguments.source_checkout,
             package_root=Path(__file__).resolve().parents[2],
+        )
+        artifact_source_root = admit_artifact_source_root(
+            root=arguments.artifact_source_root,
         )
         context = prepare_context(
             arguments,
             source_checkout=source_checkout,
+            artifact_source_root=artifact_source_root,
             deps=deps,
         )
         print_context(context)
@@ -364,9 +289,9 @@ def build_from_args(
     except (
         RunSummaryError,
         adapter.ArtifactIndexError,
-        adapter.SourceCheckoutError,
+        ArtifactSourceRootError,
+        SourceCheckoutError,
         contracts.ContractValidationError,
-        science.RunSummaryScienceError,
         OSError,
         ValueError,
     ) as exc:

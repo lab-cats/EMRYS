@@ -6,7 +6,10 @@ VULTURE_BIN ?= vulture
 DEAD_CODE_PATHS ?= scripts src/norad
 PYTHON_LINT_PATHS ?= scripts src/norad tests
 VULTURE_MIN_CONFIDENCE ?= 95
-PYTHON_COVERAGE_NEW_SHARED_MODULES ?=
+NORAD_RENV_VERSION := 1.2.3
+PYTHON_COVERAGE_NEW_SHARED_MODULES ?= \
+	src/norad/libraries/installed_package_identity.py \
+	src/norad/libraries/process_environment.py
 PYTHON_COVERAGE_NEW_SHARED_ARGS = $(foreach module,$(PYTHON_COVERAGE_NEW_SHARED_MODULES),--new-shared-module $(module))
 PYTHON_COVERAGE_NEW_SHARED_CHECK_ARGS = $(if $(strip $(PYTHON_COVERAGE_NEW_SHARED_MODULES)),--coverage-json "$(PYTHON_COVERAGE_RAW)" $(PYTHON_COVERAGE_NEW_SHARED_ARGS))
 PYTHON_COVERAGE_EXCLUDES := \
@@ -19,7 +22,9 @@ PYTHON_SUBPROCESS_COVERAGE_TESTS := \
 	tests/ingestion/sample_manifest_admission/test_validate_manifest.py
 
 SHELL_SYNTAX_PATHS := \
+	src/norad/libraries/gatk_invocation.sh \
 	src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh \
+	src/norad/stages/star_index/step_00a_build_star_index.sh \
 	src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh \
 	src/norad/stages/star_alignment/step_01_star_align.sh \
 	src/norad/stages/canonical_bam/step_02_sort_index_bam.sh \
@@ -31,7 +36,9 @@ SHELL_SYNTAX_PATHS := \
 	src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
 	src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
 	src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh \
-	src/norad/evidence/scientific_review_package/step_09c_scientific_validation.sh
+	src/norad/analyses/scientific_context_projection/scientific_context_projection.sh \
+	tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh \
+	tests/analyses/scientific_context_projection/test_scientific_context_projection.sh
 
 SLURM_SYNTAX_PATHS := \
 	src/norad/evidence/runtime_availability/tool_check.slurm \
@@ -48,7 +55,8 @@ SLURM_SYNTAX_PATHS := \
 	src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm \
 	src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm \
 	src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm \
-	src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm
+	src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm \
+	src/norad/analyses/scientific_context_projection/scientific_context_projection.slurm
 
 documentation-check:
 	./scripts/git_orchestration/validate_documentation.py --repo "$(CURDIR)"
@@ -66,7 +74,7 @@ validation-shell-contracts:
 	bash tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
 	bash tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.sh
 	bash tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.sh
-	bash tests/evidence/scientific_review_package/test_step_09c_scientific_validation.sh
+	bash tests/analyses/scientific_context_projection/test_scientific_context_projection.sh
 	bash tests/shell/test_local_r_environment.sh
 
 validation-shell-slurm: validation-shell-contracts
@@ -82,24 +90,37 @@ validation-wheel-smoke:
 real-r-test:
 	bash tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh
 	bash tests/analyses/paired_cmh_candidate_ranking/run_step_09_cmh_tests.sh
+	bash tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh
 
 r-restore:
-	NORAD_USE_RENV=1 RENV_CONFIG_SANDBOX_ENABLED=FALSE \
+	NORAD_USE_RENV=1 NORAD_LOCAL_PILOT_R=0 \
+		RENV_CONFIG_SANDBOX_ENABLED=FALSE \
 		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
 		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
 		"$(RSCRIPT_BIN)" scripts/restore_r_environment.R
 
 r-check:
-	NORAD_USE_RENV=1 RENV_CONFIG_SANDBOX_ENABLED=FALSE \
+	test -n "$(RENV_LIBRARY)"
+	test -d "$(RENV_LIBRARY)"
+	NORAD_USE_RENV=1 NORAD_LOCAL_PILOT_R=1 \
+		NORAD_RENV_LIBRARY="$(RENV_LIBRARY)" \
+		NORAD_RENV_VERSION="$(NORAD_RENV_VERSION)" \
+		RENV_CONFIG_SANDBOX_ENABLED=FALSE \
 		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
 		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
 		"$(RSCRIPT_BIN)" scripts/check_r_environment.R
 
 local-real-r-test:
-	NORAD_USE_RENV=1 RENV_CONFIG_SANDBOX_ENABLED=FALSE \
+	test -n "$(RENV_LIBRARY)"
+	test -d "$(RENV_LIBRARY)"
+	NORAD_USE_RENV=1 NORAD_LOCAL_PILOT_R=1 \
+		NORAD_RENV_LIBRARY="$(RENV_LIBRARY)" \
+		NORAD_RENV_VERSION="$(NORAD_RENV_VERSION)" \
+		RENV_CONFIG_SANDBOX_ENABLED=FALSE \
 		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
 		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
 		STEP08_TEST_RSCRIPT_BIN= STEP09_TEST_RSCRIPT_BIN= \
+		SCIENTIFIC_CONTEXT_TEST_RSCRIPT_BIN= \
 		RSCRIPT_BIN_OVERRIDE="$(RSCRIPT_BIN)" \
 		$(MAKE) real-r-test
 

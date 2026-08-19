@@ -1,0 +1,27 @@
+check_id	check_type	runtime_context	required	target	probe_args	expected	description
+bash	tool_version	local	true	/bin/bash	["--version"]	^GNU bash, version (3[.]2|[4-9][.]|[1-9][0-9][.])	Bash runtime for owner-local shell producers
+python	tool_version	local	true	/absolute/path/to/norad/.venv/bin/python	["--version"]	^Python 3[.](1[1-9]|[2-9][0-9])[.]	Exact uv-managed NORAD workflow Python
+snakemake	tool_version	local	true	/absolute/path/to/norad/.venv/bin/python	["-X","pycache_prefix=/dev/null","-I","-m","snakemake","--version"]	^9[.]25[.]1$	Locked Snakemake module through the controlled workflow Python
+sha256_python	hash_utility	local	true	/absolute/path/to/norad/.venv/bin/python	["python_hashlib"]	sha256	Controlled workflow Python SHA-256 implementation used by owner transactions
+star	tool_version	local	true	/absolute/path/to/STAR	["--version"]	^2[.]7[.]11b$	STAR aligner and genome-index builder
+samtools	tool_version	local	true	/absolute/path/to/samtools	["--version"]	^samtools 1[.]19[.]2(\s|$)	Samtools BAM utility
+java	tool_version	local	true	/absolute/java-home/bin/java	["-version"]	^(openjdk|java) version "(1[7-9]|[2-9][0-9])[.]	Java 17 or newer for Picard and GATK
+gatk	tool_version	local	true	/absolute/path/to/gatk	["--version"]	(?:^|\s)The Genome Analysis Toolkit [(]GATK[)] v?4[.]6[.]1[.]0(?:\s|$)	GATK SplitNCigarReads and sequence-dictionary runtime
+picard	tool_version_exit_1	local	true	/absolute/java-home/bin/java	["-jar","/absolute/path/to/picard.jar","MarkDuplicates","--version"]	^Version:3[.]1[.]1$	Picard MarkDuplicates 3.1.1 through the declared Java and jar
+picard_jar	path_visibility	local	true	/absolute/path/to/picard.jar	["file_readable"]	readable	Readable Picard 3.1.1 jar selected for duplicate marking
+bcftools	tool_version	local	true	/absolute/path/to/bcftools	["--version"]	^bcftools 1[.]21(\s|$)	Bcftools cohort mpileup runtime
+infer_experiment	tool_version	local	true	/absolute/path/to/infer_experiment.py	["--version"]	^[Rr][Ss]e[Qq][Cc].*[Vv]?[0-9]+	RSeQC infer_experiment runtime
+gunzip	tool_version	local	true	/absolute/path/to/gunzip	["--version"]	^(gzip|gunzip|Apple gzip).*	Exact gzip decompressor used for compressed FASTQ input
+rscript	tool_version	local	true	/absolute/path/to/Rscript	["--version"]	^Rscript [(]R[)] version 4[.]6[.]1(\s|$)	R 4.6.1 runtime selected by the guarded renv project
+renv_project	path_visibility	local	true	/absolute/path/to/norad	["directory_readable"]	readable	NORAD renv project root containing renv.lock and .Rprofile
+renv_library	path_visibility	local	true	/absolute/path/to/renv/library	["directory_readable"]	readable	Exact existing canonical renv library used by guarded R owners
+r_variant_annotation	r_namespace	local	true	VariantAnnotation	["/absolute/path/to/Rscript"]	^1[.]58[.]0$	Step 08 VariantAnnotation namespace
+r_genomic_ranges	r_namespace	local	true	GenomicRanges	["/absolute/path/to/Rscript"]	^1[.]64[.]0$	Step 08 GenomicRanges namespace
+r_iranges	r_namespace	local	true	IRanges	["/absolute/path/to/Rscript"]	^2[.]46[.]0$	Step 08 IRanges namespace
+r_biostrings	r_namespace	local	true	Biostrings	["/absolute/path/to/Rscript"]	^2[.]80[.]1$	Step 10 Biostrings sequence namespace
+r_rsamtools	r_namespace	local	true	Rsamtools	["/absolute/path/to/Rscript"]	^2[.]28[.]0$	Step 10 Rsamtools indexed-FASTA namespace
+r_s4vectors	r_namespace	local	true	S4Vectors	["/absolute/path/to/Rscript"]	^0[.]50[.]1$	Step 08 S4Vectors namespace
+r_summarized_experiment	r_namespace	local	true	SummarizedExperiment	["/absolute/path/to/Rscript"]	^1[.]42[.]0$	Step 08 SummarizedExperiment namespace
+r_genome_info_db	r_namespace	local	true	GenomeInfoDb	["/absolute/path/to/Rscript"]	^1[.]48[.]0$	Step 08 GenomeInfoDb namespace
+r_bioc_generics	r_namespace	local	true	BiocGenerics	["/absolute/path/to/Rscript"]	^0[.]58[.]1$	Step 08 BiocGenerics namespace
+r_rtracklayer	r_namespace	local	true	rtracklayer	["/absolute/path/to/Rscript"]	^1[.]72[.]0$	Step 08 rtracklayer namespace

@@ -19,7 +19,8 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
-from norad.contracts.scientific_evidence import review_package, step08, step09
+from norad.contracts.scientific_evidence import step08, step09
+from norad.libraries.source_authority import controlled_python_argv
 from tests.contract_integration.validation_rosters.validation_roster_expectations import (
     assert_exact_check_roster,
 )
@@ -37,66 +38,37 @@ GIT_ROUTING_VARIABLES = (
     "GIT_WORK_TREE",
     "GIT_FUTURE_ROUTING",
 )
-EXPECTED_PRODUCER_EVIDENCE = {
-    "00a": (
-        "src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm",
-        "f27924e80fee3b8f207a41fd7af472897ad51f06aa2e4c670973eb51f25b5fcc",
-    ),
-    "00b": (
-        "src/norad/stages/gtf_to_bed12/converter.py",
-        "b97e35fdb9b60e008f80897c9014dd3f38e2e38c0ba14b1a62c641cc4b8feaab",
-    ),
-    "00c": (
-        "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
-        "47fd09d6cf4c8c520ee39ec8491007f8e9a4dba37f2f428d56a4adfc762aefa1",
-    ),
-    "01": (
-        "src/norad/stages/star_alignment/step_01_star_align.sh",
-        "b69c81666b4d1191404bba3693995b46649b6f57bc4393becf7972f55ee25431",
-    ),
-    "02": (
-        "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh",
-        "a38ec7a8018bfda9dcd057b68290a1451bce0018b571fc938fa1a61c15988702",
-    ),
-    "02b": (
-        "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
-        "0f610a2334a707edcda46ca7f1fc467e21dcd4564286be7b6436c61855573b7a",
-    ),
+EXPECTED_PRODUCER_PATHS = {
+    "00a": "src/norad/stages/star_index/step_00a_build_star_index.sh",
+    "00b": "src/norad/stages/gtf_to_bed12/converter.py",
+    "00c": "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
+    "01": "src/norad/stages/star_alignment/step_01_star_align.sh",
+    "02": "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh",
+    "02b": "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
     "03": (
         "src/norad/evidence/rseqc_orientation/"
-        "step_03_infer_strandedness_and_orientation.sh",
-        "a2df31db018a234a2162053e9f587ea74cca6798b88685b9d18c5ea063e20b70",
+        "step_03_infer_strandedness_and_orientation.sh"
     ),
-    "04": (
-        "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
-        "568ce9536d4be309cbfeb258f7394d04f7acff6828d0fb4ff15f42dd316602da",
-    ),
-    "05": (
-        "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
-        "6712d49a7e56cad709c13325859c7ba8306c02aa6e0f681e428f37d4d8c147b6",
-    ),
+    "04": "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
+    "05": "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
     "06": (
         "src/norad/stages/mechanical_orientation/"
-        "step_06_split_bam_by_read_orientation.sh",
-        "4cc744dd7b97e8688ed59b9786e1b1e48af6994ac6a234c626e0cd8f152a3cb3",
+        "step_06_split_bam_by_read_orientation.sh"
     ),
     "07": (
         "src/norad/stages/partitioned_cohort_mpileup/"
-        "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
-        "9cdb0034b94a1606a72764d5ec0be7ff202ce15990243b1d7e4b2a1f5fee0fb7",
+        "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
     "08": (
-        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
-        "d37a82e84dc8b98c261e1e40df5ea0ffb1c9ec550381d6f0297ee3290f489a4b",
+        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
     ),
     "09": (
         "src/norad/analyses/paired_cmh_candidate_ranking/"
-        "step_09_cmh_editing_site_calling.sh",
-        "9311dc4a847e8f749c3fe033112070279b9d7beb0ff5dfaf69f67702b81f15bc",
+        "step_09_cmh_editing_site_calling.sh"
     ),
-    "09c": (
-        "src/norad/evidence/scientific_review_package/publisher.py",
-        "c5f7ddb41896790942340d91032de71bfd2221636df3d48726dc2bc9721f7e0f",
+    "10": (
+        "src/norad/analyses/scientific_context_projection/"
+        "scientific_context_projection.sh"
     ),
 }
 VALIDATION_ARTIFACT_STEPS = {
@@ -113,12 +85,19 @@ VALIDATION_ARTIFACT_STEPS = {
     "cohort.synthetic.p1.validation": "07",
     "cohort.synthetic.step08_validation": "08",
     "analysis.synthetic.cmh_validation": "09",
+    "analysis.synthetic.context_validation": "10",
 }
 
 
 ARTIFACT_CONTEXT = importlib.import_module("norad.reporting._artifact_index.context")
 ARTIFACT_CORE = importlib.import_module("norad.reporting._artifact_index.core")
+ARTIFACT_BINARY = importlib.import_module(
+    "norad.reporting._artifact_index.binary_readers"
+)
 ARTIFACT_MODELS = importlib.import_module("norad.reporting._artifact_index.models")
+ARTIFACT_INSPECTION = importlib.import_module(
+    "norad.reporting._artifact_index.inspection"
+)
 ARTIFACT_PUBLICATION = importlib.import_module(
     "norad.reporting._artifact_index.publication"
 )
@@ -128,9 +107,7 @@ ARTIFACT_ROSTERS = importlib.import_module("norad.reporting._artifact_index.rost
 ARTIFACT_NATIVE = importlib.import_module(
     "norad.reporting._artifact_index.reconcile_native"
 )
-ARTIFACT_SOURCE_CHECKOUT = importlib.import_module(
-    "norad.reporting._artifact_index.source_checkout"
-)
+SOURCE_AUTHORITY = importlib.import_module("norad.libraries.source_authority")
 ARTIFACT_VALIDATION = importlib.import_module(
     "norad.reporting._artifact_index.validation"
 )
@@ -160,10 +137,7 @@ def run_cli(
         environment.update(extra_env)
     return subprocess.run(
         [
-            sys.executable,
-            "-I",
-            "-m",
-            "norad",
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "artifact-index",
             *fixture.command_args(execute=execute),
@@ -209,7 +183,16 @@ def context_for(fixture: Any) -> Any:
             output_root=fixture.output_root,
             execute=True,
         ),
-        source_checkout=ARTIFACT_SOURCE_CHECKOUT.SourceCheckout(root=REPO_ROOT),
+        source_checkout=SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT),
+        artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(root=fixture.root),
+        identity_ops=ARTIFACT_CONTEXT.ArtifactIdentityOps(
+            matching_clean_checkout_head_commit=(
+                lambda **_kwargs: ARTIFACT_CORE.get_git_commit(
+                    source_root=REPO_ROOT,
+                    sanitize_git_routing=True,
+                )
+            )
+        ),
     )
 
 
@@ -265,24 +248,24 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
 ) -> None:
     rows = artifact_fixture.inventory_rows
 
-    assert len(rows) == 81
+    assert len(rows) == 74
     assert [row["artifact_id"] for row in rows] == [
         row["artifact_id"] for row in FIXTURE.read_inventory_template()
     ]
     assert {row["adapter"] for row in rows} == set(ARTIFACT_REGISTRY.ADAPTER_REGISTRY)
-    assert len(artifact_fixture.source_paths) == 81
+    assert len(artifact_fixture.source_paths) == 74
     assert all(path.is_file() for path in artifact_fixture.source_paths.values())
     assert not artifact_fixture.output_root.exists()
 
 
-def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes() -> None:
+def test_migrated_implementation_evidence_uses_final_paths_and_current_bytes() -> None:
     git_commit = "a" * 40
 
     evidence = ARTIFACT_RECORDS.producer_evidence(git_commit)
 
-    assert tuple(evidence) == tuple(EXPECTED_PRODUCER_EVIDENCE)
-    assert tuple(ARTIFACT_ROSTERS.STEP_PRODUCERS) == tuple(EXPECTED_PRODUCER_EVIDENCE)
-    for step_id, (expected_path, expected_sha256) in EXPECTED_PRODUCER_EVIDENCE.items():
+    assert tuple(evidence) == tuple(EXPECTED_PRODUCER_PATHS)
+    assert ARTIFACT_ROSTERS.STEP_PRODUCERS == EXPECTED_PRODUCER_PATHS
+    for step_id, expected_path in EXPECTED_PRODUCER_PATHS.items():
         record = evidence[step_id]
         assert record["status"] == "implemented"
         assert record["git_commit"] == git_commit
@@ -292,6 +275,9 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes() ->
         assert row["evidence_id"] == f"implementation_{step_id}"
         assert row["role"] == "implementation"
         assert row["path"] == expected_path
+        expected_sha256 = hashlib.sha256(
+            (REPO_ROOT / expected_path).read_bytes()
+        ).hexdigest()
         assert row["sha256"] == expected_sha256
 
 
@@ -346,40 +332,41 @@ def test_git_commit_routing_sanitization_is_explicit_and_complete(
     assert environment["NORAD_GIT_ENV_SENTINEL"] == "retained"
 
 
-def test_prepare_context_threads_one_explicit_source_checkout_root(
+def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
     artifact_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    # Fixture sources are absolute; Git/producer spies delegate to the real
-    # checkout only after proving the synthetic root reached those seams.
-    authority = ARTIFACT_SOURCE_CHECKOUT.SourceCheckout(root=artifact_fixture.root)
+    source_checkout = SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT)
+    artifact_source_root = SOURCE_AUTHORITY.ArtifactSourceRoot(
+        root=artifact_fixture.root
+    )
     root_calls: Counter[str] = Counter()
-    real_get_git_commit = ARTIFACT_CONTEXT.get_git_commit
+    real_get_git_commit = ARTIFACT_CORE.get_git_commit
     real_producer_evidence = ARTIFACT_CONTEXT.producer_evidence
     real_declared_contract_path = ARTIFACT_NATIVE.declared_contract_path
     real_validate_artifact_semantics = ARTIFACT_CONTRACTS.validate_artifact_semantics
 
-    def get_git_commit(
+    def matching_clean_checkout_head_commit(
         *,
-        source_root: Path,
-        sanitize_git_routing: bool,
+        source_checkout: Any,
+        package_root: Path,
     ) -> str:
-        assert source_root == authority.root
-        assert sanitize_git_routing is True
+        assert source_checkout.root == REPO_ROOT
+        assert package_root == Path(ARTIFACT_CONTEXT.__file__).resolve().parents[2]
         root_calls["git"] += 1
-        return real_get_git_commit()
+        return real_get_git_commit(source_root=REPO_ROOT, sanitize_git_routing=True)
 
     def producer_evidence(
         git_commit: str,
         *,
         source_root: Path,
     ) -> dict[str, dict[str, Any]]:
-        assert source_root == authority.root
+        assert source_root == source_checkout.root
         root_calls["producers"] += 1
-        return real_producer_evidence(git_commit)
+        return real_producer_evidence(git_commit, source_root=source_root)
 
     def declared_contract_path(value: str, *, source_root: Path) -> Path:
-        assert source_root == authority.root
+        assert source_root == artifact_source_root.root
         root_calls["native_references"] += 1
         return real_declared_contract_path(value, source_root=source_root)
 
@@ -388,11 +375,10 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
         *,
         source_root: Path,
     ) -> None:
-        assert source_root == authority.root
+        assert source_root == artifact_source_root.root
         root_calls["record_semantics"] += 1
         real_validate_artifact_semantics(document, source_root=source_root)
 
-    monkeypatch.setattr(ARTIFACT_CONTEXT, "get_git_commit", get_git_commit)
     monkeypatch.setattr(ARTIFACT_CONTEXT, "producer_evidence", producer_evidence)
     monkeypatch.setattr(
         ARTIFACT_NATIVE,
@@ -413,14 +399,66 @@ def test_prepare_context_threads_one_explicit_source_checkout_root(
             output_root=artifact_fixture.output_root,
             execute=False,
         ),
-        source_checkout=authority,
+        source_checkout=source_checkout,
+        artifact_source_root=artifact_source_root,
+        identity_ops=ARTIFACT_CONTEXT.ArtifactIdentityOps(
+            matching_clean_checkout_head_commit=(matching_clean_checkout_head_commit)
+        ),
     )
 
-    assert context.source_checkout == authority
+    assert context.source_checkout == source_checkout
+    assert context.artifact_source_root == artifact_source_root
     assert root_calls["git"] == 1
     assert root_calls["producers"] == 1
     assert root_calls["native_references"] > 0
     assert root_calls["record_semantics"] == len(artifact_fixture.inventory_rows)
+
+
+def test_prepare_context_rejects_unattributable_dirty_checkout(
+    artifact_fixture: Any,
+) -> None:
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError,
+        match="requires a stable clean source checkout",
+    ):
+        ARTIFACT_CONTEXT.prepare_context(
+            argparse.Namespace(
+                run_id=artifact_fixture.run_id,
+                run_contract=artifact_fixture.run_contract,
+                inventory=artifact_fixture.inventory,
+                output_root=artifact_fixture.output_root,
+                execute=False,
+            ),
+            source_checkout=SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT),
+            artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(
+                root=artifact_fixture.root
+            ),
+            identity_ops=ARTIFACT_CONTEXT.ArtifactIdentityOps(
+                matching_clean_checkout_head_commit=lambda **_kwargs: None
+            ),
+        )
+
+
+def test_publication_rechecks_source_identity_before_terminal_receipt(
+    artifact_fixture: Any,
+) -> None:
+    context = context_for(artifact_fixture)
+    calls = 0
+
+    def recheck_source_identity(_context: Any) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise ARTIFACT_MODELS.ArtifactIndexError("fixture source drift")
+
+    with pytest.raises(ARTIFACT_MODELS.ArtifactIndexError, match="source drift"):
+        ARTIFACT_PUBLICATION.publish_context(
+            context,
+            ops=publication_ops(recheck_source_identity=recheck_source_identity),
+        )
+
+    assert calls == 2
+    assert not context.receipt_path.exists()
 
 
 def test_help_and_dry_run_validate_all_sources_without_writing(
@@ -428,10 +466,7 @@ def test_help_and_dry_run_validate_all_sources_without_writing(
 ) -> None:
     help_result = subprocess.run(
         [
-            sys.executable,
-            "-I",
-            "-m",
-            "norad",
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "artifact-index",
             "--help",
@@ -446,6 +481,7 @@ def test_help_and_dry_run_validate_all_sources_without_writing(
     assert help_result.returncode == 0, help_result.stderr
     for option in (
         "--source-checkout",
+        "--artifact-source-root",
         "--run-id",
         "--run-contract",
         "--inventory",
@@ -455,11 +491,41 @@ def test_help_and_dry_run_validate_all_sources_without_writing(
         assert option in help_result.stdout
     assert result.returncode == 0, result.stderr
     assert "Mode: dry-run" in result.stdout
-    assert "Inventory artifacts: 81" in result.stdout
-    assert "present=81" in result.stdout
-    assert "complete=81" in result.stdout
+    assert "Inventory artifacts: 74" in result.stdout
+    assert "present=74" in result.stdout
+    assert "complete=74" in result.stdout
     assert "Receipt (published last)" in result.stdout
     assert "Dry-run only" in result.stdout
+    assert not artifact_fixture.output_root.exists()
+
+
+@pytest.mark.parametrize(
+    "required_option",
+    ("--source-checkout", "--artifact-source-root"),
+)
+def test_public_cli_requires_both_source_authorities(
+    artifact_fixture: Any,
+    required_option: str,
+) -> None:
+    arguments = artifact_fixture.command_args(execute=False)
+    option_index = arguments.index(required_option)
+    del arguments[option_index : option_index + 2]
+
+    result = subprocess.run(
+        [
+            *controlled_python_argv(sys.executable, "-m", "norad"),
+            "build",
+            "artifact-index",
+            *arguments,
+        ],
+        cwd=REPO_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 2
+    assert required_option in result.stderr
     assert not artifact_fixture.output_root.exists()
 
 
@@ -488,7 +554,7 @@ def test_execute_publishes_inventory_ordered_schema_valid_transaction(
     assert "Published receipt last" in result.stdout
     index_rows = read_tsv(artifact_fixture.artifacts_path)
     receipt_rows = read_tsv(artifact_fixture.receipt_path)
-    assert len(index_rows) == 81
+    assert len(index_rows) == 74
     assert len(receipt_rows) == 1
     receipt = receipt_rows[0]
     assert [row["artifact_id"] for row in index_rows] == [
@@ -496,19 +562,19 @@ def test_execute_publishes_inventory_ordered_schema_valid_transaction(
     ]
     assert {row["availability_status"] for row in index_rows} == {"present"}
     assert {row["completion_status"] for row in index_rows} == {"complete"}
-    assert receipt["inventory_row_count"] == "81"
-    assert receipt["artifact_record_count"] == "81"
-    assert receipt["present_artifact_count"] == "81"
-    assert receipt["complete_artifact_count"] == "81"
+    assert receipt["inventory_row_count"] == "74"
+    assert receipt["artifact_record_count"] == "74"
+    assert receipt["present_artifact_count"] == "74"
+    assert receipt["complete_artifact_count"] == "74"
     assert receipt["required_missing_artifact_count"] == "0"
     assert receipt["warning_count"] == "0"
     assert receipt["error_count"] == "0"
-    assert receipt["published_output_count"] == "83"
+    assert receipt["published_output_count"] == "76"
     assert receipt["transaction_state"] == "complete"
     assert receipt["artifacts_index_sha256"] == sha256_file(
         artifact_fixture.artifacts_path
     )
-    assert len(list(artifact_fixture.records_dir.glob("*.json"))) == 81
+    assert len(list(artifact_fixture.records_dir.glob("*.json"))) == 74
 
     for row in index_rows:
         record_path = Path(row["record_path"])
@@ -607,9 +673,9 @@ def test_missing_and_malformed_sources_are_explicit_and_scope_reconciled(
     assert malformed_sibling["completion_status"] == "incomplete"
 
     receipt = read_tsv(artifact_fixture.receipt_path)[0]
-    assert receipt["present_artifact_count"] == "80"
+    assert receipt["present_artifact_count"] == "67"
     assert receipt["missing_artifact_count"] == "1"
-    assert receipt["complete_artifact_count"] == "75"
+    assert receipt["complete_artifact_count"] == "62"
     assert receipt["incomplete_artifact_count"] == "5"
     assert receipt["failed_artifact_count"] == "1"
     assert receipt["required_missing_artifact_count"] == "1"
@@ -779,7 +845,7 @@ def test_undeclared_source_and_unrelated_run_outputs_are_ignored_and_preserved(
     assert second.returncode == 0, second.stderr
     assert unrelated.read_bytes() == unrelated_payload
     index_rows = read_tsv(artifact_fixture.artifacts_path)
-    assert len(index_rows) == 81
+    assert len(index_rows) == 74
     assert str(undeclared) not in {row["source_path"] for row in index_rows}
     assert not any(
         path.name.startswith("undeclared")
@@ -1009,10 +1075,7 @@ def test_semantically_identical_moved_run_contract_can_retry(
 
     second = subprocess.run(
         [
-            sys.executable,
-            "-I",
-            "-m",
-            "norad",
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "artifact-index",
             *arguments,
@@ -1150,47 +1213,6 @@ def test_dangling_declared_symlink_is_externally_unavailable(
     ]
 
 
-def test_reserved_biological_ready_state_is_rejected(
-    artifact_fixture: Any,
-) -> None:
-    for artifact_id in (
-        "review.synthetic.review_plan",
-        "review.synthetic.review_summary",
-    ):
-        path = artifact_fixture.source_for(artifact_id)
-        rows = read_tsv(path)
-        rows[0]["overall_science_status"] = "biological_interpretation_ready"
-        header = (
-            review_package.REVIEW_PLAN_HEADER
-            if artifact_id.endswith("review_plan")
-            else review_package.REVIEW_SUMMARY_HEADER
-        )
-        FIXTURE.write_tsv(path, header, rows)
-    review_summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
-    review_summary_rows = read_tsv(review_summary_path)
-    review_summary_rows[0]["review_plan_sha256"] = sha256_file(
-        artifact_fixture.source_for("review.synthetic.review_plan")
-    )
-    FIXTURE.write_tsv(
-        review_summary_path,
-        review_package.REVIEW_SUMMARY_HEADER,
-        review_summary_rows,
-    )
-
-    result = run_cli(artifact_fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    summary = record_for(artifact_fixture, "review.synthetic.review_summary")
-    assert summary["completion_status"] == "failed"
-    assert summary["scientific_state"] is None
-    assert [entry["code"] for entry in summary["errors"]] == ["science_status_invalid"]
-    assert all(
-        record_for(artifact_fixture, row["artifact_id"])["scientific_state"] is None
-        for row in artifact_fixture.inventory_rows
-        if row["step_id"] == "09c"
-    )
-
-
 def test_tampered_receipt_and_extra_record_entry_block_retry(
     artifact_fixture: Any,
 ) -> None:
@@ -1269,7 +1291,7 @@ def test_prepare_context_uses_live_predecessor_validation_owner(
 
     def fail_predecessor_validation(**kwargs: Any) -> None:
         nonlocal reached_predecessor
-        assert kwargs["source_root"] == REPO_ROOT
+        assert kwargs["source_root"] == artifact_fixture.root
         if not kwargs["require_current_source_locations"]:
             reached_predecessor = True
             raise ARTIFACT_MODELS.ArtifactIndexError(
@@ -1304,7 +1326,7 @@ def test_post_publication_source_mutation_rolls_back(
 
     def mutate_after_validation(**kwargs: Any) -> None:
         nonlocal mutated
-        assert kwargs["source_root"] == context.source_checkout.root
+        assert kwargs["source_root"] == context.artifact_source_root.root
         real_validate(**kwargs)
         if kwargs["require_current_source_locations"] and not mutated:
             source.write_text("mutated after publication\n", encoding="utf-8")
@@ -1373,7 +1395,7 @@ def test_post_commit_backup_cleanup_failure_preserves_new_transaction(
     )
 
 
-def test_native_metrics_and_science_state_are_conservative(
+def test_native_metrics_and_artifact_state_are_conservative(
     artifact_fixture: Any,
 ) -> None:
     result = run_cli(artifact_fixture, execute=True)
@@ -1400,15 +1422,80 @@ def test_native_metrics_and_science_state_are_conservative(
     )
     genome = record_for(artifact_fixture, "ref.star_index.genome")
     assert genome["source"]["media_type"] == "application/octet-stream"
-    review = record_for(
-        artifact_fixture,
-        "review.synthetic.review_summary",
+    assert "scientific_state" not in genome
+    assert genome["runtime_validation"]["status"] == "not_run"
+    assert genome["cluster_validation"]["proof_status"] == "not_run"
+    assert genome["attempts"] == []
+    assert genome["selected_attempt_id"] is None
+
+
+def test_star_final_log_preserves_infinite_mapping_speed_as_string(
+    artifact_fixture: Any,
+) -> None:
+    artifact_fixture.source_for("sample.SYNTH_A.star_log_final").write_text(
+        "Mapping speed, Million of reads per hour | inf\n"
+        "Number of input reads | 100\n"
+        "Uniquely mapped reads % | 95.00%\n",
+        encoding="utf-8",
     )
-    assert review["scientific_state"]["overall_status"] == ("evidence_incomplete")
-    assert review["runtime_validation"]["status"] == "not_run"
-    assert review["cluster_validation"]["proof_status"] == "not_run"
-    assert review["attempts"] == []
-    assert review["selected_attempt_id"] is None
+
+    context = context_for(artifact_fixture)
+    record = next(
+        record
+        for record in context.records
+        if record["artifact_id"] == "sample.SYNTH_A.star_log_final"
+    )
+    metrics = {metric["metric_id"]: metric for metric in record["metrics"]}
+    mapping_speed = metrics["mapping_speed__million_of_reads_per_hour"]
+    assert mapping_speed["value"] == "Inf"
+    assert mapping_speed["status"] == "not_assessed"
+    assert metrics["number_of_input_reads"]["value"] == 100.0
+    assert metrics["uniquely_mapped_reads"]["value"] == 95.0
+
+
+@pytest.mark.parametrize("token", ["-inf", "nan", "1e999"])
+def test_star_final_log_rejects_unapproved_nonfinite_metrics(
+    artifact_fixture: Any,
+    token: str,
+) -> None:
+    artifact_fixture.source_for("sample.SYNTH_A.star_log_final").write_text(
+        f"Mapping speed, Million of reads per hour | {token}\n"
+        "Number of input reads | 100\n",
+        encoding="utf-8",
+    )
+
+    context = context_for(artifact_fixture)
+    record = next(
+        record
+        for record in context.records
+        if record["artifact_id"] == "sample.SYNTH_A.star_log_final"
+    )
+    assert record["completion_status"] == "failed"
+    assert record["state_reason"] == "Present source failed its registered adapter."
+    assert [error["code"] for error in record["errors"]] == [
+        "adapter_validation_failed"
+    ]
+    assert "is non-finite" in record["errors"][0]["message"]
+
+
+def test_metric_projection_rejects_residual_nonfinite_values() -> None:
+    with pytest.raises(
+        ARTIFACT_MODELS.ArtifactIndexError,
+        match="Native metric 'unexpected' is non-finite",
+    ):
+        ARTIFACT_INSPECTION.build_metrics(
+            {"artifact_id": "sample.SYNTH_A.unexpected"},
+            None,
+            {"unexpected": float("inf")},
+        )
+
+
+def test_bgzf_eof_block_matches_the_independent_canonical_literal() -> None:
+    expected = bytes.fromhex("1f8b08040000000000ff0600424302001b0003000000000000000000")
+
+    assert len(expected) == 28
+    assert ARTIFACT_BINARY.BGZF_EOF_BLOCK == expected
+    assert FIXTURE.CANONICAL_BGZF_EOF_BLOCK == expected
 
 
 def test_all_missing_sources_publish_complete_index_transaction(
@@ -1421,9 +1508,9 @@ def test_all_missing_sources_publish_complete_index_transaction(
 
     assert result.returncode == 0, result.stderr
     receipt = read_tsv(artifact_fixture.receipt_path)[0]
-    assert receipt["missing_artifact_count"] == "81"
-    assert receipt["incomplete_artifact_count"] == "81"
-    assert receipt["required_missing_artifact_count"] == "81"
+    assert receipt["missing_artifact_count"] == "74"
+    assert receipt["incomplete_artifact_count"] == "74"
+    assert receipt["required_missing_artifact_count"] == "74"
     assert receipt["transaction_state"] == "complete"
 
 
@@ -1502,7 +1589,7 @@ def test_failed_restored_transaction_validation_requarantines_receipt(
 
     def fail_new_and_restored_validation(**kwargs: Any) -> None:
         nonlocal prior_validation_count
-        assert kwargs["source_root"] == replacement.source_checkout.root
+        assert kwargs["source_root"] == replacement.artifact_source_root.root
         if kwargs["require_current_source_locations"]:
             raise ARTIFACT_MODELS.ArtifactIndexError(
                 "injected new-transaction validation failure"
@@ -1554,7 +1641,7 @@ def test_failed_restored_transaction_validation_requarantines_receipt(
         ),
         (
             "08",
-            "cohort.synthetic.step08_summary",
+            "cohort.synthetic.step08_inputs",
             "cohort.synthetic.step08_sites",
         ),
         (
@@ -1563,9 +1650,9 @@ def test_failed_restored_transaction_validation_requarantines_receipt(
             "analysis.synthetic.cmh_all_sites",
         ),
         (
-            "09c",
-            "review.synthetic.review_summary",
-            "review.synthetic.review_plan",
+            "10",
+            "analysis.synthetic.context_receipt",
+            "analysis.synthetic.candidate_context",
         ),
     ],
 )
@@ -1603,15 +1690,16 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
             step09.STEP09_MUTATION_HEADER,
             rows,
         )
-    else:
-        path = artifact_fixture.source_for("review.synthetic.review_summary")
+    elif step_id == "10":
+        path = artifact_fixture.source_for("analysis.synthetic.candidate_context")
         rows = read_tsv(path)
-        rows[0]["step09_summary_sha256"] = "9" * 64
-        FIXTURE.write_tsv(
-            path,
-            review_package.REVIEW_SUMMARY_HEADER,
-            rows,
-        )
+        sequence = rows[0]["oriented_sequence"]
+        rows[0]["oriented_sequence"] = ("C" if sequence[0] != "C" else "A") + sequence[
+            1:
+        ]
+        FIXTURE.write_tsv(path, tuple(rows[0]), rows)
+    else:
+        raise AssertionError(f"Unhandled native transaction step: {step_id}")
 
     result = run_cli(artifact_fixture, execute=True)
 
@@ -1623,9 +1711,6 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
         "native_transaction_inconsistent"
     ]
     assert sibling["completion_status"] == "incomplete"
-    if step_id == "09c":
-        assert marker["scientific_state"] is None
-        assert sibling["scientific_state"] is None
 
 
 @pytest.mark.parametrize(
@@ -1748,7 +1833,7 @@ def test_native_dependency_order_is_independent_of_inventory_scope_order(
     )
     step08 = record_for(
         artifact_fixture,
-        "cohort.synthetic.step08_summary",
+        "cohort.synthetic.step08_inputs",
     )
     assert step07["completion_status"] == "failed"
     assert step08["completion_status"] == "failed"
@@ -1909,115 +1994,6 @@ def test_step09_rejects_unknown_status_and_pairwise_spectrum_mismatch(
         )["completion_status"]
         == "failed"
     )
-
-
-def test_step09c_cannot_self_declare_exploratory_completion(
-    artifact_fixture: Any,
-) -> None:
-    plan_path = artifact_fixture.source_for("review.synthetic.review_plan")
-    plan_rows = read_tsv(plan_path)
-    plan_rows[0]["overall_science_status"] = "science_review_complete_exploratory"
-    plan_rows[0]["review_completed_date"] = "2026-01-01"
-    FIXTURE.write_tsv(
-        plan_path,
-        review_package.REVIEW_PLAN_HEADER,
-        plan_rows,
-    )
-    summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
-    summary_rows = read_tsv(summary_path)
-    summary_rows[0]["overall_science_status"] = "science_review_complete_exploratory"
-    summary_rows[0]["review_completed_date"] = "2026-01-01"
-    summary_rows[0]["review_plan_sha256"] = sha256_file(plan_path)
-    FIXTURE.write_tsv(
-        summary_path,
-        review_package.REVIEW_SUMMARY_HEADER,
-        summary_rows,
-    )
-
-    result = run_cli(artifact_fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    summary = record_for(
-        artifact_fixture,
-        "review.synthetic.review_summary",
-    )
-    assert summary["completion_status"] == "failed"
-    assert summary["scientific_state"] is None
-
-
-def test_step09c_requires_every_explicit_evidence_category(
-    artifact_fixture: Any,
-) -> None:
-    evidence_index = artifact_fixture.source_for("review.synthetic.evidence_index")
-    evidence_rows = read_tsv(evidence_index)[:1]
-    FIXTURE.write_tsv(
-        evidence_index,
-        review_package.EVIDENCE_INDEX_HEADER,
-        evidence_rows,
-    )
-    summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
-    summary_rows = read_tsv(summary_path)
-    summary_rows[0]["evidence_record_count"] = "1"
-    summary_rows[0]["evidence_manifest_row_count"] = "1"
-    FIXTURE.write_tsv(
-        summary_path,
-        review_package.REVIEW_SUMMARY_HEADER,
-        summary_rows,
-    )
-
-    result = run_cli(artifact_fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    summary = record_for(
-        artifact_fixture,
-        "review.synthetic.review_summary",
-    )
-    assert summary["completion_status"] == "failed"
-    assert summary["scientific_state"] is None
-
-
-def test_step09c_complete_evidence_cannot_point_to_empty_payload(
-    artifact_fixture: Any,
-) -> None:
-    evidence_index = artifact_fixture.source_for("review.synthetic.evidence_index")
-    evidence_rows = read_tsv(evidence_index)
-    orientation = evidence_rows[0]
-    assert orientation["evidence_category"] == "orientation_locus_audit"
-    orientation.update(
-        {
-            "source_path": "/synthetic/orientation.tsv",
-            "declared_sha256": "a" * 64,
-            "observed_sha256": "a" * 64,
-            "declared_row_count": "0",
-            "observed_row_count": "0",
-            "evidence_status": "complete",
-            "evidence_date": "2026-01-01",
-        }
-    )
-    FIXTURE.write_tsv(
-        evidence_index,
-        review_package.EVIDENCE_INDEX_HEADER,
-        evidence_rows,
-    )
-    summary_path = artifact_fixture.source_for("review.synthetic.review_summary")
-    summary_rows = read_tsv(summary_path)
-    summary_rows[0]["orientation_locus_audit_status"] = "complete"
-    summary_rows[0]["evidence_source_count"] = "1"
-    FIXTURE.write_tsv(
-        summary_path,
-        review_package.REVIEW_SUMMARY_HEADER,
-        summary_rows,
-    )
-
-    result = run_cli(artifact_fixture, execute=True)
-
-    assert result.returncode == 0, result.stderr
-    summary = record_for(
-        artifact_fixture,
-        "review.synthetic.review_summary",
-    )
-    assert summary["completion_status"] == "failed"
-    assert summary["scientific_state"] is None
 
 
 def test_first_publication_rollback_fsync_failure_retains_recovery_lock(

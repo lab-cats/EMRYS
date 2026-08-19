@@ -12,7 +12,7 @@ from typing import TypeVar
 
 from norad.libraries import validation as report
 from norad.libraries.alignments.orientation import ORIENTATIONS
-from norad.libraries.validation.tsv import read_strict_tsv
+from norad.libraries.validation.tsv import parse_strict_tsv_bytes, read_strict_tsv
 
 __all__ = (
     "ContractError",
@@ -23,6 +23,7 @@ __all__ = (
     "STEP08_INPUTS_HEADER",
     "STEP08_SUMMARY_HEADER",
     "STEP08_PARTITION_COUNT_FIELDS",
+    "STEP08_LOCATION_FLAG_FIELDS",
     "SAMPLE_MANIFEST_REQUIRED",
     "SAMPLE_MANIFEST_ALLOWED",
     "PARTITION_MANIFEST_HEADER",
@@ -39,8 +40,11 @@ __all__ = (
     "validate_enum",
     "validate_hash",
     "validate_sample_manifest",
+    "validate_sample_manifest_bytes",
     "validate_partition_manifest",
+    "validate_partition_manifest_bytes",
     "validate_safe_id",
+    "validate_step08_carried_location",
     "validate_step08_inputs",
     "validate_step08_sites",
     "validate_step08_summary",
@@ -51,7 +55,7 @@ T = TypeVar("T")
 
 
 class ContractError(RuntimeError):
-    """Raised when an explicit scientific-review contract is invalid."""
+    """Raised when an explicit computational-evidence contract is invalid."""
 
 
 SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
@@ -127,6 +131,13 @@ STEP08_SUMMARY_HEADER = (
 )
 STEP08_AGGREGATE_COUNT_FIELDS = STEP08_SUMMARY_HEADER[5:10]
 STEP08_PARTITION_COUNT_FIELDS = STEP08_SUMMARY_HEADER[5:11]
+STEP08_LOCATION_FLAG_FIELDS = (
+    "is_cds",
+    "is_five_prime_utr",
+    "is_three_prime_utr",
+    "is_exon",
+    "is_intron",
+)
 
 SAMPLE_MANIFEST_REQUIRED = (
     "sample_id",
@@ -253,6 +264,43 @@ def require_text(label: str, value: str, *, allow_na: bool = False) -> None:
         fail(f"{label} must be non-empty and have no surrounding whitespace.")
 
 
+def validate_step08_carried_location(
+    row: Mapping[str, str],
+    label: str,
+) -> None:
+    """Validate the lexical Step 08 location fields carried into Step 09.
+
+    These checks intentionally preserve the five independent overlap flags.
+    They do not collapse transcript overlaps into exclusive location classes or
+    independently recompute annotation from the GTF.
+    """
+
+    require_text(f"{label} chromosome", row["chromosome"])
+    validate_enum(
+        f"{label} annotation_strand",
+        row["annotation_strand"],
+        ("+", "-"),
+    )
+    for field in ("gene_ids", "transcript_ids"):
+        value = row[field]
+        if value == NA_VALUE:
+            continue
+        require_text(f"{label} {field}", value)
+        identifiers = value.split(";")
+        if any(
+            not identifier or identifier == NA_VALUE or identifier.strip() != identifier
+            for identifier in identifiers
+        ):
+            fail(
+                f"{label} {field} must be NA or a semicolon-delimited list "
+                "of non-empty identifiers without surrounding whitespace."
+            )
+        if len(identifiers) != len(set(identifiers)):
+            fail(f"{label} {field} contains a duplicate identifier.")
+    for field in STEP08_LOCATION_FLAG_FIELDS:
+        validate_enum(f"{label} {field}", row[field], ("TRUE", "FALSE"))
+
+
 def validate_hash(label: str, value: str) -> None:
     if not SHA256_RE.fullmatch(value):
         fail(f"{label} must be a lowercase SHA-256 value; got: {value}")
@@ -262,10 +310,26 @@ def validate_sample_manifest(
     value: str | Path,
 ) -> tuple[Table, list[str], list[dict[str, str]]]:
     table = read_tsv("Sample manifest", value)
+    return _validate_sample_manifest_table(table)
+
+
+def validate_sample_manifest_bytes(
+    data: bytes,
+    source: str | Path,
+) -> tuple[Table, list[str], list[dict[str, str]]]:
+    """Validate exact admitted sample-manifest bytes without reopening a path."""
+    path = Path(source)
+    header, rows = parse_strict_tsv_bytes("Sample manifest", data, path, None, fail)
+    return _validate_sample_manifest_table(Table(header=header, rows=rows, path=path))
+
+
+def _validate_sample_manifest_table(
+    table: Table,
+) -> tuple[Table, list[str], list[dict[str, str]]]:
     if table.header not in (SAMPLE_MANIFEST_REQUIRED, SAMPLE_MANIFEST_ALLOWED):
         fail(
-            "Sample manifest must have the exact Step 09 schema, with optional "
-            "notes as the final column."
+            "Sample manifest must have the exact paired local-CMH schema, "
+            "with optional notes as the final column."
         )
     if not table.rows:
         fail("Sample manifest contains no sample rows.")
@@ -290,6 +354,21 @@ def validate_sample_manifest(
 
 def validate_partition_manifest(value: str | Path) -> Table:
     table = read_tsv("Partition manifest", value, PARTITION_MANIFEST_HEADER)
+    return _validate_partition_manifest_table(table)
+
+
+def validate_partition_manifest_bytes(data: bytes, source: str | Path) -> Table:
+    """Validate exact admitted partition-manifest bytes without reopening a path."""
+    path = Path(source)
+    header, rows = parse_strict_tsv_bytes(
+        "Partition manifest", data, path, PARTITION_MANIFEST_HEADER, fail
+    )
+    return _validate_partition_manifest_table(
+        Table(header=header, rows=rows, path=path)
+    )
+
+
+def _validate_partition_manifest_table(table: Table) -> Table:
     if not table.rows:
         fail("Partition manifest contains no partition rows.")
     ensure_unique(table.rows, "partition_id", "Partition manifest")
@@ -419,10 +498,12 @@ def validate_step08_sites(
     }
     observed_by_scope = {key: 0 for key in published_by_scope}
     for row_number, row in enumerate(table.rows, start=2):
+        row_label = f"Step 08 sites row {row_number}"
         require_text(
-            f"Step 08 sites row {row_number} candidate_id",
+            f"{row_label} candidate_id",
             row["candidate_id"],
         )
+        validate_step08_carried_location(row, row_label)
         if row["partition_id"] not in partition_ids:
             fail(f"Step 08 sites row {row_number} references an unknown partition.")
         validate_enum(

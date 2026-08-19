@@ -24,13 +24,24 @@ MAKE_EXPANSION_GOLDEN = (
 )
 CLI_USAGE_ERROR = 2
 
-PYTHON_ENTRYPOINT_PATHS: dict[str, Path] = {}
+PYTHON_ENTRYPOINT_PATHS: dict[str, Path] = {
+    "benchmark_stage_resources.py": Path("scripts/benchmark_stage_resources.py"),
+}
 PYTHON_ENTRYPOINTS = frozenset(PYTHON_ENTRYPOINT_PATHS)
 REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset()
 PRIVATE_PYTHON_MODULES = frozenset()
-DIRECT_PYTHON_ENTRYPOINTS = frozenset()
+DIRECT_PYTHON_ENTRYPOINTS = frozenset({"benchmark_stage_resources.py"})
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 NORAD_COMMANDS = (
+    (("init", "local-pilot"), "usage: norad init local-pilot"),
+    (
+        ("init", "synthetic-local-pilot"),
+        "usage: norad init synthetic-local-pilot",
+    ),
+    (
+        ("prepare", "local-pilot-runtime"),
+        "usage: norad prepare local-pilot-runtime",
+    ),
     (
         ("build", "artifact-index"),
         "usage: norad build artifact-index",
@@ -43,17 +54,25 @@ NORAD_COMMANDS = (
         ("build", "report"),
         "usage: norad build report",
     ),
+    (("doctor", "local-pilot"), "usage: norad doctor local-pilot"),
+    (("run",), "usage: norad run"),
+    (("resume",), "usage: norad resume"),
     (
         ("validate", "artifact-contracts"),
         "usage: norad validate artifact-contracts",
     ),
+    (("validate", "all-pass"), "usage: norad validate all-pass"),
     (
-        ("assemble", "scientific-review-package"),
-        "usage: norad assemble scientific-review-package",
+        ("validate", "local-pilot-request"),
+        "usage: norad validate local-pilot-request",
     ),
     (
         ("reconcile", "reference-provenance"),
         "usage: norad reconcile reference-provenance",
+    ),
+    (
+        ("inspect", "local-pilot-run"),
+        "usage: norad inspect local-pilot-run",
     ),
     (
         ("inspect", "runtime-availability"),
@@ -62,6 +81,10 @@ NORAD_COMMANDS = (
     (
         ("inspect", "storage-inventory"),
         "usage: norad inspect storage-inventory",
+    ),
+    (
+        ("inspect", "storage-qualification"),
+        "usage: norad inspect storage-qualification",
     ),
     (("convert", "gtf-to-bed12"), "usage: norad convert gtf-to-bed12"),
     (("validate", "bed12"), "usage: norad validate bed12"),
@@ -96,6 +119,10 @@ NORAD_COMMANDS = (
         ("validate", "rseqc-orientation"),
         "usage: norad validate rseqc-orientation",
     ),
+    (
+        ("validate", "scientific-context-projection"),
+        "usage: norad validate scientific-context-projection",
+    ),
     (("validate", "split-n-cigar"), "usage: norad validate split-n-cigar"),
     (("validate", "star-alignment"), "usage: norad validate star-alignment"),
     (("validate", "star-index"), "usage: norad validate star-index"),
@@ -104,6 +131,9 @@ NORAD_COMMANDS = (
 SHELL_ENTRYPOINT_PATHS = {
     "check_fastq_pairs.sh": Path(
         "src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh"
+    ),
+    "step_00a_build_star_index.sh": Path(
+        "src/norad/stages/star_index/step_00a_build_star_index.sh"
     ),
     "step_00c_prepare_gatk_reference.sh": Path(
         "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
@@ -142,8 +172,9 @@ SHELL_ENTRYPOINT_PATHS = {
         "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh"
     ),
-    "step_09c_scientific_validation.sh": Path(
-        "src/norad/evidence/scientific_review_package/step_09c_scientific_validation.sh"
+    "scientific_context_projection.sh": Path(
+        "src/norad/analyses/scientific_context_projection/"
+        "scientific_context_projection.sh"
     ),
 }
 SHELL_ENTRYPOINTS = frozenset(SHELL_ENTRYPOINT_PATHS)
@@ -165,6 +196,10 @@ R_ENTRYPOINT_PATHS = {
     "step_09_cmh_editing_site_calling.R": Path(
         "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.R"
+    ),
+    "scientific_context_projection.R": Path(
+        "src/norad/analyses/scientific_context_projection/"
+        "scientific_context_projection.R"
     ),
 }
 R_ENTRYPOINTS = frozenset(R_ENTRYPOINT_PATHS)
@@ -574,6 +609,8 @@ print(json.dumps({
     "arguments",
     (
         ("--help",),
+        ("init", "--help"),
+        ("prepare", "--help"),
         ("build", "--help"),
         ("convert", "--help"),
         ("validate", "--help"),

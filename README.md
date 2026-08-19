@@ -1,132 +1,170 @@
-# NORAD: CSU HPC RNA-seq and RNA-editing workflow
+# NORAD: evidence-bound RNA-seq candidate workflow
 
-NORAD modernizes a legacy Novogene Remora workflow as maintainable research
-software for local characterization and CSU SLURM execution. Its implemented
-repository-path owners span sample-manifest admission, reference preparation,
-RNA-seq alignment and BAM processing, mechanical-orientation-aware cohort
-candidate generation, paired CMH ranking, evidence assembly, and report
-projection. See the [architecture index](docs/architecture/README.md) for the
-organized current-system authority, including the scientist-facing flow,
-system map, functional-owner inventory, source topology, stage map, and
-diagrams. NORAD does not yet provide a single workflow orchestrator. Planned
-Snakemake orchestration is not implemented, and the fresh-clone, one-command
-full-pipeline onboarding path belongs to Campaign B rather than the current
-repository surface. Its explicitly installed, unreleased Python distribution
-provides an isolated,
-grouped module command for migrated owners, beginning with sample-manifest,
-STAR-index, FASTA-sidecar, STAR-alignment, canonical-BAM, canonical-BAM-QC,
-RSeQC-orientation, duplicate-marking, split-N-cigar, mechanical-orientation,
-partitioned-cohort-mpileup, cohort-candidate-preprocessing, and
-paired-CMH-candidate-ranking, artifact-index, run-summary, and HTML-report building,
-artifact-contract validation, reference-provenance reconciliation,
-runtime-availability and
-storage-inventory inspection, scientific-review-package assembly, plus
-GTF-to-BED12 conversion/validation and named schema/report resources.
+NORAD is an evidence-bound workflow for paired-end RNA-seq alignment, QC,
+mechanical read-orientation partitioning, cohort mpileup, candidate annotation,
+paired CMH ranking, and bounded sequence/motif context projection. You provide
+declared reads, a matching FASTA/GTF
+reference, paired experimental strata, genomic partitions, analysis thresholds,
+and exact scientific-tool identities. NORAD produces validated native outputs,
+an immutable task history, a deterministic artifact index, a machine-readable
+run summary, QC tables, and separate self-contained scientific and
+evidence/provenance HTML views.
 
-## Start here
+NORAD is alpha research software, not a clinical or diagnostic system. It is
+not a general RNA-seq expression workflow: it does not demultiplex, trim or
+quality-filter reads, merge technical lanes, quantify transcripts, test
+differential expression, discover samples, or infer experimental pairing.
+Provide analysis-ready paired FASTQs and author the intended design explicitly.
 
-Python development requires Python `3.11` or newer and a separately provisioned
-`uv` executable. From the repository root, use this one Bash/Zsh command to
-synchronize the reviewed lock, install the NORAD project itself, and activate
-its environment in the current shell:
+The automatic workflow produces **CMH-ranked computational candidates**. It
+does not prove that a candidate is an RNA-editing site, infer biological strand
+from the mechanical orientation labels, or make a biological conclusion.
+Candidate review, adjudication, and biological interpretation are external
+work-process records. NORAD does not model them as pipeline steps, gates,
+artifacts, or completion states.
+
+## What happens to the data
+
+| Step | Scope | Operation | Principal result |
+| --- | --- | --- | --- |
+| `00a` | Reference | Build and validate a STAR genome index. | STAR index directory |
+| `00b` | Reference | Convert the declared GTF deterministically to BED12. | BED12 annotation |
+| `00c` | Reference | Create or re-admit the FASTA index and sequence dictionary. | `.fai` and `.dict` beside the FASTA |
+| `01` | Each sample | Align paired reads with STAR. | Coordinate-sorted STAR BAM |
+| `02` | Each sample | Construct and validate a canonical BAM/BAI pair. | Canonical BAM and index |
+| `02b` | Each sample | Collect flagstat, quickcheck, and alignment QC evidence. | QC evidence branch |
+| `03` | Each sample | Measure paired-read orientation with RSeQC. | Orientation evidence branch |
+| `04` | Each sample | Mark duplicates with Picard. | Duplicate-marked BAM, BAI, and metrics |
+| `05` | Each sample | Apply GATK `SplitNCigarReads`. | Split BAM and BAI |
+| `06` | Each sample | Partition reads into legacy mechanical flag groups. | `FWD_like` and `REV_like` BAM/BAI pairs |
+| `07` | Each partition | Run cohort bcftools mpileup for both mechanical groups. | Two VCFs and a bound receipt |
+| `08` | Cohort | Normalize SNV candidates, attach per-sample counts and GTF overlaps. | Candidate, input-receipt, and QC tables |
+| `09` | Analysis | Perform paired two-sided CMH tests and global BH correction. | All-sites, significant-sites, summary, spectrum, and plots |
+| `10` | Analysis | Project fixed Step `09` calls onto an indexed reference and registered PUM motif. | Candidate context, motif hits, logo frequencies, motif statistics, and receipt |
+| Reporting | Run | Index artifacts, assemble the run summary, and render both report views. | Scientific HTML, evidence/provenance HTML, summary TSV, and receipt-last publication |
+
+Steps `02b` and `03` are required QC leaves but do not gate downstream
+scientific computation. External review or adjudication may use NORAD's
+computational outputs and provenance, but it is not part of `norad run`.
+
+The fixed graph contains `3 + 7S + P + 3` scientific-owner jobs for `S`
+samples and `P` genomic partitions. The four-sample, one-partition starter
+therefore expands to 35 jobs, followed by three reporting transactions.
+
+## Supported execution boundary
+
+Read this before installing:
+
+- The public runtime target is a Linux/POSIX host with Python `3.11` or newer,
+  Git, GNU Make, `uv`, and the scientific runtime listed below.
+- The workflow uses Snakemake's **single-host local executor**. It defaults to
+  the request's explicit resource plan: `workflow_cores` declares total CPU
+  capacity, `sample_concurrency` bounds concurrent sample owners, and
+  `step_threads` assigns threads only to Steps `00a`, `01`, `02`, `06`, and
+  `08`. NORAD neither submits SLURM jobs nor distributes work across nodes.
+- Run it on a suitably provisioned Linux workstation, or run the same local
+  process inside **one** batch allocation on **one** compute node. Never run the
+  scientific workflow on a cluster login/head node; use that node only to
+  clone, edit, transfer small files, submit, inspect, and tail logs.
+- One cooperative user is required. The exact workspace parent and Step `00c`
+  reference-sidecar parent must pass NORAD's two-phase site qualification for
+  hard links, `flock`, rename/visibility, fsync, UID/access, and post-allocation
+  durability. No filesystem family—including NFS—is admitted by name alone.
+- Local-pilot inputs, workspace, control logs, and results stay outside the Git
+  checkout. The locked ignored `.venv/`, the default ignored `renv/library/`,
+  and the report-only demo's ignored `results/demo-report-jinja/` are sanctioned
+  checkout-local exceptions; an already provisioned R library may instead be
+  selected explicitly. The doctor requires tracked checkout content to be clean
+  and binds its exact commit and installed package bytes.
+- NORAD does not download data, install tools, load modules, restore R
+  packages, estimate capacity, force retries, delete locks, or repair outputs.
+
+Capacity depends on reference size, read count, and selected partitions. Plan
+for the STAR index and several BAM generations per sample, plus orientation
+BAMs, VCFs, logs, and immutable recovery evidence. Before a real run, inspect
+the input size and destination capacity on the execution host:
 
 ```sh
-uv sync --locked && source .venv/bin/activate
+du -sh /absolute/path/to/norad-inputs/inputs
+df -h /absolute/path/to/operator-managed-storage
+free -h
 ```
 
-The `source` operation changes the current shell, so `python` and `norad` then
-resolve from the project `.venv`; activation lasts until that shell exits or
-you run `deactivate`. In a new shell, run `source .venv/bin/activate` before
-continuing. Bare `python` commands in the owner documentation assume this
-environment is active.
+`free` is Linux-specific. `READY` confirms bounded admission checks only; it is
+not a memory, storage, wall-time, throughput, scheduler, or science estimate.
+For an unfamiliar reference or cohort, begin with a small declared region and
+representative samples before authorizing the full analysis.
 
-Do not curl-install `uv` or restore dependencies from validation, rendering,
-compute, or scheduler commands. The guarded R environment remains owned by
-`renv`; owner-required system tools are separate prerequisites.
+## Choose a first run
 
-Implemented owners collectively consume a sample manifest and paired RNA-seq
-reads, reference FASTA/GTF material, and any owner-specific selections or
-declarations described by their local contract. The full runtime manifest and
-production references may remain operator- or cluster-local.
+- **Synthetic installation check:** use [`quickstart.md`](quickstart.md),
+  Path A, with `norad init synthetic-local-pilot`. It creates small explicit
+  inputs outside the repository and still requires the real admitted scientific
+  runtime. A synthetic result
+  demonstrates that exact runtime and request, not production or biological
+  validity.
+- **Your data:** follow [`quickstart.md`](quickstart.md), Path B, and replace
+  every starter identity and path with your own declared inputs.
+- **Report-only preview:** run `make demo-report` after installation and follow
+  [`docs/demo/README.md`](docs/demo/README.md). This renders bundled reporting
+  fixtures and does not execute ingestion, STAR, samtools, GATK, Picard,
+  RSeQC, bcftools, R analysis, or the workflow.
 
-1. Review the [configuration catalog](configs/README.md) and the structural
-   [`samples.example.tsv`](configs/samples.example.tsv) starter.
-2. From the repository root, validate the starter's public schema:
+The exact validation evidence at the current commit is recorded in
+[`HANDOFF.md`](docs/operations/HANDOFF.md). A demo, dry run, synthetic fixture,
+successful job, or report must not be promoted beyond the evidence it actually
+establishes.
 
-   ```sh
-   make validate
-   ```
+## Glossary
 
-   This checks manifest structure only. It does not require the example FASTQ
-   paths to exist, run ingestion, or establish a runnable data fixture.
-3. Choose the applicable owner through the
-   [sample-manifest admission index](src/norad/ingestion/README.md),
-   [transformation-stage index](src/norad/stages/README.md),
-   [analysis owner](src/norad/analyses/paired_cmh_candidate_ranking/README.md),
-   [evidence index](src/norad/evidence/README.md), or
-   [reporting index](src/norad/reporting/README.md). Read the routed `README.md`
-   and any adjacent `CONTRACT.md`, then follow that owner's validation and
-   safety instructions. Use a dry-run or preflight where the owner provides
-   one; some legacy-preserving owners do not, and there is no repository-wide
-   dry-run.
-4. Use the [runbook](docs/operations/RUNBOOK.md) for cross-cutting operations,
-   the selected owner's README for exact commands, and
-   [troubleshooting](docs/operations/TROUBLESHOOTING.md) for symptom-based
-   diagnosis.
-
-For current evidence state and blockers, read
-[`HANDOFF.md`](docs/operations/HANDOFF.md). For planned work and acceptance
-boundaries, read [`PIPELINE_PLAN.md`](docs/design/PIPELINE_PLAN.md); the
-[architecture index](docs/architecture/README.md) owns implemented system views.
-
-To generate a synthetic HTML report transaction, follow the
-[demo-report procedure](docs/demo/README.md),
-which creates or replaces ignored artifacts beneath `results/demo-report-jinja/`.
-Use the reviewed [demo-guide index](docs/demo/README.md) to present them. The
-fixture is synthetic and provisional; it does not establish production
-execution, local or cluster runtime validation, completed production scientific
-review, or biological readiness. Reporting is currently pure Python and
-HTML-only: the installed command uses packaged Jinja and CSS resources and does
-not require Quarto or produce a report PDF.
-
-## Evidence boundary
-
-Implementation, local fixtures, real local runtime, cluster execution,
-scientific review, and biological interpretation are distinct evidence states.
-Evidence in one layer does not automatically establish a higher one: a local
-validation proves only its declared local check, while a scheduler exit,
-generated artifact, or rendered report alone does not establish scientific
-review or biological interpretation.
-
-Candidate rows are **CMH-ranked candidates**, not validated editing sites.
-Mechanical `FWD_like` and `REV_like` labels are not biological strand claims.
-`biological_interpretation_ready` remains reserved unless an approved
-scientific policy explicitly unlocks it.
-
-## Repository map
-
-| Path | Purpose |
+| Term | Meaning in NORAD |
 | --- | --- |
-| [`src/`](src/README.md) | NORAD source domains, functional owners, neutral contracts, and shared libraries. |
-| [`configs/`](configs/README.md) | Public inputs, structural starters, selections, and reference tables; there is no universal config loader. |
-| [`scripts/`](scripts/README.md) | Explicit dependency lifecycle plus documentation and Git tooling. |
-| [`tests/`](tests/) | Active Python, shell, R, contract, and fixture protection, plus explicitly non-runnable future scaffolds under `tests/pending/`. |
-| [`docs/`](docs/README.md) | Architecture, operations, design, task, history, reference, and demonstration documentation. |
-| [`data/`](data/README.md) and [`refs/`](refs/README.md) | Operator-managed input and reference workspaces; large or runtime children are ignored while safety guidance is tracked. |
-| [`results/`](results/README.md) and [`logs/`](logs/README.md) | Ignored generated outputs and scheduler streams; generated does not automatically mean disposable. |
-| [`uv.lock`](uv.lock), [`renv/`](renv/README.md), and [root tool configuration](docs/operations/ENGINEERING_CONVENTIONS.md#repository-dependency-and-test-configuration) | Locked Python and R dependency authority plus pytest and coverage configuration. |
+| `AD` | Alternate-allele read depth reported for one sample/candidate. |
+| `AF` | Alternate fraction, normally `AD / DP`, for one sample/candidate. |
+| `DP` | Total read depth used for the candidate calculation. |
+| Candidate | A computationally represented SNV row. It is not automatically an editing site. |
+| CMH | Cochran-Mantel-Haenszel test combining paired replicate strata while retaining their pairing. |
+| FDR / BH | Benjamini-Hochberg-adjusted p-value across the tested target-change candidates. |
+| Stratum / replicate | One manifest identifier pairing exactly one control and one treatment sample. |
+| Common odds ratio | CMH effect estimate shared across the paired strata; values above `1` favor treatment enrichment and below `1` favor control, subject to the declared thresholds. |
+| `FWD_like`, `REV_like` | Legacy mechanical SAM-flag groups; not biological strand labels. |
+| Computational call | A Step `09` threshold classification such as `significant_up`; still pending scientific adjudication. |
+| External review or adjudication | A research work process that may reference NORAD outputs but is not a NORAD step, gate, artifact, or completion state. |
+| Create-absent / no-clobber | Publication that requires the destination not to exist and refuses replacement or adoption. |
+| Receipt-last | The transaction receipt is published only after its declared payload has been checked; the receipt still must be semantically re-admitted. |
+| Run root | The immutable/evidence-bearing directory for one deterministic normalized run ID. |
 
-Use the [documentation sitemap](docs/sitemap/README.md) for category-level
-navigation and canonical responsibility boundaries.
+## Further guidance
 
-## Data and repository safety
+| Need | Canonical guide |
+| --- | --- |
+| Every input and runtime-profile field | [`configs/README.md`](configs/README.md) |
+| Public local-pilot boundary | [`src/norad/orchestration/local_pilot/README.md`](src/norad/orchestration/local_pilot/README.md) |
+| Recurring operations, scheduler inspection, and recovery | [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md) |
+| Evidence-preserving recovery | [`docs/operations/TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) |
+| Optional external scientific-evaluation checklist | [`docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md`](docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md) |
+| Operator report build and workflow-owned reporting transactions | [`src/norad/reporting/README.md`](src/norad/reporting/README.md) |
+| Architecture and complete owner DAG | [`docs/architecture/README.md`](docs/architecture/README.md) |
+| Current validation evidence and remaining gaps | [`docs/operations/HANDOFF.md`](docs/operations/HANDOFF.md) |
+| Local test routes | [`tests/README.md`](tests/README.md) |
 
-Commit source, tests, configuration starters, schemas, documentation, and tiny
-safe fixtures. Do not commit FASTQ, BAM, CRAM, VCF, large result tables, runtime
-logs, credentials, tokens, private keys, restored runtimes, or environment
-caches.
+## License
 
-Record the identity, source, persistence, and hashes of production inputs and
-references before downstream runtime promotion; a path or filename is not
-provenance. Before deleting ignored data, references, results, or logs, confirm
-their owner, active consumers, recovery state, and retention requirements.
+NORAD is **source-available**, not open-source software. You may use and modify
+NORAD without charge for academic, nonprofit, research, and internal commercial
+work. You may also commercialize the scientific data, results, reports,
+visualizations, interpretations, discoveries, and other outputs produced using
+NORAD, and you may charge for research, compute, or analysis services that
+deliver those outputs.
+
+You may not sell NORAD itself, including through paid rebranding, licensing, or
+sublicensing, or by offering NORAD or substantially equivalent NORAD
+functionality as a paid hosted or managed product or service. The complete
+terms in [`LICENSE`](LICENSE) control. Third-party software, tools, data, and
+references retain their own terms; see [`NOTICE`](NOTICE) and
+[`LICENSES/`](LICENSES/).
+
+Do not commit FASTQ, BAM, CRAM, VCF, production result tables, logs,
+credentials, restored tools/libraries, or caches. Before deleting ignored data,
+results, locks, or logs, establish their owner, active consumers, recovery
+state, and retention requirements.

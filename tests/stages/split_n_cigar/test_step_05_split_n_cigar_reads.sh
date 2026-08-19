@@ -7,6 +7,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
 JOB="$REPO_ROOT/src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -173,6 +175,7 @@ unset GATK_BIN_OVERRIDE SAMTOOLS_BIN_OVERRIDE JAVA_BIN_OVERRIDE JAVA_HOME \
 
 fake_bin="$tmp_dir/bin"
 mkdir -p "$fake_bin"
+canonical_fake_bin="$(cd "$fake_bin" && pwd -P)"
 
 gatk_log="$tmp_dir/gatk_invocations.log"
 samtools_log="$tmp_dir/samtools_invocations.log"
@@ -198,6 +201,9 @@ set -euo pipefail
 
 printf 'gatk invoked\\n' >> "$gatk_log"
 printf '%s\\n' "\$@" >> "$gatk_log"
+printf 'gatk JAVA_HOME=%s\\n' "\${JAVA_HOME:-<unset>}" >> "$gatk_log"
+printf 'gatk java on PATH=%s\\n' "\$(command -v java)" >> "$gatk_log"
+java -version >/dev/null 2>&1
 
 java_options=""
 while [[ \$# -gt 0 ]]; do
@@ -295,6 +301,17 @@ case "\$subcommand" in
 esac
 EOF_GATK
 chmod +x "$fake_bin/gatk"
+
+poison_java_home="$tmp_dir/poison-java-home"
+poison_java_log="$tmp_dir/poison-java-invocations.log"
+mkdir -p "$poison_java_home/bin"
+cat >"$poison_java_home/bin/java" <<EOF_POISON_JAVA
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'poison Java invoked\\n' >> "$poison_java_log"
+printf 'openjdk version "99.0.0" 2026-01-01\\n' >&2
+EOF_POISON_JAVA
+chmod +x "$poison_java_home/bin/java"
 
 cat >"$fake_bin/samtools" <<EOF_SAMTOOLS
 #!/usr/bin/env bash
@@ -487,13 +504,15 @@ assert_no_step05_attempt_marker "$missing_samtools_dir"
 printf 'Running dry-run check...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry/split_ncigar/ABE_EV_2"
-SLURM_JOB_ID=dry001 run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$dry_output_dir" >"$dry_output"
+NORAD_RUN_TOKEN=explicit-owner-05 SLURM_JOB_ID=scheduler-05 \
+    run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$dry_output_dir" >"$dry_output"
 dry_bam="$dry_output_dir/ABE_EV_2.split_ncigar.bam"
 assert_not_exists "$dry_output_dir"
 [[ ! -e "$gatk_log" ]] || fail "dry-run invoked GATK"
 [[ ! -e "$samtools_log" ]] || fail "dry-run invoked samtools"
 [[ ! -e "$java_log" ]] || fail "dry-run invoked Java"
 assert_contains "$dry_output" "Mode: dry-run"
+assert_contains "$dry_output" "Run token: explicit-owner-05"
 assert_contains "$dry_output" "Sample ID: ABE_EV_2"
 assert_contains "$dry_output" "Input BAM: $input_bam"
 assert_contains "$dry_output" "Input BAI: $input_bam.bai"
@@ -503,10 +522,10 @@ assert_contains "$dry_output" "Reference DICT: $(dirname "$reference_fasta")/gen
 assert_contains "$dry_output" "Output BAM: $dry_bam"
 assert_contains "$dry_output" "Output BAI: $dry_bam.bai"
 assert_contains "$dry_output" "Lock directory: $dry_output_dir/.step_05_split_n_cigar_reads.lock"
-assert_contains "$dry_output" ".ABE_EV_2.step05.dry001.split_ncigar.tmp.bam"
+assert_contains "$dry_output" ".ABE_EV_2.step05.explicit-owner-05.split_ncigar.tmp.bam"
 assert_contains "$dry_output" "Alternate GATK temporary BAI:"
 assert_contains "$dry_output" "GATK temp directory:"
-assert_contains "$dry_output" ".ABE_EV_2.step05.dry001.gatk_tmp"
+assert_contains "$dry_output" ".ABE_EV_2.step05.explicit-owner-05.gatk_tmp"
 assert_contains "$dry_output" "--java-options"
 assert_contains "$dry_output" "-Djava.io.tmpdir="
 assert_contains "$dry_output" "--tmp-dir"
@@ -528,7 +547,11 @@ printf 'Running successful execute check...\n'
 execute_output="$tmp_dir/execute.out"
 execute_output_dir="$tmp_dir/results/execute/split_ncigar/ABE_EV_2"
 rm -f "$gatk_log" "$samtools_log" "$java_log"
-FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=exec001 run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$execute_output_dir" --execute >"$execute_output"
+JAVA_HOME="$poison_java_home" \
+PATH="$poison_java_home/bin:$PATH" \
+FAKE_SAMPLE_ID=ABE_EV_2 \
+SLURM_JOB_ID=exec001 \
+    run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$execute_output_dir" --execute >"$execute_output"
 execute_bam="$execute_output_dir/ABE_EV_2.split_ncigar.bam"
 execute_bai="$execute_bam.bai"
 [[ -s "$execute_bam" ]] || fail "execute did not create non-empty split-N-cigar BAM"
@@ -547,14 +570,80 @@ assert_contains "$gatk_log" "$reference_fasta"
 assert_contains "$gatk_log" "-I"
 assert_contains "$gatk_log" "$input_bam"
 assert_contains "$gatk_log" "-O"
+assert_contains "$gatk_log" "gatk JAVA_HOME=$(dirname "$canonical_fake_bin")"
+assert_contains "$gatk_log" "gatk java on PATH=$canonical_fake_bin/java"
+[[ "$(grep -Fc "gatk java on PATH=$canonical_fake_bin/java" "$gatk_log")" -eq 2 ]] ||
+    fail "GATK version and work invocations did not both select the admitted Java"
 assert_contains "$samtools_log" "index"
 assert_contains "$samtools_log" "quickcheck"
 assert_contains "$samtools_log" "view"
 assert_contains "$java_log" "-version"
+assert_not_exists "$poison_java_log"
 assert_contains "$execute_output" "Mode: execute"
 assert_contains "$execute_output" "GATK SplitNCigarReads output details:"
 assert_not_exists "$execute_output_dir/.step_05_split_n_cigar_reads.lock"
 assert_no_step05_scratch "$execute_output_dir"
+
+printf 'Running orchestration-safe no-clobber checks...\n'
+residue_output_dir="$tmp_dir/results/residue"
+mkdir -p "$residue_output_dir"
+residue_path="$residue_output_dir/.ABE_EV_2.step05.older-token.split_ncigar.tmp.bam"
+printf 'preserve residue\n' >"$residue_path"
+residue_output="$tmp_dir/residue.out"
+assert_fails "$residue_output" env FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=newer-token bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$residue_output_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --no-clobber \
+    --execute
+assert_contains "$residue_output" "residue requires operator inspection"
+assert_file_equals "$residue_path" $'preserve residue\n'
+assert_not_exists "$residue_output_dir/.ABE_EV_2.step05.lock"
+safe_output="$tmp_dir/safe.out"
+safe_output_dir="$tmp_dir/results/safe"
+FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=safe001 \
+    run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$safe_output_dir" --no-clobber --execute >"$safe_output"
+assert_contains "$safe_output" "No-clobber transaction: true"
+assert_contains "$safe_output" "Lock directory: $safe_output_dir/.ABE_EV_2.step05.lock"
+assert_not_exists "$safe_output_dir/.ABE_EV_2.step05.lock"
+safe_repeat_output="$tmp_dir/safe_repeat.out"
+assert_fails "$safe_repeat_output" env FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=safe002 bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$safe_output_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --no-clobber \
+    --execute
+assert_contains "$safe_repeat_output" "--no-clobber requires both final outputs to be absent"
+
+safe_mutation_input_bam="$fixture_dir/safe_mutation/markdup/ABE_EV_2.markdup.bam"
+safe_mutation_reference="$fixture_dir/safe_mutation/ref/genome.fa"
+safe_mutation_dir="$tmp_dir/results/safe_mutation"
+write_input_bam_pair "$safe_mutation_input_bam"
+write_reference "$safe_mutation_reference"
+safe_mutation_output="$tmp_dir/safe_mutation.out"
+assert_fails "$safe_mutation_output" env FAKE_MUTATE_ADMITTED_INPUTS=1 FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=safemutation001 bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$safe_mutation_input_bam" \
+    --reference-fasta "$safe_mutation_reference" \
+    --output-dir "$safe_mutation_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --no-clobber \
+    --execute
+assert_contains "$safe_mutation_output" "Input BAM changed during Step 05"
+assert_not_exists "$safe_mutation_dir/ABE_EV_2.split_ncigar.bam"
+assert_not_exists "$safe_mutation_dir/ABE_EV_2.split_ncigar.bam.bai"
+assert_not_exists "$safe_mutation_dir/.ABE_EV_2.step05.lock"
+assert_no_step05_scratch "$safe_mutation_dir"
 
 printf 'Running admitted input mutation success check...\n'
 mutation_input_bam="$fixture_dir/mutation/markdup/ABE_EV_2.markdup.bam"

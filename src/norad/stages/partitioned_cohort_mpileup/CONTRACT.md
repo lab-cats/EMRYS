@@ -65,9 +65,10 @@ Header-only VCFs are valid. The receipt has exactly two rows, ordered
 `FWD_like` then `REV_like`, and records cohort, partition, selector type/value,
 orientation, VCF path, both manifest SHA-256 values, sample count, and VCF
 record count. It is renamed last among the three outputs and is the native
-completion marker, but becomes visible before post-publication validation and
-the producer's in-memory committed flag; its mere presence is not independent
-proof of a successfully completed immutable computation.
+completion marker. Both published VCFs are structurally revalidated and
+record-count checked before the receipt becomes visible. The receipt itself is
+then checked inside the owned rollback boundary; its mere presence is not
+independent proof of a successfully completed immutable computation.
 
 [`step_07_bcftools_mpileup_by_chrom_and_strand.sh`](step_07_bcftools_mpileup_by_chrom_and_strand.sh)
 is side-effect-free in dry-run. Execute mode hashes and later rechecks both
@@ -75,16 +76,33 @@ manifests, uses a cohort/partition lock and run-token temporary/backup paths,
 rejects stale owned paths and partial prior sets, validates temporary VCF
 sample order and counts, then replaces all three outputs with the receipt last.
 Final outputs are revalidated before backups are removed.
+`--no-clobber` is the orchestration-safe policy: while holding the owner lock,
+it rejects a complete predecessor set without invoking bcftools or changing
+stable outputs. Before invoking bcftools on a new output set, that mode hashes
+the exact sample and partition manifests, reference FASTA/FAI pair, selected
+regions file when applicable, and both BAM/BAI pairs for every admitted
+sample. It rechecks the complete membership and bytes after tool execution and
+again before publication. These hashes are in-attempt stability guards; they
+are not added to the native receipt. Direct invocations retain complete-set
+replacement and the legacy manifests-only stability boundary unless the flag
+is supplied.
+First publication in that mode is create-exclusive; VCF and receipt staging
+inode anchors remain through final validation, and ambiguous replacement
+preserves the owner lock and residue.
 
 Ordinary rollback restores the prior three-file set. If restoration itself
-fails, backup paths are preserved, but there is no recovery marker or automated
-recovery interface. Stable-input rechecks cover the two manifests only: BAMs,
-reference, FAI, regions file, tool identity, depth, and filter are not bound by
-hash in the receipt. The receipt also does not hash either output VCF.
+fails, backup paths and the owned lock are preserved for operator recovery;
+there is no automated recovery interface. The receipt hash-binds the two
+manifests only: BAMs, reference, FAI, regions file, tool identity, depth, and
+filter are not durable receipt provenance. The receipt also does not hash
+either output VCF.
 
 [`step_07_bcftools_mpileup_by_chrom_and_strand.slurm`](step_07_bcftools_mpileup_by_chrom_and_strand.slurm)
-owns cluster defaults, module loading, execution gating, delegation, and final
-path checks; it does not own pileup or publication logic.
+requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
+resolving its repository-owned helper or producer, so SLURM's spool copy is
+never checkout authority. It owns explicit dataset/tool binding, execution
+gating, delegation, module-state logging, and final path checks; it does not own pileup or publication
+logic.
 
 ## Validation interface
 
@@ -104,12 +122,11 @@ Exact checks are:
 
 The validator enforces receipt shape and row order, VCF header/data-row shape,
 numeric positions, selector declarations against the FAI, manifest hashes,
-exact VCF sample order, explicit VCF paths, and record counts. It does not
+exact VCF sample order, physical VCF identity, and record counts. It does not
 verify that data coordinates remain inside the selector, validate REF/ALT or
 FORMAT annotation semantics, rerun the filter, or bind input BAM, reference,
-tool, policy, or output content identities. Producer and validator also differ
-for `regions_file` detail, and a receipt written from a relative output root
-may not match the validator's resolved absolute VCF arguments.
+tool, policy, or output content identities. Producer and validator still differ
+for `regions_file` detail.
 
 Content mismatches publish `status=fail`; unsafe structure or report-
 publication failures exit `2`.
@@ -153,11 +170,12 @@ cluster, scientific-review, or biological evidence.
   [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
   bcftools precedence, checks, and commands remain owned here.
 - Attempt identity, complete provenance, output hashes, and an automated
-  recovery interface remain absent. Only manifests are hash-bound and stable-
-  rechecked; restoration is best-effort and receipt visibility precedes final
-  validation and the committed flag.
-- Producer/validator selector detail and relative-path semantics remain
-  asymmetric. The validator may publish failed rows with exit `0`, does not
+  recovery interface remain absent. The native receipt binds only manifests;
+  `--no-clobber` adds in-attempt byte stability for all stationary scientific
+  inputs without extending that receipt. Incomplete restoration now retains
+  the owned lock and backups.
+- Producer/validator selector detail remains asymmetric. The validator may
+  publish failed rows with exit `0`, does not
   invoke bcftools, and does not prove selector-bound coordinates, VCF semantic
   fields, filter compliance, immutable inputs, or current-attempt identity.
 - The scheduler retains warning-only unusable-tool preflight, submit-CWD and
