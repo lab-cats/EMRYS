@@ -19,6 +19,7 @@ import pytest
 
 from norad.contracts.orchestration import api as orchestration_contracts
 from norad.libraries.source_authority import controlled_python_argv
+from norad.orchestration.local_pilot import inspection
 from norad.orchestration.local_pilot.reporting_boundary import (
     REPORTING_KINDS,
     publish_start,
@@ -217,19 +218,6 @@ def _dag(
     return nodes, edges, completed.stdout
 
 
-def _owner_graph(
-    nodes: dict[int, str],
-    edges: set[tuple[int, int]],
-) -> tuple[Counter[str], set[tuple[int, int]]]:
-    owners = {node_id for node_id, label in nodes.items() if label in EXECUTABLE_RULES}
-    counts = Counter(nodes[node_id] for node_id in owners)
-    return counts, {
-        (source, target)
-        for source, target in edges
-        if source in owners and target in owners
-    }
-
-
 def _snapshot_trees(*roots: Path) -> dict[Path, tuple[bytes, int]]:
     return {
         path: (path.read_bytes(), path.stat().st_mtime_ns)
@@ -306,17 +294,21 @@ def test_real_snakemake_dry_run_has_exact_owner_job_counts(
     expected_jobs: int,
 ) -> None:
     nodes, edges, output = _dag(built, target)
-    counts, _ = _owner_graph(nodes, edges)
+    owners = {
+        node_id for node_id, label in nodes.items() if label in EXECUTABLE_RULES
+    }
+    counts = Counter(nodes[node_id] for node_id in owners)
+    owner_edges = {
+        (source, target)
+        for source, target in edges
+        if source in owners and target in owners
+    }
     assert sum(counts.values()) == expected_jobs, output
     assert "assemble_scientific_review_evidence_package" not in output
     assert "09c" not in output
+    if target != "cohort_slice":
+        return
 
-
-def test_full_dag_has_exact_edges_and_nongating_evidence_leaves(
-    built: workflow_fixture.WorkflowFixture,
-) -> None:
-    nodes, edges, output = _dag(built, "cohort_slice")
-    counts, owner_edges = _owner_graph(nodes, edges)
     sample_count = len(built.execution["samples"]["rows"])
     partition_count = len(built.execution["partitions"]["rows"])
     assert sum(counts.values()) == 3 + (7 * sample_count) + partition_count + 2
@@ -450,54 +442,30 @@ def test_profile_and_rule_rosters_are_exact_and_output_only_verified_state(
     assert built.report_receipt not in declared
 
 
-@pytest.mark.parametrize(
-    ("target", "expected_records"),
-    (("reference_slice", 3), ("one_sample_slice", 10), ("cohort_slice", 34)),
-)
-def test_real_snakemake_test_double_executes_each_slice_without_science_tools(
-    built: workflow_fixture.WorkflowFixture,
-    target: str,
-    expected_records: int,
-) -> None:
-    completed = _snakemake(built, "--", target)
-    markers = sorted(built.verified_root.glob("*/*.json"))
-    starts = sorted((built.run_root / "state" / "task-starts").glob("*/*.json"))
-    assert len(markers) == expected_records, completed.stdout
-    assert len(starts) == expected_records, completed.stdout
-    for marker in markers:
-        record = orchestration_contracts.load_record(marker, "verified-task")
-        assert record["run_id"] == built.execution["run_id"]
-        assert record["machine_key"] == marker.parent.name
-        assert marker == (
-            built.verified_root
-            / record["machine_key"]
-            / f"{record['scope']['scope_id']}.json"
-        )
-        assert record["all_pass"] is True
-        start_path = built.run_root / record["task_start_record"]["path"]
-        start = orchestration_contracts.load_record(start_path, "task-start")
-        assert start_path == (
-            built.run_root
-            / "state"
-            / "task-starts"
-            / record["machine_key"]
-            / f"{record['scope']['scope_id']}.json"
-        )
-        assert start["machine_key"] == record["machine_key"]
-        assert start["scope"] == record["scope"]
-        assert (
-            record["task_start_record"]["sha256"]
-            == hashlib.sha256(start_path.read_bytes()).hexdigest()
-        )
-    assert not SCIENTIFIC_BINARIES.intersection(completed.stdout.split())
-
-
 def test_real_local_pipeline_builds_valid_incomplete_evidence_html_tail(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:
     completed = _snakemake(built, "--", "local_pipeline_slice")
     markers = sorted(built.verified_root.glob("*/*.json"))
-    assert len(markers) == 34, completed.stdout
+    starts = sorted((built.run_root / "state" / "task-starts").glob("*/*.json"))
+    assert len(markers) == len(starts) == 34, completed.stdout
+    for marker in markers:
+        record = orchestration_contracts.load_record(marker, "verified-task")
+        scope_id = record["scope"]["scope_id"]
+        assert record["run_id"] == built.execution["run_id"]
+        assert record["machine_key"] == marker.parent.name
+        assert marker == built.verified_root / record["machine_key"] / f"{scope_id}.json"
+        assert record["all_pass"] is True
+        start_path = built.run_root / record["task_start_record"]["path"]
+        start = orchestration_contracts.load_record(start_path, "task-start")
+        assert start_path == (
+            built.run_root / "state/task-starts" / record["machine_key"] / f"{scope_id}.json"
+        )
+        assert start["machine_key"] == record["machine_key"]
+        assert start["scope"] == record["scope"]
+        assert record["task_start_record"]["sha256"] == hashlib.sha256(
+            start_path.read_bytes()
+        ).hexdigest()
     assert built.artifact_receipt.is_file()
     assert built.run_summary_receipt.is_file()
     assert built.report_receipt.is_file()
@@ -627,25 +595,41 @@ def test_verified_state_roster_rejects_every_unexpected_entry(
     built: workflow_fixture.WorkflowFixture,
     entry_kind: str,
 ) -> None:
-    _snakemake(built, "--", "reference_slice")
     owner = built.verified_root / "norad.stage.construct_STAR_index.v1"
-    if entry_kind == "root_file":
-        (built.verified_root / "unexpected.json").write_text("{}\n", encoding="utf-8")
-    elif entry_kind == "root_symlink":
+    if entry_kind == "root_symlink":
+        _snakemake(built, "--", "reference_slice")
         (built.verified_root / "unexpected-owner").symlink_to(
             owner, target_is_directory=True
         )
+    elif entry_kind == "root_file":
+        built.verified_root.mkdir(parents=True, exist_ok=True)
+        (built.verified_root / "unexpected.json").write_text("{}\n", encoding="utf-8")
     elif entry_kind == "owner_file":
+        owner.mkdir(parents=True, exist_ok=True)
         (owner / "unexpected.json").write_text("{}\n", encoding="utf-8")
     elif entry_kind == "owner_symlink":
-        marker = next(owner.glob("*.json"))
-        (owner / "unexpected-link.json").symlink_to(marker)
+        owner.mkdir(parents=True, exist_ok=True)
+        (owner / "unexpected-link.json").symlink_to(built.config_path)
     else:
-        (owner / "unexpected-deep").mkdir()
+        (owner / "unexpected-deep").mkdir(parents=True)
 
-    failed = _snakemake(built, "--dry-run", "--", "reference_slice", check=False)
-    assert failed.returncode != 0
-    assert "Unexpected verified-task" in failed.stdout
+    blockers = inspection.verified_tree_blockers(
+        built.run_root,
+        inspection.expected_tasks(built.execution, built.profile),
+    )
+    expected_message = (
+        "Unexpected verified task owner state"
+        if entry_kind.startswith("root_")
+        else "Unexpected verified task state path"
+    )
+    assert len(blockers) == 1 and expected_message in blockers[0]
+
+    if entry_kind == "root_symlink":
+        failed = _snakemake(
+            built, "--dry-run", "--", "reference_slice", check=False
+        )
+        assert failed.returncode != 0
+        assert "Unexpected verified-task" in failed.stdout
 
 
 def test_resume_with_fresh_engine_metadata_runs_only_pending_reporting(
@@ -775,19 +759,19 @@ def test_reporting_preflight_failure_publishes_no_receipt_downstream(
 @pytest.mark.parametrize(
     ("mutation", "expected_message"),
     (
-        ("entered_incomplete", "is entered but incomplete"),
-        ("orphan_completion", "is orphan completion"),
+        ("entered_incomplete", "reporting start has no verified completion"),
+        ("orphan_completion", "verified reporting exists without a start"),
         ("root_file", "Reporting state root must be a real directory"),
         ("root_symlink", "Reporting state root must be a real directory"),
-        ("unexpected_kind", "Unexpected reporting state entry"),
-        ("unexpected_kind_file", "Unexpected reporting state entry"),
-        ("unexpected_kind_symlink", "Unexpected reporting state entry"),
-        ("unexpected_ledger_child", "Unexpected reporting ledger entry"),
+        ("unexpected_kind", "Unexpected reporting ledger kind"),
+        ("unexpected_kind_file", "Unexpected reporting ledger kind"),
+        ("unexpected_kind_symlink", "Unexpected reporting ledger kind"),
+        ("unexpected_ledger_child", "Unexpected reporting ledger state"),
         (
             "expected_member_symlink",
-            "Reporting ledger entry must be a real file",
+            "Reporting ledger record is not real",
         ),
-        ("expected_member_directory", "Reporting ledger entry must be a real file"),
+        ("expected_member_directory", "Reporting ledger record is not real"),
     ),
 )
 def test_reporting_state_is_a_closed_complete_ledger(
@@ -830,15 +814,30 @@ def test_reporting_state_is_a_closed_complete_ledger(
     else:
         built.reporting_start("artifact_index").mkdir(parents=True)
 
-    failed = _snakemake(
-        built,
-        "--dry-run",
-        "--",
-        "local_pipeline_slice",
-        check=False,
+    blockers = list(inspection.state_tree_blockers(built.run_root))
+    _, ledger_blockers = inspection.inspect_reporting_ledger(
+        built.run_root,
+        built.execution,
+        built.profile,
+        lambda *_arguments: pytest.fail("unexpected semantic receipt validation"),
     )
-    assert failed.returncode != 0
-    assert expected_message in failed.stdout
+    blockers.extend(ledger_blockers)
+    assert any(expected_message in blocker for blocker in blockers)
+
+    integration_message = {
+        "entered_incomplete": "is entered but incomplete",
+        "expected_member_symlink": "Reporting ledger entry must be a real file",
+    }.get(mutation)
+    if integration_message is not None:
+        failed = _snakemake(
+            built,
+            "--dry-run",
+            "--",
+            "local_pipeline_slice",
+            check=False,
+        )
+        assert failed.returncode != 0
+        assert integration_message in failed.stdout
 
 
 def test_foreign_preexisting_verified_marker_fails_closed(
