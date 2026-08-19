@@ -23,6 +23,7 @@ __all__ = (
     "STEP08_INPUTS_HEADER",
     "STEP08_SUMMARY_HEADER",
     "STEP08_PARTITION_COUNT_FIELDS",
+    "STEP08_LOCATION_FLAG_FIELDS",
     "SAMPLE_MANIFEST_REQUIRED",
     "SAMPLE_MANIFEST_ALLOWED",
     "PARTITION_MANIFEST_HEADER",
@@ -43,6 +44,7 @@ __all__ = (
     "validate_partition_manifest",
     "validate_partition_manifest_bytes",
     "validate_safe_id",
+    "validate_step08_carried_location",
     "validate_step08_inputs",
     "validate_step08_sites",
     "validate_step08_summary",
@@ -129,6 +131,13 @@ STEP08_SUMMARY_HEADER = (
 )
 STEP08_AGGREGATE_COUNT_FIELDS = STEP08_SUMMARY_HEADER[5:10]
 STEP08_PARTITION_COUNT_FIELDS = STEP08_SUMMARY_HEADER[5:11]
+STEP08_LOCATION_FLAG_FIELDS = (
+    "is_cds",
+    "is_five_prime_utr",
+    "is_three_prime_utr",
+    "is_exon",
+    "is_intron",
+)
 
 SAMPLE_MANIFEST_REQUIRED = (
     "sample_id",
@@ -253,6 +262,43 @@ def require_text(label: str, value: str, *, allow_na: bool = False) -> None:
         return
     if not value or value.strip() != value:
         fail(f"{label} must be non-empty and have no surrounding whitespace.")
+
+
+def validate_step08_carried_location(
+    row: Mapping[str, str],
+    label: str,
+) -> None:
+    """Validate the lexical Step 08 location fields carried into Step 09.
+
+    These checks intentionally preserve the five independent overlap flags.
+    They do not collapse transcript overlaps into exclusive location classes or
+    independently recompute annotation from the GTF.
+    """
+
+    require_text(f"{label} chromosome", row["chromosome"])
+    validate_enum(
+        f"{label} annotation_strand",
+        row["annotation_strand"],
+        ("+", "-"),
+    )
+    for field in ("gene_ids", "transcript_ids"):
+        value = row[field]
+        if value == NA_VALUE:
+            continue
+        require_text(f"{label} {field}", value)
+        identifiers = value.split(";")
+        if any(
+            not identifier or identifier == NA_VALUE or identifier.strip() != identifier
+            for identifier in identifiers
+        ):
+            fail(
+                f"{label} {field} must be NA or a semicolon-delimited list "
+                "of non-empty identifiers without surrounding whitespace."
+            )
+        if len(identifiers) != len(set(identifiers)):
+            fail(f"{label} {field} contains a duplicate identifier.")
+    for field in STEP08_LOCATION_FLAG_FIELDS:
+        validate_enum(f"{label} {field}", row[field], ("TRUE", "FALSE"))
 
 
 def validate_hash(label: str, value: str) -> None:
@@ -452,10 +498,12 @@ def validate_step08_sites(
     }
     observed_by_scope = {key: 0 for key in published_by_scope}
     for row_number, row in enumerate(table.rows, start=2):
+        row_label = f"Step 08 sites row {row_number}"
         require_text(
-            f"Step 08 sites row {row_number} candidate_id",
+            f"{row_label} candidate_id",
             row["candidate_id"],
         )
+        validate_step08_carried_location(row, row_label)
         if row["partition_id"] not in partition_ids:
             fail(f"Step 08 sites row {row_number} references an unknown partition.")
         validate_enum(

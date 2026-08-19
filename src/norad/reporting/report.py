@@ -22,7 +22,8 @@ from norad.libraries.source_authority import (
 from norad.reporting._run_report.models import RECEIPT_HEADER, ReportRenderError
 
 DESCRIPTION = (
-    "Build self-contained scientific and evidence Jinja HTML reports, a "
+    "Build self-contained scientific and evidence HTML reports, deterministic "
+    "scientific SVG figures, a "
     "deterministic run-summary TSV, and one receipt-last v4 transaction from an "
     "explicit canonical run summary. "
     "Dry-run is the default; rendering never runs analysis or promotes evidence."
@@ -127,7 +128,7 @@ def _admit_source_authorities(
 def prepare_report(
     arguments: argparse.Namespace,
 ) -> Any:
-    """Prepare and validate one side-effect-free report context."""
+    """Prepare and validate one report context without durable output state."""
 
     from norad.reporting._run_report.context import prepare_context
 
@@ -159,6 +160,11 @@ def print_plan(context: Any) -> None:
     print(f"  Interpretation boundary: {context.summary['interpretation_boundary']}")
     print(f"  Boundary banner: {context.render_metadata['state_banner']}")
     print(f"  Renderer: Jinja2 {context.render_metadata['jinja_version']}")
+    print(
+        "  Figure renderer: "
+        f"{context.render_metadata['figure_renderer']} "
+        f"{context.render_metadata['figure_renderer_version']}"
+    )
     print(f"  Scientific HTML: {context.output_scientific_html}")
     print(f"  Evidence HTML: {context.output_evidence_html}")
     print(f"  Summary TSV: {context.output_summary_tsv}")
@@ -184,8 +190,8 @@ def build_from_args(
             print(f"Published report transaction: {context.output_receipt}")
         else:
             print(
-                "Dry-run only. Add --execute to publish; no output, lock, or "
-                "scratch path was created."
+                "Dry-run only. Add --execute to publish; no output or lock was "
+                "created, and the private renderer cache was removed."
             )
         return 0
     except ReportRenderError as exc:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import re
 from collections.abc import Mapping
 from html.parser import HTMLParser
@@ -24,8 +26,11 @@ from .models import (
     CSS_RESOURCE_RE,
     REMOTE_URI_RE,
     REPORT_SECTION_IDS_BY_VIEW,
+    SCIENTIFIC_FIGURE_IDS,
     ReportRenderError,
 )
+
+_SVG_DATA_URI_PREFIX = "data:image/svg+xml;base64,"
 
 
 def build_environment() -> Environment:
@@ -85,6 +90,21 @@ def render_html(view: Mapping[str, Any], css: str) -> bytes:
     return rendered.encode("utf-8")
 
 
+def _scientific_svg_data_uri_error(source: str, figure_id: str) -> str | None:
+    if not source.startswith(_SVG_DATA_URI_PREFIX):
+        return (
+            f"scientific figure {figure_id!r} must use an exact embedded SVG data URI"
+        )
+    payload = source[len(_SVG_DATA_URI_PREFIX) :]
+    try:
+        decoded = base64.b64decode(payload, validate=True)
+    except (binascii.Error, ValueError):
+        return f"scientific figure {figure_id!r} has invalid base64 SVG data"
+    if not decoded or re.search(rb"<svg(?:\s|>)", decoded, re.IGNORECASE) is None:
+        return f"scientific figure {figure_id!r} data URI is not an SVG document"
+    return None
+
+
 class ReportHTMLInspector(HTMLParser):
     """Collect structural, accessibility, and active-resource facts."""
 
@@ -107,6 +127,7 @@ class ReportHTMLInspector(HTMLParser):
         self.current_table_bad_headers = 0
         self.table_errors: list[str] = []
         self.svg_depth = 0
+        self.svg_count = 0
         self.accessible_svgs = 0
         self.banner_depth = 0
         self.banner_count = 0
@@ -116,6 +137,9 @@ class ReportHTMLInspector(HTMLParser):
         self.style_text: list[str] = []
         self.meta_refreshes: list[str] = []
         self.image_errors: list[str] = []
+        self.scientific_figures: list[dict[str, Any]] = []
+        self.current_scientific_figure: dict[str, Any] | None = None
+        self.scientific_figure_errors: list[str] = []
 
     @staticmethod
     def _classes(attributes: Mapping[str, str | None]) -> set[str]:
@@ -173,6 +197,31 @@ class ReportHTMLInspector(HTMLParser):
             self.heading_levels.append(int(tag[1]))
 
         classes = self._classes(attributes)
+        if tag == "figure":
+            if self.current_scientific_figure is not None:
+                self.scientific_figure_errors.append(
+                    "scientific figures may not contain nested figures"
+                )
+            if "scientific-figure" in classes:
+                record = {
+                    "id": attributes.get("id"),
+                    "status": attributes.get("data-figure-status"),
+                    "images": [],
+                    "captions": 0,
+                    "summaries": 0,
+                    "unavailable_messages": 0,
+                }
+                self.scientific_figures.append(record)
+                self.current_scientific_figure = record
+        if self.current_scientific_figure is not None:
+            if tag == "img":
+                self.current_scientific_figure["images"].append(attributes)
+            if tag == "figcaption":
+                self.current_scientific_figure["captions"] += 1
+            if "figure-summary" in classes:
+                self.current_scientific_figure["summaries"] += 1
+            if "figure-unavailable" in classes:
+                self.current_scientific_figure["unavailable_messages"] += 1
         if tag == "table" and "norad-table" in classes:
             self.norad_table_depth = 1
             self.norad_tables += 1
@@ -187,6 +236,7 @@ class ReportHTMLInspector(HTMLParser):
 
         if tag == "svg":
             self.svg_depth += 1
+            self.svg_count += 1
             if attributes.get("role") == "img" and (
                 attributes.get("aria-label") or attributes.get("aria-labelledby")
             ):
@@ -230,6 +280,8 @@ class ReportHTMLInspector(HTMLParser):
         self.handle_endtag(tag)
 
     def handle_endtag(self, tag: str) -> None:
+        if tag == "figure" and self.current_scientific_figure is not None:
+            self.current_scientific_figure = None
         if tag == "main" and self.main_depth:
             self.main_depth -= 1
         if self.norad_table_depth:
@@ -321,6 +373,76 @@ def validate_rendered_html(
         _fail(
             "Rendered report image accessibility failed: "
             + "; ".join(inspector.image_errors)
+        )
+    if inspector.current_scientific_figure is not None:
+        inspector.scientific_figure_errors.append(
+            "scientific figure lacks a closing figure element"
+        )
+    if report_view == "scientific":
+        observed_figure_ids = tuple(
+            str(figure["id"] or "") for figure in inspector.scientific_figures
+        )
+        if observed_figure_ids != SCIENTIFIC_FIGURE_IDS:
+            inspector.scientific_figure_errors.append(
+                "scientific figure roster must be exactly "
+                + ", ".join(SCIENTIFIC_FIGURE_IDS)
+            )
+        for figure in inspector.scientific_figures:
+            figure_id = str(figure["id"] or "<missing>")
+            status = figure["status"]
+            images = figure["images"]
+            if figure["captions"] != 1 or figure["summaries"] != 1:
+                inspector.scientific_figure_errors.append(
+                    f"scientific figure {figure_id!r} must have one caption and "
+                    "one visible text summary"
+                )
+            if status == "available":
+                if len(images) != 1:
+                    inspector.scientific_figure_errors.append(
+                        f"scientific figure {figure_id!r} with status {status!r} "
+                        "must have exactly one image"
+                    )
+                else:
+                    image = images[0]
+                    if image.get("id") != f"{figure_id}-image":
+                        inspector.scientific_figure_errors.append(
+                            f"scientific figure {figure_id!r} image has the wrong ID"
+                        )
+                    source = image.get("src") or ""
+                    if error := _scientific_svg_data_uri_error(source, figure_id):
+                        inspector.scientific_figure_errors.append(error)
+                if figure["unavailable_messages"]:
+                    inspector.scientific_figure_errors.append(
+                        f"scientific figure {figure_id!r} has an unavailable message "
+                        f"with status {status!r}"
+                    )
+            elif status == "unavailable":
+                if images:
+                    inspector.scientific_figure_errors.append(
+                        f"unavailable scientific figure {figure_id!r} must not "
+                        "contain an image"
+                    )
+                if figure["unavailable_messages"] != 1:
+                    inspector.scientific_figure_errors.append(
+                        f"unavailable scientific figure {figure_id!r} must have "
+                        "one unavailable message"
+                    )
+            else:
+                inspector.scientific_figure_errors.append(
+                    f"scientific figure {figure_id!r} has unknown status {status!r}"
+                )
+        if inspector.svg_count:
+            inspector.scientific_figure_errors.append(
+                "scientific report must not contain raw SVG markup"
+            )
+    elif inspector.scientific_figures:
+        inspector.scientific_figure_errors.append(
+            "evidence report must not contain scientific figure images"
+        )
+    if inspector.scientific_figure_errors:
+        _fail(
+            "Rendered report scientific-figure validation failed: "
+            + "; ".join(inspector.scientific_figure_errors)
         )
     if inspector.table_errors or (
         report_view == "evidence" and inspector.norad_tables == 0

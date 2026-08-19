@@ -37,7 +37,7 @@ FIXTURES = {
     "run-summary": FIXTURE_ROOT / "run_summary.json",
     "report-receipt": FIXTURE_ROOT.parents[1] / "report_receipt_v4.json",
 }
-EXPECTED_INVENTORY_ARTIFACT_COUNT = 68
+EXPECTED_INVENTORY_ARTIFACT_COUNT = 74
 
 
 def test_validate_document_and_dispatcher_use_live_api_hooks(
@@ -219,7 +219,7 @@ def test_cli_checks_all_schemas_inventory_and_help() -> None:
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.count("Schema passed Draft 2020-12") == len(FIXTURES) + 1
-    assert "Artifacts: 68" in result.stdout
+    assert "Artifacts: 74" in result.stdout
     assert help_result.returncode == 0
     assert "--check-schemas" in help_result.stdout
     assert "--inventory" in help_result.stdout

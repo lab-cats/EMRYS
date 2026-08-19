@@ -15,7 +15,8 @@
     "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
     "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
     "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
-    "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1"
+    "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+    "norad.analysis.project_candidate_scientific_context.v1"
   ],
   "owner_tasks": [
     {
@@ -108,6 +109,13 @@
       "step_id": "09",
       "scope_type": "analysis",
       "scope_selector": "analysis"
+    },
+    {
+      "machine_key": "norad.analysis.project_candidate_scientific_context.v1",
+      "rule_name": "project_candidate_scientific_context",
+      "step_id": "10",
+      "scope_type": "analysis",
+      "scope_selector": "analysis"
     }
   ],
   "direct_edges": [
@@ -188,6 +196,18 @@
       "consumer": "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
       "artifact": "sites table and Step 08 input receipt",
       "semantics": "required artifact"
+    },
+    {
+      "producer": "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+      "consumer": "norad.analysis.project_candidate_scientific_context.v1",
+      "artifact": "all-sites, significant-sites, and summary tables",
+      "semantics": "required artifact; complete Step 09 transaction barrier"
+    },
+    {
+      "producer": "norad.stage.construct_FASTA_sidecars.v1",
+      "consumer": "norad.analysis.project_candidate_scientific_context.v1",
+      "artifact": "reference FAI paired with the external reference FASTA",
+      "semantics": "required artifact; fan-in"
     }
   ],
   "required_owner_keys": [
@@ -203,7 +223,8 @@
     "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
     "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
     "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
-    "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1"
+    "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+    "norad.analysis.project_candidate_scientific_context.v1"
   ],
   "evidence_owner_keys": [
     "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
@@ -784,6 +805,60 @@
       "scope_selector": "analysis",
       "adapter": "step09_validation_report_v1",
       "source_path_template": "results/qc/validation/09/{analysis_id}.validation.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "analysis.{analysis_id}.candidate_context",
+      "step_id": "10",
+      "scope_type": "analysis",
+      "scope_selector": "analysis",
+      "adapter": "step10_candidate_context_v1",
+      "source_path_template": "results/scientific_context/{analysis_id}/{analysis_id}.candidate_context.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "analysis.{analysis_id}.motif_hits",
+      "step_id": "10",
+      "scope_type": "analysis",
+      "scope_selector": "analysis",
+      "adapter": "step10_motif_hits_v1",
+      "source_path_template": "results/scientific_context/{analysis_id}/{analysis_id}.motif_hits.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "analysis.{analysis_id}.sequence_logo",
+      "step_id": "10",
+      "scope_type": "analysis",
+      "scope_selector": "analysis",
+      "adapter": "step10_sequence_logo_v1",
+      "source_path_template": "results/scientific_context/{analysis_id}/{analysis_id}.sequence_logo.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "analysis.{analysis_id}.motif_statistics",
+      "step_id": "10",
+      "scope_type": "analysis",
+      "scope_selector": "analysis",
+      "adapter": "step10_motif_statistics_v1",
+      "source_path_template": "results/scientific_context/{analysis_id}/{analysis_id}.motif_statistics.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "analysis.{analysis_id}.context_receipt",
+      "step_id": "10",
+      "scope_type": "analysis",
+      "scope_selector": "analysis",
+      "adapter": "step10_context_receipt_v1",
+      "source_path_template": "results/scientific_context/{analysis_id}/{analysis_id}.context_receipt.tsv",
+      "required": true
+    },
+    {
+      "artifact_id_template": "analysis.{analysis_id}.context_validation",
+      "step_id": "10",
+      "scope_type": "analysis",
+      "scope_selector": "analysis",
+      "adapter": "step10_validation_report_v1",
+      "source_path_template": "results/qc/validation/10/{analysis_id}.validation.tsv",
       "required": true
     }
   ]

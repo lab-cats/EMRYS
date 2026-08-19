@@ -63,6 +63,8 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     )
     assert set(configuration["project"]["dependencies"]) == {
         "Jinja2==3.1.6",
+        "logomaker==0.8.7",
+        "matplotlib==3.11.1",
         "PyYAML==6.0.3",
         "jsonschema>=4.18.0",
         "referencing>=0.28.4",

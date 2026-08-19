@@ -119,6 +119,11 @@ CONTRACTS = {
         "step_09_cmh_editing_site_calling.sh",
         submit_cwd="required",
     ),
+    "scientific_context_projection.slurm": contract(
+        "src/norad/analyses/scientific_context_projection/"
+        "scientific_context_projection.sh",
+        submit_cwd="required",
+    ),
     "tool_check.slurm": contract(
         "tool_version_probes",
         default="lightweight_probe",
@@ -245,6 +250,9 @@ SBATCH_DIRECTIVES = {
     "step_09_cmh_editing_site_calling.slurm": directives(
         "norad-cmh", "08:00:00", partition="long"
     ),
+    "scientific_context_projection.slurm": directives(
+        "norad-scientific-context", "02:00:00", partition="long"
+    ),
     "tool_check.slurm": directives("norad-tool-check", "00:05:00", streams_first=True),
     "validate_manifest.slurm": directives(
         "norad-validate-manifest", "00:05:00", streams_first=True
@@ -263,6 +271,7 @@ EXECUTABLE_JOBS = frozenset(
         "step_00c_prepare_gatk_reference.slurm",
         "step_06_split_bam_by_read_orientation.slurm",
         "step_09_cmh_editing_site_calling.slurm",
+        "scientific_context_projection.slurm",
     }
 )
 DELEGATED_JOBS = tuple(
@@ -656,5 +665,61 @@ DELEGATED_FIXTURES = {
             )
         ),
         output_directories=("{output_root}/analysis09",),
+    ),
+    "scientific_context_projection.slurm": DelegatedFixtureCase(
+        paths=(
+            FixturePath("all_sites", "{submit}/inputs/analysis10.cmh_all_sites.tsv"),
+            FixturePath(
+                "significant_sites",
+                "{submit}/inputs/analysis10.cmh_significant_sites.tsv",
+            ),
+            FixturePath("summary", "{submit}/inputs/analysis10.cmh_summary.tsv"),
+            FixturePath("reference", "{submit}/refs/genome.fa", ">1\nA\n"),
+            FixturePath("fai", "{submit}/refs/genome.fa.fai", "1\t1\t3\t1\t2\n"),
+            FixturePath(
+                "motif_catalog",
+                "{submit}/inputs/pum_motifs_v1.tsv",
+                "motif_id\trna_consensus\tdna_consensus\n"
+                "PUM_UGUANA\tUGUANA\tTGTANA\n",
+            ),
+            path("output_root", "{submit}/outputs/step10"),
+            FixturePath("r_script", "{submit}/implementation/scientific_context.R"),
+        ),
+        environment=(
+            ("ANALYSIS_ID", "analysis10"),
+            ("STEP09_ALL_SITES", "{all_sites}"),
+            ("STEP09_SIGNIFICANT_SITES", "{significant_sites}"),
+            ("STEP09_SUMMARY", "{summary}"),
+            ("REFERENCE_FASTA", "{reference}"),
+            ("REFERENCE_FAI", "{fai}"),
+            ("MOTIF_CATALOG", "{motif_catalog}"),
+            ("OUTPUT_ROOT", "{output_root}"),
+            ("RSCRIPT_BIN_OVERRIDE", "{fake_bin}/Rscript"),
+            ("SCIENTIFIC_CONTEXT_R_SCRIPT", "{r_script}"),
+        ),
+        arguments=(
+            ("--analysis-id", "analysis10"),
+            ("--step09-all-sites", "{all_sites}"),
+            ("--step09-significant-sites", "{significant_sites}"),
+            ("--step09-summary", "{summary}"),
+            ("--reference-fasta", "{reference}"),
+            ("--reference-fai", "{fai}"),
+            ("--output-root", "{output_root}"),
+            ("--motif-catalog", "{motif_catalog}"),
+            ("--rscript-bin", "{fake_bin}/Rscript"),
+            ("--r-script", "{r_script}"),
+        ),
+        flags=("--no-clobber",),
+        outputs=tuple(
+            "{output_root}/analysis10/analysis10." + suffix
+            for suffix in (
+                "candidate_context.tsv",
+                "motif_hits.tsv",
+                "sequence_logo.tsv",
+                "motif_statistics.tsv",
+                "context_receipt.tsv",
+            )
+        ),
+        output_directories=("{output_root}/analysis10",),
     ),
 }

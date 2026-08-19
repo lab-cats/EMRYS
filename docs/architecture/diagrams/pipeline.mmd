@@ -11,6 +11,7 @@ flowchart LR
         evidence_branches["Non-gating QC/orientation evidence (02b/03)"]
         cohort_owners["Declared cohort preprocessing (07/08)"]
         analysis["First-class paired-CMH analysis (09)"]
+        context["Scientific-context projection (10)"]
 
         reference_owners -->|"STAR index to 01; FAI/DICT to 05"| sample_owners
         reference_owners -.->|"BED12 to 03"| evidence_branches
@@ -18,6 +19,8 @@ flowchart LR
         sample_owners --> cohort_owners
         reference_owners -->|"FAI to 07"| cohort_owners
         cohort_owners --> analysis
+        analysis --> context
+        reference_owners -->|"FAI; external FASTA continues"| context
     end
 
     references --> reference_owners
@@ -37,6 +40,7 @@ flowchart LR
     evidence_branches --> registered
     cohort_owners --> registered
     analysis --> registered
+    context --> registered
     registered --> adapters --> summary --> report
 
     external_process["External review, adjudication, and biological interpretation records<br/>(outside NORAD; never a pipeline gate)"]

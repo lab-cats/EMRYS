@@ -30,8 +30,8 @@ remain beside their stage or evidence owner.
   namespace/version policy stays with runtime admission.
 - [`input_contract.R`](input_contract.R) owns neutral named-argument, file,
   hash, and TSV mechanics
-  shared by the Step `08` and Step `09` R programs; owner rosters and policies
-  remain local.
+  shared by the Step `08`, Step `09`, and scientific-context R programs; owner
+  rosters and policies remain local.
 - Root shell assets own bounded argument, file, executable, orientation,
   signal, and trap mechanics used by named consumers; they are not a general
   utility framework.

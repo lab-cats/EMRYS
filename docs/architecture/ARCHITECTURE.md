@@ -18,7 +18,7 @@ Current projections:
 
 ## Implemented system shape
 
-All thirteen numbered workflow, analysis, and evidence owners occupy their
+All fourteen numbered workflow, analysis, and evidence owners occupy their
 functional homes under `src/norad/`. Sample-manifest admission, neutral
 contracts and libraries, reporting, local-pilot intake/control, and
 reference/runtime/storage evidence occupy separate cross-cutting owners.
@@ -44,7 +44,7 @@ remain outside the proven boundary.
 | Local-pilot orchestration | `src/norad/orchestration/local_pilot/`, `src/norad/contracts/orchestration/`, and `workflow/` | Explicit YAML request, ordered TSV manifests, exact runtime profile, reviewed fixed-profile record, canonical execution/config snapshots, and hash-bound task dispatches | Dry-run plans, create-absent run/attempt materialization, canonical execution/reporting identity, semantic all-pass evidence, durable task/reporting start records, task-attempt and verified records, immutable workflow attempts, public derived inspection, and between-task resume; no real-tool or cluster proof |
 | Reference preparation | Owners `00a`, `00b`, and `00c` under `src/norad/stages/` | Reference FASTA, GTF, and tool parameters | STAR index, BED12, and FASTA sidecars |
 | Per-sample processing and evidence | Owners `01`–`06` under `src/norad/stages/` plus evidence owners `02b` and `03` | Declared reads, references, and preceding owner artifacts | Aligned/canonical/duplicate-marked/split BAMs plus QC and orientation evidence |
-| Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owner `09` | Declared partitions, sample order, reference context, and upstream receipts | Cohort VCFs, annotated candidates, and paired-CMH ranked candidates |
+| Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owners `09` and `10` | Declared partitions, sample order, reference context, registered PUM motif, and upstream receipts | Cohort VCFs, annotated candidates, paired-CMH ranked candidates, and hash-bound sequence/motif context projections |
 | Reporting | `src/norad/reporting/` | Admitted source checkout, explicit artifact inventory, and validated computational receipts | Artifact index, canonical run summary, separate self-contained scientific and evidence HTML views, summary TSV, and v4 report receipt |
 | Neutral contracts and libraries | `src/norad/contracts/` and `src/norad/libraries/` | Owner-declared records or values | Shared schemas, vocabularies, validation, and narrowly reviewed primitives |
 | Operational evidence | Runtime-availability inspection (`runtime_availability`), reference provenance, and storage inventory under `src/norad/evidence/` | Explicit profiles, reference inventories, storage roots, and retention declarations | Bounded operational observations and receipts |
@@ -54,7 +54,7 @@ the [functional-owner inventory](FUNCTIONAL_OWNER_INVENTORY.md).
 
 ## Scientist-facing workflow
 
-This view groups the exact semantic owners into eight explanatory phases. The
+This view groups the exact semantic owners into nine explanatory phases. The
 phase labels are not machine identities, public slugs, or scheduling commands;
 arrows mean data or contract dependency, not automatic execution. The
 [conceptual Mermaid source](diagrams/current_user_pipeline.mmd) and detailed
@@ -70,12 +70,13 @@ arrows mean data or contract dependency, not automatic execution. The
 | Observe the cohort | `generate_partitioned_cohort_mpileup_VCFs` | Count bases across every declared sample, partition, and mechanical orientation while preserving manifest order. | Receipt-last partitioned multi-sample VCF transactions. |
 | Normalize and annotate candidates | `preprocess_and_annotate_cohort_candidates` | Validate the declared VCF set, expand alternate alleles, apply the provisional orientation conversion, annotate candidates, and publish deterministic TSVs before statistical comparison. | Sites TSV, exact input receipt, and QC summary TSV; unsupported non-SNV alleles are counted and excluded. |
 | Rank paired candidates | `rank_cohort_candidates_with_paired_CMH` | Compare declared RNA reference/alternate counts across manifest-defined replicate strata, applying depth, statistical, and effect thresholds plus one global BH adjustment. An independently declared background cohort is optional. | Six-output transaction with all candidates, significant subset, summaries, spectrum, and plots. Outputs are **CMH-ranked candidates**, not validated editing sites. |
+| Project scientific context | `project_candidate_scientific_context` | Attach mechanically oriented continuous genomic windows and one registered PUM motif analysis after Step `09`, without reopening alignments, changing calls, discovering motifs, or inferring biological strand. | Receipt-last candidate-context, exact motif-hit, logo-frequency, and motif-statistic tables for bounded report presentation. |
 
 ### Exact continuing inputs
 
 | Input or artifact contract | Where it continues to be consumed |
 | --- | --- |
-| Reference FASTA and its FAI | Reference preparation, split-N-cigar handling, and cohort observation. |
+| Reference FASTA and its FAI | Reference preparation, split-N-cigar handling, cohort observation, and Step `10` scientific-context projection. |
 | Reference GTF | STAR-index construction, BED12 conversion, and Step `08` annotation. |
 | BED12 | RSeQC paired-orientation inference. |
 | Sample manifest | Steps `07`, `08`, and `09`. |
@@ -96,8 +97,10 @@ orientation evidence branch from that boundary while the main BAM continues
 through duplicate marking, RNA-aware splitting, and neutral mechanical-
 orientation partitioning. Manifest-declared samples and partitions then enter
 cohort mpileup; the exact VCF set is normalized and annotated before paired-
-CMH ranking. Read-only reporting may then publish the static scientific and
-evidence HTML report transaction from a validated canonical summary.
+CMH ranking. The bounded context owner then projects those fixed calls onto one
+exact indexed reference and registered PUM motif. Read-only reporting may then
+publish the static scientific and evidence HTML report transaction from a
+validated canonical summary.
 
 ### Scientific boundary
 
@@ -124,7 +127,8 @@ caller inputs
 
 Approved shared seams remain narrow: validation-report publication, BAM
 validation, reference-contig parsing, executable-value resolution, artifact
-contracts, and the neutral Step `08` and Step `09` contracts. Their exact
+contracts, and the neutral Step `08`, Step `09`, and scientific-context
+contracts. Their exact
 consumer rosters and allowed dependency directions live
 in [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
 Private bridges and colocated helper packages remain part of their public
@@ -138,11 +142,11 @@ The installed `python -X pycache_prefix=/dev/null -I -m norad build report` rout
 governs code and renderer identity, while the separately admitted artifact root
 governs contract-relative run inputs. Private owners separate
 immutable models, explicit input/context validation, two structured view
-projections, Jinja rendering, v4 receipt projection, and one receipt-last
-transaction. The
-single packaged HTML template and CSS resource are the complete rendering
-runtime; reporting has no PDF, external renderer, compatibility facade, shell
-wrapper, or format-selection surface.
+projections, fixed Matplotlib/Logomaker SVG figures, Jinja rendering, v4
+receipt projection, and one receipt-last transaction. The locked Python
+renderer plus the single packaged HTML template and CSS resource are the
+complete rendering runtime; reporting has no PDF, external renderer,
+compatibility facade, shell wrapper, or format-selection surface.
 
 The local lifecycle consumes only the direct public reporting-transaction
 validator in `reporting/transaction_validation.py`; it does not import a

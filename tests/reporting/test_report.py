@@ -23,9 +23,18 @@ from norad.libraries.source_authority import (
     controlled_python_argv,
 )
 from norad.reporting import report as REPORT
+from norad.reporting._run_report import computational as report_computational
 from norad.reporting._run_report import context as report_context
 from norad.reporting._run_report import publication, receipt, validation, view
-from norad.reporting._run_report.models import JINJA_VERSION, ReportRenderError
+from norad.reporting._run_report import scientific_context as report_scientific_context
+from norad.reporting._run_report.models import (
+    JINJA_VERSION,
+    LOGOMAKER_VERSION,
+    MATPLOTLIB_VERSION,
+    PRODUCER_VERSION,
+    SCIENTIFIC_FIGURE_IDS,
+    ReportRenderError,
+)
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -129,6 +138,7 @@ STEP09_REPORT_ADAPTERS = (
     "step09_cmh_all_sites_v1",
     "step09_cmh_significant_sites_v1",
     "step09_cmh_summary_v1",
+    "step09_mutation_spectrum_tsv_v1",
 )
 
 
@@ -177,6 +187,30 @@ def copied_step09_summary(
                 metric["value"] = row_count
     if mutate_document is not None:
         mutate_document(document, records)
+    step10_artifact_ids = {
+        artifact["artifact_id"]
+        for artifact in document["artifacts"]
+        if artifact["adapter"].startswith("step10_")
+    }
+    document["artifacts"] = [
+        artifact
+        for artifact in document["artifacts"]
+        if artifact["artifact_id"] not in step10_artifact_ids
+    ]
+    document["expected_scopes"] = [
+        scope
+        for scope in document["expected_scopes"]
+        if scope["scope"]["step_id"] != "10"
+    ]
+    document["qc_metrics"] = [
+        metric
+        for metric in document["qc_metrics"]
+        if metric["source_artifact_id"] not in step10_artifact_ids
+    ]
+    removed_count = len(step10_artifact_ids)
+    document["inventory"]["row_count"] -= removed_count
+    document["computational_rollup"]["expected_artifact_count"] -= removed_count
+    document["computational_rollup"]["complete_artifact_count"] -= removed_count
     run_id = document["run_id"]
     summary_dir = root / "summary" / run_id
     summary_dir.mkdir(parents=True)
@@ -203,6 +237,112 @@ def rewrite_tsv(path: Path, mutate: Any) -> None:
         )
         writer.writeheader()
         writer.writerows(rows)
+
+
+def test_step10_absence_and_partial_declaration_are_context_local_unavailability(
+    computational_summary: Path,
+) -> None:
+    document = json.loads(computational_summary.read_text(encoding="utf-8"))
+    without_step10 = {
+        **document,
+        "artifacts": [
+            artifact
+            for artifact in document["artifacts"]
+            if not artifact["adapter"].startswith("step10_")
+        ],
+    }
+    results, reason = report_scientific_context.admit_scientific_context_results(
+        without_step10,
+        source_root=computational_summary.parent.parent,
+        computational_results=None,
+    )
+    assert results is None
+    assert reason is not None and "predates" in reason
+
+    partially_declared = {
+        **without_step10,
+        "artifacts": [
+            *without_step10["artifacts"],
+            next(
+                artifact
+                for artifact in document["artifacts"]
+                if artifact["adapter"] == "step10_context_receipt_v1"
+            ),
+        ],
+    }
+    results, reason = report_scientific_context.admit_scientific_context_results(
+        partially_declared,
+        source_root=computational_summary.parent.parent,
+        computational_results=None,
+    )
+    assert results is None
+    assert reason is not None and "not declared" in reason
+
+
+def test_present_step10_record_mismatch_fails_closed(
+    computational_summary: Path,
+) -> None:
+    document = json.loads(computational_summary.read_text(encoding="utf-8"))
+    record = next(
+        artifact
+        for artifact in document["artifacts"]
+        if artifact["adapter"] == "step10_candidate_context_v1"
+    )
+    record["source"]["sha256"] = "0" * 64
+    with pytest.raises(ReportRenderError, match="SHA-256 mismatch"):
+        report_scientific_context.admit_scientific_context_results(
+            document,
+            source_root=computational_summary.parent.parent,
+            computational_results=None,
+        )
+
+
+def test_historical_summary_keeps_step09_figures_only(
+    computational_summary: Path,
+    tmp_path: Path,
+) -> None:
+    copied, _paths = copied_step09_summary(
+        computational_summary, tmp_path / "historical"
+    )
+
+    context = REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
+
+    assert context.scientific_context_results is None
+    assert context.scientific_context_unavailable_reason is not None
+    assert tuple(figure.status for figure in context.scientific_figures) == (
+        *("available" for _ in range(5)),
+        *("unavailable" for _ in range(3)),
+    )
+
+
+def test_step10_report_admission_calls_the_canonical_transaction_once(
+    computational_summary: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    document = json.loads(computational_summary.read_text(encoding="utf-8"))
+    original = (
+        report_scientific_context.owner_context.validate_scientific_context_transaction
+    )
+    observed: list[Path] = []
+
+    def validate_once(path: Path) -> Any:
+        observed.append(path)
+        return original(path)
+
+    monkeypatch.setattr(
+        report_scientific_context.owner_context,
+        "validate_scientific_context_transaction",
+        validate_once,
+    )
+    results, unavailable = report_scientific_context.admit_scientific_context_results(
+        document,
+        source_root=computational_summary.parent.parent,
+        computational_results=None,
+    )
+
+    assert results is not None
+    assert unavailable is None
+    assert observed == [results.receipt.path]
 
 
 def publish(context: Any, ops: REPORT.ReportPublicationOps | None = None) -> None:
@@ -334,8 +474,12 @@ def test_success_publishes_two_html_views_summary_and_v4_receipt_last(
         context.output_summary_tsv.name,
         context.output_receipt.name,
     ]
-    assert not (context.output_dir / f"{context.summary['run_id']}.run_report.html").exists()
-    assert not (context.output_dir / f"{context.summary['run_id']}.run_report.pdf").exists()
+    assert not (
+        context.output_dir / f"{context.summary['run_id']}.run_report.html"
+    ).exists()
+    assert not (
+        context.output_dir / f"{context.summary['run_id']}.run_report.pdf"
+    ).exists()
     document = receipt_document(context.output_receipt)
     assert document["schema_version"] == "4.0.0"
     assert document["interpretation_boundary"] == (
@@ -480,7 +624,7 @@ def test_receipt_attributes_provenance_to_renderer_checkout(
     assert context.producer_git_commit != upstream_commit
     assert document["provenance"] == {
         "producer": "norad.reporting.report",
-        "producer_version": "4.0.0",
+        "producer_version": PRODUCER_VERSION,
         "git_commit": context.producer_git_commit,
         "created_at": context.summary["generated_at"],
     }
@@ -597,7 +741,33 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert "Tools and issues" not in scientific
     assert "Report provenance" not in scientific
     assert "<svg" not in scientific
+    assert scientific.count("data:image/svg+xml;base64,") == sum(
+        figure.status == "available" for figure in context.scientific_figures
+    )
+    assert tuple(figure.status for figure in context.scientific_figures) == (
+        "available",
+        "available",
+        "available",
+        "available",
+        "available",
+        "available",
+        "unavailable",
+        "available",
+    )
+    assert "exact threshold lines are not overlaid" in scientific
+    assert "unweighted means across manifest-defined replicates" in scientific
+    assert "Display-only selection uses at most 8 candidates" in scientific
+    assert "percentages therefore need not sum" in scientific
+    assert (
+        tuple(
+            figure_id
+            for figure_id in SCIENTIFIC_FIGURE_IDS
+            if f'id="{figure_id}"' in scientific
+        )
+        == SCIENTIFIC_FIGURE_IDS
+    )
     assert 'id="step09-source-records"' in evidence
+    assert 'id="scientific-figure-provenance"' in evidence
     assert 'id="computational_significant_sites"' not in evidence
     assert 'id="computational_all_sites"' not in evidence
     assert "candidate_1" not in evidence
@@ -605,12 +775,29 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert "Artifact appendix" in evidence
     assert "Report provenance" in evidence
     assert "<svg" in evidence
+    assert "data:image/svg+xml;base64," not in evidence
+    assert f"Matplotlib {MATPLOTLIB_VERSION}" in evidence
+    assert f"Logomaker {LOGOMAKER_VERSION}" in evidence
+    assert (
+        "series={significant_up, significant_down, other tested statuses}" in evidence
+    )
     assert context.computational_results is not None
     for table in context.computational_results.tables:
         assert str(table.path) not in scientific
         assert table.sha256 not in scientific
         assert str(table.path) in evidence
         assert table.sha256 in evidence
+    assert context.scientific_context_results is not None
+    for table in context.scientific_context_results.tables:
+        assert str(table.path) not in scientific
+        assert table.sha256 not in scientific
+        assert str(table.path) in evidence
+        assert table.sha256 in evidence
+    for source in context.scientific_context_results.bound_inputs:
+        assert str(source.path) not in scientific
+        assert source.sha256 not in scientific
+        assert str(source.path) in evidence
+        assert source.sha256 in evidence
     for metadata_field in (
         "css_sha256",
         "run_summary_sha256",
@@ -656,9 +843,63 @@ def test_report_displays_exact_step09_results_and_key_qc(
     assert context.computational_unavailable_reason is None
     assert context.computational_results is not None
     assert context.computational_results.analysis_id == "synthetic_analysis"
-    assert context.computational_results.sample_ids == ("SYNTH_A",)
+    assert context.computational_results.sample_ids == (
+        "SYNTH_A",
+        "SYNTH_T1",
+        "SYNTH_C2",
+        "SYNTH_T2",
+    )
+    assert tuple(
+        (
+            pair.replicate,
+            pair.control_sample_id,
+            pair.treatment_sample_id,
+        )
+        for pair in context.computational_results.sample_manifest.pairs
+    ) == (
+        ("R1", "SYNTH_A", "SYNTH_T1"),
+        ("R2", "SYNTH_C2", "SYNTH_T2"),
+    )
+    manifest_index = context.input_snapshot_labels.index("Step 09 sample manifest")
+    assert context.input_snapshots[manifest_index] == (
+        context.computational_results.sample_manifest.snapshot
+    )
+    assert context.scientific_context_results is not None
+    assert context.input_snapshot_labels[-1] == (
+        "scientific-context receipt-bound input 'motif_catalog'"
+    )
+    reference_recheck = next(
+        recheck
+        for recheck in context.input_rechecks
+        if recheck[1] == "scientific-context receipt-bound input 'reference_fasta'"
+    )
+    assert reference_recheck[2] is False
     assert context.computational_results.all_sites.row_count == 4
     assert context.computational_results.significant_sites.row_count == 1
+    assert context.computational_results.mutation_spectrum.row_count == 12
+    assert context.computational_results.mutation_spectrum.displayed_row_count == 12
+    assert context.computational_results.mutation_spectrum.truncated is False
+    assert tuple(
+        row[
+            context.computational_results.mutation_spectrum.header.index(
+                "mutation_type"
+            )
+        ]
+        for row in context.computational_results.mutation_spectrum.display_rows
+    ) == (
+        "A>C",
+        "A>G",
+        "A>T",
+        "C>A",
+        "C>G",
+        "C>T",
+        "G>A",
+        "G>C",
+        "G>T",
+        "T>A",
+        "T>C",
+        "T>G",
+    )
     publish(context)
     content = context.output_scientific_html.read_text(encoding="utf-8")
     assert (
@@ -676,8 +917,13 @@ def test_report_displays_exact_step09_results_and_key_qc(
     evidence_view = view.build_evidence_view(
         context.summary,
         context.render_metadata,
+        scientific_figures=context.scientific_figures,
         computational_results=context.computational_results,
         computational_unavailable_reason=context.computational_unavailable_reason,
+        scientific_context_results=context.scientific_context_results,
+        scientific_context_unavailable_reason=(
+            context.scientific_context_unavailable_reason
+        ),
     )
     source_section = next(
         section
@@ -699,15 +945,107 @@ def test_report_displays_exact_step09_results_and_key_qc(
         "all_sites",
         "significant_sites",
         "summary",
+        "mutation_spectrum",
+        "sample_manifest",
     )
+    context_source_table = source_section["blocks"][1]
+    assert context_source_table["id"] == "step10-source-records"
+    assert tuple(row[0] for row in context_source_table["rows"][:6]) == (
+        "validation",
+        "candidate_context",
+        "motif_hits",
+        "sequence_logo",
+        "motif_statistics",
+        "receipt",
+    )
+    assert tuple(row[0] for row in context_source_table["rows"][6:]) == (
+        "step09_all_sites",
+        "step09_significant_sites",
+        "step09_summary",
+        "reference_fasta",
+        "reference_fai",
+        "motif_catalog",
+    )
+    assert source_section["blocks"][2]["id"] == "step10-policy-record"
 
 
+@pytest.mark.parametrize(
+    ("case", "expected"),
+    (
+        ("stale_bytes", "sample manifest SHA-256 mismatch"),
+        ("run_contract", "differs from the immutable run contract"),
+        ("sample_order", "order differs from the admitted result-table"),
+        ("invalid_pairing", "pairing failed validation"),
+    ),
+)
+def test_sample_manifest_admission_fails_closed(
+    computational_summary: Path,
+    tmp_path: Path,
+    case: str,
+    expected: str,
+) -> None:
+    context = REPORT.prepare_report(
+        arguments(computational_summary, tmp_path / "reports")
+    )
+    assert context.computational_results is not None
+    results = context.computational_results
+    source = results.sample_manifest.path
+    with source.open(encoding="utf-8", newline="") as stream:
+        reader = csv.DictReader(stream, delimiter="\t")
+        header = tuple(reader.fieldnames or ())
+        rows = list(reader)
+    if case == "sample_order":
+        rows[0], rows[1] = rows[1], rows[0]
+    elif case == "invalid_pairing":
+        rows[-1]["replicate"] = "R1"
+    manifest = tmp_path / f"{case}-samples.tsv"
+    with manifest.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.DictWriter(
+            stream,
+            fieldnames=header,
+            delimiter="\t",
+            lineterminator="\n",
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+    digest = hashlib.sha256(manifest.read_bytes()).hexdigest()
+    recorded_hash = "0" * 64 if case == "stale_bytes" else digest
+    run_contract_hash = "f" * 64 if case == "run_contract" else recorded_hash
+    summary_row = list(results.summary.display_rows[0])
+    summary_row[results.summary.header.index("sample_manifest_path")] = str(manifest)
+    summary_row[results.summary.header.index("sample_manifest_sha256")] = recorded_hash
+    summary_table = replace(results.summary, display_rows=(tuple(summary_row),))
+    summary_document = {
+        **context.summary,
+        "run_contract": {
+            **context.summary["run_contract"],
+            "sample_manifest_sha256": run_contract_hash,
+        },
+    }
+
+    with pytest.raises(ReportRenderError, match=expected):
+        report_computational._admit_sample_manifest(
+            summary_document,
+            summary_table,
+            results.sample_ids,
+            source_root=tmp_path,
+        )
+
+
+@pytest.mark.parametrize(
+    "artifact_id",
+    (
+        "analysis.synthetic.cmh_all_sites",
+        "analysis.synthetic.mutation_spectrum_tsv",
+    ),
+)
 def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
     tmp_path: Path,
+    artifact_id: str,
 ) -> None:
     fixture = FIXTURE.build_missing_fixture(
         tmp_path / "fixture",
-        artifact_id="analysis.synthetic.cmh_all_sites",
+        artifact_id=artifact_id,
     )
     summary = publish_run_summary(fixture)
     context = REPORT.prepare_report(
@@ -723,6 +1061,28 @@ def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
     assert 'id="computational_all_sites"' not in scientific
     assert "no computational candidate rows were opened or displayed" in evidence
     assert 'id="step09-source-records"' not in evidence
+
+
+def test_report_delegates_mutation_spectrum_reconciliation_to_step09(
+    computational_summary: Path,
+    tmp_path: Path,
+) -> None:
+    def mutate_sources(paths: dict[str, Path]) -> None:
+        def corrupt(_header: tuple[str, ...], rows: list[dict[str, str]]) -> None:
+            rows[0]["candidate_count"] = "999"
+
+        rewrite_tsv(paths["step09_mutation_spectrum_tsv_v1"], corrupt)
+
+    copied, _paths = copied_step09_summary(
+        computational_summary,
+        tmp_path / "input",
+        mutate_sources=mutate_sources,
+    )
+    with pytest.raises(
+        ReportRenderError,
+        match="Primary Step 09 projection failed validation",
+    ):
+        REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
 
 
 @pytest.mark.parametrize(
@@ -825,17 +1185,44 @@ def test_step09_owner_validation_must_be_exact_all_pass_before_rows_open(
         REPORT.prepare_report(arguments(copied, tmp_path / "reports"))
 
 
+@pytest.mark.parametrize(
+    "adapter",
+    ("step09_cmh_all_sites_v1", "step09_mutation_spectrum_tsv_v1"),
+)
 def test_step09_input_mutation_aborts_before_publication(
     computational_summary: Path,
     tmp_path: Path,
+    adapter: str,
 ) -> None:
     copied, paths = copied_step09_summary(computational_summary, tmp_path / "input")
     context = REPORT.prepare_report(
         arguments(copied, tmp_path / "reports", execute=True)
     )
-    paths["step09_cmh_all_sites_v1"].write_bytes(
-        paths["step09_cmh_all_sites_v1"].read_bytes() + b" "
+    paths[adapter].write_bytes(paths[adapter].read_bytes() + b" ")
+    with pytest.raises(ReportRenderError, match="changed during report"):
+        publish(context)
+    assert not any(path.exists() for path in output_paths(context))
+    assert not context.lock_path.exists()
+
+
+def test_step10_reference_identity_mutation_aborts_before_publication(
+    tmp_path: Path,
+) -> None:
+    summary = publish_run_summary(FIXTURE.build_fixture(tmp_path / "fixture"))
+    context = REPORT.prepare_report(
+        arguments(summary, tmp_path / "reports", execute=True)
     )
+    assert context.scientific_context_results is not None
+    reference = next(
+        source
+        for source in context.scientific_context_results.bound_inputs
+        if source.role == "reference_fasta"
+    )
+    payload = bytearray(reference.path.read_bytes())
+    index = payload.index(ord("A"))
+    payload[index] = ord("C")
+    reference.path.write_bytes(payload)
+
     with pytest.raises(ReportRenderError, match="changed during report"):
         publish(context)
     assert not any(path.exists() for path in output_paths(context))
@@ -868,8 +1255,26 @@ def test_computational_all_sites_limit_and_truncation_are_receipted(
                 }
             )
 
+        def update_mutation_spectrum(
+            _header: tuple[str, ...], rows: list[dict[str, str]]
+        ) -> None:
+            target = next(row for row in rows if row["mutation_type"] == "A>G")
+            target.update(
+                {
+                    "candidate_count": "251",
+                    "candidate_fraction": "1",
+                    "successfully_tested_count": "251",
+                    "significant_up_count": "1",
+                    "significant_down_count": "0",
+                }
+            )
+
         rewrite_tsv(paths["step09_cmh_all_sites_v1"], expand_all)
         rewrite_tsv(paths["step09_cmh_summary_v1"], update_summary)
+        rewrite_tsv(
+            paths["step09_mutation_spectrum_tsv_v1"],
+            update_mutation_spectrum,
+        )
 
     copied, _paths = copied_step09_summary(
         computational_summary,
@@ -895,6 +1300,9 @@ def test_computational_all_sites_limit_and_truncation_are_receipted(
         "displayed_row_count": 250,
     }
     assert "Displayed the first 250 of 251 rows" in (
+        context.output_scientific_html.read_text(encoding="utf-8")
+    )
+    assert "251 successfully tested target candidates" in (
         context.output_scientific_html.read_text(encoding="utf-8")
     )
 
@@ -965,8 +1373,7 @@ def test_v3_receipt_requires_fresh_output_root(
     output_dir.mkdir(parents=True)
     v3 = json.loads(
         (
-            REPO_ROOT
-            / "tests/contracts/artifacts/fixtures/report_receipt_v3.json"
+            REPO_ROOT / "tests/contracts/artifacts/fixtures/report_receipt_v3.json"
         ).read_text(encoding="utf-8")
     )
     (output_dir / f"{run_id}.report_outputs.tsv").write_bytes(
@@ -1075,8 +1482,7 @@ def test_foreign_final_and_backup_are_preserved(
     context = REPORT.prepare_report(args)
     token = "fixed-foreign-token"
     backup = (
-        context.output_dir
-        / f".{context.output_scientific_html.name}.{token}.previous"
+        context.output_dir / f".{context.output_scientific_html.name}.{token}.previous"
     )
     backup.write_text("foreign backup\n", encoding="utf-8")
     ops = replace(REPORT.default_publication_ops(), make_token=lambda: token)

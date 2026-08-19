@@ -70,7 +70,7 @@ terminal receipt only after durable lock disposition and process-group
 quiescence. These remain local cooperative-workspace guarantees, not NFS,
 distributed-filesystem, scheduler, or cluster proof.
 
-All thirteen repository-owning SLURM wrappers require literal
+All fourteen repository-owning SLURM wrappers require literal
 `SLURM_SUBMIT_DIR` and enter the submitted checkout before resolving
 repository-owned helpers or delegates, so the scheduler spool copy is never
 checkout authority. This integrated-tree contract has local static and mocked

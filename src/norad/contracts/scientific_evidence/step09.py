@@ -25,6 +25,7 @@ from norad.contracts.scientific_evidence.step08 import (
     validate_enum,
     validate_hash,
     validate_safe_id,
+    validate_step08_carried_location,
     values_close,
 )
 from norad.libraries.alignments.orientation import (
@@ -365,6 +366,7 @@ def _validate_projection_result_row_identity(
         fail(f"{label} row {row_number} is blank.")
     if row["analysis_id"] != analysis_id:
         fail(f"{label} row {row_number} has the wrong analysis_id.")
+    validate_step08_carried_location(row, f"{label} row {row_number}")
     validate_enum(
         f"{label} row {row_number} test_status",
         row["test_status"],

@@ -32,6 +32,7 @@ def with_owner_doubles(
     raw_payloads = workflow.artifact_payloads(
         rows,
         plan.normalized.execution_contract,
+        artifact_source_root=plan.run_root,
     )
     payloads: dict[Path, bytes] = {}
     for raw, data in raw_payloads.items():

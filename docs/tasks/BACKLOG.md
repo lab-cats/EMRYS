@@ -89,13 +89,6 @@ selection, implementation, or publication authority.
 - **Intent:** Independently review scientist, operator, maintainer, and automation journeys before report, logging, onboarding, and documentation-skill implementation.
 - **Boundaries:** Review findability, terminology, cognitive load, accessibility, failure recovery, console/report hierarchy, intake state, and local context without implementing or changing scientific meaning.
 
-## RPT-05 — Decide scientific report figures
-
-- **Kind:** actionable
-- **Blocked by:** None
-- **Intent:** Decide which scientifically useful figures belong in the scientific report and whether their canonical renderer should use an existing Python dependency or an R owner.
-- **Boundaries:** This is a separate approval decision. Do not add placeholder graphics, a plotting dependency, an R rendering step, another report command, or evidence/provenance content to the scientific view meanwhile.
-
 ## SKILL-11 — Evaluate repository skill opportunities
 
 - **Kind:** actionable

@@ -17,10 +17,19 @@ from pathlib import Path
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-RUNTIME_DEPENDENCIES = {"jinja2", "jsonschema", "pyyaml", "referencing"}
+RUNTIME_DEPENDENCIES = {
+    "jinja2",
+    "jsonschema",
+    "logomaker",
+    "matplotlib",
+    "pyyaml",
+    "referencing",
+}
 RUNTIME_REQUIREMENT_SPECIFIERS = {
     "jinja2": "==3.1.6",
     "jsonschema": ">=4.18.0",
+    "logomaker": "==0.8.7",
+    "matplotlib": "==3.11.1",
     "pyyaml": "==6.0.3",
     "referencing": ">=0.28.4",
 }
@@ -183,11 +192,16 @@ def inspect_wheel(wheel: Path) -> None:
 
 def install_locked_wheel(wheel: Path, tmp_path: Path) -> tuple[Path, Path]:
     locked = tomllib.loads((REPO_ROOT / "uv.lock").read_text(encoding="utf-8"))
-    constraints = sorted(
-        f"{item['name']}=={item['version']}"
-        for item in locked["package"]
-        if "version" in item
-    )
+    constraints = []
+    for item in locked["package"]:
+        if "version" not in item:
+            continue
+        requirement = f"{item['name']}=={item['version']}"
+        markers = item.get("resolution-markers", ())
+        if markers:
+            requirement += "; " + " or ".join(f"({marker})" for marker in markers)
+        constraints.append(requirement)
+    constraints.sort()
     installer = tmp_path / "installer"
     installer.mkdir()
     (installer / "pyproject.toml").write_text(
@@ -424,9 +438,24 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     assert "Jinja2" in (report_directory / f"{run_id}.report_outputs.tsv").read_text(
         encoding="utf-8"
     )
-    assert "CMH-ranked candidates" in (
-        report_directory / f"{run_id}.scientific_report.html"
-    ).read_text(encoding="utf-8")
+    scientific_html = (report_directory / f"{run_id}.scientific_report.html").read_text(
+        encoding="utf-8"
+    )
+    evidence_html = (report_directory / f"{run_id}.evidence_report.html").read_text(
+        encoding="utf-8"
+    )
+    assert "CMH-ranked candidates" in scientific_html
+    assert 'id="candidate-landscape-figure"' in scientific_html
+    assert 'id="mutation-spectrum-figure"' in scientific_html
+    assert 'id="condition-concordance-figure"' in scientific_html
+    assert 'id="paired-sample-profile-figure"' in scientific_html
+    assert 'id="location-membership-figure"' in scientific_html
+    assert 'id="sequence-context-logo-figure"' in scientific_html
+    assert 'id="motif-context-enrichment-figure"' in scientific_html
+    assert 'id="selected-context-track-figure"' in scientific_html
+    assert scientific_html.count("data:image/svg+xml;base64,") == 7
+    assert "Matplotlib 3.11.1" in evidence_html
+    assert "Logomaker 0.8.7" in evidence_html
     with (report_directory / f"{run_id}.report_outputs.tsv").open(
         encoding="utf-8",
         newline="",

@@ -102,6 +102,38 @@ def test_direct_validators_recheck_each_complete_transaction(
     assert all(len(item.receipt_sha256) == 64 for item in (adapter, summary, rendered))
 
 
+def test_report_validator_rechecks_bound_reference_identity_without_rereading(
+    complete_reporting: tuple[Any, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    built, report_root = complete_reporting
+    reference = built.adapter_fixture.source_for("ref.fasta")
+    real_snapshot = transaction_validation._snapshot_bound_file
+    hash_modes: list[bool] = []
+
+    def observe_snapshot(path: Path, *, hash_content: bool = True) -> Any:
+        if path == reference:
+            hash_modes.append(hash_content)
+        return real_snapshot(path, hash_content=hash_content)
+
+    monkeypatch.setattr(
+        transaction_validation,
+        "_snapshot_bound_file",
+        observe_snapshot,
+    )
+    transaction_validation.validate_report_transaction(
+        source_checkout=REPO_ROOT,
+        artifact_source_root=built.root,
+        run_summary=built.summary_json_path,
+        output_root=report_root,
+        receipt_ops=_fixture_receipt_ops(),
+    )
+
+    assert True in hash_modes
+    assert hash_modes[-1] is False
+    assert hash_modes.count(False) == 1
+
+
 def test_fixed_dispatcher_attests_source_checkout_to_attempt_commit(
     tmp_path: Path,
 ) -> None:
@@ -207,12 +239,14 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
 ) -> None:
     built, report_root = complete_reporting
     native_source = built.adapter_fixture.source_for("sample.SYNTH_A.star_log")
+    mutation_spectrum = built.adapter_fixture.source_for(
+        "analysis.synthetic.mutation_spectrum_tsv"
+    )
+    reference_fasta = built.adapter_fixture.source_for("ref.fasta")
     scientific_html = (
         report_root / built.run_id / f"{built.run_id}.scientific_report.html"
     )
-    evidence_html = (
-        report_root / built.run_id / f"{built.run_id}.evidence_report.html"
-    )
+    evidence_html = report_root / built.run_id / f"{built.run_id}.evidence_report.html"
 
     def validate_artifact(ops: transaction_validation.ReceiptValidationOps) -> None:
         transaction_validation.validate_artifact_index_transaction(
@@ -252,6 +286,8 @@ def test_each_validator_rejects_nonreceipt_and_upstream_mutation_faults(
         (validate_report, scientific_html),
         (validate_report, evidence_html),
         (validate_report, native_source),
+        (validate_report, mutation_spectrum),
+        (validate_report, reference_fasta),
     )
     for validator, target in cases:
         original = target.read_bytes()

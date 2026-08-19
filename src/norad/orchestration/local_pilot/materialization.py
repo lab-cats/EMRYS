@@ -987,6 +987,66 @@ def _task_commands(
             (sample_manifest, partition_manifest, sites, inputs, summary08),
         )
 
+    if step_id == "10":
+        analysis_id = str(analysis["primary_analysis_id"])
+        step09_paths = all_paths["09", analysis_id]
+        all_sites = _one(step09_paths, "step09_cmh_all_sites_v1")
+        significant = _one(step09_paths, "step09_cmh_significant_sites_v1")
+        summary = _one(step09_paths, "step09_cmh_summary_v1")
+        fai = _one(all_paths["00c", reference_id], "step00c_reference_fai_v1")
+        motif_catalog = (
+            source_root
+            / "src/norad/analyses/scientific_context_projection/resources/pum_motifs_v1.tsv"
+        )
+        receipt = _one(paths, "step10_context_receipt_v1")
+        arguments = (
+            "--analysis-id",
+            analysis_id,
+            "--step09-all-sites",
+            str(all_sites),
+            "--step09-significant-sites",
+            str(significant),
+            "--step09-summary",
+            str(summary),
+            "--reference-fasta",
+            str(fasta),
+            "--reference-fai",
+            str(fai),
+            "--output-root",
+            str(run_root / "results/scientific_context"),
+            "--motif-catalog",
+            str(motif_catalog),
+            "--rscript-bin",
+            rscript,
+            "--r-script",
+            str(
+                source_root
+                / "src/norad/analyses/scientific_context_projection/scientific_context_projection.R"
+            ),
+            "--no-clobber",
+            "--execute",
+        )
+        producer = _r_owner_command(
+            bash,
+            source_root,
+            renv_library,
+            source_root
+            / "src/norad/analyses/scientific_context_projection/scientific_context_projection.sh",
+            arguments,
+        )
+        validator = _validator(
+            "scientific-context-projection",
+            "--receipt",
+            str(receipt),
+            "--output",
+            str(validation),
+        )
+        return (
+            producer,
+            validator,
+            (all_sites, significant, summary, fasta, fai, motif_catalog),
+        )
+
     raise MaterializationError(f"Unsupported fixed-profile Step: {step_id}")
 
 

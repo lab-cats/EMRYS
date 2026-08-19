@@ -2,7 +2,7 @@
 """Build a complete, temporary artifact-adapters fixture.
 
 The tracked artifact inventory is the fixture's source of truth.  This builder
-rewrites its 68 explicit source paths into a caller-owned temporary directory
+rewrites its 74 explicit source paths into a caller-owned temporary directory
 and creates the smallest source accepted by each registered adapter.  Generated
 pipeline-like artifacts stay untracked.
 """
@@ -13,6 +13,7 @@ import argparse
 import csv
 import hashlib
 import json
+import shutil
 import struct
 import zlib
 from collections.abc import Iterable, Mapping, Sequence
@@ -20,7 +21,11 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from norad.contracts.scientific_evidence import step09
+from norad.contracts.scientific_evidence import scientific_context
 from norad.reporting._artifact_index.registry import ADAPTER_REGISTRY
+from tests.scientific_context_test_support import (
+    build_transaction as build_scientific_context_transaction,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 INVENTORY_TEMPLATE = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
@@ -34,7 +39,17 @@ INVENTORY_HEADER = (
     "required",
 )
 RUN_ID = "synthetic_run"
-SAMPLE_MANIFEST_SHA256 = "1" * 64
+SAMPLE_IDS = ("SYNTH_A", "SYNTH_T1", "SYNTH_C2", "SYNTH_T2")
+SAMPLE_MANIFEST_TEXT = (
+    "sample_id\tr1_fastq\tr2_fastq\tstrandedness\tcondition\treplicate\n"
+    "SYNTH_A\treads/a_r1.fastq.gz\treads/a_r2.fastq.gz\treverse\tcontrol\tR1\n"
+    "SYNTH_T1\treads/t1_r1.fastq.gz\treads/t1_r2.fastq.gz\treverse\ttreatment\tR1\n"
+    "SYNTH_C2\treads/c2_r1.fastq.gz\treads/c2_r2.fastq.gz\treverse\tcontrol\tR2\n"
+    "SYNTH_T2\treads/t2_r1.fastq.gz\treads/t2_r2.fastq.gz\treverse\ttreatment\tR2\n"
+)
+SAMPLE_MANIFEST_SHA256 = hashlib.sha256(
+    SAMPLE_MANIFEST_TEXT.encode("utf-8")
+).hexdigest()
 REFERENCE_CONTRACT_SHA256 = "2" * 64
 PARTITION_MANIFEST_SHA256 = "3" * 64
 PRIMARY_ANALYSIS_ID = "synthetic_analysis"
@@ -131,9 +146,9 @@ def read_inventory_template() -> list[dict[str, str]]:
         if tuple(reader.fieldnames or ()) != INVENTORY_HEADER:
             raise RuntimeError("Tracked artifact inventory header changed")
         rows = list(reader)
-    if len(rows) != 68:
+    if len(rows) != 74:
         raise RuntimeError(
-            f"Expected 68 artifact rows in tracked inventory; found {len(rows)}"
+            f"Expected 74 artifact rows in tracked inventory; found {len(rows)}"
         )
     return rows
 
@@ -156,7 +171,7 @@ def write_tsv(
         writer.writerows(rows)
 
 
-def row_value(column: str) -> str:
+def row_value(column: str, sample_manifest_path: Path) -> str:
     values = {
         "sample_id": "SYNTH_A",
         "cohort_id": COHORT_ID,
@@ -171,15 +186,15 @@ def row_value(column: str) -> str:
         "primary_analysis_id": PRIMARY_ANALYSIS_ID,
         "orientation_policy": "legacy_provisional_v1",
         "transaction_state": "complete",
-        "sample_count": "1",
+        "sample_count": str(len(SAMPLE_IDS)),
         "vcf_record_count": "1",
         "implementation_status": "implemented",
         "local_test_status": "passed",
         "runtime_validation_status": "blocked",
         "cluster_dry_run_status": "not_run",
         "cluster_proof_status": "not_run",
-        "sample_manifest_path": "/synthetic/sample_manifest.tsv",
-        "sample_manifest_row_count": "1",
+        "sample_manifest_path": str(sample_manifest_path),
+        "sample_manifest_row_count": str(len(SAMPLE_IDS)),
         "partition_manifest_path": "/synthetic/partition_manifest.tsv",
         "partition_manifest_row_count": "2",
     }
@@ -288,15 +303,21 @@ def inventory_row(
 def sample_block_header(prefix: Sequence[str]) -> tuple[str, ...]:
     return (
         *prefix,
-        "DP__SYNTH_A",
-        "AD__SYNTH_A",
-        "AF__SYNTH_A",
+        *(f"DP__{sample_id}" for sample_id in SAMPLE_IDS),
+        *(f"AD__{sample_id}" for sample_id in SAMPLE_IDS),
+        *(f"AF__{sample_id}" for sample_id in SAMPLE_IDS),
     )
 
 
 def candidate_values(index: int) -> dict[str, str]:
     orientation = "FWD_like" if index % 2 else "REV_like"
-    return {
+    alternate_depths = {
+        1: (10, 30, 12, 32),
+        2: (20, 21, 22, 23),
+        3: (40, 35, 42, 37),
+        4: (5, 8, 7, 10),
+    }[index]
+    values = {
         "partition_id": f"p{1 if index <= 2 else 2}",
         "candidate_id": f"candidate_{index}",
         "orientation": orientation,
@@ -317,12 +338,32 @@ def candidate_values(index: int) -> dict[str, str]:
         "is_intron": "FALSE",
         "qual": "60",
         "filter": "PASS",
-        "info_alt_depth": "5",
+        "info_alt_depth": str(sum(alternate_depths)),
         "orientation_policy": "legacy_provisional_v1",
-        "DP__SYNTH_A": "10",
-        "AD__SYNTH_A": "1",
-        "AF__SYNTH_A": "0.1",
     }
+    values.update({f"DP__{sample_id}": "100" for sample_id in SAMPLE_IDS})
+    values.update(
+        {
+            f"AD__{sample_id}": str(depth)
+            for sample_id, depth in zip(SAMPLE_IDS, alternate_depths, strict=True)
+        }
+    )
+    values.update(
+        {
+            f"AF__{sample_id}": f"{depth / 100:.12g}"
+            for sample_id, depth in zip(SAMPLE_IDS, alternate_depths, strict=True)
+        }
+    )
+    return values
+
+
+def candidate_condition_values(index: int) -> tuple[str, str, str]:
+    return {
+        1: ("0.11", "0.31", "0.2"),
+        2: ("0.21", "0.22", "0.01"),
+        3: ("0.41", "0.36", "-0.05"),
+        4: ("0.06", "0.09", "0.03"),
+    }[index]
 
 
 def tsv_rows_for(
@@ -330,6 +371,7 @@ def tsv_rows_for(
     header: Sequence[str],
     exact_rows: int | None,
     inventory_rows: Sequence[Mapping[str, str]],
+    sample_manifest_path: Path,
 ) -> list[dict[str, str]]:
     adapter = row["adapter"]
     count_overrides = {
@@ -343,7 +385,10 @@ def tsv_rows_for(
         adapter,
         exact_rows if exact_rows is not None else 1,
     )
-    rows = [{column: row_value(column) for column in header} for _ in range(count)]
+    rows = [
+        {column: row_value(column, sample_manifest_path) for column in header}
+        for _ in range(count)
+    ]
     if adapter == "step06_orientation_counts_v1":
         rows[0].update(
             {
@@ -374,6 +419,7 @@ def tsv_rows_for(
         "step07_validation_report_v1",
         "step08_validation_report_v1",
         "step09_validation_report_v1",
+        "step10_validation_report_v1",
     }:
         check_ids = (
             (
@@ -475,6 +521,8 @@ def tsv_rows_for(
                 "pdf_structure",
             )
             if adapter == "step09_validation_report_v1"
+            else ("scientific_context_transaction",)
+            if adapter == "step10_validation_report_v1"
             else (
                 "bam_bai_structure",
                 "samtools_quickcheck",
@@ -517,7 +565,7 @@ def tsv_rows_for(
                     "vcf_path": vcf["source_path"],
                     "sample_manifest_sha256": SAMPLE_MANIFEST_SHA256,
                     "partition_manifest_sha256": PARTITION_MANIFEST_SHA256,
-                    "sample_count": "1",
+                    "sample_count": str(len(SAMPLE_IDS)),
                     "vcf_record_count": "1",
                 }
             )
@@ -555,7 +603,7 @@ def tsv_rows_for(
                     "partition_manifest_sha256": PARTITION_MANIFEST_SHA256,
                     "annotation_gtf": "/synthetic/annotation.gtf",
                     "annotation_gtf_sha256": "5" * 64,
-                    "sample_count": "1",
+                    "sample_count": str(len(SAMPLE_IDS)),
                     "declared_vcf_record_count": "1",
                     "observed_vcf_record_count": "1",
                     "observed_alt_allele_count": "1",
@@ -573,7 +621,7 @@ def tsv_rows_for(
                 "partition_count": "2",
                 "step07_receipt_count": "2",
                 "input_vcf_count": "4",
-                "sample_count": "1",
+                "sample_count": str(len(SAMPLE_IDS)),
                 "observed_vcf_record_count": "4",
                 "observed_alt_allele_count": "4",
                 "supported_snv_count": "4",
@@ -593,6 +641,7 @@ def tsv_rows_for(
     }:
         for index, output_row in enumerate(rows, start=1):
             output_row.update(candidate_values(index))
+            control_mean, treatment_mean, difference = candidate_condition_values(index)
             significant = adapter == "step09_cmh_significant_sites_v1" or index == 1
             output_row.update(
                 {
@@ -600,18 +649,18 @@ def tsv_rows_for(
                     "control_condition": "control",
                     "treatment_condition": "treatment",
                     "target_rna_change": "A>G",
-                    "replicate_count": "1",
+                    "replicate_count": "2",
                     "test_status": "tested",
                     "call_status": "significant_up"
                     if significant
                     else "effect_not_met",
                     "background_condition": "NA",
                     "background_status": "disabled",
-                    "min_analysis_dp": "10",
-                    "mean_analysis_dp": "10",
-                    "mean_control_af": "0.1",
-                    "mean_treatment_af": "0.2" if significant else "0.1",
-                    "treatment_control_difference": "0.1" if significant else "0",
+                    "min_analysis_dp": "100",
+                    "mean_analysis_dp": "100",
+                    "mean_control_af": control_mean,
+                    "mean_treatment_af": treatment_mean,
+                    "treatment_control_difference": difference,
                     "max_background_af": "NA",
                     "cmh_statistic": "6" if significant else "0",
                     "cmh_degrees_freedom": "1",
@@ -634,8 +683,8 @@ def tsv_rows_for(
                 "treatment_condition": "treatment",
                 "background_condition": "NA",
                 "target_rna_change": "A>G",
-                "replicate_count": "1",
-                "sample_count": "1",
+                "replicate_count": "2",
+                "sample_count": str(len(SAMPLE_IDS)),
                 "candidate_count": "4",
                 "target_candidate_count": "4",
                 "successfully_tested_count": "4",
@@ -688,6 +737,7 @@ def write_adapter_source(
     path: Path,
     row: Mapping[str, str],
     inventory_rows: Sequence[Mapping[str, str]],
+    sample_manifest_path: Path,
 ) -> None:
     spec = ADAPTER_REGISTRY[row["adapter"]]
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -764,9 +814,11 @@ def write_adapter_source(
             '##INFO=<ID=AD,Number=R,Type=Integer,Description="Allele depth">\n'
             '##INFO=<ID=ADF,Number=R,Type=Integer,Description="Forward depth">\n'
             '##INFO=<ID=ADR,Number=R,Type=Integer,Description="Reverse depth">\n'
-            "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tSYNTH_A\n"
+            "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\t"
+            + "\t".join(SAMPLE_IDS)
+            + "\n"
             "1\t10\t.\tA\tG\t60\tPASS\tAD=5,5;ADF=3,3;ADR=2,2"
-            "\tDP:AD:ADF:ADR:SP\t10:5,5:3,3:2,2:0\n",
+            "\tDP:AD:ADF:ADR:SP" + "\t10:5,5:3,3:2,2:0" * len(SAMPLE_IDS) + "\n",
             encoding="utf-8",
         )
     elif spec.kind in {"tsv", "sample_blocks_tsv", "validation_report"}:
@@ -780,12 +832,98 @@ def write_adapter_source(
         write_tsv(
             path,
             header,
-            tsv_rows_for(row, header, spec.exact_data_rows, inventory_rows),
+            tsv_rows_for(
+                row,
+                header,
+                spec.exact_data_rows,
+                inventory_rows,
+                sample_manifest_path,
+            ),
         )
     elif spec.kind == "pdf":
         path.write_bytes(minimal_pdf_bytes())
     else:
         raise RuntimeError(f"No fixture source writer for adapter kind {spec.kind!r}")
+
+
+def write_scientific_context_transaction(
+    root: Path,
+    inventory_rows: Sequence[Mapping[str, str]],
+    source_paths: Mapping[str, Path],
+) -> None:
+    """Replace generic Step 10 rows with one canonical receipt-bound fixture."""
+
+    def source_for(adapter: str) -> Path:
+        row = inventory_row(inventory_rows, adapter)
+        return source_paths[row["artifact_id"]]
+
+    reference_fasta = source_for("step00c_reference_fasta_v1")
+    reference_fai = source_for("step00c_reference_fai_v1")
+    reference_dict = source_for("step00c_reference_dict_v1")
+    reference_dict = source_for("step00c_reference_dict_v1")
+    reference_sequence = list("A" * 40)
+    reference_sequence[9] = "T"
+    reference_sequence[29] = "T"
+    reference_fasta.write_text(
+        ">1\n" + "".join(reference_sequence) + "\n",
+        encoding="ascii",
+    )
+    reference_fai.write_text("1\t40\t3\t40\t41\n", encoding="ascii")
+    reference_dict.write_text(
+        "@HD\tVN:1.6\n@SQ\tSN:1\tLN:40\n",
+        encoding="ascii",
+    )
+    reference_dict.write_text(
+        "@HD\tVN:1.6\n@SQ\tSN:1\tLN:40\n",
+        encoding="ascii",
+    )
+
+    transaction = build_scientific_context_transaction(
+        root / "scientific_context_transaction",
+        analysis_id=PRIMARY_ANALYSIS_ID,
+        step09_all_sites=source_for("step09_cmh_all_sites_v1"),
+        step09_significant_sites=source_for("step09_cmh_significant_sites_v1"),
+        step09_summary=source_for("step09_cmh_summary_v1"),
+        reference_fasta=reference_fasta,
+        reference_fai=reference_fai,
+    )
+    output_sources = {
+        "candidate_context": (
+            transaction.candidate_context,
+            source_for("step10_candidate_context_v1"),
+        ),
+        "motif_hits": (
+            transaction.motif_hits,
+            source_for("step10_motif_hits_v1"),
+        ),
+        "sequence_logo": (
+            transaction.sequence_logo,
+            source_for("step10_sequence_logo_v1"),
+        ),
+        "motif_statistics": (
+            transaction.motif_statistics,
+            source_for("step10_motif_statistics_v1"),
+        ),
+    }
+    for generated, admitted in output_sources.values():
+        admitted.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(generated, admitted)
+
+    with transaction.receipt.open(encoding="utf-8", newline="") as stream:
+        reader = csv.DictReader(stream, delimiter="\t", strict=True)
+        receipt_header = tuple(reader.fieldnames or ())
+        receipt_rows = list(reader)
+    if (
+        receipt_header != scientific_context.SCIENTIFIC_CONTEXT_RECEIPT_HEADER
+        or len(receipt_rows) != 1
+    ):
+        raise RuntimeError("Canonical Step 10 fixture returned an invalid receipt")
+    receipt_row = receipt_rows[0]
+    for prefix, (_generated, admitted) in output_sources.items():
+        receipt_row[f"{prefix}_path"] = str(admitted.resolve())
+    receipt_path = source_for("step10_context_receipt_v1")
+    write_tsv(receipt_path, receipt_header, [receipt_row])
+    scientific_context.validate_scientific_context_transaction(receipt_path)
 
 
 def build_fixture(root: Path, *, run_id: str = RUN_ID) -> FixturePaths:
@@ -795,6 +933,11 @@ def build_fixture(root: Path, *, run_id: str = RUN_ID) -> FixturePaths:
     inventory_path = root / "artifact_inventory.tsv"
     run_contract_path = root / "run_contract.json"
     output_root = root / "artifacts"
+    sample_manifest_path = root / "sample_manifest.tsv"
+    sample_manifest_path.write_text(
+        SAMPLE_MANIFEST_TEXT,
+        encoding="utf-8",
+    )
 
     template_rows = read_inventory_template()
     rewritten_rows: list[dict[str, str]] = []
@@ -810,7 +953,13 @@ def build_fixture(root: Path, *, run_id: str = RUN_ID) -> FixturePaths:
         source_paths[rewritten["artifact_id"]] = source_path
 
     for row in rewritten_rows:
-        write_adapter_source(source_paths[row["artifact_id"]], row, rewritten_rows)
+        write_adapter_source(
+            source_paths[row["artifact_id"]],
+            row,
+            rewritten_rows,
+            sample_manifest_path,
+        )
+    write_scientific_context_transaction(root, rewritten_rows, source_paths)
 
     write_tsv(inventory_path, INVENTORY_HEADER, rewritten_rows)
     run_contract_path.write_text(

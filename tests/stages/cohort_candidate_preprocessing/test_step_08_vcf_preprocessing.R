@@ -297,7 +297,7 @@ build_case <- function(root, mode = "positive") {
     p1_fwd <- default_fwd_rows()
     p2_rev <- default_rev_rows()
     if (mode == "disjoint_annotation") {
-        p2_rev <- sub("^1\\t", "3\\t", p2_rev)
+        p2_rev <- sub("^1", "3", p2_rev)
     }
     p1_samples <- c("sample_A", "sample_B")
     omit_ad_definition <- FALSE

@@ -127,6 +127,12 @@ def receipt_document(
             + "\0"
             + JINJA_VERSION
             + "\0"
+            + context.render_metadata["figure_renderer_version"]
+            + "\0"
+            + context.render_metadata["logo_renderer_version"]
+            + "\0"
+            + context.render_metadata["figure_policy_version"]
+            + "\0"
             + PRODUCER_VERSION
         ).encode("utf-8")
     ).hexdigest()[:20]

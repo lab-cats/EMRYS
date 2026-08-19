@@ -11,6 +11,7 @@ flowchart LR
     observe["Observe declared cohort<br/>partitioned orientation VCFs"]
     normalize["Normalize + annotate candidates"]
     rank["Rank paired candidates<br/>CMH-ranked outputs"]
+    context["Project scientific context<br/>indexed reference + registered PUM motif"]
     reporting["Read-only reporting<br/>scientific HTML + evidence/provenance HTML + summary TSV<br/>validated v4 receipt last"]
     external_process["External review, adjudication, and biological interpretation records<br/>(outside NORAD; never a pipeline gate)"]
 
@@ -30,7 +31,9 @@ flowchart LR
     normalize --> rank
     run_contracts -.->|manifests + thresholds continue| rank
     optional_background -.->|if declared| rank
-    rank --> reporting
+    rank --> context
+    reference_contracts -.->|FASTA / FAI continue| context
+    context --> reporting
     reporting -.->|research work process may reference outputs| external_process
 
     dependency_legend["Legend: arrows are data or contract dependencies,<br/>not automatic scheduling"]

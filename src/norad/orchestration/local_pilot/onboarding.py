@@ -322,11 +322,11 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
     validate_module_settings
     [[ "$NORAD_SLURM_CPUS" =~ ^[1-9][0-9]*$ ]] || die "NORAD_SLURM_CPUS must be a positive integer"
     [[ "$NORAD_EXECUTE" == 0 || "$NORAD_EXECUTE" == 1 ]] || die "NORAD_EXECUTE must be 0 or 1"
-    slurm_memory_arguments=()
+    slurm_memory_argument=
     if [[ "$NORAD_SLURM_MEMORY" != site-default ]]; then
         [[ "$NORAD_SLURM_MEMORY" =~ ^[1-9][0-9]*[KMGTP]?$ ]] || \
             die "NORAD_SLURM_MEMORY must be site-default or a positive Slurm size"
-        slurm_memory_arguments=(--mem="$NORAD_SLURM_MEMORY")
+        slurm_memory_argument="--mem=$NORAD_SLURM_MEMORY"
     fi
     [[ -d "$NORAD_LOG_DIR" && ! -L "$NORAD_LOG_DIR" ]] || \
         die "NORAD_LOG_DIR must be an existing real directory"
@@ -337,7 +337,8 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
         --partition="$NORAD_SLURM_PARTITION" \
         --qos="$NORAD_SLURM_QOS" \
         --nodes=1 --ntasks=1 --cpus-per-task="$NORAD_SLURM_CPUS" \
-        "${slurm_memory_arguments[@]}" --time="$NORAD_SLURM_TIME" \
+        ${slurm_memory_argument:+"$slurm_memory_argument"} \
+        --time="$NORAD_SLURM_TIME" \
         --job-name=norad-local-pilot \
         --output="$NORAD_LOG_DIR/norad-local-pilot-%j.out" \
         --error="$NORAD_LOG_DIR/norad-local-pilot-%j.err" \
@@ -392,7 +393,24 @@ command -v df >/dev/null 2>&1 || die "df is unavailable in the allocation"
 scratch_parent="$(cd -P "$NORAD_SCRATCH_PARENT" && pwd)"
 job_tmpdir="$(mktemp -d "$scratch_parent/norad-${SLURM_JOB_ID}.XXXXXX")" || \
     die "unable to create private compute scratch directory"
-trap 'rm -rf --one-file-system -- "$job_tmpdir"' EXIT
+job_tmpdir_name="${job_tmpdir##*/}"
+job_tmpdir_suffix="${job_tmpdir_name#"norad-${SLURM_JOB_ID}."}"
+canonical_job_tmpdir="$(cd -P "$job_tmpdir" && pwd)" || \
+    die "unable to canonicalize private compute scratch directory"
+[[ "${job_tmpdir%/*}" == "$scratch_parent" && \
+    "$canonical_job_tmpdir" == "$job_tmpdir" && \
+    "$job_tmpdir_name" == "norad-${SLURM_JOB_ID}.$job_tmpdir_suffix" && \
+    "$job_tmpdir_suffix" =~ ^[A-Za-z0-9]{6}$ ]] || \
+    die "mktemp returned an unsafe compute scratch directory"
+readonly scratch_parent job_tmpdir
+cleanup_job_tmpdir() {
+    if [[ "${OSTYPE:-}" == linux* ]]; then
+        rm -rf --one-file-system -- "$job_tmpdir"
+    else
+        rm -rf -- "$job_tmpdir"
+    fi
+}
+trap cleanup_job_tmpdir EXIT
 chmod 700 "$job_tmpdir"
 export TMPDIR="$job_tmpdir"
 printf 'NORAD_SCRATCH_PARENT=%s\n' "$scratch_parent"
@@ -895,6 +913,8 @@ def render_runtime_profile(
         "r_variant_annotation",
         "r_genomic_ranges",
         "r_iranges",
+        "r_biostrings",
+        "r_rsamtools",
         "r_s4vectors",
         "r_summarized_experiment",
         "r_genome_info_db",

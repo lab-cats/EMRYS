@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
-from norad.contracts.scientific_evidence import step09
+from norad.contracts.scientific_evidence import step08, step09
 from norad.libraries import validation as owner_validation
 
 from .inputs import (
@@ -19,9 +20,11 @@ from .inputs import (
 from .models import (
     COMPUTATIONAL_ALL_SITES_DISPLAY_LIMIT,
     COMPUTATIONAL_SIGNIFICANT_DISPLAY_LIMIT,
+    ComputationalSampleManifest,
     ComputationalResults,
     ComputationalTable,
     ReportRenderError,
+    SamplePair,
 )
 
 
@@ -59,6 +62,14 @@ _ROLE_SPECS = (
         "cmh_summary",
         "Step 09 computational-analysis summary",
         1,
+    ),
+    (
+        "mutation_spectrum",
+        "computational_mutation_spectrum",
+        "step09_mutation_spectrum_tsv_v1",
+        "mutation_spectrum",
+        "Step 09 canonical mutation spectrum",
+        len(step09.CANONICAL_MUTATIONS),
     ),
 )
 
@@ -173,9 +184,9 @@ def _select_records(
     reason = None
     if unavailable:
         reason = (
-            "The exact primary-analysis Step 09 result trio and owner-validation "
-            "artifact are not complete, so no computational candidate rows were "
-            "opened or displayed: " + "; ".join(unavailable) + "."
+            "The exact primary-analysis Step 09 result trio, mutation spectrum, "
+            "and owner-validation artifact are not complete, so no computational "
+            "candidate rows were opened or displayed: " + "; ".join(unavailable) + "."
         )
     return selected, reason
 
@@ -389,12 +400,96 @@ def _projection_table(
     )
 
 
+def _admit_sample_manifest(
+    summary: Mapping[str, Any],
+    summary_table: ComputationalTable,
+    sample_ids: Sequence[str],
+    *,
+    source_root: Path,
+) -> ComputationalSampleManifest:
+    summary_row = dict(
+        zip(summary_table.header, summary_table.display_rows[0], strict=True)
+    )
+    recorded_hash = summary_row["sample_manifest_sha256"]
+    try:
+        step08.validate_hash("Step 09 sample manifest SHA-256", recorded_hash)
+    except step08.ContractError as exc:
+        _fail(str(exc))
+    run_contract_hash = summary["run_contract"]["sample_manifest_sha256"]
+    if recorded_hash != run_contract_hash:
+        _fail("Step 09 sample manifest SHA-256 differs from the immutable run contract")
+    path = _resolve_contract_file(
+        summary_row["sample_manifest_path"],
+        "Step 09 sample manifest",
+        source_root=source_root,
+    )
+    snapshot = _snapshot_regular(path, "Step 09 sample manifest")
+    if snapshot.sha256 != recorded_hash:
+        _fail(
+            "Step 09 sample manifest SHA-256 mismatch: observed "
+            f"{snapshot.sha256}; expected {recorded_hash}"
+        )
+    try:
+        data = path.read_bytes()
+    except OSError as exc:
+        _fail(f"Could not read Step 09 sample manifest: {exc}")
+    if (
+        len(data) != snapshot.size_bytes
+        or hashlib.sha256(data).hexdigest() != snapshot.sha256
+    ):
+        _fail("Step 09 sample manifest changed while its bytes were admitted")
+    try:
+        _table, manifest_sample_ids, sample_rows = (
+            step08.validate_sample_manifest_bytes(data, path)
+        )
+    except (step08.ContractError, UnicodeError, csv.Error) as exc:
+        _fail(f"Step 09 sample manifest failed validation: {exc}")
+    if tuple(manifest_sample_ids) != tuple(sample_ids):
+        _fail(
+            "Step 09 sample manifest order differs from the admitted result-table "
+            "sample blocks"
+        )
+    control = summary_row["control_condition"]
+    treatment = summary_row["treatment_condition"]
+    try:
+        replicate_ids, pairs = step09.paired_samples(
+            sample_rows,
+            control,
+            treatment,
+        )
+    except step09.ContractError as exc:
+        _fail(f"Step 09 sample manifest pairing failed validation: {exc}")
+    if len(replicate_ids) != int(summary_row["replicate_count"]):
+        _fail(
+            "Step 09 sample manifest replicate count differs from the admitted summary"
+        )
+    _assert_snapshot(snapshot, "Step 09 sample manifest")
+    return ComputationalSampleManifest(
+        role="sample_manifest",
+        path=path,
+        sha256=snapshot.sha256,
+        size_bytes=snapshot.size_bytes,
+        sample_ids=tuple(manifest_sample_ids),
+        control_condition=control,
+        treatment_condition=treatment,
+        pairs=tuple(
+            SamplePair(
+                replicate=replicate,
+                control_sample_id=pairs[replicate][0],
+                treatment_sample_id=pairs[replicate][1],
+            )
+            for replicate in replicate_ids
+        ),
+        snapshot=snapshot,
+    )
+
+
 def admit_computational_results(
     summary: Mapping[str, Any],
     *,
     source_root: Path,
 ) -> tuple[ComputationalResults | None, str | None]:
-    """Admit the exact complete primary Step 09 trio, or disclose unavailability."""
+    """Admit the exact primary Step 09 report sources or disclose unavailability."""
 
     records, unavailable_reason = _select_records(summary)
     if unavailable_reason is not None:
@@ -407,7 +502,12 @@ def admit_computational_results(
     )
     admitted = {
         role: _admit_source_identity(records[role], source_root=source_root)
-        for role in ("all_sites", "significant_sites", "summary")
+        for role in (
+            "all_sites",
+            "significant_sites",
+            "summary",
+            "mutation_spectrum",
+        )
     }
     try:
         all_projection, significant_projection, summary_projection, sample_ids = (
@@ -416,6 +516,7 @@ def admit_computational_results(
                 admitted["significant_sites"][0],
                 admitted["summary"][0],
                 analysis_id,
+                mutation_spectrum=admitted["mutation_spectrum"][0],
             )
         )
     except (step09.ContractError, OSError, UnicodeError, csv.Error) as exc:
@@ -436,6 +537,11 @@ def admit_computational_results(
             summary_projection.path,
             summary_projection.header,
             len(summary_projection.rows),
+        ),
+        "mutation_spectrum": (
+            admitted["mutation_spectrum"][0],
+            step09.STEP09_MUTATION_HEADER,
+            len(step09.CANONICAL_MUTATIONS),
         ),
     }
     tables: dict[str, ComputationalTable] = {}
@@ -458,6 +564,12 @@ def admit_computational_results(
             table.snapshot,
             f"computational result {records[role]['artifact_id']!r}",
         )
+    sample_manifest = _admit_sample_manifest(
+        summary,
+        tables["summary"],
+        sample_ids,
+        source_root=source_root,
+    )
     return (
         ComputationalResults(
             analysis_id=analysis_id,
@@ -466,6 +578,8 @@ def admit_computational_results(
             all_sites=tables["all_sites"],
             significant_sites=tables["significant_sites"],
             summary=tables["summary"],
+            mutation_spectrum=tables["mutation_spectrum"],
+            sample_manifest=sample_manifest,
         ),
         None,
     )

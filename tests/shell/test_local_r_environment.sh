@@ -61,7 +61,7 @@ grep -Fq '"Version": "4.6.1"' renv.lock ||
 grep -Fq '"Version": "3.23"' renv.lock ||
     fail "renv lockfile does not record Bioconductor 3.23"
 for package_name in \
-    VariantAnnotation GenomicRanges IRanges S4Vectors \
+    VariantAnnotation Biostrings GenomicRanges IRanges Rsamtools S4Vectors \
     SummarizedExperiment GenomeInfoDb BiocGenerics rtracklayer; do
     grep -Fq "\"$package_name\":" renv.lock ||
         fail "renv lockfile is missing $package_name"
@@ -167,11 +167,12 @@ FAKE_R_LOG="$fake_log" make \
 FAKE_R_LOG="$fake_log" make \
     RSCRIPT_BIN="$fake_rscript" \
     RENV_LIBRARY="$fake_renv_library" \
+    NORAD_TEST_FAKE_SCIENTIFIC_CONTEXT_R=1 \
     local-real-r-test >/dev/null
 
 line_count="$(wc -l <"$fake_log" | tr -d ' ')"
-[[ "$line_count" -eq 7 ]] ||
-    fail "expected seven guarded fake-R invocations, found $line_count"
+[[ "$line_count" -eq 8 ]] ||
+    fail "expected eight guarded fake-R invocations, found $line_count"
 
 while IFS= read -r line; do
     [[ "$line" == NORAD_USE_RENV=1$'\t'* ]] ||
@@ -207,6 +208,8 @@ grep -Fq 'tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preproces
     fail "local-real-r-test did not run Step 08 fixtures"
 grep -Fq 'tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.R' "$fake_log" ||
     fail "local-real-r-test did not run Step 09 fixtures"
+[[ "$(grep -Fc 'scientific_context_projection.R --help' "$fake_log")" -eq 1 ]] ||
+    fail "local-real-r-test did not log exactly one Step 10 R invocation"
 
 if make \
     RSCRIPT_BIN="$tmp/missing-rscript" \

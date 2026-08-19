@@ -3,7 +3,7 @@
 This document is the binding architecture for NORAD's first local Snakemake
 pilot. B2 implements its closed machine schemas, read-only request normalizer,
 reporting projection, and semantic all-pass checker. B3 implements the fixed
-local-CMH profile, static thirteen-scientific-owner-rule Snakemake graph, local executor profile,
+local-CMH profile, static fourteen-scientific-owner-rule Snakemake graph, local executor profile,
 and generic task boundary that publishes task attempts and content-bound
 verified records. B4 implements the three reporting rules and the
 internal durable producer-entry, immutable-attempt, terminal-receipt,
@@ -82,15 +82,19 @@ The only selected profile is the current paired-CMH workflow:
 - reference preparation through historical `00a`, `00b`, and `00c`;
 - per-sample compute through `01`, `02`, `04`, `05`, and `06`;
 - automatic per-sample evidence `02b` and `03`;
-- cohort/analysis work through `07`, `08`, and `09`;
+- cohort/analysis work through `07`, `08`, `09`, and the post-Step09
+  scientific-context projection `10`;
 - artifact indexing, canonical run-summary assembly, and separate
   self-contained scientific and evidence HTML reports.
 
 The `02b` and `03` evidence branches do not gate downstream scientific compute,
-but the local profile requires them before workflow completion. The profile
-ends at Step `09`; biological review and interpretation are not owner tasks,
-artifacts, or completion states. Step `09`'s two diagnostic PDFs remain native
-analysis artifacts; this does not reintroduce a PDF report format.
+but the local profile requires them before workflow completion. Step `10`
+projects the completed Step `09` candidate transaction onto one exact indexed
+reference and one registered PUM motif; it does not reopen alignments, alter
+candidate calls, discover motifs, or perform biological review. Biological
+review and interpretation are not owner tasks, artifacts, or completion
+states. Step `09`'s two diagnostic PDFs remain native analysis artifacts; this
+does not reintroduce a PDF report format.
 
 The first pilot uses only public owner commands and a clean admitted source
 checkout. It imports no peer-private Python implementation. Repository shell
@@ -281,7 +285,7 @@ root distinct from the admitted source checkout: the run root resolves
 relative inventory paths, while checkout authority continues to bind producer
 and renderer code. A workflow may not force the operator workspace beneath the
 Git checkout to collapse those authorities.
-The profile projects only current computational artifacts through Step `09`.
+The profile projects current computational artifacts through Step `10`.
 Successful reporting transactions do not create biological evidence, and the
 run-summary state or required-missing count is not the workflow completion
 Boolean.

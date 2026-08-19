@@ -186,6 +186,39 @@ pre {
   max-width: 100%;
 }
 
+.scientific-figure {
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  margin: 1.25rem 0;
+  max-width: 100%;
+  padding: 0.8rem 1rem;
+}
+
+.scientific-figure h3 {
+  margin-top: 0;
+}
+
+.scientific-figure-image {
+  display: block;
+  height: auto;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+.scientific-figure figcaption {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 0.75rem;
+}
+
+.figure-summary {
+  margin-bottom: 0;
+}
+
+.figure-unavailable {
+  margin: 0;
+}
+
 .artifact-legend {
   display: flex;
   flex-wrap: wrap;
@@ -259,5 +292,9 @@ pre {
 
   .norad-table {
     font-size: 8pt;
+  }
+
+  .scientific-figure {
+    break-inside: avoid;
   }
 }

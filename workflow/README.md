@@ -48,7 +48,7 @@ state, recovery, and resume rules.
 
 ## Fixed projection
 
-The Snakefile projects thirteen executable scientific and evidence owners.
+The Snakefile projects fourteen executable scientific and evidence owners.
 Steps `02b` and `03` are required evidence leaves of a complete run but do not
 gate downstream scientific computation. After the owner graph completes, the
 workflow runs the artifact-index, run-summary, and report transactions in

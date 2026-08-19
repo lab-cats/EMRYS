@@ -10,8 +10,12 @@ from .models import (
     BOUNDARY_BANNER,
     CANDIDATE_TERMINOLOGY,
     COMPUTATIONAL_STATUS_FIELDS,
+    SCIENTIFIC_FIGURE_IDS,
     ComputationalResults,
     ComputationalTable,
+    ReportRenderError,
+    ScientificContextResults,
+    ScientificFigure,
 )
 
 
@@ -63,6 +67,38 @@ def _empty(message: str) -> dict[str, Any]:
 
 def _note(message: str, *, notice: bool = False) -> dict[str, Any]:
     return {"kind": "note", "message": message, "notice": notice}
+
+
+def _ordered_scientific_figures(
+    figures: Sequence[ScientificFigure],
+) -> tuple[ScientificFigure, ...]:
+    ordered = tuple(figures)
+    observed_ids = tuple(figure.figure_id for figure in ordered)
+    if observed_ids != SCIENTIFIC_FIGURE_IDS:
+        raise ReportRenderError(
+            "Scientific figures must use the fixed ordered roster: "
+            + ", ".join(SCIENTIFIC_FIGURE_IDS)
+        )
+    return ordered
+
+
+def _scientific_figure_blocks(
+    figures: Sequence[ScientificFigure],
+) -> tuple[dict[str, Any], ...]:
+    return tuple(
+        {
+            "kind": "scientific_figure",
+            "id": figure.figure_id,
+            "title": figure.title,
+            "status": figure.status,
+            "data_uri": figure.data_uri,
+            "alt_text": figure.alt_text,
+            "text_summary": figure.text_summary,
+            "caption": figure.caption,
+            "unavailable_reason": figure.unavailable_reason,
+        }
+        for figure in _ordered_scientific_figures(figures)
+    )
 
 
 _COMPUTATIONAL_RESULT_COLUMNS = (
@@ -130,7 +166,7 @@ def _scientific_result_blocks(
             _empty(
                 unavailable_reason
                 or (
-                    "The exact complete primary-analysis Step 09 result trio is "
+                    "The exact complete primary-analysis Step 09 source bundle is "
                     "not available. No computational candidate row was inferred."
                 )
             ),
@@ -255,19 +291,113 @@ def _step09_sources(
         )
     return _table(
         "step09-source-records",
-        "Exact completed Step 09 sources admitted for report generation",
+        "Exact completed Step 09 sources and its hash-bound sample manifest "
+        "admitted for report generation",
         ("Role", "Artifact ID", "Source path", "SHA-256", "Bytes", "Rows"),
         (
+            *(
+                (
+                    table.role,
+                    table.artifact_id,
+                    table.path,
+                    table.sha256,
+                    table.size_bytes,
+                    table.row_count,
+                )
+                for table in results.tables
+            ),
             (
-                table.role,
-                table.artifact_id,
-                table.path,
-                table.sha256,
-                table.size_bytes,
-                table.row_count,
-            )
-            for table in results.tables
+                results.sample_manifest.role,
+                "Step 09 summary-bound input",
+                results.sample_manifest.path,
+                results.sample_manifest.sha256,
+                results.sample_manifest.size_bytes,
+                len(results.sample_manifest.sample_ids),
+            ),
         ),
+    )
+
+
+def _scientific_context_sources(
+    results: ScientificContextResults | None,
+    unavailable_reason: str | None,
+) -> dict[str, Any]:
+    if results is None:
+        return _empty(
+            unavailable_reason
+            or "The complete primary-analysis Step 10 source set is unavailable."
+        )
+    return _table(
+        "step10-source-records",
+        "Exact completed Step 10 records and every receipt-bound input admitted "
+        "for report generation",
+        ("Role", "Artifact ID", "Source path", "SHA-256", "Bytes", "Rows"),
+        (
+            *(
+                (
+                    table.role,
+                    table.artifact_id,
+                    table.path,
+                    table.sha256,
+                    table.size_bytes,
+                    table.row_count,
+                )
+                for table in results.tables
+            ),
+            *(
+                (
+                    source.role,
+                    source.artifact_id,
+                    source.path,
+                    source.sha256,
+                    source.size_bytes,
+                    source.row_count,
+                )
+                for source in results.bound_inputs
+            ),
+        ),
+    )
+
+
+def _scientific_context_policy(
+    results: ScientificContextResults | None,
+    unavailable_reason: str | None,
+) -> dict[str, Any]:
+    if results is None:
+        return _empty(
+            unavailable_reason
+            or "No Step 10 receipt policy is available for this report."
+        )
+    receipt = results.receipt_metadata
+    fields = (
+        ("Scientific-context schema", "scientific_context_schema_version"),
+        ("Orientation policy", "context_orientation_policy"),
+        ("Context radius", "context_radius"),
+        ("Logo radius", "logo_radius"),
+        ("Display limit", "display_limit"),
+        ("Motif match policy", "motif_match_policy"),
+        ("Motif distance policy", "motif_distance_policy"),
+        ("Motif distance-bin width", "motif_distance_bin_width"),
+        ("Foreground", "foreground_population"),
+        ("Comparison background", "background_population"),
+        ("Separate population", "separate_population"),
+        ("Foreground minimum", "foreground_minimum_count"),
+        ("Background minimum", "background_minimum_count"),
+        ("Separate-population minimum", "separate_minimum_count"),
+        ("Enrichment test", "enrichment_test"),
+        ("Enrichment alternative", "enrichment_alternative"),
+        ("Multiple-testing method", "multiple_testing_method"),
+        ("Producer", "producer"),
+        ("Producer version", "producer_version"),
+        ("R version", "r_version"),
+        ("Biostrings version", "biostrings_version"),
+        ("Rsamtools version", "rsamtools_version"),
+        ("Producer Git commit", "git_commit"),
+    )
+    return _key_value_table(
+        "step10-policy-record",
+        "Receipt-bound scientific-context policies and software",
+        ((label, receipt[field]) for label, field in fields),
     )
 
 
@@ -644,11 +774,57 @@ def _report_provenance(metadata: Mapping[str, str]) -> dict[str, Any]:
             ("Run-summary input SHA-256", metadata["run_summary_sha256"]),
             ("Renderer", f"{metadata['renderer']} {metadata['renderer_version']}"),
             ("Jinja2 version", metadata["jinja_version"]),
+            (
+                "Figure renderer",
+                f"{metadata['figure_renderer']} {metadata['figure_renderer_version']}",
+            ),
+            (
+                "Logo renderer",
+                f"{metadata['logo_renderer']} {metadata['logo_renderer_version']}",
+            ),
+            ("Figure format", metadata["figure_format"]),
+            ("Figure policy version", metadata["figure_policy_version"]),
             ("HTML template", metadata["template_path"]),
             ("HTML template SHA-256", metadata["template_sha256"]),
             ("CSS resource", metadata["css_path"]),
             ("CSS resource SHA-256", metadata["css_sha256"]),
         ),
+    )
+
+
+def _scientific_figure_provenance(
+    figures: Sequence[ScientificFigure],
+) -> dict[str, Any]:
+    ordered = _ordered_scientific_figures(figures)
+    rows = tuple(
+        (
+            figure.figure_id,
+            figure.status,
+            ", ".join(figure.input_roles),
+            figure.mapping,
+            figure.population,
+            figure.svg_sha256 or "Not applicable",
+            figure.svg_size_bytes
+            if figure.svg_size_bytes is not None
+            else "Not applicable",
+            figure.unavailable_reason or "None",
+        )
+        for figure in ordered
+    )
+    return _table(
+        "scientific-figure-provenance",
+        "Fixed scientific-figure inputs, mappings, outputs, and availability",
+        (
+            "Figure ID",
+            "Status",
+            "Input roles",
+            "Mapping",
+            "Population",
+            "SVG SHA-256",
+            "SVG bytes",
+            "Unavailable reason",
+        ),
+        rows,
     )
 
 
@@ -683,6 +859,7 @@ def build_scientific_view(
     summary: Mapping[str, Any],
     metadata: Mapping[str, str],
     *,
+    scientific_figures: Sequence[ScientificFigure],
     computational_results: ComputationalResults | None = None,
     computational_unavailable_reason: str | None = None,
 ) -> dict[str, Any]:
@@ -719,6 +896,11 @@ def build_scientific_view(
                         ),
                     },
                     {
+                        "id": "scientific-figures-section",
+                        "title": "Scientific figures",
+                        "blocks": _scientific_figure_blocks(scientific_figures),
+                    },
+                    {
                         "id": "key-qc-section",
                         "title": "Selected exact sample QC",
                         "blocks": (_key_qc(summary),),
@@ -733,8 +915,11 @@ def build_evidence_view(
     summary: Mapping[str, Any],
     metadata: Mapping[str, str],
     *,
+    scientific_figures: Sequence[ScientificFigure],
     computational_results: ComputationalResults | None = None,
     computational_unavailable_reason: str | None = None,
+    scientific_context_results: ScientificContextResults | None = None,
+    scientific_context_unavailable_reason: str | None = None,
 ) -> dict[str, Any]:
     """Build the operational evidence and provenance view without candidate rows."""
 
@@ -790,11 +975,19 @@ def build_evidence_view(
                 "sections": (
                     {
                         "id": "step09-sources-section",
-                        "title": "Step 09 report sources",
+                        "title": "Scientific report sources",
                         "blocks": (
                             _step09_sources(
                                 computational_results,
                                 computational_unavailable_reason,
+                            ),
+                            _scientific_context_sources(
+                                scientific_context_results,
+                                scientific_context_unavailable_reason,
+                            ),
+                            _scientific_context_policy(
+                                scientific_context_results,
+                                scientific_context_unavailable_reason,
                             ),
                         ),
                     },
@@ -828,7 +1021,10 @@ def build_evidence_view(
                     {
                         "id": "report-provenance-section",
                         "title": "Report provenance",
-                        "blocks": (_report_provenance(metadata),),
+                        "blocks": (
+                            _report_provenance(metadata),
+                            _scientific_figure_provenance(scientific_figures),
+                        ),
                     },
                 ),
             },

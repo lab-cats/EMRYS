@@ -598,10 +598,12 @@ completion proof.
 
 ### Read the computational results
 
-The scientific report presents the admitted computational results and their
-evidence boundary; it does not turn a threshold-passing row into a validated
-editing site. The [reporting owner](src/norad/reporting/README.md) defines the
-two views, source admission, display limits, and direct build transaction. The
+The scientific report presents the admitted computational results and its fixed
+eight-figure views of candidates, editing rates, locations, sequence context,
+the registered PUM motif, and sample behavior; it does not turn a threshold-
+passing row into a validated editing site. The
+[reporting owner](src/norad/reporting/README.md) defines the two views, source
+admission, display and figure policy, and direct build transaction. The
 [Step 09 owner](src/norad/analyses/paired_cmh_candidate_ranking/README.md)
 defines the complete native scientific tables and field semantics.
 

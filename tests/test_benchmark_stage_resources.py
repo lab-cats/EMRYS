@@ -60,7 +60,10 @@ def _read_tsv(path: Path) -> list[dict[str, str]]:
 @pytest.mark.parametrize(
     ("document", "message"),
     (
-        ({"schema_version": BENCHMARK.SCHEMA_VERSION}, "keys must include"),
+        (
+            {"schema_version": BENCHMARK.SCHEMA_VERSION},
+            "Benchmark manifest keys must be schema_version and cases",
+        ),
         ({"schema_version": "wrong", "cases": [_case()]}, "schema_version must be"),
         (
             {"schema_version": BENCHMARK.SCHEMA_VERSION, "cases": []},

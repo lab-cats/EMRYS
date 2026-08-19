@@ -89,6 +89,14 @@ def publication_paths(output: Path) -> dict[str, Path]:
     }
 
 
+def synthetic_mount_identity(path: Path) -> dict[str, str]:
+    return {
+        "mount_point": path.anchor,
+        "filesystem_type": "synthetic-test-filesystem",
+        "filesystem_source": "synthetic-test-device",
+    }
+
+
 def test_dry_run_is_side_effect_free(tmp_path: Path) -> None:
     roots, policy, _ = contracts(tmp_path)
     output = tmp_path / "missing"
@@ -356,10 +364,41 @@ def test_characterizes_storage_incomplete_rollback_gap(
     assert not list(output.glob("*.RECOVERY.txt"))
 
 
+def test_linux_mount_identity_selects_deepest_mount_and_decodes_escapes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    mountinfo = (
+        "24 1 8:1 / / rw,relatime - ext4 /dev/root rw\n"
+        "25 24 0:42 / /mnt/research\\040project rw - nfs4 server:/research rw\n"
+        "26 25 0:43 / /mnt/research\\040project/run rw - lustre "
+        "server:/run\\040source\\134volume rw\n"
+    )
+
+    def read_mountinfo(path: Path, *, encoding: str | None = None) -> str:
+        assert path == Path("/proc/self/mountinfo")
+        assert encoding == "utf-8"
+        return mountinfo
+
+    monkeypatch.setattr(Path, "read_text", read_mountinfo)
+
+    assert qualification._mount_identity(
+        Path("/mnt/research project/run/output")
+    ) == {
+        "mount_point": "/mnt/research project/run",
+        "filesystem_type": "lustre",
+        "filesystem_source": "server:/run source\\volume",
+    }
+
+
 def test_two_phase_storage_qualification_is_durable_and_read_only_to_doctor(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(
+        qualification,
+        "_mount_identity",
+        synthetic_mount_identity,
+    )
     workspace = tmp_path / "workspace"
     reference_root = tmp_path / "reference"
     reference_root.mkdir()
@@ -397,6 +436,11 @@ def test_storage_finalize_refuses_missing_post_allocation_probe(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr(
+        qualification,
+        "_mount_identity",
+        synthetic_mount_identity,
+    )
     workspace = tmp_path / "workspace"
     reference_root = tmp_path / "reference"
     reference_root.mkdir()

@@ -312,6 +312,11 @@ AUTOMATIC_TASKS = {
         "analysis",
         "analysis",
     ),
+    "project_candidate_scientific_context": (
+        "norad.analysis.project_candidate_scientific_context.v1",
+        "analysis",
+        "analysis",
+    ),
 }
 
 
@@ -1041,5 +1046,19 @@ rule rank_cohort_candidates_with_paired_CMH:
         python=PYTHON,
         dispatch=_dispatch(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID),
         dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID)
+    shell:
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+
+
+rule project_candidate_scientific_context:
+    input:
+        candidate_ranking=_verified(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID),
+        reference_sidecars=_verified(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+    output:
+        _verified(AUTOMATIC_TASKS["project_candidate_scientific_context"][0], ANALYSIS_ID)
+    params:
+        python=PYTHON,
+        dispatch=_dispatch(AUTOMATIC_TASKS["project_candidate_scientific_context"][0], ANALYSIS_ID),
+        dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["project_candidate_scientific_context"][0], ANALYSIS_ID)
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"

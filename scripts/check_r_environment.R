@@ -51,6 +51,8 @@ required_packages <- c(
     "VariantAnnotation",
     "GenomicRanges",
     "IRanges",
+    "Biostrings",
+    "Rsamtools",
     "S4Vectors",
     "SummarizedExperiment",
     "GenomeInfoDb",
@@ -77,17 +79,11 @@ project_root <- normalizePath(
     winslash = "/",
     mustWork = TRUE
 )
-active_project <- normalizePath(
-    renv::project(),
-    winslash = "/",
-    mustWork = TRUE
-)
-if (!identical(active_project, project_root)) {
+active_project <- renv::project()
+if (!is.null(active_project)) {
     stop(
-        "The active renv project does not match RENV_PROJECT: active=",
-        active_project,
-        "; requested=",
-        project_root
+        "The non-bootstrapping R check unexpectedly activated an renv project: ",
+        active_project
     )
 }
 

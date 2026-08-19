@@ -39,6 +39,7 @@ REPOSITORY_OWNING_JOBS = frozenset(
         "step_07_bcftools_mpileup_by_chrom_and_strand.slurm",
         "step_08_vcf_preprocessing.slurm",
         "step_09_cmh_editing_site_calling.slurm",
+        "scientific_context_projection.slurm",
     }
 )
 CHECKOUT_HELPERS = (
@@ -356,7 +357,7 @@ def test_inventory_and_contract_decisions_cover_every_live_wrapper() -> None:
     assert live_flat_jobs == expected_flat_jobs
     assert set(JOB_PATHS) == set(CONTRACTS) == set(SBATCH_DIRECTIVES)
     assert all(job_path(name).is_file() for name in CONTRACTS)
-    assert len(set(JOB_PATHS.values())) == len(CONTRACTS) == 15
+    assert len(set(JOB_PATHS.values())) == len(CONTRACTS) == 16
     assert {
         name
         for name, contract in CONTRACTS.items()

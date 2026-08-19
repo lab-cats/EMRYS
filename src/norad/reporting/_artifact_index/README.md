@@ -51,6 +51,15 @@ path/hash/adapter/sample-order graph, and artifact-state failure propagation;
 it does not replay upstream, paired-sample CMH, global BH, PDF, R-producer, or
 independent-oracle work.
 
+[`reconcile_step10.py`](reconcile_step10.py) delegates the complete receipt-
+last scientific-context transaction to
+`scientific_context.validate_scientific_context_transaction`. Artifact
+indexing retains exact adapter/inventory selection and binds the receipt's
+Step `09` trio, FASTA/FAI, and four output paths, hashes, and row counts to the
+declared graph. Reference extraction, motif matching, logo/statistic
+reconciliation, and display selection remain canonical contract or producer
+work rather than a second artifact-index implementation.
+
 Artifact inspection enforces common validation-report structure, safe unique
 check IDs, step, scope, and status, but does not yet enforce each producer's
 exact ordered check roster. A structurally plausible report with a missing,

@@ -1,11 +1,12 @@
 DEMO_REPORT_RUN_ID := synthetic_run
 DEMO_REPORT_FIXTURE_ROOT := $(DEMO_REPORT_ROOT)/full-run-fixture
-DEMO_REPORT_ARTIFACT_ROOT := $(DEMO_REPORT_FIXTURE_ROOT)/artifacts
+DEMO_REPORT_ARTIFACT_ROOT := $(DEMO_REPORT_FIXTURE_ROOT)/adapter_fixture/artifacts
 DEMO_REPORT_OUTPUT_ROOT := $(DEMO_REPORT_ROOT)/reports
 
 report-test:
 	"$(REPORT_PYTHON_BIN)" -m pytest \
 		tests/reporting/test_artifact_run_summary.py \
+		tests/reporting/test_figures.py \
 		tests/reporting/test_report.py \
 		tests/reporting/test_transaction_validation.py
 
@@ -16,7 +17,7 @@ demo-report:
 		exit 1; \
 	}
 	"$(REPORT_PYTHON_BIN)" -c \
-		'import jinja2, jsonschema' || { \
+		'import importlib.metadata, jinja2, jsonschema; assert importlib.metadata.version("matplotlib") == "3.11.1"; assert importlib.metadata.version("logomaker") == "0.8.7"' || { \
 		printf 'ERROR: report Python dependencies are unavailable: %s\n' \
 			"$(REPORT_PYTHON_BIN)" >&2; \
 		exit 1; \

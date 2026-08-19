@@ -88,6 +88,14 @@ SCOPE_ADAPTER_ROSTERS: dict[str, Counter[str]] = {
         "step09_depth_delta_pdf_v1",
         "step09_validation_report_v1",
     ),
+    "10": roster(
+        "step10_candidate_context_v1",
+        "step10_motif_hits_v1",
+        "step10_sequence_logo_v1",
+        "step10_motif_statistics_v1",
+        "step10_context_receipt_v1",
+        "step10_validation_report_v1",
+    ),
 }
 
 STEP_PRODUCERS = {
@@ -117,5 +125,9 @@ STEP_PRODUCERS = {
     "09": (
         "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh"
+    ),
+    "10": (
+        "src/norad/analyses/scientific_context_projection/"
+        "scientific_context_projection.sh"
     ),
 }

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from functools import partial
 
-from norad.contracts.scientific_evidence import step08, step09
+from norad.contracts.scientific_evidence import scientific_context, step08, step09
 from norad.libraries.alignments import orientation as alignment_orientation
 
 from .models import (
@@ -300,6 +300,45 @@ def build_adapter_registry() -> dict[str, AdapterSpec]:
             suffixes=(suffix,),
         )
     add_validation_report(registry, "09", "analysis", exact_data_rows=7)
+    for adapter_id, suffix, header in (
+        (
+            "step10_candidate_context_v1",
+            ".candidate_context.tsv",
+            scientific_context.CANDIDATE_CONTEXT_HEADER,
+        ),
+        (
+            "step10_motif_hits_v1",
+            ".motif_hits.tsv",
+            scientific_context.MOTIF_HITS_HEADER,
+        ),
+        (
+            "step10_sequence_logo_v1",
+            ".sequence_logo.tsv",
+            scientific_context.SEQUENCE_LOGO_HEADER,
+        ),
+        (
+            "step10_motif_statistics_v1",
+            ".motif_statistics.tsv",
+            scientific_context.MOTIF_STATISTICS_HEADER,
+        ),
+    ):
+        add_analysis(
+            adapter_id,
+            "10",
+            "tsv",
+            suffixes=(suffix,),
+            expected_header=header,
+        )
+    add_analysis(
+        "step10_context_receipt_v1",
+        "10",
+        "tsv",
+        suffixes=(".context_receipt.tsv",),
+        expected_header=scientific_context.SCIENTIFIC_CONTEXT_RECEIPT_HEADER,
+        exact_data_rows=1,
+        allow_header_only=False,
+    )
+    add_validation_report(registry, "10", "analysis", exact_data_rows=1)
     return registry
 
 

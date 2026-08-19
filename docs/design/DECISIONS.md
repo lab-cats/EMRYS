@@ -42,6 +42,10 @@ Detailed rationale:
   evidence distinct. Missing and failed expected evidence remains visible.
 - Reporting consumes explicit versioned computational artifacts; it
   never discovers inputs, reruns analysis, installs tools, or promotes state.
+- Scientific HTML figures use the locked private Matplotlib/Logomaker renderer
+  only for deterministic presentation of admitted scientific records. Figure
+  provenance stays in the evidence HTML; existing owner-generated scientific
+  PDFs remain native analysis artifacts.
 
 ## Scientific pipeline
 
@@ -59,6 +63,13 @@ Detailed rationale: [`scientific-pipeline.md`](decisions/scientific-pipeline.md)
 - Pair Step `09` only through explicit replicate metadata and use the declared
   paired CMH method with one global BH family. Results are CMH-ranked
   candidates, not validated editing sites.
+- Project report-ready sequence and known-motif context in one bounded
+  post-Step09 owner. Version 1 uses mechanically RNA-change-oriented continuous
+  genomic windows, one registered `PUM_UGUANA`/`TGTANA` model, significant-up
+  foreground, tested non-significant background, two-sided Fisher enrichment,
+  no single-model BH value, and upstream-owned deterministic top-eight display
+  ranks. These are context projections, not editing, binding, or biological
+  validation.
 
 ## Architecture
 

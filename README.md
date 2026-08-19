@@ -2,7 +2,8 @@
 
 NORAD is an evidence-bound workflow for paired-end RNA-seq alignment, QC,
 mechanical read-orientation partitioning, cohort mpileup, candidate annotation,
-and paired CMH ranking. You provide declared reads, a matching FASTA/GTF
+paired CMH ranking, and bounded sequence/motif context projection. You provide
+declared reads, a matching FASTA/GTF
 reference, paired experimental strata, genomic partitions, analysis thresholds,
 and exact scientific-tool identities. NORAD produces validated native outputs,
 an immutable task history, a deterministic artifact index, a machine-readable
@@ -39,15 +40,16 @@ artifacts, or completion states.
 | `07` | Each partition | Run cohort bcftools mpileup for both mechanical groups. | Two VCFs and a bound receipt |
 | `08` | Cohort | Normalize SNV candidates, attach per-sample counts and GTF overlaps. | Candidate, input-receipt, and QC tables |
 | `09` | Analysis | Perform paired two-sided CMH tests and global BH correction. | All-sites, significant-sites, summary, spectrum, and plots |
+| `10` | Analysis | Project fixed Step `09` calls onto an indexed reference and registered PUM motif. | Candidate context, motif hits, logo frequencies, motif statistics, and receipt |
 | Reporting | Run | Index artifacts, assemble the run summary, and render both report views. | Scientific HTML, evidence/provenance HTML, summary TSV, and receipt-last publication |
 
 Steps `02b` and `03` are required QC leaves but do not gate downstream
 scientific computation. External review or adjudication may use NORAD's
 computational outputs and provenance, but it is not part of `norad run`.
 
-The fixed graph contains `3 + 7S + P + 2` scientific-owner jobs for `S`
+The fixed graph contains `3 + 7S + P + 3` scientific-owner jobs for `S`
 samples and `P` genomic partitions. The four-sample, one-partition starter
-therefore expands to 34 jobs, followed by three reporting transactions.
+therefore expands to 35 jobs, followed by three reporting transactions.
 
 ## Supported execution boundary
 

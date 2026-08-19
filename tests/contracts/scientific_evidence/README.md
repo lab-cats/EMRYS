@@ -1,7 +1,7 @@
 # Scientific-evidence contract tests
 
 This directory protects neutral contracts for cohort-candidate preprocessing
-inputs/outputs and paired-CMH candidate results, summaries, and derivative
+inputs/outputs, paired-CMH candidate results, and post-Step09 scientific-context
 tables. It covers public identities, literal headers and vocabularies, parsing,
 reconciliation behavior, and rejection paths. The
 [scientific-evidence owner](../../../src/norad/contracts/scientific_evidence/README.md)

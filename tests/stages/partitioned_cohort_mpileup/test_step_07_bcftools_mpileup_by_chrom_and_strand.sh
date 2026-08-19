@@ -1165,7 +1165,7 @@ assert_contains "$partial_dir/cohort_partial.1.FWD_like.mpileup.vcf" "existing"
 
 primary_partitions="$repo_root/configs/step_07_partitions.primary_contigs.tsv"
 pilot_partitions="$repo_root/configs/step_07_partitions.pilot.tsv"
-assert_contains "$job" "configs/step_07_partitions.primary_contigs.tsv"
+assert_contains "$job" ': "${PARTITION_MANIFEST:?PARTITION_MANIFEST is required}"'
 [[ "$(awk 'END { print NR }' "$primary_partitions")" == "26" ]] ||
     fail "Primary-contig manifest must declare 25 partitions plus its header"
 assert_contains "$primary_partitions" $'MT\tregion\tMT'

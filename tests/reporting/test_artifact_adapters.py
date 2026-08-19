@@ -38,62 +38,37 @@ GIT_ROUTING_VARIABLES = (
     "GIT_WORK_TREE",
     "GIT_FUTURE_ROUTING",
 )
-EXPECTED_PRODUCER_EVIDENCE = {
-    "00a": (
-        "src/norad/stages/star_index/step_00a_build_star_index.sh",
-        "f236c627a385a8fea7b40cfc58ff847d8ec1adfd8e7bb7e0879f0783e600f9f5",
-    ),
-    "00b": (
-        "src/norad/stages/gtf_to_bed12/converter.py",
-        "835e05e459cc58b3e242a0917bfc2d8d8965f6f386576bee79fd875501f08cdc",
-    ),
-    "00c": (
-        "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
-        "74cba26b9bc033b05a94930ecbb22ca88dd147454feb0e831bb656f2951653f7",
-    ),
-    "01": (
-        "src/norad/stages/star_alignment/step_01_star_align.sh",
-        "85c8f25315340899d3d58df886c3b5ea6c6c727281ef1e59a982e3154148f22e",
-    ),
-    "02": (
-        "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh",
-        "86ffe540175ac58214c91ec3e16bb584dc945221534276a300881435c90e5a41",
-    ),
-    "02b": (
-        "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
-        "f06e0008b8e38f3485a8bb9882a0bd09c6bf540e010d8f4d51121777159566ad",
-    ),
+EXPECTED_PRODUCER_PATHS = {
+    "00a": "src/norad/stages/star_index/step_00a_build_star_index.sh",
+    "00b": "src/norad/stages/gtf_to_bed12/converter.py",
+    "00c": "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
+    "01": "src/norad/stages/star_alignment/step_01_star_align.sh",
+    "02": "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh",
+    "02b": "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
     "03": (
         "src/norad/evidence/rseqc_orientation/"
-        "step_03_infer_strandedness_and_orientation.sh",
-        "099c256ec196989df524e86d5dcb9ee36221eb28fd1c20dd21ecb62a0b674c19",
+        "step_03_infer_strandedness_and_orientation.sh"
     ),
-    "04": (
-        "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
-        "ad67d6e4c6e5e5455dcb41c4f20ab92c7385cc22198b3c5002fb5d5d34b3ba5d",
-    ),
-    "05": (
-        "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
-        "67e08352a328b710c8e6ba81ce116fef4acd077e27a5d7370678e7962b172fc5",
-    ),
+    "04": "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
+    "05": "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
     "06": (
         "src/norad/stages/mechanical_orientation/"
-        "step_06_split_bam_by_read_orientation.sh",
-        "c14c14c8e11a25c4f5ca1287e2707ddb53c686cbf0e640395f3ebbcf46f9e51e",
+        "step_06_split_bam_by_read_orientation.sh"
     ),
     "07": (
         "src/norad/stages/partitioned_cohort_mpileup/"
-        "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
-        "a9de3547a259d608cb63a34078c007dd8004d87ad025eceaa70ce2f83aebc028",
+        "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
     "08": (
-        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
-        "7327e013dab2591a58628af744c9e04a60368f32e042f85b65ca6e0313555f74",
+        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
     ),
     "09": (
         "src/norad/analyses/paired_cmh_candidate_ranking/"
-        "step_09_cmh_editing_site_calling.sh",
-        "5fb74325467541fa830e53ecd38f150d5c94511259d9915bc65074496c3be5c8",
+        "step_09_cmh_editing_site_calling.sh"
+    ),
+    "10": (
+        "src/norad/analyses/scientific_context_projection/"
+        "scientific_context_projection.sh"
     ),
 }
 VALIDATION_ARTIFACT_STEPS = {
@@ -110,6 +85,7 @@ VALIDATION_ARTIFACT_STEPS = {
     "cohort.synthetic.p1.validation": "07",
     "cohort.synthetic.step08_validation": "08",
     "analysis.synthetic.cmh_validation": "09",
+    "analysis.synthetic.context_validation": "10",
 }
 
 
@@ -272,24 +248,24 @@ def test_fixture_covers_exact_tracked_inventory_and_adapter_registry(
 ) -> None:
     rows = artifact_fixture.inventory_rows
 
-    assert len(rows) == 68
+    assert len(rows) == 74
     assert [row["artifact_id"] for row in rows] == [
         row["artifact_id"] for row in FIXTURE.read_inventory_template()
     ]
     assert {row["adapter"] for row in rows} == set(ARTIFACT_REGISTRY.ADAPTER_REGISTRY)
-    assert len(artifact_fixture.source_paths) == 68
+    assert len(artifact_fixture.source_paths) == 74
     assert all(path.is_file() for path in artifact_fixture.source_paths.values())
     assert not artifact_fixture.output_root.exists()
 
 
-def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes() -> None:
+def test_migrated_implementation_evidence_uses_final_paths_and_current_bytes() -> None:
     git_commit = "a" * 40
 
     evidence = ARTIFACT_RECORDS.producer_evidence(git_commit)
 
-    assert tuple(evidence) == tuple(EXPECTED_PRODUCER_EVIDENCE)
-    assert tuple(ARTIFACT_ROSTERS.STEP_PRODUCERS) == tuple(EXPECTED_PRODUCER_EVIDENCE)
-    for step_id, (expected_path, expected_sha256) in EXPECTED_PRODUCER_EVIDENCE.items():
+    assert tuple(evidence) == tuple(EXPECTED_PRODUCER_PATHS)
+    assert ARTIFACT_ROSTERS.STEP_PRODUCERS == EXPECTED_PRODUCER_PATHS
+    for step_id, expected_path in EXPECTED_PRODUCER_PATHS.items():
         record = evidence[step_id]
         assert record["status"] == "implemented"
         assert record["git_commit"] == git_commit
@@ -299,6 +275,9 @@ def test_migrated_implementation_evidence_uses_final_paths_and_frozen_bytes() ->
         assert row["evidence_id"] == f"implementation_{step_id}"
         assert row["role"] == "implementation"
         assert row["path"] == expected_path
+        expected_sha256 = hashlib.sha256(
+            (REPO_ROOT / expected_path).read_bytes()
+        ).hexdigest()
         assert row["sha256"] == expected_sha256
 
 
@@ -512,9 +491,9 @@ def test_help_and_dry_run_validate_all_sources_without_writing(
         assert option in help_result.stdout
     assert result.returncode == 0, result.stderr
     assert "Mode: dry-run" in result.stdout
-    assert "Inventory artifacts: 68" in result.stdout
-    assert "present=68" in result.stdout
-    assert "complete=68" in result.stdout
+    assert "Inventory artifacts: 74" in result.stdout
+    assert "present=74" in result.stdout
+    assert "complete=74" in result.stdout
     assert "Receipt (published last)" in result.stdout
     assert "Dry-run only" in result.stdout
     assert not artifact_fixture.output_root.exists()
@@ -575,7 +554,7 @@ def test_execute_publishes_inventory_ordered_schema_valid_transaction(
     assert "Published receipt last" in result.stdout
     index_rows = read_tsv(artifact_fixture.artifacts_path)
     receipt_rows = read_tsv(artifact_fixture.receipt_path)
-    assert len(index_rows) == 68
+    assert len(index_rows) == 74
     assert len(receipt_rows) == 1
     receipt = receipt_rows[0]
     assert [row["artifact_id"] for row in index_rows] == [
@@ -583,19 +562,19 @@ def test_execute_publishes_inventory_ordered_schema_valid_transaction(
     ]
     assert {row["availability_status"] for row in index_rows} == {"present"}
     assert {row["completion_status"] for row in index_rows} == {"complete"}
-    assert receipt["inventory_row_count"] == "68"
-    assert receipt["artifact_record_count"] == "68"
-    assert receipt["present_artifact_count"] == "68"
-    assert receipt["complete_artifact_count"] == "68"
+    assert receipt["inventory_row_count"] == "74"
+    assert receipt["artifact_record_count"] == "74"
+    assert receipt["present_artifact_count"] == "74"
+    assert receipt["complete_artifact_count"] == "74"
     assert receipt["required_missing_artifact_count"] == "0"
     assert receipt["warning_count"] == "0"
     assert receipt["error_count"] == "0"
-    assert receipt["published_output_count"] == "70"
+    assert receipt["published_output_count"] == "76"
     assert receipt["transaction_state"] == "complete"
     assert receipt["artifacts_index_sha256"] == sha256_file(
         artifact_fixture.artifacts_path
     )
-    assert len(list(artifact_fixture.records_dir.glob("*.json"))) == 68
+    assert len(list(artifact_fixture.records_dir.glob("*.json"))) == 74
 
     for row in index_rows:
         record_path = Path(row["record_path"])
@@ -866,7 +845,7 @@ def test_undeclared_source_and_unrelated_run_outputs_are_ignored_and_preserved(
     assert second.returncode == 0, second.stderr
     assert unrelated.read_bytes() == unrelated_payload
     index_rows = read_tsv(artifact_fixture.artifacts_path)
-    assert len(index_rows) == 68
+    assert len(index_rows) == 74
     assert str(undeclared) not in {row["source_path"] for row in index_rows}
     assert not any(
         path.name.startswith("undeclared")
@@ -1529,9 +1508,9 @@ def test_all_missing_sources_publish_complete_index_transaction(
 
     assert result.returncode == 0, result.stderr
     receipt = read_tsv(artifact_fixture.receipt_path)[0]
-    assert receipt["missing_artifact_count"] == "68"
-    assert receipt["incomplete_artifact_count"] == "68"
-    assert receipt["required_missing_artifact_count"] == "68"
+    assert receipt["missing_artifact_count"] == "74"
+    assert receipt["incomplete_artifact_count"] == "74"
+    assert receipt["required_missing_artifact_count"] == "74"
     assert receipt["transaction_state"] == "complete"
 
 
@@ -1670,6 +1649,11 @@ def test_failed_restored_transaction_validation_requarantines_receipt(
             "analysis.synthetic.cmh_summary",
             "analysis.synthetic.cmh_all_sites",
         ),
+        (
+            "10",
+            "analysis.synthetic.context_receipt",
+            "analysis.synthetic.candidate_context",
+        ),
     ],
 )
 def test_native_transaction_reconciliation_rejects_internal_mismatch(
@@ -1706,6 +1690,14 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
             step09.STEP09_MUTATION_HEADER,
             rows,
         )
+    elif step_id == "10":
+        path = artifact_fixture.source_for("analysis.synthetic.candidate_context")
+        rows = read_tsv(path)
+        sequence = rows[0]["oriented_sequence"]
+        rows[0]["oriented_sequence"] = ("C" if sequence[0] != "C" else "A") + sequence[
+            1:
+        ]
+        FIXTURE.write_tsv(path, tuple(rows[0]), rows)
     else:
         raise AssertionError(f"Unhandled native transaction step: {step_id}")
 

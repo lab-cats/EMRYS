@@ -11,13 +11,14 @@ import os
 import platform
 import subprocess
 import sys
+import tempfile
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
 from norad.contracts.orchestration import api as orchestration_contracts
 from norad.contracts.orchestration.projection import build_reporting_bundle
-from norad.contracts.scientific_evidence import step08, step09
+from norad.contracts.scientific_evidence import scientific_context, step08, step09
 from norad.libraries.source_authority import controlled_python_argv
 from norad.orchestration.local_pilot import inspection
 from norad.orchestration.local_pilot.lifecycle import build_snakemake_argv
@@ -29,6 +30,7 @@ from tests.reporting.fixtures.artifact_adapters_v1.build_fixture import (
     minimal_pdf_bytes,
 )
 from tests.orchestration.local_pilot.fixture import build as build_intake
+from tests.scientific_context_test_support import build_transaction
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 PROFILE_PATH = REPO_ROOT / "workflow" / "contracts" / "local_cmh_v2.json"
@@ -402,6 +404,8 @@ def _generic_artifact_bytes(row: dict[str, str]) -> bytes:
 def artifact_payloads(
     rows: tuple[dict[str, str], ...],
     execution: dict[str, Any],
+    *,
+    artifact_source_root: Path,
 ) -> dict[str, bytes]:
     sample_ids = tuple(str(row["sample_id"]) for row in execution["samples"]["rows"])
     partition_id = str(execution["partitions"]["rows"][0]["partition_id"])
@@ -432,6 +436,11 @@ def artifact_payloads(
                 "step09_cmh_significant_sites_v1",
                 "step09_cmh_summary_v1",
                 "step09_mutation_spectrum_tsv_v1",
+                "step10_candidate_context_v1",
+                "step10_motif_hits_v1",
+                "step10_sequence_logo_v1",
+                "step10_motif_statistics_v1",
+                "step10_context_receipt_v1",
             }:
                 payloads[str(row["source_path"])] = _generic_artifact_bytes(row)
 
@@ -670,6 +679,78 @@ def artifact_payloads(
         step09.STEP09_MUTATION_HEADER,
         mutation_rows,
     )
+
+    def resolved(row: dict[str, str]) -> Path:
+        path = Path(str(row["source_path"]))
+        return path if path.is_absolute() else artifact_source_root / path
+
+    with tempfile.TemporaryDirectory(prefix="norad-context-fixture-") as temporary:
+        temporary_root = Path(temporary)
+        temporary_all = temporary_root / "all.tsv"
+        temporary_significant = temporary_root / "significant.tsv"
+        temporary_summary = temporary_root / "summary.tsv"
+        temporary_fai = temporary_root / "reference.fa.fai"
+        temporary_all.write_bytes(payloads[str(all_row["source_path"])])
+        temporary_significant.write_bytes(payloads[str(significant_row["source_path"])])
+        temporary_summary.write_bytes(payloads[str(summary09_row["source_path"])])
+        reference_fai_row = by_adapter["step00c_reference_fai_v1"][0]
+        temporary_fai.write_bytes(payloads[str(reference_fai_row["source_path"])])
+        motif_catalog = (
+            REPO_ROOT
+            / "src/norad/analyses/scientific_context_projection/resources/pum_motifs_v1.tsv"
+        )
+        context_fixture = build_transaction(
+            temporary_root / "context",
+            analysis_id=analysis_id,
+            step09_all_sites=temporary_all,
+            step09_significant_sites=temporary_significant,
+            step09_summary=temporary_summary,
+            reference_fasta=Path(str(execution["reference"]["fasta"]["path"])),
+            reference_fai=temporary_fai,
+            motif_catalog=motif_catalog,
+            git_commit=source_checkout_commit(),
+        )
+        step10_outputs = {
+            "step10_candidate_context_v1": context_fixture.candidate_context,
+            "step10_motif_hits_v1": context_fixture.motif_hits,
+            "step10_sequence_logo_v1": context_fixture.sequence_logo,
+            "step10_motif_statistics_v1": context_fixture.motif_statistics,
+        }
+        for adapter, temporary_path in step10_outputs.items():
+            row = by_adapter[adapter][0]
+            payloads[str(row["source_path"])] = temporary_path.read_bytes()
+
+        with context_fixture.receipt.open(encoding="utf-8", newline="") as stream:
+            receipt_row = next(csv.DictReader(stream, delimiter="\t"))
+        for prefix, source_row in (
+            ("step09_all_sites", all_row),
+            ("step09_significant_sites", significant_row),
+            ("step09_summary", summary09_row),
+            ("reference_fai", reference_fai_row),
+        ):
+            data = payloads[str(source_row["source_path"])]
+            receipt_row[f"{prefix}_path"] = str(resolved(source_row))
+            receipt_row[f"{prefix}_sha256"] = _sha256(data)
+        reference_fasta = Path(str(execution["reference"]["fasta"]["path"]))
+        receipt_row["reference_fasta_path"] = str(reference_fasta)
+        receipt_row["reference_fasta_sha256"] = _sha256(reference_fasta.read_bytes())
+        receipt_row["motif_catalog_path"] = str(motif_catalog)
+        receipt_row["motif_catalog_sha256"] = _sha256(motif_catalog.read_bytes())
+        for prefix, adapter in (
+            ("candidate_context", "step10_candidate_context_v1"),
+            ("motif_hits", "step10_motif_hits_v1"),
+            ("sequence_logo", "step10_sequence_logo_v1"),
+            ("motif_statistics", "step10_motif_statistics_v1"),
+        ):
+            output_row = by_adapter[adapter][0]
+            data = payloads[str(output_row["source_path"])]
+            receipt_row[f"{prefix}_path"] = str(resolved(output_row))
+            receipt_row[f"{prefix}_sha256"] = _sha256(data)
+        context_receipt_row = by_adapter["step10_context_receipt_v1"][0]
+        payloads[str(context_receipt_row["source_path"])] = _tsv_bytes(
+            scientific_context.SCIENTIFIC_CONTEXT_RECEIPT_HEADER,
+            [receipt_row],
+        )
     return payloads
 
 
@@ -864,7 +945,11 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
     fixture_input = run_root / "contract" / "fixture_input.txt"
     fixture_input.write_text("bounded no-science workflow fixture\n", encoding="utf-8")
     inventory_rows = tuple(dict(row) for row in reporting.artifact_inventory_rows)
-    payloads = artifact_payloads(inventory_rows, execution)
+    payloads = artifact_payloads(
+        inventory_rows,
+        execution,
+        artifact_source_root=run_root,
+    )
 
     workflow_attempt_id = "workflow-20260812T120000Z-" + "a" * 32
     workflow_attempt_path = run_root / "attempts" / workflow_attempt_id / "attempt.json"

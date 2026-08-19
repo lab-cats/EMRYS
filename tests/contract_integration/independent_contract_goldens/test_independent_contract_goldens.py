@@ -30,6 +30,7 @@ ARTIFACT_INDEX_RECORDS = importlib.import_module(
 )
 RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.models")
 REPORT = importlib.import_module("norad.reporting.report")
+REPORT_FIGURES = importlib.import_module("norad.reporting._run_report.figures")
 REPORT_VALIDATION = importlib.import_module("norad.reporting._run_report.validation")
 REPORT_VIEW = importlib.import_module("norad.reporting._run_report.view")
 
@@ -131,13 +132,22 @@ def report_html_bytes(document: Mapping[str, Any]) -> dict[str, bytes]:
         summary,
         source_root=REPO_ROOT,
     )
+    scientific_figures = REPORT_FIGURES.build_scientific_figures(None, None)
     return {
         "scientific": REPORT_VALIDATION.render_html(
-            REPORT_VIEW.build_scientific_view(summary, document["metadata"]),
+            REPORT_VIEW.build_scientific_view(
+                summary,
+                document["metadata"],
+                scientific_figures=scientific_figures,
+            ),
             document["css"],
         ),
         "evidence": REPORT_VALIDATION.render_html(
-            REPORT_VIEW.build_evidence_view(summary, document["metadata"]),
+            REPORT_VIEW.build_evidence_view(
+                summary,
+                document["metadata"],
+                scientific_figures=scientific_figures,
+            ),
             document["css"],
         ),
     }

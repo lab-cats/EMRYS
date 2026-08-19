@@ -21,9 +21,14 @@ The accepted local-pilot architecture is defined by
 owner-admission dispositions are tracked in
 [`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md). Campaign B and its
 adversarial local-pilot hardening and PORT-NC-01 semantic-replay follow-ups have
-no remaining implementation dependency. No next package is selected. Future
-real-runtime and site/cluster work requires separate selection and
-authorization; no such package is selected here.
+no remaining implementation dependency. `RPT-05` is implemented as one fixed
+eight-figure scientific report: two existing Step 09 projections, three views
+of admitted Step 08/09 and sample-manifest values, and three projections of one
+new receipt-last Step 10 scientific-context owner. It retains one report
+command, four stable report files, receipt v4, and the Step 09 PDFs. The
+approved growth is limited to that Step 10 owner and the exact-pinned rendering
+and sequence packages; reporting does not recalculate its scientific values.
+Future real-runtime and site/cluster work remains separately unselected.
 
 ## Local-pilot package order
 
@@ -56,7 +61,8 @@ local-runtime decision. SLURM, VM, and site-profile evaluation are separate
 unselected decisions.
 
 Reporting remains split across characterization, contract, projection,
-usability, and default-profile cards; renderer decomposition is implemented.
+usability, and default-profile cards; renderer decomposition and the complete
+bounded `RPT-05` eight-figure package are implemented.
 Logging, validation
 receipts, documentation maintenance, future acquisition/analysis, and
 installable-control-plane items remain unselected. Backlog proposals are not

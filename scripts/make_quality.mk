@@ -35,7 +35,10 @@ SHELL_SYNTAX_PATHS := \
 	src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh \
 	src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
 	src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
-	src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh
+	src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh \
+	src/norad/analyses/scientific_context_projection/scientific_context_projection.sh \
+	tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh \
+	tests/analyses/scientific_context_projection/test_scientific_context_projection.sh
 
 SLURM_SYNTAX_PATHS := \
 	src/norad/evidence/runtime_availability/tool_check.slurm \
@@ -52,7 +55,8 @@ SLURM_SYNTAX_PATHS := \
 	src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm \
 	src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm \
 	src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm \
-	src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm
+	src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm \
+	src/norad/analyses/scientific_context_projection/scientific_context_projection.slurm
 
 documentation-check:
 	./scripts/git_orchestration/validate_documentation.py --repo "$(CURDIR)"
@@ -70,6 +74,7 @@ validation-shell-contracts:
 	bash tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
 	bash tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.sh
 	bash tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.sh
+	bash tests/analyses/scientific_context_projection/test_scientific_context_projection.sh
 	bash tests/shell/test_local_r_environment.sh
 
 validation-shell-slurm: validation-shell-contracts
@@ -85,6 +90,7 @@ validation-wheel-smoke:
 real-r-test:
 	bash tests/stages/cohort_candidate_preprocessing/run_step_08_vcf_preprocessing_tests.sh
 	bash tests/analyses/paired_cmh_candidate_ranking/run_step_09_cmh_tests.sh
+	bash tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh
 
 r-restore:
 	NORAD_USE_RENV=1 NORAD_LOCAL_PILOT_R=0 \
@@ -114,6 +120,7 @@ local-real-r-test:
 		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
 		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
 		STEP08_TEST_RSCRIPT_BIN= STEP09_TEST_RSCRIPT_BIN= \
+		SCIENTIFIC_CONTEXT_TEST_RSCRIPT_BIN= \
 		RSCRIPT_BIN_OVERRIDE="$(RSCRIPT_BIN)" \
 		$(MAKE) real-r-test
 

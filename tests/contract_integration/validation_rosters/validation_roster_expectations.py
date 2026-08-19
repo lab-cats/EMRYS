@@ -97,6 +97,7 @@ EXPECTED_CHECK_ROSTERS: dict[str, tuple[str, ...]] = {
         "mutation_spectrum_reconciliation",
         "pdf_structure",
     ),
+    "10": ("scientific_context_transaction",),
 }
 
 

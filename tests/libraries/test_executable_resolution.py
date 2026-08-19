@@ -54,6 +54,12 @@ CONSUMERS = {
         0,
         2,
     ),
+    "analyses/scientific_context_projection/scientific_context_projection.sh": (
+        0o755,
+        1,
+        0,
+        1,
+    ),
 }
 
 

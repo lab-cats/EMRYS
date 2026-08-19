@@ -119,6 +119,10 @@ NORAD_COMMANDS = (
         ("validate", "rseqc-orientation"),
         "usage: norad validate rseqc-orientation",
     ),
+    (
+        ("validate", "scientific-context-projection"),
+        "usage: norad validate scientific-context-projection",
+    ),
     (("validate", "split-n-cigar"), "usage: norad validate split-n-cigar"),
     (("validate", "star-alignment"), "usage: norad validate star-alignment"),
     (("validate", "star-index"), "usage: norad validate star-index"),
@@ -168,6 +172,10 @@ SHELL_ENTRYPOINT_PATHS = {
         "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh"
     ),
+    "scientific_context_projection.sh": Path(
+        "src/norad/analyses/scientific_context_projection/"
+        "scientific_context_projection.sh"
+    ),
 }
 SHELL_ENTRYPOINTS = frozenset(SHELL_ENTRYPOINT_PATHS)
 INTERPRETER_ONLY_SHELL_DEFECTS = frozenset(
@@ -188,6 +196,10 @@ R_ENTRYPOINT_PATHS = {
     "step_09_cmh_editing_site_calling.R": Path(
         "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.R"
+    ),
+    "scientific_context_projection.R": Path(
+        "src/norad/analyses/scientific_context_projection/"
+        "scientific_context_projection.R"
     ),
 }
 R_ENTRYPOINTS = frozenset(R_ENTRYPOINT_PATHS)

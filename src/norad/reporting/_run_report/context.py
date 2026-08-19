@@ -20,7 +20,9 @@ from norad.libraries.source_authority import (
 )
 
 from .computational import admit_computational_results
+from .figures import build_scientific_figures
 from .inputs import (
+    _assert_input_recheck,
     _assert_snapshot,
     _explicit_path,
     _fail,
@@ -30,7 +32,11 @@ from .inputs import (
 )
 from .models import (
     CSS_RESOURCE,
+    FIGURE_FORMAT,
+    FIGURE_POLICY_VERSION,
     JINJA_VERSION,
+    LOGOMAKER_VERSION,
+    MATPLOTLIB_VERSION,
     PRODUCER,
     PRODUCER_VERSION,
     BOUNDARY_BANNER,
@@ -39,6 +45,7 @@ from .models import (
     ReportContext,
 )
 from .receipt import read_receipt_tsv
+from .scientific_context import admit_scientific_context_results
 from .validation import render_html
 from .view import build_evidence_view, build_scientific_view
 
@@ -175,6 +182,13 @@ def prepare_context(
     computational_results, computational_unavailable_reason = (
         admit_computational_results(summary, source_root=source_root)
     )
+    scientific_context_results, scientific_context_unavailable_reason = (
+        admit_scientific_context_results(
+            summary,
+            source_root=source_root,
+            computational_results=computational_results,
+        )
+    )
     try:
         package_root = Path(__file__).resolve().parents[2]
         producer_git_commit = (
@@ -193,6 +207,18 @@ def prepare_context(
         _fail(
             f"Installed Jinja2 version must match the lock: observed "
             f"{installed_jinja}; expected {JINJA_VERSION}"
+        )
+    installed_matplotlib = importlib.metadata.version("matplotlib")
+    if installed_matplotlib != MATPLOTLIB_VERSION:
+        _fail(
+            "Installed Matplotlib version must match the lock: observed "
+            f"{installed_matplotlib}; expected {MATPLOTLIB_VERSION}"
+        )
+    installed_logomaker = importlib.metadata.version("logomaker")
+    if installed_logomaker != LOGOMAKER_VERSION:
+        _fail(
+            "Installed Logomaker version must match the lock: observed "
+            f"{installed_logomaker}; expected {LOGOMAKER_VERSION}"
         )
 
     output_root = _explicit_path(arguments.output_root, "report output root")
@@ -233,6 +259,12 @@ def prepare_context(
     metadata = {
         "css_path": f"norad.reporting/{CSS_RESOURCE}",
         "css_sha256": css_snapshot.sha256,
+        "figure_format": FIGURE_FORMAT,
+        "figure_policy_version": FIGURE_POLICY_VERSION,
+        "figure_renderer": "Matplotlib",
+        "figure_renderer_version": MATPLOTLIB_VERSION,
+        "logo_renderer": "Logomaker",
+        "logo_renderer_version": LOGOMAKER_VERSION,
         "jinja_version": JINJA_VERSION,
         "producer_git_commit": producer_git_commit,
         "renderer": PRODUCER,
@@ -245,12 +277,19 @@ def prepare_context(
         "template_path": f"norad.reporting/{TEMPLATE_RESOURCE}",
         "template_sha256": template_snapshot.sha256,
     }
+    scientific_figures = build_scientific_figures(
+        computational_results,
+        computational_unavailable_reason,
+        scientific_context_results,
+        scientific_context_unavailable_reason,
+    )
     scientific_html_bytes = render_html(
         build_scientific_view(
             summary,
             metadata,
             computational_results=computational_results,
             computational_unavailable_reason=computational_unavailable_reason,
+            scientific_figures=scientific_figures,
         ),
         css,
     )
@@ -260,24 +299,15 @@ def prepare_context(
             metadata,
             computational_results=computational_results,
             computational_unavailable_reason=computational_unavailable_reason,
+            scientific_context_results=scientific_context_results,
+            scientific_context_unavailable_reason=(
+                scientific_context_unavailable_reason
+            ),
+            scientific_figures=scientific_figures,
         ),
         css,
     )
-    computational_tables = (
-        computational_results.tables if computational_results is not None else ()
-    )
-    snapshots_and_labels = (
-        (run_summary_snapshot, "run-summary document"),
-        (template_snapshot, "report Jinja template"),
-        (css_snapshot, "report CSS resource"),
-        *(
-            (table.snapshot, f"computational result {table.artifact_id!r}")
-            for table in computational_tables
-        ),
-    )
-    for snapshot, label in snapshots_and_labels:
-        _assert_snapshot(snapshot, label)
-    return ReportContext(
+    context = ReportContext(
         source_checkout=source_checkout,
         artifact_source_root=artifact_source_root,
         producer_git_commit=producer_git_commit,
@@ -286,6 +316,9 @@ def prepare_context(
         summary=summary,
         computational_results=computational_results,
         computational_unavailable_reason=computational_unavailable_reason,
+        scientific_context_results=scientific_context_results,
+        scientific_context_unavailable_reason=scientific_context_unavailable_reason,
+        scientific_figures=scientific_figures,
         template_snapshot=template_snapshot,
         css_snapshot=css_snapshot,
         output_root=output_root,
@@ -302,3 +335,6 @@ def prepare_context(
         evidence_html_bytes=evidence_html_bytes,
         execute=arguments.execute,
     )
+    for recheck in context.input_rechecks:
+        _assert_input_recheck(*recheck)
+    return context

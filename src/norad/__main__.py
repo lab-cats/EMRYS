@@ -13,6 +13,9 @@ from typing import Protocol, cast
 from norad.analyses.paired_cmh_candidate_ranking import (
     validator as paired_cmh_candidate_ranking_validation_command,
 )
+from norad.analyses.scientific_context_projection import (
+    validator as scientific_context_projection_validation_command,
+)
 from norad.contracts.artifacts import (
     validator as artifact_contracts_validation_command,
 )
@@ -641,6 +644,12 @@ def build_parser(
         name="paired-cmh-candidate-ranking",
         help_text="Validate one paired-CMH candidate-ranking transaction.",
         command=paired_cmh_candidate_ranking_validation_command,
+    )
+    _add_validation_command(
+        validation_parsers,
+        name="scientific-context-projection",
+        help_text="Validate one scientific-context projection transaction.",
+        command=scientific_context_projection_validation_command,
     )
     _add_validation_command(
         validation_parsers,

@@ -261,7 +261,11 @@ def _nearest_existing_ancestor(path: Path) -> Path | None:
         return candidate
 
 
-def _snapshot_bound_file(path: Path) -> _BoundFileSnapshot:
+def _snapshot_bound_file(
+    path: Path,
+    *,
+    hash_content: bool = True,
+) -> _BoundFileSnapshot:
     if not path.is_absolute():
         raise ReportingTransactionError(
             f"Bound transaction path must be absolute: {path}"
@@ -289,9 +293,10 @@ def _snapshot_bound_file(path: Path) -> _BoundFileSnapshot:
             raise ReportingTransactionError(
                 f"Bound transaction path is not a regular file: {path}"
             )
-        digest = hashlib.sha256()
-        while block := os.read(descriptor, 1024 * 1024):
-            digest.update(block)
+        digest = hashlib.sha256() if hash_content else None
+        if digest is not None:
+            while block := os.read(descriptor, 1024 * 1024):
+                digest.update(block)
         after = os.fstat(descriptor)
     finally:
         os.close(descriptor)
@@ -326,7 +331,7 @@ def _snapshot_bound_file(path: Path) -> _BoundFileSnapshot:
         size_bytes=before.st_size,
         mtime_ns=before.st_mtime_ns,
         ctime_ns=before.st_ctime_ns,
-        sha256=digest.hexdigest(),
+        sha256=None if digest is None else digest.hexdigest(),
     )
 
 
@@ -381,8 +386,11 @@ def _snapshot_bound_directory(path: Path) -> _BoundDirectorySnapshot:
 def _snapshot_bound_roster(
     files: Iterable[Path],
     directories: Iterable[Path] = (),
+    *,
+    identity_only_files: Iterable[Path] = (),
 ) -> _BoundRosterSnapshot:
     file_paths = tuple(sorted(set(files), key=os.fspath))
+    identity_only_paths = set(identity_only_files)
     absence_anchors_before = {
         path: anchor
         for path in file_paths
@@ -397,7 +405,13 @@ def _snapshot_bound_roster(
     directories_before = tuple(
         _snapshot_bound_directory(path) for path in directory_paths
     )
-    snapshots = tuple(_snapshot_bound_file(path) for path in file_paths)
+    snapshots = tuple(
+        _snapshot_bound_file(
+            path,
+            hash_content=path not in identity_only_paths,
+        )
+        for path in file_paths
+    )
     absence_anchors_after = {
         snapshot.path: anchor
         for snapshot in snapshots
@@ -455,6 +469,8 @@ def _validated_result(
     roster: _BoundRosterSnapshot,
     ops: ReceiptValidationOps,
     reject_control_residue: Callable[[], None],
+    *,
+    identity_only_paths: Iterable[Path] = (),
 ) -> ValidatedTransaction:
     if not _receipt_is_in_roster(receipt, roster):
         raise ReportingTransactionError(
@@ -463,11 +479,37 @@ def _validated_result(
     paths = tuple(item.path for item in roster.files)
     ops.before_final_snapshot(paths)
     reject_control_residue()
+    identity_only = set(identity_only_paths)
     observed = _snapshot_bound_roster(
         paths,
         (item.path for item in roster.directories),
+        identity_only_files=identity_only,
     )
-    if observed != roster:
+    files_match = len(observed.files) == len(roster.files) and all(
+        (
+            before.path,
+            before.state,
+            before.device,
+            before.inode,
+            before.mode,
+            before.size_bytes,
+            before.mtime_ns,
+            before.ctime_ns,
+        )
+        == (
+            after.path,
+            after.state,
+            after.device,
+            after.inode,
+            after.mode,
+            after.size_bytes,
+            after.mtime_ns,
+            after.ctime_ns,
+        )
+        and (before.path in identity_only or before.sha256 == after.sha256)
+        for before, after in zip(roster.files, observed.files, strict=True)
+    )
+    if not files_match or observed.directories != roster.directories:
         raise ReportingTransactionError(
             "Reporting transaction roster changed during semantic validation"
         )
@@ -998,18 +1040,14 @@ def validate_report_transaction(
         raise ReportingTransactionError(
             "Report semantic validation admitted a different receipt"
         )
-    if (
-        context.output_scientific_html.read_bytes()
-        != context.scientific_html_bytes
-    ):
+    if context.output_scientific_html.read_bytes() != context.scientific_html_bytes:
         raise ReportingTransactionError(
             "Published scientific HTML differs from the current deterministic "
             "projection"
         )
     if context.output_evidence_html.read_bytes() != context.evidence_html_bytes:
         raise ReportingTransactionError(
-            "Published evidence HTML differs from the current deterministic "
-            "projection"
+            "Published evidence HTML differs from the current deterministic projection"
         )
     expected_summary = receipt.summary_tsv_bytes(context)
     if context.output_summary_tsv.read_bytes() != expected_summary:
@@ -1067,6 +1105,11 @@ def validate_report_transaction(
         roster,
         receipt_ops,
         reject_control_residue,
+        identity_only_paths=(
+            snapshot.path
+            for snapshot, _label, rehash_content in context.input_rechecks
+            if not rehash_content
+        ),
     )
 
 

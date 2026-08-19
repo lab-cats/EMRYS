@@ -34,6 +34,7 @@ VALIDATOR_PATHS = {
     "07": Path("src/norad/stages/partitioned_cohort_mpileup/validator.py"),
     "08": Path("src/norad/stages/cohort_candidate_preprocessing/validator.py"),
     "09": Path("src/norad/analyses/paired_cmh_candidate_ranking/validator.py"),
+    "10": Path("src/norad/analyses/scientific_context_projection/validator.py"),
 }
 VALIDATION_HEADER = (
     "step_id",
@@ -71,7 +72,7 @@ def mutate_roster(expected: tuple[str, ...], mutation: str) -> tuple[str, ...]:
     if mutation == "extra":
         return (*expected, "unexpected_check")
     if mutation == "duplicate":
-        return (*expected[:-1], expected[0])
+        return (*expected, expected[0])
     if mutation == "reordered":
         return tuple(reversed(expected))
     raise AssertionError(f"Unknown test mutation: {mutation}")
@@ -100,7 +101,10 @@ def test_independent_exact_roster_oracle_rejects_each_mutation(
     step_id: str,
     mutation: str,
 ) -> None:
-    actual = mutate_roster(EXPECTED_CHECK_ROSTERS[step_id], mutation)
+    expected = EXPECTED_CHECK_ROSTERS[step_id]
+    if mutation == "reordered" and len(expected) < 2:
+        pytest.skip("A one-check roster has no distinct reordered form")
+    actual = mutate_roster(expected, mutation)
     rows = [{"check_id": check_id} for check_id in actual]
 
     with pytest.raises(AssertionError, match=f"Step {step_id}"):

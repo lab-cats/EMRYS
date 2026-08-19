@@ -58,6 +58,7 @@ SEMANTIC_OWNERS = (
     ("stage", "generate_partitioned_cohort_mpileup_VCFs"),
     ("stage", "preprocess_and_annotate_cohort_candidates"),
     ("analysis", "rank_cohort_candidates_with_paired_CMH"),
+    ("analysis", "project_candidate_scientific_context"),
     ("evidence", "collect_canonical_BAM_QC_evidence"),
     ("evidence", "collect_RSeQC_paired_orientation_evidence"),
 )
@@ -66,6 +67,10 @@ SOURCE_OWNER_DIRECTORIES = {
         "analysis",
         "rank_cohort_candidates_with_paired_CMH",
     ): "paired_cmh_candidate_ranking",
+    (
+        "analysis",
+        "project_candidate_scientific_context",
+    ): "scientific_context_projection",
     ("evidence", "collect_canonical_BAM_QC_evidence"): "canonical_bam_qc",
     ("evidence", "collect_RSeQC_paired_orientation_evidence"): "rseqc_orientation",
     ("stage", "align_RNA_reads_with_STAR"): "star_alignment",
@@ -246,7 +251,7 @@ def test_rejects_stage_map_and_owner_failures(tmp_path: Path) -> None:
     result = validate(repository, cwd=tmp_path)
 
     assert result.returncode == 1
-    assert "STAGE_MAP identity roster must contain 13 unique owners" in result.stderr
+    assert "STAGE_MAP identity roster must contain 14 unique owners" in result.stderr
     assert "missing cross-cutting owner documentation" in result.stderr
 
 

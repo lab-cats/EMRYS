@@ -143,6 +143,7 @@ Exact checks are:
 The validator enforces exact dynamic headers, complete ordered
 partition/orientation rows, manifest and annotation identities, typed
 per-input arithmetic, unique candidate IDs, sample DP/AD/AF consistency,
+lexically valid carried annotation identifiers and independent overlap flags,
 per-scope candidate counts, and aggregate summary reconciliation. It validates
 the published tables' internal contract; it does not rerun VariantAnnotation,
 GTF overlap, allele expansion, provisional complementation, or upstream VCF

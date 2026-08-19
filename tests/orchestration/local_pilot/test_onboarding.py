@@ -509,6 +509,7 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
     assert not (tmp_path / "python-ran").exists()
     assert not (tmp_path / "module-init-ran").exists()
     arguments = capture.read_text(encoding="utf-8").splitlines()
+    assert "" not in arguments
     assert "--account=viking-users" in arguments
     assert "--partition=short" in arguments
     assert "--qos=normal" in arguments
@@ -630,6 +631,8 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
     )
     (tmp_path / "checkout").mkdir()
     environment = _wrapper_environment(tmp_path, fake_python, module_init)
+    scratch_sentinel = tmp_path / "scratch" / "sibling-sentinel"
+    scratch_sentinel.write_text("preserve\n", encoding="utf-8")
     environment.update(
         {
             "SLURM_JOB_ID": "700123",
@@ -674,7 +677,8 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
     assert f"NORAD_SCRATCH_PARENT={tmp_path / 'scratch'}" in result.stdout
     assert f"TMPDIR={tmp_path / 'scratch'}/norad-700123." in result.stdout
     assert "TMPDIR filesystem and capacity:" in result.stdout
-    assert list((tmp_path / "scratch").iterdir()) == []
+    assert list((tmp_path / "scratch").iterdir()) == [scratch_sentinel]
+    assert scratch_sentinel.read_text(encoding="utf-8") == "preserve\n"
     invocations = python_capture.read_text(encoding="utf-8").splitlines()
     assert len(invocations) == 3
     assert "-m norad validate local-pilot-request" in invocations[0]

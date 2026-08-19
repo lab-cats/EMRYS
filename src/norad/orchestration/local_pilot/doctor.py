@@ -57,6 +57,8 @@ LOCAL_PILOT_R_PACKAGES = (
     ("r_variant_annotation", "VariantAnnotation"),
     ("r_genomic_ranges", "GenomicRanges"),
     ("r_iranges", "IRanges"),
+    ("r_biostrings", "Biostrings"),
+    ("r_rsamtools", "Rsamtools"),
     ("r_s4vectors", "S4Vectors"),
     ("r_summarized_experiment", "SummarizedExperiment"),
     ("r_genome_info_db", "GenomeInfoDb"),

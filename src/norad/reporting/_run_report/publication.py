@@ -12,7 +12,7 @@ from typing import Any
 from norad.reporting.report import ReportPublicationOps
 
 from .context import expected_html_identity
-from .inputs import _assert_snapshot, _fail, _snapshot_regular
+from .inputs import _assert_input_recheck, _assert_snapshot, _fail, _snapshot_regular
 from .models import (
     BOUNDARY_BANNER,
     FileSnapshot,
@@ -36,12 +36,8 @@ from .validation import validate_rendered_html
 
 
 def _recheck_inputs(context: ReportContext) -> None:
-    for snapshot, label in zip(
-        context.input_snapshots,
-        context.input_snapshot_labels,
-        strict=True,
-    ):
-        _assert_snapshot(snapshot, label)
+    for recheck in context.input_rechecks:
+        _assert_input_recheck(*recheck)
 
 
 def _assert_predecessors(context: ReportContext) -> None:

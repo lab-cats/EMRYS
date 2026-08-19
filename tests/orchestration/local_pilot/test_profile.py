@@ -111,6 +111,13 @@ EXPECTED_TASKS = (
         "analysis",
         "analysis",
     ),
+    (
+        "norad.analysis.project_candidate_scientific_context.v1",
+        "project_candidate_scientific_context",
+        "10",
+        "analysis",
+        "analysis",
+    ),
 )
 
 # Independent compact representation of every exact public artifact template.
@@ -180,6 +187,12 @@ analysis.{analysis_id}.mutation_spectrum_tsv|09|analysis|analysis|step09_mutatio
 analysis.{analysis_id}.mutation_spectrum_pdf|09|analysis|analysis|step09_mutation_spectrum_pdf_v1|results/editing/{analysis_id}/{analysis_id}.mutation_spectrum.pdf|true
 analysis.{analysis_id}.depth_delta_pdf|09|analysis|analysis|step09_depth_delta_pdf_v1|results/editing/{analysis_id}/{analysis_id}.depth_delta.pdf|true
 analysis.{analysis_id}.cmh_validation|09|analysis|analysis|step09_validation_report_v1|results/qc/validation/09/{analysis_id}.validation.tsv|true
+analysis.{analysis_id}.candidate_context|10|analysis|analysis|step10_candidate_context_v1|results/scientific_context/{analysis_id}/{analysis_id}.candidate_context.tsv|true
+analysis.{analysis_id}.motif_hits|10|analysis|analysis|step10_motif_hits_v1|results/scientific_context/{analysis_id}/{analysis_id}.motif_hits.tsv|true
+analysis.{analysis_id}.sequence_logo|10|analysis|analysis|step10_sequence_logo_v1|results/scientific_context/{analysis_id}/{analysis_id}.sequence_logo.tsv|true
+analysis.{analysis_id}.motif_statistics|10|analysis|analysis|step10_motif_statistics_v1|results/scientific_context/{analysis_id}/{analysis_id}.motif_statistics.tsv|true
+analysis.{analysis_id}.context_receipt|10|analysis|analysis|step10_context_receipt_v1|results/scientific_context/{analysis_id}/{analysis_id}.context_receipt.tsv|true
+analysis.{analysis_id}.context_validation|10|analysis|analysis|step10_validation_report_v1|results/qc/validation/10/{analysis_id}.validation.tsv|true
 """.strip().splitlines()
 
 
@@ -269,9 +282,9 @@ def test_profile_is_schema_valid_and_exactly_matches_stage_map(
     assert profile["direct_edges"] == edges
 
 
-def test_profile_has_exact_64_artifact_templates(profile: dict[str, object]) -> None:
+def test_profile_has_exact_70_artifact_templates(profile: dict[str, object]) -> None:
     expected = _expected_templates()
-    assert len(expected) == 64
+    assert len(expected) == 70
     assert profile["artifact_templates"] == expected
 
 
@@ -283,7 +296,7 @@ def test_profile_covers_exact_public_adapter_roster_with_only_declared_reuse(
     with PUBLIC_INVENTORY_PATH.open(encoding="utf-8", newline="") as stream:
         public_rows = list(csv.DictReader(stream, delimiter="\t"))
     public_adapters = {row["adapter"] for row in public_rows}
-    assert len(counts) == 49
+    assert len(counts) == 55
     assert set(counts) == public_adapters
     assert {adapter: count for adapter, count in counts.items() if count > 1} == {
         "step00a_star_index_v1": 15,
@@ -301,7 +314,7 @@ def test_profile_expands_to_exact_formula_and_contiguous_scopes(
     rows = bundle.artifact_inventory_rows
     sample_count = len(execution["samples"]["rows"])
     partition_count = len(execution["partitions"]["rows"])
-    assert len(rows) == 33 + (27 * sample_count) + (4 * partition_count)
+    assert len(rows) == 39 + (27 * sample_count) + (4 * partition_count)
 
     inventory_path = tmp_path / "artifact_inventory.tsv"
     inventory_path.write_bytes(bundle.artifact_inventory_bytes)

@@ -18,6 +18,8 @@ renv_library	path_visibility	local	true	/absolute/path/to/renv/library	["directo
 r_variant_annotation	r_namespace	local	true	VariantAnnotation	["/absolute/path/to/Rscript"]	^1[.]58[.]0$	Step 08 VariantAnnotation namespace
 r_genomic_ranges	r_namespace	local	true	GenomicRanges	["/absolute/path/to/Rscript"]	^1[.]64[.]0$	Step 08 GenomicRanges namespace
 r_iranges	r_namespace	local	true	IRanges	["/absolute/path/to/Rscript"]	^2[.]46[.]0$	Step 08 IRanges namespace
+r_biostrings	r_namespace	local	true	Biostrings	["/absolute/path/to/Rscript"]	^2[.]80[.]1$	Step 10 Biostrings sequence namespace
+r_rsamtools	r_namespace	local	true	Rsamtools	["/absolute/path/to/Rscript"]	^2[.]28[.]0$	Step 10 Rsamtools indexed-FASTA namespace
 r_s4vectors	r_namespace	local	true	S4Vectors	["/absolute/path/to/Rscript"]	^0[.]50[.]1$	Step 08 S4Vectors namespace
 r_summarized_experiment	r_namespace	local	true	SummarizedExperiment	["/absolute/path/to/Rscript"]	^1[.]42[.]0$	Step 08 SummarizedExperiment namespace
 r_genome_info_db	r_namespace	local	true	GenomeInfoDb	["/absolute/path/to/Rscript"]	^1[.]48[.]0$	Step 08 GenomeInfoDb namespace

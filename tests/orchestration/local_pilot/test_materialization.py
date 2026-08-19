@@ -215,10 +215,10 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert not plan.workspace.exists()
     assert plan.preparation.operation == "execute"
     assert json.loads(plan.preparation.attempt_record_bytes) == plan.attempt_record
-    assert plan.dispatch_count == 34
+    assert plan.dispatch_count == 35
     records = _dispatch_records(plan)
-    assert len(records) == 34
-    assert len({record["machine_key"] for record in records}) == 13
+    assert len(records) == 35
+    assert len({record["machine_key"] for record in records}) == 14
     assert all("--execute" in record["producer_argv"] for record in records)
     assert all("--execute" in record["validator_argv"] for record in records)
     assert not any("--unlock" in record["producer_argv"] for record in records)
@@ -278,6 +278,17 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert "R_DEFAULT_PACKAGES" in r_bootstrap
     assert "--no-environ" not in producer
     assert str(tmp_path / "renv-library") in producer
+    step10 = next(
+        record
+        for record in records
+        if record["machine_key"]
+        == "norad.analysis.project_candidate_scientific_context.v1"
+    )
+    assert "scientific_context_projection.sh" in " ".join(step10["producer_argv"])
+    assert "--motif-catalog" in step10["producer_argv"]
+    assert "scientific-context-projection" in step10["validator_argv"]
+    assert len(step10["inputs"]) == 6
+    assert len(step10["outputs"]) == 5
     assert plan.attempt_record["execution_mode"] == "local-science-tools"
     assert [item["name"] for item in plan.attempt_record["required_tools"]] == sorted(
         item["name"] for item in plan.attempt_record["required_tools"]
@@ -450,7 +461,7 @@ def test_locked_publication_terminalizes_failure_and_refuses_repeat(
     assert outcome.receipt["snakemake_exit_code"] == 9
     assert outcome.released_lock_path.is_file()
     assert not (plan.run_root / "locks/run.lock").exists()
-    assert len(list((plan.run_root / "contract/dispatch").rglob("*.json"))) == 34
+    assert len(list((plan.run_root / "contract/dispatch").rglob("*.json"))) == 35
     with pytest.raises(MaterializationError, match="already exists"):
         initialize_run(plan, ops=ops)
 
@@ -708,7 +719,7 @@ def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
 
     captured = capsys.readouterr()
     assert status == 0
-    assert "Owner jobs: 34" in captured.out
+    assert "Owner jobs: 35" in captured.out
     assert "Reporting transactions: 3" in captured.out
     assert "Dry-run complete" in captured.out
     assert executed == []
@@ -850,7 +861,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     failed = inspection.inspect_run(run_root)
     assert failed.state == "resume_available"
     before = _verified_snapshot(run_root)
-    assert 0 < len(before) < 34
+    assert 0 < len(before) < 35
 
     resumed_ops = control.ControlOps(
         inspect_readiness=lambda _request, _workspace, _runtime: readiness,

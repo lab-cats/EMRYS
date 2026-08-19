@@ -81,6 +81,48 @@ def _assert_snapshot(snapshot: FileSnapshot, label: str) -> None:
         _fail(f"{label} changed during report rendering: {snapshot.path}")
 
 
+def _assert_snapshot_identity(snapshot: FileSnapshot, label: str) -> None:
+    """Recheck an already hash-bound large input without rereading its contents."""
+
+    path = _explicit_path(snapshot.path, label)
+    _reject_symlink_components(path, label)
+    try:
+        current = path.lstat()
+    except OSError as exc:
+        _fail(f"Could not recheck {label} {path}: {exc}")
+    observed = (
+        current.st_dev,
+        current.st_ino,
+        current.st_size,
+        current.st_mtime_ns,
+        current.st_ctime_ns,
+    )
+    expected = (
+        snapshot.device,
+        snapshot.inode,
+        snapshot.size_bytes,
+        snapshot.mtime_ns,
+        snapshot.ctime_ns,
+    )
+    if (
+        stat.S_ISLNK(current.st_mode)
+        or not stat.S_ISREG(current.st_mode)
+        or observed != expected
+    ):
+        _fail(f"{label} changed during report rendering: {path}")
+
+
+def _assert_input_recheck(
+    snapshot: FileSnapshot,
+    label: str,
+    rehash_content: bool,
+) -> None:
+    if rehash_content:
+        _assert_snapshot(snapshot, label)
+    else:
+        _assert_snapshot_identity(snapshot, label)
+
+
 def _load_run_summary(path: Path, *, source_root: Path) -> dict[str, Any]:
     try:
         document = contracts.load_json_object(path, "run-summary document")

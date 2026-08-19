@@ -42,9 +42,12 @@ explicit operator action. Compute and tests never bootstrap packages.
 
 ### Keep report rendering inside the locked Python package
 
-The report owner uses the locked Jinja2 runtime and packaged template/CSS. It
-never installs or repairs tooling, invokes an external renderer, accesses the
-network, or creates report sidecars.
+The report owner uses the locked Jinja2, Matplotlib, and Logomaker runtimes plus
+packaged template/CSS. Matplotlib initializes through one private temporary
+cache that is removed before rendering continues and never writes durable
+report state; Logomaker operates inside that already controlled renderer
+boundary. The owner never installs or repairs tooling, invokes an external
+renderer, accesses the network, or creates report sidecars.
 
 ### Inspect runtime availability from explicit profiles
 
@@ -136,7 +139,12 @@ canonical summary. They label computational candidates as not scientifically
 adjudicated, disclose truncation with source identity, and use one autoescaped
 strict Jinja template for HTML. Publication is transactional and never installs
 dependencies, accesses the network, creates sidecars, or promotes evidence.
-Scientific plot PDFs remain analysis artifacts rather than report formats.
+The fixed scientific SVG roster is rendered only from canonically admitted
+values and embedded as validated data URIs; reporting owns mappings and
+presentation, not scientific calculation. Exact figure inputs, policies,
+renderer versions, hashes, and availability are disclosed in the evidence
+HTML. Scientific plot PDFs remain analysis artifacts rather than report
+formats.
 
 ## Operator output and durable logs
 

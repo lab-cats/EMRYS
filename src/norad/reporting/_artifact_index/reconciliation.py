@@ -20,6 +20,7 @@ from .reconcile_native import (
     reconcile_step08,
 )
 from .reconcile_step09 import reconcile_step09
+from .reconcile_step10 import reconcile_step10
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -50,6 +51,7 @@ def reconcile_native_transactions(
         "07": "step07_mpileup_receipt_v1",
         "08": "step08_inputs_v1",
         "09": "step09_cmh_summary_v1",
+        "10": "step10_context_receipt_v1",
     }
     validators = {
         "00c": reconcile_step00c,
@@ -57,6 +59,7 @@ def reconcile_native_transactions(
         "07": partial(reconcile_step07, sources=sources),
         "08": partial(reconcile_step08, sources=sources),
         "09": partial(reconcile_step09, sources=sources),
+        "10": partial(reconcile_step10, sources=sources),
     }
     dependency_order = dict(zip(validators, range(len(validators)), strict=True))
     ordered_scopes = sorted(

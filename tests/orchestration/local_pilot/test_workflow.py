@@ -41,6 +41,7 @@ EXECUTABLE_RULES = {
     "generate_partitioned_cohort_mpileup_VCFs",
     "preprocess_and_annotate_cohort_candidates",
     "rank_cohort_candidates_with_paired_CMH",
+    "project_candidate_scientific_context",
 }
 SLICE_RULES = {"reference_slice", "one_sample_slice", "cohort_slice"}
 REPORTING_RULES = {
@@ -286,7 +287,7 @@ def _leave_real_incomplete_marker(
 
 @pytest.mark.parametrize(
     ("target", "expected_jobs"),
-    (("reference_slice", 3), ("one_sample_slice", 10), ("cohort_slice", 34)),
+    (("reference_slice", 3), ("one_sample_slice", 10), ("cohort_slice", 35)),
 )
 def test_real_snakemake_dry_run_has_exact_owner_job_counts(
     built: workflow_fixture.WorkflowFixture,
@@ -311,11 +312,11 @@ def test_real_snakemake_dry_run_has_exact_owner_job_counts(
 
     sample_count = len(built.execution["samples"]["rows"])
     partition_count = len(built.execution["partitions"]["rows"])
-    assert sum(counts.values()) == 3 + (7 * sample_count) + partition_count + 2
+    assert sum(counts.values()) == 3 + (7 * sample_count) + partition_count + 3
     assert (
         len(owner_edges)
-        == (9 * sample_count + sample_count * partition_count + 2 * partition_count + 1)
-        == 43
+        == (9 * sample_count + sample_count * partition_count + 2 * partition_count + 3)
+        == 45
     )
     observed_pairs = Counter(
         (nodes[source], nodes[target]) for source, target in owner_edges
@@ -368,6 +369,14 @@ def test_real_snakemake_dry_run_has_exact_owner_job_counts(
                 "preprocess_and_annotate_cohort_candidates",
                 "rank_cohort_candidates_with_paired_CMH",
             ): 1,
+            (
+                "rank_cohort_candidates_with_paired_CMH",
+                "project_candidate_scientific_context",
+            ): 1,
+            (
+                "construct_FASTA_sidecars",
+                "project_candidate_scientific_context",
+            ): 1,
         }
     )
 
@@ -389,7 +398,7 @@ def test_local_pipeline_dag_adds_only_the_three_reporting_transactions(
 ) -> None:
     nodes, edges, output = _dag(built, "local_pipeline_slice")
     counts = Counter(nodes.values())
-    assert sum(counts[rule] for rule in EXECUTABLE_RULES) == 34, output
+    assert sum(counts[rule] for rule in EXECUTABLE_RULES) == 35, output
     assert {rule: counts[rule] for rule in REPORTING_RULES} == {
         "build_artifact_index": 1,
         "build_run_summary": 1,
@@ -403,7 +412,7 @@ def test_local_pipeline_dag_adds_only_the_three_reporting_transactions(
             for (producer, consumer), count in observed_pairs.items()
             if producer in EXECUTABLE_RULES and consumer == "build_artifact_index"
         )
-        == 34
+        == 35
     )
     assert observed_pairs[("build_artifact_index", "build_run_summary")] == 1
     assert observed_pairs[("build_run_summary", "build_html_report")] == 1
@@ -448,7 +457,7 @@ def test_real_local_pipeline_builds_valid_incomplete_evidence_html_tail(
     completed = _snakemake(built, "--", "local_pipeline_slice")
     markers = sorted(built.verified_root.glob("*/*.json"))
     starts = sorted((built.run_root / "state" / "task-starts").glob("*/*.json"))
-    assert len(markers) == len(starts) == 34, completed.stdout
+    assert len(markers) == len(starts) == 35, completed.stdout
     for marker in markers:
         record = orchestration_contracts.load_record(marker, "verified-task")
         scope_id = record["scope"]["scope_id"]
@@ -647,7 +656,7 @@ def test_resume_with_fresh_engine_metadata_runs_only_pending_reporting(
         "local_pipeline_slice",
         metadata_name="fresh-resume-metadata",
     )
-    assert len(list(resumed.verified_root.glob("*/*.json"))) == 34
+    assert len(list(resumed.verified_root.glob("*/*.json"))) == 35
     assert _snapshot_trees(resumed.verified_root) == before
     assert completed.stdout.count("Mode: dry-run") == 3
     assert completed.stdout.count("Mode: execute") == 3

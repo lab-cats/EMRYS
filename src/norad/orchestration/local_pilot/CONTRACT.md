@@ -100,7 +100,7 @@ Python invocation and mutate nothing without `--execute`. Planning reruns the
 doctor, normalizes the authored request again, derives the deterministic run
 identity, and prints the exact request-expanded owner-job plan plus three
 reporting transactions. The tracked four-sample, one-partition starter expands
-to 34 owner jobs; other admitted sample/partition counts expand according to
+to 35 owner jobs; other admitted sample/partition counts expand according to
 the fixed profile. The control surface exposes no raw Snakemake flags, force,
 unlock, cleanup, retry, plugin, or alternate-profile escape hatch.
 
@@ -279,7 +279,7 @@ The B6 proof extends the B5 adapter evidence to a clean fresh clone with the
 locked workflow environment. It exercises the top-level parser using explicit
 repository-only no-science collaborators and leaves the shipped command default
 unchanged, with no fake mode or raw-engine option. Separate clean-success and
-controlled between-task failure/resume paths cover all 34 owner jobs, the three
+controlled between-task failure/resume paths cover all 35 owner jobs, the three
 real reporting transactions, byte-preserving reuse, final inspection, and
 completed-run refusal. These are local structural/no-science workflow facts,
 not real science-tool or cluster proof, completed scientific review, or
