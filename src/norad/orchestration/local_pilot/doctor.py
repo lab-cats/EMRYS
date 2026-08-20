@@ -122,6 +122,20 @@ class DoctorResult:
         return not self.blockers
 
 
+def storage_runtime_binding(
+    qualified: storage_qualification.QualifiedStorage,
+) -> RuntimeBinding:
+    """Project one semantically admitted storage receipt into runtime identity."""
+
+    return RuntimeBinding(
+        check_id="storage_qualification",
+        path=qualified.receipt_path,
+        resolved_path=qualified.receipt_path.resolve(strict=True),
+        sha256=qualified.receipt_sha256,
+        observed=qualified.qualification_id,
+    )
+
+
 def runtime_environment(
     source_root: Path,
     renv_library: Path,
@@ -150,6 +164,10 @@ def required_tool_identities(
     bound = {item.check_id: item for item in bindings}
     if len(bound) != len(bindings):
         raise DoctorInputError("Runtime file bindings must use unique check IDs")
+    if "storage_qualification" not in bound:
+        raise DoctorInputError(
+            "Runtime file binding is absent: storage_qualification"
+        )
 
     def file_identity(name: str, version: str) -> dict[str, str | None]:
         try:
@@ -205,13 +223,12 @@ def required_tool_identities(
             )
             continue
         identities.append(file_identity(check.check_id, observation.observed))
-    if "storage_qualification" in bound:
-        identities.append(
-            file_identity(
-                "storage_qualification",
-                bound["storage_qualification"].observed,
-            )
+    identities.append(
+        file_identity(
+            "storage_qualification",
+            bound["storage_qualification"].observed,
         )
+    )
     return tuple(sorted(identities, key=lambda item: item["name"]))
 
 
@@ -767,13 +784,7 @@ def inspect_local_pilot(
             f"{workspace_path} and reference FASTA {reference_fasta}."
         )
     else:
-        qualification_binding = RuntimeBinding(
-            check_id="storage_qualification",
-            path=qualified_storage.receipt_path,
-            resolved_path=qualified_storage.receipt_path.resolve(strict=True),
-            sha256=qualified_storage.receipt_sha256,
-            observed=qualified_storage.qualification_id,
-        )
+        qualification_binding = storage_runtime_binding(qualified_storage)
     profile_bytes, declared_checks = ops.load_runtime_profile(profile_path)
     validate_runtime_profile_contract(declared_checks, root)
     renv_library = _declared_renv_library(declared_checks)
@@ -932,5 +943,6 @@ __all__ = (
     "required_tool_identities",
     "runtime_file_bindings",
     "runtime_environment",
+    "storage_runtime_binding",
     "validate_runtime_profile",
 )

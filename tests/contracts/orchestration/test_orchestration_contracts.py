@@ -836,6 +836,40 @@ def test_workflow_attempt_requires_clean_checkout_and_named_tools() -> None:
         orchestration.validate_record("workflow-attempt", attempt)
 
 
+def test_local_science_attempt_requires_storage_qualification() -> None:
+    attempt = lifecycle_records()["workflow-attempt"]
+    attempt["execution_mode"] = "local-science-tools"
+    python = next(
+        item for item in attempt["required_tools"] if item["name"] == "python"
+    )
+    attempt["required_tools"].append(
+        {
+            **copy.deepcopy(python),
+            "name": "sha256_python",
+            "version": "sha256",
+        }
+    )
+    attempt["required_tools"].sort(key=lambda item: item["name"])
+
+    with pytest.raises(
+        orchestration.ContractValidationError,
+        match="storage qualification",
+    ):
+        orchestration.validate_record("workflow-attempt", attempt)
+
+    attempt["required_tools"].append(
+        {
+            "name": "storage_qualification",
+            "version": "b" * 64,
+            "path": "/evidence/storage.qualified.json",
+            "resolved_path": "/evidence/storage.qualified.json",
+            "sha256": ONE_HASH,
+        }
+    )
+    attempt["required_tools"].sort(key=lambda item: item["name"])
+    orchestration.validate_record("workflow-attempt", attempt)
+
+
 def test_workflow_attempt_requires_exact_internal_resume_controls() -> None:
     initial = lifecycle_records()["workflow-attempt"]
     initial["snakemake_argv"].insert(-2, "--ignore-incomplete")

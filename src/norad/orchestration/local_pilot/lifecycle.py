@@ -28,7 +28,11 @@ from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
 from types import FrameType
-from typing import Any, Iterator, Literal
+from typing import TYPE_CHECKING, Any, Iterator, Literal
+
+if TYPE_CHECKING:
+    from norad.evidence.storage_inventory.qualification import QualifiedStorage
+    from norad.orchestration.local_pilot.doctor import RuntimeBinding
 
 try:
     import fcntl as _fcntl
@@ -81,7 +85,14 @@ class WorkflowResult:
 BytesPublisher = Callable[[Path, bytes], None]
 LockReleaser = Callable[[Path, Path, bytes, tuple[int, int]], None]
 LockEvidenceLinker = Callable[[Path, Path], None]
-RuntimeContextAdmission = Callable[[Mapping[str, Any], "LifecycleRequest"], None]
+StorageContextAdmission = Callable[
+    [Mapping[str, Any], Mapping[str, Any]],
+    "RuntimeBinding | None",
+]
+RuntimeContextAdmission = Callable[
+    [Mapping[str, Any], "LifecycleRequest", "RuntimeBinding | None"],
+    None,
+]
 DirectorySynchronizer = Callable[[Path, str], None]
 PythonLauncherIdentity = tuple[str, str, int, int]
 AttemptMaterializer = Callable[[], "LifecycleRequest"]
@@ -378,6 +389,7 @@ class LifecycleOps:
     process_id: Callable[[], int]
     process_is_alive: Callable[[int], bool]
     validate_reporting_receipt: inspection.ReportingReceiptValidator
+    admit_storage_context: StorageContextAdmission
     admit_runtime_context: RuntimeContextAdmission
     sync_directory: DirectorySynchronizer
     process_group_ops: ProcessGroupOps = DEFAULT_PROCESS_GROUP_OPS
@@ -1114,9 +1126,34 @@ def _admit_required_tool_identity(identity: Mapping[str, Any]) -> None:
         raise LifecycleError(f"Required tool byte digest differs: {name}")
 
 
+def _readmit_storage_runtime_binding(
+    attempt: Mapping[str, Any],
+    execution: Mapping[str, Any],
+    *,
+    inspect_storage: Callable[[Path, Path], "QualifiedStorage"],
+) -> "RuntimeBinding | None":
+    """Re-admit the qualified roots named by canonical workflow identity."""
+
+    from norad.evidence.storage_inventory import qualification  # noqa: PLC0415
+    from norad.orchestration.local_pilot import doctor  # noqa: PLC0415
+
+    if attempt["execution_mode"] == "test-double":
+        return None
+    workspace = Path(str(attempt["workspace"]))
+    reference_fasta = Path(str(execution["reference"]["fasta"]["path"]))
+    try:
+        qualified = inspect_storage(workspace, reference_fasta)
+        return doctor.storage_runtime_binding(qualified)
+    except (qualification.StorageQualificationError, OSError) as exc:
+        raise LifecycleError(
+            f"Could not re-admit storage qualification: {exc}"
+        ) from exc
+
+
 def _admit_runtime_context(
     attempt: Mapping[str, Any],
     request: LifecycleRequest,
+    storage_binding: "RuntimeBinding | None",
 ) -> None:
     """Observe clean source/package and exact required executor identity."""
 
@@ -1176,6 +1213,10 @@ def _admit_runtime_context(
             f"declared {snakemake['version']!r}; observed {observed_version!r}"
         )
     if attempt["execution_mode"] == "test-double":
+        if storage_binding is not None:
+            raise LifecycleError(
+                "Test-double attempt must not bind storage qualification"
+            )
         for name, identity in tools.items():
             path = Path(str(identity["path"]))
             if name in {"python", "snakemake"}:
@@ -1247,24 +1288,29 @@ def _admit_runtime_context(
             if item.check.required and item.status != "pass"
         )
         raise LifecycleError(f"Required local runtime probes failed: {failures}")
-    expected_tools = doctor.required_tool_identities(
-        runtime_inspection,
-        bindings=doctor.runtime_file_bindings(runtime_inspection),
-        python_executable=request.python_executable,
-        snakemake_version=observed_version,
-        runtime_profile_path=profile_path,
-    )
-    storage_identity = tools.get("storage_qualification")
-    if storage_identity is None:
+    if (
+        tools.get("storage_qualification") is None
+        or storage_binding is None
+        or storage_binding.check_id != "storage_qualification"
+    ):
         raise LifecycleError(
             "Local science attempt must bind its storage qualification"
         )
-    expected_tools = tuple(
-        sorted(
-            (*expected_tools, storage_identity),
-            key=lambda item: item["name"],
+    try:
+        expected_tools = doctor.required_tool_identities(
+            runtime_inspection,
+            bindings=(
+                *doctor.runtime_file_bindings(runtime_inspection),
+                storage_binding,
+            ),
+            python_executable=request.python_executable,
+            snakemake_version=observed_version,
+            runtime_profile_path=profile_path,
         )
-    )
+    except doctor.DoctorInputError as exc:
+        raise LifecycleError(
+            f"Could not project re-observed runtime identities: {exc}"
+        ) from exc
     if tuple(attempt["required_tools"]) != expected_tools:
         raise LifecycleError(
             "Workflow attempt required tools differ from the re-observed runtime profile"
@@ -1301,6 +1347,7 @@ def _local_runtime_environment(
 def default_lifecycle_ops() -> LifecycleOps:
     """Construct production effects without mutable facade globals."""
 
+    from norad.evidence.storage_inventory import qualification  # noqa: PLC0415
     from norad.reporting import transaction_validation  # noqa: PLC0415
 
     return LifecycleOps(
@@ -1312,6 +1359,10 @@ def default_lifecycle_ops() -> LifecycleOps:
         process_id=os.getpid,
         process_is_alive=_process_is_alive,
         validate_reporting_receipt=transaction_validation.validate_receipt,
+        admit_storage_context=partial(
+            _readmit_storage_runtime_binding,
+            inspect_storage=qualification.admit_final_qualification,
+        ),
         admit_runtime_context=_admit_runtime_context,
         sync_directory=_sync_real_directory,
     )
@@ -1682,7 +1733,8 @@ def _admit_request(
         "sha256": hashlib.sha256(request_source_data).hexdigest(),
     }:
         raise LifecycleError("Workflow attempt does not bind authored request source")
-    ops.admit_runtime_context(attempt, request)
+    storage_binding = ops.admit_storage_context(attempt, execution)
+    ops.admit_runtime_context(attempt, request, storage_binding)
     workspace = Path(str(attempt["workspace"]))
     if not workspace.is_absolute():
         raise LifecycleError("Workflow attempt workspace must be absolute")
@@ -2096,7 +2148,8 @@ def _run_attempt_locked(
         else:
             result = candidate
         try:
-            active_ops.admit_runtime_context(attempt, request)
+            storage_binding = active_ops.admit_storage_context(attempt, execution)
+            active_ops.admit_runtime_context(attempt, request, storage_binding)
         except Exception as exc:
             runtime_blockers.append(
                 f"Runtime identity changed during workflow execution: {exc}"
@@ -2504,6 +2557,7 @@ __all__ = (
     "LifecycleOutcome",
     "LifecycleRequest",
     "RuntimeContextAdmission",
+    "StorageContextAdmission",
     "WorkflowResult",
     "build_snakemake_argv",
     "default_lifecycle_ops",

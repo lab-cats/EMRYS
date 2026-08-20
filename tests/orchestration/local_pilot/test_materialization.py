@@ -161,7 +161,17 @@ def _readiness(
         rendered_bytes=b"test runtime report\n",
     )
     workspace = tmp_path / "workspace"
-    bindings = doctor.runtime_file_bindings(runtime_inspection)
+    storage_receipt = tmp_path / "storage.qualified.json"
+    storage_bytes = b"fixed storage qualification receipt\n"
+    storage_receipt.write_bytes(storage_bytes)
+    storage_binding = doctor.RuntimeBinding(
+        check_id="storage_qualification",
+        path=storage_receipt,
+        resolved_path=storage_receipt.resolve(strict=True),
+        sha256=hashlib.sha256(storage_bytes).hexdigest(),
+        observed="b" * 64,
+    )
+    bindings = (*doctor.runtime_file_bindings(runtime_inspection), storage_binding)
     readiness = doctor.DoctorResult(
         request_path=request,
         run_id=normalized.run_id,
@@ -293,10 +303,65 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert [item["name"] for item in plan.attempt_record["required_tools"]] == sorted(
         item["name"] for item in plan.attempt_record["required_tools"]
     )
+    storage_identities = [
+        item
+        for item in plan.attempt_record["required_tools"]
+        if item["name"] == "storage_qualification"
+    ]
+    assert storage_identities == [
+        {
+            "name": "storage_qualification",
+            "version": "b" * 64,
+            "path": str(tmp_path / "storage.qualified.json"),
+            "resolved_path": str(
+                (tmp_path / "storage.qualified.json").resolve(strict=True)
+            ),
+            "sha256": hashlib.sha256(
+                b"fixed storage qualification receipt\n"
+            ).hexdigest(),
+        }
+    ]
     assert all(
         set(item) == {"name", "version", "path", "resolved_path", "sha256"}
         for item in plan.attempt_record["required_tools"]
     )
+
+
+@pytest.mark.parametrize("storage_binding_count", (0, 2))
+def test_plan_requires_exactly_one_storage_qualification_binding(
+    tmp_path: Path,
+    storage_binding_count: int,
+) -> None:
+    readiness, normalized, _request, workspace = _readiness(tmp_path)
+    storage_binding = next(
+        binding
+        for binding in readiness.bindings
+        if binding.check_id == "storage_qualification"
+    )
+    non_storage = tuple(
+        binding
+        for binding in readiness.bindings
+        if binding.check_id != "storage_qualification"
+    )
+    malformed = replace(
+        readiness,
+        bindings=non_storage + (storage_binding,) * storage_binding_count,
+    )
+
+    with pytest.raises(
+        MaterializationError,
+        match="exactly one storage qualification binding",
+    ):
+        build_attempt_plan(
+            normalized,
+            malformed,
+            workspace,
+            operation="execute",
+            now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
+            token="1" * 32,
+            host="test-host",
+            process_id=123,
+        )
 
 
 def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> None:
@@ -447,7 +512,8 @@ def test_locked_publication_terminalizes_failure_and_refuses_repeat(
         host_name=lambda: "test-host",
         process_id=lambda: 123,
         process_is_alive=lambda _pid: False,
-        admit_runtime_context=lambda _attempt, _request: None,
+        admit_storage_context=lambda _attempt, _execution: None,
+        admit_runtime_context=lambda _attempt, _request, _storage: None,
     )
 
     initialize_run(plan, ops=ops)
@@ -499,7 +565,8 @@ def test_attempt_publication_leaves_star_index_directory_for_owner(
         host_name=lambda: "test-host",
         process_id=lambda: 123,
         process_is_alive=lambda _pid: False,
-        admit_runtime_context=lambda _attempt, _request: None,
+        admit_storage_context=lambda _attempt, _execution: None,
+        admit_runtime_context=lambda _attempt, _request, _storage: None,
     )
 
     initialize_run(plan, ops=ops)
@@ -527,7 +594,8 @@ def test_lock_precedes_attempt_publication_failure_and_retains_evidence(
     ops = replace(
         base,
         publish_bytes=fail_on_config,
-        admit_runtime_context=lambda _attempt, _request: None,
+        admit_storage_context=lambda _attempt, _execution: None,
+        admit_runtime_context=lambda _attempt, _request, _storage: None,
     )
     initialize_run(plan, ops=ops)
 
@@ -569,7 +637,8 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
         host_name=lambda: "test-host",
         process_id=lambda: 123,
         process_is_alive=lambda _pid: True,
-        admit_runtime_context=lambda _attempt, _request: None,
+        admit_storage_context=lambda _attempt, _execution: None,
+        admit_runtime_context=lambda _attempt, _request, _storage: None,
     )
     initial_ops = replace(
         common_ops,

@@ -210,6 +210,13 @@ version, normalizer path, and config are admitted as one runtime identity.
 Runtime source checkout and required-tool identities are observed before
 mutation and again after the child exits. The subprocess environment removes
 inherited noninteractive-shell startup hooks before Snakemake starts.
+For a local-science attempt, those observations include a fresh semantic
+admission of the final storage-qualification receipt for the attempt workspace
+and the canonical normalized reference FASTA. The observed receipt path,
+digest, qualification identifier, and qualified root identities must reproduce
+the one immutable `storage_qualification` tool identity before and after the
+child; copying the declared identity into the observed roster is not
+admission.
 SIGINT/SIGTERM is controlled from before mutex acquisition through durable
 receipt or recovery disposition and is forwarded at most once to the delegated
 process group. Terminal success, failure, interruption, or a diagnosed state
@@ -234,6 +241,7 @@ complete attempt record exists, lifecycle still atomically retains the lock as
 `locks/released-<workflow-attempt-id>-run-lock.json`. That aggregate recovery
 evidence is never auto-deleted; inspection treats it, the partial attempt
 directory, or both as blocked state requiring explicit reconciliation.
+The retained filename alone never proves reconciliation.
 
 Only failed/interrupted between-task boundaries are automatically resumable. Resume
 requires the same run, profile, execution, source commit, executor, execution

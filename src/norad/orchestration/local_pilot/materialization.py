@@ -1260,12 +1260,26 @@ def build_attempt_plan(
     if normalized.profile != orchestration_contracts.load_json_object(fixed_profile):
         raise MaterializationError("Normalization did not use the fixed source profile")
     runtime_profile_path = run_root / "contract" / "runtime-profile.tsv"
-    required_tools = doctor.required_tool_identities(
-        readiness.inspection,
-        bindings=readiness.bindings,
-        python_executable=Path(sys.executable),
-        runtime_profile_path=runtime_profile_path,
+    storage_binding_count = sum(
+        binding.check_id == "storage_qualification"
+        for binding in readiness.bindings
     )
+    if storage_binding_count != 1:
+        raise MaterializationError(
+            "Local-pilot readiness must contain exactly one storage qualification "
+            "binding"
+        )
+    try:
+        required_tools = doctor.required_tool_identities(
+            readiness.inspection,
+            bindings=readiness.bindings,
+            python_executable=Path(sys.executable),
+            runtime_profile_path=runtime_profile_path,
+        )
+    except doctor.DoctorInputError as exc:
+        raise MaterializationError(
+            f"Doctor runtime identities are not materializable: {exc}"
+        ) from exc
     python_identity = next(item for item in required_tools if item["name"] == "python")
     normalizer_identity = {
         **python_identity,

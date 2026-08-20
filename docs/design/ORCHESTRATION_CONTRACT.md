@@ -229,6 +229,11 @@ change the scientific run identity. Version 1 automatic resume nevertheless
 requires the same clean source commit, profile digest, and ordered exact
 required-tool identities, then re-admits those paths and bytes; otherwise the
 run becomes blocked pending an explicit compatibility or new-profile decision.
+Every local-science attempt has exactly one file-backed
+`storage_qualification` identity. Lifecycle re-runs semantic qualification for
+the attempt workspace and canonical normalized reference before delegation and
+after the child exits, and requires the resulting receipt identity to reproduce
+that immutable roster entry.
 
 Each workflow attempt binds one canonical attempt-specific workflow-config
 snapshot by relative path and SHA-256. That config binds every owner/scope
@@ -477,6 +482,10 @@ unproved delegated process-group termination is not guessed complete or
 automatically repaired. Quiescence ambiguity retains the public run lock and
 publishes no resumable receipt; a proven-quiescent child plus diagnosed state
 blockers may instead release evidence and publish a blocked receipt.
+Aggregate release evidence retained before an attempt record exists is not
+self-authenticating. Inspection keeps it as a blocker until a separate
+reconciliation contract validates its bytes, ownership, and relationship to
+the absent attempt; a matching filename alone is never enough.
 
 Snakemake automatic retries are zero. NORAD version 1 does not expose automatic
 `--unlock`, `--cleanup-metadata`, `--forceall`, `--rerun-incomplete`, or blind

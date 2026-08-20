@@ -88,7 +88,8 @@ The underlying narrow read-only admission APIs are:
 - `doctor.inspect_local_pilot(...)` admits one request plus the fixed profile,
   checks a disjoint workspace plan, exact clean source checkout, controlled
   Python/Snakemake, science-tool paths and versions, Picard jar, guarded
-  `renv`, and Step `08` namespaces without creating or repairing anything.
+  `renv`, Step `08` namespaces, and the exact final storage qualification
+  without creating or repairing anything.
 
 The doctor also has the grouped public command:
 
@@ -126,6 +127,10 @@ work only through the accepted fixed profile:
 
 `run` and `resume` print the exact owner and Snakemake plan and write nothing
 unless `--execute` is present. `inspect local-pilot-run` is always read-only.
+Execution re-admits the normalized reference/workspace storage qualification
+before delegation and after the child terminates. A missing, changed, or
+semantically invalid receipt blocks the attempt; the immutable attempt cannot
+accept its own declared storage identity as proof.
 The direct public Python surface is `control.plan_run`, `plan_resume`, and
 `execute_plan`, backed by the single production owner
 `materialization.build_attempt_plan`; tests pass explicit collaborators rather

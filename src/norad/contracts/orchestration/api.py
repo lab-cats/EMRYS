@@ -486,6 +486,13 @@ def _validate_identity_record(name: str, record: Mapping[str, Any]) -> None:
             raise ContractValidationError(
                 "Local science workflow must bind controlled Python SHA-256"
             )
+        if (
+            record["execution_mode"] == "local-science-tools"
+            and "storage_qualification" not in tools
+        ):
+            raise ContractValidationError(
+                "Local science workflow must bind one storage qualification"
+            )
         if sha256_python is not None and any(
             sha256_python[field] != tools["python"][field]
             for field in ("path", "resolved_path", "sha256")

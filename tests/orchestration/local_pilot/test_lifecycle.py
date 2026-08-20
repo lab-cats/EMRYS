@@ -14,14 +14,21 @@ import subprocess
 import sys
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from norad.contracts.orchestration import api as orchestration_contracts
+from norad.evidence.storage_inventory import qualification as storage_qualification
 from norad.libraries.installed_package_identity import installed_package_tree_identity
-from norad.orchestration.local_pilot import inspection, lifecycle, reporting_boundary
+from norad.orchestration.local_pilot import (
+    doctor,
+    inspection,
+    lifecycle,
+    reporting_boundary,
+)
 from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
 
 WORKFLOW_TIME = datetime(2026, 8, 12, 14, 0, tzinfo=UTC)
@@ -58,6 +65,80 @@ def test_run_root_and_source_checkout_must_be_disjoint(
         lifecycle._require_disjoint_roots(run_root, source_checkout)
 
 
+def test_storage_readmission_uses_normalized_reference_identity(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    authored_fasta = tmp_path / "authored.fa"
+    normalized_fasta = tmp_path / "normalized.fa"
+    receipt = tmp_path / "storage.qualified.json"
+    receipt_bytes = b"qualified storage\n"
+    receipt.write_bytes(receipt_bytes)
+    calls: list[tuple[Path, Path]] = []
+
+    def inspect_storage(
+        observed_workspace: Path,
+        observed_reference: Path,
+    ) -> storage_qualification.QualifiedStorage:
+        calls.append((observed_workspace, observed_reference))
+        return storage_qualification.QualifiedStorage(
+            receipt_path=receipt,
+            receipt_sha256=hashlib.sha256(receipt_bytes).hexdigest(),
+            qualification_id="b" * 64,
+        )
+
+    binding = lifecycle._readmit_storage_runtime_binding(
+        {
+            "execution_mode": "local-science-tools",
+            "workspace": str(workspace),
+            "authored_paths": {"reference_fasta": str(authored_fasta)},
+        },
+        {"reference": {"fasta": {"path": str(normalized_fasta)}}},
+        inspect_storage=inspect_storage,
+    )
+
+    assert calls == [(workspace, normalized_fasta)]
+    assert binding == doctor.RuntimeBinding(
+        check_id="storage_qualification",
+        path=receipt,
+        resolved_path=receipt.resolve(strict=True),
+        sha256=hashlib.sha256(receipt_bytes).hexdigest(),
+        observed="b" * 64,
+    )
+
+
+def test_storage_readmission_failure_is_a_lifecycle_error(tmp_path: Path) -> None:
+    def reject_storage(
+        _workspace: Path,
+        _reference: Path,
+    ) -> storage_qualification.QualifiedStorage:
+        raise storage_qualification.StorageQualificationError("fixture drift")
+
+    with pytest.raises(
+        lifecycle.LifecycleError,
+        match="Could not re-admit storage qualification: fixture drift",
+    ):
+        lifecycle._readmit_storage_runtime_binding(
+            {
+                "execution_mode": "local-science-tools",
+                "workspace": str(tmp_path / "workspace"),
+            },
+            {"reference": {"fasta": {"path": str(tmp_path / "reference.fa")}}},
+            inspect_storage=reject_storage,
+        )
+
+
+def test_default_lifecycle_ops_bind_semantic_storage_admission() -> None:
+    admission = lifecycle.default_lifecycle_ops().admit_storage_context
+
+    assert isinstance(admission, partial)
+    assert admission.func is lifecycle._readmit_storage_runtime_binding
+    assert (
+        admission.keywords["inspect_storage"]
+        is storage_qualification.admit_final_qualification
+    )
+
+
 @dataclass(slots=True)
 class ValidatedFixtureReceipt:
     receipt_path: Path
@@ -74,6 +155,9 @@ class Harness:
     mutate_verified: bool = False
     reporting_error: str | None = None
     reporting_identity_lie: bool = False
+    storage_admissions: int = 0
+    fail_first_storage_admission: bool = False
+    fail_second_storage_admission: bool = False
     runtime_admissions: int = 0
     fail_second_runtime_admission: bool = False
     mutate_request_on_first_admission: bool = False
@@ -98,6 +182,7 @@ class Harness:
             process_id=lambda: 4242,
             process_is_alive=lambda _pid: True,
             validate_reporting_receipt=self.validate_reporting,
+            admit_storage_context=self.admit_storage,
             admit_runtime_context=self.admit_runtime,
             sync_directory=self.sync_directory,
         )
@@ -111,8 +196,28 @@ class Harness:
             raise lifecycle.LifecycleError("fixture attempt-directory sync failure")
         lifecycle._sync_real_directory(path, label)
 
+    def admit_storage(
+        self,
+        _attempt: dict[str, Any],
+        _execution: dict[str, Any],
+    ) -> None:
+        self.storage_admissions += 1
+        self.events.append("storage-admitted")
+        if self.fail_first_storage_admission and self.storage_admissions == 1:
+            raise lifecycle.LifecycleError(
+                "Could not re-admit storage qualification: initial fixture drift"
+            )
+        if self.fail_second_storage_admission and self.storage_admissions == 2:
+            raise lifecycle.LifecycleError(
+                "Could not re-admit storage qualification: post-child fixture drift"
+            )
+        return None
+
     def admit_runtime(
-        self, _attempt: dict[str, Any], _request: lifecycle.LifecycleRequest
+        self,
+        _attempt: dict[str, Any],
+        _request: lifecycle.LifecycleRequest,
+        _storage_binding: doctor.RuntimeBinding | None,
     ) -> None:
         self.runtime_admissions += 1
         self.events.append("runtime-admitted")
@@ -1327,6 +1432,21 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
         "release",
         f"publish:{outcome.receipt_path.relative_to(built.built.run_root)}",
     ]
+    runtime_admissions = [
+        index
+        for index, event in enumerate(built.events)
+        if event == "runtime-admitted"
+    ]
+    assert len(runtime_admissions) == 2
+    storage_admissions = [
+        index
+        for index, event in enumerate(built.events)
+        if event == "storage-admitted"
+    ]
+    assert len(storage_admissions) == 2
+    workflow_index = built.events.index("workflow")
+    assert runtime_admissions[0] < workflow_index < runtime_admissions[1]
+    assert storage_admissions[0] < workflow_index < storage_admissions[1]
     (built.built.run_root / ".snakemake").mkdir()
     (built.built.run_root / ".snakemake" / "foreign").write_text("junk\n")
     observed = inspection.inspect_run(
@@ -1744,6 +1864,44 @@ def test_post_child_runtime_identity_change_blocks(tmp_path: Path) -> None:
     assert any(
         "Runtime identity changed" in item for item in outcome.receipt["blockers"]
     )
+    assert built.runtime_admissions == 2
+
+
+def test_initial_storage_qualification_failure_prevents_workflow(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(tmp_path)
+    built.fail_first_storage_admission = True
+
+    with pytest.raises(
+        lifecycle.LifecycleError,
+        match="initial fixture drift",
+    ):
+        lifecycle.run_attempt(built.request, ops=built.ops())
+
+    assert built.storage_admissions == 1
+    assert "workflow" not in built.events
+    assert not (built.built.run_root / "locks" / "run.lock").exists()
+    identifier = str(built.request.attempt_record["workflow_attempt_id"])
+    assert not (built.built.run_root / "attempts" / identifier).exists()
+
+
+def test_post_child_storage_qualification_change_blocks(tmp_path: Path) -> None:
+    built = _build_harness(tmp_path)
+    built.materialize_complete = True
+    built.fail_second_storage_admission = True
+
+    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+
+    assert built.storage_admissions == 2
+    assert "workflow" in built.events
+    assert outcome.receipt["status"] == "blocked"
+    assert any(
+        "post-child fixture drift" in item
+        for item in outcome.receipt["blockers"]
+    )
+    assert not outcome.lock_path.exists()
+    assert outcome.receipt_path.is_file()
 
 
 def test_authored_request_change_before_publication_fails_cleanly(
@@ -1860,6 +2018,26 @@ def test_persistent_zero_byte_mutex_is_benign_but_other_shapes_block(
     assert any("must be zero bytes" in item for item in blockers)
 
 
+def test_retained_pre_attempt_release_evidence_requires_reconciliation(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(tmp_path)
+    identifier = "workflow-20260812T170000Z-" + "a" * 32
+    retained = (
+        built.built.run_root
+        / "locks"
+        / f"released-{identifier}-run-lock.json"
+    )
+    retained.write_bytes(b"retained pre-attempt evidence\n")
+
+    blockers = inspection.lock_tree_blockers(
+        built.built.run_root,
+        expected_run_lock=False,
+    )
+
+    assert blockers == (f"Unexpected retained aggregate lock state: {retained}",)
+
+
 def test_advisory_mutex_unavailability_fails_before_mutex_publication(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -1936,6 +2114,7 @@ def test_release_hook_cannot_substitute_equal_bytes_on_a_new_inode(
         process_id=defaults.process_id,
         process_is_alive=defaults.process_is_alive,
         validate_reporting_receipt=defaults.validate_reporting_receipt,
+        admit_storage_context=defaults.admit_storage_context,
         admit_runtime_context=defaults.admit_runtime_context,
         sync_directory=defaults.sync_directory,
     )
@@ -2144,7 +2323,11 @@ def test_nonattempt_entry_and_unexpected_attempt_child_block_before_lock(
 def test_lying_runtime_authority_fails_before_mutation(tmp_path: Path) -> None:
     built = _build_harness(tmp_path)
 
-    def reject(_attempt: dict[str, Any], _request: lifecycle.LifecycleRequest) -> None:
+    def reject(
+        _attempt: dict[str, Any],
+        _request: lifecycle.LifecycleRequest,
+        _storage_binding: doctor.RuntimeBinding | None,
+    ) -> None:
         raise lifecycle.LifecycleError("declared checkout differs from observed")
 
     ops = built.ops()
@@ -2157,12 +2340,13 @@ def test_lying_runtime_authority_fails_before_mutation(tmp_path: Path) -> None:
         process_id=ops.process_id,
         process_is_alive=ops.process_is_alive,
         validate_reporting_receipt=ops.validate_reporting_receipt,
+        admit_storage_context=ops.admit_storage_context,
         admit_runtime_context=reject,
         sync_directory=ops.sync_directory,
     )
     with pytest.raises(lifecycle.LifecycleError, match="checkout differs"):
         lifecycle.run_attempt(built.request, ops=lying)
-    assert built.events == []
+    assert built.events == ["storage-admitted"]
 
 
 def test_success_receipt_with_verified_subset_is_blocked_on_inspection(

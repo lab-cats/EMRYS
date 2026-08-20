@@ -333,6 +333,22 @@ def test_required_tool_identities_reject_duplicate_runtime_binding_ids(
         )
 
 
+def test_required_tool_identities_require_storage_qualification(
+    tmp_path: Path,
+) -> None:
+    inspection = _inspection(tmp_path)
+
+    with pytest.raises(
+        doctor.DoctorInputError,
+        match="absent: storage_qualification",
+    ):
+        doctor.required_tool_identities(
+            inspection,
+            bindings=doctor.runtime_file_bindings(inspection),
+            python_executable=Path(sys.executable),
+        )
+
+
 def test_doctor_blocks_when_storage_is_not_site_qualified(
     tmp_path: Path,
 ) -> None:
