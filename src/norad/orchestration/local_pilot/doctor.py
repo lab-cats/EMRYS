@@ -652,7 +652,7 @@ def runtime_file_bindings(
         }:
             continue
         if check.check_type == "r_namespace":
-            path = renv_library / check.target
+            path = (renv_library / check.target).resolve(strict=True)
             try:
                 identity = installed_package_tree_identity(path)
             except InstalledPackageIdentityError as exc:

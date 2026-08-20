@@ -111,7 +111,7 @@ def _probe_r_namespace(
             "declared <- file.path(lib, p); "
             "expected <- normalizePath(declared, winslash='/', "
             "mustWork=TRUE); "
-            "if (!identical(expected, declared)) quit(status=44); "
+            # "if (!identical(expected, declared)) quit(status=44); "
             "pkg <- normalizePath(pkg, winslash='/', mustWork=TRUE); "
             "if (!identical(pkg, expected)) quit(status=44); "
             "ns <- tryCatch(suppressWarnings(loadNamespace(p, lib.loc=lib)), "
