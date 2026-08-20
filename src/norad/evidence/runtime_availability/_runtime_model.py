@@ -45,7 +45,7 @@ VISIBILITY_PROBES = {
 HASH_PROBES = {"python_hashlib", "sha256sum", "shasum"}
 SAFE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 VERSION_TEXT_LIMIT = 4096
-PROBE_TIMEOUT_SECONDS = 30
+PROBE_TIMEOUT_SECONDS = 120
 HASH_PAYLOAD = b"norad-runtime-preflight\n"
 HASH_EXPECTED = hashlib.sha256(HASH_PAYLOAD).hexdigest()
 
