@@ -440,6 +440,8 @@ def _wrapper_environment(
     scratch_parent.mkdir(exist_ok=True)
     return {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+        "USER": "norad-submit-user",
+        "LOGNAME": "norad-submit-user",
         "NORAD_SLURM_ACCOUNT": "viking-users",
         "NORAD_SLURM_PARTITION": "short",
         "NORAD_SLURM_QOS": "normal",
@@ -487,7 +489,7 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
     (tmp_path / "checkout").mkdir()
     environment = _wrapper_environment(tmp_path, fake_python, module_init)
     environment["NORAD_SLURM_MEMORY"] = memory
-    environment["PATH"] = f"{bin_dir}:{environment['PATH']}"
+    environment["PATH"] = f"{bin_dir}:/hostile/ambient:{environment['PATH']}"
     environment["SBATCH_CAPTURE"] = str(capture)
     environment["PYTHON_RAN"] = str(tmp_path / "python-ran")
     environment["MODULE_INIT_RAN"] = str(tmp_path / "module-init-ran")
@@ -521,16 +523,62 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
     assert memory_arguments == (
         [] if expected_memory_argument is None else [expected_memory_argument]
     )
-    assert any(
-        argument.startswith("--export=")
-        and "NORAD_SLURM_CPUS=4" in argument
-        and "NORAD_MODULE_MODE=exact" in argument
-        and f"NORAD_SCRATCH_PARENT={tmp_path / 'scratch'}" in argument
-        and "NORAD_TOOL_THREADS" not in argument
-        and "NORAD_SAMPLE_CONCURRENCY" not in argument
-        for argument in arguments
+    export_arguments = [
+        argument for argument in arguments if argument.startswith("--export=")
+    ]
+    assert len(export_arguments) == 1
+    export_fields = export_arguments[0].removeprefix("--export=").split(",")
+    assert export_fields[0] == f"PATH={fake_python.parent}:/usr/bin:/bin"
+    assert str(bin_dir) not in export_fields[0]
+    assert "/hostile/ambient" not in export_fields[0]
+    assert "NORAD_SLURM_CPUS=4" in export_fields
+    assert "NORAD_MODULE_MODE=exact" in export_fields
+    assert f"NORAD_SCRATCH_PARENT={tmp_path / 'scratch'}" in export_fields
+    assert not any(field.startswith("NORAD_TOOL_THREADS=") for field in export_fields)
+    assert not any(
+        field.startswith("NORAD_SAMPLE_CONCURRENCY=") for field in export_fields
     )
     assert str(wrapper) == arguments[-1]
+
+
+@pytest.mark.parametrize("python_path_kind", ("relative", "root", "colon"))
+def test_slurm_wrapper_rejects_unsafe_python_path_before_submission(
+    tmp_path: Path,
+    python_path_kind: str,
+) -> None:
+    wrapper = tmp_path / "run-in-slurm.sh"
+    wrapper.write_bytes(
+        onboarding.starter_members(root=REPO_ROOT)["run-in-slurm.sh"][0]
+    )
+    wrapper.chmod(0o755)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    submitted = tmp_path / "submitted"
+    _executable(bin_dir / "sbatch", '#!/bin/sh\ntouch "$SUBMITTED"\n')
+    fake_python = _executable(tmp_path / "python")
+    module_init = tmp_path / "modules.sh"
+    module_init.write_text("module() { :; }\n", encoding="utf-8")
+    (tmp_path / "checkout").mkdir()
+    environment = _wrapper_environment(tmp_path, fake_python, module_init)
+    environment["PATH"] = f"{bin_dir}:{environment['PATH']}"
+    environment["SUBMITTED"] = str(submitted)
+    environment["NORAD_PYTHON"] = {
+        "relative": "relative/python",
+        "root": "/python",
+        "colon": f"{tmp_path}/unsafe:directory/python",
+    }[python_path_kind]
+
+    result = subprocess.run(
+        [str(wrapper)],
+        text=True,
+        capture_output=True,
+        check=False,
+        env=environment,
+    )
+
+    assert result.returncode == 2
+    assert "NORAD_PYTHON" in result.stderr
+    assert not submitted.exists()
 
 
 @pytest.mark.parametrize("unsafe", ("bad,value", "bad\nvalue"))

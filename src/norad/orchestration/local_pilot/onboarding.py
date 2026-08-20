@@ -322,6 +322,12 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
     validate_module_settings
     [[ "$NORAD_SLURM_CPUS" =~ ^[1-9][0-9]*$ ]] || die "NORAD_SLURM_CPUS must be a positive integer"
     [[ "$NORAD_EXECUTE" == 0 || "$NORAD_EXECUTE" == 1 ]] || die "NORAD_EXECUTE must be 0 or 1"
+    [[ "$NORAD_PYTHON" == /* && "$NORAD_PYTHON" != *:* ]] || \
+        die "NORAD_PYTHON must be an absolute path without a colon"
+    python_directory="${NORAD_PYTHON%/*}"
+    [[ -n "$python_directory" && "$python_directory" == /* ]] || \
+        die "NORAD_PYTHON must have an absolute parent directory"
+    readonly python_directory
     slurm_memory_argument=
     if [[ "$NORAD_SLURM_MEMORY" != site-default ]]; then
         [[ "$NORAD_SLURM_MEMORY" =~ ^[1-9][0-9]*[KMGTP]?$ ]] || \
@@ -333,7 +339,7 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
     command -v sbatch >/dev/null 2>&1 || die "sbatch is unavailable on this host"
     submit_user="${USER:-${LOGNAME:-}}"
     [[ -n "$submit_user" ]] || die "submission USER/LOGNAME is unavailable"
-    export_spec="PATH=${NORAD_PYTHON%/*}:/usr/bin:/bin,USER=$submit_user,LOGNAME=$submit_user,NORAD_SLURM_CPUS=$NORAD_SLURM_CPUS,NORAD_SOURCE_CHECKOUT=$NORAD_SOURCE_CHECKOUT,NORAD_PYTHON=$NORAD_PYTHON,NORAD_REQUEST=$NORAD_REQUEST,NORAD_WORKSPACE=$NORAD_WORKSPACE,NORAD_RUNTIME_PROFILE=$NORAD_RUNTIME_PROFILE,NORAD_MODULE_MODE=$NORAD_MODULE_MODE,NORAD_MODULE_INIT=$NORAD_MODULE_INIT,NORAD_MODULES=$NORAD_MODULES,NORAD_SCRATCH_PARENT=$NORAD_SCRATCH_PARENT,NORAD_EXECUTE=$NORAD_EXECUTE"
+    export_spec="PATH=$python_directory:/usr/bin:/bin,USER=$submit_user,LOGNAME=$submit_user,NORAD_SLURM_CPUS=$NORAD_SLURM_CPUS,NORAD_SOURCE_CHECKOUT=$NORAD_SOURCE_CHECKOUT,NORAD_PYTHON=$NORAD_PYTHON,NORAD_REQUEST=$NORAD_REQUEST,NORAD_WORKSPACE=$NORAD_WORKSPACE,NORAD_RUNTIME_PROFILE=$NORAD_RUNTIME_PROFILE,NORAD_MODULE_MODE=$NORAD_MODULE_MODE,NORAD_MODULE_INIT=$NORAD_MODULE_INIT,NORAD_MODULES=$NORAD_MODULES,NORAD_SCRATCH_PARENT=$NORAD_SCRATCH_PARENT,NORAD_EXECUTE=$NORAD_EXECUTE"
     job_id="$(sbatch --parsable \
         --account="$NORAD_SLURM_ACCOUNT" \
         --partition="$NORAD_SLURM_PARTITION" \

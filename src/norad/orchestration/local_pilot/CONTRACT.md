@@ -51,6 +51,10 @@ does not run the doctor or workflow. `NORAD_SLURM_MEMORY=site-default` emits no
 `NORAD_MODULE_MODE` is closed to `exact` or `none`: exact mode requires the
 initializer and module roster, while none mode requires both to be explicitly
 empty and never sources the module system.
+The submitted batch `PATH` is exactly the absolute parent directory of
+`NORAD_PYTHON` followed by `/usr/bin:/bin`. Relative, root-level, or
+colon-bearing Python paths fail before `sbatch`; no ambient submit-host path
+entry is exported.
 
 In the batch allocation the wrapper creates a private mode-`0700` directory
 below the required real writable `NORAD_SCRATCH_PARENT`, exports it as

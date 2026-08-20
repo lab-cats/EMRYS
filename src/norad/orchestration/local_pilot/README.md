@@ -39,6 +39,9 @@ authority.
 `sbatch` after its named `NORAD_*` scheduler, input, runtime, module, and
 scratch settings are provided. `NORAD_SLURM_MEMORY=site-default` omits
 `--mem`; a positive explicit Slurm size is passed exactly once.
+`PATH` inside the allocation is sealed at submission to the absolute
+`NORAD_PYTHON` parent followed by `/usr/bin:/bin`; the submit shell's
+ambient path is not propagated.
 `NORAD_MODULE_MODE=exact` requires and loads the declared initializer and
 colon-delimited roster, while `none` requires both module values to be
 explicitly empty and loads nothing. It prints the job ID and exact
