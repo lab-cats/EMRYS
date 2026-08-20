@@ -477,6 +477,9 @@ nonsymlink module-init file and a colon-separated exact module list.
 Submission seals the batch `PATH` to the absolute `NORAD_PYTHON` parent
 followed by `/usr/bin:/bin`; it does not propagate the submit shell's ambient
 path.
+The submit shell's `USER` and `LOGNAME` must both match `/usr/bin/id -un`.
+The wrapper binds that live user and numeric UID into the batch and rechecks
+them before any runtime or workspace action.
 `NORAD_SCRATCH_PARENT` must already be a real writable compute-node directory;
 the job creates a private mode-`700` child, exports it as `TMPDIR`, logs its
 filesystem/capacity, and removes it at exit. The wrapper installs nothing. The

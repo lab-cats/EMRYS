@@ -5,6 +5,7 @@ import csv
 import hashlib
 import json
 import os
+import pwd
 import stat
 import subprocess
 import sys
@@ -438,10 +439,14 @@ def _wrapper_environment(
     log_dir.mkdir(exist_ok=True)
     scratch_parent = tmp_path / "scratch"
     scratch_parent.mkdir(exist_ok=True)
+    live_uid = str(os.getuid())
+    live_user = pwd.getpwuid(os.getuid()).pw_name
     return {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-        "USER": "norad-submit-user",
-        "LOGNAME": "norad-submit-user",
+        "NORAD_SUBMIT_UID": live_uid,
+        "NORAD_SUBMIT_USER": live_user,
+        "USER": live_user,
+        "LOGNAME": live_user,
         "NORAD_SLURM_ACCOUNT": "viking-users",
         "NORAD_SLURM_PARTITION": "short",
         "NORAD_SLURM_QOS": "normal",
@@ -532,6 +537,10 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
     assert str(bin_dir) not in export_fields[0]
     assert "/hostile/ambient" not in export_fields[0]
     assert "NORAD_SLURM_CPUS=4" in export_fields
+    assert f"NORAD_SUBMIT_UID={os.getuid()}" in export_fields
+    assert f"NORAD_SUBMIT_USER={pwd.getpwuid(os.getuid()).pw_name}" in export_fields
+    assert f"USER={pwd.getpwuid(os.getuid()).pw_name}" in export_fields
+    assert f"LOGNAME={pwd.getpwuid(os.getuid()).pw_name}" in export_fields
     assert "NORAD_MODULE_MODE=exact" in export_fields
     assert f"NORAD_SCRATCH_PARENT={tmp_path / 'scratch'}" in export_fields
     assert not any(field.startswith("NORAD_TOOL_THREADS=") for field in export_fields)
@@ -607,6 +616,55 @@ def test_slurm_wrapper_rejects_unsafe_export_values(
     )
     assert result.returncode == 2
     assert "newline or comma" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    (
+        ("USER", None),
+        ("LOGNAME", None),
+        ("USER", "different-user"),
+        ("LOGNAME", "different-user"),
+        ("USER", "bad,user"),
+        ("LOGNAME", "bad\nuser"),
+    ),
+)
+def test_slurm_wrapper_rejects_unbound_submit_identity_before_submission(
+    tmp_path: Path,
+    name: str,
+    value: str | None,
+) -> None:
+    wrapper = tmp_path / "run-in-slurm.sh"
+    wrapper.write_bytes(
+        onboarding.starter_members(root=REPO_ROOT)["run-in-slurm.sh"][0]
+    )
+    wrapper.chmod(0o755)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    submitted = tmp_path / "submitted"
+    _executable(bin_dir / "sbatch", '#!/bin/sh\ntouch "$SUBMITTED"\n')
+    fake_python = _executable(tmp_path / "python")
+    module_init = tmp_path / "modules.sh"
+    module_init.write_text("module() { :; }\n", encoding="utf-8")
+    (tmp_path / "checkout").mkdir()
+    environment = _wrapper_environment(tmp_path, fake_python, module_init)
+    environment["PATH"] = f"{bin_dir}:{environment['PATH']}"
+    environment["SUBMITTED"] = str(submitted)
+    if value is None:
+        environment.pop(name)
+    else:
+        environment[name] = value
+
+    result = subprocess.run(
+        [str(wrapper)],
+        text=True,
+        capture_output=True,
+        check=False,
+        env=environment,
+    )
+
+    assert result.returncode == 2
+    assert not submitted.exists()
 
 
 @pytest.mark.parametrize(
@@ -737,3 +795,59 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
     assert "--workflow-cores" not in invocations[2]
     assert "--sample-concurrency" not in invocations[2]
     assert invocations[2].endswith("--execute")
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    (
+        ("NORAD_SUBMIT_UID", "999999"),
+        ("NORAD_SUBMIT_USER", "different-user"),
+        ("USER", "different-user"),
+        ("LOGNAME", "different-user"),
+    ),
+)
+def test_slurm_wrapper_batch_mode_rejects_scheduler_identity_drift(
+    tmp_path: Path,
+    name: str,
+    value: str,
+) -> None:
+    wrapper = tmp_path / "run-in-slurm.sh"
+    wrapper.write_bytes(
+        onboarding.starter_members(root=REPO_ROOT)["run-in-slurm.sh"][0]
+    )
+    wrapper.chmod(0o755)
+    python_capture = tmp_path / "python.log"
+    fake_python = _executable(
+        tmp_path / "python",
+        '#!/bin/sh\ntouch "$PYTHON_CAPTURE"\n',
+    )
+    module_capture = tmp_path / "module.log"
+    module_init = tmp_path / "modules.sh"
+    module_init.write_text('touch "$MODULE_CAPTURE"\n', encoding="utf-8")
+    (tmp_path / "checkout").mkdir()
+    environment = _wrapper_environment(tmp_path, fake_python, module_init)
+    environment.update(
+        {
+            "SLURM_JOB_ID": "700123",
+            "PYTHON_CAPTURE": str(python_capture),
+            "MODULE_CAPTURE": str(module_capture),
+            name: value,
+        }
+    )
+
+    result = subprocess.run(
+        [str(wrapper)],
+        text=True,
+        capture_output=True,
+        check=False,
+        env=environment,
+    )
+
+    assert result.returncode == 2
+    assert "identity" in result.stderr
+    assert not module_capture.exists()
+    assert not python_capture.exists()
+    assert not any(
+        path.name.startswith("norad-700123.")
+        for path in (tmp_path / "scratch").iterdir()
+    )

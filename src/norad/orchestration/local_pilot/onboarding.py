@@ -292,6 +292,15 @@ require_value() {
     [[ -n "${!name}" ]] || die "$name must be nonempty"
 }
 
+observe_live_identity() {
+    [[ -x /usr/bin/id ]] || die "/usr/bin/id is unavailable"
+    live_uid="$(/usr/bin/id -u)" || die "could not resolve the live numeric UID"
+    live_user="$(/usr/bin/id -un)" || die "could not resolve the live user name"
+    [[ "$live_uid" =~ ^[0-9]+$ ]] || die "live numeric UID is invalid"
+    [[ "$live_user" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || \
+        die "live user name is unsafe for Slurm export"
+}
+
 validate_module_settings() {
     case "$NORAD_MODULE_MODE" in
         exact)
@@ -319,7 +328,14 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
     for name in NORAD_MODULE_INIT NORAD_MODULES; do
         require_export_value "$name"
     done
+    for name in USER LOGNAME; do
+        require_value "$name"
+    done
     validate_module_settings
+    observe_live_identity
+    [[ "$USER" == "$live_user" && "$LOGNAME" == "$live_user" ]] || \
+        die "submission USER/LOGNAME must match the live user name"
+    readonly live_uid live_user
     [[ "$NORAD_SLURM_CPUS" =~ ^[1-9][0-9]*$ ]] || die "NORAD_SLURM_CPUS must be a positive integer"
     [[ "$NORAD_EXECUTE" == 0 || "$NORAD_EXECUTE" == 1 ]] || die "NORAD_EXECUTE must be 0 or 1"
     [[ "$NORAD_PYTHON" == /* && "$NORAD_PYTHON" != *:* ]] || \
@@ -337,9 +353,7 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
     [[ -d "$NORAD_LOG_DIR" && ! -L "$NORAD_LOG_DIR" ]] || \
         die "NORAD_LOG_DIR must be an existing real directory"
     command -v sbatch >/dev/null 2>&1 || die "sbatch is unavailable on this host"
-    submit_user="${USER:-${LOGNAME:-}}"
-    [[ -n "$submit_user" ]] || die "submission USER/LOGNAME is unavailable"
-    export_spec="PATH=$python_directory:/usr/bin:/bin,USER=$submit_user,LOGNAME=$submit_user,NORAD_SLURM_CPUS=$NORAD_SLURM_CPUS,NORAD_SOURCE_CHECKOUT=$NORAD_SOURCE_CHECKOUT,NORAD_PYTHON=$NORAD_PYTHON,NORAD_REQUEST=$NORAD_REQUEST,NORAD_WORKSPACE=$NORAD_WORKSPACE,NORAD_RUNTIME_PROFILE=$NORAD_RUNTIME_PROFILE,NORAD_MODULE_MODE=$NORAD_MODULE_MODE,NORAD_MODULE_INIT=$NORAD_MODULE_INIT,NORAD_MODULES=$NORAD_MODULES,NORAD_SCRATCH_PARENT=$NORAD_SCRATCH_PARENT,NORAD_EXECUTE=$NORAD_EXECUTE"
+    export_spec="PATH=$python_directory:/usr/bin:/bin,NORAD_SUBMIT_UID=$live_uid,NORAD_SUBMIT_USER=$live_user,USER=$live_user,LOGNAME=$live_user,NORAD_SLURM_CPUS=$NORAD_SLURM_CPUS,NORAD_SOURCE_CHECKOUT=$NORAD_SOURCE_CHECKOUT,NORAD_PYTHON=$NORAD_PYTHON,NORAD_REQUEST=$NORAD_REQUEST,NORAD_WORKSPACE=$NORAD_WORKSPACE,NORAD_RUNTIME_PROFILE=$NORAD_RUNTIME_PROFILE,NORAD_MODULE_MODE=$NORAD_MODULE_MODE,NORAD_MODULE_INIT=$NORAD_MODULE_INIT,NORAD_MODULES=$NORAD_MODULES,NORAD_SCRATCH_PARENT=$NORAD_SCRATCH_PARENT,NORAD_EXECUTE=$NORAD_EXECUTE"
     job_id="$(sbatch --parsable \
         --account="$NORAD_SLURM_ACCOUNT" \
         --partition="$NORAD_SLURM_PARTITION" \
@@ -364,7 +378,7 @@ if [[ -z "${SLURM_JOB_ID:-}" ]]; then
     exit 0
 fi
 
-for name in NORAD_SLURM_CPUS \
+for name in NORAD_SUBMIT_UID NORAD_SUBMIT_USER USER LOGNAME NORAD_SLURM_CPUS \
     NORAD_SOURCE_CHECKOUT NORAD_PYTHON NORAD_REQUEST NORAD_WORKSPACE \
     NORAD_RUNTIME_PROFILE NORAD_MODULE_MODE NORAD_SCRATCH_PARENT \
     NORAD_EXECUTE; do
@@ -375,6 +389,15 @@ for name in NORAD_MODULE_INIT NORAD_MODULES; do
 done
 [[ "$NORAD_SLURM_CPUS" =~ ^[1-9][0-9]*$ ]] || die "NORAD_SLURM_CPUS must be a positive integer"
 [[ "$NORAD_EXECUTE" == 0 || "$NORAD_EXECUTE" == 1 ]] || die "NORAD_EXECUTE must be 0 or 1"
+[[ "$NORAD_SUBMIT_UID" =~ ^[0-9]+$ ]] || die "NORAD_SUBMIT_UID must be numeric"
+[[ "$NORAD_SUBMIT_USER" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || \
+    die "NORAD_SUBMIT_USER is invalid"
+observe_live_identity
+[[ "$NORAD_SUBMIT_UID" == "$live_uid" && \
+    "$NORAD_SUBMIT_USER" == "$live_user" && \
+    "$USER" == "$live_user" && "$LOGNAME" == "$live_user" ]] || \
+    die "batch identity does not match the admitted submitter"
+readonly live_uid live_user
 validate_module_settings
 if [[ "$NORAD_MODULE_MODE" == exact ]]; then
     [[ -f "$NORAD_MODULE_INIT" && ! -L "$NORAD_MODULE_INIT" ]] || \

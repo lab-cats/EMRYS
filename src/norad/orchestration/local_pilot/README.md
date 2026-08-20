@@ -42,6 +42,9 @@ scratch settings are provided. `NORAD_SLURM_MEMORY=site-default` omits
 `PATH` inside the allocation is sealed at submission to the absolute
 `NORAD_PYTHON` parent followed by `/usr/bin:/bin`; the submit shell's
 ambient path is not propagated.
+Submission binds the live `/usr/bin/id` UID and user name, requires
+`USER` and `LOGNAME` to agree, and exports that identity explicitly. Batch
+mode re-observes the same identity before module loading or workspace access.
 `NORAD_MODULE_MODE=exact` requires and loads the declared initializer and
 colon-delimited roster, while `none` requires both module values to be
 explicitly empty and loads nothing. It prints the job ID and exact
