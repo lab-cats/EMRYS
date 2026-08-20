@@ -393,7 +393,7 @@ select_display_ranks <- function(rows) {
     ranked <- significant[order(
         fdr, -abs(delta), rows$candidate_id[significant], method = "radix"
     )]
-    selected <- head(ranked, DISPLAY_LIMIT)
+    selected <- utils::head(ranked, DISPLAY_LIMIT)
     ranks[selected] <- seq_along(selected)
     ranks
 }
