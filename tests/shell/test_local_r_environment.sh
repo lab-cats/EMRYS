@@ -88,16 +88,29 @@ expected_repositories = [
 if lock["R"]["Repositories"] != expected_repositories:
     raise SystemExit("renv.lock repository policy is not canonical")
 
-bad = sorted(
-    name
-    for name, package in lock["Packages"].items()
-    if package.get("Source") == "Bioconductor"
-    and package.get("Repository") != "Bioconductor 3.23"
-)
+expected_bioconductor_metadata = {
+    "Source": "Bioconductor",
+    "RemoteType": "bioconductor",
+    "Repository": "Bioconductor 3.23",
+}
+bad = []
+for name, package in lock["Packages"].items():
+    if not any(
+        package.get(field) == expected
+        for field, expected in expected_bioconductor_metadata.items()
+    ):
+        continue
+    mismatches = [
+        f"{field}={package.get(field)!r}"
+        for field, expected in expected_bioconductor_metadata.items()
+        if package.get(field) != expected
+    ]
+    if mismatches:
+        bad.append(f"{name} ({', '.join(mismatches)})")
 if bad:
     raise SystemExit(
-        "Bioconductor package repository labels are not canonical: "
-        + ", ".join(bad)
+        "Bioconductor package metadata is not canonical: "
+        + "; ".join(sorted(bad))
     )
 PY
 grep -Fq '"BiocVersion":' renv.lock ||

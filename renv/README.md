@@ -19,8 +19,9 @@ Local environment checks do not establish cluster or production runtime proof.
 
 The repository policy is fixed: Bioconductor 3.23 packages are resolved through
 `https://bioc-release.r-universe.dev`, CRAN packages through
-`https://cloud.r-project.org`, and installed Bioconductor package metadata is
-locked with the canonical `Bioconductor 3.23` repository label.
+`https://cloud.r-project.org`, and every locked Bioconductor package record uses
+canonical `Source: Bioconductor`, `RemoteType: bioconductor`, and
+`Repository: Bioconductor 3.23` metadata.
 
 `make r-restore` is the only route allowed to bootstrap or install. Point
 `RENV_PATHS_LIBRARY` at an operator-owned library root and run it with the

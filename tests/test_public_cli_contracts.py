@@ -315,6 +315,17 @@ def expected_make_expansions() -> dict[str, tuple[str, ...]]:
     return {target: tuple(lines) for target, lines in document.items()}
 
 
+def accepted_make_expansion_renderings(
+    expected: tuple[str, ...],
+) -> frozenset[tuple[str, ...]]:
+    """Allow the two exact GNU Make dry-run recipe-prefix renderings."""
+
+    without_recipe_prefix = tuple(
+        line[1:] if line.startswith("\t") else line for line in expected
+    )
+    return frozenset((expected, without_recipe_prefix))
+
+
 def canonical_make_environment() -> dict[str, str]:
     """Build a bounded environment so the golden describes declared defaults."""
 
@@ -349,6 +360,35 @@ def test_make_normalization_accepts_portable_recursive_identities(
     assert normalized_make_expansion(output) == expected
 
 
+def test_make_expansion_accepts_only_complete_portable_indent_renderings() -> None:
+    literal = (
+        "command \\",
+        "\t\tcontinued \\",
+        "\t\t\tdeeper",
+    )
+    without_recipe_prefix = (
+        "command \\",
+        "\tcontinued \\",
+        "\t\tdeeper",
+    )
+    mixed = (
+        "command \\",
+        "\tcontinued \\",
+        "\t\t\tdeeper",
+    )
+    over_normalized = (
+        "command \\",
+        "continued \\",
+        "\tdeeper",
+    )
+
+    accepted = accepted_make_expansion_renderings(literal)
+
+    assert accepted == frozenset((literal, without_recipe_prefix))
+    assert mixed not in accepted
+    assert over_normalized not in accepted
+
+
 def test_make_expansion_ignores_ambient_make_state(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -381,9 +421,9 @@ def test_make_expansion_ignores_ambient_make_state(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
-    assert (
-        normalized_make_expansion(result.stdout) == (expected_make_expansions()["test"])
-    )
+    assert normalized_make_expansion(
+        result.stdout
+    ) in accepted_make_expansion_renderings(expected_make_expansions()["test"])
 
 
 def test_inventory_classifies_every_live_public_script() -> None:
@@ -794,9 +834,9 @@ def test_make_targets_have_side_effect_free_command_expansion(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert result.stderr == ""
-    assert (
-        normalized_make_expansion(result.stdout) == (expected_make_expansions()[target])
-    )
+    assert normalized_make_expansion(
+        result.stdout
+    ) in accepted_make_expansion_renderings(expected_make_expansions()[target])
     assert relative_snapshot(tmp_path) == before
 
 
@@ -856,6 +896,6 @@ def test_make_expansion_oracle_rejects_recipe_mutation(
     )
 
     assert result.returncode == 0, result.stdout + result.stderr
-    assert (
-        normalized_make_expansion(result.stdout) != (expected_make_expansions()["test"])
-    )
+    assert normalized_make_expansion(
+        result.stdout
+    ) not in accepted_make_expansion_renderings(expected_make_expansions()["test"])

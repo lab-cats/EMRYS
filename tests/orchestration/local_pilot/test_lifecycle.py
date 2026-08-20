@@ -1310,7 +1310,10 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
     outcome = lifecycle.run_attempt(built.request, ops=built.ops())
 
     assert outcome.receipt["status"] == "succeeded"
-    assert len(outcome.receipt["verified_tasks"]) == 34
+    expected_task_count = len(
+        inspection.expected_tasks(built.built.execution, built.built.profile)
+    )
+    assert len(outcome.receipt["verified_tasks"]) == expected_task_count
     assert not outcome.lock_path.exists()
     assert outcome.attempt_path.with_name("released-run-lock.json").is_file()
     snapshot = outcome.attempt_path.with_name("request.yaml")

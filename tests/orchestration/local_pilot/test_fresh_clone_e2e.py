@@ -26,6 +26,7 @@ HARNESS = REPO_ROOT / "tests/orchestration/local_pilot/fixtures/b6_cli_harness.p
 OPT_IN = "NORAD_FRESH_CLONE_E2E"
 SOURCE_ROOT = "NORAD_FRESH_CLONE_E2E_SOURCE_ROOT"
 REPORTING_KINDS = ("artifact_index", "run_summary", "html_report")
+EXPECTED_OWNER_JOB_COUNT = 35
 
 FRESH_CLONE_ONLY = pytest.mark.skipif(
     os.environ.get(OPT_IN) != "1",
@@ -339,7 +340,10 @@ def _assert_complete_products(run_root: Path, run_id: str) -> None:
     )
     observed = inspection.inspect_run(run_root)
     assert observed.local_pipeline_complete
-    assert len(list((run_root / "state/verified").glob("*/*.json"))) == 34
+    assert (
+        len(list((run_root / "state/verified").glob("*/*.json")))
+        == EXPECTED_OWNER_JOB_COUNT
+    )
     for kind in REPORTING_KINDS:
         assert (run_root / "state/reporting" / kind / "start.json").is_file()
         assert (run_root / "state/reporting" / kind / "verified.json").is_file()
@@ -510,7 +514,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
 
     dry_run = _public_command(["run", *common], environment=environment)
     assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
-    assert "Owner jobs: 34" in dry_run.stdout
+    assert f"Owner jobs: {EXPECTED_OWNER_JOB_COUNT}" in dry_run.stdout
     assert "Reporting transactions: 3" in dry_run.stdout
     assert "Dry-run complete; no workspace state was written." in dry_run.stdout
     assert not workspace.exists()
@@ -570,7 +574,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
 
     reused_before = _reusable_snapshot(run_root)
     verified_before = list((run_root / "state/verified").glob("*/*.json"))
-    assert 0 < len(verified_before) < 34
+    assert 0 < len(verified_before) < EXPECTED_OWNER_JOB_COUNT
     before_resume_dry_run = _tree_snapshot(run_root)
     resume_common = [
         "resume",

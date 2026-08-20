@@ -234,6 +234,7 @@ def _leave_real_incomplete_marker(
 ) -> None:
     backup = built.root / "complete-reporting-output"
     output.replace(backup)
+    expected_output = backup.read_bytes()
     interrupter = built.root / "interrupted.Snakefile"
     shell_command = (
         f"cp -p {shlex.quote(str(backup))} {shlex.quote(str(output))} && sleep 60"
@@ -271,17 +272,51 @@ def _leave_real_incomplete_marker(
         text=True,
         start_new_session=True,
     )
-    deadline = time.monotonic() + 10
-    while (
-        not output.exists() and process.poll() is None and time.monotonic() < deadline
-    ):
-        time.sleep(0.02)
-    assert output.read_bytes() == backup.read_bytes()
-    # Give Snakemake's persistence thread time to publish the started-job state
-    # before terminating the process group. The shell remains asleep here.
-    time.sleep(0.5)
-    os.killpg(process.pid, signal.SIGKILL)
-    process.wait(timeout=5)
+    startup_failure: str | None = None
+    captured_output = ""
+    try:
+        deadline = time.monotonic() + 30
+        while not (output.is_file() and output.read_bytes() == expected_output):
+            returncode = process.poll()
+            if returncode is not None:
+                startup_failure = (
+                    "Snakemake exited before copying the exact reporting output "
+                    f"bytes (return code {returncode})"
+                )
+                break
+            if time.monotonic() >= deadline:
+                startup_failure = (
+                    "Snakemake did not copy the exact reporting output bytes "
+                    "within 30 seconds"
+                )
+                break
+            time.sleep(0.02)
+        if startup_failure is None:
+            # Give Snakemake's persistence thread time to publish the started-job
+            # state before terminating the process group. The shell remains asleep.
+            time.sleep(0.5)
+    finally:
+        if process.poll() is None:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        try:
+            captured_output, _ = process.communicate(timeout=5)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            if process.poll() is None:
+                process.kill()
+            captured_output, _ = process.communicate(timeout=5)
+
+    if startup_failure is not None:
+        pytest.fail(
+            f"{startup_failure}\nSnakemake output:\n"
+            f"{captured_output or '<no output captured>'}"
+        )
     assert process.returncode != 0
 
 
