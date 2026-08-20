@@ -107,9 +107,9 @@ Install or select these exact accepted identities before continuing:
 | samtools | `1.19.2` |
 | Java | canonical `<JAVA_HOME>/bin/java`, major `17` or newer |
 | GATK | `4.6.1.0` |
-| Picard | `3.1.1` jar |
+| Picard | `3.1.1` jar, including the bound `3.1.1-16-g5b0b4c014-SNAPSHOT` build |
 | bcftools | `1.21` |
-| RSeQC | `infer_experiment.py` with a parseable RSeQC version |
+| RSeQC | `infer_experiment.py 5.0.4` |
 | gzip | compatible `gunzip` |
 | R | `Rscript 4.6.1` |
 | R namespaces | Exact lock-selected versions in `local_pilot_runtime.example.tsv` |

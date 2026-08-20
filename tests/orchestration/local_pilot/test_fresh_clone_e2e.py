@@ -109,7 +109,9 @@ def _write_runtime_profile(root: Path) -> Path:
         "star": executable("STAR", "2.7.11b"),
         "samtools": executable("samtools", "samtools 1.19.2"),
         "bcftools": executable("bcftools", "bcftools 1.21"),
-        "infer_experiment": executable("infer_experiment.py", "RSeQC v5.0.4"),
+        "infer_experiment": executable(
+            "infer_experiment.py", "infer_experiment.py 5.0.4"
+        ),
         "gunzip": executable("gunzip", "gzip 1.13"),
     }
     java_home = root / "fixture-jdk"

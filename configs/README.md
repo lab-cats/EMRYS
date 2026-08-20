@@ -247,9 +247,9 @@ The accepted tool versions are:
 | samtools | `1.19.2` |
 | Java | canonical `<JAVA_HOME>/bin/java`, major `17` or newer |
 | GATK | `4.6.1.0` |
-| Picard | `3.1.1` jar, invoked through the selected Java |
+| Picard | `3.1.1` jar, including the bound `3.1.1-16-g5b0b4c014-SNAPSHOT` build, invoked through the selected Java |
 | bcftools | `1.21` |
-| RSeQC | an `infer_experiment.py` command with a parseable RSeQC version |
+| RSeQC | `infer_experiment.py 5.0.4` |
 | gzip | a compatible `gunzip` command |
 | R | `Rscript 4.6.1` |
 

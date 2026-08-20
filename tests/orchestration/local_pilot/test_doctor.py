@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -1034,10 +1035,55 @@ def test_tracked_runtime_starter_has_exact_contract() -> None:
         "MarkDuplicates",
         "--version",
     ]
-    assert by_name["picard"]["expected"] == r"^Version:3[.]1[.]1$"
+    assert by_name["picard"]["expected"] == (
+        r"^Version:3[.]1[.]1(?:-16-g5b0b4c014-SNAPSHOT)?$"
+    )
+    assert by_name["infer_experiment"]["expected"] == (
+        r"^infer_experiment[.]py 5[.]0[.]4$"
+    )
     assert by_name["gatk"]["expected"] == (
         r"(?:^|\s)The Genome Analysis Toolkit [(]GATK[)] "
         r"v?4[.]6[.]1[.]0(?:\s|$)"
     )
     assert json.loads(by_name["renv_library"]["probe_args"]) == ["directory_readable"]
     assert json.loads(rows[-1]["probe_args"]) == ["/absolute/path/to/Rscript"]
+
+
+@pytest.mark.parametrize(
+    ("check_id", "accepted", "rejected"),
+    (
+        (
+            "picard",
+            (
+                "Version:3.1.1",
+                "Version:3.1.1-16-g5b0b4c014-SNAPSHOT",
+            ),
+            (
+                "Version:3.1.2",
+                "Picard Version:3.1.1",
+                "Version:3.1.1-17-g000000000-SNAPSHOT",
+            ),
+        ),
+        (
+            "infer_experiment",
+            ("infer_experiment.py 5.0.4",),
+            (
+                "RSeQC v5.0.4",
+                "infer_experiment.py 5.0.5",
+                "prefix infer_experiment.py 5.0.4",
+            ),
+        ),
+    ),
+)
+def test_tracked_runtime_version_policies_are_strict(
+    check_id: str,
+    accepted: tuple[str, ...],
+    rejected: tuple[str, ...],
+) -> None:
+    lines = EXAMPLE_RUNTIME.read_text(encoding="utf-8").splitlines()
+    header = lines[0].split("\t")
+    rows = [dict(zip(header, line.split("\t"), strict=True)) for line in lines[1:]]
+    expected = {row["check_id"]: row["expected"] for row in rows}[check_id]
+
+    assert all(re.search(expected, value) for value in accepted)
+    assert all(re.search(expected, value) is None for value in rejected)
