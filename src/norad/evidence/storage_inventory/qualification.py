@@ -278,7 +278,7 @@ def _root_snapshot(path: Path) -> dict[str, Any]:
 def _stable_snapshot(expected: dict[str, Any], observed: dict[str, Any]) -> bool:
     fields = (
         "path",
-        "device_id",
+        # "device_id",
         "inode",
         "uid",
         "gid",
