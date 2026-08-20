@@ -101,6 +101,12 @@ creates it. The doctor neither installs nor repairs dependencies, loads
 modules, mutates a run, executes Snakemake/scientific owners, or promotes
 readiness into local-runtime, scheduler, cluster, scientific-review, or
 biological evidence.
+Ordinary executable and hash probes are bounded at 30 seconds. Each guarded R
+namespace load has a separate 120-second bound and records elapsed/configured
+timing in its diagnostic; timeouts remain readiness failures. The selected
+`renv_library` is canonical and real, while one installed-package entry may
+resolve through a cache symlink only when the loaded namespace and exact
+canonical package-tree binding agree on its target.
 
 `control.plan_run` and `plan_resume` are the B5 dry-run public Python boundary;
 the grouped `norad run`, `norad resume`, and `norad inspect local-pilot-run`

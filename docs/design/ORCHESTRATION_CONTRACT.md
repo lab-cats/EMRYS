@@ -222,13 +222,15 @@ bind the authored path, canonical target, observed version, and SHA-256;
 admitted runtime directories bind their authored and canonical paths. Each
 fixed `r_*` identity binds the observed namespace version, exact canonical
 installed-package root, and deterministic tree SHA-256 over sorted entry kind,
-relative path, permission mode, size, and regular-file bytes; symbolic links
-and special entries fail admission. Only the admitted `renv_project` and
-`renv_library` directory identities have null digests. These fields do not
-change the scientific run identity. Version 1 automatic resume nevertheless
-requires the same clean source commit, profile digest, and ordered exact
-required-tool identities, then re-admits those paths and bytes; otherwise the
-run becomes blocked pending an explicit compatibility or new-profile decision.
+relative path, permission mode, size, and regular-file bytes. A package entry
+may be a `renv` cache symlink to a canonical real target, but symbolic links and
+special entries inside each resolved fixed `r_*` namespace tree fail admission.
+Only the admitted `renv_project` and `renv_library` directory identities have
+null digests. These fields do not change the scientific run identity. Version 1
+automatic resume nevertheless requires the same clean source commit, profile
+digest, and ordered exact required-tool identities, then re-admits those paths
+and bytes; otherwise the run becomes blocked pending an explicit compatibility
+or new-profile decision.
 Every local-science attempt has exactly one file-backed
 `storage_qualification` identity. Lifecycle re-runs semantic qualification for
 the attempt workspace and canonical normalized reference before delegation and

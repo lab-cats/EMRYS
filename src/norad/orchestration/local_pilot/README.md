@@ -103,7 +103,9 @@ The doctor also has the grouped public command:
 Exit `0` means every declared readiness check passed, exit `1` reports exact
 readiness blockers and remediation routes, and exit `2` identifies malformed
 or unsafe input. The doctor runs only bounded version, namespace, hash, and
-path probes. Even exit `0` is only local readiness evidence: no workflow or
+path probes. Ordinary commands retain a 30-second bound; guarded R namespace
+loads have a separate 120-second bound with elapsed diagnostics and fail closed
+on timeout. Even exit `0` is only local readiness evidence: no workflow or
 scientific-owner computation, scheduler, cluster job, scientific review, or
 biological validation ran.
 

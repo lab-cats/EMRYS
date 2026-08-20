@@ -12,12 +12,18 @@ import pytest
 
 from norad import __main__ as norad_main
 from norad.evidence.runtime_availability import inspector
-from norad.evidence.runtime_availability._probes import run_checks
+from norad.evidence.runtime_availability import _probes as runtime_probes
+from norad.evidence.runtime_availability._probes import (
+    R_NAMESPACE_ROOT_OUTPUT_MARKER,
+    run_checks,
+)
 from norad.evidence.runtime_availability._profile_contract import load_profile
 from norad.evidence.runtime_availability._result_contract import result_bytes
 from norad.evidence.runtime_availability._runtime_model import (
     HASH_EXPECTED,
     HASH_PAYLOAD,
+    R_NAMESPACE_PROBE_TIMEOUT_SECONDS,
+    TOOL_PROBE_TIMEOUT_SECONDS,
     Check,
     PreflightError,
     Result,
@@ -291,15 +297,18 @@ def test_python_hash_probe_uses_the_controlled_python_prefix() -> None:
         expected="sha256",
         description="controlled Python hashlib",
     )
-    calls: list[tuple[list[str], bytes | None, dict[str, str] | None]] = []
+    calls: list[
+        tuple[list[str], bytes | None, dict[str, str] | None, int]
+    ] = []
 
     def capture(
         argv: list[str],
         stdin: bytes | None,
         environment: dict[str, str] | None,
-    ) -> tuple[int, str]:
-        calls.append((argv, stdin, environment))
-        return 0, HASH_EXPECTED
+        timeout_seconds: int,
+    ) -> tuple[int, str, float, bool]:
+        calls.append((argv, stdin, environment, timeout_seconds))
+        return 0, HASH_EXPECTED, 0.125, False
 
     results = run_checks(
         [check],
@@ -318,6 +327,7 @@ def test_python_hash_probe_uses_the_controlled_python_prefix() -> None:
             ],
             HASH_PAYLOAD,
             {"PATH": os.environ["PATH"]},
+            TOOL_PROBE_TIMEOUT_SECONDS,
         )
     ]
 
@@ -406,9 +416,11 @@ def test_gatk_probe_reports_an_invalid_declared_java_environment(
     results = run_checks(
         [java, gatk],
         "local",
-        command_runner=lambda _argv, _stdin, _environment: (
+        command_runner=lambda _argv, _stdin, _environment, _timeout: (
             0,
             "openjdk version 17",
+            0.0,
+            False,
         ),
     )
 
@@ -505,11 +517,87 @@ def test_tool_probe_normalizes_launch_and_version_failures(
     mismatch = run_checks(
         [check],
         "local",
-        command_runner=lambda _argv, _stdin, _environment: (0, "unexpected"),
+        command_runner=lambda _argv, _stdin, _environment, _timeout: (
+            0,
+            "unexpected",
+            0.0,
+            False,
+        ),
     )[0]
     assert mismatch.status == "fail"
     assert mismatch.observed == "unexpected"
     assert mismatch.detail == "Version output did not match expected regex"
+
+
+@pytest.mark.parametrize(
+    ("check_type", "expected_timeout", "detail_prefix"),
+    [
+        (
+            "tool_version",
+            TOOL_PROBE_TIMEOUT_SECONDS,
+            "Version probe timed out",
+        ),
+        (
+            "r_namespace",
+            R_NAMESPACE_PROBE_TIMEOUT_SECONDS,
+            "R namespace probe timed out",
+        ),
+        (
+            "hash_utility",
+            TOOL_PROBE_TIMEOUT_SECONDS,
+            "SHA-256 probe timed out",
+        ),
+    ],
+)
+def test_default_runner_forwards_distinct_timeout_and_records_elapsed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    check_type: str,
+    expected_timeout: int,
+    detail_prefix: str,
+) -> None:
+    executable = tmp_path / "runtime-tool"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o755)
+    check = Check(
+        check_id="bounded",
+        check_type=check_type,
+        runtime_context="local",
+        required=True,
+        target="FixturePackage" if check_type == "r_namespace" else str(executable),
+        probe_args=(
+            (str(executable),)
+            if check_type == "r_namespace"
+            else ("python_hashlib",)
+            if check_type == "hash_utility"
+            else ("--version",)
+        ),
+        expected=r"^1[.]2[.]3$",
+        description="bounded probe",
+    )
+    observed_timeouts: list[int] = []
+    clock = iter((10.0, 10.0 + expected_timeout + 0.5))
+
+    def expire(
+        command: list[str],
+        **kwargs: object,
+    ) -> subprocess.CompletedProcess[bytes]:
+        timeout = kwargs["timeout"]
+        assert isinstance(timeout, int)
+        observed_timeouts.append(timeout)
+        raise subprocess.TimeoutExpired(command, timeout)
+
+    monkeypatch.setattr(runtime_probes.time, "monotonic", lambda: next(clock))
+    monkeypatch.setattr(runtime_probes.subprocess, "run", expire)
+
+    result = run_checks([check], "local")[0]
+
+    assert observed_timeouts == [expected_timeout]
+    assert result.status == "fail"
+    assert result.detail == (
+        f"{detail_prefix}; elapsed_seconds={expected_timeout + 0.5:.3f}; "
+        f"timeout_seconds={expected_timeout}"
+    )
 
 
 def test_picard_version_probe_accepts_only_its_exact_exit_one_contract(
@@ -538,9 +626,11 @@ def test_picard_version_probe_accepts_only_its_exact_exit_one_contract(
         argv: Sequence[str],
         _stdin: str | None,
         _environment: Mapping[str, str] | None,
-    ) -> tuple[int, str]:
+        timeout_seconds: int,
+    ) -> tuple[int, str, float, bool]:
         observed_argv.append(tuple(argv))
-        return 1, "Version:3.1.1"
+        assert timeout_seconds == TOOL_PROBE_TIMEOUT_SECONDS
+        return 1, "Version:3.1.1", 0.25, False
 
     passed = run_checks(
         [picard],
@@ -563,9 +653,11 @@ def test_picard_version_probe_accepts_only_its_exact_exit_one_contract(
         rejected = run_checks(
             [changed],
             "local",
-            command_runner=lambda _argv, _stdin, _environment, c=code: (
+            command_runner=lambda _argv, _stdin, _environment, _timeout, c=code: (
                 c,
                 "Version:3.1.1",
+                0.0,
+                False,
             ),
         )[0]
         assert rejected.status == "fail"
@@ -574,9 +666,11 @@ def test_picard_version_probe_accepts_only_its_exact_exit_one_contract(
     wrong_output = run_checks(
         [picard],
         "local",
-        command_runner=lambda _argv, _stdin, _environment: (
+        command_runner=lambda _argv, _stdin, _environment, _timeout: (
             1,
             "Version:3.1.1 extra",
+            0.0,
+            False,
         ),
     )[0]
     assert wrong_output.status == "fail"
@@ -609,7 +703,7 @@ def test_namespace_and_hash_probes_reject_missing_executables_without_running(
     result = run_checks(
         [check],
         "local",
-        command_runner=lambda _argv, _stdin, _environment: pytest.fail(
+        command_runner=lambda _argv, _stdin, _environment, _timeout: pytest.fail(
             "missing executable must stop before command execution"
         ),
     )[0]
@@ -641,9 +735,11 @@ def test_hash_probe_binds_declared_adapter_and_reports_command_failure(
         argv: list[str],
         stdin: bytes | None,
         _environment: dict[str, str] | None,
-    ) -> tuple[int, str]:
+        timeout_seconds: int,
+    ) -> tuple[int, str, float, bool]:
         calls.append((argv, stdin))
-        return 23, ""
+        assert timeout_seconds == TOOL_PROBE_TIMEOUT_SECONDS
+        return 23, "", 0.5, False
 
     result = run_checks([check], "local", command_runner=fail)[0]
 
@@ -655,7 +751,12 @@ def test_hash_probe_binds_declared_adapter_and_reports_command_failure(
     mismatch = run_checks(
         [check],
         "local",
-        command_runner=lambda _argv, _stdin, _environment: (0, "not-a-digest"),
+        command_runner=lambda _argv, _stdin, _environment, _timeout: (
+            0,
+            "not-a-digest",
+            0.0,
+            False,
+        ),
     )[0]
     assert mismatch.status == "fail"
     assert mismatch.observed == "not-a-digest"
@@ -757,19 +858,29 @@ def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
         expected=r"^1[.]2[.]3$",
         description="guarded namespace",
     )
-    calls: list[tuple[list[str], bytes | None, dict[str, str] | None]] = []
+    calls: list[
+        tuple[list[str], bytes | None, dict[str, str] | None, int]
+    ] = []
     environment = {
         "NORAD_LOCAL_PILOT_R": "1",
         "NORAD_RENV_LIBRARY": str(library),
     }
+    resolved_package = (tmp_path / "renv-cache" / "GuardedPackage").resolve()
 
     def capture(
         argv: list[str],
         stdin: bytes | None,
         observed_environment: dict[str, str] | None,
-    ) -> tuple[int, str]:
-        calls.append((argv, stdin, observed_environment))
-        return 0, "1.2.3"
+        timeout_seconds: int,
+    ) -> tuple[int, str, float, bool]:
+        calls.append((argv, stdin, observed_environment, timeout_seconds))
+        encoded_root = str(resolved_package).encode("utf-8").hex()
+        return (
+            0,
+            f"1.2.3{R_NAMESPACE_ROOT_OUTPUT_MARKER}{encoded_root}",
+            12.5,
+            False,
+        )
 
     result = run_checks(
         [check],
@@ -779,7 +890,7 @@ def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
     )[0]
 
     assert result.status == "pass"
-    argv, stdin, observed_environment = calls[0]
+    argv, stdin, observed_environment, timeout_seconds = calls[0]
     assert argv[:5] == [
         str(fake),
         "--no-environ",
@@ -793,12 +904,146 @@ def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
         "tryCatch(suppressWarnings(loadNamespace(p, lib.loc=lib)), "
         "error=function(e) NULL)" in argv[6]
     )
-    assert "identical(expected, declared)" in argv[6]
+    assert "identical(expected, declared)" not in argv[6]
     assert "identical(pkg, expected)" in argv[6]
     assert "identical(where, expected)" in argv[6]
+    assert R_NAMESPACE_ROOT_OUTPUT_MARKER in argv[6]
     assert stdin is None
     assert observed_environment == environment
-    assert result.detail == f"Resolved R package root: {library / 'GuardedPackage'}"
+    assert timeout_seconds == R_NAMESPACE_PROBE_TIMEOUT_SECONDS
+    assert result.observed == "1.2.3"
+    assert result.resolved_path == str(resolved_package)
+    assert result.detail == (
+        f"Resolved R package root: {resolved_package}; "
+        "elapsed_seconds=12.500; "
+        f"timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
+    )
+
+
+@pytest.mark.parametrize(
+    "output",
+    [
+        "1.2.3",
+        f"1.2.3{R_NAMESPACE_ROOT_OUTPUT_MARKER}",
+        f"1.2.3{R_NAMESPACE_ROOT_OUTPUT_MARKER}not-hex",
+        f"1.2.3{R_NAMESPACE_ROOT_OUTPUT_MARKER}2f{R_NAMESPACE_ROOT_OUTPUT_MARKER}2f",
+    ],
+)
+def test_guarded_r_namespace_rejects_missing_or_malformed_root_identity(
+    tmp_path: Path,
+    output: str,
+) -> None:
+    fake = tmp_path / "Rscript"
+    fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake.chmod(0o755)
+    check = Check(
+        check_id="r_guarded",
+        check_type="r_namespace",
+        runtime_context="local",
+        required=True,
+        target="GuardedPackage",
+        probe_args=(str(fake),),
+        expected=r"^1[.]2[.]3$",
+        description="guarded namespace",
+    )
+
+    result = run_checks(
+        [check],
+        "local",
+        environment={
+            "NORAD_LOCAL_PILOT_R": "1",
+            "NORAD_RENV_LIBRARY": str(tmp_path / "library"),
+        },
+        command_runner=lambda _argv, _stdin, _environment, _timeout: (
+            0,
+            output,
+            0.5,
+            False,
+        ),
+    )[0]
+
+    assert result.status == "fail"
+    assert result.resolved_path is None
+    assert result.detail == (
+        "R namespace probe did not report its exact canonical root; "
+        "elapsed_seconds=0.500; "
+        f"timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
+    )
+
+
+def test_r_namespace_timeout_is_distinct_bounded_and_fail_closed(
+    tmp_path: Path,
+) -> None:
+    fake = tmp_path / "Rscript"
+    fake.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake.chmod(0o755)
+    check = Check(
+        check_id="r_timeout",
+        check_type="r_namespace",
+        runtime_context="local",
+        required=True,
+        target="SlowPackage",
+        probe_args=(str(fake),),
+        expected=r"^1[.]2[.]3$",
+        description="bounded namespace",
+    )
+    observed_timeouts: list[int] = []
+
+    def time_out(
+        _argv: list[str],
+        _stdin: bytes | None,
+        _environment: dict[str, str] | None,
+        timeout_seconds: int,
+    ) -> tuple[int, str, float, bool]:
+        observed_timeouts.append(timeout_seconds)
+        return 124, "fixture timeout", 120.25, True
+
+    result = run_checks([check], "local", command_runner=time_out)[0]
+
+    assert observed_timeouts == [R_NAMESPACE_PROBE_TIMEOUT_SECONDS]
+    assert R_NAMESPACE_PROBE_TIMEOUT_SECONDS > TOOL_PROBE_TIMEOUT_SECONDS
+    assert result.status == "fail"
+    assert result.observed == "fixture timeout"
+    assert result.detail == (
+        "R namespace probe timed out; elapsed_seconds=120.250; "
+        f"timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
+    )
+
+
+def test_r_namespace_real_exit_124_is_not_misclassified_as_timeout(
+    tmp_path: Path,
+) -> None:
+    fake = tmp_path / "Rscript"
+    fake.write_text("#!/bin/sh\nexit 124\n", encoding="utf-8")
+    fake.chmod(0o755)
+    check = Check(
+        check_id="r_exit_124",
+        check_type="r_namespace",
+        runtime_context="local",
+        required=True,
+        target="FixturePackage",
+        probe_args=(str(fake),),
+        expected=r"^1[.]2[.]3$",
+        description="real exit 124",
+    )
+
+    result = run_checks(
+        [check],
+        "local",
+        command_runner=lambda _argv, _stdin, _environment, _timeout: (
+            124,
+            "real child exit",
+            0.25,
+            False,
+        ),
+    )[0]
+
+    assert result.status == "fail"
+    assert result.observed == "real child exit"
+    assert result.detail == (
+        "R namespace probe failed; elapsed_seconds=0.250; "
+        f"timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
+    )
 
 
 def test_unguarded_r_namespace_probe_suppresses_only_load_warnings(
@@ -823,9 +1068,11 @@ def test_unguarded_r_namespace_probe_suppresses_only_load_warnings(
         argv: list[str],
         _stdin: bytes | None,
         _environment: dict[str, str] | None,
-    ) -> tuple[int, str]:
+        timeout_seconds: int,
+    ) -> tuple[int, str, float, bool]:
         calls.append(argv)
-        return 0, "1.2.3"
+        assert timeout_seconds == R_NAMESPACE_PROBE_TIMEOUT_SECONDS
+        return 0, "1.2.3", 0.75, False
 
     result = run_checks([check], "local", command_runner=capture)[0]
 
@@ -853,12 +1100,21 @@ def test_r_namespace_keeps_strict_version_output_matching(tmp_path: Path) -> Non
     result = run_checks(
         [check],
         "local",
-        command_runner=lambda _argv, _stdin, _environment: (0, contaminated),
+        command_runner=lambda _argv, _stdin, _environment, _timeout: (
+            0,
+            contaminated,
+            0.0,
+            False,
+        ),
     )[0]
 
     assert result.status == "fail"
     assert result.observed == contaminated
-    assert result.detail == "Namespace version did not match expected regex"
+    assert result.detail == (
+        "Namespace version did not match expected regex; "
+        "elapsed_seconds=0.000; "
+        f"timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -902,20 +1158,32 @@ def test_r_namespace_failure_detail_distinguishes_guarded_selection(
         [check],
         "local",
         environment=environment,
-        command_runner=lambda _argv, _stdin, _environment: (code, ""),
+        command_runner=lambda _argv, _stdin, _environment, _timeout: (
+            code,
+            "",
+            0.0,
+            False,
+        ),
     )[0]
 
     assert result.status == "fail"
-    assert result.detail == expected_detail
+    assert result.detail == (
+        f"{expected_detail}; elapsed_seconds=0.000; "
+        f"timeout_seconds={R_NAMESPACE_PROBE_TIMEOUT_SECONDS}"
+    )
 
 
 def test_direct_inspection_uses_explicit_probe_environment(tmp_path: Path) -> None:
+    library = tmp_path / "library"
+    package_root = library / "GuardedPackage"
+    package_root.mkdir(parents=True)
+    encoded_root = str(package_root.resolve(strict=True)).encode("utf-8").hex()
     fake = tmp_path / "Rscript"
     fake.write_text(
         "#!/usr/bin/env bash\n"
         "set -euo pipefail\n"
         '[[ "${NORAD_DOCTOR_TEST:-}" == "guarded" ]] || exit 43\n'
-        "printf '1.2.3'\n",
+        f"printf '1.2.3{R_NAMESPACE_ROOT_OUTPUT_MARKER}{encoded_root}'\n",
         encoding="utf-8",
     )
     fake.chmod(0o755)
@@ -938,13 +1206,19 @@ def test_direct_inspection_uses_explicit_probe_environment(tmp_path: Path) -> No
     inspection = inspector.inspect_runtime_availability(
         profile,
         "local",
-        environment={"NORAD_DOCTOR_TEST": "guarded", "PATH": os.environ["PATH"]},
+        environment={
+            "NORAD_DOCTOR_TEST": "guarded",
+            "NORAD_LOCAL_PILOT_R": "1",
+            "NORAD_RENV_LIBRARY": str(library),
+            "PATH": os.environ["PATH"],
+        },
     )
 
     assert inspection.required_ready
     assert inspection.profile_bytes == profile.read_bytes()
     assert inspection.observations[0].status == "pass"
     assert inspection.observations[0].observed == "1.2.3"
+    assert inspection.observations[0].resolved_path == package_root.resolve(strict=True)
 
 
 def test_r_namespace_requires_package_name(tmp_path: Path) -> None:

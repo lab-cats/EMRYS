@@ -595,11 +595,35 @@ def _declared_renv_library(checks: tuple[RuntimeCheck, ...]) -> Path:
             "renv_library must be one readable-directory visibility check"
         )
     library = _admit_runtime_directory(Path(check.target), "renv_library")
-    description = library / "renv" / "DESCRIPTION"
+    package_entry = library / "renv"
+    try:
+        entry_before = package_entry.lstat()
+        package_root = package_entry.resolve(strict=True)
+        package_state = package_root.lstat()
+    except OSError as exc:
+        raise DoctorInputError(
+            f"Selected renv_library has no readable installed renv package: {exc}"
+        ) from exc
+    if not (
+        stat.S_ISDIR(entry_before.st_mode) or stat.S_ISLNK(entry_before.st_mode)
+    ):
+        raise DoctorInputError(
+            f"Installed renv package entry must be a directory or symlink: "
+            f"{package_entry}"
+        )
+    if stat.S_ISLNK(package_state.st_mode) or not stat.S_ISDIR(package_state.st_mode):
+        raise DoctorInputError(
+            f"Installed renv package must resolve to a canonical real directory: "
+            f"{package_entry}"
+        )
+    description = package_root / "DESCRIPTION"
     try:
         state = description.lstat()
         data = description.read_bytes()
         after = description.lstat()
+        entry_after = package_entry.lstat()
+        resolved_after = package_entry.resolve(strict=True)
+        package_after = package_root.lstat()
     except OSError as exc:
         raise DoctorInputError(
             f"Selected renv_library has no readable installed renv package: {exc}"
@@ -608,6 +632,42 @@ def _declared_renv_library(checks: tuple[RuntimeCheck, ...]) -> Path:
         raise DoctorInputError(
             f"Installed renv DESCRIPTION must be a regular non-symlink file: {description}"
         )
+    if (
+        (
+            entry_before.st_dev,
+            entry_before.st_ino,
+            entry_before.st_mode,
+            entry_before.st_size,
+            entry_before.st_mtime_ns,
+            entry_before.st_ctime_ns,
+        )
+        != (
+            entry_after.st_dev,
+            entry_after.st_ino,
+            entry_after.st_mode,
+            entry_after.st_size,
+            entry_after.st_mtime_ns,
+            entry_after.st_ctime_ns,
+        )
+        or resolved_after != package_root
+    ):
+        raise DoctorInputError("Installed renv package entry changed during admission")
+    if (
+        package_state.st_dev,
+        package_state.st_ino,
+        package_state.st_mode,
+        package_state.st_size,
+        package_state.st_mtime_ns,
+        package_state.st_ctime_ns,
+    ) != (
+        package_after.st_dev,
+        package_after.st_ino,
+        package_after.st_mode,
+        package_after.st_size,
+        package_after.st_mtime_ns,
+        package_after.st_ctime_ns,
+    ):
+        raise DoctorInputError("Installed renv package root changed during admission")
     if (
         state.st_dev,
         state.st_ino,
@@ -669,13 +729,103 @@ def runtime_file_bindings(
         }:
             continue
         if check.check_type == "r_namespace":
-            path = (renv_library / check.target).resolve(strict=True)
+            package_entry = renv_library / check.target
+            try:
+                entry_before = package_entry.lstat()
+                path = package_entry.resolve(strict=True)
+                target_before = path.lstat()
+            except OSError as exc:
+                raise DoctorInputError(
+                    f"Could not resolve installed R package {check.check_id}: "
+                    f"{package_entry}: {exc}"
+                ) from exc
+            if not (
+                stat.S_ISDIR(entry_before.st_mode)
+                or stat.S_ISLNK(entry_before.st_mode)
+            ):
+                raise DoctorInputError(
+                    f"Installed R package entry must be a directory or symlink: "
+                    f"{check.check_id}: {package_entry}"
+                )
+            if (
+                stat.S_ISLNK(target_before.st_mode)
+                or not stat.S_ISDIR(target_before.st_mode)
+            ):
+                raise DoctorInputError(
+                    f"Installed R package must resolve to a canonical real directory: "
+                    f"{check.check_id}: {package_entry}"
+                )
+            if observation.resolved_path is None:
+                raise DoctorInputError(
+                    f"Passing R namespace observation did not bind its loaded root: "
+                    f"{check.check_id}"
+                )
+            if path != observation.resolved_path:
+                raise DoctorInputError(
+                    f"Loaded R namespace root changed before package binding: "
+                    f"{check.check_id}: observed {observation.resolved_path}; "
+                    f"bound {path}"
+                )
             try:
                 identity = installed_package_tree_identity(path)
             except InstalledPackageIdentityError as exc:
                 raise DoctorInputError(
                     f"Could not bind installed R package {check.check_id}: {exc}"
                 ) from exc
+            if identity.root != observation.resolved_path:
+                raise DoctorInputError(
+                    f"Loaded R namespace root changed before package binding: "
+                    f"{check.check_id}: observed {observation.resolved_path}; "
+                    f"bound {identity.root}"
+                )
+            try:
+                entry_after = package_entry.lstat()
+                resolved_after = package_entry.resolve(strict=True)
+                target_after = path.lstat()
+            except OSError as exc:
+                raise DoctorInputError(
+                    f"Could not re-admit installed R package {check.check_id}: "
+                    f"{package_entry}: {exc}"
+                ) from exc
+            if (
+                (
+                    entry_before.st_dev,
+                    entry_before.st_ino,
+                    entry_before.st_mode,
+                    entry_before.st_size,
+                    entry_before.st_mtime_ns,
+                    entry_before.st_ctime_ns,
+                )
+                != (
+                    entry_after.st_dev,
+                    entry_after.st_ino,
+                    entry_after.st_mode,
+                    entry_after.st_size,
+                    entry_after.st_mtime_ns,
+                    entry_after.st_ctime_ns,
+                )
+                or resolved_after != path
+                or (
+                    target_before.st_dev,
+                    target_before.st_ino,
+                    target_before.st_mode,
+                    target_before.st_size,
+                    target_before.st_mtime_ns,
+                    target_before.st_ctime_ns,
+                )
+                != (
+                    target_after.st_dev,
+                    target_after.st_ino,
+                    target_after.st_mode,
+                    target_after.st_size,
+                    target_after.st_mtime_ns,
+                    target_after.st_ctime_ns,
+                )
+            ):
+                raise DoctorInputError(
+                    f"Installed R package entry changed during admission: "
+                    f"{check.check_id}: {package_entry}"
+                )
             bindings.append(
                 RuntimeBinding(
                     check_id=check.check_id,

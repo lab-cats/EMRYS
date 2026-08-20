@@ -19,6 +19,8 @@ def _observation(
     check_type: str,
     target: str,
     probe_args: tuple[str, ...],
+    *,
+    resolved_path: Path | None = None,
 ) -> RuntimeObservation:
     return RuntimeObservation(
         check=RuntimeCheck(
@@ -34,6 +36,7 @@ def _observation(
         status="pass",
         observed="1.0.0",
         detail="fixture",
+        resolved_path=resolved_path,
     )
 
 
@@ -65,6 +68,7 @@ def test_r_namespace_binding_uses_exact_package_tree_not_rscript(
             "r_namespace",
             "VariantAnnotation",
             (str(rscript),),
+            resolved_path=package,
         ),
     )
     inspection = RuntimeInspection(

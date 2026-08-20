@@ -23,15 +23,18 @@ from norad.evidence.runtime_availability.inspector import (
     load_runtime_profile_contract,
 )
 from norad.evidence.storage_inventory import qualification as storage_qualification
-from norad.libraries.source_authority import (
-    SourceCheckoutError,
-    SourceCheckoutIdentity,
-    controlled_python_argv,
+from norad.libraries.installed_package_identity import (
+    installed_package_tree_identity,
 )
 from norad.libraries.process_environment import (
     gatk_subprocess_environment,
     guarded_r_environment,
     guarded_rscript_argv,
+)
+from norad.libraries.source_authority import (
+    SourceCheckoutError,
+    SourceCheckoutIdentity,
+    controlled_python_argv,
 )
 from norad.orchestration.local_pilot import doctor
 from norad.orchestration.local_pilot.normalization import normalize_request
@@ -50,6 +53,7 @@ def _check(
     *,
     probe_args: tuple[str, ...],
     status: str = "pass",
+    resolved_path: Path | None = None,
 ) -> RuntimeObservation:
     _policy_bytes, policy_checks = load_runtime_profile_contract(EXAMPLE_RUNTIME)
     policy = next(item for item in policy_checks if item.check_id == check_id)
@@ -67,6 +71,7 @@ def _check(
         status=status,
         observed="9.25.1" if check_id == "snakemake" else "observed",
         detail="test observation",
+        resolved_path=resolved_path,
     )
 
 
@@ -151,7 +156,13 @@ def _inspection(tmp_path: Path, *, failing: str | None = None) -> RuntimeInspect
     ]
     for check_id, package in doctor.LOCAL_PILOT_R_PACKAGES:
         observations.append(
-            _check(check_id, "r_namespace", package, probe_args=(rscript,))
+            _check(
+                check_id,
+                "r_namespace",
+                package,
+                probe_args=(rscript,),
+                resolved_path=(renv_library / package).resolve(strict=True),
+            )
         )
     if failing is not None:
         index = next(
@@ -174,6 +185,22 @@ def _inspection(tmp_path: Path, *, failing: str | None = None) -> RuntimeInspect
         runtime_context="local",
         observations=tuple(observations),
         rendered_bytes=b"rendered\n",
+    )
+
+
+def _with_namespace_root(
+    inspection: RuntimeInspection,
+    check_id: str,
+    root: Path | None,
+) -> RuntimeInspection:
+    return replace(
+        inspection,
+        observations=tuple(
+            replace(item, resolved_path=root)
+            if item.check.check_id == check_id
+            else item
+            for item in inspection.observations
+        ),
     )
 
 
@@ -919,6 +946,191 @@ def test_renv_library_must_be_an_existing_canonical_real_directory(
             source_root=REPO_ROOT,
             ops=_ops(linked_inspection),
         )
+
+
+def test_installed_renv_package_entry_may_resolve_through_cache_symlink(
+    tmp_path: Path,
+) -> None:
+    inspection = _inspection(tmp_path)
+    library = tmp_path / "renv-library"
+    package_entry = library / "renv"
+    cache_root = tmp_path / "renv-cache"
+    cache_root.mkdir()
+    cached_package = cache_root / "renv-1.2.3"
+    package_entry.rename(cached_package)
+    package_entry.symlink_to(cached_package, target_is_directory=True)
+    checks = tuple(item.check for item in inspection.observations)
+
+    assert doctor._declared_renv_library(checks) == library
+    assert package_entry.is_symlink()
+
+
+def test_installed_renv_package_entry_rejects_dangling_cache_symlink(
+    tmp_path: Path,
+) -> None:
+    inspection = _inspection(tmp_path)
+    package_entry = tmp_path / "renv-library" / "renv"
+    (package_entry / "DESCRIPTION").unlink()
+    package_entry.rmdir()
+    package_entry.symlink_to(tmp_path / "missing-renv-cache-package")
+    checks = tuple(item.check for item in inspection.observations)
+
+    with pytest.raises(
+        doctor.DoctorInputError,
+        match="no readable installed renv package",
+    ):
+        doctor._declared_renv_library(checks)
+
+
+def test_installed_renv_package_entry_rejects_retarget_during_admission(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inspection = _inspection(tmp_path)
+    package_entry = tmp_path / "renv-library" / "renv"
+    cache_root = tmp_path / "renv-cache"
+    cache_root.mkdir()
+    cached_a = cache_root / "renv-a"
+    cached_b = cache_root / "renv-b"
+    package_entry.rename(cached_a)
+    shutil.copytree(cached_a, cached_b)
+    package_entry.symlink_to(cached_a, target_is_directory=True)
+    checks = tuple(item.check for item in inspection.observations)
+    real_read_bytes = Path.read_bytes
+
+    def retarget_after_read(path: Path) -> bytes:
+        data = real_read_bytes(path)
+        if path == cached_a / "DESCRIPTION":
+            package_entry.unlink()
+            package_entry.symlink_to(cached_b, target_is_directory=True)
+        return data
+
+    monkeypatch.setattr(Path, "read_bytes", retarget_after_read)
+
+    with pytest.raises(
+        doctor.DoctorInputError,
+        match="Installed renv package entry changed during admission",
+    ):
+        doctor._declared_renv_library(checks)
+
+
+def test_runtime_bindings_resolve_symlinked_installed_package_entry(
+    tmp_path: Path,
+) -> None:
+    inspection = _inspection(tmp_path)
+    check_id, package = doctor.LOCAL_PILOT_R_PACKAGES[0]
+    package_entry = tmp_path / "renv-library" / package
+    cache_root = tmp_path / "renv-cache"
+    cache_root.mkdir()
+    cached_package = cache_root / f"{package}-1.0.0"
+    package_entry.rename(cached_package)
+    package_entry.symlink_to(cached_package, target_is_directory=True)
+    expected = installed_package_tree_identity(cached_package)
+    inspection = _with_namespace_root(inspection, check_id, expected.root)
+
+    binding = next(
+        item
+        for item in doctor.runtime_file_bindings(inspection)
+        if item.check_id == check_id
+    )
+
+    assert binding.path == expected.root
+    assert binding.resolved_path == expected.root
+    assert binding.sha256 == expected.sha256
+    assert package_entry.is_symlink()
+
+
+def test_runtime_bindings_reject_package_retargeted_after_namespace_probe(
+    tmp_path: Path,
+) -> None:
+    inspection = _inspection(tmp_path)
+    check_id, package = doctor.LOCAL_PILOT_R_PACKAGES[0]
+    package_entry = tmp_path / "renv-library" / package
+    observed_root = package_entry.resolve(strict=True)
+    cache_root = tmp_path / "renv-cache"
+    cache_root.mkdir()
+    cached_package = cache_root / f"{package}-retargeted"
+    package_entry.rename(cached_package)
+    package_entry.symlink_to(cached_package, target_is_directory=True)
+    inspection = _with_namespace_root(inspection, check_id, observed_root)
+
+    with pytest.raises(
+        doctor.DoctorInputError,
+        match=f"Loaded R namespace root changed before package binding: {check_id}",
+    ):
+        doctor.runtime_file_bindings(inspection)
+
+
+def test_runtime_bindings_require_loaded_root_on_passing_namespace(
+    tmp_path: Path,
+) -> None:
+    inspection = _inspection(tmp_path)
+    check_id, _package = doctor.LOCAL_PILOT_R_PACKAGES[0]
+    inspection = _with_namespace_root(inspection, check_id, None)
+
+    with pytest.raises(
+        doctor.DoctorInputError,
+        match=f"Passing R namespace observation did not bind its loaded root: {check_id}",
+    ):
+        doctor.runtime_file_bindings(inspection)
+
+
+def test_runtime_bindings_reject_package_entry_retargeted_during_hash(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    inspection = _inspection(tmp_path)
+    check_id, package = doctor.LOCAL_PILOT_R_PACKAGES[0]
+    package_entry = tmp_path / "renv-library" / package
+    cache_root = tmp_path / "renv-cache"
+    cache_root.mkdir()
+    cached_a = cache_root / f"{package}-a"
+    cached_b = cache_root / f"{package}-b"
+    package_entry.rename(cached_a)
+    shutil.copytree(cached_a, cached_b)
+    package_entry.symlink_to(cached_a, target_is_directory=True)
+    inspection = _with_namespace_root(
+        inspection,
+        check_id,
+        cached_a.resolve(strict=True),
+    )
+    real_identity = doctor.installed_package_tree_identity
+
+    def retarget_after_hash(root: Path):
+        identity = real_identity(root)
+        if root == cached_a.resolve(strict=True):
+            package_entry.unlink()
+            package_entry.symlink_to(cached_b, target_is_directory=True)
+        return identity
+
+    monkeypatch.setattr(
+        doctor,
+        "installed_package_tree_identity",
+        retarget_after_hash,
+    )
+
+    with pytest.raises(
+        doctor.DoctorInputError,
+        match=f"Installed R package entry changed during admission: {check_id}",
+    ):
+        doctor.runtime_file_bindings(inspection)
+
+
+def test_runtime_bindings_reject_broken_package_entry_symlink(
+    tmp_path: Path,
+) -> None:
+    inspection = _inspection(tmp_path)
+    check_id, package = doctor.LOCAL_PILOT_R_PACKAGES[0]
+    package_entry = tmp_path / "renv-library" / package
+    (package_entry / "DESCRIPTION").unlink()
+    package_entry.rmdir()
+    package_entry.symlink_to(tmp_path / "missing-cache-package")
+
+    with pytest.raises(
+        doctor.DoctorInputError,
+        match=f"Could not resolve installed R package {check_id}",
+    ):
+        doctor.runtime_file_bindings(inspection)
 
 
 def test_missing_installed_renv_fails_before_probe_without_bootstrap(

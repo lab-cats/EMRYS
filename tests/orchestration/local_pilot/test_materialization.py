@@ -150,6 +150,11 @@ def _readiness(
                     else f"observed-{check_id}"
                 ),
                 detail="test runtime",
+                resolved_path=(
+                    (renv_library / target).resolve(strict=True)
+                    if check_type == "r_namespace"
+                    else None
+                ),
             )
         )
     runtime_inspection = RuntimeInspection(

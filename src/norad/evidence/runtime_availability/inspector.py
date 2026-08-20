@@ -54,6 +54,7 @@ class RuntimeObservation:
     status: str
     observed: str
     detail: str
+    resolved_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,6 +122,11 @@ def inspect_runtime_availability(
             status=result.status,
             observed=result.observed,
             detail=result.detail,
+            resolved_path=(
+                None
+                if result.resolved_path is None
+                else Path(result.resolved_path)
+            ),
         )
         for result in results
     )
