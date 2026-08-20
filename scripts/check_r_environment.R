@@ -119,7 +119,7 @@ if (!identical(bioconductor_version, "3.23")) {
 
 renv_status <- renv::status(
     project = project_root,
-    library = selected_library,
+    library = selected_library
     )
 if (!isTRUE(renv_status$synchronized)) {
     stop("renv::status() reports that the project is not synchronized.")
