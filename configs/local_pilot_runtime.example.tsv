@@ -7,10 +7,10 @@ star	tool_version	local	true	/absolute/path/to/STAR	["--version"]	^2[.]7[.]11b$	
 samtools	tool_version	local	true	/absolute/path/to/samtools	["--version"]	^samtools 1[.]19[.]2(\s|$)	Samtools BAM utility
 java	tool_version	local	true	/absolute/java-home/bin/java	["-version"]	^(openjdk|java) version "(1[7-9]|[2-9][0-9])[.]	Java 17 or newer for Picard and GATK
 gatk	tool_version	local	true	/absolute/path/to/gatk	["--version"]	(?:^|\s)The Genome Analysis Toolkit [(]GATK[)] v?4[.]6[.]1[.]0(?:\s|$)	GATK SplitNCigarReads and sequence-dictionary runtime
-picard	tool_version_exit_1	local	true	/absolute/java-home/bin/java	["-jar","/absolute/path/to/picard.jar","MarkDuplicates","--version"]	^Version:3[.]1[.]1$	Picard MarkDuplicates 3.1.1 through the declared Java and jar
+picard	tool_version_exit_1	local	true	/absolute/java-home/bin/java	["-jar","/absolute/path/to/picard.jar","MarkDuplicates","--version"]	^Version:3[.]1[.]1-16-g5b0b4c014-SNAPSHOT$	Picard MarkDuplicates 3.1.1 through the declared Java and jar
 picard_jar	path_visibility	local	true	/absolute/path/to/picard.jar	["file_readable"]	readable	Readable Picard 3.1.1 jar selected for duplicate marking
 bcftools	tool_version	local	true	/absolute/path/to/bcftools	["--version"]	^bcftools 1[.]21(\s|$)	Bcftools cohort mpileup runtime
-infer_experiment	tool_version	local	true	/absolute/path/to/infer_experiment.py	["--version"]	^[Rr][Ss]e[Qq][Cc].*[Vv]?[0-9]+	RSeQC infer_experiment runtime
+infer_experiment	tool_version	local	true	/absolute/path/to/infer_experiment.py	["--version"]	^infer_experiment[.]py 5[.]0[.]4$	RSeQC infer_experiment runtime
 gunzip	tool_version	local	true	/absolute/path/to/gunzip	["--version"]	^(gzip|gunzip|Apple gzip).*	Exact gzip decompressor used for compressed FASTQ input
 rscript	tool_version	local	true	/absolute/path/to/Rscript	["--version"]	^Rscript [(]R[)] version 4[.]6[.]1(\s|$)	R 4.6.1 runtime selected by the guarded renv project
 renv_project	path_visibility	local	true	/absolute/path/to/norad	["directory_readable"]	readable	NORAD renv project root containing renv.lock and .Rprofile
