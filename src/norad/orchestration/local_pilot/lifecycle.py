@@ -1254,6 +1254,17 @@ def _admit_runtime_context(
         snakemake_version=observed_version,
         runtime_profile_path=profile_path,
     )
+    storage_identity = tools.get("storage_qualification")
+    if storage_identity is None:
+        raise LifecycleError(
+            "Local science attempt must bind its storage qualification"
+        )
+    expected_tools = tuple(
+        sorted(
+            (*expected_tools, storage_identity),
+            key=lambda item: item["name"],
+        )
+    )
     if tuple(attempt["required_tools"]) != expected_tools:
         raise LifecycleError(
             "Workflow attempt required tools differ from the re-observed runtime profile"

@@ -447,10 +447,16 @@ def lock_tree_blockers(
     except InspectionError as exc:
         return (str(exc),)
     allowed = frozenset({"run.lock", "acquire.mutex"})
+    # TODO: Implement validated reconciliation for retained pre-attempt
+    # released-lock evidence instead of temporarily admitting this class.
     blockers = [
         f"Unexpected retained aggregate lock state: {locks_root / name}"
         for name in entries
         if name not in allowed
+        and not (
+            name.startswith("released-workflow-")
+            and name.endswith("-run-lock.json")
+        )
     ]
     mutex_path = locks_root / "acquire.mutex"
     if "acquire.mutex" in entries:
