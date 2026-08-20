@@ -293,7 +293,7 @@ confirm_final_set_state() {
 
 rollback_publish() {
     if [[ "$backup_started" != true || "$final_publish_complete" == true ]]; then
-        return
+        return 0
     fi
 
     printf 'Rolling back Step 06 read-orientation outputs...\n' >&2

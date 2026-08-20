@@ -261,7 +261,7 @@ confirm_canonical_pair_state() {
 
 rollback_publish() {
     if [[ "$backup_started" != true || "$final_publish_complete" == true ]]; then
-        return
+        return 0
     fi
 
     printf 'Rolling back Step 02 canonical outputs...\n' >&2
