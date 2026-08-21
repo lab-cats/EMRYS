@@ -140,8 +140,9 @@ lock_owner_file="$lock_path/owner"
 tmp_bam="$output_dir/.${sample_id}.step05.${run_token}.split_ncigar.tmp.bam"
 tmp_bai="$tmp_bam.bai"
 
-# GATK/HTSJDK may also create an index by replacing .bam with .bai.
-# Track this so failed runs do not leave confusing zero-byte sidecars.
+# GATK/HTSJDK may create an index by replacing the .bam suffix with .bai. If
+# that happens, normalize and reuse it instead of decompressing the completed
+# BAM for a second indexing pass with samtools.
 tmp_gatk_bai="${tmp_bam%.bam}.bai"
 
 # Do not let GATK spill internal SortingCollection temp files to node-local /tmp.
@@ -201,6 +202,25 @@ tagged_count_command=(
     -d "RG:$sample_id"
     "$tmp_bam"
 )
+
+ensure_bam_index() {
+    # Some GATK/HTSJDK configurations emit <output>.bai while others replace
+    # the final .bam suffix. Prefer either nonempty native index and only fall
+    # back to samtools when GATK emitted none.
+    if [[ -s "$tmp_bai" ]]; then
+        rm -f -- "$tmp_gatk_bai"
+        printf 'Reusing GATK-produced BAM index: %s\n' "$tmp_bai"
+        return
+    fi
+    if [[ -s "$tmp_gatk_bai" ]]; then
+        mv "$tmp_gatk_bai" "$tmp_bai"
+        printf 'Reusing GATK-produced BAM index after path normalization: %s\n' "$tmp_bai"
+        return
+    fi
+    rm -f -- "$tmp_bai" "$tmp_gatk_bai"
+    printf 'GATK did not produce a usable BAM index; running samtools index.\n'
+    "${index_command[@]}"
+}
 
 validate_bam_pair() {
     local bam="$1"
@@ -393,6 +413,7 @@ printf 'rm -rf %q\n' "$gatk_tmp_dir"
 
 printf 'samtools index command:\n'
 print_command "${index_command[@]}"
+printf '  This is a fallback only when GATK did not emit a usable BAM index.\n'
 
 printf 'samtools quickcheck validation command:\n'
 print_command "${quickcheck_command[@]}"
@@ -412,7 +433,7 @@ printf '  2. Verify Step 00c reference FASTA, .fai, and .dict exist and are none
 printf '  3. Resolve GATK, samtools, and Java executables.\n'
 printf '  4. Validate actual Java version is >=17 before execute-mode GATK use.\n'
 printf '  5. Run GATK SplitNCigarReads into a run-token temp BAM using a project-storage GATK temp directory.\n'
-printf '  6. Index the temp BAM and validate quickcheck, coordinate sort, read group preservation, and nonempty BAI.\n'
+printf '  6. Reuse a nonempty GATK-produced BAM index when available; otherwise index with samtools, then validate quickcheck, coordinate sort, read group preservation, and nonempty BAI.\n'
 printf '  7. Publish final BAM/BAI only after validation succeeds; no-clobber publication proves the finals are the validated staging inodes.\n'
 printf '  8. Roll back previous final outputs if publication fails after backups begin.\n'
 
@@ -461,7 +482,7 @@ invoke_gatk_with_selected_java "$java_bin" "$gatk_bin" --version 2>&1 ||
 
 TMPDIR="$gatk_tmp_dir" \
     invoke_gatk_with_selected_java "$java_bin" "${gatk_command[@]}"
-"${index_command[@]}"
+ensure_bam_index
 validate_bam_pair "$tmp_bam" "$tmp_bai" "Replacement"
 if [[ "$no_clobber" == true ]]; then
     [[ "$(sha256_file "$input_bam")" == "$input_bam_sha256" ]] || die "Input BAM changed during Step 05."
