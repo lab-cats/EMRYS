@@ -130,8 +130,10 @@ def _select_records(
         return (
             None,
             "This run predates the Step 10 scientific-context transaction; "
-            "sequence-context, motif, and selected context-track figures are "
-            "unavailable, while the Step 09 figures remain reportable.",
+            "the sequence-context and motif-enrichment figures are unavailable. "
+            "Selected-candidate editing-rate and location evidence remains "
+            "reportable from Step 09, with sequence and registered-motif context "
+            "marked not admitted.",
         )
     wrong_scopes = [
         artifact["artifact_id"]
@@ -173,9 +175,10 @@ def _select_records(
         return (
             None,
             "The complete primary-analysis Step 10 transaction is unavailable, "
-            "so its three context figures were not inferred: "
-            + "; ".join(missing_or_incomplete)
-            + ".",
+            "so the Step 10 sequence-context and motif-enrichment figures were not "
+            "inferred. Selected-candidate editing-rate and location evidence can "
+            "remain reportable from Step 09, with sequence and registered-motif "
+            "context marked not admitted: " + "; ".join(missing_or_incomplete) + ".",
         )
     return selected, None
 

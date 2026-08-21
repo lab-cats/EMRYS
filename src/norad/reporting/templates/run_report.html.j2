@@ -27,6 +27,17 @@
 </div>
 {%- endmacro %}
 
+{% macro render_fact_grid(block) -%}
+<div id="{{ block.id }}" class="fact-grid-block">
+  <h3>{{ block.title }}</h3>
+  <dl class="fact-grid">
+  {% for label, value in block.facts %}
+    <div class="fact-item"><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+  {% endfor %}
+  </dl>
+</div>
+{%- endmacro %}
+
 {% macro render_block(block) -%}
 {% if block.kind == "table" %}
 {{ render_table(block) }}
@@ -56,17 +67,115 @@
 <ul class="artifact-legend" aria-label="Artifact state legend">
   {% for item in block.legend %}<li class="legend-{{ item.name | replace(' ', '-') }}">{{ item.name | title }}: {{ item.count }}</li>{% endfor %}
 </ul>
+{% elif block.kind == "metric_grid" %}
+<dl id="{{ block.id }}" class="metric-grid" aria-label="Key analysis counts">
+  {% for metric in block.metrics %}
+  <div class="metric-card"><dt>{{ metric.label }}</dt><dd>{{ metric.value }}</dd></div>
+  {% endfor %}
+</dl>
+{% elif block.kind == "fact_grid" %}
+{{ render_fact_grid(block) }}
+{% elif block.kind == "candidate_index" %}
+<div class="candidate-index-block">
+  <p class="provenance-note">{{ block.selection_note }}</p>
+  <section class="candidate-index-summary" aria-labelledby="{{ block.id }}-heading">
+    <h3 id="{{ block.id }}-heading">{{ block.caption }}</h3>
+    <ol class="candidate-index-list" id="{{ block.id }}">
+    {% for record in block.records %}
+      <li class="candidate-index-record" data-candidate-id="{{ record.candidate_id }}">
+        <div class="candidate-index-heading">
+          <span class="candidate-rank">{{ record.rank }}.</span>
+          <strong class="candidate-index-id">{{ record.candidate_id }}</strong>
+          <span class="candidate-gene">{{ record.gene_ids }}</span>
+          <span class="candidate-status">{{ record.call_status }}</span>
+        </div>
+        <dl class="candidate-index-facts">
+          <div><dt>Editing rate</dt><dd>{{ record.editing_rate }}</dd></div>
+          <div><dt>Location (1-based)</dt><dd>{{ record.location }}</dd></div>
+          <div><dt>Nearby motifs</dt><dd>{{ record.motif }}</dd></div>
+        </dl>
+      </li>
+    {% endfor %}
+    </ol>
+  </section>
+</div>
+{% elif block.kind == "candidate_record" %}
+<article id="{{ block.record.id }}" class="candidate-evidence-record" data-candidate-rank="{{ block.record.rank }}" data-candidate-id="{{ block.record.candidate_id }}">
+  <h3>{{ block.record.rank }}. {{ block.record.candidate_id }}</h3>
+  <p class="candidate-status">{{ block.record.call_status }}</p>
+  <div class="candidate-evidence-groups">
+  {% for group in block.record.groups %}
+    <div class="candidate-evidence-group" data-evidence-group="{{ group.title | lower | replace(' ', '-') }}">
+      <h4>{{ group.title }}</h4>
+      <dl>
+      {% for label, value in group.facts %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
+      </dl>
+    </div>
+  {% endfor %}
+  </div>
+  {% if block.record.pairs %}
+  <div class="candidate-replicates">
+    {% for pair_batch in block.record.pairs | batch(4) %}
+    <div class="candidate-pair-batch">
+    <h4{% if not loop.first %} class="candidate-replicates-continuation"{% endif %}>Manifest-paired sample evidence — {{ block.record.candidate_id }}{% if not loop.first %} (continued){% endif %}</h4>
+    {% for pair in pair_batch %}
+    <div class="candidate-pair">
+      <p><strong>Replicate {{ pair.replicate }}</strong></p>
+      <div class="candidate-pair-samples">
+        <dl class="candidate-sample">
+          <div><dt>Condition</dt><dd>{{ pair.control_label }}</dd></div>
+          <div><dt>Sample</dt><dd>{{ pair.control.sample_id }}</dd></div>
+          <div><dt>Editing rate</dt><dd>{{ pair.control.editing_rate }}</dd></div>
+          <div><dt>Read support</dt><dd>{{ pair.control.read_support }}</dd></div>
+        </dl>
+        <dl class="candidate-sample">
+          <div><dt>Condition</dt><dd>{{ pair.treatment_label }}</dd></div>
+          <div><dt>Sample</dt><dd>{{ pair.treatment.sample_id }}</dd></div>
+          <div><dt>Editing rate</dt><dd>{{ pair.treatment.editing_rate }}</dd></div>
+          <div><dt>Read support</dt><dd>{{ pair.treatment.read_support }}</dd></div>
+        </dl>
+      </div>
+    </div>
+    {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if block.record.motif_hits %}
+  <div class="candidate-motif-hits">
+    <h4>Exact registered-motif hits</h4>
+    <ul>{% for hit in block.record.motif_hits %}<li>{{ hit }}</li>{% endfor %}</ul>
+  </div>
+  {% elif block.record.motif_unavailable_reason %}
+  <p class="provenance-note">{{ block.record.motif_unavailable_reason }}</p>
+  {% endif %}
+</article>
 {% elif block.kind == "scientific_figure" %}
-<figure id="{{ block.id }}" class="scientific-figure figure-status-{{ block.status }}" data-figure-status="{{ block.status }}" aria-labelledby="{{ block.id }}-title {{ block.id }}-caption">
-  <h3 id="{{ block.id }}-title">{{ block.title }}</h3>
+<figure id="{{ block.id }}" class="scientific-figure{% if block.assets | length > 1 %} scientific-figure-multipanel{% endif %} figure-status-{{ block.status }}" data-figure-status="{{ block.status }}" aria-labelledby="{{ block.id }}-title {{ block.id }}-caption">
+  <h3 id="{{ block.id }}-title">{{ block.label }} — {{ block.title }}</h3>
+  <p class="figure-summary figure-takeaway"><strong>Takeaway:</strong> {{ block.takeaway }}</p>
   {% if block.status == "available" %}
-  <img id="{{ block.id }}-image" class="scientific-figure-image" src="{{ block.data_uri }}" alt="{{ block.alt_text }}">
+  <div class="scientific-figure-assets">
+  {% for asset in block.assets %}
+    <img id="{{ block.id }}-image-{{ loop.index }}" class="scientific-figure-image" data-panel-id="{{ asset.panel_id }}" src="{{ asset.data_uri }}" alt="{{ asset.alt_text }}">
+  {% endfor %}
+  </div>
   {% else %}
   <p class="empty-state figure-unavailable">{{ block.unavailable_reason }}</p>
   {% endif %}
-  <p class="figure-summary">{{ block.text_summary }}</p>
   <figcaption id="{{ block.id }}-caption">{{ block.caption }}</figcaption>
 </figure>
+{% elif block.kind == "figure_guide" %}
+<article id="{{ block.id }}" class="figure-guide-entry" data-figure-id="{{ block.figure_id }}">
+  <h3>{{ block.label }} — {{ block.title }}</h3>
+  <dl>
+    <div class="figure-guide-question"><dt>What it answers</dt><dd>{{ block.question }}</dd></div>
+    <div class="figure-guide-reading"><dt>How to read it</dt><dd>{{ block.how_to_read }}</dd></div>
+    <div class="figure-guide-inputs"><dt>Data inputs</dt><dd>{{ block.input_roles }}</dd></div>
+    <div class="figure-guide-population"><dt>Population</dt><dd>{{ block.population }}</dd></div>
+    <div class="figure-guide-limitations"><dt>Limitations</dt><dd>{{ block.limitations }}</dd></div>
+  </dl>
+</article>
 {% elif block.kind == "notice_list" %}
 <div class="notice"><p><strong>{{ block.title }}</strong></p><ul>{% for item in block["items"] %}<li>{{ item }}</li>{% endfor %}</ul></div>
 {% endif %}
@@ -75,6 +184,9 @@
 <main id="norad-report" tabindex="-1"
   data-run-id="{{ view.run_id }}"
   data-report-view="{{ view.report_view }}"
+{% if view.report_view == "scientific" %}
+  data-selected-candidate-count="{{ view.selected_candidate_ids | length }}"
+{% endif %}
 {% if view.report_view == "evidence" %}
   data-run-summary-sha256="{{ view.metadata.run_summary_sha256 }}"
   data-renderer-version="{{ view.metadata.renderer_version }}"
@@ -87,6 +199,18 @@
   <p class="report-disclaimer">{{ view.introduction }}</p>
   <div class="report-category-tabs" role="group" aria-label="Report categories">
   {% for category in view.categories %}
+  {% if view.report_view == "scientific" %}
+    <div id="{{ category.id }}" class="report-category report-category-static" aria-label="{{ category.title }}">
+      <div class="report-category-body">
+      {% for section in category.sections %}
+        <section id="{{ section.id }}" class="report-section" aria-labelledby="{{ section.id }}-heading">
+          <h2 id="{{ section.id }}-heading">{{ section.title }}</h2>
+          {% for block in section.blocks %}{{ render_block(block) }}{% endfor %}
+        </section>
+      {% endfor %}
+      </div>
+    </div>
+  {% else %}
     <details id="{{ category.id }}" class="report-category" name="norad-report-categories"{% if category.open %} open{% endif %}>
       <summary>{{ category.title }}</summary>
       <div class="report-category-body">
@@ -98,6 +222,7 @@
       {% endfor %}
       </div>
     </details>
+  {% endif %}
   {% endfor %}
   </div>
   <p class="report-disclaimer">{{ view.end_note }}</p>

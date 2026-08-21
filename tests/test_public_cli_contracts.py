@@ -228,6 +228,7 @@ MAKE_TARGET_DECISIONS = {
     "local-real-r-test": "local_gate",
     "report-test": "local_gate",
     "demo-report": "explicit_output",
+    "dashboard": "operator_observation",
     "python-coverage-measure": "explicit_output",
     "python-coverage-check": "local_gate",
     "python-coverage-baseline-update": "operator_mutation",
@@ -238,6 +239,14 @@ MAKE_TARGET_DECISIONS = {
     "lint": "local_gate",
     "all-checks": "local_gate",
 }
+MAKE_OPERATION_CONTEXT_VARIABLES = frozenset(
+    {
+        "DASHBOARD_PYTHON_BIN",
+        "DASHBOARD_REFRESH",
+        "JOB_ID",
+        "LOG_DIR",
+    }
+)
 MAKE_CONTEXT_VARIABLES = frozenset(
     {
         "DEMO_REPORT_ROOT",
@@ -791,6 +800,9 @@ def test_rscript_only_entrypoint_modes_are_explicit(entrypoint: str) -> None:
 
 def test_make_target_inventory_and_applicability_decisions_are_complete() -> None:
     makefile_lines = (REPO_ROOT / "Makefile").read_text(encoding="utf-8").splitlines()
+    operations_makefile_lines = (
+        REPO_ROOT / "scripts" / "make_operations.mk"
+    ).read_text(encoding="utf-8").splitlines()
     phony_line = next(line for line in makefile_lines if line.startswith(".PHONY:"))
     live_targets = set(phony_line.partition(":")[2].split())
     configurable_variables = {
@@ -798,10 +810,17 @@ def test_make_target_inventory_and_applicability_decisions_are_complete() -> Non
         for line in makefile_lines
         if (match := re.match(r"^([A-Z][A-Z0-9_]*)\s*\?=", line))
     }
+    operation_configurable_variables = {
+        match.group(1)
+        for line in operations_makefile_lines
+        if (match := re.match(r"^([A-Z][A-Z0-9_]*)\s*\?=", line))
+    }
     include_lines = [line for line in makefile_lines if line.startswith("include ")]
 
     assert live_targets == set(MAKE_TARGET_DECISIONS)
     assert configurable_variables == MAKE_CONTEXT_VARIABLES
+    assert operation_configurable_variables == MAKE_OPERATION_CONTEXT_VARIABLES
+    assert ".PHONY: dashboard" in operations_makefile_lines
     assert (
         "NORAD_MAKE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))"
         in makefile_lines
@@ -809,12 +828,14 @@ def test_make_target_inventory_and_applicability_decisions_are_complete() -> Non
     assert include_lines == [
         "include $(NORAD_MAKE_ROOT)/scripts/make_quality.mk",
         "include $(NORAD_MAKE_ROOT)/scripts/make_reporting.mk",
+        "include $(NORAD_MAKE_ROOT)/scripts/make_operations.mk",
     ]
     assert set(MAKE_TARGET_DECISIONS.values()) == {
         "explicit_output",
         "internal_lane",
         "local_gate",
         "operator_mutation",
+        "operator_observation",
     }
     assert set(expected_make_expansions()) == set(MAKE_TARGET_DECISIONS)
 

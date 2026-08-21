@@ -112,14 +112,13 @@ The authored YAML request carries only run intent and explicit references:
 - sample-manifest and partition-manifest paths;
 - reference FASTA and GTF paths;
 - cohort and primary-analysis identities;
-- attempt-level workflow and per-step resources; and
 - the complete inline Step `09` analysis policy.
 
-Version 2 uses this closed top-level shape, encoded by the request schema
+Version 3 uses this closed top-level shape, encoded by the request schema
 without adding discovery or extension fields:
 
 ```yaml
-schema_version: norad.request.v2
+schema_version: norad.request.v3
 label: optional-human-label
 profile: norad.profile.local_cmh.v2
 sample_manifest: samples.tsv
@@ -132,15 +131,6 @@ reference:
     sjdb_overhang: 149
     genome_sa_index_nbases: 14
 cohort_id: declared-cohort-id
-resources:
-  workflow_cores: 4
-  sample_concurrency: 1
-  step_threads:
-    "00a": 4
-    "01": 4
-    "02": 1
-    "06": 4
-    "08": 1
 analysis:
   id: declared-analysis-id
   control_condition: EV
@@ -155,6 +145,13 @@ analysis:
   background_condition: null
   background_max_fraction: 0.01
 ```
+
+Execution resources use the separate
+`norad.local-pilot-resources.v1` configuration. NORAD layers packaged defaults,
+optional adjacent `norad.resources.yaml`, and explicit CLI overrides. The
+resource document contains workflow-wide cores and memory, per-stage
+concurrency, per-stage threads, and per-job computational/reporting memory.
+Resource changes do not change the normalized scientific run identity.
 
 Every field except `label` and `background_condition` is required. Unknown
 fields fail admission. The implementation may expose a schema-preserving
@@ -203,8 +200,9 @@ The canonical JSON contract contains at least:
 
 `normalized.json` contains only deterministic normalized run content and its
 explicit identity envelope. Non-identity admission metadata—the original
-request hash and bytes, human label, authored path strings, attempt-level
-resource plan, and normalization tool identity—belongs to the immutable
+request hash and bytes, human label, authored path strings, resolved
+attempt-level resource policy and its source provenance, observed outer
+allocation, and normalization tool identity—belongs to the immutable
 workflow-attempt/config records. Reformatting an otherwise equivalent request,
 changing its label, or tuning resources therefore does not create a new
 scientific run or demand different bytes at the same canonical contract path.
@@ -222,13 +220,20 @@ bind the authored path, canonical target, observed version, and SHA-256;
 admitted runtime directories bind their authored and canonical paths. Each
 fixed `r_*` identity binds the observed namespace version, exact canonical
 installed-package root, and deterministic tree SHA-256 over sorted entry kind,
-relative path, permission mode, size, and regular-file bytes; symbolic links
-and special entries fail admission. Only the admitted `renv_project` and
-`renv_library` directory identities have null digests. These fields do not
-change the scientific run identity. Version 1 automatic resume nevertheless
-requires the same clean source commit, profile digest, and ordered exact
-required-tool identities, then re-admits those paths and bytes; otherwise the
-run becomes blocked pending an explicit compatibility or new-profile decision.
+relative path, permission mode, size, and regular-file bytes. A package entry
+may be a `renv` cache symlink to a canonical real target, but symbolic links and
+special entries inside each resolved fixed `r_*` namespace tree fail admission.
+Only the admitted `renv_project` and `renv_library` directory identities have
+null digests. These fields do not change the scientific run identity. Version 1
+automatic resume nevertheless requires the same clean source commit, profile
+digest, and ordered exact required-tool identities, then re-admits those paths
+and bytes; otherwise the run becomes blocked pending an explicit compatibility
+or new-profile decision.
+Every local-science attempt has exactly one file-backed
+`storage_qualification` identity. Lifecycle re-runs semantic qualification for
+the attempt workspace and canonical normalized reference before delegation and
+after the child exits, and requires the resulting receipt identity to reproduce
+that immutable roster entry.
 
 Each workflow attempt binds one canonical attempt-specific workflow-config
 snapshot by relative path and SHA-256. That config binds every owner/scope
@@ -477,6 +482,10 @@ unproved delegated process-group termination is not guessed complete or
 automatically repaired. Quiescence ambiguity retains the public run lock and
 publishes no resumable receipt; a proven-quiescent child plus diagnosed state
 blockers may instead release evidence and publish a blocked receipt.
+Aggregate release evidence retained before an attempt record exists is not
+self-authenticating. Inspection keeps it as a blocker until a separate
+reconciliation contract validates its bytes, ownership, and relationship to
+the absent attempt; a matching filename alone is never enough.
 
 Snakemake automatic retries are zero. NORAD version 1 does not expose automatic
 `--unlock`, `--cleanup-metadata`, `--forceall`, `--rerun-incomplete`, or blind

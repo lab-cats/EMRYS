@@ -19,6 +19,7 @@ from norad.libraries.source_authority import (
     matching_checkout_head_commit,
 )
 
+from .candidate_display import build_candidate_display
 from .computational import admit_computational_results
 from .figures import build_scientific_figures
 from .inputs import (
@@ -71,6 +72,11 @@ def expected_html_identity(
         "data-run-id": context.summary["run_id"],
     }
     if report_view == "scientific":
+        identity["data-selected-candidate-count"] = str(
+            len(context.candidate_display.candidates)
+            if context.candidate_display is not None
+            else 0
+        )
         return identity
     metadata = context.render_metadata
     identity.update(
@@ -189,6 +195,15 @@ def prepare_context(
             computational_results=computational_results,
         )
     )
+    candidate_display = (
+        None
+        if computational_results is None
+        else build_candidate_display(
+            computational_results,
+            scientific_context_results,
+            scientific_context_unavailable_reason,
+        )
+    )
     try:
         package_root = Path(__file__).resolve().parents[2]
         producer_git_commit = (
@@ -282,6 +297,7 @@ def prepare_context(
         computational_unavailable_reason,
         scientific_context_results,
         scientific_context_unavailable_reason,
+        candidate_display,
     )
     scientific_html_bytes = render_html(
         build_scientific_view(
@@ -289,6 +305,11 @@ def prepare_context(
             metadata,
             computational_results=computational_results,
             computational_unavailable_reason=computational_unavailable_reason,
+            scientific_context_results=scientific_context_results,
+            scientific_context_unavailable_reason=(
+                scientific_context_unavailable_reason
+            ),
+            candidate_display=candidate_display,
             scientific_figures=scientific_figures,
         ),
         css,
@@ -318,6 +339,7 @@ def prepare_context(
         computational_unavailable_reason=computational_unavailable_reason,
         scientific_context_results=scientific_context_results,
         scientific_context_unavailable_reason=scientific_context_unavailable_reason,
+        candidate_display=candidate_display,
         scientific_figures=scientific_figures,
         template_snapshot=template_snapshot,
         css_snapshot=css_snapshot,

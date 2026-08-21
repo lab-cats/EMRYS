@@ -48,20 +48,30 @@ The last file is the `norad.report_receipt` v4 receipt. Existing older output
 directories, bare HTML predecessors, and incomplete sets are rejected; use a
 fresh output root unless an explicit migration is separately approved.
 
-The scientific HTML is the reader-facing interpretation view. For the primary
-analysis, it shows the Step `09` design and contrast, counts, declared
-thresholds and method, the significant subset before all CMH-ranked candidates,
-raw per-sample DP/AD/AF, and selected exact sample QC already recorded by STAR,
-flagstat, RSeQC, and Picard artifacts. It also embeds deterministic candidate-
-landscape, mutation-spectrum, condition-mean-concordance, manifest-paired
-sample-profile, and nonexclusive annotation-membership SVG figures rendered
-from the admitted Step `09` records. When a complete Step `10` scientific-
-context transaction is present, it adds edit-centered observed and registered
-PUM logos, a fixed-bin motif-position/Fisher-enrichment view, and upstream-
-selected ±25-nt candidate context tracks with admitted motif spans and paired
-sample AF values. It intentionally omits source paths,
-hashes, attempts, the artifact appendix, tool records, renderer provenance, and
-the artifact-availability figure.
+The scientific HTML is the print-oriented reader-facing interpretation view.
+It opens with a concise analysis summary, then presents four primary figures,
+four supporting figures, a visible figure-reading guide, and a visible methods
+and data note. It uses static sections only: no scientific explanation or
+limitation is hidden in a collapsible control. Every figure carries a plain-
+language takeaway, question, reading guide, population statement, and explicit
+limitations. Primary figures use reader-facing labels `Figure 1` through
+`Figure 4`; supporting appendix figures use `Figure S1` through `Figure S4`,
+while stable internal figure IDs continue to own validation and provenance.
+
+The primary set contains the complete candidate effect-versus-depth landscape,
+the selected candidate-centered context panels, the nonexclusive annotation-
+membership summary, and the registered-motif position/enrichment view. The
+supporting set preserves the mutation spectrum, condition-mean concordance,
+manifest-paired sample profiles, and sequence-context logos. The ranked-card
+selected-candidate index and vertical evidence records state editing rate,
+exact location and orientation facts, paired AF/AD/DP support, and nearby
+registered motif evidence from the same immutable display projection used by
+the paired-profile and selected-context figures. The selected-context figure
+is explicitly candidate-centered mechanically oriented genomic context; it
+does not claim a continuous transcript locus, choose an isoform, or infer
+biological strand. The scientific view
+intentionally omits source paths, hashes, attempts, the artifact appendix, tool
+records, renderer provenance, and the artifact-availability figure.
 
 The evidence HTML is the operational and provenance view. It retains run
 identity and status, limitations, expected scopes, artifact-level QC, attempt
@@ -96,23 +106,26 @@ discover motifs, count bases or hits, rebuild populations, rerun a statistical
 test, smooth profiles, or select candidates. Logomaker `0.8.7` renders the
 admitted logo matrices inside the same cleaned temporary Matplotlib cache.
 
-Scientific candidate tables display at most 250 rows each and disclose any
-truncation without mixing paths or hashes into the scientific view. The evidence
-view records the exact full sources, while receipt `truncations` bind truncated
-scientific table displays to those sources. The candidate landscape consumes
-all successfully tested rows rather than the 250-row table prefix; the mutation
+The scientific HTML does not reproduce either native candidate TSV as a wide
+table. The complete all-sites and threshold-passing TSVs remain admitted,
+evidence-bound data artifacts; the evidence view records their exact paths and
+hashes. The scientific view instead uses the complete tested population for the
+candidate landscape plus one bounded, vertically structured selected-candidate
+projection. When Step `10` is present, its upstream display ranks are preserved;
+historical runs use the fixed FDR/effect/candidate-ID fallback rule. The mutation
 spectrum consumes the canonical 12-row TSV and is not recomputed from candidate
-rows. The location bars preserve independent Step `08` overlaps, so their
-percentages need not sum to 100%. The paired profile is a display-only top-eight
-selection by FDR ascending, absolute effect descending, then candidate ID; it
-does not define a new scientific ranking. If the exact result trio, mutation
-spectrum, or all-pass owner validation is incomplete, both views say so and no
-candidate rows or scientific figures are opened.
+rows. Location memberships remain independent and nonexclusive, so percentages
+need not sum to 100%; an all-false record is labeled as no recorded overlap, not
+inferred to be intergenic. If the exact result trio, mutation spectrum, or all-
+pass owner validation is incomplete, both views disclose that state and do not
+infer candidate evidence or figures.
 
-Runs that predate Step `10` retain the five Step `09` figures and mark only the
-three context figures unavailable. Partial or incomplete Step `10` declarations
-are disclosed without inference; any complete present transaction with a path,
-hash, size, row-count, schema, validation, or semantic mismatch fails closed.
+Runs that predate Step `10` retain the five Step `09` figures and the selected-
+candidate panels, with motif context explicitly marked unavailable; the two
+population-level Step `10` figures remain unavailable. Partial or incomplete
+Step `10` declarations are disclosed without inference; any complete present
+transaction with a path, hash, size, row-count, schema, validation, or semantic
+mismatch fails closed.
 
 These are explicitly **computational results — not scientifically
 adjudicated**. Candidate review, adjudication, and biological interpretation

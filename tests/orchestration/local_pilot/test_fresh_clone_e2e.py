@@ -17,6 +17,9 @@ import pytest
 
 from norad import __file__ as norad_package_file
 from norad.contracts.orchestration import api as orchestration_contracts
+from norad.evidence.runtime_availability._probes import (
+    R_NAMESPACE_ROOT_OUTPUT_MARKER,
+)
 from norad.orchestration.local_pilot import doctor, inspection, reporting_boundary
 from norad.orchestration.local_pilot.normalization import normalize_request
 from tests.orchestration.local_pilot.fixture import build as build_intake_fixture
@@ -109,7 +112,9 @@ def _write_runtime_profile(root: Path) -> Path:
         "star": executable("STAR", "2.7.11b"),
         "samtools": executable("samtools", "samtools 1.19.2"),
         "bcftools": executable("bcftools", "bcftools 1.21"),
-        "infer_experiment": executable("infer_experiment.py", "RSeQC v5.0.4"),
+        "infer_experiment": executable(
+            "infer_experiment.py", "infer_experiment.py 5.0.4"
+        ),
         "gunzip": executable("gunzip", "gzip 1.13"),
     }
     java_home = root / "fixture-jdk"
@@ -175,7 +180,10 @@ def _write_runtime_profile(root: Path) -> Path:
         "  *' --version '*) printf 'Rscript (R) version 4.6.1\\n' ;;",
     ]
     for package, version in package_versions.items():
-        r_lines.append(f"  *' {package} '*) printf '{version}\\n' ;;")
+        package_root = (renv_library / package).resolve(strict=True)
+        encoded_root = str(package_root).encode("utf-8").hex()
+        output = f"{version}{R_NAMESPACE_ROOT_OUTPUT_MARKER}{encoded_root}"
+        r_lines.append(f"  *' {package} '*) printf '{output}\\n' ;;")
     r_lines.extend(("  *) exit 42 ;;", "esac"))
     rscript.write_text("\n".join(r_lines) + "\n", encoding="utf-8")
     rscript.chmod(0o755)

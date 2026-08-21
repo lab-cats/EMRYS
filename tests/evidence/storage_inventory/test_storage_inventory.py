@@ -390,6 +390,51 @@ def test_linux_mount_identity_selects_deepest_mount_and_decodes_escapes(
     }
 
 
+def _qualification_snapshot() -> dict[str, object]:
+    return {
+        "path": "/shared/workspace",
+        "device_id": 101,
+        "inode": 202,
+        "uid": 303,
+        "gid": 404,
+        "filesystem_total_bytes": 1000,
+        "filesystem_free_bytes": 500,
+        "filesystem_available_bytes": 400,
+        "mount_point": "/shared",
+        "filesystem_type": "nfs4",
+        "filesystem_source": "server:/shared",
+    }
+
+
+def test_storage_snapshot_allows_cross_node_device_id_difference() -> None:
+    expected = _qualification_snapshot()
+    observed = {**expected, "device_id": 102}
+
+    assert qualification._stable_snapshot(expected, observed)
+
+
+@pytest.mark.parametrize(
+    ("field", "different"),
+    [
+        ("path", "/other"),
+        ("inode", 2002),
+        ("uid", 3003),
+        ("gid", 4004),
+        ("mount_point", "/other-mount"),
+        ("filesystem_type", "lustre"),
+        ("filesystem_source", "other:/export"),
+    ],
+)
+def test_storage_snapshot_rejects_other_identity_drift(
+    field: str,
+    different: object,
+) -> None:
+    expected = _qualification_snapshot()
+    observed = {**expected, field: different}
+
+    assert not qualification._stable_snapshot(expected, observed)
+
+
 def test_two_phase_storage_qualification_is_durable_and_read_only_to_doctor(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -1,9 +1,10 @@
 # Configuration and input guide
 
-The four tracked `local_pilot_*` examples are the policy templates behind the
+The tracked `local_pilot_*` examples are the policy templates behind the
 generated matched starter set for the supported automatic workflow. They
-describe what to analyze; they do not contain reads, a reference, scientific
-software, or a ready-to-run production selection.
+describe what to analyze and how to request one outer allocation; they do not
+contain reads, a reference, scientific software, private site values, or a
+ready-to-run production selection.
 
 Initialize the set in an operator-managed directory **outside the Git
 checkout**. Both forms are dry-run-first; the output must be an absolute absent
@@ -16,15 +17,17 @@ norad init local-pilot \
   --execute
 ```
 
-The execute form publishes `request.yaml`, `samples.tsv`, `partitions.tsv`,
-`runtime.tsv`, executable `run-in-slurm.sh`, and then
-`starter-set.manifest.tsv` last. The manifest proves only the initial generated
-starter; expected data/config edits make those original hashes historical.
+The execute form publishes `request.yaml`, `norad.launcher.yaml`,
+`norad.resources.yaml`, `samples.tsv`, `partitions.tsv`, `runtime.tsv`,
+executable `run-in-slurm.sh`, and then `starter-set.manifest.tsv` last. The
+manifest proves only the initial generated starter; expected data/config edits
+make those original hashes historical.
 
-Keep the authored request, manifests, selected runtime profile, and source data
-together for the life of the run. NORAD hashes and binds their exact bytes, so
-changing any of them describes a different execution rather than a way to
-repair an existing run.
+Keep the authored request, launcher and resource configurations, manifests,
+selected runtime profile, and source data together for the life of the run.
+NORAD binds the scientific inputs into run identity and snapshots the effective
+workflow resource policy for each attempt; changing either is not a way to
+repair an entered attempt.
 
 ## Recommended input layout
 
@@ -34,6 +37,8 @@ checkout clean:
 ```text
 norad-inputs/
 |-- request.yaml
+|-- norad.launcher.yaml
+|-- norad.resources.yaml
 |-- samples.tsv
 |-- partitions.tsv
 |-- runtime.tsv
@@ -62,6 +67,41 @@ request. They must be explicit: no `~`, environment variables, templates,
 globs, redundant separators, or `.`/`..` components. NORAD does not search for
 files or infer which sample, reference, or runtime you intended.
 
+## Launcher configuration and private site values
+
+[`local_pilot_launcher.example.yaml`](local_pilot_launcher.example.yaml) is
+published as `norad.launcher.yaml` beside `run-in-slurm.sh`. It controls the
+single outer Slurm allocation, launcher paths, and module setup. It is separate
+from `norad.resources.yaml`, which controls Snakemake's workflow resources
+inside that allocation.
+
+Launcher precedence is packaged defaults, adjacent or explicitly selected
+launcher YAML, then explicit `run-in-slurm.sh` options. A YAML value may be a
+literal or the exact structured form `{env: NORAD_NAME}` allowed for that
+field. NORAD does not perform `$VAR`, command, shell, template, or arbitrary
+environment interpolation.
+
+Structured references read the invocation environment first and then the
+source-checkout root `.env` for missing values. Copy the tracked
+[`../.env.example`](../.env.example) to `.env` at that root, keep only the
+site/private NORAD values used by your launcher YAML, and set mode `0600`.
+The real `.env` is Git-ignored; it must be an owner-controlled nonsymlink file.
+Unknown variables, duplicates, shell syntax, loose permissions, and
+`NORAD_EXECUTE` fail admission without printing private values.
+
+The launcher requests its configured CPUs, memory, time, placement, and node
+selection; these are not lower bounds or workflow measurements. `exclusive:
+true` emits `--exclusive`, while a nonempty `nodelist` emits one exact
+`--nodelist=...`. Review the outer request together with the effective
+`norad.resources.yaml` so workflow totals fit inside the allocation.
+
+Execution is deliberately absent from launcher YAML and `.env`. Invoking the
+wrapper without a mode flag submits a no-write plan. Only the explicit
+`run-in-slurm.sh --execute` action activates workflow execution. Ambient
+`SBATCH_*` policy variables are removed before submission so they cannot alter
+omitted options such as `memory: site-default`, `exclusive: false`, or a null
+node list.
+
 ## Request YAML
 
 [`local_pilot_request.example.yaml`](local_pilot_request.example.yaml) is the
@@ -72,7 +112,7 @@ merge keys are rejected.
 
 | Field | Meaning | How to choose it |
 | --- | --- | --- |
-| `schema_version` | Request contract version. | Keep `norad.request.v2`. |
+| `schema_version` | Request contract version. | Keep `norad.request.v3`. |
 | `label` | Optional human label. It does not affect the run ID. | Use a short description for operators. |
 | `profile` | Fixed automatic workflow. | Keep `norad.profile.local_cmh.v2`. There is no public alternate profile. |
 | `sample_manifest` | Sample TSV path. | Point to the matched sample manifest, normally beside the request. |
@@ -84,21 +124,47 @@ merge keys are rejected.
 | `reference.star_index.genome_sa_index_nbases` | STAR suffix-array index parameter. | Select for the reference size according to the admitted STAR release; `14` is appropriate for many mammalian references but is not universal. |
 | `cohort_id` | Identity shared by the samples entering cohort processing. | Use a stable safe ID, not an analysis conclusion. |
 
-### Resource fields
+### Resource configuration
 
-The closed `resources` block is attempt-level configuration. Changing it does
-not change the scientific run ID, but every attempt snapshots the exact request
-and materialized workflow configuration.
+Execution resources are separate from scientific run intent. The optional
+[`local_pilot_resources.example.yaml`](local_pilot_resources.example.yaml) is
+published by `norad init local-pilot` as `norad.resources.yaml` beside
+`request.yaml`. If that adjacent file is absent, NORAD uses its packaged
+conservative defaults. An explicitly selected `--resource-config` replaces
+adjacent discovery, and individual resource CLI options override the selected
+YAML and packaged defaults.
 
 | Field | Meaning |
 | --- | --- |
-| `resources.workflow_cores` | Total CPU capacity made available to Snakemake. It must not exceed the host or scheduler allocation. |
-| `resources.sample_concurrency` | Maximum simultaneous sample-scoped owners. It must not exceed `workflow_cores`; memory and storage throughput often make `1` preferable. |
-| `resources.step_threads` | Closed mapping for Steps `00a`, `01`, `02`, `06`, and `08`. Every value is required, positive, and no greater than `workflow_cores`. |
+| `workflow_cores` | Total CPU capacity made available to Snakemake. |
+| `workflow_memory_mb` | Total global scheduler memory in MiB, or `allocation` to use observed capacity. |
+| `stage_concurrency` | Closed per-stage caps for repeatable Steps `01`, `02`, `02b`, `03`, `04`, `05`, `06`, and `07`. |
+| `step_threads` | Closed thread mapping for Steps `00a`, `01`, `02`, `06`, and `08`. |
+| `stage_memory_mb` | Total memory reserved by one computational owner job, in MiB or `workflow`. |
+| `reporting_memory_mb` | Total memory reserved by each reporting transaction, in MiB or `workflow`. |
 
-Use [`scripts/benchmark_stage_resources.py`](../scripts/benchmark_stage_resources.py)
-with representative data on each materially different environment before
-raising these values. Benchmark recommendations are environment-specific.
+The tracked
+[`local_pilot_resources.csu_viking_ev_pum1.yaml`](local_pilot_resources.csu_viking_ev_pum1.yaml)
+is the workload-specific retained policy for the six-library EV/PUM1 run on
+CSU Viking node002. It is not a packaged default or a general CSU profile.
+Copy it to the matched operator input directory as `norad.resources.yaml` only
+for that workload and its reviewed exclusive 256-CPU node allocation. The
+workflow exposes 12 schedulable cores to Snakemake while retaining 524,288 MiB
+as its internal memory budget; unmodeled JVM/native helper threads remain
+bounded by the outer exclusive allocation.
+Copy the matching
+[`local_pilot_launcher.csu_viking_ev_pum1.yaml`](local_pilot_launcher.csu_viking_ev_pum1.yaml)
+as the adjacent `norad.launcher.yaml`. It requests all 256 CPUs and exclusive
+node placement but deliberately leaves memory at `site-default`, matching
+Viking's no-explicit-memory site policy. Its 12-hour walltime is conservative
+operator headroom rather than a benchmark result; private site values and
+operator paths remain references to the ignored source-checkout root `.env`.
+
+NORAD rejects a policy when concurrency multiplied by per-job threads exceeds
+workflow cores, when concurrency multiplied by per-job memory exceeds workflow
+memory, or when workflow totals exceed the process-visible outer allocation.
+The effective policy, source digests, explicit override paths, and observed
+allocation are stored in the immutable attempt workflow config.
 
 Safe IDs begin with an ASCII letter or digit and then contain only letters,
 digits, `.`, `_`, or `-`.
@@ -247,9 +313,9 @@ The accepted tool versions are:
 | samtools | `1.19.2` |
 | Java | canonical `<JAVA_HOME>/bin/java`, major `17` or newer |
 | GATK | `4.6.1.0` |
-| Picard | `3.1.1` jar, invoked through the selected Java |
+| Picard | `3.1.1` jar, including the bound `3.1.1-16-g5b0b4c014-SNAPSHOT` build, invoked through the selected Java |
 | bcftools | `1.21` |
-| RSeQC | an `infer_experiment.py` command with a parseable RSeQC version |
+| RSeQC | `infer_experiment.py 5.0.4` |
 | gzip | a compatible `gunzip` command |
 | R | `Rscript 4.6.1` |
 

@@ -7,6 +7,7 @@ import re
 import shutil
 import stat
 import subprocess
+import time
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
 
@@ -20,8 +21,9 @@ from norad.libraries.source_authority import controlled_python_argv
 from ._runtime_model import (
     HASH_EXPECTED,
     HASH_PAYLOAD,
-    PROBE_TIMEOUT_SECONDS,
+    R_NAMESPACE_PROBE_TIMEOUT_SECONDS,
     RESULT_STATUSES,
+    TOOL_PROBE_TIMEOUT_SECONDS,
     VERSION_TEXT_LIMIT,
     Check,
     Result,
@@ -30,8 +32,37 @@ from ._runtime_model import (
 )
 
 CommandRunner = Callable[
-    [list[str], bytes | None, Mapping[str, str] | None], tuple[int, str]
+    [list[str], bytes | None, Mapping[str, str] | None, int],
+    tuple[int, str, float, bool],
 ]
+R_NAMESPACE_ROOT_OUTPUT_MARKER = "::norad-root-utf8-hex::"
+
+
+def _timing_detail(elapsed_seconds: float, timeout_seconds: int) -> str:
+    return (
+        f"elapsed_seconds={elapsed_seconds:.3f}; "
+        f"timeout_seconds={timeout_seconds}"
+    )
+
+
+def _guarded_namespace_output(output: str) -> tuple[str, Path] | None:
+    if output.count(R_NAMESPACE_ROOT_OUTPUT_MARKER) != 1:
+        return None
+    version, encoded_root = output.split(R_NAMESPACE_ROOT_OUTPUT_MARKER, 1)
+    if (
+        not encoded_root
+        or len(encoded_root) % 2 != 0
+        or re.fullmatch(r"[0-9a-f]+", encoded_root) is None
+    ):
+        return None
+    try:
+        decoded_root = bytes.fromhex(encoded_root).decode("utf-8")
+    except (UnicodeDecodeError, ValueError):
+        return None
+    root = Path(decoded_root)
+    if "\x00" in decoded_root or not root.is_absolute():
+        return None
+    return version, root
 
 
 def _resolve_executable(target: str) -> str | None:
@@ -45,21 +76,36 @@ def _run_command(
     command: list[str],
     stdin: bytes | None = None,
     environment: Mapping[str, str] | None = None,
-) -> tuple[int, str]:
+    timeout_seconds: int = TOOL_PROBE_TIMEOUT_SECONDS,
+) -> tuple[int, str, float, bool]:
+    started = time.monotonic()
     try:
         completed = subprocess.run(
             command,
             input=stdin,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            timeout=PROBE_TIMEOUT_SECONDS,
+            timeout=timeout_seconds,
             check=False,
             env=None if environment is None else dict(environment),
         )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        return 127, _single_line(str(exc))
+    except subprocess.TimeoutExpired as exc:
+        elapsed = time.monotonic() - started
+        return (
+            124,
+            _single_line(str(exc)),
+            elapsed,
+            True,
+        )
+    except OSError as exc:
+        return 127, _single_line(str(exc)), time.monotonic() - started, False
     output = completed.stdout[:VERSION_TEXT_LIMIT].decode("utf-8", errors="replace")
-    return completed.returncode, _single_line(output)
+    return (
+        completed.returncode,
+        _single_line(output),
+        time.monotonic() - started,
+        False,
+    )
 
 
 def _probe_tool(
@@ -80,8 +126,21 @@ def _probe_tool(
         and check.probe_args != ("--version",)
     ):
         command = guarded_rscript_argv(executable, check.probe_args)
-    code, output = run_command(command, None, environment)
+    code, output, elapsed, timed_out = run_command(
+        command,
+        None,
+        environment,
+        TOOL_PROBE_TIMEOUT_SECONDS,
+    )
     expected_code = 1 if check.check_type == "tool_version_exit_1" else 0
+    if timed_out:
+        return Result(
+            check,
+            "fail",
+            output or f"timeout after {TOOL_PROBE_TIMEOUT_SECONDS} seconds",
+            "Version probe timed out; "
+            f"{_timing_detail(elapsed, TOOL_PROBE_TIMEOUT_SECONDS)}",
+        )
     if code != expected_code:
         return Result(check, "fail", output or f"exit {code}", "Version probe failed")
     if re.search(check.expected, output) is None:
@@ -111,7 +170,6 @@ def _probe_r_namespace(
             "declared <- file.path(lib, p); "
             "expected <- normalizePath(declared, winslash='/', "
             "mustWork=TRUE); "
-            # "if (!identical(expected, declared)) quit(status=44); "
             "pkg <- normalizePath(pkg, winslash='/', mustWork=TRUE); "
             "if (!identical(pkg, expected)) quit(status=44); "
             "ns <- tryCatch(suppressWarnings(loadNamespace(p, lib.loc=lib)), "
@@ -120,7 +178,10 @@ def _probe_r_namespace(
             "where <- normalizePath(getNamespaceInfo(ns, 'path'), winslash='/', "
             "mustWork=TRUE); "
             "if (!identical(where, expected)) quit(status=44); "
-            "cat(as.character(utils::packageVersion(p, lib.loc=lib)))"
+            "root_hex <- paste(sprintf('%02x', as.integer(charToRaw(enc2utf8(where)))), "
+            "collapse=''); "
+            f"cat(as.character(utils::packageVersion(p, lib.loc=lib)), "
+            f"'{R_NAMESPACE_ROOT_OUTPUT_MARKER}', root_hex, sep='')"
         )
         arguments = guarded_rscript_argv(
             rscript,
@@ -134,7 +195,20 @@ def _probe_r_namespace(
             "cat(as.character(utils::packageVersion(p)))"
         )
         arguments = [rscript, "-e", expression, check.target]
-    code, output = run_command(arguments, None, environment)
+    code, output, elapsed, timed_out = run_command(
+        arguments,
+        None,
+        environment,
+        R_NAMESPACE_PROBE_TIMEOUT_SECONDS,
+    )
+    elapsed_detail = _timing_detail(elapsed, R_NAMESPACE_PROBE_TIMEOUT_SECONDS)
+    if timed_out:
+        return Result(
+            check,
+            "fail",
+            output or f"timeout after {R_NAMESPACE_PROBE_TIMEOUT_SECONDS} seconds",
+            f"R namespace probe timed out; {elapsed_detail}",
+        )
     if code != 0:
         details = (
             {
@@ -145,21 +219,44 @@ def _probe_r_namespace(
             if guarded
             else {42: "R namespace is unavailable"}
         )
-        detail = details.get(code, "R namespace probe failed")
+        detail = f"{details.get(code, 'R namespace probe failed')}; {elapsed_detail}"
         return Result(check, "fail", output or f"exit {code}", detail)
-    if re.fullmatch(check.expected, output) is None:
+    version_output = output
+    resolved_root: Path | None = None
+    if guarded:
+        parsed = _guarded_namespace_output(output)
+        if parsed is None:
+            return Result(
+                check,
+                "fail",
+                output,
+                "R namespace probe did not report its exact canonical root; "
+                + elapsed_detail,
+            )
+        version_output, resolved_root = parsed
+    if re.fullmatch(check.expected, version_output) is None:
         return Result(
             check,
             "fail",
-            output,
-            "Namespace version did not match expected regex",
+            version_output,
+            "Namespace version did not match expected regex; " + elapsed_detail,
         )
     detail = (
-        f"Resolved R package root: {Path(environment['NORAD_RENV_LIBRARY']) / check.target}"
+        "Resolved R package root: "
+        f"{resolved_root}; "
+        f"{elapsed_detail}"
         if guarded and environment is not None
-        else f"Resolved Rscript: {rscript}"
+        else (
+            f"Resolved Rscript: {rscript}; {elapsed_detail}"
+        )
     )
-    return Result(check, "pass", output, detail)
+    return Result(
+        check,
+        "pass",
+        version_output,
+        detail,
+        None if resolved_root is None else str(resolved_root),
+    )
 
 
 def _probe_hash_utility(
@@ -183,8 +280,21 @@ def _probe_hash_utility(
         command = [executable]
     else:
         command = [executable, "-a", "256"]
-    code, output = run_command(command, HASH_PAYLOAD, environment)
+    code, output, elapsed, timed_out = run_command(
+        command,
+        HASH_PAYLOAD,
+        environment,
+        TOOL_PROBE_TIMEOUT_SECONDS,
+    )
     observed = output.split()[0].lower() if output else ""
+    if timed_out:
+        return Result(
+            check,
+            "fail",
+            output or f"timeout after {TOOL_PROBE_TIMEOUT_SECONDS} seconds",
+            "SHA-256 probe timed out; "
+            f"{_timing_detail(elapsed, TOOL_PROBE_TIMEOUT_SECONDS)}",
+        )
     if code != 0:
         return Result(check, "fail", output or f"exit {code}", "SHA-256 probe failed")
     if observed != HASH_EXPECTED:

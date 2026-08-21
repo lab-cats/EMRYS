@@ -307,7 +307,7 @@ def _sample_manifest() -> bytes:
 
 
 def _request() -> bytes:
-    return b"""schema_version: norad.request.v2
+    return b"""schema_version: norad.request.v3
 label: deterministic-science-smoke-v1
 profile: norad.profile.local_cmh.v2
 sample_manifest: samples.tsv
@@ -320,15 +320,6 @@ reference:
     sjdb_overhang: 74
     genome_sa_index_nbases: 3
 cohort_id: synthetic-smoke-v1
-resources:
-  workflow_cores: 1
-  sample_concurrency: 1
-  step_threads:
-    "00a": 1
-    "01": 1
-    "02": 1
-    "06": 1
-    "08": 1
 analysis:
   id: synthetic-smoke-cmh-v1
   control_condition: control
@@ -345,12 +336,54 @@ analysis:
 """
 
 
+def _resources() -> bytes:
+    return b"""schema_version: norad.local-pilot-resources.v1
+workflow_cores: 1
+workflow_memory_mb: allocation
+stage_concurrency:
+  "01": 1
+  "02": 1
+  "02b": 1
+  "03": 1
+  "04": 1
+  "05": 1
+  "06": 1
+  "07": 1
+step_threads:
+  "00a": 1
+  "01": 1
+  "02": 1
+  "06": 1
+  "08": 1
+stage_memory_mb:
+  "00a": workflow
+  "00b": workflow
+  "00c": workflow
+  "01": workflow
+  "02": workflow
+  "02b": workflow
+  "03": workflow
+  "04": workflow
+  "05": workflow
+  "06": workflow
+  "07": workflow
+  "08": workflow
+  "09": workflow
+  "10": workflow
+reporting_memory_mb:
+  artifact_index: workflow
+  run_summary: workflow
+  html_report: workflow
+"""
+
+
 def fixture_members() -> dict[str, tuple[bytes, int]]:
     """Return deterministic fixture members, excluding the completion manifest."""
 
     reference = _reference()
     members: dict[str, tuple[bytes, int]] = {
         "request.yaml": (_request(), 0o644),
+        "norad.resources.yaml": (_resources(), 0o644),
         "samples.tsv": (_sample_manifest(), 0o644),
         "partitions.tsv": (
             f"partition_id\tselector_type\tselector_value\nprimary\tregion\t{CONTIG}\n".encode(),

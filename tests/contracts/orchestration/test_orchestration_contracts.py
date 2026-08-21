@@ -50,7 +50,7 @@ def request() -> dict[str, Any]:
     result["id"] = result.pop("analysis_id")
     result.pop("schema_version")
     return {
-        "schema_version": "norad.request.v2",
+        "schema_version": "norad.request.v3",
         "label": "tiny local run",
         "profile": "norad.profile.local_cmh.v2",
         "sample_manifest": "samples.tsv",
@@ -65,12 +65,47 @@ def request() -> dict[str, Any]:
             },
         },
         "cohort_id": "cohort-1",
-        "resources": {
-            "workflow_cores": 4,
-            "sample_concurrency": 1,
-            "step_threads": {"00a": 4, "01": 4, "02": 4, "06": 2, "08": 4},
-        },
         "analysis": result,
+    }
+
+
+def resource_config() -> dict[str, Any]:
+    return {
+        "schema_version": "norad.local-pilot-resources.v1",
+        "workflow_cores": 4,
+        "workflow_memory_mb": "allocation",
+        "stage_concurrency": {"01": 2, "06": 4},
+        "step_threads": {"00a": 4, "01": 2},
+        "stage_memory_mb": {"00a": "workflow", "01": 2048},
+        "reporting_memory_mb": {"html_report": 1024},
+    }
+
+
+def launcher_config() -> dict[str, Any]:
+    return {
+        "schema_version": "norad.local-pilot-launcher.v1",
+        "slurm": {
+            "account": {"env": "NORAD_SLURM_ACCOUNT"},
+            "partition": "example-partition",
+            "qos": {"env": "NORAD_SLURM_QOS"},
+            "cpus_per_task": 4,
+            "memory": "site-default",
+            "time": "00:30:00",
+            "exclusive": False,
+            "nodelist": {"env": "NORAD_SLURM_NODELIST"},
+        },
+        "paths": {
+            "log_dir": {"env": "NORAD_LOG_DIR"},
+            "request": "/absolute/path/to/request.yaml",
+            "workspace": {"env": "NORAD_WORKSPACE"},
+            "runtime_profile": {"env": "NORAD_RUNTIME_PROFILE"},
+            "scratch_parent": "/absolute/path/to/scratch",
+        },
+        "modules": {
+            "mode": "none",
+            "init": "",
+            "load": [],
+        },
     }
 
 
@@ -477,6 +512,17 @@ def test_registry_is_closed_and_every_schema_is_draft_2020_12() -> None:
                 stack.extend(value)
 
 
+def test_launcher_config_schema_is_registered_as_v3() -> None:
+    assert "launcher-config" in orchestration.SCHEMA_NAMES
+    assert orchestration.SCHEMA_PATHS["launcher-config"].name == (
+        "launcher_config.schema.json"
+    )
+    assert orchestration.SCHEMA_PATHS["launcher-config"].parent.name == "v3"
+    assert orchestration.SCHEMA_IDS["launcher-config"] == (
+        "urn:norad:schema:orchestration:launcher-config:v1"
+    )
+
+
 def test_unknown_schema_selector_and_nonstandard_json_constant_are_rejected(
     tmp_path: Path,
 ) -> None:
@@ -495,9 +541,12 @@ def test_unknown_schema_selector_and_nonstandard_json_constant_are_rejected(
         orchestration.load_json_object(record_path)
 
 
-def test_request_profile_reference_policy_and_execution_records_pass() -> None:
+def test_request_resource_launcher_profile_reference_policy_and_execution_records_pass(
+) -> None:
     records = {
         "request": request(),
+        "resource-config": resource_config(),
+        "launcher-config": launcher_config(),
         "profile": profile(),
         "reference": reference(),
         "policy": policy(),
@@ -513,6 +562,43 @@ def test_request_profile_reference_policy_and_execution_records_pass() -> None:
     request_without_background = request()
     request_without_background["analysis"].pop("background_condition")
     orchestration.validate_record("request", request_without_background)
+
+
+def test_launcher_config_accepts_a_schema_only_authored_fragment() -> None:
+    orchestration.validate_record(
+        "launcher-config",
+        {"schema_version": "norad.local-pilot-launcher.v1"},
+    )
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    (
+        lambda record: record.__setitem__("unknown", True),
+        lambda record: record["slurm"].__setitem__("unknown", True),
+        lambda record: record["slurm"].__setitem__(
+            "account",
+            {"env": "NORAD_SLURM_ACCOUNT", "fallback": "example"},
+        ),
+    ),
+)
+def test_launcher_config_rejects_unknown_fields(mutate: Any) -> None:
+    record = launcher_config()
+    mutate(record)
+
+    with pytest.raises(
+        orchestration.ContractValidationError,
+        match="Additional properties|not valid under any of the given schemas",
+    ):
+        orchestration.validate_record("launcher-config", record)
+
+
+def test_launcher_config_rejects_an_environment_reference_for_another_field() -> None:
+    record = launcher_config()
+    record["slurm"]["account"] = {"env": "NORAD_WORKSPACE"}
+
+    with pytest.raises(orchestration.ContractValidationError, match="NORAD_WORKSPACE"):
+        orchestration.validate_record("launcher-config", record)
 
 
 def test_lifecycle_and_verified_records_pass() -> None:
@@ -834,6 +920,40 @@ def test_workflow_attempt_requires_clean_checkout_and_named_tools() -> None:
         orchestration.ContractValidationError, match="exact Python executable bytes"
     ):
         orchestration.validate_record("workflow-attempt", attempt)
+
+
+def test_local_science_attempt_requires_storage_qualification() -> None:
+    attempt = lifecycle_records()["workflow-attempt"]
+    attempt["execution_mode"] = "local-science-tools"
+    python = next(
+        item for item in attempt["required_tools"] if item["name"] == "python"
+    )
+    attempt["required_tools"].append(
+        {
+            **copy.deepcopy(python),
+            "name": "sha256_python",
+            "version": "sha256",
+        }
+    )
+    attempt["required_tools"].sort(key=lambda item: item["name"])
+
+    with pytest.raises(
+        orchestration.ContractValidationError,
+        match="storage qualification",
+    ):
+        orchestration.validate_record("workflow-attempt", attempt)
+
+    attempt["required_tools"].append(
+        {
+            "name": "storage_qualification",
+            "version": "b" * 64,
+            "path": "/evidence/storage.qualified.json",
+            "resolved_path": "/evidence/storage.qualified.json",
+            "sha256": ONE_HASH,
+        }
+    )
+    attempt["required_tools"].sort(key=lambda item: item["name"])
+    orchestration.validate_record("workflow-attempt", attempt)
 
 
 def test_workflow_attempt_requires_exact_internal_resume_controls() -> None:

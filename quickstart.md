@@ -17,7 +17,7 @@ result, scheduler job, and report has the evidence ceiling stated below.
 | 5. Admission | Validate the request and finalize two-phase storage qualification | Request PASS and matching final storage receipt |
 | 6. Readiness | Run doctor in the execution context | Exact `READY` result |
 | 7. Plan | Run the full no-write workflow plan | Reviewed deterministic run ID, run root, and owner commands |
-| 8. Process | Submit the generated single-allocation wrapper first with `NORAD_EXECUTE=0`, then unchanged with `1` | Terminal scheduler success plus verified NORAD task records |
+| 8. Process | Submit the generated single-allocation wrapper first with no mode flag, then with explicit `--execute` | Terminal scheduler success plus verified NORAD task records |
 | 9. Results | Inspect the run and retain its complete evidence tree | `local_pipeline_complete` and automatic scientific/evidence HTML reports |
 
 Do not skip a gate, hand-edit the generated scheduler wrapper, adopt outputs from
@@ -107,9 +107,9 @@ Install or select these exact accepted identities before continuing:
 | samtools | `1.19.2` |
 | Java | canonical `<JAVA_HOME>/bin/java`, major `17` or newer |
 | GATK | `4.6.1.0` |
-| Picard | `3.1.1` jar |
+| Picard | `3.1.1` jar, including the bound `3.1.1-16-g5b0b4c014-SNAPSHOT` build |
 | bcftools | `1.21` |
-| RSeQC | `infer_experiment.py` with a parseable RSeQC version |
+| RSeQC | `infer_experiment.py 5.0.4` |
 | gzip | compatible `gunzip` |
 | R | `Rscript 4.6.1` |
 | R namespaces | Exact lock-selected versions in `local_pilot_runtime.example.tsv` |
@@ -237,6 +237,8 @@ The generated layout is:
 ```text
 norad-inputs/
 |-- request.yaml
+|-- norad.launcher.yaml
+|-- norad.resources.yaml
 |-- samples.tsv
 |-- partitions.tsv
 |-- runtime.tsv
@@ -249,7 +251,8 @@ norad-inputs/
 ```
 
 Create and populate `inputs/` without replacing an earlier staging tree. Then
-edit `request.yaml`, `samples.tsv`, and `partitions.tsv`:
+edit `request.yaml`, `norad.resources.yaml`, `samples.tsv`, and
+`partitions.tsv`:
 
 ```sh
 test ! -e "$NORAD_INPUT_DIR/inputs" &&
@@ -268,6 +271,9 @@ mkdir -m 700 \
    not row order or sample names.
 3. Select one or more nonoverlapping genomic partitions using contigs present
    in the reference. Start small for the first real-runtime check.
+4. Keep the conservative resource defaults or author reviewed per-stage
+   concurrency, threads, and memory. The YAML is optional at execution time;
+   if absent, packaged defaults apply.
 
 The [configuration guide](configs/README.md) explains every field, threshold,
 path rule, sample-pairing requirement, and runtime row. Relative paths resolve
@@ -314,8 +320,8 @@ preserve it for diagnosis and select a new absent output name.
 Run Steps 5–7 only on the intended workstation or inside an interactive compute
 allocation. For scheduled execution, do not perform their data reads or runtime
 probes on the login node; continue to the generated SLURM-wrapper section,
-whose `NORAD_EXECUTE=0` job runs the same validation, doctor, and no-write plan
-inside its allocation.
+whose default no-mode submission runs the same validation, doctor, and no-write
+plan inside its allocation.
 
 Run the read-only intake validator first:
 
@@ -436,53 +442,54 @@ mode validates every required value, requests one node/task, publishes exact
 modules, enters the selected checkout, runs input/runtime preflight, and then
 uses the public local executor.
 
-Bind the site's **actual** scheduler values, module mode, and writable compute
-scratch parent. There are no portable defaults:
+Edit adjacent `norad.launcher.yaml` for non-private allocation policy. Keep
+site/private values in the selected checkout's ignored root `.env`, using the
+tracked `.env.example` only as a placeholder template:
 
 ```sh
-NORAD_LOG_DIR="$NORAD_OPERATOR_ROOT/norad-slurm-logs"
-test ! -e "$NORAD_LOG_DIR" && mkdir -m 700 "$NORAD_LOG_DIR"
+cd "$NORAD_REPO"
+test ! -e .env || { test -f .env && test ! -L .env; }
+test -e .env || { cp .env.example .env && chmod 600 .env; }
 
-NORAD_SLURM_ACCOUNT=replace-with-site-account
-NORAD_SLURM_PARTITION=replace-with-site-partition
-NORAD_SLURM_QOS=replace-with-site-qos
-NORAD_SLURM_CPUS=4
-NORAD_SLURM_MEMORY=site-default
-NORAD_SLURM_TIME=replace-with-reviewed-walltime
-NORAD_SOURCE_CHECKOUT="$NORAD_REPO"
-NORAD_PYTHON="$NORAD_PY"
-NORAD_REQUEST="$NORAD_REQUEST_PATH"
-NORAD_WORKSPACE="$NORAD_WORKSPACE_PATH"
-NORAD_RUNTIME_PROFILE="$NORAD_RUNTIME_PROFILE_PATH"
-NORAD_MODULE_MODE=none
-NORAD_MODULE_INIT=
-NORAD_MODULES=
-NORAD_SCRATCH_PARENT=/absolute/writable/compute-scratch-parent
-NORAD_EXECUTE=0
+# Replace every placeholder referenced by norad.launcher.yaml. Keep this file
+# private and untracked; do not put credentials or NORAD_EXECUTE in it.
+${EDITOR:-vi} .env
 
-export NORAD_SLURM_ACCOUNT NORAD_SLURM_PARTITION NORAD_SLURM_QOS
-export NORAD_SLURM_CPUS
-export NORAD_SLURM_MEMORY NORAD_SLURM_TIME NORAD_LOG_DIR
-export NORAD_SOURCE_CHECKOUT NORAD_PYTHON NORAD_REQUEST NORAD_WORKSPACE
-export NORAD_RUNTIME_PROFILE NORAD_MODULE_MODE NORAD_MODULE_INIT NORAD_MODULES
-export NORAD_SCRATCH_PARENT NORAD_EXECUTE
+# Review requested CPUs, memory, time, exclusive placement, and optional
+# nodelist. These are the resources Slurm will be asked for, not minima.
+${EDITOR:-vi} "$NORAD_INPUT_DIR/norad.launcher.yaml"
 
 "$NORAD_SLURM_WRAPPER"
 ```
 
-`NORAD_SLURM_MEMORY=site-default` emits no `--mem`; an explicit Slurm size
-is passed exactly once. `NORAD_MODULE_MODE=none` requires empty module values
-and uses the absolute runtime paths unchanged. Use `exact` only with a real
-nonsymlink module-init file and a colon-separated exact module list.
+Launcher precedence is packaged defaults, adjacent `norad.launcher.yaml`, then
+explicit wrapper options. A YAML `{env: NORAD_NAME}` reference reads the
+invocation environment before root `.env`; scalar `$VAR` and shell syntax are
+never evaluated. The `.env` must be an owner-only nonsymlink file and is not
+copied into the generated starter or printed.
+
+`memory: site-default` emits no `--mem`; an explicit Slurm size is passed
+exactly once. `exclusive: true` emits `--exclusive`, and a configured nodelist
+emits one exact `--nodelist=...`. Module mode `none` requires empty module
+values and uses absolute runtime paths unchanged. Use `exact` only with a real
+nonsymlink module-init file and an exact module list. Submission seals the
+batch `PATH` to the generation-bound Python parent followed by `/usr/bin:/bin`;
+the source checkout and Python cannot be replaced from launcher configuration.
+The submit shell's `USER` and `LOGNAME` must both match `/usr/bin/id -un`.
+The wrapper binds that live user and numeric UID into the batch and rechecks
+them before any runtime or workspace action.
 `NORAD_SCRATCH_PARENT` must already be a real writable compute-node directory;
 the job creates a private mode-`700` child, exports it as `TMPDIR`, logs its
-filesystem/capacity, and removes it at exit. The wrapper installs nothing. The
-wrapper passes `NORAD_SLURM_CPUS` only as an allocation assertion. The request
-remains the sole resource-plan authority, and execution fails if its
-`workflow_cores` exceeds the scheduler allocation.
+filesystem/capacity, and removes it at exit. The wrapper installs nothing.
+Inside the job, NORAD observes the Slurm CPU and memory allocation together
+with process CPU affinity and memory limits. It resolves packaged resource
+defaults, adjacent `norad.resources.yaml`, and any explicit resource CLI
+overrides in that order. Execution fails before workflow entry if the effective
+cores, memory, concurrency, or threads cannot fit.
 
-The first submission uses `NORAD_EXECUTE=0`: it performs compute-context
-preflight and prints the complete no-write workflow plan in the job log. Copy
+The first submission uses no mode flag: it performs compute-context preflight
+and prints the complete no-write workflow plan in the job log. Ambient or
+authored `NORAD_EXECUTE` cannot activate execution. Copy
 the printed job ID, wait for both streams, and confirm scheduler exit plus the
 plan. Copy the exact run root printed in that completed dry-run log into the
 shell that will submit and inspect the execution:
@@ -501,9 +508,7 @@ sanity check succeeds should you submit the execution job with the otherwise
 identical values:
 
 ```sh
-NORAD_EXECUTE=1
-export NORAD_EXECUTE
-"$NORAD_SLURM_WRAPPER"
+"$NORAD_SLURM_WRAPPER" --execute
 ```
 
 Submitting one allocation does not make this distributed workflow execution;

@@ -34,6 +34,8 @@ _RESOURCE_PATTERNS = (
     (Path("contracts"), "schemas/artifacts/v4/*.json"),
     (Path("contracts"), "schemas/orchestration/v1/*.json"),
     (Path("contracts"), "schemas/orchestration/v2/*.json"),
+    (Path("contracts"), "schemas/orchestration/v3/*.json"),
+    (Path("orchestration/local_pilot"), "resources/*.yaml"),
     (Path("reporting"), "styles/*.css"),
     (Path("reporting"), "templates/*.html.j2"),
 )
