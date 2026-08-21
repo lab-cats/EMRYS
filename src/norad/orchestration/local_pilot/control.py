@@ -4,19 +4,18 @@ from __future__ import annotations
 
 import argparse
 import hashlib
-import json
 import os
 import shlex
 import sys
 import uuid
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from norad.contracts.orchestration import api as orchestration_contracts
-from norad.orchestration.local_pilot import doctor, inspection, lifecycle
+from norad.orchestration.local_pilot import capacity, doctor, inspection, lifecycle
 from norad.orchestration.local_pilot.materialization import (
     AttemptPlan,
     MaterializationError,
@@ -27,6 +26,15 @@ from norad.orchestration.local_pilot.materialization import (
 from norad.orchestration.local_pilot.normalization import (
     NormalizationBundle,
     normalize_request,
+)
+from norad.orchestration.local_pilot.resource_policy import (
+    AllocationCapacity,
+    ResourceConfigError,
+    ResourceOverrides,
+    add_resource_arguments,
+    load_resource_plan,
+    overrides_from_args,
+    resume_resource_plan,
 )
 
 RUN_DESCRIPTION = (
@@ -52,6 +60,7 @@ Normalizer = Callable[[Path, Mapping[str, Any] | Path], NormalizationBundle]
 RunInspector = Callable[[Path], inspection.RunInspection]
 PlanExecutor = Callable[[AttemptPlan], lifecycle.LifecycleOutcome]
 PlanTransformer = Callable[[AttemptPlan], AttemptPlan]
+AllocationObserver = Callable[[], AllocationCapacity]
 
 
 @dataclass(frozen=True, slots=True)
@@ -65,6 +74,7 @@ class ControlOps:
     transform_plan: PlanTransformer
     now: Callable[[], datetime]
     token: Callable[[], str]
+    observe_allocation: AllocationObserver = capacity.observe_allocation
 
 
 def _default_readiness(
@@ -99,16 +109,6 @@ def _absolute(path: Path) -> Path:
     return Path(os.path.abspath(path))
 
 
-def _positive_integer(value: str) -> int:
-    try:
-        parsed = int(value)
-    except ValueError as exc:
-        raise argparse.ArgumentTypeError("must be a positive integer") from exc
-    if parsed < 1:
-        raise argparse.ArgumentTypeError("must be a positive integer")
-    return parsed
-
-
 def _require_ready(result: doctor.DoctorResult) -> None:
     if result.ready:
         return
@@ -138,6 +138,8 @@ def plan_run(
     workspace: Path,
     runtime_profile: Path,
     *,
+    resource_config: Path | None = None,
+    resource_overrides: ResourceOverrides = ResourceOverrides(),
     ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> AttemptPlan:
     """Plan a new run without writing any workspace state."""
@@ -146,17 +148,24 @@ def plan_run(
         readiness = ops.inspect_readiness(request, workspace, runtime_profile)
         _require_ready(readiness)
         normalized = _normalize_after_doctor(readiness, ops)
+        resources = load_resource_plan(
+            normalized.request_path,
+            ops.observe_allocation(),
+            config_path=resource_config,
+            overrides=resource_overrides,
+        )
         plan = ops.transform_plan(
             build_attempt_plan(
                 normalized,
                 readiness,
                 _absolute(workspace),
+                resources=resources,
                 operation="execute",
                 now=ops.now(),
                 token=ops.token(),
             )
         )
-    except (doctor.DoctorInputError, MaterializationError) as exc:
+    except (doctor.DoctorInputError, MaterializationError, ResourceConfigError) as exc:
         raise ControlError(str(exc)) from exc
     if os.path.lexists(plan.run_root):
         raise ControlError(
@@ -220,6 +229,8 @@ def plan_resume(
     run_root: Path,
     runtime_profile: Path,
     *,
+    resource_config: Path | None = None,
+    resource_overrides: ResourceOverrides = ResourceOverrides(),
     ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> AttemptPlan:
     """Plan a safe between-task resume without writing run state."""
@@ -252,11 +263,29 @@ def plan_resume(
             or fixed_execution.read_bytes() != normalized.normalized_bytes
         ):
             raise ControlError("Current normalization differs from immutable run bytes")
+        predecessor_config = _load_config_reference(root, previous)
+        if resource_config is not None:
+            resources = load_resource_plan(
+                normalized.request_path,
+                ops.observe_allocation(),
+                config_path=resource_config,
+                overrides=resource_overrides,
+            )
+        else:
+            policy = predecessor_config.get("resource_policy")
+            if not isinstance(policy, dict):
+                raise ControlError("Prior workflow config has no resource policy")
+            resources = resume_resource_plan(
+                policy,
+                ops.observe_allocation(),
+                overrides=resource_overrides,
+            )
         plan = ops.transform_plan(
             build_attempt_plan(
                 normalized,
                 readiness,
                 workspace,
+                resources=resources,
                 operation="resume",
                 now=ops.now(),
                 token=ops.token(),
@@ -264,7 +293,7 @@ def plan_resume(
                 retained_dispatches=_retained_dispatches(observed),
             )
         )
-    except (doctor.DoctorInputError, MaterializationError) as exc:
+    except (doctor.DoctorInputError, MaterializationError, ResourceConfigError) as exc:
         raise ControlError(str(exc)) from exc
     if plan.run_root != root:
         raise ControlError("Resume workspace resolves to a different run root")
@@ -310,7 +339,13 @@ def _print_plan(plan: AttemptPlan) -> None:
     for step_id, threads in plan.step_threads:
         print(f"  Step {step_id}: {threads}")
     print(f"Total workflow cores: {plan.workflow_cores}")
-    print(f"Maximum concurrent sample tasks: {plan.sample_concurrency}")
+    print(f"Total workflow memory: {plan.workflow_memory_mb} MiB")
+    print("Stage concurrency:")
+    for step_id, concurrency in plan.stage_concurrency:
+        print(f"  Step {step_id}: {concurrency}")
+    print("Stage memory per job:")
+    for step_id, memory_mb in plan.stage_memory_mb:
+        print(f"  Step {step_id}: {memory_mb} MiB")
     print("Reporting transactions: 3")
     print(f"Reusable completed owner jobs: {reused}")
     print(f"Pending owner jobs: {plan.dispatch_count - reused}")
@@ -336,14 +371,7 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--request", required=True, type=Path)
     parser.add_argument("--workspace", required=True, type=Path)
     parser.add_argument("--runtime-profile", required=True, type=Path)
-    parser.add_argument(
-        "--allocated-cores",
-        type=_positive_integer,
-        help=(
-            "Optional scheduler-allocation assertion; fails if the request's "
-            "workflow_cores exceeds this value."
-        ),
-    )
+    add_resource_arguments(parser)
     parser.add_argument(
         "--execute",
         action="store_true",
@@ -354,14 +382,7 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
 def configure_resume_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--run-root", required=True, type=Path)
     parser.add_argument("--runtime-profile", required=True, type=Path)
-    parser.add_argument(
-        "--allocated-cores",
-        type=_positive_integer,
-        help=(
-            "Optional scheduler-allocation assertion; fails if the request's "
-            "workflow_cores exceeds this value."
-        ),
-    )
+    add_resource_arguments(parser)
     parser.add_argument(
         "--execute",
         action="store_true",
@@ -383,20 +404,16 @@ def run_from_args(
             arguments.request,
             arguments.workspace,
             arguments.runtime_profile,
+            resource_config=getattr(arguments, "resource_config", None),
+            resource_overrides=overrides_from_args(arguments),
             ops=ops,
         )
-        allocated_cores = getattr(arguments, "allocated_cores", None)
-        if allocated_cores is not None and plan.workflow_cores > allocated_cores:
-            raise ControlError(
-                "Request workflow_cores exceeds the declared scheduler allocation: "
-                f"{plan.workflow_cores} > {allocated_cores}"
-            )
         _print_plan(plan)
         if not arguments.execute:
             print("Dry-run complete; no workspace state was written.")
             return 0
         return execute_plan(plan, ops=ops)
-    except ControlError as exc:
+    except (ControlError, ResourceConfigError) as exc:
         print(f"norad: error: {exc}", file=sys.stderr)
         return 2
 
@@ -410,20 +427,16 @@ def resume_from_args(
         plan = plan_resume(
             arguments.run_root,
             arguments.runtime_profile,
+            resource_config=getattr(arguments, "resource_config", None),
+            resource_overrides=overrides_from_args(arguments),
             ops=ops,
         )
-        allocated_cores = getattr(arguments, "allocated_cores", None)
-        if allocated_cores is not None and plan.workflow_cores > allocated_cores:
-            raise ControlError(
-                "Request workflow_cores exceeds the declared scheduler allocation: "
-                f"{plan.workflow_cores} > {allocated_cores}"
-            )
         _print_plan(plan)
         if not arguments.execute:
             print("Dry-run complete; no resume state was written.")
             return 0
         return execute_plan(plan, ops=ops)
-    except ControlError as exc:
+    except (ControlError, ResourceConfigError) as exc:
         print(f"norad: error: {exc}", file=sys.stderr)
         return 2
 

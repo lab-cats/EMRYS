@@ -58,10 +58,11 @@ Read this before installing:
 - The public runtime target is a Linux/POSIX host with Python `3.11` or newer,
   Git, GNU Make, `uv`, and the scientific runtime listed below.
 - The workflow uses Snakemake's **single-host local executor**. It defaults to
-  the request's explicit resource plan: `workflow_cores` declares total CPU
-  capacity, `sample_concurrency` bounds concurrent sample owners, and
-  `step_threads` assigns threads only to Steps `00a`, `01`, `02`, `06`, and
-  `08`. NORAD neither submits SLURM jobs nor distributes work across nodes.
+  a packaged resource policy that can be overridden by adjacent
+  `norad.resources.yaml` and then by explicit CLI values. `workflow_cores` and
+  `workflow_memory_mb` bound the whole scheduler; per-stage concurrency,
+  threads, and memory model each owner class. NORAD neither submits SLURM jobs
+  nor distributes work across nodes.
 - Run it on a suitably provisioned Linux workstation, or run the same local
   process inside **one** batch allocation on **one** compute node. Never run the
   scientific workflow on a cluster login/head node; use that node only to
@@ -77,7 +78,9 @@ Read this before installing:
   selected explicitly. The doctor requires tracked checkout content to be clean
   and binds its exact commit and installed package bytes.
 - NORAD does not download data, install tools, load modules, restore R
-  packages, estimate capacity, force retries, delete locks, or repair outputs.
+  packages, estimate runtime, force retries, delete locks, or repair outputs.
+  It does observe the CPU affinity and memory capacity available to its local
+  executor so an impossible resource policy fails before workflow entry.
 
 Capacity depends on reference size, read count, and selected partitions. Plan
 for the STAR index and several BAM generations per sample, plus orientation

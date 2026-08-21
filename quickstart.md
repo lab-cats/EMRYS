@@ -237,6 +237,7 @@ The generated layout is:
 ```text
 norad-inputs/
 |-- request.yaml
+|-- norad.resources.yaml
 |-- samples.tsv
 |-- partitions.tsv
 |-- runtime.tsv
@@ -249,7 +250,8 @@ norad-inputs/
 ```
 
 Create and populate `inputs/` without replacing an earlier staging tree. Then
-edit `request.yaml`, `samples.tsv`, and `partitions.tsv`:
+edit `request.yaml`, `norad.resources.yaml`, `samples.tsv`, and
+`partitions.tsv`:
 
 ```sh
 test ! -e "$NORAD_INPUT_DIR/inputs" &&
@@ -268,6 +270,9 @@ mkdir -m 700 \
    not row order or sample names.
 3. Select one or more nonoverlapping genomic partitions using contigs present
    in the reference. Start small for the first real-runtime check.
+4. Keep the conservative resource defaults or author reviewed per-stage
+   concurrency, threads, and memory. The YAML is optional at execution time;
+   if absent, packaged defaults apply.
 
 The [configuration guide](configs/README.md) explains every field, threshold,
 path rule, sample-pairing requirement, and runtime row. Relative paths resolve
@@ -482,10 +487,12 @@ The wrapper binds that live user and numeric UID into the batch and rechecks
 them before any runtime or workspace action.
 `NORAD_SCRATCH_PARENT` must already be a real writable compute-node directory;
 the job creates a private mode-`700` child, exports it as `TMPDIR`, logs its
-filesystem/capacity, and removes it at exit. The wrapper installs nothing. The
-wrapper passes `NORAD_SLURM_CPUS` only as an allocation assertion. The request
-remains the sole resource-plan authority, and execution fails if its
-`workflow_cores` exceeds the scheduler allocation.
+filesystem/capacity, and removes it at exit. The wrapper installs nothing.
+Inside the job, NORAD observes the Slurm CPU and memory allocation together
+with process CPU affinity and memory limits. It resolves packaged resource
+defaults, adjacent `norad.resources.yaml`, and any explicit resource CLI
+overrides in that order. Execution fails before workflow entry if the effective
+cores, memory, concurrency, or threads cannot fit.
 
 The first submission uses `NORAD_EXECUTE=0`: it performs compute-context
 preflight and prints the complete no-write workflow plan in the job log. Copy

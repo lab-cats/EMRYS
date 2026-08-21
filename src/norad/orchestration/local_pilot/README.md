@@ -24,8 +24,9 @@ norad prepare local-pilot-runtime \
   > /new/absent/path/runtime.ready.tsv
 ```
 
-`init local-pilot` publishes `request.yaml`, `samples.tsv`, `partitions.tsv`,
-`runtime.tsv`, and executable `run-in-slurm.sh`, then writes
+`init local-pilot` publishes `request.yaml`, editable `norad.resources.yaml`,
+`samples.tsv`, `partitions.tsv`, `runtime.tsv`, and executable
+`run-in-slurm.sh`, then writes
 `starter-set.manifest.tsv` last and re-admits every path, mode, size, and byte.
 It neither fills unknown science-tool paths nor installs anything. The runtime
 preparer requires explicit Java, Picard-jar, Rscript, and `renv`-library paths.
@@ -54,9 +55,11 @@ Inside an allocation the wrapper creates one mode-`0700` job directory below
 the declared `NORAD_SCRATCH_PARENT`, exports it as `TMPDIR`, logs its
 canonical path plus `df -PT` filesystem/capacity evidence, and removes it on
 exit. It then validates the request, runs the doctor, and plans or executes the
-whole single-host local pilot. `NORAD_SLURM_CPUS` is an allocation assertion;
-the request's closed `resources` block remains the authority for workflow
-capacity, concurrent samples, and owner threads. The wrapper never runs
+whole single-host local pilot. NORAD observes `SLURM_CPUS_PER_TASK`, Slurm's
+memory environment, process CPU affinity, and the process memory limit before
+resolving the resource policy. Packaged defaults are overridden by adjacent
+`norad.resources.yaml`, then by any explicit resource CLI values. The wrapper
+never runs
 analysis or large-input validation on a login node and does not claim
 per-owner Slurm scheduling or multi-node execution.
 
@@ -129,6 +132,10 @@ work only through the accepted fixed profile:
 
 `run` and `resume` print the exact owner and Snakemake plan and write nothing
 unless `--execute` is present. `inspect local-pilot-run` is always read-only.
+The request defines scientific identity only. Execution-resource precedence is
+packaged defaults, optional YAML, then explicit CLI values. A resume without a
+new resource source reuses its predecessor's immutable effective policy while
+checking that it still fits the newly observed allocation.
 Execution re-admits the normalized reference/workspace storage qualification
 before delegation and after the child terminates. A missing, changed, or
 semantically invalid receipt blocks the attempt; the immutable attempt cannot

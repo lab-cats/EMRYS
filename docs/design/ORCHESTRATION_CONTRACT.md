@@ -112,14 +112,13 @@ The authored YAML request carries only run intent and explicit references:
 - sample-manifest and partition-manifest paths;
 - reference FASTA and GTF paths;
 - cohort and primary-analysis identities;
-- attempt-level workflow and per-step resources; and
 - the complete inline Step `09` analysis policy.
 
-Version 2 uses this closed top-level shape, encoded by the request schema
+Version 3 uses this closed top-level shape, encoded by the request schema
 without adding discovery or extension fields:
 
 ```yaml
-schema_version: norad.request.v2
+schema_version: norad.request.v3
 label: optional-human-label
 profile: norad.profile.local_cmh.v2
 sample_manifest: samples.tsv
@@ -132,15 +131,6 @@ reference:
     sjdb_overhang: 149
     genome_sa_index_nbases: 14
 cohort_id: declared-cohort-id
-resources:
-  workflow_cores: 4
-  sample_concurrency: 1
-  step_threads:
-    "00a": 4
-    "01": 4
-    "02": 1
-    "06": 4
-    "08": 1
 analysis:
   id: declared-analysis-id
   control_condition: EV
@@ -155,6 +145,13 @@ analysis:
   background_condition: null
   background_max_fraction: 0.01
 ```
+
+Execution resources use the separate
+`norad.local-pilot-resources.v1` configuration. NORAD layers packaged defaults,
+optional adjacent `norad.resources.yaml`, and explicit CLI overrides. The
+resource document contains workflow-wide cores and memory, per-stage
+concurrency, per-stage threads, and per-job computational/reporting memory.
+Resource changes do not change the normalized scientific run identity.
 
 Every field except `label` and `background_condition` is required. Unknown
 fields fail admission. The implementation may expose a schema-preserving
@@ -203,8 +200,9 @@ The canonical JSON contract contains at least:
 
 `normalized.json` contains only deterministic normalized run content and its
 explicit identity envelope. Non-identity admission metadata—the original
-request hash and bytes, human label, authored path strings, attempt-level
-resource plan, and normalization tool identity—belongs to the immutable
+request hash and bytes, human label, authored path strings, resolved
+attempt-level resource policy and its source provenance, observed outer
+allocation, and normalization tool identity—belongs to the immutable
 workflow-attempt/config records. Reformatting an otherwise equivalent request,
 changing its label, or tuning resources therefore does not create a new
 scientific run or demand different bytes at the same canonical contract path.

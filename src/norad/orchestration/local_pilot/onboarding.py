@@ -459,7 +459,6 @@ run_arguments=(
     --request "$NORAD_REQUEST"
     --workspace "$NORAD_WORKSPACE"
     --runtime-profile "$NORAD_RUNTIME_PROFILE"
-    --allocated-cores "$NORAD_SLURM_CPUS"
 )
 if [[ "$NORAD_EXECUTE" == 1 ]]; then
     run_arguments+=(--execute)
@@ -489,6 +488,9 @@ def starter_members(
         "partition_manifest: local_pilot_partitions.example.tsv",
         "partition_manifest: partitions.tsv",
     )
+    resource_config = (
+        checkout / "configs/local_pilot_resources.example.yaml"
+    ).read_bytes()
     runtime = (checkout / "configs/local_pilot_runtime.example.tsv").read_text(
         encoding="utf-8"
     )
@@ -497,6 +499,7 @@ def starter_members(
     ).replace("/absolute/path/to/norad", str(checkout))
     return {
         "request.yaml": (request.encode("utf-8"), 0o644),
+        "norad.resources.yaml": (resource_config, 0o644),
         "samples.tsv": (
             (checkout / "configs/local_pilot_samples.example.tsv").read_bytes(),
             0o644,

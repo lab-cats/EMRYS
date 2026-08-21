@@ -1,6 +1,6 @@
 # Configuration and input guide
 
-The four tracked `local_pilot_*` examples are the policy templates behind the
+The five tracked `local_pilot_*` examples are the policy templates behind the
 generated matched starter set for the supported automatic workflow. They
 describe what to analyze; they do not contain reads, a reference, scientific
 software, or a ready-to-run production selection.
@@ -16,15 +16,16 @@ norad init local-pilot \
   --execute
 ```
 
-The execute form publishes `request.yaml`, `samples.tsv`, `partitions.tsv`,
-`runtime.tsv`, executable `run-in-slurm.sh`, and then
-`starter-set.manifest.tsv` last. The manifest proves only the initial generated
-starter; expected data/config edits make those original hashes historical.
+The execute form publishes `request.yaml`, `norad.resources.yaml`,
+`samples.tsv`, `partitions.tsv`, `runtime.tsv`, executable `run-in-slurm.sh`,
+and then `starter-set.manifest.tsv` last. The manifest proves only the initial
+generated starter; expected data/config edits make those original hashes
+historical.
 
-Keep the authored request, manifests, selected runtime profile, and source data
-together for the life of the run. NORAD hashes and binds their exact bytes, so
-changing any of them describes a different execution rather than a way to
-repair an existing run.
+Keep the authored request, resource configuration, manifests, selected runtime
+profile, and source data together for the life of the run. NORAD binds the
+scientific inputs into run identity and snapshots the effective resource policy
+for each attempt; changing either is not a way to repair an entered attempt.
 
 ## Recommended input layout
 
@@ -34,6 +35,7 @@ checkout clean:
 ```text
 norad-inputs/
 |-- request.yaml
+|-- norad.resources.yaml
 |-- samples.tsv
 |-- partitions.tsv
 |-- runtime.tsv
@@ -72,7 +74,7 @@ merge keys are rejected.
 
 | Field | Meaning | How to choose it |
 | --- | --- | --- |
-| `schema_version` | Request contract version. | Keep `norad.request.v2`. |
+| `schema_version` | Request contract version. | Keep `norad.request.v3`. |
 | `label` | Optional human label. It does not affect the run ID. | Use a short description for operators. |
 | `profile` | Fixed automatic workflow. | Keep `norad.profile.local_cmh.v2`. There is no public alternate profile. |
 | `sample_manifest` | Sample TSV path. | Point to the matched sample manifest, normally beside the request. |
@@ -84,21 +86,30 @@ merge keys are rejected.
 | `reference.star_index.genome_sa_index_nbases` | STAR suffix-array index parameter. | Select for the reference size according to the admitted STAR release; `14` is appropriate for many mammalian references but is not universal. |
 | `cohort_id` | Identity shared by the samples entering cohort processing. | Use a stable safe ID, not an analysis conclusion. |
 
-### Resource fields
+### Resource configuration
 
-The closed `resources` block is attempt-level configuration. Changing it does
-not change the scientific run ID, but every attempt snapshots the exact request
-and materialized workflow configuration.
+Execution resources are separate from scientific run intent. The optional
+[`local_pilot_resources.example.yaml`](local_pilot_resources.example.yaml) is
+published by `norad init local-pilot` as `norad.resources.yaml` beside
+`request.yaml`. If that adjacent file is absent, NORAD uses its packaged
+conservative defaults. An explicitly selected `--resource-config` replaces
+adjacent discovery, and individual resource CLI options override the selected
+YAML and packaged defaults.
 
 | Field | Meaning |
 | --- | --- |
-| `resources.workflow_cores` | Total CPU capacity made available to Snakemake. It must not exceed the host or scheduler allocation. |
-| `resources.sample_concurrency` | Maximum simultaneous sample-scoped owners. It must not exceed `workflow_cores`; memory and storage throughput often make `1` preferable. |
-| `resources.step_threads` | Closed mapping for Steps `00a`, `01`, `02`, `06`, and `08`. Every value is required, positive, and no greater than `workflow_cores`. |
+| `workflow_cores` | Total CPU capacity made available to Snakemake. |
+| `workflow_memory_mb` | Total global scheduler memory in MiB, or `allocation` to use observed capacity. |
+| `stage_concurrency` | Closed per-stage caps for repeatable Steps `01`, `02`, `02b`, `03`, `04`, `05`, `06`, and `07`. |
+| `step_threads` | Closed thread mapping for Steps `00a`, `01`, `02`, `06`, and `08`. |
+| `stage_memory_mb` | Total memory reserved by one computational owner job, in MiB or `workflow`. |
+| `reporting_memory_mb` | Total memory reserved by each reporting transaction, in MiB or `workflow`. |
 
-Use [`scripts/benchmark_stage_resources.py`](../scripts/benchmark_stage_resources.py)
-with representative data on each materially different environment before
-raising these values. Benchmark recommendations are environment-specific.
+NORAD rejects a policy when concurrency multiplied by per-job threads exceeds
+workflow cores, when concurrency multiplied by per-job memory exceeds workflow
+memory, or when workflow totals exceed the process-visible outer allocation.
+The effective policy, source digests, explicit override paths, and observed
+allocation are stored in the immutable attempt workflow config.
 
 Safe IDs begin with an ASCII letter or digit and then contain only letters,
 digits, `.`, `_`, or `-`.

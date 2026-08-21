@@ -54,6 +54,7 @@ def test_init_local_pilot_is_dry_run_first_and_receipt_last(
     assert onboarding.init_from_args(_namespace(output, execute=True)) == 0
     expected = {
         "request.yaml",
+        "norad.resources.yaml",
         "samples.tsv",
         "partitions.tsv",
         "runtime.tsv",
@@ -790,7 +791,7 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
     assert "-m norad validate local-pilot-request" in invocations[0]
     assert "-m norad doctor local-pilot" in invocations[1]
     assert "-m norad run" in invocations[2]
-    assert "--allocated-cores 4" in invocations[2]
+    assert "--allocated-cores" not in invocations[2]
     assert "--threads" not in invocations[2]
     assert "--workflow-cores" not in invocations[2]
     assert "--sample-concurrency" not in invocations[2]
