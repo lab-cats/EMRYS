@@ -118,7 +118,8 @@ def _project_configuration(name: str = PROJECT_NAME) -> bytes:
         "namespaces = false\n"
         "\n"
         "[tool.setuptools.package-data]\n"
-        '"norad.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/artifacts/v3/*.json", "schemas/artifacts/v4/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json"]\n'
+        '"norad.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/artifacts/v3/*.json", "schemas/artifacts/v4/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json", "schemas/orchestration/v3/*.json"]\n'
+        '"norad.orchestration.local_pilot" = ["resources/*.yaml"]\n'
         '"norad.reporting" = ["styles/*.css", "templates/*.html.j2"]\n'
     ).encode()
 

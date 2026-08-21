@@ -63,7 +63,9 @@ namespaces = false
     "schemas/artifacts/v4/*.json",
     "schemas/orchestration/v1/*.json",
     "schemas/orchestration/v2/*.json",
+    "schemas/orchestration/v3/*.json",
 ]
+"norad.orchestration.local_pilot" = ["resources/*.yaml"]
 "norad.reporting" = ["styles/*.css", "templates/*.html.j2"]
 
 [tool.setuptools.dynamic]

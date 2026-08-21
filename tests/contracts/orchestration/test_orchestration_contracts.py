@@ -50,7 +50,7 @@ def request() -> dict[str, Any]:
     result["id"] = result.pop("analysis_id")
     result.pop("schema_version")
     return {
-        "schema_version": "norad.request.v2",
+        "schema_version": "norad.request.v3",
         "label": "tiny local run",
         "profile": "norad.profile.local_cmh.v2",
         "sample_manifest": "samples.tsv",
@@ -65,12 +65,19 @@ def request() -> dict[str, Any]:
             },
         },
         "cohort_id": "cohort-1",
-        "resources": {
-            "workflow_cores": 4,
-            "sample_concurrency": 1,
-            "step_threads": {"00a": 4, "01": 4, "02": 4, "06": 2, "08": 4},
-        },
         "analysis": result,
+    }
+
+
+def resource_config() -> dict[str, Any]:
+    return {
+        "schema_version": "norad.local-pilot-resources.v1",
+        "workflow_cores": 4,
+        "workflow_memory_mb": "allocation",
+        "stage_concurrency": {"01": 2, "06": 4},
+        "step_threads": {"00a": 4, "01": 2},
+        "stage_memory_mb": {"00a": "workflow", "01": 2048},
+        "reporting_memory_mb": {"html_report": 1024},
     }
 
 
@@ -498,6 +505,7 @@ def test_unknown_schema_selector_and_nonstandard_json_constant_are_rejected(
 def test_request_profile_reference_policy_and_execution_records_pass() -> None:
     records = {
         "request": request(),
+        "resource-config": resource_config(),
         "profile": profile(),
         "reference": reference(),
         "policy": policy(),

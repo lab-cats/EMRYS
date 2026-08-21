@@ -20,6 +20,7 @@ from norad.libraries.source_authority import controlled_python_argv
 SCHEMA_ROOT = Path(__file__).resolve().parents[1] / "schemas" / "orchestration" / "v1"
 SCHEMA_NAMES = (
     "request",
+    "resource-config",
     "profile",
     "execution",
     "reference",
@@ -41,15 +42,21 @@ SCHEMA_PATHS = {
     },
 }
 SCHEMA_PATHS["profile"] = SCHEMA_ROOT.parent / "v2" / "profile.schema.json"
-SCHEMA_PATHS["request"] = SCHEMA_ROOT.parent / "v2" / "request.schema.json"
+SCHEMA_PATHS["request"] = SCHEMA_ROOT.parent / "v3" / "request.schema.json"
+SCHEMA_PATHS["resource-config"] = (
+    SCHEMA_ROOT.parent / "v3" / "resource_config.schema.json"
+)
 SCHEMA_IDS = {
-    name: (
-        f"urn:norad:schema:orchestration:{name}:v2"
-        if name in {"profile", "request"}
-        else f"urn:norad:schema:orchestration:{name}:v1"
-    )
+    name: f"urn:norad:schema:orchestration:{name}:v1"
     for name in SCHEMA_PATHS
 }
+SCHEMA_IDS.update(
+    {
+        "request": "urn:norad:schema:orchestration:request:v3",
+        "resource-config": "urn:norad:schema:orchestration:resource-config:v1",
+        "profile": "urn:norad:schema:orchestration:profile:v2",
+    }
+)
 
 
 class ContractValidationError(ValueError):
