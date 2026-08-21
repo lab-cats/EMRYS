@@ -40,6 +40,51 @@ TASK_DOUBLE = Path(__file__).with_name("task_double.py").resolve()
 OWNER_ARTIFACT_DOUBLE = Path(__file__).with_name("owner_artifact_double.py").resolve()
 
 
+def _resource_policy() -> dict[str, Any]:
+    effective = {
+        "schema_version": "norad.local-pilot-resources.v1",
+        "workflow_cores": 1,
+        "workflow_memory_mb": 1024,
+        "stage_concurrency": {
+            step_id: 1
+            for step_id in ("01", "02", "02b", "03", "04", "05", "06", "07")
+        },
+        "step_threads": {step_id: 1 for step_id in ("00a", "01", "02", "06", "08")},
+        "stage_memory_mb": {
+            step_id: 1024
+            for step_id in (
+                "00a", "00b", "00c", "01", "02", "02b", "03", "04", "05",
+                "06", "07", "08", "09", "10",
+            )
+        },
+        "reporting_memory_mb": {
+            "artifact_index": 1024,
+            "run_summary": 1024,
+            "html_report": 1024,
+        },
+    }
+    return {
+        "effective": effective,
+        "effective_sha256": orchestration_contracts.canonical_sha256(effective),
+        "allocation": {"cores": 1, "memory_mb": 1024, "source": "test"},
+        "sources": {
+            "default_sha256": "0" * 64,
+            "config_path": None,
+            "config_sha256": None,
+            "cli_overrides": [],
+        },
+    }
+
+
+def _resource_limits() -> tuple[tuple[str, int], ...]:
+    return (
+        ("mem_mb", 1024),
+        *((f"stage_{step_id}_slots", 1) for step_id in (
+            "01", "02", "02b", "03", "04", "05", "06", "07"
+        )),
+    )
+
+
 def source_checkout_commit() -> str:
     """Return the live checkout commit used by source-attested child fixtures."""
 
@@ -1080,8 +1125,7 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
         ),
         "reporting_run_contract_path": str(projection_paths["reporting_run_contract"]),
         "artifact_inventory_path": str(projection_paths["artifact_inventory"]),
-        "step_threads": {"00a": 1, "01": 1, "02": 1, "06": 1, "08": 1},
-        "sample_concurrency": 1,
+        "resource_policy": _resource_policy(),
         "dispatch_paths": dispatch_references,
     }
     config_path = contract_root / "workflow-configs" / f"{workflow_attempt_id}.json"
@@ -1097,6 +1141,8 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
             run_root=run_root,
             target="local_pipeline_slice",
             operation="execute",
+            cores=1,
+            resource_limits=_resource_limits(),
         )
     )
     attempt["workflow_config"] = {
@@ -1236,6 +1282,8 @@ def refresh_attempt(
             run_root=built.run_root,
             target="local_pipeline_slice",
             operation="resume",
+            cores=1,
+            resource_limits=_resource_limits(),
         )
     )
     attempt["workflow_config"] = {

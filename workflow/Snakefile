@@ -53,8 +53,7 @@ CONFIG_KEYS = {
     "primary_analysis_policy_path",
     "reporting_run_contract_path",
     "artifact_inventory_path",
-    "step_threads",
-    "sample_concurrency",
+    "resource_policy",
     "dispatch_paths",
 }
 if set(config) != CONFIG_KEYS:
@@ -73,21 +72,38 @@ def _absolute_config_path(key):
     return path
 
 
-def _positive_config_integer(key):
-    value = config.get(key)
-    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
-        raise WorkflowError(f"Workflow config {key!r} must be a positive integer")
-    return value
-
-
 RUN_ROOT = _absolute_config_path("run_root")
 CONFIGURED_PYTHON = _absolute_config_path("python_executable")
 EXECUTION_PATH = _absolute_config_path("execution_path")
 PROFILE_SNAPSHOT_PATH = _absolute_config_path("profile_path")
 SOURCE_CHECKOUT = _absolute_config_path("source_checkout")
 ARTIFACT_SOURCE_ROOT = _absolute_config_path("artifact_source_root")
+STAGE_IDS = {
+    "00a", "00b", "00c", "01", "02", "02b", "03", "04", "05", "06",
+    "07", "08", "09", "10",
+}
+REPEATABLE_STAGE_IDS = {"01", "02", "02b", "03", "04", "05", "06", "07"}
 THREAD_CAPABLE_STEP_IDS = {"00a", "01", "02", "06", "08"}
-STEP_THREADS = config.get("step_threads")
+RESOURCE_POLICY = config.get("resource_policy")
+if not isinstance(RESOURCE_POLICY, dict) or set(RESOURCE_POLICY) != {
+    "effective", "effective_sha256", "allocation", "sources",
+}:
+    raise WorkflowError("Workflow config resource_policy is malformed")
+EFFECTIVE_RESOURCES = RESOURCE_POLICY.get("effective")
+orchestration_contracts.validate_record("resource-config", EFFECTIVE_RESOURCES)
+if orchestration_contracts.canonical_sha256(EFFECTIVE_RESOURCES) != RESOURCE_POLICY.get(
+    "effective_sha256"
+):
+    raise WorkflowError("Workflow config effective resource digest differs")
+WORKFLOW_CORES = EFFECTIVE_RESOURCES.get("workflow_cores")
+WORKFLOW_MEMORY_MB = EFFECTIVE_RESOURCES.get("workflow_memory_mb")
+for key, value in {
+    "workflow_cores": WORKFLOW_CORES,
+    "workflow_memory_mb": WORKFLOW_MEMORY_MB,
+}.items():
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        raise WorkflowError(f"Effective resource {key!r} must be a positive integer")
+STEP_THREADS = EFFECTIVE_RESOURCES.get("step_threads")
 if not isinstance(STEP_THREADS, dict) or set(STEP_THREADS) != THREAD_CAPABLE_STEP_IDS:
     raise WorkflowError(
         "Workflow config step_threads keys must be exactly "
@@ -98,7 +114,49 @@ for step_id, value in STEP_THREADS.items():
         raise WorkflowError(
             f"Workflow config step_threads[{step_id!r}] must be a positive integer"
         )
-SAMPLE_CONCURRENCY = _positive_config_integer("sample_concurrency")
+STAGE_CONCURRENCY = EFFECTIVE_RESOURCES.get("stage_concurrency")
+if not isinstance(STAGE_CONCURRENCY, dict) or set(STAGE_CONCURRENCY) != REPEATABLE_STAGE_IDS:
+    raise WorkflowError(
+        "Workflow config stage_concurrency keys must be exactly "
+        + ", ".join(sorted(REPEATABLE_STAGE_IDS))
+    )
+STAGE_MEMORY_MB = EFFECTIVE_RESOURCES.get("stage_memory_mb")
+if not isinstance(STAGE_MEMORY_MB, dict) or set(STAGE_MEMORY_MB) != STAGE_IDS:
+    raise WorkflowError(
+        "Workflow config stage_memory_mb keys must be exactly "
+        + ", ".join(sorted(STAGE_IDS))
+    )
+REPORTING_MEMORY_MB = EFFECTIVE_RESOURCES.get("reporting_memory_mb")
+if not isinstance(REPORTING_MEMORY_MB, dict) or set(REPORTING_MEMORY_MB) != {
+    "artifact_index", "run_summary", "html_report",
+}:
+    raise WorkflowError("Workflow config reporting_memory_mb keys are malformed")
+for field, values in (
+    ("stage_concurrency", STAGE_CONCURRENCY),
+    ("stage_memory_mb", STAGE_MEMORY_MB),
+    ("reporting_memory_mb", REPORTING_MEMORY_MB),
+):
+    for key, value in values.items():
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise WorkflowError(
+                f"Workflow config {field}[{key!r}] must be a positive integer"
+            )
+for kind, memory_mb in REPORTING_MEMORY_MB.items():
+    if memory_mb > WORKFLOW_MEMORY_MB:
+        raise WorkflowError(
+            f"Reporting {kind} memory exceeds workflow memory"
+        )
+for step_id in STAGE_IDS:
+    concurrency = STAGE_CONCURRENCY.get(step_id, 1)
+    threads = STEP_THREADS.get(step_id, 1)
+    if concurrency * threads > WORKFLOW_CORES:
+        raise WorkflowError(
+            f"Stage {step_id} concurrency x threads exceeds workflow cores"
+        )
+    if concurrency * STAGE_MEMORY_MB[step_id] > WORKFLOW_MEMORY_MB:
+        raise WorkflowError(
+            f"Stage {step_id} concurrency x memory exceeds workflow memory"
+        )
 WORKFLOW_ATTEMPT_ID = config.get("workflow_attempt_id")
 if not isinstance(WORKFLOW_ATTEMPT_ID, str) or re.fullmatch(
     r"workflow-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{32}", WORKFLOW_ATTEMPT_ID
@@ -738,6 +796,10 @@ rule build_artifact_index:
         inventory=str(PROJECTION_PATHS["artifact_inventory"])
     output:
         str(ARTIFACT_INDEX_VERIFIED)
+    threads:
+        1
+    resources:
+        mem_mb=REPORTING_MEMORY_MB["artifact_index"]
     params:
         python=PYTHON,
         source_checkout=str(SOURCE_CHECKOUT),
@@ -779,6 +841,10 @@ rule build_run_summary:
         artifact_index_verified=str(ARTIFACT_INDEX_VERIFIED)
     output:
         str(RUN_SUMMARY_VERIFIED)
+    threads:
+        1
+    resources:
+        mem_mb=REPORTING_MEMORY_MB["run_summary"]
     params:
         python=PYTHON,
         source_checkout=str(SOURCE_CHECKOUT),
@@ -820,6 +886,10 @@ rule build_html_report:
         run_summary_verified=str(RUN_SUMMARY_VERIFIED)
     output:
         str(HTML_REPORT_VERIFIED)
+    threads:
+        1
+    resources:
+        mem_mb=REPORTING_MEMORY_MB["html_report"]
     params:
         python=PYTHON,
         source_checkout=str(SOURCE_CHECKOUT),
@@ -863,6 +933,8 @@ rule construct_STAR_index:
         dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["construct_STAR_index"][0], REFERENCE_ID)
     threads:
         STEP_THREADS["00a"]
+    resources:
+        mem_mb=STAGE_MEMORY_MB["00a"]
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -874,6 +946,10 @@ rule convert_GTF_to_BED12:
         python=PYTHON,
         dispatch=_dispatch(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID),
         dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["convert_GTF_to_BED12"][0], REFERENCE_ID)
+    threads:
+        1
+    resources:
+        mem_mb=STAGE_MEMORY_MB["00b"]
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -885,6 +961,10 @@ rule construct_FASTA_sidecars:
         python=PYTHON,
         dispatch=_dispatch(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID),
         dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["construct_FASTA_sidecars"][0], REFERENCE_ID)
+    threads:
+        1
+    resources:
+        mem_mb=STAGE_MEMORY_MB["00c"]
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -901,7 +981,8 @@ rule align_RNA_reads_with_STAR:
     threads:
         STEP_THREADS["01"]
     resources:
-        sample_slots=1
+        mem_mb=STAGE_MEMORY_MB["01"],
+        stage_01_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -918,7 +999,8 @@ rule construct_canonical_BAM:
     threads:
         STEP_THREADS["02"]
     resources:
-        sample_slots=1
+        mem_mb=STAGE_MEMORY_MB["02"],
+        stage_02_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -932,8 +1014,11 @@ rule collect_canonical_BAM_QC_evidence:
         python=PYTHON,
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["collect_canonical_BAM_QC_evidence"][0])
+    threads:
+        1
     resources:
-        sample_slots=1
+        mem_mb=STAGE_MEMORY_MB["02b"],
+        stage_02b_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -948,8 +1033,11 @@ rule collect_RSeQC_paired_orientation_evidence:
         python=PYTHON,
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["collect_RSeQC_paired_orientation_evidence"][0])
+    threads:
+        1
     resources:
-        sample_slots=1
+        mem_mb=STAGE_MEMORY_MB["03"],
+        stage_03_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -963,8 +1051,11 @@ rule mark_BAM_duplicates_with_Picard:
         python=PYTHON,
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["mark_BAM_duplicates_with_Picard"][0])
+    threads:
+        1
     resources:
-        sample_slots=1
+        mem_mb=STAGE_MEMORY_MB["04"],
+        stage_04_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -979,8 +1070,11 @@ rule split_N_cigar_reads_with_GATK:
         python=PYTHON,
         dispatch=_sample_dispatch(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0]),
         dispatch_sha256=_sample_dispatch_sha256(AUTOMATIC_TASKS["split_N_cigar_reads_with_GATK"][0])
+    threads:
+        1
     resources:
-        sample_slots=1
+        mem_mb=STAGE_MEMORY_MB["05"],
+        stage_05_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -997,7 +1091,8 @@ rule partition_BAM_by_mechanical_read_orientation:
     threads:
         STEP_THREADS["06"]
     resources:
-        sample_slots=1
+        mem_mb=STAGE_MEMORY_MB["06"],
+        stage_06_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -1015,6 +1110,11 @@ rule generate_partitioned_cohort_mpileup_VCFs:
         python=PYTHON,
         dispatch=_partition_dispatch(AUTOMATIC_TASKS["generate_partitioned_cohort_mpileup_VCFs"][0]),
         dispatch_sha256=_partition_dispatch_sha256(AUTOMATIC_TASKS["generate_partitioned_cohort_mpileup_VCFs"][0])
+    threads:
+        1
+    resources:
+        mem_mb=STAGE_MEMORY_MB["07"],
+        stage_07_slots=1
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -1033,6 +1133,8 @@ rule preprocess_and_annotate_cohort_candidates:
         dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["preprocess_and_annotate_cohort_candidates"][0], COHORT_ID)
     threads:
         STEP_THREADS["08"]
+    resources:
+        mem_mb=STAGE_MEMORY_MB["08"]
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -1046,6 +1148,10 @@ rule rank_cohort_candidates_with_paired_CMH:
         python=PYTHON,
         dispatch=_dispatch(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID),
         dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["rank_cohort_candidates_with_paired_CMH"][0], ANALYSIS_ID)
+    threads:
+        1
+    resources:
+        mem_mb=STAGE_MEMORY_MB["09"]
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
@@ -1060,5 +1166,9 @@ rule project_candidate_scientific_context:
         python=PYTHON,
         dispatch=_dispatch(AUTOMATIC_TASKS["project_candidate_scientific_context"][0], ANALYSIS_ID),
         dispatch_sha256=_dispatch_sha256(AUTOMATIC_TASKS["project_candidate_scientific_context"][0], ANALYSIS_ID)
+    threads:
+        1
+    resources:
+        mem_mb=STAGE_MEMORY_MB["10"]
     shell:
         "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"

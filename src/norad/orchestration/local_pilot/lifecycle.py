@@ -51,9 +51,20 @@ from norad.libraries.process_environment import (
 )
 from norad.libraries.source_authority import controlled_python_argv
 from norad.orchestration.local_pilot import inspection, task
+from norad.orchestration.local_pilot.resource_policy import (
+    AllocationCapacity,
+    REPEATABLE_STAGE_IDS,
+    ResourceConfigError,
+    ResourcePlan,
+    resume_resource_plan,
+    stage_slot_name,
+)
 
 Operation = Literal["execute", "resume"]
 _SAFE_RULE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+_RESOURCE_LIMIT_NAMES = frozenset(
+    {"mem_mb", *(stage_slot_name(step_id) for step_id in REPEATABLE_STAGE_IDS)}
+)
 _FORBIDDEN_SNAKEMAKE_FLAGS = frozenset(
     {
         "--unlock",
@@ -537,8 +548,8 @@ def build_snakemake_argv(
     run_root: Path,
     target: str,
     operation: Operation,
-    cores: int = 1,
-    sample_concurrency: int = 1,
+    cores: int,
+    resource_limits: Sequence[tuple[str, int]],
 ) -> tuple[str, ...]:
     """Construct the fixed direct invocation and reject recovery bypasses."""
 
@@ -557,14 +568,17 @@ def build_snakemake_argv(
         raise LifecycleError(f"Unsupported lifecycle operation: {operation}")
     if isinstance(cores, bool) or not isinstance(cores, int) or cores < 1:
         raise LifecycleError("Workflow cores must be a positive integer")
-    if (
-        isinstance(sample_concurrency, bool)
-        or not isinstance(sample_concurrency, int)
-        or sample_concurrency < 1
-    ):
-        raise LifecycleError("Sample concurrency must be a positive integer")
-    if sample_concurrency > cores:
-        raise LifecycleError("Sample concurrency cannot exceed workflow cores")
+    limits = dict(resource_limits)
+    if len(limits) != len(resource_limits) or set(limits) != _RESOURCE_LIMIT_NAMES:
+        raise LifecycleError(
+            "Snakemake resource limits must contain exactly: "
+            + ", ".join(sorted(_RESOURCE_LIMIT_NAMES))
+        )
+    for name, value in limits.items():
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise LifecycleError(
+                f"Snakemake resource limit {name} must be a positive integer"
+            )
     argv = [
         *controlled_python_argv(python_executable),
         "-m",
@@ -580,7 +594,7 @@ def build_snakemake_argv(
         "--cores",
         str(cores),
         "--resources",
-        f"sample_slots={sample_concurrency}",
+        *(f"{name}={limits[name]}" for name in sorted(limits)),
         "--nocolor",
     ]
     if operation == "resume":
@@ -592,6 +606,37 @@ def build_snakemake_argv(
             "Forbidden Snakemake recovery controls: " + ", ".join(sorted(observed))
         )
     return tuple(argv)
+
+
+def _resource_plan_from_workflow_config(
+    config_document: Mapping[str, Any],
+) -> ResourcePlan:
+    policy = config_document.get("resource_policy")
+    if not isinstance(policy, dict) or set(policy) != {
+        "effective",
+        "effective_sha256",
+        "allocation",
+        "sources",
+    }:
+        raise LifecycleError("Workflow config resource policy is malformed")
+    allocation = policy.get("allocation")
+    if not isinstance(allocation, dict) or set(allocation) != {
+        "cores",
+        "memory_mb",
+        "source",
+    }:
+        raise LifecycleError("Workflow config allocation observation is malformed")
+    try:
+        capacity = AllocationCapacity(
+            cores=allocation["cores"],
+            memory_mb=allocation["memory_mb"],
+            source=allocation["source"],
+        )
+        return resume_resource_plan(policy, capacity)
+    except (KeyError, ResourceConfigError) as exc:
+        raise LifecycleError(
+            f"Workflow config resource policy is invalid: {exc}"
+        ) from exc
 
 
 def _publish_exclusive(path: Path, data: bytes) -> None:
@@ -1665,6 +1710,11 @@ def _admit_request(
     }
     attempt = dict(request.attempt_record)
     orchestration_contracts.validate_record("workflow-attempt", attempt)
+    resources = _resource_plan_from_workflow_config(config_document)
+    if resources.workflow_cores != attempt["cores"]:
+        raise LifecycleError(
+            "Workflow config resource cores differ from the attempt record"
+        )
     argv = build_snakemake_argv(
         python_executable=python_executable,
         snakefile=snakefile,
@@ -1674,7 +1724,7 @@ def _admit_request(
         target=request.target,
         operation=request.operation,
         cores=int(attempt["cores"]),
-        sample_concurrency=config_document.get("sample_concurrency", 1),
+        resource_limits=resources.scheduler_limits(),
     )
     identifier = str(attempt["workflow_attempt_id"])
     source_root = Path(str(attempt["source_checkout"]["path"]))
