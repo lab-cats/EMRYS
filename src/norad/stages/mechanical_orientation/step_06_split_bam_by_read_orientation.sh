@@ -214,36 +214,35 @@ input_count_command=(
     "$input_bam"
 )
 
+# The filter outputs are exact materializations of the four legacy -f groups.
+# Count those already-written subsets instead of rescanning the complete Step 05
+# input BAM four additional times merely to reproduce their cardinalities.
 flag_99_count_command=(
     "$samtools_bin"
     view
     -c
-    -f 99
-    "$input_bam"
+    "$tmp_99_bam"
 )
 
 flag_147_count_command=(
     "$samtools_bin"
     view
     -c
-    -f 147
-    "$input_bam"
+    "$tmp_147_bam"
 )
 
 flag_83_count_command=(
     "$samtools_bin"
     view
     -c
-    -f 83
-    "$input_bam"
+    "$tmp_83_bam"
 )
 
 flag_163_count_command=(
     "$samtools_bin"
     view
     -c
-    -f 163
-    "$input_bam"
+    "$tmp_163_bam"
 )
 
 fwd_count_command=(
@@ -440,8 +439,10 @@ write_counts_tsv() {
     local unassigned_records
     local assigned_fraction
 
-    # Counts come from samtools view -c rather than the filter temp files alone,
-    # so the QC row reflects the BAM records that downstream tools will see.
+    # The full input count still describes the admitted Step 05 BAM. The four
+    # flag-subcounts come from the exact filtered temporary BAMs that were just
+    # produced, avoiding four more passes over the complete input. Merged-group
+    # counts still observe the BAMs downstream tools will consume.
     input_records="$("${input_count_command[@]}")"
     flag_99_records="$("${flag_99_count_command[@]}")"
     flag_147_records="$("${flag_147_count_command[@]}")"
@@ -580,7 +581,7 @@ printf '  1. Verify Step 05 input BAM and BAI exist and are nonempty.\n'
 printf '  2. Resolve samtools without invoking heavy computation.\n'
 printf '  3. Refuse stale run-token temp and backup paths in execute mode.\n'
 printf '  4. Write flag-filtered and merged outputs to run-token temp BAMs.\n'
-printf '  5. Generate counts TSV with samtools view -c and awk-formatted assigned_fraction.\n'
+printf '  5. Generate counts TSV by counting the full input once, each exact flag-filtered temp BAM, and each merged group; format assigned_fraction with awk.\n'
 printf '  6. Fail if input_records is zero, assigned_records exceeds input_records, or either merged group is empty.\n'
 printf '  7. Validate temporary FWD_like and REV_like BAMs with samtools quickcheck and nonempty BAIs.\n'
 printf '  8. Publish final outputs only after validation succeeds.\n'
