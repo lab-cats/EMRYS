@@ -2,16 +2,15 @@
 
 This is the observed contract of historical Step `06`, now implemented in this
 native owner directory. The exact public identity and historical alias are
-owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the lowercase physical owner for that public slug and owns the producer,
-validator, and scheduler assets. Its Python validator is installed only
-through the grouped command; the shell producer and scheduler remain explicit
-repository-path interfaces.
+owned by the [semantic stage map](../../contracts/STAGE_MAP.md#identity-map).
+This directory is the lowercase physical owner for that public slug and owns
+the producer, validator, and scheduler assets. Its Python validator is installed
+only through the grouped command; the shell producer and scheduler remain
+explicit repository-path interfaces.
 
 ## Responsibility and execution dependencies
 
-Partition one split-N-cigar BAM into the protected legacy `FWD_like` and
+Partition one split-n-cigar BAM into the protected legacy `FWD_like` and
 `REV_like` mechanical flag groups, index both BAMs, reconcile counts, and
 publish the five outputs as one rollback-protected set.
 
@@ -56,23 +55,27 @@ both merged groups must be nonzero; assigned may not exceed input.
 
 `--no-clobber` is the required local-profile mode. It refuses any member of an
 existing five-file final set before tool work and before publication, hashes
-and rechecks the input BAM/BAI, and retains the existing per-sample owned lock,
-temporary-set validation, ordered publication, and final-path validation. It
-never creates predecessor backups, so interruption cannot enter the retained
-restoration-failure defect. Its finals are create-exclusive and staging inode
-anchors remain through complete-set validation. The counts TSV remains native evidence rather than
-a receipt; tool-version and final-set hashes belong in the workflow verified
-record. Execute without this option preserves replaceable-set behavior.
+and rechecks the input BAM/BAI, and retains the existing per-sample owned lock
+and temporary-set validation. It never creates predecessor backups, so
+interruption cannot enter the retained restoration-failure defect. Its finals
+are create-exclusive hard links to the validated staging files. The producer
+proves that all five final paths still resolve to those staging inodes rather
+than rerunning `samtools quickcheck` against the same BAM bytes after
+publication. The counts TSV remains native evidence rather than a receipt;
+tool-version and final-set hashes belong in the workflow verified record.
+Execute without `--no-clobber` preserves replaceable-set behavior and final-path
+revalidation.
 
 ## Current execution surfaces
 
 [`step_06_split_bam_by_read_orientation.sh`](step_06_split_bam_by_read_orientation.sh)
 is side-effect-free in dry-run. Execute mode uses a per-sample owned lock,
 run-token temporary and backup paths, rejects stale owned-path candidates,
-validates both temporary pairs and arithmetic, requires an existing final set
-to contain all five files or none, publishes the counts TSV last, and
-revalidates final paths. Failures restore a prior set or remove new partial
-finals.
+validates both temporary pairs and arithmetic, and requires an existing final
+set to contain all five files or none. On the orchestration-safe path it
+publishes create-exclusively and carries staged validation through exact inode
+identity; the historical replacement route revalidates final paths. Failures
+restore a prior set or remove new partial finals.
 
 The historical replacement route has no stable-input recheck, and neither
 route publishes a native receipt binding the set to its source/tool/attempt.
@@ -129,7 +132,9 @@ failures exit `2`.
   rerunning samtools.
 - [`test_step_06_split_bam_by_read_orientation.sh`](../../../../tests/stages/mechanical_orientation/test_step_06_split_bam_by_read_orientation.sh)
   protects flags, counts, dry-run, locks, stale paths, validation, zero-group
-  failures, cleanup, complete-set replacement, and ordinary rollback.
+  failures, cleanup, complete-set replacement, and ordinary rollback. The
+  orchestration-safe publication path additionally relies on the shared
+  create-exclusive ownership helpers to prove staging/final inode identity.
 - [`test_validate_step_06_orientation_outputs.py`](../../../../tests/stages/mechanical_orientation/test_validate_step_06_orientation_outputs.py),
   wrapper, roster, publication-fault, public-CLI, artifact, report, and coverage
   tests protect the recorded independent evidence boundary.
@@ -145,9 +150,9 @@ scientific-review, or biological evidence.
   [`validation/report.py`](../../libraries/validation/report.py), imported
   through `norad.libraries.validation`.
 - The producer uses `resolve_overridable_executable` from neutral
-  [`executable_resolution.sh`](../../libraries/executable_resolution.sh); the
-  explicit argument, `SAMTOOLS_BIN_OVERRIDE`, and PATH selection policy,
-  samtools checks, and commands remain owned here.
+  [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
+  explicit argument, `SAMTOOLS_BIN_OVERRIDE`, PATH selection policy, samtools
+  checks, and commands remain owned here.
 - The legacy replacement route lacks stable-input identity; restoration is
   best-effort and cleanup can erase recovery evidence. The no-clobber path
   hash-rechecks BAM/BAI inputs and rejects any prior member, but native outputs
