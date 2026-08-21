@@ -2,12 +2,11 @@
 
 This is the observed contract of historical Step `05`, now implemented in this
 native owner directory. The exact public identity and historical alias are
-owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the lowercase physical owner for that public slug and owns the producer,
-validator, and scheduler assets. Its Python validator is installed only
-through the grouped command; the shell producer and scheduler remain explicit
-repository-path interfaces.
+owned by the [semantic stage map](../../contracts/STAGE_MAP.md#identity-map).
+This directory is the lowercase physical owner for that public slug and owns
+the producer, validator, and scheduler assets. Its Python validator is installed
+only through the grouped command; the shell producer and scheduler remain
+explicit repository-path interfaces.
 
 ## Responsibility and execution dependencies
 
@@ -37,10 +36,13 @@ Outputs are:
 <output-dir>/<sample-id>.split_ncigar.bam.bai
 ```
 
-The producer requires quickcheck success, coordinate sort order, exactly one
-matching `ID`/`SM` read group, at least one alignment, all alignments tagged
-with that group, and a nonempty index. It does not publish a receipt or prove
-that CIGAR-N transformation semantics occurred.
+The producer accepts a nonempty index emitted by GATK/HTSJDK during
+`SplitNCigarReads`, normalizing the alternate `<stem>.bai` spelling to NORAD's
+stable `<bam>.bai` interface when needed. If GATK does not emit a usable index,
+it falls back to `samtools index`. The producer then requires quickcheck success,
+coordinate sort order, exactly one matching `ID`/`SM` read group, at least one
+alignment, all alignments tagged with that group, and a nonempty index. It does
+not publish a receipt or prove that CIGAR-N transformation semantics occurred.
 
 ## Orchestration-safe producer boundary
 
@@ -60,8 +62,10 @@ the replacement transaction below.
 ## Current execution surfaces
 
 [`step_05_split_n_cigar_reads.sh`](step_05_split_n_cigar_reads.sh)
-is side-effect-free in dry-run. Historical execute mode uses run-token BAM,
-BAI, GATK temp, and backup paths; an owned output-directory lock;
+is side-effect-free in dry-run. After GATK returns, it first looks for a usable
+GATK-produced index under either supported spelling and only invokes the
+samtools index command as a fallback. Historical execute mode uses run-token
+BAM, BAI, GATK temp, and backup paths; an owned output-directory lock;
 pre-publication validation; complete-pair predecessor checks; sequential final
 moves; final revalidation; and rollback to a prior pair or removal of a new
 partial pair. Existing valid pairs are replaceable. That route does not
@@ -99,9 +103,8 @@ Exact checks are:
 The validator checks BAM/BAI magic, quickcheck exit, coordinate order, one
 matching `ID`/`SM` read group, and exact ordered FASTA/FAI/DICT contig/length
 agreement. It does not prove BAM/BAI correspondence, output relation to the
-marked input, or GATK split-N-cigar semantics. It imports
-report/BAM helpers from neutral
-[`validation/report.py`](../../libraries/validation/report.py) and
+marked input, or GATK split-N-cigar semantics. It imports report/BAM helpers
+from neutral [`validation/report.py`](../../libraries/validation/report.py) and
 [`alignments/bam.py`](../../libraries/alignments/bam.py), and reference parsers
 from neutral [`references/contigs.py`](../../libraries/references/contigs.py).
 Package selection is owned by the grouped command; direct execution of private
@@ -132,7 +135,9 @@ failures, and report-publication failures exit `2`.
   rerunning GATK.
 - [`test_step_05_split_n_cigar_reads.sh`](../../../../tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh)
   protects dry-run, tools/Java, reference prerequisites, locks, temp cleanup,
-  staged validation, complete-pair rules, and ordinary rollback fault paths.
+  staged validation, complete-pair rules, samtools fallback indexing, and
+  ordinary rollback fault paths. Real-runtime acceptance must establish whether
+  the admitted GATK build emits a reusable index in the production path.
 - [`test_validate_step_05_split_ncigar.py`](../../../../tests/stages/split_n_cigar/test_validate_step_05_split_ncigar.py),
   wrapper, roster, publication-fault, public-CLI, artifact, report, data-check,
   and coverage tests protect the recorded boundaries.
