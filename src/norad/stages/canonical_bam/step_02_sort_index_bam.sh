@@ -384,10 +384,10 @@ printf 'Publish plan:\n'
 printf '  1. Validate replacement BAM and BAI: %s %s\n' "$tmp_rg_bam" "$tmp_rg_bai"
 printf '  2. Confirm canonical outputs are a complete pair or both absent.\n'
 printf '  3. Back up existing pair to: %s %s\n' "$backup_bam" "$backup_bai"
-printf '  4. Move replacement BAM to: %s\n' "$output_bam"
-printf '  5. Move replacement BAI to: %s\n' "$output_bai"
-printf '  6. Revalidate published canonical BAM and BAI.\n'
-printf '  7. Remove backups and owned lock after successful final validation.\n'
+printf '  4. Publish replacement BAM to: %s\n' "$output_bam"
+printf '  5. Publish replacement BAI to: %s\n' "$output_bai"
+printf '  6. Under --no-clobber, prove final paths are the validated staging inodes; legacy replacement mode revalidates final paths.\n'
+printf '  7. Remove backups and owned lock after successful publication validation.\n'
 printf 'Rollback plan:\n'
 printf '  Restore backups before cleanup on failures after backup begins; remove new canonical files if no prior pair existed.\n'
 
@@ -456,16 +456,23 @@ fi
 if [[ "$no_clobber" == true ]]; then
     publish_file_create_exclusive "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
     publish_file_create_exclusive "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
+
+    # The orchestration-safe path publishes hard links to the exact staged
+    # artifacts that already passed the full semantic validation. Inode identity
+    # therefore carries that validation across publication without two more
+    # whole-BAM record scans at the final pathname.
+    require_owned_published_file "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
+    require_owned_published_file "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
 else
     mv "$tmp_rg_bam" "$output_bam"
     mv "$tmp_rg_bai" "$output_bai"
+
+    # The legacy replacement route drops the staging identity anchor, so keep
+    # its historical final-path semantic revalidation unchanged.
+    validate_bam_pair "$output_bam" "$output_bai" "Canonical"
 fi
 
-# Revalidate after publish so a copied/moved pair is known-good at final paths.
-validate_bam_pair "$output_bam" "$output_bai" "Canonical"
 if [[ "$no_clobber" == true ]]; then
-    require_owned_published_file "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
-    require_owned_published_file "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
     rm -f -- "$tmp_rg_bam" "$tmp_rg_bai"
     [[ ! -e "$tmp_rg_bam" && ! -L "$tmp_rg_bam" &&
        ! -e "$tmp_rg_bai" && ! -L "$tmp_rg_bai" ]] ||
