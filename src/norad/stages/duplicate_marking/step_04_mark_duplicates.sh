@@ -4,7 +4,7 @@
 # Dry-run mode validates inputs and prints the exact Picard and samtools
 # commands without creating output directories or final output files. Passing
 # --execute runs Picard MarkDuplicates, validates the BAM with samtools
-# quickcheck, indexes it, and checks the expected outputs.
+# quickcheck, ensures an index, and checks the expected outputs.
 set -euo pipefail
 
 usage() {
@@ -115,6 +115,7 @@ run_token="${NORAD_RUN_TOKEN:-${SLURM_JOB_ID:-$$}}"
 validate_safe_id "Step 04 run token" "$run_token"
 tmp_bam="$output_dir/.${sample_id}.step04.${run_token}.markdup.tmp.bam"
 tmp_bai="$tmp_bam.bai"
+tmp_picard_bai="${tmp_bam%.bam}.bai"
 tmp_metrics="$metrics_dir/.${sample_id}.step04.${run_token}.metrics.tmp"
 lock_path="$output_dir/.${sample_id}.step04.lock"
 lock_owner_file="$lock_path/owner"
@@ -172,6 +173,14 @@ cleanup_no_clobber() {
                 rollback_failed=true
             fi
         fi
+        if [[ -e "$tmp_picard_bai" || -L "$tmp_picard_bai" ]]; then
+            if ! rm -f -- "$tmp_picard_bai" ||
+               [[ -e "$tmp_picard_bai" || -L "$tmp_picard_bai" ]]; then
+                printf 'ERROR: Could not remove Step 04 alternate Picard BAI during cleanup: %s\n' \
+                    "$tmp_picard_bai" >&2
+                rollback_failed=true
+            fi
+        fi
         if [[ -e "$tmp_metrics" || -L "$tmp_metrics" ]]; then
             if ! rm -f -- "$tmp_metrics" ||
                [[ -e "$tmp_metrics" || -L "$tmp_metrics" ]]; then
@@ -224,6 +233,7 @@ printf '  Lock directory: %s\n' "$lock_path"
 printf '  Run token: %s\n' "$run_token"
 printf '  Temporary BAM: %s\n' "$tmp_bam"
 printf '  Temporary BAI: %s\n' "$tmp_bai"
+printf '  Alternate Picard BAI: %s\n' "$tmp_picard_bai"
 printf '  Temporary metrics: %s\n' "$tmp_metrics"
 printf '  Mode: %s\n' "$mode"
 
@@ -233,6 +243,8 @@ if [[ "$no_clobber" == true ]]; then
     command_output_bam="$tmp_bam"
     command_metrics_file="$tmp_metrics"
 fi
+command_output_bai="$command_output_bam.bai"
+picard_output_bai="${command_output_bam%.bam}.bai"
 
 picard_command=(
     "$java_bin"
@@ -241,6 +253,9 @@ picard_command=(
     "INPUT=$input_bam"
     "OUTPUT=$command_output_bam"
     "METRICS_FILE=$command_metrics_file"
+    # Ask Picard to build the index while it owns the output stream. The
+    # fallback below retains samtools compatibility when the runtime does not.
+    CREATE_INDEX=true
     # Mark duplicates for downstream filtering/inspection; do not remove reads.
     REMOVE_DUPLICATES=false
     "TMP_DIR=$tmp_dir"
@@ -258,6 +273,28 @@ index_command=(
     "$command_output_bam"
 )
 
+ensure_output_index() {
+    if [[ -s "$command_output_bai" ]]; then
+        [[ "$picard_output_bai" == "$command_output_bai" ]] ||
+            rm -f -- "$picard_output_bai"
+        printf 'Reusing Picard-produced BAM index: %s\n' "$command_output_bai"
+        return
+    fi
+    if [[ "$picard_output_bai" != "$command_output_bai" &&
+          -s "$picard_output_bai" ]]; then
+        mv "$picard_output_bai" "$command_output_bai"
+        printf 'Reusing Picard-produced BAM index after path normalization: %s\n' \
+            "$command_output_bai"
+        return
+    fi
+    rm -f -- "$command_output_bai"
+    if [[ "$picard_output_bai" != "$command_output_bai" ]]; then
+        rm -f -- "$picard_output_bai"
+    fi
+    printf 'Picard did not produce a usable BAM index; running samtools index.\n'
+    "${index_command[@]}"
+}
+
 printf 'Picard MarkDuplicates command:\n'
 print_command "${picard_command[@]}"
 
@@ -266,6 +303,7 @@ print_command "${quickcheck_command[@]}"
 
 printf 'samtools index command:\n'
 print_command "${index_command[@]}"
+printf '  This is a fallback only when Picard did not emit a usable BAM index.\n'
 
 if [[ "$no_clobber" == true ]]; then
     require_no_owner_residue \
@@ -285,20 +323,22 @@ mkdir -p "$output_dir" "$metrics_dir"
 
 if [[ "$no_clobber" == true ]]; then
     require_absent_outputs
-    [[ ! -e "$tmp_bam" && ! -e "$tmp_bai" && ! -e "$tmp_metrics" ]] ||
-        die "Step 04 temporary output already exists: $tmp_bam $tmp_bai $tmp_metrics"
+    [[ ! -e "$tmp_bam" && ! -e "$tmp_bai" && ! -e "$tmp_picard_bai" &&
+       ! -e "$tmp_metrics" ]] ||
+        die "Step 04 temporary output already exists: $tmp_bam $tmp_bai $tmp_picard_bai $tmp_metrics"
     set_exit_trap cleanup_no_clobber
     acquire_lock "Step 04"
 fi
 
 "${picard_command[@]}"
 
-# Validate the duplicate-marked BAM before creating the index expected by
-# downstream steps. This gives a clearer failure when Picard writes a bad BAM.
+# Validate the duplicate-marked BAM before accepting or constructing the index
+# expected by downstream steps. This gives a clearer failure when Picard writes
+# a bad BAM, while avoiding a second full indexing pass when Picard already
+# emitted a usable index during MarkDuplicates.
 "${quickcheck_command[@]}"
-"${index_command[@]}"
+ensure_output_index
 
-command_output_bai="$command_output_bam.bai"
 [[ -s "$command_output_bam" ]] || die "Output BAM is missing or empty: $command_output_bam"
 [[ -s "$command_output_bai" ]] || die "Output BAI is missing or empty: $command_output_bai"
 [[ -s "$command_metrics_file" ]] || die "Picard metrics file is missing or empty: $command_metrics_file"
@@ -320,9 +360,10 @@ if [[ "$no_clobber" == true ]]; then
     require_owned_published_file "Step 04 BAI" "$tmp_bai" "$output_bai"
     require_owned_published_file \
         "Step 04 metrics" "$tmp_metrics" "$metrics_file"
-    rm -f -- "$tmp_bam" "$tmp_bai" "$tmp_metrics"
+    rm -f -- "$tmp_bam" "$tmp_bai" "$tmp_picard_bai" "$tmp_metrics"
     [[ ! -e "$tmp_bam" && ! -L "$tmp_bam" &&
        ! -e "$tmp_bai" && ! -L "$tmp_bai" &&
+       ! -e "$tmp_picard_bai" && ! -L "$tmp_picard_bai" &&
        ! -e "$tmp_metrics" && ! -L "$tmp_metrics" ]] ||
         die "Step 04 could not remove owned publication anchors."
     publication_started=false
