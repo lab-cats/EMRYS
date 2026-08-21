@@ -3,8 +3,8 @@
 # Step 08: validate the complete declared Step 07 VCF set, expand alternate
 # alleles, apply the provisional legacy orientation policy, annotate candidates,
 # and write deterministic cohort-level TSVs. Publication and locking belong to
-# src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh; this program writes only its three
-# explicitly supplied output paths.
+# src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh;
+# this program writes only its three explicitly supplied output paths.
 
 options(stringsAsFactors = FALSE, scipen = 999, digits = 15)
 
@@ -44,7 +44,6 @@ SUMMARY_COLUMNS <- c(
     "partition_manifest_sha256", "annotation_gtf", "annotation_gtf_sha256",
     "orientation_policy"
 )
-
 
 write_tsv <- function(table, path) {
     utils::write.table(
@@ -306,42 +305,14 @@ main <- function() {
         paste0("AF__", sample_ids)
     )
     sites <- sites[, expected_site_columns, drop = FALSE]
+
+    # The shell owner immediately validates the staged TSVs before publication,
+    # including exact headers, row counts, ordering, policy, hash bindings and
+    # aggregate reconciliation. Avoid reading the just-written cohort tables
+    # back into R a second time solely to repeat a subset of those checks.
     write_tsv(sites, output_paths[[1L]])
     write_tsv(summary, output_paths[[3L]])
     write_tsv(input_receipt, output_paths[[2L]])
-
-    reread_sites <- read_tsv(
-        "Written Step 08 sites table",
-        output_paths[[1L]],
-        expected_site_columns
-    )
-    reread_inputs <- read_tsv(
-        "Written Step 08 input receipt",
-        output_paths[[2L]],
-        INPUT_COLUMNS
-    )
-    reread_summary <- read_tsv(
-        "Written Step 08 summary",
-        output_paths[[3L]],
-        SUMMARY_COLUMNS
-    )
-    if (nrow(reread_sites) != nrow(sites) ||
-        nrow(reread_inputs) != nrow(input_receipt) ||
-        nrow(reread_summary) != 1L) {
-        abort("Written Step 08 table row counts failed revalidation.")
-    }
-    if (nrow(reread_sites) > 0L &&
-        !identical(reread_sites$candidate_id, sites$candidate_id)) {
-        abort("Written Step 08 candidate order changed during serialization.")
-    }
-    if (!all(!is.na(reread_inputs$orientation_policy) &
-            reread_inputs$orientation_policy == ORIENTATION_POLICY) ||
-        !(
-            !is.na(reread_summary$orientation_policy[[1L]]) &&
-            reread_summary$orientation_policy[[1L]] == ORIENTATION_POLICY
-        )) {
-        abort("Written Step 08 orientation policy failed revalidation.")
-    }
     successful <- TRUE
 
     message(
