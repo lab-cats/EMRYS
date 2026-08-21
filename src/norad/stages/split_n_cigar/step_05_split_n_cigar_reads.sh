@@ -354,6 +354,7 @@ printf '  Input BAM SHA-256: %s\n' "$input_bam_sha256"
 printf '  Input BAI SHA-256: %s\n' "$input_bai_sha256"
 printf '  Reference FASTA: %s\n' "$reference_fasta"
 printf '  Reference FAI: %s\n' "$reference_fai"
+printf '  Reference DICT: %s\n' "$reference_dict_sha256"
 printf '  Reference DICT: %s\n' "$reference_dict"
 printf '  Reference FASTA SHA-256: %s\n' "$reference_fasta_sha256"
 printf '  Reference FAI SHA-256: %s\n' "$reference_fai_sha256"
@@ -413,7 +414,7 @@ printf '  3. Resolve GATK, samtools, and Java executables.\n'
 printf '  4. Validate actual Java version is >=17 before execute-mode GATK use.\n'
 printf '  5. Run GATK SplitNCigarReads into a run-token temp BAM using a project-storage GATK temp directory.\n'
 printf '  6. Index the temp BAM and validate quickcheck, coordinate sort, read group preservation, and nonempty BAI.\n'
-printf '  7. Publish final BAM/BAI only after validation succeeds.\n'
+printf '  7. Publish final BAM/BAI only after validation succeeds; no-clobber publication proves the finals are the validated staging inodes.\n'
 printf '  8. Roll back previous final outputs if publication fails after backups begin.\n'
 
 if [[ "$no_clobber" == true ]]; then
@@ -487,17 +488,22 @@ fi
 if [[ "$no_clobber" == true ]]; then
     publish_file_create_exclusive "Step 05 BAM" "$tmp_bam" "$output_bam"
     publish_file_create_exclusive "Step 05 BAI" "$tmp_bai" "$output_bai"
+
+    # Create-exclusive publication hard-links the already validated staging
+    # files. Proving both finals still resolve to those exact inodes is enough to
+    # carry the semantic validation across publication without decompressing and
+    # scanning the BAM a second time.
+    require_owned_published_file "Step 05 BAM" "$tmp_bam" "$output_bam"
+    require_owned_published_file "Step 05 BAI" "$tmp_bai" "$output_bai"
 else
     mv "$tmp_bam" "$output_bam"
     mv "$tmp_bai" "$output_bai"
-fi
 
-# Revalidate at final paths so downstream steps never consume a half-published
-# or path-specific bad BAM/BAI pair.
-validate_bam_pair "$output_bam" "$output_bai" "Published"
+    # The legacy replacement route does not retain a staging inode anchor after
+    # mv, so keep its final-path semantic revalidation unchanged.
+    validate_bam_pair "$output_bam" "$output_bai" "Published"
+fi
 if [[ "$no_clobber" == true ]]; then
-    require_owned_published_file "Step 05 BAM" "$tmp_bam" "$output_bam"
-    require_owned_published_file "Step 05 BAI" "$tmp_bai" "$output_bai"
     rm -f -- "$tmp_bam" "$tmp_bai"
     [[ ! -e "$tmp_bam" && ! -L "$tmp_bam" &&
        ! -e "$tmp_bai" && ! -L "$tmp_bai" ]] ||
