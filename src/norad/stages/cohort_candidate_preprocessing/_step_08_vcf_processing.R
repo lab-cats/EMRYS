@@ -335,11 +335,14 @@ process_vcf_jobs <- function(jobs, threads, sample_ids, annotation_model) {
             }
         )
     }
+    # Partition/orientation VCFs can differ substantially in size. Dynamic
+    # scheduling keeps workers fed as they finish while mclapply still returns
+    # results in input order, so deterministic publication ordering is unchanged.
     results <- parallel::mclapply(
         jobs,
         process_safely,
         mc.cores = worker_count,
-        mc.preschedule = TRUE,
+        mc.preschedule = FALSE,
         mc.set.seed = FALSE
     )
     valid_outcome <- vapply(
