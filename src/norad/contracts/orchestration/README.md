@@ -12,6 +12,13 @@ cross-field invariants that JSON Schema cannot express. Complete execution
 validation requires the exact profile record so all four reporting projection
 references can be reconstructed and compared.
 
+The optional `resource-config` and `launcher-config` selectors validate authored
+configuration fragments before their application owners layer them over
+packaged defaults. Resource configuration controls the one-host workflow budget;
+launcher configuration controls the outer single-allocation submission. Neither
+configuration is scientific run intent, and this neutral package does not load
+YAML, inspect environment variables, or choose precedence.
+
 The lifecycle family includes an explicit run-lock record, an immutable
 workflow attempt that binds its exact canonical workflow-config reference, and
 a terminal attempt receipt with mutually consistent executor exit/signal,

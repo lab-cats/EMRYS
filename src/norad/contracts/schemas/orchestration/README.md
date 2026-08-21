@@ -6,7 +6,10 @@ documented in [`../../orchestration`](../../orchestration/README.md).
 
 - [`v1/`](v1/) — shared definitions plus active execution, reference, policy,
   attempt, task, lock, receipt, and reporting-ledger records.
-- [`v2/`](v2/) — the active local-CMH request and workflow-profile resources.
+- [`v2/`](v2/) — the active workflow profile and retired resource-embedded
+  request contract.
+- [`v3/`](v3/) — the active resource-independent request plus optional
+  local-pilot resource- and launcher-configuration contracts.
 
 [`contracts/orchestration/api.py`](../../orchestration/api.py) selects and
 validates this mixed-version registry and owns canonical JSON. These directories

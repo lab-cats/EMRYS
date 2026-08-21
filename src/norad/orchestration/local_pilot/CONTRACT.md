@@ -6,9 +6,10 @@
 external create-absent starter tree only with `--execute`. The parent must
 already be a canonical real writable/searchable directory and the target must
 not overlap the selected checkout. The owner reserves the output directory,
-writes the matched request, sample, partition, runtime, and single-allocation
-Slurm-wrapper members create-exclusively, publishes the manifest last, and
-then re-admits exact membership, regular-file types, modes, sizes, and bytes.
+writes the matched request, launcher/resource policy, sample, partition,
+runtime, and single-allocation Slurm-wrapper members create-exclusively,
+publishes the manifest last, and then re-admits exact membership, regular-file
+types, modes, sizes, and bytes.
 It never overwrites, adopts, installs, restores, selects reference data, or
 guesses site-specific scheduler/tool values. Failure after reservation leaves
 the partial directory for inspection with no claim that its manifest is valid.
@@ -44,17 +45,38 @@ three computational candidates and one significant candidate are deterministic
 fixture expectations, not scientific review or biological interpretation.
 
 The generated `run-in-slurm.sh` is a submit-or-batch template, not a scheduler
-inside NORAD. With no `SLURM_JOB_ID`, it validates all required explicit
-`NORAD_*` settings and calls `sbatch` for exactly one node/task/allocation; it
-does not run the doctor or workflow. `NORAD_SLURM_MEMORY=site-default` emits no
-`--mem`; a positive explicit Slurm size is emitted exactly once.
-`NORAD_MODULE_MODE` is closed to `exact` or `none`: exact mode requires the
-initializer and module roster, while none mode requires both to be explicitly
-empty and never sources the module system.
-The submitted batch `PATH` is exactly the absolute parent directory of
-`NORAD_PYTHON` followed by `/usr/bin:/bin`. Relative, root-level, or
-colon-bearing Python paths fail before `sbatch`; no ambient submit-host path
-entry is exported.
+inside NORAD. With no `SLURM_JOB_ID`, it calls the generation-bound controlled
+Python to resolve packaged launcher defaults, adjacent or explicit launcher
+YAML, and explicit wrapper options in ascending precedence, then invokes
+`sbatch` for exactly one node/task/allocation. It does not run the doctor or
+workflow on the submit host.
+
+Launcher YAML is a closed `norad.local-pilot-launcher.v1` fragment. A field is
+either a literal or its field-specific `{env: NORAD_NAME}` object; `$VAR`, shell
+commands, merge keys, custom tags, arbitrary environment names, and execution
+mode are not configuration. A structured reference uses an existing process
+environment value before the source-checkout root `.env`. The private file is
+optional, UTF-8 `NAME=VALUE` only, closed to launcher variables, duplicate-free,
+owned by the live user, mode `0600` or stricter, and a real nonsymlink file.
+Admission errors never include private values; missing-reference and `.env`
+diagnostics identify only the affected field or variable name.
+
+`memory: site-default` emits no `--mem`; a positive explicit Slurm size is
+emitted exactly once. `exclusive: true` emits one `--exclusive`; a nonempty
+validated node list emits one exact `--nodelist=VALUE`. Both are submission-only
+placement controls. Module mode is closed to `exact` or `none`: exact mode
+requires the initializer and module roster, while none mode requires both to
+be empty and never sources the module system.
+
+The generated source checkout and Python identities cannot be replaced by
+launcher YAML, `.env`, or wrapper options. The submitted batch `PATH` is exactly
+the absolute parent directory of that lexical Python launcher followed by
+`/usr/bin:/bin`; no ambient submit-host path entry is exported. A virtualenv
+launcher symlink is preserved after its launcher and executable target are
+stably admitted, so invoking the generated wrapper does not discard virtualenv
+identity. Before invoking `sbatch`, the launcher removes ambient `SBATCH_*`
+policy variables and ambient `NORAD_EXECUTE`; the closed command and export
+arguments remain the submission authority.
 Submission derives `NORAD_SUBMIT_UID` and `NORAD_SUBMIT_USER` only from
 `/usr/bin/id`, requires nonempty export-safe `USER` and `LOGNAME` to equal
 that live user, and exports all four values. Batch mode requires and validates
@@ -62,16 +84,23 @@ the four values against a fresh `/usr/bin/id` observation before loading
 modules, creating scratch, running doctor, or writing workflow state.
 
 In the batch allocation the wrapper creates a private mode-`0700` directory
-below the required real writable `NORAD_SCRATCH_PARENT`, exports it as
+below the resolved real writable scratch parent, exports it as
 `TMPDIR`, records the effective path and `df -PT` filesystem/capacity
 output, and removes that private directory on exit. It then runs request
 compatibility and doctor checks before delegating the entire single-host local
-pilot. `NORAD_EXECUTE=0` plans; `1` adds the public `--execute` gate. The
+pilot. Batch mode requires both Slurm allocation identity and the one exact
+internal script argument emitted by the submit helper; inherited
+`SLURM_JOB_ID` alone cannot enter it. Submission without a wrapper mode flag
+always plans. Only
+`run-in-slurm.sh --execute` derives the internal `NORAD_EXECUTE=1` batch
+transport and adds the public NORAD `--execute` gate; ambient or authored
+`NORAD_EXECUTE` cannot activate it. The
 wrapper does not claim login-node computation, per-owner Slurm jobs, multi-node
 scheduling, scheduler success as workflow completion, or site portability
-before site validation. Its admitted CPU allocation is a capacity assertion;
-the request's resource block remains the sole authority for workflow cores,
-sample concurrency, and per-step threads.
+before site validation. The outer CPU/memory request is allocation capacity,
+not a minimum. `norad.resources.yaml` remains the separate authority for
+workflow cores, stage concurrency, per-step threads, and per-job memory, and
+its effective totals must fit the observed allocation.
 
 ## Normalization and execution
 

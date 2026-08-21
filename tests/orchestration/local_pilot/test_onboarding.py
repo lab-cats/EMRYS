@@ -12,10 +12,12 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 from norad import __main__ as cli
 from norad.evidence.runtime_availability.inspector import load_runtime_profile_contract
 from norad.orchestration.local_pilot import doctor, onboarding, synthetic_fixture
+from norad.orchestration.local_pilot.launcher_config import BATCH_MARKER
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -54,6 +56,8 @@ def test_init_local_pilot_is_dry_run_first_and_receipt_last(
     assert onboarding.init_from_args(_namespace(output, execute=True)) == 0
     expected = {
         "request.yaml",
+        "norad.launcher.yaml",
+        "norad.resources.yaml",
         "samples.tsv",
         "partitions.tsv",
         "runtime.tsv",
@@ -78,6 +82,17 @@ def test_init_local_pilot_is_dry_run_first_and_receipt_last(
     request = (output / "request.yaml").read_text(encoding="utf-8")
     assert "sample_manifest: samples.tsv" in request
     assert "partition_manifest: partitions.tsv" in request
+    launcher = yaml.safe_load(
+        (output / "norad.launcher.yaml").read_text(encoding="utf-8")
+    )
+    assert launcher["schema_version"] == "norad.local-pilot-launcher.v1"
+    assert "execute" not in launcher
+    assert launcher["slurm"]["exclusive"] is False
+    assert launcher["paths"]["request"] == "request.yaml"
+    assert launcher["paths"]["runtime_profile"] == "runtime.selected.tsv"
+    assert launcher["modules"] == {"mode": "none", "init": "", "load": []}
+    assert not (output / ".env").exists()
+    assert not (output / ".env.example").exists()
 
 
 def test_init_refuses_predecessor_without_changing_it(tmp_path: Path) -> None:
@@ -447,12 +462,14 @@ def _wrapper_environment(
         "NORAD_SUBMIT_USER": live_user,
         "USER": live_user,
         "LOGNAME": live_user,
-        "NORAD_SLURM_ACCOUNT": "viking-users",
-        "NORAD_SLURM_PARTITION": "short",
-        "NORAD_SLURM_QOS": "normal",
+        "NORAD_SLURM_ACCOUNT": "test-account",
+        "NORAD_SLURM_PARTITION": "test-partition",
+        "NORAD_SLURM_QOS": "test-qos",
         "NORAD_SLURM_CPUS": "4",
         "NORAD_SLURM_MEMORY": "8G",
         "NORAD_SLURM_TIME": "00:30:00",
+        "NORAD_SLURM_EXCLUSIVE": "0",
+        "NORAD_SLURM_NODELIST": "",
         "NORAD_LOG_DIR": str(log_dir),
         "NORAD_SOURCE_CHECKOUT": str(tmp_path / "checkout"),
         "NORAD_PYTHON": str(python),
@@ -467,6 +484,250 @@ def _wrapper_environment(
     }
 
 
+def _write_slurm_wrapper(tmp_path: Path) -> Path:
+    source_checkout = tmp_path / "launcher-source"
+    config_directory = source_checkout / "configs"
+    config_directory.mkdir(parents=True)
+    for name in (
+        "local_pilot_launcher.example.yaml",
+        "local_pilot_partitions.example.tsv",
+        "local_pilot_request.example.yaml",
+        "local_pilot_resources.example.yaml",
+        "local_pilot_runtime.example.tsv",
+        "local_pilot_samples.example.tsv",
+    ):
+        template = REPO_ROOT / "configs" / name
+        (config_directory / name).write_bytes(template.read_bytes())
+    members = onboarding.starter_members(
+        root=source_checkout,
+        python_executable=Path(sys.executable),
+    )
+    wrapper = tmp_path / "run-in-slurm.sh"
+    wrapper.write_bytes(members["run-in-slurm.sh"][0])
+    wrapper.chmod(0o755)
+    launcher_member = members.get("norad.launcher.yaml")
+    if launcher_member is not None:
+        (tmp_path / "norad.launcher.yaml").write_bytes(launcher_member[0])
+    return wrapper
+
+
+def test_starter_rejects_python_parent_unsafe_for_sealed_path(
+    tmp_path: Path,
+) -> None:
+    unsafe_parent = tmp_path / "unsafe:python-parent"
+    unsafe_parent.mkdir()
+    unsafe_python = _executable(unsafe_parent / "python")
+
+    with pytest.raises(onboarding.OnboardingError, match="sealed PATH"):
+        onboarding.starter_members(
+            root=REPO_ROOT,
+            python_executable=unsafe_python,
+        )
+
+
+def test_starter_preserves_a_lexical_virtualenv_python_launcher(
+    tmp_path: Path,
+) -> None:
+    target = _executable(tmp_path / "python-target")
+    launcher_parent = tmp_path / "venv" / "bin"
+    launcher_parent.mkdir(parents=True)
+    launcher = launcher_parent / "python"
+    launcher.symlink_to(target)
+
+    members = onboarding.starter_members(
+        root=REPO_ROOT,
+        python_executable=launcher,
+    )
+
+    wrapper = members["run-in-slurm.sh"][0].decode("utf-8")
+    assert str(launcher) in wrapper
+    assert str(target) not in wrapper
+
+
+def _write_launcher_config(
+    path: Path,
+    tmp_path: Path,
+    *,
+    memory: str = "8G",
+    exclusive: bool = False,
+    nodelist: str | None = None,
+) -> None:
+    request = tmp_path / "request.yaml"
+    runtime_profile = tmp_path / "runtime.tsv"
+    request.touch()
+    runtime_profile.touch()
+    launcher = {
+        "log_dir": tmp_path / "logs",
+        "request": request,
+        "workspace": tmp_path / "workspace",
+        "runtime_profile": runtime_profile,
+        "scratch_parent": tmp_path / "scratch",
+    }
+    path.write_text(
+        "schema_version: norad.local-pilot-launcher.v1\n"
+        "slurm:\n"
+        "  account: test-account\n"
+        "  partition: test-partition\n"
+        "  qos: test-qos\n"
+        "  cpus_per_task: 4\n"
+        f"  memory: {memory}\n"
+        "  time: '00:30:00'\n"
+        f"  exclusive: {'true' if exclusive else 'false'}\n"
+        f"  nodelist: {json.dumps(nodelist)}\n"
+        "paths:\n"
+        f"  log_dir: {json.dumps(str(launcher['log_dir']))}\n"
+        f"  request: {json.dumps(str(launcher['request']))}\n"
+        f"  workspace: {json.dumps(str(launcher['workspace']))}\n"
+        f"  runtime_profile: {json.dumps(str(launcher['runtime_profile']))}\n"
+        f"  scratch_parent: {json.dumps(str(launcher['scratch_parent']))}\n"
+        "modules:\n"
+        "  mode: none\n"
+        "  init: ''\n"
+        "  load: []\n",
+        encoding="utf-8",
+    )
+
+
+def _submit_with_launcher_config(
+    tmp_path: Path,
+    *,
+    execute: bool,
+    memory: str = "8G",
+    exclusive: bool = False,
+    nodelist: str | None = None,
+    ambient_execute: str = "1",
+) -> tuple[subprocess.CompletedProcess[str], list[str]]:
+    wrapper = _write_slurm_wrapper(tmp_path)
+    launcher_config = tmp_path / "selected-launcher.yaml"
+    _write_launcher_config(
+        launcher_config,
+        tmp_path,
+        memory=memory,
+        exclusive=exclusive,
+        nodelist=nodelist,
+    )
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    capture = tmp_path / "sbatch.args"
+    _executable(
+        bin_dir / "sbatch",
+        "#!/bin/bash\n"
+        "if [[ -n \"${SBATCH_EXCLUSIVE+x}${SBATCH_NODELIST+x}${SBATCH_MEM+x}\" || "
+        "-n \"${SBATCH_WAIT+x}${NORAD_EXECUTE+x}\" ]]; then exit 9; fi\n"
+        "printf '%s\\n' \"$@\" > \"$LAUNCHER_CAPTURE\"\n"
+        "printf '700123\\n'\n",
+    )
+    module_init = tmp_path / "modules.sh"
+    module_init.write_text("module() { :; }\n", encoding="utf-8")
+    (tmp_path / "checkout").mkdir()
+    environment = _wrapper_environment(tmp_path, Path(sys.executable), module_init)
+    environment.update(
+        {
+            "PATH": f"{bin_dir}:{environment['PATH']}",
+            "LAUNCHER_CAPTURE": str(capture),
+            "NORAD_EXECUTE": ambient_execute,
+            "SBATCH_EXCLUSIVE": "1",
+            "SBATCH_NODELIST": "ambient-node",
+            "SBATCH_MEM": "1T",
+            "SBATCH_WAIT": "1",
+        }
+    )
+    command = [str(wrapper), "--launcher-config", str(launcher_config)]
+    if execute:
+        command.append("--execute")
+
+    result = subprocess.run(
+        command,
+        text=True,
+        capture_output=True,
+        check=False,
+        env=environment,
+    )
+    arguments = (
+        capture.read_text(encoding="utf-8").splitlines()
+        if capture.exists()
+        else []
+    )
+    return result, arguments
+
+
+@pytest.mark.parametrize(
+    ("execute", "expected_execute"),
+    ((False, "0"), (True, "1")),
+)
+def test_slurm_wrapper_execute_is_an_explicit_cli_gate(
+    tmp_path: Path,
+    execute: bool,
+    expected_execute: str,
+) -> None:
+    result, arguments = _submit_with_launcher_config(
+        tmp_path,
+        execute=execute,
+        ambient_execute="1",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    export_arguments = [
+        argument for argument in arguments if argument.startswith("--export=")
+    ]
+    assert len(export_arguments) == 1
+    export_fields = export_arguments[0].removeprefix("--export=").split(",")
+    assert f"NORAD_EXECUTE={expected_execute}" in export_fields
+    unexpected_execute = "1" if expected_execute == "0" else "0"
+    assert f"NORAD_EXECUTE={unexpected_execute}" not in export_fields
+
+
+def test_submission_strips_ambient_sbatch_policy_variables(
+    tmp_path: Path,
+) -> None:
+    result, arguments = _submit_with_launcher_config(
+        tmp_path,
+        execute=False,
+        memory="site-default",
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "--exclusive" not in arguments
+    assert not any(argument.startswith("--nodelist=") for argument in arguments)
+    assert not any(argument.startswith("--mem=") for argument in arguments)
+
+
+@pytest.mark.parametrize(
+    ("exclusive", "nodelist", "expected_placement"),
+    (
+        (False, None, []),
+        (
+            True,
+            "compute-test[01-02]",
+            ["--exclusive", "--nodelist=compute-test[01-02]"],
+        ),
+    ),
+)
+def test_slurm_wrapper_uses_resolved_placement_settings(
+    tmp_path: Path,
+    exclusive: bool,
+    nodelist: str | None,
+    expected_placement: list[str],
+) -> None:
+    result, arguments = _submit_with_launcher_config(
+        tmp_path,
+        execute=False,
+        exclusive=exclusive,
+        nodelist=nodelist,
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "--account=test-account" in arguments
+    assert "--partition=test-partition" in arguments
+    assert "--qos=test-qos" in arguments
+    placement = [
+        argument
+        for argument in arguments
+        if argument == "--exclusive" or argument.startswith("--nodelist=")
+    ]
+    assert placement == expected_placement
+
+
 @pytest.mark.parametrize(
     ("memory", "expected_memory_argument"),
     (("8G", "--mem=8G"), ("site-default", None)),
@@ -476,16 +737,13 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
     memory: str,
     expected_memory_argument: str | None,
 ) -> None:
-    members = onboarding.starter_members(root=REPO_ROOT)
-    wrapper = tmp_path / "run-in-slurm.sh"
-    wrapper.write_bytes(members["run-in-slurm.sh"][0])
-    wrapper.chmod(0o755)
+    wrapper = _write_slurm_wrapper(tmp_path)
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     capture = tmp_path / "sbatch.args"
     sbatch = _executable(
         bin_dir / "sbatch",
-        "#!/bin/bash\nprintf '%s\\n' \"$@\" > \"$SBATCH_CAPTURE\"\nprintf '700123\\n'\n",
+        "#!/bin/bash\nprintf '%s\\n' \"$@\" > \"$LAUNCHER_CAPTURE\"\nprintf '700123\\n'\n",
     )
     assert sbatch.is_file()
     fake_python = _executable(tmp_path / "python", '#!/bin/sh\ntouch "$PYTHON_RAN"\n')
@@ -495,12 +753,12 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
     environment = _wrapper_environment(tmp_path, fake_python, module_init)
     environment["NORAD_SLURM_MEMORY"] = memory
     environment["PATH"] = f"{bin_dir}:/hostile/ambient:{environment['PATH']}"
-    environment["SBATCH_CAPTURE"] = str(capture)
+    environment["LAUNCHER_CAPTURE"] = str(capture)
     environment["PYTHON_RAN"] = str(tmp_path / "python-ran")
     environment["MODULE_INIT_RAN"] = str(tmp_path / "module-init-ran")
 
     result = subprocess.run(
-        [str(wrapper)],
+        [str(wrapper), "--memory", memory],
         text=True,
         capture_output=True,
         check=False,
@@ -517,9 +775,9 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
     assert not (tmp_path / "module-init-ran").exists()
     arguments = capture.read_text(encoding="utf-8").splitlines()
     assert "" not in arguments
-    assert "--account=viking-users" in arguments
-    assert "--partition=short" in arguments
-    assert "--qos=normal" in arguments
+    assert "--account=test-account" in arguments
+    assert "--partition=test-partition" in arguments
+    assert "--qos=test-qos" in arguments
     assert "--nodes=1" in arguments
     assert "--ntasks=1" in arguments
     memory_arguments = [
@@ -533,7 +791,8 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
     ]
     assert len(export_arguments) == 1
     export_fields = export_arguments[0].removeprefix("--export=").split(",")
-    assert export_fields[0] == f"PATH={fake_python.parent}:/usr/bin:/bin"
+    bound_python = Path(os.path.abspath(sys.executable))
+    assert export_fields[0] == f"PATH={bound_python.parent}:/usr/bin:/bin"
     assert str(bin_dir) not in export_fields[0]
     assert "/hostile/ambient" not in export_fields[0]
     assert "NORAD_SLURM_CPUS=4" in export_fields
@@ -541,29 +800,32 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
     assert f"NORAD_SUBMIT_USER={pwd.getpwuid(os.getuid()).pw_name}" in export_fields
     assert f"USER={pwd.getpwuid(os.getuid()).pw_name}" in export_fields
     assert f"LOGNAME={pwd.getpwuid(os.getuid()).pw_name}" in export_fields
-    assert "NORAD_MODULE_MODE=exact" in export_fields
+    assert "NORAD_MODULE_MODE=none" in export_fields
     assert f"NORAD_SCRATCH_PARENT={tmp_path / 'scratch'}" in export_fields
+    assert f"NORAD_PYTHON={bound_python}" in export_fields
     assert not any(field.startswith("NORAD_TOOL_THREADS=") for field in export_fields)
     assert not any(
         field.startswith("NORAD_SAMPLE_CONCURRENCY=") for field in export_fields
     )
-    assert str(wrapper) == arguments[-1]
+    assert arguments[-2:] == [str(wrapper), BATCH_MARKER]
 
 
 @pytest.mark.parametrize("python_path_kind", ("relative", "root", "colon"))
-def test_slurm_wrapper_rejects_unsafe_python_path_before_submission(
+def test_slurm_wrapper_ignores_ambient_python_selection_before_submission(
     tmp_path: Path,
     python_path_kind: str,
 ) -> None:
-    wrapper = tmp_path / "run-in-slurm.sh"
-    wrapper.write_bytes(
-        onboarding.starter_members(root=REPO_ROOT)["run-in-slurm.sh"][0]
-    )
-    wrapper.chmod(0o755)
+    wrapper = _write_slurm_wrapper(tmp_path)
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     submitted = tmp_path / "submitted"
-    _executable(bin_dir / "sbatch", '#!/bin/sh\ntouch "$SUBMITTED"\n')
+    capture = tmp_path / "sbatch.args"
+    _executable(
+        bin_dir / "sbatch",
+        "#!/bin/sh\ntouch \"$SUBMITTED\"\n"
+        "printf '%s\\n' \"$@\" > \"$LAUNCHER_CAPTURE\"\n"
+        "printf '700123\\n'\n",
+    )
     fake_python = _executable(tmp_path / "python")
     module_init = tmp_path / "modules.sh"
     module_init.write_text("module() { :; }\n", encoding="utf-8")
@@ -571,6 +833,9 @@ def test_slurm_wrapper_rejects_unsafe_python_path_before_submission(
     environment = _wrapper_environment(tmp_path, fake_python, module_init)
     environment["PATH"] = f"{bin_dir}:{environment['PATH']}"
     environment["SUBMITTED"] = str(submitted)
+    environment["LAUNCHER_CAPTURE"] = str(capture)
+    environment["NORAD_LAUNCHER_SOURCE_CHECKOUT"] = "/caller/source"
+    environment["NORAD_LAUNCHER_PYTHON"] = "/caller/python"
     environment["NORAD_PYTHON"] = {
         "relative": "relative/python",
         "root": "/python",
@@ -585,9 +850,15 @@ def test_slurm_wrapper_rejects_unsafe_python_path_before_submission(
         env=environment,
     )
 
-    assert result.returncode == 2
-    assert "NORAD_PYTHON" in result.stderr
-    assert not submitted.exists()
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert submitted.exists()
+    arguments = capture.read_text(encoding="utf-8").splitlines()
+    export_argument = next(
+        argument for argument in arguments if argument.startswith("--export=")
+    )
+    export_fields = export_argument.removeprefix("--export=").split(",")
+    assert f"NORAD_PYTHON={Path(os.path.abspath(sys.executable))}" in export_fields
+    assert f"NORAD_SOURCE_CHECKOUT={tmp_path / 'launcher-source'}" in export_fields
 
 
 @pytest.mark.parametrize("unsafe", ("bad,value", "bad\nvalue"))
@@ -595,27 +866,22 @@ def test_slurm_wrapper_rejects_unsafe_export_values(
     tmp_path: Path,
     unsafe: str,
 ) -> None:
-    wrapper = tmp_path / "run-in-slurm.sh"
-    wrapper.write_bytes(
-        onboarding.starter_members(root=REPO_ROOT)["run-in-slurm.sh"][0]
-    )
-    wrapper.chmod(0o755)
+    wrapper = _write_slurm_wrapper(tmp_path)
     fake_python = _executable(tmp_path / "python")
     module_init = tmp_path / "modules.sh"
     module_init.write_text("module() { :; }\n", encoding="utf-8")
     (tmp_path / "checkout").mkdir()
     environment = _wrapper_environment(tmp_path, fake_python, module_init)
-    environment["NORAD_REQUEST"] = unsafe
 
     result = subprocess.run(
-        [str(wrapper)],
+        [str(wrapper), "--request", unsafe],
         text=True,
         capture_output=True,
         check=False,
         env=environment,
     )
     assert result.returncode == 2
-    assert "newline or comma" in result.stderr
+    assert "unsafe" in result.stderr
 
 
 @pytest.mark.parametrize(
@@ -634,11 +900,7 @@ def test_slurm_wrapper_rejects_unbound_submit_identity_before_submission(
     name: str,
     value: str | None,
 ) -> None:
-    wrapper = tmp_path / "run-in-slurm.sh"
-    wrapper.write_bytes(
-        onboarding.starter_members(root=REPO_ROOT)["run-in-slurm.sh"][0]
-    )
-    wrapper.chmod(0o755)
+    wrapper = _write_slurm_wrapper(tmp_path)
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     submitted = tmp_path / "submitted"
@@ -668,23 +930,18 @@ def test_slurm_wrapper_rejects_unbound_submit_identity_before_submission(
 
 
 @pytest.mark.parametrize(
-    ("name", "value"),
+    ("option", "value"),
     (
-        ("NORAD_MODULE_MODE", None),
-        ("NORAD_MODULE_MODE", "excat"),
-        ("NORAD_SLURM_MEMORY", "site-defualt"),
+        ("--module-mode", "excat"),
+        ("--memory", "site-defualt"),
     ),
 )
-def test_slurm_wrapper_rejects_missing_or_invalid_portability_modes(
+def test_slurm_wrapper_rejects_invalid_portability_overrides(
     tmp_path: Path,
-    name: str,
-    value: str | None,
+    option: str,
+    value: str,
 ) -> None:
-    wrapper = tmp_path / "run-in-slurm.sh"
-    wrapper.write_bytes(
-        onboarding.starter_members(root=REPO_ROOT)["run-in-slurm.sh"][0]
-    )
-    wrapper.chmod(0o755)
+    wrapper = _write_slurm_wrapper(tmp_path)
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     submitted = tmp_path / "submitted"
@@ -696,13 +953,9 @@ def test_slurm_wrapper_rejects_missing_or_invalid_portability_modes(
     environment = _wrapper_environment(tmp_path, fake_python, module_init)
     environment["PATH"] = f"{bin_dir}:{environment['PATH']}"
     environment["SUBMITTED"] = str(submitted)
-    if value is None:
-        environment.pop(name)
-    else:
-        environment[name] = value
 
     result = subprocess.run(
-        [str(wrapper)],
+        [str(wrapper), option, value],
         text=True,
         capture_output=True,
         check=False,
@@ -718,13 +971,10 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
     tmp_path: Path,
     module_mode: str,
 ) -> None:
-    wrapper = tmp_path / "run-in-slurm.sh"
-    wrapper.write_bytes(
-        onboarding.starter_members(root=REPO_ROOT)["run-in-slurm.sh"][0]
-    )
-    wrapper.chmod(0o755)
+    wrapper = _write_slurm_wrapper(tmp_path)
     module_capture = tmp_path / "modules.log"
     python_capture = tmp_path / "python.log"
+    allocation_capture = tmp_path / "allocation.log"
     module_init = tmp_path / "modules.sh"
     module_init.write_text(
         'printf \'source\\n\' >> "$MODULE_CAPTURE"\n'
@@ -733,7 +983,12 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
     )
     fake_python = _executable(
         tmp_path / "python",
-        '#!/bin/bash\nprintf \'%s\\n\' "$*" >> "$PYTHON_CAPTURE"\n',
+        '#!/bin/bash\n'
+        'printf \'%s\\n\' "$*" >> "$PYTHON_CAPTURE"\n'
+        "printf '%s|%s|%s|%s\\n' "
+        '"$SLURM_JOB_ID" "$SLURM_CPUS_PER_TASK" '
+        '"$SLURM_MEM_PER_NODE" "${SLURM_MEM_PER_CPU-}" '
+        '>> "$ALLOCATION_CAPTURE"\n',
     )
     (tmp_path / "checkout").mkdir()
     environment = _wrapper_environment(tmp_path, fake_python, module_init)
@@ -742,8 +997,11 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
     environment.update(
         {
             "SLURM_JOB_ID": "700123",
+            "SLURM_CPUS_PER_TASK": "4",
+            "SLURM_MEM_PER_NODE": "8192",
             "MODULE_CAPTURE": str(module_capture),
             "PYTHON_CAPTURE": str(python_capture),
+            "ALLOCATION_CAPTURE": str(allocation_capture),
         }
     )
     if module_mode == "none":
@@ -756,7 +1014,7 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
         )
 
     result = subprocess.run(
-        [str(wrapper)],
+        [str(wrapper), BATCH_MARKER],
         text=True,
         capture_output=True,
         check=False,
@@ -787,14 +1045,55 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
     assert scratch_sentinel.read_text(encoding="utf-8") == "preserve\n"
     invocations = python_capture.read_text(encoding="utf-8").splitlines()
     assert len(invocations) == 3
+    assert allocation_capture.read_text(encoding="utf-8").splitlines() == [
+        "700123|4|8192|",
+        "700123|4|8192|",
+        "700123|4|8192|",
+    ]
     assert "-m norad validate local-pilot-request" in invocations[0]
     assert "-m norad doctor local-pilot" in invocations[1]
     assert "-m norad run" in invocations[2]
-    assert "--allocated-cores 4" in invocations[2]
+    assert "--allocated-cores" not in invocations[2]
     assert "--threads" not in invocations[2]
     assert "--workflow-cores" not in invocations[2]
     assert "--sample-concurrency" not in invocations[2]
     assert invocations[2].endswith("--execute")
+
+
+@pytest.mark.parametrize("arguments", ((), (BATCH_MARKER, "unexpected")))
+def test_slurm_wrapper_rejects_ambient_batch_mode_without_exact_marker(
+    tmp_path: Path,
+    arguments: tuple[str, ...],
+) -> None:
+    wrapper = _write_slurm_wrapper(tmp_path)
+    python_capture = tmp_path / "python.log"
+    fake_python = _executable(
+        tmp_path / "python",
+        '#!/bin/sh\ntouch "$PYTHON_CAPTURE"\n',
+    )
+    module_init = tmp_path / "modules.sh"
+    module_init.write_text("module() { :; }\n", encoding="utf-8")
+    (tmp_path / "checkout").mkdir()
+    environment = _wrapper_environment(tmp_path, fake_python, module_init)
+    environment.update(
+        {
+            "SLURM_JOB_ID": "700123",
+            "PYTHON_CAPTURE": str(python_capture),
+            "NORAD_EXECUTE": "1",
+        }
+    )
+
+    result = subprocess.run(
+        [str(wrapper), *arguments],
+        text=True,
+        capture_output=True,
+        check=False,
+        env=environment,
+    )
+
+    assert result.returncode == 2
+    assert "batch marker" in result.stderr
+    assert not python_capture.exists()
 
 
 @pytest.mark.parametrize(
@@ -811,11 +1110,7 @@ def test_slurm_wrapper_batch_mode_rejects_scheduler_identity_drift(
     name: str,
     value: str,
 ) -> None:
-    wrapper = tmp_path / "run-in-slurm.sh"
-    wrapper.write_bytes(
-        onboarding.starter_members(root=REPO_ROOT)["run-in-slurm.sh"][0]
-    )
-    wrapper.chmod(0o755)
+    wrapper = _write_slurm_wrapper(tmp_path)
     python_capture = tmp_path / "python.log"
     fake_python = _executable(
         tmp_path / "python",
@@ -836,7 +1131,7 @@ def test_slurm_wrapper_batch_mode_rejects_scheduler_identity_drift(
     )
 
     result = subprocess.run(
-        [str(wrapper)],
+        [str(wrapper), BATCH_MARKER],
         text=True,
         capture_output=True,
         check=False,

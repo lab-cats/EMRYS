@@ -12,7 +12,7 @@ VALIDATION_PYTHON_WORKERS ?= 2
 VALIDATION_ARGS ?=
 DEMO_REPORT_ROOT ?= $(CURDIR)/results/demo-report-jinja
 
-.PHONY: test documentation-check shell-test validation-shell-contracts validation-shell-slurm validation-wheel-smoke real-r-test r-restore r-check local-real-r-test report-test demo-report python-coverage-measure python-coverage-check python-coverage-baseline-update validation-guarded-r validation-static validate smoke lint all-checks
+.PHONY: test documentation-check shell-test validation-shell-contracts validation-shell-slurm validation-wheel-smoke real-r-test r-restore r-check local-real-r-test report-test demo-report dashboard python-coverage-measure python-coverage-check python-coverage-baseline-update validation-guarded-r validation-static validate smoke lint all-checks
 
 test:
 	"$(REPORT_PYTHON_BIN)" -m pytest
@@ -20,3 +20,4 @@ test:
 NORAD_MAKE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 include $(NORAD_MAKE_ROOT)/scripts/make_quality.mk
 include $(NORAD_MAKE_ROOT)/scripts/make_reporting.mk
+include $(NORAD_MAKE_ROOT)/scripts/make_operations.mk

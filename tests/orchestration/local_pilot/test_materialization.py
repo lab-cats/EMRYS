@@ -38,6 +38,10 @@ from norad.orchestration.local_pilot.materialization import (
     publish_attempt,
 )
 from norad.orchestration.local_pilot.normalization import normalize_request
+from norad.orchestration.local_pilot.resource_policy import (
+    AllocationCapacity,
+    load_resource_plan,
+)
 from tests.orchestration.local_pilot.fixture import build
 from tests.orchestration.local_pilot.fixtures.b5_doubles import with_owner_doubles
 
@@ -50,26 +54,41 @@ def _readiness(
     source_root: Path = REPO_ROOT,
     source_commit: str = "a" * 40,
     workflow_cores: int = 1,
-    sample_concurrency: int = 1,
+    stage_concurrency: dict[str, int] | None = None,
     step_threads: dict[str, int] | None = None,
-) -> tuple[doctor.DoctorResult, object, Path, Path]:
+) -> tuple[doctor.DoctorResult, object, object, Path, Path]:
     tmp_path.mkdir(parents=True, exist_ok=True)
     intake = tmp_path / "intake"
     intake.mkdir()
     request = build(intake)
-    request_document = yaml.safe_load(request.read_text(encoding="utf-8"))
-    request_document["resources"] = {
-        "workflow_cores": workflow_cores,
-        "sample_concurrency": sample_concurrency,
-        "step_threads": (
-            {"00a": 1, "01": 1, "02": 1, "06": 1, "08": 1}
-            if step_threads is None
-            else step_threads
-        ),
+    resource_path = request.parent / "norad.resources.yaml"
+    resource_document = yaml.safe_load(resource_path.read_text(encoding="utf-8"))
+    resource_document["workflow_cores"] = workflow_cores
+    resource_document["workflow_memory_mb"] = max(1024, workflow_cores * 1024)
+    resource_document["stage_concurrency"] = {
+        step_id: (
+            1 if stage_concurrency is None else stage_concurrency.get(step_id, 1)
+        )
+        for step_id in ("01", "02", "02b", "03", "04", "05", "06", "07")
     }
-    request.write_text(yaml.safe_dump(request_document, sort_keys=False), encoding="utf-8")
+    resource_document["step_threads"] = (
+        {"00a": 1, "01": 1, "02": 1, "06": 1, "08": 1}
+        if step_threads is None
+        else step_threads
+    )
+    resource_path.write_text(
+        yaml.safe_dump(resource_document, sort_keys=False), encoding="utf-8"
+    )
     normalized = normalize_request(
         request, source_root / "workflow/contracts/local_cmh_v2.json"
+    )
+    resources = load_resource_plan(
+        request,
+        AllocationCapacity(
+            cores=workflow_cores,
+            memory_mb=max(1024, workflow_cores * 1024),
+            source="test allocation",
+        ),
     )
     runtime = tmp_path / "runtime.tsv"
     runtime_bytes = b"fixed test runtime profile\n"
@@ -190,7 +209,7 @@ def _readiness(
         blockers=(),
         remediations=(),
     )
-    return readiness, normalized, request, workspace
+    return readiness, normalized, resources, request, workspace
 
 
 def _plan(
@@ -198,18 +217,19 @@ def _plan(
     *,
     step_threads: dict[str, int] | None = None,
     workflow_cores: int = 1,
-    sample_concurrency: int = 1,
+    stage_concurrency: dict[str, int] | None = None,
 ):
-    readiness, normalized, _request, workspace = _readiness(
+    readiness, normalized, resources, _request, workspace = _readiness(
         tmp_path,
         workflow_cores=workflow_cores,
-        sample_concurrency=sample_concurrency,
+        stage_concurrency=stage_concurrency,
         step_threads=step_threads,
     )
     return build_attempt_plan(
         normalized,
         readiness,
         workspace,
+        resources=resources,
         operation="execute",
         now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
         token="1" * 32,
@@ -337,7 +357,7 @@ def test_plan_requires_exactly_one_storage_qualification_binding(
     tmp_path: Path,
     storage_binding_count: int,
 ) -> None:
-    readiness, normalized, _request, workspace = _readiness(tmp_path)
+    readiness, normalized, resources, _request, workspace = _readiness(tmp_path)
     storage_binding = next(
         binding
         for binding in readiness.bindings
@@ -361,6 +381,7 @@ def test_plan_requires_exactly_one_storage_qualification_binding(
             normalized,
             malformed,
             workspace,
+            resources=resources,
             operation="execute",
             now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
             token="1" * 32,
@@ -400,12 +421,12 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
             assert "--threads" not in producer
 
 
-def test_plan_records_configurable_sample_concurrency(tmp_path: Path) -> None:
+def test_plan_records_stage_specific_concurrency(tmp_path: Path) -> None:
     plan = _plan(
         tmp_path,
         workflow_cores=4,
-        sample_concurrency=2,
-        step_threads={"00a": 4, "01": 4, "02": 2, "06": 2, "08": 4},
+        stage_concurrency={"01": 2, "02": 1, "06": 2},
+        step_threads={"00a": 4, "01": 2, "02": 2, "06": 2, "08": 4},
     )
     argv = plan.attempt_record["snakemake_argv"]
     config = json.loads(
@@ -413,18 +434,24 @@ def test_plan_records_configurable_sample_concurrency(tmp_path: Path) -> None:
     )
 
     assert plan.workflow_cores == 4
-    assert plan.sample_concurrency == 2
+    assert dict(plan.stage_concurrency)["01"] == 2
+    assert dict(plan.stage_concurrency)["02"] == 1
+    assert dict(plan.stage_concurrency)["06"] == 2
     assert plan.attempt_record["cores"] == 4
     assert argv[argv.index("--cores") + 1] == "4"
-    assert argv[argv.index("--resources") + 1] == "sample_slots=2"
-    assert config["step_threads"] == {
+    resource_args = argv[argv.index("--resources") + 1 : argv.index("--nocolor")]
+    assert "stage_01_slots=2" in resource_args
+    assert "stage_02_slots=1" in resource_args
+    assert "stage_06_slots=2" in resource_args
+    effective = config["resource_policy"]["effective"]
+    assert effective["step_threads"] == {
         "00a": 4,
-        "01": 4,
+        "01": 2,
         "02": 2,
         "06": 2,
         "08": 4,
     }
-    assert config["sample_concurrency"] == 2
+    assert effective["stage_concurrency"]["01"] == 2
 
 
 def test_r_owner_bootstrap_clears_hostile_selectors_and_exports_exact_library(
@@ -623,11 +650,12 @@ def test_lock_precedes_attempt_publication_failure_and_retains_evidence(
 def test_waiting_stale_resume_exits_before_attempt_materialization(
     tmp_path: Path,
 ) -> None:
-    readiness, normalized, _request, workspace = _readiness(tmp_path)
+    readiness, normalized, resources, _request, workspace = _readiness(tmp_path)
     initial = build_attempt_plan(
         normalized,
         readiness,
         workspace,
+        resources=resources,
         operation="execute",
         now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
         token="1" * 32,
@@ -663,6 +691,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
             normalized,
             readiness,
             workspace,
+            resources=resources,
             operation="resume",
             now=datetime(2026, 8, 12, 20, minute, tzinfo=UTC),
             token=token * 32,
@@ -769,7 +798,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
 
 
 def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
-    readiness, normalized, request, workspace = _readiness(tmp_path)
+    readiness, normalized, resources, request, workspace = _readiness(tmp_path)
     runtime = readiness.runtime_profile
     executed: list[object] = []
     ops = control.ControlOps(
@@ -780,6 +809,7 @@ def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
         transform_plan=lambda plan: plan,
         now=lambda: datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
         token=lambda: "2" * 32,
+        observe_allocation=lambda: resources.allocation,
     )
     arguments = argparse.Namespace(
         request=request,
@@ -795,6 +825,10 @@ def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
     assert status == 0
     assert "Owner jobs: 35" in captured.out
     assert "Reporting transactions: 3" in captured.out
+    assert "Reporting memory per transaction:" in captured.out
+    assert "  artifact_index: 1024 MiB" in captured.out
+    assert "  run_summary: 1024 MiB" in captured.out
+    assert "  html_report: 1024 MiB" in captured.out
     assert "Dry-run complete" in captured.out
     assert executed == []
     assert not workspace.exists()
@@ -905,7 +939,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     tmp_path: Path, capsys
 ) -> None:
     checkout, commit = _clean_checkout(tmp_path)
-    readiness, normalized, request, workspace = _readiness(
+    readiness, normalized, resources, request, workspace = _readiness(
         tmp_path / "case",
         source_root=checkout,
         source_commit=commit,
@@ -920,6 +954,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         transform_plan=with_owner_doubles,
         now=lambda: datetime.now(UTC),
         token=lambda: "3" * 32,
+        observe_allocation=lambda: resources.allocation,
     )
     run_arguments = argparse.Namespace(
         request=request,
@@ -945,6 +980,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         transform_plan=with_owner_doubles,
         now=lambda: datetime.now(UTC),
         token=lambda: "4" * 32,
+        observe_allocation=lambda: resources.allocation,
     )
     resume_arguments = argparse.Namespace(
         run_root=run_root,

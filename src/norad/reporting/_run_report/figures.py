@@ -14,11 +14,11 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from collections.abc import Iterator, Mapping, Sequence
-from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
 from typing import Any
 
+from .candidate_display import SelectedCandidateProjection
 from .inputs import _assert_snapshot
 from .models import (
     FIGURE_POLICY_VERSION,
@@ -38,6 +38,9 @@ _LANDSCAPE_X_BINS = 48
 _LANDSCAPE_Y_BINS = 36
 _CONCORDANCE_BINS = 40
 _PROFILE_DISPLAY_LIMIT = 8
+_PAIR_LEGEND_LIMIT = 4
+_PROFILE_MAX_HEIGHT_INCHES = 7.2
+_PROFILE_ROW_HEIGHT_INCHES = 1.6
 _LOCATION_FIELDS = (
     ("is_five_prime_utr", "5′ UTR"),
     ("is_cds", "CDS"),
@@ -271,10 +274,49 @@ def _tested_candidate(row: Mapping[str, str]) -> tuple[float, float, str] | None
     return depth, effect, group
 
 
-@dataclass(frozen=True)
-class _SelectedProfile:
-    rank_key: tuple[float, float, str]
-    row: Mapping[str, str]
+def _combined_occupancy(
+    grid: Mapping[str, Mapping[tuple[int, int], int]],
+) -> dict[tuple[int, int], int]:
+    """Return one complete tested-population background occupancy."""
+
+    combined: dict[tuple[int, int], int] = {}
+    for status in _STATUS_ORDER:
+        for cell, count in grid[status].items():
+            combined[cell] = combined.get(cell, 0) + count
+    return combined
+
+
+def _exact_significant_points(
+    table: ComputationalTable,
+    *,
+    x_field: str,
+    y_field: str,
+    x_positive: bool = False,
+    unit_interval: bool = False,
+) -> dict[str, tuple[tuple[float, float], ...]]:
+    """Read exact admitted coordinates for both significant call directions."""
+
+    _assert_snapshot(table.snapshot, f"scientific figure input {table.artifact_id!r}")
+    points: dict[str, list[tuple[float, float]]] = {
+        "significant_down": [],
+        "significant_up": [],
+    }
+    for row in _candidate_rows(table):
+        status = row["call_status"]
+        if row["test_status"] != "tested" or status not in points:
+            continue
+        try:
+            x_value = float(row[x_field])
+            y_value = float(row[y_field])
+        except ValueError as exc:
+            _fail(f"Admitted significant-candidate figure value is not numeric: {exc}")
+        if x_positive and x_value <= 0:
+            _fail(f"Admitted significant-candidate {x_field!r} must be positive")
+        if unit_interval and not (0 <= x_value <= 1 and 0 <= y_value <= 1):
+            _fail("Admitted significant-candidate condition mean is outside [0, 1]")
+        points[status].append((x_value, y_value))
+    _assert_snapshot(table.snapshot, f"scientific figure input {table.artifact_id!r}")
+    return {status: tuple(values) for status, values in points.items()}
 
 
 def _candidate_grid(
@@ -333,6 +375,12 @@ def _candidate_grid(
 def _candidate_figure(results: ComputationalResults) -> ScientificFigure:
     summary = _table_row(results.summary)
     grid, population_count, grid_x_limits = _candidate_grid(results.all_sites)
+    significant_points = _exact_significant_points(
+        results.all_sites,
+        x_field="mean_analysis_dp",
+        y_field="treatment_control_difference",
+        x_positive=True,
+    )
     expected_count = int(summary["successfully_tested_count"])
     if population_count != expected_count:
         _fail(
@@ -343,39 +391,63 @@ def _candidate_figure(results: ComputationalResults) -> ScientificFigure:
     effect_threshold = float(summary["absolute_difference_threshold"])
     significant_up_count = int(summary["significant_up_count"])
     significant_down_count = int(summary["significant_down_count"])
+    if (
+        len(significant_points["significant_up"]) != significant_up_count
+        or len(significant_points["significant_down"]) != significant_down_count
+    ):
+        _fail("Exact significant landscape points do not match the Step 09 summary")
     other_count = expected_count - significant_up_count - significant_down_count
+    control = summary["control_condition"]
+    treatment = summary["treatment_condition"]
+    background_grid = _combined_occupancy(grid)
+    plot_x_limits = grid_x_limits
+    if depth_threshold > 0:
+        plot_x_limits = (
+            min(grid_x_limits[0], depth_threshold / 1.25),
+            max(grid_x_limits[1], depth_threshold * 1.25),
+        )
+    depth_gate_note = (
+        f"mean depth > {depth_threshold:g}"
+        if depth_threshold > 0
+        else "mean-depth threshold = 0 (outside the log axis; no vertical line)"
+    )
+    depth_caption = (
+        "the declared mean-depth and absolute-difference gates are drawn"
+        if depth_threshold > 0
+        else (
+            "the absolute-difference gates are drawn; the declared zero mean-depth "
+            "threshold cannot be represented on the logarithmic axis"
+        )
+    )
 
     def draw(figure: Any) -> None:
         axis = figure.add_subplot(1, 1, 1)
         if population_count:
             log_min = math.log10(grid_x_limits[0])
             log_max = math.log10(grid_x_limits[1])
-            for status in _STATUS_ORDER:
-                label, color, marker = _STATUS_STYLE[status]
-                cells = sorted(grid[status])
-                x_values = [
+            cells = sorted(background_grid)
+            axis.scatter(
+                [
                     10
                     ** (log_min + ((x + 0.5) / _LANDSCAPE_X_BINS) * (log_max - log_min))
                     for x, _y in cells
-                ]
-                y_values = [
-                    -1.0 + ((y + 0.5) / _LANDSCAPE_Y_BINS) * 2.0 for _x, y in cells
-                ]
-                sizes = [
-                    18.0 + min(82.0, 14.0 * math.log2(grid[status][cell] + 1))
+                ],
+                [
+                    100.0 * (-1.0 + ((y + 0.5) / _LANDSCAPE_Y_BINS) * 2.0)
+                    for _x, y in cells
+                ],
+                s=[
+                    15.0 + min(72.0, 12.0 * math.log2(background_grid[cell] + 1))
                     for cell in cells
-                ]
-                axis.scatter(
-                    x_values,
-                    y_values,
-                    s=sizes,
-                    c=color,
-                    marker=marker,
-                    alpha=0.78,
-                    edgecolors="white",
-                    linewidths=0.35,
-                    label=label,
-                )
+                ],
+                c="#9ca3af",
+                marker="o",
+                alpha=0.52,
+                edgecolors="white",
+                linewidths=0.3,
+                label="All tested candidates (binned)",
+                zorder=2,
+            )
         else:
             axis.text(
                 0.5,
@@ -385,18 +457,62 @@ def _candidate_figure(results: ComputationalResults) -> ScientificFigure:
                 va="center",
                 transform=axis.transAxes,
             )
-            for status in _STATUS_ORDER:
-                label, color, marker = _STATUS_STYLE[status]
-                axis.scatter([], [], c=color, marker=marker, label=label)
+            axis.scatter(
+                [], [], c="#9ca3af", marker="o", label="All tested candidates (binned)"
+            )
+        for status in ("significant_down", "significant_up"):
+            _label, color, marker = _STATUS_STYLE[status]
+            points = significant_points[status]
+            condition_label = (
+                f"Significant: {treatment} < {control}"
+                if status == "significant_down"
+                else f"Significant: {treatment} > {control}"
+            )
+            axis.scatter(
+                [point[0] for point in points],
+                [100.0 * point[1] for point in points],
+                s=35.0,
+                c=color,
+                marker=marker,
+                alpha=0.95,
+                edgecolors="#111827",
+                linewidths=0.45,
+                label=condition_label,
+                zorder=4,
+            )
         axis.set_xscale("log")
-        axis.set_xlim(*grid_x_limits)
-        axis.set_ylim(-1.0, 1.0)
+        axis.set_xlim(*plot_x_limits)
+        axis.set_ylim(-100.0, 100.0)
         axis.axhline(0.0, color="#111827", linewidth=0.7)
+        if depth_threshold > 0:
+            axis.axvline(
+                depth_threshold,
+                color="#7c3aed",
+                linestyle="--",
+                linewidth=0.9,
+                label="Declared mean-depth threshold",
+                zorder=3,
+            )
+        axis.axhline(
+            100.0 * effect_threshold,
+            color="#d97706",
+            linestyle=":",
+            linewidth=0.9,
+            label="Declared ±effect threshold",
+            zorder=3,
+        )
+        axis.axhline(
+            -100.0 * effect_threshold,
+            color="#d97706",
+            linestyle=":",
+            linewidth=0.9,
+            zorder=3,
+        )
         axis.text(
             0.01,
             0.98,
-            f"Declared thresholds: mean depth {depth_threshold:g}; "
-            f"absolute difference {effect_threshold:g}",
+            f"Declared gates: {depth_gate_note}; "
+            f"|{treatment} − {control}| > {100.0 * effect_threshold:g} pp",
             ha="left",
             va="top",
             transform=axis.transAxes,
@@ -404,10 +520,12 @@ def _candidate_figure(results: ComputationalResults) -> ScientificFigure:
         )
         axis.set_title("Candidate editing landscape")
         axis.set_xlabel("Mean analysis depth (log scale)")
-        axis.set_ylabel("Treatment − control mean editing rate")
+        axis.set_ylabel(
+            f"{treatment} − {control} mean editing-rate difference (percentage points)"
+        )
         axis.grid(True, which="both", color="#d1d5db", linewidth=0.45, alpha=0.6)
-        axis.legend(loc="lower right", frameon=True)
-        figure.subplots_adjust(left=0.11, right=0.98, bottom=0.16, top=0.90)
+        axis.legend(loc="lower right", frameon=True, fontsize=7.0)
+        figure.subplots_adjust(left=0.13, right=0.98, bottom=0.17, top=0.90)
 
     svg, digest, size = _render_svg("candidate-landscape-figure", draw)
     summary_text = (
@@ -422,29 +540,42 @@ def _candidate_figure(results: ComputationalResults) -> ScientificFigure:
         status="available",
         data_uri=_data_uri(svg),
         alt_text=(
-            "Candidate landscape of mean analysis depth versus treatment-minus-"
-            "control editing-rate difference, grouped as significant up, "
-            "significant down, or other tested status. " + summary_text
+            f"Candidate landscape of mean analysis depth versus {treatment}-minus-"
+            f"{control} editing-rate difference in percentage points. A complete "
+            "binned tested-candidate background is overlaid with exact significant "
+            f"candidate coordinates; {depth_caption}. " + summary_text
         ),
         text_summary=summary_text,
         caption=(
-            "All successfully tested target candidates are included through a "
-            f"fixed {_LANDSCAPE_X_BINS} × {_LANDSCAPE_Y_BINS} occupancy grid; "
-            "capped log-scaled symbol area reflects candidates per occupied cell. "
-            "No random sampling or 250-row table-display limit is applied. Cell "
-            "centers approximate coordinates, so exact threshold lines are not "
-            "overlaid; the declared mean-depth and absolute-difference thresholds "
-            f"({depth_threshold:g} and {effect_threshold:g}) are shown in the plot."
+            "The gray occupancy grid includes every successfully tested candidate; "
+            "triangles mark exact threshold-passing coordinates. "
+            f"{depth_caption.capitalize()}. These geometric guides are not the "
+            "complete calling rule: Step 09 also applies the "
+            f"declared BH FDR ({summary['fdr_threshold']}), common-odds-ratio "
+            f"({summary['common_or_threshold']}), and background policy before a "
+            "candidate is called significant."
         ),
         input_roles=("all_sites", "summary"),
         mapping=(
-            "x=mean_analysis_dp log-grid center; "
-            "y=treatment_control_difference grid center; series={significant_up, "
-            "significant_down, other tested statuses}; marker area=cell count"
+            "background x=mean_analysis_dp log-grid center; background "
+            "y=100*treatment_control_difference grid center; background marker "
+            "area=cell count; exact overlays=(mean_analysis_dp, "
+            "100*treatment_control_difference) for significant_up/down; lines="
+            + (
+                "declared mean_dp_threshold and ±absolute_difference_threshold"
+                if depth_threshold > 0
+                else (
+                    "±absolute_difference_threshold only; zero mean_dp_threshold "
+                    "is outside the log axis"
+                )
+            )
         ),
         population=(
             f"{population_count} successfully tested target candidates; fixed "
-            f"{_LANDSCAPE_X_BINS}x{_LANDSCAPE_Y_BINS} occupancy grid; no sampling"
+            f"{_LANDSCAPE_X_BINS}x{_LANDSCAPE_Y_BINS} complete-population occupancy "
+            f"grid plus {significant_up_count + significant_down_count} exact significant "
+            f"{'overlay' if significant_up_count + significant_down_count == 1 else 'overlays'}; "
+            "no sampling"
         ),
         svg_sha256=digest,
         svg_size_bytes=size,
@@ -453,16 +584,27 @@ def _candidate_figure(results: ComputationalResults) -> ScientificFigure:
 
 
 def _mutation_figure(results: ComputationalResults) -> ScientificFigure:
+    summary = _table_row(results.summary)
     table = results.mutation_spectrum
     _assert_snapshot(table.snapshot, f"scientific figure input {table.artifact_id!r}")
     rows = [dict(zip(table.header, row, strict=True)) for row in table.display_rows]
     mutations = tuple(row["mutation_type"] for row in rows)
     counts = tuple(int(row["candidate_count"]) for row in rows)
+    target_change = summary["target_rna_change"]
+    if mutations.count(target_change) != 1:
+        _fail(
+            "Admitted mutation spectrum does not contain the declared target RNA "
+            f"change exactly once: {target_change!r}"
+        )
     _assert_snapshot(table.snapshot, f"scientific figure input {table.artifact_id!r}")
 
     def draw(figure: Any) -> None:
         axis = figure.add_subplot(1, 1, 1)
-        bars = axis.bar(mutations, counts, color="#2563eb", width=0.72)
+        colors = tuple(
+            "#dc2626" if mutation == target_change else "#94a3b8"
+            for mutation in mutations
+        )
+        bars = axis.bar(mutations, counts, color=colors, width=0.72)
         for bar, count in zip(bars, counts, strict=True):
             axis.text(
                 bar.get_x() + bar.get_width() / 2,
@@ -472,11 +614,18 @@ def _mutation_figure(results: ComputationalResults) -> ScientificFigure:
                 va="bottom",
                 fontsize=7.5,
             )
+        for tick, mutation in zip(axis.get_xticklabels(), mutations, strict=True):
+            if mutation == target_change:
+                tick.set_color("#b91c1c")
+                tick.set_fontweight("bold")
+        axis.bar([], [], color="#dc2626", label=f"Declared target: {target_change}")
+        axis.bar([], [], color="#94a3b8", label="Other RNA changes")
         axis.set_title("Candidate mutation spectrum")
         axis.set_xlabel("RNA reference > alternate")
         axis.set_ylabel("Candidate count")
         axis.grid(True, axis="y", color="#d1d5db", linewidth=0.45, alpha=0.7)
         axis.set_axisbelow(True)
+        axis.legend(loc="upper right", frameon=True)
         figure.subplots_adjust(left=0.10, right=0.98, bottom=0.16, top=0.90)
 
     svg, digest, size = _render_svg("mutation-spectrum-figure", draw)
@@ -485,7 +634,8 @@ def _mutation_figure(results: ComputationalResults) -> ScientificFigure:
     class_clause = "class has" if nonzero == 1 else "classes have"
     summary_text = (
         f"{total} candidates across 12 canonical single-nucleotide changes; "
-        f"{nonzero} mutation {class_clause} nonzero counts."
+        f"{nonzero} mutation {class_clause} nonzero counts. The declared target "
+        f"RNA change is {target_change}."
     )
     return ScientificFigure(
         figure_id="mutation-spectrum-figure",
@@ -500,10 +650,15 @@ def _mutation_figure(results: ComputationalResults) -> ScientificFigure:
         caption=(
             "Counts are read directly from the admitted Step 09 mutation-spectrum "
             "TSV in canonical order; reporting does not recompute them from the "
-            "candidate table or consume the existing PDF diagnostic."
+            "candidate table or consume the existing PDF diagnostic. The declared "
+            "target RNA change is highlighted. This is candidate-class composition; "
+            "it does not establish PUM specificity or biological editing validity."
         ),
-        input_roles=("mutation_spectrum",),
-        mapping="x=mutation_type (canonical order); y=candidate_count",
+        input_roles=("mutation_spectrum", "summary"),
+        mapping=(
+            "x=mutation_type (canonical order); y=candidate_count; "
+            "red=summary target_rna_change; grey=other RNA changes"
+        ),
         population=f"All {len(rows)} canonical mutation classes; {total} candidates",
         svg_sha256=digest,
         svg_size_bytes=size,
@@ -542,42 +697,74 @@ def _condition_grid(
 def _condition_concordance_figure(results: ComputationalResults) -> ScientificFigure:
     summary = _table_row(results.summary)
     grid, population_count = _condition_grid(results.all_sites)
+    significant_points = _exact_significant_points(
+        results.all_sites,
+        x_field="mean_control_af",
+        y_field="mean_treatment_af",
+        unit_interval=True,
+    )
     expected_count = int(summary["successfully_tested_count"])
     if population_count != expected_count:
         _fail(
             "Condition-concordance population does not match the admitted Step 09 "
             f"summary: observed {population_count}; expected {expected_count}"
         )
+    significant_up_count = int(summary["significant_up_count"])
+    significant_down_count = int(summary["significant_down_count"])
+    if (
+        len(significant_points["significant_up"]) != significant_up_count
+        or len(significant_points["significant_down"]) != significant_down_count
+    ):
+        _fail("Exact significant concordance points do not match the Step 09 summary")
+    background_grid = _combined_occupancy(grid)
+    control = summary["control_condition"]
+    treatment = summary["treatment_condition"]
 
     def draw(figure: Any) -> None:
         axis = figure.add_subplot(1, 1, 1)
         axis.plot(
-            (0.0, 1.0),
-            (0.0, 1.0),
+            (0.0, 100.0),
+            (0.0, 100.0),
             color="#111827",
             linestyle="--",
             linewidth=0.8,
-            label="Equal condition means",
+            label=f"Equal {control} and {treatment} means",
         )
-        for status in _STATUS_ORDER:
-            label, color, marker = _STATUS_STYLE[status]
-            cells = sorted(grid[status])
-            x_values = [(x + 0.5) / _CONCORDANCE_BINS for x, _y in cells]
-            y_values = [(y + 0.5) / _CONCORDANCE_BINS for _x, y in cells]
-            sizes = [
-                18.0 + min(82.0, 14.0 * math.log2(grid[status][cell] + 1))
+        cells = sorted(background_grid)
+        axis.scatter(
+            [100.0 * (x + 0.5) / _CONCORDANCE_BINS for x, _y in cells],
+            [100.0 * (y + 0.5) / _CONCORDANCE_BINS for _x, y in cells],
+            s=[
+                15.0 + min(72.0, 12.0 * math.log2(background_grid[cell] + 1))
                 for cell in cells
-            ]
+            ],
+            c="#9ca3af",
+            marker="o",
+            alpha=0.52,
+            edgecolors="white",
+            linewidths=0.3,
+            label="All tested candidates (binned)",
+            zorder=2,
+        )
+        for status in ("significant_down", "significant_up"):
+            _label, color, marker = _STATUS_STYLE[status]
+            points = significant_points[status]
+            condition_label = (
+                f"Significant: {treatment} < {control}"
+                if status == "significant_down"
+                else f"Significant: {treatment} > {control}"
+            )
             axis.scatter(
-                x_values,
-                y_values,
-                s=sizes,
+                [100.0 * point[0] for point in points],
+                [100.0 * point[1] for point in points],
+                s=35.0,
                 c=color,
                 marker=marker,
-                alpha=0.78,
-                edgecolors="white",
-                linewidths=0.35,
-                label=label,
+                alpha=0.95,
+                edgecolors="#111827",
+                linewidths=0.45,
+                label=condition_label,
+                zorder=4,
             )
         if not population_count:
             axis.text(
@@ -588,12 +775,12 @@ def _condition_concordance_figure(results: ComputationalResults) -> ScientificFi
                 va="center",
                 transform=axis.transAxes,
             )
-        axis.set_xlim(0.0, 1.0)
-        axis.set_ylim(0.0, 1.0)
+        axis.set_xlim(0.0, 100.0)
+        axis.set_ylim(0.0, 100.0)
         axis.set_aspect("equal", adjustable="box")
         axis.set_title("Condition editing-rate concordance")
-        axis.set_xlabel(f"{summary['control_condition']} mean editing rate")
-        axis.set_ylabel(f"{summary['treatment_condition']} mean editing rate")
+        axis.set_xlabel(f"{control} mean editing rate (%)")
+        axis.set_ylabel(f"{treatment} mean editing rate (%)")
         axis.grid(True, color="#d1d5db", linewidth=0.45, alpha=0.6)
         axis.legend(loc="lower right", frameon=True)
         figure.subplots_adjust(left=0.19, right=0.93, bottom=0.15, top=0.90)
@@ -610,8 +797,10 @@ def _condition_concordance_figure(results: ComputationalResults) -> ScientificFi
         status="available",
         data_uri=_data_uri(svg),
         alt_text=(
-            "Scatter plot of Step 09 mean control editing rate versus mean "
-            "treatment editing rate with an equality diagonal. " + summary_text
+            f"Scatter plot of Step 09 mean {control} editing rate versus mean "
+            f"{treatment} editing rate in percent, with an equality diagonal, a "
+            "complete binned tested-candidate background, and exact significant "
+            "candidate overlays. " + summary_text
         ),
         text_summary=summary_text,
         caption=(
@@ -620,42 +809,29 @@ def _condition_concordance_figure(results: ComputationalResults) -> ScientificFi
             "The axes use Step 09's unweighted means across manifest-defined "
             "replicates; reporting does not pool allele and depth counts. Cell "
             "centers approximate coordinates and capped log-scaled symbol area "
-            "reflects candidates per occupied cell."
+            "reflects candidates per occupied cell. Significant candidates are "
+            "overlaid at their exact admitted condition means; points above the "
+            f"equality diagonal have higher mean editing in {treatment}, and points "
+            f"below it have higher mean editing in {control}."
         ),
         input_roles=("all_sites", "summary"),
         mapping=(
-            "x=mean_control_af grid center; y=mean_treatment_af grid center; "
-            "series={significant_up, significant_down, other tested statuses}; "
-            "marker area=cell count"
+            "background x=100*mean_control_af grid center; background "
+            "y=100*mean_treatment_af grid center; background marker area=cell "
+            "count; exact overlays=(100*mean_control_af, 100*mean_treatment_af) "
+            "for significant_up/down; diagonal=equal condition means"
         ),
         population=(
             f"{population_count} successfully tested target candidates; fixed "
-            f"{_CONCORDANCE_BINS}x{_CONCORDANCE_BINS} occupancy grid; no sampling"
+            f"{_CONCORDANCE_BINS}x{_CONCORDANCE_BINS} complete-population occupancy "
+            f"grid plus {significant_up_count + significant_down_count} exact significant "
+            f"{'overlay' if significant_up_count + significant_down_count == 1 else 'overlays'}; "
+            "no sampling"
         ),
         svg_sha256=digest,
         svg_size_bytes=size,
         unavailable_reason=None,
     )
-
-
-def _selected_profiles(table: ComputationalTable) -> tuple[_SelectedProfile, ...]:
-    _assert_snapshot(table.snapshot, f"scientific figure input {table.artifact_id!r}")
-    selected: list[_SelectedProfile] = []
-    for row in _candidate_rows(table):
-        try:
-            fdr = float(row["cmh_fdr_bh"])
-            effect = float(row["treatment_control_difference"])
-        except ValueError as exc:
-            _fail(f"Admitted significant-candidate ranking value is not numeric: {exc}")
-        profile = _SelectedProfile(
-            rank_key=(fdr, -abs(effect), row["candidate_id"]),
-            row=dict(row),
-        )
-        selected.append(profile)
-        selected.sort(key=lambda value: value.rank_key)
-        del selected[_PROFILE_DISPLAY_LIMIT:]
-    _assert_snapshot(table.snapshot, f"scientific figure input {table.artifact_id!r}")
-    return tuple(selected)
 
 
 def _short_candidate_id(value: str, *, limit: int = 34) -> str:
@@ -664,25 +840,15 @@ def _short_candidate_id(value: str, *, limit: int = 34) -> str:
     return value[: limit - 1] + "…"
 
 
-def _paired_sample_profile_figure(results: ComputationalResults) -> ScientificFigure:
-    profiles = _selected_profiles(results.significant_sites)
-    design = results.sample_manifest
-    pair_count = len(design.pairs)
-
-    def sample_af(row: Mapping[str, str], sample_id: str) -> float:
-        value = row[f"AF__{sample_id}"]
-        try:
-            parsed = float(value)
-        except ValueError:
-            _fail(
-                "Admitted significant candidate lacks a numeric editing rate for "
-                f"paired sample {sample_id!r}"
-            )
-        if not 0 <= parsed <= 1:
-            _fail(
-                f"Admitted significant-candidate AF for {sample_id!r} is outside [0, 1]"
-            )
-        return parsed
+def _paired_sample_profile_figure(
+    candidate_display: SelectedCandidateProjection,
+) -> ScientificFigure:
+    profiles = candidate_display.candidates
+    if len(profiles) > _PROFILE_DISPLAY_LIMIT:
+        _fail("Shared candidate display exceeds the paired-profile display limit")
+    pair_count = len(profiles[0].pairs) if profiles else 0
+    if any(len(candidate.pairs) != pair_count for candidate in profiles):
+        _fail("Shared candidate display changes its manifest pair roster")
 
     def draw(figure: Any) -> None:
         if not profiles:
@@ -699,15 +865,18 @@ def _paired_sample_profile_figure(results: ComputationalResults) -> ScientificFi
             return
         columns = 1 if len(profiles) == 1 else 2
         row_count = math.ceil(len(profiles) / columns)
-        for profile_index, profile in enumerate(profiles, start=1):
+        for profile_index, candidate in enumerate(profiles, start=1):
             axis = figure.add_subplot(row_count, columns, profile_index)
-            row = profile.row
-            for pair_index, pair in enumerate(design.pairs):
-                control_af = sample_af(row, pair.control_sample_id)
-                treatment_af = sample_af(row, pair.treatment_sample_id)
+            complete_pair_count = 0
+            for pair_index, pair in enumerate(candidate.pairs):
+                control_af = pair.control.allele_fraction
+                treatment_af = pair.treatment.allele_fraction
+                if control_af is None or treatment_af is None:
+                    continue
+                complete_pair_count += 1
                 axis.plot(
                     (0.0, 1.0),
-                    (control_af, treatment_af),
+                    (100.0 * float(control_af), 100.0 * float(treatment_af)),
                     marker="o",
                     markersize=3.2,
                     linewidth=0.9,
@@ -715,35 +884,61 @@ def _paired_sample_profile_figure(results: ComputationalResults) -> ScientificFi
                     color=_PAIR_COLORS[pair_index % len(_PAIR_COLORS)],
                     label=pair.replicate,
                 )
-            axis.plot(
-                (0.0, 1.0),
-                (
-                    float(row["mean_control_af"]),
-                    float(row["mean_treatment_af"]),
-                ),
-                marker="D",
-                markersize=4.0,
-                linewidth=1.8,
-                color="#111827",
-                label="Step 09 mean",
-            )
+            if (
+                candidate.mean_control_af is not None
+                and candidate.mean_treatment_af is not None
+            ):
+                axis.plot(
+                    (0.0, 1.0),
+                    (
+                        100.0 * float(candidate.mean_control_af),
+                        100.0 * float(candidate.mean_treatment_af),
+                    ),
+                    marker="D",
+                    markersize=4.0,
+                    linewidth=1.8,
+                    color="#111827",
+                    label="Step 09 mean",
+                )
             axis.set_xlim(-0.12, 1.12)
-            axis.set_ylim(0.0, 1.0)
+            axis.set_ylim(0.0, 100.0)
             axis.set_xticks((0.0, 1.0))
             axis.set_xticklabels(
-                (design.control_condition, design.treatment_condition),
+                (
+                    _short_candidate_id(
+                        candidate_display.control_condition,
+                        limit=18,
+                    ),
+                    _short_candidate_id(
+                        candidate_display.treatment_condition,
+                        limit=18,
+                    ),
+                ),
                 fontsize=7,
             )
             axis.set_title(
-                f"{profile_index}. {_short_candidate_id(row['candidate_id'])}",
+                f"{candidate.display_rank}. "
+                f"{_short_candidate_id(candidate.candidate_id)}",
                 fontsize=8.5,
                 loc="left",
             )
             axis.grid(True, axis="y", color="#d1d5db", linewidth=0.4, alpha=0.6)
             if (profile_index - 1) % columns == 0:
-                axis.set_ylabel("Editing rate", fontsize=7.5)
+                axis.set_ylabel("Editing rate (%)", fontsize=7.5)
             if profile_index == 1:
-                axis.legend(loc="best", fontsize=5.5, frameon=True)
+                if complete_pair_count <= _PAIR_LEGEND_LIMIT:
+                    axis.legend(loc="best", fontsize=5.5, frameon=True)
+                else:
+                    axis.text(
+                        0.02,
+                        0.98,
+                        f"{complete_pair_count} manifest pairs; exact values in "
+                        "candidate records",
+                        ha="left",
+                        va="top",
+                        transform=axis.transAxes,
+                        fontsize=5.8,
+                    )
         figure.suptitle(
             "Selected significant-candidate paired sample profiles",
             fontsize=11,
@@ -753,7 +948,7 @@ def _paired_sample_profile_figure(results: ComputationalResults) -> ScientificFi
             right=0.98,
             bottom=0.07,
             top=0.93,
-            hspace=0.72,
+            hspace=0.62,
             wspace=0.26,
         )
 
@@ -761,17 +956,28 @@ def _paired_sample_profile_figure(results: ComputationalResults) -> ScientificFi
     svg, digest, size = _render_svg(
         "paired-sample-profile-figure",
         draw,
-        figsize=(8.0, max(4.8, 2.15 * row_count + 0.8)),
+        figsize=(
+            8.0,
+            min(
+                _PROFILE_MAX_HEIGHT_INCHES,
+                max(4.8, _PROFILE_ROW_HEIGHT_INCHES * row_count + 0.8),
+            ),
+        ),
     )
-    selected_ids = tuple(profile.row["candidate_id"] for profile in profiles)
+    selected_ids = tuple(candidate.candidate_id for candidate in profiles)
     pair_mapping = "; ".join(
-        f"{pair.replicate}: {pair.control_sample_id} → {pair.treatment_sample_id}"
-        for pair in design.pairs
+        f"{pair.replicate}: {pair.control.sample_id} → {pair.treatment.sample_id}"
+        for pair in (profiles[0].pairs if profiles else ())
+    )
+    selection_description = (
+        "the admitted Step 10 display order"
+        if candidate_display.selection_source == "step10_display_rank"
+        else "the fixed Step 09 presentation rule"
     )
     summary_text = (
-        f"{len(profiles)} of {results.significant_sites.row_count} significant "
-        f"candidates are displayed across {pair_count} manifest-defined replicate "
-        "pairs."
+        f"{len(profiles)} of {candidate_display.significant_candidate_count} "
+        f"significant {'candidate is' if len(profiles) == 1 else 'candidates are'} "
+        f"displayed across {pair_count} manifest-defined replicate pairs."
     )
     return ScientificFigure(
         figure_id="paired-sample-profile-figure",
@@ -784,23 +990,34 @@ def _paired_sample_profile_figure(results: ComputationalResults) -> ScientificFi
         ),
         text_summary=summary_text,
         caption=(
-            f"Display-only selection uses at most {_PROFILE_DISPLAY_LIMIT} candidates "
-            "ordered by CMH BH FDR ascending, absolute treatment-minus-control "
-            "difference descending, then candidate ID. It does not create a new "
-            "scientific ranking. Colored lines join the exact manifest-defined "
+            f"The shared display-only roster uses at most {_PROFILE_DISPLAY_LIMIT} "
+            f"candidates selected by {selection_description}; this figure performs "
+            "no selection or reranking. Colored lines join the exact manifest-defined "
             f"sample pairs ({pair_mapping}); black diamonds join Step 09's "
             "unweighted condition means. Selected IDs: "
             + (", ".join(selected_ids) if selected_ids else "none")
             + "."
         ),
-        input_roles=("significant_sites", "summary", "sample_manifest"),
+        input_roles=(
+            (
+                "significant_sites",
+                "summary",
+                "sample_manifest",
+                "candidate_context",
+                "receipt",
+            )
+            if candidate_display.selection_source == "step10_display_rank"
+            else ("significant_sites", "summary", "sample_manifest")
+        ),
         mapping=(
-            "x={control_condition,treatment_condition}; y=AF__sample; "
-            "line=manifest replicate pair; black diamonds=Step 09 condition means"
+            "x={control_condition,treatment_condition}; y=100*AF__sample; "
+            "line=manifest replicate pair; black diamonds=Step 09 condition means; "
+            f"candidate order={candidate_display.selection_source}"
         ),
         population=(
-            f"Top {len(profiles)} of {results.significant_sites.row_count} significant "
-            "candidates by the fixed display rule; all manifest-defined analysis pairs"
+            f"Shared ordered roster of {len(profiles)} of "
+            f"{candidate_display.significant_candidate_count} significant candidates "
+            f"from {selection_description}; all manifest-defined pairs"
         ),
         svg_sha256=digest,
         svg_size_bytes=size,
@@ -812,13 +1029,17 @@ def _location_memberships(
     table: ComputationalTable,
 ) -> tuple[tuple[int, ...], int]:
     _assert_snapshot(table.snapshot, f"scientific figure input {table.artifact_id!r}")
-    counts = [0] * len(_LOCATION_FIELDS)
+    counts = [0] * (len(_LOCATION_FIELDS) + 1)
     population_count = 0
     for row in _candidate_rows(table):
         population_count += 1
+        recorded_overlap = False
         for index, (field, _label) in enumerate(_LOCATION_FIELDS):
             if row[field] == "TRUE":
                 counts[index] += 1
+                recorded_overlap = True
+        if not recorded_overlap:
+            counts[-1] += 1
     _assert_snapshot(table.snapshot, f"scientific figure input {table.artifact_id!r}")
     return tuple(counts), population_count
 
@@ -838,12 +1059,16 @@ def _location_membership_figure(results: ComputationalResults) -> ScientificFigu
         (100.0 * count / population_count) if population_count else 0.0
         for count in counts
     )
-    labels = tuple(label for _field, label in _LOCATION_FIELDS)
+    labels = (
+        *tuple(label for _field, label in _LOCATION_FIELDS),
+        "No recorded overlap",
+    )
 
     def draw(figure: Any) -> None:
         axis = figure.add_subplot(1, 1, 1)
         positions = tuple(range(len(labels)))
-        bars = axis.barh(positions, percentages, color="#2563eb", height=0.66)
+        colors = (*("#2563eb" for _ in _LOCATION_FIELDS), "#64748b")
+        bars = axis.barh(positions, percentages, color=colors, height=0.66)
         axis.set_yticks(positions)
         axis.set_yticklabels(labels)
         axis.invert_yaxis()
@@ -857,7 +1082,9 @@ def _location_membership_figure(results: ComputationalResults) -> ScientificFigu
             axis.text(
                 min(bar.get_width() + 1.2, 97.0) if population_count else 0.02,
                 bar.get_y() + bar.get_height() / 2,
-                f"{count} ({percentage:.1f}%)",
+                f"{count}/{population_count} ({percentage:.1f}%)"
+                if population_count
+                else "0/0 (0.0%)",
                 ha="left" if percentage < 91 else "right",
                 va="center",
                 fontsize=8,
@@ -872,16 +1099,22 @@ def _location_membership_figure(results: ComputationalResults) -> ScientificFigu
                 transform=axis.transAxes,
             )
         axis.set_title("Recorded annotation-overlap memberships")
-        axis.set_xlabel("Percentage of significant candidates")
+        axis.set_xlabel(
+            "Percentage of significant candidates (shared denominator; memberships nonexclusive)"
+        )
         axis.grid(True, axis="x", color="#d1d5db", linewidth=0.45, alpha=0.7)
         axis.set_axisbelow(True)
         figure.subplots_adjust(left=0.18, right=0.96, bottom=0.16, top=0.90)
 
     svg, digest, size = _render_svg("location-membership-figure", draw)
     summary_text = (
-        f"{population_count} significant candidates contribute independently to "
+        f"Among {population_count} significant candidates, the independently "
+        "recorded memberships are "
         + ", ".join(
-            f"{label}={count}" for label, count in zip(labels, counts, strict=True)
+            f"{label}={count} ({percentage:.1f}%)"
+            for label, count, percentage in zip(
+                labels, counts, percentages, strict=True
+            )
         )
         + "."
     )
@@ -892,7 +1125,9 @@ def _location_membership_figure(results: ComputationalResults) -> ScientificFigu
         data_uri=_data_uri(svg),
         alt_text=(
             "Horizontal bars of the recorded five-prime UTR, CDS, three-prime "
-            "UTR, exon, and intron overlap memberships. " + summary_text
+            "UTR, exon, and intron overlap memberships plus an explicit no-"
+            "recorded-overlap category. Each label gives count, common denominator, "
+            "and percentage. " + summary_text
         ),
         text_summary=summary_text,
         caption=(
@@ -901,13 +1136,15 @@ def _location_membership_figure(results: ComputationalResults) -> ScientificFigu
             "independent and nonexclusive: CDS and UTR memberships can also be "
             "exonic, and transcript isoforms can give one candidate several "
             "memberships. Counts and percentages therefore need not sum to the "
-            "candidate population or 100%. Reporting does not reannotate, infer "
-            "an exclusive region, or rename an all-false record as intergenic."
+            "candidate population or 100%. ‘No recorded overlap’ means all five "
+            "admitted flags are false; it is not renamed or inferred as intergenic. "
+            "Reporting does not reannotate or infer an exclusive region."
         ),
         input_roles=("significant_sites", "summary"),
         mapping=(
             "y={is_five_prime_utr,is_cds,is_three_prime_utr,is_exon,is_intron}; "
-            "x=independent membership percentage among significant candidates"
+            "additional y=no recorded overlap when all five flags are FALSE; "
+            "x=count / all significant candidates * 100 for each displayed category"
         ),
         population=f"All {population_count} significant Step 09 candidates; no sampling",
         svg_sha256=digest,
@@ -922,29 +1159,31 @@ def _unavailable_figures(reason: str) -> tuple[ScientificFigure, ...]:
             "candidate-landscape-figure",
             "Candidate editing landscape",
             ("all_sites", "summary"),
-            "x=mean_analysis_dp log-grid center; "
-            "y=treatment_control_difference grid center; series={significant_up, "
-            "significant_down, other tested statuses}; marker area=cell count",
+            "background x=mean_analysis_dp log-grid center; background "
+            "y=100*treatment_control_difference grid center; background marker "
+            "area=cell count; exact significant_up/down overlays; lines=declared "
+            "mean_dp_threshold and ±absolute_difference_threshold",
         ),
         (
             "mutation-spectrum-figure",
             "Candidate mutation spectrum",
-            ("mutation_spectrum",),
-            "x=mutation_type (canonical order); y=candidate_count",
+            ("mutation_spectrum", "summary"),
+            "x=mutation_type (canonical order); y=candidate_count; "
+            "color=declared target_rna_change versus other RNA changes",
         ),
         (
             "condition-concordance-figure",
             "Condition editing-rate concordance",
             ("all_sites", "summary"),
-            "x=mean_control_af grid center; y=mean_treatment_af grid center; "
-            "series={significant_up, significant_down, other tested statuses}; "
-            "marker area=cell count",
+            "background x=100*mean_control_af grid center; background "
+            "y=100*mean_treatment_af grid center; background marker area=cell "
+            "count; exact significant_up/down overlays; diagonal=equal means",
         ),
         (
             "paired-sample-profile-figure",
             "Selected candidate per-sample profiles",
             ("significant_sites", "summary", "sample_manifest"),
-            "x={control_condition,treatment_condition}; y=AF__sample; "
+            "x={control_condition,treatment_condition}; y=100*AF__sample; "
             "line=manifest replicate pair; black diamonds=Step 09 condition means",
         ),
         (
@@ -952,7 +1191,8 @@ def _unavailable_figures(reason: str) -> tuple[ScientificFigure, ...]:
             "Candidate location memberships",
             ("significant_sites", "summary"),
             "y={is_five_prime_utr,is_cds,is_three_prime_utr,is_exon,is_intron}; "
-            "x=independent membership percentage among significant candidates",
+            "additional y=no recorded overlap when all five flags are FALSE; "
+            "x=count/all significant candidates*100 per category",
         ),
     )
     return tuple(
@@ -983,6 +1223,7 @@ def build_scientific_figures(
     unavailable_reason: str | None,
     scientific_context_results: ScientificContextResults | None = None,
     scientific_context_unavailable_reason: str | None = None,
+    candidate_display: SelectedCandidateProjection | None = None,
 ) -> tuple[ScientificFigure, ...]:
     """Return the fixed ordered eight-figure scientific roster."""
 
@@ -996,12 +1237,18 @@ def build_scientific_figures(
     else:
         if unavailable_reason is not None:
             _fail("Computational results and an unavailable reason cannot coexist")
+        if candidate_display is None:
+            _fail(
+                "Admitted computational results require the shared selected-"
+                "candidate projection for the paired-profile and selected-context "
+                "figures"
+            )
         try:
             current_figures = (
                 _candidate_figure(results),
                 _mutation_figure(results),
                 _condition_concordance_figure(results),
-                _paired_sample_profile_figure(results),
+                _paired_sample_profile_figure(candidate_display),
                 _location_membership_figure(results),
             )
         except ReportRenderError:
@@ -1011,7 +1258,7 @@ def build_scientific_figures(
     context_figures = build_scientific_context_figures(
         scientific_context_results,
         scientific_context_unavailable_reason,
-        results,
+        candidate_display,
         unavailable_reason,
     )
     return (*current_figures, *context_figures)

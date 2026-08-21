@@ -7,6 +7,11 @@
     "\t\t--jobs \"3\" \\",
     "\t\t--python-workers \"2\" "
   ],
+  "dashboard": [
+    "\"/usr/bin/python3\" -I -B \\",
+    "\t\t\"<REPO_ROOT>/src/norad/orchestration/local_pilot/dashboard.py\" \\",
+    "\t\t--refresh \"$NORAD_DASHBOARD_REFRESH\""
+  ],
   "demo-report": [
     "command -v \"<REPO_ROOT>/.venv/bin/python\" >/dev/null 2>&1 || { \\",
     "\t\tprintf 'ERROR: report Python is unavailable: %s\\n' \\",
@@ -222,6 +227,7 @@
   "report-test": [
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest \\",
     "\t\ttests/reporting/test_artifact_run_summary.py \\",
+    "\t\ttests/reporting/test_candidate_display.py \\",
     "\t\ttests/reporting/test_figures.py \\",
     "\t\ttests/reporting/test_report.py \\",
     "\t\ttests/reporting/test_transaction_validation.py"

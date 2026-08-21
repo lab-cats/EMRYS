@@ -31,8 +31,11 @@ from norad.reporting._run_report.models import (
     JINJA_VERSION,
     LOGOMAKER_VERSION,
     MATPLOTLIB_VERSION,
+    PRIMARY_SCIENTIFIC_FIGURE_IDS,
     PRODUCER_VERSION,
     SCIENTIFIC_FIGURE_IDS,
+    SCIENTIFIC_FIGURE_LABELS,
+    SUPPORTING_SCIENTIFIC_FIGURE_IDS,
     ReportRenderError,
 )
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
@@ -297,7 +300,7 @@ def test_present_step10_record_mismatch_fails_closed(
         )
 
 
-def test_historical_summary_keeps_step09_figures_only(
+def test_historical_summary_discloses_step10_unavailability_in_candidate_evidence(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
@@ -309,9 +312,21 @@ def test_historical_summary_keeps_step09_figures_only(
 
     assert context.scientific_context_results is None
     assert context.scientific_context_unavailable_reason is not None
+    assert "sequence-context and motif-enrichment figures are unavailable" in (
+        context.scientific_context_unavailable_reason
+    )
+    assert "Selected-candidate editing-rate and location evidence remains" in (
+        context.scientific_context_unavailable_reason
+    )
     assert tuple(figure.status for figure in context.scientific_figures) == (
         *("available" for _ in range(5)),
-        *("unavailable" for _ in range(3)),
+        *("unavailable" for _ in range(2)),
+        "available",
+    )
+    assert context.candidate_display is not None
+    assert all(
+        candidate.motif.state == "step10_unavailable"
+        for candidate in context.candidate_display.candidates
     )
 
 
@@ -715,6 +730,48 @@ def test_template_rejects_additional_or_untrusted_safe_boundaries() -> None:
         )
 
 
+def test_scientific_print_styles_pin_static_nonoverflow_layout() -> None:
+    source = (
+        files("norad.reporting")
+        .joinpath("styles/run_report.css")
+        .read_text(encoding="utf-8")
+    )
+
+    assert "@media print" in source
+    assert "@page" in source
+    assert "position: static" in source
+    assert "background: #fff" in source
+    assert "border: 2px solid #17202a" in source
+    assert "color: #17202a" in source
+    assert '[data-report-view="scientific"] > .report-disclaimer:last-child' in source
+    assert "display: none" in source
+    assert '[data-report-view="scientific"] .norad-table-wrap' in source
+    assert "overflow: visible" in source
+    assert ".candidate-evidence-record {" in source
+    assert "break-inside: auto" in source
+    assert "break-inside: avoid-page" in source
+    for section_id in (
+        "#primary-scientific-figures-section",
+        "#supporting-scientific-figures-section",
+        "#figure-guide-section",
+        "#methods-data-note-section",
+    ):
+        assert section_id in source
+    assert "break-before: page" in source
+    assert "max-height: 7.25in" in source
+    assert "width: 100%" in source
+    assert "page-break-before: always" in source
+    assert ".candidate-pair-batch" in source
+    assert "page-break-before: always" in source
+    assert ".candidate-index-record" in source
+    assert ".candidate-index-facts" in source
+    assert ".figure-summary" in source
+    assert "page-break-inside: avoid" in source
+    assert ".scientific-figure-assets" in source
+    assert "display: block" in source
+    assert ".scientific-figure-image:last-child" in source
+
+
 def test_two_html_views_separate_science_from_operational_evidence(
     computational_summary: Path,
     tmp_path: Path,
@@ -732,17 +789,65 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert 'data-report-view="evidence"' in evidence
     assert "CMH-ranked candidates" in scientific
     assert "FWD_like" in scientific
-    assert 'id="computational_significant_sites"' in scientific
-    assert 'id="computational_all_sites"' in scientific
+    assert 'id="computational_significant_sites"' not in scientific
+    assert 'id="computational_all_sites"' not in scientific
+    assert 'id="scientific-kpis"' in scientific
+    for label in (
+        "Samples",
+        "Replicate pairs",
+        "Successfully tested",
+        "Significant up",
+        "Significant down",
+    ):
+        assert label in scientific
+    assert 'id="scientific-method-summary"' in scientific
+    assert 'id="selected-candidate-index"' in scientific
+    assert "Primary findings" in scientific
+    assert "Supporting scientific analyses appendix" in scientific
+    assert "Figure 1 — Candidate editing landscape" in scientific
+    assert (
+        "Figure 2 — Selected candidate editing rate, location, and nearby motifs"
+        in scientific
+    )
+    assert "Figure 3 — Candidate location memberships" in scientific
+    assert "Figure 4 — Registered PUM motif position and enrichment" in scientific
+    assert "Figure S1 — Candidate mutation spectrum" in scientific
+    assert "Figure S2 — Condition editing-rate concordance" in scientific
+    assert "Figure S3 — Selected candidate per-sample profiles" in scientific
+    assert (
+        "Figure S4 — Edit-centered sequence context and registered PUM motif"
+        in scientific
+    )
+    assert "Figure 8 —" not in scientific
+    assert "1 of 1 significant candidate is shown" in scientific
+    assert "1 of 1 significant candidate is displayed" in scientific
+    assert "1 exact significant overlay" in scientific
+    assert "1 exact significant overlays" not in scientific
+    assert "threshold-passing (1 row) TSVs" in scientific
+    assert "the admitted Step 10 display order" in scientific
+    assert "step10_display_rank" not in scientific
+    assert scientific.count('<article id="candidate-evidence-') == 1
+    assert scientific.index('id="candidate-landscape-figure"') < scientific.index(
+        'id="selected-context-track-figure"'
+    )
+    assert scientific.index('id="selected-context-track-figure"') < scientific.index(
+        'id="candidate-evidence-1"'
+    )
+    assert scientific.index('id="candidate-evidence-1"') < scientific.index(
+        'id="location-membership-figure"'
+    )
+    assert "Editing rate" in scientific
+    assert "Location" in scientific
+    assert "Nearby motifs" in scientific
     assert "candidate_1" in scientific
-    assert "Selected exact sample QC" in scientific
+    assert "Selected exact sample QC" not in scientific
     assert "Attempt lineage" not in scientific
     assert "Artifact appendix" not in scientific
     assert "Tools and issues" not in scientific
     assert "Report provenance" not in scientific
     assert "<svg" not in scientific
     assert scientific.count("data:image/svg+xml;base64,") == sum(
-        figure.status == "available" for figure in context.scientific_figures
+        len(figure.assets) for figure in context.scientific_figures
     )
     assert tuple(figure.status for figure in context.scientific_figures) == (
         "available",
@@ -754,17 +859,33 @@ def test_two_html_views_separate_science_from_operational_evidence(
         "unavailable",
         "available",
     )
-    assert "exact threshold lines are not overlaid" in scientific
     assert "unweighted means across manifest-defined replicates" in scientific
-    assert "Display-only selection uses at most 8 candidates" in scientific
     assert "percentages therefore need not sum" in scientific
-    assert (
-        tuple(
-            figure_id
-            for figure_id in SCIENTIFIC_FIGURE_IDS
-            if f'id="{figure_id}"' in scientific
+    assert "<details" not in scientific
+    assert '<div class="norad-table-wrap norad-table-wrap-wide"' not in scientific
+    assert scientific.count("figure-takeaway") == len(SCIENTIFIC_FIGURE_IDS)
+    assert scientific.count('class="figure-guide-entry"') == len(SCIENTIFIC_FIGURE_IDS)
+    assert tuple(
+        sorted(
+            SCIENTIFIC_FIGURE_IDS,
+            key=lambda figure_id: scientific.index(f'id="{figure_id}"'),
         )
-        == SCIENTIFIC_FIGURE_IDS
+    ) == (*PRIMARY_SCIENTIFIC_FIGURE_IDS, *SUPPORTING_SCIENTIFIC_FIGURE_IDS)
+    assert tuple(
+        SCIENTIFIC_FIGURE_LABELS[figure_id]
+        for figure_id in (
+            *PRIMARY_SCIENTIFIC_FIGURE_IDS,
+            *SUPPORTING_SCIENTIFIC_FIGURE_IDS,
+        )
+    ) == (
+        "Figure 1",
+        "Figure 2",
+        "Figure 3",
+        "Figure 4",
+        "Figure S1",
+        "Figure S2",
+        "Figure S3",
+        "Figure S4",
     )
     assert 'id="step09-source-records"' in evidence
     assert 'id="scientific-figure-provenance"' in evidence
@@ -772,15 +893,14 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert 'id="computational_all_sites"' not in evidence
     assert "candidate_1" not in evidence
     assert "Attempt lineage" in evidence
+    assert "<details" in evidence
     assert "Artifact appendix" in evidence
     assert "Report provenance" in evidence
     assert "<svg" in evidence
     assert "data:image/svg+xml;base64," not in evidence
     assert f"Matplotlib {MATPLOTLIB_VERSION}" in evidence
     assert f"Logomaker {LOGOMAKER_VERSION}" in evidence
-    assert (
-        "series={significant_up, significant_down, other tested statuses}" in evidence
-    )
+    assert "exact significant overlay" in evidence
     assert context.computational_results is not None
     for table in context.computational_results.tables:
         assert str(table.path) not in scientific
@@ -806,7 +926,7 @@ def test_two_html_views_separate_science_from_operational_evidence(
         assert context.render_metadata[metadata_field] not in scientific
         assert context.render_metadata[metadata_field] in evidence
     for content in (scientific, evidence):
-        assert "biological strand" not in content
+        assert "selected biological strand" not in content
         assert "<script" not in content.lower()
         assert "http://" not in content and "https://" not in content
 
@@ -816,7 +936,9 @@ def test_two_html_views_separate_science_from_operational_evidence(
         expected_identity={
             "data-report-view": "scientific",
             "data-run-id": context.summary["run_id"],
+            "data-selected-candidate-count": "1",
         },
+        expected_candidate_ids=("candidate_1",),
     )
     validation.validate_rendered_html(
         context.output_evidence_html,
@@ -831,9 +953,50 @@ def test_two_html_views_separate_science_from_operational_evidence(
             "data-template-sha256": context.render_metadata["template_sha256"],
         },
     )
+    candidate_in_evidence = tmp_path / "candidate-in-evidence.html"
+    candidate_in_evidence.write_text(
+        evidence.replace(
+            "</main>",
+            '<div class="candidate-index-block"></div></main>',
+            1,
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ReportRenderError, match="selected-candidate presentation"):
+        validation.validate_rendered_html(
+            candidate_in_evidence,
+            expected_banner=context.render_metadata["state_banner"],
+            expected_identity={
+                "data-css-sha256": context.render_metadata["css_sha256"],
+                "data-jinja-version": JINJA_VERSION,
+                "data-report-view": "evidence",
+                "data-renderer-version": context.render_metadata["renderer_version"],
+                "data-run-id": context.summary["run_id"],
+                "data-run-summary-sha256": context.render_metadata[
+                    "run_summary_sha256"
+                ],
+                "data-template-sha256": context.render_metadata["template_sha256"],
+            },
+        )
+    missing_motif_group = tmp_path / "missing-motif-group.html"
+    missing_motif_group.write_text(
+        scientific.replace(' data-evidence-group="nearby-motifs"', "", 1),
+        encoding="utf-8",
+    )
+    with pytest.raises(ReportRenderError, match="lacks Editing rate"):
+        validation.validate_rendered_html(
+            missing_motif_group,
+            expected_banner=context.render_metadata["state_banner"],
+            expected_identity={
+                "data-report-view": "scientific",
+                "data-run-id": context.summary["run_id"],
+                "data-selected-candidate-count": "1",
+            },
+            expected_candidate_ids=("candidate_1",),
+        )
 
 
-def test_report_displays_exact_step09_results_and_key_qc(
+def test_report_displays_print_first_selected_candidate_evidence(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
@@ -900,19 +1063,42 @@ def test_report_displays_exact_step09_results_and_key_qc(
         "T>C",
         "T>G",
     )
+    landscape = context.scientific_figures[0]
+    assert "zero mean-depth threshold" in landscape.caption
+    assert "cannot be represented on the logarithmic axis" in landscape.alt_text
+    assert "zero mean_dp_threshold is outside the log axis" in landscape.mapping
     publish(context)
     content = context.output_scientific_html.read_text(encoding="utf-8")
-    assert (
-        '<details id="scientific-category" '
-        'class="report-category" name="norad-report-categories" open>'
-    ) in content
+    assert '<div id="scientific-category" ' in content
+    assert "<details" not in content
     assert "COMPUTATIONAL RESULTS — NOT SCIENTIFICALLY ADJUDICATED." in content
-    assert 'id="computational_significant_sites"' in content
-    assert 'id="computational_all_sites"' in content
+    assert 'id="computational_significant_sites"' not in content
+    assert 'id="computational_all_sites"' not in content
+    assert 'id="selected-candidate-index"' in content
+    assert 'class="candidate-index-list"' in content
+    assert 'class="candidate-index-record"' in content
+    assert '<table class="norad-table candidate-index"' not in content
+    assert '<th scope="col">Editing rate</th>' not in content
+    assert 'id="candidate-evidence-1"' in content
     assert "candidate_1" in content
-    assert "DP__SYNTH_A" in content
-    assert "Mapped reads" in content
-    assert "0.97" in content
+    assert "control mean" in content
+    assert "11.00% (AF 0.11)" in content
+    assert "treatment mean" in content
+    assert "31.00% (AF 0.31)" in content
+    assert "1:10" in content
+    assert "GENE1" in content
+    assert "PUM_UGUANA" in content
+    assert "RNA UGUANA" in content
+    assert "DNA TGTANA" in content
+    assert "registered radius ±100 nt" in content
+    assert "hits outside that panel remain listed here" in content
+    assert "Admitted orientation policy" in content
+    assert "Context orientation action" in content
+    assert "Recorded transcripts (no isoform selected)" in content
+    assert "AD 10 / DP 100" in content
+    assert 'class="candidate-pair-batch"' in content
+    assert "Manifest-paired sample evidence — candidate_1" in content
+    assert "candidate_1 (continued)" not in content
     assert "not validated RNA-editing sites" in content
     evidence_view = view.build_evidence_view(
         context.summary,
@@ -1229,7 +1415,7 @@ def test_step10_reference_identity_mutation_aborts_before_publication(
     assert not context.lock_path.exists()
 
 
-def test_computational_all_sites_limit_and_truncation_are_receipted(
+def test_native_candidate_tables_are_not_rendered_as_truncated_wide_tables(
     computational_summary: Path,
     tmp_path: Path,
 ) -> None:
@@ -1287,24 +1473,17 @@ def test_computational_all_sites_limit_and_truncation_are_receipted(
     assert context.computational_results is not None
     all_sites = context.computational_results.all_sites
     assert all_sites.row_count == 251
-    assert all_sites.displayed_row_count == 250
-    assert all_sites.truncated is True
+    assert all_sites.display_row_limit == 0
+    assert all_sites.displayed_row_count == 0
     publish(context)
     document = receipt_document(context.output_receipt)
-    assert document["truncations"][0] == {
-        "table_id": "computational_all_sites",
-        "report_section": "computational-results-section",
-        "full_table_path": str(all_sites.path),
-        "full_table_sha256": all_sites.sha256,
-        "full_row_count": 251,
-        "displayed_row_count": 250,
-    }
-    assert "Displayed the first 250 of 251 rows" in (
-        context.output_scientific_html.read_text(encoding="utf-8")
-    )
-    assert "251 successfully tested target candidates" in (
-        context.output_scientific_html.read_text(encoding="utf-8")
-    )
+    assert document["truncations"] == []
+    scientific = context.output_scientific_html.read_text(encoding="utf-8")
+    assert "Displayed the first 250 of 251 rows" not in scientific
+    assert 'id="computational_all_sites"' not in scientific
+    assert 'id="computational_significant_sites"' not in scientific
+    assert "Successfully tested" in scientific
+    assert "251" in scientific
 
 
 def test_explicit_input_and_canonical_name_are_required(

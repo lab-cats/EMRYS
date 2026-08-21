@@ -47,12 +47,26 @@ selection, implementation, or publication authority.
 - **Intent:** Evaluate a later installable CLI that materializes explicit repository assets and orchestrates stable public boundaries.
 - **Boundaries:** Keep it thin and inspectable; no hidden dependency installation, database, private source import, scientific computation, or silent migration.
 
+## FUT-DASH-01 — Portable live workflow dashboard
+
+- **Kind:** proposal
+- **Blocked by:** None
+- **Intent:** Generalize the CSU-specialized live dashboard around versioned machine-readable workflow events, bounded parsing, verified report discovery, and request-derived samples, partitions, resources, and stage topology.
+- **Boundaries:** The dashboard remains read-only and nonauthoritative; scheduler state, logs, inferred progress, and displayed report paths never become completion or evidence authority. Discovery must remain bounded and fail closed, explicit overrides must be validated, and portability may not introduce shared-storage scans, hard-coded cohort structure, output adoption, or workflow mutation.
+
 ## FUT-DATA-02 — Public reference and SRA acquisition
 
 - **Kind:** actionable
 - **Blocked by:** `AUDIT-99`
 - **Intent:** Define explicit, retryable public-reference and public-read acquisition adapters with provenance and content identity.
 - **Boundaries:** Reference and read acquisition remain separate; no scraping, credential handling, silent updates, implicit trust, or production-data authority.
+
+## FUT-INDEX-01 — Prebuilt STAR-index admission
+
+- **Kind:** proposal
+- **Blocked by:** None
+- **Intent:** Define safe admission and reuse of an explicitly declared prebuilt STAR index in a fresh local-pilot run by binding every required index member to the source FASTA/GTF identities, STAR parameters and tool version, and exact content hashes.
+- **Boundaries:** Existing-directory presence is never proof of compatibility; do not discover, adopt, repair, merge, or mutate an index implicitly. Preserve the Step `00a` producer's create-absent semantics and require fail-closed validation plus the same content-bound verified-task meaning before downstream use.
 
 ## FUT-SUCCESS-04 — Optional analysis and archival semantics
 

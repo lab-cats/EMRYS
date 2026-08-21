@@ -7,12 +7,13 @@ This private package supports the direct public
 | --- | --- |
 | [`models.py`](models.py) | Immutable v4 contract constants, figure values, and two-view context values. |
 | [`inputs.py`](inputs.py) | Explicit run-summary admission with stable snapshots. |
-| [`computational.py`](computational.py) | Exact primary-analysis Step 09 trio, mutation spectrum, all-pass owner validation, and summary-bound sample-manifest admission; source identity/snapshots; canonical admission; and bounded table-display rows. |
+| [`computational.py`](computational.py) | Exact primary-analysis Step 09 trio, mutation spectrum, all-pass owner validation, and summary-bound sample-manifest admission; source identity/snapshots; and canonical admission without materializing wide HTML-table prefixes. |
 | [`scientific_context.py`](scientific_context.py) | Exact primary-analysis Step 10 selection, canonical receipt-transaction admission, record reconciliation, and stable snapshots of all outputs and receipt-bound inputs. |
-| [`figures.py`](figures.py) | Shared controlled Matplotlib/Logomaker SVG boundary plus the five deterministic Step 09 figures. |
-| [`scientific_context_figures.py`](scientific_context_figures.py) | Presentation-only observed/registered logos, motif-position/enrichment, and selected context-track figures from admitted Step 10 values. |
+| [`candidate_display.py`](candidate_display.py) | One immutable selected-candidate roster joining admitted Step 09 evidence to admitted Step 10 display ranks, contexts, and registered-motif hits without rescanning or reranking. |
+| [`figures.py`](figures.py) | Shared controlled Matplotlib/Logomaker SVG boundary plus deterministic candidate, mutation, concordance, paired-profile, and location figures. |
+| [`scientific_context_figures.py`](scientific_context_figures.py) | Presentation-only observed/registered logos, motif-position/enrichment, and multi-panel selected candidate-centered context views from admitted values. |
 | [`context.py`](context.py) | Resource, output, and predecessor preparation without durable output state; cleaned temporary renderer initialization is explicit. |
-| [`view.py`](view.py) | Separate structured scientific and operational-evidence projections without HTML construction. |
+| [`view.py`](view.py) | Separate structured scientific and operational-evidence projections, including the print-oriented hierarchy, figure guide, and vertical candidate records, without HTML construction. |
 | [`validation.py`](validation.py) | Autoescaped strict Jinja environment plus CSS, security, per-view semantic HTML, and accessibility validation. |
 | [`receipt.py`](receipt.py) | Deterministic summary TSV and v4 two-view receipt projection/validation. |
 | [`publication.py`](publication.py) | One receipt-last two-HTML transaction using injected immutable fault operations. |
@@ -52,30 +53,40 @@ requires its one-check owner validation to pass and reuses
 It reconciles every output artifact record with that receipt-last transaction,
 snapshots the receipt plus all four outputs and six bound inputs, and requires
 the receipt-bound Step 09 trio to be the same trio admitted for the report. A
-run with no Step 10 records is treated as historical: only figures 6–8 are
-unavailable. A partial or incomplete declared transaction is disclosed without
-opening it; a present hash, path, row, schema, validation, or semantic mismatch
-fails the report closed.
+run with no Step 10 records is treated as historical: the population-level
+context figures are unavailable, while selected candidate panels remain and
+label motif context unavailable. A partial or incomplete declared transaction
+is disclosed without opening it; a present hash, path, row, schema, validation,
+or semantic mismatch fails the report closed.
 
-The scientific view labels these rows **computational results — not
-scientifically adjudicated**. It presents Step 09 design, contrast, counts,
-thresholds and method; displays the significant subset before the all-sites
-table; includes raw per-sample DP/AD/AF; and caps each candidate table at 250
-rows. Its current-data figures render a candidate landscape and condition-mean
-concordance from every successfully tested all-sites row, a mutation spectrum
-from the admitted canonical 12-row TSV, up to eight significant-candidate
-paired-sample profiles under the fixed FDR/effect/ID display rule, and
-independent Step 08 location-membership bars from the complete significant
-subset. The remaining figures consume Step 10's observed ±10 frequency matrix,
-registered PUM catalog, fixed 10-nt nearest-hit bins and Fisher result, and its
-upstream-ranked candidate contexts. The selected-context view displays only a
-±25-nt slice, admitted motif spans, and manifest-paired Step 09 AF values. It
-does not reopen the FASTA, scan motifs, count bases or hits, reconstruct
-populations, run enrichment, smooth position profiles, or select/rerank
-candidates. Figures do not inherit the table-display cap. Selected
-sample QC is copied only from exact complete metrics already in the run summary.
-Paths, hashes, attempts, artifacts, tools, renderer provenance, and the
-artifact-availability figure are excluded from this view.
+The scientific view labels all candidates **computational results — not
+scientifically adjudicated**. It is a static, print-oriented hierarchy: concise
+summary, four primary figures, four supporting figures, visible figure-reading
+guide, and visible methods/data note. It does not render the wide all-sites or
+significant-sites TSVs. Instead, it uses their complete admitted populations for
+the relevant summaries and figures, then presents up to eight selected
+candidates as a narrow ranked-card index plus vertically structured records.
+Primary display labels are `Figure 1`–`Figure 4`; supporting appendix labels are
+`Figure S1`–`Figure S4`. Stable internal figure IDs remain unchanged.
+
+One shared projection supplies the selected index, paired-profile figure, and
+candidate-centered context panels. It preserves Step 10 display ranks when
+available or uses the fixed FDR/effect/candidate-ID historical fallback. Each
+record exposes named-condition editing rates, treatment-minus-control percentage
+points, paired AF/AD/DP support, 1-based coordinates, genomic and RNA changes,
+workflow orientation, orientation policy, annotation strand, nonexclusive
+region memberships, and every admitted registered-motif hit with explicit
+availability semantics. The candidate panels show a bounded ±25-nt slice but
+the adjacent record retains hits elsewhere in the admitted ±100-nt context.
+This is mechanically oriented candidate context, not a report-selected
+transcript locus or inferred biological strand.
+
+The renderer consumes Step 10's admitted frequency matrix, registered PUM
+catalog, fixed nearest-hit bins and Fisher result, and upstream-ranked contexts.
+It does not reopen the FASTA, scan motifs, count bases or hits, reconstruct
+populations, run enrichment, smooth profiles, choose an isoform, or rerank
+candidates. Paths, hashes, attempts, artifacts, tools, renderer provenance, and
+the artifact-availability figure are excluded from this view.
 
 The operational-evidence view contains no candidate rows. It retains run and
 execution status, limitations, expected scopes, artifact QC, attempt lineage,
@@ -86,16 +97,17 @@ all-sites, significant-sites, summary, mutation-spectrum, and summary-bound
 sample-manifest inputs. A separate Step 10 table records its validation,
 receipt, four outputs, and every receipt-bound input; the adjacent policy table
 keeps the orientation, windows, motif, populations, minima, Fisher policy, and
-owner software in the evidence view. The existing provenance section records the fixed
-figure roster, status, mappings, populations, SVG hashes/sizes, Matplotlib
-and Logomaker versions, and figure-policy version without duplicating the images. Any
-scientific-table truncation uses the v4 receipt contract to bind the displayed
-prefix to its full source. Candidate review, adjudication, and biological
-interpretation remain external research activities.
+owner software in the evidence view. The existing provenance section records
+the fixed figure roster, status, mappings, populations, every SVG panel
+hash/size, Matplotlib and Logomaker versions, and figure-policy version without
+duplicating the images. The complete native candidate TSVs remain evidence-
+bound artifacts; no human-facing table prefix or truncation is produced.
+Candidate review, adjudication, and biological interpretation remain external
+research activities.
 
 The transaction retains input rechecks, lock ownership, predecessor identity,
 backup/rollback, recovery markers, foreign-state preservation, staged
 validation, receipt-last publication, and characterized interruption behavior.
 Tests inject a frozen `ReportPublicationOps` value rather than patching module
-globals. The renderer producer is `4.3.0`; run-summary `2.0.0` and
+globals. The renderer producer is `5.0.0`; run-summary `2.0.0` and
 report-receipt `4.0.0` are clean breaking contracts with no compatibility shim.

@@ -1376,6 +1376,8 @@ def _build_harness(
         run_root=built.run_root,
         target="local_pipeline_slice",
         operation=operation,
+        cores=1,
+        resource_limits=workflow_fixture._resource_limits(),
     )
     attempt = _attempt(
         built,
@@ -1678,6 +1680,8 @@ def test_alternate_checkout_snakefile_is_rejected_before_mutation(
         run_root=built.request.run_root,
         target=built.request.target,
         operation=built.request.operation,
+        cores=1,
+        resource_limits=workflow_fixture._resource_limits(),
     )
     attempt = copy.deepcopy(built.request.attempt_record)
     attempt["snakemake_argv"] = list(argv)
@@ -1748,6 +1752,8 @@ def test_resume_creates_new_attempt_and_reuses_content_bound_tasks(
         run_root=first.built.run_root,
         target="local_pipeline_slice",
         operation="resume",
+        cores=1,
+        resource_limits=workflow_fixture._resource_limits(),
     )
     second_attempt = _attempt(
         first.built,
@@ -2398,6 +2404,8 @@ def test_completed_run_refuses_rerun_and_resume(tmp_path: Path) -> None:
         run_root=built.built.run_root,
         target="local_pipeline_slice",
         operation="resume",
+        cores=1,
+        resource_limits=workflow_fixture._resource_limits(),
     )
     attempt = _attempt(
         built.built,
@@ -2643,6 +2651,8 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
         run_root=first.built.run_root,
         target=first.request.target,
         operation="resume",
+        cores=1,
+        resource_limits=workflow_fixture._resource_limits(),
     )
     attempt = _attempt(
         first.built,

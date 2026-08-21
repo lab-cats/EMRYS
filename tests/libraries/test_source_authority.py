@@ -27,6 +27,10 @@ RESOURCE_FILES: Mapping[str, bytes] = {
     "contracts/schemas/artifacts/v4/report_receipt.schema.json": b'{"schema": 4}\n',
     "contracts/schemas/orchestration/v1/common.schema.json": b'{"schema": true}\n',
     "contracts/schemas/orchestration/v2/request.schema.json": b'{"schema": true}\n',
+    "contracts/schemas/orchestration/v3/launcher_config.schema.json": b'{"schema": 3}\n',
+    "orchestration/local_pilot/resources/default_launcher.yaml": (
+        b"schema_version: norad.local-pilot-launcher.v1\n"
+    ),
     "reporting/styles/example.css": b"body { color: black; }\n",
     "reporting/templates/example.html.j2": b"<!doctype html>\n",
     "runtime/data.bin": b"synthetic package data\n",
@@ -118,7 +122,8 @@ def _project_configuration(name: str = PROJECT_NAME) -> bytes:
         "namespaces = false\n"
         "\n"
         "[tool.setuptools.package-data]\n"
-        '"norad.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/artifacts/v3/*.json", "schemas/artifacts/v4/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json"]\n'
+        '"norad.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/artifacts/v3/*.json", "schemas/artifacts/v4/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json", "schemas/orchestration/v3/*.json"]\n'
+        '"norad.orchestration.local_pilot" = ["resources/*.yaml"]\n'
         '"norad.reporting" = ["styles/*.css", "templates/*.html.j2"]\n'
     ).encode()
 
@@ -393,6 +398,8 @@ def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -
         Path("contracts/schemas/artifacts/v3/report_receipt.schema.json"),
         Path("contracts/schemas/artifacts/v4/report_receipt.schema.json"),
         Path("contracts/schemas/orchestration/v1/common.schema.json"),
+        Path("contracts/schemas/orchestration/v3/launcher_config.schema.json"),
+        Path("orchestration/local_pilot/resources/default_launcher.yaml"),
     ),
 )
 def test_package_identity_includes_declared_resource_bytes(

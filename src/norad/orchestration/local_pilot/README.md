@@ -24,9 +24,10 @@ norad prepare local-pilot-runtime \
   > /new/absent/path/runtime.ready.tsv
 ```
 
-`init local-pilot` publishes `request.yaml`, `samples.tsv`, `partitions.tsv`,
-`runtime.tsv`, and executable `run-in-slurm.sh`, then writes
-`starter-set.manifest.tsv` last and re-admits every path, mode, size, and byte.
+`init local-pilot` publishes `request.yaml`, editable `norad.launcher.yaml` and
+`norad.resources.yaml`, `samples.tsv`, `partitions.tsv`, `runtime.tsv`, and
+executable `run-in-slurm.sh`, then writes `starter-set.manifest.tsv` last and
+re-admits every path, mode, size, and byte.
 It neither fills unknown science-tool paths nor installs anything. The runtime
 preparer requires explicit Java, Picard-jar, Rscript, and `renv`-library paths.
 For Bash, STAR, samtools, GATK, bcftools, RSeQC `infer_experiment.py`, and
@@ -35,30 +36,69 @@ contains exactly one distinct resolved executable. It preserves the tracked
 version policy and performs no version probe; the doctor remains the readiness
 authority.
 
-`run-in-slurm.sh` has two explicit modes. Outside an allocation it only calls
-`sbatch` after its named `NORAD_*` scheduler, input, runtime, module, and
-scratch settings are provided. `NORAD_SLURM_MEMORY=site-default` omits
-`--mem`; a positive explicit Slurm size is passed exactly once.
-`PATH` inside the allocation is sealed at submission to the absolute
-`NORAD_PYTHON` parent followed by `/usr/bin:/bin`; the submit shell's
-ambient path is not propagated.
+`run-in-slurm.sh` has two explicit modes. Outside an allocation it resolves
+packaged launcher defaults, adjacent or explicit launcher YAML, and optional
+wrapper arguments in that order, then calls `sbatch` once. Exact `{env:
+NORAD_NAME}` references read the invocation environment before the
+generation-bound source checkout's private root `.env`; no shell interpolation
+is accepted. The private file is optional, closed to launcher variables,
+owner-only, and never copied into a starter or printed. The generated wrapper
+binds its source checkout and controlled Python at generation instead of
+accepting either from launcher configuration.
+
+`memory: site-default` omits `--mem`; a positive explicit Slurm size is passed
+exactly once. `exclusive: true` and a nonempty `nodelist` emit one
+`--exclusive` and `--nodelist=...` respectively. These values request the
+outer allocation; they are not workflow-resource minima. `PATH` inside the
+allocation is sealed at submission to the generation-bound lexical Python
+launcher parent followed by `/usr/bin:/bin`; the submit shell's ambient path is
+not propagated. Virtualenv launcher symlinks retain their lexical identity
+after stable target admission. Ambient `SBATCH_*` variables and ambient
+`NORAD_EXECUTE` are removed before the `sbatch` client is invoked.
 Submission binds the live `/usr/bin/id` UID and user name, requires
 `USER` and `LOGNAME` to agree, and exports that identity explicitly. Batch
 mode re-observes the same identity before module loading or workspace access.
-`NORAD_MODULE_MODE=exact` requires and loads the declared initializer and
-colon-delimited roster, while `none` requires both module values to be
-explicitly empty and loads nothing. It prints the job ID and exact
-stdout/stderr tail paths.
+Module mode `exact` requires and loads the declared initializer and roster,
+while `none` requires both module values to be empty and loads nothing. The
+wrapper prints the job ID and exact stdout/stderr tail paths. Batch entry also
+requires the exact internal marker emitted by that submit helper, not merely an
+inherited `SLURM_JOB_ID`. Submission is dry-run-first regardless of ambient
+`NORAD_EXECUTE`; only the explicit wrapper `--execute` action derives the
+internal batch execution flag.
 
 Inside an allocation the wrapper creates one mode-`0700` job directory below
 the declared `NORAD_SCRATCH_PARENT`, exports it as `TMPDIR`, logs its
 canonical path plus `df -PT` filesystem/capacity evidence, and removes it on
 exit. It then validates the request, runs the doctor, and plans or executes the
-whole single-host local pilot. `NORAD_SLURM_CPUS` is an allocation assertion;
-the request's closed `resources` block remains the authority for workflow
-capacity, concurrent samples, and owner threads. The wrapper never runs
+whole single-host local pilot. NORAD observes `SLURM_CPUS_PER_TASK`, Slurm's
+memory environment, process CPU affinity, and the process memory limit before
+resolving the resource policy. When a full-node allocation omits Slurm memory
+variables, NORAD uses process-visible memory; ambiguous partial-node
+allocations without an explicit memory boundary remain rejected. Packaged
+defaults are overridden by adjacent `norad.resources.yaml`, then by any
+explicit resource CLI values. The wrapper never runs
 analysis or large-input validation on a login node and does not claim
 per-owner Slurm scheduling or multi-node execution.
+
+The adjacent `dashboard.py` owns a read-only live view over one wrapper job's
+Slurm metadata and append-only stdout/stderr streams. The repository-level
+`make dashboard` target is only a thin entry point to that owner. Selection,
+bounded current-user scheduler discovery, stream admission and sanitization,
+incremental parsing, and terminal rendering stay here; the dashboard never
+scans shared storage, mutates the workflow, or replaces final NORAD
+inspection. Scheduler state, inferred progress and timing, displayed report
+paths, and the dashboard process exit are operational observations rather than
+completion, validation, or evidence authority.
+
+This dashboard is currently a CSU-oriented preview, not a portable execution
+contract. It expects CSU Slurm metadata and the generated local-pilot wrapper's
+exact stream naming, and parts of its display still encode the fixed qualified
+stage topology, six-sample cohort, and 25-partition qualification run.
+Workflow cores, per-stage concurrency, per-step thread allocations, and memory
+policy are read from the selected run's control stream rather than fixed to one
+benchmark policy. See the
+[runbook](../../../../docs/operations/RUNBOOK.md#live-whole-run-dashboard) for
+the supported preview commands and explicit override rules.
 
 `init synthetic-local-pilot` publishes a deterministic 100-kb reference, GTF,
 four paired 130-read libraries across two control/treatment strata, matched
@@ -72,9 +112,17 @@ Focused protection is:
 
 ```bash
 .venv/bin/python -m pytest -q \
+  tests/orchestration/local_pilot/test_launcher_config.py \
   tests/orchestration/local_pilot/test_onboarding.py \
+  tests/orchestration/local_pilot/test_dashboard.py \
   tests/test_public_cli_contracts.py
 ```
+
+Run the deferred workstation acceptance sequence in
+[`docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md`](../../../../docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md)
+after restoring the locked development environment. Checks that require that
+environment remain explicitly `NOT RUN` until then; they are not inferred from
+static validation.
 
 The underlying narrow read-only admission APIs are:
 
@@ -129,6 +177,10 @@ work only through the accepted fixed profile:
 
 `run` and `resume` print the exact owner and Snakemake plan and write nothing
 unless `--execute` is present. `inspect local-pilot-run` is always read-only.
+The request defines scientific identity only. Execution-resource precedence is
+packaged defaults, optional YAML, then explicit CLI values. A resume without a
+new resource source reuses its predecessor's immutable effective policy while
+checking that it still fits the newly observed allocation.
 Execution re-admits the normalized reference/workspace storage qualification
 before delegation and after the child terminates. A missing, changed, or
 semantically invalid receipt blocks the attempt; the immutable attempt cannot

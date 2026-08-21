@@ -1,0 +1,50 @@
+schema_version: norad.local-pilot-resources.v1
+
+# This file is optional. When it is absent, NORAD uses its packaged conservative
+# defaults. Values authored here override those defaults; explicit resource CLI
+# options override both.
+workflow_cores: 4
+workflow_memory_mb: allocation
+
+# Only repeatable stages have concurrency settings. These defaults preserve one
+# owner job at a time until memory requirements have been reviewed.
+stage_concurrency:
+  "01": 1
+  "02": 1
+  "02b": 1
+  "03": 1
+  "04": 1
+  "05": 1
+  "06": 1
+  "07": 1
+
+step_threads:
+  "00a": 4
+  "01": 4
+  "02": 1
+  "06": 4
+  "08": 1
+
+# "workflow" reserves the whole workflow memory budget for one job, safely
+# serializing jobs by memory. Replace it with reviewed per-job MiB values before
+# increasing the corresponding stage concurrency.
+stage_memory_mb:
+  "00a": workflow
+  "00b": workflow
+  "00c": workflow
+  "01": workflow
+  "02": workflow
+  "02b": workflow
+  "03": workflow
+  "04": workflow
+  "05": workflow
+  "06": workflow
+  "07": workflow
+  "08": workflow
+  "09": workflow
+  "10": workflow
+
+reporting_memory_mb:
+  artifact_index: workflow
+  run_summary: workflow
+  html_report: workflow

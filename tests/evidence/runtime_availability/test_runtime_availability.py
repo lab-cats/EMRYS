@@ -449,7 +449,7 @@ def test_tracked_gatk_policy_handles_official_launcher_prelude(
     java.write_text(
         "#!/bin/sh\n"
         '[ "$#" -eq 1 ] && [ "$1" = -version ] || exit 2\n'
-        "printf 'openjdk version \\\"17.0.1\\\"\\n' >&2\n",
+        "printf '%s\\n' 'openjdk version \"17.0.1\"' >&2\n",
         encoding="utf-8",
     )
     java.chmod(0o755)

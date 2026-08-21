@@ -1089,6 +1089,14 @@ def validate_report_transaction(
             context,
             "scientific",
         ),
+        expected_candidate_ids=(
+            tuple(
+                candidate.candidate_id
+                for candidate in context.candidate_display.candidates
+            )
+            if context.candidate_display is not None
+            else ()
+        ),
     )
     validation.validate_rendered_html(
         context.output_evidence_html,

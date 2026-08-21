@@ -283,6 +283,59 @@ merely to turn a freshness result green.
 
 ## Manual job inspection
 
+### Live whole-run dashboard
+
+For a lifecycle-generated one-allocation job, the CSU preview dashboard can
+show bounded live scheduler, stage, sample, resource-plan, and report-location
+observations:
+
+```bash
+# Discover the newest admissible current-user NORAD wrapper job.
+make dashboard
+
+# Select one job explicitly; optionally bind its exact log directory too.
+make dashboard JOB_ID=replace-with-printed-job-id
+make dashboard \
+  JOB_ID=replace-with-printed-job-id \
+  LOG_DIR=/absolute/path/to/norad-slurm-logs
+
+# The default is 30 seconds; values below five seconds are rejected.
+make dashboard DASHBOARD_REFRESH=15
+```
+
+Automatic selection queries only the current user's live jobs and the most
+recent seven days of Slurm accounting, considers at most 50 root allocation
+IDs, and admits the first candidate whose scheduler metadata and exact
+`norad-local-pilot-<job-id>.out/.err` pair can be proved. It does not walk or
+glob shared storage. `LOG_DIR` without `JOB_ID` is ambiguous and rejected; when
+Slurm declares the stream paths, an explicit `LOG_DIR` must agree with them.
+The selected directory and streams must be current-user-owned, readable, real
+directory or regular-file entries with no symlinked path.
+
+Press `1` or `o` for the overview, `2` or `d` for details, or `Tab` to switch
+views. Press `r` to refresh immediately and `q` to quit; quitting the dashboard
+does not cancel the allocation. The details view also accepts arrow or `j`/`k`
+scrolling and Page Up/Page Down.
+
+The dashboard reads scheduler metadata and only newly appended stream bytes.
+It never changes the workflow, run root, logs, scheduler job, or reports. Its
+status, inferred progress, timing, and derived report paths are not completion
+or evidence authority. After the allocation reaches a terminal state, inspect
+accounting and run the final NORAD inspection using the exact run root printed
+by the control stream:
+
+```bash
+.venv/bin/python -X pycache_prefix=/dev/null -I -m norad inspect \
+  local-pilot-run \
+  --run-root /absolute/path/to/workspace/runs/run-DIGEST
+```
+
+Only the admitted run records and owner validations establish local-pilot
+completion. Use the manual stream procedure below when dashboard discovery is
+unavailable or when exact raw scheduler streams are required.
+
+### Manual stream and accounting fallback
+
 For a lifecycle-generated one-allocation job, use the exact job ID and log
 directory printed at submission. Wait for both `%j` streams, but stop waiting
 if accounting shows a terminal allocation:
