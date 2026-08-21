@@ -1,11 +1,10 @@
 # `mark_BAM_duplicates_with_Picard` stage contract
 
 This is the observed contract of historical Step `04`, now implemented in this
-native owner directory. The
-exact public identity and historical alias are owned by the
-[semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
-is the capability-oriented physical owner for that identity and owns the
-producer, validator, and scheduler assets.
+native owner directory. The exact public identity and historical alias are owned
+by the [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This
+directory is the capability-oriented physical owner for that identity and owns
+the producer, validator, and scheduler assets.
 
 ## Responsibility and execution dependencies
 
@@ -17,8 +16,8 @@ The hard input is the explicit `<bam>.bai` canonical pair normally produced by
 Step `02`. Step `04` does not consume Step `02b` or Step `03` evidence and may
 run alongside them once the pair is stable. Step `05` consumes the marked
 BAM/BAI, so successful Step `04` publication is its data prerequisite. Current
-readers do not share a lock or a pinned snapshot; replacement must
-not overlap downstream reads.
+readers do not share a lock or a pinned snapshot; replacement must not overlap
+downstream reads.
 
 ## Inputs and outputs
 
@@ -37,7 +36,11 @@ Outputs are:
 <metrics-dir>/<sample-id>.markdup.metrics.txt
 ```
 
-Picard runs with `REMOVE_DUPLICATES=false`. The producer requires nonempty
+Picard runs with `REMOVE_DUPLICATES=false` and requests `CREATE_INDEX=true`.
+When Picard emits a nonempty index while writing the BAM, the producer reuses
+that index and normalizes Picard's alternate `<stem>.bai` spelling to the
+stable `<bam>.bai` interface when necessary. If no usable Picard index exists,
+the producer falls back to `samtools index`. The producer requires nonempty
 files and samtools quickcheck success for the BAM, but does not parse metrics,
 verify duplicate flags, publish a receipt, or bind outputs to one input/tool
 attempt.
@@ -46,24 +49,24 @@ attempt.
 
 `--no-clobber` is the required local-profile mode. It hashes the input BAM/BAI
 and Picard jar, refuses any existing final, holds a per-sample owned lock,
-directs Picard and samtools to run-token BAM/BAI/metrics paths, validates the
-complete triplet, rechecks the admitted hashes, and publishes only the new set.
-Publication is create-exclusive and keeps staging inode anchors through
-complete-set validation. Failure removes only still-owned new finals;
-ambiguous replacement preserves lock and residue. Java
-and samtools paths are explicit; observed tool versions and final hashes belong
-in the workflow verified record. Execute without this option retains the
-historical direct-final contract below.
+directs Picard and any samtools fallback to run-token BAM/BAI/metrics paths,
+validates the complete triplet, rechecks the admitted hashes, and publishes
+only the new set. Publication is create-exclusive and keeps staging inode
+anchors through complete-set validation. Failure removes only still-owned new
+finals; ambiguous replacement preserves lock and residue. Java and samtools
+paths are explicit; observed tool versions and final hashes belong in the
+workflow verified record. Execute without this option retains the historical
+direct-final contract below.
 
 ## Current execution surfaces
 
 [`step_04_mark_duplicates.sh`](step_04_mark_duplicates.sh)
 is dry-run by default and creates no output directories in dry-run. Execute
 without `--no-clobber` writes Picard BAM and metrics directly to final paths,
-quickchecks the BAM, indexes it at the final path, then checks all three files
-for nonemptiness. That historical route has no lock, staging, stable-input
-recheck, rollback, or all-or-none transaction; failure may leave a partial or
-cross-attempt set.
+quickchecks the BAM, reuses Picard's index when available or runs the samtools
+index fallback, then checks all three files for nonemptiness. That historical
+route has no lock, staging, stable-input recheck, rollback, or all-or-none
+transaction; failure may leave a partial or cross-attempt set.
 
 [`step_04_mark_duplicates.slurm`](step_04_mark_duplicates.slurm)
 requires literal `SLURM_SUBMIT_DIR` and enters the submitted checkout before
@@ -96,10 +99,9 @@ The validator checks BAM/BAI magic, quickcheck exit, coordinate order, one
 duplication-metrics table with nonempty library, nonnegative pair counts,
 duplicates not exceeding examined pairs, and a finite `PERCENT_DUPLICATION` in
 `0..1`. Later Picard tables such as the duplicate-set histogram are ignored. It
-does not prove BAI/BAM
-correspondence, duplicate flags, metrics/BAM correspondence, or the producer's
-`LB`/platform contract. A nonzero quickcheck becomes failed evidence even when
-diagnostics are nonempty.
+does not prove BAI/BAM correspondence, duplicate flags, metrics/BAM
+correspondence, or the producer's `LB`/platform contract. A nonzero quickcheck
+becomes failed evidence even when diagnostics are nonempty.
 
 Content mismatches publish `status=fail` rows; unsafe inputs, evidence-building
 tool failures, and publication-contract failures exit `2`. BAM tool/header
@@ -116,8 +118,10 @@ public package or CLI identity.
   `step04_validation_report_v1`; summary/report code consumes those artifacts
   without rerunning Picard.
 - [`test_step_04_mark_duplicates.sh`](../../../../tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh)
-  protects CLI, side-effect-free dry-run, exact Picard/samtools commands,
-  output presence, missing inputs, and temp-directory failure with mocks.
+  protects CLI, side-effect-free dry-run, Picard/samtools command construction,
+  output presence, missing inputs, fallback indexing, and temp-directory
+  failure with mocks. Real-runtime performance acceptance must establish
+  whether the admitted Picard build emits a reusable index as expected.
 - [`test_validate_step_04_mark_duplicates.py`](../../../../tests/stages/duplicate_marking/test_validate_step_04_mark_duplicates.py),
   wrapper, roster, publication-fault, public-CLI, artifact, report, and coverage
   tests protect the recorded validation and projection boundaries.
@@ -133,7 +137,7 @@ scientific-review, or biological evidence.
   owns a staged three-file publication boundary.
 - Sample/library/platform metadata is hardcoded or scope-derived rather than
   manifest-bound.
-- The neutral BAM and report helpers remain private shared owners rather
-  than installed or public package APIs.
+- The neutral BAM and report helpers remain private shared owners rather than
+  installed or public package APIs.
 - A native receipt, manifest-level sample binding, and wider verified-task
   tool/output identity remain deferred.
