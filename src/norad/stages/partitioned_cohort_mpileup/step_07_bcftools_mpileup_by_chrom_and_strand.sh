@@ -636,6 +636,7 @@ printf '  Temporary %s VCF: %s\n' "${ORIENTATIONS[0]}" "$tmp_fwd_vcf"
 printf '  Temporary %s VCF: %s\n' "${ORIENTATIONS[1]}" "$tmp_rev_vcf"
 printf '  Temporary receipt: %s\n' "$tmp_receipt"
 printf '  Publish the validated VCF/VCF/receipt set with rollback protection\n'
+printf '  Under --no-clobber, final VCF identity is proven by staging inode ownership rather than rescanning the same bytes.\n'
 printf 'Post-execution validator command:\n'
 print_command "${validator_command[@]}"
 printf 'Semantic all-pass gate:\n'
@@ -845,6 +846,10 @@ if ! "${rev_mpileup_command[@]}" | "${rev_filter_command[@]}"; then
     die "REV_like bcftools mpileup/filter pipeline failed."
 fi
 
+# One complete post-consumption snapshot is sufficient to prove that the
+# scientific inputs seen by both bcftools pipelines stayed stable. Subsequent
+# receipt construction and publication consume only the already-produced VCFs,
+# so do not hash every large BAM/BAI a third time.
 confirm_input_manifest_hashes
 confirm_no_clobber_scientific_inputs
 validate_vcf "Published ${ORIENTATIONS[0]} temporary" "$tmp_fwd_vcf" "$expected_samples"
@@ -870,8 +875,9 @@ tmp_rev_count="$(vcf_record_count "$tmp_rev_vcf")" ||
         "$sample_count" "$tmp_rev_count"
 } > "$tmp_receipt"
 validate_receipt "$tmp_receipt"
+# Manifests are small and are embedded in the receipt identity, so retain their
+# inexpensive final recheck without repeating the full BAM/BAI cohort hash pass.
 confirm_input_manifest_hashes
-confirm_no_clobber_scientific_inputs
 
 if [[ "$final_count" -eq 3 ]]; then
     previous_final_set_present=true
@@ -888,22 +894,32 @@ if [[ "$no_clobber" == true ]]; then
         "Step 07 FWD VCF" "$tmp_fwd_vcf" "$final_fwd_vcf"
     publish_file_create_exclusive \
         "Step 07 REV VCF" "$tmp_rev_vcf" "$final_rev_vcf"
+
+    # Both final VCFs are hard links to the exact temporary VCFs that already
+    # passed header/sample validation and record-count reconciliation. Prove
+    # that identity rather than parsing/counting those bytes again.
+    require_owned_published_file \
+        "Step 07 FWD VCF" "$tmp_fwd_vcf" "$final_fwd_vcf"
+    require_owned_published_file \
+        "Step 07 REV VCF" "$tmp_rev_vcf" "$final_rev_vcf"
 else
     mv "$tmp_fwd_vcf" "$final_fwd_vcf"
     mv "$tmp_rev_vcf" "$final_rev_vcf"
+
+    # The legacy replacement route drops staging identity anchors, so preserve
+    # its historical final-path structural and count checks.
+    validate_vcf "Published ${ORIENTATIONS[0]}" "$final_fwd_vcf" "$expected_samples"
+    validate_vcf "Published ${ORIENTATIONS[1]}" "$final_rev_vcf" "$expected_samples"
+    published_fwd_count="$(vcf_record_count "$final_fwd_vcf")"
+    published_rev_count="$(vcf_record_count "$final_rev_vcf")"
+    [[ "$published_fwd_count" == "$tmp_fwd_count" ]] ||
+        die "Published ${ORIENTATIONS[0]} VCF record count changed during publication."
+    [[ "$published_rev_count" == "$tmp_rev_count" ]] ||
+        die "Published ${ORIENTATIONS[1]} VCF record count changed during publication."
 fi
 
-validate_vcf "Published ${ORIENTATIONS[0]}" "$final_fwd_vcf" "$expected_samples"
-validate_vcf "Published ${ORIENTATIONS[1]}" "$final_rev_vcf" "$expected_samples"
-published_fwd_count="$(vcf_record_count "$final_fwd_vcf")"
-published_rev_count="$(vcf_record_count "$final_rev_vcf")"
-[[ "$published_fwd_count" == "$tmp_fwd_count" ]] ||
-    die "Published ${ORIENTATIONS[0]} VCF record count changed during publication."
-[[ "$published_rev_count" == "$tmp_rev_count" ]] ||
-    die "Published ${ORIENTATIONS[1]} VCF record count changed during publication."
-
-# Make the already-validated receipt visible only after both VCFs pass their
-# final structural/count checks. A later failure still enters owned rollback.
+# Make the already-validated receipt visible only after both VCFs are either
+# identity-proven (no-clobber) or final-path revalidated (legacy replacement).
 if [[ "$no_clobber" == true ]]; then
     publish_file_create_exclusive \
         "Step 07 receipt" "$tmp_receipt" "$final_receipt"
@@ -913,10 +929,6 @@ fi
 validate_receipt "$final_receipt"
 
 if [[ "$no_clobber" == true ]]; then
-    require_owned_published_file \
-        "Step 07 FWD VCF" "$tmp_fwd_vcf" "$final_fwd_vcf"
-    require_owned_published_file \
-        "Step 07 REV VCF" "$tmp_rev_vcf" "$final_rev_vcf"
     require_owned_published_file \
         "Step 07 receipt" "$tmp_receipt" "$final_receipt"
     rm -f -- "$tmp_fwd_vcf" "$tmp_rev_vcf" "$tmp_receipt"
