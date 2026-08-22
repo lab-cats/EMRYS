@@ -1,6 +1,7 @@
-# NORAD: evidence-bound RNA-seq candidate workflow
+# EMRYS: Epic Molecular Read Yield System
+## Evidence-bound analysis of DNA and RNA sequencing data.
 
-NORAD is an evidence-bound workflow for paired-end RNA-seq alignment, QC,
+EMRYS is an evidence-bound workflow for paired-end RNA-seq alignment, QC,
 mechanical read-orientation partitioning, cohort mpileup, candidate annotation,
 paired CMH ranking, and bounded sequence/motif context projection. You provide
 declared reads, a matching FASTA/GTF
@@ -10,7 +11,7 @@ an immutable task history, a deterministic artifact index, a machine-readable
 run summary, QC tables, and separate self-contained scientific and
 evidence/provenance HTML views.
 
-NORAD is alpha research software, not a clinical or diagnostic system. It is
+EMRYS is alpha research software, not a clinical or diagnostic system. It is
 not a general RNA-seq expression workflow: it does not demultiplex, trim or
 quality-filter reads, merge technical lanes, quantify transcripts, test
 differential expression, discover samples, or infer experimental pairing.
@@ -153,15 +154,15 @@ establishes.
 
 ## License
 
-NORAD is **source-available**, not open-source software. You may use and modify
-NORAD without charge for academic, nonprofit, research, and internal commercial
+EMRYS is **source-available**, not open-source software. You may use and modify
+EMRYS without charge for academic, nonprofit, research, and internal commercial
 work. You may also commercialize the scientific data, results, reports,
 visualizations, interpretations, discoveries, and other outputs produced using
-NORAD, and you may charge for research, compute, or analysis services that
+EMRYS, and you may charge for research, compute, or analysis services that
 deliver those outputs.
 
-You may not sell NORAD itself, including through paid rebranding, licensing, or
-sublicensing, or by offering NORAD or substantially equivalent NORAD
+You may not sell EMRYS itself, including through paid rebranding, licensing, or
+sublicensing, or by offering EMRYS or substantially equivalent EMRYS
 functionality as a paid hosted or managed product or service. The complete
 terms in [`LICENSE`](LICENSE) control. Third-party software, tools, data, and
 references retain their own terms; see [`NOTICE`](NOTICE) and
