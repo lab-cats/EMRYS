@@ -6,7 +6,7 @@ mechanical read-orientation partitioning, cohort mpileup, candidate annotation,
 paired CMH ranking, and bounded sequence/motif context projection. You provide
 declared reads, a matching FASTA/GTF
 reference, paired experimental strata, genomic partitions, analysis thresholds,
-and exact scientific-tool identities. NORAD produces validated native outputs,
+and exact scientific-tool identities. EMRYS produces validated native outputs,
 an immutable task history, a deterministic artifact index, a machine-readable
 run summary, QC tables, and separate self-contained scientific and
 evidence/provenance HTML views.
@@ -21,7 +21,7 @@ The automatic workflow produces **CMH-ranked computational candidates**. It
 does not prove that a candidate is an RNA-editing site, infer biological strand
 from the mechanical orientation labels, or make a biological conclusion.
 Candidate review, adjudication, and biological interpretation are external
-work-process records. NORAD does not model them as pipeline steps, gates,
+work-process records. EMRYS does not model them as pipeline steps, gates,
 artifacts, or completion states.
 
 ## What happens to the data
@@ -45,7 +45,7 @@ artifacts, or completion states.
 | Reporting | Run | Index artifacts, assemble the run summary, and render both report views. | Scientific HTML, evidence/provenance HTML, summary TSV, and receipt-last publication |
 
 Steps `02b` and `03` are required QC leaves but do not gate downstream
-scientific computation. External review or adjudication may use NORAD's
+scientific computation. External review or adjudication may use EMRYS's
 computational outputs and provenance, but it is not part of `norad run`.
 
 The fixed graph contains `3 + 7S + P + 3` scientific-owner jobs for `S`
@@ -62,14 +62,14 @@ Read this before installing:
   a packaged resource policy that can be overridden by adjacent
   `norad.resources.yaml` and then by explicit CLI values. `workflow_cores` and
   `workflow_memory_mb` bound the whole scheduler; per-stage concurrency,
-  threads, and memory model each owner class. NORAD neither submits SLURM jobs
+  threads, and memory model each owner class. EMRYS neither submits SLURM jobs
   nor distributes work across nodes.
 - Run it on a suitably provisioned Linux workstation, or run the same local
   process inside **one** batch allocation on **one** compute node. Never run the
   scientific workflow on a cluster login/head node; use that node only to
   clone, edit, transfer small files, submit, inspect, and tail logs.
 - One cooperative user is required. The exact workspace parent and Step `00c`
-  reference-sidecar parent must pass NORAD's two-phase site qualification for
+  reference-sidecar parent must pass EMRYS's two-phase site qualification for
   hard links, `flock`, rename/visibility, fsync, UID/access, and post-allocation
   durability. No filesystem family—including NFS—is admitted by name alone.
 - Local-pilot inputs, workspace, control logs, and results stay outside the Git
@@ -78,7 +78,7 @@ Read this before installing:
   checkout-local exceptions; an already provisioned R library may instead be
   selected explicitly. The doctor requires tracked checkout content to be clean
   and binds its exact commit and installed package bytes.
-- NORAD does not download data, install tools, load modules, restore R
+- EMRYS does not download data, install tools, load modules, restore R
   packages, estimate runtime, force retries, delete locks, or repair outputs.
   It does observe the CPU affinity and memory capacity available to its local
   executor so an impossible resource policy fails before workflow entry.
@@ -121,7 +121,7 @@ establishes.
 
 ## Glossary
 
-| Term | Meaning in NORAD |
+| Term | Meaning in EMRYS |
 | --- | --- |
 | `AD` | Alternate-allele read depth reported for one sample/candidate. |
 | `AF` | Alternate fraction, normally `AD / DP`, for one sample/candidate. |
@@ -133,7 +133,7 @@ establishes.
 | Common odds ratio | CMH effect estimate shared across the paired strata; values above `1` favor treatment enrichment and below `1` favor control, subject to the declared thresholds. |
 | `FWD_like`, `REV_like` | Legacy mechanical SAM-flag groups; not biological strand labels. |
 | Computational call | A Step `09` threshold classification such as `significant_up`; still pending scientific adjudication. |
-| External review or adjudication | A research work process that may reference NORAD outputs but is not a NORAD step, gate, artifact, or completion state. |
+| External review or adjudication | A research work process that may reference EMRYS outputs but is not a EMRYS step, gate, artifact, or completion state. |
 | Create-absent / no-clobber | Publication that requires the destination not to exist and refuses replacement or adoption. |
 | Receipt-last | The transaction receipt is published only after its declared payload has been checked; the receipt still must be semantically re-admitted. |
 | Run root | The immutable/evidence-bearing directory for one deterministic normalized run ID. |
