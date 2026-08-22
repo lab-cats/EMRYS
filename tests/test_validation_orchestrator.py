@@ -79,7 +79,7 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     assert configuration["dependency-groups"]["workflow"] == [
         "snakemake==9.25.1"
     ]
-    assert configuration["build-system"]["requires"] == ["setuptools==80.9.0"]
+    assert configuration["build-system"]["requires"] == ["setuptools==83.0.0"]
     assert not (REPO_ROOT / "requirements.txt").exists()
     assert not (REPO_ROOT / "requirements-dev.txt").exists()
 
