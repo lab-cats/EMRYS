@@ -33,6 +33,15 @@ PROBE_FILES = (
     "hardlink.bin",
     "visible.bin",
 )
+_CROSS_NODE_STABLE_ROOT_FIELDS = (
+    "path",
+    "inode",
+    "uid",
+    "gid",
+    "mount_point",
+    "filesystem_type",
+    "filesystem_source",
+)
 _LOCK_CHILD = """import fcntl
 import os
 import sys
@@ -276,17 +285,12 @@ def _root_snapshot(path: Path) -> dict[str, Any]:
 
 
 def _stable_snapshot(expected: dict[str, Any], observed: dict[str, Any]) -> bool:
-    fields = (
-        "path",
-        "device_id",
-        "inode",
-        "uid",
-        "gid",
-        "mount_point",
-        "filesystem_type",
-        "filesystem_source",
+    # Linux st_dev is recorded for diagnostics and same-node hard-link checks,
+    # but a shared mount may receive a different device number on another node.
+    return all(
+        expected.get(field) == observed.get(field)
+        for field in _CROSS_NODE_STABLE_ROOT_FIELDS
     )
-    return all(expected.get(field) == observed.get(field) for field in fields)
 
 
 def _probe_root(

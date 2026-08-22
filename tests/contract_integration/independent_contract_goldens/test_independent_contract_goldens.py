@@ -256,8 +256,10 @@ def test_report_html_views_match_exact_independent_sha256_goldens() -> None:
     evidence = rendered["evidence"]
 
     assert scientific != evidence
-    assert b"computational-results-section" in scientific
-    assert b"computational-results-section" not in evidence
+    assert b"scientific-summary-section" in scientific
+    assert b"scientific-summary-section" not in evidence
+    assert b"primary-scientific-figures-section" in scientific
+    assert b"figure-guide-section" in scientific
     assert b"artifact-appendix-section" in evidence
     assert b"artifact-appendix-section" not in scientific
 

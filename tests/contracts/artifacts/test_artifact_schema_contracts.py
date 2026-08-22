@@ -1027,7 +1027,7 @@ def test_run_summary_semantics_threads_the_explicit_source_root(
     ]
 
 
-def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_09() -> None:
+def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_10() -> None:
     rows = contracts.validate_inventory(INVENTORY)
 
     assert Counter(row["step_id"] for row in rows) == {
@@ -1044,6 +1044,7 @@ def test_inventory_is_explicit_ordered_unique_and_covers_steps_00a_through_09() 
         "07": 8,
         "08": 4,
         "09": 7,
+        "10": 6,
     }
     assert all(row["required"] == "true" for row in rows)
     assert all(not any(token in row["source_path"] for token in "*?[]") for row in rows)

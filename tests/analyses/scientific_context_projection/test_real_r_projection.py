@@ -6,10 +6,16 @@ import csv
 import os
 import shutil
 import subprocess
+import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
 from norad.contracts.scientific_evidence import scientific_context
+from norad.libraries.process_environment import (
+    guarded_r_environment,
+    guarded_rscript_argv,
+)
 from tests import scientific_evidence_test_support as STEP_FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -19,30 +25,64 @@ PRODUCER = (
 )
 
 
-def _rscript() -> str:
+def _test_environment() -> dict[str, str]:
+    selected_library = os.environ.get("NORAD_RENV_LIBRARY")
+    environment = (
+        guarded_r_environment(
+            REPO_ROOT,
+            Path(selected_library),
+            base_environment=os.environ,
+        )
+        if selected_library
+        else os.environ.copy()
+    )
+    environment["NORAD_SHA256_PYTHON"] = sys.executable
+    environment.setdefault("NORAD_LOCAL_PILOT_R", "0")
+    environment.pop("NORAD_RUN_TOKEN", None)
+    return environment
+
+
+def _rscript(environment: Mapping[str, str]) -> str:
+    guarded = environment.get("NORAD_LOCAL_PILOT_R") == "1"
     requested = os.environ.get("RSCRIPT_BIN_OVERRIDE", "Rscript")
     resolved = (
         str(Path(requested).resolve()) if "/" in requested else shutil.which(requested)
     )
     if not resolved or not os.access(resolved, os.X_OK):
-        pytest.skip(f"real scientific-context test requires Rscript: {requested}")
+        message = f"real scientific-context test requires Rscript: {requested}"
+        if guarded:
+            pytest.fail(message)
+        pytest.skip(message)
+    probe_arguments = (
+        "-e",
+        'required <- c("Biostrings", "GenomicRanges", "IRanges", '
+        '"Rsamtools"); quit(status = if '
+        "(all(vapply(required, requireNamespace, logical(1), quietly = TRUE))) "
+        "0L else 1L)",
+    )
+    probe_command = (
+        guarded_rscript_argv(resolved, probe_arguments)
+        if guarded
+        else [resolved, *probe_arguments]
+    )
     package_check = subprocess.run(
-        [
-            resolved,
-            "-e",
-            (
-                'required <- c("Biostrings", "GenomicRanges", "IRanges", '
-                '"Rsamtools"); quit(status = if '
-                "(all(vapply(required, requireNamespace, logical(1), quietly = TRUE))) "
-                "0L else 1L)"
-            ),
-        ],
+        probe_command,
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
         check=False,
+        env=dict(environment),
     )
     if package_check.returncode != 0:
+        if guarded:
+            detail = " ".join(
+                (package_check.stdout + " " + package_check.stderr).split()
+            )
+            pytest.fail(
+                "guarded real-R package probe failed with exit "
+                f"{package_check.returncode}"
+                + (f": {detail}" if detail else "")
+            )
         pytest.skip(
             "real scientific-context test requires the locked Bioconductor packages"
         )
@@ -179,12 +219,9 @@ def _run_projection(
     output_root: Path,
     inputs: tuple[str, Path, Path, Path, Path, Path],
     rscript: str,
+    environment: Mapping[str, str],
 ) -> Path:
     analysis_id, all_sites, significant, summary, reference, fai = inputs
-    environment = os.environ.copy()
-    environment["NORAD_SHA256_PYTHON"] = str(REPO_ROOT / ".venv/bin/python")
-    environment.setdefault("NORAD_LOCAL_PILOT_R", "0")
-    environment.pop("NORAD_RUN_TOKEN", None)
     subprocess.run(
         [
             str(PRODUCER),
@@ -211,7 +248,7 @@ def _run_projection(
         capture_output=True,
         text=True,
         check=True,
-        env=environment,
+        env=dict(environment),
     )
     return output_root / analysis_id
 
@@ -219,10 +256,14 @@ def _run_projection(
 def test_real_r_projection_is_canonically_admitted_and_deterministic(
     tmp_path: Path,
 ) -> None:
-    rscript = _rscript()
+    environment = _test_environment()
+    if os.environ.get("NORAD_RENV_LIBRARY"):
+        assert environment["NORAD_LOCAL_PILOT_R"] == "1"
+        assert environment["R_DEFAULT_PACKAGES"] == "NULL"
+    rscript = _rscript(environment)
     inputs = _expanded_step09(tmp_path / "inputs")
-    first_dir = _run_projection(tmp_path / "first", inputs, rscript)
-    second_dir = _run_projection(tmp_path / "second", inputs, rscript)
+    first_dir = _run_projection(tmp_path / "first", inputs, rscript, environment)
+    second_dir = _run_projection(tmp_path / "second", inputs, rscript, environment)
     analysis_id = inputs[0]
 
     first = scientific_context.validate_scientific_context_transaction(
@@ -269,7 +310,8 @@ def test_real_r_projection_is_canonically_admitted_and_deterministic(
 def test_real_r_projection_enforces_canonical_fai_lexemes_and_dimensions(
     tmp_path: Path,
 ) -> None:
-    rscript = _rscript()
+    environment = _test_environment()
+    rscript = _rscript(environment)
     inputs = _expanded_step09(tmp_path / "inputs")
     fields = inputs[-1].read_text(encoding="ascii").rstrip("\n").split("\t")
     assert len(fields) == 5
@@ -303,7 +345,12 @@ def test_real_r_projection_enforces_canonical_fai_lexemes_and_dimensions(
         bad_fai.write_text("\t".join(bad_fields) + "\n", encoding="ascii")
         output_root = tmp_path / f"output-{case}"
         with pytest.raises(subprocess.CalledProcessError) as failure:
-            _run_projection(output_root, (*inputs[:-1], bad_fai), rscript)
+            _run_projection(
+                output_root,
+                (*inputs[:-1], bad_fai),
+                rscript,
+                environment,
+            )
         assert expected in failure.value.stderr
         assert not (
             output_root / analysis_id / f"{analysis_id}.context_receipt.tsv"
@@ -319,6 +366,7 @@ def test_real_r_projection_enforces_canonical_fai_lexemes_and_dimensions(
             tmp_path / "output-large-offset",
             (*inputs[:-1], large_offset_fai),
             rscript,
+            environment,
         )
     assert "Candidate chromosome is absent from the exact reference FAI" in (
         accepted_large_offset.value.stderr

@@ -673,9 +673,9 @@ def test_missing_and_malformed_sources_are_explicit_and_scope_reconciled(
     assert malformed_sibling["completion_status"] == "incomplete"
 
     receipt = read_tsv(artifact_fixture.receipt_path)[0]
-    assert receipt["present_artifact_count"] == "67"
+    assert receipt["present_artifact_count"] == "73"
     assert receipt["missing_artifact_count"] == "1"
-    assert receipt["complete_artifact_count"] == "62"
+    assert receipt["complete_artifact_count"] == "68"
     assert receipt["incomplete_artifact_count"] == "5"
     assert receipt["failed_artifact_count"] == "1"
     assert receipt["required_missing_artifact_count"] == "1"

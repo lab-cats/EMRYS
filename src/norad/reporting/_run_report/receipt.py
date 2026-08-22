@@ -79,24 +79,12 @@ def validate_summary_tsv(path: Path, context: ReportContext) -> None:
 
 
 def _truncations(context: ReportContext) -> list[dict[str, Any]]:
-    computational_tables = (
-        context.computational_results.tables
-        if context.computational_results is not None
-        else ()
-    )
-    computational = [
-        {
-            "table_id": table.table_id,
-            "report_section": "computational-results-section",
-            "full_table_path": str(table.path),
-            "full_table_sha256": table.sha256,
-            "full_row_count": table.row_count,
-            "displayed_row_count": table.displayed_row_count,
-        }
-        for table in computational_tables
-        if table.truncated
-    ]
-    return computational
+    # The scientific view no longer renders prefixes of the native candidate
+    # tables. Complete Step 09 TSVs remain admitted inputs and are bound in the
+    # evidence view; selected-candidate records are an explicit display
+    # projection, not a truncated table. The v4 field therefore remains an
+    # empty roster rather than describing rows that were never rendered.
+    return []
 
 
 def receipt_document(

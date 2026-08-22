@@ -2,26 +2,38 @@
 
 from __future__ import annotations
 
+import base64
 import csv
 import json
 import os
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
+from dataclasses import replace
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
 
 from norad.reporting._run_report import figures
 from norad.reporting._run_report import scientific_context_figures as context_figures
+from norad.reporting._run_report.candidate_display import (
+    CandidateLocation,
+    CandidateMotifEvidence,
+    CandidateMotifHit,
+    CandidatePairEvidence,
+    CandidateSampleEvidence,
+    MotifState,
+    SelectedCandidate,
+    SelectedCandidateProjection,
+)
 from norad.reporting._run_report.inputs import _snapshot_regular
 from norad.reporting._run_report.models import (
     SCIENTIFIC_FIGURE_IDS,
-    ComputationalResults,
-    ComputationalSampleManifest,
     ComputationalTable,
     ReportRenderError,
-    SamplePair,
     ScientificContextResults,
+    ScientificFigurePanel,
 )
 from tests import scientific_context_test_support as CONTEXT_FIXTURE
 
@@ -67,6 +79,113 @@ def context_table(path: Path, role: str, *, materialize: bool) -> ComputationalT
         header=tuple(rows[0]),
         display_rows=tuple(tuple(row) for row in rows[1:]) if materialize else (),
         snapshot=snapshot,
+    )
+
+
+def selected_candidate(
+    rank: int,
+    candidate_id: str,
+    *,
+    motif_state: MotifState = "present",
+    hit_offset: int = 5,
+) -> SelectedCandidate:
+    sequence = list("A" * 201)
+    if motif_state == "present":
+        sequence[100 + hit_offset : 106 + hit_offset] = "TGTACA"
+    hits = (
+        (
+            CandidateMotifHit(
+                motif_id="PUM_UGUANA",
+                matched_sequence="TGTACA",
+                start_offset=hit_offset,
+                end_offset=hit_offset + 5,
+                midpoint_offset=Decimal(str(hit_offset + 2.5)),
+                bin_start=hit_offset,
+                bin_end=hit_offset + 10,
+            ),
+        )
+        if motif_state == "present"
+        else ()
+    )
+    context_available = motif_state != "step10_unavailable"
+    return SelectedCandidate(
+        display_rank=rank,
+        candidate_id=candidate_id,
+        call_status="significant_up",
+        mean_analysis_dp=Decimal("72.5"),
+        mean_control_af=Decimal("0.125"),
+        mean_treatment_af=Decimal("0.375"),
+        treatment_control_difference=Decimal("0.25"),
+        cmh_fdr_bh=Decimal("0.004"),
+        common_odds_ratio=Decimal("2.4"),
+        location=CandidateLocation(
+            chromosome="1",
+            position_1based=101,
+            genomic_ref="A",
+            genomic_alt="G",
+            rna_ref="A",
+            rna_alt="G",
+            workflow_orientation="FWD_like",
+            orientation_policy="legacy_reverse_stranded_v1",
+            annotation_strand="+",
+            gene_ids=("GENE1",),
+            transcript_ids=("TX1", "TX2"),
+            region_memberships=("3' UTR", "exon"),
+        ),
+        pairs=(
+            CandidatePairEvidence(
+                replicate="R1",
+                control=CandidateSampleEvidence(
+                    sample_id="control",
+                    allele_fraction=Decimal("0.10"),
+                    alternate_depth=10,
+                    total_depth=100,
+                ),
+                treatment=CandidateSampleEvidence(
+                    sample_id="treatment",
+                    allele_fraction=Decimal("0.40"),
+                    alternate_depth=40,
+                    total_depth=100,
+                ),
+            ),
+        ),
+        motif=CandidateMotifEvidence(
+            state=motif_state,
+            motif_id="PUM_UGUANA",
+            rna_consensus="UGUANA",
+            dna_consensus="TGTANA",
+            context_radius=100,
+            match_policy="exact_iupac_presented_strand_v1",
+            context_status="available" if context_available else None,
+            orientation_action="identity" if context_available else None,
+            window_start_1based=1 if context_available else None,
+            window_end_1based=201 if context_available else None,
+            edit_offset_0based=100 if context_available else None,
+            oriented_sequence="".join(sequence) if context_available else None,
+            hits=hits,
+            unavailable_reason=(
+                "The complete admitted Step 10 context is unavailable."
+                if motif_state == "step10_unavailable"
+                else None
+            ),
+        ),
+    )
+
+
+def candidate_projection(
+    candidates: tuple[SelectedCandidate, ...],
+    *,
+    significant_count: int | None = None,
+) -> SelectedCandidateProjection:
+    return SelectedCandidateProjection(
+        analysis_id="analysis",
+        control_condition="control",
+        treatment_condition="treatment",
+        selection_source="step10_display_rank",
+        significant_candidate_count=(
+            len(candidates) if significant_count is None else significant_count
+        ),
+        candidates=candidates,
     )
 
 
@@ -199,75 +318,210 @@ def test_available_step10_logos_and_enrichment_are_deterministic(
     )
     assert first[0].svg_sha256 == second[0].svg_sha256
     assert first[1].svg_sha256 == second[1].svg_sha256
+    assert "not de novo motif discovery" in first[0].text_summary.lower()
     assert "reporting performs no motif scan" in first[1].caption.lower()
     assert "BH as not applicable" in first[1].caption
+    assert "100*admitted nearest-hit" in first[1].mapping
 
 
-def test_selected_context_tracks_use_only_upstream_ranks_and_paired_af(
+def test_scientific_figure_assets_bind_shape_hash_size_and_unique_panel_ids(
     tmp_path: Path,
 ) -> None:
     paths = CONTEXT_FIXTURE.build_outputs(tmp_path / "context")
-    candidate = context_table(
-        paths["candidate_context"], "candidate_context", materialize=False
-    )
-    hits = context_table(paths["motif_hits"], "motif_hits", materialize=False)
     logo = context_table(paths["sequence_logo"], "sequence_logo", materialize=True)
-    statistics = context_table(
-        paths["motif_statistics"], "motif_statistics", materialize=True
+    rendered = context_figures._sequence_context_logo_figure(
+        ScientificContextResults(
+            analysis_id="analysis",
+            validation=logo,
+            candidate_context=logo,
+            motif_hits=logo,
+            sequence_logo=logo,
+            motif_statistics=logo,
+            receipt=logo,
+            bound_inputs=(),
+            receipt_metadata={},
+        )
     )
-    context_results = ScientificContextResults(
-        analysis_id="analysis",
-        validation=candidate,
-        candidate_context=candidate,
-        motif_hits=hits,
-        sequence_logo=logo,
-        motif_statistics=statistics,
-        receipt=candidate,
-        bound_inputs=(),
-        receipt_metadata={},
+    rendered.validate()
+    assert rendered.svg_size_bytes is not None
+    with pytest.raises(ReportRenderError, match="byte size"):
+        replace(rendered, svg_size_bytes=rendered.svg_size_bytes + 1).validate()
+
+    asset = rendered.assets[0]
+    mixed = replace(
+        rendered,
+        panels=(
+            ScientificFigurePanel(
+                panel_id="mixed-panel",
+                data_uri=asset.data_uri,
+                alt_text=asset.alt_text,
+                svg_sha256=asset.svg_sha256,
+                svg_size_bytes=asset.svg_size_bytes,
+            ),
+        ),
     )
-    significant_path = tmp_path / "significant.tsv"
-    with significant_path.open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
-        writer.writerow(("candidate_id", "AF__control", "AF__treatment"))
-        for index in range(8):
-            writer.writerow(
-                (f"significant_up_{index:02d}", f"0.{index + 1}", f"0.{index + 2}")
-            )
-    significant = computational_table(significant_path)
-    manifest_path = tmp_path / "samples.tsv"
-    manifest_path.write_text("synthetic manifest\n", encoding="utf-8")
-    manifest_snapshot = _snapshot_regular(manifest_path, "sample manifest fixture")
-    manifest = ComputationalSampleManifest(
-        role="sample_manifest",
-        path=manifest_path,
-        sha256=manifest_snapshot.sha256,
-        size_bytes=manifest_snapshot.size_bytes,
-        sample_ids=("control", "treatment"),
-        control_condition="control",
-        treatment_condition="treatment",
-        pairs=(SamplePair("R1", "control", "treatment"),),
-        snapshot=manifest_snapshot,
+    with pytest.raises(ReportRenderError, match="mixes legacy and panel"):
+        mixed.validate()
+
+    duplicated = replace(
+        rendered,
+        data_uri=None,
+        svg_sha256=None,
+        svg_size_bytes=None,
+        panels=(asset, asset),
     )
-    computational = ComputationalResults(
-        analysis_id="analysis",
-        sample_ids=("control", "treatment"),
-        validation=significant,
-        all_sites=significant,
-        significant_sites=significant,
-        summary=significant,
-        mutation_spectrum=significant,
-        sample_manifest=manifest,
+    with pytest.raises(ReportRenderError, match="repeats a panel ID"):
+        duplicated.validate()
+
+
+def test_position_profiles_use_each_populations_analyzable_denominator() -> None:
+    rows = (
+        {
+            "bin_start": "-10",
+            "bin_end": "0",
+            "analyzable_candidate_count": "20",
+            "candidate_with_motif_count": "2",
+        },
+        {
+            "bin_start": "0",
+            "bin_end": "10",
+            "analyzable_candidate_count": "20",
+            "candidate_with_motif_count": "3",
+        },
     )
 
-    rendered = context_figures._selected_context_track_figure(
-        context_results, computational
+    midpoints, percentages, analyzable, with_hit = (
+        context_figures._position_profile_percentages(rows)
     )
+
+    assert midpoints == (-5.0, 5.0)
+    assert percentages == (10.0, 15.0)
+    assert analyzable == 20
+    assert with_hit == 5
+
+
+def test_selected_context_panels_use_shared_order_and_list_out_of_slice_hits() -> None:
+    candidates = tuple(
+        selected_candidate(
+            index,
+            f"significant_up_{index:02d}",
+            hit_offset=45 if index == 1 else 5,
+        )
+        for index in range(1, 9)
+    )
+    projection = candidate_projection(candidates, significant_count=12)
+
+    first = context_figures._selected_context_track_figure(projection)
+    second = context_figures._selected_context_track_figure(projection)
+
+    assert first.status == "available"
+    assert first.data_uri is first.svg_sha256 is first.svg_size_bytes is None
+    assert len(first.panels) == 8
+    assert tuple(panel.panel_id for panel in first.panels) == tuple(
+        f"selected-context-track-figure-candidate-{index:02d}-panel"
+        for index in range(1, 9)
+    )
+    assert tuple(panel.svg_sha256 for panel in first.panels) == tuple(
+        panel.svg_sha256 for panel in second.panels
+    )
+    assert "+45..+50" in first.panels[0].alt_text
+    assert "orientation policy legacy_reverse_stranded_v1" in first.panels[0].alt_text
+    assert "12 significant candidates" in first.population
+    assert "no figure-side selection or reranking" in first.population
+    assert "Figure 2 performs no selection or reranking" in first.caption
+    assert all(panel.svg_size_bytes < 4_000_000 for panel in first.panels)
+
+
+def test_many_manifest_pairs_use_bounded_visual_notes() -> None:
+    pairs = tuple(
+        CandidatePairEvidence(
+            replicate=f"R{index}",
+            control=CandidateSampleEvidence(
+                sample_id=f"control_{index}",
+                allele_fraction=Decimal("0.10"),
+                alternate_depth=10,
+                total_depth=100,
+            ),
+            treatment=CandidateSampleEvidence(
+                sample_id=f"treatment_{index}",
+                allele_fraction=Decimal("0.40"),
+                alternate_depth=40,
+                total_depth=100,
+            ),
+        )
+        for index in range(1, 9)
+    )
+    candidate = replace(selected_candidate(1, "many-pairs"), pairs=pairs)
+    projection = replace(
+        candidate_projection((candidate,)),
+        control_condition="control-" + "c" * 80,
+        treatment_condition="treatment-" + "t" * 80,
+    )
+
+    context_figure = context_figures._selected_context_track_figure(projection)
+    profile_figure = figures._paired_sample_profile_figure(projection)
+    context_svg = base64.b64decode(context_figure.panels[0].data_uri.partition(",")[2])
+    assert profile_figure.data_uri is not None
+    profile_svg = base64.b64decode(profile_figure.data_uri.partition(",")[2])
+
+    assert b"8 manifest pairs; exact values below" in context_svg
+    assert b"8 manifest pairs; exact values in candidate records" in profile_svg
+    assert projection.control_condition.encode() not in context_svg
+    assert projection.control_condition.encode() not in profile_svg
+
+
+def test_selected_context_panel_keeps_step10_unavailable_distinct() -> None:
+    projection = candidate_projection(
+        (selected_candidate(1, "fallback", motif_state="step10_unavailable"),)
+    )
+
+    rendered = context_figures._selected_context_track_figure(projection)
 
     assert rendered.status == "available"
-    assert rendered.population.startswith("Exactly 8 candidates with upstream")
-    assert "no report-side selection or reranking" in rendered.population
-    assert rendered.svg_size_bytes is not None and rendered.svg_size_bytes < 4_000_000
+    assert "fallback=step10_unavailable" in rendered.alt_text
+    assert "Registered motif evidence was not admitted" in rendered.panels[0].alt_text
+    assert "state step10_unavailable" in rendered.panels[0].alt_text
+    assert "Registered motif UGUANA" not in rendered.panels[0].alt_text
+
+
+def test_selected_context_panel_bounds_long_labels_and_boundary_text() -> None:
+    candidate = selected_candidate(
+        1,
+        "candidate-" + "x" * 180,
+        motif_state="boundary_unavailable",
+    )
+    candidate = replace(
+        candidate,
+        location=replace(
+            candidate.location,
+            chromosome="contig-" + "y" * 120,
+            gene_ids=("gene-" + "z" * 120,),
+        ),
+        motif=replace(
+            candidate.motif,
+            motif_id="motif-" + "m" * 120,
+            context_status="boundary-" + "s" * 120,
+            orientation_action="orientation-" + "a" * 120,
+        ),
+    )
+    projection = replace(
+        candidate_projection((candidate,)),
+        control_condition="control-" + "c" * 120,
+        treatment_condition="treatment-" + "t" * 120,
+    )
+
+    lines = context_figures._motif_panel_lines(candidate)
+    rendered = context_figures._selected_context_track_figure(projection)
+
+    assert lines
+    assert max(map(len, lines)) <= context_figures._MOTIF_PANEL_LINE_WIDTH
+    assert (
+        len(context_figures._panel_condition_label(projection.control_condition))
+        <= context_figures._PANEL_CONDITION_LABEL_LIMIT
+    )
+    assert len(rendered.panels) == 1
+    assert rendered.panels[0].svg_size_bytes < 4_000_000
+    assert candidate.candidate_id in rendered.panels[0].alt_text
 
 
 def test_candidate_grid_is_population_complete_and_size_bounded(
@@ -319,6 +573,42 @@ def test_candidate_grid_is_population_complete_and_size_bounded(
     )
 
 
+def test_exact_significant_overlays_preserve_admitted_coordinates(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "significant-overlays.tsv"
+    with path.open("w", encoding="utf-8", newline="") as stream:
+        writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
+        writer.writerow(
+            (
+                "test_status",
+                "call_status",
+                "mean_analysis_dp",
+                "treatment_control_difference",
+            )
+        )
+        writer.writerows(
+            (
+                ("tested", "effect_not_met", "10", "0.01"),
+                ("tested", "significant_up", "75.5", "0.125"),
+                ("tested", "significant_down", "44", "-0.25"),
+                ("low_coverage", "not_tested", "NA", "NA"),
+            )
+        )
+
+    points = figures._exact_significant_points(
+        computational_table(path, role="all_sites"),
+        x_field="mean_analysis_dp",
+        y_field="treatment_control_difference",
+        x_positive=True,
+    )
+
+    assert points == {
+        "significant_down": ((44.0, -0.25),),
+        "significant_up": ((75.5, 0.125),),
+    }
+
+
 def test_condition_grid_is_population_complete_and_bounded(tmp_path: Path) -> None:
     path = tmp_path / "all-sites.tsv"
     with path.open("w", encoding="utf-8", newline="") as stream:
@@ -352,33 +642,35 @@ def test_condition_grid_is_population_complete_and_bounded(tmp_path: Path) -> No
     )
 
 
-def test_selected_profiles_use_the_fixed_top_eight_display_rule(
-    tmp_path: Path,
-) -> None:
-    path = tmp_path / "significant.tsv"
-    with path.open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.writer(stream, delimiter="\t", lineterminator="\n")
-        writer.writerow(("candidate_id", "cmh_fdr_bh", "treatment_control_difference"))
-        rows = (
-            ("tie-z", "0.01", "0.2"),
-            ("tie-a", "0.01", "-0.2"),
-            ("larger-effect", "0.01", "0.4"),
-            *(
-                (f"candidate-{index}", str(0.02 + index / 100), "0.1")
-                for index in range(8)
-            ),
-        )
-        writer.writerows(rows)
+def test_paired_profiles_preserve_the_shared_candidate_roster() -> None:
+    projection = candidate_projection(
+        (
+            selected_candidate(1, "candidate-z"),
+            selected_candidate(2, "candidate-a"),
+        ),
+        significant_count=9,
+    )
 
-    selected = figures._selected_profiles(computational_table(path))
+    rendered = figures._paired_sample_profile_figure(projection)
 
-    assert len(selected) == figures._PROFILE_DISPLAY_LIMIT
-    assert [profile.row["candidate_id"] for profile in selected[:3]] == [
-        "larger-effect",
-        "tie-a",
-        "tie-z",
-    ]
-    assert "candidate-7" not in {profile.row["candidate_id"] for profile in selected}
+    assert rendered.status == "available"
+    assert "candidate-z, candidate-a" in rendered.caption
+    assert "Shared ordered roster of 2 of 9" in rendered.population
+    assert "100*AF__sample" in rendered.mapping
+
+
+def test_maximum_paired_profile_roster_fits_the_print_height_bound() -> None:
+    projection = candidate_projection(
+        tuple(selected_candidate(index, f"candidate-{index}") for index in range(1, 9))
+    )
+
+    rendered = figures._paired_sample_profile_figure(projection)
+
+    assert rendered.data_uri is not None
+    svg = base64.b64decode(rendered.data_uri.partition(",")[2])
+    root = ET.fromstring(svg)
+    height_points = float(root.attrib["height"].removesuffix("pt"))
+    assert height_points <= figures._PROFILE_MAX_HEIGHT_INCHES * 72
 
 
 def test_location_memberships_remain_independent_and_nonexclusive(
@@ -400,7 +692,7 @@ def test_location_memberships_remain_independent_and_nonexclusive(
     counts, population = figures._location_memberships(computational_table(path))
 
     assert population == 3
-    assert counts == (1, 1, 0, 2, 1)
+    assert counts == (1, 1, 0, 2, 1, 1)
     assert sum(counts) > population
 
 

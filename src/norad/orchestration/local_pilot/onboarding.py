@@ -10,6 +10,7 @@ import io
 import json
 import os
 import re
+import shlex
 import stat
 import sys
 from collections.abc import Callable, Iterator, Mapping, Sequence
@@ -25,6 +26,7 @@ from norad.orchestration.local_pilot.normalization import (
     NormalizationBundle,
     normalize_request,
 )
+from norad.orchestration.local_pilot.launcher_config import BATCH_MARKER
 from norad.stages.gtf_to_bed12 import converter as gtf_converter
 
 DESCRIPTION = (
@@ -35,6 +37,7 @@ DESCRIPTION = (
 PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v2.json")
 STARTER_MANIFEST = "starter-set.manifest.tsv"
 SLURM_WRAPPER = "run-in-slurm.sh"
+LAUNCHER_CONFIG = "norad.launcher.yaml"
 RUNTIME_HEADER = (
     "check_id",
     "check_type",
@@ -269,8 +272,8 @@ def publish_create_absent_tree(
         ) from exc
 
 
-def _slurm_wrapper_bytes() -> bytes:
-    return b"""#!/bin/bash
+def _slurm_wrapper_bytes(source_checkout: Path, python_executable: Path) -> bytes:
+    template = b"""#!/bin/bash
 set -euo pipefail
 
 die() {
@@ -292,6 +295,15 @@ require_value() {
     [[ -n "${!name}" ]] || die "$name must be nonempty"
 }
 
+observe_live_identity() {
+    [[ -x /usr/bin/id ]] || die "/usr/bin/id is unavailable"
+    live_uid="$(/usr/bin/id -u)" || die "could not resolve the live numeric UID"
+    live_user="$(/usr/bin/id -un)" || die "could not resolve the live user name"
+    [[ "$live_uid" =~ ^[0-9]+$ ]] || die "live numeric UID is invalid"
+    [[ "$live_user" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || \
+        die "live user name is unsafe for Slurm export"
+}
+
 validate_module_settings() {
     case "$NORAD_MODULE_MODE" in
         exact)
@@ -309,54 +321,20 @@ validate_module_settings() {
 }
 
 if [[ -z "${SLURM_JOB_ID:-}" ]]; then
-    for name in NORAD_SLURM_ACCOUNT NORAD_SLURM_PARTITION NORAD_SLURM_QOS \
-        NORAD_SLURM_CPUS NORAD_SLURM_MEMORY NORAD_SLURM_TIME NORAD_LOG_DIR \
-        NORAD_SOURCE_CHECKOUT NORAD_PYTHON NORAD_REQUEST NORAD_WORKSPACE \
-        NORAD_RUNTIME_PROFILE NORAD_MODULE_MODE NORAD_SCRATCH_PARENT \
-        NORAD_EXECUTE; do
-        require_value "$name"
-    done
-    for name in NORAD_MODULE_INIT NORAD_MODULES; do
-        require_export_value "$name"
-    done
-    validate_module_settings
-    [[ "$NORAD_SLURM_CPUS" =~ ^[1-9][0-9]*$ ]] || die "NORAD_SLURM_CPUS must be a positive integer"
-    [[ "$NORAD_EXECUTE" == 0 || "$NORAD_EXECUTE" == 1 ]] || die "NORAD_EXECUTE must be 0 or 1"
-    slurm_memory_argument=
-    if [[ "$NORAD_SLURM_MEMORY" != site-default ]]; then
-        [[ "$NORAD_SLURM_MEMORY" =~ ^[1-9][0-9]*[KMGTP]?$ ]] || \
-            die "NORAD_SLURM_MEMORY must be site-default or a positive Slurm size"
-        slurm_memory_argument="--mem=$NORAD_SLURM_MEMORY"
-    fi
-    [[ -d "$NORAD_LOG_DIR" && ! -L "$NORAD_LOG_DIR" ]] || \
-        die "NORAD_LOG_DIR must be an existing real directory"
-    command -v sbatch >/dev/null 2>&1 || die "sbatch is unavailable on this host"
-    export_spec="NORAD_SLURM_CPUS=$NORAD_SLURM_CPUS,NORAD_SOURCE_CHECKOUT=$NORAD_SOURCE_CHECKOUT,NORAD_PYTHON=$NORAD_PYTHON,NORAD_REQUEST=$NORAD_REQUEST,NORAD_WORKSPACE=$NORAD_WORKSPACE,NORAD_RUNTIME_PROFILE=$NORAD_RUNTIME_PROFILE,NORAD_MODULE_MODE=$NORAD_MODULE_MODE,NORAD_MODULE_INIT=$NORAD_MODULE_INIT,NORAD_MODULES=$NORAD_MODULES,NORAD_SCRATCH_PARENT=$NORAD_SCRATCH_PARENT,NORAD_EXECUTE=$NORAD_EXECUTE"
-    job_id="$(sbatch --parsable \
-        --account="$NORAD_SLURM_ACCOUNT" \
-        --partition="$NORAD_SLURM_PARTITION" \
-        --qos="$NORAD_SLURM_QOS" \
-        --nodes=1 --ntasks=1 --cpus-per-task="$NORAD_SLURM_CPUS" \
-        ${slurm_memory_argument:+"$slurm_memory_argument"} \
-        --time="$NORAD_SLURM_TIME" \
-        --job-name=norad-local-pilot \
-        --output="$NORAD_LOG_DIR/norad-local-pilot-%j.out" \
-        --error="$NORAD_LOG_DIR/norad-local-pilot-%j.err" \
-        --export="$export_spec" "$0")"
-    printf 'JOB_ID=%s\n' "$job_id"
-    printf 'OUT=%s/norad-local-pilot-%s.out\n' "$NORAD_LOG_DIR" "$job_id"
-    printf 'ERR=%s/norad-local-pilot-%s.err\n' "$NORAD_LOG_DIR" "$job_id"
-    printf 'Wait for both files, then tail them with:\n'
-    printf 'while [[ ! -e %q || ! -e %q ]]; do squeue -j %q; sleep 2; done\n' \
-        "$NORAD_LOG_DIR/norad-local-pilot-$job_id.out" \
-        "$NORAD_LOG_DIR/norad-local-pilot-$job_id.err" "$job_id"
-    printf 'tail -n +1 -F %q %q\n' \
-        "$NORAD_LOG_DIR/norad-local-pilot-$job_id.out" \
-        "$NORAD_LOG_DIR/norad-local-pilot-$job_id.err"
-    exit 0
+    [[ "${1:-}" != __NORAD_BATCH_MARKER__ ]] || \
+        die "internal batch marker requires a Slurm allocation"
+    NORAD_LAUNCHER_SOURCE_CHECKOUT=__NORAD_LAUNCHER_SOURCE_CHECKOUT__
+    NORAD_LAUNCHER_PYTHON=__NORAD_LAUNCHER_PYTHON__
+    export NORAD_LAUNCHER_SOURCE_CHECKOUT NORAD_LAUNCHER_PYTHON
+    exec __NORAD_LAUNCHER_PYTHON__ -X pycache_prefix=/dev/null -I \
+        -m norad.orchestration.local_pilot.launcher_config "$0" "$@"
 fi
 
-for name in NORAD_SLURM_CPUS \
+[[ "$#" -eq 1 && "$1" == __NORAD_BATCH_MARKER__ ]] || \
+    die "batch mode requires the exact internal batch marker"
+shift
+
+for name in NORAD_SUBMIT_UID NORAD_SUBMIT_USER USER LOGNAME NORAD_SLURM_CPUS \
     NORAD_SOURCE_CHECKOUT NORAD_PYTHON NORAD_REQUEST NORAD_WORKSPACE \
     NORAD_RUNTIME_PROFILE NORAD_MODULE_MODE NORAD_SCRATCH_PARENT \
     NORAD_EXECUTE; do
@@ -367,6 +345,15 @@ for name in NORAD_MODULE_INIT NORAD_MODULES; do
 done
 [[ "$NORAD_SLURM_CPUS" =~ ^[1-9][0-9]*$ ]] || die "NORAD_SLURM_CPUS must be a positive integer"
 [[ "$NORAD_EXECUTE" == 0 || "$NORAD_EXECUTE" == 1 ]] || die "NORAD_EXECUTE must be 0 or 1"
+[[ "$NORAD_SUBMIT_UID" =~ ^[0-9]+$ ]] || die "NORAD_SUBMIT_UID must be numeric"
+[[ "$NORAD_SUBMIT_USER" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || \
+    die "NORAD_SUBMIT_USER is invalid"
+observe_live_identity
+[[ "$NORAD_SUBMIT_UID" == "$live_uid" && \
+    "$NORAD_SUBMIT_USER" == "$live_user" && \
+    "$USER" == "$live_user" && "$LOGNAME" == "$live_user" ]] || \
+    die "batch identity does not match the admitted submitter"
+readonly live_uid live_user
 validate_module_settings
 if [[ "$NORAD_MODULE_MODE" == exact ]]; then
     [[ -f "$NORAD_MODULE_INIT" && ! -L "$NORAD_MODULE_INIT" ]] || \
@@ -428,13 +415,20 @@ run_arguments=(
     --request "$NORAD_REQUEST"
     --workspace "$NORAD_WORKSPACE"
     --runtime-profile "$NORAD_RUNTIME_PROFILE"
-    --allocated-cores "$NORAD_SLURM_CPUS"
 )
 if [[ "$NORAD_EXECUTE" == 1 ]]; then
     run_arguments+=(--execute)
 fi
 "$NORAD_PYTHON" -X pycache_prefix=/dev/null -I -m norad run "${run_arguments[@]}"
 """
+    source_value = shlex.quote(str(source_checkout)).encode("utf-8")
+    python_value = shlex.quote(str(python_executable)).encode("utf-8")
+    marker_value = shlex.quote(BATCH_MARKER).encode("utf-8")
+    return (
+        template.replace(b"__NORAD_LAUNCHER_SOURCE_CHECKOUT__", source_value)
+        .replace(b"__NORAD_LAUNCHER_PYTHON__", python_value)
+        .replace(b"__NORAD_BATCH_MARKER__", marker_value)
+    )
 
 
 def starter_members(
@@ -444,10 +438,71 @@ def starter_members(
 ) -> dict[str, tuple[bytes, int]]:
     """Render one matched starter set from the tracked policy templates."""
 
-    checkout = source_root() if root is None else root
-    selected_python = (
+    requested_checkout = source_root() if root is None else root
+    requested_python = (
         Path(sys.executable) if python_executable is None else python_executable
     )
+    try:
+        checkout = requested_checkout.resolve(strict=True)
+    except OSError as exc:
+        raise OnboardingError(
+            f"source checkout must resolve to an existing directory: "
+            f"{requested_checkout}: {exc}"
+        ) from exc
+    if not checkout.is_dir():
+        raise OnboardingError(f"source checkout must be a directory: {checkout}")
+    selected_python = _absolute(requested_python)
+    if selected_python.parent == Path("/"):
+        raise OnboardingError(
+            "selected Python parent must not be the filesystem root"
+        )
+    if ":" in str(selected_python.parent):
+        raise OnboardingError(
+            "selected Python parent is unsafe for the sealed PATH"
+        )
+    try:
+        parent_state = selected_python.parent.lstat()
+        parent_resolved = selected_python.parent.resolve(strict=True)
+        before = selected_python.lstat()
+        link_before = (
+            os.readlink(selected_python) if stat.S_ISLNK(before.st_mode) else ""
+        )
+        target = selected_python.resolve(strict=True)
+        target_before = target.stat(follow_symlinks=False)
+        after = selected_python.lstat()
+        link_after = (
+            os.readlink(selected_python) if stat.S_ISLNK(after.st_mode) else ""
+        )
+        confirmed_target = selected_python.resolve(strict=True)
+        target_after = confirmed_target.stat(follow_symlinks=False)
+    except OSError as exc:
+        raise OnboardingError(
+            f"selected Python must resolve to an executable file: "
+            f"{selected_python}: {exc}"
+        ) from exc
+    if (
+        stat.S_ISLNK(parent_state.st_mode)
+        or not stat.S_ISDIR(parent_state.st_mode)
+        or parent_resolved != selected_python.parent
+        or (before.st_dev, before.st_ino, before.st_mode, before.st_mtime_ns)
+        != (after.st_dev, after.st_ino, after.st_mode, after.st_mtime_ns)
+        or link_before != link_after
+        or confirmed_target != target
+        or (target_before.st_dev, target_before.st_ino, target_before.st_mode)
+        != (target_after.st_dev, target_after.st_ino, target_after.st_mode)
+        or not stat.S_ISREG(target_after.st_mode)
+        or not os.access(selected_python, os.X_OK)
+    ):
+        raise OnboardingError(
+            "selected Python launcher identity is invalid or changed: "
+            f"{selected_python}"
+        )
+    for label, path in (
+        ("source checkout", checkout),
+        ("selected Python", selected_python),
+    ):
+        if any(character in str(path) for character in ("\n", "\r", ",")):
+            raise OnboardingError(f"{label} path contains an unsafe character")
     request = (checkout / "configs/local_pilot_request.example.yaml").read_text(
         encoding="utf-8"
     )
@@ -458,6 +513,12 @@ def starter_members(
         "partition_manifest: local_pilot_partitions.example.tsv",
         "partition_manifest: partitions.tsv",
     )
+    resource_config = (
+        checkout / "configs/local_pilot_resources.example.yaml"
+    ).read_bytes()
+    launcher_config = (
+        checkout / "configs/local_pilot_launcher.example.yaml"
+    ).read_bytes()
     runtime = (checkout / "configs/local_pilot_runtime.example.tsv").read_text(
         encoding="utf-8"
     )
@@ -466,6 +527,8 @@ def starter_members(
     ).replace("/absolute/path/to/norad", str(checkout))
     return {
         "request.yaml": (request.encode("utf-8"), 0o644),
+        LAUNCHER_CONFIG: (launcher_config, 0o644),
+        "norad.resources.yaml": (resource_config, 0o644),
         "samples.tsv": (
             (checkout / "configs/local_pilot_samples.example.tsv").read_bytes(),
             0o644,
@@ -475,7 +538,10 @@ def starter_members(
             0o644,
         ),
         "runtime.tsv": (runtime.encode("utf-8"), 0o644),
-        SLURM_WRAPPER: (_slurm_wrapper_bytes(), 0o755),
+        SLURM_WRAPPER: (
+            _slurm_wrapper_bytes(checkout, selected_python),
+            0o755,
+        ),
     }
 
 

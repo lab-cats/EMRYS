@@ -28,7 +28,11 @@ from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
 from types import FrameType
-from typing import Any, Iterator, Literal
+from typing import TYPE_CHECKING, Any, Iterator, Literal
+
+if TYPE_CHECKING:
+    from norad.evidence.storage_inventory.qualification import QualifiedStorage
+    from norad.orchestration.local_pilot.doctor import RuntimeBinding
 
 try:
     import fcntl as _fcntl
@@ -47,9 +51,20 @@ from norad.libraries.process_environment import (
 )
 from norad.libraries.source_authority import controlled_python_argv
 from norad.orchestration.local_pilot import inspection, task
+from norad.orchestration.local_pilot.resource_policy import (
+    AllocationCapacity,
+    REPEATABLE_STAGE_IDS,
+    ResourceConfigError,
+    ResourcePlan,
+    resume_resource_plan,
+    stage_slot_name,
+)
 
 Operation = Literal["execute", "resume"]
 _SAFE_RULE_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]*$")
+_RESOURCE_LIMIT_NAMES = frozenset(
+    {"mem_mb", *(stage_slot_name(step_id) for step_id in REPEATABLE_STAGE_IDS)}
+)
 _FORBIDDEN_SNAKEMAKE_FLAGS = frozenset(
     {
         "--unlock",
@@ -81,7 +96,14 @@ class WorkflowResult:
 BytesPublisher = Callable[[Path, bytes], None]
 LockReleaser = Callable[[Path, Path, bytes, tuple[int, int]], None]
 LockEvidenceLinker = Callable[[Path, Path], None]
-RuntimeContextAdmission = Callable[[Mapping[str, Any], "LifecycleRequest"], None]
+StorageContextAdmission = Callable[
+    [Mapping[str, Any], Mapping[str, Any]],
+    "RuntimeBinding | None",
+]
+RuntimeContextAdmission = Callable[
+    [Mapping[str, Any], "LifecycleRequest", "RuntimeBinding | None"],
+    None,
+]
 DirectorySynchronizer = Callable[[Path, str], None]
 PythonLauncherIdentity = tuple[str, str, int, int]
 AttemptMaterializer = Callable[[], "LifecycleRequest"]
@@ -378,6 +400,7 @@ class LifecycleOps:
     process_id: Callable[[], int]
     process_is_alive: Callable[[int], bool]
     validate_reporting_receipt: inspection.ReportingReceiptValidator
+    admit_storage_context: StorageContextAdmission
     admit_runtime_context: RuntimeContextAdmission
     sync_directory: DirectorySynchronizer
     process_group_ops: ProcessGroupOps = DEFAULT_PROCESS_GROUP_OPS
@@ -525,8 +548,8 @@ def build_snakemake_argv(
     run_root: Path,
     target: str,
     operation: Operation,
-    cores: int = 1,
-    sample_concurrency: int = 1,
+    cores: int,
+    resource_limits: Sequence[tuple[str, int]],
 ) -> tuple[str, ...]:
     """Construct the fixed direct invocation and reject recovery bypasses."""
 
@@ -545,14 +568,17 @@ def build_snakemake_argv(
         raise LifecycleError(f"Unsupported lifecycle operation: {operation}")
     if isinstance(cores, bool) or not isinstance(cores, int) or cores < 1:
         raise LifecycleError("Workflow cores must be a positive integer")
-    if (
-        isinstance(sample_concurrency, bool)
-        or not isinstance(sample_concurrency, int)
-        or sample_concurrency < 1
-    ):
-        raise LifecycleError("Sample concurrency must be a positive integer")
-    if sample_concurrency > cores:
-        raise LifecycleError("Sample concurrency cannot exceed workflow cores")
+    limits = dict(resource_limits)
+    if len(limits) != len(resource_limits) or set(limits) != _RESOURCE_LIMIT_NAMES:
+        raise LifecycleError(
+            "Snakemake resource limits must contain exactly: "
+            + ", ".join(sorted(_RESOURCE_LIMIT_NAMES))
+        )
+    for name, value in limits.items():
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise LifecycleError(
+                f"Snakemake resource limit {name} must be a positive integer"
+            )
     argv = [
         *controlled_python_argv(python_executable),
         "-m",
@@ -568,7 +594,7 @@ def build_snakemake_argv(
         "--cores",
         str(cores),
         "--resources",
-        f"sample_slots={sample_concurrency}",
+        *(f"{name}={limits[name]}" for name in sorted(limits)),
         "--nocolor",
     ]
     if operation == "resume":
@@ -580,6 +606,37 @@ def build_snakemake_argv(
             "Forbidden Snakemake recovery controls: " + ", ".join(sorted(observed))
         )
     return tuple(argv)
+
+
+def _resource_plan_from_workflow_config(
+    config_document: Mapping[str, Any],
+) -> ResourcePlan:
+    policy = config_document.get("resource_policy")
+    if not isinstance(policy, dict) or set(policy) != {
+        "effective",
+        "effective_sha256",
+        "allocation",
+        "sources",
+    }:
+        raise LifecycleError("Workflow config resource policy is malformed")
+    allocation = policy.get("allocation")
+    if not isinstance(allocation, dict) or set(allocation) != {
+        "cores",
+        "memory_mb",
+        "source",
+    }:
+        raise LifecycleError("Workflow config allocation observation is malformed")
+    try:
+        capacity = AllocationCapacity(
+            cores=allocation["cores"],
+            memory_mb=allocation["memory_mb"],
+            source=allocation["source"],
+        )
+        return resume_resource_plan(policy, capacity)
+    except (KeyError, ResourceConfigError) as exc:
+        raise LifecycleError(
+            f"Workflow config resource policy is invalid: {exc}"
+        ) from exc
 
 
 def _publish_exclusive(path: Path, data: bytes) -> None:
@@ -1114,9 +1171,34 @@ def _admit_required_tool_identity(identity: Mapping[str, Any]) -> None:
         raise LifecycleError(f"Required tool byte digest differs: {name}")
 
 
+def _readmit_storage_runtime_binding(
+    attempt: Mapping[str, Any],
+    execution: Mapping[str, Any],
+    *,
+    inspect_storage: Callable[[Path, Path], "QualifiedStorage"],
+) -> "RuntimeBinding | None":
+    """Re-admit the qualified roots named by canonical workflow identity."""
+
+    from norad.evidence.storage_inventory import qualification  # noqa: PLC0415
+    from norad.orchestration.local_pilot import doctor  # noqa: PLC0415
+
+    if attempt["execution_mode"] == "test-double":
+        return None
+    workspace = Path(str(attempt["workspace"]))
+    reference_fasta = Path(str(execution["reference"]["fasta"]["path"]))
+    try:
+        qualified = inspect_storage(workspace, reference_fasta)
+        return doctor.storage_runtime_binding(qualified)
+    except (qualification.StorageQualificationError, OSError) as exc:
+        raise LifecycleError(
+            f"Could not re-admit storage qualification: {exc}"
+        ) from exc
+
+
 def _admit_runtime_context(
     attempt: Mapping[str, Any],
     request: LifecycleRequest,
+    storage_binding: "RuntimeBinding | None",
 ) -> None:
     """Observe clean source/package and exact required executor identity."""
 
@@ -1176,6 +1258,10 @@ def _admit_runtime_context(
             f"declared {snakemake['version']!r}; observed {observed_version!r}"
         )
     if attempt["execution_mode"] == "test-double":
+        if storage_binding is not None:
+            raise LifecycleError(
+                "Test-double attempt must not bind storage qualification"
+            )
         for name, identity in tools.items():
             path = Path(str(identity["path"]))
             if name in {"python", "snakemake"}:
@@ -1247,13 +1333,29 @@ def _admit_runtime_context(
             if item.check.required and item.status != "pass"
         )
         raise LifecycleError(f"Required local runtime probes failed: {failures}")
-    expected_tools = doctor.required_tool_identities(
-        runtime_inspection,
-        bindings=doctor.runtime_file_bindings(runtime_inspection),
-        python_executable=request.python_executable,
-        snakemake_version=observed_version,
-        runtime_profile_path=profile_path,
-    )
+    if (
+        tools.get("storage_qualification") is None
+        or storage_binding is None
+        or storage_binding.check_id != "storage_qualification"
+    ):
+        raise LifecycleError(
+            "Local science attempt must bind its storage qualification"
+        )
+    try:
+        expected_tools = doctor.required_tool_identities(
+            runtime_inspection,
+            bindings=(
+                *doctor.runtime_file_bindings(runtime_inspection),
+                storage_binding,
+            ),
+            python_executable=request.python_executable,
+            snakemake_version=observed_version,
+            runtime_profile_path=profile_path,
+        )
+    except doctor.DoctorInputError as exc:
+        raise LifecycleError(
+            f"Could not project re-observed runtime identities: {exc}"
+        ) from exc
     if tuple(attempt["required_tools"]) != expected_tools:
         raise LifecycleError(
             "Workflow attempt required tools differ from the re-observed runtime profile"
@@ -1290,6 +1392,7 @@ def _local_runtime_environment(
 def default_lifecycle_ops() -> LifecycleOps:
     """Construct production effects without mutable facade globals."""
 
+    from norad.evidence.storage_inventory import qualification  # noqa: PLC0415
     from norad.reporting import transaction_validation  # noqa: PLC0415
 
     return LifecycleOps(
@@ -1301,6 +1404,10 @@ def default_lifecycle_ops() -> LifecycleOps:
         process_id=os.getpid,
         process_is_alive=_process_is_alive,
         validate_reporting_receipt=transaction_validation.validate_receipt,
+        admit_storage_context=partial(
+            _readmit_storage_runtime_binding,
+            inspect_storage=qualification.admit_final_qualification,
+        ),
         admit_runtime_context=_admit_runtime_context,
         sync_directory=_sync_real_directory,
     )
@@ -1603,6 +1710,11 @@ def _admit_request(
     }
     attempt = dict(request.attempt_record)
     orchestration_contracts.validate_record("workflow-attempt", attempt)
+    resources = _resource_plan_from_workflow_config(config_document)
+    if resources.workflow_cores != attempt["cores"]:
+        raise LifecycleError(
+            "Workflow config resource cores differ from the attempt record"
+        )
     argv = build_snakemake_argv(
         python_executable=python_executable,
         snakefile=snakefile,
@@ -1612,7 +1724,7 @@ def _admit_request(
         target=request.target,
         operation=request.operation,
         cores=int(attempt["cores"]),
-        sample_concurrency=config_document.get("sample_concurrency", 1),
+        resource_limits=resources.scheduler_limits(),
     )
     identifier = str(attempt["workflow_attempt_id"])
     source_root = Path(str(attempt["source_checkout"]["path"]))
@@ -1671,7 +1783,8 @@ def _admit_request(
         "sha256": hashlib.sha256(request_source_data).hexdigest(),
     }:
         raise LifecycleError("Workflow attempt does not bind authored request source")
-    ops.admit_runtime_context(attempt, request)
+    storage_binding = ops.admit_storage_context(attempt, execution)
+    ops.admit_runtime_context(attempt, request, storage_binding)
     workspace = Path(str(attempt["workspace"]))
     if not workspace.is_absolute():
         raise LifecycleError("Workflow attempt workspace must be absolute")
@@ -2085,7 +2198,8 @@ def _run_attempt_locked(
         else:
             result = candidate
         try:
-            active_ops.admit_runtime_context(attempt, request)
+            storage_binding = active_ops.admit_storage_context(attempt, execution)
+            active_ops.admit_runtime_context(attempt, request, storage_binding)
         except Exception as exc:
             runtime_blockers.append(
                 f"Runtime identity changed during workflow execution: {exc}"
@@ -2493,6 +2607,7 @@ __all__ = (
     "LifecycleOutcome",
     "LifecycleRequest",
     "RuntimeContextAdmission",
+    "StorageContextAdmission",
     "WorkflowResult",
     "build_snakemake_argv",
     "default_lifecycle_ops",

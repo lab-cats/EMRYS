@@ -19,9 +19,9 @@ from norad.contracts.orchestration import api as orchestration_contracts
 from norad.contracts.orchestration.projection import build_reporting_bundle
 from norad.libraries.source_authority import controlled_python_argv
 from norad.orchestration.local_pilot import doctor, inspection, lifecycle
-from norad.orchestration.local_pilot.normalization import (
-    THREAD_CAPABLE_STEP_IDS,
-    NormalizationBundle,
+from norad.orchestration.local_pilot.normalization import NormalizationBundle
+from norad.orchestration.local_pilot.resource_policy import (
+    THREAD_CAPABLE_STAGE_IDS,
     ResourcePlan,
 )
 from norad.libraries.process_environment import (
@@ -61,7 +61,10 @@ class AttemptPlan:
     workflow_attempt_id: str
     step_threads: tuple[tuple[str, int], ...]
     workflow_cores: int
-    sample_concurrency: int
+    workflow_memory_mb: int
+    stage_concurrency: tuple[tuple[str, int], ...]
+    stage_memory_mb: tuple[tuple[str, int], ...]
+    reporting_memory_mb: tuple[tuple[str, int], ...]
     supersedes_workflow_attempt_id: str | None
     attempt_record: dict[str, Any]
     fixed_files: tuple[PlannedFile, ...]
@@ -1111,7 +1114,7 @@ def _dispatches(
             all_paths=paths_by_scope,
             threads=(
                 resources.threads_for(step_id)
-                if step_id in THREAD_CAPABLE_STEP_IDS
+                if step_id in THREAD_CAPABLE_STAGE_IDS
                 else None
             ),
         )
@@ -1216,6 +1219,7 @@ def build_attempt_plan(
     readiness: doctor.DoctorResult,
     workspace: Path,
     *,
+    resources: ResourcePlan,
     operation: Operation,
     now: datetime | None = None,
     token: str | None = None,
@@ -1228,9 +1232,7 @@ def build_attempt_plan(
 
     if not readiness.ready:
         raise MaterializationError("Local-pilot readiness has unresolved blockers")
-    resources = normalized.resources
     workflow_cores = resources.workflow_cores
-    sample_concurrency = resources.sample_concurrency
     if readiness.run_id != normalized.run_id:
         raise MaterializationError(
             "Doctor and normalization resolved different run IDs"
@@ -1260,12 +1262,26 @@ def build_attempt_plan(
     if normalized.profile != orchestration_contracts.load_json_object(fixed_profile):
         raise MaterializationError("Normalization did not use the fixed source profile")
     runtime_profile_path = run_root / "contract" / "runtime-profile.tsv"
-    required_tools = doctor.required_tool_identities(
-        readiness.inspection,
-        bindings=readiness.bindings,
-        python_executable=Path(sys.executable),
-        runtime_profile_path=runtime_profile_path,
+    storage_binding_count = sum(
+        binding.check_id == "storage_qualification"
+        for binding in readiness.bindings
     )
+    if storage_binding_count != 1:
+        raise MaterializationError(
+            "Local-pilot readiness must contain exactly one storage qualification "
+            "binding"
+        )
+    try:
+        required_tools = doctor.required_tool_identities(
+            readiness.inspection,
+            bindings=readiness.bindings,
+            python_executable=Path(sys.executable),
+            runtime_profile_path=runtime_profile_path,
+        )
+    except doctor.DoctorInputError as exc:
+        raise MaterializationError(
+            f"Doctor runtime identities are not materializable: {exc}"
+        ) from exc
     python_identity = next(item for item in required_tools if item["name"] == "python")
     normalizer_identity = {
         **python_identity,
@@ -1337,8 +1353,7 @@ def build_attempt_plan(
                 "artifact_inventory"
             ]["path"]
         ),
-        "step_threads": resources.thread_map(),
-        "sample_concurrency": sample_concurrency,
+        "resource_policy": resources.policy_record(),
         "dispatch_paths": dispatch_references,
     }
     config_data = orchestration_contracts.canonical_json_bytes(config)
@@ -1352,7 +1367,7 @@ def build_attempt_plan(
         target=TARGET,
         operation=operation,
         cores=workflow_cores,
-        sample_concurrency=sample_concurrency,
+        resource_limits=resources.scheduler_limits(),
     )
     request = normalized.request
     attempt = {
@@ -1422,7 +1437,10 @@ def build_attempt_plan(
         workflow_attempt_id=attempt_id,
         step_threads=resources.step_threads,
         workflow_cores=workflow_cores,
-        sample_concurrency=sample_concurrency,
+        workflow_memory_mb=resources.workflow_memory_mb,
+        stage_concurrency=resources.stage_concurrency,
+        stage_memory_mb=resources.stage_memory_mb,
+        reporting_memory_mb=resources.reporting_memory_mb,
         supersedes_workflow_attempt_id=supersedes_workflow_attempt_id,
         attempt_record=attempt,
         fixed_files=tuple(fixed_files),

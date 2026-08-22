@@ -40,6 +40,16 @@ def _recheck_inputs(context: ReportContext) -> None:
         _assert_input_recheck(*recheck)
 
 
+def _expected_candidate_ids(context: ReportContext) -> tuple[str, ...]:
+    return (
+        tuple(
+            candidate.candidate_id for candidate in context.candidate_display.candidates
+        )
+        if context.candidate_display is not None
+        else ()
+    )
+
+
 def _assert_predecessors(context: ReportContext) -> None:
     for path in context.stable_paths:
         previous = context.previous_snapshots.get(path)
@@ -120,6 +130,7 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
             staged_scientific_html,
             expected_banner=BOUNDARY_BANNER,
             expected_identity=expected_html_identity(context, "scientific"),
+            expected_candidate_ids=_expected_candidate_ids(context),
         )
         staged_evidence_html = stage / context.output_evidence_html.name
         ops.write_owned_file(staged_evidence_html, context.evidence_html_bytes)
@@ -245,6 +256,7 @@ def publish_report(context: ReportContext, ops: ReportPublicationOps) -> None:
             context.output_scientific_html,
             expected_banner=BOUNDARY_BANNER,
             expected_identity=expected_html_identity(context, "scientific"),
+            expected_candidate_ids=_expected_candidate_ids(context),
         )
         validate_rendered_html(
             context.output_evidence_html,

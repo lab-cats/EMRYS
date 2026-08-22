@@ -30,6 +30,12 @@ output regex; the fixed local-pilot profile uses it for Picard 3.1.1's exact
 `java -jar ... MarkDuplicates --version` behavior. Other nonzero tool probes
 remain failures.
 
+Executable/version and hash commands retain a 30-second per-process bound.
+R namespace loading has a separate 120-second per-package bound for cold
+read-only library access. Every executed namespace probe records elapsed
+seconds and the selected bound; a timeout is a failing readiness observation
+and is never retried, suppressed, or treated as availability.
+
 [`tool_check.slurm`](tool_check.slurm) is a separate manual cluster smoke
 probe. It attempts to load its declared CSU Python, STAR, samtools, and Picard
 module names and records scheduler context, module state, resolved executable
@@ -49,6 +55,12 @@ The stricter fixed-pilot roster is a separate public starter at
 [`local_pilot_runtime.example.tsv`](../../../../configs/local_pilot_runtime.example.tsv)
 and is admitted by the local-pilot owner rather than changing this generic
 profile contract.
+For the guarded local pilot, the declared `renv_library` itself remains one
+canonical real directory. An installed package entry may be a normal `renv`
+cache symlink, but the probe resolves it and requires `find.package`, the loaded
+namespace, and the recorded package-tree identity to agree on the exact
+canonical target. Symlinks or special entries inside that resolved package tree
+remain inadmissible.
 
 Dry-run, execute, focused test, and the separate scheduler probe are:
 

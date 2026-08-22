@@ -24,6 +24,11 @@ private probe directories. It tests hard links, advisory `flock` contention,
 atomic rename visibility, write/fsync, numeric UID/GID consistency, mount
 identity/capacity, and post-allocation durability. A failed or interrupted
 phase publishes no final qualification and leaves evidence for inspection.
+The receipt records each observed Linux device number for diagnosis and uses
+it for same-node hard-link proof, but does not require `st_dev` to be identical
+across nodes because one shared mount may receive different node-local device
+numbers. Canonical path, inode, UID/GID, and mount source/type remain stable
+cross-node identity requirements.
 
 The inventory inspector is private and performs no retention action. Its
 inspection is read-only with respect to measured storage: it never deletes,
@@ -71,7 +76,10 @@ The receipt path is derived from the two canonical storage roots, so doctor
 needs no ambient selector. Network storage is supported only after this exact
 check passes. Node-local storage that is not visible and durable on the head
 node cannot finalize and therefore cannot report ready; this owner does not
-copy or stage data around that failure.
+copy or stage data around that failure. The local-pilot lifecycle semantically
+re-admits this receipt and both qualified roots before delegation and after the
+workflow child terminates; the attempt is blocked if either
+observation differs from its immutable storage identity.
 
 Dry-run, execute, and focused test are:
 

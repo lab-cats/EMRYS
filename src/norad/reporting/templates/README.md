@@ -4,10 +4,16 @@
 template shared by the scientific and operational-evidence HTML views. The
 Python view builders select each document's title, banner context, introduction,
 sections, and end note; this template owns their common accessible structure,
-tables, figure cards, and block rendering. Scientific SVG figures are validated
+tables, figure cards, the ranked selected-candidate card index, detailed
+candidate records, and block rendering. The scientific hierarchy is static and
+print-oriented, with no `details` elements;
+the operational-evidence categories retain their bounded disclosure controls.
+Scientific SVG figures, including multi-panel candidate views, are validated
 and supplied as base64 data URIs; the artifact-availability SVG is emitted only
 when the evidence view supplies that block. A bounded macro section avoids
-template fragments.
+template fragments. Manifest-paired candidate evidence is emitted in bounded
+four-pair batches with the candidate-specific heading inside each batch so print
+page breaks never remove the record identity or split a replicate card.
 
 The Jinja environment uses HTML autoescaping and `StrictUndefined`. Run-summary
 content, identifiers, paths, computational text, issues, limitations, and table
