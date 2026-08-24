@@ -255,6 +255,40 @@ editing sites, or biological interpretation. Use focused checks per approved
 slice and run the assembled gate once after the final executable state is
 settled; rerun it only for a concrete failure-driven reason.
 
+### GitHub Actions Phase 1 CI
+
+The tracked [Phase 1 workflow](../../.github/workflows/ci.yml) runs for pull
+requests targeting `master`, pushes to `master`, merge-queue candidates, and
+explicit manual dispatches. It grants the workflow token read-only repository
+access, pins external actions to immutable commits, and cancels superseded runs
+for the same ref.
+
+Phase 1 exposes four independent checks:
+
+- `Workflow lint` verifies the tracked Actions workflows with a
+  checksum-verified `actionlint` binary. Its external ShellCheck and Pyflakes
+  integrations remain disabled because Phase 1 does not establish either as a
+  new repository policy.
+- `Repository gate` provisions Python 3.11, exact R 4.6.1, the locked Python
+  workflow environment, and the locked R library before running the unchanged
+  `make -s all-checks` authority above.
+- `Fresh-clone E2E` creates a separate ordinary clone, performs locked setup,
+  and explicitly enables the deterministic no-science clean-clone
+  failure/resume/output proof.
+- `Python 3.14 compatibility` runs static checks, the complete Python test
+  suite, and shell contracts with the current supported Python line. It does
+  not apply the repository coverage baseline or claim guarded real-R evidence;
+  coverage enforcement remains in the Python 3.11 repository gate.
+
+The workflow bootstrap may download explicitly selected dependencies, but the
+validation commands themselves remain non-restoring. A green Phase 1 workflow
+establishes clean GitHub-hosted Ubuntu engineering evidence, guarded fixture R
+evidence in the repository gate, and deterministic no-science fresh-clone
+evidence. It does not establish real scientific-tool execution, a real Slurm
+scheduler, CSU or distributed-filesystem behavior, production-data execution,
+scientific review, or biological interpretation. Those runtime and scheduler
+lanes remain separate Phase 2 work.
+
 ## Dependency maintenance
 
 The [Quickstart setup](../../quickstart.md#1-clone-and-install-the-locked-python-workflow)

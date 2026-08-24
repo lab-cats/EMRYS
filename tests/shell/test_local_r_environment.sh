@@ -117,6 +117,16 @@ grep -Fq '"BiocVersion":' renv.lock ||
     fail "renv lockfile does not include the Bioconductor release marker"
 grep -Fq 'restore_status <- renv::status' scripts/restore_r_environment.R ||
     fail "r-restore does not attest the restored library"
+grep -Fq 'lock_recorded_packages <- names(lock$Packages)' \
+    scripts/restore_r_environment.R ||
+    fail "r-restore does not inventory every lock-recorded package"
+grep -Fq 'hydration <- renv::hydrate' scripts/restore_r_environment.R ||
+    fail "r-restore does not hydrate lock-recorded external packages"
+grep -Fq 'library = restored_library' scripts/restore_r_environment.R ||
+    fail "r-restore does not bind hydration and status to the selected library"
+grep -Fq 'length(hydration$unresolved) > 0L' \
+    scripts/restore_r_environment.R ||
+    fail "r-restore does not reject unresolved hydration packages"
 
 for r_entrypoint in \
     scripts/check_r_environment.R scripts/restore_r_environment.R; do
