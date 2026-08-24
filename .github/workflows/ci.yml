@@ -229,5 +229,8 @@ jobs:
         run: |
           set -euo pipefail
           make -s validation-static
-          .venv/bin/python -m pytest -q --tb=short -n 2 --dist=loadfile
-          make -s validation-shell-contracts
+          .venv/bin/python -m pytest -q --tb=short -n 2 --dist=loadfile \
+            --ignore=tests/test_package_distribution.py \
+            --ignore=tests/test_slurm_wrapper_contracts.py
+          make -s validation-wheel-smoke
+          make -s validation-shell-slurm
