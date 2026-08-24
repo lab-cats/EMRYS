@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import argparse
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -171,10 +173,7 @@ def test_launcher_policy_layers_defaults_yaml_and_explicit_parameters(
     fixture = _fixture(tmp_path)
     _write_config(
         fixture,
-        "slurm:\n"
-        "  account: yaml-account\n"
-        "  memory: 8G\n"
-        "  exclusive: true\n",
+        "slurm:\n  account: yaml-account\n  memory: 8G\n  exclusive: true\n",
     )
 
     plan = _load(
@@ -227,8 +226,7 @@ def test_absent_repo_dotenv_is_allowed_when_process_env_satisfies_refs(
     fixture = _fixture(tmp_path)
     _write_config(
         fixture,
-        "slurm:\n"
-        "  account: {env: NORAD_SLURM_ACCOUNT}\n",
+        "slurm:\n  account: {env: NORAD_SLURM_ACCOUNT}\n",
     )
 
     plan = _load(fixture)
@@ -241,20 +239,16 @@ def test_absent_repo_dotenv_is_allowed_when_process_env_satisfies_refs(
     ("fragment", "message"),
     (
         (
-            "slurm:\n"
-            "  account: first-account\n"
-            "  account: second-account\n",
+            "slurm:\n  account: first-account\n  account: second-account\n",
             "Duplicate YAML",
         ),
         ("unknown_launcher_field: value\n", "Additional properties|unknown"),
         (
-            "slurm:\n"
-            "  account: {env: NORAD_SLURM_ACCOUNT, fallback: unsafe}\n",
+            "slurm:\n  account: {env: NORAD_SLURM_ACCOUNT, fallback: unsafe}\n",
             "Additional properties|environment reference",
         ),
         (
-            "slurm:\n"
-            "  account: {env: bad-name}\n",
+            "slurm:\n  account: {env: bad-name}\n",
             "environment variable|environment reference",
         ),
     ),
@@ -278,8 +272,7 @@ def test_shell_shaped_scalar_is_never_interpolated_or_executed(
     sentinel = tmp_path / "interpolated"
     _write_config(
         fixture,
-        "slurm:\n"
-        f'  account: "$(touch {sentinel})"\n',
+        f'slurm:\n  account: "$(touch {sentinel})"\n',
     )
 
     with pytest.raises(ValueError) as failure:
@@ -309,8 +302,7 @@ def test_repo_dotenv_rejects_duplicate_unknown_and_shell_syntax(
     fixture = _fixture(tmp_path)
     _write_config(
         fixture,
-        "slurm:\n"
-        "  account: {env: NORAD_SLURM_ACCOUNT}\n",
+        "slurm:\n  account: {env: NORAD_SLURM_ACCOUNT}\n",
     )
     _write_dotenv(fixture, contents)
     environment = _environment(fixture)
@@ -326,8 +318,7 @@ def test_repo_dotenv_must_be_a_private_real_file(tmp_path: Path) -> None:
     fixture = _fixture(tmp_path)
     _write_config(
         fixture,
-        "slurm:\n"
-        "  account: {env: NORAD_SLURM_ACCOUNT}\n",
+        "slurm:\n  account: {env: NORAD_SLURM_ACCOUNT}\n",
     )
     environment = _environment(fixture)
     environment.pop("NORAD_SLURM_ACCOUNT")
@@ -355,8 +346,7 @@ def test_missing_referenced_environment_value_fails_closed(tmp_path: Path) -> No
     fixture = _fixture(tmp_path)
     _write_config(
         fixture,
-        "slurm:\n"
-        "  account: {env: NORAD_SLURM_ACCOUNT}\n",
+        "slurm:\n  account: {env: NORAD_SLURM_ACCOUNT}\n",
     )
     environment = _environment(fixture)
     environment.pop("NORAD_SLURM_ACCOUNT")
@@ -411,3 +401,267 @@ def test_norad_execute_is_excluded_from_dotenv_process_env_and_overrides(
     _write_dotenv(fixture, "NORAD_EXECUTE=1\n")
     with pytest.raises(ValueError, match="NORAD_EXECUTE|unknown|unsupported"):
         _load(fixture, environment=environment)
+
+
+def test_submission_command_seals_exports_and_optional_slurm_flags(
+    tmp_path: Path,
+) -> None:
+    fixture = _fixture(tmp_path)
+    plan = _load(
+        fixture,
+        overrides=LauncherOverrides(
+            memory="8G",
+            exclusive=True,
+            nodelist="compute-[01-02]",
+            module_mode="exact",
+            module_init=fixture.request,
+            modules=("R/4.6.1", "bcftools/1.22"),
+        ),
+    )
+    wrapper = fixture.launcher_root / "run-in-slurm.sh"
+    workflow_python = fixture.source_checkout / ".venv/bin/python"
+
+    command = launcher_config._submission_command(
+        plan,
+        wrapper=wrapper,
+        source_checkout=fixture.source_checkout,
+        workflow_python=workflow_python,
+        execute=True,
+        live_uid=1234,
+        live_user="test-user",
+        sbatch="/opt/slurm/bin/sbatch",
+    )
+
+    assert command[:8] == [
+        "/opt/slurm/bin/sbatch",
+        "--parsable",
+        "--account=default-account",
+        "--partition=default-partition",
+        "--qos=default-qos",
+        "--nodes=1",
+        "--ntasks=1",
+        "--cpus-per-task=4",
+    ]
+    assert "--mem=8G" in command
+    assert "--exclusive" in command
+    assert "--nodelist=compute-[01-02]" in command
+    exports = next(argument for argument in command if argument.startswith("--export="))
+    assert "NORAD_EXECUTE=1" in exports
+    assert "NORAD_MODULES=R/4.6.1:bcftools/1.22" in exports
+    assert command[-2:] == [str(wrapper), launcher_config.BATCH_MARKER]
+
+    with pytest.raises(ValueError, match="unsafe for Slurm export"):
+        launcher_config._export_value("UNSAFE", "line one\nline two")
+
+
+@pytest.mark.parametrize(
+    ("value", "directory", "message"),
+    (
+        (None, True, "generation-bound"),
+        ("relative", True, "absolute non-root"),
+        ("/", True, "absolute non-root"),
+        ("bad,newline", True, "generation-bound"),
+    ),
+)
+def test_generation_path_rejects_unbound_and_unsafe_values(
+    value: str | None,
+    directory: bool,
+    message: str,
+) -> None:
+    environment = {} if value is None else {"GENERATED": value}
+
+    with pytest.raises(ValueError, match=message):
+        launcher_config._generation_path(
+            environment,
+            "GENERATED",
+            directory=directory,
+        )
+
+
+def test_generation_and_wrapper_paths_reject_links_and_nonexecutables(
+    tmp_path: Path,
+) -> None:
+    real_directory = tmp_path / "real-directory"
+    real_directory.mkdir()
+    directory_link = tmp_path / "directory-link"
+    directory_link.symlink_to(real_directory, target_is_directory=True)
+    with pytest.raises(ValueError, match="one real directory"):
+        launcher_config._generation_path(
+            {"GENERATED": str(directory_link)}, "GENERATED", directory=True
+        )
+
+    nonexecuting = tmp_path / "bin" / "python"
+    nonexecuting.parent.mkdir()
+    nonexecuting.write_text("python fixture\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="identity is invalid"):
+        launcher_config._generation_path(
+            {"GENERATED": str(nonexecuting)}, "GENERATED", directory=False
+        )
+
+    nonexecuting.chmod(0o755)
+    executable_link = tmp_path / "bin" / "python-link"
+    executable_link.symlink_to(nonexecuting)
+    assert (
+        launcher_config._generation_path(
+            {"GENERATED": str(executable_link)}, "GENERATED", directory=False
+        )
+        == executable_link
+    )
+
+    with pytest.raises(ValueError, match="real file"):
+        launcher_config._wrapper_path(real_directory)
+    wrapper_link = tmp_path / "wrapper-link"
+    wrapper_link.symlink_to(nonexecuting)
+    with pytest.raises(ValueError, match="real file"):
+        launcher_config._wrapper_path(wrapper_link)
+
+
+@pytest.mark.parametrize(
+    ("outputs", "message"),
+    (
+        (("not-a-uid\n", "test-user\n"), "numeric UID"),
+        (("1234\n", "unsafe user\n"), "user name is unsafe"),
+        (("1234\nextra\n", "test-user\n"), "output is invalid"),
+    ),
+)
+def test_live_submitter_identity_rejects_invalid_command_output(
+    monkeypatch: pytest.MonkeyPatch,
+    outputs: tuple[str, str],
+    message: str,
+) -> None:
+    iterator = iter(outputs)
+    monkeypatch.setattr(
+        launcher_config.subprocess,
+        "check_output",
+        lambda *_args, **_kwargs: next(iterator),
+    )
+
+    with pytest.raises(ValueError, match=message):
+        launcher_config._live_submitter_identity()
+
+
+def _submit_fixture(
+    tmp_path: Path,
+    *arguments: str,
+) -> tuple[argparse.Namespace, dict[str, str]]:
+    fixture = _fixture(tmp_path)
+    wrapper = fixture.launcher_root / "run-in-slurm.sh"
+    wrapper.write_text("#!/bin/bash\n", encoding="utf-8")
+    workflow_python = fixture.source_checkout / ".venv/bin/python"
+    workflow_python.parent.mkdir(parents=True)
+    workflow_python.write_text("#!/bin/sh\n", encoding="utf-8")
+    workflow_python.chmod(0o755)
+    parser = argparse.ArgumentParser()
+    launcher_config.configure_parser(parser)
+    parsed = parser.parse_args([str(wrapper), *arguments])
+    environment = {
+        **_environment(fixture),
+        "NORAD_LAUNCHER_SOURCE_CHECKOUT": str(fixture.source_checkout),
+        "NORAD_LAUNCHER_PYTHON": str(workflow_python),
+        "USER": "test-user",
+        "LOGNAME": "test-user",
+        "PATH": "/opt/slurm/bin:/usr/bin:/bin",
+        "SBATCH_ACCOUNT": "must-be-removed",
+        "NORAD_EXECUTE": "must-be-removed",
+    }
+    return parsed, environment
+
+
+def test_submit_from_args_calls_sbatch_once_with_scrubbed_environment(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    arguments, environment = _submit_fixture(
+        tmp_path,
+        "--execute",
+        "--memory",
+        "8G",
+        "--exclusive",
+    )
+    calls: list[tuple[list[str], dict[str, str]]] = []
+    monkeypatch.setattr(
+        launcher_config,
+        "_live_submitter_identity",
+        lambda: (1234, "test-user"),
+    )
+    monkeypatch.setattr(
+        launcher_config.shutil,
+        "which",
+        lambda *_args, **_kwargs: "/opt/slurm/bin/sbatch",
+    )
+
+    def run(command: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append((command, kwargs["env"]))  # type: ignore[arg-type]
+        return subprocess.CompletedProcess(command, 0, "605305;cluster\n", "")
+
+    monkeypatch.setattr(launcher_config.subprocess, "run", run)
+
+    assert launcher_config.submit_from_args(arguments, environment=environment) == 0
+
+    assert len(calls) == 1
+    command, submitted_environment = calls[0]
+    assert command[0] == "/opt/slurm/bin/sbatch"
+    assert "--mem=8G" in command
+    assert "--exclusive" in command
+    assert "SBATCH_ACCOUNT" not in submitted_environment
+    assert "NORAD_EXECUTE" not in submitted_environment
+    output = capsys.readouterr().out
+    assert "JOB_ID=605305" in output
+    assert "norad-local-pilot-605305.out" in output
+    assert "tail -n +1 -F" in output
+
+
+@pytest.mark.parametrize(
+    ("mode", "message"),
+    (
+        ("user_mismatch", "USER/LOGNAME"),
+        ("missing_sbatch", "sbatch is unavailable"),
+        ("os_error", "Could not execute sbatch"),
+        ("nonzero", "sbatch failed with exit 9"),
+        ("multiple_lines", "one parsable job ID"),
+        ("invalid_job", "invalid job ID"),
+    ),
+)
+def test_submit_from_args_rejects_submission_failures(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+    message: str,
+) -> None:
+    arguments, environment = _submit_fixture(tmp_path)
+    identity = (1234, "other-user") if mode == "user_mismatch" else (1234, "test-user")
+    monkeypatch.setattr(launcher_config, "_live_submitter_identity", lambda: identity)
+    monkeypatch.setattr(
+        launcher_config.shutil,
+        "which",
+        lambda *_args, **_kwargs: (
+            None if mode == "missing_sbatch" else "/usr/bin/sbatch"
+        ),
+    )
+
+    def run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
+        if mode == "os_error":
+            raise OSError("injected")
+        if mode == "nonzero":
+            return subprocess.CompletedProcess(command, 9, "", "failed")
+        stdout = "1\n2\n" if mode == "multiple_lines" else "not-a-job\n"
+        return subprocess.CompletedProcess(command, 0, stdout, "")
+
+    monkeypatch.setattr(launcher_config.subprocess, "run", run)
+
+    with pytest.raises(ValueError, match=message):
+        launcher_config.submit_from_args(arguments, environment=environment)
+
+
+def test_main_reports_launcher_errors(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    def fail(_arguments: argparse.Namespace) -> int:
+        raise launcher_config.LauncherConfigError("injected launcher failure")
+
+    monkeypatch.setattr(launcher_config, "submit_from_args", fail)
+
+    assert launcher_config.main(["/missing-wrapper"]) == 2
+    assert "ERROR: injected launcher failure" in capsys.readouterr().err

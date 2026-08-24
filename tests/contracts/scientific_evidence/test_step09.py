@@ -369,6 +369,157 @@ def test_projection_rejects_header_duplicates_and_subset_drift(
         validate_projection(valid)
 
 
+@pytest.mark.parametrize(
+    ("case", "expected"),
+    (
+        ("empty", "is empty"),
+        ("empty_header", "empty header field"),
+        ("duplicate_header", "duplicate header fields"),
+        ("short_row", "has .* fields; expected"),
+        ("fixed_header", "invalid fixed Step 09 header"),
+        ("missing_sample_blocks", "equal non-empty"),
+        ("invalid_dp", "invalid DP__ sample block"),
+        ("invalid_ad", "invalid AD__ sample block"),
+        ("sample_disagreement", "sample blocks disagree"),
+        ("blank_row", "empty candidate_id"),
+    ),
+)
+def test_projection_rejects_stream_and_header_edges(
+    valid: SimpleNamespace,
+    case: str,
+    expected: str,
+) -> None:
+    path = valid.all_sites_path
+    header, rows = read_tsv(path)
+    raw_rows = path.read_text(encoding="utf-8").splitlines()[1:]
+    changed = list(header)
+    if case == "empty":
+        path.write_text("", encoding="utf-8")
+    elif case == "empty_header":
+        changed[0] = ""
+        path.write_text("\t".join(changed) + "\n", encoding="utf-8")
+    elif case == "duplicate_header":
+        changed[-1] = changed[0]
+        path.write_text("\t".join(changed) + "\n", encoding="utf-8")
+    elif case == "short_row":
+        path.write_text(
+            "\t".join(header) + "\n" + "\t".join(raw_rows[0].split("\t")[:-1]) + "\n",
+            encoding="utf-8",
+        )
+    elif case == "fixed_header":
+        changed[0] = "wrong_analysis_id"
+        path.write_text("\t".join(changed) + "\n", encoding="utf-8")
+    elif case == "missing_sample_blocks":
+        fixed = tuple(STEP09.STEP09_RESULT_HEADER)
+        write_tsv(path, fixed, [{name: row[name] for name in fixed} for row in rows])
+    elif case == "invalid_dp":
+        first = len(STEP09.STEP09_RESULT_HEADER)
+        changed[first] = "DP__"
+        path.write_text("\t".join(changed) + "\n", encoding="utf-8")
+    elif case == "invalid_ad":
+        first = len(STEP09.STEP09_RESULT_HEADER)
+        sample_count = len(valid.sample_ids)
+        changed[first + sample_count] = "AD__OTHER"
+        path.write_text("\t".join(changed) + "\n", encoding="utf-8")
+    elif case == "sample_disagreement":
+        significant_header, _ = read_tsv(valid.significant_path)
+        changed = list(significant_header)
+        first = len(STEP09.STEP09_RESULT_HEADER)
+        sample_count = len(valid.sample_ids)
+        for offset, prefix in (
+            (0, "DP__"),
+            (sample_count, "AD__"),
+            (2 * sample_count, "AF__"),
+        ):
+            changed[first + offset] = prefix + "OTHER"
+        raw = valid.significant_path.read_text(encoding="utf-8").splitlines()[1:]
+        valid.significant_path.write_text(
+            "\t".join(changed) + "\n" + "\n".join(raw) + "\n",
+            encoding="utf-8",
+        )
+    else:
+        path.write_text(
+            "\t".join(header) + "\n" + "\t" * (len(header) - 1) + "\n",
+            encoding="utf-8",
+        )
+
+    with pytest.raises(STEP09.ContractError, match=expected):
+        validate_projection(valid)
+
+
+@pytest.mark.parametrize(
+    ("case", "expected"),
+    (
+        ("af_without_depth", "AF without DP/AD"),
+        ("zero_depth_af", "invalid zero-depth"),
+        ("af_below_zero", "must be at least"),
+        ("af_above_one", "must be at most"),
+        ("af_mismatch", "AF does not reconcile"),
+        ("alt_index", "alt_index must be at least 1"),
+        ("empty_candidate", "empty candidate_id"),
+        ("missing_significant", "exact ordered significant subset"),
+        ("extra_nonsignificant", "non-significant call status"),
+        ("summary_significant_count", "significant counts disagree"),
+    ),
+)
+def test_projection_rejects_remaining_value_and_subset_edges(
+    valid: SimpleNamespace,
+    case: str,
+    expected: str,
+) -> None:
+    first_sample = valid.sample_ids[0]
+    if case in {
+        "af_without_depth",
+        "zero_depth_af",
+        "af_below_zero",
+        "af_above_one",
+        "af_mismatch",
+    }:
+        header, rows = read_tsv(valid.all_sites_path)
+        row = rows[0]
+        if case == "af_without_depth":
+            row[f"DP__{first_sample}"] = "NA"
+            row[f"AD__{first_sample}"] = "NA"
+            row[f"AF__{first_sample}"] = "0.5"
+        elif case == "zero_depth_af":
+            row[f"DP__{first_sample}"] = "0"
+            row[f"AD__{first_sample}"] = "0"
+            row[f"AF__{first_sample}"] = "0"
+        elif case == "af_below_zero":
+            row[f"AF__{first_sample}"] = "-0.1"
+        elif case == "af_above_one":
+            row[f"AF__{first_sample}"] = "1.1"
+        else:
+            row[f"AF__{first_sample}"] = "0.123456789"
+        write_tsv(valid.all_sites_path, header, rows)
+    elif case == "alt_index":
+        replace_cell(valid.all_sites_path, 0, "alt_index", "0")
+    elif case == "empty_candidate":
+        replace_cell(valid.all_sites_path, 0, "candidate_id", "")
+    elif case == "missing_significant":
+        header, _rows = read_tsv(valid.significant_path)
+        write_tsv(valid.significant_path, header, [])
+    elif case == "extra_nonsignificant":
+        all_header, all_rows = read_tsv(valid.all_sites_path)
+        significant_header, significant_rows = read_tsv(valid.significant_path)
+        nonsignificant = next(
+            row
+            for row in all_rows
+            if row["call_status"] not in {"significant_up", "significant_down"}
+        )
+        assert all_header == significant_header
+        write_tsv(
+            valid.significant_path,
+            significant_header,
+            [*significant_rows, nonsignificant],
+        )
+    else:
+        replace_cell(valid.summary_path, 0, "significant_up_count", "99")
+
+    with pytest.raises(STEP09.ContractError, match=expected):
+        validate_projection(valid)
+
+
 def test_valid_fixture_passes_every_public_validator_with_exact_results(
     valid: SimpleNamespace,
 ) -> None:

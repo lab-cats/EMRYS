@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import subprocess
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -107,8 +109,7 @@ Reporting memory per transaction:
         "html_report": 16384,
     }
     assert dashboard.configuration_text(identity) == (
-        "Step 01: 6 sample processes x 2 configured threads | "
-        "12 workflow cores"
+        "Step 01: 6 sample processes x 2 configured threads | 12 workflow cores"
     )
     assert dashboard.stage_resource_text("01", identity, "unused") == (
         "Up to 6 sample processes x 2 STAR threads (12 nominal threads). "
@@ -185,8 +186,7 @@ def test_missing_control_plan_never_invents_six_by_two() -> None:
 def test_stream_cache_sanitizes_terminal_sequences_and_controls() -> None:
     cache = dashboard.StreamCache("unused")
     cache.data.extend(
-        b"plain\x1b[31mred\x1b[0m\tkept\n"
-        b"\x1b]52;c;clipboard-secret\x07after\x00\x08"
+        b"plain\x1b[31mred\x1b[0m\tkept\n\x1b]52;c;clipboard-secret\x07after\x00\x08"
     )
 
     assert cache.text() == "plainred\tkept\nafter"
@@ -239,7 +239,9 @@ def test_explicit_job_failure_does_not_fall_back_to_discovery(
         dashboard.resolve_selection(JOB_ID)
 
 
-def test_validate_log_selection_accepts_exact_owned_regular_pair(tmp_path: Path) -> None:
+def test_validate_log_selection_accepts_exact_owned_regular_pair(
+    tmp_path: Path,
+) -> None:
     stdout, stderr = _make_logs(tmp_path / "logs")
 
     selected = dashboard.validate_log_selection(JOB_ID, stdout, stderr)
@@ -368,18 +370,20 @@ def test_auto_discovery_uses_accounting_declared_completed_streams(
     monkeypatch.setattr(
         dashboard,
         "scheduler_candidates",
-        lambda: [{
-            "job_id": JOB_ID,
-            "accounting": {
-                "JobId": str(JOB_ID),
-                "JobName": "norad-real-run",
-                "JobState": "COMPLETED",
-                "User": "2609214",
-                "UID": str(os.getuid()),
-                "StdOut": str(stdout),
-                "StdErr": str(stderr),
-            },
-        }],
+        lambda: [
+            {
+                "job_id": JOB_ID,
+                "accounting": {
+                    "JobId": str(JOB_ID),
+                    "JobName": "norad-real-run",
+                    "JobState": "COMPLETED",
+                    "User": "2609214",
+                    "UID": str(os.getuid()),
+                    "StdOut": str(stdout),
+                    "StdErr": str(stderr),
+                },
+            }
+        ],
     )
 
     def unexpected_scontrol(*args: object) -> dict[str, object]:
@@ -463,8 +467,7 @@ def test_explicit_completed_job_uses_exact_accounting_streams_without_log_dir(
         calls.append(argv)
         assert argv[0] == "sacct"
         return (
-            f"{JOB_ID}|norad-real-run|COMPLETED|2609214|{os.getuid()}|"
-            f"{stdout}|{stderr}"
+            f"{JOB_ID}|norad-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}"
         )
 
     monkeypatch.setattr(dashboard, "command_text", fake_command)
@@ -497,8 +500,7 @@ def test_explicit_log_dir_must_agree_with_exact_accounting_streams(
         del argv, timeout
         calls += 1
         return (
-            f"{JOB_ID}|norad-real-run|COMPLETED|2609214|{os.getuid()}|"
-            f"{stdout}|{stderr}"
+            f"{JOB_ID}|norad-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}"
         )
 
     monkeypatch.setattr(dashboard, "command_text", fake_command)
@@ -611,9 +613,7 @@ def test_auto_discovery_never_uses_historical_accounting_fallback(
     monkeypatch.setattr(dashboard, "slurm_job_metadata", lambda job_id: None)
 
     def unexpected_accounting(*args: object) -> dict[str, str]:
-        pytest.fail(
-            f"auto-discovery must not use explicit accounting fallback: {args}"
-        )
+        pytest.fail(f"auto-discovery must not use explicit accounting fallback: {args}")
 
     monkeypatch.setattr(
         dashboard,
@@ -644,12 +644,14 @@ def test_report_locations_are_derived_only_from_valid_run_identity() -> None:
             f"{run_root}/products/report/{RUN_ID}/{RUN_ID}.evidence_report.html"
         ),
     }
-    assert dashboard.report_locations(
-        {"run_id": "../not-a-run", "run_root": run_root}
-    ) is None
-    assert dashboard.report_locations(
-        {"run_id": RUN_ID, "run_root": "relative/run-root"}
-    ) is None
+    assert (
+        dashboard.report_locations({"run_id": "../not-a-run", "run_root": run_root})
+        is None
+    )
+    assert (
+        dashboard.report_locations({"run_id": RUN_ID, "run_root": "relative/run-root"})
+        is None
+    )
 
 
 def test_validate_log_selection_rejects_relative_paths(
@@ -665,3 +667,337 @@ def test_validate_log_selection_rejects_relative_paths(
             stdout.relative_to(tmp_path),
             stderr.relative_to(tmp_path),
         )
+
+
+def _rich_model(now: float) -> dict[str, object]:
+    model = dashboard.parse_workflow("")
+    model["done"].update({"00a": 1, "00b": 1, "00c": 1, "01": 2, "06": 1})
+    model["started"].update({"00a": now - 900, "01": now - 600, "06": now - 90})
+    model["finished"].update({"00a": now - 800, "01": now - 300})
+    model["active"] = {
+        "11": {
+            "rule": "align_RNA_reads_with_STAR",
+            "stage": "01",
+            "wildcards": "sample_id=ABE_EV_2",
+            "started": now - 180,
+        },
+        "12": {
+            "rule": "merge_candidate_partitions",
+            "stage": "07",
+            "wildcards": "partition_id=chr1",
+            "started": now - 60,
+        },
+    }
+    model["samples"] = {
+        "ABE_EV_2": {
+            "last_stage": "00c",
+            "last_finished": now - 500,
+            "history": {"00a": 40, "00b": 20, "00c": 30},
+        },
+        "ABE_PUM1_2": {
+            "last_stage": "06",
+            "last_finished": now - 30,
+            "history": {
+                "00a": 35,
+                "00b": 20,
+                "00c": 30,
+                "01": 100,
+                "02": 40,
+                "02b": 30,
+                "03": 20,
+                "04": 20,
+                "05": 20,
+                "06": 15,
+            },
+        },
+        "ABE_EV_3": {
+            "last_stage": "01",
+            "last_finished": now - 100,
+            "history": {"00a": 30, "00b": 20, "00c": 25, "01": 120},
+        },
+        "ABE_PUM1_3": {
+            "last_stage": "01",
+            "last_finished": now - 120,
+            "history": {"00a": 30, "00b": 20, "00c": 25, "01": 150},
+        },
+        "unpaired": {"last_stage": None, "last_finished": None, "history": {}},
+    }
+    model["sample_order"] = list(model["samples"])
+    model["recent"] = [
+        ("8", "00a", "build_reference", now - 500),
+        ("9", "01", "align_RNA_reads_with_STAR", now - 100),
+    ]
+    model["completion_times"] = [now - 100, now - 1200, now - 7200]
+    model["last_completion"] = now - 100
+    model["progress_done"] = 7
+    model["progress_total"] = 20
+    model["warning"] = "WorkflowError: injected fixture"
+    return model
+
+
+def _dashboard_identity() -> dict[str, object]:
+    return {
+        "run_id": RUN_ID,
+        "run_root": f"/work/runs/{RUN_ID}",
+        "source_commit": "a" * 40,
+        "attempt": "attempt-" + "b" * 20,
+        "attempt_status": "running",
+        "runtime_hash": "c" * 64,
+        "workflow_cores": "12",
+        "step_threads": {"01": 2, "06": 1},
+        "stage_concurrency": {"01": 6, "06": 6, "07": 12},
+        "stage_memory_mb": {"01": 40960},
+    }
+
+
+def _slurm(*, terminal: bool = False, state: str = "RUNNING") -> dict[str, object]:
+    return {
+        "terminal": terminal,
+        "state": state,
+        "elapsed": "00:10:00",
+        "left": "01:50:00",
+        "cpus": "12",
+        "partition": "compute",
+        "node": "node01",
+        "reason": "None",
+        "ave_cpu": "00:01:00",
+        "max_rss": "2048M",
+        "disk_read": "1G",
+        "disk_write": "512M",
+        "exit_code": "0:0",
+    }
+
+
+def test_dashboard_model_and_text_views_cover_active_terminal_and_empty_states(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    now = 1_800_000_000.0
+    model = _rich_model(now)
+    identity = _dashboard_identity()
+
+    assert dashboard.human_size(None) == "-"
+    assert dashboard.human_size("invalid") == "invalid"
+    assert dashboard.human_size("1024") == "1.0 KiB"
+    assert dashboard.human_size("1G") == "1.0 GiB"
+    assert dashboard.duration(None) == "-"
+    assert dashboard.duration(-1) == "-"
+    assert dashboard.duration(45) == "45s"
+    assert dashboard.duration(125) == "2m05s"
+    assert dashboard.duration(3725) == "1h02m05s"
+    assert dashboard.duration(90061) == "1d01h01m"
+    assert dashboard.sample_sort_key("sample2") < dashboard.sample_sort_key("sample10")
+    assert dashboard.sample_sort_key("unpaired")[0] > 10
+    assert dashboard.active_sample_info(model, "ABE_EV_2")[0] == "11"
+    assert dashboard.active_sample_info(model, "missing") == (None, None)
+    assert (
+        dashboard.latest_sample_state(model, "ABE_PUM1_2", now)[1] == "READY FOR COHORT"
+    )
+    assert dashboard.latest_sample_state(model, "unpaired", now)[1] == "PENDING"
+    assert dashboard.peer_runtime_comparison(model, "ABE_EV_2", now)[0].startswith(
+        "LONGER THAN PEERS"
+    )
+    assert dashboard.peer_runtime_comparison(model, "unpaired", now) == (
+        "NOT RUNNING",
+        "dim",
+    )
+    assert dashboard.replicate_groups(model)
+    assert dashboard.completion_velocity(model, now) == (1, 2)
+    assert dashboard.progress_values(model) == (7, 20, 13)
+    assert "7/20" in dashboard.progress_line(model, 100)
+
+    rendered_groups = (
+        dashboard.job_lines(_slurm(), identity, 100, {}),
+        dashboard.pipeline_lines(model, now, 100),
+        dashboard.current_lines(model, identity, now, 100),
+        dashboard.sample_lines(model, now, 120),
+        dashboard.sample_lane_lines(model, now, 120),
+        dashboard.sample_lane_lines(model, now, 50),
+        dashboard.compact_activity_lines(model, now, 90),
+        dashboard.overview_lines(_slurm(), identity, model, 100),
+        dashboard.workflow_frontier_lines(model, now, 90),
+    )
+    assert all(lines for lines in rendered_groups)
+    title, provenance = dashboard.provenance_activity_lines(
+        _slurm(), identity, model, now, 90
+    )
+    assert title == "FLOW, RUN ID & ACTIVITY"
+    assert provenance
+    terminal_title, terminal_lines = dashboard.activity_lines(
+        model, _slurm(terminal=True, state="COMPLETED"), identity, now
+    )
+    assert terminal_title == "COMPLETION"
+    assert any("Scientific report" in str(line) for line in terminal_lines)
+
+    empty = dashboard.parse_workflow("")
+    assert "No scientific owner" in dashboard.current_lines(empty, {}, now, 80)[0]
+    assert "Waiting for sample jobs" in dashboard.sample_lines(empty, now, 80)[-1]
+    assert dashboard.workflow_frontier_lines(empty, now, 80)
+
+    dashboard.snapshot(JOB_ID, _slurm(), identity, model)
+    assert "NORAD LIVE DASHBOARD" in capsys.readouterr().out
+
+
+class _FakeScreen:
+    def __init__(
+        self, height: int = 50, width: int = 160, keys: list[int] | None = None
+    ):
+        self.height = height
+        self.width = width
+        self.keys = iter(keys or [])
+        self.writes: list[tuple[int, int, str, int, int]] = []
+        self.refreshes = 0
+        self.erases = 0
+
+    def getmaxyx(self) -> tuple[int, int]:
+        return self.height, self.width
+
+    def addnstr(self, y: int, x: int, text: str, limit: int, attr: int) -> None:
+        self.writes.append((y, x, text, limit, attr))
+
+    def erase(self) -> None:
+        self.erases += 1
+
+    def refresh(self) -> None:
+        self.refreshes += 1
+
+    def keypad(self, _enabled: bool) -> None:
+        return None
+
+    def timeout(self, _milliseconds: int) -> None:
+        return None
+
+    def getch(self) -> int:
+        return next(self.keys)
+
+
+def test_dashboard_drawing_and_rendering_support_wide_compact_and_small_screens(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("NO_COLOR", "1")
+    attrs = dashboard.init_colors()
+    model = _rich_model(1_800_000_000.0)
+    identity = _dashboard_identity()
+    screen = _FakeScreen()
+    dashboard.render.attrs = attrs
+
+    assert (
+        dashboard.draw_box(
+            screen,
+            1,
+            1,
+            8,
+            40,
+            "FIXTURE",
+            ["plain", ("styled", "green"), [("segment", "yellow")]] * 4,
+            attrs,
+            scroll=2,
+            scrollable=True,
+        )
+        > 0
+    )
+    dashboard.safe_add(screen, -1, 0, "outside")
+    dashboard.safe_add(screen, 0, screen.width, "outside")
+    dashboard.render_overview(screen, JOB_ID, _slurm(), identity, model, 30, 0, 0)
+    dashboard.render_details(screen, JOB_ID, _slurm(), identity, model, 30, 0, 0)
+    dashboard.render(screen, JOB_ID, _slurm(), identity, model, 30, 0, "details", 0)
+    dashboard.render(screen, JOB_ID, _slurm(), identity, model, 30, 0, "overview", 0)
+    assert screen.writes
+    assert screen.refreshes == 4
+
+    compact = _FakeScreen(height=30, width=100)
+    dashboard.render_overview(compact, JOB_ID, _slurm(), identity, model, 30, 0, 0)
+    dashboard.render_details(compact, JOB_ID, _slurm(), identity, model, 30, 0, 0)
+    small = _FakeScreen(height=10, width=60)
+    dashboard.render_overview(small, JOB_ID, _slurm(), identity, model, 30, 0, 0)
+    assert any("too small" in write[2] for write in small.writes)
+
+
+def test_stream_cache_commands_and_slurm_queries_cover_success_and_failures(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real_command_bytes = dashboard.command_bytes
+    real_command_text = dashboard.command_text
+    outputs = iter((b"5\n", b"hello", b"3\n", b"bye"))
+    monkeypatch.setattr(
+        dashboard, "command_bytes", lambda *_args, **_kwargs: next(outputs)
+    )
+    cache = dashboard.StreamCache("/remote/log")
+    assert cache.sync()
+    assert cache.text() == "hello"
+    assert cache.sync()
+    assert cache.text() == "bye"
+
+    monkeypatch.setattr(dashboard, "command_bytes", lambda *_args, **_kwargs: None)
+    assert not dashboard.StreamCache("missing").sync()
+    monkeypatch.setattr(
+        dashboard, "command_bytes", lambda *_args, **_kwargs: b"bad-size"
+    )
+    assert not dashboard.StreamCache("invalid").sync()
+
+    calls = iter(
+        (
+            "RUNNING|00:10:00|01:50:00|12|compute|node01|None",
+            "605305.batch|00:01:00|2G|1G|512M",
+        )
+    )
+    monkeypatch.setattr(
+        dashboard, "command_text", lambda *_args, **_kwargs: next(calls)
+    )
+    live = dashboard.query_slurm(JOB_ID)
+    assert live["state"] == "RUNNING"
+    assert live["max_rss"] == "2G"
+
+    calls = iter(("", "COMPLETED|0:0|00:20:00|12|node01"))
+    monkeypatch.setattr(
+        dashboard, "command_text", lambda *_args, **_kwargs: next(calls)
+    )
+    completed = dashboard.query_slurm(JOB_ID)
+    assert completed["terminal"] is True
+    assert completed["state"] == "COMPLETED"
+
+    monkeypatch.setattr(dashboard, "command_bytes", real_command_bytes)
+    monkeypatch.setattr(
+        dashboard.subprocess,
+        "run",
+        lambda argv, **_kwargs: subprocess.CompletedProcess(argv, 0, b"value\n", b""),
+    )
+    assert real_command_text(["fixture"]) == "value"
+    monkeypatch.setattr(
+        dashboard.subprocess,
+        "run",
+        lambda argv, **_kwargs: subprocess.CompletedProcess(argv, 1, b"", b""),
+    )
+    assert dashboard.command_bytes(["fixture"]) is None
+
+
+def test_dashboard_event_loop_handles_navigation_refresh_and_quit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    keys = [
+        ord("2"),
+        ord("1"),
+        9,
+        ord("r"),
+        dashboard.curses.KEY_UP,
+        dashboard.curses.KEY_DOWN,
+        dashboard.curses.KEY_PPAGE,
+        dashboard.curses.KEY_NPAGE,
+        dashboard.curses.KEY_HOME,
+        dashboard.curses.KEY_RESIZE,
+        ord("q"),
+    ]
+    screen = _FakeScreen(keys=keys)
+    monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.setattr(dashboard.curses, "curs_set", lambda _value: None)
+    monkeypatch.setattr(dashboard, "query_slurm", lambda _job: _slurm())
+    monkeypatch.setattr(dashboard, "render", lambda *_args, **_kwargs: None)
+    arguments = SimpleNamespace(
+        out="/missing/out",
+        err="/missing/err",
+        refresh=30,
+        job_id=JOB_ID,
+    )
+
+    dashboard.dashboard(screen, arguments)
+
+    assert screen.erases == 1
