@@ -173,11 +173,6 @@ def build_lanes(
 ) -> tuple[Lane, ...]:
     """Build the four non-overlapping validation lanes."""
     coverage_root = run_root / "coverage"
-    pytest_args = ["-q", "--tb=short"]
-    if python_workers > 1:
-        pytest_args.extend(["-n", str(python_workers), "--dist=loadfile"])
-    coverage_pytest_args = " ".join(shlex.quote(value) for value in pytest_args)
-
     common = (make_assignment("REPORT_PYTHON_BIN", python_bin),)
     return (
         Lane(
@@ -188,7 +183,7 @@ def build_lanes(
                 "python-coverage-check",
                 *common,
                 make_assignment("PYTHON_COVERAGE_ROOT", coverage_root),
-                make_assignment("PYTHON_COVERAGE_PYTEST_ARGS", coverage_pytest_args),
+                make_assignment("PYTHON_COVERAGE_WORKERS", python_workers),
             ),
         ),
         Lane(

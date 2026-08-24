@@ -49,13 +49,13 @@
       ]
     },
     {
-      "branch_rate": "0.975862",
-      "covered_branches": 283,
-      "covered_lines": 592,
-      "line_rate": "0.991625",
+      "branch_rate": "0.936893",
+      "covered_branches": 579,
+      "covered_lines": 1310,
+      "line_rate": "0.957602",
       "name": "norad.contracts.scientific_evidence",
-      "num_branches": 290,
-      "num_statements": 597,
+      "num_branches": 618,
+      "num_statements": 1368,
       "prefixes": [
         "src/norad/contracts/scientific_evidence/"
       ]

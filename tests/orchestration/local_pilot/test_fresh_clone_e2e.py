@@ -275,6 +275,37 @@ def _public_command(
     )
 
 
+def _qualify_storage(
+    workspace: Path,
+    reference_fasta: Path,
+    *,
+    environment: dict[str, str],
+) -> None:
+    common = [
+        "inspect",
+        "storage-qualification",
+        "--workspace",
+        str(workspace),
+        "--reference-fasta",
+        str(reference_fasta),
+    ]
+    compute_environment = dict(environment)
+    compute_environment["SLURM_JOB_ID"] = "fresh-clone-fixture"
+    compute = _public_command(
+        [*common, "--phase", "compute", "--execute"],
+        environment=compute_environment,
+    )
+    assert compute.returncode == 0, compute.stdout + compute.stderr
+
+    final_environment = dict(environment)
+    final_environment.pop("SLURM_JOB_ID", None)
+    final = _public_command(
+        [*common, "--phase", "finalize", "--execute"],
+        environment=final_environment,
+    )
+    assert final.returncode == 0, final.stdout + final.stderr
+
+
 def _harness_command(
     mode: str,
     arguments: list[str],
@@ -486,31 +517,10 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert help_result.returncode == 0, help_result.stdout + help_result.stderr
     assert "usage: norad" in help_result.stdout
 
-    qualification_common = [
-        "inspect",
-        "storage-qualification",
-        "--workspace",
-        str(workspace),
-        "--reference-fasta",
-        str(normalized.execution_contract["reference"]["fasta"]["path"]),
-    ]
-    compute_environment = dict(environment)
-    compute_environment["SLURM_JOB_ID"] = "fresh-clone-fixture"
-    compute_qualification = _public_command(
-        [*qualification_common, "--phase", "compute", "--execute"],
-        environment=compute_environment,
-    )
-    assert compute_qualification.returncode == 0, (
-        compute_qualification.stdout + compute_qualification.stderr
-    )
-    final_environment = dict(environment)
-    final_environment.pop("SLURM_JOB_ID", None)
-    final_qualification = _public_command(
-        [*qualification_common, "--phase", "finalize", "--execute"],
-        environment=final_environment,
-    )
-    assert final_qualification.returncode == 0, (
-        final_qualification.stdout + final_qualification.stderr
+    _qualify_storage(
+        workspace,
+        Path(str(normalized.execution_contract["reference"]["fasta"]["path"])),
+        environment=environment,
     )
 
     readiness = _public_command(
@@ -675,6 +685,13 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         "--runtime-profile",
         str(runtime_profile),
     ]
+    _qualify_storage(
+        clean_workspace,
+        Path(
+            str(clean_normalized.execution_contract["reference"]["fasta"]["path"])
+        ),
+        environment=environment,
+    )
     clean_run = _harness_command(
         "success",
         ["run", *clean_common, "--execute"],

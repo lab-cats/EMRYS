@@ -1,5 +1,6 @@
 import argparse
 import csv
+import json
 import subprocess
 import sys
 from collections.abc import Sequence
@@ -381,9 +382,7 @@ def test_linux_mount_identity_selects_deepest_mount_and_decodes_escapes(
 
     monkeypatch.setattr(Path, "read_text", read_mountinfo)
 
-    assert qualification._mount_identity(
-        Path("/mnt/research project/run/output")
-    ) == {
+    assert qualification._mount_identity(Path("/mnt/research project/run/output")) == {
         "mount_point": "/mnt/research project/run",
         "filesystem_type": "lustre",
         "filesystem_source": "server:/run source\\volume",
@@ -507,3 +506,239 @@ def test_storage_finalize_refuses_missing_post_allocation_probe(
     assert qualification.qualify_from_args(arguments) == 2
     evidence_root = tmp_path / qualification.EVIDENCE_DIRECTORY
     assert not list(evidence_root.glob("*.qualified.json"))
+
+
+def _qualification_inputs(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[argparse.Namespace, Path, Path]:
+    monkeypatch.setattr(qualification, "_mount_identity", synthetic_mount_identity)
+    workspace = tmp_path / "workspace"
+    reference_root = tmp_path / "reference"
+    reference_root.mkdir(parents=True)
+    reference_fasta = reference_root / "genome.fa"
+    reference_fasta.write_text(">1\nA\n", encoding="utf-8")
+    arguments = argparse.Namespace(
+        workspace=workspace,
+        reference_fasta=reference_fasta,
+        phase="compute",
+        execute=True,
+    )
+    return arguments, workspace, reference_fasta
+
+
+def _compute_qualification(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[argparse.Namespace, Path, Path, Path, Path]:
+    arguments, workspace, reference_fasta = _qualification_inputs(tmp_path, monkeypatch)
+    monkeypatch.setenv("SLURM_JOB_ID", "700200")
+    assert qualification.qualify_from_args(arguments) == 0
+    roots = qualification._storage_roots(workspace, reference_fasta)
+    _identity, _evidence, compute, final, _staged = qualification._evidence_paths(roots)
+    return arguments, workspace, reference_fasta, compute, final
+
+
+def _final_qualification(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[Path, Path, Path, Path]:
+    arguments, workspace, reference_fasta, compute, final = _compute_qualification(
+        tmp_path, monkeypatch
+    )
+    monkeypatch.delenv("SLURM_JOB_ID")
+    arguments.phase = "finalize"
+    assert qualification.qualify_from_args(arguments) == 0
+    return workspace, reference_fasta, compute, final
+
+
+def test_storage_roots_reject_relative_links_and_noncanonical_inputs(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(
+        qualification.StorageQualificationError, match="must be absolute"
+    ):
+        qualification._canonical_directory(Path("relative"), "Fixture")
+
+    real = tmp_path / "real"
+    real.mkdir()
+    linked = tmp_path / "linked"
+    linked.symlink_to(real, target_is_directory=True)
+    with pytest.raises(qualification.StorageQualificationError, match="canonical real"):
+        qualification._canonical_directory(linked, "Fixture")
+
+    reference = tmp_path / "reference.fa"
+    reference.write_text(">1\nA\n", encoding="utf-8")
+    reference_link = tmp_path / "reference-link.fa"
+    reference_link.symlink_to(reference)
+    with pytest.raises(
+        qualification.StorageQualificationError, match="canonical regular"
+    ):
+        qualification._storage_roots(tmp_path / "workspace", reference_link)
+
+    workspace_target = tmp_path / "workspace-target"
+    workspace_target.mkdir()
+    workspace_link = tmp_path / "workspace-link"
+    workspace_link.symlink_to(workspace_target, target_is_directory=True)
+    with pytest.raises(
+        qualification.StorageQualificationError,
+        match="absent or a canonical real directory",
+    ):
+        qualification._storage_roots(workspace_link, reference)
+
+
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    (
+        (b"not-json", "not valid UTF-8 JSON"),
+        (b"[]\n", "must be a JSON object"),
+    ),
+)
+def test_qualification_json_requires_a_strict_object(
+    payload: bytes,
+    message: str,
+) -> None:
+    with pytest.raises(qualification.StorageQualificationError, match=message):
+        qualification._json_object(payload, "Fixture receipt")
+
+
+@pytest.mark.parametrize(
+    ("mountinfo", "message"),
+    (
+        ("invalid-row\n", "invalid row"),
+        ("24 1 8:1 / /other rw - ext4 /dev/root rw\n", "No Linux mount identity"),
+    ),
+)
+def test_mount_identity_rejects_invalid_or_uncovered_mountinfo(
+    monkeypatch: pytest.MonkeyPatch,
+    mountinfo: str,
+    message: str,
+) -> None:
+    monkeypatch.setattr(Path, "read_text", lambda *_args, **_kwargs: mountinfo)
+
+    with pytest.raises(qualification.StorageQualificationError, match=message):
+        qualification._mount_identity(Path("/shared/workspace"))
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("fields", "invalid fields"),
+        ("identity", "invalid identity or status"),
+        ("execution", "invalid execution identity"),
+        ("roster", "invalid root roster"),
+        ("role", "invalid ordered roles"),
+        ("probe", "unexpected probe directory"),
+        ("hash", "invalid source_sha256"),
+    ),
+)
+def test_compute_receipt_rejects_each_identity_layer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mutation: str,
+    message: str,
+) -> None:
+    _arguments, workspace, reference_fasta, compute, _final = _compute_qualification(
+        tmp_path, monkeypatch
+    )
+    value = json.loads(compute.read_text(encoding="utf-8"))
+    if mutation == "fields":
+        value["unexpected"] = True
+    elif mutation == "identity":
+        value["status"] = "failed"
+    elif mutation == "execution":
+        value["compute"] = []
+    elif mutation == "roster":
+        value["roots"] = []
+    elif mutation == "role":
+        value["roots"][0]["role"] = "wrong"
+    elif mutation == "probe":
+        value["roots"][0]["probe_directory"] = "/wrong"
+    else:
+        value["roots"][0]["source_sha256"] = "short"
+    roots = qualification._storage_roots(workspace, reference_fasta)
+    qualification_id = qualification._qualification_id(roots)
+
+    with pytest.raises(qualification.StorageQualificationError, match=message):
+        qualification._validate_compute(value, qualification_id, roots)
+
+
+def test_finalize_rejects_tampered_retained_probe_and_head_node_context(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments, _workspace, _reference, compute, _final = _compute_qualification(
+        tmp_path / "tampered", monkeypatch
+    )
+    value = json.loads(compute.read_text(encoding="utf-8"))
+    visible = Path(value["roots"][0]["probe_directory"]) / "visible.bin"
+    visible.write_bytes(b"tampered")
+    monkeypatch.delenv("SLURM_JOB_ID")
+    arguments.phase = "finalize"
+    assert qualification.qualify_from_args(arguments) == 2
+
+    arguments, _workspace, _reference, _compute, _final = _compute_qualification(
+        tmp_path / "inside-allocation", monkeypatch
+    )
+    arguments.phase = "finalize"
+    with pytest.raises(
+        qualification.StorageQualificationError,
+        match="after the allocation",
+    ):
+        qualification._run_finalize(arguments.workspace, arguments.reference_fasta)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "message"),
+    (
+        ("fields", "invalid fields"),
+        ("identity", "invalid identity or status"),
+        ("binding", "does not bind"),
+        ("numeric_identity", "numeric UID/GID differs"),
+        ("roster", "invalid root roster"),
+        ("root", "no longer matches workflow_workspace"),
+    ),
+)
+def test_final_qualification_admission_rejects_mutated_receipts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mutation: str,
+    message: str,
+) -> None:
+    workspace, reference_fasta, _compute, final = _final_qualification(
+        tmp_path, monkeypatch
+    )
+    value = json.loads(final.read_text(encoding="utf-8"))
+    if mutation == "fields":
+        value["unexpected"] = True
+    elif mutation == "identity":
+        value["status"] = "failed"
+    elif mutation == "binding":
+        value["compute_receipt"]["sha256"] = "0" * 64
+    elif mutation == "numeric_identity":
+        value["head"]["uid"] = value["head"]["uid"] + 1
+    elif mutation == "roster":
+        value["roots"] = []
+    else:
+        value["roots"][0]["root"]["path"] = "/wrong"
+    final.write_text(json.dumps(value, sort_keys=True) + "\n", encoding="utf-8")
+
+    with pytest.raises(qualification.StorageQualificationError, match=message):
+        qualification.admit_final_qualification(workspace, reference_fasta)
+
+
+def test_final_qualification_rejects_incomplete_staged_publication(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    workspace, reference_fasta, _compute, _final = _final_qualification(
+        tmp_path, monkeypatch
+    )
+    roots = qualification._storage_roots(workspace, reference_fasta)
+    _identity, _evidence, _compute_path, _final_path, staged = (
+        qualification._evidence_paths(roots)
+    )
+    staged.write_text("incomplete\n", encoding="utf-8")
+
+    with pytest.raises(qualification.StorageQualificationError, match="Incomplete"):
+        qualification.admit_final_qualification(workspace, reference_fasta)

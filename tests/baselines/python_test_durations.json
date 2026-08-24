@@ -1,0 +1,13 @@
+{
+  "default_seconds": 1.0,
+  "durations_seconds": {
+    "tests/orchestration/local_pilot/test_materialization.py::test_every_projected_owner_command_is_accepted_by_public_help": 22.0,
+    "tests/orchestration/local_pilot/test_materialization.py::test_public_adapter_executes_failure_and_byte_preserving_resume": 220.37,
+    "tests/orchestration/local_pilot/test_workflow.py::test_pinned_snakemake_requires_ignore_incomplete_for_validated_resume": 200.0,
+    "tests/orchestration/local_pilot/test_workflow.py::test_real_local_pipeline_validates_outputs_and_reusable_reporting_ledgers": 149.52,
+    "tests/orchestration/local_pilot/test_workflow.py::test_resume_reuses_completed_reporting_without_engine_metadata": 170.0,
+    "tests/orchestration/local_pilot/test_workflow.py::test_resume_reuses_every_completed_file_with_existing_engine_metadata": 181.25,
+    "tests/orchestration/local_pilot/test_workflow.py::test_resume_with_fresh_engine_metadata_runs_only_pending_reporting": 140.0
+  },
+  "schema_version": "1.0.0"
+}

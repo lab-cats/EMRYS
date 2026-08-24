@@ -255,6 +255,55 @@ editing sites, or biological interpretation. Use focused checks per approved
 slice and run the assembled gate once after the final executable state is
 settled; rerun it only for a concrete failure-driven reason.
 
+### GitHub Actions Phase 1 CI
+
+The tracked [Phase 1 workflow](../../.github/workflows/ci.yml) runs for pull
+requests targeting `master`, pushes to `master`, merge-queue candidates,
+explicit manual dispatches, and a nightly schedule. It grants the workflow
+token read-only repository access, pins external actions to immutable commits,
+and cancels superseded runs for the same ref.
+
+Python 3.14 is the primary development and pull-request runtime. Every pull
+request runs the complete behavioral inventory under branch coverage as four
+duration-balanced shards. Each shard collects the whole inventory, records its
+exact selection, uses xdist work stealing within the runner, and streams the
+50 slowest timings. The merge check rejects missing, duplicate, stale, or
+inconsistently planned receipts before combining coverage and applying the
+reviewed baseline.
+
+Python 3.11 remains supported. Pull requests run a bounded 3.11 compilation,
+wheel, installed CLI, and manifest smoke. Nightly and manual runs additionally
+run the complete behavioral inventory as four receipt-verified 3.11 shards;
+they do not duplicate the Python 3.14 coverage measurement.
+
+The assembled local `make -s all-checks` authority remains unchanged in
+meaning. CI executes its non-overlapping owners as independent checks so a
+slow R restore or shell lane cannot serialize the Python suite:
+
+- `Static, lint, docs, and wheel` runs the serial preflight and installed-wheel
+  owner.
+- `Python 3.14 complete suite and coverage policy` aggregates the four
+  complete-suite coverage shards and the isolated subprocess probes.
+- `Shell and Slurm contracts` runs the shell and generated-wrapper owner.
+- `Guarded R fixtures` restores the exact R 4.6.1 environment and runs the
+  guarded R owner.
+- `Fresh-clone E2E (Python 3.14)` creates a separate ordinary clone, performs
+  locked setup, and enables the deterministic no-science
+  failure/resume/output proof.
+- `Workflow lint` verifies the tracked Actions workflows with a
+  checksum-verified `actionlint` binary. Its external ShellCheck and Pyflakes
+  integrations remain disabled because Phase 1 does not establish either as a
+  new repository policy.
+
+The workflow bootstrap may download explicitly selected dependencies, but the
+validation commands themselves remain non-restoring. A green Phase 1 workflow
+establishes clean GitHub-hosted Ubuntu engineering evidence, guarded fixture R
+evidence in its dedicated lane, and deterministic no-science fresh-clone
+evidence. It does not establish real scientific-tool execution, a real Slurm
+scheduler, CSU or distributed-filesystem behavior, production-data execution,
+scientific review, or biological interpretation. Those runtime and scheduler
+lanes remain separate Phase 2 work.
+
 ## Dependency maintenance
 
 The [Quickstart setup](../../quickstart.md#1-clone-and-install-the-locked-python-workflow)

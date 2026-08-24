@@ -486,7 +486,7 @@ def test_profile_and_rule_rosters_are_exact_and_output_only_verified_state(
     assert built.report_receipt not in declared
 
 
-def test_real_local_pipeline_builds_valid_incomplete_evidence_html_tail(
+def test_real_local_pipeline_validates_outputs_and_reusable_reporting_ledgers(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:
     completed = _snakemake(built, "--", "local_pipeline_slice")
@@ -540,12 +540,6 @@ def test_real_local_pipeline_builds_valid_incomplete_evidence_html_tail(
     assert completed.stdout.count("Verified reporting:") == 3
     assert "Published report transaction" in completed.stdout
     assert not SCIENTIFIC_BINARIES.intersection(completed.stdout.split())
-
-
-def test_every_reusable_reporting_ledger_revalidates_its_semantic_receipt(
-    built: workflow_fixture.WorkflowFixture,
-) -> None:
-    _snakemake(built, "--", "local_pipeline_slice")
     for receipt, kind in (
         (built.artifact_receipt, "artifact_index"),
         (built.run_summary_receipt, "run_summary"),

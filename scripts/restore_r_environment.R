@@ -81,7 +81,45 @@ renv::restore(
     prompt = FALSE
 )
 
-restore_status <- renv::status(project = project_root)
+restored_library <- normalizePath(
+    .libPaths()[[1L]],
+    winslash = "/",
+    mustWork = TRUE
+)
+lock <- renv::lockfile_read(lockfile)
+lock_recorded_packages <- names(lock$Packages)
+missing_from_restored_library <- lock_recorded_packages[
+    !vapply(
+        file.path(restored_library, lock_recorded_packages),
+        dir.exists,
+        logical(1)
+    )
+]
+if (length(missing_from_restored_library) > 0L) {
+    message(
+        "Hydrating lock-recorded packages found only in external R libraries: ",
+        paste(missing_from_restored_library, collapse = ", ")
+    )
+    hydration <- renv::hydrate(
+        packages = missing_from_restored_library,
+        library = restored_library,
+        update = FALSE,
+        project = project_root,
+        prompt = FALSE,
+        report = TRUE
+    )
+    if (length(hydration$unresolved) > 0L) {
+        stop(
+            "Could not hydrate lock-recorded package(s) into the project library: ",
+            paste(hydration$unresolved, collapse = ", ")
+        )
+    }
+}
+
+restore_status <- renv::status(
+    project = project_root,
+    library = restored_library
+)
 if (!isTRUE(restore_status$synchronized)) {
     stop(
         "The restored library does not match renv.lock; ",
@@ -90,4 +128,4 @@ if (!isTRUE(restore_status$synchronized)) {
 }
 
 message("NORAD R environment restore complete.")
-message("  project library: ", .libPaths()[[1L]])
+message("  project library: ", restored_library)

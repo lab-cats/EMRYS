@@ -49,8 +49,8 @@ def test_interface_bounds_and_lane_partition(tmp_path: Path) -> None:
     )
     assert tuple(lane.name for lane in serial) == TOOL.LANE_NAMES
     assert tuple(lane.name for lane in parallel) == TOOL.LANE_NAMES
-    assert "-n" not in serial[0].command[-1]
-    assert "-n 4 --dist=loadfile" in parallel[0].command[-1]
+    assert "PYTHON_COVERAGE_WORKERS=1" in serial[0].command
+    assert "PYTHON_COVERAGE_WORKERS=4" in parallel[0].command
     assert "python-coverage-check" in serial[0].command
     assert "validation-wheel-smoke" in serial[1].command
     assert "validation-shell-slurm" in serial[2].command
@@ -96,6 +96,7 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     )
     for target in (
         "python-coverage-check:",
+        "python-coverage-enforce:",
         "validation-shell-contracts:",
         "validation-shell-slurm:",
         "validation-wheel-smoke:",
@@ -108,10 +109,13 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         assert target in reporting_makefile
     assert "validation-report-runtime:" not in reporting_makefile
     assert "tests/tools/run_validation.py" in quality_makefile
-    assert "PYTHON_COVERAGE_PYTEST_ARGS" in root_makefile
-    assert "PYTHON_COVERAGE_EXCLUDES" in quality_makefile
-    assert "--ignore=tests/test_package_distribution.py" in quality_makefile
-    assert "--ignore=tests/test_slurm_wrapper_contracts.py" in quality_makefile
+    assert "PYTHON_COVERAGE_WORKERS" in root_makefile
+    shard_tool = (
+        REPO_ROOT / "tests" / "tools" / "python_test_shards.py"
+    ).read_text(encoding="utf-8")
+    assert '"tests/test_package_distribution.py"' in shard_tool
+    assert '"tests/test_slurm_wrapper_contracts.py"' in shard_tool
+    assert "--dist=worksteal" in shard_tool
     assert "shell-test: validation-shell-slurm" in quality_makefile
     assert "validation-static: lint documentation-check" in quality_makefile
     assert 'version("ruff")' not in quality_makefile

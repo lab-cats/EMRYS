@@ -245,3 +245,270 @@ def test_v1_receipt_rederives_context_from_bound_reference(
 
     with pytest.raises(CONTEXT.ContractError, match=expected):
         CONTEXT.validate_scientific_context_transaction(transaction.receipt)
+
+
+@pytest.mark.parametrize(
+    ("row_index", "field", "value", "message"),
+    (
+        (0, "analysis_id", "other-analysis", "wrong analysis_id"),
+        (0, "position", "0", "outside the declared contig"),
+        (0, "window_start_1based", "2", "window does not equal"),
+        (0, "oriented_sequence", "X" * 201, "not the declared genomic window"),
+        (0, "edit_offset_0based", "0", "center does not equal"),
+        (0, "genomic_alt", "X", "canonical DNA base"),
+        (0, "genomic_alt", "A", "nucleotide substitution"),
+        (0, "rna_alt", "T", "does not reconcile genomic and RNA bases"),
+        (0, "context_status", "boundary_truncated", "does not match its window"),
+        (0, "display_rank", "9", "between 1 and 8"),
+        (10, "display_rank", "1", "background candidate"),
+    ),
+)
+def test_v1_candidate_rows_reject_each_declared_invariant(
+    tmp_path: Path,
+    row_index: int,
+    field: str,
+    value: str,
+    message: str,
+) -> None:
+    paths = FIXTURE.build_outputs(tmp_path)
+    FIXTURE.replace_cell(paths["candidate_context"], row_index, field, value)
+
+    with pytest.raises(CONTEXT.ContractError, match=message):
+        CONTEXT.validate_scientific_context_outputs(
+            paths["candidate_context"],
+            paths["motif_hits"],
+            paths["sequence_logo"],
+            paths["motif_statistics"],
+            "analysis",
+        )
+
+
+@pytest.mark.parametrize(
+    ("row_index", "field", "source_index", "message"),
+    (
+        (1, "candidate_id", 0, "duplicate candidate_id"),
+        (1, "display_rank", 0, "duplicate display_rank"),
+    ),
+)
+def test_v1_candidate_roster_rejects_duplicate_identities(
+    tmp_path: Path,
+    row_index: int,
+    field: str,
+    source_index: int,
+    message: str,
+) -> None:
+    paths = FIXTURE.build_outputs(tmp_path)
+    with paths["candidate_context"].open(encoding="utf-8", newline="") as stream:
+        rows = list(csv.DictReader(stream, delimiter="\t"))
+    FIXTURE.replace_cell(
+        paths["candidate_context"], row_index, field, rows[source_index][field]
+    )
+
+    with pytest.raises(CONTEXT.ContractError, match=message):
+        CONTEXT.validate_scientific_context_outputs(
+            paths["candidate_context"],
+            paths["motif_hits"],
+            paths["sequence_logo"],
+            paths["motif_statistics"],
+            "analysis",
+        )
+
+
+def test_v1_outputs_reject_missing_extra_and_malformed_rows(tmp_path: Path) -> None:
+    paths = FIXTURE.build_outputs(tmp_path / "missing-hit")
+    with paths["motif_hits"].open(encoding="utf-8", newline="") as stream:
+        hit_rows = list(csv.DictReader(stream, delimiter="\t"))
+    FIXTURE.write_tsv(paths["motif_hits"], CONTEXT.MOTIF_HITS_HEADER, hit_rows[1:])
+    with pytest.raises(CONTEXT.ContractError, match="every exact overlapping"):
+        CONTEXT.validate_scientific_context_outputs(
+            paths["candidate_context"],
+            paths["motif_hits"],
+            paths["sequence_logo"],
+            paths["motif_statistics"],
+            "analysis",
+        )
+
+    paths = FIXTURE.build_outputs(tmp_path / "extra-hit")
+    with paths["motif_hits"].open(encoding="utf-8", newline="") as stream:
+        hit_rows = list(csv.DictReader(stream, delimiter="\t"))
+    FIXTURE.write_tsv(
+        paths["motif_hits"], CONTEXT.MOTIF_HITS_HEADER, [*hit_rows, hit_rows[-1]]
+    )
+    with pytest.raises(CONTEXT.ContractError, match="extra row"):
+        CONTEXT.validate_scientific_context_outputs(
+            paths["candidate_context"],
+            paths["motif_hits"],
+            paths["sequence_logo"],
+            paths["motif_statistics"],
+            "analysis",
+        )
+
+    paths = FIXTURE.build_outputs(tmp_path / "malformed")
+    paths["candidate_context"].write_text("wrong\theader\n", encoding="utf-8")
+    with pytest.raises(CONTEXT.ContractError, match="header is invalid"):
+        CONTEXT.validate_scientific_context_outputs(
+            paths["candidate_context"],
+            paths["motif_hits"],
+            paths["sequence_logo"],
+            paths["motif_statistics"],
+            "analysis",
+        )
+
+
+@pytest.mark.parametrize(
+    ("table", "mode", "message"),
+    (
+        ("sequence_logo", "missing", "lacks its complete fixed matrix"),
+        ("sequence_logo", "extra", "beyond its fixed matrix"),
+        ("motif_statistics", "missing", "lacks its complete fixed position bins"),
+        ("motif_statistics", "extra", "beyond its fixed roster"),
+    ),
+)
+def test_v1_fixed_output_matrices_reject_missing_and_extra_rows(
+    tmp_path: Path,
+    table: str,
+    mode: str,
+    message: str,
+) -> None:
+    paths = FIXTURE.build_outputs(tmp_path)
+    headers = {
+        "sequence_logo": CONTEXT.SEQUENCE_LOGO_HEADER,
+        "motif_statistics": CONTEXT.MOTIF_STATISTICS_HEADER,
+    }
+    with paths[table].open(encoding="utf-8", newline="") as stream:
+        rows = list(csv.DictReader(stream, delimiter="\t"))
+    changed = rows[:-1] if mode == "missing" else [*rows, rows[-1]]
+    FIXTURE.write_tsv(paths[table], headers[table], changed)
+
+    with pytest.raises(CONTEXT.ContractError, match=message):
+        CONTEXT.validate_scientific_context_outputs(
+            paths["candidate_context"],
+            paths["motif_hits"],
+            paths["sequence_logo"],
+            paths["motif_statistics"],
+            "analysis",
+        )
+
+
+@pytest.mark.parametrize(
+    ("table", "row_index", "field", "value", "message"),
+    (
+        ("sequence_logo", 0, "base_fraction", "0.5", "fraction does not reconcile"),
+        ("sequence_logo", 0, "base_count", "99", "does not reconcile"),
+        (
+            "motif_statistics",
+            1,
+            "candidate_with_motif_count",
+            "99",
+            "position bin does not reconcile",
+        ),
+        (
+            "motif_statistics",
+            1,
+            "odds_ratio",
+            "1",
+            "must use NA",
+        ),
+    ),
+)
+def test_v1_derived_matrices_reject_value_mutations(
+    tmp_path: Path,
+    table: str,
+    row_index: int,
+    field: str,
+    value: str,
+    message: str,
+) -> None:
+    paths = FIXTURE.build_outputs(tmp_path)
+    FIXTURE.replace_cell(paths[table], row_index, field, value)
+
+    with pytest.raises(CONTEXT.ContractError, match=message):
+        CONTEXT.validate_scientific_context_outputs(
+            paths["candidate_context"],
+            paths["motif_hits"],
+            paths["sequence_logo"],
+            paths["motif_statistics"],
+            "analysis",
+        )
+
+
+def _build_transaction(tmp_path: Path) -> FIXTURE.ContextFixture:
+    built = STEP_FIXTURE.build_fixture(tmp_path / "step09")
+    analysis_id = STEP_FIXTURE.PRIMARY_ANALYSIS_ID
+    return FIXTURE.build_transaction(
+        tmp_path / "context",
+        analysis_id=analysis_id,
+        step09_all_sites=built.step09_analysis_dir / f"{analysis_id}.cmh_all_sites.tsv",
+        step09_significant_sites=(
+            built.step09_analysis_dir / f"{analysis_id}.cmh_significant_sites.tsv"
+        ),
+        step09_summary=built.step09_analysis_dir / f"{analysis_id}.cmh_summary.tsv",
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    (
+        ("schema_version", "2.0.0", "schema_version must be"),
+        ("published_output_count", "4", "published_output_count must be"),
+        ("transaction_state", "partial", "transaction_state must be"),
+        ("git_commit", "short", "full hexadecimal commit"),
+        ("r_version", "", "r_version"),
+    ),
+)
+def test_v1_receipt_rejects_constant_and_identity_mutations(
+    tmp_path: Path,
+    field: str,
+    value: str,
+    message: str,
+) -> None:
+    transaction = _build_transaction(tmp_path)
+    FIXTURE.replace_cell(transaction.receipt, 0, field, value)
+
+    with pytest.raises(CONTEXT.ContractError, match=message):
+        CONTEXT.validate_scientific_context_transaction(transaction.receipt)
+
+
+def test_v1_receipt_rejects_relative_paths_and_stale_row_counts(tmp_path: Path) -> None:
+    transaction = _build_transaction(tmp_path / "relative")
+    FIXTURE.replace_cell(
+        transaction.receipt,
+        0,
+        "candidate_context_path",
+        transaction.candidate_context.name,
+    )
+    with pytest.raises(CONTEXT.ContractError, match="absolute and canonical"):
+        CONTEXT.validate_scientific_context_transaction(transaction.receipt)
+
+    transaction = _build_transaction(tmp_path / "count")
+    FIXTURE.replace_cell(transaction.receipt, 0, "candidate_context_row_count", "0")
+    with pytest.raises(CONTEXT.ContractError, match="row_count is stale"):
+        CONTEXT.validate_scientific_context_transaction(transaction.receipt)
+
+
+def test_v1_receipt_rejects_malformed_fai_and_fasta_identity(tmp_path: Path) -> None:
+    transaction = _build_transaction(tmp_path / "duplicate-fai")
+    fai_text = transaction.reference_fai.read_text(encoding="utf-8")
+    transaction.reference_fai.write_text(fai_text + fai_text, encoding="utf-8")
+    FIXTURE.replace_cell(
+        transaction.receipt,
+        0,
+        "reference_fai_sha256",
+        sha256_file(transaction.reference_fai),
+    )
+    with pytest.raises(CONTEXT.ContractError, match="duplicate contig"):
+        CONTEXT.validate_scientific_context_transaction(transaction.receipt)
+
+    transaction = _build_transaction(tmp_path / "fasta-header")
+    fasta_text = transaction.reference_fasta.read_text(encoding="utf-8")
+    transaction.reference_fasta.write_text(
+        fasta_text.replace(">1\n", ">2\n", 1), encoding="utf-8"
+    )
+    FIXTURE.replace_cell(
+        transaction.receipt,
+        0,
+        "reference_fasta_sha256",
+        sha256_file(transaction.reference_fasta),
+    )
+    with pytest.raises(CONTEXT.ContractError, match="does not match its FASTA header"):
+        CONTEXT.validate_scientific_context_transaction(transaction.receipt)

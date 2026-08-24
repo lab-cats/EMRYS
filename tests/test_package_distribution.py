@@ -225,7 +225,6 @@ def install_locked_wheel(wheel: Path, tmp_path: Path) -> tuple[Path, Path]:
         [
             uv_executable(),
             "lock",
-            "--offline",
             "--no-python-downloads",
             "--project",
             str(installer),
