@@ -2,7 +2,7 @@
 
 This directory protects both optional storage inventory and required
 two-phase storage qualification for the
-[storage-inventory owner](../../../src/norad/evidence/storage_inventory/README.md)
+[storage-inventory owner](../../../src/emrys/evidence/storage_inventory/README.md)
 and its grouped routes. Inventory records caller-declared roots, measurements,
 and retention-policy state for operator diagnosis. Qualification performs the
 compute/finalize site checks whose final receipt is consumed by local-pilot

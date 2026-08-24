@@ -1,5 +1,5 @@
 {
-  "schema_name": "norad.report_receipt",
+  "schema_name": "emrys.report_receipt",
   "schema_version": "3.0.0",
   "record_type": "report_receipt",
   "run_id": "run_fixture",
@@ -7,11 +7,11 @@
   "generated_at": "2000-01-01T00:00:05Z",
   "publication_state": "complete",
   "transaction_state": "complete",
-  "interpretation_boundary": "computational_candidates_only_biological_validation_outside_norad",
+  "interpretation_boundary": "computational_candidates_only_biological_validation_outside_emrys",
   "input_run_summary": {
     "path": "tests/fixtures/artifact_schema_v1/source/results/artifacts/run_fixture/run_fixture.run_summary.json",
     "sha256": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-    "schema_name": "norad.run_summary",
+    "schema_name": "emrys.run_summary",
     "schema_version": "2.0.0"
   },
   "renderer": {
@@ -19,11 +19,11 @@
     "version": "3.1.6"
   },
   "template": {
-    "path": "norad.reporting/templates/run_report.html.j2",
+    "path": "emrys.reporting/templates/run_report.html.j2",
     "sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
   },
   "stylesheet": {
-    "path": "norad.reporting/styles/run_report.css",
+    "path": "emrys.reporting/styles/run_report.css",
     "sha256": "abababababababababababababababababababababababababababababababab"
   },
   "outputs": [
@@ -45,7 +45,7 @@
       "media_type": "text/tab-separated-values"
     }
   ],
-  "state_banner": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE NORAD.",
+  "state_banner": "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS.",
   "truncations": [
     {
       "table_id": "cmh_ranked_candidates",

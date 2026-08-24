@@ -788,7 +788,7 @@ engine <- if (length(arguments) >= 2L) {
     file.path(
         repo_root,
         "src",
-        "norad",
+        "emrys",
         "stages",
         "cohort_candidate_preprocessing",
         "step_08_vcf_preprocessing.R"
@@ -801,7 +801,7 @@ assert_true(
 )
 assert_true(file.exists(engine), "Step 08 R engine must exist")
 
-test_root <- tempfile("norad-step08-real-r-")
+test_root <- tempfile("emrys-step08-real-r-")
 dir.create(test_root, recursive = TRUE)
 on.exit(unlink(test_root, recursive = TRUE, force = TRUE), add = TRUE)
 

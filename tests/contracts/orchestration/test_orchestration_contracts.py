@@ -10,8 +10,8 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator
 
-from norad.contracts import orchestration
-from norad.contracts.orchestration import projection as reporting_projection
+from emrys.contracts import orchestration
+from emrys.contracts.orchestration import projection as reporting_projection
 
 ZERO_HASH = "0" * 64
 ONE_HASH = "1" * 64
@@ -29,7 +29,7 @@ def record_reference(path: str, digest: str = ZERO_HASH) -> dict[str, str]:
 
 def policy() -> dict[str, Any]:
     return {
-        "schema_version": "norad.analysis-policy.v1",
+        "schema_version": "emrys.analysis-policy.v1",
         "analysis_id": "analysis-1",
         "control_condition": "EV",
         "treatment_condition": "PUM1",
@@ -50,9 +50,9 @@ def request() -> dict[str, Any]:
     result["id"] = result.pop("analysis_id")
     result.pop("schema_version")
     return {
-        "schema_version": "norad.request.v3",
+        "schema_version": "emrys.request.v3",
         "label": "tiny local run",
-        "profile": "norad.profile.local_cmh.v2",
+        "profile": "emrys.profile.local_cmh.v2",
         "sample_manifest": "samples.tsv",
         "partition_manifest": "partitions.tsv",
         "reference": {
@@ -71,7 +71,7 @@ def request() -> dict[str, Any]:
 
 def resource_config() -> dict[str, Any]:
     return {
-        "schema_version": "norad.local-pilot-resources.v1",
+        "schema_version": "emrys.local-pilot-resources.v1",
         "workflow_cores": 4,
         "workflow_memory_mb": "allocation",
         "stage_concurrency": {"01": 2, "06": 4},
@@ -83,22 +83,22 @@ def resource_config() -> dict[str, Any]:
 
 def launcher_config() -> dict[str, Any]:
     return {
-        "schema_version": "norad.local-pilot-launcher.v1",
+        "schema_version": "emrys.local-pilot-launcher.v1",
         "slurm": {
-            "account": {"env": "NORAD_SLURM_ACCOUNT"},
+            "account": {"env": "EMRYS_SLURM_ACCOUNT"},
             "partition": "example-partition",
-            "qos": {"env": "NORAD_SLURM_QOS"},
+            "qos": {"env": "EMRYS_SLURM_QOS"},
             "cpus_per_task": 4,
             "memory": "site-default",
             "time": "00:30:00",
             "exclusive": False,
-            "nodelist": {"env": "NORAD_SLURM_NODELIST"},
+            "nodelist": {"env": "EMRYS_SLURM_NODELIST"},
         },
         "paths": {
-            "log_dir": {"env": "NORAD_LOG_DIR"},
+            "log_dir": {"env": "EMRYS_LOG_DIR"},
             "request": "/absolute/path/to/request.yaml",
-            "workspace": {"env": "NORAD_WORKSPACE"},
-            "runtime_profile": {"env": "NORAD_RUNTIME_PROFILE"},
+            "workspace": {"env": "EMRYS_WORKSPACE"},
+            "runtime_profile": {"env": "EMRYS_RUNTIME_PROFILE"},
             "scratch_parent": "/absolute/path/to/scratch",
         },
         "modules": {
@@ -111,8 +111,8 @@ def launcher_config() -> dict[str, Any]:
 
 def profile() -> dict[str, Any]:
     return {
-        "schema_version": "norad.profile.v2",
-        "profile_id": "norad.profile.local_cmh",
+        "schema_version": "emrys.profile.v2",
+        "profile_id": "emrys.profile.local_cmh",
         "profile_version": "v2",
         "semantic_owner_keys": ["star_index", "bam_qc"],
         "owner_tasks": [
@@ -157,7 +157,7 @@ def profile() -> dict[str, Any]:
 
 def reference() -> dict[str, Any]:
     return {
-        "schema_version": "norad.reference.v1",
+        "schema_version": "emrys.reference.v1",
         "reference_id": "ref-1",
         "fasta": snapshot("/data/genome.fa"),
         "gtf": snapshot("/data/genome.gtf", ONE_HASH),
@@ -219,7 +219,7 @@ def execution() -> dict[str, Any]:
         ],
     }
     profile_identity = {
-        "profile_id": "norad.profile.local_cmh",
+        "profile_id": "emrys.profile.local_cmh",
         "profile_version": "v2",
         "profile_sha256": orchestration.canonical_sha256(profile()),
     }
@@ -230,7 +230,7 @@ def execution() -> dict[str, Any]:
         "policy_sha256": orchestration.canonical_sha256(analysis_policy),
     }
     envelope = {
-        "schema_version": "norad.identity-envelope.v1",
+        "schema_version": "emrys.identity-envelope.v1",
         "profile": profile_identity,
         "samples": samples,
         "partitions": partitions,
@@ -239,7 +239,7 @@ def execution() -> dict[str, Any]:
     }
     digest = orchestration.canonical_sha256(envelope)
     record = {
-        "schema_version": "norad.execution.v1",
+        "schema_version": "emrys.execution.v1",
         "profile": profile_identity,
         "samples": samples,
         "partitions": partitions,
@@ -258,9 +258,9 @@ def execution() -> dict[str, Any]:
 def lifecycle_records() -> dict[str, dict[str, Any]]:
     run_id = f"run-{ZERO_HASH}"
     scope = {"scope_type": "sample", "scope_id": "EV-1"}
-    command = {"argv": ["norad-owner", "--execute"], "exit_code": 0}
+    command = {"argv": ["emrys-owner", "--execute"], "exit_code": 0}
     workflow_attempt = {
-        "schema_version": "norad.workflow-attempt.v1",
+        "schema_version": "emrys.workflow-attempt.v1",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -279,7 +279,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
             "analysis_policy": None,
         },
         "normalizer": {
-            "name": "norad",
+            "name": "emrys",
             "version": "0.1.0",
             "path": "/checkout/.venv/bin/python",
             "resolved_path": "/checkout/.venv/bin/python",
@@ -330,7 +330,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "state/task-starts/star_alignment/EV-1.json"
     )
     task_start = {
-        "schema_version": "norad.task-start.v1",
+        "schema_version": "emrys.task-start.v1",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -352,7 +352,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "created_at": "2026-08-12T12:01:30Z",
     }
     task_attempt = {
-        "schema_version": "norad.task-attempt.v1",
+        "schema_version": "emrys.task-attempt.v1",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -381,7 +381,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "failure_message": None,
     }
     verified_task = {
-        "schema_version": "norad.verified-task.v1",
+        "schema_version": "emrys.verified-task.v1",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -426,7 +426,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
         "created_at": "2026-08-12T12:02:00Z",
     }
     attempt_receipt = {
-        "schema_version": "norad.attempt-receipt.v1",
+        "schema_version": "emrys.attempt-receipt.v1",
         "run_id": run_id,
         "execution_contract_sha256": ZERO_HASH,
         "profile_sha256": ONE_HASH,
@@ -506,7 +506,7 @@ def test_registry_is_closed_and_every_schema_is_draft_2020_12() -> None:
             if isinstance(value, dict):
                 reference_value = value.get("$ref")
                 if reference_value is not None:
-                    assert reference_value.startswith(("urn:norad:", "#"))
+                    assert reference_value.startswith(("urn:emrys:", "#"))
                 stack.extend(value.values())
             elif isinstance(value, list):
                 stack.extend(value)
@@ -519,7 +519,7 @@ def test_launcher_config_schema_is_registered_as_v3() -> None:
     )
     assert orchestration.SCHEMA_PATHS["launcher-config"].parent.name == "v3"
     assert orchestration.SCHEMA_IDS["launcher-config"] == (
-        "urn:norad:schema:orchestration:launcher-config:v1"
+        "urn:emrys:schema:orchestration:launcher-config:v1"
     )
 
 
@@ -567,7 +567,7 @@ def test_request_resource_launcher_profile_reference_policy_and_execution_record
 def test_launcher_config_accepts_a_schema_only_authored_fragment() -> None:
     orchestration.validate_record(
         "launcher-config",
-        {"schema_version": "norad.local-pilot-launcher.v1"},
+        {"schema_version": "emrys.local-pilot-launcher.v1"},
     )
 
 
@@ -578,7 +578,7 @@ def test_launcher_config_accepts_a_schema_only_authored_fragment() -> None:
         lambda record: record["slurm"].__setitem__("unknown", True),
         lambda record: record["slurm"].__setitem__(
             "account",
-            {"env": "NORAD_SLURM_ACCOUNT", "fallback": "example"},
+            {"env": "EMRYS_SLURM_ACCOUNT", "fallback": "example"},
         ),
     ),
 )
@@ -595,9 +595,9 @@ def test_launcher_config_rejects_unknown_fields(mutate: Any) -> None:
 
 def test_launcher_config_rejects_an_environment_reference_for_another_field() -> None:
     record = launcher_config()
-    record["slurm"]["account"] = {"env": "NORAD_WORKSPACE"}
+    record["slurm"]["account"] = {"env": "EMRYS_WORKSPACE"}
 
-    with pytest.raises(orchestration.ContractValidationError, match="NORAD_WORKSPACE"):
+    with pytest.raises(orchestration.ContractValidationError, match="EMRYS_WORKSPACE"):
         orchestration.validate_record("launcher-config", record)
 
 

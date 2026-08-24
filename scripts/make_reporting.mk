@@ -28,7 +28,7 @@ demo-report:
 		--root "$(DEMO_REPORT_FIXTURE_ROOT)" \
 		--run-id "$(DEMO_REPORT_RUN_ID)"
 	SOURCE_DATE_EPOCH=1700000000 \
-		"$(REPORT_PYTHON_BIN)" -X pycache_prefix=/dev/null -I -m norad build run-summary \
+		"$(REPORT_PYTHON_BIN)" -X pycache_prefix=/dev/null -I -m emrys build run-summary \
 		--source-checkout "$(CURDIR)" \
 		--artifact-source-root "$(DEMO_REPORT_ROOT)/full-run-fixture" \
 		--run-id "$(DEMO_REPORT_RUN_ID)" \
@@ -37,14 +37,14 @@ demo-report:
 		--output-root "$(DEMO_REPORT_ARTIFACT_ROOT)" \
 		--execute
 	SOURCE_DATE_EPOCH=1700000000 \
-		"$(REPORT_PYTHON_BIN)" -X pycache_prefix=/dev/null -I -m norad build report \
+		"$(REPORT_PYTHON_BIN)" -X pycache_prefix=/dev/null -I -m emrys build report \
 		--source-checkout "$(CURDIR)" \
 		--artifact-source-root "$(DEMO_REPORT_ROOT)/full-run-fixture" \
 		--run-summary \
 			"$(DEMO_REPORT_ARTIFACT_ROOT)/$(DEMO_REPORT_RUN_ID)/$(DEMO_REPORT_RUN_ID).run_summary.json" \
 		--output-root "$(DEMO_REPORT_OUTPUT_ROOT)"
 	SOURCE_DATE_EPOCH=1700000000 \
-		"$(REPORT_PYTHON_BIN)" -X pycache_prefix=/dev/null -I -m norad build report \
+		"$(REPORT_PYTHON_BIN)" -X pycache_prefix=/dev/null -I -m emrys build report \
 		--source-checkout "$(CURDIR)" \
 		--artifact-source-root "$(DEMO_REPORT_ROOT)/full-run-fixture" \
 		--run-summary \

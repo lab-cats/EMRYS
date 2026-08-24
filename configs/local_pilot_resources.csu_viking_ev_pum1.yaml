@@ -1,4 +1,4 @@
-schema_version: norad.local-pilot-resources.v1
+schema_version: emrys.local-pilot-resources.v1
 
 workflow_cores: 12
 workflow_memory_mb: 524288

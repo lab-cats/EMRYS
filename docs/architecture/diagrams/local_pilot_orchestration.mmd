@@ -53,7 +53,7 @@ flowchart TB
     report_verified["HTML-report verified record"]
     released_lock["Owned run lock atomically retained\nas immutable attempt-local release evidence"]
     complete["Workflow-attempt receipt published last\nlocal_pipeline_complete"]
-    inspect["Read-only derived inspection\nNORAD records only"]
+    inspect["Read-only derived inspection\nEMRYS records only"]
     resume{"Every entered scope fully verified\nand every other scope unentered?"}
     resumable["New workflow attempt may resume"]
     blocked["Blocked pending explicit reconciliation"]
@@ -92,7 +92,7 @@ flowchart TB
     resume -->|yes| resumable --> control
     resume -->|no or ambiguous| blocked
 
-    snakemake_state[".snakemake metadata\ndisposable, never NORAD authority"]
+    snakemake_state[".snakemake metadata\ndisposable, never EMRYS authority"]
     slurm["SLURM, VM, and CSU profiles\nexplicitly deferred"]
 
     engine -.-> snakemake_state

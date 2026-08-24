@@ -20,10 +20,10 @@ from typing import Any
 
 import pytest
 
-from norad.contracts.orchestration import api as orchestration_contracts
-from norad.evidence.storage_inventory import qualification as storage_qualification
-from norad.libraries.installed_package_identity import installed_package_tree_identity
-from norad.orchestration.local_pilot import (
+from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.evidence.storage_inventory import qualification as storage_qualification
+from emrys.libraries.installed_package_identity import installed_package_tree_identity
+from emrys.orchestration.local_pilot import (
     doctor,
     inspection,
     lifecycle,
@@ -874,7 +874,7 @@ def _materialize_start_only(
     task_root = Path(dispatch["task_attempt_path"]).parent
     task_root.mkdir(parents=True, exist_ok=True)
     start = {
-        "schema_version": "norad.task-start.v1",
+        "schema_version": "emrys.task-start.v1",
         "run_id": built.execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(
             (built.run_root / "contract" / "normalized.json").read_bytes()
@@ -914,7 +914,7 @@ def _materialize_preentry_failure(
     stdout.write_bytes(b"fixture preentry stdout\n")
     stderr.write_bytes(b"fixture preentry stderr\n")
     record = {
-        "schema_version": "norad.task-attempt.v1",
+        "schema_version": "emrys.task-attempt.v1",
         "run_id": built.execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(
             (built.run_root / "contract" / "normalized.json").read_bytes()
@@ -1002,7 +1002,7 @@ def _materialize_verified(
         )
         task_start_path.parent.mkdir(parents=True, exist_ok=True)
         start = {
-            "schema_version": "norad.task-start.v1",
+            "schema_version": "emrys.task-start.v1",
             "run_id": built.execution["run_id"],
             "execution_contract_sha256": execution_hash,
             "profile_sha256": profile_hash,
@@ -1031,7 +1031,7 @@ def _materialize_verified(
         (task_root / "stderr.log").write_bytes(b"fixture owner stderr\n")
         report_reference = _record_reference(report_path, built.run_root)
         task_attempt = {
-            "schema_version": "norad.task-attempt.v1",
+            "schema_version": "emrys.task-attempt.v1",
             "run_id": built.execution["run_id"],
             "execution_contract_sha256": execution_hash,
             "profile_sha256": profile_hash,
@@ -1058,7 +1058,7 @@ def _materialize_verified(
             orchestration_contracts.canonical_json_bytes(task_attempt)
         )
         verified = {
-            "schema_version": "norad.verified-task.v1",
+            "schema_version": "emrys.verified-task.v1",
             "run_id": built.execution["run_id"],
             "execution_contract_sha256": execution_hash,
             "profile_sha256": profile_hash,
@@ -1271,7 +1271,7 @@ def _attempt(
     created = identifier.split("-")[1]
     created_at = datetime.strptime(created, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
     return {
-        "schema_version": "norad.workflow-attempt.v1",
+        "schema_version": "emrys.workflow-attempt.v1",
         "run_id": built.execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
         "profile_sha256": hashlib.sha256(profile_bytes).hexdigest(),
@@ -1296,7 +1296,7 @@ def _attempt(
             "analysis_policy": None,
         },
         "normalizer": {
-            "name": "norad",
+            "name": "emrys",
             "version": "0.1.0",
             "path": sys.executable,
             "resolved_path": str(Path(sys.executable).resolve(strict=True)),
@@ -1355,7 +1355,7 @@ def _build_harness(
 ) -> Harness:
     built = workflow_fixture.build(tmp_path / "workspace" / "fixture")
     # The workflow fixture's static B3 attempt binds task dispatches; lifecycle
-    # tests replace it with the attempt under test before any NORAD mutation.
+    # tests replace it with the attempt under test before any EMRYS mutation.
     shutil.rmtree(built.workflow_attempt_path.parent)
     workflow_test_state = built.run_root / "attempts" / "workflow-test"
     if workflow_test_state.exists():

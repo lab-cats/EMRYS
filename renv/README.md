@@ -5,7 +5,7 @@ is repository dependency lifecycle state, not a workflow stage.
 
 Tracked files are `activate.R`, `settings.json`, this README, and the local
 ignore policy; the canonical package lock is [`../renv.lock`](../renv.lock).
-Project activation occurs only when `NORAD_USE_RENV=1`. Local libraries,
+Project activation occurs only when `EMRYS_USE_RENV=1`. Local libraries,
 caches, staging, sandbox, and related restored state remain ignored.
 
 ## Restoration and cleanup

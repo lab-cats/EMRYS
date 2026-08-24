@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render a deterministic read-only view of the compact NORAD backlog."""
+"""Render a deterministic read-only view of the compact EMRYS backlog."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ def render_markdown(root: Path, cards: Mapping[str, TaskCard]) -> str:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Render deterministic NORAD backlog status."
+        description="Render deterministic EMRYS backlog status."
     )
     parser.add_argument("--repo", required=True, type=Path)
     return parser.parse_args()

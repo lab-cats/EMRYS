@@ -13,7 +13,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 JOB = (
     REPO_ROOT
     / "src"
-    / "norad"
+    / "emrys"
     / "stages"
     / "star_index"
     / "step_00a_build_novogene_star_index.slurm"
@@ -21,10 +21,10 @@ JOB = (
 PRODUCER = JOB.with_name("step_00a_build_star_index.sh")
 CHECKOUT_IMPLEMENTATION = (
     PRODUCER,
-    REPO_ROOT / "src/norad/libraries/argument_parsing.sh",
-    REPO_ROOT / "src/norad/libraries/executable_resolution.sh",
-    REPO_ROOT / "src/norad/libraries/file_checks.sh",
-    REPO_ROOT / "src/norad/libraries/signal_traps.sh",
+    REPO_ROOT / "src/emrys/libraries/argument_parsing.sh",
+    REPO_ROOT / "src/emrys/libraries/executable_resolution.sh",
+    REPO_ROOT / "src/emrys/libraries/file_checks.sh",
+    REPO_ROOT / "src/emrys/libraries/signal_traps.sh",
 )
 REQUIRED_MEMBERS = {
     "genomeParameters.txt",
@@ -123,7 +123,7 @@ def prepared_environment(tmp_path: Path) -> tuple[Path, dict[str, str]]:
         {
             "PATH": os.pathsep.join((str(fake_bin), "/usr/bin", "/bin")),
             "TMPDIR": str(runtime_tmp),
-            "NORAD_SHA256_PYTHON": sys.executable,
+            "EMRYS_SHA256_PYTHON": sys.executable,
             "SLURM_JOB_ID": "local-step00a-test",
             "SLURM_JOB_NAME": "local-step00a-test",
             "SLURMD_NODENAME": "local-mock-node",
@@ -355,7 +355,7 @@ def test_public_producer_dry_run_is_side_effect_free_from_arbitrary_cwd(
     index = tmp_path / "outputs" / "star-index"
     invocation_cwd = tmp_path / "elsewhere"
     invocation_cwd.mkdir()
-    environment["NORAD_RUN_TOKEN"] = "explicit-owner-step00a"
+    environment["EMRYS_RUN_TOKEN"] = "explicit-owner-step00a"
     environment["SLURM_JOB_ID"] = "scheduler-step00a"
 
     result = run_producer(
@@ -391,7 +391,7 @@ def test_public_producer_rejects_unsafe_explicit_run_token_before_mutation(
     index = tmp_path / "outputs" / "star-index"
     invocation_cwd = tmp_path / "elsewhere"
     invocation_cwd.mkdir()
-    environment["NORAD_RUN_TOKEN"] = "../unsafe-owner-token"
+    environment["EMRYS_RUN_TOKEN"] = "../unsafe-owner-token"
     environment["SLURM_JOB_ID"] = "safe-scheduler-token"
 
     result = run_producer(

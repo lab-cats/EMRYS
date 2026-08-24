@@ -10,16 +10,16 @@ from pathlib import Path
 
 import pytest
 
-from norad import __main__ as norad_main
-from norad.evidence.runtime_availability import inspector
-from norad.evidence.runtime_availability import _probes as runtime_probes
-from norad.evidence.runtime_availability._probes import (
+from emrys import __main__ as emrys_main
+from emrys.evidence.runtime_availability import inspector
+from emrys.evidence.runtime_availability import _probes as runtime_probes
+from emrys.evidence.runtime_availability._probes import (
     R_NAMESPACE_ROOT_OUTPUT_MARKER,
     run_checks,
 )
-from norad.evidence.runtime_availability._profile_contract import load_profile
-from norad.evidence.runtime_availability._result_contract import result_bytes
-from norad.evidence.runtime_availability._runtime_model import (
+from emrys.evidence.runtime_availability._profile_contract import load_profile
+from emrys.evidence.runtime_availability._result_contract import result_bytes
+from emrys.evidence.runtime_availability._runtime_model import (
     HASH_EXPECTED,
     HASH_PAYLOAD,
     R_NAMESPACE_PROBE_TIMEOUT_SECONDS,
@@ -28,10 +28,10 @@ from norad.evidence.runtime_availability._runtime_model import (
     PreflightError,
     Result,
 )
-from norad.libraries.source_authority import controlled_python_argv
+from emrys.libraries.source_authority import controlled_python_argv
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-COMMAND = (sys.executable, "-I", "-m", "norad", "inspect", "runtime-availability")
+COMMAND = (sys.executable, "-I", "-m", "emrys", "inspect", "runtime-availability")
 EXAMPLE_PROFILE = REPO_ROOT / "configs" / "runtime_preflight.example.tsv"
 PROFILE_HEADER = (
     "check_id\tcheck_type\truntime_context\trequired\ttarget\tprobe_args\t"
@@ -229,7 +229,7 @@ def test_missing_tool_and_version_mismatch_are_failures(tmp_path: Path) -> None:
     mismatch[6] = "^definitely-not-python$"
     profile = write_profile(
         tmp_path / "profile.tsv",
-        [tool_row("missing", target="norad-tool-that-does-not-exist"), mismatch],
+        [tool_row("missing", target="emrys-tool-that-does-not-exist"), mismatch],
     )
     output = tmp_path / "preflight.tsv"
     result = run_cli(profile, output, "--execute")
@@ -379,7 +379,7 @@ def test_guarded_rscript_version_probe_uses_its_standalone_information_mode(
     result = run_checks(
         [check],
         "local",
-        environment={"NORAD_LOCAL_PILOT_R": "1"},
+        environment={"EMRYS_LOCAL_PILOT_R": "1"},
     )[0]
 
     assert result.status == "pass"
@@ -694,7 +694,7 @@ def test_namespace_and_hash_probes_reject_missing_executables_without_running(
         check_type=check_type,
         runtime_context="local",
         required=True,
-        target="norad-runtime-tool-that-does-not-exist",
+        target="emrys-runtime-tool-that-does-not-exist",
         probe_args=probe_args,
         expected=r".*",
         description="missing runtime",
@@ -862,8 +862,8 @@ def test_guarded_r_namespace_probe_binds_startup_and_selected_library(
         tuple[list[str], bytes | None, dict[str, str] | None, int]
     ] = []
     environment = {
-        "NORAD_LOCAL_PILOT_R": "1",
-        "NORAD_RENV_LIBRARY": str(library),
+        "EMRYS_LOCAL_PILOT_R": "1",
+        "EMRYS_RENV_LIBRARY": str(library),
     }
     resolved_package = (tmp_path / "renv-cache" / "GuardedPackage").resolve()
 
@@ -951,8 +951,8 @@ def test_guarded_r_namespace_rejects_missing_or_malformed_root_identity(
         [check],
         "local",
         environment={
-            "NORAD_LOCAL_PILOT_R": "1",
-            "NORAD_RENV_LIBRARY": str(tmp_path / "library"),
+            "EMRYS_LOCAL_PILOT_R": "1",
+            "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
         },
         command_runner=lambda _argv, _stdin, _environment, _timeout: (
             0,
@@ -1147,8 +1147,8 @@ def test_r_namespace_failure_detail_distinguishes_guarded_selection(
     )
     environment = (
         {
-            "NORAD_LOCAL_PILOT_R": "1",
-            "NORAD_RENV_LIBRARY": str(tmp_path / "library"),
+            "EMRYS_LOCAL_PILOT_R": "1",
+            "EMRYS_RENV_LIBRARY": str(tmp_path / "library"),
         }
         if guarded
         else None
@@ -1182,7 +1182,7 @@ def test_direct_inspection_uses_explicit_probe_environment(tmp_path: Path) -> No
     fake.write_text(
         "#!/usr/bin/env bash\n"
         "set -euo pipefail\n"
-        '[[ "${NORAD_DOCTOR_TEST:-}" == "guarded" ]] || exit 43\n'
+        '[[ "${EMRYS_DOCTOR_TEST:-}" == "guarded" ]] || exit 43\n'
         f"printf '1.2.3{R_NAMESPACE_ROOT_OUTPUT_MARKER}{encoded_root}'\n",
         encoding="utf-8",
     )
@@ -1207,9 +1207,9 @@ def test_direct_inspection_uses_explicit_probe_environment(tmp_path: Path) -> No
         profile,
         "local",
         environment={
-            "NORAD_DOCTOR_TEST": "guarded",
-            "NORAD_LOCAL_PILOT_R": "1",
-            "NORAD_RENV_LIBRARY": str(library),
+            "EMRYS_DOCTOR_TEST": "guarded",
+            "EMRYS_LOCAL_PILOT_R": "1",
+            "EMRYS_RENV_LIBRARY": str(library),
             "PATH": os.environ["PATH"],
         },
     )
@@ -1309,7 +1309,7 @@ def test_profile_symlink_and_changed_profile_fail_closed(
 
     monkeypatch.setattr(inspector, "run_checks", mutate)
     assert (
-        norad_main.main(
+        emrys_main.main(
             [
                 "inspect",
                 "runtime-availability",

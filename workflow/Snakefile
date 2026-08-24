@@ -1,4 +1,4 @@
-"""Static local-CMH projection of NORAD's public scientific owner graph."""
+"""Static local-CMH projection of EMRYS's public scientific owner graph."""
 
 from __future__ import annotations
 
@@ -7,24 +7,24 @@ import re
 import sys
 from pathlib import Path
 
-import norad
-from norad.contracts.orchestration import api as orchestration_contracts
-from norad.libraries.source_authority import (
+import emrys
+from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout,
     require_controlled_python_runtime,
 )
-from norad.orchestration.local_pilot.task import (
+from emrys.orchestration.local_pilot.task import (
     TaskBoundaryError,
     validate_task_start,
     validate_verified_task,
 )
-from norad.orchestration.local_pilot.inspection import (
+from emrys.orchestration.local_pilot.inspection import (
     expected_tasks,
     state_tree_blockers,
     task_start_tree_blockers,
 )
-from norad.orchestration.local_pilot.reporting_boundary import (
+from emrys.orchestration.local_pilot.reporting_boundary import (
     REPORTING_KINDS,
     ReportingBoundaryError,
     ledger_paths,
@@ -252,7 +252,7 @@ if Path(WORKFLOW_ATTEMPT["source_checkout"]["path"]) != SOURCE_CHECKOUT:
 try:
     SOURCE_ATTESTATION = attest_source_checkout(
         root=SOURCE_CHECKOUT,
-        package_root=Path(norad.__file__).resolve().parent,
+        package_root=Path(emrys.__file__).resolve().parent,
         expected_commit=WORKFLOW_ATTEMPT["source_checkout"]["commit"],
     )
 except SourceCheckoutError as exc:
@@ -306,72 +306,72 @@ OWNER_TASKS = {
 }
 AUTOMATIC_TASKS = {
     "construct_STAR_index": (
-        "norad.stage.construct_STAR_index.v1",
+        "emrys.stage.construct_STAR_index.v1",
         "reference",
         "reference",
     ),
     "convert_GTF_to_BED12": (
-        "norad.stage.convert_GTF_to_BED12.v1",
+        "emrys.stage.convert_GTF_to_BED12.v1",
         "reference",
         "reference",
     ),
     "construct_FASTA_sidecars": (
-        "norad.stage.construct_FASTA_sidecars.v1",
+        "emrys.stage.construct_FASTA_sidecars.v1",
         "reference",
         "reference",
     ),
     "align_RNA_reads_with_STAR": (
-        "norad.stage.align_RNA_reads_with_STAR.v1",
+        "emrys.stage.align_RNA_reads_with_STAR.v1",
         "sample",
         "samples",
     ),
     "construct_canonical_BAM": (
-        "norad.stage.construct_canonical_BAM.v1",
+        "emrys.stage.construct_canonical_BAM.v1",
         "sample",
         "samples",
     ),
     "collect_canonical_BAM_QC_evidence": (
-        "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
+        "emrys.evidence.collect_canonical_BAM_QC_evidence.v1",
         "sample",
         "samples",
     ),
     "collect_RSeQC_paired_orientation_evidence": (
-        "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+        "emrys.evidence.collect_RSeQC_paired_orientation_evidence.v1",
         "sample",
         "samples",
     ),
     "mark_BAM_duplicates_with_Picard": (
-        "norad.stage.mark_BAM_duplicates_with_Picard.v1",
+        "emrys.stage.mark_BAM_duplicates_with_Picard.v1",
         "sample",
         "samples",
     ),
     "split_N_cigar_reads_with_GATK": (
-        "norad.stage.split_N_cigar_reads_with_GATK.v1",
+        "emrys.stage.split_N_cigar_reads_with_GATK.v1",
         "sample",
         "samples",
     ),
     "partition_BAM_by_mechanical_read_orientation": (
-        "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
+        "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1",
         "sample",
         "samples",
     ),
     "generate_partitioned_cohort_mpileup_VCFs": (
-        "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+        "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
         "cohort_partition",
         "partitions",
     ),
     "preprocess_and_annotate_cohort_candidates": (
-        "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
+        "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
         "cohort",
         "cohort",
     ),
     "rank_cohort_candidates_with_paired_CMH": (
-        "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+        "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
         "analysis",
         "analysis",
     ),
     "project_candidate_scientific_context": (
-        "norad.analysis.project_candidate_scientific_context.v1",
+        "emrys.analysis.project_candidate_scientific_context.v1",
         "analysis",
         "analysis",
     ),
@@ -666,7 +666,7 @@ def _admit_state_namespace():
         *task_start_tree_blockers(RUN_ROOT, expected),
     ]
     if blockers:
-        raise WorkflowError("Could not close NORAD state namespace: " + "; ".join(blockers))
+        raise WorkflowError("Could not close EMRYS state namespace: " + "; ".join(blockers))
     for item in expected:
         start_path = (
             RUN_ROOT
@@ -813,23 +813,23 @@ rule build_artifact_index:
         workflow_config=str(WORKFLOW_CONFIG_PATH),
         receipt=str(ARTIFACT_RECEIPT)
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad build artifact-index "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys build artifact-index "
         "--source-checkout {params.source_checkout:q} "
         "--artifact-source-root {params.artifact_source_root:q} "
         "--run-id {params.run_id:q} --run-contract {input.run_contract:q} "
         "--inventory {input.inventory:q} --output-root {params.output_root:q} && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.reporting_boundary start "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.reporting_boundary start "
         "--kind artifact_index --run-root {params.run_root:q} "
         "--execution {params.execution:q} --profile {params.profile:q} "
         "--workflow-attempt {params.workflow_attempt:q} "
         "--workflow-config {params.workflow_config:q} && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad build artifact-index "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys build artifact-index "
         "--source-checkout {params.source_checkout:q} "
         "--artifact-source-root {params.artifact_source_root:q} "
         "--run-id {params.run_id:q} --run-contract {input.run_contract:q} "
         "--inventory {input.inventory:q} --output-root {params.output_root:q} "
         "--execute && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.reporting_boundary complete "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.reporting_boundary complete "
         "--kind artifact_index --run-root {params.run_root:q} "
         "--execution {params.execution:q} --profile {params.profile:q} "
         "--workflow-attempt {params.workflow_attempt:q} "
@@ -859,22 +859,22 @@ rule build_run_summary:
         workflow_config=str(WORKFLOW_CONFIG_PATH),
         receipt=str(RUN_SUMMARY_RECEIPT)
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad build run-summary "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys build run-summary "
         "--source-checkout {params.source_checkout:q} "
         "--artifact-source-root {params.artifact_source_root:q} "
         "--run-id {params.run_id:q} --artifact-receipt {params.artifact_receipt:q} "
         "--output-root {params.output_root:q} && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.reporting_boundary start "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.reporting_boundary start "
         "--kind run_summary --run-root {params.run_root:q} "
         "--execution {params.execution:q} --profile {params.profile:q} "
         "--workflow-attempt {params.workflow_attempt:q} "
         "--workflow-config {params.workflow_config:q} && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad build run-summary "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys build run-summary "
         "--source-checkout {params.source_checkout:q} "
         "--artifact-source-root {params.artifact_source_root:q} "
         "--run-id {params.run_id:q} --artifact-receipt {params.artifact_receipt:q} "
         "--output-root {params.output_root:q} --execute && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.reporting_boundary complete "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.reporting_boundary complete "
         "--kind run_summary --run-root {params.run_root:q} "
         "--execution {params.execution:q} --profile {params.profile:q} "
         "--workflow-attempt {params.workflow_attempt:q} "
@@ -903,21 +903,21 @@ rule build_html_report:
         workflow_config=str(WORKFLOW_CONFIG_PATH),
         receipt=str(REPORT_RECEIPT)
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad build report "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys build report "
         "--source-checkout {params.source_checkout:q} "
         "--artifact-source-root {params.artifact_source_root:q} "
         "--run-summary {params.run_summary:q} --output-root {params.output_root:q} && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.reporting_boundary start "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.reporting_boundary start "
         "--kind html_report --run-root {params.run_root:q} "
         "--execution {params.execution:q} --profile {params.profile:q} "
         "--workflow-attempt {params.workflow_attempt:q} "
         "--workflow-config {params.workflow_config:q} && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad build report "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys build report "
         "--source-checkout {params.source_checkout:q} "
         "--artifact-source-root {params.artifact_source_root:q} "
         "--run-summary {params.run_summary:q} --output-root {params.output_root:q} "
         "--execute && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.reporting_boundary complete "
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.reporting_boundary complete "
         "--kind html_report --run-root {params.run_root:q} "
         "--execution {params.execution:q} --profile {params.profile:q} "
         "--workflow-attempt {params.workflow_attempt:q} "
@@ -936,7 +936,7 @@ rule construct_STAR_index:
     resources:
         mem_mb=STAGE_MEMORY_MB["00a"]
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
 
 rule convert_GTF_to_BED12:
@@ -951,7 +951,7 @@ rule convert_GTF_to_BED12:
     resources:
         mem_mb=STAGE_MEMORY_MB["00b"]
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
 
 rule construct_FASTA_sidecars:
@@ -966,7 +966,7 @@ rule construct_FASTA_sidecars:
     resources:
         mem_mb=STAGE_MEMORY_MB["00c"]
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
 
 rule align_RNA_reads_with_STAR:
@@ -984,7 +984,7 @@ rule align_RNA_reads_with_STAR:
         mem_mb=STAGE_MEMORY_MB["01"],
         stage_01_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
 
 rule construct_canonical_BAM:
@@ -1002,7 +1002,7 @@ rule construct_canonical_BAM:
         mem_mb=STAGE_MEMORY_MB["02"],
         stage_02_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
 
 rule collect_canonical_BAM_QC_evidence:
@@ -1020,7 +1020,7 @@ rule collect_canonical_BAM_QC_evidence:
         mem_mb=STAGE_MEMORY_MB["02b"],
         stage_02b_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
 
 rule collect_RSeQC_paired_orientation_evidence:
@@ -1039,7 +1039,7 @@ rule collect_RSeQC_paired_orientation_evidence:
         mem_mb=STAGE_MEMORY_MB["03"],
         stage_03_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
 
 rule mark_BAM_duplicates_with_Picard:
@@ -1057,7 +1057,7 @@ rule mark_BAM_duplicates_with_Picard:
         mem_mb=STAGE_MEMORY_MB["04"],
         stage_04_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
 
 rule split_N_cigar_reads_with_GATK:
@@ -1076,7 +1076,7 @@ rule split_N_cigar_reads_with_GATK:
         mem_mb=STAGE_MEMORY_MB["05"],
         stage_05_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
 
 rule partition_BAM_by_mechanical_read_orientation:
@@ -1094,7 +1094,7 @@ rule partition_BAM_by_mechanical_read_orientation:
         mem_mb=STAGE_MEMORY_MB["06"],
         stage_06_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
 
 rule generate_partitioned_cohort_mpileup_VCFs:
@@ -1116,7 +1116,7 @@ rule generate_partitioned_cohort_mpileup_VCFs:
         mem_mb=STAGE_MEMORY_MB["07"],
         stage_07_slots=1
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
 
 rule preprocess_and_annotate_cohort_candidates:
@@ -1136,7 +1136,7 @@ rule preprocess_and_annotate_cohort_candidates:
     resources:
         mem_mb=STAGE_MEMORY_MB["08"]
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
 
 rule rank_cohort_candidates_with_paired_CMH:
@@ -1153,7 +1153,7 @@ rule rank_cohort_candidates_with_paired_CMH:
     resources:
         mem_mb=STAGE_MEMORY_MB["09"]
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
 
 
 rule project_candidate_scientific_context:
@@ -1171,4 +1171,4 @@ rule project_candidate_scientific_context:
     resources:
         mem_mb=STAGE_MEMORY_MB["10"]
     shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m norad.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"
+        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.task --dispatch {params.dispatch:q} --dispatch-sha256 {params.dispatch_sha256:q}"

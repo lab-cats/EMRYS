@@ -6,8 +6,8 @@ import csv
 from pathlib import Path
 
 import pytest
-from norad.contracts.scientific_evidence import scientific_context as CONTEXT
-from norad.contracts.scientific_evidence.step08 import sha256_file
+from emrys.contracts.scientific_evidence import scientific_context as CONTEXT
+from emrys.contracts.scientific_evidence.step08 import sha256_file
 from tests import scientific_context_test_support as FIXTURE
 from tests import scientific_evidence_test_support as STEP_FIXTURE
 

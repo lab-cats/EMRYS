@@ -1,0 +1,197 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:emrys:schema:orchestration:task-attempt:v1",
+  "title": "EMRYS owner task attempt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "execution_contract_sha256",
+    "profile_sha256",
+    "workflow_attempt_id",
+    "task_attempt_id",
+    "machine_key",
+    "scope",
+    "owner_run_token",
+    "task_start_record",
+    "status",
+    "started_at",
+    "finished_at",
+    "producer",
+    "validator",
+    "semantic_all_pass",
+    "stable_inputs_rechecked",
+    "validation_report",
+    "stdout_log",
+    "stderr_log",
+    "failure_message"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "emrys.task-attempt.v1"
+    },
+    "run_id": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/run_id"
+    },
+    "execution_contract_sha256": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256"
+    },
+    "profile_sha256": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256"
+    },
+    "workflow_attempt_id": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/workflow_attempt_id"
+    },
+    "task_attempt_id": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/task_attempt_id"
+    },
+    "machine_key": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+    },
+    "scope": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/scope"
+    },
+    "owner_run_token": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+    },
+    "task_start_record": {
+      "oneOf": [
+        {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "status": {
+      "enum": [
+        "succeeded",
+        "failed",
+        "interrupted",
+        "blocked"
+      ]
+    },
+    "started_at": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/timestamp"
+    },
+    "finished_at": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/timestamp"
+    },
+    "producer": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/nullable_command"
+    },
+    "validator": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/nullable_command"
+    },
+    "semantic_all_pass": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/nullable_command"
+    },
+    "stable_inputs_rechecked": {
+      "type": "boolean"
+    },
+    "validation_report": {
+      "oneOf": [
+        {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "stdout_log": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
+    },
+    "stderr_log": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
+    },
+    "failure_message": {
+      "oneOf": [
+        {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/non_empty_string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "succeeded"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "producer": {
+            "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/successful_command"
+          },
+          "task_start_record": {
+            "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
+          },
+          "validator": {
+            "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/successful_command"
+          },
+          "semantic_all_pass": {
+            "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/successful_command"
+          },
+          "stable_inputs_rechecked": {
+            "const": true
+          },
+          "validation_report": {
+            "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/record_reference"
+          },
+          "failure_message": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "task_start_record": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "task_start_record"
+        ]
+      },
+      "then": {
+        "properties": {
+          "status": {
+            "const": "failed"
+          },
+          "producer": {
+            "type": "null"
+          },
+          "validator": {
+            "type": "null"
+          },
+          "semantic_all_pass": {
+            "type": "null"
+          },
+          "stable_inputs_rechecked": {
+            "const": false
+          },
+          "validation_report": {
+            "type": "null"
+          },
+          "failure_message": {
+            "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/non_empty_string"
+          }
+        }
+      }
+    }
+  ]
+}

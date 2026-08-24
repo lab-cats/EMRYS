@@ -9,8 +9,8 @@
   ],
   "dashboard": [
     "\"/usr/bin/python3\" -I -B \\",
-    "\t\t\"<REPO_ROOT>/src/norad/orchestration/local_pilot/dashboard.py\" \\",
-    "\t\t--refresh \"$NORAD_DASHBOARD_REFRESH\""
+    "\t\t\"<REPO_ROOT>/src/emrys/orchestration/local_pilot/dashboard.py\" \\",
+    "\t\t--refresh \"$EMRYS_DASHBOARD_REFRESH\""
   ],
   "demo-report": [
     "command -v \"<REPO_ROOT>/.venv/bin/python\" >/dev/null 2>&1 || { \\",
@@ -29,7 +29,7 @@
     "\t\t--root \"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture\" \\",
     "\t\t--run-id \"synthetic_run\"",
     "SOURCE_DATE_EPOCH=1700000000 \\",
-    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -X pycache_prefix=/dev/null -I -m norad build run-summary \\",
+    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -X pycache_prefix=/dev/null -I -m emrys build run-summary \\",
     "\t\t--source-checkout \"<REPO_ROOT>\" \\",
     "\t\t--artifact-source-root \"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture\" \\",
     "\t\t--run-id \"synthetic_run\" \\",
@@ -38,14 +38,14 @@
     "\t\t--output-root \"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture/adapter_fixture/artifacts\" \\",
     "\t\t--execute",
     "SOURCE_DATE_EPOCH=1700000000 \\",
-    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -X pycache_prefix=/dev/null -I -m norad build report \\",
+    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -X pycache_prefix=/dev/null -I -m emrys build report \\",
     "\t\t--source-checkout \"<REPO_ROOT>\" \\",
     "\t\t--artifact-source-root \"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture\" \\",
     "\t\t--run-summary \\",
     "\t\t\t\"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture/adapter_fixture/artifacts/synthetic_run/synthetic_run.run_summary.json\" \\",
     "\t\t--output-root \"<REPO_ROOT>/results/demo-report-jinja/reports\"",
     "SOURCE_DATE_EPOCH=1700000000 \\",
-    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -X pycache_prefix=/dev/null -I -m norad build report \\",
+    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -X pycache_prefix=/dev/null -I -m emrys build report \\",
     "\t\t--source-checkout \"<REPO_ROOT>\" \\",
     "\t\t--artifact-source-root \"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture\" \\",
     "\t\t--run-summary \\",
@@ -64,17 +64,17 @@
     "./scripts/git_orchestration/validate_documentation.py --repo \"<REPO_ROOT>\""
   ],
   "lint": [
-    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/norad tests",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
     "\t\t--min-confidence 95 \\",
-    "\t\tscripts src/norad"
+    "\t\tscripts src/emrys"
   ],
   "local-real-r-test": [
     "test -n \"\"",
     "test -d \"\"",
-    "NORAD_USE_RENV=1 NORAD_LOCAL_PILOT_R=1 \\",
-    "\t\tNORAD_RENV_LIBRARY=\"\" \\",
-    "\t\tNORAD_RENV_VERSION=\"1.2.3\" \\",
+    "EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=1 \\",
+    "\t\tEMRYS_RENV_LIBRARY=\"\" \\",
+    "\t\tEMRYS_RENV_VERSION=\"1.2.3\" \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
     "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
     "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
@@ -123,7 +123,7 @@
     "COVERAGE_FILE=\"<REPO_ROOT>/.coverage-work/.coverage-subprocess\" \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m coverage run \\",
     "\t\t--rcfile=\"<REPO_ROOT>/.coveragerc\" \\",
-    "\t\t--source=scripts,src/norad,tests -m pytest -q \\",
+    "\t\t--source=scripts,src/emrys,tests -m pytest -q \\",
     "\t\ttests/stages/gtf_to_bed12/test_gtf_to_bed12.py tests/ingestion/sample_manifest_admission/test_validate_manifest.py",
     "COVERAGE_FILE=\"<REPO_ROOT>/.coverage-work/.coverage-subprocess\" \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m coverage combine -q \\",
@@ -131,7 +131,7 @@
     "COVERAGE_FILE=\"<REPO_ROOT>/.coverage-work/.coverage-subprocess\" \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m coverage json \\",
     "\t\t--rcfile=\"<REPO_ROOT>/.coveragerc\" \\",
-    "\t\t--include=\"scripts/*,src/norad/*\" \\",
+    "\t\t--include=\"scripts/*,src/emrys/*\" \\",
     "\t\t-o \"<REPO_ROOT>/.coverage-work/subprocess-coverage.json\"",
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/python_coverage_baseline.py build \\",
     "\t\t--coverage-json \"<REPO_ROOT>/.coverage-work/coverage.json\" \\",
@@ -176,7 +176,7 @@
     "COVERAGE_FILE=\"<REPO_ROOT>/.coverage-work/.coverage-subprocess\" \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m coverage run \\",
     "\t\t--rcfile=\"<REPO_ROOT>/.coveragerc\" \\",
-    "\t\t--source=scripts,src/norad,tests -m pytest -q \\",
+    "\t\t--source=scripts,src/emrys,tests -m pytest -q \\",
     "\t\ttests/stages/gtf_to_bed12/test_gtf_to_bed12.py tests/ingestion/sample_manifest_admission/test_validate_manifest.py",
     "COVERAGE_FILE=\"<REPO_ROOT>/.coverage-work/.coverage-subprocess\" \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m coverage combine -q \\",
@@ -184,7 +184,7 @@
     "COVERAGE_FILE=\"<REPO_ROOT>/.coverage-work/.coverage-subprocess\" \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m coverage json \\",
     "\t\t--rcfile=\"<REPO_ROOT>/.coveragerc\" \\",
-    "\t\t--include=\"scripts/*,src/norad/*\" \\",
+    "\t\t--include=\"scripts/*,src/emrys/*\" \\",
     "\t\t-o \"<REPO_ROOT>/.coverage-work/subprocess-coverage.json\"",
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/python_coverage_baseline.py build \\",
     "\t\t--coverage-json \"<REPO_ROOT>/.coverage-work/coverage.json\" \\",
@@ -193,12 +193,12 @@
     "<MAKE> -s python-coverage-enforce",
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/python_coverage_baseline.py check \\",
     "\t\t--baseline \"<REPO_ROOT>/tests/baselines/python_coverage.json\" \\",
-    "\t\t--current \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\" --coverage-json \"<REPO_ROOT>/.coverage-work/coverage.json\" --new-shared-module src/norad/libraries/installed_package_identity.py --new-shared-module src/norad/libraries/process_environment.py"
+    "\t\t--current \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\" --coverage-json \"<REPO_ROOT>/.coverage-work/coverage.json\" --new-shared-module src/emrys/libraries/installed_package_identity.py --new-shared-module src/emrys/libraries/process_environment.py"
   ],
   "python-coverage-enforce": [
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/python_coverage_baseline.py check \\",
     "\t\t--baseline \"<REPO_ROOT>/tests/baselines/python_coverage.json\" \\",
-    "\t\t--current \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\" --coverage-json \"<REPO_ROOT>/.coverage-work/coverage.json\" --new-shared-module src/norad/libraries/installed_package_identity.py --new-shared-module src/norad/libraries/process_environment.py"
+    "\t\t--current \"<REPO_ROOT>/.coverage-work/python_coverage.current.json\" --coverage-json \"<REPO_ROOT>/.coverage-work/coverage.json\" --new-shared-module src/emrys/libraries/installed_package_identity.py --new-shared-module src/emrys/libraries/process_environment.py"
   ],
   "python-coverage-finalize": [
     "test \"$(\"<REPO_ROOT>/.venv/bin/python\" -c 'import importlib.metadata; print(importlib.metadata.version(\"coverage\"))')\" \\",
@@ -216,7 +216,7 @@
     "COVERAGE_FILE=\"<REPO_ROOT>/.coverage-work/.coverage-subprocess\" \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m coverage run \\",
     "\t\t--rcfile=\"<REPO_ROOT>/.coveragerc\" \\",
-    "\t\t--source=scripts,src/norad,tests -m pytest -q \\",
+    "\t\t--source=scripts,src/emrys,tests -m pytest -q \\",
     "\t\ttests/stages/gtf_to_bed12/test_gtf_to_bed12.py tests/ingestion/sample_manifest_admission/test_validate_manifest.py",
     "COVERAGE_FILE=\"<REPO_ROOT>/.coverage-work/.coverage-subprocess\" \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m coverage combine -q \\",
@@ -224,7 +224,7 @@
     "COVERAGE_FILE=\"<REPO_ROOT>/.coverage-work/.coverage-subprocess\" \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m coverage json \\",
     "\t\t--rcfile=\"<REPO_ROOT>/.coveragerc\" \\",
-    "\t\t--include=\"scripts/*,src/norad/*\" \\",
+    "\t\t--include=\"scripts/*,src/emrys/*\" \\",
     "\t\t-o \"<REPO_ROOT>/.coverage-work/subprocess-coverage.json\"",
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/python_coverage_baseline.py build \\",
     "\t\t--coverage-json \"<REPO_ROOT>/.coverage-work/coverage.json\" \\",
@@ -268,7 +268,7 @@
     "COVERAGE_FILE=\"<REPO_ROOT>/.coverage-work/.coverage-subprocess\" \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m coverage run \\",
     "\t\t--rcfile=\"<REPO_ROOT>/.coveragerc\" \\",
-    "\t\t--source=scripts,src/norad,tests -m pytest -q \\",
+    "\t\t--source=scripts,src/emrys,tests -m pytest -q \\",
     "\t\ttests/stages/gtf_to_bed12/test_gtf_to_bed12.py tests/ingestion/sample_manifest_admission/test_validate_manifest.py",
     "COVERAGE_FILE=\"<REPO_ROOT>/.coverage-work/.coverage-subprocess\" \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m coverage combine -q \\",
@@ -276,7 +276,7 @@
     "COVERAGE_FILE=\"<REPO_ROOT>/.coverage-work/.coverage-subprocess\" \\",
     "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m coverage json \\",
     "\t\t--rcfile=\"<REPO_ROOT>/.coveragerc\" \\",
-    "\t\t--include=\"scripts/*,src/norad/*\" \\",
+    "\t\t--include=\"scripts/*,src/emrys/*\" \\",
     "\t\t-o \"<REPO_ROOT>/.coverage-work/subprocess-coverage.json\"",
     "\"<REPO_ROOT>/.venv/bin/python\" tests/tools/python_coverage_baseline.py build \\",
     "\t\t--coverage-json \"<REPO_ROOT>/.coverage-work/coverage.json\" \\",
@@ -301,16 +301,16 @@
   "r-check": [
     "test -n \"\"",
     "test -d \"\"",
-    "NORAD_USE_RENV=1 NORAD_LOCAL_PILOT_R=1 \\",
-    "\t\tNORAD_RENV_LIBRARY=\"\" \\",
-    "\t\tNORAD_RENV_VERSION=\"1.2.3\" \\",
+    "EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=1 \\",
+    "\t\tEMRYS_RENV_LIBRARY=\"\" \\",
+    "\t\tEMRYS_RENV_VERSION=\"1.2.3\" \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
     "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
     "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
     "\t\t\"Rscript\" scripts/check_r_environment.R"
   ],
   "r-restore": [
-    "NORAD_USE_RENV=1 NORAD_LOCAL_PILOT_R=0 \\",
+    "EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=0 \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
     "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
     "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
@@ -348,23 +348,23 @@
     "\t\ttests/test_slurm_wrapper_contracts.py"
   ],
   "smoke": [
-    "bash -n src/norad/libraries/gatk_invocation.sh src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/norad/stages/star_index/step_00a_build_star_index.sh src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/norad/stages/star_alignment/step_01_star_align.sh src/norad/stages/canonical_bam/step_02_sort_index_bam.sh src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh src/norad/analyses/scientific_context_projection/scientific_context_projection.sh tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/scientific_context_projection/test_scientific_context_projection.sh",
-    "bash -n src/norad/evidence/runtime_availability/tool_check.slurm src/norad/ingestion/sample_manifest_admission/validate_manifest.slurm src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm src/norad/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm src/norad/stages/star_alignment/step_01_star_align.slurm src/norad/stages/canonical_bam/step_02_sort_index_bam.slurm src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.slurm src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.slurm src/norad/stages/duplicate_marking/step_04_mark_duplicates.slurm src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm src/norad/analyses/scientific_context_projection/scientific_context_projection.slurm"
+    "bash -n src/emrys/libraries/gatk_invocation.sh src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/emrys/stages/star_index/step_00a_build_star_index.sh src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/emrys/stages/star_alignment/step_01_star_align.sh src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/scientific_context_projection/test_scientific_context_projection.sh",
+    "bash -n src/emrys/evidence/runtime_availability/tool_check.slurm src/emrys/ingestion/sample_manifest_admission/validate_manifest.slurm src/emrys/stages/star_index/step_00a_build_novogene_star_index.slurm src/emrys/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm src/emrys/stages/star_alignment/step_01_star_align.slurm src/emrys/stages/canonical_bam/step_02_sort_index_bam.slurm src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.slurm src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.slurm src/emrys/stages/duplicate_marking/step_04_mark_duplicates.slurm src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm src/emrys/analyses/scientific_context_projection/scientific_context_projection.slurm"
   ],
   "test": [
     "\"<REPO_ROOT>/.venv/bin/python\" -m pytest"
   ],
   "validate": [
-    "\"<REPO_ROOT>/.venv/bin/python\" -I -m norad validate manifest \\",
+    "\"<REPO_ROOT>/.venv/bin/python\" -I -m emrys validate manifest \\",
     "\t\t--manifest configs/samples.example.tsv"
   ],
   "validation-guarded-r": [
     "<MAKE> -s r-check",
     "test -n \"\"",
     "test -d \"\"",
-    "NORAD_USE_RENV=1 NORAD_LOCAL_PILOT_R=1 \\",
-    "\t\tNORAD_RENV_LIBRARY=\"\" \\",
-    "\t\tNORAD_RENV_VERSION=\"1.2.3\" \\",
+    "EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=1 \\",
+    "\t\tEMRYS_RENV_LIBRARY=\"\" \\",
+    "\t\tEMRYS_RENV_VERSION=\"1.2.3\" \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
     "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
     "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
@@ -372,9 +372,9 @@
     "<MAKE> -s local-real-r-test",
     "test -n \"\"",
     "test -d \"\"",
-    "NORAD_USE_RENV=1 NORAD_LOCAL_PILOT_R=1 \\",
-    "\t\tNORAD_RENV_LIBRARY=\"\" \\",
-    "\t\tNORAD_RENV_VERSION=\"1.2.3\" \\",
+    "EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=1 \\",
+    "\t\tEMRYS_RENV_LIBRARY=\"\" \\",
+    "\t\tEMRYS_RENV_VERSION=\"1.2.3\" \\",
     "\t\tRENV_CONFIG_SANDBOX_ENABLED=FALSE \\",
     "\t\tRENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT=\"<REPO_ROOT>\" \\",
     "\t\tR_PROFILE_USER=\"<REPO_ROOT>/.Rprofile\" \\",
@@ -421,17 +421,17 @@
     "\t\ttests/test_slurm_wrapper_contracts.py"
   ],
   "validation-static": [
-    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/norad tests",
+    "\"<REPO_ROOT>/.venv/bin/python\" -m \"ruff\" check --no-cache scripts src/emrys tests",
     "\"<REPO_ROOT>/.venv/bin/python\" -m \"vulture\" \\",
     "\t\t--min-confidence 95 \\",
-    "\t\tscripts src/norad",
+    "\t\tscripts src/emrys",
     "./scripts/git_orchestration/validate_documentation.py --repo \"<REPO_ROOT>\"",
     "git diff --check",
-    "bash -n src/norad/libraries/gatk_invocation.sh src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/norad/stages/star_index/step_00a_build_star_index.sh src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/norad/stages/star_alignment/step_01_star_align.sh src/norad/stages/canonical_bam/step_02_sort_index_bam.sh src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh src/norad/analyses/scientific_context_projection/scientific_context_projection.sh tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/scientific_context_projection/test_scientific_context_projection.sh",
-    "bash -n src/norad/evidence/runtime_availability/tool_check.slurm src/norad/ingestion/sample_manifest_admission/validate_manifest.slurm src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm src/norad/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm src/norad/stages/star_alignment/step_01_star_align.slurm src/norad/stages/canonical_bam/step_02_sort_index_bam.slurm src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.slurm src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.slurm src/norad/stages/duplicate_marking/step_04_mark_duplicates.slurm src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm src/norad/analyses/scientific_context_projection/scientific_context_projection.slurm",
+    "bash -n src/emrys/libraries/gatk_invocation.sh src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh src/emrys/stages/star_index/step_00a_build_star_index.sh src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh src/emrys/stages/star_alignment/step_01_star_align.sh src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh tests/analyses/scientific_context_projection/test_scientific_context_projection.sh",
+    "bash -n src/emrys/evidence/runtime_availability/tool_check.slurm src/emrys/ingestion/sample_manifest_admission/validate_manifest.slurm src/emrys/stages/star_index/step_00a_build_novogene_star_index.slurm src/emrys/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm src/emrys/stages/star_alignment/step_01_star_align.slurm src/emrys/stages/canonical_bam/step_02_sort_index_bam.slurm src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.slurm src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.slurm src/emrys/stages/duplicate_marking/step_04_mark_duplicates.slurm src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm src/emrys/analyses/scientific_context_projection/scientific_context_projection.slurm",
     "PYTHONDONTWRITEBYTECODE=1 \\",
-    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q scripts src/norad tests",
-    "\"<REPO_ROOT>/.venv/bin/python\" -I -m norad validate manifest \\",
+    "\t\t\"<REPO_ROOT>/.venv/bin/python\" -m compileall -q scripts src/emrys tests",
+    "\"<REPO_ROOT>/.venv/bin/python\" -I -m emrys validate manifest \\",
     "\t\t--manifest configs/samples.example.tsv"
   ],
   "validation-wheel-smoke": [

@@ -120,7 +120,7 @@ def run_validator(
             sys.executable,
             "-I",
             "-m",
-            "norad",
+            "emrys",
             "validate",
             "duplicate-marking",
             *validator_arguments(evidence, *extra),

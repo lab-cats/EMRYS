@@ -15,19 +15,19 @@ from typing import Any
 
 import pytest
 
-from norad import __file__ as norad_package_file
-from norad.contracts.orchestration import api as orchestration_contracts
-from norad.evidence.runtime_availability._probes import (
+from emrys import __file__ as emrys_package_file
+from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.evidence.runtime_availability._probes import (
     R_NAMESPACE_ROOT_OUTPUT_MARKER,
 )
-from norad.orchestration.local_pilot import doctor, inspection, reporting_boundary
-from norad.orchestration.local_pilot.normalization import normalize_request
+from emrys.orchestration.local_pilot import doctor, inspection, reporting_boundary
+from emrys.orchestration.local_pilot.normalization import normalize_request
 from tests.orchestration.local_pilot.fixture import build as build_intake_fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 HARNESS = REPO_ROOT / "tests/orchestration/local_pilot/fixtures/b6_cli_harness.py"
-OPT_IN = "NORAD_FRESH_CLONE_E2E"
-SOURCE_ROOT = "NORAD_FRESH_CLONE_E2E_SOURCE_ROOT"
+OPT_IN = "EMRYS_FRESH_CLONE_E2E"
+SOURCE_ROOT = "EMRYS_FRESH_CLONE_E2E_SOURCE_ROOT"
 REPORTING_KINDS = ("artifact_index", "run_summary", "html_report")
 EXPECTED_OWNER_JOB_COUNT = 35
 
@@ -75,7 +75,7 @@ def _assert_prepared_fresh_clone(source_root: Path) -> None:
     assert Path(local_origin).is_absolute(), "proof requires an explicit local origin"
     assert Path(os.path.abspath(local_origin)) == source_root
     assert Path(os.path.abspath(sys.executable)) == REPO_ROOT / ".venv/bin/python"
-    assert Path(norad_package_file).resolve().is_relative_to(REPO_ROOT / "src/norad")
+    assert Path(emrys_package_file).resolve().is_relative_to(REPO_ROOT / "src/emrys")
 
     uv = shutil.which("uv")
     assert uv is not None, "uv must be provisioned before fresh-clone setup"
@@ -267,7 +267,7 @@ def _public_command(
             "pycache_prefix=/dev/null",
             "-I",
             "-m",
-            "norad",
+            "emrys",
             *arguments,
         ],
         cwd=REPO_ROOT,
@@ -406,7 +406,7 @@ def _assert_complete_products(run_root: Path, run_id: str) -> None:
     assert (report_root / f"{run_id}.report_outputs.tsv").is_file()
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     assert summary["interpretation_boundary"] == (
-        "computational_candidates_only_biological_validation_outside_norad"
+        "computational_candidates_only_biological_validation_outside_emrys"
     )
     assert "science_status" not in summary
     assert "scientific_review" not in summary
@@ -418,8 +418,8 @@ def test_public_cli_accepts_explicit_control_ops_and_harness_starts(
     program = """
 import json
 from types import SimpleNamespace
-from norad import __main__ as cli
-from norad.orchestration.local_pilot import control
+from emrys import __main__ as cli
+from emrys.orchestration.local_pilot import control
 
 def unreachable(*_args, **_kwargs):
     raise AssertionError("unreachable control dependency")
@@ -484,7 +484,7 @@ print(json.dumps({"status": status}))
         environment=os.environ.copy(),
     )
     assert harness.returncode == 2
-    assert "norad: error:" in harness.stderr
+    assert "emrys: error:" in harness.stderr
 
 
 @FRESH_CLONE_ONLY
@@ -515,7 +515,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
 
     help_result = _public_command(["--help"], environment=environment)
     assert help_result.returncode == 0, help_result.stdout + help_result.stderr
-    assert "usage: norad" in help_result.stdout
+    assert "usage: emrys" in help_result.stdout
 
     _qualify_storage(
         workspace,

@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-from norad.libraries.alignments import bam as BAM
+from emrys.libraries.alignments import bam as BAM
 
 
 def test_public_api_and_characterized_behavior(tmp_path: Path) -> None:
@@ -38,7 +38,7 @@ def test_public_api_and_characterized_behavior(tmp_path: Path) -> None:
     assert completed.stdout == "probe-out\n"
     assert completed.stderr == "probe-err\n"
     with pytest.raises(FileNotFoundError) as raised:
-        BAM.run_tool(Path("/definitely/missing/norad-tool"), "--probe")
+        BAM.run_tool(Path("/definitely/missing/emrys-tool"), "--probe")
     assert raised.value.errno == 2
 
     assert BAM.parse_header("@HD\tVN:1.6\tSO:coordinate\n@RG\tID:S\tSM:S\n", "S") == (

@@ -8,7 +8,7 @@ which mirrors the physical owner of semantic
 analysis.
 
 Analysis method and operating commands remain with the corresponding
-[source owner](../../src/norad/analyses/README.md). The
+[source owner](../../src/emrys/analyses/README.md). The
 [test baseline](../../docs/design/TEST_BASELINE.md) owns cross-cutting evidence
 language and risk policy. Results here are local method and contract evidence,
 not completed scientific review or biological validation.

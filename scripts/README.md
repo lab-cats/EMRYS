@@ -13,7 +13,7 @@ Exact invocations belong in the [runbook](../docs/operations/RUNBOOK.md).
 The read-only `make dashboard` operator view is implemented by
 [`make_operations.mk`](make_operations.mk). With no override it queries bounded
 recent Slurm metadata for the current user and admits only a job whose exact
-NORAD wrapper streams can be proved from live control metadata or accounting's
+EMRYS wrapper streams can be proved from live control metadata or accounting's
 declared stdout/stderr paths. `JOB_ID=<id>` selects an explicit job;
 `LOG_DIR=<absolute-directory>` may accompany `JOB_ID` and must agree with
 scheduler-declared streams. After live metadata expires, exact bounded
@@ -27,7 +27,7 @@ shared storage.
 
 The dashboard is an operational convenience over scheduler metadata and
 append-only logs. Its state, progress, timing, and derived report locations are
-not completion, validation, or evidence authority; final NORAD inspection and
+not completion, validation, or evidence authority; final EMRYS inspection and
 the applicable owner records remain authoritative. The current implementation
 is specialized to the CSU local-pilot wrapper, fixed qualified stage topology,
 six-sample cohort, and 25-partition qualification run. Portable,

@@ -12,7 +12,7 @@ stage.
   audit, debugging, and recovery.
 - Adopted Python, shell, and R commands accept `--log-level
   normal|verbose|debug` and `--log-root PATH`; the environment forms are
-  `NORAD_LOG_LEVEL` and `NORAD_LOG_ROOT`. Resolution is command line,
+  `EMRYS_LOG_LEVEL` and `EMRYS_LOG_ROOT`. Resolution is command line,
   environment, then default, resolved once by the outer operation and passed to
   delegates explicitly.
 - `normal` is the default; there is no `quiet`. Empty, unknown, or conflicting
@@ -117,7 +117,7 @@ If initialization failed, state that no durable log exists. Never replay
 Fields and commands carry sensitivity metadata. Render known secrets as
 `<redacted>`, never dump the environment, and record commands only after
 argument classification. Logs are protected operational data, not presumed
-public. NORAD does not automatically rotate, truncate, compress, upload, or
+public. EMRYS does not automatically rotate, truncate, compress, upload, or
 delete them. A log never promotes runtime, cluster, scientific, or biological
 evidence. Only an authorized immutable copy with required path, hash,
 relationship, and evidence policy may satisfy an existing runtime/cluster role.

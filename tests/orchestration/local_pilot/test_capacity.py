@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from norad.orchestration.local_pilot import capacity
-from norad.orchestration.local_pilot.resource_policy import ResourceConfigError
+from emrys.orchestration.local_pilot import capacity
+from emrys.orchestration.local_pilot.resource_policy import ResourceConfigError
 
 
 def test_local_capacity_uses_process_limits(monkeypatch: pytest.MonkeyPatch) -> None:

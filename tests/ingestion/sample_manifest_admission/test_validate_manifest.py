@@ -14,7 +14,7 @@ def write_manifest(path: Path, header: list[str], rows: list[list[str]]) -> Path
 
 def run_validator(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-I", "-m", "norad", "validate", "manifest", *args],
+        [sys.executable, "-I", "-m", "emrys", "validate", "manifest", *args],
         cwd=REPO_ROOT,
         text=True,
         capture_output=True,

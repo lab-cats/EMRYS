@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ view.document_title }}</title>
+  <style id="emrys-report-styles">
+{{ css | safe }}
+  </style>
+</head>
+<body>
+{% macro render_table(block) -%}
+<div class="emrys-table-wrap{% if block.wide %} emrys-table-wrap-wide{% endif %}"{% if block.wide %} tabindex="0" role="region" aria-label="{{ block.caption }}"{% endif %}>
+  <table class="emrys-table" id="{{ block.id }}">
+    <caption>{{ block.caption }}</caption>
+    <thead><tr>{% for column in block.header %}<th scope="col">{{ column }}</th>{% endfor %}</tr></thead>
+    <tbody>
+    {% if block.rows %}
+      {% for row in block.rows %}
+      <tr>{% for value in row %}{% if block.row_headers and loop.first %}<th scope="row">{{ value }}</th>{% else %}<td>{{ value }}</td>{% endif %}{% endfor %}</tr>
+      {% endfor %}
+    {% else %}
+      <tr><td colspan="{{ block.header | length }}">No rows are available.</td></tr>
+    {% endif %}
+    </tbody>
+  </table>
+</div>
+{%- endmacro %}
+
+{% macro render_fact_grid(block) -%}
+<div id="{{ block.id }}" class="fact-grid-block">
+  <h3>{{ block.title }}</h3>
+  <dl class="fact-grid">
+  {% for label, value in block.facts %}
+    <div class="fact-item"><dt>{{ label }}</dt><dd>{{ value }}</dd></div>
+  {% endfor %}
+  </dl>
+</div>
+{%- endmacro %}
+
+{% macro render_block(block) -%}
+{% if block.kind == "table" %}
+{{ render_table(block) }}
+{% elif block.kind == "empty" %}
+<p class="empty-state">{{ block.message }}</p>
+{% elif block.kind == "note" %}
+<p class="{% if block.notice %}notice{% else %}provenance-note{% endif %}">{{ block.message }}</p>
+{% elif block.kind == "json" %}
+<h3>{{ block.title }}</h3>
+<pre aria-label="{{ block.title }}">{{ block.payload }}</pre>
+{% elif block.kind == "panel_grid" %}
+<div class="panel-grid">
+  {% for panel in block.panels %}
+  <div class="status-panel"><h3>{{ panel.title }}</h3>{{ render_block(panel.block) }}</div>
+  {% endfor %}
+</div>
+{% elif block.kind == "artifact_overview" %}
+<figure class="artifact-overview">
+  <svg viewBox="0 0 {{ block.width }} {{ block.height }}" role="img" aria-labelledby="artifact-overview-title artifact-overview-description">
+    <title id="artifact-overview-title">Expected artifact state overview</title>
+    <desc id="artifact-overview-description">{{ block.description }}</desc>
+    {% for segment in block.segments %}<rect x="{{ segment.x }}" y="18" width="{{ segment.width }}" height="30" fill="{{ segment.color }}"><title>{{ segment.name }}: {{ segment.count }}</title></rect>{% endfor %}
+    <text x="0" y="70" font-size="14" fill="#17202a">Expected artifacts: {{ block.total }}</text>
+  </svg>
+  <figcaption>Artifact availability is copied from the canonical run summary. This visualization is not validation evidence.</figcaption>
+</figure>
+<ul class="artifact-legend" aria-label="Artifact state legend">
+  {% for item in block.legend %}<li class="legend-{{ item.name | replace(' ', '-') }}">{{ item.name | title }}: {{ item.count }}</li>{% endfor %}
+</ul>
+{% elif block.kind == "metric_grid" %}
+<dl id="{{ block.id }}" class="metric-grid" aria-label="Key analysis counts">
+  {% for metric in block.metrics %}
+  <div class="metric-card"><dt>{{ metric.label }}</dt><dd>{{ metric.value }}</dd></div>
+  {% endfor %}
+</dl>
+{% elif block.kind == "fact_grid" %}
+{{ render_fact_grid(block) }}
+{% elif block.kind == "candidate_index" %}
+<div class="candidate-index-block">
+  <p class="provenance-note">{{ block.selection_note }}</p>
+  <section class="candidate-index-summary" aria-labelledby="{{ block.id }}-heading">
+    <h3 id="{{ block.id }}-heading">{{ block.caption }}</h3>
+    <ol class="candidate-index-list" id="{{ block.id }}">
+    {% for record in block.records %}
+      <li class="candidate-index-record" data-candidate-id="{{ record.candidate_id }}">
+        <div class="candidate-index-heading">
+          <span class="candidate-rank">{{ record.rank }}.</span>
+          <strong class="candidate-index-id">{{ record.candidate_id }}</strong>
+          <span class="candidate-gene">{{ record.gene_ids }}</span>
+          <span class="candidate-status">{{ record.call_status }}</span>
+        </div>
+        <dl class="candidate-index-facts">
+          <div><dt>Editing rate</dt><dd>{{ record.editing_rate }}</dd></div>
+          <div><dt>Location (1-based)</dt><dd>{{ record.location }}</dd></div>
+          <div><dt>Nearby motifs</dt><dd>{{ record.motif }}</dd></div>
+        </dl>
+      </li>
+    {% endfor %}
+    </ol>
+  </section>
+</div>
+{% elif block.kind == "candidate_record" %}
+<article id="{{ block.record.id }}" class="candidate-evidence-record" data-candidate-rank="{{ block.record.rank }}" data-candidate-id="{{ block.record.candidate_id }}">
+  <h3>{{ block.record.rank }}. {{ block.record.candidate_id }}</h3>
+  <p class="candidate-status">{{ block.record.call_status }}</p>
+  <div class="candidate-evidence-groups">
+  {% for group in block.record.groups %}
+    <div class="candidate-evidence-group" data-evidence-group="{{ group.title | lower | replace(' ', '-') }}">
+      <h4>{{ group.title }}</h4>
+      <dl>
+      {% for label, value in group.facts %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
+      </dl>
+    </div>
+  {% endfor %}
+  </div>
+  {% if block.record.pairs %}
+  <div class="candidate-replicates">
+    {% for pair_batch in block.record.pairs | batch(4) %}
+    <div class="candidate-pair-batch">
+    <h4{% if not loop.first %} class="candidate-replicates-continuation"{% endif %}>Manifest-paired sample evidence — {{ block.record.candidate_id }}{% if not loop.first %} (continued){% endif %}</h4>
+    {% for pair in pair_batch %}
+    <div class="candidate-pair">
+      <p><strong>Replicate {{ pair.replicate }}</strong></p>
+      <div class="candidate-pair-samples">
+        <dl class="candidate-sample">
+          <div><dt>Condition</dt><dd>{{ pair.control_label }}</dd></div>
+          <div><dt>Sample</dt><dd>{{ pair.control.sample_id }}</dd></div>
+          <div><dt>Editing rate</dt><dd>{{ pair.control.editing_rate }}</dd></div>
+          <div><dt>Read support</dt><dd>{{ pair.control.read_support }}</dd></div>
+        </dl>
+        <dl class="candidate-sample">
+          <div><dt>Condition</dt><dd>{{ pair.treatment_label }}</dd></div>
+          <div><dt>Sample</dt><dd>{{ pair.treatment.sample_id }}</dd></div>
+          <div><dt>Editing rate</dt><dd>{{ pair.treatment.editing_rate }}</dd></div>
+          <div><dt>Read support</dt><dd>{{ pair.treatment.read_support }}</dd></div>
+        </dl>
+      </div>
+    </div>
+    {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if block.record.motif_hits %}
+  <div class="candidate-motif-hits">
+    <h4>Exact registered-motif hits</h4>
+    <ul>{% for hit in block.record.motif_hits %}<li>{{ hit }}</li>{% endfor %}</ul>
+  </div>
+  {% elif block.record.motif_unavailable_reason %}
+  <p class="provenance-note">{{ block.record.motif_unavailable_reason }}</p>
+  {% endif %}
+</article>
+{% elif block.kind == "scientific_figure" %}
+<figure id="{{ block.id }}" class="scientific-figure{% if block.assets | length > 1 %} scientific-figure-multipanel{% endif %} figure-status-{{ block.status }}" data-figure-status="{{ block.status }}" aria-labelledby="{{ block.id }}-title {{ block.id }}-caption">
+  <h3 id="{{ block.id }}-title">{{ block.label }} — {{ block.title }}</h3>
+  <p class="figure-summary figure-takeaway"><strong>Takeaway:</strong> {{ block.takeaway }}</p>
+  {% if block.status == "available" %}
+  <div class="scientific-figure-assets">
+  {% for asset in block.assets %}
+    <img id="{{ block.id }}-image-{{ loop.index }}" class="scientific-figure-image" data-panel-id="{{ asset.panel_id }}" src="{{ asset.data_uri }}" alt="{{ asset.alt_text }}">
+  {% endfor %}
+  </div>
+  {% else %}
+  <p class="empty-state figure-unavailable">{{ block.unavailable_reason }}</p>
+  {% endif %}
+  <figcaption id="{{ block.id }}-caption">{{ block.caption }}</figcaption>
+</figure>
+{% elif block.kind == "figure_guide" %}
+<article id="{{ block.id }}" class="figure-guide-entry" data-figure-id="{{ block.figure_id }}">
+  <h3>{{ block.label }} — {{ block.title }}</h3>
+  <dl>
+    <div class="figure-guide-question"><dt>What it answers</dt><dd>{{ block.question }}</dd></div>
+    <div class="figure-guide-reading"><dt>How to read it</dt><dd>{{ block.how_to_read }}</dd></div>
+    <div class="figure-guide-inputs"><dt>Data inputs</dt><dd>{{ block.input_roles }}</dd></div>
+    <div class="figure-guide-population"><dt>Population</dt><dd>{{ block.population }}</dd></div>
+    <div class="figure-guide-limitations"><dt>Limitations</dt><dd>{{ block.limitations }}</dd></div>
+  </dl>
+</article>
+{% elif block.kind == "notice_list" %}
+<div class="notice"><p><strong>{{ block.title }}</strong></p><ul>{% for item in block["items"] %}<li>{{ item }}</li>{% endfor %}</ul></div>
+{% endif %}
+{%- endmacro %}
+
+<main id="emrys-report" tabindex="-1"
+  data-run-id="{{ view.run_id }}"
+  data-report-view="{{ view.report_view }}"
+{% if view.report_view == "scientific" %}
+  data-selected-candidate-count="{{ view.selected_candidate_ids | length }}"
+{% endif %}
+{% if view.report_view == "evidence" %}
+  data-run-summary-sha256="{{ view.metadata.run_summary_sha256 }}"
+  data-renderer-version="{{ view.metadata.renderer_version }}"
+  data-jinja-version="{{ view.metadata.jinja_version }}"
+  data-template-sha256="{{ view.metadata.template_sha256 }}"
+  data-css-sha256="{{ view.metadata.css_sha256 }}"
+{% endif %}>
+  <h1 id="emrys-report-title">{{ view.heading }}</h1>
+  <div class="state-banner state-{{ view.boundary_class }}" role="status" aria-live="polite">{{ view.banner }}</div>
+  <p class="report-disclaimer">{{ view.introduction }}</p>
+  <div class="report-category-tabs" role="group" aria-label="Report categories">
+  {% for category in view.categories %}
+  {% if view.report_view == "scientific" %}
+    <div id="{{ category.id }}" class="report-category report-category-static" aria-label="{{ category.title }}">
+      <div class="report-category-body">
+      {% for section in category.sections %}
+        <section id="{{ section.id }}" class="report-section" aria-labelledby="{{ section.id }}-heading">
+          <h2 id="{{ section.id }}-heading">{{ section.title }}</h2>
+          {% for block in section.blocks %}{{ render_block(block) }}{% endfor %}
+        </section>
+      {% endfor %}
+      </div>
+    </div>
+  {% else %}
+    <details id="{{ category.id }}" class="report-category" name="emrys-report-categories"{% if category.open %} open{% endif %}>
+      <summary>{{ category.title }}</summary>
+      <div class="report-category-body">
+      {% for section in category.sections %}
+        <section id="{{ section.id }}" class="report-section" aria-labelledby="{{ section.id }}-heading">
+          <h2 id="{{ section.id }}-heading">{{ section.title }}</h2>
+          {% for block in section.blocks %}{{ render_block(block) }}{% endfor %}
+        </section>
+      {% endfor %}
+      </div>
+    </details>
+  {% endif %}
+  {% endfor %}
+  </div>
+  <p class="report-disclaimer">{{ view.end_note }}</p>
+</main>
+</body>
+</html>

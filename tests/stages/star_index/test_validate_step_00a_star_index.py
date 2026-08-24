@@ -70,7 +70,7 @@ def run_validator(
             sys.executable,
             "-I",
             "-m",
-            "norad",
+            "emrys",
             "validate",
             "star-index",
             "--scope-id",

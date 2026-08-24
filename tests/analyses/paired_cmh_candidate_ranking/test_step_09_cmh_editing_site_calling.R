@@ -12,7 +12,7 @@ repo_root <- normalizePath(
     file.path(dirname(test_path), "..", "..", ".."), mustWork = TRUE
 )
 engine <- file.path(
-    repo_root, "src", "norad", "analyses",
+    repo_root, "src", "emrys", "analyses",
     "paired_cmh_candidate_ranking",
     "step_09_cmh_editing_site_calling.R"
 )

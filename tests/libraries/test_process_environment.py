@@ -8,8 +8,8 @@ from typing import NoReturn
 
 import pytest
 
-from norad.libraries import process_environment
-from norad.libraries.process_environment import (
+from emrys.libraries import process_environment
+from emrys.libraries.process_environment import (
     GATK_STARTUP_VARIABLES,
     ProcessEnvironmentError,
     admit_java_launcher,

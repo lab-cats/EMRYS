@@ -15,29 +15,29 @@ from pathlib import Path
 
 import pytest
 
-from norad.evidence.runtime_availability.inspector import (
+from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
     RuntimeInspectionError,
     RuntimeObservation,
     load_runtime_profile_contract,
 )
-from norad.evidence.storage_inventory import qualification as storage_qualification
-from norad.libraries.installed_package_identity import (
+from emrys.evidence.storage_inventory import qualification as storage_qualification
+from emrys.libraries.installed_package_identity import (
     installed_package_tree_identity,
 )
-from norad.libraries.process_environment import (
+from emrys.libraries.process_environment import (
     gatk_subprocess_environment,
     guarded_r_environment,
     guarded_rscript_argv,
 )
-from norad.libraries.source_authority import (
+from emrys.libraries.source_authority import (
     SourceCheckoutError,
     SourceCheckoutIdentity,
     controlled_python_argv,
 )
-from norad.orchestration.local_pilot import doctor
-from norad.orchestration.local_pilot.normalization import normalize_request
+from emrys.orchestration.local_pilot import doctor
+from emrys.orchestration.local_pilot.normalization import normalize_request
 
 from tests.orchestration.local_pilot.fixture import build
 
@@ -1173,7 +1173,7 @@ def test_cli_statuses_and_help(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     help_result = subprocess.run(
-        [sys.executable, "-I", "-m", "norad", "doctor", "local-pilot", "--help"],
+        [sys.executable, "-I", "-m", "emrys", "doctor", "local-pilot", "--help"],
         cwd=tmp_path,
         text=True,
         capture_output=True,
