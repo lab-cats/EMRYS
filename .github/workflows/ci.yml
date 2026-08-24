@@ -448,14 +448,14 @@ jobs:
           --shard-count ${{ env.PYTHON_TEST_SHARD_COUNT }}
           --workers 2
           --receipt
-          "${GITHUB_WORKSPACE}/.test-shards/python-test-shard-${{ matrix.shard }}-of-${{ env.PYTHON_TEST_SHARD_COUNT }}.json"
+          "${RUNNER_TEMP}/emrys-python311-test-shards/python-test-shard-${{ matrix.shard }}-of-${{ env.PYTHON_TEST_SHARD_COUNT }}.json"
 
       - name: Upload selection receipt
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: python311-test-shard-${{ matrix.shard }}
-          path: .test-shards/python-test-shard-*.json
+          path: ${{ runner.temp }}/emrys-python311-test-shards/python-test-shard-*.json
           if-no-files-found: error
           retention-days: 7
 
@@ -493,7 +493,7 @@ jobs:
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           pattern: python311-test-shard-*
-          path: .test-shards/merged
+          path: ${{ runner.temp }}/emrys-python311-test-shards/merged
           merge-multiple: true
 
       - name: Verify complete and disjoint shard receipts
@@ -501,7 +501,7 @@ jobs:
         run: >-
           .venv/bin/python tests/tools/python_test_shards.py verify
           --repo-root "${GITHUB_WORKSPACE}"
-          --receipt-dir "${GITHUB_WORKSPACE}/.test-shards/merged"
+          --receipt-dir "${RUNNER_TEMP}/emrys-python311-test-shards/merged"
 
       - name: Require every Python 3.11 shard to pass
         shell: bash
