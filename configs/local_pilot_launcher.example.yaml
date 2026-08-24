@@ -1,25 +1,25 @@
-schema_version: emrys.local-pilot-launcher.v1
+schema_version: norad.local-pilot-launcher.v1
 
 # Site identity and optional placement are resolved from the generation-bound
 # source checkout's private .env, unless the launching process defines them.
 slurm:
-  account: {env: EMRYS_SLURM_ACCOUNT}
-  partition: {env: EMRYS_SLURM_PARTITION}
-  qos: {env: EMRYS_SLURM_QOS}
+  account: {env: NORAD_SLURM_ACCOUNT}
+  partition: {env: NORAD_SLURM_PARTITION}
+  qos: {env: NORAD_SLURM_QOS}
   cpus_per_task: 4
   memory: site-default
   time: "03:00:00"
   exclusive: false
-  nodelist: {env: EMRYS_SLURM_NODELIST}
+  nodelist: {env: NORAD_SLURM_NODELIST}
 
 # Private mutation/log paths remain outside tracked policy; starter inputs stay
 # relative to this launcher file.
 paths:
-  log_dir: {env: EMRYS_LOG_DIR}
+  log_dir: {env: NORAD_LOG_DIR}
   request: request.yaml
-  workspace: {env: EMRYS_WORKSPACE}
+  workspace: {env: NORAD_WORKSPACE}
   runtime_profile: runtime.selected.tsv
-  scratch_parent: {env: EMRYS_SCRATCH_PARENT}
+  scratch_parent: {env: NORAD_SCRATCH_PARENT}
 
 modules:
   mode: none

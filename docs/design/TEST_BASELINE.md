@@ -62,8 +62,8 @@ The accepted exact floors are:
 | Local-pilot control plane | `3385 / 4138` (`0.818028`) | `1030 / 1498` (`0.687583`) |
 | Source-checkout admission | `235 / 267` (`0.880150`) | `83 / 94` (`0.882979`) |
 | Runtime-availability admission | `364 / 410` (`0.887805`) | `100 / 138` (`0.724638`) |
-| `emrys.contracts.scientific_evidence` | `592 / 597` (`0.991625`) | `283 / 290` (`0.975862`) |
-| `emrys.libraries.validation` | `371 / 379` (`0.978892`) | `116 / 122` (`0.950820`) |
+| `norad.contracts.scientific_evidence` | `592 / 597` (`0.991625`) | `283 / 290` (`0.975862`) |
+| `norad.libraries.validation` | `371 / 379` (`0.978892`) | `116 / 122` (`0.950820`) |
 | Shared scientific validation primitives | `341 / 341` (`1.000000`) | `123 / 124` (`0.991935`) |
 | Report/publication and receipt validation | `5272 / 6247` (`0.843925`) | `1782 / 2480` (`0.718548`) |
 | Paired-CMH analysis contracts | `85 / 85` (`1.000000`) | `16 / 18` (`0.888889`) |
@@ -90,7 +90,7 @@ values and never weaken the gate through rounding.
 
 The active policy:
 
-- measures branches over exactly `scripts` and `src/emrys`, with subprocess
+- measures branches over exactly `scripts` and `src/norad`, with subprocess
   tracing enabled for the Python behavior lane;
 - separately runs the subprocess-only GTF-to-BED12 and sample-manifest CLI
   suites and requires coverage in their exact public route modules;
@@ -171,7 +171,7 @@ or documented consumer and is not a supported contract.
 Nox disposition: **REJECTED**. After native simplification,
 `tests/tools/run_validation.py` and its direct test total 876 maintained lines,
 down from 1,029. Nox parallel stop-on-error permits already-running sessions to
-finish, while EMRYS's contract terminates their process groups and retains
+finish, while NORAD's contract terminates their process groups and retains
 interruption diagnostics. Matching that behavior would require a substantial
 custom supervisor around Nox, failing the mandatory exact-cancellation/no-
 custom-orchestration criterion. `uv` remains the sole Python dependency and

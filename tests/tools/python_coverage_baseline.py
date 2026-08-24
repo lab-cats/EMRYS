@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build and check compact EMRYS Python coverage policies."""
+"""Build and check compact NORAD Python coverage policies."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from typing import Any
 
 SCHEMA_VERSION = "2.0.0"
 COVERAGE_VERSION = "7.15.2"
-SOURCE_ROOTS = ("scripts", "src/emrys")
+SOURCE_ROOTS = ("scripts", "src/norad")
 NEW_SHARED_LINE_MINIMUM = (90, 100)
 NEW_SHARED_BRANCH_MINIMUM = (85, 100)
 COUNT_FIELDS = (
@@ -23,32 +23,32 @@ COUNT_FIELDS = (
     "num_branches",
 )
 CRITICAL_OWNER_GROUPS: Mapping[str, tuple[str, ...]] = {
-    "orchestration_machine_contracts": ("src/emrys/contracts/orchestration/",),
-    "local_pilot_control_plane": ("src/emrys/orchestration/local_pilot/",),
-    "source_checkout_admission": ("src/emrys/libraries/source_authority.py",),
-    "runtime_availability_admission": ("src/emrys/evidence/runtime_availability/",),
-    "emrys.contracts.scientific_evidence": (
-        "src/emrys/contracts/scientific_evidence/",
+    "orchestration_machine_contracts": ("src/norad/contracts/orchestration/",),
+    "local_pilot_control_plane": ("src/norad/orchestration/local_pilot/",),
+    "source_checkout_admission": ("src/norad/libraries/source_authority.py",),
+    "runtime_availability_admission": ("src/norad/evidence/runtime_availability/",),
+    "norad.contracts.scientific_evidence": (
+        "src/norad/contracts/scientific_evidence/",
     ),
-    "emrys.libraries.validation": ("src/emrys/libraries/validation/",),
+    "norad.libraries.validation": ("src/norad/libraries/validation/",),
     "shared_scientific_validation_primitives": (
-        "src/emrys/libraries/alignments/",
-        "src/emrys/libraries/evidence/",
-        "src/emrys/libraries/quality/",
-        "src/emrys/libraries/references/",
+        "src/norad/libraries/alignments/",
+        "src/norad/libraries/evidence/",
+        "src/norad/libraries/quality/",
+        "src/norad/libraries/references/",
     ),
     "report_publication_and_receipt_validation": (
-        "src/emrys/contracts/artifacts/",
-        "src/emrys/reporting/",
+        "src/norad/contracts/artifacts/",
+        "src/norad/reporting/",
     ),
     "paired_cmh_analysis_contracts": (
-        "src/emrys/analyses/paired_cmh_candidate_ranking/",
+        "src/norad/analyses/paired_cmh_candidate_ranking/",
     ),
 }
 REQUIRED_SUBPROCESS_ROUTES: Mapping[str, tuple[str, ...]] = {
-    "emrys.convert.gtf_to_bed12": ("src/emrys/stages/gtf_to_bed12/converter.py",),
-    "emrys.validate.sample_manifest": (
-        "src/emrys/ingestion/sample_manifest_admission/validator.py",
+    "norad.convert.gtf_to_bed12": ("src/norad/stages/gtf_to_bed12/converter.py",),
+    "norad.validate.sample_manifest": (
+        "src/norad/ingestion/sample_manifest_admission/validator.py",
     ),
 }
 SUBPROCESS_TEST_COMMAND = (

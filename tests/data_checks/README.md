@@ -8,7 +8,7 @@ does create or overwrite its selected status TSV and performs a temporary write
 probe in that output directory. The route is described by the
 [test baseline](../../docs/design/TEST_BASELINE.md); the producing stage is
 routed through the
-[Step 05 owner](../../src/emrys/stages/split_n_cigar/README.md).
+[Step 05 owner](../../src/norad/stages/split_n_cigar/README.md).
 
 Its default sample roster and `samtools` path are site-specific operator
 configuration, not a portable fixture or general stage contract. These checks

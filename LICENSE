@@ -1,10 +1,10 @@
-EMRYS SOURCE-AVAILABLE LICENSE 1.0
+NORAD SOURCE-AVAILABLE LICENSE 1.0
 
 Copyright 2026 Eli Steiger
 
-EMRYS is provided under the Apache License, Version 2.0, subject to the
+NORAD is provided under the Apache License, Version 2.0, subject to the
 Commons Clause License Condition v1.0 and the Additional Permission below.
-Together, these terms form the EMRYS Source-Available License 1.0.
+Together, these terms form the NORAD Source-Available License 1.0.
 
 "Commons Clause" License Condition v1.0
 
@@ -23,7 +23,7 @@ whose value derives, entirely or substantially, from the functionality of the
 Software. Any license notice or attribution required by the License must also
 include this Commons Clause License Condition notice.
 
-Software: EMRYS
+Software: NORAD
 
 License: Apache License, Version 2.0
 
@@ -33,22 +33,22 @@ ADDITIONAL PERMISSION FOR RESULTS AND SERVICES
 
 Notwithstanding the Commons Clause License Condition above, You may:
 
-1. use EMRYS to generate scientific data, results, reports, visualizations,
+1. use NORAD to generate scientific data, results, reports, visualizations,
    interpretations, discoveries, and other outputs (collectively, "Outputs");
 2. use, copy, modify, publish, distribute, sell, license, and otherwise
-   commercialize Outputs, including EMRYS styling or template material
+   commercialize Outputs, including NORAD styling or template material
    embedded in a rendered Output; and
 3. charge for research, compute, analysis, consulting, or other services that
-   use EMRYS to deliver Outputs.
+   use NORAD to deliver Outputs.
 
-This Additional Permission does not permit You to Sell EMRYS. This includes
-rebranding, licensing, or sublicensing EMRYS for a fee or other consideration;
-providing paid hosted or managed access to EMRYS; or otherwise offering EMRYS
-or substantially equivalent EMRYS functionality itself as the paid product or
+This Additional Permission does not permit You to Sell NORAD. This includes
+rebranding, licensing, or sublicensing NORAD for a fee or other consideration;
+providing paid hosted or managed access to NORAD; or otherwise offering NORAD
+or substantially equivalent NORAD functionality itself as the paid product or
 service.
 
-This license governs EMRYS only. It does not grant rights in third-party data,
-references, software, or other materials used with EMRYS or incorporated into
+This license governs NORAD only. It does not grant rights in third-party data,
+references, software, or other materials used with NORAD or incorporated into
 an Output. Those materials remain subject to their own terms.
 
                                  Apache License

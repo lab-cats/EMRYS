@@ -10,8 +10,8 @@ from pathlib import Path
 
 import pytest
 
-from emrys.libraries.validation import runtime as validation_runtime
-from emrys.stages.fasta_sidecars import validator
+from norad.libraries.validation import runtime as validation_runtime
+from norad.stages.fasta_sidecars import validator
 from tests.stage_validator_test_support import load_roster_oracle
 from tests.stage_validator_test_support import read_tsv as report_rows
 
@@ -58,7 +58,7 @@ def run_validator(
             sys.executable,
             "-I",
             "-m",
-            "emrys",
+            "norad",
             "validate",
             "fasta-sidecars",
             "--scope-id",

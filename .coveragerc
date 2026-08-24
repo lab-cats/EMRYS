@@ -3,7 +3,7 @@ branch = True
 parallel = True
 source =
     scripts
-    src/emrys
+    src/norad
 relative_files = True
 patch =
     subprocess

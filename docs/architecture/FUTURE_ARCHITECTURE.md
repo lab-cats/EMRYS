@@ -14,7 +14,7 @@ choices remain in [`QUESTIONS.md`](../design/QUESTIONS.md).
   contracts, and deterministic identities.
 - Functional owners remain independently understandable and testable; shared
   code follows the current dependency rules in
-  [`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md).
+  [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
 - Run, workflow-attempt, task, failure, rollback, and recovery state remains
   filesystem-first and inspectable without a special service.
 - Inputs, dependencies, cleanup, repair, publication, and evidence promotion

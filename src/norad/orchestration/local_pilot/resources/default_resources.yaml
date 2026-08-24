@@ -1,0 +1,37 @@
+schema_version: norad.local-pilot-resources.v1
+workflow_cores: 4
+workflow_memory_mb: allocation
+stage_concurrency:
+  "01": 1
+  "02": 1
+  "02b": 1
+  "03": 1
+  "04": 1
+  "05": 1
+  "06": 1
+  "07": 1
+step_threads:
+  "00a": 4
+  "01": 4
+  "02": 1
+  "06": 4
+  "08": 1
+stage_memory_mb:
+  "00a": workflow
+  "00b": workflow
+  "00c": workflow
+  "01": workflow
+  "02": workflow
+  "02b": workflow
+  "03": workflow
+  "04": workflow
+  "05": workflow
+  "06": workflow
+  "07": workflow
+  "08": workflow
+  "09": workflow
+  "10": workflow
+reporting_memory_mb:
+  artifact_index: workflow
+  run_summary: workflow
+  html_report: workflow

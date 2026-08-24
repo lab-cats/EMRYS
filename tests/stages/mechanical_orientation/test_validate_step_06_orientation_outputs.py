@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from emrys.__main__ import main as emrys_main
-from emrys.libraries.validation import Snapshot
-from emrys.stages.mechanical_orientation import (
+from norad.__main__ import main as norad_main
+from norad.libraries.validation import Snapshot
+from norad.stages.mechanical_orientation import (
     validator as mechanical_orientation_validator,
 )
 from tests.stage_validator_test_support import load_roster_oracle
@@ -98,7 +98,7 @@ def run_validator(
             sys.executable,
             "-I",
             "-m",
-            "emrys",
+            "norad",
             "validate",
             "mechanical-orientation",
             *validator_arguments(evidence, *extra),
@@ -260,7 +260,7 @@ def test_post_build_input_mutation_preserves_valid_predecessor(
         "build_validation_report",
         mutate_after_build,
     )
-    status = emrys_main(
+    status = norad_main(
         [
             "validate",
             "mechanical-orientation",

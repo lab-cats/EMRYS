@@ -1,7 +1,7 @@
 # Orchestration contract tests
 
 This directory directly protects the neutral
-[`contracts/orchestration`](../../../src/emrys/contracts/orchestration/README.md)
+[`contracts/orchestration`](../../../src/norad/contracts/orchestration/README.md)
 owner. It tests shared record and projection semantics, not lifecycle execution
 or recovery.
 

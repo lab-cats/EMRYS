@@ -3,9 +3,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"
-unset EMRYS_RUN_TOKEN
-export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
+SCRIPT="$REPO_ROOT/src/norad/stages/canonical_bam/step_02_sort_index_bam.sh"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 # Keep assertions small and shell-native so failures print the local fixture state.
 fail() {
@@ -327,7 +327,7 @@ assert_contains "$threads_output" "--threads must be a positive integer"
 printf 'Running dry-run no-output check...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry"
-env FAKE_SAMPLE_ID=sample_dry EMRYS_RUN_TOKEN=explicit-owner-02 \
+env FAKE_SAMPLE_ID=sample_dry NORAD_RUN_TOKEN=explicit-owner-02 \
     SLURM_JOB_ID=scheduler-02 bash "$SCRIPT" \
     --sample-id sample_dry \
     --input-alignment "$input_sam" \

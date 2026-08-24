@@ -12,7 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from emrys.contracts.scientific_evidence import step08 as STEP08
+from norad.contracts.scientific_evidence import step08 as STEP08
 
 ROOT = Path(__file__).resolve().parents[3]
 

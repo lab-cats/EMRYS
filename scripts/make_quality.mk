@@ -3,13 +3,13 @@ SHELLCHECK_BIN ?= shellcheck
 SHFMT_BIN ?= shfmt
 RUFF_BIN ?= ruff
 VULTURE_BIN ?= vulture
-DEAD_CODE_PATHS ?= scripts src/emrys
-PYTHON_LINT_PATHS ?= scripts src/emrys tests
+DEAD_CODE_PATHS ?= scripts src/norad
+PYTHON_LINT_PATHS ?= scripts src/norad tests
 VULTURE_MIN_CONFIDENCE ?= 95
-EMRYS_RENV_VERSION := 1.2.3
+NORAD_RENV_VERSION := 1.2.3
 PYTHON_COVERAGE_NEW_SHARED_MODULES ?= \
-	src/emrys/libraries/installed_package_identity.py \
-	src/emrys/libraries/process_environment.py
+	src/norad/libraries/installed_package_identity.py \
+	src/norad/libraries/process_environment.py
 PYTHON_COVERAGE_NEW_SHARED_ARGS = $(foreach module,$(PYTHON_COVERAGE_NEW_SHARED_MODULES),--new-shared-module $(module))
 PYTHON_COVERAGE_NEW_SHARED_CHECK_ARGS = $(if $(strip $(PYTHON_COVERAGE_NEW_SHARED_MODULES)),--coverage-json "$(PYTHON_COVERAGE_RAW)" $(PYTHON_COVERAGE_NEW_SHARED_ARGS))
 PYTHON_SUBPROCESS_COVERAGE_DATA := $(PYTHON_COVERAGE_ROOT)/.coverage-subprocess
@@ -19,41 +19,41 @@ PYTHON_SUBPROCESS_COVERAGE_TESTS := \
 	tests/ingestion/sample_manifest_admission/test_validate_manifest.py
 
 SHELL_SYNTAX_PATHS := \
-	src/emrys/libraries/gatk_invocation.sh \
-	src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh \
-	src/emrys/stages/star_index/step_00a_build_star_index.sh \
-	src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh \
-	src/emrys/stages/star_alignment/step_01_star_align.sh \
-	src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh \
-	src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh \
-	src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh \
-	src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh \
-	src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh \
-	src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh \
-	src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
-	src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
-	src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh \
-	src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh \
+	src/norad/libraries/gatk_invocation.sh \
+	src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh \
+	src/norad/stages/star_index/step_00a_build_star_index.sh \
+	src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh \
+	src/norad/stages/star_alignment/step_01_star_align.sh \
+	src/norad/stages/canonical_bam/step_02_sort_index_bam.sh \
+	src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh \
+	src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh \
+	src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh \
+	src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh \
+	src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh \
+	src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
+	src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
+	src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh \
+	src/norad/analyses/scientific_context_projection/scientific_context_projection.sh \
 	tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh \
 	tests/analyses/scientific_context_projection/test_scientific_context_projection.sh
 
 SLURM_SYNTAX_PATHS := \
-	src/emrys/evidence/runtime_availability/tool_check.slurm \
-	src/emrys/ingestion/sample_manifest_admission/validate_manifest.slurm \
-	src/emrys/stages/star_index/step_00a_build_novogene_star_index.slurm \
-	src/emrys/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm \
-	src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm \
-	src/emrys/stages/star_alignment/step_01_star_align.slurm \
-	src/emrys/stages/canonical_bam/step_02_sort_index_bam.slurm \
-	src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.slurm \
-	src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.slurm \
-	src/emrys/stages/duplicate_marking/step_04_mark_duplicates.slurm \
-	src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm \
-	src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm \
-	src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm \
-	src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm \
-	src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm \
-	src/emrys/analyses/scientific_context_projection/scientific_context_projection.slurm
+	src/norad/evidence/runtime_availability/tool_check.slurm \
+	src/norad/ingestion/sample_manifest_admission/validate_manifest.slurm \
+	src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm \
+	src/norad/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm \
+	src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm \
+	src/norad/stages/star_alignment/step_01_star_align.slurm \
+	src/norad/stages/canonical_bam/step_02_sort_index_bam.slurm \
+	src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.slurm \
+	src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.slurm \
+	src/norad/stages/duplicate_marking/step_04_mark_duplicates.slurm \
+	src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm \
+	src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm \
+	src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm \
+	src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm \
+	src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.slurm \
+	src/norad/analyses/scientific_context_projection/scientific_context_projection.slurm
 
 documentation-check:
 	./scripts/git_orchestration/validate_documentation.py --repo "$(CURDIR)"
@@ -90,7 +90,7 @@ real-r-test:
 	bash tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh
 
 r-restore:
-	EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=0 \
+	NORAD_USE_RENV=1 NORAD_LOCAL_PILOT_R=0 \
 		RENV_CONFIG_SANDBOX_ENABLED=FALSE \
 		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
 		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
@@ -99,9 +99,9 @@ r-restore:
 r-check:
 	test -n "$(RENV_LIBRARY)"
 	test -d "$(RENV_LIBRARY)"
-	EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=1 \
-		EMRYS_RENV_LIBRARY="$(RENV_LIBRARY)" \
-		EMRYS_RENV_VERSION="$(EMRYS_RENV_VERSION)" \
+	NORAD_USE_RENV=1 NORAD_LOCAL_PILOT_R=1 \
+		NORAD_RENV_LIBRARY="$(RENV_LIBRARY)" \
+		NORAD_RENV_VERSION="$(NORAD_RENV_VERSION)" \
 		RENV_CONFIG_SANDBOX_ENABLED=FALSE \
 		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
 		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
@@ -110,9 +110,9 @@ r-check:
 local-real-r-test:
 	test -n "$(RENV_LIBRARY)"
 	test -d "$(RENV_LIBRARY)"
-	EMRYS_USE_RENV=1 EMRYS_LOCAL_PILOT_R=1 \
-		EMRYS_RENV_LIBRARY="$(RENV_LIBRARY)" \
-		EMRYS_RENV_VERSION="$(EMRYS_RENV_VERSION)" \
+	NORAD_USE_RENV=1 NORAD_LOCAL_PILOT_R=1 \
+		NORAD_RENV_LIBRARY="$(RENV_LIBRARY)" \
+		NORAD_RENV_VERSION="$(NORAD_RENV_VERSION)" \
 		RENV_CONFIG_SANDBOX_ENABLED=FALSE \
 		RENV_CONFIG_AUTO_SNAPSHOT=FALSE RENV_PROJECT="$(CURDIR)" \
 		R_PROFILE_USER="$(CURDIR)/.Rprofile" \
@@ -154,7 +154,7 @@ python-coverage-finalize:
 	COVERAGE_FILE="$(PYTHON_SUBPROCESS_COVERAGE_DATA)" \
 		"$(REPORT_PYTHON_BIN)" -m coverage run \
 		--rcfile="$(CURDIR)/.coveragerc" \
-		--source=scripts,src/emrys,tests -m pytest -q \
+		--source=scripts,src/norad,tests -m pytest -q \
 		$(PYTHON_SUBPROCESS_COVERAGE_TESTS)
 	COVERAGE_FILE="$(PYTHON_SUBPROCESS_COVERAGE_DATA)" \
 		"$(REPORT_PYTHON_BIN)" -m coverage combine -q \
@@ -162,7 +162,7 @@ python-coverage-finalize:
 	COVERAGE_FILE="$(PYTHON_SUBPROCESS_COVERAGE_DATA)" \
 		"$(REPORT_PYTHON_BIN)" -m coverage json \
 		--rcfile="$(CURDIR)/.coveragerc" \
-		--include="scripts/*,src/emrys/*" \
+		--include="scripts/*,src/norad/*" \
 		-o "$(PYTHON_SUBPROCESS_COVERAGE_RAW)"
 	"$(REPORT_PYTHON_BIN)" tests/tools/python_coverage_baseline.py build \
 		--coverage-json "$(PYTHON_COVERAGE_RAW)" \
@@ -203,12 +203,12 @@ validation-static: lint documentation-check
 	git diff --check
 	$(STATIC_SHELL_CHECKS)
 	PYTHONDONTWRITEBYTECODE=1 \
-		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/emrys tests
-	"$(REPORT_PYTHON_BIN)" -I -m emrys validate manifest \
+		"$(REPORT_PYTHON_BIN)" -m compileall -q scripts src/norad tests
+	"$(REPORT_PYTHON_BIN)" -I -m norad validate manifest \
 		--manifest configs/samples.example.tsv
 
 validate:
-	"$(REPORT_PYTHON_BIN)" -I -m emrys validate manifest \
+	"$(REPORT_PYTHON_BIN)" -I -m norad validate manifest \
 		--manifest configs/samples.example.tsv
 
 smoke:

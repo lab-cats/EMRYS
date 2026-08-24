@@ -121,7 +121,7 @@ def run_validator(
             sys.executable,
             "-I",
             "-m",
-            "emrys",
+            "norad",
             "validate",
             "split-n-cigar",
             *validator_arguments(evidence, *extra),

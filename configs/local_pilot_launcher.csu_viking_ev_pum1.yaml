@@ -1,25 +1,25 @@
-schema_version: emrys.local-pilot-launcher.v1
+schema_version: norad.local-pilot-launcher.v1
 
 # Workload-specific outer allocation for the retained six-library EV/PUM1
 # policy. The 12-hour walltime is conservative operator headroom; it was not a
 # benchmark result. Viking supplies memory from the exclusive node allocation,
 # so this launcher deliberately omits an explicit Slurm memory request.
 slurm:
-  account: {env: EMRYS_SLURM_ACCOUNT}
-  partition: {env: EMRYS_SLURM_PARTITION}
-  qos: {env: EMRYS_SLURM_QOS}
+  account: {env: NORAD_SLURM_ACCOUNT}
+  partition: {env: NORAD_SLURM_PARTITION}
+  qos: {env: NORAD_SLURM_QOS}
   cpus_per_task: 256
   memory: site-default
   time: "12:00:00"
   exclusive: true
-  nodelist: {env: EMRYS_SLURM_NODELIST}
+  nodelist: {env: NORAD_SLURM_NODELIST}
 
 paths:
-  log_dir: {env: EMRYS_LOG_DIR}
+  log_dir: {env: NORAD_LOG_DIR}
   request: request.yaml
-  workspace: {env: EMRYS_WORKSPACE}
+  workspace: {env: NORAD_WORKSPACE}
   runtime_profile: runtime.selected.tsv
-  scratch_parent: {env: EMRYS_SCRATCH_PARENT}
+  scratch_parent: {env: NORAD_SCRATCH_PARENT}
 
 modules:
   mode: none

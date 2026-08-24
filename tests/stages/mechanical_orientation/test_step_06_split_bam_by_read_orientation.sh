@@ -5,10 +5,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh"
-JOB="$REPO_ROOT/src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm"
-unset EMRYS_RUN_TOKEN
-export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
+SCRIPT="$REPO_ROOT/src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh"
+JOB="$REPO_ROOT/src/norad/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.slurm"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 unset \
     FAKE_COUNT_FAIL_MATCH FAKE_COUNT_FAIL_STATUS \
@@ -556,7 +556,7 @@ dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry/orientation/ABE_EV_2"
 dry_qc_dir="$tmp_dir/results/dry/qc/orientation"
 rm -f "$samtools_log"
-EMRYS_RUN_TOKEN=explicit-owner-06 SLURM_JOB_ID=scheduler-06 \
+NORAD_RUN_TOKEN=explicit-owner-06 SLURM_JOB_ID=scheduler-06 \
     run_step06 ABE_EV_2 "$input_bam" "$dry_output_dir" "$dry_qc_dir" >"$dry_output"
 dry_fwd_bam="$dry_output_dir/ABE_EV_2.FWD_like.bam"
 dry_rev_bam="$dry_output_dir/ABE_EV_2.REV_like.bam"

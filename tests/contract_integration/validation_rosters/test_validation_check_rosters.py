@@ -13,28 +13,28 @@ from validation_roster_expectations import (
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
-REPORT_LIBRARY = REPO_ROOT / "src" / "emrys" / "libraries" / "validation/report.py"
+REPORT_LIBRARY = REPO_ROOT / "src" / "norad" / "libraries" / "validation/report.py"
 SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from emrys.libraries import validation as SHARED_REPORT_VALIDATOR
+from norad.libraries import validation as SHARED_REPORT_VALIDATOR
 
 VALIDATOR_PATHS = {
-    "00a": Path("src/emrys/stages/star_index/validator.py"),
-    "00b": Path("src/emrys/stages/gtf_to_bed12/validator.py"),
-    "00c": Path("src/emrys/stages/fasta_sidecars/validator.py"),
-    "01": Path("src/emrys/stages/star_alignment/validator.py"),
-    "02": Path("src/emrys/stages/canonical_bam/validator.py"),
-    "02b": Path("src/emrys/evidence/canonical_bam_qc/validator.py"),
-    "03": Path("src/emrys/evidence/rseqc_orientation/validator.py"),
-    "04": Path("src/emrys/stages/duplicate_marking/validator.py"),
-    "05": Path("src/emrys/stages/split_n_cigar/validator.py"),
-    "06": Path("src/emrys/stages/mechanical_orientation/validator.py"),
-    "07": Path("src/emrys/stages/partitioned_cohort_mpileup/validator.py"),
-    "08": Path("src/emrys/stages/cohort_candidate_preprocessing/validator.py"),
-    "09": Path("src/emrys/analyses/paired_cmh_candidate_ranking/validator.py"),
-    "10": Path("src/emrys/analyses/scientific_context_projection/validator.py"),
+    "00a": Path("src/norad/stages/star_index/validator.py"),
+    "00b": Path("src/norad/stages/gtf_to_bed12/validator.py"),
+    "00c": Path("src/norad/stages/fasta_sidecars/validator.py"),
+    "01": Path("src/norad/stages/star_alignment/validator.py"),
+    "02": Path("src/norad/stages/canonical_bam/validator.py"),
+    "02b": Path("src/norad/evidence/canonical_bam_qc/validator.py"),
+    "03": Path("src/norad/evidence/rseqc_orientation/validator.py"),
+    "04": Path("src/norad/stages/duplicate_marking/validator.py"),
+    "05": Path("src/norad/stages/split_n_cigar/validator.py"),
+    "06": Path("src/norad/stages/mechanical_orientation/validator.py"),
+    "07": Path("src/norad/stages/partitioned_cohort_mpileup/validator.py"),
+    "08": Path("src/norad/stages/cohort_candidate_preprocessing/validator.py"),
+    "09": Path("src/norad/analyses/paired_cmh_candidate_ranking/validator.py"),
+    "10": Path("src/norad/analyses/scientific_context_projection/validator.py"),
 }
 VALIDATION_HEADER = (
     "step_id",

@@ -17,10 +17,10 @@ from typing import Any
 
 import pytest
 
-from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.libraries.source_authority import controlled_python_argv
-from emrys.orchestration.local_pilot import inspection
-from emrys.orchestration.local_pilot.reporting_boundary import (
+from norad.contracts.orchestration import api as orchestration_contracts
+from norad.libraries.source_authority import controlled_python_argv
+from norad.orchestration.local_pilot import inspection
+from norad.orchestration.local_pilot.reporting_boundary import (
     REPORTING_KINDS,
     publish_start,
     validate_verified,
@@ -70,21 +70,21 @@ def clean_source_checkout(
     checkout.mkdir()
     shutil.copy2(workflow_fixture.REPO_ROOT / "pyproject.toml", checkout)
     shutil.copytree(
-        workflow_fixture.REPO_ROOT / "src" / "emrys",
-        checkout / "src" / "emrys",
+        workflow_fixture.REPO_ROOT / "src" / "norad",
+        checkout / "src" / "norad",
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "*.pyo"),
     )
     subprocess.run(["git", "init", "--quiet"], cwd=checkout, check=True)
     subprocess.run(
-        ["git", "add", "pyproject.toml", "src/emrys"], cwd=checkout, check=True
+        ["git", "add", "pyproject.toml", "src/norad"], cwd=checkout, check=True
     )
     subprocess.run(
         [
             "git",
             "-c",
-            "user.name=EMRYS Fixture",
+            "user.name=NORAD Fixture",
             "-c",
-            "user.email=emrys-fixture@example.invalid",
+            "user.email=norad-fixture@example.invalid",
             "commit",
             "--quiet",
             "-m",
@@ -530,7 +530,7 @@ def test_real_local_pipeline_validates_outputs_and_reusable_reporting_ledgers(
         assert outcome.verified_path == verified
     summary = json.loads(built.run_summary.read_text(encoding="utf-8"))
     assert summary["interpretation_boundary"] == (
-        "computational_candidates_only_biological_validation_outside_emrys"
+        "computational_candidates_only_biological_validation_outside_norad"
     )
     assert "science_status" not in summary
     assert "scientific_review" not in summary
@@ -566,7 +566,7 @@ def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
         built.run_root / "products" / "report",
     )
     resumed = workflow_fixture.refresh_attempt(built, sequence=1)
-    machine_key = "emrys.stage.construct_STAR_index.v1"
+    machine_key = "norad.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
     resumed_config = orchestration_contracts.load_json_object(resumed.config_path)
     assert (
@@ -603,7 +603,7 @@ def test_resume_refuses_dispatch_substitution_for_a_valid_completed_task(
         sequence=4,
         rematerialize_dispatches=True,
     )
-    machine_key = "emrys.stage.construct_STAR_index.v1"
+    machine_key = "norad.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
     assert (
         substituted.dispatch_paths[machine_key][scope_id]
@@ -633,7 +633,7 @@ def test_verified_state_roster_rejects_every_unexpected_entry(
     built: workflow_fixture.WorkflowFixture,
     entry_kind: str,
 ) -> None:
-    owner = built.verified_root / "emrys.stage.construct_STAR_index.v1"
+    owner = built.verified_root / "norad.stage.construct_STAR_index.v1"
     if entry_kind == "root_symlink":
         _snakemake(built, "--", "reference_slice")
         (built.verified_root / "unexpected-owner").symlink_to(
@@ -882,7 +882,7 @@ def test_foreign_preexisting_verified_marker_fails_closed(
     built: workflow_fixture.WorkflowFixture,
     clean_source_checkout: tuple[Path, str],
 ) -> None:
-    machine_key = "emrys.stage.construct_STAR_index.v1"
+    machine_key = "norad.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
     marker = built.verified_root / machine_key / f"{scope_id}.json"
     marker.parent.mkdir(parents=True, exist_ok=True)
@@ -906,7 +906,7 @@ def test_content_bound_verified_marker_is_reused_and_mutation_fails_closed(
     reused = _snakemake(built, "--dry-run", "--", "reference_slice")
     assert "Nothing to be done" in reused.stdout
 
-    machine_key = "emrys.stage.construct_STAR_index.v1"
+    machine_key = "norad.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
     marker = built.verified_root / machine_key / f"{scope_id}.json"
     record = orchestration_contracts.load_record(marker, "verified-task")
@@ -923,7 +923,7 @@ def test_foreign_dispatch_binding_and_unknown_scope_fail_closed(
     built: workflow_fixture.WorkflowFixture,
     clean_source_checkout: tuple[Path, str],
 ) -> None:
-    machine_key = "emrys.stage.construct_STAR_index.v1"
+    machine_key = "norad.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
     dispatch = Path(built.dispatch_paths[machine_key][scope_id])
     record = json.loads(dispatch.read_text(encoding="utf-8"))
@@ -977,7 +977,7 @@ def test_pending_dispatch_identity_and_task_evidence_paths_fail_closed(
     mutation: str,
     expected_message: str,
 ) -> None:
-    machine_key = "emrys.stage.construct_STAR_index.v1"
+    machine_key = "norad.stage.construct_STAR_index.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
     config = orchestration_contracts.load_json_object(built.config_path)
     reference = config["dispatch_paths"][machine_key][scope_id]

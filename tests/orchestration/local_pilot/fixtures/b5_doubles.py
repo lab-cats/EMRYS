@@ -10,10 +10,10 @@ import sys
 from dataclasses import replace
 from pathlib import Path
 
-from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.projection import build_reporting_bundle
-from emrys.libraries.source_authority import controlled_python_argv
-from emrys.orchestration.local_pilot.materialization import AttemptPlan, PlannedFile
+from norad.contracts.orchestration import api as orchestration_contracts
+from norad.contracts.orchestration.projection import build_reporting_bundle
+from norad.libraries.source_authority import controlled_python_argv
+from norad.orchestration.local_pilot.materialization import AttemptPlan, PlannedFile
 from tests.orchestration.local_pilot.fixtures import workflow
 
 

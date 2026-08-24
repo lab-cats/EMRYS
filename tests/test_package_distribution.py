@@ -1,4 +1,4 @@
-"""Protect EMRYS's installed-wheel contract without replaying repository tests."""
+"""Protect NORAD's installed-wheel contract without replaying repository tests."""
 
 from __future__ import annotations
 
@@ -34,38 +34,38 @@ RUNTIME_REQUIREMENT_SPECIFIERS = {
     "referencing": ">=0.28.4",
 }
 RESOURCE_PATHS = (
-    "emrys/contracts/schemas/artifacts/v2/artifact_record.schema.json",
-    "emrys/contracts/schemas/artifacts/v1/common.schema.json",
-    "emrys/contracts/schemas/artifacts/v2/run_summary.schema.json",
-    "emrys/contracts/schemas/artifacts/v3/report_receipt.schema.json",
-    "emrys/contracts/schemas/artifacts/v4/report_receipt.schema.json",
-    "emrys/contracts/schemas/orchestration/v2/profile.schema.json",
-    "emrys/contracts/schemas/orchestration/v2/request.schema.json",
-    "emrys/contracts/schemas/orchestration/v3/request.schema.json",
-    "emrys/contracts/schemas/orchestration/v3/resource_config.schema.json",
-    "emrys/contracts/schemas/orchestration/v3/launcher_config.schema.json",
-    "emrys/orchestration/local_pilot/resources/default_resources.yaml",
-    "emrys/orchestration/local_pilot/resources/default_launcher.yaml",
-    "emrys/contracts/schemas/orchestration/v1/execution.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/reference.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/policy.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/workflow_attempt.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/attempt_receipt.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/run_lock.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/task_start.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/task_attempt.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/verified_task.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/reporting_start.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/verified_reporting.schema.json",
-    "emrys/contracts/schemas/orchestration/v1/common.schema.json",
-    "emrys/reporting/styles/run_report.css",
-    "emrys/reporting/templates/run_report.html.j2",
+    "norad/contracts/schemas/artifacts/v2/artifact_record.schema.json",
+    "norad/contracts/schemas/artifacts/v1/common.schema.json",
+    "norad/contracts/schemas/artifacts/v2/run_summary.schema.json",
+    "norad/contracts/schemas/artifacts/v3/report_receipt.schema.json",
+    "norad/contracts/schemas/artifacts/v4/report_receipt.schema.json",
+    "norad/contracts/schemas/orchestration/v2/profile.schema.json",
+    "norad/contracts/schemas/orchestration/v2/request.schema.json",
+    "norad/contracts/schemas/orchestration/v3/request.schema.json",
+    "norad/contracts/schemas/orchestration/v3/resource_config.schema.json",
+    "norad/contracts/schemas/orchestration/v3/launcher_config.schema.json",
+    "norad/orchestration/local_pilot/resources/default_resources.yaml",
+    "norad/orchestration/local_pilot/resources/default_launcher.yaml",
+    "norad/contracts/schemas/orchestration/v1/execution.schema.json",
+    "norad/contracts/schemas/orchestration/v1/reference.schema.json",
+    "norad/contracts/schemas/orchestration/v1/policy.schema.json",
+    "norad/contracts/schemas/orchestration/v1/workflow_attempt.schema.json",
+    "norad/contracts/schemas/orchestration/v1/attempt_receipt.schema.json",
+    "norad/contracts/schemas/orchestration/v1/run_lock.schema.json",
+    "norad/contracts/schemas/orchestration/v1/task_start.schema.json",
+    "norad/contracts/schemas/orchestration/v1/task_attempt.schema.json",
+    "norad/contracts/schemas/orchestration/v1/verified_task.schema.json",
+    "norad/contracts/schemas/orchestration/v1/reporting_start.schema.json",
+    "norad/contracts/schemas/orchestration/v1/verified_reporting.schema.json",
+    "norad/contracts/schemas/orchestration/v1/common.schema.json",
+    "norad/reporting/styles/run_report.css",
+    "norad/reporting/templates/run_report.html.j2",
 )
 PUBLIC_ONBOARDING_MODULES = {
-    "emrys/orchestration/local_pilot/onboarding.py",
-    "emrys/orchestration/local_pilot/synthetic_fixture.py",
+    "norad/orchestration/local_pilot/onboarding.py",
+    "norad/orchestration/local_pilot/synthetic_fixture.py",
 }
-LICENSE_EXPRESSION = "LicenseRef-EMRYS-Source-Available-1.0"
+LICENSE_EXPRESSION = "LicenseRef-NORAD-Source-Available-1.0"
 LICENSE_FILES = {
     "LICENSE": REPO_ROOT / "LICENSE",
     "NOTICE": REPO_ROOT / "NOTICE",
@@ -165,7 +165,7 @@ def inspect_wheel(wheel: Path) -> None:
         metadata = Parser().parsestr(archive.read(metadata_member).decode())
         declared = declared_requirements(metadata.get_all("Requires-Dist", []))
 
-        assert metadata["Name"] == "emrys-rna-workflow"
+        assert metadata["Name"] == "norad-rna-workflow"
         assert metadata["Version"] == "0.1.0.dev0"
         assert metadata["License-Expression"] == LICENSE_EXPRESSION
         assert set(metadata.get_all("License-File", [])) == set(LICENSE_FILES)
@@ -174,8 +174,8 @@ def inspect_wheel(wheel: Path) -> None:
             for classifier in metadata.get_all("Classifier", [])
         )
         assert metadata.get_all("Project-URL") == [
-            "Repository, https://github.com/lab-cats/EMRYS",
-            "Issues, https://github.com/lab-cats/EMRYS/issues",
+            "Repository, https://github.com/lab-cats/norad",
+            "Issues, https://github.com/lab-cats/norad/issues",
         ]
         assert set(declared) == RUNTIME_DEPENDENCIES
         assert declared == {
@@ -183,7 +183,7 @@ def inspect_wheel(wheel: Path) -> None:
             for name, specifier in RUNTIME_REQUIREMENT_SPECIFIERS.items()
         }
         entry_points = archive.read(entry_points_member).decode().splitlines()
-        assert "emrys = emrys.__main__:main" in entry_points
+        assert "norad = norad.__main__:main" in entry_points
         assert set(RESOURCE_PATHS) <= members
         assert PUBLIC_ONBOARDING_MODULES <= members
         for resource in RESOURCE_PATHS:
@@ -211,10 +211,10 @@ def install_locked_wheel(wheel: Path, tmp_path: Path) -> tuple[Path, Path]:
     installer.mkdir()
     (installer / "pyproject.toml").write_text(
         "[project]\n"
-        'name = "emrys-wheel-smoke"\n'
+        'name = "norad-wheel-smoke"\n'
         'version = "0"\n'
         'requires-python = ">=3.11"\n'
-        f"dependencies = [{json.dumps(f'emrys-rna-workflow @ {wheel.as_uri()}')}]\n"
+        f"dependencies = [{json.dumps(f'norad-rna-workflow @ {wheel.as_uri()}')}]\n"
         "[tool.uv]\n"
         "constraint-dependencies = [\n"
         + "".join(f"    {json.dumps(requirement)},\n" for requirement in constraints)
@@ -251,7 +251,7 @@ def install_locked_wheel(wheel: Path, tmp_path: Path) -> tuple[Path, Path]:
     require_success(sync)
     environment_root = installer / ".venv"
     environment_python = environment_root / "bin" / "python"
-    console = environment_root / "bin" / "emrys"
+    console = environment_root / "bin" / "norad"
     assert console.is_file()
     return environment_python, console
 
@@ -265,16 +265,16 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
             "-I",
             "-c",
             (
-                "import importlib.metadata, json, emrys, sys; "
+                "import importlib.metadata, json, norad, sys; "
                 "from importlib.resources import files; "
-                f"resources={RESOURCE_PATHS!r}; root=files('emrys'); "
+                f"resources={RESOURCE_PATHS!r}; root=files('norad'); "
                 f"dependencies={sorted(RUNTIME_DEPENDENCIES)!r}; "
                 "print(json.dumps({"
-                "'module': emrys.__file__, "
-                "'requirements': importlib.metadata.requires('emrys-rna-workflow'), "
+                "'module': norad.__file__, "
+                "'requirements': importlib.metadata.requires('norad-rna-workflow'), "
                 "'installed': {name: importlib.metadata.version(name) "
                 "for name in dependencies}, "
-                "'resources': [root.joinpath(path.removeprefix('emrys/')).is_file() "
+                "'resources': [root.joinpath(path.removeprefix('norad/')).is_file() "
                 "for path in resources], "
                 "'sys_path': sys.path}))"
             ),
@@ -295,7 +295,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
             "pycache_prefix=/dev/null",
             "-I",
             "-m",
-            "emrys",
+            "norad",
             "build",
             "run-summary",
             *fixture.command_args(execute=True),
@@ -330,38 +330,38 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         str(Path(entry).resolve()) for entry in observed["sys_path"] if entry
     }
     module_help = run_command(
-        [str(environment_python), "-I", "-m", "emrys", "--help"],
+        [str(environment_python), "-I", "-m", "norad", "--help"],
         cwd=arbitrary_cwd,
         hostile_pythonpath=True,
     )
     require_success(module_help)
-    assert "usage: emrys" in module_help.stdout
+    assert "usage: norad" in module_help.stdout
     for command, usage in (
         (
             ("init", "local-pilot", "--help"),
-            "usage: emrys init local-pilot",
+            "usage: norad init local-pilot",
         ),
         (
             ("init", "synthetic-local-pilot", "--help"),
-            "usage: emrys init synthetic-local-pilot",
+            "usage: norad init synthetic-local-pilot",
         ),
         (
             ("prepare", "local-pilot-runtime", "--help"),
-            "usage: emrys prepare local-pilot-runtime",
+            "usage: norad prepare local-pilot-runtime",
         ),
         (
             ("validate", "local-pilot-request", "--help"),
-            "usage: emrys validate local-pilot-request",
+            "usage: norad validate local-pilot-request",
         ),
-        (("run", "--help"), "usage: emrys run"),
-        (("resume", "--help"), "usage: emrys resume"),
+        (("run", "--help"), "usage: norad run"),
+        (("resume", "--help"), "usage: norad resume"),
         (
             ("inspect", "local-pilot-run", "--help"),
-            "usage: emrys inspect local-pilot-run",
+            "usage: norad inspect local-pilot-run",
         ),
     ):
         public_help = run_command(
-            [str(environment_python), "-I", "-m", "emrys", *command],
+            [str(environment_python), "-I", "-m", "norad", *command],
             cwd=arbitrary_cwd,
             hostile_pythonpath=True,
         )
@@ -369,7 +369,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         assert usage in public_help.stdout
     console_help = run_command([str(console), "--help"], cwd=arbitrary_cwd)
     require_success(console_help)
-    assert "usage: emrys" in console_help.stdout
+    assert "usage: norad" in console_help.stdout
     manifest = arbitrary_cwd / "samples.tsv"
     manifest.write_text(
         "sample_id\tr1_fastq\tr2_fastq\tstrandedness\tcondition\n"
@@ -383,7 +383,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
             "pycache_prefix=/dev/null",
             "-I",
             "-m",
-            "emrys",
+            "norad",
             "validate",
             "manifest",
             "--manifest",
@@ -397,7 +397,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     assert "Samples: 1" in validation.stdout
     report_output_root = arbitrary_cwd / "reports"
     report_help = run_command(
-        [str(environment_python), "-I", "-m", "emrys", "build", "report", "--help"],
+        [str(environment_python), "-I", "-m", "norad", "build", "report", "--help"],
         cwd=arbitrary_cwd,
         hostile_pythonpath=True,
     )
@@ -412,7 +412,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
             "pycache_prefix=/dev/null",
             "-I",
             "-m",
-            "emrys",
+            "norad",
             "build",
             "report",
             "--source-checkout",
@@ -483,7 +483,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     }
     assert receipt["provenance"]["git_commit"] != "upstream-summary-commit"
     wrong_checkout = run_command(
-        [str(environment_python), "-I", "-m", "emrys", "--help"],
+        [str(environment_python), "-I", "-m", "norad", "--help"],
         cwd=REPO_ROOT,
         hostile_pythonpath=True,
     )

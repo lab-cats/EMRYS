@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
-SOURCE_ROOT = ROOT / "src/emrys"
+SOURCE_ROOT = ROOT / "src/norad"
 OWNER = SOURCE_ROOT / "libraries/executable_resolution.sh"
 BASH = Path("/bin/bash")
 SOURCE_STATEMENT = re.compile(
@@ -330,7 +330,7 @@ def test_one_owner_and_exact_consumer_roster() -> None:
         definition = re.compile(rf"^{function_name}\(\) \{{", re.MULTILINE)
         definitions = [
             path
-            for path in (ROOT / "src/emrys").rglob("*.sh")
+            for path in (ROOT / "src/norad").rglob("*.sh")
             if definition.search(path.read_text(encoding="utf-8"))
         ]
         assert definitions == [OWNER]

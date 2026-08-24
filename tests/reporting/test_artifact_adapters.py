@@ -18,9 +18,9 @@ from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
-from emrys.contracts.artifacts import api as ARTIFACT_CONTRACTS
-from emrys.contracts.scientific_evidence import step08, step09
-from emrys.libraries.source_authority import controlled_python_argv
+from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
+from norad.contracts.scientific_evidence import step08, step09
+from norad.libraries.source_authority import controlled_python_argv
 from tests.contract_integration.validation_rosters.validation_roster_expectations import (
     assert_exact_check_roster,
 )
@@ -39,35 +39,35 @@ GIT_ROUTING_VARIABLES = (
     "GIT_FUTURE_ROUTING",
 )
 EXPECTED_PRODUCER_PATHS = {
-    "00a": "src/emrys/stages/star_index/step_00a_build_star_index.sh",
-    "00b": "src/emrys/stages/gtf_to_bed12/converter.py",
-    "00c": "src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
-    "01": "src/emrys/stages/star_alignment/step_01_star_align.sh",
-    "02": "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh",
-    "02b": "src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
+    "00a": "src/norad/stages/star_index/step_00a_build_star_index.sh",
+    "00b": "src/norad/stages/gtf_to_bed12/converter.py",
+    "00c": "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
+    "01": "src/norad/stages/star_alignment/step_01_star_align.sh",
+    "02": "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh",
+    "02b": "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
     "03": (
-        "src/emrys/evidence/rseqc_orientation/"
+        "src/norad/evidence/rseqc_orientation/"
         "step_03_infer_strandedness_and_orientation.sh"
     ),
-    "04": "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh",
-    "05": "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
+    "04": "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
+    "05": "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
     "06": (
-        "src/emrys/stages/mechanical_orientation/"
+        "src/norad/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh"
     ),
     "07": (
-        "src/emrys/stages/partitioned_cohort_mpileup/"
+        "src/norad/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
     "08": (
-        "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
+        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
     ),
     "09": (
-        "src/emrys/analyses/paired_cmh_candidate_ranking/"
+        "src/norad/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh"
     ),
     "10": (
-        "src/emrys/analyses/scientific_context_projection/"
+        "src/norad/analyses/scientific_context_projection/"
         "scientific_context_projection.sh"
     ),
 }
@@ -89,27 +89,27 @@ VALIDATION_ARTIFACT_STEPS = {
 }
 
 
-ARTIFACT_CONTEXT = importlib.import_module("emrys.reporting._artifact_index.context")
-ARTIFACT_CORE = importlib.import_module("emrys.reporting._artifact_index.core")
+ARTIFACT_CONTEXT = importlib.import_module("norad.reporting._artifact_index.context")
+ARTIFACT_CORE = importlib.import_module("norad.reporting._artifact_index.core")
 ARTIFACT_BINARY = importlib.import_module(
-    "emrys.reporting._artifact_index.binary_readers"
+    "norad.reporting._artifact_index.binary_readers"
 )
-ARTIFACT_MODELS = importlib.import_module("emrys.reporting._artifact_index.models")
+ARTIFACT_MODELS = importlib.import_module("norad.reporting._artifact_index.models")
 ARTIFACT_INSPECTION = importlib.import_module(
-    "emrys.reporting._artifact_index.inspection"
+    "norad.reporting._artifact_index.inspection"
 )
 ARTIFACT_PUBLICATION = importlib.import_module(
-    "emrys.reporting._artifact_index.publication"
+    "norad.reporting._artifact_index.publication"
 )
-ARTIFACT_RECORDS = importlib.import_module("emrys.reporting._artifact_index.records")
-ARTIFACT_REGISTRY = importlib.import_module("emrys.reporting._artifact_index.registry")
-ARTIFACT_ROSTERS = importlib.import_module("emrys.reporting._artifact_index.rosters")
+ARTIFACT_RECORDS = importlib.import_module("norad.reporting._artifact_index.records")
+ARTIFACT_REGISTRY = importlib.import_module("norad.reporting._artifact_index.registry")
+ARTIFACT_ROSTERS = importlib.import_module("norad.reporting._artifact_index.rosters")
 ARTIFACT_NATIVE = importlib.import_module(
-    "emrys.reporting._artifact_index.reconcile_native"
+    "norad.reporting._artifact_index.reconcile_native"
 )
-SOURCE_AUTHORITY = importlib.import_module("emrys.libraries.source_authority")
+SOURCE_AUTHORITY = importlib.import_module("norad.libraries.source_authority")
 ARTIFACT_VALIDATION = importlib.import_module(
-    "emrys.reporting._artifact_index.validation"
+    "norad.reporting._artifact_index.validation"
 )
 
 
@@ -137,7 +137,7 @@ def run_cli(
         environment.update(extra_env)
     return subprocess.run(
         [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "artifact-index",
             *fixture.command_args(execute=execute),
@@ -302,7 +302,7 @@ def test_git_commit_routing_sanitization_is_explicit_and_complete(
 
     for name in GIT_ROUTING_VARIABLES:
         monkeypatch.setenv(name, f"hostile-{name}")
-    monkeypatch.setenv("EMRYS_GIT_ENV_SENTINEL", "retained")
+    monkeypatch.setenv("NORAD_GIT_ENV_SENTINEL", "retained")
     monkeypatch.setattr(ARTIFACT_CORE.subprocess, "run", observe_run)
 
     assert ARTIFACT_CORE.get_git_commit() == commit
@@ -329,7 +329,7 @@ def test_git_commit_routing_sanitization_is_explicit_and_complete(
     environment = sanitized_options["env"]
     assert isinstance(environment, dict)
     assert not any(name.startswith("GIT_") for name in environment)
-    assert environment["EMRYS_GIT_ENV_SENTINEL"] == "retained"
+    assert environment["NORAD_GIT_ENV_SENTINEL"] == "retained"
 
 
 def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
@@ -466,7 +466,7 @@ def test_help_and_dry_run_validate_all_sources_without_writing(
 ) -> None:
     help_result = subprocess.run(
         [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "artifact-index",
             "--help",
@@ -513,7 +513,7 @@ def test_public_cli_requires_both_source_authorities(
 
     result = subprocess.run(
         [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "artifact-index",
             *arguments,
@@ -1075,7 +1075,7 @@ def test_semantically_identical_moved_run_contract_can_retry(
 
     second = subprocess.run(
         [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "artifact-index",
             *arguments,

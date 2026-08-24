@@ -3,11 +3,11 @@ requires = ["setuptools==80.9.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "emrys-rna-workflow"
+name = "norad-rna-workflow"
 dynamic = ["version"]
 description = "Evidence-bound local RNA-seq and RNA-editing workflow"
 readme = "README.md"
-license = "LicenseRef-EMRYS-Source-Available-1.0"
+license = "LicenseRef-NORAD-Source-Available-1.0"
 license-files = ["LICENSE", "NOTICE", "LICENSES/*.txt"]
 requires-python = ">=3.11"
 classifiers = [
@@ -28,11 +28,11 @@ dependencies = [
 ]
 
 [project.urls]
-Repository = "https://github.com/lab-cats/EMRYS"
-Issues = "https://github.com/lab-cats/EMRYS/issues"
+Repository = "https://github.com/lab-cats/norad"
+Issues = "https://github.com/lab-cats/norad/issues"
 
 [project.scripts]
-emrys = "emrys.__main__:main"
+norad = "norad.__main__:main"
 
 [dependency-groups]
 dev = [
@@ -52,11 +52,11 @@ include-package-data = false
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["emrys*"]
+include = ["norad*"]
 namespaces = false
 
 [tool.setuptools.package-data]
-"emrys.contracts" = [
+"norad.contracts" = [
     "schemas/artifacts/v1/*.json",
     "schemas/artifacts/v2/*.json",
     "schemas/artifacts/v3/*.json",
@@ -65,11 +65,11 @@ namespaces = false
     "schemas/orchestration/v2/*.json",
     "schemas/orchestration/v3/*.json",
 ]
-"emrys.orchestration.local_pilot" = ["resources/*.yaml"]
-"emrys.reporting" = ["styles/*.css", "templates/*.html.j2"]
+"norad.orchestration.local_pilot" = ["resources/*.yaml"]
+"norad.reporting" = ["styles/*.css", "templates/*.html.j2"]
 
 [tool.setuptools.dynamic]
-version = { attr = "emrys.__version__" }
+version = { attr = "norad.__version__" }
 
 [tool.ruff]
 target-version = "py311"

@@ -17,17 +17,17 @@ from typing import Any
 import pytest
 from jinja2 import StrictUndefined, UndefinedError
 
-from emrys.libraries.source_authority import (
+from norad.libraries.source_authority import (
     ArtifactSourceRoot,
     SourceCheckout,
     controlled_python_argv,
 )
-from emrys.reporting import report as REPORT
-from emrys.reporting._run_report import computational as report_computational
-from emrys.reporting._run_report import context as report_context
-from emrys.reporting._run_report import publication, receipt, validation, view
-from emrys.reporting._run_report import scientific_context as report_scientific_context
-from emrys.reporting._run_report.models import (
+from norad.reporting import report as REPORT
+from norad.reporting._run_report import computational as report_computational
+from norad.reporting._run_report import context as report_context
+from norad.reporting._run_report import publication, receipt, validation, view
+from norad.reporting._run_report import scientific_context as report_scientific_context
+from norad.reporting._run_report.models import (
     JINJA_VERSION,
     LOGOMAKER_VERSION,
     MATPLOTLIB_VERSION,
@@ -49,7 +49,7 @@ def publish_run_summary(fixture: Any) -> Path:
     environment["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
     result = subprocess.run(
         [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "run-summary",
             *fixture.command_args(execute=True),
@@ -367,7 +367,7 @@ def publish(context: Any, ops: REPORT.ReportPublicationOps | None = None) -> Non
 def test_grouped_help_exposes_only_direct_html_contract(tmp_path: Path) -> None:
     result = subprocess.run(
         [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "report",
             "--help",
@@ -379,7 +379,7 @@ def test_grouped_help_exposes_only_direct_html_contract(tmp_path: Path) -> None:
     )
     missing = subprocess.run(
         [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
+            *controlled_python_argv(sys.executable, "-m", "norad"),
             "build",
             "report",
         ],
@@ -389,7 +389,7 @@ def test_grouped_help_exposes_only_direct_html_contract(tmp_path: Path) -> None:
         check=False,
     )
     assert result.returncode == 0
-    assert "usage: emrys build report" in result.stdout
+    assert "usage: norad build report" in result.stdout
     assert "--source-checkout" in result.stdout
     assert "--artifact-source-root" in result.stdout
     assert "--run-summary" in result.stdout
@@ -405,7 +405,7 @@ def test_source_checkout_is_admitted_before_report_inputs(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    invalid_checkout = tmp_path / "not-emrys"
+    invalid_checkout = tmp_path / "not-norad"
     invalid_checkout.mkdir()
     result = REPORT.build_from_args(
         argparse.Namespace(
@@ -498,7 +498,7 @@ def test_success_publishes_two_html_views_summary_and_v4_receipt_last(
     document = receipt_document(context.output_receipt)
     assert document["schema_version"] == "4.0.0"
     assert document["interpretation_boundary"] == (
-        "computational_candidates_only_biological_validation_outside_emrys"
+        "computational_candidates_only_biological_validation_outside_norad"
     )
     assert document["renderer"] == {"name": "Jinja2", "version": JINJA_VERSION}
     assert [item["kind"] for item in document["outputs"]] == [
@@ -638,7 +638,7 @@ def test_receipt_attributes_provenance_to_renderer_checkout(
     assert context.summary["provenance"]["git_commit"] == upstream_commit
     assert context.producer_git_commit != upstream_commit
     assert document["provenance"] == {
-        "producer": "emrys.reporting.report",
+        "producer": "norad.reporting.report",
         "producer_version": PRODUCER_VERSION,
         "git_commit": context.producer_git_commit,
         "created_at": context.summary["generated_at"],
@@ -712,12 +712,12 @@ def test_jinja_is_strict_autoescaped_and_template_owns_markup(
     assert "&lt;script src=&#34;https://evil.invalid/x.js&#34;&gt;" in content
     assert "<script" not in content.lower()
     assert 'src="https://evil.invalid' not in content
-    assert content.count('<style id="emrys-report-styles">') == 1
+    assert content.count('<style id="norad-report-styles">') == 1
 
 
 def test_template_rejects_additional_or_untrusted_safe_boundaries() -> None:
     source = (
-        files("emrys.reporting")
+        files("norad.reporting")
         .joinpath("templates/run_report.html.j2")
         .read_text(encoding="utf-8")
     )
@@ -732,7 +732,7 @@ def test_template_rejects_additional_or_untrusted_safe_boundaries() -> None:
 
 def test_scientific_print_styles_pin_static_nonoverflow_layout() -> None:
     source = (
-        files("emrys.reporting")
+        files("norad.reporting")
         .joinpath("styles/run_report.css")
         .read_text(encoding="utf-8")
     )
@@ -745,7 +745,7 @@ def test_scientific_print_styles_pin_static_nonoverflow_layout() -> None:
     assert "color: #17202a" in source
     assert '[data-report-view="scientific"] > .report-disclaimer:last-child' in source
     assert "display: none" in source
-    assert '[data-report-view="scientific"] .emrys-table-wrap' in source
+    assert '[data-report-view="scientific"] .norad-table-wrap' in source
     assert "overflow: visible" in source
     assert ".candidate-evidence-record {" in source
     assert "break-inside: auto" in source
@@ -782,7 +782,7 @@ def test_two_html_views_separate_science_from_operational_evidence(
     publish(context)
     scientific = context.output_scientific_html.read_text(encoding="utf-8")
     evidence = context.output_evidence_html.read_text(encoding="utf-8")
-    banner = "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE EMRYS."
+    banner = "COMPUTATIONAL RESULTS — BIOLOGICAL VALIDATION IS OUTSIDE NORAD."
 
     assert banner in scientific and banner in evidence
     assert 'data-report-view="scientific"' in scientific
@@ -862,7 +862,7 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert "unweighted means across manifest-defined replicates" in scientific
     assert "percentages therefore need not sum" in scientific
     assert "<details" not in scientific
-    assert '<div class="emrys-table-wrap emrys-table-wrap-wide"' not in scientific
+    assert '<div class="norad-table-wrap norad-table-wrap-wide"' not in scientific
     assert scientific.count("figure-takeaway") == len(SCIENTIFIC_FIGURE_IDS)
     assert scientific.count('class="figure-guide-entry"') == len(SCIENTIFIC_FIGURE_IDS)
     assert tuple(
@@ -1077,7 +1077,7 @@ def test_report_displays_print_first_selected_candidate_evidence(
     assert 'id="selected-candidate-index"' in content
     assert 'class="candidate-index-list"' in content
     assert 'class="candidate-index-record"' in content
-    assert '<table class="emrys-table candidate-index"' not in content
+    assert '<table class="norad-table candidate-index"' not in content
     assert '<th scope="col">Editing rate</th>' not in content
     assert 'id="candidate-evidence-1"' in content
     assert "candidate_1" in content

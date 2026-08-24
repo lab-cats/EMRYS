@@ -1,0 +1,719 @@
+:root {
+  --ink: #17202a;
+  --muted: #52606d;
+  --line: #cbd5e1;
+  --panel: #f8fafc;
+  --complete: #287a5d;
+  --missing: #64748b;
+  --incomplete: #b7791f;
+  --failed: #b42318;
+  --external: #6b5ca5;
+  --science-incomplete-bg: #7f1d1d;
+  --evidence-bg: #334155;
+}
+
+html {
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+
+body {
+  box-sizing: border-box;
+  margin: 0 auto;
+  max-width: 920px;
+  padding: 0 1.25rem 4rem;
+}
+
+main {
+  max-width: 100%;
+  min-width: 0;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+}
+
+h2 {
+  border-bottom: 2px solid var(--line);
+  margin-top: 2.5rem;
+  padding-bottom: 0.35rem;
+}
+
+code,
+pre {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.state-banner {
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 800;
+  left: 0;
+  letter-spacing: 0.02em;
+  margin: 0 -1.25rem 1.5rem;
+  padding: 0.8rem 1.25rem;
+  position: sticky;
+  right: 0;
+  text-align: center;
+  top: 0;
+  z-index: 1000;
+}
+
+.state-scientific-boundary {
+  background: var(--science-incomplete-bg);
+}
+
+.state-evidence-boundary {
+  background: var(--evidence-bg);
+}
+
+.report-disclaimer {
+  border: 2px solid var(--line);
+  font-weight: 700;
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+}
+
+.report-category-tabs {
+  display: grid;
+  gap: 0.7rem;
+  margin: 1.5rem 0;
+}
+
+.report-category {
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  max-width: 100%;
+  min-width: 0;
+  overflow: clip;
+}
+
+.report-category > summary {
+  background: #e2e8f0;
+  cursor: pointer;
+  font-size: 1.05rem;
+  font-weight: 800;
+  padding: 0.8rem 1rem;
+}
+
+.report-category[open] > summary {
+  background: var(--ink);
+  color: #fff;
+}
+
+.report-category-static {
+  border: 0;
+  overflow: visible;
+}
+
+.report-category-static > .report-category-body {
+  padding: 0;
+}
+
+.report-category-body {
+  min-width: 0;
+  padding: 0 1rem 1rem;
+}
+
+.report-category-body > .report-section:first-child h2 {
+  margin-top: 1.25rem;
+}
+
+.panel-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.status-panel,
+.empty-state,
+.notice,
+.provenance-note {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  padding: 0.8rem 1rem;
+}
+
+.status-panel h3 {
+  margin-top: 0;
+}
+
+.status-value {
+  font-size: 1.1rem;
+  font-weight: 800;
+}
+
+.metric-grid,
+.fact-grid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  margin: 1rem 0;
+}
+
+.metric-card,
+.fact-item {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  min-width: 0;
+  padding: 0.75rem 0.85rem;
+}
+
+.metric-card dt,
+.fact-item dt,
+.figure-guide-entry dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.metric-card dd,
+.fact-item dd,
+.figure-guide-entry dd {
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.metric-card dd {
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.fact-grid-block h3 {
+  margin-bottom: 0.5rem;
+}
+
+.fact-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0;
+}
+
+.candidate-index-summary > h3 {
+  margin-bottom: 0.65rem;
+}
+
+.candidate-index-list {
+  display: grid;
+  gap: 0.7rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.candidate-index-record {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-left: 0.3rem solid var(--complete);
+  border-radius: 0.35rem;
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: minmax(10rem, 0.75fr) minmax(0, 2.25fr);
+  min-width: 0;
+  padding: 0.7rem 0.8rem;
+}
+
+.candidate-index-heading,
+.candidate-index-id {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.candidate-index-facts {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  min-width: 0;
+}
+
+.candidate-index-facts > div {
+  min-width: 0;
+}
+
+.candidate-index-facts dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.025em;
+  text-transform: uppercase;
+}
+
+.candidate-index-facts dd {
+  margin: 0.2rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.candidate-rank {
+  color: var(--muted);
+}
+
+.candidate-status {
+  color: var(--muted);
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin: 0.15rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.candidate-gene {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 700;
+  margin-top: 0.2rem;
+  overflow-wrap: anywhere;
+}
+
+.candidate-evidence-record {
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  margin: 1.35rem 0;
+  padding: 0.9rem 1rem;
+}
+
+.candidate-evidence-record > h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.candidate-evidence-groups {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 0.8rem;
+}
+
+.candidate-evidence-group,
+.candidate-pair {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  min-width: 0;
+  padding: 0.7rem 0.8rem;
+}
+
+.candidate-evidence-group h4,
+.candidate-replicates h4,
+.candidate-motif-hits h4 {
+  margin: 0 0 0.5rem;
+}
+
+.candidate-evidence-group dl,
+.candidate-sample {
+  margin: 0;
+}
+
+.candidate-evidence-group dl > div,
+.candidate-sample > div {
+  display: grid;
+  gap: 0.45rem;
+  grid-template-columns: minmax(7.5rem, 0.8fr) minmax(0, 1.2fr);
+  padding: 0.2rem 0;
+}
+
+.candidate-evidence-group dt,
+.candidate-sample dt {
+  color: var(--muted);
+  font-size: 0.84rem;
+  font-weight: 750;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.candidate-evidence-group dd,
+.candidate-sample dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.candidate-replicates,
+.candidate-motif-hits {
+  margin-top: 1rem;
+}
+
+.candidate-pair + .candidate-pair {
+  margin-top: 0.7rem;
+}
+
+.candidate-pair > p {
+  margin: 0 0 0.45rem;
+}
+
+.candidate-pair-samples {
+  display: grid;
+  gap: 0.7rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.candidate-sample {
+  background: #fff;
+  border-left: 0.2rem solid var(--line);
+  min-width: 0;
+  padding: 0.45rem 0.55rem;
+}
+
+.norad-table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.norad-table-wrap-wide {
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+}
+
+.norad-table {
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin: 1rem 0;
+  min-width: 100%;
+  width: max-content;
+}
+
+.norad-table caption {
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.4rem 0;
+  text-align: left;
+}
+
+.norad-table th,
+.norad-table td {
+  border: 1px solid var(--line);
+  max-width: 24rem;
+  overflow-wrap: anywhere;
+  padding: 0.4rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.norad-table th {
+  background: #e2e8f0;
+  white-space: nowrap;
+}
+
+.artifact-overview {
+  border: 1px solid var(--line);
+  margin: 1rem 0;
+  max-width: 100%;
+}
+
+.scientific-figure {
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  margin: 1.25rem 0;
+  max-width: 100%;
+  padding: 0.8rem 1rem;
+}
+
+.scientific-figure h3 {
+  margin: 0;
+}
+
+.scientific-figure-assets {
+  display: grid;
+  gap: 1rem;
+  margin-top: 0.8rem;
+}
+
+.scientific-figure-image {
+  display: block;
+  height: auto;
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+.scientific-figure figcaption {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin-top: 0.75rem;
+}
+
+.figure-summary {
+  background: #eef6f2;
+  border-left: 0.3rem solid var(--complete);
+  margin: 0.75rem 0;
+  padding: 0.65rem 0.8rem;
+}
+
+.figure-unavailable {
+  margin: 0;
+}
+
+.figure-guide-entry {
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  margin: 1rem 0;
+  padding: 0.8rem 1rem;
+}
+
+.figure-guide-entry h3 {
+  margin: 0 0 0.65rem;
+}
+
+.figure-guide-entry dl {
+  display: grid;
+  gap: 0.65rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 0;
+}
+
+.figure-guide-entry dl > div {
+  min-width: 0;
+}
+
+[data-report-view="scientific"] .norad-table-wrap {
+  overflow: visible;
+}
+
+[data-report-view="scientific"] .norad-table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+[data-report-view="scientific"] .norad-table th {
+  white-space: normal;
+}
+
+.artifact-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  list-style: none;
+  padding: 0;
+}
+
+.artifact-legend li::before {
+  border-radius: 50%;
+  content: "";
+  display: inline-block;
+  height: 0.8rem;
+  margin-right: 0.35rem;
+  width: 0.8rem;
+}
+
+.legend-complete::before {
+  background: var(--complete);
+}
+
+.legend-missing::before {
+  background: var(--missing);
+}
+
+.legend-incomplete::before {
+  background: var(--incomplete);
+}
+
+.legend-failed::before {
+  background: var(--failed);
+}
+
+.legend-external::before {
+  background: var(--external);
+}
+
+.status-complete,
+.status-passed,
+.status-proven,
+.status-implemented,
+.status-recorded,
+.status-validated {
+  color: #176044;
+  font-weight: 700;
+}
+
+.status-failed,
+.status-replacement-required {
+  color: #9f1c13;
+  font-weight: 700;
+}
+
+.status-missing,
+.status-incomplete,
+.status-blocked,
+.status-pending,
+.status-provisional,
+.status-not-run,
+.status-not-implemented,
+.status-externally-unavailable,
+.status-mixed {
+  color: #81520b;
+  font-weight: 700;
+}
+
+@media print {
+  @page {
+    margin: 0.55in;
+  }
+
+  body {
+    max-width: none;
+    padding: 0;
+  }
+
+  .state-banner {
+    background: #fff;
+    border: 2px solid #17202a;
+    color: #17202a;
+    margin-left: 0;
+    margin-right: 0;
+    position: static;
+  }
+
+  [data-report-view="scientific"] > .report-disclaimer:last-child {
+    display: none;
+  }
+
+  .norad-table {
+    font-size: 8pt;
+  }
+
+  .report-category,
+  .scientific-figure,
+  .figure-guide-entry,
+  .metric-card,
+  .fact-item {
+    box-shadow: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  caption,
+  dt {
+    break-after: avoid-page;
+    page-break-after: avoid;
+  }
+
+  .metric-grid,
+  .fact-grid,
+  .metric-card,
+  .fact-item,
+  .candidate-index-record,
+  .candidate-evidence-group,
+  .candidate-pair,
+  .candidate-pair-batch,
+  .candidate-motif-hits,
+  .figure-guide-entry,
+  .figure-summary,
+  .figure-status-unavailable,
+  .notice,
+  .empty-state,
+  .provenance-note {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  .candidate-evidence-record {
+    border: 0;
+    border-radius: 0;
+    break-before: page;
+    break-inside: auto;
+    margin: 0;
+    padding: 0;
+    page-break-before: always;
+    page-break-inside: auto;
+  }
+
+  .candidate-evidence-groups {
+    gap: 0.55rem;
+  }
+
+  .candidate-evidence-group {
+    font-size: 9.5pt;
+    padding: 0.55rem 0.65rem;
+  }
+
+  .candidate-evidence-group dl > div {
+    gap: 0.35rem;
+    grid-template-columns: minmax(7rem, 0.7fr) minmax(0, 1.3fr);
+    padding: 0.1rem 0;
+  }
+
+  .candidate-evidence-group[data-evidence-group="editing-rate"] {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .candidate-evidence-group[data-evidence-group="statistical-evidence"] {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .candidate-evidence-group[data-evidence-group="location"] {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .candidate-evidence-group[data-evidence-group="nearby-motifs"] {
+    grid-column: 1 / -1;
+    grid-row: 3;
+  }
+
+  .candidate-evidence-record > .candidate-status,
+  .scientific-figure-multipanel .figure-summary,
+  .scientific-figure-multipanel .scientific-figure-image:last-child {
+    break-after: avoid-page;
+  }
+
+  .candidate-pair-batch {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  #primary-scientific-figures-section,
+  #supporting-scientific-figures-section,
+  #figure-guide-section,
+  #methods-data-note-section {
+    break-before: page;
+  }
+
+  .scientific-figure:not(.scientific-figure-multipanel) {
+    break-inside: avoid-page;
+    page-break-inside: avoid;
+  }
+
+  .figure-status-unavailable {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  .scientific-figure-assets {
+    display: block;
+  }
+
+  .scientific-figure-image + .scientific-figure-image {
+    margin-top: 0.75rem;
+  }
+
+  .scientific-figure-image {
+    break-inside: avoid-page;
+    height: auto;
+    max-height: 7.25in;
+    object-fit: contain;
+    page-break-inside: avoid;
+    width: 100%;
+  }
+}
+
+@media (max-width: 720px) {
+  .metric-grid,
+  .fact-grid,
+  .candidate-index-record,
+  .candidate-index-facts,
+  .candidate-evidence-groups,
+  .candidate-pair-samples,
+  .figure-guide-entry dl {
+    grid-template-columns: 1fr;
+  }
+}

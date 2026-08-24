@@ -13,9 +13,9 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(REPO_ROOT))
 
-from emrys import __main__ as emrys_cli  # noqa: E402
-from emrys.orchestration.local_pilot import control, lifecycle  # noqa: E402
-from emrys.orchestration.local_pilot.materialization import (  # noqa: E402
+from norad import __main__ as norad_cli  # noqa: E402
+from norad.orchestration.local_pilot import control, lifecycle  # noqa: E402
+from norad.orchestration.local_pilot.materialization import (  # noqa: E402
     AttemptPlan,
     initialize_run,
     publish_attempt,
@@ -83,15 +83,15 @@ def _control_ops(mode: str) -> control.ControlOps:
 def main() -> int:
     parser = argparse.ArgumentParser(
         description=(
-            "Exercise the public EMRYS parser and control plane with an explicit "
+            "Exercise the public NORAD parser and control plane with an explicit "
             "repository-only no-science dependency."
         )
     )
     parser.add_argument("mode", choices=("failure", "success"))
     arguments, command = parser.parse_known_args()
     if not command:
-        parser.error("one EMRYS command is required after mode")
-    return emrys_cli.main(
+        parser.error("one NORAD command is required after mode")
+    return norad_cli.main(
         command,
         local_pilot_control_ops=_control_ops(arguments.mode),
     )

@@ -32,8 +32,8 @@ else
     exit 0
 fi
 
-step08_engine="$repo_root/src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
-foreign_help_cwd="$(mktemp -d "${TMPDIR:-/tmp}/emrys-step08-help.XXXXXX")"
+step08_engine="$repo_root/src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
+foreign_help_cwd="$(mktemp -d "${TMPDIR:-/tmp}/norad-step08-help.XXXXXX")"
 cleanup_help_cwd() {
     rmdir "$foreign_help_cwd" 2>/dev/null || true
 }

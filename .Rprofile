@@ -1,44 +1,24 @@
 local({
-    legacy_selector_names <- c(
-        "NORAD_USE_RENV",
-        "NORAD_LOCAL_PILOT_R",
-        "NORAD_RENV_LIBRARY",
-        "NORAD_RENV_VERSION"
-    )
-    legacy_selector_values <- Sys.getenv(
-        legacy_selector_names, unset = NA_character_
-    )
-    legacy_selectors_present <- legacy_selector_names[
-        !is.na(legacy_selector_values)
-    ]
-    if (length(legacy_selectors_present) > 0L) {
-        stop(
-            "Legacy NORAD R selectors are not accepted by EMRYS: ",
-            paste(legacy_selectors_present, collapse = ", "),
-            ". Rename them to the corresponding EMRYS_* selectors."
-        )
-    }
-
-    use_renv <- Sys.getenv("EMRYS_USE_RENV", unset = "0")
+    use_renv <- Sys.getenv("NORAD_USE_RENV", unset = "0")
     if (!use_renv %in% c("0", "1")) {
-        stop("EMRYS_USE_RENV must be exactly 0 or 1.")
+        stop("NORAD_USE_RENV must be exactly 0 or 1.")
     }
 
-    local_pilot <- Sys.getenv("EMRYS_LOCAL_PILOT_R", unset = "0")
+    local_pilot <- Sys.getenv("NORAD_LOCAL_PILOT_R", unset = "0")
     if (!local_pilot %in% c("0", "1")) {
-        stop("EMRYS_LOCAL_PILOT_R must be exactly 0 or 1.")
+        stop("NORAD_LOCAL_PILOT_R must be exactly 0 or 1.")
     }
 
     if (identical(local_pilot, "1")) {
         if (!identical(use_renv, "1")) {
-            stop("EMRYS local-pilot R requires EMRYS_USE_RENV=1.")
+            stop("NORAD local-pilot R requires NORAD_USE_RENV=1.")
         }
         project_root <- Sys.getenv("RENV_PROJECT", unset = "")
-        selected_library <- Sys.getenv("EMRYS_RENV_LIBRARY", unset = "")
-        expected_renv_version <- Sys.getenv("EMRYS_RENV_VERSION", unset = "")
+        selected_library <- Sys.getenv("NORAD_RENV_LIBRARY", unset = "")
+        expected_renv_version <- Sys.getenv("NORAD_RENV_VERSION", unset = "")
         if (!nzchar(project_root) || !nzchar(selected_library) ||
             !nzchar(expected_renv_version)) {
-            stop("EMRYS local-pilot R selectors are incomplete.")
+            stop("NORAD local-pilot R selectors are incomplete.")
         }
         project_root <- normalizePath(project_root, winslash = "/", mustWork = TRUE)
         selected_library <- normalizePath(
@@ -53,25 +33,25 @@ local({
             ),
             profile_path
         )) {
-            stop("EMRYS local-pilot R did not select the reviewed project profile.")
+            stop("NORAD local-pilot R did not select the reviewed project profile.")
         }
         renv_description <- file.path(selected_library, "renv", "DESCRIPTION")
         if (!file.exists(renv_description)) {
-            stop("The selected EMRYS R library has no installed renv package.")
+            stop("The selected NORAD R library has no installed renv package.")
         }
         installed_renv <- base::read.dcf(
             renv_description, fields = "Version"
         )[[1L]]
         if (!identical(installed_renv, expected_renv_version)) {
             stop(
-                "The selected EMRYS R library has renv ", installed_renv,
+                "The selected NORAD R library has renv ", installed_renv,
                 "; expected ", expected_renv_version, "."
             )
         }
         .libPaths(selected_library)
         admitted_library <- normalizePath(.libPaths()[[1L]], winslash = "/")
         if (!identical(admitted_library, selected_library)) {
-            stop("R did not admit the selected EMRYS library first.")
+            stop("R did not admit the selected NORAD library first.")
         }
     } else if (identical(use_renv, "1")) {
         if (!nzchar(Sys.getenv("RENV_CONFIG_SANDBOX_ENABLED", unset = ""))) {
@@ -87,7 +67,7 @@ local({
             "activate.R"
         )
         if (!file.exists(activation_script)) {
-            stop("Missing EMRYS renv activation script: ", activation_script)
+            stop("Missing NORAD renv activation script: ", activation_script)
         }
         source(activation_script)
     }

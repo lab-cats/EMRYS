@@ -3,7 +3,7 @@ novogene_reference	genome_fasta	fasta	refs/novogene_ref/genome.fa	true	NA	Novoge
 novogene_reference	genome_fai	fai	refs/novogene_ref/genome.fa.fai	true	NA	Novogene	unknown	FASTA index
 novogene_reference	genome_dict	dict	refs/novogene_ref/genome.dict	true	NA	Novogene	unknown	Sequence dictionary
 novogene_reference	genome_gtf	gtf	refs/novogene_ref/genome.gtf	true	NA	Novogene	unknown	Delivered annotation; exact release unresolved
-novogene_reference	genome_bed	bed12	refs/novogene_ref/genome.bed	true	NA	EMRYS	derived_from_declared_gtf	Deterministic BED12
+novogene_reference	genome_bed	bed12	refs/novogene_ref/genome.bed	true	NA	NORAD	derived_from_declared_gtf	Deterministic BED12
 novogene_reference	star_chr_name	star_chr_name	refs/novogene_star_index/chrName.txt	true	NA	STAR	2.7.11b	STAR contig names
 novogene_reference	star_chr_length	star_chr_length	refs/novogene_star_index/chrLength.txt	true	NA	STAR	2.7.11b	STAR contig lengths
 novogene_reference	star_genome	star_index_file	refs/novogene_star_index/Genome	true	NA	STAR	2.7.11b	STAR genome index member

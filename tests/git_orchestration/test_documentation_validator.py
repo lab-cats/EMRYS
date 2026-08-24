@@ -25,7 +25,7 @@ JIT_SECTIONS = (
     "Documentation updates",
 )
 CANONICAL_H1S = {
-    "AGENTS.md": "# EMRYS safety guard",
+    "AGENTS.md": "# NORAD safety guard",
     "README.md": "# EMRYS: Epic Molecular Read Yield System",
     "docs/architecture/README.md": "# Architecture index",
     "docs/architecture/ARCHITECTURE.md": "# Current architecture",
@@ -35,7 +35,7 @@ CANONICAL_H1S = {
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
     "docs/design/ORCHESTRATION_CONTRACT.md": "# Local-pilot orchestration contract",
     "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
-    "docs/design/PIPELINE_PLAN.md": "# EMRYS pipeline plan",
+    "docs/design/PIPELINE_PLAN.md": "# NORAD pipeline plan",
     "docs/design/QUESTIONS.md": "# Open questions",
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
     "docs/operations/HANDOFF.md": "# Project handoff",
@@ -43,8 +43,8 @@ CANONICAL_H1S = {
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
     "docs/sitemap/README.md": "# Documentation sitemap",
-    "src/emrys/contracts/SOURCE_TOPOLOGY.md": "# Source ownership and dependency direction",
-    "src/emrys/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
+    "src/norad/contracts/SOURCE_TOPOLOGY.md": "# Source ownership and dependency direction",
+    "src/norad/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
 }
 SEMANTIC_OWNERS = (
     ("stage", "construct_STAR_index"),
@@ -94,12 +94,12 @@ SOURCE_OWNER_DIRECTORIES = {
     ("stage", "split_N_cigar_reads_with_GATK"): "split_n_cigar",
 }
 CROSS_CUTTING_DOCS = (
-    "src/emrys/contracts/artifacts/README.md",
-    "src/emrys/evidence/reference_provenance/README.md",
-    "src/emrys/evidence/runtime_availability/README.md",
-    "src/emrys/evidence/storage_inventory/README.md",
-    "src/emrys/ingestion/sample_manifest_admission/README.md",
-    "src/emrys/reporting/README.md",
+    "src/norad/contracts/artifacts/README.md",
+    "src/norad/evidence/reference_provenance/README.md",
+    "src/norad/evidence/runtime_availability/README.md",
+    "src/norad/evidence/storage_inventory/README.md",
+    "src/norad/ingestion/sample_manifest_admission/README.md",
+    "src/norad/reporting/README.md",
 )
 
 
@@ -161,10 +161,10 @@ def write_fixture(root: Path) -> Path:
     }
     files.update({path: f"{h1}\n" for path, h1 in CANONICAL_H1S.items()})
     identity_rows = [
-        f"| {kind} | Fixture | `{slug}` | `emrys.{kind}.{slug}.v1` | `00` |"
+        f"| {kind} | Fixture | `{slug}` | `norad.{kind}.{slug}.v1` | `00` |"
         for kind, slug in SEMANTIC_OWNERS
     ]
-    files["src/emrys/contracts/STAGE_MAP.md"] = (
+    files["src/norad/contracts/STAGE_MAP.md"] = (
         "# Semantic workflow identity and DAG\n\n" + "\n".join(identity_rows) + "\n"
     )
     files.update({path: "# Owner\n" for path in CROSS_CUTTING_DOCS})
@@ -172,10 +172,10 @@ def write_fixture(root: Path) -> Path:
     for kind, slug in SEMANTIC_OWNERS:
         domain = domain_by_kind[kind]
         source_directory = SOURCE_OWNER_DIRECTORIES.get((kind, slug), slug)
-        files[f"src/emrys/{domain}/{source_directory}/README.md"] = (
+        files[f"src/norad/{domain}/{source_directory}/README.md"] = (
             f"# `{slug}` owner\n"
         )
-        files[f"src/emrys/{domain}/{source_directory}/CONTRACT.md"] = (
+        files[f"src/norad/{domain}/{source_directory}/CONTRACT.md"] = (
             f"# `{slug}` {kind} contract\n"
         )
         files[f"tests/{domain}/{source_directory}/.keep"] = "fixture\n"
@@ -240,13 +240,13 @@ def test_rejects_missing_or_mislabeled_canonical_documents(tmp_path: Path) -> No
 
 def test_rejects_stage_map_and_owner_failures(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
-    (repository / "src/emrys/contracts/STAGE_MAP.md").write_text(
+    (repository / "src/norad/contracts/STAGE_MAP.md").write_text(
         "# Semantic workflow identity and DAG\n\n"
-        "| stage | Fixture | `STAGE-01` | `emrys.stage.STAGE-01.v1` | `00` |\n",
+        "| stage | Fixture | `STAGE-01` | `norad.stage.STAGE-01.v1` | `00` |\n",
         encoding="utf-8",
     )
-    (repository / "src/emrys/stages/star_index/CONTRACT.md").unlink()
-    (repository / "src/emrys/reporting/README.md").unlink()
+    (repository / "src/norad/stages/star_index/CONTRACT.md").unlink()
+    (repository / "src/norad/reporting/README.md").unlink()
 
     result = validate(repository, cwd=tmp_path)
 
@@ -257,7 +257,7 @@ def test_rejects_stage_map_and_owner_failures(tmp_path: Path) -> None:
 
 def test_rejects_missing_semantic_owner_after_valid_roster(tmp_path: Path) -> None:
     repository = write_fixture(tmp_path)
-    (repository / "src/emrys/stages/star_index/CONTRACT.md").unlink()
+    (repository / "src/norad/stages/star_index/CONTRACT.md").unlink()
     shutil.rmtree(repository / "tests/stages/gtf_to_bed12")
 
     result = validate(repository, cwd=tmp_path)

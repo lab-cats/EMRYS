@@ -4,7 +4,7 @@ This directory directly protects the curated computational artifact-contract API
 its shared import identity, the grouped validation route and private
 coordinator, schema registry, semantic validators, inventory compatibility,
 and CLI failure behavior. The detailed contract and supported validation command
-remain with the [artifact-contract owner](../../../src/emrys/contracts/artifacts/README.md).
+remain with the [artifact-contract owner](../../../src/norad/contracts/artifacts/README.md).
 
 [`fixtures/`](fixtures/) contains the tracked valid example documents used by
 this suite. Fixture and schema bytes are contract inputs: do not regenerate or

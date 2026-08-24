@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-producer="$repo_root/src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh"
+producer="$repo_root/src/norad/analyses/scientific_context_projection/scientific_context_projection.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 export REAL_SHA256_PYTHON="$repo_root/.venv/bin/python"
@@ -18,8 +18,8 @@ esac
 exec "${REAL_SHA256_PYTHON:?}" "$@"
 PYTHON_WRAPPER
 chmod +x "$python_wrapper"
-export EMRYS_SHA256_PYTHON="$python_wrapper"
-unset EMRYS_LOCAL_PILOT_R EMRYS_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$python_wrapper"
+unset NORAD_LOCAL_PILOT_R NORAD_RUN_TOKEN
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2

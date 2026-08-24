@@ -111,7 +111,7 @@ def test_oracle_executes_without_production_imports(
     real_import = builtins.__import__
 
     def reject_production_imports(name: str, *args, **kwargs):
-        if name.startswith(("emrys", "scripts", "step_09", "step09")):
+        if name.startswith(("norad", "scripts", "step_09", "step09")):
             raise AssertionError(f"independent oracle imported production code: {name}")
         return real_import(name, *args, **kwargs)
 

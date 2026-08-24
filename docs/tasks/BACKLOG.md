@@ -1,6 +1,6 @@
 # Backlog
 
-This is EMRYS's compact live inventory. Actionable items may be selected only
+This is NORAD's compact live inventory. Actionable items may be selected only
 after their open blockers are gone and a reviewed JIT card exists under
 [`cards/`](cards/). Proposal entries preserve questions but confer no roadmap,
 selection, implementation, or publication authority.
@@ -23,7 +23,7 @@ selection, implementation, or publication authority.
 
 - **Kind:** actionable
 - **Blocked by:** `CODEDOC-05`, `REVIEW-UX-03`
-- **Intent:** Build and forward-test a read-only-first skill for deterministic and semantic EMRYS documentation-health review after the practices are stable.
+- **Intent:** Build and forward-test a read-only-first skill for deterministic and semantic NORAD documentation-health review after the practices are stable.
 - **Boundaries:** Use the supported skill workflow; require approval for mutation; detect broken links, owner drift, task integrity, README/glossary/header gaps, and seeded failures without replacing the documentation gate.
 
 ## DOC-TASK-SCAN-01 — Scan documentation for future commitments
@@ -40,7 +40,7 @@ selection, implementation, or publication authority.
 - **Intent:** Design typed, language-neutral preprocessing profiles and optional analysis modules from concrete post-audit use cases.
 - **Boundaries:** No universal registry or scientific generalization before multiple proven cases; preserve artifact, evidence, and public-runner contracts.
 
-## FUT-CLI-03 — Installable EMRYS control plane
+## FUT-CLI-03 — Installable NORAD control plane
 
 - **Kind:** actionable
 - **Blocked by:** `AUDIT-99`
@@ -121,7 +121,7 @@ selection, implementation, or publication authority.
 
 - **Kind:** proposal
 - **Blocked by:** None
-- **Intent:** Explore a project-agnostic file-first kernel only from practices proven in EMRYS and a materially different repository.
+- **Intent:** Explore a project-agnostic file-first kernel only from practices proven in NORAD and a materially different repository.
 - **Boundaries:** Human-readable files and Git remain canonical; separate generic mechanics, project policy, and live state; adapters stay optional and nonauthoritative; correctness and semantic sufficiency outrank token savings.
 
 ## FUT-SITE-01 — CSU SLURM execution profile

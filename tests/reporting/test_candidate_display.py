@@ -9,10 +9,10 @@ from pathlib import Path
 
 import pytest
 
-from emrys.contracts.scientific_evidence import scientific_context, step09
-from emrys.reporting._run_report.candidate_display import build_candidate_display
-from emrys.reporting._run_report.inputs import _snapshot_regular
-from emrys.reporting._run_report.models import (
+from norad.contracts.scientific_evidence import scientific_context, step09
+from norad.reporting._run_report.candidate_display import build_candidate_display
+from norad.reporting._run_report.inputs import _snapshot_regular
+from norad.reporting._run_report.models import (
     ComputationalResults,
     ComputationalSampleManifest,
     ComputationalTable,

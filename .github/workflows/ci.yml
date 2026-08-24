@@ -197,8 +197,8 @@ jobs:
           rscript_bin="$(command -v Rscript)"
           make -s r-restore RSCRIPT_BIN="${rscript_bin}"
           renv_library="$({
-            EMRYS_USE_RENV=1 \
-            EMRYS_LOCAL_PILOT_R=0 \
+            NORAD_USE_RENV=1 \
+            NORAD_LOCAL_PILOT_R=0 \
             RENV_CONFIG_SANDBOX_ENABLED=FALSE \
             RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
             RENV_PROJECT="${GITHUB_WORKSPACE}" \
@@ -255,8 +255,8 @@ jobs:
       - name: Run opt-in clean-clone failure and resume proof
         shell: bash
         env:
-          EMRYS_FRESH_CLONE_E2E: "1"
-          EMRYS_FRESH_CLONE_E2E_SOURCE_ROOT: ${{ github.workspace }}
+          NORAD_FRESH_CLONE_E2E: "1"
+          NORAD_FRESH_CLONE_E2E_SOURCE_ROOT: ${{ github.workspace }}
         run: |
           set -euo pipefail
           fresh_clone="${{ steps.fresh-clone.outputs.path }}"
@@ -403,9 +403,9 @@ jobs:
         run: |
           set -euo pipefail
           PYTHONDONTWRITEBYTECODE=1 \
-            .venv/bin/python -m compileall -q scripts src/emrys tests
+            .venv/bin/python -m compileall -q scripts src/norad tests
           make -s validation-wheel-smoke
-          .venv/bin/python -I -m emrys validate manifest \
+          .venv/bin/python -I -m norad validate manifest \
             --manifest configs/samples.example.tsv
 
   python311-full-shards:

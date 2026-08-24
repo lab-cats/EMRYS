@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from emrys.orchestration.local_pilot import launcher_config
-from emrys.orchestration.local_pilot.launcher_config import (
+from norad.orchestration.local_pilot import launcher_config
+from norad.orchestration.local_pilot.launcher_config import (
     LauncherOverrides,
     load_launcher_plan,
 )
@@ -49,7 +49,7 @@ def _fixture(tmp_path: Path) -> LauncherFixture:
     return LauncherFixture(
         source_checkout=source_checkout,
         launcher_root=launcher_root,
-        config=launcher_root / "emrys.launcher.yaml",
+        config=launcher_root / "norad.launcher.yaml",
         log_dir=log_dir,
         request=request,
         workspace=tmp_path / "workspace",
@@ -60,7 +60,7 @@ def _fixture(tmp_path: Path) -> LauncherFixture:
 
 def _write_config(fixture: LauncherFixture, fragment: str = "") -> Path:
     fixture.config.write_text(
-        "schema_version: emrys.local-pilot-launcher.v1\n" + fragment,
+        "schema_version: norad.local-pilot-launcher.v1\n" + fragment,
         encoding="utf-8",
     )
     return fixture.config
@@ -70,22 +70,22 @@ def _environment(fixture: LauncherFixture) -> dict[str, str]:
     """Return a complete deterministic environment for packaged env defaults."""
 
     return {
-        "EMRYS_SLURM_ACCOUNT": "default-account",
-        "EMRYS_SLURM_PARTITION": "default-partition",
-        "EMRYS_SLURM_QOS": "default-qos",
-        "EMRYS_SLURM_CPUS": "4",
-        "EMRYS_SLURM_MEMORY": "site-default",
-        "EMRYS_SLURM_TIME": "00:30:00",
-        "EMRYS_SLURM_EXCLUSIVE": "0",
-        "EMRYS_SLURM_NODELIST": "",
-        "EMRYS_LOG_DIR": str(fixture.log_dir),
-        "EMRYS_REQUEST": str(fixture.request),
-        "EMRYS_WORKSPACE": str(fixture.workspace),
-        "EMRYS_RUNTIME_PROFILE": str(fixture.runtime_profile),
-        "EMRYS_MODULE_MODE": "none",
-        "EMRYS_MODULE_INIT": "",
-        "EMRYS_MODULES": "",
-        "EMRYS_SCRATCH_PARENT": str(fixture.scratch_parent),
+        "NORAD_SLURM_ACCOUNT": "default-account",
+        "NORAD_SLURM_PARTITION": "default-partition",
+        "NORAD_SLURM_QOS": "default-qos",
+        "NORAD_SLURM_CPUS": "4",
+        "NORAD_SLURM_MEMORY": "site-default",
+        "NORAD_SLURM_TIME": "00:30:00",
+        "NORAD_SLURM_EXCLUSIVE": "0",
+        "NORAD_SLURM_NODELIST": "",
+        "NORAD_LOG_DIR": str(fixture.log_dir),
+        "NORAD_REQUEST": str(fixture.request),
+        "NORAD_WORKSPACE": str(fixture.workspace),
+        "NORAD_RUNTIME_PROFILE": str(fixture.runtime_profile),
+        "NORAD_MODULE_MODE": "none",
+        "NORAD_MODULE_INIT": "",
+        "NORAD_MODULES": "",
+        "NORAD_SCRATCH_PARENT": str(fixture.scratch_parent),
     }
 
 
@@ -127,27 +127,6 @@ def test_missing_adjacent_launcher_config_uses_packaged_defaults(
     assert plan.partition == "default-partition"
     assert plan.exclusive is False
     assert plan.nodelist is None
-
-
-def test_legacy_adjacent_launcher_fails_closed_instead_of_using_defaults(
-    tmp_path: Path,
-) -> None:
-    fixture = _fixture(tmp_path)
-    legacy = fixture.launcher_root / "norad.launcher.yaml"
-    legacy.write_text("legacy launcher policy\n", encoding="utf-8")
-
-    with pytest.raises(
-        launcher_config.LauncherConfigError,
-        match="rename it to emrys.launcher.yaml",
-    ):
-        _load(fixture)
-
-    _write_config(fixture)
-    with pytest.raises(
-        launcher_config.LauncherConfigError,
-        match="Conflicting adjacent",
-    ):
-        _load(fixture)
 
 
 def test_tracked_csu_viking_ev_pum1_launcher_matches_outer_allocation(
@@ -215,23 +194,23 @@ def test_launcher_env_refs_prefer_process_environment_then_repo_dotenv(
     _write_config(
         fixture,
         "slurm:\n"
-        "  account: {env: EMRYS_SLURM_ACCOUNT}\n"
-        "  partition: {env: EMRYS_SLURM_PARTITION}\n"
-        "  exclusive: {env: EMRYS_SLURM_EXCLUSIVE}\n"
-        "  nodelist: {env: EMRYS_SLURM_NODELIST}\n",
+        "  account: {env: NORAD_SLURM_ACCOUNT}\n"
+        "  partition: {env: NORAD_SLURM_PARTITION}\n"
+        "  exclusive: {env: NORAD_SLURM_EXCLUSIVE}\n"
+        "  nodelist: {env: NORAD_SLURM_NODELIST}\n",
     )
     _write_dotenv(
         fixture,
-        "EMRYS_SLURM_ACCOUNT=dotenv-account\n"
-        "EMRYS_SLURM_PARTITION=dotenv-partition\n"
-        "EMRYS_SLURM_EXCLUSIVE=true\n"
-        "EMRYS_SLURM_NODELIST=compute-test[01-02]\n",
+        "NORAD_SLURM_ACCOUNT=dotenv-account\n"
+        "NORAD_SLURM_PARTITION=dotenv-partition\n"
+        "NORAD_SLURM_EXCLUSIVE=true\n"
+        "NORAD_SLURM_NODELIST=compute-test[01-02]\n",
     )
     environment = _environment(fixture)
-    environment["EMRYS_SLURM_ACCOUNT"] = "process-account"
-    environment.pop("EMRYS_SLURM_PARTITION")
-    environment.pop("EMRYS_SLURM_EXCLUSIVE")
-    environment.pop("EMRYS_SLURM_NODELIST")
+    environment["NORAD_SLURM_ACCOUNT"] = "process-account"
+    environment.pop("NORAD_SLURM_PARTITION")
+    environment.pop("NORAD_SLURM_EXCLUSIVE")
+    environment.pop("NORAD_SLURM_NODELIST")
 
     plan = _load(fixture, environment=environment)
 
@@ -247,8 +226,7 @@ def test_absent_repo_dotenv_is_allowed_when_process_env_satisfies_refs(
     fixture = _fixture(tmp_path)
     _write_config(
         fixture,
-        "slurm:\n"
-        "  account: {env: EMRYS_SLURM_ACCOUNT}\n",
+        "slurm:\n  account: {env: NORAD_SLURM_ACCOUNT}\n",
     )
 
     plan = _load(fixture)
@@ -266,8 +244,7 @@ def test_absent_repo_dotenv_is_allowed_when_process_env_satisfies_refs(
         ),
         ("unknown_launcher_field: value\n", "Additional properties|unknown"),
         (
-            "slurm:\n"
-            "  account: {env: EMRYS_SLURM_ACCOUNT, fallback: unsafe}\n",
+            "slurm:\n  account: {env: NORAD_SLURM_ACCOUNT, fallback: unsafe}\n",
             "Additional properties|environment reference",
         ),
         (
@@ -309,12 +286,12 @@ def test_shell_shaped_scalar_is_never_interpolated_or_executed(
     ("contents", "message"),
     (
         (
-            "EMRYS_SLURM_ACCOUNT=first\nEMRYS_SLURM_ACCOUNT=second\n",
+            "NORAD_SLURM_ACCOUNT=first\nNORAD_SLURM_ACCOUNT=second\n",
             "duplicate|Duplicate",
         ),
-        ("EMRYS_UNSUPPORTED_VALUE=private-value\n", "unknown|unsupported"),
-        ("export EMRYS_SLURM_ACCOUNT=private-value\n", "NAME=VALUE|variable"),
-        ("EMRYS_SLURM_ACCOUNT=private-value\r\n", "carriage return|CRLF"),
+        ("NORAD_UNSUPPORTED_VALUE=private-value\n", "unknown|unsupported"),
+        ("export NORAD_SLURM_ACCOUNT=private-value\n", "NAME=VALUE|variable"),
+        ("NORAD_SLURM_ACCOUNT=private-value\r\n", "carriage return|CRLF"),
     ),
 )
 def test_repo_dotenv_rejects_duplicate_unknown_and_shell_syntax(
@@ -325,12 +302,11 @@ def test_repo_dotenv_rejects_duplicate_unknown_and_shell_syntax(
     fixture = _fixture(tmp_path)
     _write_config(
         fixture,
-        "slurm:\n"
-        "  account: {env: EMRYS_SLURM_ACCOUNT}\n",
+        "slurm:\n  account: {env: NORAD_SLURM_ACCOUNT}\n",
     )
     _write_dotenv(fixture, contents)
     environment = _environment(fixture)
-    environment.pop("EMRYS_SLURM_ACCOUNT")
+    environment.pop("NORAD_SLURM_ACCOUNT")
 
     with pytest.raises(ValueError, match=message) as failure:
         _load(fixture, environment=environment)
@@ -342,15 +318,14 @@ def test_repo_dotenv_must_be_a_private_real_file(tmp_path: Path) -> None:
     fixture = _fixture(tmp_path)
     _write_config(
         fixture,
-        "slurm:\n"
-        "  account: {env: EMRYS_SLURM_ACCOUNT}\n",
+        "slurm:\n  account: {env: NORAD_SLURM_ACCOUNT}\n",
     )
     environment = _environment(fixture)
-    environment.pop("EMRYS_SLURM_ACCOUNT")
+    environment.pop("NORAD_SLURM_ACCOUNT")
 
     _write_dotenv(
         fixture,
-        "EMRYS_SLURM_ACCOUNT=world-readable\n",
+        "NORAD_SLURM_ACCOUNT=world-readable\n",
         mode=0o644,
     )
     with pytest.raises(ValueError, match="permissions|mode") as failure:
@@ -359,7 +334,7 @@ def test_repo_dotenv_must_be_a_private_real_file(tmp_path: Path) -> None:
 
     (fixture.source_checkout / ".env").unlink()
     target = tmp_path / "outside.env"
-    target.write_text("EMRYS_SLURM_ACCOUNT=linked-value\n", encoding="utf-8")
+    target.write_text("NORAD_SLURM_ACCOUNT=linked-value\n", encoding="utf-8")
     target.chmod(0o600)
     (fixture.source_checkout / ".env").symlink_to(target)
     with pytest.raises(ValueError, match="symlink|real regular file") as failure:
@@ -371,13 +346,12 @@ def test_missing_referenced_environment_value_fails_closed(tmp_path: Path) -> No
     fixture = _fixture(tmp_path)
     _write_config(
         fixture,
-        "slurm:\n"
-        "  account: {env: EMRYS_SLURM_ACCOUNT}\n",
+        "slurm:\n  account: {env: NORAD_SLURM_ACCOUNT}\n",
     )
     environment = _environment(fixture)
-    environment.pop("EMRYS_SLURM_ACCOUNT")
+    environment.pop("NORAD_SLURM_ACCOUNT")
 
-    with pytest.raises(ValueError, match="EMRYS_SLURM_ACCOUNT"):
+    with pytest.raises(ValueError, match="NORAD_SLURM_ACCOUNT"):
         _load(fixture, environment=environment)
 
 
@@ -397,26 +371,26 @@ def test_log_directory_rejects_slurm_percent_expansion(tmp_path: Path) -> None:
     "fragment",
     (
         "execute: true\n",
-        "slurm:\n  account: {env: EMRYS_EXECUTE}\n",
+        "slurm:\n  account: {env: NORAD_EXECUTE}\n",
     ),
 )
 def test_launcher_yaml_cannot_author_execution(fragment: str, tmp_path: Path) -> None:
     fixture = _fixture(tmp_path)
     _write_config(fixture, fragment)
     environment = _environment(fixture)
-    environment["EMRYS_EXECUTE"] = "1"
+    environment["NORAD_EXECUTE"] = "1"
 
-    with pytest.raises(ValueError, match="execute|EMRYS_EXECUTE|environment"):
+    with pytest.raises(ValueError, match="execute|NORAD_EXECUTE|environment"):
         _load(fixture, environment=environment)
 
 
-def test_emrys_execute_is_excluded_from_dotenv_process_env_and_overrides(
+def test_norad_execute_is_excluded_from_dotenv_process_env_and_overrides(
     tmp_path: Path,
 ) -> None:
     fixture = _fixture(tmp_path)
     _write_config(fixture)
     environment = _environment(fixture)
-    environment["EMRYS_EXECUTE"] = "1"
+    environment["NORAD_EXECUTE"] = "1"
 
     plan = _load(fixture, environment=environment)
 
@@ -424,8 +398,8 @@ def test_emrys_execute_is_excluded_from_dotenv_process_env_and_overrides(
     with pytest.raises(TypeError):
         LauncherOverrides(execute=True)  # type: ignore[call-arg]
 
-    _write_dotenv(fixture, "EMRYS_EXECUTE=1\n")
-    with pytest.raises(ValueError, match="EMRYS_EXECUTE|unknown|unsupported"):
+    _write_dotenv(fixture, "NORAD_EXECUTE=1\n")
+    with pytest.raises(ValueError, match="NORAD_EXECUTE|unknown|unsupported"):
         _load(fixture, environment=environment)
 
 
@@ -472,8 +446,8 @@ def test_submission_command_seals_exports_and_optional_slurm_flags(
     assert "--exclusive" in command
     assert "--nodelist=compute-[01-02]" in command
     exports = next(argument for argument in command if argument.startswith("--export="))
-    assert "EMRYS_EXECUTE=1" in exports
-    assert "EMRYS_MODULES=R/4.6.1:bcftools/1.22" in exports
+    assert "NORAD_EXECUTE=1" in exports
+    assert "NORAD_MODULES=R/4.6.1:bcftools/1.22" in exports
     assert command[-2:] == [str(wrapper), launcher_config.BATCH_MARKER]
 
     with pytest.raises(ValueError, match="unsafe for Slurm export"):
@@ -582,13 +556,13 @@ def _submit_fixture(
     parsed = parser.parse_args([str(wrapper), *arguments])
     environment = {
         **_environment(fixture),
-        "EMRYS_LAUNCHER_SOURCE_CHECKOUT": str(fixture.source_checkout),
-        "EMRYS_LAUNCHER_PYTHON": str(workflow_python),
+        "NORAD_LAUNCHER_SOURCE_CHECKOUT": str(fixture.source_checkout),
+        "NORAD_LAUNCHER_PYTHON": str(workflow_python),
         "USER": "test-user",
         "LOGNAME": "test-user",
         "PATH": "/opt/slurm/bin:/usr/bin:/bin",
         "SBATCH_ACCOUNT": "must-be-removed",
-        "EMRYS_EXECUTE": "must-be-removed",
+        "NORAD_EXECUTE": "must-be-removed",
     }
     return parsed, environment
 
@@ -631,10 +605,10 @@ def test_submit_from_args_calls_sbatch_once_with_scrubbed_environment(
     assert "--mem=8G" in command
     assert "--exclusive" in command
     assert "SBATCH_ACCOUNT" not in submitted_environment
-    assert "EMRYS_EXECUTE" not in submitted_environment
+    assert "NORAD_EXECUTE" not in submitted_environment
     output = capsys.readouterr().out
     assert "JOB_ID=605305" in output
-    assert "emrys-local-pilot-605305.out" in output
+    assert "norad-local-pilot-605305.out" in output
     assert "tail -n +1 -F" in output
 
 

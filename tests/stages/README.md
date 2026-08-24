@@ -18,7 +18,7 @@ This directory mirrors the ten computational stage owners.
   and
   [`cohort_candidate_preprocessing/`](cohort_candidate_preprocessing/README.md).
 
-The [stage-owner router](../../src/emrys/stages/README.md) owns exact identities,
+The [stage-owner router](../../src/norad/stages/README.md) owns exact identities,
 commands, transactions, recovery, and cross-stage placement. Protection here
 is predominantly local fixture or fake-tool evidence, with guarded real-R
 evidence only where explicitly stated; it is not cluster or production proof.
