@@ -9,6 +9,8 @@ on:
       - master
   merge_group:
   workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * *"
 
 permissions:
   contents: read
@@ -22,7 +24,8 @@ env:
   ACTIONLINT_LINUX_AMD64_SHA256: >-
     8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
   MINIMUM_PYTHON_VERSION: "3.11"
-  CURRENT_PYTHON_VERSION: "3.14"
+  PRIMARY_PYTHON_VERSION: "3.14"
+  PYTHON_TEST_SHARD_COUNT: "4"
   UV_VERSION: "0.12.3"
   R_VERSION: "4.6.1"
 
@@ -60,10 +63,73 @@ jobs:
           -pyflakes=
           -color
 
-  repository-gate:
-    name: Repository gate
+  static-wheel:
+    name: Static, lint, docs, and wheel
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 20
+    steps:
+      - name: Check out the triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up primary Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+
+      - name: Set up locked uv version
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Restore locked Python environment
+        shell: bash
+        run: uv sync --locked --group workflow --python python
+
+      - name: Run static, lint, documentation, and wheel checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -s validation-static
+          make -s validation-wheel-smoke
+
+  shell-slurm:
+    name: Shell and Slurm contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out the triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up primary Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+
+      - name: Set up locked uv version
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Restore locked Python environment
+        shell: bash
+        run: uv sync --locked --group workflow --python python
+
+      - name: Run shell and generated Slurm-wrapper contracts
+        shell: bash
+        run: make -s validation-shell-slurm
+
+  guarded-r:
+    name: Guarded R fixtures
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
       - name: Check out the triggering commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -78,10 +144,10 @@ jobs:
           printf 'RENV_PATHS_LIBRARY=%s/emrys-renv/library\n' \
             "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
 
-      - name: Set up minimum supported Python
+      - name: Set up primary Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
-          python-version: ${{ env.MINIMUM_PYTHON_VERSION }}
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
 
       - name: Set up locked uv version
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
@@ -144,12 +210,12 @@ jobs:
           test -d "${renv_library}"
           printf 'RENV_LIBRARY=%s\n' "${renv_library}" >> "${GITHUB_ENV}"
 
-      - name: Run complete repository validation gate
+      - name: Run guarded R environment and fixture checks
         shell: bash
-        run: make -s all-checks RSCRIPT_BIN="$(command -v Rscript)"
+        run: make -s validation-guarded-r RSCRIPT_BIN="$(command -v Rscript)"
 
   fresh-clone-e2e:
-    name: Fresh-clone E2E
+    name: Fresh-clone E2E (Python 3.14)
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -159,10 +225,10 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Set up minimum supported Python
+      - name: Set up primary Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
-          python-version: ${{ env.MINIMUM_PYTHON_VERSION }}
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
 
       - name: Set up locked uv version
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
@@ -198,20 +264,24 @@ jobs:
           .venv/bin/python -m pytest -q --tb=short \
             tests/orchestration/local_pilot/test_fresh_clone_e2e.py
 
-  python-compatibility:
-    name: Python 3.14 compatibility
+  python314-coverage-shards:
+    name: Python 3.14 tests + coverage (shard ${{ matrix.shard }})
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
     steps:
       - name: Check out the triggering commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
 
-      - name: Set up current Python
+      - name: Set up primary Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
         with:
-          python-version: ${{ env.CURRENT_PYTHON_VERSION }}
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
 
       - name: Set up locked uv version
         uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
@@ -224,13 +294,215 @@ jobs:
         shell: bash
         run: uv sync --locked --group workflow --python python
 
-      - name: Run current-Python static and behavioral checks
+      - name: Run complete-suite shard with live slow-test timings
+        shell: bash
+        run: >-
+          make -s python-coverage-shard
+          PYTHON_TEST_SHARD_INDEX=${{ matrix.shard }}
+          PYTHON_TEST_SHARD_COUNT=${{ env.PYTHON_TEST_SHARD_COUNT }}
+          PYTHON_COVERAGE_WORKERS=2
+
+      - name: Upload coverage fragment and selection receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: python314-coverage-shard-${{ matrix.shard }}
+          path: |
+            .coverage-work/.coverage.*
+            .coverage-work/python-test-shard-*.json
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7
+
+  python314-coverage:
+    name: Python 3.14 complete suite and coverage policy
+    needs: python314-coverage-shards
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out the triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up primary Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+
+      - name: Set up locked uv version
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Restore locked Python environment
+        shell: bash
+        run: uv sync --locked --group workflow --python python
+
+      - name: Download every coverage shard
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          pattern: python314-coverage-shard-*
+          path: .coverage-work/merged
+          merge-multiple: true
+
+      - name: Verify complete and disjoint shard receipts
+        shell: bash
+        run: >-
+          .venv/bin/python tests/tools/python_test_shards.py verify
+          --repo-root "${GITHUB_WORKSPACE}"
+          --receipt-dir "${GITHUB_WORKSPACE}/.coverage-work/merged"
+
+      - name: Require every behavioral shard to pass
+        shell: bash
+        run: test "${{ needs.python314-coverage-shards.result }}" = "success"
+
+      - name: Merge coverage and run isolated subprocess probes
+        shell: bash
+        run: >-
+          make -s python-coverage-finalize
+          PYTHON_COVERAGE_ROOT="${GITHUB_WORKSPACE}/.coverage-work/merged"
+
+      - name: Enforce reviewed Python coverage policy
+        shell: bash
+        run: >-
+          make -s python-coverage-enforce
+          PYTHON_COVERAGE_ROOT="${GITHUB_WORKSPACE}/.coverage-work/merged"
+
+  python311-smoke:
+    name: Python 3.11 compatibility smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out the triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up minimum supported Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ env.MINIMUM_PYTHON_VERSION }}
+
+      - name: Set up locked uv version
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Restore locked Python environment
+        shell: bash
+        run: uv sync --locked --group workflow --python python
+
+      - name: Compile, package, and invoke the supported minimum
         shell: bash
         run: |
           set -euo pipefail
-          make -s validation-static
-          .venv/bin/python -m pytest -q --tb=short -n 2 --dist=loadfile \
-            --ignore=tests/test_package_distribution.py \
-            --ignore=tests/test_slurm_wrapper_contracts.py
+          PYTHONDONTWRITEBYTECODE=1 \
+            .venv/bin/python -m compileall -q scripts src/norad tests
           make -s validation-wheel-smoke
-          make -s validation-shell-slurm
+          .venv/bin/python -I -m norad validate manifest \
+            --manifest configs/samples.example.tsv
+
+  python311-full-shards:
+    name: Python 3.11 nightly full suite (shard ${{ matrix.shard }})
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    steps:
+      - name: Check out the triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up minimum supported Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ env.MINIMUM_PYTHON_VERSION }}
+
+      - name: Set up locked uv version
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Restore locked Python environment
+        shell: bash
+        run: uv sync --locked --group workflow --python python
+
+      - name: Run complete-suite shard with live slow-test timings
+        shell: bash
+        run: >-
+          .venv/bin/python tests/tools/python_test_shards.py run
+          --repo-root "${GITHUB_WORKSPACE}"
+          --shard-index ${{ matrix.shard }}
+          --shard-count ${{ env.PYTHON_TEST_SHARD_COUNT }}
+          --workers 2
+          --receipt
+          "${GITHUB_WORKSPACE}/.test-shards/python-test-shard-${{ matrix.shard }}-of-${{ env.PYTHON_TEST_SHARD_COUNT }}.json"
+
+      - name: Upload selection receipt
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: python311-test-shard-${{ matrix.shard }}
+          path: .test-shards/python-test-shard-*.json
+          if-no-files-found: error
+          retention-days: 7
+
+  python311-full:
+    name: Python 3.11 nightly complete suite
+    needs: python311-full-shards
+    if: >-
+      always() &&
+      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out the triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up minimum supported Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ env.MINIMUM_PYTHON_VERSION }}
+
+      - name: Set up locked uv version
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Restore locked Python environment
+        shell: bash
+        run: uv sync --locked --group workflow --python python
+
+      - name: Download every Python 3.11 shard receipt
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          pattern: python311-test-shard-*
+          path: .test-shards/merged
+          merge-multiple: true
+
+      - name: Verify complete and disjoint shard receipts
+        shell: bash
+        run: >-
+          .venv/bin/python tests/tools/python_test_shards.py verify
+          --repo-root "${GITHUB_WORKSPACE}"
+          --receipt-dir "${GITHUB_WORKSPACE}/.test-shards/merged"
+
+      - name: Require every Python 3.11 shard to pass
+        shell: bash
+        run: test "${{ needs.python311-full-shards.result }}" = "success"

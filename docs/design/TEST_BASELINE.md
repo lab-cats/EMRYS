@@ -35,6 +35,17 @@ git diff -- tests/baselines/python_coverage.json
 make python-coverage-check
 ```
 
+CI measures the same behavioral inventory across four deterministic Python
+3.14 shards. [`python_test_shards.py`](../../tests/tools/python_test_shards.py)
+collects the complete inventory independently in every shard, balances known
+slow tests using the reviewed estimates in
+[`python_test_durations.json`](../../tests/baselines/python_test_durations.json),
+and records the exact selected node IDs before execution. The merge lane
+requires all four receipts to be complete, disjoint, current, and identical to
+the deterministic plan before combining coverage. The duration estimates
+affect scheduling only; they never select, skip, or change a test expectation.
+Each shard also reports its 50 slowest tests in the live job log.
+
 The compact snapshot records schema `2.0.0`, coverage.py `7.15.2`, exact
 repository totals, critical-owner aggregates, and route-specific subprocess
 evidence from a separate subprocess-only probe.
@@ -144,7 +155,7 @@ authoritative deterministic fallback:
 | Lane | What it validates | Deliberate exclusions |
 | --- | --- | --- |
 | Static preflight | Ruff and dead-code configuration, documentation structure, `git diff --check`, shell and SLURM syntax, Python compilation, and the example-manifest contract. | No behavior suite and no dependency restoration. |
-| Python coverage | The Python behavior suite with branch and traced-subprocess coverage, including pure-Python Jinja report rendering and publication. The two route-specific subprocess probes remain focused measurements inside this lane. | The isolated-wheel and SLURM-wrapper suites, which run in their owning lanes. |
+| Python coverage | The Python behavior suite with branch and traced-subprocess coverage, including pure-Python Jinja report rendering and publication. Local `make all-checks` runs the complete inventory in one process group; CI runs the same inventory as four receipt-verified shards. The two route-specific subprocess probes remain focused measurements inside this lane. | The isolated-wheel and SLURM-wrapper suites, which run in their owning lanes. |
 | Installed wheel | One offline wheel build, clean locked installation, packaged-schema/template/CSS checks, installed grouped CLI/resource probes, representative manifest validation, and installed Jinja rendering. | No replay of repository owner suites. |
 | Shell and SLURM | Shell behavior contracts, the repository-local R-selection shell contract, and SLURM wrapper directives, delegation, arguments, CWD, modules, outputs, and exits. | No general Python validator or reporting suite. |
 | Guarded real R | Locked-environment checks plus the Step `08` and Step `09` real-R contract suites. | No Python, reporting, shell, or wheel replay. |

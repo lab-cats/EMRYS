@@ -12,9 +12,6 @@ PYTHON_COVERAGE_NEW_SHARED_MODULES ?= \
 	src/norad/libraries/process_environment.py
 PYTHON_COVERAGE_NEW_SHARED_ARGS = $(foreach module,$(PYTHON_COVERAGE_NEW_SHARED_MODULES),--new-shared-module $(module))
 PYTHON_COVERAGE_NEW_SHARED_CHECK_ARGS = $(if $(strip $(PYTHON_COVERAGE_NEW_SHARED_MODULES)),--coverage-json "$(PYTHON_COVERAGE_RAW)" $(PYTHON_COVERAGE_NEW_SHARED_ARGS))
-PYTHON_COVERAGE_EXCLUDES := \
-	--ignore=tests/test_package_distribution.py \
-	--ignore=tests/test_slurm_wrapper_contracts.py
 PYTHON_SUBPROCESS_COVERAGE_DATA := $(PYTHON_COVERAGE_ROOT)/.coverage-subprocess
 PYTHON_SUBPROCESS_COVERAGE_RAW := $(PYTHON_COVERAGE_ROOT)/subprocess-coverage.json
 PYTHON_SUBPROCESS_COVERAGE_TESTS := \
@@ -124,17 +121,27 @@ local-real-r-test:
 		RSCRIPT_BIN_OVERRIDE="$(RSCRIPT_BIN)" \
 		$(MAKE) real-r-test
 
-python-coverage-measure:
+python-coverage-shard:
 	test "$$("$(REPORT_PYTHON_BIN)" -c \
 		'import importlib.metadata; print(importlib.metadata.version("coverage"))')" \
 		= "$(PYTHON_COVERAGE_VERSION)"
 	mkdir -p "$(PYTHON_COVERAGE_ROOT)"
 	COVERAGE_FILE="$(PYTHON_COVERAGE_DATA)" \
-		"$(REPORT_PYTHON_BIN)" -m coverage erase
-	COVERAGE_FILE="$(PYTHON_COVERAGE_DATA)" \
 		"$(REPORT_PYTHON_BIN)" -m coverage run \
-		--rcfile="$(CURDIR)/.coveragerc" -m pytest \
-		$(PYTHON_COVERAGE_EXCLUDES) $(PYTHON_COVERAGE_PYTEST_ARGS)
+		--rcfile="$(CURDIR)/.coveragerc" \
+		tests/tools/python_test_shards.py run \
+		--repo-root "$(CURDIR)" \
+		--shard-index "$(PYTHON_TEST_SHARD_INDEX)" \
+		--shard-count "$(PYTHON_TEST_SHARD_COUNT)" \
+		--workers "$(PYTHON_COVERAGE_WORKERS)" \
+		--duration-baseline "$(PYTHON_TEST_DURATION_BASELINE)" \
+		--receipt "$(PYTHON_TEST_SHARD_RECEIPT)"
+
+python-coverage-finalize:
+	test "$$("$(REPORT_PYTHON_BIN)" -c \
+		'import importlib.metadata; print(importlib.metadata.version("coverage"))')" \
+		= "$(PYTHON_COVERAGE_VERSION)"
+	mkdir -p "$(PYTHON_COVERAGE_ROOT)"
 	COVERAGE_FILE="$(PYTHON_COVERAGE_DATA)" \
 		"$(REPORT_PYTHON_BIN)" -m coverage combine -q \
 		"$(PYTHON_COVERAGE_ROOT)"
@@ -162,10 +169,23 @@ python-coverage-measure:
 		--subprocess-coverage-json "$(PYTHON_SUBPROCESS_COVERAGE_RAW)" \
 		--output "$(PYTHON_COVERAGE_CURRENT)"
 
-python-coverage-check: python-coverage-measure
+python-coverage-measure:
+	mkdir -p "$(PYTHON_COVERAGE_ROOT)"
+	COVERAGE_FILE="$(PYTHON_COVERAGE_DATA)" \
+		"$(REPORT_PYTHON_BIN)" -m coverage erase
+	$(MAKE) -s python-coverage-shard \
+		PYTHON_TEST_SHARD_INDEX=0 \
+		PYTHON_TEST_SHARD_COUNT=1 \
+		PYTHON_TEST_SHARD_RECEIPT="$(PYTHON_COVERAGE_ROOT)/python-test-shard-0-of-1.json"
+	$(MAKE) -s python-coverage-finalize
+
+python-coverage-enforce:
 	"$(REPORT_PYTHON_BIN)" tests/tools/python_coverage_baseline.py check \
 		--baseline "$(PYTHON_COVERAGE_BASELINE)" \
 		--current "$(PYTHON_COVERAGE_CURRENT)"$(if $(PYTHON_COVERAGE_NEW_SHARED_CHECK_ARGS), $(PYTHON_COVERAGE_NEW_SHARED_CHECK_ARGS))
+
+python-coverage-check: python-coverage-measure
+	$(MAKE) -s python-coverage-enforce
 
 python-coverage-baseline-update: python-coverage-measure
 	cp "$(PYTHON_COVERAGE_CURRENT)" "$(PYTHON_COVERAGE_BASELINE)"
