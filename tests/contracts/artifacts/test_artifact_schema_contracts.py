@@ -14,9 +14,9 @@ from typing import Any
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
-from norad import __main__ as norad_main
-from norad.contracts.artifacts import api as contracts
-from norad.contracts.artifacts._artifact_contracts import (
+from emrys import __main__ as emrys_main
+from emrys.contracts.artifacts import api as contracts
+from emrys.contracts.artifacts._artifact_contracts import (
     identity,
     run_summary_validation,
 )
@@ -44,7 +44,7 @@ def test_validate_document_and_dispatcher_use_live_api_hooks(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    arguments = norad_main.build_parser().parse_args(
+    arguments = emrys_main.build_parser().parse_args(
         [
             "validate",
             "artifact-contracts",
@@ -147,7 +147,7 @@ def run_cli(*arguments: str) -> subprocess.CompletedProcess[str]:
             sys.executable,
             "-I",
             "-m",
-            "norad",
+            "emrys",
             "validate",
             "artifact-contracts",
             *arguments,
@@ -187,17 +187,17 @@ def test_all_tracked_schemas_are_valid_draft_2020_12_and_local_only() -> None:
             if isinstance(value, dict):
                 reference = value.get("$ref")
                 if reference is not None:
-                    assert reference.startswith(("urn:norad:", "#"))
+                    assert reference.startswith(("urn:emrys:", "#"))
                 stack.extend(value.values())
             elif isinstance(value, list):
                 stack.extend(value)
 
     report_schema = schemas["report-receipt"]
-    assert report_schema["$id"] == "urn:norad:schema:artifacts:report-receipt:v4"
+    assert report_schema["$id"] == "urn:emrys:schema:artifacts:report-receipt:v4"
     assert report_schema["properties"]["schema_version"]["const"] == "4.0.0"
     historical = read_json(
         REPO_ROOT
-        / "src/norad/contracts/schemas/artifacts/v3/report_receipt.schema.json"
+        / "src/emrys/contracts/schemas/artifacts/v3/report_receipt.schema.json"
     )
     assert historical["properties"]["schema_version"]["const"] == "3.0.0"
 
@@ -1261,7 +1261,7 @@ def test_duplicate_json_keys_are_rejected_before_schema_validation(
 ) -> None:
     duplicate = tmp_path / "duplicate.json"
     duplicate.write_text(
-        '{"schema_name":"norad.artifact_record","schema_name":"duplicate"}\n',
+        '{"schema_name":"emrys.artifact_record","schema_name":"duplicate"}\n',
         encoding="utf-8",
     )
 

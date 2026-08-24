@@ -8,14 +8,14 @@ from pathlib import Path
 
 import pytest
 
-import norad.evidence.storage_inventory._storage_contract as contract
-import norad.evidence.storage_inventory._storage_measurement as measurement
-import norad.evidence.storage_inventory._storage_publication as publication
-from norad import __main__ as norad_main
-from norad.evidence.storage_inventory import qualification
+import emrys.evidence.storage_inventory._storage_contract as contract
+import emrys.evidence.storage_inventory._storage_measurement as measurement
+import emrys.evidence.storage_inventory._storage_publication as publication
+from emrys import __main__ as emrys_main
+from emrys.evidence.storage_inventory import qualification
 
 ROOT = Path(__file__).resolve().parents[3]
-COMMAND = (sys.executable, "-I", "-m", "norad", "inspect", "storage-inventory")
+COMMAND = (sys.executable, "-I", "-m", "emrys", "inspect", "storage-inventory")
 ROOT_HEADER = "storage_id\tpath\trequired\tpurpose\tquota_bytes_expected\tnotes\n"
 POLICY_HEADER = (
     "policy_id\tstorage_id\tartifact_class\taction\tretention_days\t"
@@ -266,7 +266,7 @@ def test_contract_mutation_after_measurement_fails_before_publication(
         return generated
 
     monkeypatch.setattr(measurement, "outputs", render_then_mutate)
-    status = norad_main.main(
+    status = emrys_main.main(
         [
             "inspect",
             "storage-inventory",
@@ -472,8 +472,8 @@ def test_two_phase_storage_qualification_is_durable_and_read_only_to_doctor(
     )
     assert admitted.receipt_path.is_file()
     assert len(admitted.receipt_sha256) == 64
-    assert not list(tmp_path.glob(".norad-storage-probe-*"))
-    assert not list(reference_root.glob(".norad-storage-probe-*"))
+    assert not list(tmp_path.glob(".emrys-storage-probe-*"))
+    assert not list(reference_root.glob(".emrys-storage-probe-*"))
 
 
 def test_storage_finalize_refuses_missing_post_allocation_probe(
@@ -498,7 +498,7 @@ def test_storage_finalize_refuses_missing_post_allocation_probe(
     )
     monkeypatch.setenv("SLURM_JOB_ID", "700124")
     assert qualification.qualify_from_args(arguments) == 0
-    retained = next(tmp_path.glob(".norad-storage-probe-*/visible.bin"))
+    retained = next(tmp_path.glob(".emrys-storage-probe-*/visible.bin"))
     retained.unlink()
 
     monkeypatch.delenv("SLURM_JOB_ID")

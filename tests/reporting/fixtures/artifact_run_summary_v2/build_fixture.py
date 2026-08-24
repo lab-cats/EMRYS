@@ -12,12 +12,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
-from norad.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
-from norad.reporting._artifact_index import context as ARTIFACT_CONTEXT
-from norad.reporting._artifact_index import core as ARTIFACT_CORE
-from norad.reporting._artifact_index import models as ARTIFACT_MODELS
-from norad.reporting._artifact_index import publication as ARTIFACT_PUBLICATION
+from emrys.contracts.artifacts import api as ARTIFACT_CONTRACTS
+from emrys.libraries.source_authority import ArtifactSourceRoot, SourceCheckout
+from emrys.reporting._artifact_index import context as ARTIFACT_CONTEXT
+from emrys.reporting._artifact_index import core as ARTIFACT_CORE
+from emrys.reporting._artifact_index import models as ARTIFACT_MODELS
+from emrys.reporting._artifact_index import publication as ARTIFACT_PUBLICATION
 from tests.reporting.fixtures.artifact_adapters_v1 import (
     build_fixture as ADAPTER_FIXTURE,
 )

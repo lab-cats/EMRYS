@@ -16,14 +16,14 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from norad.contracts.orchestration import api as orchestration_contracts
-from norad.contracts.orchestration.projection import build_reporting_bundle
-from norad.contracts.scientific_evidence import scientific_context, step08, step09
-from norad.libraries.source_authority import controlled_python_argv
-from norad.orchestration.local_pilot import inspection
-from norad.orchestration.local_pilot.lifecycle import build_snakemake_argv
-from norad.orchestration.local_pilot.normalization import normalize_request
-from norad.reporting._artifact_index.registry import ADAPTER_REGISTRY
+from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.projection import build_reporting_bundle
+from emrys.contracts.scientific_evidence import scientific_context, step08, step09
+from emrys.libraries.source_authority import controlled_python_argv
+from emrys.orchestration.local_pilot import inspection
+from emrys.orchestration.local_pilot.lifecycle import build_snakemake_argv
+from emrys.orchestration.local_pilot.normalization import normalize_request
+from emrys.reporting._artifact_index.registry import ADAPTER_REGISTRY
 from tests.reporting.fixtures.artifact_adapters_v1.build_fixture import (
     minimal_bai_bytes,
     minimal_bam_bytes,
@@ -42,7 +42,7 @@ OWNER_ARTIFACT_DOUBLE = Path(__file__).with_name("owner_artifact_double.py").res
 
 def _resource_policy() -> dict[str, Any]:
     effective = {
-        "schema_version": "norad.local-pilot-resources.v1",
+        "schema_version": "emrys.local-pilot-resources.v1",
         "workflow_cores": 1,
         "workflow_memory_mb": 1024,
         "stage_concurrency": {
@@ -171,7 +171,7 @@ def materialize_active_run_lock(built: WorkflowFixture) -> Path:
     )
     identifier = str(attempt["workflow_attempt_id"])
     record = {
-        "schema_version": "norad.run-lock.v1",
+        "schema_version": "emrys.run-lock.v1",
         "run_id": attempt["run_id"],
         "workflow_attempt_id": identifier,
         "attempt_record_path": f"attempts/{identifier}/attempt.json",
@@ -258,7 +258,7 @@ def _terminalize_active_attempt(
             for state in ("start", "verified")
         }
     receipt = {
-        "schema_version": "norad.attempt-receipt.v1",
+        "schema_version": "emrys.attempt-receipt.v1",
         "run_id": attempt["run_id"],
         "execution_contract_sha256": attempt["execution_contract_sha256"],
         "profile_sha256": attempt["profile_sha256"],
@@ -729,7 +729,7 @@ def artifact_payloads(
         path = Path(str(row["source_path"]))
         return path if path.is_absolute() else artifact_source_root / path
 
-    with tempfile.TemporaryDirectory(prefix="norad-context-fixture-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="emrys-context-fixture-") as temporary:
         temporary_root = Path(temporary)
         temporary_all = temporary_root / "all.tsv"
         temporary_significant = temporary_root / "significant.tsv"
@@ -742,7 +742,7 @@ def artifact_payloads(
         temporary_fai.write_bytes(payloads[str(reference_fai_row["source_path"])])
         motif_catalog = (
             REPO_ROOT
-            / "src/norad/analyses/scientific_context_projection/resources/pum_motifs_v1.tsv"
+            / "src/emrys/analyses/scientific_context_projection/resources/pum_motifs_v1.tsv"
         )
         context_fixture = build_transaction(
             temporary_root / "context",
@@ -924,7 +924,7 @@ def _write_dispatch(
             }
         )
     record = {
-        "schema_version": "norad.local-task-dispatch.v1",
+        "schema_version": "emrys.local-task-dispatch.v1",
         "run_root": str(run_root),
         "execution_path": str(execution_path),
         "profile_path": str(run_root / "contract" / "profile.json"),
@@ -1003,7 +1003,7 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
     attempt_request_path = workflow_attempt_path.parent / "request.yaml"
     git_commit = source_checkout_commit()
     attempt = {
-        "schema_version": "norad.workflow-attempt.v1",
+        "schema_version": "emrys.workflow-attempt.v1",
         "run_id": execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(
             normalized.normalized_bytes
@@ -1028,7 +1028,7 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
             "analysis_policy": None,
         },
         "normalizer": {
-            "name": "norad",
+            "name": "emrys",
             "version": "0.1.0",
             "path": sys.executable,
             "resolved_path": str(Path(sys.executable).resolve(strict=True)),

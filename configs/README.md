@@ -11,21 +11,21 @@ checkout**. Both forms are dry-run-first; the output must be an absolute absent
 directory beneath an existing writable real parent:
 
 ```sh
-norad init local-pilot --output-dir /absolute/absent/norad-inputs
-norad init local-pilot \
-  --output-dir /absolute/absent/norad-inputs \
+emrys init local-pilot --output-dir /absolute/absent/emrys-inputs
+emrys init local-pilot \
+  --output-dir /absolute/absent/emrys-inputs \
   --execute
 ```
 
-The execute form publishes `request.yaml`, `norad.launcher.yaml`,
-`norad.resources.yaml`, `samples.tsv`, `partitions.tsv`, `runtime.tsv`,
+The execute form publishes `request.yaml`, `emrys.launcher.yaml`,
+`emrys.resources.yaml`, `samples.tsv`, `partitions.tsv`, `runtime.tsv`,
 executable `run-in-slurm.sh`, and then `starter-set.manifest.tsv` last. The
 manifest proves only the initial generated starter; expected data/config edits
 make those original hashes historical.
 
 Keep the authored request, launcher and resource configurations, manifests,
 selected runtime profile, and source data together for the life of the run.
-NORAD binds the scientific inputs into run identity and snapshots the effective
+EMRYS binds the scientific inputs into run identity and snapshots the effective
 workflow resource policy for each attempt; changing either is not a way to
 repair an entered attempt.
 
@@ -35,10 +35,10 @@ This layout makes every data path relative to the request and keeps the
 checkout clean:
 
 ```text
-norad-inputs/
+emrys-inputs/
 |-- request.yaml
-|-- norad.launcher.yaml
-|-- norad.resources.yaml
+|-- emrys.launcher.yaml
+|-- emrys.resources.yaml
 |-- samples.tsv
 |-- partitions.tsv
 |-- runtime.tsv
@@ -64,36 +64,36 @@ results in the checkout.
 
 Authored paths may be absolute or relative to the directory containing the
 request. They must be explicit: no `~`, environment variables, templates,
-globs, redundant separators, or `.`/`..` components. NORAD does not search for
+globs, redundant separators, or `.`/`..` components. EMRYS does not search for
 files or infer which sample, reference, or runtime you intended.
 
 ## Launcher configuration and private site values
 
 [`local_pilot_launcher.example.yaml`](local_pilot_launcher.example.yaml) is
-published as `norad.launcher.yaml` beside `run-in-slurm.sh`. It controls the
+published as `emrys.launcher.yaml` beside `run-in-slurm.sh`. It controls the
 single outer Slurm allocation, launcher paths, and module setup. It is separate
-from `norad.resources.yaml`, which controls Snakemake's workflow resources
+from `emrys.resources.yaml`, which controls Snakemake's workflow resources
 inside that allocation.
 
 Launcher precedence is packaged defaults, adjacent or explicitly selected
 launcher YAML, then explicit `run-in-slurm.sh` options. A YAML value may be a
-literal or the exact structured form `{env: NORAD_NAME}` allowed for that
-field. NORAD does not perform `$VAR`, command, shell, template, or arbitrary
+literal or the exact structured form `{env: EMRYS_NAME}` allowed for that
+field. EMRYS does not perform `$VAR`, command, shell, template, or arbitrary
 environment interpolation.
 
 Structured references read the invocation environment first and then the
 source-checkout root `.env` for missing values. Copy the tracked
 [`../.env.example`](../.env.example) to `.env` at that root, keep only the
-site/private NORAD values used by your launcher YAML, and set mode `0600`.
+site/private EMRYS values used by your launcher YAML, and set mode `0600`.
 The real `.env` is Git-ignored; it must be an owner-controlled nonsymlink file.
 Unknown variables, duplicates, shell syntax, loose permissions, and
-`NORAD_EXECUTE` fail admission without printing private values.
+`EMRYS_EXECUTE` fail admission without printing private values.
 
 The launcher requests its configured CPUs, memory, time, placement, and node
 selection; these are not lower bounds or workflow measurements. `exclusive:
 true` emits `--exclusive`, while a nonempty `nodelist` emits one exact
 `--nodelist=...`. Review the outer request together with the effective
-`norad.resources.yaml` so workflow totals fit inside the allocation.
+`emrys.resources.yaml` so workflow totals fit inside the allocation.
 
 Execution is deliberately absent from launcher YAML and `.env`. Invoking the
 wrapper without a mode flag submits a no-write plan. Only the explicit
@@ -112,9 +112,9 @@ merge keys are rejected.
 
 | Field | Meaning | How to choose it |
 | --- | --- | --- |
-| `schema_version` | Request contract version. | Keep `norad.request.v3`. |
+| `schema_version` | Request contract version. | Keep `emrys.request.v3`. |
 | `label` | Optional human label. It does not affect the run ID. | Use a short description for operators. |
-| `profile` | Fixed automatic workflow. | Keep `norad.profile.local_cmh.v2`. There is no public alternate profile. |
+| `profile` | Fixed automatic workflow. | Keep `emrys.profile.local_cmh.v2`. There is no public alternate profile. |
 | `sample_manifest` | Sample TSV path. | Point to the matched sample manifest, normally beside the request. |
 | `partition_manifest` | Genomic partition TSV path. | Point to the matched partition manifest. |
 | `reference.id` | Stable reference-build identity. | Use a safe ID such as `grch38_gencode_v47`; do not use a filename as a substitute for provenance. |
@@ -128,8 +128,8 @@ merge keys are rejected.
 
 Execution resources are separate from scientific run intent. The optional
 [`local_pilot_resources.example.yaml`](local_pilot_resources.example.yaml) is
-published by `norad init local-pilot` as `norad.resources.yaml` beside
-`request.yaml`. If that adjacent file is absent, NORAD uses its packaged
+published by `emrys init local-pilot` as `emrys.resources.yaml` beside
+`request.yaml`. If that adjacent file is absent, EMRYS uses its packaged
 conservative defaults. An explicitly selected `--resource-config` replaces
 adjacent discovery, and individual resource CLI options override the selected
 YAML and packaged defaults.
@@ -147,20 +147,20 @@ The tracked
 [`local_pilot_resources.csu_viking_ev_pum1.yaml`](local_pilot_resources.csu_viking_ev_pum1.yaml)
 is the workload-specific retained policy for the six-library EV/PUM1 run on
 CSU Viking node002. It is not a packaged default or a general CSU profile.
-Copy it to the matched operator input directory as `norad.resources.yaml` only
+Copy it to the matched operator input directory as `emrys.resources.yaml` only
 for that workload and its reviewed exclusive 256-CPU node allocation. The
 workflow exposes 12 schedulable cores to Snakemake while retaining 524,288 MiB
 as its internal memory budget; unmodeled JVM/native helper threads remain
 bounded by the outer exclusive allocation.
 Copy the matching
 [`local_pilot_launcher.csu_viking_ev_pum1.yaml`](local_pilot_launcher.csu_viking_ev_pum1.yaml)
-as the adjacent `norad.launcher.yaml`. It requests all 256 CPUs and exclusive
+as the adjacent `emrys.launcher.yaml`. It requests all 256 CPUs and exclusive
 node placement but deliberately leaves memory at `site-default`, matching
 Viking's no-explicit-memory site policy. Its 12-hour walltime is conservative
 operator headroom rather than a benchmark result; private site values and
 operator paths remain references to the ignored source-checkout root `.env`.
 
-NORAD rejects a policy when concurrency multiplied by per-job threads exceeds
+EMRYS rejects a policy when concurrency multiplied by per-job threads exceeds
 workflow cores, when concurrency multiplied by per-job memory exceeds workflow
 memory, or when workflow totals exceed the process-visible outer allocation.
 The effective policy, source digests, explicit override paths, and observed
@@ -225,10 +225,10 @@ Do not use technical lanes as independent biological strata unless that is the
 declared experimental design. Merge or model lanes according to an approved
 upstream policy before authoring this manifest.
 
-NORAD checks the declared FASTQ files and binds their bytes, but the request
+EMRYS checks the declared FASTQ files and binds their bytes, but the request
 contract does not prove sample provenance or complete record-level pairing.
 Confirm checksums from the sequencing provider and use the paired-FASTQ
-diagnostic described in the [ingestion owner](../src/norad/ingestion/sample_manifest_admission/README.md)
+diagnostic described in the [ingestion owner](../src/emrys/ingestion/sample_manifest_admission/README.md)
 when appropriate.
 
 ## Partition manifest
@@ -251,7 +251,7 @@ all declared counts and receipts reconcile.
 ## Runtime profile
 
 [`local_pilot_runtime.example.tsv`](local_pilot_runtime.example.tsv) is a
-fixed admission roster, not a shell setup script. It tells NORAD exactly which
+fixed admission roster, not a shell setup script. It tells EMRYS exactly which
 already-installed executables, jar, Python environment, R project/library, and
 R namespaces to use.
 
@@ -277,9 +277,9 @@ It renders the complete fixed TSV to stdout; redirect it only to a new absent
 file:
 
 ```sh
-test ! -e /absolute/norad-inputs/runtime.selected.tsv && (
+test ! -e /absolute/emrys-inputs/runtime.selected.tsv && (
   set -C
-  norad prepare local-pilot-runtime \
+  emrys prepare local-pilot-runtime \
     --bash /canonical/path/to/bash \
     --star /canonical/path/to/STAR \
     --samtools /canonical/path/to/samtools \
@@ -291,7 +291,7 @@ test ! -e /absolute/norad-inputs/runtime.selected.tsv && (
     --picard-jar /canonical/path/to/picard.jar \
     --rscript /canonical/path/to/Rscript \
     --renv-library /canonical/path/to/renv-library \
-    > /absolute/norad-inputs/runtime.selected.tsv
+    > /absolute/emrys-inputs/runtime.selected.tsv
 )
 ```
 
@@ -320,13 +320,13 @@ The accepted tool versions are:
 | R | `Rscript 4.6.1` |
 
 The exact Step `08` R namespace versions remain in the starter. The
-`renv_project` target must be the exact clean NORAD checkout; `renv_library`
+`renv_project` target must be the exact clean EMRYS checkout; `renv_library`
 must be an existing canonical library that passed the guarded `r-check` for
 that checkout. Doctor and execution never install, download, restore, load
 modules, or repair a missing runtime.
 
 On a module-based cluster, module loading belongs in the batch environment
-that will run NORAD. Load the selected modules there, resolve their canonical
+that will run EMRYS. Load the selected modules there, resolve their canonical
 commands (for example with `readlink -f "$(command -v STAR)"` where supported),
 and author those absolute targets in the profile. Repeat admission inside the
 same batch allocation; a successful head-node probe does not establish
@@ -360,7 +360,7 @@ scientific result.
 Before doctor, run the tool-free compatibility validator on the execution host:
 
 ```sh
-norad validate local-pilot-request --request /absolute/norad-inputs/request.yaml
+emrys validate local-pilot-request --request /absolute/emrys-inputs/request.yaml
 ```
 
 It streams and binds declared inputs, checks paired strata, reconciles
@@ -375,13 +375,18 @@ their owner explicitly calls for them.
 
 | Area | Consumer | Tracked inputs |
 | --- | --- | --- |
-| Narrow sample-manifest admission | [Sample-manifest admission](../src/norad/ingestion/sample_manifest_admission/README.md) | [`samples.example.tsv`](samples.example.tsv) |
-| Artifact and report projection | [Reporting](../src/norad/reporting/README.md) and [artifact contracts](../src/norad/contracts/artifacts/README.md) | [`artifact_inventory.example.tsv`](artifact_inventory.example.tsv), [`artifact_run_contract.example.json`](artifact_run_contract.example.json) |
-| Reference provenance | [Reference-provenance evidence](../src/norad/evidence/reference_provenance/README.md) | [`reference_provenance.example.tsv`](reference_provenance.example.tsv) |
-| Standalone runtime inspection | [Runtime-availability evidence](../src/norad/evidence/runtime_availability/README.md) | [`runtime_preflight.example.tsv`](runtime_preflight.example.tsv) |
-| Storage and retention | [Storage-inventory evidence](../src/norad/evidence/storage_inventory/README.md) | [`storage_roots.example.tsv`](storage_roots.example.tsv), [`retention_policy.example.tsv`](retention_policy.example.tsv) |
-| Step `07` selections | [Partitioned cohort mpileup](../src/norad/stages/partitioned_cohort_mpileup/README.md) | [`step_07_partitions.example.tsv`](step_07_partitions.example.tsv), [`step_07_partitions.pilot.tsv`](step_07_partitions.pilot.tsv), [`step_07_partitions.primary_contigs.tsv`](step_07_partitions.primary_contigs.tsv) |
-| Historical Step `09` pairing reference | [Paired CMH ranking](../src/norad/analyses/paired_cmh_candidate_ranking/README.md) | [`step_09_pairs.NORAD_EV_PUM1.tsv`](step_09_pairs.NORAD_EV_PUM1.tsv) |
+| Narrow sample-manifest admission | [Sample-manifest admission](../src/emrys/ingestion/sample_manifest_admission/README.md) | [`samples.example.tsv`](samples.example.tsv) |
+| Artifact and report projection | [Reporting](../src/emrys/reporting/README.md) and [artifact contracts](../src/emrys/contracts/artifacts/README.md) | [`artifact_inventory.example.tsv`](artifact_inventory.example.tsv), [`artifact_run_contract.example.json`](artifact_run_contract.example.json) |
+| Reference provenance | [Reference-provenance evidence](../src/emrys/evidence/reference_provenance/README.md) | [`reference_provenance.example.tsv`](reference_provenance.example.tsv) |
+| Standalone runtime inspection | [Runtime-availability evidence](../src/emrys/evidence/runtime_availability/README.md) | [`runtime_preflight.example.tsv`](runtime_preflight.example.tsv) |
+| Storage and retention | [Storage-inventory evidence](../src/emrys/evidence/storage_inventory/README.md) | [`storage_roots.example.tsv`](storage_roots.example.tsv), [`retention_policy.example.tsv`](retention_policy.example.tsv) |
+| Step `07` selections | [Partitioned cohort mpileup](../src/emrys/stages/partitioned_cohort_mpileup/README.md) | [`step_07_partitions.example.tsv`](step_07_partitions.example.tsv), [`step_07_partitions.pilot.tsv`](step_07_partitions.pilot.tsv), [`step_07_partitions.primary_contigs.tsv`](step_07_partitions.primary_contigs.tsv) |
+| Historical Step `09` pairing reference | [Paired CMH ranking](../src/emrys/analyses/paired_cmh_candidate_ranking/README.md) | [`step_09_pairs.NORAD_EV_PUM1.tsv`](step_09_pairs.NORAD_EV_PUM1.tsv) |
+
+`NORAD_EV_PUM1` and `NORAD_EV_vs_PUM1` are frozen scientific cohort and
+analysis identifiers. They intentionally retain their original spelling and
+must not be treated as current project branding or rewritten in retained
+artifact paths.
 
 An `.example` filename means structural starter, not production evidence.
 Never edit a tracked example to manufacture a passing status, approval,

@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from norad.libraries import validation
-from norad.orchestration.local_pilot.all_pass import require_all_pass
+from emrys.libraries import validation
+from emrys.orchestration.local_pilot.all_pass import require_all_pass
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -35,7 +35,7 @@ def passing_row(check_id: str = "declared_output") -> tuple[str, ...]:
 
 def run_cli(*arguments: str, cwd: Path = REPO_ROOT) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        [sys.executable, "-I", "-m", "norad", "validate", "all-pass", *arguments],
+        [sys.executable, "-I", "-m", "emrys", "validate", "all-pass", *arguments],
         cwd=cwd,
         text=True,
         capture_output=True,

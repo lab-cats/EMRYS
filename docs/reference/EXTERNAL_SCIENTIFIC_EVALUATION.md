@@ -1,12 +1,12 @@
 # External scientific-evaluation checklist
 
-This optional checklist is a non-normative research aid outside NORAD. It does
+This optional checklist is a non-normative research aid outside EMRYS. It does
 not define a pipeline step, schema, approver role, gate, status, or completion
-condition. NORAD's output remains CMH-ranked computational candidates and
+condition. EMRYS's output remains CMH-ranked computational candidates and
 provenance whether or not a research team performs or records these activities.
 
 If a team evaluates candidates, keep its records in the team's scientific work
-process and reference immutable NORAD run, artifact, path, and hash identities
+process and reference immutable EMRYS run, artifact, path, and hash identities
 rather than editing native outputs or report receipts.
 
 - **Orientation and locus sanity:** compare the mechanical `FWD_like` and
@@ -26,11 +26,11 @@ rather than editing native outputs or report receipts.
   one replicate pair.
 - **Candidate adjudication:** record the evidence considered, unresolved
   alternatives, and the researcher's candidate-level conclusion outside the
-  NORAD run. A threshold-passing row alone is not a validated editing site.
+  EMRYS run. A threshold-passing row alone is not a validated editing site.
 - **Limitations:** record data quality, sample size, assay, reference,
   annotation, mapping, model, threshold, background, and generalizability
   limitations, including analyses that were not performed.
 
 These notes may support a publication or later experiment, but they neither
-change NORAD's computational result nor establish a biological conclusion by
+change EMRYS's computational result nor establish a biological conclusion by
 themselves.

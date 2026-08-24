@@ -8,9 +8,9 @@ from pathlib import Path
 
 import pytest
 
-from norad.contracts.orchestration import api as contracts
-from norad.orchestration.local_pilot import normalization
-from norad.orchestration.local_pilot.normalization import normalize_request
+from emrys.contracts.orchestration import api as contracts
+from emrys.orchestration.local_pilot import normalization
+from emrys.orchestration.local_pilot.normalization import normalize_request
 from tests.orchestration.local_pilot import fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -61,7 +61,7 @@ def test_local_pilot_starters_normalize_after_explicit_paths_are_populated(
     assert normalized.request["partition_manifest"] == (
         "local_pilot_partitions.example.tsv"
     )
-    assert normalized.profile["profile_id"] == "norad.profile.local_cmh"
+    assert normalized.profile["profile_id"] == "emrys.profile.local_cmh"
     assert normalized.profile["profile_version"] == "v2"
     assert [
         (row["sample_id"], row["condition"], row["replicate"])
@@ -120,7 +120,7 @@ def test_resource_config_is_attempt_level_and_does_not_change_run_identity(
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
     baseline = normalize_request(request, fixture.profile())
-    resource_config = request.parent / "norad.resources.yaml"
+    resource_config = request.parent / "emrys.resources.yaml"
     resource_config.write_text(
         resource_config.read_text(encoding="utf-8")
         .replace("workflow_cores: 1\n", "workflow_cores: 4\n")
@@ -381,14 +381,14 @@ def test_normalization_rejects_step09_threshold_boundaries(
     ("replacement", "message"),
     [
         (
-            "schema_version: norad.request.v3\nschema_version: norad.request.v3\n",
+            "schema_version: emrys.request.v3\nschema_version: emrys.request.v3\n",
             "Duplicate YAML mapping key",
         ),
         (
             "defaults: &defaults\n  id: synthetic_ref\nreference:\n  <<: *defaults\n",
             "merge keys are not allowed",
         ),
-        ("schema_version: !custom norad.request.v3\n", "could not determine"),
+        ("schema_version: !custom emrys.request.v3\n", "could not determine"),
     ],
 )
 def test_yaml_extensions_are_rejected(

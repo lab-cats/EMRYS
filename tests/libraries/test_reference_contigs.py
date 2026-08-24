@@ -11,7 +11,7 @@ SRC_ROOT = ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from norad.libraries.references import contigs as REFERENCE_CONTIGS
+from emrys.libraries.references import contigs as REFERENCE_CONTIGS
 
 
 def test_neutral_public_api() -> None:

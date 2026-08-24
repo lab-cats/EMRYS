@@ -26,7 +26,7 @@ def contract(delegation: str, **overrides: Any) -> WrapperContract:
 
 CONTRACTS = {
     "step_00a_build_novogene_star_index.slurm": contract(
-        "src/norad/stages/star_index/step_00a_build_star_index.sh",
+        "src/emrys/stages/star_index/step_00a_build_star_index.sh",
         default="legacy_implicit_execute",
         execute="implicit_only",
         invalid_mode="not_applicable",
@@ -36,7 +36,7 @@ CONTRACTS = {
         output_validation="producer_declared_members",
     ),
     "step_00b_gtf_to_bed12.slurm": contract(
-        "python -I -m norad convert gtf-to-bed12",
+        "python -I -m emrys convert gtf-to-bed12",
         default="legacy_implicit_execute",
         execute="implicit_only",
         invalid_mode="not_applicable",
@@ -46,13 +46,13 @@ CONTRACTS = {
         output_validation="nonempty_bed12_field_count",
     ),
     "step_00c_prepare_gatk_reference.slurm": contract(
-        "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
+        "src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_calls=("list", "load samtools/1.19.2", "list"),
         submit_cwd="required",
     ),
     "step_01_star_align.slurm": contract(
-        "src/norad/stages/star_alignment/step_01_star_align.sh",
+        "src/emrys/stages/star_alignment/step_01_star_align.sh",
         default="dry_run_with_fixture_side_effects",
         module_policy="strict_loads_tolerated_lists",
         module_calls=("list", "load star/2.7.11b", "list"),
@@ -60,27 +60,27 @@ CONTRACTS = {
         output_validation="delegate_only",
     ),
     "step_02_sort_index_bam.slurm": contract(
-        "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh",
+        "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh",
         default="dry_run_creates_output_directory_with_bash32_empty_array_defect",
         module_policy="strict_loads_tolerated_lists",
         module_calls=("list", "load samtools/1.19.2", "list"),
         submit_cwd="required",
     ),
     "step_02b_bam_qc.slurm": contract(
-        "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
+        "src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh",
         default="dry_run_creates_output_directory_with_bash32_empty_array_defect",
         module_policy="strict_loads_tolerated_lists",
         module_calls=("load samtools/1.19.2", "list"),
         submit_cwd="required",
     ),
     "step_03_infer_strandedness_and_orientation.slurm": contract(
-        "src/norad/evidence/rseqc_orientation/"
+        "src/emrys/evidence/rseqc_orientation/"
         "step_03_infer_strandedness_and_orientation.sh",
         default="dry_run_with_bash32_empty_array_defect",
         submit_cwd="required",
     ),
     "step_04_mark_duplicates.slurm": contract(
-        "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh",
+        "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_policy="strict_loads_tolerated_lists",
         module_calls=(
@@ -92,35 +92,35 @@ CONTRACTS = {
         submit_cwd="required",
     ),
     "step_05_split_n_cigar_reads.slurm": contract(
-        "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
+        "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_calls=("list", "load samtools/1.19.2", "list"),
         submit_cwd="required",
     ),
     "step_06_split_bam_by_read_orientation.slurm": contract(
-        "src/norad/stages/mechanical_orientation/"
+        "src/emrys/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh",
         default="dry_run_with_bash32_empty_array_defect",
         module_calls=("list", "load samtools/1.19.2", "list"),
         submit_cwd="required",
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": contract(
-        "src/norad/stages/partitioned_cohort_mpileup/"
+        "src/emrys/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
         module_calls=("list",),
         submit_cwd="required",
     ),
     "step_08_vcf_preprocessing.slurm": contract(
-        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
+        "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
         submit_cwd="required",
     ),
     "step_09_cmh_editing_site_calling.slurm": contract(
-        "src/norad/analyses/paired_cmh_candidate_ranking/"
+        "src/emrys/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh",
         submit_cwd="required",
     ),
     "scientific_context_projection.slurm": contract(
-        "src/norad/analyses/scientific_context_projection/"
+        "src/emrys/analyses/scientific_context_projection/"
         "scientific_context_projection.sh",
         submit_cwd="required",
     ),
@@ -142,7 +142,7 @@ CONTRACTS = {
         exit_propagation="strict_except_optional_picard_probe",
     ),
     "validate_manifest.slurm": contract(
-        "python -I -m norad validate manifest",
+        "python -I -m emrys validate manifest",
         default="lightweight_validation",
         execute="not_applicable",
         invalid_mode="not_applicable",
@@ -161,16 +161,16 @@ JOB_PATHS = {
 JOB_PATHS.update(
     {
         "step_00a_build_novogene_star_index.slurm": Path(
-            "src/norad/stages/star_index/step_00a_build_novogene_star_index.slurm"
+            "src/emrys/stages/star_index/step_00a_build_novogene_star_index.slurm"
         ),
         "step_00b_gtf_to_bed12.slurm": Path(
-            "src/norad/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm"
+            "src/emrys/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm"
         ),
         "tool_check.slurm": Path(
-            "src/norad/evidence/runtime_availability/tool_check.slurm"
+            "src/emrys/evidence/runtime_availability/tool_check.slurm"
         ),
         "validate_manifest.slurm": Path(
-            "src/norad/ingestion/sample_manifest_admission/validate_manifest.slurm"
+            "src/emrys/ingestion/sample_manifest_admission/validate_manifest.slurm"
         ),
     }
 )
@@ -201,61 +201,61 @@ def directives(
 
 SBATCH_DIRECTIVES = {
     "step_00a_build_novogene_star_index.slurm": directives(
-        "norad-build-star-index",
+        "emrys-build-star-index",
         "08:00:00",
         partition="long",
         cpus=8,
         streams_first=True,
     ),
     "step_00b_gtf_to_bed12.slurm": directives(
-        "norad-gtf-bed12", "00:30:00", partition="short"
+        "emrys-gtf-bed12", "00:30:00", partition="short"
     ),
     "step_00c_prepare_gatk_reference.slurm": directives(
-        "norad-gatk-ref", "00:30:00", partition="short"
+        "emrys-gatk-ref", "00:30:00", partition="short"
     ),
     "step_01_star_align.slurm": directives(
-        "norad-star-align",
+        "emrys-star-align",
         "08:00:00",
         partition="long",
         cpus=8,
         streams_first=True,
     ),
     "step_02_sort_index_bam.slurm": directives(
-        "norad-sort-index-bam",
+        "emrys-sort-index-bam",
         "01:00:00",
         partition="short",
         cpus=8,
         export_tmp=False,
         streams_first=True,
     ),
-    "step_02b_bam_qc.slurm": directives("norad-bam-qc", "00:30:00", partition="short"),
+    "step_02b_bam_qc.slurm": directives("emrys-bam-qc", "00:30:00", partition="short"),
     "step_03_infer_strandedness_and_orientation.slurm": directives(
-        "norad-infer-strandedness", "00:30:00", partition="short"
+        "emrys-infer-strandedness", "00:30:00", partition="short"
     ),
     "step_04_mark_duplicates.slurm": directives(
-        "norad-markdup", "02:00:00", partition="short"
+        "emrys-markdup", "02:00:00", partition="short"
     ),
     "step_05_split_n_cigar_reads.slurm": directives(
-        "norad-split-n-cigar", "02:00:00", partition="short"
+        "emrys-split-n-cigar", "02:00:00", partition="short"
     ),
     "step_06_split_bam_by_read_orientation.slurm": directives(
-        "norad-split-orientation", "02:00:00", partition="short"
+        "emrys-split-orientation", "02:00:00", partition="short"
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": directives(
-        "norad-mpileup", "08:00:00", partition="long"
+        "emrys-mpileup", "08:00:00", partition="long"
     ),
     "step_08_vcf_preprocessing.slurm": directives(
-        "norad-vcf-preprocess", "08:00:00", partition="long"
+        "emrys-vcf-preprocess", "08:00:00", partition="long"
     ),
     "step_09_cmh_editing_site_calling.slurm": directives(
-        "norad-cmh", "08:00:00", partition="long"
+        "emrys-cmh", "08:00:00", partition="long"
     ),
     "scientific_context_projection.slurm": directives(
-        "norad-scientific-context", "02:00:00", partition="long"
+        "emrys-scientific-context", "02:00:00", partition="long"
     ),
-    "tool_check.slurm": directives("norad-tool-check", "00:05:00", streams_first=True),
+    "tool_check.slurm": directives("emrys-tool-check", "00:05:00", streams_first=True),
     "validate_manifest.slurm": directives(
-        "norad-validate-manifest", "00:05:00", streams_first=True
+        "emrys-validate-manifest", "00:05:00", streams_first=True
     ),
 }
 
@@ -327,7 +327,7 @@ DELEGATED_FIXTURES = {
             ("SAMTOOLS_BIN_OVERRIDE", "{fake_bin}/samtools"),
             ("GATK_BIN_OVERRIDE", "{fake_bin}/gatk"),
             ("JAVA_BIN_OVERRIDE", "{fake_bin}/java"),
-            ("NORAD_SHA256_PYTHON", "{python}"),
+            ("EMRYS_SHA256_PYTHON", "{python}"),
         ),
         arguments=(
             ("--reference-fasta", "{fasta}"),
@@ -351,7 +351,7 @@ DELEGATED_FIXTURES = {
             ("R2_FASTQ", "{r2}"),
             ("STAR_INDEX", "{star_index}"),
             ("OUTPUT_DIR", "{output_dir}"),
-            ("NORAD_SHA256_PYTHON", "{python}"),
+            ("EMRYS_SHA256_PYTHON", "{python}"),
         ),
         arguments=(
             ("--sample-id", "sample-test"),
@@ -475,7 +475,7 @@ DELEGATED_FIXTURES = {
             ("GATK_BIN_OVERRIDE", "{fake_bin}/gatk"),
             ("SAMTOOLS_BIN_OVERRIDE", "{fake_bin}/samtools"),
             ("JAVA_BIN_OVERRIDE", "{fake_bin}/java"),
-            ("NORAD_SHA256_PYTHON", "{python}"),
+            ("EMRYS_SHA256_PYTHON", "{python}"),
         ),
         arguments=(
             ("--sample-id", "sample05"),

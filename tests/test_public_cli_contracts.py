@@ -1,4 +1,4 @@
-"""Cross-entrypoint characterization of NORAD's public command surfaces."""
+"""Cross-entrypoint characterization of EMRYS's public command surfaces."""
 
 from __future__ import annotations
 
@@ -32,148 +32,148 @@ REPOSITORY_PACKAGE_BOOTSTRAP_ENTRYPOINTS = frozenset()
 PRIVATE_PYTHON_MODULES = frozenset()
 DIRECT_PYTHON_ENTRYPOINTS = frozenset({"benchmark_stage_resources.py"})
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
-NORAD_COMMANDS = (
-    (("init", "local-pilot"), "usage: norad init local-pilot"),
+EMRYS_COMMANDS = (
+    (("init", "local-pilot"), "usage: emrys init local-pilot"),
     (
         ("init", "synthetic-local-pilot"),
-        "usage: norad init synthetic-local-pilot",
+        "usage: emrys init synthetic-local-pilot",
     ),
     (
         ("prepare", "local-pilot-runtime"),
-        "usage: norad prepare local-pilot-runtime",
+        "usage: emrys prepare local-pilot-runtime",
     ),
     (
         ("build", "artifact-index"),
-        "usage: norad build artifact-index",
+        "usage: emrys build artifact-index",
     ),
     (
         ("build", "run-summary"),
-        "usage: norad build run-summary",
+        "usage: emrys build run-summary",
     ),
     (
         ("build", "report"),
-        "usage: norad build report",
+        "usage: emrys build report",
     ),
-    (("doctor", "local-pilot"), "usage: norad doctor local-pilot"),
-    (("run",), "usage: norad run"),
-    (("resume",), "usage: norad resume"),
+    (("doctor", "local-pilot"), "usage: emrys doctor local-pilot"),
+    (("run",), "usage: emrys run"),
+    (("resume",), "usage: emrys resume"),
     (
         ("validate", "artifact-contracts"),
-        "usage: norad validate artifact-contracts",
+        "usage: emrys validate artifact-contracts",
     ),
-    (("validate", "all-pass"), "usage: norad validate all-pass"),
+    (("validate", "all-pass"), "usage: emrys validate all-pass"),
     (
         ("validate", "local-pilot-request"),
-        "usage: norad validate local-pilot-request",
+        "usage: emrys validate local-pilot-request",
     ),
     (
         ("reconcile", "reference-provenance"),
-        "usage: norad reconcile reference-provenance",
+        "usage: emrys reconcile reference-provenance",
     ),
     (
         ("inspect", "local-pilot-run"),
-        "usage: norad inspect local-pilot-run",
+        "usage: emrys inspect local-pilot-run",
     ),
     (
         ("inspect", "runtime-availability"),
-        "usage: norad inspect runtime-availability",
+        "usage: emrys inspect runtime-availability",
     ),
     (
         ("inspect", "storage-inventory"),
-        "usage: norad inspect storage-inventory",
+        "usage: emrys inspect storage-inventory",
     ),
     (
         ("inspect", "storage-qualification"),
-        "usage: norad inspect storage-qualification",
+        "usage: emrys inspect storage-qualification",
     ),
-    (("convert", "gtf-to-bed12"), "usage: norad convert gtf-to-bed12"),
-    (("validate", "bed12"), "usage: norad validate bed12"),
-    (("validate", "canonical-bam"), "usage: norad validate canonical-bam"),
+    (("convert", "gtf-to-bed12"), "usage: emrys convert gtf-to-bed12"),
+    (("validate", "bed12"), "usage: emrys validate bed12"),
+    (("validate", "canonical-bam"), "usage: emrys validate canonical-bam"),
     (
         ("validate", "canonical-bam-qc"),
-        "usage: norad validate canonical-bam-qc",
+        "usage: emrys validate canonical-bam-qc",
     ),
     (
         ("validate", "cohort-candidate-preprocessing"),
-        "usage: norad validate cohort-candidate-preprocessing",
+        "usage: emrys validate cohort-candidate-preprocessing",
     ),
     (
         ("validate", "duplicate-marking"),
-        "usage: norad validate duplicate-marking",
+        "usage: emrys validate duplicate-marking",
     ),
-    (("validate", "fasta-sidecars"), "usage: norad validate fasta-sidecars"),
-    (("validate", "manifest"), "usage: norad validate manifest"),
+    (("validate", "fasta-sidecars"), "usage: emrys validate fasta-sidecars"),
+    (("validate", "manifest"), "usage: emrys validate manifest"),
     (
         ("validate", "mechanical-orientation"),
-        "usage: norad validate mechanical-orientation",
+        "usage: emrys validate mechanical-orientation",
     ),
     (
         ("validate", "paired-cmh-candidate-ranking"),
-        "usage: norad validate paired-cmh-candidate-ranking",
+        "usage: emrys validate paired-cmh-candidate-ranking",
     ),
     (
         ("validate", "partitioned-cohort-mpileup"),
-        "usage: norad validate partitioned-cohort-mpileup",
+        "usage: emrys validate partitioned-cohort-mpileup",
     ),
     (
         ("validate", "rseqc-orientation"),
-        "usage: norad validate rseqc-orientation",
+        "usage: emrys validate rseqc-orientation",
     ),
     (
         ("validate", "scientific-context-projection"),
-        "usage: norad validate scientific-context-projection",
+        "usage: emrys validate scientific-context-projection",
     ),
-    (("validate", "split-n-cigar"), "usage: norad validate split-n-cigar"),
-    (("validate", "star-alignment"), "usage: norad validate star-alignment"),
-    (("validate", "star-index"), "usage: norad validate star-index"),
+    (("validate", "split-n-cigar"), "usage: emrys validate split-n-cigar"),
+    (("validate", "star-alignment"), "usage: emrys validate star-alignment"),
+    (("validate", "star-index"), "usage: emrys validate star-index"),
 )
 
 SHELL_ENTRYPOINT_PATHS = {
     "check_fastq_pairs.sh": Path(
-        "src/norad/ingestion/sample_manifest_admission/check_fastq_pairs.sh"
+        "src/emrys/ingestion/sample_manifest_admission/check_fastq_pairs.sh"
     ),
     "step_00a_build_star_index.sh": Path(
-        "src/norad/stages/star_index/step_00a_build_star_index.sh"
+        "src/emrys/stages/star_index/step_00a_build_star_index.sh"
     ),
     "step_00c_prepare_gatk_reference.sh": Path(
-        "src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
+        "src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
     ),
     "step_01_star_align.sh": Path(
-        "src/norad/stages/star_alignment/step_01_star_align.sh"
+        "src/emrys/stages/star_alignment/step_01_star_align.sh"
     ),
     "step_02_sort_index_bam.sh": Path(
-        "src/norad/stages/canonical_bam/step_02_sort_index_bam.sh"
+        "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"
     ),
     "step_02b_bam_qc.sh": Path(
-        "src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
+        "src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
     ),
     "step_03_infer_strandedness_and_orientation.sh": Path(
-        "src/norad/evidence/rseqc_orientation/"
+        "src/emrys/evidence/rseqc_orientation/"
         "step_03_infer_strandedness_and_orientation.sh"
     ),
     "step_04_mark_duplicates.sh": Path(
-        "src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh"
+        "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh"
     ),
     "step_05_split_n_cigar_reads.sh": Path(
-        "src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
+        "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
     ),
     "step_06_split_bam_by_read_orientation.sh": Path(
-        "src/norad/stages/mechanical_orientation/"
+        "src/emrys/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh"
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.sh": Path(
-        "src/norad/stages/partitioned_cohort_mpileup/"
+        "src/emrys/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
     "step_08_vcf_preprocessing.sh": Path(
-        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
+        "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
     ),
     "step_09_cmh_editing_site_calling.sh": Path(
-        "src/norad/analyses/paired_cmh_candidate_ranking/"
+        "src/emrys/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh"
     ),
     "scientific_context_projection.sh": Path(
-        "src/norad/analyses/scientific_context_projection/"
+        "src/emrys/analyses/scientific_context_projection/"
         "scientific_context_projection.sh"
     ),
 }
@@ -191,14 +191,14 @@ R_ENTRYPOINT_PATHS = {
     "check_r_environment.R": Path("scripts/check_r_environment.R"),
     "restore_r_environment.R": Path("scripts/restore_r_environment.R"),
     "step_08_vcf_preprocessing.R": Path(
-        "src/norad/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
+        "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R"
     ),
     "step_09_cmh_editing_site_calling.R": Path(
-        "src/norad/analyses/paired_cmh_candidate_ranking/"
+        "src/emrys/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.R"
     ),
     "scientific_context_projection.R": Path(
-        "src/norad/analyses/scientific_context_projection/"
+        "src/emrys/analyses/scientific_context_projection/"
         "scientific_context_projection.R"
     ),
 }
@@ -551,17 +551,17 @@ def test_python_help_and_parse_failure_are_cwd_independent_and_side_effect_free(
     assert relative_snapshot(tmp_path) == before
 
 
-@pytest.mark.parametrize(("command", "expected_usage"), NORAD_COMMANDS)
-def test_installed_norad_commands_are_isolated_and_cwd_independent(
+@pytest.mark.parametrize(("command", "expected_usage"), EMRYS_COMMANDS)
+def test_installed_emrys_commands_are_isolated_and_cwd_independent(
     command: tuple[str, ...],
     expected_usage: str,
     tmp_path: Path,
 ) -> None:
     foreign_root = tmp_path / "foreign"
-    foreign_package = foreign_root / "norad"
+    foreign_package = foreign_root / "emrys"
     foreign_package.mkdir(parents=True)
     (foreign_package / "__init__.py").write_text(
-        "raise RuntimeError('foreign norad package imported')\n",
+        "raise RuntimeError('foreign emrys package imported')\n",
         encoding="utf-8",
     )
     invocation_cwd = tmp_path / "invocation"
@@ -571,7 +571,7 @@ def test_installed_norad_commands_are_isolated_and_cwd_independent(
     before = relative_snapshot(tmp_path)
 
     help_result = run_command(
-        [sys.executable, "-I", "-m", "norad", *command, "--help"],
+        [sys.executable, "-I", "-m", "emrys", *command, "--help"],
         cwd=invocation_cwd,
         env=environment,
     )
@@ -580,7 +580,7 @@ def test_installed_norad_commands_are_isolated_and_cwd_independent(
             sys.executable,
             "-I",
             "-m",
-            "norad",
+            "emrys",
             *command,
             "--definitely-not-a-public-option",
         ],
@@ -592,7 +592,7 @@ def test_installed_norad_commands_are_isolated_and_cwd_independent(
     assert expected_usage in help_result.stdout
     assert parse_failure.returncode != 0
     assert expected_usage in parse_failure.stderr
-    assert "foreign norad package imported" not in help_result.stderr
+    assert "foreign emrys package imported" not in help_result.stderr
     assert relative_snapshot(tmp_path) == before
 
 
@@ -601,7 +601,7 @@ def test_installed_norad_commands_are_isolated_and_cwd_independent(
     (
         ("[project\n", 0),
         ('[project]\nname = "another-project"\n', 0),
-        ('[project]\nname = "norad-rna-workflow"\n', CLI_USAGE_ERROR),
+        ('[project]\nname = "emrys-rna-workflow"\n', CLI_USAGE_ERROR),
     ),
 )
 def test_checkout_authority_ignores_nonowners_and_rejects_another_owner(
@@ -611,7 +611,7 @@ def test_checkout_authority_ignores_nonowners_and_rejects_another_owner(
 ) -> None:
     checkout = tmp_path / "checkout"
     invocation_cwd = checkout / "nested"
-    package = checkout / "src" / "norad"
+    package = checkout / "src" / "emrys"
     invocation_cwd.mkdir(parents=True)
     package.mkdir(parents=True)
     (package / "__init__.py").write_text("", encoding="utf-8")
@@ -619,13 +619,13 @@ def test_checkout_authority_ignores_nonowners_and_rejects_another_owner(
     before = relative_snapshot(tmp_path)
 
     result = run_command(
-        [sys.executable, "-I", "-m", "norad", "--help"],
+        [sys.executable, "-I", "-m", "emrys", "--help"],
         cwd=invocation_cwd,
     )
 
     assert result.returncode == expected_status
     if expected_status == 0:
-        assert "usage: norad" in result.stdout
+        assert "usage: emrys" in result.stdout
     else:
         assert "not the current checkout" in result.stderr
     assert relative_snapshot(tmp_path) == before
@@ -638,7 +638,7 @@ def test_run_summary_help_and_parse_failure_are_side_effect_free(
     program = """
 import json
 
-from norad import __main__ as cli
+from emrys import __main__ as cli
 
 statuses = []
 for arguments in (["build", "run-summary", "--help"], ["build", "run-summary"]):
@@ -672,17 +672,17 @@ print(json.dumps({
         ("validate", "--help"),
     ),
 )
-def test_installed_norad_command_routing_help(
+def test_installed_emrys_command_routing_help(
     arguments: tuple[str, ...],
     tmp_path: Path,
 ) -> None:
     result = run_command(
-        [sys.executable, "-I", "-m", "norad", *arguments],
+        [sys.executable, "-I", "-m", "emrys", *arguments],
         cwd=tmp_path,
     )
 
     assert result.returncode == 0, result.stderr
-    assert "usage: norad" in result.stdout
+    assert "usage: emrys" in result.stdout
     assert relative_snapshot(tmp_path) == ()
 
 
@@ -695,10 +695,10 @@ def test_repository_package_bootstrap_precedes_ambient_pythonpath(
     tmp_path: Path,
 ) -> None:
     foreign_root = tmp_path / "foreign"
-    foreign_package = foreign_root / "norad"
+    foreign_package = foreign_root / "emrys"
     foreign_package.mkdir(parents=True)
     (foreign_package / "__init__.py").write_text(
-        "raise RuntimeError('foreign norad package imported')\n",
+        "raise RuntimeError('foreign emrys package imported')\n",
         encoding="utf-8",
     )
     invocation_cwd = tmp_path / "invocation"
@@ -717,7 +717,7 @@ def test_repository_package_bootstrap_precedes_ambient_pythonpath(
     )
 
     assert result.returncode == 0, result.stderr
-    assert "foreign norad package imported" not in result.stderr
+    assert "foreign emrys package imported" not in result.stderr
     assert relative_snapshot(tmp_path) == before
 
 
@@ -829,13 +829,13 @@ def test_make_target_inventory_and_applicability_decisions_are_complete() -> Non
     assert operation_configurable_variables == MAKE_OPERATION_CONTEXT_VARIABLES
     assert ".PHONY: dashboard" in operations_makefile_lines
     assert (
-        "NORAD_MAKE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))"
+        "EMRYS_MAKE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))"
         in makefile_lines
     )
     assert include_lines == [
-        "include $(NORAD_MAKE_ROOT)/scripts/make_quality.mk",
-        "include $(NORAD_MAKE_ROOT)/scripts/make_reporting.mk",
-        "include $(NORAD_MAKE_ROOT)/scripts/make_operations.mk",
+        "include $(EMRYS_MAKE_ROOT)/scripts/make_quality.mk",
+        "include $(EMRYS_MAKE_ROOT)/scripts/make_reporting.mk",
+        "include $(EMRYS_MAKE_ROOT)/scripts/make_operations.mk",
     ]
     assert set(MAKE_TARGET_DECISIONS.values()) == {
         "explicit_output",
@@ -916,7 +916,7 @@ def test_make_expansion_oracle_rejects_recipe_mutation(
             str(REPO_ROOT),
             "-f",
             str(mutated_makefile),
-            f"NORAD_MAKE_ROOT={REPO_ROOT}",
+            f"EMRYS_MAKE_ROOT={REPO_ROOT}",
             "test",
         ],
         cwd=tmp_path,

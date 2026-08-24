@@ -18,27 +18,27 @@ from pathlib import Path
 import pytest
 import yaml
 
-from norad.evidence.runtime_availability.inspector import (
+from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
     RuntimeObservation,
 )
-from norad.libraries.source_authority import controlled_python_argv
-from norad.orchestration.local_pilot import (
+from emrys.libraries.source_authority import controlled_python_argv
+from emrys.orchestration.local_pilot import (
     control,
     doctor,
     inspection,
     lifecycle,
     materialization,
 )
-from norad.orchestration.local_pilot.materialization import (
+from emrys.orchestration.local_pilot.materialization import (
     MaterializationError,
     build_attempt_plan,
     initialize_run,
     publish_attempt,
 )
-from norad.orchestration.local_pilot.normalization import normalize_request
-from norad.orchestration.local_pilot.resource_policy import (
+from emrys.orchestration.local_pilot.normalization import normalize_request
+from emrys.orchestration.local_pilot.resource_policy import (
     AllocationCapacity,
     load_resource_plan,
 )
@@ -61,7 +61,7 @@ def _readiness(
     intake = tmp_path / "intake"
     intake.mkdir()
     request = build(intake)
-    resource_path = request.parent / "norad.resources.yaml"
+    resource_path = request.parent / "emrys.resources.yaml"
     resource_document = yaml.safe_load(resource_path.read_text(encoding="utf-8"))
     resource_document["workflow_cores"] = workflow_cores
     resource_document["workflow_memory_mb"] = max(1024, workflow_cores * 1024)
@@ -266,14 +266,14 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     step00a = next(
         record
         for record in records
-        if record["machine_key"] == "norad.stage.construct_STAR_index.v1"
+        if record["machine_key"] == "emrys.stage.construct_STAR_index.v1"
     )
     assert "--genome-sa-index-nbases" in step00a["producer_argv"]
     assert "--expected-genome-sa-index-nbases" in step00a["validator_argv"]
     step00b = next(
         record
         for record in records
-        if record["machine_key"] == "norad.stage.convert_GTF_to_BED12.v1"
+        if record["machine_key"] == "emrys.stage.convert_GTF_to_BED12.v1"
     )
     assert (
         step00b["producer_argv"][step00b["producer_argv"].index("--run-token") + 1]
@@ -282,7 +282,7 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     step01 = next(
         record
         for record in records
-        if record["machine_key"] == "norad.stage.align_RNA_reads_with_STAR.v1"
+        if record["machine_key"] == "emrys.stage.align_RNA_reads_with_STAR.v1"
     )
     assert "--gunzip-bin" in step01["producer_argv"]
     assert step01["producer_argv"][
@@ -292,23 +292,23 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         record
         for record in records
         if record["machine_key"]
-        == "norad.stage.preprocess_and_annotate_cohort_candidates.v1"
+        == "emrys.stage.preprocess_and_annotate_cohort_candidates.v1"
     )
     producer = step08["producer_argv"]
     assert producer[:4] == [
         str(tmp_path / "tool"),
         "-c",
         (
-            'export NORAD_RUN_TOKEN="$1" NORAD_SHA256_PYTHON="$2" '
-            'NORAD_REQUIRE_BOUND_SHA256=1; shift 2; exec "$@"'
+            'export EMRYS_RUN_TOKEN="$1" EMRYS_SHA256_PYTHON="$2" '
+            'EMRYS_REQUIRE_BOUND_SHA256=1; shift 2; exec "$@"'
         ),
-        "norad-owner",
+        "emrys-owner",
     ]
     assert producer[4] == step08["owner_run_token"]
     assert producer[5] == sys.executable
-    r_bootstrap = next(item for item in producer if "NORAD_LOCAL_PILOT_R" in item)
+    r_bootstrap = next(item for item in producer if "EMRYS_LOCAL_PILOT_R" in item)
     assert "R_LIBS*|R_PROFILE*|R_ENVIRON*|RENV_*|R_DEFAULT_PACKAGES" in r_bootstrap
-    assert "NORAD_USE_RENV" in r_bootstrap
+    assert "EMRYS_USE_RENV" in r_bootstrap
     assert "RENV_PATHS_LIBRARY" in r_bootstrap
     assert "R_DEFAULT_PACKAGES" in r_bootstrap
     assert "--no-environ" not in producer
@@ -317,7 +317,7 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         record
         for record in records
         if record["machine_key"]
-        == "norad.analysis.project_candidate_scientific_context.v1"
+        == "emrys.analysis.project_candidate_scientific_context.v1"
     )
     assert "scientific_context_projection.sh" in " ".join(step10["producer_argv"])
     assert "--motif-catalog" in step10["producer_argv"]
@@ -395,20 +395,20 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
     plan = _plan(tmp_path, workflow_cores=4, step_threads=allocation)
     records = _dispatch_records(plan)
     threaded_owners = {
-        "norad.stage.construct_STAR_index.v1",
-        "norad.stage.align_RNA_reads_with_STAR.v1",
-        "norad.stage.construct_canonical_BAM.v1",
-        "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
-        "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
+        "emrys.stage.construct_STAR_index.v1",
+        "emrys.stage.align_RNA_reads_with_STAR.v1",
+        "emrys.stage.construct_canonical_BAM.v1",
+        "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1",
+        "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
     }
 
     assert dict(plan.step_threads) == allocation
     owner_steps = {
-        "norad.stage.construct_STAR_index.v1": "00a",
-        "norad.stage.align_RNA_reads_with_STAR.v1": "01",
-        "norad.stage.construct_canonical_BAM.v1": "02",
-        "norad.stage.partition_BAM_by_mechanical_read_orientation.v1": "06",
-        "norad.stage.preprocess_and_annotate_cohort_candidates.v1": "08",
+        "emrys.stage.construct_STAR_index.v1": "00a",
+        "emrys.stage.align_RNA_reads_with_STAR.v1": "01",
+        "emrys.stage.construct_canonical_BAM.v1": "02",
+        "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1": "06",
+        "emrys.stage.preprocess_and_annotate_cohort_candidates.v1": "08",
     }
     for record in records:
         producer = record["producer_argv"]
@@ -571,7 +571,7 @@ def test_attempt_publication_leaves_star_index_directory_for_owner(
     step00a = next(
         record
         for record in _dispatch_records(plan)
-        if record["machine_key"] == "norad.stage.construct_STAR_index.v1"
+        if record["machine_key"] == "emrys.stage.construct_STAR_index.v1"
     )
     outputs = tuple(Path(item["path"]) for item in step00a["outputs"])
     index_directories = {path.parent for path in outputs}
@@ -836,15 +836,15 @@ def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
 
 def test_public_help_routes() -> None:
     for command, expected in (
-        (("run", "--help"), "usage: norad run"),
-        (("resume", "--help"), "usage: norad resume"),
+        (("run", "--help"), "usage: emrys run"),
+        (("resume", "--help"), "usage: emrys resume"),
         (
             ("inspect", "local-pilot-run", "--help"),
-            "usage: norad inspect local-pilot-run",
+            "usage: emrys inspect local-pilot-run",
         ),
     ):
         result = subprocess.run(
-            [sys.executable, "-I", "-m", "norad", *command],
+            [sys.executable, "-I", "-m", "emrys", *command],
             check=False,
             capture_output=True,
             text=True,
@@ -865,9 +865,9 @@ def _clean_checkout(tmp_path: Path) -> tuple[Path, str]:
         [
             "git",
             "-c",
-            "user.name=NORAD Fixture",
+            "user.name=EMRYS Fixture",
             "-c",
-            "user.email=norad-fixture@example.invalid",
+            "user.email=emrys-fixture@example.invalid",
             "commit",
             "--quiet",
             "-m",

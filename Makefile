@@ -21,7 +21,7 @@ DEMO_REPORT_ROOT ?= $(CURDIR)/results/demo-report-jinja
 test:
 	"$(REPORT_PYTHON_BIN)" -m pytest
 
-NORAD_MAKE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-include $(NORAD_MAKE_ROOT)/scripts/make_quality.mk
-include $(NORAD_MAKE_ROOT)/scripts/make_reporting.mk
-include $(NORAD_MAKE_ROOT)/scripts/make_operations.mk
+EMRYS_MAKE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+include $(EMRYS_MAKE_ROOT)/scripts/make_quality.mk
+include $(EMRYS_MAKE_ROOT)/scripts/make_reporting.mk
+include $(EMRYS_MAKE_ROOT)/scripts/make_operations.mk

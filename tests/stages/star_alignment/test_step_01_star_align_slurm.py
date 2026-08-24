@@ -16,7 +16,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 JOB = (
     REPO_ROOT
     / "src"
-    / "norad"
+    / "emrys"
     / "stages"
     / "star_alignment"
     / "step_01_star_align.slurm"
@@ -24,10 +24,10 @@ JOB = (
 OWNER = JOB.with_suffix(".sh")
 CHECKOUT_IMPLEMENTATION = (
     OWNER,
-    REPO_ROOT / "src/norad/libraries/argument_parsing.sh",
-    REPO_ROOT / "src/norad/libraries/file_checks.sh",
-    REPO_ROOT / "src/norad/libraries/executable_resolution.sh",
-    REPO_ROOT / "src/norad/libraries/signal_traps.sh",
+    REPO_ROOT / "src/emrys/libraries/argument_parsing.sh",
+    REPO_ROOT / "src/emrys/libraries/file_checks.sh",
+    REPO_ROOT / "src/emrys/libraries/executable_resolution.sh",
+    REPO_ROOT / "src/emrys/libraries/signal_traps.sh",
 )
 CONTROLLED_HASH_PREFIX = ("-X", "pycache_prefix=/dev/null", "-I", "-c")
 
@@ -69,8 +69,8 @@ printf '%s\n' "$count" > "$HASH_PYTHON_COUNT"
     printf '%s\\0' "$@"
 } > "${HASH_PYTHON_LOG_DIR:?}/$count.args"
 printf '%s\\0%s\\0' \
-    "${NORAD_SHA256_PYTHON:-}" \
-    "${NORAD_REQUIRE_BOUND_SHA256:-}" \
+    "${EMRYS_SHA256_PYTHON:-}" \
+    "${EMRYS_REQUIRE_BOUND_SHA256:-}" \
     > "$HASH_PYTHON_LOG_DIR/$count.env"
 exec "${REAL_PYTHON:?}" "$@"
 """,
@@ -119,15 +119,15 @@ printf '%s\n' "$*" >> "${FAKE_MODULE_LOG:?}"
     environment = os.environ.copy()
     for name in (
         "EXECUTE",
-        "NORAD_REQUIRE_BOUND_SHA256",
-        "NORAD_SHA256_PYTHON",
+        "EMRYS_REQUIRE_BOUND_SHA256",
+        "EMRYS_SHA256_PYTHON",
     ):
         environment.pop(name, None)
     environment.update(
         {
             "PATH": os.pathsep.join((str(fake_bin), "/usr/bin", "/bin")),
             "TMPDIR": str(runtime_tmp),
-            "USER": "norad-test",
+            "USER": "emrys-test",
             "SLURM_JOB_ID": "local-step01-wrapper-test",
             "SLURM_JOB_NAME": "local-step01-wrapper-test",
             "SLURMD_NODENAME": "local-mock-node",
@@ -187,7 +187,7 @@ def test_wrapper_real_owner_uses_controlled_hash_python(
         launcher = context.submit / ".venv/bin/python"
     else:
         launcher = tmp_path / "operator-python"
-        context.environment["NORAD_SHA256_PYTHON"] = str(launcher)
+        context.environment["EMRYS_SHA256_PYTHON"] = str(launcher)
     install_guarded_python(launcher)
 
     result = run_wrapper(context)
@@ -230,7 +230,7 @@ def test_wrapper_rejects_unusable_hash_python_before_mutation(
         launcher.write_text("#!/bin/bash\n", encoding="utf-8")
         launcher.chmod(0o644)
         expected = f"is not executable: {launcher}"
-    context.environment["NORAD_SHA256_PYTHON"] = str(launcher)
+    context.environment["EMRYS_SHA256_PYTHON"] = str(launcher)
 
     result = run_wrapper(context)
 

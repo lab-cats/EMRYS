@@ -9,7 +9,7 @@
       "num_branches": 236,
       "num_statements": 492,
       "prefixes": [
-        "src/norad/contracts/orchestration/"
+        "src/emrys/contracts/orchestration/"
       ]
     },
     {
@@ -21,7 +21,7 @@
       "num_branches": 1498,
       "num_statements": 4138,
       "prefixes": [
-        "src/norad/orchestration/local_pilot/"
+        "src/emrys/orchestration/local_pilot/"
       ]
     },
     {
@@ -33,7 +33,7 @@
       "num_branches": 94,
       "num_statements": 267,
       "prefixes": [
-        "src/norad/libraries/source_authority.py"
+        "src/emrys/libraries/source_authority.py"
       ]
     },
     {
@@ -45,7 +45,7 @@
       "num_branches": 138,
       "num_statements": 410,
       "prefixes": [
-        "src/norad/evidence/runtime_availability/"
+        "src/emrys/evidence/runtime_availability/"
       ]
     },
     {
@@ -53,11 +53,11 @@
       "covered_branches": 579,
       "covered_lines": 1310,
       "line_rate": "0.957602",
-      "name": "norad.contracts.scientific_evidence",
+      "name": "emrys.contracts.scientific_evidence",
       "num_branches": 618,
       "num_statements": 1368,
       "prefixes": [
-        "src/norad/contracts/scientific_evidence/"
+        "src/emrys/contracts/scientific_evidence/"
       ]
     },
     {
@@ -65,11 +65,11 @@
       "covered_branches": 116,
       "covered_lines": 371,
       "line_rate": "0.978892",
-      "name": "norad.libraries.validation",
+      "name": "emrys.libraries.validation",
       "num_branches": 122,
       "num_statements": 379,
       "prefixes": [
-        "src/norad/libraries/validation/"
+        "src/emrys/libraries/validation/"
       ]
     },
     {
@@ -81,10 +81,10 @@
       "num_branches": 124,
       "num_statements": 341,
       "prefixes": [
-        "src/norad/libraries/alignments/",
-        "src/norad/libraries/evidence/",
-        "src/norad/libraries/quality/",
-        "src/norad/libraries/references/"
+        "src/emrys/libraries/alignments/",
+        "src/emrys/libraries/evidence/",
+        "src/emrys/libraries/quality/",
+        "src/emrys/libraries/references/"
       ]
     },
     {
@@ -96,8 +96,8 @@
       "num_branches": 2480,
       "num_statements": 6247,
       "prefixes": [
-        "src/norad/contracts/artifacts/",
-        "src/norad/reporting/"
+        "src/emrys/contracts/artifacts/",
+        "src/emrys/reporting/"
       ]
     },
     {
@@ -109,7 +109,7 @@
       "num_branches": 18,
       "num_statements": 85,
       "prefixes": [
-        "src/norad/analyses/paired_cmh_candidate_ranking/"
+        "src/emrys/analyses/paired_cmh_candidate_ranking/"
       ]
     }
   ],
@@ -117,7 +117,7 @@
     "branch": true,
     "source": [
       "scripts",
-      "src/norad"
+      "src/emrys"
     ],
     "subprocess": true,
     "subprocess_test_command": [
@@ -137,35 +137,35 @@
   "policy": {
     "critical_owner_non_regression": {
       "local_pilot_control_plane": [
-        "src/norad/orchestration/local_pilot/"
+        "src/emrys/orchestration/local_pilot/"
       ],
-      "norad.contracts.scientific_evidence": [
-        "src/norad/contracts/scientific_evidence/"
+      "emrys.contracts.scientific_evidence": [
+        "src/emrys/contracts/scientific_evidence/"
       ],
-      "norad.libraries.validation": [
-        "src/norad/libraries/validation/"
+      "emrys.libraries.validation": [
+        "src/emrys/libraries/validation/"
       ],
       "orchestration_machine_contracts": [
-        "src/norad/contracts/orchestration/"
+        "src/emrys/contracts/orchestration/"
       ],
       "paired_cmh_analysis_contracts": [
-        "src/norad/analyses/paired_cmh_candidate_ranking/"
+        "src/emrys/analyses/paired_cmh_candidate_ranking/"
       ],
       "report_publication_and_receipt_validation": [
-        "src/norad/contracts/artifacts/",
-        "src/norad/reporting/"
+        "src/emrys/contracts/artifacts/",
+        "src/emrys/reporting/"
       ],
       "runtime_availability_admission": [
-        "src/norad/evidence/runtime_availability/"
+        "src/emrys/evidence/runtime_availability/"
       ],
       "shared_scientific_validation_primitives": [
-        "src/norad/libraries/alignments/",
-        "src/norad/libraries/evidence/",
-        "src/norad/libraries/quality/",
-        "src/norad/libraries/references/"
+        "src/emrys/libraries/alignments/",
+        "src/emrys/libraries/evidence/",
+        "src/emrys/libraries/quality/",
+        "src/emrys/libraries/references/"
       ],
       "source_checkout_admission": [
-        "src/norad/libraries/source_authority.py"
+        "src/emrys/libraries/source_authority.py"
       ]
     },
     "global_non_regression": [
@@ -177,11 +177,11 @@
       "line_rate": "0.900000"
     },
     "required_subprocess_coverage": {
-      "norad.convert.gtf_to_bed12": [
-        "src/norad/stages/gtf_to_bed12/converter.py"
+      "emrys.convert.gtf_to_bed12": [
+        "src/emrys/stages/gtf_to_bed12/converter.py"
       ],
-      "norad.validate.sample_manifest": [
-        "src/norad/ingestion/sample_manifest_admission/validator.py"
+      "emrys.validate.sample_manifest": [
+        "src/emrys/ingestion/sample_manifest_admission/validator.py"
       ]
     }
   },
@@ -189,16 +189,16 @@
   "subprocess_routes": [
     {
       "covered_lines": 268,
-      "name": "norad.convert.gtf_to_bed12",
+      "name": "emrys.convert.gtf_to_bed12",
       "paths": [
-        "src/norad/stages/gtf_to_bed12/converter.py"
+        "src/emrys/stages/gtf_to_bed12/converter.py"
       ]
     },
     {
       "covered_lines": 118,
-      "name": "norad.validate.sample_manifest",
+      "name": "emrys.validate.sample_manifest",
       "paths": [
-        "src/norad/ingestion/sample_manifest_admission/validator.py"
+        "src/emrys/ingestion/sample_manifest_admission/validator.py"
       ]
     }
   ],

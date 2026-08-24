@@ -13,26 +13,26 @@ from types import ModuleType
 from typing import Any
 
 import pytest
-from norad.contracts.artifacts import api as ARTIFACT_CONTRACTS
+from emrys.contracts.artifacts import api as ARTIFACT_CONTRACTS
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 GOLDENS = Path(__file__).resolve().parent
-SCHEMAS = REPO_ROOT / "src" / "norad" / "contracts" / "schemas" / "artifacts"
+SCHEMAS = REPO_ROOT / "src" / "emrys" / "contracts" / "schemas" / "artifacts"
 
 ARTIFACT_INDEX_CORE = importlib.import_module(
-    "norad.reporting._artifact_index.core",
+    "emrys.reporting._artifact_index.core",
 )
 ARTIFACT_INDEX_MODELS = importlib.import_module(
-    "norad.reporting._artifact_index.models",
+    "emrys.reporting._artifact_index.models",
 )
 ARTIFACT_INDEX_RECORDS = importlib.import_module(
-    "norad.reporting._artifact_index.records",
+    "emrys.reporting._artifact_index.records",
 )
-RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.models")
-REPORT = importlib.import_module("norad.reporting.report")
-REPORT_FIGURES = importlib.import_module("norad.reporting._run_report.figures")
-REPORT_VALIDATION = importlib.import_module("norad.reporting._run_report.validation")
-REPORT_VIEW = importlib.import_module("norad.reporting._run_report.view")
+RUN_SUMMARY = importlib.import_module("emrys.reporting._run_summary.models")
+REPORT = importlib.import_module("emrys.reporting.report")
+REPORT_FIGURES = importlib.import_module("emrys.reporting._run_report.figures")
+REPORT_VALIDATION = importlib.import_module("emrys.reporting._run_report.validation")
+REPORT_VIEW = importlib.import_module("emrys.reporting._run_report.view")
 
 
 HEADER_MODULES: Mapping[str, ModuleType] = {

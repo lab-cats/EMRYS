@@ -1,6 +1,6 @@
-schema_version: norad.local-pilot-resources.v1
+schema_version: emrys.local-pilot-resources.v1
 
-# This file is optional. When it is absent, NORAD uses its packaged conservative
+# This file is optional. When it is absent, EMRYS uses its packaged conservative
 # defaults. Values authored here override those defaults; explicit resource CLI
 # options override both.
 workflow_cores: 4

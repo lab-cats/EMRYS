@@ -14,8 +14,8 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from norad.libraries import validation as REPORT
-from norad.libraries.validation import inputs as INPUTS
+from emrys.libraries import validation as REPORT
+from emrys.libraries.validation import inputs as INPUTS
 
 
 def test_require_executable_rejects_non_executable_file(tmp_path: Path) -> None:

@@ -15,6 +15,6 @@ does not centralize stage behavior or prove successful execution.
 Ignored does not mean disposable. Preserve logs while jobs are active, a
 failure or recovery state is unresolved, or the streams support runtime or
 cluster review. Confirm scheduler state and evidence needs before targeted
-cleanup; NORAD does not automatically rotate, truncate, archive, or delete
+cleanup; EMRYS does not automatically rotate, truncate, archive, or delete
 logs. For missing paths or unexpected names, use
 [`TROUBLESHOOTING.md`](../docs/operations/TROUBLESHOOTING.md).

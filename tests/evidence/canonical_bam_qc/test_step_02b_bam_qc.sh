@@ -3,9 +3,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/norad/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
-unset NORAD_RUN_TOKEN
-export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
+SCRIPT="$REPO_ROOT/src/emrys/evidence/canonical_bam_qc/step_02b_bam_qc.sh"
+unset EMRYS_RUN_TOKEN
+export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -220,7 +220,7 @@ printf 'Running dry-run check with BAM.bai index...\n'
 printf 'placeholder index\n' >"$bam_dot_bai"
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry"
-NORAD_RUN_TOKEN=explicit-owner-02b SLURM_JOB_ID=scheduler-02b bash "$SCRIPT" \
+EMRYS_RUN_TOKEN=explicit-owner-02b SLURM_JOB_ID=scheduler-02b bash "$SCRIPT" \
     --sample-id sample_dry \
     --bam "$bam" \
     --output-dir "$dry_output_dir" \

@@ -11,8 +11,8 @@ from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from norad.contracts.scientific_evidence import scientific_context
-from norad.libraries.process_environment import (
+from emrys.contracts.scientific_evidence import scientific_context
+from emrys.libraries.process_environment import (
     guarded_r_environment,
     guarded_rscript_argv,
 )
@@ -21,12 +21,12 @@ from tests import scientific_evidence_test_support as STEP_FIXTURE
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PRODUCER = (
     REPO_ROOT
-    / "src/norad/analyses/scientific_context_projection/scientific_context_projection.sh"
+    / "src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh"
 )
 
 
 def _test_environment() -> dict[str, str]:
-    selected_library = os.environ.get("NORAD_RENV_LIBRARY")
+    selected_library = os.environ.get("EMRYS_RENV_LIBRARY")
     environment = (
         guarded_r_environment(
             REPO_ROOT,
@@ -36,14 +36,14 @@ def _test_environment() -> dict[str, str]:
         if selected_library
         else os.environ.copy()
     )
-    environment["NORAD_SHA256_PYTHON"] = sys.executable
-    environment.setdefault("NORAD_LOCAL_PILOT_R", "0")
-    environment.pop("NORAD_RUN_TOKEN", None)
+    environment["EMRYS_SHA256_PYTHON"] = sys.executable
+    environment.setdefault("EMRYS_LOCAL_PILOT_R", "0")
+    environment.pop("EMRYS_RUN_TOKEN", None)
     return environment
 
 
 def _rscript(environment: Mapping[str, str]) -> str:
-    guarded = environment.get("NORAD_LOCAL_PILOT_R") == "1"
+    guarded = environment.get("EMRYS_LOCAL_PILOT_R") == "1"
     requested = os.environ.get("RSCRIPT_BIN_OVERRIDE", "Rscript")
     resolved = (
         str(Path(requested).resolve()) if "/" in requested else shutil.which(requested)
@@ -257,8 +257,8 @@ def test_real_r_projection_is_canonically_admitted_and_deterministic(
     tmp_path: Path,
 ) -> None:
     environment = _test_environment()
-    if os.environ.get("NORAD_RENV_LIBRARY"):
-        assert environment["NORAD_LOCAL_PILOT_R"] == "1"
+    if os.environ.get("EMRYS_RENV_LIBRARY"):
+        assert environment["EMRYS_LOCAL_PILOT_R"] == "1"
         assert environment["R_DEFAULT_PACKAGES"] == "NULL"
     rscript = _rscript(environment)
     inputs = _expanded_step09(tmp_path / "inputs")

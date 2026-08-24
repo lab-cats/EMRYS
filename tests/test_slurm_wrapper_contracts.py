@@ -43,10 +43,10 @@ REPOSITORY_OWNING_JOBS = frozenset(
     }
 )
 CHECKOUT_HELPERS = (
-    Path("src/norad/libraries/argument_parsing.sh"),
-    Path("src/norad/libraries/gatk_invocation.sh"),
-    Path("src/norad/libraries/orientation.sh"),
-    Path("src/norad/libraries/process_environment.py"),
+    Path("src/emrys/libraries/argument_parsing.sh"),
+    Path("src/emrys/libraries/gatk_invocation.sh"),
+    Path("src/emrys/libraries/orientation.sh"),
+    Path("src/emrys/libraries/process_environment.py"),
 )
 
 
@@ -202,7 +202,7 @@ def base_environment(root: Path, fake_bin: Path) -> dict[str, str]:
         {
             "PATH": os.pathsep.join((str(fake_bin), "/usr/bin", "/bin")),
             "TMPDIR": str(runtime_tmp),
-            "USER": "norad-test",
+            "USER": "emrys-test",
             "SLURM_JOB_ID": "local-wrapper-test",
             "SLURM_JOB_NAME": "local-wrapper-test",
             "SLURMD_NODENAME": "local-mock-node",
@@ -404,7 +404,7 @@ def test_submit_directory_decision_is_literal(name: str) -> None:
         assert 'cd "${SLURM_SUBMIT_DIR:-$PWD}"' not in source
         assert "BASH_SOURCE" not in source
         assert source.index(guard) < source.index(change_directory)
-        assert source.index(change_directory) < source.index("src/norad/")
+        assert source.index(change_directory) < source.index("src/emrys/")
     elif decision == "fallback":
         assert 'cd "${SLURM_SUBMIT_DIR:-$PWD}"' in source
     else:
@@ -1043,11 +1043,11 @@ def test_gatk_wrappers_reject_unusable_controlled_python_before_delegation(
     result = run_prepared(
         prepared,
         execute="1",
-        environment_updates={"NORAD_SHA256_PYTHON": str(python)},
+        environment_updates={"EMRYS_SHA256_PYTHON": str(python)},
     )
 
     assert result.returncode == 2, result.stdout + result.stderr
-    assert "NORAD_SHA256_PYTHON" in result.stderr
+    assert "EMRYS_SHA256_PYTHON" in result.stderr
     assert not prepared.delegate_log.exists()
 
 
@@ -1575,7 +1575,7 @@ def prepare_legacy_environment(tmp_path: Path) -> tuple[Path, Path, dict[str, st
     environment = base_environment(tmp_path, fake_bin)
     environment.update(
         {
-            "NORAD_PYTHON_BIN": str(fake_bin / "python"),
+            "EMRYS_PYTHON_BIN": str(fake_bin / "python"),
             "SLURM_SUBMIT_DIR": str(submit),
         }
     )
@@ -1596,7 +1596,7 @@ UTILITY_TOOL_CALLS = {
     ),
     "validate_manifest.slurm": (
         "python\t--version",
-        "python\t-I\t-m\tnorad\tvalidate\tmanifest\t--manifest\tconfigs/samples.example.tsv\t--base-dir\t.",
+        "python\t-I\t-m\temrys\tvalidate\tmanifest\t--manifest\tconfigs/samples.example.tsv\t--base-dir\t.",
     ),
 }
 

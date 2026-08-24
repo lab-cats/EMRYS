@@ -20,12 +20,12 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
-from norad import __main__ as norad_cli
-from norad.contracts.artifacts import api as CONTRACTS
-from norad.libraries import source_authority as SOURCE_AUTHORITY
-from norad.libraries.source_authority import controlled_python_argv
-from norad.reporting import transaction_validation as REPORTING_VALIDATION
-from norad.reporting._artifact_index import api as ARTIFACT_INDEX_API
+from emrys import __main__ as emrys_cli
+from emrys.contracts.artifacts import api as CONTRACTS
+from emrys.libraries import source_authority as SOURCE_AUTHORITY
+from emrys.libraries.source_authority import controlled_python_argv
+from emrys.reporting import transaction_validation as REPORTING_VALIDATION
+from emrys.reporting._artifact_index import api as ARTIFACT_INDEX_API
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
 
 if TYPE_CHECKING:
@@ -35,17 +35,17 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXED_EPOCH = "1700000000"
 CLI_USAGE_ERROR = 2
 
-RUN_SUMMARY = importlib.import_module("norad.reporting._run_summary.builder")
-RUN_SUMMARY_DOCUMENT = importlib.import_module("norad.reporting._run_summary.document")
-RUN_SUMMARY_MODELS = importlib.import_module("norad.reporting._run_summary.models")
+RUN_SUMMARY = importlib.import_module("emrys.reporting._run_summary.builder")
+RUN_SUMMARY_DOCUMENT = importlib.import_module("emrys.reporting._run_summary.document")
+RUN_SUMMARY_MODELS = importlib.import_module("emrys.reporting._run_summary.models")
 RUN_SUMMARY_PROJECTION = importlib.import_module(
-    "norad.reporting._run_summary.projection"
+    "emrys.reporting._run_summary.projection"
 )
 RUN_SUMMARY_PUBLICATION = importlib.import_module(
-    "norad.reporting._run_summary.publication"
+    "emrys.reporting._run_summary.publication"
 )
 RUN_SUMMARY_TRANSACTION = importlib.import_module(
-    "norad.reporting._run_summary.transaction"
+    "emrys.reporting._run_summary.transaction"
 )
 SOURCE_CHECKOUT = SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT)
 
@@ -87,7 +87,7 @@ def run_cli(
     )
     return subprocess.run(
         [
-            *controlled_python_argv(sys.executable, "-m", "norad"),
+            *controlled_python_argv(sys.executable, "-m", "emrys"),
             "build",
             "run-summary",
             *cli_arguments,
@@ -103,7 +103,7 @@ def run_cli(
 def _parse_run_summary_arguments(
     arguments: Sequence[str],
 ) -> argparse.Namespace:
-    return norad_cli.build_parser().parse_args(
+    return emrys_cli.build_parser().parse_args(
         ["build", "run-summary", *arguments],
     )
 
@@ -305,13 +305,13 @@ def test_parser_termination_precedes_lazy_run_summary_builder_import(
         pytest.fail("run-summary builder was imported before parsing terminated")
 
     monkeypatch.setattr(
-        norad_cli,
+        emrys_cli,
         "_build_run_summary_from_args",
         unexpected_dispatch,
     )
 
     with pytest.raises(SystemExit) as termination:
-        norad_cli.main(["build", "run-summary", *arguments])
+        emrys_cli.main(["build", "run-summary", *arguments])
 
     assert not dispatch_attempted
     assert termination.value.code == expected_status
@@ -324,7 +324,7 @@ def test_grouped_cli_requires_explicit_source_checkout(
 ) -> None:
     """Missing checkout authority fails parsing before builder dispatch."""
     monkeypatch.setattr(
-        norad_cli,
+        emrys_cli,
         "_build_run_summary_from_args",
         lambda _arguments: pytest.fail("run-summary builder was dispatched"),
     )
@@ -340,7 +340,7 @@ def test_grouped_cli_requires_explicit_source_checkout(
     ]
 
     with pytest.raises(SystemExit) as termination:
-        norad_cli.main(arguments)
+        emrys_cli.main(arguments)
 
     assert termination.value.code == CLI_USAGE_ERROR
     captured = capsys.readouterr()
@@ -603,9 +603,9 @@ def test_source_checkout_admission_error_precedes_input_diagnostics(
         "admit_source_checkout",
         reject_source_checkout,
     )
-    monkeypatch.setattr(norad_cli, "require_controlled_python_runtime", lambda: None)
+    monkeypatch.setattr(emrys_cli, "require_controlled_python_runtime", lambda: None)
     assert (
-        norad_cli.main(
+        emrys_cli.main(
             [
                 "build",
                 "run-summary",
@@ -649,7 +649,7 @@ def test_help_and_dry_run_validate_without_summary_writes(
 ) -> None:
     help_result = subprocess.run(
         [
-            *controlled_python_argv(sys.executable, "-m", "norad"),
+            *controlled_python_argv(sys.executable, "-m", "emrys"),
             "build",
             "run-summary",
             "--help",
@@ -733,7 +733,7 @@ def test_execute_publishes_exact_canonical_schema_valid_transaction(
     )
     assert document["summary_state"] == "complete"
     assert document["interpretation_boundary"] == (
-        "computational_candidates_only_biological_validation_outside_norad"
+        "computational_candidates_only_biological_validation_outside_emrys"
     )
     assert "scientific_review" not in document
     assert "science_status" not in document
@@ -787,7 +787,7 @@ def test_unrelated_files_are_ignored_and_preserved(
     assert unrelated.read_bytes() == unrelated_payload
     assert decoy.read_bytes() == decoy_payload
     assert document["interpretation_boundary"].endswith(
-        "biological_validation_outside_norad"
+        "biological_validation_outside_emrys"
     )
 
 
@@ -896,7 +896,7 @@ def test_complete_summary_preserves_required_missing_artifact_state(
         for scope in document["expected_scopes"]
     )
     assert document["interpretation_boundary"].endswith(
-        "biological_validation_outside_norad"
+        "biological_validation_outside_emrys"
     )
 
 

@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from norad import __main__ as norad_main
-from norad.evidence.reference_provenance import reconciler
-from norad.evidence.reference_provenance._reference_model import (
+from emrys import __main__ as emrys_main
+from emrys.evidence.reference_provenance import reconciler
+from emrys.evidence.reference_provenance._reference_model import (
     Item,
     Observation,
 )
@@ -29,7 +29,7 @@ RECONCILE_COMMAND = (
     sys.executable,
     "-I",
     "-m",
-    "norad",
+    "emrys",
     "reconcile",
     "reference-provenance",
 )
@@ -392,7 +392,7 @@ def test_input_mutation_after_observation_fails_before_publication(
         return observations
 
     monkeypatch.setattr(reconciler, "observe", observe_then_mutate)
-    status = norad_main.main(
+    status = emrys_main.main(
         [
             "reconcile",
             "reference-provenance",

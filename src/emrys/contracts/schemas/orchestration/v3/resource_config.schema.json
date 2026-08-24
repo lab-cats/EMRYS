@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:emrys:schema:orchestration:resource-config:v1",
+  "title": "EMRYS local-pilot resource configuration v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version"
+  ],
+  "$defs": {
+    "positive_integer": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "workflow_memory_value": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/positive_integer"
+        },
+        {
+          "const": "allocation"
+        }
+      ]
+    },
+    "job_memory_value": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/positive_integer"
+        },
+        {
+          "const": "workflow"
+        }
+      ]
+    },
+    "stage_concurrency": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "01": { "$ref": "#/$defs/positive_integer" },
+        "02": { "$ref": "#/$defs/positive_integer" },
+        "02b": { "$ref": "#/$defs/positive_integer" },
+        "03": { "$ref": "#/$defs/positive_integer" },
+        "04": { "$ref": "#/$defs/positive_integer" },
+        "05": { "$ref": "#/$defs/positive_integer" },
+        "06": { "$ref": "#/$defs/positive_integer" },
+        "07": { "$ref": "#/$defs/positive_integer" }
+      }
+    },
+    "step_threads": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "00a": { "$ref": "#/$defs/positive_integer" },
+        "01": { "$ref": "#/$defs/positive_integer" },
+        "02": { "$ref": "#/$defs/positive_integer" },
+        "06": { "$ref": "#/$defs/positive_integer" },
+        "08": { "$ref": "#/$defs/positive_integer" }
+      }
+    },
+    "stage_memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "00a": { "$ref": "#/$defs/job_memory_value" },
+        "00b": { "$ref": "#/$defs/job_memory_value" },
+        "00c": { "$ref": "#/$defs/job_memory_value" },
+        "01": { "$ref": "#/$defs/job_memory_value" },
+        "02": { "$ref": "#/$defs/job_memory_value" },
+        "02b": { "$ref": "#/$defs/job_memory_value" },
+        "03": { "$ref": "#/$defs/job_memory_value" },
+        "04": { "$ref": "#/$defs/job_memory_value" },
+        "05": { "$ref": "#/$defs/job_memory_value" },
+        "06": { "$ref": "#/$defs/job_memory_value" },
+        "07": { "$ref": "#/$defs/job_memory_value" },
+        "08": { "$ref": "#/$defs/job_memory_value" },
+        "09": { "$ref": "#/$defs/job_memory_value" },
+        "10": { "$ref": "#/$defs/job_memory_value" }
+      }
+    },
+    "reporting_memory": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "artifact_index": { "$ref": "#/$defs/job_memory_value" },
+        "run_summary": { "$ref": "#/$defs/job_memory_value" },
+        "html_report": { "$ref": "#/$defs/job_memory_value" }
+      }
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "const": "emrys.local-pilot-resources.v1"
+    },
+    "workflow_cores": {
+      "$ref": "#/$defs/positive_integer"
+    },
+    "workflow_memory_mb": {
+      "$ref": "#/$defs/workflow_memory_value"
+    },
+    "stage_concurrency": {
+      "$ref": "#/$defs/stage_concurrency"
+    },
+    "step_threads": {
+      "$ref": "#/$defs/step_threads"
+    },
+    "stage_memory_mb": {
+      "$ref": "#/$defs/stage_memory"
+    },
+    "reporting_memory_mb": {
+      "$ref": "#/$defs/reporting_memory"
+    }
+  }
+}

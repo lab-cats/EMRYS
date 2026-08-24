@@ -15,12 +15,12 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 JOB_PATH = (
     REPO_ROOT
     / "src"
-    / "norad"
+    / "emrys"
     / "stages"
     / "gtf_to_bed12"
     / "step_00b_gtf_to_bed12.slurm"
 )
-PRODUCER_ARGUMENTS = "-I\t-m\tnorad\tconvert\tgtf-to-bed12"
+PRODUCER_ARGUMENTS = "-I\t-m\temrys\tconvert\tgtf-to-bed12"
 VALID_BED = "chr1\t0\t4\ttx1|g1\t0\t+\t0\t4\t0\t1\t4,\t0,\n"
 VALID_BED_BYTES = VALID_BED.encode()
 
@@ -162,8 +162,8 @@ def prepare_job(tmp_path: Path) -> JobContext:
     gtf.parent.mkdir()
     gtf.write_text("fixture\n", encoding="utf-8")
 
-    helper_source = REPO_ROOT / "src" / "norad" / "libraries" / "argument_parsing.sh"
-    helper_target = submit / "src" / "norad" / "libraries" / "argument_parsing.sh"
+    helper_source = REPO_ROOT / "src" / "emrys" / "libraries" / "argument_parsing.sh"
+    helper_target = submit / "src" / "emrys" / "libraries" / "argument_parsing.sh"
     helper_target.parent.mkdir(parents=True, exist_ok=True)
     helper_target.write_bytes(helper_source.read_bytes())
 
@@ -261,7 +261,7 @@ def configure_preflight_failure(job: JobContext, scenario: str) -> str:
             f"ERROR: Python executable not found or not executable: {nonexecutable}\n"
         )
     if scenario == "unsafe_run_token":
-        job.environment["NORAD_RUN_TOKEN"] = "unsafe/token"
+        job.environment["EMRYS_RUN_TOKEN"] = "unsafe/token"
         return "ERROR: Unsafe Step 00b publication token: unsafe/token\n"
     raise AssertionError(f"Unknown preflight scenario: {scenario}")
 
@@ -323,7 +323,7 @@ def test_explicit_run_token_takes_precedence_over_slurm_job_id(
     tmp_path: Path,
 ) -> None:
     job = prepare_job(tmp_path)
-    job.environment["NORAD_RUN_TOKEN"] = "explicit-owner-token"
+    job.environment["EMRYS_RUN_TOKEN"] = "explicit-owner-token"
 
     result = run_job(job)
 
@@ -339,7 +339,7 @@ def test_direct_execution_uses_safe_process_id_token_fallback(
     tmp_path: Path,
 ) -> None:
     job = prepare_job(tmp_path)
-    job.environment.pop("NORAD_RUN_TOKEN", None)
+    job.environment.pop("EMRYS_RUN_TOKEN", None)
     job.environment.pop("SLURM_JOB_ID")
 
     result = run_job(job)

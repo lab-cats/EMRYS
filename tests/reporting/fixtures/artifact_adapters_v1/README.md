@@ -8,4 +8,4 @@ This builder is production-contract-aware test support, not an independent
 oracle or public command. Its consumer is the
 [artifact-adapter suite](../../test_artifact_adapters.py), and public adapter
 behavior remains owned by the
-[reporting README](../../../../src/norad/reporting/README.md).
+[reporting README](../../../../src/emrys/reporting/README.md).

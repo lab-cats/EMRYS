@@ -197,8 +197,8 @@ jobs:
           rscript_bin="$(command -v Rscript)"
           make -s r-restore RSCRIPT_BIN="${rscript_bin}"
           renv_library="$({
-            NORAD_USE_RENV=1 \
-            NORAD_LOCAL_PILOT_R=0 \
+            EMRYS_USE_RENV=1 \
+            EMRYS_LOCAL_PILOT_R=0 \
             RENV_CONFIG_SANDBOX_ENABLED=FALSE \
             RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
             RENV_PROJECT="${GITHUB_WORKSPACE}" \
@@ -255,8 +255,8 @@ jobs:
       - name: Run opt-in clean-clone failure and resume proof
         shell: bash
         env:
-          NORAD_FRESH_CLONE_E2E: "1"
-          NORAD_FRESH_CLONE_E2E_SOURCE_ROOT: ${{ github.workspace }}
+          EMRYS_FRESH_CLONE_E2E: "1"
+          EMRYS_FRESH_CLONE_E2E_SOURCE_ROOT: ${{ github.workspace }}
         run: |
           set -euo pipefail
           fresh_clone="${{ steps.fresh-clone.outputs.path }}"
@@ -403,9 +403,9 @@ jobs:
         run: |
           set -euo pipefail
           PYTHONDONTWRITEBYTECODE=1 \
-            .venv/bin/python -m compileall -q scripts src/norad tests
+            .venv/bin/python -m compileall -q scripts src/emrys tests
           make -s validation-wheel-smoke
-          .venv/bin/python -I -m norad validate manifest \
+          .venv/bin/python -I -m emrys validate manifest \
             --manifest configs/samples.example.tsv
 
   python311-full-shards:
@@ -448,14 +448,14 @@ jobs:
           --shard-count ${{ env.PYTHON_TEST_SHARD_COUNT }}
           --workers 2
           --receipt
-          "${GITHUB_WORKSPACE}/.test-shards/python-test-shard-${{ matrix.shard }}-of-${{ env.PYTHON_TEST_SHARD_COUNT }}.json"
+          "${RUNNER_TEMP}/emrys-python311-test-shards/python-test-shard-${{ matrix.shard }}-of-${{ env.PYTHON_TEST_SHARD_COUNT }}.json"
 
       - name: Upload selection receipt
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: python311-test-shard-${{ matrix.shard }}
-          path: .test-shards/python-test-shard-*.json
+          path: ${{ runner.temp }}/emrys-python311-test-shards/python-test-shard-*.json
           if-no-files-found: error
           retention-days: 7
 
@@ -493,7 +493,7 @@ jobs:
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           pattern: python311-test-shard-*
-          path: .test-shards/merged
+          path: ${{ runner.temp }}/emrys-python311-test-shards/merged
           merge-multiple: true
 
       - name: Verify complete and disjoint shard receipts
@@ -501,7 +501,7 @@ jobs:
         run: >-
           .venv/bin/python tests/tools/python_test_shards.py verify
           --repo-root "${GITHUB_WORKSPACE}"
-          --receipt-dir "${GITHUB_WORKSPACE}/.test-shards/merged"
+          --receipt-dir "${RUNNER_TEMP}/emrys-python311-test-shards/merged"
 
       - name: Require every Python 3.11 shard to pass
         shell: bash

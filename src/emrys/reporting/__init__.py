@@ -1,0 +1,1 @@
+"""EMRYS reporting implementation."""

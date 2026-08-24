@@ -3,7 +3,7 @@ import sys
 from argparse import Namespace
 from pathlib import Path
 
-from norad.stages.gtf_to_bed12 import validator
+from emrys.stages.gtf_to_bed12 import validator
 from tests.stage_validator_test_support import load_roster_oracle
 from tests.stage_validator_test_support import read_tsv as rows
 
@@ -41,7 +41,7 @@ def run(
             sys.executable,
             "-I",
             "-m",
-            "norad",
+            "emrys",
             "validate",
             "bed12",
             "--scope-id",

@@ -12,16 +12,16 @@ from typing import cast
 
 import pytest
 
-from norad.__main__ import main as norad_main
-from norad.contracts.scientific_evidence.step08 import (
+from emrys.__main__ import main as emrys_main
+from emrys.contracts.scientific_evidence.step08 import (
     PARTITION_MANIFEST_HEADER,
     SAMPLE_MANIFEST_REQUIRED,
     STEP08_INPUTS_HEADER,
     STEP08_METADATA_HEADER,
     STEP08_SUMMARY_HEADER,
 )
-from norad.libraries.validation import Snapshot
-from norad.stages.cohort_candidate_preprocessing import (
+from emrys.libraries.validation import Snapshot
+from emrys.stages.cohort_candidate_preprocessing import (
     validator as cohort_candidate_preprocessing_validator,
 )
 from tests.stage_validator_test_support import load_roster_oracle
@@ -213,7 +213,7 @@ def _run_validator(
             sys.executable,
             "-I",
             "-m",
-            "norad",
+            "emrys",
             "validate",
             "cohort-candidate-preprocessing",
             *_validator_arguments(evidence, *extra),
@@ -348,7 +348,7 @@ def test_post_build_mutation_of_each_input_preserves_predecessor(
             "build_validation_report",
             mutate_after_build,
         )
-        status = norad_main(
+        status = emrys_main(
             [
                 "validate",
                 "cohort-candidate-preprocessing",
