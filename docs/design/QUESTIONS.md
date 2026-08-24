@@ -14,7 +14,7 @@ remain in [`HANDOFF.md`](../operations/HANDOFF.md); durable answers move to
 | Storage | Home/project/scratch capacity, large temporary/intermediate placement, and approved native/derived retention. |
 | Reference | Exact Novogene annotation release and FASTA/FAI/DICT/GTF/BED/STAR contig agreement, including mitochondrial naming. |
 | Runtime promotion | Real-bcftools Step `07` parity, partition-scale resources, and required evidence before computational Steps `08`–`09`. |
-| External research process | Where researchers will keep orientation, annotation, sensitivity, replicate-consistency, candidate-adjudication, and limitation records outside EMRYS. |
+| External research process | Where researchers will keep orientation, annotation, sensitivity, replicate-consistency, candidate-adjudication, and limitation records outside NORAD. |
 
 ## Design choices
 

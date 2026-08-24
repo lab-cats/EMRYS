@@ -21,9 +21,9 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from emrys.libraries import validation as REPORT
-from emrys.libraries.validation import inputs as INPUTS
-from emrys.libraries.validation import publication as PUBLICATION
+from norad.libraries import validation as REPORT
+from norad.libraries.validation import inputs as INPUTS
+from norad.libraries.validation import publication as PUBLICATION
 
 SCOPE_ID = "fixture_scope"
 STEP_ID = "fixture"

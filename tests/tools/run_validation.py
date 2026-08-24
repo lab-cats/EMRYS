@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the de-duplicated EMRYS local validation lanes."""
+"""Run the de-duplicated NORAD local validation lanes."""
 
 from __future__ import annotations
 
@@ -224,7 +224,7 @@ def command_text(command: Sequence[str]) -> str:
 def retained_log_path(lane_name: str) -> Path:
     """Allocate a durable failed-lane log outside the ephemeral run root."""
     descriptor, raw_path = tempfile.mkstemp(
-        prefix=f"emrys-validation-{lane_name}-",
+        prefix=f"norad-validation-{lane_name}-",
         suffix=".log",
     )
     os.close(descriptor)
@@ -307,7 +307,7 @@ def start_lane(
         running.stream_thread = threading.Thread(
             target=stream_log,
             args=(log_path, running.stream_stop),
-            name=f"emrys-validation-{lane.name}-stream",
+            name=f"norad-validation-{lane.name}-stream",
             daemon=True,
         )
         running.stream_thread.start()
@@ -529,7 +529,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             else require_concurrency(arguments.python_workers, "python workers")
         )
         overall_started = time.monotonic()
-        with tempfile.TemporaryDirectory(prefix="emrys-validation-") as temporary_root:
+        with tempfile.TemporaryDirectory(prefix="norad-validation-") as temporary_root:
             run_root = Path(temporary_root)
             preflight = run_lanes(
                 [build_preflight(repo_root, python_bin)],

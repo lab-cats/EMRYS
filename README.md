@@ -46,7 +46,7 @@ artifacts, or completion states.
 
 Steps `02b` and `03` are required QC leaves but do not gate downstream
 scientific computation. External review or adjudication may use EMRYS's
-computational outputs and provenance, but it is not part of `emrys run`.
+computational outputs and provenance, but it is not part of `norad run`.
 
 The fixed graph contains `3 + 7S + P + 3` scientific-owner jobs for `S`
 samples and `P` genomic partitions. The four-sample, one-partition starter
@@ -60,7 +60,7 @@ Read this before installing:
   Git, GNU Make, `uv`, and the scientific runtime listed below.
 - The workflow uses Snakemake's **single-host local executor**. It defaults to
   a packaged resource policy that can be overridden by adjacent
-  `emrys.resources.yaml` and then by explicit CLI values. `workflow_cores` and
+  `norad.resources.yaml` and then by explicit CLI values. `workflow_cores` and
   `workflow_memory_mb` bound the whole scheduler; per-stage concurrency,
   threads, and memory model each owner class. EMRYS neither submits SLURM jobs
   nor distributes work across nodes.
@@ -89,7 +89,7 @@ BAMs, VCFs, logs, and immutable recovery evidence. Before a real run, inspect
 the input size and destination capacity on the execution host:
 
 ```sh
-du -sh /absolute/path/to/emrys-inputs/inputs
+du -sh /absolute/path/to/norad-inputs/inputs
 df -h /absolute/path/to/operator-managed-storage
 free -h
 ```
@@ -102,7 +102,7 @@ representative samples before authorizing the full analysis.
 ## Choose a first run
 
 - **Synthetic installation check:** use [`quickstart.md`](quickstart.md),
-  Path A, with `emrys init synthetic-local-pilot`. It creates small explicit
+  Path A, with `norad init synthetic-local-pilot`. It creates small explicit
   inputs outside the repository and still requires the real admitted scientific
   runtime. A synthetic result
   demonstrates that exact runtime and request, not production or biological
@@ -133,7 +133,7 @@ establishes.
 | Common odds ratio | CMH effect estimate shared across the paired strata; values above `1` favor treatment enrichment and below `1` favor control, subject to the declared thresholds. |
 | `FWD_like`, `REV_like` | Legacy mechanical SAM-flag groups; not biological strand labels. |
 | Computational call | A Step `09` threshold classification such as `significant_up`; still pending scientific adjudication. |
-| External review or adjudication | A research work process that may reference EMRYS outputs but is not an EMRYS step, gate, artifact, or completion state. |
+| External review or adjudication | A research work process that may reference EMRYS outputs but is not a EMRYS step, gate, artifact, or completion state. |
 | Create-absent / no-clobber | Publication that requires the destination not to exist and refuses replacement or adoption. |
 | Receipt-last | The transaction receipt is published only after its declared payload has been checked; the receipt still must be semantically re-admitted. |
 | Run root | The immutable/evidence-bearing directory for one deterministic normalized run ID. |
@@ -143,11 +143,11 @@ establishes.
 | Need | Canonical guide |
 | --- | --- |
 | Every input and runtime-profile field | [`configs/README.md`](configs/README.md) |
-| Public local-pilot boundary | [`src/emrys/orchestration/local_pilot/README.md`](src/emrys/orchestration/local_pilot/README.md) |
+| Public local-pilot boundary | [`src/norad/orchestration/local_pilot/README.md`](src/norad/orchestration/local_pilot/README.md) |
 | Recurring operations, scheduler inspection, and recovery | [`docs/operations/RUNBOOK.md`](docs/operations/RUNBOOK.md) |
 | Evidence-preserving recovery | [`docs/operations/TROUBLESHOOTING.md`](docs/operations/TROUBLESHOOTING.md) |
 | Optional external scientific-evaluation checklist | [`docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md`](docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md) |
-| Operator report build and workflow-owned reporting transactions | [`src/emrys/reporting/README.md`](src/emrys/reporting/README.md) |
+| Operator report build and workflow-owned reporting transactions | [`src/norad/reporting/README.md`](src/norad/reporting/README.md) |
 | Architecture and complete owner DAG | [`docs/architecture/README.md`](docs/architecture/README.md) |
 | Current validation evidence and remaining gaps | [`docs/operations/HANDOFF.md`](docs/operations/HANDOFF.md) |
 | Local test routes | [`tests/README.md`](tests/README.md) |

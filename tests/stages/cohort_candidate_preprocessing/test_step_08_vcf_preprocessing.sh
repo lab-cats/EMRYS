@@ -14,9 +14,9 @@ unset \
     FAKE_RSCRIPT_BARRIER_{MARKER,RELEASE} FAKE_RSCRIPT_{DUPLICATE_CANDIDATE,EXTRA_INPUT_FIELD,FAIL,HEADER_ONLY,LOG,MUTATE,OMIT_OUTPUT}
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-unset EMRYS_RUN_TOKEN
-export EMRYS_SHA256_PYTHON="$repo_root/.venv/bin/python"
-owner_path="src/emrys/stages/cohort_candidate_preprocessing"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$repo_root/.venv/bin/python"
+owner_path="src/norad/stages/cohort_candidate_preprocessing"
 script="$repo_root/$owner_path/step_08_vcf_preprocessing.sh"
 job="$repo_root/$owner_path/step_08_vcf_preprocessing.slurm"
 test_root="$(mktemp -d)"
@@ -645,7 +645,7 @@ assert_not_exists "$missing_r_program_fixture/qc"
 printf 'Running Step 08 dry-run and exact-input enumeration checks...\n'
 printf 'unmanifested\n' >"$fixture/step07/cohort_A/p1/unmanifested.extra.vcf"
 dry_log="$test_root/dry-rscript.log"
-env EMRYS_RUN_TOKEN=explicit-owner-08 SLURM_JOB_ID=scheduler-08 \
+env NORAD_RUN_TOKEN=explicit-owner-08 SLURM_JOB_ID=scheduler-08 \
     FAKE_RSCRIPT_LOG="$dry_log" \
     bash "$script" "${common_args[@]}" >"$test_root/dry.out"
 assert_contains "$test_root/dry.out" "Mode: dry-run"
@@ -1424,14 +1424,14 @@ assert_no_step08_scratch "$first_failure_fixture/output" "$first_failure_fixture
 
 printf 'Running Step 08 SLURM wrapper checks...\n'
 wrapper_dry="$test_root/wrapper-dry"
-mkdir -p "$wrapper_dry/$owner_path" "$wrapper_dry/src/emrys/libraries"
+mkdir -p "$wrapper_dry/$owner_path" "$wrapper_dry/src/norad/libraries"
 cp "$script" "$wrapper_dry/$owner_path/"
-cp "$repo_root/src/emrys/libraries/executable_resolution.sh" \
-    "$repo_root/src/emrys/libraries/file_checks.sh" \
-    "$repo_root/src/emrys/libraries/argument_parsing.sh" \
-    "$repo_root/src/emrys/libraries/orientation.sh" \
-    "$repo_root/src/emrys/libraries/signal_traps.sh" \
-    "$wrapper_dry/src/emrys/libraries/"
+cp "$repo_root/src/norad/libraries/executable_resolution.sh" \
+    "$repo_root/src/norad/libraries/file_checks.sh" \
+    "$repo_root/src/norad/libraries/argument_parsing.sh" \
+    "$repo_root/src/norad/libraries/orientation.sh" \
+    "$repo_root/src/norad/libraries/signal_traps.sh" \
+    "$wrapper_dry/src/norad/libraries/"
 env \
     PATH="$fake_bin:$PATH" \
     SLURM_SUBMIT_DIR="$wrapper_dry" \
@@ -1454,14 +1454,14 @@ assert_not_exists "$wrapper_dry/qc"
 wrapper_execute="$test_root/wrapper-execute"
 mkdir -p \
     "$wrapper_execute/$owner_path" \
-    "$wrapper_execute/src/emrys/libraries"
+    "$wrapper_execute/src/norad/libraries"
 cp "$script" "$wrapper_execute/$owner_path/"
-cp "$repo_root/src/emrys/libraries/executable_resolution.sh" \
-    "$repo_root/src/emrys/libraries/file_checks.sh" \
-    "$repo_root/src/emrys/libraries/argument_parsing.sh" \
-    "$repo_root/src/emrys/libraries/orientation.sh" \
-    "$repo_root/src/emrys/libraries/signal_traps.sh" \
-    "$wrapper_execute/src/emrys/libraries/"
+cp "$repo_root/src/norad/libraries/executable_resolution.sh" \
+    "$repo_root/src/norad/libraries/file_checks.sh" \
+    "$repo_root/src/norad/libraries/argument_parsing.sh" \
+    "$repo_root/src/norad/libraries/orientation.sh" \
+    "$repo_root/src/norad/libraries/signal_traps.sh" \
+    "$wrapper_execute/src/norad/libraries/"
 env \
     PATH="$fake_bin:$PATH" \
     SLURM_SUBMIT_DIR="$wrapper_execute" \
@@ -1483,9 +1483,9 @@ assert_exists "$wrapper_execute/output/cohort_A/cohort_A.step08_inputs.tsv"
 assert_exists "$wrapper_execute/qc/cohort_A.step08_summary.tsv"
 
 invalid_wrapper="$test_root/wrapper-invalid"
-invalid_wrapper_libraries="$invalid_wrapper/src/emrys/libraries"
+invalid_wrapper_libraries="$invalid_wrapper/src/norad/libraries"
 mkdir -p "$invalid_wrapper_libraries"
-cp "$repo_root/src/emrys/libraries/argument_parsing.sh" \
+cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
     "$invalid_wrapper_libraries/"
 run_expect_status 1 "$test_root/wrapper-invalid.out" "$test_root/wrapper-invalid.err" \
     env \
@@ -1505,9 +1505,9 @@ assert_contains "$test_root/wrapper-invalid.err" "EXECUTE must be 0 or 1"
 assert_not_exists "$invalid_wrapper/logs"
 
 wrapper_missing="$test_root/wrapper-missing"
-wrapper_missing_libraries="$wrapper_missing/src/emrys/libraries"
+wrapper_missing_libraries="$wrapper_missing/src/norad/libraries"
 mkdir -p "$wrapper_missing/$owner_path" "$wrapper_missing_libraries"
-cp "$repo_root/src/emrys/libraries/argument_parsing.sh" \
+cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
     "$wrapper_missing_libraries/"
 cat >"$wrapper_missing/$owner_path/step_08_vcf_preprocessing.sh" <<'WRAPPER_STUB'
 #!/usr/bin/env bash

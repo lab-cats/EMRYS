@@ -9,7 +9,7 @@ fail() {
     exit 1
 }
 
-tmp="$(mktemp -d "${TMPDIR:-/tmp}/emrys-r-contract.XXXXXX")"
+tmp="$(mktemp -d "${TMPDIR:-/tmp}/norad-r-contract.XXXXXX")"
 trap 'rm -rf "$tmp"' EXIT
 
 fake_rscript="$tmp/Rscript"
@@ -17,11 +17,11 @@ fake_log="$tmp/rscript.log"
 cat >"$fake_rscript" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-printf 'EMRYS_USE_RENV=%s\tEMRYS_LOCAL_PILOT_R=%s\tEMRYS_RENV_LIBRARY=%s\tEMRYS_RENV_VERSION=%s\tRENV_SANDBOX=%s\tRENV_AUTO_SNAPSHOT=%s\tRENV_PROJECT=%s\tR_PROFILE_USER=%s\targs=' \
-    "${EMRYS_USE_RENV:-<unset>}" \
-    "${EMRYS_LOCAL_PILOT_R:-<unset>}" \
-    "${EMRYS_RENV_LIBRARY:-<unset>}" \
-    "${EMRYS_RENV_VERSION:-<unset>}" \
+printf 'NORAD_USE_RENV=%s\tNORAD_LOCAL_PILOT_R=%s\tNORAD_RENV_LIBRARY=%s\tNORAD_RENV_VERSION=%s\tRENV_SANDBOX=%s\tRENV_AUTO_SNAPSHOT=%s\tRENV_PROJECT=%s\tR_PROFILE_USER=%s\targs=' \
+    "${NORAD_USE_RENV:-<unset>}" \
+    "${NORAD_LOCAL_PILOT_R:-<unset>}" \
+    "${NORAD_RENV_LIBRARY:-<unset>}" \
+    "${NORAD_RENV_VERSION:-<unset>}" \
     "${RENV_CONFIG_SANDBOX_ENABLED:-<unset>}" \
     "${RENV_CONFIG_AUTO_SNAPSHOT:-<unset>}" \
     "${RENV_PROJECT:-<unset>}" \
@@ -46,15 +46,8 @@ printf 'Package: renv\nVersion: 1.2.3\n' \
 
 grep -Fq 'identical(use_renv, "1")' .Rprofile ||
     fail ".Rprofile does not guard renv activation"
-grep -Fq 'EMRYS_USE_RENV must be exactly 0 or 1' .Rprofile ||
+grep -Fq 'NORAD_USE_RENV must be exactly 0 or 1' .Rprofile ||
     fail ".Rprofile does not reject invalid activation values"
-for legacy_selector in \
-    NORAD_USE_RENV NORAD_LOCAL_PILOT_R NORAD_RENV_LIBRARY NORAD_RENV_VERSION; do
-    grep -Fq "\"$legacy_selector\"" .Rprofile ||
-        fail ".Rprofile does not detect legacy selector $legacy_selector"
-done
-grep -Fq 'Legacy NORAD R selectors are not accepted by EMRYS' .Rprofile ||
-    fail ".Rprofile does not reject legacy R selectors"
 if grep -Eq '^source\\("renv/activate\\.R"\\)' .Rprofile; then
     fail ".Rprofile activates renv unconditionally"
 fi
@@ -143,7 +136,7 @@ for r_entrypoint in \
         fail "$r_entrypoint no longer rejects every positional argument"
 done
 
-grep -Fq 'EMRYS_LOCAL_PILOT_R", unset = "0"), "1"' \
+grep -Fq 'NORAD_LOCAL_PILOT_R", unset = "0"), "1"' \
     scripts/check_r_environment.R ||
     fail "r-check does not require non-bootstrapping library selection"
 if grep -Eq 'renv::(restore|install|hydrate|snapshot)' \
@@ -166,7 +159,7 @@ if resolved_rscript="$(command -v "$rscript_bin" 2>/dev/null)"; then
                 cd "$r_cli_cwd"
                 R_PROFILE_USER="$tmp/no-r-profile" \
                     R_ENVIRON_USER="$tmp/no-r-environ" \
-                    EMRYS_USE_RENV=0 \
+                    NORAD_USE_RENV=0 \
                     "$resolved_rscript" "$repo_root/$r_entrypoint" "$argument"
             ) >"$stdout_path" 2>"$stderr_path"; then
                 fail "$r_entrypoint accepted unsupported argument $argument"
@@ -197,7 +190,7 @@ FAKE_R_LOG="$fake_log" make \
 FAKE_R_LOG="$fake_log" make \
     RSCRIPT_BIN="$fake_rscript" \
     RENV_LIBRARY="$fake_renv_library" \
-    EMRYS_TEST_FAKE_SCIENTIFIC_CONTEXT_R=1 \
+    NORAD_TEST_FAKE_SCIENTIFIC_CONTEXT_R=1 \
     local-real-r-test >/dev/null
 
 line_count="$(wc -l <"$fake_log" | tr -d ' ')"
@@ -205,8 +198,8 @@ line_count="$(wc -l <"$fake_log" | tr -d ' ')"
     fail "expected eight guarded fake-R invocations, found $line_count"
 
 while IFS= read -r line; do
-    [[ "$line" == EMRYS_USE_RENV=1$'\t'* ]] ||
-        fail "Make target invoked R without EMRYS_USE_RENV=1: $line"
+    [[ "$line" == NORAD_USE_RENV=1$'\t'* ]] ||
+        fail "Make target invoked R without NORAD_USE_RENV=1: $line"
     [[ "$line" == *$'\tRENV_SANDBOX=FALSE\t'* ]] ||
         fail "Make target did not disable the pathological local sandbox: $line"
     [[ "$line" == *$'\tRENV_AUTO_SNAPSHOT=FALSE\t'* ]] ||
@@ -218,15 +211,15 @@ while IFS= read -r line; do
 done <"$fake_log"
 
 restore_line="$(sed -n '1p' "$fake_log")"
-[[ "$restore_line" == *$'\tEMRYS_LOCAL_PILOT_R=0\t'* ]] ||
+[[ "$restore_line" == *$'\tNORAD_LOCAL_PILOT_R=0\t'* ]] ||
     fail "r-restore did not select bootstrap-capable operator mode"
 
 tail -n +2 "$fake_log" | while IFS= read -r line; do
-    [[ "$line" == *$'\tEMRYS_LOCAL_PILOT_R=1\t'* ]] ||
+    [[ "$line" == *$'\tNORAD_LOCAL_PILOT_R=1\t'* ]] ||
         fail "R check/test did not select non-bootstrapping mode: $line"
-    [[ "$line" == *$'\tEMRYS_RENV_LIBRARY='"$fake_renv_library"$'\t'* ]] ||
+    [[ "$line" == *$'\tNORAD_RENV_LIBRARY='"$fake_renv_library"$'\t'* ]] ||
         fail "R check/test did not bind the exact existing library: $line"
-    [[ "$line" == *$'\tEMRYS_RENV_VERSION=1.2.3\t'* ]] ||
+    [[ "$line" == *$'\tNORAD_RENV_VERSION=1.2.3\t'* ]] ||
         fail "R check/test did not bind the exact renv version: $line"
 done
 

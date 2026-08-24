@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from emrys.__main__ import main as emrys_main
-from emrys.analyses.paired_cmh_candidate_ranking import validator
-from emrys.libraries.validation import Snapshot
+from norad.__main__ import main as norad_main
+from norad.analyses.paired_cmh_candidate_ranking import validator
+from norad.libraries.validation import Snapshot
 from tests import scientific_evidence_test_support as fixture_builder
 from tests.stage_validator_test_support import load_roster_oracle
 from tests.stage_validator_test_support import read_tsv as report_rows
@@ -151,7 +151,7 @@ def _run(
             sys.executable,
             "-I",
             "-m",
-            "emrys",
+            "norad",
             "validate",
             "paired-cmh-candidate-ranking",
             *_arguments(evidence, *extra),
@@ -358,7 +358,7 @@ def test_post_build_mutation_of_each_input_preserves_predecessor_report(
         return built
 
     monkeypatch.setattr(validator, "build_validation_report", mutate_after_build)
-    status = emrys_main(
+    status = norad_main(
         [
             "validate",
             "paired-cmh-candidate-ranking",

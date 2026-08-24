@@ -1,5 +1,5 @@
 {
-  "schema_name": "emrys.run_summary",
+  "schema_name": "norad.run_summary",
   "schema_version": "2.0.0",
   "record_type": "run_summary",
   "run_id": "run_fixture",
@@ -60,7 +60,7 @@
   ],
   "artifacts": [
     {
-      "schema_name": "emrys.artifact_record",
+      "schema_name": "norad.artifact_record",
       "schema_version": "2.0.0",
       "record_type": "artifact_record",
       "run_id": "run_fixture",
@@ -167,7 +167,7 @@
     }
   ],
   "candidate_terminology": "CMH-ranked candidates",
-  "interpretation_boundary": "computational_candidates_only_biological_validation_outside_emrys",
+  "interpretation_boundary": "computational_candidates_only_biological_validation_outside_norad",
   "warnings": [
     {
       "code": "production_output_missing",

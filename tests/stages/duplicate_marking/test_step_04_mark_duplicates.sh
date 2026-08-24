@@ -3,9 +3,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh"
-unset EMRYS_RUN_TOKEN
-export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
+SCRIPT="$REPO_ROOT/src/norad/stages/duplicate_marking/step_04_mark_duplicates.sh"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -285,7 +285,7 @@ printf 'Running dry-run check...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry/markdup"
 dry_metrics_dir="$tmp_dir/results/dry/qc"
-EMRYS_RUN_TOKEN=explicit-owner-04 SLURM_JOB_ID=scheduler-04 bash "$SCRIPT" \
+NORAD_RUN_TOKEN=explicit-owner-04 SLURM_JOB_ID=scheduler-04 bash "$SCRIPT" \
     --sample-id sample_dry \
     --input-bam "$input_bam" \
     --output-dir "$dry_output_dir" \

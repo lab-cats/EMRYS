@@ -10,9 +10,9 @@ import pytest
 
 MODULE_PATH = (
     Path(__file__).resolve().parents[3]
-    / "src/emrys/orchestration/local_pilot/dashboard.py"
+    / "src/norad/orchestration/local_pilot/dashboard.py"
 )
-SPEC = importlib.util.spec_from_file_location("emrys_dashboard_under_test", MODULE_PATH)
+SPEC = importlib.util.spec_from_file_location("norad_dashboard_under_test", MODULE_PATH)
 assert SPEC is not None and SPEC.loader is not None
 dashboard = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(dashboard)
@@ -24,8 +24,8 @@ RUN_ID = "run-" + "a" * 64
 
 def _make_logs(log_dir: Path, job_id: int = JOB_ID) -> tuple[Path, Path]:
     log_dir.mkdir()
-    stdout = log_dir / f"emrys-local-pilot-{job_id}.out"
-    stderr = log_dir / f"emrys-local-pilot-{job_id}.err"
+    stdout = log_dir / f"norad-local-pilot-{job_id}.out"
+    stderr = log_dir / f"norad-local-pilot-{job_id}.err"
     stdout.write_text("stdout\n", encoding="utf-8")
     stderr.write_text("stderr\n", encoding="utf-8")
     return stdout, stderr
@@ -176,10 +176,10 @@ def test_missing_control_plan_never_invents_six_by_two() -> None:
     identity = dashboard.parse_identity(f"Run ID: {RUN_ID}\n")
 
     assert dashboard.configuration_text(identity) == (
-        "not yet reported by the EMRYS control plan"
+        "not yet reported by the NORAD control plan"
     )
     assert dashboard.stage_resource_text("01", identity, "legacy fallback") == (
-        "Resource plan not yet reported by the EMRYS control stream."
+        "Resource plan not yet reported by the NORAD control stream."
     )
 
 
@@ -196,16 +196,16 @@ def test_positional_overrides_take_precedence_over_environment(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls: list[tuple[object, ...]] = []
-    monkeypatch.setenv("EMRYS_DASHBOARD_JOB_ID", "111")
-    monkeypatch.setenv("EMRYS_DASHBOARD_LOG_DIR", "/environment")
+    monkeypatch.setenv("NORAD_DASHBOARD_JOB_ID", "111")
+    monkeypatch.setenv("NORAD_DASHBOARD_LOG_DIR", "/environment")
 
     def fake_resolve(*args: object) -> dict[str, object]:
         calls.append(args)
         return {
             "job_id": 222,
             "log_dir": "/explicit",
-            "out": "/explicit/emrys-local-pilot-222.out",
-            "err": "/explicit/emrys-local-pilot-222.err",
+            "out": "/explicit/norad-local-pilot-222.out",
+            "err": "/explicit/norad-local-pilot-222.err",
         }
 
     monkeypatch.setattr(dashboard, "resolve_selection", fake_resolve)
@@ -257,8 +257,8 @@ def test_validate_log_selection_accepts_exact_owned_regular_pair(
 @pytest.mark.parametrize(
     ("stdout_name", "stderr_name", "message"),
     [
-        ("wrong.out", f"emrys-local-pilot-{JOB_ID}.err", "stdout does not match"),
-        (f"emrys-local-pilot-{JOB_ID}.out", "wrong.err", "stderr does not match"),
+        ("wrong.out", f"norad-local-pilot-{JOB_ID}.err", "stdout does not match"),
+        (f"norad-local-pilot-{JOB_ID}.out", "wrong.err", "stderr does not match"),
     ],
 )
 def test_validate_log_selection_rejects_wrong_contract_filenames(
@@ -283,9 +283,9 @@ def test_validate_log_selection_rejects_symlinked_log(tmp_path: Path) -> None:
     log_dir.mkdir()
     target = log_dir / "target"
     target.write_text("stdout", encoding="utf-8")
-    stdout = log_dir / f"emrys-local-pilot-{JOB_ID}.out"
+    stdout = log_dir / f"norad-local-pilot-{JOB_ID}.out"
     stdout.symlink_to(target)
-    stderr = log_dir / f"emrys-local-pilot-{JOB_ID}.err"
+    stderr = log_dir / f"norad-local-pilot-{JOB_ID}.err"
     stderr.write_text("stderr", encoding="utf-8")
 
     with pytest.raises(dashboard.DiscoveryError, match="real regular file"):
@@ -335,8 +335,8 @@ def test_auto_discovery_skips_unprovable_candidate(
     selected = {
         "job_id": 605304,
         "log_dir": "/logs",
-        "out": "/logs/emrys-local-pilot-605304.out",
-        "err": "/logs/emrys-local-pilot-605304.err",
+        "out": "/logs/norad-local-pilot-605304.out",
+        "err": "/logs/norad-local-pilot-605304.err",
     }
     attempted: list[int] = []
     monkeypatch.setattr(
@@ -352,7 +352,7 @@ def test_auto_discovery_skips_unprovable_candidate(
         del log_dir
         attempted.append(job_id)
         if job_id == 605305:
-            raise dashboard.DiscoveryError("not an EMRYS wrapper job")
+            raise dashboard.DiscoveryError("not a NORAD wrapper job")
         return selected
 
     monkeypatch.setattr(dashboard, "scheduler_selection", fake_selection)
@@ -375,7 +375,7 @@ def test_auto_discovery_uses_accounting_declared_completed_streams(
                 "job_id": JOB_ID,
                 "accounting": {
                     "JobId": str(JOB_ID),
-                    "JobName": "emrys-real-run",
+                    "JobName": "norad-real-run",
                     "JobState": "COMPLETED",
                     "User": "2609214",
                     "UID": str(os.getuid()),
@@ -438,7 +438,7 @@ def test_explicit_job_and_log_dir_use_terminal_accounting_fallback(
         del timeout
         assert argv[0] == "sacct"
         return (
-            f"{JOB_ID}|emrys-real-run|COMPLETED+|2609214|{os.getuid()}\n"
+            f"{JOB_ID}|norad-real-run|COMPLETED+|2609214|{os.getuid()}\n"
             f"{JOB_ID}.batch|batch|COMPLETED|2609214|{os.getuid()}"
         )
 
@@ -467,8 +467,7 @@ def test_explicit_completed_job_uses_exact_accounting_streams_without_log_dir(
         calls.append(argv)
         assert argv[0] == "sacct"
         return (
-            f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|"
-            f"{stdout}|{stderr}"
+            f"{JOB_ID}|norad-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}"
         )
 
     monkeypatch.setattr(dashboard, "command_text", fake_command)
@@ -501,8 +500,7 @@ def test_explicit_log_dir_must_agree_with_exact_accounting_streams(
         del argv, timeout
         calls += 1
         return (
-            f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}|"
-            f"{stdout}|{stderr}"
+            f"{JOB_ID}|norad-real-run|COMPLETED|2609214|{os.getuid()}|{stdout}|{stderr}"
         )
 
     monkeypatch.setattr(dashboard, "command_text", fake_command)
@@ -527,7 +525,7 @@ def test_exact_accounting_uses_one_basic_fallback_when_stream_fields_unavailable
         formats.append(format_value)
         if format_value.endswith(",StdOut,StdErr"):
             return ""
-        return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}"
+        return f"{JOB_ID}|norad-real-run|COMPLETED|2609214|{os.getuid()}"
 
     monkeypatch.setattr(dashboard, "command_text", fake_command)
 
@@ -554,7 +552,7 @@ def test_explicit_job_without_log_dir_fails_if_accounting_has_no_stream_paths(
         del timeout
         if argv[-1].endswith(",StdOut,StdErr"):
             return ""
-        return f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}"
+        return f"{JOB_ID}|norad-real-run|COMPLETED|2609214|{os.getuid()}"
 
     monkeypatch.setattr(dashboard, "command_text", fake_command)
 
@@ -566,17 +564,17 @@ def test_explicit_job_without_log_dir_fails_if_accounting_has_no_stream_paths(
     ("accounting", "message"),
     [
         (
-            f"{JOB_ID}|emrys-real-run|RUNNING|2609214|{os.getuid()}",
+            f"{JOB_ID}|norad-real-run|RUNNING|2609214|{os.getuid()}",
             "is not terminal",
         ),
         (
-            f"{JOB_ID}|emrys-real-run|COMPLETED|someone-else|999999",
+            f"{JOB_ID}|norad-real-run|COMPLETED|someone-else|999999",
             "is not owned",
         ),
         (
             "\n".join(
                 [
-                    f"{JOB_ID}|emrys-real-run|COMPLETED|2609214|{os.getuid()}",
+                    f"{JOB_ID}|norad-real-run|COMPLETED|2609214|{os.getuid()}",
                     f"{JOB_ID}|duplicate|COMPLETED|2609214|{os.getuid()}",
                 ]
             ),
@@ -836,7 +834,7 @@ def test_dashboard_model_and_text_views_cover_active_terminal_and_empty_states(
     assert dashboard.workflow_frontier_lines(empty, now, 80)
 
     dashboard.snapshot(JOB_ID, _slurm(), identity, model)
-    assert "EMRYS LIVE DASHBOARD" in capsys.readouterr().out
+    assert "NORAD LIVE DASHBOARD" in capsys.readouterr().out
 
 
 class _FakeScreen:

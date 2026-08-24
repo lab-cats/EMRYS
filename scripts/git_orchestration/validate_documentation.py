@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate EMRYS documentation ownership and the compact task registry."""
+"""Validate NORAD documentation ownership and the compact task registry."""
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ FIELD_PATTERN = re.compile(
 BLOCKER_LIST_PATTERN = re.compile(r"`([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)`(?:, |$)")
 
 CANONICAL_DOCUMENTS = {
-    "AGENTS.md": "# EMRYS safety guard",
+    "AGENTS.md": "# NORAD safety guard",
     "README.md": "# EMRYS: Epic Molecular Read Yield System",
     "docs/architecture/README.md": "# Architecture index",
     "docs/architecture/ARCHITECTURE.md": "# Current architecture",
@@ -41,7 +41,7 @@ CANONICAL_DOCUMENTS = {
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
     "docs/design/ORCHESTRATION_CONTRACT.md": "# Local-pilot orchestration contract",
     "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
-    "docs/design/PIPELINE_PLAN.md": "# EMRYS pipeline plan",
+    "docs/design/PIPELINE_PLAN.md": "# NORAD pipeline plan",
     "docs/design/QUESTIONS.md": "# Open questions",
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
     "docs/operations/HANDOFF.md": "# Project handoff",
@@ -49,27 +49,27 @@ CANONICAL_DOCUMENTS = {
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
     "docs/sitemap/README.md": "# Documentation sitemap",
-    "src/emrys/contracts/SOURCE_TOPOLOGY.md": (
+    "src/norad/contracts/SOURCE_TOPOLOGY.md": (
         "# Source ownership and dependency direction"
     ),
-    "src/emrys/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
+    "src/norad/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
 }
 
 RETIRED_DOCUMENTS = (
     "docs/design/REFACTOR_AUDIT.md",
     "docs/operations/CONCURRENT_WORK.md",
     "docs/operations/TASK_DELIVERY.md",
-    "src/emrys/contracts/MIGRATION_MECHANICS.md",
+    "src/norad/contracts/MIGRATION_MECHANICS.md",
 )
 RETIRED_TASK_DIRECTORIES = ("TODO", "IN_PROGRESS", "INTEGRATION_REVIEW", "UNREFINED")
 
 CROSS_CUTTING_OWNER_DOCS = (
-    "src/emrys/contracts/artifacts/README.md",
-    "src/emrys/evidence/reference_provenance/README.md",
-    "src/emrys/evidence/runtime_availability/README.md",
-    "src/emrys/evidence/storage_inventory/README.md",
-    "src/emrys/ingestion/sample_manifest_admission/README.md",
-    "src/emrys/reporting/README.md",
+    "src/norad/contracts/artifacts/README.md",
+    "src/norad/evidence/reference_provenance/README.md",
+    "src/norad/evidence/runtime_availability/README.md",
+    "src/norad/evidence/storage_inventory/README.md",
+    "src/norad/ingestion/sample_manifest_admission/README.md",
+    "src/norad/reporting/README.md",
 )
 SOURCE_OWNER_DIRECTORY_NAMES = {
     (
@@ -190,7 +190,7 @@ def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
         if not (root / relative).is_file():
             problems.append(f"missing cross-cutting owner documentation: {relative}")
 
-    stage_map = root / "src" / "emrys" / "contracts" / "STAGE_MAP.md"
+    stage_map = root / "src" / "norad" / "contracts" / "STAGE_MAP.md"
     if not stage_map.is_file():
         return
     identity_pattern = re.compile(
@@ -205,7 +205,7 @@ def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
     for kind, slug in identities:
         domain = domain_by_kind[kind]
         owner_name = SOURCE_OWNER_DIRECTORY_NAMES.get((kind, slug), slug)
-        owner = root / "src" / "emrys" / domain / owner_name
+        owner = root / "src" / "norad" / domain / owner_name
         tests = root / "tests" / domain / owner_name
         for basename in ("README.md", "CONTRACT.md"):
             if not (owner / basename).is_file():
@@ -397,7 +397,7 @@ def validate(root: Path) -> tuple[int, int, int, int]:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Validate EMRYS documentation ownership and local structure."
+        description="Validate NORAD documentation ownership and local structure."
     )
     parser.add_argument("--repo", required=True, type=Path)
     return parser.parse_args()

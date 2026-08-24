@@ -1,0 +1,294 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:norad:schema:orchestration:attempt-receipt:v1",
+  "title": "NORAD terminal workflow attempt receipt v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "execution_contract_sha256",
+    "profile_sha256",
+    "workflow_attempt_id",
+    "attempt_record",
+    "released_run_lock",
+    "status",
+    "finished_at",
+    "snakemake_exit_code",
+    "termination_signal",
+    "preentry_task_attempt_records",
+    "task_start_records",
+    "verified_tasks",
+    "reporting_completion_records",
+    "blockers",
+    "message",
+    "local_pipeline_complete"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "norad.attempt-receipt.v1"
+    },
+    "run_id": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/run_id"
+    },
+    "execution_contract_sha256": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/sha256"
+    },
+    "profile_sha256": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/sha256"
+    },
+    "workflow_attempt_id": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/workflow_attempt_id"
+    },
+    "attempt_record": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+    },
+    "released_run_lock": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+    },
+    "status": {
+      "enum": [
+        "succeeded",
+        "failed",
+        "interrupted",
+        "blocked"
+      ]
+    },
+    "finished_at": {
+      "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/timestamp"
+    },
+    "snakemake_exit_code": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "termination_signal": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "preentry_task_attempt_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workflow_attempt_id",
+          "machine_key",
+          "scope",
+          "record"
+        ],
+        "properties": {
+          "workflow_attempt_id": {
+            "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/workflow_attempt_id"
+          },
+          "machine_key": {
+            "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/safe_id"
+          },
+          "scope": {
+            "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/scope"
+          },
+          "record": {
+            "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+          }
+        }
+      }
+    },
+    "task_start_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "machine_key",
+          "scope",
+          "record"
+        ],
+        "properties": {
+          "machine_key": {
+            "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/safe_id"
+          },
+          "scope": {
+            "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/scope"
+          },
+          "record": {
+            "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+          }
+        }
+      }
+    },
+    "verified_tasks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "machine_key",
+          "scope",
+          "record"
+        ],
+        "properties": {
+          "machine_key": {
+            "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/safe_id"
+          },
+          "scope": {
+            "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/scope"
+          },
+          "record": {
+            "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+          }
+        }
+      }
+    },
+    "reporting_completion_records": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_index",
+        "run_summary",
+        "html_report"
+      ],
+      "properties": {
+        "artifact_index": {
+          "$ref": "#/$defs/reporting_ledger_state"
+        },
+        "run_summary": {
+          "$ref": "#/$defs/reporting_ledger_state"
+        },
+        "html_report": {
+          "$ref": "#/$defs/reporting_ledger_state"
+        }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/non_empty_string"
+      }
+    },
+    "message": {
+      "oneOf": [
+        {
+          "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/non_empty_string"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "local_pipeline_complete": {
+      "type": "boolean"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "succeeded"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "verified_tasks": {
+            "minItems": 1
+          },
+          "message": {
+            "type": "null"
+          },
+          "reporting_completion_records": {
+            "properties": {
+              "artifact_index": {
+                "$ref": "#/$defs/complete_reporting_ledger_state"
+              },
+              "run_summary": {
+                "$ref": "#/$defs/complete_reporting_ledger_state"
+              },
+              "html_report": {
+                "$ref": "#/$defs/complete_reporting_ledger_state"
+              }
+            }
+          },
+          "blockers": {
+            "maxItems": 0
+          },
+          "local_pipeline_complete": {
+            "const": true
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "local_pipeline_complete": {
+            "const": false
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "reporting_ledger_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start",
+        "verified"
+      ],
+      "properties": {
+        "start": {
+          "oneOf": [
+            {
+              "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verified": {
+          "oneOf": [
+            {
+              "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "complete_reporting_ledger_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start",
+        "verified"
+      ],
+      "properties": {
+        "start": {
+          "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+        },
+        "verified": {
+          "$ref": "urn:norad:schema:orchestration:common:v1#/$defs/record_reference"
+        }
+      }
+    }
+  }
+}

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from emrys.stages.gtf_to_bed12.converter import (
+from norad.stages.gtf_to_bed12.converter import (
     PublicationOperations,
     convert_from_args,
     publish_bed,
@@ -23,7 +23,7 @@ def run_converter(
             sys.executable,
             "-I",
             "-m",
-            "emrys",
+            "norad",
             "convert",
             "gtf-to-bed12",
             *args,

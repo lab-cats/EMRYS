@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from emrys.evidence.rseqc_orientation import validator
-from emrys.libraries.validation import Snapshot
+from norad.evidence.rseqc_orientation import validator
+from norad.libraries.validation import Snapshot
 from tests.stage_validator_test_support import load_roster_oracle
 from tests.stage_validator_test_support import read_tsv as report_rows
 
@@ -72,7 +72,7 @@ def run_validator(
             sys.executable,
             "-I",
             "-m",
-            "emrys",
+            "norad",
             "validate",
             "rseqc-orientation",
             *validator_arguments(evidence, *extra),

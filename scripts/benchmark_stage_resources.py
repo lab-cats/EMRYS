@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Benchmark explicit EMRYS owner commands across resource values.
+"""Benchmark explicit NORAD owner commands across resource values.
 
 This opt-in operator utility is deliberately outside the normal test suite.  It
 does not discover inputs or construct scientific commands: a reviewed manifest
@@ -28,7 +28,7 @@ from typing import Any
 
 import yaml
 
-SCHEMA_VERSION = "emrys.resource-benchmark.v1"
+SCHEMA_VERSION = "norad.resource-benchmark.v1"
 REQUIRED_CASE_FIELDS = {
     "name",
     "values",

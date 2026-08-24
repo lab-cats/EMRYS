@@ -3,9 +3,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/emrys/stages/star_alignment/step_01_star_align.sh"
-unset EMRYS_RUN_TOKEN
-export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
+SCRIPT="$REPO_ROOT/src/norad/stages/star_alignment/step_01_star_align.sh"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -166,7 +166,7 @@ assert_contains "$help_output" "--execute"
 printf 'Running dry-run check...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry"
-EMRYS_RUN_TOKEN=explicit-owner-01 SLURM_JOB_ID=scheduler-01 bash "$SCRIPT" \
+NORAD_RUN_TOKEN=explicit-owner-01 SLURM_JOB_ID=scheduler-01 bash "$SCRIPT" \
     --sample-id sample_001 \
     --r1-fastq "$r1_fastq" \
     --r2-fastq "$r2_fastq" \

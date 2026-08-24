@@ -1,4 +1,4 @@
-# EMRYS quickstart: fresh checkout to processed results
+# NORAD quickstart: fresh checkout to processed results
 
 This is the single supported first-run sequence for taking either a deterministic
 synthetic fixture or paired FASTQ data from a fresh checkout through runtime
@@ -10,14 +10,14 @@ result, scheduler job, and report has the evidence ceiling stated below.
 
 | Phase | Operator action | Required result before continuing |
 | --- | --- | --- |
-| 1. Source | Clone, select one immutable commit, and install the locked Python environment | Clean detached commit and working `emrys --help` |
+| 1. Source | Clone, select one immutable commit, and install the locked Python environment | Clean detached commit and working `norad --help` |
 | 2. Runtime | Provision exact scientific tools and restore/check the canonical R library outside workflow execution | Canonical compute-node paths and passing `r-check` |
 | 3. Inputs | Generate a create-absent starter set, then stage FASTQ, FASTA, GTF, and optional regions files | Explicit request, paired sample rows, and nonoverlapping partitions |
 | 4. Profile | Render a new runtime profile from the observed canonical paths | Complete create-absent runtime TSV |
 | 5. Admission | Validate the request and finalize two-phase storage qualification | Request PASS and matching final storage receipt |
 | 6. Readiness | Run doctor in the execution context | Exact `READY` result |
 | 7. Plan | Run the full no-write workflow plan | Reviewed deterministic run ID, run root, and owner commands |
-| 8. Process | Submit the generated single-allocation wrapper first with no mode flag, then with explicit `--execute` | Terminal scheduler success plus verified EMRYS task records |
+| 8. Process | Submit the generated single-allocation wrapper first with no mode flag, then with explicit `--execute` | Terminal scheduler success plus verified NORAD task records |
 | 9. Results | Inspect the run and retain its complete evidence tree | `local_pipeline_complete` and automatic scientific/evidence HTML reports |
 
 Do not skip a gate, hand-edit the generated scheduler wrapper, adopt outputs from
@@ -33,25 +33,25 @@ full commit, select that ref instead. A moving branch name is never the
 admitted identity.
 
 ```sh
-git clone https://github.com/lab-cats/EMRYS.git
-cd emrys
+git clone https://github.com/lab-cats/norad.git
+cd norad
 git fetch --tags --force
 
 # Executable zero-context path: select the exact commit just cloned.
-EMRYS_REF="$(git rev-parse HEAD)"
+NORAD_REF="$(git rev-parse HEAD)"
 
-# Optional project policy: replace EMRYS_REF with a designated release tag or
+# Optional project policy: replace NORAD_REF with a designated release tag or
 # full commit before detaching.
-git checkout --detach "$EMRYS_REF"
+git checkout --detach "$NORAD_REF"
 git rev-parse HEAD
 git status --short
 ```
 
 Require empty status output and record the printed full commit with the
 analysis. Using the cloned commit means **you selected a development snapshot**;
-it does not make that snapshot an EMRYS release or authorize a biological
+it does not make that snapshot a NORAD release or authorize a biological
 claim. If your organization requires an approved release record, verify the
-printed commit against that record before execution. EMRYS's receipts bind the
+printed commit against that record before execution. NORAD's receipts bind the
 commit you actually selected either way, so a no-context user can begin without
 an invented tag while a governed project can impose a stricter release rule.
 
@@ -70,16 +70,8 @@ uv --version
 uv sync --locked --group workflow
 ```
 
-This installs EMRYS and locked Snakemake `9.25.1` into `.venv`. It does not
+This installs NORAD and locked Snakemake `9.25.1` into `.venv`. It does not
 install scientific tools, R, or R packages, and it never relocks the project.
-
-The EMRYS cutover is an identity boundary. New package, CLI, environment,
-adjacent-config, schema, receipt, and recovery-state identities use EMRYS only;
-EMRYS does not adopt or resume a run root created by a pre-cutover checkout.
-Use that exact historical checkout to inspect or resume retained historical
-runs. Rename `norad.launcher.yaml`, `norad.resources.yaml`, and `NORAD_*`
-operator selectors before using this checkout; detected legacy adjacent files
-or R selectors fail closed rather than silently falling back to defaults.
 
 The onboarding commands in this guide intentionally use templates and policy
 from this exact source checkout. Run them through this checkout's editable
@@ -89,12 +81,12 @@ bundle.
 Create one controlled command in every terminal used for this checkout:
 
 ```sh
-EMRYS_REPO="$(pwd -P)"
-EMRYS_PY="$EMRYS_REPO/.venv/bin/python"
-emrys() {
-  "$EMRYS_PY" -X pycache_prefix=/dev/null -I -m emrys "$@"
+NORAD_REPO="$(pwd -P)"
+NORAD_PY="$NORAD_REPO/.venv/bin/python"
+norad() {
+  "$NORAD_PY" -X pycache_prefix=/dev/null -I -m norad "$@"
 }
-emrys --help
+norad --help
 test -z "$(git status --porcelain=v1)"
 ```
 
@@ -138,7 +130,7 @@ Rscript --version 2>&1 || true
 ```
 
 Load only the site's approved modules in that allocation, record the canonical
-targets actually observed there, and provision missing tools outside EMRYS
+targets actually observed there, and provision missing tools outside NORAD
 before continuing.
 
 The exact clean checkout is also the guarded `renv` project. It requires an
@@ -169,16 +161,16 @@ Choose durable storage visible from the execution host. The parent must exist;
 the selected input directory and workspace leaf must not:
 
 ```sh
-EMRYS_OPERATOR_ROOT=/absolute/path/to/operator-managed-storage
-EMRYS_WORKSPACE_PATH="$EMRYS_OPERATOR_ROOT/emrys-workspace"
+NORAD_OPERATOR_ROOT=/absolute/path/to/operator-managed-storage
+NORAD_WORKSPACE_PATH="$NORAD_OPERATOR_ROOT/norad-workspace"
 
-test -d "$EMRYS_OPERATOR_ROOT" &&
-test -w "$EMRYS_OPERATOR_ROOT" &&
-test ! -e "$EMRYS_WORKSPACE_PATH"
+test -d "$NORAD_OPERATOR_ROOT" &&
+test -w "$NORAD_OPERATOR_ROOT" &&
+test ! -e "$NORAD_WORKSPACE_PATH"
 ```
 
 If that check fails, stop and choose the correct existing parent or a new
-absent workspace. EMRYS does not recursively create a missing workspace parent.
+absent workspace. NORAD does not recursively create a missing workspace parent.
 
 ### Path A: deterministic synthetic science smoke
 
@@ -186,15 +178,15 @@ Generate the small input fixture directly outside the checkout. Both
 initializer commands are dry-run-first and refuse an existing destination:
 
 ```sh
-EMRYS_INPUT_DIR="$EMRYS_OPERATOR_ROOT/emrys-synthetic-inputs"
+NORAD_INPUT_DIR="$NORAD_OPERATOR_ROOT/norad-synthetic-inputs"
 
-emrys init synthetic-local-pilot --output-dir "$EMRYS_INPUT_DIR"
-emrys init synthetic-local-pilot \
-  --output-dir "$EMRYS_INPUT_DIR" \
+norad init synthetic-local-pilot --output-dir "$NORAD_INPUT_DIR"
+norad init synthetic-local-pilot \
+  --output-dir "$NORAD_INPUT_DIR" \
   --execute
 
-test -f "$EMRYS_INPUT_DIR/fixture.manifest.json"
-EMRYS_REQUEST_PATH="$EMRYS_INPUT_DIR/request.yaml"
+test -f "$NORAD_INPUT_DIR/fixture.manifest.json"
+NORAD_REQUEST_PATH="$NORAD_INPUT_DIR/request.yaml"
 ```
 
 The fixture has a deterministic 100 kb reference, matching GTF, one partition,
@@ -209,12 +201,12 @@ Its request/manifests are unused for the synthetic run; only its reviewed
 single-allocation wrapper is selected later:
 
 ```sh
-EMRYS_LAUNCHER_DIR="$EMRYS_OPERATOR_ROOT/emrys-slurm-launcher"
-emrys init local-pilot --output-dir "$EMRYS_LAUNCHER_DIR"
-emrys init local-pilot \
-  --output-dir "$EMRYS_LAUNCHER_DIR" \
+NORAD_LAUNCHER_DIR="$NORAD_OPERATOR_ROOT/norad-slurm-launcher"
+norad init local-pilot --output-dir "$NORAD_LAUNCHER_DIR"
+norad init local-pilot \
+  --output-dir "$NORAD_LAUNCHER_DIR" \
   --execute
-EMRYS_SLURM_WRAPPER="$EMRYS_LAUNCHER_DIR/run-in-slurm.sh"
+NORAD_SLURM_WRAPPER="$NORAD_LAUNCHER_DIR/run-in-slurm.sh"
 ```
 
 ### Path B: ingest your data
@@ -222,16 +214,16 @@ EMRYS_SLURM_WRAPPER="$EMRYS_LAUNCHER_DIR/run-in-slurm.sh"
 Generate one matched, create-absent starter set:
 
 ```sh
-EMRYS_INPUT_DIR="$EMRYS_OPERATOR_ROOT/emrys-inputs"
+NORAD_INPUT_DIR="$NORAD_OPERATOR_ROOT/norad-inputs"
 
-emrys init local-pilot --output-dir "$EMRYS_INPUT_DIR"
-emrys init local-pilot \
-  --output-dir "$EMRYS_INPUT_DIR" \
+norad init local-pilot --output-dir "$NORAD_INPUT_DIR"
+norad init local-pilot \
+  --output-dir "$NORAD_INPUT_DIR" \
   --execute
 
-test -f "$EMRYS_INPUT_DIR/starter-set.manifest.tsv"
-EMRYS_REQUEST_PATH="$EMRYS_INPUT_DIR/request.yaml"
-EMRYS_SLURM_WRAPPER="$EMRYS_INPUT_DIR/run-in-slurm.sh"
+test -f "$NORAD_INPUT_DIR/starter-set.manifest.tsv"
+NORAD_REQUEST_PATH="$NORAD_INPUT_DIR/request.yaml"
+NORAD_SLURM_WRAPPER="$NORAD_INPUT_DIR/run-in-slurm.sh"
 ```
 
 The completion manifest is published last. Preserve a partial generated
@@ -243,10 +235,10 @@ starter hashes historical rather than a current input attestation.
 The generated layout is:
 
 ```text
-emrys-inputs/
+norad-inputs/
 |-- request.yaml
-|-- emrys.launcher.yaml
-|-- emrys.resources.yaml
+|-- norad.launcher.yaml
+|-- norad.resources.yaml
 |-- samples.tsv
 |-- partitions.tsv
 |-- runtime.tsv
@@ -259,16 +251,16 @@ emrys-inputs/
 ```
 
 Create and populate `inputs/` without replacing an earlier staging tree. Then
-edit `request.yaml`, `emrys.resources.yaml`, `samples.tsv`, and
+edit `request.yaml`, `norad.resources.yaml`, `samples.tsv`, and
 `partitions.tsv`:
 
 ```sh
-test ! -e "$EMRYS_INPUT_DIR/inputs" &&
-mkdir -m 700 "$EMRYS_INPUT_DIR/inputs" &&
+test ! -e "$NORAD_INPUT_DIR/inputs" &&
+mkdir -m 700 "$NORAD_INPUT_DIR/inputs" &&
 mkdir -m 700 \
-  "$EMRYS_INPUT_DIR/inputs/reads" \
-  "$EMRYS_INPUT_DIR/inputs/reference" \
-  "$EMRYS_INPUT_DIR/inputs/regions"
+  "$NORAD_INPUT_DIR/inputs/reads" \
+  "$NORAD_INPUT_DIR/inputs/reference" \
+  "$NORAD_INPUT_DIR/inputs/regions"
 ```
 
 1. Give the request stable reference, cohort, and analysis IDs; point it to the
@@ -297,11 +289,11 @@ does not install tools, probe versions, or write a file.
 Redirect it to a **new absent filename**, never over the generated starter:
 
 ```sh
-EMRYS_RUNTIME_PROFILE_PATH="$EMRYS_INPUT_DIR/runtime.selected.tsv"
+NORAD_RUNTIME_PROFILE_PATH="$NORAD_INPUT_DIR/runtime.selected.tsv"
 
-test ! -e "$EMRYS_RUNTIME_PROFILE_PATH" && (
+test ! -e "$NORAD_RUNTIME_PROFILE_PATH" && (
   set -C
-  emrys prepare local-pilot-runtime \
+  norad prepare local-pilot-runtime \
     --bash /canonical/path/to/bash \
     --star /canonical/path/to/STAR \
     --samtools /canonical/path/to/samtools \
@@ -313,7 +305,7 @@ test ! -e "$EMRYS_RUNTIME_PROFILE_PATH" && (
     --picard-jar /canonical/path/to/picard.jar \
     --rscript /canonical/path/to/Rscript \
     --renv-library /canonical/path/to/renv-library \
-    > "$EMRYS_RUNTIME_PROFILE_PATH"
+    > "$NORAD_RUNTIME_PROFILE_PATH"
 )
 ```
 
@@ -334,7 +326,7 @@ plan inside its allocation.
 Run the read-only intake validator first:
 
 ```sh
-emrys validate local-pilot-request --request "$EMRYS_REQUEST_PATH"
+norad validate local-pilot-request --request "$NORAD_REQUEST_PATH"
 ```
 
 Continue only after `Local-pilot request validation: PASS`. It normalizes and
@@ -349,14 +341,14 @@ node, let that allocation end, then run the finalize phase from the durable
 control context:
 
 ```sh
-EMRYS_REFERENCE_FASTA=/absolute/path/from/request/to/reference.fa
-emrys inspect storage-qualification \
-  --workspace "$EMRYS_WORKSPACE_PATH" \
-  --reference-fasta "$EMRYS_REFERENCE_FASTA" --phase compute
+NORAD_REFERENCE_FASTA=/absolute/path/from/request/to/reference.fa
+norad inspect storage-qualification \
+  --workspace "$NORAD_WORKSPACE_PATH" \
+  --reference-fasta "$NORAD_REFERENCE_FASTA" --phase compute
 # Repeat the same command with --execute inside the allocation.
-emrys inspect storage-qualification \
-  --workspace "$EMRYS_WORKSPACE_PATH" \
-  --reference-fasta "$EMRYS_REFERENCE_FASTA" --phase finalize
+norad inspect storage-qualification \
+  --workspace "$NORAD_WORKSPACE_PATH" \
+  --reference-fasta "$NORAD_REFERENCE_FASTA" --phase finalize
 # Repeat the same command with --execute after the allocation has ended.
 ```
 
@@ -370,10 +362,10 @@ The doctor safely re-admits the request and source files plus the workspace
 plan, checkout, locked workflow, tools, jar, R project/library, and namespaces:
 
 ```sh
-emrys doctor local-pilot \
-  --request "$EMRYS_REQUEST_PATH" \
-  --workspace "$EMRYS_WORKSPACE_PATH" \
-  --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH"
+norad doctor local-pilot \
+  --request "$NORAD_REQUEST_PATH" \
+  --workspace "$NORAD_WORKSPACE_PATH" \
+  --runtime-profile "$NORAD_RUNTIME_PROFILE_PATH"
 ```
 
 Continue only after:
@@ -389,13 +381,13 @@ load modules, or alter an input.
 
 ## 7. Review the strict no-write plan
 
-`emrys run` is a dry run unless `--execute` is present:
+`norad run` is a dry run unless `--execute` is present:
 
 ```sh
-emrys run \
-  --request "$EMRYS_REQUEST_PATH" \
-  --workspace "$EMRYS_WORKSPACE_PATH" \
-  --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH"
+norad run \
+  --request "$NORAD_REQUEST_PATH" \
+  --workspace "$NORAD_WORKSPACE_PATH" \
+  --runtime-profile "$NORAD_RUNTIME_PROFILE_PATH"
 ```
 
 Review the deterministic run ID and run root, workflow-attempt identity,
@@ -406,7 +398,7 @@ that no workspace state was written.
 Copy the exact run root printed by the plan:
 
 ```sh
-EMRYS_RUN_ROOT=/absolute/path/to/emrys-workspace/runs/run-DIGEST
+NORAD_RUN_ROOT=/absolute/path/to/norad-workspace/runs/run-DIGEST
 ```
 
 The run ID is derived from the exact normalized inputs and policy. Formatting
@@ -429,49 +421,49 @@ the pipeline's true exit status:
 ```sh
 (
   set -o pipefail
-  EMRYS_CONTROL_DIR="$(mktemp -d \
-    "$EMRYS_OPERATOR_ROOT/.emrys-control.XXXXXX")" || exit 1
-  EMRYS_CONTROL_LOG="$EMRYS_CONTROL_DIR/emrys-run-control.log"
-  printf 'Control log: %s\n' "$EMRYS_CONTROL_LOG"
-  emrys run \
-    --request "$EMRYS_REQUEST_PATH" \
-    --workspace "$EMRYS_WORKSPACE_PATH" \
-    --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH" \
-    --execute 2>&1 | tee "$EMRYS_CONTROL_LOG"
+  NORAD_CONTROL_DIR="$(mktemp -d \
+    "$NORAD_OPERATOR_ROOT/.norad-control.XXXXXX")" || exit 1
+  NORAD_CONTROL_LOG="$NORAD_CONTROL_DIR/norad-run-control.log"
+  printf 'Control log: %s\n' "$NORAD_CONTROL_LOG"
+  norad run \
+    --request "$NORAD_REQUEST_PATH" \
+    --workspace "$NORAD_WORKSPACE_PATH" \
+    --runtime-profile "$NORAD_RUNTIME_PROFILE_PATH" \
+    --execute 2>&1 | tee "$NORAD_CONTROL_LOG"
 )
 ```
 
 ### One SLURM batch allocation
 
-Use the executable `run-in-slurm.sh` published by `emrys init local-pilot`.
+Use the executable `run-in-slurm.sh` published by `norad init local-pilot`.
 The generated wrapper is the supported single-allocation starter: submission
 mode validates every required value, requests one node/task, publishes exact
 `%j` stream paths, and resubmits itself as the job body. The job initializes
 modules, enters the selected checkout, runs input/runtime preflight, and then
 uses the public local executor.
 
-Edit adjacent `emrys.launcher.yaml` for non-private allocation policy. Keep
+Edit adjacent `norad.launcher.yaml` for non-private allocation policy. Keep
 site/private values in the selected checkout's ignored root `.env`, using the
 tracked `.env.example` only as a placeholder template:
 
 ```sh
-cd "$EMRYS_REPO"
+cd "$NORAD_REPO"
 test ! -e .env || { test -f .env && test ! -L .env; }
 test -e .env || { cp .env.example .env && chmod 600 .env; }
 
-# Replace every placeholder referenced by emrys.launcher.yaml. Keep this file
-# private and untracked; do not put credentials or EMRYS_EXECUTE in it.
+# Replace every placeholder referenced by norad.launcher.yaml. Keep this file
+# private and untracked; do not put credentials or NORAD_EXECUTE in it.
 ${EDITOR:-vi} .env
 
 # Review requested CPUs, memory, time, exclusive placement, and optional
 # nodelist. These are the resources Slurm will be asked for, not minima.
-${EDITOR:-vi} "$EMRYS_INPUT_DIR/emrys.launcher.yaml"
+${EDITOR:-vi} "$NORAD_INPUT_DIR/norad.launcher.yaml"
 
-"$EMRYS_SLURM_WRAPPER"
+"$NORAD_SLURM_WRAPPER"
 ```
 
-Launcher precedence is packaged defaults, adjacent `emrys.launcher.yaml`, then
-explicit wrapper options. A YAML `{env: EMRYS_NAME}` reference reads the
+Launcher precedence is packaged defaults, adjacent `norad.launcher.yaml`, then
+explicit wrapper options. A YAML `{env: NORAD_NAME}` reference reads the
 invocation environment before root `.env`; scalar `$VAR` and shell syntax are
 never evaluated. The `.env` must be an owner-only nonsymlink file and is not
 copied into the generated starter or printed.
@@ -486,29 +478,29 @@ the source checkout and Python cannot be replaced from launcher configuration.
 The submit shell's `USER` and `LOGNAME` must both match `/usr/bin/id -un`.
 The wrapper binds that live user and numeric UID into the batch and rechecks
 them before any runtime or workspace action.
-`EMRYS_SCRATCH_PARENT` must already be a real writable compute-node directory;
+`NORAD_SCRATCH_PARENT` must already be a real writable compute-node directory;
 the job creates a private mode-`700` child, exports it as `TMPDIR`, logs its
 filesystem/capacity, and removes it at exit. The wrapper installs nothing.
-Inside the job, EMRYS observes the Slurm CPU and memory allocation together
+Inside the job, NORAD observes the Slurm CPU and memory allocation together
 with process CPU affinity and memory limits. It resolves packaged resource
-defaults, adjacent `emrys.resources.yaml`, and any explicit resource CLI
+defaults, adjacent `norad.resources.yaml`, and any explicit resource CLI
 overrides in that order. Execution fails before workflow entry if the effective
 cores, memory, concurrency, or threads cannot fit.
 
 The first submission uses no mode flag: it performs compute-context preflight
 and prints the complete no-write workflow plan in the job log. Ambient or
-authored `EMRYS_EXECUTE` cannot activate execution. Copy
+authored `NORAD_EXECUTE` cannot activate execution. Copy
 the printed job ID, wait for both streams, and confirm scheduler exit plus the
 plan. Copy the exact run root printed in that completed dry-run log into the
 shell that will submit and inspect the execution:
 
 ```sh
-EMRYS_RUN_ROOT=/absolute/path/printed/by/the/dry-run/plan
-case "$EMRYS_RUN_ROOT" in
+NORAD_RUN_ROOT=/absolute/path/printed/by/the/dry-run/plan
+case "$NORAD_RUN_ROOT" in
   /*/runs/run-*) ;;
-  *) printf 'Invalid EMRYS_RUN_ROOT: %s\n' "$EMRYS_RUN_ROOT" >&2; false ;;
+  *) printf 'Invalid NORAD_RUN_ROOT: %s\n' "$NORAD_RUN_ROOT" >&2; false ;;
 esac
-export EMRYS_RUN_ROOT
+export NORAD_RUN_ROOT
 ```
 
 Do not infer this value from the job ID or workspace name. Only after the
@@ -516,7 +508,7 @@ sanity check succeeds should you submit the execution job with the otherwise
 identical values:
 
 ```sh
-"$EMRYS_SLURM_WRAPPER" --execute
+"$NORAD_SLURM_WRAPPER" --execute
 ```
 
 Submitting one allocation does not make this distributed workflow execution;
@@ -535,16 +527,16 @@ For a workstation or interactive allocation, tail the exact control-log path
 printed when execution began:
 
 ```sh
-tail -n +1 -F /exact/path/to/emrys-run-control.log
+tail -n +1 -F /exact/path/to/norad-run-control.log
 ```
 
 For a submitted SLURM job, use the exact job ID and `%j` stream paths printed
 by the generated wrapper. The Runbook owns the reusable
 [stream-wait and accounting procedure](docs/operations/RUNBOOK.md#manual-job-inspection).
 Control-C stops a local `tail`; it does not cancel the allocation. Confirm
-scheduler state separately from EMRYS completion evidence.
+scheduler state separately from NORAD completion evidence.
 
-EMRYS inspection is read-only and derives state from immutable records rather
+NORAD inspection is read-only and derives state from immutable records rather
 than `.snakemake` metadata. Run it only on a host where the exact workspace path
 is available under the supported filesystem contract. A login node that can see
 only the shared scheduler logs cannot inspect or collect a node-local workspace;
@@ -552,13 +544,13 @@ the generated wrapper does not copy results. Arrange a reviewed site-native
 retention/transfer path before execution if the workspace will otherwise become
 unreachable when the allocation ends.
 
-Before inspecting from a new terminal, repeat Step 1's `cd`, `EMRYS_PY`, and
-`emrys` function setup, then export the exact `EMRYS_RUN_ROOT` copied from the
+Before inspecting from a new terminal, repeat Step 1's `cd`, `NORAD_PY`, and
+`norad` function setup, then export the exact `NORAD_RUN_ROOT` copied from the
 dry-run plan. Tailing the scheduler streams requires only `job_id` and
-`EMRYS_LOG_DIR`; running EMRYS requires the controlled checkout setup too.
+`NORAD_LOG_DIR`; running NORAD requires the controlled checkout setup too.
 
 ```sh
-emrys inspect local-pilot-run --run-root "$EMRYS_RUN_ROOT"
+norad inspect local-pilot-run --run-root "$NORAD_RUN_ROOT"
 ```
 
 Inspection rehashes bound evidence, so run it at stage boundaries, after a long
@@ -576,14 +568,14 @@ disconnect or uncertain exit. Inspect the existing run first.
 | Route | Result |
 | --- | --- |
 | Owner-local stage scheduler entry points | Native stage outputs and validation TSVs; no orchestration report or adoption |
-| `emrys run` | Attempts, verified records, artifact index, run summary, and automatic scientific and evidence HTML reports |
-| `emrys build report` | Rebuild from an existing canonical run summary; never adopt standalone outputs |
+| `norad run` | Attempts, verified records, artifact index, run summary, and automatic scientific and evidence HTML reports |
+| `norad build report` | Rebuild from an existing canonical run summary; never adopt standalone outputs |
 
 The reporting sequence is part of the orchestrated workflow. Run a final
 inspection:
 
 ```sh
-emrys inspect local-pilot-run --run-root "$EMRYS_RUN_ROOT"
+norad inspect local-pilot-run --run-root "$NORAD_RUN_ROOT"
 ```
 
 Successful automatic completion prints:
@@ -596,11 +588,11 @@ Local pipeline complete: yes
 Compute the exact report paths without searching the tree:
 
 ```sh
-EMRYS_RUN_ID="${EMRYS_RUN_ROOT##*/}"
-EMRYS_SCIENTIFIC_REPORT_PATH="$EMRYS_RUN_ROOT/products/report/$EMRYS_RUN_ID/$EMRYS_RUN_ID.scientific_report.html"
-EMRYS_EVIDENCE_REPORT_PATH="$EMRYS_RUN_ROOT/products/report/$EMRYS_RUN_ID/$EMRYS_RUN_ID.evidence_report.html"
-test -f "$EMRYS_SCIENTIFIC_REPORT_PATH" && printf '%s\n' "$EMRYS_SCIENTIFIC_REPORT_PATH"
-test -f "$EMRYS_EVIDENCE_REPORT_PATH" && printf '%s\n' "$EMRYS_EVIDENCE_REPORT_PATH"
+NORAD_RUN_ID="${NORAD_RUN_ROOT##*/}"
+NORAD_SCIENTIFIC_REPORT_PATH="$NORAD_RUN_ROOT/products/report/$NORAD_RUN_ID/$NORAD_RUN_ID.scientific_report.html"
+NORAD_EVIDENCE_REPORT_PATH="$NORAD_RUN_ROOT/products/report/$NORAD_RUN_ID/$NORAD_RUN_ID.evidence_report.html"
+test -f "$NORAD_SCIENTIFIC_REPORT_PATH" && printf '%s\n' "$NORAD_SCIENTIFIC_REPORT_PATH"
+test -f "$NORAD_EVIDENCE_REPORT_PATH" && printf '%s\n' "$NORAD_EVIDENCE_REPORT_PATH"
 ```
 
 Copy either self-contained HTML file to a trusted workstation or open it with
@@ -615,14 +607,14 @@ The scientific report presents the admitted computational results and its fixed
 eight-figure views of candidates, editing rates, locations, sequence context,
 the registered PUM motif, and sample behavior; it does not turn a threshold-
 passing row into a validated editing site. The
-[reporting owner](src/emrys/reporting/README.md) defines the two views, source
+[reporting owner](src/norad/reporting/README.md) defines the two views, source
 admission, display and figure policy, and direct build transaction. The
-[Step 09 owner](src/emrys/analyses/paired_cmh_candidate_ranking/README.md)
+[Step 09 owner](src/norad/analyses/paired_cmh_candidate_ranking/README.md)
 defines the complete native scientific tables and field semantics.
 
 Use those native TSVs for complete machine-readable results. Candidate review,
 adjudication, and biological interpretation remain external research work and
-never alter or promote EMRYS's computational tables.
+never alter or promote NORAD's computational tables.
 
 ## 11. Keep the whole run root
 
@@ -632,7 +624,7 @@ products, locks, partials, backups, and recovery evidence belong to one
 content-bound execution history.
 
 The local-pilot
-[contract](src/emrys/orchestration/local_pilot/CONTRACT.md#run-root-output-contract)
+[contract](src/norad/orchestration/local_pilot/CONTRACT.md#run-root-output-contract)
 owns the durable directory and product roster. Do not copy a report or result
 table and then discard its run evidence.
 

@@ -1,7 +1,7 @@
 # Engineering conventions
 
 This document owns neutral, cross-language engineering conventions for new or
-changed EMRYS implementation in the currently supported workflow. It is not an
+changed NORAD implementation in the currently supported workflow. It is not an
 inventory of current executable behavior and does not claim that every legacy
 entry point already conforms. When a convention conflicts with characterized
 current behavior, the applicable colocated `CONTRACT.md` and the
@@ -10,7 +10,7 @@ describe current truth; preserve that behavior until a separately approved
 implementation changes it.
 
 The [architecture index](../architecture/README.md) organizes current system
-views. [`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md)
+views. [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md)
 owns current source domains and dependency direction. Exact commands belong in
 the applicable owner README, cross-cutting commands in [`RUNBOOK.md`](RUNBOOK.md),
 and durable rationale in [`DECISIONS.md`](../design/DECISIONS.md).
@@ -20,7 +20,7 @@ and durable rationale in [`DECISIONS.md`](../design/DECISIONS.md).
 - The [functional-owner inventory](../architecture/FUNCTIONAL_OWNER_INVENTORY.md)
   and its linked contracts own exact current interfaces, side effects, defects,
   and legacy exceptions. Documentation must not normalize those exceptions.
-- The [source topology](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) owns
+- The [source topology](../../src/norad/contracts/SOURCE_TOPOLOGY.md) owns
   current source domains and dependency direction.
 - Owner READMEs own exact invocations; the [runbook](RUNBOOK.md) owns only
   genuinely cross-cutting operations.
@@ -30,7 +30,7 @@ and durable rationale in [`DECISIONS.md`](../design/DECISIONS.md).
 ## Owner-local entry points
 
 Workflow, analysis, evidence, ingestion, and scheduler assets live with their
-functional owner under `src/emrys/<domain>/<owner>/`; direct tests mirror that
+functional owner under `src/norad/<domain>/<owner>/`; direct tests mirror that
 owner under `tests/<domain>/<owner>/`. Root `jobs/` and numbered root
 `scripts/` paths are retired. Exact current names and protected exceptions
 belong to the
@@ -115,9 +115,9 @@ stages or miscellaneous application inputs:
 
 | Root file | Purpose and placement boundary |
 | --- | --- |
-| [`.Rprofile`](../../.Rprofile) | Guarded R startup hook. With the default `EMRYS_USE_RENV=0`, startup is unchanged; `1` opts in and every other value fails. When opted in, the hook defaults sandboxing and automatic snapshots to disabled only when the caller has not set them; supported Make lanes set both controls false explicitly. It then sources the project `renv/activate.R`. Activation does not restore the lockfile, although the activator may bootstrap the pinned `renv` package itself if missing. R can discover this file at the project root, and Make also binds it by absolute path. |
+| [`.Rprofile`](../../.Rprofile) | Guarded R startup hook. With the default `NORAD_USE_RENV=0`, startup is unchanged; `1` opts in and every other value fails. When opted in, the hook defaults sandboxing and automatic snapshots to disabled only when the caller has not set them; supported Make lanes set both controls false explicitly. It then sources the project `renv/activate.R`. Activation does not restore the lockfile, although the activator may bootstrap the pinned `renv` package itself if missing. R can discover this file at the project root, and Make also binds it by absolute path. |
 | [`renv.lock`](../../renv.lock) | Reviewed R and Bioconductor dependency snapshot used by guarded activation plus explicit restore and status checks. Root placement is the conventional and implemented `renv` project boundary; restored libraries and caches remain ignored. See [`renv/README.md`](../../renv/README.md). |
-| [`pyproject.toml`](../../pyproject.toml) | Authoritative Python package metadata: build backend, distribution identity, license expression and packaged legal files, direct runtime dependencies, the `dev` dependency group, package discovery/resources, Ruff configuration, and the installed `emrys` console entry point. Migrated commands use the grouped interface through the selected installed interpreter in isolated mode; unmigrated owner directories and commands enter the distribution only through an owner-local cutover. |
+| [`pyproject.toml`](../../pyproject.toml) | Authoritative Python package metadata: build backend, distribution identity, license expression and packaged legal files, direct runtime dependencies, the `dev` dependency group, package discovery/resources, Ruff configuration, and the installed `norad` console entry point. Migrated commands use the grouped interface through the selected installed interpreter in isolated mode; unmigrated owner directories and commands enter the distribution only through an owner-local cutover. |
 | [`uv.lock`](../../uv.lock) | Authoritative exact Python dependency graph resolved from `pyproject.toml`. `uv sync --locked` installs the project plus its default `dev` group into `.venv`; the complete gate first uses `uv sync --locked --check` as a read-only congruence check, while validation and runtime owners never mutate the lock or repair the environment. The lock contains transitive packages without making them direct project dependencies. |
 | [`.coveragerc`](../../.coveragerc) | Coverage.py measurement configuration for branch, parallel/subprocess, relative-path, and source-scope behavior. Make binds the root file and coverage also supports root discovery. Acceptance thresholds and evidence belong to [`TEST_BASELINE.md`](../design/TEST_BASELINE.md), not this file. |
 
@@ -132,7 +132,7 @@ validators, SLURM jobs, report renderers, and tests must not bootstrap or
 install R, system packages, or analysis dependencies.
 
 The repository-local R environment is opt-in only through
-`EMRYS_USE_RENV=1`; `0` leaves normal startup unchanged and any other value
+`NORAD_USE_RENV=1`; `0` leaves normal startup unchanged and any other value
 must fail. Automatic snapshots remain disabled, and lockfile changes require
 review. The [R-environment decision](../design/decisions/execution-evidence-and-reporting.md#guard-the-repository-local-r-environment)
 owns the rationale; setup and restoration commands remain in the
@@ -153,7 +153,7 @@ Record the loaded module state as part of the cross-cutting
 [cluster procedure](RUNBOOK.md#cluster-execution-and-promotion). Do not add an
 explicit memory request without confirmation in the relevant cluster contract.
 Current scheduler placement and dependency boundaries are described by
-[source topology](../../src/emrys/contracts/SOURCE_TOPOLOGY.md).
+[source topology](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
 
 ## Reporting consumers
 

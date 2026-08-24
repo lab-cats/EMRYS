@@ -1,24 +1,24 @@
 #!/usr/bin/env Rscript
 
-# Validate the guarded EMRYS R runtime, lockfile, packages, and PDF device.
+# Validate the guarded NORAD R runtime, lockfile, packages, and PDF device.
 
 arguments <- commandArgs(trailingOnly = TRUE)
 if (length(arguments) != 0L) {
     stop("check_r_environment.R does not accept positional arguments.")
 }
 
-if (!identical(Sys.getenv("EMRYS_USE_RENV", unset = "0"), "1")) {
-    stop("Set EMRYS_USE_RENV=1 before checking the EMRYS R environment.")
+if (!identical(Sys.getenv("NORAD_USE_RENV", unset = "0"), "1")) {
+    stop("Set NORAD_USE_RENV=1 before checking the NORAD R environment.")
 }
-if (!identical(Sys.getenv("EMRYS_LOCAL_PILOT_R", unset = "0"), "1")) {
+if (!identical(Sys.getenv("NORAD_LOCAL_PILOT_R", unset = "0"), "1")) {
     stop(
         "R checks require non-bootstrapping local-pilot library selection."
     )
 }
-selected_library_request <- Sys.getenv("EMRYS_RENV_LIBRARY", unset = "")
-expected_renv_version <- Sys.getenv("EMRYS_RENV_VERSION", unset = "")
+selected_library_request <- Sys.getenv("NORAD_RENV_LIBRARY", unset = "")
+expected_renv_version <- Sys.getenv("NORAD_RENV_VERSION", unset = "")
 if (!nzchar(selected_library_request) || !nzchar(expected_renv_version)) {
-    stop("EMRYS_RENV_LIBRARY and EMRYS_RENV_VERSION are required.")
+    stop("NORAD_RENV_LIBRARY and NORAD_RENV_VERSION are required.")
 }
 
 bioconductor_mirror <- "https://bioconductor.posit.co"
@@ -42,7 +42,7 @@ options(
 
 project_request <- Sys.getenv("RENV_PROJECT", unset = "")
 if (!nzchar(project_request)) {
-    stop("RENV_PROJECT must identify the EMRYS repository root.")
+    stop("RENV_PROJECT must identify the NORAD repository root.")
 }
 
 required_packages <- c(
@@ -65,13 +65,13 @@ missing_packages <- required_packages[
 ]
 if (length(missing_packages) > 0L) {
     stop(
-        "Missing required EMRYS R package(s): ",
+        "Missing required NORAD R package(s): ",
         paste(missing_packages, collapse = ", ")
     )
 }
 
 if (!identical(as.character(getRversion()), "4.6.1")) {
-    stop("EMRYS local R must be version 4.6.1; found ", R.version.string)
+    stop("NORAD local R must be version 4.6.1; found ", R.version.string)
 }
 
 project_root <- normalizePath(
@@ -95,7 +95,7 @@ selected_library <- normalizePath(
 active_library <- normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE)
 if (!identical(active_library, selected_library)) {
     stop(
-        "The active R library does not match EMRYS_RENV_LIBRARY: active=",
+        "The active R library does not match NORAD_RENV_LIBRARY: active=",
         active_library,
         "; requested=",
         selected_library
@@ -112,7 +112,7 @@ if (!identical(installed_renv_version, expected_renv_version)) {
 bioconductor_version <- as.character(BiocManager::version())
 if (!identical(bioconductor_version, "3.23")) {
     stop(
-        "EMRYS requires Bioconductor 3.23; found ",
+        "NORAD requires Bioconductor 3.23; found ",
         bioconductor_version
     )
 }
@@ -125,10 +125,10 @@ if (!isTRUE(renv_status$synchronized)) {
     stop("renv::status() reports that the project is not synchronized.")
 }
 
-pdf_path <- tempfile("emrys-r-device-", fileext = ".pdf")
+pdf_path <- tempfile("norad-r-device-", fileext = ".pdf")
 grDevices::pdf(pdf_path, width = 3, height = 3, onefile = TRUE)
 graphics::plot.new()
-graphics::title(main = "EMRYS R runtime")
+graphics::title(main = "NORAD R runtime")
 grDevices::dev.off()
 
 pdf_size <- file.info(pdf_path)$size
@@ -158,7 +158,7 @@ if (!eof_found) {
     stop("Headless R PDF device produced a PDF without an EOF marker.")
 }
 
-message("EMRYS R environment check passed")
+message("NORAD R environment check passed")
 message("  R: ", R.version.string)
 message("  Bioconductor: ", bioconductor_version)
 message("  project library: ", .libPaths()[[1L]])

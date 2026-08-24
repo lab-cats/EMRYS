@@ -7,8 +7,8 @@ import math
 from dataclasses import dataclass
 from pathlib import Path
 
-from emrys.contracts.scientific_evidence import scientific_context as CONTEXT
-from emrys.contracts.scientific_evidence.step08 import sha256_file
+from norad.contracts.scientific_evidence import scientific_context as CONTEXT
+from norad.contracts.scientific_evidence.step08 import sha256_file
 
 
 @dataclass(frozen=True, slots=True)
@@ -499,7 +499,7 @@ def build_transaction(
     output_paths, output_rows = write_outputs(root, candidates)
     receipt_row = {column: "NA" for column in CONTEXT.SCIENTIFIC_CONTEXT_RECEIPT_HEADER}
     receipt_row.update(
-        schema_name="emrys.scientific_context_receipt",
+        schema_name="norad.scientific_context_receipt",
         schema_version="1.0.0",
         analysis_id=analysis_id,
         scientific_context_schema_version="1.0.0",

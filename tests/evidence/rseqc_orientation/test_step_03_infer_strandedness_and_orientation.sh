@@ -3,9 +3,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/emrys/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
-unset EMRYS_RUN_TOKEN
-export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
+SCRIPT="$REPO_ROOT/src/norad/evidence/rseqc_orientation/step_03_infer_strandedness_and_orientation.sh"
+unset NORAD_RUN_TOKEN
+export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 # Keep this test self-contained and local-only. It uses placeholder BAM/BED
 # files plus a fake infer_experiment.py, so no real biological data or RSeQC
@@ -194,7 +194,7 @@ assert_contains "$help_output" "--execute"
 printf 'Running dry-run check with path-style binary...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry"
-EMRYS_RUN_TOKEN=explicit-owner-03 SLURM_JOB_ID=scheduler-03 bash "$SCRIPT" \
+NORAD_RUN_TOKEN=explicit-owner-03 SLURM_JOB_ID=scheduler-03 bash "$SCRIPT" \
     --sample-id sample_dry \
     --input-bam "$bam" \
     --bed12 "$bed12" \

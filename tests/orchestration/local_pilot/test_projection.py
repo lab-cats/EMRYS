@@ -8,10 +8,10 @@ from pathlib import Path
 
 import pytest
 
-from emrys.contracts.artifacts import api as artifact_contracts
-from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.projection import project_reporting
-from emrys.orchestration.local_pilot.normalization import normalize_request
+from norad.contracts.artifacts import api as artifact_contracts
+from norad.contracts.orchestration import api as orchestration_contracts
+from norad.contracts.orchestration.projection import project_reporting
+from norad.orchestration.local_pilot.normalization import normalize_request
 from tests.orchestration.local_pilot import fixture
 
 

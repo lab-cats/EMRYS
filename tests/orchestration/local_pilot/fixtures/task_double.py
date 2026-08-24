@@ -47,14 +47,14 @@ def _output(value: str) -> tuple[str, Path]:
 
 def _produce(arguments: argparse.Namespace) -> int:
     for index, (role, path) in enumerate(arguments.output, start=1):
-        data = f"EMRYS local task test double\nrole={role}\n".encode()
+        data = f"NORAD local task test double\nrole={role}\n".encode()
         _publish(path, data)
         if arguments.fail_after == index:
             print(f"producer failed after {role}", file=sys.stderr)
             return arguments.failure_exit
     if arguments.native_receipt is not None:
         receipt = {
-            "schema_version": "emrys.test-native-receipt.v1",
+            "schema_version": "norad.test-native-receipt.v1",
             "status": "succeeded",
         }
         _publish(

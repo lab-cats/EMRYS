@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pytest
 
-from emrys.reporting._run_report import figures
-from emrys.reporting._run_report import scientific_context_figures as context_figures
-from emrys.reporting._run_report.candidate_display import (
+from norad.reporting._run_report import figures
+from norad.reporting._run_report import scientific_context_figures as context_figures
+from norad.reporting._run_report.candidate_display import (
     CandidateLocation,
     CandidateMotifEvidence,
     CandidateMotifHit,
@@ -27,8 +27,8 @@ from emrys.reporting._run_report.candidate_display import (
     SelectedCandidate,
     SelectedCandidateProjection,
 )
-from emrys.reporting._run_report.inputs import _snapshot_regular
-from emrys.reporting._run_report.models import (
+from norad.reporting._run_report.inputs import _snapshot_regular
+from norad.reporting._run_report.models import (
     SCIENTIFIC_FIGURE_IDS,
     ComputationalTable,
     ReportRenderError,
@@ -207,7 +207,7 @@ def test_matplotlib_bootstrap_is_clean_and_deterministic_across_processes(
     script = """
 import json
 import os
-from emrys.reporting._run_report.figures import _matplotlib_api, _render_svg
+from norad.reporting._run_report.figures import _matplotlib_api, _render_svg
 
 keys = ("MPLBACKEND", "MPLCONFIGDIR", "MPL_IGNORE_SYSTEM_FONTS")
 before = {key: os.environ.get(key) for key in keys}

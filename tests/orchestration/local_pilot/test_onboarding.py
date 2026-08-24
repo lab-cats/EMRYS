@@ -14,10 +14,10 @@ from pathlib import Path
 import pytest
 import yaml
 
-from emrys import __main__ as cli
-from emrys.evidence.runtime_availability.inspector import load_runtime_profile_contract
-from emrys.orchestration.local_pilot import doctor, onboarding, synthetic_fixture
-from emrys.orchestration.local_pilot.launcher_config import BATCH_MARKER
+from norad import __main__ as cli
+from norad.evidence.runtime_availability.inspector import load_runtime_profile_contract
+from norad.orchestration.local_pilot import doctor, onboarding, synthetic_fixture
+from norad.orchestration.local_pilot.launcher_config import BATCH_MARKER
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -56,8 +56,8 @@ def test_init_local_pilot_is_dry_run_first_and_receipt_last(
     assert onboarding.init_from_args(_namespace(output, execute=True)) == 0
     expected = {
         "request.yaml",
-        "emrys.launcher.yaml",
-        "emrys.resources.yaml",
+        "norad.launcher.yaml",
+        "norad.resources.yaml",
         "samples.tsv",
         "partitions.tsv",
         "runtime.tsv",
@@ -83,9 +83,9 @@ def test_init_local_pilot_is_dry_run_first_and_receipt_last(
     assert "sample_manifest: samples.tsv" in request
     assert "partition_manifest: partitions.tsv" in request
     launcher = yaml.safe_load(
-        (output / "emrys.launcher.yaml").read_text(encoding="utf-8")
+        (output / "norad.launcher.yaml").read_text(encoding="utf-8")
     )
-    assert launcher["schema_version"] == "emrys.local-pilot-launcher.v1"
+    assert launcher["schema_version"] == "norad.local-pilot-launcher.v1"
     assert "execute" not in launcher
     assert launcher["slurm"]["exclusive"] is False
     assert launcher["paths"]["request"] == "request.yaml"
@@ -458,29 +458,29 @@ def _wrapper_environment(
     live_user = pwd.getpwuid(os.getuid()).pw_name
     return {
         "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-        "EMRYS_SUBMIT_UID": live_uid,
-        "EMRYS_SUBMIT_USER": live_user,
+        "NORAD_SUBMIT_UID": live_uid,
+        "NORAD_SUBMIT_USER": live_user,
         "USER": live_user,
         "LOGNAME": live_user,
-        "EMRYS_SLURM_ACCOUNT": "test-account",
-        "EMRYS_SLURM_PARTITION": "test-partition",
-        "EMRYS_SLURM_QOS": "test-qos",
-        "EMRYS_SLURM_CPUS": "4",
-        "EMRYS_SLURM_MEMORY": "8G",
-        "EMRYS_SLURM_TIME": "00:30:00",
-        "EMRYS_SLURM_EXCLUSIVE": "0",
-        "EMRYS_SLURM_NODELIST": "",
-        "EMRYS_LOG_DIR": str(log_dir),
-        "EMRYS_SOURCE_CHECKOUT": str(tmp_path / "checkout"),
-        "EMRYS_PYTHON": str(python),
-        "EMRYS_REQUEST": str(tmp_path / "request.yaml"),
-        "EMRYS_WORKSPACE": str(tmp_path / "workspace"),
-        "EMRYS_RUNTIME_PROFILE": str(tmp_path / "runtime.tsv"),
-        "EMRYS_MODULE_MODE": "exact",
-        "EMRYS_MODULE_INIT": str(module_init),
-        "EMRYS_MODULES": "java/17.0.10:star/2.7.11b:samtools/1.19.2",
-        "EMRYS_SCRATCH_PARENT": str(scratch_parent),
-        "EMRYS_EXECUTE": "1",
+        "NORAD_SLURM_ACCOUNT": "test-account",
+        "NORAD_SLURM_PARTITION": "test-partition",
+        "NORAD_SLURM_QOS": "test-qos",
+        "NORAD_SLURM_CPUS": "4",
+        "NORAD_SLURM_MEMORY": "8G",
+        "NORAD_SLURM_TIME": "00:30:00",
+        "NORAD_SLURM_EXCLUSIVE": "0",
+        "NORAD_SLURM_NODELIST": "",
+        "NORAD_LOG_DIR": str(log_dir),
+        "NORAD_SOURCE_CHECKOUT": str(tmp_path / "checkout"),
+        "NORAD_PYTHON": str(python),
+        "NORAD_REQUEST": str(tmp_path / "request.yaml"),
+        "NORAD_WORKSPACE": str(tmp_path / "workspace"),
+        "NORAD_RUNTIME_PROFILE": str(tmp_path / "runtime.tsv"),
+        "NORAD_MODULE_MODE": "exact",
+        "NORAD_MODULE_INIT": str(module_init),
+        "NORAD_MODULES": "java/17.0.10:star/2.7.11b:samtools/1.19.2",
+        "NORAD_SCRATCH_PARENT": str(scratch_parent),
+        "NORAD_EXECUTE": "1",
     }
 
 
@@ -505,9 +505,9 @@ def _write_slurm_wrapper(tmp_path: Path) -> Path:
     wrapper = tmp_path / "run-in-slurm.sh"
     wrapper.write_bytes(members["run-in-slurm.sh"][0])
     wrapper.chmod(0o755)
-    launcher_member = members.get("emrys.launcher.yaml")
+    launcher_member = members.get("norad.launcher.yaml")
     if launcher_member is not None:
-        (tmp_path / "emrys.launcher.yaml").write_bytes(launcher_member[0])
+        (tmp_path / "norad.launcher.yaml").write_bytes(launcher_member[0])
     return wrapper
 
 
@@ -564,7 +564,7 @@ def _write_launcher_config(
         "scratch_parent": tmp_path / "scratch",
     }
     path.write_text(
-        "schema_version: emrys.local-pilot-launcher.v1\n"
+        "schema_version: norad.local-pilot-launcher.v1\n"
         "slurm:\n"
         "  account: test-account\n"
         "  partition: test-partition\n"
@@ -613,7 +613,7 @@ def _submit_with_launcher_config(
         bin_dir / "sbatch",
         "#!/bin/bash\n"
         "if [[ -n \"${SBATCH_EXCLUSIVE+x}${SBATCH_NODELIST+x}${SBATCH_MEM+x}\" || "
-        "-n \"${SBATCH_WAIT+x}${EMRYS_EXECUTE+x}\" ]]; then exit 9; fi\n"
+        "-n \"${SBATCH_WAIT+x}${NORAD_EXECUTE+x}\" ]]; then exit 9; fi\n"
         "printf '%s\\n' \"$@\" > \"$LAUNCHER_CAPTURE\"\n"
         "printf '700123\\n'\n",
     )
@@ -625,7 +625,7 @@ def _submit_with_launcher_config(
         {
             "PATH": f"{bin_dir}:{environment['PATH']}",
             "LAUNCHER_CAPTURE": str(capture),
-            "EMRYS_EXECUTE": ambient_execute,
+            "NORAD_EXECUTE": ambient_execute,
             "SBATCH_EXCLUSIVE": "1",
             "SBATCH_NODELIST": "ambient-node",
             "SBATCH_MEM": "1T",
@@ -672,9 +672,9 @@ def test_slurm_wrapper_execute_is_an_explicit_cli_gate(
     ]
     assert len(export_arguments) == 1
     export_fields = export_arguments[0].removeprefix("--export=").split(",")
-    assert f"EMRYS_EXECUTE={expected_execute}" in export_fields
+    assert f"NORAD_EXECUTE={expected_execute}" in export_fields
     unexpected_execute = "1" if expected_execute == "0" else "0"
-    assert f"EMRYS_EXECUTE={unexpected_execute}" not in export_fields
+    assert f"NORAD_EXECUTE={unexpected_execute}" not in export_fields
 
 
 def test_submission_strips_ambient_sbatch_policy_variables(
@@ -751,7 +751,7 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
     module_init.write_text('touch "$MODULE_INIT_RAN"\n', encoding="utf-8")
     (tmp_path / "checkout").mkdir()
     environment = _wrapper_environment(tmp_path, fake_python, module_init)
-    environment["EMRYS_SLURM_MEMORY"] = memory
+    environment["NORAD_SLURM_MEMORY"] = memory
     environment["PATH"] = f"{bin_dir}:/hostile/ambient:{environment['PATH']}"
     environment["LAUNCHER_CAPTURE"] = str(capture)
     environment["PYTHON_RAN"] = str(tmp_path / "python-ran")
@@ -770,7 +770,7 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
     assert "while [[ ! -e" in result.stdout
     assert "squeue -j 700123" in result.stdout
     assert "tail -n +1 -F" in result.stdout
-    assert "emrys-local-pilot-700123.out" in result.stdout
+    assert "norad-local-pilot-700123.out" in result.stdout
     assert not (tmp_path / "python-ran").exists()
     assert not (tmp_path / "module-init-ran").exists()
     arguments = capture.read_text(encoding="utf-8").splitlines()
@@ -795,17 +795,17 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
     assert export_fields[0] == f"PATH={bound_python.parent}:/usr/bin:/bin"
     assert str(bin_dir) not in export_fields[0]
     assert "/hostile/ambient" not in export_fields[0]
-    assert "EMRYS_SLURM_CPUS=4" in export_fields
-    assert f"EMRYS_SUBMIT_UID={os.getuid()}" in export_fields
-    assert f"EMRYS_SUBMIT_USER={pwd.getpwuid(os.getuid()).pw_name}" in export_fields
+    assert "NORAD_SLURM_CPUS=4" in export_fields
+    assert f"NORAD_SUBMIT_UID={os.getuid()}" in export_fields
+    assert f"NORAD_SUBMIT_USER={pwd.getpwuid(os.getuid()).pw_name}" in export_fields
     assert f"USER={pwd.getpwuid(os.getuid()).pw_name}" in export_fields
     assert f"LOGNAME={pwd.getpwuid(os.getuid()).pw_name}" in export_fields
-    assert "EMRYS_MODULE_MODE=none" in export_fields
-    assert f"EMRYS_SCRATCH_PARENT={tmp_path / 'scratch'}" in export_fields
-    assert f"EMRYS_PYTHON={bound_python}" in export_fields
-    assert not any(field.startswith("EMRYS_TOOL_THREADS=") for field in export_fields)
+    assert "NORAD_MODULE_MODE=none" in export_fields
+    assert f"NORAD_SCRATCH_PARENT={tmp_path / 'scratch'}" in export_fields
+    assert f"NORAD_PYTHON={bound_python}" in export_fields
+    assert not any(field.startswith("NORAD_TOOL_THREADS=") for field in export_fields)
     assert not any(
-        field.startswith("EMRYS_SAMPLE_CONCURRENCY=") for field in export_fields
+        field.startswith("NORAD_SAMPLE_CONCURRENCY=") for field in export_fields
     )
     assert arguments[-2:] == [str(wrapper), BATCH_MARKER]
 
@@ -834,9 +834,9 @@ def test_slurm_wrapper_ignores_ambient_python_selection_before_submission(
     environment["PATH"] = f"{bin_dir}:{environment['PATH']}"
     environment["SUBMITTED"] = str(submitted)
     environment["LAUNCHER_CAPTURE"] = str(capture)
-    environment["EMRYS_LAUNCHER_SOURCE_CHECKOUT"] = "/caller/source"
-    environment["EMRYS_LAUNCHER_PYTHON"] = "/caller/python"
-    environment["EMRYS_PYTHON"] = {
+    environment["NORAD_LAUNCHER_SOURCE_CHECKOUT"] = "/caller/source"
+    environment["NORAD_LAUNCHER_PYTHON"] = "/caller/python"
+    environment["NORAD_PYTHON"] = {
         "relative": "relative/python",
         "root": "/python",
         "colon": f"{tmp_path}/unsafe:directory/python",
@@ -857,8 +857,8 @@ def test_slurm_wrapper_ignores_ambient_python_selection_before_submission(
         argument for argument in arguments if argument.startswith("--export=")
     )
     export_fields = export_argument.removeprefix("--export=").split(",")
-    assert f"EMRYS_PYTHON={Path(os.path.abspath(sys.executable))}" in export_fields
-    assert f"EMRYS_SOURCE_CHECKOUT={tmp_path / 'launcher-source'}" in export_fields
+    assert f"NORAD_PYTHON={Path(os.path.abspath(sys.executable))}" in export_fields
+    assert f"NORAD_SOURCE_CHECKOUT={tmp_path / 'launcher-source'}" in export_fields
 
 
 @pytest.mark.parametrize("unsafe", ("bad,value", "bad\nvalue"))
@@ -1007,9 +1007,9 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
     if module_mode == "none":
         environment.update(
             {
-                "EMRYS_MODULE_MODE": "none",
-                "EMRYS_MODULE_INIT": "",
-                "EMRYS_MODULES": "",
+                "NORAD_MODULE_MODE": "none",
+                "NORAD_MODULE_INIT": "",
+                "NORAD_MODULES": "",
             }
         )
 
@@ -1038,8 +1038,8 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
         else []
     )
     assert observed_modules == expected_modules
-    assert f"EMRYS_SCRATCH_PARENT={tmp_path / 'scratch'}" in result.stdout
-    assert f"TMPDIR={tmp_path / 'scratch'}/emrys-700123." in result.stdout
+    assert f"NORAD_SCRATCH_PARENT={tmp_path / 'scratch'}" in result.stdout
+    assert f"TMPDIR={tmp_path / 'scratch'}/norad-700123." in result.stdout
     assert "TMPDIR filesystem and capacity:" in result.stdout
     assert list((tmp_path / "scratch").iterdir()) == [scratch_sentinel]
     assert scratch_sentinel.read_text(encoding="utf-8") == "preserve\n"
@@ -1050,9 +1050,9 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
         "700123|4|8192|",
         "700123|4|8192|",
     ]
-    assert "-m emrys validate local-pilot-request" in invocations[0]
-    assert "-m emrys doctor local-pilot" in invocations[1]
-    assert "-m emrys run" in invocations[2]
+    assert "-m norad validate local-pilot-request" in invocations[0]
+    assert "-m norad doctor local-pilot" in invocations[1]
+    assert "-m norad run" in invocations[2]
     assert "--allocated-cores" not in invocations[2]
     assert "--threads" not in invocations[2]
     assert "--workflow-cores" not in invocations[2]
@@ -1079,7 +1079,7 @@ def test_slurm_wrapper_rejects_ambient_batch_mode_without_exact_marker(
         {
             "SLURM_JOB_ID": "700123",
             "PYTHON_CAPTURE": str(python_capture),
-            "EMRYS_EXECUTE": "1",
+            "NORAD_EXECUTE": "1",
         }
     )
 
@@ -1099,8 +1099,8 @@ def test_slurm_wrapper_rejects_ambient_batch_mode_without_exact_marker(
 @pytest.mark.parametrize(
     ("name", "value"),
     (
-        ("EMRYS_SUBMIT_UID", "999999"),
-        ("EMRYS_SUBMIT_USER", "different-user"),
+        ("NORAD_SUBMIT_UID", "999999"),
+        ("NORAD_SUBMIT_USER", "different-user"),
         ("USER", "different-user"),
         ("LOGNAME", "different-user"),
     ),
@@ -1143,6 +1143,6 @@ def test_slurm_wrapper_batch_mode_rejects_scheduler_identity_drift(
     assert not module_capture.exists()
     assert not python_capture.exists()
     assert not any(
-        path.name.startswith("emrys-700123.")
+        path.name.startswith("norad-700123.")
         for path in (tmp_path / "scratch").iterdir()
     )

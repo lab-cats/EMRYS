@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from emrys.orchestration.local_pilot.resource_policy import (
+from norad.orchestration.local_pilot.resource_policy import (
     ADJACENT_CONFIG_NAME,
     AllocationCapacity,
     ResourceConfigError,
@@ -53,31 +53,13 @@ def test_missing_adjacent_config_uses_packaged_conservative_defaults(
     assert plan.override_labels == ()
 
 
-def test_legacy_adjacent_config_fails_closed_instead_of_using_defaults(
-    tmp_path: Path,
-) -> None:
-    request = _request(tmp_path)
-    legacy = tmp_path / "norad.resources.yaml"
-    legacy.write_text("legacy resource policy\n", encoding="utf-8")
-
-    with pytest.raises(ResourceConfigError, match="rename it to emrys.resources.yaml"):
-        load_resource_plan(request, _allocation())
-
-    (tmp_path / ADJACENT_CONFIG_NAME).write_text(
-        "schema_version: emrys.local-pilot-resources.v1\n",
-        encoding="utf-8",
-    )
-    with pytest.raises(ResourceConfigError, match="Conflicting adjacent"):
-        load_resource_plan(request, _allocation())
-
-
 def test_adjacent_config_overrides_defaults_and_cli_overrides_both(
     tmp_path: Path,
 ) -> None:
     request = _request(tmp_path)
     config = tmp_path / ADJACENT_CONFIG_NAME
     config.write_text(
-        "schema_version: emrys.local-pilot-resources.v1\n"
+        "schema_version: norad.local-pilot-resources.v1\n"
         "workflow_cores: 6\n"
         "workflow_memory_mb: 12000\n"
         "stage_concurrency:\n"
@@ -156,10 +138,10 @@ def test_tracked_csu_viking_ev_pum1_policy_matches_retained_benchmark() -> None:
         "html_report": 16_384,
     }
     assert plan.sha256 == (
-        "f63946309a42526029707605600caa5049f6a04fdb141ed2e475175235be708b"
+        "3f5767f4878cbc9878d21798ef385daea850a1e539fba66b80e8537cdfa2a2e8"
     )
     assert plan.config_sha256 == (
-        "dab4f20a63aaf36327b471d33b1efc134c6b1e60429f3d6bdf4529f9943f3202"
+        "dd629f5d6d0072a2ccfa7f9114a85f13e8a2fef00f561db0831cf464fb1720c1"
     )
 
 
@@ -215,7 +197,7 @@ def test_resolved_policy_rejects_stage_oversubscription(
 ) -> None:
     request = _request(tmp_path)
     (tmp_path / ADJACENT_CONFIG_NAME).write_text(
-        "schema_version: emrys.local-pilot-resources.v1\n" + fragment,
+        "schema_version: norad.local-pilot-resources.v1\n" + fragment,
         encoding="utf-8",
     )
 
@@ -241,7 +223,7 @@ def test_resource_yaml_rejects_duplicate_and_unknown_keys(tmp_path: Path) -> Non
     request = _request(tmp_path)
     config = tmp_path / ADJACENT_CONFIG_NAME
     config.write_text(
-        "schema_version: emrys.local-pilot-resources.v1\n"
+        "schema_version: norad.local-pilot-resources.v1\n"
         "workflow_cores: 4\n"
         "workflow_cores: 5\n",
         encoding="utf-8",
@@ -250,7 +232,7 @@ def test_resource_yaml_rejects_duplicate_and_unknown_keys(tmp_path: Path) -> Non
         load_resource_plan(request, _allocation())
 
     config.write_text(
-        "schema_version: emrys.local-pilot-resources.v1\nunknown: 1\n",
+        "schema_version: norad.local-pilot-resources.v1\nunknown: 1\n",
         encoding="utf-8",
     )
     with pytest.raises(ResourceConfigError, match="Additional properties"):

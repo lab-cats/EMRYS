@@ -9,8 +9,8 @@ from typing import Callable
 
 import pytest
 
-import emrys.libraries.installed_package_identity as package_identity
-from emrys.libraries.installed_package_identity import (
+import norad.libraries.installed_package_identity as package_identity
+from norad.libraries.installed_package_identity import (
     InstalledPackageIdentityError,
     installed_package_tree_identity,
 )

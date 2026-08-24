@@ -2,7 +2,7 @@
 
 `data/` is the repository-local landing area for inputs that have already been
 obtained and approved for use. It is storage, not an ingestion queue: no
-implemented EMRYS owner downloads, normalizes, or advances inputs through a
+implemented NORAD owner downloads, normalizes, or advances inputs through a
 data lifecycle.
 
 ## Contents
@@ -11,7 +11,7 @@ data lifecycle.
 - [`test/`](test/) is the retained local fixture workspace named by the structural
   [`sample-manifest starter`](../configs/samples.example.tsv); no orchestrator
   wires that starter into a run. Independently, the
-  [Step `01` scheduler owner](../src/emrys/stages/star_alignment/README.md)
+  [Step `01` scheduler owner](../src/norad/stages/star_alignment/README.md)
   uses only the `sample_001` mate paths as current default dry-run placeholders.
   Directory or placeholder-file presence alone does not establish a runnable
   fixture or production evidence.

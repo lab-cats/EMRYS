@@ -19,7 +19,7 @@ another.
 | Local fixtures | Do controlled cases behave as specified? | Real tool or cluster behavior |
 | Real local runtime | Does the available runtime execute semantic fixtures? | Cluster compatibility |
 | Cluster proof | Did declared computation run and reconcile on the cluster? | Scientific validity |
-| External research process | Were review, adjudication, and limitation records kept outside EMRYS? | Pipeline completion or biological causality |
+| External research process | Were review, adjudication, and limitation records kept outside NORAD? | Pipeline completion or biological causality |
 | Report | Can evidence be presented deterministically? | Any new evidence state |
 
 ## Scientific caution
@@ -33,7 +33,7 @@ orientation policy remains provisional.
 Rows emitted by the CMH stage are “CMH-ranked candidates.” They are not
 validated editing sites.
 
-EMRYS produces CMH-ranked computational candidates and provenance. Review,
+NORAD produces CMH-ranked computational candidates and provenance. Review,
 adjudication, and biological interpretation are external work-process records,
 not pipeline steps, gates, artifacts, or completion states.
 

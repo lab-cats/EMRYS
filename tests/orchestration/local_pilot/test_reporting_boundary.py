@@ -10,8 +10,8 @@ from typing import Any
 
 import pytest
 
-from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.orchestration.local_pilot import reporting_boundary
+from norad.contracts.orchestration import api as orchestration_contracts
+from norad.orchestration.local_pilot import reporting_boundary
 from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
 
 FIXED_TIME = datetime(2026, 8, 12, 14, 0, tzinfo=UTC)
@@ -45,7 +45,7 @@ def _build(root: Path) -> workflow_fixture.WorkflowFixture:
     )
     identifier = str(attempt["workflow_attempt_id"])
     run_lock = {
-        "schema_version": "emrys.run-lock.v1",
+        "schema_version": "norad.run-lock.v1",
         "run_id": attempt["run_id"],
         "workflow_attempt_id": identifier,
         "attempt_record_path": f"attempts/{identifier}/attempt.json",
@@ -83,7 +83,7 @@ def _terminalize_run_lock(built: workflow_fixture.WorkflowFixture) -> None:
             else None,
         }
     terminal = {
-        "schema_version": "emrys.attempt-receipt.v1",
+        "schema_version": "norad.attempt-receipt.v1",
         "run_id": attempt["run_id"],
         "execution_contract_sha256": attempt["execution_contract_sha256"],
         "profile_sha256": attempt["profile_sha256"],

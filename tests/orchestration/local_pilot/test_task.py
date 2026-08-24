@@ -16,19 +16,19 @@ from typing import Any
 
 import pytest
 
-from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.libraries.source_authority import (
+from norad.contracts.orchestration import api as orchestration_contracts
+from norad.libraries.source_authority import (
     SourceCheckoutAttestation,
     controlled_python_argv,
 )
-from emrys.orchestration.local_pilot import normalization, task
+from norad.orchestration.local_pilot import normalization, task
 
 from tests.orchestration.local_pilot import fixture
 from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
 
 WORKFLOW_ATTEMPT_ID = "workflow-20260812T120000Z-" + "a" * 32
 TASK_ATTEMPT_ID = "task-20260812T120100Z-" + "b" * 32
-MACHINE_KEY = "emrys.stage.align_RNA_reads_with_STAR.v1"
+MACHINE_KEY = "norad.stage.align_RNA_reads_with_STAR.v1"
 SCOPE_ID = "EV_1"
 TEST_DOUBLE = Path(__file__).parent / "fixtures" / "task_double.py"
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -51,7 +51,7 @@ def _materialize_active_lock(run_root: Path, attempt_path: Path) -> Path:
     attempt = orchestration_contracts.load_record(attempt_path, "workflow-attempt")
     identifier = str(attempt["workflow_attempt_id"])
     lock = {
-        "schema_version": "emrys.run-lock.v1",
+        "schema_version": "norad.run-lock.v1",
         "run_id": attempt["run_id"],
         "workflow_attempt_id": identifier,
         "attempt_record_path": f"attempts/{identifier}/attempt.json",
@@ -179,7 +179,7 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
     request_snapshot.write_bytes(request_bytes)
     config_bytes = config_path.read_bytes()
     attempt = {
-        "schema_version": "emrys.workflow-attempt.v1",
+        "schema_version": "norad.workflow-attempt.v1",
         "run_id": normalized.execution_contract["run_id"],
         "execution_contract_sha256": hashlib.sha256(
             normalized.normalized_bytes
@@ -204,7 +204,7 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
             "analysis_policy": None,
         },
         "normalizer": {
-            "name": "emrys",
+            "name": "norad",
             "version": "0.1.0",
             "path": sys.executable,
             "resolved_path": str(Path(sys.executable).resolve(strict=True)),
@@ -327,18 +327,18 @@ def _bind_clean_current_source_checkout(built: TaskFixture, tmp_path: Path) -> N
     checkout = tmp_path / "clean-source-checkout"
     checkout.mkdir()
     shutil.copy2(REPO_ROOT / "pyproject.toml", checkout / "pyproject.toml")
-    shutil.copytree(REPO_ROOT / "src" / "emrys", checkout / "src" / "emrys")
+    shutil.copytree(REPO_ROOT / "src" / "norad", checkout / "src" / "norad")
     subprocess.run(["git", "init", "--quiet"], cwd=checkout, check=True)
     subprocess.run(
-        ["git", "add", "pyproject.toml", "src/emrys"], cwd=checkout, check=True
+        ["git", "add", "pyproject.toml", "src/norad"], cwd=checkout, check=True
     )
     subprocess.run(
         [
             "git",
             "-c",
-            "user.name=EMRYS Fixture",
+            "user.name=NORAD Fixture",
             "-c",
-            "user.email=emrys-fixture@example.invalid",
+            "user.email=norad-fixture@example.invalid",
             "commit",
             "--quiet",
             "-m",
@@ -399,7 +399,7 @@ def _step00c_with_existing_sidecars(
 ]:
     built = workflow_fixture.build(tmp_path)
     workflow_fixture.materialize_active_run_lock(built)
-    machine_key = "emrys.stage.construct_FASTA_sidecars.v1"
+    machine_key = "norad.stage.construct_FASTA_sidecars.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
     dispatch_path = Path(built.dispatch_paths[machine_key][scope_id])
     record = orchestration_contracts.load_json_object(dispatch_path)
@@ -503,7 +503,7 @@ def test_records_exact_public_commands_and_exit_codes(tmp_path: Path) -> None:
         controlled_python_argv(
             sys.executable,
             "-m",
-            "emrys",
+            "norad",
             "validate",
             "all-pass",
             "--report",
@@ -776,7 +776,7 @@ def test_internal_module_cli_is_isolated_and_not_a_public_lifecycle_command(
     tmp_path: Path,
 ) -> None:
     help_result = subprocess.run(
-        [sys.executable, "-I", "-m", "emrys.orchestration.local_pilot.task", "--help"],
+        [sys.executable, "-I", "-m", "norad.orchestration.local_pilot.task", "--help"],
         check=False,
         capture_output=True,
         text=True,
@@ -794,7 +794,7 @@ def test_internal_module_cli_is_isolated_and_not_a_public_lifecycle_command(
             *controlled_python_argv(
                 sys.executable,
                 "-m",
-                "emrys.orchestration.local_pilot.task",
+                "norad.orchestration.local_pilot.task",
             ),
             "--dispatch",
             str(built.dispatch_path),
@@ -1130,7 +1130,7 @@ def test_step00c_symlinked_stationary_reference_blocks_before_producer(
 ) -> None:
     built = workflow_fixture.build(tmp_path / "workflow-fixture")
     workflow_fixture.materialize_active_run_lock(built)
-    machine_key = "emrys.stage.construct_FASTA_sidecars.v1"
+    machine_key = "norad.stage.construct_FASTA_sidecars.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
     dispatch_path = Path(built.dispatch_paths[machine_key][scope_id])
     record = orchestration_contracts.load_json_object(dispatch_path)
@@ -1180,7 +1180,7 @@ def test_step00c_parent_permission_drift_blocks_before_task_start(
 ) -> None:
     built = workflow_fixture.build(tmp_path / "workflow-fixture")
     workflow_fixture.materialize_active_run_lock(built)
-    machine_key = "emrys.stage.construct_FASTA_sidecars.v1"
+    machine_key = "norad.stage.construct_FASTA_sidecars.v1"
     scope_id = str(built.execution["reference"]["reference_id"])
     dispatch_path = Path(built.dispatch_paths[machine_key][scope_id])
     record = orchestration_contracts.load_json_object(dispatch_path)
@@ -1238,7 +1238,7 @@ def test_step00c_parent_permission_drift_blocks_before_task_start(
     assert not Path(f"{fasta}.fai").exists()
     assert not fasta.with_name(f"{fasta.stem}.dict").exists()
     assert not list(parent.glob(".*step00c*"))
-    assert not list(parent.glob("*.emrys-stage"))
+    assert not list(parent.glob("*.norad-stage"))
 
 
 def test_complete_step00c_sidecar_pair_is_reused_and_content_bound(

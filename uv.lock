@@ -897,7 +897,7 @@ wheels = [
 ]
 
 [[package]]
-name = "emrys-rna-workflow"
+name = "norad-rna-workflow"
 source = { editable = "." }
 dependencies = [
     { name = "jinja2" },

@@ -1,4 +1,4 @@
-# EMRYS presenter walkthrough
+# NORAD presenter walkthrough
 
 This is the presenter run-of-show, not the audience handout, authoritative
 status ledger, report contract, or command owner. During a live demo, use the
@@ -19,7 +19,7 @@ current [`HANDOFF.md`](../operations/HANDOFF.md); run only the exact
 6. Static reports project that summary without running analysis or promoting
    state.
 7. Review, adjudication, and biological interpretation remain external
-   work-process records and never gate the EMRYS run.
+   work-process records and never gate the NORAD run.
 
 ## Populated synthetic report
 

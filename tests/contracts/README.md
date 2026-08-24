@@ -12,6 +12,6 @@ across workflow owners.
   08 and Step 09 computational APIs and behavior.
 
 Production identities and dependency direction remain with the
-[contract owners](../../src/emrys/contracts/README.md). Independent literal
+[contract owners](../../src/norad/contracts/README.md). Independent literal
 expectations that compare multiple owners remain under
 [`../contract_integration/`](../contract_integration/README.md).

@@ -1,4 +1,4 @@
-# EMRYS pipeline plan
+# NORAD pipeline plan
 
 This document owns open package families and package acceptance. Open intent
 and selected scope belong to the [task registry](../tasks/README.md), current
@@ -111,7 +111,7 @@ cluster, scientific-review, or biological proof.
 
 ## External interpretation boundary
 
-EMRYS's computational exit is CMH-ranked candidates plus their provenance.
+NORAD's computational exit is CMH-ranked candidates plus their provenance.
 Candidate review, adjudication, and biological interpretation are external
 work-process records. No local structural or reporting gate represents,
-requires, or promotes those activities as an EMRYS completion state.
+requires, or promotes those activities as a NORAD completion state.

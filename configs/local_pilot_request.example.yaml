@@ -1,6 +1,6 @@
-schema_version: emrys.request.v3
+schema_version: norad.request.v3
 label: local-pilot-example
-profile: emrys.profile.local_cmh.v2
+profile: norad.profile.local_cmh.v2
 sample_manifest: local_pilot_samples.example.tsv
 partition_manifest: local_pilot_partitions.example.tsv
 reference:

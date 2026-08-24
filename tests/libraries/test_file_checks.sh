@@ -18,7 +18,7 @@ expect_failure() {
     fi
 }
 
-source "$repo_root/src/emrys/libraries/file_checks.sh"
+source "$repo_root/src/norad/libraries/file_checks.sh"
 
 die() {
     printf 'ERROR: %s\n' "$*" >&2
@@ -27,13 +27,13 @@ die() {
 
 hash_input="$test_root/hash-input.txt"
 printf 'bound hashing\n' >"$hash_input"
-unset EMRYS_SHA256_PYTHON
-EMRYS_REQUIRE_BOUND_SHA256=1
+unset NORAD_SHA256_PYTHON
+NORAD_REQUIRE_BOUND_SHA256=1
 expect_failure "missing SHA-256 Python binding" sha256_file "$hash_input"
-unset EMRYS_REQUIRE_BOUND_SHA256
-EMRYS_SHA256_PYTHON=python3
+unset NORAD_REQUIRE_BOUND_SHA256
+NORAD_SHA256_PYTHON=python3
 expect_failure "relative SHA-256 Python binding" sha256_file "$hash_input"
-export EMRYS_TEST_REAL_PYTHON="$(command -v python3)"
+export NORAD_TEST_REAL_PYTHON="$(command -v python3)"
 guarded_python="$test_root/guarded-python"
 printf '%s\n' \
     '#!/usr/bin/env bash' \
@@ -41,16 +41,16 @@ printf '%s\n' \
     '[[ "$#" -ge 4 ]] || exit 91' \
     '[[ "$1" == -X && "$2" == pycache_prefix=/dev/null && "$3" == -I && "$4" == -c ]] || exit 92' \
     'shift 4' \
-    'exec "$EMRYS_TEST_REAL_PYTHON" -X pycache_prefix=/dev/null -I -c "$@"' \
+    'exec "$NORAD_TEST_REAL_PYTHON" -X pycache_prefix=/dev/null -I -c "$@"' \
     >"$guarded_python"
 chmod 0755 "$guarded_python"
-EMRYS_SHA256_PYTHON="$guarded_python"
+NORAD_SHA256_PYTHON="$guarded_python"
 [[ "$(sha256_file "$hash_input")" == \
    "0c009bef8b5cd42114e0daf15a7ded967e9fd9041adaa491055fb90b8573bc4f" ]] ||
     fail "bound Python did not use the controlled prefix and expected SHA-256 digest"
-export EMRYS_SHA256_PYTHON
+export NORAD_SHA256_PYTHON
 
-source "$repo_root/src/emrys/libraries/signal_traps.sh"
+source "$repo_root/src/norad/libraries/signal_traps.sh"
 
 valid_samples="$test_root/valid-samples.tsv"
 invalid_samples="$test_root/invalid-samples.tsv"

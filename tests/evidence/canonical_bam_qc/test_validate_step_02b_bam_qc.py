@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from emrys.evidence.canonical_bam_qc import validator
-from emrys.libraries.validation import Snapshot
+from norad.evidence.canonical_bam_qc import validator
+from norad.libraries.validation import Snapshot
 from tests.stage_validator_test_support import load_roster_oracle
 from tests.stage_validator_test_support import read_tsv as report_rows
 
@@ -80,7 +80,7 @@ def run_validator(
             sys.executable,
             "-I",
             "-m",
-            "emrys",
+            "norad",
             "validate",
             "canonical-bam-qc",
             *validator_arguments(evidence, *extra),

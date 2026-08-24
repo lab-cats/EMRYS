@@ -11,11 +11,11 @@ from pathlib import Path
 
 import pytest
 
-from emrys.libraries import source_authority
+from norad.libraries import source_authority
 
-PROJECT_NAME = "emrys-rna-workflow"
+PROJECT_NAME = "norad-rna-workflow"
 PYTHON_FILES: Mapping[str, bytes] = {
-    "__init__.py": b'"""Synthetic EMRYS package."""\n',
+    "__init__.py": b'"""Synthetic NORAD package."""\n',
     "contracts/__init__.py": b'"""Synthetic contracts package."""\n',
     "reporting/__init__.py": b'"""Synthetic reporting package."""\n',
     "reporting/owner.py": b"VALUE = 1\n",
@@ -29,7 +29,7 @@ RESOURCE_FILES: Mapping[str, bytes] = {
     "contracts/schemas/orchestration/v2/request.schema.json": b'{"schema": true}\n',
     "contracts/schemas/orchestration/v3/launcher_config.schema.json": b'{"schema": 3}\n',
     "orchestration/local_pilot/resources/default_launcher.yaml": (
-        b"schema_version: emrys.local-pilot-launcher.v1\n"
+        b"schema_version: norad.local-pilot-launcher.v1\n"
     ),
     "reporting/styles/example.css": b"body { color: black; }\n",
     "reporting/templates/example.html.j2": b"<!doctype html>\n",
@@ -76,7 +76,7 @@ def _initialize_git(root: Path) -> None:
 
 def _commit_package(fixture: CheckoutFixture) -> str:
     subprocess.run(
-        ["git", "add", "pyproject.toml", "src/emrys"],
+        ["git", "add", "pyproject.toml", "src/norad"],
         cwd=fixture.root,
         text=True,
         capture_output=True,
@@ -86,9 +86,9 @@ def _commit_package(fixture: CheckoutFixture) -> str:
         [
             "git",
             "-c",
-            "user.name=EMRYS Fixture",
+            "user.name=NORAD Fixture",
             "-c",
-            "user.email=emrys-fixture@example.invalid",
+            "user.email=norad-fixture@example.invalid",
             "commit",
             "--quiet",
             "-m",
@@ -118,13 +118,13 @@ def _project_configuration(name: str = PROJECT_NAME) -> bytes:
         "\n"
         "[tool.setuptools.packages.find]\n"
         'where = ["src"]\n'
-        'include = ["emrys*"]\n'
+        'include = ["norad*"]\n'
         "namespaces = false\n"
         "\n"
         "[tool.setuptools.package-data]\n"
-        '"emrys.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/artifacts/v3/*.json", "schemas/artifacts/v4/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json", "schemas/orchestration/v3/*.json"]\n'
-        '"emrys.orchestration.local_pilot" = ["resources/*.yaml"]\n'
-        '"emrys.reporting" = ["styles/*.css", "templates/*.html.j2"]\n'
+        '"norad.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/artifacts/v3/*.json", "schemas/artifacts/v4/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json", "schemas/orchestration/v3/*.json"]\n'
+        '"norad.orchestration.local_pilot" = ["resources/*.yaml"]\n'
+        '"norad.reporting" = ["styles/*.css", "templates/*.html.j2"]\n'
     ).encode()
 
 
@@ -134,8 +134,8 @@ def _build_fixture(
     git_root: Path | None = None,
 ) -> CheckoutFixture:
     root = tmp_path / "checkout"
-    checkout_package = root / "src" / "emrys"
-    package_root = tmp_path / "active-package" / "emrys"
+    checkout_package = root / "src" / "norad"
+    package_root = tmp_path / "active-package" / "norad"
     _initialize_git(root if git_root is None else git_root)
     root.mkdir(parents=True, exist_ok=True)
     (root / "pyproject.toml").write_bytes(_project_configuration())
@@ -285,7 +285,7 @@ def test_matching_clean_checkout_head_commit_rejects_dirty_external_producer(
 ) -> None:
     fixture = _build_fixture(tmp_path)
     _commit_package(fixture)
-    producer = fixture.root / "src" / "emrys" / "stages" / "owner" / "step.sh"
+    producer = fixture.root / "src" / "norad" / "stages" / "owner" / "step.sh"
     producer.parent.mkdir(parents=True)
     producer.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     subprocess.run(
@@ -297,9 +297,9 @@ def test_matching_clean_checkout_head_commit_rejects_dirty_external_producer(
         [
             "git",
             "-c",
-            "user.name=EMRYS Fixture",
+            "user.name=NORAD Fixture",
             "-c",
-            "user.email=emrys-fixture@example.invalid",
+            "user.email=norad-fixture@example.invalid",
             "commit",
             "--quiet",
             "-m",
@@ -362,10 +362,10 @@ def test_controlled_python_ignores_timestamp_valid_adjacent_bytecode(
 def test_uncontrolled_reporting_build_rejects_before_lazy_owner_import() -> None:
     program = (
         "import sys; "
-        "from emrys import __main__ as cli; "
-        "sys.modules.pop('emrys.reporting._artifact_index.builder', None); "
+        "from norad import __main__ as cli; "
+        "sys.modules.pop('norad.reporting._artifact_index.builder', None); "
         "status = cli._build_artifact_index_from_args(None); "
-        "print(status, 'emrys.reporting._artifact_index.builder' in sys.modules)"
+        "print(status, 'norad.reporting._artifact_index.builder' in sys.modules)"
     )
     result = subprocess.run(
         [sys.executable, "-I", "-c", program],
@@ -375,7 +375,7 @@ def test_uncontrolled_reporting_build_rejects_before_lazy_owner_import() -> None
     )
 
     assert result.stdout.strip() == "2 False"
-    assert "Controlled EMRYS Python children require" in result.stderr
+    assert "Controlled NORAD Python children require" in result.stderr
 
 
 def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -> None:
@@ -747,7 +747,7 @@ def test_inspect_source_checkout_uses_explicit_git_dependency(
         ("git", "rev-parse", "--show-toplevel"),
         ("git", "rev-parse", "--verify", "HEAD"),
         ("git", "rev-parse", "--show-object-format"),
-        ("git", "ls-tree", "-r", "-z", commit, "--", "src/emrys"),
+        ("git", "ls-tree", "-r", "-z", commit, "--", "src/norad"),
         ("git", "status", "--porcelain=v1", "--untracked-files=all"),
         ("git", "rev-parse", "--verify", "HEAD"),
         ("git", "status", "--porcelain=v1", "--untracked-files=all"),
@@ -761,7 +761,7 @@ def test_inspection_rejects_ignored_package_identity_outside_head(
     _commit_package(fixture)
     info_exclude = fixture.root / ".git" / "info" / "exclude"
     info_exclude.write_text(
-        "src/emrys/reporting/ignored_owner.py\n",
+        "src/norad/reporting/ignored_owner.py\n",
         encoding="utf-8",
     )
     relative = Path("reporting/ignored_owner.py")

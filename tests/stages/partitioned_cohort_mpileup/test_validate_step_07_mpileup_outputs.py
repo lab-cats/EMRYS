@@ -12,9 +12,9 @@ from typing import cast
 
 import pytest
 
-from emrys.__main__ import main as emrys_main
-from emrys.libraries.validation import Snapshot
-from emrys.stages.partitioned_cohort_mpileup import (
+from norad.__main__ import main as norad_main
+from norad.libraries.validation import Snapshot
+from norad.stages.partitioned_cohort_mpileup import (
     validator as partitioned_cohort_mpileup_validator,
 )
 from tests.stage_validator_test_support import load_roster_oracle
@@ -175,7 +175,7 @@ def run_validator(
             sys.executable,
             "-I",
             "-m",
-            "emrys",
+            "norad",
             "validate",
             "partitioned-cohort-mpileup",
             *validator_arguments(evidence, *extra),
@@ -383,7 +383,7 @@ def test_post_build_input_mutation_preserves_valid_predecessor(
         "build_validation_report",
         mutate_after_build,
     )
-    status = emrys_main(
+    status = norad_main(
         [
             "validate",
             "partitioned-cohort-mpileup",

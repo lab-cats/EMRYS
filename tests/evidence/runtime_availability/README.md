@@ -2,8 +2,8 @@
 
 This directory directly protects runtime-profile admission, read-only probes,
 deterministic results, publication, rollback, and CLI failure behavior for the
-[runtime-availability owner](../../../src/emrys/evidence/runtime_availability/README.md)
-and its grouped route `python -I -m emrys inspect runtime-availability`.
+[runtime-availability owner](../../../src/norad/evidence/runtime_availability/README.md)
+and its grouped route `python -I -m norad inspect runtime-availability`.
 The local-pilot doctor separately consumes the owner's direct admitted
 inspection result as required readiness. The standalone inspector remains an
 operator diagnostic, and the repository-only `tool_check.slurm` is a distinct

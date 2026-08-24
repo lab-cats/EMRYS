@@ -1,0 +1,101 @@
+# Runtime-availability inspection owner
+
+[`inspector.py`](inspector.py) directly owns the immutable
+`inspect_runtime_availability(...)` API and implements
+`python -I -m norad inspect runtime-availability`. It performs read-only
+availability probes declared in an explicit profile and retains the
+`runtime_preflight` profile, report, and publication vocabulary. It records
+observations for an asserted `local` or `cluster_batch` context; it does not
+infer the context, install dependencies, load modules, execute a workflow,
+validate production inputs, or repair a runtime.
+
+The direct API returns the admitted profile bytes and SHA-256, normalized
+checks, observations, deterministic result bytes, and required-readiness
+summary without publication. The local-pilot doctor consumes that result with
+an explicit guarded R environment; it does not parse CLI output or import the
+private probe/model modules. Private modules separate
+literal data/error contracts (`_runtime_model.py`), profile parsing
+(`_profile_contract.py`), read-only probes (`_probes.py`), and deterministic
+result rendering/validation (`_result_contract.py`). They add no public command
+or evidence state.
+
+The supported probes cover tool versions, R namespaces, hash utilities, and
+absolute-path visibility. Rows report `pass`, `fail`, `blocked`, or
+`not_checked`. Dry run performs applicable read-only probes but publishes
+nothing; execute mode publishes the requested TSV. Exit zero means probing and
+any requested publication completed, not that every required probe passed.
+Ordinary `tool_version` probes require command status zero. The explicit
+`tool_version_exit_1` probe type requires status exactly 1 before applying its
+output regex; the fixed local-pilot profile uses it for Picard 3.1.1's exact
+`java -jar ... MarkDuplicates --version` behavior. Other nonzero tool probes
+remain failures.
+
+Executable/version and hash commands retain a 30-second per-process bound.
+R namespace loading has a separate 120-second per-package bound for cold
+read-only library access. Every executed namespace probe records elapsed
+seconds and the selected bound; a timeout is a failing readiness observation
+and is never retried, suppressed, or treated as availability.
+
+[`tool_check.slurm`](tool_check.slurm) is a separate manual cluster smoke
+probe. It attempts to load its declared CSU Python, STAR, samtools, and Picard
+module names and records scheduler context, module state, resolved executable
+paths, and tool versions in SLURM logs. It does not call the grouped inspector,
+publish a structured report, run analysis, or prove that the workflow works on
+the cluster. Its module loads and required probes fail strictly; only the
+optional Picard version probe is tolerated. Central wrapper characterization
+lives in
+[`test_slurm_wrapper_contracts.py`](../../../../tests/test_slurm_wrapper_contracts.py).
+
+The committed
+[`runtime_preflight.example.tsv`](../../../../configs/runtime_preflight.example.tsv)
+is a structural starter requiring site-specific paths and expectations. Direct
+protection lives in
+[`test_runtime_availability.py`](../../../../tests/evidence/runtime_availability/test_runtime_availability.py).
+The stricter fixed-pilot roster is a separate public starter at
+[`local_pilot_runtime.example.tsv`](../../../../configs/local_pilot_runtime.example.tsv)
+and is admitted by the local-pilot owner rather than changing this generic
+profile contract.
+For the guarded local pilot, the declared `renv_library` itself remains one
+canonical real directory. An installed package entry may be a normal `renv`
+cache symlink, but the probe resolves it and requires `find.package`, the loaded
+namespace, and the recorded package-tree identity to agree on the exact
+canonical target. Symlinks or special entries inside that resolved package tree
+remain inadmissible.
+
+Dry-run, execute, focused test, and the separate scheduler probe are:
+
+```bash
+python -I -m norad inspect runtime-availability \
+  --profile configs/runtime_preflight.example.tsv \
+  --output results/qc/runtime/local.runtime_preflight.tsv \
+  --runtime-context local
+
+mkdir -p results/qc/runtime
+python -I -m norad inspect runtime-availability \
+  --profile /explicit/path/to/runtime_profile.tsv \
+  --output results/qc/runtime/runtime_preflight.tsv \
+  --runtime-context cluster_batch \
+  --execute
+
+.venv/bin/python -m pytest -q \
+  tests/evidence/runtime_availability/test_runtime_availability.py
+
+mkdir -p logs
+sbatch src/norad/evidence/runtime_availability/tool_check.slurm
+```
+
+Use [`TROUBLESHOOTING`](../../../../docs/operations/TROUBLESHOOTING.md) for
+contract, status, and publication-lock failures.
+
+Even an all-pass report or successful manual smoke probe proves only the
+declared availability checks in the declared context. Current evidence is
+local fixture and mocked-wrapper evidence; CSU batch execution and
+workflow/cluster proof remain absent.
+
+Publication has three characterized recovery defects. A lock write or fsync
+failure can leave the owned lock behind. Failed predecessor restoration leaves
+the only predecessor bytes in a run-token `.previous` path while removing the
+lock and creating no recovery marker. A lock-cleanup failure is suppressed, so
+the command can report success while the surviving lock blocks later attempts.
+Preserve the report and every lock, temporary, and previous path; an absent lock
+is not proof that publication committed.

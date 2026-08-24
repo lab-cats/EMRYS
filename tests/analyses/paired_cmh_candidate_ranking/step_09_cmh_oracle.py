@@ -1,6 +1,6 @@
 """Independent, test-only Step 09 CMH characterization oracle.
 
-This module intentionally does not import EMRYS production code.  It derives
+This module intentionally does not import NORAD production code.  It derives
 the two-sided, continuity-corrected 2 x 2 x K Mantel-Haenszel result directly
 from paired DP/AD counts so tests can detect coordinated corruption in
 producer-shaped result fields.
