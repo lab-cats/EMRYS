@@ -11,9 +11,9 @@ from typing import Any
 
 import pytest
 
-from norad.contracts.orchestration import api as orchestration_contracts
-from norad.libraries.source_authority import controlled_python_argv
-from norad.reporting import report, transaction_validation
+from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.libraries.source_authority import controlled_python_argv
+from emrys.reporting import report, transaction_validation
 from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as fixture
 
@@ -37,7 +37,7 @@ def _publish_summary(built: Any) -> None:
     environment["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
     result = subprocess.run(
         [
-            *controlled_python_argv(sys.executable, "-m", "norad"),
+            *controlled_python_argv(sys.executable, "-m", "emrys"),
             "build",
             "run-summary",
             *built.command_args(execute=True),

@@ -1,16 +1,16 @@
 #!/usr/bin/env Rscript
 
-# Restore the explicitly activated NORAD R environment from renv.lock.
+# Restore the explicitly activated EMRYS R environment from renv.lock.
 
 arguments <- commandArgs(trailingOnly = TRUE)
 if (length(arguments) != 0L) {
     stop("restore_r_environment.R does not accept positional arguments.")
 }
 
-if (!identical(Sys.getenv("NORAD_USE_RENV", unset = "0"), "1")) {
-    stop("Set NORAD_USE_RENV=1 before restoring the NORAD R environment.")
+if (!identical(Sys.getenv("EMRYS_USE_RENV", unset = "0"), "1")) {
+    stop("Set EMRYS_USE_RENV=1 before restoring the EMRYS R environment.")
 }
-if (!identical(Sys.getenv("NORAD_LOCAL_PILOT_R", unset = "0"), "0")) {
+if (!identical(Sys.getenv("EMRYS_LOCAL_PILOT_R", unset = "0"), "0")) {
     stop("R restoration must run in bootstrap-capable operator mode.")
 }
 
@@ -42,7 +42,7 @@ if (!requireNamespace("renv", quietly = TRUE)) {
 
 project_request <- Sys.getenv("RENV_PROJECT", unset = "")
 if (!nzchar(project_request)) {
-    stop("RENV_PROJECT must identify the NORAD repository root.")
+    stop("RENV_PROJECT must identify the EMRYS repository root.")
 }
 project_root <- normalizePath(project_request, winslash = "/", mustWork = TRUE)
 active_project <- normalizePath(
@@ -60,7 +60,7 @@ if (!identical(active_project, project_root)) {
 }
 
 if (!identical(as.character(getRversion()), "4.6.1")) {
-    stop("NORAD local restore requires R 4.6.1; found ", R.version.string)
+    stop("EMRYS local restore requires R 4.6.1; found ", R.version.string)
 }
 
 lockfile <- file.path(project_root, "renv.lock")
@@ -68,7 +68,7 @@ if (!file.exists(lockfile)) {
     stop("Missing renv lockfile: ", lockfile)
 }
 
-message("Restoring NORAD R environment")
+message("Restoring EMRYS R environment")
 message("  project: ", project_root)
 message("  lockfile: ", lockfile)
 message("  R: ", R.version.string)
@@ -127,5 +127,5 @@ if (!isTRUE(restore_status$synchronized)) {
     )
 }
 
-message("NORAD R environment restore complete.")
+message("EMRYS R environment restore complete.")
 message("  project library: ", restored_library)

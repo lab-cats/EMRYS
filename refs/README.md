@@ -7,7 +7,7 @@ are large, environment-specific, or derived; this README and the local
 
 Step `00a` owns reference-index construction, while downstream owners consume
 explicit files beneath this root. Supported preparation commands are routed by
-the [stage-owner index](../src/norad/stages/README.md). Record real reference
+the [stage-owner index](../src/emrys/stages/README.md). Record real reference
 identity, hashes, source, and release using the
 [reference-provenance starter](../configs/reference_provenance.example.tsv)
 before runtime promotion. A path or filename is not provenance.
@@ -16,5 +16,5 @@ before runtime promotion. A path or filename is not provenance.
 
 Do not commit production references or assume ignored artifacts are safe to
 delete. Before cleanup, confirm the active consumers, provenance record,
-reproducibility of derived indexes, and approved storage policy. NORAD does not
+reproducibility of derived indexes, and approved storage policy. EMRYS does not
 automatically repair, replace, or remove reference material.

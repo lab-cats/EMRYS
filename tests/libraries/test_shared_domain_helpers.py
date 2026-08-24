@@ -12,11 +12,11 @@ SRC_ROOT = REPO_ROOT / "src"
 if str(SRC_ROOT) not in sys.path:
     sys.path.insert(0, str(SRC_ROOT))
 
-from norad.libraries import validation as report
-from norad.libraries.alignments import bed, orientation, star
-from norad.libraries.evidence import qc
-from norad.libraries.quality import picard
-from norad.libraries.validation import mpileup
+from emrys.libraries import validation as report
+from emrys.libraries.alignments import bed, orientation, star
+from emrys.libraries.evidence import qc
+from emrys.libraries.quality import picard
+from emrys.libraries.validation import mpileup
 
 
 def write_tsv(path: Path, header: tuple[str, ...], rows: list[tuple[str, ...]]) -> None:

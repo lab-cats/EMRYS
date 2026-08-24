@@ -23,7 +23,7 @@ else
     exit 0
 fi
 
-fake_contract="${NORAD_TEST_FAKE_SCIENTIFIC_CONTEXT_R:-0}"
+fake_contract="${EMRYS_TEST_FAKE_SCIENTIFIC_CONTEXT_R:-0}"
 case "$fake_contract" in
     0) ;;
     1)
@@ -32,13 +32,13 @@ case "$fake_contract" in
             exit 1
         }
         "$rscript_bin" \
-            src/norad/analyses/scientific_context_projection/scientific_context_projection.R \
+            src/emrys/analyses/scientific_context_projection/scientific_context_projection.R \
             --help >/dev/null
         printf 'SKIP: explicit fake-R contract logged one Step 10 invocation.\n'
         exit 0
         ;;
     *)
-        printf 'ERROR: NORAD_TEST_FAKE_SCIENTIFIC_CONTEXT_R must be 0 or 1.\n' >&2
+        printf 'ERROR: EMRYS_TEST_FAKE_SCIENTIFIC_CONTEXT_R must be 0 or 1.\n' >&2
         exit 1
         ;;
 esac

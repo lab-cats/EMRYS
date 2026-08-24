@@ -8,12 +8,12 @@ from typing import Any
 
 def profile() -> dict[str, Any]:
     owners = (
-        "norad.stage.construct_STAR_index.v1",
-        "norad.stage.align_RNA_reads_with_STAR.v1",
+        "emrys.stage.construct_STAR_index.v1",
+        "emrys.stage.align_RNA_reads_with_STAR.v1",
     )
     return {
-        "schema_version": "norad.profile.v2",
-        "profile_id": "norad.profile.local_cmh",
+        "schema_version": "emrys.profile.v2",
+        "profile_id": "emrys.profile.local_cmh",
         "profile_version": "v2",
         "semantic_owner_keys": list(owners),
         "owner_tasks": [
@@ -124,9 +124,9 @@ def build(root: Path) -> Path:
     )
     request = root / "request.yaml"
     request.write_text(
-        "schema_version: norad.request.v3\n"
+        "schema_version: emrys.request.v3\n"
         "label: first label\n"
-        "profile: norad.profile.local_cmh.v2\n"
+        "profile: emrys.profile.local_cmh.v2\n"
         "sample_manifest: samples.tsv\n"
         "partition_manifest: partitions.tsv\n"
         "reference:\n"
@@ -152,8 +152,8 @@ def build(root: Path) -> Path:
         "  background_max_fraction: 0.01\n",
         encoding="utf-8",
     )
-    (root / "norad.resources.yaml").write_text(
-        "schema_version: norad.local-pilot-resources.v1\n"
+    (root / "emrys.resources.yaml").write_text(
+        "schema_version: emrys.local-pilot-resources.v1\n"
         "workflow_cores: 1\n"
         "workflow_memory_mb: 1024\n"
         "stage_concurrency:\n"

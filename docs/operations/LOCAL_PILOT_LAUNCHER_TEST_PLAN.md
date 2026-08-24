@@ -98,7 +98,7 @@ Confirm the tests specifically exercise:
 - process environment before repository-root `.env`;
 - strict YAML/environment-reference and private-file rejection;
 - no shell interpolation or private-value disclosure;
-- ambient/authored `NORAD_EXECUTE` cannot activate execution;
+- ambient/authored `EMRYS_EXECUTE` cannot activate execution;
 - default plan versus explicit `--execute` internal transport;
 - exact inclusion/omission of `--exclusive` and `--nodelist`;
 - removal of ambient `SBATCH_*` policy and ambient internal execution state;
@@ -114,7 +114,7 @@ PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest \
   -q --tb=short -p no:cacheprovider tests/test_package_distribution.py
 PYCACHE_ROOT="$(mktemp -d)"
 .venv/bin/python -X pycache_prefix="$PYCACHE_ROOT" \
-  -m compileall -q scripts src/norad tests
+  -m compileall -q scripts src/emrys tests
 rm -r -- "$PYCACHE_ROOT"
 PYTHONDONTWRITEBYTECODE=1 PYTEST_ADDOPTS='-p no:cacheprovider' \
   make -s shell-test
@@ -136,21 +136,21 @@ writes nothing, then create the starter:
 TEST_ROOT="$(mktemp -d)"
 STARTER="$TEST_ROOT/starter"
 
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad init local-pilot \
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys init local-pilot \
   --output-dir "$STARTER"
 test ! -e "$STARTER"
 
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad init local-pilot \
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys init local-pilot \
   --output-dir "$STARTER" \
   --execute
 
-test -f "$STARTER/norad.launcher.yaml"
+test -f "$STARTER/emrys.launcher.yaml"
 test -x "$STARTER/run-in-slurm.sh"
 test ! -e "$STARTER/.env"
 test ! -e "$STARTER/.env.example"
 ```
 
-Verify the starter manifest names and hashes `norad.launcher.yaml`, and that no
+Verify the starter manifest names and hashes `emrys.launcher.yaml`, and that no
 generated file contains an execution field or a private `.env` value.
 
 ## 5. Workstation-only compatibility checks
@@ -231,9 +231,9 @@ tracked profiles beside its wrapper:
 
 ```bash
 cp configs/local_pilot_launcher.csu_viking_ev_pum1.yaml \
-  "$NORAD_INPUT_DIR/norad.launcher.yaml"
+  "$EMRYS_INPUT_DIR/emrys.launcher.yaml"
 cp configs/local_pilot_resources.csu_viking_ev_pum1.yaml \
-  "$NORAD_INPUT_DIR/norad.resources.yaml"
+  "$EMRYS_INPUT_DIR/emrys.resources.yaml"
 ```
 
 The private source-checkout root `.env` supplies only account, partition, QOS,

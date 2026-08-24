@@ -13,8 +13,8 @@ from pathlib import Path
 from types import ModuleType, SimpleNamespace
 
 import pytest
-from norad.contracts.scientific_evidence import step08 as STEP08
-from norad.contracts.scientific_evidence import step09 as STEP09
+from emrys.contracts.scientific_evidence import step08 as STEP08
+from emrys.contracts.scientific_evidence import step09 as STEP09
 from tests import scientific_evidence_test_support as FIXTURES
 
 ROOT = Path(__file__).resolve().parents[3]

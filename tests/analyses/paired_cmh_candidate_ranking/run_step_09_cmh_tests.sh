@@ -27,7 +27,7 @@ else
     rscript_bin="$(command -v Rscript)"
 fi
 
-step09_help="$("$rscript_bin" "$repo_root/src/norad/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" --help)"
+step09_help="$("$rscript_bin" "$repo_root/src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R" --help)"
 [[ "$step09_help" == *"Usage:"* ]] || {
     echo "Step 09 --help output is missing its usage line." >&2
     exit 1

@@ -1,6 +1,6 @@
 # Local-pilot orchestration contract
 
-This document is the binding architecture for NORAD's first local Snakemake
+This document is the binding architecture for EMRYS's first local Snakemake
 pilot. B2 implements its closed machine schemas, read-only request normalizer,
 reporting projection, and semantic all-pass checker. B3 implements the fixed
 local-CMH profile, static fourteen-scientific-owner-rule Snakemake graph, local executor profile,
@@ -14,7 +14,7 @@ first `run`, `resume`, and `inspect local-pilot-run` adapter. No real science-
 tool execution has been proven. Current
 scientific behavior remains with the
 applicable functional owner, and exact semantic identities and artifact edges remain in
-[`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md).
+[`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md).
 
 B4 assumes a single-user, cooperative POSIX local workspace with working
 advisory `flock` and same-filesystem hard links. It rejects admitted symlink
@@ -37,7 +37,7 @@ The local pilot has one explicit path:
 
 1. An operator authors one YAML request that references ordered TSV manifests
    and stationary FASTQ/reference inputs.
-2. NORAD validates and normalizes those inputs into one immutable canonical
+2. EMRYS validates and normalizes those inputs into one immutable canonical
    JSON execution contract with an explicit identity envelope.
 3. The identity-envelope digest determines one immutable `run_id`.
 4. The public dry-run prints the complete fixed command plan without creating
@@ -51,7 +51,7 @@ The local pilot has one explicit path:
 8. Required verified tasks feed the existing artifact-index, run-summary, and
    Jinja HTML-report owners.
 9. A workflow-attempt receipt is published last. Inspection derives state from
-   NORAD contracts and records, never from Snakemake metadata alone.
+   EMRYS contracts and records, never from Snakemake metadata alone.
 
 There is no request inbox, watcher, database, service, plugin registry, or
 automatic recovery subsystem in version 1.
@@ -60,16 +60,16 @@ automatic recovery subsystem in version 1.
 
 | Subject | Authority | Explicit non-authority |
 | --- | --- | --- |
-| Scientific owner identity and direct artifact edges | [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) | Snakemake rule names, filenames, numeric aliases, and narrative order |
+| Scientific owner identity and direct artifact edges | [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md) | Snakemake rule names, filenames, numeric aliases, and narrative order |
 | Producer, validator, output, transaction, and recovery behavior | Applicable owner `README.md` and `CONTRACT.md` | Workflow rules and lifecycle records |
 | Operator intent | Admitted YAML request plus referenced ordered TSV manifests | Caller working directory, environment discovery, filename inference, and globs |
 | Immutable local-run identity | Canonical normalized execution contract and its SHA-256 digest | Request formatting, human label, attempt-level resources, workspace, executor, host, or Snakemake state |
 | Fixed pilot membership and scope expansion | Versioned local CMH workflow profile | A generic registry or automatic owner discovery |
 | Scheduling | Snakemake's local executor and static rule graph | Scientific completion, recovery authority, or evidence promotion |
-| Reusable task completion | NORAD verified task record after owner validation and semantic all-pass gating | Process exit alone, output presence, timestamps, or `.snakemake/` metadata |
+| Reusable task completion | EMRYS verified task record after owner validation and semantic all-pass gating | Process exit alone, output presence, timestamps, or `.snakemake/` metadata |
 | Reporting identity | Explicit projection from the execution contract into the existing artifact run contract | The reporting run contract as a complete execution identity |
 | Run state | Immutable workflow-attempt records, verified task records, owner receipts/reports, and observed recovery state | A mutable status cache, log, rendered report, or scheduler state |
-| Biological review and interpretation | External research work-process records | NORAD orchestration, reports, or local computational completion |
+| Biological review and interpretation | External research work-process records | EMRYS orchestration, reports, or local computational completion |
 
 Snakemake implements a checked projection of `STAGE_MAP.md`; it never becomes
 a second semantic DAG authority. An exact workflow-profile test must compare
@@ -118,9 +118,9 @@ Version 3 uses this closed top-level shape, encoded by the request schema
 without adding discovery or extension fields:
 
 ```yaml
-schema_version: norad.request.v3
+schema_version: emrys.request.v3
 label: optional-human-label
-profile: norad.profile.local_cmh.v2
+profile: emrys.profile.local_cmh.v2
 sample_manifest: samples.tsv
 partition_manifest: partitions.tsv
 reference:
@@ -147,8 +147,8 @@ analysis:
 ```
 
 Execution resources use the separate
-`norad.local-pilot-resources.v1` configuration. NORAD layers packaged defaults,
-optional adjacent `norad.resources.yaml`, and explicit CLI overrides. The
+`emrys.local-pilot-resources.v1` configuration. EMRYS layers packaged defaults,
+optional adjacent `emrys.resources.yaml`, and explicit CLI overrides. The
 resource document contains workflow-wide cores and memory, per-stage
 concurrency, per-stage threads, and per-job computational/reporting memory.
 Resource changes do not change the normalized scientific run identity.
@@ -359,7 +359,7 @@ Exact native result paths remain profile projections of owner contracts; the
 layout above does not rename owner outputs. Contract snapshots and terminal
 records are create-exclusive and immutable. A convenience status projection
 may be regenerated, but is never authority. `.snakemake/` is disposable engine
-metadata and is never a reporting input or NORAD completion record.
+metadata and is never a reporting input or EMRYS completion record.
 
 Task stdout/stderr files are complete opaque command-stream captures for
 diagnosis. They are not the future structured application logs defined by
@@ -461,7 +461,7 @@ and a completed run refuses another execute or resume operation.
 
 Attempt admission is serialized by a persistent canonical zero-byte advisory
 mutex beneath `locks/`. That mutex is benign infrastructure, not attempt or
-recovery evidence. NORAD holds it while revalidating the exact prepared
+recovery evidence. EMRYS holds it while revalidating the exact prepared
 execute/resume request; only a still-current request may publish `run.lock` or
 attempt-specific state. A contender that waited behind a completing attempt
 therefore exits without contaminating the completed or resumable run.
@@ -487,14 +487,14 @@ self-authenticating. Inspection keeps it as a blocker until a separate
 reconciliation contract validates its bytes, ownership, and relationship to
 the absent attempt; a matching filename alone is never enough.
 
-Snakemake automatic retries are zero. NORAD version 1 does not expose automatic
+Snakemake automatic retries are zero. EMRYS version 1 does not expose automatic
 `--unlock`, `--cleanup-metadata`, `--forceall`, `--rerun-incomplete`, or blind
 force controls.
 
 ### Resume
 
 Resume always creates a new workflow attempt. A prior verified task may be
-reused only after NORAD rechecks:
+reused only after EMRYS rechecks:
 
 - the execution contract and profile digest;
 - the clean source checkout plus every exact required-tool authored path,
@@ -526,7 +526,7 @@ the orchestrator never deletes or bypasses the state.
 The internal resume invocation uses exactly `--rerun-triggers input` plus
 `--ignore-incomplete`, and only after the independent checks above succeed.
 Pinned Snakemake characterization requires the latter when an interrupted job
-left a fully NORAD-validated output marked incomplete in disposable engine
+left a fully EMRYS-validated output marked incomplete in disposable engine
 metadata. This fixed internal flag does not admit an unverified output, erase
 metadata, force a rule, or become an operator-exposed recovery control. Initial
 execution never uses it.
@@ -535,14 +535,14 @@ execution never uses it.
 
 The fixed acquisition order is:
 
-1. NORAD persistent advisory acquisition mutex;
-2. NORAD evidence-bearing run/workflow-attempt lock;
+1. EMRYS persistent advisory acquisition mutex;
+2. EMRYS evidence-bearing run/workflow-attempt lock;
 3. Snakemake work-directory lock; and
 4. delegated owner-local publication lock.
 
 No path may acquire these in reverse order. The outer lifecycle process owns
 aggregate attempt state; jobs write only their task-local records. Existing
-owner locks keep their current authority. NORAD never breaks an owner lock,
+owner locks keep their current authority. EMRYS never breaks an owner lock,
 deletes recovery residue, or considers a lock stale because time elapsed.
 
 The run lock records run, workflow attempt, process, host, creation time, and an
@@ -565,7 +565,7 @@ task-start and verified-task records, reporting start/completion records, owner
 receipts and validation reports, and the aggregate run-lock evidence. It
 reports pending, entered, verified, failed, resume-available, and blocked
 scopes, plus the exact evidence ceiling. It never accepts a caller-supplied
-residue list, infers NORAD state from `.snakemake/`, or repairs what it
+residue list, infers EMRYS state from `.snakemake/`, or repairs what it
 observes.
 
 Each reporting transaction follows the same irreversible entry policy. Its

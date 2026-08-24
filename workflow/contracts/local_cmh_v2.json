@@ -1,117 +1,117 @@
 {
-  "schema_version": "norad.profile.v2",
-  "profile_id": "norad.profile.local_cmh",
+  "schema_version": "emrys.profile.v2",
+  "profile_id": "emrys.profile.local_cmh",
   "profile_version": "v2",
   "semantic_owner_keys": [
-    "norad.stage.construct_STAR_index.v1",
-    "norad.stage.convert_GTF_to_BED12.v1",
-    "norad.stage.construct_FASTA_sidecars.v1",
-    "norad.stage.align_RNA_reads_with_STAR.v1",
-    "norad.stage.construct_canonical_BAM.v1",
-    "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
-    "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
-    "norad.stage.mark_BAM_duplicates_with_Picard.v1",
-    "norad.stage.split_N_cigar_reads_with_GATK.v1",
-    "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
-    "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
-    "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
-    "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
-    "norad.analysis.project_candidate_scientific_context.v1"
+    "emrys.stage.construct_STAR_index.v1",
+    "emrys.stage.convert_GTF_to_BED12.v1",
+    "emrys.stage.construct_FASTA_sidecars.v1",
+    "emrys.stage.align_RNA_reads_with_STAR.v1",
+    "emrys.stage.construct_canonical_BAM.v1",
+    "emrys.evidence.collect_canonical_BAM_QC_evidence.v1",
+    "emrys.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+    "emrys.stage.mark_BAM_duplicates_with_Picard.v1",
+    "emrys.stage.split_N_cigar_reads_with_GATK.v1",
+    "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1",
+    "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+    "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
+    "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+    "emrys.analysis.project_candidate_scientific_context.v1"
   ],
   "owner_tasks": [
     {
-      "machine_key": "norad.stage.construct_STAR_index.v1",
+      "machine_key": "emrys.stage.construct_STAR_index.v1",
       "rule_name": "construct_STAR_index",
       "step_id": "00a",
       "scope_type": "reference",
       "scope_selector": "reference"
     },
     {
-      "machine_key": "norad.stage.convert_GTF_to_BED12.v1",
+      "machine_key": "emrys.stage.convert_GTF_to_BED12.v1",
       "rule_name": "convert_GTF_to_BED12",
       "step_id": "00b",
       "scope_type": "reference",
       "scope_selector": "reference"
     },
     {
-      "machine_key": "norad.stage.construct_FASTA_sidecars.v1",
+      "machine_key": "emrys.stage.construct_FASTA_sidecars.v1",
       "rule_name": "construct_FASTA_sidecars",
       "step_id": "00c",
       "scope_type": "reference",
       "scope_selector": "reference"
     },
     {
-      "machine_key": "norad.stage.align_RNA_reads_with_STAR.v1",
+      "machine_key": "emrys.stage.align_RNA_reads_with_STAR.v1",
       "rule_name": "align_RNA_reads_with_STAR",
       "step_id": "01",
       "scope_type": "sample",
       "scope_selector": "samples"
     },
     {
-      "machine_key": "norad.stage.construct_canonical_BAM.v1",
+      "machine_key": "emrys.stage.construct_canonical_BAM.v1",
       "rule_name": "construct_canonical_BAM",
       "step_id": "02",
       "scope_type": "sample",
       "scope_selector": "samples"
     },
     {
-      "machine_key": "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
+      "machine_key": "emrys.evidence.collect_canonical_BAM_QC_evidence.v1",
       "rule_name": "collect_canonical_BAM_QC_evidence",
       "step_id": "02b",
       "scope_type": "sample",
       "scope_selector": "samples"
     },
     {
-      "machine_key": "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+      "machine_key": "emrys.evidence.collect_RSeQC_paired_orientation_evidence.v1",
       "rule_name": "collect_RSeQC_paired_orientation_evidence",
       "step_id": "03",
       "scope_type": "sample",
       "scope_selector": "samples"
     },
     {
-      "machine_key": "norad.stage.mark_BAM_duplicates_with_Picard.v1",
+      "machine_key": "emrys.stage.mark_BAM_duplicates_with_Picard.v1",
       "rule_name": "mark_BAM_duplicates_with_Picard",
       "step_id": "04",
       "scope_type": "sample",
       "scope_selector": "samples"
     },
     {
-      "machine_key": "norad.stage.split_N_cigar_reads_with_GATK.v1",
+      "machine_key": "emrys.stage.split_N_cigar_reads_with_GATK.v1",
       "rule_name": "split_N_cigar_reads_with_GATK",
       "step_id": "05",
       "scope_type": "sample",
       "scope_selector": "samples"
     },
     {
-      "machine_key": "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
+      "machine_key": "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1",
       "rule_name": "partition_BAM_by_mechanical_read_orientation",
       "step_id": "06",
       "scope_type": "sample",
       "scope_selector": "samples"
     },
     {
-      "machine_key": "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+      "machine_key": "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
       "rule_name": "generate_partitioned_cohort_mpileup_VCFs",
       "step_id": "07",
       "scope_type": "cohort_partition",
       "scope_selector": "partitions"
     },
     {
-      "machine_key": "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
+      "machine_key": "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
       "rule_name": "preprocess_and_annotate_cohort_candidates",
       "step_id": "08",
       "scope_type": "cohort",
       "scope_selector": "cohort"
     },
     {
-      "machine_key": "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+      "machine_key": "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
       "rule_name": "rank_cohort_candidates_with_paired_CMH",
       "step_id": "09",
       "scope_type": "analysis",
       "scope_selector": "analysis"
     },
     {
-      "machine_key": "norad.analysis.project_candidate_scientific_context.v1",
+      "machine_key": "emrys.analysis.project_candidate_scientific_context.v1",
       "rule_name": "project_candidate_scientific_context",
       "step_id": "10",
       "scope_type": "analysis",
@@ -120,115 +120,115 @@
   ],
   "direct_edges": [
     {
-      "producer": "norad.stage.construct_STAR_index.v1",
-      "consumer": "norad.stage.align_RNA_reads_with_STAR.v1",
+      "producer": "emrys.stage.construct_STAR_index.v1",
+      "consumer": "emrys.stage.align_RNA_reads_with_STAR.v1",
       "artifact": "STAR genome-index directory",
       "semantics": "required artifact"
     },
     {
-      "producer": "norad.stage.align_RNA_reads_with_STAR.v1",
-      "consumer": "norad.stage.construct_canonical_BAM.v1",
+      "producer": "emrys.stage.align_RNA_reads_with_STAR.v1",
+      "consumer": "emrys.stage.construct_canonical_BAM.v1",
       "artifact": "coordinate-sorted STAR BAM",
       "semantics": "required artifact"
     },
     {
-      "producer": "norad.stage.construct_canonical_BAM.v1",
-      "consumer": "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
+      "producer": "emrys.stage.construct_canonical_BAM.v1",
+      "consumer": "emrys.evidence.collect_canonical_BAM_QC_evidence.v1",
       "artifact": "canonical BAM/BAI pair",
       "semantics": "required artifact; non-gating evidence branch"
     },
     {
-      "producer": "norad.stage.construct_canonical_BAM.v1",
-      "consumer": "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+      "producer": "emrys.stage.construct_canonical_BAM.v1",
+      "consumer": "emrys.evidence.collect_RSeQC_paired_orientation_evidence.v1",
       "artifact": "canonical BAM/BAI pair",
       "semantics": "required artifact; fan-in; non-gating evidence branch"
     },
     {
-      "producer": "norad.stage.convert_GTF_to_BED12.v1",
-      "consumer": "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+      "producer": "emrys.stage.convert_GTF_to_BED12.v1",
+      "consumer": "emrys.evidence.collect_RSeQC_paired_orientation_evidence.v1",
       "artifact": "BED12 annotation",
       "semantics": "required artifact; fan-in; non-gating evidence branch"
     },
     {
-      "producer": "norad.stage.construct_canonical_BAM.v1",
-      "consumer": "norad.stage.mark_BAM_duplicates_with_Picard.v1",
+      "producer": "emrys.stage.construct_canonical_BAM.v1",
+      "consumer": "emrys.stage.mark_BAM_duplicates_with_Picard.v1",
       "artifact": "canonical BAM/BAI pair",
       "semantics": "required artifact"
     },
     {
-      "producer": "norad.stage.mark_BAM_duplicates_with_Picard.v1",
-      "consumer": "norad.stage.split_N_cigar_reads_with_GATK.v1",
+      "producer": "emrys.stage.mark_BAM_duplicates_with_Picard.v1",
+      "consumer": "emrys.stage.split_N_cigar_reads_with_GATK.v1",
       "artifact": "duplicate-marked BAM/BAI pair",
       "semantics": "required artifact; fan-in"
     },
     {
-      "producer": "norad.stage.construct_FASTA_sidecars.v1",
-      "consumer": "norad.stage.split_N_cigar_reads_with_GATK.v1",
+      "producer": "emrys.stage.construct_FASTA_sidecars.v1",
+      "consumer": "emrys.stage.split_N_cigar_reads_with_GATK.v1",
       "artifact": "reference FAI and sequence dictionary",
       "semantics": "required artifact; fan-in"
     },
     {
-      "producer": "norad.stage.split_N_cigar_reads_with_GATK.v1",
-      "consumer": "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
+      "producer": "emrys.stage.split_N_cigar_reads_with_GATK.v1",
+      "consumer": "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1",
       "artifact": "split-N-cigar BAM/BAI pair",
       "semantics": "required artifact"
     },
     {
-      "producer": "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
-      "consumer": "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+      "producer": "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1",
+      "consumer": "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
       "artifact": "both orientation BAM/BAI pairs for every declared sample",
       "semantics": "required artifact; declared-sample barrier; fan-in"
     },
     {
-      "producer": "norad.stage.construct_FASTA_sidecars.v1",
-      "consumer": "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+      "producer": "emrys.stage.construct_FASTA_sidecars.v1",
+      "consumer": "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
       "artifact": "reference FAI paired with the external reference FASTA",
       "semantics": "required artifact; fan-in"
     },
     {
-      "producer": "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
-      "consumer": "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
+      "producer": "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+      "consumer": "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
       "artifact": "receipt and both orientation VCFs for every declared partition",
       "semantics": "required artifact; declared-partition-and-orientation barrier"
     },
     {
-      "producer": "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
-      "consumer": "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+      "producer": "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
+      "consumer": "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
       "artifact": "sites table and Step 08 input receipt",
       "semantics": "required artifact"
     },
     {
-      "producer": "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
-      "consumer": "norad.analysis.project_candidate_scientific_context.v1",
+      "producer": "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+      "consumer": "emrys.analysis.project_candidate_scientific_context.v1",
       "artifact": "all-sites, significant-sites, and summary tables",
       "semantics": "required artifact; complete Step 09 transaction barrier"
     },
     {
-      "producer": "norad.stage.construct_FASTA_sidecars.v1",
-      "consumer": "norad.analysis.project_candidate_scientific_context.v1",
+      "producer": "emrys.stage.construct_FASTA_sidecars.v1",
+      "consumer": "emrys.analysis.project_candidate_scientific_context.v1",
       "artifact": "reference FAI paired with the external reference FASTA",
       "semantics": "required artifact; fan-in"
     }
   ],
   "required_owner_keys": [
-    "norad.stage.construct_STAR_index.v1",
-    "norad.stage.convert_GTF_to_BED12.v1",
-    "norad.stage.construct_FASTA_sidecars.v1",
-    "norad.stage.align_RNA_reads_with_STAR.v1",
-    "norad.stage.construct_canonical_BAM.v1",
-    "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
-    "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
-    "norad.stage.mark_BAM_duplicates_with_Picard.v1",
-    "norad.stage.split_N_cigar_reads_with_GATK.v1",
-    "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
-    "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
-    "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
-    "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
-    "norad.analysis.project_candidate_scientific_context.v1"
+    "emrys.stage.construct_STAR_index.v1",
+    "emrys.stage.convert_GTF_to_BED12.v1",
+    "emrys.stage.construct_FASTA_sidecars.v1",
+    "emrys.stage.align_RNA_reads_with_STAR.v1",
+    "emrys.stage.construct_canonical_BAM.v1",
+    "emrys.evidence.collect_canonical_BAM_QC_evidence.v1",
+    "emrys.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+    "emrys.stage.mark_BAM_duplicates_with_Picard.v1",
+    "emrys.stage.split_N_cigar_reads_with_GATK.v1",
+    "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1",
+    "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+    "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
+    "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+    "emrys.analysis.project_candidate_scientific_context.v1"
   ],
   "evidence_owner_keys": [
-    "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
-    "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1"
+    "emrys.evidence.collect_canonical_BAM_QC_evidence.v1",
+    "emrys.evidence.collect_RSeQC_paired_orientation_evidence.v1"
   ],
   "artifact_templates": [
     {

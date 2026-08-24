@@ -81,7 +81,7 @@ def run_validator(
             sys.executable,
             "-I",
             "-m",
-            "norad",
+            "emrys",
             "validate",
             "canonical-bam",
             "--scope-id",

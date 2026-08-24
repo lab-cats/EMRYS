@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:emrys:schema:orchestration:reference:v1",
+  "title": "EMRYS normalized reference contract v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "reference_id",
+    "fasta",
+    "gtf",
+    "star_index"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "emrys.reference.v1"
+    },
+    "reference_id": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+    },
+    "fasta": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/file_snapshot"
+    },
+    "gtf": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/file_snapshot"
+    },
+    "star_index": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sjdb_overhang",
+        "genome_sa_index_nbases"
+      ],
+      "properties": {
+        "sjdb_overhang": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "genome_sa_index_nbases": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

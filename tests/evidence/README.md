@@ -15,7 +15,7 @@ This directory owns local protection for three distinct evidence roles:
   workflow completion authority.
 
 Commands, transaction behavior, and precise evidence meanings remain with the
-[production evidence owners](../../src/norad/evidence/README.md). Tests in one
+[production evidence owners](../../src/emrys/evidence/README.md). Tests in one
 source owner may protect both a doctor-consumed API and a separate optional
 diagnostic route; those roles remain distinct. Tests in one child do not raise
 or substitute for another child's evidence state. Candidate

@@ -8,111 +8,111 @@ from pathlib import Path
 
 import pytest
 
-from norad.contracts.artifacts import api as artifact_contracts
-from norad.contracts.orchestration import api as orchestration_contracts
-from norad.contracts.orchestration.projection import build_reporting_bundle
-from norad.orchestration.local_pilot.normalization import normalize_request
+from emrys.contracts.artifacts import api as artifact_contracts
+from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.projection import build_reporting_bundle
+from emrys.orchestration.local_pilot.normalization import normalize_request
 from tests.orchestration.local_pilot.fixture import build
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PROFILE_PATH = REPO_ROOT / "workflow" / "contracts" / "local_cmh_v2.json"
-STAGE_MAP_PATH = REPO_ROOT / "src" / "norad" / "contracts" / "STAGE_MAP.md"
+STAGE_MAP_PATH = REPO_ROOT / "src" / "emrys" / "contracts" / "STAGE_MAP.md"
 PUBLIC_INVENTORY_PATH = REPO_ROOT / "configs" / "artifact_inventory.example.tsv"
 
 EXPECTED_TASKS = (
     (
-        "norad.stage.construct_STAR_index.v1",
+        "emrys.stage.construct_STAR_index.v1",
         "construct_STAR_index",
         "00a",
         "reference",
         "reference",
     ),
     (
-        "norad.stage.convert_GTF_to_BED12.v1",
+        "emrys.stage.convert_GTF_to_BED12.v1",
         "convert_GTF_to_BED12",
         "00b",
         "reference",
         "reference",
     ),
     (
-        "norad.stage.construct_FASTA_sidecars.v1",
+        "emrys.stage.construct_FASTA_sidecars.v1",
         "construct_FASTA_sidecars",
         "00c",
         "reference",
         "reference",
     ),
     (
-        "norad.stage.align_RNA_reads_with_STAR.v1",
+        "emrys.stage.align_RNA_reads_with_STAR.v1",
         "align_RNA_reads_with_STAR",
         "01",
         "sample",
         "samples",
     ),
     (
-        "norad.stage.construct_canonical_BAM.v1",
+        "emrys.stage.construct_canonical_BAM.v1",
         "construct_canonical_BAM",
         "02",
         "sample",
         "samples",
     ),
     (
-        "norad.evidence.collect_canonical_BAM_QC_evidence.v1",
+        "emrys.evidence.collect_canonical_BAM_QC_evidence.v1",
         "collect_canonical_BAM_QC_evidence",
         "02b",
         "sample",
         "samples",
     ),
     (
-        "norad.evidence.collect_RSeQC_paired_orientation_evidence.v1",
+        "emrys.evidence.collect_RSeQC_paired_orientation_evidence.v1",
         "collect_RSeQC_paired_orientation_evidence",
         "03",
         "sample",
         "samples",
     ),
     (
-        "norad.stage.mark_BAM_duplicates_with_Picard.v1",
+        "emrys.stage.mark_BAM_duplicates_with_Picard.v1",
         "mark_BAM_duplicates_with_Picard",
         "04",
         "sample",
         "samples",
     ),
     (
-        "norad.stage.split_N_cigar_reads_with_GATK.v1",
+        "emrys.stage.split_N_cigar_reads_with_GATK.v1",
         "split_N_cigar_reads_with_GATK",
         "05",
         "sample",
         "samples",
     ),
     (
-        "norad.stage.partition_BAM_by_mechanical_read_orientation.v1",
+        "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1",
         "partition_BAM_by_mechanical_read_orientation",
         "06",
         "sample",
         "samples",
     ),
     (
-        "norad.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
+        "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1",
         "generate_partitioned_cohort_mpileup_VCFs",
         "07",
         "cohort_partition",
         "partitions",
     ),
     (
-        "norad.stage.preprocess_and_annotate_cohort_candidates.v1",
+        "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
         "preprocess_and_annotate_cohort_candidates",
         "08",
         "cohort",
         "cohort",
     ),
     (
-        "norad.analysis.rank_cohort_candidates_with_paired_CMH.v1",
+        "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1",
         "rank_cohort_candidates_with_paired_CMH",
         "09",
         "analysis",
         "analysis",
     ),
     (
-        "norad.analysis.project_candidate_scientific_context.v1",
+        "emrys.analysis.project_candidate_scientific_context.v1",
         "project_candidate_scientific_context",
         "10",
         "analysis",

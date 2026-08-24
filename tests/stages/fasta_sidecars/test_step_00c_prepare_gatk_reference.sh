@@ -3,10 +3,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
-JOB="$REPO_ROOT/src/norad/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm"
-unset NORAD_RUN_TOKEN
-export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
+SCRIPT="$REPO_ROOT/src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.sh"
+JOB="$REPO_ROOT/src/emrys/stages/fasta_sidecars/step_00c_prepare_gatk_reference.slurm"
+unset EMRYS_RUN_TOKEN
+export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -283,7 +283,7 @@ dry_dir="$tmp_dir/dry"
 dry_fasta="$dry_dir/genome.fa"
 write_fasta "$dry_fasta"
 dry_output="$tmp_dir/dry.out"
-NORAD_RUN_TOKEN=explicit-owner-00c SLURM_JOB_ID=scheduler-00c bash "$SCRIPT" \
+EMRYS_RUN_TOKEN=explicit-owner-00c SLURM_JOB_ID=scheduler-00c bash "$SCRIPT" \
     --reference-fasta "$dry_fasta" \
     --samtools-bin "$fake_bin/samtools" \
     --gatk-bin "$fake_bin/gatk" \
@@ -315,7 +315,7 @@ unsafe_token_fasta="$unsafe_token_dir/genome.fa"
 write_fasta "$unsafe_token_fasta"
 unsafe_token_output="$tmp_dir/unsafe_token.out"
 set +e
-NORAD_RUN_TOKEN='../unsafe-token' \
+EMRYS_RUN_TOKEN='../unsafe-token' \
 SLURM_JOB_ID='safe-scheduler-token' \
 bash "$SCRIPT" \
     --reference-fasta "$unsafe_token_fasta" \

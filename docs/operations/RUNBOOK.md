@@ -1,6 +1,6 @@
 # Runbook
 
-This file contains genuinely cross-cutting NORAD commands. Exact producer,
+This file contains genuinely cross-cutting EMRYS commands. Exact producer,
 validator, scheduler, test, diagnostic, and recovery commands live in the
 adjacent README of the functional owner linked from the
 [architecture index](../architecture/README.md).
@@ -38,7 +38,7 @@ mkdir -p logs
 ```
 
 The login node is for Git, small transfers, editing, inspection, submission,
-and small smoke checks. Never run `norad run --execute`, STAR, BAM processing,
+and small smoke checks. Never run `emrys run --execute`, STAR, BAM processing,
 mpileup, or R analysis there. The public local pilot runs inside one approved
 compute-node allocation; individual owner operations may instead use the
 owner-local `.slurm` entry points. Ordinary wrappers use `TMPDIR=/tmp`; the
@@ -48,12 +48,12 @@ Step `05` owner requires its documented project-storage temporary directory.
 
 | Area | Exact command owner |
 | --- | --- |
-| Sample admission | [`sample_manifest_admission`](../../src/norad/ingestion/sample_manifest_admission/README.md) |
-| Reference preparation and Steps `01`–`08` | [`stages`](../../src/norad/stages/README.md) |
-| Paired CMH ranking | [`rank_cohort_candidates_with_paired_CMH`](../../src/norad/analyses/paired_cmh_candidate_ranking/README.md) |
-| Runtime, reference, storage, and QC evidence | [`evidence`](../../src/norad/evidence/README.md); runtime `inspect runtime-availability`; storage `inspect storage-inventory` and `inspect storage-qualification`; reference `reconcile reference-provenance` |
-| Artifact schemas | [`artifact contracts`](../../src/norad/contracts/artifacts/README.md); installed route `python -I -m norad validate artifact-contracts` |
-| Artifact index, run summary, and reports | [`reporting`](../../src/norad/reporting/README.md); `artifact-index` and `run-summary` are workflow-owned transaction commands, while `build report` is the operator-facing standalone rebuild |
+| Sample admission | [`sample_manifest_admission`](../../src/emrys/ingestion/sample_manifest_admission/README.md) |
+| Reference preparation and Steps `01`–`08` | [`stages`](../../src/emrys/stages/README.md) |
+| Paired CMH ranking | [`rank_cohort_candidates_with_paired_CMH`](../../src/emrys/analyses/paired_cmh_candidate_ranking/README.md) |
+| Runtime, reference, storage, and QC evidence | [`evidence`](../../src/emrys/evidence/README.md); runtime `inspect runtime-availability`; storage `inspect storage-inventory` and `inspect storage-qualification`; reference `reconcile reference-provenance` |
+| Artifact schemas | [`artifact contracts`](../../src/emrys/contracts/artifacts/README.md); installed route `python -I -m emrys validate artifact-contracts` |
+| Artifact index, run summary, and reports | [`reporting`](../../src/emrys/reporting/README.md); `artifact-index` and `run-summary` are workflow-owned transaction commands, while `build report` is the operator-facing standalone rebuild |
 | Synthetic demonstration | [`demo`](../demo/README.md) |
 
 Each owner README supplies supported help, dry-run, execute, scheduler, focused
@@ -73,11 +73,11 @@ walkthrough.
 | Prepare the explicit runtime profile | [Quickstart: runtime profile](../../quickstart.md#4-prepare-one-explicit-runtime-profile) and [`configs/README.md`](../../configs/README.md) |
 | Qualify storage and obtain runtime `READY` | [Quickstart: compatibility](../../quickstart.md#5-validate-data-compatibility-without-scientific-tools) and [runtime readiness](../../quickstart.md#6-require-full-runtime-ready) |
 | Review and execute the fixed workflow | [Quickstart: plan and execution](../../quickstart.md#7-review-the-strict-no-write-plan) |
-| Inspect run state or plan a supported resume | Commands below and the [local-pilot owner](../../src/norad/orchestration/local_pilot/README.md) |
+| Inspect run state or plan a supported resume | Commands below and the [local-pilot owner](../../src/emrys/orchestration/local_pilot/README.md) |
 | Diagnose blocked, partial, locked, or uncertain state | [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) |
 
 The lifecycle-generated `run-in-slurm.sh` is the supported whole-run
-single-allocation launcher. It runs NORAD's one-host local workflow inside one
+single-allocation launcher. It runs EMRYS's one-host local workflow inside one
 approved compute-node allocation; it is not a distributed executor.
 Owner-local `.slurm` files are separate supported scheduler entry points for
 running one stage. They publish only that owner's native outputs and
@@ -85,10 +85,10 @@ validation evidence and never create or adopt an orchestrated run root.
 
 ### Recurring inspection and resume
 
-Inspect state from NORAD's admitted records rather than `.snakemake` metadata:
+Inspect state from EMRYS's admitted records rather than `.snakemake` metadata:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad inspect \
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
   local-pilot-run \
   --run-root /absolute/path/to/workspace/runs/run-DIGEST
 ```
@@ -100,7 +100,7 @@ Resume is supported only when inspection reports both `State:
 resume_available` and `Resume available: yes`. Review the no-write plan first:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad resume \
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \
   --run-root /absolute/path/to/workspace/runs/run-DIGEST \
   --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
 ```
@@ -120,7 +120,7 @@ the placeholders `{value}` and `{trial_dir}` where the candidate value and
 create-absent trial directory belong:
 
 ```yaml
-schema_version: norad.resource-benchmark.v1
+schema_version: emrys.resource-benchmark.v1
 cases:
   - name: step01_threads
     values: [1, 2, 4]
@@ -139,7 +139,7 @@ cases:
       - pycache_prefix=/dev/null
       - -I
       - -m
-      - norad
+      - emrys
       - validate
       - star-alignment
       # include exact trial output and validation arguments explicitly
@@ -339,14 +339,14 @@ show bounded live scheduler, stage, sample, resource-plan, and report-location
 observations:
 
 ```bash
-# Discover the newest admissible current-user NORAD wrapper job.
+# Discover the newest admissible current-user EMRYS wrapper job.
 make dashboard
 
 # Select one job explicitly; optionally bind its exact log directory too.
 make dashboard JOB_ID=replace-with-printed-job-id
 make dashboard \
   JOB_ID=replace-with-printed-job-id \
-  LOG_DIR=/absolute/path/to/norad-slurm-logs
+  LOG_DIR=/absolute/path/to/emrys-slurm-logs
 
 # The default is 30 seconds; values below five seconds are rejected.
 make dashboard DASHBOARD_REFRESH=15
@@ -355,7 +355,7 @@ make dashboard DASHBOARD_REFRESH=15
 Automatic selection queries only the current user's live jobs and the most
 recent seven days of Slurm accounting, considers at most 50 root allocation
 IDs, and admits the first candidate whose scheduler metadata and exact
-`norad-local-pilot-<job-id>.out/.err` pair can be proved. It does not walk or
+`emrys-local-pilot-<job-id>.out/.err` pair can be proved. It does not walk or
 glob shared storage. `LOG_DIR` without `JOB_ID` is ambiguous and rejected; when
 Slurm declares the stream paths, an explicit `LOG_DIR` must agree with them.
 The selected directory and streams must be current-user-owned, readable, real
@@ -370,11 +370,11 @@ The dashboard reads scheduler metadata and only newly appended stream bytes.
 It never changes the workflow, run root, logs, scheduler job, or reports. Its
 status, inferred progress, timing, and derived report paths are not completion
 or evidence authority. After the allocation reaches a terminal state, inspect
-accounting and run the final NORAD inspection using the exact run root printed
+accounting and run the final EMRYS inspection using the exact run root printed
 by the control stream:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m norad inspect \
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
   local-pilot-run \
   --run-root /absolute/path/to/workspace/runs/run-DIGEST
 ```
@@ -391,9 +391,9 @@ if accounting shows a terminal allocation:
 
 ```bash
 job_id=replace-with-printed-job-id
-NORAD_LOG_DIR=/absolute/path/to/norad-slurm-logs
-stdout="$NORAD_LOG_DIR/norad-local-pilot-$job_id.out"
-stderr="$NORAD_LOG_DIR/norad-local-pilot-$job_id.err"
+EMRYS_LOG_DIR=/absolute/path/to/emrys-slurm-logs
+stdout="$EMRYS_LOG_DIR/emrys-local-pilot-$job_id.out"
+stderr="$EMRYS_LOG_DIR/emrys-local-pilot-$job_id.err"
 
 while [[ ! -e "$stdout" || ! -e "$stderr" ]]; do
   state="$(sacct -X -n -P -j "$job_id" --format=State 2>/dev/null |

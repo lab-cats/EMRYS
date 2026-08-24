@@ -9,9 +9,9 @@ import pytest
 from tests.tools import python_coverage_baseline as TOOL
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-PRIVATE_CONTRACT_PATH = "src/norad/contracts/scientific_evidence/_private_contract.py"
-CONVERTER_PATH = "src/norad/stages/gtf_to_bed12/converter.py"
-MANIFEST_VALIDATOR_PATH = "src/norad/ingestion/sample_manifest_admission/validator.py"
+PRIVATE_CONTRACT_PATH = "src/emrys/contracts/scientific_evidence/_private_contract.py"
+CONVERTER_PATH = "src/emrys/stages/gtf_to_bed12/converter.py"
+MANIFEST_VALIDATOR_PATH = "src/emrys/ingestion/sample_manifest_admission/validator.py"
 
 
 def summary(lines: tuple[int, int], branches: tuple[int, int]) -> dict[str, int]:
@@ -25,34 +25,34 @@ def summary(lines: tuple[int, int], branches: tuple[int, int]) -> dict[str, int]
 
 def fixture_files() -> dict[str, dict[str, dict[str, int]]]:
     return {
-        "src/norad/contracts/orchestration/private_contract.py": {
+        "src/emrys/contracts/orchestration/private_contract.py": {
             "summary": summary((90, 100), (34, 40))
         },
-        "src/norad/orchestration/local_pilot/private_control.py": {
+        "src/emrys/orchestration/local_pilot/private_control.py": {
             "summary": summary((80, 100), (28, 40))
         },
-        "src/norad/libraries/source_authority.py": {
+        "src/emrys/libraries/source_authority.py": {
             "summary": summary((88, 100), (34, 40))
         },
-        "src/norad/evidence/runtime_availability/private_admission.py": {
+        "src/emrys/evidence/runtime_availability/private_admission.py": {
             "summary": summary((88, 100), (30, 40))
         },
         MANIFEST_VALIDATOR_PATH: {"summary": summary((90, 100), (36, 40))},
         CONVERTER_PATH: {"summary": summary((80, 100), (30, 40))},
         PRIVATE_CONTRACT_PATH: {"summary": summary((99, 100), (39, 40))},
-        "src/norad/libraries/validation/private_report.py": {
+        "src/emrys/libraries/validation/private_report.py": {
             "summary": summary((95, 100), (35, 40))
         },
-        "src/norad/libraries/alignments/private_alignment.py": {
+        "src/emrys/libraries/alignments/private_alignment.py": {
             "summary": summary((96, 100), (36, 40))
         },
-        "src/norad/contracts/artifacts/private_receipt.py": {
+        "src/emrys/contracts/artifacts/private_receipt.py": {
             "summary": summary((80, 100), (28, 40))
         },
-        "src/norad/reporting/private_publication.py": {
+        "src/emrys/reporting/private_publication.py": {
             "summary": summary((70, 100), (20, 40))
         },
-        "src/norad/analyses/paired_cmh_candidate_ranking/private_validator.py": {
+        "src/emrys/analyses/paired_cmh_candidate_ranking/private_validator.py": {
             "summary": summary((90, 100), (32, 40))
         },
         "scripts/example.py": {"summary": summary((30, 50), (10, 20))},
@@ -125,10 +125,10 @@ def test_campaign_b_critical_owner_floors_are_independent() -> None:
             "runtime_availability_admission",
         )
     } == {
-        "orchestration_machine_contracts": ("src/norad/contracts/orchestration/",),
-        "local_pilot_control_plane": ("src/norad/orchestration/local_pilot/",),
-        "source_checkout_admission": ("src/norad/libraries/source_authority.py",),
-        "runtime_availability_admission": ("src/norad/evidence/runtime_availability/",),
+        "orchestration_machine_contracts": ("src/emrys/contracts/orchestration/",),
+        "local_pilot_control_plane": ("src/emrys/orchestration/local_pilot/",),
+        "source_checkout_admission": ("src/emrys/libraries/source_authority.py",),
+        "runtime_availability_admission": ("src/emrys/evidence/runtime_availability/",),
     }
 
 
@@ -158,12 +158,12 @@ def test_measurement_requires_branches_and_subprocess_owner_coverage() -> None:
 
     subprocess_files = subprocess_fixture_files()
     subprocess_files[CONVERTER_PATH]["summary"] = summary((0, 100), (0, 40))
-    subprocess_files["src/norad/stages/gtf_to_bed12/validator.py"] = {
+    subprocess_files["src/emrys/stages/gtf_to_bed12/validator.py"] = {
         "summary": summary((75, 100), (25, 40))
     }
     with pytest.raises(
         TOOL.SnapshotError,
-        match="Subprocess coverage is missing for route norad.convert.gtf_to_bed12",
+        match="Subprocess coverage is missing for route emrys.convert.gtf_to_bed12",
     ):
         TOOL.build_snapshot(raw_document(), raw_document(subprocess_files))
 
@@ -200,7 +200,7 @@ def test_check_rejects_critical_owner_regression_with_stable_aggregate() -> None
 
     with pytest.raises(
         TOOL.SnapshotError,
-        match="Critical owner norad.contracts.scientific_evidence line coverage regressed",
+        match="Critical owner emrys.contracts.scientific_evidence line coverage regressed",
     ):
         TOOL.compare_snapshots(baseline, current)
 
@@ -208,7 +208,7 @@ def test_check_rejects_critical_owner_regression_with_stable_aggregate() -> None
 def test_check_protects_shared_scientific_primitives_as_one_owner() -> None:
     baseline = snapshot()
     files = fixture_files()
-    shared_path = "src/norad/libraries/alignments/private_alignment.py"
+    shared_path = "src/emrys/libraries/alignments/private_alignment.py"
     files[shared_path]["summary"]["covered_lines"] -= 1
     files["scripts/example.py"]["summary"]["covered_lines"] += 1
     current = TOOL.build_snapshot(
@@ -229,7 +229,7 @@ def test_private_filename_move_does_not_change_the_policy() -> None:
     baseline = snapshot()
     files = fixture_files()
     moved = files.pop(PRIVATE_CONTRACT_PATH)
-    files["src/norad/contracts/scientific_evidence/_consolidated.py"] = moved
+    files["src/emrys/contracts/scientific_evidence/_consolidated.py"] = moved
     current = TOOL.build_snapshot(
         raw_document(files), raw_document(subprocess_fixture_files())
     )
@@ -248,7 +248,7 @@ def test_private_filename_move_does_not_change_the_policy() -> None:
 def test_new_shared_module_thresholds_remain_explicit(
     lines: tuple[int, int], branches: tuple[int, int], message: str
 ) -> None:
-    path = "src/norad/libraries/new_shared.py"
+    path = "src/emrys/libraries/new_shared.py"
     passing_files = fixture_files()
     passing_files[path] = {"summary": summary((95, 100), (18, 20))}
     TOOL.validate_new_shared_modules(raw_document(passing_files), [path])
@@ -267,7 +267,7 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     assert config.getboolean("run", "branch")
     assert config.getboolean("run", "parallel")
     assert config.getboolean("run", "relative_files")
-    assert config.get("run", "source").split() == ["scripts", "src/norad"]
+    assert config.get("run", "source").split() == ["scripts", "src/emrys"]
     assert config.get("run", "patch").split() == ["subprocess"]
 
     makefile = (REPO_ROOT / "scripts" / "make_quality.mk").read_text(encoding="utf-8")
@@ -280,11 +280,11 @@ def test_repository_coverage_wiring_is_pinned_and_subprocess_aware() -> None:
     for subprocess_test in TOOL.SUBPROCESS_TEST_COMMAND[4:]:
         assert subprocess_test in makefile
     for shared_module in (
-        "src/norad/libraries/installed_package_identity.py",
-        "src/norad/libraries/process_environment.py",
+        "src/emrys/libraries/installed_package_identity.py",
+        "src/emrys/libraries/process_environment.py",
     ):
         assert shared_module in makefile
-    assert "compileall -q scripts src/norad tests" in makefile
+    assert "compileall -q scripts src/emrys tests" in makefile
 
 
 def test_check_is_read_only_and_baseline_update_is_explicit(tmp_path: Path) -> None:
@@ -346,7 +346,7 @@ def test_check_requires_raw_measurement_for_new_module(capsys: Any) -> None:
             "--current",
             "unused-current.json",
             "--new-shared-module",
-            "src/norad/libraries/new_shared.py",
+            "src/emrys/libraries/new_shared.py",
         ]
     )
     assert result == 2

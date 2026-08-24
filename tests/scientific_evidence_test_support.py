@@ -12,7 +12,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from norad.contracts.scientific_evidence import step08, step09
+from emrys.contracts.scientific_evidence import step08, step09
 
 COHORT_ID = "cohort"
 PRIMARY_ANALYSIS_ID = "analysis_primary"

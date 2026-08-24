@@ -7,8 +7,8 @@ import csv
 from pathlib import Path
 
 import pytest
-from norad.analyses.scientific_context_projection import validator
-from norad.contracts.scientific_evidence import scientific_context
+from emrys.analyses.scientific_context_projection import validator
+from emrys.contracts.scientific_evidence import scientific_context
 from tests import scientific_context_test_support as CONTEXT_FIXTURE
 from tests import scientific_evidence_test_support as STEP_FIXTURE
 

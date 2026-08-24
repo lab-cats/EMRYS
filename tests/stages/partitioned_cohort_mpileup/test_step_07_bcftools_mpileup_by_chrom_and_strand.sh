@@ -2,10 +2,10 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-script="$repo_root/src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh"
-job="$repo_root/src/norad/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
-unset NORAD_RUN_TOKEN
-export NORAD_SHA256_PYTHON="$repo_root/.venv/bin/python"
+script="$repo_root/src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh"
+job="$repo_root/src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
+unset EMRYS_RUN_TOKEN
+export EMRYS_SHA256_PYTHON="$repo_root/.venv/bin/python"
 test_root="$(mktemp -d)"
 trap 'rm -rf "$test_root"' EXIT
 export TMPDIR="$test_root"
@@ -276,7 +276,7 @@ run_expect_status 1 "$test_root/missing.out" "$test_root/missing.err" \
     bash "$script"
 assert_contains "$test_root/missing.err" "Missing required argument: --cohort-id"
 
-NORAD_RUN_TOKEN=explicit-owner-07 SLURM_JOB_ID=scheduler-07 \
+EMRYS_RUN_TOKEN=explicit-owner-07 SLURM_JOB_ID=scheduler-07 \
     FAKE_BCFTOOLS_LOG="$test_root/dry-run.log" \
     bash "$script" "${common_args[@]}" >"$test_root/dry-run.out"
 assert_contains "$test_root/dry-run.out" "Mode: dry-run"
@@ -1173,15 +1173,15 @@ assert_contains "$primary_partitions" $'MT\tregion\tMT'
     fail "Pilot manifest must contain exactly one partition plus its header"
 assert_contains "$pilot_partitions" $'pilot_1\tregion\t1:1-100000'
 wrapper_root="$test_root/wrapper"
-wrapper_owner="$wrapper_root/src/norad/stages/partitioned_cohort_mpileup"
-wrapper_libraries="$wrapper_root/src/norad/libraries"
+wrapper_owner="$wrapper_root/src/emrys/stages/partitioned_cohort_mpileup"
+wrapper_libraries="$wrapper_root/src/emrys/libraries"
 mkdir -p "$wrapper_owner" "$wrapper_libraries"
 cp "$script" "$wrapper_owner/"
-cp "$repo_root/src/norad/libraries/executable_resolution.sh" \
-    "$repo_root/src/norad/libraries/file_checks.sh" \
-    "$repo_root/src/norad/libraries/argument_parsing.sh" \
-    "$repo_root/src/norad/libraries/orientation.sh" \
-    "$repo_root/src/norad/libraries/signal_traps.sh" \
+cp "$repo_root/src/emrys/libraries/executable_resolution.sh" \
+    "$repo_root/src/emrys/libraries/file_checks.sh" \
+    "$repo_root/src/emrys/libraries/argument_parsing.sh" \
+    "$repo_root/src/emrys/libraries/orientation.sh" \
+    "$repo_root/src/emrys/libraries/signal_traps.sh" \
     "$wrapper_libraries/"
 wrapper_filter='INFO/AD[1-]>7 & MAX(FORMAT/DP)>31'
 env \
@@ -1225,10 +1225,10 @@ assert_exists "$wrapper_root/execute-output/wrapper_exec/1/wrapper_exec.1.REV_li
 assert_exists "$wrapper_root/execute-output/wrapper_exec/1/wrapper_exec.1.step07_outputs.tsv"
 
 wrapper_missing_root="$test_root/wrapper-missing-output"
-wrapper_missing_owner="$wrapper_missing_root/src/norad/stages/partitioned_cohort_mpileup"
-wrapper_missing_libraries="$wrapper_missing_root/src/norad/libraries"
+wrapper_missing_owner="$wrapper_missing_root/src/emrys/stages/partitioned_cohort_mpileup"
+wrapper_missing_libraries="$wrapper_missing_root/src/emrys/libraries"
 mkdir -p "$wrapper_missing_owner" "$wrapper_missing_libraries"
-cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
+cp "$repo_root/src/emrys/libraries/argument_parsing.sh" \
     "$wrapper_missing_libraries/"
 cat >"$wrapper_missing_owner/step_07_bcftools_mpileup_by_chrom_and_strand.sh" <<'STUB'
 #!/usr/bin/env bash
@@ -1251,9 +1251,9 @@ run_expect_status 1 "$test_root/wrapper-missing.out" "$test_root/wrapper-missing
 assert_contains "$test_root/wrapper-missing.err" "Expected FWD_like VCF does not exist or is empty"
 
 invalid_wrapper_root="$test_root/wrapper-invalid"
-invalid_wrapper_libraries="$invalid_wrapper_root/src/norad/libraries"
+invalid_wrapper_libraries="$invalid_wrapper_root/src/emrys/libraries"
 mkdir -p "$invalid_wrapper_libraries"
-cp "$repo_root/src/norad/libraries/argument_parsing.sh" \
+cp "$repo_root/src/emrys/libraries/argument_parsing.sh" \
     "$invalid_wrapper_libraries/"
 run_expect_status 1 "$test_root/wrapper-invalid.out" "$test_root/wrapper-invalid.err" \
     env PATH="$fake_bin:$PATH" SLURM_SUBMIT_DIR="$invalid_wrapper_root" EXECUTE=2 \

@@ -2,7 +2,7 @@
 
 This directory protects Step 06 flag grouping, five-output publication and
 rollback, count arithmetic, and structural validator behavior. The
-[stage owner](../../../src/norad/stages/mechanical_orientation/README.md)
+[stage owner](../../../src/emrys/stages/mechanical_orientation/README.md)
 owns commands, recovery, and exact evidence meaning. Validator tests exercise
 the grouped package route; private `validator.py` is not a direct command.
 

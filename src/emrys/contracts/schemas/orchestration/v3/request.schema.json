@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:emrys:schema:orchestration:request:v3",
+  "title": "EMRYS local CMH request v3",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile",
+    "sample_manifest",
+    "partition_manifest",
+    "reference",
+    "cohort_id",
+    "analysis"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "emrys.request.v3"
+    },
+    "label": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/non_empty_string"
+    },
+    "profile": {
+      "const": "emrys.profile.local_cmh.v2"
+    },
+    "sample_manifest": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/authored_path"
+    },
+    "partition_manifest": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/authored_path"
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "fasta",
+        "gtf",
+        "star_index"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+        },
+        "fasta": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/authored_path"
+        },
+        "gtf": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/authored_path"
+        },
+        "star_index": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sjdb_overhang",
+            "genome_sa_index_nbases"
+          ],
+          "properties": {
+            "sjdb_overhang": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "genome_sa_index_nbases": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    },
+    "cohort_id": {
+      "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+    },
+    "analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "control_condition",
+        "treatment_condition",
+        "rna_ref",
+        "rna_alt",
+        "min_sample_dp",
+        "mean_dp_threshold",
+        "fdr_threshold",
+        "common_or_threshold",
+        "absolute_difference_threshold",
+        "background_max_fraction"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+        },
+        "control_condition": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+        },
+        "treatment_condition": {
+          "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+        },
+        "rna_ref": {
+          "type": "string",
+          "pattern": "^[ACGT]$"
+        },
+        "rna_alt": {
+          "type": "string",
+          "pattern": "^[ACGT]$"
+        },
+        "min_sample_dp": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "mean_dp_threshold": {
+          "type": "number",
+          "minimum": 0
+        },
+        "fdr_threshold": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "common_or_threshold": {
+          "type": "number",
+          "exclusiveMinimum": 1
+        },
+        "absolute_difference_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "background_condition": {
+          "oneOf": [
+            {
+              "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "background_max_fraction": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        }
+      }
+    }
+  }
+}

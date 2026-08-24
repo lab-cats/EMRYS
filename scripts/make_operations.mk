@@ -5,12 +5,12 @@ DASHBOARD_REFRESH ?= 30
 JOB_ID ?=
 LOG_DIR ?=
 
-export NORAD_DASHBOARD_JOB_ID := $(JOB_ID)
-export NORAD_DASHBOARD_LOG_DIR := $(LOG_DIR)
-export NORAD_DASHBOARD_REFRESH := $(DASHBOARD_REFRESH)
+export EMRYS_DASHBOARD_JOB_ID := $(JOB_ID)
+export EMRYS_DASHBOARD_LOG_DIR := $(LOG_DIR)
+export EMRYS_DASHBOARD_REFRESH := $(DASHBOARD_REFRESH)
 
 .PHONY: dashboard
 dashboard:
 	@"$(DASHBOARD_PYTHON_BIN)" -I -B \
-		"$(NORAD_MAKE_ROOT)/src/norad/orchestration/local_pilot/dashboard.py" \
-		--refresh "$$NORAD_DASHBOARD_REFRESH"
+		"$(EMRYS_MAKE_ROOT)/src/emrys/orchestration/local_pilot/dashboard.py" \
+		--refresh "$$EMRYS_DASHBOARD_REFRESH"

@@ -20,9 +20,9 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from norad.contracts.scientific_evidence import step09
-from norad.contracts.scientific_evidence import scientific_context
-from norad.reporting._artifact_index.registry import ADAPTER_REGISTRY
+from emrys.contracts.scientific_evidence import step09
+from emrys.contracts.scientific_evidence import scientific_context
+from emrys.reporting._artifact_index.registry import ADAPTER_REGISTRY
 from tests.scientific_context_test_support import (
     build_transaction as build_scientific_context_transaction,
 )

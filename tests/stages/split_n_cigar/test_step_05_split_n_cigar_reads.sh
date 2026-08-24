@@ -5,10 +5,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
-SCRIPT="$REPO_ROOT/src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
-JOB="$REPO_ROOT/src/norad/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm"
-unset NORAD_RUN_TOKEN
-export NORAD_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
+SCRIPT="$REPO_ROOT/src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
+JOB="$REPO_ROOT/src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.slurm"
+unset EMRYS_RUN_TOKEN
+export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -504,7 +504,7 @@ assert_no_step05_attempt_marker "$missing_samtools_dir"
 printf 'Running dry-run check...\n'
 dry_output="$tmp_dir/dry.out"
 dry_output_dir="$tmp_dir/results/dry/split_ncigar/ABE_EV_2"
-NORAD_RUN_TOKEN=explicit-owner-05 SLURM_JOB_ID=scheduler-05 \
+EMRYS_RUN_TOKEN=explicit-owner-05 SLURM_JOB_ID=scheduler-05 \
     run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$dry_output_dir" >"$dry_output"
 dry_bam="$dry_output_dir/ABE_EV_2.split_ncigar.bam"
 assert_not_exists "$dry_output_dir"

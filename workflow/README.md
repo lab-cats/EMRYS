@@ -1,6 +1,6 @@
 # Local CMH workflow projection
 
-This directory contains NORAD's fixed, source-checkout-bound Snakemake
+This directory contains EMRYS's fixed, source-checkout-bound Snakemake
 projection. It schedules public functional owners; it does not implement their
 science, infer work from filenames, or treat Snakemake metadata as completion
 evidence.
@@ -11,12 +11,12 @@ evidence.
 | --- | --- |
 | [`Snakefile`](Snakefile) | Static scheduling projection for the supported local CMH graph and its reporting tail. |
 | [`contracts/`](contracts/README.md) | Reviewed workflow-projection instances that select owners, scopes, edges, and reportable artifacts. |
-| [`profiles/`](profiles/README.md) | Snakemake engine settings selected by NORAD's lifecycle. |
+| [`profiles/`](profiles/README.md) | Snakemake engine settings selected by EMRYS's lifecycle. |
 
 The canonical semantic owner identities and artifact edges live in
-[`STAGE_MAP.md`](../src/norad/contracts/STAGE_MAP.md). Exact workflow-profile
+[`STAGE_MAP.md`](../src/emrys/contracts/STAGE_MAP.md). Exact workflow-profile
 validation belongs to the
-[`contracts/orchestration`](../src/norad/contracts/orchestration/README.md)
+[`contracts/orchestration`](../src/emrys/contracts/orchestration/README.md)
 owner. Functional behavior, native outputs, validation, and recovery remain
 with each stage, analysis, or evidence owner.
 
@@ -25,7 +25,7 @@ with each stage, analysis, or evidence owner.
 The supported flow is:
 
 ```text
-norad run / norad resume
+emrys run / emrys resume
   -> request admission and lifecycle materialization
   -> fixed Snakefile plus checkout-bound local engine profile
   -> public owner producers and validators
@@ -38,12 +38,12 @@ bound public owners and declares only their verified records. Native scientific
 outputs, locks, receipts, and rollback remain owner-controlled rather than
 becoming generic Snakemake outputs.
 
-Verified task and reporting records are reusable only after NORAD re-admits
+Verified task and reporting records are reusable only after EMRYS re-admits
 their canonical identities, bound evidence, and semantic transactions. A path,
 timestamp, process exit, `.snakemake` entry, or receipt name alone is not
 completion authority. The local-pilot
-[`README`](../src/norad/orchestration/local_pilot/README.md) and
-[`CONTRACT`](../src/norad/orchestration/local_pilot/CONTRACT.md) own the exact
+[`README`](../src/emrys/orchestration/local_pilot/README.md) and
+[`CONTRACT`](../src/emrys/orchestration/local_pilot/CONTRACT.md) own the exact
 state, recovery, and resume rules.
 
 ## Fixed projection
@@ -81,7 +81,7 @@ sample concurrency, and owner thread counts. A workstation or one allocated
 Slurm node may be that host, but this is not a distributed or Slurm-executor
 profile.
 
-Operators use `norad run` and `norad resume`; bare Snakemake invocation and ad
+Operators use `emrys run` and `emrys resume`; bare Snakemake invocation and ad
 hoc configs are unsupported. Standalone stage execution remains supported
 through each functional owner's direct command and owner-local scheduler entry
 point. See the [Runbook](../docs/operations/RUNBOOK.md) for cross-cutting

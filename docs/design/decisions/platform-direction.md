@@ -27,9 +27,9 @@ declared barriers create DAG edges. Filenames, narrative order, shared
 directories, validators, or one wrapper's materialization behavior do not.
 
 Exact identities and edges live in
-[`STAGE_MAP.md`](../../../src/norad/contracts/STAGE_MAP.md). Current source and
+[`STAGE_MAP.md`](../../../src/emrys/contracts/STAGE_MAP.md). Current source and
 dependency rules live in
-[`SOURCE_TOPOLOGY.md`](../../../src/norad/contracts/SOURCE_TOPOLOGY.md).
+[`SOURCE_TOPOLOGY.md`](../../../src/emrys/contracts/SOURCE_TOPOLOGY.md).
 
 ## Share only proven equivalence
 
@@ -51,7 +51,7 @@ workflow domains.
 
 The first workflow control plane uses Snakemake's local executor because the
 existing semantic owners already expose the scientific operations and artifact
-edges that a general-purpose workflow engine should schedule. NORAD therefore
+edges that a general-purpose workflow engine should schedule. EMRYS therefore
 does not build a second scheduler, stage registry, scientific implementation,
 or recovery system. One fixed profile is easier to inspect and prove than a
 generic extension surface before a second real workflow exists.

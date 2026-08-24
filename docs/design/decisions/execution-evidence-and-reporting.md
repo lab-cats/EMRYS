@@ -36,7 +36,7 @@ approve the defect or make unlike transaction implementations interchangeable.
 
 ### Guard the repository-local R environment
 
-Repository R activation is opt-in through `NORAD_USE_RENV=1`; normal startup is
+Repository R activation is opt-in through `EMRYS_USE_RENV=1`; normal startup is
 unchanged when it is disabled, and invalid values fail. Restoration is an
 explicit operator action. Compute and tests never bootstrap packages.
 
@@ -51,7 +51,7 @@ renderer, accesses the network, or creates report sidecars.
 
 ### Inspect runtime availability from explicit profiles
 
-The grouped route `python -I -m norad inspect runtime-availability` evaluates
+The grouped route `python -I -m emrys inspect runtime-availability` evaluates
 one exact profile in one explicitly declared context and installs or repairs
 nothing. It retains `runtime_preflight` artifact vocabulary. Local or
 login-shell availability does not establish batch visibility. Even an all-pass
@@ -78,13 +78,13 @@ Implementation, fixture testing, real-runtime testing, cluster dry-run, and
 cluster proof are separate computational claims. Cluster proof requires
 inspected scheduler, log, command, and output evidence; report generation is
 not validation. Candidate review, adjudication, and biological interpretation
-are external work-process records and are not NORAD evidence states.
+are external work-process records and are not EMRYS evidence states.
 
 ### Keep external interpretation outside the pipeline
 
-NORAD produces CMH-ranked computational candidates and provenance. It does not
+EMRYS produces CMH-ranked computational candidates and provenance. It does not
 encode an approver, adjudication gate, biological-readiness gate, or scientific
-completion status. External research records may reference immutable NORAD
+completion status. External research records may reference immutable EMRYS
 outputs without becoming inputs to pipeline completion.
 
 ### Require explicit evidence relationships

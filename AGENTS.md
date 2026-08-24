@@ -1,6 +1,6 @@
-# NORAD safety guard
+# EMRYS safety guard
 
-NORAD is research software for local development and CSU SLURM execution.
+EMRYS is research software for local development and CSU SLURM execution.
 Correctness, recoverability, scientific meaning, and honest evidence claims
 take priority over speed or convenience.
 
@@ -39,7 +39,7 @@ Scheduler success, output presence, schema validity, a receipt, or a report is
 not proof of a higher layer.
 
 Use **CMH-ranked candidates**, not validated editing sites. `FWD_like` and
-`REV_like` are mechanical labels, not biological strand claims. NORAD ends
+`REV_like` are mechanical labels, not biological strand claims. EMRYS ends
 with computational candidates and provenance. Candidate review, adjudication,
 and biological interpretation are external work-process records, not pipeline
 steps, gates, artifacts, or completion states.

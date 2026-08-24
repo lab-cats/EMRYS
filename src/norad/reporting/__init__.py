@@ -1,1 +1,0 @@
-"""NORAD reporting implementation."""

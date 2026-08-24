@@ -2,11 +2,11 @@
 
 This directory protects the Step 03 producer and validator through shell cases
 and Python report checks. The
-[production owner](../../../src/norad/evidence/rseqc_orientation/README.md)
+[production owner](../../../src/emrys/evidence/rseqc_orientation/README.md)
 defines supported commands, publication hazards, and the mechanical-evidence
 boundary.
 
-Python tests invoke the grouped `python -I -m norad validate rseqc-orientation`
+Python tests invoke the grouped `python -I -m emrys validate rseqc-orientation`
 route; the owner's `validator.py` is private.
 
 Mocked or fixture fractions do not establish real RSeQC execution, transcript

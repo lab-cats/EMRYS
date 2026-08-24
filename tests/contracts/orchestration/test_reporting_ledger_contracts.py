@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from norad.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration import api as orchestration_contracts
 
 ZERO_HASH = "0" * 64
 ONE_HASH = "1" * 64
@@ -27,7 +27,7 @@ def _records() -> dict[str, dict[str, Any]]:
         "kind": "artifact_index",
     }
     start = {
-        "schema_version": "norad.reporting-start.v1",
+        "schema_version": "emrys.reporting-start.v1",
         **identity,
         "workflow_attempt": _reference(f"attempts/{ATTEMPT_ID}/attempt.json"),
         "workflow_config": _reference("contract/workflow-config.json"),
@@ -35,7 +35,7 @@ def _records() -> dict[str, dict[str, Any]]:
         "created_at": "2026-08-12T12:00:00Z",
     }
     verified = {
-        "schema_version": "norad.verified-reporting.v1",
+        "schema_version": "emrys.verified-reporting.v1",
         **identity,
         "reporting_start": _reference("state/reporting/artifact_index/start.json"),
         "semantic_receipt": _reference(

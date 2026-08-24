@@ -1,8 +1,8 @@
 # Current architecture
 
-This document owns the conceptual map of the implemented NORAD system within
+This document owns the conceptual map of the implemented EMRYS system within
 the [`architecture index`](README.md). Exact semantic identities and DAG edges belong in
-[`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md); current public
+[`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md); current public
 surfaces and direct protection belong in the
 [`functional-owner inventory`](FUNCTIONAL_OWNER_INVENTORY.md); and each
 owner-local `CONTRACT.md` owns exact interface and failure behavior.
@@ -13,19 +13,19 @@ Current projections:
   [Mermaid source](diagrams/current_user_pipeline.mmd) provide the phase view;
 - [`pipeline.mmd`](diagrams/pipeline.mmd) provides the grouped system
   projection; and
-- [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) remains the exact
+- [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md) remains the exact
   machine-independent dependency authority.
 
 ## Implemented system shape
 
 All fourteen numbered workflow, analysis, and evidence owners occupy their
-functional homes under `src/norad/`. Sample-manifest admission, neutral
+functional homes under `src/emrys/`. Sample-manifest admission, neutral
 contracts and libraries, reporting, local-pilot intake/control, and
 reference/runtime/storage evidence occupy separate cross-cutting owners.
 Numeric step labels are historical aliases rather than a complete execution
 order.
 
-NORAD currently exposes owner-local commands, SLURM entry points, read-only
+EMRYS currently exposes owner-local commands, SLURM entry points, read-only
 local-pilot admission, dry-run-first public run/resume/inspection commands, and
 one fixed source-checkout-bound Snakemake graph for local execution. The static
 graph invokes public owners through hash-bound closed dispatch records,
@@ -40,14 +40,14 @@ remain outside the proven boundary.
 
 | Component group | Implemented owners | Principal inputs | Principal outputs |
 | --- | --- | --- | --- |
-| Input admission | `src/norad/ingestion/sample_manifest_admission/` | Explicit sample manifest and optional declared FASTQ paths | Schema/admission result and paired-FASTQ diagnostics |
-| Local-pilot orchestration | `src/norad/orchestration/local_pilot/`, `src/norad/contracts/orchestration/`, and `workflow/` | Explicit YAML request, ordered TSV manifests, exact runtime profile, reviewed fixed-profile record, canonical execution/config snapshots, and hash-bound task dispatches | Dry-run plans, create-absent run/attempt materialization, canonical execution/reporting identity, semantic all-pass evidence, durable task/reporting start records, task-attempt and verified records, immutable workflow attempts, public derived inspection, and between-task resume; no real-tool or cluster proof |
-| Reference preparation | Owners `00a`, `00b`, and `00c` under `src/norad/stages/` | Reference FASTA, GTF, and tool parameters | STAR index, BED12, and FASTA sidecars |
-| Per-sample processing and evidence | Owners `01`–`06` under `src/norad/stages/` plus evidence owners `02b` and `03` | Declared reads, references, and preceding owner artifacts | Aligned/canonical/duplicate-marked/split BAMs plus QC and orientation evidence |
+| Input admission | `src/emrys/ingestion/sample_manifest_admission/` | Explicit sample manifest and optional declared FASTQ paths | Schema/admission result and paired-FASTQ diagnostics |
+| Local-pilot orchestration | `src/emrys/orchestration/local_pilot/`, `src/emrys/contracts/orchestration/`, and `workflow/` | Explicit YAML request, ordered TSV manifests, exact runtime profile, reviewed fixed-profile record, canonical execution/config snapshots, and hash-bound task dispatches | Dry-run plans, create-absent run/attempt materialization, canonical execution/reporting identity, semantic all-pass evidence, durable task/reporting start records, task-attempt and verified records, immutable workflow attempts, public derived inspection, and between-task resume; no real-tool or cluster proof |
+| Reference preparation | Owners `00a`, `00b`, and `00c` under `src/emrys/stages/` | Reference FASTA, GTF, and tool parameters | STAR index, BED12, and FASTA sidecars |
+| Per-sample processing and evidence | Owners `01`–`06` under `src/emrys/stages/` plus evidence owners `02b` and `03` | Declared reads, references, and preceding owner artifacts | Aligned/canonical/duplicate-marked/split BAMs plus QC and orientation evidence |
 | Cohort transformation and analysis | Stage owners `07` and `08`, then analysis owners `09` and `10` | Declared partitions, sample order, reference context, registered PUM motif, and upstream receipts | Cohort VCFs, annotated candidates, paired-CMH ranked candidates, and hash-bound sequence/motif context projections |
-| Reporting | `src/norad/reporting/` | Admitted source checkout, explicit artifact inventory, and validated computational receipts | Artifact index, canonical run summary, separate self-contained scientific and evidence HTML views, summary TSV, and v4 report receipt |
-| Neutral contracts and libraries | `src/norad/contracts/` and `src/norad/libraries/` | Owner-declared records or values | Shared schemas, vocabularies, validation, and narrowly reviewed primitives |
-| Operational evidence | Runtime-availability inspection (`runtime_availability`), reference provenance, and storage inventory under `src/norad/evidence/` | Explicit profiles, reference inventories, storage roots, and retention declarations | Bounded operational observations and receipts |
+| Reporting | `src/emrys/reporting/` | Admitted source checkout, explicit artifact inventory, and validated computational receipts | Artifact index, canonical run summary, separate self-contained scientific and evidence HTML views, summary TSV, and v4 report receipt |
+| Neutral contracts and libraries | `src/emrys/contracts/` and `src/emrys/libraries/` | Owner-declared records or values | Shared schemas, vocabularies, validation, and narrowly reviewed primitives |
+| Operational evidence | Runtime-availability inspection (`runtime_availability`), reference provenance, and storage inventory under `src/emrys/evidence/` | Explicit profiles, reference inventories, storage roots, and retention declarations | Bounded operational observations and receipts |
 
 Exact files, scheduler wrappers, validators, and direct tests are linked from
 the [functional-owner inventory](FUNCTIONAL_OWNER_INVENTORY.md).
@@ -91,7 +91,7 @@ validated, identity-bound v4 receipt last.
 Reporting does not discover inputs, execute analysis, repair artifacts, or
 promote runtime, cluster, scientific-review, or biological evidence.
 
-In prose: NORAD prepares a shared reference universe, aligns each declared
+In prose: EMRYS prepares a shared reference universe, aligns each declared
 read pair, and converts the alignment into a canonical BAM. QC and mechanical-
 orientation evidence branch from that boundary while the main BAM continues
 through duplicate marking, RNA-aware splitting, and neutral mechanical-
@@ -105,7 +105,7 @@ validated canonical summary.
 ### Scientific boundary
 
 Computational completion is not a biological conclusion. `FWD_like` and
-`REV_like` are mechanical labels. NORAD produces CMH-ranked computational
+`REV_like` are mechanical labels. EMRYS produces CMH-ranked computational
 candidates and provenance; candidate review, adjudication, and biological
 interpretation are external work-process records, not pipeline steps, gates,
 artifacts, or completion states.
@@ -130,15 +130,15 @@ validation, reference-contig parsing, executable-value resolution, artifact
 contracts, and the neutral Step `08`, Step `09`, and scientific-context
 contracts. Their exact
 consumer rosters and allowed dependency directions live
-in [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md).
+in [`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md).
 Private bridges and colocated helper packages remain part of their public
 owner; they do not create additional pipeline components or a generic utility
 layer.
 
 Static reporting follows that rule through the private
-[`_run_report/`](../../src/norad/reporting/_run_report/README.md) package.
-The installed `python -X pycache_prefix=/dev/null -I -m norad build report` route is owned directly by
-[`report.py`](../../src/norad/reporting/report.py). Its admitted source checkout
+[`_run_report/`](../../src/emrys/reporting/_run_report/README.md) package.
+The installed `python -X pycache_prefix=/dev/null -I -m emrys build report` route is owned directly by
+[`report.py`](../../src/emrys/reporting/report.py). Its admitted source checkout
 governs code and renderer identity, while the separately admitted artifact root
 governs contract-relative run inputs. Private owners separate
 immutable models, explicit input/context validation, two structured view
@@ -198,10 +198,10 @@ state are deliberately outside this architecture map.
 
 | Question | Canonical owner |
 | --- | --- |
-| What are the exact semantic owners, inputs, outputs, and DAG edges? | [`STAGE_MAP.md`](../../src/norad/contracts/STAGE_MAP.md) |
+| What are the exact semantic owners, inputs, outputs, and DAG edges? | [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md) |
 | Where are public commands, jobs, validators, Make surfaces, and tests? | [`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md) |
 | What does one operation validate, publish, or preserve on failure? | Its adjacent `CONTRACT.md` linked from the inventory |
-| Which source homes and dependency directions are allowed? | [`SOURCE_TOPOLOGY.md`](../../src/norad/contracts/SOURCE_TOPOLOGY.md) |
+| Which source homes and dependency directions are allowed? | [`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) |
 | Which commands and operational procedures are supported? | [`RUNBOOK.md`](../operations/RUNBOOK.md) |
 | Where are recovery procedures and symptom diagnosis? | [`TROUBLESHOOTING.md`](../operations/TROUBLESHOOTING.md) |
 | Where do reporting, scientific, execution, and evidence rules live? | [`DECISIONS.md`](../design/DECISIONS.md), owner-local contracts, and [`TEST_BASELINE.md`](../design/TEST_BASELINE.md) |

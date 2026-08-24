@@ -5,13 +5,13 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-from norad.evidence.runtime_availability.inspector import (
+from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
     RuntimeObservation,
 )
-from norad.libraries.installed_package_identity import installed_package_tree_identity
-from norad.orchestration.local_pilot import doctor
+from emrys.libraries.installed_package_identity import installed_package_tree_identity
+from emrys.orchestration.local_pilot import doctor
 
 
 def _observation(
