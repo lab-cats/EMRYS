@@ -59,7 +59,7 @@ node_name="$(hostname -s)"
 [[ "$node_name" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
     die "runner hostname is unsafe for Slurm: $node_name"
 node_probe="$(slurmd -C)"
-node_record="${node_probe%% UpTime=*}"
+node_record="${node_probe%%$'\n'*}"
 [[ "$node_record" == "NodeName=$node_name "* ]] ||
     die "slurmd hardware probe did not describe the current runner node"
 printf '%s\n' "$node_probe" > "$evidence_dir/slurmd-hardware.txt"

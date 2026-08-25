@@ -653,7 +653,8 @@ jobs:
           post-cleanup: all
 
       - name: Restore exact R dependency cache
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        id: renv-cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
         with:
           path: |
             ${{ runner.temp }}/emrys-renv/cache
@@ -684,6 +685,15 @@ jobs:
           test -n "${renv_library}"
           test -d "${renv_library}"
           printf 'RENV_LIBRARY=%s\n' "${renv_library}" >> "${GITHUB_ENV}"
+
+      - name: Save exact R dependency cache after successful restore
+        if: steps.renv-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ${{ runner.temp }}/emrys-renv/cache
+            ${{ runner.temp }}/emrys-renv/library
+          key: ${{ steps.renv-cache.outputs.cache-primary-key }}
 
       - name: Record exact runtime authorities outside the checkout
         shell: bash

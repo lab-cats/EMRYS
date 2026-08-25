@@ -139,6 +139,25 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
     assert "picard-slim-3.1.1-*/picard.jar" in authorities["run"]
     assert "*/picard-3.1.1-*/picard.jar" not in authorities["run"]
 
+    renv_restore = _named_step(job, "Restore exact R dependency cache")
+    assert renv_restore["id"] == "renv-cache"
+    assert renv_restore["uses"] == (
+        "actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25"
+    )
+    renv_save = _named_step(
+        job, "Save exact R dependency cache after successful restore"
+    )
+    assert _expression(renv_save["if"]) == (
+        "steps.renv-cache.outputs.cache-hit != 'true'"
+    )
+    assert renv_save["uses"] == (
+        "actions/cache/save@caa296126883cff596d87d8935842f9db880ef25"
+    )
+    assert renv_save["with"]["path"] == renv_restore["with"]["path"]
+    assert renv_save["with"]["key"] == (
+        "${{ steps.renv-cache.outputs.cache-primary-key }}"
+    )
+
     profile_expectations = (
         (
             "Run the selected 130-pair real synthetic E2E",
@@ -226,6 +245,8 @@ def test_ci_slurm_setup_is_guarded_real_and_diagnostic() -> None:
     assert "ProctrackType=proctrack/linuxproc" in script
     assert "TaskPlugin=task/none" in script
     assert "PartitionName=emrys-ci" in script
+    assert "node_record=\"${node_probe%%$'\\n'*}\"" in script
+    assert "node_probe%% UpTime=" not in script
     assert "scontrol ping" in script
     assert '[[ "$state" =~ ^[[:space:]]*idle[[:space:]]*$ ]]' in script
     assert "idle([*~+#-])?" not in script
