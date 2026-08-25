@@ -1,7 +1,7 @@
 # EMRYS pipeline plan
 
-This document owns open package families and package acceptance. Open intent
-and selected scope belong to the [task registry](../tasks/README.md), current
+This document owns open package families and package acceptance. Accepted work
+and selected scope belong to the [findings matrix](../tasks/backlog_matrix.md), current
 evidence ceilings and blockers to [`HANDOFF.md`](../operations/HANDOFF.md),
 implemented system views to the [architecture index](../architecture/README.md),
 commands to the [`RUNBOOK.md`](../operations/RUNBOOK.md), and rationale to
@@ -63,10 +63,10 @@ unselected decisions.
 Reporting remains split across characterization, contract, projection,
 usability, and default-profile cards; renderer decomposition and the complete
 bounded `RPT-05` eight-figure package are implemented.
-Logging, validation
-receipts, documentation maintenance, future acquisition/analysis, and
-installable-control-plane items remain unselected. Backlog proposals are not
-actionable.
+Logging, validation receipts, documentation maintenance, future
+acquisition/analysis, and installable-control-plane items remain unselected.
+Architecture-campaign proposals are not actionable until accepted into the
+findings matrix.
 
 ## Package acceptance
 
@@ -86,9 +86,10 @@ Every package must:
 - validate in proportion to changed behavior and shared risk.
 
 Documentation-only work must preserve live operational and scientific meaning
-and pass the documentation gate. JIT cards and historical records are not live
-subject-matter owners: completed detail is deleted, every dependent backlog
-edge is repaired atomically, and `docs/history` is maintained separately.
+and pass the documentation gate. Historical planning records are not live
+subject-matter owners: durable details move to their canonical owner, terminal
+task state is recorded in the findings matrix, and `docs/history` remains
+separate.
 
 ### Local-pilot owner admission
 

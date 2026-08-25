@@ -18,16 +18,16 @@ remain in [`HANDOFF.md`](../operations/HANDOFF.md); durable answers move to
 
 ## Design choices
 
+This table lists only questions routed to active findings-matrix items.
+Questions owned solely by discarded predecessor proposals remain in Git
+history rather than forming a shadow backlog.
+
 | Choice | Decision needed | Owner/deadline |
 | --- | --- | --- |
-| `CHOICE-GATE-REC-01` | Validation catalog/receipt schema, subject identity, storage, retention, compatibility, privacy, and invalidation. | `GATE-REC-01`, before receipt implementation. |
-| `CHOICE-SITE-01` | Whether scheduler proof should begin on CSU or in a reproducible single-node Linux VM, plus the exact SLURM executor, accounting, storage, module, and recovery profile. | `FUT-SITE-01`, only after the local pilot is proven. |
-| `CHOICE-SKILL-01` | Supported documentation-health skill name, scope, and discovery/install location. | [`DOC-SKILL-10`](../tasks/BACKLOG.md#doc-skill-10--build-documentation-health-skill), before scaffolding. |
-| `CHOICE-ANALYSIS-01` | Trust, registration, validation, provenance, dependencies, reports, and evidence for exploratory versus built-in analyses. | `FUT-ANALYSIS-01`, before a registry/prototype. |
+| `CHOICE-SITE-01` | Exact SLURM executor, accounting, storage, module, and recovery profile for institutional runtime support. | `RUNTIME-01` and `DOCTOR-01`, before accepting the site runtime path. |
+| `CHOICE-ANALYSIS-01` | Trust, registration, validation, provenance, dependencies, reports, and evidence for exploratory versus built-in analyses. | `ANALYSIS-01` and `ANALYSIS-02`, before a library or alternate cohort analysis is accepted. |
 | `CHOICE-DATA-01` | First version-pinned NCBI reference and SRA read interfaces, cache, and resumable transfer. | `FUT-DATA-02`, before acquisition implementation. |
-| `CHOICE-CONTROL-01` | Public commands/APIs, non-Python assets, immutable job materialization, packaging, and versioning. | `FUT-CLI-03`, before an installable prototype. |
-| `CHOICE-SUCCESS-01` | Required/optional outcome, retry, reporting, and request-metadata archival semantics. | `FUT-SUCCESS-04`, before optional modules execute. |
-| `CHOICE-EPIC-01` | Stable epic IDs and single/multiple navigation membership. | `TASK-EPIC-01`, before its planning. |
+| `CHOICE-CONTROL-01` | Public commands/APIs, non-Python assets, immutable job materialization, packaging, and versioning. | `CONTROL-01`, `CONFIG-01`, `OPS-01`, and `OPS-02`, before the accepted public-control redesign. |
 
-Recommendations and detailed designs belong in the owning card's approved
-planning, not in this global backlog.
+Recommendations and detailed designs belong with the owning matrix item and
+its routed campaign context, not in this question index.

@@ -1,4 +1,4 @@
-"""Behavior locks for documentation ownership and the compact task registry."""
+"""Behavior locks for documentation ownership and local structure."""
 
 from __future__ import annotations
 
@@ -14,16 +14,6 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 VALIDATOR = REPO_ROOT / "scripts" / "git_orchestration" / "validate_documentation.py"
-TASK_STATUS = REPO_ROOT / "scripts" / "git_orchestration" / "task_status.py"
-JIT_SECTIONS = (
-    "Outcome",
-    "Touches",
-    "Stop",
-    "Context",
-    "Deliverables",
-    "Acceptance evidence",
-    "Documentation updates",
-)
 CANONICAL_H1S = {
     "AGENTS.md": "# EMRYS safety guard",
     "README.md": "# EMRYS: Epic Molecular Read Yield System",
@@ -43,6 +33,8 @@ CANONICAL_H1S = {
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
     "docs/sitemap/README.md": "# Documentation sitemap",
+    "docs/tasks/README.md": "# Task planning",
+    "docs/tasks/backlog_matrix.md": "# EMRYS Findings Matrix and Working Backlog",
     "src/emrys/contracts/SOURCE_TOPOLOGY.md": "# Source ownership and dependency direction",
     "src/emrys/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
 }
@@ -122,32 +114,6 @@ def run(
     )
 
 
-def backlog_text(
-    entries: tuple[tuple[str, str, str], ...] = (("TEST-01", "actionable", "None"),),
-) -> str:
-    lines = ["# Backlog", "", "Fixture registry.", ""]
-    for card_id, kind, blockers in entries:
-        lines.extend(
-            (
-                f"## {card_id} — Fixture item",
-                "",
-                f"- **Kind:** {kind}",
-                f"- **Blocked by:** {blockers}",
-                "- **Intent:** Fixture intent.",
-                "- **Boundaries:** Fixture boundary.",
-                "",
-            )
-        )
-    return "\n".join(lines)
-
-
-def jit_text(card_id: str = "TEST-01") -> str:
-    lines = [f"# {card_id} — Fixture detail", ""]
-    for heading in JIT_SECTIONS:
-        lines.extend((f"## {heading}", "", "Fixture detail.", ""))
-    return "\n".join(lines)
-
-
 def write_fixture(root: Path) -> Path:
     repository = root / "repository"
     repository.mkdir()
@@ -155,9 +121,6 @@ def write_fixture(root: Path) -> Path:
     assert initialized.returncode == 0, initialized.stderr
     files = {
         "docs/fixture.mmd": "flowchart LR\n    A --> B\n",
-        "docs/tasks/README.md": "# Task registry\n",
-        "docs/tasks/BACKLOG.md": backlog_text(),
-        "docs/tasks/cards/README.md": "# Just-in-time task cards\n",
     }
     files.update({path: f"{h1}\n" for path, h1 in CANONICAL_H1S.items()})
     identity_rows = [
@@ -199,13 +162,6 @@ def validate(
     )
 
 
-def task_status(repository: Path, *, cwd: Path) -> subprocess.CompletedProcess[str]:
-    return run(
-        [sys.executable, str(TASK_STATUS), "--repo", str(repository)],
-        cwd=cwd,
-    )
-
-
 def test_accepts_minimal_repository_and_reports_counts_without_writes(
     tmp_path: Path,
 ) -> None:
@@ -217,7 +173,7 @@ def test_accepts_minimal_repository_and_reports_counts_without_writes(
     result = validate(repository, cwd=tmp_path)
 
     assert result.returncode == 0, result.stderr
-    assert "1 actionable items, 0 proposals, 1 Mermaid sources" in result.stdout
+    assert "1 Mermaid sources" in result.stdout
     assert (
         tuple(sorted(path.relative_to(repository) for path in repository.rglob("*")))
         == before
@@ -271,20 +227,27 @@ def test_rejects_returned_retired_docs_and_task_directories(tmp_path: Path) -> N
     retired_paths = (
         "docs/design/REFACTOR_AUDIT.md",
         "docs/operations/TASK_DELIVERY.md",
+        "docs/tasks/BACKLOG.md",
+        "docs/tasks/cards/README.md",
     )
     for relative in retired_paths:
         retired = repository / relative
         retired.parent.mkdir(parents=True, exist_ok=True)
         retired.write_text("# Retired\n", encoding="utf-8")
-    legacy = repository / "docs/tasks/TODO/OLD-01.md"
-    legacy.parent.mkdir()
-    legacy.write_text("# Old\n", encoding="utf-8")
+    legacy_paths = (
+        repository / "docs/tasks/TODO/OLD-01.md",
+        repository / "docs/tasks/cards/OLD-02.md",
+    )
+    for legacy in legacy_paths:
+        legacy.parent.mkdir(parents=True, exist_ok=True)
+        legacy.write_text("# Old\n", encoding="utf-8")
 
     result = validate(repository, cwd=tmp_path)
 
     for relative in retired_paths:
         assert f"retired documentation owner returned: {relative}" in result.stderr
     assert "retired task directory contains Markdown: docs/tasks/TODO" in result.stderr
+    assert "retired task directory contains Markdown: docs/tasks/cards" in result.stderr
 
 
 @pytest.mark.parametrize("kind", ("missing", "non_git", "nested"))
@@ -355,152 +318,3 @@ def test_ignores_general_markdown_links_but_rejects_bad_mermaid(tmp_path: Path) 
     result = validate(repository, cwd=tmp_path)
     assert "invalid Mermaid declaration: docs/fixture.mmd" in result.stderr
     assert "Markdown fence in Mermaid source: docs/fixture.mmd" in result.stderr
-
-
-def test_rejects_missing_registry_docs_and_bad_backlog_fields(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/tasks/cards/README.md").unlink()
-    backlog = repository / "docs/tasks/BACKLOG.md"
-    backlog.write_text(
-        backlog.read_text(encoding="utf-8").replace("- **Intent:**", "- **Wrong:**"),
-        encoding="utf-8",
-    )
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert "missing task-registry document: docs/tasks/cards/README.md" in result.stderr
-    assert "backlog field order/count: TEST-01" in result.stderr
-
-
-def test_rejects_unknown_proposal_self_and_cyclic_blockers(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/tasks/BACKLOG.md").write_text(
-        backlog_text(
-            (
-                ("TEST-01", "actionable", "`TEST-02`"),
-                ("TEST-02", "actionable", "`TEST-01`"),
-                ("TEST-03", "actionable", "`MISSING-01`"),
-                ("TEST-04", "actionable", "`IDEA-01`"),
-                ("TEST-05", "actionable", "`TEST-05`"),
-                ("IDEA-01", "proposal", "`TEST-01`"),
-            )
-        ),
-        encoding="utf-8",
-    )
-
-    result = validate(repository, cwd=tmp_path)
-
-    for expected in (
-        "proposal has blockers: IDEA-01",
-        "unknown backlog blocker: TEST-03 -> MISSING-01",
-        "proposal used as blocker: TEST-04 -> IDEA-01",
-        "self dependency: TEST-05",
-        "backlog dependency cycle: TEST-01, TEST-02, TEST-05",
-    ):
-        assert expected in result.stderr
-
-
-def test_rejects_duplicate_ids_kind_and_blocker_syntax(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    text = backlog_text((("TEST-01", "invalid", "BAD"),))
-    text += "\n" + backlog_text((("TEST-01", "actionable", "None"),)).split("\n", 4)[4]
-    (repository / "docs/tasks/BACKLOG.md").write_text(text, encoding="utf-8")
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert "invalid backlog kind: TEST-01" in result.stderr
-    assert "invalid backlog blocker list: TEST-01" in result.stderr
-    assert "duplicate backlog ID: TEST-01" in result.stderr
-
-
-def test_accepts_jit_card_and_status_is_read_only(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    card = repository / "docs/tasks/cards/TEST-01-fixture.md"
-    card.write_text(jit_text(), encoding="utf-8")
-    before = tuple(
-        sorted(path.relative_to(repository) for path in repository.rglob("*"))
-    )
-
-    validation = validate(repository, cwd=tmp_path)
-    status = task_status(repository, cwd=tmp_path)
-
-    assert validation.returncode == 0, validation.stderr
-    assert status.returncode == 0, status.stderr
-    assert (
-        "| TEST-01 | actionable | active | — | — | — | docs/tasks/cards/TEST-01-fixture.md |"
-        in status.stdout
-    )
-    assert (
-        tuple(sorted(path.relative_to(repository) for path in repository.rglob("*")))
-        == before
-    )
-
-
-def test_rejects_unknown_proposal_and_malformed_jit_cards(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/tasks/BACKLOG.md").write_text(
-        backlog_text(
-            (("TEST-01", "actionable", "None"), ("IDEA-01", "proposal", "None"))
-        ),
-        encoding="utf-8",
-    )
-    cards = repository / "docs/tasks/cards"
-    (cards / "MISSING-01-fixture.md").write_text(
-        jit_text("MISSING-01"), encoding="utf-8"
-    )
-    (cards / "IDEA-01-fixture.md").write_text(jit_text("IDEA-01"), encoding="utf-8")
-    malformed = jit_text().replace("## Stop\n\nFixture detail.\n\n", "")
-    (cards / "WRONG-01-fixture.md").write_text(malformed, encoding="utf-8")
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert "JIT card has unknown backlog ID: MISSING-01" in result.stderr
-    assert "proposal has JIT card: IDEA-01" in result.stderr
-    assert (
-        "JIT card ID/filename mismatch: docs/tasks/cards/WRONG-01-fixture.md"
-        in result.stderr
-    )
-    assert (
-        "JIT card heading order/count: docs/tasks/cards/WRONG-01-fixture.md"
-        in result.stderr
-    )
-
-
-def test_task_status_derives_readiness_reverse_edges_and_proposals(
-    tmp_path: Path,
-) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/tasks/BACKLOG.md").write_text(
-        backlog_text(
-            (
-                ("TEST-01", "actionable", "None"),
-                ("TEST-02", "actionable", "`TEST-01`"),
-                ("IDEA-01", "proposal", "None"),
-            )
-        ),
-        encoding="utf-8",
-    )
-
-    result = task_status(repository, cwd=tmp_path)
-
-    assert result.returncode == 0, result.stderr
-    assert "| TEST-01 | actionable | planned | yes | — | TEST-02 | — |" in result.stdout
-    assert "| TEST-02 | actionable | planned | no | TEST-01 | — | — |" in result.stdout
-    assert "| IDEA-01 | proposal | proposal | — | — | — | — |" in result.stdout
-
-
-def test_task_status_fails_closed_on_bad_registry(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    backlog = repository / "docs/tasks/BACKLOG.md"
-    backlog.write_text(
-        backlog.read_text(encoding="utf-8").replace(
-            "- **Kind:** actionable", "- **Kind:** bad"
-        ),
-        encoding="utf-8",
-    )
-
-    result = task_status(repository, cwd=tmp_path)
-
-    assert result.returncode == 1
-    assert result.stdout == ""
-    assert result.stderr.startswith("ERROR: Task registry failures:\n")

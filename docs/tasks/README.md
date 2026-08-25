@@ -1,75 +1,43 @@
-# Task planning and registry transition
+# Task planning
 
-## Authority during transition
+## Authority
 
-| Concern | Current owner | Boundary |
+| Concern | Owner | Boundary |
 |---|---|---|
-| Current planning backlog | [`backlog_matrix.md`](backlog_matrix.md) | Owns accepted task IDs, status, required outcomes, acceptance, dispositions, and the later Importance/Complexity scores |
-| Unsliced architecture context | [`architecture_campaign.md`](architecture_campaign.md) | Temporarily owns source feedback, cross-task rationale, ideal states, alternatives, decisions, and slicing traceability; it does not create tasks by itself |
-| Architecture campaign ranking | [`architecture_backlog_matrix.md`](architecture_backlog_matrix.md) | Provisional Architecture Priority/Indicative Complexity view of campaign cards; it does not own implementation status, acceptance, or final task scoring |
-| Legacy registry and cards | [`BACKLOG.md`](BACKLOG.md) and [`cards/`](cards/) | Frozen mechanically consumed surfaces pending `BACKLOG-01`; do not add or mirror current planning work here |
-| Legacy evidence and roadmap sources | [`HANDOFF.md`](../operations/HANDOFF.md) and [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) | Mechanically referenced but user-identified as stale and unverified pending `DOC-02`; not reliable current authorities |
+| Working backlog | [`backlog_matrix.md`](backlog_matrix.md) | Owns accepted task IDs, status, required outcomes, acceptance, and dispositions |
+| Unsliced architecture context | [`architecture_campaign.md`](architecture_campaign.md) | Temporarily preserves source feedback, rationale, ideal states, alternatives, and slicing traceability; it does not create tasks |
+| Architecture campaign ranking | [`architecture_backlog_matrix.md`](architecture_backlog_matrix.md) | Provides provisional Architecture Priority and Indicative Complexity for campaign cards; it does not own implementation status or final task scoring |
+| Historical planning detail | Git history and [`docs/history`](../history/) | Supplies dated context only; it does not own current state or requirements |
 
-The main matrix is the current planning backlog. The campaign is temporary and
-cannot become a second permanent backlog. Its architecture-only matrix is a
-provisional ranking view, not another implementation-status or final-scoring
-authority. The legacy registry and card format remain present only because
-existing selection guidance, status rendering, and documentation validation
-still consume them. Their callers and useful validation behavior receive
-separate dispositions under `BACKLOG-01` and `DOC-TOOL-01`.
+The findings matrix is the repository's only durable backlog. Do not create a
+parallel registry, task-card directory, status list, or campaign-only task. The
+campaign is temporary and must eventually be fully sliced into the matrix or
+retired.
 
-None of these documents grants mutation, implementation, publication, cluster
-execution, scientific-review, or evidence-promotion authority. Use
-[`WORKFLOW.md`](../operations/WORKFLOW.md) and an explicitly approved bounded
-objective. Do not create a duplicate legacy item merely because current tooling
-does not yet understand a matrix-only ID.
+None of these documents grants mutation, publication, cluster execution,
+scientific review, or evidence promotion authority. Select one accepted matrix
+item or state one explicitly bounded objective, then use the
+[workflow kernel](../operations/WORKFLOW.md) and the directly affected owners.
+The matrix intentionally has no blocker graph; priority labels remain
+provisional until the planned Importance and Complexity scoring pass.
 
-[`HANDOFF.md`](../operations/HANDOFF.md) and
-[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) remain mechanically named by
-existing repository guards, navigation, and cross-links, but the user has
-identified both as stale. Pending `DOC-02`, treat them as legacy, unverified
-transition inputs rather than reliable current evidence or roadmap authorities.
-Verify any retained claim against live Git, source, tests, the current matrix,
-and the applicable durable owner. Do not add current planning or evidence solely
-to either file. `DOC-02` must decide their destinations and update every inbound
-route atomically.
-
-## Legacy status tooling
-
-The existing read-only renderer still reports only [`BACKLOG.md`](BACKLOG.md):
-
-```bash
-./scripts/git_orchestration/task_status.py \
-  --repo "$(git rev-parse --show-toplevel)"
-```
-
-Its output is a legacy-registry view, not the current planning inventory. The
-current documentation gate likewise validates legacy registry/card structure;
-it does not yet validate matrix rows, campaign source IDs, or
-Importance/Complexity scoring.
-
-## Legacy dependency meaning
-
-The matrix intentionally owns no blocker/dependency graph. Within the frozen
-legacy registry, `Blocked by` retains its former mechanical meaning: an open
-actionable item whose unavailable technical output prevents meaningful
-progress. It never grants approval or establishes current matrix priority.
-
-The documentation gate continues to reject duplicate or unknown legacy IDs,
-proposal blockers, self-dependencies, and cycles. This behavior remains in
-place until `BACKLOG-01` and `DOC-TOOL-01` migrate or retire it deliberately.
+Completing, retiring, absorbing, or discarding an item removes it from the
+active table and adds an explicit terminal entry to the matrix disposition log.
+Before deleting detailed planning, move durable contracts, safety rules,
+defects, decisions, recovery guidance, and evidence ceilings to their subject
+owners. Chronology, repeated totals, and superseded proposals remain history.
 
 ## Archived detail
 
-The detailed predecessor registry is preserved at Git commit
-`755678ec28a6aa4e58149447704551312e365254`. Retrieve an old item without
-restoring it to the worktree:
+The predecessor registry and detailed task directories remain retrievable at
+Git commit `755678ec28a6aa4e58149447704551312e365254` without restoring a second
+live backlog:
 
 ```bash
+git show 755678ec28a6aa4e58149447704551312e365254:docs/tasks/BACKLOG.md
 git show 755678ec28a6aa4e58149447704551312e365254:docs/tasks/TODO/<file>.md
 git show 755678ec28a6aa4e58149447704551312e365254:docs/tasks/UNREFINED/<file>.md
 ```
 
-Archived prose and the frozen compact registry are refinement input only.
-Reconcile them against the current matrix, code, contracts, decisions,
-questions, and Git state before using any retained detail.
+Reconcile historical detail against the current matrix, live implementation,
+contracts, decisions, and Git state before reusing it.

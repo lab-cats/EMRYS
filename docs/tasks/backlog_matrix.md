@@ -26,10 +26,6 @@ ordering quoted from the architecture intake remain suggestions unless this
 matrix explicitly adopts them. They must be reconsidered during later slicing
 and prioritization rather than silently treated as settled design.
 
-Until <code>BACKLOG-01</code> completes, the repository still contains files
-that describe <code>docs/tasks/BACKLOG.md</code> as backlog authority. That is
-known transition state, not a second source of current planning decisions.
-
 A row in this matrix does not itself authorize implementation, publication,
 cluster execution, dependency installation, destructive cleanup, scientific
 review, or evidence promotion.
@@ -270,7 +266,6 @@ All reporting rows also inherit the
 |---|---|---|---|---|
 | <code>DOC-01</code> | P1 | Open | Condense retained documentation and reorganize it around scientist, operator, and developer journeys without requiring campaign history or developer-only context. | Scientist guidance covers purpose, inputs, project definition, the golden path, results, and scientific limitations; operator guidance covers runtime, profiles, storage, scheduler, diagnosis, and recovery; developer guidance retains exact architecture, contracts, evidence, and internals. Each retained document states purpose, pipeline role, when it is needed, primary interface/output, and canonical contract owner; B2/B4, campaign, phase, and similar shorthand is replaced with meaningful content. Successful ordinary use does not require reading developer architecture. |
 | <code>DOC-02</code> | P1 | Open | Audit repository documentation and decide independently for each source whether to retain, refresh, consolidate, move durable information, or retire it. | The audit covers all inbound references and named candidates; each disposition is evidence-based; durable safety, operations, science, evidence ceilings, and recovery content move before deletion; execution of separately scoped decisions remains separately tracked. |
-| <code>BACKLOG-01</code> | P1 | Open | Retire the repository backlog/task-card operating system and establish one durable canonical location for this matrix. | <code>docs/tasks/BACKLOG.md</code>, registry/card guidance, task-specific navigation, and <code>task_status.py</code> receive explicit dispositions; every caller is updated; no second backlog authority or broken task reference remains. |
 | <code>DOC-TOOL-01</code> | P1 | Open | Preserve, narrow, relocate, and revalidate the useful non-backlog behavior of <code>validate_documentation.py</code>. | Existing checks are inventoried; retained canonical-owner, retired-document, owner-adjacency, topology/diagram, and other intended checks move to a correctly named owner; obsolete task-registry logic is removed; Make, docs, fixtures, and tests are updated; seeded failures prove the replacement is not weaker. |
 | <code>TOOLING-01</code> | P2 | Open | Independently audit the remainder of <code>scripts/git_orchestration/</code> and remove the misleading ownership bucket. | Every file and caller receives a retain, relocate, replace, or retire decision; useful tools move beside their real owner; no generic Git-orchestration directory remains solely as historical taxonomy. |
 | <code>CLEAN-01</code> | P2 | Open | Retire the historically coupled “demo” product surface without losing a neutral supported synthetic golden path or necessary reporting validation. | Demo Make targets, docs, fixtures, tests, links, and public references are inventoried and removed, renamed, or moved to neutral synthetic-example/test/preview ownership; a fresh installation can still produce a valid synthetic result through the accepted golden path; no historical “demo” state remains in the primary product surface unless that name is deliberately reconsidered and accepted later. |
@@ -568,6 +563,7 @@ be added solely to either file on the assumption that it remains reliable.
 | 2026-08-24 | <code>REPORT-04</code> | The current scientific-context/report selection contract uses a fixed display limit of eight. The requested A-through-I surface requires nine when warranted. | Current source observation |
 | 2026-08-24 | Configuration/setup | The repository contains 20 files under <code>configs/</code>; Quickstart still exposes manual configuration and directory preparation. | Current source/documentation observation |
 | 2026-08-24 | Documentation/task tooling | The repository still declares <code>docs/tasks/BACKLOG.md</code> as live authority; <code>task_status.py</code> renders that registry; <code>validate_documentation.py</code> combines useful documentation checks with task-registry enforcement. | Current source/documentation observation |
+| 2026-08-25 | <code>BACKLOG-01</code> | The legacy backlog, task-card guidance, status renderer, registry parser, and live callers were removed; canonical planning now routes only through this matrix, with retired surfaces and the matrix owner protected by the documentation gate. | Focused local evidence: documentation gate passed; documentation-validator and affected public-interface tests passed, 12 tests total |
 
 ## Former repository-backlog reconciliation
 
@@ -585,6 +581,7 @@ No former blocker relationships were retained.
 
 | Date | ID | Disposition | Reason or successor |
 |---|---|---|---|
+| 2026-08-25 | <code>BACKLOG-01</code> | Complete | The findings matrix is the sole durable backlog; legacy registry/card/status surfaces and broken task routes were removed, while historical detail remains available through Git history. |
 | 2026-08-24 | <code>AUDIT-99</code> | Discarded | Explicitly excluded from the retained backlog. Current architecture/documentation concerns are re-authored under <code>ARCH-01</code> and <code>DOC-02</code>. |
 | 2026-08-24 | <code>CODEDOC-05</code> | Discarded | Explicitly excluded; current reader-facing documentation outcome is owned by <code>DOC-01</code>. |
 | 2026-08-24 | <code>DOC-SKILL-10</code> | Discarded | Explicitly excluded without retaining the former skill proposal. |

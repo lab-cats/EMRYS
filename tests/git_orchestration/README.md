@@ -1,6 +1,6 @@
-# Git-orchestration tests
+# Documentation structure tests
 
-This directory protects repository-resident documentation and task-routing
+This directory protects repository-resident documentation structure
 validation. `test_documentation_validator.py` is the direct regression owner
 for the tooling described by the
 [Git-orchestration README](../../scripts/git_orchestration/README.md).

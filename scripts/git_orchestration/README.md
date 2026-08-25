@@ -1,15 +1,11 @@
-# Documentation and task helpers
+# Documentation structure helper
 
-This directory contains two read-only repository-maintenance commands:
+[`validate_documentation.py`](validate_documentation.py) is the read-only
+repository-maintenance command behind `make -s documentation-check`. It checks
+canonical document ownership, retired-document guards, semantic-owner
+adjacency, and standalone Mermaid source shape.
 
-- [`validate_documentation.py`](validate_documentation.py) validates canonical
-  owners, semantic-owner adjacency, Mermaid source shape, compact-backlog
-  structure, genuine dependency integrity, and selected JIT-card structure.
-  It rejects unknown, proposal, self, and cyclic blockers. `make -s
-  documentation-check` is its supported wrapper.
-- [`task_status.py`](task_status.py) renders a deterministic view of actionable
-  items, proposals, readiness, reverse dependencies, and JIT detail.
-
-Neither command selects work, grants authority, mutates Git, or creates
-pipeline evidence. Focused behavior tests live in
+It does not select work, grant authority, mutate Git, validate general links or
+anchors, establish documentation currency, or create pipeline evidence.
+Focused behavior tests live in
 [`tests/git_orchestration/test_documentation_validator.py`](../../tests/git_orchestration/test_documentation_validator.py).

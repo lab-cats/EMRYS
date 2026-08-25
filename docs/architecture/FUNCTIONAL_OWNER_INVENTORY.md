@@ -85,7 +85,7 @@ pipeline owner graph but still receive one owner:
 
 | Current owner | Public surfaces assigned here | Direct protection and boundary |
 | --- | --- | --- |
-| Documentation and task inspection | [`validate_documentation.py`](../../scripts/git_orchestration/validate_documentation.py) and [`task_status.py`](../../scripts/git_orchestration/task_status.py) | [documentation-validator tests](../../tests/git_orchestration/test_documentation_validator.py) and [public CLI contracts](../../tests/test_public_cli_contracts.py). These read repository state and never create scientific artifacts or evidence state. |
+| Documentation structure inspection | [`validate_documentation.py`](../../scripts/git_orchestration/validate_documentation.py) | [documentation-validator tests](../../tests/git_orchestration/test_documentation_validator.py) and [public CLI contracts](../../tests/test_public_cli_contracts.py). This reads repository state and never creates scientific artifacts or evidence state. |
 | Developer quality gates | Public targets and variables in the root [`Makefile`](../../Makefile), with private recipes grouped by [quality](../../scripts/make_quality.mk) and [reporting](../../scripts/make_reporting.mk) ownership | [literal Make expansions](../../tests/fixtures/public_cli_contracts/make_target_expansions.json), [public CLI contracts](../../tests/test_public_cli_contracts.py), [`test_python_coverage_baseline.py`](../../tests/test_python_coverage_baseline.py). These are development gates, not workflow stages; the includes add no public entry point. |
 
 ## Remaining repository-level exceptions

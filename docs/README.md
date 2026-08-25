@@ -17,8 +17,8 @@ functional `README.md` and `CONTRACT.md` beside an implementation.
 - [`demo/`](demo/) — reviewed presenter guides.
 - [`history/`](history/) — frozen dated evidence that does not own current
   state.
-- [`tasks/`](tasks/) — the current planning matrix, temporary architecture
-  campaign, and frozen legacy registry/cards during transition.
+- [`tasks/`](tasks/) — the canonical findings matrix, temporary architecture
+  campaign, provisional architecture ranking, and planning rules.
 - [`sitemap/`](sitemap/) — audience routes and canonical documentation roles.
 
 Start with the [documentation sitemap](sitemap/) when the correct subject owner

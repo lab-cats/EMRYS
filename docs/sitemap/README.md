@@ -14,8 +14,9 @@ the routes below explain the human boundaries.
   troubleshooting.
 - [Reference](../reference/) — terminology that routes back to canonical
   subject owners.
-- [Tasks](../tasks/README.md) — current planning matrix, temporary unsliced
-  architecture context, and frozen legacy registry/cards during transition.
+- [Tasks](../tasks/README.md) — canonical planning matrix, temporary unsliced
+  architecture context, provisional architecture ranking, and disposition
+  rules.
 - [Demonstrations](../demo/README.md) — reviewed presenter guides.
 - [History](../history/) — immutable dated records maintained separately.
 
@@ -30,7 +31,7 @@ For task orientation and approved delivery, use
 | User | [Root README](../../README.md) | [Scientist-facing workflow](../architecture/ARCHITECTURE.md#scientist-facing-workflow) |
 | Operator | [Runbook](../operations/RUNBOOK.md) | Owner README, [troubleshooting](../operations/TROUBLESHOOTING.md), and the legacy [handoff](../operations/HANDOFF.md) only after live verification pending `DOC-02` |
 | Scientist/reviewer | [Architecture index](../architecture/README.md) | Stage map, owner contracts, questions, and test baseline |
-| Maintainer | [Safety guard](../../AGENTS.md) | [Workflow](../operations/WORKFLOW.md), selected card, and affected owners |
+| Maintainer | [Safety guard](../../AGENTS.md) | [Workflow](../operations/WORKFLOW.md), selected matrix item or approved objective, and affected owners |
 | Auditor/historian | [History](../history/) | Dated evidence and test-baseline recheck routes |
 
 ## Canonical roles
@@ -46,10 +47,10 @@ For task orientation and approved delivery, use
 | Durable rationale and unresolved choices | [`DECISIONS.md`](../design/DECISIONS.md), its detail files, and [`QUESTIONS.md`](../design/QUESTIONS.md) |
 | Exact behavior, commands, defects, and tests | Applicable colocated owner `README.md` and `CONTRACT.md` |
 | Test policy and cross-cutting recheck routes | [`TEST_BASELINE.md`](../design/TEST_BASELINE.md); exact defects remain with the applicable owner `README.md` or `CONTRACT.md` |
-| Current planning backlog and temporary unsliced architecture context | [Findings matrix](../tasks/backlog_matrix.md), [architecture campaign](../tasks/architecture_campaign.md), [provisional architecture ranking](../tasks/architecture_backlog_matrix.md), and [task transition rules](../tasks/README.md) |
-| Legacy task registry/cards and dated records | Frozen [`BACKLOG.md`](../tasks/BACKLOG.md), [`cards/`](../tasks/cards/), and [`docs/history`](../history/) pending the separately tracked backlog cutover |
+| Current planning backlog and temporary unsliced architecture context | [Findings matrix](../tasks/backlog_matrix.md), [architecture campaign](../tasks/architecture_campaign.md), [provisional architecture ranking](../tasks/architecture_backlog_matrix.md), and [task-planning rules](../tasks/README.md) |
+| Dated planning and evidence records | Git history and [`docs/history`](../history/); neither owns current state or requirements |
 
-JIT cards and history are not live subject-matter owners. Delete completed or
-retired JIT detail, but remove or replace every dependent backlog edge in the
-same package. Before deleting any live owner, retain its operative contract,
-safety rule, defect, or evidence ceiling in the destination.
+Historical planning detail is not a live subject-matter owner. Before deleting
+any live owner, retain its operative contract, safety rule, defect, or evidence
+ceiling in the destination and update the matrix disposition in the same
+package.
