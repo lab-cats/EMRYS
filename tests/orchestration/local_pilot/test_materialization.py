@@ -834,6 +834,18 @@ def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
     assert not workspace.exists()
 
 
+def test_completed_states_require_exact_verified_result_locations() -> None:
+    for locations in (
+        (),
+        (
+            ("scientific-report-html", Path("/results/scientific.html")),
+            ("wrong-output-id", Path("/results/evidence.html")),
+        ),
+    ):
+        with pytest.raises(control.ControlError, match="verified result locations"):
+            control._verified_report_location_lines(locations)
+
+
 def test_public_help_routes() -> None:
     for command, expected in (
         (("run", "--help"), "usage: emrys run"),
@@ -965,10 +977,12 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
 
     assert control.run_from_args(run_arguments, ops=first_ops) == 1
-    capsys.readouterr()
+    failed_output = capsys.readouterr().out
+    assert "Results:" not in failed_output
     run_root = workspace / "runs" / normalized.run_id
     failed = inspection.inspect_run(run_root)
     assert failed.state == "resume_available"
+    assert failed.verified_report_locations == ()
     before = _verified_snapshot(run_root)
     assert 0 < len(before) < 35
 
@@ -991,19 +1005,39 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 0
     dry_output = capsys.readouterr().out
     assert "Reusable completed owner jobs:" in dry_output
+    assert "Results:" not in dry_output
     assert _verified_snapshot(run_root) == before
 
     resume_arguments.execute = True
     assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 0
-    capsys.readouterr()
+    resumed_output = capsys.readouterr().out
+    report_root = run_root / "products" / "report" / normalized.run_id
+    expected_results = (
+        "Results:\n"
+        f"  Scientific report: {report_root}/{normalized.run_id}.scientific_report.html\n"
+        f"  Evidence report: {report_root}/{normalized.run_id}.evidence_report.html\n"
+    )
+    assert expected_results in resumed_output
     completed = inspection.inspect_run(run_root)
     assert completed.state == "local_pipeline_complete"
+    assert completed.verified_report_locations == (
+        (
+            "scientific-report-html",
+            report_root / f"{normalized.run_id}.scientific_report.html",
+        ),
+        (
+            "evidence-report-html",
+            report_root / f"{normalized.run_id}.evidence_report.html",
+        ),
+    )
     after = _verified_snapshot(run_root)
     assert all(after[path] == value for path, value in before.items())
 
     inspect_arguments = argparse.Namespace(run_root=run_root)
     assert control.inspect_from_args(inspect_arguments, ops=resumed_ops) == 0
-    assert "State: local_pipeline_complete" in capsys.readouterr().out
+    inspect_output = capsys.readouterr().out
+    assert "State: local_pipeline_complete" in inspect_output
+    assert expected_results in inspect_output
 
     resume_arguments.execute = False
     assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 2

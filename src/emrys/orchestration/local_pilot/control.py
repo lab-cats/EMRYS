@@ -311,6 +311,31 @@ def plan_resume(
     return plan
 
 
+def _verified_report_location_lines(
+    locations: tuple[tuple[str, Path], ...],
+) -> tuple[str, ...]:
+    expected = (
+        ("scientific-report-html", "Scientific report"),
+        ("evidence-report-html", "Evidence report"),
+    )
+    if len(locations) != len(expected):
+        raise ControlError(
+            "Completed run lacks both exact verified result locations"
+        )
+    lines = ["Results:"]
+    for (output_id, path), (expected_id, label) in zip(
+        locations, expected, strict=True
+    ):
+        if (
+            output_id != expected_id
+            or not isinstance(path, Path)
+            or not path.is_absolute()
+        ):
+            raise ControlError("Completed run has malformed verified result locations")
+        lines.append(f"  {label}: {path}")
+    return tuple(lines)
+
+
 def execute_plan(plan: AttemptPlan, *, ops: ControlOps = DEFAULT_CONTROL_OPS) -> int:
     """Execute one already-rendered plan through its explicit lifecycle adapter."""
 
@@ -319,11 +344,18 @@ def execute_plan(plan: AttemptPlan, *, ops: ControlOps = DEFAULT_CONTROL_OPS) ->
     except (MaterializationError, lifecycle.LifecycleError, OSError) as exc:
         raise ControlError(str(exc)) from exc
     status = str(outcome.receipt["status"])
+    result_lines = (
+        _verified_report_location_lines(outcome.verified_report_locations)
+        if status == "succeeded"
+        else ()
+    )
     print(f"Attempt receipt: {outcome.receipt_path}")
     print(f"Attempt status: {status}")
     if outcome.receipt["blockers"]:
         for blocker in outcome.receipt["blockers"]:
             print(f"BLOCKER: {blocker}")
+    for line in result_lines:
+        print(line)
     return 0 if status == "succeeded" else 1
 
 
@@ -451,7 +483,12 @@ def inspect_from_args(
 ) -> int:
     try:
         observed = ops.inspect_run(_absolute(arguments.run_root))
-    except (OSError, inspection.InspectionError) as exc:
+        result_lines = (
+            _verified_report_location_lines(observed.verified_report_locations)
+            if observed.local_pipeline_complete
+            else ()
+        )
+    except (OSError, inspection.InspectionError, ControlError) as exc:
         print(f"emrys: error: {exc}", file=sys.stderr)
         return 2
     print(f"Run ID: {observed.run_id}")
@@ -474,6 +511,8 @@ def inspect_from_args(
         "Local pipeline complete: "
         + ("yes" if observed.local_pipeline_complete else "no")
     )
+    for line in result_lines:
+        print(line)
     return 0
 
 

@@ -23,6 +23,13 @@ class _SemanticResult:
     receipt_sha256: str
 
 
+@dataclass(frozen=True, slots=True)
+class _ReportSemanticResult:
+    receipt_path: Path
+    receipt_sha256: str
+    verified_report_locations: tuple[tuple[str, Path], ...]
+
+
 def _semantic_result(path: Path) -> _SemanticResult:
     return _SemanticResult(
         receipt_path=path,
@@ -253,6 +260,70 @@ def test_start_and_completion_publish_fixed_closed_records(
             built.profile,
             semantic_validator=mutate_start,
         )
+
+
+def test_verified_boundary_carries_admitted_report_locations_unchanged(
+    tmp_path: Path,
+) -> None:
+    built = _build(tmp_path / "fixture")
+    run_id = str(built.execution["run_id"])
+    locations = (
+        (
+            "scientific-report-html",
+            built.report_receipt.with_name(f"{run_id}.scientific_report.html"),
+        ),
+        (
+            "evidence-report-html",
+            built.report_receipt.with_name(f"{run_id}.evidence_report.html"),
+        ),
+    )
+
+    def validate(*_arguments: Any) -> _ReportSemanticResult:
+        return _ReportSemanticResult(
+            receipt_path=built.report_receipt,
+            receipt_sha256=hashlib.sha256(
+                built.report_receipt.read_bytes()
+            ).hexdigest(),
+            verified_report_locations=locations,
+        )
+
+    ops = _ops(validate)
+    reporting_boundary.publish_start(
+        kind="html_report",
+        **_identity_paths(built),
+        ops=ops,
+    )
+    built.report_receipt.parent.mkdir(parents=True, exist_ok=True)
+    built.report_receipt.write_bytes(b"semantic report receipt\n")
+    published = reporting_boundary.publish_verified(
+        kind="html_report",
+        receipt_path=built.report_receipt,
+        **_identity_paths(built),
+        ops=ops,
+    )
+    assert published.verified_report_locations == locations
+
+    _terminalize_run_lock(built)
+    observed = reporting_boundary.validate_verified(
+        "html_report",
+        built.run_root,
+        built.execution,
+        built.profile,
+        semantic_validator=validate,
+    )
+    assert observed.verified_report_locations == locations
+
+
+def test_only_html_semantic_results_require_verified_locations() -> None:
+    legacy = _SemanticResult(Path("/receipt.tsv"), "a" * 64)
+    assert (
+        reporting_boundary._semantic_report_locations("artifact_index", legacy) == ()
+    )
+    with pytest.raises(
+        reporting_boundary.ReportingBoundaryError,
+        match="lacks both exact verified result locations",
+    ):
+        reporting_boundary._semantic_report_locations("html_report", legacy)
 
 
 def test_boundary_rejects_wrong_identity_and_nonfixed_paths(tmp_path: Path) -> None:

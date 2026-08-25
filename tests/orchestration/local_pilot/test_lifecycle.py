@@ -144,6 +144,22 @@ class ValidatedFixtureReceipt:
     receipt_path: Path
     receipt_sha256: str
 
+    @property
+    def verified_report_locations(self) -> tuple[tuple[str, Path], ...]:
+        if not self.receipt_path.name.endswith(".report_outputs.tsv"):
+            return ()
+        run_id = self.receipt_path.parent.name
+        return (
+            (
+                "scientific-report-html",
+                self.receipt_path.with_name(f"{run_id}.scientific_report.html"),
+            ),
+            (
+                "evidence-report-html",
+                self.receipt_path.with_name(f"{run_id}.evidence_report.html"),
+            ),
+        )
+
 
 @dataclass(slots=True)
 class Harness:

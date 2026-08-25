@@ -15,6 +15,10 @@ take priority over speed or convenience.
   mutation, destructive cleanup, scientific review, and evidence promotion
   require their own explicit authority.
 - Local commits do not authorize a push.
+- Favor net-negative or minimally additive code changes except when to do
+  so would introduce excessive complexity or incomplete behavior
+- long running checks should be run in CI, with quick targeted checks
+  being run locally
 
 ## Repository, runtime, and data safety
 

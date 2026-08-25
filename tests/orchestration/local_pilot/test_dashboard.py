@@ -632,30 +632,6 @@ def test_auto_discovery_never_uses_historical_accounting_fallback(
         dashboard.resolve_selection()
 
 
-def test_report_locations_are_derived_only_from_valid_run_identity() -> None:
-    run_root = f"/work/runs/{RUN_ID}"
-
-    locations = dashboard.report_locations({"run_id": RUN_ID, "run_root": run_root})
-
-    assert locations == {
-        "directory": f"{run_root}/products/report/{RUN_ID}",
-        "scientific": (
-            f"{run_root}/products/report/{RUN_ID}/{RUN_ID}.scientific_report.html"
-        ),
-        "evidence": (
-            f"{run_root}/products/report/{RUN_ID}/{RUN_ID}.evidence_report.html"
-        ),
-    }
-    assert (
-        dashboard.report_locations({"run_id": "../not-a-run", "run_root": run_root})
-        is None
-    )
-    assert (
-        dashboard.report_locations({"run_id": RUN_ID, "run_root": "relative/run-root"})
-        is None
-    )
-
-
 def test_validate_log_selection_rejects_relative_paths(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -828,7 +804,9 @@ def test_dashboard_model_and_text_views_cover_active_terminal_and_empty_states(
         model, _slurm(terminal=True, state="COMPLETED"), identity, now
     )
     assert terminal_title == "COMPLETION"
-    assert any("Scientific report" in str(line) for line in terminal_lines)
+    assert any("final EMRYS inspection" in str(line) for line in terminal_lines)
+    assert not any("Scientific report" in str(line) for line in terminal_lines)
+    assert not any("Evidence report" in str(line) for line in terminal_lines)
 
     empty = dashboard.parse_workflow("")
     assert "No scientific owner" in dashboard.current_lines(empty, {}, now, 80)[0]
@@ -836,7 +814,10 @@ def test_dashboard_model_and_text_views_cover_active_terminal_and_empty_states(
     assert dashboard.workflow_frontier_lines(empty, now, 80)
 
     dashboard.snapshot(JOB_ID, _slurm(), identity, model)
-    assert "EMRYS LIVE DASHBOARD" in capsys.readouterr().out
+    snapshot = capsys.readouterr().out
+    assert "EMRYS LIVE DASHBOARD" in snapshot
+    assert "Reports:" not in snapshot
+    assert "/products/report/" not in snapshot
 
 
 class _FakeScreen:

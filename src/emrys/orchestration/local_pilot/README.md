@@ -99,9 +99,9 @@ Slurm metadata and append-only stdout/stderr streams. The repository-level
 bounded current-user scheduler discovery, stream admission and sanitization,
 incremental parsing, and terminal rendering stay here; the dashboard never
 scans shared storage, mutates the workflow, or replaces final EMRYS
-inspection. Scheduler state, inferred progress and timing, displayed report
-paths, and the dashboard process exit are operational observations rather than
-completion, validation, or evidence authority.
+inspection. It does not derive or display result locations. Scheduler state,
+inferred progress and timing, and the dashboard process exit are operational
+observations rather than completion, validation, or evidence authority.
 
 This dashboard is currently a CSU-oriented preview, not a portable execution
 contract. It expects CSU Slurm metadata and the generated local-pilot wrapper's

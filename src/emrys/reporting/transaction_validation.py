@@ -45,6 +45,7 @@ class ValidatedTransaction:
 
     receipt_path: Path
     receipt_sha256: str
+    verified_report_locations: tuple[tuple[str, Path], ...] = ()
 
 
 def _no_transaction_fault(_paths: tuple[Path, ...]) -> None:
@@ -471,6 +472,7 @@ def _validated_result(
     reject_control_residue: Callable[[], None],
     *,
     identity_only_paths: Iterable[Path] = (),
+    verified_report_locations: tuple[tuple[str, Path], ...] = (),
 ) -> ValidatedTransaction:
     if not _receipt_is_in_roster(receipt, roster):
         raise ReportingTransactionError(
@@ -516,6 +518,7 @@ def _validated_result(
     return ValidatedTransaction(
         receipt_path=receipt.path,
         receipt_sha256=receipt.sha256,
+        verified_report_locations=verified_report_locations,
     )
 
 
@@ -1082,6 +1085,18 @@ def validate_report_transaction(
         raise ReportingTransactionError(
             "Published report receipt differs from the current projection"
         )
+    verified_report_locations = tuple(
+        (str(output["output_id"]), Path(str(output["path"])))
+        for output in document["outputs"]
+        if output["output_id"] in {"scientific-report-html", "evidence-report-html"}
+    )
+    if tuple(output_id for output_id, _path in verified_report_locations) != (
+        "scientific-report-html",
+        "evidence-report-html",
+    ):
+        raise ReportingTransactionError(
+            "Published report receipt does not identify both verified HTML outputs"
+        )
     validation.validate_rendered_html(
         context.output_scientific_html,
         expected_banner=context.render_metadata["state_banner"],
@@ -1118,6 +1133,7 @@ def validate_report_transaction(
             for snapshot, _label, rehash_content in context.input_rechecks
             if not rehash_content
         ),
+        verified_report_locations=verified_report_locations,
     )
 
 

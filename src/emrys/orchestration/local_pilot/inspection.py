@@ -45,6 +45,7 @@ class ValidatedReportingReceipt(Protocol):
 
     receipt_path: Path
     receipt_sha256: str
+    verified_report_locations: tuple[tuple[str, Path], ...]
 
 
 ReportingReceiptValidator = Callable[
@@ -124,6 +125,7 @@ class RunInspection:
     blockers: tuple[str, ...]
     resume_available: bool
     local_pipeline_complete: bool
+    verified_report_locations: tuple[tuple[str, Path], ...] = ()
 
 
 def _default_process_is_alive(process_id: int) -> bool:
@@ -624,15 +626,19 @@ def _fixed_reporting_receipt(root: Path, run_id: str, kind: str) -> Path:
     raise InspectionError(f"Unknown reporting transaction kind: {kind}")
 
 
-def inspect_reporting_ledger(
+def _inspect_reporting_ledger_with_locations(
     root: Path,
     execution: Mapping[str, Any],
     profile: Mapping[str, Any],
     validator: ReportingReceiptValidator,
     *,
     allow_incomplete_origin: str | None = None,
-) -> tuple[dict[str, dict[str, dict[str, str] | None]], list[str]]:
-    """Close and semantically admit the fixed reporting-entry ledger."""
+) -> tuple[
+    dict[str, dict[str, dict[str, str] | None]],
+    list[str],
+    tuple[tuple[str, Path], ...],
+]:
+    """Admit the reporting ledger and retain verified report output locations."""
 
     from emrys.orchestration.local_pilot import reporting_boundary  # noqa: PLC0415
 
@@ -640,11 +646,14 @@ def inspect_reporting_ledger(
     state_root = root / "state" / "reporting"
     result = {kind: {"start": None, "verified": None} for kind in kinds}
     blockers: list[str] = []
+    verified_report_locations: tuple[tuple[str, Path], ...] = ()
     if state_root.exists() or state_root.is_symlink():
         if state_root.is_symlink() or not state_root.is_dir():
-            return result, [
-                f"Reporting ledger root is not a real directory: {state_root}"
-            ]
+            return (
+                result,
+                [f"Reporting ledger root is not a real directory: {state_root}"],
+                (),
+            )
         for kind_path in state_root.iterdir():
             if kind_path.name not in kinds:
                 blockers.append(f"Unexpected reporting ledger kind: {kind_path}")
@@ -715,9 +724,31 @@ def inspect_reporting_ledger(
                     f"{kind} reporting boundary selected a different semantic receipt"
                 )
             result[kind]["verified"] = verified_reference
+            if kind == "html_report":
+                verified_report_locations = verified_outcome.verified_report_locations
         except Exception as exc:
             blockers.append(f"Could not close {kind} reporting ledger: {exc}")
-    return result, blockers
+    return result, blockers, verified_report_locations
+
+
+def inspect_reporting_ledger(
+    root: Path,
+    execution: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    validator: ReportingReceiptValidator,
+    *,
+    allow_incomplete_origin: str | None = None,
+) -> tuple[dict[str, dict[str, dict[str, str] | None]], list[str]]:
+    """Close and semantically admit the fixed reporting-entry ledger."""
+
+    records, blockers, _locations = _inspect_reporting_ledger_with_locations(
+        root,
+        execution,
+        profile,
+        validator,
+        allow_incomplete_origin=allow_incomplete_origin,
+    )
+    return records, blockers
 
 
 def inspect_attempt_tree(root: Path) -> tuple[tuple[Path, ...], tuple[str, ...]]:
@@ -1900,7 +1931,11 @@ def inspect_run(
         allow_incomplete_origin=live_origin,
     )
     blockers.extend(task_tree_blockers)
-    reporting, reporting_blockers = inspect_reporting_ledger(
+    (
+        reporting,
+        reporting_blockers,
+        verified_report_locations,
+    ) = _inspect_reporting_ledger_with_locations(
         root,
         execution,
         profile,
@@ -2008,6 +2043,7 @@ def inspect_run(
         blockers=tuple(dict.fromkeys(blockers)),
         resume_available=state == "resume_available",
         local_pipeline_complete=complete,
+        verified_report_locations=(verified_report_locations if complete else ()),
     )
 
 
