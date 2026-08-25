@@ -28,6 +28,10 @@ remain beside their stage or evidence owner.
 - [`installed_package_identity.py`](installed_package_identity.py) owns the
   deterministic no-follow digest of one canonical installed R-package tree;
   namespace/version policy stays with runtime admission.
+- [`application_logging/`](application_logging/README.md) is the approved owner
+  for pure control resolution, standard-library attempt logging, protected
+  JSONL persistence, console projection, and redaction helpers. Operation owners
+  retain their computation, publication, recovery, exits, and adoption policy.
 - [`input_contract.R`](input_contract.R) owns neutral named-argument, file,
   hash, and TSV mechanics
   shared by the Step `08`, Step `09`, and scientific-context R programs; owner

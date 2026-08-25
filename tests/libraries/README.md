@@ -2,7 +2,8 @@
 
 This directory owns direct tests for neutral helpers shared by multiple
 workflow owners, including validation reports and inputs, BAM and reference
-checks, executable resolution, and shell file checks. The corresponding
+checks, executable resolution, shell file checks, and the neutral application
+logging foundation. The corresponding
 implementation domains are routed by the
 [library README](../../src/emrys/libraries/README.md).
 

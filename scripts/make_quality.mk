@@ -8,6 +8,10 @@ PYTHON_LINT_PATHS ?= scripts src/emrys tests
 VULTURE_MIN_CONFIDENCE ?= 95
 EMRYS_RENV_VERSION := 1.2.3
 PYTHON_COVERAGE_NEW_SHARED_MODULES ?= \
+	src/emrys/libraries/application_logging/controls.py \
+	src/emrys/libraries/application_logging/handler.py \
+	src/emrys/libraries/application_logging/helpers.py \
+	src/emrys/libraries/application_logging/storage.py \
 	src/emrys/libraries/installed_package_identity.py \
 	src/emrys/libraries/process_environment.py
 PYTHON_COVERAGE_NEW_SHARED_ARGS = $(foreach module,$(PYTHON_COVERAGE_NEW_SHARED_MODULES),--new-shared-module $(module))
