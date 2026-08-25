@@ -6,8 +6,13 @@
 > owns architectural context that has not yet been converted into accepted,
 > bounded backlog items. The [backlog matrix](backlog_matrix.md) owns accepted
 > task-level work.
-> Where the two overlap, the matrix owns task status and acceptance while this
-> document preserves the broader rationale, alternatives, and ideal end state.
+> The [architecture backlog matrix](architecture_backlog_matrix.md) provides a
+> provisional Architecture Priority/Indicative Complexity view of this
+> campaign's candidate cards; it does not accept or authorize those cards or
+> supply their final task scores.
+> Where the documents overlap, the main backlog matrix owns task status and
+> acceptance while this document preserves the broader rationale,
+> alternatives, and ideal end state.
 >
 > The command names, class names, phase numbers, P0–P3 ordering, numeric targets,
 > example schemas, diagrams, and filesystem layouts recorded here are proposals
@@ -1208,11 +1213,19 @@ detail. They are **overlapping sources**, not disposable duplicates:
 No substantive recommendation was discarded merely because another source
 made a similar recommendation.
 
-## 19. Later prioritization contract
+## 19. Prioritization contract
 
-Prioritization happens only after campaign context has been sliced into the
-matrix and traceability is complete. Each active matrix item will receive
-separate **Importance** and **Complexity** scores with a short rationale.
+At the user's explicit direction on **2026-08-25**, the campaign uses two
+deliberately separate scoring passes:
+
+1. The [architecture backlog matrix](architecture_backlog_matrix.md) records a
+   cursory **Architecture Priority** and **Indicative Complexity** for each
+   unsliced campaign card. These preliminary buckets guide just-in-time
+   selection and decomposition. They do not accept work, settle sequencing, or
+   become task scores automatically.
+2. After campaign context has been sliced into the main matrix and traceability
+   is complete, every active main-matrix item will receive separately reviewed
+   **Importance** and **Complexity** scores with a short rationale.
 
 Candidate dimensions are:
 
@@ -1221,11 +1234,12 @@ Candidate dimensions are:
 | Importance | Scientific integrity, user/operator impact, evidence or reliability risk, breadth/frequency, strategic enablement, and urgency |
 | Complexity | Number of owners and callers, public-interface/schema migration, runtime/site/cluster dependencies, transaction/recovery risk, compatibility burden, and required validation |
 
-The scale and rubric remain to be ratified. Importance and complexity must not
-be collapsed into one opaque number, and source-proposed P0–P3 ordering must not
-preempt the scoring pass. Dependencies, risk, sequencing opportunities, and
-available evidence may inform later execution order without becoming hidden
-blocker edges.
+The final accepted-task scale and rubric remain to be ratified. Preliminary
+campaign-card scores must be reconsidered rather than copied into that pass.
+Importance and complexity must not be collapsed into one opaque number, and
+source-proposed P0–P3 ordering must not preempt final scoring. Dependencies,
+risk, sequencing opportunities, and available evidence may inform later
+execution order without becoming hidden blocker edges.
 
 ## 20. Campaign exit criteria
 
