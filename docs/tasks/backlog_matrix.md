@@ -16,6 +16,11 @@ This matrix remains authoritative for task IDs, status, required outcomes,
 acceptance conditions, and dispositions; the campaign document does not create
 or authorize tasks by itself.
 
+The [architecture backlog matrix](architecture_backlog_matrix.md) records only
+a cursory Architecture Priority and Indicative Complexity for unsliced campaign
+cards. Those provisional values neither create tasks nor supply the final
+Importance and Complexity scores for accepted items in this matrix.
+
 Names, command spellings, phase boundaries, numeric targets, and proposed
 ordering quoted from the architecture intake remain suggestions unless this
 matrix explicitly adopts them. They must be reconsidered during later slicing

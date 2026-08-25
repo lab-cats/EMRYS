@@ -6,15 +6,17 @@
 |---|---|---|
 | Current planning backlog | [`backlog_matrix.md`](backlog_matrix.md) | Owns accepted task IDs, status, required outcomes, acceptance, dispositions, and the later Importance/Complexity scores |
 | Unsliced architecture context | [`architecture_campaign.md`](architecture_campaign.md) | Temporarily owns source feedback, cross-task rationale, ideal states, alternatives, decisions, and slicing traceability; it does not create tasks by itself |
+| Architecture campaign ranking | [`architecture_backlog_matrix.md`](architecture_backlog_matrix.md) | Provisional Architecture Priority/Indicative Complexity view of campaign cards; it does not own implementation status, acceptance, or final task scoring |
 | Legacy registry and cards | [`BACKLOG.md`](BACKLOG.md) and [`cards/`](cards/) | Frozen mechanically consumed surfaces pending `BACKLOG-01`; do not add or mirror current planning work here |
 | Legacy evidence and roadmap sources | [`HANDOFF.md`](../operations/HANDOFF.md) and [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) | Mechanically referenced but user-identified as stale and unverified pending `DOC-02`; not reliable current authorities |
 
-The matrix is the current planning backlog. The campaign is temporary and
-cannot become a second permanent backlog. The legacy registry and card format
-remain present only because existing selection guidance, status rendering, and
-documentation validation still consume them. Their callers and useful
-validation behavior receive separate dispositions under `BACKLOG-01` and
-`DOC-TOOL-01`.
+The main matrix is the current planning backlog. The campaign is temporary and
+cannot become a second permanent backlog. Its architecture-only matrix is a
+provisional ranking view, not another implementation-status or final-scoring
+authority. The legacy registry and card format remain present only because
+existing selection guidance, status rendering, and documentation validation
+still consume them. Their callers and useful validation behavior receive
+separate dispositions under `BACKLOG-01` and `DOC-TOOL-01`.
 
 None of these documents grants mutation, implementation, publication, cluster
 execution, scientific-review, or evidence-promotion authority. Use

@@ -46,7 +46,7 @@ For task orientation and approved delivery, use
 | Durable rationale and unresolved choices | [`DECISIONS.md`](../design/DECISIONS.md), its detail files, and [`QUESTIONS.md`](../design/QUESTIONS.md) |
 | Exact behavior, commands, defects, and tests | Applicable colocated owner `README.md` and `CONTRACT.md` |
 | Test policy and cross-cutting recheck routes | [`TEST_BASELINE.md`](../design/TEST_BASELINE.md); exact defects remain with the applicable owner `README.md` or `CONTRACT.md` |
-| Current planning backlog and temporary unsliced architecture context | [Findings matrix](../tasks/backlog_matrix.md), [architecture campaign](../tasks/architecture_campaign.md), and [task transition rules](../tasks/README.md) |
+| Current planning backlog and temporary unsliced architecture context | [Findings matrix](../tasks/backlog_matrix.md), [architecture campaign](../tasks/architecture_campaign.md), [provisional architecture ranking](../tasks/architecture_backlog_matrix.md), and [task transition rules](../tasks/README.md) |
 | Legacy task registry/cards and dated records | Frozen [`BACKLOG.md`](../tasks/BACKLOG.md), [`cards/`](../tasks/cards/), and [`docs/history`](../history/) pending the separately tracked backlog cutover |
 
 JIT cards and history are not live subject-matter owners. Delete completed or
