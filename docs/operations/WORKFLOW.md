@@ -22,11 +22,11 @@ Load only:
 4. Directly affected functional owners: implementation, adjacent `README.md`
    or `CONTRACT.md`, public callers and consumers, tests, and fixtures that
    define or exercise the behavior.
-5. Only applicable canonical sections linked by the card or affected owners.
-   Use [HANDOFF](HANDOFF.md) for current evidence and blockers,
-   [PIPELINE_PLAN](../design/PIPELINE_PLAN.md) for roadmap and acceptance, and
-   the [architecture index](../architecture/README.md) for cross-owner identity
-   and dependency direction.
+5. Only applicable canonical sections linked by the matrix item or affected
+   owners. Use live Git for checkout state, checks and retained artifacts for
+   exact validation observations, the matrix for accepted outcomes and
+   acceptance, and the [architecture index](../architecture/README.md) for
+   cross-owner identity and dependency direction.
 
 Do not preload the full documentation corpus, history, unrelated backlog
 items, every owner, all tests, or entire canonical documents merely for

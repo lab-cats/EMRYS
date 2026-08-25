@@ -20,15 +20,10 @@ CANONICAL_H1S = {
     "docs/architecture/README.md": "# Architecture index",
     "docs/architecture/ARCHITECTURE.md": "# Current architecture",
     "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": "# Current functional-owner inventory",
-    "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
     "docs/design/DECISIONS.md": "# Durable decisions",
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
     "docs/design/ORCHESTRATION_CONTRACT.md": "# Local-pilot orchestration contract",
-    "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
-    "docs/design/PIPELINE_PLAN.md": "# EMRYS pipeline plan",
-    "docs/design/QUESTIONS.md": "# Open questions",
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
-    "docs/operations/HANDOFF.md": "# Project handoff",
     "docs/operations/RUNBOOK.md": "# Runbook",
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
@@ -38,6 +33,20 @@ CANONICAL_H1S = {
     "src/emrys/contracts/SOURCE_TOPOLOGY.md": "# Source ownership and dependency direction",
     "src/emrys/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
 }
+LEGACY_H1S = {
+    "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
+    "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
+    "docs/design/PIPELINE_PLAN.md": "# EMRYS pipeline plan",
+    "docs/design/QUESTIONS.md": "# Open questions",
+    "docs/operations/HANDOFF.md": "# Project handoff",
+    "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md": (
+        "# Local-pilot launcher regression test plan"
+    ),
+}
+LEGACY_DIAGRAMS = (
+    "docs/architecture/diagrams/future_modular_pipeline.mmd",
+    "docs/architecture/diagrams/future_reporting_layer.mmd",
+)
 SEMANTIC_OWNERS = (
     ("stage", "construct_STAR_index"),
     ("stage", "construct_FASTA_sidecars"),
@@ -138,6 +147,10 @@ def write_fixture(root: Path) -> Path:
         "docs/fixture.mmd": "flowchart LR\n    A --> B\n",
     }
     files.update({path: f"{h1}\n" for path, h1 in CANONICAL_H1S.items()})
+    files.update(
+        {path: f"{h1}\n\n> **Legacy fixture.**\n" for path, h1 in LEGACY_H1S.items()}
+    )
+    files.update({path: "flowchart LR\n    A --> B\n" for path in LEGACY_DIAGRAMS})
     identity_rows = [
         f"| {kind} | Fixture | `{slug}` | `emrys.{kind}.{slug}.v1` | `00` |"
         for kind, slug in SEMANTIC_OWNERS
@@ -188,7 +201,7 @@ def test_accepts_minimal_repository_and_reports_counts_without_writes(
     result = validate(repository, cwd=tmp_path)
 
     assert result.returncode == 0, result.stderr
-    assert "1 Mermaid sources" in result.stdout
+    assert "3 Mermaid sources" in result.stdout
     assert (
         tuple(sorted(path.relative_to(repository) for path in repository.rglob("*")))
         == before
@@ -207,6 +220,38 @@ def test_rejects_missing_or_mislabeled_canonical_documents(tmp_path: Path) -> No
     assert result.returncode == 1
     assert "missing canonical document: docs/operations/WORKFLOW.md" in result.stderr
     assert "canonical document H1 mismatch: docs/operations/RUNBOOK.md" in result.stderr
+
+
+@pytest.mark.parametrize("relative", tuple(LEGACY_H1S))
+def test_rejects_unmarked_or_mislabeled_legacy_documents(
+    tmp_path: Path,
+    relative: str,
+) -> None:
+    repository = write_fixture(tmp_path)
+    (repository / relative).write_text(
+        "# Wrong legacy H1\n\nOrdinary prose before the warning.\n\n"
+        "> **Legacy fixture.**\n",
+        encoding="utf-8",
+    )
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert f"legacy document lacks visible warning: {relative}" in result.stderr
+    assert f"legacy document H1 mismatch: {relative}" in result.stderr
+
+
+@pytest.mark.parametrize("relative", (*LEGACY_H1S, *LEGACY_DIAGRAMS))
+def test_rejects_early_legacy_source_deletion(
+    tmp_path: Path,
+    relative: str,
+) -> None:
+    repository = write_fixture(tmp_path)
+    (repository / relative).unlink()
+
+    result = validate(repository, cwd=tmp_path)
+
+    kind = "diagram" if relative in LEGACY_DIAGRAMS else "document"
+    assert f"missing legacy transition {kind}: {relative}" in result.stderr
 
 
 @pytest.mark.parametrize("roster_defect", ("short", "duplicate"))

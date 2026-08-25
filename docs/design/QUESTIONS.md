@@ -1,8 +1,14 @@
 # Open questions
 
-This is the concise backlog of unresolved evidence and design decisions. It
-does not authorize implementation. Current blockers and evidence ceilings
-remain in [`HANDOFF.md`](../operations/HANDOFF.md); durable answers move to
+> **Legacy transition source — not a current backlog or decision authority.**
+> Accepted outcomes live in the [findings matrix](../tasks/backlog_matrix.md)
+> and unsliced architecture alternatives in the temporary
+> [architecture campaign](../tasks/architecture_campaign.md). This file remains
+> only for the `DOC-03` preservation and retirement trace.
+
+This legacy index does not authorize implementation. Accepted open outcomes
+and evidence requirements live in the
+[findings matrix](../tasks/backlog_matrix.md); durable answers move to
 [`DECISIONS.md`](DECISIONS.md) or the applicable contract.
 
 ## Operational and scientific evidence

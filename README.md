@@ -116,8 +116,8 @@ representative samples before authorizing the full analysis.
   fixtures and does not execute ingestion, STAR, samtools, GATK, Picard,
   RSeQC, bcftools, R analysis, or the workflow.
 
-The exact validation evidence at the current commit is recorded in
-[`HANDOFF.md`](docs/operations/HANDOFF.md). A demo, dry run, synthetic fixture,
+Use checks and retained artifacts bound to the exact commit for validation
+observations and their evidence ceilings. A demo, dry run, synthetic fixture,
 successful job, or report must not be promoted beyond the evidence it actually
 establishes.
 
@@ -151,7 +151,8 @@ establishes.
 | Optional external scientific-evaluation checklist | [`docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md`](docs/reference/EXTERNAL_SCIENTIFIC_EVALUATION.md) |
 | Operator report build and workflow-owned reporting transactions | [`src/emrys/reporting/README.md`](src/emrys/reporting/README.md) |
 | Architecture and complete owner DAG | [`docs/architecture/README.md`](docs/architecture/README.md) |
-| Current validation evidence and remaining gaps | [`docs/operations/HANDOFF.md`](docs/operations/HANDOFF.md) |
+| Accepted open outcomes and remaining work | [`docs/tasks/backlog_matrix.md`](docs/tasks/backlog_matrix.md) |
+| CI runtime contract and retained long-lane artifacts | [`.github/ci/README.md`](.github/ci/README.md) and checks for the exact commit |
 | Local test routes | [`tests/README.md`](tests/README.md) |
 
 ## License

@@ -1,11 +1,18 @@
 # Project handoff
 
-This file owns current evidence ceilings, blockers, and live takeover facts
-that are not safely reconstructed from Git. Resolve branch, commit, upstream
-relation, and worktree contents directly from Git. Use
-[`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) for open package families and
-acceptance, [`RUNBOOK.md`](RUNBOOK.md) for commands, and
-[`docs/history`](../history/) for frozen delivery records.
+> **Legacy historical source — not current state, blocker, or evidence
+> authority.** Verify checkout state from live Git and validation observations
+> from checks and retained artifacts bound to the exact commit. This file
+> remains only for the `DOC-04` section-level reconciliation of its unique
+> dated evidence and durable recovery constraints; its blocker and
+> immediate-resume prose will be discarded after that trace.
+
+This file formerly collected evidence ceilings, blockers, and takeover facts;
+those rolling claims are no longer current authority. Resolve branch, commit,
+upstream relation, and worktree contents directly from Git. Use the
+[findings matrix](../tasks/backlog_matrix.md) for accepted work and acceptance,
+[`RUNBOOK.md`](RUNBOOK.md) for commands, and [`docs/history`](../history/) for
+frozen delivery records after the selected evidence is migrated.
 
 Campaign B owner hardening (`B1a` through `B1c`), B2 intake/contracts, B3's
 static local workflow, B4's reporting/lifecycle tail, B5 readiness and public
@@ -28,7 +35,7 @@ dry-run-first `emrys run`, `emrys resume`, and `emrys inspect local-pilot-run`.
 
 ## Evidence boundary
 
-| Surface | Current evidence ceiling |
+| Surface | Recorded evidence ceiling |
 | --- | --- |
 | Local-pilot orchestration | B0 defines the source-checkout-bound lifecycle; B1 hardens owner boundaries; B2 adds intake/contracts; B3 adds an exact fixed profile, 13-scientific-owner-rule static graph, task attempts, and content-bound verified records; B4 adds three ordered reporting rules, durable task/reporting entry records, and the run-lock/attempt/receipt tail; B5 adds the exact fixed-profile materializer and public dry-run-first run/resume/inspection adapter; B6 adds matched structural starters, a clean-fresh-clone proof, and proof-matched onboarding. The adversarial follow-up binds exact tool and installed-R-package bytes, task logs and owner tokens; admits only stable complete Step `00c` sidecar reuse; serializes stale contenders without residue; and terminalizes interruption only after process-group quiescence and durable lock disposition. In addition to real Snakemake 9.25.1 dry-runs and deterministic no-science slices, NORAD science commit `2587126e7e471b504657c9a43789e870713f8bb6` completed a production-like synthetic ingestion-to-report run on one native ARM64 Ubuntu VM in one real single-node Slurm allocation. The lane verified 34/34 owner tasks across 13 automatic owners, 3/3 reporting transactions, and a 38/38 DAG. `.snakemake` is not completion authority. There is still no reconciliation after an entered scope fails, CSU Viking `emrys run` execution, distributed Slurm executor, multi-node proof, or current full production-cluster proof. The manual CSU Viking Step `07`–`09` evidence recorded below does not cross those boundaries. |
 | PORT-NC-01 integration | Tests added on `fix/no-clobber` were reported as cluster-run and as validating that source branch's behavior. They informed, but do not validate, the differently implemented replay. Exact integrated candidate `ebc43b4a8342b676eafb6b56492989498886ab55` passed the unchanged assembled local gate: static preflight, installed-wheel smoke, guarded local R, shell/SLURM-wrapper contracts, and Python behavior/coverage. The replay preserves stronger current transactions and runtime authority while admitting STAR metadata rows, publishing the deterministic Step `00b` final through its converter transaction, binding all repository-owning wrappers to the submitted checkout, and making Step `01` staged no-clobber plus controlled hashing the scheduled default. That replay closeout itself was local integration evidence only: its wrapper lane did not submit Slurm jobs or exercise a distributed filesystem, and no fresh-clone or local-pilot E2E was part of that closeout. The later production-like pilot on science commit `2587126e7e471b504657c9a43789e870713f8bb6` exercised the integrated public path with real tools in a VM Slurm allocation, but does not retroactively supply CSU, distributed-filesystem, or production-data evidence. |
@@ -61,7 +68,7 @@ Those changes preserved public paths, commands, direct-import bindings,
 schemas, serialized bytes, explicit inputs, transaction/recovery behavior,
 fault-injection boundaries, scientific methods, independent-oracle boundaries,
 and evidence semantics. The external REMORA reference is not a parity oracle.
-Known publication defects remain current blockers below. Focused storage and
+Known publication defects were recorded as blockers below. Focused storage and
 public-CLI tests passed, but that storage slice did not rerun the full coverage
 gate. These decompositions establish local maintainability evidence only. The
 later production-like pilot below separately adds exact synthetic real-runtime
@@ -176,7 +183,7 @@ The installed project library remains at `renv` `1.2.3` while current
 metadata advertises `1.2.4`. Dependency maintenance is a separate package;
 do not mutate the environment incidentally.
 
-## Current blockers
+## Recorded blockers selected for discard
 
 - The manual Viking Step `07`–`09` run used the external paired manifest
   `data/raw/samples.paired.tsv`, whose retained SHA-256 is
@@ -206,7 +213,7 @@ Cross-cutting contract risks and recheck routes are indexed in
 [`TEST_BASELINE.md`](../design/TEST_BASELINE.md); exact defects remain with the
 applicable owner `README.md` or `CONTRACT.md`.
 
-## Immediate resume point
+## Recorded immediate resume point selected for discard
 
 Campaign B, its adversarial local-pilot hardening follow-up, PORT-NC-01, the
 preserved production-like synthetic VM/Slurm pilot, and the approved

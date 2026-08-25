@@ -1,9 +1,9 @@
 # EMRYS presenter walkthrough
 
 This is the presenter run-of-show, not the audience handout, authoritative
-status ledger, report contract, or command owner. During a live demo, use the
-current [`HANDOFF.md`](../operations/HANDOFF.md); run only the exact
-[`README.md`](README.md) procedure.
+status ledger, report contract, or command owner. During a live demo, verify
+live Git plus checks and retained artifacts for the exact commit; run only the
+exact [`README.md`](README.md) procedure.
 
 ## Narrative
 
@@ -26,7 +26,7 @@ current [`HANDOFF.md`](../operations/HANDOFF.md); run only the exact
 Before presenting, generate the local synthetic report through the
 [demo procedure](README.md).
 Its current implementation and evidence ceiling remain in the
-[`HANDOFF.md`](../operations/HANDOFF.md#evidence-boundary).
+reporting owner, contracts, tests, and exact checks for the selected commit.
 
 Start in the open `Computational results` category. Show the
 not-scientifically-adjudicated notice, the significant subset, the complete
@@ -40,8 +40,8 @@ behavior.
 1. [`../../README.md`](../../README.md)
 2. [`../architecture/ARCHITECTURE.md`](../architecture/ARCHITECTURE.md)
 3. [`../architecture/diagrams/pipeline.mmd`](../architecture/diagrams/pipeline.mmd)
-4. [`../operations/HANDOFF.md`](../operations/HANDOFF.md)
-5. [`../design/PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md)
+4. [`../tasks/backlog_matrix.md`](../tasks/backlog_matrix.md)
+5. [`../design/DECISIONS.md`](../design/DECISIONS.md)
 6. [PI discussion guide](PI_DEMO_REPORT.md)
 7. [`../operations/RUNBOOK.md`](../operations/RUNBOOK.md)
 
@@ -53,7 +53,8 @@ Say:
 - mechanical `FWD_like` and `REV_like` groups;
 - CMH-ranked candidates;
 - implemented, locally tested, real-runtime tested, or cluster-proven only
-  when the handoff supports that exact state;
+  when checks and retained artifacts bound to the exact commit support that
+  state;
 - external review or adjudication record only when that separate work product
   actually exists.
 
@@ -67,9 +68,9 @@ Do not say:
 
 ## Cohort evidence cue
 
-At the cohort-evidence stop, display the current
+The legacy
 [`HANDOFF.md`](../operations/HANDOFF.md#cohort-and-preserved-scientific-evidence)
-table and caveats directly. Do not copy its fractions or sample status into
-this guide. Emphasize at the action point that orientation evidence is not
-biological-strand proof and that a mapping outlier is not, by itself, a
-pipeline failure.
+contains one historical cohort table selected for migration under `DOC-04`.
+Do not present it as current or copy its fractions or sample status into this
+guide. Emphasize that orientation evidence is not biological-strand proof and
+that a mapping outlier is not, by itself, a pipeline failure.

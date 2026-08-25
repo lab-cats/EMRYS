@@ -13,5 +13,7 @@ provide subject detail without owning current status or commands.
 - [`platform-direction.md`](platform-direction.md) — product and future-platform
   direction.
 
-Unresolved choices remain in [`QUESTIONS.md`](../QUESTIONS.md); current
-acceptance remains in [`PIPELINE_PLAN.md`](../PIPELINE_PLAN.md).
+Accepted open outcomes and acceptance remain in the
+[findings matrix](../../tasks/backlog_matrix.md). Unsliced architecture choices
+remain temporarily in the
+[architecture campaign](../../tasks/architecture_campaign.md).

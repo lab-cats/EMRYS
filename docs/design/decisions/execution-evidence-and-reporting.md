@@ -152,7 +152,8 @@ formats.
 
 Keep console output concise while retaining complete durable diagnostic logs
 under the target contract in
-[`FUTURE_ARCHITECTURE.md`](../../architecture/FUTURE_ARCHITECTURE.md#capability-backlog).
+[`LOGGING_CONTRACT.md`](../LOGGING_CONTRACT.md). Accepted adoption work remains
+in the [findings matrix](../../tasks/backlog_matrix.md).
 Declared machine responses remain on stdout and human events on stderr. Log
 level changes projection only; it never changes computation, validation,
 publication, recovery, evidence, or exit behavior.

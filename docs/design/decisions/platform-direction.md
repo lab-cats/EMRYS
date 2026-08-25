@@ -73,8 +73,8 @@ Local execution precedes site execution so workflow semantics can be proven
 without mixing CSU modules, storage, accounting, or scheduler policy into the
 scientific graph. SLURM and the possible Linux VM remain deferred rather than
 rejected. The decision-complete lifecycle and resume rules are in
-[`ORCHESTRATION_CONTRACT.md`](../ORCHESTRATION_CONTRACT.md); owner admission
-gaps remain in [`ORCHESTRATION_READINESS.md`](../ORCHESTRATION_READINESS.md).
+[`ORCHESTRATION_CONTRACT.md`](../ORCHESTRATION_CONTRACT.md); accepted remaining
+work is tracked in the [findings matrix](../../tasks/backlog_matrix.md).
 
 The public control plane remains thin: it reruns read-only admission, prints an
 exact no-write plan by default, materializes only the fixed profile under the
@@ -84,6 +84,7 @@ no raw Snakemake flags or automatic owner recovery.
 Logging, report profiles, analysis modules, public acquisition, standalone
 workflow packaging,
 site profiles, and optional-success policy remain designs, not current
-architecture. Their concise boundary is
-[`FUTURE_ARCHITECTURE.md`](../../architecture/FUTURE_ARCHITECTURE.md); unresolved
-choices remain in [`QUESTIONS.md`](../QUESTIONS.md).
+architecture. Accepted outcomes are in the
+[findings matrix](../../tasks/backlog_matrix.md); unsliced alternatives remain
+in the temporary
+[architecture campaign](../../tasks/architecture_campaign.md).

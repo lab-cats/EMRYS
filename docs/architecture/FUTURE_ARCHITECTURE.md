@@ -1,12 +1,18 @@
 # Future architecture
 
-This file records unimplemented capability boundaries. It is a backlog guard,
-not current functionality, authorization, roadmap order, or evidence. The
-accepted local-first design is now owned by the
-[`ORCHESTRATION_CONTRACT`](../design/ORCHESTRATION_CONTRACT.md) and its
-[readiness register](../design/ORCHESTRATION_READINESS.md); current system views
-are organized by the [architecture index](README.md), and exact remaining open
-choices remain in [`QUESTIONS.md`](../design/QUESTIONS.md).
+> **Legacy transition source — not current architecture authority.** The
+> [findings matrix](../tasks/backlog_matrix.md) owns accepted outcomes and the
+> temporary [architecture campaign](../tasks/architecture_campaign.md) owns
+> unsliced alternatives. This file remains only for the `DOC-03` node-by-node
+> preservation and retirement trace.
+
+This legacy file recorded unimplemented capability boundaries. It is preserved
+only as migration input, not as a backlog, current functionality,
+authorization, roadmap order, or evidence. The implemented local-first design
+is owned by the
+[`ORCHESTRATION_CONTRACT`](../design/ORCHESTRATION_CONTRACT.md), current system
+views are organized by the [architecture index](README.md), and accepted or
+unsliced future context lives in the matrix and campaign linked above.
 
 ## Principles
 

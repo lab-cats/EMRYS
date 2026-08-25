@@ -16,15 +16,10 @@ CANONICAL_DOCUMENTS = {
     "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": (
         "# Current functional-owner inventory"
     ),
-    "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
     "docs/design/DECISIONS.md": "# Durable decisions",
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
     "docs/design/ORCHESTRATION_CONTRACT.md": "# Local-pilot orchestration contract",
-    "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
-    "docs/design/PIPELINE_PLAN.md": "# EMRYS pipeline plan",
-    "docs/design/QUESTIONS.md": "# Open questions",
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
-    "docs/operations/HANDOFF.md": "# Project handoff",
     "docs/operations/RUNBOOK.md": "# Runbook",
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
@@ -36,6 +31,21 @@ CANONICAL_DOCUMENTS = {
     ),
     "src/emrys/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
 }
+
+LEGACY_TRANSITION_DOCUMENTS = {
+    "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
+    "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
+    "docs/design/PIPELINE_PLAN.md": "# EMRYS pipeline plan",
+    "docs/design/QUESTIONS.md": "# Open questions",
+    "docs/operations/HANDOFF.md": "# Project handoff",
+    "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md": (
+        "# Local-pilot launcher regression test plan"
+    ),
+}
+LEGACY_TRANSITION_DIAGRAMS = (
+    "docs/architecture/diagrams/future_modular_pipeline.mmd",
+    "docs/architecture/diagrams/future_reporting_layer.mmd",
+)
 
 RETIRED_DOCUMENTS = (
     "docs/design/REFACTOR_AUDIT.md",
@@ -197,6 +207,31 @@ def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
             problems.append(f"missing mirrored test owner: {tests.relative_to(root)}")
 
 
+def validate_legacy_transitions(root: Path, problems: list[str]) -> None:
+    """Keep legacy migration inputs present and visibly marked until retirement."""
+    for relative, expected_h1 in LEGACY_TRANSITION_DOCUMENTS.items():
+        path = root / relative
+        if not path.is_file():
+            problems.append(f"missing legacy transition document: {relative}")
+            continue
+        if first_heading(path) != expected_h1:
+            problems.append(f"legacy document H1 mismatch: {relative}")
+        lines = path.read_text(encoding="utf-8").splitlines()
+        heading_index = next(
+            (index for index, line in enumerate(lines) if line.startswith("# ")),
+            -1,
+        )
+        opening = next(
+            (line for line in lines[heading_index + 1 :] if line.strip()),
+            "",
+        )
+        if not opening.startswith("> **Legacy "):
+            problems.append(f"legacy document lacks visible warning: {relative}")
+    for relative in LEGACY_TRANSITION_DIAGRAMS:
+        if not (root / relative).is_file():
+            problems.append(f"missing legacy transition diagram: {relative}")
+
+
 def validate_retired_task_directories(root: Path, problems: list[str]) -> None:
     """Reject Markdown that revives a retired task-detail directory."""
     for dirname in RETIRED_TASK_DIRECTORIES:
@@ -230,6 +265,7 @@ def validate(root: Path) -> tuple[int, int]:
     diagrams = git_paths(root, "*.mmd")
     problems: list[str] = []
     validate_canonical_ownership(root, problems)
+    validate_legacy_transitions(root, problems)
     validate_retired_task_directories(root, problems)
     diagram_count = validate_diagrams(diagrams, root, problems)
     if problems:

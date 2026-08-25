@@ -8,6 +8,9 @@ root and inventories tracked plus untracked, non-ignored Markdown and Mermaid
 sources. It checks:
 
 - canonical document presence and first H1;
+- presence and opening warnings for legacy transition documents, plus presence
+  of their retained transition diagrams, until the owning retirement package
+  deliberately removes them from the roster;
 - absence of explicitly retired document and task-detail surfaces;
 - required cross-cutting owner documentation;
 - the 14-identity `STAGE_MAP` roster and adjacent owner `README.md`,

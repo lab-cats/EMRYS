@@ -25,8 +25,8 @@ unique ongoing value, and no adequate current subject owner or Git record.
   does not rewrite the earlier observation into current truth.
 - Keep each record under one topic and link it from that topic's index. Other
   documents link the record instead of copying its historical narrative.
-- Route current state and evidence to
-  [`HANDOFF.md`](../operations/HANDOFF.md), roadmap and lineage to
-  [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md), exact commands to
+- Route checkout state to live Git, validation observations to exact checks and
+  retained artifacts, accepted work to the
+  [findings matrix](../tasks/backlog_matrix.md), exact commands to the
   [`RUNBOOK.md`](../operations/RUNBOOK.md), and functional meaning to the
   applicable colocated contract.

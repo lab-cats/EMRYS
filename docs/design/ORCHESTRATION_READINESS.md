@@ -1,21 +1,25 @@
 # Local-pilot orchestration readiness
 
-This document is the canonical Campaign B owner-admission view for the local
-CMH pilot defined by
-[`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md). It records each
-owner's orchestration disposition and the retained admission invariants for
-the admitted fixed no-science local profile. It is not live runtime state, a
-second DAG, roadmap authority, or
-permission to change an owner.
+> **Legacy transition source — not current admission authority.** Current
+> profile membership and edges come from the workflow, stage map, owner
+> contracts, and tests. This file remains only for the `DOC-05` consolidation
+> and retirement trace recorded by the
+> [documentation audit](decisions/repository-and-delivery.md#repository-documentation-audit-2026-08-25).
+
+This legacy document was the Campaign B owner-admission view for the local CMH
+pilot defined by
+[`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md). Its owner
+dispositions and admission invariants remain migration input only. They are not
+live runtime state, a second DAG, roadmap authority, current admission
+decisions, or permission to change an owner.
 
 Exact semantic edges remain in
 [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md). Exact producer,
 validator, transaction, defect, and recovery behavior remains in each linked
-owner contract. Current blockers and evidence remain in
-[`HANDOFF.md`](../operations/HANDOFF.md), and package order and acceptance
-remain in [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md). Update a disposition here
-only after its owner-local authority and current evidence record the accepted
-proof; do not copy this B0 assessment into workflow rules as new behavior.
+owner contract. Accepted open work and acceptance remain in the
+[findings matrix](../tasks/backlog_matrix.md); exact validation observations
+come from checks and retained artifacts bound to the commit. Do not copy this
+legacy B0 assessment into workflow rules as new behavior.
 
 ## Disposition vocabulary
 
@@ -30,7 +34,7 @@ zero.
 
 ## Owner matrix
 
-| Owner and scope | Public producer / validator | Current admission state | Disposition | Retained admission invariant |
+| Owner and scope | Public producer / validator | Recorded Campaign B admission state | Disposition | Retained admission invariant |
 | --- | --- | --- | --- | --- |
 | [`construct_STAR_index`](../../src/emrys/stages/star_index/CONTRACT.md), one reference | Explicit local producer plus owner-local scheduler entry point; grouped public validator | B1 added dry-run-first, declared-member, locked no-clobber publication; current validation also ignores STAR-emitted `###` metadata rows while retaining exact overhang and suffix-array checks | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
 | [`convert_GTF_to_BED12`](../../src/emrys/stages/gtf_to_bed12/CONTRACT.md), one reference | Grouped `emrys convert gtf-to-bed12`; grouped validator | B1 added explicit execute plus atomic no-replace publication; the scheduler wrapper now delegates the deterministic final BED directly through that transaction with explicit run-token and execute authority and no bedtools intermediate | `ready` | Validator all-pass and verified-task binding remain required for continued rule admission and reuse |
@@ -100,5 +104,5 @@ The admitted profile retains these prerequisites:
 generic transaction framework: change the smallest owner-local boundary that
 makes clean execution, failure, and resume unambiguous.
 
-The proof-sized package order and the acceptance rule for changing a
-disposition are owned by [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md).
+The matrix owns any accepted change to the current profile; owner contracts and
+tests own its behavioral proof.

@@ -1,14 +1,20 @@
 # Local-pilot launcher regression test plan
 
-Use this plan after the launcher-config implementation is committed locally.
-It is a local/workstation acceptance pass only: do not invoke a real `sbatch`,
-access a cluster, edit operator data, or push changes. Provision the locked
-development/workflow environment before validation only with explicit local
-installation authority; validation itself must run without dependency or
-lockfile mutation. The package-distribution test creates an isolated temporary
-environment from the existing offline lock/cache. Report that lane `BLOCKED`
-rather than weakening or skipping its assertions when its exact cache is not
-available.
+> **Legacy transition source — not a current test plan or execution record.**
+> Active behavior lives in tests and CI, delivery safety in `AGENTS.md` and the
+> workflow kernel, and supported commands in the runbook. This file remains
+> only for the `DOC-05` consolidation and retirement trace.
+
+This legacy plan recorded a local/workstation acceptance pass after the
+launcher-config implementation. Its safeguards remain migration input only;
+the transcript is not a current test result. It did not authorize a real
+`sbatch`, cluster access, operator-data edits, pushes, dependency mutation, or
+lockfile mutation. The recorded pass provisioned the locked
+development/workflow environment only with explicit local installation
+authority, and its package-distribution test used an isolated temporary
+environment from the existing offline lock/cache. It required reporting that
+lane `BLOCKED`, rather than weakening or skipping assertions, when the exact
+cache was unavailable.
 
 ## Required report
 
@@ -182,7 +188,7 @@ isolation.
    This full gate includes the isolated wheel-install lane above and therefore
    requires the same explicit local installation authority.
 
-## Current execution status
+## Recorded execution status
 
 Last updated 2026-08-21 for the reporting/optimization integration based at
 `0422957`. The optimization history advances from `82d991c` through `69caf2c`,

@@ -1,25 +1,33 @@
 # EMRYS pipeline plan
 
-This document owns open package families and package acceptance. Accepted work
-and selected scope belong to the [findings matrix](../tasks/backlog_matrix.md), current
-evidence ceilings and blockers to [`HANDOFF.md`](../operations/HANDOFF.md),
-implemented system views to the [architecture index](../architecture/README.md),
-commands to the [`RUNBOOK.md`](../operations/RUNBOOK.md), and rationale to
+> **Legacy transition source — not current roadmap or acceptance authority.**
+> The [findings matrix](../tasks/backlog_matrix.md) owns accepted work and
+> acceptance. This file remains only for the `DOC-03` preservation and
+> retirement trace recorded by the
+> [documentation audit](decisions/repository-and-delivery.md#repository-documentation-audit-2026-08-25).
+
+This legacy document formerly grouped package chronology and acceptance.
+Accepted work and selected scope now belong to the
+[findings matrix](../tasks/backlog_matrix.md), implemented system views to the
+[architecture index](../architecture/README.md), commands to the
+[`RUNBOOK.md`](../operations/RUNBOOK.md), and rationale to
 [`DECISIONS.md`](DECISIONS.md).
 
-## Current state
+## Authority routing after audit
 
-Current evidence and blockers are not restated here. Use the live
-[`HANDOFF.md`](../operations/HANDOFF.md); implemented structure and exact source
-ownership remain with the [architecture index](../architecture/README.md) and
-its routed owners.
+Resolve current checkout state from live Git, validation observations from
+checks and retained artifacts bound to the exact commit, and accepted open work
+from the findings matrix. Implemented structure and exact source ownership
+remain with the [architecture index](../architecture/README.md) and its routed
+owners.
 
 ## Open package families
 
 The accepted local-pilot architecture is defined by
-[`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md), and the canonical
-owner-admission dispositions are tracked in
-[`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md). Campaign B and its
+[`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md); current membership,
+behavior, and proof live in the workflow, stage map, owner contracts, and
+tests. The following package chronology remains legacy migration input.
+Campaign B and its
 adversarial local-pilot hardening and PORT-NC-01 semantic-replay follow-ups have
 no remaining implementation dependency. `RPT-05` is implemented as one fixed
 eight-figure scientific report: two existing Step 09 projections, three views
@@ -91,11 +99,10 @@ subject-matter owners: durable details move to their canonical owner, terminal
 task state is recorded in the findings matrix, and `docs/history` remains
 separate.
 
-### Local-pilot owner admission
+### Historical local-pilot owner-admission checklist
 
-A row in [`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md) may move
-from `harden` to `ready` only when its owner-local contract and focused tests
-prove:
+The following retained checklist is migration input only. Current admission is
+proved by the workflow, stage map, owner-local contracts, and focused tests:
 
 - side-effect-free help and declared dry-run behavior;
 - explicit inputs, outputs, commands, tool requirements, and scope identity;

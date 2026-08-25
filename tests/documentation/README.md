@@ -6,5 +6,6 @@ read-only documentation structure gate in
 
 The suite seeds success without writes, exact-root and Git-inventory failures,
 canonical-owner and retired-surface failures, semantic-owner adjacency defects,
+missing or buried legacy-source warnings, premature legacy-source deletion,
 and malformed standalone Mermaid sources. It does not validate workflow
 computation, scientific artifacts, documentation prose, or general links.

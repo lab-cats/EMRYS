@@ -57,9 +57,9 @@ local-pilot ...`.
 | Step `00c` cannot create or re-admit the reference FAI/dictionary | Stop before downstream work. Preserve the FASTA, `<reference-fasta>.fai`, `<reference-stem>.dict`, and every adjacent Step `00c` lock/staging path. Confirm that the declared external reference directory is the intended writable sidecar authority; do not copy, delete, or regenerate one member independently. |
 
 Control-plane fixtures, real-tool demonstrations, and scheduled runs establish
-different evidence. Consult [`HANDOFF.md`](HANDOFF.md) for the exact current
-commit, commands, artifacts, and ceiling; do not infer a current execution
-claim from this recovery guide.
+different evidence. Use live Git plus checks and retained artifacts bound to
+the exact commit for current execution observations and their ceiling; do not
+infer such a claim from this recovery guide.
 
 ## First-run admission blockers
 
