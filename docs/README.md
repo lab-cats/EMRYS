@@ -10,15 +10,15 @@ functional `README.md` and `CONTRACT.md` beside an implementation.
 - [`design/`](design/) — durable decisions, plans, questions, test policy, and
   cross-cutting application contracts.
 - [`operations/`](operations/) — development workflow, supported commands,
-  troubleshooting, engineering conventions, and a legacy handoff whose currency
-  is unverified pending `DOC-02`.
+  troubleshooting, engineering conventions, and a visibly marked legacy
+  handoff retained only for `DOC-04` evidence and recovery reconciliation.
 - [`reference/`](reference/) — terminology and other non-authoritative lookup
   aids that link back to subject owners.
 - [`demo/`](demo/) — reviewed presenter guides.
 - [`history/`](history/) — frozen dated evidence that does not own current
   state.
-- [`tasks/`](tasks/) — the current planning matrix, temporary architecture
-  campaign, and frozen legacy registry/cards during transition.
+- [`tasks/`](tasks/) — the canonical findings matrix, temporary architecture
+  campaign, provisional architecture ranking, and planning rules.
 - [`sitemap/`](sitemap/) — audience routes and canonical documentation roles.
 
 Start with the [documentation sitemap](sitemap/) when the correct subject owner

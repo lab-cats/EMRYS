@@ -11,10 +11,12 @@ with the relevant child and functional owner.
 | Which public programs, jobs, validators, and tests exist? | [`FUNCTIONAL_OWNER_INVENTORY.md`](FUNCTIONAL_OWNER_INVENTORY.md) |
 | What are the semantic identities and artifact edges? | [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md) |
 | Which source dependencies and shared seams are allowed? | [`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) |
-| How is the implemented source-checkout local pilot designed? | [`ORCHESTRATION_CONTRACT.md`](../design/ORCHESTRATION_CONTRACT.md), its [readiness register](../design/ORCHESTRATION_READINESS.md), and [`local_pilot_orchestration.mmd`](diagrams/local_pilot_orchestration.mmd) |
-| What else remains unimplemented? | [`FUTURE_ARCHITECTURE.md`](FUTURE_ARCHITECTURE.md) and its future diagrams |
+| How is the implemented source-checkout local pilot designed? | [`ORCHESTRATION_CONTRACT.md`](../design/ORCHESTRATION_CONTRACT.md), workflow profile, stage map, owner contracts/tests, and [`local_pilot_orchestration.mmd`](diagrams/local_pilot_orchestration.mmd) |
+| What accepted work remains? | [`backlog_matrix.md`](../tasks/backlog_matrix.md) |
+| Where are unsliced architecture alternatives preserved? | Temporary [`architecture_campaign.md`](../tasks/architecture_campaign.md) |
 | What are the exact local interfaces and defects? | The applicable owner `README.md` and `CONTRACT.md` |
 
-The detailed current system, user pipeline, reliability, and future projections
-remain in [`diagrams/`](diagrams/). Diagrams explain their named view; they do
-not override contracts, prove implementation, or authorize future work.
+The detailed current system, user pipeline, and reliability projections remain
+in [`diagrams/`](diagrams/). Two legacy future projections remain only for the
+bounded `DOC-03` retirement trace. Diagrams do not override contracts, prove
+implementation, or authorize future work.

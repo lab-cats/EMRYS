@@ -5,7 +5,7 @@ Repository-level utilities that do not belong to one scientific owner:
 | Area | Interfaces |
 | --- | --- |
 | R environment | [`check_r_environment.R`](check_r_environment.R), [`restore_r_environment.R`](restore_r_environment.R) |
-| Documentation and tasks | [`validate_documentation.py`](git_orchestration/validate_documentation.py), [`task_status.py`](git_orchestration/task_status.py) |
+| Documentation structure | [`documentation/`](documentation/README.md) |
 | Make implementation | [`make_quality.mk`](make_quality.mk), [`make_reporting.mk`](make_reporting.mk), [`make_operations.mk`](make_operations.mk) |
 | Resource benchmarking | [`benchmark_stage_resources.py`](benchmark_stage_resources.py) |
 

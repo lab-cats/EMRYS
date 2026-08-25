@@ -165,19 +165,13 @@ percent of the fastest successful median. Apply that result only to the tested
 dataset scale, runtime, machine, memory, and storage system; preserve the raw
 trial tree with the resulting request resource plan.
 
-## Task status
+## Task selection
 
-The backlog is coarse and execution cards are created just in time. Inspect the
-derived view:
-
-```bash
-./scripts/git_orchestration/task_status.py \
-  --repo "$(git rev-parse --show-toplevel)"
-```
-
-Selection adds a temporary JIT card under `docs/tasks/cards/`; completion or
-pause removes it. See the [workflow kernel](WORKFLOW.md) and [task
-registry](../tasks/README.md).
+The [findings matrix](../tasks/backlog_matrix.md) is the only durable backlog.
+Select one accepted item or state one explicitly bounded objective, obtain the
+required authority, and follow the [workflow kernel](WORKFLOW.md). The
+[task-planning guide](../tasks/README.md) explains the matrix, temporary
+architecture campaign, and terminal disposition rules.
 
 ## Local validation
 
@@ -245,8 +239,9 @@ git diff --name-status
 ```
 
 The documentation gate checks local document structure, mechanically derived
-ownership, compact backlog dependencies, and JIT-card structure. It does not
-validate general Markdown links, anchors, or diagrams' inbound references.
+ownership, retired-document guards, and standalone Mermaid source shape. It
+does not validate general Markdown links, anchors, or diagrams' inbound
+references.
 
 These checks establish local structural/test evidence only. Guarded R adds
 real local runtime evidence for its named fixtures. Neither result establishes

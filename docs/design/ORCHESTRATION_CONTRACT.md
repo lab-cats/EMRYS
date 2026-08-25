@@ -599,8 +599,9 @@ B0 makes no decision or implementation commitment for:
 - a wheel-only control plane; or
 - Nox.
 
-Owner-admission dispositions and proof targets live in
-[`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md); proof-sized package
-order and acceptance live in [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md).
-Implemented commands belong in the runbook and owner documentation only after
-their exact behavior is proven.
+Current profile membership and semantic edges live in the workflow and
+[`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md); exact admission,
+failure, and recovery behavior stays with each owner contract and test suite.
+Accepted changes and their acceptance live in the
+[findings matrix](../tasks/backlog_matrix.md). Implemented commands belong in
+the runbook and owner documentation only after their exact behavior is proven.

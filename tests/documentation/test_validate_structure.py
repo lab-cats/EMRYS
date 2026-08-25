@@ -1,4 +1,4 @@
-"""Behavior locks for documentation ownership and the compact task registry."""
+"""Behavior locks for documentation ownership and local structure."""
 
 from __future__ import annotations
 
@@ -13,39 +13,40 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-VALIDATOR = REPO_ROOT / "scripts" / "git_orchestration" / "validate_documentation.py"
-TASK_STATUS = REPO_ROOT / "scripts" / "git_orchestration" / "task_status.py"
-JIT_SECTIONS = (
-    "Outcome",
-    "Touches",
-    "Stop",
-    "Context",
-    "Deliverables",
-    "Acceptance evidence",
-    "Documentation updates",
-)
+VALIDATOR = REPO_ROOT / "scripts" / "documentation" / "validate_structure.py"
 CANONICAL_H1S = {
     "AGENTS.md": "# EMRYS safety guard",
     "README.md": "# EMRYS: Epic Molecular Read Yield System",
     "docs/architecture/README.md": "# Architecture index",
     "docs/architecture/ARCHITECTURE.md": "# Current architecture",
     "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": "# Current functional-owner inventory",
-    "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
     "docs/design/DECISIONS.md": "# Durable decisions",
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
     "docs/design/ORCHESTRATION_CONTRACT.md": "# Local-pilot orchestration contract",
-    "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
-    "docs/design/PIPELINE_PLAN.md": "# EMRYS pipeline plan",
-    "docs/design/QUESTIONS.md": "# Open questions",
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
-    "docs/operations/HANDOFF.md": "# Project handoff",
     "docs/operations/RUNBOOK.md": "# Runbook",
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
     "docs/sitemap/README.md": "# Documentation sitemap",
+    "docs/tasks/README.md": "# Task planning",
+    "docs/tasks/backlog_matrix.md": "# EMRYS Findings Matrix and Working Backlog",
     "src/emrys/contracts/SOURCE_TOPOLOGY.md": "# Source ownership and dependency direction",
     "src/emrys/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
 }
+LEGACY_H1S = {
+    "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
+    "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
+    "docs/design/PIPELINE_PLAN.md": "# EMRYS pipeline plan",
+    "docs/design/QUESTIONS.md": "# Open questions",
+    "docs/operations/HANDOFF.md": "# Project handoff",
+    "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md": (
+        "# Local-pilot launcher regression test plan"
+    ),
+}
+LEGACY_DIAGRAMS = (
+    "docs/architecture/diagrams/future_modular_pipeline.mmd",
+    "docs/architecture/diagrams/future_reporting_layer.mmd",
+)
 SEMANTIC_OWNERS = (
     ("stage", "construct_STAR_index"),
     ("stage", "construct_FASTA_sidecars"),
@@ -101,6 +102,21 @@ CROSS_CUTTING_DOCS = (
     "src/emrys/ingestion/sample_manifest_admission/README.md",
     "src/emrys/reporting/README.md",
 )
+RETIRED_DOCUMENTS = (
+    "docs/design/REFACTOR_AUDIT.md",
+    "docs/operations/CONCURRENT_WORK.md",
+    "docs/operations/TASK_DELIVERY.md",
+    "docs/tasks/BACKLOG.md",
+    "docs/tasks/cards/README.md",
+    "src/emrys/contracts/MIGRATION_MECHANICS.md",
+)
+RETIRED_TASK_DIRECTORIES = (
+    "TODO",
+    "IN_PROGRESS",
+    "INTEGRATION_REVIEW",
+    "UNREFINED",
+    "cards",
+)
 
 
 def run(
@@ -122,32 +138,6 @@ def run(
     )
 
 
-def backlog_text(
-    entries: tuple[tuple[str, str, str], ...] = (("TEST-01", "actionable", "None"),),
-) -> str:
-    lines = ["# Backlog", "", "Fixture registry.", ""]
-    for card_id, kind, blockers in entries:
-        lines.extend(
-            (
-                f"## {card_id} — Fixture item",
-                "",
-                f"- **Kind:** {kind}",
-                f"- **Blocked by:** {blockers}",
-                "- **Intent:** Fixture intent.",
-                "- **Boundaries:** Fixture boundary.",
-                "",
-            )
-        )
-    return "\n".join(lines)
-
-
-def jit_text(card_id: str = "TEST-01") -> str:
-    lines = [f"# {card_id} — Fixture detail", ""]
-    for heading in JIT_SECTIONS:
-        lines.extend((f"## {heading}", "", "Fixture detail.", ""))
-    return "\n".join(lines)
-
-
 def write_fixture(root: Path) -> Path:
     repository = root / "repository"
     repository.mkdir()
@@ -155,11 +145,12 @@ def write_fixture(root: Path) -> Path:
     assert initialized.returncode == 0, initialized.stderr
     files = {
         "docs/fixture.mmd": "flowchart LR\n    A --> B\n",
-        "docs/tasks/README.md": "# Task registry\n",
-        "docs/tasks/BACKLOG.md": backlog_text(),
-        "docs/tasks/cards/README.md": "# Just-in-time task cards\n",
     }
     files.update({path: f"{h1}\n" for path, h1 in CANONICAL_H1S.items()})
+    files.update(
+        {path: f"{h1}\n\n> **Legacy fixture.**\n" for path, h1 in LEGACY_H1S.items()}
+    )
+    files.update({path: "flowchart LR\n    A --> B\n" for path in LEGACY_DIAGRAMS})
     identity_rows = [
         f"| {kind} | Fixture | `{slug}` | `emrys.{kind}.{slug}.v1` | `00` |"
         for kind, slug in SEMANTIC_OWNERS
@@ -199,13 +190,6 @@ def validate(
     )
 
 
-def task_status(repository: Path, *, cwd: Path) -> subprocess.CompletedProcess[str]:
-    return run(
-        [sys.executable, str(TASK_STATUS), "--repo", str(repository)],
-        cwd=cwd,
-    )
-
-
 def test_accepts_minimal_repository_and_reports_counts_without_writes(
     tmp_path: Path,
 ) -> None:
@@ -217,7 +201,7 @@ def test_accepts_minimal_repository_and_reports_counts_without_writes(
     result = validate(repository, cwd=tmp_path)
 
     assert result.returncode == 0, result.stderr
-    assert "1 actionable items, 0 proposals, 1 Mermaid sources" in result.stdout
+    assert "3 Mermaid sources" in result.stdout
     assert (
         tuple(sorted(path.relative_to(repository) for path in repository.rglob("*")))
         == before
@@ -238,53 +222,119 @@ def test_rejects_missing_or_mislabeled_canonical_documents(tmp_path: Path) -> No
     assert "canonical document H1 mismatch: docs/operations/RUNBOOK.md" in result.stderr
 
 
-def test_rejects_stage_map_and_owner_failures(tmp_path: Path) -> None:
+@pytest.mark.parametrize("relative", tuple(LEGACY_H1S))
+def test_rejects_unmarked_or_mislabeled_legacy_documents(
+    tmp_path: Path,
+    relative: str,
+) -> None:
     repository = write_fixture(tmp_path)
-    (repository / "src/emrys/contracts/STAGE_MAP.md").write_text(
-        "# Semantic workflow identity and DAG\n\n"
-        "| stage | Fixture | `STAGE-01` | `emrys.stage.STAGE-01.v1` | `00` |\n",
+    (repository / relative).write_text(
+        "# Wrong legacy H1\n\nOrdinary prose before the warning.\n\n"
+        "> **Legacy fixture.**\n",
         encoding="utf-8",
     )
-    (repository / "src/emrys/stages/star_index/CONTRACT.md").unlink()
-    (repository / "src/emrys/reporting/README.md").unlink()
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert f"legacy document lacks visible warning: {relative}" in result.stderr
+    assert f"legacy document H1 mismatch: {relative}" in result.stderr
+
+
+@pytest.mark.parametrize("relative", (*LEGACY_H1S, *LEGACY_DIAGRAMS))
+def test_rejects_early_legacy_source_deletion(
+    tmp_path: Path,
+    relative: str,
+) -> None:
+    repository = write_fixture(tmp_path)
+    (repository / relative).unlink()
+
+    result = validate(repository, cwd=tmp_path)
+
+    kind = "diagram" if relative in LEGACY_DIAGRAMS else "document"
+    assert f"missing legacy transition {kind}: {relative}" in result.stderr
+
+
+@pytest.mark.parametrize("roster_defect", ("short", "duplicate"))
+def test_rejects_invalid_stage_map_roster(
+    tmp_path: Path,
+    roster_defect: str,
+) -> None:
+    repository = write_fixture(tmp_path)
+    stage_map = repository / "src/emrys/contracts/STAGE_MAP.md"
+    lines = stage_map.read_text(encoding="utf-8").splitlines()
+    if roster_defect == "short":
+        lines = lines[:3]
+    else:
+        lines[-1] = lines[-2]
+    stage_map.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     result = validate(repository, cwd=tmp_path)
 
     assert result.returncode == 1
     assert "STAGE_MAP identity roster must contain 14 unique owners" in result.stderr
-    assert "missing cross-cutting owner documentation" in result.stderr
 
 
-def test_rejects_missing_semantic_owner_after_valid_roster(tmp_path: Path) -> None:
+@pytest.mark.parametrize("relative", CROSS_CUTTING_DOCS)
+def test_rejects_missing_cross_cutting_owner_document(
+    tmp_path: Path,
+    relative: str,
+) -> None:
     repository = write_fixture(tmp_path)
-    (repository / "src/emrys/stages/star_index/CONTRACT.md").unlink()
-    shutil.rmtree(repository / "tests/stages/gtf_to_bed12")
+    (repository / relative).unlink()
 
     result = validate(repository, cwd=tmp_path)
 
-    assert "missing semantic-owner CONTRACT.md" in result.stderr
-    assert "missing mirrored test owner: tests/stages/gtf_to_bed12" in result.stderr
+    assert f"missing cross-cutting owner documentation: {relative}" in result.stderr
 
 
-def test_rejects_returned_retired_docs_and_task_directories(tmp_path: Path) -> None:
+@pytest.mark.parametrize("missing_kind", ("README.md", "CONTRACT.md", "tests"))
+def test_rejects_missing_semantic_owner_after_valid_roster(
+    tmp_path: Path,
+    missing_kind: str,
+) -> None:
     repository = write_fixture(tmp_path)
-    retired_paths = (
-        "docs/design/REFACTOR_AUDIT.md",
-        "docs/operations/TASK_DELIVERY.md",
-    )
-    for relative in retired_paths:
-        retired = repository / relative
-        retired.parent.mkdir(parents=True, exist_ok=True)
-        retired.write_text("# Retired\n", encoding="utf-8")
-    legacy = repository / "docs/tasks/TODO/OLD-01.md"
-    legacy.parent.mkdir()
+    if missing_kind == "tests":
+        relative = "tests/stages/gtf_to_bed12"
+        shutil.rmtree(repository / relative)
+        expected = f"missing mirrored test owner: {relative}"
+    else:
+        relative = f"src/emrys/stages/star_index/{missing_kind}"
+        (repository / relative).unlink()
+        expected = f"missing semantic-owner {missing_kind}: {relative}"
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert expected in result.stderr
+
+
+@pytest.mark.parametrize("relative", RETIRED_DOCUMENTS)
+def test_rejects_each_returned_retired_document(
+    tmp_path: Path,
+    relative: str,
+) -> None:
+    repository = write_fixture(tmp_path)
+    retired = repository / relative
+    retired.parent.mkdir(parents=True, exist_ok=True)
+    retired.write_text("# Retired\n", encoding="utf-8")
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert f"retired documentation owner returned: {relative}" in result.stderr
+
+
+@pytest.mark.parametrize("dirname", RETIRED_TASK_DIRECTORIES)
+def test_rejects_each_retired_task_directory(
+    tmp_path: Path,
+    dirname: str,
+) -> None:
+    repository = write_fixture(tmp_path)
+    legacy = repository / f"docs/tasks/{dirname}/OLD-01.md"
+    legacy.parent.mkdir(parents=True, exist_ok=True)
     legacy.write_text("# Old\n", encoding="utf-8")
 
     result = validate(repository, cwd=tmp_path)
 
-    for relative in retired_paths:
-        assert f"retired documentation owner returned: {relative}" in result.stderr
-    assert "retired task directory contains Markdown: docs/tasks/TODO" in result.stderr
+    assert f"retired task directory contains Markdown: docs/tasks/{dirname}" in result.stderr
 
 
 @pytest.mark.parametrize("kind", ("missing", "non_git", "nested"))
@@ -355,152 +405,3 @@ def test_ignores_general_markdown_links_but_rejects_bad_mermaid(tmp_path: Path) 
     result = validate(repository, cwd=tmp_path)
     assert "invalid Mermaid declaration: docs/fixture.mmd" in result.stderr
     assert "Markdown fence in Mermaid source: docs/fixture.mmd" in result.stderr
-
-
-def test_rejects_missing_registry_docs_and_bad_backlog_fields(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/tasks/cards/README.md").unlink()
-    backlog = repository / "docs/tasks/BACKLOG.md"
-    backlog.write_text(
-        backlog.read_text(encoding="utf-8").replace("- **Intent:**", "- **Wrong:**"),
-        encoding="utf-8",
-    )
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert "missing task-registry document: docs/tasks/cards/README.md" in result.stderr
-    assert "backlog field order/count: TEST-01" in result.stderr
-
-
-def test_rejects_unknown_proposal_self_and_cyclic_blockers(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/tasks/BACKLOG.md").write_text(
-        backlog_text(
-            (
-                ("TEST-01", "actionable", "`TEST-02`"),
-                ("TEST-02", "actionable", "`TEST-01`"),
-                ("TEST-03", "actionable", "`MISSING-01`"),
-                ("TEST-04", "actionable", "`IDEA-01`"),
-                ("TEST-05", "actionable", "`TEST-05`"),
-                ("IDEA-01", "proposal", "`TEST-01`"),
-            )
-        ),
-        encoding="utf-8",
-    )
-
-    result = validate(repository, cwd=tmp_path)
-
-    for expected in (
-        "proposal has blockers: IDEA-01",
-        "unknown backlog blocker: TEST-03 -> MISSING-01",
-        "proposal used as blocker: TEST-04 -> IDEA-01",
-        "self dependency: TEST-05",
-        "backlog dependency cycle: TEST-01, TEST-02, TEST-05",
-    ):
-        assert expected in result.stderr
-
-
-def test_rejects_duplicate_ids_kind_and_blocker_syntax(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    text = backlog_text((("TEST-01", "invalid", "BAD"),))
-    text += "\n" + backlog_text((("TEST-01", "actionable", "None"),)).split("\n", 4)[4]
-    (repository / "docs/tasks/BACKLOG.md").write_text(text, encoding="utf-8")
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert "invalid backlog kind: TEST-01" in result.stderr
-    assert "invalid backlog blocker list: TEST-01" in result.stderr
-    assert "duplicate backlog ID: TEST-01" in result.stderr
-
-
-def test_accepts_jit_card_and_status_is_read_only(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    card = repository / "docs/tasks/cards/TEST-01-fixture.md"
-    card.write_text(jit_text(), encoding="utf-8")
-    before = tuple(
-        sorted(path.relative_to(repository) for path in repository.rglob("*"))
-    )
-
-    validation = validate(repository, cwd=tmp_path)
-    status = task_status(repository, cwd=tmp_path)
-
-    assert validation.returncode == 0, validation.stderr
-    assert status.returncode == 0, status.stderr
-    assert (
-        "| TEST-01 | actionable | active | — | — | — | docs/tasks/cards/TEST-01-fixture.md |"
-        in status.stdout
-    )
-    assert (
-        tuple(sorted(path.relative_to(repository) for path in repository.rglob("*")))
-        == before
-    )
-
-
-def test_rejects_unknown_proposal_and_malformed_jit_cards(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/tasks/BACKLOG.md").write_text(
-        backlog_text(
-            (("TEST-01", "actionable", "None"), ("IDEA-01", "proposal", "None"))
-        ),
-        encoding="utf-8",
-    )
-    cards = repository / "docs/tasks/cards"
-    (cards / "MISSING-01-fixture.md").write_text(
-        jit_text("MISSING-01"), encoding="utf-8"
-    )
-    (cards / "IDEA-01-fixture.md").write_text(jit_text("IDEA-01"), encoding="utf-8")
-    malformed = jit_text().replace("## Stop\n\nFixture detail.\n\n", "")
-    (cards / "WRONG-01-fixture.md").write_text(malformed, encoding="utf-8")
-
-    result = validate(repository, cwd=tmp_path)
-
-    assert "JIT card has unknown backlog ID: MISSING-01" in result.stderr
-    assert "proposal has JIT card: IDEA-01" in result.stderr
-    assert (
-        "JIT card ID/filename mismatch: docs/tasks/cards/WRONG-01-fixture.md"
-        in result.stderr
-    )
-    assert (
-        "JIT card heading order/count: docs/tasks/cards/WRONG-01-fixture.md"
-        in result.stderr
-    )
-
-
-def test_task_status_derives_readiness_reverse_edges_and_proposals(
-    tmp_path: Path,
-) -> None:
-    repository = write_fixture(tmp_path)
-    (repository / "docs/tasks/BACKLOG.md").write_text(
-        backlog_text(
-            (
-                ("TEST-01", "actionable", "None"),
-                ("TEST-02", "actionable", "`TEST-01`"),
-                ("IDEA-01", "proposal", "None"),
-            )
-        ),
-        encoding="utf-8",
-    )
-
-    result = task_status(repository, cwd=tmp_path)
-
-    assert result.returncode == 0, result.stderr
-    assert "| TEST-01 | actionable | planned | yes | — | TEST-02 | — |" in result.stdout
-    assert "| TEST-02 | actionable | planned | no | TEST-01 | — | — |" in result.stdout
-    assert "| IDEA-01 | proposal | proposal | — | — | — | — |" in result.stdout
-
-
-def test_task_status_fails_closed_on_bad_registry(tmp_path: Path) -> None:
-    repository = write_fixture(tmp_path)
-    backlog = repository / "docs/tasks/BACKLOG.md"
-    backlog.write_text(
-        backlog.read_text(encoding="utf-8").replace(
-            "- **Kind:** actionable", "- **Kind:** bad"
-        ),
-        encoding="utf-8",
-    )
-
-    result = task_status(repository, cwd=tmp_path)
-
-    assert result.returncode == 1
-    assert result.stdout == ""
-    assert result.stderr.startswith("ERROR: Task registry failures:\n")

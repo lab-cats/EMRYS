@@ -1,32 +1,12 @@
 #!/usr/bin/env python3
-"""Validate EMRYS documentation ownership and the compact task registry."""
+"""Validate EMRYS documentation ownership and local structure."""
 
 from __future__ import annotations
 
 import argparse
 import re
 import subprocess
-from dataclasses import dataclass, replace
 from pathlib import Path
-
-JIT_SECTIONS = (
-    "Outcome",
-    "Touches",
-    "Stop",
-    "Context",
-    "Deliverables",
-    "Acceptance evidence",
-    "Documentation updates",
-)
-BACKLOG_FIELDS = ("Kind", "Blocked by", "Intent", "Boundaries")
-TASK_H1_PATTERN = re.compile(r"^([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+) — (.+)$")
-BACKLOG_ENTRY_PATTERN = re.compile(
-    r"^## ([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+) — (.+)$", re.MULTILINE
-)
-FIELD_PATTERN = re.compile(
-    r"^- \*\*(Kind|Blocked by|Intent|Boundaries):\*\* (.+)$", re.MULTILINE
-)
-BLOCKER_LIST_PATTERN = re.compile(r"`([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)`(?:, |$)")
 
 CANONICAL_DOCUMENTS = {
     "AGENTS.md": "# EMRYS safety guard",
@@ -36,32 +16,52 @@ CANONICAL_DOCUMENTS = {
     "docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md": (
         "# Current functional-owner inventory"
     ),
-    "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
     "docs/design/DECISIONS.md": "# Durable decisions",
     "docs/design/LOGGING_CONTRACT.md": "# Application logging contract",
     "docs/design/ORCHESTRATION_CONTRACT.md": "# Local-pilot orchestration contract",
-    "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
-    "docs/design/PIPELINE_PLAN.md": "# EMRYS pipeline plan",
-    "docs/design/QUESTIONS.md": "# Open questions",
     "docs/design/TEST_BASELINE.md": "# Test baseline and contract-risk index",
-    "docs/operations/HANDOFF.md": "# Project handoff",
     "docs/operations/RUNBOOK.md": "# Runbook",
     "docs/operations/TROUBLESHOOTING.md": "# Troubleshooting",
     "docs/operations/WORKFLOW.md": "# Workflow kernel",
     "docs/sitemap/README.md": "# Documentation sitemap",
+    "docs/tasks/README.md": "# Task planning",
+    "docs/tasks/backlog_matrix.md": "# EMRYS Findings Matrix and Working Backlog",
     "src/emrys/contracts/SOURCE_TOPOLOGY.md": (
         "# Source ownership and dependency direction"
     ),
     "src/emrys/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
 }
 
+LEGACY_TRANSITION_DOCUMENTS = {
+    "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
+    "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
+    "docs/design/PIPELINE_PLAN.md": "# EMRYS pipeline plan",
+    "docs/design/QUESTIONS.md": "# Open questions",
+    "docs/operations/HANDOFF.md": "# Project handoff",
+    "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md": (
+        "# Local-pilot launcher regression test plan"
+    ),
+}
+LEGACY_TRANSITION_DIAGRAMS = (
+    "docs/architecture/diagrams/future_modular_pipeline.mmd",
+    "docs/architecture/diagrams/future_reporting_layer.mmd",
+)
+
 RETIRED_DOCUMENTS = (
     "docs/design/REFACTOR_AUDIT.md",
     "docs/operations/CONCURRENT_WORK.md",
     "docs/operations/TASK_DELIVERY.md",
+    "docs/tasks/BACKLOG.md",
+    "docs/tasks/cards/README.md",
     "src/emrys/contracts/MIGRATION_MECHANICS.md",
 )
-RETIRED_TASK_DIRECTORIES = ("TODO", "IN_PROGRESS", "INTEGRATION_REVIEW", "UNREFINED")
+RETIRED_TASK_DIRECTORIES = (
+    "TODO",
+    "IN_PROGRESS",
+    "INTEGRATION_REVIEW",
+    "UNREFINED",
+    "cards",
+)
 
 CROSS_CUTTING_OWNER_DOCS = (
     "src/emrys/contracts/artifacts/README.md",
@@ -106,16 +106,6 @@ SOURCE_OWNER_DIRECTORY_NAMES = {
 
 class DocumentationError(RuntimeError):
     """Raised when the documentation gate cannot run or finds failures."""
-
-
-@dataclass(frozen=True)
-class TaskCard:
-    card_id: str
-    title: str
-    path: Path
-    state: str
-    kind: str
-    blockers: frozenset[str]
 
 
 def git_paths(root: Path, pattern: str) -> list[Path]:
@@ -217,149 +207,38 @@ def validate_canonical_ownership(root: Path, problems: list[str]) -> None:
             problems.append(f"missing mirrored test owner: {tests.relative_to(root)}")
 
 
-def parse_blockers(value: str, card_id: str, problems: list[str]) -> frozenset[str]:
-    if value == "None":
-        return frozenset()
-    blockers = BLOCKER_LIST_PATTERN.findall(value)
-    if not blockers or ", ".join(f"`{item}`" for item in blockers) != value:
-        problems.append(f"invalid backlog blocker list: {card_id}")
-        return frozenset()
-    if len(blockers) != len(set(blockers)):
-        problems.append(f"duplicate backlog blocker: {card_id}")
-    return frozenset(blockers)
-
-
-def cycle_nodes(cards: dict[str, TaskCard]) -> set[str]:
-    """Return actionable IDs participating in a dependency cycle."""
-    visiting: list[str] = []
-    visited: set[str] = set()
-    cycles: set[str] = set()
-
-    def visit(card_id: str) -> None:
-        if card_id in visiting:
-            cycles.update(visiting[visiting.index(card_id) :])
-            return
-        if card_id in visited:
-            return
-        visiting.append(card_id)
-        for blocker in cards[card_id].blockers:
-            if blocker in cards:
-                visit(blocker)
-        visiting.pop()
-        visited.add(card_id)
-
-    for card_id in cards:
-        visit(card_id)
-    return cycles
-
-
-def validate_jit_card(
-    root: Path,
-    path: Path,
-    items: dict[str, TaskCard],
-    active: dict[str, Path],
-    problems: list[str],
-) -> None:
-    relative = path.relative_to(root)
-    text = path.read_text(encoding="utf-8")
-    h1s = re.findall(r"^# (.+)$", text, flags=re.MULTILINE)
-    match = TASK_H1_PATTERN.fullmatch(h1s[0]) if len(h1s) == 1 else None
-    if not match:
-        problems.append(f"invalid JIT card H1: {relative}")
-        return
-    card_id = match.group(1)
-    if not path.name.startswith(f"{card_id}-"):
-        problems.append(f"JIT card ID/filename mismatch: {relative}")
-    if card_id not in items:
-        problems.append(f"JIT card has unknown backlog ID: {card_id}")
-        return
-    if items[card_id].kind != "actionable":
-        problems.append(f"proposal has JIT card: {card_id}")
-        return
-    if card_id in active:
-        problems.append(f"duplicate JIT card: {card_id}")
-    active[card_id] = path
-    headings = re.findall(r"^## (.+)$", text, flags=re.MULTILINE)
-    if headings != list(JIT_SECTIONS):
-        problems.append(f"JIT card heading order/count: {relative}")
-    for heading in JIT_SECTIONS:
-        marker = f"## {heading}\n"
-        if marker in text and not text.split(marker, 1)[1].split("\n## ", 1)[0].strip():
-            problems.append(f"empty JIT card section {heading}: {relative}")
-
-
-def validate_cards(root: Path, problems: list[str]) -> dict[str, TaskCard]:
-    """Validate the compact backlog and any selected JIT detail."""
-    task_root = root / "docs" / "tasks"
-    backlog = task_root / "BACKLOG.md"
-    required = (task_root / "README.md", backlog, task_root / "cards" / "README.md")
-    for path in required:
+def validate_legacy_transitions(root: Path, problems: list[str]) -> None:
+    """Keep legacy migration inputs present and visibly marked until retirement."""
+    for relative, expected_h1 in LEGACY_TRANSITION_DOCUMENTS.items():
+        path = root / relative
         if not path.is_file():
-            problems.append(f"missing task-registry document: {path.relative_to(root)}")
+            problems.append(f"missing legacy transition document: {relative}")
+            continue
+        if first_heading(path) != expected_h1:
+            problems.append(f"legacy document H1 mismatch: {relative}")
+        lines = path.read_text(encoding="utf-8").splitlines()
+        heading_index = next(
+            (index for index, line in enumerate(lines) if line.startswith("# ")),
+            -1,
+        )
+        opening = next(
+            (line for line in lines[heading_index + 1 :] if line.strip()),
+            "",
+        )
+        if not opening.startswith("> **Legacy "):
+            problems.append(f"legacy document lacks visible warning: {relative}")
+    for relative in LEGACY_TRANSITION_DIAGRAMS:
+        if not (root / relative).is_file():
+            problems.append(f"missing legacy transition diagram: {relative}")
+
+
+def validate_retired_task_directories(root: Path, problems: list[str]) -> None:
+    """Reject Markdown that revives a retired task-detail directory."""
     for dirname in RETIRED_TASK_DIRECTORIES:
         if git_paths(root, f"docs/tasks/{dirname}/*.md"):
             problems.append(
                 f"retired task directory contains Markdown: docs/tasks/{dirname}"
             )
-    if not backlog.is_file():
-        return {}
-    if first_heading(backlog) != "# Backlog":
-        problems.append("backlog H1 mismatch: docs/tasks/BACKLOG.md")
-
-    text = backlog.read_text(encoding="utf-8")
-    matches = list(BACKLOG_ENTRY_PATTERN.finditer(text))
-    items: dict[str, TaskCard] = {}
-    for index, match in enumerate(matches):
-        card_id, title = match.groups()
-        body_end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
-        body = text[match.end() : body_end]
-        fields = FIELD_PATTERN.findall(body)
-        if [name for name, _ in fields] != list(BACKLOG_FIELDS):
-            problems.append(f"backlog field order/count: {card_id}")
-            continue
-        values = dict(fields)
-        kind = values["Kind"]
-        if kind not in {"actionable", "proposal"}:
-            problems.append(f"invalid backlog kind: {card_id}")
-        blockers = parse_blockers(values["Blocked by"], card_id, problems)
-        if kind == "proposal" and blockers:
-            problems.append(f"proposal has blockers: {card_id}")
-        if card_id in items:
-            problems.append(f"duplicate backlog ID: {card_id}")
-            continue
-        items[card_id] = TaskCard(
-            card_id=card_id,
-            title=title,
-            path=backlog,
-            state="proposal" if kind == "proposal" else "planned",
-            kind=kind,
-            blockers=blockers,
-        )
-
-    for card_id, item in items.items():
-        if card_id in item.blockers:
-            problems.append(f"self dependency: {card_id}")
-        for blocker in item.blockers:
-            target = items.get(blocker)
-            if target is None:
-                problems.append(f"unknown backlog blocker: {card_id} -> {blocker}")
-            elif target.kind != "actionable":
-                problems.append(f"proposal used as blocker: {card_id} -> {blocker}")
-    cycles = cycle_nodes(
-        {key: value for key, value in items.items() if value.kind == "actionable"}
-    )
-    if cycles:
-        problems.append(f"backlog dependency cycle: {', '.join(sorted(cycles))}")
-
-    active: dict[str, Path] = {}
-    cards_readme = task_root / "cards" / "README.md"
-    for path in sorted(git_paths(root, "docs/tasks/cards/*.md")):
-        if path == cards_readme:
-            continue
-        validate_jit_card(root, path, items, active, problems)
-    for card_id, path in active.items():
-        items[card_id] = replace(items[card_id], state="active", path=path)
-    return items
 
 
 def validate_diagrams(diagrams: list[Path], root: Path, problems: list[str]) -> int:
@@ -381,18 +260,17 @@ def validate_diagrams(diagrams: list[Path], root: Path, problems: list[str]) -> 
     return len(diagrams)
 
 
-def validate(root: Path) -> tuple[int, int, int, int]:
+def validate(root: Path) -> tuple[int, int]:
     documents = git_paths(root, "*.md")
     diagrams = git_paths(root, "*.mmd")
     problems: list[str] = []
     validate_canonical_ownership(root, problems)
-    cards = validate_cards(root, problems)
+    validate_legacy_transitions(root, problems)
+    validate_retired_task_directories(root, problems)
     diagram_count = validate_diagrams(diagrams, root, problems)
     if problems:
         raise DocumentationError("Documentation gate failures:\n" + "\n".join(problems))
-    actionable_count = sum(card.kind == "actionable" for card in cards.values())
-    proposal_count = sum(card.kind == "proposal" for card in cards.values())
-    return len(documents), actionable_count, proposal_count, diagram_count
+    return len(documents), diagram_count
 
 
 def parse_args() -> argparse.Namespace:
@@ -407,12 +285,11 @@ def main() -> None:
     args = parse_args()
     try:
         root = repository_root(args.repo)
-        document_count, actionable_count, proposal_count, diagram_count = validate(root)
+        document_count, diagram_count = validate(root)
     except DocumentationError as exc:
         raise SystemExit(f"ERROR: {exc}") from exc
     print(
         f"PASS documentation structure ({document_count} Markdown documents, "
-        f"{actionable_count} actionable items, {proposal_count} proposals, "
         f"{diagram_count} Mermaid sources)"
     )
 

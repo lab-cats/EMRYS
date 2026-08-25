@@ -1,9 +1,10 @@
 # Design documentation
 
-This directory owns durable cross-cutting decisions, planned acceptance,
-unresolved choices, test policy, and application-level contracts. Current Git
-state and evidence belong in the operations handoff; commands belong in the
-runbook or the applicable functional owner.
+This directory owns durable cross-cutting decisions, test policy, and
+application-level contracts. Accepted work and acceptance belong in the
+[findings matrix](../tasks/backlog_matrix.md); checkout state comes from live
+Git and validation observations from exact checks and retained artifacts.
+Commands belong in the runbook or the applicable functional owner.
 
 - [`DECISIONS.md`](DECISIONS.md) routes durable rationale to focused records
   under [`decisions/`](decisions/).
@@ -12,10 +13,9 @@ runbook or the applicable functional owner.
 - [`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md) defines the accepted
   local-first Snakemake lifecycle, authority, identity, completion, resume, and
   evidence boundaries before implementation.
-- [`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md) is the canonical
-  owner-by-owner admission disposition and proof-target view for that pilot.
-- [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md) owns roadmap and acceptance boundaries.
-- [`QUESTIONS.md`](QUESTIONS.md) owns unresolved product, operational, and
-  scientific choices.
+- [`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md),
+  [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md), and [`QUESTIONS.md`](QUESTIONS.md)
+  are visibly marked legacy sources retained only for the bounded `DOC-03` and
+  `DOC-05` migrations.
 - [`TEST_BASELINE.md`](TEST_BASELINE.md) owns test policy, evidence vocabulary,
   contract risks, and current recheck routes.

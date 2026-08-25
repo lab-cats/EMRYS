@@ -205,7 +205,8 @@ state are deliberately outside this architecture map.
 | Which commands and operational procedures are supported? | [`RUNBOOK.md`](../operations/RUNBOOK.md) |
 | Where are recovery procedures and symptom diagnosis? | [`TROUBLESHOOTING.md`](../operations/TROUBLESHOOTING.md) |
 | Where do reporting, scientific, execution, and evidence rules live? | [`DECISIONS.md`](../design/DECISIONS.md), owner-local contracts, and [`TEST_BASELINE.md`](../design/TEST_BASELINE.md) |
-| What is currently proved, blocked, or awaiting external execution? | [`HANDOFF.md`](../operations/HANDOFF.md) and [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) |
+| What is implemented or currently checked? | Live Git plus checks and retained artifacts for the exact commit |
+| What accepted work remains? | [`backlog_matrix.md`](../tasks/backlog_matrix.md) |
 
 The standalone [reliability flow](diagrams/reliability.mmd) is a concise
 non-authoritative view of validation and publication boundaries.

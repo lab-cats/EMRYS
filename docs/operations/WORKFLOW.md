@@ -1,8 +1,9 @@
 # Workflow kernel
 
 This is the complete repository-development workflow. The root
-[`AGENTS.md`](../../AGENTS.md) supplies the safety and authority guard,
-a selected JIT card supplies scope and acceptance but never mutation authority.
+[`AGENTS.md`](../../AGENTS.md) supplies the safety and authority guard. A
+selected matrix item or explicitly bounded objective supplies scope and
+acceptance but never mutation authority.
 
 ## Context
 
@@ -14,17 +15,18 @@ Load only:
 1. The exact current root [`AGENTS.md`](../../AGENTS.md).
 2. Live Git identity and state: repository root, branch, `HEAD`, worktree
    changes, upstream relation, and any competing relevant worktree.
-3. The selected backlog item and its JIT card in full, or one explicitly
-   bounded objective when no card is needed. Backlog proposals are not
-   selectable.
+3. The selected item in the canonical
+   [findings matrix](../tasks/backlog_matrix.md) in full, plus any explicitly
+   approved package boundary needed to make the work decision-complete.
+   Campaign proposals are not selectable until accepted into the matrix.
 4. Directly affected functional owners: implementation, adjacent `README.md`
    or `CONTRACT.md`, public callers and consumers, tests, and fixtures that
    define or exercise the behavior.
-5. Only applicable canonical sections linked by the card or affected owners.
-   Use [HANDOFF](HANDOFF.md) for current evidence and blockers,
-   [PIPELINE_PLAN](../design/PIPELINE_PLAN.md) for roadmap and acceptance, and
-   the [architecture index](../architecture/README.md) for cross-owner identity
-   and dependency direction.
+5. Only applicable canonical sections linked by the matrix item or affected
+   owners. Use live Git for checkout state, checks and retained artifacts for
+   exact validation observations, the matrix for accepted outcomes and
+   acceptance, and the [architecture index](../architecture/README.md) for
+   cross-owner identity and dependency direction.
 
 Do not preload the full documentation corpus, history, unrelated backlog
 items, every owner, all tests, or entire canonical documents merely for
@@ -99,11 +101,10 @@ output, important non-goals, and where the exact contract lives without needing
 project history or substantial outside context. The README orients maintainers;
 the adjacent contract owns exact inputs, outputs, checks, and failure semantics.
 
-The compact backlog retains stable identities, real open blockers, intent, and
-boundaries. Create a detailed card only for selected work and delete it when
-the execution package completes or pauses. Completing or retiring an item must
-also remove or replace every live dependent edge; missing blockers are errors,
-not implicit completion. Before deleting detail, move every durable contract,
+The findings matrix retains stable identities, status, required outcomes,
+acceptance, and terminal dispositions. It intentionally has no blocker graph.
+Completing or retiring an item must update the matrix and every live reference
+in the same package. Before deleting detail, move every durable contract,
 safety rule, defect, decision, and evidence ceiling to its canonical subject
 owner; then discard chronology, repeated totals, and superseded planning.
 

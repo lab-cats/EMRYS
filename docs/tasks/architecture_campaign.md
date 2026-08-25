@@ -1086,7 +1086,7 @@ matrix.
 | `AC-SLICE-15` | Audit the Steps 07–09 statistical contract | New scientific-review slice; not architecture evidence |
 | `AC-SLICE-16` | Build independent numerical oracles for Steps 08 and 09 | New scientific-validation slice |
 | `AC-SLICE-17` | Retire duplicated lifecycle, validator, infrastructure, adapter, or compatibility paths after each replacement is proven | Multiple bounded deletion slices; never one unbounded cleanup task |
-| `AC-SLICE-18` | Rewrite navigation and documentation around scientist/operator/developer journeys | Expansion or slicing of `DOC-01`, after `DOC-02` decisions |
+| `AC-SLICE-18` | Rewrite navigation and documentation around scientist/operator/developer journeys | Expansion or slicing of `DOC-01`; use the accepted `DOC-02` audit and coordinate with `DOC-03`–`DOC-05` retirements |
 | `AC-SLICE-19` | Define Doctor repair ownership, supported mutations, preview/reporting, and safety contracts | Expansion of `DOCTOR-01` reflecting the explicit override |
 
 Slicing must preserve traceability to the campaign section and source IDs. A
@@ -1129,11 +1129,15 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |
 | `RESULTS-01` | One discoverable results surface and coordination with the proposed Run Bundle and Artifact Store concepts without preselecting their ownership or layouts |
 | `DOC-01` | Role- and journey-based scientist/operator/developer documentation that does not assume campaign history |
-| `DOC-02` | Audit stale architecture/design/operations documents and decide what to retire, refresh, consolidate, or relocate before deletion |
+| `DOC-02` | Completed repository-wide documentation disposition and authority cutover; bounded migration and retirement now remain under `DOC-03`–`DOC-05`, `CLEAN-01`, and `CLEAN-02` |
+| `DOC-03` | Retire stale future-architecture, pipeline-plan, question-index, and future-diagram surfaces after context reconciliation without settling the final architecture-document set |
+| `DOC-04` | Reconcile every handoff section, preserve unique dated evidence and durable recovery facts without promotion, discard blocker/takeover prose, and retire the rolling handoff |
+| `DOC-05` | Consolidate useful orchestration-admission and launcher safeguards into live owners, discard stale transcripts, and retire both transition sources |
 | `BACKLOG-01` | Matrix cutover remains a discrete task; this campaign does not silently create another permanent backlog authority |
 | `DOC-TOOL-01` | Preserve useful documentation validation in a correctly named owner while removing obsolete task-registry coupling |
-| `TOOLING-01` | Audit and relocate or retire the rest of the generic Git-orchestration bucket by true ownership |
+| `TOOLING-01` | Verify the now-empty generic Git-orchestration namespace against history and callers, then guard its retired paths from returning |
 | `CLEAN-01` | Retire the old demo product surface without losing a neutral synthetic golden path and its validation value; final terminology is open |
+| `CLEAN-02` | Reconcile the obsolete pending Step 04 scaffold against the active owner test, then retire the duplicate test-planning surface |
 | `FUT-INDEX-01` | Reuse a compatible declared index rather than regenerate it; compatibility and identity remain fail-closed |
 
 Other retained qualification, runtime-defect, reporting-layout, acquisition, and

@@ -26,10 +26,6 @@ ordering quoted from the architecture intake remain suggestions unless this
 matrix explicitly adopts them. They must be reconsidered during later slicing
 and prioritization rather than silently treated as settled design.
 
-Until <code>BACKLOG-01</code> completes, the repository still contains files
-that describe <code>docs/tasks/BACKLOG.md</code> as backlog authority. That is
-known transition state, not a second source of current planning decisions.
-
 A row in this matrix does not itself authorize implementation, publication,
 cluster execution, dependency installation, destructive cleanup, scientific
 review, or evidence promotion.
@@ -269,11 +265,12 @@ All reporting rows also inherit the
 | ID | Priority (provisional) | Status | Required outcome | Acceptance |
 |---|---|---|---|---|
 | <code>DOC-01</code> | P1 | Open | Condense retained documentation and reorganize it around scientist, operator, and developer journeys without requiring campaign history or developer-only context. | Scientist guidance covers purpose, inputs, project definition, the golden path, results, and scientific limitations; operator guidance covers runtime, profiles, storage, scheduler, diagnosis, and recovery; developer guidance retains exact architecture, contracts, evidence, and internals. Each retained document states purpose, pipeline role, when it is needed, primary interface/output, and canonical contract owner; B2/B4, campaign, phase, and similar shorthand is replaced with meaningful content. Successful ordinary use does not require reading developer architecture. |
-| <code>DOC-02</code> | P1 | Open | Audit repository documentation and decide independently for each source whether to retain, refresh, consolidate, move durable information, or retire it. | The audit covers all inbound references and named candidates; each disposition is evidence-based; durable safety, operations, science, evidence ceilings, and recovery content move before deletion; execution of separately scoped decisions remains separately tracked. |
-| <code>BACKLOG-01</code> | P1 | Open | Retire the repository backlog/task-card operating system and establish one durable canonical location for this matrix. | <code>docs/tasks/BACKLOG.md</code>, registry/card guidance, task-specific navigation, and <code>task_status.py</code> receive explicit dispositions; every caller is updated; no second backlog authority or broken task reference remains. |
-| <code>DOC-TOOL-01</code> | P1 | Open | Preserve, narrow, relocate, and revalidate the useful non-backlog behavior of <code>validate_documentation.py</code>. | Existing checks are inventoried; retained canonical-owner, retired-document, owner-adjacency, topology/diagram, and other intended checks move to a correctly named owner; obsolete task-registry logic is removed; Make, docs, fixtures, and tests are updated; seeded failures prove the replacement is not weaker. |
-| <code>TOOLING-01</code> | P2 | Open | Independently audit the remainder of <code>scripts/git_orchestration/</code> and remove the misleading ownership bucket. | Every file and caller receives a retain, relocate, replace, or retire decision; useful tools move beside their real owner; no generic Git-orchestration directory remains solely as historical taxonomy. |
+| <code>DOC-03</code> | P1 | Open | Retire the stale future-architecture, pipeline-plan, and question-index surfaces after reconciling every durable statement to its accepted owner. | <code>FUTURE_ARCHITECTURE.md</code>, its two future diagrams, <code>PIPELINE_PLAN.md</code>, and <code>QUESTIONS.md</code> receive node/section-level source-to-destination traces; unique durable content moves to current architecture, decisions, contracts, the matrix, or campaign before deletion; every inbound route and documentation-structure roster is updated; completed chronology remains Git history; the package does not settle the final architecture-document set or revive discarded tasks. |
+| <code>DOC-04</code> | P1 | Open | Reconcile every section of <code>HANDOFF.md</code>, preserve all uniquely valuable dated evidence and durable recovery constraints, discard its blockers/current-resume prose, and retire the rolling handoff surface. | A section-level source-to-destination/discard trace covers the VM, renderer/report derivative, PORT-NC-01, Viking Step 07–09, cohort/Step 03, artifact-identity, local-R-recovery, blocker, and resume material; retained history records preserve exact source commits, commands, hashes/artifacts, dates, and evidence ceilings; live recovery facts move to their owner only after verification; claims are not promoted; blockers and takeover instructions are discarded only after reconciliation; every inbound route and structure roster is updated before <code>HANDOFF.md</code> is deleted. |
+| <code>DOC-05</code> | P1 | Open | Consolidate useful orchestration-admission and launcher-regression safeguards into their live owners, then retire the two stale transition documents. | Shared invariants move only when absent from <code>ORCHESTRATION_CONTRACT.md</code> or <code>TEST_BASELINE.md</code>; exact owner behavior remains owner-local; current profile membership/proof remains in the workflow, stage map, tests, and CI; supported commands/site guidance remain in the runbook and configuration owner; stale transcripts and unverifiable short references are discarded; all inbound routes and structure checks are updated before deleting <code>ORCHESTRATION_READINESS.md</code> and <code>LOCAL_PILOT_LAUNCHER_TEST_PLAN.md</code>. |
+| <code>TOOLING-01</code> | P2 | Open | Independently verify the now-empty <code>scripts/git_orchestration/</code> namespace after <code>BACKLOG-01</code> and <code>DOC-TOOL-01</code>, then prevent the misleading ownership bucket from returning. | Every former file and caller receives a history-backed disposition; no useful behavior or public route was lost; retired directory/entry-point guards fail closed; no tracked generic Git-orchestration path or live reference remains. This is a bounded retrospective audit/guard package, not another relocation campaign. |
 | <code>CLEAN-01</code> | P2 | Open | Retire the historically coupled “demo” product surface without losing a neutral supported synthetic golden path or necessary reporting validation. | Demo Make targets, docs, fixtures, tests, links, and public references are inventoried and removed, renamed, or moved to neutral synthetic-example/test/preview ownership; a fresh installation can still produce a valid synthetic result through the accepted golden path; no historical “demo” state remains in the primary product surface unless that name is deliberately reconsidered and accepted later. |
+| <code>CLEAN-02</code> | P2 | Open | Reconcile and retire the obsolete non-runnable Step 04 scaffold under <code>tests/pending/</code>. | Every intended check in <code>tests/pending/test_step_04_mark_duplicates.sh</code> is mapped to the active duplicate-marking owner suite or moved there if still unique; <code>tests/pending/README.md</code>, the scaffold, inbound links, and the <code>RETAIN_ROOT</code> inventory exception are removed; a retired-surface guard prevents the duplicate planning area from returning. |
 
 ## Routed architecture context for existing IDs
 
@@ -296,7 +293,7 @@ verbatim record.
 | <code>REPORT-03</code>, <code>RESULTS-01</code> | Reporting must serve three explicit questions: scientific—what was found; evidence—why the result is trustworthy; operational—how execution occurred. | The views share run identity and provenance but do not force operational/evidence detail into the primary scientific narrative. Separate commands versus report views/files remain undecided. |
 | <code>DOC-01</code>, <code>REVIEW-UX-03</code> | Documentation and review follow the role journeys: scientists reach a result and interpretation first; operators provision, qualify, schedule, diagnose, and recover; developers inspect architecture and exact contracts. | Developer architecture remains available, but reading it cannot be a prerequisite for ordinary scientific use. |
 | <code>CONTAINER-01</code>, <code>RUNTIME-01</code> | A managed image/environment may provide the easiest supported runtime and bind an image digest plus enumerated tool identities into provenance. | Containerization remains independent of guided project setup and supplements rather than automatically replacing the institutional, native, or advanced runtime paths accepted by <code>RUNTIME-01</code>. |
-| <code>ARCH-01</code>, <code>DOC-02</code>, <code>TOOLING-01</code>, <code>DOC-TOOL-01</code>, <code>CLEAN-01</code> | Cleanup is an architectural deliverable: inventory duplicate validators, lifecycle implementations, stage-specific infrastructure, migration adapters, compatibility paths, generic ownership buckets, and stale documentation, then retain, relocate, consolidate, or retire each deliberately. | Durable scientific, operational, provenance, recovery, testing, and documentation-validation value moves before any retirement. Whether each abstraction package must immediately delete all superseded paths is the proposed migration policy tracked by <code>AC-DEC-018</code>/<code>020</code>; every compatibility path still receives an explicit disposition. |
+| <code>ARCH-01</code>, <code>DOC-03</code>, <code>DOC-04</code>, <code>DOC-05</code>, <code>TOOLING-01</code>, <code>CLEAN-01</code>, <code>CLEAN-02</code> | Cleanup is an architectural deliverable: inventory duplicate validators, lifecycle implementations, stage-specific infrastructure, migration adapters, compatibility paths, generic ownership buckets, stale documentation, and superseded test scaffolds, then retain, relocate, consolidate, or retire each deliberately. | Durable scientific, operational, provenance, recovery, testing, and documentation-validation value moves before any retirement. Whether each abstraction package must immediately delete all superseded paths is the proposed migration policy tracked by <code>AC-DEC-018</code>/<code>020</code>; every compatibility path still receives an explicit disposition. |
 
 ## Illustrative architecture reference models
 
@@ -525,34 +522,32 @@ remains available as linked TSV/CSV output rather than a rendered wide
 appendix. Nine admitted A-through-I selections must render without silent
 truncation or degraded print/accessibility behavior.
 
-## Documentation audit candidates
+## Documentation audit decisions
 
-<code>DOC-02</code> must at minimum inspect:
+The completed <code>DOC-02</code> audit covers all 170 tracked Markdown sources
+and six diagrams. Its individual <code>docs/</code> roster and exhaustive
+owner-partition dispositions live in the
+[repository-and-delivery decision record](../design/decisions/repository-and-delivery.md#repository-documentation-audit-2026-08-25).
+The named candidates have these accepted dispositions:
 
-- <code>docs/architecture/FUTURE_ARCHITECTURE.md</code>
-- <code>docs/design/ORCHESTRATION_READINESS.md</code>
-- <code>docs/design/PIPELINE_PLAN.md</code>
-- <code>docs/design/QUESTIONS.md</code>
-- <code>docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md</code>
-- <code>docs/operations/HANDOFF.md</code>
-- <code>docs/tasks/BACKLOG.md</code>
-- <code>docs/tasks/README.md</code>
-- <code>docs/tasks/cards/README.md</code>
-- <code>docs/demo/</code>
-- <code>scripts/git_orchestration/README.md</code>
+| Source | Accepted disposition | Execution owner |
+|---|---|---|
+| <code>docs/architecture/FUTURE_ARCHITECTURE.md</code> and two future diagrams | Retire after node-level context reconciliation | <code>DOC-03</code> |
+| <code>docs/design/PIPELINE_PLAN.md</code> and <code>docs/design/QUESTIONS.md</code> | Retire after durable content is traced to the matrix, campaign, decisions, contracts, or Git history | <code>DOC-03</code> |
+| <code>docs/operations/HANDOFF.md</code> | Trace every section; move unique dated evidence to history and verified recovery facts to live owners, discard blockers/takeover prose after reconciliation, then retire | <code>DOC-04</code> |
+| <code>docs/design/ORCHESTRATION_READINESS.md</code> and <code>docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md</code> | Consolidate missing safeguards into live owners, discard stale transcript material, then retire | <code>DOC-05</code> |
+| <code>docs/tasks/BACKLOG.md</code> and <code>docs/tasks/cards/README.md</code> | Retired | Completed <code>BACKLOG-01</code> |
+| <code>docs/tasks/README.md</code> | Retain as compact task-planning index | Completed <code>BACKLOG-01</code> refresh |
+| <code>docs/demo/</code> | Retire or rehome while preserving a neutral supported synthetic path | <code>CLEAN-01</code> |
+| <code>tests/pending/README.md</code> and its Step 04 scaffold | Trace against the active owner test and retire the duplicate pending surface | <code>CLEAN-02</code> |
+| <code>scripts/git_orchestration/README.md</code> | Removed after the useful validator moved to its documentation owner | Completed <code>DOC-TOOL-01</code> |
 
-The audit decides retain, refresh, consolidate, move, or retire. It does not
-perform the independently tracked backlog, validator, or demo migrations merely
-by recording a disposition.
-
-<code>docs/operations/HANDOFF.md</code> and
-<code>docs/design/PIPELINE_PLAN.md</code> are user-identified stale, unverified
-transition sources even though existing repository guards, navigation, and
-cross-links still route to them. <code>DOC-02</code> must reconcile useful
-content against live Git, source, tests, this matrix, and applicable durable
-owners, then update every inbound authority claim before either document is
-retained, refreshed, replaced, or retired. Current planning or evidence must not
-be added solely to either file on the assumption that it remains reliable.
+The six not-yet-retired sources are visibly marked legacy and are not current
+authority. Live Git owns checkout state; exact checks and retained artifacts
+own validation observations; this matrix owns accepted work and acceptance;
+the temporary campaign owns unsliced alternatives; owner contracts, the
+runbook, troubleshooting, and test policy own behavior, recovery, commands,
+and evidence meaning. The later role-journey rewrite remains <code>DOC-01</code>.
 
 ## Dated evidence ledger
 
@@ -568,6 +563,9 @@ be added solely to either file on the assumption that it remains reliable.
 | 2026-08-24 | <code>REPORT-04</code> | The current scientific-context/report selection contract uses a fixed display limit of eight. The requested A-through-I surface requires nine when warranted. | Current source observation |
 | 2026-08-24 | Configuration/setup | The repository contains 20 files under <code>configs/</code>; Quickstart still exposes manual configuration and directory preparation. | Current source/documentation observation |
 | 2026-08-24 | Documentation/task tooling | The repository still declares <code>docs/tasks/BACKLOG.md</code> as live authority; <code>task_status.py</code> renders that registry; <code>validate_documentation.py</code> combines useful documentation checks with task-registry enforcement. | Current source/documentation observation |
+| 2026-08-25 | <code>BACKLOG-01</code> | The legacy backlog, task-card guidance, status renderer, registry parser, and live callers were removed; canonical planning now routes only through this matrix, with retired surfaces and the matrix owner protected by the documentation gate. | Focused local evidence: documentation gate passed; documentation-validator and affected public-interface tests passed, 12 tests total |
+| 2026-08-25 | <code>DOC-TOOL-01</code> | The retained structure checks moved from the generic Git-orchestration bucket to <code>scripts/documentation/validate_structure.py</code>; the owner now documents its exact checks and non-goals, and seeded tests cover every retired surface plus canonical, adjacency, inventory, and Mermaid failures. | Focused local evidence: relocated documentation gate passed; documentation-owner, public-interface, and Make-expansion tests passed, 32 tests total |
+| 2026-08-25 | <code>DOC-02</code> | All 170 tracked Markdown sources, six Mermaid sources, named retired candidates, and inbound routes to the six stale sources received evidence-based individual or exhaustive owner-partition dispositions. Current authority now routes to live Git, exact checks/artifacts, this matrix, the temporary campaign, and subject owners; all six legacy pages and two future diagrams remain mechanically protected until <code>DOC-03</code>–<code>DOC-05</code> execute the accepted migrations. | Current Git/source/reference audit plus focused local evidence: documentation gate passed; documentation-owner, public-interface, and Make-expansion tests passed, 46 tests total; no retirement migration or scientific/runtime proof performed |
 
 ## Former repository-backlog reconciliation
 
@@ -585,6 +583,9 @@ No former blocker relationships were retained.
 
 | Date | ID | Disposition | Reason or successor |
 |---|---|---|---|
+| 2026-08-25 | <code>DOC-02</code> | Complete | The repository-wide disposition roster and authority cutover are accepted; <code>DOC-03</code>, <code>DOC-04</code>, <code>DOC-05</code>, <code>CLEAN-01</code>, and <code>CLEAN-02</code> separately own the resulting migrations. |
+| 2026-08-25 | <code>DOC-TOOL-01</code> | Complete | Useful documentation structure validation has one correctly named owner and direct test suite; obsolete registry coupling was removed and the validator no longer lives in a generic Git-orchestration bucket. <code>TOOLING-01</code> independently owns the retired-namespace audit and guard. |
+| 2026-08-25 | <code>BACKLOG-01</code> | Complete | The findings matrix is the sole durable backlog; legacy registry/card/status surfaces and broken task routes were removed, while historical detail remains available through Git history. |
 | 2026-08-24 | <code>AUDIT-99</code> | Discarded | Explicitly excluded from the retained backlog. Current architecture/documentation concerns are re-authored under <code>ARCH-01</code> and <code>DOC-02</code>. |
 | 2026-08-24 | <code>CODEDOC-05</code> | Discarded | Explicitly excluded; current reader-facing documentation outcome is owned by <code>DOC-01</code>. |
 | 2026-08-24 | <code>DOC-SKILL-10</code> | Discarded | Explicitly excluded without retaining the former skill proposal. |

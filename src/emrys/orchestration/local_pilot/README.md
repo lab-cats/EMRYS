@@ -136,11 +136,10 @@ Focused protection is:
   tests/test_public_cli_contracts.py
 ```
 
-Run the deferred workstation acceptance sequence in
-[`docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md`](../../../../docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md)
-after restoring the locked development environment. Checks that require that
-environment remain explicitly `NOT RUN` until then; they are not inferred from
-static validation.
+Run the focused suite above after restoring the locked development environment,
+and use CI checks attached to the exact commit for any selected hosted lane.
+Checks that require an unavailable environment remain explicitly `NOT RUN`;
+they are not inferred from static validation.
 
 The underlying narrow read-only admission APIs are:
 

@@ -2,10 +2,11 @@
 
 This index records current decisions that are not safely inferred from code or
 filenames. Detailed rationale remains grouped by responsibility; exact behavior
-belongs to the applicable owner contract. Current state belongs in
-[`HANDOFF.md`](../operations/HANDOFF.md), roadmap in
-[`PIPELINE_PLAN.md`](PIPELINE_PLAN.md), and unresolved design in
-[`QUESTIONS.md`](QUESTIONS.md).
+belongs to the applicable owner contract. Live Git owns checkout state, exact
+checks and retained artifacts own validation observations, the
+[findings matrix](../tasks/backlog_matrix.md) owns accepted work and acceptance,
+and the temporary [architecture campaign](../tasks/architecture_campaign.md)
+owns unsliced alternatives.
 
 ## Repository and delivery
 
@@ -23,6 +24,10 @@ Detailed rationale: [`repository-and-delivery.md`](decisions/repository-and-deli
   regression signal, not a substitute for behavioral or scientific evidence.
 - Update documentation when its subject changes and keep exact operator detail
   with its functional owner.
+- Follow the accepted
+  [2026-08-25 documentation audit](decisions/repository-and-delivery.md#repository-documentation-audit-2026-08-25):
+  legacy sources are not current authority, and their durable content moves in
+  bounded retirement packages before deletion.
 
 ## Execution, evidence, and reporting
 
@@ -100,8 +105,9 @@ Detailed rationale: [`platform-direction.md`](decisions/platform-direction.md).
   pipeline steps, gates, artifacts, or completion states.
 
 The implemented source-checkout local lifecycle is defined by
-[`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md). Logging, report
-profiles, site execution, acquisition, analysis extensions, and standalone
-wheel-control-plane ideas remain unimplemented in
-[`FUTURE_ARCHITECTURE.md`](../architecture/FUTURE_ARCHITECTURE.md) and
-[`QUESTIONS.md`](QUESTIONS.md).
+[`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md). Accepted open outcomes
+remain in the [findings matrix](../tasks/backlog_matrix.md); unsliced
+architecture alternatives remain in the temporary
+[architecture campaign](../tasks/architecture_campaign.md). The legacy future
+architecture and question indexes are retained only for the bounded `DOC-03`
+retirement trace.

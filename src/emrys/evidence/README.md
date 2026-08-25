@@ -57,8 +57,8 @@ both declared roots pass and never supplies an ad hoc stage-copy path.
 
 Use the [`RUNBOOK`](../../../docs/operations/RUNBOOK.md) for supported commands,
 [`TROUBLESHOOTING`](../../../docs/operations/TROUBLESHOOTING.md) for failure and
-recovery routes, and
-[`HANDOFF.md`](../../../docs/operations/HANDOFF.md) for current evidence state.
+recovery routes, and checks plus retained artifacts bound to the exact commit
+for current validation observations.
 Ownership and system boundaries live in
 [`ARCHITECTURE.md`](../../../docs/architecture/ARCHITECTURE.md) and the
 [`functional-owner inventory`](../../../docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md).

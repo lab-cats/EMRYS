@@ -1,8 +1,9 @@
 # PI demo discussion guide
 
 This is the PI/audience discussion view, not the presenter run-of-show, live
-project status, command source, report contract, or dated snapshot. Consult the
-current [`HANDOFF.md`](../operations/HANDOFF.md) before presenting.
+project status, command source, report contract, or dated snapshot. Before
+presenting, verify live Git plus checks and retained artifacts for the exact
+commit; this guide cannot establish current evidence.
 
 ## Discussion context
 
@@ -24,9 +25,11 @@ another.
 
 ## Scientific caution
 
-Use the current cohort evidence in the
-[`HANDOFF.md`](../operations/HANDOFF.md#cohort-and-preserved-scientific-evidence).
-Reverse-stranded/first-strand-style evidence does not make mechanical
+The legacy
+[`HANDOFF.md`](../operations/HANDOFF.md#cohort-and-preserved-scientific-evidence)
+contains one historical cohort snapshot selected for migration under `DOC-04`;
+do not present it as current evidence. Reverse-stranded/first-strand-style
+evidence does not make mechanical
 `FWD_like` and `REV_like` groups biological strand. The legacy-compatible
 orientation policy remains provisional.
 
@@ -41,12 +44,11 @@ not pipeline steps, gates, artifacts, or completion states.
 
 The current conceptual reporting boundary belongs in the
 [`ARCHITECTURE.md`](../architecture/ARCHITECTURE.md#publication-and-evidence-flow),
-with implementation and synthetic-demo status in the
-[`HANDOFF.md`](../operations/HANDOFF.md#evidence-boundary). For this
-discussion, the essential boundary is that a report presents declared
-evidence without creating new computational, cluster, scientific, or
-biological evidence. A synthetic demo must never be presented as production
-or validation evidence.
+with implementation behavior in the reporting owner and tests. For this
+discussion, the essential boundary is that a report presents declared evidence
+without creating new computational, cluster, scientific, or biological
+evidence. A synthetic demo must never be presented as production or validation
+evidence.
 
 ## Discussion prompts
 
@@ -56,7 +58,5 @@ or validation evidence.
 - What is the approved production artifact retention policy?
 - Which conclusions may be communicated under exploratory review?
 
-Current answers and blockers belong in the
-[`HANDOFF.md`](../operations/HANDOFF.md#current-blockers) and
-[`QUESTIONS.md`](../design/QUESTIONS.md#operational-and-scientific-evidence),
-not in this discussion guide.
+Accepted open outcomes belong in the
+[findings matrix](../tasks/backlog_matrix.md), not in this discussion guide.

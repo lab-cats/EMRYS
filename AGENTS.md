@@ -53,7 +53,8 @@ steps, gates, artifacts, or completion states.
 Each functional owner keeps its commands, contract, tests, diagnostics, and
 recovery detail beside its implementation. Cross-owner identity and dependency
 direction are organized by the [architecture index](docs/architecture/README.md).
-Current evidence belongs in [HANDOFF](docs/operations/HANDOFF.md), roadmap and
-acceptance in [PIPELINE_PLAN](docs/design/PIPELINE_PLAN.md), cross-cutting
-commands in the [RUNBOOK](docs/operations/RUNBOOK.md), and common recovery in
+Live Git owns checkout state; exact checks and retained artifacts bound to a
+commit own validation observations. Accepted work and acceptance live in the
+[findings matrix](docs/tasks/backlog_matrix.md), cross-cutting commands in the
+[RUNBOOK](docs/operations/RUNBOOK.md), and common recovery in
 [TROUBLESHOOTING](docs/operations/TROUBLESHOOTING.md).
