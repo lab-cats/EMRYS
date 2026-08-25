@@ -179,12 +179,17 @@ environment authority; Nox is not a dependency.
 
 ## Current output and log boundaries
 
-Current output behavior belongs to each implementation, contract, and direct
-test; future guarantees belong to the
-[`logging contract`](LOGGING_CONTRACT.md). Git history retains the superseded
-commit-bound crosswalk and exposure inventory.
+Current production-operation output behavior belongs to each implementation,
+contract, and direct test. No production operation currently adopts the neutral
+logging foundation. The [`logging contract`](LOGGING_CONTRACT.md) owns both the
+implemented foundation contract and guarantees for later operation adoption;
+exact foundation behavior lives with the
+[application-logging owner](../../src/emrys/libraries/application_logging/README.md)
+and its [direct tests](../../tests/libraries/application_logging/). Git history
+retains the superseded commit-bound crosswalk and exposure inventory.
 
-Retained current boundaries:
+For production paths that have not adopted the foundation, retained current
+boundaries are:
 
 - console streams are human or mixed unless an interface explicitly declares a
   machine stream or output file;

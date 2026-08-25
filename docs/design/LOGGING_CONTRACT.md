@@ -1,9 +1,12 @@
 # Application logging contract
 
-This is binding implementation input for `LOG-03` and later logging adoption.
-It defines a future interface; it does not claim that current commands implement
-it. Foundation code belongs in the narrowest neutral owner and never imports a
-stage.
+This is the binding cross-cutting application logging contract. The neutral
+foundation is implemented by the
+[application-logging owner](../../src/emrys/libraries/application_logging/README.md),
+but no production command or scheduler wrapper currently adopts it. That rollout
+remains `LOG-05` in the [findings matrix](../tasks/backlog_matrix.md). A command
+implements this contract only when its owner documentation and direct tests say
+so. Foundation code remains stage-independent and never imports a stage.
 
 ## Sinks, controls, and streams
 
