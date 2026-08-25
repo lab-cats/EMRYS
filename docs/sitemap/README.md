@@ -14,8 +14,8 @@ the routes below explain the human boundaries.
   troubleshooting.
 - [Reference](../reference/) — terminology that routes back to canonical
   subject owners.
-- [Tasks](../tasks/README.md) — compact actionable/proposal backlog and
-  temporary JIT execution cards.
+- [Tasks](../tasks/README.md) — current planning matrix, temporary unsliced
+  architecture context, and frozen legacy registry/cards during transition.
 - [Demonstrations](../demo/README.md) — reviewed presenter guides.
 - [History](../history/) — immutable dated records maintained separately.
 
@@ -28,7 +28,7 @@ For task orientation and approved delivery, use
 | Audience | Start | Continue |
 | --- | --- | --- |
 | User | [Root README](../../README.md) | [Scientist-facing workflow](../architecture/ARCHITECTURE.md#scientist-facing-workflow) |
-| Operator | [Handoff](../operations/HANDOFF.md) | [Runbook](../operations/RUNBOOK.md), owner README, and [troubleshooting](../operations/TROUBLESHOOTING.md) |
+| Operator | [Runbook](../operations/RUNBOOK.md) | Owner README, [troubleshooting](../operations/TROUBLESHOOTING.md), and the legacy [handoff](../operations/HANDOFF.md) only after live verification pending `DOC-02` |
 | Scientist/reviewer | [Architecture index](../architecture/README.md) | Stage map, owner contracts, questions, and test baseline |
 | Maintainer | [Safety guard](../../AGENTS.md) | [Workflow](../operations/WORKFLOW.md), selected card, and affected owners |
 | Auditor/historian | [History](../history/) | Dated evidence and test-baseline recheck routes |
@@ -39,14 +39,15 @@ For task orientation and approved delivery, use
 | --- | --- |
 | Product entrypoint and repository map | Root [`README.md`](../../README.md) |
 | Safety, context selection, and development procedure | [`AGENTS.md`](../../AGENTS.md) and [`WORKFLOW.md`](../operations/WORKFLOW.md) |
-| Current evidence/blockers and roadmap/acceptance | [`HANDOFF.md`](../operations/HANDOFF.md) and [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md) |
+| Legacy evidence/blocker and roadmap/acceptance inputs pending audit | [`HANDOFF.md`](../operations/HANDOFF.md) and [`PIPELINE_PLAN.md`](../design/PIPELINE_PLAN.md); user-identified as stale and unverified pending `DOC-02` |
 | Cross-cutting commands and common recovery | [`RUNBOOK.md`](../operations/RUNBOOK.md) and [`TROUBLESHOOTING.md`](../operations/TROUBLESHOOTING.md) |
 | System-view routing and exact architecture | [Architecture index](../architecture/README.md) and its named children |
 | Future local-pilot lifecycle and owner admission | [`ORCHESTRATION_CONTRACT.md`](../design/ORCHESTRATION_CONTRACT.md) and [`ORCHESTRATION_READINESS.md`](../design/ORCHESTRATION_READINESS.md) |
 | Durable rationale and unresolved choices | [`DECISIONS.md`](../design/DECISIONS.md), its detail files, and [`QUESTIONS.md`](../design/QUESTIONS.md) |
 | Exact behavior, commands, defects, and tests | Applicable colocated owner `README.md` and `CONTRACT.md` |
 | Test policy and cross-cutting recheck routes | [`TEST_BASELINE.md`](../design/TEST_BASELINE.md); exact defects remain with the applicable owner `README.md` or `CONTRACT.md` |
-| Actionable work, proposals, and dated records | Compact [`BACKLOG.md`](../tasks/BACKLOG.md), selected [`cards/`](../tasks/cards/), and [`docs/history`](../history/) respectively |
+| Current planning backlog and temporary unsliced architecture context | [Findings matrix](../tasks/backlog_matrix.md), [architecture campaign](../tasks/architecture_campaign.md), and [task transition rules](../tasks/README.md) |
+| Legacy task registry/cards and dated records | Frozen [`BACKLOG.md`](../tasks/BACKLOG.md), [`cards/`](../tasks/cards/), and [`docs/history`](../history/) pending the separately tracked backlog cutover |
 
 JIT cards and history are not live subject-matter owners. Delete completed or
 retired JIT detail, but remove or replace every dependent backlog edge in the
