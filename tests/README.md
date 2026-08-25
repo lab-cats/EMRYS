@@ -15,7 +15,7 @@ are in the [operations runbook](../docs/operations/RUNBOOK.md).
   and no-science fresh-clone execution for the local-pilot application owner.
 - `contracts/` and `contract_integration/` protect shared and independent
   public contracts.
-- `libraries/`, `git_orchestration/`, `shell/`, and `data_checks/` own
+- `libraries/`, `documentation/`, `shell/`, and `data_checks/` own
   cross-cutting support checks.
 - `fixtures/`, `baselines/`, and `tools/` own shared test inputs, accepted
   comparator state, and test-only runners.

@@ -56,7 +56,7 @@ SLURM_SYNTAX_PATHS := \
 	src/emrys/analyses/scientific_context_projection/scientific_context_projection.slurm
 
 documentation-check:
-	./scripts/git_orchestration/validate_documentation.py --repo "$(CURDIR)"
+	./scripts/documentation/validate_structure.py --repo "$(CURDIR)"
 
 validation-shell-contracts:
 	bash tests/libraries/test_file_checks.sh

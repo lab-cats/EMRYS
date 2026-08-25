@@ -14,7 +14,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_ROOT = REPO_ROOT / "scripts"
-GIT_ORCHESTRATION_ROOT = SCRIPTS_ROOT / "git_orchestration"
+DOCUMENTATION_TOOLS_ROOT = SCRIPTS_ROOT / "documentation"
 MAKE_EXPANSION_GOLDEN = (
     REPO_ROOT
     / "tests"
@@ -206,13 +206,13 @@ R_ENTRYPOINTS = frozenset(R_ENTRYPOINT_PATHS)
 DIRECT_R_ENTRYPOINTS = frozenset({"check_r_environment.R", "restore_r_environment.R"})
 RSCRIPT_ONLY_ENTRYPOINTS = R_ENTRYPOINTS - DIRECT_R_ENTRYPOINTS
 
-GIT_ORCHESTRATION_PYTHON_ENTRYPOINTS = frozenset(
+DOCUMENTATION_PYTHON_ENTRYPOINTS = frozenset(
     {
-        "validate_documentation.py",
+        "validate_structure.py",
     }
 )
-GIT_ORCHESTRATION_SHELL_ENTRYPOINTS = frozenset()
-GIT_ORCHESTRATION_PRIVATE_FILES = frozenset({"README.md"})
+DOCUMENTATION_SHELL_ENTRYPOINTS = frozenset()
+DOCUMENTATION_PRIVATE_FILES = frozenset({"README.md"})
 
 MAKE_TARGET_DECISIONS = {
     "test": "local_gate",
@@ -479,26 +479,26 @@ def test_inventory_classifies_every_live_public_script() -> None:
     assert DIRECT_R_ENTRYPOINTS | RSCRIPT_ONLY_ENTRYPOINTS == R_ENTRYPOINTS
 
 
-def test_git_orchestration_inventory_is_explicit() -> None:
+def test_documentation_tool_inventory_is_explicit() -> None:
     live_files = {
-        item.name for item in GIT_ORCHESTRATION_ROOT.iterdir() if item.is_file()
+        item.name for item in DOCUMENTATION_TOOLS_ROOT.iterdir() if item.is_file()
     }
     assert live_files == (
-        GIT_ORCHESTRATION_PYTHON_ENTRYPOINTS
-        | GIT_ORCHESTRATION_SHELL_ENTRYPOINTS
-        | GIT_ORCHESTRATION_PRIVATE_FILES
+        DOCUMENTATION_PYTHON_ENTRYPOINTS
+        | DOCUMENTATION_SHELL_ENTRYPOINTS
+        | DOCUMENTATION_PRIVATE_FILES
     )
 
 
 @pytest.mark.parametrize(
     "entrypoint",
-    sorted(GIT_ORCHESTRATION_PYTHON_ENTRYPOINTS),
+    sorted(DOCUMENTATION_PYTHON_ENTRYPOINTS),
 )
-def test_git_orchestration_python_help_is_cwd_independent(
+def test_documentation_python_help_is_cwd_independent(
     entrypoint: str,
     tmp_path: Path,
 ) -> None:
-    script = GIT_ORCHESTRATION_ROOT / entrypoint
+    script = DOCUMENTATION_TOOLS_ROOT / entrypoint
     before = relative_snapshot(tmp_path)
     result = run_command([sys.executable, str(script), "--help"], cwd=tmp_path)
 
@@ -510,13 +510,13 @@ def test_git_orchestration_python_help_is_cwd_independent(
 
 @pytest.mark.parametrize(
     "entrypoint",
-    sorted(GIT_ORCHESTRATION_SHELL_ENTRYPOINTS),
+    sorted(DOCUMENTATION_SHELL_ENTRYPOINTS),
 )
-def test_git_orchestration_shell_help_is_cwd_independent(
+def test_documentation_shell_help_is_cwd_independent(
     entrypoint: str,
     tmp_path: Path,
 ) -> None:
-    script = GIT_ORCHESTRATION_ROOT / entrypoint
+    script = DOCUMENTATION_TOOLS_ROOT / entrypoint
     before = relative_snapshot(tmp_path)
     result = run_command([str(script), "--help"], cwd=tmp_path)
 

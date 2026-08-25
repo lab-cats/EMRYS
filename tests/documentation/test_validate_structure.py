@@ -13,7 +13,7 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-VALIDATOR = REPO_ROOT / "scripts" / "git_orchestration" / "validate_documentation.py"
+VALIDATOR = REPO_ROOT / "scripts" / "documentation" / "validate_structure.py"
 CANONICAL_H1S = {
     "AGENTS.md": "# EMRYS safety guard",
     "README.md": "# EMRYS: Epic Molecular Read Yield System",
@@ -92,6 +92,21 @@ CROSS_CUTTING_DOCS = (
     "src/emrys/evidence/storage_inventory/README.md",
     "src/emrys/ingestion/sample_manifest_admission/README.md",
     "src/emrys/reporting/README.md",
+)
+RETIRED_DOCUMENTS = (
+    "docs/design/REFACTOR_AUDIT.md",
+    "docs/operations/CONCURRENT_WORK.md",
+    "docs/operations/TASK_DELIVERY.md",
+    "docs/tasks/BACKLOG.md",
+    "docs/tasks/cards/README.md",
+    "src/emrys/contracts/MIGRATION_MECHANICS.md",
+)
+RETIRED_TASK_DIRECTORIES = (
+    "TODO",
+    "IN_PROGRESS",
+    "INTEGRATION_REVIEW",
+    "UNREFINED",
+    "cards",
 )
 
 
@@ -194,60 +209,87 @@ def test_rejects_missing_or_mislabeled_canonical_documents(tmp_path: Path) -> No
     assert "canonical document H1 mismatch: docs/operations/RUNBOOK.md" in result.stderr
 
 
-def test_rejects_stage_map_and_owner_failures(tmp_path: Path) -> None:
+@pytest.mark.parametrize("roster_defect", ("short", "duplicate"))
+def test_rejects_invalid_stage_map_roster(
+    tmp_path: Path,
+    roster_defect: str,
+) -> None:
     repository = write_fixture(tmp_path)
-    (repository / "src/emrys/contracts/STAGE_MAP.md").write_text(
-        "# Semantic workflow identity and DAG\n\n"
-        "| stage | Fixture | `STAGE-01` | `emrys.stage.STAGE-01.v1` | `00` |\n",
-        encoding="utf-8",
-    )
-    (repository / "src/emrys/stages/star_index/CONTRACT.md").unlink()
-    (repository / "src/emrys/reporting/README.md").unlink()
+    stage_map = repository / "src/emrys/contracts/STAGE_MAP.md"
+    lines = stage_map.read_text(encoding="utf-8").splitlines()
+    if roster_defect == "short":
+        lines = lines[:3]
+    else:
+        lines[-1] = lines[-2]
+    stage_map.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     result = validate(repository, cwd=tmp_path)
 
     assert result.returncode == 1
     assert "STAGE_MAP identity roster must contain 14 unique owners" in result.stderr
-    assert "missing cross-cutting owner documentation" in result.stderr
 
 
-def test_rejects_missing_semantic_owner_after_valid_roster(tmp_path: Path) -> None:
+@pytest.mark.parametrize("relative", CROSS_CUTTING_DOCS)
+def test_rejects_missing_cross_cutting_owner_document(
+    tmp_path: Path,
+    relative: str,
+) -> None:
     repository = write_fixture(tmp_path)
-    (repository / "src/emrys/stages/star_index/CONTRACT.md").unlink()
-    shutil.rmtree(repository / "tests/stages/gtf_to_bed12")
+    (repository / relative).unlink()
 
     result = validate(repository, cwd=tmp_path)
 
-    assert "missing semantic-owner CONTRACT.md" in result.stderr
-    assert "missing mirrored test owner: tests/stages/gtf_to_bed12" in result.stderr
+    assert f"missing cross-cutting owner documentation: {relative}" in result.stderr
 
 
-def test_rejects_returned_retired_docs_and_task_directories(tmp_path: Path) -> None:
+@pytest.mark.parametrize("missing_kind", ("README.md", "CONTRACT.md", "tests"))
+def test_rejects_missing_semantic_owner_after_valid_roster(
+    tmp_path: Path,
+    missing_kind: str,
+) -> None:
     repository = write_fixture(tmp_path)
-    retired_paths = (
-        "docs/design/REFACTOR_AUDIT.md",
-        "docs/operations/TASK_DELIVERY.md",
-        "docs/tasks/BACKLOG.md",
-        "docs/tasks/cards/README.md",
-    )
-    for relative in retired_paths:
-        retired = repository / relative
-        retired.parent.mkdir(parents=True, exist_ok=True)
-        retired.write_text("# Retired\n", encoding="utf-8")
-    legacy_paths = (
-        repository / "docs/tasks/TODO/OLD-01.md",
-        repository / "docs/tasks/cards/OLD-02.md",
-    )
-    for legacy in legacy_paths:
-        legacy.parent.mkdir(parents=True, exist_ok=True)
-        legacy.write_text("# Old\n", encoding="utf-8")
+    if missing_kind == "tests":
+        relative = "tests/stages/gtf_to_bed12"
+        shutil.rmtree(repository / relative)
+        expected = f"missing mirrored test owner: {relative}"
+    else:
+        relative = f"src/emrys/stages/star_index/{missing_kind}"
+        (repository / relative).unlink()
+        expected = f"missing semantic-owner {missing_kind}: {relative}"
 
     result = validate(repository, cwd=tmp_path)
 
-    for relative in retired_paths:
-        assert f"retired documentation owner returned: {relative}" in result.stderr
-    assert "retired task directory contains Markdown: docs/tasks/TODO" in result.stderr
-    assert "retired task directory contains Markdown: docs/tasks/cards" in result.stderr
+    assert expected in result.stderr
+
+
+@pytest.mark.parametrize("relative", RETIRED_DOCUMENTS)
+def test_rejects_each_returned_retired_document(
+    tmp_path: Path,
+    relative: str,
+) -> None:
+    repository = write_fixture(tmp_path)
+    retired = repository / relative
+    retired.parent.mkdir(parents=True, exist_ok=True)
+    retired.write_text("# Retired\n", encoding="utf-8")
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert f"retired documentation owner returned: {relative}" in result.stderr
+
+
+@pytest.mark.parametrize("dirname", RETIRED_TASK_DIRECTORIES)
+def test_rejects_each_retired_task_directory(
+    tmp_path: Path,
+    dirname: str,
+) -> None:
+    repository = write_fixture(tmp_path)
+    legacy = repository / f"docs/tasks/{dirname}/OLD-01.md"
+    legacy.parent.mkdir(parents=True, exist_ok=True)
+    legacy.write_text("# Old\n", encoding="utf-8")
+
+    result = validate(repository, cwd=tmp_path)
+
+    assert f"retired task directory contains Markdown: docs/tasks/{dirname}" in result.stderr
 
 
 @pytest.mark.parametrize("kind", ("missing", "non_git", "nested"))
