@@ -308,13 +308,14 @@ def resolve_runtime_paths(
     library = _canonical_directory(renv_library, "renv library")
     picard_candidates = tuple(
         path
-        for path in sorted(prefix.glob("share/picard-3.1.1-*/picard.jar"))
+        for path in sorted(prefix.glob("share/picard-slim-3.1.1-*/picard.jar"))
         if path.is_file()
     )
     if len(picard_candidates) != 1:
         raise DriverError(
             "preflight",
-            "runtime prefix must contain exactly one share/picard-3.1.1-*/picard.jar",
+            "runtime prefix must contain exactly one "
+            "share/picard-slim-3.1.1-*/picard.jar",
         )
     return RuntimePaths(
         bash=_resolve_command(None, "bash"),

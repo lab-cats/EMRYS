@@ -133,6 +133,12 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
     slurm = _named_step(job, "Configure and prove one disposable Slurm node")
     assert "tests/tools/configure_ci_slurm.sh" in slurm["run"]
 
+    authorities = _named_step(
+        job, "Record exact runtime authorities outside the checkout"
+    )
+    assert "picard-slim-3.1.1-*/picard.jar" in authorities["run"]
+    assert "*/picard-3.1.1-*/picard.jar" not in authorities["run"]
+
     profile_expectations = (
         (
             "Run the selected 130-pair real synthetic E2E",

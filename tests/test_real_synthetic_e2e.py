@@ -98,6 +98,37 @@ def test_workflow_python_preserves_lexical_virtualenv_launcher(tmp_path: Path) -
     assert launcher.resolve(strict=True) == target
 
 
+def test_runtime_paths_admit_the_locked_picard_slim_layout(tmp_path: Path) -> None:
+    prefix = tmp_path / "runtime"
+    bin_dir = prefix / "bin"
+    bin_dir.mkdir(parents=True)
+    for tool in (
+        "STAR",
+        "samtools",
+        "gatk",
+        "bcftools",
+        "python",
+        "infer_experiment.py",
+        "gunzip",
+        "java",
+    ):
+        executable = bin_dir / tool
+        executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        executable.chmod(0o755)
+    picard_jar = prefix / "share" / "picard-slim-3.1.1-0" / "picard.jar"
+    picard_jar.parent.mkdir(parents=True)
+    picard_jar.write_bytes(b"locked picard jar fixture\n")
+    rscript = tmp_path / "Rscript"
+    rscript.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    rscript.chmod(0o755)
+    renv_library = tmp_path / "renv-library"
+    renv_library.mkdir()
+
+    observed = DRIVER.resolve_runtime_paths(prefix, rscript, renv_library)
+
+    assert observed.picard_jar == picard_jar
+
+
 def test_gatk_adapter_binds_exact_python_java_and_forwarded_args(
     tmp_path: Path,
 ) -> None:
