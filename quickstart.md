@@ -598,17 +598,15 @@ Successful automatic completion prints:
 ```text
 State: local_pipeline_complete
 Local pipeline complete: yes
+Results:
+  Scientific report: /absolute/path/to/the/scientific-report.html
+  Evidence report: /absolute/path/to/the/evidence-report.html
 ```
 
-Compute the exact report paths without searching the tree:
-
-```sh
-EMRYS_RUN_ID="${EMRYS_RUN_ROOT##*/}"
-EMRYS_SCIENTIFIC_REPORT_PATH="$EMRYS_RUN_ROOT/products/report/$EMRYS_RUN_ID/$EMRYS_RUN_ID.scientific_report.html"
-EMRYS_EVIDENCE_REPORT_PATH="$EMRYS_RUN_ROOT/products/report/$EMRYS_RUN_ID/$EMRYS_RUN_ID.evidence_report.html"
-test -f "$EMRYS_SCIENTIFIC_REPORT_PATH" && printf '%s\n' "$EMRYS_SCIENTIFIC_REPORT_PATH"
-test -f "$EMRYS_EVIDENCE_REPORT_PATH" && printf '%s\n' "$EMRYS_EVIDENCE_REPORT_PATH"
-```
+The completed inspection prints those locations only after admitting the
+complete report transaction. Copy the printed paths. If inspection does not
+print a `Results:` block, do not infer locations from the run ID, run root, or
+a tree search.
 
 Copy either self-contained HTML file to a trusted workstation or open it with
 the local browser allowed by your environment. The scientific report presents

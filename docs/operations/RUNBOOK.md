@@ -350,8 +350,7 @@ merely to turn a freshness result green.
 ### Live whole-run dashboard
 
 For a lifecycle-generated one-allocation job, the CSU preview dashboard can
-show bounded live scheduler, stage, sample, resource-plan, and report-location
-observations:
+show bounded live scheduler, stage, sample, and resource-plan observations:
 
 ```bash
 # Discover the newest admissible current-user EMRYS wrapper job.
@@ -382,11 +381,11 @@ does not cancel the allocation. The details view also accepts arrow or `j`/`k`
 scrolling and Page Up/Page Down.
 
 The dashboard reads scheduler metadata and only newly appended stream bytes.
-It never changes the workflow, run root, logs, scheduler job, or reports. Its
-status, inferred progress, timing, and derived report paths are not completion
-or evidence authority. After the allocation reaches a terminal state, inspect
-accounting and run the final EMRYS inspection using the exact run root printed
-by the control stream:
+It never changes the workflow, run root, logs, scheduler job, or reports, and
+it does not derive or display result locations. Its status, inferred progress,
+and timing are not completion or evidence authority. After the allocation
+reaches a terminal state, inspect accounting and run the final EMRYS inspection
+using the exact run root printed by the control stream:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
@@ -394,9 +393,11 @@ by the control stream:
   --run-root /absolute/path/to/workspace/runs/run-DIGEST
 ```
 
-Only the admitted run records and owner validations establish local-pilot
-completion. Use the manual stream procedure below when dashboard discovery is
-unavailable or when exact raw scheduler streams are required.
+A successful run or resume, and a completed inspection, supply verified result
+locations. If no `Results:` block is printed, do not construct or search for
+report paths. The admitted run records and owner validations establish
+local-pilot completion. Use the manual stream procedure below when dashboard
+discovery is unavailable or when exact raw scheduler streams are required.
 
 ### Manual stream and accounting fallback
 

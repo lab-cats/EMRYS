@@ -137,7 +137,6 @@ TIMESTAMP_RE = re.compile(
     r"(\d\d):(\d\d):(\d\d) (\d{4})\]$"
 )
 JOB_ID_RE = re.compile(r"^[1-9][0-9]*$")
-RUN_ID_RE = re.compile(r"^run-[0-9a-f]{64}$")
 ANSI_CSI_RE = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 ANSI_OSC_RE = re.compile(r"\x1b\].*?(?:\x07|\x1b\\)")
 CONTROL_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
@@ -791,20 +790,6 @@ def stage_resource_text(stage, identity, fallback):
     }:
         return "Resource plan not yet reported by the EMRYS control stream."
     return fallback
-
-
-def report_locations(identity):
-    """Return current-contract report paths without probing the run root."""
-    run_root = identity.get("run_root")
-    run_id = identity.get("run_id")
-    if not run_root or not os.path.isabs(run_root) or not RUN_ID_RE.fullmatch(run_id or ""):
-        return None
-    report_dir = os.path.join(run_root, "products", "report", run_id)
-    return {
-        "directory": report_dir,
-        "scientific": os.path.join(report_dir, "%s.scientific_report.html" % run_id),
-        "evidence": os.path.join(report_dir, "%s.evidence_report.html" % run_id),
-    }
 
 
 def parse_workflow(stderr_text):
@@ -1676,12 +1661,6 @@ def provenance_activity_lines(slurm, identity, model, now, width):
         "Configuration", configuration_text(identity),
         width, "value",
     ))
-    reports = report_locations(identity)
-    if reports:
-        lines.extend(wrapped_field(
-            "Reports (after reporting succeeds)", reports["directory"],
-            width, "value",
-        ))
     lines.append("")
     lines.extend(workflow_frontier_lines(model, now, width))
     lines.append("")
@@ -1701,14 +1680,9 @@ def activity_lines(model, slurm, identity, now):
             "Snakemake: %d/%d jobs complete" % progress_values(model)[:2],
             "Run root: %s" % identity.get("run_root", "-"),
         ]
-        reports = report_locations(identity)
-        if reports:
-            lines.extend([
-                "Scientific report: %s" % reports["scientific"],
-                "Evidence report: %s" % reports["evidence"],
-            ])
         lines.append(
-            "Next: run final EMRYS inspection; this dashboard is not completion authority."
+            "Next: run final EMRYS inspection for completion and verified result "
+            "locations."
         )
         return "COMPLETION", lines
 
@@ -1884,9 +1858,6 @@ def snapshot(job_id, slurm, identity, model):
         slurm.get("state", "UNKNOWN"), complete, total, remaining))
     print("Run: %s" % identity.get("run_id", "-"))
     print("Configuration: %s" % configuration_text(identity))
-    reports = report_locations(identity)
-    if reports:
-        print("Reports: %s" % reports["directory"])
     for line in pipeline_lines(model, now, 80):
         print(line[0] if isinstance(line, tuple) else line)
 

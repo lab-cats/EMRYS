@@ -61,6 +61,33 @@ class SemanticTransaction(Protocol):
     receipt_sha256: str
 
 
+def _semantic_report_locations(
+    kind: ReportingKind,
+    semantic: SemanticTransaction,
+) -> tuple[tuple[str, Path], ...]:
+    if kind != "html_report":
+        return ()
+    locations = getattr(semantic, "verified_report_locations", ())
+    expected_ids = ("scientific-report-html", "evidence-report-html")
+    try:
+        admitted = tuple((output_id, path) for output_id, path in locations)
+    except (TypeError, ValueError) as exc:
+        raise ReportingBoundaryError(
+            "Validated HTML report transaction returned malformed result locations"
+        ) from exc
+    if (
+        tuple(output_id for output_id, _path in admitted) != expected_ids
+        or any(
+            not isinstance(path, Path) or not path.is_absolute()
+            for _, path in admitted
+        )
+    ):
+        raise ReportingBoundaryError(
+            "Validated HTML report transaction lacks both exact verified result locations"
+        )
+    return admitted
+
+
 SemanticValidator = Callable[
     [
         str,
@@ -93,6 +120,7 @@ class ReportingBoundaryOutcome:
     origin_workflow_attempt_id: str
     semantic_receipt_path: Path | None
     semantic_receipt_sha256: str | None
+    verified_report_locations: tuple[tuple[str, Path], ...] = ()
 
 
 BytesPublisher = Callable[[Path, bytes], None]
@@ -745,6 +773,10 @@ def publish_verified(
         raise ReportingBoundaryError(
             "Semantic validator returned a different reporting receipt identity"
         )
+    verified_report_locations = _semantic_report_locations(
+        admitted_kind,
+        semantic,
+    )
     confirmed = _admit_identity(
         run_root=run_root,
         execution_path=execution_path,
@@ -799,6 +831,7 @@ def publish_verified(
         origin_workflow_attempt_id=str(identity.attempt["workflow_attempt_id"]),
         semantic_receipt_path=receipt_path,
         semantic_receipt_sha256=receipt_reference["sha256"],
+        verified_report_locations=verified_report_locations,
     )
 
 
@@ -926,6 +959,10 @@ def validate_verified(
         raise ReportingBoundaryError(
             "Verified reporting semantic receipt identity no longer matches"
         )
+    verified_report_locations = _semantic_report_locations(
+        admitted_kind,
+        semantic,
+    )
     confirmed, confirmed_start, confirmed_start_reference = _identity_from_origin(
         admitted_kind,
         identity.root,
@@ -956,6 +993,7 @@ def validate_verified(
         origin_workflow_attempt_id=str(identity.attempt["workflow_attempt_id"]),
         semantic_receipt_path=receipt_path,
         semantic_receipt_sha256=receipt_reference["sha256"],
+        verified_report_locations=verified_report_locations,
     )
 
 

@@ -434,6 +434,7 @@ observed = SimpleNamespace(
     blockers=(),
     resume_available=True,
     local_pipeline_complete=False,
+    verified_report_locations=(),
 )
 ops = control.ControlOps(
     inspect_readiness=unreachable,
@@ -465,6 +466,7 @@ print(json.dumps({"status": status}))
     assert seam.returncode == 0, seam.stdout + seam.stderr
     assert "Run ID: run-explicit-ops" in seam.stdout
     assert "State: resume_available" in seam.stdout
+    assert "Results:" not in seam.stdout
     assert json.loads(seam.stdout.splitlines()[-1]) == {"status": 0}
 
     harness = _run(
@@ -544,6 +546,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     )
     assert failed_run.returncode == 1, failed_run.stdout + failed_run.stderr
     assert "Attempt status: failed" in failed_run.stdout
+    assert "Results:" not in failed_run.stdout
     assert run_root.is_dir()
 
     failed_receipts = sorted(run_root.glob("attempts/*/attempt-receipt.json"))
@@ -561,6 +564,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert failed_inspect.returncode == 0, failed_inspect.stderr
     assert "State: resume_available" in failed_inspect.stdout
     assert "Resume available: yes" in failed_inspect.stdout
+    assert "Results:" not in failed_inspect.stdout
     second_initial = _harness_command(
         "success",
         ["run", *common, "--execute"],
@@ -611,6 +615,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         resume_dry_run.stdout
     )
     assert "Dry-run complete; no resume state was written." in resume_dry_run.stdout
+    assert "Results:" not in resume_dry_run.stdout
     assert _tree_snapshot(run_root) == before_resume_dry_run
 
     resumed = _harness_command(
@@ -620,6 +625,13 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     )
     assert resumed.returncode == 0, resumed.stdout + resumed.stderr
     assert "Attempt status: succeeded" in resumed.stdout
+    report_root = run_root / "products" / "report" / normalized.run_id
+    expected_results = (
+        "Results:\n"
+        f"  Scientific report: {report_root}/{normalized.run_id}.scientific_report.html\n"
+        f"  Evidence report: {report_root}/{normalized.run_id}.evidence_report.html\n"
+    )
+    assert expected_results in resumed.stdout
     reused_after = _reusable_snapshot(run_root)
     assert reused_before.keys() <= reused_after.keys()
     assert all(reused_after[path] == value for path, value in reused_before.items())
@@ -631,6 +643,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert completed_inspect.returncode == 0, completed_inspect.stderr
     assert "State: local_pipeline_complete" in completed_inspect.stdout
     assert "Local pipeline complete: yes" in completed_inspect.stdout
+    assert expected_results in completed_inspect.stdout
 
     _assert_complete_products(run_root, normalized.run_id)
 
@@ -700,6 +713,13 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert clean_run.returncode == 0, clean_run.stdout + clean_run.stderr
     assert "Attempt status: succeeded" in clean_run.stdout
     clean_root = clean_workspace / "runs" / clean_normalized.run_id
+    clean_report_root = clean_root / "products" / "report" / clean_normalized.run_id
+    clean_expected_results = (
+        "Results:\n"
+        f"  Scientific report: {clean_report_root}/{clean_normalized.run_id}.scientific_report.html\n"
+        f"  Evidence report: {clean_report_root}/{clean_normalized.run_id}.evidence_report.html\n"
+    )
+    assert clean_expected_results in clean_run.stdout
     clean_inspect = _public_command(
         ["inspect", "local-pilot-run", "--run-root", str(clean_root)],
         environment=environment,
@@ -707,6 +727,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert clean_inspect.returncode == 0, clean_inspect.stderr
     assert "State: local_pipeline_complete" in clean_inspect.stdout
     assert "Local pipeline complete: yes" in clean_inspect.stdout
+    assert clean_expected_results in clean_inspect.stdout
     _assert_complete_products(clean_root, clean_normalized.run_id)
     for path in clean_root.rglob("*"):
         if path.is_file() and not path.is_symlink():

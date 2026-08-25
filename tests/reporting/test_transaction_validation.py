@@ -100,6 +100,18 @@ def test_direct_validators_recheck_each_complete_transaction(
     assert summary.receipt_path == built.summary_receipt_path
     assert rendered.receipt_path.name == f"{built.run_id}.report_outputs.tsv"
     assert all(len(item.receipt_sha256) == 64 for item in (adapter, summary, rendered))
+    assert adapter.verified_report_locations == ()
+    assert summary.verified_report_locations == ()
+    assert rendered.verified_report_locations == (
+        (
+            "scientific-report-html",
+            report_root / built.run_id / f"{built.run_id}.scientific_report.html",
+        ),
+        (
+            "evidence-report-html",
+            report_root / built.run_id / f"{built.run_id}.evidence_report.html",
+        ),
+    )
 
 
 def test_report_validator_rechecks_bound_reference_identity_without_rereading(

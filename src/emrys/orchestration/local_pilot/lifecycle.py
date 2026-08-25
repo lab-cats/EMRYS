@@ -458,6 +458,7 @@ class LifecycleOutcome:
     released_lock_path: Path
     receipt: dict[str, Any]
     workflow_result: WorkflowResult | None
+    verified_report_locations: tuple[tuple[str, Path], ...] = ()
 
 
 def _canonical_file(path: Path, label: str) -> Path:
@@ -2125,7 +2126,11 @@ def _run_attempt_locked(
         *task_tree_blockers,
         *_incomplete_task_start_blockers(task_starts, verified),
     ]
-    reporting, reporting_blockers = inspection.inspect_reporting_ledger(
+    (
+        reporting,
+        reporting_blockers,
+        verified_report_locations,
+    ) = inspection._inspect_reporting_ledger_with_locations(
         root,
         execution,
         profile,
@@ -2256,7 +2261,11 @@ def _run_attempt_locked(
             root, execution, profile, attempts
         )
         task_tree_blockers.extend(_chain_blockers)
-        reporting, reporting_blockers = inspection.inspect_reporting_ledger(
+        (
+            reporting,
+            reporting_blockers,
+            verified_report_locations,
+        ) = inspection._inspect_reporting_ledger_with_locations(
             root,
             execution,
             profile,
@@ -2408,6 +2417,9 @@ def _run_attempt_locked(
         released_lock_path=released_lock_path,
         receipt=receipt,
         workflow_result=result,
+        verified_report_locations=(
+            verified_report_locations if receipt["status"] == "succeeded" else ()
+        ),
     )
 
 
