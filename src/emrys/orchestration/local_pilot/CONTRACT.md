@@ -36,13 +36,18 @@ required flags, and descriptions remain unchanged. Doctor owns the later
 content binding and actual version/readiness probes.
 
 `emrys init synthetic-local-pilot` uses the same external, dry-run-first,
-create-absent publication policy. It writes a deterministic tiny reference,
-annotation, four paired libraries, and matched manifests, validates its own
-request before publishing `fixture.manifest.json` last, and then re-admits the
-complete transaction. Its two paired control/treatment strata and engineered
-reads are suitable for a fast real-tool workflow smoke. The metadata's expected
-three computational candidates and one significant candidate are deterministic
-fixture expectations, not scientific review or biological interpretation.
+create-absent publication policy. Its closed `--dataset-profile` selector
+defaults to `smoke-v1` (130 pairs per library on 100 kb) and also admits
+`production-like-v1` (100,000 pairs per library on 5 Mb). The larger profile
+retains the exact engineered core while adding globally disjoint deterministic
+neutral templates and an explicit deliberate-duplicate subset. Dry-run plans
+either profile without generating its reference or FASTQs. Execute writes the
+reference, annotation, four paired libraries, matched manifests, and explicit
+metadata, validates its own request before publishing `fixture.manifest.json`
+last, and then re-admits the complete transaction. The metadata's expected
+three Step 09 computational candidates, one significant candidate, and Step 10
+workflow completion are deterministic synthetic expectations, not production
+data, scientific review, or biological interpretation.
 
 The generated `run-in-slurm.sh` is a submit-or-batch template, not a scheduler
 inside EMRYS. With no `SLURM_JOB_ID`, it calls the generation-bound controlled
@@ -61,6 +66,8 @@ owned by the live user, mode `0600` or stricter, and a real nonsymlink file.
 Admission errors never include private values; missing-reference and `.env`
 diagnostics identify only the affected field or variable name.
 
+`account: site-default` and `qos: site-default` emit neither optional Slurm
+flag; any other admitted account or QOS emits its flag exactly once.
 `memory: site-default` emits no `--mem`; a positive explicit Slurm size is
 emitted exactly once. `exclusive: true` emits one `--exclusive`; a nonempty
 validated node list emits one exact `--nodelist=VALUE`. Both are submission-only

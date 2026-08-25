@@ -16,3 +16,22 @@ fail closed.
 
 These files support repository validation; they are not public workflow
 commands or independent evidence authorities.
+
+`real_synthetic_e2e.py` is the CI-owned retained real-runtime driver. It
+initializes one public synthetic profile, prepares an exact runtime TSV from
+already-provisioned paths, performs real two-phase storage qualification,
+submits both the no-write plan and explicit execution through the generated
+single-node Slurm wrapper, and independently checks the fixed completion
+oracles. The default invocation is a no-write plan; only its explicit
+`--execute` flag enters the sequence. The driver independently attests the
+exact RSeQC distribution and retains a narrow version adapter; only
+`--version` is normalized, while real calls execute the exact provisioned
+Python and delegate. A retained GATK adapter executes the canonical Broad
+launcher with the locked runtime Python, clears ambient launcher overrides, and
+seals PATH/JAVA_HOME to the locked Java independently of the Slurm launcher's
+PATH. A retained gunzip adapter adds explicit decompression after canonical
+path admission, so a provisioned `gunzip -> gzip` link cannot silently change
+STAR's read-command behavior. Adapter delegates, retained bytes, and bound
+runtimes are hashed in the summary. The driver installs and cleans nothing; its
+machine-readable summary remains synthetic execution evidence, never
+production or biological evidence.

@@ -480,6 +480,31 @@ def test_submission_command_seals_exports_and_optional_slurm_flags(
         launcher_config._export_value("UNSAFE", "line one\nline two")
 
 
+def test_site_default_account_and_qos_omit_optional_submission_flags(
+    tmp_path: Path,
+) -> None:
+    fixture = _fixture(tmp_path)
+    plan = _load(
+        fixture,
+        overrides=LauncherOverrides(account="site-default", qos="site-default"),
+    )
+
+    command = launcher_config._submission_command(
+        plan,
+        wrapper=fixture.launcher_root / "run-in-slurm.sh",
+        source_checkout=fixture.source_checkout,
+        workflow_python=fixture.source_checkout / ".venv/bin/python",
+        execute=False,
+        live_uid=1234,
+        live_user="test-user",
+        sbatch="/opt/slurm/bin/sbatch",
+    )
+
+    assert not any(argument.startswith("--account=") for argument in command)
+    assert not any(argument.startswith("--qos=") for argument in command)
+    assert "--partition=default-partition" in command
+
+
 @pytest.mark.parametrize(
     ("value", "directory", "message"),
     (

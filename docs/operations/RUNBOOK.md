@@ -257,11 +257,15 @@ settled; rerun it only for a concrete failure-driven reason.
 
 ### GitHub Actions Phase 1 CI
 
-The tracked [Phase 1 workflow](../../.github/workflows/ci.yml) runs for pull
-requests targeting `master`, pushes to `master`, merge-queue candidates,
-explicit manual dispatches, and a nightly schedule. It grants the workflow
-token read-only repository access, pins external actions to immutable commits,
-and cancels superseded runs for the same ref.
+The tracked [Phase 1 workflow](../../.github/workflows/ci.yml) runs its ordinary
+lanes for pull requests targeting `master`, pushes to `master`, and merge-queue
+candidates. Its long lanes run separately: the complete Python 3.11 suite and
+the 130-pair real synthetic E2E run nightly, and the 100,000-pair real synthetic
+E2E joins them weekly. Manual dispatch exposes three independent boolean
+selectors for those same lanes and rejects an empty selection. The workflow
+token has read-only repository access and every external action is pinned to an
+immutable commit. Superseded ordinary runs for the same ref are cancelled;
+scheduled and manually selected long runs have unique, non-cancelling groups.
 
 Python 3.14 is the primary development and pull-request runtime. Every pull
 request runs the complete behavioral inventory under branch coverage as four
@@ -272,9 +276,10 @@ inconsistently planned receipts before combining coverage and applying the
 reviewed baseline.
 
 Python 3.11 remains supported. Pull requests run a bounded 3.11 compilation,
-wheel, installed CLI, and manifest smoke. Nightly and manual runs additionally
-run the complete behavioral inventory as four receipt-verified 3.11 shards;
-they do not duplicate the Python 3.14 coverage measurement.
+wheel, installed CLI, and manifest smoke. Nightly runs and manual dispatches
+that select `python311` additionally run the complete behavioral inventory as
+four receipt-verified 3.11 shards; they do not duplicate the Python 3.14
+coverage measurement.
 
 The assembled local `make -s all-checks` authority remains unchanged in
 meaning. CI executes its non-overlapping owners as independent checks so a
@@ -295,14 +300,24 @@ slow R restore or shell lane cannot serialize the Python suite:
   integrations remain disabled because Phase 1 does not establish either as a
   new repository policy.
 
+The scheduled real synthetic lane restores the checked-in Linux lock for STAR,
+Samtools, GATK, BCFtools, Picard, and RSeQC, restores the exact R and Python
+authorities separately, and configures one disposable real Slurm node on the
+GitHub-hosted runner. It executes the public workflow through the generated
+Slurm launcher and retains runtime, scheduler, transcript, partial-state, and
+result evidence even when a selected profile fails. The direct completion
+oracle requires all 35 owner jobs, Step 10, all three reporting transactions,
+the three-row/one-significant-row Step 09 result, and both HTML reports.
+
 The workflow bootstrap may download explicitly selected dependencies, but the
-validation commands themselves remain non-restoring. A green Phase 1 workflow
-establishes clean GitHub-hosted Ubuntu engineering evidence, guarded fixture R
-evidence in its dedicated lane, and deterministic no-science fresh-clone
-evidence. It does not establish real scientific-tool execution, a real Slurm
-scheduler, CSU or distributed-filesystem behavior, production-data execution,
-scientific review, or biological interpretation. Those runtime and scheduler
-lanes remain separate Phase 2 work.
+ordinary validation commands themselves remain non-restoring. A green ordinary
+Phase 1 run establishes clean GitHub-hosted Ubuntu engineering evidence,
+guarded fixture R evidence in its dedicated lane, and deterministic no-science
+fresh-clone evidence. A green selected synthetic lane additionally establishes
+the named locked real-tool, single-node Slurm, synthetic workflow result on that
+hosted runner. Neither establishes CSU or distributed-filesystem behavior,
+production-data execution, scientific review, biological validation, or
+biological interpretation.
 
 ## Dependency maintenance
 

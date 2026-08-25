@@ -191,6 +191,7 @@ EMRYS_INPUT_DIR="$EMRYS_OPERATOR_ROOT/emrys-synthetic-inputs"
 emrys init synthetic-local-pilot --output-dir "$EMRYS_INPUT_DIR"
 emrys init synthetic-local-pilot \
   --output-dir "$EMRYS_INPUT_DIR" \
+  --dataset-profile smoke-v1 \
   --execute
 
 test -f "$EMRYS_INPUT_DIR/fixture.manifest.json"
@@ -203,6 +204,12 @@ engineered expectation is three Step `09` all-sites rows and one significant
 computational row when the complete real-tool workflow succeeds. Those facts
 are a smoke oracle only; they are not production, scientific-review, or
 biological evidence.
+
+For the larger production-like functional exercise, use a different absent
+destination and select `--dataset-profile production-like-v1` on both the plan
+and execute commands. It preserves the engineered oracle while expanding to a
+5 Mb reference and 100,000 pairs per library. It is intentionally much slower
+than `smoke-v1` and still uses only synthetic data.
 
 If this synthetic run will use SLURM, also generate one separate launcher set.
 Its request/manifests are unused for the synthetic run; only its reviewed

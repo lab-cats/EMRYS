@@ -7,9 +7,15 @@ surface. The zero-context entry points are:
 # Plan first; add --execute to create one absent starter directory.
 emrys init local-pilot --output-dir /absolute/outside-checkout/starter
 
-# Generate a tiny deterministic four-library science fixture the same way.
+# Generate the default 130-pair deterministic science fixture the same way.
 emrys init synthetic-local-pilot \
-  --output-dir /absolute/outside-checkout/synthetic-smoke
+  --output-dir /absolute/outside-checkout/synthetic-smoke \
+  --dataset-profile smoke-v1
+
+# Select the closed 100,000-pair-per-library, 5 Mb profile explicitly.
+emrys init synthetic-local-pilot \
+  --output-dir /absolute/outside-checkout/synthetic-production-like \
+  --dataset-profile production-like-v1
 
 # Validate all declared inputs without requiring or probing science tools.
 emrys validate local-pilot-request \
@@ -50,6 +56,9 @@ owner-only, and never copied into a starter or printed. The generated wrapper
 binds its source checkout and controlled Python at generation instead of
 accepting either from launcher configuration.
 
+`account: site-default` and `qos: site-default` omit their optional Slurm
+flags so sites without accounting or QOS policy can use their scheduler
+defaults. Any explicit account or QOS is passed exactly once. Likewise,
 `memory: site-default` omits `--mem`; a positive explicit Slurm size is passed
 exactly once. `exclusive: true` and a nonempty `nodelist` emit one
 `--exclusive` and `--nodelist=...` respectively. These values request the
@@ -104,13 +113,18 @@ benchmark policy. See the
 [runbook](../../../../docs/operations/RUNBOOK.md#live-whole-run-dashboard) for
 the supported preview commands and explicit override rules.
 
-`init synthetic-local-pilot` publishes a deterministic 100-kb reference, GTF,
-four paired 130-read libraries across two control/treatment strata, matched
-request/manifests, and metadata. `fixture.manifest.json` is written last after
-the generated request passes the same normalizer and reference-compatibility
-checks. The engineered smoke expectation is three Step 09 computational rows
-and one significant row; it is not scientific adjudication or biological
-evidence.
+`init synthetic-local-pilot` has two closed dataset profiles. The default
+`smoke-v1` publishes a deterministic 100-kb reference, GTF, and four paired
+130-read libraries across two control/treatment strata. The explicit
+`production-like-v1` profile retains the same engineered core and oracle, adds
+deterministic neutral background and deliberate duplicate templates to reach
+100,000 pairs per library, and uses a 5 Mb reference. Both profiles publish
+matched request/manifests and explicit fixture metadata for the current
+Step 00a-10 and reporting workflow. `fixture.manifest.json` is written last
+after the generated request passes the same normalizer and reference-
+compatibility checks. Their expectation is three Step 09 computational rows,
+one significant row, and a complete Step 10 projection; none is production
+data, scientific adjudication, or biological evidence.
 
 Focused protection is:
 
