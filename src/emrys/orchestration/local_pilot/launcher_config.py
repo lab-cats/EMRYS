@@ -907,13 +907,19 @@ def _submission_command(
     command = [
         sbatch,
         "--parsable",
-        f"--account={plan.account}",
-        f"--partition={plan.partition}",
-        f"--qos={plan.qos}",
-        "--nodes=1",
-        "--ntasks=1",
-        f"--cpus-per-task={plan.cpus_per_task}",
     ]
+    if plan.account != "site-default":
+        command.append(f"--account={plan.account}")
+    command.append(f"--partition={plan.partition}")
+    if plan.qos != "site-default":
+        command.append(f"--qos={plan.qos}")
+    command.extend(
+        (
+            "--nodes=1",
+            "--ntasks=1",
+            f"--cpus-per-task={plan.cpus_per_task}",
+        )
+    )
     if plan.memory != "site-default":
         command.append(f"--mem={plan.memory}")
     if plan.exclusive:

@@ -102,8 +102,10 @@ representative samples before authorizing the full analysis.
 ## Choose a first run
 
 - **Synthetic installation check:** use [`quickstart.md`](quickstart.md),
-  Path A, with `emrys init synthetic-local-pilot`. It creates small explicit
-  inputs outside the repository and still requires the real admitted scientific
+  Path A, with `emrys init synthetic-local-pilot`. The default `smoke-v1`
+  creates small explicit inputs; the closed `production-like-v1` selector
+  creates the 100,000-pair-per-library, 5 Mb functional fixture. Both write
+  outside the repository and still require the real admitted scientific
   runtime. A synthetic result
   demonstrates that exact runtime and request, not production or biological
   validity.

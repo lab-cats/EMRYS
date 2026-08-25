@@ -208,7 +208,7 @@ def _add_onboarding_commands(command_parsers: _SubparserCollection) -> None:
     )
     synthetic_parser = init_parsers.add_parser(
         "synthetic-local-pilot",
-        help="Create a tiny deterministic four-library science fixture.",
+        help="Create a deterministic four-library synthetic science fixture.",
         description=local_pilot_synthetic_fixture_command.DESCRIPTION,
     )
     local_pilot_synthetic_fixture_command.configure_parser(synthetic_parser)

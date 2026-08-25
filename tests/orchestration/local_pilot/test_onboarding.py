@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gzip
 import hashlib
 import json
 import os
@@ -9,6 +10,7 @@ import pwd
 import stat
 import subprocess
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -22,8 +24,17 @@ from emrys.orchestration.local_pilot.launcher_config import BATCH_MARKER
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
-def _namespace(output: Path, *, execute: bool) -> argparse.Namespace:
-    return argparse.Namespace(output_dir=output, execute=execute)
+def _namespace(
+    output: Path,
+    *,
+    execute: bool,
+    dataset_profile: str = synthetic_fixture.DEFAULT_DATASET_PROFILE,
+) -> argparse.Namespace:
+    return argparse.Namespace(
+        output_dir=output,
+        execute=execute,
+        dataset_profile=dataset_profile,
+    )
 
 
 def _publish_synthetic(output: Path) -> None:
@@ -200,7 +211,11 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
     assert result.fasta_contigs == (("chrSynthetic", 100_000),)
     assert result.transcript_count == 2
     metadata = json.loads((first / "fixture.json").read_text(encoding="utf-8"))
+    assert metadata["dataset_profile"] == "smoke-v1"
+    assert metadata["fixture_id"] == "deterministic-science-smoke-v1"
     assert metadata["read_pairs_per_library"] == 130
+    assert metadata["core_read_pairs_per_library"] == 130
+    assert metadata["neutral_background"]["pair_count_per_library"] == 0
     assert metadata["expected_terminal_computational_result"] == {
         "absolute_af_difference": 0.4375,
         "all_sites_rows": 3,
@@ -211,6 +226,14 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
         "significant_sites_rows": 1,
         "treatment_af": 0.5,
     }
+    assert metadata["expected_terminal_workflow"] == {
+        "interpretation": (
+            "synthetic functional expectation; not production, scientific-review, "
+            "or biological evidence"
+        ),
+        "last_scientific_step": "10",
+        "local_pipeline_complete": True,
+    }
     manifest = json.loads((first / synthetic_fixture.COMPLETION_MANIFEST).read_text())
     assert set(manifest) == set(_tree_bytes(first)) - {
         synthetic_fixture.COMPLETION_MANIFEST
@@ -219,6 +242,316 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
         data = (first / relative).read_bytes()
         assert record["size_bytes"] == len(data)
         assert record["sha256"] == hashlib.sha256(data).hexdigest()
+
+
+def test_production_like_profile_is_explicit_and_dry_run_skips_generation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "production-like"
+
+    def fail_if_generated(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("dry-run generated production-like fixture members")
+
+    monkeypatch.setattr(synthetic_fixture, "fixture_members", fail_if_generated)
+    assert (
+        synthetic_fixture.init_from_args(
+            _namespace(
+                output,
+                execute=False,
+                dataset_profile=synthetic_fixture.PRODUCTION_LIKE_DATASET_PROFILE,
+            )
+        )
+        == 0
+    )
+    assert not output.exists()
+    stdout = capsys.readouterr().out
+    assert "Dataset profile: production-like-v1" in stdout
+    assert "Read pairs per library: 100000" in stdout
+    assert "Neutral unique/duplicate pairs per library: 89883/9987" in stdout
+    assert "Reference length: 5000000" in stdout
+
+    profile = synthetic_fixture.DATASET_PROFILES["production-like-v1"]
+    metadata = synthetic_fixture.fixture_metadata(profile)
+    assert metadata["fixture_id"] == "deterministic-production-like-v1"
+    assert metadata["dataset_profile"] == "production-like-v1"
+    assert metadata["seed"] == 20260814
+    assert metadata["contig_length"] == 5_000_000
+    assert metadata["read_pairs_per_library"] == 100_000
+    assert metadata["core_read_pairs_per_library"] == 130
+    assert metadata["neutral_background"] == {
+        "deliberate_duplicate_pair_count_per_library": 9_987,
+        "fragment_start_interval_0_based_half_open": [100_000, 4_999_776],
+        "pair_count_per_library": 99_870,
+        "placement_seed": 20260814,
+        "reserved_core_region_1_based_closed": [1, 100_000],
+        "unique_template_pair_count_per_library": 89_883,
+    }
+    assert metadata["star"] == {
+        "genome_sa_index_nbases": 10,
+        "sjdb_overhang": 74,
+    }
+    assert metadata["expected_terminal_computational_result"] == {
+        "absolute_af_difference": 0.4375,
+        "all_sites_rows": 3,
+        "common_odds_ratio": 15.0,
+        "control_af": 0.0625,
+        "interpretation": (
+            "computational production-like expectation; not scientific adjudication"
+        ),
+        "significant_candidate_id": "REV_like|chrSynthetic|50000|A>G",
+        "significant_sites_rows": 1,
+        "treatment_af": 0.5,
+    }
+    assert metadata["expected_terminal_workflow"]["last_scientific_step"] == "10"
+    assert metadata["expected_terminal_workflow"]["local_pipeline_complete"] is True
+    request = synthetic_fixture._request(profile).decode("utf-8")
+    assert "label: deterministic-production-like-v1" in request
+    assert "id: synthetic-production-like-v1" in request
+    assert "cohort_id: synthetic-production-like-v1" in request
+    assert "id: synthetic-production-like-cmh-v1" in request
+    assert "genome_sa_index_nbases: 10" in request
+
+
+def test_production_like_neutral_plan_is_globally_disjoint_and_guarded() -> None:
+    profile = synthetic_fixture.DATASET_PROFILES["production-like-v1"]
+    starts_by_sample: list[set[int]] = []
+    for sample_index in range(len(synthetic_fixture.SAMPLES)):
+        starts = {
+            synthetic_fixture._neutral_unique_start(
+                profile,
+                sample_index,
+                unique_index,
+            )
+            for unique_index in range(
+                profile.neutral_unique_template_pair_count_per_library
+            )
+        }
+        assert len(starts) == 89_883
+        assert min(starts) >= 100_000
+        assert max(starts) + synthetic_fixture.FRAGMENT_LENGTH <= 5_000_000
+        starts_by_sample.append(starts)
+
+        duplicate_sources = {
+            synthetic_fixture._neutral_duplicate_source_index(
+                profile,
+                sample_index,
+                duplicate_index,
+            )
+            for duplicate_index in range(
+                profile.neutral_duplicate_pair_count_per_library
+            )
+        }
+        assert len(duplicate_sources) == 9_987
+        assert all(0 <= source_index < 89_883 for source_index in duplicate_sources)
+
+    assert len(set().union(*starts_by_sample)) == 4 * 89_883
+    guarded_positions = (30_000 - 1, 50_000 - 1, 50_010 - 1)
+    assert all(
+        not any(
+            start <= position < start + synthetic_fixture.FRAGMENT_LENGTH
+            for position in guarded_positions
+        )
+        for starts in starts_by_sample
+        for start in starts
+    )
+
+
+def _tiny_neutral_profile() -> synthetic_fixture.DatasetProfile:
+    return synthetic_fixture.DatasetProfile(
+        name="test-neutral-v1",
+        fixture_id="test-neutral-v1",
+        reference_id="test-neutral-v1",
+        cohort_id="test-neutral-v1",
+        analysis_id="test-neutral-v1",
+        seed=17,
+        contig_length=52_500,
+        pair_count_per_library=133,
+        neutral_unique_template_pair_count_per_library=2,
+        neutral_duplicate_pair_count_per_library=1,
+        neutral_start_zero_based=51_900,
+        genome_sa_index_nbases=3,
+    )
+
+
+def test_tiny_neutral_profile_exercises_unique_and_duplicate_records() -> None:
+    profile = _tiny_neutral_profile()
+    reference = synthetic_fixture._reference(profile)
+    r1_records = list(
+        synthetic_fixture._fastq_records(
+            reference,
+            synthetic_fixture.SAMPLES[0],
+            0,
+            profile,
+            mate=1,
+        )
+    )
+    r2_records = list(
+        synthetic_fixture._fastq_records(
+            reference,
+            synthetic_fixture.SAMPLES[0],
+            0,
+            profile,
+            mate=2,
+        )
+    )
+
+    assert len(r1_records) == len(r2_records) == 133
+    neutral_r1 = r1_records[-3:]
+    neutral_r2 = r2_records[-3:]
+    assert all(":NEUTRAL_UNIQUE:" in record for record in neutral_r1[:2])
+    assert ":NEUTRAL_DUPLICATE:" in neutral_r1[2]
+    source_index = synthetic_fixture._neutral_duplicate_source_index(profile, 0, 0)
+    assert neutral_r1[2].splitlines()[1] == neutral_r1[source_index].splitlines()[1]
+    assert neutral_r2[2].splitlines()[1] == neutral_r2[source_index].splitlines()[1]
+    assert all(
+        len(record.splitlines()[1]) == 75 for record in (*neutral_r1, *neutral_r2)
+    )
+
+
+def test_dataset_profile_validation_rejects_every_inconsistent_plan() -> None:
+    base = _tiny_neutral_profile()
+    invalid_cases = (
+        (replace(base, pair_count_per_library=132), "pair counts do not add up"),
+        (replace(base, contig_length=49_999), "reference is shorter"),
+        (
+            replace(
+                base,
+                pair_count_per_library=129,
+                neutral_unique_template_pair_count_per_library=-1,
+                neutral_duplicate_pair_count_per_library=0,
+            ),
+            "negative neutral pair count",
+        ),
+        (
+            replace(
+                base,
+                pair_count_per_library=130,
+                neutral_unique_template_pair_count_per_library=0,
+                neutral_duplicate_pair_count_per_library=0,
+            ),
+            "invalid empty neutral plan",
+        ),
+        (
+            replace(
+                base,
+                neutral_unique_template_pair_count_per_library=1,
+                neutral_duplicate_pair_count_per_library=2,
+            ),
+            "duplicates more neutral templates",
+        ),
+        (
+            replace(
+                base,
+                pair_count_per_library=131,
+                neutral_unique_template_pair_count_per_library=1,
+                neutral_duplicate_pair_count_per_library=0,
+                neutral_start_zero_based=None,
+            ),
+            "omits its neutral start interval",
+        ),
+        (
+            replace(
+                base,
+                pair_count_per_library=131,
+                neutral_unique_template_pair_count_per_library=1,
+                neutral_duplicate_pair_count_per_library=0,
+                neutral_start_zero_based=51_899,
+            ),
+            "guarded candidate/splice region",
+        ),
+        (
+            replace(
+                base,
+                pair_count_per_library=1_130,
+                neutral_unique_template_pair_count_per_library=1_000,
+                neutral_duplicate_pair_count_per_library=0,
+            ),
+            "allowed neutral starts",
+        ),
+    )
+
+    for profile, message in invalid_cases:
+        with pytest.raises(ValueError, match=message):
+            synthetic_fixture._validate_dataset_profile(profile)
+
+
+def test_synthetic_streaming_helpers_fail_closed_and_flush(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    profile = _tiny_neutral_profile()
+    reference = "A" * profile.contig_length
+    with pytest.raises(ValueError, match="FASTQ mate"):
+        list(
+            synthetic_fixture._fastq_records(
+                reference,
+                synthetic_fixture.SAMPLES[0],
+                0,
+                profile,
+                mate=3,
+            )
+        )
+
+    monkeypatch.setattr(
+        synthetic_fixture,
+        "_core_pairs",
+        lambda *_args, **_kwargs: iter(()),
+    )
+    monkeypatch.setattr(
+        synthetic_fixture,
+        "_neutral_pairs",
+        lambda *_args, **_kwargs: iter(()),
+    )
+    with pytest.raises(onboarding.OnboardingError, match="produced 0 pairs"):
+        list(
+            synthetic_fixture._fastq_records(
+                reference,
+                synthetic_fixture.SAMPLES[0],
+                0,
+                profile,
+                mate=1,
+            )
+        )
+
+    monkeypatch.setattr(synthetic_fixture, "GZIP_WRITE_BUFFER_SIZE", 5)
+    assert (
+        gzip.decompress(synthetic_fixture._gzip_records(iter(("abc", "defghij", "k"))))
+        == b"abcdefghijk"
+    )
+    assert gzip.decompress(synthetic_fixture._gzip_records(iter(()))) == b""
+
+
+def test_synthetic_profile_primitives_and_closed_selector_failures(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    profile = _tiny_neutral_profile()
+    assert (
+        synthetic_fixture._neutral_start_capacity(synthetic_fixture.DEFAULT_PROFILE)
+        == 0
+    )
+    assert synthetic_fixture._coprime_step(1, profile.seed) == 1
+    with pytest.raises(ValueError, match="modulus must be positive"):
+        synthetic_fixture._coprime_step(0, profile.seed)
+    with pytest.raises(ValueError, match="invalid sample index"):
+        synthetic_fixture._neutral_unique_start(profile, -1, 0)
+    with pytest.raises(ValueError, match="invalid neutral unique-template index"):
+        synthetic_fixture._neutral_unique_start(profile, 0, 2)
+    with pytest.raises(ValueError, match="invalid sample index"):
+        synthetic_fixture._neutral_duplicate_source_index(profile, 4, 0)
+    with pytest.raises(ValueError, match="invalid neutral duplicate index"):
+        synthetic_fixture._neutral_duplicate_source_index(profile, 0, 1)
+
+    output = tmp_path / "unsupported-profile"
+    assert (
+        synthetic_fixture.init_from_args(
+            _namespace(output, execute=False, dataset_profile="not-a-profile")
+        )
+        == 2
+    )
+    assert not output.exists()
+    assert "unsupported synthetic dataset profile" in capsys.readouterr().err
 
 
 def test_synthetic_fastqs_have_complete_matching_mates(tmp_path: Path) -> None:

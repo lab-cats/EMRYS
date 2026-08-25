@@ -9,29 +9,70 @@ on:
       - master
   merge_group:
   workflow_dispatch:
+    inputs:
+      python311:
+        description: Run the complete Python 3.11 suite
+        required: true
+        default: false
+        type: boolean
+      synthetic_130:
+        description: Run the real-tool 130-pair synthetic E2E
+        required: true
+        default: false
+        type: boolean
+      synthetic_100000:
+        description: Run the real-tool 100,000-pair synthetic E2E
+        required: true
+        default: false
+        type: boolean
   schedule:
-    - cron: "17 5 * * *"
+    - cron: "17 5 * * 1-6"
+    - cron: "17 5 * * 0"
 
 permissions:
   contents: read
 
 concurrency:
-  group: phase-1-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: phase-1-ci-${{ github.workflow }}-${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.run_id || github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' && github.event_name != 'workflow_dispatch' }}
 
 env:
   ACTIONLINT_VERSION: "1.7.12"
   ACTIONLINT_LINUX_AMD64_SHA256: >-
     8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
   MINIMUM_PYTHON_VERSION: "3.11"
+  MICROMAMBA_VERSION: "2.9.0-0"
   PRIMARY_PYTHON_VERSION: "3.14"
   PYTHON_TEST_SHARD_COUNT: "4"
   UV_VERSION: "0.12.3"
   R_VERSION: "4.6.1"
 
 jobs:
+  manual-selection:
+    name: Validate manually selected long lanes
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require at least one selected long lane
+        shell: bash
+        env:
+          RUN_PYTHON311: ${{ inputs.python311 }}
+          RUN_SYNTHETIC_130: ${{ inputs.synthetic_130 }}
+          RUN_SYNTHETIC_100000: ${{ inputs.synthetic_100000 }}
+        run: |
+          set -euo pipefail
+          if [[ "${RUN_PYTHON311}" != true &&
+                "${RUN_SYNTHETIC_130}" != true &&
+                "${RUN_SYNTHETIC_100000}" != true ]]; then
+            printf '%s\n' \
+              'ERROR: select at least one lane: Python 3.11, 130-pair E2E, or 100,000-pair E2E.' >&2
+            exit 2
+          fi
+
   workflow-lint:
     name: Workflow lint
+    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -65,6 +106,7 @@ jobs:
 
   static-wheel:
     name: Static, lint, docs, and wheel
+    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -98,6 +140,7 @@ jobs:
 
   shell-slurm:
     name: Shell and Slurm contracts
+    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -128,6 +171,7 @@ jobs:
 
   guarded-r:
     name: Guarded R fixtures
+    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -216,6 +260,7 @@ jobs:
 
   fresh-clone-e2e:
     name: Fresh-clone E2E (Python 3.14)
+    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -266,6 +311,7 @@ jobs:
 
   python314-coverage-shards:
     name: Python 3.14 tests + coverage (shard ${{ matrix.shard }})
+    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
@@ -317,7 +363,10 @@ jobs:
   python314-coverage:
     name: Python 3.14 complete suite and coverage policy
     needs: python314-coverage-shards
-    if: always()
+    if: >-
+      always() &&
+      github.event_name != 'workflow_dispatch' &&
+      github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
@@ -374,6 +423,7 @@ jobs:
 
   python311-smoke:
     name: Python 3.11 compatibility smoke
+    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -410,7 +460,9 @@ jobs:
 
   python311-full-shards:
     name: Python 3.11 nightly full suite (shard ${{ matrix.shard }})
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.python311)
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
@@ -464,7 +516,8 @@ jobs:
     needs: python311-full-shards
     if: >-
       always() &&
-      (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+      (github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' && inputs.python311))
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -506,3 +559,337 @@ jobs:
       - name: Require every Python 3.11 shard to pass
         shell: bash
         run: test "${{ needs.python311-full-shards.result }}" = "success"
+
+  synthetic-e2e:
+    name: Real synthetic E2E (selected profiles)
+    if: >-
+      github.event_name == 'schedule' ||
+      (github.event_name == 'workflow_dispatch' &&
+      (inputs.synthetic_130 || inputs.synthetic_100000))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - name: Seed external evidence roots for selected profiles
+        shell: bash
+        env:
+          RUN_SYNTHETIC_130: ${{ github.event_name == 'schedule' || inputs.synthetic_130 }}
+          RUN_SYNTHETIC_100000: ${{ (github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') || inputs.synthetic_100000 }}
+        run: |
+          set -euo pipefail
+          evidence_root="${RUNNER_TEMP}/emrys-synthetic-e2e"
+          install -d -m 0700 "${evidence_root}" "${evidence_root}/runtime" "${evidence_root}/slurm"
+          if [[ "${RUN_SYNTHETIC_130}" == true ]]; then
+            install -d -m 0700 "${evidence_root}/130" "${evidence_root}/130/operator"
+            printf 'profile\tdataset_profile\ttrigger\tcommit\n130\tsmoke-v1\t%s\t%s\n' \
+              "${GITHUB_EVENT_NAME}" "${GITHUB_SHA}" \
+              > "${evidence_root}/130/selection.tsv"
+          fi
+          if [[ "${RUN_SYNTHETIC_100000}" == true ]]; then
+            install -d -m 0700 "${evidence_root}/100000" "${evidence_root}/100000/operator"
+            printf 'profile\tdataset_profile\ttrigger\tcommit\n100000\tproduction-like-v1\t%s\t%s\n' \
+              "${GITHUB_EVENT_NAME}" "${GITHUB_SHA}" \
+              > "${evidence_root}/100000/selection.tsv"
+          fi
+          printf 'E2E_EVIDENCE_ROOT=%s\n' "${evidence_root}" >> "${GITHUB_ENV}"
+          printf 'RENV_PATHS_CACHE=%s/emrys-renv/cache\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+          printf 'RENV_PATHS_LIBRARY=%s/emrys-renv/library\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+
+      - name: Check out the triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up primary Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+
+      - name: Set up locked uv version
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Set up exact R version
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        with:
+          r-version: ${{ env.R_VERSION }}
+          use-public-rspm: false
+
+      - name: Install R build requirements and disposable Slurm
+        shell: bash
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            libbz2-dev \
+            libcurl4-openssl-dev \
+            liblzma-dev \
+            libpng-dev \
+            libssl-dev \
+            libxml2-dev \
+            munge \
+            slurm-wlm \
+            xz-utils \
+            zlib1g-dev
+
+      - name: Restore exact real-tool environment from the Linux lock
+        id: real-tools
+        uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39 # v3.2.1
+        with:
+          environment-file: .github/ci/real-tools.conda-lock.yml
+          environment-name: emrys-real-e2e-tools
+          micromamba-version: ${{ env.MICROMAMBA_VERSION }}
+          micromamba-root-path: ${{ runner.temp }}/emrys-micromamba/root
+          micromamba-binary-path: ${{ runner.temp }}/emrys-micromamba/bin/micromamba
+          init-shell: none
+          generate-run-shell: false
+          cache-environment: true
+          cache-downloads: true
+          post-cleanup: all
+
+      - name: Restore exact R dependency cache
+        id: renv-cache
+        uses: actions/cache/restore@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ${{ runner.temp }}/emrys-renv/cache
+            ${{ runner.temp }}/emrys-renv/library
+          key: >-
+            emrys-real-e2e-renv-${{ runner.os }}-${{ runner.arch }}-R-${{ env.R_VERSION }}-${{ hashFiles('renv.lock') }}
+
+      - name: Restore locked Python environment
+        shell: bash
+        run: uv sync --locked --group workflow --python python
+
+      - name: Restore and select locked R environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          rscript_bin="$(command -v Rscript)"
+          make -s r-restore RSCRIPT_BIN="${rscript_bin}"
+          renv_library="$({
+            EMRYS_USE_RENV=1 \
+            EMRYS_LOCAL_PILOT_R=0 \
+            RENV_CONFIG_SANDBOX_ENABLED=FALSE \
+            RENV_CONFIG_AUTO_SNAPSHOT=FALSE \
+            RENV_PROJECT="${GITHUB_WORKSPACE}" \
+            R_PROFILE_USER="${GITHUB_WORKSPACE}/.Rprofile" \
+              "${rscript_bin}" -e \
+                'cat(normalizePath(.libPaths()[[1L]], winslash = "/", mustWork = TRUE))'
+          })"
+          test -n "${renv_library}"
+          test -d "${renv_library}"
+          printf 'RENV_LIBRARY=%s\n' "${renv_library}" >> "${GITHUB_ENV}"
+
+      - name: Save exact R dependency cache after successful restore
+        if: steps.renv-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ${{ runner.temp }}/emrys-renv/cache
+            ${{ runner.temp }}/emrys-renv/library
+          key: ${{ steps.renv-cache.outputs.cache-primary-key }}
+
+      - name: Record exact runtime authorities outside the checkout
+        shell: bash
+        env:
+          REAL_TOOLS_PREFIX: ${{ steps.real-tools.outputs.environment-path }}
+        run: |
+          set -euo pipefail
+          runtime_evidence="${E2E_EVIDENCE_ROOT}/runtime"
+          test -d "${REAL_TOOLS_PREFIX}"
+          cp -- \
+            .github/ci/real-tools.environment.yml \
+            .github/ci/real-tools.conda-lock.yml \
+            renv.lock \
+            uv.lock \
+            "${runtime_evidence}/"
+          cp -a -- "${REAL_TOOLS_PREFIX}/conda-meta" "${runtime_evidence}/conda-meta"
+          "${RUNNER_TEMP}/emrys-micromamba/bin/micromamba" \
+            list --prefix "${REAL_TOOLS_PREFIX}" --json \
+            > "${runtime_evidence}/conda-packages.json"
+          "${RUNNER_TEMP}/emrys-micromamba/bin/micromamba" \
+            list --prefix "${REAL_TOOLS_PREFIX}" --explicit \
+            > "${runtime_evidence}/conda-explicit.txt"
+          {
+            printf 'tool\tpath\tsha256\n'
+            for tool in STAR samtools gatk bcftools infer_experiment.py java; do
+              path="${REAL_TOOLS_PREFIX}/bin/${tool}"
+              test -x "${path}"
+              printf '%s\t%s\t%s\n' \
+                "${tool}" "${path}" "$(sha256sum "${path}" | awk '{print $1}')"
+            done
+            mapfile -t picard_jars < <(find "${REAL_TOOLS_PREFIX}/share" \
+              -type f -path '*/picard-slim-3.1.1-*/picard.jar' -print)
+            test "${#picard_jars[@]}" -eq 1
+            printf 'picard.jar\t%s\t%s\n' \
+              "${picard_jars[0]}" \
+              "$(sha256sum "${picard_jars[0]}" | awk '{print $1}')"
+          } > "${runtime_evidence}/tool-sha256.tsv"
+          git status --porcelain=v1 --untracked-files=all \
+            > "${runtime_evidence}/checkout-before.tsv"
+          test ! -s "${runtime_evidence}/checkout-before.tsv"
+
+      - name: Configure and prove one disposable Slurm node
+        shell: bash
+        run: bash tests/tools/configure_ci_slurm.sh "${E2E_EVIDENCE_ROOT}/slurm"
+
+      - name: Run the selected 130-pair real synthetic E2E
+        id: synthetic-130
+        if: github.event_name == 'schedule' || inputs.synthetic_130
+        continue-on-error: true
+        shell: bash
+        env:
+          REAL_TOOLS_PREFIX: ${{ steps.real-tools.outputs.environment-path }}
+        run: |
+          set -euo pipefail
+          .venv/bin/python tests/tools/real_synthetic_e2e.py \
+            --profile 130 \
+            --repo-root "${GITHUB_WORKSPACE}" \
+            --operator-root "${E2E_EVIDENCE_ROOT}/130/operator" \
+            --runtime-prefix "${REAL_TOOLS_PREFIX}" \
+            --rscript "$(command -v Rscript)" \
+            --renv-library "${RENV_LIBRARY}" \
+            --storage-compute-launcher-json \
+              '["/usr/bin/srun","--partition=emrys-ci","--nodes=1","--ntasks=1","--cpus-per-task=1","--mem=1G","--time=00:05:00","--wait=60"]' \
+            --slurm-partition emrys-ci \
+            --slurm-cpus 2 \
+            --slurm-memory 6G \
+            --slurm-time 02:00:00 \
+            --slurm-timeout-seconds 7200 \
+            --execute
+
+      - name: Upload retained 130-pair evidence
+        id: upload-synthetic-130
+        if: >-
+          always() &&
+          (github.event_name == 'schedule' || inputs.synthetic_130)
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: emrys-real-synthetic-130-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/emrys-synthetic-e2e/130
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+      - name: Run the selected 100,000-pair real synthetic E2E
+        id: synthetic-100000
+        if: >-
+          (github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') ||
+          inputs.synthetic_100000
+        continue-on-error: true
+        shell: bash
+        env:
+          REAL_TOOLS_PREFIX: ${{ steps.real-tools.outputs.environment-path }}
+        run: |
+          set -euo pipefail
+          .venv/bin/python tests/tools/real_synthetic_e2e.py \
+            --profile 100000 \
+            --repo-root "${GITHUB_WORKSPACE}" \
+            --operator-root "${E2E_EVIDENCE_ROOT}/100000/operator" \
+            --runtime-prefix "${REAL_TOOLS_PREFIX}" \
+            --rscript "$(command -v Rscript)" \
+            --renv-library "${RENV_LIBRARY}" \
+            --storage-compute-launcher-json \
+              '["/usr/bin/srun","--partition=emrys-ci","--nodes=1","--ntasks=1","--cpus-per-task=1","--mem=1G","--time=00:05:00","--wait=60"]' \
+            --slurm-partition emrys-ci \
+            --slurm-cpus 2 \
+            --slurm-memory 6G \
+            --slurm-time 02:00:00 \
+            --slurm-timeout-seconds 7200 \
+            --execute
+
+      - name: Upload retained 100,000-pair evidence
+        id: upload-synthetic-100000
+        if: >-
+          always() &&
+          ((github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') ||
+          inputs.synthetic_100000)
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: emrys-real-synthetic-100000-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/emrys-synthetic-e2e/100000
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+      - name: Retain terminal scheduler diagnostics
+        if: always()
+        shell: bash
+        run: |
+          set +e
+          squeue --all --long > "${E2E_EVIDENCE_ROOT}/slurm/final-squeue.txt" 2>&1
+          sinfo --all --long > "${E2E_EVIDENCE_ROOT}/slurm/final-sinfo.txt" 2>&1
+          scontrol show nodes -o > "${E2E_EVIDENCE_ROOT}/slurm/final-nodes.txt" 2>&1
+          systemctl --no-pager --full status munge slurmctld slurmd \
+            > "${E2E_EVIDENCE_ROOT}/slurm/final-systemd-status.txt" 2>&1
+          sudo journalctl --no-pager -u munge -u slurmctld -u slurmd \
+            > "${E2E_EVIDENCE_ROOT}/slurm/final-journal.txt" 2>&1
+          exit 0
+
+      - name: Require the checkout to remain unchanged
+        id: checkout-unchanged
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          git status --porcelain=v1 --untracked-files=all \
+            > "${E2E_EVIDENCE_ROOT}/runtime/checkout-after.tsv"
+          test ! -s "${E2E_EVIDENCE_ROOT}/runtime/checkout-after.tsv"
+
+      - name: Upload shared runtime and Slurm evidence
+        id: upload-synthetic-infrastructure
+        if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: emrys-real-synthetic-infrastructure-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/emrys-synthetic-e2e/runtime
+            ${{ runner.temp }}/emrys-synthetic-e2e/slurm
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+      - name: Require every selected synthetic lane and evidence upload to pass
+        if: always()
+        shell: bash
+        env:
+          SELECT_130: ${{ github.event_name == 'schedule' || inputs.synthetic_130 }}
+          SELECT_100000: ${{ (github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') || inputs.synthetic_100000 }}
+          OUTCOME_130: ${{ steps.synthetic-130.outcome }}
+          OUTCOME_100000: ${{ steps.synthetic-100000.outcome }}
+          UPLOAD_130: ${{ steps.upload-synthetic-130.outcome }}
+          UPLOAD_100000: ${{ steps.upload-synthetic-100000.outcome }}
+          UPLOAD_INFRASTRUCTURE: ${{ steps.upload-synthetic-infrastructure.outcome }}
+          CHECKOUT_OUTCOME: ${{ steps.checkout-unchanged.outcome }}
+        run: |
+          set -euo pipefail
+          failed=false
+          if [[ "${SELECT_130}" == true &&
+                ("${OUTCOME_130}" != success || "${UPLOAD_130}" != success) ]]; then
+            printf 'ERROR: selected 130-pair lane or its evidence upload failed.\n' >&2
+            failed=true
+          fi
+          if [[ "${SELECT_100000}" == true &&
+                ("${OUTCOME_100000}" != success || "${UPLOAD_100000}" != success) ]]; then
+            printf 'ERROR: selected 100,000-pair lane or its evidence upload failed.\n' >&2
+            failed=true
+          fi
+          if [[ "${CHECKOUT_OUTCOME}" != success ]]; then
+            printf 'ERROR: E2E provisioning or execution changed the source checkout.\n' >&2
+            failed=true
+          fi
+          if [[ "${UPLOAD_INFRASTRUCTURE}" != success ]]; then
+            printf 'ERROR: shared runtime or Slurm evidence upload failed.\n' >&2
+            failed=true
+          fi
+          [[ "${failed}" == false ]]

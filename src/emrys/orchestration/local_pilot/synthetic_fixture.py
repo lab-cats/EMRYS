@@ -1,4 +1,4 @@
-"""Generate a tiny deterministic four-library local-pilot science fixture."""
+"""Generate deterministic four-library local-pilot science fixtures."""
 
 from __future__ import annotations
 
@@ -7,9 +7,15 @@ import gzip
 import hashlib
 import io
 import json
+import math
 import random
 import sys
+from collections.abc import Iterable, Iterator, Mapping
+from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
+from types import MappingProxyType
+from typing import cast
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.orchestration.local_pilot.onboarding import (
@@ -21,19 +27,88 @@ from emrys.orchestration.local_pilot.onboarding import (
 )
 
 DESCRIPTION = (
-    "Generate one tiny deterministic four-library RNA fixture for a fast, "
-    "real-tool local-pilot smoke run. Dry-run is the default."
+    "Generate one deterministic four-library RNA fixture for a real-tool "
+    "local-pilot run. Dry-run is the default."
 )
 FIXTURE_SCHEMA = "emrys.synthetic-local-pilot.v1"
 COMPLETION_MANIFEST = "fixture.manifest.json"
-SEED = 20260814
 CONTIG = "chrSynthetic"
-CONTIG_LENGTH = 100_000
 READ_LENGTH = 75
 FRAGMENT_LENGTH = 225
 CANDIDATE_PAIR_COUNT = 64
 SPLICE_PAIR_COUNT = 2
-PAIR_COUNT_PER_LIBRARY = 2 * CANDIDATE_PAIR_COUNT + SPLICE_PAIR_COUNT
+CORE_PAIR_COUNT_PER_LIBRARY = 2 * CANDIDATE_PAIR_COUNT + SPLICE_PAIR_COUNT
+MIN_ENGINEERED_ALT_OFFSET = 10
+MAX_ENGINEERED_ALT_OFFSET = 64
+DEFAULT_DATASET_PROFILE = "smoke-v1"
+PRODUCTION_LIKE_DATASET_PROFILE = "production-like-v1"
+NEUTRAL_BACKGROUND_START_ZERO_BASED = 100_000
+GZIP_WRITE_BUFFER_SIZE = 1024 * 1024
+
+
+@dataclass(frozen=True)
+class DatasetProfile:
+    """One closed deterministic synthetic-dataset plan."""
+
+    name: str
+    fixture_id: str
+    reference_id: str
+    cohort_id: str
+    analysis_id: str
+    seed: int
+    contig_length: int
+    pair_count_per_library: int
+    neutral_unique_template_pair_count_per_library: int
+    neutral_duplicate_pair_count_per_library: int
+    neutral_start_zero_based: int | None
+    genome_sa_index_nbases: int
+
+    @property
+    def neutral_pair_count_per_library(self) -> int:
+        return (
+            self.neutral_unique_template_pair_count_per_library
+            + self.neutral_duplicate_pair_count_per_library
+        )
+
+
+DATASET_PROFILES: Mapping[str, DatasetProfile] = MappingProxyType(
+    {
+        DEFAULT_DATASET_PROFILE: DatasetProfile(
+            name=DEFAULT_DATASET_PROFILE,
+            fixture_id="deterministic-science-smoke-v1",
+            reference_id="synthetic-smoke-v1",
+            cohort_id="synthetic-smoke-v1",
+            analysis_id="synthetic-smoke-cmh-v1",
+            seed=20260814,
+            contig_length=100_000,
+            pair_count_per_library=CORE_PAIR_COUNT_PER_LIBRARY,
+            neutral_unique_template_pair_count_per_library=0,
+            neutral_duplicate_pair_count_per_library=0,
+            neutral_start_zero_based=None,
+            genome_sa_index_nbases=3,
+        ),
+        PRODUCTION_LIKE_DATASET_PROFILE: DatasetProfile(
+            name=PRODUCTION_LIKE_DATASET_PROFILE,
+            fixture_id="deterministic-production-like-v1",
+            reference_id="synthetic-production-like-v1",
+            cohort_id="synthetic-production-like-v1",
+            analysis_id="synthetic-production-like-cmh-v1",
+            seed=20260814,
+            contig_length=5_000_000,
+            pair_count_per_library=100_000,
+            neutral_unique_template_pair_count_per_library=89_883,
+            neutral_duplicate_pair_count_per_library=9_987,
+            neutral_start_zero_based=NEUTRAL_BACKGROUND_START_ZERO_BASED,
+            genome_sa_index_nbases=10,
+        ),
+    }
+)
+DEFAULT_PROFILE = DATASET_PROFILES[DEFAULT_DATASET_PROFILE]
+
+# Preserve the established tiny-fixture Python constants for callers and tests.
+SEED = DEFAULT_PROFILE.seed
+CONTIG_LENGTH = DEFAULT_PROFILE.contig_length
+PAIR_COUNT_PER_LIBRARY = DEFAULT_PROFILE.pair_count_per_library
 PLUS_EXONS = ((29_001, 30_300), (30_601, 31_900))
 MINUS_EXONS = ((49_001, 50_300), (50_601, 51_900))
 NULL_SITE = {
@@ -88,9 +163,119 @@ SAMPLES = (
 )
 
 
-def _reference() -> str:
-    generator = random.Random(SEED)
-    bases = [generator.choice("ACGT") for _ in range(CONTIG_LENGTH)]
+def _neutral_start_capacity(profile: DatasetProfile) -> int:
+    if profile.neutral_start_zero_based is None:
+        return 0
+    return (
+        profile.contig_length - FRAGMENT_LENGTH + 1 - profile.neutral_start_zero_based
+    )
+
+
+@cache
+def _validate_dataset_profile(profile: DatasetProfile) -> None:
+    if profile.pair_count_per_library != (
+        CORE_PAIR_COUNT_PER_LIBRARY + profile.neutral_pair_count_per_library
+    ):
+        raise ValueError(f"dataset profile {profile.name!r} pair counts do not add up")
+    if profile.contig_length < max(
+        int(NON_TARGET_SITE["position"]),
+        PLUS_EXONS[-1][1],
+        MINUS_EXONS[-1][1],
+    ):
+        raise ValueError(
+            f"dataset profile {profile.name!r} reference is shorter than its core"
+        )
+    unique_count = profile.neutral_unique_template_pair_count_per_library
+    duplicate_count = profile.neutral_duplicate_pair_count_per_library
+    if unique_count < 0 or duplicate_count < 0:
+        raise ValueError(
+            f"dataset profile {profile.name!r} has a negative neutral pair count"
+        )
+    if unique_count == 0:
+        if duplicate_count != 0 or profile.neutral_start_zero_based is not None:
+            raise ValueError(
+                f"dataset profile {profile.name!r} has an invalid empty neutral plan"
+            )
+        return
+    if duplicate_count > unique_count:
+        raise ValueError(
+            f"dataset profile {profile.name!r} duplicates more neutral templates "
+            "than it creates"
+        )
+    if profile.neutral_start_zero_based is None:
+        raise ValueError(
+            f"dataset profile {profile.name!r} omits its neutral start interval"
+        )
+    guarded_end_zero_based = max(PLUS_EXONS[-1][1], MINUS_EXONS[-1][1])
+    if profile.neutral_start_zero_based < guarded_end_zero_based:
+        raise ValueError(
+            f"dataset profile {profile.name!r} places neutral fragments inside "
+            "the guarded candidate/splice region"
+        )
+    capacity = _neutral_start_capacity(profile)
+    required_unique_starts = unique_count * len(SAMPLES)
+    if capacity < required_unique_starts:
+        raise ValueError(
+            f"dataset profile {profile.name!r} has {capacity} allowed neutral "
+            f"starts but needs {required_unique_starts} globally unique starts"
+        )
+
+
+@cache
+def _coprime_step(modulus: int, seed: int) -> int:
+    if modulus < 1:
+        raise ValueError("permutation modulus must be positive")
+    if modulus == 1:
+        return 1
+    candidate = seed % modulus or 1
+    while math.gcd(candidate, modulus) != 1:
+        candidate += 1
+    return candidate
+
+
+def _neutral_unique_start(
+    profile: DatasetProfile,
+    sample_index: int,
+    unique_index: int,
+) -> int:
+    _validate_dataset_profile(profile)
+    unique_count = profile.neutral_unique_template_pair_count_per_library
+    if not 0 <= sample_index < len(SAMPLES):
+        raise ValueError(f"invalid sample index: {sample_index}")
+    if not 0 <= unique_index < unique_count:
+        raise ValueError(f"invalid neutral unique-template index: {unique_index}")
+    neutral_start = cast(int, profile.neutral_start_zero_based)
+    capacity = _neutral_start_capacity(profile)
+    step = _coprime_step(capacity, profile.seed ^ 0x454D5259)
+    offset = (profile.seed ^ 0x53594E54) % capacity
+    global_index = sample_index * unique_count + unique_index
+    return neutral_start + ((offset + global_index * step) % capacity)
+
+
+def _neutral_duplicate_source_index(
+    profile: DatasetProfile,
+    sample_index: int,
+    duplicate_index: int,
+) -> int:
+    _validate_dataset_profile(profile)
+    unique_count = profile.neutral_unique_template_pair_count_per_library
+    duplicate_count = profile.neutral_duplicate_pair_count_per_library
+    if not 0 <= sample_index < len(SAMPLES):
+        raise ValueError(f"invalid sample index: {sample_index}")
+    if not 0 <= duplicate_index < duplicate_count:
+        raise ValueError(f"invalid neutral duplicate index: {duplicate_index}")
+    step = _coprime_step(unique_count, profile.seed ^ 0x4455504C)
+    offset = (profile.seed + sample_index * 104_729) % unique_count
+    return (offset + duplicate_index * step) % unique_count
+
+
+for _profile in DATASET_PROFILES.values():
+    _validate_dataset_profile(_profile)
+
+
+def _reference(profile: DatasetProfile = DEFAULT_PROFILE) -> str:
+    generator = random.Random(profile.seed)
+    bases = [generator.choice("ACGT") for _ in range(profile.contig_length)]
     for site in (NULL_SITE, POSITIVE_SITE, NON_TARGET_SITE):
         bases[int(site["position"]) - 1] = str(site["genomic_ref"])
     return "".join(bases)
@@ -180,7 +365,12 @@ def _selected_indices(
     eligible = [
         index
         for index, start in enumerate(starts)
-        if all(10 <= int(site["position"]) - 1 - start <= 64 for site in sites)
+        if all(
+            MIN_ENGINEERED_ALT_OFFSET
+            <= int(site["position"]) - 1 - start
+            <= MAX_ENGINEERED_ALT_OFFSET
+            for site in sites
+        )
     ]
     if len(eligible) < count:
         raise OnboardingError(
@@ -281,7 +471,85 @@ def _splice_pairs(
     return pairs
 
 
-def _gzip_records(records: list[str]) -> bytes:
+def _core_pairs(
+    reference: str,
+    sample: dict[str, object],
+    sample_index: int,
+) -> Iterator[tuple[str, str]]:
+    pairs = _candidate_pairs(reference, sample, sample_index)
+    pairs.extend(_splice_pairs(reference, str(sample["sample_id"]), sample_index))
+    if len(pairs) != CORE_PAIR_COUNT_PER_LIBRARY:
+        raise OnboardingError(
+            f"synthetic core has {len(pairs)} pairs; "
+            f"expected {CORE_PAIR_COUNT_PER_LIBRARY}"
+        )
+    yield from pairs
+
+
+def _neutral_pairs(
+    reference: str,
+    sample: dict[str, object],
+    sample_index: int,
+    profile: DatasetProfile,
+) -> Iterator[tuple[str, str]]:
+    _validate_dataset_profile(profile)
+    sample_id = str(sample["sample_id"])
+    unique_count = profile.neutral_unique_template_pair_count_per_library
+    duplicate_count = profile.neutral_duplicate_pair_count_per_library
+    for unique_index in range(unique_count):
+        start = _neutral_unique_start(profile, sample_index, unique_index)
+        fragment = reference[start : start + FRAGMENT_LENGTH]
+        if len(fragment) != FRAGMENT_LENGTH:
+            raise OnboardingError(
+                f"short neutral fragment for {sample_id} at zero-based start {start}"
+            )
+        name = f"{sample_id}:NEUTRAL_UNIQUE:{unique_index + 1:06d}:{start + 1}"
+        yield (
+            _fastq_record(name, 1, fragment[:READ_LENGTH]),
+            _fastq_record(name, 2, _reverse_complement(fragment[-READ_LENGTH:])),
+        )
+
+    for duplicate_index in range(duplicate_count):
+        source_index = _neutral_duplicate_source_index(
+            profile, sample_index, duplicate_index
+        )
+        start = _neutral_unique_start(profile, sample_index, source_index)
+        fragment = reference[start : start + FRAGMENT_LENGTH]
+        name = (
+            f"{sample_id}:NEUTRAL_DUPLICATE:{duplicate_index + 1:06d}:"
+            f"{source_index + 1:06d}:{start + 1}"
+        )
+        yield (
+            _fastq_record(name, 1, fragment[:READ_LENGTH]),
+            _fastq_record(name, 2, _reverse_complement(fragment[-READ_LENGTH:])),
+        )
+
+
+def _fastq_records(
+    reference: str,
+    sample: dict[str, object],
+    sample_index: int,
+    profile: DatasetProfile,
+    mate: int,
+) -> Iterator[str]:
+    if mate not in (1, 2):
+        raise ValueError(f"FASTQ mate must be 1 or 2, not {mate}")
+    pair_count = 0
+    for pairs in (
+        _core_pairs(reference, sample, sample_index),
+        _neutral_pairs(reference, sample, sample_index, profile),
+    ):
+        for r1_record, r2_record in pairs:
+            pair_count += 1
+            yield r1_record if mate == 1 else r2_record
+    if pair_count != profile.pair_count_per_library:
+        raise OnboardingError(
+            f"dataset profile {profile.name!r} produced {pair_count} pairs; "
+            f"expected {profile.pair_count_per_library}"
+        )
+
+
+def _gzip_records(records: Iterable[str]) -> bytes:
     destination = io.BytesIO()
     with gzip.GzipFile(
         filename="",
@@ -290,7 +558,14 @@ def _gzip_records(records: list[str]) -> bytes:
         fileobj=destination,
         mtime=0,
     ) as stream:
-        stream.write("".join(records).encode("ascii"))
+        buffer = bytearray()
+        for record in records:
+            buffer.extend(record.encode("ascii"))
+            if len(buffer) >= GZIP_WRITE_BUFFER_SIZE:
+                stream.write(buffer)
+                buffer.clear()
+        if buffer:
+            stream.write(buffer)
     return destination.getvalue()
 
 
@@ -306,22 +581,22 @@ def _sample_manifest() -> bytes:
     return ("\n".join(rows) + "\n").encode("utf-8")
 
 
-def _request() -> bytes:
-    return b"""schema_version: emrys.request.v3
-label: deterministic-science-smoke-v1
+def _request(profile: DatasetProfile = DEFAULT_PROFILE) -> bytes:
+    return f"""schema_version: emrys.request.v3
+label: {profile.fixture_id}
 profile: emrys.profile.local_cmh.v2
 sample_manifest: samples.tsv
 partition_manifest: partitions.tsv
 reference:
-  id: synthetic-smoke-v1
+  id: {profile.reference_id}
   fasta: inputs/reference/reference.fa
   gtf: inputs/reference/genes.gtf
   star_index:
     sjdb_overhang: 74
-    genome_sa_index_nbases: 3
-cohort_id: synthetic-smoke-v1
+    genome_sa_index_nbases: {profile.genome_sa_index_nbases}
+cohort_id: {profile.cohort_id}
 analysis:
-  id: synthetic-smoke-cmh-v1
+  id: {profile.analysis_id}
   control_condition: control
   treatment_condition: treatment
   rna_ref: A
@@ -333,7 +608,7 @@ analysis:
   absolute_difference_threshold: 0.005
   background_condition: null
   background_max_fraction: 0.01
-"""
+""".encode("utf-8")
 
 
 def _resources() -> bytes:
@@ -377,12 +652,155 @@ reporting_memory_mb:
 """
 
 
-def fixture_members() -> dict[str, tuple[bytes, int]]:
+def _candidate_metadata(site: dict[str, object]) -> dict[str, object]:
+    strata: dict[str, dict[str, dict[str, object]]] = {}
+    for sample in SAMPLES:
+        replicate = str(sample["replicate"])
+        condition = str(sample["condition"])
+        ad = int(sample["positive_ad"]) if site["key"] == "positive" else 8
+        strata.setdefault(replicate, {})[condition] = {
+            "sample_id": sample["sample_id"],
+            "dp": CANDIDATE_PAIR_COUNT,
+            "ad": ad,
+        }
+    genomic_change = f"{site['genomic_ref']}>{site['genomic_alt']}"
+    return {
+        "candidate_id": (
+            f"{site['orientation']}|{CONTIG}|{site['position']}|{genomic_change}"
+        ),
+        "orientation": site["orientation"],
+        "chromosome": CONTIG,
+        "position": site["position"],
+        "genomic_ref": site["genomic_ref"],
+        "genomic_alt": site["genomic_alt"],
+        "input": {"rna_change": site["rna_change"], "strata": strata},
+    }
+
+
+def fixture_metadata(
+    profile: DatasetProfile = DEFAULT_PROFILE,
+) -> dict[str, object]:
+    """Return the explicit deterministic contract for one dataset profile."""
+
+    _validate_dataset_profile(profile)
+    if profile.neutral_start_zero_based is None:
+        neutral_interval: list[int] | None = None
+        reserved_core_region: list[int] | None = None
+    else:
+        neutral_interval = [
+            profile.neutral_start_zero_based,
+            profile.contig_length - FRAGMENT_LENGTH + 1,
+        ]
+        reserved_core_region = [1, profile.neutral_start_zero_based]
+    return {
+        "schema_version": FIXTURE_SCHEMA,
+        "fixture_id": profile.fixture_id,
+        "dataset_profile": profile.name,
+        "seed": profile.seed,
+        "contig": CONTIG,
+        "contig_length": profile.contig_length,
+        "read_length": READ_LENGTH,
+        "fragment_length": FRAGMENT_LENGTH,
+        "library_count": len(SAMPLES),
+        "read_pairs_per_library": profile.pair_count_per_library,
+        "core_read_pairs_per_library": CORE_PAIR_COUNT_PER_LIBRARY,
+        "candidate_fragment_pair_count": CANDIDATE_PAIR_COUNT,
+        "engineered_alt_read_offset_bounds": [
+            MIN_ENGINEERED_ALT_OFFSET,
+            MAX_ENGINEERED_ALT_OFFSET,
+        ],
+        "splice_sentinel_pair_count_per_library": SPLICE_PAIR_COUNT,
+        "reference_generation": {
+            "alphabet": "ACGT",
+            "generator": "python.random.Random.choice-v1",
+            "seed": profile.seed,
+            "contig_length": profile.contig_length,
+        },
+        "neutral_background": {
+            "pair_count_per_library": profile.neutral_pair_count_per_library,
+            "unique_template_pair_count_per_library": (
+                profile.neutral_unique_template_pair_count_per_library
+            ),
+            "deliberate_duplicate_pair_count_per_library": (
+                profile.neutral_duplicate_pair_count_per_library
+            ),
+            "placement_seed": profile.seed,
+            "fragment_start_interval_0_based_half_open": neutral_interval,
+            "reserved_core_region_1_based_closed": reserved_core_region,
+        },
+        "star": {
+            "genome_sa_index_nbases": profile.genome_sa_index_nbases,
+            "sjdb_overhang": READ_LENGTH - 1,
+        },
+        "samples": [
+            {
+                "sample_id": sample["sample_id"],
+                "condition": sample["condition"],
+                "replicate": sample["replicate"],
+                "strandedness": "forward",
+                "read_pair_count": profile.pair_count_per_library,
+            }
+            for sample in SAMPLES
+        ],
+        "engineered_candidates": [NULL_SITE, POSITIVE_SITE, NON_TARGET_SITE],
+        "engineered_candidate_inputs": {
+            "positive": _candidate_metadata(POSITIVE_SITE),
+            "null": _candidate_metadata(NULL_SITE),
+            "non_target": _candidate_metadata(NON_TARGET_SITE),
+        },
+        "splice_junction_sentinels": [
+            {
+                "transcript_id": "TX_PLUS",
+                "strand": "+",
+                "expected_orientation": "FWD_like",
+                "junction_1_based": [PLUS_EXONS[0][1], PLUS_EXONS[1][0]],
+            },
+            {
+                "transcript_id": "TX_MINUS",
+                "strand": "-",
+                "expected_orientation": "REV_like",
+                "junction_1_based": [MINUS_EXONS[0][1], MINUS_EXONS[1][0]],
+            },
+        ],
+        "intended_use": (
+            "real-tool EMRYS Step 00a-10 and reporting workflow exercise; "
+            "not production data or biological evidence"
+        ),
+        "expected_terminal_computational_result": {
+            "all_sites_rows": 3,
+            "significant_sites_rows": 1,
+            "significant_candidate_id": "REV_like|chrSynthetic|50000|A>G",
+            "control_af": 0.0625,
+            "treatment_af": 0.5,
+            "absolute_af_difference": 0.4375,
+            "common_odds_ratio": 15.0,
+            "interpretation": (
+                "computational smoke expectation; not scientific adjudication"
+                if profile.name == DEFAULT_DATASET_PROFILE
+                else "computational production-like expectation; not scientific "
+                "adjudication"
+            ),
+        },
+        "expected_terminal_workflow": {
+            "last_scientific_step": "10",
+            "local_pipeline_complete": True,
+            "interpretation": (
+                "synthetic functional expectation; not production, scientific-review, "
+                "or biological evidence"
+            ),
+        },
+    }
+
+
+def fixture_members(
+    profile: DatasetProfile = DEFAULT_PROFILE,
+) -> dict[str, tuple[bytes, int]]:
     """Return deterministic fixture members, excluding the completion manifest."""
 
-    reference = _reference()
+    _validate_dataset_profile(profile)
+    reference = _reference(profile)
     members: dict[str, tuple[bytes, int]] = {
-        "request.yaml": (_request(), 0o644),
+        "request.yaml": (_request(profile), 0o644),
         "emrys.resources.yaml": (_resources(), 0o644),
         "samples.tsv": (_sample_manifest(), 0o644),
         "partitions.tsv": (
@@ -394,42 +812,19 @@ def fixture_members() -> dict[str, tuple[bytes, int]]:
     }
     for sample_index, sample in enumerate(SAMPLES):
         sample_id = str(sample["sample_id"])
-        pairs = _candidate_pairs(reference, sample, sample_index)
-        pairs.extend(_splice_pairs(reference, sample_id, sample_index))
-        if len(pairs) != PAIR_COUNT_PER_LIBRARY:
-            raise OnboardingError(
-                f"synthetic library has {len(pairs)} pairs; expected {PAIR_COUNT_PER_LIBRARY}"
-            )
         members[f"inputs/reads/{sample_id}_R1.fastq.gz"] = (
-            _gzip_records([pair[0] for pair in pairs]),
+            _gzip_records(
+                _fastq_records(reference, sample, sample_index, profile, mate=1)
+            ),
             0o644,
         )
         members[f"inputs/reads/{sample_id}_R2.fastq.gz"] = (
-            _gzip_records([pair[1] for pair in pairs]),
+            _gzip_records(
+                _fastq_records(reference, sample, sample_index, profile, mate=2)
+            ),
             0o644,
         )
-    metadata = {
-        "schema_version": FIXTURE_SCHEMA,
-        "seed": SEED,
-        "contig": CONTIG,
-        "contig_length": CONTIG_LENGTH,
-        "read_length": READ_LENGTH,
-        "fragment_length": FRAGMENT_LENGTH,
-        "library_count": len(SAMPLES),
-        "read_pairs_per_library": PAIR_COUNT_PER_LIBRARY,
-        "intended_use": "fast real-tool workflow smoke; not biological evidence",
-        "engineered_candidates": [NULL_SITE, POSITIVE_SITE, NON_TARGET_SITE],
-        "expected_terminal_computational_result": {
-            "all_sites_rows": 3,
-            "significant_sites_rows": 1,
-            "significant_candidate_id": "REV_like|chrSynthetic|50000|A>G",
-            "control_af": 0.0625,
-            "treatment_af": 0.5,
-            "absolute_af_difference": 0.4375,
-            "common_odds_ratio": 15.0,
-            "interpretation": "computational smoke expectation; not scientific adjudication",
-        },
-    }
+    metadata = fixture_metadata(profile)
     members["fixture.json"] = (
         (json.dumps(metadata, indent=2, sort_keys=True) + "\n").encode("utf-8"),
         0o644,
@@ -457,6 +852,16 @@ def configure_parser(parser: argparse.ArgumentParser) -> None:
         help="Absolute absent directory to receive the deterministic fixture.",
     )
     parser.add_argument(
+        "--dataset-profile",
+        choices=tuple(DATASET_PROFILES),
+        default=DEFAULT_DATASET_PROFILE,
+        help=(
+            "Closed deterministic dataset plan. smoke-v1 is the 130-pair "
+            "default; production-like-v1 emits 100,000 pairs per library "
+            "on a 5 Mb reference."
+        ),
+    )
+    parser.add_argument(
         "--execute",
         action="store_true",
         help="Create the fixture. Default is a no-write plan.",
@@ -470,15 +875,33 @@ def init_from_args(arguments: argparse.Namespace) -> int:
     try:
         root = source_root()
         output = _require_external_absent_output(arguments.output_dir, root)
-        members = fixture_members()
+        profile_name = str(
+            getattr(arguments, "dataset_profile", DEFAULT_DATASET_PROFILE)
+        )
+        try:
+            profile = DATASET_PROFILES[profile_name]
+        except KeyError as exc:
+            raise OnboardingError(
+                f"unsupported synthetic dataset profile: {profile_name}"
+            ) from exc
+        _validate_dataset_profile(profile)
+        print(f"Dataset profile: {profile.name}")
         print(f"Output directory: {output}")
         print(f"Libraries: {len(SAMPLES)}")
-        print(f"Read pairs per library: {PAIR_COUNT_PER_LIBRARY}")
-        print(f"Reference length: {CONTIG_LENGTH}")
+        print(f"Read pairs per library: {profile.pair_count_per_library}")
+        print(f"Engineered/core pairs per library: {CORE_PAIR_COUNT_PER_LIBRARY}")
+        print(
+            "Neutral unique/duplicate pairs per library: "
+            f"{profile.neutral_unique_template_pair_count_per_library}/"
+            f"{profile.neutral_duplicate_pair_count_per_library}"
+        )
+        print(f"Reference length: {profile.contig_length}")
         print("Publication policy: create-absent; fixture manifest is written last.")
         if not arguments.execute:
             print("Dry-run complete; no files were written.")
             return 0
+
+        members = fixture_members(profile)
 
         def validate_before_completion(published: Path) -> None:
             validate_local_pilot_request(published / "request.yaml", root=root)
@@ -490,7 +913,7 @@ def init_from_args(arguments: argparse.Namespace) -> int:
             completion_bytes=_completion_bytes(members),
             before_completion=validate_before_completion,
         )
-        print(f"Published deterministic local-pilot fixture: {output}")
+        print(f"Published deterministic local-pilot fixture ({profile.name}): {output}")
         print(f"Request: {output / 'request.yaml'}")
         print(
             "Evidence boundary: synthetic workflow smoke input; not biological evidence."
@@ -500,6 +923,7 @@ def init_from_args(arguments: argparse.Namespace) -> int:
         OSError,
         OnboardingError,
         orchestration_contracts.ContractValidationError,
+        ValueError,
     ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
@@ -507,10 +931,15 @@ def init_from_args(arguments: argparse.Namespace) -> int:
 
 __all__ = (
     "COMPLETION_MANIFEST",
+    "CORE_PAIR_COUNT_PER_LIBRARY",
+    "DATASET_PROFILES",
+    "DEFAULT_DATASET_PROFILE",
     "DESCRIPTION",
     "PAIR_COUNT_PER_LIBRARY",
+    "PRODUCTION_LIKE_DATASET_PROFILE",
     "SAMPLES",
     "configure_parser",
+    "fixture_metadata",
     "fixture_members",
     "init_from_args",
 )

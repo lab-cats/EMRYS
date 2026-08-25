@@ -99,8 +99,10 @@ Execution is deliberately absent from launcher YAML and `.env`. Invoking the
 wrapper without a mode flag submits a no-write plan. Only the explicit
 `run-in-slurm.sh --execute` action activates workflow execution. Ambient
 `SBATCH_*` policy variables are removed before submission so they cannot alter
-omitted options such as `memory: site-default`, `exclusive: false`, or a null
-node list.
+omitted options such as `account: site-default`, `qos: site-default`,
+`memory: site-default`, `exclusive: false`, or a null node list. The two
+identity defaults omit `--account` and `--qos`; any explicit admitted value is
+passed exactly once.
 
 ## Request YAML
 
