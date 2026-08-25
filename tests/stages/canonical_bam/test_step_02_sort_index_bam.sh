@@ -25,6 +25,18 @@ assert_contains() {
     fi
 }
 
+assert_not_contains() {
+    local file="$1"
+    local unexpected="$2"
+
+    if grep -Fq -- "$unexpected" "$file"; then
+        printf 'Did not expect to find: %s\n' "$unexpected" >&2
+        printf 'Actual output:\n' >&2
+        cat "$file" >&2
+        fail "unexpected output"
+    fi
+}
+
 assert_not_exists() {
     local path="$1"
 
@@ -440,8 +452,12 @@ assert_file_equals "$residue_path" "preserve residue"
 assert_not_exists "$residue_output_dir/.sample_residue.step02.lock"
 safe_output="$tmp_dir/safe.out"
 safe_output_dir="$tmp_dir/results/safe"
+rm -f "$samtools_log"
 SLURM_JOB_ID=safe001 run_step02 sample_safe "$safe_input" "$safe_output_dir" 2 --no-clobber --execute >"$safe_output"
 assert_contains "$safe_output" "No-clobber transaction: true"
+assert_contains "$samtools_log" \
+    "$safe_output_dir/.sample_safe.step02.safe001.rg.tmp.bam"
+assert_not_contains "$samtools_log" "$safe_output_dir/sample_safe.sorted.bam"
 assert_not_exists "$safe_output_dir/.sample_safe.step02.lock"
 safe_repeat_output="$tmp_dir/safe_repeat.out"
 assert_fails "$safe_repeat_output" env FAKE_SAMPLE_ID=sample_safe SLURM_JOB_ID=safe002 bash "$SCRIPT" \
