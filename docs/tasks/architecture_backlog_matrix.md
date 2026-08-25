@@ -76,7 +76,7 @@ implementation order, dependencies, or approval.
 | `AC-SLICE-15` | Scientific companion | `1` | `4` | Audit the Steps 07–09 statistical contract | New scientific-review slice; not architecture evidence | Parallel scientific-review work |
 | `AC-SLICE-16` | Scientific companion | `1` | `4` | Build independent numerical oracles for Steps 08 and 09 | New scientific-validation slice | Parallel scientific-validation work |
 | `AC-SLICE-17` | Retirement | `3` | `5` | Retire duplicated lifecycle, validator, infrastructure, adapter, or compatibility paths after each replacement is proven | Multiple bounded deletion slices; never one unbounded cleanup task | Create one retirement task per proven replacement |
-| `AC-SLICE-18` | Documentation | `4` | `3` | Rewrite navigation and documentation around scientist/operator/developer journeys | Expansion or slicing of `DOC-01`; uses the accepted `DOC-02` audit and coordinates with `DOC-03`–`DOC-05` retirements | Scope follows the settled role journeys |
+| `AC-SLICE-18` | Documentation | `4` | `3` | Rewrite navigation and documentation around scientist/operator/developer journeys | Expansion or slicing of `DOC-01`; uses the accepted `DOC-02`/`DOC-03` traces and coordinates with `DOC-04`–`DOC-05` retirements | Scope follows the settled role journeys |
 | `AC-SLICE-19` | Doctor | `4` | `5` | Define Doctor repair ownership, supported mutations, preview/reporting, and safety contracts | Expansion of `DOCTOR-01` reflecting the explicit override | Separate the repair constitution from each supported repair action |
 
 `AC-SLICE-15` and `AC-SLICE-16` remain visible so the campaign does not lose

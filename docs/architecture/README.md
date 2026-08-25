@@ -17,6 +17,5 @@ with the relevant child and functional owner.
 | What are the exact local interfaces and defects? | The applicable owner `README.md` and `CONTRACT.md` |
 
 The detailed current system, user pipeline, and reliability projections remain
-in [`diagrams/`](diagrams/). Two legacy future projections remain only for the
-bounded `DOC-03` retirement trace. Diagrams do not override contracts, prove
+in [`diagrams/`](diagrams/). Diagrams do not override contracts, prove
 implementation, or authorize future work.

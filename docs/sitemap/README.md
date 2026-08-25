@@ -7,10 +7,9 @@ evidence. The documentation gate checks structural ownership mechanically;
 the routes below explain the human boundaries.
 
 - [Architecture](../architecture/) — current structure, contracts, owner
-  inventory, diagrams, and one visibly marked legacy future source pending
-  `DOC-03`.
-- [Design](../design/) — decisions, application contracts, test policy, and
-  visibly marked legacy planning sources pending `DOC-03`/`DOC-05`.
+  inventory, and diagrams.
+- [Design](../design/) — decisions, application contracts, test policy, and one
+  visibly marked legacy readiness source pending `DOC-05`.
 - [Operations](../operations/) — workflow, cross-cutting commands,
   troubleshooting, and visibly marked legacy evidence/test-plan sources
   pending `DOC-04`/`DOC-05`.

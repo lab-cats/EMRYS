@@ -34,19 +34,12 @@ CANONICAL_H1S = {
     "src/emrys/contracts/STAGE_MAP.md": "# Semantic workflow identity and DAG",
 }
 LEGACY_H1S = {
-    "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
     "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
-    "docs/design/PIPELINE_PLAN.md": "# EMRYS pipeline plan",
-    "docs/design/QUESTIONS.md": "# Open questions",
     "docs/operations/HANDOFF.md": "# Project handoff",
     "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md": (
         "# Local-pilot launcher regression test plan"
     ),
 }
-LEGACY_DIAGRAMS = (
-    "docs/architecture/diagrams/future_modular_pipeline.mmd",
-    "docs/architecture/diagrams/future_reporting_layer.mmd",
-)
 SEMANTIC_OWNERS = (
     ("stage", "construct_STAR_index"),
     ("stage", "construct_FASTA_sidecars"),
@@ -103,6 +96,11 @@ CROSS_CUTTING_DOCS = (
     "src/emrys/reporting/README.md",
 )
 RETIRED_DOCUMENTS = (
+    "docs/architecture/FUTURE_ARCHITECTURE.md",
+    "docs/architecture/diagrams/future_modular_pipeline.mmd",
+    "docs/architecture/diagrams/future_reporting_layer.mmd",
+    "docs/design/PIPELINE_PLAN.md",
+    "docs/design/QUESTIONS.md",
     "docs/design/REFACTOR_AUDIT.md",
     "docs/operations/CONCURRENT_WORK.md",
     "docs/operations/TASK_DELIVERY.md",
@@ -150,7 +148,6 @@ def write_fixture(root: Path) -> Path:
     files.update(
         {path: f"{h1}\n\n> **Legacy fixture.**\n" for path, h1 in LEGACY_H1S.items()}
     )
-    files.update({path: "flowchart LR\n    A --> B\n" for path in LEGACY_DIAGRAMS})
     identity_rows = [
         f"| {kind} | Fixture | `{slug}` | `emrys.{kind}.{slug}.v1` | `00` |"
         for kind, slug in SEMANTIC_OWNERS
@@ -201,7 +198,7 @@ def test_accepts_minimal_repository_and_reports_counts_without_writes(
     result = validate(repository, cwd=tmp_path)
 
     assert result.returncode == 0, result.stderr
-    assert "3 Mermaid sources" in result.stdout
+    assert "1 Mermaid sources" in result.stdout
     assert (
         tuple(sorted(path.relative_to(repository) for path in repository.rglob("*")))
         == before
@@ -240,7 +237,7 @@ def test_rejects_unmarked_or_mislabeled_legacy_documents(
     assert f"legacy document H1 mismatch: {relative}" in result.stderr
 
 
-@pytest.mark.parametrize("relative", (*LEGACY_H1S, *LEGACY_DIAGRAMS))
+@pytest.mark.parametrize("relative", tuple(LEGACY_H1S))
 def test_rejects_early_legacy_source_deletion(
     tmp_path: Path,
     relative: str,
@@ -250,8 +247,7 @@ def test_rejects_early_legacy_source_deletion(
 
     result = validate(repository, cwd=tmp_path)
 
-    kind = "diagram" if relative in LEGACY_DIAGRAMS else "document"
-    assert f"missing legacy transition {kind}: {relative}" in result.stderr
+    assert f"missing legacy transition document: {relative}" in result.stderr
 
 
 @pytest.mark.parametrize("roster_defect", ("short", "duplicate"))

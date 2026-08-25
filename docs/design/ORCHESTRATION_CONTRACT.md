@@ -593,7 +593,7 @@ B0 makes no decision or implementation commitment for:
 - optional-stage and archival-success policy;
 - in-code scientific approval or biological-readiness policy;
 - public acquisition or a general provenance subsystem;
-- application logging implementation or generic gate receipts;
+- production-command logging adoption or generic gate receipts;
 - automatic stale-lock cleanup or owner recovery;
 - artifact-schema migration or installed workflow assets;
 - a wheel-only control plane; or

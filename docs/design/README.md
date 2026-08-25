@@ -13,9 +13,7 @@ Commands belong in the runbook or the applicable functional owner.
 - [`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md) defines the accepted
   local-first Snakemake lifecycle, authority, identity, completion, resume, and
   evidence boundaries before implementation.
-- [`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md),
-  [`PIPELINE_PLAN.md`](PIPELINE_PLAN.md), and [`QUESTIONS.md`](QUESTIONS.md)
-  are visibly marked legacy sources retained only for the bounded `DOC-03` and
-  `DOC-05` migrations.
+- [`ORCHESTRATION_READINESS.md`](ORCHESTRATION_READINESS.md) is a visibly
+  marked legacy source retained only for the bounded `DOC-05` migration.
 - [`TEST_BASELINE.md`](TEST_BASELINE.md) owns test policy, evidence vocabulary,
   contract risks, and current recheck routes.

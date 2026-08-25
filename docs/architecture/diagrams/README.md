@@ -15,12 +15,6 @@ Current-system views:
   local-first request, readiness, public control, execution, validation,
   failure, resume, and completion flow.
 
-Legacy future-design views retained only for the `DOC-03` node-by-node
-preservation and retirement trace:
-
-- [`future_modular_pipeline.mmd`](future_modular_pipeline.mmd)
-- [`future_reporting_layer.mmd`](future_reporting_layer.mmd)
-
 Interpret current diagrams through [`ARCHITECTURE.md`](../ARCHITECTURE.md).
 Accepted future outcomes live in the
 [findings matrix](../../tasks/backlog_matrix.md), while unsliced alternatives
