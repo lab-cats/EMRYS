@@ -9,14 +9,16 @@ functional `README.md` and `CONTRACT.md` beside an implementation.
   owner inventory, dependency direction, and diagrams.
 - [`design/`](design/) — durable decisions, plans, questions, test policy, and
   cross-cutting application contracts.
-- [`operations/`](operations/) — development workflow, current handoff,
-  supported commands, troubleshooting, and engineering conventions.
+- [`operations/`](operations/) — development workflow, supported commands,
+  troubleshooting, engineering conventions, and a legacy handoff whose currency
+  is unverified pending `DOC-02`.
 - [`reference/`](reference/) — terminology and other non-authoritative lookup
   aids that link back to subject owners.
 - [`demo/`](demo/) — reviewed presenter guides.
 - [`history/`](history/) — frozen dated evidence that does not own current
   state.
-- [`tasks/`](tasks/) — the compact backlog and temporary JIT execution detail.
+- [`tasks/`](tasks/) — the current planning matrix, temporary architecture
+  campaign, and frozen legacy registry/cards during transition.
 - [`sitemap/`](sitemap/) — audience routes and canonical documentation roles.
 
 Start with the [documentation sitemap](sitemap/) when the correct subject owner
