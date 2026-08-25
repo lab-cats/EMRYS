@@ -227,7 +227,7 @@ separately tracked where required.
 | ID | Priority (provisional) | Status | Required outcome | Acceptance |
 |---|---|---|---|---|
 | <code>REVIEW-UX-03</code> | P1 | Open | Independently review scientist, advanced-scientist, operator, developer/maintainer, and automation journeys against the non-negotiable simplified golden path. | The review covers fresh installation through valid synthetic result, findability, terminology, concepts required, configuration burden, progressive disclosure, accessibility, failure diagnosis and recovery, console/report hierarchy, intake, local/HPC context, and evaluation of the source-proposed expert inspection, override, and escape-hatch model without changing scientific meaning. It records baseline and target measures without treating source-proposed numeric targets as already accepted. |
-| <code>LOG-03</code> | P1 | Open | Build a neutral two-sink logging foundation that separates concise operator output from complete durable attempt logs. | The binding logging contract is implemented across identity, records, publication, failure, redaction, retention, and scheduler streams without changing computation, artifacts, transactions, recovery, exits, or evidence meaning. |
+| <code>LOG-03</code> | P1 | Verification pending | Build a neutral two-sink logging foundation that separates concise operator output from complete durable attempt logs. | The binding logging contract is implemented across identity, records, publication, failure, redaction, retention, and scheduler streams without changing computation, artifacts, transactions, recovery, exits, or evidence meaning. |
 | <code>LOG-05</code> | P1 | Open | Activate concise role-appropriate default logging across every applicable command after foundation adoption. | Routine output uses scientific and run-level milestones rather than owner jobs, transactions, scheduler commands, or receipt mechanics; failures identify the useful public state, reason, recovery guidance, and durable log path; complete forensic detail remains available; parity evidence covers each adopted domain. |
 | <code>OBS-01</code> | P1 | Open | Remove low-value console noise from the default user experience. | Default output shows meaningful milestones, warnings, failures, and the durable log path; verbose/debug detail is explicitly requested. |
 | <code>OBS-02</code> | P1 | Open | Provide a supported high-level progress, status, and recovery-guidance surface while hiding the internal execution/publication state machine. | Users see preparation, alignment, QC, candidate generation/testing, report generation, elapsed time, and a small truthful state vocabulary such as pending/running/complete/failed/recoverable; failure output explains the reason, whether resume is safe, and the supported next action. EMRYS determines internally what remains valid, provisional, reusable, rolled back, or recomputed; Snakemake jobs, owner counts, transactions, publication states, and attempt internals remain available in evidence/debug views. Exact states and resume command remain unsettled. |
@@ -569,7 +569,8 @@ and evidence meaning. The later role-journey rewrite remains <code>DOC-01</code>
 
 ## Former repository-backlog reconciliation
 
-The following IDs were explicitly retained and now appear in the active matrix:
+The following IDs were explicitly retained; unresolved work appears in the
+active matrix and completed work appears in the disposition log:
 
 - <code>FUT-DATA-02</code>
 - <code>FUT-INDEX-01</code>
