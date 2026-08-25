@@ -165,6 +165,44 @@ percent of the fastest successful median. Apply that result only to the tested
 dataset scale, runtime, machine, memory, and storage system; preserve the raw
 trial tree with the resulting request resource plan.
 
+For a same-runner baseline/change comparison, use the v2 schema. `values` may
+represent resource values or explicit dataset scales. The validator wrapper is
+responsible for owner validation, `validate all-pass`, and deterministic
+semantic fingerprints listed under `artifact_paths`:
+
+```yaml
+schema_version: emrys.resource-benchmark.v2
+cases:
+  - name: step06_large_skewed
+    values: [100000]
+    repetitions: 3
+    warmup_repetitions: 1
+    baseline_variant: master
+    setup_argv: [/absolute/setup-step06, "{trial_dir}"]
+    variants:
+      - name: master
+        producer_argv: [/external/master/step06.sh, "{trial_dir}", "{value}"]
+      - name: changed
+        producer_argv: [/external/changed/step06.sh, "{trial_dir}", "{value}"]
+    validator_argv:
+      - /absolute/validate-and-fingerprint-step06
+      - "{trial_dir}"
+      - "{variant}"
+    artifact_paths:
+      - "{trial_dir}/equivalence/alignments.sha256"
+      - "{trial_dir}/equivalence/counts.tsv"
+```
+
+Measured repetitions use deterministic cyclic ordering—`A,B`, then `B,A` for
+two variants—and each trial receives a fresh directory. Failed warmups
+invalidate the comparison even though warmup timings are excluded. Artifact parity is
+evaluated within each value and repetition against `baseline_variant`, even
+when that baseline runs second. The comparison summary reports median, median
+absolute deviation, range, CPU, memory, block I/O, and paired speedup; it emits no speedup claim unless
+all measured repetitions and parity checks pass. CI or the supplied wrappers
+must bind source, dataset, runtime, runner, storage, cancellation, and any
+scheduler accounting outside this deliberately small harness.
+
 ## Task selection
 
 The [findings matrix](../tasks/backlog_matrix.md) is the only durable backlog.

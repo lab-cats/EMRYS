@@ -52,6 +52,50 @@ def _write_manifest(path: Path, cases: list[dict[str, Any]]) -> Path:
     return path
 
 
+def _comparison_case(**overrides: Any) -> dict[str, Any]:
+    producer = [
+        sys.executable,
+        "-c",
+        ("from pathlib import Path; import sys; Path(sys.argv[1]).write_text(sys.argv[2]); Path(sys.argv[3]).write_text(sys.argv[4])"),
+        "{trial_dir}/product.txt",
+        "{value}",
+        "{trial_dir}/variant.txt",
+        "{variant}",
+    ]
+    case: dict[str, Any] = {
+        "name": "step06",
+        "values": [2],
+        "repetitions": 3,
+        "warmup_repetitions": 1,
+        "baseline_variant": "master",
+        "setup_argv": None,
+        "variants": [
+            {"name": "changed", "producer_argv": producer},
+            {"name": "master", "producer_argv": producer},
+        ],
+        "validator_argv": [
+            sys.executable,
+            "-c",
+            "from pathlib import Path; import sys; assert Path(sys.argv[1]).read_text() == '2'",
+            "{trial_dir}/product.txt",
+        ],
+        "artifact_paths": ["{trial_dir}/product.txt"],
+    }
+    case.update(overrides)
+    return case
+
+
+def _write_comparison_manifest(path: Path, case: dict[str, Any]) -> Path:
+    path.write_text(
+        yaml.safe_dump(
+            {"schema_version": BENCHMARK.COMPARISON_SCHEMA_VERSION, "cases": [case]},
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    return path
+
+
 def _read_tsv(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8", newline="") as handle:
         return list(csv.DictReader(handle, dialect="excel-tab"))
@@ -126,7 +170,7 @@ def test_dry_run_prints_expanded_commands_without_writing(
             _case(
                 values=[2],
                 setup_argv=["setup", "{trial_dir}"],
-                producer_argv=["producer", "--threads", "{value}"],
+                producer_argv=["producer", "--threads", "{value}", "{variant}"],
                 validator_argv=["validator", "{trial_dir}", "{value}"],
             )
         ],
@@ -138,6 +182,7 @@ def test_dry_run_prints_expanded_commands_without_writing(
     printed = capsys.readouterr().out
     assert "CASE threads value=2 repetition=1" in printed
     assert "producer --threads 2" in printed
+    assert "{variant}" in printed
     assert str(output / "trials" / "threads" / "2" / "rep-01") in printed
     assert "Dry-run complete; no benchmark state was written." in printed
 
@@ -339,6 +384,167 @@ def test_run_rejects_existing_output_and_nonreal_parent(tmp_path: Path) -> None:
     parent_link.symlink_to(tmp_path, target_is_directory=True)
     with pytest.raises(BENCHMARK.BenchmarkError, match="existing real directory"):
         BENCHMARK.run(manifest, parent_link / "results", execute=False)
+
+
+@pytest.mark.parametrize(
+    ("override", "message"),
+    (
+        ({"name": ".."}, "safe identifier"),
+        ({"repetitions": 2}, "at least 3"),
+        ({"warmup_repetitions": -1}, "must be nonnegative"),
+        ({"baseline_variant": "missing"}, "must name a variant"),
+        ({"artifact_paths": None}, "artifact_paths must be nonempty"),
+    ),
+)
+def test_comparison_manifest_rejects_invalid_cases(tmp_path: Path, override: dict[str, Any], message: str) -> None:
+    manifest = _write_comparison_manifest(tmp_path / "benchmark.yaml", _comparison_case(**override))
+
+    with pytest.raises(BENCHMARK.BenchmarkError, match=message):
+        BENCHMARK._load_comparison_manifest(manifest)
+
+
+def test_comparison_dry_run_is_balanced_and_writes_nothing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert BENCHMARK._expand(("{trial_dir}", "{variant}"), value=2, trial_dir=tmp_path / "{variant}", variant="master") == (str(tmp_path / "{variant}"), "master")
+    case = _comparison_case(warmup_repetitions=0)
+    case.pop("setup_argv")
+    manifest = _write_comparison_manifest(tmp_path / "benchmark.yaml", case)
+    output = tmp_path / "results"
+
+    assert BENCHMARK.run(manifest, output, execute=False) == 0
+    assert not output.exists()
+    cases = [line for line in capsys.readouterr().out.splitlines() if line.startswith("CASE ")]
+    assert [line.rsplit("=", 1)[-1] for line in cases] == [
+        "master",
+        "changed",
+        "changed",
+        "master",
+        "master",
+        "changed",
+    ]
+
+
+def test_comparison_executes_warmups_and_explicit_baseline_pairs(
+    tmp_path: Path,
+) -> None:
+    manifest = _write_comparison_manifest(tmp_path / "benchmark.yaml", _comparison_case())
+    output = tmp_path / "results"
+
+    assert BENCHMARK.run(manifest, output, execute=True) == 0
+    rows = _read_tsv(output / "trials.tsv")
+    assert len(rows) == 8
+    measured = [row for row in rows if row["trial_kind"] == "measured"]
+    assert [(row["repetition"], row["variant"]) for row in measured] == [
+        ("1", "master"),
+        ("1", "changed"),
+        ("2", "changed"),
+        ("2", "master"),
+        ("3", "master"),
+        ("3", "changed"),
+    ]
+    assert {row["artifact_match_baseline"] for row in rows} == {"yes"}
+    assert all((Path(row["trial_dir"]) / "variant.txt").read_text() == row["variant"] for row in rows)
+    summary = _read_tsv(output / "summary.tsv")
+    assert {row["comparison_valid"] for row in summary} == {"yes"}
+    assert {row["artifact_parity"] for row in summary} == {"yes"}
+    assert {row["warmups_valid"] for row in summary} == {"yes"}
+    assert {row["successful_repetitions"] for row in summary} == {"3"}
+    assert {row["paired_repetitions"] for row in summary} == {"3"}
+    assert all(row["median_cpu_seconds"] for row in summary)
+    assert all(row["median_max_rss_kib"] for row in summary)
+    assert all(row["median_paired_speedup_ratio"] for row in summary)
+
+
+def test_comparison_artifact_mismatch_invalidates_summary(tmp_path: Path) -> None:
+    producer = [
+        sys.executable,
+        "-c",
+        "from pathlib import Path; import sys; Path(sys.argv[1]).write_text(sys.argv[2])",
+        "{trial_dir}/product.txt",
+        "{variant}",
+    ]
+    case = _comparison_case(
+        warmup_repetitions=0,
+        variants=[
+            {"name": "master", "producer_argv": producer},
+            {"name": "changed", "producer_argv": producer},
+        ],
+        validator_argv=[sys.executable, "-c", "pass"],
+    )
+    manifest = _write_comparison_manifest(tmp_path / "benchmark.yaml", case)
+    output = tmp_path / "results"
+
+    assert BENCHMARK.run(manifest, output, execute=True) == 1
+    rows = _read_tsv(output / "trials.tsv")
+    assert [row["status"] for row in rows if row["variant"] == "master"] == [
+        "pass",
+        "pass",
+        "pass",
+    ]
+    assert [row["artifact_match_baseline"] for row in rows if row["variant"] == "changed"] == [
+        "no",
+        "no",
+        "no",
+    ]
+    changed = next(row for row in _read_tsv(output / "summary.tsv") if row["variant"] == "changed")
+    assert changed["comparison_valid"] == "no"
+    assert changed["artifact_parity"] == "no"
+    assert changed["median_paired_speedup_percent"] == ""
+
+
+def test_comparison_failed_warmup_invalidates_measured_summary(tmp_path: Path) -> None:
+    case = _comparison_case(
+        setup_argv=[
+            sys.executable,
+            "-c",
+            "import sys; raise SystemExit(7 if 'warmups' in sys.argv[1] else 0)",
+            "{trial_dir}",
+        ]
+    )
+    manifest = _write_comparison_manifest(tmp_path / "benchmark.yaml", case)
+    output = tmp_path / "results"
+
+    assert BENCHMARK.run(manifest, output, execute=True) == 1
+    summary = _read_tsv(output / "summary.tsv")
+    assert {row["warmups_valid"] for row in summary} == {"no"}
+    assert {row["comparison_valid"] for row in summary} == {"no"}
+    assert {row["median_paired_speedup_percent"] for row in summary} == {""}
+
+
+def test_comparison_summary_reports_paired_speedup_and_spread(tmp_path: Path) -> None:
+    case = BENCHMARK._load_comparison_manifest(_write_comparison_manifest(tmp_path / "benchmark.yaml", _comparison_case(warmup_repetitions=0)))[0]
+    results = []
+    for repetition, baseline in enumerate((10.0, 20.0, 30.0), start=1):
+        for variant, wall in (("master", baseline), ("changed", baseline / 2)):
+            results.append(
+                {
+                    "case": "step06",
+                    "value": 2,
+                    "variant": variant,
+                    "trial_kind": "measured",
+                    "repetition": repetition,
+                    "status": "pass",
+                    "producer_wall_seconds": str(wall),
+                    "producer_cpu_seconds": str(wall / 2),
+                    "producer_max_rss_kib": "100",
+                    "producer_input_blocks": "4",
+                    "producer_output_blocks": "2",
+                    "artifact_match_baseline": "yes",
+                }
+            )
+    summary = tmp_path / "summary.tsv"
+
+    BENCHMARK._write_comparison_summary((case,), results, summary)
+
+    changed = next(row for row in _read_tsv(summary) if row["variant"] == "changed")
+    assert changed["median_wall_seconds"] == "10.000000"
+    assert changed["wall_mad_seconds"] == "5.000000"
+    assert changed["wall_range_seconds"] == "10.000000"
+    assert changed["median_cpu_seconds"] == "5.000000"
+    assert changed["median_max_rss_kib"] == "100"
+    assert changed["median_input_blocks"] == "4"
+    assert changed["median_output_blocks"] == "2"
+    assert changed["median_paired_speedup_percent"] == "50.000000"
+    assert changed["median_paired_speedup_ratio"] == "2.000000"
 
 
 def test_main_reports_operator_errors(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:

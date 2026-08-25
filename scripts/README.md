@@ -43,6 +43,12 @@ producer wall time and child-process peak RSS, validates every trial, and recomm
 the smallest value within five percent of the fastest successful median. It is
 not part of normal validation and its recommendation applies only to the tested
 dataset, machine, runtime, and storage system.
+The backward-compatible comparison schema pairs a named baseline with one or
+more changed implementations, alternates their order by repetition, and keeps
+warmups outside its measured summary. Its single validator command must perform
+owner validation, the all-pass gate, and any stage-specific semantic
+fingerprinting. A comparison is valid only when every measured trial passes and
+its fingerprints match that repetition's explicit baseline.
 Dependency restoration is explicit operator mutation. Validation, rendering,
 and restore success do not establish runtime, cluster, scientific-review, or
 biological evidence.
