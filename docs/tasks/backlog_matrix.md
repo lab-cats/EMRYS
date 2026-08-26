@@ -236,9 +236,32 @@ separately tracked where required.
 | ID | Priority (provisional) | Status | Required outcome | Acceptance |
 |---|---|---|---|---|
 | <code>REVIEW-UX-03</code> | P1 | Open | Independently review scientist, advanced-scientist, operator, developer/maintainer, and automation journeys against the non-negotiable simplified golden path. | The review covers fresh installation through valid synthetic result, findability, terminology, concepts required, configuration burden, progressive disclosure, accessibility, failure diagnosis and recovery, console/report hierarchy, intake, local/HPC context, and the ratified inspectable-effective-value and safe-override boundaries plus role-appropriate escape hatches without changing scientific meaning. It records baseline and target measures without treating source-proposed numeric targets as already accepted. |
-| <code>LOG-05</code> | P1 | Open | Activate concise role-appropriate default logging across every applicable command after foundation adoption. | Routine output uses scientific and run-level milestones rather than owner jobs, transactions, scheduler commands, or receipt mechanics; failures identify the useful public state, reason, recovery guidance, and durable log path; contract-required forensic detail remains inspectable under explicit retention and redaction policy; parity evidence covers each adopted domain. |
+| <code>LOG-05</code> | P1 | Open | Activate concise role-appropriate default logging using the implemented foundation, incrementally across every retained applicable operation. | Routine output uses scientific and run-level milestones rather than owner jobs, transactions, scheduler commands, or receipt mechanics; failures identify the useful public state, reason, recovery guidance, and durable log path; contract-required forensic detail remains inspectable under explicit retention and redaction policy; parity evidence covers each adopted domain. |
 | <code>OBS-01</code> | P1 | Open | Remove low-value console noise from the default user experience. | Default output shows meaningful milestones, warnings, failures, and the durable log path; verbose/debug detail is explicitly requested. |
 | <code>OBS-02</code> | P1 | Open | Provide a supported high-level progress, status, and recovery-guidance surface while hiding the internal execution/publication state machine. | Users see preparation, alignment, QC, candidate generation/testing, report generation, elapsed time, and a small truthful state vocabulary such as pending/running/complete/failed/recoverable; failure output explains the reason, whether resume is safe, and the supported next action. EMRYS determines internally what remains valid, provisional, reusable, rolled back, or recomputed; Snakemake jobs, owner counts, transactions, publication states, and attempt internals remain available in evidence/debug views. Exact states and resume command remain unsettled. |
+
+#### LOG-05 adoption and closure guard
+
+Planning, retained-surface inventory, attempt-owner mapping, and reusable
+conformance and parity-harness work may precede production adoption and need not
+wait for unrelated campaign work. Production adoption occurs only in a
+separately approved bounded slice for a retained semantic operation or an
+explicitly approved transitional compatibility operation. Before or within the
+slice, it must identify the operation's role, exactly one application-attempt
+owner and its delegates, role-appropriate identity and entry-point
+compatibility, durable log placement, truthful milestone/failure/recovery
+projection, stdout contract, and applicable Local/SLURM responsibility and
+parity evidence. The slice may settle those bounded decisions but may not
+silently adopt a nonbinding campaign suggestion.
+
+A transitional compatibility adoption does not satisfy final retained-operation
+coverage, and an unapproved retiring surface is out of scope. <code>LOG-05</code>
+remains Open until every operation in the reviewed application surface is
+either adopted when retained and applicable or explicitly dispositioned as
+retired or not applicable, and every adoption has the required evidence. A
+claimed complete golden-path capstone requires current <code>LOG-05</code>
+closure evidence. These are slice-admission and capstone-acceptance conditions,
+not blocker edges or an overall campaign order.
 
 ### Analysis modularity and overall architecture
 

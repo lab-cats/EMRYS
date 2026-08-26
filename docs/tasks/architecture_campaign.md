@@ -1070,6 +1070,20 @@ The expanded source also proposed this P0–P3 order:
 These labels record source recommendations only. Actual ordering will follow
 task slicing, evidence review, and the later importance/complexity scoring pass.
 
+### 13.2 Accepted LOG-05 sequencing boundary
+
+**Binding:** `LOG-05` planning and guard work may precede production adoption.
+Wiring proceeds operation by operation through separately approved bounded
+slices and need not wait for unrelated campaign work. The
+[matrix guard](backlog_matrix.md#log-05-adoption-and-closure-guard) owns slice
+admission and closure, and the
+[logging contract](../design/LOGGING_CONTRACT.md#adoption-boundary) owns exact
+operation behavior. Transitional compatibility support does not satisfy final
+retained-operation coverage, and retiring surfaces do not advance closure.
+
+This resolves only the `LOG-05` migration boundary within `AC-DEC-020`. It does
+not settle any other campaign ordering or interface decision.
+
 ## 14. Measurement plan
 
 Measurement is required so the campaign does not merely move complexity.
@@ -1136,7 +1150,7 @@ Sections 7, 8, and 11.3.
 | `AC-DEC-017` | Which advanced interfaces are stable? | inspect run/artifact, manifest, evidence, diagnostics, debug, machine-readable outputs |
 | `AC-DEC-018` | How is each bounded compatibility and retirement transition implemented? | Compatibility window, warnings, fixtures, and removal evidence; caller migration, relevant parity, owned temporary compatibility, and eventual retirement are already binding |
 | `AC-DEC-019` | Which campaign metrics and targets become commitments? | Baseline method, supported environment, time targets, qualitative acceptance |
-| `AC-DEC-020` | How should work and any just-in-time facade use be ordered? | Three source phase models and P0–P3 suggestion; per-slice facade need; later importance and complexity scores |
+| `AC-DEC-020` | How should work beyond the accepted `LOG-05` migration boundary, including any just-in-time facade use, be ordered? | Three source phase models and P0–P3 suggestion; per-slice facade need; later importance and complexity scores; Section 13.2 settles only logging adoption sequencing |
 | `AC-DEC-021` | Which new architecture documents should remain after the campaign? | Invariants, current architecture, target architecture, or consolidation into existing durable owners |
 | `AC-DEC-022` | How should the Steps 07–09 audit be bounded? | Review authority, candidate universe, count/CMH/BH contracts, oracle data, evidence ceiling |
 | `AC-DEC-023` | Which historical claims from the source are accurate and useful? | Development dates, chronology, and repository-history interpretations require live Git verification before reuse |
