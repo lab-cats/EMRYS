@@ -351,3 +351,16 @@ not current architecture. Accepted outcomes are in the
 [findings matrix](../../tasks/backlog_matrix.md); unsliced alternatives remain
 in the temporary
 [architecture campaign](../../tasks/architecture_campaign.md).
+
+## Adopt application logging through accepted operations
+
+Application logging migrates incrementally through separately approved semantic
+application-operation slices, not through blanket instrumentation of the
+current command and wrapper surface. This prevents transport and compatibility
+layers from becoming competing lifecycle or logging authorities while allowing
+accepted facades to adopt logging as they land. Planning and conformance work
+may precede production adoption, and unrelated campaign work need not finish
+first. An explicitly approved transitional compatibility operation is eligible
+for bounded support but does not satisfy final retained-operation coverage. The
+broader public-model, execution, identity, status, filesystem, and overall-order
+choices remain open.

@@ -194,6 +194,10 @@ exact foundation behavior lives with the
 [application-logging owner](../../src/emrys/libraries/application_logging/README.md)
 and its [direct tests](../../tests/libraries/application_logging/). Git history
 retains the superseded commit-bound crosswalk and exposure inventory.
+The direct suite also ratchets the packaged-Python production-import roster,
+which is currently empty; an approved adoption slice must change that roster
+together with its owner contract, current source topology, and behavioral
+evidence.
 
 For production paths that have not adopted the foundation, retained current
 boundaries are:

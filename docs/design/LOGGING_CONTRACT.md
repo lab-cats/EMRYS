@@ -8,6 +8,31 @@ remains `LOG-05` in the [findings matrix](../tasks/backlog_matrix.md). A command
 implements this contract only when its owner documentation and direct tests say
 so. Foundation code remains stage-independent and never imports a stage.
 
+## Adoption boundary
+
+Production adoption is evaluated at one semantic application-operation
+boundary, not independently at every leaf command, compatibility facade,
+transport, or scheduler wrapper. The accepted outer operation owns exactly one
+application attempt and resolves controls once. Retained delegates receive the
+resolved controls and event context explicitly and do not open a second attempt.
+
+Each bounded adoption package satisfies the operation, ownership, placement,
+projection, stream, and parity admission conditions in its owner documentation
+and direct tests. An explicitly approved transitional compatibility operation
+may adopt the foundation for bounded support but does not satisfy final
+retained-operation coverage. An unapproved retiring surface is out of scope;
+closure remains governed by the
+[matrix adoption guard](../tasks/backlog_matrix.md#log-05-adoption-and-closure-guard).
+
+The packaged-Python production-import roster is mechanically guarded. Changing
+it is part of the adopter's approved slice and must update the current
+[source topology](../../src/emrys/contracts/SOURCE_TOPOLOGY.md), owner contract,
+and direct tests together. The static import ratchet does not establish semantic
+one-attempt ownership, output preservation, wrapper adoption, or Local/SLURM
+parity; owner and integration tests must do so. It also does not select public
+nouns, classes, commands, state vocabulary, filesystem layout, or scheduler
+policy before their own bounded decisions.
+
 ## Sinks, controls, and streams
 
 - Two sinks are explicit: a concise console for current-operator progress,

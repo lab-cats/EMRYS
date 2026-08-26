@@ -100,6 +100,10 @@ Detailed rationale: [`platform-direction.md`](decisions/platform-direction.md).
   parity protection, and retirement condition; superseded paths retire after
   caller migration and parity. Existing direct, adversarial, seeded-fault, and
   synthetic end-to-end defenses require mapped equal-or-stronger replacement.
+- Roll out application logging incrementally through separately approved
+  application-operation slices with exactly one semantic attempt owner and an
+  explicit disposition for transitional or retiring surfaces; do not
+  blanket-retrofit the legacy control surface.
 - Use semantic identities and explicit artifact DAG edges rather than numeric
   aliases or filenames for order.
 - Prohibit peer private-implementation imports. Promote shared code only after
