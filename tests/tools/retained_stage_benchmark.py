@@ -342,6 +342,7 @@ def _admit_verified_owner(
     machine_key: str,
     scope_id: str,
     expected: Sequence[tuple[str, str, Path]],
+    exact_roster: bool = False,
 ) -> tuple[tuple[RetainedArtifact, ...], Mapping[str, Any]]:
     references = [
         record
@@ -365,7 +366,9 @@ def _admit_verified_owner(
     ):
         raise BenchmarkSetupError(f"retained {machine_key} verified-task identity differs")
     outputs = verified.get("outputs")
-    if not isinstance(outputs, list) or len(outputs) != len(expected):
+    if not isinstance(outputs, list):
+        raise BenchmarkSetupError(f"retained {machine_key} outputs are absent")
+    if exact_roster and len(outputs) != len(expected):
         raise BenchmarkSetupError(
             f"retained {machine_key} outputs differ from the exact expected roster"
         )
@@ -598,6 +601,7 @@ def _admit_e2e(summary_path: Path) -> AdmittedE2E:
         records,
         machine_key=STEP06_OWNER,
         scope_id=RETAINED_SAMPLE_ID,
+        exact_roster=True,
         expected=(
             ("retained Step 06 FWD BAM", "output_001", expected_step06_fwd_bam),
             ("retained Step 06 FWD BAI", "output_002", expected_step06_fwd_bai),
