@@ -1,4 +1,4 @@
-"""Fast contract tests for the retained Step 07/08 benchmark helper."""
+"""Fast contract tests for the retained performance benchmark helper."""
 
 from __future__ import annotations
 
@@ -41,6 +41,108 @@ def _artifact(path: Path) -> dict[str, object]:
         "size_bytes": len(data),
         "sha256": hashlib.sha256(data).hexdigest(),
     }
+
+
+def _retained_artifact(path: Path) -> object:
+    state = path.stat(follow_symlinks=False)
+    return BENCHMARK.RetainedArtifact(
+        path,
+        state.st_size,
+        hashlib.sha256(path.read_bytes()).hexdigest(),
+        state.st_dev,
+        state.st_ino,
+        state.st_mtime_ns,
+    )
+
+
+def _publish_verified_owner(
+    path: Path, machine_key: str, outputs: list[dict[str, object]]
+) -> dict[str, object]:
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": "emrys.verified-task.v1",
+                "machine_key": machine_key,
+                "scope": {
+                    "scope_type": "sample",
+                    "scope_id": BENCHMARK.RETAINED_SAMPLE_ID,
+                },
+                "stable_inputs_rechecked": True,
+                "all_pass": True,
+                "outputs": outputs,
+            }
+        )
+    )
+    return {
+        "machine_key": machine_key,
+        "scope_type": "sample",
+        "scope_id": BENCHMARK.RETAINED_SAMPLE_ID,
+        **_artifact(path),
+    }
+
+
+def _step02_validator_fixture(
+    root: Path,
+) -> tuple[dict[str, object], Path, Path, Path, Path]:
+    trial = root / "trial"
+    output = trial / "output"
+    (trial / "qc").mkdir(parents=True)
+    output.mkdir()
+    retained = root / "retained"
+    retained.mkdir()
+    sample = BENCHMARK.RETAINED_SAMPLE_ID
+    input_bam = retained / "step01.bam"
+    retained_bam = retained / "step02.bam"
+    retained_bai = retained / "step02.bam.bai"
+    input_bam.write_bytes(b"bam-bytes")
+    retained_bam.hardlink_to(input_bam)
+    retained_bai.write_bytes(b"bai-bytes")
+    bam = output / f"{sample}.sorted.bam"
+    bai = output / f"{sample}.sorted.bam.bai"
+    bam.hardlink_to(input_bam)
+    bai.write_bytes(retained_bai.read_bytes())
+    samtools = root / "runtime/bin/samtools"
+    samtools.parent.mkdir(parents=True)
+    samtools.write_text("#!/bin/sh\n")
+    samtools.chmod(0o755)
+    context = {
+        "sample_id": sample,
+        "python": "/repo/.venv/bin/python",
+        "runtime_prefix": str(samtools.parents[1]),
+        "retained_step01_bam": BENCHMARK._artifact_context(
+            _retained_artifact(input_bam)
+        ),
+        "retained_step02_bam": BENCHMARK._artifact_context(
+            _retained_artifact(retained_bam)
+        ),
+        "retained_step02_bai": BENCHMARK._artifact_context(
+            _retained_artifact(retained_bai)
+        ),
+    }
+    return context, trial, bam, bai, samtools
+
+
+def _run_step02_validator(
+    context: dict[str, object], trial: Path, samtools: Path
+) -> tuple[list[tuple[str, ...]], bytes]:
+    calls: list[tuple[str, ...]] = []
+    idxstats = b"chrSynthetic\t5000000\t2\t0\n"
+    with (
+        mock.patch.object(
+            BENCHMARK,
+            "_run_checked",
+            side_effect=lambda argv, **_kwargs: calls.append(tuple(argv)),
+        ),
+        mock.patch.object(
+            BENCHMARK.subprocess,
+            "run",
+            return_value=subprocess.CompletedProcess(
+                [str(samtools), "idxstats"], 0, idxstats, b""
+            ),
+        ),
+    ):
+        BENCHMARK._validate_step02(context, trial)
+    return calls, idxstats
 
 
 class RetainedStageBenchmarkTests(unittest.TestCase):
@@ -93,6 +195,10 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
         self.assertEqual(
             BENCHMARK._select_cases(suite="identity", names=None),
             (BENCHMARK.RETAINED_CASE_BY_NAME["alignment-signatures-mib"],),
+        )
+        self.assertEqual(
+            BENCHMARK._select_cases(suite="sample-stages", names=None),
+            (BENCHMARK.RETAINED_CASE_BY_NAME["step02-canonical-bam"],),
         )
         self.assertEqual(
             BENCHMARK._select_cases(suite="all", names=None),
@@ -476,6 +582,126 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 },
             )
 
+    def test_step02_owner_uses_retained_input_and_stable_relative_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            trial = root / "trial"
+            source = root / "source"
+            owner = source / "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"
+            samtools = root / "runtime/bin/samtools"
+            input_bam = root / "retained/input.bam"
+            trial.mkdir()
+            owner.parent.mkdir(parents=True)
+            owner.write_text("#!/bin/bash\n")
+            samtools.parent.mkdir(parents=True)
+            samtools.write_text("#!/bin/sh\n")
+            samtools.chmod(0o755)
+            input_bam.parent.mkdir()
+            input_bam.write_bytes(b"retained")
+            state = input_bam.stat()
+            context = {
+                "sample_id": BENCHMARK.RETAINED_SAMPLE_ID,
+                "python": "/repo/.venv/bin/python",
+                "runtime_prefix": str(samtools.parents[1]),
+                "retained_step01_bam": {
+                    "path": str(input_bam),
+                    "size_bytes": state.st_size,
+                    "sha256": hashlib.sha256(input_bam.read_bytes()).hexdigest(),
+                    "device": state.st_dev,
+                    "inode": state.st_ino,
+                    "mtime_ns": state.st_mtime_ns,
+                },
+            }
+            captured: dict[str, object] = {}
+
+            def run(argv: object, *, cwd: Path, environment: object) -> None:
+                captured.update(argv=tuple(argv), cwd=cwd, environment=environment)
+
+            process_environment = ModuleType("emrys.libraries.process_environment")
+            process_environment.sanitized_subprocess_environment = (
+                lambda _environment: {"SANITIZED": "1"}
+            )
+            modules = {
+                "emrys": ModuleType("emrys"),
+                "emrys.libraries": ModuleType("emrys.libraries"),
+                "emrys.libraries.process_environment": process_environment,
+            }
+            with mock.patch.object(
+                BENCHMARK,
+                "_sha256_file",
+                side_effect=AssertionError("setup must not hash the retained BAM"),
+            ):
+                BENCHMARK._setup_step02(context, trial, 100_000)
+            (trial / "completed-output-link").hardlink_to(input_bam)
+            (trial / "completed-output-link").unlink()
+            self.assertEqual(BENCHMARK._retained_step01_bam(context), input_bam)
+            with (
+                mock.patch.dict(sys.modules, modules),
+                mock.patch.object(BENCHMARK, "_run_checked", side_effect=run),
+            ):
+                BENCHMARK._produce_step02(context, trial, source)
+
+            argv = captured["argv"]
+            self.assertEqual(captured["cwd"], trial)
+            self.assertEqual(argv[argv.index("--output-dir") + 1], "output")
+            self.assertEqual(argv[argv.index("--threads") + 1], "2")
+            self.assertEqual(argv[argv.index("--input-alignment") + 1], str(input_bam))
+            self.assertEqual(
+                captured["environment"],
+                {
+                    "SANITIZED": "1",
+                    "EMRYS_RUN_TOKEN": "retained-benchmark",
+                    "EMRYS_SHA256_PYTHON": "/repo/.venv/bin/python",
+                    "EMRYS_REQUIRE_BOUND_SHA256": "1",
+                },
+            )
+            self.assertTrue((trial / "qc").is_dir())
+
+    def test_step02_validator_binds_exact_pair_and_removes_large_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            context, trial, bam, bai, samtools = _step02_validator_fixture(root)
+
+            validation_calls, idxstats = _run_step02_validator(
+                context, trial, samtools
+            )
+
+            self.assertIn("canonical-bam", validation_calls[0])
+            self.assertIn("all-pass", validation_calls[1])
+            parity = (trial / "parity.bin").read_bytes()
+            self.assertIn(hashlib.sha256(b"bam-bytes").hexdigest().encode(), parity)
+            self.assertIn(hashlib.sha256(b"bai-bytes").hexdigest().encode(), parity)
+            self.assertIn(idxstats, parity)
+            self.assertFalse(bam.exists())
+            self.assertFalse(bai.exists())
+            self.assertEqual(list((trial / "output").iterdir()), [])
+
+    def test_step02_validator_rejects_a_byte_identical_copy(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            context, trial, bam, _bai, samtools = _step02_validator_fixture(
+                Path(directory).resolve()
+            )
+            data = bam.read_bytes()
+            bam.unlink()
+            bam.write_bytes(data)
+
+            with self.assertRaisesRegex(
+                BENCHMARK.BenchmarkSetupError, "canonical hard-link path"
+            ):
+                _run_step02_validator(context, trial, samtools)
+
+    def test_step02_validator_rejects_retained_pair_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            context, trial, _bam, bai, samtools = _step02_validator_fixture(
+                Path(directory).resolve()
+            )
+            bai.write_bytes(b"different-index")
+
+            with self.assertRaisesRegex(
+                BENCHMARK.BenchmarkSetupError, "retained verified identities"
+            ):
+                _run_step02_validator(context, trial, samtools)
+
     def test_archive_extractor_rejects_escape_and_links(self) -> None:
         def archive(member: tarfile.TarInfo, data: bytes = b"") -> bytes:
             stream = io.BytesIO()
@@ -727,6 +953,12 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             summary.write_text("{}\n")
             primary_vcf = root / "retained.primary.FWD_like.mpileup.vcf"
             primary_vcf.write_text("##fileformat=VCFv4.2\n")
+            step01_bam = root / "retained.step01.bam"
+            step01_bam.write_bytes(b"bam")
+            step02_bam = root / "retained.step02.bam"
+            step02_bai = root / "retained.step02.bam.bai"
+            step02_bam.hardlink_to(step01_bam)
+            step02_bai.write_bytes(b"bai")
             retained = BENCHMARK.AdmittedE2E(
                 summary,
                 hashlib.sha256(summary.read_bytes()).hexdigest(),
@@ -737,6 +969,10 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 root / "genes.gtf",
                 root / "orientation",
                 primary_vcf,
+                BENCHMARK.RETAINED_SAMPLE_ID,
+                _retained_artifact(step01_bam),
+                _retained_artifact(step02_bam),
+                _retained_artifact(step02_bai),
             )
             repository = BENCHMARK.RepositoryState(
                 repo_root,
@@ -789,6 +1025,15 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
 
             context = json.loads((output / "benchmark-context.json").read_text())
             self.assertEqual(context["retained_primary_vcf"], str(primary_vcf))
+            self.assertEqual(
+                context["retained_step01_bam"]["path"], str(step01_bam)
+            )
+            self.assertEqual(
+                context["retained_step02_bam"]["path"], str(step02_bam)
+            )
+            self.assertEqual(
+                context["retained_step02_bai"]["path"], str(step02_bai)
+            )
             self.assertNotIn("retained_step07_root", context)
             summary_document = json.loads(
                 (output / "retained-stage-benchmark-summary.json").read_text()
@@ -817,7 +1062,9 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             partitions = inputs / "partitions.tsv"
             fasta = inputs / "inputs/reference/reference.fa"
             gtf = inputs / "inputs/reference/genes.gtf"
-            samples.write_text("sample_id\tx\nS\t1\n")
+            samples.write_text(
+                f"sample_id\tx\n{BENCHMARK.RETAINED_SAMPLE_ID}\t1\n"
+            )
             partitions.write_text("partition_id\tselector_type\tselector_value\nprimary\tregion\ts\n")
             fasta.write_text(">s\nA\n")
             Path(f"{fasta}.fai").write_text("s\t5000000\t0\t1\t2\n")
@@ -834,11 +1081,47 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             (run / "contract/normalized.json").write_text(json.dumps(execution))
             evidence = operator / "evidence"
             evidence.mkdir()
+            step01_bam = (
+                run
+                / "results/star"
+                / BENCHMARK.RETAINED_SAMPLE_ID
+                / f"{BENCHMARK.RETAINED_SAMPLE_ID}.Aligned.sortedByCoord.out.bam"
+            )
+            step01_bam.parent.mkdir(parents=True)
+            step01_bam.write_bytes(b"retained-step01-bam")
+            step02_bam = (
+                run
+                / "results/bam"
+                / BENCHMARK.RETAINED_SAMPLE_ID
+                / f"{BENCHMARK.RETAINED_SAMPLE_ID}.sorted.bam"
+            )
+            step02_bam.parent.mkdir(parents=True)
+            step02_bam.hardlink_to(step01_bam)
+            step02_bai = Path(f"{step02_bam}.bai")
+            step02_bai.write_bytes(b"retained-step02-bai")
+            step01_outputs = [{"role": "output_001", **_artifact(step01_bam)}]
+            step02_outputs = [
+                {"role": "output_001", **_artifact(step02_bam)},
+                {"role": "output_002", **_artifact(step02_bai)},
+            ]
             owners = []
             for index in range(35):
                 path = evidence / f"owner-{index}.json"
-                path.write_text(str(index))
-                owners.append(_artifact(path))
+                if index == 0:
+                    owners.append(
+                        _publish_verified_owner(
+                            path, BENCHMARK.STEP01_OWNER, step01_outputs
+                        )
+                    )
+                elif index == 1:
+                    owners.append(
+                        _publish_verified_owner(
+                            path, BENCHMARK.STEP02_OWNER, step02_outputs
+                        )
+                    )
+                else:
+                    path.write_text(str(index))
+                    owners.append(_artifact(path))
             final = evidence / "attempt.json"
             final.write_text("complete")
             runtime_profile = operator / "runtime.selected.tsv"
@@ -874,9 +1157,33 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             self.assertEqual(admitted.run_root, run)
             self.assertEqual(admitted.cohort_id, "cohort")
             self.assertEqual(admitted.retained_primary_vcf, primary_vcf)
+            self.assertEqual(admitted.retained_step01_bam.path, step01_bam)
+            self.assertEqual(admitted.retained_step02_bam.path, step02_bam)
+            self.assertEqual(admitted.retained_step02_bai.path, step02_bai)
             summary["profile"] = "130"
             summary_path.write_text(json.dumps(summary))
             with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "exact passed retained 100k"):
+                BENCHMARK._admit_e2e(summary_path)
+            summary["profile"] = "100000"
+            summary_path.write_text(json.dumps(summary))
+            step02_outputs[0]["role"] = "wrong-role"
+            owners[1] = _publish_verified_owner(
+                evidence / "owner-1.json", BENCHMARK.STEP02_OWNER, step02_outputs
+            )
+            summary_path.write_text(json.dumps(summary))
+            with self.assertRaisesRegex(
+                BENCHMARK.BenchmarkSetupError, "binding differs"
+            ):
+                BENCHMARK._admit_e2e(summary_path)
+            step02_outputs[0]["role"] = "output_001"
+            owners[1] = _publish_verified_owner(
+                evidence / "owner-1.json", BENCHMARK.STEP02_OWNER, step02_outputs
+            )
+            summary_path.write_text(json.dumps(summary))
+            step01_bam.write_bytes(b"changed")
+            with self.assertRaisesRegex(
+                BENCHMARK.BenchmarkSetupError, "Step 01 BAM.*retained identity"
+            ):
                 BENCHMARK._admit_e2e(summary_path)
 
     def test_dry_run_default_does_not_create_output(self) -> None:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare retained Step 07/08 owners at ``origin/master`` and ``HEAD``.
+"""Compare retained performance owners at ``origin/master`` and ``HEAD``.
 
 This CI-only helper consumes a successful retained 100,000-read-pair E2E.  It
 creates deterministic external fixtures, materializes the two committed source
@@ -39,6 +39,9 @@ MEASURED_REPETITIONS = 4
 WARMUP_REPETITIONS = 1
 DEFAULT_SUITE = "cohort-stages"
 VARIANTS = ("master", "head")
+RETAINED_SAMPLE_ID = "control_pair_01"
+STEP01_OWNER = "emrys.stage.align_RNA_reads_with_STAR.v1"
+STEP02_OWNER = "emrys.stage.construct_canonical_BAM.v1"
 BCFTOOLS_METADATA_PREFIXES = (
     b"##bcftoolsVersion=",
     b"##bcftoolsCommand=",
@@ -120,6 +123,7 @@ class RetainedCase:
 
 RETAINED_CASES = (
     RetainedCase("alignment-signatures-mib", "identity", 0, (10, 100, 1024), 1),
+    RetainedCase("step02-canonical-bam", "sample-stages", 2, (100_000,), 2),
     RetainedCase("step07-partitions", "cohort-stages", 7, (1, 5, 25), 2),
     RetainedCase("step08-reread", "cohort-stages", 8, (10_000, 100_000), 1),
     RetainedCase("step08-skew", "cohort-stages", 8, (100_000,), 2),
@@ -141,6 +145,20 @@ class AdmittedE2E:
     annotation_gtf: Path
     orientation_root: Path
     retained_primary_vcf: Path
+    sample_id: str
+    retained_step01_bam: RetainedArtifact
+    retained_step02_bam: RetainedArtifact
+    retained_step02_bai: RetainedArtifact
+
+
+@dataclass(frozen=True, slots=True)
+class RetainedArtifact:
+    path: Path
+    size_bytes: int
+    sha256: str
+    device: int
+    inode: int
+    mtime_ns: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -215,6 +233,83 @@ def _verify_artifact(record: Any, label: str) -> None:
     path = _real_file(Path(str(record["path"])), label)
     if path.stat().st_size != record["size_bytes"] or _sha256_file(path) != record["sha256"]:
         raise BenchmarkSetupError(f"{label} no longer matches its retained identity")
+
+
+def _admit_bound_artifact(
+    record: Any, expected_path: Path, expected_role: str, label: str
+) -> RetainedArtifact:
+    if not isinstance(record, Mapping) or set(record) != {
+        "role",
+        "path",
+        "size_bytes",
+        "sha256",
+    }:
+        raise BenchmarkSetupError(f"{label} is not one exact bound artifact")
+    if record["role"] != expected_role or Path(str(record["path"])) != expected_path:
+        raise BenchmarkSetupError(f"{label} binding differs from the retained contract")
+    identity = {key: record[key] for key in ("path", "size_bytes", "sha256")}
+    _verify_artifact(identity, label)
+    path = _real_file(expected_path, label)
+    state = path.stat(follow_symlinks=False)
+    return RetainedArtifact(
+        path,
+        int(record["size_bytes"]),
+        str(record["sha256"]),
+        state.st_dev,
+        state.st_ino,
+        state.st_mtime_ns,
+    )
+
+
+def _admit_verified_outputs(
+    summary_records: Sequence[Mapping[str, Any]],
+    *,
+    machine_key: str,
+    scope_id: str,
+    expected: Sequence[tuple[str, str, Path]],
+) -> tuple[RetainedArtifact, ...]:
+    references = [
+        record
+        for record in summary_records
+        if record.get("machine_key") == machine_key
+        and record.get("scope_type") == "sample"
+        and record.get("scope_id") == scope_id
+    ]
+    if len(references) != 1:
+        raise BenchmarkSetupError(f"retained summary omits the exact {machine_key} owner")
+    verified = _load_json(
+        Path(str(references[0]["path"])), f"retained {machine_key} verified task"
+    )
+    if (
+        verified.get("schema_version") != "emrys.verified-task.v1"
+        or verified.get("machine_key") != machine_key
+        or verified.get("scope")
+        != {"scope_type": "sample", "scope_id": scope_id}
+        or verified.get("stable_inputs_rechecked") is not True
+        or verified.get("all_pass") is not True
+    ):
+        raise BenchmarkSetupError(f"retained {machine_key} verified-task identity differs")
+    outputs = verified.get("outputs")
+    if not isinstance(outputs, list):
+        raise BenchmarkSetupError(f"retained {machine_key} outputs are absent")
+    admitted = []
+    for label, expected_role, expected_path in expected:
+        matches = [
+            record
+            for record in outputs
+            if isinstance(record, Mapping)
+            and Path(str(record.get("path"))) == expected_path
+        ]
+        if len(matches) != 1:
+            raise BenchmarkSetupError(
+                f"retained {machine_key} verified task omits its exact {label}"
+            )
+        admitted.append(
+            _admit_bound_artifact(
+                matches[0], expected_path, expected_role, label
+            )
+        )
+    return tuple(admitted)
 
 
 def _admit_e2e(summary_path: Path) -> AdmittedE2E:
@@ -295,6 +390,43 @@ def _admit_e2e(summary_path: Path) -> AdmittedE2E:
         (annotation_gtf, "annotation GTF"),
     ):
         _real_file(selected, label)
+    try:
+        with sample_manifest.open(encoding="utf-8", newline="") as stream:
+            sample_rows = list(csv.DictReader(stream, dialect="excel-tab"))
+    except (OSError, UnicodeError, csv.Error) as exc:
+        raise BenchmarkSetupError(f"sample manifest is unreadable: {exc}") from exc
+    if [row.get("sample_id") for row in sample_rows].count(RETAINED_SAMPLE_ID) != 1:
+        raise BenchmarkSetupError(
+            f"retained sample manifest must contain {RETAINED_SAMPLE_ID} exactly once"
+        )
+    expected_step01_bam = (
+        run_root
+        / "results/star"
+        / RETAINED_SAMPLE_ID
+        / f"{RETAINED_SAMPLE_ID}.Aligned.sortedByCoord.out.bam"
+    )
+    expected_step02_bam = (
+        run_root
+        / "results/bam"
+        / RETAINED_SAMPLE_ID
+        / f"{RETAINED_SAMPLE_ID}.sorted.bam"
+    )
+    expected_step02_bai = Path(f"{expected_step02_bam}.bai")
+    (retained_step01_bam,) = _admit_verified_outputs(
+        records,
+        machine_key=STEP01_OWNER,
+        scope_id=RETAINED_SAMPLE_ID,
+        expected=(("retained Step 01 BAM", "output_001", expected_step01_bam),),
+    )
+    retained_step02_bam, retained_step02_bai = _admit_verified_outputs(
+        records,
+        machine_key=STEP02_OWNER,
+        scope_id=RETAINED_SAMPLE_ID,
+        expected=(
+            ("retained Step 02 BAM", "output_001", expected_step02_bam),
+            ("retained Step 02 BAI", "output_002", expected_step02_bai),
+        ),
+    )
     orientation_root = _real_directory(run_root / "results/orientation", "retained orientation root")
     retained_step07_root = _real_directory(run_root / "results/mpileup", "retained Step 07 root")
     retained_primary_vcf = _real_file(
@@ -314,6 +446,10 @@ def _admit_e2e(summary_path: Path) -> AdmittedE2E:
         annotation_gtf,
         orientation_root,
         retained_primary_vcf,
+        RETAINED_SAMPLE_ID,
+        retained_step01_bam,
+        retained_step02_bam,
+        retained_step02_bai,
     )
 
 
@@ -690,6 +826,188 @@ def _run_checked(
         raise BenchmarkSetupError(f"command exited {completed.returncode}: {' '.join(argv)}")
 
 
+def _context_artifact(
+    context: Mapping[str, Any], key: str, label: str
+) -> RetainedArtifact:
+    record = context.get(key)
+    required = {"path", "size_bytes", "sha256", "device", "inode", "mtime_ns"}
+    if not isinstance(record, Mapping) or set(record) != required:
+        raise BenchmarkSetupError(f"benchmark context omits the {label}")
+    if (
+        any(not isinstance(record[field], int) for field in required - {"path", "sha256"})
+        or not isinstance(record["sha256"], str)
+        or len(record["sha256"]) != 64
+        or any(character not in "0123456789abcdef" for character in record["sha256"])
+    ):
+        raise BenchmarkSetupError(f"benchmark context has an invalid {label} identity")
+    return RetainedArtifact(
+        Path(str(record["path"])),
+        record["size_bytes"],
+        record["sha256"],
+        record["device"],
+        record["inode"],
+        record["mtime_ns"],
+    )
+
+
+def _artifact_context(artifact: RetainedArtifact) -> dict[str, str | int]:
+    return {
+        "path": str(artifact.path),
+        "size_bytes": artifact.size_bytes,
+        "sha256": artifact.sha256,
+        "device": artifact.device,
+        "inode": artifact.inode,
+        "mtime_ns": artifact.mtime_ns,
+    }
+
+
+def _retained_step01_bam(context: Mapping[str, Any]) -> Path:
+    admitted = _context_artifact(context, "retained_step01_bam", "retained Step 01 BAM")
+    path = _real_file(admitted.path, "retained Step 01 BAM")
+    state = path.stat(follow_symlinks=False)
+    if (
+        state.st_size != admitted.size_bytes
+        or state.st_dev != admitted.device
+        or state.st_ino != admitted.inode
+        or state.st_mtime_ns != admitted.mtime_ns
+    ):
+        raise BenchmarkSetupError("retained Step 01 BAM identity changed")
+    return path
+
+
+def _setup_step02(context: Mapping[str, Any], trial: Path, value: int) -> None:
+    if value != EXPECTED_READ_PAIRS:
+        raise BenchmarkSetupError("Step 02 benchmark requires the retained 100k profile")
+    input_bam = _retained_step01_bam(context)
+    if input_bam.stat(follow_symlinks=False).st_dev != trial.stat().st_dev:
+        raise BenchmarkSetupError("Step 02 benchmark requires same-filesystem hard links")
+    (trial / "qc").mkdir(mode=0o700)
+
+
+def _produce_step02(context: Mapping[str, Any], trial: Path, source: Path) -> None:
+    from emrys.libraries.process_environment import sanitized_subprocess_environment
+
+    input_bam = _retained_step01_bam(context)
+    runtime = _real_directory(Path(str(context["runtime_prefix"])), "runtime prefix")
+    samtools = _real_file(runtime / "bin/samtools", "samtools", executable=True)
+    owner = _real_file(
+        source / "src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh",
+        "Step 02 owner",
+    )
+    environment = sanitized_subprocess_environment(os.environ)
+    environment.update(
+        {
+            "EMRYS_RUN_TOKEN": "retained-benchmark",
+            "EMRYS_SHA256_PYTHON": str(context["python"]),
+            "EMRYS_REQUIRE_BOUND_SHA256": "1",
+        }
+    )
+    _run_checked(
+        (
+            "bash",
+            str(owner),
+            "--sample-id",
+            str(context["sample_id"]),
+            "--input-alignment",
+            str(input_bam),
+            "--output-dir",
+            "output",
+            "--threads",
+            str(_case_threads("step02-canonical-bam")),
+            "--samtools-bin",
+            str(samtools),
+            "--no-clobber",
+            "--execute",
+        ),
+        cwd=trial,
+        environment=environment,
+    )
+
+
+def _validate_step02(context: Mapping[str, Any], trial: Path) -> None:
+    sample_id = str(context["sample_id"])
+    relative_bam = Path("output") / f"{sample_id}.sorted.bam"
+    relative_bai = Path(f"{relative_bam}.bai")
+    bam = _real_file(trial / relative_bam, "Step 02 benchmark BAM")
+    bai = _real_file(trial / relative_bai, "Step 02 benchmark BAI")
+    retained_input = _retained_step01_bam(context)
+    if not os.path.samefile(bam, retained_input):
+        raise BenchmarkSetupError("Step 02 case left the canonical hard-link path")
+    runtime = _real_directory(Path(str(context["runtime_prefix"])), "runtime prefix")
+    samtools = _real_file(runtime / "bin/samtools", "samtools", executable=True)
+    report = Path("qc") / f"{sample_id}.step02_validation.tsv"
+    _run_checked(
+        _emrys(
+            context,
+            "validate",
+            "canonical-bam",
+            "--scope-id",
+            sample_id,
+            "--bam",
+            str(relative_bam),
+            "--bai",
+            str(relative_bai),
+            "--samtools-bin",
+            str(samtools),
+            "--output",
+            str(report),
+            "--execute",
+        ),
+        cwd=trial,
+    )
+    _run_checked(
+        _emrys(
+            context,
+            "validate",
+            "all-pass",
+            "--report",
+            str(report),
+            "--step-id",
+            "02",
+            "--scope-id",
+            sample_id,
+        ),
+        cwd=trial,
+    )
+    idxstats = subprocess.run(
+        [str(samtools), "idxstats", str(relative_bam)],
+        cwd=trial,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if idxstats.returncode != 0 or not idxstats.stdout:
+        raise BenchmarkSetupError("Step 02 benchmark index query failed")
+    bam_digest = _sha256_file(bam)
+    bai_digest = _sha256_file(bai)
+    expected_bam = _context_artifact(
+        context, "retained_step02_bam", "retained Step 02 BAM"
+    )
+    expected_bai = _context_artifact(
+        context, "retained_step02_bai", "retained Step 02 BAI"
+    )
+    if (
+        (bam.stat().st_size, bam_digest)
+        != (expected_bam.size_bytes, expected_bam.sha256)
+        or (bai.stat().st_size, bai_digest)
+        != (expected_bai.size_bytes, expected_bai.sha256)
+    ):
+        raise BenchmarkSetupError("Step 02 outputs differ from retained verified identities")
+    _write_bundle(
+        trial / "parity.bin",
+        (
+            ("bam", f"{bam.stat().st_size}\t{bam_digest}\n".encode()),
+            ("bai", f"{bai.stat().st_size}\t{bai_digest}\n".encode()),
+            ("idxstats", idxstats.stdout),
+        ),
+    )
+    bam.unlink()
+    bai.unlink()
+    if any((trial / "output").iterdir()):
+        raise BenchmarkSetupError("Step 02 benchmark retained publication residue")
+
+
 def _produce_step07(context: Mapping[str, Any], trial: Path, source: Path) -> None:
     from emrys.libraries.process_environment import sanitized_subprocess_environment
 
@@ -947,6 +1265,8 @@ def _internal(arguments: argparse.Namespace) -> int:
     if arguments.operation == "_setup":
         if retained_case.stage == 0:
             _setup_alignment_signatures(trial, arguments.value)
+        elif retained_case.stage == 2:
+            _setup_step02(context, trial, arguments.value)
         elif retained_case.stage == 7:
             _setup_step07(context, trial, arguments.value)
         else:
@@ -955,6 +1275,8 @@ def _internal(arguments: argparse.Namespace) -> int:
         source = _source(context, arguments.variant)
         if retained_case.stage == 0:
             _produce_alignment_signatures(trial, source)
+        elif retained_case.stage == 2:
+            _produce_step02(context, trial, source)
         elif retained_case.stage == 7:
             _produce_step07(context, trial, source)
         else:
@@ -968,6 +1290,8 @@ def _internal(arguments: argparse.Namespace) -> int:
             )
     elif retained_case.stage == 0:
         _validate_alignment_signatures(trial)
+    elif retained_case.stage == 2:
+        _validate_step02(context, trial)
     elif retained_case.stage == 7:
         _validate_step07(context, trial)
     else:
@@ -1278,6 +1602,10 @@ def _execute(
         "annotation_gtf": str(e2e.annotation_gtf),
         "orientation_root": str(e2e.orientation_root),
         "retained_primary_vcf": str(e2e.retained_primary_vcf),
+        "sample_id": e2e.sample_id,
+        "retained_step01_bam": _artifact_context(e2e.retained_step01_bam),
+        "retained_step02_bam": _artifact_context(e2e.retained_step02_bam),
+        "retained_step02_bai": _artifact_context(e2e.retained_step02_bai),
         "runtime_prefix": str(runtime_prefix),
         "rscript": str(rscript),
         "renv_library": str(renv_library),
@@ -1362,6 +1690,7 @@ def _orchestrate(arguments: argparse.Namespace) -> int:
     e2e = _admit_e2e(arguments.e2e_summary)
     runtime = _real_directory(arguments.runtime_prefix, "runtime prefix")
     _real_file(runtime / "bin/bcftools", "bcftools", executable=True)
+    _real_file(runtime / "bin/samtools", "samtools", executable=True)
     rscript = _real_file(arguments.rscript, "Rscript", executable=True)
     renv = _real_directory(arguments.renv_library, "renv library")
     output = Path(os.path.abspath(arguments.output_root))

@@ -109,6 +109,15 @@ The full 100k E2E is an integration/correctness screen. Focused retained cases
 attribute a result to one owner or cross-cutting boundary. Existing successful
 100k runs are reused and are not repeated merely to reproduce pass/fail.
 
+The initial `sample-stages` case reuses the exact verified 100k Step 01 BAM to
+exercise Step 02's canonical hard-link/index/publication path. Retained-evidence
+admission necessarily hash-verifies and therefore warms the BAM; per-trial setup
+adds only metadata-identity checks. Paired producer wall and CPU time are the
+primary signal, and hosted block counters must not be interpreted as cold-I/O
+evidence. Exact BAM/BAI identities plus an indexed query form parity; the
+trial-owned large outputs are unlinked after validation while the compact
+fingerprint, validation report, logs, and phase-resource evidence are retained.
+
 ## Proven scaling defects
 
 ### Bounded signature checks are not bounded
