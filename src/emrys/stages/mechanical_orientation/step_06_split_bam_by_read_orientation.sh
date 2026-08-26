@@ -218,32 +218,28 @@ flag_99_count_command=(
     "$samtools_bin"
     view
     -c
-    -f 99
-    "$input_bam"
+    "$tmp_99_bam"
 )
 
 flag_147_count_command=(
     "$samtools_bin"
     view
     -c
-    -f 147
-    "$input_bam"
+    "$tmp_147_bam"
 )
 
 flag_83_count_command=(
     "$samtools_bin"
     view
     -c
-    -f 83
-    "$input_bam"
+    "$tmp_83_bam"
 )
 
 flag_163_count_command=(
     "$samtools_bin"
     view
     -c
-    -f 163
-    "$input_bam"
+    "$tmp_163_bam"
 )
 
 fwd_count_command=(
@@ -442,8 +438,8 @@ write_counts_tsv() {
     local unassigned_records
     local assigned_fraction
 
-    # Counts come from samtools view -c rather than the filter temp files alone,
-    # so the QC row reflects the BAM records that downstream tools will see.
+    # Count each filtered and merged temporary BAM so the QC row reflects the
+    # exact records produced for publication and downstream use.
     input_records="$("${input_count_command[@]}")"
     flag_99_records="$("${flag_99_count_command[@]}")"
     flag_147_records="$("${flag_147_count_command[@]}")"

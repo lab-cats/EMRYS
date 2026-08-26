@@ -50,7 +50,9 @@ override, or PATH. Outputs are:
 
 The exact one-row TSV records input, four flag-group, two merged-group,
 assigned, and unassigned counts plus a six-decimal assigned fraction. Input and
-both merged groups must be nonzero; assigned may not exceed input.
+both merged groups must be nonzero; assigned may not exceed input. The four
+flag-group counts come from their filtered temporary BAMs, while both merged
+groups are recounted independently from the merged temporary BAMs.
 
 ## Orchestration-safe producer boundary
 
