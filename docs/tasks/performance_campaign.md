@@ -138,6 +138,20 @@ evidence ceiling is paired, real-tool, single-node synthetic 100k performance an
 semantic artifact parity; it is not cold-cache, shared-storage, cluster,
 production-scale, scientific-review, or biological evidence.
 
+The `step04-duplicate-marking` case similarly times only the archived Picard
+owner for the exact verified 100k Step 02 pair and admitted Java, Picard,
+samtools, Bash, and SHA-256 authorities. Admission warms the exact Step 02 and
+Step 04 publications; per-trial setup is metadata-only. Outside the timer, the
+current duplicate-marking validator and all-pass gate are followed by decoded
+BAM/header/index parity, exact Picard metrics body and histogram parity, and an
+independent Step 02-to-04 duplicate-bit, PG-tag, and metrics reconciliation.
+Only the stage-owned command path, run-token, timestamp, TMPDIR, and index-policy
+metadata are normalized. Large trial publications are removed and residue is
+rejected. The evidence ceiling is paired real-tool, single-node synthetic 100k
+warm-cache performance and semantic parity, not raw BAI byte identity,
+cold-cache, shared-storage, cluster, production-scale, scientific-review, or
+biological evidence.
+
 ## Proven scaling defects
 
 ### Bounded signature checks are not bounded
