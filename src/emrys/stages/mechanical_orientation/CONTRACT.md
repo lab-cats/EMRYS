@@ -49,8 +49,11 @@ override, or PATH. Outputs are:
 ```
 
 The exact one-row TSV records input, four flag-group, two merged-group,
-assigned, and unassigned counts plus a six-decimal assigned fraction. Input and
-both merged groups must be nonzero; assigned may not exceed input.
+assigned, and unassigned counts plus a six-decimal assigned fraction. The four
+flag-group fields count the exact run-token filter BAMs rather than a second
+filtering pass over the input. Each merged-group count must equal the sum of its
+two materialized component counts. Input and both merged groups must be nonzero;
+assigned may not exceed input.
 
 ## Orchestration-safe producer boundary
 
@@ -153,9 +156,11 @@ scientific-review, or biological evidence.
   hash-rechecks BAM/BAI inputs and rejects any prior member, but native outputs
   still lack attempt binding and the output-directory lock does not serialize
   writers to a shared QC directory.
-- The producer does not reconcile flag-subcounts against merged-BAM counts;
-  the independent validator may publish failed rows with exit `0` and neither
-  quickchecks nor recounts BAM records.
+- The producer counts the exact materialized flag-subset BAMs and reconciles
+  each merged-BAM count against its two component counts. This proves
+  cardinality consistency, not record identity or flag correctness. The
+  independent validator checks recorded TSV arithmetic without recounting BAMs
+  and may publish failed rows with exit `0`.
 - Scheduler Bash `3.2`, warning-only samtools preflight, one-CPU versus
   independently configured threads, dry-run log mutation, version-command,
   and stale-five-file success remain characterized defects rather than
