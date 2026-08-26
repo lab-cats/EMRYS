@@ -47,12 +47,15 @@ The orchestration-safe invocation also supplies `--no-clobber`, which rejects a 
 prior set without running R; direct use retains complete-set replacement
 unless that option is supplied.
 
-`--threads` bounds independent partition/orientation VCF workers. The owner
-builds the annotation model once, returns worker results in manifest then
-`FWD_like`, `REV_like` order, and retains one deterministic validation and
-publication transaction. It defaults to `1`; Windows direct execution falls
-back to one worker because the implementation uses Unix process forking.
-Each execution logs assigned job count and cumulative job seconds per worker.
+`--threads` bounds concurrent partition/orientation VCF jobs. The owner builds
+the annotation model once and, on Unix, dynamically admits one child process
+per job up to that bound. It returns results in manifest then `FWD_like`,
+`REV_like` order and retains one deterministic validation and publication
+transaction. It defaults to `1`; Windows direct execution falls back to serial
+processing because the implementation uses Unix process forking. Each
+execution logs its scheduling mode, then parent-side per-job timing in declared
+input order, followed by cumulative and maximum per-job seconds. Those timing
+values are neither workflow wall time nor utilization.
 
 For a site qualification, use the existing
 `scripts/benchmark_stage_resources.py` utility with values `1, 2, 4`,
@@ -60,8 +63,8 @@ identical inputs, and the three trial-local outputs declared as
 `artifact_paths`. It records wall/CPU time, peak RSS, block I/O, and an
 artifact-set SHA-256; any byte or row-order change fails artifact parity.
 Keep manifests and results outside the repository. The default remains one
-worker unless retained site measurements show a material improvement within
-the admitted memory limit.
+concurrent job unless retained site measurements show a material improvement
+within the admitted memory limit.
 
 Execute publishes sites, cross-root summary, then the input receipt. Receipt
 visibility precedes final validation; it does not hash sibling outputs or the R
