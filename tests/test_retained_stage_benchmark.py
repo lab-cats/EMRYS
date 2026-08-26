@@ -1834,7 +1834,13 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             )
             step06_counts.parent.mkdir(parents=True)
             step06_counts.write_bytes(b"retained-step06-counts")
-            step01_outputs = [{"role": "output_001", **_artifact(step01_bam)}]
+            step01_log = run / "logs/steps/01/control_pair_01.log"
+            step01_log.parent.mkdir(parents=True)
+            step01_log.write_bytes(b"retained-step01-log")
+            step01_outputs = [
+                {"role": "output_001", **_artifact(step01_bam)},
+                {"role": "output_002", **_artifact(step01_log)},
+            ]
             step02_outputs = [
                 {"role": "output_001", **_artifact(step02_bam)},
                 {"role": "output_002", **_artifact(step02_bai)},
