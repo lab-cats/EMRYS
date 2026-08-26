@@ -21,6 +21,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import partial
+from operator import attrgetter
 from pathlib import Path
 from typing import Any
 
@@ -81,16 +82,7 @@ class FileDeclaration:
 
 
 _FileIdentity = tuple[int, int, int, int, int]
-
-
-def _file_identity(state: os.stat_result) -> _FileIdentity:
-    return (
-        state.st_dev,
-        state.st_ino,
-        state.st_size,
-        state.st_mtime_ns,
-        state.st_ctime_ns,
-    )
+_file_identity = attrgetter("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
 
 
 @dataclass(frozen=True, slots=True)
@@ -639,19 +631,15 @@ class _TaskStreamCapture:
             return self._stdout_descriptor, self._stderr_descriptor
         self._opened = True
         try:
-            self._stdout_descriptor = _open_task_log(
-                self.stdout_path, "task stdout log"
-            )
-            _sync_task_log_directory(self.stdout_path.parent)
-            self._stderr_descriptor = _open_task_log(
-                self.stderr_path, "task stderr log"
-            )
-            _sync_task_log_directory(self.stderr_path.parent)
-        except TaskBoundaryError as exc:
-            self._open_failure = exc
-            self.preserve_incomplete()
-            raise
-        except BaseException:
+            for field, path, label in (
+                ("_stdout_descriptor", self.stdout_path, "task stdout log"),
+                ("_stderr_descriptor", self.stderr_path, "task stderr log"),
+            ):
+                setattr(self, field, _open_task_log(path, label))
+                _sync_task_log_directory(path.parent)
+        except BaseException as exc:
+            if isinstance(exc, TaskBoundaryError):
+                self._open_failure = exc
             self.preserve_incomplete()
             raise
         return self._stdout_descriptor, self._stderr_descriptor
@@ -730,19 +718,12 @@ class _TaskStreamCapture:
     def revalidate_after_attempt_publication(self) -> None:
         if self._references is None or self._final_identities is None:
             raise TaskBoundaryError("Task command streams were not finalized")
-        for label, path, reference, identity in (
-            (
-                "stdout",
-                self.stdout_path,
-                self._references[0],
-                self._final_identities[0],
-            ),
-            (
-                "stderr",
-                self.stderr_path,
-                self._references[1],
-                self._final_identities[1],
-            ),
+        for label, path, reference, identity in zip(
+            ("stdout", "stderr"),
+            (self.stdout_path, self.stderr_path),
+            self._references,
+            self._final_identities,
+            strict=True,
         ):
             try:
                 current = _record_reference(
@@ -1889,14 +1870,12 @@ def run_task(
             raise TaskBoundaryError("Workflow run lock changed before producer entry")
         _recheck_reused_outputs(reused_outputs, phase="before producer entry")
         command_environment = sanitized_subprocess_environment()
-        stdout_descriptor, stderr_descriptor = streams.open()
-        producer = ops.run_command(
-            backend.producer_argv,
+        command_arguments = (
             dispatch.run_root,
             command_environment,
-            stdout_descriptor,
-            stderr_descriptor,
+            *streams.open(),
         )
+        producer = ops.run_command(backend.producer_argv, *command_arguments)
         if producer.exit_code != 0:
             raise TaskBoundaryError(
                 f"Producer command exited with status {producer.exit_code}"
@@ -1909,13 +1888,7 @@ def run_task(
             else _record_reference(dispatch.native_receipt_path, dispatch.run_root)
         )
 
-        validator = ops.run_command(
-            backend.validator_argv,
-            dispatch.run_root,
-            command_environment,
-            stdout_descriptor,
-            stderr_descriptor,
-        )
+        validator = ops.run_command(backend.validator_argv, *command_arguments)
         if validator.exit_code != 0:
             raise TaskBoundaryError(
                 f"Validator command exited with status {validator.exit_code}"
@@ -1925,11 +1898,7 @@ def run_task(
             dispatch.validation_report_path, dispatch.run_root
         )
         semantic = ops.run_semantic_all_pass(
-            _semantic_argv(dispatch, step_id),
-            dispatch.run_root,
-            command_environment,
-            stdout_descriptor,
-            stderr_descriptor,
+            _semantic_argv(dispatch, step_id), *command_arguments
         )
         if semantic.exit_code != 0:
             raise TaskBoundaryError(
