@@ -16,6 +16,7 @@ import hashlib
 import importlib
 import io
 import json
+import math
 import os
 import stat
 import subprocess
@@ -26,9 +27,10 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-SUMMARY_SCHEMA = "emrys.retained-stage-benchmark-summary.v2"
+SUMMARY_SCHEMA = "emrys.retained-stage-benchmark-summary.v3"
 E2E_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v2"
 COMPARISON_SCHEMA = "emrys.resource-benchmark.v2"
+PHASE_RESOURCE_SCHEMA = "emrys.resource-benchmark-phase.v1"
 STEP08_FIXTURE_SCHEMA = "emrys.retained-step08-fixture.v1"
 BASELINE_REF = "origin/master"
 EXPECTED_READ_PAIRS = 100_000
@@ -64,6 +66,43 @@ COMPARISON_SUMMARY_FIELDS = (
     "median_paired_speedup_percent",
     "median_paired_speedup_ratio",
 )
+COMPARISON_TRIAL_FIELDS = (
+    "case",
+    "value",
+    "variant",
+    "trial_kind",
+    "repetition",
+    "status",
+    "setup_exit_code",
+    "producer_exit_code",
+    "validator_exit_code",
+    "producer_wall_seconds",
+    "producer_cpu_seconds",
+    "producer_max_rss_kib",
+    "producer_input_blocks",
+    "producer_output_blocks",
+    "artifact_set_sha256",
+    "artifact_match_baseline",
+    "trial_dir",
+)
+PHASE_RESOURCE_FIELDS = (
+    "schema_version",
+    "case",
+    "value",
+    "variant",
+    "trial_kind",
+    "repetition",
+    "phase",
+    "state",
+    "exit_code",
+    "wall_seconds",
+    "cpu_seconds",
+    "max_rss_kib",
+    "input_blocks",
+    "output_blocks",
+    "trial_dir",
+)
+PHASES = ("setup", "producer", "validator")
 
 
 class BenchmarkSetupError(RuntimeError):
@@ -1060,6 +1099,149 @@ def _comparison_summary_complete(
     return True, "complete"
 
 
+def _phase_resources_complete(
+    phase_path: Path,
+    trials_path: Path,
+    manifest: Mapping[str, Any],
+) -> tuple[bool, str]:
+    expected_trials: dict[tuple[str, str, str, str, str], str] = {}
+    try:
+        for case in manifest["cases"]:
+            case_name = str(case["name"])
+            variants = tuple(str(variant["name"]) for variant in case["variants"])
+            for value in case["values"]:
+                for trial_kind, count, directory in (
+                    ("warmup", int(case["warmup_repetitions"]), "warmups"),
+                    ("measured", int(case["repetitions"]), "trials"),
+                ):
+                    for repetition in range(1, count + 1):
+                        for variant in variants:
+                            key = (
+                                case_name,
+                                str(value),
+                                variant,
+                                trial_kind,
+                                str(repetition),
+                            )
+                            trial = (
+                                phase_path.parent
+                                / directory
+                                / case_name
+                                / str(value)
+                                / f"rep-{repetition:02d}"
+                                / variant
+                            )
+                            if key in expected_trials:
+                                return False, "comparison manifest repeats a trial identity"
+                            expected_trials[key] = str(trial)
+    except (KeyError, TypeError, ValueError) as exc:
+        return False, f"comparison manifest is invalid: {exc}"
+
+    try:
+        with trials_path.open(encoding="utf-8", newline="") as stream:
+            reader = csv.DictReader(stream, dialect="excel-tab")
+            if tuple(reader.fieldnames or ()) != COMPARISON_TRIAL_FIELDS:
+                return False, "comparison trials header differs"
+            trial_rows = list(reader)
+        with phase_path.open(encoding="utf-8", newline="") as stream:
+            reader = csv.DictReader(stream, dialect="excel-tab")
+            if tuple(reader.fieldnames or ()) != PHASE_RESOURCE_FIELDS:
+                return False, "phase resource header differs"
+            phase_rows = list(reader)
+    except (OSError, UnicodeError, csv.Error) as exc:
+        return False, f"phase resource evidence is unreadable: {exc}"
+    if any(
+        None in row or any(value is None for value in row.values())
+        for row in (*trial_rows, *phase_rows)
+    ):
+        return False, "phase resource evidence contains malformed rows"
+
+    trial_by_key: dict[tuple[str, str, str, str, str], Mapping[str, str]] = {}
+    for row in trial_rows:
+        key = tuple(row[field] for field in COMPARISON_TRIAL_FIELDS[:5])
+        if key in trial_by_key:
+            return False, "comparison trials contain a duplicate identity"
+        trial_by_key[key] = row
+    if set(trial_by_key) != set(expected_trials):
+        return False, "comparison trial roster differs from the manifest"
+
+    phase_by_key: dict[
+        tuple[str, str, str, str, str, str], Mapping[str, str]
+    ] = {}
+    for row in phase_rows:
+        key = (
+            row["case"],
+            row["value"],
+            row["variant"],
+            row["trial_kind"],
+            row["repetition"],
+            row["phase"],
+        )
+        if key in phase_by_key:
+            return False, "phase resources contain a duplicate identity"
+        phase_by_key[key] = row
+    expected_phases = {
+        (*key, phase) for key in expected_trials for phase in PHASES
+    }
+    if set(phase_by_key) != expected_phases:
+        return False, "phase resource roster differs from the manifest"
+
+    metric_pairs = (
+        ("exit_code", "producer_exit_code"),
+        ("wall_seconds", "producer_wall_seconds"),
+        ("cpu_seconds", "producer_cpu_seconds"),
+        ("max_rss_kib", "producer_max_rss_kib"),
+        ("input_blocks", "producer_input_blocks"),
+        ("output_blocks", "producer_output_blocks"),
+    )
+    for key, expected_trial in expected_trials.items():
+        trial = trial_by_key[key]
+        if (
+            trial["status"] != "pass"
+            or trial["setup_exit_code"] != "0"
+            or trial["producer_exit_code"] != "0"
+            or trial["validator_exit_code"] != "0"
+            or trial["artifact_match_baseline"] != "yes"
+            or len(trial["artifact_set_sha256"]) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in trial["artifact_set_sha256"]
+            )
+            or trial["trial_dir"] != expected_trial
+        ):
+            return False, "comparison trial is not one exact passing trial"
+        for phase in PHASES:
+            row = phase_by_key[(*key, phase)]
+            if (
+                row["schema_version"] != PHASE_RESOURCE_SCHEMA
+                or row["state"] != "passed"
+                or row["exit_code"] != "0"
+                or row["trial_dir"] != expected_trial
+            ):
+                return False, "phase resource row is not one exact passing phase"
+            try:
+                wall = float(row["wall_seconds"])
+                cpu = float(row["cpu_seconds"])
+                integers = tuple(
+                    int(row[field])
+                    for field in ("max_rss_kib", "input_blocks", "output_blocks")
+                )
+            except (TypeError, ValueError):
+                return False, "phase resource row has invalid numeric metrics"
+            if (
+                not math.isfinite(wall)
+                or not math.isfinite(cpu)
+                or wall < 0
+                or cpu < 0
+                or any(value < 0 for value in integers)
+            ):
+                return False, "phase resource row has invalid numeric metrics"
+        producer = phase_by_key[(*key, "producer")]
+        if any(producer[phase_field] != trial[trial_field] for phase_field, trial_field in metric_pairs):
+            return False, "producer phase metrics differ from comparison trials"
+    return True, "complete"
+
+
 def _execute(
     repo: RepositoryState,
     e2e: AdmittedE2E,
@@ -1124,12 +1306,19 @@ def _execute(
     )
     summary_path = output / "retained-stage-benchmark-summary.json"
     result_summary = results / "summary.tsv"
+    result_trials = results / "trials.tsv"
+    phase_resources = results / "phase-resources.tsv"
     complete, completion_detail = (
         _comparison_summary_complete(result_summary, manifest)
         if result_summary.is_file()
         else (False, "comparison summary was not published")
     )
-    passed = completed.returncode == 0 and complete
+    phase_complete, phase_completion_detail = (
+        _phase_resources_complete(phase_resources, result_trials, manifest)
+        if phase_resources.is_file() and result_trials.is_file()
+        else (False, "phase resource evidence was not published")
+    )
+    passed = completed.returncode == 0 and complete and phase_complete
     _write_json(
         summary_path,
         {
@@ -1149,7 +1338,14 @@ def _execute(
             "run_root": str(e2e.run_root),
             "manifest": _artifact(manifest_path),
             "comparison_summary": _artifact(result_summary) if result_summary.is_file() else None,
+            "comparison_trials": (
+                _artifact(result_trials) if result_trials.is_file() else None
+            ),
+            "phase_resources": (
+                _artifact(phase_resources) if phase_resources.is_file() else None
+            ),
             "comparison_completeness": completion_detail,
+            "phase_resource_completeness": phase_completion_detail,
             "benchmark_exit_code": completed.returncode,
             "evidence_boundary": (
                 "paired hosted single-node synthetic stage timing only; not cluster, "

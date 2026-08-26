@@ -159,11 +159,15 @@ compute host:
   --execute
 ```
 
-Each trial records exact logs, producer wall time, child-process peak RSS, and
-validator status. `summary.tsv` marks the smallest resource value within five
-percent of the fastest successful median. Apply that result only to the tested
-dataset scale, runtime, machine, memory, and storage system; preserve the raw
-trial tree with the resulting request resource plan.
+Each trial records exact logs plus wall time, child-process CPU, peak RSS, and
+filesystem blocks for setup, producer, and validator commands in
+`phase-resources.tsv`. The existing `trials.tsv` and `summary.tsv` remain
+producer-focused: `summary.tsv` marks the smallest resource value within five
+percent of the fastest successful producer median. A missing setup command is
+recorded explicitly as `not_configured`; phases prevented by an earlier failure
+are `skipped`. Apply results only to the tested dataset scale, runtime, machine,
+memory, and storage system; preserve the raw trial tree with the resulting
+request resource plan.
 
 For a same-runner baseline/change comparison, use the v2 schema. `values` may
 represent resource values or explicit dataset scales. The validator wrapper is

@@ -608,6 +608,108 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             self.assertFalse(valid)
             self.assertIn("roster", detail)
 
+    def test_phase_resources_require_exact_roster_and_producer_metrics(self) -> None:
+        selected = (BENCHMARK.RETAINED_CASE_BY_NAME["step08-uniform"],)
+        manifest = BENCHMARK._manifest(
+            Path("/locked/python"),
+            Path("/repo/tests/tools/retained_stage_benchmark.py"),
+            Path("/external/context.json"),
+            selected,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            results = Path(directory).resolve() / "results"
+            results.mkdir()
+            trials_path = results / "trials.tsv"
+            phase_path = results / "phase-resources.tsv"
+            trial_rows: list[dict[str, str]] = []
+            phase_rows: list[dict[str, str]] = []
+            for case in manifest["cases"]:
+                for value in case["values"]:
+                    for trial_kind, count, root_name in (
+                        ("warmup", case["warmup_repetitions"], "warmups"),
+                        ("measured", case["repetitions"], "trials"),
+                    ):
+                        for repetition in range(1, count + 1):
+                            for variant in case["variants"]:
+                                trial = (
+                                    results
+                                    / root_name
+                                    / case["name"]
+                                    / str(value)
+                                    / f"rep-{repetition:02d}"
+                                    / variant["name"]
+                                )
+                                identity = {
+                                    "case": str(case["name"]),
+                                    "value": str(value),
+                                    "variant": str(variant["name"]),
+                                    "trial_kind": trial_kind,
+                                    "repetition": str(repetition),
+                                }
+                                trial_rows.append(
+                                    {
+                                        **identity,
+                                        "status": "pass",
+                                        "setup_exit_code": "0",
+                                        "producer_exit_code": "0",
+                                        "validator_exit_code": "0",
+                                        "producer_wall_seconds": "1.000000",
+                                        "producer_cpu_seconds": "0.500000",
+                                        "producer_max_rss_kib": "100",
+                                        "producer_input_blocks": "2",
+                                        "producer_output_blocks": "3",
+                                        "artifact_set_sha256": "a" * 64,
+                                        "artifact_match_baseline": "yes",
+                                        "trial_dir": str(trial),
+                                    }
+                                )
+                                for phase in BENCHMARK.PHASES:
+                                    phase_rows.append(
+                                        {
+                                            "schema_version": BENCHMARK.PHASE_RESOURCE_SCHEMA,
+                                            **identity,
+                                            "phase": phase,
+                                            "state": "passed",
+                                            "exit_code": "0",
+                                            "wall_seconds": "1.000000",
+                                            "cpu_seconds": "0.500000",
+                                            "max_rss_kib": "100",
+                                            "input_blocks": "2",
+                                            "output_blocks": "3",
+                                            "trial_dir": str(trial),
+                                        }
+                                    )
+
+            def publish(
+                path: Path,
+                fields: tuple[str, ...],
+                rows: list[dict[str, str]],
+            ) -> None:
+                with path.open("w", encoding="utf-8", newline="") as stream:
+                    writer = csv.DictWriter(
+                        stream, fieldnames=fields, dialect="excel-tab"
+                    )
+                    writer.writeheader()
+                    writer.writerows(rows)
+
+            publish(trials_path, BENCHMARK.COMPARISON_TRIAL_FIELDS, trial_rows)
+            publish(phase_path, BENCHMARK.PHASE_RESOURCE_FIELDS, phase_rows)
+            self.assertEqual(
+                BENCHMARK._phase_resources_complete(
+                    phase_path, trials_path, manifest
+                ),
+                (True, "complete"),
+            )
+
+            producer = next(row for row in phase_rows if row["phase"] == "producer")
+            producer["wall_seconds"] = "2.000000"
+            publish(phase_path, BENCHMARK.PHASE_RESOURCE_FIELDS, phase_rows)
+            valid, detail = BENCHMARK._phase_resources_complete(
+                phase_path, trials_path, manifest
+            )
+            self.assertFalse(valid)
+            self.assertIn("differ", detail)
+
     def test_output_root_must_be_external_to_checkout(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             repo = Path(directory).resolve() / "repo"
@@ -651,6 +753,8 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 results = Path(argv[argv.index("--output") + 1])
                 results.mkdir()
                 (results / "summary.tsv").write_text("summary\n")
+                (results / "trials.tsv").write_text("trials\n")
+                (results / "phase-resources.tsv").write_text("phases\n")
                 return subprocess.CompletedProcess(argv, 0, b"", b"")
 
             with (
@@ -661,6 +765,11 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 ),
                 mock.patch.object(BENCHMARK, "_safe_extract_archive", side_effect=extract),
                 mock.patch.object(BENCHMARK, "_comparison_summary_complete", return_value=(True, "complete")),
+                mock.patch.object(
+                    BENCHMARK,
+                    "_phase_resources_complete",
+                    return_value=(True, "complete"),
+                ),
                 mock.patch.object(BENCHMARK.subprocess, "run", side_effect=run),
                 contextlib.redirect_stdout(io.StringIO()),
             ):
@@ -689,6 +798,11 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 summary_document["selection"],
                 {"suite": None, "cases": {"step08-uniform": [100_000]}},
             )
+            self.assertEqual(
+                summary_document["phase_resource_completeness"], "complete"
+            )
+            self.assertIsNotNone(summary_document["comparison_trials"])
+            self.assertIsNotNone(summary_document["phase_resources"])
 
     def test_admit_e2e_requires_the_exact_retained_100k_boundary(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

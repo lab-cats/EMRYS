@@ -245,6 +245,30 @@ def test_execute_records_successful_trial_and_summary(tmp_path: Path) -> None:
     assert (trial / "producer.time.txt").read_text(encoding="utf-8").startswith(
         "wall_seconds\t"
     )
+    phase_rows = _read_tsv(output / "phase-resources.tsv")
+    assert [row["phase"] for row in phase_rows] == [
+        "setup",
+        "producer",
+        "validator",
+    ]
+    assert {row["schema_version"] for row in phase_rows} == {
+        BENCHMARK.PHASE_RESOURCE_SCHEMA_VERSION
+    }
+    assert {row["state"] for row in phase_rows} == {"passed"}
+    assert {row["variant"] for row in phase_rows} == {""}
+    assert {row["trial_kind"] for row in phase_rows} == {"measured"}
+    for phase in ("setup", "producer", "validator"):
+        assert (trial / f"{phase}.time.txt").is_file()
+    producer_phase = phase_rows[1]
+    for phase_field, trial_field in (
+        ("exit_code", "producer_exit_code"),
+        ("wall_seconds", "producer_wall_seconds"),
+        ("cpu_seconds", "producer_cpu_seconds"),
+        ("max_rss_kib", "producer_max_rss_kib"),
+        ("input_blocks", "producer_input_blocks"),
+        ("output_blocks", "producer_output_blocks"),
+    ):
+        assert producer_phase[phase_field] == trial_rows[0][trial_field]
     artifact_rows = _read_tsv(trial / "producer.artifacts.tsv")
     assert len(artifact_rows) == 1
     assert artifact_rows[0]["path"] == str((trial / "product.txt").resolve())
@@ -293,6 +317,53 @@ def test_execute_records_setup_producer_and_validator_failures(tmp_path: Path) -
         "producer": ("fail", "0", "3", "-1"),
         "validator": ("fail", "0", "0", "5"),
     }
+    phases = {
+        (row["case"], row["phase"]): row
+        for row in _read_tsv(output / "phase-resources.tsv")
+    }
+    assert [phases["setup", phase]["state"] for phase in ("setup", "producer", "validator")] == [
+        "failed",
+        "skipped",
+        "skipped",
+    ]
+    assert [phases["producer", phase]["state"] for phase in ("setup", "producer", "validator")] == [
+        "not_configured",
+        "failed",
+        "skipped",
+    ]
+    assert [phases["validator", phase]["state"] for phase in ("setup", "producer", "validator")] == [
+        "not_configured",
+        "passed",
+        "failed",
+    ]
+    for row in phases.values():
+        metrics = [
+            row[field]
+            for field in (
+                "exit_code",
+                "wall_seconds",
+                "cpu_seconds",
+                "max_rss_kib",
+                "input_blocks",
+                "output_blocks",
+            )
+        ]
+        if row["state"] in {"skipped", "not_configured"}:
+            assert metrics == [""] * 6
+        else:
+            assert all(value != "" for value in metrics)
+    setup_trial = Path(phases["setup", "setup"]["trial_dir"])
+    assert (setup_trial / "setup.time.txt").is_file()
+    assert not (setup_trial / "producer.time.txt").exists()
+    assert not (setup_trial / "validator.time.txt").exists()
+    producer_trial = Path(phases["producer", "producer"]["trial_dir"])
+    assert not (producer_trial / "setup.time.txt").exists()
+    assert (producer_trial / "producer.time.txt").is_file()
+    assert not (producer_trial / "validator.time.txt").exists()
+    validator_trial = Path(phases["validator", "validator"]["trial_dir"])
+    assert not (validator_trial / "setup.time.txt").exists()
+    assert (validator_trial / "producer.time.txt").is_file()
+    assert (validator_trial / "validator.time.txt").is_file()
     assert _read_tsv(output / "summary.tsv") == []
 
 
@@ -454,6 +525,43 @@ def test_comparison_executes_warmups_and_explicit_baseline_pairs(
     assert all(row["median_cpu_seconds"] for row in summary)
     assert all(row["median_max_rss_kib"] for row in summary)
     assert all(row["median_paired_speedup_ratio"] for row in summary)
+    phase_rows = _read_tsv(output / "phase-resources.tsv")
+    assert len(phase_rows) == len(rows) * 3
+    assert {
+        (row["trial_kind"], row["variant"], row["phase"], row["state"])
+        for row in phase_rows
+    } == {
+        (kind, variant, phase, state)
+        for kind in ("warmup", "measured")
+        for variant in ("master", "changed")
+        for phase, state in (
+            ("setup", "not_configured"),
+            ("producer", "passed"),
+            ("validator", "passed"),
+        )
+    }
+    trials_by_key = {
+        (
+            row["case"],
+            row["value"],
+            row["variant"],
+            row["trial_kind"],
+            row["repetition"],
+        ): row
+        for row in rows
+    }
+    for phase in (row for row in phase_rows if row["phase"] == "producer"):
+        trial = trials_by_key[
+            (
+                phase["case"],
+                phase["value"],
+                phase["variant"],
+                phase["trial_kind"],
+                phase["repetition"],
+            )
+        ]
+        assert phase["wall_seconds"] == trial["producer_wall_seconds"]
+        assert phase["cpu_seconds"] == trial["producer_cpu_seconds"]
 
 
 def test_comparison_artifact_mismatch_invalidates_summary(tmp_path: Path) -> None:

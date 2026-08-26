@@ -113,6 +113,24 @@ COMPARISON_SUMMARY_FIELDS = (
     "median_paired_speedup_percent",
     "median_paired_speedup_ratio",
 )
+PHASE_RESOURCE_SCHEMA_VERSION = "emrys.resource-benchmark-phase.v1"
+PHASE_RESOURCE_FIELDS = (
+    "schema_version",
+    "case",
+    "value",
+    "variant",
+    "trial_kind",
+    "repetition",
+    "phase",
+    "state",
+    "exit_code",
+    "wall_seconds",
+    "cpu_seconds",
+    "max_rss_kib",
+    "input_blocks",
+    "output_blocks",
+    "trial_dir",
+)
 
 
 class BenchmarkError(RuntimeError):
@@ -149,6 +167,19 @@ class ComparisonCase:
     variants: tuple[ComparisonVariant, ...]
     validator_argv: tuple[str, ...]
     artifact_paths: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class PhaseMeasurement:
+    """Resource observation for one configured benchmark command."""
+
+    state: str
+    exit_code: int | None = None
+    wall_seconds: float | None = None
+    cpu_seconds: float | None = None
+    max_rss_kib: int | None = None
+    input_blocks: int | None = None
+    output_blocks: int | None = None
 
 
 def _argv(value: Any, label: str, *, optional: bool = False) -> tuple[str, ...] | None:
@@ -355,21 +386,9 @@ def _expand(argv: Sequence[str], *, value: int, trial_dir: Path, variant: str | 
     )
 
 
-def _run(argv: Sequence[str], *, stdout: Path, stderr: Path) -> int:
-    with stdout.open("xb") as stdout_handle, stderr.open("xb") as stderr_handle:
-        completed = subprocess.run(
-            argv,
-            stdin=subprocess.DEVNULL,
-            stdout=stdout_handle,
-            stderr=stderr_handle,
-            check=False,
-        )
-    return completed.returncode
-
-
 def _run_timed(
     argv: Sequence[str], *, stdout: Path, stderr: Path, usage: Path
-) -> tuple[int, float, float, int, int, int]:
+) -> PhaseMeasurement:
     if not hasattr(os, "wait4"):
         raise BenchmarkError("Execution requires os.wait4 child-resource accounting")
     with stdout.open("xb") as stdout_handle, stderr.open("xb") as stderr_handle:
@@ -404,14 +423,120 @@ def _run_timed(
         ),
         encoding="utf-8",
     )
-    return (
-        process.returncode,
-        wall_seconds,
-        cpu_seconds,
-        max_rss_kib,
-        input_blocks,
-        output_blocks,
+    return PhaseMeasurement(
+        state="passed" if process.returncode == 0 else "failed",
+        exit_code=process.returncode,
+        wall_seconds=wall_seconds,
+        cpu_seconds=cpu_seconds,
+        max_rss_kib=max_rss_kib,
+        input_blocks=input_blocks,
+        output_blocks=output_blocks,
     )
+
+
+def _write_phase_rows(
+    writer: csv.DictWriter[str],
+    *,
+    case: str,
+    value: int,
+    variant: str,
+    trial_kind: str,
+    repetition: int,
+    trial: Path,
+    setup: PhaseMeasurement,
+    producer: PhaseMeasurement,
+    validator: PhaseMeasurement,
+) -> None:
+    for phase, measurement in (
+        ("setup", setup),
+        ("producer", producer),
+        ("validator", validator),
+    ):
+        observed = measurement.exit_code is not None
+        writer.writerow(
+            {
+                "schema_version": PHASE_RESOURCE_SCHEMA_VERSION,
+                "case": case,
+                "value": value,
+                "variant": variant,
+                "trial_kind": trial_kind,
+                "repetition": repetition,
+                "phase": phase,
+                "state": measurement.state,
+                "exit_code": measurement.exit_code if observed else "",
+                "wall_seconds": (
+                    f"{measurement.wall_seconds:.6f}" if observed else ""
+                ),
+                "cpu_seconds": (
+                    f"{measurement.cpu_seconds:.6f}" if observed else ""
+                ),
+                "max_rss_kib": measurement.max_rss_kib if observed else "",
+                "input_blocks": measurement.input_blocks if observed else "",
+                "output_blocks": measurement.output_blocks if observed else "",
+                "trial_dir": str(trial),
+            }
+        )
+
+
+def _run_phases(
+    *,
+    setup_argv: Sequence[str] | None,
+    producer_argv: Sequence[str],
+    validator_argv: Sequence[str],
+    trial: Path,
+) -> tuple[PhaseMeasurement, PhaseMeasurement, PhaseMeasurement]:
+    setup = PhaseMeasurement("not_configured")
+    if setup_argv is not None:
+        setup = _run_timed(
+            setup_argv,
+            stdout=trial / "setup.stdout.log",
+            stderr=trial / "setup.stderr.log",
+            usage=trial / "setup.time.txt",
+        )
+    if setup.exit_code not in (None, 0):
+        return setup, PhaseMeasurement("skipped"), PhaseMeasurement("skipped")
+    producer = _run_timed(
+        producer_argv,
+        stdout=trial / "producer.stdout.log",
+        stderr=trial / "producer.stderr.log",
+        usage=trial / "producer.time.txt",
+    )
+    if producer.exit_code != 0:
+        return setup, producer, PhaseMeasurement("skipped")
+    validator = _run_timed(
+        validator_argv,
+        stdout=trial / "validator.stdout.log",
+        stderr=trial / "validator.stderr.log",
+        usage=trial / "validator.time.txt",
+    )
+    return setup, producer, validator
+
+
+def _legacy_phase_codes(
+    setup: PhaseMeasurement,
+    producer: PhaseMeasurement,
+    validator: PhaseMeasurement,
+) -> tuple[int, int, int]:
+    return (
+        setup.exit_code if setup.exit_code is not None else 0,
+        producer.exit_code if producer.exit_code is not None else -1,
+        validator.exit_code if validator.exit_code is not None else -1,
+    )
+
+
+def _legacy_producer_metrics(producer: PhaseMeasurement) -> dict[str, Any]:
+    observed = producer.exit_code is not None
+    return {
+        "producer_wall_seconds": (
+            f"{producer.wall_seconds:.6f}" if observed else "0.000000"
+        ),
+        "producer_cpu_seconds": (
+            f"{producer.cpu_seconds:.6f}" if observed else "0.000000"
+        ),
+        "producer_max_rss_kib": producer.max_rss_kib if observed else "",
+        "producer_input_blocks": producer.input_blocks if observed else 0,
+        "producer_output_blocks": producer.output_blocks if observed else 0,
+    }
 
 
 def _sha256(path: Path) -> str:
@@ -606,54 +731,56 @@ def _run_resource(manifest: Path, output: Path, *, execute: bool) -> int:
     results: list[dict[str, Any]] = []
     artifact_baselines: dict[str, str] = {}
     failed = False
-    with results_path.open("x", encoding="utf-8", newline="") as handle:
+    with (
+        results_path.open("x", encoding="utf-8", newline="") as handle,
+        (output / "phase-resources.tsv").open(
+            "x", encoding="utf-8", newline=""
+        ) as phase_handle,
+    ):
         writer = csv.DictWriter(handle, fieldnames=RESULT_FIELDS, dialect="excel-tab")
+        phase_writer = csv.DictWriter(
+            phase_handle, fieldnames=PHASE_RESOURCE_FIELDS, dialect="excel-tab"
+        )
         writer.writeheader()
+        phase_writer.writeheader()
         for case in cases:
             for value in case.values:
                 for repetition in range(1, case.repetitions + 1):
                     trial = output / "trials" / case.name / str(value) / f"rep-{repetition:02d}"
                     trial.mkdir(mode=0o700, parents=True)
-                    setup_code = 0
-                    if case.setup_argv is not None:
-                        setup_code = _run(
-                            _expand(case.setup_argv, value=value, trial_dir=trial),
-                            stdout=trial / "setup.stdout.log",
-                            stderr=trial / "setup.stderr.log",
-                        )
-                    producer_code = -1
-                    validator_code = -1
-                    wall_seconds = 0.0
-                    cpu_seconds = 0.0
-                    max_rss_kib: int | str = ""
-                    input_blocks = 0
-                    output_blocks = 0
+                    setup, producer, validator = _run_phases(
+                        setup_argv=(
+                            _expand(case.setup_argv, value=value, trial_dir=trial)
+                            if case.setup_argv is not None
+                            else None
+                        ),
+                        producer_argv=_expand(
+                            case.producer_argv, value=value, trial_dir=trial
+                        ),
+                        validator_argv=_expand(
+                            case.validator_argv, value=value, trial_dir=trial
+                        ),
+                        trial=trial,
+                    )
+                    setup_code, producer_code, validator_code = _legacy_phase_codes(
+                        setup, producer, validator
+                    )
                     artifact_set_sha256 = ""
                     artifact_match_baseline = ""
-                    usage_path = trial / "producer.time.txt"
-                    if setup_code == 0:
-                        producer = _expand(
-                            case.producer_argv, value=value, trial_dir=trial
-                        )
-                        (
-                            producer_code,
-                            wall_seconds,
-                            cpu_seconds,
-                            max_rss_kib,
-                            input_blocks,
-                            output_blocks,
-                        ) = _run_timed(
-                            producer,
-                            stdout=trial / "producer.stdout.log",
-                            stderr=trial / "producer.stderr.log",
-                            usage=usage_path,
-                        )
-                    if producer_code == 0:
-                        validator_code = _run(
-                            _expand(case.validator_argv, value=value, trial_dir=trial),
-                            stdout=trial / "validator.stdout.log",
-                            stderr=trial / "validator.stderr.log",
-                        )
+                    _write_phase_rows(
+                        phase_writer,
+                        case=case.name,
+                        value=value,
+                        variant="",
+                        trial_kind="measured",
+                        repetition=repetition,
+                        trial=trial,
+                        setup=setup,
+                        producer=producer,
+                        validator=validator,
+                    )
+                    phase_handle.flush()
+                    os.fsync(phase_handle.fileno())
                     if producer_code == validator_code == 0 and case.artifact_paths:
                         artifact_set_sha256 = _record_artifacts(
                             case.artifact_paths, value=value, trial=trial
@@ -679,11 +806,7 @@ def _run_resource(manifest: Path, output: Path, *, execute: bool) -> int:
                         "setup_exit_code": setup_code,
                         "producer_exit_code": producer_code,
                         "validator_exit_code": validator_code,
-                        "producer_wall_seconds": f"{wall_seconds:.6f}",
-                        "producer_cpu_seconds": f"{cpu_seconds:.6f}",
-                        "producer_max_rss_kib": max_rss_kib,
-                        "producer_input_blocks": input_blocks,
-                        "producer_output_blocks": output_blocks,
+                        **_legacy_producer_metrics(producer),
                         "artifact_set_sha256": artifact_set_sha256,
                         "artifact_match_baseline": artifact_match_baseline,
                         "trial_dir": str(trial),
@@ -694,7 +817,7 @@ def _run_resource(manifest: Path, output: Path, *, execute: bool) -> int:
                     os.fsync(handle.fileno())
                     print(
                         f"RESULT {case.name} value={value} repetition={repetition} "
-                        f"status={status} wall={wall_seconds:.3f}s"
+                        f"status={status} wall={producer.wall_seconds or 0.0:.3f}s"
                     )
     _write_summary(results, output / "summary.tsv")
     return 1 if failed else 0
@@ -750,55 +873,66 @@ def _run_comparison(manifest: Path, output: Path, *, execute: bool) -> int:
     results: list[dict[str, Any]] = []
     variant_artifact_references: dict[tuple[str, int, str], str] = {}
     failed = False
-    with (output / "trials.tsv").open("x", encoding="utf-8", newline="") as handle:
+    with (
+        (output / "trials.tsv").open("x", encoding="utf-8", newline="") as handle,
+        (output / "phase-resources.tsv").open(
+            "x", encoding="utf-8", newline=""
+        ) as phase_handle,
+    ):
         writer = csv.DictWriter(handle, fieldnames=COMPARISON_RESULT_FIELDS, dialect="excel-tab")
+        phase_writer = csv.DictWriter(
+            phase_handle, fieldnames=PHASE_RESOURCE_FIELDS, dialect="excel-tab"
+        )
         writer.writeheader()
+        phase_writer.writeheader()
         for case, value, trial_kind, repetition, trials in rounds:
             round_rows: list[dict[str, Any]] = []
             for variant, trial in trials:
                 trial.mkdir(mode=0o700, parents=True)
-                setup_code = 0
-                if case.setup_argv is not None:
-                    setup_code = _run(
+                setup, producer, validator = _run_phases(
+                    setup_argv=(
                         _expand(
                             case.setup_argv,
                             value=value,
                             trial_dir=trial,
                             variant=variant.name,
-                        ),
-                        stdout=trial / "setup.stdout.log",
-                        stderr=trial / "setup.stderr.log",
-                    )
-                producer_code = validator_code = -1
-                wall = 0.0
-                cpu = 0.0
-                rss: int | str = ""
-                input_blocks = output_blocks = 0
+                        )
+                        if case.setup_argv is not None
+                        else None
+                    ),
+                    producer_argv=_expand(
+                        variant.producer_argv,
+                        value=value,
+                        trial_dir=trial,
+                        variant=variant.name,
+                    ),
+                    validator_argv=_expand(
+                        case.validator_argv,
+                        value=value,
+                        trial_dir=trial,
+                        variant=variant.name,
+                    ),
+                    trial=trial,
+                )
+                setup_code, producer_code, validator_code = _legacy_phase_codes(
+                    setup, producer, validator
+                )
                 artifact_sha256 = ""
-                if setup_code == 0:
-                    producer_code, wall, cpu, rss, input_blocks, output_blocks = _run_timed(
-                        _expand(
-                            variant.producer_argv,
-                            value=value,
-                            trial_dir=trial,
-                            variant=variant.name,
-                        ),
-                        stdout=trial / "producer.stdout.log",
-                        stderr=trial / "producer.stderr.log",
-                        usage=trial / "producer.time.txt",
-                    )
-                if producer_code == 0:
-                    validator_code = _run(
-                        _expand(
-                            case.validator_argv,
-                            value=value,
-                            trial_dir=trial,
-                            variant=variant.name,
-                        ),
-                        stdout=trial / "validator.stdout.log",
-                        stderr=trial / "validator.stderr.log",
-                    )
                 phase_pass = setup_code == producer_code == validator_code == 0
+                _write_phase_rows(
+                    phase_writer,
+                    case=case.name,
+                    value=value,
+                    variant=variant.name,
+                    trial_kind=trial_kind,
+                    repetition=repetition,
+                    trial=trial,
+                    setup=setup,
+                    producer=producer,
+                    validator=validator,
+                )
+                phase_handle.flush()
+                os.fsync(phase_handle.fileno())
                 if phase_pass:
                     artifact_sha256 = _record_artifacts(
                         case.artifact_paths,
@@ -817,11 +951,7 @@ def _run_comparison(manifest: Path, output: Path, *, execute: bool) -> int:
                         "setup_exit_code": setup_code,
                         "producer_exit_code": producer_code,
                         "validator_exit_code": validator_code,
-                        "producer_wall_seconds": f"{wall:.6f}",
-                        "producer_cpu_seconds": f"{cpu:.6f}",
-                        "producer_max_rss_kib": rss,
-                        "producer_input_blocks": input_blocks,
-                        "producer_output_blocks": output_blocks,
+                        **_legacy_producer_metrics(producer),
                         "artifact_set_sha256": artifact_sha256,
                         "artifact_match_baseline": "",
                         "trial_dir": str(trial),
