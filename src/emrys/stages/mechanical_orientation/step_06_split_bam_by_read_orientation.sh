@@ -214,36 +214,35 @@ input_count_command=(
     "$input_bam"
 )
 
+# The filter outputs are the exact materializations of the four legacy -f
+# groups. Count those staged subsets instead of refiltering the full Step 05 BAM
+# four more times to reproduce their cardinalities.
 flag_99_count_command=(
     "$samtools_bin"
     view
     -c
-    -f 99
-    "$input_bam"
+    "$tmp_99_bam"
 )
 
 flag_147_count_command=(
     "$samtools_bin"
     view
     -c
-    -f 147
-    "$input_bam"
+    "$tmp_147_bam"
 )
 
 flag_83_count_command=(
     "$samtools_bin"
     view
     -c
-    -f 83
-    "$input_bam"
+    "$tmp_83_bam"
 )
 
 flag_163_count_command=(
     "$samtools_bin"
     view
     -c
-    -f 163
-    "$input_bam"
+    "$tmp_163_bam"
 )
 
 fwd_count_command=(
@@ -440,8 +439,9 @@ write_counts_tsv() {
     local unassigned_records
     local assigned_fraction
 
-    # Counts come from samtools view -c rather than the filter temp files alone,
-    # so the QC row reflects the BAM records that downstream tools will see.
+    # The input count describes the admitted Step 05 BAM. Component counts come
+    # from the exact staged filter BAMs, and merged counts describe the BAMs that
+    # downstream tools will consume.
     input_records="$("${input_count_command[@]}")"
     flag_99_records="$("${flag_99_count_command[@]}")"
     flag_147_records="$("${flag_147_count_command[@]}")"
@@ -461,6 +461,13 @@ write_counts_tsv() {
     [[ "$input_records" -gt 0 ]] || die "input_records is zero; refusing to publish empty Step 06 outputs"
     [[ "$fwd_like_records" -gt 0 ]] || die "fwd_like_records is zero; refusing to publish empty FWD_like output"
     [[ "$rev_like_records" -gt 0 ]] || die "rev_like_records is zero; refusing to publish empty REV_like output"
+
+    if (( fwd_like_records != flag_99_records + flag_147_records )); then
+        die "FWD_like merged count does not match materialized flag subsets: $fwd_like_records != $flag_99_records + $flag_147_records"
+    fi
+    if (( rev_like_records != flag_83_records + flag_163_records )); then
+        die "REV_like merged count does not match materialized flag subsets: $rev_like_records != $flag_83_records + $flag_163_records"
+    fi
 
     assigned_records=$((fwd_like_records + rev_like_records))
     if (( assigned_records > input_records )); then
@@ -580,8 +587,8 @@ printf '  1. Verify Step 05 input BAM and BAI exist and are nonempty.\n'
 printf '  2. Resolve samtools without invoking heavy computation.\n'
 printf '  3. Refuse stale run-token temp and backup paths in execute mode.\n'
 printf '  4. Write flag-filtered and merged outputs to run-token temp BAMs.\n'
-printf '  5. Generate counts TSV with samtools view -c and awk-formatted assigned_fraction.\n'
-printf '  6. Fail if input_records is zero, assigned_records exceeds input_records, or either merged group is empty.\n'
+printf '  5. Count the input once, each exact flag-filtered temp BAM, and both merged temp BAMs; format assigned_fraction with awk.\n'
+printf '  6. Fail on zero required groups, component/merged count disagreement, or assigned_records exceeding input_records.\n'
 printf '  7. Validate temporary FWD_like and REV_like BAMs with samtools quickcheck and nonempty BAIs.\n'
 printf '  8. Publish final outputs only after validation succeeds.\n'
 printf '  9. Roll back previous final outputs if publication fails after backups begin.\n'
