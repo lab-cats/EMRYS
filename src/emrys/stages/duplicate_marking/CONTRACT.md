@@ -37,23 +37,30 @@ Outputs are:
 <metrics-dir>/<sample-id>.markdup.metrics.txt
 ```
 
-Picard runs with `REMOVE_DUPLICATES=false`. The producer requires nonempty
-files and samtools quickcheck success for the BAM, but does not parse metrics,
-verify duplicate flags, publish a receipt, or bind outputs to one input/tool
-attempt.
+Picard runs with `REMOVE_DUPLICATES=false`. Under `--no-clobber`, the producer
+also requests `CREATE_INDEX=true` and accepts a regular, non-symlink, nonempty
+index only at one of the two run-token staging paths proven absent before the
+current Picard invocation. It normalizes Picard's alternate `<stem>.bai`
+spelling to the stable `<bam>.bai` interface and falls back to `samtools index`
+when neither staged path contains a nonempty index. Legacy replacement mode
+never adopts a discovered sidecar and always runs `samtools index`, so a
+predecessor BAI cannot be mistaken for current output. The producer requires
+nonempty files and samtools quickcheck success for the BAM, but does not parse
+metrics, verify duplicate flags, publish a receipt, or bind outputs to one
+input/tool attempt.
 
 ## Orchestration-safe producer boundary
 
 `--no-clobber` is the required local-profile mode. It hashes the input BAM/BAI
 and Picard jar, refuses any existing final, holds a per-sample owned lock,
-directs Picard and samtools to run-token BAM/BAI/metrics paths, validates the
-complete triplet, rechecks the admitted hashes, and publishes only the new set.
-Publication is create-exclusive and keeps staging inode anchors through
-complete-set validation. Failure removes only still-owned new finals;
-ambiguous replacement preserves lock and residue. Java
-and samtools paths are explicit; observed tool versions and final hashes belong
-in the workflow verified record. Execute without this option retains the
-historical direct-final contract below.
+directs Picard and any samtools fallback to run-token BAM/BAI/metrics paths,
+validates the complete triplet, rechecks the admitted hashes, and publishes
+only the new set. Publication is create-exclusive and keeps staging inode
+anchors through complete-set validation. Failure removes only still-owned new
+finals; ambiguous replacement preserves lock and residue. Java and samtools
+paths are explicit; observed tool versions and final hashes belong in the
+workflow verified record. Execute without this option retains the historical
+direct-final contract below.
 
 ## Current execution surfaces
 
@@ -116,8 +123,10 @@ public package or CLI identity.
   `step04_validation_report_v1`; summary/report code consumes those artifacts
   without rerunning Picard.
 - [`test_step_04_mark_duplicates.sh`](../../../../tests/stages/duplicate_marking/test_step_04_mark_duplicates.sh)
-  protects CLI, side-effect-free dry-run, exact Picard/samtools commands,
-  output presence, missing inputs, and temp-directory failure with mocks.
+  protects CLI, side-effect-free dry-run, Picard/samtools command construction,
+  both staged native-index spellings, missing/empty-index fallback, legacy
+  predecessor safety, cleanup, output presence, missing inputs, and temporary-
+  directory failure with mocks.
 - [`test_validate_step_04_mark_duplicates.py`](../../../../tests/stages/duplicate_marking/test_validate_step_04_mark_duplicates.py),
   wrapper, roster, publication-fault, public-CLI, artifact, report, and coverage
   tests protect the recorded validation and projection boundaries.
