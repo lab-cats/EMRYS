@@ -530,6 +530,30 @@ run_step08() {
         "$@"
 }
 
+run_invalid_vcf_preflight_case() {
+    local slug="$1"
+    local definition_pattern="$2"
+    local expected_error="$3"
+    local case_root="$test_root/$slug"
+    local cohort="cohort_$slug"
+    local vcf
+
+    create_fixture "$case_root" "$cohort"
+    vcf="$case_root/step07/$cohort/p1/$cohort.p1.FWD_like.mpileup.vcf"
+    if [[ -n "$definition_pattern" ]]; then
+        awk -v pattern="$definition_pattern" '$0 !~ pattern { print }' \
+            "$vcf" >"$vcf.updated"
+        mv "$vcf.updated" "$vcf"
+    else
+        printf ' \t \n' >>"$vcf"
+    fi
+    run_expect_status 1 "$test_root/$slug.out" "$test_root/$slug.err" \
+        run_step08 "$case_root" "$cohort"
+    assert_contains "$test_root/$slug.err" "$expected_error"
+    assert_not_exists "$case_root/output"
+    assert_not_exists "$case_root/qc"
+}
+
 run_invalid_fake_output_case() {
     local slug="$1"
     local fake_setting="$2"
@@ -729,6 +753,23 @@ run_expect_status 1 \
 assert_contains \
     "$test_root/preflight-sample-order.err" \
     "VCF header or sample order is invalid"
+
+run_invalid_vcf_preflight_case \
+    preflight-missing-info-ad \
+    '^##INFO=<ID=AD,' \
+    "VCF is missing the INFO/AD definition"
+run_invalid_vcf_preflight_case \
+    preflight-missing-format-dp \
+    '^##FORMAT=<ID=DP,' \
+    "VCF is missing the FORMAT/DP definition"
+run_invalid_vcf_preflight_case \
+    preflight-missing-format-ad \
+    '^##FORMAT=<ID=AD,' \
+    "VCF is missing the FORMAT/AD definition"
+run_invalid_vcf_preflight_case \
+    preflight-blank-data-row \
+    '' \
+    "VCF contains a blank data row"
 
 record_count_fixture="$test_root/preflight-record-count"
 create_fixture "$record_count_fixture" cohort_record_count

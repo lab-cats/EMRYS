@@ -163,12 +163,21 @@ validate_step07_vcf_preflight() {
     local label="$1"
     local path="$2"
     local declared_count="$3"
+    local preflight_summary
+    local header_valid
+    local has_info_ad
+    local has_format_dp
+    local has_format_ad
+    local has_blank_data_row
     local observed_count
 
-    awk -F '\t' -v expected_samples="$expected_samples_csv" '
+    if ! preflight_summary="$(awk -F '\t' -v expected_samples="$expected_samples_csv" '
         BEGIN {
             sample_count = split(expected_samples, samples, ",")
         }
+        index($0, "##INFO=<ID=AD,") == 1 { has_info_ad = 1 }
+        index($0, "##FORMAT=<ID=DP,") == 1 { has_format_dp = 1 }
+        index($0, "##FORMAT=<ID=AD,") == 1 { has_format_ad = 1 }
         /^#CHROM/ {
             header_count++
             if (NF != 9 + sample_count ||
@@ -183,28 +192,31 @@ validate_step07_vcf_preflight() {
                 if ($(9 + sample_index) != samples[sample_index]) invalid = 1
             }
         }
-        END {
-            if (header_count != 1 || invalid) exit 1
-        }
-    ' "$path" ||
-        die "$label VCF header or sample order is invalid: $path"
-
-    grep -q '^##INFO=<ID=AD,' "$path" ||
-        die "$label VCF is missing the INFO/AD definition: $path"
-    grep -q '^##FORMAT=<ID=DP,' "$path" ||
-        die "$label VCF is missing the FORMAT/DP definition: $path"
-    grep -q '^##FORMAT=<ID=AD,' "$path" ||
-        die "$label VCF is missing the FORMAT/AD definition: $path"
-
-    if ! observed_count="$(awk '
         /^#/ { next }
-        /^[[:space:]]*$/ { invalid = 1; next }
-        { count++ }
+        /^[[:space:]]*$/ { has_blank_data_row = 1; next }
+        { observed_count++ }
         END {
-            if (invalid) exit 1
-            print count + 0
+            header_valid = (header_count == 1 && !invalid)
+            printf "%d\t%d\t%d\t%d\t%d\t%.0f\n", \
+                header_valid, has_info_ad, has_format_dp, has_format_ad, \
+                has_blank_data_row, observed_count
         }
     ' "$path")"; then
+        die "$label VCF header or sample order is invalid: $path"
+    fi
+    IFS=$'\t' read -r \
+        header_valid has_info_ad has_format_dp has_format_ad \
+        has_blank_data_row observed_count <<< "$preflight_summary"
+
+    [[ "$header_valid" == "1" ]] ||
+        die "$label VCF header or sample order is invalid: $path"
+    [[ "$has_info_ad" == "1" ]] ||
+        die "$label VCF is missing the INFO/AD definition: $path"
+    [[ "$has_format_dp" == "1" ]] ||
+        die "$label VCF is missing the FORMAT/DP definition: $path"
+    [[ "$has_format_ad" == "1" ]] ||
+        die "$label VCF is missing the FORMAT/AD definition: $path"
+    if [[ "$has_blank_data_row" == "1" ]]; then
         die "$label VCF contains a blank data row: $path"
     fi
     [[ "$observed_count" == "$declared_count" ]] ||
@@ -285,22 +297,6 @@ validate_step07_receipt_preflight() {
     preflight_rev_record_count="$rev_records"
 }
 
-confirm_step07_input_hashes() {
-    local index
-    local current_hash
-
-    for index in "${!expected_receipts[@]}"; do
-        current_hash="$(sha256_file "${expected_receipts[$index]}")"
-        [[ "$current_hash" == "${expected_receipt_hashes[$index]}" ]] ||
-            die "Step 07 receipt changed during Step 08: ${expected_receipts[$index]}"
-    done
-    for index in "${!expected_vcfs[@]}"; do
-        current_hash="$(sha256_file "${expected_vcfs[$index]}")"
-        [[ "$current_hash" == "${expected_vcf_hashes[$index]}" ]] ||
-            die "Step 07 VCF changed during Step 08: ${expected_vcfs[$index]}"
-    done
-}
-
 validate_output_tables() {
     local sites_path="$1"
     local inputs_path="$2"
@@ -336,7 +332,6 @@ validate_output_tables() {
     local s_annotation_hash s_policy
     local summary_count
 
-    confirm_step07_input_hashes
     validate_exact_header "Step 08 sites table" "$sites_path" "$sites_header"
     validate_exact_header "Step 08 input receipt" "$inputs_path" "$inputs_header"
     validate_exact_header "Step 08 summary" "$summary_path" "$summary_header"
@@ -361,6 +356,12 @@ validate_output_tables() {
 
     row_number=2
     for partition_index in "${!partition_ids[@]}"; do
+        current_receipt_hash="$(
+            sha256_file "${expected_receipts[$partition_index]}"
+        )"
+        [[ "$current_receipt_hash" == \
+           "${expected_receipt_hashes[$partition_index]}" ]] ||
+            die "Step 07 receipt changed during Step 08: ${expected_receipts[$partition_index]}"
         for orientation_index in "${!ORIENTATIONS[@]}"; do
             expected_orientation="${ORIENTATIONS[$orientation_index]}"
             vcf_index=$((partition_index * 2 + orientation_index))
@@ -373,10 +374,9 @@ validate_output_tables() {
                 i_alt i_supported i_symbolic i_non_snv i_published i_policy \
                 <<< "$input_line"
 
-            current_receipt_hash="$(
-                sha256_file "${expected_receipts[$partition_index]}"
-            )"
             current_vcf_hash="$(sha256_file "${expected_vcfs[$vcf_index]}")"
+            [[ "$current_vcf_hash" == "${expected_vcf_hashes[$vcf_index]}" ]] ||
+                die "Step 07 VCF changed during Step 08: ${expected_vcfs[$vcf_index]}"
             [[ "$i_cohort" == "$cohort_id" &&
                "$i_partition" == "${partition_ids[$partition_index]}" &&
                "$i_selector_type" == "${partition_types[$partition_index]}" &&
