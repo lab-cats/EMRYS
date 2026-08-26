@@ -624,12 +624,13 @@ assert_contains "$samtools_log" "merge -@ 2 -o $execute_output_dir/.ABE_EV_2.ste
 assert_contains "$samtools_log" "index $execute_output_dir/.ABE_EV_2.step06.exec001.FWD_like.tmp.bam"
 assert_contains "$samtools_log" "index $execute_output_dir/.ABE_EV_2.step06.exec001.REV_like.tmp.bam"
 assert_contains "$samtools_log" "view -c $input_bam"
-assert_contains "$samtools_log" "view -c -f 99 $input_bam"
-assert_contains "$samtools_log" "view -c -f 147 $input_bam"
-assert_contains "$samtools_log" "view -c -f 83 $input_bam"
-assert_contains "$samtools_log" "view -c -f 163 $input_bam"
+assert_contains "$samtools_log" "view -c $execute_output_dir/.ABE_EV_2.step06.exec001.99.tmp.bam"
+assert_contains "$samtools_log" "view -c $execute_output_dir/.ABE_EV_2.step06.exec001.147.tmp.bam"
+assert_contains "$samtools_log" "view -c $execute_output_dir/.ABE_EV_2.step06.exec001.83.tmp.bam"
+assert_contains "$samtools_log" "view -c $execute_output_dir/.ABE_EV_2.step06.exec001.163.tmp.bam"
 assert_contains "$samtools_log" "view -c $execute_output_dir/.ABE_EV_2.step06.exec001.FWD_like.tmp.bam"
 assert_contains "$samtools_log" "view -c $execute_output_dir/.ABE_EV_2.step06.exec001.REV_like.tmp.bam"
+assert_not_contains "$samtools_log" "view -c -f "
 assert_contains "$samtools_log" "quickcheck $execute_output_dir/.ABE_EV_2.step06.exec001.FWD_like.tmp.bam"
 assert_contains "$samtools_log" "quickcheck $execute_output_dir/.ABE_EV_2.step06.exec001.REV_like.tmp.bam"
 assert_contains "$samtools_log" "quickcheck $execute_fwd_bam"
@@ -810,29 +811,45 @@ assert_fails "$assigned_output" env SLURM_JOB_ID=assigned001 bash "$SCRIPT" \
 assert_contains "$assigned_output" "assigned_records exceeds input_records: 18 > 10"
 assert_child_failure_state "$assigned_dir" "$assigned_qc"
 
-printf 'Running flag-subcount/merged-count mismatch publication defect check...\n'
-mismatch_output="$tmp_dir/count_mismatch.out"
-mismatch_dir="$tmp_dir/results/count_mismatch/orientation/ABE_EV_2"
-mismatch_qc="$tmp_dir/results/count_mismatch/qc/orientation"
-mkdir -p "$mismatch_dir" "$mismatch_qc"
-printf 'unrelated mismatch output bytes\n' >"$mismatch_dir/unrelated.txt"
-printf 'unrelated mismatch qc bytes\n' >"$mismatch_qc/unrelated.txt"
-FAKE_MERGE_COUNT_MATCH=FWD_like.tmp.bam \
-FAKE_MERGE_COUNT=12 \
-SLURM_JOB_ID=mismatch001 \
-    run_step06 ABE_EV_2 "$input_bam" "$mismatch_dir" "$mismatch_qc" --execute >"$mismatch_output" 2>&1
-mismatch_counts="$mismatch_qc/ABE_EV_2.orientation_counts.tsv"
-[[ -s "$mismatch_dir/ABE_EV_2.FWD_like.bam" ]] || fail "mismatch run did not publish FWD_like BAM"
-[[ -s "$mismatch_dir/ABE_EV_2.FWD_like.bam.bai" ]] || fail "mismatch run did not publish FWD_like BAI"
-[[ -s "$mismatch_dir/ABE_EV_2.REV_like.bam" ]] || fail "mismatch run did not publish REV_like BAM"
-[[ -s "$mismatch_dir/ABE_EV_2.REV_like.bam.bai" ]] || fail "mismatch run did not publish REV_like BAI"
-assert_contains "$mismatch_counts" $'ABE_EV_2\t20\t5\t6\t4\t3\t12\t7\t19\t1\t0.950000'
-assert_file_equals "$mismatch_dir/unrelated.txt" $'unrelated mismatch output bytes\n'
-assert_file_equals "$mismatch_qc/unrelated.txt" $'unrelated mismatch qc bytes\n'
-assert_contains "$mismatch_output" "Step 06 read-orientation output details:"
-assert_not_exists "$mismatch_dir/.ABE_EV_2.step06.lock"
-assert_no_step06_scratch "$mismatch_dir" "$mismatch_qc"
-assert_no_step06_attempt_marker "$mismatch_dir" "$mismatch_qc"
+printf 'Running FWD flag-subcount/merged-count mismatch rejection check...\n'
+fwd_mismatch_output="$tmp_dir/fwd_count_mismatch.out"
+fwd_mismatch_dir="$tmp_dir/results/fwd_count_mismatch/orientation/ABE_EV_2"
+fwd_mismatch_qc="$tmp_dir/results/fwd_count_mismatch/qc/orientation"
+prepare_child_failure_dirs "$fwd_mismatch_dir" "$fwd_mismatch_qc"
+assert_fails "$fwd_mismatch_output" env \
+    FAKE_MERGE_COUNT_MATCH=FWD_like.tmp.bam \
+    FAKE_MERGE_COUNT=12 \
+    SLURM_JOB_ID=fwdmismatch001 \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$fwd_mismatch_dir" \
+    --qc-dir "$fwd_mismatch_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_contains "$fwd_mismatch_output" "FWD_like merged count does not match materialized flag subsets: 12 != 5 + 6"
+assert_child_failure_state "$fwd_mismatch_dir" "$fwd_mismatch_qc"
+
+printf 'Running REV flag-subcount/merged-count mismatch rejection check...\n'
+rev_mismatch_output="$tmp_dir/rev_count_mismatch.out"
+rev_mismatch_dir="$tmp_dir/results/rev_count_mismatch/orientation/ABE_EV_2"
+rev_mismatch_qc="$tmp_dir/results/rev_count_mismatch/qc/orientation"
+prepare_child_failure_dirs "$rev_mismatch_dir" "$rev_mismatch_qc"
+assert_fails "$rev_mismatch_output" env \
+    FAKE_MERGE_COUNT_MATCH=REV_like.tmp.bam \
+    FAKE_MERGE_COUNT=8 \
+    SLURM_JOB_ID=revmismatch001 \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --output-dir "$rev_mismatch_dir" \
+    --qc-dir "$rev_mismatch_qc" \
+    --threads 2 \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute
+assert_contains "$rev_mismatch_output" "REV_like merged count does not match materialized flag subsets: 8 != 4 + 3"
+assert_child_failure_state "$rev_mismatch_dir" "$rev_mismatch_qc"
 
 printf 'Running existing foreign lock failure check...\n'
 lock_dir="$tmp_dir/results/locked/orientation/ABE_EV_2"
