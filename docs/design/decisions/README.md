@@ -11,7 +11,7 @@ provide subject detail without owning current status or commands.
 - [`scientific-pipeline.md`](scientific-pipeline.md) — scientific workflow and
   artifact-policy decisions.
 - [`platform-direction.md`](platform-direction.md) — product and future-platform
-  direction.
+  direction, including the ratified architectural invariant constitution.
 
 Accepted open outcomes and acceptance remain in the
 [findings matrix](../../tasks/backlog_matrix.md). Unsliced architecture choices

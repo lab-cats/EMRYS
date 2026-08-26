@@ -82,6 +82,16 @@ Detailed rationale: [`platform-direction.md`](decisions/platform-direction.md).
 
 - Organize source vertically by functional owner; keep native implementation,
   contracts, commands, diagnostics, recovery, and tests together.
+- Apply the [ratified architectural invariant constitution](decisions/platform-direction.md#ratified-architectural-invariant-constitution).
+  Its **Preserved** entries are scoped current contracts; its **Target** entries
+  are binding campaign requirements with named gaps, not implementation claims.
+- Keep every effective operational value and source inspectable, expose only
+  owner-defined safe overrides, and keep the science needed for review visible
+  across operational abstractions.
+- Migrate in bounded slices. Temporary compatibility has an owner, scope,
+  parity protection, and retirement condition; superseded paths retire after
+  caller migration and parity. Existing direct, adversarial, seeded-fault, and
+  synthetic end-to-end defenses require mapped equal-or-stronger replacement.
 - Use semantic identities and explicit artifact DAG edges rather than numeric
   aliases or filenames for order.
 - Prohibit peer private-implementation imports. Promote shared code only after

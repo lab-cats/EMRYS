@@ -75,8 +75,15 @@ surface growth, not maintainability progress.
   documentation together. One semantic commit is the default.
 - For a physical ownership move, freeze the old public and fault boundary,
   move the implementation, direct tests, affected callers, contracts, and
-  tooling together, and leave one live final owner. Do not accept a temporary
-  implementation shadow as completion.
+  tooling together, and leave one live final owner. A separately approved
+  compatibility path has a named owner, bounded scope, parity protection, and
+  an explicit retirement condition. Do not accept that temporary shadow as
+  completion; retire the superseded path when the condition is met.
+- Before removing a direct-owner, adversarial, seeded-fault, or synthetic
+  end-to-end defense, map the protected invariant to an equal-or-stronger
+  replacement at the same declared evidence level. Coverage or a
+  scientist-facing golden path alone is not replacement evidence. See the
+  [ratified architecture guardrails](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails).
 - Use focused checks as useful feedback. Review the complete final diff and run
   one de-duplicated applicable gate after the final state is assembled; rerun
   only evidence invalidated by later changes.

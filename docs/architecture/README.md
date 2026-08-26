@@ -12,6 +12,7 @@ with the relevant child and functional owner.
 | What are the semantic identities and artifact edges? | [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md) |
 | Which source dependencies and shared seams are allowed? | [`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md) |
 | How is the implemented source-checkout local pilot designed? | [`ORCHESTRATION_CONTRACT.md`](../design/ORCHESTRATION_CONTRACT.md), workflow profile, stage map, owner contracts/tests, and [`local_pilot_orchestration.mmd`](diagrams/local_pilot_orchestration.mmd) |
+| Which invariants and migration guardrails constrain architecture changes? | [Ratified architectural invariant constitution](../design/decisions/platform-direction.md#ratified-architectural-invariant-constitution) |
 | What accepted work remains? | [`backlog_matrix.md`](../tasks/backlog_matrix.md) |
 | Where are unsliced architecture alternatives preserved? | Temporary [`architecture_campaign.md`](../tasks/architecture_campaign.md) |
 | What are the exact local interfaces and defects? | The applicable owner `README.md` and `CONTRACT.md` |

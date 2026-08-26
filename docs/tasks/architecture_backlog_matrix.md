@@ -20,6 +20,10 @@ The outcome and routing columns below are navigation summaries. If their
 wording ever conflicts with the campaign, the campaign controls until a task is
 accepted into the main backlog.
 
+`AC-SLICE-01` completed as `ARCH-CONST-01` after this ranking was recorded. Its
+original `5`/`3` values and row remain for traceability rather than implying
+active work or a reranking; the main matrix owns the terminal disposition.
+
 ## Scoring
 
 Both columns use `5` as the highest value. Scores are intentionally loose and
@@ -59,7 +63,7 @@ implementation order, dependencies, or approval.
 
 | Card | Track | Architecture Priority | Indicative Complexity | Campaign outcome | Likely routing | Sizing note |
 |---|---|---:|---:|---|---|---|
-| `AC-SLICE-01` | Foundations | `5` | `3` | Ratify an architectural-invariants constitution against live contracts and tests | New slice; supports `ARCH-01` | — |
+| `AC-SLICE-01` | Foundations | `5` | `3` | Ratified an architectural-invariants constitution against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open | Original provisional ranking retained for traceability |
 | `AC-SLICE-02` | Foundations | `5` | `3` | Define formal layers, dependency direction, forbidden edges, and enforcement strategy | New slice; supports `ARCH-01` | — |
 | `AC-SLICE-03` | Public model | `5` | `4` | Define and introduce the Project/Analysis/Run application model without behavior change | New slice or expansion of `CONTROL-01` | Separate vocabulary/contract, facade introduction, and caller migration before promotion |
 | `AC-SLICE-04` | Scientific boundary | `3` | `4` | Define the minimum thin Stage boundary and migrate one representative lifecycle | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` | Separate contract selection from one explicitly named lifecycle migration |

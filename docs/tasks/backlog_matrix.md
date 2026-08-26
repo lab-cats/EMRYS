@@ -1,6 +1,6 @@
 # EMRYS Findings Matrix and Working Backlog
 
-Last reconciled: **2026-08-25**
+Last reconciled: **2026-08-26**
 
 This file is the working planning backlog for EMRYS. It retains every unresolved
 finding from the original NORAD E2E matrix, incorporates the selected entries
@@ -16,10 +16,11 @@ This matrix remains authoritative for task IDs, status, required outcomes,
 acceptance conditions, and dispositions; the campaign document does not create
 or authorize tasks by itself.
 
-The [architecture backlog matrix](architecture_backlog_matrix.md) records only
-a cursory Architecture Priority and Indicative Complexity for unsliced campaign
-cards. Those provisional values neither create tasks nor supply the final
-Importance and Complexity scores for accepted items in this matrix.
+The [architecture backlog matrix](architecture_backlog_matrix.md) records the
+original cursory Architecture Priority and Indicative Complexity for campaign
+cards. Completed candidates may remain there for ranking traceability. Those
+provisional values neither create tasks nor supply the final Importance and
+Complexity scores for accepted items in this matrix.
 
 Names, command spellings, phase boundaries, numeric targets, and proposed
 ordering quoted from the architecture intake remain suggestions unless this
@@ -92,9 +93,11 @@ not these exact names.
 
 Low-level files, Snakemake, owner jobs, task records, receipts, transactions,
 and detailed identities may remain internal. Records required by existing
-evidence and audit contracts remain accessible. Broader expert inspection and
-override is a source-proposed guardrail pending ratification; ordinary
-scientists must not be required to author or operate these internals.
+evidence and audit contracts remain inspectable subject to explicit retention
+and redaction policy. Every effective operational value and source is
+inspectable; an override exists only where its owner defines a safe supported
+boundary. Ordinary scientists must not be required to author or operate these
+internals.
 
 ### Configuration ownership
 
@@ -116,17 +119,21 @@ or recovery guarantees underneath:
 - substantially simpler scientist and operator experiences;
 - explicit architectural layers and dependency direction;
 - coherent abstractions around identified operational complexity, with exact
-  consolidation, ownership, anti-framework, and retirement guardrails ratified
-  against live behavior and contracts;
+  consolidation, ownership, API, and anti-framework choices made just in time
+  under the ratified migration and retirement guardrails;
 - a complete supported golden path from fresh installation to a valid
   synthetic result; and
 - role-based scientist, advanced-scientist, operator, and developer interfaces
   implemented through progressive disclosure.
 
 Role-based progressive disclosure is binding, and simplification may not weaken
-the underlying guarantees. The exact expert inspection/override contract and
-the proposed requirement for direct scientific-implementation visibility remain
-decisions to ratify rather than acceptance criteria already adopted here.
+the underlying guarantees. The
+[ratified architectural invariant constitution](../design/decisions/platform-direction.md#ratified-architectural-invariant-constitution)
+also binds scientific reviewability, inspectable effective operational values,
+safe owner-defined overrides, bounded migration, eventual retirement after
+caller migration and parity, and mapped equal-or-stronger test replacement.
+Exact expert interfaces, public vocabulary, layers, APIs, and facade use remain
+open decisions.
 
 ## Backlog operating rules
 
@@ -207,7 +214,7 @@ separately tracked where required.
 |---|---|---|---|---|
 | <code>CONTROL-01</code> | P1 | Open | Establish a compact role-aware public conceptual model and explicitly decide the relationship among Project, Analysis, Dataset, Reference, ExperimentalDesign, Runtime, Run, Result, Attempt, Task, Artifact, and Report. | Ordinary scientific work can be explained and operated through the smallest accepted vocabulary; advanced scientists, operators, and developers can progressively inspect the deeper model; generated manifests, control files, engine state, and low-level identities remain available but are not required user-authored concepts. Exact nouns and nesting remain a later design decision. |
 | <code>CONFIG-01</code> | P1 | Open | Replace configuration sprawl with one scientist-facing project definition and explicit scientific, execution, and evidence ownership. | Scientists author data/reference/design/analysis intent; operators select and define execution profiles; EMRYS owns evidence configuration and generates normalized requests, manifests, runtime/resource/launcher artifacts, identities, and records; runtime provisioning mode and execution backend/profile remain distinct inspectable choices; every effective value and its source are inspectable. |
-| <code>OPS-01</code> | P1 | Open | Remove the large manually maintained export surface and define a small operator-configuration surface; evaluate named execution profiles as one candidate encapsulation. | The accepted precedence and operator-control model is documented; installation-derived facts can be discovered; backend, resources, storage, and runtime are not conflated. The task explicitly decides which effective operational values require stable inspection or override and through which interfaces. The stronger “every supported decision without modifying source” rule remains a source proposal pending ratification. |
+| <code>OPS-01</code> | P1 | Open | Remove the large manually maintained export surface and define a small operator-configuration surface; evaluate named execution profiles as one candidate encapsulation. | The accepted precedence and operator-control model is documented; installation-derived facts can be discovered; backend, resources, storage, and runtime are not conflated. Every effective operational value and source is inspectable. An override exists only where the owning contract explicitly supports it and defines a safe admission boundary; the task decides the exact interfaces, merge semantics, and supported override roster. |
 | <code>OPS-02</code> | P1 | Open | Provide a small role-aware public CLI instead of exposing wrappers, implementation variables, scheduler mechanics, or direct engine controls. | Workstation and scheduled execution expose the same accepted high-level capabilities for project preparation, readiness/validation, execution, progress/status, inspection, and reporting with safe defaults. The task decides command partitioning and ordering, scheduler-selection behavior, and stable advanced inspection/override/debug routes. Exact command names and sequence remain open. |
 | <code>OPS-03</code> | P2 | Open | Inventory inline/generated programs and extract substantive reusable scripts from Python, Make, documentation, and other owners. | Every inline program has an explicit retain/extract disposition; substantive independently testable programs have one owner and direct tests; operators do not run internal helper scripts to complete normal work. |
 | <code>OPS-04</code> | P2 | Open | Replace the misleading “local pilot” orchestrator name in the primary product surface. | The stable command and domain name describe execution accurately across CLI, modules, docs, logs, and generated assets, with an explicit compatibility/retirement policy for the old name. |
@@ -226,8 +233,8 @@ separately tracked where required.
 
 | ID | Priority (provisional) | Status | Required outcome | Acceptance |
 |---|---|---|---|---|
-| <code>REVIEW-UX-03</code> | P1 | Open | Independently review scientist, advanced-scientist, operator, developer/maintainer, and automation journeys against the non-negotiable simplified golden path. | The review covers fresh installation through valid synthetic result, findability, terminology, concepts required, configuration burden, progressive disclosure, accessibility, failure diagnosis and recovery, console/report hierarchy, intake, local/HPC context, and evaluation of the source-proposed expert inspection, override, and escape-hatch model without changing scientific meaning. It records baseline and target measures without treating source-proposed numeric targets as already accepted. |
-| <code>LOG-05</code> | P1 | Open | Activate concise role-appropriate default logging across every applicable command after foundation adoption. | Routine output uses scientific and run-level milestones rather than owner jobs, transactions, scheduler commands, or receipt mechanics; failures identify the useful public state, reason, recovery guidance, and durable log path; complete forensic detail remains available; parity evidence covers each adopted domain. |
+| <code>REVIEW-UX-03</code> | P1 | Open | Independently review scientist, advanced-scientist, operator, developer/maintainer, and automation journeys against the non-negotiable simplified golden path. | The review covers fresh installation through valid synthetic result, findability, terminology, concepts required, configuration burden, progressive disclosure, accessibility, failure diagnosis and recovery, console/report hierarchy, intake, local/HPC context, and the ratified inspectable-effective-value and safe-override boundaries plus role-appropriate escape hatches without changing scientific meaning. It records baseline and target measures without treating source-proposed numeric targets as already accepted. |
+| <code>LOG-05</code> | P1 | Open | Activate concise role-appropriate default logging across every applicable command after foundation adoption. | Routine output uses scientific and run-level milestones rather than owner jobs, transactions, scheduler commands, or receipt mechanics; failures identify the useful public state, reason, recovery guidance, and durable log path; contract-required forensic detail remains inspectable under explicit retention and redaction policy; parity evidence covers each adopted domain. |
 | <code>OBS-01</code> | P1 | Open | Remove low-value console noise from the default user experience. | Default output shows meaningful milestones, warnings, failures, and the durable log path; verbose/debug detail is explicitly requested. |
 | <code>OBS-02</code> | P1 | Open | Provide a supported high-level progress, status, and recovery-guidance surface while hiding the internal execution/publication state machine. | Users see preparation, alignment, QC, candidate generation/testing, report generation, elapsed time, and a small truthful state vocabulary such as pending/running/complete/failed/recoverable; failure output explains the reason, whether resume is safe, and the supported next action. EMRYS determines internally what remains valid, provisional, reusable, rolled back, or recomputed; Snakemake jobs, owner counts, transactions, publication states, and attempt internals remain available in evidence/debug views. Exact states and resume command remain unsettled. |
 
@@ -236,8 +243,8 @@ separately tracked where required.
 | ID | Priority (provisional) | Status | Required outcome | Acceptance |
 |---|---|---|---|---|
 | <code>ANALYSIS-01</code> | P1 | Open | Allow one project to stop after compatible per-sample processing and launch separately identified cohort, subset, sensitivity, or downstream analyses from the reusable Step 06 boundary. | Compatible Steps 00–06 artifacts are content-bound and reused without mutation; cohort-dependent Steps 07 onward receive a distinct analysis/run identity, outputs, evidence, and report; incompatible reuse fails closed. |
-| <code>ANALYSIS-02</code> | P2 | Open | Provide a versioned collaborator-extensible analysis library/module interface and explicitly decide whether and how the source-proposed anti-framework guardrail applies. | Modules declare typed inputs/outputs, dependencies, validation, provenance, trust level, failure semantics, resource needs, and report integration; adding a differential analysis does not require editing the scientific core or unrelated owners. The task explicitly decides whether and how algorithms, assumptions, biological interpretation, and implementation visibility remain reviewable across the module boundary. Candidate shared abstractions may own execution, filesystem, provenance, and scheduler mechanics only after that boundary is accepted. |
-| <code>ARCH-01</code> | P2 | Open | Establish formal architectural layers and dependency direction, introduce deliberate application/infrastructure abstractions, and reduce maintained surface and cross-module coupling while preserving every declared invariant. | The task ratifies the inventory, invariant, sequencing, layer, dependency, ownership, and migration policies before applying any source-proposed order or consolidation rule. For each adopted abstraction it records the ratified purpose, authority relationship, and guarantee-preservation contract. The source-proposed exact layer map, one-final-authority rule, facade-first sequence, direct-scientific-visibility guardrail, and deletion-complete retirement rule are evaluated explicitly rather than presumed. The task also ratifies whether existing adversarial/seeded-fault and synthetic end-to-end coverage must be preserved or may be replaced by equal-or-stronger defenses, then applies the accepted contract with explicit evidence ceilings distinct from the user-facing neutral-synthetic golden path. |
+| <code>ANALYSIS-02</code> | P2 | Open | Provide a versioned collaborator-extensible analysis library/module interface and explicitly decide whether and how the source-proposed anti-framework guardrail applies. | Modules declare typed inputs/outputs, dependencies, validation, provenance, trust level, failure semantics, resource needs, and report integration; adding a differential analysis does not require editing the scientific core or unrelated owners. Algorithms, parameters, assumptions, biological interpretation boundaries, and implementation needed for scientific review remain recognizable and inspectable across the module boundary. The task decides the exact module API and how the anti-framework proposal applies; candidate shared abstractions may own execution, filesystem, provenance, and scheduler mechanics only within that binding visibility boundary. |
+| <code>ARCH-01</code> | P2 | Open | Establish formal architectural layers and dependency direction, introduce deliberate application/infrastructure abstractions, and reduce maintained surface and cross-module coupling while preserving every declared invariant. | Completed <code>ARCH-CONST-01</code> supplies the qualified 27-invariant register and binding migration/test guardrails. <code>ARCH-01</code> remains Open for the exact owner inventory, layer and dependency map, enforcement, abstraction purposes and APIs, authority relationships, guarantee-preservation contracts, individual migrations, Artifact Store boundary, and facade use/order. One final authority per artifact class or guarantee without a god object, review-relevant scientific visibility, bounded migration, caller migration and parity before completion, eventual retirement, and mapped equal-or-stronger defense replacement are binding rather than open. |
 
 ### Performance and benchmarking
 
@@ -283,15 +290,15 @@ verbatim record.
 
 | Existing ID or IDs | Routed campaign context | Scope boundary retained |
 |---|---|---|
-| <code>CONTROL-01</code>, <code>REVIEW-UX-03</code> | The public surface must become substantially simpler and use progressive disclosure for scientist, advanced-scientist, operator, and developer roles. Project/Run/Result is a leading source proposal; Project/Analysis/Run/Result and the placement of Dataset, Reference, Design, Runtime, Attempt, Task, Artifact, and Report remain alternatives to evaluate. | Simplification preserves guarantees and uses binding role-based progressive disclosure. The exact stable expert inspection and override surface, source-proposed nouns, command names, percentages, and concept counts require explicit decision. |
-| <code>CONFIG-01</code>, <code>OPS-01</code>, <code>RUNTIME-01</code> | Scientific intent, execution/site policy, and EMRYS-owned evidence configuration have different authors. Named execution profiles and Managed/Site/Explicit are source-proposed ways to represent distinct concerns; the tasks must choose terminology and taxonomy without conflating runtime provisioning, execution backend, or profile. | Whatever taxonomy is accepted, generated configuration retains precedence and provenance, and runtime/readiness qualification includes internal engine dependencies such as Snakemake without exposing engine invocation or configuration as an ordinary scientist task. |
+| <code>CONTROL-01</code>, <code>REVIEW-UX-03</code> | The public surface must become substantially simpler and use progressive disclosure for scientist, advanced-scientist, operator, and developer roles. Project/Run/Result is a leading source proposal; Project/Analysis/Run/Result and the placement of Dataset, Reference, Design, Runtime, Attempt, Task, Artifact, and Report remain alternatives to evaluate. | Simplification preserves guarantees and uses binding role-based progressive disclosure. Every effective operational value and source remains inspectable, while only owner-defined safe values are overrideable. The exact expert interface, safe override roster, source-proposed nouns, command names, percentages, and concept counts require explicit decision. |
+| <code>CONFIG-01</code>, <code>OPS-01</code>, <code>RUNTIME-01</code> | Scientific intent, execution/site policy, and EMRYS-owned evidence configuration have different authors. Named execution profiles and Managed/Site/Explicit are source-proposed ways to represent distinct concerns; the tasks must choose terminology and taxonomy without conflating runtime provisioning, execution backend, or profile. | Whatever taxonomy is accepted, generated configuration retains an inspectable precedence and provenance model, safe overrides remain owner-defined, and runtime/readiness qualification includes internal engine dependencies such as Snakemake without exposing engine invocation or configuration as an ordinary scientist task. |
 | <code>OPS-02</code>, <code>SETUP-03</code>, <code>DOCTOR-01</code>, <code>RUN-03</code>, <code>OBS-02</code>, <code>LOG-05</code>, <code>RESULTS-01</code>, <code>CLEAN-01</code> | Together these rows own the required golden-path capability set: supported installation/runtime, readiness diagnosis, project creation and validation, neutral-synthetic execution, useful progress/status, safe recovery, and discoverable valid results. The ordinary path must not require manual directory creation, run-root copying, scheduler scripts, engine state, transaction states, or forensic identities. | The capability set and successful end state are binding; no exact ordering is adopted because the sources propose different sequences. No one row can claim the complete golden path from its segment alone. Diagnosis is the default while repair is explicit, bounded, safe, and provenance-aware. Command spellings and partitioning remain unsettled. |
-| <code>ARCH-01</code>, <code>ANALYSIS-02</code> | Formal layering and deliberate abstractions are non-negotiable. The leading layer model and candidate Run, Execution, Stage, Artifact lifecycle/Store, and policy boundaries are proposals to evaluate. | Higher-to-lower dependency direction is binding. Exact classes/APIs, direct scientific-code visibility, facade-first migration, one-final-authority wording, deletion-complete retirement, and the preservation-versus-equal/stronger-replacement rule for adversarial/seeded-fault and synthetic E2E tests all require ratification before migration; their evidence labels remain distinct. |
+| <code>ARCH-01</code>, <code>ANALYSIS-02</code> | Formal layering and deliberate abstractions are non-negotiable. The leading layer model and candidate Run, Execution, Stage, Artifact lifecycle/Store, and policy boundaries are proposals to evaluate. | Higher-to-lower dependency direction remains binding; exact layers, classes/APIs, enforcement, Artifact Store ownership, individual migrations, and facade use remain open. Review-relevant scientific visibility, one final authority per artifact class or guarantee without a god object, bounded migration, eventual retirement, and mapped equal-or-stronger protection for direct/adversarial/seeded-fault/synthetic E2E defenses are binding; evidence labels remain distinct. |
 | <code>IDENTITY-01</code>, <code>FILESYSTEM-01</code>, <code>RESULTS-01</code> | A run should be understandable as one coherent package containing its configuration, identity, artifacts/results, evidence, logs, and reports. Detailed identities remain metadata under whatever public identity model is accepted. | “Run Bundle” and “Artifact Store” are proposed abstractions, not settled owners, on-disk schemas, or portability guarantees. Scratch/work state is not promoted into the scientist-facing result merely for structural symmetry. |
 | <code>REPORT-03</code>, <code>RESULTS-01</code> | Reporting must serve three explicit questions: scientific—what was found; evidence—why the result is trustworthy; operational—how execution occurred. | The views share run identity and provenance but do not force operational/evidence detail into the primary scientific narrative. Separate commands versus report views/files remain undecided. |
 | <code>DOC-01</code>, <code>REVIEW-UX-03</code> | Documentation and review follow the role journeys: scientists reach a result and interpretation first; operators provision, qualify, schedule, diagnose, and recover; developers inspect architecture and exact contracts. | Developer architecture remains available, but reading it cannot be a prerequisite for ordinary scientific use. |
 | <code>CONTAINER-01</code>, <code>RUNTIME-01</code> | A managed image/environment may provide the easiest supported runtime and bind an image digest plus enumerated tool identities into provenance. | Containerization remains independent of guided project setup and supplements rather than automatically replacing the institutional, native, or advanced runtime paths accepted by <code>RUNTIME-01</code>. |
-| <code>ARCH-01</code>, <code>DOC-04</code>, <code>DOC-05</code>, <code>TOOLING-01</code>, <code>CLEAN-01</code>, <code>CLEAN-02</code> | Cleanup is an architectural deliverable: inventory duplicate validators, lifecycle implementations, stage-specific infrastructure, migration adapters, compatibility paths, generic ownership buckets, stale documentation, and superseded test scaffolds, then retain, relocate, consolidate, or retire each deliberately. | Durable scientific, operational, provenance, recovery, testing, and documentation-validation value moves before any retirement. Whether each abstraction package must immediately delete all superseded paths is the proposed migration policy tracked by <code>AC-DEC-018</code>/<code>020</code>; every compatibility path still receives an explicit disposition. Completed <code>DOC-03</code> supplies the first accepted trace-and-retirement example. |
+| <code>ARCH-01</code>, <code>DOC-04</code>, <code>DOC-05</code>, <code>TOOLING-01</code>, <code>CLEAN-01</code>, <code>CLEAN-02</code> | Cleanup is an architectural deliverable: inventory duplicate validators, lifecycle implementations, stage-specific infrastructure, migration adapters, compatibility paths, generic ownership buckets, stale documentation, and superseded test scaffolds, then retain, relocate, consolidate, or retire each deliberately. | Durable scientific, operational, provenance, recovery, testing, and documentation-validation value moves before retirement. Eventual retirement after caller migration, relevant parity, and an explicit condition is binding. <code>AC-DEC-018</code> decides each compatibility window, warnings, fixtures, and removal evidence; <code>AC-DEC-020</code> decides ordering. Completed <code>DOC-03</code> supplies the first accepted trace-and-retirement example. |
 
 ## Illustrative architecture reference models
 
@@ -336,14 +343,17 @@ profiles, launcher/resource configuration, run identities, and evidence
 manifests internally. Generated artifacts remain inspectable and
 content/provenance bound; scientists are not required to author them.
 
-The accepted design requires an explicit precedence contract. One proposed
-ordering is:
+The accepted design requires one documented, inspectable precedence contract:
+every effective operational value and source is inspectable, and an override
+exists only at an owner-defined safe supported boundary. One proposed ordering
+is:
 
 ~~~text
 built-in defaults -> site/execution profile -> project request -> CLI override
 ~~~
 
-Exact merge order and list/map/null semantics remain open.
+Exact merge order, safe override roster, and list/map/null semantics remain
+open.
 
 ### Source-proposed runtime modes
 
@@ -370,10 +380,10 @@ They are independent of execution backends and named execution profiles:
 | Execution backend | How is work launched? | Local, SLURM |
 | Execution profile | Which site-approved backend, resources, storage, and runtime selection apply? | Local, cluster, development, production |
 
-The example labels are not settled vocabulary. The accepted design must decide
-which operational choices are visible and overrideable for each role and how
-their provenance is reported. The stronger proposal that every important choice
-be overrideable without source modification is not yet ratified.
+The example labels are not settled vocabulary. Every effective operational
+value and source is inspectable, but the owning contract decides which values
+are safe to override and through which role-appropriate interface. Exact
+override scope, terminology, and provenance presentation remain open.
 
 ### Illustrative readiness/Doctor surface
 
@@ -566,6 +576,7 @@ and evidence meaning. The later role-journey rewrite remains <code>DOC-01</code>
 | 2026-08-25 | <code>DOC-02</code> | All 170 tracked Markdown sources, six Mermaid sources, named retired candidates, and inbound routes to the six stale sources received evidence-based individual or exhaustive owner-partition dispositions. Current authority now routes to live Git, exact checks/artifacts, this matrix, the temporary campaign, and subject owners; all six legacy pages and two future diagrams remain mechanically protected until <code>DOC-03</code>–<code>DOC-05</code> execute the accepted migrations. | Current Git/source/reference audit plus focused local evidence: documentation gate passed; documentation-owner, public-interface, and Make-expansion tests passed, 46 tests total; no retirement migration or scientific/runtime proof performed |
 | 2026-08-25 | <code>DOC-03</code> | Every section of the future-architecture, pipeline-plan, and question-index pages and every node/edge of both future diagrams received an explicit preserve/discard destination. Two unique nonbinding choices moved to the campaign; five stale sources retired; live routes and latest-head logging status were reconciled; runtime/site claims were routed without promotion; and the gate now protects all five retired paths while retaining three pending transition pages. | Focused local documentation evidence: structure gate passed at 168 Markdown and four Mermaid sources; documentation-owner, affected public-interface, and Make-expansion tests passed, 43 tests total; Ruff and <code>git diff --check</code> passed. No long aggregate, runtime, cluster, scientific-review, or biological evidence was produced. |
 | 2026-08-25 | <code>LOG-03</code> | The neutral [application-logging owner](../../src/emrys/libraries/application_logging/README.md) implements the [binding two-sink foundation](../design/LOGGING_CONTRACT.md). No production command or wrapper adopts it; that rollout remains <code>LOG-05</code>. | Hosted [Phase 1 CI run #43](https://github.com/lab-cats/EMRYS/actions/runs/32888179176) passed on exact implementation-and-documentation head [<code>c6aee017</code>](https://github.com/lab-cats/EMRYS/commit/c6aee017f0d1982627782e40f3efa01eef908ad9). Engineering evidence only; no production-command adoption, real scheduler or cluster execution, scientific review, or biological proof is claimed. |
+| 2026-08-26 | <code>ARCH-CONST-01</code> | All 27 campaign invariant candidates were reconciled to live contracts, decisions, implementation boundaries, representative regression routes, and named gaps. The durable register distinguishes scoped current <strong>Preserved</strong> contracts from binding <strong>Target</strong> requirements with named current gaps, and five abstraction/migration/test guardrails are ratified. No command, API, class, schema, layer map, filesystem layout, runtime, scheduler, scientific method, or performance behavior changed; broad <code>ARCH-01</code> remains Open. | Current source/contract/test audit plus focused local documentation evidence: structure gate passed at 168 Markdown and four Mermaid sources; documentation-owner, affected public-interface, and Make-expansion tests passed, 43 tests total; <code>git diff --check</code> passed. Representative scientific, lifecycle, artifact, reporting, and onboarding tests were inspected but not executed. No long aggregate, runtime, cluster, production, scientific-review, or biological evidence was produced. |
 
 ## Former repository-backlog reconciliation
 
@@ -584,6 +595,7 @@ No former blocker relationships were retained.
 
 | Date | ID | Disposition | Reason or successor |
 |---|---|---|---|
+| 2026-08-26 | <code>ARCH-CONST-01</code> | Complete | The qualified invariant register, current-gap classification, and five binding migration/test guardrails are recorded in the platform-direction decision. Exact layers, APIs, abstraction selection, facade use, migrations, and remaining target implementation stay Open under <code>ARCH-01</code> and the routed owner tasks. |
 | 2026-08-25 | <code>DOC-03</code> | Complete | Acceptance evidence is recorded above. The five source paths are retired and guarded; the final architecture-document set remains open under <code>AC-DEC-021</code>, and no discarded task was revived. |
 | 2026-08-25 | <code>LOG-03</code> | Complete | Acceptance evidence is recorded above. Production-command and real-wrapper adoption remains independently owned by <code>LOG-05</code>. |
 | 2026-08-25 | <code>DOC-02</code> | Complete | The repository-wide disposition roster and authority cutover are accepted; completed <code>DOC-03</code>, open <code>DOC-04</code>/<code>DOC-05</code>, <code>CLEAN-01</code>, and <code>CLEAN-02</code> separately own the resulting migrations. |

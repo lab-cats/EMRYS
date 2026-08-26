@@ -23,11 +23,14 @@
 
 ## How to read this document
 
-This document uses four decision labels:
+This document uses the following decision-label classes:
 
 - **Binding:** a requirement the user has explicitly made non-negotiable.
-- **Invariant candidate:** a guarantee that must be formalized and checked
-  against the live implementation before it becomes authoritative wording.
+- **Preserved/Target:** the two states in the ratified constitution; Preserved
+  is a scoped current contract, while Target is binding with a named current
+  gap and is not an implementation claim.
+- **Invariant candidate:** original source wording retained only for intake
+  traceability; the qualified ratified register controls.
 - **Proposed:** a concrete design suggestion retained for evaluation.
 - **Open:** a decision that has deliberately not been made.
 
@@ -165,8 +168,8 @@ campaign:
    entangled.
 3. **Deliberate abstractions.** The campaign must introduce coherent
    abstractions around identified operational complexity. Exact consolidation,
-   ownership, anti-framework, and retirement guardrails require ratification
-   against live behavior and contracts.
+   ownership, API, and anti-framework choices remain just-in-time decisions
+   under the ratified migration and retirement guardrails.
 4. **A complete golden path.** A competent computational biologist must be able
    to go from a supported fresh installation to a valid synthetic result and
    find the report without understanding EMRYS's internal architecture.
@@ -183,26 +186,30 @@ campaign:
    provenance-aware where applicable, and unable to silently invent biology,
    secrets, or mutate declared scientific inputs.
 
-The sources also recommend five strong campaign guardrails that remain
-**proposed pending explicit ratification**:
+`ARCH-CONST-01` also ratified five binding campaign guardrails in the
+[architectural invariant constitution](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails):
 
-- experienced operators can inspect and deliberately override every supported
-  operational decision without modifying source;
-- abstractions hide operational mechanics without burying scientific
-  algorithms, parameters, assumptions, or interpretation;
-- migration is incremental rather than an unbounded rewrite; and
-- adopted facades and shared owners eventually retire their superseded paths
-  instead of creating permanent parallel architecture; and
-- adversarial testing and synthetic end-to-end regression coverage are
-  preserved or replaced only by equal-or-stronger defenses, with evidence
-  ceilings distinct from the scientist-facing synthetic golden path.
+- every effective operational value and source is inspectable, while overrides
+  exist only at explicitly supported safe owner boundaries;
+- abstractions may hide operational mechanics but not the science needed for
+  review;
+- migration is bounded and incremental rather than an unbounded rewrite;
+- a replacement completes only after caller migration and relevant parity,
+  with owned, bounded, protected temporary compatibility and an explicit
+  retirement condition; and
+- direct-owner, adversarial, seeded-fault, and synthetic end-to-end defenses
+  require mapped equal-or-stronger replacement at the same evidence level.
 
-## 4. Invariant constitution to formalize
+## 4. Invariant constitution and source trace
 
-An early campaign deliverable should establish an authoritative architectural
-constitution. The statements below are **invariant candidates** derived from
-the intake, not a claim that their exact wording already matches every live
-contract. Ratification requires source and test review.
+`ARCH-CONST-01` completed the source, contract, and test reconciliation. The
+[qualified 27-invariant register](../design/decisions/platform-direction.md#ratified-architectural-invariant-constitution)
+is binding and distinguishes scoped current **Preserved** contracts from
+binding **Target** requirements with named implementation gaps.
+
+The statements below remain the original intake candidates for source
+traceability. Their broader wording does not override the qualified register,
+live owner contracts, or current evidence.
 
 ### 4.1 Scientific invariants
 
@@ -553,11 +560,11 @@ admit -> plan -> execute -> validate -> publish -> record
 ```
 
 Both the API and lifecycle vocabulary are proposed. A task selecting this model
-must ratify whether one thin boundary is the right owner for repeated
-operational mechanics and how scientific implementations remain reviewable.
-The source further proposes rejecting a generic workflow framework or hierarchy
-of abstract factories; that anti-framework guardrail remains pending
-ratification.
+must decide whether one thin boundary is the right owner for repeated
+operational mechanics and must satisfy the binding scientific-visibility
+guardrail. The source further proposes rejecting a generic workflow framework
+or hierarchy of abstract factories; whether and how that anti-framework
+proposal applies remains open.
 
 ### 8.3 Execution boundary
 
@@ -570,11 +577,14 @@ needs. Execution infrastructure owns process invocation, environment binding,
 scheduler integration, allocation identity, exit state, logs, cleanup, and
 recovery metadata.
 
-The source proposes that this abstraction use appropriate workflow machinery
-rather than building a second scheduler. The task must explicitly ratify that
-anti-second-engine guardrail and its boundary. The proposed rationale is that
-EMRYS's differentiator is evidence-bound, provenance-aware scientific analysis
-with strong execution guarantees—not a new generic workflow engine.
+The durable platform direction already rejects building a second scheduler,
+stage registry, scientific implementation, or recovery system. The source
+reinforces that constraint. The open task must decide how the proposed
+execution abstraction integrates appropriate workflow machinery and where its
+supported backend boundary belongs; it does not reopen the no-second-scheduler
+authority. EMRYS's differentiator remains evidence-bound, provenance-aware
+scientific analysis with strong execution guarantees—not a new generic
+workflow engine.
 
 ### 8.4 Shared policy authorities
 
@@ -590,10 +600,9 @@ ResourcePolicy
 ExecutionPolicy
 ```
 
-The taxonomy is open. A proposed abstraction guardrail, pending explicit
-ratification, is:
-
-> One invariant has one final implementation authority.
+The taxonomy is open. `AC-INV-011` now binds the qualified requirement that
+each artifact class and guarantee have one declared admission chain and one
+final authority without creating one global implementation or god object.
 
 A stage requests a policy decision rather than reimplementing locking, rename,
 durability, runtime, validation, publication, or resource semantics. A policy
@@ -621,9 +630,11 @@ ArtifactCandidate
    Immutable Artifact
 ```
 
-The exact states are open. The proposed property is one canonical path for
-creating a durable artifact, with visible provisional and failure states and no
-silent mutation; ratification must reconcile it with live artifact contracts.
+The exact states are open. `AC-INV-011` makes one declared admission chain and
+final authority per artifact class or guarantee a binding target; it does not
+claim that the generalized lifecycle exists or preselect its owner. Visible
+provisional/failure state and mutation detection remain separately qualified in
+the constitution.
 
 Two sources also place a named **Artifact Store** between stages and reports.
 That is a proposed boundary, not a selected service or directory. It could be a
@@ -632,28 +643,27 @@ lifecycle, or a physical collection. Its relationship to Run coordination, the
 Run Bundle, filesystem layout, external or large artifacts, scientist-facing
 results, and reporting remains open. A source-proposed constraint is that it not
 become a second artifact authority beside an accepted lifecycle owner;
-`AC-DEC-025` preserves that constraint for ratification with the boundary.
+`AC-DEC-025` preserves the boundary choice and must apply binding
+`AC-INV-011` rather than reopening the one-authority requirement.
 
-### 8.6 Abstraction guardrails
+### 8.6 Ratified and open abstraction guardrails
 
-These source-proposed guardrails require explicit ratification with the
-applicable live contracts:
+The binding constitution now requires operational mechanics to remain
+encapsulatable while review-relevant science stays visible; one final authority
+per artifact class or guarantee without a god object; bounded migration with
+caller migration, parity, owned temporary compatibility, and eventual
+retirement; and mapped equal-or-stronger replacement before direct-owner,
+adversarial, seeded-fault, or synthetic end-to-end defenses are removed.
+Evidence levels remain distinct, so neither coverage nor a scientist-facing
+synthetic golden path proves scheduler, production, scientific-review, or
+biological readiness.
 
-- Hide execution, filesystem, provenance, scheduler, and transaction mechanics.
-- Keep scientific algorithms, statistical assumptions, and biological meaning
-  visible.
-- Introduce facades around proven behavior before changing behavior.
-- Do not add a second authority beside the current one and call that
-  consolidation.
-- Pair every adopted abstraction with a caller migration and eventual deletion
-  package for superseded paths.
-- Preserve adversarial tests, direct tests, and seeded fault cases for the
-  invariant being moved.
-- Preserve synthetic end-to-end regression coverage independently of the
-  user-facing synthetic golden path; neither proves cluster, production,
-  scientific-review, or biological readiness.
-- Reject generic framework work that is not required by an identified EMRYS
-  lifecycle or policy duplication.
+Exact facade use, package order, layer APIs, whether to reject a proposed
+generic framework, and integration with supported workflow/scheduler machinery
+remain just-in-time design choices within the existing no-second-scheduler
+authority. Adding a wrapper beside an existing authority without a bounded
+caller migration and retirement condition cannot satisfy the ratified
+guardrails.
 
 ## 9. Runtime, execution, storage, and Doctor
 
@@ -890,12 +900,13 @@ Operational simplification must not distract from scientific architecture.
 - A collaborator-extensible analysis library may support differential or other
   analyses through typed inputs/outputs, provenance, validation, trust level,
   resources, failure semantics, and report integration.
-- Proposed guardrail: scientific modules should not require editing unrelated
-  owners or turn EMRYS into a generic workflow framework; the module task must
-  ratify this boundary.
-- Proposed guardrail: the specific R/shell/Python scientific implementation and
-  its assumptions should remain reviewable within the operational boundary;
-  the task must ratify what visibility is required.
+- The proposal that scientific modules should not require editing unrelated
+  owners or turn EMRYS into a generic workflow framework remains an exact
+  module-design choice for `ANALYSIS-02` and `ARCH-01`.
+- The algorithms, parameters, assumptions, interpretation boundaries, and
+  implementation needed for scientific review must remain recognizable and
+  inspectable under binding `AC-GUARD-002`; the exact module API and placement
+  remain open.
 
 The intake separately recommends a scientific audit of Steps 07–09, with
 particular attention to:
@@ -920,12 +931,14 @@ the later Importance/Complexity pass.
 
 ## 13. Incremental migration strategy
 
-The leading source proposal is a facade-first, invariant-preserving,
-incremental, deletion-complete strategy:
+Invariant preservation, bounded incremental migration, caller migration and
+relevant parity before replacement completion, and eventual retirement after
+an explicit compatibility condition are binding. Facade-first sequencing is
+not. One source proposed this order:
 
 1. Inventory live owners, callers, state transitions, artifact paths,
    execution paths, duplicated policies, and user-authored configuration.
-2. Ratify the architectural invariants against current contracts and tests.
+2. Apply the ratified architectural invariants to the selected slice.
 3. Introduce the smallest useful Project/Run/application facades around current
    behavior.
 4. Move the public CLI and documentation to those facades while retaining
@@ -937,12 +950,13 @@ incremental, deletion-complete strategy:
    than leaving permanent dual architecture.
 8. Measure whether the user and maintenance surface actually became simpler.
 
-Under this proposal, “introduce an abstraction” is not completion. A package
-would close only when its callers use the intended owner, old paths have
-explicit dispositions, protected behavior and evidence remain intact, and
-maintained surface is reduced or one final owner is established. The exact
-migration and deletion policy remains open under `AC-DEC-018` and
-`AC-DEC-020`.
+Regardless of the selected sequence, “introduce an abstraction” is not
+completion. A package closes only when its callers use the intended owner,
+relevant parity is established, protected behavior and evidence remain intact,
+and every old path has the disposition required by its retirement condition.
+`AC-DEC-018` now owns only each migration's compatibility window, warnings,
+fixtures, and removal evidence. `AC-DEC-020` owns work order and just-in-time
+facade sequencing; neither reopens the binding eventual-retirement rule.
 
 ### 13.1 Nonbinding sequencing proposals from the sources
 
@@ -1015,7 +1029,7 @@ before any time target becomes normative.
 | `AC-DEC-002` | Which names form the stable public CLI? | setup/init, validate/check/doctor, status/resume, config, inspect/explain/debug |
 | `AC-DEC-003` | How are Doctor diagnosis and repair divided? | default read-only diagnosis plus explicit `--fix`, dedicated repair command, or setup-owned mutations; repair provenance and safety |
 | `AC-DEC-004` | What is the user-authored scientific schema? | project.yaml versus analysis.yaml; embedded samples versus TSV; configuration evolution |
-| `AC-DEC-005` | How are effective values merged? | defaults, site/execution profile, project request, and CLI override precedence; list/map/null semantics |
+| `AC-DEC-005` | What are the exact merge semantics within the ratified inspectable effective-value model? | Exact defaults/site/project/CLI order and list/map/null semantics; every effective value and source remains inspectable, and only owner-defined safe values are overrideable |
 | `AC-DEC-006` | How are runtime and execution choices represented? | Managed/Site/Explicit runtimes; local/cluster profiles; explicit versus automatic backend selection |
 | `AC-DEC-007` | Is a supported managed container/environment accepted? | Scheduler, storage, architecture, security, licensing, updates, native escape hatch, image and tool provenance |
 | `AC-DEC-008` | What is the minimum useful Stage boundary? | Methods, lifecycle states, typed contracts, current-owner mapping, avoiding a generic framework |
@@ -1028,9 +1042,9 @@ before any time target becomes normative.
 | `AC-DEC-015` | What replaces the current “demo” surface? | Neutral synthetic golden path; whether “demo” remains a command, test-only term, or is retired completely |
 | `AC-DEC-016` | Which filesystem concepts are public? | Project/inputs/runs/results/runtime; exact internal-to-public mapping |
 | `AC-DEC-017` | Which advanced interfaces are stable? | inspect run/artifact, manifest, evidence, diagnostics, debug, machine-readable outputs |
-| `AC-DEC-018` | What deprecation and deletion policy applies? | Compatibility window, caller migration, warnings, fixtures, removal evidence |
+| `AC-DEC-018` | How is each bounded compatibility and retirement transition implemented? | Compatibility window, warnings, fixtures, and removal evidence; caller migration, relevant parity, owned temporary compatibility, and eventual retirement are already binding |
 | `AC-DEC-019` | Which campaign metrics and targets become commitments? | Baseline method, supported environment, time targets, qualitative acceptance |
-| `AC-DEC-020` | How should work be ordered? | Three source phase models and P0–P3 suggestion; later importance and complexity scores |
+| `AC-DEC-020` | How should work and any just-in-time facade use be ordered? | Three source phase models and P0–P3 suggestion; per-slice facade need; later importance and complexity scores |
 | `AC-DEC-021` | Which new architecture documents should remain after the campaign? | Invariants, current architecture, target architecture, or consolidation into existing durable owners |
 | `AC-DEC-022` | How should the Steps 07–09 audit be bounded? | Review authority, candidate universe, count/CMH/BH contracts, oracle data, evidence ceiling |
 | `AC-DEC-023` | Which historical claims from the source are accurate and useful? | Development dates, chronology, and repository-history interpretations require live Git verification before reuse |
@@ -1065,14 +1079,15 @@ does not select a name, API, schema, or implementation.
 
 ## 16. Candidate slicing ledger
 
-These are candidate work slices, not final backlog IDs, priority, or
-implementation authorization. Each will require a bounded owner/caller review,
-non-goals, acceptance conditions, and evidence ceiling before entering the
-matrix.
+These began as candidate work slices, not final backlog IDs, priority, or
+implementation authorization. `AC-SLICE-01` is now complete as the bounded
+`ARCH-CONST-01` decision/audit slice. Every remaining candidate still requires
+a bounded owner/caller review, non-goals, acceptance conditions, and evidence
+ceiling before entering the matrix.
 
 | Candidate | Observable outcome | Likely relationship to current matrix |
 |---|---|---|
-| `AC-SLICE-01` | Ratify an architectural-invariants constitution against live contracts and tests | New slice; supports `ARCH-01` |
+| `AC-SLICE-01` | Ratified all 27 architectural invariants and five migration/test guardrails against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open |
 | `AC-SLICE-02` | Define formal layers, dependency direction, forbidden edges, and enforcement strategy | New slice; supports `ARCH-01` |
 | `AC-SLICE-03` | Define and introduce the Project/Analysis/Run application model without behavior change | New slice or expansion of `CONTROL-01` |
 | `AC-SLICE-04` | Define the minimum thin Stage boundary and migrate one representative lifecycle | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` |
@@ -1105,9 +1120,10 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 
 | Existing ID | Context to carry into the matrix |
 |---|---|
+| `ARCH-CONST-01` | Completed decision/audit slice: the durable 27-invariant register and five migration/test guardrails now live in the platform-direction decision; broad implementation remains `ARCH-01` and the routed owner tasks |
 | `CONTROL-01` | Compact Project/Analysis/Run/Result model, progressive disclosure, public identity vocabulary, and generated internals remaining inspectable |
 | `CONFIG-01` | Scientific versus execution versus evidence ownership; one scientist-facing definition; generated normalized artifacts; schema alternatives remain open |
-| `OPS-01` | Small operator-configuration surface; proposed precedence and named-profile models remain choices to ratify; installation facts and accepted effective values remain discoverable |
+| `OPS-01` | Small operator-configuration surface; every effective value and source is inspectable and only explicitly safe owner-defined values are overrideable; exact interfaces, merge semantics, and named-profile model remain open |
 | `OPS-02` | Small role-aware CLI with the required capabilities; command partitioning/order, scheduler-selection behavior, and stable advanced inspection/override/debug routes remain open |
 | `OPS-03` | Inline/generated program inventory, extraction of substantive reusable logic, and removal of operator dependence on helper scripts |
 | `OPS-04` | Replace “local pilot” with a domain name that remains accurate beyond one execution context |
@@ -1126,8 +1142,8 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `OBS-01` | Remove engine, owner, transaction, and low-value noise from the primary view while retaining durable detail |
 | `OBS-02` | High-level scientific progress, public run status, elapsed time, completion/failure, and links to recovery/inspection |
 | `ANALYSIS-01` | Stop/reuse through the Step 06 boundary and launch separately identified cohort, subset, sensitivity, or downstream work |
-| `ANALYSIS-02` | Collaborator-extensible modules with typed scientific contracts; explicitly ratify how scientific algorithms, assumptions, interpretation, and implementation visibility remain reviewable across the module boundary |
-| `ARCH-01` | Binding formal layering and deliberate abstractions; explicitly evaluate proposed one-authority, facade-first, scientific-visibility, deletion-complete, Artifact Store, and migration guardrails; ratify preservation versus equal-or-stronger replacement of adversarial/seeded-fault and synthetic E2E regression defenses with honest evidence ceilings |
+| `ANALYSIS-02` | Collaborator-extensible modules with typed scientific contracts; scientific algorithms, assumptions, interpretation, and review-relevant implementation must remain visible, while exact module APIs and anti-framework application remain open |
+| `ARCH-01` | Consumes the completed invariant constitution. Exact layers, dependencies, enforcement, abstraction purposes and APIs, individual authority migrations, Artifact Store boundary, and facade use remain open; bounded migration, eventual retirement, and equal-or-stronger mapped test protection are binding |
 | `REPORT-03` | Primary-scientific-findings hierarchy with evidence and operational detail progressively disclosed |
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |
 | `RESULTS-01` | One discoverable results surface and coordination with the proposed Run Bundle and Artifact Store concepts without preselecting their ownership or layouts |
