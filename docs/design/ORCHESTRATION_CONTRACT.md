@@ -361,11 +361,21 @@ records are create-exclusive and immutable. A convenience status projection
 may be regenerated, but is never authority. `.snakemake/` is disposable engine
 metadata and is never a reporting input or EMRYS completion record.
 
-Task stdout/stderr files are complete opaque command-stream captures for
-diagnosis. They are not the future structured application logs defined by
-`LOGGING_CONTRACT.md`. Each task-attempt record binds both captures by canonical
-path and SHA-256; their presence or content never establishes task success or
-evidence promotion, but later mutation invalidates that task evidence.
+Task stdout/stderr files are opaque command-stream captures for diagnosis. They
+are not the future structured application logs defined by
+`LOGGING_CONTRACT.md`. After durable task-start publication, the task boundary
+creates them exclusively without following links and drains each child stream
+through EOF in bounded chunks into its separate descriptor. Byte order is exact
+within each stream; no stdout/stderr interleaving order is claimed. Both files
+are fsynced, their final descriptor identities are retained, and they are
+closed. Bounded pathname hashing must reopen the same device, inode, size,
+modification time, and change time before task-attempt publication. Each
+task-attempt record binds both complete captures by canonical path and SHA-256.
+Their presence or content never establishes task success or evidence
+promotion, but later mutation invalidates that task evidence. An unexpected
+interruption may
+leave exact partial captures without a task-attempt record; those captures are
+post-entry diagnostic evidence, not completion proof.
 
 ## Planning and mutation boundary
 
@@ -387,14 +397,18 @@ not separate DAG nodes. A job performs, in order:
 
 1. immutable identity, dispatch, input, and declared-destination preflight;
 2. durable create-exclusive publication of the scope's task-start record;
-3. the owner's public producer command, including its owner-local no-clobber
+3. protected create-exclusive opening of the task's separate stdout/stderr
+   captures;
+4. the owner's public producer command, including its owner-local no-clobber
    and recovery-residue preflight;
-4. structural admission of the declared native output set;
-5. the owner's public validator in execute mode;
-6. a generic parser requiring the exact seven-column validation header, at
+5. structural admission of the declared native output set;
+6. the owner's public validator in execute mode;
+7. a generic parser requiring the exact seven-column validation header, at
    least one declared row, and `status=pass` for every row;
-7. stable-input rechecks; and
-8. atomic publication of the verified task record.
+8. stable-input rechecks;
+9. stream fsync/close, bounded stable hashing, and immutable task-attempt
+   publication; and
+10. atomic publication of the verified task record.
 
 Validators may publish `status=fail` rows and still exit zero. Consequently,
 producer exit, validator exit, and semantic report status are three distinct
