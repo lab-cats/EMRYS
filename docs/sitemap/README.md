@@ -47,10 +47,10 @@ For task orientation and approved delivery, use
 | Cross-cutting commands and common recovery | [`RUNBOOK.md`](../operations/RUNBOOK.md) and [`TROUBLESHOOTING.md`](../operations/TROUBLESHOOTING.md) |
 | System-view routing and exact architecture | [Architecture index](../architecture/README.md) and its named children |
 | Local-pilot lifecycle and owner admission | [`ORCHESTRATION_CONTRACT.md`](../design/ORCHESTRATION_CONTRACT.md), owner contracts, workflow profile, stage map, and tests |
-| Durable rationale and unsliced architecture alternatives | [`DECISIONS.md`](../design/DECISIONS.md), its detail files, and the temporary [`architecture_campaign.md`](../tasks/architecture_campaign.md) |
+| Durable rationale and unsliced campaign alternatives | [`DECISIONS.md`](../design/DECISIONS.md), its detail files, the temporary [`architecture_campaign.md`](../tasks/architecture_campaign.md), and the temporary [`performance_campaign.md`](../tasks/performance_campaign.md) |
 | Exact behavior, commands, defects, and tests | Applicable colocated owner `README.md` and `CONTRACT.md` |
 | Test policy and cross-cutting recheck routes | [`TEST_BASELINE.md`](../design/TEST_BASELINE.md); exact defects remain with the applicable owner `README.md` or `CONTRACT.md` |
-| Current planning backlog and temporary unsliced architecture context | [Findings matrix](../tasks/backlog_matrix.md), [architecture campaign](../tasks/architecture_campaign.md), [provisional architecture ranking](../tasks/architecture_backlog_matrix.md), and [task-planning rules](../tasks/README.md) |
+| Current planning backlog and temporary unsliced campaign context | [Findings matrix](../tasks/backlog_matrix.md), [architecture campaign](../tasks/architecture_campaign.md), [provisional architecture ranking](../tasks/architecture_backlog_matrix.md), [performance campaign](../tasks/performance_campaign.md), [provisional performance ranking](../tasks/performance_backlog_matrix.md), and [task-planning rules](../tasks/README.md) |
 | Dated planning and evidence records | Git history and [`docs/history`](../history/); neither owns current state or requirements |
 
 Historical planning detail is not a live subject-matter owner. Before deleting

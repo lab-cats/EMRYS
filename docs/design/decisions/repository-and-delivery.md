@@ -173,10 +173,12 @@ handoff, or stale roadmap authority.
 | `docs/reference/GLOSSARY.md` | Retain | Shared terminology routed to canonical subject owners. |
 | `docs/reference/README.md` | Retain | Necessary reference index. |
 | `docs/sitemap/README.md` | Retain and refresh routes | Canonical audience/owner map; legacy authorities are removed now and later journey redesign remains `DOC-01`. |
-| `docs/tasks/README.md` | Retain | Compact entry point for the canonical matrix and temporary campaign/ranking. |
+| `docs/tasks/README.md` | Retain | Compact entry point for the canonical matrix and temporary campaign/ranking views. |
 | `docs/tasks/architecture_backlog_matrix.md` | Retain temporarily | Provisional campaign-card ranking only; retire when campaign slicing and final matrix scoring make it unnecessary. |
 | `docs/tasks/architecture_campaign.md` | Retain temporarily | Temporary source of truth for unsliced architecture context; it cannot become another backlog. |
 | `docs/tasks/backlog_matrix.md` | Retain as canonical | Sole durable task/status/outcome/acceptance/disposition authority. |
+| `docs/tasks/performance_backlog_matrix.md` | Retain temporarily | Provisional performance-card ranking and experiment routing only; it cannot own status or acceptance. |
+| `docs/tasks/performance_campaign.md` | Retain temporarily | Temporary source of truth for unsliced computational-scaling context and experiment rules; it cannot become another backlog. |
 | `docs/architecture/diagrams/current_user_pipeline.mmd` | Retain | Current non-authoritative user-flow projection. |
 | `docs/architecture/diagrams/future_modular_pipeline.mmd` | Retire with `DOC-03` | Future proposal duplicates campaign context and must be traced node by node before deletion. |
 | `docs/architecture/diagrams/future_reporting_layer.mmd` | Retire with `DOC-03` | Future proposal duplicates campaign context and must be traced node by node before deletion. |

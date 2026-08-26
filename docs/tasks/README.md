@@ -7,12 +7,18 @@
 | Working backlog | [`backlog_matrix.md`](backlog_matrix.md) | Owns accepted task IDs, status, required outcomes, acceptance, and dispositions |
 | Unsliced architecture context | [`architecture_campaign.md`](architecture_campaign.md) | Temporarily preserves source feedback, rationale, ideal states, alternatives, and slicing traceability; it does not create tasks |
 | Architecture campaign ranking | [`architecture_backlog_matrix.md`](architecture_backlog_matrix.md) | Provides provisional Architecture Priority and Indicative Complexity for campaign cards; it does not own implementation status or final task scoring |
+| Unsliced performance context | [`performance_campaign.md`](performance_campaign.md) | Temporarily preserves scaling diagnoses, hypotheses, alternatives, experiment rules, and context not yet accepted into the backlog; it does not create tasks |
+| Performance campaign ranking | [`performance_backlog_matrix.md`](performance_backlog_matrix.md) | Provides provisional Importance, Complexity, correctness/evidence Risk, Benchmark, and Parity for performance cards; it does not own implementation status or acceptance |
 | Historical planning detail | Git history and [`docs/history`](../history/) | Supplies dated context only; it does not own current state or requirements |
 
 The findings matrix is the repository's only durable backlog. Do not create a
-parallel registry, task-card directory, status list, or campaign-only task. The
-campaign is temporary and must eventually be fully sliced into the matrix or
-retired.
+parallel registry, task-card directory, status list, or campaign-only task.
+Campaign documents and their provisional ranking views are temporary and must
+eventually be fully sliced into the matrix or retired.
+
+A successful experiment or CI timing result does not itself authorize
+integration. Only an accepted main-matrix item whose parity and evidence
+requirements have been satisfied may enter the performance-integration branch.
 
 None of these documents grants mutation, publication, cluster execution,
 scientific review, or evidence promotion authority. Select one accepted matrix
