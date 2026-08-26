@@ -657,6 +657,12 @@ final_summary="$qc_root/$cohort_id.step08_summary.tsv"
 tmp_sites="$cohort_output_dir/.$cohort_id.step08.$run_token.sites.tmp.tsv"
 tmp_inputs="$cohort_output_dir/.$cohort_id.step08.$run_token.inputs.tmp.tsv"
 tmp_summary="$qc_root/.$cohort_id.step08.$run_token.summary.tmp.tsv"
+fragment_paths=()
+for ((index = 1; index <= expected_input_count; index++)); do
+    printf -v fragment_path \
+        '%s.fragment-%06d.tsv' "$tmp_sites" "$index"
+    fragment_paths+=("$fragment_path")
+done
 
 backup_sites="$cohort_output_dir/.$cohort_id.step08.$run_token.previous.sites.tsv"
 backup_inputs="$cohort_output_dir/.$cohort_id.step08.$run_token.previous.inputs.tsv"
@@ -889,7 +895,9 @@ cleanup() {
 
     if [[ "$scratch_owned" == true &&
           ( "$rollback_failed" != true || "$no_clobber" != true ) ]]; then
-        rm -f "$tmp_sites" "$tmp_inputs" "$tmp_summary" || true
+        rm -f \
+            "$tmp_sites" "$tmp_inputs" "$tmp_summary" \
+            "${fragment_paths[@]}" || true
         if [[ "$rollback_failed" != true ]] &&
            [[ "$status" -eq 0 ||
               "$backup_started" != true ||
@@ -932,9 +940,10 @@ lock_owner_written=true
 
 for owned_path in \
     "$tmp_sites" "$tmp_inputs" "$tmp_summary" \
-    "$backup_sites" "$backup_inputs" "$backup_summary"
+    "$backup_sites" "$backup_inputs" "$backup_summary" \
+    "${fragment_paths[@]}"
 do
-    if [[ -e "$owned_path" ]]; then
+    if [[ -e "$owned_path" || -L "$owned_path" ]]; then
         arm_signal_traps
         die "Refusing to reuse an existing Step 08 scratch path: $owned_path"
     fi
@@ -958,6 +967,10 @@ confirm_input_hashes
 if ! "${r_command[@]}"; then
     die "Step 08 R VCF preprocessing failed."
 fi
+for fragment_path in "${fragment_paths[@]}"; do
+    [[ ! -e "$fragment_path" && ! -L "$fragment_path" ]] ||
+        die "Step 08 R left a site fragment after processing: $fragment_path"
+done
 confirm_input_hashes
 
 validate_output_tables "$tmp_sites" "$tmp_inputs" "$tmp_summary"

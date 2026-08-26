@@ -37,12 +37,16 @@ DP/AD/ADF/ADR/SP and INFO AD/ADF/ADR; sample columns must match the sample
 manifest exactly.
 
 The optional positive `--threads` value defaults to `1` and bounds independent
-partition/orientation VCF workers. On Unix, worker results are returned in the
-declared manifest/orientation order before deterministic aggregation; Windows
-direct execution falls back to one worker. Annotation import/model construction
-and aggregate reconciliation remain single-owner R operations. R also owns
-deterministic candidate construction, aggregation, and TSV serialization. The
-shell owner performs post-serialization admission and publication.
+partition/orientation VCF workers. Workers write exact run-token-private site
+fragments and return compact counts, candidate IDs, and upstream hashes; R
+appends those fragments in declared manifest/orientation order and removes them
+before success. Windows direct execution falls back to one worker. Annotation
+import/model construction and aggregate reconciliation remain single-owner R
+operations. R still owns
+deterministic candidate construction and TSV serialization. The shell
+predeclares the finite fragment roster for failure cleanup, then performs
+post-serialization admission and publication. Fragments are never outputs or
+transaction markers.
 
 The fixed `legacy_provisional_v1` compatibility policy maps:
 

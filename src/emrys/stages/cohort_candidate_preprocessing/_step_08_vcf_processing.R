@@ -277,7 +277,45 @@ process_vcf_job <- function(job, sample_ids, annotation_model) {
             job$vcf_path
         )
     }
-    list(result = result, vcf_sha256 = vcf_hash_before)
+    published_candidate_count <- nrow(result$sites)
+    candidate_ids <- result$sites$candidate_id
+    if (published_candidate_count > 0L) {
+        if (file.exists(job$fragment_path) ||
+            path_is_symlink(job$fragment_path)) {
+            abort(
+                "Refusing to overwrite an existing Step 08 site fragment: ",
+                job$fragment_path
+            )
+        }
+        utils::write.table(
+            result$sites,
+            file = job$fragment_path,
+            sep = "\t",
+            quote = FALSE,
+            row.names = FALSE,
+            col.names = FALSE,
+            na = "NA",
+            eol = "\n"
+        )
+        fragment_info <- file.info(job$fragment_path)
+        if (!file.exists(job$fragment_path) ||
+            path_is_symlink(job$fragment_path) ||
+            isTRUE(fragment_info$isdir) || is.na(fragment_info$size) ||
+            fragment_info$size <= 0L) {
+            abort(
+                "Step 08 worker did not write its expected site fragment: ",
+                job$fragment_path
+            )
+        }
+    }
+    result$sites <- NULL
+    result$published_candidate_count <- published_candidate_count
+    list(
+        result = result,
+        vcf_sha256 = vcf_hash_before,
+        fragment_path = job$fragment_path,
+        candidate_ids = candidate_ids
+    )
 }
 
 process_vcf_jobs <- function(jobs, threads, sample_ids, annotation_model) {

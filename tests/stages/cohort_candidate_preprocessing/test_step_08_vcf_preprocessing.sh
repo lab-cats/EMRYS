@@ -11,7 +11,7 @@ unset \
     FAKE_MV_FAIL_{MARKER,ONCE_DEST_MATCH} FAKE_MV_RECEIPT_FAIL_{DEST_MATCH,MARKER} \
     FAKE_MV_SITES_RESTORE_FAIL_{DEST_MATCH,MARKER} FAKE_MV_LOG \
     FAKE_RSCRIPT_BAD_{HEADER,INPUT_HASH,INPUT_ORDER,INPUT_PATH,RECONCILIATION,SUMMARY} \
-    FAKE_RSCRIPT_BARRIER_{MARKER,RELEASE} FAKE_RSCRIPT_{DUPLICATE_CANDIDATE,EXTRA_INPUT_FIELD,FAIL,HEADER_ONLY,LOG,MUTATE,OMIT_OUTPUT}
+    FAKE_RSCRIPT_BARRIER_{MARKER,RELEASE} FAKE_RSCRIPT_{DUPLICATE_CANDIDATE,EXTRA_INPUT_FIELD,FAIL,FRAGMENT_FAIL,HEADER_ONLY,LOG,MUTATE,OMIT_OUTPUT}
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 unset EMRYS_RUN_TOKEN
@@ -176,6 +176,11 @@ done
 
 if [[ "${FAKE_RSCRIPT_FAIL:-0}" == "1" ]]; then
     exit 73
+fi
+if [[ "${FAKE_RSCRIPT_FRAGMENT_FAIL:-0}" == "1" ]]; then
+    printf 'partial private fragment\n' \
+        >"$sites_output.fragment-000001.tsv"
+    exit 74
 fi
 
 if [[ -n "${FAKE_RSCRIPT_BARRIER_MARKER:-}" ]]; then
@@ -924,6 +929,21 @@ assert_contains "$test_root/r-failure.err" "Step 08 R VCF preprocessing failed"
 assert_not_exists "$failure_fixture/output/cohort_failure/cohort_failure.step08_sites.tsv"
 assert_not_exists "$failure_fixture/output/cohort_failure/.cohort_failure.step08.lock"
 assert_no_step08_scratch "$failure_fixture/output" "$failure_fixture/qc"
+
+fragment_failure_fixture="$test_root/r-fragment-failure"
+create_fixture "$fragment_failure_fixture" cohort_fragment_failure
+PATH="$fake_bin:$PATH" SLURM_JOB_ID=fragmentfail08 \
+FAKE_RSCRIPT_FRAGMENT_FAIL=1 \
+    run_expect_status 1 \
+        "$test_root/r-fragment-failure.out" \
+        "$test_root/r-fragment-failure.err" \
+        run_step08 \
+        "$fragment_failure_fixture" cohort_fragment_failure --execute
+assert_contains \
+    "$test_root/r-fragment-failure.err" \
+    "Step 08 R VCF preprocessing failed"
+assert_no_step08_scratch \
+    "$fragment_failure_fixture/output" "$fragment_failure_fixture/qc"
 
 printf 'Running malformed/missing R output checks...\n'
 malformed_fixture="$test_root/malformed"

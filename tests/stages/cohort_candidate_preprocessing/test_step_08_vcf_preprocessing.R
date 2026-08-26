@@ -295,6 +295,7 @@ build_case <- function(root, mode = "positive") {
     annotation_hash <- sha256_file(annotation_gtf)
 
     p1_fwd <- default_fwd_rows()
+    p2_fwd <- character()
     p2_rev <- default_rev_rows()
     if (mode == "disjoint_annotation") {
         p2_rev <- sub("^1", "3", p2_rev)
@@ -335,6 +336,12 @@ build_case <- function(root, mode = "positive") {
         omit_ad_definition <- TRUE
     } else if (mode == "duplicate_candidate") {
         p1_fwd <- c(p1_fwd, p1_fwd[[1L]])
+    } else if (mode == "cross_job_duplicate") {
+        p2_fwd <- p1_fwd[[1L]]
+    } else if (mode == "late_job_failure") {
+        p2_rev[[1L]] <- sub(
+            "14:12,2", "14:12,x", p2_rev[[1L]], fixed = TRUE
+        )
     }
 
     for (partition_id in partitions$partition_id) {
@@ -362,9 +369,12 @@ build_case <- function(root, mode = "positive") {
             write_lines(vcf_header(c("sample_A", "sample_B")), rev_path)
         } else {
             write_lines(
-                vcf_header(
-                    c("sample_A", "sample_B"),
-                    contig = selector_chromosome
+                c(
+                    vcf_header(
+                        c("sample_A", "sample_B"),
+                        contig = selector_chromosome
+                    ),
+                    p2_fwd
                 ),
                 fwd_path
             )
@@ -511,6 +521,11 @@ run_engine <- function(
             "failed engine run must remove all owned output paths"
         )
     }
+    assert_true(
+        length(Sys.glob(paste0(invocation$paths$sites, ".fragment-*.tsv"))) ==
+            0L,
+        "engine run must remove all private site fragments"
+    )
     invocation$paths
 }
 
@@ -906,6 +921,8 @@ negative_modes <- c(
     "malformed_info_count",
     "missing_format_definition",
     "duplicate_candidate",
+    "cross_job_duplicate",
+    "late_job_failure",
     "receipt_path_mismatch",
     "declared_count_mismatch"
 )
@@ -917,7 +934,11 @@ expected_negative_errors <- list(
     overlap = "Partition selectors overlap",
     malformed_count = "FORMAT/AD must contain",
     malformed_dp_count = "FORMAT/DP must contain",
-    malformed_info_count = "INFO/AD must contain"
+    malformed_info_count = "INFO/AD must contain",
+    cross_job_duplicate = paste0(
+        "Duplicate partition-independent candidate_id across declared inputs"
+    ),
+    late_job_failure = "FORMAT/AD must contain"
 )
 for (mode in negative_modes) {
     case <- build_case(file.path(test_root, paste0("negative-", mode)), mode)

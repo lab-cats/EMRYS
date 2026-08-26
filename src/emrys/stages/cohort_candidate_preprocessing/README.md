@@ -48,11 +48,12 @@ prior set without running R; direct use retains complete-set replacement
 unless that option is supplied.
 
 `--threads` bounds independent partition/orientation VCF workers. The owner
-builds the annotation model once, returns worker results in manifest then
-`FWD_like`, `REV_like` order, and retains one deterministic validation and
-publication transaction. It defaults to `1`; Windows direct execution falls
-back to one worker because the implementation uses Unix process forking.
-Each execution logs assigned job count and cumulative job seconds per worker.
+builds the annotation model once, writes private per-job site fragments, appends
+them in manifest then `FWD_like`, `REV_like` order, and retains one deterministic
+validation and publication transaction. Fragments are removed before success
+and are not outputs. It defaults to `1`; Windows direct execution falls back to
+one worker because the implementation uses Unix process forking. Each execution
+logs assigned job count and cumulative job seconds per worker.
 
 For a site qualification, use the existing
 `scripts/benchmark_stage_resources.py` utility with values `1, 2, 4`,

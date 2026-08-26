@@ -59,6 +59,28 @@ write_tsv <- function(table, path) {
     )
 }
 
+path_is_symlink <- function(path) {
+    target <- Sys.readlink(path)
+    length(target) == 1L && !is.na(target) && nzchar(target)
+}
+
+append_site_fragment <- function(output_path, fragment_path) {
+    input <- file(fragment_path, open = "rb")
+    on.exit(close(input), add = TRUE)
+    output <- file(output_path, open = "ab")
+    on.exit(close(output), add = TRUE)
+    row_count <- 0
+    repeat {
+        bytes <- readBin(input, what = "raw", n = 1024L * 1024L)
+        if (length(bytes) == 0L) {
+            break
+        }
+        row_count <- row_count + sum(bytes == as.raw(0x0a))
+        writeBin(bytes, output)
+    }
+    row_count
+}
+
 main <- function() {
     arguments <- parse_arguments(commandArgs(trailingOnly = TRUE))
     require_packages()
@@ -118,9 +140,13 @@ main <- function() {
         }
     }
     successful <- FALSE
+    owned_paths <- output_paths
     on.exit({
         if (!successful) {
-            unlink(output_paths[file.exists(output_paths)], force = TRUE)
+            present <- file.exists(owned_paths) | vapply(
+                owned_paths, path_is_symlink, logical(1)
+            )
+            unlink(owned_paths[present], force = TRUE)
         }
     }, add = TRUE)
 
@@ -174,11 +200,27 @@ main <- function() {
                 receipt_path = receipt_path,
                 receipt_sha256 = receipt_hash_before,
                 vcf_path = vcf_path,
+                fragment_path = sprintf(
+                    "%s.fragment-%06d.tsv", output_paths[[1L]], job_count
+                ),
                 declared_count =
                     receipt_data$declared_counts[[orientation_index]]
             )
         }
     }
+
+    fragment_paths <- vapply(
+        jobs, function(job) job$fragment_path, character(1)
+    )
+    for (fragment_path in fragment_paths) {
+        if (file.exists(fragment_path) || path_is_symlink(fragment_path)) {
+            abort(
+                "Refusing to overwrite an existing Step 08 site fragment: ",
+                fragment_path
+            )
+        }
+    }
+    owned_paths <- c(output_paths, fragment_paths)
 
     job_results <- process_vcf_jobs(
         jobs, threads, sample_ids, annotation_model
@@ -193,17 +235,27 @@ main <- function() {
         }
     }
 
-    all_sites <- list()
+    candidate_ids <- unlist(
+        lapply(job_results, function(job_result) job_result$candidate_ids),
+        use.names = FALSE
+    )
+    duplicate_index <- anyDuplicated(candidate_ids)
+    if (duplicate_index != 0L) {
+        abort(
+            "Duplicate partition-independent candidate_id across declared ",
+            "inputs: ", candidate_ids[[duplicate_index]]
+        )
+    }
+    for (job_index in seq_along(job_results)) {
+        job_results[[job_index]]$candidate_ids <- NULL
+    }
+    rm(candidate_ids)
+
     input_rows <- vector("list", length(jobs))
-    site_count <- 0L
     for (job_index in seq_along(jobs)) {
         job <- jobs[[job_index]]
         job_result <- job_results[[job_index]]
         result <- job_result$result
-        if (nrow(result$sites) > 0L) {
-            site_count <- site_count + 1L
-            all_sites[[site_count]] <- result$sites
-        }
         input_rows[[job_index]] <- data.frame(
             cohort_id = cohort_id,
             partition_id = job$partition_id,
@@ -225,29 +277,15 @@ main <- function() {
             supported_snv_count = result$supported_snvs,
             skipped_symbolic_count = result$skipped_symbolic,
             skipped_non_snv_count = result$skipped_non_snv,
-            published_candidate_count = nrow(result$sites),
+            published_candidate_count = result$published_candidate_count,
             orientation_policy = ORIENTATION_POLICY,
             stringsAsFactors = FALSE,
             check.names = FALSE
         )
     }
 
-    sites <- if (site_count == 0L) {
-        empty_sites(sample_ids)
-    } else {
-        do.call(rbind, all_sites[seq_len(site_count)])
-    }
     input_receipt <- do.call(rbind, input_rows)
     input_receipt <- input_receipt[, INPUT_COLUMNS, drop = FALSE]
-    if (anyDuplicated(sites$candidate_id)) {
-        duplicate <- unique(
-            sites$candidate_id[duplicated(sites$candidate_id)]
-        )[[1L]]
-        abort(
-            "Duplicate partition-independent candidate_id across declared ",
-            "inputs: ", duplicate
-        )
-    }
 
     count_columns <- c(
         "observed_vcf_record_count", "observed_alt_allele_count",
@@ -260,8 +298,7 @@ main <- function() {
         numeric(1)
     )
     if (totals[["supported_snv_count"]] !=
-        totals[["published_candidate_count"]] ||
-        totals[["published_candidate_count"]] != nrow(sites)) {
+        totals[["published_candidate_count"]]) {
         abort(
             "Step 08 supported, published, and combined candidate counts do ",
             "not reconcile."
@@ -305,19 +342,58 @@ main <- function() {
         paste0("AD__", sample_ids),
         paste0("AF__", sample_ids)
     )
-    sites <- sites[, expected_site_columns, drop = FALSE]
+    sites_header <- empty_sites(sample_ids)
+    sites_header <- sites_header[, expected_site_columns, drop = FALSE]
 
     # R owns deterministic candidate construction and TSV serialization. The
     # shell owner performs post-serialization admission on these staged outputs
     # before publication; it does not reconstruct within-VCF candidate order.
-    write_tsv(sites, output_paths[[1L]])
+    write_tsv(sites_header, output_paths[[1L]])
+    appended_candidate_count <- 0
+    for (job_result in job_results) {
+        result <- job_result$result
+        fragment_path <- job_result$fragment_path
+        if (result$published_candidate_count == 0L) {
+            if (file.exists(fragment_path) || path_is_symlink(fragment_path)) {
+                abort(
+                    "Step 08 worker wrote an unexpected empty site fragment: ",
+                    fragment_path
+                )
+            }
+            next
+        }
+        if (!file.exists(fragment_path) || path_is_symlink(fragment_path)) {
+            abort("Step 08 site fragment is unavailable: ", fragment_path)
+        }
+        appended_rows <- append_site_fragment(
+            output_paths[[1L]], fragment_path
+        )
+        if (appended_rows != result$published_candidate_count) {
+            abort(
+                "Step 08 site fragment row count does not reconcile: ",
+                fragment_path
+            )
+        }
+        appended_candidate_count <- appended_candidate_count + appended_rows
+        if (unlink(fragment_path, force = TRUE) != 0L ||
+            file.exists(fragment_path) || path_is_symlink(fragment_path)) {
+            abort("Could not remove Step 08 site fragment: ", fragment_path)
+        }
+    }
+    if (appended_candidate_count != totals[["published_candidate_count"]]) {
+        abort(
+            "Step 08 supported, published, and combined candidate counts do ",
+            "not reconcile."
+        )
+    }
     write_tsv(summary, output_paths[[3L]])
     write_tsv(input_receipt, output_paths[[2L]])
     successful <- TRUE
 
     message(
         "Step 08 preprocessing complete: ", nrow(input_receipt),
-        " VCFs, ", nrow(sites), " supported SNV candidates."
+        " VCFs, ", totals[["published_candidate_count"]],
+        " supported SNV candidates."
     )
 }
 
