@@ -1,0 +1,12 @@
+schema_version: emrys.resource-benchmark.v1
+cases:
+  - name: step08_site_fragments
+    values: [1, 2]
+    repetitions: 3
+    setup_argv: null
+    producer_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, run, "{value}", "{trial_dir}"]
+    validator_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, validate, "{value}", "{trial_dir}"]
+    artifact_paths:
+      - "{trial_dir}/sites.tsv"
+      - "{trial_dir}/inputs.tsv"
+      - "{trial_dir}/summary.tsv"
