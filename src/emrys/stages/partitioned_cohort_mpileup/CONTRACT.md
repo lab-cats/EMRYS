@@ -64,31 +64,40 @@ For `<cohort>` and `<partition>`, the output directory contains:
 Header-only VCFs are valid. The receipt has exactly two rows, ordered
 `FWD_like` then `REV_like`, and records cohort, partition, selector type/value,
 orientation, VCF path, both manifest SHA-256 values, sample count, and VCF
-record count. It is renamed last among the three outputs and is the native
-completion marker. Both published VCFs are structurally revalidated and
-record-count checked before the receipt becomes visible. The receipt itself is
-then checked inside the owned rollback boundary; its mere presence is not
+record count. It is published last among the three outputs and is the native
+completion marker. Temporary VCFs are structurally validated and record-count
+checked before publication. On the orchestration-safe no-clobber path the final
+VCFs are create-exclusive hard links to those validated temporary artifacts;
+exact staging/final inode identity carries their validation across publication
+without reparsing or recounting the VCFs. The legacy replacement route retains
+final-path VCF validation and counting. After the receipt is published and
+validated, no-clobber checks both VCF identities and the receipt identity
+together before removing staging anchors. The receipt's mere presence is not
 independent proof of a successfully completed immutable computation.
 
 [`step_07_bcftools_mpileup_by_chrom_and_strand.sh`](step_07_bcftools_mpileup_by_chrom_and_strand.sh)
 is side-effect-free in dry-run. Execute mode hashes and later rechecks both
 manifests, uses a cohort/partition lock and run-token temporary/backup paths,
 rejects stale owned paths and partial prior sets, validates temporary VCF
-sample order and counts, then replaces all three outputs with the receipt last.
-Final outputs are revalidated before backups are removed.
+sample order and counts, then publishes all three outputs with the receipt last.
 `--no-clobber` is the orchestration-safe policy: while holding the owner lock,
 it rejects a complete predecessor set without invoking bcftools or changing
-stable outputs. Before invoking bcftools on a new output set, that mode hashes
-the exact sample and partition manifests, reference FASTA/FAI pair, selected
-regions file when applicable, and both BAM/BAI pairs for every admitted
-sample. It rechecks the complete membership and bytes after tool execution and
-again before publication. These hashes are in-attempt stability guards; they
-are not added to the native receipt. Direct invocations retain complete-set
+stable outputs. Immediately before invoking bcftools on a new output set, that
+mode hashes the exact sample and partition manifests, reference FASTA/FAI pair,
+selected regions file when applicable, and both BAM/BAI pairs for every
+admitted sample. It performs one complete post-bcftools recheck of that roster,
+covering stability through both scientific consumers. Receipt construction and
+publication no longer consume those large scientific inputs, so the producer
+does not repeat their hashes at transaction completion; it still rechecks the
+small manifest hashes because they are embedded in receipt identity. These
+hashes are in-attempt stability guards, not proof against transient mutations,
+and are not added to the native receipt. Direct invocations retain complete-set
 replacement and the legacy manifests-only stability boundary unless the flag
 is supplied.
-First publication in that mode is create-exclusive; VCF and receipt staging
-inode anchors remain through final validation, and ambiguous replacement
-preserves the owner lock and residue.
+
+First publication in no-clobber mode is create-exclusive; VCF and receipt
+staging inode anchors remain until complete-set publication is proven, and
+ambiguous replacement preserves the owner lock and residue.
 
 Ordinary rollback restores the prior three-file set. If restoration itself
 fails, backup paths and the owned lock are preserved for operator recovery;
@@ -150,7 +159,8 @@ controlled exit-`2` boundary.
 - [`test_step_07_bcftools_mpileup_by_chrom_and_strand.sh`](../../../../tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh)
   protects selector modes, manifest order, commands, dry-run, publication,
   locking, stale paths, child failures, transaction ordering, replacement,
-  rollback failures, signals, mutation gaps, and provenance omissions.
+  rollback failures, signals, mutation gaps, provenance omissions, no-clobber
+  hash-pass counts, and staging/final inode-bound validation.
 - [`test_validate_step_07_mpileup_outputs.py`](../../../../tests/stages/partitioned_cohort_mpileup/test_validate_step_07_mpileup_outputs.py)
   plus wrapper, roster, publication-fault, public-CLI, artifact, report, and
   coverage tests protect the independent evidence boundary.
