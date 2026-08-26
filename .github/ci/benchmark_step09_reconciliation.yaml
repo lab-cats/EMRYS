@@ -1,0 +1,37 @@
+schema_version: emrys.resource-benchmark.v1
+cases:
+  - name: step09_p1_c100000
+    values: [1, 2]
+    repetitions: 3
+    setup_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, setup, "1", "100000", "{trial_dir}"]
+    producer_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, run, "{value}", "0", "{trial_dir}"]
+    validator_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, validate, "0", "0", "{trial_dir}"]
+    artifact_paths: ["{trial_dir}/result.tsv"]
+  - name: step09_p8_c100000
+    values: [1, 2]
+    repetitions: 3
+    setup_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, setup, "8", "100000", "{trial_dir}"]
+    producer_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, run, "{value}", "0", "{trial_dir}"]
+    validator_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, validate, "0", "0", "{trial_dir}"]
+    artifact_paths: ["{trial_dir}/result.tsv"]
+  - name: step09_p32_c100000
+    values: [1, 2]
+    repetitions: 3
+    setup_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, setup, "32", "100000", "{trial_dir}"]
+    producer_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, run, "{value}", "0", "{trial_dir}"]
+    validator_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, validate, "0", "0", "{trial_dir}"]
+    artifact_paths: ["{trial_dir}/result.tsv"]
+  - name: step09_p128_c100000
+    values: [1, 2]
+    repetitions: 3
+    setup_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, setup, "128", "100000", "{trial_dir}"]
+    producer_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, run, "{value}", "0", "{trial_dir}"]
+    validator_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, validate, "0", "0", "{trial_dir}"]
+    artifact_paths: ["{trial_dir}/result.tsv"]
+  - name: step09_p250_c250000
+    values: [1, 2]
+    repetitions: 3
+    setup_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, setup, "250", "250000", "{trial_dir}"]
+    producer_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, run, "{value}", "0", "{trial_dir}"]
+    validator_argv: [Rscript, .github/ci/benchmark_step09_reconciliation.R, validate, "0", "0", "{trial_dir}"]
+    artifact_paths: ["{trial_dir}/result.tsv"]

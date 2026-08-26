@@ -893,3 +893,68 @@ jobs:
             failed=true
           fi
           [[ "${failed}" == false ]]
+
+  optimization-step09-reconciliation:
+    name: Temporary Step 09 reconciliation benchmark
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref_name == 'perf/optimization-05-step09-reconciliation'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out the candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Check out the fixed baseline
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          ref: 4796e9ecb96df1b352fa5f4fb7fc83de0e1cac24
+          path: baseline
+
+      - name: Set up Python and R
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+
+      - name: Set up locked uv version
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Set up exact R version
+        uses: r-lib/actions/setup-r@d3c5be51b12e724e68f33216ca3c148b66d5f0b6 # v2
+        with:
+          r-version: ${{ env.R_VERSION }}
+          use-public-rspm: false
+
+      - name: Restore the locked Python benchmark runtime
+        shell: bash
+        run: uv sync --locked --group workflow --python python
+
+      - name: Compare the fixed baseline and candidate
+        shell: bash
+        env:
+          EMRYS_BASELINE_ROOT: ${{ github.workspace }}/baseline
+          EMRYS_CANDIDATE_ROOT: ${{ github.workspace }}
+        run: |
+          set -euo pipefail
+          .venv/bin/python scripts/benchmark_stage_resources.py \
+            --manifest .github/ci/benchmark_step09_reconciliation.yaml \
+            --output "${RUNNER_TEMP}/step09-reconciliation" \
+            --execute
+
+      - name: Upload compact benchmark results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: step09-reconciliation-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/step09-reconciliation/trials.tsv
+            ${{ runner.temp }}/step09-reconciliation/summary.tsv
+          if-no-files-found: error
+          retention-days: 14
