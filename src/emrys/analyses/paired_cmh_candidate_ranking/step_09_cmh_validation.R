@@ -262,13 +262,11 @@ validate_step08_sites <- function(sites, sample_ids, partitions, inputs,
         }
     }
 
-    observed_counts <- integer(nrow(inputs))
-    for (index in seq_len(nrow(inputs))) {
-        observed_counts[[index]] <- sum(
-            sites$partition_id == inputs$partition_id[[index]] &
-            sites$orientation == inputs$orientation[[index]]
-        )
-    }
+    input_keys <- paste(inputs$partition_id, inputs$orientation, sep = "\t")
+    site_keys <- paste(sites$partition_id, sites$orientation, sep = "\t")
+    observed_counts <- tabulate(
+        match(site_keys, input_keys), nbins = nrow(inputs)
+    )
     if (!identical(
         as.numeric(observed_counts),
         as.numeric(input_counts$published_candidate_count)
