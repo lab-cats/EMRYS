@@ -204,6 +204,7 @@ bash -n $(SLURM_SYNTAX_PATHS)
 endef
 
 validation-static: lint documentation-check
+	"$(REPORT_PYTHON_BIN)" tests/tools/source_dependencies.py --repo "$(CURDIR)"
 	git diff --check
 	$(STATIC_SHELL_CHECKS)
 	PYTHONDONTWRITEBYTECODE=1 \

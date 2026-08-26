@@ -123,6 +123,13 @@ additional end-to-end evidence. Readable failed validator evidence may publish
 publishes nothing. Restore and baseline-update targets are explicit operator
 mutations, never implicit test actions.
 
+Direct-owner, adversarial, seeded-fault, and synthetic end-to-end defenses may
+be removed only when an explicit invariant-to-test mapping establishes an
+equal-or-stronger replacement at the same declared evidence level. Coverage or
+the scientist-facing synthetic golden path alone is insufficient. This is the
+binding [`AC-GUARD-005`](decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails)
+replacement policy.
+
 ## Python entry points
 
 Current executable behavior belongs to its implementation, colocated contract,

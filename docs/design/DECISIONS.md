@@ -47,6 +47,9 @@ Detailed rationale:
   evidence distinct. Missing and failed expected evidence remains visible.
 - Reporting consumes explicit versioned computational artifacts; it
   never discovers inputs, reruns analysis, installs tools, or promotes state.
+- A full run invokes downstream reporting by default after upstream admission,
+  with an explicit opt-out. Reports are independently regenerable; report
+  failure remains visible but does not invalidate completed scientific work.
 - Scientific HTML figures use the locked private Matplotlib/Logomaker renderer
   only for deterministic presentation of admitted scientific records. Figure
   provenance stays in the evidence HTML; existing owner-generated scientific
@@ -82,6 +85,21 @@ Detailed rationale: [`platform-direction.md`](decisions/platform-direction.md).
 
 - Organize source vertically by functional owner; keep native implementation,
   contracts, commands, diagnostics, recovery, and tests together.
+- Apply the [ratified architectural invariant constitution](decisions/platform-direction.md#ratified-architectural-invariant-constitution).
+  Its **Preserved** entries are scoped current contracts; its **Target** entries
+  are binding campaign requirements with named gaps, not implementation claims.
+- Apply the
+  [ratified responsibility and dependency model](decisions/platform-direction.md#ratified-responsibility-and-dependency-model):
+  responsibility bands are not packages, source imports, runtime invocation,
+  and artifact flow are separate graphs, and only durable negative directions
+  are enforced before later slices select concrete APIs.
+- Keep every effective operational value and source inspectable, expose only
+  owner-defined safe overrides, and keep the science needed for review visible
+  across operational abstractions.
+- Migrate in bounded slices. Temporary compatibility has an owner, scope,
+  parity protection, and retirement condition; superseded paths retire after
+  caller migration and parity. Existing direct, adversarial, seeded-fault, and
+  synthetic end-to-end defenses require mapped equal-or-stronger replacement.
 - Use semantic identities and explicit artifact DAG edges rather than numeric
   aliases or filenames for order.
 - Prohibit peer private-implementation imports. Promote shared code only after
