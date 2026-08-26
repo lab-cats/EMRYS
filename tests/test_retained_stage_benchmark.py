@@ -76,7 +76,9 @@ def _publish_verified_owner(
                 "owner_run_token": "owner-" + "6" * 32,
                 "commands": {
                     "producer": {
-                        "argv": ["owner", "--threads", "4"],
+                        # The retained E2E chose two threads. Benchmark trials
+                        # independently exercise their case-declared count.
+                        "argv": ["owner", "--threads", "2"],
                         "exit_code": 0,
                     }
                 },
@@ -530,6 +532,29 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             BENCHMARK._select_cases(
                 suite="cohort-stages", names=("step08-uniform",)
             )
+
+    def test_retained_owner_threads_are_positive_but_not_case_coupled(self) -> None:
+        record = {
+            "commands": {"producer": {"argv": ["owner", "--threads", "2"]}}
+        }
+        for accepted in ("2", "16"):
+            with self.subTest(accepted=accepted):
+                record["commands"]["producer"]["argv"][-1] = accepted
+                self.assertEqual(
+                    BENCHMARK._admit_owner_positive_integer_argument(
+                        record, BENCHMARK.STEP06_OWNER, "--threads"
+                    ),
+                    int(accepted),
+                )
+        for invalid in ("", "0", "01", "+2", "2.0", "two"):
+            with self.subTest(invalid=invalid):
+                record["commands"]["producer"]["argv"][-1] = invalid
+                with self.assertRaisesRegex(
+                    BENCHMARK.BenchmarkSetupError, "canonical positive integer"
+                ):
+                    BENCHMARK._admit_owner_positive_integer_argument(
+                        record, BENCHMARK.STEP06_OWNER, "--threads"
+                    )
 
     def test_cli_case_parser_preserves_exact_values_and_fails_closed(self) -> None:
         base_arguments = [
