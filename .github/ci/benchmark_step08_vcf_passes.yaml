@@ -1,0 +1,22 @@
+schema_version: emrys.resource-benchmark.v1
+cases:
+  - name: step08_one_large
+    values: [1, 2]
+    repetitions: 3
+    setup_argv: null
+    producer_argv: [.venv/bin/python, .github/ci/benchmark_step08_vcf_passes.py, run, "{value}", one-large, "{trial_dir}"]
+    validator_argv: [.venv/bin/python, .github/ci/benchmark_step08_vcf_passes.py, validate, "{value}", one-large, "{trial_dir}"]
+    artifact_paths:
+      - "{trial_dir}/output/cohort_benchmark/cohort_benchmark.step08_sites.tsv"
+      - "{trial_dir}/output/cohort_benchmark/cohort_benchmark.step08_inputs.tsv"
+      - "{trial_dir}/qc/cohort_benchmark.step08_summary.tsv"
+  - name: step08_many_small
+    values: [1, 2]
+    repetitions: 3
+    setup_argv: null
+    producer_argv: [.venv/bin/python, .github/ci/benchmark_step08_vcf_passes.py, run, "{value}", many-small, "{trial_dir}"]
+    validator_argv: [.venv/bin/python, .github/ci/benchmark_step08_vcf_passes.py, validate, "{value}", many-small, "{trial_dir}"]
+    artifact_paths:
+      - "{trial_dir}/output/cohort_benchmark/cohort_benchmark.step08_sites.tsv"
+      - "{trial_dir}/output/cohort_benchmark/cohort_benchmark.step08_inputs.tsv"
+      - "{trial_dir}/qc/cohort_benchmark.step08_summary.tsv"
