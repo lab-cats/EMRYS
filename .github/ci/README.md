@@ -30,12 +30,18 @@ The workflow runs the complete Python 3.11 suite and the 130-pair `smoke-v1`
 real synthetic E2E every night. Its Sunday UTC schedule also runs the
 100,000-pair `production-like-v1` E2E and, after that lane succeeds, paired
 retained benchmarks for alignment-signature I/O plus Steps 02, 06, 07, and 08.
-A manual dispatch exposes
-independent `python311`, `synthetic_130`, and `synthetic_100000` boolean inputs;
-any nonempty combination is valid, and ordinary pull-request lanes do not run
-for that dispatch. Selecting `synthetic_100000` also selects the retained-stage
-benchmark; allow roughly 30--60 additional minutes and expect the retained
-100,000-pair artifact to be substantially larger.
+A manual dispatch exposes independent `python311`, `synthetic_130`, and
+`synthetic_100000` boolean lane inputs; any nonempty combination is valid, and
+ordinary pull-request lanes do not run for that dispatch. The optional string
+`retained_benchmark_cases` filters the retained benchmark but does not count as
+a lane and is valid only when `synthetic_100000` is selected. Leave it blank to
+run every registered suite, or provide comma-delimited exact case names such as
+`step07-partitions,step08-reread`. Segments are not trimmed or deduplicated, so
+empty, whitespace-padded, unknown, and duplicate values fail closed at the
+benchmark CLI. Scheduled runs always select every registered suite. Selecting
+`synthetic_100000` also selects the retained-stage benchmark; allow roughly
+30--60 additional minutes and expect the retained 100,000-pair artifact to be
+substantially larger.
 
 Each synthetic profile retains its operator root as a separate artifact, while
 the shared artifact records the locked runtime and disposable single-node

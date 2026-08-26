@@ -300,11 +300,18 @@ The tracked [Phase 1 workflow](../../.github/workflows/ci.yml) runs its ordinary
 lanes for pull requests targeting `master`, pushes to `master`, and merge-queue
 candidates. Its long lanes run separately: the complete Python 3.11 suite and
 the 130-pair real synthetic E2E run nightly, and the 100,000-pair real synthetic
-E2E joins them weekly. Manual dispatch exposes three independent boolean
-selectors for those same lanes and rejects an empty selection. The workflow
-token has read-only repository access and every external action is pinned to an
-immutable commit. Superseded ordinary runs for the same ref are cancelled;
-scheduled and manually selected long runs have unique, non-cancelling groups.
+E2E joins them weekly. Manual dispatch exposes three independent boolean lane
+selectors and rejects an empty lane selection. Its optional
+`retained_benchmark_cases` string is a comma-delimited exact-case filter, not a
+fourth lane, and requires `synthetic_100000`. Blank manual filters and scheduled
+runs execute every registered retained suite. The workflow preserves each
+provided segment without trimming or deduplication so empty, whitespace-padded,
+unknown, and duplicate values fail closed in the benchmark CLI; the exact case
+names are documented with the [test tools](../../tests/tools/README.md). The
+workflow token has read-only repository access and every external action is
+pinned to an immutable commit. Superseded ordinary runs for the same ref are
+cancelled; scheduled and manually selected long runs have unique,
+non-cancelling groups.
 
 Python 3.14 is the primary development and pull-request runtime. Every pull
 request runs the complete behavioral inventory under branch coverage as four

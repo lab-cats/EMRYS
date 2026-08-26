@@ -25,6 +25,11 @@ on:
         required: true
         default: false
         type: boolean
+      retained_benchmark_cases:
+        description: Comma-delimited retained benchmark cases (requires 100,000-pair E2E)
+        required: false
+        default: ""
+        type: string
   schedule:
     - cron: "17 5 * * 1-6"
     - cron: "17 5 * * 0"
@@ -54,6 +59,20 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
+      - name: Require retained benchmark cases to select the 100,000-pair lane
+        shell: bash
+        env:
+          RETAINED_BENCHMARK_CASES: ${{ inputs.retained_benchmark_cases }}
+          RUN_SYNTHETIC_100000: ${{ inputs.synthetic_100000 }}
+        run: |
+          set -euo pipefail
+          if [[ -n "${RETAINED_BENCHMARK_CASES}" &&
+                "${RUN_SYNTHETIC_100000}" != true ]]; then
+            printf '%s\n' \
+              'ERROR: retained_benchmark_cases requires the 100,000-pair E2E lane.' >&2
+            exit 2
+          fi
+
       - name: Require at least one selected long lane
         shell: bash
         env:
@@ -816,8 +835,20 @@ jobs:
         shell: bash
         env:
           REAL_TOOLS_PREFIX: ${{ steps.real-tools.outputs.environment-path }}
+          RETAINED_BENCHMARK_CASES: ${{ github.event_name == 'workflow_dispatch' && inputs.retained_benchmark_cases || '' }}
         run: |
           set -euo pipefail
+          benchmark_selection=(--suite all)
+          if [[ "${GITHUB_EVENT_NAME}" == workflow_dispatch &&
+                -n "${RETAINED_BENCHMARK_CASES}" ]]; then
+            benchmark_selection=()
+            remaining_cases="${RETAINED_BENCHMARK_CASES}"
+            while [[ "${remaining_cases}" == *,* ]]; do
+              benchmark_selection+=(--case "${remaining_cases%%,*}")
+              remaining_cases="${remaining_cases#*,}"
+            done
+            benchmark_selection+=(--case "${remaining_cases}")
+          fi
           .venv/bin/python tests/tools/retained_stage_benchmark.py \
             --repo-root "${GITHUB_WORKSPACE}" \
             --e2e-summary \
@@ -827,7 +858,7 @@ jobs:
             --runtime-prefix "${REAL_TOOLS_PREFIX}" \
             --rscript "$(command -v Rscript)" \
             --renv-library "${RENV_LIBRARY}" \
-            --suite all \
+            "${benchmark_selection[@]}" \
             --execute
 
       - name: Upload retained 100,000-pair evidence

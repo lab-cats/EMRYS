@@ -419,6 +419,47 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 suite="cohort-stages", names=("step08-uniform",)
             )
 
+    def test_cli_case_parser_preserves_exact_values_and_fails_closed(self) -> None:
+        base_arguments = [
+            "--repo-root",
+            "/repo",
+            "--e2e-summary",
+            "/evidence/e2e-summary.json",
+            "--output-root",
+            "/evidence/benchmark",
+            "--runtime-prefix",
+            "/runtime",
+            "--rscript",
+            "/runtime/bin/Rscript",
+            "--renv-library",
+            "/runtime/renv",
+        ]
+        for invalid in ("", " step07-partitions", "unknown-case"):
+            with (
+                self.subTest(invalid=invalid),
+                contextlib.redirect_stderr(io.StringIO()),
+                self.assertRaises(SystemExit),
+            ):
+                BENCHMARK._parser().parse_args(
+                    [*base_arguments, "--case", invalid]
+                )
+
+        parsed = BENCHMARK._parser().parse_args(
+            [
+                *base_arguments,
+                "--case",
+                "step07-partitions",
+                "--case",
+                "step07-partitions",
+            ]
+        )
+        self.assertEqual(
+            parsed.case_names,
+            ["step07-partitions", "step07-partitions"],
+        )
+        with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "selected once"):
+            BENCHMARK._select_cases(suite=parsed.suite, names=parsed.case_names)
+
     def test_alignment_signature_case_binds_variant_source_and_exact_parity(
         self,
     ) -> None:

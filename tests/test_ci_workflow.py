@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -53,6 +54,27 @@ def _expression(value: object) -> str:
     return " ".join(str(value).split())
 
 
+def _retained_benchmark_selection_arguments(
+    command: str, *, event: str, selection: str
+) -> list[bytes]:
+    setup, marker, _invocation = command.partition(
+        ".venv/bin/python tests/tools/retained_stage_benchmark.py"
+    )
+    assert marker
+    completed = subprocess.run(
+        ["bash", "-c", setup + "printf '%s\\0' \"${benchmark_selection[@]}\"\n"],
+        check=False,
+        capture_output=True,
+        env={
+            "GITHUB_EVENT_NAME": event,
+            "RETAINED_BENCHMARK_CASES": selection,
+        },
+    )
+    assert completed.returncode == 0, completed.stderr.decode()
+    assert completed.stdout.endswith(b"\0")
+    return completed.stdout.removesuffix(b"\0").split(b"\0")
+
+
 def test_long_lane_triggers_are_closed_and_independently_selectable() -> None:
     triggers = _workflow_triggers()
     assert triggers["schedule"] == [
@@ -60,15 +82,34 @@ def test_long_lane_triggers_are_closed_and_independently_selectable() -> None:
         {"cron": "17 5 * * 0"},
     ]
     inputs = triggers["workflow_dispatch"]["inputs"]
-    assert set(inputs) == {"python311", "synthetic_130", "synthetic_100000"}
-    for value in inputs.values():
+    lane_names = {"python311", "synthetic_130", "synthetic_100000"}
+    assert set(inputs) == {*lane_names, "retained_benchmark_cases"}
+    for name in lane_names:
+        value = inputs[name]
         assert value["type"] == "boolean"
         assert value["required"] is True
         assert value["default"] is False
+    selector = inputs["retained_benchmark_cases"]
+    assert set(selector) == {"description", "required", "default", "type"}
+    assert selector["required"] is False
+    assert selector["default"] == ""
+    assert selector["type"] == "string"
+    assert "requires 100,000-pair E2E" in selector["description"]
 
     jobs = _workflow_jobs()
     manual = jobs["manual-selection"]
     assert _expression(manual["if"]) == "github.event_name == 'workflow_dispatch'"
+    selector_guard = _named_step(
+        manual, "Require retained benchmark cases to select the 100,000-pair lane"
+    )
+    assert selector_guard["env"] == {
+        "RETAINED_BENCHMARK_CASES": "${{ inputs.retained_benchmark_cases }}",
+        "RUN_SYNTHETIC_100000": "${{ inputs.synthetic_100000 }}",
+    }
+    assert '-n "${RETAINED_BENCHMARK_CASES}"' in selector_guard["run"]
+    assert '"${RUN_SYNTHETIC_100000}" != true' in selector_guard["run"]
+    assert "requires the 100,000-pair E2E lane" in selector_guard["run"]
+
     guard = _named_step(manual, "Require at least one selected long lane")
     assert set(guard["env"]) == {
         "RUN_PYTHON311",
@@ -76,6 +117,9 @@ def test_long_lane_triggers_are_closed_and_independently_selectable() -> None:
         "RUN_SYNTHETIC_100000",
     }
     assert "select at least one lane" in guard["run"]
+    assert "RETAINED_BENCHMARK_CASES" not in guard["env"]
+    step_names = [step["name"] for step in manual["steps"]]
+    assert step_names.index(selector_guard["name"]) < step_names.index(guard["name"])
 
 
 def test_ordinary_jobs_do_not_run_for_schedules_or_manual_long_lanes() -> None:
@@ -233,6 +277,10 @@ def test_retained_stage_benchmark_follows_successful_100000_e2e() -> None:
     assert benchmark["env"]["REAL_TOOLS_PREFIX"] == (
         "${{ steps.real-tools.outputs.environment-path }}"
     )
+    assert benchmark["env"]["RETAINED_BENCHMARK_CASES"] == (
+        "${{ github.event_name == 'workflow_dispatch' && "
+        "inputs.retained_benchmark_cases || '' }}"
+    )
 
     command = benchmark["run"]
     assert ".venv/bin/python tests/tools/retained_stage_benchmark.py" in command
@@ -246,7 +294,17 @@ def test_retained_stage_benchmark_follows_successful_100000_e2e() -> None:
     assert '--runtime-prefix "${REAL_TOOLS_PREFIX}"' in command
     assert '--rscript "$(command -v Rscript)"' in command
     assert '--renv-library "${RENV_LIBRARY}"' in command
-    assert "--suite all" in command
+    assert "benchmark_selection=(--suite all)" in command
+    assert '"${GITHUB_EVENT_NAME}" == workflow_dispatch' in command
+    assert '-n "${RETAINED_BENCHMARK_CASES}"' in command
+    assert 'while [[ "${remaining_cases}" == *,* ]]' in command
+    assert 'benchmark_selection+=(--case "${remaining_cases%%,*}")' in command
+    assert 'remaining_cases="${remaining_cases#*,}"' in command
+    assert 'benchmark_selection+=(--case "${remaining_cases}")' in command
+    assert '"${benchmark_selection[@]}"' in command
+    assert "inputs.retained_benchmark_cases" not in command
+    assert "eval " not in command
+    assert "xargs" not in command
     assert "--execute" in command
     assert "threshold" not in command.lower()
 
@@ -254,6 +312,50 @@ def test_retained_stage_benchmark_follows_successful_100000_e2e() -> None:
     assert upload["with"]["path"] == (
         "${{ runner.temp }}/emrys-synthetic-e2e/100000"
     )
+
+
+def test_retained_benchmark_case_split_preserves_every_segment() -> None:
+    benchmark = _named_step(
+        _workflow_jobs()["synthetic-e2e"],
+        "Run retained-stage benchmark comparisons",
+    )
+    command = benchmark["run"]
+    assert _retained_benchmark_selection_arguments(
+        command, event="schedule", selection="step07-partitions"
+    ) == [b"--suite", b"all"]
+    assert _retained_benchmark_selection_arguments(
+        command, event="workflow_dispatch", selection=""
+    ) == [b"--suite", b"all"]
+
+    exact_cases = "step07-partitions,step08-reread"
+    assert _retained_benchmark_selection_arguments(
+        command, event="workflow_dispatch", selection=exact_cases
+    ) == [b"--case", b"step07-partitions", b"--case", b"step08-reread"]
+
+    preserved_invalid = {
+        ",step07-partitions": [b"--case", b"", b"--case", b"step07-partitions"],
+        "step07-partitions,": [b"--case", b"step07-partitions", b"--case", b""],
+        "step07-partitions,,step08-reread": [
+            b"--case",
+            b"step07-partitions",
+            b"--case",
+            b"",
+            b"--case",
+            b"step08-reread",
+        ],
+        " step07-partitions": [b"--case", b" step07-partitions"],
+        "unknown-case": [b"--case", b"unknown-case"],
+        "step07-partitions,step07-partitions": [
+            b"--case",
+            b"step07-partitions",
+            b"--case",
+            b"step07-partitions",
+        ],
+    }
+    for selection, expected in preserved_invalid.items():
+        assert _retained_benchmark_selection_arguments(
+            command, event="workflow_dispatch", selection=selection
+        ) == expected
 
 
 def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:
