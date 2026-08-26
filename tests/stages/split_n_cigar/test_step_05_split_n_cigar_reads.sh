@@ -605,10 +605,14 @@ assert_file_equals "$residue_path" $'preserve residue\n'
 assert_not_exists "$residue_output_dir/.ABE_EV_2.step05.lock"
 safe_output="$tmp_dir/safe.out"
 safe_output_dir="$tmp_dir/results/safe"
+rm -f "$samtools_log"
 FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=safe001 \
     run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$safe_output_dir" --no-clobber --execute >"$safe_output"
 assert_contains "$safe_output" "No-clobber transaction: true"
 assert_contains "$safe_output" "Lock directory: $safe_output_dir/.ABE_EV_2.step05.lock"
+assert_contains "$samtools_log" \
+    "$safe_output_dir/.ABE_EV_2.step05.safe001.split_ncigar.tmp.bam"
+assert_not_contains "$samtools_log" "$safe_output_dir/ABE_EV_2.split_ncigar.bam"
 assert_not_exists "$safe_output_dir/.ABE_EV_2.step05.lock"
 safe_repeat_output="$tmp_dir/safe_repeat.out"
 assert_fails "$safe_repeat_output" env FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=safe002 bash "$SCRIPT" \
