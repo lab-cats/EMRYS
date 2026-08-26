@@ -36,12 +36,15 @@ vocabulary, and sample IDs are unique. Required VCF definitions include FORMAT
 DP/AD/ADF/ADR/SP and INFO AD/ADF/ADR; sample columns must match the sample
 manifest exactly.
 
-The optional positive `--threads` value defaults to `1` and bounds independent
-partition/orientation VCF workers. On Unix, worker results are returned in the
-declared manifest/orientation order before deterministic aggregation; Windows
-direct execution falls back to one worker. Annotation import/model construction,
-aggregate reconciliation, serialization, validation, and publication remain
-single-owner operations.
+The optional positive `--threads` value defaults to `1` and bounds concurrent
+partition/orientation VCF jobs. On Unix, dynamic scheduling starts one child
+process per job while admitting no more than that bound concurrently. Results
+are returned in the declared manifest/orientation order before deterministic
+aggregation; Windows direct execution falls back to serial processing.
+Annotation import/model construction, aggregate reconciliation, serialization,
+validation, and publication remain single-owner operations. Parent-side
+telemetry reports each job in declared input order, followed by cumulative and
+maximum per-job seconds; those values are not workflow wall time or utilization.
 
 The fixed `legacy_provisional_v1` compatibility policy maps:
 
