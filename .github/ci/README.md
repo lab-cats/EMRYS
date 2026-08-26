@@ -30,16 +30,18 @@ The workflow runs the complete Python 3.11 suite and the 130-pair `smoke-v1`
 real synthetic E2E every night. Its Sunday UTC schedule also runs the
 100,000-pair `production-like-v1` E2E and, after that lane succeeds, paired
 retained benchmarks for alignment-signature I/O, reference-contig membership,
-and Steps 02, 04, 05, 06, 07, and 08.
+Steps 02, 04, 05, 06, 07, and 08, and the standard strict-TSV row/width sweep.
 A manual dispatch exposes independent `python311`, `synthetic_130`, and
 `synthetic_100000` boolean lane inputs; any nonempty combination is valid, and
 ordinary pull-request lanes do not run for that dispatch. The optional string
 `retained_benchmark_cases` filters the retained benchmark but does not count as
 a lane and is valid only when `synthetic_100000` is selected. Leave it blank to
-run every registered suite, or provide comma-delimited exact case names such as
+run every standard suite, or provide comma-delimited exact case names such as
 `step07-partitions,step08-reread`. Segments are not trimmed or deduplicated, so
 empty, whitespace-padded, unknown, and duplicate values fail closed at the
-benchmark CLI. Scheduled runs always select every registered suite. Selecting
+benchmark CLI. The 1,000,000-row narrow strict-TSV case is opt-in as
+`strict-tsv-materialization-extended`; scheduled runs exclude it while selecting
+all standard suites. Selecting
 `synthetic_100000` also selects the retained-stage benchmark; allow roughly
 30--60 additional minutes. The broad retained 100,000-pair diagnostic artifact
 remains substantially larger than the compact comparison artifact.
