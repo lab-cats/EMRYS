@@ -636,6 +636,7 @@ printf '  Temporary %s VCF: %s\n' "${ORIENTATIONS[0]}" "$tmp_fwd_vcf"
 printf '  Temporary %s VCF: %s\n' "${ORIENTATIONS[1]}" "$tmp_rev_vcf"
 printf '  Temporary receipt: %s\n' "$tmp_receipt"
 printf '  Publish the validated VCF/VCF/receipt set with rollback protection\n'
+printf '  Under --no-clobber, carry temporary VCF validation through exact staging/final inode identity instead of reparsing final paths\n'
 printf 'Post-execution validator command:\n'
 print_command "${validator_command[@]}"
 printf 'Semantic all-pass gate:\n'
@@ -870,8 +871,9 @@ tmp_rev_count="$(vcf_record_count "$tmp_rev_vcf")" ||
         "$sample_count" "$tmp_rev_count"
 } > "$tmp_receipt"
 validate_receipt "$tmp_receipt"
+# Manifests are small and are embedded in receipt identity, so retain their
+# final recheck without repeating the complete BAM/BAI/reference roster hash.
 confirm_input_manifest_hashes
-confirm_no_clobber_scientific_inputs
 
 if [[ "$final_count" -eq 3 ]]; then
     previous_final_set_present=true
@@ -891,19 +893,22 @@ if [[ "$no_clobber" == true ]]; then
 else
     mv "$tmp_fwd_vcf" "$final_fwd_vcf"
     mv "$tmp_rev_vcf" "$final_rev_vcf"
+
+    # The legacy replacement route drops staging identity anchors, so retain
+    # final-path structural validation and record-count reconciliation there.
+    validate_vcf "Published ${ORIENTATIONS[0]}" "$final_fwd_vcf" "$expected_samples"
+    validate_vcf "Published ${ORIENTATIONS[1]}" "$final_rev_vcf" "$expected_samples"
+    published_fwd_count="$(vcf_record_count "$final_fwd_vcf")"
+    published_rev_count="$(vcf_record_count "$final_rev_vcf")"
+    [[ "$published_fwd_count" == "$tmp_fwd_count" ]] ||
+        die "Published ${ORIENTATIONS[0]} VCF record count changed during publication."
+    [[ "$published_rev_count" == "$tmp_rev_count" ]] ||
+        die "Published ${ORIENTATIONS[1]} VCF record count changed during publication."
 fi
 
-validate_vcf "Published ${ORIENTATIONS[0]}" "$final_fwd_vcf" "$expected_samples"
-validate_vcf "Published ${ORIENTATIONS[1]}" "$final_rev_vcf" "$expected_samples"
-published_fwd_count="$(vcf_record_count "$final_fwd_vcf")"
-published_rev_count="$(vcf_record_count "$final_rev_vcf")"
-[[ "$published_fwd_count" == "$tmp_fwd_count" ]] ||
-    die "Published ${ORIENTATIONS[0]} VCF record count changed during publication."
-[[ "$published_rev_count" == "$tmp_rev_count" ]] ||
-    die "Published ${ORIENTATIONS[1]} VCF record count changed during publication."
-
-# Make the already-validated receipt visible only after both VCFs pass their
-# final structural/count checks. A later failure still enters owned rollback.
+# Make the already-validated receipt visible only after both VCFs are either
+# create-exclusive identities of validated staging files or final-path
+# revalidated on the legacy replacement route.
 if [[ "$no_clobber" == true ]]; then
     publish_file_create_exclusive \
         "Step 07 receipt" "$tmp_receipt" "$final_receipt"
