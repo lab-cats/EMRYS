@@ -1128,6 +1128,13 @@ def _produce_step02(context: Mapping[str, Any], trial: Path, source: Path) -> No
     )
 
 
+def _validation_report(
+    root: Path, scope_id: str, partition_id: str | None = None
+) -> Path:
+    suffix = f"__{partition_id}" if partition_id is not None else ""
+    return root / f"{scope_id}{suffix}.validation.tsv"
+
+
 def _validate_step02(context: Mapping[str, Any], trial: Path) -> None:
     sample_id = str(context["sample_id"])
     relative_bam = Path("output") / f"{sample_id}.sorted.bam"
@@ -1139,7 +1146,7 @@ def _validate_step02(context: Mapping[str, Any], trial: Path) -> None:
         raise BenchmarkSetupError("Step 02 case left the canonical hard-link path")
     runtime = _real_directory(Path(str(context["runtime_prefix"])), "runtime prefix")
     samtools = _real_file(runtime / "bin/samtools", "samtools", executable=True)
-    report = Path("qc") / f"{sample_id}.step02_validation.tsv"
+    report = _validation_report(Path("qc"), sample_id)
     _run_checked(
         _emrys(
             context,
@@ -1237,7 +1244,7 @@ def _step06_paths(sample_id: str) -> dict[str, Path]:
         "rev_bam": orientation / f"{sample_id}.REV_like.bam",
         "rev_bai": orientation / f"{sample_id}.REV_like.bam.bai",
         "counts": counts_root / f"{sample_id}.orientation_counts.tsv",
-        "report": Path("results/qc/validation/06") / f"{sample_id}.validation.tsv",
+        "report": _validation_report(Path("results/qc/validation/06"), sample_id),
     }
 
 
@@ -1810,7 +1817,7 @@ def _validate_step07(context: Mapping[str, Any], trial: Path) -> None:
         fwd = root / f"{cohort}.{partition}.FWD_like.mpileup.vcf"
         rev = root / f"{cohort}.{partition}.REV_like.mpileup.vcf"
         receipt = root / f"{cohort}.{partition}.step07_outputs.tsv"
-        report = root / f"{cohort}.{partition}.step07_validation.tsv"
+        report = _validation_report(root, cohort, partition)
         owner = _emrys(
             context, "validate", "partitioned-cohort-mpileup",
             "--cohort-id", cohort, "--partition-id", partition,
@@ -1837,7 +1844,7 @@ def _validate_step08(
     sites = trial / "output" / cohort / f"{cohort}.step08_sites.tsv"
     inputs = trial / "output" / cohort / f"{cohort}.step08_inputs.tsv"
     summary = trial / "qc" / f"{cohort}.step08_summary.tsv"
-    report = trial / "qc" / f"{cohort}.step08_validation.tsv"
+    report = _validation_report(trial / "qc", cohort)
     owner = _emrys(
         context, "validate", "cohort-candidate-preprocessing",
         "--cohort-id", cohort, "--sample-manifest", str(context["sample_manifest"]),
