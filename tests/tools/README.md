@@ -41,9 +41,9 @@ sampler. The driver installs and cleans nothing; its machine-readable summary
 remains synthetic execution evidence, never production or biological evidence.
 
 `retained_stage_benchmark.py` consumes the successful retained 100,000-pair
-summary and runs paired Step 02, Step 06, Step 07, and Step 08 comparison cases
-against the exact locked Python, scientific-tool, and R authorities supplied by
-CI. It creates
+summary and runs paired identity, Step 02, Step 06, Step 07, and Step 08
+comparison cases against the exact locked Python, scientific-tool, and R
+authorities supplied by CI. It creates
 fixtures, frozen source archives, manifests, raw benchmark results, and its
 machine-readable summary only beneath a create-absent external output root;
 the source checkout remains read-only. The default invocation is a no-write
@@ -54,21 +54,25 @@ case. `--suite all` selects every registered suite, while repeatable `--case`
 arguments select an exact subset for focused CI attribution. Each retained
 comparison uses one warmup and four measured repetitions so the two variants
 occupy each execution position equally often. The CI-only `identity` suite
-measures protected BAM/BAI signature reads at 10 MiB, 100 MiB, and 1 GiB;
-the retained 100,000-pair lane explicitly runs all suites. Retained sample-stage
-admission warms the exact BAM references before timing; their paired producer
-wall/CPU results are not cold-I/O or shared-filesystem evidence.
+measures protected BAM/BAI signature reads at 10 MiB, 100 MiB, and 1 GiB plus
+ordered FASTA contig parsing at 1,000, 4,000, and 16,000 fixed-width one-base
+contigs. The FASTA validator independently reconstructs exact names, order,
+lengths, and count. The retained 100,000-pair lane explicitly runs all suites.
+Retained sample-stage admission warms the exact BAM references before timing;
+their paired producer wall/CPU results are not cold-I/O or shared-filesystem
+evidence. Identity-case timings remain hosted-runner observations and do not
+establish representative production-reference impact.
 
 Manual workflow dispatch may narrow that retained comparison with the optional
 comma-delimited `retained_benchmark_cases` input. It is a filter rather than a
 lane, requires the `synthetic_100000` lane, and accepts these exact names:
-`alignment-signatures-mib`, `step02-canonical-bam`,
-`step06-mechanical-orientation`, `step07-partitions`, `step08-reread`,
-`step08-skew`, and `step08-uniform`. A blank input and every scheduled run use
-`--suite all`. A nonblank input becomes one repeated `--case` argument per
-unchanged comma-delimited segment. Empty, whitespace-padded, unknown, and
-duplicate segments therefore remain visible to the CLI and fail closed rather
-than being normalized silently.
+`alignment-signatures-mib`, `reference-contig-membership`,
+`step02-canonical-bam`, `step06-mechanical-orientation`, `step07-partitions`,
+`step08-reread`, `step08-skew`, and `step08-uniform`. A blank input and every
+scheduled run use `--suite all`. A nonblank input becomes one repeated `--case`
+argument per unchanged comma-delimited segment. Empty, whitespace-padded,
+unknown, and duplicate segments therefore remain visible to the CLI and fail
+closed rather than being normalized silently.
 
 In CI the benchmark output is retained beneath
 `100000/retained-stage-benchmark` in the existing 100,000-pair evidence

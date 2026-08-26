@@ -388,8 +388,26 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
         )
         self.assertEqual(
             BENCHMARK._select_cases(suite="identity", names=None),
-            (BENCHMARK.RETAINED_CASE_BY_NAME["alignment-signatures-mib"],),
+            (
+                BENCHMARK.RETAINED_CASE_BY_NAME["alignment-signatures-mib"],
+                BENCHMARK.RETAINED_CASE_BY_NAME[
+                    "reference-contig-membership"
+                ],
+            ),
         )
+        reference_case = BENCHMARK.RETAINED_CASE_BY_NAME[
+            "reference-contig-membership"
+        ]
+        self.assertEqual(reference_case.values, (1_000, 4_000, 16_000))
+        self.assertEqual(reference_case.threads, 1)
+        reference_manifest = BENCHMARK._manifest(
+            Path("/locked/python"),
+            Path("/repo/tests/tools/retained_stage_benchmark.py"),
+            Path("/external/context.json"),
+            (reference_case,),
+        )["cases"][0]
+        self.assertEqual(reference_manifest["warmup_repetitions"], 1)
+        self.assertEqual(reference_manifest["repetitions"], 4)
         self.assertEqual(
             BENCHMARK._select_cases(suite="sample-stages", names=None),
             (
@@ -506,6 +524,169 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             self.assertEqual(
                 (trial / "parity.bin").read_bytes(), b"\x1f\x8b\x08\x04BAI\x01"
             )
+
+    def test_reference_contig_case_binds_variant_source_and_exact_parity(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            trial = root / "trial"
+            trial.mkdir()
+            context = root / "context.json"
+            context.write_text(
+                json.dumps(
+                    {"sources": {"master": str(ROOT), "head": str(ROOT)}}
+                ),
+                encoding="utf-8",
+            )
+            BENCHMARK._setup_reference_contig_membership(trial, 1_000)
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    "-X",
+                    "pycache_prefix=/dev/null",
+                    str(SCRIPT),
+                    "_produce",
+                    "--context",
+                    str(context),
+                    "--case",
+                    "reference-contig-membership",
+                    "--value",
+                    "1000",
+                    "--variant",
+                    "head",
+                    "--trial-dir",
+                    str(trial),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            fasta_lines = (trial / "reference.fa").read_text(
+                encoding="ascii"
+            ).splitlines()
+            self.assertEqual(len(fasta_lines), 2_000)
+            self.assertEqual(fasta_lines[:2], [">contig-00000000", "A"])
+            self.assertEqual(fasta_lines[-2:], [">contig-00000999", "A"])
+            expected = "".join(
+                f"contig-{index:08d}\t1\n" for index in range(1_000)
+            ).encode("ascii")
+            self.assertEqual((trial / "observed.tsv").read_bytes(), expected)
+
+            BENCHMARK._validate_reference_contig_membership(trial, 1_000)
+            self.assertEqual((trial / "parity.bin").read_bytes(), expected)
+
+    def test_reference_contig_case_uses_selected_source_and_fails_closed(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            source = root / "selected-source"
+            module = source / "src/emrys/libraries/references/contigs.py"
+            module.parent.mkdir(parents=True)
+            for package in (
+                source / "src/emrys/__init__.py",
+                source / "src/emrys/libraries/__init__.py",
+                source / "src/emrys/libraries/references/__init__.py",
+            ):
+                package.write_text("", encoding="utf-8")
+            module.write_text(
+                "def parse_fasta(_path):\n"
+                "    return [('selected-archive', 1)]\n",
+                encoding="utf-8",
+            )
+            trial = root / "trial"
+            trial.mkdir()
+            BENCHMARK._setup_reference_contig_membership(trial, 1_000)
+            context = root / "context.json"
+            context.write_text(
+                json.dumps(
+                    {"sources": {"master": str(source), "head": str(source)}}
+                ),
+                encoding="utf-8",
+            )
+            arguments = [
+                sys.executable,
+                "-X",
+                "pycache_prefix=/dev/null",
+                str(SCRIPT),
+                "_produce",
+                "--context",
+                str(context),
+                "--case",
+                "reference-contig-membership",
+                "--value",
+                "1000",
+                "--variant",
+                "head",
+                "--trial-dir",
+                str(trial),
+            ]
+
+            completed = subprocess.run(
+                arguments, check=False, capture_output=True, text=True
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            self.assertEqual(
+                (trial / "observed.tsv").read_bytes(), b"selected-archive\t1\n"
+            )
+            with self.assertRaisesRegex(
+                BENCHMARK.BenchmarkSetupError, "order, name, length, or count"
+            ):
+                BENCHMARK._validate_reference_contig_membership(trial, 1_000)
+
+            context.write_text(
+                json.dumps(
+                    {
+                        "sources": {
+                            "master": str(source),
+                            "head": str(root / "missing-source"),
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            missing = subprocess.run(
+                arguments, check=False, capture_output=True, text=True
+            )
+            self.assertEqual(missing.returncode, 2)
+            self.assertIn("head source archive is unavailable", missing.stderr)
+
+            with self.assertRaisesRegex(
+                BENCHMARK.BenchmarkSetupError, "count is not registered"
+            ):
+                BENCHMARK._setup_reference_contig_membership(root / "unused", 999)
+
+    def test_reference_contig_validator_rejects_each_semantic_tamper(self) -> None:
+        expected_lines = [
+            f"contig-{index:08d}\t1\n".encode("ascii")
+            for index in range(1_000)
+        ]
+        tampered = {
+            "order": [expected_lines[1], expected_lines[0], *expected_lines[2:]],
+            "name": [b"wrong-name\t1\n", *expected_lines[1:]],
+            "length": [b"contig-00000000\t2\n", *expected_lines[1:]],
+            "count": expected_lines[:-1],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            for label, lines in tampered.items():
+                with self.subTest(label=label):
+                    trial = root / label
+                    trial.mkdir()
+                    (trial / "observed.tsv").write_bytes(b"".join(lines))
+                    with self.assertRaisesRegex(
+                        BENCHMARK.BenchmarkSetupError,
+                        "order, name, length, or count",
+                    ):
+                        BENCHMARK._validate_reference_contig_membership(
+                            trial, 1_000
+                        )
+                    self.assertFalse((trial / "parity.bin").exists())
 
     def test_partition_sweeps_cover_the_full_5mb_contig_once(self) -> None:
         for count in (1, 5, 25):

@@ -150,6 +150,9 @@ class RetainedCase:
 
 RETAINED_CASES = (
     RetainedCase("alignment-signatures-mib", "identity", 0, (10, 100, 1024), 1),
+    RetainedCase(
+        "reference-contig-membership", "identity", 0, (1_000, 4_000, 16_000), 1
+    ),
     RetainedCase("step02-canonical-bam", "sample-stages", 2, (100_000,), 2),
     RetainedCase("step06-mechanical-orientation", "sample-stages", 6, (100_000,), 4),
     RetainedCase("step07-partitions", "cohort-stages", 7, (1, 5, 25), 2),
@@ -1854,6 +1857,29 @@ def _case_threads(case: str) -> int:
     return RETAINED_CASE_BY_NAME[case].threads
 
 
+def _load_variant_module(
+    source: Path, module_name: str, relative_path: str, label: str
+) -> Any:
+    loaded = tuple(
+        name for name in sys.modules if name == "emrys" or name.startswith("emrys.")
+    )
+    if loaded:
+        raise BenchmarkSetupError(f"{label} imported EMRYS before source binding")
+    source_root = _real_directory(source / "src", "variant Python source root")
+    sys.path.insert(0, str(source_root))
+    try:
+        module = importlib.import_module(module_name)
+    finally:
+        sys.path.pop(0)
+    expected_module = (source_root / relative_path).resolve(strict=True)
+    observed_module = Path(str(module.__file__)).resolve(strict=True)
+    if observed_module != expected_module:
+        raise BenchmarkSetupError(
+            f"{label} imported foreign source: {observed_module}"
+        )
+    return module
+
+
 def _setup_alignment_signatures(trial: Path, size_mib: int) -> None:
     retained = RETAINED_CASE_BY_NAME["alignment-signatures-mib"]
     if size_mib not in retained.values:
@@ -1869,27 +1895,12 @@ def _setup_alignment_signatures(trial: Path, size_mib: int) -> None:
 
 
 def _produce_alignment_signatures(trial: Path, source: Path) -> None:
-    loaded = tuple(
-        name for name in sys.modules if name == "emrys" or name.startswith("emrys.")
+    module = _load_variant_module(
+        source,
+        "emrys.libraries.alignments.bam",
+        "emrys/libraries/alignments/bam.py",
+        "alignment signature producer",
     )
-    if loaded:
-        raise BenchmarkSetupError(
-            "alignment signature producer imported EMRYS before source binding"
-        )
-    source_root = _real_directory(source / "src", "variant Python source root")
-    sys.path.insert(0, str(source_root))
-    try:
-        module = importlib.import_module("emrys.libraries.alignments.bam")
-    finally:
-        sys.path.pop(0)
-    expected_module = (
-        source_root / "emrys/libraries/alignments/bam.py"
-    ).resolve(strict=True)
-    observed_module = Path(str(module.__file__)).resolve(strict=True)
-    if observed_module != expected_module:
-        raise BenchmarkSetupError(
-            f"alignment signature producer imported foreign source: {observed_module}"
-        )
     valid, bam_magic, bai_magic = module.validate_bam_bai_pair(
         trial / "input.bam", trial / "input.bam.bai"
     )
@@ -1906,6 +1917,62 @@ def _validate_alignment_signatures(trial: Path) -> None:
     ).read_bytes()
     if observed != expected:
         raise BenchmarkSetupError("alignment signature observation differs")
+    with (trial / "parity.bin").open("xb") as stream:
+        stream.write(expected)
+
+
+def _setup_reference_contig_membership(trial: Path, contig_count: int) -> None:
+    retained = RETAINED_CASE_BY_NAME["reference-contig-membership"]
+    if contig_count not in retained.values:
+        raise BenchmarkSetupError("reference contig count is not registered")
+    with (trial / "reference.fa").open(
+        "x", encoding="ascii", newline="\n"
+    ) as stream:
+        for index in range(contig_count):
+            stream.write(f">contig-{index:08d}\nA\n")
+
+
+def _produce_reference_contig_membership(trial: Path, source: Path) -> None:
+    module = _load_variant_module(
+        source,
+        "emrys.libraries.references.contigs",
+        "emrys/libraries/references/contigs.py",
+        "reference contig producer",
+    )
+    observed = module.parse_fasta(
+        _real_file(trial / "reference.fa", "reference contig fixture")
+    )
+    if type(observed) is not list or any(
+        type(row) is not tuple
+        or len(row) != 2
+        or type(row[0]) is not str
+        or type(row[1]) is not int
+        for row in observed
+    ):
+        raise BenchmarkSetupError("reference contig parser returned an invalid shape")
+    with (trial / "observed.tsv").open(
+        "x", encoding="utf-8", newline="\n"
+    ) as stream:
+        for name, length in observed:
+            stream.write(f"{name}\t{length}\n")
+
+
+def _validate_reference_contig_membership(
+    trial: Path, contig_count: int
+) -> None:
+    retained = RETAINED_CASE_BY_NAME["reference-contig-membership"]
+    if contig_count not in retained.values:
+        raise BenchmarkSetupError("reference contig count is not registered")
+    expected = "".join(
+        f"contig-{index:08d}\t1\n" for index in range(contig_count)
+    ).encode("ascii")
+    observed = _real_file(
+        trial / "observed.tsv", "reference contig observation"
+    ).read_bytes()
+    if observed != expected:
+        raise BenchmarkSetupError(
+            "reference contig order, name, length, or count differs"
+        )
     with (trial / "parity.bin").open("xb") as stream:
         stream.write(expected)
 
@@ -1947,7 +2014,9 @@ def _internal(arguments: argparse.Namespace) -> int:
     trial = Path(os.path.abspath(arguments.trial_dir))
     retained_case = RETAINED_CASE_BY_NAME[arguments.case]
     if arguments.operation == "_setup":
-        if retained_case.stage == 0:
+        if arguments.case == "reference-contig-membership":
+            _setup_reference_contig_membership(trial, arguments.value)
+        elif retained_case.stage == 0:
             _setup_alignment_signatures(trial, arguments.value)
         elif retained_case.stage == 2:
             _setup_step02(context, trial, arguments.value)
@@ -1959,7 +2028,9 @@ def _internal(arguments: argparse.Namespace) -> int:
             _setup_step08(context, trial, arguments.case, arguments.value)
     elif arguments.operation == "_produce":
         source = _source(context, arguments.variant)
-        if retained_case.stage == 0:
+        if arguments.case == "reference-contig-membership":
+            _produce_reference_contig_membership(trial, source)
+        elif retained_case.stage == 0:
             _produce_alignment_signatures(trial, source)
         elif retained_case.stage == 2:
             _produce_step02(context, trial, source)
@@ -1976,6 +2047,8 @@ def _internal(arguments: argparse.Namespace) -> int:
                 arguments.value,
                 _case_threads(arguments.case),
             )
+    elif arguments.case == "reference-contig-membership":
+        _validate_reference_contig_membership(trial, arguments.value)
     elif retained_case.stage == 0:
         _validate_alignment_signatures(trial)
     elif retained_case.stage == 2:
