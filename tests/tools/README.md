@@ -52,7 +52,9 @@ threshold. The default `cohort-stages` suite covers every currently retained
 case. `--suite all` selects every registered suite, while repeatable `--case`
 arguments select an exact subset for focused CI attribution. Each retained
 comparison uses one warmup and four measured repetitions so the two variants
-occupy each execution position equally often.
+occupy each execution position equally often. The CI-only `identity` suite
+measures protected BAM/BAI signature reads at 10 MiB, 100 MiB, and 1 GiB;
+the retained 100,000-pair lane explicitly runs all suites.
 
 In CI the benchmark output is retained beneath
 `100000/retained-stage-benchmark` in the existing 100,000-pair evidence

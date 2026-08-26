@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import importlib
 import io
 import json
 import os
@@ -79,6 +80,7 @@ class RetainedCase:
 
 
 RETAINED_CASES = (
+    RetainedCase("alignment-signatures-mib", "identity", 0, (10, 100, 1024), 1),
     RetainedCase("step07-partitions", "cohort-stages", 7, (1, 5, 25), 2),
     RetainedCase("step08-reread", "cohort-stages", 8, (10_000, 100_000), 1),
     RetainedCase("step08-skew", "cohort-stages", 8, (100_000,), 2),
@@ -811,6 +813,62 @@ def _case_threads(case: str) -> int:
     return RETAINED_CASE_BY_NAME[case].threads
 
 
+def _setup_alignment_signatures(trial: Path, size_mib: int) -> None:
+    retained = RETAINED_CASE_BY_NAME["alignment-signatures-mib"]
+    if size_mib not in retained.values:
+        raise BenchmarkSetupError("alignment signature size is not registered")
+    size_bytes = size_mib * 1024 * 1024
+    for name, magic in (
+        ("input.bam", b"\x1f\x8b\x08\x04"),
+        ("input.bam.bai", b"BAI\x01"),
+    ):
+        with (trial / name).open("xb") as stream:
+            stream.write(magic)
+            stream.truncate(size_bytes)
+
+
+def _produce_alignment_signatures(trial: Path, source: Path) -> None:
+    loaded = tuple(
+        name for name in sys.modules if name == "emrys" or name.startswith("emrys.")
+    )
+    if loaded:
+        raise BenchmarkSetupError(
+            "alignment signature producer imported EMRYS before source binding"
+        )
+    source_root = _real_directory(source / "src", "variant Python source root")
+    sys.path.insert(0, str(source_root))
+    try:
+        module = importlib.import_module("emrys.libraries.alignments.bam")
+    finally:
+        sys.path.pop(0)
+    expected_module = (
+        source_root / "emrys/libraries/alignments/bam.py"
+    ).resolve(strict=True)
+    observed_module = Path(str(module.__file__)).resolve(strict=True)
+    if observed_module != expected_module:
+        raise BenchmarkSetupError(
+            f"alignment signature producer imported foreign source: {observed_module}"
+        )
+    valid, bam_magic, bai_magic = module.validate_bam_bai_pair(
+        trial / "input.bam", trial / "input.bam.bai"
+    )
+    if not valid:
+        raise BenchmarkSetupError("alignment signature fixture failed validation")
+    with (trial / "observed.bin").open("xb") as stream:
+        stream.write(bam_magic + bai_magic)
+
+
+def _validate_alignment_signatures(trial: Path) -> None:
+    expected = b"\x1f\x8b\x08\x04BAI\x01"
+    observed = _real_file(
+        trial / "observed.bin", "alignment signature observation"
+    ).read_bytes()
+    if observed != expected:
+        raise BenchmarkSetupError("alignment signature observation differs")
+    with (trial / "parity.bin").open("xb") as stream:
+        stream.write(expected)
+
+
 def _select_cases(
     *, suite: str | None, names: Sequence[str] | None
 ) -> tuple[RetainedCase, ...]:
@@ -848,13 +906,17 @@ def _internal(arguments: argparse.Namespace) -> int:
     trial = Path(os.path.abspath(arguments.trial_dir))
     retained_case = RETAINED_CASE_BY_NAME[arguments.case]
     if arguments.operation == "_setup":
-        if retained_case.stage == 7:
+        if retained_case.stage == 0:
+            _setup_alignment_signatures(trial, arguments.value)
+        elif retained_case.stage == 7:
             _setup_step07(context, trial, arguments.value)
         else:
             _setup_step08(context, trial, arguments.case, arguments.value)
     elif arguments.operation == "_produce":
         source = _source(context, arguments.variant)
-        if retained_case.stage == 7:
+        if retained_case.stage == 0:
+            _produce_alignment_signatures(trial, source)
+        elif retained_case.stage == 7:
             _produce_step07(context, trial, source)
         else:
             _produce_step08(
@@ -865,6 +927,8 @@ def _internal(arguments: argparse.Namespace) -> int:
                 arguments.value,
                 _case_threads(arguments.case),
             )
+    elif retained_case.stage == 0:
+        _validate_alignment_signatures(trial)
     elif retained_case.stage == 7:
         _validate_step07(context, trial)
     else:

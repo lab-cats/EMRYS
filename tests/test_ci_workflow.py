@@ -246,6 +246,7 @@ def test_retained_stage_benchmark_follows_successful_100000_e2e() -> None:
     assert '--runtime-prefix "${REAL_TOOLS_PREFIX}"' in command
     assert '--rscript "$(command -v Rscript)"' in command
     assert '--renv-library "${RENV_LIBRARY}"' in command
+    assert "--suite all" in command
     assert "--execute" in command
     assert "threshold" not in command.lower()
 

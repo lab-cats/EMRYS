@@ -53,9 +53,10 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
 
         self.assertEqual(document["schema_version"], "emrys.resource-benchmark.v2")
         cases = document["cases"]
+        default_cases = BENCHMARK._select_cases(suite=None, names=None)
         self.assertEqual(
             {case["name"]: case["values"] for case in cases},
-            {case.name: list(case.values) for case in BENCHMARK.RETAINED_CASES},
+            {case.name: list(case.values) for case in default_cases},
         )
         for case in cases:
             self.assertEqual(case["repetitions"], BENCHMARK.MEASURED_REPETITIONS)
@@ -81,12 +82,30 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
 
     def test_case_selection_is_closed_deduplicated_and_canonical(self) -> None:
         default = BENCHMARK._select_cases(suite=None, names=None)
-        self.assertEqual(default, BENCHMARK.RETAINED_CASES)
+        self.assertEqual(
+            default,
+            tuple(
+                case
+                for case in BENCHMARK.RETAINED_CASES
+                if case.suite == BENCHMARK.DEFAULT_SUITE
+            ),
+        )
+        self.assertEqual(
+            BENCHMARK._select_cases(suite="identity", names=None),
+            (BENCHMARK.RETAINED_CASE_BY_NAME["alignment-signatures-mib"],),
+        )
+        self.assertEqual(
+            BENCHMARK._select_cases(suite="all", names=None),
+            BENCHMARK.RETAINED_CASES,
+        )
         self.assertEqual(
             BENCHMARK._select_cases(
                 suite=None, names=("step08-uniform", "step07-partitions")
             ),
-            (BENCHMARK.RETAINED_CASES[0], BENCHMARK.RETAINED_CASES[3]),
+            (
+                BENCHMARK.RETAINED_CASE_BY_NAME["step07-partitions"],
+                BENCHMARK.RETAINED_CASE_BY_NAME["step08-uniform"],
+            ),
         )
         with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "selected once"):
             BENCHMARK._select_cases(
@@ -95,6 +114,53 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
         with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "mutually exclusive"):
             BENCHMARK._select_cases(
                 suite="cohort-stages", names=("step08-uniform",)
+            )
+
+    def test_alignment_signature_case_binds_variant_source_and_exact_parity(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            trial = root / "trial"
+            trial.mkdir()
+            context = root / "context.json"
+            context.write_text(
+                json.dumps(
+                    {"sources": {"master": str(ROOT), "head": str(ROOT)}}
+                ),
+                encoding="utf-8",
+            )
+            BENCHMARK._setup_alignment_signatures(trial, 10)
+
+            completed = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "_produce",
+                    "--context",
+                    str(context),
+                    "--case",
+                    "alignment-signatures-mib",
+                    "--value",
+                    "10",
+                    "--variant",
+                    "head",
+                    "--trial-dir",
+                    str(trial),
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            BENCHMARK._validate_alignment_signatures(trial)
+            self.assertEqual((trial / "input.bam").stat().st_size, 10 * 1024**2)
+            self.assertEqual(
+                (trial / "input.bam.bai").stat().st_size, 10 * 1024**2
+            )
+            self.assertEqual(
+                (trial / "parity.bin").read_bytes(), b"\x1f\x8b\x08\x04BAI\x01"
             )
 
     def test_partition_sweeps_cover_the_full_5mb_contig_once(self) -> None:

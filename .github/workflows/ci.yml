@@ -827,6 +827,7 @@ jobs:
             --runtime-prefix "${REAL_TOOLS_PREFIX}" \
             --rscript "$(command -v Rscript)" \
             --renv-library "${RENV_LIBRARY}" \
+            --suite all \
             --execute
 
       - name: Upload retained 100,000-pair evidence
