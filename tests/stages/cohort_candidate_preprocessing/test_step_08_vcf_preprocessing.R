@@ -413,6 +413,13 @@ build_case <- function(root, mode = "positive") {
             receipt$vcf_record_count[[1L]] <-
                 receipt$vcf_record_count[[1L]] + 1L
         }
+        if (
+            mode == "p2_rev_declared_count_mismatch" &&
+                partition_id == "p2"
+        ) {
+            receipt$vcf_record_count[[2L]] <-
+                receipt$vcf_record_count[[2L]] + 1L
+        }
         write_tsv(
             receipt,
             file.path(
@@ -512,6 +519,85 @@ run_engine <- function(
         )
     }
     invocation$paths
+}
+
+assert_scheduler_telemetry <- function(
+    log_path, expected_mode, expected_max_concurrent_jobs
+) {
+    log_lines <- readLines(log_path, warn = FALSE)
+    scheduling_lines <- log_lines[startsWith(
+        log_lines, "Step 08 VCF scheduling:"
+    )]
+    assert_identical(
+        scheduling_lines,
+        paste0(
+            "Step 08 VCF scheduling: mode=", expected_mode,
+            " max_concurrent_jobs=", expected_max_concurrent_jobs,
+            " ordered_input_jobs=4"
+        ),
+        "scheduler telemetry must report one exact scheduling line"
+    )
+
+    timing_lines <- log_lines[startsWith(
+        log_lines, "Step 08 VCF job timing:"
+    )]
+    expected_jobs <- data.frame(
+        partition_id = c("p1", "p1", "p2", "p2"),
+        orientation = c("FWD_like", "REV_like", "FWD_like", "REV_like"),
+        stringsAsFactors = FALSE
+    )
+    assert_true(
+        length(timing_lines) == nrow(expected_jobs),
+        "scheduler telemetry must report every successful input job once"
+    )
+    for (input_index in seq_len(nrow(expected_jobs))) {
+        expected_pattern <- paste0(
+            "^Step 08 VCF job timing: input_index=", input_index,
+            " partition_id=", expected_jobs$partition_id[[input_index]],
+            " orientation=", expected_jobs$orientation[[input_index]],
+            " pid=[0-9]+ elapsed_seconds=[0-9]+\\.[0-9]{3}$"
+        )
+        assert_true(
+            grepl(expected_pattern, timing_lines[[input_index]]),
+            paste0(
+                "job timing telemetry must preserve declared input order at ",
+                "input index ", input_index
+            )
+        )
+    }
+
+    summary_lines <- log_lines[startsWith(
+        log_lines,
+        paste0(
+            "Step 08 VCF timing summary (per-job only; not wall time or ",
+            "utilization):"
+        )
+    )]
+    assert_true(
+        length(summary_lines) == 1L && grepl(
+            paste0(
+                "^Step 08 VCF timing summary \\(per-job only; not wall time ",
+                "or utilization\\): successful_jobs=4 ",
+                "cumulative_job_seconds=[0-9]+\\.[0-9]{3} ",
+                "maximum_job_seconds=[0-9]+\\.[0-9]{3}$"
+            ),
+            summary_lines[[1L]]
+        ),
+        "scheduler telemetry must report one exact per-job timing summary"
+    )
+    assert_true(
+        !any(grepl("Step 08 worker load:", log_lines, fixed = TRUE)),
+        "scheduler telemetry must not report the retired worker-load metric"
+    )
+
+    as.integer(sub(
+        paste0(
+            "^Step 08 VCF job timing:.* pid=([0-9]+) ",
+            "elapsed_seconds=.*$"
+        ),
+        "\\1",
+        timing_lines
+    ))
 }
 
 hash_mutation_environment <- function(root, target) {
@@ -827,6 +913,11 @@ assert_true(
     "an internally inconsistent transcript must be warned about and skipped"
 )
 assert_positive_outputs(first_paths)
+assert_scheduler_telemetry(
+    file.path(test_root, "positive-output-1", "engine.log"),
+    expected_mode = "serial",
+    expected_max_concurrent_jobs = 1L
+)
 for (threads in c("2", "4")) {
     output_dir <- file.path(test_root, paste0("positive-output-", threads))
     compared_paths <- run_engine(
@@ -848,15 +939,34 @@ for (threads in c("2", "4")) {
             ),
             paste0(
                 name, " output must be byte-deterministic at ",
-                threads, " workers"
+                threads, " concurrent jobs"
             )
         )
     }
-    worker_log <- readLines(file.path(output_dir, "engine.log"), warn = FALSE)
-    assert_true(
-        any(grepl("Step 08 worker load:", worker_log, fixed = TRUE)),
-        paste0(threads, "-worker execution must report worker load")
+    expected_mode <- if (.Platform$OS.type == "windows") {
+        "serial"
+    } else {
+        "dynamic"
+    }
+    expected_max_concurrent_jobs <- if (.Platform$OS.type == "windows") {
+        1L
+    } else {
+        as.integer(threads)
+    }
+    job_pids <- assert_scheduler_telemetry(
+        file.path(output_dir, "engine.log"),
+        expected_mode = expected_mode,
+        expected_max_concurrent_jobs = expected_max_concurrent_jobs
     )
+    if (.Platform$OS.type != "windows") {
+        assert_true(
+            length(unique(job_pids)) == 4L,
+            paste0(
+                threads,
+                "-thread dynamic scheduling must start one child per input job"
+            )
+        )
+    }
 }
 
 disjoint_case <- build_case(
@@ -929,6 +1039,22 @@ for (mode in negative_modes) {
         expected_error = expected_negative_errors[[mode]]
     )
 }
+
+p2_rev_mismatch_case <- build_case(
+    file.path(test_root, "negative-p2-rev-mismatch"),
+    mode = "p2_rev_declared_count_mismatch"
+)
+run_engine(
+    engine,
+    p2_rev_mismatch_case,
+    file.path(test_root, "negative-output-p2-rev-mismatch"),
+    expect_success = FALSE,
+    expected_error = paste0(
+        "Step 08 input processing failed for partition p2 REV_like: ",
+        "VCF record count does not match Step 07 receipt"
+    ),
+    threads = "2"
+)
 
 vcf_mutation_case <- build_case(file.path(test_root, "negative-vcf-mutation"))
 vcf_mutation_target <- file.path(

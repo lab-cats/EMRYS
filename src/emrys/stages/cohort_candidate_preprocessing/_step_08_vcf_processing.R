@@ -281,13 +281,15 @@ process_vcf_job <- function(job, sample_ids, annotation_model) {
 }
 
 process_vcf_jobs <- function(jobs, threads, sample_ids, annotation_model) {
-    worker_count <- min(threads, length(jobs))
+    max_concurrent_jobs <- min(threads, length(jobs))
     if (.Platform$OS.type == "windows") {
-        worker_count <- 1L
+        max_concurrent_jobs <- 1L
     }
+    scheduling_mode <- if (max_concurrent_jobs == 1L) "serial" else "dynamic"
     message(
-        "Step 08 VCF workers: ", worker_count,
-        " for ", length(jobs), " ordered input job(s)."
+        "Step 08 VCF scheduling: mode=", scheduling_mode,
+        " max_concurrent_jobs=", max_concurrent_jobs,
+        " ordered_input_jobs=", length(jobs)
     )
 
     process_timed <- function(job) {
@@ -299,28 +301,38 @@ process_vcf_jobs <- function(jobs, threads, sample_ids, annotation_model) {
             elapsed_seconds = as.numeric(proc.time()[["elapsed"]] - started)
         )
     }
-    report_worker_load <- function(outcomes) {
-        worker_pid <- vapply(
-            outcomes, function(outcome) outcome$worker_pid, integer(1)
+    report_job_timings <- function(outcomes) {
+        elapsed_seconds <- vapply(
+            outcomes, function(outcome) outcome$elapsed_seconds, numeric(1)
         )
-        for (pid in sort(unique(worker_pid), method = "radix")) {
-            assigned <- which(worker_pid == pid)
-            elapsed <- sum(vapply(
-                outcomes[assigned],
-                function(outcome) outcome$elapsed_seconds,
-                numeric(1)
-            ))
+        for (input_index in seq_along(outcomes)) {
+            job <- jobs[[input_index]]
+            outcome <- outcomes[[input_index]]
             message(
-                "Step 08 worker load: pid=", pid,
-                " jobs=", length(assigned),
-                " cumulative_job_seconds=", sprintf("%.3f", elapsed)
+                "Step 08 VCF job timing: input_index=", input_index,
+                " partition_id=", job$partition_id,
+                " orientation=", job$orientation,
+                " pid=", outcome$worker_pid,
+                " elapsed_seconds=", sprintf("%.3f", outcome$elapsed_seconds)
             )
         }
+        message(
+            paste0(
+                "Step 08 VCF timing summary (per-job only; not wall time or ",
+                "utilization): successful_jobs=", length(outcomes),
+                " cumulative_job_seconds=", sprintf(
+                    "%.3f", sum(elapsed_seconds)
+                ),
+                " maximum_job_seconds=", sprintf(
+                    "%.3f", max(elapsed_seconds)
+                )
+            )
+        )
     }
 
-    if (worker_count == 1L) {
+    if (max_concurrent_jobs == 1L) {
         outcomes <- lapply(jobs, process_timed)
-        report_worker_load(outcomes)
+        report_job_timings(outcomes)
         return(lapply(outcomes, function(outcome) outcome$value))
     }
 
@@ -338,8 +350,8 @@ process_vcf_jobs <- function(jobs, threads, sample_ids, annotation_model) {
     results <- parallel::mclapply(
         jobs,
         process_safely,
-        mc.cores = worker_count,
-        mc.preschedule = TRUE,
+        mc.cores = max_concurrent_jobs,
+        mc.preschedule = FALSE,
         mc.set.seed = FALSE
     )
     valid_outcome <- vapply(
@@ -371,6 +383,6 @@ process_vcf_jobs <- function(jobs, threads, sample_ids, annotation_model) {
         )
     }
     outcomes <- lapply(results, function(outcome) outcome$value)
-    report_worker_load(outcomes)
+    report_job_timings(outcomes)
     lapply(outcomes, function(outcome) outcome$value)
 }
