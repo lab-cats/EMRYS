@@ -14,6 +14,7 @@ import argparse
 import csv
 import hashlib
 import importlib
+import importlib.util
 import io
 import json
 import math
@@ -27,6 +28,7 @@ from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
+from types import ModuleType
 from typing import Any
 
 SUMMARY_SCHEMA = "emrys.retained-stage-benchmark-summary.v3"
@@ -170,10 +172,46 @@ RETAINED_CASES = (
     RetainedCase("step08-reread", "cohort-stages", 8, (10_000, 100_000), 1),
     RetainedCase("step08-skew", "cohort-stages", 8, (100_000,), 2),
     RetainedCase("step08-uniform", "cohort-stages", 8, (100_000,), 2),
+    RetainedCase("task-log-capture", "task-runtime", 19, (1, 32, 128), 1),
+    RetainedCase("task-log-inspection", "task-runtime", 19, (1, 32, 128), 1),
 )
 RETAINED_CASE_BY_NAME = {case.name: case for case in RETAINED_CASES}
 RETAINED_CASE_NAMES = tuple(case.name for case in RETAINED_CASES)
 RETAINED_SUITES = tuple(dict.fromkeys(case.suite for case in RETAINED_CASES))
+
+_TASK_LOG_CASE_MODULE: ModuleType | None = None
+
+
+def _task_log_case_module() -> ModuleType:
+    global _TASK_LOG_CASE_MODULE
+    if _TASK_LOG_CASE_MODULE is not None:
+        return _TASK_LOG_CASE_MODULE
+    path = Path(__file__).resolve().parent / "performance_cases/task_logs.py"
+    spec = importlib.util.spec_from_file_location(
+        "emrys_retained_task_log_cases",
+        path,
+    )
+    if spec is None or spec.loader is None:
+        raise BenchmarkSetupError("could not load retained task-log benchmark cases")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+    except (ImportError, OSError) as exc:
+        sys.modules.pop(spec.name, None)
+        raise BenchmarkSetupError(
+            f"could not load retained task-log benchmark cases: {exc}"
+        ) from exc
+    _TASK_LOG_CASE_MODULE = module
+    return module
+
+
+def _run_task_log_case(operation: str, *arguments: Any) -> None:
+    module = _task_log_case_module()
+    try:
+        getattr(module, operation)(*arguments)
+    except module.TaskLogCaseError as exc:
+        raise BenchmarkSetupError(str(exc)) from exc
 
 
 @dataclass(frozen=True, slots=True)
@@ -3363,6 +3401,10 @@ def _internal(arguments: argparse.Namespace) -> int:
             _setup_step06(context, trial, arguments.value)
         elif retained_case.stage == 7:
             _setup_step07(context, trial, arguments.value)
+        elif retained_case.stage == 19:
+            _run_task_log_case(
+                "setup", trial, arguments.case, arguments.value
+            )
         else:
             _setup_step08(context, trial, arguments.case, arguments.value)
     elif arguments.operation == "_produce":
@@ -3381,6 +3423,10 @@ def _internal(arguments: argparse.Namespace) -> int:
             _produce_step06(context, trial, source)
         elif retained_case.stage == 7:
             _produce_step07(context, trial, source)
+        elif retained_case.stage == 19:
+            _run_task_log_case(
+                "produce", trial, source, arguments.case, arguments.value
+            )
         else:
             _produce_step08(
                 context,
@@ -3404,6 +3450,10 @@ def _internal(arguments: argparse.Namespace) -> int:
         _validate_step06(context, trial)
     elif retained_case.stage == 7:
         _validate_step07(context, trial)
+    elif retained_case.stage == 19:
+        _run_task_log_case(
+            "validate", trial, arguments.case, arguments.value
+        )
     else:
         _validate_step08(context, trial, arguments.case, arguments.value)
     return 0

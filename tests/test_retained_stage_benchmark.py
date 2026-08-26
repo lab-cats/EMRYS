@@ -790,6 +790,16 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 BENCHMARK.RETAINED_CASE_BY_NAME["step06-mechanical-orientation"],
             ),
         )
+        task_runtime = BENCHMARK._select_cases(suite="task-runtime", names=None)
+        self.assertEqual(
+            tuple(case.name for case in task_runtime),
+            ("task-log-capture", "task-log-inspection"),
+        )
+        self.assertEqual(
+            tuple(case.values for case in task_runtime),
+            ((1, 32, 128), (1, 32, 128)),
+        )
+        self.assertTrue(all(case.stage == 19 for case in task_runtime))
         self.assertEqual(
             BENCHMARK._select_cases(suite="all", names=None),
             BENCHMARK.RETAINED_CASES,
@@ -2392,7 +2402,11 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                         runtime,
                         root / "Rscript",
                         root / "renv",
-                        (BENCHMARK.RETAINED_CASES[-1],),
+                        (
+                            BENCHMARK.RETAINED_CASE_BY_NAME[
+                                "step08-uniform"
+                            ],
+                        ),
                         None,
                     ),
                     0,
