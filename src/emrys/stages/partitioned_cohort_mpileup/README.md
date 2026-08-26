@@ -40,8 +40,9 @@ The orchestration-safe invocation also supplies `--no-clobber`, which rejects a 
 prior set without running bcftools; direct use retains complete-set
 replacement unless that option is supplied. On a new output set, this mode
 hashes the exact manifests, reference FASTA/FAI pair, optional regions file,
-and every admitted orientation BAM/BAI before bcftools, then rechecks their
-membership and bytes before receipt construction and publication.
+and every admitted orientation BAM/BAI before bcftools, rechecks their
+membership and bytes after both bcftools consumers, and rechecks them again
+immediately before publication.
 
 Do not tune `--max-depth` from the bcftools warning alone. First retain a
 representative-partition benchmark with elapsed/CPU time, peak RSS, block I/O,
@@ -50,12 +51,14 @@ validator success, and byte hashes. The existing
 `sacct` may supplement them. Keep benchmark manifests/results outside the
 repository and leave the default unchanged until site evidence supports a cut.
 
-Execute requires all three predecessors or none, publishes and revalidates the
-FWD and REV VCFs, then publishes the two-row receipt. Only manifests are
-durably hash-bound in that receipt; the additional `--no-clobber` hashes are
+Execute requires all three predecessors or none and validates staged FWD and
+REV VCFs before publishing the two-row receipt last. No-clobber publication
+carries staged VCF validation through create-exclusive staging/final inode
+identity; legacy replacement revalidates the final VCF paths. Only manifests
+are durably hash-bound in the receipt; the additional `--no-clobber` hashes are
 in-attempt guards and are not receipt provenance. Receipt visibility is not
-current-attempt proof. An incomplete rollback retains the owned lock and backups
-for operator recovery.
+current-attempt proof. An incomplete rollback retains the owned lock and
+backups for operator recovery.
 
 The producer prints the exact post-execution validator command using its bound
 paths, followed by the exact `emrys validate all-pass` command. Run both after

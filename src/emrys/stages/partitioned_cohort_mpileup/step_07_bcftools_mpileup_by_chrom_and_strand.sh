@@ -871,9 +871,12 @@ tmp_rev_count="$(vcf_record_count "$tmp_rev_vcf")" ||
         "$sample_count" "$tmp_rev_count"
 } > "$tmp_receipt"
 validate_receipt "$tmp_receipt"
-# Manifests are small and are embedded in receipt identity, so retain their
-# final recheck without repeating the complete BAM/BAI/reference roster hash.
+# Preserve the orchestration-safe stability boundary through receipt
+# construction and the start of publication. The performance fast path below
+# removes only redundant final-output reparsing; it does not weaken admitted
+# scientific-input stability.
 confirm_input_manifest_hashes
+confirm_no_clobber_scientific_inputs
 
 if [[ "$final_count" -eq 3 ]]; then
     previous_final_set_present=true

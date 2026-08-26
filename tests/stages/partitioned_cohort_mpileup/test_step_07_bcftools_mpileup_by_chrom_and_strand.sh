@@ -13,6 +13,7 @@ export TMPDIR="$test_root"
 unset BCFTOOLS_BIN_OVERRIDE SLURM_JOB_ID \
     FAKE_BCFTOOLS_BARRIER_READY FAKE_BCFTOOLS_BARRIER_RELEASE \
     FAKE_BCFTOOLS_FAIL_STAGE FAKE_BCFTOOLS_LOG \
+    FAKE_BCFTOOLS_LATE_MUTATE_PATH \
     FAKE_BCFTOOLS_MUTATE_ORIENTATION FAKE_BCFTOOLS_MUTATE_PATH \
     FAKE_BCFTOOLS_SAMPLES FAKE_FAIL_FINAL_VALIDATION FAKE_HEADER_ONLY \
     FAKE_LN_SWAP_RECEIPT_PATH FAKE_LN_SWAP_TARGET FAKE_SHA256_LOG \
@@ -180,6 +181,11 @@ case "$command_name" in
         mode="${1:-}"
         path="${2:-}"
         [[ -s "$path" ]] || exit 44
+        if [[ -n "${FAKE_BCFTOOLS_LATE_MUTATE_PATH:-}" &&
+              "$mode" == "-H" && "$path" == *".REV_like.tmp.vcf" ]]; then
+            printf '# controlled late mutation\n' \
+                >>"$FAKE_BCFTOOLS_LATE_MUTATE_PATH"
+        fi
         if [[ -n "${FAKE_OBSERVE_PUBLISHED_FWD:-}" &&
               "$mode" == "-h" && "$path" == "$FAKE_OBSERVE_PUBLISHED_FWD" ]]; then
             [[ -s "${FAKE_OBSERVE_PUBLISHED_REV:-}" ]] || exit 50
@@ -505,14 +511,51 @@ done
 for sample in sample_A sample_B; do
     for orientation in FWD_like REV_like; do
         fastpath_bam="$fastpath_fixture/orientation/$sample/$sample.$orientation.bam"
-        assert_log_line_count 2 "$fastpath_sha256_log" "$fastpath_bam"
-        assert_log_line_count 2 "$fastpath_sha256_log" "$fastpath_bam.bai"
+        assert_log_line_count 3 "$fastpath_sha256_log" "$fastpath_bam"
+        assert_log_line_count 3 "$fastpath_sha256_log" "$fastpath_bam.bai"
     done
 done
+assert_log_line_count 3 "$fastpath_sha256_log" "$fastpath_fixture/reference.fa"
+assert_log_line_count 3 "$fastpath_sha256_log" "$fastpath_fixture/reference.fa.fai"
 assert_exists "$fastpath_final_fwd"
 assert_exists "$fastpath_final_rev"
 assert_exists "$fastpath_dir/cohort_fastpath.1.step07_outputs.tsv"
 assert_not_exists "$fastpath_dir/.cohort_fastpath.1.step07.lock"
+
+late_fixture="$test_root/no-clobber-late-mutation"
+cp -R "$fixture" "$late_fixture"
+rm -rf "$late_fixture/output"
+late_output="$late_fixture/output/cohort_late/1"
+mkdir -p "$late_output"
+late_sentinel="$late_output/unrelated.txt"
+printf 'preserve late-mutation neighbor\n' >"$late_sentinel"
+late_mutation_path="$late_fixture/reference.fa"
+late_args=(
+    --cohort-id cohort_late
+    --sample-manifest "$late_fixture/samples.tsv"
+    --partition-manifest "$late_fixture/partitions.tsv"
+    --partition-id 1
+    --orientation-root "$late_fixture/orientation"
+    --reference-fasta "$late_fixture/reference.fa"
+    --output-root "$late_fixture/output"
+    --bcftools-bin "$fake_bcftools"
+    --no-clobber
+)
+run_expect_status 1 \
+    "$test_root/no-clobber-late-mutation.out" \
+    "$test_root/no-clobber-late-mutation.err" \
+    env FAKE_BCFTOOLS_LATE_MUTATE_PATH="$late_mutation_path" \
+    FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
+    bash "$script" "${late_args[@]}" --execute
+assert_file_equals "$test_root/no-clobber-late-mutation.err" \
+    "ERROR: Reference FASTA changed during Step 07 --no-clobber execution: $late_mutation_path"$'\n'
+assert_contains "$late_mutation_path" "# controlled late mutation"
+assert_not_exists "$late_output/cohort_late.1.FWD_like.mpileup.vcf"
+assert_not_exists "$late_output/cohort_late.1.REV_like.mpileup.vcf"
+assert_not_exists "$late_output/cohort_late.1.step07_outputs.tsv"
+assert_not_exists "$late_output/.cohort_late.1.step07.lock"
+assert_no_owned_step07_paths "$late_output" '.cohort_late.1.step07.*'
+assert_file_equals "$late_sentinel" $'preserve late-mutation neighbor\n'
 
 identity_fixture="$test_root/no-clobber-final-identity"
 cp -R "$fixture" "$identity_fixture"
@@ -585,13 +628,21 @@ assert_contains "$test_root/regions.out" "target.bed"
 assert_contains "$test_root/regions.out" "-R"
 assert_contains "$test_root/regions.out" "$regions_fixture/target.bed"
 assert_not_exists "$regions_fixture/output"
+regions_sha256_log="$test_root/regions-sha256.log"
 FAKE_BCFTOOLS_LOG="$test_root/regions-execute.log" \
 FAKE_BCFTOOLS_SAMPLES="sample_A,sample_B" \
-    bash "$script" "${regions_args[@]}" --execute >/dev/null
+FAKE_SHA256_LOG="$regions_sha256_log" \
+REAL_SHA256_PYTHON="$real_sha256_python" \
+EMRYS_SHA256_PYTHON="$sha256_logging_python" \
+    bash "$script" "${regions_args[@]}" --no-clobber --execute >/dev/null
 regions_receipt="$regions_fixture/output/cohort_regions/target/cohort_regions.target.step07_outputs.tsv"
 [[ "$(awk -F '\t' 'NR == 2 { print $4 }' "$regions_receipt")" == "target.bed" ]] ||
     fail "Receipt must preserve the manifest-declared regions_file value"
 assert_contains "$test_root/regions-execute.log" "$regions_fixture/target.bed"
+regions_reported_path="$(
+    cd "$(dirname "$regions_fixture/target.bed")" && pwd -P
+)/$(basename "$regions_fixture/target.bed")"
+assert_log_line_count 3 "$regions_sha256_log" "$regions_reported_path"
 
 compressed_regions_fixture="$test_root/compressed-regions"
 cp -R "$fixture" "$compressed_regions_fixture"

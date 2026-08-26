@@ -86,14 +86,15 @@ stable outputs. Immediately before invoking bcftools on a new output set, that
 mode hashes the exact sample and partition manifests, reference FASTA/FAI pair,
 selected regions file when applicable, and both BAM/BAI pairs for every
 admitted sample. It performs one complete post-bcftools recheck of that roster,
-covering stability through both scientific consumers. Receipt construction and
-publication no longer consume those large scientific inputs, so the producer
-does not repeat their hashes at transaction completion; it still rechecks the
-small manifest hashes because they are embedded in receipt identity. These
-hashes are in-attempt stability guards, not proof against transient mutations,
-and are not added to the native receipt. Direct invocations retain complete-set
-replacement and the legacy manifests-only stability boundary unless the flag
-is supplied.
+covering stability through both scientific consumers, and repeats the complete
+recheck immediately before publication so receipt construction cannot open an
+unobserved mutation window. The publication fast path removes only redundant
+final-VCF validation and counting; it does not reduce scientific-input hashing.
+The small manifest hashes are also rechecked because they are embedded in
+receipt identity. These hashes are in-attempt stability guards, not proof
+against transient mutations, and are not added to the native receipt. Direct
+invocations retain complete-set replacement and the legacy manifests-only
+stability boundary unless the flag is supplied.
 
 First publication in no-clobber mode is create-exclusive; VCF and receipt
 staging inode anchors remain until complete-set publication is proven, and
