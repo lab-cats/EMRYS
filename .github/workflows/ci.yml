@@ -568,9 +568,6 @@ jobs:
       inputs.synthetic_100000
     runs-on: ubuntu-24.04
     timeout-minutes: 120
-    env:
-      EMRYS_STEP07_HASH_FIXTURE: ${{ runner.temp }}/emrys-step07-hash-fixture
-      STEP07_HASH_RESULTS: ${{ runner.temp }}/emrys-step07-hash-results
     steps:
       - name: Check out the triggering commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -595,6 +592,9 @@ jobs:
 
       - name: Measure fixed-baseline Step 07 hashing amplification
         shell: bash
+        env:
+          EMRYS_STEP07_HASH_FIXTURE: ${{ runner.temp }}/emrys-step07-hash-fixture
+          STEP07_HASH_RESULTS: ${{ runner.temp }}/emrys-step07-hash-results
         run: |
           set -euo pipefail
           .venv/bin/python .github/ci/step07_hash_probe.py seed \
