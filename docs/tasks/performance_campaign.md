@@ -181,6 +181,17 @@ Reference-contig duplicate detection uses a linear membership scan for each
 contig. A set-backed membership owner can preserve order and diagnostics while
 changing that check from quadratic to linear in contig count.
 
+The retained `reference-contig-membership` identity case compares exact
+`origin/master` and `HEAD` source archives at 1,000, 4,000, and 16,000
+fixed-width one-base contigs. Setup is outside producer timing; one warmup and
+four balanced measured repetitions include parsing and canonical-result
+publication. An independent formula validates every ordered name and length
+plus the exact count before parity is accepted. A direct equality/hash-operation
+oracle remains part of the implementation acceptance boundary so heterogeneous
+hosted-runner timing is not the sole complexity proof. These measurements are
+synthetic hosted-runner identity evidence, not representative reference,
+full-E2E, cluster, production, scientific-review, or biological evidence.
+
 ### Step 08 and strict table validation materialize complete datasets
 
 Step 08 validates, parses, expands, aggregates, writes, and in some paths
