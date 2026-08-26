@@ -36,6 +36,30 @@ assert_not_contains() {
     fi
 }
 
+assert_exact_line() {
+    local file="$1"
+    local expected="$2"
+
+    grep -Fxq -- "$expected" "$file" || {
+        printf 'Expected exact line: %s\n' "$expected" >&2
+        printf 'Actual output:\n' >&2
+        cat "$file" >&2
+        fail "missing expected exact line"
+    }
+}
+
+assert_no_exact_line() {
+    local file="$1"
+    local unexpected="$2"
+
+    if grep -Fxq -- "$unexpected" "$file"; then
+        printf 'Did not expect exact line: %s\n' "$unexpected" >&2
+        printf 'Actual output:\n' >&2
+        cat "$file" >&2
+        fail "unexpected exact line"
+    fi
+}
+
 assert_not_exists() {
     local path="$1"
 
@@ -110,7 +134,7 @@ prepare_predecessor() {
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 export TMPDIR="$tmp_dir"
-unset FAKE_JAVA_MODE FAKE_JAVA_MUTATE_INPUTS \
+unset FAKE_JAVA_MODE FAKE_JAVA_MUTATE_INPUTS FAKE_PICARD_INDEX_STYLE \
     FAKE_SAMTOOLS_QUICKCHECK_EXIT FAKE_SAMTOOLS_INDEX_EXIT
 
 fake_bin="$tmp_dir/bin"
@@ -154,6 +178,7 @@ fi
 input_bam=""
 output_bam=""
 metrics_file=""
+create_index=false
 for arg in "\$@"; do
     case "\$arg" in
         INPUT=*)
@@ -164,6 +189,9 @@ for arg in "\$@"; do
             ;;
         METRICS_FILE=*)
             metrics_file="\${arg#METRICS_FILE=}"
+            ;;
+        CREATE_INDEX=*)
+            create_index="\${arg#CREATE_INDEX=}"
             ;;
     esac
 done
@@ -178,6 +206,39 @@ if [[ -z "\$metrics_file" ]]; then
     exit 64
 fi
 
+write_picard_index() {
+    case "\${FAKE_PICARD_INDEX_STYLE:-none}" in
+        none)
+            ;;
+        bam_bai)
+            [[ "\$create_index" == true ]] || {
+                printf 'fake Picard index requested without CREATE_INDEX=true\\n' >&2
+                exit 64
+            }
+            printf 'fake picard bam.bai index\\n' > "\$output_bam.bai"
+            ;;
+        stem_bai)
+            [[ "\$create_index" == true ]] || {
+                printf 'fake Picard index requested without CREATE_INDEX=true\\n' >&2
+                exit 64
+            }
+            printf 'fake picard stem.bai index\\n' > "\${output_bam%.bam}.bai"
+            ;;
+        empty_bam_bai)
+            [[ "\$create_index" == true ]] || {
+                printf 'fake Picard index requested without CREATE_INDEX=true\\n' >&2
+                exit 64
+            }
+            : > "\$output_bam.bai"
+            ;;
+        *)
+            printf 'unknown FAKE_PICARD_INDEX_STYLE: %s\\n' \
+                "\${FAKE_PICARD_INDEX_STYLE}" >&2
+            exit 64
+            ;;
+    esac
+}
+
 mkdir -p "\$(dirname "\$output_bam")" "\$(dirname "\$metrics_file")"
 case "\${FAKE_JAVA_MODE:-success}" in
     success)
@@ -187,6 +248,7 @@ case "\${FAKE_JAVA_MODE:-success}" in
     partial_failure)
         printf 'partial picard bam\\n' > "\$output_bam"
         printf 'partial picard metrics\\n' > "\$metrics_file"
+        write_picard_index
         printf 'fake Picard partial failure\\n' >&2
         exit 42
         ;;
@@ -199,6 +261,8 @@ case "\${FAKE_JAVA_MODE:-success}" in
         exit 64
         ;;
 esac
+
+write_picard_index
 
 if [[ "\${FAKE_JAVA_MUTATE_INPUTS:-0}" == "1" ]]; then
     [[ -n "\$input_bam" ]] || exit 64
@@ -265,6 +329,23 @@ printf 'placeholder bam\n' >"$input_bam"
 printf 'placeholder index\n' >"$input_bai"
 printf 'placeholder jar\n' >"$picard_jar"
 
+run_step04() {
+    local sample="$1"
+    local output_dir="$2"
+    local metrics_dir="$3"
+    shift 3
+
+    bash "$SCRIPT" \
+        --sample-id "$sample" \
+        --input-bam "$input_bam" \
+        --output-dir "$output_dir" \
+        --metrics-dir "$metrics_dir" \
+        --picard-jar "$picard_jar" \
+        --java-bin "$fake_bin/java" \
+        --samtools-bin "$fake_bin/samtools" \
+        "$@"
+}
+
 printf 'Running syntax check...\n'
 bash -n "$SCRIPT"
 
@@ -323,6 +404,7 @@ assert_contains "$dry_output" "OUTPUT=$dry_bam"
 assert_contains "$dry_output" "METRICS_FILE=$dry_metrics"
 assert_contains "$dry_output" "REMOVE_DUPLICATES=false"
 assert_contains "$dry_output" "TMP_DIR=${TMPDIR:-/tmp}"
+assert_not_contains "$dry_output" "CREATE_INDEX=true"
 assert_contains "$dry_output" "quickcheck"
 assert_contains "$dry_output" "index"
 assert_contains "$dry_output" "Dry-run only"
@@ -357,10 +439,12 @@ assert_contains "$java_log" "OUTPUT=$execute_bam"
 assert_contains "$java_log" "METRICS_FILE=$execute_metrics"
 assert_contains "$java_log" "REMOVE_DUPLICATES=false"
 assert_contains "$java_log" "TMP_DIR=${TMPDIR:-/tmp}"
+assert_not_contains "$java_log" "CREATE_INDEX=true"
 assert_contains "$samtools_log" "samtools invoked"
 assert_contains "$samtools_log" "quickcheck"
 assert_contains "$samtools_log" "$execute_bam"
 assert_contains "$samtools_log" "index"
+assert_exact_line "$samtools_log" "index"
 assert_contains "$execute_output" "Mode: execute"
 assert_contains "$execute_output" "Picard MarkDuplicates output details:"
 
@@ -384,9 +468,34 @@ assert_exit "$residue_output" 1 env SLURM_JOB_ID=newer-token bash "$SCRIPT" \
 assert_contains "$residue_output" "residue requires operator inspection"
 assert_file_content "$residue_path" $'preserve residue\n'
 assert_not_exists "$residue_output_dir/.sample_residue.step04.lock"
+
+stale_index_sample="sample_stale_picard_index"
+stale_index_token="stale-picard-index"
+stale_index_output_dir="$tmp_dir/results/stale_picard_index/markdup"
+stale_index_metrics_dir="$tmp_dir/results/stale_picard_index/qc"
+stale_index_path="$stale_index_output_dir/.${stale_index_sample}.step04.${stale_index_token}.markdup.tmp.bai"
+mkdir -p "$stale_index_output_dir" "$stale_index_metrics_dir"
+printf 'preserve stale index\n' >"$stale_index_path"
+stale_index_output="$tmp_dir/stale_picard_index.out"
+assert_exit "$stale_index_output" 1 env SLURM_JOB_ID="$stale_index_token" \
+    bash "$SCRIPT" \
+    --sample-id "$stale_index_sample" \
+    --input-bam "$input_bam" \
+    --output-dir "$stale_index_output_dir" \
+    --metrics-dir "$stale_index_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute
+assert_contains "$stale_index_output" "residue requires operator inspection"
+assert_file_content "$stale_index_path" $'preserve stale index\n'
+assert_not_exists "$stale_index_output_dir/.${stale_index_sample}.step04.lock"
+
 safe_output="$tmp_dir/safe.out"
 safe_output_dir="$tmp_dir/results/safe/markdup"
 safe_metrics_dir="$tmp_dir/results/safe/qc"
+rm -f "$java_log" "$samtools_log"
 bash "$SCRIPT" \
     --sample-id sample_safe \
     --input-bam "$input_bam" \
@@ -401,6 +510,10 @@ assert_file_content "$safe_output_dir/sample_safe.markdup.bam" $'fake duplicate-
 assert_file_content "$safe_output_dir/sample_safe.markdup.bam.bai" $'fake bam index\n'
 assert_file_content "$safe_metrics_dir/sample_safe.markdup.metrics.txt" $'fake picard metrics\n'
 assert_contains "$safe_output" "No-clobber transaction: true"
+assert_contains "$safe_output" \
+    "Picard did not produce a nonempty staged BAM index; running samtools index."
+assert_contains "$java_log" "CREATE_INDEX=true"
+assert_exact_line "$samtools_log" "index"
 assert_not_exists "$safe_output_dir/.sample_safe.step04.lock"
 safe_repeat_output="$tmp_dir/safe_repeat.out"
 assert_exit "$safe_repeat_output" 1 bash "$SCRIPT" \
@@ -414,6 +527,109 @@ assert_exit "$safe_repeat_output" 1 bash "$SCRIPT" \
     --no-clobber \
     --execute
 assert_contains "$safe_repeat_output" "requires all final outputs to be absent"
+
+run_picard_index_case() {
+    local label="$1"
+    local style="$2"
+    local sample="$3"
+    local token="$4"
+    local expected_index="$5"
+    local expected_message="$6"
+    local expect_samtools="$7"
+    local case_root="$tmp_dir/results/$sample"
+    local case_output="$tmp_dir/${sample}.out"
+    local case_output_dir="$case_root/markdup"
+    local case_metrics_dir="$case_root/qc"
+    local case_tmp_bam="$case_output_dir/.${sample}.step04.${token}.markdup.tmp.bam"
+
+    printf 'Running %s...\n' "$label"
+    rm -f "$java_log" "$samtools_log"
+    FAKE_PICARD_INDEX_STYLE="$style" SLURM_JOB_ID="$token" \
+        run_step04 "$sample" "$case_output_dir" "$case_metrics_dir" \
+            --no-clobber --execute >"$case_output"
+    assert_file_content "$case_output_dir/${sample}.markdup.bam.bai" \
+        "$expected_index"
+    assert_contains "$case_output" "$expected_message"
+    assert_contains "$java_log" "CREATE_INDEX=true"
+    if [[ "$expect_samtools" == true ]]; then
+        assert_exact_line "$samtools_log" "index"
+    else
+        assert_no_exact_line "$samtools_log" "index"
+    fi
+    assert_not_exists "$case_tmp_bam.bai"
+    assert_not_exists "${case_tmp_bam%.bam}.bai"
+}
+
+run_picard_index_case \
+    "no-clobber Picard bam.bai reuse check" \
+    bam_bai sample_picard_bam_bai picard-bam-bai \
+    $'fake picard bam.bai index\n' \
+    "Reusing Picard-produced BAM index:" false
+run_picard_index_case \
+    "no-clobber Picard stem.bai normalization check" \
+    stem_bai sample_picard_stem_bai picard-stem-bai \
+    $'fake picard stem.bai index\n' \
+    "Reusing Picard-produced BAM index after path normalization:" false
+run_picard_index_case \
+    "empty Picard index fallback check" \
+    empty_bam_bai sample_picard_empty_index picard-empty-index \
+    $'fake bam index\n' \
+    "Picard did not produce a nonempty staged BAM index; running samtools index." \
+    true
+
+printf 'Running alternate Picard index failure-cleanup check...\n'
+native_cleanup_sample="sample_picard_cleanup"
+native_cleanup_token="picard-cleanup"
+native_cleanup_output="$tmp_dir/picard_index_cleanup.out"
+native_cleanup_output_dir="$tmp_dir/results/picard_index_cleanup/markdup"
+native_cleanup_metrics_dir="$tmp_dir/results/picard_index_cleanup/qc"
+native_cleanup_tmp_bam="$native_cleanup_output_dir/.${native_cleanup_sample}.step04.${native_cleanup_token}.markdup.tmp.bam"
+native_cleanup_tmp_bai="${native_cleanup_tmp_bam}.bai"
+native_cleanup_tmp_picard_bai="${native_cleanup_tmp_bam%.bam}.bai"
+native_cleanup_tmp_metrics="$native_cleanup_metrics_dir/.${native_cleanup_sample}.step04.${native_cleanup_token}.metrics.tmp"
+assert_exit "$native_cleanup_output" 42 env \
+    FAKE_JAVA_MODE=partial_failure \
+    FAKE_PICARD_INDEX_STYLE=stem_bai \
+    SLURM_JOB_ID="$native_cleanup_token" \
+    bash "$SCRIPT" \
+    --sample-id "$native_cleanup_sample" \
+    --input-bam "$input_bam" \
+    --output-dir "$native_cleanup_output_dir" \
+    --metrics-dir "$native_cleanup_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$fake_bin/samtools" \
+    --no-clobber \
+    --execute
+assert_contains "$native_cleanup_output" "fake Picard partial failure"
+assert_not_exists "$native_cleanup_tmp_bam"
+assert_not_exists "$native_cleanup_tmp_bai"
+assert_not_exists "$native_cleanup_tmp_picard_bai"
+assert_not_exists "$native_cleanup_tmp_metrics"
+assert_not_exists "$native_cleanup_output_dir/${native_cleanup_sample}.markdup.bam"
+assert_not_exists "$native_cleanup_output_dir/${native_cleanup_sample}.markdup.bam.bai"
+assert_not_exists "$native_cleanup_metrics_dir/${native_cleanup_sample}.markdup.metrics.txt"
+assert_not_exists "$native_cleanup_output_dir/.${native_cleanup_sample}.step04.lock"
+
+printf 'Running legacy predecessor BAI replacement check...\n'
+legacy_predecessor_sample="sample_legacy_predecessor"
+prepare_predecessor \
+    "$tmp_dir/results/legacy_predecessor" "$legacy_predecessor_sample"
+legacy_predecessor_output="$tmp_dir/legacy_predecessor.out"
+rm -f "$java_log" "$samtools_log"
+bash "$SCRIPT" \
+    --sample-id "$legacy_predecessor_sample" \
+    --input-bam "$input_bam" \
+    --output-dir "$case_output_dir" \
+    --metrics-dir "$case_metrics_dir" \
+    --picard-jar "$picard_jar" \
+    --java-bin "$fake_bin/java" \
+    --samtools-bin "$fake_bin/samtools" \
+    --execute >"$legacy_predecessor_output"
+assert_file_content "$case_output_bai" $'fake bam index\n'
+assert_not_contains "$java_log" "CREATE_INDEX=true"
+assert_exact_line "$samtools_log" "index"
+assert_no_recovery_artifacts "$tmp_dir/results/legacy_predecessor"
 
 printf 'Running no-clobber stable-input rejection check...\n'
 safe_mutation_bam="$fixture_dir/safe_mutation.sorted.bam"
