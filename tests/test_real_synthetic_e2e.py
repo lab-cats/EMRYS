@@ -56,6 +56,7 @@ def test_parser_exposes_only_explicit_profiles_and_external_runtime_inputs() -> 
     assert arguments.slurm_qos == "site-default"
     assert arguments.slurm_cpus == 4
     assert arguments.execute is False
+    assert DRIVER.SUMMARY_SCHEMA == "emrys.ci-real-synthetic-e2e-summary.v2"
 
     with pytest.raises(SystemExit):
         parser.parse_args(
@@ -397,6 +398,60 @@ def test_submission_and_scontrol_parsers_fail_closed(tmp_path: Path) -> None:
         DRIVER.parse_submission(text.replace("1234.out", "other.out"), logs)
     with pytest.raises(DRIVER.DriverError, match="omits JobState"):
         DRIVER.parse_scontrol_job("JobId=1234 Partition=emrys-ci")
+
+
+def test_transcripts_record_command_elapsed_time(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transcripts_root = tmp_path / "transcripts"
+    transcripts_root.mkdir()
+    ticks = iter((10.0, 12.5))
+    monkeypatch.setattr(DRIVER.time, "monotonic", lambda: next(ticks))
+    monkeypatch.setattr(
+        DRIVER.subprocess,
+        "run",
+        lambda *_args, **_kwargs: subprocess.CompletedProcess(
+            ["tool"], 0, "stdout\n", "stderr\n"
+        ),
+    )
+    transcripts = DRIVER.Transcripts(transcripts_root)
+
+    transcripts.run("probe", ["tool"], cwd=tmp_path)
+
+    assert transcripts.records == [
+        {
+            "stage": "probe",
+            "argv": ["tool"],
+            "returncode": 0,
+            "elapsed_seconds": 2.5,
+            "stdout": str(transcripts_root / "01-probe.stdout.log"),
+            "stderr": str(transcripts_root / "01-probe.stderr.log"),
+        }
+    ]
+
+
+def test_tree_footprint_deduplicates_hard_link_bytes(tmp_path: Path) -> None:
+    root = tmp_path / "tree"
+    nested = root / "nested"
+    nested.mkdir(parents=True)
+    first = root / "first.bin"
+    first.write_bytes(b"12345678")
+    os.link(first, nested / "second-name.bin")
+    (nested / "third.bin").write_bytes(b"abc")
+
+    observed = DRIVER.tree_footprint(root, "test tree")
+
+    assert observed == {
+        "path": str(root),
+        "directories": 2,
+        "regular_file_paths": 3,
+        "unique_regular_files": 2,
+        "symlinks": 0,
+        "other_entries": 0,
+        "logical_bytes": 19,
+        "unique_bytes": 11,
+    }
 
 
 def test_cancel_job_sends_term_once_and_confirms_terminal_state(

@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-SUMMARY_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v1"
+SUMMARY_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v2"
 PROFILE_DATASETS = {
     "130": "smoke-v1",
     "100000": "production-like-v1",
@@ -115,6 +115,7 @@ class CompletedJob:
     stderr_path: Path
     stdout_sha256: str
     stderr_sha256: str
+    terminal_observation_elapsed_seconds: float
 
 
 def _positive_int(value: str) -> int:
@@ -481,6 +482,56 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def tree_footprint(root: Path, label: str) -> dict[str, Any]:
+    """Measure one retained tree while counting hard-linked bytes only once."""
+
+    if root.is_symlink() or not root.is_dir():
+        raise DriverError("assert-results", f"{label} is not a real directory: {root}")
+    directories = 0
+    regular_file_paths = 0
+    symlinks = 0
+    other_entries = 0
+    logical_bytes = 0
+    unique_bytes = 0
+    unique_files: set[tuple[int, int]] = set()
+    pending = [root]
+    while pending:
+        directory = pending.pop()
+        directories += 1
+        try:
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    state = entry.stat(follow_symlinks=False)
+                    mode = state.st_mode
+                    if stat.S_ISDIR(mode):
+                        pending.append(Path(entry.path))
+                    elif stat.S_ISREG(mode):
+                        regular_file_paths += 1
+                        logical_bytes += state.st_size
+                        identity = (state.st_dev, state.st_ino)
+                        if identity not in unique_files:
+                            unique_files.add(identity)
+                            unique_bytes += state.st_size
+                    elif stat.S_ISLNK(mode):
+                        symlinks += 1
+                    else:
+                        other_entries += 1
+        except OSError as exc:
+            raise DriverError(
+                "assert-results", f"could not measure {label}: {directory}: {exc}"
+            ) from exc
+    return {
+        "path": str(root),
+        "directories": directories,
+        "regular_file_paths": regular_file_paths,
+        "unique_regular_files": len(unique_files),
+        "symlinks": symlinks,
+        "other_entries": other_entries,
+        "logical_bytes": logical_bytes,
+        "unique_bytes": unique_bytes,
+    }
+
+
 class Transcripts:
     """Run argv-only subprocesses and retain every captured stream under the root."""
 
@@ -505,6 +556,7 @@ class Transcripts:
         stderr_path = self.root / f"{stem}.stderr.log"
         selected = tuple(str(value) for value in command)
         print(f"E2E stage {stage}: {shlex.join(selected)}", flush=True)
+        started = time.monotonic()
         try:
             result = subprocess.run(
                 selected,
@@ -516,6 +568,7 @@ class Transcripts:
             )
         except OSError as exc:
             raise DriverError(stage, f"could not execute command: {exc}") from exc
+        elapsed_seconds = max(0.0, time.monotonic() - started)
         _write_exclusive(stdout_path, result.stdout.encode("utf-8"))
         _write_exclusive(stderr_path, result.stderr.encode("utf-8"))
         self.records.append(
@@ -523,6 +576,7 @@ class Transcripts:
                 "stage": stage,
                 "argv": list(selected),
                 "returncode": result.returncode,
+                "elapsed_seconds": elapsed_seconds,
                 "stdout": str(stdout_path),
                 "stderr": str(stderr_path),
             }
@@ -741,6 +795,7 @@ def wait_for_job(
         stderr_path=job.stderr_path,
         stdout_sha256=sha256_file(job.stdout_path),
         stderr_sha256=sha256_file(job.stderr_path),
+        terminal_observation_elapsed_seconds=max(0.0, time.monotonic() - started),
     )
     if state != "COMPLETED" or exit_code != "0:0":
         raise DriverError(
@@ -987,6 +1042,9 @@ def _job_summary(job: CompletedJob) -> dict[str, Any]:
         "stdout_sha256": job.stdout_sha256,
         "stderr": str(job.stderr_path),
         "stderr_sha256": job.stderr_sha256,
+        "terminal_observation_elapsed_seconds": (
+            job.terminal_observation_elapsed_seconds
+        ),
     }
 
 
@@ -1404,6 +1462,11 @@ def run_driver(
             "fixture metadata omits the current Step 10 completion oracle",
         )
     completion = assert_completed_run(run_root, fixture_metadata)
+    footprints = {
+        "run_root": tree_footprint(run_root, "completed run root"),
+        "operator_root": tree_footprint(paths.operator_root, "operator root"),
+        "final_scratch": tree_footprint(paths.scratch, "final scratch root"),
+    }
     return {
         "schema_version": SUMMARY_SCHEMA,
         "status": "passed",
@@ -1429,6 +1492,23 @@ def run_driver(
         },
         "completion": completion,
         "commands": transcripts.records,
+        "performance": {
+            "filesystem_footprints": footprints,
+            "footprint_boundary": (
+                "after completion assertions and before e2e-summary publication; "
+                "hard-linked regular-file bytes counted once per measured tree"
+            ),
+            "unavailable_metrics": {
+                "cpu_time": "disposable CI Slurm uses jobacct_gather/none",
+                "peak_rss": "disposable CI Slurm uses jobacct_gather/none",
+                "read_write_bytes": (
+                    "disposable CI Slurm exposes no admitted accounting source"
+                ),
+                "peak_scratch": (
+                    "no continuous scratch sampler is active; final scratch is reported"
+                ),
+            },
+        },
         "retention": "complete operator root retained; no cleanup or repair performed",
         "evidence_boundary": (
             "real-tool single-node Slurm synthetic workflow evidence only; not "
@@ -1503,10 +1583,15 @@ def main(argv: list[str] | None = None) -> int:
     transcript_root = Path(arguments.operator_root).absolute() / "driver-transcripts"
     transcripts = Transcripts(transcript_root)
     summary_path = Path(arguments.operator_root).absolute() / "e2e-summary.json"
+    driver_started = time.monotonic()
     try:
         summary = run_driver(arguments, transcripts)
     except Exception as exc:
         summary = _failure_summary(arguments, transcripts, exc)
+        summary["performance"] = {
+            "driver_elapsed_seconds": max(0.0, time.monotonic() - driver_started),
+            "measurement_boundary": "failed retained driver attempt",
+        }
         try:
             if transcripts.operator_root_admitted and not summary_path.exists():
                 _publish_summary(summary_path, summary)
@@ -1517,6 +1602,9 @@ def main(argv: list[str] | None = None) -> int:
             )
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
+    summary["performance"]["driver_elapsed_seconds"] = max(
+        0.0, time.monotonic() - driver_started
+    )
     _publish_summary(summary_path, summary)
     return 0
 

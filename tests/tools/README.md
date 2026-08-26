@@ -32,9 +32,13 @@ seals PATH/JAVA_HOME to the locked Java independently of the Slurm launcher's
 PATH. A retained gunzip adapter adds explicit decompression after canonical
 path admission, so a provisioned `gunzip -> gzip` link cannot silently change
 STAR's read-command behavior. Adapter delegates, retained bytes, and bound
-runtimes are hashed in the summary. The driver installs and cleans nothing; its
-machine-readable summary remains synthetic execution evidence, never
-production or biological evidence.
+runtimes are hashed in the summary. The v2 summary records controller-command
+wall times, separate terminal-observation time for the plan and execution jobs,
+and hard-link-aware final footprints for the run, operator, and scratch roots.
+It explicitly marks CPU time, peak RSS, read/write bytes, and peak scratch as
+unavailable while disposable CI Slurm uses `jobacct_gather/none` and no admitted
+sampler. The driver installs and cleans nothing; its machine-readable summary
+remains synthetic execution evidence, never production or biological evidence.
 
 `retained_stage_benchmark.py` consumes the successful retained 100,000-pair
 summary and runs paired Step 07 and Step 08 comparison cases against the exact

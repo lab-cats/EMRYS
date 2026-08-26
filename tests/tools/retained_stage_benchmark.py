@@ -26,7 +26,7 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 SUMMARY_SCHEMA = "emrys.retained-stage-benchmark-summary.v1"
-E2E_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v1"
+E2E_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v2"
 COMPARISON_SCHEMA = "emrys.resource-benchmark.v2"
 STEP08_FIXTURE_SCHEMA = "emrys.retained-step08-fixture.v1"
 BASELINE_REF = "origin/master"
