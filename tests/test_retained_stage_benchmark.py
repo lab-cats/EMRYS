@@ -1951,6 +1951,49 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             ):
                 _run_step06_validator(fixture)
 
+    def test_step06_independent_oracle_accepts_optional_tag_reordering(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = _step06_validator_fixture(Path(directory).resolve())
+            outputs = fixture["outputs"]
+            retained = fixture["retained"]
+            records = fixture["records"]
+            indexed = fixture["indexed"]
+
+            def reverse_optional_fields(data: bytes) -> bytes:
+                rendered: list[bytes] = []
+                for line in data.splitlines():
+                    fields = line.split(b"\t")
+                    rendered.append(
+                        b"\t".join((*fields[:11], *reversed(fields[11:]))) + b"\n"
+                    )
+                return b"".join(rendered)
+
+            for selected in (
+                outputs["fwd_bam"],
+                outputs["rev_bam"],
+                retained["fwd_bam"],
+                retained["rev_bam"],
+            ):
+                reordered = reverse_optional_fields(records[selected])
+                records[selected] = reordered
+                indexed[selected] = reordered
+
+            _run_step06_validator(fixture)
+
+    def test_step06_membership_canonicalization_keeps_tag_values_exact(self) -> None:
+        first = b"r1\t99\tchr1\t1\t60\t1M\t=\t1\t0\tA\tI\tRG:Z:s1\tNM:i:0\n"
+        reordered = b"r1\t99\tchr1\t1\t60\t1M\t=\t1\t0\tA\tI\tNM:i:0\tRG:Z:s1\n"
+        changed = b"r1\t99\tchr1\t1\t60\t1M\t=\t1\t0\tA\tI\tNM:i:1\tRG:Z:s1\n"
+
+        self.assertEqual(
+            BENCHMARK._step06_membership_record(first, "first"),
+            BENCHMARK._step06_membership_record(reordered, "reordered"),
+        )
+        self.assertNotEqual(
+            BENCHMARK._step06_membership_record(first, "first"),
+            BENCHMARK._step06_membership_record(changed, "changed"),
+        )
+
     def test_step06_validator_rejects_counts_or_publication_residue(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()

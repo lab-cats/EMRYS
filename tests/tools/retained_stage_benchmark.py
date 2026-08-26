@@ -2754,6 +2754,16 @@ def _parse_step06_counts(data: bytes, sample_id: str, label: str) -> dict[str, i
     return values
 
 
+def _step06_membership_record(line: bytes, label: str) -> bytes:
+    """Render one SAM record with its unordered optional fields canonicalized."""
+
+    if not line.endswith(b"\n"):
+        raise BenchmarkSetupError(f"{label} is not a complete SAM record")
+    fields = line[:-1].split(b"\t")
+    _sam_optional_tags(fields, label)
+    return b"\t".join((*fields[:11], *sorted(fields[11:]))) + b"\n"
+
+
 def _independent_step06_counts(
     input_records: tuple[tuple[bytes, int, bytes], ...],
     fwd_records: tuple[tuple[bytes, int, bytes], ...],
@@ -2786,9 +2796,22 @@ def _independent_step06_counts(
         for line, flag, _reference in input_records
         if includes(flag, required)
     ]
-    if Counter(line for line, _flag, _reference in fwd_records) != Counter(expected_fwd):
+    observed_fwd = [line for line, _flag, _reference in fwd_records]
+    observed_rev = [line for line, _flag, _reference in rev_records]
+
+    def membership(lines: Sequence[bytes], label: str) -> Counter[bytes]:
+        return Counter(
+            _step06_membership_record(line, f"{label} record {index}")
+            for index, line in enumerate(lines, start=1)
+        )
+
+    if membership(observed_fwd, "Step 06 FWD") != membership(
+        expected_fwd, "retained Step 05 FWD member"
+    ):
         raise BenchmarkSetupError("Step 06 FWD record membership differs from Step 05")
-    if Counter(line for line, _flag, _reference in rev_records) != Counter(expected_rev):
+    if membership(observed_rev, "Step 06 REV") != membership(
+        expected_rev, "retained Step 05 REV member"
+    ):
         raise BenchmarkSetupError("Step 06 REV record membership differs from Step 05")
     counts = {
         "input_records": len(input_records),
