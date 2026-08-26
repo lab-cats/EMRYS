@@ -405,7 +405,7 @@ def test_comparison_manifest_rejects_invalid_cases(tmp_path: Path, override: dic
 
 def test_comparison_dry_run_is_balanced_and_writes_nothing(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     assert BENCHMARK._expand(("{trial_dir}", "{variant}"), value=2, trial_dir=tmp_path / "{variant}", variant="master") == (str(tmp_path / "{variant}"), "master")
-    case = _comparison_case(warmup_repetitions=0)
+    case = _comparison_case(repetitions=4, warmup_repetitions=0)
     case.pop("setup_argv")
     manifest = _write_comparison_manifest(tmp_path / "benchmark.yaml", case)
     output = tmp_path / "results"
@@ -420,6 +420,8 @@ def test_comparison_dry_run_is_balanced_and_writes_nothing(tmp_path: Path, capsy
         "master",
         "master",
         "changed",
+        "changed",
+        "master",
     ]
 
 

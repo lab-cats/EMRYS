@@ -55,16 +55,13 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
         cases = document["cases"]
         self.assertEqual(
             {case["name"]: case["values"] for case in cases},
-            {
-                "step07-partitions": [1, 5, 25],
-                "step08-reread": [10_000, 100_000],
-                "step08-skew": [100_000],
-                "step08-uniform": [100_000],
-            },
+            {case.name: list(case.values) for case in BENCHMARK.RETAINED_CASES},
         )
         for case in cases:
-            self.assertEqual(case["repetitions"], 3)
-            self.assertEqual(case["warmup_repetitions"], 1)
+            self.assertEqual(case["repetitions"], BENCHMARK.MEASURED_REPETITIONS)
+            self.assertEqual(
+                case["warmup_repetitions"], BENCHMARK.WARMUP_REPETITIONS
+            )
             self.assertEqual(case["baseline_variant"], "master")
             self.assertEqual(
                 [variant["name"] for variant in case["variants"]],
@@ -81,6 +78,24 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             self.assertEqual(case["validator_argv"][:5], [*prefix, "_validate"])
             for variant in case["variants"]:
                 self.assertEqual(variant["producer_argv"][:5], [*prefix, "_produce"])
+
+    def test_case_selection_is_closed_deduplicated_and_canonical(self) -> None:
+        default = BENCHMARK._select_cases(suite=None, names=None)
+        self.assertEqual(default, BENCHMARK.RETAINED_CASES)
+        self.assertEqual(
+            BENCHMARK._select_cases(
+                suite=None, names=("step08-uniform", "step07-partitions")
+            ),
+            (BENCHMARK.RETAINED_CASES[0], BENCHMARK.RETAINED_CASES[3]),
+        )
+        with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "selected once"):
+            BENCHMARK._select_cases(
+                suite=None, names=("step08-uniform", "step08-uniform")
+            )
+        with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "mutually exclusive"):
+            BENCHMARK._select_cases(
+                suite="cohort-stages", names=("step08-uniform",)
+            )
 
     def test_partition_sweeps_cover_the_full_5mb_contig_once(self) -> None:
         for count in (1, 5, 25):
@@ -461,28 +476,27 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             )
 
     def test_comparison_summary_requires_exact_complete_four_case_roster(self) -> None:
-        values = {
-            "step07-partitions": ("1", "5", "25"),
-            "step08-reread": ("10000", "100000"),
-            "step08-skew": ("100000",),
-            "step08-uniform": ("100000",),
-        }
+        manifest = BENCHMARK._manifest(
+            Path("/locked/python"),
+            Path("/repo/tests/tools/retained_stage_benchmark.py"),
+            Path("/external/context.json"),
+        )
 
         def rows() -> list[dict[str, str]]:
             selected = []
-            for case, case_values in values.items():
-                for value in case_values:
-                    for variant in ("master", "head"):
+            for case in manifest["cases"]:
+                for value in case["values"]:
+                    for variant in case["variants"]:
                         row = {field: "1" for field in BENCHMARK.COMPARISON_SUMMARY_FIELDS}
                         row.update(
                             {
-                                "case": case,
-                                "value": value,
-                                "baseline_variant": "master",
-                                "variant": variant,
-                                "required_repetitions": "3",
-                                "successful_repetitions": "3",
-                                "paired_repetitions": "3",
+                                "case": str(case["name"]),
+                                "value": str(value),
+                                "baseline_variant": str(case["baseline_variant"]),
+                                "variant": str(variant["name"]),
+                                "required_repetitions": str(case["repetitions"]),
+                                "successful_repetitions": str(case["repetitions"]),
+                                "paired_repetitions": str(case["repetitions"]),
                                 "warmups_valid": "yes",
                                 "comparison_valid": "yes",
                                 "artifact_parity": "yes",
@@ -507,10 +521,24 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             complete_rows = rows()
             publish(complete_rows)
             self.assertEqual(
-                BENCHMARK._comparison_summary_complete(path), (True, "complete")
+                BENCHMARK._comparison_summary_complete(path, manifest),
+                (True, "complete"),
             )
             publish(complete_rows[:-1])
-            valid, detail = BENCHMARK._comparison_summary_complete(path)
+            valid, detail = BENCHMARK._comparison_summary_complete(path, manifest)
+            self.assertFalse(valid)
+            self.assertIn("roster", detail)
+
+            selected_manifest = BENCHMARK._manifest(
+                Path("/locked/python"),
+                Path("/repo/tests/tools/retained_stage_benchmark.py"),
+                Path("/external/context.json"),
+                (BENCHMARK.RETAINED_CASES[-1],),
+            )
+            publish(rows())
+            valid, detail = BENCHMARK._comparison_summary_complete(
+                path, selected_manifest
+            )
             self.assertFalse(valid)
             self.assertIn("roster", detail)
 
@@ -578,6 +606,8 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                         root / "runtime",
                         root / "Rscript",
                         root / "renv",
+                        (BENCHMARK.RETAINED_CASES[-1],),
+                        None,
                     ),
                     0,
                 )
@@ -585,6 +615,14 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             context = json.loads((output / "benchmark-context.json").read_text())
             self.assertEqual(context["retained_primary_vcf"], str(primary_vcf))
             self.assertNotIn("retained_step07_root", context)
+            summary_document = json.loads(
+                (output / "retained-stage-benchmark-summary.json").read_text()
+            )
+            self.assertEqual(summary_document["schema_version"], BENCHMARK.SUMMARY_SCHEMA)
+            self.assertEqual(
+                summary_document["selection"],
+                {"suite": None, "cases": {"step08-uniform": [100_000]}},
+            )
 
     def test_admit_e2e_requires_the_exact_retained_100k_boundary(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -685,6 +723,8 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 runtime_prefix=runtime,
                 rscript=root / "Rscript",
                 renv_library=renv,
+                suite=None,
+                case_names=None,
                 execute=False,
             )
             with (
@@ -704,6 +744,16 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                     [
                         "_produce", "--context", "/context", "--case", "step08-reread",
                         "--value", "10000", "--trial-dir", "/trial",
+                    ]
+                )
+
+    def test_internal_parser_rejects_an_unregistered_case_value(self) -> None:
+        with self.assertRaises(SystemExit):
+            with contextlib.redirect_stderr(io.StringIO()):
+                BENCHMARK._internal_parser(
+                    [
+                        "_setup", "--context", "/context", "--case",
+                        "step08-reread", "--value", "999", "--trial-dir", "/trial",
                     ]
                 )
 

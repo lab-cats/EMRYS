@@ -25,13 +25,16 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
 
-SUMMARY_SCHEMA = "emrys.retained-stage-benchmark-summary.v1"
+SUMMARY_SCHEMA = "emrys.retained-stage-benchmark-summary.v2"
 E2E_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v2"
 COMPARISON_SCHEMA = "emrys.resource-benchmark.v2"
 STEP08_FIXTURE_SCHEMA = "emrys.retained-step08-fixture.v1"
 BASELINE_REF = "origin/master"
 EXPECTED_READ_PAIRS = 100_000
 EXPECTED_CONTIG_LENGTH = 5_000_000
+MEASURED_REPETITIONS = 4
+WARMUP_REPETITIONS = 1
+DEFAULT_SUITE = "cohort-stages"
 VARIANTS = ("master", "head")
 BCFTOOLS_METADATA_PREFIXES = (
     b"##bcftoolsVersion=",
@@ -64,6 +67,26 @@ COMPARISON_SUMMARY_FIELDS = (
 
 class BenchmarkSetupError(RuntimeError):
     """The retained evidence or benchmark boundary is not admissible."""
+
+
+@dataclass(frozen=True, slots=True)
+class RetainedCase:
+    name: str
+    suite: str
+    stage: int
+    values: tuple[int, ...]
+    threads: int
+
+
+RETAINED_CASES = (
+    RetainedCase("step07-partitions", "cohort-stages", 7, (1, 5, 25), 2),
+    RetainedCase("step08-reread", "cohort-stages", 8, (10_000, 100_000), 1),
+    RetainedCase("step08-skew", "cohort-stages", 8, (100_000,), 2),
+    RetainedCase("step08-uniform", "cohort-stages", 8, (100_000,), 2),
+)
+RETAINED_CASE_BY_NAME = {case.name: case for case in RETAINED_CASES}
+RETAINED_CASE_NAMES = tuple(case.name for case in RETAINED_CASES)
+RETAINED_SUITES = tuple(dict.fromkeys(case.suite for case in RETAINED_CASES))
 
 
 @dataclass(frozen=True, slots=True)
@@ -785,20 +808,53 @@ def _validate_step08(
 
 
 def _case_threads(case: str) -> int:
-    return 1 if case == "step08-reread" else 2
+    return RETAINED_CASE_BY_NAME[case].threads
+
+
+def _select_cases(
+    *, suite: str | None, names: Sequence[str] | None
+) -> tuple[RetainedCase, ...]:
+    requested = tuple(names or ())
+    if suite is not None and requested:
+        raise BenchmarkSetupError("--suite and --case are mutually exclusive")
+    if len(requested) != len(set(requested)):
+        raise BenchmarkSetupError("each retained benchmark case may be selected once")
+    if requested:
+        unknown = set(requested).difference(RETAINED_CASE_BY_NAME)
+        if unknown:
+            raise BenchmarkSetupError(
+                "unknown retained benchmark case: " + ", ".join(sorted(unknown))
+            )
+        selected = tuple(case for case in RETAINED_CASES if case.name in requested)
+    else:
+        selected_suite = suite or DEFAULT_SUITE
+        if selected_suite == "all":
+            selected = RETAINED_CASES
+        elif selected_suite in RETAINED_SUITES:
+            selected = tuple(
+                case for case in RETAINED_CASES if case.suite == selected_suite
+            )
+        else:
+            raise BenchmarkSetupError(
+                f"unknown retained benchmark suite: {selected_suite}"
+            )
+    if not selected:
+        raise BenchmarkSetupError("retained benchmark selection is empty")
+    return selected
 
 
 def _internal(arguments: argparse.Namespace) -> int:
     context = _load_context(arguments.context)
     trial = Path(os.path.abspath(arguments.trial_dir))
+    retained_case = RETAINED_CASE_BY_NAME[arguments.case]
     if arguments.operation == "_setup":
-        if arguments.case == "step07-partitions":
+        if retained_case.stage == 7:
             _setup_step07(context, trial, arguments.value)
         else:
             _setup_step08(context, trial, arguments.case, arguments.value)
     elif arguments.operation == "_produce":
         source = _source(context, arguments.variant)
-        if arguments.case == "step07-partitions":
+        if retained_case.stage == 7:
             _produce_step07(context, trial, source)
         else:
             _produce_step08(
@@ -809,14 +865,19 @@ def _internal(arguments: argparse.Namespace) -> int:
                 arguments.value,
                 _case_threads(arguments.case),
             )
-    elif arguments.case == "step07-partitions":
+    elif retained_case.stage == 7:
         _validate_step07(context, trial)
     else:
         _validate_step08(context, trial, arguments.case, arguments.value)
     return 0
 
 
-def _manifest(python: Path, script: Path, context: Path) -> dict[str, Any]:
+def _manifest(
+    python: Path,
+    script: Path,
+    context: Path,
+    selected_cases: Sequence[RetainedCase] | None = None,
+) -> dict[str, Any]:
     prefix = [
         str(python),
         "-X",
@@ -825,12 +886,14 @@ def _manifest(python: Path, script: Path, context: Path) -> dict[str, Any]:
     ]
     common = ["--context", str(context), "--case"]
     cases = []
-    for name, values in (
-        ("step07-partitions", [1, 5, 25]),
-        ("step08-reread", [10_000, 100_000]),
-        ("step08-skew", [100_000]),
-        ("step08-uniform", [100_000]),
-    ):
+    retained_cases = tuple(
+        selected_cases
+        if selected_cases is not None
+        else _select_cases(suite=DEFAULT_SUITE, names=None)
+    )
+    for retained_case in retained_cases:
+        name = retained_case.name
+        values = list(retained_case.values)
         setup = [*prefix, "_setup", *common, name, "--value", "{value}", "--trial-dir", "{trial_dir}"]
         variants = [
             {
@@ -848,8 +911,8 @@ def _manifest(python: Path, script: Path, context: Path) -> dict[str, Any]:
             {
                 "name": name,
                 "values": values,
-                "repetitions": 3,
-                "warmup_repetitions": 1,
+                "repetitions": MEASURED_REPETITIONS,
+                "warmup_repetitions": WARMUP_REPETITIONS,
                 "baseline_variant": "master",
                 "setup_argv": setup,
                 "variants": variants,
@@ -888,19 +951,21 @@ def _require_external_output(output: Path, repo_root: Path) -> None:
         raise BenchmarkSetupError("benchmark output root must be outside the repository")
 
 
-def _comparison_summary_complete(path: Path) -> tuple[bool, str]:
-    expected_values = {
-        "step07-partitions": {"1", "5", "25"},
-        "step08-reread": {"10000", "100000"},
-        "step08-skew": {"100000"},
-        "step08-uniform": {"100000"},
-    }
-    expected_roster = {
-        (case, value, variant)
-        for case, values in expected_values.items()
-        for value in values
-        for variant in VARIANTS
-    }
+def _comparison_summary_complete(
+    path: Path, manifest: Mapping[str, Any]
+) -> tuple[bool, str]:
+    try:
+        expected = {
+            (str(case["name"]), str(value), str(variant["name"])): (
+                str(case["baseline_variant"]),
+                str(case["repetitions"]),
+            )
+            for case in manifest["cases"]
+            for value in case["values"]
+            for variant in case["variants"]
+        }
+    except (KeyError, TypeError, ValueError) as exc:
+        return False, f"comparison manifest is invalid: {exc}"
     try:
         with path.open(encoding="utf-8", newline="") as stream:
             reader = csv.DictReader(stream, dialect="excel-tab")
@@ -910,15 +975,18 @@ def _comparison_summary_complete(path: Path) -> tuple[bool, str]:
     except (OSError, UnicodeError, csv.Error) as exc:
         return False, f"comparison summary is unreadable: {exc}"
     roster = {(row["case"], row["value"], row["variant"]) for row in rows}
-    if len(rows) != len(expected_roster) or roster != expected_roster:
+    if len(rows) != len(expected) or roster != set(expected):
         return False, "comparison summary row roster is incomplete or duplicated"
     required_metrics = COMPARISON_SUMMARY_FIELDS[10:]
     for row in rows:
+        baseline, repetitions = expected[
+            (row["case"], row["value"], row["variant"])
+        ]
         if (
-            row["baseline_variant"] != "master"
-            or row["required_repetitions"] != "3"
-            or row["successful_repetitions"] != "3"
-            or row["paired_repetitions"] != "3"
+            row["baseline_variant"] != baseline
+            or row["required_repetitions"] != repetitions
+            or row["successful_repetitions"] != repetitions
+            or row["paired_repetitions"] != repetitions
             or row["warmups_valid"] != "yes"
             or row["comparison_valid"] != "yes"
             or row["artifact_parity"] != "yes"
@@ -935,6 +1003,8 @@ def _execute(
     runtime_prefix: Path,
     rscript: Path,
     renv_library: Path,
+    selected_cases: Sequence[RetainedCase],
+    selected_suite: str | None,
 ) -> int:
     _require_external_output(output, repo.root)
     if output.exists() or output.is_symlink():
@@ -968,19 +1038,15 @@ def _execute(
         "sources": {"master": str(baseline_root), "head": str(head_root)},
     }
     _write_json(context_path, context)
+    manifest = _manifest(
+        repo.python,
+        repo.root / "tests/tools/retained_stage_benchmark.py",
+        context_path,
+        selected_cases,
+    )
     manifest_path = output / "benchmark-manifest.yaml"
     with manifest_path.open("x", encoding="utf-8") as stream:
-        stream.write(
-            json.dumps(
-                _manifest(
-                    repo.python,
-                    repo.root / "tests/tools/retained_stage_benchmark.py",
-                    context_path,
-                ),
-                indent=2,
-            )
-            + "\n"
-        )
+        stream.write(json.dumps(manifest, indent=2) + "\n")
     results = output / "benchmark-results"
     completed = subprocess.run(
         [
@@ -995,7 +1061,7 @@ def _execute(
     summary_path = output / "retained-stage-benchmark-summary.json"
     result_summary = results / "summary.tsv"
     complete, completion_detail = (
-        _comparison_summary_complete(result_summary)
+        _comparison_summary_complete(result_summary, manifest)
         if result_summary.is_file()
         else (False, "comparison summary was not published")
     )
@@ -1009,6 +1075,12 @@ def _execute(
             "baseline_commit": repo.baseline_commit,
             "head_commit": repo.head_commit,
             "read_pairs_per_library": EXPECTED_READ_PAIRS,
+            "selection": {
+                "suite": selected_suite,
+                "cases": {
+                    case.name: list(case.values) for case in selected_cases
+                },
+            },
             "e2e_summary": _artifact(e2e.summary_path),
             "run_root": str(e2e.run_root),
             "manifest": _artifact(manifest_path),
@@ -1034,27 +1106,44 @@ def _orchestrate(arguments: argparse.Namespace) -> int:
     renv = _real_directory(arguments.renv_library, "renv library")
     output = Path(os.path.abspath(arguments.output_root))
     _require_external_output(output, repo.root)
+    case_names = getattr(arguments, "case_names", None)
+    suite = getattr(arguments, "suite", None)
+    selected_cases = _select_cases(suite=suite, names=case_names)
+    selected_suite = None if case_names else suite or DEFAULT_SUITE
+    manifest = _manifest(
+        repo.python,
+        repo.root / "tests/tools/retained_stage_benchmark.py",
+        output / "benchmark-context.json",
+        selected_cases,
+    )
     plan = {
         "operation": "execute" if arguments.execute else "plan",
         "output_root": str(output),
         "baseline_commit": repo.baseline_commit,
         "head_commit": repo.head_commit,
-        "cases": {
-            case["name"]: case["values"]
-            for case in _manifest(
-                repo.python,
-                repo.root / "tests/tools/retained_stage_benchmark.py",
-                output / "benchmark-context.json",
-            )["cases"]
+        "selection": {
+            "suite": selected_suite,
+            "cases": {
+                case["name"]: case["values"] for case in manifest["cases"]
+            },
         },
-        "paired_repetitions": 3,
-        "warmup_repetitions": 1,
+        "paired_repetitions": MEASURED_REPETITIONS,
+        "warmup_repetitions": WARMUP_REPETITIONS,
     }
     print(json.dumps(plan, indent=2, sort_keys=True))
     if not arguments.execute:
         print("Dry-run complete; no benchmark state was written.")
         return 0
-    return _execute(repo, e2e, output, runtime, rscript, renv)
+    return _execute(
+        repo,
+        e2e,
+        output,
+        runtime,
+        rscript,
+        renv,
+        selected_cases,
+        selected_suite,
+    )
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -1065,6 +1154,16 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--runtime-prefix", required=True, type=Path)
     parser.add_argument("--rscript", required=True, type=Path)
     parser.add_argument("--renv-library", required=True, type=Path)
+    selector = parser.add_mutually_exclusive_group()
+    selector.add_argument(
+        "--suite", choices=("all", *RETAINED_SUITES), default=None
+    )
+    selector.add_argument(
+        "--case",
+        choices=RETAINED_CASE_NAMES,
+        action="append",
+        dest="case_names",
+    )
     parser.add_argument("--execute", action="store_true")
     return parser
 
@@ -1076,7 +1175,7 @@ def _internal_parser(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--case",
         required=True,
-        choices=("step07-partitions", "step08-reread", "step08-skew", "step08-uniform"),
+        choices=RETAINED_CASE_NAMES,
     )
     parser.add_argument("--value", required=True, type=int)
     parser.add_argument("--variant", choices=VARIANTS)
@@ -1086,6 +1185,8 @@ def _internal_parser(argv: Sequence[str]) -> argparse.Namespace:
         parser.error("_produce requires --variant")
     if selected.operation != "_produce" and selected.variant is not None:
         parser.error("--variant is valid only for _produce")
+    if selected.value not in RETAINED_CASE_BY_NAME[selected.case].values:
+        parser.error("--value is not registered for the selected case")
     return selected
 
 
