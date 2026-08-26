@@ -22,6 +22,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -42,6 +43,32 @@ VARIANTS = ("master", "head")
 RETAINED_SAMPLE_ID = "control_pair_01"
 STEP01_OWNER = "emrys.stage.align_RNA_reads_with_STAR.v1"
 STEP02_OWNER = "emrys.stage.construct_canonical_BAM.v1"
+STEP05_OWNER = "emrys.stage.split_N_cigar_reads_with_GATK.v1"
+STEP06_OWNER = "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1"
+STEP06_TRIAL_RUN_TOKEN = "retained-step06-benchmark"
+STEP06_COUNTS_HEADER = (
+    "sample_id",
+    "input_records",
+    "flag_99_records",
+    "flag_147_records",
+    "flag_83_records",
+    "flag_163_records",
+    "fwd_like_records",
+    "rev_like_records",
+    "assigned_records",
+    "unassigned_records",
+    "assigned_fraction",
+)
+RUNTIME_PROFILE_HEADER = (
+    "check_id",
+    "check_type",
+    "runtime_context",
+    "required",
+    "target",
+    "probe_args",
+    "expected",
+    "description",
+)
 BCFTOOLS_METADATA_PREFIXES = (
     b"##bcftoolsVersion=",
     b"##bcftoolsCommand=",
@@ -124,6 +151,7 @@ class RetainedCase:
 RETAINED_CASES = (
     RetainedCase("alignment-signatures-mib", "identity", 0, (10, 100, 1024), 1),
     RetainedCase("step02-canonical-bam", "sample-stages", 2, (100_000,), 2),
+    RetainedCase("step06-mechanical-orientation", "sample-stages", 6, (100_000,), 4),
     RetainedCase("step07-partitions", "cohort-stages", 7, (1, 5, 25), 2),
     RetainedCase("step08-reread", "cohort-stages", 8, (10_000, 100_000), 1),
     RetainedCase("step08-skew", "cohort-stages", 8, (100_000,), 2),
@@ -149,6 +177,17 @@ class AdmittedE2E:
     retained_step01_bam: RetainedArtifact
     retained_step02_bam: RetainedArtifact
     retained_step02_bai: RetainedArtifact
+    retained_step05_bam: RetainedArtifact
+    retained_step05_bai: RetainedArtifact
+    retained_step06_fwd_bam: RetainedArtifact
+    retained_step06_fwd_bai: RetainedArtifact
+    retained_step06_rev_bam: RetainedArtifact
+    retained_step06_rev_bai: RetainedArtifact
+    retained_step06_counts: RetainedArtifact
+    retained_step06_run_token: str
+    runtime_bash: Path
+    runtime_samtools: Path
+    runtime_sha256_python: Path
 
 
 @dataclass(frozen=True, slots=True)
@@ -227,6 +266,39 @@ def _load_json(path: Path, label: str) -> Mapping[str, Any]:
     return value
 
 
+def _runtime_authorities(profile: Path) -> tuple[Path, Path, Path]:
+    try:
+        with profile.open(encoding="utf-8", newline="") as stream:
+            reader = csv.DictReader(stream, dialect="excel-tab")
+            rows = list(reader)
+    except (OSError, UnicodeError, csv.Error) as exc:
+        raise BenchmarkSetupError(f"retained runtime profile is unreadable: {exc}") from exc
+    if tuple(reader.fieldnames or ()) != RUNTIME_PROFILE_HEADER:
+        raise BenchmarkSetupError("retained runtime profile header differs")
+    selected = []
+    for check_id, check_type, label in (
+        ("bash", "tool_version", "retained Bash authority"),
+        ("samtools", "tool_version", "retained samtools authority"),
+        ("sha256_python", "hash_utility", "retained SHA-256 Python authority"),
+    ):
+        matches = [row for row in rows if row.get("check_id") == check_id]
+        if len(matches) != 1:
+            raise BenchmarkSetupError(
+                f"retained runtime profile omits the exact {check_id} authority"
+            )
+        if (
+            matches[0].get("check_type") != check_type
+            or matches[0].get("runtime_context") != "local"
+            or matches[0].get("required") != "true"
+        ):
+            raise BenchmarkSetupError(f"retained {check_id} authority is not required locally")
+        target = Path(str(matches[0].get("target")))
+        if not target.is_absolute():
+            raise BenchmarkSetupError(f"retained {check_id} authority is not absolute")
+        selected.append(_real_file(target, label, executable=True))
+    return selected[0], selected[1], selected[2]
+
+
 def _verify_artifact(record: Any, label: str) -> None:
     if not isinstance(record, Mapping) or set(record) != {"path", "size_bytes", "sha256"}:
         raise BenchmarkSetupError(f"{label} is not one exact artifact record")
@@ -261,13 +333,13 @@ def _admit_bound_artifact(
     )
 
 
-def _admit_verified_outputs(
+def _admit_verified_owner(
     summary_records: Sequence[Mapping[str, Any]],
     *,
     machine_key: str,
     scope_id: str,
     expected: Sequence[tuple[str, str, Path]],
-) -> tuple[RetainedArtifact, ...]:
+) -> tuple[tuple[RetainedArtifact, ...], Mapping[str, Any]]:
     references = [
         record
         for record in summary_records
@@ -290,8 +362,10 @@ def _admit_verified_outputs(
     ):
         raise BenchmarkSetupError(f"retained {machine_key} verified-task identity differs")
     outputs = verified.get("outputs")
-    if not isinstance(outputs, list):
-        raise BenchmarkSetupError(f"retained {machine_key} outputs are absent")
+    if not isinstance(outputs, list) or len(outputs) != len(expected):
+        raise BenchmarkSetupError(
+            f"retained {machine_key} outputs differ from the exact expected roster"
+        )
     admitted = []
     for label, expected_role, expected_path in expected:
         matches = [
@@ -309,7 +383,60 @@ def _admit_verified_outputs(
                 matches[0], expected_path, expected_role, label
             )
         )
-    return tuple(admitted)
+    return tuple(admitted), verified
+
+
+def _admit_verified_outputs(
+    summary_records: Sequence[Mapping[str, Any]],
+    *,
+    machine_key: str,
+    scope_id: str,
+    expected: Sequence[tuple[str, str, Path]],
+) -> tuple[RetainedArtifact, ...]:
+    admitted, _verified = _admit_verified_owner(
+        summary_records,
+        machine_key=machine_key,
+        scope_id=scope_id,
+        expected=expected,
+    )
+    return admitted
+
+
+def _admit_owner_run_token(record: Mapping[str, Any], machine_key: str) -> str:
+    token = record.get("owner_run_token")
+    prefix = "owner-"
+    suffix = token.removeprefix(prefix) if isinstance(token, str) else ""
+    if (
+        not isinstance(token, str)
+        or not token.startswith(prefix)
+        or len(suffix) != 32
+        or any(character not in "0123456789abcdef" for character in suffix)
+    ):
+        raise BenchmarkSetupError(
+            f"retained {machine_key} owner run token differs from the admitted format"
+        )
+    return token
+
+
+def _admit_owner_argument(
+    record: Mapping[str, Any], machine_key: str, option: str, expected: str
+) -> None:
+    commands = record.get("commands")
+    producer = commands.get("producer") if isinstance(commands, Mapping) else None
+    argv = producer.get("argv") if isinstance(producer, Mapping) else None
+    if (
+        not isinstance(argv, list)
+        or any(not isinstance(value, str) for value in argv)
+        or argv.count(option) != 1
+    ):
+        raise BenchmarkSetupError(
+            f"retained {machine_key} producer omits the exact {option} argument"
+        )
+    index = argv.index(option)
+    if index + 1 >= len(argv) or argv[index + 1] != expected:
+        raise BenchmarkSetupError(
+            f"retained {machine_key} producer {option} differs from {expected}"
+        )
 
 
 def _admit_e2e(summary_path: Path) -> AdmittedE2E:
@@ -359,6 +486,9 @@ def _admit_e2e(summary_path: Path) -> AdmittedE2E:
     _verify_artifact(runtime_profile, "retained runtime profile")
     if not isinstance(runtime_profile, Mapping) or Path(str(runtime_profile["path"])) != operator_root / "runtime.selected.tsv":
         raise BenchmarkSetupError("retained runtime profile path differs")
+    runtime_bash, runtime_samtools, runtime_sha256_python = _runtime_authorities(
+        Path(str(runtime_profile["path"]))
+    )
 
     execution = _load_json(run_root / "contract/normalized.json", "normalized execution")
     try:
@@ -427,7 +557,66 @@ def _admit_e2e(summary_path: Path) -> AdmittedE2E:
             ("retained Step 02 BAI", "output_002", expected_step02_bai),
         ),
     )
+    expected_step05_bam = (
+        run_root
+        / "results/split_ncigar"
+        / RETAINED_SAMPLE_ID
+        / f"{RETAINED_SAMPLE_ID}.split_ncigar.bam"
+    )
+    expected_step05_bai = Path(f"{expected_step05_bam}.bai")
+    retained_step05_bam, retained_step05_bai = _admit_verified_outputs(
+        records,
+        machine_key=STEP05_OWNER,
+        scope_id=RETAINED_SAMPLE_ID,
+        expected=(
+            ("retained Step 05 BAM", "output_001", expected_step05_bam),
+            ("retained Step 05 BAI", "output_002", expected_step05_bai),
+        ),
+    )
     orientation_root = _real_directory(run_root / "results/orientation", "retained orientation root")
+    expected_step06_fwd_bam = (
+        orientation_root
+        / RETAINED_SAMPLE_ID
+        / f"{RETAINED_SAMPLE_ID}.FWD_like.bam"
+    )
+    expected_step06_fwd_bai = Path(f"{expected_step06_fwd_bam}.bai")
+    expected_step06_rev_bam = (
+        orientation_root
+        / RETAINED_SAMPLE_ID
+        / f"{RETAINED_SAMPLE_ID}.REV_like.bam"
+    )
+    expected_step06_rev_bai = Path(f"{expected_step06_rev_bam}.bai")
+    expected_step06_counts = (
+        run_root
+        / "results/qc/orientation"
+        / f"{RETAINED_SAMPLE_ID}.orientation_counts.tsv"
+    )
+    step06_artifacts, step06_verified = _admit_verified_owner(
+        records,
+        machine_key=STEP06_OWNER,
+        scope_id=RETAINED_SAMPLE_ID,
+        expected=(
+            ("retained Step 06 FWD BAM", "output_001", expected_step06_fwd_bam),
+            ("retained Step 06 FWD BAI", "output_002", expected_step06_fwd_bai),
+            ("retained Step 06 REV BAM", "output_003", expected_step06_rev_bam),
+            ("retained Step 06 REV BAI", "output_004", expected_step06_rev_bai),
+            ("retained Step 06 counts", "output_005", expected_step06_counts),
+        ),
+    )
+    (
+        retained_step06_fwd_bam,
+        retained_step06_fwd_bai,
+        retained_step06_rev_bam,
+        retained_step06_rev_bai,
+        retained_step06_counts,
+    ) = step06_artifacts
+    retained_step06_run_token = _admit_owner_run_token(step06_verified, STEP06_OWNER)
+    _admit_owner_argument(
+        step06_verified,
+        STEP06_OWNER,
+        "--threads",
+        str(_case_threads("step06-mechanical-orientation")),
+    )
     retained_step07_root = _real_directory(run_root / "results/mpileup", "retained Step 07 root")
     retained_primary_vcf = _real_file(
         retained_step07_root
@@ -450,6 +639,17 @@ def _admit_e2e(summary_path: Path) -> AdmittedE2E:
         retained_step01_bam,
         retained_step02_bam,
         retained_step02_bai,
+        retained_step05_bam,
+        retained_step05_bai,
+        retained_step06_fwd_bam,
+        retained_step06_fwd_bai,
+        retained_step06_rev_bam,
+        retained_step06_rev_bai,
+        retained_step06_counts,
+        retained_step06_run_token,
+        runtime_bash,
+        runtime_samtools,
+        runtime_sha256_python,
     )
 
 
@@ -1008,6 +1208,490 @@ def _validate_step02(context: Mapping[str, Any], trial: Path) -> None:
         raise BenchmarkSetupError("Step 02 benchmark retained publication residue")
 
 
+def _retained_path(context: Mapping[str, Any], key: str, label: str) -> Path:
+    admitted = _context_artifact(context, key, label)
+    path = _real_file(admitted.path, label)
+    state = path.stat(follow_symlinks=False)
+    if (
+        state.st_size != admitted.size_bytes
+        or state.st_dev != admitted.device
+        or state.st_ino != admitted.inode
+        or state.st_mtime_ns != admitted.mtime_ns
+    ):
+        raise BenchmarkSetupError(f"{label} identity changed")
+    return path
+
+
+def _step06_paths(sample_id: str) -> dict[str, Path]:
+    orientation = Path("results/orientation") / sample_id
+    counts_root = Path("results/qc/orientation")
+    return {
+        "orientation_root": orientation,
+        "counts_root": counts_root,
+        "fwd_bam": orientation / f"{sample_id}.FWD_like.bam",
+        "fwd_bai": orientation / f"{sample_id}.FWD_like.bam.bai",
+        "rev_bam": orientation / f"{sample_id}.REV_like.bam",
+        "rev_bai": orientation / f"{sample_id}.REV_like.bam.bai",
+        "counts": counts_root / f"{sample_id}.orientation_counts.tsv",
+        "report": Path("results/qc/validation/06") / f"{sample_id}.validation.tsv",
+    }
+
+
+def _setup_step06(context: Mapping[str, Any], trial: Path, value: int) -> None:
+    if value != EXPECTED_READ_PAIRS:
+        raise BenchmarkSetupError("Step 06 benchmark requires the retained 100k profile")
+    _retained_path(context, "retained_step05_bam", "retained Step 05 BAM")
+    _retained_path(context, "retained_step05_bai", "retained Step 05 BAI")
+    paths = _step06_paths(str(context["sample_id"]))
+    for key in ("orientation_root", "counts_root"):
+        (trial / paths[key]).mkdir(mode=0o700, parents=True)
+    (trial / paths["report"]).parent.mkdir(mode=0o700, parents=True)
+
+
+def _produce_step06(context: Mapping[str, Any], trial: Path, source: Path) -> None:
+    from emrys.libraries.process_environment import sanitized_subprocess_environment
+
+    sample_id = str(context["sample_id"])
+    paths = _step06_paths(sample_id)
+    input_bam = _retained_path(
+        context, "retained_step05_bam", "retained Step 05 BAM"
+    )
+    _retained_path(context, "retained_step05_bai", "retained Step 05 BAI")
+    bash = _real_file(
+        Path(str(context["runtime_bash"])), "retained Bash authority", executable=True
+    )
+    samtools = _real_file(
+        Path(str(context["runtime_samtools"])),
+        "retained samtools authority",
+        executable=True,
+    )
+    sha256_python = _real_file(
+        Path(str(context["runtime_sha256_python"])),
+        "retained SHA-256 Python authority",
+        executable=True,
+    )
+    owner = _real_file(
+        source
+        / "src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh",
+        "Step 06 owner",
+    )
+    environment = sanitized_subprocess_environment(os.environ)
+    environment.update(
+        {
+            "EMRYS_RUN_TOKEN": STEP06_TRIAL_RUN_TOKEN,
+            "EMRYS_SHA256_PYTHON": str(sha256_python),
+            "EMRYS_REQUIRE_BOUND_SHA256": "1",
+        }
+    )
+    _run_checked(
+        (
+            str(bash),
+            str(owner),
+            "--sample-id",
+            sample_id,
+            "--input-bam",
+            str(input_bam),
+            "--output-dir",
+            str(paths["orientation_root"]),
+            "--qc-dir",
+            str(paths["counts_root"]),
+            "--threads",
+            str(_case_threads("step06-mechanical-orientation")),
+            "--samtools-bin",
+            str(samtools),
+            "--no-clobber",
+            "--execute",
+        ),
+        cwd=trial,
+        environment=environment,
+    )
+
+
+def _capture_checked(argv: Sequence[str], *, cwd: Path) -> bytes:
+    completed = subprocess.run(
+        argv,
+        cwd=cwd,
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if completed.returncode != 0:
+        detail = completed.stderr.decode("utf-8", errors="replace").strip()
+        suffix = f": {detail}" if detail else ""
+        raise BenchmarkSetupError(
+            f"command exited {completed.returncode}: {' '.join(argv)}{suffix}"
+        )
+    return completed.stdout
+
+
+def _sam_records(data: bytes, label: str) -> tuple[tuple[bytes, int, bytes], ...]:
+    if data and not data.endswith(b"\n"):
+        raise BenchmarkSetupError(f"{label} is not newline-terminated SAM")
+    records = []
+    for index, line in enumerate(data.splitlines(keepends=True), start=1):
+        if not line.endswith(b"\n"):
+            raise BenchmarkSetupError(f"{label} record {index} is incomplete")
+        fields = line[:-1].split(b"\t")
+        if len(fields) < 11:
+            raise BenchmarkSetupError(f"{label} record {index} is not decoded SAM")
+        try:
+            flag = int(fields[1])
+        except ValueError as exc:
+            raise BenchmarkSetupError(
+                f"{label} record {index} has an invalid SAM flag"
+            ) from exc
+        if flag < 0:
+            raise BenchmarkSetupError(f"{label} record {index} has a negative SAM flag")
+        records.append((line, flag, fields[2]))
+    return tuple(records)
+
+
+def _idxstats_contigs(data: bytes, label: str) -> tuple[tuple[bytes, ...], int]:
+    if not data or not data.endswith(b"\n"):
+        raise BenchmarkSetupError(f"{label} is empty or incomplete")
+    contigs = []
+    total_records = 0
+    for index, line in enumerate(data.splitlines(), start=1):
+        fields = line.split(b"\t")
+        if len(fields) != 4:
+            raise BenchmarkSetupError(f"{label} row {index} is malformed")
+        try:
+            length, mapped, unmapped = (int(value) for value in fields[1:])
+        except ValueError as exc:
+            raise BenchmarkSetupError(
+                f"{label} row {index} contains a non-integer count"
+            ) from exc
+        if min(length, mapped, unmapped) < 0:
+            raise BenchmarkSetupError(f"{label} row {index} contains a negative count")
+        total_records += mapped + unmapped
+        if fields[0] != b"*" and length > 0:
+            contigs.append(fields[0])
+    if not contigs:
+        raise BenchmarkSetupError(f"{label} has no traversable reference contig")
+    return tuple(contigs), total_records
+
+
+def _inspect_indexed_bam(
+    samtools: Path, bam: Path, *, cwd: Path, label: str
+) -> dict[str, bytes | tuple[tuple[bytes, int, bytes], ...]]:
+    quickcheck = _capture_checked(
+        (str(samtools), "quickcheck", "-v", str(bam)), cwd=cwd
+    )
+    if quickcheck:
+        raise BenchmarkSetupError(f"{label} emitted quickcheck failure paths")
+    header = _capture_checked((str(samtools), "view", "-H", str(bam)), cwd=cwd)
+    if not header or not header.endswith(b"\n") or any(
+        not line.startswith(b"@") for line in header.splitlines()
+    ):
+        raise BenchmarkSetupError(f"{label} has an invalid decoded SAM header")
+    decoded = _capture_checked((str(samtools), "view", str(bam)), cwd=cwd)
+    records = _sam_records(decoded, label)
+    idxstats = _capture_checked((str(samtools), "idxstats", str(bam)), cwd=cwd)
+    contigs, indexed_record_count = _idxstats_contigs(
+        idxstats, f"{label} idxstats"
+    )
+    if indexed_record_count != len(records):
+        raise BenchmarkSetupError(f"{label} idxstats counts do not reconcile")
+    indexed = _capture_checked(
+        (str(samtools), "view", str(bam), *(item.decode("utf-8") for item in contigs)),
+        cwd=cwd,
+    )
+    expected_indexed = b"".join(
+        line for line, _flag, reference in records if reference in set(contigs)
+    )
+    if indexed != expected_indexed:
+        raise BenchmarkSetupError(f"{label} indexed traversal differs from decoded SAM")
+    return {
+        "header": header,
+        "decoded": decoded,
+        "records": records,
+        "idxstats": idxstats,
+        "indexed": indexed,
+    }
+
+
+def _canonicalize_sam_header(
+    data: bytes, *, roots: Sequence[Path], run_tokens: Sequence[str]
+) -> bytes:
+    replacements: list[tuple[bytes, bytes]] = []
+    for root in roots:
+        encoded = str(root).encode("utf-8")
+        if not root.is_absolute() or not encoded:
+            raise BenchmarkSetupError("SAM header root must be absolute")
+        replacements.append((encoded + b"/", b""))
+        replacements.append((encoded, b"<EMRYS_ROOT>"))
+    for token in run_tokens:
+        if not token or any(
+            character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.-"
+            for character in token
+        ):
+            raise BenchmarkSetupError("SAM header run token is invalid")
+        replacements.append((token.encode("ascii"), b"<EMRYS_RUN_TOKEN>"))
+    normalized = data
+    for authored, replacement in sorted(set(replacements), key=lambda item: -len(item[0])):
+        normalized = normalized.replace(authored, replacement)
+    return normalized
+
+
+def _parse_step06_counts(data: bytes, sample_id: str, label: str) -> dict[str, int | str]:
+    try:
+        text = data.decode("utf-8")
+        reader = csv.DictReader(io.StringIO(text), dialect="excel-tab")
+        rows = list(reader)
+    except (UnicodeError, csv.Error) as exc:
+        raise BenchmarkSetupError(f"{label} is not readable TSV: {exc}") from exc
+    if tuple(reader.fieldnames or ()) != STEP06_COUNTS_HEADER:
+        raise BenchmarkSetupError(f"{label} header differs from the Step 06 contract")
+    if len(rows) != 1 or rows[0].get("sample_id") != sample_id:
+        raise BenchmarkSetupError(f"{label} must contain the exact retained sample")
+    values: dict[str, int | str] = {"sample_id": sample_id}
+    try:
+        for field in STEP06_COUNTS_HEADER[1:-1]:
+            value = int(rows[0][field])
+            if value < 0:
+                raise ValueError
+            values[field] = value
+    except (KeyError, TypeError, ValueError) as exc:
+        raise BenchmarkSetupError(f"{label} has invalid integer counts") from exc
+    fraction = rows[0].get("assigned_fraction")
+    if not isinstance(fraction, str):
+        raise BenchmarkSetupError(f"{label} omits assigned_fraction")
+    values["assigned_fraction"] = fraction
+    return values
+
+
+def _independent_step06_counts(
+    input_records: tuple[tuple[bytes, int, bytes], ...],
+    fwd_records: tuple[tuple[bytes, int, bytes], ...],
+    rev_records: tuple[tuple[bytes, int, bytes], ...],
+) -> dict[str, int | str]:
+    def includes(flag: int, required: int) -> bool:
+        return flag & required == required
+
+    if not input_records or not fwd_records or not rev_records:
+        raise BenchmarkSetupError("Step 06 semantic comparison requires nonempty records")
+    if any(
+        not (includes(flag, 99) or includes(flag, 147))
+        for _line, flag, _reference in fwd_records
+    ):
+        raise BenchmarkSetupError("Step 06 FWD output contains an unaccepted flag")
+    if any(
+        not (includes(flag, 83) or includes(flag, 163))
+        for _line, flag, _reference in rev_records
+    ):
+        raise BenchmarkSetupError("Step 06 REV output contains an unaccepted flag")
+    expected_fwd = [
+        line
+        for required in (99, 147)
+        for line, flag, _reference in input_records
+        if includes(flag, required)
+    ]
+    expected_rev = [
+        line
+        for required in (83, 163)
+        for line, flag, _reference in input_records
+        if includes(flag, required)
+    ]
+    if Counter(line for line, _flag, _reference in fwd_records) != Counter(expected_fwd):
+        raise BenchmarkSetupError("Step 06 FWD record membership differs from Step 05")
+    if Counter(line for line, _flag, _reference in rev_records) != Counter(expected_rev):
+        raise BenchmarkSetupError("Step 06 REV record membership differs from Step 05")
+    counts = {
+        "input_records": len(input_records),
+        "flag_99_records": sum(includes(flag, 99) for _line, flag, _ref in input_records),
+        "flag_147_records": sum(includes(flag, 147) for _line, flag, _ref in input_records),
+        "flag_83_records": sum(includes(flag, 83) for _line, flag, _ref in input_records),
+        "flag_163_records": sum(includes(flag, 163) for _line, flag, _ref in input_records),
+        "fwd_like_records": len(fwd_records),
+        "rev_like_records": len(rev_records),
+    }
+    if counts["fwd_like_records"] != counts["flag_99_records"] + counts["flag_147_records"]:
+        raise BenchmarkSetupError("Step 06 FWD component counts do not reconcile")
+    if counts["rev_like_records"] != counts["flag_83_records"] + counts["flag_163_records"]:
+        raise BenchmarkSetupError("Step 06 REV component counts do not reconcile")
+    assigned = counts["fwd_like_records"] + counts["rev_like_records"]
+    if assigned > counts["input_records"]:
+        raise BenchmarkSetupError("Step 06 assigned count exceeds the input count")
+    counts["assigned_records"] = assigned
+    counts["unassigned_records"] = counts["input_records"] - assigned
+    counts["assigned_fraction"] = f"{assigned / counts['input_records']:.6f}"
+    return counts
+
+
+def _validate_step06(context: Mapping[str, Any], trial: Path) -> None:
+    sample_id = str(context["sample_id"])
+    paths = _step06_paths(sample_id)
+    outputs = {
+        key: _real_file(trial / paths[key], f"Step 06 benchmark {key}")
+        for key in ("fwd_bam", "fwd_bai", "rev_bam", "rev_bai", "counts")
+    }
+    retained = {
+        key: _retained_path(context, f"retained_step06_{key}", f"retained Step 06 {key}")
+        for key in ("fwd_bam", "fwd_bai", "rev_bam", "rev_bai", "counts")
+    }
+    input_bam = _retained_path(
+        context, "retained_step05_bam", "retained Step 05 BAM"
+    )
+    _retained_path(context, "retained_step05_bai", "retained Step 05 BAI")
+    samtools = _real_file(
+        Path(str(context["runtime_samtools"])),
+        "retained samtools authority",
+        executable=True,
+    )
+    validator_python = _real_file(
+        Path(str(context["runtime_sha256_python"])),
+        "retained SHA-256 Python authority",
+        executable=True,
+    )
+    if not os.path.samefile(validator_python, Path(str(context["python"]))):
+        raise BenchmarkSetupError("validator Python differs from retained SHA-256 authority")
+    report = paths["report"]
+    _run_checked(
+        _emrys(
+            context,
+            "validate",
+            "mechanical-orientation",
+            "--scope-id",
+            sample_id,
+            "--fwd-bam",
+            str(paths["fwd_bam"]),
+            "--fwd-bai",
+            str(paths["fwd_bai"]),
+            "--rev-bam",
+            str(paths["rev_bam"]),
+            "--rev-bai",
+            str(paths["rev_bai"]),
+            "--counts",
+            str(paths["counts"]),
+            "--output",
+            str(report),
+            "--execute",
+        ),
+        cwd=trial,
+    )
+    _run_checked(
+        _emrys(
+            context,
+            "validate",
+            "all-pass",
+            "--report",
+            str(report),
+            "--step-id",
+            "06",
+            "--scope-id",
+            sample_id,
+        ),
+        cwd=trial,
+    )
+
+    input_decoded = _capture_checked((str(samtools), "view", str(input_bam)), cwd=trial)
+    input_records = _sam_records(input_decoded, "retained Step 05 input")
+    observed: dict[str, dict[str, bytes | tuple[tuple[bytes, int, bytes], ...]]] = {}
+    reference: dict[str, dict[str, bytes | tuple[tuple[bytes, int, bytes], ...]]] = {}
+    for orientation in ("fwd", "rev"):
+        observed[orientation] = _inspect_indexed_bam(
+            samtools,
+            outputs[f"{orientation}_bam"],
+            cwd=trial,
+            label=f"Step 06 benchmark {orientation.upper()} BAM",
+        )
+        reference[orientation] = _inspect_indexed_bam(
+            samtools,
+            retained[f"{orientation}_bam"],
+            cwd=trial,
+            label=f"retained Step 06 {orientation.upper()} BAM",
+        )
+    run_root = _real_directory(Path(str(context["run_root"])), "retained run root")
+    retained_run_token = context.get("retained_step06_run_token")
+    if not isinstance(retained_run_token, str):
+        raise BenchmarkSetupError("benchmark context omits the retained Step 06 run token")
+    observed_roots = (run_root, trial)
+    reference_roots = (run_root,)
+    observed_tokens = (STEP06_TRIAL_RUN_TOKEN,)
+    reference_tokens = (retained_run_token,)
+    for orientation in ("fwd", "rev"):
+        observed_header = _canonicalize_sam_header(
+            bytes(observed[orientation]["header"]),
+            roots=observed_roots,
+            run_tokens=observed_tokens,
+        )
+        reference_header = _canonicalize_sam_header(
+            bytes(reference[orientation]["header"]),
+            roots=reference_roots,
+            run_tokens=reference_tokens,
+        )
+        if observed_header != reference_header:
+            raise BenchmarkSetupError(
+                f"Step 06 {orientation.upper()} header differs beyond admitted roots and run tokens"
+            )
+        if observed[orientation]["decoded"] != reference[orientation]["decoded"]:
+            raise BenchmarkSetupError(
+                f"Step 06 {orientation.upper()} decoded SAM records differ in content or order"
+            )
+        if observed[orientation]["idxstats"] != reference[orientation]["idxstats"]:
+            raise BenchmarkSetupError(
+                f"Step 06 {orientation.upper()} indexed counts differ from retained output"
+            )
+
+    counts_data = outputs["counts"].read_bytes()
+    retained_counts_data = retained["counts"].read_bytes()
+    if counts_data != retained_counts_data:
+        raise BenchmarkSetupError("Step 06 counts TSV differs from the retained output")
+    observed_counts = _parse_step06_counts(counts_data, sample_id, "Step 06 counts")
+    retained_counts = _parse_step06_counts(
+        retained_counts_data, sample_id, "retained Step 06 counts"
+    )
+    fwd_records = observed["fwd"]["records"]
+    rev_records = observed["rev"]["records"]
+    if not isinstance(fwd_records, tuple) or not isinstance(rev_records, tuple):
+        raise BenchmarkSetupError("Step 06 decoded record boundary is invalid")
+    independent_counts = {
+        "sample_id": sample_id,
+        **_independent_step06_counts(input_records, fwd_records, rev_records),
+    }
+    if observed_counts != independent_counts or retained_counts != independent_counts:
+        raise BenchmarkSetupError("Step 06 independent flag and aggregate counts differ")
+
+    members: list[tuple[str, bytes]] = [
+        ("counts", counts_data),
+        (
+            "independent-counts",
+            json.dumps(independent_counts, sort_keys=True, separators=(",", ":")).encode()
+            + b"\n",
+        ),
+    ]
+    for orientation in ("fwd", "rev"):
+        normalized_header = _canonicalize_sam_header(
+            bytes(observed[orientation]["header"]),
+            roots=observed_roots,
+            run_tokens=observed_tokens,
+        )
+        decoded = bytes(observed[orientation]["decoded"])
+        indexed = bytes(observed[orientation]["indexed"])
+        members.extend(
+            (
+                (f"{orientation}/header", normalized_header),
+                (
+                    f"{orientation}/records",
+                    f"{len(decoded)}\t{hashlib.sha256(decoded).hexdigest()}\n".encode(),
+                ),
+                (f"{orientation}/idxstats", bytes(observed[orientation]["idxstats"])),
+                (
+                    f"{orientation}/indexed",
+                    f"{len(indexed)}\t{hashlib.sha256(indexed).hexdigest()}\n".encode(),
+                ),
+            )
+        )
+    _write_bundle(trial / "parity.bin", members)
+
+    for key in ("fwd_bam", "fwd_bai", "rev_bam", "rev_bai", "counts"):
+        outputs[key].unlink()
+    for key in ("orientation_root", "counts_root"):
+        if any((trial / paths[key]).iterdir()):
+            raise BenchmarkSetupError("Step 06 benchmark retained publication residue")
+
+
 def _produce_step07(context: Mapping[str, Any], trial: Path, source: Path) -> None:
     from emrys.libraries.process_environment import sanitized_subprocess_environment
 
@@ -1267,6 +1951,8 @@ def _internal(arguments: argparse.Namespace) -> int:
             _setup_alignment_signatures(trial, arguments.value)
         elif retained_case.stage == 2:
             _setup_step02(context, trial, arguments.value)
+        elif retained_case.stage == 6:
+            _setup_step06(context, trial, arguments.value)
         elif retained_case.stage == 7:
             _setup_step07(context, trial, arguments.value)
         else:
@@ -1277,6 +1963,8 @@ def _internal(arguments: argparse.Namespace) -> int:
             _produce_alignment_signatures(trial, source)
         elif retained_case.stage == 2:
             _produce_step02(context, trial, source)
+        elif retained_case.stage == 6:
+            _produce_step06(context, trial, source)
         elif retained_case.stage == 7:
             _produce_step07(context, trial, source)
         else:
@@ -1292,6 +1980,8 @@ def _internal(arguments: argparse.Namespace) -> int:
         _validate_alignment_signatures(trial)
     elif retained_case.stage == 2:
         _validate_step02(context, trial)
+    elif retained_case.stage == 6:
+        _validate_step06(context, trial)
     elif retained_case.stage == 7:
         _validate_step07(context, trial)
     else:
@@ -1579,6 +2269,15 @@ def _execute(
     _require_external_output(output, repo.root)
     if output.exists() or output.is_symlink():
         raise BenchmarkSetupError(f"output root must be absent: {output}")
+    runtime_samtools = _real_file(
+        runtime_prefix / "bin/samtools", "selected samtools", executable=True
+    )
+    if not os.path.samefile(runtime_samtools, e2e.runtime_samtools):
+        raise BenchmarkSetupError("selected samtools differs from retained E2E authority")
+    if not os.path.samefile(repo.python, e2e.runtime_sha256_python):
+        raise BenchmarkSetupError(
+            "workflow Python differs from retained E2E SHA-256 authority"
+        )
     parent = _real_directory(output.parent, "benchmark output parent")
     output = parent / output.name
     output.mkdir(mode=0o700)
@@ -1606,6 +2305,17 @@ def _execute(
         "retained_step01_bam": _artifact_context(e2e.retained_step01_bam),
         "retained_step02_bam": _artifact_context(e2e.retained_step02_bam),
         "retained_step02_bai": _artifact_context(e2e.retained_step02_bai),
+        "retained_step05_bam": _artifact_context(e2e.retained_step05_bam),
+        "retained_step05_bai": _artifact_context(e2e.retained_step05_bai),
+        "retained_step06_fwd_bam": _artifact_context(e2e.retained_step06_fwd_bam),
+        "retained_step06_fwd_bai": _artifact_context(e2e.retained_step06_fwd_bai),
+        "retained_step06_rev_bam": _artifact_context(e2e.retained_step06_rev_bam),
+        "retained_step06_rev_bai": _artifact_context(e2e.retained_step06_rev_bai),
+        "retained_step06_counts": _artifact_context(e2e.retained_step06_counts),
+        "retained_step06_run_token": e2e.retained_step06_run_token,
+        "runtime_bash": str(e2e.runtime_bash),
+        "runtime_samtools": str(e2e.runtime_samtools),
+        "runtime_sha256_python": str(e2e.runtime_sha256_python),
         "runtime_prefix": str(runtime_prefix),
         "rscript": str(rscript),
         "renv_library": str(renv_library),

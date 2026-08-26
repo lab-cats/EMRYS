@@ -41,8 +41,9 @@ sampler. The driver installs and cleans nothing; its machine-readable summary
 remains synthetic execution evidence, never production or biological evidence.
 
 `retained_stage_benchmark.py` consumes the successful retained 100,000-pair
-summary and runs paired Step 07 and Step 08 comparison cases against the exact
-locked Python, scientific-tool, and R authorities supplied by CI. It creates
+summary and runs paired Step 02, Step 06, Step 07, and Step 08 comparison cases
+against the exact locked Python, scientific-tool, and R authorities supplied by
+CI. It creates
 fixtures, frozen source archives, manifests, raw benchmark results, and its
 machine-readable summary only beneath a create-absent external output root;
 the source checkout remains read-only. The default invocation is a no-write
@@ -54,7 +55,9 @@ arguments select an exact subset for focused CI attribution. Each retained
 comparison uses one warmup and four measured repetitions so the two variants
 occupy each execution position equally often. The CI-only `identity` suite
 measures protected BAM/BAI signature reads at 10 MiB, 100 MiB, and 1 GiB;
-the retained 100,000-pair lane explicitly runs all suites.
+the retained 100,000-pair lane explicitly runs all suites. Retained sample-stage
+admission warms the exact BAM references before timing; their paired producer
+wall/CPU results are not cold-I/O or shared-filesystem evidence.
 
 In CI the benchmark output is retained beneath
 `100000/retained-stage-benchmark` in the existing 100,000-pair evidence

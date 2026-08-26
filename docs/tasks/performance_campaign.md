@@ -118,6 +118,26 @@ evidence. Exact BAM/BAI identities plus an indexed query form parity; the
 trial-owned large outputs are unlinked after validation while the compact
 fingerprint, validation report, logs, and phase-resource evidence are retained.
 
+The `step06-mechanical-orientation` case reuses the exact verified 100k Step 05
+BAM/BAI and compares each archived Step 06 owner with the exact verified Step 06
+five-output reference for `control_pair_01`. Admission hash-verifies the retained
+input and reference publications before timing, so this is a warm-cache screen;
+per-trial setup performs metadata-identity checks and creates only the
+EMRYS-shaped result directories. Paired producer wall and CPU time remain the
+primary hosted-run signals, and hosted block counters do not establish cold-I/O
+or shared-filesystem behavior.
+
+Outside the timer, the case requires the current mechanical-orientation validator
+and all-pass gate, samtools quickcheck, reconciled idxstats, indexed traversal,
+exact counts-TSV bytes, narrowly canonicalized headers, and decoded SAM records
+in exact retained order. An independent oracle recomputes the four flag-group,
+orientation, assigned, and unassigned counts from the retained Step 05 records.
+Only admitted run-root and run-token substrings may be normalized. The compact
+parity bundle is retained and the trial BAM/BAI publications are removed. Its
+evidence ceiling is paired, real-tool, single-node synthetic 100k performance and
+semantic artifact parity; it is not cold-cache, shared-storage, cluster,
+production-scale, scientific-review, or biological evidence.
+
 ## Proven scaling defects
 
 ### Bounded signature checks are not bounded
@@ -232,6 +252,11 @@ The accepted runtime currently has no htslib language binding and samtools does
 not provide multi-output flag routing. A pure text/FIFO workaround is not an
 accepted substitute. Dependency/tool ownership must be explicitly selected
 before this implementation proceeds.
+
+The retained 100k Step 06 case supplies the first attributable screening rung
+for existing materialized-count and publication candidates and future owner
+implementations. Its decoded parity boundary does not settle the dispatcher
+dependency, production-scale qualification, or scientific-equivalence campaign.
 
 ### Step 07
 
