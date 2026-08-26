@@ -49,9 +49,10 @@ machine-readable summary only beneath a create-absent external output root;
 the source checkout remains read-only. The default invocation is a no-write
 plan, and `--execute` is required to run the comparisons. Correctness parity
 is mandatory, but timings are observational: the helper defines no speed
-threshold. The default `cohort-stages` suite covers every currently retained
-case. `--suite all` selects every registered suite, while repeatable `--case`
-arguments select an exact subset for focused CI attribution. Each retained
+threshold. The default `cohort-stages` suite covers the cohort-stage cases.
+`--suite all` selects every standard suite while excluding explicitly extended
+memory-pressure cases; repeatable `--case` arguments select an exact subset for
+focused CI attribution. Each retained
 comparison uses one warmup and four measured repetitions so the two variants
 occupy each execution position equally often. The CI-only `identity` suite
 measures protected BAM/BAI signature reads at 10 MiB, 100 MiB, and 1 GiB plus
@@ -69,8 +70,18 @@ lane, requires the `synthetic_100000` lane, and accepts these exact names:
 `alignment-signatures-mib`, `reference-contig-membership`,
 `step02-canonical-bam`, `step04-duplicate-marking`,
 `step05-split-n-cigar`, `step06-mechanical-orientation`, `step07-partitions`,
-`step08-reread`, `step08-skew`, and `step08-uniform`. A blank input and every
-scheduled run use `--suite all`. A nonblank input becomes one repeated `--case`
+`step08-reread`, `step08-skew`, `step08-uniform`,
+`strict-tsv-materialization`, and
+`strict-tsv-materialization-extended`. The standard strict-TSV case compares
+10,000 rows at 1, 4, and 16 sample widths plus 100,000 rows at the representative
+34-column four-sample width. The explicit extended case compares 1,000,000 rows
+at the narrower one-sample width and is never selected by `--suite all`. Both
+retain the exact header, row/column counts, ordered-cell digest, first/middle/last
+formula probes, and accepted malformed-input diagnostics in the parity record.
+Peak RSS reduction is the primary strict-TSV signal; wall and CPU measurements
+are conservative no-regression checks because exact-oracle hashing is included
+in both variants. A blank input and every scheduled run use `--suite all`. A
+nonblank input becomes one repeated `--case`
 argument per unchanged comma-delimited segment. Empty, whitespace-padded,
 unknown, and duplicate segments therefore remain visible to the CLI and fail
 closed rather than being normalized silently.

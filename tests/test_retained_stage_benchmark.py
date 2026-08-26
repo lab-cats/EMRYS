@@ -781,6 +781,37 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
         )["cases"][0]
         self.assertEqual(reference_manifest["warmup_repetitions"], 1)
         self.assertEqual(reference_manifest["repetitions"], 4)
+        strict_case = BENCHMARK.RETAINED_CASE_BY_NAME[
+            BENCHMARK.STRICT_TSV_CASE.CASE_NAME
+        ]
+        extended_case = BENCHMARK.RETAINED_CASE_BY_NAME[
+            BENCHMARK.STRICT_TSV_CASE.EXTENDED_CASE_NAME
+        ]
+        self.assertEqual(
+            strict_case.values,
+            (1_000_001, 1_000_004, 1_000_016, 10_000_004),
+        )
+        self.assertEqual(extended_case.values, (100_000_001,))
+        self.assertEqual(
+            [
+                len(BENCHMARK.STRICT_TSV_CASE.header_for_samples(samples))
+                for samples in (1, 4, 16)
+            ],
+            [25, 34, 70],
+        )
+        strict_manifest = BENCHMARK._manifest(
+            Path("/locked/python"),
+            Path("/repo/tests/tools/retained_stage_benchmark.py"),
+            Path("/external/context.json"),
+            (strict_case,),
+        )["cases"][0]
+        self.assertEqual(strict_manifest["warmup_repetitions"], 1)
+        self.assertEqual(strict_manifest["repetitions"], 4)
+        self.assertEqual(strict_manifest["artifact_paths"], ["{trial_dir}/parity.bin"])
+        self.assertEqual(
+            BENCHMARK._select_cases(suite="validation-extended", names=None),
+            (extended_case,),
+        )
         self.assertEqual(
             BENCHMARK._select_cases(suite="sample-stages", names=None),
             (
@@ -792,7 +823,12 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
         )
         self.assertEqual(
             BENCHMARK._select_cases(suite="all", names=None),
-            BENCHMARK.RETAINED_CASES,
+            tuple(
+                case
+                for case in BENCHMARK.RETAINED_CASES
+                if case.suite
+                != BENCHMARK.STRICT_TSV_CASE.EXTENDED_SUITE_NAME
+            ),
         )
         self.assertEqual(
             BENCHMARK._select_cases(

@@ -14,6 +14,7 @@ import argparse
 import csv
 import hashlib
 import importlib
+import importlib.util
 import io
 import json
 import math
@@ -28,6 +29,23 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any
+
+
+def _load_adjacent_case_module(name: str, relative_path: str) -> Any:
+    path = Path(__file__).resolve().parent / relative_path
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"could not load retained benchmark case module: {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+STRICT_TSV_CASE = _load_adjacent_case_module(
+    "emrys_retained_benchmark_strict_tsv_case",
+    "retained_benchmark_cases/strict_tsv.py",
+)
 
 SUMMARY_SCHEMA = "emrys.retained-stage-benchmark-summary.v3"
 E2E_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v2"
@@ -166,6 +184,20 @@ RETAINED_CASES = (
     RetainedCase("step04-duplicate-marking", "sample-stages", 4, (100_000,), 1),
     RetainedCase("step05-split-n-cigar", "sample-stages", 5, (100_000,), 1),
     RetainedCase("step06-mechanical-orientation", "sample-stages", 6, (100_000,), 4),
+    RetainedCase(
+        STRICT_TSV_CASE.CASE_NAME,
+        STRICT_TSV_CASE.SUITE_NAME,
+        -1,
+        STRICT_TSV_CASE.VALUES_BY_CASE[STRICT_TSV_CASE.CASE_NAME],
+        1,
+    ),
+    RetainedCase(
+        STRICT_TSV_CASE.EXTENDED_CASE_NAME,
+        STRICT_TSV_CASE.EXTENDED_SUITE_NAME,
+        -1,
+        STRICT_TSV_CASE.VALUES_BY_CASE[STRICT_TSV_CASE.EXTENDED_CASE_NAME],
+        1,
+    ),
     RetainedCase("step07-partitions", "cohort-stages", 7, (1, 5, 25), 2),
     RetainedCase("step08-reread", "cohort-stages", 8, (10_000, 100_000), 1),
     RetainedCase("step08-skew", "cohort-stages", 8, (100_000,), 2),
@@ -3330,7 +3362,11 @@ def _select_cases(
     else:
         selected_suite = suite or DEFAULT_SUITE
         if selected_suite == "all":
-            selected = RETAINED_CASES
+            selected = tuple(
+                case
+                for case in RETAINED_CASES
+                if case.suite != STRICT_TSV_CASE.EXTENDED_SUITE_NAME
+            )
         elif selected_suite in RETAINED_SUITES:
             selected = tuple(
                 case for case in RETAINED_CASES if case.suite == selected_suite
@@ -3349,7 +3385,13 @@ def _internal(arguments: argparse.Namespace) -> int:
     trial = Path(os.path.abspath(arguments.trial_dir))
     retained_case = RETAINED_CASE_BY_NAME[arguments.case]
     if arguments.operation == "_setup":
-        if arguments.case == "reference-contig-membership":
+        if arguments.case in STRICT_TSV_CASE.CASE_NAMES:
+            STRICT_TSV_CASE.setup(
+                _step08_fixture_path(trial, arguments.case, arguments.value),
+                arguments.case,
+                arguments.value,
+            )
+        elif arguments.case == "reference-contig-membership":
             _setup_reference_contig_membership(trial, arguments.value)
         elif retained_case.stage == 0:
             _setup_alignment_signatures(trial, arguments.value)
@@ -3367,7 +3409,16 @@ def _internal(arguments: argparse.Namespace) -> int:
             _setup_step08(context, trial, arguments.case, arguments.value)
     elif arguments.operation == "_produce":
         source = _source(context, arguments.variant)
-        if arguments.case == "reference-contig-membership":
+        if arguments.case in STRICT_TSV_CASE.CASE_NAMES:
+            STRICT_TSV_CASE.produce(
+                trial,
+                _step08_fixture_path(trial, arguments.case, arguments.value),
+                source,
+                arguments.case,
+                arguments.value,
+                _load_variant_module,
+            )
+        elif arguments.case == "reference-contig-membership":
             _produce_reference_contig_membership(trial, source)
         elif retained_case.stage == 0:
             _produce_alignment_signatures(trial, source)
@@ -3390,6 +3441,13 @@ def _internal(arguments: argparse.Namespace) -> int:
                 arguments.value,
                 _case_threads(arguments.case),
             )
+    elif arguments.case in STRICT_TSV_CASE.CASE_NAMES:
+        STRICT_TSV_CASE.validate(
+            trial,
+            _step08_fixture_path(trial, arguments.case, arguments.value),
+            arguments.case,
+            arguments.value,
+        )
     elif arguments.case == "reference-contig-membership":
         _validate_reference_contig_membership(trial, arguments.value)
     elif retained_case.stage == 0:
@@ -3928,7 +3986,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         if selected and selected[0].startswith("_"):
             return _internal(_internal_parser(selected))
         return _orchestrate(_parser().parse_args(selected))
-    except (BenchmarkSetupError, OSError, subprocess.SubprocessError) as exc:
+    except (
+        BenchmarkSetupError,
+        STRICT_TSV_CASE.StrictTsvBenchmarkError,
+        OSError,
+        subprocess.SubprocessError,
+    ) as exc:
         print(f"retained-stage-benchmark: error: {exc}", file=sys.stderr)
         return 2
 
