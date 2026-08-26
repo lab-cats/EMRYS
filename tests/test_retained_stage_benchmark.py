@@ -61,7 +61,13 @@ def _publish_verified_owner(
     outputs: list[dict[str, object]],
     *,
     inputs: list[dict[str, object]] | None = None,
+    producer_argv: list[str] | None = None,
 ) -> dict[str, object]:
+    provenance = []
+    for role in BENCHMARK.STANDARD_TASK_INPUT_ROLES:
+        artifact = path.with_name(f"{role}.json")
+        artifact.write_text(role + "\n")
+        provenance.append({"role": role, **_artifact(artifact)})
     path.write_text(
         json.dumps(
             {
@@ -78,11 +84,11 @@ def _publish_verified_owner(
                     "producer": {
                         # The retained E2E chose two threads. Benchmark trials
                         # independently exercise their case-declared count.
-                        "argv": ["owner", "--threads", "2"],
+                        "argv": producer_argv or ["owner", "--threads", "2"],
                         "exit_code": 0,
                     }
                 },
-                "inputs": inputs or [],
+                "inputs": [*provenance, *(inputs or [])],
                 "outputs": outputs,
             }
         )
@@ -249,6 +255,82 @@ def _step04_validator_fixture(root: Path) -> dict[str, object]:
         "retained_step04_run_token": retained_token,
     }
     return {"context": context, "trial": trial, "outputs": outputs, "input": input_records, "inspections": inspections}
+
+
+def _step05_validator_fixture(root: Path) -> dict[str, object]:
+    sample = BENCHMARK.RETAINED_SAMPLE_ID
+    run, trial = root / "run", root / "trial"
+    input_bam = run / "results/markdup" / sample / f"{sample}.markdup.bam"
+    retained_bam = run / "results/split_ncigar" / sample / f"{sample}.split_ncigar.bam"
+    for selected, data in ((input_bam, b"input"), (retained_bam, b"retained")):
+        selected.parent.mkdir(parents=True)
+        selected.write_bytes(data)
+        Path(f"{selected}.bai").write_bytes(b"retained-index")
+    reference = root / "reference.fa"
+    reference.write_bytes(b">chrSynthetic\nA\n")
+    reference_fai = Path(f"{reference}.fai")
+    reference_fai.write_bytes(b"chrSynthetic\t5000000\t0\t1\t2\n")
+    reference_dict = root / "reference.dict"
+    reference_dict.write_bytes(b"@SQ\tSN:chrSynthetic\tLN:5000000\n")
+    trial.mkdir()
+    paths = BENCHMARK._step05_paths(sample)
+    (trial / paths["output_root"]).mkdir(parents=True)
+    (trial / paths["report"]).parent.mkdir(parents=True)
+    outputs = {key: trial / paths[key] for key in ("bam", "bai")}
+    outputs["bam"].write_bytes(b"observed")
+    outputs["bai"].write_bytes(b"native-index-differs")
+    input_records = (
+        f"r1\t99\tchrSynthetic\t1\t60\t5M10N5M\t=\t20\t0\tAAAAAAAAAA\tIIIIIIIIII\tRG:Z:{sample}\tPG:Z:MarkDuplicates\n"
+    ).encode()
+    output_records = (
+        f"r1\t99\tchrSynthetic\t1\t60\t5M\t=\t20\t0\tAAAAA\tIIIII\tRG:Z:{sample}\tPG:Z:MarkDuplicates\n"
+        f"r1\t2147\tchrSynthetic\t16\t60\t5M\t=\t20\t0\tAAAAA\tIIIII\tRG:Z:{sample}\tPG:Z:MarkDuplicates\n"
+    ).encode()
+    base = b"@HD\tVN:1.6\tSO:coordinate\n@SQ\tSN:chrSynthetic\tLN:5000000\n@PG\tID:MarkDuplicates\tPN:MarkDuplicates\n"
+    retained_token = "owner-" + "5" * 32
+    gatk_program = (
+        f"@PG\tID:GATK SplitNCigarReads\tPN:GATK SplitNCigarReads\tPP:MarkDuplicates\t"
+        f"CL:SplitNCigarReads -O results/split_ncigar/{sample}/.{sample}.step05."
+        f"{BENCHMARK.STEP05_TRIAL_RUN_TOKEN}.split_ncigar.tmp.bam\n"
+    ).encode()
+    observed_header = base + gatk_program + gatk_program.replace(
+        b"ID:GATK SplitNCigarReads\t", b"ID:GATK SplitNCigarReads.1\t"
+    )
+    retained_header = observed_header.replace(
+        f"results/split_ncigar/{sample}".encode(),
+        f"{run}/results/split_ncigar/{sample}".encode(),
+    ).replace(BENCHMARK.STEP05_TRIAL_RUN_TOKEN.encode(), retained_token.encode())
+    def inspection(header: bytes, records: bytes, count: int) -> dict[str, object]:
+        return {
+            "header": header, "decoded": records,
+            "records": BENCHMARK._sam_records(records, "fixture"),
+            "idxstats": f"chrSynthetic\t5000000\t{count}\t0\n*\t0\t0\t0\n".encode(),
+            "indexed": records,
+        }
+    inspections = {
+        input_bam: inspection(base, input_records, 1),
+        outputs["bam"]: inspection(observed_header, output_records, 2),
+        retained_bam: inspection(retained_header, output_records, 2),
+    }
+    samtools = root / "samtools"
+    samtools.write_text("#!/bin/sh\n")
+    samtools.chmod(0o755)
+    artifact = BENCHMARK._artifact_context
+    context = {
+        "sample_id": sample, "python": sys.executable, "run_root": str(run),
+        "reference_fasta": str(reference), "runtime_samtools": str(samtools),
+        "runtime_bash": str(samtools), "runtime_gatk": str(samtools), "runtime_java": str(samtools),
+        "runtime_sha256_python": sys.executable,
+        "retained_step04_bam": artifact(_retained_artifact(input_bam)),
+        "retained_step04_bai": artifact(_retained_artifact(Path(f"{input_bam}.bai"))),
+        "retained_step05_bam": artifact(_retained_artifact(retained_bam)),
+        "retained_step05_bai": artifact(_retained_artifact(Path(f"{retained_bam}.bai"))),
+        "retained_reference_fasta": artifact(_retained_artifact(reference)),
+        "retained_reference_fai": artifact(_retained_artifact(reference_fai)),
+        "retained_reference_dict": artifact(_retained_artifact(reference_dict)),
+        "retained_step05_run_token": retained_token,
+    }
+    return {"context": context, "trial": trial, "outputs": outputs, "inspections": inspections}
 
 
 def _step06_validator_fixture(root: Path) -> dict[str, object]:
@@ -526,6 +608,7 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             (
                 BENCHMARK.RETAINED_CASE_BY_NAME["step02-canonical-bam"],
                 BENCHMARK.RETAINED_CASE_BY_NAME["step04-duplicate-marking"],
+                BENCHMARK.RETAINED_CASE_BY_NAME["step05-split-n-cigar"],
                 BENCHMARK.RETAINED_CASE_BY_NAME["step06-mechanical-orientation"],
             ),
         )
@@ -1299,6 +1382,89 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "PG/tag transition"):
                 run(fixture)
 
+    def test_step05_validator_proves_split_semantics_index_parity_and_cleanup(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = _step05_validator_fixture(Path(directory).resolve())
+            calls: list[tuple[str, ...]] = []
+            with (
+                mock.patch.object(
+                    BENCHMARK, "_run_checked",
+                    side_effect=lambda argv, **_kwargs: calls.append(tuple(argv)),
+                ),
+                mock.patch.object(
+                    BENCHMARK, "_inspect_indexed_bam",
+                    side_effect=lambda _tool, bam, **_kwargs: fixture["inspections"][bam],
+                ),
+            ):
+                BENCHMARK._validate_step05(fixture["context"], fixture["trial"])
+            self.assertIn("split-n-cigar", calls[0])
+            self.assertIn("all-pass", calls[1])
+            parity = (fixture["trial"] / "parity.bin").read_bytes()
+            self.assertIn(b'"input_n_cigar_operations":1', parity)
+            self.assertTrue(all(not path.exists() for path in fixture["outputs"].values()))
+            output_root = BENCHMARK._step05_paths(BENCHMARK.RETAINED_SAMPLE_ID)["output_root"]
+            self.assertEqual(list((fixture["trial"] / output_root).iterdir()), [])
+
+            observed = fixture["inspections"][next(iter(fixture["outputs"].values()))]
+            bad_records = observed["decoded"].replace(b"5M\t=", b"2M1N2M\t=", 1)
+            observed["records"] = BENCHMARK._sam_records(bad_records, "bad output")
+            with self.assertRaisesRegex(
+                BENCHMARK.BenchmarkSetupError, "retains an N CIGAR"
+            ):
+                BENCHMARK._independent_step05_semantics(
+                    fixture["inspections"][Path(fixture["context"]["retained_step04_bam"]["path"])],
+                    observed,
+                )
+
+    def test_step05_owner_uses_retained_gatk_adapter_and_exact_transaction(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            fixture = _step05_validator_fixture(root)
+            source = root / "source"
+            owner = source / "src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
+            owner.parent.mkdir(parents=True)
+            owner.write_text("#!/bin/bash\n")
+            runtime = root / "runtime/bin"
+            runtime.mkdir(parents=True)
+            for name in ("bash", "gatk-adapter", "java", "samtools", "python"):
+                executable = runtime / name
+                executable.write_text("#!/bin/sh\n")
+                executable.chmod(0o755)
+            context = fixture["context"]
+            context.update(
+                runtime_bash=str(runtime / "bash"),
+                runtime_gatk=str(runtime / "gatk-adapter"),
+                runtime_java=str(runtime / "java"),
+                runtime_samtools=str(runtime / "samtools"),
+                runtime_sha256_python=str(runtime / "python"),
+            )
+            captured: dict[str, object] = {}
+            process_environment = ModuleType("emrys.libraries.process_environment")
+            process_environment.gatk_subprocess_environment = (
+                lambda selected, **_kwargs: {"SELECTED_JAVA": str(selected)}
+            )
+            modules = {
+                "emrys": ModuleType("emrys"),
+                "emrys.libraries": ModuleType("emrys.libraries"),
+                "emrys.libraries.process_environment": process_environment,
+            }
+            with (
+                mock.patch.dict(sys.modules, modules),
+                mock.patch.object(
+                    BENCHMARK, "_run_checked",
+                    side_effect=lambda argv, **kwargs: captured.update(argv=tuple(argv), **kwargs),
+                ),
+            ):
+                BENCHMARK._produce_step05(context, fixture["trial"], source)
+            argv = captured["argv"]
+            self.assertEqual(argv[0:2], (str(runtime / "bash"), str(owner)))
+            self.assertEqual(argv[argv.index("--gatk-bin") + 1], str(runtime / "gatk-adapter"))
+            self.assertEqual(argv[-2:], ("--no-clobber", "--execute"))
+            self.assertEqual(
+                captured["environment"]["EMRYS_RUN_TOKEN"],
+                BENCHMARK.STEP05_TRIAL_RUN_TOKEN,
+            )
+
     def test_step06_owner_binds_exact_authorities_and_relative_results(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
@@ -1795,6 +1961,11 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             picard_jar = root / "picard.jar"
             for selected in (step04_bam, step04_bai, step04_metrics, picard_jar):
                 selected.write_bytes(selected.name.encode())
+            reference_fasta = root / "reference.fa"
+            reference_fai = Path(f"{reference_fasta}.fai")
+            reference_dict = root / "reference.dict"
+            for selected in (reference_fasta, reference_fai, reference_dict):
+                selected.write_bytes(selected.name.encode())
             step05_bam = root / "retained.step05.bam"
             step05_bai = root / "retained.step05.bam.bai"
             step05_bam.write_bytes(b"step05-bam")
@@ -1814,9 +1985,10 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 selected.write_bytes(selected.name.encode())
             runtime = root / "runtime"
             runtime_bash = runtime / "bin/bash"
+            runtime_gatk = runtime / "bin/gatk"
             runtime_java = runtime / "bin/java"
             runtime_samtools = runtime / "bin/samtools"
-            for executable in (runtime_bash, runtime_java, runtime_samtools):
+            for executable in (runtime_bash, runtime_gatk, runtime_java, runtime_samtools):
                 executable.parent.mkdir(parents=True, exist_ok=True)
                 executable.write_text("#!/bin/sh\n")
                 executable.chmod(0o755)
@@ -1839,8 +2011,12 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 _retained_artifact(step04_metrics),
                 "owner-" + "4" * 32,
                 _retained_artifact(picard_jar),
+                _retained_artifact(reference_fasta),
+                _retained_artifact(reference_fai),
+                _retained_artifact(reference_dict),
                 _retained_artifact(step05_bam),
                 _retained_artifact(step05_bai),
+                "owner-" + "5" * 32,
                 _retained_artifact(step06_fwd_bam),
                 _retained_artifact(step06_fwd_bai),
                 _retained_artifact(step06_rev_bam),
@@ -1848,6 +2024,7 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 _retained_artifact(step06_counts),
                 "owner-" + "6" * 32,
                 runtime_bash,
+                runtime_gatk,
                 runtime_java,
                 picard_jar,
                 runtime_samtools,
@@ -1915,6 +2092,7 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             )
             self.assertEqual(context["retained_step04_bam"]["path"], str(step04_bam))
             self.assertEqual(context["retained_picard_jar"]["path"], str(picard_jar))
+            self.assertEqual(context["retained_reference_dict"]["path"], str(reference_dict))
             self.assertEqual(
                 context["retained_step05_bam"]["path"], str(step05_bam)
             )
@@ -1928,6 +2106,7 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 context["retained_step06_run_token"], "owner-" + "6" * 32
             )
             self.assertEqual(context["runtime_bash"], str(runtime_bash))
+            self.assertEqual(context["runtime_gatk"], str(runtime_gatk))
             self.assertEqual(context["runtime_java"], str(runtime_java))
             self.assertEqual(context["runtime_samtools"], str(runtime_samtools))
             self.assertEqual(context["runtime_sha256_python"], sys.executable)
@@ -1965,6 +2144,8 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             partitions.write_text("partition_id\tselector_type\tselector_value\nprimary\tregion\ts\n")
             fasta.write_text(">s\nA\n")
             Path(f"{fasta}.fai").write_text("s\t5000000\t0\t1\t2\n")
+            reference_dict = fasta.with_name(f"{fasta.stem}.dict")
+            reference_dict.write_text("@HD\tVN:1.6\n@SQ\tSN:s\tLN:5000000\n")
             gtf.write_text("s\tx\tgene\t1\t1\t.\t+\t.\tgene_id \"g\";\n")
             execution = {
                 "analysis": {"cohort_id": "cohort"},
@@ -2071,6 +2252,13 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 {"role": "output_001", **_artifact(step05_bam)},
                 {"role": "output_002", **_artifact(step05_bai)},
             ]
+            step05_inputs = [
+                {"role": "input_001", **_artifact(step04_bam)},
+                {"role": "input_002", **_artifact(step04_bai)},
+                {"role": "input_003", **_artifact(fasta)},
+                {"role": "input_004", **_artifact(Path(f"{fasta}.fai"))},
+                {"role": "input_005", **_artifact(reference_dict)},
+            ]
             step06_outputs = [
                 {"role": "output_001", **_artifact(step06_fwd_bam)},
                 {"role": "output_002", **_artifact(step06_fwd_bai)},
@@ -2101,11 +2289,7 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                         )
                     )
                 elif index == 3:
-                    owners.append(
-                        _publish_verified_owner(
-                            path, BENCHMARK.STEP05_OWNER, step05_outputs
-                        )
-                    )
+                    owners.append({})
                 elif index == 4:
                     owners.append(
                         _publish_verified_owner(
@@ -2118,9 +2302,15 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             final = evidence / "attempt.json"
             final.write_text("complete")
             runtime_bash = operator / "runtime/bin/bash"
+            runtime_gatk = operator / "runtime/bin/gatk"
+            gatk_delegate = operator / "runtime/bin/gatk-delegate"
+            gatk_runtime_python = operator / "runtime/bin/gatk-python"
             runtime_java = operator / "runtime/bin/java"
             runtime_samtools = operator / "runtime/bin/samtools"
-            for executable in (runtime_bash, runtime_java, runtime_samtools):
+            for executable in (
+                runtime_bash, runtime_gatk, gatk_delegate, gatk_runtime_python,
+                runtime_java, runtime_samtools,
+            ):
                 executable.parent.mkdir(parents=True, exist_ok=True)
                 executable.write_text("#!/bin/sh\n")
                 executable.chmod(0o755)
@@ -2134,11 +2324,33 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 f"sha256_python\thash_utility\tlocal\ttrue\t{sys.executable}\t[]\t"
                 "sha256\tPython\n"
                 f"java\ttool_version\tlocal\ttrue\t{runtime_java}\t[]\tjava\tJava\n"
+                f"gatk\ttool_version\tlocal\ttrue\t{runtime_gatk}\t"
+                "[\"--version\"]\tgatk\tGATK\n"
                 f"picard\ttool_version_exit_1\tlocal\ttrue\t{runtime_java}\t"
                 f"[\"-jar\",\"{picard_jar}\",\"MarkDuplicates\",\"--version\"]\t"
                 "picard\tPicard\n"
                 f"picard_jar\tpath_visibility\tlocal\ttrue\t{picard_jar}\t[]\t"
                 "readable\tPicard jar\n"
+            )
+            step05_owner = operator / "checkout/src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh"
+            step05_owner.parent.mkdir(parents=True)
+            step05_owner.write_text("#!/bin/bash\n")
+            step05_producer_argv = [
+                str(runtime_bash), "-c", BENCHMARK.OWNER_ENVIRONMENT_BOOTSTRAP,
+                "emrys-owner", "owner-" + "6" * 32, sys.executable,
+                str(runtime_bash), str(step05_owner),
+                "--sample-id", BENCHMARK.RETAINED_SAMPLE_ID,
+                "--input-bam", str(step04_bam), "--reference-fasta", str(fasta),
+                "--output-dir", str(step05_bam.parent), "--gatk-bin", str(runtime_gatk),
+                "--samtools-bin", str(runtime_samtools), "--java-bin", str(runtime_java),
+                "--no-clobber", "--execute",
+            ]
+            owners[3] = _publish_verified_owner(
+                evidence / "owner-3.json",
+                BENCHMARK.STEP05_OWNER,
+                step05_outputs,
+                inputs=step05_inputs,
+                producer_argv=step05_producer_argv,
             )
             primary_vcf = run / "results/mpileup/cohort/primary/cohort.primary.FWD_like.mpileup.vcf"
             primary_vcf.parent.mkdir(parents=True)
@@ -2153,6 +2365,15 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 "biological_interpretation_claimed": False,
                 "operator_root": str(operator),
                 "runtime_profile": _artifact(runtime_profile),
+                "gatk_attestation": {
+                    "adapter": _artifact(runtime_gatk),
+                    "delegate": _artifact(gatk_delegate),
+                    "java_home": str(runtime_java.parent.parent),
+                    "runtime_java": _artifact(runtime_java),
+                    "runtime_python": _artifact(gatk_runtime_python),
+                    "runtime_python_launcher": str(gatk_runtime_python),
+                    "version_output": "The Genome Analysis Toolkit (GATK) v4.6.1.0",
+                },
                 "completion": {
                     "state": "local_pipeline_complete",
                     "run_id": "run-test",
@@ -2179,6 +2400,8 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             self.assertEqual(admitted.retained_picard_jar.path, picard_jar)
             self.assertEqual(admitted.retained_step05_bam.path, step05_bam)
             self.assertEqual(admitted.retained_step05_bai.path, step05_bai)
+            self.assertEqual(admitted.retained_reference_dict.path, reference_dict)
+            self.assertEqual(admitted.retained_step05_run_token, "owner-" + "6" * 32)
             self.assertEqual(admitted.retained_step06_fwd_bam.path, step06_fwd_bam)
             self.assertEqual(admitted.retained_step06_rev_bam.path, step06_rev_bam)
             self.assertEqual(admitted.retained_step06_counts.path, step06_counts)
@@ -2186,9 +2409,60 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 admitted.retained_step06_run_token, "owner-" + "6" * 32
             )
             self.assertEqual(admitted.runtime_bash, runtime_bash)
+            self.assertEqual(admitted.runtime_gatk, runtime_gatk)
             self.assertEqual(admitted.runtime_java, runtime_java)
             self.assertEqual(admitted.runtime_samtools, runtime_samtools)
             self.assertEqual(admitted.runtime_sha256_python, Path(sys.executable))
+
+            def republish_step05() -> None:
+                owners[3] = _publish_verified_owner(
+                    evidence / "owner-3.json", BENCHMARK.STEP05_OWNER,
+                    step05_outputs, inputs=step05_inputs,
+                    producer_argv=step05_producer_argv,
+                )
+                summary_path.write_text(json.dumps(summary))
+
+            step05_inputs[4]["role"] = "wrong-role"
+            republish_step05()
+            with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "binding differs"):
+                BENCHMARK._admit_e2e(summary_path)
+            step05_inputs[4]["role"] = "input_005"
+            extra_step05 = step05_bai.with_name("unexpected-step05-output")
+            extra_step05.write_text("unexpected\n")
+            step05_outputs.append({"role": "output_003", **_artifact(extra_step05)})
+            republish_step05()
+            with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "exact expected roster"):
+                BENCHMARK._admit_e2e(summary_path)
+            step05_outputs.pop()
+            step05_producer_argv[-2:] = ["--execute", "--no-clobber"]
+            republish_step05()
+            with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "producer argv differs"):
+                BENCHMARK._admit_e2e(summary_path)
+            step05_producer_argv[-2:] = ["--no-clobber", "--execute"]
+            republish_step05()
+            runtime_text = runtime_profile.read_text()
+            runtime_profile.write_text(
+                runtime_text.replace('["--version"]\tgatk\tGATK', '["version"]\tgatk\tGATK')
+            )
+            summary["runtime_profile"] = _artifact(runtime_profile)
+            summary_path.write_text(json.dumps(summary))
+            with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "GATK authority probe"):
+                BENCHMARK._admit_e2e(summary_path)
+            runtime_profile.write_text(runtime_text)
+            summary["runtime_profile"] = _artifact(runtime_profile)
+            summary_path.write_text(json.dumps(summary))
+            replacement_adapter = runtime_gatk.with_name("replacement-gatk")
+            replacement_adapter.write_text("#!/bin/sh\n")
+            replacement_adapter.chmod(0o755)
+            runtime_profile.write_text(
+                runtime_text.replace(str(runtime_gatk), str(replacement_adapter))
+            )
+            summary["runtime_profile"] = _artifact(runtime_profile)
+            summary_path.write_text(json.dumps(summary))
+            with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "adapter differs"):
+                BENCHMARK._admit_e2e(summary_path)
+            runtime_profile.write_text(runtime_text)
+            summary["runtime_profile"] = _artifact(runtime_profile)
             summary["profile"] = "130"
             summary_path.write_text(json.dumps(summary))
             with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "exact passed retained 100k"):
