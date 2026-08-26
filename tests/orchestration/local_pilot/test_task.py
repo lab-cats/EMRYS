@@ -11,10 +11,11 @@ import subprocess
 import sys
 import tempfile
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from unittest.mock import Mock
 
 import pytest
 
@@ -403,70 +404,31 @@ def test_default_command_runner_cleans_up_child_when_selector_setup_fails(
     monkeypatch: pytest.MonkeyPatch,
     fault: str,
 ) -> None:
-    class FakeStream:
-        def __init__(self) -> None:
-            self.closed = False
+    process = Mock(stdout=Mock(), stderr=Mock())
+    selector = Mock()
+    selector.register.side_effect = [
+        None,
+        RuntimeError("injected selector registration failure"),
+    ]
 
-        def close(self) -> None:
-            self.closed = True
-
-    class FakeProcess:
-        def __init__(self) -> None:
-            self.stdout = FakeStream()
-            self.stderr = FakeStream()
-            self.kill_count = 0
-            self.wait_count = 0
-
-        def kill(self) -> None:
-            self.kill_count += 1
-
-        def wait(self) -> int:
-            self.wait_count += 1
-            return 0
-
-    class FakeSelector:
-        def __init__(self) -> None:
-            self.closed = False
-            self.registration_count = 0
-
-        def register(
-            self,
-            fileobj: object,
-            events: int,
-            data: object,
-        ) -> None:
-            del fileobj, events, data
-            self.registration_count += 1
-            if self.registration_count == 2:
-                raise RuntimeError("injected selector registration failure")
-
-        def close(self) -> None:
-            self.closed = True
-
-    process = FakeProcess()
-    selector_instances: list[FakeSelector] = []
-
-    def popen(*_args: object, **_kwargs: object) -> FakeProcess:
-        return process
-
-    def selector_factory() -> FakeSelector:
+    def selector_factory() -> Mock:
         if fault == "selector-construction":
             raise RuntimeError("injected selector construction failure")
-        selector = FakeSelector()
-        selector_instances.append(selector)
         return selector
 
-    monkeypatch.setattr(task.subprocess, "Popen", popen)
+    monkeypatch.setattr(task.subprocess, "Popen", lambda *_args, **_kwargs: process)
     monkeypatch.setattr(task.selectors, "DefaultSelector", selector_factory)
     with pytest.raises(RuntimeError, match="injected selector"):
         _run_default_command(("fixture-tool",), tmp_path, {})
 
-    assert process.kill_count == 1
-    assert process.wait_count == 1
-    assert process.stdout.closed is True
-    assert process.stderr.closed is True
-    if selector_instances:
-        assert selector_instances[0].closed is True
+    process.kill.assert_called_once_with()
+    process.wait.assert_called_once_with()
+    process.stdout.close.assert_called_once_with()
+    process.stderr.close.assert_called_once_with()
+    if fault == "second-registration":
+        selector.close.assert_called_once_with()
+    else:
+        selector.close.assert_not_called()
 
 
 def _rewrite_dispatch(built: TaskFixture) -> None:
@@ -549,6 +511,23 @@ def _load_dispatch(path: Path) -> task.TaskDispatch:
 
 def _record(path: str | Path) -> dict[str, Any]:
     return orchestration_contracts.load_json_object(path)
+
+
+def _validate_verified(
+    built: TaskFixture,
+    **overrides: Any,
+) -> dict[str, Any]:
+    arguments = {
+        "run_root": built.run_root,
+        "execution": _record(built.dispatch["execution_path"]),
+        "profile": _record(built.dispatch["profile_path"]),
+        "machine_key": MACHINE_KEY,
+        "scope": built.dispatch["scope"],
+        **overrides,
+    }
+    return task.validate_verified_task(
+        Path(built.dispatch["verified_task_path"]), **arguments
+    )
 
 
 def _step00c_with_existing_sidecars(
@@ -694,12 +673,10 @@ def test_stream_capture_preserves_exact_opaque_bytes_and_per_stream_order(
 
     _execute_dispatch(
         built.dispatch_path,
-        ops=task.TaskOps(
+        ops=replace(
+            defaults,
             run_command=command,
             run_semantic_all_pass=semantic,
-            publish_bytes=defaults.publish_bytes,
-            now=defaults.now,
-            attest_source_checkout=defaults.attest_source_checkout,
         ),
     )
 
@@ -844,13 +821,7 @@ def test_unexpected_interruption_preserves_and_closes_partial_task_logs(
     with pytest.raises(KeyboardInterrupt):
         _execute_dispatch(
             built.dispatch_path,
-            ops=task.TaskOps(
-                run_command=interrupt,
-                run_semantic_all_pass=defaults.run_semantic_all_pass,
-                publish_bytes=defaults.publish_bytes,
-                now=defaults.now,
-                attest_source_checkout=defaults.attest_source_checkout,
-            ),
+            ops=replace(defaults, run_command=interrupt),
         )
 
     assert Path(built.dispatch["task_start_path"]).is_file()
@@ -1021,12 +992,11 @@ def test_task_start_publication_failure_after_link_never_enters_producer(
             injected = True
             raise task.TaskBoundaryError("injected after task-start link")
 
-    ops = task.TaskOps(
+    ops = replace(
+        defaults,
         run_command=command,
         run_semantic_all_pass=command,
         publish_bytes=publish,
-        now=lambda: datetime(2026, 8, 12, 12, 2, tzinfo=UTC),
-        attest_source_checkout=defaults.attest_source_checkout,
     )
     with pytest.raises(task.TaskBoundaryError, match="injected after task-start"):
         _execute_dispatch(built.dispatch_path, ops=ops)
@@ -1068,10 +1038,7 @@ def test_task_streams_are_fsynced_and_closed_before_attempt_publication(
                 path_state = path.stat(follow_symlinks=False)
             except OSError:
                 continue
-            if (descriptor_state.st_dev, descriptor_state.st_ino) == (
-                path_state.st_dev,
-                path_state.st_ino,
-            ):
+            if os.path.samestat(descriptor_state, path_state):
                 return label
         return None
 
@@ -1096,13 +1063,7 @@ def test_task_streams_are_fsynced_and_closed_before_attempt_publication(
     monkeypatch.setattr(task.os, "close", tracked_close)
     _execute_dispatch(
         built.dispatch_path,
-        ops=task.TaskOps(
-            run_command=defaults.run_command,
-            run_semantic_all_pass=defaults.run_semantic_all_pass,
-            publish_bytes=publish,
-            now=defaults.now,
-            attest_source_checkout=defaults.attest_source_checkout,
-        ),
+        ops=replace(defaults, publish_bytes=publish),
     )
 
     attempt_index = events.index("publish-attempt")
@@ -1111,21 +1072,14 @@ def test_task_streams_are_fsynced_and_closed_before_attempt_publication(
         assert events.index(f"close-{label}") < attempt_index
 
 
-@pytest.mark.parametrize(
-    ("field", "descriptor_index", "label"),
-    [
-        ("stdout_path", 0, "stdout"),
-        ("stderr_path", 1, "stderr"),
-    ],
-)
+@pytest.mark.parametrize("label", ["stdout", "stderr"])
 def test_same_byte_log_replacement_while_descriptor_open_is_not_admitted(
     tmp_path: Path,
-    field: str,
-    descriptor_index: int,
     label: str,
 ) -> None:
     built = _task_fixture(tmp_path)
     defaults = _fixed_ops()
+    field = f"{label}_path"
     replacement_bytes = b""
 
     def semantic(
@@ -1143,7 +1097,7 @@ def test_same_byte_log_replacement_while_descriptor_open_is_not_admitted(
             stdout_descriptor,
             stderr_descriptor,
         )
-        descriptor = (stdout_descriptor, stderr_descriptor)[descriptor_index]
+        descriptor = stdout_descriptor if label == "stdout" else stderr_descriptor
         target = Path(built.dispatch[field])
         original_state = os.fstat(descriptor)
         replacement_bytes = target.read_bytes()
@@ -1152,14 +1106,8 @@ def test_same_byte_log_replacement_while_descriptor_open_is_not_admitted(
         replacement.replace(target)
         current_state = target.stat(follow_symlinks=False)
         still_open_state = os.fstat(descriptor)
-        assert (still_open_state.st_dev, still_open_state.st_ino) == (
-            original_state.st_dev,
-            original_state.st_ino,
-        )
-        assert (current_state.st_dev, current_state.st_ino) != (
-            still_open_state.st_dev,
-            still_open_state.st_ino,
-        )
+        assert os.path.samestat(still_open_state, original_state)
+        assert not os.path.samestat(current_state, still_open_state)
         return result
 
     with pytest.raises(
@@ -1168,13 +1116,7 @@ def test_same_byte_log_replacement_while_descriptor_open_is_not_admitted(
     ):
         _execute_dispatch(
             built.dispatch_path,
-            ops=task.TaskOps(
-                run_command=defaults.run_command,
-                run_semantic_all_pass=semantic,
-                publish_bytes=defaults.publish_bytes,
-                now=defaults.now,
-                attest_source_checkout=defaults.attest_source_checkout,
-            ),
+            ops=replace(defaults, run_semantic_all_pass=semantic),
         )
 
     assert Path(built.dispatch[field]).read_bytes() == replacement_bytes
@@ -1182,20 +1124,14 @@ def test_same_byte_log_replacement_while_descriptor_open_is_not_admitted(
     assert not Path(built.dispatch["verified_task_path"]).exists()
 
 
-@pytest.mark.parametrize(
-    ("field", "message"),
-    [
-        ("stdout_path", "Task stdout changed"),
-        ("stderr_path", "Task stderr changed"),
-    ],
-)
+@pytest.mark.parametrize("label", ["stdout", "stderr"])
 def test_log_change_during_attempt_publication_blocks_verified_record(
     tmp_path: Path,
-    field: str,
-    message: str,
+    label: str,
 ) -> None:
     built = _task_fixture(tmp_path)
     defaults = _fixed_ops()
+    field = f"{label}_path"
 
     def publish(path: Path, data: bytes) -> None:
         defaults.publish_bytes(path, data)
@@ -1203,16 +1139,10 @@ def test_log_change_during_attempt_publication_blocks_verified_record(
             with Path(built.dispatch[field]).open("ab") as stream:
                 stream.write(b"foreign log bytes\n")
 
-    with pytest.raises(task.TaskBoundaryError, match=message):
+    with pytest.raises(task.TaskBoundaryError, match=rf"Task {label} changed"):
         _execute_dispatch(
             built.dispatch_path,
-            ops=task.TaskOps(
-                run_command=defaults.run_command,
-                run_semantic_all_pass=defaults.run_semantic_all_pass,
-                publish_bytes=publish,
-                now=defaults.now,
-                attest_source_checkout=defaults.attest_source_checkout,
-            ),
+            ops=replace(defaults, publish_bytes=publish),
         )
 
     assert Path(built.dispatch["task_attempt_path"]).is_file()
@@ -1298,12 +1228,11 @@ def test_task_log_symlink_injected_at_stream_open_is_never_followed(
     with pytest.raises(task.TaskBoundaryError, match="canonical|replace existing"):
         _execute_dispatch(
             built.dispatch_path,
-            ops=task.TaskOps(
+            ops=replace(
+                defaults,
                 run_command=command,
                 run_semantic_all_pass=command,
                 publish_bytes=publish,
-                now=defaults.now,
-                attest_source_checkout=defaults.attest_source_checkout,
             ),
         )
 
@@ -1341,26 +1270,20 @@ def test_read_only_verified_admission_rechecks_every_content_binding(
     execution = _record(built.dispatch["execution_path"])
     profile = _record(built.dispatch["profile_path"])
 
-    admitted = task.validate_verified_task(
-        Path(built.dispatch["verified_task_path"]),
-        run_root=built.run_root,
+    admitted = _validate_verified(
+        built,
         execution=execution,
         profile=profile,
-        machine_key=MACHINE_KEY,
-        scope=built.dispatch["scope"],
     )
     assert admitted["all_pass"] is True
 
     output = Path(built.dispatch["outputs"][0]["path"])
     output.write_bytes(b"changed after verification\n")
     with pytest.raises(task.TaskBoundaryError, match="content binding"):
-        task.validate_verified_task(
-            Path(built.dispatch["verified_task_path"]),
-            run_root=built.run_root,
+        _validate_verified(
+            built,
             execution=execution,
             profile=profile,
-            machine_key=MACHINE_KEY,
-            scope=built.dispatch["scope"],
         )
 
 
@@ -1381,14 +1304,7 @@ def test_read_only_verified_admission_rechecks_task_log_hashes(
         log_path.write_bytes(b"")
 
     with pytest.raises(task.TaskBoundaryError, match="SHA-256 no longer matches"):
-        task.validate_verified_task(
-            Path(built.dispatch["verified_task_path"]),
-            run_root=built.run_root,
-            execution=_record(built.dispatch["execution_path"]),
-            profile=_record(built.dispatch["profile_path"]),
-            machine_key=MACHINE_KEY,
-            scope=built.dispatch["scope"],
-        )
+        _validate_verified(built)
 
 
 def test_task_log_hashing_and_revalidation_are_chunked_without_full_log_reads(
@@ -1448,25 +1364,9 @@ def test_task_log_hashing_and_revalidation_are_chunked_without_full_log_reads(
     monkeypatch.setattr(task, "_read_bound_file", reject_full_log_read)
     _execute_dispatch(
         built.dispatch_path,
-        ops=task.TaskOps(
-            run_command=command,
-            run_semantic_all_pass=defaults.run_semantic_all_pass,
-            publish_bytes=defaults.publish_bytes,
-            now=defaults.now,
-            attest_source_checkout=defaults.attest_source_checkout,
-        ),
+        ops=replace(defaults, run_command=command),
     )
-    validation_arguments = {
-        "run_root": built.run_root,
-        "execution": _record(built.dispatch["execution_path"]),
-        "profile": _record(built.dispatch["profile_path"]),
-        "machine_key": MACHINE_KEY,
-        "scope": built.dispatch["scope"],
-    }
-    task.validate_verified_task(
-        Path(built.dispatch["verified_task_path"]),
-        **validation_arguments,
-    )
+    _validate_verified(built)
 
     stdout_chunks = chunks[Path(built.dispatch["stdout_path"])]
     assert len(stdout_chunks) > 2
@@ -1474,10 +1374,7 @@ def test_task_log_hashing_and_revalidation_are_chunked_without_full_log_reads(
     with Path(built.dispatch["stdout_path"]).open("ab") as stream:
         stream.write(b"mutation")
     with pytest.raises(task.TaskBoundaryError, match="SHA-256 no longer matches"):
-        task.validate_verified_task(
-            Path(built.dispatch["verified_task_path"]),
-            **validation_arguments,
-        )
+        _validate_verified(built)
 
 
 def test_read_only_task_start_admission_rechecks_every_origin(
@@ -1550,13 +1447,7 @@ def test_transient_wrong_source_head_blocks_before_task_start(tmp_path: Path) ->
         )
 
     defaults = _fixed_ops()
-    ops = task.TaskOps(
-        run_command=defaults.run_command,
-        run_semantic_all_pass=defaults.run_semantic_all_pass,
-        publish_bytes=defaults.publish_bytes,
-        now=defaults.now,
-        attest_source_checkout=reject_transient_head,
-    )
+    ops = replace(defaults, attest_source_checkout=reject_transient_head)
     with pytest.raises(task.TaskBoundaryError, match="Could not attest task child"):
         _execute_dispatch(built.dispatch_path, ops=ops)
 
@@ -1579,13 +1470,7 @@ def test_task_child_rechecks_source_identity_at_irreversible_entry(
         return production_attester(**kwargs)
 
     defaults = _fixed_ops()
-    ops = task.TaskOps(
-        run_command=defaults.run_command,
-        run_semantic_all_pass=defaults.run_semantic_all_pass,
-        publish_bytes=defaults.publish_bytes,
-        now=defaults.now,
-        attest_source_checkout=transient_move,
-    )
+    ops = replace(defaults, attest_source_checkout=transient_move)
     with pytest.raises(task.TaskBoundaryError, match="transient wrong HEAD"):
         _execute_dispatch(built.dispatch_path, ops=ops)
 
@@ -1614,14 +1499,7 @@ def test_read_only_verified_admission_rejects_mutated_references(
         stream.write(b"mutated-after-publication\n")
 
     with pytest.raises(task.TaskBoundaryError):
-        task.validate_verified_task(
-            Path(built.dispatch["verified_task_path"]),
-            run_root=built.run_root,
-            execution=_record(built.dispatch["execution_path"]),
-            profile=_record(built.dispatch["profile_path"]),
-            machine_key=MACHINE_KEY,
-            scope=built.dispatch["scope"],
-        )
+        _validate_verified(built)
 
 
 def test_read_only_verified_admission_rejects_wrong_identity_and_scope(
@@ -1630,12 +1508,8 @@ def test_read_only_verified_admission_rejects_wrong_identity_and_scope(
     built = _task_fixture(tmp_path)
     _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
     with pytest.raises(task.TaskBoundaryError, match="scope"):
-        task.validate_verified_task(
-            Path(built.dispatch["verified_task_path"]),
-            run_root=built.run_root,
-            execution=_record(built.dispatch["execution_path"]),
-            profile=_record(built.dispatch["profile_path"]),
-            machine_key=MACHINE_KEY,
+        _validate_verified(
+            built,
             scope={"scope_type": "sample", "scope_id": "PUM1_1"},
         )
 
@@ -1662,13 +1536,7 @@ def test_semantic_gate_cannot_change_the_report_it_approves(tmp_path: Path) -> N
             stream.write(b"post-gate mutation\n")
         return result
 
-    ops = task.TaskOps(
-        run_command=defaults.run_command,
-        run_semantic_all_pass=semantic,
-        publish_bytes=defaults.publish_bytes,
-        now=lambda: datetime(2026, 8, 12, 12, 2, tzinfo=UTC),
-        attest_source_checkout=defaults.attest_source_checkout,
-    )
+    ops = replace(defaults, run_semantic_all_pass=semantic)
     with pytest.raises(task.TaskBoundaryError, match="report changed"):
         _execute_dispatch(built.dispatch_path, ops=ops)
     assert not Path(built.dispatch["verified_task_path"]).exists()
@@ -1697,13 +1565,7 @@ def test_validator_cannot_change_a_producer_output(tmp_path: Path) -> None:
                 stream.write(b"validator mutation\n")
         return result
 
-    ops = task.TaskOps(
-        run_command=command,
-        run_semantic_all_pass=defaults.run_semantic_all_pass,
-        publish_bytes=defaults.publish_bytes,
-        now=lambda: datetime(2026, 8, 12, 12, 2, tzinfo=UTC),
-        attest_source_checkout=defaults.attest_source_checkout,
-    )
+    ops = replace(defaults, run_command=command)
     with pytest.raises(task.TaskBoundaryError, match="producer output changed"):
         _execute_dispatch(built.dispatch_path, ops=ops)
     assert not Path(built.dispatch["verified_task_path"]).exists()
@@ -1764,12 +1626,10 @@ def test_step00c_symlinked_stationary_reference_blocks_before_producer(
         return task.CommandResult(argv, 0)
 
     defaults = _fixed_ops()
-    ops = task.TaskOps(
+    ops = replace(
+        defaults,
         run_command=command,
         run_semantic_all_pass=command,
-        publish_bytes=defaults.publish_bytes,
-        now=lambda: datetime(2026, 8, 12, 12, 2, tzinfo=UTC),
-        attest_source_checkout=defaults.attest_source_checkout,
     )
     with pytest.raises(
         task.TaskBoundaryError, match="stationary FASTA must be canonical"
@@ -1817,12 +1677,10 @@ def test_step00c_parent_permission_drift_blocks_before_task_start(
     with pytest.raises(task.TaskBoundaryError, match="not readable, writable"):
         _execute_dispatch(
             dispatch_path,
-            ops=task.TaskOps(
+            ops=replace(
+                defaults,
                 run_command=command,
                 run_semantic_all_pass=command,
-                publish_bytes=defaults.publish_bytes,
-                now=defaults.now,
-                attest_source_checkout=defaults.attest_source_checkout,
                 path_access=permission_drift,
             ),
         )
@@ -1886,13 +1744,7 @@ def test_complete_step00c_sidecar_pair_is_reused_and_content_bound(
 
     outcome = _execute_dispatch(
         dispatch_path,
-        ops=task.TaskOps(
-            run_command=command,
-            run_semantic_all_pass=defaults.run_semantic_all_pass,
-            publish_bytes=defaults.publish_bytes,
-            now=defaults.now,
-            attest_source_checkout=defaults.attest_source_checkout,
-        ),
+        ops=replace(defaults, run_command=command),
     )
 
     assert calls == [producer_argv, tuple(record["validator_argv"])]
@@ -1940,13 +1792,7 @@ def test_partial_step00c_sidecar_pair_blocks_before_producer(tmp_path: Path) -> 
     with pytest.raises(task.TaskBoundaryError, match="partial pre-existing Step 00c"):
         _execute_dispatch(
             dispatch_path,
-            ops=task.TaskOps(
-                run_command=command,
-                run_semantic_all_pass=defaults.run_semantic_all_pass,
-                publish_bytes=defaults.publish_bytes,
-                now=defaults.now,
-                attest_source_checkout=defaults.attest_source_checkout,
-            ),
+            ops=replace(defaults, run_command=command),
         )
 
     assert calls == []
@@ -1984,13 +1830,7 @@ def test_reused_step00c_sidecar_replacement_during_producer_fails_closed(
     with pytest.raises(task.TaskBoundaryError, match="during producer execution"):
         _execute_dispatch(
             dispatch_path,
-            ops=task.TaskOps(
-                run_command=command,
-                run_semantic_all_pass=defaults.run_semantic_all_pass,
-                publish_bytes=defaults.publish_bytes,
-                now=defaults.now,
-                attest_source_checkout=defaults.attest_source_checkout,
-            ),
+            ops=replace(defaults, run_command=command),
         )
     assert not Path(record["verified_task_path"]).exists()
 
@@ -2027,13 +1867,7 @@ def test_reused_step00c_sidecar_mutation_during_validation_fails_closed(
     with pytest.raises(task.TaskBoundaryError, match="during validation"):
         _execute_dispatch(
             dispatch_path,
-            ops=task.TaskOps(
-                run_command=command,
-                run_semantic_all_pass=defaults.run_semantic_all_pass,
-                publish_bytes=defaults.publish_bytes,
-                now=defaults.now,
-                attest_source_checkout=defaults.attest_source_checkout,
-            ),
+            ops=replace(defaults, run_command=command),
         )
     assert not Path(record["verified_task_path"]).exists()
 
@@ -2075,12 +1909,10 @@ def test_reused_step00c_sidecar_rechecked_before_verified_publication(
     with pytest.raises(task.TaskBoundaryError, match="before verified publication"):
         _execute_dispatch(
             dispatch_path,
-            ops=task.TaskOps(
+            ops=replace(
+                defaults,
                 run_command=command,
-                run_semantic_all_pass=defaults.run_semantic_all_pass,
                 publish_bytes=publish,
-                now=defaults.now,
-                attest_source_checkout=defaults.attest_source_checkout,
             ),
         )
     assert _record(record["task_attempt_path"])["status"] == "succeeded"
