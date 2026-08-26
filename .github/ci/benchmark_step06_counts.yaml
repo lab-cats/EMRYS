@@ -1,0 +1,69 @@
+schema_version: emrys.resource-benchmark.v1
+cases:
+  - name: step06-counts-balanced
+    values:
+      - 1
+      - 2
+    repetitions: 3
+    setup_argv:
+      - .venv/bin/python
+      - -I
+      - .github/ci/benchmark_step06_counts.py
+      - setup
+      - balanced
+      - "2000000"
+      - "{trial_dir}"
+    producer_argv:
+      - .venv/bin/python
+      - -I
+      - .github/ci/benchmark_step06_counts.py
+      - run
+      - "{value}"
+      - balanced
+      - "2000000"
+      - "{trial_dir}"
+    validator_argv:
+      - .venv/bin/python
+      - -I
+      - .github/ci/benchmark_step06_counts.py
+      - validate
+      - "{value}"
+      - balanced
+      - "2000000"
+      - "{trial_dir}"
+    artifact_paths:
+      - "{trial_dir}/counts.tsv"
+
+  - name: step06-counts-assigned20
+    values:
+      - 1
+      - 2
+    repetitions: 3
+    setup_argv:
+      - .venv/bin/python
+      - -I
+      - .github/ci/benchmark_step06_counts.py
+      - setup
+      - assigned20
+      - "2000000"
+      - "{trial_dir}"
+    producer_argv:
+      - .venv/bin/python
+      - -I
+      - .github/ci/benchmark_step06_counts.py
+      - run
+      - "{value}"
+      - assigned20
+      - "2000000"
+      - "{trial_dir}"
+    validator_argv:
+      - .venv/bin/python
+      - -I
+      - .github/ci/benchmark_step06_counts.py
+      - validate
+      - "{value}"
+      - assigned20
+      - "2000000"
+      - "{trial_dir}"
+    artifact_paths:
+      - "{trial_dir}/counts.tsv"

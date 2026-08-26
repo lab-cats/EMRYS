@@ -893,3 +893,103 @@ jobs:
             failed=true
           fi
           [[ "${failed}" == false ]]
+
+  step06-count-pass-benchmark:
+    name: Step06 count-pass benchmark (temporary)
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.synthetic_100000 &&
+      github.ref_name == 'perf/optimization-03-step06-pass-reduction'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out the triggering candidate commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Check out the fixed pre-change baseline
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: 4796e9ecb96df1b352fa5f4fb7fc83de0e1cac24
+          path: baseline
+          persist-credentials: false
+
+      - name: Set up primary Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+
+      - name: Set up locked uv version
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Restore exact real samtools from the Linux lock
+        id: step06-real-tools
+        uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39 # v3.2.1
+        with:
+          environment-file: .github/ci/real-tools.conda-lock.yml
+          environment-name: emrys-step06-benchmark-tools
+          micromamba-version: ${{ env.MICROMAMBA_VERSION }}
+          micromamba-root-path: ${{ runner.temp }}/emrys-step06-micromamba/root
+          micromamba-binary-path: ${{ runner.temp }}/emrys-step06-micromamba/bin/micromamba
+          init-shell: none
+          generate-run-shell: false
+          cache-environment: true
+          cache-downloads: true
+          post-cleanup: all
+
+      - name: Restore locked Python benchmark runtime
+        shell: bash
+        run: uv sync --locked --group workflow --python python
+
+      - name: Assert the fixed baseline and candidate production identities
+        shell: bash
+        env:
+          BASELINE_COMMIT: 4796e9ecb96df1b352fa5f4fb7fc83de0e1cac24
+          CANDIDATE_PRODUCTION_COMMIT: e6e0134d9796dbea6694bc2a2b74934b9db66c54
+          BASELINE_SCRIPT_SHA256: c60013a0cafe7618bc7f403a5d52c02fa5990ab21ff8775c4f989d53ba6a614d
+          CANDIDATE_SCRIPT_SHA256: 5c9dfe0f8b9b15dd56622a37181f44cb1bf382b093dc0312e8ef78a62e767013
+        run: |
+          set -euo pipefail
+          script_path='src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh'
+          test "$(git -C baseline rev-parse HEAD)" = "${BASELINE_COMMIT}"
+          test "$(git rev-parse "${CANDIDATE_PRODUCTION_COMMIT}^")" = "${BASELINE_COMMIT}"
+          git merge-base --is-ancestor "${CANDIDATE_PRODUCTION_COMMIT}" "${GITHUB_SHA}"
+          git diff --exit-code "${CANDIDATE_PRODUCTION_COMMIT}" "${GITHUB_SHA}" -- "${script_path}"
+          test "$(sha256sum "baseline/${script_path}" | awk '{print $1}')" = \
+            "${BASELINE_SCRIPT_SHA256}"
+          test "$(sha256sum "${script_path}" | awk '{print $1}')" = \
+            "${CANDIDATE_SCRIPT_SHA256}"
+
+      - name: Run the real-samtools Step06 count-pass benchmark
+        shell: bash
+        env:
+          EMRYS_STEP06_SAMTOOLS: ${{ steps.step06-real-tools.outputs.environment-path }}/bin/samtools
+        run: |
+          set -euo pipefail
+          output_parent="${RUNNER_TEMP}/emrys-step06-count-pass-benchmark"
+          install -d -m 0700 "${output_parent}"
+          samtools_version="$("${EMRYS_STEP06_SAMTOOLS}" --version)"
+          test "${samtools_version%%$'\n'*}" = 'samtools 1.19.2'
+          .venv/bin/python scripts/benchmark_stage_resources.py \
+            --manifest .github/ci/benchmark_step06_counts.yaml \
+            --output "${output_parent}/results" \
+            --execute
+
+      - name: Upload compact Step06 benchmark tables
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: emrys-step06-count-pass-benchmark-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/emrys-step06-count-pass-benchmark/results/trials.tsv
+            ${{ runner.temp }}/emrys-step06-count-pass-benchmark/results/summary.tsv
+            ${{ runner.temp }}/emrys-step06-count-pass-benchmark/results/trials/**/counts.tsv
+            ${{ runner.temp }}/emrys-step06-count-pass-benchmark/results/trials/**/scan_observation.tsv
+          if-no-files-found: error
+          retention-days: 14
