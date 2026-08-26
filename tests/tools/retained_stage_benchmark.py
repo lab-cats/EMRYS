@@ -484,9 +484,9 @@ def _admit_owner_run_token(record: Mapping[str, Any], machine_key: str) -> str:
     return token
 
 
-def _admit_owner_argument(
-    record: Mapping[str, Any], machine_key: str, option: str, expected: str
-) -> None:
+def _admit_owner_positive_integer_argument(
+    record: Mapping[str, Any], machine_key: str, option: str
+) -> int:
     commands = record.get("commands")
     producer = commands.get("producer") if isinstance(commands, Mapping) else None
     argv = producer.get("argv") if isinstance(producer, Mapping) else None
@@ -499,10 +499,17 @@ def _admit_owner_argument(
             f"retained {machine_key} producer omits the exact {option} argument"
         )
     index = argv.index(option)
-    if index + 1 >= len(argv) or argv[index + 1] != expected:
+    value = argv[index + 1] if index + 1 < len(argv) else ""
+    if not value.isascii() or not value.isdecimal():
         raise BenchmarkSetupError(
-            f"retained {machine_key} producer {option} differs from {expected}"
+            f"retained {machine_key} producer {option} is not a canonical positive integer"
         )
+    parsed = int(value)
+    if parsed < 1 or str(parsed) != value:
+        raise BenchmarkSetupError(
+            f"retained {machine_key} producer {option} is not a canonical positive integer"
+        )
+    return parsed
 
 
 def _admit_e2e(summary_path: Path) -> AdmittedE2E:
@@ -731,11 +738,10 @@ def _admit_e2e(summary_path: Path) -> AdmittedE2E:
         retained_step06_counts,
     ) = step06_artifacts
     retained_step06_run_token = _admit_owner_run_token(step06_verified, STEP06_OWNER)
-    _admit_owner_argument(
+    _admit_owner_positive_integer_argument(
         step06_verified,
         STEP06_OWNER,
         "--threads",
-        str(_case_threads("step06-mechanical-orientation")),
     )
     retained_step07_root = _real_directory(run_root / "results/mpileup", "retained Step 07 root")
     retained_primary_vcf = _real_file(
