@@ -33,6 +33,11 @@ This document uses the following decision-label classes:
   traceability; the qualified ratified register controls.
 - **Proposed:** a concrete design suggestion retained for evaluation.
 - **Open:** a decision that has deliberately not been made.
+- **Observed:** behavior established at one exact audited source revision; it
+  is neither a target design nor a compatibility promise.
+- **Candidate compression:** a conditional reduction opportunity requiring
+  owner/caller review, relevant parity, protection disposition, and explicit
+  approval before any evidence deletion.
 
 Repeated recommendations from the source material are consolidated in the
 main narrative. Their variants are retained in the source, open-decision, and
@@ -606,6 +611,9 @@ Analysis, Attempt, Result, and artifacts are named or nested, and whether any
 representation is an object, record, service, facade, or functions remain
 `AC-SLICE-03` and `AC-DEC-001` audit and discussion outcomes.
 
+`ARCH-MODEL-AUDIT-01` completes the current-state audit prerequisite below;
+it does not resolve the remaining `AC-DEC-001` or `AC-DEC-011` model choices.
+
 The same slice must inventory, but not prematurely decide, whether consumers
 receive one narrow shared context or multiple owner-specific capability views;
 the exact operations, arguments, return types, error model, and
@@ -617,6 +625,455 @@ schemas, package/import surfaces, CLI mapping, compatibility windows, migration
 order, persistence, storage, and any relationship between default reporting
 and the lifecycle surrounding Run also remain unsettled until the audit is
 reviewed and the user separately approves decisions.
+
+### 8.1.1 `ARCH-MODEL-AUDIT-01` current application-model audit
+
+> **Observed baseline, not a design decision.** This read-only audit mapped the
+> current application/control flow, representations, semantic lifetimes,
+> owners, callers, identity inputs, mutable state, protections, evidence, and
+> candidate compression at exact source revision
+> `6524ed7967090319cf4ae62ae1b2edf31e9ca02d`. It does not select public nouns
+> or nesting, plan fields, APIs, package placement, persistence, execution
+> backends, state vocabulary, compatibility policy, or migration order. The
+> only target-model constraint applied here is that **Run is an immutable
+> plan**; changing the plan creates a different Run.
+
+`ARCH-MODEL-AUDIT-01` is complete as the current-state audit prerequisite.
+Per the approved recording boundary, `AC-SLICE-03`, `CONTROL-01`, `RUN-03`,
+`IDENTITY-01`, and broad `ARCH-01` remain Open; no model decision or bounded
+implementation is completed here.
+
+#### Audit scope and reproducible method
+
+The implementation baseline is exact source revision
+`6524ed7967090319cf4ae62ae1b2edf31e9ca02d`. This record is stacked on the
+later documentation-only campaign-guardrail commit
+`4c3f50ced83859083127501d5e40e4c03554a833`; that commit changed no product
+source in the audited roster. The audit used tracked source, contract, schema,
+test, configuration, workflow, CLI, and journey-document inspection. It did
+not use generated, ignored, untracked, installed-environment, workspace,
+runtime, or run-output files as inventory inputs.
+
+The bounded product/schema roster and physical-line count are reproducible
+from the reviewed revision with:
+
+```sh
+git ls-files -- \
+  src/emrys/contracts/orchestration \
+  src/emrys/contracts/schemas/orchestration \
+  src/emrys/orchestration/local_pilot
+```
+
+That command returns 43 files. Summing `wc -l` over those exact paths—where a
+physical line means one newline-counted line—returns 22,395 lines. Filtering
+that same roster to filenames ending in `.py` returns 19 files and 18,892
+lines. The direct contract/local-pilot test and support roster is:
+
+```sh
+git ls-files -- \
+  tests/contracts/orchestration \
+  tests/orchestration/local_pilot
+```
+
+It returns 27 files and 17,776 physical lines, including the tracked contract
+README. These totals deliberately exclude `src/emrys/__main__.py`,
+`pyproject.toml`, `workflow/Snakefile`, the fixed workflow contract/profile,
+`configs/`, Quickstart and other documentation, generated files, runtime
+environments, and run data. Those surfaces were inspected separately where
+named below; the exclusions prevent the footprint caption from implying a
+larger roster than was actually counted.
+
+#### Current control flow
+
+The current entry and follow-up paths are separate; they do not form one
+automatic pipeline:
+
+```text
+emrys
+  +-- init -> onboarding -> starter-set publication
+  +-- validate local-pilot-request -> request admission/normalization only
+  +-- doctor local-pilot -> readiness inspection
+  +-- run -> control -> Doctor -> normalization -> resource/capacity policy
+  |    -> AttemptPlan
+  |       +-- dry-run -> print plan; no workspace write
+  |       +-- --execute -> create run skeleton -> lifecycle admission
+  |            -> local Snakemake executor -> functional-owner tasks
+  |            -> artifact index -> run summary -> HTML reports
+  |            -> terminal attempt receipt
+  +-- resume -> inspection/readiness -> AttemptPlan -> optional execution
+  +-- inspect local-pilot-run -> explicit read-only derived inspection
+  +-- build report -> separate low-level report regeneration path
+```
+
+Ordinary `emrys run` does not invoke onboarding or the explicit request-
+validation command, and full `inspect_run` is an explicit command or an
+internal resume/lifecycle check rather than an automatic post-receipt step.
+The generated Slurm wrapper composes validation, Doctor, and `run` separately,
+as recorded below.
+
+The installed entry point is [`emrys.__main__:main`](../../pyproject.toml).
+The current composition root is a 711-line
+[`__main__.py`](../../src/emrys/__main__.py) with ten top-level command groups:
+`init`, `prepare`, `build`, `doctor`, `run`, `resume`, `reconcile`, `inspect`,
+`convert`, and `validate`. This is a supported compatibility surface, not the
+accepted target CLI.
+
+Current onboarding generates seven user-visible starter members—
+`request.yaml`, `emrys.launcher.yaml`, `emrys.resources.yaml`, `samples.tsv`,
+`partitions.tsv`, `runtime.tsv`, and `run-in-slurm.sh`—then publishes
+`starter-set.manifest.tsv` last. The repository also contains 20 tracked files
+under `configs/`. These counts establish the present operational surface; they
+do not by themselves authorize consolidation or removal.
+
+The normal `run` command still requires explicit request, workspace, and
+runtime-profile paths. Its primary plan output includes the run ID and root,
+workflow-attempt ID, owner-job count, thread/concurrency/memory details, three
+reporting transactions, the raw Snakemake command, and every pending producer
+and validator command. Those details are useful expert evidence but exceed the
+intended ordinary control plane.
+
+The current [quickstart](../../quickstart.md) also tells the operator to create
+and populate the input-directory tree manually, redirect a complete runtime
+profile to a new filename, copy the run root from a dry-run, and repeat that
+transfer from a completed Slurm dry-run log before execution. This confirms
+that safe internal boundaries still leak user-as-glue work into both local and
+scheduled journeys.
+
+#### Current owner and caller map
+
+| Current owner or surface | Current responsibility | Principal callers or consumers | Audit conclusion |
+|---|---|---|---|
+| [`__main__.py`](../../src/emrys/__main__.py) | Parse and compose all installed command routes | Scientists, operators, automation, owner commands | Composition root, not a semantic application model; ordinary and expert capabilities are interleaved. |
+| [`onboarding.py`](../../src/emrys/orchestration/local_pilot/onboarding.py) | Starter generation, request compatibility validation, and generated one-allocation Slurm wrapper | `init`, `validate local-pilot-request`, generated wrapper | Owns several setup, validation, and scheduler-launch concerns that later role journeys must repartition without weakening create-absent publication. |
+| [`normalization.py`](../../src/emrys/orchestration/local_pilot/normalization.py) | Admit authored intent and construct the canonical execution identity | Onboarding validation, Doctor, control, reporting projection | Closest current semantic plan source, but it returns shallowly frozen mutable structures and is not a selected public Run API. |
+| Orchestration [`api.py`](../../src/emrys/contracts/orchestration/api.py), schemas, and package exports | Validate closed records, canonicalize bytes, recompute identities, and expose the deliberate current contract API | Normalization, materialization, lifecycle, task/reporting boundaries, inspection, projection, workflow owners, packaging tests | Current contract authority and compatibility boundary; model consolidation must preserve historical admission and must not silently widen the public import surface. |
+| [`doctor.py`](../../src/emrys/orchestration/local_pilot/doctor.py) | Read-only source, storage, runtime, tool, and request readiness | Standalone Doctor and `plan_run`/`plan_resume` | Produces readiness facts; it currently normalizes the request internally. |
+| [Runtime-availability inspector](../../src/emrys/evidence/runtime_availability/inspector.py) and [storage-qualification owner](../../src/emrys/evidence/storage_inventory/qualification.py) | Declare/admit runtime availability and final two-phase storage evidence | Direct inspect commands, Doctor readiness, materialization bindings, lifecycle re-admission, runtime/storage tests | Independent evidence authorities outside the 43-file roster. Doctor composes them and lifecycle re-admits them before execution; future capability placement must preserve that attribution and recheck. |
+| [`control.py`](../../src/emrys/orchestration/local_pilot/control.py) | Compose Doctor, normalization, resources, attempt planning, execution, resume, and inspection output | `emrys run`, `resume`, `inspect local-pilot-run` | Nearest current application coordinator; it still exposes attempt, engine, owner-job, and transaction detail directly. |
+| [`resource_policy.py`](../../src/emrys/orchestration/local_pilot/resource_policy.py) and [`capacity.py`](../../src/emrys/orchestration/local_pilot/capacity.py) | Resolve effective per-stage/report resources and observe/admit available allocation capacity | Control planning, materialization/workflow configuration, launcher and resource tests | These owners materially shape the effective executable plan even though their values do not enter current `run_id`; final policy/application placement remains Open. |
+| [`materialization.py`](../../src/emrys/orchestration/local_pilot/materialization.py) | Build a complete no-write `AttemptPlan`, workflow config, task dispatches, and fixed/attempt files | Control and lifecycle materialization | Current attempt-planning representation, not a selected Run model. Whether any class, package, or facade is later public remains Open. |
+| [`lifecycle.py`](../../src/emrys/orchestration/local_pilot/lifecycle.py) | Serialize admission, own the run lock, execute the delegated process, bind recovery evidence, and publish the terminal receipt last | Control, task/reporting boundaries, inspection | Strong operational transaction authority cannot be transferred into application coordination. Future class/package/facade placement remains Open. |
+| [`task.py`](../../src/emrys/orchestration/local_pilot/task.py) and [`reporting_boundary.py`](../../src/emrys/orchestration/local_pilot/reporting_boundary.py) | Admit one owner scope or reporting transaction and publish start/attempt/verified records | Fixed Snakemake workflow and lifecycle | Retain functional and downstream transaction authority; do not move it into application coordination around Run. |
+| Fixed [`Snakefile`](../../workflow/Snakefile), workflow contract, and local profile | Declare the reviewed task graph, fixed scientific-owner invocations, target, and local engine configuration | Materialization, local Snakemake execution, task/reporting boundaries, contract and end-to-end tests | Effective execution surface and current engine adapter; not application or scientific authority and not included in the 43-file footprint total. |
+| [`inspection.py`](../../src/emrys/orchestration/local_pilot/inspection.py) | Derive current aggregate state from canonical contracts, records, receipts, and the owned lock | Control, lifecycle resume checks, tests | Read model only. The current `RunInspection` name is descriptive and does not select the target Run representation. |
+| [`projection.py`](../../src/emrys/contracts/orchestration/projection.py) and reporting owners | Project the execution contract into reporting contracts and render admitted results | Normalization, materialization, workflow, standalone `build report` | Downstream reporting remains separate from scientific completion and is not a scientific stage. |
+| [`launcher_config.py`](../../src/emrys/orchestration/local_pilot/launcher_config.py) | Resolve outer Slurm allocation defaults/configuration/environment/overrides and submit once | Generated `run-in-slurm.sh` | Scheduler transport only; not a second application backend or scientific authority. |
+| [`dashboard.py`](../../src/emrys/orchestration/local_pilot/dashboard.py) | CSU preview using scheduler queries plus parsed stdout/Snakemake stderr | `make dashboard` | Non-authoritative presentation with text coupling and fixed six-sample/25-partition display assumptions; eventual structured input is a candidate, not an approved rewrite. |
+
+#### Representation and semantic-lifetime map
+
+| Current representation | Lifetime and current persistence | Current authority | Relationship to the target model |
+|---|---|---|---|
+| Authored request YAML plus sample/partition TSVs | Evolvable external intent; an exact request copy is retained per attempt | Operator intent before admission | Possible Project/Analysis input, not a Run after admission. |
+| `NormalizationBundle` | One no-write normalization result in memory | Normalization result plus non-identity admission evidence | Contains the closest current plan analogue but is only shallowly frozen. |
+| `emrys.execution.v1` and `contract/normalized.json` | Deterministic canonical execution contract; published only when an execution attempt materializes the run root | Immutable local-run identity | Closest current analogue to the target immutable Run; it is not yet selected as Run and does not include the full effective execution choice. |
+| Identity envelope and `run_id` | Deterministic digest of workflow profile, samples, partitions, reference, and analysis policy | Canonical execution contract | Current local-run identity, not a decision about future Run identity composition. |
+| `AttemptPlan` | One in-memory execute/resume plan with time/token/host/process/resources and planned files | Control/materialization | Operational attempt plan. A frozen dataclass contains mutable mappings, so the boundary is not deeply immutable. |
+| `workflow-attempt` record and workflow config | One persisted execute or resume invocation | Lifecycle and attempt schema | Current Attempt analogue; it binds source, runtime/tool, resource, executor, and command facts omitted from `run_id`. |
+| Task dispatch/start/attempt/verified records | One functional-owner scope within an attempt, with reusable verified state across compatible attempts | Task boundary and owner validation | Internal operational/evidence detail; not required ordinary public vocabulary. |
+| Reporting start/verified records and report receipt | One downstream report transaction/output identity | Reporting owners | Derived output that may be regenerated; not a semantic scientific stage or Run mutation. |
+| Attempt receipt | Terminal outcome of one workflow attempt | Lifecycle, published last | Attempt outcome and evidence, not a general application Result. |
+| `RunInspection` | Regenerated read-only aggregate state | Inspection over persisted authorities | Current state projection. It is not persisted authority and must not define target Run mutability. |
+| Dashboard dictionaries and stream caches | Mutable presentation state for one live view | Dashboard only | Necessary local UI state, not application or evidence authority. |
+
+There is no current application-level `Project` or `Result` representation.
+`WorkflowResult` reports the delegated process exit and `LifecycleOutcome`
+reports one terminal attempt; neither is the campaign's possible public
+Result. The current run root is an aggregate namespace containing an immutable
+contract, evolving attempts, locks, task/report state, native results,
+products including reports, attempt-local stream logs, and disposable engine
+metadata. It has no top-level report surface; generated reports live under
+`products/report/<run-id>/`. Treating that entire directory or `RunInspection`
+as the target Run would therefore contradict the settled immutable-plan
+meaning.
+
+#### Current identity boundary
+
+Normalization constructs an identity envelope from:
+
+- the fixed workflow profile ID, version, and canonical digest;
+- the ordered sample-manifest snapshot, normalized rows, and FASTQ path, size,
+  and content identities;
+- the ordered partition-manifest snapshot, normalized rows, and any selector
+  file identities;
+- reference ID, FASTA/GTF path, size, and content identities plus STAR-index
+  parameters; and
+- cohort, primary-analysis ID, normalized analysis policy, and policy digest.
+
+The current execution record repeats profile, samples, partitions, reference,
+and analysis both at its top level and inside `identity_envelope`, then requires
+exact equality before hashing. That duplication is validated today and cannot
+be removed without a schema/consumer migration.
+
+| Change or fact | Current `run_id` effect | Current placement |
+|---|---|---|
+| Bound sample/reference/selector content, manifest order, analysis policy, or fixed workflow-profile digest | Creates a different ID | Identity envelope |
+| Absolute paths embedded in admitted manifest/input/reference snapshots | Affects the digest; relocating otherwise identical bound files therefore changes the current ID | Identity envelope; this is an implementation inference from the hashed snapshots, not a target portability decision |
+| Request label, YAML formatting, or omitted-versus-explicit normalized null | No change | Attempt metadata or normalized away |
+| Workspace, source checkout/commit, runtime profile/tools, resources, executor, host/process, attempt time/token, or resume predecessor | No change | Workflow-attempt/configuration records |
+| Reporting enabled/disabled | No current full-run option exists; no target identity rule is implied | Reporting is currently mandatory in the lifecycle tail |
+| Reporting `run_contract_sha256` | Narrower five-component reporting projection only | Reporting contract; explicitly not complete orchestration identity |
+
+The current `run_id` is consequently a deterministic digest of the current
+path-sensitive identity envelope, while `AttemptPlan` contains a fuller
+effective operational plan. Giving that digest a durable scientific or public
+semantic label is part of the still-Open identity decision. Whether target Run
+follows either boundary or composes separate immutable intent and execution-
+plan records remains Open.
+
+#### Plan, execute, and scheduler observations
+
+`plan_run` performs readiness, normalization, resource resolution, and attempt
+planning without writing workspace state. In one `emrys run --execute`
+invocation, the same in-memory `AttemptPlan` is printed and then executed. A
+plain dry-run persists no accepted plan. If the user later invokes
+`emrys run --execute` separately, EMRYS recomputes normalization/readiness and
+creates a new attempt time, token, owner token, process identity, and attempt
+paths. The user therefore cannot currently approve and execute the exact prior
+dry-run plan. There is also no built-in interactive confirmation between plan
+display and mutation.
+
+The current ordering has an important qualification. The normalized execution
+contract candidate and the in-memory `AttemptPlan` exist before mutation, but
+`_default_execute()` calls `initialize_run()` first, creating and syncing the
+workspace/run skeleton. Only afterward does argument evaluation materialize
+`plan.preparation`, whose property canonicalizes the current mutable
+`attempt_record` into exact attempt-preparation bytes for lifecycle admission.
+Whether that is a contract violation depends on which fields the future Run
+plan contains, so the audit does not decide it. It does record a real gap: if
+attempt-specific fields belong to Run, the exact immutable plan is not frozen
+before the first write; if they remain Attempt facts, the normalized Run
+candidate predates mutation but the shallow mutable aggregate still needs a
+single immutable authority. A future journey may compose validation, plan
+display, confirmation, and execution without requiring run-root transfer, but
+the selected Run must be exact and immutable before its first execution
+mutation.
+
+The same order has a recovery consequence. Initial execution creates and
+syncs the workspace, `runs/`, run root, and `attempts/`, `locks/`, and `state/`
+directories before exact attempt-preparation admission, signal control, or
+attempt-mutex acquisition. Failure in that interval can leave a create-absent
+run skeleton with no attempt or terminal receipt, while a later `plan_run`
+rejects the already-existing root. The audit records that unreceipted-skeleton
+state and owner/recovery gap without choosing whether planning, lifecycle,
+reconciliation, or another bounded capability should resolve it.
+
+The generated Slurm path is an outer single-node allocation wrapper:
+
+```text
+submit host
+  -> resolve LauncherPlan
+  -> sbatch --nodes=1 --ntasks=1 ...
+  -> generated wrapper inside allocation
+  -> validate request
+  -> Doctor
+  -> emrys run
+  -> Snakemake local executor on the allocated node
+```
+
+It is not currently a separate application execution backend. `AttemptPlan`
+records `executor: local`, and no scheduler job ID is stored in the workflow
+attempt or terminal lifecycle receipt. Scheduler association is reconstructed
+from wrapper/log context and by the dashboard. The generated wrapper also
+normalizes the same request four times along its validate → Doctor → run path:
+once for explicit request validation, once for standalone Doctor, once for the
+Doctor invoked by `run`, and once after that Doctor in control. Any reduction
+must retain deliberate lock-time and pre-mutation re-admission and must
+re-admit after any future explicit Doctor repair that changes owned state,
+rather than equate every repeated check with waste or carry stale facts across
+a mutating repair.
+
+#### Current status, Result, and reporting gap
+
+Current `RunInspection` exposes five derived states:
+`prepared`, `running`, `resume_available`, `blocked`, and
+`local_pipeline_complete`. Attempt receipts separately expose
+`succeeded`, `failed`, `interrupted`, or `blocked`.
+
+Today a successful attempt receipt sets `local_pipeline_complete=true`, and
+inspection requires all three reporting transactions before admitting that
+success. This conflicts with the already accepted target semantics: reporting
+is downstream operational work, invoked by default for a full run, explicitly
+disableable, and independently regenerable; report failure must not invalidate
+completed science. The standalone `emrys build report` capability exists, but
+requires implementation-level input and output paths rather than a compact
+Run-oriented reference, and its output does not adopt or repair the
+orchestration reporting ledger. The audit records this gap without selecting
+new status names, persistence, command structure, or retry policy.
+
+#### Mutation inventory
+
+The strongest current immutability is in validated canonical bytes and
+create-exclusive persisted records, not in every Python aggregate:
+
+| State | Current owner and lifetime | Writers | Readers | Why mutation exists now | Immutable-boundary disposition |
+|---|---|---|---|---|---|
+| Normalization drafts and `NormalizationBundle` mappings | `normalization.py`; one normalization call, then the returned bundle's in-memory lifetime | Normalization builders populate request, profile, and execution dictionaries | Onboarding validation, Doctor, control, projection, materialization, tests | Draft parsing, defaulting, snapshot admission, and canonical construction are naturally incremental; post-admission mutability is not required | Retain mutable local drafts; candidate one immutable admitted result whose canonical bytes and views cannot diverge. Final public type and owner remain Open. |
+| `AttemptPlan.attempt_record` and nested bundle | `materialization.py` and control; one execute or resume planning invocation through lifecycle handoff | `build_attempt_plan` constructs it; an injected control transformer may replace the plan before return; audited in-repo local-pilot callers showed no later mutation | Control display/execution, materialization publication, lifecycle admission, tests | Construction combines readiness, resources, identity, time/token/host/process, files, and command facts; later mutability is incidental | Exact admitted plan boundary is required. Preserve prepared-versus-materialized byte equality; whether Attempt fields belong to Run remains Open. |
+| `LifecycleRequest.attempt_record` | Materialization-to-lifecycle handoff; one materialized attempt admission | `publish_attempt` constructs the request from the plan | Lifecycle admission, identity/resource/argv rechecks, tests | Mapping shape is inherited from construction; no mutation after handoff is necessary | Candidate immutable admitted request value; do not conflate it with live lifecycle transaction state. |
+| `LifecycleOutcome.receipt` | Lifecycle-to-control handoff; one terminal attempt return | Lifecycle builds the terminal receipt/outcome after receipt-last publication | Control result projection, verified-report display, tests | Dictionary construction mirrors the persisted schema; post-return mutation is not required | Candidate immutable terminal view over persisted evidence; receipt file remains authority. |
+| `TransactionSignalController` and delegated-process state | `lifecycle.py`; from signal-handler installation through receipt commit/restore | Signal handlers and lifecycle execution update child, signal, interruption, and commit state | Lifecycle cleanup, termination, receipt publication, fault tests | Live process and signal ownership must change as execution advances and cannot be modeled truthfully as a fixed value | Retain tightly owned mutation. Expose only immutable outcome/evidence values after the transaction. |
+| `_OwnedRunLock.record`, bytes, inode, and live lock ownership | `lifecycle.py`; from exclusive lock acquisition through release/recovery publication | Lock acquisition constructs identity fields; lifecycle changes filesystem ownership state and publishes release evidence | Lifecycle serialization/recovery, inspection, resume, fault tests | The Python record need not mutate, but owned filesystem lock state must transition with attributable identity | Make the in-memory value deeply immutable if consolidated; retain narrowly owned live lock mutation and exact release/history records. |
+| `RunInspection` nested attempt, receipt, task, and report dictionaries | `inspection.py`; one read-only inspection call/result | Inspection derives the aggregate from persisted authorities | Control, resume/lifecycle checks, dashboard/tests | Mutable dictionaries simplify construction; post-construction mutation is not authority or required behavior | Keep a derived non-authoritative read model and make exposed boundary values immutable when selected; never persist it as status authority. |
+| `ReportingBundle` dictionaries beside exact bytes | Contract projection; one deterministic reporting projection | Projection constructs reference, policy, run-contract, and inventory documents and bytes | Materialization, workflow/reporting owners, projection tests | Incremental projection is convenient; the admitted dictionary and byte forms need no later shared mutation | Candidate one immutable projection authority with derived views; preserve deterministic exact output and separate reporting transaction authority. |
+| `TaskDispatch.scope` and admitted dispatch collections | Task boundary; one functional-owner invocation | Task admission constructs the closed dispatch value from canonical bytes | Producer/validator invocation, stream capture, task publication and tests | Parsing constructs nested values; execution needs stable facts, not mutable shared ownership | Candidate deeply immutable admitted dispatch; canonical dispatch bytes and schema remain authority. |
+| `TaskOutcome.task_attempt` and `verified_task` | Task boundary; one successful owner return | Task transaction builds the dictionaries after create-exclusive publication | Workflow/lifecycle caller and task tests | Dictionary form mirrors persisted records; post-return mutation is not needed | Candidate immutable result view; persisted task attempt and verified records remain evidence authority. |
+| Reporting-boundary `_AdmittedIdentity` dictionaries | Reporting boundary; one report transaction admission | Reporting admission loads and validates execution, profile, attempt and references | Reporting start, semantic validation, verified publication and tests | Admission assembles related mappings; downstream mutation is not required | Candidate immutable internal admitted identity; final neutral shared admission owner remains Open and reporting ordering stays local. |
+| `_TaskStreamCapture` descriptors, digests, sizes, and completion state | `task.py`; one functional-owner process invocation | Stream callbacks and cleanup update descriptor/capture state | Task attempt/log/verified publication and fault cleanup | Streaming output identities and descriptors are only known while the process runs | Retain narrowly owned mutation; publish immutable stream evidence at the boundary. |
+| Dashboard `StreamCache` and presentation dictionaries | `dashboard.py`; one live dashboard session | Scheduler/log polling and parsing update cached state | Dashboard rendering and dashboard tests | A live view necessarily tracks changing non-authoritative presentation state | Retain as presentation-only mutation pending dashboard decisions; it cannot become Run, Attempt, or completion authority. |
+| Filesystem locks, create-exclusive publications, and transaction progress | Lifecycle, task, and reporting owners; one attempt or transaction plus recovery lifetime | Owned lock/process/publication operations mutate filesystem state; receipts are committed last | Lifecycle and owner recovery, inspection, resume, audit consumers | Concurrency, crash recovery, attribution, and durable publication require controlled state transitions | Retain controlled mutation and immutable committed records. Consolidation may share primitives but cannot merge semantic owners or erase ordering/fault behavior. |
+
+Text and caller inspection within the exact in-repo contract/local-pilot roster
+found no post-return product mutation of the principal plan dictionaries. This
+was not dynamic proof and does not cover unknown external callers; the type
+boundaries do not enforce the observed convention.
+Persisted canonical records, hash recomputation, and—after preparation is
+formed—prepared-versus-materialized byte equality currently prevent several
+mutation races and must remain equal or stronger through any consolidation.
+
+#### Protections and evidence disposition
+
+These rows are the retain/evidence portion of the mandatory Section 13.1
+register. For every retained row, the directional estimate and audit actual
+are zero changed product files/lines, public concepts, configuration artifacts,
+call edges, and compatibility paths. A later slice that changes one must supply
+its own exact category deltas and equal-or-stronger replacement proof.
+
+| Mechanism and category | Current owners; callers and consumers | Unique retained need; redundancy evidence | Disposition and surviving authority | Estimated and audit-actual deltas | Preconditions for any future change |
+|---|---|---|---|---|---|
+| Closed schemas, canonical JSON, digest recomputation; protection/schema | Orchestration contract API and versioned schemas; every normalization, materialization, lifecycle, task, reporting, inspection, workflow and historical reader | Defines admitted shape and identity and independently rechecks bytes; no equivalent independent authority was found | **Retain.** Versioned contract/schema owner survives | Estimate all six zero; audit actual all six zero | A successor must prove current and historical admission, canonical bytes and digest parity before old support changes |
+| Stable-file snapshots, no-follow descriptor/path binding and near-mutation rechecks; protection | Normalization, lifecycle, task, reporting and inspection; input admission, publication, recovery and adversarial tests | Prevents path replacement, symlink, inode and stale-read races; similar helpers have owner-specific semantics, not proven redundancy | **Retain; conditional primitive consolidation only.** Each current semantic owner survives | Estimate all six zero for retention; audit actual all six zero | Map large-file, inode, destination, hash, timing and error behavior and retain last-safe-boundary checks |
+| Attempt mutex, owned run lock, create-exclusive publication, fsync and receipt-last ordering; protection | Lifecycle, task and reporting transaction owners; recovery, resume, inspection and fault tests | Provides serialization, attributable ownership, durability and truthful completion; repeated mechanics do not duplicate semantic ordering | **Retain.** Transaction authorities survive; only a proven low-level primitive may consolidate | Estimate all six zero for retention; audit actual all six zero | Equal-or-stronger concurrency, crash, signal, rollback, directory-durability and failure evidence required |
+| Separate start, attempt, stream, verified, reporting, lock-release and terminal records; evidence | Task, reporting and lifecycle owners; inspection, recovery, audit and historical readers | Distinguishes entry, execution, validation, failure/recovery and terminal truth; record count alone is no redundancy evidence | **Retain pending itemized lifecycle/evidence audit.** Current record owners survive | Estimate all six zero; audit actual all six zero | Any proposal must name exact record class, producers/consumers, claim, recovery path, retention and rollback and receive explicit user approval if deleting evidence |
+| Derived inspection independent of `.snakemake`; protection | Inspection over EMRYS contracts/records/locks; control, resume, dashboard and tests | Prevents engine metadata from becoming status, recovery or completion authority; no redundant authority exists | **Retain.** Persisted EMRYS records remain authority and inspection remains derived | Estimate all six zero; audit actual all six zero | A new read model must derive the same or stronger truthful state and cannot persist a competing status |
+| Direct-owner, adversarial, seeded-fault, independent-golden, recovery, fresh-clone and synthetic E2E defenses; protection/tests | Functional owners and CI; maintainers, release review and regression diagnosis | Protects distinct failure, packaging, recovery and synthetic execution claims; coverage or happy path is not equivalent | **Retain or map individually to equal-or-stronger defense.** Existing test/evidence owner survives until mapped replacement | Estimate all six zero; audit actual all six zero | Name invariant, evidence level and surviving test for each retirement; long checks remain CI-owned |
+| Deliberate orchestration exports and eager-import-free local-pilot package; compatibility/protection | Contract package and local-pilot package; importers, packaging and public-contract tests | Controls supported imports and avoids import-time side effects; no redundant facade was proved | **Retain pending API/package decision.** Current boundaries survive | Estimate all six zero; audit actual all six zero | Inventory external imports and import-time behavior; do not make an interim package stack permanent |
+| Packaged retired-v2 request schema; evidence/compatibility | Orchestration schema package and distribution tests; historical package readers | Preserves declared retired-format compatibility evidence and wheel contents; age is not redundancy evidence | **Retain pending approval-gated evidence review.** Packaged schema remains authority for its historical claim | Estimate all six zero; audit actual all six zero | Exact consumer/history/claim/rollback review and explicit user approval before any evidence deletion |
+| `.snakemake/`; runtime metadata | Snakemake engine; engine only, never EMRYS completion/reporting readers | Supports engine operation but is deliberately excluded from EMRYS authority; no retained-evidence claim | **Disposable runtime metadata, not authority.** EMRYS contracts/records survive | Maintained-source estimate and audit actual all six zero | Cleanup must stay within the run/work policy and cannot substitute engine state for EMRYS evidence |
+| `locks/acquire.mutex`; protection/runtime state | Lifecycle admission; concurrent attempts and lifecycle fault tests | Reusable synchronization point; historical attribution is carried by owned-lock/release/receipt records, not the mutex itself | **Retain as synchronization mechanism, not historical evidence by itself.** Lifecycle owns it | Estimate all six zero; audit actual all six zero | Preserve serialization and safe stale-state handling; do not delete attributable lock/release evidence by analogy |
+| Retained exact evidence generally; evidence | Named producer/owner of each artifact or record; scientific, operational, recovery, audit and historical consumers | Supports claims and recovery at different levels; no blanket redundancy finding exists | **Retain. No evidence deletion is proposed.** Each current owner survives | Estimate all six zero; audit actual all six zero | Separate itemized review plus explicit user approval and separate commit for any exact evidence deletion |
+
+#### Footprint indicators
+
+The exact tracked roster defined in the audit method—local-pilot orchestration
+plus orchestration contracts/schemas—counted 43 product/schema/owner files and
+22,395 physical lines. Its 19-file Python subset totaled 18,892 lines; the
+separate 27-file direct test/support roster totaled 17,776 lines. CLI
+composition, fixed workflow/profile files, configurations, and documentation
+were inspected but are excluded from those totals. These are audit-scope
+baselines, not targets or permission to merge unlike owners.
+
+The largest current orchestration modules are scope indicators, not automatic
+deletion or splitting targets:
+
+| Module | Physical lines at audited revision |
+|---|---:|
+| `lifecycle.py` | 2,628 |
+| `task.py` | 2,111 |
+| `inspection.py` | 2,088 |
+| `dashboard.py` | 1,984 |
+| `materialization.py` | 1,547 |
+| `doctor.py` | 1,098 |
+| `launcher_config.py` | 1,082 |
+| `onboarding.py` | 1,076 |
+| `reporting_boundary.py` | 1,070 |
+| `__main__.py` | 711 |
+
+Size may direct owner/caller review, but it cannot justify a god module,
+forwarding facade, weakened failure behavior, or moving complexity into
+configuration/generated code.
+
+#### Candidate compression register
+
+Every row below is conditional. None authorizes implementation or deletion.
+
+The delta column records directional audit estimates because no design or
+caller migration is selected. A promoted slice must replace them with an exact
+numeric before/after roster. “Audit actual all zero” means zero changed product
+files/lines, public concepts, configuration artifacts, call edges, and
+compatibility paths for that candidate; documentation-only audit accounting is
+reported separately below.
+
+| Candidate | Surface/category | Current owners; callers and consumers | Unique retained responsibility | Redundancy evidence | Proposed disposition and surviving authority | Directional estimate; audit actual | Preconditions before change |
+|---|---|---|---|---|---|---|---|
+| `ARCH-MODEL-COMP-01` | Schema and protection | Contract API/execution schema; normalization, projection, materialization, lifecycle, task, reporting, inspection, workflow and tests | Canonical execution identity, closed shape, digest recomputation, and historical admission | Profile, samples, partitions, reference, and analysis occur both top-level and in `identity_envelope`; validation requires exact equality | **Defer; candidate consolidate.** Current versioned contract/schema remains authority until an approved successor and migration exist | Est.: files 0; lines lower; concepts/config 0; edges lower; at most one temporary compatibility path, then zero. Audit actual all zero | Complete consumer roster; select identity boundary; version/migrate schema; prove historical and current admission plus exact digest parity |
+| `ARCH-MODEL-COMP-02` | Maintained product code and protection | Normalization, materialization, lifecycle, inspection and projection; control, task/reporting owners and tests | Exact admitted record bytes and immutable identity/plan facts | Frozen dataclasses wrap mutable dictionaries beside cached or recomputed canonical bytes | **Defer; candidate consolidate.** One immutable admitted-record authority is required, but its type, noun, and package remain Open | Est.: files no growth; lines and competing views lower; concepts/config/compat 0; edges no increase. Audit actual all zero | Decide Run/Attempt fields; prove no mutable caller ownership; add deep-immutability and byte-divergence protection; preserve fault checks |
+| `ARCH-MODEL-COMP-03` | Maintained product code and protection | Onboarding validation, Doctor, generated wrapper and control; operators, CLI, planning and tests | Fresh admission at each mutation/repair/lock risk boundary | Generated Slurm journey normalizes the same request four times before execution; ordinary run normalizes in Doctor and again in control. Wrapper validate, Doctor, and run are separate subprocesses, so one in-memory result cannot simply cross all boundaries | **Defer; candidate consolidate reusable admission only.** Current normalization/schema authority and deliberate re-admission survive | Est.: files no growth; lines and repeated call edges lower; concepts/config/compat 0. Audit actual all zero | Separate redundant work from TOCTOU defense; either collapse an approved command boundary or use one admitted transport that cannot become a second authority; re-admit after future repair and prove changed inputs fail closed at the last safe boundary |
+| `ARCH-MODEL-COMP-04` | Maintained product code and protection | Inspection, lifecycle, task and reporting owners; recovery, validation and tests | No-follow stable canonical-record admission with owner-specific size, inode, destination, hashing and diagnostic rules | Multiple owners already call `inspection.admit_canonical_record` while retaining parallel higher-level identity binding and specialized readers | **Defer; evaluate candidate seam.** Final neutral owner/API/package remains Open; each semantic owner retains its unique checks | Est.: files no growth; lines and duplicate call edges lower; concepts/config/compat 0. Audit actual all zero | Map exact per-owner semantics and dependency cycles; share only proven intersection; preserve large-file behavior and fault/error contracts |
+| `ARCH-MODEL-COMP-05` | Maintained product code and protection | Lifecycle, task and reporting publication owners; inspection, recovery and fault tests | Create-exclusive durable bytes, directory fsync, transaction ordering, rollback and truthful terminal publication | Closely related low-level publication mechanics are implemented separately in the three transaction owners | **Defer; candidate consolidate primitive only.** Lifecycle/task/reporting remain separate semantic authorities; primitive owner Open | Est.: files no growth; lines lower; concepts/config/compat 0; low-level edges may converge without new semantic edge. Audit actual all zero | Prove byte-publication equivalence; retain signal/ownership/rollback/order/fault differences and receipt-last semantics |
+| `ARCH-MODEL-COMP-06` | Maintained product code and configuration | Doctor, onboarding, materialization and control; readiness, planning, validation and tests | Bind the reviewed fixed workflow profile and exact checkout identity | The same current-profile relative path is repeated in four owners | **Defer; candidate consolidate locator.** Current exact-profile and checkout checks survive; final profile-policy owner remains Open | Est.: files 0; lines and literal call edges lower; concepts/config/compat 0. Audit actual all zero | Decide profile/application policy; prove packaging and checkout behavior; avoid a facade that merely forwards the literal |
+| `ARCH-MODEL-COMP-07` | Maintained product code and policy/protection | Reporting boundary, resource policy, inspection, control and `Snakefile`; workflow, status, memory planning and tests | Closed report-kind roster, deterministic order, resources, transaction schemas and independent regeneration | Report kinds/count appear as a tuple, hard-coded `3`, workflow targets and validation assumptions across several owners | **Defer; candidate consolidate catalog.** Final catalog authority/package remains Open; reporting transactions retain semantic authority | Est.: files no growth; lines and repeated edges lower; concepts/config/compat 0. Audit actual all zero | Inventory all producers/consumers and dependency direction; avoid inspection/reporting cycle; prove order, memory, schema and regeneration parity |
+| `ARCH-MODEL-COMP-08` | Wrapper/compatibility path and maintained product code | Dashboard plus control/inspection and Snakemake text producers; operators and dashboard tests | Safe non-authoritative live presentation, scheduler selection, bounded reads, and historical log support | Dashboard parses human plan stdout, Snakemake stderr and legacy `sample_concurrency` text instead of a structured projection | **Defer; candidate replace then retire parsers.** Structured read-model owner remains Open; inspection-derived non-authority survives | Est.: files no growth; lines, call edges and at least one compatibility parser lower; concepts/config 0. Audit actual all zero | Decide advanced status boundary and historical support window; migrate callers/tests; prove Local/Slurm distinction and bounded-read behavior |
+| `ARCH-MODEL-COMP-09` | Maintained product code | CLI composition, control, onboarding, launcher and owner commands; users, wrappers, automation and tests | Owner-specific actionable diagnostics and stable exit contracts | Similar exception-to-public-error projection patterns recur, but exact equivalence and caller dependence are not yet proved | **Defer pending inventory.** Each current owner remains authority until a genuinely shared projection is proved | Est.: files no growth; lines and edges may decrease; concepts/config/compat 0. Audit actual all zero | Inventory exact messages, exception types, exit codes and machine consumers; retain owner-specific context and failure ceilings |
+| `ARCH-MODEL-COMP-10` | Configuration/script/schema/documentation and compatibility | `configs/`, onboarding starter set, control/runtime/resource/launcher owners; scientists, operators, examples and tests | Scientific intent, site execution policy, inspectable defaults/sources, deterministic generated artifacts and compatibility | Twenty tracked config files and eight visible starter artifacts expose overlapping user, operator, generated, example and compatibility concerns without one classification | **Defer; classify then retain/consolidate/retire individually.** Existing owners survive until `CONFIG-01` and `OPS-01` decide authority | Est.: product files no growth; config files and public concepts lower; lines/edges likely lower; temporary compatibility path possible then retired. Audit actual all zero | Complete ownership/classification and external-caller review; preserve scientific visibility, safe override provenance and create-absent publication |
+| `ARCH-MODEL-COMP-11` | Wrapper/compatibility path | Dashboard helper/parser; dashboard callers and tests plus historical plan/log readers | Scheduler-candidate selection and explicitly supported historical dashboard input | `scheduler_candidate_ids()` is a three-line compatibility view; legacy `sample_concurrency` parsing duplicates newer text interpretation | **Defer; candidate retire after support review.** Current dashboard behavior survives until a structured replacement and retirement condition exist | Est.: files no growth; lines lower; concepts/config 0; edges lower; at least one compatibility path retired. Audit actual all zero | Search external callers; define history window; migrate tests/consumers; prove scheduler safety and rollback route |
+| `ARCH-MODEL-COMP-12` | Maintained product code and wrapper/compatibility path | `__main__.py` grouped composition and command adapters; all CLI users, automation, docs and public-contract tests | Stable public capability routing, arguments, exits and advanced escape hatches | A 711-line root composes ten top-level groups and interleaves ordinary/expert plumbing; duplication cannot be quantified before the public model is chosen | **Defer.** Current CLI remains authority; later migrate directly to selected owners and retire superseded routes without a permanent facade | Est.: files no growth; lines, concepts and call edges lower; config 0; temporary compatibility route only with owner/retirement. Audit actual all zero | Decide public nouns/capabilities; roster every caller; preserve exact contracts; prove parity before retiring old tree |
+| `ARCH-MODEL-COMP-13` | Documentation and compatibility | Quickstart, orchestration, launcher and role-journey documentation; scientists, operators, maintainers and support | Canonical safety, recovery, advanced inspection and evidence-ceiling guidance | Manual directory creation, runtime-profile redirection and dry-run-root transfer recur across local and Slurm journeys | **Defer; candidate relocate unique facts and retire superseded journey text.** Final subject owners retain exact contracts | Est.: documentation files/lines, public concepts and compatibility journeys lower; product/config/call edges 0. Audit actual all zero | Implement accepted interface first; map every unique rule and inbound link; update/retire old journeys in the same bounded migration |
+| `ARCH-MODEL-COMP-14` | Wrapper/compatibility path and protection | Resource policy and launcher configuration; CLI/config callers, packaging and migration tests | Fail closed on ambiguous retired `NORAD` filenames during rename compatibility | Equivalent legacy-filename guards occur in both owners | **Defer; candidate consolidate or retire only by migration policy.** Both guards survive until one final owner or proven end of support | Est.: files no growth; lines and duplicate edges lower; concepts/config 0; compatibility support unchanged until separately retired. Audit actual all zero | Decide rename/support policy; inventory distributions/callers; preserve rejection behavior; require explicit retirement evidence before deletion |
+
+#### Open model options and decision order
+
+A useful first question for the next bounded discussion—not a settled campaign
+order—is:
+
+> **Which changes create a new immutable Run, and which create only a new
+> Attempt of the same Run?**
+
+Three current options remain for explicit comparison:
+
+| Option | Shape | Benefit | Cost or risk |
+|---|---|---|---|
+| **A — promote the normalized execution contract essentially as Run** | Workflow profile + scientific inputs/design/reference/policy form the Run; runtime/resources/executor/source remain Attempt facts | Smallest migration and strongest reuse of current canonical identity | Current identity is path-sensitive and omits effective execution choices, so the object may be less than the full plan users expect. |
+| **B — include effective execution selection in Run** | Add selected runtime/executor/resources and possibly source realization to the immutable plan | Run becomes the complete accepted execution plan | Changes identity, storage, migration, reuse, and compatibility semantics; may conflate scientific intent with site execution. |
+| **C — separate immutable scientific intent from immutable execution plan, with Run referencing both** | One admitted scientific definition plus one immutable effective realization compose Run; Attempt executes it | Clean distinction between science and realization and supports multiple execution plans | Adds concepts and risks locking the repository into an interim stack unless old representations retire in the same bounded migration. |
+
+Whichever option is selected, mutable object state and canonical bytes cannot
+be competing authorities. One **nonbinding candidate discussion order** is:
+
+1. decide the Run-versus-Attempt change boundary;
+2. decide the minimum public nouns, nesting, and cardinalities around Run;
+3. decide exact Run fields, identity inputs, relocation behavior, and immutable
+   in-memory/persisted representation;
+4. decide Attempt/Result relationships and separate scientific, execution,
+   reporting, and recovery status semantics;
+5. decide persistence and storage relationships; then
+6. select APIs, CLI mapping, execution-backend interfaces, policy boundaries,
+   compatibility windows, and caller migration only where those decisions are
+   required by a bounded implementation slice.
+
+This list is not approved implementation sequencing. `AC-DEC-020` remains
+Open, and the required decisions and their order must be reconsidered for each
+bounded slice rather than used to pre-set the campaign.
+
+The audit deliberately leaves every item above Open except Run's immutable-plan
+meaning. It introduces no product code, command, API, class, schema, package,
+backend, policy owner, persistence format, or evidence deletion.
+
+#### Audit-only change accounting
+
+The audit delta is measured from the inherited campaign-guardrail commit
+`4c3f50ced83859083127501d5e40e4c03554a833`. Categories do not offset one
+another:
+
+| Category | Actual change |
+|---|---|
+| Maintained product implementation | 0 files; 0 physical lines |
+| Protections and executable tests | 0 files; 0 physical lines; no defense retired or added |
+| Configuration, scripts, schemas, generated/runtime material | 0 files; 0 physical lines; no generated or runtime artifact counted |
+| Retained evidence | 0 artifacts or evidence classes added, moved, or deleted; no deletion proposed |
+| Public product concepts and interfaces | 0 commands, types, methods, schemas, or accepted public nouns added or removed |
+| Compatibility paths | 0 added, changed, or retired |
+| Mutable product state | 0 product mutations added or removed; current exceptions are inventory only |
+| Documentation | 3 files; `+485/-16` physical lines relative to the inherited guardrail commit |
+
+#### Evidence ceiling
+
+This audit used exact current Git/source, contract, schema, and test inspection
+at the revision named above. No product tests, runtime restoration, real
+scientific tools, scheduler job, Slurm allocation, cluster or production run,
+scientific review, or biological validation was performed. Focused
+documentation validation of the recorded audit is separate engineering
+evidence and cannot promote this ceiling.
 
 ### 8.2 Thin Stage boundary
 
@@ -1278,10 +1735,10 @@ Sections 7, 8, and 11.3.
 | `AC-DEC-008` | What is the minimum useful operation/Stage representation? | Name, methods, lifecycle states, typed contracts, granularity, discovery, and migration. The boundary is already constrained to remain thin, preserve functional/scientific ownership, and avoid a generic framework. |
 | `AC-DEC-009` | Which repeated policy decisions deserve shared authorities? | Inventory input, validation, runtime, storage, publication, resource, and execution decisions; decide final authorities, package/service placement, configuration inputs, return/error contracts, defaults, safe overrides, precedence, compatibility, consolidation order, and migration. Every decision already requires one authority, but shared centralization must prove net reduction and avoid empty wrappers. |
 | `AC-DEC-010` | What artifact-lifecycle vocabulary and owner shape are justified? | Candidate, validation, admission, publication, commit, immutability, evidence, and rollback; generalized versus class-specific ownership; APIs, schemas, manifests, receipts, immutability mechanisms, external/large artifacts, Run Bundle/report-derived relationships, cleanup, recovery, and representative migration. Lifecycle/admission is already distinct from physical storage. |
-| `AC-DEC-011` | What concrete application model surrounds the immutable Run plan? | Exact identities, cardinalities, capability views, APIs, persistence, storage, migration, and configuration/execution/status/artifact/evidence/report relationships remain post-audit. Coordination may compose capabilities but cannot mutate Run, reconstruct its plan, absorb lower authorities, or become a god object. |
-| `AC-DEC-012` | What public run and reporting states are useful and truthful? | Pending/running/complete/failed/recoverable and representation of partial or blocked states. Scientific and reporting outcomes must remain distinguishable. |
+| `AC-DEC-011` | Which changes create a new immutable Run rather than a new Attempt, and what concrete model belongs in application coordination? | `ARCH-MODEL-AUDIT-01` retains three options: promote the normalized execution contract essentially as Run; add effective execution selection/resources to Run; or compose Run from separate immutable scientific-intent and execution-plan records. Exact fields, relocation behavior, identity/configuration/execution/status/artifact/evidence/report views, persistence, and API remain Open. Current initial execution creates a run skeleton before exact attempt-preparation admission, so the selected model must also assign recovery ownership for an unreceipted skeleton. Mutable object state and canonical bytes cannot become competing authorities; coordination cannot absorb lower authorities or become a god object. |
+| `AC-DEC-012` | What public Run, Attempt, scientific, and reporting states are useful and truthful? | Current `RunInspection` states and attempt-receipt statuses are Observed implementation vocabulary only. Current `local_pipeline_complete` requires reporting, contrary to accepted downstream-reporting semantics. Pending/running/complete/failed/recoverable and representation of partial or blocked states remain options; scientific and reporting outcomes must remain distinguishable. |
 | `AC-DEC-013` | What is the Run Bundle contract? | Layout, portability, large artifacts, external references, redaction, archival, regeneration, sharing |
-| `AC-DEC-014` | How are the ratified downstream-reporting semantics represented? | Exact opt-out/regeneration interfaces, persisted associations between Run and report or execution state, retry/resume and exit presentation, scientific/evidence/operations commands or views, one shared receipt-last transaction versus profile-specific receipts, immutable artifacts versus derived views, and canonical location. Reporting is already downstream, invoked by default for a full run, able to be disabled, and independently regenerable without invalidating science. |
+| `AC-DEC-014` | How are the ratified downstream-reporting semantics represented? | The current lifecycle conflates report completion with `local_pipeline_complete`; standalone regeneration exists but requires low-level roots and does not adopt or repair the orchestration reporting ledger. Exact opt-out/regeneration interfaces, persisted Run/report states, retry/resume and exit presentation, scientific/evidence/operations commands or views, one shared receipt-last transaction versus profile-specific receipts, immutable artifacts versus derived views, and canonical location remain Open. Reporting is already downstream, invoked by default for a full run, able to be disabled, and independently regenerable without invalidating science. |
 | `AC-DEC-015` | What replaces the current “demo” surface? | Neutral synthetic golden path; whether “demo” remains a command, test-only term, or is retired completely |
 | `AC-DEC-016` | Which filesystem concepts are public? | Project/inputs/runs/results/runtime; exact internal-to-public mapping |
 | `AC-DEC-017` | Which advanced interfaces are stable? | inspect run/artifact, manifest, evidence, diagnostics, debug, machine-readable outputs |
@@ -1327,18 +1784,21 @@ does not select a name, API, schema, or implementation.
 These began as candidate work slices, not final backlog IDs, priority, or
 implementation authorization. `AC-SLICE-01` is complete as the bounded
 `ARCH-CONST-01` decision/audit slice, and `AC-SLICE-02` is complete as
-`ARCH-LAYER-01`. Every candidate from `AC-SLICE-03` onward still requires a
-bounded owner/caller review, compression register, mutation inventory,
-non-goals, acceptance conditions, protection disposition, and evidence ceiling
-before entering the matrix. A promoted implementation card also requires the
-category-separated closeout defined in Section 13.1; evidence deletion cannot
-be implied by promotion.
+`ARCH-LAYER-01`. The read-only owner/caller, representation, identity,
+mutation, protection/evidence, and compression prerequisite is complete as
+`ARCH-MODEL-AUDIT-01`; `AC-SLICE-03` remains Open under the approved recording
+boundary, and model selection/introduction are separate future work. Every
+later candidate still requires its own bounded owner/caller review,
+compression register, mutation inventory, non-goals, acceptance conditions,
+protection disposition, and evidence ceiling before entering the matrix. A
+promoted implementation card also requires the category-separated closeout
+defined in Section 13.1; evidence deletion cannot be implied by promotion.
 
 | Candidate | Observable outcome | Likely relationship to current matrix |
 |---|---|---|
 | `AC-SLICE-01` | Ratified all 27 architectural invariants and five migration/test guardrails against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open |
 | `AC-SLICE-02` | Ratified responsibility clusters, three separate dependency graphs, forbidden authority transfers, a current-owner crosswalk, and a fast Python source-boundary ratchet for exact CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open |
-| `AC-SLICE-03` | Audit current user-intent, plan, identity, attempt, result, mutation, persistence, API, owner, caller, protection, evidence, and compression representations; record facts and options without selecting anything beyond `Run` as the immutable plan | New audit/decision slice or expansion of `CONTROL-01`; implementation requires later discussion and approval |
+| `AC-SLICE-03` | Audit current user-intent, plan, identity, attempt, result, mutation, persistence, API, owner, caller, protection, evidence, and compression representations; record facts and options without selecting anything beyond `Run` as the immutable plan | Current-state prerequisite recorded as completed `ARCH-MODEL-AUDIT-01`; this campaign card remains Open per the approved boundary, and model selection/implementation require later discussion and separate approval |
 | `AC-SLICE-04` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` |
 | `AC-SLICE-05` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across supported local and SLURM backends | New slice; enriches `OPS-02` |
 | `AC-SLICE-06` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` |
@@ -1371,7 +1831,8 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 |---|---|
 | `ARCH-CONST-01` | Completed decision/audit slice: the durable 27-invariant register and five migration/test guardrails now live in the platform-direction decision; broad implementation remains `ARCH-01` and the routed owner tasks |
 | `ARCH-LAYER-01` | Completed responsibility-shape slice: the five bands are responsibility clusters rather than package topology; source imports, runtime/control invocation, and artifact/evidence flow are separate graphs; forbidden authority transfers, current owners, exact transitional imports, and a fast import ratchet now have durable owners |
-| `CONTROL-01` | Audit-first compact application model and progressive disclosure. `Run` is the immutable plan; whether it is public and every other noun, nesting, identity, cardinality, API, persistence, and storage choice remain post-audit decisions. Generated internals remain inspectable. |
+| `ARCH-MODEL-AUDIT-01` | Completed current-model prerequisite: maps separate control paths, semantic lifetimes, owners/callers, identity boundaries, dry-run and write-before-attempt-admission gaps, Local/Slurm relationship, reporting/status mismatch, mutation ownership, protected evidence, reproducible footprint/change accounting, and 14 conditional compression candidates without selecting the application model |
+| `CONTROL-01` | Audit-first compact application model and progressive disclosure. `Run` is the immutable plan; whether it is public, the explicit Run-versus-Attempt change boundary, and every other noun, nesting, identity, cardinality, API, persistence, and storage choice remain post-audit decisions. Generated internals remain inspectable. |
 | `CONFIG-01` | Scientific versus execution versus evidence ownership; one scientist-facing definition; generated normalized artifacts; schema alternatives remain open |
 | `OPS-01` | Small operator-configuration surface; every effective value and source is inspectable and only explicitly safe owner-defined values are overrideable; exact interfaces, merge semantics, and named-profile model remain open |
 | `OPS-02` | Small role-aware CLI with the required capabilities; command partitioning/order, scheduler-selection behavior, and stable advanced inspection/override/debug routes remain open |
@@ -1393,7 +1854,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `OBS-02` | High-level scientific progress, public run status, elapsed time, completion/failure, and links to recovery/inspection |
 | `ANALYSIS-01` | Stop/reuse through the Step 06 boundary and launch separately identified cohort, subset, sensitivity, or downstream work |
 | `ANALYSIS-02` | Collaborator-extensible modules with typed scientific contracts; scientific algorithms, assumptions, interpretation, and review-relevant implementation remain visible. The lightweight extension mechanism is open within the binding prohibition on a mandatory universal Stage hierarchy, registry, workflow language, or second scheduler |
-| `ARCH-01` | Consumes the completed invariant constitution and responsibility/dependency model. Every slice performs the owner/caller/compression/mutation audit and category-separated closeout in Section 13.1. Concrete application, operation, execution, policy, identity, and artifact APIs; individual authority migrations; Artifact Store decision; package realization; and facade use remain post-audit choices. Bounded migration, default net-negative maintained product code with no product-file growth, immutable-by-default boundaries, eventual retirement, equal-or-stronger mapped protection, and separate approval for exact evidence deletion are binding. |
+| `ARCH-01` | Consumes the completed invariant constitution, responsibility/dependency model, and `ARCH-MODEL-AUDIT-01` current application-model/compression baseline. Every slice performs the owner/caller/compression/mutation audit and category-separated closeout in Section 13.1. Run means the immutable plan; concrete application, operation, execution, policy, identity, and artifact APIs; individual authority migrations; Artifact Store decision; package realization; and facade use remain post-audit choices. Bounded migration, default net-negative maintained product code with no product-file growth, immutable-by-default boundaries, eventual retirement, equal-or-stronger mapped protection, and separate approval for exact evidence deletion are binding. |
 | `REPORT-03` | Primary-scientific-findings hierarchy with evidence and operational detail progressively disclosed |
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |
 | `RESULTS-01` | One discoverable results surface and coordination with the proposed Run Bundle and Artifact Store concepts without preselecting their ownership or layouts |
