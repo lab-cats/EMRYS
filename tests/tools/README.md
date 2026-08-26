@@ -35,3 +35,19 @@ STAR's read-command behavior. Adapter delegates, retained bytes, and bound
 runtimes are hashed in the summary. The driver installs and cleans nothing; its
 machine-readable summary remains synthetic execution evidence, never
 production or biological evidence.
+
+`retained_stage_benchmark.py` consumes the successful retained 100,000-pair
+summary and runs paired Step 07 and Step 08 comparison cases against the exact
+locked Python, scientific-tool, and R authorities supplied by CI. It creates
+fixtures, frozen source archives, manifests, raw benchmark results, and its
+machine-readable summary only beneath a create-absent external output root;
+the source checkout remains read-only. The default invocation is a no-write
+plan, and `--execute` is required to run the comparisons. Correctness parity
+is mandatory, but timings are observational: the helper defines no speed
+threshold.
+
+In CI the benchmark output is retained beneath
+`100000/retained-stage-benchmark` in the existing 100,000-pair evidence
+artifact. These are hosted-runner, single-node, synthetic-data measurements.
+They do not prove CSU or another real cluster, shared-filesystem behavior,
+production performance, scientific review, or biological validity.

@@ -28,12 +28,26 @@ belongs only in the selected GitHub Actions lanes.
 
 The workflow runs the complete Python 3.11 suite and the 130-pair `smoke-v1`
 real synthetic E2E every night. Its Sunday UTC schedule also runs the
-100,000-pair `production-like-v1` E2E. A manual dispatch exposes independent
-`python311`, `synthetic_130`, and `synthetic_100000` boolean inputs; any
-nonempty combination is valid, and ordinary pull-request lanes do not run for
-that dispatch.
+100,000-pair `production-like-v1` E2E and, after that lane succeeds, paired
+retained-stage benchmarks for Step 07 and Step 08. A manual dispatch exposes
+independent `python311`, `synthetic_130`, and `synthetic_100000` boolean inputs;
+any nonempty combination is valid, and ordinary pull-request lanes do not run
+for that dispatch. Selecting `synthetic_100000` also selects the retained-stage
+benchmark; allow roughly 30--60 additional minutes and expect the retained
+100,000-pair artifact to be substantially larger.
 
 Each synthetic profile retains its operator root as a separate artifact, while
 the shared artifact records the locked runtime and disposable single-node
 Slurm state. A failed selected profile does not prevent later selected profiles
-or the shared diagnostics from running and uploading their evidence.
+or the shared diagnostics from running and uploading their evidence. The
+retained-stage benchmark writes beneath
+`100000/retained-stage-benchmark`, so the existing 100,000-pair upload retains
+the benchmark evidence, including any diagnostics produced before a failure.
+The final gate requires successful benchmark execution and correctness parity
+whenever the 100,000-pair lane is selected; recorded speedups have no pass/fail
+threshold.
+
+The benchmark is hosted-runner, single-node, synthetic-data performance
+evidence under the locked runtime. The same job's disposable Slurm proof does
+not promote those timings to CSU or other real-cluster, shared-filesystem,
+production, scientific-review, or biological evidence.

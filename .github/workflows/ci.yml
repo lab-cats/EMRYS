@@ -805,6 +805,30 @@ jobs:
             --slurm-timeout-seconds 7200 \
             --execute
 
+      - name: Run retained-stage benchmark comparisons
+        id: retained-stage-benchmark
+        if: >-
+          ((github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') ||
+          inputs.synthetic_100000) &&
+          steps.synthetic-100000.outcome == 'success'
+        continue-on-error: true
+        timeout-minutes: 180
+        shell: bash
+        env:
+          REAL_TOOLS_PREFIX: ${{ steps.real-tools.outputs.environment-path }}
+        run: |
+          set -euo pipefail
+          .venv/bin/python tests/tools/retained_stage_benchmark.py \
+            --repo-root "${GITHUB_WORKSPACE}" \
+            --e2e-summary \
+              "${E2E_EVIDENCE_ROOT}/100000/operator/e2e-summary.json" \
+            --output-root \
+              "${E2E_EVIDENCE_ROOT}/100000/retained-stage-benchmark" \
+            --runtime-prefix "${REAL_TOOLS_PREFIX}" \
+            --rscript "$(command -v Rscript)" \
+            --renv-library "${RENV_LIBRARY}" \
+            --execute
+
       - name: Upload retained 100,000-pair evidence
         id: upload-synthetic-100000
         if: >-
@@ -867,6 +891,7 @@ jobs:
           SELECT_100000: ${{ (github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') || inputs.synthetic_100000 }}
           OUTCOME_130: ${{ steps.synthetic-130.outcome }}
           OUTCOME_100000: ${{ steps.synthetic-100000.outcome }}
+          OUTCOME_RETAINED_STAGE_BENCHMARK: ${{ steps.retained-stage-benchmark.outcome }}
           UPLOAD_130: ${{ steps.upload-synthetic-130.outcome }}
           UPLOAD_100000: ${{ steps.upload-synthetic-100000.outcome }}
           UPLOAD_INFRASTRUCTURE: ${{ steps.upload-synthetic-infrastructure.outcome }}
@@ -880,8 +905,10 @@ jobs:
             failed=true
           fi
           if [[ "${SELECT_100000}" == true &&
-                ("${OUTCOME_100000}" != success || "${UPLOAD_100000}" != success) ]]; then
-            printf 'ERROR: selected 100,000-pair lane or its evidence upload failed.\n' >&2
+                ("${OUTCOME_100000}" != success ||
+                 "${OUTCOME_RETAINED_STAGE_BENCHMARK}" != success ||
+                 "${UPLOAD_100000}" != success) ]]; then
+            printf 'ERROR: selected 100,000-pair lane, retained-stage benchmark, or evidence upload failed.\n' >&2
             failed=true
           fi
           if [[ "${CHECKOUT_OUTCOME}" != success ]]; then

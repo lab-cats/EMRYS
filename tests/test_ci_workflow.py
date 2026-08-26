@@ -212,6 +212,49 @@ def test_real_tool_lock_is_linux_only_and_keeps_exact_science_versions() -> None
         )
 
 
+def test_retained_stage_benchmark_follows_successful_100000_e2e() -> None:
+    job = _workflow_jobs()["synthetic-e2e"]
+    benchmark_name = "Run retained-stage benchmark comparisons"
+    upload_name = "Upload retained 100,000-pair evidence"
+    step_names = [step.get("name") for step in job["steps"]]
+    assert step_names.index("Run the selected 100,000-pair real synthetic E2E") < (
+        step_names.index(benchmark_name)
+    )
+    assert step_names.index(benchmark_name) < step_names.index(upload_name)
+
+    benchmark = _named_step(job, benchmark_name)
+    assert benchmark["id"] == "retained-stage-benchmark"
+    assert benchmark["continue-on-error"] is True
+    assert benchmark["timeout-minutes"] == 180
+    condition = _expression(benchmark["if"])
+    assert "github.event.schedule == '17 5 * * 0'" in condition
+    assert "inputs.synthetic_100000" in condition
+    assert "steps.synthetic-100000.outcome == 'success'" in condition
+    assert benchmark["env"]["REAL_TOOLS_PREFIX"] == (
+        "${{ steps.real-tools.outputs.environment-path }}"
+    )
+
+    command = benchmark["run"]
+    assert ".venv/bin/python tests/tools/retained_stage_benchmark.py" in command
+    assert '--repo-root "${GITHUB_WORKSPACE}"' in command
+    assert (
+        '"${E2E_EVIDENCE_ROOT}/100000/operator/e2e-summary.json"' in command
+    )
+    assert (
+        '"${E2E_EVIDENCE_ROOT}/100000/retained-stage-benchmark"' in command
+    )
+    assert '--runtime-prefix "${REAL_TOOLS_PREFIX}"' in command
+    assert '--rscript "$(command -v Rscript)"' in command
+    assert '--renv-library "${RENV_LIBRARY}"' in command
+    assert "--execute" in command
+    assert "threshold" not in command.lower()
+
+    upload = _named_step(job, upload_name)
+    assert upload["with"]["path"] == (
+        "${{ runner.temp }}/emrys-synthetic-e2e/100000"
+    )
+
+
 def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:
     job = _workflow_jobs()["synthetic-e2e"]
     upload_names = (
@@ -235,6 +278,11 @@ def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:
     )
     assert "steps.synthetic-130.outcome" in final["env"]["OUTCOME_130"]
     assert "steps.synthetic-100000.outcome" in final["env"]["OUTCOME_100000"]
+    assert "steps.retained-stage-benchmark.outcome" in (
+        final["env"]["OUTCOME_RETAINED_STAGE_BENCHMARK"]
+    )
+    assert '"${SELECT_100000}" == true' in final["run"]
+    assert '"${OUTCOME_RETAINED_STAGE_BENCHMARK}" != success' in final["run"]
     assert "UPLOAD_INFRASTRUCTURE" in final["run"]
 
 
