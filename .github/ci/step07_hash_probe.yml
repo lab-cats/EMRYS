@@ -1,0 +1,50 @@
+schema_version: emrys.resource-benchmark.v1
+cases:
+  - name: step07_hash_actual
+    values: [1, 8, 25]
+    repetitions: 3
+    setup_argv: null
+    producer_argv:
+      - .venv/bin/python
+      - .github/ci/step07_hash_probe.py
+      - produce
+      - --mode
+      - actual
+      - --partitions
+      - "{value}"
+      - --trial-dir
+      - "{trial_dir}"
+    validator_argv:
+      - .venv/bin/python
+      - .github/ci/step07_hash_probe.py
+      - validate
+      - --mode
+      - actual
+      - --partitions
+      - "{value}"
+      - --trial-dir
+      - "{trial_dir}"
+  - name: step07_hash_no_read
+    values: [1, 8, 25]
+    repetitions: 3
+    setup_argv: null
+    producer_argv:
+      - .venv/bin/python
+      - .github/ci/step07_hash_probe.py
+      - produce
+      - --mode
+      - no-read
+      - --partitions
+      - "{value}"
+      - --trial-dir
+      - "{trial_dir}"
+    validator_argv:
+      - .venv/bin/python
+      - .github/ci/step07_hash_probe.py
+      - validate
+      - --mode
+      - no-read
+      - --partitions
+      - "{value}"
+      - --trial-dir
+      - "{trial_dir}"
