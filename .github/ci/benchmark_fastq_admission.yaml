@@ -1,0 +1,30 @@
+schema_version: emrys.resource-benchmark.v1
+cases:
+  - name: fastq_gzip_n20
+    values: [1, 2]
+    repetitions: 3
+    setup_argv: [python3, .github/ci/benchmark_fastq_admission.py, prepare, "{value}", gzip, "20", "{trial_dir}"]
+    producer_argv: [python3, .github/ci/benchmark_fastq_admission.py, run, "{value}", gzip, "20", "{trial_dir}"]
+    validator_argv: [python3, .github/ci/benchmark_fastq_admission.py, validate, "{value}", gzip, "20", "{trial_dir}"]
+    artifact_paths: ["{trial_dir}/result.bin"]
+  - name: fastq_plain_n20
+    values: [1, 2]
+    repetitions: 3
+    setup_argv: [python3, .github/ci/benchmark_fastq_admission.py, prepare, "{value}", plain, "20", "{trial_dir}"]
+    producer_argv: [python3, .github/ci/benchmark_fastq_admission.py, run, "{value}", plain, "20", "{trial_dir}"]
+    validator_argv: [python3, .github/ci/benchmark_fastq_admission.py, validate, "{value}", plain, "20", "{trial_dir}"]
+    artifact_paths: ["{trial_dir}/result.bin"]
+  - name: fastq_gzip_n1
+    values: [1, 2]
+    repetitions: 3
+    setup_argv: [python3, .github/ci/benchmark_fastq_admission.py, prepare, "{value}", gzip, "1", "{trial_dir}"]
+    producer_argv: [python3, .github/ci/benchmark_fastq_admission.py, run, "{value}", gzip, "1", "{trial_dir}"]
+    validator_argv: [python3, .github/ci/benchmark_fastq_admission.py, validate, "{value}", gzip, "1", "{trial_dir}"]
+    artifact_paths: ["{trial_dir}/result.bin"]
+  - name: fastq_gzip_n100
+    values: [1, 2]
+    repetitions: 3
+    setup_argv: [python3, .github/ci/benchmark_fastq_admission.py, prepare, "{value}", gzip, "100", "{trial_dir}"]
+    producer_argv: [python3, .github/ci/benchmark_fastq_admission.py, run, "{value}", gzip, "100", "{trial_dir}"]
+    validator_argv: [python3, .github/ci/benchmark_fastq_admission.py, validate, "{value}", gzip, "100", "{trial_dir}"]
+    artifact_paths: ["{trial_dir}/result.bin"]
