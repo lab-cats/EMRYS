@@ -54,6 +54,16 @@ def _expression(value: object) -> str:
     return " ".join(str(value).split())
 
 
+def _run_workflow_shell(command: str, environment: dict[str, str]) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["bash", "-c", command],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=environment,
+    )
+
+
 def _retained_benchmark_selection_arguments(
     command: str, *, event: str, selection: str
 ) -> list[bytes]:
@@ -259,12 +269,19 @@ def test_real_tool_lock_is_linux_only_and_keeps_exact_science_versions() -> None
 def test_retained_stage_benchmark_follows_successful_100000_e2e() -> None:
     job = _workflow_jobs()["synthetic-e2e"]
     benchmark_name = "Run retained-stage benchmark comparisons"
+    compact_name = "Admit compact retained-stage benchmark evidence"
+    compact_upload_name = "Upload compact retained-stage benchmark evidence"
     upload_name = "Upload retained 100,000-pair evidence"
     step_names = [step.get("name") for step in job["steps"]]
     assert step_names.index("Run the selected 100,000-pair real synthetic E2E") < (
         step_names.index(benchmark_name)
     )
-    assert step_names.index(benchmark_name) < step_names.index(upload_name)
+    assert (
+        step_names.index(benchmark_name)
+        < step_names.index(compact_name)
+        < step_names.index(compact_upload_name)
+        < step_names.index(upload_name)
+    )
 
     benchmark = _named_step(job, benchmark_name)
     assert benchmark["id"] == "retained-stage-benchmark"
@@ -311,6 +328,76 @@ def test_retained_stage_benchmark_follows_successful_100000_e2e() -> None:
     upload = _named_step(job, upload_name)
     assert upload["with"]["path"] == (
         "${{ runner.temp }}/emrys-synthetic-e2e/100000"
+    )
+
+
+def test_compact_retained_benchmark_upload_is_exact_and_admitted(tmp_path: Path) -> None:
+    job = _workflow_jobs()["synthetic-e2e"]
+    admission = _named_step(job, "Admit compact retained-stage benchmark evidence")
+    upload = _named_step(job, "Upload compact retained-stage benchmark evidence")
+    expected = (
+        "retained-stage-benchmark-summary.json",
+        "benchmark-manifest.yaml",
+        "benchmark-results/summary.tsv",
+        "benchmark-results/trials.tsv",
+        "benchmark-results/phase-resources.tsv",
+    )
+
+    assert admission["id"] == "compact-retained-stage-benchmark"
+    assert admission["continue-on-error"] is True
+    condition = _expression(admission["if"])
+    assert "always()" in condition
+    assert "inputs.synthetic_100000" in condition
+    assert "steps.retained-stage-benchmark.outcome == 'success'" in condition
+    command = admission["run"]
+    _prefix, marker, remainder = command.partition("required=(\n")
+    roster, closing, _suffix = remainder.partition("\n)")
+    assert marker and closing
+    assert tuple(line.strip() for line in roster.splitlines()) == expected
+    assert '[[ -d "${root}" && ! -L "${root}" ]]' in command
+    assert '[[ -f "${selected}" && ! -L "${selected}" && -s "${selected}" ]]' in command
+
+    evidence_root = tmp_path / "evidence"
+    root = evidence_root / "100000/retained-stage-benchmark"
+    for relative in expected:
+        selected = root / relative
+        selected.parent.mkdir(parents=True, exist_ok=True)
+        selected.write_text(f"{relative}\n", encoding="utf-8")
+    environment = {"E2E_EVIDENCE_ROOT": str(evidence_root)}
+    assert _run_workflow_shell(command, environment).returncode == 0
+    selected = root / expected[-1]
+    selected.unlink()
+    assert _run_workflow_shell(command, environment).returncode != 0
+    selected.write_text("", encoding="utf-8")
+    assert _run_workflow_shell(command, environment).returncode != 0
+    selected.unlink()
+    symlink_target = tmp_path / "nonempty.tsv"
+    symlink_target.write_text("not admitted\n", encoding="utf-8")
+    selected.symlink_to(symlink_target)
+    assert _run_workflow_shell(command, environment).returncode != 0
+
+    assert upload["id"] == "upload-retained-stage-benchmark"
+    assert upload["continue-on-error"] is True
+    upload_condition = _expression(upload["if"])
+    assert "always()" in upload_condition
+    assert "steps.compact-retained-stage-benchmark.outcome == 'success'" in upload_condition
+    assert upload["uses"] == (
+        "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02"
+    )
+    assert upload["with"]["name"] == (
+        "emrys-retained-stage-benchmark-100000-${{ github.run_attempt }}"
+    )
+    uploaded = tuple(
+        Path(path).name if "/benchmark-results/" not in path else "benchmark-results/" + Path(path).name
+        for path in upload["with"]["path"].splitlines()
+    )
+    assert uploaded == expected
+    assert upload["with"]["if-no-files-found"] == "error"
+    assert upload["with"]["retention-days"] == 14
+    assert "include-hidden-files" not in upload["with"]
+    assert all(
+        excluded not in upload["with"]["path"]
+        for excluded in ("/operator", "/sources", "/trials/", "benchmark-context.json")
     )
 
 
@@ -384,9 +471,56 @@ def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:
     assert "steps.retained-stage-benchmark.outcome" in (
         final["env"]["OUTCOME_RETAINED_STAGE_BENCHMARK"]
     )
+    assert "steps.compact-retained-stage-benchmark.outcome" in (
+        final["env"]["COMPACT_RETAINED_STAGE_BENCHMARK"]
+    )
+    assert "steps.upload-retained-stage-benchmark.outcome" in (
+        final["env"]["UPLOAD_RETAINED_STAGE_BENCHMARK"]
+    )
     assert '"${SELECT_100000}" == true' in final["run"]
     assert '"${OUTCOME_RETAINED_STAGE_BENCHMARK}" != success' in final["run"]
+    assert '"${COMPACT_RETAINED_STAGE_BENCHMARK}" != success' in final["run"]
+    assert '"${UPLOAD_RETAINED_STAGE_BENCHMARK}" != success' in final["run"]
     assert "UPLOAD_INFRASTRUCTURE" in final["run"]
+
+
+def test_synthetic_final_gate_executes_compact_outcome_matrix() -> None:
+    final = _named_step(
+        _workflow_jobs()["synthetic-e2e"],
+        "Require every selected synthetic lane and evidence upload to pass",
+    )
+    base = {
+        "SELECT_130": "false",
+        "SELECT_100000": "false",
+        "OUTCOME_130": "skipped",
+        "OUTCOME_100000": "skipped",
+        "OUTCOME_RETAINED_STAGE_BENCHMARK": "skipped",
+        "COMPACT_RETAINED_STAGE_BENCHMARK": "skipped",
+        "UPLOAD_130": "skipped",
+        "UPLOAD_100000": "skipped",
+        "UPLOAD_RETAINED_STAGE_BENCHMARK": "skipped",
+        "UPLOAD_INFRASTRUCTURE": "success",
+        "CHECKOUT_OUTCOME": "success",
+    }
+    assert _run_workflow_shell(final["run"], base).returncode == 0
+    selected = {
+        **base,
+        "SELECT_100000": "true",
+        "OUTCOME_100000": "success",
+        "OUTCOME_RETAINED_STAGE_BENCHMARK": "success",
+        "COMPACT_RETAINED_STAGE_BENCHMARK": "success",
+        "UPLOAD_100000": "success",
+        "UPLOAD_RETAINED_STAGE_BENCHMARK": "success",
+    }
+    assert _run_workflow_shell(final["run"], selected).returncode == 0
+    for variable in (
+        "OUTCOME_RETAINED_STAGE_BENCHMARK",
+        "COMPACT_RETAINED_STAGE_BENCHMARK",
+        "UPLOAD_RETAINED_STAGE_BENCHMARK",
+        "UPLOAD_100000",
+    ):
+        failed = {**selected, variable: "failure"}
+        assert _run_workflow_shell(final["run"], failed).returncode != 0
 
 
 def test_ci_slurm_setup_is_guarded_real_and_diagnostic() -> None:

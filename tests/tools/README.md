@@ -76,7 +76,9 @@ unknown, and duplicate segments therefore remain visible to the CLI and fail
 closed rather than being normalized silently.
 
 In CI the benchmark output is retained beneath
-`100000/retained-stage-benchmark` in the existing 100,000-pair evidence
-artifact. These are hosted-runner, single-node, synthetic-data measurements.
+`100000/retained-stage-benchmark` in the broad 100,000-pair evidence artifact.
+Successful comparisons also publish a compact artifact containing only the
+benchmark summary, manifest, paired timing tables, and phase-resource table.
+These are hosted-runner, single-node, synthetic-data measurements.
 They do not prove CSU or another real cluster, shared-filesystem behavior,
 production performance, scientific review, or biological validity.

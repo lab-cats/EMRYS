@@ -861,6 +861,51 @@ jobs:
             "${benchmark_selection[@]}" \
             --execute
 
+      - name: Admit compact retained-stage benchmark evidence
+        id: compact-retained-stage-benchmark
+        if: >-
+          always() &&
+          ((github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') ||
+          inputs.synthetic_100000) &&
+          steps.retained-stage-benchmark.outcome == 'success'
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          root="${E2E_EVIDENCE_ROOT}/100000/retained-stage-benchmark"
+          [[ -d "${root}" && ! -L "${root}" ]]
+          required=(
+            retained-stage-benchmark-summary.json
+            benchmark-manifest.yaml
+            benchmark-results/summary.tsv
+            benchmark-results/trials.tsv
+            benchmark-results/phase-resources.tsv
+          )
+          for relative in "${required[@]}"; do
+            selected="${root}/${relative}"
+            [[ -f "${selected}" && ! -L "${selected}" && -s "${selected}" ]]
+          done
+
+      - name: Upload compact retained-stage benchmark evidence
+        id: upload-retained-stage-benchmark
+        if: >-
+          always() &&
+          ((github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') ||
+          inputs.synthetic_100000) &&
+          steps.compact-retained-stage-benchmark.outcome == 'success'
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: emrys-retained-stage-benchmark-100000-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/emrys-synthetic-e2e/100000/retained-stage-benchmark/retained-stage-benchmark-summary.json
+            ${{ runner.temp }}/emrys-synthetic-e2e/100000/retained-stage-benchmark/benchmark-manifest.yaml
+            ${{ runner.temp }}/emrys-synthetic-e2e/100000/retained-stage-benchmark/benchmark-results/summary.tsv
+            ${{ runner.temp }}/emrys-synthetic-e2e/100000/retained-stage-benchmark/benchmark-results/trials.tsv
+            ${{ runner.temp }}/emrys-synthetic-e2e/100000/retained-stage-benchmark/benchmark-results/phase-resources.tsv
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload retained 100,000-pair evidence
         id: upload-synthetic-100000
         if: >-
@@ -924,8 +969,10 @@ jobs:
           OUTCOME_130: ${{ steps.synthetic-130.outcome }}
           OUTCOME_100000: ${{ steps.synthetic-100000.outcome }}
           OUTCOME_RETAINED_STAGE_BENCHMARK: ${{ steps.retained-stage-benchmark.outcome }}
+          COMPACT_RETAINED_STAGE_BENCHMARK: ${{ steps.compact-retained-stage-benchmark.outcome }}
           UPLOAD_130: ${{ steps.upload-synthetic-130.outcome }}
           UPLOAD_100000: ${{ steps.upload-synthetic-100000.outcome }}
+          UPLOAD_RETAINED_STAGE_BENCHMARK: ${{ steps.upload-retained-stage-benchmark.outcome }}
           UPLOAD_INFRASTRUCTURE: ${{ steps.upload-synthetic-infrastructure.outcome }}
           CHECKOUT_OUTCOME: ${{ steps.checkout-unchanged.outcome }}
         run: |
@@ -939,8 +986,10 @@ jobs:
           if [[ "${SELECT_100000}" == true &&
                 ("${OUTCOME_100000}" != success ||
                  "${OUTCOME_RETAINED_STAGE_BENCHMARK}" != success ||
+                 "${COMPACT_RETAINED_STAGE_BENCHMARK}" != success ||
+                 "${UPLOAD_RETAINED_STAGE_BENCHMARK}" != success ||
                  "${UPLOAD_100000}" != success) ]]; then
-            printf 'ERROR: selected 100,000-pair lane, retained-stage benchmark, or evidence upload failed.\n' >&2
+            printf 'ERROR: selected 100,000-pair lane, retained-stage benchmark, or compact/broad evidence upload failed.\n' >&2
             failed=true
           fi
           if [[ "${CHECKOUT_OUTCOME}" != success ]]; then

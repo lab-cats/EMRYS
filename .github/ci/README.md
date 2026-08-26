@@ -41,8 +41,8 @@ run every registered suite, or provide comma-delimited exact case names such as
 empty, whitespace-padded, unknown, and duplicate values fail closed at the
 benchmark CLI. Scheduled runs always select every registered suite. Selecting
 `synthetic_100000` also selects the retained-stage benchmark; allow roughly
-30--60 additional minutes and expect the retained 100,000-pair artifact to be
-substantially larger.
+30--60 additional minutes. The broad retained 100,000-pair diagnostic artifact
+remains substantially larger than the compact comparison artifact.
 
 Each synthetic profile retains its operator root as a separate artifact, while
 the shared artifact records the locked runtime and disposable single-node
@@ -51,9 +51,11 @@ or the shared diagnostics from running and uploading their evidence. The
 retained-stage benchmark writes beneath
 `100000/retained-stage-benchmark`, so the existing 100,000-pair upload retains
 the benchmark evidence, including any diagnostics produced before a failure.
-The final gate requires successful benchmark execution and correctness parity
-whenever the 100,000-pair lane is selected; recorded speedups have no pass/fail
-threshold.
+After a successful benchmark, a separate compact artifact retains only its
+summary, manifest, paired timing tables, and phase-resource table. The final
+gate requires successful benchmark execution, correctness parity, exact compact
+file admission, and both compact and broad uploads whenever the 100,000-pair
+lane is selected; recorded speedups have no pass/fail threshold.
 
 The benchmark is hosted-runner, single-node, synthetic-data performance
 evidence under the locked runtime. The same job's disposable Slurm proof does
