@@ -77,6 +77,10 @@ def test_fasta_uses_explicit_utf8_while_sidecars_use_default_decoding(
         ("AC\n", "FASTA sequence appears before its header"),
         (">chr1\nAC1\n", "FASTA has invalid sequence characters for chr1"),
         (">chr1\nA\n>chr1\nC\n", "FASTA has empty or duplicate contig: 'chr1'"),
+        (
+            ">chr1 first\nA\n>chr2\nC\n>chr1 later\nG\n",
+            "FASTA has empty or duplicate contig: 'chr1'",
+        ),
         (">chr1\n\n", "FASTA must contain nonempty contigs"),
         ("", "FASTA must contain nonempty contigs"),
     ],
@@ -96,6 +100,73 @@ def test_fasta_empty_header_preserves_raw_index_error(tmp_path: Path) -> None:
     path.write_text(">   \nA\n", encoding="utf-8")
     with pytest.raises(IndexError):
         REFERENCE_CONTIGS.parse_fasta(path)
+
+
+def test_fasta_duplicate_membership_work_grows_linearly() -> None:
+    class TrackedName(str):
+        equality_calls: dict[str, int]
+        stable_hash: int
+
+        def __new__(
+            cls, value: str, equality_calls: dict[str, int], stable_hash: int
+        ) -> TrackedName:
+            instance = super().__new__(cls, value)
+            instance.equality_calls = equality_calls
+            instance.stable_hash = stable_hash
+            return instance
+
+        def __eq__(self, other: object) -> bool:
+            self.equality_calls["equality"] += 1
+            return super().__eq__(other)
+
+        def __hash__(self) -> int:
+            self.equality_calls["hash"] += 1
+            return self.stable_hash
+
+    class HeaderTail(str):
+        name: TrackedName
+
+        def __new__(cls, name: TrackedName) -> HeaderTail:
+            instance = super().__new__(cls, name)
+            instance.name = name
+            return instance
+
+        def split(self, *args: object, **kwargs: object) -> list[str]:
+            assert not args and not kwargs
+            return [self.name]
+
+    class HeaderLine(str):
+        name: TrackedName
+
+        def __new__(cls, name: TrackedName) -> HeaderLine:
+            instance = super().__new__(cls, f">{name}")
+            instance.name = name
+            return instance
+
+        def __getitem__(self, key: object) -> str:
+            if key == slice(1, None, None):
+                return HeaderTail(self.name)
+            return super().__getitem__(key)  # type: ignore[arg-type]
+
+    def membership_operations(contig_count: int) -> int:
+        calls = {"equality": 0, "hash": 0}
+        lines: list[str] = []
+        for index in range(contig_count):
+            name = TrackedName(f"contig-{index:08d}", calls, index + 1)
+            lines.extend((HeaderLine(name), "A"))
+
+        observed = REFERENCE_CONTIGS.parse_fasta_lines(lines)
+
+        assert [(str(name), length) for name, length in observed] == [
+            (f"contig-{index:08d}", 1) for index in range(contig_count)
+        ]
+        return calls["equality"] + calls["hash"]
+
+    small = membership_operations(64)
+    large = membership_operations(128)
+
+    assert small > 0
+    assert small <= large <= small * 3
 
 
 @pytest.mark.parametrize(
