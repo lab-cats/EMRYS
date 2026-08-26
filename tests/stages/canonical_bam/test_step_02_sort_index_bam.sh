@@ -6,6 +6,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"
 unset EMRYS_RUN_TOKEN
 export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
+real_sha256_python="$EMRYS_SHA256_PYTHON"
 
 # Keep assertions small and shell-native so failures print the local fixture state.
 fail() {
@@ -270,26 +271,34 @@ fi
 EOF_MV
 chmod +x "$fake_bin/mv"
 
-cat >"$fake_bin/ln" <<'EOF_LN'
+cat >"$fake_bin/sha256-python" <<'EOF_SHA256_PYTHON'
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ "${1:-}" == "--" ]]; then
-    src="${2:-}"
-    dest="${3:-}"
-else
-    src="${1:-}"
-    dest="${2:-}"
+real_python="${FAKE_SHA256_REAL_PYTHON:-}"
+if [[ -z "$real_python" || ! -x "$real_python" ]]; then
+    printf 'fake SHA-256 launcher requires an executable real Python\n' >&2
+    exit 64
 fi
 
-/bin/ln "$@"
+hash_target=""
+for argument in "$@"; do
+    hash_target="$argument"
+done
 
-if [[ -n "${FAKE_LN_MUTATE_AFTER_DEST:-}" &&
-      "$dest" == "$FAKE_LN_MUTATE_AFTER_DEST" ]]; then
-    printf 'mutated after final BAM publication\n' >"$src"
+if [[ -n "${FAKE_SHA256_MUTATE_WHEN_PATH:-}" &&
+      "$hash_target" == "$FAKE_SHA256_MUTATE_WHEN_PATH" ]]; then
+    mutation_path="${FAKE_SHA256_MUTATE_PATH:-}"
+    [[ -n "$mutation_path" ]] || {
+        printf 'fake SHA-256 launcher requires a mutation path\n' >&2
+        exit 64
+    }
+    printf 'mutated after final BAM publication\n' >"$mutation_path"
 fi
-EOF_LN
-chmod +x "$fake_bin/ln"
+
+exec "$real_python" "$@"
+EOF_SHA256_PYTHON
+chmod +x "$fake_bin/sha256-python"
 
 export PATH="$fake_bin:$PATH"
 
@@ -465,7 +474,10 @@ publication_mutation_output="$tmp_dir/publication_mutation.out"
 publication_mutation_output_dir="$tmp_dir/results/publication_mutation"
 publication_mutation_bam="$publication_mutation_output_dir/sample_publish_race.sorted.bam"
 assert_fails "$publication_mutation_output" env \
-    FAKE_LN_MUTATE_AFTER_DEST="$publication_mutation_bam" \
+    EMRYS_SHA256_PYTHON="$fake_bin/sha256-python" \
+    FAKE_SHA256_REAL_PYTHON="$real_sha256_python" \
+    FAKE_SHA256_MUTATE_WHEN_PATH="$publication_mutation_bam" \
+    FAKE_SHA256_MUTATE_PATH="$publication_mutation_input" \
     FAKE_SAMPLE_ID=sample_publish_race \
     SLURM_JOB_ID=publish-race001 \
     bash "$SCRIPT" \
@@ -477,6 +489,9 @@ assert_fails "$publication_mutation_output" env \
     --execute
 assert_contains "$publication_mutation_output" \
     "Canonical BAM changed after create-exclusive publication: $publication_mutation_bam"
+assert_contains "$publication_mutation_output" "Rolling back Step 02 canonical outputs..."
+assert_not_contains "$publication_mutation_output" \
+    "Step 02 no-clobber rollback was incomplete"
 assert_file_equals "$publication_mutation_input" "mutated after final BAM publication"
 assert_not_exists "$publication_mutation_bam"
 assert_not_exists "$publication_mutation_bam.bai"
