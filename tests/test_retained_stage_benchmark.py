@@ -340,6 +340,20 @@ def _run_step06_validator(fixture: dict[str, object]) -> list[tuple[str, ...]]:
 
 
 class RetainedStageBenchmarkTests(unittest.TestCase):
+    def test_validation_report_names_match_public_validator_contracts(self) -> None:
+        self.assertEqual(
+            BENCHMARK._validation_report(Path("qc"), "sample"),
+            Path("qc/sample.validation.tsv"),
+        )
+        self.assertEqual(
+            BENCHMARK._validation_report(Path("qc"), "cohort"),
+            Path("qc/cohort.validation.tsv"),
+        )
+        self.assertEqual(
+            BENCHMARK._validation_report(Path("qc"), "cohort", "p01"),
+            Path("qc/cohort__p01.validation.tsv"),
+        )
+
     def test_manifest_is_one_paired_v2_plan_over_exact_cases(self) -> None:
         document = BENCHMARK._manifest(
             Path("/locked/python"),
