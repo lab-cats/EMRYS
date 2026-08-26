@@ -54,6 +54,18 @@ def stable_text(path: Path, label: str) -> tuple[str, Snapshot]:
 
 def read_bytes(path: Path, label: str) -> bytes:
     """Read exact bytes through a stable, no-follow descriptor binding."""
+    return _read_bytes(path, label, limit=None)
+
+
+def read_prefix(path: Path, label: str, length: int) -> bytes:
+    """Read at most ``length`` bytes through a stable, no-follow binding."""
+    if isinstance(length, bool) or not isinstance(length, int) or length < 1:
+        raise ValueError("prefix length must be a positive integer")
+    return _read_bytes(path, label, limit=length)
+
+
+def _read_bytes(path: Path, label: str, *, limit: int | None) -> bytes:
+    """Read a stable complete file or fixed prefix from one bound descriptor."""
 
     no_follow = getattr(os, "O_NOFOLLOW", None)
     if no_follow is None:
@@ -70,8 +82,19 @@ def read_bytes(path: Path, label: str) -> bytes:
             fail(f"{label} must be nonempty: {path}")
         _require_descriptor_path_binding(path, before, label)
         chunks: list[bytes] = []
-        while chunk := os.read(descriptor, 1024 * 1024):
+        remaining = limit
+        while remaining is None or remaining > 0:
+            read_size = (
+                1024 * 1024
+                if remaining is None
+                else min(remaining, 1024 * 1024)
+            )
+            chunk = os.read(descriptor, read_size)
+            if not chunk:
+                break
             chunks.append(chunk)
+            if remaining is not None:
+                remaining -= len(chunk)
         after = os.fstat(descriptor)
         _require_descriptor_path_binding(path, after, label)
     except OSError as exc:
@@ -82,9 +105,10 @@ def read_bytes(path: Path, label: str) -> bytes:
         if descriptor is not None:
             os.close(descriptor)
     data = b"".join(chunks)
+    expected_size = before.st_size if limit is None else min(before.st_size, limit)
     if (
         _stable_file_state(before) != _stable_file_state(after)
-        or len(data) != before.st_size
+        or len(data) != expected_size
     ):
         fail(f"{label} changed while read: {path}")
     return data
