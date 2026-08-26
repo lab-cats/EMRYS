@@ -81,10 +81,11 @@ exact no-write plan by default, materializes only the fixed profile under the
 aggregate run lock, and delegates scientific work to public owners. It exposes
 no raw Snakemake flags or automatic owner recovery.
 
-Logging, report profiles, analysis modules, public acquisition, standalone
-workflow packaging,
-site profiles, and optional-success policy remain designs, not current
-architecture. Accepted outcomes are in the
+The application-logging foundation is implemented under
+[`LOGGING_CONTRACT.md`](../LOGGING_CONTRACT.md), while production-command
+adoption remains `LOG-05`. Report profiles, analysis modules, public
+acquisition, standalone workflow packaging, and site profiles remain designs,
+not current architecture. Accepted outcomes are in the
 [findings matrix](../../tasks/backlog_matrix.md); unsliced alternatives remain
 in the temporary
 [architecture campaign](../../tasks/architecture_campaign.md).

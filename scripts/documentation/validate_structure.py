@@ -33,21 +33,19 @@ CANONICAL_DOCUMENTS = {
 }
 
 LEGACY_TRANSITION_DOCUMENTS = {
-    "docs/architecture/FUTURE_ARCHITECTURE.md": "# Future architecture",
     "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
-    "docs/design/PIPELINE_PLAN.md": "# EMRYS pipeline plan",
-    "docs/design/QUESTIONS.md": "# Open questions",
     "docs/operations/HANDOFF.md": "# Project handoff",
     "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md": (
         "# Local-pilot launcher regression test plan"
     ),
 }
-LEGACY_TRANSITION_DIAGRAMS = (
-    "docs/architecture/diagrams/future_modular_pipeline.mmd",
-    "docs/architecture/diagrams/future_reporting_layer.mmd",
-)
 
 RETIRED_DOCUMENTS = (
+    "docs/architecture/FUTURE_ARCHITECTURE.md",
+    "docs/architecture/diagrams/future_modular_pipeline.mmd",
+    "docs/architecture/diagrams/future_reporting_layer.mmd",
+    "docs/design/PIPELINE_PLAN.md",
+    "docs/design/QUESTIONS.md",
     "docs/design/REFACTOR_AUDIT.md",
     "docs/operations/CONCURRENT_WORK.md",
     "docs/operations/TASK_DELIVERY.md",
@@ -227,9 +225,6 @@ def validate_legacy_transitions(root: Path, problems: list[str]) -> None:
         )
         if not opening.startswith("> **Legacy "):
             problems.append(f"legacy document lacks visible warning: {relative}")
-    for relative in LEGACY_TRANSITION_DIAGRAMS:
-        if not (root / relative).is_file():
-            problems.append(f"missing legacy transition diagram: {relative}")
 
 
 def validate_retired_task_directories(root: Path, problems: list[str]) -> None:

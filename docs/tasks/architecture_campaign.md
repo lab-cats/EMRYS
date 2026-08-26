@@ -875,7 +875,10 @@ are immutable artifacts, derived views, or both remain open.
 The sources also disagree about lifecycle ownership: one proposal includes a
 `ReportStage` within the run lifecycle, while another makes Report a downstream
 consumer of a completed Run so reporting cannot become workflow state.
-`AC-DEC-014` preserves this choice for explicit resolution.
+`AC-DEC-014` preserves this choice for explicit resolution. Future profile
+design must also decide whether multiple audience views share one receipt-last
+publication transaction or publish profile-specific receipts; neither topology
+is accepted yet.
 
 ## 12. Scientific modularity and audit boundary
 
@@ -1021,7 +1024,7 @@ before any time target becomes normative.
 | `AC-DEC-011` | What belongs in Run coordination? | Identity, configuration, execution, status, artifacts, evidence, reports; avoid a god object |
 | `AC-DEC-012` | What public run states are useful and truthful? | Pending/running/complete/failed/recoverable and representation of partial or blocked states |
 | `AC-DEC-013` | What is the Run Bundle contract? | Layout, portability, large artifacts, external references, redaction, archival, regeneration, sharing |
-| `AC-DEC-014` | What are report lifecycle semantics? | `ReportStage` inside the run lifecycle versus Report as a downstream consumer of a completed Run; automatic generation versus explicit regeneration; scientific/evidence/operations commands or views; immutable artifacts versus derived views; canonical location |
+| `AC-DEC-014` | What are report lifecycle semantics? | `ReportStage` inside the run lifecycle versus Report as a downstream consumer of a completed Run; automatic generation versus explicit regeneration; scientific/evidence/operations commands or views; one shared receipt-last transaction versus profile-specific receipts; immutable artifacts versus derived views; canonical location |
 | `AC-DEC-015` | What replaces the current “demo” surface? | Neutral synthetic golden path; whether “demo” remains a command, test-only term, or is retired completely |
 | `AC-DEC-016` | Which filesystem concepts are public? | Project/inputs/runs/results/runtime; exact internal-to-public mapping |
 | `AC-DEC-017` | Which advanced interfaces are stable? | inspect run/artifact, manifest, evidence, diagnostics, debug, machine-readable outputs |
@@ -1086,7 +1089,7 @@ matrix.
 | `AC-SLICE-15` | Audit the Steps 07–09 statistical contract | New scientific-review slice; not architecture evidence |
 | `AC-SLICE-16` | Build independent numerical oracles for Steps 08 and 09 | New scientific-validation slice |
 | `AC-SLICE-17` | Retire duplicated lifecycle, validator, infrastructure, adapter, or compatibility paths after each replacement is proven | Multiple bounded deletion slices; never one unbounded cleanup task |
-| `AC-SLICE-18` | Rewrite navigation and documentation around scientist/operator/developer journeys | Expansion or slicing of `DOC-01`; use the accepted `DOC-02` audit and coordinate with `DOC-03`–`DOC-05` retirements |
+| `AC-SLICE-18` | Rewrite navigation and documentation around scientist/operator/developer journeys | Expansion or slicing of `DOC-01`; use the accepted `DOC-02`/`DOC-03` traces and coordinate with `DOC-04`–`DOC-05` retirements |
 | `AC-SLICE-19` | Define Doctor repair ownership, supported mutations, preview/reporting, and safety contracts | Expansion of `DOCTOR-01` reflecting the explicit override |
 
 Slicing must preserve traceability to the campaign section and source IDs. A
@@ -1129,8 +1132,8 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |
 | `RESULTS-01` | One discoverable results surface and coordination with the proposed Run Bundle and Artifact Store concepts without preselecting their ownership or layouts |
 | `DOC-01` | Role- and journey-based scientist/operator/developer documentation that does not assume campaign history |
-| `DOC-02` | Completed repository-wide documentation disposition and authority cutover; bounded migration and retirement now remain under `DOC-03`–`DOC-05`, `CLEAN-01`, and `CLEAN-02` |
-| `DOC-03` | Retire stale future-architecture, pipeline-plan, question-index, and future-diagram surfaces after context reconciliation without settling the final architecture-document set |
+| `DOC-02` | Completed repository-wide documentation disposition and authority cutover; bounded migration and retirement now remain under completed `DOC-03`, open `DOC-04`–`DOC-05`, `CLEAN-01`, and `CLEAN-02` |
+| `DOC-03` | Completed source reconciliation and retirement of the stale future-architecture, pipeline-plan, question-index, and future-diagram surfaces without settling the final architecture-document set; the [durable trace](../design/decisions/repository-and-delivery.md#doc-03-source-to-destination-trace-2026-08-25) lives in the repository-and-delivery decision record |
 | `DOC-04` | Reconcile every handoff section, preserve unique dated evidence and durable recovery facts without promotion, discard blocker/takeover prose, and retire the rolling handoff |
 | `DOC-05` | Consolidate useful orchestration-admission and launcher safeguards into live owners, discard stale transcripts, and retire both transition sources |
 | `BACKLOG-01` | Matrix cutover remains a discrete task; this campaign does not silently create another permanent backlog authority |
@@ -1138,6 +1141,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `TOOLING-01` | Verify the now-empty generic Git-orchestration namespace against history and callers, then guard its retired paths from returning |
 | `CLEAN-01` | Retire the old demo product surface without losing a neutral synthetic golden path and its validation value; final terminology is open |
 | `CLEAN-02` | Reconcile the obsolete pending Step 04 scaffold against the active owner test, then retire the duplicate test-planning surface |
+| `FUT-DATA-02` | Preserve initial exact NCBI reference and SRA-read adapters versus possible later ENA, GEO, and BAM acquisition as an explicit nonbinding scope choice; provenance and acquisition acceptance remain matrix-owned |
 | `FUT-INDEX-01` | Reuse a compatible declared index rather than regenerate it; compatibility and identity remain fail-closed |
 
 Other retained qualification, runtime-defect, reporting-layout, acquisition, and

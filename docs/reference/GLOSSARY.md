@@ -102,6 +102,7 @@ interface, or can plausibly be mistaken for a stronger evidence or scientific
 claim. Verify the meaning against the canonical document, schema, or
 implementation; keep the entry concise and alphabetized; add only selective
 inbound links where the term otherwise blocks understanding; and run the
-documentation gate. Put procedures in the runbook, mutable status in the
-handoff or pipeline plan, and scientific policy in the decision owner rather
+documentation gate. Put procedures in the runbook, checkout state in live Git,
+validation observations in exact checks and retained artifacts, accepted work
+in the findings matrix, and scientific policy in the decision owner rather
 than duplicating them here.

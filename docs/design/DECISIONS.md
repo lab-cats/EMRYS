@@ -108,6 +108,4 @@ The implemented source-checkout local lifecycle is defined by
 [`ORCHESTRATION_CONTRACT.md`](ORCHESTRATION_CONTRACT.md). Accepted open outcomes
 remain in the [findings matrix](../tasks/backlog_matrix.md); unsliced
 architecture alternatives remain in the temporary
-[architecture campaign](../tasks/architecture_campaign.md). The legacy future
-architecture and question indexes are retained only for the bounded `DOC-03`
-retirement trace.
+[architecture campaign](../tasks/architecture_campaign.md).
