@@ -200,12 +200,15 @@ def _step04_validator_fixture(root: Path) -> dict[str, object]:
     ).replace(b"PG:Z:samtools", b"PG:Z:MarkDuplicates")
 
     def command(prefix: str, token: str, tmp: Path) -> str:
-        return (
+        base = (
             f"MarkDuplicates INPUT={run_root}/results/bam/{sample}/{sample}.sorted.bam "
             f"OUTPUT={prefix}results/markdup/{sample}/.{sample}.step04.{token}.markdup.tmp.bam "
             f"METRICS_FILE={prefix}results/qc/markdup/.{sample}.step04.{token}.metrics.tmp "
-            f"REMOVE_DUPLICATES=false TMP_DIR={tmp} CREATE_INDEX=false"
+            f"REMOVE_DUPLICATES=false TMP_DIR={tmp}"
         )
+        if prefix:
+            return f"{base} CREATE_INDEX=true MAX_RECORDS_IN_RAM=500000 CREATE_MD5_FILE=false"
+        return f"{base} MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false"
 
     body = (
         "## METRICS CLASS picard.sam.DuplicationMetrics\n"
@@ -392,43 +395,131 @@ def _step06_validator_fixture(root: Path) -> dict[str, object]:
     samtools.write_text("#!/bin/sh\n")
     samtools.chmod(0o755)
     input_records = (
-        b"r99\t99\tchrSynthetic\t1\t60\t1M\t=\t1\t0\tA\tI\n"
-        b"r147\t147\tchrSynthetic\t2\t60\t1M\t=\t2\t0\tC\tI\n"
-        b"r83\t83\tchrSynthetic\t3\t60\t1M\t=\t3\t0\tG\tI\n"
-        b"r163\t163\tchrSynthetic\t4\t60\t1M\t=\t4\t0\tT\tI\n"
-        b"other\t0\tchrSynthetic\t5\t60\t1M\t*\t0\t0\tA\tI\n"
-    )
-    fwd_records = b"".join(input_records.splitlines(keepends=True)[:2])
-    rev_records = b"".join(input_records.splitlines(keepends=True)[2:4])
+        f"r99\t99\tchrSynthetic\t1\t60\t1M\t=\t1\t0\tA\tI\t"
+        f"RG:Z:{sample}\tPG:Z:MarkDuplicates\n"
+        f"r147\t147\tchrSynthetic\t2\t60\t1M\t=\t2\t0\tC\tI\t"
+        f"RG:Z:{sample}\tPG:Z:MarkDuplicates\n"
+        f"r83\t83\tchrSynthetic\t3\t60\t1M\t=\t3\t0\tG\tI\t"
+        f"RG:Z:{sample}\tPG:Z:MarkDuplicates\n"
+        f"r163\t163\tchrSynthetic\t4\t60\t1M\t=\t4\t0\tT\tI\t"
+        f"RG:Z:{sample}\tPG:Z:MarkDuplicates\n"
+        f"other\t0\tchrSynthetic\t5\t60\t1M\t*\t0\t0\tA\tI\t"
+        f"RG:Z:{sample}\tPG:Z:MarkDuplicates\n"
+    ).encode()
     retained_token = "owner-" + "6" * 32
+    observed_aliases = {
+        "rg": "11111111",
+        "mark_duplicates": "22222222",
+        "gatk": "A918B00",
+        "gatk_1": "94BE513",
+        "samtools": "55555555",
+    }
+    retained_aliases = {
+        "rg": "AAAAAAA1",
+        "mark_duplicates": "AAAAAAA2",
+        "gatk": "AAAAAAA3",
+        "gatk_1": "AAAAAAA4",
+        "samtools": "AAAAAAA5",
+    }
 
-    def header(root_path: Path | None, token: str, orientation: str) -> bytes:
+    def grouped_records(first: int, second: int, aliases: dict[str, str]) -> bytes:
+        records = input_records.splitlines(keepends=True)
+        aliased = records[second].replace(
+            f"RG:Z:{sample}".encode(),
+            f"RG:Z:{sample}-{aliases['rg']}".encode(),
+        ).replace(
+            b"PG:Z:MarkDuplicates",
+            f"PG:Z:MarkDuplicates-{aliases['mark_duplicates']}".encode(),
+        )
+        return records[first] + aliased
+
+    def header(
+        root_path: Path | None,
+        token: str,
+        orientation: str,
+        threads: int,
+        aliases: dict[str, str],
+    ) -> bytes:
         prefix = f"{root_path}/" if root_path is not None else ""
+        flags = (99, 147) if orientation == "FWD_like" else (83, 163)
+        orientation_root = f"{prefix}results/orientation/{sample}"
+        input_bam = (
+            f"{run_root}/results/split_ncigar/{sample}/{sample}.split_ncigar.bam"
+        )
+        merge_command = (
+            f"samtools merge -@ {threads} -o {orientation_root}/.{sample}.step06."
+            f"{token}.{orientation}.tmp.bam {orientation_root}/.{sample}.step06."
+            f"{token}.{flags[0]}.tmp.bam {orientation_root}/.{sample}.step06."
+            f"{token}.{flags[1]}.tmp.bam"
+        )
         return (
             b"@HD\tVN:1.6\tSO:coordinate\n"
             b"@SQ\tSN:chrSynthetic\tLN:5000000\n"
             + (
-                f"@PG\tID:samtools\tPN:samtools\tCL:samtools merge "
-                f"{prefix}results/orientation/{sample}/.{sample}.step06."
-                f"{token}.{orientation}.tmp.bam\n"
+                f"@RG\tID:{sample}\tSM:{sample}\tLB:{sample}\tPL:ILLUMINA\n"
+                f"@RG\tID:{sample}-{aliases['rg']}\tSM:{sample}\tLB:{sample}"
+                f"\tPL:ILLUMINA\n"
+                "@PG\tID:MarkDuplicates\tPN:MarkDuplicates\n"
+                "@PG\tID:GATK SplitNCigarReads\tPN:GATK SplitNCigarReads"
+                "\tPP:MarkDuplicates\tCL:SplitNCigarReads --input retained.bam\n"
+                "@PG\tID:GATK SplitNCigarReads.1\tPN:GATK SplitNCigarReads"
+                "\tPP:MarkDuplicates\tCL:SplitNCigarReads --input retained.bam\n"
+                f"@PG\tID:samtools\tPN:samtools\tPP:GATK SplitNCigarReads.1"
+                f"\tCL:samtools view -@ {threads} -b -f {flags[0]} -o "
+                f"{orientation_root}/.{sample}.step06.{token}.{flags[0]}.tmp.bam "
+                f"{input_bam}\n"
+                f"@PG\tID:MarkDuplicates-{aliases['mark_duplicates']}"
+                "\tPN:MarkDuplicates\n"
+                f"@PG\tID:GATK SplitNCigarReads-{aliases['gatk']}"
+                "\tPN:GATK SplitNCigarReads"
+                f"\tPP:MarkDuplicates-{aliases['mark_duplicates']}"
+                "\tCL:SplitNCigarReads --input retained.bam\n"
+                f"@PG\tID:GATK SplitNCigarReads.1-{aliases['gatk_1']}"
+                "\tPN:GATK SplitNCigarReads"
+                f"\tPP:MarkDuplicates-{aliases['mark_duplicates']}"
+                "\tCL:SplitNCigarReads --input retained.bam\n"
+                f"@PG\tID:samtools-{aliases['samtools']}\tPN:samtools"
+                f"\tPP:GATK SplitNCigarReads.1-{aliases['gatk_1']}"
+                f"\tCL:samtools view -@ {threads} -b -f {flags[1]} -o "
+                f"{orientation_root}/.{sample}.step06.{token}.{flags[1]}.tmp.bam "
+                f"{input_bam}\n"
+                f"@PG\tID:samtools.1\tPN:samtools\tPP:samtools\tCL:{merge_command}\n"
+                f"@PG\tID:samtools.2\tPN:samtools"
+                f"\tPP:samtools-{aliases['samtools']}\tCL:{merge_command}\n"
             ).encode()
         )
 
+    observed_fwd = grouped_records(0, 1, observed_aliases)
+    observed_rev = grouped_records(2, 3, observed_aliases)
+    retained_fwd_records = grouped_records(0, 1, retained_aliases)
+    retained_rev_records = grouped_records(2, 3, retained_aliases)
     records = {
         step05_bam: input_records,
-        retained_fwd: fwd_records,
-        retained_rev: rev_records,
-        outputs["fwd_bam"]: fwd_records,
-        outputs["rev_bam"]: rev_records,
+        retained_fwd: retained_fwd_records,
+        retained_rev: retained_rev_records,
+        outputs["fwd_bam"]: observed_fwd,
+        outputs["rev_bam"]: observed_rev,
     }
     headers = {
-        retained_fwd: header(run_root, retained_token, "FWD_like"),
-        retained_rev: header(run_root, retained_token, "REV_like"),
+        retained_fwd: header(
+            run_root, retained_token, "FWD_like", 2, retained_aliases
+        ),
+        retained_rev: header(
+            run_root, retained_token, "REV_like", 2, retained_aliases
+        ),
         outputs["fwd_bam"]: header(
-            None, BENCHMARK.STEP06_TRIAL_RUN_TOKEN, "FWD_like"
+            None,
+            BENCHMARK.STEP06_TRIAL_RUN_TOKEN,
+            "FWD_like",
+            4,
+            observed_aliases,
         ),
         outputs["rev_bam"]: header(
-            None, BENCHMARK.STEP06_TRIAL_RUN_TOKEN, "REV_like"
+            None,
+            BENCHMARK.STEP06_TRIAL_RUN_TOKEN,
+            "REV_like",
+            4,
+            observed_aliases,
         ),
     }
     idxstats = {
@@ -464,6 +555,7 @@ def _step06_validator_fixture(root: Path) -> dict[str, object]:
             _retained_artifact(retained_counts)
         ),
         "retained_step06_run_token": retained_token,
+        "retained_step06_threads": 2,
     }
     return {
         "context": context,
@@ -478,6 +570,7 @@ def _step06_validator_fixture(root: Path) -> dict[str, object]:
         "headers": headers,
         "idxstats": idxstats,
         "indexed": dict(records),
+        "observed_aliases": observed_aliases,
     }
 
 
@@ -495,7 +588,7 @@ def _run_step06_validator(fixture: dict[str, object]) -> list[tuple[str, ...]]:
     def capture(argv: object, *, cwd: Path) -> bytes:
         del cwd
         command = tuple(argv)
-        selected = Path(command[3] if command[1:3] == ("view", "-H") else command[2])
+        selected = Path(command[-1] if command[1:3] == ("view", "-H") else command[2])
         if command[1] == "quickcheck":
             return b""
         if command[1:3] == ("view", "-H"):
@@ -534,6 +627,91 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             BENCHMARK._validation_report(Path("qc"), "cohort", "p01"),
             Path("qc/cohort__p01.validation.tsv"),
         )
+
+    def test_indexed_bam_header_inspection_suppresses_program_injection(self) -> None:
+        calls: list[tuple[str, ...]] = []
+        samtools = Path("/runtime/samtools")
+        bam = Path("/retained/input.bam")
+        decoded = b"r1\t99\tchrSynthetic\t1\t60\t1M\t=\t1\t0\tA\tI\n"
+
+        def capture(argv: object, *, cwd: Path) -> bytes:
+            self.assertEqual(cwd, Path("/trial"))
+            command = tuple(argv)
+            calls.append(command)
+            if command[1] == "quickcheck":
+                return b""
+            if command[1:3] == ("view", "-H"):
+                return b"@HD\tVN:1.6\tSO:coordinate\n@SQ\tSN:chrSynthetic\tLN:10\n"
+            if command[1] == "idxstats":
+                return b"chrSynthetic\t10\t1\t0\n*\t0\t0\t0\n"
+            if command[1] == "view":
+                return decoded
+            raise AssertionError(command)
+
+        with mock.patch.object(BENCHMARK, "_capture_checked", side_effect=capture):
+            BENCHMARK._inspect_indexed_bam(
+                samtools, bam, cwd=Path("/trial"), label="fixture BAM"
+            )
+
+        self.assertIn(
+            (str(samtools), "view", "-H", "--no-PG", str(bam)), calls
+        )
+
+    def test_step04_index_policy_position_is_normalized_but_required(self) -> None:
+        first = (
+            b"@PG\tID:MarkDuplicates\tCL:MarkDuplicates TMP_DIR=/scratch "
+            b"CREATE_INDEX=true MAX_RECORDS_IN_RAM=500000 CREATE_MD5_FILE=false\n"
+        )
+        second = (
+            b"@PG\tID:MarkDuplicates\tCL:MarkDuplicates TMP_DIR=/scratch "
+            b"MAX_RECORDS_IN_RAM=500000 CREATE_INDEX=false CREATE_MD5_FILE=false\n"
+        )
+        normalized_first, _ = BENCHMARK._canonicalize_step04_command(
+            first,
+            roots=(),
+            run_tokens=(),
+            expected_tmp=b"/scratch",
+            label="first",
+        )
+        normalized_second, _ = BENCHMARK._canonicalize_step04_command(
+            second,
+            roots=(),
+            run_tokens=(),
+            expected_tmp=b"/scratch",
+            label="second",
+        )
+        self.assertEqual(normalized_first, normalized_second)
+        unrelated_double_space = second.replace(
+            b"TMP_DIR=/scratch ", b"TMP_DIR=/scratch  "
+        )
+        normalized_double_space, _ = BENCHMARK._canonicalize_step04_command(
+            unrelated_double_space,
+            roots=(),
+            run_tokens=(),
+            expected_tmp=b"/scratch",
+            label="unrelated double space",
+        )
+        self.assertNotEqual(normalized_second, normalized_double_space)
+        for invalid in (
+            second.replace(b" CREATE_INDEX=false", b""),
+            second.replace(b"CREATE_INDEX=false", b"CREATE_INDEX=maybe"),
+            second.replace(
+                b"CREATE_INDEX=false",
+                b"CREATE_INDEX=false CREATE_INDEX=true",
+            ),
+        ):
+            with self.subTest(invalid=invalid):
+                with self.assertRaisesRegex(
+                    BENCHMARK.BenchmarkSetupError,
+                    "omits exact TMP_DIR or CREATE_INDEX metadata",
+                ):
+                    BENCHMARK._canonicalize_step04_command(
+                        invalid,
+                        roots=(),
+                        run_tokens=(),
+                        expected_tmp=b"/scratch",
+                        label="invalid",
+                    )
 
     def test_manifest_is_one_paired_v2_plan_over_exact_cases(self) -> None:
         document = BENCHMARK._manifest(
@@ -1416,6 +1594,30 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                     observed,
                 )
 
+    def test_step05_validator_rejects_predecessor_header_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = _step05_validator_fixture(Path(directory).resolve())
+            observed_bam = fixture["outputs"]["bam"]
+            observed = fixture["inspections"][observed_bam]
+            observed["header"] = observed["header"].replace(
+                b"@PG\tID:MarkDuplicates\tPN:MarkDuplicates\n",
+                b"@PG\tID:MarkDuplicates\tPN:foreign-writer\n",
+                1,
+            )
+            with (
+                mock.patch.object(BENCHMARK, "_run_checked"),
+                mock.patch.object(
+                    BENCHMARK,
+                    "_inspect_indexed_bam",
+                    side_effect=lambda _tool, bam, **_kwargs: fixture["inspections"][bam],
+                ),
+                self.assertRaisesRegex(
+                    BENCHMARK.BenchmarkSetupError,
+                    "header differs beyond admitted roots and run tokens or metadata",
+                ),
+            ):
+                BENCHMARK._validate_step05(fixture["context"], fixture["trial"])
+
     def test_step05_owner_uses_retained_gatk_adapter_and_exact_transaction(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
@@ -1559,6 +1761,11 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             fixture = _step06_validator_fixture(Path(directory).resolve())
 
+            self.assertIn(
+                b"ID:GATK SplitNCigarReads-A918B00\t",
+                fixture["headers"][fixture["outputs"]["fwd_bam"]],
+            )
+
             validation_calls = _run_step06_validator(fixture)
 
             self.assertIn("mechanical-orientation", validation_calls[0])
@@ -1571,6 +1778,22 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             relative = BENCHMARK._step06_paths(BENCHMARK.RETAINED_SAMPLE_ID)
             self.assertEqual(list((fixture["trial"] / relative["orientation_root"]).iterdir()), [])
             self.assertEqual(list((fixture["trial"] / relative["counts_root"]).iterdir()), [])
+
+    def test_step06_collision_shape_requires_a_proven_base(self) -> None:
+        base = b"GATK SplitNCigarReads"
+        generated = base + b"-A918B00"
+        unrelated = b"ResearchTool-A918B00"
+        known_ids = {base, generated, unrelated}
+
+        self.assertEqual(
+            BENCHMARK._step06_collision_base(generated, known_ids), base
+        )
+        self.assertIsNone(
+            BENCHMARK._step06_collision_base(unrelated, known_ids)
+        )
+        self.assertIsNone(
+            BENCHMARK._step06_collision_base(base + b"-A918B0000", known_ids)
+        )
 
     def test_step06_parity_bundle_is_stable_across_trial_roots(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1592,11 +1815,62 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             outputs = fixture["outputs"]
             headers = fixture["headers"]
             headers[outputs["fwd_bam"]] = headers[outputs["fwd_bam"]].replace(
-                b"PN:samtools", b"PN:foreign-writer"
+                b"PN:MarkDuplicates", b"PN:foreign-writer"
             )
 
             with self.assertRaisesRegex(
-                BENCHMARK.BenchmarkSetupError, "beyond admitted roots and run tokens"
+                BENCHMARK.BenchmarkSetupError,
+                "beyond admitted roots and run tokens",
+            ):
+                _run_step06_validator(fixture)
+
+    def test_step06_validator_rejects_altered_collision_alias_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = _step06_validator_fixture(Path(directory).resolve())
+            outputs = fixture["outputs"]
+            headers = fixture["headers"]
+            alias = fixture["observed_aliases"]["mark_duplicates"]
+            headers[outputs["fwd_bam"]] = headers[outputs["fwd_bam"]].replace(
+                f"ID:MarkDuplicates-{alias}\tPN:MarkDuplicates".encode(),
+                f"ID:MarkDuplicates-{alias}\tPN:foreign-writer".encode(),
+            )
+
+            with self.assertRaisesRegex(
+                BENCHMARK.BenchmarkSetupError,
+                "collision alias differs beyond admitted Step 06 view metadata",
+            ):
+                _run_step06_validator(fixture)
+
+    def test_step06_validator_rejects_unadmitted_thread_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = _step06_validator_fixture(Path(directory).resolve())
+            outputs = fixture["outputs"]
+            headers = fixture["headers"]
+            headers[outputs["fwd_bam"]] = headers[outputs["fwd_bam"]].replace(
+                b"-@ 4", b"-@ 3"
+            )
+
+            with self.assertRaisesRegex(
+                BENCHMARK.BenchmarkSetupError, "admitted thread count"
+            ):
+                _run_step06_validator(fixture)
+
+    def test_step06_validator_rejects_unknown_record_collision_alias(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            fixture = _step06_validator_fixture(Path(directory).resolve())
+            outputs = fixture["outputs"]
+            records = fixture["records"]
+            indexed = fixture["indexed"]
+            alias = fixture["observed_aliases"]["rg"]
+            bad = records[outputs["fwd_bam"]].replace(
+                f"RG:Z:{BENCHMARK.RETAINED_SAMPLE_ID}-{alias}".encode(),
+                f"RG:Z:{BENCHMARK.RETAINED_SAMPLE_ID}-DEADBEEF".encode(),
+            )
+            records[outputs["fwd_bam"]] = bad
+            indexed[outputs["fwd_bam"]] = bad
+
+            with self.assertRaisesRegex(
+                BENCHMARK.BenchmarkSetupError, "references an unknown RG ID"
             ):
                 _run_step06_validator(fixture)
 
@@ -1611,7 +1885,8 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             )
 
             with self.assertRaisesRegex(
-                BENCHMARK.BenchmarkSetupError, "beyond admitted roots and run tokens"
+                BENCHMARK.BenchmarkSetupError,
+                "exact four Step 06 samtools programs",
             ):
                 _run_step06_validator(fixture)
 
@@ -1648,8 +1923,8 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             retained = fixture["retained"]
             records = fixture["records"]
             indexed = fixture["indexed"]
-            bad = records[outputs["fwd_bam"]].replace(b"r99\t99\t", b"r99\t0\t")
             for selected in (outputs["fwd_bam"], retained["fwd_bam"]):
+                bad = records[selected].replace(b"r99\t99\t", b"r99\t0\t")
                 records[selected] = bad
                 indexed[selected] = bad
 
@@ -1665,9 +1940,9 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             retained = fixture["retained"]
             records = fixture["records"]
             indexed = fixture["indexed"]
-            valid_record = records[outputs["fwd_bam"]].splitlines(keepends=True)[1]
-            substituted = valid_record + valid_record
             for selected in (outputs["fwd_bam"], retained["fwd_bam"]):
+                valid_record = records[selected].splitlines(keepends=True)[1]
+                substituted = valid_record + valid_record
                 records[selected] = substituted
                 indexed[selected] = substituted
 
@@ -2023,6 +2298,7 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 _retained_artifact(step06_rev_bai),
                 _retained_artifact(step06_counts),
                 "owner-" + "6" * 32,
+                2,
                 runtime_bash,
                 runtime_gatk,
                 runtime_java,
@@ -2408,6 +2684,7 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             self.assertEqual(
                 admitted.retained_step06_run_token, "owner-" + "6" * 32
             )
+            self.assertEqual(admitted.retained_step06_threads, 2)
             self.assertEqual(admitted.runtime_bash, runtime_bash)
             self.assertEqual(admitted.runtime_gatk, runtime_gatk)
             self.assertEqual(admitted.runtime_java, runtime_java)

@@ -208,6 +208,7 @@ class AdmittedE2E:
     retained_step06_rev_bai: RetainedArtifact
     retained_step06_counts: RetainedArtifact
     retained_step06_run_token: str
+    retained_step06_threads: int
     runtime_bash: Path
     runtime_gatk: Path
     runtime_java: Path
@@ -909,7 +910,7 @@ def _admit_e2e(summary_path: Path) -> AdmittedE2E:
         retained_step06_counts,
     ) = step06_artifacts
     retained_step06_run_token = _admit_owner_run_token(step06_verified, STEP06_OWNER)
-    _admit_owner_positive_integer_argument(
+    retained_step06_threads = _admit_owner_positive_integer_argument(
         step06_verified,
         STEP06_OWNER,
         "--threads",
@@ -953,6 +954,7 @@ def _admit_e2e(summary_path: Path) -> AdmittedE2E:
         retained_step06_rev_bai,
         retained_step06_counts,
         retained_step06_run_token,
+        retained_step06_threads,
         runtime_bash,
         runtime_gatk,
         runtime_java,
@@ -1870,7 +1872,9 @@ def _inspect_indexed_bam(
     )
     if quickcheck:
         raise BenchmarkSetupError(f"{label} emitted quickcheck failure paths")
-    header = _capture_checked((str(samtools), "view", "-H", str(bam)), cwd=cwd)
+    header = _capture_checked(
+        (str(samtools), "view", "-H", "--no-PG", str(bam)), cwd=cwd
+    )
     if not header or not header.endswith(b"\n") or any(
         not line.startswith(b"@") for line in header.splitlines()
     ):
@@ -1959,6 +1963,249 @@ def _canonicalize_sam_header(
     return normalized
 
 
+def _sam_header_fields(
+    line: bytes, record_type: bytes, label: str
+) -> list[tuple[bytes, bytes]]:
+    if not line.endswith(b"\n"):
+        raise BenchmarkSetupError(f"{label} contains an incomplete {record_type.decode()} line")
+    raw_fields = line[:-1].split(b"\t")
+    if not raw_fields or raw_fields[0] != record_type:
+        raise BenchmarkSetupError(f"{label} contains an invalid {record_type.decode()} line")
+    fields: list[tuple[bytes, bytes]] = []
+    seen: set[bytes] = set()
+    for raw_field in raw_fields[1:]:
+        key, separator, value = raw_field.partition(b":")
+        if separator != b":" or len(key) != 2 or not value or key in seen:
+            raise BenchmarkSetupError(
+                f"{label} contains malformed or duplicate {record_type.decode()} metadata"
+            )
+        fields.append((key, value))
+        seen.add(key)
+    if b"ID" not in seen:
+        raise BenchmarkSetupError(f"{label} contains {record_type.decode()} metadata without ID")
+    return fields
+
+
+def _replace_sam_header_field(
+    fields: Sequence[tuple[bytes, bytes]], key: bytes, value: bytes
+) -> list[tuple[bytes, bytes]]:
+    return [(selected, value if selected == key else current) for selected, current in fields]
+
+
+def _render_sam_header_fields(
+    record_type: bytes, fields: Sequence[tuple[bytes, bytes]]
+) -> bytes:
+    return b"\t".join(
+        (record_type, *(key + b":" + value for key, value in fields))
+    ) + b"\n"
+
+
+def _step06_program_semantics(
+    fields: Sequence[tuple[bytes, bytes]],
+) -> tuple[tuple[bytes, bytes], ...]:
+    return tuple(sorted((key, value) for key, value in fields if key != b"ID"))
+
+
+def _step06_collision_base(program_id: bytes, known_ids: set[bytes]) -> bytes | None:
+    matched = re.fullmatch(rb"(.+)-[0-9A-F]{1,8}", program_id)
+    if matched is None or matched.group(1) not in known_ids:
+        return None
+    return matched.group(1)
+
+
+def _canonicalize_step06_header(
+    data: bytes,
+    *,
+    roots: Sequence[Path],
+    run_tokens: Sequence[str],
+    expected_threads: int,
+    label: str,
+) -> tuple[bytes, dict[bytes, bytes], dict[bytes, bytes]]:
+    if type(expected_threads) is not int or expected_threads < 1:
+        raise BenchmarkSetupError(f"{label} has no admitted positive thread count")
+    normalized = _canonicalize_sam_header(
+        data,
+        roots=roots,
+        run_tokens=run_tokens,
+    )
+    if not normalized.endswith(b"\n"):
+        raise BenchmarkSetupError(f"{label} is not a complete SAM header")
+    lines = normalized.splitlines(keepends=True)
+    program_fields: dict[int, list[tuple[bytes, bytes]]] = {}
+    step06_programs: set[int] = set()
+    program_ids: set[bytes] = set()
+    thread_pattern = re.compile(rb"(?<!\S)-@ ([1-9][0-9]*)(?= |$)")
+    for index, line in enumerate(lines):
+        if not line.startswith(b"@PG\t"):
+            continue
+        fields = _sam_header_fields(line, b"@PG", label)
+        values = dict(fields)
+        program_id = values[b"ID"]
+        if program_id in program_ids:
+            raise BenchmarkSetupError(f"{label} contains a duplicate @PG ID")
+        program_ids.add(program_id)
+        command = values.get(b"CL")
+        is_step06 = (
+            values.get(b"PN") == b"samtools"
+            and command is not None
+            and b".step06.<EMRYS_RUN_TOKEN>." in command
+        )
+        if is_step06:
+            matches = tuple(thread_pattern.finditer(command))
+            if (
+                len(matches) != 1
+                or int(matches[0].group(1)) != expected_threads
+                or str(expected_threads).encode() != matches[0].group(1)
+            ):
+                raise BenchmarkSetupError(
+                    f"{label} Step 06 command differs from its admitted thread count"
+                )
+            command = thread_pattern.sub(b"-@ <EMRYS_THREADS>", command, count=1)
+            fields = _replace_sam_header_field(fields, b"CL", command)
+            step06_programs.add(index)
+        program_fields[index] = fields
+    if len(step06_programs) != 4:
+        raise BenchmarkSetupError(
+            f"{label} does not contain the exact four Step 06 samtools programs"
+        )
+
+    program_aliases: dict[bytes, bytes] = {}
+    semantics_by_id: dict[bytes, tuple[tuple[bytes, bytes], ...]] = {}
+    for index, fields in program_fields.items():
+        values = dict(fields)
+        raw_id = values[b"ID"]
+        predecessor = values.get(b"PP")
+        if predecessor is not None:
+            canonical_predecessor = program_aliases.get(predecessor)
+            if canonical_predecessor is None:
+                raise BenchmarkSetupError(
+                    f"{label} @PG predecessor is absent or appears after its consumer"
+                )
+            fields = _replace_sam_header_field(
+                fields, b"PP", canonical_predecessor
+            )
+        semantics = _step06_program_semantics(fields)
+        base = _step06_collision_base(raw_id, program_ids)
+        if base is None:
+            canonical_id = raw_id
+        else:
+            canonical_base = program_aliases.get(base)
+            if canonical_base is None:
+                raise BenchmarkSetupError(
+                    f"{label} collision base is absent or appears after its alias"
+                )
+            base_semantics = semantics_by_id[canonical_base]
+            if semantics == base_semantics:
+                canonical_id = canonical_base
+            else:
+                command = dict(fields).get(b"CL", b"")
+                is_step06_view = (
+                    index in step06_programs
+                    and re.search(
+                        rb"(?:^|/)samtools view -@ <EMRYS_THREADS> -b -f "
+                        rb"(?:99|147|83|163) -o ",
+                        command,
+                    )
+                    is not None
+                )
+                if not is_step06_view:
+                    raise BenchmarkSetupError(
+                        f"{label} collision alias differs beyond admitted Step 06 view metadata"
+                    )
+                digest_source = b"\0".join(
+                    key + b"\0" + value for key, value in semantics
+                )
+                digest = hashlib.sha256(digest_source).hexdigest()[:16].upper().encode()
+                canonical_id = (
+                    canonical_base + b"-<EMRYS_COLLISION_" + digest + b">"
+                )
+        prior_semantics = semantics_by_id.get(canonical_id)
+        if prior_semantics is not None and prior_semantics != semantics:
+            raise BenchmarkSetupError(f"{label} canonical @PG identities collide")
+        semantics_by_id.setdefault(canonical_id, semantics)
+        program_aliases[raw_id] = canonical_id
+        fields = _replace_sam_header_field(fields, b"ID", canonical_id)
+        lines[index] = _render_sam_header_fields(b"@PG", fields)
+
+    read_group_fields: dict[int, list[tuple[bytes, bytes]]] = {}
+    read_group_ids: set[bytes] = set()
+    for index, line in enumerate(lines):
+        if not line.startswith(b"@RG\t"):
+            continue
+        fields = _sam_header_fields(line, b"@RG", label)
+        read_group_id = dict(fields)[b"ID"]
+        if read_group_id in read_group_ids:
+            raise BenchmarkSetupError(f"{label} contains a duplicate @RG ID")
+        read_group_ids.add(read_group_id)
+        read_group_fields[index] = fields
+    read_group_aliases: dict[bytes, bytes] = {}
+    read_group_semantics: dict[bytes, tuple[tuple[bytes, bytes], ...]] = {}
+    for index, fields in read_group_fields.items():
+        values = dict(fields)
+        raw_id = values[b"ID"]
+        program = values.get(b"PG")
+        if program is not None:
+            canonical_program = program_aliases.get(program)
+            if canonical_program is None:
+                raise BenchmarkSetupError(f"{label} @RG references an unknown @PG ID")
+            fields = _replace_sam_header_field(fields, b"PG", canonical_program)
+        semantics = _step06_program_semantics(fields)
+        base = _step06_collision_base(raw_id, read_group_ids)
+        if base is None:
+            canonical_id = raw_id
+        else:
+            canonical_base = read_group_aliases.get(base)
+            if canonical_base is None:
+                raise BenchmarkSetupError(
+                    f"{label} @RG collision base appears after its alias"
+                )
+            if read_group_semantics[canonical_base] != semantics:
+                raise BenchmarkSetupError(
+                    f"{label} @RG collision alias differs beyond its generated ID"
+                )
+            canonical_id = canonical_base
+        prior_semantics = read_group_semantics.get(canonical_id)
+        if prior_semantics is not None and prior_semantics != semantics:
+            raise BenchmarkSetupError(f"{label} canonical @RG identities collide")
+        read_group_semantics.setdefault(canonical_id, semantics)
+        read_group_aliases[raw_id] = canonical_id
+        fields = _replace_sam_header_field(fields, b"ID", canonical_id)
+        lines[index] = _render_sam_header_fields(b"@RG", fields)
+    return b"".join(lines), read_group_aliases, program_aliases
+
+
+def _canonicalize_step06_records(
+    data: bytes,
+    *,
+    read_group_aliases: Mapping[bytes, bytes],
+    program_aliases: Mapping[bytes, bytes],
+    label: str,
+) -> bytes:
+    records = _sam_records(data, label)
+    normalized: list[bytes] = []
+    mappings = {b"RG": read_group_aliases, b"PG": program_aliases}
+    for index, (line, _flag, _reference) in enumerate(records, start=1):
+        fields = line[:-1].split(b"\t")
+        _sam_optional_tags(fields, f"{label} record {index}")
+        for field_index in range(11, len(fields)):
+            tag, value_type, value = fields[field_index].split(b":", 2)
+            mapping = mappings.get(tag)
+            if mapping is None:
+                continue
+            if value_type != b"Z" or not value:
+                raise BenchmarkSetupError(
+                    f"{label} record {index} has a non-text {tag.decode()} tag"
+                )
+            canonical = mapping.get(value)
+            if canonical is None:
+                raise BenchmarkSetupError(
+                    f"{label} record {index} references an unknown {tag.decode()} ID"
+                )
+            fields[field_index] = tag + b":Z:" + canonical
+        normalized.append(b"\t".join(fields) + b"\n")
+    return b"".join(normalized)
+
+
 def _canonicalize_step05_header(
     data: bytes,
     *,
@@ -2004,18 +2251,33 @@ def _canonicalize_step04_command(
     label: str,
 ) -> tuple[bytes, bytes]:
     tmp_matches = re.findall(rb"TMP_DIR=(?:\[[^\]]+\]|\S+)", data)
-    index_matches = re.findall(rb"CREATE_INDEX=(?:true|false)", data)
+    index_matches = tuple(re.finditer(rb"CREATE_INDEX=(?:true|false)", data))
     if len(tmp_matches) != 1 or len(index_matches) != 1:
+        raise BenchmarkSetupError(f"{label} omits exact TMP_DIR or CREATE_INDEX metadata")
+    index_match = index_matches[0]
+    if (
+        (index_match.start() > 0 and data[index_match.start() - 1] not in b" \t")
+        or (
+            index_match.end() < len(data)
+            and data[index_match.end()] not in b" \t\n"
+        )
+    ):
         raise BenchmarkSetupError(f"{label} omits exact TMP_DIR or CREATE_INDEX metadata")
     tmp = tmp_matches[0].removeprefix(b"TMP_DIR=").strip(b"[]")
     if expected_tmp is not None and tmp != expected_tmp:
         raise BenchmarkSetupError(f"{label} TMP_DIR differs from its admitted value")
+    removal_start = index_match.start()
+    removal_end = index_match.end()
+    if removal_start > 0 and data[removal_start - 1 : removal_start] == b" ":
+        removal_start -= 1
+    elif removal_end < len(data) and data[removal_end : removal_end + 1] == b" ":
+        removal_end += 1
+    without_index_policy = data[:removal_start] + data[removal_end:]
     normalized = _canonicalize_sam_header(
-        data.replace(tmp_matches[0], b"TMP_DIR=<EMRYS_TMPDIR>"),
+        without_index_policy.replace(tmp_matches[0], b"TMP_DIR=<EMRYS_TMPDIR>"),
         roots=roots,
         run_tokens=run_tokens,
     )
-    normalized = normalized.replace(index_matches[0], b"CREATE_INDEX=<INDEX_POLICY>")
     return normalized, tmp
 
 
@@ -2637,25 +2899,68 @@ def _validate_step06(context: Mapping[str, Any], trial: Path) -> None:
     retained_run_token = context.get("retained_step06_run_token")
     if not isinstance(retained_run_token, str):
         raise BenchmarkSetupError("benchmark context omits the retained Step 06 run token")
+    retained_threads = context.get("retained_step06_threads")
     observed_roots = (run_root, trial)
     reference_roots = (run_root,)
     observed_tokens = (STEP06_TRIAL_RUN_TOKEN,)
     reference_tokens = (retained_run_token,)
     bam_members: dict[str, tuple[tuple[str, bytes], ...]] = {}
+    canonical_observed: dict[str, dict[str, Any]] = {}
+    canonical_reference: dict[str, dict[str, Any]] = {}
     for orientation in ("fwd", "rev"):
-        observed_header = _canonicalize_sam_header(
-            bytes(observed[orientation]["header"]),
-            roots=observed_roots,
-            run_tokens=observed_tokens,
+        observed_header, observed_read_groups, observed_programs = (
+            _canonicalize_step06_header(
+                bytes(observed[orientation]["header"]),
+                roots=observed_roots,
+                run_tokens=observed_tokens,
+                expected_threads=_case_threads("step06-mechanical-orientation"),
+                label=f"Step 06 benchmark {orientation.upper()} header",
+            )
         )
-        reference_header = _canonicalize_sam_header(
-            bytes(reference[orientation]["header"]),
-            roots=reference_roots,
-            run_tokens=reference_tokens,
+        reference_header, reference_read_groups, reference_programs = (
+            _canonicalize_step06_header(
+                bytes(reference[orientation]["header"]),
+                roots=reference_roots,
+                run_tokens=reference_tokens,
+                expected_threads=retained_threads,
+                label=f"retained Step 06 {orientation.upper()} header",
+            )
         )
+        canonical_observed[orientation] = dict(observed[orientation])
+        canonical_reference[orientation] = dict(reference[orientation])
+        for selected, inspection, read_groups, programs, selected_label in (
+            (
+                canonical_observed[orientation],
+                observed[orientation],
+                observed_read_groups,
+                observed_programs,
+                f"Step 06 benchmark {orientation.upper()}",
+            ),
+            (
+                canonical_reference[orientation],
+                reference[orientation],
+                reference_read_groups,
+                reference_programs,
+                f"retained Step 06 {orientation.upper()}",
+            ),
+        ):
+            decoded = _canonicalize_step06_records(
+                bytes(inspection["decoded"]),
+                read_group_aliases=read_groups,
+                program_aliases=programs,
+                label=f"{selected_label} decoded SAM",
+            )
+            selected["decoded"] = decoded
+            selected["records"] = _sam_records(decoded, selected_label)
+            selected["indexed"] = _canonicalize_step06_records(
+                bytes(inspection["indexed"]),
+                read_group_aliases=read_groups,
+                program_aliases=programs,
+                label=f"{selected_label} indexed SAM",
+            )
         bam_members[orientation] = _require_indexed_bam_parity(
-            observed[orientation],
-            reference[orientation],
+            canonical_observed[orientation],
+            canonical_reference[orientation],
             observed_header=observed_header,
             reference_header=reference_header,
             label=f"Step 06 {orientation.upper()}",
@@ -2669,8 +2974,8 @@ def _validate_step06(context: Mapping[str, Any], trial: Path) -> None:
     retained_counts = _parse_step06_counts(
         retained_counts_data, sample_id, "retained Step 06 counts"
     )
-    fwd_records = observed["fwd"]["records"]
-    rev_records = observed["rev"]["records"]
+    fwd_records = canonical_observed["fwd"]["records"]
+    rev_records = canonical_observed["rev"]["records"]
     if not isinstance(fwd_records, tuple) or not isinstance(rev_records, tuple):
         raise BenchmarkSetupError("Step 06 decoded record boundary is invalid")
     independent_counts = {
@@ -3414,6 +3719,7 @@ def _execute(
         "retained_step06_rev_bai": _artifact_context(e2e.retained_step06_rev_bai),
         "retained_step06_counts": _artifact_context(e2e.retained_step06_counts),
         "retained_step06_run_token": e2e.retained_step06_run_token,
+        "retained_step06_threads": e2e.retained_step06_threads,
         "runtime_bash": str(e2e.runtime_bash),
         "runtime_gatk": str(e2e.runtime_gatk),
         "runtime_java": str(e2e.runtime_java),
