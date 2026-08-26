@@ -216,24 +216,19 @@ create-absent.
 
 After identity and owner-native preflight, the task boundary durably publishes
 the fixed `state/task-starts/<machine>/<scope>.json` record immediately before
-producer invocation. It then opens the two task-owned opaque command streams by
-create-exclusive, no-follow descriptors and drains each delegated command's
-stdout and stderr in bounded chunks into its corresponding file through stream
-EOF. Bytes and order within each stream are exact; no ordering between the two
-independent streams is claimed. A post-start task attempt must bind that exact
-record and must end in a succeeded task-attempt plus verified-task chain to be
-reusable.
+producer invocation and applies the binding [task-stream
+rules](../../../../docs/design/ORCHESTRATION_CONTRACT.md#filesystem-layout):
+create-exclusive/no-follow files, bounded draining through EOF, exact bytes and
+order within each stream, fsync/close, descriptor/path identity, bounded hashes,
+and post-attempt revalidation. No ordering between streams is claimed. A
+post-start task attempt must bind that exact start record and end in a succeeded
+task-attempt plus verified-task chain to be reusable.
 If admission fails before start publication, the exact failed task attempt and
 its two logs are retained as a bound pre-entry diagnostic; because the owner
 never entered, a later attempt may retry that scope without erasing the earlier
-record. Before any task-attempt publication, both stream descriptors are
-fsynced, their final file identities are retained, and they are closed. Each
-bounded pathname hash must reopen the same device, inode, size, modification
-time, and change time before the log reference is admitted.
-An unexpected interruption after stream creation preserves the available
+record. An unexpected interruption after stream creation preserves available
 partial bytes but publishes no terminal attempt or verified record. Every task
-attempt binds the exact path and SHA-256 of both captured logs; verified-task
-reuse re-hashes those bytes in bounded chunks, so later mutation or truncation
+attempt binds both log paths and SHA-256 values; later mutation or truncation
 blocks completion and resume. Log presence or content never establishes task
 success.
 

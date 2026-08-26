@@ -364,18 +364,16 @@ metadata and is never a reporting input or EMRYS completion record.
 Task stdout/stderr files are opaque command-stream captures for diagnosis. They
 are not the future structured application logs defined by
 `LOGGING_CONTRACT.md`. After durable task-start publication, the task boundary
-creates them exclusively without following links and drains each child stream
-through EOF in bounded chunks into its separate descriptor. Byte order is exact
-within each stream; no stdout/stderr interleaving order is claimed. Both files
-are fsynced, their final descriptor identities are retained, and they are
-closed. Bounded pathname hashing must reopen the same device, inode, size,
-modification time, and change time before task-attempt publication. Each
-task-attempt record binds both complete captures by canonical path and SHA-256.
-Their presence or content never establishes task success or evidence
-promotion, but later mutation invalidates that task evidence. An unexpected
-interruption may
-leave exact partial captures without a task-attempt record; those captures are
-post-entry diagnostic evidence, not completion proof.
+opens separate create-exclusive, no-follow descriptors and drains each child
+stream through EOF in bounded chunks. Bytes and order are exact within each
+stream; no stdout/stderr interleaving order is claimed. Before task-attempt
+publication, both files are fsynced and closed, and bounded pathname hashing
+must match the retained descriptor device, inode, size, modification time, and
+change time. Each task attempt binds both complete captures by canonical path
+and SHA-256; later mutation invalidates that evidence, while log presence or
+content never establishes success or promotion. An unexpected interruption may
+leave exact partial captures without a task-attempt record; they are post-entry
+diagnostic evidence, not completion proof.
 
 ## Planning and mutation boundary
 
