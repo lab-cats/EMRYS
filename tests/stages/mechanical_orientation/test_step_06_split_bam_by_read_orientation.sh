@@ -643,8 +643,13 @@ printf 'Running orchestration-safe no-clobber checks...\n'
 safe_output="$tmp_dir/safe.out"
 safe_output_dir="$tmp_dir/results/safe/orientation/ABE_EV_2"
 safe_qc_dir="$tmp_dir/results/safe/qc/orientation"
+rm -f "$samtools_log"
 SLURM_JOB_ID=safe001 run_step06 ABE_EV_2 "$input_bam" "$safe_output_dir" "$safe_qc_dir" --no-clobber --execute >"$safe_output"
 assert_contains "$safe_output" "No-clobber transaction: true"
+assert_contains "$samtools_log" "quickcheck $safe_output_dir/.ABE_EV_2.step06.safe001.FWD_like.tmp.bam"
+assert_contains "$samtools_log" "quickcheck $safe_output_dir/.ABE_EV_2.step06.safe001.REV_like.tmp.bam"
+assert_not_contains "$samtools_log" "quickcheck $safe_output_dir/ABE_EV_2.FWD_like.bam"
+assert_not_contains "$samtools_log" "quickcheck $safe_output_dir/ABE_EV_2.REV_like.bam"
 assert_not_exists "$safe_output_dir/.ABE_EV_2.step06.lock"
 safe_repeat_output="$tmp_dir/safe_repeat.out"
 assert_fails "$safe_repeat_output" env SLURM_JOB_ID=safe002 bash "$SCRIPT" \

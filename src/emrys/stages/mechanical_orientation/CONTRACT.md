@@ -56,23 +56,26 @@ both merged groups must be nonzero; assigned may not exceed input.
 
 `--no-clobber` is the required local-profile mode. It refuses any member of an
 existing five-file final set before tool work and before publication, hashes
-and rechecks the input BAM/BAI, and retains the existing per-sample owned lock,
-temporary-set validation, ordered publication, and final-path validation. It
-never creates predecessor backups, so interruption cannot enter the retained
-restoration-failure defect. Its finals are create-exclusive and staging inode
-anchors remain through complete-set validation. The counts TSV remains native evidence rather than
-a receipt; tool-version and final-set hashes belong in the workflow verified
-record. Execute without this option preserves replaceable-set behavior.
+and rechecks the input BAM/BAI, and retains the existing per-sample owned lock
+and temporary-set validation. It never creates predecessor backups, so
+interruption cannot enter the retained restoration-failure defect. Its finals
+are create-exclusive hard links to the validated staging files. The producer
+proves that all five final paths still resolve to those staging inodes rather
+than rerunning `samtools quickcheck` against the same BAMs after publication.
+The counts TSV remains native evidence rather than a receipt; tool-version and
+final-set hashes belong in the workflow verified record. Execute without this
+option preserves replaceable-set behavior and final-path validation.
 
 ## Current execution surfaces
 
 [`step_06_split_bam_by_read_orientation.sh`](step_06_split_bam_by_read_orientation.sh)
 is side-effect-free in dry-run. Execute mode uses a per-sample owned lock,
 run-token temporary and backup paths, rejects stale owned-path candidates,
-validates both temporary pairs and arithmetic, requires an existing final set
-to contain all five files or none, publishes the counts TSV last, and
-revalidates final paths. Failures restore a prior set or remove new partial
-finals.
+validates both temporary pairs and arithmetic, and requires an existing final
+set to contain all five files or none. On the orchestration-safe path it
+publishes create-exclusively and carries staged validation through exact inode
+identity; the historical replacement route revalidates final paths. Failures
+restore a prior set or remove new partial finals.
 
 The historical replacement route has no stable-input recheck, and neither
 route publishes a native receipt binding the set to its source/tool/attempt.
@@ -129,7 +132,8 @@ failures exit `2`.
   rerunning samtools.
 - [`test_step_06_split_bam_by_read_orientation.sh`](../../../../tests/stages/mechanical_orientation/test_step_06_split_bam_by_read_orientation.sh)
   protects flags, counts, dry-run, locks, stale paths, validation, zero-group
-  failures, cleanup, complete-set replacement, and ordinary rollback.
+  failures, cleanup, complete-set replacement, ordinary rollback, and the
+  no-clobber staging/final inode-validation fast path.
 - [`test_validate_step_06_orientation_outputs.py`](../../../../tests/stages/mechanical_orientation/test_validate_step_06_orientation_outputs.py),
   wrapper, roster, publication-fault, public-CLI, artifact, report, and coverage
   tests protect the recorded independent evidence boundary.
