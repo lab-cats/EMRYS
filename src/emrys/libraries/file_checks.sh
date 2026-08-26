@@ -143,6 +143,7 @@ remove_owned_published_file() {
             "$label" "$final_path" >&2
         return 1
     fi
+    return 0
 }
 
 require_owned_published_file() {
