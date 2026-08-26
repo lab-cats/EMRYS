@@ -197,7 +197,9 @@ Measured repetitions use deterministic cyclic ordering—`A,B`, then `B,A` for
 two variants—and each trial receives a fresh directory. Failed warmups
 invalidate the comparison even though warmup timings are excluded. Artifact parity is
 evaluated within each value and repetition against `baseline_variant`, even
-when that baseline runs second. The comparison summary reports median, median
+when that baseline runs second. Each variant's normalized fingerprints must
+also remain stable across its warmups and measured repetitions. The comparison
+summary reports median, median
 absolute deviation, range, CPU, memory, block I/O, and paired speedup; it emits no speedup claim unless
 all measured repetitions and parity checks pass. CI or the supplied wrappers
 must bind source, dataset, runtime, runner, storage, cancellation, and any

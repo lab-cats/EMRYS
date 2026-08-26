@@ -493,6 +493,45 @@ def test_comparison_artifact_mismatch_invalidates_summary(tmp_path: Path) -> Non
     assert changed["median_paired_speedup_percent"] == ""
 
 
+def test_comparison_rejects_artifact_drift_between_repetitions(
+    tmp_path: Path,
+) -> None:
+    producer = [
+        sys.executable,
+        "-c",
+        (
+            "from pathlib import Path; import sys; "
+            "output = Path(sys.argv[1]); "
+            "output.write_text(output.parents[1].name)"
+        ),
+        "{trial_dir}/product.txt",
+    ]
+    case = _comparison_case(
+        warmup_repetitions=0,
+        variants=[
+            {"name": "master", "producer_argv": producer},
+            {"name": "changed", "producer_argv": producer},
+        ],
+        validator_argv=[sys.executable, "-c", "pass"],
+    )
+    manifest = _write_comparison_manifest(tmp_path / "benchmark.yaml", case)
+    output = tmp_path / "results"
+
+    assert BENCHMARK.run(manifest, output, execute=True) == 1
+    rows = _read_tsv(output / "trials.tsv")
+    assert {row["artifact_match_baseline"] for row in rows} == {"yes"}
+    for variant in ("master", "changed"):
+        assert [row["status"] for row in rows if row["variant"] == variant] == [
+            "pass",
+            "fail",
+            "fail",
+        ]
+    summary = _read_tsv(output / "summary.tsv")
+    assert {row["comparison_valid"] for row in summary} == {"no"}
+    assert {row["artifact_parity"] for row in summary} == {"no"}
+    assert {row["median_paired_speedup_percent"] for row in summary} == {""}
+
+
 def test_comparison_failed_warmup_invalidates_measured_summary(tmp_path: Path) -> None:
     case = _comparison_case(
         setup_argv=[

@@ -748,6 +748,7 @@ def _run_comparison(manifest: Path, output: Path, *, execute: bool) -> int:
 
     output.mkdir(mode=0o700)
     results: list[dict[str, Any]] = []
+    variant_artifact_references: dict[tuple[str, int, str], str] = {}
     failed = False
     with (output / "trials.tsv").open("x", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=COMPARISON_RESULT_FIELDS, dialect="excel-tab")
@@ -835,6 +836,13 @@ def _run_comparison(manifest: Path, output: Path, *, execute: bool) -> int:
                         row["status"] = "fail"
                 elif row["status"] == "pass":
                     row["status"] = "fail"
+                if row["status"] == "pass":
+                    artifact_key = (case.name, value, str(row["variant"]))
+                    reference = variant_artifact_references.setdefault(
+                        artifact_key, str(row["artifact_set_sha256"])
+                    )
+                    if row["artifact_set_sha256"] != reference:
+                        row["status"] = "fail"
                 failed = failed or row["status"] == "fail"
                 results.append(row)
                 writer.writerow(row)

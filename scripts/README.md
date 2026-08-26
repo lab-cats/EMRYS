@@ -48,7 +48,8 @@ more changed implementations, alternates their order by repetition, and keeps
 warmups outside its measured summary. Its single validator command must perform
 owner validation, the all-pass gate, and any stage-specific semantic
 fingerprinting. A comparison is valid only when every measured trial passes and
-its fingerprints match that repetition's explicit baseline.
+its fingerprints match that repetition's explicit baseline and remain stable
+for each case, value, and variant across warmups and measured repetitions.
 Dependency restoration is explicit operator mutation. Validation, rendering,
 and restore success do not establish runtime, cluster, scientific-review, or
 biological evidence.
