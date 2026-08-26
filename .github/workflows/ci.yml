@@ -560,6 +560,68 @@ jobs:
         shell: bash
         run: test "${{ needs.python311-full-shards.result }}" = "success"
 
+  step07-hash-amplification-probe:
+    name: Step 07 hashing amplification probe
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref == 'refs/heads/perf/optimization-02-step07-identity' &&
+      inputs.synthetic_100000
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      EMRYS_STEP07_HASH_FIXTURE: ${{ runner.temp }}/emrys-step07-hash-fixture
+      STEP07_HASH_RESULTS: ${{ runner.temp }}/emrys-step07-hash-results
+    steps:
+      - name: Check out the triggering commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - name: Set up primary Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: ${{ env.PRIMARY_PYTHON_VERSION }}
+
+      - name: Set up locked uv version
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Restore the locked Python runtime
+        shell: bash
+        run: uv sync --locked --no-dev --python python
+
+      - name: Measure fixed-baseline Step 07 hashing amplification
+        shell: bash
+        run: |
+          set -euo pipefail
+          .venv/bin/python .github/ci/step07_hash_probe.py seed \
+            --root "${EMRYS_STEP07_HASH_FIXTURE}"
+          .venv/bin/python scripts/benchmark_stage_resources.py \
+            --manifest .github/ci/step07_hash_probe.yml \
+            --output "${STEP07_HASH_RESULTS}"
+          .venv/bin/python scripts/benchmark_stage_resources.py \
+            --manifest .github/ci/step07_hash_probe.yml \
+            --output "${STEP07_HASH_RESULTS}" \
+            --execute
+          .venv/bin/python .github/ci/step07_hash_probe.py summarize \
+            --results "${STEP07_HASH_RESULTS}"
+          test -z "$(git status --porcelain=v1 --untracked-files=all)"
+
+      - name: Upload compact Step 07 hash measurements
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: emrys-step07-hash-probe-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/emrys-step07-hash-results/trials.tsv
+            ${{ runner.temp }}/emrys-step07-hash-results/summary.tsv
+            ${{ runner.temp }}/emrys-step07-hash-results/comparison.tsv
+          if-no-files-found: error
+          retention-days: 7
+
   synthetic-e2e:
     name: Real synthetic E2E (selected profiles)
     if: >-
