@@ -273,8 +273,10 @@ rollback_publish() {
             "Step 02 BAM" "$tmp_rg_bam" "$output_bam" || rollback_ok=false
         remove_owned_published_file \
             "Step 02 BAI" "$tmp_rg_bai" "$output_bai" || rollback_ok=false
-        [[ "$rollback_ok" == true ]]
-        return
+        if [[ "$rollback_ok" == true ]]; then
+            return 0
+        fi
+        return 1
     fi
 
     if [[ "$previous_pair_present" == true ]]; then

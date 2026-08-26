@@ -310,8 +310,10 @@ rollback_publish() {
             "Step 06 REV BAI" "$tmp_rev_bai" "$output_rev_bai" || rollback_ok=false
         remove_owned_published_file \
             "Step 06 counts" "$tmp_counts_tsv" "$output_counts_tsv" || rollback_ok=false
-        [[ "$rollback_ok" == true ]]
-        return
+        if [[ "$rollback_ok" == true ]]; then
+            return 0
+        fi
+        return 1
     fi
 
     if [[ "$previous_final_set_present" == true ]]; then
