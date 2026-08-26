@@ -15,10 +15,12 @@ unset BCFTOOLS_BIN_OVERRIDE SLURM_JOB_ID \
     FAKE_BCFTOOLS_FAIL_STAGE FAKE_BCFTOOLS_LOG \
     FAKE_BCFTOOLS_MUTATE_ORIENTATION FAKE_BCFTOOLS_MUTATE_PATH \
     FAKE_BCFTOOLS_SAMPLES FAKE_FAIL_FINAL_VALIDATION FAKE_HEADER_ONLY \
+    FAKE_LN_SWAP_RECEIPT_PATH FAKE_LN_SWAP_TARGET FAKE_SHA256_LOG \
     FAKE_MV_FAIL_FWD_RESTORE FAKE_MV_FAIL_RECEIPT_PUBLICATION FAKE_MV_LOG \
     FAKE_MV_SEND_TERM_AFTER_RECEIPT FAKE_OBSERVE_PUBLISHED_FWD \
     FAKE_OBSERVE_PUBLISHED_RECEIPT FAKE_OBSERVE_PUBLISHED_REV \
-    FAKE_PUBLICATION_OBSERVATION
+    FAKE_PUBLICATION_OBSERVATION REAL_CP REAL_LN REAL_MV \
+    REAL_SHA256_PYTHON
 
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
@@ -67,6 +69,17 @@ assert_file_equals() {
     if ! printf '%s' "$expected" | cmp -s - "$path"; then
         fail "Unexpected bytes in: $path"
     fi
+}
+
+assert_log_line_count() {
+    local expected="$1"
+    local path="$2"
+    local line="$3"
+    local observed
+
+    observed="$(grep -Fxc -- "$line" "$path" || true)"
+    [[ "$observed" == "$expected" ]] ||
+        fail "Expected $expected exact log lines for '$line', got $observed in: $path"
 }
 
 assert_no_owned_step07_paths() {
@@ -203,6 +216,20 @@ esac
 FAKE
 chmod +x "$fake_bcftools"
 
+real_sha256_python="$EMRYS_SHA256_PYTHON"
+sha256_logging_python="$test_root/sha256-logging-python"
+cat >"$sha256_logging_python" <<'FAKE_SHA256_PYTHON'
+#!/usr/bin/env bash
+set -euo pipefail
+
+last_argument=""
+for last_argument in "$@"; do :; done
+[[ -n "$last_argument" ]] || exit 64
+printf '%s\n' "$last_argument" >>"$FAKE_SHA256_LOG"
+exec "$REAL_SHA256_PYTHON" "$@"
+FAKE_SHA256_PYTHON
+chmod +x "$sha256_logging_python"
+
 fake_bin="$test_root/fake-bin"
 mkdir -p "$fake_bin"
 cat >"$fake_bin/module" <<'FAKE_MODULE'
@@ -211,9 +238,29 @@ exit 0
 FAKE_MODULE
 chmod +x "$fake_bin/module"
 
+identity_bin="$test_root/identity-bin"
 transaction_bin="$test_root/transaction-bin"
+real_cp="$(command -v cp)"
+real_ln="$(command -v ln)"
 real_mv="$(command -v mv)"
-mkdir -p "$transaction_bin"
+mkdir -p "$identity_bin" "$transaction_bin"
+cat >"$identity_bin/ln" <<'FAKE_LN'
+#!/usr/bin/env bash
+set -euo pipefail
+
+"$REAL_LN" "$@"
+destination_path=""
+for destination_path in "$@"; do :; done
+if [[ -n "${FAKE_LN_SWAP_RECEIPT_PATH:-}" &&
+      "$destination_path" == "$FAKE_LN_SWAP_RECEIPT_PATH" ]]; then
+    [[ -s "${FAKE_LN_SWAP_TARGET:-}" ]] || exit 65
+    replacement_path="$FAKE_LN_SWAP_TARGET.same-byte-replacement"
+    "$REAL_CP" "$FAKE_LN_SWAP_TARGET" "$replacement_path"
+    "$REAL_MV" "$replacement_path" "$FAKE_LN_SWAP_TARGET"
+fi
+FAKE_LN
+chmod +x "$identity_bin/ln"
+
 cat >"$transaction_bin/mv" <<'FAKE_MV'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -291,6 +338,8 @@ assert_contains "$test_root/dry-run.out" "validate partitioned-cohort-mpileup"
 assert_contains "$test_root/dry-run.out" "--fwd-vcf"
 assert_contains "$test_root/dry-run.out" "Semantic all-pass gate:"
 assert_contains "$test_root/dry-run.out" "validate all-pass"
+assert_contains "$test_root/dry-run.out" \
+    "Under --no-clobber, carry temporary VCF validation through exact staging/final inode identity instead of reparsing final paths"
 assert_contains "$test_root/dry-run.out" "Dry-run complete; no directories or files were created."
 assert_not_exists "$fixture/output"
 assert_not_exists "$test_root/dry-run.log"
@@ -414,6 +463,106 @@ FAKE_HEADER_ONLY=1 FAKE_BCFTOOLS_SAMPLES="sample_A,sample_B" \
 header_receipt="$header_fixture/output/cohort_empty/1/cohort_empty.1.step07_outputs.tsv"
 [[ "$(awk -F '\t' 'NR > 1 { total += $10 } END { print total + 0 }' "$header_receipt")" == "0" ]] ||
     fail "Header-only VCF receipt should record zero records"
+
+fastpath_fixture="$test_root/no-clobber-fastpath"
+cp -R "$fixture" "$fastpath_fixture"
+rm -rf "$fastpath_fixture/output"
+fastpath_token="fastpath001"
+fastpath_bcftools_log="$test_root/no-clobber-fastpath-bcftools.log"
+fastpath_sha256_log="$test_root/no-clobber-fastpath-sha256.log"
+fastpath_args=(
+    --cohort-id cohort_fastpath
+    --sample-manifest "$fastpath_fixture/samples.tsv"
+    --partition-manifest "$fastpath_fixture/partitions.tsv"
+    --partition-id 1
+    --orientation-root "$fastpath_fixture/orientation"
+    --reference-fasta "$fastpath_fixture/reference.fa"
+    --output-root "$fastpath_fixture/output"
+    --bcftools-bin "$fake_bcftools"
+)
+EMRYS_RUN_TOKEN="$fastpath_token" \
+FAKE_BCFTOOLS_LOG="$fastpath_bcftools_log" \
+FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
+FAKE_SHA256_LOG="$fastpath_sha256_log" \
+REAL_SHA256_PYTHON="$real_sha256_python" \
+EMRYS_SHA256_PYTHON="$sha256_logging_python" \
+    bash "$script" "${fastpath_args[@]}" --no-clobber --execute >/dev/null
+fastpath_dir="$fastpath_fixture/output/cohort_fastpath/1"
+fastpath_final_fwd="$fastpath_dir/cohort_fastpath.1.FWD_like.mpileup.vcf"
+fastpath_final_rev="$fastpath_dir/cohort_fastpath.1.REV_like.mpileup.vcf"
+fastpath_tmp_fwd="$fastpath_dir/.cohort_fastpath.1.step07.$fastpath_token.FWD_like.tmp.vcf"
+fastpath_tmp_rev="$fastpath_dir/.cohort_fastpath.1.step07.$fastpath_token.REV_like.tmp.vcf"
+for vcf_path in "$fastpath_tmp_fwd" "$fastpath_tmp_rev"; do
+    assert_log_line_count 1 "$fastpath_bcftools_log" "view -h $vcf_path "
+    assert_log_line_count 1 "$fastpath_bcftools_log" "query -l $vcf_path "
+    assert_log_line_count 1 "$fastpath_bcftools_log" "view -H $vcf_path "
+done
+for vcf_path in "$fastpath_final_fwd" "$fastpath_final_rev"; do
+    assert_log_line_count 0 "$fastpath_bcftools_log" "view -h $vcf_path "
+    assert_log_line_count 0 "$fastpath_bcftools_log" "query -l $vcf_path "
+    assert_log_line_count 0 "$fastpath_bcftools_log" "view -H $vcf_path "
+done
+for sample in sample_A sample_B; do
+    for orientation in FWD_like REV_like; do
+        fastpath_bam="$fastpath_fixture/orientation/$sample/$sample.$orientation.bam"
+        assert_log_line_count 2 "$fastpath_sha256_log" "$fastpath_bam"
+        assert_log_line_count 2 "$fastpath_sha256_log" "$fastpath_bam.bai"
+    done
+done
+assert_exists "$fastpath_final_fwd"
+assert_exists "$fastpath_final_rev"
+assert_exists "$fastpath_dir/cohort_fastpath.1.step07_outputs.tsv"
+assert_not_exists "$fastpath_dir/.cohort_fastpath.1.step07.lock"
+
+identity_fixture="$test_root/no-clobber-final-identity"
+cp -R "$fixture" "$identity_fixture"
+rm -rf "$identity_fixture/output"
+identity_token="identity001"
+identity_args=(
+    --cohort-id cohort_identity
+    --sample-manifest "$identity_fixture/samples.tsv"
+    --partition-manifest "$identity_fixture/partitions.tsv"
+    --partition-id 1
+    --orientation-root "$identity_fixture/orientation"
+    --reference-fasta "$identity_fixture/reference.fa"
+    --output-root "$identity_fixture/output"
+    --bcftools-bin "$fake_bcftools"
+)
+identity_dir="$identity_fixture/output/cohort_identity/1"
+identity_fwd="$identity_dir/cohort_identity.1.FWD_like.mpileup.vcf"
+identity_rev="$identity_dir/cohort_identity.1.REV_like.mpileup.vcf"
+identity_receipt="$identity_dir/cohort_identity.1.step07_outputs.tsv"
+identity_tmp_fwd="$identity_dir/.cohort_identity.1.step07.$identity_token.FWD_like.tmp.vcf"
+identity_tmp_rev="$identity_dir/.cohort_identity.1.step07.$identity_token.REV_like.tmp.vcf"
+identity_tmp_receipt="$identity_dir/.cohort_identity.1.step07.$identity_token.outputs.tmp.tsv"
+identity_lock="$identity_dir/.cohort_identity.1.step07.lock"
+run_expect_status 1 "$test_root/no-clobber-final-identity.out" \
+    "$test_root/no-clobber-final-identity.err" \
+    env PATH="$identity_bin:$PATH" \
+    EMRYS_RUN_TOKEN="$identity_token" \
+    FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
+    FAKE_LN_SWAP_RECEIPT_PATH="$identity_receipt" \
+    FAKE_LN_SWAP_TARGET="$identity_fwd" \
+    REAL_CP="$real_cp" \
+    REAL_LN="$real_ln" \
+    REAL_MV="$real_mv" \
+    bash "$script" "${identity_args[@]}" --no-clobber --execute
+assert_contains "$test_root/no-clobber-final-identity.err" \
+    "Step 07 FWD VCF final no longer matches its owned staging anchor: $identity_fwd"
+assert_contains "$test_root/no-clobber-final-identity.err" \
+    "Step 07 rollback was incomplete; retaining the owned lock and backups for operator recovery: $identity_lock"
+assert_exists "$identity_fwd"
+assert_exists "$identity_tmp_fwd"
+assert_exists "$identity_tmp_rev"
+assert_exists "$identity_tmp_receipt"
+[[ -d "$identity_lock" ]] || fail "Final-identity failure did not retain its owned lock"
+assert_exists "$identity_lock/owner"
+cmp -s "$identity_fwd" "$identity_tmp_fwd" ||
+    fail "Same-byte foreign FWD replacement changed VCF contents"
+[[ ! "$identity_fwd" -ef "$identity_tmp_fwd" ]] ||
+    fail "Same-byte foreign FWD replacement retained the staging inode"
+assert_not_exists "$identity_rev"
+assert_not_exists "$identity_receipt"
 
 regions_fixture="$test_root/regions"
 cp -R "$fixture" "$regions_fixture"
