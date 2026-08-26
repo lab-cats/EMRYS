@@ -62,13 +62,14 @@ wall/CPU results are not cold-I/O or shared-filesystem evidence.
 Manual workflow dispatch may narrow that retained comparison with the optional
 comma-delimited `retained_benchmark_cases` input. It is a filter rather than a
 lane, requires the `synthetic_100000` lane, and accepts these exact names:
-`alignment-signatures-mib`, `step02-canonical-bam`,
-`step06-mechanical-orientation`, `step07-partitions`, `step08-reread`,
-`step08-skew`, and `step08-uniform`. A blank input and every scheduled run use
-`--suite all`. A nonblank input becomes one repeated `--case` argument per
-unchanged comma-delimited segment. Empty, whitespace-padded, unknown, and
-duplicate segments therefore remain visible to the CLI and fail closed rather
-than being normalized silently.
+`alignment-signatures-mib`, `reference-contig-membership`,
+`step02-canonical-bam`, `step04-duplicate-marking`,
+`step06-mechanical-orientation`, `step07-partitions`,
+`step08-reread`, `step08-skew`, and `step08-uniform`. A blank input and every
+scheduled run use `--suite all`. A nonblank input becomes one repeated `--case`
+argument per unchanged comma-delimited segment. Empty, whitespace-padded,
+unknown, and duplicate segments therefore remain visible to the CLI and fail
+closed rather than being normalized silently.
 
 In CI the benchmark output is retained beneath
 `100000/retained-stage-benchmark` in the existing 100,000-pair evidence
