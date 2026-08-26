@@ -130,6 +130,16 @@ the scientist-facing synthetic golden path alone is insufficient. This is the
 binding [`AC-GUARD-005`](decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails)
 replacement policy.
 
+A **protection** is an executable or static defense such as a test, validator,
+fixture, or oracle. **Evidence** is a retained record or artifact that supports
+or bounds a claim, reproduction, or recovery. A test definition is not evidence
+merely because it can produce a result; a retained result may be. Fixtures,
+goldens, and oracles can be both, so both policies apply. An existing surviving
+defense may satisfy the `AC-GUARD-005` mapping when it provides equal-or-stronger
+coverage; replacement does not require one new test per removed mechanism.
+Deleting retained evidence is a separate decision requiring exact explicit
+user approval under [`AC-GUARD-008`](decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails).
+
 ## Python entry points
 
 Current executable behavior belongs to its implementation, colocated contract,

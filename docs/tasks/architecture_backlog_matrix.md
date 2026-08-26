@@ -66,7 +66,7 @@ implementation order, dependencies, or approval.
 |---|---|---:|---:|---|---|---|
 | `AC-SLICE-01` | Foundations | `5` | `3` | Ratified an architectural-invariants constitution against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open | Original provisional ranking retained for traceability |
 | `AC-SLICE-02` | Foundations | `5` | `3` | Ratified responsibility clusters, three graph semantics, forbidden authority transfers, and fast source-boundary enforcement over exact current CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open | Original provisional ranking retained for traceability |
-| `AC-SLICE-03` | Public model | `5` | `4` | Select and introduce the minimum application model for user intent, immutable effective realization, and attempts without behavior change; public nouns remain a decision outcome | New slice or expansion of `CONTROL-01` | Separate vocabulary/contract, any facade introduction, and caller migration before promotion |
+| `AC-SLICE-03` | Public model | `5` | `4` | Audit current representations, owners, callers, lifetimes, mutation, identity construction, protections, retained evidence, and compression opportunities before selecting any application model; only the binding meaning of Run as an immutable plan is settled | New slice or expansion of `CONTROL-01` | Public nouns and nesting, cardinalities, identity composition, Attempt/Result relationships, APIs, persistence, and migration remain open until after audit review and a separate user-approved decision |
 | `AC-SLICE-04` | Scientific boundary | `3` | `4` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` | Paper-map diverse owners before selecting a denominator; generalize only after a second owner maps without distortion |
 | `AC-SLICE-05` | Execution | `4` | `5` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across supported local and SLURM backends | New slice; enriches `OPS-02` | Cross-execution integration and parity proof drive the estimate; one API is not preselected |
 | `AC-SLICE-06` | Policy ownership | `3` | `3` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` | Inventory first; centralization is conditional and individual migrations may range from `2` to `5` |
@@ -77,10 +77,10 @@ implementation order, dependencies, or approval.
 | `AC-SLICE-11` | Results | `3` | `5` | Define a portable canonical Run Bundle contract | New slice; coordinates with `FILESYSTEM-01` and `RESULTS-01` | Separate the bundle contract from portability, archival, and external-artifact realization |
 | `AC-SLICE-12` | Results | `4` | `3` | Formalize scientific, evidence, and operational report purposes and navigation | New slice or expansion of `REPORT-03` and `RESULTS-01` | — |
 | `AC-SLICE-13` | Golden path | `5` | `5` | Deliver a supported fresh-install-to-valid-synthetic-result golden path after ratifying its capability order | New cross-cutting outcome; coordinates with setup, runtime, Doctor, run, results, and `CLEAN-01` | Capstone acceptance outcome, not an atomic implementation package |
-| `AC-SLICE-14` | Measurement | `3` | `2` | Capture UX/architecture baselines and ratify campaign success measures | New slice; coordinates with `REVIEW-UX-03` and `ARCH-01` | Primarily read-only baseline work |
+| `AC-SLICE-14` | Measurement | `3` | `2` | Establish reproducible UX and architecture baselines plus separately interpreted product-implementation, protection/test, configuration/documentation, and retained-evidence baselines | New slice; coordinates with `REVIEW-UX-03` and `ARCH-01` | Establishes aggregate methods; mandatory category-separated accounting begins with every slice now and is not deferred to this card |
 | `AC-SLICE-15` | Scientific companion | `1` | `4` | Audit the Steps 07–09 statistical contract | New scientific-review slice; not architecture evidence | Parallel scientific-review work |
 | `AC-SLICE-16` | Scientific companion | `1` | `4` | Build independent numerical oracles for Steps 08 and 09 | New scientific-validation slice | Parallel scientific-validation work |
-| `AC-SLICE-17` | Retirement | `3` | `5` | Retire duplicated lifecycle, validator, infrastructure, adapter, or compatibility paths after each replacement is proven | Multiple bounded deletion slices; never one unbounded cleanup task | Create one retirement task per proven replacement |
+| `AC-SLICE-17` | Retirement | `3` | `5` | Retire duplicated lifecycle, validator, infrastructure, adapter, or compatibility paths after each replacement is proven; retained evidence may be deleted only after an exact scoped proposal and the user's explicit approval | Multiple bounded deletion slices; never one unbounded cleanup task | Create one retirement task per proven replacement; isolate any approved evidence deletion in its own commit and never use it to offset product growth |
 | `AC-SLICE-18` | Documentation | `4` | `3` | Rewrite navigation and documentation around scientist/operator/developer journeys | Expansion or slicing of `DOC-01`; uses the accepted `DOC-02`/`DOC-03` traces and coordinates with `DOC-04`–`DOC-05` retirements | Scope follows the settled role journeys |
 | `AC-SLICE-19` | Doctor | `4` | `5` | Define Doctor repair ownership, supported mutations, preview/reporting, and safety contracts | Expansion of `DOCTOR-01` reflecting the explicit override | Separate the repair constitution from each supported repair action |
 
@@ -99,7 +99,15 @@ about their scientific importance.
   decline remains a later explicit decision.
 - A card should be promoted only after a read-only owner/caller review defines
   one observable outcome, non-goals, preserved invariants, open decisions,
-  acceptance evidence, and an honest evidence ceiling.
+  acceptance evidence, and an honest evidence ceiling; records its compression
+  opportunities and proposed dispositions; classifies affected protections and
+  retained evidence; and identifies every mutable exception and temporary
+  compatibility path with its owner and retirement condition.
+- Use the campaign's canonical
+  [per-slice compression and mutation protocol](architecture_campaign.md#131-mandatory-per-slice-compression-and-mutation-protocol)
+  for the register and category-separated closeout. Promotion never implies
+  authority to delete retained evidence; that requires an exact proposal,
+  explicit user approval, and a separate commit.
 - One provisional working method is to revisit ranking just in time rather
   than require complete campaign sequencing up front. This does not resolve
   the campaign's open capability order or any individual task sequence.

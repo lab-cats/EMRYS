@@ -151,9 +151,13 @@ must manually assemble into a miniature workflow operating system.
 | Low-level operational configuration | Place behind profiles and explicit advanced interfaces |
 | Internal state machine | Retain internally; expose a smaller run-state vocabulary |
 
-The success measure is not necessarily fewer lines or files. It is fewer
-independent places where the same guarantee can be implemented differently,
-and fewer internal concepts required before a user can obtain a valid result.
+Lines and files are not sufficient measures by themselves: moving the same
+responsibility into a larger module, generated source, configuration, or an
+unowned wrapper is not simplification. The primary measures are fewer
+independent authorities, public concepts, call edges, and compatibility paths.
+Within each implementation slice, however, net-negative maintained product
+code and no product-file growth are binding defaults unless the user approves a
+quantified exception.
 
 ## 3. Binding campaign requirements
 
@@ -187,6 +191,30 @@ campaign:
    default; any repair must be separately invoked, bounded, disclosed,
    provenance-aware where applicable, and unable to silently invent biology,
    secrets, or mutate declared scientific inputs.
+8. **Maintenance-surface compression.** Every architecture audit must record
+   concrete opportunities to retain, consolidate, retire, or defer product
+   logic, wrappers and compatibility paths, configuration, scripts, schemas,
+   documentation, protections, and evidence. Each implementation slice must
+   make the smallest complete vertical change, migrate callers, and retire the
+   responsibility it supersedes. Net-negative maintained product code and no
+   product-file growth are the defaults; an exception requires the user's
+   approval of quantified growth and its justification, plus an owner and
+   retirement condition when the growth is temporary.
+9. **Immutability by default; Run is the immutable plan.** Boundary values are
+   immutable unless an owning contract justifies a narrow mutable lifecycle.
+   Any architecture concept named `Run` denotes the immutable plan and is never
+   modified in place. A changed plan requires a new plan rather than mutation
+   of the existing Run. Public nouns, nesting, identity inputs, cardinalities,
+   Attempt/Result relationships, APIs, backends, policies, persistence, and
+   storage remain unresolved until after audit review and a separate approved
+   decision.
+10. **Evidence deletion requires explicit approval.** An audit may identify
+    redundant evidence and propose its deletion, but no retained evidence is
+    deleted without the user's separate explicit approval of the exact
+    artifact or bounded class. The proposal must state the supported claims,
+    producers and consumers, redundancy basis, retention and recovery effect,
+    evidence-level effect, and rollback. Approved evidence deletion is isolated
+    in its own commit and never offsets product-code growth.
 
 `ARCH-CONST-01` also ratified five binding campaign guardrails in the
 [architectural invariant constitution](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails):
@@ -201,6 +229,13 @@ campaign:
   retirement condition; and
 - direct-owner, adversarial, seeded-fault, and synthetic end-to-end defenses
   require mapped equal-or-stronger replacement at the same evidence level.
+
+On **2026-08-26**, the user ratified three additional campaign guardrails for
+maintenance-surface compression, immutable-by-default design with `Run` as the
+immutable plan, and approval-gated evidence deletion. These extend rather
+than rewrite the historical five-guardrail `ARCH-CONST-01` result. Their
+canonical definitions are `AC-GUARD-006` through `AC-GUARD-008` in the same
+platform-direction decision.
 
 ## 4. Invariant constitution and source trace
 
@@ -307,8 +342,12 @@ and the even smaller:
 Project / Analysis -> Run -> Result
 ```
 
-The binding outcome is a small vocabulary. Whether `Project` and `Analysis`
-are distinct public identities, aliases, or nested concepts is open.
+The binding outcome is a small vocabulary. The method notation above is intake
+traceability, not an authorization for a mutable Run aggregate or a selected
+application API. `Run` is now reserved for the immutable plan. Whether it is a
+public type, how it is constructed or persisted, where it nests, and whether
+`Project` and `Analysis` are distinct identities, aliases, or nested concepts
+remain open pending the application-model audit and discussion.
 
 ### 5.2 Proposed public commands
 
@@ -500,10 +539,11 @@ the original five-band proposal remains a useful responsibility view:
 ```
 
 The labels are not packages, classes, services, or a one-to-one owner roster.
-The `Project / Run` and `Stage` nouns remain proposals. Reporting is downstream
-operational work rather than a semantic scientific stage. OS, R, Python,
-SLURM, Snakemake, and filesystems are external mechanisms reached through
-EMRYS-owned boundaries, not an internal authority layer.
+`Project`, `Stage`, and whether `Run` is public remain proposals; `Run` itself
+is reserved for the immutable plan. Reporting is downstream operational work
+rather than a semantic scientific stage. OS, R, Python, SLURM, Snakemake, and
+filesystems are external mechanisms reached through EMRYS-owned boundaries,
+not an internal authority layer.
 
 The binding dependency rule is:
 
@@ -514,8 +554,9 @@ Consequences include:
 
 - scientific stages do not implement scheduler, runtime, storage, or
   transaction behavior;
-- reporting does not publish upstream artifacts or mutate upstream run state;
-  it may publish its own derived report transaction;
+- reporting does not publish upstream artifacts or mutate upstream scientific,
+  artifact, execution, or attempt state; it may publish its own derived report
+  transaction;
 - validators do not implement runtime discovery;
 - CLI code does not implement scientific semantics;
 - stages do not independently reinvent provenance or evidence;
@@ -535,38 +576,47 @@ One source summarized the desired internal conceptual consolidation as:
 Domain -> Stage -> Run
 ```
 
-Here, Domain is visible scientific logic; Stage is a possible thin operational
-boundary; and Run is possible global coordination. Inventory must establish
-the mapping. `AC-SLICE-02` did not select those nouns, a Stage interface, or a
-Run aggregate.
+Here, Domain is visible scientific logic and Stage is a possible thin
+operational boundary. The source used Run for possible global coordination,
+but the later binding decision reserves `Run` for the immutable plan rather
+than a mutable coordinator. Inventory must establish the actual mapping.
+`AC-SLICE-02` did not select the remaining nouns, a Stage interface, or an
+application API.
 
 ## 8. Proposed abstractions and guardrails
 
 ### 8.1 Project and Run application boundaries
 
-**Partially resolved:** the architecture distinguishes evolvable user intent,
-an immutable inspectable effective realization, and one or more operational
-attempts. It must permit multiple analyses over compatible upstream artifacts.
-Application coordination may admit intent, resolve a plan, invoke lower
-capabilities, and assemble outcomes, but it cannot absorb scientific,
-execution, policy, artifact, evidence, or reporting authority.
+**Partially resolved:** the architecture distinguishes evolvable user intent
+from an immutable inspectable plan and from operational attempt state when
+present. The immutable plan is the `Run`; it is never modified in place, and a
+changed plan requires a new plan. The exact identity and cardinality
+consequences remain open. The model must permit multiple analyses over
+compatible upstream artifacts. Application coordination may admit intent,
+resolve a Run, invoke lower capabilities, and assemble outcomes, but it cannot
+absorb scientific, execution, policy, artifact, evidence, or reporting
+authority.
 
 Lower capabilities receive explicit immutable supported information rather
 than importing a broad higher-level aggregate or independently reconstructing
-competing identity. Whether the public nouns are Project, Analysis, Run, or a
-different hierarchy—and whether the representation is an object, record,
-service, facade, or functions—remains `AC-SLICE-03` and `AC-DEC-001`.
+competing identity. Draft construction, attempt-local execution state, locks,
+logs, and transactional publication may mutate only inside an explicit owner
+and cannot alter or reconstruct the Run. Whether `Run` is public, how Project,
+Analysis, Attempt, Result, and artifacts are named or nested, and whether any
+representation is an object, record, service, facade, or functions remain
+`AC-SLICE-03` and `AC-DEC-001` audit and discussion outcomes.
 
-The same slice must still decide whether consumers receive one narrow shared
-context or multiple owner-specific capability views; the exact operations,
-arguments, return types, error model, and synchronous/asynchronous behavior;
-and the boundary among science-affecting values, execution values, run
-identity, and attempt identity. Analysis, run, attempt, artifact, and report
-identity inputs remain open, including whether runtime, executor, resource, or
-report choices affect a run identity. User-authored schemas, package/import
-surfaces, CLI mapping, compatibility windows, migration order, and any
-persisted relationship between default reporting and Run lifecycle also remain
-unsettled.
+The same slice must inventory, but not prematurely decide, whether consumers
+receive one narrow shared context or multiple owner-specific capability views;
+the exact operations, arguments, return types, error model, and
+synchronous/asynchronous behavior; and the boundary among science-affecting
+values, execution values, Run identity, and attempt identity. Analysis, Run,
+attempt, artifact, and report identity inputs remain open, including whether
+runtime, executor, resource, or report choices affect identity. User-authored
+schemas, package/import surfaces, CLI mapping, compatibility windows, migration
+order, persistence, storage, and any relationship between default reporting
+and the lifecycle surrounding Run also remain unsettled until the audit is
+reviewed and the user separately approves decisions.
 
 ### 8.2 Thin Stage boundary
 
@@ -715,9 +765,10 @@ the constitution.
 Two sources also place a named **Artifact Store** between stages and reports.
 That is a proposed boundary, not a selected service or directory. It could be a
 logical API, a manifest-backed view, the owner of the canonical artifact
-lifecycle, or a physical collection. Its relationship to Run coordination, the
-Run Bundle, filesystem layout, external or large artifacts, scientist-facing
-results, and reporting remains open. A source-proposed constraint is that it not
+lifecycle, or a physical collection. Its relationship to application
+coordination around Run, the Run Bundle, filesystem layout, external or large
+artifacts, scientist-facing results, and reporting remains open. A
+source-proposed constraint is that it not
 become a second artifact authority beside an accepted lifecycle owner;
 `AC-DEC-025` preserves the boundary choice and must apply binding
 `AC-INV-011` rather than reopening the one-authority requirement.
@@ -734,11 +785,21 @@ The binding constitution now requires operational mechanics to remain
 encapsulatable while review-relevant science stays visible; one final authority
 per artifact class or guarantee without a god object; bounded migration with
 caller migration, parity, owned temporary compatibility, and eventual
-retirement; and mapped equal-or-stronger replacement before direct-owner,
-adversarial, seeded-fault, or synthetic end-to-end defenses are removed.
-Evidence levels remain distinct, so neither coverage nor a scientist-facing
-synthetic golden path proves scheduler, production, scientific-review, or
-biological readiness.
+retirement; and mapped equal-or-stronger protection before direct-owner,
+adversarial, seeded-fault, or synthetic end-to-end defenses are removed. The
+replacement defense may already survive elsewhere; removing redundancy does
+not require creating a duplicate test. Evidence levels remain distinct, so
+neither coverage nor a scientist-facing synthetic golden path proves scheduler,
+production, scientific-review, or biological readiness.
+
+The later `AC-GUARD-006` through `AC-GUARD-008` additions also make
+maintenance-surface compression and immutable-by-default boundaries binding,
+reserve `Run` for the immutable plan, and require explicit user approval before
+retained evidence is deleted. A protection is an executable or static defense
+such as a test, validator, CI check, fixture, or oracle. Evidence is a retained
+record or artifact that supports or bounds a claim, reproduction, or recovery.
+A fixture, golden, or oracle may be both; in that case both the protection and
+evidence guardrails apply.
 
 Exact facade use, package order, layer APIs, the lightweight
 collaborator-module extension mechanism, and integration with supported
@@ -970,12 +1031,12 @@ identity/validity of completed science. A report failure remains visible but
 does not invalidate admitted upstream work.
 
 Whether reports are immutable artifacts, derived views, or both remains open,
-as do exact persisted Run/report states, retry/resume and exit presentation,
-canonical location, and whether multiple audience views share one receipt-last
-publication transaction or use profile-specific receipts. `AC-DEC-014` now
-preserves only those residual choices rather than reopening reporting's
-downstream classification, default invocation, opt-out, or regeneration
-semantics.
+as do the exact persisted association between Run and report or execution
+state, retry/resume and exit presentation, canonical location, and whether
+multiple audience views share one receipt-last publication transaction or use
+profile-specific receipts. `AC-DEC-014` now preserves only those residual
+choices rather than reopening reporting's downstream classification, default
+invocation, opt-out, or regeneration semantics.
 
 ## 12. Scientific modularity and audit boundary
 
@@ -1045,7 +1106,70 @@ and every old path has the disposition required by its retirement condition.
 fixtures, and removal evidence. `AC-DEC-020` owns work order and just-in-time
 facade sequencing; neither reopens the binding eventual-retirement rule.
 
-### 13.1 Nonbinding sequencing proposals from the sources
+### 13.1 Mandatory per-slice compression and mutation protocol
+
+This is the canonical protocol for every architecture audit, decision slice,
+and implementation slice. Other governance documents point here rather than
+creating competing templates.
+
+Before design selection, the slice records a compression register with one row
+for every concrete retention, consolidation, retirement, or deferral
+opportunity it finds. Each row records:
+
+- surface and category: maintained product code, wrapper/compatibility path,
+  configuration/script/schema/documentation, protection, or evidence;
+- current owner, callers, and consumers;
+- the unique responsibility, invariant, claim, recovery need, or reader need;
+- the evidence for redundancy;
+- proposed disposition: retain, consolidate, retire, or defer;
+- the surviving authority;
+- estimated and then actual change in files, lines, public concepts,
+  configuration artifacts, call edges, and compatibility paths; and
+- preconditions, including caller migration, parity, evidence review,
+  retirement condition, and any explicit approval required.
+
+The same audit inventories mutable state, its owner, lifetime, readers and
+writers, why mutation is necessary, and whether it can become an immutable
+boundary value. Draft construction and tightly owned attempt, lock, log, or
+transaction state may remain mutable when justified. A Run is never mutable. The
+audit records facts and options; it does not settle nouns, nesting, APIs,
+backends, policies, persistence, or other application-model choices beyond the
+binding Run decision.
+
+An implementation slice closes only when it:
+
+1. makes the smallest complete vertical change and migrates the selected
+   callers;
+2. removes the superseded responsibility once parity and its retirement
+   condition are satisfied;
+3. is net-negative in maintained product code and adds no maintained product
+   file by default, or stops for user approval of quantified growth and its
+   justification, plus an owner and retirement condition when temporary;
+4. reports before/after changes separately for product implementation,
+   protections/tests, configuration/documentation, retained evidence, public
+   concepts, and compatibility paths; and
+5. reports every remaining mutable exception and its owner and justification.
+
+No category offsets another. Deleting tests, documentation, configuration, or
+evidence cannot make product growth appear net-negative. Generated files,
+runtime environments, vendored bulk, and moving logic into configuration do
+not count as maintained-source reduction. File and line counts are secondary
+signals: a god module, denser code, hidden generated logic, weakened protection,
+or an extra facade beside the old authority fails the compression requirement
+even if counts decline. Temporary growth remains growth until its owner,
+retirement condition, and removal are recorded.
+
+Protection retirement follows `AC-GUARD-005`: the slice maps the invariant and
+shows the equal-or-stronger defense that survives, which need not be newly
+created. Evidence retirement follows a separate gate. The proposal must name
+the exact artifacts or bounded class; claims and recovery paths supported;
+producers and consumers; retention requirement; redundancy basis;
+discoverability, verification, and evidence-level effects; and rollback. The
+user must explicitly approve that exact deletion, which is then isolated in a
+separate commit. Ambiguous fixtures, goldens, oracles, receipts, logs, reports,
+and dated records are treated as evidence until classified otherwise.
+
+### 13.2 Nonbinding sequencing proposals from the sources
 
 The sources suggested several useful but different sequences. None is adopted
 by this document.
@@ -1054,7 +1178,7 @@ by this document.
 |---|---|
 | UX-first seven phases | UX wrapper; unified scientific configuration; runtime abstraction; Stage abstraction; simplified identities; Steps 08/09 numerical validation; role-based documentation |
 | Facade-first six phases | Freeze invariants; introduce Project/Run/Artifact/Execution/Report facades; move CLI; consolidate implementations; mark internals as operator/developer APIs; measure |
-| Detailed nine phases | Inventory; domain objects; policy consolidation; execution abstraction; Run coordination; high-level CLI; profiles; deletion; journey-first documentation |
+| Detailed nine phases | Inventory; domain objects; policy consolidation; execution abstraction; source-proposed “Run coordination” (now constrained to application coordination around immutable Run); high-level CLI; profiles; deletion; journey-first documentation |
 
 The expanded source also proposed this P0–P3 order:
 
@@ -1070,7 +1194,7 @@ The expanded source also proposed this P0–P3 order:
 These labels record source recommendations only. Actual ordering will follow
 task slicing, evidence review, and the later importance/complexity scoring pass.
 
-### 13.2 Accepted LOG-05 sequencing boundary
+### 13.3 Accepted LOG-05 sequencing boundary
 
 **Binding:** `LOG-05` planning and guard work may precede production adoption.
 Wiring proceeds operation by operation through separately approved bounded
@@ -1087,7 +1211,10 @@ not settle any other campaign ordering or interface decision.
 ## 14. Measurement plan
 
 Measurement is required so the campaign does not merely move complexity.
-Baselines should be captured before targets are ratified.
+The per-slice register and closeout in Section 13.1 apply immediately;
+`AC-SLICE-14` does not defer or own that accounting. Its separate purpose is to
+establish reproducible campaign-wide baselines and interpretation methods
+before aggregate targets are ratified.
 
 ### 14.1 New-user measures
 
@@ -1112,9 +1239,19 @@ Baselines should be captured before targets are ratified.
 - Number of execution implementations and direct scheduler callers
 - Number of duplicated validators or policy decisions
 - Number of modules directly implementing publication or storage semantics
-- Number of modules that understand internal Run state
+- Number of modules that understand mutable execution or attempt state
 - Number of compatibility/migration paths after their supported window
-- Net maintained surface and call-edge change for each consolidation package
+- Maintained product files and lines, public concepts, call edges, and
+  compatibility paths
+- Protection files and lines, mapped invariants, and surviving defense routes
+- Configuration, script, schema, and documentation files and lines
+- Retained evidence artifacts, classes, claims, and retention owners
+
+These categories are measured and interpreted independently. Counts do not
+prove simplicity or safety, and one category cannot offset growth in another.
+The baseline must explain inclusions, exclusions, generated/runtime material,
+and how a reviewed source-coverage baseline is rebased after source retirement
+without hiding its absolute numerator, denominator, or surviving routes.
 
 The source suggested **under 30 minutes** for a supported local synthetic run
 and **under one hour** in a prepared HPC environment. These are useful candidate
@@ -1131,7 +1268,7 @@ Sections 7, 8, and 11.3.
 
 | Decision ID | Open question | Retained options or concerns |
 |---|---|---|
-| `AC-DEC-001` | What is the canonical public identity vocabulary? | Project, Analysis, or both; Run and Result nesting. Three semantic lifetimes, non-one-to-one analysis/attempt cardinality, and no competing identity reconstruction are already binding. |
+| `AC-DEC-001` | What is the canonical public identity vocabulary and nesting around Run? | `Run` is already reserved for the immutable plan. Whether it is public and how Project, Analysis, Attempt, Result, and artifacts are named, exposed, and nested remain post-audit decisions; current `run_id` and run-root terminology are not thereby reinterpreted. |
 | `AC-DEC-002` | Which names form the stable public CLI? | setup/init, validate/check/doctor, status/resume, config, inspect/explain/debug |
 | `AC-DEC-003` | How are Doctor diagnosis and repair divided? | default read-only diagnosis plus explicit `--fix`, dedicated repair command, or setup-owned mutations; repair provenance and safety |
 | `AC-DEC-004` | What is the user-authored scientific schema? | project.yaml versus analysis.yaml; embedded samples versus TSV; configuration evolution |
@@ -1141,16 +1278,16 @@ Sections 7, 8, and 11.3.
 | `AC-DEC-008` | What is the minimum useful operation/Stage representation? | Name, methods, lifecycle states, typed contracts, granularity, discovery, and migration. The boundary is already constrained to remain thin, preserve functional/scientific ownership, and avoid a generic framework. |
 | `AC-DEC-009` | Which repeated policy decisions deserve shared authorities? | Inventory input, validation, runtime, storage, publication, resource, and execution decisions; decide final authorities, package/service placement, configuration inputs, return/error contracts, defaults, safe overrides, precedence, compatibility, consolidation order, and migration. Every decision already requires one authority, but shared centralization must prove net reduction and avoid empty wrappers. |
 | `AC-DEC-010` | What artifact-lifecycle vocabulary and owner shape are justified? | Candidate, validation, admission, publication, commit, immutability, evidence, and rollback; generalized versus class-specific ownership; APIs, schemas, manifests, receipts, immutability mechanisms, external/large artifacts, Run Bundle/report-derived relationships, cleanup, recovery, and representative migration. Lifecycle/admission is already distinct from physical storage. |
-| `AC-DEC-011` | What concrete model belongs in application/Run coordination? | Exact identity/configuration/execution/status/artifact/evidence/report views and API. Coordination may compose capabilities but cannot absorb their authorities or become a god object. |
+| `AC-DEC-011` | What concrete application model surrounds the immutable Run plan? | Exact identities, cardinalities, capability views, APIs, persistence, storage, migration, and configuration/execution/status/artifact/evidence/report relationships remain post-audit. Coordination may compose capabilities but cannot mutate Run, reconstruct its plan, absorb lower authorities, or become a god object. |
 | `AC-DEC-012` | What public run and reporting states are useful and truthful? | Pending/running/complete/failed/recoverable and representation of partial or blocked states. Scientific and reporting outcomes must remain distinguishable. |
 | `AC-DEC-013` | What is the Run Bundle contract? | Layout, portability, large artifacts, external references, redaction, archival, regeneration, sharing |
-| `AC-DEC-014` | How are the ratified downstream-reporting semantics represented? | Exact opt-out/regeneration interfaces, persisted Run/report states, retry/resume and exit presentation, scientific/evidence/operations commands or views, one shared receipt-last transaction versus profile-specific receipts, immutable artifacts versus derived views, and canonical location. Reporting is already downstream, invoked by default for a full run, able to be disabled, and independently regenerable without invalidating science. |
+| `AC-DEC-014` | How are the ratified downstream-reporting semantics represented? | Exact opt-out/regeneration interfaces, persisted associations between Run and report or execution state, retry/resume and exit presentation, scientific/evidence/operations commands or views, one shared receipt-last transaction versus profile-specific receipts, immutable artifacts versus derived views, and canonical location. Reporting is already downstream, invoked by default for a full run, able to be disabled, and independently regenerable without invalidating science. |
 | `AC-DEC-015` | What replaces the current “demo” surface? | Neutral synthetic golden path; whether “demo” remains a command, test-only term, or is retired completely |
 | `AC-DEC-016` | Which filesystem concepts are public? | Project/inputs/runs/results/runtime; exact internal-to-public mapping |
 | `AC-DEC-017` | Which advanced interfaces are stable? | inspect run/artifact, manifest, evidence, diagnostics, debug, machine-readable outputs |
-| `AC-DEC-018` | How is each bounded compatibility and retirement transition implemented? | Compatibility window, warnings, fixtures, and removal evidence; caller migration, relevant parity, owned temporary compatibility, and eventual retirement are already binding |
-| `AC-DEC-019` | Which campaign metrics and targets become commitments? | Baseline method, supported environment, time targets, qualitative acceptance |
-| `AC-DEC-020` | How should work beyond the accepted `LOG-05` migration boundary, including any just-in-time facade use, be ordered? | Three source phase models and P0–P3 suggestion; per-slice facade need; later importance and complexity scores; Section 13.2 settles only logging adoption sequencing |
+| `AC-DEC-018` | How is each bounded compatibility and retirement transition implemented? | Compatibility window, warnings, fixtures, and removal evidence; caller migration, relevant parity, owned temporary compatibility, and eventual retirement are already binding. Evidence deletion remains separately approval-gated. |
+| `AC-DEC-019` | Which campaign metrics and targets become commitments? | Reproducible UX and operational baselines; separate product, protection, configuration/documentation, and retained-evidence methods; supported environment; time targets; coverage-rebase interpretation; qualitative acceptance. Per-slice accounting is already binding. |
+| `AC-DEC-020` | How should work beyond the accepted `LOG-05` migration boundary, compression opportunities, and any just-in-time facade use be ordered? | Three source phase models and P0–P3 suggestion; per-slice facade need; compression and retirement opportunities from each audit; later importance and complexity scores. The audit must precede selection; Section 13.3 settles only logging adoption sequencing. |
 | `AC-DEC-021` | Which new architecture documents should remain after the campaign? | Invariants, current architecture, target architecture, or consolidation into existing durable owners |
 | `AC-DEC-022` | How should the Steps 07–09 audit be bounded? | Review authority, candidate universe, count/CMH/BH contracts, oracle data, evidence ceiling |
 | `AC-DEC-023` | Which historical claims from the source are accurate and useful? | Development dates, chronology, and repository-history interpretations require live Git verification before reuse |
@@ -1158,7 +1295,9 @@ Sections 7, 8, and 11.3.
 | `AC-DEC-025` | Is Artifact Store a distinct boundary, and what does it own? | Logical API, manifest-backed view, lifecycle owner, or physical collection; relationship to Run, Run Bundle, filesystem, external/large artifacts, immutability mechanisms, results, and report-derived artifacts. Artifact capability does not imply a Store, and storage cannot become a second admission/completion authority. |
 
 No open decision is resolved merely because one source supplied a concrete
-example.
+example. In this document, “post-audit” always means after the audit is reviewed
+and a separate user-approved decision is recorded; the audit itself selects
+nothing beyond already binding constraints.
 
 ### 15.1 Concrete nonbinding suggestion register
 
@@ -1189,14 +1328,17 @@ These began as candidate work slices, not final backlog IDs, priority, or
 implementation authorization. `AC-SLICE-01` is complete as the bounded
 `ARCH-CONST-01` decision/audit slice, and `AC-SLICE-02` is complete as
 `ARCH-LAYER-01`. Every candidate from `AC-SLICE-03` onward still requires a
-bounded owner/caller review, non-goals, acceptance conditions, and evidence
-ceiling before entering the matrix.
+bounded owner/caller review, compression register, mutation inventory,
+non-goals, acceptance conditions, protection disposition, and evidence ceiling
+before entering the matrix. A promoted implementation card also requires the
+category-separated closeout defined in Section 13.1; evidence deletion cannot
+be implied by promotion.
 
 | Candidate | Observable outcome | Likely relationship to current matrix |
 |---|---|---|
 | `AC-SLICE-01` | Ratified all 27 architectural invariants and five migration/test guardrails against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open |
 | `AC-SLICE-02` | Ratified responsibility clusters, three separate dependency graphs, forbidden authority transfers, a current-owner crosswalk, and a fast Python source-boundary ratchet for exact CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open |
-| `AC-SLICE-03` | Select and introduce the minimum application model for user intent, immutable effective realization, and attempts without behavior change; public nouns remain a decision outcome | New slice or expansion of `CONTROL-01` |
+| `AC-SLICE-03` | Audit current user-intent, plan, identity, attempt, result, mutation, persistence, API, owner, caller, protection, evidence, and compression representations; record facts and options without selecting anything beyond `Run` as the immutable plan | New audit/decision slice or expansion of `CONTROL-01`; implementation requires later discussion and approval |
 | `AC-SLICE-04` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` |
 | `AC-SLICE-05` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across supported local and SLURM backends | New slice; enriches `OPS-02` |
 | `AC-SLICE-06` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` |
@@ -1207,10 +1349,10 @@ ceiling before entering the matrix.
 | `AC-SLICE-11` | Define a portable canonical Run Bundle contract | New slice; coordinates with `FILESYSTEM-01` and `RESULTS-01` |
 | `AC-SLICE-12` | Formalize scientific, evidence, and operational report purposes and navigation | New slice or expansion of `REPORT-03` and `RESULTS-01` |
 | `AC-SLICE-13` | Deliver a supported fresh-install-to-valid-synthetic-result golden path after ratifying its capability order | New cross-cutting outcome; coordinates with setup, runtime, Doctor, run, results, and `CLEAN-01` |
-| `AC-SLICE-14` | Capture UX/architecture baselines and ratify campaign success measures | New slice; coordinates with `REVIEW-UX-03` and `ARCH-01` |
+| `AC-SLICE-14` | Establish reproducible UX, operational, and separate product/protection/configuration-documentation/retained-evidence baselines and ratify their interpretation methods and campaign success measures | New aggregate-measurement slice; per-slice accounting starts immediately and coordinates with `REVIEW-UX-03` and `ARCH-01` |
 | `AC-SLICE-15` | Audit the Steps 07–09 statistical contract | New scientific-review slice; not architecture evidence |
 | `AC-SLICE-16` | Build independent numerical oracles for Steps 08 and 09 | New scientific-validation slice |
-| `AC-SLICE-17` | Retire duplicated lifecycle, validator, infrastructure, adapter, or compatibility paths after each replacement is proven | Multiple bounded deletion slices; never one unbounded cleanup task |
+| `AC-SLICE-17` | Retire duplicated lifecycle, validator, infrastructure, adapter, or compatibility paths after each replacement is proven; classify dual-purpose fixtures, goldens, logs, receipts, reports, and dated records before deletion | Multiple bounded deletion slices; never one unbounded cleanup task, and exact evidence deletion requires separate user approval and commit |
 | `AC-SLICE-18` | Rewrite navigation and documentation around scientist/operator/developer journeys | Expansion or slicing of `DOC-01`; use the accepted `DOC-02`/`DOC-03` traces and coordinate with `DOC-04`–`DOC-05` retirements |
 | `AC-SLICE-19` | Define Doctor repair ownership, supported mutations, preview/reporting, and safety contracts | Expansion of `DOCTOR-01` reflecting the explicit override |
 
@@ -1229,7 +1371,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 |---|---|
 | `ARCH-CONST-01` | Completed decision/audit slice: the durable 27-invariant register and five migration/test guardrails now live in the platform-direction decision; broad implementation remains `ARCH-01` and the routed owner tasks |
 | `ARCH-LAYER-01` | Completed responsibility-shape slice: the five bands are responsibility clusters rather than package topology; source imports, runtime/control invocation, and artifact/evidence flow are separate graphs; forbidden authority transfers, current owners, exact transitional imports, and a fast import ratchet now have durable owners |
-| `CONTROL-01` | Compact Project/Analysis/Run/Result model, progressive disclosure, public identity vocabulary, and generated internals remaining inspectable |
+| `CONTROL-01` | Audit-first compact application model and progressive disclosure. `Run` is the immutable plan; whether it is public and every other noun, nesting, identity, cardinality, API, persistence, and storage choice remain post-audit decisions. Generated internals remain inspectable. |
 | `CONFIG-01` | Scientific versus execution versus evidence ownership; one scientist-facing definition; generated normalized artifacts; schema alternatives remain open |
 | `OPS-01` | Small operator-configuration surface; every effective value and source is inspectable and only explicitly safe owner-defined values are overrideable; exact interfaces, merge semantics, and named-profile model remain open |
 | `OPS-02` | Small role-aware CLI with the required capabilities; command partitioning/order, scheduler-selection behavior, and stable advanced inspection/override/debug routes remain open |
@@ -1240,7 +1382,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `SETUP-03` | Guided project creation, safe owned directories, generated configuration, validation, and no secret or biological invention; not containerization |
 | `RUNTIME-01` | Tiered runtime provisioning and admission; Managed/Site/Explicit are proposed labels; complete qualification includes the active internal workflow engine/Snakemake where applicable and remains separate from execution profiles |
 | `DOCTOR-01` | Project-aware readiness capabilities, actionable failures, qualified internal workflow-engine dependency, debug escape hatch, and the explicit-repair override with bounded mutation rules; exact command partitioning remains open |
-| `RUN-03` | Preserve immutable-plan safety while eliminating run-root copying; the one-command validate/plan/confirm/execute interaction and exact ordering remain proposals |
+| `RUN-03` | Preserve `Run` as the immutable plan while eliminating run-root copying; the one-command validate/plan/confirm/execute interaction and exact ordering remain proposals, and execution/attempt state cannot mutate Run |
 | `IDENTITY-01` | Ratify the smallest role-appropriate identity model while preserving detailed identities as evidence metadata; Run/Attempt nesting remains illustrative |
 | `FILESYSTEM-01` | Automatic predictable directory creation, one discoverable result surface, and no hidden report root; Project/inputs/runs and Run-Bundle layouts remain proposed |
 | `CONTAINER-01` | Independent managed-container/environment decision without assuming final runtime labels; institutional/native/advanced coexistence, image contents and digest, scheduler/storage/security/licensing/update contracts |
@@ -1251,7 +1393,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `OBS-02` | High-level scientific progress, public run status, elapsed time, completion/failure, and links to recovery/inspection |
 | `ANALYSIS-01` | Stop/reuse through the Step 06 boundary and launch separately identified cohort, subset, sensitivity, or downstream work |
 | `ANALYSIS-02` | Collaborator-extensible modules with typed scientific contracts; scientific algorithms, assumptions, interpretation, and review-relevant implementation remain visible. The lightweight extension mechanism is open within the binding prohibition on a mandatory universal Stage hierarchy, registry, workflow language, or second scheduler |
-| `ARCH-01` | Consumes the completed invariant constitution and responsibility/dependency model. Concrete application, operation, execution, policy, identity, and artifact APIs; individual authority migrations; Artifact Store decision; package realization; and facade use remain open. Bounded migration, eventual retirement, and equal-or-stronger mapped test protection are binding |
+| `ARCH-01` | Consumes the completed invariant constitution and responsibility/dependency model. Every slice performs the owner/caller/compression/mutation audit and category-separated closeout in Section 13.1. Concrete application, operation, execution, policy, identity, and artifact APIs; individual authority migrations; Artifact Store decision; package realization; and facade use remain post-audit choices. Bounded migration, default net-negative maintained product code with no product-file growth, immutable-by-default boundaries, eventual retirement, equal-or-stronger mapped protection, and separate approval for exact evidence deletion are binding. |
 | `REPORT-03` | Primary-scientific-findings hierarchy with evidence and operational detail progressively disclosed |
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |
 | `RESULTS-01` | One discoverable results surface and coordination with the proposed Run Bundle and Artifact Store concepts without preselecting their ownership or layouts |
@@ -1329,7 +1471,18 @@ are provenance for this intake, not durable links to the attachment paths.
 | `AC-IN-006` | Proposed names, phases, numeric targets, and ordering are not settled; preserve them as suggestions for later reconsideration | Enforced by status banner and Sections 13–15 |
 | `AC-IN-007` | Intake complete | Intake frozen on 2026-08-24; new material requires an explicit reopened or successor intake |
 
-### 18.3 Duplicate policy
+### 18.3 Post-intake ratification ledger
+
+These user decisions govern how the closed intake is audited and implemented;
+they do not reopen it or promote any remaining proposal.
+
+| Ratification | User decision | Durable disposition |
+|---|---|---|
+| `AC-RAT-001` | Every audit records compression opportunities; every vertical implementation slice aggressively removes redundant maintenance surface without losing essential behavior; net-negative maintained product code and no product-file growth are the defaults | Binding requirement 8, `AC-GUARD-006`, and the Section 13.1 protocol |
+| `AC-RAT-002` | Immutability is preferred throughout; `Run` is the immutable plan; public nouns and nesting are decided only after audit and discussion; every other application-model, API, backend, and policy decision is deferred until then | Binding requirement 9, `AC-GUARD-007`, `AC-SLICE-03`, and `AC-DEC-001`/`011` |
+| `AC-RAT-003` | Redundant evidence may be identified, but deletion requires great caution and the user's explicit approval | Binding requirement 10, `AC-GUARD-008`, and the evidence proposal and separate-commit gate in Section 13.1 |
+
+### 18.4 Duplicate policy
 
 The three attachments express the same central thesis at different levels of
 detail. They are **overlapping sources**, not disposable duplicates:
@@ -1388,19 +1541,24 @@ This document remains temporary authority until all of the following are true:
 3. Every candidate slice has been accepted, revised, split, absorbed, or
    explicitly declined.
 4. Every new matrix item has one observable outcome, bounded scope, non-goals,
-   affected owners/callers, invariant traceability, acceptance conditions, and
-   evidence ceiling.
+   affected owners/callers, a compression register, mutation inventory,
+   invariant traceability, protection and evidence dispositions, acceptance
+   conditions, and evidence ceiling.
 5. The completed matrix has separately reviewed Importance and Complexity
    scores and rationales.
 6. The matrix, task navigation, and legacy backlog transition identify one
    unambiguous active backlog authority.
 7. No proposed name, phase, target, ordering, historical claim, or example has
    been silently promoted into a binding decision.
-8. A final source-to-destination audit finds no orphaned intake item and no
-   architectural context that exists only in an attachment path.
+8. A final source-to-destination audit finds no orphaned intake item,
+   compression opportunity, or architectural context that exists only in an
+   attachment path or temporary register.
 9. The user approves the final traceability and prioritization review.
 10. This document receives an explicit retain, archive, consolidate, or retire
     disposition; it does not remain a second permanent backlog by accident.
+11. Every proposed evidence deletion is explicitly declined or
+    approved for an exact bounded deletion; campaign completion itself never
+    supplies deletion authority.
 
 Until those conditions hold, this campaign document preserves the complete
 planning context while the matrix remains the authority for accepted tasks and

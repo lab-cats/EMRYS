@@ -104,6 +104,22 @@ Detailed rationale: [`platform-direction.md`](decisions/platform-direction.md).
   application-operation slices with exactly one semantic attempt owner and an
   explicit disposition for transitional or retiring surfaces; do not
   blanket-retrofit the legacy control surface.
+- Make every architecture audit record concrete compression opportunities and
+  apply the campaign's full category-separated
+  [per-slice protocol](../tasks/architecture_campaign.md#131-mandatory-per-slice-compression-and-mutation-protocol).
+  Default implementation slices to net-negative maintained product code and no
+  product-file growth; an exception requires explicit user approval of
+  quantified growth and its justification, plus a retirement condition when
+  temporary.
+- Treat boundary values as immutable by default. A `Run` is an immutable plan;
+  changing it creates a distinct `Run`. Other public nouns, nesting,
+  identities, APIs, backends, policy, persistence, and storage remain
+  unresolved until after audit review and a separate approved decision.
+- Distinguish executable/static protections from retained evidence. An existing
+  surviving defense may satisfy equal-or-stronger replacement. Evidence may be
+  marked as a deletion candidate, but deleting the exact artifacts or class
+  requires separate explicit user approval and its own commit, and cannot
+  offset implementation growth.
 - Use semantic identities and explicit artifact DAG edges rather than numeric
   aliases or filenames for order.
 - Prohibit peer private-implementation imports. Promote shared code only after
