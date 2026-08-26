@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 from emrys.libraries.alignments import bam as BAM
+from emrys.libraries.validation import inputs as INPUTS
 
 
 def test_public_api_and_characterized_behavior(tmp_path: Path) -> None:
@@ -56,6 +58,58 @@ def test_public_api_and_characterized_behavior(tmp_path: Path) -> None:
         False,
         "HD=1 RG=1",
     )
+
+
+@pytest.mark.parametrize(
+    ("name", "magic", "reader"),
+    (
+        ("large.bam", b"\x1f\x8b\x08\x04", BAM.read_bam_prefix),
+        ("large.bam.bai", b"BAI\x01", BAM.read_bai_prefix),
+    ),
+)
+def test_signature_reads_are_bounded_for_sparse_files(
+    name: str,
+    magic: bytes,
+    reader: Callable[[Path], bytes],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / name
+    sparse_size = 8 * 1024**3
+    with path.open("wb") as stream:
+        stream.write(magic)
+        stream.truncate(sparse_size)
+    real_read = INPUTS.os.read
+    requests: list[int] = []
+    returned: list[int] = []
+
+    def bounded_read(descriptor: int, size: int) -> bytes:
+        requests.append(size)
+        assert size <= BAM.MAGIC_PREFIX_BYTES
+        data = real_read(descriptor, size)
+        returned.append(len(data))
+        return data
+
+    monkeypatch.setattr(INPUTS.os, "read", bounded_read)
+
+    assert reader(path) == magic
+    assert requests[0] == BAM.MAGIC_PREFIX_BYTES
+    assert sum(returned) == BAM.MAGIC_PREFIX_BYTES
+    assert path.stat().st_size == sparse_size
+
+
+def test_signature_reads_preserve_short_and_empty_file_behavior(
+    tmp_path: Path,
+) -> None:
+    short = tmp_path / "short.bam"
+    short.write_bytes(b"BA")
+    assert BAM.read_bam_prefix(short) == b"BA"
+    assert BAM.validate_bam_signature(short) == (False, b"BA")
+
+    empty = tmp_path / "empty.bam"
+    empty.touch()
+    with pytest.raises(BAM.ValidationError, match="BAM file must be nonempty"):
+        BAM.read_bam_prefix(empty)
 
 
 def test_validate_samtools_readiness_uses_quickcheck_and_header(tmp_path: Path) -> None:

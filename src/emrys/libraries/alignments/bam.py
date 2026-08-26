@@ -5,10 +5,11 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from emrys.libraries.validation import ValidationError, clean, read_bytes
+from emrys.libraries.validation import ValidationError, clean, read_prefix
 
 BAM_MAGIC_PREFIXES = {b"BAM\x01", b"\x1f\x8b\x08\x04"}
 BAI_MAGIC_PREFIXES = {b"BAI\x01", b"CSI\x01"}
+MAGIC_PREFIX_BYTES = 4
 
 
 def validate_bam_bai_pair(bam: Path, bai: Path) -> tuple[bool, bytes, bytes]:
@@ -65,11 +66,11 @@ def parse_header(text: str, scope_id: str) -> tuple[bool, bool, str]:
 
 
 def read_bam_prefix(path: Path) -> bytes:
-    return read_bytes(path, "BAM file")[:4]
+    return read_prefix(path, "BAM file", MAGIC_PREFIX_BYTES)
 
 
 def read_bai_prefix(path: Path) -> bytes:
-    return read_bytes(path, "BAI file")[:4]
+    return read_prefix(path, "BAI file", MAGIC_PREFIX_BYTES)
 
 
 def bam_magic_ok(prefix: bytes) -> bool:
