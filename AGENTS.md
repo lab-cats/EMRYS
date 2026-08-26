@@ -14,7 +14,6 @@ take priority over speed or convenience.
   deleting branches, dependency installation, cluster execution, production
   mutation, destructive cleanup, scientific review, and evidence promotion
   require their own explicit authority.
-- Local commits do not authorize a push.
 - Favor net-negative or minimally additive code changes except when to do
   so would introduce excessive complexity or incomplete behavior
 - long running checks should be run in CI, with quick targeted checks
@@ -22,6 +21,8 @@ take priority over speed or convenience.
 - prefer using standard libraries over bespoke implementation except
   when standard libraries would be insufficient or when bespoke implementation
   would permit for a smaller implementation
+- features should be implemented with the MINIMUM possible footprint
+  while still maintaining repo quality
 
 ## Repository, runtime, and data safety
 
