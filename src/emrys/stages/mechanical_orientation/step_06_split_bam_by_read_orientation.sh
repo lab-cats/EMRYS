@@ -589,9 +589,9 @@ printf '  9. Roll back previous final outputs if publication fails after backups
 printf 'Publish plan:\n'
 printf '  1. Confirm final outputs are all present or all absent.\n'
 printf '  2. Back up any existing complete final output set.\n'
-printf '  3. Move temp BAM/BAI/TSV outputs to final paths.\n'
-printf '  4. Revalidate final outputs at their published paths.\n'
-printf '  5. Remove backups and owned lock after successful final validation.\n'
+printf '  3. Publish temp BAM/BAI/TSV outputs to final paths.\n'
+printf '  4. Under --no-clobber, prove final paths are the validated staging inodes; legacy replacement mode revalidates final paths.\n'
+printf '  5. Remove backups and owned lock after successful publication validation.\n'
 
 printf 'Rollback plan:\n'
 printf '  Restore backups before cleanup on failures after backup begins; remove new final files if no prior final set existed.\n'
@@ -687,25 +687,10 @@ if [[ "$no_clobber" == true ]]; then
         "Step 06 REV BAI" "$tmp_rev_bai" "$output_rev_bai"
     publish_file_create_exclusive \
         "Step 06 counts" "$tmp_counts_tsv" "$output_counts_tsv"
-else
-    mv "$tmp_fwd_bam" "$output_fwd_bam"
-    mv "$tmp_fwd_bai" "$output_fwd_bai"
-    mv "$tmp_rev_bam" "$output_rev_bam"
-    mv "$tmp_rev_bai" "$output_rev_bai"
-    mv "$tmp_counts_tsv" "$output_counts_tsv"
-fi
 
-# Revalidate at final paths so downstream steps consume only a complete,
-# readable BAM/BAI/TSV set.
-validate_orientation_outputs \
-    "$output_fwd_bam" \
-    "$output_fwd_bai" \
-    "$output_rev_bam" \
-    "$output_rev_bai" \
-    "$output_counts_tsv" \
-    "Published"
-
-if [[ "$no_clobber" == true ]]; then
+    # All five finals are create-exclusive hard links to artifacts already
+    # validated as one temporary set. Prove those exact staging inodes survived
+    # publication instead of reopening the same BAMs for another quickcheck.
     require_owned_published_file \
         "Step 06 FWD BAM" "$tmp_fwd_bam" "$output_fwd_bam"
     require_owned_published_file \
@@ -716,6 +701,25 @@ if [[ "$no_clobber" == true ]]; then
         "Step 06 REV BAI" "$tmp_rev_bai" "$output_rev_bai"
     require_owned_published_file \
         "Step 06 counts" "$tmp_counts_tsv" "$output_counts_tsv"
+else
+    mv "$tmp_fwd_bam" "$output_fwd_bam"
+    mv "$tmp_fwd_bai" "$output_fwd_bai"
+    mv "$tmp_rev_bam" "$output_rev_bam"
+    mv "$tmp_rev_bai" "$output_rev_bai"
+    mv "$tmp_counts_tsv" "$output_counts_tsv"
+
+    # The legacy replacement route drops its staging identity anchors, so keep
+    # final-path validation there.
+    validate_orientation_outputs \
+        "$output_fwd_bam" \
+        "$output_fwd_bai" \
+        "$output_rev_bam" \
+        "$output_rev_bai" \
+        "$output_counts_tsv" \
+        "Published"
+fi
+
+if [[ "$no_clobber" == true ]]; then
     rm -f -- \
         "$tmp_fwd_bam" "$tmp_fwd_bai" "$tmp_rev_bam" "$tmp_rev_bai" \
         "$tmp_counts_tsv"
