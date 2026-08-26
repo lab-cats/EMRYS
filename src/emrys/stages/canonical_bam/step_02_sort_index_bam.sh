@@ -113,6 +113,7 @@ backup_started=false
 bam_backed_up=false
 bai_backed_up=false
 final_publish_complete=false
+reused_input_alignment=false
 
 # Build tool commands as arrays to preserve argument boundaries in dry-run logs.
 input_header_command=(
@@ -386,7 +387,7 @@ printf '  2. Confirm canonical outputs are a complete pair or both absent.\n'
 printf '  3. Back up existing pair to: %s %s\n' "$backup_bam" "$backup_bai"
 printf '  4. Publish replacement BAM to: %s\n' "$output_bam"
 printf '  5. Publish replacement BAI to: %s\n' "$output_bai"
-printf '  6. Under --no-clobber, prove final paths are the validated staging inodes; legacy replacement mode revalidates final paths.\n'
+printf '  6. Under --no-clobber, prove final paths are the validated staging inodes and recheck reused input bytes; legacy replacement mode revalidates final paths.\n'
 printf '  7. Remove backups and owned lock after successful publication validation.\n'
 printf 'Rollback plan:\n'
 printf '  Restore backups before cleanup on failures after backup begins; remove new canonical files if no prior pair existed.\n'
@@ -422,6 +423,7 @@ else
 fi
 if input_has_canonical_bam_contract "$input_header"; then
     if ln -- "$input_alignment" "$tmp_rg_bam"; then
+        reused_input_alignment=true
         printf 'Input alignment already satisfies the canonical BAM contract; reusing its bytes without rewriting.\n'
     else
         printf 'Could not hard-link the canonical input; falling back to samtools addreplacerg.\n' >&2
@@ -460,6 +462,17 @@ if [[ "$no_clobber" == true ]]; then
     # Create-exclusive publication hard-links the already validated staging
     # files. Prove both finals still resolve to those exact inodes instead of
     # repeating quickcheck, header inspection, and two whole-BAM count scans.
+    require_owned_published_file "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
+    require_owned_published_file "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
+
+    # A reused input remains writable through its original path even while the
+    # staging and final paths still share its inode. Rebind the published bytes
+    # to the admitted input digest after both links exist so an in-place change
+    # in the publication window fails before the staging anchors are removed.
+    if [[ "$reused_input_alignment" == true ]]; then
+        [[ "$(sha256_file "$output_bam")" == "$input_alignment_sha256" ]] ||
+            die "Canonical BAM changed after create-exclusive publication: $output_bam"
+    fi
     require_owned_published_file "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
     require_owned_published_file "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
 else

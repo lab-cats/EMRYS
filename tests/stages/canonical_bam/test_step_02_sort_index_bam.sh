@@ -270,6 +270,27 @@ fi
 EOF_MV
 chmod +x "$fake_bin/mv"
 
+cat >"$fake_bin/ln" <<'EOF_LN'
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ "${1:-}" == "--" ]]; then
+    src="${2:-}"
+    dest="${3:-}"
+else
+    src="${1:-}"
+    dest="${2:-}"
+fi
+
+/bin/ln "$@"
+
+if [[ -n "${FAKE_LN_MUTATE_AFTER_DEST:-}" &&
+      "$dest" == "$FAKE_LN_MUTATE_AFTER_DEST" ]]; then
+    printf 'mutated after final BAM publication\n' >"$src"
+fi
+EOF_LN
+chmod +x "$fake_bin/ln"
+
 export PATH="$fake_bin:$PATH"
 
 fixture_dir="$tmp_dir/fixtures"
@@ -431,6 +452,36 @@ canonical_bam="$canonical_output_dir/sample_canonical.sorted.bam"
 assert_contains "$canonical_output" \
     "Input alignment already satisfies the canonical BAM contract; reusing its bytes without rewriting."
 assert_no_step02_scratch "$canonical_output_dir"
+
+printf 'Running zero-copy post-publication mutation rejection check...\n'
+publication_mutation_input="$tmp_dir/fixtures/publication_mutation_input.bam"
+{
+    printf '@HD\tVN:1.6\tSO:coordinate\n'
+    printf '@RG\tID:sample_publish_race\tSM:sample_publish_race\tLB:sample_publish_race\tPL:ILLUMINA\n'
+    printf 'TOTAL:10\n'
+    printf 'TAGGED:10\n'
+} >"$publication_mutation_input"
+publication_mutation_output="$tmp_dir/publication_mutation.out"
+publication_mutation_output_dir="$tmp_dir/results/publication_mutation"
+publication_mutation_bam="$publication_mutation_output_dir/sample_publish_race.sorted.bam"
+assert_fails "$publication_mutation_output" env \
+    FAKE_LN_MUTATE_AFTER_DEST="$publication_mutation_bam" \
+    FAKE_SAMPLE_ID=sample_publish_race \
+    SLURM_JOB_ID=publish-race001 \
+    bash "$SCRIPT" \
+    --sample-id sample_publish_race \
+    --input-alignment "$publication_mutation_input" \
+    --output-dir "$publication_mutation_output_dir" \
+    --threads 2 \
+    --no-clobber \
+    --execute
+assert_contains "$publication_mutation_output" \
+    "Canonical BAM changed after create-exclusive publication: $publication_mutation_bam"
+assert_file_equals "$publication_mutation_input" "mutated after final BAM publication"
+assert_not_exists "$publication_mutation_bam"
+assert_not_exists "$publication_mutation_bam.bai"
+assert_not_exists "$publication_mutation_output_dir/.sample_publish_race.step02.lock"
+assert_no_step02_scratch "$publication_mutation_output_dir"
 
 printf 'Running orchestration-safe no-clobber checks...\n'
 safe_input="$tmp_dir/fixtures/safe_input.sam"
