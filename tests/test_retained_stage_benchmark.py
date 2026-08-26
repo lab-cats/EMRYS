@@ -56,7 +56,11 @@ def _retained_artifact(path: Path) -> object:
 
 
 def _publish_verified_owner(
-    path: Path, machine_key: str, outputs: list[dict[str, object]]
+    path: Path,
+    machine_key: str,
+    outputs: list[dict[str, object]],
+    *,
+    inputs: list[dict[str, object]] | None = None,
 ) -> dict[str, object]:
     path.write_text(
         json.dumps(
@@ -76,6 +80,7 @@ def _publish_verified_owner(
                         "exit_code": 0,
                     }
                 },
+                "inputs": inputs or [],
                 "outputs": outputs,
             }
         )
@@ -150,6 +155,98 @@ def _run_step02_validator(
     ):
         BENCHMARK._validate_step02(context, trial)
     return calls, idxstats
+
+
+def _step04_validator_fixture(root: Path) -> dict[str, object]:
+    sample = BENCHMARK.RETAINED_SAMPLE_ID
+    run_root, trial = root / "run", root / "trial"
+    input_bam = run_root / "results/bam" / sample / f"{sample}.sorted.bam"
+    input_bam.parent.mkdir(parents=True)
+    input_bam.write_bytes(b"input")
+    input_bai = Path(f"{input_bam}.bai")
+    input_bai.write_bytes(b"index")
+    retained_bam = run_root / "results/markdup" / sample / f"{sample}.markdup.bam"
+    retained_bam.parent.mkdir(parents=True)
+    retained_bam.write_bytes(b"retained")
+    retained_bai = Path(f"{retained_bam}.bai")
+    retained_bai.write_bytes(b"index")
+    retained_metrics = run_root / "results/qc/markdup" / f"{sample}.markdup.metrics.txt"
+    retained_metrics.parent.mkdir(parents=True)
+    trial.mkdir()
+    paths = BENCHMARK._step04_paths(sample)
+    for key in ("output_root", "metrics_root", "scratch"):
+        (trial / paths[key]).mkdir(parents=True)
+    (trial / paths["report"]).parent.mkdir(parents=True)
+    outputs = {key: trial / paths[key] for key in ("bam", "bai", "metrics")}
+    outputs["bam"].write_bytes(b"observed")
+    outputs["bai"].write_bytes(b"index")
+    retained_token = "owner-" + "4" * 32
+    observed_tmp = trial / paths["scratch"]
+    reference_tmp = root / "retained-scratch"
+    input_records = (
+        b"r1\t99\tchrSynthetic\t1\t60\t1M\t=\t2\t1\tA\tI\tPG:Z:samtools\n"
+        b"r1\t147\tchrSynthetic\t2\t60\t1M\t=\t1\t-1\tT\tI\tPG:Z:samtools\n"
+    )
+    output_records = input_records.replace(b"\t99\t", b"\t1123\t").replace(
+        b"\t147\t", b"\t1171\t"
+    ).replace(b"PG:Z:samtools", b"PG:Z:MarkDuplicates")
+
+    def command(prefix: str, token: str, tmp: Path) -> str:
+        return (
+            f"MarkDuplicates INPUT={run_root}/results/bam/{sample}/{sample}.sorted.bam "
+            f"OUTPUT={prefix}results/markdup/{sample}/.{sample}.step04.{token}.markdup.tmp.bam "
+            f"METRICS_FILE={prefix}results/qc/markdup/.{sample}.step04.{token}.metrics.tmp "
+            f"REMOVE_DUPLICATES=false TMP_DIR={tmp} CREATE_INDEX=false"
+        )
+
+    body = (
+        "## METRICS CLASS picard.sam.DuplicationMetrics\n"
+        "LIBRARY\tUNPAIRED_READS_EXAMINED\tREAD_PAIRS_EXAMINED\t"
+        "SECONDARY_OR_SUPPLEMENTARY_RDS\tUNMAPPED_READS\t"
+        "UNPAIRED_READ_DUPLICATES\tREAD_PAIR_DUPLICATES\tPERCENT_DUPLICATION\n"
+        f"{sample}\t0\t1\t0\t0\t0\t1\t1\n\n"
+        "## HISTOGRAM java.lang.Double\nset_size\tall_sets\n1.0\t1\n"
+    ).encode()
+
+    def metrics(prefix: str, token: str, tmp: Path, stamp: str) -> bytes:
+        return (
+            "## htsjdk.samtools.metrics.StringHeader\n# "
+            + command(prefix, token, tmp)
+            + f"\n## htsjdk.samtools.metrics.StringHeader\n# Started on: {stamp}\n\n"
+        ).encode() + body
+
+    outputs["metrics"].write_bytes(
+        metrics("", BENCHMARK.STEP04_TRIAL_RUN_TOKEN, observed_tmp, "observed")
+    )
+    retained_metrics.write_bytes(metrics(f"{run_root}/", retained_token, reference_tmp, "reference"))
+    base_header = b"@HD\tVN:1.6\tSO:coordinate\n@SQ\tSN:chrSynthetic\tLN:5000000\n"
+    inspections = {}
+    for bam, prefix, token, tmp in (
+        (outputs["bam"], "", BENCHMARK.STEP04_TRIAL_RUN_TOKEN, observed_tmp),
+        (retained_bam, f"{run_root}/", retained_token, reference_tmp),
+    ):
+        header = base_header + (f"@PG\tID:MarkDuplicates\tPN:MarkDuplicates\tCL:{command(prefix, token, tmp)}\n").encode()
+        inspections[bam] = {
+            "header": header, "decoded": output_records,
+            "records": BENCHMARK._sam_records(output_records, "fixture"),
+            "idxstats": b"chrSynthetic\t5000000\t2\t0\n*\t0\t0\t0\n",
+            "indexed": output_records,
+        }
+    samtools = root / "samtools"
+    samtools.write_text("#!/bin/sh\n")
+    samtools.chmod(0o755)
+    context = {
+        "sample_id": sample, "python": sys.executable, "run_root": str(run_root),
+        "runtime_samtools": str(samtools),
+        "runtime_sha256_python": sys.executable,
+        "retained_step02_bam": BENCHMARK._artifact_context(_retained_artifact(input_bam)),
+        "retained_step02_bai": BENCHMARK._artifact_context(_retained_artifact(input_bai)),
+        "retained_step04_bam": BENCHMARK._artifact_context(_retained_artifact(retained_bam)),
+        "retained_step04_bai": BENCHMARK._artifact_context(_retained_artifact(retained_bai)),
+        "retained_step04_metrics": BENCHMARK._artifact_context(_retained_artifact(retained_metrics)),
+        "retained_step04_run_token": retained_token,
+    }
+    return {"context": context, "trial": trial, "outputs": outputs, "input": input_records, "inspections": inspections}
 
 
 def _step06_validator_fixture(root: Path) -> dict[str, object]:
@@ -426,6 +523,7 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             BENCHMARK._select_cases(suite="sample-stages", names=None),
             (
                 BENCHMARK.RETAINED_CASE_BY_NAME["step02-canonical-bam"],
+                BENCHMARK.RETAINED_CASE_BY_NAME["step04-duplicate-marking"],
                 BENCHMARK.RETAINED_CASE_BY_NAME["step06-mechanical-orientation"],
             ),
         )
@@ -1135,6 +1233,47 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             ):
                 _run_step02_validator(context, trial, samtools)
 
+    def test_step04_validator_proves_semantics_and_rejects_shared_bad_tags(self) -> None:
+        def run(fixture: dict[str, object]) -> list[tuple[str, ...]]:
+            calls: list[tuple[str, ...]] = []
+            with (
+                mock.patch.object(
+                    BENCHMARK, "_run_checked",
+                    side_effect=lambda argv, **_kwargs: calls.append(tuple(argv)),
+                ),
+                mock.patch.object(
+                    BENCHMARK, "_capture_checked", return_value=fixture["input"]
+                ),
+                mock.patch.object(
+                    BENCHMARK, "_inspect_indexed_bam",
+                    side_effect=lambda _tool, bam, **_kwargs: fixture["inspections"][bam],
+                ),
+            ):
+                BENCHMARK._validate_step04(fixture["context"], fixture["trial"])
+            return calls
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            fixture = _step04_validator_fixture(root / "pass")
+            calls = run(fixture)
+            self.assertIn("duplicate-marking", calls[0])
+            self.assertIn("all-pass", calls[1])
+            self.assertIn(b"independent-counts", (fixture["trial"] / "parity.bin").read_bytes())
+            self.assertTrue(all(not path.exists() for path in fixture["outputs"].values()))
+
+            fixture = _step04_validator_fixture(root / "bad-tags")
+            for inspection in fixture["inspections"].values():
+                decoded = inspection["decoded"].replace(
+                    b"PG:Z:MarkDuplicates", b"PG:Z:samtools"
+                )
+                inspection.update(
+                    decoded=decoded,
+                    records=BENCHMARK._sam_records(decoded, "bad fixture"),
+                    indexed=decoded,
+                )
+            with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "PG/tag transition"):
+                run(fixture)
+
     def test_step06_owner_binds_exact_authorities_and_relative_results(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory).resolve()
@@ -1625,6 +1764,12 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             step02_bai = root / "retained.step02.bam.bai"
             step02_bam.hardlink_to(step01_bam)
             step02_bai.write_bytes(b"bai")
+            step04_bam = root / "retained.step04.bam"
+            step04_bai = root / "retained.step04.bam.bai"
+            step04_metrics = root / "retained.step04.metrics.txt"
+            picard_jar = root / "picard.jar"
+            for selected in (step04_bam, step04_bai, step04_metrics, picard_jar):
+                selected.write_bytes(selected.name.encode())
             step05_bam = root / "retained.step05.bam"
             step05_bai = root / "retained.step05.bam.bai"
             step05_bam.write_bytes(b"step05-bam")
@@ -1644,8 +1789,9 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 selected.write_bytes(selected.name.encode())
             runtime = root / "runtime"
             runtime_bash = runtime / "bin/bash"
+            runtime_java = runtime / "bin/java"
             runtime_samtools = runtime / "bin/samtools"
-            for executable in (runtime_bash, runtime_samtools):
+            for executable in (runtime_bash, runtime_java, runtime_samtools):
                 executable.parent.mkdir(parents=True, exist_ok=True)
                 executable.write_text("#!/bin/sh\n")
                 executable.chmod(0o755)
@@ -1663,6 +1809,11 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 _retained_artifact(step01_bam),
                 _retained_artifact(step02_bam),
                 _retained_artifact(step02_bai),
+                _retained_artifact(step04_bam),
+                _retained_artifact(step04_bai),
+                _retained_artifact(step04_metrics),
+                "owner-" + "4" * 32,
+                _retained_artifact(picard_jar),
                 _retained_artifact(step05_bam),
                 _retained_artifact(step05_bai),
                 _retained_artifact(step06_fwd_bam),
@@ -1672,6 +1823,8 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 _retained_artifact(step06_counts),
                 "owner-" + "6" * 32,
                 runtime_bash,
+                runtime_java,
+                picard_jar,
                 runtime_samtools,
                 Path(sys.executable),
             )
@@ -1735,6 +1888,8 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             self.assertEqual(
                 context["retained_step02_bai"]["path"], str(step02_bai)
             )
+            self.assertEqual(context["retained_step04_bam"]["path"], str(step04_bam))
+            self.assertEqual(context["retained_picard_jar"]["path"], str(picard_jar))
             self.assertEqual(
                 context["retained_step05_bam"]["path"], str(step05_bam)
             )
@@ -1748,6 +1903,7 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 context["retained_step06_run_token"], "owner-" + "6" * 32
             )
             self.assertEqual(context["runtime_bash"], str(runtime_bash))
+            self.assertEqual(context["runtime_java"], str(runtime_java))
             self.assertEqual(context["runtime_samtools"], str(runtime_samtools))
             self.assertEqual(context["runtime_sha256_python"], sys.executable)
             self.assertNotIn("retained_step07_root", context)
@@ -1815,6 +1971,23 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             step02_bam.hardlink_to(step01_bam)
             step02_bai = Path(f"{step02_bam}.bai")
             step02_bai.write_bytes(b"retained-step02-bai")
+            picard_jar = operator / "runtime/share/picard.jar"
+            picard_jar.parent.mkdir(parents=True)
+            picard_jar.write_bytes(b"retained-picard-jar")
+            step04_bam = (
+                run / "results/markdup" / BENCHMARK.RETAINED_SAMPLE_ID
+                / f"{BENCHMARK.RETAINED_SAMPLE_ID}.markdup.bam"
+            )
+            step04_bam.parent.mkdir(parents=True)
+            step04_bam.write_bytes(b"retained-step04-bam")
+            step04_bai = Path(f"{step04_bam}.bai")
+            step04_bai.write_bytes(b"retained-step04-bai")
+            step04_metrics = (
+                run / "results/qc/markdup"
+                / f"{BENCHMARK.RETAINED_SAMPLE_ID}.markdup.metrics.txt"
+            )
+            step04_metrics.parent.mkdir(parents=True)
+            step04_metrics.write_bytes(b"retained-step04-metrics")
             step05_bam = (
                 run
                 / "results/split_ncigar"
@@ -1859,6 +2032,16 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 {"role": "output_001", **_artifact(step02_bam)},
                 {"role": "output_002", **_artifact(step02_bai)},
             ]
+            step04_inputs = [
+                {"role": "input_001", **_artifact(step02_bam)},
+                {"role": "input_002", **_artifact(step02_bai)},
+                {"role": "input_003", **_artifact(picard_jar)},
+            ]
+            step04_outputs = [
+                {"role": "output_001", **_artifact(step04_bam)},
+                {"role": "output_002", **_artifact(step04_bai)},
+                {"role": "output_003", **_artifact(step04_metrics)},
+            ]
             step05_outputs = [
                 {"role": "output_001", **_artifact(step05_bam)},
                 {"role": "output_002", **_artifact(step05_bai)},
@@ -1888,10 +2071,17 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 elif index == 2:
                     owners.append(
                         _publish_verified_owner(
-                            path, BENCHMARK.STEP05_OWNER, step05_outputs
+                            path, BENCHMARK.STEP04_OWNER, step04_outputs,
+                            inputs=step04_inputs,
                         )
                     )
                 elif index == 3:
+                    owners.append(
+                        _publish_verified_owner(
+                            path, BENCHMARK.STEP05_OWNER, step05_outputs
+                        )
+                    )
+                elif index == 4:
                     owners.append(
                         _publish_verified_owner(
                             path, BENCHMARK.STEP06_OWNER, step06_outputs
@@ -1903,8 +2093,9 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             final = evidence / "attempt.json"
             final.write_text("complete")
             runtime_bash = operator / "runtime/bin/bash"
+            runtime_java = operator / "runtime/bin/java"
             runtime_samtools = operator / "runtime/bin/samtools"
-            for executable in (runtime_bash, runtime_samtools):
+            for executable in (runtime_bash, runtime_java, runtime_samtools):
                 executable.parent.mkdir(parents=True, exist_ok=True)
                 executable.write_text("#!/bin/sh\n")
                 executable.chmod(0o755)
@@ -1917,6 +2108,12 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 "samtools\tsamtools\n"
                 f"sha256_python\thash_utility\tlocal\ttrue\t{sys.executable}\t[]\t"
                 "sha256\tPython\n"
+                f"java\ttool_version\tlocal\ttrue\t{runtime_java}\t[]\tjava\tJava\n"
+                f"picard\ttool_version_exit_1\tlocal\ttrue\t{runtime_java}\t"
+                f"[\"-jar\",\"{picard_jar}\",\"MarkDuplicates\",\"--version\"]\t"
+                "picard\tPicard\n"
+                f"picard_jar\tpath_visibility\tlocal\ttrue\t{picard_jar}\t[]\t"
+                "readable\tPicard jar\n"
             )
             primary_vcf = run / "results/mpileup/cohort/primary/cohort.primary.FWD_like.mpileup.vcf"
             primary_vcf.parent.mkdir(parents=True)
@@ -1952,6 +2149,9 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             self.assertEqual(admitted.retained_step01_bam.path, step01_bam)
             self.assertEqual(admitted.retained_step02_bam.path, step02_bam)
             self.assertEqual(admitted.retained_step02_bai.path, step02_bai)
+            self.assertEqual(admitted.retained_step04_bam.path, step04_bam)
+            self.assertEqual(admitted.retained_step04_metrics.path, step04_metrics)
+            self.assertEqual(admitted.retained_picard_jar.path, picard_jar)
             self.assertEqual(admitted.retained_step05_bam.path, step05_bam)
             self.assertEqual(admitted.retained_step05_bai.path, step05_bai)
             self.assertEqual(admitted.retained_step06_fwd_bam.path, step06_fwd_bam)
@@ -1961,6 +2161,7 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 admitted.retained_step06_run_token, "owner-" + "6" * 32
             )
             self.assertEqual(admitted.runtime_bash, runtime_bash)
+            self.assertEqual(admitted.runtime_java, runtime_java)
             self.assertEqual(admitted.runtime_samtools, runtime_samtools)
             self.assertEqual(admitted.runtime_sha256_python, Path(sys.executable))
             summary["profile"] = "130"
@@ -1983,9 +2184,23 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
                 evidence / "owner-1.json", BENCHMARK.STEP02_OWNER, step02_outputs
             )
             summary_path.write_text(json.dumps(summary))
+            step04_inputs[2]["role"] = "wrong-role"
+            owners[2] = _publish_verified_owner(
+                evidence / "owner-2.json", BENCHMARK.STEP04_OWNER, step04_outputs,
+                inputs=step04_inputs,
+            )
+            summary_path.write_text(json.dumps(summary))
+            with self.assertRaisesRegex(BENCHMARK.BenchmarkSetupError, "binding differs"):
+                BENCHMARK._admit_e2e(summary_path)
+            step04_inputs[2]["role"] = "input_003"
+            owners[2] = _publish_verified_owner(
+                evidence / "owner-2.json", BENCHMARK.STEP04_OWNER, step04_outputs,
+                inputs=step04_inputs,
+            )
+            summary_path.write_text(json.dumps(summary))
             step06_outputs[4]["role"] = "wrong-role"
-            owners[3] = _publish_verified_owner(
-                evidence / "owner-3.json", BENCHMARK.STEP06_OWNER, step06_outputs
+            owners[4] = _publish_verified_owner(
+                evidence / "owner-4.json", BENCHMARK.STEP06_OWNER, step06_outputs
             )
             summary_path.write_text(json.dumps(summary))
             with self.assertRaisesRegex(
@@ -1993,8 +2208,8 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             ):
                 BENCHMARK._admit_e2e(summary_path)
             step06_outputs[4]["role"] = "output_005"
-            owners[3] = _publish_verified_owner(
-                evidence / "owner-3.json", BENCHMARK.STEP06_OWNER, step06_outputs
+            owners[4] = _publish_verified_owner(
+                evidence / "owner-4.json", BENCHMARK.STEP06_OWNER, step06_outputs
             )
             summary_path.write_text(json.dumps(summary))
             extra_step06 = step06_counts.with_name("unexpected-step06-output")
@@ -2002,8 +2217,8 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             step06_outputs.append(
                 {"role": "output_006", **_artifact(extra_step06)}
             )
-            owners[3] = _publish_verified_owner(
-                evidence / "owner-3.json", BENCHMARK.STEP06_OWNER, step06_outputs
+            owners[4] = _publish_verified_owner(
+                evidence / "owner-4.json", BENCHMARK.STEP06_OWNER, step06_outputs
             )
             summary_path.write_text(json.dumps(summary))
             with self.assertRaisesRegex(
@@ -2011,8 +2226,8 @@ class RetainedStageBenchmarkTests(unittest.TestCase):
             ):
                 BENCHMARK._admit_e2e(summary_path)
             step06_outputs.pop()
-            owners[3] = _publish_verified_owner(
-                evidence / "owner-3.json", BENCHMARK.STEP06_OWNER, step06_outputs
+            owners[4] = _publish_verified_owner(
+                evidence / "owner-4.json", BENCHMARK.STEP06_OWNER, step06_outputs
             )
             summary_path.write_text(json.dumps(summary))
             step01_bam.write_bytes(b"changed")

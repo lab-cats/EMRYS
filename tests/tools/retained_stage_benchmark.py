@@ -18,6 +18,7 @@ import io
 import json
 import math
 import os
+import re
 import stat
 import subprocess
 import sys
@@ -43,6 +44,8 @@ VARIANTS = ("master", "head")
 RETAINED_SAMPLE_ID = "control_pair_01"
 STEP01_OWNER = "emrys.stage.align_RNA_reads_with_STAR.v1"
 STEP02_OWNER = "emrys.stage.construct_canonical_BAM.v1"
+STEP04_OWNER = "emrys.stage.mark_BAM_duplicates_with_Picard.v1"
+STEP04_TRIAL_RUN_TOKEN = "retained-step04-benchmark"
 STEP05_OWNER = "emrys.stage.split_N_cigar_reads_with_GATK.v1"
 STEP06_OWNER = "emrys.stage.partition_BAM_by_mechanical_read_orientation.v1"
 STEP06_TRIAL_RUN_TOKEN = "retained-step06-benchmark"
@@ -154,6 +157,7 @@ RETAINED_CASES = (
         "reference-contig-membership", "identity", 0, (1_000, 4_000, 16_000), 1
     ),
     RetainedCase("step02-canonical-bam", "sample-stages", 2, (100_000,), 2),
+    RetainedCase("step04-duplicate-marking", "sample-stages", 4, (100_000,), 1),
     RetainedCase("step06-mechanical-orientation", "sample-stages", 6, (100_000,), 4),
     RetainedCase("step07-partitions", "cohort-stages", 7, (1, 5, 25), 2),
     RetainedCase("step08-reread", "cohort-stages", 8, (10_000, 100_000), 1),
@@ -180,6 +184,11 @@ class AdmittedE2E:
     retained_step01_bam: RetainedArtifact
     retained_step02_bam: RetainedArtifact
     retained_step02_bai: RetainedArtifact
+    retained_step04_bam: RetainedArtifact
+    retained_step04_bai: RetainedArtifact
+    retained_step04_metrics: RetainedArtifact
+    retained_step04_run_token: str
+    retained_picard_jar: RetainedArtifact
     retained_step05_bam: RetainedArtifact
     retained_step05_bai: RetainedArtifact
     retained_step06_fwd_bam: RetainedArtifact
@@ -189,6 +198,8 @@ class AdmittedE2E:
     retained_step06_counts: RetainedArtifact
     retained_step06_run_token: str
     runtime_bash: Path
+    runtime_java: Path
+    runtime_picard_jar: Path
     runtime_samtools: Path
     runtime_sha256_python: Path
 
@@ -269,7 +280,7 @@ def _load_json(path: Path, label: str) -> Mapping[str, Any]:
     return value
 
 
-def _runtime_authorities(profile: Path) -> tuple[Path, Path, Path]:
+def _runtime_authorities(profile: Path) -> tuple[Path, Path, Path, Path, Path]:
     try:
         with profile.open(encoding="utf-8", newline="") as stream:
             reader = csv.DictReader(stream, dialect="excel-tab")
@@ -278,11 +289,13 @@ def _runtime_authorities(profile: Path) -> tuple[Path, Path, Path]:
         raise BenchmarkSetupError(f"retained runtime profile is unreadable: {exc}") from exc
     if tuple(reader.fieldnames or ()) != RUNTIME_PROFILE_HEADER:
         raise BenchmarkSetupError("retained runtime profile header differs")
-    selected = []
+    selected: dict[str, Path] = {}
     for check_id, check_type, label in (
         ("bash", "tool_version", "retained Bash authority"),
         ("samtools", "tool_version", "retained samtools authority"),
         ("sha256_python", "hash_utility", "retained SHA-256 Python authority"),
+        ("java", "tool_version", "retained Java authority"),
+        ("picard_jar", "path_visibility", "retained Picard jar authority"),
     ):
         matches = [row for row in rows if row.get("check_id") == check_id]
         if len(matches) != 1:
@@ -298,8 +311,38 @@ def _runtime_authorities(profile: Path) -> tuple[Path, Path, Path]:
         target = Path(str(matches[0].get("target")))
         if not target.is_absolute():
             raise BenchmarkSetupError(f"retained {check_id} authority is not absolute")
-        selected.append(_real_file(target, label, executable=True))
-    return selected[0], selected[1], selected[2]
+        selected[check_id] = _real_file(
+            target, label, executable=check_id != "picard_jar"
+        )
+    picard = [row for row in rows if row.get("check_id") == "picard"]
+    expected_probe = [
+        "-jar",
+        str(selected["picard_jar"]),
+        "MarkDuplicates",
+        "--version",
+    ]
+    try:
+        probe = json.loads(str(picard[0].get("probe_args")))
+    except (IndexError, json.JSONDecodeError) as exc:
+        raise BenchmarkSetupError("retained Picard authority is invalid") from exc
+    if (
+        len(picard) != 1
+        or picard[0].get("check_type") != "tool_version_exit_1"
+        or picard[0].get("runtime_context") != "local"
+        or picard[0].get("required") != "true"
+        or picard[0].get("target") != str(selected["java"])
+        or probe != expected_probe
+    ):
+        raise BenchmarkSetupError(
+            "retained Picard authority is not coupled to the admitted Java and jar"
+        )
+    return (
+        selected["bash"],
+        selected["samtools"],
+        selected["sha256_python"],
+        selected["java"],
+        selected["picard_jar"],
+    )
 
 
 def _verify_artifact(record: Any, label: str) -> None:
@@ -408,6 +451,23 @@ def _admit_verified_outputs(
     return admitted
 
 
+def _admit_exact_bindings(
+    record: Mapping[str, Any],
+    machine_key: str,
+    boundary: str,
+    expected: Sequence[tuple[str, str, Path]],
+) -> tuple[RetainedArtifact, ...]:
+    bindings = record.get(boundary)
+    if not isinstance(bindings, list) or len(bindings) != len(expected):
+        raise BenchmarkSetupError(
+            f"retained {machine_key} {boundary} differ from the exact expected roster"
+        )
+    return tuple(
+        _admit_bound_artifact(binding, path, role, label)
+        for binding, (label, role, path) in zip(bindings, expected, strict=True)
+    )
+
+
 def _admit_owner_run_token(record: Mapping[str, Any], machine_key: str) -> str:
     token = record.get("owner_run_token")
     prefix = "owner-"
@@ -492,9 +552,13 @@ def _admit_e2e(summary_path: Path) -> AdmittedE2E:
     _verify_artifact(runtime_profile, "retained runtime profile")
     if not isinstance(runtime_profile, Mapping) or Path(str(runtime_profile["path"])) != operator_root / "runtime.selected.tsv":
         raise BenchmarkSetupError("retained runtime profile path differs")
-    runtime_bash, runtime_samtools, runtime_sha256_python = _runtime_authorities(
-        Path(str(runtime_profile["path"]))
-    )
+    (
+        runtime_bash,
+        runtime_samtools,
+        runtime_sha256_python,
+        runtime_java,
+        runtime_picard_jar,
+    ) = _runtime_authorities(Path(str(runtime_profile["path"])))
 
     execution = _load_json(run_root / "contract/normalized.json", "normalized execution")
     try:
@@ -563,6 +627,55 @@ def _admit_e2e(summary_path: Path) -> AdmittedE2E:
             ("retained Step 02 BAI", "output_002", expected_step02_bai),
         ),
     )
+    expected_step04_bam = (
+        run_root
+        / "results/markdup"
+        / RETAINED_SAMPLE_ID
+        / f"{RETAINED_SAMPLE_ID}.markdup.bam"
+    )
+    expected_step04_bai = Path(f"{expected_step04_bam}.bai")
+    expected_step04_metrics = (
+        run_root
+        / "results/qc/markdup"
+        / f"{RETAINED_SAMPLE_ID}.markdup.metrics.txt"
+    )
+    step04_artifacts, step04_verified = _admit_verified_owner(
+        records,
+        machine_key=STEP04_OWNER,
+        scope_id=RETAINED_SAMPLE_ID,
+        exact_roster=True,
+        expected=(
+            ("retained Step 04 BAM", "output_001", expected_step04_bam),
+            ("retained Step 04 BAI", "output_002", expected_step04_bai),
+            ("retained Step 04 metrics", "output_003", expected_step04_metrics),
+        ),
+    )
+    retained_step04_bam, retained_step04_bai, retained_step04_metrics = (
+        step04_artifacts
+    )
+    step04_input_bam, step04_input_bai, retained_picard_jar = _admit_exact_bindings(
+        step04_verified,
+        STEP04_OWNER,
+        "inputs",
+        (
+            ("retained Step 04 input BAM", "input_001", expected_step02_bam),
+            ("retained Step 04 input BAI", "input_002", expected_step02_bai),
+            (
+                "retained Step 04 Picard jar",
+                "input_003",
+                runtime_picard_jar,
+            ),
+        ),
+    )
+    if (
+        step04_input_bam != retained_step02_bam
+        or step04_input_bai != retained_step02_bai
+        or not os.path.samefile(retained_picard_jar.path, runtime_picard_jar)
+    ):
+        raise BenchmarkSetupError(
+            "retained Step 04 inputs differ from admitted Step 02 and Picard authorities"
+        )
+    retained_step04_run_token = _admit_owner_run_token(step04_verified, STEP04_OWNER)
     expected_step05_bam = (
         run_root
         / "results/split_ncigar"
@@ -646,6 +759,11 @@ def _admit_e2e(summary_path: Path) -> AdmittedE2E:
         retained_step01_bam,
         retained_step02_bam,
         retained_step02_bai,
+        retained_step04_bam,
+        retained_step04_bai,
+        retained_step04_metrics,
+        retained_step04_run_token,
+        retained_picard_jar,
         retained_step05_bam,
         retained_step05_bai,
         retained_step06_fwd_bam,
@@ -655,6 +773,8 @@ def _admit_e2e(summary_path: Path) -> AdmittedE2E:
         retained_step06_counts,
         retained_step06_run_token,
         runtime_bash,
+        runtime_java,
+        runtime_picard_jar,
         runtime_samtools,
         runtime_sha256_python,
     )
@@ -1236,6 +1356,101 @@ def _retained_path(context: Mapping[str, Any], key: str, label: str) -> Path:
     return path
 
 
+def _step04_paths(sample_id: str) -> dict[str, Path]:
+    output_root = Path("results/markdup") / sample_id
+    metrics_root = Path("results/qc/markdup")
+    bam = output_root / f"{sample_id}.markdup.bam"
+    return {
+        "output_root": output_root,
+        "metrics_root": metrics_root,
+        "scratch": Path("scratch"),
+        "bam": bam,
+        "bai": Path(f"{bam}.bai"),
+        "metrics": metrics_root / f"{sample_id}.markdup.metrics.txt",
+        "report": _validation_report(Path("results/qc/validation/04"), sample_id),
+    }
+
+
+def _setup_step04(context: Mapping[str, Any], trial: Path, value: int) -> None:
+    if value != EXPECTED_READ_PAIRS or context.get("sample_id") != RETAINED_SAMPLE_ID:
+        raise BenchmarkSetupError("Step 04 benchmark requires the retained 100k sample")
+    for key, label in (
+        ("retained_step02_bam", "retained Step 02 BAM"),
+        ("retained_step02_bai", "retained Step 02 BAI"),
+        ("retained_step04_bam", "retained Step 04 BAM"),
+        ("retained_step04_bai", "retained Step 04 BAI"),
+        ("retained_step04_metrics", "retained Step 04 metrics"),
+        ("retained_picard_jar", "retained Picard jar"),
+    ):
+        _retained_path(context, key, label)
+    paths = _step04_paths(RETAINED_SAMPLE_ID)
+    for key in ("output_root", "metrics_root", "scratch"):
+        (trial / paths[key]).mkdir(mode=0o700, parents=True)
+    (trial / paths["report"]).parent.mkdir(mode=0o700, parents=True)
+
+
+def _produce_step04(context: Mapping[str, Any], trial: Path, source: Path) -> None:
+    from emrys.libraries.process_environment import sanitized_subprocess_environment
+
+    paths = _step04_paths(RETAINED_SAMPLE_ID)
+    input_bam = _retained_path(context, "retained_step02_bam", "retained Step 02 BAM")
+    _retained_path(context, "retained_step02_bai", "retained Step 02 BAI")
+    picard_jar = _retained_path(
+        context, "retained_picard_jar", "retained Picard jar"
+    )
+    authorities = {
+        label: _real_file(Path(str(context[key])), label, executable=executable)
+        for key, label, executable in (
+            ("runtime_bash", "retained Bash authority", True),
+            ("runtime_java", "retained Java authority", True),
+            ("runtime_picard_jar", "retained Picard jar authority", False),
+            ("runtime_samtools", "retained samtools authority", True),
+            ("runtime_sha256_python", "retained SHA-256 Python authority", True),
+        )
+    }
+    if not os.path.samefile(picard_jar, authorities["retained Picard jar authority"]):
+        raise BenchmarkSetupError("Step 04 Picard jar differs from runtime authority")
+    owner = _real_file(
+        source / "src/emrys/stages/duplicate_marking/step_04_mark_duplicates.sh",
+        "Step 04 owner",
+    )
+    environment = sanitized_subprocess_environment(os.environ)
+    environment.update(
+        {
+            "EMRYS_RUN_TOKEN": STEP04_TRIAL_RUN_TOKEN,
+            "EMRYS_SHA256_PYTHON": str(
+                authorities["retained SHA-256 Python authority"]
+            ),
+            "EMRYS_REQUIRE_BOUND_SHA256": "1",
+            "TMPDIR": str((trial / paths["scratch"]).resolve(strict=True)),
+        }
+    )
+    _run_checked(
+        (
+            str(authorities["retained Bash authority"]),
+            str(owner),
+            "--sample-id",
+            RETAINED_SAMPLE_ID,
+            "--input-bam",
+            str(input_bam),
+            "--output-dir",
+            str(paths["output_root"]),
+            "--metrics-dir",
+            str(paths["metrics_root"]),
+            "--picard-jar",
+            str(picard_jar),
+            "--java-bin",
+            str(authorities["retained Java authority"]),
+            "--samtools-bin",
+            str(authorities["retained samtools authority"]),
+            "--no-clobber",
+            "--execute",
+        ),
+        cwd=trial,
+        environment=environment,
+    )
+
+
 def _step06_paths(sample_id: str) -> dict[str, Path]:
     orientation = Path("results/orientation") / sample_id
     counts_root = Path("results/qc/orientation")
@@ -1425,6 +1640,41 @@ def _inspect_indexed_bam(
     }
 
 
+def _require_indexed_bam_parity(
+    observed: Mapping[str, Any],
+    reference: Mapping[str, Any],
+    *,
+    observed_header: bytes,
+    reference_header: bytes,
+    label: str,
+) -> tuple[tuple[str, bytes], ...]:
+    if observed_header != reference_header:
+        raise BenchmarkSetupError(
+            f"{label} header differs beyond admitted roots and run tokens or metadata"
+        )
+    for key, detail in (
+        ("decoded", "decoded SAM records differ in content or order"),
+        ("idxstats", "indexed counts differ from retained output"),
+        ("indexed", "indexed traversal differs from retained output"),
+    ):
+        if observed[key] != reference[key]:
+            raise BenchmarkSetupError(f"{label} {detail}")
+    decoded = bytes(observed["decoded"])
+    indexed = bytes(observed["indexed"])
+    return (
+        ("header", observed_header),
+        (
+            "records",
+            f"{len(decoded)}\t{hashlib.sha256(decoded).hexdigest()}\n".encode(),
+        ),
+        ("idxstats", bytes(observed["idxstats"])),
+        (
+            "indexed",
+            f"{len(indexed)}\t{hashlib.sha256(indexed).hexdigest()}\n".encode(),
+        ),
+    )
+
+
 def _canonicalize_sam_header(
     data: bytes, *, roots: Sequence[Path], run_tokens: Sequence[str]
 ) -> bytes:
@@ -1446,6 +1696,253 @@ def _canonicalize_sam_header(
     for authored, replacement in sorted(set(replacements), key=lambda item: -len(item[0])):
         normalized = normalized.replace(authored, replacement)
     return normalized
+
+
+def _canonicalize_step04_command(
+    data: bytes,
+    *,
+    roots: Sequence[Path],
+    run_tokens: Sequence[str],
+    expected_tmp: bytes | None,
+    label: str,
+) -> tuple[bytes, bytes]:
+    tmp_matches = re.findall(rb"TMP_DIR=(?:\[[^\]]+\]|\S+)", data)
+    index_matches = re.findall(rb"CREATE_INDEX=(?:true|false)", data)
+    if len(tmp_matches) != 1 or len(index_matches) != 1:
+        raise BenchmarkSetupError(f"{label} omits exact TMP_DIR or CREATE_INDEX metadata")
+    tmp = tmp_matches[0].removeprefix(b"TMP_DIR=").strip(b"[]")
+    if expected_tmp is not None and tmp != expected_tmp:
+        raise BenchmarkSetupError(f"{label} TMP_DIR differs from its admitted value")
+    normalized = _canonicalize_sam_header(
+        data.replace(tmp_matches[0], b"TMP_DIR=<EMRYS_TMPDIR>"),
+        roots=roots,
+        run_tokens=run_tokens,
+    )
+    normalized = normalized.replace(index_matches[0], b"CREATE_INDEX=<INDEX_POLICY>")
+    return normalized, tmp
+
+
+def _canonicalize_step04_header(
+    data: bytes,
+    *,
+    roots: Sequence[Path],
+    run_tokens: Sequence[str],
+    expected_tmp: bytes | None,
+    label: str,
+) -> tuple[bytes, bytes]:
+    lines = data.splitlines(keepends=True)
+    selected = [
+        index
+        for index, line in enumerate(lines)
+        if line.startswith(b"@PG\t") and b"\tID:MarkDuplicates\t" in b"\t" + line
+    ]
+    if not data.endswith(b"\n") or len(selected) != 1:
+        raise BenchmarkSetupError(f"{label} lacks one complete MarkDuplicates @PG line")
+    lines[selected[0]], tmp = _canonicalize_step04_command(
+        lines[selected[0]],
+        roots=roots,
+        run_tokens=run_tokens,
+        expected_tmp=expected_tmp,
+        label=label,
+    )
+    return b"".join(lines), tmp
+
+
+def _step04_metrics_semantics(
+    data: bytes,
+    *,
+    roots: Sequence[Path],
+    run_tokens: Sequence[str],
+    expected_tmp: bytes,
+    label: str,
+) -> tuple[bytes, bytes, dict[str, str]]:
+    marker = b"## METRICS CLASS"
+    if not data.endswith(b"\n") or data.count(marker) != 1:
+        raise BenchmarkSetupError(f"{label} lacks one complete metrics body")
+    prefix, body_tail = data.split(marker, 1)
+    lines = prefix.splitlines(keepends=True)
+    commands = [index for index, line in enumerate(lines) if line.startswith(b"# MarkDuplicates ")]
+    started = [index for index, line in enumerate(lines) if line.startswith(b"# Started on: ")]
+    if len(commands) != 1 or len(started) != 1:
+        raise BenchmarkSetupError(f"{label} metadata roster differs")
+    lines[commands[0]], _tmp = _canonicalize_step04_command(
+        lines[commands[0]],
+        roots=roots,
+        run_tokens=run_tokens,
+        expected_tmp=expected_tmp,
+        label=label,
+    )
+    lines[started[0]] = b"# Started on: <PICARD_TIMESTAMP>\n"
+    body = marker + body_tail
+    table = [line for line in body.decode("utf-8").splitlines()[1:] if line]
+    if len(table) < 2:
+        raise BenchmarkSetupError(f"{label} metrics table is absent")
+    header = table[0].split("\t")
+    values = table[1].split("\t")
+    if len(header) != len(values) or len(set(header)) != len(header):
+        raise BenchmarkSetupError(f"{label} metrics row differs from its header")
+    return b"".join(lines) + body, body, dict(zip(header, values, strict=True))
+
+
+def _step04_optional_tags(fields: Sequence[bytes], label: str) -> dict[bytes, bytes]:
+    tags: dict[bytes, bytes] = {}
+    for field in fields[11:]:
+        parts = field.split(b":", 2)
+        if len(parts) != 3 or len(parts[0]) != 2 or parts[0] in tags:
+            raise BenchmarkSetupError(f"{label} has malformed or duplicate optional tags")
+        tags[parts[0]] = b":".join(parts[1:])
+    return tags
+
+
+def _independent_step04_metrics(
+    input_records: tuple[tuple[bytes, int, bytes], ...],
+    output_records: tuple[tuple[bytes, int, bytes], ...],
+    metrics: Mapping[str, str],
+    sample_id: str,
+) -> dict[str, int | str]:
+    if not input_records or len(input_records) != len(output_records):
+        raise BenchmarkSetupError("Step 04 input/output record counts differ")
+    duplicates = 0
+    for index, (source, target) in enumerate(
+        zip(input_records, output_records, strict=True), start=1
+    ):
+        source_fields, target_fields = source[0][:-1].split(b"\t"), target[0][:-1].split(b"\t")
+        if source[1] & 0x400:
+            raise BenchmarkSetupError("retained Step 02 input already has duplicate flags")
+        if (
+            source_fields[0] != target_fields[0]
+            or source_fields[2:11] != target_fields[2:11]
+            or source[1] != target[1] & ~0x400
+        ):
+            raise BenchmarkSetupError(f"Step 04 record {index} differs beyond the duplicate bit")
+        source_tags = _step04_optional_tags(source_fields, f"Step 02 record {index}")
+        target_tags = _step04_optional_tags(target_fields, f"Step 04 record {index}")
+        if (
+            source_tags.pop(b"PG", None) == b"Z:MarkDuplicates"
+            or target_tags.pop(b"PG", None) != b"Z:MarkDuplicates"
+            or source_tags != target_tags
+        ):
+            raise BenchmarkSetupError(f"Step 04 record {index} PG/tag transition differs")
+        duplicates += bool(target[1] & 0x400)
+    integer_fields = (
+        "UNPAIRED_READS_EXAMINED",
+        "READ_PAIRS_EXAMINED",
+        "SECONDARY_OR_SUPPLEMENTARY_RDS",
+        "UNMAPPED_READS",
+        "UNPAIRED_READ_DUPLICATES",
+        "READ_PAIR_DUPLICATES",
+    )
+    try:
+        counts = {field: int(metrics[field]) for field in integer_fields}
+        fraction = float(metrics["PERCENT_DUPLICATION"])
+    except (KeyError, ValueError) as exc:
+        raise BenchmarkSetupError("Step 04 metrics omit exact numeric counts") from exc
+    if min(counts.values()) < 0 or metrics.get("LIBRARY") != sample_id:
+        raise BenchmarkSetupError("Step 04 metrics library or counts differ")
+    primary = counts["UNPAIRED_READS_EXAMINED"] + 2 * counts["READ_PAIRS_EXAMINED"]
+    examined = primary + counts["SECONDARY_OR_SUPPLEMENTARY_RDS"] + counts["UNMAPPED_READS"]
+    metric_duplicates = counts["UNPAIRED_READ_DUPLICATES"] + 2 * counts["READ_PAIR_DUPLICATES"]
+    expected_fraction = metric_duplicates / primary if primary else 0.0
+    if (
+        examined != len(input_records)
+        or metric_duplicates != duplicates
+        or not math.isfinite(fraction)
+        or not math.isclose(fraction, expected_fraction, abs_tol=5e-7)
+    ):
+        raise BenchmarkSetupError("Step 04 duplicate flags and Picard metrics do not reconcile")
+    return {
+        "input_records": len(input_records),
+        "output_records": len(output_records),
+        "duplicate_records": duplicates,
+        "percent_duplication": metrics["PERCENT_DUPLICATION"],
+    }
+
+
+def _validate_step04(context: Mapping[str, Any], trial: Path) -> None:
+    paths = _step04_paths(RETAINED_SAMPLE_ID)
+    outputs = {
+        key: _real_file(trial / paths[key], f"Step 04 benchmark {key}")
+        for key in ("bam", "bai", "metrics")
+    }
+    retained = {
+        key: _retained_path(context, f"retained_step04_{key}", f"retained Step 04 {key}")
+        for key in ("bam", "bai", "metrics")
+    }
+    input_bam = _retained_path(context, "retained_step02_bam", "retained Step 02 BAM")
+    _retained_path(context, "retained_step02_bai", "retained Step 02 BAI")
+    samtools = _real_file(Path(str(context["runtime_samtools"])), "retained samtools authority", executable=True)
+    validator_python = _real_file(Path(str(context["runtime_sha256_python"])), "retained SHA-256 Python authority", executable=True)
+    if not os.path.samefile(validator_python, Path(str(context["python"]))):
+        raise BenchmarkSetupError("validator Python differs from retained SHA-256 authority")
+    report = paths["report"]
+    _run_checked(
+        _emrys(
+            context, "validate", "duplicate-marking", "--scope-id", RETAINED_SAMPLE_ID,
+            "--bam", str(paths["bam"]), "--bai", str(paths["bai"]),
+            "--metrics", str(paths["metrics"]), "--samtools-bin", str(samtools),
+            "--output", str(report), "--execute",
+        ),
+        cwd=trial,
+    )
+    _run_checked(
+        _emrys(context, "validate", "all-pass", "--report", str(report), "--step-id", "04", "--scope-id", RETAINED_SAMPLE_ID),
+        cwd=trial,
+    )
+    input_records = _sam_records(
+        _capture_checked((str(samtools), "view", str(input_bam)), cwd=trial),
+        "retained Step 02 input",
+    )
+    observed = _inspect_indexed_bam(samtools, outputs["bam"], cwd=trial, label="Step 04 benchmark BAM")
+    reference = _inspect_indexed_bam(samtools, retained["bam"], cwd=trial, label="retained Step 04 BAM")
+    run_root = _real_directory(Path(str(context["run_root"])), "retained run root")
+    retained_token = context.get("retained_step04_run_token")
+    if not isinstance(retained_token, str):
+        raise BenchmarkSetupError("benchmark context omits the retained Step 04 run token")
+    observed_header, observed_tmp = _canonicalize_step04_header(
+        bytes(observed["header"]), roots=(run_root, trial),
+        run_tokens=(STEP04_TRIAL_RUN_TOKEN,),
+        expected_tmp=str((trial / paths["scratch"]).resolve(strict=True)).encode(),
+        label="Step 04 benchmark header",
+    )
+    reference_header, reference_tmp = _canonicalize_step04_header(
+        bytes(reference["header"]), roots=(run_root,), run_tokens=(retained_token,),
+        expected_tmp=None, label="retained Step 04 header",
+    )
+    members = list(
+        _require_indexed_bam_parity(
+            observed, reference, observed_header=observed_header,
+            reference_header=reference_header, label="Step 04 BAM",
+        )
+    )
+    observed_metrics, observed_body, values = _step04_metrics_semantics(
+        outputs["metrics"].read_bytes(), roots=(run_root, trial),
+        run_tokens=(STEP04_TRIAL_RUN_TOKEN,), expected_tmp=observed_tmp,
+        label="Step 04 benchmark metrics",
+    )
+    reference_metrics, reference_body, _reference_values = _step04_metrics_semantics(
+        retained["metrics"].read_bytes(), roots=(run_root,), run_tokens=(retained_token,),
+        expected_tmp=reference_tmp, label="retained Step 04 metrics",
+    )
+    if observed_metrics != reference_metrics or observed_body != reference_body:
+        raise BenchmarkSetupError("Step 04 Picard metrics differ beyond admitted metadata")
+    output_records = observed["records"]
+    if not isinstance(output_records, tuple):
+        raise BenchmarkSetupError("Step 04 decoded record boundary is invalid")
+    independent = _independent_step04_metrics(
+        input_records, output_records, values, RETAINED_SAMPLE_ID
+    )
+    members.extend(
+        (
+            ("metrics-body", observed_body),
+            ("independent-counts", json.dumps(independent, sort_keys=True, separators=(",", ":")).encode() + b"\n"),
+        )
+    )
+    _write_bundle(trial / "parity.bin", members)
+    for output in outputs.values():
+        output.unlink()
+    for key in ("output_root", "metrics_root", "scratch"):
+        if any((trial / paths[key]).iterdir()):
+            raise BenchmarkSetupError("Step 04 benchmark retained publication residue")
 
 
 def _parse_step06_counts(data: bytes, sample_id: str, label: str) -> dict[str, int | str]:
@@ -1624,6 +2121,7 @@ def _validate_step06(context: Mapping[str, Any], trial: Path) -> None:
     reference_roots = (run_root,)
     observed_tokens = (STEP06_TRIAL_RUN_TOKEN,)
     reference_tokens = (retained_run_token,)
+    bam_members: dict[str, tuple[tuple[str, bytes], ...]] = {}
     for orientation in ("fwd", "rev"):
         observed_header = _canonicalize_sam_header(
             bytes(observed[orientation]["header"]),
@@ -1635,18 +2133,13 @@ def _validate_step06(context: Mapping[str, Any], trial: Path) -> None:
             roots=reference_roots,
             run_tokens=reference_tokens,
         )
-        if observed_header != reference_header:
-            raise BenchmarkSetupError(
-                f"Step 06 {orientation.upper()} header differs beyond admitted roots and run tokens"
-            )
-        if observed[orientation]["decoded"] != reference[orientation]["decoded"]:
-            raise BenchmarkSetupError(
-                f"Step 06 {orientation.upper()} decoded SAM records differ in content or order"
-            )
-        if observed[orientation]["idxstats"] != reference[orientation]["idxstats"]:
-            raise BenchmarkSetupError(
-                f"Step 06 {orientation.upper()} indexed counts differ from retained output"
-            )
+        bam_members[orientation] = _require_indexed_bam_parity(
+            observed[orientation],
+            reference[orientation],
+            observed_header=observed_header,
+            reference_header=reference_header,
+            label=f"Step 06 {orientation.upper()}",
+        )
 
     counts_data = outputs["counts"].read_bytes()
     retained_counts_data = retained["counts"].read_bytes()
@@ -1676,26 +2169,9 @@ def _validate_step06(context: Mapping[str, Any], trial: Path) -> None:
         ),
     ]
     for orientation in ("fwd", "rev"):
-        normalized_header = _canonicalize_sam_header(
-            bytes(observed[orientation]["header"]),
-            roots=observed_roots,
-            run_tokens=observed_tokens,
-        )
-        decoded = bytes(observed[orientation]["decoded"])
-        indexed = bytes(observed[orientation]["indexed"])
         members.extend(
-            (
-                (f"{orientation}/header", normalized_header),
-                (
-                    f"{orientation}/records",
-                    f"{len(decoded)}\t{hashlib.sha256(decoded).hexdigest()}\n".encode(),
-                ),
-                (f"{orientation}/idxstats", bytes(observed[orientation]["idxstats"])),
-                (
-                    f"{orientation}/indexed",
-                    f"{len(indexed)}\t{hashlib.sha256(indexed).hexdigest()}\n".encode(),
-                ),
-            )
+            (f"{orientation}/{name}", data)
+            for name, data in bam_members[orientation]
         )
     _write_bundle(trial / "parity.bin", members)
 
@@ -2031,6 +2507,8 @@ def _internal(arguments: argparse.Namespace) -> int:
             _setup_alignment_signatures(trial, arguments.value)
         elif retained_case.stage == 2:
             _setup_step02(context, trial, arguments.value)
+        elif retained_case.stage == 4:
+            _setup_step04(context, trial, arguments.value)
         elif retained_case.stage == 6:
             _setup_step06(context, trial, arguments.value)
         elif retained_case.stage == 7:
@@ -2045,6 +2523,8 @@ def _internal(arguments: argparse.Namespace) -> int:
             _produce_alignment_signatures(trial, source)
         elif retained_case.stage == 2:
             _produce_step02(context, trial, source)
+        elif retained_case.stage == 4:
+            _produce_step04(context, trial, source)
         elif retained_case.stage == 6:
             _produce_step06(context, trial, source)
         elif retained_case.stage == 7:
@@ -2064,6 +2544,8 @@ def _internal(arguments: argparse.Namespace) -> int:
         _validate_alignment_signatures(trial)
     elif retained_case.stage == 2:
         _validate_step02(context, trial)
+    elif retained_case.stage == 4:
+        _validate_step04(context, trial)
     elif retained_case.stage == 6:
         _validate_step06(context, trial)
     elif retained_case.stage == 7:
@@ -2389,6 +2871,11 @@ def _execute(
         "retained_step01_bam": _artifact_context(e2e.retained_step01_bam),
         "retained_step02_bam": _artifact_context(e2e.retained_step02_bam),
         "retained_step02_bai": _artifact_context(e2e.retained_step02_bai),
+        "retained_step04_bam": _artifact_context(e2e.retained_step04_bam),
+        "retained_step04_bai": _artifact_context(e2e.retained_step04_bai),
+        "retained_step04_metrics": _artifact_context(e2e.retained_step04_metrics),
+        "retained_step04_run_token": e2e.retained_step04_run_token,
+        "retained_picard_jar": _artifact_context(e2e.retained_picard_jar),
         "retained_step05_bam": _artifact_context(e2e.retained_step05_bam),
         "retained_step05_bai": _artifact_context(e2e.retained_step05_bai),
         "retained_step06_fwd_bam": _artifact_context(e2e.retained_step06_fwd_bam),
@@ -2398,6 +2885,8 @@ def _execute(
         "retained_step06_counts": _artifact_context(e2e.retained_step06_counts),
         "retained_step06_run_token": e2e.retained_step06_run_token,
         "runtime_bash": str(e2e.runtime_bash),
+        "runtime_java": str(e2e.runtime_java),
+        "runtime_picard_jar": str(e2e.runtime_picard_jar),
         "runtime_samtools": str(e2e.runtime_samtools),
         "runtime_sha256_python": str(e2e.runtime_sha256_python),
         "runtime_prefix": str(runtime_prefix),

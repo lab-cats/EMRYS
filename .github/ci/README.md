@@ -30,7 +30,7 @@ The workflow runs the complete Python 3.11 suite and the 130-pair `smoke-v1`
 real synthetic E2E every night. Its Sunday UTC schedule also runs the
 100,000-pair `production-like-v1` E2E and, after that lane succeeds, paired
 retained benchmarks for alignment-signature I/O, reference-contig membership,
-and Steps 02, 06, 07, and 08.
+and Steps 02, 04, 06, 07, and 08.
 A manual dispatch exposes independent `python311`, `synthetic_130`, and
 `synthetic_100000` boolean lane inputs; any nonempty combination is valid, and
 ordinary pull-request lanes do not run for that dispatch. The optional string
