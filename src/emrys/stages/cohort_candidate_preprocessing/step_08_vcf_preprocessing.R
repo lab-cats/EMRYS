@@ -306,42 +306,13 @@ main <- function() {
         paste0("AF__", sample_ids)
     )
     sites <- sites[, expected_site_columns, drop = FALSE]
+
+    # R owns deterministic candidate construction and TSV serialization. The
+    # shell owner performs post-serialization admission on these staged outputs
+    # before publication; it does not reconstruct within-VCF candidate order.
     write_tsv(sites, output_paths[[1L]])
     write_tsv(summary, output_paths[[3L]])
     write_tsv(input_receipt, output_paths[[2L]])
-
-    reread_sites <- read_tsv(
-        "Written Step 08 sites table",
-        output_paths[[1L]],
-        expected_site_columns
-    )
-    reread_inputs <- read_tsv(
-        "Written Step 08 input receipt",
-        output_paths[[2L]],
-        INPUT_COLUMNS
-    )
-    reread_summary <- read_tsv(
-        "Written Step 08 summary",
-        output_paths[[3L]],
-        SUMMARY_COLUMNS
-    )
-    if (nrow(reread_sites) != nrow(sites) ||
-        nrow(reread_inputs) != nrow(input_receipt) ||
-        nrow(reread_summary) != 1L) {
-        abort("Written Step 08 table row counts failed revalidation.")
-    }
-    if (nrow(reread_sites) > 0L &&
-        !identical(reread_sites$candidate_id, sites$candidate_id)) {
-        abort("Written Step 08 candidate order changed during serialization.")
-    }
-    if (!all(!is.na(reread_inputs$orientation_policy) &
-            reread_inputs$orientation_policy == ORIENTATION_POLICY) ||
-        !(
-            !is.na(reread_summary$orientation_policy[[1L]]) &&
-            reread_summary$orientation_policy[[1L]] == ORIENTATION_POLICY
-        )) {
-        abort("Written Step 08 orientation policy failed revalidation.")
-    }
     successful <- TRUE
 
     message(

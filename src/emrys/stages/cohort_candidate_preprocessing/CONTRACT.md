@@ -39,9 +39,10 @@ manifest exactly.
 The optional positive `--threads` value defaults to `1` and bounds independent
 partition/orientation VCF workers. On Unix, worker results are returned in the
 declared manifest/orientation order before deterministic aggregation; Windows
-direct execution falls back to one worker. Annotation import/model construction,
-aggregate reconciliation, serialization, validation, and publication remain
-single-owner operations.
+direct execution falls back to one worker. Annotation import/model construction
+and aggregate reconciliation remain single-owner R operations. R also owns
+deterministic candidate construction, aggregation, and TSV serialization. The
+shell owner performs post-serialization admission and publication.
 
 The fixed `legacy_provisional_v1` compatibility policy maps:
 
@@ -105,9 +106,13 @@ Failed restore moves preserve remaining backups and retain the cohort lock for
 operator recovery. No automated recovery interface exists.
 
 [`step_08_vcf_preprocessing.R`](step_08_vcf_preprocessing.R)
-owns semantic parsing, candidate construction, provisional orientation policy,
-annotation, and deterministic TSV generation. The shell owns orchestration,
-validation, locking, and publication.
+owns semantic parsing, deterministic candidate construction and TSV
+serialization, provisional orientation policy, and annotation. The shell owns
+orchestration, locking, staged post-serialization admission, and publication.
+Its admission checks exact headers and field/row counts, declared input-receipt
+ordering and identities, basic site fields and candidate uniqueness, and
+policy/count reconciliation. It does not reparse source VCFs or reconstruct
+within-VCF candidate order.
 
 The canonical R facade requires its adjacent owner-private input-contract,
 annotation, Step `07` receipt, VCF/count, and candidate-processing modules. It
@@ -171,6 +176,9 @@ peer-stage implementation dependencies are not supported interfaces.
 - Wrapper, roster, publication-fault, public-CLI, artifact, report, coverage,
   and Step `09` consumer tests protect cross-boundary behavior.
 
+The guarded real-R fixtures compare exact candidate order and byte equality
+across worker counts. The shell fault fixtures prove structural and
+reconciliation admission, not independent reconstruction of candidate order.
 This is local fixture characterization, including guarded real-R fixtures, not
 production, cluster, scientific-review, or biological evidence.
 

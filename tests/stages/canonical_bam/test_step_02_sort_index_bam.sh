@@ -6,6 +6,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 SCRIPT="$REPO_ROOT/src/emrys/stages/canonical_bam/step_02_sort_index_bam.sh"
 unset EMRYS_RUN_TOKEN
 export EMRYS_SHA256_PYTHON="$REPO_ROOT/.venv/bin/python"
+real_sha256_python="$EMRYS_SHA256_PYTHON"
 
 # Keep assertions small and shell-native so failures print the local fixture state.
 fail() {
@@ -22,6 +23,18 @@ assert_contains() {
         printf 'Actual output:\n' >&2
         cat "$file" >&2
         fail "missing expected output"
+    fi
+}
+
+assert_not_contains() {
+    local file="$1"
+    local unexpected="$2"
+
+    if grep -Fq -- "$unexpected" "$file"; then
+        printf 'Did not expect to find: %s\n' "$unexpected" >&2
+        printf 'Actual output:\n' >&2
+        cat "$file" >&2
+        fail "unexpected output"
     fi
 }
 
@@ -258,6 +271,35 @@ fi
 EOF_MV
 chmod +x "$fake_bin/mv"
 
+cat >"$fake_bin/sha256-python" <<'EOF_SHA256_PYTHON'
+#!/usr/bin/env bash
+set -euo pipefail
+
+real_python="${FAKE_SHA256_REAL_PYTHON:-}"
+if [[ -z "$real_python" || ! -x "$real_python" ]]; then
+    printf 'fake SHA-256 launcher requires an executable real Python\n' >&2
+    exit 64
+fi
+
+hash_target=""
+for argument in "$@"; do
+    hash_target="$argument"
+done
+
+if [[ -n "${FAKE_SHA256_MUTATE_WHEN_PATH:-}" &&
+      "$hash_target" == "$FAKE_SHA256_MUTATE_WHEN_PATH" ]]; then
+    mutation_path="${FAKE_SHA256_MUTATE_PATH:-}"
+    [[ -n "$mutation_path" ]] || {
+        printf 'fake SHA-256 launcher requires a mutation path\n' >&2
+        exit 64
+    }
+    printf 'mutated after final BAM publication\n' >"$mutation_path"
+fi
+
+exec "$real_python" "$@"
+EOF_SHA256_PYTHON
+chmod +x "$fake_bin/sha256-python"
+
 export PATH="$fake_bin:$PATH"
 
 fixture_dir="$tmp_dir/fixtures"
@@ -420,6 +462,42 @@ assert_contains "$canonical_output" \
     "Input alignment already satisfies the canonical BAM contract; reusing its bytes without rewriting."
 assert_no_step02_scratch "$canonical_output_dir"
 
+printf 'Running zero-copy post-publication mutation rejection check...\n'
+publication_mutation_input="$tmp_dir/fixtures/publication_mutation_input.bam"
+{
+    printf '@HD\tVN:1.6\tSO:coordinate\n'
+    printf '@RG\tID:sample_publish_race\tSM:sample_publish_race\tLB:sample_publish_race\tPL:ILLUMINA\n'
+    printf 'TOTAL:10\n'
+    printf 'TAGGED:10\n'
+} >"$publication_mutation_input"
+publication_mutation_output="$tmp_dir/publication_mutation.out"
+publication_mutation_output_dir="$tmp_dir/results/publication_mutation"
+publication_mutation_bam="$publication_mutation_output_dir/sample_publish_race.sorted.bam"
+assert_fails "$publication_mutation_output" env \
+    EMRYS_SHA256_PYTHON="$fake_bin/sha256-python" \
+    FAKE_SHA256_REAL_PYTHON="$real_sha256_python" \
+    FAKE_SHA256_MUTATE_WHEN_PATH="$publication_mutation_bam" \
+    FAKE_SHA256_MUTATE_PATH="$publication_mutation_input" \
+    FAKE_SAMPLE_ID=sample_publish_race \
+    SLURM_JOB_ID=publish-race001 \
+    bash "$SCRIPT" \
+    --sample-id sample_publish_race \
+    --input-alignment "$publication_mutation_input" \
+    --output-dir "$publication_mutation_output_dir" \
+    --threads 2 \
+    --no-clobber \
+    --execute
+assert_contains "$publication_mutation_output" \
+    "Canonical BAM changed after create-exclusive publication: $publication_mutation_bam"
+assert_contains "$publication_mutation_output" "Rolling back Step 02 canonical outputs..."
+assert_not_contains "$publication_mutation_output" \
+    "Step 02 no-clobber rollback was incomplete"
+assert_file_equals "$publication_mutation_input" "mutated after final BAM publication"
+assert_not_exists "$publication_mutation_bam"
+assert_not_exists "$publication_mutation_bam.bai"
+assert_not_exists "$publication_mutation_output_dir/.sample_publish_race.step02.lock"
+assert_no_step02_scratch "$publication_mutation_output_dir"
+
 printf 'Running orchestration-safe no-clobber checks...\n'
 safe_input="$tmp_dir/fixtures/safe_input.sam"
 printf '@HD\tVN:1.6\tSO:unsorted\n' >"$safe_input"
@@ -440,8 +518,12 @@ assert_file_equals "$residue_path" "preserve residue"
 assert_not_exists "$residue_output_dir/.sample_residue.step02.lock"
 safe_output="$tmp_dir/safe.out"
 safe_output_dir="$tmp_dir/results/safe"
+rm -f "$samtools_log"
 SLURM_JOB_ID=safe001 run_step02 sample_safe "$safe_input" "$safe_output_dir" 2 --no-clobber --execute >"$safe_output"
 assert_contains "$safe_output" "No-clobber transaction: true"
+assert_contains "$samtools_log" \
+    "$safe_output_dir/.sample_safe.step02.safe001.rg.tmp.bam"
+assert_not_contains "$samtools_log" "$safe_output_dir/sample_safe.sorted.bam"
 assert_not_exists "$safe_output_dir/.sample_safe.step02.lock"
 safe_repeat_output="$tmp_dir/safe_repeat.out"
 assert_fails "$safe_repeat_output" env FAKE_SAMPLE_ID=sample_safe SLURM_JOB_ID=safe002 bash "$SCRIPT" \

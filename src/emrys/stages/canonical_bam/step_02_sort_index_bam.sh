@@ -113,6 +113,7 @@ backup_started=false
 bam_backed_up=false
 bai_backed_up=false
 final_publish_complete=false
+reused_input_alignment=false
 
 # Build tool commands as arrays to preserve argument boundaries in dry-run logs.
 input_header_command=(
@@ -272,8 +273,10 @@ rollback_publish() {
             "Step 02 BAM" "$tmp_rg_bam" "$output_bam" || rollback_ok=false
         remove_owned_published_file \
             "Step 02 BAI" "$tmp_rg_bai" "$output_bai" || rollback_ok=false
-        [[ "$rollback_ok" == true ]]
-        return
+        if [[ "$rollback_ok" == true ]]; then
+            return 0
+        fi
+        return 1
     fi
 
     if [[ "$previous_pair_present" == true ]]; then
@@ -384,10 +387,10 @@ printf 'Publish plan:\n'
 printf '  1. Validate replacement BAM and BAI: %s %s\n' "$tmp_rg_bam" "$tmp_rg_bai"
 printf '  2. Confirm canonical outputs are a complete pair or both absent.\n'
 printf '  3. Back up existing pair to: %s %s\n' "$backup_bam" "$backup_bai"
-printf '  4. Move replacement BAM to: %s\n' "$output_bam"
-printf '  5. Move replacement BAI to: %s\n' "$output_bai"
-printf '  6. Revalidate published canonical BAM and BAI.\n'
-printf '  7. Remove backups and owned lock after successful final validation.\n'
+printf '  4. Publish replacement BAM to: %s\n' "$output_bam"
+printf '  5. Publish replacement BAI to: %s\n' "$output_bai"
+printf '  6. Under --no-clobber, prove final paths are the validated staging inodes and recheck reused input bytes; legacy replacement mode revalidates final paths.\n'
+printf '  7. Remove backups and owned lock after successful publication validation.\n'
 printf 'Rollback plan:\n'
 printf '  Restore backups before cleanup on failures after backup begins; remove new canonical files if no prior pair existed.\n'
 
@@ -422,6 +425,7 @@ else
 fi
 if input_has_canonical_bam_contract "$input_header"; then
     if ln -- "$input_alignment" "$tmp_rg_bam"; then
+        reused_input_alignment=true
         printf 'Input alignment already satisfies the canonical BAM contract; reusing its bytes without rewriting.\n'
     else
         printf 'Could not hard-link the canonical input; falling back to samtools addreplacerg.\n' >&2
@@ -456,16 +460,32 @@ fi
 if [[ "$no_clobber" == true ]]; then
     publish_file_create_exclusive "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
     publish_file_create_exclusive "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
+
+    # Create-exclusive publication hard-links the already validated staging
+    # files. Prove both finals still resolve to those exact inodes instead of
+    # repeating quickcheck, header inspection, and two whole-BAM count scans.
+    require_owned_published_file "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
+    require_owned_published_file "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
+
+    # A reused input remains writable through its original path even while the
+    # staging and final paths still share its inode. Rebind the published bytes
+    # to the admitted input digest after both links exist so an in-place change
+    # in the publication window fails before the staging anchors are removed.
+    if [[ "$reused_input_alignment" == true ]]; then
+        [[ "$(sha256_file "$output_bam")" == "$input_alignment_sha256" ]] ||
+            die "Canonical BAM changed after create-exclusive publication: $output_bam"
+    fi
+    require_owned_published_file "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
+    require_owned_published_file "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
 else
     mv "$tmp_rg_bam" "$output_bam"
     mv "$tmp_rg_bai" "$output_bai"
-fi
 
-# Revalidate after publish so a copied/moved pair is known-good at final paths.
-validate_bam_pair "$output_bam" "$output_bai" "Canonical"
+    # The legacy replacement route drops the staging identity anchors, so it
+    # retains final-path semantic revalidation.
+    validate_bam_pair "$output_bam" "$output_bai" "Canonical"
+fi
 if [[ "$no_clobber" == true ]]; then
-    require_owned_published_file "Step 02 BAM" "$tmp_rg_bam" "$output_bam"
-    require_owned_published_file "Step 02 BAI" "$tmp_rg_bai" "$output_bai"
     rm -f -- "$tmp_rg_bam" "$tmp_rg_bai"
     [[ ! -e "$tmp_rg_bam" && ! -L "$tmp_rg_bam" &&
        ! -e "$tmp_rg_bai" && ! -L "$tmp_rg_bai" ]] ||

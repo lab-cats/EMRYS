@@ -12,6 +12,7 @@ import errno
 import hashlib
 import os
 import re
+import selectors
 import stat
 import subprocess
 import sys
@@ -20,6 +21,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import partial
+from operator import attrgetter
 from pathlib import Path
 from typing import Any
 
@@ -64,6 +66,7 @@ _DISPATCH_FIELDS = frozenset(
 _DECLARATION_FIELDS = frozenset({"role", "path"})
 _SCOPE_FIELDS = frozenset({"scope_type", "scope_id"})
 _SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+_STREAM_CHUNK_BYTES = 1024 * 1024
 
 
 class TaskBoundaryError(RuntimeError):
@@ -78,12 +81,16 @@ class FileDeclaration:
     path: Path
 
 
+_FileIdentity = tuple[int, int, int, int, int]
+_file_identity = attrgetter("st_dev", "st_ino", "st_size", "st_mtime_ns", "st_ctime_ns")
+
+
 @dataclass(frozen=True, slots=True)
 class _BoundFileSnapshot:
     """One content record plus the exact regular-file identity that supplied it."""
 
     record: dict[str, Any]
-    identity: tuple[int, int, int, int, int]
+    identity: _FileIdentity
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,19 +129,20 @@ class TaskDispatch:
 
 @dataclass(frozen=True, slots=True)
 class CommandResult:
-    """Complete captured result for one delegated public command."""
+    """Exit evidence for one delegated public command."""
 
     argv: tuple[str, ...]
     exit_code: int
-    stdout: bytes
-    stderr: bytes
 
     @property
     def record(self) -> dict[str, Any]:
         return {"argv": list(self.argv), "exit_code": self.exit_code}
 
 
-CommandRunner = Callable[[tuple[str, ...], Path, Mapping[str, str]], CommandResult]
+CommandRunner = Callable[
+    [tuple[str, ...], Path, Mapping[str, str], int, int],
+    CommandResult,
+]
 BytesPublisher = Callable[[Path, bytes], None]
 Clock = Callable[[], datetime]
 SourceCheckoutAttester = Callable[..., Any]
@@ -443,7 +451,7 @@ def _consume_bound_file(
         if not stat.S_ISREG(before.st_mode):
             raise TaskBoundaryError(f"{label} is not a regular file: {path}")
         while True:
-            chunk = os.read(descriptor, 1024 * 1024)
+            chunk = os.read(descriptor, _STREAM_CHUNK_BYTES)
             if not chunk:
                 break
             consume(chunk)
@@ -454,28 +462,10 @@ def _consume_bound_file(
         path_state = path.stat(follow_symlinks=False)
     except OSError as exc:
         raise TaskBoundaryError(f"Could not restat {label}: {path}: {exc}") from exc
-    identity = (
-        before.st_dev,
-        before.st_ino,
-        before.st_size,
-        before.st_mtime_ns,
-        before.st_ctime_ns,
-    )
-    if identity != (
-        after.st_dev,
-        after.st_ino,
-        after.st_size,
-        after.st_mtime_ns,
-        after.st_ctime_ns,
-    ):
+    identity = _file_identity(before)
+    if identity != _file_identity(after):
         raise TaskBoundaryError(f"{label} changed while it was read: {path}")
-    if identity != (
-        path_state.st_dev,
-        path_state.st_ino,
-        path_state.st_size,
-        path_state.st_mtime_ns,
-        path_state.st_ctime_ns,
-    ):
+    if identity != _file_identity(path_state):
         raise TaskBoundaryError(f"{label} path changed while it was read: {path}")
     return after
 
@@ -513,13 +503,7 @@ def _bound_snapshot(declaration: FileDeclaration) -> _BoundFileSnapshot:
             "size_bytes": state.st_size,
             "sha256": digest,
         },
-        identity=(
-            state.st_dev,
-            state.st_ino,
-            state.st_size,
-            state.st_mtime_ns,
-            state.st_ctime_ns,
-        ),
+        identity=_file_identity(state),
     )
 
 
@@ -527,26 +511,255 @@ def _snapshot(declaration: FileDeclaration) -> dict[str, Any]:
     return _bound_snapshot(declaration).record
 
 
-def _record_reference(path: Path, run_root: Path) -> dict[str, str]:
-    data, _ = _read_bound_file(path, "record reference")
+def _record_reference(
+    path: Path,
+    run_root: Path,
+    *,
+    expected_identity: _FileIdentity | None = None,
+    label: str = "record reference",
+) -> dict[str, str]:
+    digest, state = _hash_bound_file(path, label)
+    if expected_identity is not None and _file_identity(state) != expected_identity:
+        raise TaskBoundaryError(
+            f"{label} path no longer matches its synchronized descriptor"
+        )
     return {
         "path": path.relative_to(run_root).as_posix(),
-        "sha256": hashlib.sha256(data).hexdigest(),
+        "sha256": digest,
     }
+
+
+def _write_descriptor(descriptor: int, data: bytes, label: str) -> None:
+    view = memoryview(data)
+    try:
+        while view:
+            written = os.write(descriptor, view)
+            if written <= 0:
+                raise OSError(f"short write returned {written}")
+            view = view[written:]
+    except OSError as exc:
+        raise TaskBoundaryError(f"Could not write {label}: {exc}") from exc
+
+
+def _open_task_log(path: Path, label: str) -> int:
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise TaskBoundaryError("This platform lacks required O_NOFOLLOW publication")
+    parent = path.parent
+    try:
+        parent_state = parent.lstat()
+    except OSError as exc:
+        raise TaskBoundaryError(
+            f"Could not inspect {label} parent: {parent}: {exc}"
+        ) from exc
+    if stat.S_ISLNK(parent_state.st_mode) or not stat.S_ISDIR(parent_state.st_mode):
+        raise TaskBoundaryError(f"{label} parent must be a real directory: {parent}")
+    try:
+        if parent.resolve(strict=True) != parent:
+            raise TaskBoundaryError(f"{label} parent must be canonical: {parent}")
+    except OSError as exc:
+        raise TaskBoundaryError(
+            f"Could not resolve {label} parent: {parent}: {exc}"
+        ) from exc
+
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_APPEND | os.O_NOFOLLOW
+    flags |= getattr(os, "O_CLOEXEC", 0)
+    try:
+        descriptor = os.open(path, flags, 0o600)
+    except FileExistsError as exc:
+        raise TaskBoundaryError(
+            f"Refusing to replace existing {label}: {path}"
+        ) from exc
+    except OSError as exc:
+        raise TaskBoundaryError(f"Could not create {label}: {path}: {exc}") from exc
+    try:
+        descriptor_state = os.fstat(descriptor)
+        path_state = path.stat(follow_symlinks=False)
+        if not stat.S_ISREG(descriptor_state.st_mode) or not stat.S_ISREG(
+            path_state.st_mode
+        ):
+            raise TaskBoundaryError(f"{label} is not a regular file: {path}")
+        if (descriptor_state.st_dev, descriptor_state.st_ino) != (
+            path_state.st_dev,
+            path_state.st_ino,
+        ):
+            raise TaskBoundaryError(f"{label} path changed during creation: {path}")
+    except BaseException:
+        os.close(descriptor)
+        raise
+    return descriptor
+
+
+def _sync_task_log_directory(path: Path) -> None:
+    flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+    flags |= getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+    try:
+        descriptor = os.open(path, flags)
+        try:
+            state = os.fstat(descriptor)
+            if not stat.S_ISDIR(state.st_mode):
+                raise TaskBoundaryError(f"Task log parent is not a directory: {path}")
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+    except TaskBoundaryError:
+        raise
+    except OSError as exc:
+        raise TaskBoundaryError(
+            f"Could not synchronize task log directory: {path}: {exc}"
+        ) from exc
+
+
+@dataclass(slots=True)
+class _TaskStreamCapture:
+    """One protected pair of task-owned opaque command streams."""
+
+    stdout_path: Path
+    stderr_path: Path
+    run_root: Path
+    _stdout_descriptor: int = -1
+    _stderr_descriptor: int = -1
+    _opened: bool = False
+    _closed: bool = False
+    _open_failure: TaskBoundaryError | None = None
+    _final_identities: tuple[_FileIdentity, _FileIdentity] | None = None
+    _references: tuple[dict[str, str], dict[str, str]] | None = None
+
+    def open(self) -> tuple[int, int]:
+        if self._opened:
+            if self._closed:
+                raise TaskBoundaryError("Task command streams are already closed")
+            return self._stdout_descriptor, self._stderr_descriptor
+        self._opened = True
+        try:
+            for field, path, label in (
+                ("_stdout_descriptor", self.stdout_path, "task stdout log"),
+                ("_stderr_descriptor", self.stderr_path, "task stderr log"),
+            ):
+                setattr(self, field, _open_task_log(path, label))
+                _sync_task_log_directory(path.parent)
+        except BaseException as exc:
+            if isinstance(exc, TaskBoundaryError):
+                self._open_failure = exc
+            self.preserve_incomplete()
+            raise
+        return self._stdout_descriptor, self._stderr_descriptor
+
+    def _synchronize_and_close(
+        self, *, best_effort: bool
+    ) -> tuple[_FileIdentity, _FileIdentity] | None:
+        if not self._opened or self._closed:
+            return self._final_identities
+        failures: list[str] = []
+        identities: dict[str, _FileIdentity] = {}
+        for label, descriptor in (
+            ("stdout", self._stdout_descriptor),
+            ("stderr", self._stderr_descriptor),
+        ):
+            if descriptor < 0:
+                continue
+            try:
+                os.fsync(descriptor)
+                identities[label] = _file_identity(os.fstat(descriptor))
+            except OSError as exc:
+                failures.append(f"{label} fsync/fstat: {exc}")
+        for label, field in (
+            ("stdout", "_stdout_descriptor"),
+            ("stderr", "_stderr_descriptor"),
+        ):
+            descriptor = getattr(self, field)
+            if descriptor < 0:
+                continue
+            try:
+                os.close(descriptor)
+            except OSError as exc:
+                failures.append(f"{label} close: {exc}")
+            finally:
+                setattr(self, field, -1)
+        self._closed = True
+        if "stdout" in identities and "stderr" in identities:
+            self._final_identities = (identities["stdout"], identities["stderr"])
+        if failures and not best_effort:
+            raise TaskBoundaryError(
+                "Could not synchronize and close task command streams: "
+                + "; ".join(failures)
+            )
+        return self._final_identities
+
+    def preserve_incomplete(self) -> None:
+        """Best-effort durability for an unexpected interruption or capture fault."""
+
+        self._synchronize_and_close(best_effort=True)
+
+    def finalize(self) -> tuple[dict[str, str], dict[str, str]]:
+        if self._open_failure is not None:
+            raise TaskBoundaryError(str(self._open_failure)) from self._open_failure
+        if self._references is not None:
+            return self._references
+        if not self._opened:
+            self.open()
+        identities = self._synchronize_and_close(best_effort=False)
+        if identities is None:
+            raise TaskBoundaryError("Task command streams have no final identity")
+        stdout_reference = _record_reference(
+            self.stdout_path,
+            self.run_root,
+            expected_identity=identities[0],
+            label="task stdout log",
+        )
+        stderr_reference = _record_reference(
+            self.stderr_path,
+            self.run_root,
+            expected_identity=identities[1],
+            label="task stderr log",
+        )
+        self._references = (stdout_reference, stderr_reference)
+        return self._references
+
+    def revalidate_after_attempt_publication(self) -> None:
+        if self._references is None or self._final_identities is None:
+            raise TaskBoundaryError("Task command streams were not finalized")
+        for label, path, reference, identity in zip(
+            ("stdout", "stderr"),
+            (self.stdout_path, self.stderr_path),
+            self._references,
+            self._final_identities,
+            strict=True,
+        ):
+            try:
+                current = _record_reference(
+                    path,
+                    self.run_root,
+                    expected_identity=identity,
+                    label=f"task {label} log",
+                )
+            except TaskBoundaryError as exc:
+                raise TaskBoundaryError(
+                    f"Task {label} changed during attempt publication"
+                ) from exc
+            if current != reference:
+                raise TaskBoundaryError(
+                    f"Task {label} changed during attempt publication"
+                )
 
 
 def _default_run_command(
     argv: tuple[str, ...],
     cwd: Path,
     environment: Mapping[str, str] | None = None,
+    stdout_descriptor: int = -1,
+    stderr_descriptor: int = -1,
 ) -> CommandResult:
+    if stdout_descriptor < 0 or stderr_descriptor < 0:
+        raise TaskBoundaryError(
+            "Task command execution requires both stream descriptors"
+        )
     try:
-        completed = subprocess.run(
+        process = subprocess.Popen(
             argv,
             cwd=cwd,
-            check=False,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            bufsize=0,
             env=sanitized_subprocess_environment(environment),
         )
     except OSError as exc:
@@ -554,9 +767,60 @@ def _default_run_command(
             "utf-8", errors="backslashreplace"
         )
         exit_code = 127 if exc.errno == errno.ENOENT else 126
-        return CommandResult(argv, exit_code, b"", message)
-    exit_code = completed.returncode if 0 <= completed.returncode <= 255 else 128
-    return CommandResult(argv, exit_code, completed.stdout, completed.stderr)
+        _write_descriptor(stderr_descriptor, message, "task stderr log")
+        return CommandResult(argv, exit_code)
+    selector: selectors.BaseSelector | None = None
+    try:
+        if process.stdout is None or process.stderr is None:
+            raise TaskBoundaryError("Task command did not expose both captured streams")
+        selector = selectors.DefaultSelector()
+        selector.register(
+            process.stdout,
+            selectors.EVENT_READ,
+            (stdout_descriptor, "task stdout log"),
+        )
+        selector.register(
+            process.stderr,
+            selectors.EVENT_READ,
+            (stderr_descriptor, "task stderr log"),
+        )
+        while selector.get_map():
+            try:
+                ready = selector.select()
+            except OSError as exc:
+                raise TaskBoundaryError(
+                    f"Could not wait for task command streams: {exc}"
+                ) from exc
+            for key, _events in ready:
+                destination, label = key.data
+                try:
+                    chunk = os.read(key.fd, _STREAM_CHUNK_BYTES)
+                except OSError as exc:
+                    raise TaskBoundaryError(f"Could not read {label}: {exc}") from exc
+                if chunk:
+                    _write_descriptor(destination, chunk, label)
+                else:
+                    selector.unregister(key.fileobj)
+        return_code = process.wait()
+    except BaseException:
+        try:
+            process.kill()
+        finally:
+            process.wait()
+        raise
+    finally:
+        try:
+            if selector is not None:
+                selector.close()
+        finally:
+            try:
+                if process.stdout is not None:
+                    process.stdout.close()
+            finally:
+                if process.stderr is not None:
+                    process.stderr.close()
+    exit_code = return_code if 0 <= return_code <= 255 else 128
+    return CommandResult(argv, exit_code)
 
 
 def _publish_bytes(path: Path, data: bytes) -> None:
@@ -1220,8 +1484,8 @@ def _verify_reference(
         raise TaskBoundaryError(f"{label}.path must be a relative contract path")
     path = run_root / raw_path
     _safe_in_run_destination(path, run_root, label)
-    data, _ = _read_bound_file(path, label)
-    if hashlib.sha256(data).hexdigest() != reference.get("sha256"):
+    digest, _ = _hash_bound_file(path, label)
+    if digest != reference.get("sha256"):
         raise TaskBoundaryError(f"{label} SHA-256 no longer matches")
     return path
 
@@ -1415,25 +1679,9 @@ def _publish_attempt(
     stable_inputs_rechecked: bool,
     task_start_reference: Mapping[str, str] | None,
     failure_message: str | None,
-    stdout: bytes,
-    stderr: bytes,
+    streams: _TaskStreamCapture,
 ) -> tuple[dict[str, Any], bytes]:
-    ops.publish_bytes(dispatch.stdout_path, stdout)
-    ops.publish_bytes(dispatch.stderr_path, stderr)
-    stdout_reference = _record_reference(dispatch.stdout_path, dispatch.run_root)
-    stderr_reference = _record_reference(dispatch.stderr_path, dispatch.run_root)
-    expected_stdout_reference = {
-        "path": _relative(dispatch.stdout_path, dispatch.run_root),
-        "sha256": hashlib.sha256(stdout).hexdigest(),
-    }
-    expected_stderr_reference = {
-        "path": _relative(dispatch.stderr_path, dispatch.run_root),
-        "sha256": hashlib.sha256(stderr).hexdigest(),
-    }
-    if stdout_reference != expected_stdout_reference:
-        raise TaskBoundaryError("Published task stdout bytes changed before admission")
-    if stderr_reference != expected_stderr_reference:
-        raise TaskBoundaryError("Published task stderr bytes changed before admission")
+    stdout_reference, stderr_reference = streams.finalize()
     report_reference = None
     if task_start_reference is not None:
         try:
@@ -1472,10 +1720,7 @@ def _publish_attempt(
     orchestration_contracts.validate_record("task-attempt", attempt)
     attempt_bytes = orchestration_contracts.canonical_json_bytes(attempt)
     ops.publish_bytes(dispatch.task_attempt_path, attempt_bytes)
-    if _record_reference(dispatch.stdout_path, dispatch.run_root) != stdout_reference:
-        raise TaskBoundaryError("Task stdout changed during attempt publication")
-    if _record_reference(dispatch.stderr_path, dispatch.run_root) != stderr_reference:
-        raise TaskBoundaryError("Task stderr changed during attempt publication")
+    streams.revalidate_after_attempt_publication()
     return attempt, attempt_bytes
 
 
@@ -1502,8 +1747,11 @@ def run_task(
     task_start_reference: dict[str, str] | None = None
     task_scope_materialized = False
     reused_outputs: dict[FileDeclaration, _BoundFileSnapshot] = {}
-    stdout_parts: list[bytes] = []
-    stderr_parts: list[bytes] = []
+    streams = _TaskStreamCapture(
+        dispatch.stdout_path,
+        dispatch.stderr_path,
+        dispatch.run_root,
+    )
     failure: TaskBoundaryError | None = None
 
     protected = (
@@ -1622,11 +1870,12 @@ def run_task(
             raise TaskBoundaryError("Workflow run lock changed before producer entry")
         _recheck_reused_outputs(reused_outputs, phase="before producer entry")
         command_environment = sanitized_subprocess_environment()
-        producer = ops.run_command(
-            backend.producer_argv, dispatch.run_root, command_environment
+        command_arguments = (
+            dispatch.run_root,
+            command_environment,
+            *streams.open(),
         )
-        stdout_parts.append(producer.stdout)
-        stderr_parts.append(producer.stderr)
+        producer = ops.run_command(backend.producer_argv, *command_arguments)
         if producer.exit_code != 0:
             raise TaskBoundaryError(
                 f"Producer command exited with status {producer.exit_code}"
@@ -1639,11 +1888,7 @@ def run_task(
             else _record_reference(dispatch.native_receipt_path, dispatch.run_root)
         )
 
-        validator = ops.run_command(
-            backend.validator_argv, dispatch.run_root, command_environment
-        )
-        stdout_parts.append(validator.stdout)
-        stderr_parts.append(validator.stderr)
+        validator = ops.run_command(backend.validator_argv, *command_arguments)
         if validator.exit_code != 0:
             raise TaskBoundaryError(
                 f"Validator command exited with status {validator.exit_code}"
@@ -1653,12 +1898,8 @@ def run_task(
             dispatch.validation_report_path, dispatch.run_root
         )
         semantic = ops.run_semantic_all_pass(
-            _semantic_argv(dispatch, step_id),
-            dispatch.run_root,
-            command_environment,
+            _semantic_argv(dispatch, step_id), *command_arguments
         )
-        stdout_parts.append(semantic.stdout)
-        stderr_parts.append(semantic.stderr)
         if semantic.exit_code != 0:
             raise TaskBoundaryError(
                 f"Semantic all-pass command exited with status {semantic.exit_code}"
@@ -1703,6 +1944,9 @@ def run_task(
             )
     except TaskBoundaryError as exc:
         failure = exc
+    except BaseException:
+        streams.preserve_incomplete()
+        raise
 
     if failure is not None:
         message = str(failure).strip() or type(failure).__name__
@@ -1721,8 +1965,7 @@ def run_task(
             stable_inputs_rechecked=stable_inputs_rechecked,
             task_start_reference=task_start_reference,
             failure_message=message,
-            stdout=b"".join(stdout_parts),
-            stderr=b"".join(stderr_parts),
+            streams=streams,
         )
         raise TaskBoundaryError(message) from failure
 
@@ -1739,8 +1982,7 @@ def run_task(
         stable_inputs_rechecked=True,
         task_start_reference=task_start_reference,
         failure_message=None,
-        stdout=b"".join(stdout_parts),
-        stderr=b"".join(stderr_parts),
+        streams=streams,
     )
     assert producer is not None and validator is not None and semantic is not None
     assert task_start_reference is not None

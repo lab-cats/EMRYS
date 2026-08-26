@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -17,6 +18,21 @@ if str(SRC_ROOT) not in sys.path:
 from emrys.libraries import validation as REPORT
 from emrys.libraries.validation import inputs as INPUTS
 
+Reader = Callable[[Path, str], bytes]
+
+
+def _read_all(path: Path, label: str) -> bytes:
+    return INPUTS.read_bytes(path, label)
+
+
+def _read_prefix(path: Path, label: str) -> bytes:
+    return INPUTS.read_prefix(path, label, 4)
+
+
+READERS = pytest.mark.parametrize(
+    "reader", (_read_all, _read_prefix), ids=("all-bytes", "prefix")
+)
+
 
 def test_require_executable_rejects_non_executable_file(tmp_path: Path) -> None:
     tool = tmp_path / "not_executable.sh"
@@ -27,7 +43,9 @@ def test_require_executable_rejects_non_executable_file(tmp_path: Path) -> None:
         INPUTS.require_executable(tool, "Tool")
 
 
-def test_read_bytes_rejects_unreadable_file(
+@READERS
+def test_read_rejects_unreadable_file(
+    reader: Reader,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -40,11 +58,12 @@ def test_read_bytes_rejects_unreadable_file(
     monkeypatch.setattr(INPUTS.os, "open", fail_open)
 
     with pytest.raises(REPORT.ValidationError, match="is unavailable"):
-        INPUTS.read_bytes(source, "Unreadable file")
+        reader(source, "Unreadable file")
 
 
-def test_read_bytes_rejects_mutated_source(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+@READERS
+def test_read_rejects_mutated_source(
+    reader: Reader, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     source = tmp_path / "input.txt"
     source.write_text("fixture")
@@ -62,10 +81,12 @@ def test_read_bytes_rejects_mutated_source(
     monkeypatch.setattr(INPUTS.os, "read", read_then_mutate)
 
     with pytest.raises(REPORT.ValidationError, match="changed while read"):
-        INPUTS.read_bytes(source, "Mutable fixture")
+        reader(source, "Mutable fixture")
 
 
-def test_read_bytes_rejects_path_replacement_after_open(
+@READERS
+def test_read_rejects_path_replacement_after_open(
+    reader: Reader,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -95,7 +116,38 @@ def test_read_bytes_rejects_path_replacement_after_open(
         REPORT.ValidationError,
         match="pathname changed while read",
     ):
-        INPUTS.read_bytes(source, "Replaced fixture")
+        reader(source, "Replaced fixture")
+
+
+def test_read_prefix_handles_short_descriptor_reads(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source = tmp_path / "input.txt"
+    source.write_bytes(b"ABCDremainder")
+    real_read = INPUTS.os.read
+    requests: list[int] = []
+
+    def one_byte_read(descriptor: int, size: int) -> bytes:
+        requests.append(size)
+        return real_read(descriptor, 1)
+
+    monkeypatch.setattr(INPUTS.os, "read", one_byte_read)
+
+    assert INPUTS.read_prefix(source, "Short-read fixture", 4) == b"ABCD"
+    assert requests == [4, 3, 2, 1]
+
+
+def test_read_prefix_rejects_symlinks_and_invalid_lengths(tmp_path: Path) -> None:
+    source = tmp_path / "input.txt"
+    source.write_bytes(b"fixture")
+    link = tmp_path / "input-link.txt"
+    link.symlink_to(source)
+
+    with pytest.raises(REPORT.ValidationError, match="regular non-symlink"):
+        INPUTS.read_prefix(link, "Linked prefix fixture", 4)
+    for invalid in (True, 0, -1):
+        with pytest.raises(ValueError, match="positive integer"):
+            INPUTS.read_prefix(source, "Invalid prefix fixture", invalid)
 
 
 def test_integer_stdout_rejects_failed_process() -> None:

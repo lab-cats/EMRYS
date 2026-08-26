@@ -48,11 +48,11 @@ The producer accepts:
 - an available samtools executable.
 
 The current producer checks that the input path is a file but relies on
-samtools to establish its content contract. It does not validate sample-
-identifier path safety or recheck input stability before final publication.
-The scheduler entrypoint supplies repository- and sample-specific defaults and
-loads samtools `1.19.2`; those are current bindings, not approved future
-interface defaults.
+samtools to establish its content contract. The orchestration-safe
+`--no-clobber` route validates sample-identifier path safety and binds input
+stability; the legacy replaceable route does neither. The scheduler entrypoint
+supplies repository- and sample-specific defaults and loads samtools `1.19.2`;
+those are current bindings, not approved future interface defaults.
 
 ## Outputs
 
@@ -77,11 +77,17 @@ receipt or summary marks transaction completion.
 `--no-clobber` is the required local-profile mode. It refuses either existing
 final before tool work and immediately before publication, pins the explicit
 samtools path, hashes and rechecks the input alignment, and uses the existing
-per-sample lock, staged pair validation, and final-path revalidation. Because
-replacement is forbidden, this path never creates or consumes backups and a
-failed attempt cannot damage a predecessor. It publishes create-exclusively
-and retains staging inode anchors through final validation. The historical execute route
-retains replaceable-pair behavior and its characterized restoration defect.
+per-sample lock and staged pair validation. Because replacement is forbidden,
+this path never creates or consumes backups and a failed attempt cannot damage
+a predecessor. It publishes create-exclusively with staging inode anchors and
+proves that both final paths still resolve to the already validated staging
+inodes. When the canonical input itself supplied the staging inode, the
+producer additionally hashes the published BAM after both links exist and
+requires it to match the admitted input digest. The inode proof plus this
+post-publication content binding carries the staged semantic validation across
+publication without another `quickcheck`, header read, or two whole-BAM count
+scans at the final pathname. The historical replaceable execute route retains
+final-path semantic revalidation and its characterized restoration defect.
 
 ## Current execution surfaces
 
@@ -98,8 +104,12 @@ the public producer entrypoint. It:
 - validates the staged BAM/BAI before touching canonical paths;
 - acquires an owned per-sample lock;
 - requires an existing canonical state to contain both BAM and BAI or neither;
-- backs up a prior pair, publishes the replacement files, and revalidates the
-  final pair; and
+- on the orchestration-safe no-clobber path, create-exclusively publishes the
+  pair, proves final/staging inode identity, and rechecks the admitted digest
+  after publication when the input inode was reused, instead of semantically
+  scanning the same bytes a second time;
+- on the legacy replaceable path, backs up a prior pair, publishes the
+  replacement files, and revalidates the final pair; and
 - attempts to restore the prior pair, or remove a newly introduced partial
   pair, when a protected execution or publication step fails.
 
@@ -196,7 +206,11 @@ their functional ownership.
 - [`test_step_02_sort_index_bam.sh`](../../../../tests/stages/canonical_bam/test_step_02_sort_index_bam.sh)
   protects the explicit CLI, side-effect-free producer dry-run, read-group and
   sort contract, locking, inconsistent-pair rejection, staged validation,
-  cleanup, and rollback after backup, publication, and final-validation faults.
+  cleanup, and legacy rollback after backup, publication, and final-validation
+  faults. The no-clobber path additionally relies on the shared
+  create-exclusive publication ownership helpers that require exact staging
+  inode identity and exercises rollback when a reused input changes after its
+  final BAM link is published.
 - [`test_validate_step_02_canonical_bam.py`](../../../../tests/stages/canonical_bam/test_validate_step_02_canonical_bam.py)
   protects dry-run, the five checks, mismatch evidence, fail-closed missing
   input, publication, and foreign-lock preservation.

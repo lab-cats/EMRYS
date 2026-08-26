@@ -12,6 +12,7 @@ import signal
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from functools import partial
@@ -181,6 +182,8 @@ class Harness:
     materialize_start_only: bool = False
     materialize_reporting_start_only: bool = False
     materialize_preentry_failure: bool = False
+    preentry_stdout: bytes = b"fixture preentry stdout\n"
+    preentry_stderr: bytes = b"fixture preentry stderr\n"
     inspect_live_transient: bool = False
     inject_state_entry_after_child: bool = False
     inject_lock_entry_on_release: bool = False
@@ -308,7 +311,12 @@ class Harness:
             / "attempt.json"
         )
         if self.materialize_preentry_failure:
-            _materialize_preentry_failure(self.built, attempt_path)
+            _materialize_preentry_failure(
+                self.built,
+                attempt_path,
+                stdout_data=self.preentry_stdout,
+                stderr_data=self.preentry_stderr,
+            )
         if self.materialize_start_only or self.inspect_live_transient:
             _materialize_start_only(self.built, attempt_path)
         if self.materialize_reporting_start_only:
@@ -919,6 +927,9 @@ def _materialize_start_only(
 def _materialize_preentry_failure(
     built: workflow_fixture.WorkflowFixture,
     attempt_path: Path,
+    *,
+    stdout_data: bytes,
+    stderr_data: bytes,
 ) -> Path:
     expected, attempt, _dispatch_path, dispatch = _first_task_context(
         built, attempt_path
@@ -927,8 +938,8 @@ def _materialize_preentry_failure(
     task_attempt_path.parent.mkdir(parents=True, exist_ok=True)
     stdout = Path(dispatch["stdout_path"])
     stderr = Path(dispatch["stderr_path"])
-    stdout.write_bytes(b"fixture preentry stdout\n")
-    stderr.write_bytes(b"fixture preentry stderr\n")
+    stdout.write_bytes(stdout_data)
+    stderr.write_bytes(stderr_data)
     record = {
         "schema_version": "emrys.task-attempt.v1",
         "run_id": built.execution["run_id"],
@@ -1425,6 +1436,42 @@ def _build_harness(
     )
 
 
+def _resume_request(
+    harness: Harness,
+    *,
+    identifier: str,
+    supersedes: str,
+) -> tuple[lifecycle.LifecycleRequest, dict[str, Any]]:
+    config = _materialize_workflow_config(harness.built, identifier)
+    argv = lifecycle.build_snakemake_argv(
+        python_executable=harness.request.python_executable,
+        snakefile=harness.request.snakefile,
+        workflow_profile=harness.request.workflow_profile,
+        configfile=config,
+        run_root=harness.built.run_root,
+        target=harness.request.target,
+        operation="resume",
+        cores=1,
+        resource_limits=workflow_fixture._resource_limits(),
+    )
+    attempt = _attempt(
+        harness.built,
+        operation="resume",
+        identifier=identifier,
+        supersedes=supersedes,
+        argv=argv,
+    )
+    return (
+        replace(
+            harness.request,
+            workflow_config_path=config,
+            operation="resume",
+            attempt_record=attempt,
+        ),
+        attempt,
+    )
+
+
 def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
     tmp_path: Path,
 ) -> None:
@@ -1759,37 +1806,10 @@ def test_resume_creates_new_attempt_and_reuses_content_bound_tasks(
     second = first
     second.events = []
     second.result = lifecycle.WorkflowResult(0, None)
-    config = _materialize_workflow_config(first.built, second_id)
-    argv = lifecycle.build_snakemake_argv(
-        python_executable=first.request.python_executable,
-        snakefile=workflow_fixture.SNAKEFILE.resolve(),
-        workflow_profile=first.request.workflow_profile,
-        configfile=config,
-        run_root=first.built.run_root,
-        target="local_pipeline_slice",
-        operation="resume",
-        cores=1,
-        resource_limits=workflow_fixture._resource_limits(),
-    )
-    second_attempt = _attempt(
-        first.built,
-        operation="resume",
+    second.request, second_attempt = _resume_request(
+        first,
         identifier=second_id,
         supersedes=first_id,
-        argv=argv,
-    )
-    second.request = lifecycle.LifecycleRequest(
-        run_root=first.built.run_root,
-        execution_path=first.built.run_root / "contract" / "normalized.json",
-        profile_path=first.built.run_root / "contract" / "profile.json",
-        workflow_config_path=config,
-        snakefile=first.request.snakefile,
-        python_executable=first.request.python_executable,
-        workflow_profile=first.request.workflow_profile,
-        target=first.request.target,
-        operation="resume",
-        attempt_record=second_attempt,
-        request_source_path=first.request.request_source_path,
     )
     second.materialize_complete = True
     second_outcome = lifecycle.run_attempt(second.request, ops=second.ops())
@@ -2566,6 +2586,153 @@ def test_historical_task_tree_is_recursively_closed(
     assert any("task" in blocker.lower() for blocker in observed.blockers)
 
 
+def test_stable_file_reference_rejects_same_byte_replacement_during_hash(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "stdout.log"
+    payload = b"x" * (2 * 1024 * 1024 + 17)
+    path.write_bytes(payload)
+    original_state = path.stat(follow_symlinks=False)
+    original_read = inspection.os.read
+    replaced = False
+
+    def replace_after_first_chunk(descriptor: int, size: int) -> bytes:
+        nonlocal replaced
+        data = original_read(descriptor, size)
+        state = os.fstat(descriptor)
+        if (
+            not replaced
+            and data
+            and (state.st_dev, state.st_ino)
+            == (original_state.st_dev, original_state.st_ino)
+        ):
+            replaced = True
+            path.rename(tmp_path / "original.log")
+            path.write_bytes(payload)
+        return data
+
+    monkeypatch.setattr(inspection.os, "read", replace_after_first_chunk)
+
+    with pytest.raises(inspection.InspectionError, match="changed while it was read"):
+        inspection._stable_file_reference(path, tmp_path, "stdout log")
+    assert replaced
+
+
+def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first = _build_harness(
+        tmp_path, result=lifecycle.WorkflowResult(23, None, "preentry failure")
+    )
+    stdout_data = b"o" * (3 * 1024 * 1024 + 17)
+    stderr_data = b"e" * (2 * 1024 * 1024 + 29)
+    first.materialize_preentry_failure = True
+    first.preentry_stdout = stdout_data
+    first.preentry_stderr = stderr_data
+    first_outcome = lifecycle.run_attempt(first.request, ops=first.ops())
+    assert first_outcome.receipt["status"] == "failed"
+    task_attempt = next(
+        first_outcome.attempt_path.parent.glob("tasks/*/*/task-attempt.json")
+    )
+    stdout_path = task_attempt.with_name("stdout.log")
+    stderr_path = task_attempt.with_name("stderr.log")
+    log_paths = {stdout_path, stderr_path}
+    chunk_lengths: dict[Path, list[int]] = {path: [] for path in log_paths}
+    stable_calls: list[Path] = []
+    original_consume = inspection._consume_stable_file
+    original_read_bytes = inspection._read_bytes
+    original_stable_reference = inspection._stable_file_reference
+
+    def track_consume(
+        path: Path,
+        root: Path,
+        label: str,
+        consume: Callable[[bytes], object],
+    ) -> None:
+        def consume_chunk(chunk: bytes) -> object:
+            if path in log_paths:
+                chunk_lengths[path].append(len(chunk))
+            return consume(chunk)
+
+        original_consume(path, root, label, consume_chunk)
+
+    def reject_full_log_read(path: Path, root: Path, label: str) -> bytes:
+        if path in log_paths:
+            raise AssertionError(f"task log was fully read: {label}")
+        return original_read_bytes(path, root, label)
+
+    def track_stable_reference(path: Path, root: Path, label: str) -> dict[str, str]:
+        stable_calls.append(path)
+        return original_stable_reference(path, root, label)
+
+    monkeypatch.setattr(inspection, "_consume_stable_file", track_consume)
+    monkeypatch.setattr(inspection, "_read_bytes", reject_full_log_read)
+    monkeypatch.setattr(inspection, "_stable_file_reference", track_stable_reference)
+    inspect_ops = inspection.InspectionOps(
+        lambda: "fixture-host",
+        lambda _pid: True,
+        first.validate_reporting,
+    )
+
+    observed = inspection.inspect_run(first.built.run_root, ops=inspect_ops)
+    assert observed.state == "resume_available"
+    assert stable_calls == [stdout_path, stderr_path]
+    for path, expected_size in (
+        (stdout_path, len(stdout_data)),
+        (stderr_path, len(stderr_data)),
+    ):
+        assert sum(chunk_lengths[path]) == expected_size
+        assert len(chunk_lengths[path]) > 2
+        assert max(chunk_lengths[path]) <= 1024 * 1024
+
+    stable_calls.clear()
+    original_inspect_run = inspection.inspect_run
+    resume_inspections: list[tuple[str, tuple[Path, ...]]] = []
+
+    def track_inspect_run(
+        run_root: Path,
+        *,
+        ops: inspection.InspectionOps | None = None,
+        allowed_next_attempt: Mapping[str, Any] | None = None,
+    ) -> inspection.RunInspection:
+        before = len(stable_calls)
+        result = original_inspect_run(
+            run_root,
+            ops=ops,
+            allowed_next_attempt=allowed_next_attempt,
+        )
+        resume_inspections.append(
+            (
+                "under-lock" if allowed_next_attempt is not None else "outer",
+                tuple(stable_calls[before:]),
+            )
+        )
+        return result
+
+    monkeypatch.setattr(inspection, "inspect_run", track_inspect_run)
+    first_id = str(first.request.attempt_record["workflow_attempt_id"])
+    second_id = "workflow-20260812T140500Z-" + "e" * 32
+    first.request, _ = _resume_request(
+        first,
+        identifier=second_id,
+        supersedes=first_id,
+    )
+    first.events = []
+    first.result = lifecycle.WorkflowResult(0, None)
+    first.materialize_preentry_failure = False
+    first.materialize_complete = True
+
+    second_outcome = lifecycle.run_attempt(first.request, ops=first.ops())
+    assert second_outcome.receipt["status"] == "succeeded"
+    expected_log_pass = (stdout_path, stderr_path)
+    assert resume_inspections == [
+        ("outer", expected_log_pass),
+        ("under-lock", expected_log_pass),
+    ]
+
+
 @pytest.mark.parametrize("file_name", ["stdout.log", "stderr.log"])
 @pytest.mark.parametrize("tamper", ["append", "truncate"])
 def test_task_log_mutation_blocks_completed_run_inspection(
@@ -2658,37 +2825,10 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
 
     first_id = str(first.request.attempt_record["workflow_attempt_id"])
     second_id = "workflow-20260812T140500Z-" + "a" * 32
-    config = _materialize_workflow_config(first.built, second_id)
-    argv = lifecycle.build_snakemake_argv(
-        python_executable=first.request.python_executable,
-        snakefile=first.request.snakefile,
-        workflow_profile=first.request.workflow_profile,
-        configfile=config,
-        run_root=first.built.run_root,
-        target=first.request.target,
-        operation="resume",
-        cores=1,
-        resource_limits=workflow_fixture._resource_limits(),
-    )
-    attempt = _attempt(
-        first.built,
-        operation="resume",
+    first.request, _ = _resume_request(
+        first,
         identifier=second_id,
         supersedes=first_id,
-        argv=argv,
-    )
-    first.request = lifecycle.LifecycleRequest(
-        run_root=first.request.run_root,
-        execution_path=first.request.execution_path,
-        profile_path=first.request.profile_path,
-        workflow_config_path=config,
-        snakefile=first.request.snakefile,
-        python_executable=first.request.python_executable,
-        workflow_profile=first.request.workflow_profile,
-        target=first.request.target,
-        operation="resume",
-        attempt_record=attempt,
-        request_source_path=first.request.request_source_path,
     )
     first.events = []
     first.result = lifecycle.WorkflowResult(0, None)

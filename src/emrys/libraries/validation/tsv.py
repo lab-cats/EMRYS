@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import codecs
 import csv
 import hashlib
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from io import StringIO
+from io import StringIO, TextIOWrapper
 from pathlib import Path
-from typing import NoReturn, TextIO, TypeVar
+from typing import BinaryIO, NoReturn, TextIO, TypeVar
 
 from emrys.libraries.validation.report import clean
 
@@ -62,10 +63,23 @@ def read_strict_tsv(
 ) -> tuple[tuple[str, ...], list[dict[str, str]]]:
     """Parse a validated path with EMRYS's strict tabular diagnostics."""
     try:
-        data = path.read_bytes()
-    except OSError as exc:
+        with path.open("rb") as byte_stream:
+            _preflight_utf8(byte_stream)
+            byte_stream.seek(0)
+            with TextIOWrapper(
+                byte_stream,
+                encoding="utf-8",
+                newline="",
+            ) as stream:
+                return _parse_strict_tsv_stream(
+                    label,
+                    stream,
+                    str(path),
+                    expected_header,
+                    fail,
+                )
+    except (OSError, UnicodeError, csv.Error) as exc:
         fail(f"Could not read {label} as UTF-8 TSV ({path}): {exc}")
-    return parse_strict_tsv_bytes(label, data, path, expected_header, fail)
 
 
 def parse_strict_tsv_bytes(
@@ -78,31 +92,105 @@ def parse_strict_tsv_bytes(
     """Parse exact admitted UTF-8 TSV bytes without reopening their pathname."""
     source_label = str(source)
     try:
-        stream = StringIO(data.decode("utf-8"), newline="")
-        raw_rows = list(csv.reader(stream, delimiter="\t", strict=True))
+        with StringIO(data.decode("utf-8"), newline="") as stream:
+            return _parse_strict_tsv_stream(
+                label,
+                stream,
+                source_label,
+                expected_header,
+                fail,
+            )
     except (UnicodeError, csv.Error) as exc:
         fail(f"Could not read {label} as UTF-8 TSV ({source_label}): {exc}")
-    if not raw_rows:
+
+
+def _preflight_utf8(stream: BinaryIO) -> None:
+    """Validate a complete UTF-8 stream with bounded transient memory."""
+    decoder = codecs.getincrementaldecoder("utf-8")()
+    byte_offset = 0
+    for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+        buffered_prefix, _ = decoder.getstate()
+        try:
+            decoder.decode(chunk)
+        except UnicodeDecodeError as exc:
+            _raise_absolute_unicode_error(
+                exc,
+                byte_offset - len(buffered_prefix),
+            )
+        byte_offset += len(chunk)
+    buffered_prefix, _ = decoder.getstate()
+    try:
+        decoder.decode(b"", final=True)
+    except UnicodeDecodeError as exc:
+        _raise_absolute_unicode_error(
+            exc,
+            byte_offset - len(buffered_prefix),
+        )
+
+
+def _raise_absolute_unicode_error(
+    error: UnicodeDecodeError,
+    base_offset: int,
+) -> NoReturn:
+    """Raise a standard decode diagnostic using absolute stream offsets."""
+    start = base_offset + error.start
+    end = base_offset + error.end
+    if end == start + 1:
+        location = f"byte 0x{error.object[error.start]:02x} in position {start}"
+    else:
+        location = f"bytes in position {start}-{end - 1}"
+    raise UnicodeError(
+        f"'{error.encoding}' codec can't decode {location}: {error.reason}"
+    ) from error
+
+
+def _parse_strict_tsv_stream(
+    label: str,
+    stream: TextIO,
+    source_label: str,
+    expected_header: Sequence[str] | None,
+    fail: Callable[[str], NoReturn],
+) -> tuple[tuple[str, ...], list[dict[str, str]]]:
+    """Materialize strict rows from a text stream without retaining raw rows."""
+    reader = csv.reader(stream, delimiter="\t", strict=True)
+    try:
+        header = tuple(next(reader))
+    except StopIteration:
         fail(f"{label} is empty: {source_label}")
-    header = tuple(raw_rows[0])
+
+    header_error: str | None = None
     if any(not column for column in header):
-        fail(f"{label} contains an empty header field: {source_label}")
-    if len(header) != len(set(header)):
-        fail(f"{label} contains duplicate header fields: {source_label}")
-    if expected_header is not None and header != tuple(expected_header):
-        fail(
+        header_error = f"{label} contains an empty header field: {source_label}"
+    elif len(header) != len(set(header)):
+        header_error = f"{label} contains duplicate header fields: {source_label}"
+    elif expected_header is not None and header != tuple(expected_header):
+        header_error = (
             f"{label} header is invalid: {source_label}\n"
             f"Expected: {' | '.join(expected_header)}\n"
             f"Observed: {' | '.join(header)}"
         )
+
     rows: list[dict[str, str]] = []
-    for index, values in enumerate(raw_rows[1:], start=2):
+    row_error: str | None = None
+    for index, values in enumerate(reader, start=2):
         if len(values) != len(header):
-            fail(
-                f"{label} row {index} has {len(values)} fields; "
-                f"expected {len(header)}: {source_label}"
-            )
-        rows.append(dict(zip(header, values, strict=True)))
+            if row_error is None:
+                row_error = (
+                    f"{label} row {index} has {len(values)} fields; "
+                    f"expected {len(header)}: {source_label}"
+                )
+                rows.clear()
+            continue
+        if header_error is None and row_error is None:
+            rows.append(dict(zip(header, values, strict=True)))
+
+    # The previous whole-file parser completed UTF-8 and CSV lexing before it
+    # reported EMRYS-owned header or row-shape failures. Defer those failures
+    # until the reader is exhausted so a later lexical failure still wins.
+    if header_error is not None:
+        fail(header_error)
+    if row_error is not None:
+        fail(row_error)
     return header, rows
 
 

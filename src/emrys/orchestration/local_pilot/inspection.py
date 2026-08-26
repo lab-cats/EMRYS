@@ -168,7 +168,12 @@ def _within(path: Path, root: Path, label: str) -> None:
         raise InspectionError(f"{label} must be beneath run_root: {path}") from exc
 
 
-def _read_bytes(path: Path, root: Path, label: str) -> bytes:
+def _consume_stable_file(
+    path: Path,
+    root: Path,
+    label: str,
+    consume: Callable[[bytes], object],
+) -> None:
     _within(path, root, label)
     if not hasattr(os, "O_NOFOLLOW"):
         raise InspectionError("This platform lacks required O_NOFOLLOW admission")
@@ -185,9 +190,10 @@ def _read_bytes(path: Path, root: Path, label: str) -> bytes:
         before = os.fstat(descriptor)
         if not stat.S_ISREG(before.st_mode):
             raise InspectionError(f"{label} is not a regular file: {path}")
-        chunks: list[bytes] = []
+        size = 0
         while chunk := os.read(descriptor, 1024 * 1024):
-            chunks.append(chunk)
+            consume(chunk)
+            size += len(chunk)
         after = os.fstat(descriptor)
     finally:
         os.close(descriptor)
@@ -206,14 +212,29 @@ def _read_bytes(path: Path, root: Path, label: str) -> bytes:
             value.st_ctime_ns,
         )
 
-    data = b"".join(chunks)
     if (
         identity(before) != identity(after)
         or identity(after) != identity(path_state)
-        or len(data) != before.st_size
+        or size != before.st_size
     ):
         raise InspectionError(f"{label} changed while it was read: {path}")
-    return data
+
+
+def _read_bytes(path: Path, root: Path, label: str) -> bytes:
+    chunks: list[bytes] = []
+    _consume_stable_file(path, root, label, chunks.append)
+    return b"".join(chunks)
+
+
+def _stable_file_reference(path: Path, root: Path, label: str) -> dict[str, str]:
+    """Hash one stable descriptor snapshot without retaining its contents."""
+
+    digest = hashlib.sha256()
+    _consume_stable_file(path, root, label, digest.update)
+    return {
+        "path": path.relative_to(root).as_posix(),
+        "sha256": digest.hexdigest(),
+    }
 
 
 def _stable_directory_entries(path: Path, root: Path, label: str) -> tuple[str, ...]:
@@ -1619,15 +1640,10 @@ def inspect_attempt_task_trees(
                         ("stderr_log", "stderr.log"),
                     ):
                         log_path = children[child_name]
-                        log_data = _read_bytes(
+                        expected_reference = _stable_file_reference(
                             log_path,
                             root,
                             field.replace("_", " "),
-                        )
-                        expected_reference = _reference_for_bytes(
-                            log_path,
-                            root,
-                            log_data,
                         )
                         if record[field] != expected_reference:
                             raise InspectionError(

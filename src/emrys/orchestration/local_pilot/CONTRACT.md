@@ -216,14 +216,21 @@ create-absent.
 
 After identity and owner-native preflight, the task boundary durably publishes
 the fixed `state/task-starts/<machine>/<scope>.json` record immediately before
-producer invocation. A post-start task attempt must bind that exact record and
-must end in a succeeded task-attempt plus verified-task chain to be reusable.
+producer invocation and applies the binding [task-stream
+rules](../../../../docs/design/ORCHESTRATION_CONTRACT.md#filesystem-layout):
+create-exclusive/no-follow files, bounded draining through EOF, exact bytes and
+order within each stream, fsync/close, descriptor/path identity, bounded hashes,
+and post-attempt revalidation. No ordering between streams is claimed. A
+post-start task attempt must bind that exact start record and end in a succeeded
+task-attempt plus verified-task chain to be reusable.
 If admission fails before start publication, the exact failed task attempt and
 its two logs are retained as a bound pre-entry diagnostic; because the owner
 never entered, a later attempt may retry that scope without erasing the earlier
-record. Every task attempt binds the exact path and SHA-256 of both captured
-logs; inspection and verified-task reuse re-read those bytes, so later mutation
-or truncation blocks completion and resume.
+record. An unexpected interruption after stream creation preserves available
+partial bytes but publishes no terminal attempt or verified record. Every task
+attempt binds both log paths and SHA-256 values; later mutation or truncation
+blocks completion and resume. Log presence or content never establishes task
+success.
 
 Snakemake schedules only verified-task records. Native artifacts, validation
 reports, receipts, logs, and recovery evidence are never disposable workflow

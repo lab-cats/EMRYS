@@ -108,8 +108,12 @@ publish_file_create_exclusive \
     "test publication" "$staged_publication" "$final_publication"
 [[ "$final_publication" -ef "$staged_publication" ]] ||
     fail "create-exclusive publication did not retain the staged inode"
+owned_removal_ok=true
 remove_owned_published_file \
-    "test publication" "$staged_publication" "$final_publication"
+    "test publication" "$staged_publication" "$final_publication" ||
+    owned_removal_ok=false
+[[ "$owned_removal_ok" == true ]] ||
+    fail "successful owned publication removal returned failure"
 [[ ! -e "$final_publication" ]] ||
     fail "owned publication rollback left the final path"
 
