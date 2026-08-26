@@ -101,6 +101,20 @@ Keep native compute outputs unchanged behind explicit read-only adapters.
 Renderers consume one canonical structured summary and never discover inputs or
 rerun analysis.
 
+Reporting is downstream operational work, not a semantic scientific stage. A
+full run invokes it automatically by default after required upstream artifacts
+are admitted, while an explicit supported opt-out may skip that projection.
+The exact configuration field and CLI spelling remain public-UX decisions.
+
+A report can be regenerated independently from admitted artifacts and evidence
+without rerunning scientific work. Skipping or regenerating reporting does not
+change the identity or validity of completed science; each generated report may
+retain its own content-bound artifact/version identity. A reporting failure is
+visible and may make the requested full command unsuccessful or partial, but it
+does not invalidate completed science or admitted upstream artifacts.
+Independent regeneration is a supported recovery path. Exact persisted status,
+retry/resume, and exit-code presentation remain unsettled.
+
 ### Use versioned closed schemas
 
 Public artifact, run-summary, and report-receipt documents

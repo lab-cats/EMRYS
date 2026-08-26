@@ -109,6 +109,166 @@ sequencing, an exact layer map, the campaign phase order, or a public API.
    equal-or-stronger replacement at the same declared evidence level. Coverage
    or the scientist-facing synthetic golden path alone is insufficient.
 
+## Ratified responsibility and dependency model
+
+`AC-SLICE-02` ratified this model on 2026-08-26. It defines responsibility
+direction and forbidden authority transfers without selecting the public
+Project/Analysis/Run vocabulary, a Stage API, package layout, class hierarchy,
+service roster, policy taxonomy, artifact state vocabulary, or migration order.
+
+The campaign's proposed five bands are responsibility clusters, not source
+containers or a promise of one implementation object per band:
+
+| Responsibility cluster | Owns | Does not become |
+|---|---|---|
+| Interaction and composition | Role-appropriate CLI/UX composition and projection of supported application or advanced-owner capabilities | Scientific implementation, evidence authority, or a second copy of application policy |
+| Intent admission and application coordination | Admission of user intent, resolution of an inspectable effective plan, invocation of lower capabilities, and assembly of user-facing outcomes | A Project/Run god object or owner of scientific algorithms, execution backends, policy decisions, artifact admission, evidence meaning, or reporting semantics |
+| Functional and downstream product owners | Recognizable transformation, analysis, and evidence owners retain review-relevant semantics; reporting consumes admitted results as downstream operational work | A generic Stage framework; reporting is not a semantic scientific stage and cannot mutate or admit upstream science |
+| Neutral contracts and capabilities | Explicit identity facts and contracts plus deliberately selected execution, policy, artifact-lifecycle, and narrow shared capabilities | A mandatory package for every concept, a catch-all policy object, a universal artifact store, or an authority facade that merely forwards existing owners |
+| Owned mechanism boundaries | EMRYS adapters contain filesystem, process, runtime, workflow-engine, and scheduler mechanics | Scientific, validation, artifact-admission, recovery, or evidence-promotion authority |
+
+OS, R, Python, filesystems, Snakemake, and SLURM are external mechanisms outside
+the owned product graph. An EMRYS adapter may bind and observe them, but a
+mechanism's success or metadata cannot decide scientific completion, artifact
+admission, recovery safety, or evidence level.
+
+Identity is a responsibility cluster, not a presumed service or package.
+Consumers receive authoritative identity facts through explicit contracts
+rather than reconstructing competing identities. Exact public nouns,
+hierarchy, ownership, and hash composition remain `AC-DEC-001` and the
+applicable identity/application slice.
+
+### Three separate dependency graphs
+
+Architecture decisions and checks keep three graphs distinct:
+
+| Graph | Meaning | Current authority |
+|---|---|---|
+| Source imports | One source module loads and can directly depend on another source module | [`SOURCE_TOPOLOGY.md`](../../../src/emrys/contracts/SOURCE_TOPOLOGY.md) and its fast Python import ratchet |
+| Runtime and control invocation | A coordinator, workflow engine, process, or public entry point requests a capability | The [current architecture](../../architecture/ARCHITECTURE.md), orchestration contract, and affected owner contracts/tests |
+| Artifact and evidence flow | An owner consumes an explicitly admitted artifact, record, or evidence relationship | [`STAGE_MAP.md`](../../../src/emrys/contracts/STAGE_MAP.md) for the functional-owner semantic DAG; artifact, orchestration, lifecycle, reporting, and owner contracts plus producer/consumer tests for the remaining flows |
+
+Permission in one graph grants no automatic permission in another. Invoking a
+public owner command does not authorize importing its private implementation;
+consuming an admitted artifact does not authorize either an import or a reverse
+control edge. Numeric order, filenames, validators, and colocated paths create
+none of these relationships.
+
+Higher interaction and coordination responsibilities may request declared
+capabilities from lower responsibilities. Lower capabilities must not depend on
+the application aggregate or reconstruct higher-level state. Until
+`AC-SLICE-03` and `AC-SLICE-04` settle the application and operation
+interfaces, current calls are descriptive behavior rather than the target API.
+
+### Decision scope filter
+
+A cross-slice architecture decision belongs in this responsibility model only
+when it remains true across reasonable class, function, protocol, manifest,
+adapter, and existing-owner representations and can be enforced without
+inventing a future package or API. Public nouns, package/class/service shape,
+methods and schemas, lifecycle states, identity hash composition, physical
+storage, workflow-engine integration, defaults and precedence, recovery
+mechanics, and migration order remain with their owning just-in-time slices.
+
+`AC-SLICE-02` therefore ratifies representation-independent responsibilities
+and forbidden authority transfers, but it does not ratify concrete positive
+ownership reserved for `AC-SLICE-03` through `AC-SLICE-07`. Later slices may
+select or reject a proposed abstraction only inside the binding responsibility
+direction and migration guardrails.
+
+### Forbidden authority transfers
+
+The stable rules below bind later design even where the first automated check
+covers only their Python-import projection:
+
+1. **Neutral-contract independence (`AC-DEP-001`).** Neutral contracts do not
+   acquire implementation dependencies. Exact current exceptions are bounded,
+   ratcheted, and routed to successor decisions; they grant no new permission.
+2. **Neutral-library direction (`AC-DEP-002`).** Neutral libraries depend only
+   on contracts and lower neutral libraries in an acyclic graph. They never
+   import functional, ingestion, application, or reporting owners.
+3. **Functional-owner locality (`AC-DEP-003`).** Transformation, analysis, and
+   evidence owners retain their semantics and do not import peer owners or
+   ingestion, application, or reporting implementation. Cross-owner data uses
+   contracts and admitted artifacts.
+4. **Input-admission boundary (`AC-DEP-004`).** Ingestion validates and emits
+   declarations; it does not acquire functional science, execution, reporting,
+   or lifecycle authority.
+5. **Downstream-reporting boundary (`AC-DEP-005`).** Reporting consumes admitted
+   artifacts, never functional or application implementation, never reruns
+   science, and never mutates upstream state or grants upstream completion.
+6. **Application non-authority (`AC-DEP-006`).** Application coordination may
+   request declared public capabilities but does not import peer-private
+   implementation or absorb their semantics. Every current direct capability
+   edge is either an approved current seam or a named transition, not a blanket
+   domain permission.
+7. **Private-owner isolation (`AC-DEP-007`).** A private module is owner-local.
+   The grouped composition root may use only the exact owner-declared current
+   composition seams; those seams do not become general import APIs. Every
+   other cross-owner or composition-root access requires one exact bounded
+   transition with a successor and exit condition.
+8. **Mechanism non-authority (`AC-DEP-008`).** Scheduler, workflow-engine,
+   runtime, process, and storage mechanisms provide attributable facts and
+   effects only; adapters cannot reinterpret scientific, policy, validation,
+   admission, reporting, or recovery decisions.
+9. **Source-domain classification (`AC-DEP-009`).** Every EMRYS product source
+   domain has an explicit current responsibility classification before it may
+   enter the import graph. Package metadata cannot become an undeclared
+   composition root. This is a review gate for new source ownership, not a
+   permanent target-package map.
+
+### Cross-slice shape constraints
+
+The following semantic constraints are settled; their representations remain
+with the named later slices:
+
+- Application design must distinguish evolvable user intent, an immutable
+  inspectable effective realization, and one or more operational attempts. It
+  must permit multiple analyses over compatible upstream work and must pass
+  lower owners an explicit immutable contract rather than a broad aggregate.
+- A possible Stage boundary stays thin and cannot obscure the distinct
+  transformation, analysis, and evidence identities or move review-relevant
+  science away from its owner. Functional owners declare needs and semantic
+  validity; allocation authority resolves resources; execution enforces the
+  result; lifecycle/admission remains logically distinct.
+- Supported execution backends owe equivalent declared scientific,
+  artifact-integrity, recovery, and evidence guarantees, while mechanisms and
+  environment-specific proof may differ. This guarantee contract does not
+  select a request/result API or Local/SLURM class design.
+- Every policy decision has one declared final authority. Repeated equivalent
+  owner-local decisions may move to one shared authority only after inventory
+  demonstrates real net reduction; policy is not a mandatory central layer.
+- Logical artifact lifecycle/admission is distinct from physical storage.
+  Storage, copying, publication, or engine success cannot by itself grant
+  scientific completion or admission, and the requirement does not presume a
+  distinct Artifact Store.
+
+The exact application nouns and API remain `AC-SLICE-03`; the minimum operation
+representation remains `AC-SLICE-04`; execution request/result and backend
+design remain `AC-SLICE-05`; policy inventory and owners remain
+`AC-SLICE-06`; and artifact states, lifecycle API, and Artifact Store decision
+remain `AC-SLICE-07`.
+
+### Enforcement strategy
+
+The static preflight scans statically declared Python imports and recognized
+literal standard-library dynamic import forms. It enforces the import
+projections of `AC-DEP-001` through `AC-DEP-007` plus source-domain
+classification under `AC-DEP-009` that can be determined without inventing
+future APIs. Exact live composition seams and transitions fail when broadened
+and also fail when stale, forcing current-boundary or retirement metadata to
+change with the source. The checker does not perform general dynamic-import
+data-flow inference, infer semantics from filenames, enforce a future package
+map, or treat the current local-pilot topology as the target.
+
+Runtime/control invocation and artifact/evidence flow remain protected by
+their explicit contracts, rosters, fixtures, and producer/consumer tests.
+Shell, R, workflow, and scheduler relationships are not falsely inferred from
+the Python graph. Authority rules that require semantic review—such as no
+scientific logic in the CLI, reporting's read-only behavior, and mechanism
+non-authority—remain decision and contract obligations until an equally direct
+automated oracle exists.
+
 ## Organize by functional owner
 
 Keep each stage, analysis, evidence operation, reporting component, or neutral

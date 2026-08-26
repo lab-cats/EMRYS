@@ -1,10 +1,13 @@
 # Source ownership and dependency direction
 
-This file owns current source-domain boundaries, approved shared seams, and
-allowed implementation dependencies. The
+This file owns the descriptive current Python source-import graph, approved
+shared seams, and exact bounded import transitions. It does not turn the
+current package tree into the target responsibility model. The
 [`architecture index`](../../../docs/architecture/README.md) organizes the
-human views; [`STAGE_MAP.md`](STAGE_MAP.md) owns semantic identities and
-artifact edges; the
+human views; the
+[`platform-direction decision`](../../../docs/design/decisions/platform-direction.md#ratified-responsibility-and-dependency-model)
+owns target responsibilities and forbidden authority transfers;
+[`STAGE_MAP.md`](STAGE_MAP.md) owns semantic identities and artifact edges; the
 [`functional-owner inventory`](../../../docs/architecture/FUNCTIONAL_OWNER_INVENTORY.md)
 owns exact public programs, jobs, validators, and tests.
 
@@ -12,6 +15,7 @@ owns exact public programs, jobs, validators, and tests.
 
 | Domain | Responsibility |
 | --- | --- |
+| Package root | `__init__.py` exposes package metadata; `__main__.py` is the current grouped CLI composition root, not the future application model. |
 | `contracts/` | Neutral schemas, shared scientific-evidence contracts, identities, and topology contracts. |
 | `libraries/` | Narrow shared implementation proven across named consumers; never a generic utility bucket. |
 | `stages/` | Preprocessing and transformation owners keyed by the slugs in `STAGE_MAP.md`. |
@@ -94,18 +98,112 @@ imported across peers.
 
 | Owner | May import | May invoke or consume | Prohibited |
 | --- | --- | --- | --- |
-| `contracts/` | standard/external libraries only | none | every EMRYS implementation domain |
-| `libraries/` | `contracts/` and lower neutral libraries in an acyclic chain | none | functional/application owners |
+| Package metadata | standard/external libraries only | none | implementation or composition owners |
+| CLI composition | The exact owner-declared current composition roster plus the exact transitions below | supported grouped public routes over those owner modules | every target outside the two explicit rosters; no seam becomes a general import API |
+| `contracts/` | standard/external libraries and other contracts; only the exact transitions below may reach implementation | none | every other EMRYS implementation dependency |
+| `libraries/` | `contracts/` and lower neutral libraries in an acyclic chain | none | functional, ingestion, application, or reporting owners |
 | `stages/`, `analyses/`, `evidence/` | `contracts/`, approved `libraries/`, owner-local code | owner-local tools and peer artifacts through contracts | peer implementation, ingestion, or reporting implementation |
 | `ingestion/` | `contracts/`, approved `libraries/`, ingestion-local code | external inputs; emitted validated declarations | functional-owner implementation or execution |
-| `orchestration/` | `contracts/`, approved `libraries/`, orchestration-local code, and the direct public `reporting.transaction_validation` completion API | public owner commands and declared artifacts only | peer-private implementation or scientific logic |
+| `orchestration/` | `contracts/`, approved `libraries/`, orchestration-local code, the direct public `reporting.transaction_validation` completion API, and the exact transitions below | public owner commands/capabilities and declared artifacts | peer-private implementation, ingestion, or scientific logic outside a named transition |
 | `reporting/` | `contracts/`, approved `libraries/`, reporting-local code | explicit public artifacts and summaries | functional-owner implementation, input discovery, or analysis execution |
 
-Cross-owner data flow follows the explicit edges in `STAGE_MAP.md`. No owner
-infers dependency order from numeric aliases, filenames, globs, neighboring
-directories, validator imports, or historical execution order. Reporting is a
-downstream projection and never promotes computational candidates into an
-external scientific or biological claim.
+Scientific functional-owner data flow follows the explicit semantic DAG edges
+in `STAGE_MAP.md`; lifecycle, admission, reporting, and orchestration flows
+remain with their artifact and owner contracts and the current architecture.
+No owner infers dependency order from numeric aliases, filenames, globs,
+neighboring directories, validator imports, or historical execution order.
+Reporting is a downstream projection and never promotes computational
+candidates into an external scientific or biological claim.
+
+Application coordination is intentionally not given blanket import permission
+to functional owners. Its current direct calls are exact transitions while
+`AC-SLICE-03` through `AC-SLICE-05` decide whether the final capability boundary
+uses imports, injected callables, commands, or another representation. One
+transition cannot be copied to justify another edge.
+
+### Current CLI composition seams
+
+The grouped `src/emrys/__main__.py` dispatcher may import only this exact
+current roster plus the two private reporting transitions below. The roster is
+descriptive current behavior, not the future application API. A new target or
+a stale target fails the source-dependency gate so owner privacy and public CLI
+composition are reviewed together.
+
+| ID | Exact current target | Current grouped-CLI purpose |
+|---|---|---|
+| `CLI-SEAM-001` | `emrys.analyses.paired_cmh_candidate_ranking.validator` | Owner validation command |
+| `CLI-SEAM-002` | `emrys.analyses.scientific_context_projection.validator` | Owner validation command |
+| `CLI-SEAM-003` | `emrys.contracts.artifacts.validator` | Artifact-contract validation command |
+| `CLI-SEAM-004` | `emrys.evidence.canonical_bam_qc.validator` | Owner validation command |
+| `CLI-SEAM-005` | `emrys.evidence.reference_provenance.reconciler` | Reference-provenance reconciliation command |
+| `CLI-SEAM-006` | `emrys.evidence.rseqc_orientation.validator` | Owner validation command |
+| `CLI-SEAM-007` | `emrys.evidence.runtime_availability.inspector` | Runtime inspection command |
+| `CLI-SEAM-008` | `emrys.evidence.storage_inventory.inspector` | Storage inventory command |
+| `CLI-SEAM-009` | `emrys.evidence.storage_inventory.qualification` | Storage qualification command |
+| `CLI-SEAM-010` | `emrys.ingestion.sample_manifest_admission.validator` | Input-manifest admission command |
+| `CLI-SEAM-011` | `emrys.libraries.source_authority` | Controlled-runtime admission for grouped dispatch |
+| `CLI-SEAM-012` | `emrys.orchestration.local_pilot.all_pass` | Current all-pass inspection command |
+| `CLI-SEAM-013` | `emrys.orchestration.local_pilot.doctor` | Current readiness command |
+| `CLI-SEAM-014` | `emrys.orchestration.local_pilot.control` | Current plan/execute/inspect commands |
+| `CLI-SEAM-015` | `emrys.orchestration.local_pilot.onboarding` | Current onboarding commands |
+| `CLI-SEAM-016` | `emrys.orchestration.local_pilot.synthetic_fixture` | Current synthetic-fixture command |
+| `CLI-SEAM-017` | `emrys.reporting.report` | Current run-report commands |
+| `CLI-SEAM-018` | `emrys.stages.canonical_bam.validator` | Owner validation command |
+| `CLI-SEAM-019` | `emrys.stages.cohort_candidate_preprocessing.validator` | Owner validation command |
+| `CLI-SEAM-020` | `emrys.stages.duplicate_marking.validator` | Owner validation command |
+| `CLI-SEAM-021` | `emrys.stages.fasta_sidecars.validator` | Owner validation command |
+| `CLI-SEAM-022` | `emrys.stages.gtf_to_bed12.converter` | Owner conversion command |
+| `CLI-SEAM-023` | `emrys.stages.gtf_to_bed12.validator` | Owner validation command |
+| `CLI-SEAM-024` | `emrys.stages.mechanical_orientation.validator` | Owner validation command |
+| `CLI-SEAM-025` | `emrys.stages.partitioned_cohort_mpileup.validator` | Owner validation command |
+| `CLI-SEAM-026` | `emrys.stages.split_n_cigar.validator` | Owner validation command |
+| `CLI-SEAM-027` | `emrys.stages.star_alignment.validator` | Owner validation command |
+| `CLI-SEAM-028` | `emrys.stages.star_index.validator` | Owner validation command |
+
+### Bounded current import transitions
+
+These exceptions preserve observed current behavior while preventing the
+exception roster from becoming the target architecture. The source-dependency
+ratchet admits only the exact source/target pair, rejects any neighboring edge,
+and fails when an entry becomes stale. Resolution means either removing the
+edge after its successor design supplies the final boundary or recording an
+explicit permanent justification in the durable owner.
+
+| ID | Exact current import | Protected current behavior | Successor and exit condition |
+|---|---|---|---|
+| `SRC-TRANS-001` | `contracts/artifacts/_artifact_contracts/schema.py` → `emrys.libraries.validation` | Artifact-schema path and digest validation | `AC-SLICE-07`: remove the upward contract dependency after lifecycle/admission ownership is selected, or justify the final neutral placement. |
+| `SRC-TRANS-002` | `contracts/orchestration/api.py` → `emrys.libraries.source_authority` | Controlled Python argument construction and admission for the bound `python -m snakemake` command prefix | `AC-SLICE-05`: move command construction behind the selected execution/mechanism boundary or justify the final neutral placement. |
+| `SRC-TRANS-003` | `contracts/scientific_evidence/step08.py` → `emrys.libraries.validation` | Shared failed-attempt normalization and file-digest mechanics | `AC-SLICE-04` and `AC-SLICE-07`: settle operation and artifact-integrity ownership, then remove or permanently justify the dependency. |
+| `SRC-TRANS-004` | `contracts/scientific_evidence/step08.py` → `emrys.libraries.validation.tsv` | Strict TSV contract mechanics | `AC-SLICE-04`: retain strict parsing while selecting the final operation/contract boundary. |
+| `SRC-TRANS-005` | `contracts/scientific_evidence/step08.py` → `emrys.libraries.alignments.orientation` | Fixed mechanical-orientation vocabulary and labels | `AC-SLICE-04`: retain the semantic vocabulary while selecting its final neutral owner. |
+| `SRC-TRANS-006` | `contracts/scientific_evidence/step09.py` → `emrys.libraries.alignments.orientation` | Step `09` orientation-policy admission | `AC-SLICE-04`: preserve the single orientation authority without broadening the dependency. |
+| `SRC-TRANS-007` | `orchestration/local_pilot/doctor.py` → `emrys.evidence.runtime_availability.inspector` | Current readiness composition over runtime inspection | `AC-SLICE-03`, `AC-SLICE-05`, and `AC-SLICE-08`: select the final application, capability, and execution-profile boundary. |
+| `SRC-TRANS-008` | `orchestration/local_pilot/doctor.py` → `emrys.evidence.storage_inventory.qualification` | Current readiness composition over admitted storage qualification | `AC-SLICE-03`, `AC-SLICE-05`, and `AC-SLICE-06`: select the final application, capability, and storage-policy boundary without weakening qualification. |
+| `SRC-TRANS-009` | `orchestration/local_pilot/lifecycle.py` → `emrys.evidence.runtime_availability.inspector` | Runtime re-admission before execution/reuse | `AC-SLICE-03`, `AC-SLICE-05`, and `AC-SLICE-08`: preserve re-admission and evidence attribution while selecting the final boundary. |
+| `SRC-TRANS-010` | `orchestration/local_pilot/lifecycle.py` → `emrys.evidence.storage_inventory.qualification` | Storage re-admission before execution/reuse | `AC-SLICE-05` and `AC-SLICE-06`: preserve fail-closed qualification and recovery while selecting the final boundary. |
+| `SRC-TRANS-011` | `orchestration/local_pilot/onboarding.py` → `emrys.stages.gtf_to_bed12.converter` | Reference GTF/FASTA compatibility using the current normalization implementation | `AC-SLICE-03` and `AC-SLICE-04`: select a public capability/contract boundary without duplicating GTF semantics. |
+| `SRC-TRANS-012` | `__main__.py` → `emrys.reporting._artifact_index.builder` | Current grouped `build artifact-index` composition | `AC-SLICE-03` and `AC-SLICE-12`: route through a public reporting capability or explicitly justify the retained private access. |
+| `SRC-TRANS-013` | `__main__.py` → `emrys.reporting._run_summary.builder` | Current grouped `build run-summary` composition | `AC-SLICE-03` and `AC-SLICE-12`: route through a public reporting capability or explicitly justify the retained private access. |
+
+### Automated import projection
+
+[`tests/tools/source_dependencies.py`](../../../tests/tools/source_dependencies.py)
+uses the standard-library AST and Git's tracked-plus-untracked, non-ignored
+inventory to check statically declared imports and recognized literal
+standard-library dynamic import forms without importing product modules or
+writing the tree. It enforces the stable negative directions above,
+functional-owner isolation, exact current CLI composition, private-module
+isolation, acyclicity between neutral library owners, explicit classification
+for every product source domain, the single public reporting transaction seam,
+and the exact transition roster. Focused tests keep the executable
+seam/transition rosters equal to the tables above.
+
+The checker deliberately does not perform general dynamic-import data-flow
+inference or infer runtime invocation, native shell/R relationships, workflow
+scheduling, artifact flow, scientific semantics, or authority from an import
+alone. Those remain with the current architecture, `STAGE_MAP.md`, owner
+contracts, and direct tests. It does not require future `project`, `run`,
+`stage`, `execution`, `policy`, or `artifact_store` packages.
 
 ## Public-interface and future boundary
 

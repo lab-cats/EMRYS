@@ -52,6 +52,40 @@ remain outside the proven boundary.
 Exact files, scheduler wrappers, validators, and direct tests are linked from
 the [functional-owner inventory](FUNCTIONAL_OWNER_INVENTORY.md).
 
+## Current-to-target responsibility crosswalk
+
+This is a descriptive mapping of the implemented tree to the
+[ratified responsibility model](../design/decisions/platform-direction.md#ratified-responsibility-and-dependency-model).
+It is not a target package map. `Aligned` means the current owner already fits
+the durable responsibility direction in its declared scope; `transitional`
+means protected current behavior spans responsibilities whose final interface
+or owner remains with a later slice; `unresolved` means the target decision has
+not selected a representation. No status authorizes a source move.
+
+| Current owner | Responsibility represented today | Graph(s) | Status | Later decision or exit condition |
+|---|---|---|---|---|
+| Package root `__main__.py` | Grouped CLI composition over owner validation, inspection, onboarding, control, and reporting entry points | Source import and invocation | Transitional | `AC-SLICE-03` plus the public-UX slices select the ordinary application surface. Two private reporting imports remain exact ratcheted transitions until a public capability replaces them or their permanence is explicitly justified. |
+| `ingestion/` | External sample/input admission and diagnostics | Import and emitted declarations | Aligned | Public configuration and setup slices may simplify intake without giving ingestion execution or scientific authority. |
+| `contracts/` | Closed schemas, vocabularies, identity facts, and cross-owner records | Import and artifact/evidence contracts | Transitional | The neutral role is aligned, but exact upward imports into shared implementation are ratcheted in `SOURCE_TOPOLOGY.md`; `AC-SLICE-03`, `AC-SLICE-04`, and `AC-SLICE-07` must resolve or permanently justify them. |
+| `libraries/` | Narrow implementation shared only across demonstrated consumers | Import | Aligned | Every seam stays independently justified and acyclic. `AC-SLICE-06` may consolidate repeated decisions only after inventory proves net reduction. |
+| Semantic behavior under `stages/`, `analyses/`, and `evidence/` | Recognizable transformation, analysis, and evidence semantics with adjacent contracts and tests | Import, invocation, and semantic artifact/evidence flow | Aligned | `AC-SLICE-04` and `ANALYSIS-02` may select a thin operation/module representation without erasing owner kinds or scientific visibility. |
+| Owner-local cross-cutting mechanics under `stages/`, `analyses/`, and `evidence/` | Current shell/SLURM wrappers, runtime resolution, filesystem operations, and publication transactions adjacent to the semantic owner | Import and runtime/control invocation | Transitional | `AC-SLICE-04` through `AC-SLICE-07` must inventory these mechanics and move only demonstrated repeated responsibilities behind an owned boundary, with caller migration and equal-or-stronger protection. |
+| Runtime, reference, and storage evidence owners | Explicit operational observations that do not become computation or admission authority | Import and invocation | Transitional | Current application code imports named public modules directly. `AC-SLICE-03`, `AC-SLICE-05`, and the runtime/storage slices select the final capability boundary without broadening these edges by analogy. |
+| `orchestration/local_pilot/` and `contracts/orchestration/` | Request normalization, planning, current application coordination, fixed-profile materialization, execution/reuse admission, lifecycle, inspection, and resource decisions | Import and invocation | Transitional | It remains the current behavior oracle, not a future Run god object. `AC-SLICE-03`, `AC-SLICE-05`, `AC-SLICE-06`, and `AC-SLICE-07` assign final application, execution, policy, and lifecycle interfaces. |
+| `reporting/` | Read-only artifact adaptation, canonical summary, static views, and receipt-last report publication | Import and artifact/evidence flow | Transitional | Its downstream direction is aligned. Current `local_pipeline_complete` still requires three reporting transactions; later Run/report work must separate scientific completion from a visible, default reporting outcome that can be disabled and regenerated independently. |
+| Root `workflow/` and the fixed profile | Snakemake scheduling of public owner commands through hash-bound task records | Runtime/control invocation | Transitional | `AC-SLICE-05` retains one execution guarantee contract while deciding the backend boundary. Snakemake remains a mechanism, not scientific, admission, or recovery authority. |
+| Repository `scripts/`, tests, Git, Make, CI, and environments | Development, validation, restoration, and delivery controls | Outside the product graphs except as test or build consumers | Aligned | These remain repository controls and never become scientific-workflow owners or evidence promotion. |
+| OS, R, Python, filesystem, Snakemake, and SLURM mechanisms | External effects and observations reached through current owner code | Runtime/control invocation | Unresolved | Owned adapter placement remains later design. Equivalent guarantees, attributable observations, and mechanism non-authority are already binding. |
+
+The source-import projection and its exact current transitions live in
+[`SOURCE_TOPOLOGY.md`](../../src/emrys/contracts/SOURCE_TOPOLOGY.md). Runtime
+invocation remains visible here and in the orchestration/owner contracts. Exact
+functional-owner semantic artifact and evidence edges remain in
+[`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md); lifecycle, admission,
+orchestration, and reporting flows remain with their current contracts and this
+architecture. Permission in one projection does not grant permission in
+another.
+
 ## Scientist-facing workflow
 
 This view groups the exact semantic owners into nine explanatory phases. The

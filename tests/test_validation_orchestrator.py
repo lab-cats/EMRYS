@@ -109,6 +109,7 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         assert target in reporting_makefile
     assert "validation-report-runtime:" not in reporting_makefile
     assert "tests/tools/run_validation.py" in quality_makefile
+    assert "tests/tools/source_dependencies.py" in quality_makefile
     assert "PYTHON_COVERAGE_WORKERS" in root_makefile
     shard_tool = (
         REPO_ROOT / "tests" / "tools" / "python_test_shards.py"

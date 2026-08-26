@@ -181,6 +181,20 @@ Use focused tests during implementation:
 .venv/bin/python -m pytest -q --tb=short <focused-test-paths>
 ```
 
+The static preflight includes a fast, read-only check of the current Python
+source-import graph. Run it directly while changing owner boundaries:
+
+```bash
+.venv/bin/python tests/tools/source_dependencies.py --repo "$PWD"
+```
+
+This check covers statically declared Python imports, recognized literal
+standard-library dynamic import forms, the exact current CLI composition
+roster, and exact transitional edges. It does not perform general
+dynamic-import data-flow inference or establish runtime/control invocation,
+shell or R relationships, artifact/evidence flow, scheduler behavior, or
+scientific correctness.
+
 For package metadata, wheel isolation, installed commands, and resources:
 
 ```bash

@@ -17,6 +17,15 @@ fail closed.
 These files support repository validation; they are not public workflow
 commands or independent evidence authorities.
 
+`source_dependencies.py` is the read-only Python import-graph gate used by the
+static preflight. It classifies current source owners, scans declared imports
+and recognized literal standard-library dynamic import forms, enforces only
+the ratified negative dependency rules, rejects cycles between neutral library
+owners, and contains exact stale-failing rosters for current CLI composition
+and known transitional edges. It does not perform general dynamic-import
+data-flow inference or infer shell/R invocation, artifact flow, scientific
+semantics, future package placement, or a general architecture framework.
+
 `real_synthetic_e2e.py` is the CI-owned retained real-runtime driver. It
 initializes one public synthetic profile, prepares an exact runtime TSV from
 already-provisioned paths, performs real two-phase storage qualification,
