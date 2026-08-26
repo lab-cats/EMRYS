@@ -46,10 +46,12 @@ that CIGAR-N transformation semantics occurred.
 
 `--no-clobber` is the required local-profile mode. It changes lock scope from
 the output directory to the declared sample, refuses either existing final,
-hashes and rechecks the input BAM/BAI plus reference FASTA/FAI/DICT, and uses
-the existing staged validation and final-path revalidation. This path never
-creates predecessor backups; it publishes create-exclusively with staging
-inode anchors, so an interruption cannot enter the retained
+hashes and rechecks the input BAM/BAI plus reference FASTA/FAI/DICT, validates
+the staged BAM/BAI before publication, and carries that validation through
+create-exclusive publication by proving the final paths are the exact staging
+inodes. This avoids a second full BAM semantic scan after publication without
+weakening the content identity of the published pair. This path never creates
+predecessor backups, so an interruption cannot enter the retained
 restoration-failure defect. Tool paths are explicit; observed GATK, samtools,
 and Java versions and output hashes belong in the workflow verified record.
 Execute without this option preserves the replacement transaction below.
@@ -129,7 +131,8 @@ failures, and report-publication failures exit `2`.
   rerunning GATK.
 - [`test_step_05_split_n_cigar_reads.sh`](../../../../tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh)
   protects dry-run, tools/Java, reference prerequisites, locks, temp cleanup,
-  staged validation, complete-pair rules, and ordinary rollback fault paths.
+  staged validation, no-clobber publication identity, complete-pair rules, and
+  ordinary legacy rollback fault paths.
 - [`test_validate_step_05_split_ncigar.py`](../../../../tests/stages/split_n_cigar/test_validate_step_05_split_ncigar.py),
   wrapper, roster, publication-fault, public-CLI, artifact, report, data-check,
   and coverage tests protect the recorded boundaries.
