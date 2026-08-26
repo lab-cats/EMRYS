@@ -19,6 +19,9 @@ take priority over speed or convenience.
   so would introduce excessive complexity or incomplete behavior
 - long running checks should be run in CI, with quick targeted checks
   being run locally
+- prefer using standard libraries over bespoke implementation except
+  when standard libraries would be insufficient or when bespoke implementation
+  would permit for a smaller implementation
 
 ## Repository, runtime, and data safety
 
