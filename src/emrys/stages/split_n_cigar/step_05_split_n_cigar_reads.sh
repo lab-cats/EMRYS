@@ -140,8 +140,9 @@ lock_owner_file="$lock_path/owner"
 tmp_bam="$output_dir/.${sample_id}.step05.${run_token}.split_ncigar.tmp.bam"
 tmp_bai="$tmp_bam.bai"
 
-# GATK/HTSJDK may also create an index by replacing .bam with .bai.
-# Track this so failed runs do not leave confusing zero-byte sidecars.
+# GATK/HTSJDK may create an index either by appending .bai or by replacing the
+# final .bam suffix. Both names remain run-token staging paths; normalize either
+# current-attempt result to the canonical appended spelling before publication.
 tmp_gatk_bai="${tmp_bam%.bam}.bai"
 
 # Do not let GATK spill internal SortingCollection temp files to node-local /tmp.
@@ -173,6 +174,32 @@ index_command=(
     index
     "$tmp_bam"
 )
+
+ensure_staged_bam_index() {
+    # The execute preflight proves both run-token paths absent before GATK runs.
+    # Accept only a regular, non-symlink current-attempt index. Prefer the
+    # canonical appended spelling if GATK emitted both names.
+    if [[ -f "$tmp_bai" && ! -L "$tmp_bai" && -s "$tmp_bai" ]]; then
+        rm -f -- "$tmp_gatk_bai"
+        printf 'Reusing GATK-produced staged BAM index: %s\n' "$tmp_bai"
+        return 0
+    fi
+
+    if [[ -f "$tmp_gatk_bai" && ! -L "$tmp_gatk_bai" && -s "$tmp_gatk_bai" ]]; then
+        rm -f -- "$tmp_bai"
+        mv "$tmp_gatk_bai" "$tmp_bai"
+        printf 'Reusing GATK-produced staged BAM index after path normalization: %s\n' \
+            "$tmp_bai"
+        return 0
+    fi
+
+    # Zero-byte or ambiguous candidates are not evidence of a usable index.
+    # Remove only the two pre-proven run-token staging paths, then retain the
+    # historical samtools behavior as the compatibility fallback.
+    rm -f -- "$tmp_bai" "$tmp_gatk_bai"
+    printf 'GATK did not produce a usable staged BAM index; running samtools index fallback.\n'
+    "${index_command[@]}"
+}
 
 quickcheck_command=(
     "$samtools_bin"
@@ -391,7 +418,7 @@ printf 'mkdir -p %q\n' "$gatk_tmp_dir"
 printf 'GATK temp cleanup action:\n'
 printf 'rm -rf %q\n' "$gatk_tmp_dir"
 
-printf 'samtools index command:\n'
+printf 'samtools index fallback command:\n'
 print_command "${index_command[@]}"
 
 printf 'samtools quickcheck validation command:\n'
@@ -412,7 +439,7 @@ printf '  2. Verify Step 00c reference FASTA, .fai, and .dict exist and are none
 printf '  3. Resolve GATK, samtools, and Java executables.\n'
 printf '  4. Validate actual Java version is >=17 before execute-mode GATK use.\n'
 printf '  5. Run GATK SplitNCigarReads into a run-token temp BAM using a project-storage GATK temp directory.\n'
-printf '  6. Index the temp BAM and validate quickcheck, coordinate sort, read group preservation, and nonempty BAI.\n'
+printf '  6. Reuse a nonempty current-attempt GATK index when available; otherwise index with samtools, then validate quickcheck, coordinate sort, read group preservation, and nonempty BAI.\n'
 printf '  7. Publish final BAM/BAI only after validation succeeds.\n'
 printf '  8. Roll back previous final outputs if publication fails after backups begin.\n'
 
@@ -433,12 +460,12 @@ mkdir -p "$output_dir"
 
 # Refuse to reuse scratch names. A pre-existing temp/backup file means a prior
 # run may need manual inspection before this sample is attempted again.
-[[ ! -e "$tmp_bam" ]] || die "Temporary BAM path already exists: $tmp_bam"
-[[ ! -e "$tmp_bai" ]] || die "Temporary BAI path already exists: $tmp_bai"
-[[ ! -e "$tmp_gatk_bai" ]] || die "Alternate GATK temporary BAI path already exists: $tmp_gatk_bai"
-[[ ! -e "$gatk_tmp_dir" ]] || die "GATK temp directory already exists: $gatk_tmp_dir"
-[[ ! -e "$backup_bam" ]] || die "Backup BAM path already exists: $backup_bam"
-[[ ! -e "$backup_bai" ]] || die "Backup BAI path already exists: $backup_bai"
+[[ ! -e "$tmp_bam" && ! -L "$tmp_bam" ]] || die "Temporary BAM path already exists: $tmp_bam"
+[[ ! -e "$tmp_bai" && ! -L "$tmp_bai" ]] || die "Temporary BAI path already exists: $tmp_bai"
+[[ ! -e "$tmp_gatk_bai" && ! -L "$tmp_gatk_bai" ]] || die "Alternate GATK temporary BAI path already exists: $tmp_gatk_bai"
+[[ ! -e "$gatk_tmp_dir" && ! -L "$gatk_tmp_dir" ]] || die "GATK temp directory already exists: $gatk_tmp_dir"
+[[ ! -e "$backup_bam" && ! -L "$backup_bam" ]] || die "Backup BAM path already exists: $backup_bam"
+[[ ! -e "$backup_bai" && ! -L "$backup_bai" ]] || die "Backup BAI path already exists: $backup_bai"
 
 set_exit_trap cleanup
 
@@ -461,7 +488,7 @@ invoke_gatk_with_selected_java "$java_bin" "$gatk_bin" --version 2>&1 ||
 
 TMPDIR="$gatk_tmp_dir" \
     invoke_gatk_with_selected_java "$java_bin" "${gatk_command[@]}"
-"${index_command[@]}"
+ensure_staged_bam_index
 validate_bam_pair "$tmp_bam" "$tmp_bai" "Replacement"
 if [[ "$no_clobber" == true ]]; then
     [[ "$(sha256_file "$input_bam")" == "$input_bam_sha256" ]] || die "Input BAM changed during Step 05."
