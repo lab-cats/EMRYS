@@ -1,5 +1,6 @@
 import gzip
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -344,3 +345,94 @@ def test_id_mismatch_after_requested_prefix_is_not_checked(
         "total read counts.\n"
     )
     assert tree_snapshot(tmp_path) == before
+
+
+def test_gzip_inputs_are_each_decompressed_once(tmp_path: Path) -> None:
+    real_gunzip = shutil.which("gunzip")
+    assert real_gunzip is not None
+    fake_bin = tmp_path / "fake-bin"
+    fake_bin.mkdir()
+    counter = tmp_path / "gunzip-invocations.txt"
+    fake_gunzip = fake_bin / "gunzip"
+    fake_gunzip.write_text(
+        "#!/bin/sh\nprintf 'invoked\\n' >> \"$EMRYS_GUNZIP_COUNTER\"\n"
+        "exec \"$EMRYS_REAL_GUNZIP\" \"$@\"\n",
+        encoding="utf-8",
+    )
+    fake_gunzip.chmod(0o755)
+    r1 = write_fastq(
+        tmp_path / "reads_R1.fastq.gz",
+        ["read_001", "read_002"],
+        1,
+        compressed=True,
+    )
+    r2 = write_fastq(
+        tmp_path / "reads_R2.fastq.gz",
+        ["read_001", "read_002"],
+        2,
+        compressed=True,
+    )
+    environment = os.environ.copy()
+    environment["PATH"] = os.pathsep.join((str(fake_bin), environment["PATH"]))
+    environment["EMRYS_GUNZIP_COUNTER"] = str(counter)
+    environment["EMRYS_REAL_GUNZIP"] = real_gunzip
+
+    result = run_checker(
+        "--r1-fastq",
+        str(r1),
+        "--r2-fastq",
+        str(r2),
+        "--num-reads",
+        "2",
+        cwd=tmp_path,
+        environment=environment,
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""
+    assert counter.read_text(encoding="utf-8").splitlines() == [
+        "invoked",
+        "invoked",
+    ]
+
+
+def test_unterminated_final_line_preserves_wc_line_count_semantics(
+    tmp_path: Path,
+) -> None:
+    r1 = tmp_path / "reads_R1.fastq"
+    r1.write_text(fastq_text(["read_001"], 1).rstrip("\n"), encoding="utf-8")
+    r2 = write_fastq(tmp_path / "reads_R2.fastq", ["read_001"], 2)
+
+    result = run_checker(
+        "--r1-fastq",
+        str(r1),
+        "--r2-fastq",
+        str(r2),
+        "--sample-id",
+        "unterminated",
+        "--num-reads",
+        "1",
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 1
+    assert result.stdout == expected_context(
+        sample_id="unterminated", r1=r1, r2=r2, num_reads=1
+    )
+    assert result.stderr == (
+        "Sample ID: unterminated\n"
+        "FAIL: R1 FASTQ line count is not divisible by 4: 3\n"
+    )
+
+
+def test_empty_normalized_ids_are_preserved(tmp_path: Path) -> None:
+    r1 = write_fastq(tmp_path / "reads_R1.fastq", [""], 1)
+    r2 = write_fastq(tmp_path / "reads_R2.fastq", [""], 2)
+
+    result = run_checker(
+        "--r1-fastq", str(r1), "--r2-fastq", str(r2),
+        "--num-reads", "1", cwd=tmp_path,
+    )
+
+    assert result.returncode == 0
+    assert result.stderr == ""

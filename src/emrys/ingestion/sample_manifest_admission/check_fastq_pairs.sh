@@ -46,26 +46,42 @@ fastq_stream() {
     fi
 }
 
-normalize_read_id() {
-    local read_id="$1"
-
-    read_id="${read_id#@}"
-    read_id="${read_id%% *}"
-    read_id="${read_id%/1}"
-    read_id="${read_id%/2}"
-    printf '%s\n' "$read_id"
-}
-
 sample_label() {
     if [[ -n "$sample_id" ]]; then
         printf 'Sample ID: %s\n' "$sample_id"
     fi
 }
 
-count_lines() {
+scan_fastq() {
     local file="$1"
+    local limit="$2"
+    local stream_status
 
-    fastq_stream "$file" | wc -l | tr -d '[:space:]'
+    {
+        set +e
+        fastq_stream "$file"
+        stream_status=$?
+        printf '\n'
+        exit "$stream_status"
+    } | awk -v limit="$limit" '
+        NR % 4 == 1 && captured < limit {
+            read_id = $0
+            sub(/^@/, "", read_id)
+            sub(/ .*/, "", read_id)
+            sub(/\/1$/, "", read_id)
+            sub(/\/2$/, "", read_id)
+            ids[++captured] = read_id
+        }
+        END {
+            line_count = NR - 1
+            printf "COUNT\t%.0f\n", line_count
+            complete_records = int(line_count / 4)
+            output_count = captured < complete_records ? captured : complete_records
+            for (ordinal = 1; ordinal <= output_count; ordinal++) {
+                printf "ID\t%s\n", ids[ordinal]
+            }
+        }
+    '
 }
 
 declare_required_arguments r1_fastq r2_fastq
@@ -109,8 +125,24 @@ printf '  R1 FASTQ: %s\n' "$r1_fastq"
 printf '  R2 FASTQ: %s\n' "$r2_fastq"
 printf '  Read IDs checked: %s\n' "$num_reads"
 
-r1_line_count="$(count_lines "$r1_fastq")"
-r2_line_count="$(count_lines "$r2_fastq")"
+r1_scan="$(scan_fastq "$r1_fastq" "$num_reads")"
+r2_scan="$(scan_fastq "$r2_fastq" "$num_reads")"
+
+r1_ids=()
+while IFS= read -r summary_line; do
+    case "$summary_line" in
+        COUNT$'\t'*) r1_line_count="${summary_line#*$'\t'}" ;;
+        ID$'\t'*) r1_ids+=("${summary_line#*$'\t'}") ;;
+    esac
+done <<< "$r1_scan"
+
+r2_ids=()
+while IFS= read -r summary_line; do
+    case "$summary_line" in
+        COUNT$'\t'*) r2_line_count="${summary_line#*$'\t'}" ;;
+        ID$'\t'*) r2_ids+=("${summary_line#*$'\t'}") ;;
+    esac
+done <<< "$r2_scan"
 
 if (( r1_line_count % 4 != 0 )); then
     sample_label >&2
@@ -144,12 +176,8 @@ if (( r1_read_count != r2_read_count )); then
 fi
 
 for ((record_number = 1; record_number <= num_reads; record_number++)); do
-    header_line=$((1 + ((record_number - 1) * 4)))
-    r1_header="$(fastq_stream "$r1_fastq" | sed -n "${header_line}p")"
-    r2_header="$(fastq_stream "$r2_fastq" | sed -n "${header_line}p")"
-
-    r1_id="$(normalize_read_id "$r1_header")"
-    r2_id="$(normalize_read_id "$r2_header")"
+    r1_id="${r1_ids[record_number - 1]}"
+    r2_id="${r2_ids[record_number - 1]}"
 
     if [[ "$r1_id" != "$r2_id" ]]; then
         {
