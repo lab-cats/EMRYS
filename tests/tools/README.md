@@ -41,7 +41,7 @@ sampler. The driver installs and cleans nothing; its machine-readable summary
 remains synthetic execution evidence, never production or biological evidence.
 
 `retained_stage_benchmark.py` consumes the successful retained 100,000-pair
-summary and runs paired identity, Step 02, Step 06, Step 07, and Step 08
+summary and runs paired identity, Step 02, Step 04, Step 05, Step 06, Step 07, and Step 08
 comparison cases against the exact locked Python, scientific-tool, and R
 authorities supplied by CI. It creates
 fixtures, frozen source archives, manifests, raw benchmark results, and its
@@ -68,7 +68,7 @@ comma-delimited `retained_benchmark_cases` input. It is a filter rather than a
 lane, requires the `synthetic_100000` lane, and accepts these exact names:
 `alignment-signatures-mib`, `reference-contig-membership`,
 `step02-canonical-bam`, `step04-duplicate-marking`,
-`step06-mechanical-orientation`, `step07-partitions`,
+`step05-split-n-cigar`, `step06-mechanical-orientation`, `step07-partitions`,
 `step08-reread`, `step08-skew`, and `step08-uniform`. A blank input and every
 scheduled run use `--suite all`. A nonblank input becomes one repeated `--case`
 argument per unchanged comma-delimited segment. Empty, whitespace-padded,
