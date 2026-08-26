@@ -21,6 +21,7 @@ def parse_fasta(path: Path) -> list[tuple[str, int]]:
 
 def parse_fasta_lines(lines: Iterable[str]) -> list[tuple[str, int]]:
     result: list[tuple[str, int]] = []
+    seen: set[str] = set()
     name: str | None = None
     length = 0
     for raw_line in lines:
@@ -28,8 +29,9 @@ def parse_fasta_lines(lines: Iterable[str]) -> list[tuple[str, int]]:
             if name is not None:
                 result.append((name, length))
             name = raw_line[1:].split()[0]
-            if not name or any(existing == name for existing, _ in result):
+            if not name or name in seen:
                 _fail(f"FASTA has empty or duplicate contig: {name!r}")
+            seen.add(name)
             length = 0
         else:
             if name is None:
