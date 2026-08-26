@@ -807,6 +807,37 @@ main <- function() {
         )
     }
 
+    # The receipt may remain internally self-consistent while assigning one
+    # candidate to the wrong partition/orientation bucket.
+    count_mismatch_fixture <- make_fixture(
+        file.path(temporary_root, "count-mismatch-input"), core_rows
+    )
+    count_mismatch_inputs <- read_tsv(count_mismatch_fixture$inputs_path)
+    count_columns <- c(
+        "declared_vcf_record_count", "observed_vcf_record_count",
+        "observed_alt_allele_count", "supported_snv_count",
+        "published_candidate_count"
+    )
+    count_mismatch_inputs[1L, count_columns] <-
+        as.integer(count_mismatch_inputs[1L, count_columns]) + 1L
+    count_mismatch_inputs[2L, count_columns] <-
+        as.integer(count_mismatch_inputs[2L, count_columns]) - 1L
+    write_tsv(count_mismatch_inputs, count_mismatch_fixture$inputs_path)
+    count_mismatch_fixture$inputs_hash <-
+        sha256_file(count_mismatch_fixture$inputs_path)
+    count_mismatch <- run_engine(
+        count_mismatch_fixture,
+        file.path(temporary_root, "count-mismatch-output"),
+        expect_success = FALSE
+    )
+    assert_true(
+        any(grepl(
+            "Step 08 receipt published counts do not match sites table.",
+            readLines(count_mismatch$log, warn = FALSE), fixed = TRUE
+        )),
+        "A self-consistent receipt with wrong bucket counts was not rejected."
+    )
+
     # OR direction plus explicit background statuses. Exact 0.01 must fail.
     background_samples <- sample_table(TRUE)$sample_id
     strong_down_ad <- c(20, 16, 24, 5, 4, 6, 0, 0)
