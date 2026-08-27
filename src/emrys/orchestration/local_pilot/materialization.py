@@ -16,6 +16,7 @@ from typing import Any, Literal
 
 from emrys import __version__
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration import artifact_inventory
 from emrys.contracts.orchestration.application_model import (
     EXECUTION_PROJECTION_SCHEMA_VERSION,
     LEGACY_EXECUTION_SCHEMA_VERSION,
@@ -29,7 +30,6 @@ from emrys.contracts.orchestration.application_model import (
     validate_execution_view,
     validate_successor_adapter,
 )
-from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.orchestration.local_pilot import (
     doctor,
@@ -337,9 +337,8 @@ def _artifact_rows(
     profile: Mapping[str, Any],
     run_root: Path,
 ) -> dict[tuple[str, str], tuple[dict[str, Any], ...]]:
-    bundle = build_reporting_bundle(execution, profile)
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
-    for row in bundle.artifact_inventory_rows:
+    for row in artifact_inventory.project_rows(execution, profile):
         item = dict(row)
         item["path"] = _resolved_inventory_path(run_root, str(row["source_path"]))
         grouped.setdefault((str(row["step_id"]), str(row["scope_id"])), []).append(item)

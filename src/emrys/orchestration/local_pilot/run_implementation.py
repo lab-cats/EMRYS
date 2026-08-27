@@ -49,7 +49,7 @@ _ADMISSION_ROOTS = (
     "src/emrys/contracts/artifacts",
     "src/emrys/contracts/orchestration/api.py",
     "src/emrys/contracts/orchestration/application_model.py",
-    "src/emrys/contracts/orchestration/projection.py",
+    "src/emrys/contracts/orchestration/artifact_inventory.py",
     "src/emrys/contracts/schemas/orchestration/v1/application_model.schema.json",
     "src/emrys/contracts/schemas/orchestration/v1/attempt_receipt.schema.json",
     "src/emrys/contracts/schemas/orchestration/v1/common.schema.json",

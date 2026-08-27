@@ -502,12 +502,28 @@ def test_run_identity_excludes_attempt_reporting_and_backend_adapter_code(
     )
     assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
 
+    reporting_projection = checkout / "src/emrys/contracts/orchestration/projection.py"
+    reporting_projection.write_bytes(
+        reporting_projection.read_bytes() + b"\n# reporting projection change\n"
+    )
+    assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
+
     materializer = checkout / "src/emrys/orchestration/local_pilot/materialization.py"
     materializer.write_bytes(materializer.read_bytes() + b"\n# dispatch change\n")
     assert _run_candidate(readiness, normalized, resources).run_id != baseline.run_id
 
 
-def test_run_identity_binds_semantic_all_pass_gate(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "relative",
+    (
+        "src/emrys/orchestration/local_pilot/all_pass.py",
+        "src/emrys/contracts/orchestration/artifact_inventory.py",
+    ),
+)
+def test_run_identity_binds_semantic_admission_code(
+    tmp_path: Path,
+    relative: str,
+) -> None:
     checkout, commit = _clean_checkout(tmp_path)
     readiness, normalized, resources, _request, _workspace = _readiness(
         tmp_path / "case",
@@ -517,8 +533,8 @@ def test_run_identity_binds_semantic_all_pass_gate(tmp_path: Path) -> None:
     baseline_implementation = implementation_identity(checkout)
     baseline = _run_candidate(readiness, normalized, resources)
 
-    all_pass = checkout / "src/emrys/orchestration/local_pilot/all_pass.py"
-    all_pass.write_bytes(all_pass.read_bytes() + b"\n# admission change\n")
+    admission = checkout / relative
+    admission.write_bytes(admission.read_bytes() + b"\n# admission change\n")
 
     assert implementation_identity(checkout) != baseline_implementation
     assert _run_candidate(readiness, normalized, resources).run_id != baseline.run_id
@@ -559,6 +575,7 @@ def test_implementation_identity_closes_direct_scientific_dependencies(
     (
         "src/emrys/orchestration/local_pilot/materialization.py",
         "src/emrys/orchestration/local_pilot/all_pass.py",
+        "src/emrys/contracts/orchestration/artifact_inventory.py",
     ),
 )
 def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
