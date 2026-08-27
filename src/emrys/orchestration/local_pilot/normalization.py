@@ -406,7 +406,6 @@ def _normalize_samples(
 def _normalize_partitions(
     manifest_path: Path,
     manifest_data: bytes,
-    request_dir: Path,
 ) -> dict[str, Any]:
     try:
         table = step08.validate_partition_manifest_bytes(manifest_data, manifest_path)
@@ -419,7 +418,7 @@ def _normalize_partitions(
         if row["selector_type"] == "regions_file":
             path, selector_file = _resolve_authored_snapshot(
                 selector_value,
-                request_dir,
+                manifest_path.parent,
                 f"Partition manifest row {index} regions file",
             )
             selector_value = str(path)
@@ -489,7 +488,7 @@ def normalize_request(
         request["partition_manifest"], request_dir, "Partition manifest"
     )
     samples = _normalize_samples(sample_path, sample_data, request_dir)
-    partitions = _normalize_partitions(partition_path, partition_data, request_dir)
+    partitions = _normalize_partitions(partition_path, partition_data)
     policy = _policy(request)
     try:
         step09.paired_samples(

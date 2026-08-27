@@ -14,8 +14,12 @@ take priority over speed or convenience.
   deleting branches, dependency installation, cluster execution, production
   mutation, destructive cleanup, scientific review, and evidence promotion
   require their own explicit authority.
-- Favor net-negative or minimally additive code changes except when to do
-  so would introduce excessive complexity or incomplete behavior
+- Every architecture audit records concrete compression opportunities across
+  every maintained surface. Follow the campaign's
+  [per-slice protocol](docs/tasks/architecture_campaign.md#131-mandatory-per-slice-compression-and-mutation-protocol).
+  Implementation defaults to net-negative maintained product code and no
+  product-file growth; any quantified exception requires explicit user
+  approval.
 - long running checks should be run in CI, with quick targeted checks
   being run locally
 - prefer using standard libraries over bespoke implementation except
@@ -23,6 +27,10 @@ take priority over speed or convenience.
   would permit for a smaller implementation
 - features should be implemented with the MINIMUM possible footprint
   while still maintaining repo quality
+- Treat boundary values as immutable by default. A `Run` is an immutable plan:
+  changing that plan creates a distinct `Run`, never an in-place mutation. This
+  settles no other public noun, nesting, identity, API, backend, persistence,
+  or policy choice until after audit review and a separate approved decision.
 
 ## Repository, runtime, and data safety
 
@@ -45,6 +53,13 @@ Keep implementation, local fixtures, real local runtime, cluster dry-run,
 cluster proof, scientific review, and biological interpretation distinct.
 Scheduler success, output presence, schema validity, a receipt, or a report is
 not proof of a higher layer.
+
+Protections are executable/static defenses; evidence is retained support for a
+claim, reproduction, or recovery. A dual-purpose artifact obeys both
+[campaign guardrails](docs/design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails).
+An existing surviving defense may satisfy equal-or-stronger replacement.
+Deleting exact evidence requires separate explicit user approval and its own
+commit, and never offsets implementation growth.
 
 Use **CMH-ranked candidates**, not validated editing sites. `FWD_like` and
 `REV_like` are mechanical labels, not biological strand claims. EMRYS ends

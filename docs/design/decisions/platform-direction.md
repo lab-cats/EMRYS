@@ -81,8 +81,10 @@ new evidence level.
 
 ### Ratified abstraction, migration, and test guardrails
 
-The following guardrails are binding. They do not ratify facade-first
-sequencing, an exact layer map, the campaign phase order, or a public API.
+The following guardrails are binding. `AC-GUARD-001` through `005` are the
+original set; `AC-GUARD-006` through `008` are later campaign-level extensions.
+They do not ratify facade-first sequencing, an exact layer map, the campaign
+phase order, or a public API beyond the settled `Run` meaning below.
 
 1. **Inspectable, bounded operational control (`AC-GUARD-001`).** Every
    effective operational value and its source is inspectable. An override
@@ -108,6 +110,48 @@ sequencing, an exact layer map, the campaign phase order, or a public API.
    only through an explicit invariant-to-test mapping that establishes an
    equal-or-stronger replacement at the same declared evidence level. Coverage
    or the scientist-facing synthetic golden path alone is insufficient.
+6. **Maintenance-surface compression (`AC-GUARD-006`).** Every architecture
+   audit records concrete compression opportunities across implementation,
+   compatibility paths, configuration, scripts, schemas, documentation,
+   protections, and retained evidence. Each implementation slice migrates
+   callers, establishes parity, and retires superseded responsibility where
+   safe. The default is net-negative maintained product code with no
+   product-file growth; an exception requires the user's explicit approval of
+   quantified growth and its justification, plus an owner and retirement
+   condition when temporary.
+   The full category-separated closeout in the campaign's
+   [per-slice protocol](../../tasks/architecture_campaign.md#131-mandatory-per-slice-compression-and-mutation-protocol)
+   is binding; categories never offset one another. File and line counts are
+   indicators, not authority to create god modules, displace logic into
+   generated/configured form, or weaken a guarantee. Temporary growth remains
+   counted until retired.
+7. **Immutable by default; `Run` is the plan (`AC-GUARD-007`).** Boundary
+   values are immutable unless the owning contract justifies a narrow mutable
+   lifecycle. A `Run` is an immutable plan and is never modified in place; a
+   plan change creates a distinct `Run`. Draft and attempt-local state may
+   mutate only within their owners and cannot alter the `Run` or reconstruct a
+   competing plan from mutable state.
+   This does not settle other public nouns or nesting, identity composition or
+   cardinality, Attempt/Result relationships, APIs, backends, policy,
+   persistence, or storage until after audit review and a separate approved
+   decision.
+8. **Explicit evidence-deletion authority (`AC-GUARD-008`).** Identifying
+   apparently redundant evidence in an audit, campaign, task, or compression
+   proposal does not authorize deletion. Deletion requires separate explicit
+   user approval for the exact artifacts or class after a proposal identifies
+   supported claims and recovery, producers and consumers, retention and
+   redundancy, evidence-level effects, and rollback. Approved deletion is
+   isolated in its own commit and never offsets implementation growth.
+   Ambiguous dual-purpose material is treated as evidence.
+
+For these guardrails, a **protection** is an executable or static defense such
+as a test, validator, fixture, or oracle. **Evidence** is a retained record or
+artifact that supports or bounds a claim, reproduction, or recovery. A test
+definition is not evidence merely because it can produce a result; a retained
+result may be. Fixtures, goldens, and oracles can be both, so both guardrails
+apply. An existing surviving defense may satisfy `AC-GUARD-005` when the
+mapping establishes equal-or-stronger coverage; replacement does not require a
+new one-for-one test.
 
 ## Ratified responsibility and dependency model
 
@@ -222,10 +266,12 @@ covers only their Python-import projection:
 The following semantic constraints are settled; their representations remain
 with the named later slices:
 
-- Application design must distinguish evolvable user intent, an immutable
-  inspectable effective realization, and one or more operational attempts. It
-  must permit multiple analyses over compatible upstream work and must pass
-  lower owners an explicit immutable contract rather than a broad aggregate.
+- Application design must distinguish evolvable user intent from an immutable
+  inspectable effective plan called `Run` and from operational attempt state
+  when present. It must permit multiple analyses over compatible upstream
+  work, pass lower owners an explicit immutable contract rather than a broad
+  aggregate, and prevent mutable attempt state from altering or reconstructing
+  the Run. This distinction does not settle cardinality or nesting.
 - A possible Stage boundary stays thin and cannot obscure the distinct
   transformation, analysis, and evidence identities or move review-relevant
   science away from its owner. Functional owners declare needs and semantic
@@ -243,9 +289,10 @@ with the named later slices:
   scientific completion or admission, and the requirement does not presume a
   distinct Artifact Store.
 
-The exact application nouns and API remain `AC-SLICE-03`; the minimum operation
-representation remains `AC-SLICE-04`; execution request/result and backend
-design remain `AC-SLICE-05`; policy inventory and owners remain
+Except for `Run` meaning the immutable plan, the exact application nouns,
+nesting, identity composition, and API remain `AC-SLICE-03`; the minimum
+operation representation remains `AC-SLICE-04`; execution request/result and
+backend design remain `AC-SLICE-05`; policy inventory and owners remain
 `AC-SLICE-06`; and artifact states, lifecycle API, and Artifact Store decision
 remain `AC-SLICE-07`.
 

@@ -11,6 +11,7 @@ trap 'rm -rf "$test_root"' EXIT
 export TMPDIR="$test_root"
 
 unset BCFTOOLS_BIN_OVERRIDE SLURM_JOB_ID \
+    EMRYS_STEP07_INPUT_IDENTITY_SHA256 \
     FAKE_BCFTOOLS_BARRIER_READY FAKE_BCFTOOLS_BARRIER_RELEASE \
     FAKE_BCFTOOLS_FAIL_STAGE FAKE_BCFTOOLS_LOG \
     FAKE_BCFTOOLS_MUTATE_ORIENTATION FAKE_BCFTOOLS_MUTATE_PATH \
@@ -23,6 +24,40 @@ unset BCFTOOLS_BIN_OVERRIDE SLURM_JOB_ID \
 fail() {
     printf 'FAIL: %s\n' "$*" >&2
     exit 1
+}
+
+die() {
+    fail "$*"
+}
+
+# shellcheck source=../../../src/emrys/libraries/file_checks.sh
+source "$repo_root/src/emrys/libraries/file_checks.sh"
+
+step07_fixture_identity() {
+    local root
+    root="$(cd "$1" && pwd -P)"
+    local paths=(
+        "$root/samples.tsv" "$root/partitions.tsv"
+        "$root/reference.fa" "$root/reference.fa.fai"
+    )
+    local sample
+    if grep -Fq $'\tregions_file\t' "$root/partitions.tsv"; then
+        paths+=("$root/target.bed")
+    fi
+    for sample in sample_A sample_B; do
+        paths+=(
+            "$root/orientation/$sample/$sample.FWD_like.bam"
+            "$root/orientation/$sample/$sample.FWD_like.bam.bai"
+            "$root/orientation/$sample/$sample.REV_like.bam"
+            "$root/orientation/$sample/$sample.REV_like.bam.bai"
+        )
+    done
+    {
+        printf 'emrys.step07-input-identity.v1\0'
+        for path in "${paths[@]}"; do
+            printf '%s\0%s\0' "$path" "$(sha256_file "$path")"
+        done
+    } | sha256_file /dev/stdin
 }
 
 assert_contains() {
@@ -398,20 +433,27 @@ assert_not_exists "$output_dir/.cohort_A.1.step07.lock"
 
 header_fixture="$test_root/header-only"
 cp -R "$fixture" "$header_fixture"
+header_fixture="$(cd "$header_fixture" && pwd -P)"
 rm -rf "$header_fixture/output"
+printf '1\t0\t4\n' >"$header_fixture/target.bed"
+printf 'partition_id\tselector_type\tselector_value\ntarget\tregions_file\ttarget.bed\n' \
+    >"$header_fixture/partitions.tsv"
 header_args=(
     --cohort-id cohort_empty
     --sample-manifest "$header_fixture/samples.tsv"
     --partition-manifest "$header_fixture/partitions.tsv"
-    --partition-id 1
+    --partition-id target
     --orientation-root "$header_fixture/orientation"
     --reference-fasta "$header_fixture/reference.fa"
     --output-root "$header_fixture/output"
     --bcftools-bin "$fake_bcftools"
 )
+header_identity="$(step07_fixture_identity "$header_fixture")"
+EMRYS_REQUIRE_BOUND_SHA256=1 \
+EMRYS_STEP07_INPUT_IDENTITY_SHA256="$header_identity" \
 FAKE_HEADER_ONLY=1 FAKE_BCFTOOLS_SAMPLES="sample_A,sample_B" \
     bash "$script" "${header_args[@]}" --no-clobber --execute >/dev/null
-header_receipt="$header_fixture/output/cohort_empty/1/cohort_empty.1.step07_outputs.tsv"
+header_receipt="$header_fixture/output/cohort_empty/target/cohort_empty.target.step07_outputs.tsv"
 [[ "$(awk -F '\t' 'NR > 1 { total += $10 } END { print total + 0 }' "$header_receipt")" == "0" ]] ||
     fail "Header-only VCF receipt should record zero records"
 
@@ -740,15 +782,18 @@ for stability_input in bam bai fasta fai regions_file; do
     assert_not_exists "$stability_output/.cohort_stability.target.step07.lock"
 done
 
-for stability_input in bam bai fasta fai regions_file; do
+for stability_input in bam bai fasta fai regions_file bound_bam; do
     strict_fixture="$test_root/no-clobber-stability-$stability_input"
     cp -R "$fixture" "$strict_fixture"
+    if [[ "$stability_input" == bound_bam ]]; then
+        strict_fixture="$(cd "$strict_fixture" && pwd -P)"
+    fi
     rm -rf "$strict_fixture/output"
     printf '1\t0\t4\n' >"$strict_fixture/target.bed"
     printf 'partition_id\tselector_type\tselector_value\ntarget\tregions_file\ttarget.bed\n' \
         >"$strict_fixture/partitions.tsv"
     case "$stability_input" in
-        bam)
+        bam|bound_bam)
             strict_mutation_label="FWD_like BAM for sample_A"
             strict_mutation_path="$strict_fixture/orientation/sample_A/sample_A.FWD_like.bam"
             ;;
@@ -787,15 +832,25 @@ for stability_input in bam bai fasta fai regions_file; do
         --bcftools-bin "$fake_bcftools"
         --no-clobber
     )
+    strict_environment=(env)
+    expected_strict_error="ERROR: $strict_mutation_label changed during Step 07 --no-clobber execution: $strict_reported_mutation_path"$'\n'
+    if [[ "$stability_input" == bound_bam ]]; then
+        strict_environment+=(
+            EMRYS_REQUIRE_BOUND_SHA256=1
+            EMRYS_STEP07_INPUT_IDENTITY_SHA256="$(step07_fixture_identity "$strict_fixture")"
+        )
+        expected_strict_error="ERROR: Scientific inputs changed after local-pilot admission during Step 07 --no-clobber execution."$'\n'
+    fi
     run_expect_status 1 \
         "$test_root/no-clobber-stability-$stability_input.out" \
         "$test_root/no-clobber-stability-$stability_input.err" \
-        env FAKE_BCFTOOLS_MUTATE_PATH="$strict_mutation_path" \
+        "${strict_environment[@]}" \
+        FAKE_BCFTOOLS_MUTATE_PATH="$strict_mutation_path" \
         FAKE_BCFTOOLS_SAMPLES=sample_A,sample_B \
         bash "$script" "${strict_args[@]}" --execute
     assert_file_equals \
         "$test_root/no-clobber-stability-$stability_input.err" \
-        "ERROR: $strict_mutation_label changed during Step 07 --no-clobber execution: $strict_reported_mutation_path"$'\n'
+        "$expected_strict_error"
     strict_output="$strict_fixture/output/cohort_strict/target"
     assert_not_exists "$strict_output/cohort_strict.target.FWD_like.mpileup.vcf"
     assert_not_exists "$strict_output/cohort_strict.target.REV_like.mpileup.vcf"
