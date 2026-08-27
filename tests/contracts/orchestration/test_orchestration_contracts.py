@@ -11,6 +11,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from emrys.contracts import orchestration
+from emrys.contracts.orchestration import artifact_inventory
 from emrys.contracts.orchestration import projection as reporting_projection
 
 ZERO_HASH = "0" * 64
@@ -1063,6 +1064,40 @@ def test_execution_requires_profile_and_complete_projection_match() -> None:
     record["reporting_projection"]["artifact_inventory"]["sha256"] = ONE_HASH
     with pytest.raises(orchestration.ContractValidationError, match="projection"):
         orchestration.validate_record("execution", record, profile=profile())
+
+
+@pytest.mark.parametrize(
+    ("case", "message"),
+    (
+        ("unsupported-selector", "Unsupported profile scope_selector"),
+        ("unresolved-template", "Unresolved template syntax"),
+        ("empty", "projects no artifact inventory rows"),
+        ("unsafe-id", "artifact_id is not a safe ID"),
+        ("duplicate", "duplicate artifact_id"),
+        ("scope-mismatch", "scope_selector/scope_type mismatch"),
+    ),
+)
+def test_artifact_inventory_rejects_invalid_projection(
+    case: str,
+    message: str,
+) -> None:
+    candidate = profile()
+    template = candidate["artifact_templates"][0]
+    if case == "unsupported-selector":
+        template["scope_selector"] = "unsupported"
+    elif case == "unresolved-template":
+        template["artifact_id_template"] = "{{sample_id}}"
+    elif case == "empty":
+        candidate["artifact_templates"] = []
+    elif case == "unsafe-id":
+        template["artifact_id_template"] = "bad id.{sample_id}"
+    elif case == "duplicate":
+        candidate["artifact_templates"].append(copy.deepcopy(template))
+    else:
+        template["scope_type"] = "analysis"
+
+    with pytest.raises(orchestration.ContractValidationError, match=message):
+        artifact_inventory.project_rows(execution(), candidate)
 
 
 def test_strict_json_loader_rejects_duplicate_keys_and_non_object(

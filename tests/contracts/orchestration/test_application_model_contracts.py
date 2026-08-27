@@ -537,6 +537,75 @@ def test_successor_adapter_proves_authority_and_optional_attempt_observations() 
     )
 
 
+@pytest.mark.parametrize(
+    ("path", "value", "rehash", "message"),
+    (
+        (("unexpected",), True, None, "policy fields must be closed"),
+        (("symbolic",), [], None, "requires symbolic.*mappings"),
+        (("symbolic_sha256",), TWO_HASH, None, "symbolic resource digest differs"),
+        (("effective_sha256",), TWO_HASH, None, "resource policy digest differs"),
+        (
+            ("sources", "default_sha256"),
+            "not-a-digest",
+            None,
+            "default_sha256 must be a SHA-256 digest",
+        ),
+        (
+            ("sources", "cli_overrides"),
+            [3],
+            None,
+            "cli_overrides must be a string list",
+        ),
+        (
+            ("allocation", "cores"),
+            0,
+            None,
+            "Allocation cores must be a positive integer",
+        ),
+        (("effective", "workflow_cores"), 1, "effective", "workflow cores differ"),
+        (
+            ("effective", "workflow_memory_mb"),
+            2048,
+            "effective",
+            "workflow memory differs",
+        ),
+        (("allocation", "cores"), 1, None, "exceed the observed allocation"),
+        (("effective", "stage_concurrency"), {}, "effective", "stage_concurrency"),
+        (
+            ("effective", "reporting_memory_mb"),
+            {"html_report": 8192},
+            "effective",
+            "reporting memory html_report exceeds",
+        ),
+    ),
+)
+def test_successor_adapter_rejects_invalid_resource_resolution(
+    path: tuple[str, ...],
+    value: object,
+    rehash: str | None,
+    message: str,
+) -> None:
+    analysis, plan, run, projection, profile, _, resource_policy = (
+        successor_adapter_fixture()
+    )
+    changed = copy.deepcopy(resource_policy)
+    target = changed
+    for key in path[:-1]:
+        target = target[key]
+    target[path[-1]] = value
+    if rehash is not None:
+        changed[f"{rehash}_sha256"] = contracts.canonical_sha256(changed[rehash])
+    with pytest.raises(contracts.ContractValidationError, match=message):
+        model.validate_successor_adapter(
+            analysis=analysis,
+            plan=plan,
+            run=run,
+            execution_projection=projection,
+            profile=profile,
+            resource_policy=changed,
+        )
+
+
 def test_successor_adapter_rejects_projection_profile_and_stopping_drift() -> None:
     analysis, plan, run, projection, profile, _, _ = successor_adapter_fixture()
     changed_projection = copy.deepcopy(projection)
