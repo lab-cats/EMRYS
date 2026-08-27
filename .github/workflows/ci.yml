@@ -25,6 +25,11 @@ on:
         required: true
         default: false
         type: boolean
+      synthetic_1000000:
+        description: Run the temporary real-tool 1,000,000-pair synthetic E2E
+        required: true
+        default: false
+        type: boolean
   schedule:
     - cron: "17 5 * * 1-6"
     - cron: "17 5 * * 0"
@@ -60,13 +65,15 @@ jobs:
           RUN_PYTHON311: ${{ inputs.python311 }}
           RUN_SYNTHETIC_130: ${{ inputs.synthetic_130 }}
           RUN_SYNTHETIC_100000: ${{ inputs.synthetic_100000 }}
+          RUN_SYNTHETIC_1000000: ${{ inputs.synthetic_1000000 }}
         run: |
           set -euo pipefail
           if [[ "${RUN_PYTHON311}" != true &&
                 "${RUN_SYNTHETIC_130}" != true &&
-                "${RUN_SYNTHETIC_100000}" != true ]]; then
+                "${RUN_SYNTHETIC_100000}" != true &&
+                "${RUN_SYNTHETIC_1000000}" != true ]]; then
             printf '%s\n' \
-              'ERROR: select at least one lane: Python 3.11, 130-pair E2E, or 100,000-pair E2E.' >&2
+              'ERROR: select at least one lane: Python 3.11, 130-pair E2E, 100,000-pair E2E, or 1,000,000-pair E2E.' >&2
             exit 2
           fi
 
@@ -565,7 +572,7 @@ jobs:
     if: >-
       github.event_name == 'schedule' ||
       (github.event_name == 'workflow_dispatch' &&
-      (inputs.synthetic_130 || inputs.synthetic_100000))
+      (inputs.synthetic_130 || inputs.synthetic_100000 || inputs.synthetic_1000000))
     runs-on: ubuntu-24.04
     timeout-minutes: 360
     steps:
@@ -574,6 +581,7 @@ jobs:
         env:
           RUN_SYNTHETIC_130: ${{ github.event_name == 'schedule' || inputs.synthetic_130 }}
           RUN_SYNTHETIC_100000: ${{ (github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') || inputs.synthetic_100000 }}
+          RUN_SYNTHETIC_1000000: ${{ inputs.synthetic_1000000 }}
         run: |
           set -euo pipefail
           evidence_root="${RUNNER_TEMP}/emrys-synthetic-e2e"
@@ -589,6 +597,12 @@ jobs:
             printf 'profile\tdataset_profile\ttrigger\tcommit\n100000\tproduction-like-v1\t%s\t%s\n' \
               "${GITHUB_EVENT_NAME}" "${GITHUB_SHA}" \
               > "${evidence_root}/100000/selection.tsv"
+          fi
+          if [[ "${RUN_SYNTHETIC_1000000}" == true ]]; then
+            install -d -m 0700 "${evidence_root}/1000000" "${evidence_root}/1000000/operator"
+            printf 'profile\tdataset_profile\ttrigger\tcommit\n1000000\tmillion-pair-v1\t%s\t%s\n' \
+              "${GITHUB_EVENT_NAME}" "${GITHUB_SHA}" \
+              > "${evidence_root}/1000000/selection.tsv"
           fi
           printf 'E2E_EVIDENCE_ROOT=%s\n' "${evidence_root}" >> "${GITHUB_ENV}"
           printf 'RENV_PATHS_CACHE=%s/emrys-renv/cache\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
@@ -820,6 +834,43 @@ jobs:
           include-hidden-files: true
           retention-days: 14
 
+      - name: Run the selected 1,000,000-pair real synthetic E2E
+        id: synthetic-1000000
+        if: inputs.synthetic_1000000
+        continue-on-error: true
+        shell: bash
+        env:
+          REAL_TOOLS_PREFIX: ${{ steps.real-tools.outputs.environment-path }}
+        run: |
+          set -euo pipefail
+          .venv/bin/python tests/tools/real_synthetic_e2e.py \
+            --profile 1000000 \
+            --repo-root "${GITHUB_WORKSPACE}" \
+            --operator-root "${E2E_EVIDENCE_ROOT}/1000000/operator" \
+            --runtime-prefix "${REAL_TOOLS_PREFIX}" \
+            --rscript "$(command -v Rscript)" \
+            --renv-library "${RENV_LIBRARY}" \
+            --storage-compute-launcher-json \
+              '["/usr/bin/srun","--partition=emrys-ci","--nodes=1","--ntasks=1","--cpus-per-task=1","--mem=1G","--time=00:05:00","--wait=60"]' \
+            --slurm-partition emrys-ci \
+            --slurm-cpus 2 \
+            --slurm-memory 6G \
+            --slurm-time 05:00:00 \
+            --slurm-timeout-seconds 18000 \
+            --execute
+
+      - name: Upload retained 1,000,000-pair evidence
+        id: upload-synthetic-1000000
+        if: always() && inputs.synthetic_1000000
+        continue-on-error: true
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: emrys-real-synthetic-1000000-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/emrys-synthetic-e2e/1000000
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
       - name: Retain terminal scheduler diagnostics
         if: always()
         shell: bash
@@ -865,10 +916,13 @@ jobs:
         env:
           SELECT_130: ${{ github.event_name == 'schedule' || inputs.synthetic_130 }}
           SELECT_100000: ${{ (github.event_name == 'schedule' && github.event.schedule == '17 5 * * 0') || inputs.synthetic_100000 }}
+          SELECT_1000000: ${{ inputs.synthetic_1000000 }}
           OUTCOME_130: ${{ steps.synthetic-130.outcome }}
           OUTCOME_100000: ${{ steps.synthetic-100000.outcome }}
+          OUTCOME_1000000: ${{ steps.synthetic-1000000.outcome }}
           UPLOAD_130: ${{ steps.upload-synthetic-130.outcome }}
           UPLOAD_100000: ${{ steps.upload-synthetic-100000.outcome }}
+          UPLOAD_1000000: ${{ steps.upload-synthetic-1000000.outcome }}
           UPLOAD_INFRASTRUCTURE: ${{ steps.upload-synthetic-infrastructure.outcome }}
           CHECKOUT_OUTCOME: ${{ steps.checkout-unchanged.outcome }}
         run: |
@@ -882,6 +936,11 @@ jobs:
           if [[ "${SELECT_100000}" == true &&
                 ("${OUTCOME_100000}" != success || "${UPLOAD_100000}" != success) ]]; then
             printf 'ERROR: selected 100,000-pair lane or its evidence upload failed.\n' >&2
+            failed=true
+          fi
+          if [[ "${SELECT_1000000}" == true &&
+                ("${OUTCOME_1000000}" != success || "${UPLOAD_1000000}" != success) ]]; then
+            printf 'ERROR: selected 1,000,000-pair lane or its evidence upload failed.\n' >&2
             failed=true
           fi
           if [[ "${CHECKOUT_OUTCOME}" != success ]]; then

@@ -42,6 +42,7 @@ MIN_ENGINEERED_ALT_OFFSET = 10
 MAX_ENGINEERED_ALT_OFFSET = 64
 DEFAULT_DATASET_PROFILE = "smoke-v1"
 PRODUCTION_LIKE_DATASET_PROFILE = "production-like-v1"
+MILLION_PAIR_DATASET_PROFILE = "million-pair-v1"
 NEUTRAL_BACKGROUND_START_ZERO_BASED = 100_000
 GZIP_WRITE_BUFFER_SIZE = 1024 * 1024
 
@@ -98,6 +99,20 @@ DATASET_PROFILES: Mapping[str, DatasetProfile] = MappingProxyType(
             pair_count_per_library=100_000,
             neutral_unique_template_pair_count_per_library=89_883,
             neutral_duplicate_pair_count_per_library=9_987,
+            neutral_start_zero_based=NEUTRAL_BACKGROUND_START_ZERO_BASED,
+            genome_sa_index_nbases=10,
+        ),
+        MILLION_PAIR_DATASET_PROFILE: DatasetProfile(
+            name=MILLION_PAIR_DATASET_PROFILE,
+            fixture_id="deterministic-million-pair-v1",
+            reference_id="synthetic-million-pair-v1",
+            cohort_id="synthetic-million-pair-v1",
+            analysis_id="synthetic-million-pair-cmh-v1",
+            seed=20260814,
+            contig_length=5_000_000,
+            pair_count_per_library=1_000_000,
+            neutral_unique_template_pair_count_per_library=899_883,
+            neutral_duplicate_pair_count_per_library=99_987,
             neutral_start_zero_based=NEUTRAL_BACKGROUND_START_ZERO_BASED,
             genome_sa_index_nbases=10,
         ),
