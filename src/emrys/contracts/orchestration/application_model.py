@@ -609,8 +609,12 @@ def read_application_record(
         EXECUTION_PLAN_SCHEMA_VERSION: ExecutionPlan,
         RUN_BINDING_SCHEMA_VERSION: RunBinding,
     }
+    if not isinstance(version, str):
+        raise ContractValidationError(
+            f"Application record schema_version must be a string: {version!r}"
+        )
     if version in record_types:
-        return record_types[str(version)].from_bytes(data)
+        return record_types[version].from_bytes(data)
     if version == LEGACY_EXECUTION_SCHEMA_VERSION:
         errors = schema_errors("execution", record)
         if errors:

@@ -396,6 +396,17 @@ def test_version_aware_reader_preserves_historical_execution_bytes() -> None:
     assert admitted.profile_validated
 
 
+@pytest.mark.parametrize("version", (None, [], {}))
+def test_version_aware_reader_rejects_non_string_schema_versions(version: object) -> None:
+    with pytest.raises(
+        contracts.ContractValidationError,
+        match="schema_version must be a string",
+    ):
+        model.read_application_record(
+            contracts.canonical_json_bytes({"schema_version": version})
+        )
+
+
 def test_temporary_execution_projection_is_closed_one_way_and_not_run_authority() -> None:
     legacy = historical_execution()
     run = model.bind_run(analysis_revision(), execution_plan())
