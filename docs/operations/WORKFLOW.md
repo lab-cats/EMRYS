@@ -67,6 +67,14 @@ required to support an already approved surface are part of that approval.
 Moving or splitting an existing concept without retiring its former owner is
 surface growth, not maintainability progress.
 
+Before selecting a design for an architecture-campaign slice, complete the
+read-only compression audit and register required by the campaign's
+[per-slice compression and mutation protocol](../tasks/architecture_campaign.md#131-mandatory-per-slice-compression-and-mutation-protocol).
+For an implementation slice, the default closure is net-negative maintained
+product code with no product-file growth. Stop for explicit user approval of
+any quantified exception; counts cannot be satisfied by moving or weakening
+responsibility.
+
 ## Deliver
 
 - Work sequentially in one authoritative worktree. Keep each package or slice
@@ -84,6 +92,13 @@ surface growth, not maintainability progress.
   replacement at the same declared evidence level. Coverage or a
   scientist-facing golden path alone is not replacement evidence. See the
   [ratified architecture guardrails](../design/decisions/platform-direction.md#ratified-abstraction-migration-and-test-guardrails).
+- Treat boundary values as immutable by default. Every mutable exception must
+  have a named owner, narrow lifecycle, and recorded justification; it must not
+  modify an immutable Run plan or reconstruct a different plan in place.
+- Audit, task, and implementation approval never authorize evidence deletion.
+  Follow the campaign's exact proposal gate, obtain separate explicit user
+  approval, and put any approved deletion in its own commit; it cannot offset
+  maintained product growth.
 - Use focused checks as useful feedback. Review the complete final diff and run
   one de-duplicated applicable gate after the final state is assembled; rerun
   only evidence invalidated by later changes.
@@ -118,7 +133,12 @@ owner; then discard chronology, repeated totals, and superseded planning.
 ## Close and publish
 
 Close by reviewing the semantic result, running the applicable validation, and
-verifying acceptance. Commit the completed result once. A clean local commit
-does not authorize publication: push only when explicitly approved, then prove
-the intended remote ref and upstream equality. Runtime and cluster promotion
-remain separately authorized and upstream-sequential.
+verifying acceptance. For every architecture-campaign slice, report actual
+deltas separately for maintained product implementation, protections/tests,
+retained evidence, configuration/documentation, public concepts, compatibility
+paths, and justified mutable state; do not net categories. Update the campaign
+register and temporary-path disposition. Commit the completed result once,
+except that approved evidence deletion remains its own commit. A clean local
+commit does not authorize publication: push only when explicitly approved,
+then prove the intended remote ref and upstream equality. Runtime and cluster
+promotion remain separately authorized and upstream-sequential.
