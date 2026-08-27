@@ -58,15 +58,18 @@ jobs:
         shell: bash
         env:
           RUN_PYTHON311: ${{ inputs.python311 }}
+          RUN_STEP08_SCAN_VCF: >-
+            ${{ github.ref_name == 'perf/eval-step08-scan-vcf-param' }}
           RUN_SYNTHETIC_130: ${{ inputs.synthetic_130 }}
           RUN_SYNTHETIC_100000: ${{ inputs.synthetic_100000 }}
         run: |
           set -euo pipefail
           if [[ "${RUN_PYTHON311}" != true &&
+                "${RUN_STEP08_SCAN_VCF}" != true &&
                 "${RUN_SYNTHETIC_130}" != true &&
                 "${RUN_SYNTHETIC_100000}" != true ]]; then
             printf '%s\n' \
-              'ERROR: select at least one lane: Python 3.11, 130-pair E2E, or 100,000-pair E2E.' >&2
+              'ERROR: select at least one available long lane.' >&2
             exit 2
           fi
 
@@ -171,9 +174,12 @@ jobs:
 
   guarded-r:
     name: Guarded R fixtures
-    if: github.event_name != 'workflow_dispatch' && github.event_name != 'schedule'
+    if: >-
+      (github.event_name != 'workflow_dispatch' && github.event_name != 'schedule') ||
+      (github.event_name == 'workflow_dispatch' &&
+      github.ref_name == 'perf/eval-step08-scan-vcf-param')
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 360
     steps:
       - name: Check out the triggering commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -257,6 +263,60 @@ jobs:
       - name: Run guarded R environment and fixture checks
         shell: bash
         run: make -s validation-guarded-r RSCRIPT_BIN="$(command -v Rscript)"
+
+      - name: Check out the fixed optimization baseline
+        if: >-
+          github.event_name == 'workflow_dispatch' &&
+          github.ref_name == 'perf/eval-step08-scan-vcf-param'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          ref: 9efb6867cc93d2da2579abdde6db25e55f416784
+          path: baseline
+
+      - name: Generate the shared Step 08 fragment fixture
+        if: >-
+          github.event_name == 'workflow_dispatch' &&
+          github.ref_name == 'perf/eval-step08-scan-vcf-param'
+        shell: bash
+        run: >-
+          .venv/bin/python .github/ci/benchmark_step08_fragments.py generate
+          "${RUNNER_TEMP}/step08-fragment-fixture"
+
+      - name: Compare baseline and narrowed VCF materialization
+        if: >-
+          github.event_name == 'workflow_dispatch' &&
+          github.ref_name == 'perf/eval-step08-scan-vcf-param'
+        shell: bash
+        env:
+          EMRYS_LOCAL_PILOT_R: "0"
+          EMRYS_BASELINE_ROOT: ${{ github.workspace }}/baseline
+          EMRYS_CANDIDATE_ROOT: ${{ github.workspace }}
+          EMRYS_RSCRIPT_BIN: Rscript
+          EMRYS_STEP08_FRAGMENT_FIXTURE: ${{ runner.temp }}/step08-fragment-fixture
+          EMRYS_USE_RENV: "1"
+          RENV_CONFIG_AUTO_SNAPSHOT: "FALSE"
+          RENV_CONFIG_SANDBOX_ENABLED: "FALSE"
+          RENV_PROJECT: ${{ github.workspace }}
+          R_PROFILE_USER: ${{ github.workspace }}/.Rprofile
+        run: >-
+          .venv/bin/python scripts/benchmark_stage_resources.py
+          --manifest .github/ci/benchmark_step08_fragments.yaml
+          --output "${RUNNER_TEMP}/step08-fragments"
+          --execute
+
+      - name: Upload compact Step 08 fragment benchmark results
+        if: >-
+          always() && github.event_name == 'workflow_dispatch' &&
+          github.ref_name == 'perf/eval-step08-scan-vcf-param'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: step08-fragments-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/step08-fragments/trials.tsv
+            ${{ runner.temp }}/step08-fragments/summary.tsv
+          if-no-files-found: error
+          retention-days: 14
 
   fresh-clone-e2e:
     name: Fresh-clone E2E (Python 3.14)
