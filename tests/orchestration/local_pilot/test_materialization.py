@@ -894,7 +894,7 @@ def test_locked_publication_terminalizes_failure_and_refuses_repeat(
     assert outcome.released_lock_path.is_file()
     assert not (plan.run_root / "locks/run.lock").exists()
     assert len(list((plan.run_root / "contract/dispatch").rglob("*.json"))) == 35
-    with pytest.raises(MaterializationError, match="Committed Run"):
+    with pytest.raises(MaterializationError, match="inspect or resume"):
         admit_run(plan, ops=ops)
 
 

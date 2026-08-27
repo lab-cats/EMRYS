@@ -1677,6 +1677,16 @@ def _validate_pristine_committed_run(root: Path, candidate: RunCandidate) -> Non
         != candidate.run_binding.canonical_bytes
     ):
         raise MaterializationError("Existing Run authority differs from the planned Run")
+    attempts = root / "attempts"
+    if (
+        attempts.exists()
+        and not attempts.is_symlink()
+        and attempts.is_dir()
+        and any(attempts.iterdir())
+    ):
+        raise MaterializationError(
+            "Run root already exists; inspect or resume it instead"
+        )
     allowed_root = {"contract", "attempts", "locks", "state"}
     if {item.name for item in root.iterdir()} - allowed_root:
         raise MaterializationError("Committed Run contains unexpected pre-Attempt state")
