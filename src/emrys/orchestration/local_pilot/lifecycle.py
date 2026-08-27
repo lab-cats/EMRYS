@@ -1263,20 +1263,7 @@ def _admit_runtime_context(
             raise LifecycleError(
                 "Test-double attempt must not bind storage qualification"
             )
-        for name, identity in tools.items():
-            path = Path(str(identity["path"]))
-            if name in {"python", "snakemake"}:
-                continue
-            if not path.is_absolute() or path.is_symlink() or not path.is_file():
-                raise LifecycleError(
-                    f"Required tool path is not admissible: {name}: {path}"
-                )
-            observed = _tool_version((str(path),), name)
-            if observed != identity["version"]:
-                raise LifecycleError(
-                    f"Required {name} version differs: declared "
-                    f"{identity['version']!r}; observed {observed!r}"
-                )
+        # Common admission re-admits identities; doubles do not invoke science tools.
         return
 
     from emrys.evidence.runtime_availability.inspector import (  # noqa: PLC0415

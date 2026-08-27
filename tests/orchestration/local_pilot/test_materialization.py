@@ -250,6 +250,18 @@ def _dispatch_records(plan) -> list[dict[str, object]]:
     return [json.loads(item.data) for item in plan.new_dispatch_files]
 
 
+def test_owner_doubles_preserve_immutable_run_toolchain(tmp_path: Path) -> None:
+    plan = _plan(tmp_path)
+
+    doubled = with_owner_doubles(plan)
+
+    assert doubled.attempt_record["execution_mode"] == "test-double"
+    assert (
+        doubled.attempt_record["required_tools"]
+        == plan.attempt_record["required_tools"]
+    )
+
+
 def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     tmp_path: Path,
 ) -> None:

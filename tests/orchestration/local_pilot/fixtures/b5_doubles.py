@@ -5,7 +5,6 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-import platform
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -115,26 +114,6 @@ def with_owner_doubles(
     replacement_files[config_index] = PlannedFile(config_file.path, config_data)
     attempt = dict(plan.attempt_record)
     attempt["execution_mode"] = "test-double"
-    attempt["required_tools"] = [
-        {
-            "name": "python",
-            "version": platform.python_version(),
-            "path": sys.executable,
-            "resolved_path": str(Path(sys.executable).resolve(strict=True)),
-            "sha256": hashlib.sha256(
-                Path(sys.executable).resolve(strict=True).read_bytes()
-            ).hexdigest(),
-        },
-        {
-            "name": "snakemake",
-            "version": "9.25.1",
-            "path": sys.executable,
-            "resolved_path": str(Path(sys.executable).resolve(strict=True)),
-            "sha256": hashlib.sha256(
-                Path(sys.executable).resolve(strict=True).read_bytes()
-            ).hexdigest(),
-        },
-    ]
     attempt["workflow_config"] = {
         **attempt["workflow_config"],
         "sha256": hashlib.sha256(config_data).hexdigest(),
