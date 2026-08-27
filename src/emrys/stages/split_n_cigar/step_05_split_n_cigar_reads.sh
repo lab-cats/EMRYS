@@ -469,7 +469,7 @@ printf '  3. Resolve GATK, samtools, and Java executables.\n'
 printf '  4. Validate actual Java version is >=17 before execute-mode GATK use.\n'
 printf '  5. Run GATK SplitNCigarReads into a run-token temp BAM using a project-storage GATK temp directory.\n'
 printf '  6. Reuse a nonempty current-attempt GATK index when available; otherwise index with samtools, then validate quickcheck, coordinate sort, read group preservation, and index readability/count reconciliation.\n'
-printf '  7. Publish final BAM/BAI only after validation succeeds.\n'
+printf '  7. Publish final BAM/BAI only after validation succeeds; no-clobber publication proves the finals are the validated staging inodes.\n'
 printf '  8. Roll back previous final outputs if publication fails after backups begin.\n'
 
 if [[ "$no_clobber" == true ]]; then
@@ -543,17 +543,21 @@ fi
 if [[ "$no_clobber" == true ]]; then
     publish_file_create_exclusive "Step 05 BAM" "$tmp_bam" "$output_bam"
     publish_file_create_exclusive "Step 05 BAI" "$tmp_bai" "$output_bai"
+
+    # Create-exclusive publication hard-links the already validated staging
+    # files. Prove both finals still resolve to those exact inodes instead of
+    # decompressing and semantically scanning the same BAM a second time.
+    require_owned_published_file "Step 05 BAM" "$tmp_bam" "$output_bam"
+    require_owned_published_file "Step 05 BAI" "$tmp_bai" "$output_bai"
 else
     mv "$tmp_bam" "$output_bam"
     mv "$tmp_bai" "$output_bai"
-fi
 
-# Revalidate at final paths so downstream steps never consume a half-published
-# or path-specific bad BAM/BAI pair.
-validate_bam_pair "$output_bam" "$output_bai" "Published"
+    # The legacy replacement route drops the staging identity anchors, so it
+    # retains final-path semantic revalidation.
+    validate_bam_pair "$output_bam" "$output_bai" "Published"
+fi
 if [[ "$no_clobber" == true ]]; then
-    require_owned_published_file "Step 05 BAM" "$tmp_bam" "$output_bam"
-    require_owned_published_file "Step 05 BAI" "$tmp_bai" "$output_bai"
     rm -f -- "$tmp_bam" "$tmp_bai"
     [[ ! -e "$tmp_bam" && ! -L "$tmp_bam" &&
        ! -e "$tmp_bai" && ! -L "$tmp_bai" ]] ||

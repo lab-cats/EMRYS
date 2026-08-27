@@ -508,7 +508,7 @@ run_index_reuse_case() {
     [[ -s "$final_bam" ]] || fail "$mode index case did not publish a BAM"
     assert_file_equals "$final_bam.bai" "$expected_bai"
     assert_samtools_command_calls index "$expected_index_calls"
-    assert_samtools_command_calls idxstats 2
+    assert_samtools_command_calls idxstats 1
     assert_contains "$output_file" "$expected_message"
     assert_not_exists "$output_dir/.ABE_EV_2.step05.lock"
     assert_no_step05_scratch "$output_dir"
@@ -734,10 +734,14 @@ assert_file_equals "$residue_path" $'preserve residue\n'
 assert_not_exists "$residue_output_dir/.ABE_EV_2.step05.lock"
 safe_output="$tmp_dir/safe.out"
 safe_output_dir="$tmp_dir/results/safe"
+rm -f "$samtools_log"
 FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=safe001 \
     run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$safe_output_dir" --no-clobber --execute >"$safe_output"
 assert_contains "$safe_output" "No-clobber transaction: true"
 assert_contains "$safe_output" "Lock directory: $safe_output_dir/.ABE_EV_2.step05.lock"
+assert_contains "$samtools_log" \
+    "$safe_output_dir/.ABE_EV_2.step05.safe001.split_ncigar.tmp.bam"
+assert_not_contains "$samtools_log" "$safe_output_dir/ABE_EV_2.split_ncigar.bam"
 assert_not_exists "$safe_output_dir/.ABE_EV_2.step05.lock"
 safe_repeat_output="$tmp_dir/safe_repeat.out"
 assert_fails "$safe_repeat_output" env FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=safe002 bash "$SCRIPT" \
@@ -868,6 +872,76 @@ assert_not_exists "$safe_mutation_dir/ABE_EV_2.split_ncigar.bam"
 assert_not_exists "$safe_mutation_dir/ABE_EV_2.split_ncigar.bam.bai"
 assert_not_exists "$safe_mutation_dir/.ABE_EV_2.step05.lock"
 assert_no_step05_scratch "$safe_mutation_dir"
+
+printf 'Running no-clobber foreign final replacement preservation check...\n'
+real_ln_bin="$(command -v ln)"
+real_cp_bin="$(command -v cp)"
+real_rm_bin="$(command -v rm)"
+cat >"$fake_bin/ln" <<'EOF_LN'
+#!/usr/bin/env bash
+set -euo pipefail
+
+destination="${!#}"
+"$REAL_LN_BIN" "$@"
+if [[ -n "${FAKE_LN_TRIGGER_DEST:-}" &&
+      "$destination" == "$FAKE_LN_TRIGGER_DEST" ]]; then
+    "$REAL_RM_BIN" -f -- "$FAKE_LN_REPLACE_DEST"
+    "$REAL_CP_BIN" -- "$FAKE_LN_REPLACE_SOURCE" "$FAKE_LN_REPLACE_DEST"
+    printf 'injected same-byte foreign BAM: %s\n' "$FAKE_LN_REPLACE_DEST" >&2
+fi
+EOF_LN
+chmod +x "$fake_bin/ln"
+
+foreign_final_dir="$tmp_dir/results/safe_foreign_final"
+foreign_final_bam="$foreign_final_dir/ABE_EV_2.split_ncigar.bam"
+foreign_final_bai="$foreign_final_bam.bai"
+foreign_run_token="safeforeign001"
+foreign_tmp_bam="$foreign_final_dir/.ABE_EV_2.step05.$foreign_run_token.split_ncigar.tmp.bam"
+foreign_tmp_bai="$foreign_tmp_bam.bai"
+foreign_gatk_tmp="$foreign_final_dir/.ABE_EV_2.step05.$foreign_run_token.gatk_tmp"
+foreign_lock="$foreign_final_dir/.ABE_EV_2.step05.lock"
+foreign_sentinel="$foreign_final_dir/unrelated.txt"
+mkdir -p "$foreign_final_dir"
+printf 'unrelated foreign-final bytes\n' >"$foreign_sentinel"
+foreign_final_output="$tmp_dir/safe_foreign_final.out"
+assert_fails "$foreign_final_output" env \
+    REAL_LN_BIN="$real_ln_bin" \
+    REAL_CP_BIN="$real_cp_bin" \
+    REAL_RM_BIN="$real_rm_bin" \
+    FAKE_LN_TRIGGER_DEST="$foreign_final_bai" \
+    FAKE_LN_REPLACE_SOURCE="$foreign_tmp_bam" \
+    FAKE_LN_REPLACE_DEST="$foreign_final_bam" \
+    FAKE_SAMPLE_ID=ABE_EV_2 \
+    SLURM_JOB_ID="$foreign_run_token" \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$foreign_final_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --no-clobber \
+    --execute
+rm -f "$fake_bin/ln"
+
+assert_contains "$foreign_final_output" \
+    "Step 05 BAM final no longer matches its owned staging anchor"
+assert_contains "$foreign_final_output" \
+    "Step 05 no-clobber rollback was incomplete; retaining owned lock and residue"
+assert_contains "$foreign_final_output" "injected same-byte foreign BAM"
+[[ -s "$foreign_final_bam" ]] || fail "foreign BAM final was removed"
+[[ -s "$foreign_tmp_bam" ]] || fail "BAM staging anchor was removed"
+[[ ! "$foreign_final_bam" -ef "$foreign_tmp_bam" ]] ||
+    fail "foreign BAM final still shares the owned staging inode"
+cmp -s "$foreign_final_bam" "$foreign_tmp_bam" ||
+    fail "foreign BAM replacement does not preserve the staged bytes"
+assert_not_exists "$foreign_final_bai"
+[[ -s "$foreign_tmp_bai" ]] || fail "BAI staging anchor was removed"
+[[ -d "$foreign_gatk_tmp" ]] || fail "GATK scratch was removed after incomplete rollback"
+[[ -d "$foreign_lock" ]] || fail "owned lock was removed after incomplete rollback"
+assert_contains "$foreign_lock/owner" "run_token=$foreign_run_token"
+assert_file_equals "$foreign_sentinel" $'unrelated foreign-final bytes\n'
 
 printf 'Running admitted input mutation success check...\n'
 mutation_input_bam="$fixture_dir/mutation/markdup/ABE_EV_2.markdup.bam"
@@ -1037,6 +1111,7 @@ assert_file_equals "$legacy_native_dir/ABE_EV_2.split_ncigar.bam.bai" \
 assert_file_equals "$legacy_native_dir/unrelated.txt" "unrelated legacy-native bytes"
 assert_samtools_command_calls index 0
 assert_samtools_command_calls quickcheck 2
+assert_samtools_command_calls idxstats 2
 assert_not_exists "$legacy_native_dir/.step_05_split_n_cigar_reads.lock"
 assert_no_step05_scratch "$legacy_native_dir"
 
