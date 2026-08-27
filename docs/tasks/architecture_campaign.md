@@ -1561,21 +1561,56 @@ lock/released-lock recovery evidence, and historical schemas remain retained.
 Repeated identity or count fields require schema-by-schema tamper-detection and
 consumer review; duplication alone is not deletion evidence.
 
-#### Decision closeout and remaining implementation choices
+#### Minimal implementation design
 
-`ARCH-MODEL-FIELDS-01` resolves the semantic portion of `AC-DEC-011`: exact
-identity-bearing fields, relocation/content/order rules, Run-ID composition,
-Attempt variation, logical authorities, direct compatibility direction,
-initialization recovery ownership, and status-domain separation. It does not
-complete `AC-SLICE-03`, because product realization is still Open.
+This is the complete pre-code design for the first `AC-SLICE-03` authority
+cutover. Details not fixed here are implementation choices and do not require
+another planning package unless they change these boundaries.
 
-The first vertical implementation may now be sliced around the smallest
-caller-complete authority cutover. It must still choose its exact types,
-serialization, persistence and storage location, API signatures, package
-owners, backend adapter changes, migration mechanics, tests, and retirement
-roster. Public state names, reporting API/CLI, Artifact Store, broader policy
-services, and evidence deletion remain later or separately approval-gated
-decisions.
+1. **Construct once.** The application/control layer constructs the Analysis
+   revision and Execution Plan after scientific inputs, implementation and
+   tool/environment identity, backend/stopping boundary, and symbolic
+   computational-resource policy are admitted. It binds the Run before actual
+   allocation resolution, Attempt identity, run-root mutation, workflow
+   configuration, or dispatch generation. Doctor and onboarding supply
+   admitted inputs but do not own Run.
+2. **Persist three authorities.** A new-format Run has three separate immutable
+   canonical JSON records: Analysis revision, Execution Plan, and Run binding.
+   They use the repository's existing canonical JSON encoding and the identity
+   rules above. The Run binding is the sole Run identity and admission
+   authority. Exact Python types, schema identifiers, filenames, and helper
+   APIs are selected in implementation.
+3. **Commit Run before Attempt.** One Run-admission transaction publishes and
+   durably syncs Analysis and Execution Plan, then publishes the Run binding
+   create-exclusively and last. Only an admitted Run may acquire an Attempt
+   lock or publish Attempt adapters. Pre-binding residue is recovered or
+   quarantined under the rules above; evidence-bearing state is never deleted
+   as initialization residue.
+4. **Cut over without rewriting history.** Existing
+   `emrys.execution.v1` Runs keep their identifiers and remain readable through
+   a version-aware reader. New Runs use only the successor authorities. A
+   legacy-shaped backend projection is allowed temporarily only for the
+   current workflow, task, and reporting adapters; it is generated one-way
+   from the successor records, cannot determine or reconstruct Run, and is
+   retired when those consumers receive narrower owner-appropriate inputs
+   derived from the successor authorities.
+5. **Migrate one complete boundary.** The first implementation tranche moves
+   new-Run creation, Run-ID/root selection, Run admission, Attempt planning and
+   admission, resume compatibility, and inspection to the successor authority
+   together. Backend execution may consume the temporary projection above.
+   Public command redesign, Project persistence, Results layout, Run Bundle,
+   Artifact Store, generalized backend/policy APIs, reporting UX, and public
+   state vocabulary are outside this tranche.
+
+Deterministic implementation-content closure and content-bound scope-ID
+formulas are completed directly in implementation, frozen as versioned
+identity rules before the first successor ID is persisted, and protected by
+tests under the already-fixed identity semantics; they do not receive another
+design gate.
+The tranche must retire new-Run authority from the current identity envelope,
+mutable normalization dictionaries, copied `AttemptPlan` resource views, and
+workflow configuration. Historical records and retained evidence are not
+deleted.
 
 #### Decision-only change accounting and evidence ceiling
 
