@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
@@ -394,6 +395,31 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     )
 
 
+def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> None:
+    plan = _plan(tmp_path)
+    execution = plan.run.execution_projection
+    reporting = build_reporting_bundle(execution, plan.run.normalized.profile)
+    projection_data = {
+        "reference_contract": reporting.reference_contract_bytes,
+        "primary_analysis_policy": reporting.primary_analysis_policy_bytes,
+        "reporting_run_contract": reporting.reporting_run_contract_bytes,
+        "artifact_inventory": reporting.artifact_inventory_bytes,
+    }
+    fixed_files = {item.path: item.data for item in plan.fixed_files}
+    config = json.loads(
+        next(item.data for item in plan.attempt_files if item.path == plan.config_path)
+    )
+
+    for name, reference in execution["reporting_projection"].items():
+        path = plan.run_root / str(reference["path"])
+        assert fixed_files[path] == projection_data[name]
+        assert config[f"{name}_path"] == str(path)
+    assert {
+        plan.run_root / "products" / "artifact-summary",
+        plan.run_root / "products" / "report",
+    } <= set(plan.directories)
+
+
 def test_run_identity_excludes_reporting_and_allocation_but_binds_resources_and_tools(
     tmp_path: Path,
 ) -> None:
@@ -467,8 +493,33 @@ def test_run_identity_excludes_attempt_reporting_and_backend_adapter_code(
     cli_adapter.write_bytes(cli_adapter.read_bytes() + b"\n# CLI adapter change\n")
     assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
 
+    reporting_materializer = (
+        checkout / "src/emrys/orchestration/local_pilot/reporting_boundary.py"
+    )
+    reporting_materializer.write_bytes(
+        reporting_materializer.read_bytes() + b"\n# reporting materialization change\n"
+    )
+    assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
+
     materializer = checkout / "src/emrys/orchestration/local_pilot/materialization.py"
     materializer.write_bytes(materializer.read_bytes() + b"\n# dispatch change\n")
+    assert _run_candidate(readiness, normalized, resources).run_id != baseline.run_id
+
+
+def test_run_identity_binds_semantic_all_pass_gate(tmp_path: Path) -> None:
+    checkout, commit = _clean_checkout(tmp_path)
+    readiness, normalized, resources, _request, _workspace = _readiness(
+        tmp_path / "case",
+        source_root=checkout,
+        source_commit=commit,
+    )
+    baseline_implementation = implementation_identity(checkout)
+    baseline = _run_candidate(readiness, normalized, resources)
+
+    all_pass = checkout / "src/emrys/orchestration/local_pilot/all_pass.py"
+    all_pass.write_bytes(all_pass.read_bytes() + b"\n# admission change\n")
+
+    assert implementation_identity(checkout) != baseline_implementation
     assert _run_candidate(readiness, normalized, resources).run_id != baseline.run_id
 
 
@@ -502,8 +553,16 @@ def test_implementation_identity_closes_direct_scientific_dependencies(
     assert implementation_identity(checkout) == baseline
 
 
-def test_lifecycle_refuses_dispatch_implementation_drift_before_attempt(
+@pytest.mark.parametrize(
+    "relative",
+    (
+        "src/emrys/orchestration/local_pilot/materialization.py",
+        "src/emrys/orchestration/local_pilot/all_pass.py",
+    ),
+)
+def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
     tmp_path: Path,
+    relative: str,
 ) -> None:
     checkout, commit = _clean_checkout(tmp_path)
     readiness, normalized, resources, _request, workspace = _readiness(
@@ -533,8 +592,8 @@ def test_lifecycle_refuses_dispatch_implementation_drift_before_attempt(
         admit_runtime_context=lambda _attempt, _request, _storage: None,
     )
     admit_run(plan, ops=ops)
-    materializer = checkout / "src/emrys/orchestration/local_pilot/materialization.py"
-    materializer.write_bytes(materializer.read_bytes() + b"\n# dispatch drift\n")
+    implementation = checkout / relative
+    implementation.write_bytes(implementation.read_bytes() + b"\n# Run-bound drift\n")
 
     with pytest.raises(lifecycle.LifecycleError, match="implementation content"):
         lifecycle.run_materialized_attempt(

@@ -31,7 +31,12 @@ from emrys.contracts.orchestration.application_model import (
 )
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.libraries.source_authority import controlled_python_argv
-from emrys.orchestration.local_pilot import doctor, inspection, lifecycle
+from emrys.orchestration.local_pilot import (
+    doctor,
+    inspection,
+    lifecycle,
+    reporting_boundary,
+)
 from emrys.orchestration.local_pilot.normalization import NormalizationBundle
 from emrys.orchestration.local_pilot.resource_policy import (
     ComputationalResourceDeclaration,
@@ -1492,13 +1497,13 @@ def build_attempt_plan(
         retained,
         resources,
     )
-    reporting = build_reporting_bundle(execution, normalized.profile)
-    projection_data = {
-        "reference_contract": reporting.reference_contract_bytes,
-        "primary_analysis_policy": reporting.primary_analysis_policy_bytes,
-        "reporting_run_contract": reporting.reporting_run_contract_bytes,
-        "artifact_inventory": reporting.artifact_inventory_bytes,
-    }
+    reporting_files, reporting_config, reporting_directories = (
+        reporting_boundary._attempt_reporting_materialization(
+            execution,
+            normalized.profile,
+            run_root,
+        )
+    )
     fixed_files = [
         PlannedFile(
             run_root / "contract/normalized.json",
@@ -1508,11 +1513,8 @@ def build_attempt_plan(
             run_root / "contract/profile.json",
             orchestration_contracts.canonical_json_bytes(normalized.profile),
         ),
+        *(PlannedFile(path, data) for path, data in reporting_files),
     ]
-    for name, reference in execution["reporting_projection"].items():
-        fixed_files.append(
-            PlannedFile(run_root / str(reference["path"]), projection_data[name])
-        )
     config = {
         "run_root": str(run_root),
         "python_executable": sys.executable,
@@ -1521,22 +1523,7 @@ def build_attempt_plan(
         "workflow_attempt_id": attempt_id,
         "source_checkout": str(source_root),
         "artifact_source_root": str(run_root),
-        "reference_contract_path": str(
-            run_root
-            / execution["reporting_projection"]["reference_contract"]["path"]
-        ),
-        "primary_analysis_policy_path": str(
-            run_root
-            / execution["reporting_projection"]["primary_analysis_policy"]["path"]
-        ),
-        "reporting_run_contract_path": str(
-            run_root
-            / execution["reporting_projection"]["reporting_run_contract"]["path"]
-        ),
-        "artifact_inventory_path": str(
-            run_root
-            / execution["reporting_projection"]["artifact_inventory"]["path"]
-        ),
+        **reporting_config,
         "resource_policy": resource_policy_record,
         "dispatch_paths": dispatch_references,
     }
@@ -1634,8 +1621,7 @@ def build_attempt_plan(
         run_root / "contract",
         run_root / "contract" / "workflow-configs",
         run_root / "contract" / "dispatch" / attempt_id,
-        run_root / "products" / "artifact-summary",
-        run_root / "products" / "report",
+        *reporting_directories,
         *dispatch_directories,
         *(item.path.parent for item in fixed_files),
         *(item.path.parent for item in attempt_files),

@@ -17,7 +17,7 @@ from typing import Any, Literal, Protocol, cast
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import validate_execution_view
-from emrys.contracts.orchestration.projection import CONTRACT_PATHS
+from emrys.contracts.orchestration.projection import CONTRACT_PATHS, build_reporting_bundle
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout,
@@ -388,6 +388,38 @@ def _admit_reporting_projection(
                 raise ReportingBoundaryError(
                     f"Reporting projection {name} must use canonical JSON bytes"
                 )
+
+
+def _attempt_reporting_materialization(
+    execution: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    run_root: Path,
+) -> tuple[
+    tuple[tuple[Path, bytes], ...],
+    dict[str, str],
+    tuple[Path, ...],
+]:
+    """Project identity-neutral reporting inputs for one Attempt adapter."""
+
+    reporting = build_reporting_bundle(execution, profile)
+    projection_data = {
+        "reference_contract": reporting.reference_contract_bytes,
+        "primary_analysis_policy": reporting.primary_analysis_policy_bytes,
+        "reporting_run_contract": reporting.reporting_run_contract_bytes,
+        "artifact_inventory": reporting.artifact_inventory_bytes,
+    }
+    files: list[tuple[Path, bytes]] = []
+    config: dict[str, str] = {}
+    for name in CONTRACT_PATHS:
+        reference = execution["reporting_projection"][name]
+        path = run_root / str(reference["path"])
+        files.append((path, projection_data[name]))
+        config[f"{name}_path"] = str(path)
+    directories = (
+        run_root / "products" / "artifact-summary",
+        run_root / "products" / "report",
+    )
+    return tuple(files), config, directories
 
 
 def ledger_paths(run_root: Path, kind: str) -> ReportingLedgerPaths:

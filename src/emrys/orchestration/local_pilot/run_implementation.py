@@ -65,6 +65,7 @@ _ADMISSION_ROOTS = (
     "src/emrys/contracts/schemas/orchestration/v3/resource_config.schema.json",
     "src/emrys/contracts/scientific_evidence",
     "src/emrys/libraries/source_authority.py",
+    "src/emrys/orchestration/local_pilot/all_pass.py",
     "src/emrys/orchestration/local_pilot/inspection.py",
     "src/emrys/orchestration/local_pilot/lifecycle.py",
     "src/emrys/orchestration/local_pilot/run_implementation.py",
