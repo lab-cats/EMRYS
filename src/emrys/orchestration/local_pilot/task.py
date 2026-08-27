@@ -68,6 +68,8 @@ _DECLARATION_FIELDS = frozenset({"role", "path"})
 _SCOPE_FIELDS = frozenset({"scope_type", "scope_id"})
 _SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _STREAM_CHUNK_BYTES = 1024 * 1024
+_STEP07_INPUT_IDENTITY_ENV = "EMRYS_STEP07_INPUT_IDENTITY_SHA256"
+_STEP07_MACHINE_KEY = "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1"
 
 
 class TaskBoundaryError(RuntimeError):
@@ -1880,12 +1882,25 @@ def run_task(
             raise TaskBoundaryError("Workflow run lock changed before producer entry")
         _recheck_reused_outputs(reused_outputs, phase="before producer entry")
         command_environment = sanitized_subprocess_environment()
+        command_environment.pop(_STEP07_INPUT_IDENTITY_ENV, None)
+        producer_environment = dict(command_environment)
+        if dispatch.machine_key == _STEP07_MACHINE_KEY:
+            identity = hashlib.sha256(b"emrys.step07-input-identity.v1\0")
+            for item in entry_inputs[3:]:
+                identity.update(os.fsencode(f"{item['path']}\0{item['sha256']}\0"))
+            producer_environment[_STEP07_INPUT_IDENTITY_ENV] = identity.hexdigest()
+        stream_descriptors = streams.open()
         command_arguments = (
             dispatch.run_root,
             command_environment,
-            *streams.open(),
+            *stream_descriptors,
         )
-        producer = ops.run_command(backend.producer_argv, *command_arguments)
+        producer = ops.run_command(
+            backend.producer_argv,
+            dispatch.run_root,
+            producer_environment,
+            *stream_descriptors,
+        )
         if producer.exit_code != 0:
             raise TaskBoundaryError(
                 f"Producer command exited with status {producer.exit_code}"

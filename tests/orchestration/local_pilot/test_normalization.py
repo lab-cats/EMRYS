@@ -139,6 +139,40 @@ def test_analysis_revision_is_deterministic_path_neutral_and_label_independent(
     assert historical["run_id"] == (f"run-{historical['identity_envelope_sha256']}")
 
 
+def test_regions_file_resolves_from_nested_partition_manifest(
+    tmp_path: Path,
+) -> None:
+    request = fixture.build(tmp_path / "request-root")
+    partition_root = request.parent / "manifests"
+    partition_root.mkdir()
+    partition_manifest = partition_root / "partitions.tsv"
+    (request.parent / "partitions.tsv").rename(partition_manifest)
+    partition_manifest.write_text(
+        "partition_id\tselector_type\tselector_value\np1\tregions_file\ttarget.bed\n",
+        encoding="utf-8",
+    )
+    selector = partition_root / "target.bed"
+    selector.write_text("chrSynthetic\t0\t100\n", encoding="utf-8")
+    request.write_text(
+        request.read_text(encoding="utf-8").replace(
+            "partition_manifest: partitions.tsv",
+            "partition_manifest: manifests/partitions.tsv",
+        ),
+        encoding="utf-8",
+    )
+
+    row = normalize_request(request, fixture.profile()).projection_source["partitions"][
+        "rows"
+    ][0]
+
+    assert row["selector_value"] == str(selector)
+    assert row["selector_file"] == {
+        "path": str(selector),
+        "size_bytes": selector.stat().st_size,
+        "sha256": hashlib.sha256(selector.read_bytes()).hexdigest(),
+    }
+
+
 def test_resource_config_does_not_change_analysis_revision(
     tmp_path: Path,
 ) -> None:

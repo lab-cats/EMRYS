@@ -78,14 +78,18 @@ sample order and counts, then replaces all three outputs with the receipt last.
 Final outputs are revalidated before backups are removed.
 `--no-clobber` is the orchestration-safe policy: while holding the owner lock,
 it rejects a complete predecessor set without invoking bcftools or changing
-stable outputs. Before invoking bcftools on a new output set, that mode hashes
-the exact sample and partition manifests, reference FASTA/FAI pair, selected
-regions file when applicable, and both BAM/BAI pairs for every admitted
-sample. It rechecks the complete membership and bytes after tool execution and
-again before publication. These hashes are in-attempt stability guards; they
-are not added to the native receipt. Direct invocations retain complete-set
-replacement and the legacy manifests-only stability boundary unless the flag
-is supplied.
+stable outputs. A direct invocation hashes the exact sample and partition
+manifests, reference FASTA/FAI pair, selected regions file when applicable,
+and both BAM/BAI pairs for every admitted sample before bcftools, then rechecks
+that roster after tool execution and again before publication. An admitted
+local-pilot task has already hashed the same declared roster twice at producer
+entry. It supplies a process-lifetime aggregate only to this producer, which
+reconstructs the roster without another initial full pass and rehashes the
+complete roster immediately before publication. The task boundary performs
+its unchanged final declared-input recheck after validation. The aggregate is
+not persisted or added to the native receipt. Direct invocations retain
+complete-set replacement and the legacy manifests-only stability boundary
+unless `--no-clobber` is supplied.
 First publication in that mode is create-exclusive; VCF and receipt staging
 inode anchors remain through final validation, and ambiguous replacement
 preserves the owner lock and residue.
