@@ -22,6 +22,7 @@ from typing import Any, Literal, Protocol
 
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration import application_model
 from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
     SourceCheckout,
@@ -1151,11 +1152,7 @@ def validate_receipt(
         raise ReportingTransactionError(f"Unknown reporting transaction kind: {kind}")
     try:
         orchestration_contracts.validate_record("profile", profile)
-        orchestration_contracts.validate_record(
-            "execution",
-            execution,
-            profile=profile,
-        )
+        application_model.validate_execution_view(execution, profile=profile)
         orchestration_contracts.validate_record("workflow-attempt", attempt)
     except Exception as exc:
         raise ReportingTransactionError(

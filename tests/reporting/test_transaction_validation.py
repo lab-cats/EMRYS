@@ -12,6 +12,7 @@ from typing import Any
 import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.reporting import report, transaction_validation
 from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
@@ -168,6 +169,67 @@ def test_fixed_dispatcher_attests_source_checkout_to_attempt_commit(
             built.profile,
             attempt,
         )
+
+
+def test_fixed_dispatcher_accepts_successor_execution_projection(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    built = workflow_fixture.build(tmp_path / "workflow")
+    execution = {
+        "schema_version": "emrys.execution-projection.v1",
+        "run_id": built.execution["run_id"],
+        "run_binding_sha256": "a" * 64,
+        **{
+            key: built.execution[key]
+            for key in (
+                "profile",
+                "samples",
+                "partitions",
+                "reference",
+                "analysis",
+                "reporting_projection",
+            )
+        },
+    }
+    execution["reporting_projection"] = build_reporting_bundle(
+        execution,
+        built.profile,
+    ).projection_references
+    attempt = orchestration_contracts.load_record(
+        built.workflow_attempt_path,
+        "workflow-attempt",
+    )
+    attempt["execution_contract_sha256"] = orchestration_contracts.canonical_sha256(
+        execution
+    )
+    receipt_path = built.artifact_receipt
+    expected = transaction_validation.ValidatedTransaction(
+        receipt_path=receipt_path,
+        receipt_sha256="c" * 64,
+    )
+    monkeypatch.setattr(
+        transaction_validation,
+        "attest_source_checkout",
+        lambda **_kwargs: "stable-source",
+    )
+    monkeypatch.setattr(
+        transaction_validation,
+        "validate_artifact_index_transaction",
+        lambda **_kwargs: expected,
+    )
+
+    assert (
+        transaction_validation.validate_receipt(
+            "artifact_index",
+            receipt_path,
+            built.run_root,
+            execution,
+            built.profile,
+            attempt,
+        )
+        == expected
+    )
 
 
 def test_artifact_validator_rejects_native_source_mutation(
