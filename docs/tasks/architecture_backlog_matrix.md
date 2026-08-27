@@ -38,9 +38,18 @@ rerank or complete `AC-SLICE-03`.
 field-and-authority package: identity fields and digest composition,
 relocation/order/content rules, the symbolic resource/Attempt envelope,
 logical authorities, recovery owner, direct compatibility direction, and
-status-domain separation. It also does not rerank or complete `AC-SLICE-03`:
-product records, persistence, APIs, caller migration, compatibility mechanics,
-and implementation remain Open.
+status-domain separation.
+
+The first successor Run-authority cutover subsequently implemented immutable
+Analysis-revision, Execution-Plan, and Run-binding records; durable Run-last
+admission; zero-Attempt inspection; and new-Run planning, execution, resume,
+and inspection through the current local-pilot path. Historical
+`emrys.execution.v1` read/resume remains supported through a version-aware
+reader, and workflow/task/reporting consumers temporarily receive a one-way
+successor projection. This first product boundary does not rerank or complete
+`AC-SLICE-03`: public Project and Results realization, role-aware APIs/CLI,
+generalized backend and policy boundaries, remaining caller migration, and
+projection retirement remain Open.
 
 ## Scoring
 
@@ -83,7 +92,7 @@ implementation order, dependencies, or approval.
 |---|---|---:|---:|---|---|---|
 | `AC-SLICE-01` | Foundations | `5` | `3` | Ratified an architectural-invariants constitution against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open | Original provisional ranking retained for traceability |
 | `AC-SLICE-02` | Foundations | `5` | `3` | Ratified responsibility clusters, three graph semantics, forbidden authority transfers, and fast source-boundary enforcement over exact current CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open | Original provisional ranking retained for traceability |
-| `AC-SLICE-03` | Public model | `5` | `4` | Establish the compact public application model and introduce it only after exact field, identity, authority, recovery, compatibility, and retirement decisions | Audit completed as `ARCH-MODEL-AUDIT-01`; model/boundary completed as `ARCH-MODEL-DECISION-01`; semantic fields, identity, authority, recovery, direct compatibility, and retirement direction completed as `ARCH-MODEL-FIELDS-01`; card remains Open | Product types/records, persistence/storage, APIs, caller migration, compatibility mechanics, tests, and implementation remain Open |
+| `AC-SLICE-03` | Public model | `5` | `4` | Establish the compact public application model and introduce it only after exact field, identity, authority, recovery, compatibility, and retirement decisions | Audit, model/boundary, and semantic decisions completed as `ARCH-MODEL-AUDIT-01`, `ARCH-MODEL-DECISION-01`, and `ARCH-MODEL-FIELDS-01`; the first successor Run-authority cutover is implemented; card remains Open | Immutable Analysis/Execution-Plan/Run records, Run-last persistence, current-path caller migration, historical read/resume, and a temporary one-way adapter are implemented. Public Project/Results, role-aware APIs/CLI, generalized backend/policy boundaries, remaining migration, and adapter retirement remain Open |
 | `AC-SLICE-04` | Scientific boundary | `3` | `4` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` | Paper-map diverse owners before selecting a denominator; generalize only after a second owner maps without distortion |
 | `AC-SLICE-05` | Execution | `4` | `5` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across supported local and SLURM backends | New slice; enriches `OPS-02` | Cross-execution integration and parity proof drive the estimate; one API is not preselected |
 | `AC-SLICE-06` | Policy ownership | `3` | `3` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` | Inventory first; centralization is conditional and individual migrations may range from `2` to `5` |

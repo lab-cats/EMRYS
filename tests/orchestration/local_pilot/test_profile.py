@@ -309,7 +309,10 @@ def test_profile_expands_to_exact_formula_and_contiguous_scopes(
     profile: dict[str, object],
 ) -> None:
     request = build(tmp_path)
-    execution = normalize_request(request, profile).execution_contract
+    execution, _execution_bytes = normalize_request(
+        request,
+        profile,
+    ).historical_execution_v1()
     bundle = build_reporting_bundle(execution, profile)
     rows = bundle.artifact_inventory_rows
     sample_count = len(execution["samples"]["rows"])

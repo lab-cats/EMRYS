@@ -19,6 +19,17 @@ from pathlib import Path
 from typing import Any, Literal, Protocol
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import (
+    EXECUTION_PROJECTION_SCHEMA_VERSION,
+    AnalysisRevision,
+    ExecutionPlan,
+    RunBinding,
+    analysis_revision_from_execution_fields,
+    bind_run,
+    read_application_record,
+    validate_execution_view,
+    validate_successor_adapter,
+)
 
 RunState = Literal[
     "prepared",
@@ -126,6 +137,23 @@ class RunInspection:
     resume_available: bool
     local_pipeline_complete: bool
     verified_report_locations: tuple[tuple[str, Path], ...] = ()
+    authority_format: Literal["legacy", "successor"] = "legacy"
+    analysis_revision: AnalysisRevision | None = None
+    execution_plan: ExecutionPlan | None = None
+    run_binding: RunBinding | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SuccessorRunAuthority:
+    """One fully admitted successor authority triple."""
+
+    analysis_revision: AnalysisRevision
+    execution_plan: ExecutionPlan
+    run_binding: RunBinding
+
+    @property
+    def run_id(self) -> str:
+        return self.run_binding.run_id
 
 
 def _default_process_is_alive(process_id: int) -> bool:
@@ -300,24 +328,111 @@ def admit_canonical_record(
     return record, data
 
 
+def admit_successor_run(root: Path) -> SuccessorRunAuthority | None:
+    """Admit a complete successor triple, or return None for a legacy namespace."""
+
+    paths = {
+        "analysis": root / "contract" / "analysis.json",
+        "execution_plan": root / "contract" / "execution-plan.json",
+        "run": root / "contract" / "run.json",
+    }
+    present = {name for name, path in paths.items() if path.exists() or path.is_symlink()}
+    if not present:
+        return None
+    if present != set(paths):
+        missing = ", ".join(sorted(set(paths) - present))
+        raise InspectionError(
+            f"Incomplete successor Run authority; missing: {missing}"
+        )
+    values: dict[str, Any] = {}
+    for name, path in paths.items():
+        data = _read_bytes(path, root, f"successor {name} authority")
+        try:
+            values[name] = read_application_record(data)
+        except orchestration_contracts.ContractValidationError as exc:
+            raise InspectionError(f"Invalid successor {name} authority: {exc}") from exc
+    analysis = values["analysis"]
+    plan = values["execution_plan"]
+    run = values["run"]
+    if not isinstance(analysis, AnalysisRevision):
+        raise InspectionError("analysis.json is not an Analysis revision")
+    if not isinstance(plan, ExecutionPlan):
+        raise InspectionError("execution-plan.json is not an Execution Plan")
+    if not isinstance(run, RunBinding):
+        raise InspectionError("run.json is not a Run binding")
+    if run.canonical_bytes != bind_run(analysis, plan).canonical_bytes:
+        raise InspectionError("Run binding does not bind its Analysis and Execution Plan")
+    if root.name != run.run_id:
+        raise InspectionError("Run root name does not match successor Run ID")
+    return SuccessorRunAuthority(analysis, plan, run)
+
+
+def _successor_expected_tasks(
+    authority: SuccessorRunAuthority,
+) -> tuple[ExpectedTask, ...]:
+    functional = authority.execution_plan.record["identity"][
+        "functional_specification"
+    ]
+    required = set(functional["required_owner_keys"])
+    analysis = authority.analysis_revision
+    identity = analysis.record["identity"]
+    scope_ids = {
+        "reference": (analysis.scope_id("reference"),),
+        "sample": tuple(row["sample_id"] for row in identity["samples"]),
+        "cohort_partition": tuple(
+            analysis.scope_id("cohort_partition", row["partition_id"])
+            for row in identity["partitions"]
+        ),
+        "cohort": (analysis.scope_id("cohort"),),
+        "analysis": (analysis.scope_id("analysis"),),
+    }
+    return tuple(
+        ExpectedTask(
+            machine_key=str(owner["machine_key"]),
+            scope_type=str(owner["scope_type"]),
+            scope_id=str(scope_id),
+        )
+        for owner in functional["owner_tasks"]
+        if owner["machine_key"] in required
+        for scope_id in scope_ids[str(owner["scope_type"])]
+    )
+
+
 def _scope_ids(
     owner: Mapping[str, Any], execution: Mapping[str, Any]
 ) -> tuple[str, ...]:
     selector = owner["scope_selector"]
+    successor = execution.get("schema_version") == EXECUTION_PROJECTION_SCHEMA_VERSION
+    analysis = analysis_revision_from_execution_fields(execution) if successor else None
     if selector == "reference":
-        return (str(execution["reference"]["reference_id"]),)
+        return (
+            analysis.scope_id("reference")
+            if analysis is not None
+            else str(execution["reference"]["reference_id"]),
+        )
     if selector == "samples":
         return tuple(str(row["sample_id"]) for row in execution["samples"]["rows"])
     if selector == "partitions":
-        cohort = str(execution["analysis"]["cohort_id"])
         return tuple(
-            f"{cohort}__{row['partition_id']}"
+            (
+                analysis.scope_id("cohort_partition", str(row["partition_id"]))
+                if analysis is not None
+                else f"{execution['analysis']['cohort_id']}__{row['partition_id']}"
+            )
             for row in execution["partitions"]["rows"]
         )
     if selector == "cohort":
-        return (str(execution["analysis"]["cohort_id"]),)
+        return (
+            analysis.scope_id("cohort")
+            if analysis is not None
+            else str(execution["analysis"]["cohort_id"]),
+        )
     if selector == "analysis":
-        return (str(execution["analysis"]["primary_analysis_id"]),)
+        return (
+            analysis.scope_id("analysis")
+            if analysis is not None
+            else str(execution["analysis"]["primary_analysis_id"]),
+        )
     raise InspectionError(f"Unsupported required scope selector: {selector}")
 
 
@@ -327,7 +442,7 @@ def expected_tasks(
     """Project the exact required owner/scope roster in profile order."""
 
     orchestration_contracts.validate_record("profile", profile)
-    orchestration_contracts.validate_record("execution", execution, profile=profile)
+    validate_execution_view(execution, profile=profile)
     required = set(profile["required_owner_keys"])
     projected: list[ExpectedTask] = []
     for owner in profile["owner_tasks"]:
@@ -855,13 +970,40 @@ def inspect_attempt_tree(root: Path) -> tuple[tuple[Path, ...], tuple[str, ...]]
     return tuple(entries), tuple(blockers)
 
 
+def attempt_compatibility_fields(
+    authority_format: Literal["legacy", "successor"],
+) -> tuple[str, ...]:
+    """Return fields that must remain equal across Attempts for one Run format."""
+
+    common = ("run_id", "execution_contract_sha256", "profile_sha256")
+    attempt_semantics = ("execution_mode", "executor")
+    if authority_format == "successor":
+        return (*common, *attempt_semantics)
+    return (*common, "source_checkout", "required_tools", *attempt_semantics)
+
+
 def inspect_attempt_chain(
     root: Path,
+    *,
+    authority_format: Literal["legacy", "successor"] | None = None,
+    successor_authority: SuccessorRunAuthority | None = None,
+    execution_projection: Mapping[str, Any] | None = None,
+    profile: Mapping[str, Any] | None = None,
 ) -> tuple[
     tuple[dict[str, Any], ...],
     dict[str, dict[str, Any]],
     list[str],
 ]:
+    if authority_format is None:
+        authority_format = (
+            "successor" if admit_successor_run(root) is not None else "legacy"
+        )
+    if successor_authority is not None and (
+        authority_format != "successor"
+        or execution_projection is None
+        or profile is None
+    ):
+        raise InspectionError("Successor Attempt admission requires complete Run context")
     records: dict[str, dict[str, Any]] = {}
     attempt_references: dict[str, dict[str, str]] = {}
     receipts: dict[str, dict[str, Any]] = {}
@@ -944,15 +1086,7 @@ def inspect_attempt_chain(
                 f"{identifier}/{predecessor_receipt['status']}"
             )
         successor = ordered[index + 1]
-        for field in (
-            "run_id",
-            "execution_contract_sha256",
-            "profile_sha256",
-            "source_checkout",
-            "required_tools",
-            "execution_mode",
-            "executor",
-        ):
+        for field in attempt_compatibility_fields(authority_format):
             if successor[field] != attempt[field]:
                 blockers.append(
                     f"Adjacent workflow attempts differ on {field}: {identifier}"
@@ -1056,6 +1190,25 @@ def inspect_attempt_chain(
                     blockers.append(
                         f"Workflow attempt config binding no longer matches: {identifier}"
                     )
+                if successor_authority is not None:
+                    try:
+                        validate_successor_adapter(
+                            analysis=successor_authority.analysis_revision,
+                            plan=successor_authority.execution_plan,
+                            run=successor_authority.run_binding,
+                            execution_projection=execution_projection,
+                            profile=profile,
+                            attempt=attempt,
+                            resource_policy=config_document["resource_policy"],
+                        )
+                    except (
+                        KeyError,
+                        orchestration_contracts.ContractValidationError,
+                    ) as exc:
+                        blockers.append(
+                            "Workflow Attempt differs from immutable Run: "
+                            f"{identifier}: {exc}"
+                        )
         receipt = receipts.get(identifier)
         if receipt is None:
             continue
@@ -1885,23 +2038,106 @@ def inspect_run(
 
     root = _canonical_root(run_root)
     active_ops = default_inspection_ops() if ops is None else ops
-    profile, profile_data = admit_canonical_record(
-        root / "contract" / "profile.json", root, "profile"
-    )
-    execution, execution_data = admit_canonical_record(
-        root / "contract" / "normalized.json",
-        root,
-        "execution",
-        profile=profile,
-    )
+    authority = admit_successor_run(root)
+    profile_path = root / "contract" / "profile.json"
+    execution_path = root / "contract" / "normalized.json"
+    profile_present = profile_path.exists() or profile_path.is_symlink()
+    execution_present = execution_path.exists() or execution_path.is_symlink()
+    if authority is not None and not profile_present and not execution_present:
+        blockers = list(state_tree_blockers(root))
+        attempts, receipts, attempt_blockers = inspect_attempt_chain(
+            root, authority_format="successor"
+        )
+        blockers.extend(attempt_blockers)
+        latest = attempts[-1] if attempts else None
+        latest_id = None if latest is None else str(latest["workflow_attempt_id"])
+        latest_receipt = None if latest_id is None else receipts.get(latest_id)
+        running, lock_blockers = _inspect_lock(
+            root,
+            latest=latest,
+            latest_terminal=latest_receipt is not None,
+            ops=active_ops,
+            allowed_next_attempt=allowed_next_attempt,
+        )
+        blockers.extend(lock_blockers)
+        if latest is not None:
+            blockers.append("Successor Attempt exists without its backend adapters")
+        expected = _successor_expected_tasks(authority)
+        tasks = tuple(
+            TaskInspection(
+                item,
+                "pending",
+                root / "state" / "verified" / item.machine_key / f"{item.scope_id}.json",
+                None,
+                None,
+                None,
+            )
+            for item in expected
+        )
+        if blockers:
+            state: RunState = "blocked"
+        elif running:
+            state = "running"
+        else:
+            state = "prepared"
+        return RunInspection(
+            run_root=root,
+            run_id=authority.run_id,
+            state=state,
+            latest_workflow_attempt_id=latest_id,
+            latest_attempt=latest,
+            latest_receipt=latest_receipt,
+            tasks=tasks,
+            reporting_completion_records={
+                kind: {"start": None, "verified": None}
+                for kind in ("artifact_index", "run_summary", "html_report")
+            },
+            blockers=tuple(dict.fromkeys(blockers)),
+            resume_available=False,
+            local_pipeline_complete=False,
+            authority_format="successor",
+            analysis_revision=authority.analysis_revision,
+            execution_plan=authority.execution_plan,
+            run_binding=authority.run_binding,
+        )
+    if profile_present != execution_present:
+        raise InspectionError("Run has an incomplete profile/execution adapter pair")
+    profile, profile_data = admit_canonical_record(profile_path, root, "profile")
+    execution_data = _read_bytes(execution_path, root, "execution view")
+    try:
+        execution = orchestration_contracts.load_json_object_bytes(
+            execution_data,
+            f"execution view {execution_path}",
+        )
+        validate_execution_view(execution, profile=profile)
+    except orchestration_contracts.ContractValidationError as exc:
+        raise InspectionError(f"Invalid execution view at {execution_path}: {exc}") from exc
+    if execution_data != orchestration_contracts.canonical_json_bytes(execution):
+        raise InspectionError(f"execution view must use canonical JSON bytes: {execution_path}")
     blockers: list[str] = []
     blockers.extend(state_tree_blockers(root))
-    if (
-        execution["profile"]["profile_sha256"]
-        != hashlib.sha256(profile_data).hexdigest()
-    ):
+    if execution["profile"]["profile_sha256"] != hashlib.sha256(profile_data).hexdigest():
         blockers.append("Execution contract no longer binds profile snapshot bytes")
-    attempts, receipts, attempt_blockers = inspect_attempt_chain(root)
+    if authority is not None:
+        try:
+            validate_successor_adapter(
+                analysis=authority.analysis_revision,
+                plan=authority.execution_plan,
+                run=authority.run_binding,
+                execution_projection=execution,
+                profile=profile,
+            )
+        except orchestration_contracts.ContractValidationError as exc:
+            blockers.append(f"Execution projection differs from immutable Run: {exc}")
+    elif execution.get("schema_version") == EXECUTION_PROJECTION_SCHEMA_VERSION:
+        blockers.append("Execution projection exists without successor Run authority")
+    attempts, receipts, attempt_blockers = inspect_attempt_chain(
+        root,
+        authority_format="successor" if authority is not None else "legacy",
+        successor_authority=authority,
+        execution_projection=execution if authority is not None else None,
+        profile=profile if authority is not None else None,
+    )
     blockers.extend(attempt_blockers)
     latest = attempts[-1] if attempts else None
     latest_id = None if latest is None else str(latest["workflow_attempt_id"])
@@ -2049,7 +2285,7 @@ def inspect_run(
     complete = state == "local_pipeline_complete"
     return RunInspection(
         run_root=root,
-        run_id=str(execution["run_id"]),
+        run_id=(authority.run_id if authority is not None else str(execution["run_id"])),
         state=state,
         latest_workflow_attempt_id=latest_id,
         latest_attempt=latest,
@@ -2060,6 +2296,10 @@ def inspect_run(
         resume_available=state == "resume_available",
         local_pipeline_complete=complete,
         verified_report_locations=(verified_report_locations if complete else ()),
+        authority_format="successor" if authority is not None else "legacy",
+        analysis_revision=(None if authority is None else authority.analysis_revision),
+        execution_plan=(None if authority is None else authority.execution_plan),
+        run_binding=(None if authority is None else authority.run_binding),
     )
 
 
@@ -2073,7 +2313,9 @@ __all__ = (
     "TaskLedgerInspection",
     "ValidatedReportingReceipt",
     "admit_canonical_record",
+    "admit_successor_run",
     "admit_attempt_run_lock",
+    "attempt_compatibility_fields",
     "default_inspection_ops",
     "expected_tasks",
     "inspect_attempt_tree",

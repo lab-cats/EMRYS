@@ -106,7 +106,6 @@ class DoctorResult:
     """Immutable read-only local-pilot readiness result."""
 
     request_path: Path
-    run_id: str
     workspace: Path
     source_root: Path
     source_commit: str | None
@@ -396,7 +395,7 @@ def _step00c_external_parent_blockers(
 ) -> tuple[list[str], list[str]]:
     """Check the stationary FASTA parent needed for Step 00c sidecar publication."""
 
-    fasta = Path(str(normalized.execution_contract["reference"]["fasta"]["path"]))
+    fasta = Path(str(normalized.projection_source["reference"]["fasta"]["path"]))
     parent = fasta.parent
     try:
         fasta_state = fasta.lstat()
@@ -921,7 +920,7 @@ def inspect_local_pilot(
     blockers.extend(step00c_blockers)
     remediations.extend(step00c_remediations)
     reference_fasta = Path(
-        str(normalized.execution_contract["reference"]["fasta"]["path"])
+        str(normalized.projection_source["reference"]["fasta"]["path"])
     )
     qualification_binding: RuntimeBinding | None = None
     try:
@@ -1005,7 +1004,6 @@ def inspect_local_pilot(
             )
     return DoctorResult(
         request_path=normalized.request_path,
-        run_id=normalized.run_id,
         workspace=workspace_path,
         source_root=root,
         source_commit=source_commit,
@@ -1046,7 +1044,6 @@ def doctor_from_args(
         print(f"emrys: error: {exc}", file=sys.stderr)
         return 2
     print(f"Request: {result.request_path}")
-    print(f"Run ID: {result.run_id}")
     print(f"Workspace: {result.workspace}")
     print(f"Source checkout: {result.source_root}")
     print(f"Source commit: {result.source_commit or 'not admitted'}")

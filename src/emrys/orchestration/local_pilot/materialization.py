@@ -16,13 +16,35 @@ from typing import Any, Literal
 
 from emrys import __version__
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import (
+    EXECUTION_PROJECTION_SCHEMA_VERSION,
+    LEGACY_EXECUTION_SCHEMA_VERSION,
+    ExecutionPlan,
+    RunBinding,
+    analysis_revision_from_execution_fields,
+    bind_run,
+    build_execution_plan,
+    functional_specification_from_profile,
+    toolchain_from_required_tools,
+    validate_execution_view,
+    validate_successor_adapter,
+)
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.orchestration.local_pilot import doctor, inspection, lifecycle
 from emrys.orchestration.local_pilot.normalization import NormalizationBundle
 from emrys.orchestration.local_pilot.resource_policy import (
+    ComputationalResourceDeclaration,
     THREAD_CAPABLE_STAGE_IDS,
     ResourcePlan,
+)
+from emrys.orchestration.local_pilot.run_implementation import (
+    BACKEND_TARGET,
+    SNAKEFILE_RELATIVE,
+    WORKFLOW_PROFILE_RELATIVE,
+    RunImplementationError,
+    backend_semantics_identity,
+    implementation_identity,
 )
 from emrys.libraries.process_environment import (
     R_SELECTOR_PREFIXES,
@@ -31,10 +53,7 @@ from emrys.libraries.process_environment import (
 )
 
 Operation = Literal["execute", "resume"]
-TARGET = "local_pipeline_slice"
 PROFILE_RELATIVE = Path("workflow/contracts/local_cmh_v2.json")
-SNAKEFILE_RELATIVE = Path("workflow/Snakefile")
-WORKFLOW_PROFILE_RELATIVE = Path("workflow/profiles/local/profile.v9+.yaml")
 
 
 class MaterializationError(RuntimeError):
@@ -50,27 +69,116 @@ class PlannedFile:
 
 
 @dataclass(frozen=True, slots=True)
+class RunCandidate:
+    """One complete immutable Run value before filesystem admission."""
+
+    normalized: NormalizationBundle
+    execution_plan: ExecutionPlan
+    run_binding: RunBinding
+    execution_projection_bytes: bytes
+
+    def __post_init__(self) -> None:
+        try:
+            projection = orchestration_contracts.load_json_object_bytes(
+                self.execution_projection_bytes,
+                "successor execution projection",
+            )
+            if (
+                orchestration_contracts.canonical_json_bytes(projection)
+                != self.execution_projection_bytes
+            ):
+                raise orchestration_contracts.ContractValidationError(
+                    "Successor execution projection must use canonical JSON bytes"
+                )
+            validate_successor_adapter(
+                analysis=self.normalized.analysis_revision,
+                plan=self.execution_plan,
+                run=self.run_binding,
+                execution_projection=projection,
+                profile=self.normalized.profile,
+            )
+        except orchestration_contracts.ContractValidationError as exc:
+            raise MaterializationError(f"Invalid Run candidate: {exc}") from exc
+
+    @property
+    def run_id(self) -> str:
+        return self.run_binding.run_id
+
+    @property
+    def execution_projection(self) -> dict[str, Any]:
+        return orchestration_contracts.load_json_object_bytes(
+            self.execution_projection_bytes,
+            "successor execution projection",
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class HistoricalRun:
+    """Exact existing execution.v1 authority retained only for resume."""
+
+    normalized: NormalizationBundle
+    run_id: str
+    execution_projection_bytes: bytes
+
+    def __post_init__(self) -> None:
+        try:
+            execution = orchestration_contracts.load_json_object_bytes(
+                self.execution_projection_bytes,
+                "historical execution contract",
+            )
+            if (
+                execution.get("schema_version") != LEGACY_EXECUTION_SCHEMA_VERSION
+                or orchestration_contracts.canonical_json_bytes(execution)
+                != self.execution_projection_bytes
+            ):
+                raise orchestration_contracts.ContractValidationError(
+                    "Historical execution must retain canonical execution.v1 bytes"
+                )
+            validate_execution_view(execution, profile=self.normalized.profile)
+            if execution["run_id"] != self.run_id:
+                raise orchestration_contracts.ContractValidationError(
+                    "Historical Run ID differs from execution.v1"
+                )
+        except orchestration_contracts.ContractValidationError as exc:
+            raise MaterializationError(f"Invalid historical Run: {exc}") from exc
+
+    @property
+    def execution_projection(self) -> dict[str, Any]:
+        return orchestration_contracts.load_json_object_bytes(
+            self.execution_projection_bytes,
+            "historical execution.v1",
+        )
+
+
+MaterializedRun = RunCandidate | HistoricalRun
+
+
+@dataclass(frozen=True, slots=True)
 class AttemptPlan:
     """Pure, complete publication and command plan for one workflow attempt."""
 
-    normalized: NormalizationBundle
+    run: MaterializedRun
     readiness: doctor.DoctorResult
+    resources: ResourcePlan
     operation: Operation
     workspace: Path
     run_root: Path
     workflow_attempt_id: str
-    step_threads: tuple[tuple[str, int], ...]
-    workflow_cores: int
-    workflow_memory_mb: int
-    stage_concurrency: tuple[tuple[str, int], ...]
-    stage_memory_mb: tuple[tuple[str, int], ...]
-    reporting_memory_mb: tuple[tuple[str, int], ...]
     supersedes_workflow_attempt_id: str | None
-    attempt_record: dict[str, Any]
+    attempt_record_bytes: bytes
     fixed_files: tuple[PlannedFile, ...]
     attempt_files: tuple[PlannedFile, ...]
     directories: tuple[Path, ...]
     dispatch_count: int
+
+    @property
+    def attempt_record(self) -> dict[str, Any]:
+        """Return a fresh view of the immutable prepared Attempt record."""
+
+        return orchestration_contracts.load_json_object_bytes(
+            self.attempt_record_bytes,
+            "prepared workflow Attempt",
+        )
 
     @property
     def config_path(self) -> Path:
@@ -90,7 +198,7 @@ class AttemptPlan:
             process_id=int(attempt["process_id"]),
             created_at=str(attempt["created_at"]),
             operation=self.operation,
-            attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
+            attempt_record_bytes=self.attempt_record_bytes,
         )
 
     @property
@@ -136,6 +244,61 @@ def _absolute(path: Path) -> Path:
     return Path(os.path.abspath(path))
 
 
+def build_run_candidate(
+    normalized: NormalizationBundle,
+    readiness: doctor.DoctorResult,
+    declaration: ComputationalResourceDeclaration,
+) -> RunCandidate:
+    """Construct the complete Run before allocation or Attempt identity exists."""
+
+    if not readiness.ready:
+        raise MaterializationError("Local-pilot readiness has unresolved blockers")
+    if readiness.source_commit is None:
+        raise MaterializationError("Doctor did not admit one exact source commit")
+    try:
+        required_tools = doctor.required_tool_identities(
+            readiness.inspection,
+            bindings=readiness.bindings,
+            python_executable=Path(sys.executable),
+        )
+    except doctor.DoctorInputError as exc:
+        raise MaterializationError(
+            f"Doctor runtime identities are not Run-bindable: {exc}"
+        ) from exc
+    try:
+        implementation_sha256 = implementation_identity(readiness.source_root)
+        backend_sha256 = backend_semantics_identity(readiness.source_root)
+    except RunImplementationError as exc:
+        raise MaterializationError(str(exc)) from exc
+    source = normalized.projection_source
+    try:
+        plan = build_execution_plan(
+            functional_specification=functional_specification_from_profile(
+                normalized.profile
+            ),
+            scientific_stopping_owner_keys=normalized.profile["required_owner_keys"],
+            implementation_content_sha256=implementation_sha256,
+            toolchain=toolchain_from_required_tools(required_tools),
+            backend="local",
+            engine="snakemake",
+            backend_semantics_sha256=backend_sha256,
+            star_index=source["reference"]["star_index"],
+            computational_resources=declaration.identity_document(),
+        )
+        run = bind_run(normalized.analysis_revision, plan)
+        projection = normalized.execution_projection(run)
+        return RunCandidate(
+            normalized=normalized,
+            execution_plan=plan,
+            run_binding=run,
+            execution_projection_bytes=orchestration_contracts.canonical_json_bytes(
+                projection
+            ),
+        )
+    except orchestration_contracts.ContractValidationError as exc:
+        raise MaterializationError(f"Could not bind immutable Run: {exc}") from exc
+
+
 def _within(path: Path, root: Path, label: str) -> None:
     try:
         path.relative_to(root)
@@ -165,13 +328,11 @@ def _resolved_inventory_path(run_root: Path, raw: str) -> Path:
 
 
 def _artifact_rows(
-    normalized: NormalizationBundle,
+    execution: Mapping[str, Any],
+    profile: Mapping[str, Any],
     run_root: Path,
 ) -> dict[tuple[str, str], tuple[dict[str, Any], ...]]:
-    bundle = build_reporting_bundle(
-        normalized.execution_contract,
-        normalized.profile,
-    )
+    bundle = build_reporting_bundle(execution, profile)
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for row in bundle.artifact_inventory_rows:
         item = dict(row)
@@ -275,13 +436,39 @@ def _task_commands(
     }
     reference = execution["reference"]
     analysis = execution["analysis"]
+    analysis_revision = (
+        analysis_revision_from_execution_fields(execution)
+        if execution.get("schema_version") == EXECUTION_PROJECTION_SCHEMA_VERSION
+        else None
+    )
     policy = analysis["policy"]
     sample_manifest = Path(str(execution["samples"]["manifest"]["path"]))
     partition_manifest = Path(str(execution["partitions"]["manifest"]["path"]))
     fasta = Path(str(reference["fasta"]["path"]))
     gtf = Path(str(reference["gtf"]["path"]))
-    reference_id = str(reference["reference_id"])
-    cohort_id = str(analysis["cohort_id"])
+    reference_id = (
+        analysis_revision.scope_id("reference")
+        if analysis_revision is not None
+        else str(reference["reference_id"])
+    )
+    cohort_id = (
+        analysis_revision.scope_id("cohort")
+        if analysis_revision is not None
+        else str(analysis["cohort_id"])
+    )
+    analysis_id = (
+        analysis_revision.scope_id("analysis")
+        if analysis_revision is not None
+        else str(analysis["primary_analysis_id"])
+    )
+    partition_scopes = {
+        partition_id: (
+            analysis_revision.scope_id("cohort_partition", partition_id)
+            if analysis_revision is not None
+            else f"{cohort_id}__{partition_id}"
+        )
+        for partition_id in partition_rows
+    }
     bash = _runtime_path(runtime, "bash")
     star = _runtime_path(runtime, "star")
     samtools = _runtime_path(runtime, "samtools")
@@ -738,7 +925,14 @@ def _task_commands(
         return producer, validator, (split_bam, split_bai)
 
     if step_id == "07":
-        partition_id = scope_id.removeprefix(f"{cohort_id}__")
+        try:
+            partition_id = next(
+                key for key, value in partition_scopes.items() if value == scope_id
+            )
+        except StopIteration as exc:
+            raise MaterializationError(
+                f"Unknown content-bound partition scope: {scope_id}"
+            ) from exc
         partition = partition_rows[partition_id]
         vcf_paths = paths["step07_mpileup_vcf_v1"]
         if len(vcf_paths) != 2:
@@ -828,7 +1022,7 @@ def _task_commands(
             path
             for partition_id in partition_rows
             for adapter in ("step07_mpileup_vcf_v1", "step07_mpileup_receipt_v1")
-            for path in all_paths["07", f"{cohort_id}__{partition_id}"][adapter]
+            for path in all_paths["07", partition_scopes[partition_id]][adapter]
         )
         arguments = (
             "--cohort-id",
@@ -902,7 +1096,7 @@ def _task_commands(
         depth_pdf = _one(paths, "step09_depth_delta_pdf_v1")
         arguments = [
             "--analysis-id",
-            str(analysis["primary_analysis_id"]),
+            analysis_id,
             "--cohort-id",
             cohort_id,
             "--sample-manifest",
@@ -958,7 +1152,7 @@ def _task_commands(
         validator = _validator(
             "paired-cmh-candidate-ranking",
             "--analysis-id",
-            str(analysis["primary_analysis_id"]),
+            analysis_id,
             "--cohort-id",
             cohort_id,
             "--sample-manifest",
@@ -991,7 +1185,6 @@ def _task_commands(
         )
 
     if step_id == "10":
-        analysis_id = str(analysis["primary_analysis_id"])
         step09_paths = all_paths["09", analysis_id]
         all_sites = _one(step09_paths, "step09_cmh_all_sites_v1")
         significant = _one(step09_paths, "step09_cmh_significant_sites_v1")
@@ -1054,7 +1247,7 @@ def _task_commands(
 
 
 def _dispatches(
-    normalized: NormalizationBundle,
+    run: MaterializedRun,
     readiness: doctor.DoctorResult,
     run_root: Path,
     attempt_id: str,
@@ -1064,7 +1257,9 @@ def _dispatches(
 ) -> tuple[
     tuple[PlannedFile, ...], dict[str, dict[str, dict[str, str]]], tuple[Path, ...]
 ]:
-    inventory = _artifact_rows(normalized, run_root)
+    execution = run.execution_projection
+    profile = run.normalized.profile
+    inventory = _artifact_rows(execution, profile, run_root)
     paths_by_scope: dict[tuple[str, str], dict[str, list[Path]]] = {}
     for key, rows in inventory.items():
         adapters: dict[str, list[Path]] = {}
@@ -1075,11 +1270,9 @@ def _dispatches(
     planned: list[PlannedFile] = []
     references: dict[str, dict[str, dict[str, str]]] = {}
     directories: set[Path] = set()
-    expected = inspection.expected_tasks(
-        normalized.execution_contract, normalized.profile
-    )
+    expected = inspection.expected_tasks(execution, profile)
     owners = {
-        str(item["machine_key"]): item for item in normalized.profile["owner_tasks"]
+        str(item["machine_key"]): item for item in profile["owner_tasks"]
     }
     for index, task in enumerate(expected, start=1):
         identity = (task.machine_key, task.scope_id)
@@ -1107,7 +1300,7 @@ def _dispatches(
             step_id=step_id,
             scope_id=task.scope_id,
             paths=adapters,
-            execution=normalized.execution_contract,
+            execution=execution,
             run_root=run_root,
             source_root=readiness.source_root,
             runtime=runtime,
@@ -1215,7 +1408,7 @@ def _dispatches(
 
 
 def build_attempt_plan(
-    normalized: NormalizationBundle,
+    run: MaterializedRun,
     readiness: doctor.DoctorResult,
     workspace: Path,
     *,
@@ -1230,13 +1423,12 @@ def build_attempt_plan(
 ) -> AttemptPlan:
     """Build one complete attempt without touching the filesystem."""
 
+    normalized = run.normalized
+    execution = run.execution_projection
+    resource_policy_record = resources.policy_record()
     if not readiness.ready:
         raise MaterializationError("Local-pilot readiness has unresolved blockers")
     workflow_cores = resources.workflow_cores
-    if readiness.run_id != normalized.run_id:
-        raise MaterializationError(
-            "Doctor and normalization resolved different run IDs"
-        )
     if readiness.source_commit is None:
         raise MaterializationError("Doctor did not admit one exact source commit")
     if readiness.runtime_profile_sha256 != readiness.inspection.profile_sha256:
@@ -1256,12 +1448,14 @@ def build_attempt_plan(
     attempt_id = f"workflow-{compact}-{suffix}"
     owner_token = f"workflow-owner-{suffix}"
     workspace_path = _absolute(workspace)
-    run_root = workspace_path / "runs" / normalized.run_id
+    run_root = workspace_path / "runs" / run.run_id
     source_root = readiness.source_root
     fixed_profile = source_root / PROFILE_RELATIVE
     if normalized.profile != orchestration_contracts.load_json_object(fixed_profile):
         raise MaterializationError("Normalization did not use the fixed source profile")
-    runtime_profile_path = run_root / "contract" / "runtime-profile.tsv"
+    runtime_profile_path = (
+        run_root / "contract" / "runtime-profiles" / f"{attempt_id}.tsv"
+    )
     storage_binding_count = sum(
         binding.check_id == "storage_qualification"
         for binding in readiness.bindings
@@ -1290,7 +1484,7 @@ def build_attempt_plan(
     }
     retained = {} if retained_dispatches is None else dict(retained_dispatches)
     dispatch_files, dispatch_references, dispatch_directories = _dispatches(
-        normalized,
+        run,
         readiness,
         run_root,
         attempt_id,
@@ -1298,9 +1492,7 @@ def build_attempt_plan(
         retained,
         resources,
     )
-    reporting = build_reporting_bundle(
-        normalized.execution_contract, normalized.profile
-    )
+    reporting = build_reporting_bundle(execution, normalized.profile)
     projection_data = {
         "reference_contract": reporting.reference_contract_bytes,
         "primary_analysis_policy": reporting.primary_analysis_policy_bytes,
@@ -1308,16 +1500,16 @@ def build_attempt_plan(
         "artifact_inventory": reporting.artifact_inventory_bytes,
     }
     fixed_files = [
-        PlannedFile(run_root / "contract/normalized.json", normalized.normalized_bytes),
+        PlannedFile(
+            run_root / "contract/normalized.json",
+            run.execution_projection_bytes,
+        ),
         PlannedFile(
             run_root / "contract/profile.json",
             orchestration_contracts.canonical_json_bytes(normalized.profile),
         ),
-        PlannedFile(runtime_profile_path, readiness.inspection.profile_bytes),
     ]
-    for name, reference in normalized.execution_contract[
-        "reporting_projection"
-    ].items():
+    for name, reference in execution["reporting_projection"].items():
         fixed_files.append(
             PlannedFile(run_root / str(reference["path"]), projection_data[name])
         )
@@ -1331,29 +1523,21 @@ def build_attempt_plan(
         "artifact_source_root": str(run_root),
         "reference_contract_path": str(
             run_root
-            / normalized.execution_contract["reporting_projection"][
-                "reference_contract"
-            ]["path"]
+            / execution["reporting_projection"]["reference_contract"]["path"]
         ),
         "primary_analysis_policy_path": str(
             run_root
-            / normalized.execution_contract["reporting_projection"][
-                "primary_analysis_policy"
-            ]["path"]
+            / execution["reporting_projection"]["primary_analysis_policy"]["path"]
         ),
         "reporting_run_contract_path": str(
             run_root
-            / normalized.execution_contract["reporting_projection"][
-                "reporting_run_contract"
-            ]["path"]
+            / execution["reporting_projection"]["reporting_run_contract"]["path"]
         ),
         "artifact_inventory_path": str(
             run_root
-            / normalized.execution_contract["reporting_projection"][
-                "artifact_inventory"
-            ]["path"]
+            / execution["reporting_projection"]["artifact_inventory"]["path"]
         ),
-        "resource_policy": resources.policy_record(),
+        "resource_policy": resource_policy_record,
         "dispatch_paths": dispatch_references,
     }
     config_data = orchestration_contracts.canonical_json_bytes(config)
@@ -1364,7 +1548,7 @@ def build_attempt_plan(
         workflow_profile=source_root / WORKFLOW_PROFILE_RELATIVE,
         configfile=config_path,
         run_root=run_root,
-        target=TARGET,
+        target=BACKEND_TARGET,
         operation=operation,
         cores=workflow_cores,
         resource_limits=resources.scheduler_limits(),
@@ -1372,8 +1556,8 @@ def build_attempt_plan(
     request = normalized.request
     attempt = {
         "schema_version": "emrys.workflow-attempt.v1",
-        "run_id": normalized.run_id,
-        "execution_contract_sha256": _sha256(normalized.normalized_bytes),
+        "run_id": run.run_id,
+        "execution_contract_sha256": _sha256(run.execution_projection_bytes),
         "profile_sha256": _sha256(
             orchestration_contracts.canonical_json_bytes(normalized.profile)
         ),
@@ -1416,8 +1600,36 @@ def build_attempt_plan(
         "cores": workflow_cores,
         "required_tools": list(required_tools),
     }
+    if isinstance(run, RunCandidate):
+        try:
+            validate_successor_adapter(
+                analysis=normalized.analysis_revision,
+                plan=run.execution_plan,
+                run=run.run_binding,
+                execution_projection=execution,
+                profile=normalized.profile,
+                attempt=attempt,
+                resource_policy=resource_policy_record,
+                observed_implementation_content_sha256=implementation_identity(
+                    source_root
+                ),
+                observed_backend_semantics_sha256=backend_semantics_identity(
+                    source_root
+                ),
+            )
+        except (
+            orchestration_contracts.ContractValidationError,
+            RunImplementationError,
+        ) as exc:
+            raise MaterializationError(
+                f"Attempt differs from immutable Run: {exc}"
+            ) from exc
     orchestration_contracts.validate_record("workflow-attempt", attempt)
-    attempt_files = (*dispatch_files, PlannedFile(config_path, config_data))
+    attempt_files = (
+        *dispatch_files,
+        PlannedFile(config_path, config_data),
+        PlannedFile(runtime_profile_path, readiness.inspection.profile_bytes),
+    )
     directories = {
         run_root / "contract",
         run_root / "contract" / "workflow-configs",
@@ -1429,34 +1641,126 @@ def build_attempt_plan(
         *(item.path.parent for item in attempt_files),
     }
     return AttemptPlan(
-        normalized=normalized,
+        run=run,
         readiness=readiness,
+        resources=resources,
         operation=operation,
         workspace=workspace_path,
         run_root=run_root,
         workflow_attempt_id=attempt_id,
-        step_threads=resources.step_threads,
-        workflow_cores=workflow_cores,
-        workflow_memory_mb=resources.workflow_memory_mb,
-        stage_concurrency=resources.stage_concurrency,
-        stage_memory_mb=resources.stage_memory_mb,
-        reporting_memory_mb=resources.reporting_memory_mb,
         supersedes_workflow_attempt_id=supersedes_workflow_attempt_id,
-        attempt_record=attempt,
+        attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
         fixed_files=tuple(fixed_files),
         attempt_files=tuple(attempt_files),
         directories=tuple(sorted(directories)),
         dispatch_count=len(
-            inspection.expected_tasks(normalized.execution_contract, normalized.profile)
+            inspection.expected_tasks(execution, normalized.profile)
         ),
     )
 
 
-def initialize_run(plan: AttemptPlan, *, ops: lifecycle.LifecycleOps) -> None:
-    """Create only the new aggregate run skeleton before lock acquisition."""
+def _validate_pristine_committed_run(root: Path, candidate: RunCandidate) -> None:
+    try:
+        authority = inspection.admit_successor_run(root)
+    except inspection.InspectionError as exc:
+        raise MaterializationError(
+            f"Run root contains invalid committed authority: {root}: {exc}"
+        ) from exc
+    if authority is None:
+        raise MaterializationError(f"Run root has no committed successor authority: {root}")
+    if (
+        authority.analysis_revision.canonical_bytes
+        != candidate.normalized.analysis_revision.canonical_bytes
+        or authority.execution_plan.canonical_bytes
+        != candidate.execution_plan.canonical_bytes
+        or authority.run_binding.canonical_bytes
+        != candidate.run_binding.canonical_bytes
+    ):
+        raise MaterializationError("Existing Run authority differs from the planned Run")
+    allowed_root = {"contract", "attempts", "locks", "state"}
+    if {item.name for item in root.iterdir()} - allowed_root:
+        raise MaterializationError("Committed Run contains unexpected pre-Attempt state")
+    contract = root / "contract"
+    if {item.name for item in contract.iterdir()} != {
+        "analysis.json",
+        "execution-plan.json",
+        "run.json",
+    }:
+        raise MaterializationError("Committed Run already contains backend adapters")
+    for name in ("attempts", "locks", "state"):
+        namespace = root / name
+        if not (namespace.exists() or namespace.is_symlink()):
+            continue
+        if namespace.is_symlink() or not namespace.is_dir() or any(namespace.iterdir()):
+            raise MaterializationError(
+                f"Committed Run contains non-pristine {name} state"
+            )
+
+
+def validate_run_destination(
+    root: Path,
+    *,
+    candidate: RunCandidate | None = None,
+) -> None:
+    """Accept an absent destination or only provably evidence-free Run residue."""
+
+    if not (root.exists() or root.is_symlink()):
+        return
+    if root.is_symlink() or not root.is_dir():
+        raise MaterializationError(f"Uncommitted Run residue is not a real directory: {root}")
+    run_path = root / "contract" / "run.json"
+    if run_path.exists() or run_path.is_symlink():
+        if candidate is not None:
+            _validate_pristine_committed_run(root, candidate)
+            return
+        raise MaterializationError(
+            "Run root already exists; inspect or resume it instead"
+        )
+    contract = root / "contract"
+    allowed_root = {"contract"}
+    if {item.name for item in root.iterdir()} - allowed_root:
+        raise MaterializationError(
+            f"Run root contains ambiguous or evidence-bearing residue: {root}"
+        )
+    allowed_contract = {"analysis.json", "execution-plan.json"}
+    if contract.exists() or contract.is_symlink():
+        if contract.is_symlink() or not contract.is_dir():
+            raise MaterializationError(f"Run contract residue is not a real directory: {contract}")
+        for item in contract.iterdir():
+            if item.name not in allowed_contract or item.is_symlink() or not item.is_file():
+                raise MaterializationError(
+                    f"Run contract contains ambiguous residue: {item}"
+                )
+
+
+def _quarantine_uncommitted_run(
+    plan: AttemptPlan,
+    ops: lifecycle.LifecycleOps,
+) -> Path:
+    root = plan.run_root
+    validate_run_destination(root)
+    quarantine = root.with_name(
+        f"{root.name}.uncommitted-{plan.workflow_attempt_id.removeprefix('workflow-')}"
+    )
+    if quarantine.exists() or quarantine.is_symlink():
+        raise MaterializationError(f"Run-residue quarantine already exists: {quarantine}")
+    try:
+        root.rename(quarantine)
+    except OSError as exc:
+        raise MaterializationError(
+            f"Could not quarantine uncommitted Run residue: {root}"
+        ) from exc
+    ops.sync_directory(root.parent, "workspace runs directory after quarantine")
+    return quarantine
+
+
+def admit_run(plan: AttemptPlan, *, ops: lifecycle.LifecycleOps) -> None:
+    """Durably publish Analysis and Plan, then commit the Run binding last."""
 
     if plan.operation != "execute":
-        raise MaterializationError("Only an initial execution may initialize a run")
+        raise MaterializationError("Only an initial execution may admit a Run")
+    if not isinstance(plan.run, RunCandidate):
+        raise MaterializationError("Historical Runs cannot be newly admitted")
     for directory in (plan.workspace, plan.workspace / "runs"):
         try:
             directory.mkdir(mode=0o700)
@@ -1465,19 +1769,48 @@ def initialize_run(plan: AttemptPlan, *, ops: lifecycle.LifecycleOps) -> None:
                 raise MaterializationError(
                     f"Run parent is not a real directory: {directory}"
                 )
-    try:
+    run_path = plan.run_root / "contract" / "run.json"
+    if plan.run_root.exists() or plan.run_root.is_symlink():
+        if run_path.exists() or run_path.is_symlink():
+            _validate_pristine_committed_run(plan.run_root, plan.run)
+        else:
+            _quarantine_uncommitted_run(plan, ops)
+    if not plan.run_root.exists():
         plan.run_root.mkdir(mode=0o700)
-    except FileExistsError as exc:
-        raise MaterializationError(f"Run root already exists: {plan.run_root}") from exc
+        contract = plan.run_root / "contract"
+        contract.mkdir(mode=0o700)
+        ops.sync_directory(contract, "new Run contract namespace")
+        ops.sync_directory(plan.run_root, "new Run root")
+        ops.sync_directory(plan.run_root.parent, "workspace runs directory")
+        try:
+            ops.publish_bytes(
+                contract / "analysis.json",
+                plan.run.normalized.analysis_revision.canonical_bytes,
+            )
+            ops.publish_bytes(
+                contract / "execution-plan.json",
+                plan.run.execution_plan.canonical_bytes,
+            )
+            ops.publish_bytes(run_path, plan.run.run_binding.canonical_bytes)
+        except BaseException:
+            if not run_path.exists() and not run_path.is_symlink():
+                _quarantine_uncommitted_run(plan, ops)
+            raise
     for directory in (
         plan.run_root / "attempts",
         plan.run_root / "locks",
         plan.run_root / "state",
     ):
-        directory.mkdir(mode=0o700)
-        ops.sync_directory(directory, "new run namespace")
-    ops.sync_directory(plan.run_root, "new run root")
-    ops.sync_directory(plan.run_root.parent, "workspace runs directory")
+        try:
+            directory.mkdir(mode=0o700)
+        except FileExistsError:
+            if directory.is_symlink() or not directory.is_dir():
+                raise MaterializationError(
+                    f"Run namespace is not a real directory: {directory}"
+                )
+        else:
+            ops.sync_directory(directory, "new Run namespace")
+    ops.sync_directory(plan.run_root, "admitted Run root")
 
 
 def _create_directory(path: Path, run_root: Path, ops: lifecycle.LifecycleOps) -> None:
@@ -1530,18 +1863,22 @@ def publish_attempt(
         snakefile=plan.readiness.source_root / SNAKEFILE_RELATIVE,
         python_executable=Path(sys.executable),
         workflow_profile=plan.readiness.source_root / WORKFLOW_PROFILE_RELATIVE,
-        target=TARGET,
+        target=BACKEND_TARGET,
         operation=plan.operation,
         attempt_record=plan.attempt_record,
-        request_source_path=plan.normalized.request_path,
+        request_source_path=plan.run.normalized.request_path,
     )
 
 
 __all__ = (
     "AttemptPlan",
     "MaterializationError",
+    "HistoricalRun",
     "PlannedFile",
+    "RunCandidate",
+    "admit_run",
     "build_attempt_plan",
-    "initialize_run",
+    "build_run_candidate",
     "publish_attempt",
+    "validate_run_destination",
 )

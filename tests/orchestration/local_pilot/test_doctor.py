@@ -292,7 +292,8 @@ def test_ready_doctor_is_read_only_and_guards_renv(
     )
 
     assert result.ready
-    assert result.run_id.startswith("run-")
+    assert result.request_path == request.resolve(strict=True)
+    assert not hasattr(result, "run_id")
     assert result.source_commit == "a" * 40
     assert not workspace.exists()
     assert environment_log == [

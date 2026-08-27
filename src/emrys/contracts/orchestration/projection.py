@@ -11,6 +11,10 @@ from typing import Any
 
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import (
+    EXECUTION_PROJECTION_SCHEMA_VERSION,
+    analysis_revision_from_execution_fields,
+)
 
 CONTRACT_PATHS = {
     "reference_contract": "contract/reference_contract.json",
@@ -66,12 +70,28 @@ def _template_contexts(
     selector: str,
     execution: Mapping[str, Any],
 ) -> tuple[dict[str, str], ...]:
-    reference_id = str(execution["reference"]["reference_id"])
+    successor = execution.get("schema_version") == EXECUTION_PROJECTION_SCHEMA_VERSION
+    analysis_revision = (
+        analysis_revision_from_execution_fields(execution) if successor else None
+    )
+    reference_id = (
+        analysis_revision.scope_id("reference")
+        if analysis_revision is not None
+        else str(execution["reference"]["reference_id"])
+    )
     reference_fasta_path = str(execution["reference"]["fasta"]["path"])
     reference_path = Path(reference_fasta_path)
     reference_dict_path = str(reference_path.with_name(f"{reference_path.stem}.dict"))
-    cohort_id = str(execution["analysis"]["cohort_id"])
-    analysis_id = str(execution["analysis"]["primary_analysis_id"])
+    cohort_id = (
+        analysis_revision.scope_id("cohort")
+        if analysis_revision is not None
+        else str(execution["analysis"]["cohort_id"])
+    )
+    analysis_id = (
+        analysis_revision.scope_id("analysis")
+        if analysis_revision is not None
+        else str(execution["analysis"]["primary_analysis_id"])
+    )
     shared = {
         "run_id": str(execution["run_id"]),
         "reference_id": reference_id,
@@ -96,7 +116,13 @@ def _template_contexts(
             {
                 **shared,
                 "partition_id": str(row["partition_id"]),
-                "scope_id": f"{cohort_id}__{row['partition_id']}",
+                "scope_id": (
+                    analysis_revision.scope_id(
+                        "cohort_partition", str(row["partition_id"])
+                    )
+                    if analysis_revision is not None
+                    else f"{cohort_id}__{row['partition_id']}"
+                ),
             }
             for row in execution["partitions"]["rows"]
         )

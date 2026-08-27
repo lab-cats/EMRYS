@@ -739,7 +739,8 @@ def validate_local_pilot_request(
 
     checkout = source_root() if root is None else root
     normalized = normalize_request(request, checkout / PROFILE_RELATIVE_PATH)
-    reference = normalized.execution_contract["reference"]
+    source = normalized.projection_source
+    reference = source["reference"]
     fasta_snapshot = reference["fasta"]
     gtf_snapshot = reference["gtf"]
     fasta = _require_snapshot(fasta_snapshot, "reference FASTA")
@@ -775,7 +776,7 @@ def validate_local_pilot_request(
                 f"{transcript.name} ends at {transcript.chrom_end}; "
                 f"{transcript.chrom} length is {lengths[transcript.chrom]}"
             )
-    for partition in normalized.execution_contract["partitions"]["rows"]:
+    for partition in source["partitions"]["rows"]:
         if partition["selector_type"] == "region":
             _validate_region_selector(str(partition["selector_value"]), lengths)
         else:
@@ -791,8 +792,8 @@ def validate_local_pilot_request(
             _require_snapshot(selector_snapshot, "partition regions file")
     _require_snapshot(fasta_snapshot, "reference FASTA")
     _require_snapshot(gtf_snapshot, "reference GTF")
-    samples = normalized.execution_contract["samples"]["rows"]
-    control = normalized.execution_contract["analysis"]["policy"]["control_condition"]
+    samples = source["samples"]["rows"]
+    control = source["analysis"]["policy"]["control_condition"]
     pair_count = len(
         {row["replicate"] for row in samples if row["condition"] == control}
     )
@@ -802,7 +803,7 @@ def validate_local_pilot_request(
         transcript_count=len(transcripts),
         sample_count=len(samples),
         pair_count=pair_count,
-        partition_count=len(normalized.execution_contract["partitions"]["rows"]),
+        partition_count=len(source["partitions"]["rows"]),
         gtf_warnings=tuple(warnings),
     )
 
@@ -823,11 +824,11 @@ def validate_from_args(arguments: argparse.Namespace) -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
     normalized = result.normalized
-    reference = normalized.execution_contract["reference"]
+    reference = normalized.projection_source["reference"]
     print("Local-pilot request validation: PASS")
     print(f"  Request: {normalized.request_path}")
     print(f"  Request SHA-256: {normalized.request_sha256}")
-    print(f"  Run ID: {normalized.run_id}")
+    print(f"  Analysis revision: {normalized.analysis_revision.analysis_revision_id}")
     print(f"  Samples / paired strata: {result.sample_count} / {result.pair_count}")
     print(f"  Partitions: {result.partition_count}")
     print(

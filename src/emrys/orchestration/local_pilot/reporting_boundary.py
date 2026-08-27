@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Literal, Protocol, cast
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import validate_execution_view
 from emrys.contracts.orchestration.projection import CONTRACT_PATHS
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
@@ -305,6 +306,24 @@ _admit_record = partial(
 )
 
 
+def _admit_execution_view(
+    path: Path,
+    root: Path,
+    profile: Mapping[str, Any],
+) -> tuple[dict[str, Any], bytes]:
+    data = _read_bound(path, root, "execution")
+    try:
+        record = orchestration_contracts.load_json_object_bytes(
+            data, f"execution {path}"
+        )
+        validate_execution_view(record, profile=profile)
+    except orchestration_contracts.ContractValidationError as exc:
+        raise ReportingBoundaryError(f"Invalid execution at {path}: {exc}") from exc
+    if data != orchestration_contracts.canonical_json_bytes(record):
+        raise ReportingBoundaryError(f"execution must use canonical JSON bytes: {path}")
+    return record, data
+
+
 def _load_canonical_object(
     path: Path,
     root: Path,
@@ -506,11 +525,10 @@ def _admit_identity(
             "Reporting identity must use the fixed execution/profile contract paths"
         )
     profile, profile_data = _admit_record(profile_path, root, "profile")
-    execution, execution_data = _admit_record(
+    execution, execution_data = _admit_execution_view(
         execution_path,
         root,
-        "execution",
-        profile=profile,
+        profile,
     )
     attempt, attempt_data = _admit_record(
         workflow_attempt_path,

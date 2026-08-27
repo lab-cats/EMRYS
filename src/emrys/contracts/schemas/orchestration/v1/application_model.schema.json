@@ -1,0 +1,329 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:emrys:schema:orchestration:application-model:v1",
+  "title": "EMRYS immutable application model records v1",
+  "$defs": {
+    "analysis_sample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sample_id",
+        "condition",
+        "replicate",
+        "strandedness",
+        "r1_fastq_sha256",
+        "r2_fastq_sha256"
+      ],
+      "properties": {
+        "sample_id": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+        "condition": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+        "replicate": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+        "strandedness": { "enum": ["forward", "reverse", "unstranded", "unknown"] },
+        "r1_fastq_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" },
+        "r2_fastq_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" }
+      }
+    },
+    "analysis_partition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["partition_id", "selector_type", "selector_value"],
+          "properties": {
+            "partition_id": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+            "selector_type": { "const": "region" },
+            "selector_value": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/non_empty_string" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["partition_id", "selector_type", "selector_file_sha256"],
+          "properties": {
+            "partition_id": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+            "selector_type": { "const": "regions_file" },
+            "selector_file_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" }
+          }
+        }
+      ]
+    },
+    "scientific_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "control_condition",
+        "treatment_condition",
+        "background_condition",
+        "rna_ref",
+        "rna_alt",
+        "min_sample_dp",
+        "mean_dp_threshold",
+        "fdr_threshold",
+        "common_or_threshold",
+        "absolute_difference_threshold",
+        "background_max_fraction"
+      ],
+      "properties": {
+        "control_condition": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+        "treatment_condition": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+        "background_condition": {
+          "oneOf": [
+            { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+            { "type": "null" }
+          ]
+        },
+        "rna_ref": { "type": "string", "pattern": "^[ACGT]$" },
+        "rna_alt": { "type": "string", "pattern": "^[ACGT]$" },
+        "min_sample_dp": { "type": "integer", "minimum": 1 },
+        "mean_dp_threshold": { "type": "number", "minimum": 0 },
+        "fdr_threshold": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
+        "common_or_threshold": { "type": "number", "exclusiveMinimum": 1 },
+        "absolute_difference_threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+        "background_max_fraction": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 }
+      }
+    },
+    "analysis_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_domain", "samples", "partitions", "reference", "scientific_policy"],
+      "properties": {
+        "identity_domain": { "const": "emrys.analysis-revision-identity.v1" },
+        "samples": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/analysis_sample" }
+        },
+        "partitions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/analysis_partition" }
+        },
+        "reference": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fasta_sha256", "gtf_sha256"],
+          "properties": {
+            "fasta_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" },
+            "gtf_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" }
+          }
+        },
+        "scientific_policy": { "$ref": "#/$defs/scientific_policy" }
+      }
+    },
+    "analysis_revision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "identity", "analysis_revision_id"],
+      "properties": {
+        "schema_version": { "const": "emrys.analysis-revision.v1" },
+        "identity": { "$ref": "#/$defs/analysis_identity" },
+        "analysis_revision_id": { "type": "string", "pattern": "^analysis-[0-9a-f]{64}$" }
+      }
+    },
+    "owner_task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["machine_key", "step_id", "scope_type"],
+      "properties": {
+        "machine_key": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+        "step_id": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+        "scope_type": { "enum": ["reference", "sample", "cohort_partition", "cohort", "analysis"] }
+      }
+    },
+    "direct_edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["producer", "consumer", "artifact", "semantics"],
+      "properties": {
+        "producer": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+        "consumer": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+        "artifact": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/non_empty_string" },
+        "semantics": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/non_empty_string" }
+      }
+    },
+    "artifact_template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id_template", "step_id", "scope_type", "adapter", "source_path_template", "required"],
+      "properties": {
+        "artifact_id_template": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/non_empty_string" },
+        "step_id": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+        "scope_type": { "enum": ["reference", "sample", "cohort_partition", "cohort", "analysis"] },
+        "adapter": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+        "source_path_template": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/non_empty_string" },
+        "required": { "type": "boolean" }
+      }
+    },
+    "functional_specification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner_tasks", "direct_edges", "required_owner_keys", "evidence_owner_keys", "artifact_templates"],
+      "properties": {
+        "owner_tasks": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/owner_task" } },
+        "direct_edges": { "type": "array", "items": { "$ref": "#/$defs/direct_edge" } },
+        "required_owner_keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" }
+        },
+        "evidence_owner_keys": {
+          "type": "array",
+          "items": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" }
+        },
+        "artifact_templates": { "type": "array", "items": { "$ref": "#/$defs/artifact_template" } }
+      }
+    },
+    "tool_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "logical_name", "content_sha256"],
+      "properties": {
+        "kind": { "enum": ["tool", "environment"] },
+        "logical_name": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+        "content_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" }
+      }
+    },
+    "positive_integer_map": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9._-]*$": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "stage_memory_map": {
+      "type": "object",
+      "patternProperties": {
+        "^[A-Za-z0-9][A-Za-z0-9._-]*$": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "const": "workflow" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "computational_resources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflow_cores", "workflow_memory_mb", "stage_concurrency", "step_threads", "stage_memory_mb"],
+      "properties": {
+        "workflow_cores": { "type": "integer", "minimum": 1 },
+        "workflow_memory_mb": {
+          "oneOf": [
+            { "type": "integer", "minimum": 1 },
+            { "const": "allocation" }
+          ]
+        },
+        "stage_concurrency": { "$ref": "#/$defs/positive_integer_map" },
+        "step_threads": { "$ref": "#/$defs/positive_integer_map" },
+        "stage_memory_mb": { "$ref": "#/$defs/stage_memory_map" }
+      }
+    },
+    "execution_plan_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identity_domain",
+        "functional_specification",
+        "scientific_stopping_owner_keys",
+        "implementation_content_sha256",
+        "toolchain",
+        "backend",
+        "star_index",
+        "computational_resources"
+      ],
+      "properties": {
+        "identity_domain": { "const": "emrys.execution-plan-identity.v1" },
+        "functional_specification": { "$ref": "#/$defs/functional_specification" },
+        "scientific_stopping_owner_keys": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" }
+        },
+        "implementation_content_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" },
+        "toolchain": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/tool_identity" } },
+        "backend": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["backend", "engine", "semantics_sha256"],
+          "properties": {
+            "backend": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+            "engine": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/safe_id" },
+            "semantics_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" }
+          }
+        },
+        "star_index": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sjdb_overhang", "genome_sa_index_nbases"],
+          "properties": {
+            "sjdb_overhang": { "type": "integer", "minimum": 1 },
+            "genome_sa_index_nbases": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "computational_resources": { "$ref": "#/$defs/computational_resources" }
+      }
+    },
+    "execution_plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "identity", "execution_plan_id"],
+      "properties": {
+        "schema_version": { "const": "emrys.execution-plan.v1" },
+        "identity": { "$ref": "#/$defs/execution_plan_identity" },
+        "execution_plan_id": { "type": "string", "pattern": "^plan-[0-9a-f]{64}$" }
+      }
+    },
+    "run_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "binding", "run_id"],
+      "properties": {
+        "schema_version": { "const": "emrys.run-binding.v1" },
+        "binding": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["identity_domain", "analysis_revision_sha256", "execution_plan_sha256"],
+          "properties": {
+            "identity_domain": { "const": "emrys.run-identity.v1" },
+            "analysis_revision_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" },
+            "execution_plan_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" }
+          }
+        },
+        "run_id": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/run_id" }
+      }
+    },
+    "execution_projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "run_id",
+        "run_binding_sha256",
+        "profile",
+        "samples",
+        "partitions",
+        "reference",
+        "analysis",
+        "reporting_projection"
+      ],
+      "properties": {
+        "schema_version": { "const": "emrys.execution-projection.v1" },
+        "run_id": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/run_id" },
+        "run_binding_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" },
+        "profile": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/profile_identity" },
+        "samples": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sample_set" },
+        "partitions": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/partition_set" },
+        "reference": { "$ref": "urn:emrys:schema:orchestration:reference:v1" },
+        "analysis": { "$ref": "urn:emrys:schema:orchestration:execution:v1#/$defs/analysis" },
+        "reporting_projection": { "$ref": "urn:emrys:schema:orchestration:execution:v1#/properties/reporting_projection" }
+      }
+    }
+  },
+  "oneOf": [
+    { "$ref": "#/$defs/analysis_revision" },
+    { "$ref": "#/$defs/execution_plan" },
+    { "$ref": "#/$defs/run_binding" },
+    { "$ref": "#/$defs/execution_projection" }
+  ]
+}

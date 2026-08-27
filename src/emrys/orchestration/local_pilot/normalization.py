@@ -16,6 +16,13 @@ from typing import Any
 import yaml
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import (
+    AnalysisRevision,
+    RunBinding,
+    analysis_revision_from_execution_fields,
+    build_execution_projection,
+    validate_execution_view,
+)
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import step08, step09
 
@@ -54,19 +61,66 @@ class _ClosedSafeLoader(yaml.SafeLoader):
 
 @dataclass(frozen=True, slots=True)
 class NormalizationBundle:
-    """Read-only normalization result plus non-identity admission evidence."""
+    """Admitted scientific inputs plus non-identity source provenance."""
 
     request_path: Path
     request_sha256: str
     request_bytes: bytes
     request: dict[str, Any]
     profile: dict[str, Any]
-    execution_contract: dict[str, Any]
-    normalized_bytes: bytes
+    analysis_revision: AnalysisRevision
+    projection_source_bytes: bytes
 
     @property
-    def run_id(self) -> str:
-        return str(self.execution_contract["run_id"])
+    def projection_source(self) -> dict[str, Any]:
+        """Return a fresh construction view; it is never Run authority."""
+
+        return orchestration_contracts.load_json_object_bytes(
+            self.projection_source_bytes,
+            "normalized execution-projection source",
+        )
+
+    def execution_projection(self, run: RunBinding) -> dict[str, Any]:
+        """Derive the temporary backend view from one already-bound Run."""
+
+        fields = self.projection_source
+        provisional = {
+            "schema_version": "emrys.execution-projection.v1",
+            "run_id": run.run_id,
+            "run_binding_sha256": run.record_sha256,
+            **fields,
+            "reporting_projection": {},
+        }
+        reporting = build_reporting_bundle(provisional, self.profile)
+        fields["reporting_projection"] = reporting.projection_references
+        projected = build_execution_projection(
+            run=run,
+            current_execution_fields=fields,
+        )
+        validate_execution_view(projected, profile=self.profile)
+        return projected
+
+    def historical_execution_v1(self) -> tuple[dict[str, Any], bytes]:
+        """Reconstruct only an existing v1 Run for historical resume admission."""
+
+        source = self.projection_source
+        envelope = {
+            "schema_version": "emrys.identity-envelope.v1",
+            **{key: source[key] for key in ("profile", "samples", "partitions", "reference", "analysis")},
+        }
+        digest = orchestration_contracts.canonical_sha256(envelope)
+        execution = {
+            "schema_version": "emrys.execution.v1",
+            **{key: source[key] for key in ("profile", "samples", "partitions", "reference", "analysis")},
+            "identity_envelope": envelope,
+            "identity_envelope_sha256": digest,
+            "run_id": f"run-{digest}",
+            "reporting_projection": {},
+        }
+        reporting = build_reporting_bundle(execution, self.profile)
+        execution["reporting_projection"] = reporting.projection_references
+        orchestration_contracts.validate_record("execution", execution, profile=self.profile)
+        return execution, orchestration_contracts.canonical_json_bytes(execution)
 
 
 def _schema_validate(name: str, value: Any) -> None:
@@ -533,41 +587,24 @@ def normalize_request(
         "policy": policy,
         "policy_sha256": orchestration_contracts.canonical_sha256(policy),
     }
-    envelope = {
-        "schema_version": "emrys.identity-envelope.v1",
+    projection_source = {
         "profile": profile_identity,
         "samples": samples,
         "partitions": partitions,
         "reference": reference,
         "analysis": analysis,
     }
-    digest = orchestration_contracts.canonical_sha256(envelope)
-    execution: dict[str, Any] = {
-        "schema_version": "emrys.execution.v1",
-        "profile": profile_identity,
-        "samples": samples,
-        "partitions": partitions,
-        "reference": reference,
-        "analysis": analysis,
-        "identity_envelope": envelope,
-        "identity_envelope_sha256": digest,
-        "run_id": f"run-{digest}",
-        "reporting_projection": {},
-    }
-    reporting = build_reporting_bundle(execution, profile_record)
-    execution["reporting_projection"] = reporting.projection_references
-    orchestration_contracts.validate_record(
-        "execution", execution, profile=profile_record
-    )
-    normalized_bytes = orchestration_contracts.canonical_json_bytes(execution)
+    analysis_revision = analysis_revision_from_execution_fields(projection_source)
     return NormalizationBundle(
         request_path=resolved_request,
         request_sha256=hashlib.sha256(request_data).hexdigest(),
         request_bytes=request_data,
         request=request,
         profile=profile_record,
-        execution_contract=execution,
-        normalized_bytes=normalized_bytes,
+        analysis_revision=analysis_revision,
+        projection_source_bytes=orchestration_contracts.canonical_json_bytes(
+            projection_source
+        ),
     )
 
 

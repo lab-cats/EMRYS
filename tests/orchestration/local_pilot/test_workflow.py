@@ -428,6 +428,33 @@ def test_real_snakemake_dry_run_has_exact_owner_job_counts(
     assert not any(source in evidence for source, _ in owner_edges), output
 
 
+def test_backend_projection_accepts_successor_resource_policy_record(
+    built: workflow_fixture.WorkflowFixture,
+) -> None:
+    config = orchestration_contracts.load_json_object(built.config_path)
+    resource_policy = config["resource_policy"]
+    effective = resource_policy["effective"]
+    symbolic = {
+        **effective,
+        "workflow_memory_mb": "allocation",
+        "stage_memory_mb": {
+            step_id: "workflow" for step_id in effective["stage_memory_mb"]
+        },
+        "reporting_memory_mb": {
+            kind: "workflow" for kind in effective["reporting_memory_mb"]
+        },
+    }
+    resource_policy["symbolic"] = symbolic
+    resource_policy["symbolic_sha256"] = (
+        orchestration_contracts.canonical_sha256(symbolic)
+    )
+    _publish_config(built, config)
+
+    nodes, _, output = _dag(built, "reference_slice")
+
+    assert sum(nodes[node] in EXECUTABLE_RULES for node in nodes) == 3, output
+
+
 def test_local_pipeline_dag_adds_only_the_three_reporting_transactions(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:

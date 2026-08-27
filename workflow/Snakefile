@@ -9,6 +9,7 @@ from pathlib import Path
 
 import emrys
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import validate_execution_view
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout,
@@ -85,8 +86,12 @@ STAGE_IDS = {
 REPEATABLE_STAGE_IDS = {"01", "02", "02b", "03", "04", "05", "06", "07"}
 THREAD_CAPABLE_STEP_IDS = {"00a", "01", "02", "06", "08"}
 RESOURCE_POLICY = config.get("resource_policy")
-if not isinstance(RESOURCE_POLICY, dict) or set(RESOURCE_POLICY) != {
+RESOURCE_POLICY_KEYS = {
     "effective", "effective_sha256", "allocation", "sources",
+}
+if not isinstance(RESOURCE_POLICY, dict) or frozenset(RESOURCE_POLICY) not in {
+    frozenset(RESOURCE_POLICY_KEYS),
+    frozenset(RESOURCE_POLICY_KEYS | {"symbolic", "symbolic_sha256"}),
 }:
     raise WorkflowError("Workflow config resource_policy is malformed")
 EFFECTIVE_RESOURCES = RESOURCE_POLICY.get("effective")
@@ -166,7 +171,7 @@ WORKFLOW_ATTEMPT_PATH = (
     RUN_ROOT / "attempts" / WORKFLOW_ATTEMPT_ID / "attempt.json"
 )
 EXECUTION = orchestration_contracts.load_json_object(EXECUTION_PATH)
-orchestration_contracts.validate_record("execution", EXECUTION, profile=PROFILE)
+validate_execution_view(EXECUTION, profile=PROFILE)
 PROFILE_SNAPSHOT = orchestration_contracts.load_json_object(PROFILE_SNAPSHOT_PATH)
 if PROFILE_SNAPSHOT != PROFILE:
     raise WorkflowError("Run profile snapshot does not match the reviewed source profile")

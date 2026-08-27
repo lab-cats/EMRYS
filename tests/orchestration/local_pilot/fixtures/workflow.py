@@ -965,13 +965,13 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
     request_path = build_intake(intake_root)
     profile = orchestration_contracts.load_json_object(PROFILE_PATH)
     normalized = normalize_request(request_path, profile)
-    execution = normalized.execution_contract
+    execution, execution_bytes = normalized.historical_execution_v1()
 
     run_root = (root / "run").resolve()
     contract_root = run_root / "contract"
     contract_root.mkdir(parents=True)
     execution_path = contract_root / "normalized.json"
-    execution_path.write_bytes(normalized.normalized_bytes)
+    execution_path.write_bytes(execution_bytes)
     profile_snapshot = contract_root / "profile.json"
     profile_snapshot.write_bytes(orchestration_contracts.canonical_json_bytes(profile))
     reporting = build_reporting_bundle(execution, profile)
@@ -1005,9 +1005,7 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
     attempt = {
         "schema_version": "emrys.workflow-attempt.v1",
         "run_id": execution["run_id"],
-        "execution_contract_sha256": hashlib.sha256(
-            normalized.normalized_bytes
-        ).hexdigest(),
+        "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
         "profile_sha256": hashlib.sha256(profile_snapshot.read_bytes()).hexdigest(),
         "workflow_attempt_id": workflow_attempt_id,
         "supersedes_workflow_attempt_id": None,

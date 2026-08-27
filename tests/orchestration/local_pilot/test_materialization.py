@@ -33,14 +33,19 @@ from emrys.orchestration.local_pilot import (
 )
 from emrys.orchestration.local_pilot.materialization import (
     MaterializationError,
+    admit_run,
     build_attempt_plan,
-    initialize_run,
+    build_run_candidate,
     publish_attempt,
 )
 from emrys.orchestration.local_pilot.normalization import normalize_request
 from emrys.orchestration.local_pilot.resource_policy import (
     AllocationCapacity,
     load_resource_plan,
+    resolve_resource_policy,
+)
+from emrys.orchestration.local_pilot.run_implementation import (
+    implementation_identity,
 )
 from tests.orchestration.local_pilot.fixture import build
 from tests.orchestration.local_pilot.fixtures.b5_doubles import with_owner_doubles
@@ -198,7 +203,6 @@ def _readiness(
     bindings = (*doctor.runtime_file_bindings(runtime_inspection), storage_binding)
     readiness = doctor.DoctorResult(
         request_path=request,
-        run_id=normalized.run_id,
         workspace=workspace,
         source_root=source_root,
         source_commit=source_commit,
@@ -210,6 +214,10 @@ def _readiness(
         remediations=(),
     )
     return readiness, normalized, resources, request, workspace
+
+
+def _run_candidate(readiness, normalized, resources):
+    return build_run_candidate(normalized, readiness, resources.declaration)
 
 
 def _plan(
@@ -226,7 +234,7 @@ def _plan(
         step_threads=step_threads,
     )
     return build_attempt_plan(
-        normalized,
+        _run_candidate(readiness, normalized, resources),
         readiness,
         workspace,
         resources=resources,
@@ -352,6 +360,158 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     )
 
 
+def test_run_identity_excludes_reporting_and_allocation_but_binds_resources_and_tools(
+    tmp_path: Path,
+) -> None:
+    readiness, normalized, resources, _request, _workspace = _readiness(tmp_path)
+    baseline = _run_candidate(readiness, normalized, resources)
+
+    reallocated = resolve_resource_policy(
+        resources.policy,
+        AllocationCapacity(cores=2, memory_mb=2048, source="different allocation"),
+    )
+    reporting_policy = replace(
+        resources.policy,
+        reporting_memory_mb=tuple(
+            (kind, 512) for kind, _memory in resources.policy.reporting_memory_mb
+        ),
+    )
+    reporting_changed = resolve_resource_policy(
+        reporting_policy,
+        resources.allocation,
+    )
+    assert _run_candidate(readiness, normalized, reallocated).run_id == baseline.run_id
+    assert (
+        _run_candidate(readiness, normalized, reporting_changed).run_id
+        == baseline.run_id
+    )
+
+    computational_change = replace(resources.declaration, workflow_cores=2)
+    assert (
+        build_run_candidate(normalized, readiness, computational_change).run_id
+        != baseline.run_id
+    )
+    tool_changed = replace(
+        readiness,
+        bindings=tuple(
+            replace(binding, sha256="c" * 64)
+            if binding.check_id == "star"
+            else binding
+            for binding in readiness.bindings
+        ),
+    )
+    assert (
+        build_run_candidate(normalized, tool_changed, resources.declaration).run_id
+        != baseline.run_id
+    )
+
+
+def test_run_identity_excludes_attempt_reporting_and_backend_adapter_code(
+    tmp_path: Path,
+) -> None:
+    checkout, commit = _clean_checkout(tmp_path)
+    readiness, normalized, resources, _request, _workspace = _readiness(
+        tmp_path / "case",
+        source_root=checkout,
+        source_commit=commit,
+    )
+    baseline = _run_candidate(readiness, normalized, resources)
+
+    report_renderer = checkout / "src/emrys/reporting/report.py"
+    report_renderer.write_bytes(report_renderer.read_bytes() + b"\n# reporting-only change\n")
+    assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
+
+    resource_policy = checkout / "src/emrys/orchestration/local_pilot/resource_policy.py"
+    resource_policy.write_bytes(resource_policy.read_bytes() + b"\n# policy change\n")
+    assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
+
+    snakefile = checkout / "workflow/Snakefile"
+    snakefile.write_bytes(snakefile.read_bytes() + b"\n# adapter change\n")
+    assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
+
+    cli_adapter = checkout / "src/emrys/__main__.py"
+    cli_adapter.write_bytes(cli_adapter.read_bytes() + b"\n# CLI adapter change\n")
+    assert _run_candidate(readiness, normalized, resources).run_id == baseline.run_id
+
+    materializer = checkout / "src/emrys/orchestration/local_pilot/materialization.py"
+    materializer.write_bytes(materializer.read_bytes() + b"\n# dispatch change\n")
+    assert _run_candidate(readiness, normalized, resources).run_id != baseline.run_id
+
+
+def test_implementation_identity_closes_direct_scientific_dependencies(
+    tmp_path: Path,
+) -> None:
+    checkout, _ = _clean_checkout(tmp_path)
+    baseline = implementation_identity(checkout)
+    dependencies = (
+        ".Rprofile",
+        "src/emrys/libraries/argument_parsing.sh",
+        "src/emrys/libraries/executable_resolution.sh",
+        "src/emrys/libraries/file_checks.sh",
+        "src/emrys/libraries/gatk_invocation.sh",
+        "src/emrys/libraries/input_contract.R",
+        "src/emrys/libraries/orientation.sh",
+        "src/emrys/libraries/signal_traps.sh",
+        "src/emrys/analyses/paired_cmh_candidate_ranking/"
+        "step_09_cmh_awk_validation_functions.awk",
+        "src/emrys/analyses/scientific_context_projection/resources/"
+        "pum_motifs_v1.tsv",
+    )
+
+    for relative in dependencies:
+        path = checkout / relative
+        original = path.read_bytes()
+        path.write_bytes(original + b"\n# identity sensitivity\n")
+        assert implementation_identity(checkout) != baseline, relative
+        path.write_bytes(original)
+
+    assert implementation_identity(checkout) == baseline
+
+
+def test_lifecycle_refuses_dispatch_implementation_drift_before_attempt(
+    tmp_path: Path,
+) -> None:
+    checkout, commit = _clean_checkout(tmp_path)
+    readiness, normalized, resources, _request, workspace = _readiness(
+        tmp_path / "case",
+        source_root=checkout,
+        source_commit=commit,
+    )
+    plan = build_attempt_plan(
+        _run_candidate(readiness, normalized, resources),
+        readiness,
+        workspace,
+        resources=resources,
+        operation="execute",
+        now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
+        token="1" * 32,
+        host="test-host",
+        process_id=123,
+    )
+    base = lifecycle.default_lifecycle_ops()
+    ops = replace(
+        base,
+        run_workflow=lambda _argv, _cwd: pytest.fail("workflow must not start"),
+        host_name=lambda: "test-host",
+        process_id=lambda: 123,
+        process_is_alive=lambda _pid: True,
+        admit_storage_context=lambda _attempt, _execution: None,
+        admit_runtime_context=lambda _attempt, _request, _storage: None,
+    )
+    admit_run(plan, ops=ops)
+    materializer = checkout / "src/emrys/orchestration/local_pilot/materialization.py"
+    materializer.write_bytes(materializer.read_bytes() + b"\n# dispatch drift\n")
+
+    with pytest.raises(lifecycle.LifecycleError, match="implementation content"):
+        lifecycle.run_materialized_attempt(
+            plan.preparation,
+            lambda: publish_attempt(plan, ops=ops),
+            ops=ops,
+        )
+
+    assert not (plan.run_root / "attempts" / plan.workflow_attempt_id).exists()
+
+
 @pytest.mark.parametrize("storage_binding_count", (0, 2))
 def test_plan_requires_exactly_one_storage_qualification_binding(
     tmp_path: Path,
@@ -375,10 +535,10 @@ def test_plan_requires_exactly_one_storage_qualification_binding(
 
     with pytest.raises(
         MaterializationError,
-        match="exactly one storage qualification binding",
+        match="Run-bindable",
     ):
         build_attempt_plan(
-            normalized,
+            _run_candidate(malformed, normalized, resources),
             malformed,
             workspace,
             resources=resources,
@@ -402,7 +562,7 @@ def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> Non
         "emrys.stage.preprocess_and_annotate_cohort_candidates.v1",
     }
 
-    assert dict(plan.step_threads) == allocation
+    assert dict(plan.resources.step_threads) == allocation
     owner_steps = {
         "emrys.stage.construct_STAR_index.v1": "00a",
         "emrys.stage.align_RNA_reads_with_STAR.v1": "01",
@@ -433,10 +593,10 @@ def test_plan_records_stage_specific_concurrency(tmp_path: Path) -> None:
         next(item.data for item in plan.attempt_files if item.path == plan.config_path)
     )
 
-    assert plan.workflow_cores == 4
-    assert dict(plan.stage_concurrency)["01"] == 2
-    assert dict(plan.stage_concurrency)["02"] == 1
-    assert dict(plan.stage_concurrency)["06"] == 2
+    assert plan.resources.workflow_cores == 4
+    assert dict(plan.resources.stage_concurrency)["01"] == 2
+    assert dict(plan.resources.stage_concurrency)["02"] == 1
+    assert dict(plan.resources.stage_concurrency)["06"] == 2
     assert plan.attempt_record["cores"] == 4
     assert argv[argv.index("--cores") + 1] == "4"
     resource_args = argv[argv.index("--resources") + 1 : argv.index("--nocolor")]
@@ -532,6 +692,146 @@ def test_every_projected_owner_command_is_accepted_by_public_help(
         assert result.returncode == 0, " ".join(command) + "\n" + result.stderr
 
 
+def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
+    tmp_path: Path,
+) -> None:
+    plan = _plan(tmp_path)
+    base = lifecycle.default_lifecycle_ops()
+    published: list[Path] = []
+
+    def observe_publication(path: Path, data: bytes) -> None:
+        base.publish_bytes(path, data)
+        published.append(path)
+
+    admit_run(plan, ops=replace(base, publish_bytes=observe_publication))
+
+    assert [path.name for path in published] == [
+        "analysis.json",
+        "execution-plan.json",
+        "run.json",
+    ]
+    assert not (plan.run_root / "attempts" / plan.workflow_attempt_id).exists()
+    observed = inspection.inspect_run(plan.run_root)
+    assert observed.state == "prepared"
+    assert observed.authority_format == "successor"
+    assert observed.run_id == plan.run.run_id
+    assert observed.latest_attempt is None
+    with pytest.raises(MaterializationError, match="inspect or resume"):
+        materialization.validate_run_destination(plan.run_root)
+    materialization.validate_run_destination(plan.run_root, candidate=plan.run)
+
+
+def test_attempt_refuses_incomplete_run_authority_before_mutex_or_materialization(
+    tmp_path: Path,
+) -> None:
+    plan = _plan(tmp_path)
+    ops = lifecycle.default_lifecycle_ops()
+    admit_run(plan, ops=ops)
+    (plan.run_root / "contract" / "run.json").unlink()
+    def unexpected_materialization() -> lifecycle.LifecycleRequest:
+        raise AssertionError("materialization must remain unreachable")
+
+    with pytest.raises(lifecycle.LifecycleError, match="successor Run"):
+        lifecycle.run_materialized_attempt(
+            plan.preparation,
+            unexpected_materialization,
+            ops=ops,
+        )
+
+    assert not (plan.run_root / "locks" / "run.lock").exists()
+
+
+def test_pre_binding_failure_quarantines_only_uncommitted_run_residue(
+    tmp_path: Path,
+) -> None:
+    plan = _plan(tmp_path)
+    base = lifecycle.default_lifecycle_ops()
+
+    def fail_on_plan(path: Path, data: bytes) -> None:
+        if path.name == "execution-plan.json":
+            raise OSError("injected execution-plan publication failure")
+        base.publish_bytes(path, data)
+
+    with pytest.raises(OSError, match="execution-plan publication failure"):
+        admit_run(plan, ops=replace(base, publish_bytes=fail_on_plan))
+
+    assert not plan.run_root.exists()
+    quarantines = tuple(
+        plan.run_root.parent.glob(f"{plan.run.run_id}.uncommitted-*")
+    )
+    assert len(quarantines) == 1
+    assert (quarantines[0] / "contract" / "analysis.json").is_file()
+    assert not (quarantines[0] / "contract" / "run.json").exists()
+
+
+def test_post_binding_interruption_completes_the_exact_pristine_run(
+    tmp_path: Path,
+) -> None:
+    plan = _plan(tmp_path)
+    base = lifecycle.default_lifecycle_ops()
+
+    def interrupt_after_binding(path: Path, data: bytes) -> None:
+        base.publish_bytes(path, data)
+        if path.name == "run.json":
+            raise OSError("injected interruption after Run binding")
+
+    with pytest.raises(OSError, match="after Run binding"):
+        admit_run(plan, ops=replace(base, publish_bytes=interrupt_after_binding))
+
+    authority_paths = tuple(
+        plan.run_root / "contract" / name
+        for name in ("analysis.json", "execution-plan.json", "run.json")
+    )
+    before = tuple((path.read_bytes(), path.stat().st_mtime_ns) for path in authority_paths)
+
+    admit_run(plan, ops=base)
+
+    after = tuple((path.read_bytes(), path.stat().st_mtime_ns) for path in authority_paths)
+    assert after == before
+    assert inspection.inspect_run(plan.run_root).state == "prepared"
+    assert all((plan.run_root / name).is_dir() for name in ("attempts", "locks", "state"))
+    control_ops = control.ControlOps(
+        inspect_readiness=lambda _request, _workspace, _runtime: plan.readiness,
+        normalize=lambda _request, _profile: plan.run.normalized,
+        inspect_run=inspection.inspect_run,
+        execute_plan=lambda _plan: pytest.fail("planning must not execute"),
+        transform_plan=lambda value: value,
+        now=lambda: datetime(2026, 8, 12, 20, 1, tzinfo=UTC),
+        token=lambda: "2" * 32,
+        observe_allocation=lambda: plan.resources.allocation,
+    )
+    replanned = control.plan_run(
+        plan.run.normalized.request_path,
+        plan.workspace,
+        plan.readiness.runtime_profile,
+        ops=control_ops,
+    )
+    assert replanned.run.run_binding.canonical_bytes == plan.run.run_binding.canonical_bytes
+
+
+def test_post_binding_failure_retains_truthful_run_authority(
+    tmp_path: Path,
+) -> None:
+    plan = _plan(tmp_path)
+    base = lifecycle.default_lifecycle_ops()
+
+    def obstruct_post_binding_namespace(path: Path, data: bytes) -> None:
+        base.publish_bytes(path, data)
+        if path.name == "run.json":
+            (plan.run_root / "attempts").write_bytes(b"obstruction\n")
+
+    with pytest.raises(MaterializationError, match="Run namespace is not a real"):
+        admit_run(plan, ops=replace(base, publish_bytes=obstruct_post_binding_namespace))
+
+    authority = inspection.admit_successor_run(plan.run_root)
+    assert authority is not None
+    assert authority.run_id == plan.run.run_id
+    assert tuple(
+        plan.run_root.parent.glob(f"{plan.run.run_id}.uncommitted-*")
+    ) == ()
+    assert inspection.inspect_run(plan.run_root).state == "blocked"
+
+
 def test_locked_publication_terminalizes_failure_and_refuses_repeat(
     tmp_path: Path,
 ) -> None:
@@ -548,7 +848,7 @@ def test_locked_publication_terminalizes_failure_and_refuses_repeat(
         admit_runtime_context=lambda _attempt, _request, _storage: None,
     )
 
-    initialize_run(plan, ops=ops)
+    admit_run(plan, ops=ops)
     outcome = lifecycle.run_materialized_attempt(
         plan.preparation,
         lambda: publish_attempt(plan, ops=ops),
@@ -560,8 +860,150 @@ def test_locked_publication_terminalizes_failure_and_refuses_repeat(
     assert outcome.released_lock_path.is_file()
     assert not (plan.run_root / "locks/run.lock").exists()
     assert len(list((plan.run_root / "contract/dispatch").rglob("*.json"))) == 35
-    with pytest.raises(MaterializationError, match="already exists"):
-        initialize_run(plan, ops=ops)
+    with pytest.raises(MaterializationError, match="Committed Run"):
+        admit_run(plan, ops=ops)
+
+
+def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
+    tmp_path: Path,
+) -> None:
+    first_source = tmp_path / "first-source"
+    second_source = tmp_path / "second-source"
+    first_source.mkdir()
+    second_source.mkdir()
+    checkout_one, commit_one = _clean_checkout(first_source)
+    checkout_two, commit_two = _clean_checkout(second_source)
+    readiness_one, normalized, resources, _request, workspace = _readiness(
+        tmp_path / "first-case",
+        source_root=checkout_one,
+        source_commit=commit_one,
+    )
+    readiness_two, _unused, _unused_resources, _request_two, _workspace_two = (
+        _readiness(
+            tmp_path / "second-case",
+            source_root=checkout_two,
+            source_commit=commit_two,
+        )
+    )
+    runtime_bytes = b"different admitted runtime profile\n"
+    readiness_two.runtime_profile.write_bytes(runtime_bytes)
+    runtime_sha256 = hashlib.sha256(runtime_bytes).hexdigest()
+    readiness_two = replace(
+        readiness_two,
+        request_path=readiness_one.request_path,
+        workspace=workspace,
+        runtime_profile_sha256=runtime_sha256,
+        inspection=replace(
+            readiness_two.inspection,
+            profile_sha256=runtime_sha256,
+            profile_bytes=runtime_bytes,
+        ),
+    )
+    symbolic_policy = replace(
+        resources.policy,
+        declaration=replace(
+            resources.declaration,
+            workflow_memory_mb="allocation",
+        ),
+        reporting_memory_mb=tuple(
+            (kind, "workflow")
+            for kind, _memory in resources.policy.reporting_memory_mb
+        ),
+    )
+    first_resources = resolve_resource_policy(
+        symbolic_policy,
+        AllocationCapacity(
+            cores=1,
+            memory_mb=32_768,
+            source="first test allocation",
+        ),
+    )
+
+    run_one = _run_candidate(readiness_one, normalized, first_resources)
+    run_two = _run_candidate(readiness_two, normalized, first_resources)
+    assert run_two.run_id == run_one.run_id
+
+    first = build_attempt_plan(
+        run_one,
+        readiness_one,
+        workspace,
+        resources=first_resources,
+        operation="execute",
+        now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
+        token="1" * 32,
+        host="test-host",
+        process_id=123,
+    )
+    base = lifecycle.default_lifecycle_ops()
+    first_ops = replace(
+        base,
+        run_workflow=lambda _argv, _cwd: lifecycle.WorkflowResult(9, None),
+        now=lambda: datetime(2026, 8, 12, 20, 5, tzinfo=UTC),
+        host_name=lambda: "test-host",
+        process_id=lambda: 123,
+        process_is_alive=lambda _pid: True,
+        admit_storage_context=lambda _attempt, _execution: None,
+        admit_runtime_context=lambda _attempt, _request, _storage: None,
+    )
+    admit_run(first, ops=first_ops)
+    first_outcome = lifecycle.run_materialized_attempt(
+        first.preparation,
+        lambda: publish_attempt(first, ops=first_ops),
+        ops=first_ops,
+    )
+    assert first_outcome.receipt["status"] == "failed"
+
+    resume_ops = control.ControlOps(
+        inspect_readiness=lambda _request, _workspace, _runtime: readiness_two,
+        normalize=lambda _request, _profile: normalized,
+        inspect_run=inspection.inspect_run,
+        execute_plan=lambda _plan: pytest.fail("planning must not execute"),
+        transform_plan=lambda value: value,
+        now=lambda: datetime(2026, 8, 12, 20, 10, tzinfo=UTC),
+        token=lambda: "2" * 32,
+        observe_allocation=lambda: AllocationCapacity(
+            cores=1,
+            memory_mb=16_384,
+            source="second test allocation",
+        ),
+    )
+    second = control.plan_resume(
+        first.run_root,
+        readiness_two.runtime_profile,
+        ops=resume_ops,
+    )
+    second_ops = replace(
+        base,
+        run_workflow=lambda _argv, _cwd: lifecycle.WorkflowResult(9, None),
+        now=lambda: datetime(2026, 8, 12, 20, 15, tzinfo=UTC),
+        admit_storage_context=lambda _attempt, _execution: None,
+        admit_runtime_context=lambda _attempt, _request, _storage: None,
+    )
+    second_outcome = lifecycle.run_materialized_attempt(
+        second.preparation,
+        lambda: publish_attempt(second, ops=second_ops),
+        ops=second_ops,
+    )
+
+    assert second_outcome.receipt["status"] == "failed"
+    assert second.resources.workflow_memory_mb == 16_384
+    assert set(dict(second.resources.reporting_memory_mb).values()) == {16_384}
+    first_runtime = next(
+        item for item in first.attempt_record["required_tools"]
+        if item["name"] == "runtime_profile"
+    )
+    second_runtime = next(
+        item for item in second.attempt_record["required_tools"]
+        if item["name"] == "runtime_profile"
+    )
+    assert first.attempt_record["source_checkout"] != second.attempt_record[
+        "source_checkout"
+    ]
+    assert first_runtime["path"] != second_runtime["path"]
+    assert first_runtime["sha256"] != second_runtime["sha256"]
+    observed = inspection.inspect_run(second.run_root)
+    assert observed.state == "resume_available", observed.blockers
+    assert len(tuple((second.run_root / "attempts").iterdir())) == 2
 
 
 def test_attempt_publication_leaves_star_index_directory_for_owner(
@@ -601,7 +1043,7 @@ def test_attempt_publication_leaves_star_index_directory_for_owner(
         admit_runtime_context=lambda _attempt, _request, _storage: None,
     )
 
-    initialize_run(plan, ops=ops)
+    admit_run(plan, ops=ops)
     outcome = lifecycle.run_materialized_attempt(
         plan.preparation,
         lambda: publish_attempt(plan, ops=ops),
@@ -629,7 +1071,7 @@ def test_lock_precedes_attempt_publication_failure_and_retains_evidence(
         admit_storage_context=lambda _attempt, _execution: None,
         admit_runtime_context=lambda _attempt, _request, _storage: None,
     )
-    initialize_run(plan, ops=ops)
+    admit_run(plan, ops=ops)
 
     with pytest.raises(lifecycle.LifecycleError, match="materialize"):
         lifecycle.run_materialized_attempt(
@@ -652,7 +1094,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
 ) -> None:
     readiness, normalized, resources, _request, workspace = _readiness(tmp_path)
     initial = build_attempt_plan(
-        normalized,
+        _run_candidate(readiness, normalized, resources),
         readiness,
         workspace,
         resources=resources,
@@ -677,7 +1119,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
         common_ops,
         now=lambda: datetime(2026, 8, 12, 20, 5, tzinfo=UTC),
     )
-    initialize_run(initial, ops=initial_ops)
+    admit_run(initial, ops=initial_ops)
     first = lifecycle.run_materialized_attempt(
         initial.preparation,
         lambda: publish_attempt(initial, ops=initial_ops),
@@ -688,7 +1130,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
 
     def resume_plan(token: str, minute: int):
         return build_attempt_plan(
-            normalized,
+            initial.run,
             readiness,
             workspace,
             resources=resources,
@@ -868,7 +1310,8 @@ def test_public_help_routes() -> None:
 def _clean_checkout(tmp_path: Path) -> tuple[Path, str]:
     checkout = tmp_path / "clean-checkout"
     checkout.mkdir()
-    shutil.copy2(REPO_ROOT / "pyproject.toml", checkout)
+    for name in (".Rprofile", "pyproject.toml", "uv.lock", "renv.lock"):
+        shutil.copy2(REPO_ROOT / name, checkout)
     shutil.copytree(REPO_ROOT / "src", checkout / "src")
     shutil.copytree(REPO_ROOT / "workflow", checkout / "workflow")
     subprocess.run(["git", "init", "--quiet"], cwd=checkout, check=True)
@@ -931,7 +1374,7 @@ def _real_doubled_executor(plan, *, stop_after_target: str | None = None):
 
     ops = replace(default_ops, run_workflow=run_workflow)
     if plan.operation == "execute":
-        initialize_run(plan, ops=ops)
+        admit_run(plan, ops=ops)
     return lifecycle.run_materialized_attempt(
         plan.preparation,
         lambda: publish_attempt(plan, ops=ops),
@@ -975,11 +1418,12 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         allocated_cores=1,
         execute=True,
     )
+    run_id = _run_candidate(readiness, normalized, resources).run_id
 
     assert control.run_from_args(run_arguments, ops=first_ops) == 1
     failed_output = capsys.readouterr().out
     assert "Results:" not in failed_output
-    run_root = workspace / "runs" / normalized.run_id
+    run_root = workspace / "runs" / run_id
     failed = inspection.inspect_run(run_root)
     assert failed.state == "resume_available"
     assert failed.verified_report_locations == ()
@@ -1011,11 +1455,11 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     resume_arguments.execute = True
     assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 0
     resumed_output = capsys.readouterr().out
-    report_root = run_root / "products" / "report" / normalized.run_id
+    report_root = run_root / "products" / "report" / run_id
     expected_results = (
         "Results:\n"
-        f"  Scientific report: {report_root}/{normalized.run_id}.scientific_report.html\n"
-        f"  Evidence report: {report_root}/{normalized.run_id}.evidence_report.html\n"
+        f"  Scientific report: {report_root}/{run_id}.scientific_report.html\n"
+        f"  Evidence report: {report_root}/{run_id}.evidence_report.html\n"
     )
     assert expected_results in resumed_output
     completed = inspection.inspect_run(run_root)
@@ -1023,11 +1467,11 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert completed.verified_report_locations == (
         (
             "scientific-report-html",
-            report_root / f"{normalized.run_id}.scientific_report.html",
+            report_root / f"{run_id}.scientific_report.html",
         ),
         (
             "evidence-report-html",
-            report_root / f"{normalized.run_id}.evidence_report.html",
+            report_root / f"{run_id}.evidence_report.html",
         ),
     )
     after = _verified_snapshot(run_root)

@@ -24,14 +24,12 @@ def with_owner_doubles(
 ) -> AttemptPlan:
     """Return the same exact output plan with no-science test commands."""
 
-    reporting = build_reporting_bundle(
-        plan.normalized.execution_contract,
-        plan.normalized.profile,
-    )
+    execution = plan.run.execution_projection
+    reporting = build_reporting_bundle(execution, plan.run.normalized.profile)
     rows = tuple(dict(row) for row in reporting.artifact_inventory_rows)
     raw_payloads = workflow.artifact_payloads(
         rows,
-        plan.normalized.execution_contract,
+        execution,
         artifact_source_root=plan.run_root,
     )
     payloads: dict[Path, bytes] = {}
@@ -144,7 +142,7 @@ def with_owner_doubles(
     orchestration_contracts.validate_record("workflow-attempt", attempt)
     return replace(
         plan,
-        attempt_record=attempt,
+        attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
         attempt_files=tuple((*replacement_files, *manifest_files)),
     )
 

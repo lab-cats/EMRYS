@@ -327,6 +327,19 @@ def _harness_command(
     )
 
 
+def _planned_run(stdout: str, workspace: Path) -> tuple[str, Path]:
+    """Read the immutable Run selected by the public control-plane plan."""
+
+    run_ids = re.findall(r"^Run ID: (run-[0-9a-f]{64})$", stdout, re.MULTILINE)
+    run_roots = re.findall(r"^Run root: (.+)$", stdout, re.MULTILINE)
+    assert len(run_ids) == 1, stdout
+    assert len(run_roots) == 1, stdout
+    run_id = run_ids[0]
+    run_root = Path(run_roots[0])
+    assert run_root == workspace.resolve() / "runs" / run_id
+    return run_id, run_root
+
+
 def _tree_snapshot(root: Path) -> dict[Path, tuple[bytes, int]]:
     return {
         path.relative_to(root): (path.read_bytes(), path.stat().st_mtime_ns)
@@ -374,10 +387,17 @@ def _assert_complete_products(run_root: Path, run_id: str) -> None:
     execution = orchestration_contracts.load_json_object(
         run_root / "contract/normalized.json"
     )
+    assert execution["schema_version"] == "emrys.execution-projection.v1"
+    assert execution["run_id"] == run_id
     profile = orchestration_contracts.load_json_object(
         run_root / "contract/profile.json"
     )
     observed = inspection.inspect_run(run_root)
+    assert observed.authority_format == "successor"
+    assert observed.run_binding is not None
+    assert observed.run_binding.run_id == run_id
+    assert observed.analysis_revision is not None
+    assert observed.execution_plan is not None
     assert observed.local_pipeline_complete
     assert (
         len(list((run_root / "state/verified").glob("*/*.json")))
@@ -505,7 +525,6 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         request,
         REPO_ROOT / "workflow/contracts/local_cmh_v2.json",
     )
-    run_root = workspace / "runs" / normalized.run_id
     common = [
         "--request",
         str(request),
@@ -521,7 +540,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
 
     _qualify_storage(
         workspace,
-        Path(str(normalized.execution_contract["reference"]["fasta"]["path"])),
+        Path(str(normalized.projection_source["reference"]["fasta"]["path"])),
         environment=environment,
     )
 
@@ -538,6 +557,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert "Reporting transactions: 3" in dry_run.stdout
     assert "Dry-run complete; no workspace state was written." in dry_run.stdout
     assert not workspace.exists()
+    run_id, run_root = _planned_run(dry_run.stdout, workspace)
 
     failed_run = _harness_command(
         "failure",
@@ -547,6 +567,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert failed_run.returncode == 1, failed_run.stdout + failed_run.stderr
     assert "Attempt status: failed" in failed_run.stdout
     assert "Results:" not in failed_run.stdout
+    assert _planned_run(failed_run.stdout, workspace) == (run_id, run_root)
     assert run_root.is_dir()
 
     failed_receipts = sorted(run_root.glob("attempts/*/attempt-receipt.json"))
@@ -625,11 +646,11 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     )
     assert resumed.returncode == 0, resumed.stdout + resumed.stderr
     assert "Attempt status: succeeded" in resumed.stdout
-    report_root = run_root / "products" / "report" / normalized.run_id
+    report_root = run_root / "products" / "report" / run_id
     expected_results = (
         "Results:\n"
-        f"  Scientific report: {report_root}/{normalized.run_id}.scientific_report.html\n"
-        f"  Evidence report: {report_root}/{normalized.run_id}.evidence_report.html\n"
+        f"  Scientific report: {report_root}/{run_id}.scientific_report.html\n"
+        f"  Evidence report: {report_root}/{run_id}.evidence_report.html\n"
     )
     assert expected_results in resumed.stdout
     reused_after = _reusable_snapshot(run_root)
@@ -645,7 +666,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert "Local pipeline complete: yes" in completed_inspect.stdout
     assert expected_results in completed_inspect.stdout
 
-    _assert_complete_products(run_root, normalized.run_id)
+    _assert_complete_products(run_root, run_id)
 
     receipts = sorted(run_root.glob("attempts/*/attempt-receipt.json"))
     assert len(receipts) == 2
@@ -701,7 +722,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     _qualify_storage(
         clean_workspace,
         Path(
-            str(clean_normalized.execution_contract["reference"]["fasta"]["path"])
+            str(clean_normalized.projection_source["reference"]["fasta"]["path"])
         ),
         environment=environment,
     )
@@ -712,12 +733,12 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     )
     assert clean_run.returncode == 0, clean_run.stdout + clean_run.stderr
     assert "Attempt status: succeeded" in clean_run.stdout
-    clean_root = clean_workspace / "runs" / clean_normalized.run_id
-    clean_report_root = clean_root / "products" / "report" / clean_normalized.run_id
+    clean_run_id, clean_root = _planned_run(clean_run.stdout, clean_workspace)
+    clean_report_root = clean_root / "products" / "report" / clean_run_id
     clean_expected_results = (
         "Results:\n"
-        f"  Scientific report: {clean_report_root}/{clean_normalized.run_id}.scientific_report.html\n"
-        f"  Evidence report: {clean_report_root}/{clean_normalized.run_id}.evidence_report.html\n"
+        f"  Scientific report: {clean_report_root}/{clean_run_id}.scientific_report.html\n"
+        f"  Evidence report: {clean_report_root}/{clean_run_id}.evidence_report.html\n"
     )
     assert clean_expected_results in clean_run.stdout
     clean_inspect = _public_command(
@@ -728,7 +749,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert "State: local_pipeline_complete" in clean_inspect.stdout
     assert "Local pipeline complete: yes" in clean_inspect.stdout
     assert clean_expected_results in clean_inspect.stdout
-    _assert_complete_products(clean_root, clean_normalized.run_id)
+    _assert_complete_products(clean_root, clean_run_id)
     for path in clean_root.rglob("*"):
         if path.is_file() and not path.is_symlink():
             assert forbidden not in path.read_bytes(), path

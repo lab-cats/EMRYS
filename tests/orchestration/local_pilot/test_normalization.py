@@ -63,16 +63,17 @@ def test_local_pilot_starters_normalize_after_explicit_paths_are_populated(
     )
     assert normalized.profile["profile_id"] == "emrys.profile.local_cmh"
     assert normalized.profile["profile_version"] == "v2"
+    source = normalized.projection_source
     assert [
         (row["sample_id"], row["condition"], row["replicate"])
-        for row in normalized.execution_contract["samples"]["rows"]
+        for row in source["samples"]["rows"]
     ] == [
         ("sample_001", "control", "pair_01"),
         ("sample_002", "treatment", "pair_01"),
         ("sample_003", "control", "pair_02"),
         ("sample_004", "treatment", "pair_02"),
     ]
-    assert normalized.execution_contract["partitions"]["rows"] == [
+    assert source["partitions"]["rows"] == [
         {
             "partition_id": "primary",
             "selector_type": "region",
@@ -82,7 +83,7 @@ def test_local_pilot_starters_normalize_after_explicit_paths_are_populated(
     ]
 
 
-def test_normalization_is_deterministic_and_independent_of_cwd_and_label(
+def test_analysis_revision_is_deterministic_path_neutral_and_label_independent(
     tmp_path: Path,
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
@@ -96,8 +97,23 @@ def test_normalization_is_deterministic_and_independent_of_cwd_and_label(
     finally:
         os.chdir(previous)
 
-    assert first.run_id == second.run_id
-    assert first.normalized_bytes == second.normalized_bytes
+    relocated = normalize_request(
+        fixture.build(tmp_path / "relocated-request-root"),
+        fixture.profile(),
+    )
+    assert first.analysis_revision.analysis_revision_id == (
+        second.analysis_revision.analysis_revision_id
+    )
+    assert first.analysis_revision.canonical_bytes == (
+        second.analysis_revision.canonical_bytes
+    )
+    assert first.analysis_revision.analysis_revision_id == (
+        relocated.analysis_revision.analysis_revision_id
+    )
+    assert first.analysis_revision.canonical_bytes == (
+        relocated.analysis_revision.canonical_bytes
+    )
+    assert first.projection_source_bytes != relocated.projection_source_bytes
     original_request_hash = first.request_sha256
     request.write_text(
         request.read_text(encoding="utf-8")
@@ -107,15 +123,23 @@ def test_normalization_is_deterministic_and_independent_of_cwd_and_label(
     )
     relabeled = normalize_request(request, fixture.profile())
     assert relabeled.request_sha256 != original_request_hash
-    assert relabeled.run_id == first.run_id
-    assert relabeled.normalized_bytes == first.normalized_bytes
-    assert "label" not in first.normalized_bytes.decode("utf-8")
-    contracts.validate_record(
-        "execution", first.execution_contract, profile=fixture.profile()
+    assert relabeled.analysis_revision.analysis_revision_id == (
+        first.analysis_revision.analysis_revision_id
     )
+    assert relabeled.analysis_revision.canonical_bytes == (
+        first.analysis_revision.canonical_bytes
+    )
+    assert relabeled.projection_source_bytes == first.projection_source_bytes
+    assert "label" not in first.analysis_revision.canonical_bytes.decode("utf-8")
+    contracts.validate_record("application-model", first.analysis_revision.record)
+
+    historical, historical_bytes = first.historical_execution_v1()
+    contracts.validate_record("execution", historical, profile=fixture.profile())
+    assert historical_bytes == contracts.canonical_json_bytes(historical)
+    assert historical["run_id"] == (f"run-{historical['identity_envelope_sha256']}")
 
 
-def test_resource_config_is_attempt_level_and_does_not_change_run_identity(
+def test_resource_config_does_not_change_analysis_revision(
     tmp_path: Path,
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
@@ -132,19 +156,28 @@ def test_resource_config_is_attempt_level_and_does_not_change_run_identity(
     tuned = normalize_request(request, fixture.profile())
 
     assert tuned.request_sha256 == baseline.request_sha256
-    assert tuned.run_id == baseline.run_id
-    assert tuned.normalized_bytes == baseline.normalized_bytes
+    assert tuned.analysis_revision.analysis_revision_id == (
+        baseline.analysis_revision.analysis_revision_id
+    )
+    assert tuned.analysis_revision.canonical_bytes == (
+        baseline.analysis_revision.canonical_bytes
+    )
+    assert tuned.projection_source_bytes == baseline.projection_source_bytes
 
 
-def test_bound_input_change_creates_a_new_run(tmp_path: Path) -> None:
+def test_bound_input_change_creates_a_new_analysis_revision(tmp_path: Path) -> None:
     request = fixture.build(tmp_path / "request-root")
     before = normalize_request(request, fixture.profile())
     changed = request.parent / "reads" / "PUM1_2_R1.fastq"
     changed.write_text("@changed/1\nGGGG\n+\nIIII\n", encoding="utf-8")
     after = normalize_request(request, fixture.profile())
 
-    assert after.run_id != before.run_id
-    assert after.normalized_bytes != before.normalized_bytes
+    assert after.analysis_revision.analysis_revision_id != (
+        before.analysis_revision.analysis_revision_id
+    )
+    assert after.analysis_revision.canonical_bytes != (
+        before.analysis_revision.canonical_bytes
+    )
 
 
 def test_large_input_identities_are_streamed_without_byte_capture(
@@ -167,19 +200,20 @@ def test_large_input_identities_are_streamed_without_byte_capture(
     normalized = normalize_request(request, fixture.profile())
 
     assert captured_labels == ["Request", "Sample manifest", "Partition manifest"]
-    reference = normalized.execution_contract["reference"]
+    source = normalized.projection_source
+    reference = source["reference"]
     for key in ("fasta", "gtf"):
         path = Path(reference[key]["path"])
         assert reference[key]["size_bytes"] == path.stat().st_size
         assert reference[key]["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
-    for row in normalized.execution_contract["samples"]["rows"]:
+    for row in source["samples"]["rows"]:
         for key in ("r1_fastq", "r2_fastq"):
             path = Path(row[key]["path"])
             assert row[key]["size_bytes"] == path.stat().st_size
             assert row[key]["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def test_mixed_fastq_compression_is_rejected_before_run_identity(
+def test_mixed_fastq_compression_is_rejected_before_analysis_identity(
     tmp_path: Path,
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
@@ -289,28 +323,18 @@ def test_manifest_parsing_uses_admitted_bytes_across_an_aba_path_swap(
     normalized = normalize_request(request, fixture.profile())
 
     assert state == {"opens": 1, "path_checks": 2, "swapped": True}
+    source = normalized.projection_source
     if manifest_name == "samples.tsv":
-        assert [
-            row["sample_id"] for row in normalized.execution_contract["samples"]["rows"]
-        ] == [
+        assert [row["sample_id"] for row in source["samples"]["rows"]] == [
             "EV_1",
             "PUM1_1",
             "EV_2",
             "PUM1_2",
         ]
-        assert (
-            normalized.execution_contract["samples"]["manifest"]["sha256"]
-            == admitted_hash
-        )
+        assert source["samples"]["manifest"]["sha256"] == admitted_hash
     else:
-        assert (
-            normalized.execution_contract["partitions"]["rows"][0]["selector_value"]
-            == "chrSynthetic"
-        )
-        assert (
-            normalized.execution_contract["partitions"]["manifest"]["sha256"]
-            == admitted_hash
-        )
+        assert source["partitions"]["rows"][0]["selector_value"] == "chrSynthetic"
+        assert source["partitions"]["manifest"]["sha256"] == admitted_hash
 
 
 def test_absent_optional_background_normalizes_to_explicit_null(
@@ -326,9 +350,11 @@ def test_absent_optional_background_normalizes_to_explicit_null(
     )
     omitted = normalize_request(request, fixture.profile())
 
-    assert omitted.run_id == explicit.run_id
+    assert omitted.analysis_revision.analysis_revision_id == (
+        explicit.analysis_revision.analysis_revision_id
+    )
     assert (
-        omitted.execution_contract["analysis"]["policy"]["background_condition"] is None
+        omitted.projection_source["analysis"]["policy"]["background_condition"] is None
     )
 
 

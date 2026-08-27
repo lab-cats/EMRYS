@@ -76,6 +76,7 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
     request = fixture.build(intake)
     profile = fixture.profile()
     normalized = normalization.normalize_request(request, profile=profile)
+    execution, execution_bytes = normalized.historical_execution_v1()
 
     run_root = tmp_path / "run"
     contract = run_root / "contract"
@@ -83,7 +84,7 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
     profile_path = contract / "profile.json"
     execution_path = contract / "normalized.json"
     _publish_json(profile_path, profile)
-    execution_path.write_bytes(normalized.normalized_bytes)
+    execution_path.write_bytes(execution_bytes)
 
     mutable_input = run_root / "inputs" / "owner-input.txt"
     mutable_input.parent.mkdir()
@@ -183,10 +184,8 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
     config_bytes = config_path.read_bytes()
     attempt = {
         "schema_version": "emrys.workflow-attempt.v1",
-        "run_id": normalized.execution_contract["run_id"],
-        "execution_contract_sha256": hashlib.sha256(
-            normalized.normalized_bytes
-        ).hexdigest(),
+        "run_id": execution["run_id"],
+        "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
         "profile_sha256": hashlib.sha256(profile_path.read_bytes()).hexdigest(),
         "workflow_attempt_id": WORKFLOW_ATTEMPT_ID,
         "supersedes_workflow_attempt_id": None,

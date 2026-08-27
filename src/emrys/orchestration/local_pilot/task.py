@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import validate_execution_view
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout as _attest_source_checkout,
@@ -486,6 +487,24 @@ _admit_record = partial(
     read_bytes=_read_bound_record,
     error_type=TaskBoundaryError,
 )
+
+
+def _admit_execution_view(
+    path: Path,
+    root: Path,
+    profile: Mapping[str, Any],
+) -> tuple[dict[str, Any], bytes]:
+    data = _read_bound_record(path, root, "execution")
+    try:
+        record = orchestration_contracts.load_json_object_bytes(
+            data, f"execution {path}"
+        )
+        validate_execution_view(record, profile=profile)
+    except orchestration_contracts.ContractValidationError as exc:
+        raise TaskBoundaryError(f"Invalid execution at {path}: {exc}") from exc
+    if data != orchestration_contracts.canonical_json_bytes(record):
+        raise TaskBoundaryError(f"execution must use canonical JSON bytes: {path}")
+    return record, data
 
 
 def _hash_bound_file(path: Path, label: str) -> tuple[str, os.stat_result]:
@@ -1160,11 +1179,10 @@ def _admit_identity(
     profile, profile_data = _admit_record(
         dispatch.profile_path, dispatch.run_root, "profile"
     )
-    execution, execution_data = _admit_record(
+    execution, execution_data = _admit_execution_view(
         dispatch.execution_path,
         dispatch.run_root,
-        "execution",
-        profile=profile,
+        profile,
     )
     profile_sha256 = hashlib.sha256(profile_data).hexdigest()
     if execution["profile"]["profile_sha256"] != profile_sha256:
@@ -1403,7 +1421,7 @@ def validate_task_start(
         raise TaskBoundaryError("Task-start record is not at its exact ledger path")
     _safe_in_run_destination(start_path, canonical_root, "task-start path")
     orchestration_contracts.validate_record("profile", profile)
-    orchestration_contracts.validate_record("execution", execution, profile=profile)
+    validate_execution_view(execution, profile=profile)
     record, start_data = _admit_record(start_path, canonical_root, "task-start")
     identity = {
         "run_id": execution["run_id"],
@@ -1511,7 +1529,7 @@ def validate_verified_task(
     verified_path = _absolute_path(str(path), "verified task path")
     _safe_in_run_destination(verified_path, canonical_root, "verified task path")
     orchestration_contracts.validate_record("profile", profile)
-    orchestration_contracts.validate_record("execution", execution, profile=profile)
+    validate_execution_view(execution, profile=profile)
     record, _ = _admit_record(verified_path, canonical_root, "verified-task")
 
     expected_scope = {
