@@ -1208,6 +1208,31 @@ retained-operation coverage, and retiring surfaces do not advance closure.
 This resolves only the `LOG-05` migration boundary within `AC-DEC-020`. It does
 not settle any other campaign ordering or interface decision.
 
+### 13.4 Bounded slice record: Step 07 verified input-identity reuse
+
+**Table 13.4-1 — Compression and mutation register**
+
+| Surface/category | Finding | Disposition and surviving authority | Delta | Preconditions or retirement condition |
+|---|---|---|---:|---|
+| Maintained product: repeated Step 07 full-input hashing | The local-pilot task already hashes every declared input twice before producer entry and once afterward; direct Step 07 independently performs three full roster passes. | Consolidate only the admitted local-pilot route: its entry snapshots supply one producer-lifetime aggregate, Step 07 retains one final full roster comparison before publication, and the task retains its final declared-input recheck. Normalize relative selector files from their manifest owner so the two rosters cannot bind different paths. | `+58/-11`, net `+47` lines in three existing files; `0` files | Exact ordered-roster parity; inherited-value scrubbing; nested selector-path parity; mutation failure before publication; unchanged receipt/schema |
+| Direct compatibility path | A direct caller has no admitted task-entry identity. | Retain its existing three-pass `--no-clobber` behavior. | `0` paths | Retire only with direct invocation or after it receives equivalent authority. |
+| Protections and evidence | Direct mutation, fail-closed publication, and task-boundary guarantees remain necessary. | Retain the existing fresh-clone cross-boundary E2E and all direct-path protections; add nested selector-authority plus valid bound-route and mutation tests; add no receipt field or persistent handoff artifact. | Test delta recorded in Table 13.4-2 | No protection or evidence deletion. |
+| `ANALYSIS-01` physical realization | A Step 06 copy or snapshot may serve portability, retention, or locality but cannot establish reuse authority. | Defer storage realization to `ANALYSIS-01`/`AC-SUG-016`; implement no storage mechanism in this slice. | `0` | Separate identity, compatibility, storage, and site-measurement decision. |
+
+The sole new boundary value is one immutable 64-character aggregate written once by the local-pilot task owner from admitted entry snapshots, read only by the Step 07 producer, scrubbed from inherited and downstream environments, and discarded with the process. It is not persisted in Run, configuration, receipt, schema, logs, or evidence; existing publication and rollback state remains unchanged.
+
+**Table 13.4-2 — Category-separated closeout**
+
+| Category | Estimated delta | Actual delta and disposition |
+|---|---:|---|
+| Product implementation | `+35–50` lines, `0` files | `+58/-11`, net `+47` lines in three existing files; approved bounded exception; no temporary owner or retirement condition |
+| Protections/tests | `+60–100` lines, `0` files | `+95/-6`, net `+89` lines in two existing files; no protection deleted |
+| Configuration/documentation | Approximately `+25` lines, `0` files | `+39/-9`, net `+30` lines in three existing files; contract, matrix context, suggestion, and this register only |
+| Retained evidence | `0` | `0`; none added, rewritten, or deleted |
+| Public concepts/interfaces | `0` | `0`; no command, option, schema, receipt field, public noun, or backend |
+| Compatibility paths | `0` | `0`; direct three-pass path retained |
+| Persisted mutable state | `0` | `0`; one producer-lifetime immutable value only |
+
 ## 14. Measurement plan
 
 Measurement is required so the campaign does not merely move complexity.
@@ -1321,6 +1346,7 @@ does not select a name, API, schema, or implementation.
 | `AC-SUG-013` | Illustrative completion funnel: 42,381 candidates evaluated; 127 passing statistical/effect thresholds; 18 passing the background criterion; then `scientific.html` and `evidence.html`. Counts and filenames are examples, not targets |
 | `AC-SUG-014` | Pursue the Steps 07–09 audit in parallel as the proposed next scientific-review focus rather than further filesystem/provenance refinement; this is a sequencing suggestion, not accepted priority |
 | `AC-SUG-015` | The exact `Artifact Store` name and the source diagrams that place it between stages and reports; boundary type and ownership remain open |
+| `AC-SUG-016` | Physical realizations for reusable scientific artifacts: stationary admitted paths with verified identities as the lowest-footprint candidate; retained full copy for portability or retention; qualified copy-to-scratch only when real-site measurements show benefit; reflink or native snapshots where semantics are qualified; and future content-addressed storage. Copying alone does not authorize reuse or replace identity and compatibility admission. Step 07 directly consumes Step 06 BAM/BAI; Steps 08–09 benefit only through their own admitted upstream outputs. Evaluate the STAR reference/index and canonical BAM as separate high-fanout candidates rather than inferring blanket duplication of raw inputs or every stage. Exact noun, backend, default, and ordering remain open. |
 
 ## 16. Candidate slicing ledger
 
