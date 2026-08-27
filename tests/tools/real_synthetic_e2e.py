@@ -24,6 +24,7 @@ SUMMARY_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v1"
 PROFILE_DATASETS = {
     "130": "smoke-v1",
     "100000": "production-like-v1",
+    "1000000": "million-pair-v1",
 }
 EXPECTED_OWNER_JOBS = 35
 EXPECTED_REPORTING_KINDS = ("artifact_index", "run_summary", "html_report")
