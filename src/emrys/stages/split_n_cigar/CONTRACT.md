@@ -39,20 +39,34 @@ Outputs are:
 
 The producer requires quickcheck success, coordinate sort order, exactly one
 matching `ID`/`SM` read group, at least one alignment, all alignments tagged
-with that group, and a nonempty index. It does not publish a receipt or prove
-that CIGAR-N transformation semantics occurred.
+with that group, and a nonempty index. After GATK succeeds, the producer may
+reuse a regular, non-symlink native index at either of the two run-token staging
+names proven absent before that attempt: appended `<tmp-bam>.bai` or the HTSJDK
+replacement-suffix spelling. The latter is normalized to the canonical
+appended spelling. A missing, empty, or ambiguous candidate is removed and
+`samtools index` remains the fallback. Before publication, `samtools idxstats`
+must read the canonical index without warnings and its mapped-plus-unmapped
+total must equal the producer's full BAM record count. This detects unreadable
+and ordinarily mismatched indexes but is not a cryptographic BAM/BAI identity
+proof. The producer does not publish a receipt or prove that CIGAR-N
+transformation semantics occurred.
 
 ## Orchestration-safe producer boundary
 
 `--no-clobber` is the required local-profile mode. It changes lock scope from
 the output directory to the declared sample, refuses either existing final,
-hashes and rechecks the input BAM/BAI plus reference FASTA/FAI/DICT, and uses
-the existing staged validation and final-path revalidation. This path never
-creates predecessor backups; it publishes create-exclusively with staging
-inode anchors, so an interruption cannot enter the retained
-restoration-failure defect. Tool paths are explicit; observed GATK, samtools,
-and Java versions and output hashes belong in the workflow verified record.
-Execute without this option preserves the replacement transaction below.
+hashes and rechecks the input BAM/BAI plus reference FASTA/FAI/DICT, validates
+the staged BAM/BAI before publication, and carries that validation through
+create-exclusive publication by proving each final still resolves to its
+validated staging inode. This avoids a second full BAM semantic scan after
+publication. A detected replacement fails publication and is preserved as
+foreign state; owned anchors and the lock remain when rollback cannot complete.
+The workflow verified record remains responsible for the published pair's
+content hashes. This path never creates predecessor backups, so an interruption
+cannot enter the retained restoration-failure defect. Tool paths are explicit;
+observed GATK, samtools, and Java versions belong in the workflow verified
+record. Execute without this option preserves the replacement transaction
+below.
 
 ## Current execution surfaces
 
@@ -61,8 +75,10 @@ is side-effect-free in dry-run. Historical execute mode uses run-token BAM,
 BAI, GATK temp, and backup paths; an owned output-directory lock;
 pre-publication validation; complete-pair predecessor checks; sequential final
 moves; final revalidation; and rollback to a prior pair or removal of a new
-partial pair. Existing valid pairs are replaceable. That route does not
-snapshot-recheck inputs, and neither route publishes a native attempt receipt.
+partial pair. Both execute modes direct GATK to the run-token staged BAM, so
+native-index reuse never admits a predecessor final index. Existing valid pairs
+are replaceable. That route does not snapshot-recheck inputs, and neither route
+publishes a native attempt receipt.
 
 Rollback restoration moves are best-effort (`|| true`), after which cleanup
 can remove backups and the lock. Ordinary backup/publication rollback is
@@ -129,7 +145,10 @@ failures, and report-publication failures exit `2`.
   rerunning GATK.
 - [`test_step_05_split_n_cigar_reads.sh`](../../../../tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh)
   protects dry-run, tools/Java, reference prerequisites, locks, temp cleanup,
-  staged validation, complete-pair rules, and ordinary rollback fault paths.
+  current-attempt native-index reuse and fallback, index readability/count
+  reconciliation, staged validation, no-clobber publication identity and
+  foreign-final preservation, complete-pair rules, and ordinary legacy
+  rollback fault paths.
 - [`test_validate_step_05_split_ncigar.py`](../../../../tests/stages/split_n_cigar/test_validate_step_05_split_ncigar.py),
   wrapper, roster, publication-fault, public-CLI, artifact, report, data-check,
   and coverage tests protect the recorded boundaries.

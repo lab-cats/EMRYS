@@ -80,6 +80,18 @@ assert_file_equals() {
         fail "unexpected contents for $path"
 }
 
+assert_samtools_command_calls() {
+    local command_name="$1"
+    local expected="$2"
+    local observed="0"
+
+    if [[ -f "$samtools_log" ]]; then
+        observed="$(grep -Fxc -- "$command_name" "$samtools_log" || true)"
+    fi
+    [[ "$observed" == "$expected" ]] ||
+        fail "expected $expected samtools $command_name calls, found $observed"
+}
+
 assert_no_step05_scratch() {
     local dir="$1"
 
@@ -168,7 +180,8 @@ trap 'rm -rf "$tmp_dir"' EXIT
 export TMPDIR="$tmp_dir"
 unset GATK_BIN_OVERRIDE SAMTOOLS_BIN_OVERRIDE JAVA_BIN_OVERRIDE JAVA_HOME \
     SLURM_JOB_ID \
-    FAKE_GATK_FAIL FAKE_GATK_TERM_PARENT FAKE_INDEX_EMPTY FAKE_JAVA_MAJOR \
+    FAKE_GATK_FAIL FAKE_GATK_FAIL_AFTER_OUTPUT FAKE_GATK_INDEX_MODE \
+    FAKE_GATK_TERM_PARENT FAKE_INDEX_EMPTY FAKE_IDXSTATS_MODE FAKE_JAVA_MAJOR \
     FAKE_MUTATE_ADMITTED_INPUTS FAKE_MV_FAIL_ONCE_DEST_MATCH \
     FAKE_MV_FAIL_SOURCE_MATCH FAKE_QUICKCHECK_FAIL \
     FAKE_QUICKCHECK_FAIL_FINAL FAKE_SAMPLE_ID FAKE_SORT_ORDER
@@ -293,6 +306,34 @@ case "\$subcommand" in
             printf 'TAGGED:10\\n'
             printf 'fake split-n-cigar bam from %s with %s\\n' "\$input" "\$reference"
         } > "\$output"
+        case "\${FAKE_GATK_INDEX_MODE:-missing}" in
+            missing)
+                ;;
+            appended)
+                printf 'fake GATK appended index\\n' > "\$output.bai"
+                ;;
+            alternate)
+                printf 'fake GATK alternate index\\n' > "\${output%.bam}.bai"
+                ;;
+            empty-appended)
+                : > "\$output.bai"
+                ;;
+            empty-alternate)
+                : > "\${output%.bam}.bai"
+                ;;
+            both)
+                printf 'fake GATK canonical index\\n' > "\$output.bai"
+                printf 'fake GATK noncanonical index\\n' > "\${output%.bam}.bai"
+                ;;
+            *)
+                printf 'fake gatk unknown index mode: %s\\n' "\$FAKE_GATK_INDEX_MODE" >&2
+                exit 64
+                ;;
+        esac
+        if [[ "\${FAKE_GATK_FAIL_AFTER_OUTPUT:-0}" == "1" ]]; then
+            printf 'fake gatk forced post-output failure\\n' >&2
+            exit 70
+        fi
         ;;
     *)
         printf 'fake gatk unknown subcommand: %s\\n' "\$subcommand" >&2
@@ -335,6 +376,36 @@ case "\$subcommand" in
         else
             printf 'fake bam index\\n' > "\$input_bam.bai"
         fi
+        ;;
+    idxstats)
+        input_bam="\${1:-}"
+        [[ -n "\$input_bam" ]] || { printf 'fake samtools idxstats missing BAM\\n' >&2; exit 64; }
+        case "\${FAKE_IDXSTATS_MODE:-valid}" in
+            valid)
+                total="\$(grep '^TOTAL:' "\$input_bam" | head -n 1 | cut -d: -f2)"
+                ;;
+            count-mismatch)
+                total="9"
+                ;;
+            warning)
+                printf 'fake idxstats index warning\\n' >&2
+                total="\$(grep '^TOTAL:' "\$input_bam" | head -n 1 | cut -d: -f2)"
+                ;;
+            malformed)
+                printf 'not-valid-idxstats-output\\n'
+                exit 0
+                ;;
+            fail)
+                printf 'fake idxstats forced failure\\n' >&2
+                exit 71
+                ;;
+            *)
+                printf 'fake idxstats unknown mode: %s\\n' "\$FAKE_IDXSTATS_MODE" >&2
+                exit 64
+                ;;
+        esac
+        printf 'chrA\\t6\\t%s\\t0\\n' "\$total"
+        printf '*\\t0\\t0\\t0\\n'
         ;;
     quickcheck)
         input_bam="\${1:-}"
@@ -416,6 +487,63 @@ input_bam="$fixture_dir/markdup/ABE_EV_2/ABE_EV_2.markdup.bam"
 reference_fasta="$fixture_dir/ref/genome.fa"
 write_input_bam_pair "$input_bam"
 write_reference "$reference_fasta"
+
+run_index_reuse_case() {
+    local mode="$1"
+    local slug="$2"
+    local expected_bai="$3"
+    local expected_index_calls="$4"
+    local expected_message="$5"
+    local output_dir="$tmp_dir/results/index_$slug"
+    local output_file="$tmp_dir/index_$slug.out"
+    local final_bam="$output_dir/ABE_EV_2.split_ncigar.bam"
+
+    rm -f "$samtools_log"
+    FAKE_GATK_INDEX_MODE="$mode" \
+    FAKE_SAMPLE_ID=ABE_EV_2 \
+    SLURM_JOB_ID="index-$slug" \
+        run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$output_dir" \
+            --no-clobber --execute >"$output_file"
+
+    [[ -s "$final_bam" ]] || fail "$mode index case did not publish a BAM"
+    assert_file_equals "$final_bam.bai" "$expected_bai"
+    assert_samtools_command_calls index "$expected_index_calls"
+    assert_samtools_command_calls idxstats 1
+    assert_contains "$output_file" "$expected_message"
+    assert_not_exists "$output_dir/.ABE_EV_2.step05.lock"
+    assert_no_step05_scratch "$output_dir"
+}
+
+run_native_index_rejection_case() {
+    local mode="$1"
+    local expected_message="$2"
+    local output_dir="$tmp_dir/results/index_reject_$mode"
+    local output_file="$tmp_dir/index_reject_$mode.out"
+
+    rm -f "$samtools_log"
+    assert_fails "$output_file" env \
+        FAKE_GATK_INDEX_MODE=appended \
+        FAKE_IDXSTATS_MODE="$mode" \
+        FAKE_SAMPLE_ID=ABE_EV_2 \
+        SLURM_JOB_ID="index-reject-$mode" \
+        bash "$SCRIPT" \
+        --sample-id ABE_EV_2 \
+        --input-bam "$input_bam" \
+        --reference-fasta "$reference_fasta" \
+        --output-dir "$output_dir" \
+        --gatk-bin "$fake_bin/gatk" \
+        --samtools-bin "$fake_bin/samtools" \
+        --java-bin "$fake_bin/java" \
+        --no-clobber \
+        --execute
+    assert_contains "$output_file" "$expected_message"
+    assert_samtools_command_calls index 0
+    assert_samtools_command_calls idxstats 1
+    assert_not_exists "$output_dir/ABE_EV_2.split_ncigar.bam"
+    assert_not_exists "$output_dir/ABE_EV_2.split_ncigar.bam.bai"
+    assert_not_exists "$output_dir/.ABE_EV_2.step05.lock"
+    assert_no_step05_scratch "$output_dir"
+}
 
 printf 'Running syntax checks...\n'
 bash -n "$SCRIPT"
@@ -538,7 +666,8 @@ assert_contains "$dry_output" "$reference_fasta"
 assert_contains "$dry_output" "-I"
 assert_contains "$dry_output" "$input_bam"
 assert_contains "$dry_output" "-O"
-assert_contains "$dry_output" "samtools index command:"
+assert_contains "$dry_output" "samtools index fallback command:"
+assert_contains "$dry_output" "samtools index-statistics validation command:"
 assert_contains "$dry_output" "Validation plan:"
 assert_contains "$dry_output" "Dry-run only"
 assert_not_contains "$dry_output" "sorted.md"
@@ -605,10 +734,14 @@ assert_file_equals "$residue_path" $'preserve residue\n'
 assert_not_exists "$residue_output_dir/.ABE_EV_2.step05.lock"
 safe_output="$tmp_dir/safe.out"
 safe_output_dir="$tmp_dir/results/safe"
+rm -f "$samtools_log"
 FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=safe001 \
     run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$safe_output_dir" --no-clobber --execute >"$safe_output"
 assert_contains "$safe_output" "No-clobber transaction: true"
 assert_contains "$safe_output" "Lock directory: $safe_output_dir/.ABE_EV_2.step05.lock"
+assert_contains "$samtools_log" \
+    "$safe_output_dir/.ABE_EV_2.step05.safe001.split_ncigar.tmp.bam"
+assert_not_contains "$samtools_log" "$safe_output_dir/ABE_EV_2.split_ncigar.bam"
 assert_not_exists "$safe_output_dir/.ABE_EV_2.step05.lock"
 safe_repeat_output="$tmp_dir/safe_repeat.out"
 assert_fails "$safe_repeat_output" env FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=safe002 bash "$SCRIPT" \
@@ -622,6 +755,101 @@ assert_fails "$safe_repeat_output" env FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=safe
     --no-clobber \
     --execute
 assert_contains "$safe_repeat_output" "--no-clobber requires both final outputs to be absent"
+
+printf 'Running current-attempt native index reuse and fallback checks...\n'
+run_index_reuse_case \
+    appended appended $'fake GATK appended index\n' 0 \
+    "Reusing GATK-produced staged BAM index:"
+run_index_reuse_case \
+    alternate alternate $'fake GATK alternate index\n' 0 \
+    "Reusing GATK-produced staged BAM index after path normalization:"
+run_index_reuse_case \
+    missing missing $'fake bam index\n' 1 \
+    "running samtools index fallback"
+run_index_reuse_case \
+    empty-appended empty-appended $'fake bam index\n' 1 \
+    "running samtools index fallback"
+run_index_reuse_case \
+    empty-alternate empty-alternate $'fake bam index\n' 1 \
+    "running samtools index fallback"
+run_index_reuse_case \
+    both both $'fake GATK canonical index\n' 0 \
+    "Reusing GATK-produced staged BAM index:"
+
+printf 'Running native index readability and count-reconciliation rejection checks...\n'
+run_native_index_rejection_case count-mismatch "BAI accounts for 9 of 10 BAM records"
+run_native_index_rejection_case warning "BAI failed samtools idxstats validation"
+run_native_index_rejection_case malformed "BAI failed samtools idxstats validation"
+run_native_index_rejection_case fail "BAI failed samtools idxstats validation"
+
+printf 'Running stale exact staged-index rejection checks...\n'
+stale_appended_dir="$tmp_dir/results/stale_appended"
+stale_appended_path="$stale_appended_dir/.ABE_EV_2.step05.stale-appended.split_ncigar.tmp.bam.bai"
+mkdir -p "$stale_appended_dir"
+printf 'stale appended index\n' >"$stale_appended_path"
+stale_appended_output="$tmp_dir/stale_appended.out"
+assert_fails "$stale_appended_output" env \
+    FAKE_GATK_INDEX_MODE=appended \
+    FAKE_SAMPLE_ID=ABE_EV_2 \
+    SLURM_JOB_ID=stale-appended \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$stale_appended_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --execute
+assert_contains "$stale_appended_output" "Temporary BAI path already exists"
+assert_file_equals "$stale_appended_path" $'stale appended index\n'
+
+stale_alternate_dir="$tmp_dir/results/stale_alternate"
+stale_alternate_path="$stale_alternate_dir/.ABE_EV_2.step05.stale-alternate.split_ncigar.tmp.bai"
+mkdir -p "$stale_alternate_dir"
+ln -s "$tmp_dir/missing-stale-index-target" "$stale_alternate_path"
+stale_alternate_output="$tmp_dir/stale_alternate.out"
+assert_fails "$stale_alternate_output" env \
+    FAKE_GATK_INDEX_MODE=alternate \
+    FAKE_SAMPLE_ID=ABE_EV_2 \
+    SLURM_JOB_ID=stale-alternate \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$stale_alternate_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --execute
+assert_contains "$stale_alternate_output" "Alternate GATK temporary BAI path already exists"
+[[ -L "$stale_alternate_path" ]] || fail "stale alternate symlink should remain for inspection"
+
+printf 'Running post-output GATK failure cleanup check...\n'
+native_cleanup_dir="$tmp_dir/results/native_cleanup"
+native_cleanup_output="$tmp_dir/native_cleanup.out"
+rm -f "$samtools_log"
+assert_fails "$native_cleanup_output" env \
+    FAKE_GATK_FAIL_AFTER_OUTPUT=1 \
+    FAKE_GATK_INDEX_MODE=alternate \
+    FAKE_SAMPLE_ID=ABE_EV_2 \
+    SLURM_JOB_ID=native-cleanup \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$native_cleanup_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --no-clobber \
+    --execute
+assert_contains "$native_cleanup_output" "fake gatk forced post-output failure"
+assert_samtools_command_calls index 0
+assert_not_exists "$native_cleanup_dir/ABE_EV_2.split_ncigar.bam"
+assert_not_exists "$native_cleanup_dir/ABE_EV_2.split_ncigar.bam.bai"
+assert_not_exists "$native_cleanup_dir/.ABE_EV_2.step05.lock"
+assert_no_step05_scratch "$native_cleanup_dir"
 
 safe_mutation_input_bam="$fixture_dir/safe_mutation/markdup/ABE_EV_2.markdup.bam"
 safe_mutation_reference="$fixture_dir/safe_mutation/ref/genome.fa"
@@ -644,6 +872,76 @@ assert_not_exists "$safe_mutation_dir/ABE_EV_2.split_ncigar.bam"
 assert_not_exists "$safe_mutation_dir/ABE_EV_2.split_ncigar.bam.bai"
 assert_not_exists "$safe_mutation_dir/.ABE_EV_2.step05.lock"
 assert_no_step05_scratch "$safe_mutation_dir"
+
+printf 'Running no-clobber foreign final replacement preservation check...\n'
+real_ln_bin="$(command -v ln)"
+real_cp_bin="$(command -v cp)"
+real_rm_bin="$(command -v rm)"
+cat >"$fake_bin/ln" <<'EOF_LN'
+#!/usr/bin/env bash
+set -euo pipefail
+
+destination="${!#}"
+"$REAL_LN_BIN" "$@"
+if [[ -n "${FAKE_LN_TRIGGER_DEST:-}" &&
+      "$destination" == "$FAKE_LN_TRIGGER_DEST" ]]; then
+    "$REAL_RM_BIN" -f -- "$FAKE_LN_REPLACE_DEST"
+    "$REAL_CP_BIN" -- "$FAKE_LN_REPLACE_SOURCE" "$FAKE_LN_REPLACE_DEST"
+    printf 'injected same-byte foreign BAM: %s\n' "$FAKE_LN_REPLACE_DEST" >&2
+fi
+EOF_LN
+chmod +x "$fake_bin/ln"
+
+foreign_final_dir="$tmp_dir/results/safe_foreign_final"
+foreign_final_bam="$foreign_final_dir/ABE_EV_2.split_ncigar.bam"
+foreign_final_bai="$foreign_final_bam.bai"
+foreign_run_token="safeforeign001"
+foreign_tmp_bam="$foreign_final_dir/.ABE_EV_2.step05.$foreign_run_token.split_ncigar.tmp.bam"
+foreign_tmp_bai="$foreign_tmp_bam.bai"
+foreign_gatk_tmp="$foreign_final_dir/.ABE_EV_2.step05.$foreign_run_token.gatk_tmp"
+foreign_lock="$foreign_final_dir/.ABE_EV_2.step05.lock"
+foreign_sentinel="$foreign_final_dir/unrelated.txt"
+mkdir -p "$foreign_final_dir"
+printf 'unrelated foreign-final bytes\n' >"$foreign_sentinel"
+foreign_final_output="$tmp_dir/safe_foreign_final.out"
+assert_fails "$foreign_final_output" env \
+    REAL_LN_BIN="$real_ln_bin" \
+    REAL_CP_BIN="$real_cp_bin" \
+    REAL_RM_BIN="$real_rm_bin" \
+    FAKE_LN_TRIGGER_DEST="$foreign_final_bai" \
+    FAKE_LN_REPLACE_SOURCE="$foreign_tmp_bam" \
+    FAKE_LN_REPLACE_DEST="$foreign_final_bam" \
+    FAKE_SAMPLE_ID=ABE_EV_2 \
+    SLURM_JOB_ID="$foreign_run_token" \
+    bash "$SCRIPT" \
+    --sample-id ABE_EV_2 \
+    --input-bam "$input_bam" \
+    --reference-fasta "$reference_fasta" \
+    --output-dir "$foreign_final_dir" \
+    --gatk-bin "$fake_bin/gatk" \
+    --samtools-bin "$fake_bin/samtools" \
+    --java-bin "$fake_bin/java" \
+    --no-clobber \
+    --execute
+rm -f "$fake_bin/ln"
+
+assert_contains "$foreign_final_output" \
+    "Step 05 BAM final no longer matches its owned staging anchor"
+assert_contains "$foreign_final_output" \
+    "Step 05 no-clobber rollback was incomplete; retaining owned lock and residue"
+assert_contains "$foreign_final_output" "injected same-byte foreign BAM"
+[[ -s "$foreign_final_bam" ]] || fail "foreign BAM final was removed"
+[[ -s "$foreign_tmp_bam" ]] || fail "BAM staging anchor was removed"
+[[ ! "$foreign_final_bam" -ef "$foreign_tmp_bam" ]] ||
+    fail "foreign BAM final still shares the owned staging inode"
+cmp -s "$foreign_final_bam" "$foreign_tmp_bam" ||
+    fail "foreign BAM replacement does not preserve the staged bytes"
+assert_not_exists "$foreign_final_bai"
+[[ -s "$foreign_tmp_bai" ]] || fail "BAI staging anchor was removed"
+[[ -d "$foreign_gatk_tmp" ]] || fail "GATK scratch was removed after incomplete rollback"
+[[ -d "$foreign_lock" ]] || fail "owned lock was removed after incomplete rollback"
+assert_contains "$foreign_lock/owner" "run_token=$foreign_run_token"
+assert_file_equals "$foreign_sentinel" $'unrelated foreign-final bytes\n'
 
 printf 'Running admitted input mutation success check...\n'
 mutation_input_bam="$fixture_dir/mutation/markdup/ABE_EV_2.markdup.bam"
@@ -789,6 +1087,34 @@ assert_not_exists "$header_fail_dir/ABE_EV_2.split_ncigar.bam.bai"
 assert_not_exists "$header_fail_dir/.step_05_split_n_cigar_reads.lock"
 assert_no_step05_scratch "$header_fail_dir"
 
+printf 'Running legacy predecessor replacement with native index check...\n'
+legacy_native_dir="$tmp_dir/results/legacy_native"
+mkdir -p "$legacy_native_dir"
+printf 'previous legacy-native bam' >"$legacy_native_dir/ABE_EV_2.split_ncigar.bam"
+printf 'previous legacy-native bai' >"$legacy_native_dir/ABE_EV_2.split_ncigar.bam.bai"
+printf 'unrelated legacy-native bytes' >"$legacy_native_dir/unrelated.txt"
+legacy_native_output="$tmp_dir/legacy_native.out"
+rm -f "$samtools_log"
+FAKE_GATK_INDEX_MODE=alternate \
+FAKE_SAMPLE_ID=ABE_EV_2 \
+SLURM_JOB_ID=legacy-native \
+    run_step05 ABE_EV_2 "$input_bam" "$reference_fasta" "$legacy_native_dir" \
+        --execute >"$legacy_native_output"
+assert_contains "$legacy_native_output" \
+    "Reusing GATK-produced staged BAM index after path normalization:"
+assert_contains "$legacy_native_dir/ABE_EV_2.split_ncigar.bam" \
+    "fake split-n-cigar bam"
+assert_not_contains "$legacy_native_dir/ABE_EV_2.split_ncigar.bam" \
+    "previous legacy-native bam"
+assert_file_equals "$legacy_native_dir/ABE_EV_2.split_ncigar.bam.bai" \
+    $'fake GATK alternate index\n'
+assert_file_equals "$legacy_native_dir/unrelated.txt" "unrelated legacy-native bytes"
+assert_samtools_command_calls index 0
+assert_samtools_command_calls quickcheck 2
+assert_samtools_command_calls idxstats 2
+assert_not_exists "$legacy_native_dir/.step_05_split_n_cigar_reads.lock"
+assert_no_step05_scratch "$legacy_native_dir"
+
 printf 'Running validation failure preserves existing final pair check...\n'
 rollback_dir="$tmp_dir/results/rollback"
 mkdir -p "$rollback_dir"
@@ -840,7 +1166,8 @@ printf 'previous final-revalidation bam' >"$final_revalidation_dir/ABE_EV_2.spli
 printf 'previous final-revalidation bai' >"$final_revalidation_dir/ABE_EV_2.split_ncigar.bam.bai"
 printf 'unrelated final-revalidation bytes' >"$final_revalidation_dir/unrelated.txt"
 final_revalidation_output="$tmp_dir/final_revalidation.out"
-assert_fails "$final_revalidation_output" env FAKE_QUICKCHECK_FAIL_FINAL=1 FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=finalcheck001 bash "$SCRIPT" \
+rm -f "$samtools_log"
+assert_fails "$final_revalidation_output" env FAKE_GATK_INDEX_MODE=appended FAKE_QUICKCHECK_FAIL_FINAL=1 FAKE_SAMPLE_ID=ABE_EV_2 SLURM_JOB_ID=finalcheck001 bash "$SCRIPT" \
     --sample-id ABE_EV_2 \
     --input-bam "$input_bam" \
     --reference-fasta "$reference_fasta" \
@@ -854,6 +1181,8 @@ assert_contains "$final_revalidation_output" "Rolling back Step 05"
 assert_file_equals "$final_revalidation_dir/ABE_EV_2.split_ncigar.bam" "previous final-revalidation bam"
 assert_file_equals "$final_revalidation_dir/ABE_EV_2.split_ncigar.bam.bai" "previous final-revalidation bai"
 assert_file_equals "$final_revalidation_dir/unrelated.txt" "unrelated final-revalidation bytes"
+assert_samtools_command_calls index 0
+assert_samtools_command_calls quickcheck 2
 assert_not_exists "$final_revalidation_dir/.step_05_split_n_cigar_reads.lock"
 assert_no_step05_scratch "$final_revalidation_dir"
 assert_no_step05_recovery "$final_revalidation_dir"
