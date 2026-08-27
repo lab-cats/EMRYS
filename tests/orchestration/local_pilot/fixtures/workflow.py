@@ -454,8 +454,8 @@ def artifact_payloads(
 ) -> dict[str, bytes]:
     sample_ids = tuple(str(row["sample_id"]) for row in execution["samples"]["rows"])
     partition_id = str(execution["partitions"]["rows"][0]["partition_id"])
-    cohort_id = str(execution["analysis"]["cohort_id"])
-    analysis_id = str(execution["analysis"]["primary_analysis_id"])
+    cohort_id, = inspection.selected_scope_ids("cohort", execution)
+    analysis_id, = inspection.selected_scope_ids("analysis", execution)
     sample_hash = str(execution["samples"]["manifest"]["sha256"])
     partition_hash = str(execution["partitions"]["manifest"]["sha256"])
     policy = execution["analysis"]["policy"]

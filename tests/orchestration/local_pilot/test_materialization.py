@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
 import multiprocessing
@@ -260,6 +261,27 @@ def test_owner_doubles_preserve_immutable_run_toolchain(tmp_path: Path) -> None:
         doubled.attempt_record["required_tools"]
         == plan.attempt_record["required_tools"]
     )
+
+
+def test_owner_doubles_use_successor_scopes_inside_reporting_payloads(
+    tmp_path: Path,
+) -> None:
+    plan = _plan(tmp_path)
+    doubled = with_owner_doubles(plan)
+    payloads: list[bytes] = []
+    for item in doubled.attempt_files:
+        if not item.path.name.endswith(".payload.json"):
+            continue
+        manifest = json.loads(item.data)
+        payloads.extend(
+            base64.b64decode(output["data_base64"])
+            for output in manifest["producer"]
+        )
+    combined = b"\n".join(payloads)
+    analysis = plan.run.normalized.analysis_revision
+
+    assert analysis.scope_id("cohort").encode() in combined
+    assert analysis.scope_id("analysis").encode() in combined
 
 
 def test_plan_is_no_write_and_projects_exact_public_owner_roster(
