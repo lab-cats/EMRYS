@@ -1321,6 +1321,7 @@ does not select a name, API, schema, or implementation.
 | `AC-SUG-013` | Illustrative completion funnel: 42,381 candidates evaluated; 127 passing statistical/effect thresholds; 18 passing the background criterion; then `scientific.html` and `evidence.html`. Counts and filenames are examples, not targets |
 | `AC-SUG-014` | Pursue the Steps 07–09 audit in parallel as the proposed next scientific-review focus rather than further filesystem/provenance refinement; this is a sequencing suggestion, not accepted priority |
 | `AC-SUG-015` | The exact `Artifact Store` name and the source diagrams that place it between stages and reports; boundary type and ownership remain open |
+| `AC-SUG-016` | Physical realizations for reusable scientific artifacts: stationary admitted paths with verified identities as the lowest-footprint candidate; retained full copy for portability or retention; qualified copy-to-scratch only when real-site measurements show benefit; reflink or native snapshots where semantics are qualified; and future content-addressed storage. Copying alone does not authorize reuse or replace identity and compatibility admission. Step 07 directly consumes Step 06 BAM/BAI; Steps 08–09 benefit only through their own admitted upstream outputs. Evaluate the STAR reference/index and canonical BAM as separate high-fanout candidates rather than inferring blanket duplication of raw inputs or every stage. Exact noun, backend, default, and ordering remain open. |
 
 ## 16. Candidate slicing ledger
 
