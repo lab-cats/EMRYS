@@ -112,9 +112,14 @@ Detailed rationale: [`platform-direction.md`](decisions/platform-direction.md).
   quantified growth and its justification, plus a retirement condition when
   temporary.
 - Treat boundary values as immutable by default. A `Run` is an immutable plan;
-  changing it creates a distinct `Run`. Other public nouns, nesting,
-  identities, APIs, backends, policy, persistence, and storage remain
-  unresolved until after audit review and a separate approved decision.
+  changing it creates a distinct `Run`. Apply the
+  [ratified application model and Run boundary](decisions/platform-direction.md#ratified-application-model-and-run-boundary):
+  the compact public model is `Project -> Analysis -> Run -> Results`, with
+  `Attempt` progressively disclosed; each Run binds one immutable admitted
+  Analysis revision to one immutable inspectable internal Execution Plan.
+  Exact fields, identity composition, persistence, recovery ownership, APIs,
+  backends, policy interfaces, storage, compatibility, and migration remain
+  unresolved.
 - Distinguish executable/static protections from retained evidence. An existing
   surviving defense may satisfy equal-or-stronger replacement. Evidence may be
   marked as a deletion candidate, but deleting the exact artifacts or class

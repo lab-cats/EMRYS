@@ -30,6 +30,13 @@ prerequisite for `AC-SLICE-03`. Per the approved recording boundary it did not
 complete, accept, implement, or rerank that campaign card; the original
 `5`/`4` values remain provisional.
 
+`ARCH-MODEL-DECISION-01` subsequently selected model C, the compact public
+vocabulary, and the Run-versus-Attempt semantic boundary. It also did not
+rerank or complete `AC-SLICE-03`: exact fields, authorities, persistence,
+recovery, compatibility, migration, and implementation remain. The next
+documentation-only field-and-authority package is defined in the campaign but
+not yet implemented.
+
 ## Scoring
 
 Both columns use `5` as the highest value. Scores are intentionally loose and
@@ -71,7 +78,7 @@ implementation order, dependencies, or approval.
 |---|---|---:|---:|---|---|---|
 | `AC-SLICE-01` | Foundations | `5` | `3` | Ratified an architectural-invariants constitution against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open | Original provisional ranking retained for traceability |
 | `AC-SLICE-02` | Foundations | `5` | `3` | Ratified responsibility clusters, three graph semantics, forbidden authority transfers, and fast source-boundary enforcement over exact current CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open | Original provisional ranking retained for traceability |
-| `AC-SLICE-03` | Public model | `5` | `4` | Audit current representations, owners, callers, lifetimes, mutation, identity construction, protections, retained evidence, and compression opportunities without selecting any application model; only the binding meaning of Run as an immutable plan is settled | Read-only prerequisite completed as `ARCH-MODEL-AUDIT-01`; campaign card remains Open per the approved boundary | Whether Run is public, public nouns and nesting, cardinalities, Run-versus-Attempt identity, APIs, persistence, compatibility, migration, and any implementation remain Open until separate user-approved decisions |
+| `AC-SLICE-03` | Public model | `5` | `4` | Establish the compact public application model and introduce it only after exact field, identity, authority, recovery, compatibility, and retirement decisions | Audit completed as `ARCH-MODEL-AUDIT-01`; model C, `Project -> Analysis -> Run -> Results`, progressive Attempt disclosure, and the Run/Attempt boundary completed as `ARCH-MODEL-DECISION-01`; card remains Open | Next no-code field-and-authority package is defined but not implemented; exact records, persistence, recovery, APIs, compatibility, migration, and every product change remain Open |
 | `AC-SLICE-04` | Scientific boundary | `3` | `4` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` | Paper-map diverse owners before selecting a denominator; generalize only after a second owner maps without distortion |
 | `AC-SLICE-05` | Execution | `4` | `5` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across supported local and SLURM backends | New slice; enriches `OPS-02` | Cross-execution integration and parity proof drive the estimate; one API is not preselected |
 | `AC-SLICE-06` | Policy ownership | `3` | `3` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` | Inventory first; centralization is conditional and individual migrations may range from `2` to `5` |

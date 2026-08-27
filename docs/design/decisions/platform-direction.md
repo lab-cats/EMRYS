@@ -84,7 +84,8 @@ new evidence level.
 The following guardrails are binding. `AC-GUARD-001` through `005` are the
 original set; `AC-GUARD-006` through `008` are later campaign-level extensions.
 They do not ratify facade-first sequencing, an exact layer map, the campaign
-phase order, or a public API beyond the settled `Run` meaning below.
+phase order, or a concrete public API. The later application-model section
+settles conceptual vocabulary and semantics, not an API realization.
 
 1. **Inspectable, bounded operational control (`AC-GUARD-001`).** Every
    effective operational value and its source is inspectable. An override
@@ -131,10 +132,12 @@ phase order, or a public API beyond the settled `Run` meaning below.
    plan change creates a distinct `Run`. Draft and attempt-local state may
    mutate only within their owners and cannot alter the `Run` or reconstruct a
    competing plan from mutable state.
-   This does not settle other public nouns or nesting, identity composition or
-   cardinality, Attempt/Result relationships, APIs, backends, policy,
-   persistence, or storage until after audit review and a separate approved
-   decision.
+   This guardrail did not itself settle other public nouns or nesting,
+   identity composition or cardinality, Attempt/Results relationships, APIs,
+   backends, policy, persistence, or storage. The later
+   [application-model decision](#ratified-application-model-and-run-boundary)
+   settles only the named vocabulary, nesting, and Run-versus-Attempt boundary;
+   its explicit deferrals remain open.
 8. **Explicit evidence-deletion authority (`AC-GUARD-008`).** Identifying
    apparently redundant evidence in an audit, campaign, task, or compression
    proposal does not authorize deletion. Deletion requires separate explicit
@@ -178,9 +181,10 @@ admission, recovery safety, or evidence level.
 
 Identity is a responsibility cluster, not a presumed service or package.
 Consumers receive authoritative identity facts through explicit contracts
-rather than reconstructing competing identities. Exact public nouns,
-hierarchy, ownership, and hash composition remain `AC-DEC-001` and the
-applicable identity/application slice.
+rather than reconstructing competing identities. Public nouns and hierarchy
+are settled by the application-model decision below; exact field ownership,
+hash composition, persistence, and subordinate exposure remain `AC-DEC-011`
+and the applicable identity/application slice.
 
 ### Three separate dependency graphs
 
@@ -271,7 +275,8 @@ with the named later slices:
   when present. It must permit multiple analyses over compatible upstream
   work, pass lower owners an explicit immutable contract rather than a broad
   aggregate, and prevent mutable attempt state from altering or reconstructing
-  the Run. This distinction does not settle cardinality or nesting.
+  the Run. The later application-model decision settles the public nesting and
+  minimum cardinalities without choosing representation.
 - A possible Stage boundary stays thin and cannot obscure the distinct
   transformation, analysis, and evidence identities or move review-relevant
   science away from its owner. Functional owners declare needs and semantic
@@ -289,12 +294,13 @@ with the named later slices:
   scientific completion or admission, and the requirement does not presume a
   distinct Artifact Store.
 
-Except for `Run` meaning the immutable plan, the exact application nouns,
-nesting, identity composition, and API remain `AC-SLICE-03`; the minimum
-operation representation remains `AC-SLICE-04`; execution request/result and
-backend design remain `AC-SLICE-05`; policy inventory and owners remain
-`AC-SLICE-06`; and artifact states, lifecycle API, and Artifact Store decision
-remain `AC-SLICE-07`.
+The public application vocabulary, nesting, and Run-versus-Attempt boundary are
+now settled below. Exact field and identity composition, persisted authorities,
+recovery ownership, compatibility, and migration remain in `AC-SLICE-03`; the
+minimum operation representation remains `AC-SLICE-04`; execution
+request/result and backend design remain `AC-SLICE-05`; policy inventory and
+owners remain `AC-SLICE-06`; and artifact states, lifecycle API, and Artifact
+Store decision remain `AC-SLICE-07`.
 
 ### Enforcement strategy
 
@@ -315,6 +321,76 @@ the Python graph. Authority rules that require semantic review—such as no
 scientific logic in the CLI, reporting's read-only behavior, and mechanism
 non-authority—remain decision and contract obligations until an equally direct
 automated oracle exists.
+
+## Ratified application model and Run boundary
+
+`ARCH-MODEL-DECISION-01` ratified this boundary on 2026-08-26 after the
+read-only `ARCH-MODEL-AUDIT-01` review. It selects the campaign's option C
+without selecting a class hierarchy, serialized schema, package map, storage
+layout, command tree, backend interface, or permanent compatibility facade.
+
+The smallest ordinary public model is:
+
+```text
+Project -> Analysis -> Run -> Results
+                         |
+                         +-- Attempt(s), when operationally relevant
+```
+
+- **Project** is the mutable organizational workspace for drafts, declared
+  inputs, references, and configuration. It is not execution authority.
+- **Analysis** expresses scientist-facing scientific intent. Drafts may evolve;
+  an admitted Analysis revision is immutable. Analysis may use a human-facing
+  name while retaining its internal immutable identity.
+- **Run** is public, has the primary ordinary identifier, and immutably binds
+  exactly one admitted Analysis revision to exactly one internal immutable
+  Execution Plan. An Analysis revision may have multiple Runs when its
+  effective realization differs.
+- **Attempt** is progressively disclosed operational history for executing the
+  same Run. A Run may have zero or more Attempts; Attempt state and metadata
+  cannot alter or reconstruct the Run.
+- **Results** is the read-only discoverable surface of Run-bound committed
+  outputs. It is not a second mutable completion authority or initially a
+  separately managed identity-bearing aggregate.
+
+The internal Execution Plan remains inspectable but is not an ordinary
+user-authored or user-managed public noun. Dataset, Reference, and
+ExperimentalDesign remain meaningful scientific-definition sections rather
+than independent top-level commands or identities by default. Runtime and
+execution-profile selection are operator-facing inputs to Run construction and
+stay out of the ordinary scientist path unless inspected. Artifact is advanced
+inspection vocabulary, Task is an internal implementation detail, and Report
+is a regenerable output capability beneath Results rather than a scientific
+stage or completion authority.
+
+The Run-versus-Attempt boundary is semantic:
+
+| Change | Consequence |
+|---|---|
+| Scientific intent changes | Admit a new Analysis revision and create a new Run. |
+| The declared Execution Plan changes, including selected toolchain, backend, execution profile, or permissible resource policy | Create a new Run. |
+| The same immutable plan is retried or re-executed | Create a new Attempt of the existing Run. |
+| Host, scheduler job identifier, timestamps, or actual allocation vary within the Run's declared permissible envelope | Record Attempt metadata; the Run is unchanged. |
+| A retry requires resources outside that declared envelope | Create a new Run. |
+| Only downstream report enablement or format changes, or a report is generated or regenerated independently | The reporting choice itself creates neither a new Run nor a new Attempt; executing the Run still creates an Attempt. |
+
+Reporting is invoked by default for a full run, can be disabled, and can be
+regenerated independently. Reporting failure or regeneration does not rewrite
+scientific completion semantics.
+
+Each admitted boundary will have one immutable canonical authority; mutable
+dictionaries and cached canonical bytes cannot compete. The application model
+also cannot become a god object: application coordination may bind intent and
+plan and invoke lower capabilities, but scientific, execution, policy,
+artifact, evidence, and reporting authorities remain with their owners.
+
+Still open are the exact fields, identity digest inputs and relocation
+semantics, permissible-envelope representation, serialized and in-memory
+forms, persistence and storage, recovery ownership for an unreceipted run
+skeleton, status vocabulary, APIs and operation signatures, CLI mapping,
+backend and policy interfaces, and bounded compatibility/migration details.
+Those choices require the next `AC-SLICE-03` field-and-authority decision
+package before any model implementation.
 
 ## Organize by functional owner
 
@@ -409,5 +485,5 @@ accepted facades to adopt logging as they land. Planning and conformance work
 may precede production adoption, and unrelated campaign work need not finish
 first. An explicitly approved transitional compatibility operation is eligible
 for bounded support but does not satisfy final retained-operation coverage. The
-broader public-model, execution, identity, status, filesystem, and overall-order
-choices remain open.
+broader realization choices—fields, execution, identity composition, status,
+filesystem, APIs, compatibility, and overall order—remain open.
