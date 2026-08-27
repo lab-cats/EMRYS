@@ -224,7 +224,7 @@ def validate(trial: Path) -> None:
     if "Step 08 preprocessing complete:" not in stderr or "ERROR:" in stderr:
         raise RuntimeError("Step 08 did not complete cleanly")
 
-    report = trial / "validation.tsv"
+    report = trial / f"{COHORT_ID}.validation.tsv"
     validator = [
         sys.executable,
         "-X",
