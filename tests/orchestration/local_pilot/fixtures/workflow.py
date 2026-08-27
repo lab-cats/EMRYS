@@ -799,25 +799,6 @@ def artifact_payloads(
     return payloads
 
 
-def _scope_ids(task: dict[str, Any], execution: dict[str, Any]) -> tuple[str, ...]:
-    selector = task["scope_selector"]
-    if selector == "reference":
-        return (str(execution["reference"]["reference_id"]),)
-    if selector == "samples":
-        return tuple(str(row["sample_id"]) for row in execution["samples"]["rows"])
-    if selector == "partitions":
-        cohort = str(execution["analysis"]["cohort_id"])
-        return tuple(
-            f"{cohort}__{row['partition_id']}"
-            for row in execution["partitions"]["rows"]
-        )
-    if selector == "cohort":
-        return (str(execution["analysis"]["cohort_id"]),)
-    if selector == "analysis":
-        return (str(execution["analysis"]["primary_analysis_id"]),)
-    raise AssertionError(f"Fixture cannot execute selector {selector!r}")
-
-
 def _task_attempt_id(index: int) -> str:
     suffix = hashlib.sha256(f"fixture-task-{index}".encode()).hexdigest()[:32]
     return f"task-20260812T120100Z-{suffix}"
@@ -1078,7 +1059,9 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
             continue
         by_scope: dict[str, str] = {}
         references_by_scope: dict[str, dict[str, str]] = {}
-        for scope_id in _scope_ids(task, execution):
+        for scope_id in inspection.selected_scope_ids(
+            str(task["scope_selector"]), execution
+        ):
             index += 1
             dispatch_path = (
                 run_root

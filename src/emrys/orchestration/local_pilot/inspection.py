@@ -398,10 +398,11 @@ def _successor_expected_tasks(
     )
 
 
-def _scope_ids(
-    owner: Mapping[str, Any], execution: Mapping[str, Any]
+def selected_scope_ids(
+    selector: str, execution: Mapping[str, Any]
 ) -> tuple[str, ...]:
-    selector = owner["scope_selector"]
+    """Derive the admitted scopes selected by one profile owner."""
+
     successor = execution.get("schema_version") == EXECUTION_PROJECTION_SCHEMA_VERSION
     analysis = analysis_revision_from_execution_fields(execution) if successor else None
     if selector == "reference":
@@ -449,7 +450,9 @@ def expected_tasks(
         machine_key = str(owner["machine_key"])
         if machine_key not in required:
             continue
-        for scope_id in _scope_ids(owner, execution):
+        for scope_id in selected_scope_ids(
+            str(owner["scope_selector"]), execution
+        ):
             projected.append(
                 ExpectedTask(
                     machine_key=machine_key,

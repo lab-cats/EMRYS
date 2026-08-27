@@ -9,11 +9,7 @@ from pathlib import Path
 
 import emrys
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.application_model import (
-    EXECUTION_PROJECTION_SCHEMA_VERSION,
-    analysis_revision_from_execution_fields,
-    validate_execution_view,
-)
+from emrys.contracts.orchestration.application_model import validate_execution_view
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout,
@@ -26,6 +22,7 @@ from emrys.orchestration.local_pilot.task import (
 )
 from emrys.orchestration.local_pilot.inspection import (
     expected_tasks,
+    selected_scope_ids,
     state_tree_blockers,
     task_start_tree_blockers,
 )
@@ -282,35 +279,11 @@ if (
 ):
     raise WorkflowError("workflow attempt required tools do not bind python_executable")
 
-SUCCESSOR_ANALYSIS = (
-    analysis_revision_from_execution_fields(EXECUTION)
-    if EXECUTION.get("schema_version") == EXECUTION_PROJECTION_SCHEMA_VERSION
-    else None
-)
-REFERENCE_ID = (
-    SUCCESSOR_ANALYSIS.scope_id("reference")
-    if SUCCESSOR_ANALYSIS is not None
-    else EXECUTION["reference"]["reference_id"]
-)
-SAMPLE_IDS = tuple(row["sample_id"] for row in EXECUTION["samples"]["rows"])
-COHORT_ID = (
-    SUCCESSOR_ANALYSIS.scope_id("cohort")
-    if SUCCESSOR_ANALYSIS is not None
-    else EXECUTION["analysis"]["cohort_id"]
-)
-PARTITION_SCOPES = tuple(
-    (
-        SUCCESSOR_ANALYSIS.scope_id("cohort_partition", row["partition_id"])
-        if SUCCESSOR_ANALYSIS is not None
-        else f"{COHORT_ID}__{row['partition_id']}"
-    )
-    for row in EXECUTION["partitions"]["rows"]
-)
-ANALYSIS_ID = (
-    SUCCESSOR_ANALYSIS.scope_id("analysis")
-    if SUCCESSOR_ANALYSIS is not None
-    else EXECUTION["analysis"]["primary_analysis_id"]
-)
+REFERENCE_ID, = selected_scope_ids("reference", EXECUTION)
+SAMPLE_IDS = selected_scope_ids("samples", EXECUTION)
+PARTITION_SCOPES = selected_scope_ids("partitions", EXECUTION)
+COHORT_ID, = selected_scope_ids("cohort", EXECUTION)
+ANALYSIS_ID, = selected_scope_ids("analysis", EXECUTION)
 FIRST_SAMPLE_ID = SAMPLE_IDS[0]
 RUN_ID = EXECUTION["run_id"]
 ARTIFACT_OUTPUT_ROOT = RUN_ROOT / "products" / "artifact-summary"

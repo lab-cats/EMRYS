@@ -998,22 +998,14 @@ def _materialize_task_scope(dispatch: TaskDispatch) -> None:
 def _expected_scope_ids(
     task: Mapping[str, Any], execution: Mapping[str, Any]
 ) -> set[str]:
-    selector = task["scope_selector"]
-    if selector == "reference":
-        return {str(execution["reference"]["reference_id"])}
-    if selector == "samples":
-        return {str(row["sample_id"]) for row in execution["samples"]["rows"]}
-    if selector == "partitions":
-        cohort = str(execution["analysis"]["cohort_id"])
-        return {
-            f"{cohort}__{row['partition_id']}"
-            for row in execution["partitions"]["rows"]
-        }
-    if selector == "cohort":
-        return {str(execution["analysis"]["cohort_id"])}
-    if selector == "analysis":
-        return {str(execution["analysis"]["primary_analysis_id"])}
-    raise TaskBoundaryError(f"Unsupported task scope selector: {selector}")
+    try:
+        return set(
+            inspection.selected_scope_ids(
+                str(task["scope_selector"]), execution
+            )
+        )
+    except inspection.InspectionError as exc:
+        raise TaskBoundaryError(str(exc)) from exc
 
 
 def _admit_output_locations(
