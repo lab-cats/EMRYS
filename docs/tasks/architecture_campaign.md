@@ -351,8 +351,9 @@ Project / Analysis -> Run -> Result
 `Project -> Analysis -> Run -> Results`, with Attempt progressively disclosed.
 The method notation above remains intake traceability, not an authorization
 for a mutable Run aggregate or a selected application API. Exact construction,
-fields, persistence, subordinate identity, and interface realization remain
-Open under the Section 8.1.2 field-and-authority package.
+persisted representation, and interface realization remain Open. Exact
+semantic fields, subordinate identity, and logical authorities are selected by
+`ARCH-MODEL-FIELDS-01` in Section 8.1.3.
 
 ### 5.2 Proposed public commands
 
@@ -608,23 +609,27 @@ Lower capabilities receive explicit immutable supported information rather
 than importing a broad higher-level aggregate or independently reconstructing
 competing identity. Draft construction, attempt-local execution state, locks,
 logs, and transactional publication may mutate only inside an explicit owner
-and cannot alter or reconstruct the Run. Exact fields, identity composition,
-representations, persistence, APIs, and migration remain `AC-SLICE-03` and
-`AC-DEC-011` decisions.
+and cannot alter or reconstruct the Run. `ARCH-MODEL-FIELDS-01` now selects
+exact semantic fields, identity composition, Attempt variation, logical
+authorities, and recovery ownership. Types, serialization, persistence,
+storage, APIs, migration mechanics, and product realization remain
+`AC-SLICE-03` and `AC-DEC-011` work.
 
 `ARCH-MODEL-AUDIT-01` completed the current-state prerequisite below.
 `ARCH-MODEL-DECISION-01` then resolved `AC-DEC-001` and the model/boundary
-portion of `AC-DEC-011`; the next field-and-authority package is defined in
-Section 8.1.2 and is not implementation authorization.
+portion of `AC-DEC-011`; `ARCH-MODEL-FIELDS-01` completes the bounded semantic
+field-and-authority package in Section 8.1.3. Neither decision is product
+implementation authorization.
 
-The next package must inventory, but not prematurely decide, whether consumers
+The implementation design must decide whether consumers
 receive one narrow shared context or multiple owner-specific capability views;
 the exact operations, arguments, return types, error model, and
-synchronous/asynchronous behavior; and the boundary among science-affecting
-values, execution values, Run identity, and attempt identity. Exact Analysis,
-Run, Attempt, artifact, and report-provenance identity inputs remain open. The
-semantic boundary is settled: declared toolchain/backend/profile/resource
-policy changes Run; actual realization within the declared envelope belongs to
+synchronous/asynchronous behavior. Exact Analysis, Execution-Plan, Run, and
+Attempt semantic identity inputs are now fixed; their product representation,
+storage, API exposure, and migration remain Open. The
+semantic boundary is settled: identity-bearing effective
+toolchain/backend/profile/resource-policy changes Run; actual realization
+within the declared envelope belongs to
 Attempt; reporting changes neither Run nor Attempt. User-authored
 schemas, package/import surfaces, CLI mapping, compatibility windows, migration
 order, persistence, storage, and the representation of reporting state remain
@@ -1086,8 +1091,10 @@ evidence and cannot promote this ceiling.
 
 > **Ratified direction, not implementation.** After reviewing the current-state
 > audit and the three alternatives above, the user selected model C and the
-> smallest public vocabulary below. Exact fields, records, APIs, persistence,
-> storage, backends, compatibility, and migration remain Open.
+> smallest public vocabulary below. At this decision boundary, exact fields,
+> records, APIs, persistence, storage, backends, compatibility, and migration
+> remained Open; Section 8.1.3 subsequently resolves the semantic fields and
+> logical authorities only.
 
 The compact public conceptual model is:
 
@@ -1118,7 +1125,7 @@ The semantic change boundary is:
 | Change | New Analysis revision | New Run | New Attempt |
 |---|:---:|:---:|:---:|
 | Scientific intent changes | yes | yes | no |
-| Declared toolchain, backend/profile, or permissible resource policy changes | no | yes | no |
+| Identity-bearing effective toolchain, backend/profile, or permissible resource policy changes | no | yes | no |
 | The same immutable Run is retried or re-executed | no | no | yes |
 | Host, scheduler job ID, timestamps, or actual allocation vary inside the declared permissible envelope | no | no | yes |
 | A retry requires resources outside the declared permissible envelope | no | yes | no |
@@ -1128,16 +1135,14 @@ Reporting is invoked by default during a full run, can be disabled, and can be
 regenerated independently with its own downstream provenance. It does not
 change Run or Attempt identity and cannot define scientific completion.
 
-The following remain explicitly Open: exact Analysis/Execution-Plan/Run/
-Attempt fields; the permissible variation envelope; Run-ID inputs and hash
-composition; relocation and collection-order semantics; subordinate identity
-exposure; the one logical canonical-record authority and retirement treatment
-for `contract/normalized.json`, `NormalizationBundle`, `AttemptPlan`, workflow
-configuration, and attempt records; serialization, persistence, storage, and
-recovery ownership for an unreceipted skeleton; status representation; APIs,
-classes, packages, and CLI mapping; backend interfaces and selection;
-compatibility and caller migration. No interim parallel model or god object is
-authorized.
+At this decision boundary, exact Analysis/Execution-Plan/Run/Attempt fields,
+the permissible variation envelope, Run-ID inputs, relocation/order semantics,
+logical authorities, recovery ownership, status separation, persistence,
+APIs, compatibility, and migration remained Open. Section 8.1.3 subsequently
+resolves the semantic field, identity, authority, envelope, recovery-owner,
+and status-domain questions. Product representation, persistence, APIs,
+backend realization, compatibility mechanics, and caller migration remain
+Open. No interim parallel model or god object is authorized.
 
 #### Next bounded `AC-SLICE-03` field-and-authority decision package
 
@@ -1186,6 +1191,405 @@ complete only when the field map is schema/caller-backed, every remaining
 choice and rationale is durable, and documentation-only evidence is reported
 without implying runtime, scheduler, scientific, or biological proof. A first
 vertical implementation requires separate review and approval.
+
+### 8.1.3 `ARCH-MODEL-FIELDS-01` field and authority decision
+
+> **Selected semantic design, not product implementation.** This package
+> completes the no-code prerequisite defined above. It fixes the semantic
+> fields, identity inputs, Attempt envelope, logical authorities, and recovery
+> owner needed to slice the first implementation. It deliberately does not
+> choose public APIs or commands, packages, storage paths, serialized schemas,
+> backend implementation, public status names, or an Artifact Store.
+
+The governing split is deliberately portable:
+
+```text
+Project aliases and locators
+        |
+        +--> immutable Analysis revision: what is being analyzed
+        +--> immutable Execution Plan: how it is to be computed
+                    |
+                    v
+             immutable Run binding
+                    |
+                    +--> Attempt(s): where and when the plan was realized
+                    +--> Results: what the Run produced and proved
+```
+
+Paths locate content but do not identify it. Raw configuration sources explain
+how an effective decision was reached but do not replace that decision.
+Backend-specific dispatch material executes a Run but does not become another
+Run authority.
+
+#### Canonical identity records
+
+The logical identity records below are exact. Their later Python types,
+serialization, filenames, and storage remain Open.
+
+| Record | Exact identity-bearing semantic fields | Explicit exclusions |
+|---|---|---|
+| Analysis revision | Identity-domain version; samples sorted by `sample_id`, each with `sample_id`, `condition`, `replicate`, `strandedness`, and R1/R2 content SHA-256; partitions sorted by `partition_id`, each with `partition_id`, `selector_type`, and either the normalized region selector or selector-file content SHA-256; reference FASTA and GTF content SHA-256; and the complete normalized scientific policy: `control_condition`, `treatment_condition`, `background_condition`, `rna_ref`, `rna_alt`, `min_sample_dp`, `mean_dp_threshold`, `fdr_threshold`, `common_or_threshold`, `absolute_difference_threshold`, and `background_max_fraction` | Project/name aliases; authored and resolved paths; file sizes; request/manifest bytes and hashes; raw formatting and collection order; notes; `label`, `analysis.id`, `cohort_id`, and `reference.id`; STAR-index settings; runtime, source, backend, resources, reporting, and storage |
+| Execution Plan | Identity-domain version; normalized functional-owner/dependency/output-admission specification; declared scientific-computation target or stopping boundary; exact executable implementation content identity for scientific computation and artifact admission; exact logical toolchain and environment content identities; declared execution-backend and engine semantics; STAR-index parameters; and the canonical pre-allocation computational resource declaration, including `workflow_cores`, `stage_concurrency`, `step_threads`, `workflow_memory_mb`, and computational `stage_memory_mb` with their symbolic values preserved | Analysis fields; physical source/tool/config paths; commit labels that do not prove executable content; host, process, scheduler job, workspace, scratch, and run-root locations; allocation-resolved resource values; logging/display flags; reporting targets, implementation, templates, enablement, format, projection, and reporting memory; backend adapter files, argv, dispatch paths, and absolute output paths |
+| Run binding | Identity-domain version, Analysis-revision digest, and Execution-Plan digest | Project identity/location, human labels, Attempt facts, Results/report state, and every derived adapter |
+
+The Analysis and Execution Plan are independently content-addressed and may be
+reused. A Run binds exactly one of each. Any Analysis-specific dispatch roster
+is therefore a deterministic projection of the Run binding, not an additional
+identity record.
+
+Successor task and artifact scopes that currently depend on `reference.id`,
+`cohort_id`, or `analysis.id` use internal content-bound scope identities;
+Project aliases may still be displayed and retained as provenance. This is why
+renaming one of those aliases cannot silently change the Run's task or Results
+identity. `sample_id` and `partition_id` remain Analysis fields because they are
+structural keys within the declared design, not top-level display aliases.
+
+For the current CMH profile, “normalized functional-owner/dependency/output
+specification” means the semantic content of `owner_tasks`, `direct_edges`,
+completion/evidence-owner classification, and required artifact templates,
+including the current logical `source_path_template` because it selects the
+artifact admitted under an ID. Engine `rule_name` and derivable
+`scope_selector` values are adapter material. Set- or graph-like lists
+are canonicalized by stable semantic keys; their authored order is not
+identity. Artifact adapters remain semantic where they determine how an output
+is admitted.
+
+The implementation identity is the digest of executable source, workflow,
+scripts, and locked code dependencies that can affect Run-bound scientific
+computation or artifact admission. Report-only rules, modules, renderers,
+templates, and stylesheets have their own downstream transaction provenance
+and do not enter Run identity. A
+clean source commit may be retained and may locate that material, but a commit
+label alone is not the portable content identity. Each tool or environment
+identity contains the logical name and exact admitted executable, package, or
+environment-content digest; version is retained for explanation. Install
+paths are Attempt realization facts. This exact-content rule is intentionally
+conservative: version-compatible substitution is not allowed inside one Run.
+
+The identity calculation is domain-separated:
+
+```text
+analysis_revision_digest = SHA256(canonical Analysis-revision identity record)
+execution_plan_digest     = SHA256(canonical Execution-Plan identity record)
+run_binding               = {
+  identity_domain: "emrys.run-identity.v1",
+  analysis_revision_sha256: analysis_revision_digest,
+  execution_plan_sha256: execution_plan_digest
+}
+run_id                    = "run-" + SHA256(canonical run_binding)
+```
+
+The identity-domain version changes only when identity semantics change. A
+storage-schema or formatting migration alone must not change these identities.
+Historical current-format Run IDs remain valid for their historical records;
+they are not recomputed into the successor domain.
+
+#### Relocation, formatting, naming, order, and content rules
+
+| Change | Identity consequence |
+|---|---|
+| Move a request, manifest, FASTQ, selector file, FASTA, GTF, tool, environment, Project, workspace, or Run bundle without changing admitted content | No Analysis, Execution-Plan, or Run identity change. A later execution records the new realization in a new Attempt. |
+| Change request YAML/TSV whitespace, quoting, key order, row order, or equivalent relative/absolute locator spelling while normalized semantics and bound content are unchanged | No identity change. Exact authored-source bytes remain provenance. |
+| Change `label`, `analysis.id`, `cohort_id`, `reference.id`, or sample `notes` only | Project alias/annotation change only. No new Analysis revision or Run. |
+| Change `sample_id`, `condition`, `replicate`, `strandedness`, `partition_id`, `selector_type`, or normalized region selector | New Analysis revision and therefore a new Run. These values are structural scientific keys, not presentation-only labels. |
+| Change any bound FASTQ, selector-file, FASTA, or GTF byte content | New Analysis revision and Run, even if a higher-level parser might judge the files equivalent. A future semantic-content equivalence rule would require a new identity domain. |
+| Change any scientific comparison, allele, threshold, background, or design value | New Analysis revision and Run. Omitted `background_condition` and explicit normalized `null` are equivalent. |
+| Change the Run-bound workflow/method graph, scientific/evidence completion or output-admission policy, scientific stopping boundary, computational/artifact-admission implementation, exact computational tool/environment content, backend/engine semantics, STAR-index policy, or declared computational resource policy | New Execution Plan and Run. |
+| Change only a raw profile/config path, formatting, source hash, default source, or override source while the canonical effective declaration is unchanged | Provenance change only; no new Run. |
+| Change report enablement, format, renderer, template, output path, or reporting resource policy | No Analysis revision, Run, or Attempt by itself. The reporting transaction records the change. |
+
+The present `local_pipeline_slice` target is a composite backend target whose
+only direct prerequisite is the verified HTML report. It is therefore not the
+Run-bound target. For a full current Run, the Run-bound stopping boundary is
+the required scientific/evidence-owner closure currently exposed by
+`cohort_slice`/`_all_owner_outputs()`; the artifact-index, summary, and HTML
+targets are downstream default reporting adapters. A later backend may name or
+represent those boundaries differently without changing the semantic split.
+
+`strandedness` remains an Analysis design declaration even though the present
+pipeline does not consume it computationally. That gap must stay visible until
+a scientific decision either uses it or explicitly retires it; it must not be
+silently dropped during architecture migration.
+
+#### Resource declaration and permissible Attempt variation
+
+The current `ResourcePlan` mixes two authorities. It resolves symbolic
+`workflow_memory_mb: allocation` and per-job `memory: workflow` against the
+observed allocation, then records both the resolved values and allocation.
+Freezing that object into Run would make the same declared plan change identity
+from host to host.
+
+The Run instead owns the canonical **pre-allocation declaration**. Symbolic
+`allocation` and `workflow` values remain symbolic and define the permissible
+envelope. Each Attempt records `allocation.{cores,memory_mb,source}` and the
+deterministic numeric resolution. The declaration is unchanged across
+Attempts; insufficient capacity is inadmissible. No new min/max range policy
+is introduced by this decision.
+
+Reporting memory is outside Run because reporting is a downstream,
+identity-neutral transaction. `default_sha256`, `config_path`,
+`config_sha256`, and override labels explain policy provenance but do not enter
+Run identity; the effective symbolic declaration does.
+
+The complete change boundary is:
+
+| Change or observation | New Analysis revision | New Run | New Attempt or downstream transaction |
+|---|:---:|:---:|---|
+| Any Analysis identity field changes | yes | yes | No Attempt until the new Run is executed |
+| Any Execution-Plan identity field or symbolic resource declaration changes | no | yes | No Attempt until the new Run is executed |
+| Same Run executes or resumes, including reuse of verified predecessor work | no | no | New Attempt |
+| Attempt ID, predecessor, operation, time, owner token, host, PID, scheduler job, account/partition/QoS/node, walltime, workspace, scratch, run-root location, or storage location changes | no | no | New Attempt |
+| Physical source/tool/runtime paths change while exact Run-bound content identities remain equal | no | no | New Attempt when execution occurs |
+| Actual cores or memory change while the unchanged symbolic declaration admits the allocation and the effective computational target, threads, concurrency, and toolchain stay fixed | no | no | New Attempt; record the observation and numeric resolution |
+| Allocation is insufficient for the Run declaration | no | no | Block before Attempt admission when possible; otherwise retain a truthful blocked Attempt. Changing the declaration requires a new Run. |
+| Scheduler transport changes but the declared backend, implementation, toolchain, and resource declaration do not | no | no | New Attempt; current outer Slurm placement is such transport, not a second backend |
+| Declared execution backend or engine semantics change | no | yes | No Attempt until the new Run is executed |
+| Report is generated, regenerated, fails, or uses different report-only policy | no | no | Separate reporting transaction; never an Attempt by itself |
+| Inspection or another read-only projection is regenerated | no | no | Neither |
+
+An Attempt may vary only in realization and observation. Its effective
+scientific inputs, target, implementation, tool/environment identities,
+backend semantics, computational resource declaration, thread/concurrency
+policy, and task semantics must still match the Run. Backend-specific argv may
+contain different paths, tokens, and locators, but it may not silently change
+those semantics.
+
+#### Exhaustive current-field disposition
+
+The tables below name every current field or closed field family required by
+the package. Existing Section 8.1.1 retains the source-backed caller map;
+these tables settle the target allocation.
+
+| Current authored/normalized field | Final semantic owner or disposition |
+|---|---|
+| Request `schema_version` | Serialization compatibility metadata |
+| Request `label`; `analysis.id`; `cohort_id`; `reference.id` | Project aliases/annotations; exact values also remain authored-source provenance |
+| Request `profile` | Project selector that resolves to the Execution Plan; raw token is provenance |
+| `sample_manifest`, `partition_manifest`, `reference.fasta`, `reference.gtf` authored strings | Project locators; physical resolution is Attempt provenance |
+| Sample `sample_id`, `condition`, `replicate`, `strandedness`; R1/R2 content SHA-256 | Analysis revision |
+| Sample R1/R2 `path`, `size_bytes`; sample `notes`; raw sample-manifest `path`, `size_bytes`, `sha256` | Locator, validation, annotation, or exact-source provenance; no identity authority |
+| Partition `partition_id`, `selector_type`, normalized region `selector_value`, or selector-file content SHA-256 | Analysis revision |
+| Regions-file authored/absolute `selector_value`; selector-file `path`, `size_bytes`; raw partition-manifest `path`, `size_bytes`, `sha256` | Locator/validation/exact-source provenance; duplicate path authority retires |
+| Reference FASTA/GTF content SHA-256 | Analysis revision |
+| Reference FASTA/GTF `path`, `size_bytes` | Locator, validation, and Attempt realization provenance |
+| `star_index.sjdb_overhang`, `star_index.genome_sa_index_nbases` | Execution Plan technical policy |
+| Policy `control_condition`, `treatment_condition`, `background_condition`, `rna_ref`, `rna_alt`, `min_sample_dp`, `mean_dp_threshold`, `fdr_threshold`, `common_or_threshold`, `absolute_difference_threshold`, `background_max_fraction` | Analysis revision |
+| Policy/Reference `schema_version`; `policy_sha256` | Identity-domain/compatibility metadata or derived component digest |
+| `primary_analysis_id` versus `policy.analysis_id` | Duplicated human alias; one Project alias survives, neither enters Analysis identity |
+
+| Current plan/profile field | Final semantic owner or disposition |
+|---|---|
+| Workflow-contract `profile_id`, `profile_version`, raw `profile_sha256` | Inspectable provenance/compatibility; the normalized semantic profile content enters Execution Plan |
+| `semantic_owner_keys[]`; `owner_tasks[].{machine_key,step_id,scope_type}`; `direct_edges[].{producer,consumer,artifact,semantics}`; `required_owner_keys[]`; `evidence_owner_keys[]`; `artifact_templates[].{artifact_id_template,step_id,scope_type,adapter,source_path_template,required}` | Normalized functional and output-admission specification in Execution Plan; set/graph order is canonicalized. `source_path_template` stays bound until another bound field provably derives the same artifact selection. |
+| `owner_tasks[].rule_name`; both `scope_selector` occurrences | Derived backend adapter material; derivable duplicate fields are compression candidates |
+| Snakemake profile `executor`, `scheduler`, effective `cores`, `retries`, `keep-incomplete` | Normalized backend/engine/resource semantics in Execution Plan |
+| Snakemake profile `printshellcmds`, `show-failed-logs` | Attempt logging/presentation policy, not identity |
+| Resource declaration `workflow_cores`, `workflow_memory_mb`, `stage_concurrency`, `step_threads`, computational `stage_memory_mb` | Execution Plan in canonical pre-allocation form |
+| Reporting `reporting_memory_mb` | Downstream reporting policy/provenance |
+| Allocation `cores`, `memory_mb`, `source`; numeric memory resolution | Attempt observation/provenance |
+| Resource source/default/config paths, hashes, and override labels | Provenance only; effective semantic declaration is authority |
+| Computational `RuntimeBinding.check_id`, `sha256`, and content-bearing `observed` fact | Resolve exact Execution-Plan tool/environment content identity where semantically relevant; retained again as Attempt admission observation |
+| `RuntimeBinding.path`, `resolved_path` | Attempt physical realization/provenance only |
+| Raw runtime-profile identity and `storage_qualification` binding/receipt | Readiness and Attempt admission provenance only. They prove how/where the fixed plan was admitted but never enter Run identity. |
+| `DoctorResult.request_path`, `workspace`, `source_root`, `runtime_profile`; `inspection`; `blockers`, `remediations`, and derived `ready` | Readiness/locator projection, not Run or Attempt authority |
+| `DoctorResult.run_id`, `source_commit`, `runtime_profile_sha256`, `bindings` | Current candidate/reference and provenance; exact executable/tool content is projected into Execution Plan, while path-bound re-observation remains Attempt admission evidence |
+| Launcher `slurm.account`, `partition`, `qos`, `cpus_per_task`, `memory`, `time`, `exclusive`, `nodelist` / `LauncherPlan` equivalents | Attempt scheduler placement and requested/observed allocation provenance. Capacity must admit the unchanged Run declaration; changing placement alone does not change Run. |
+| Launcher `paths.log_dir`, `request`, `workspace`, `runtime_profile`, `scratch_parent` | Attempt locators/placement provenance only |
+| Launcher `modules.mode`, `init`, `load` | Attempt environment-realization instructions and provenance. Only the exact resulting Run-bound tool/environment content identities affect Run identity; equivalent directives or module locations do not. |
+| `LauncherPlan.config_path`, `dotenv_path`, `override_labels` and raw config/environment/override sources | Provenance for effective placement/realization values, never Run identity; secret values are not made evidence merely because their source participates in resolution |
+
+| Current representation field | Final semantic owner or disposition |
+|---|---|
+| `NormalizationBundle.request_path`, `request_sha256`, `request_bytes` | Authored-source locator/evidence passed into Attempt provenance |
+| `NormalizationBundle.request`, `profile`, `execution_contract` mutable dictionaries | Construction-only views; retire as authorities |
+| `NormalizationBundle.normalized_bytes`; computed `run_id` | Current-format compatibility authority/derived view until successor cutover; not a second successor authority |
+| Current execution top-level `profile`, `samples`, `partitions`, `reference`, `analysis` and their duplicate `identity_envelope` copies | Migrate into one Analysis record, one Execution Plan record, and one Run binding; duplicate envelope retires |
+| `identity_envelope.schema_version`, `identity_envelope_sha256`, current `run_id` | Historical identity authority for current-format Runs; successor generation uses the domain-separated binding above |
+| `reporting_projection.{reference_contract,primary_analysis_policy,reporting_run_contract,artifact_inventory}.{path,sha256}` | Derived reporting adapter/Results projection; identity-neutral |
+| `ReportingBundle` dictionaries, rows, and cached bytes | Derived construction state; no public or persisted authority |
+
+| Current Attempt/materialization field | Final semantic owner or disposition |
+|---|---|
+| `AttemptPlan.normalized` | Run candidate/reference until successor Run admission |
+| `AttemptPlan.readiness`, `workspace`; `run_root`; fixed/attempt files, directories, path properties, `dispatch_count` | Transient readiness, placement, and derived materialization |
+| `operation`, `workflow_attempt_id`, `supersedes_workflow_attempt_id` | Attempt identity/chain |
+| `AttemptPlan.step_threads`, `workflow_cores`, `workflow_memory_mb`, `stage_concurrency`, `stage_memory_mb`, `reporting_memory_mb`, and mutable `attempt_record` | Replace with one Run resource declaration reference, one Attempt resolution/report-policy view, and one immutable admitted Attempt record |
+| Workflow config `run_root`, `python_executable`, `execution_path`, `profile_path`, `source_checkout`, `artifact_source_root`, `reference_contract_path`, `primary_analysis_policy_path`, `reporting_run_contract_path`, `artifact_inventory_path`, and `dispatch_paths` | Attempt-local derived backend adapter |
+| Workflow config `workflow_attempt_id` | Attempt reference |
+| Workflow config `resource_policy` | Split into Run declaration plus Attempt allocation/resolution; not an independent authority |
+| Workflow-attempt `run_id`, `execution_contract_sha256`, `profile_sha256` | Run and historical-compatibility references |
+| `workflow_attempt_id`, `supersedes_workflow_attempt_id`, `operation`, `created_at` | Attempt identity, chain, and occurrence |
+| `request`, `request_label`, `authored_paths`, `workspace`, `scratch`, `host`, `process_id`, `owner_token` | Attempt provenance/realization |
+| `source_checkout.{path,commit,clean}` | Executable content identity is Run-bound; path and cleanliness observation are Attempt provenance; commit is inspectable locator/provenance |
+| `normalizer` and computational entries in `required_tools` `name/version/path/resolved_path/sha256` | Normalizer/implementation and actual tool/package/environment logical name plus exact content identity are Run-bound; paths and re-observation are Attempt provenance; duplicate normalizer/Python identity is a compression candidate |
+| `required_tools` entries `runtime_profile` and `storage_qualification` | Raw runtime-profile and filesystem-qualification evidence are Attempt/readiness provenance, not Execution-Plan identity. `renv_project`/`renv_library` paths likewise realize a separately content-bound environment rather than identify it. |
+| `executor`, `execution_mode` | Declared semantic backend/mode is Run-bound; test or physical realization detail is Attempt provenance |
+| `cores` | Redundant Attempt numeric resolution; retire after resource split |
+| `snakemake_argv`, `workflow_config` reference | Derived Attempt adapter and provenance, never Run authority |
+| Task dispatch `schema_version`, `run_root`, `execution_path`, `profile_path`, `workflow_attempt_id`, `task_attempt_id`, `owner_run_token`, `machine_key`, `scope`, `producer_argv`, `validator_argv`, `inputs`, `outputs`, `validation_report_path`, `native_receipt_path`, `task_start_path`, `task_attempt_path`, `verified_task_path`, `stdout_path`, `stderr_path` | Logical owner/scope/I/O/command derive from Run; task/owner tokens, physical paths, logs, record locations, and retained predecessor references are Attempt/internal evidence |
+
+| Current lifecycle/inspection field | Final semantic owner or disposition |
+|---|---|
+| `LifecycleRequest.run_root`, contract/config/Snakefile/Python/profile paths, authored request path | Derived Attempt invocation/placement |
+| `LifecycleRequest.target` | Current `local_pipeline_slice` is a composite scientific-plus-reporting adapter and is not directly Run-bound. A derived invocation must separately select the Run-bound scientific stopping boundary and any default downstream reporting target. |
+| `LifecycleRequest.operation`, `attempt_record` | Attempt occurrence and admitted Attempt reference |
+| `AttemptPreparation.run_root`, `run_id`, `workflow_attempt_id`, `owner_token`, `host`, `process_id`, `created_at`, `operation`, `attempt_record_bytes` | Transient pre-publication view of one immutable Attempt record; duplicated scalars do not become authorities |
+| `WorkflowResult.exit_code`, `termination_signal`, `message` | Attempt observation reduced into terminal evidence |
+| `LifecycleOutcome.attempt_path`, `receipt_path`, lock paths, `receipt`, `workflow_result`, verified report locations | Derived post-transaction view; persisted records remain authorities |
+| Attempt receipt `schema_version`, `run_id`, `execution_contract_sha256`, `profile_sha256`, `workflow_attempt_id`, `attempt_record`, `released_run_lock`, `status`, `finished_at`, `snakemake_exit_code`, `termination_signal`, `preentry_task_attempt_records`, `task_start_records`, `verified_tasks`, `blockers`, `message` | Immutable Attempt terminal evidence and exact subordinate evidence references |
+| Attempt receipt `reporting_completion_records` | Downstream Results/reporting lineage, not Attempt-success authority |
+| Attempt receipt `local_pipeline_complete` | Current compatibility projection only; retire as scientific-completion authority |
+| `RunInspection.run_root`, `run_id`, state, latest Attempt/receipt, tasks, reporting, blockers, resume/completion booleans, report locations | Read-only derived projection. Duplicate booleans become derived accessors, never persisted state. |
+| `ReportingBoundaryOutcome.kind`, `start_path`, `verified_path`, `origin_workflow_attempt_id`, `semantic_receipt_path`, `semantic_receipt_sha256`, `verified_report_locations` | Derived reporting-transaction return view; persisted start, verified, and semantic receipt records remain authorities |
+
+| Current artifact/report field family | Final semantic owner or disposition |
+|---|---|
+| Artifact inventory `artifact_id`, `step_id`, `scope_type`, `scope_id`, `adapter`, `source_path`, `required` | Logical expected-output identity/scope/adapter/requirement derives from Run; `source_path` is placement; the realized inventory is a read-only Results discovery projection |
+| Artifact record `schema_name`, `schema_version`, `record_type`, `run_id`, `run_contract`, `artifact_id`, `scope` | Versioned Run-bound Results evidence identity |
+| `adapter`, `expectation`, `availability_status`, `completion_status`, `state_reason`, `attempt_provenance_status`, `attempts`, `selected_attempt_id` | Per-artifact Results completeness and Attempt lineage |
+| `implementation`, `local_testing`, `runtime_validation`, `cluster_validation`, `source`, `members`, `tools`, `parameters`, `metrics`, `warnings`, `errors`, `provenance` | Results evidence, validation ceiling, content binding, and provenance |
+| Run summary `schema_name`, `schema_version`, `record_type`, `run_id`, `run_contract`, `summary_state`, `generated_at`, `inventory`, `artifact_receipt`, `attempts`, `superseded_attempt_ids`, `expected_scopes`, `artifacts`, `computational_rollup`, `tools`, `parameters`, `qc_metrics`, `limitations`, `candidate_terminology`, `interpretation_boundary`, `warnings`, `errors`, `provenance` | Read-only Results summary/projection; not Run or Attempt authority |
+| Report receipt `schema_name`, `schema_version`, `record_type`, `run_id`, `attempt_id`, `generated_at`, `publication_state`, `transaction_state`, `interpretation_boundary`, `input_run_summary`, `renderer`, `template`, `stylesheet`, `outputs`, `state_banner`, `truncations`, `schema_versions`, `analysis_execution_performed`, `external_network_assets_used`, `validation_claimed`, `warnings`, `errors`, `provenance` | Downstream reporting transaction/output evidence. `attempt_id` is lineage, not report-created Attempt identity. |
+| Reporting start `schema_version`, Run/execution/profile identities, `origin_workflow_attempt_id`, `kind`, workflow-attempt/config/lock references, `created_at` | Reporting transaction admission and lineage |
+| Verified reporting `schema_version`, Run/execution/profile identities, `origin_workflow_attempt_id`, `kind`, start/semantic-receipt references, `created_at` | Reporting transaction commitment and lineage |
+| Artifact-index receipt `run_id`, Run-contract path/hash/components, inventory path/hash/row count, artifact/index/receipt schema versions, index path/hash, record/count/status/error totals, `record_set_sha256`, adapter Attempt chain/history, producer/version/commit, start/finish times, `transaction_state` | Results-index transaction commitment, independent admission, and provenance; current narrow Run-contract components are historical compatibility, not successor Run authority |
+| Run-summary receipt `run_id`, Run-contract fields, artifact-receipt and inventory/index references/counts, output schema versions and JSON/TSV/QC paths/hashes/sizes/row counts, `summary_state`, `interpretation_boundary`, output count, summary Attempt chain/history, producer/version/commit, start/finish times, `transaction_state` | Results-summary transaction commitment, independent admission, and provenance |
+| Reporting-context and artifact-index/run-summary build-context objects | Mutable transaction construction state; cannot become Results authority |
+
+Shared nested artifact fields—record/path/evidence references, scopes, attempts,
+implementation/runtime/cluster status blocks, members, tools, metrics,
+limitations, report outputs, truncations, and provenance—inherit the parent
+Results or reporting disposition above. Their `path` fields locate exact
+content; their digests bind it. Repeated identity/count fields may support
+independent admission and are not authorized for mechanical deletion.
+
+#### Canonical authorities, migration, and retirement
+
+| Boundary | One surviving logical authority | Current-record treatment |
+|---|---|---|
+| Analysis revision | One deeply immutable admitted Analysis record | Parsed request/manifests are construction/provenance. Current normalized components remain readable for historical Runs but do not compete with successor records. |
+| Execution Plan | One deeply immutable admitted Execution-Plan record | `ResourcePlan` and workflow/profile dictionaries become builders or projections. Allocation resolution stays with Attempt. |
+| Run | One immutable binding record published only after its referenced Analysis and Execution Plan are durable | `contract/normalized.json`/`emrys.execution.v1` remains historical authority for existing Runs. If an implementation slice temporarily emits it for unmigrated current consumers, that compatibility projection has an explicit owner and must stop when those callers migrate. The duplicated identity envelope does not survive as a successor authority. |
+| Attempt | One immutable admitted occurrence record plus its append-only terminal receipt and subordinate task/recovery evidence | `AttemptPlan`, `AttemptPreparation`, `LifecycleRequest`, and `LifecycleOutcome` are transient views. The unversioned workflow config remains a content-bound backend adapter only until all current consumers read Run plus Attempt authority. |
+| Results | Existing per-artifact evidence and transaction commitments, with indexes/summaries as read-only discoverability projections | No new mutable Results aggregate or completion record is introduced. Existing artifact, summary, reporting, and historical evidence is retained. |
+
+Before persistence, construction has one immutable value. After persistence,
+every in-memory object is parsed from or checked against the one admitted
+record; mutable dictionaries and separately cached canonical bytes cannot both
+claim authority. Derived projections may be cached only when their source
+identity is explicit and divergence fails closed.
+
+Migration is direct and bounded rather than a permanent parallel stack:
+
+1. Add successor Analysis, Execution-Plan, and Run authorities and a
+   version-aware historical reader.
+2. Migrate every in-repository current-format consumer in the bounded
+   implementation tranche; any temporary generated current-format projection
+   names its exact callers and retirement condition.
+3. Stop producing current-format compatibility projections for new Runs when
+   those callers migrate. Keep historical records readable; do not rewrite or
+   delete them.
+4. Retire `NormalizationBundle`/mutable-dictionary authority and workflow
+   config authority in the same caller-complete migrations, without adding a
+   forwarding facade or god object.
+
+#### Run admission and unreceipted-skeleton recovery
+
+One Run-admission transaction owner owns the interval from create-absent
+initialization through durable publication of the immutable Run binding.
+Attempt lifecycle begins only after it can admit that Run. A directory, empty
+subdirectory roster, `AttemptPlan`, or workflow config is never a Run.
+
+No separate initialization receipt is required. The Run binding is published
+last after its referenced immutable records are durable; its presence and
+successful admission are the Run commit. That gives zero-Attempt Runs a
+truthful authority without adding another evidence class.
+
+If publication is interrupted before that commit, the same owner may reuse or
+roll back only residue proved to contain no admitted Run, Attempt, lock,
+receipt, task/report record, result, log, or other retained evidence. Anything
+nonempty, concurrent, partially attributable, or ambiguous is quarantined and
+reported rather than silently repaired or deleted. Once an Attempt admission
+or lock exists, existing lifecycle/recovery owners retain authority and their
+evidence is never treated as initialization residue.
+
+#### Status-domain separation
+
+Exact public state names remain Open, but five semantic dimensions are now
+binding and cannot collapse:
+
+1. Run admission and immutable-plan integrity.
+2. Per-Attempt execution and terminal outcome.
+3. Evidence integrity, blockers, and recovery availability.
+4. Scientific Results/artifact availability, completeness, and validation
+   ceiling.
+5. Reporting transaction/publication state.
+
+Run existence is not Attempt success; Attempt success is not complete Results;
+complete Results is not report publication; none implies scientific review or
+biological validation. Report failure or disablement cannot turn a successful
+scientific Attempt into a failed one. The ordinary command journey may still
+surface a downstream reporting failure, but the underlying authorities remain
+separate. `RunInspection` and future read models derive these dimensions and
+never persist a competing mutable status.
+
+#### Compression, protection, compatibility, and evidence boundary
+
+The first implementation slice must be net-negative in maintained product
+surface and must report category-separated actuals. The highest-confidence
+required reductions are the duplicated execution/identity-envelope view,
+mutable-dictionary-plus-canonical-bytes competition, six copied
+`AttemptPlan` resource views, redundant normalizer/Python identities,
+duplicated status booleans, and workflow-config authority. Profile fields
+proved derivable (`semantic_owner_keys`, equal required-owner rosters, and
+`scope_selector`) and unused convenience/outcome fields remain caller-audit
+candidates rather than automatic deletions.
+
+Closed validation, canonicalization and digest rechecks; no-follow input and
+record admission; exact source/runtime re-admission; resource
+oversubscription checks; create-exclusive publication, fsync and publication-
+last ordering; attempt mutexes, owned locks, signal/process-group behavior;
+dispatch substitution and resume-chain checks; derived inspection independent
+of Snakemake metadata; and direct-owner, adversarial, seeded-fault, recovery,
+fresh-clone, and synthetic end-to-end defenses all survive unless an
+implementation maps an equal-or-stronger replacement.
+
+No retained evidence deletion is proposed or authorized. Workflow attempts,
+terminal receipts, task start/attempt/verified records, reporting ledgers and
+semantic receipts, artifact records/indexes/summaries/reports, logs,
+lock/released-lock recovery evidence, and historical schemas remain retained.
+Repeated identity or count fields require schema-by-schema tamper-detection and
+consumer review; duplication alone is not deletion evidence.
+
+#### Decision closeout and remaining implementation choices
+
+`ARCH-MODEL-FIELDS-01` resolves the semantic portion of `AC-DEC-011`: exact
+identity-bearing fields, relocation/content/order rules, Run-ID composition,
+Attempt variation, logical authorities, direct compatibility direction,
+initialization recovery ownership, and status-domain separation. It does not
+complete `AC-SLICE-03`, because product realization is still Open.
+
+The first vertical implementation may now be sliced around the smallest
+caller-complete authority cutover. It must still choose its exact types,
+serialization, persistence and storage location, API signatures, package
+owners, backend adapter changes, migration mechanics, tests, and retirement
+roster. Public state names, reporting API/CLI, Artifact Store, broader policy
+services, and evidence deletion remain later or separately approval-gated
+decisions.
+
+#### Decision-only change accounting and evidence ceiling
+
+This package changes documentation only. Maintained product implementation,
+protections/executable tests, configuration/scripts/schemas/runtime material,
+retained evidence, compatibility code paths, and mutable product state all
+change by zero. No public command, type, method, serialized schema, backend, or
+storage path is introduced.
+
+The decision is grounded in current schemas, exact constructor/consumer
+inspection, and the completed Section 8.1.1 audit. Focused documentation
+validation can prove internal consistency only. It cannot prove product
+behavior, runtime portability, local/Slurm parity, scheduler or cluster
+operation, production readiness, scientific review, or biological validity.
 
 ### 8.2 Thin Stage boundary
 
@@ -1837,13 +2241,15 @@ Those rows now retain only their stated concrete vocabulary, API, lifecycle,
 storage, or migration choices; they do not reopen the ratified constraints in
 Sections 7, 8, and 11.3.
 
-`ARCH-MODEL-DECISION-01` resolves `AC-DEC-001` and the model and semantic
-change-boundary portion of `AC-DEC-011`:
+`ARCH-MODEL-DECISION-01` resolves `AC-DEC-001` and the model/change-boundary
+portion of `AC-DEC-011`; `ARCH-MODEL-FIELDS-01` resolves the remaining
+semantic field-and-authority portion:
 
 | Decision ID | Resolved decision |
 |---|---|
 | `AC-DEC-001` | The compact public conceptual model is `Project -> Analysis -> Run -> Results`; Run is public and owns the primary ordinary identity, while Attempt is progressively disclosed. Execution Plan is internal and inspectable; Dataset, Reference, and ExperimentalDesign are scientific-definition sections; Runtime/profile is operator-facing; Artifact is advanced, Task internal, and Report a downstream Results capability. |
 | `AC-DEC-011` (partial) | Model C is selected. A Run immutably binds one admitted immutable Analysis revision to one immutable effective Execution Plan. Scientific-intent or declared-plan changes create a new Run; re-execution creates an Attempt; attempt-local realization may vary only inside the Run's declared envelope; reporting changes create neither. |
+| `AC-DEC-011` (semantic fields and authorities) | Section 8.1.3 fixes the Analysis, Execution-Plan, and Run identity fields and digest composition; relocation/content/order rules; symbolic resource envelope; Attempt variation; logical canonical authorities and direct retirement direction; Run-admission recovery owner; and five separate status domains. |
 
 | Decision ID | Open question | Retained options or concerns |
 |---|---|---|
@@ -1856,7 +2262,7 @@ change-boundary portion of `AC-DEC-011`:
 | `AC-DEC-008` | What is the minimum useful operation/Stage representation? | Name, methods, lifecycle states, typed contracts, granularity, discovery, and migration. The boundary is already constrained to remain thin, preserve functional/scientific ownership, and avoid a generic framework. |
 | `AC-DEC-009` | Which repeated policy decisions deserve shared authorities? | Inventory input, validation, runtime, storage, publication, resource, and execution decisions; decide final authorities, package/service placement, configuration inputs, return/error contracts, defaults, safe overrides, precedence, compatibility, consolidation order, and migration. Every decision already requires one authority, but shared centralization must prove net reduction and avoid empty wrappers. |
 | `AC-DEC-010` | What artifact-lifecycle vocabulary and owner shape are justified? | Candidate, validation, admission, publication, commit, immutability, evidence, and rollback; generalized versus class-specific ownership; APIs, schemas, manifests, receipts, immutability mechanisms, external/large artifacts, Run Bundle/report-derived relationships, cleanup, recovery, and representative migration. Lifecycle/admission is already distinct from physical storage. |
-| `AC-DEC-011` | Which exact fields and authorities realize the selected Analysis/Execution-Plan/Run/Attempt model? | Exact field allocation, Run-ID inputs and relocation behavior, permissible Attempt envelope, subordinate identities, canonical records and retirement of competing representations, persistence/serialization/storage, recovery ownership for an unreceipted skeleton, status/result/report projections, APIs, and migration remain Open. Mutable object state and canonical bytes cannot compete; coordination cannot absorb lower authorities or become a god object. |
+| `AC-DEC-011` | How are the selected Analysis/Execution-Plan/Run/Attempt semantics realized? | Exact product types, persistence/serialization/storage, API/package placement, backend adapters, caller migration mechanics, compatibility duration, and implementation retirement roster remain Open. The identity fields, Run-ID composition, relocation/order/content rules, symbolic Attempt envelope, logical authorities, recovery owner, and status-domain separation are fixed in Section 8.1.3. Mutable object state and canonical bytes cannot compete; coordination cannot absorb lower authorities or become a god object. |
 | `AC-DEC-012` | What public Run, Attempt, scientific, and reporting states are useful and truthful? | Current `RunInspection` states and attempt-receipt statuses are Observed implementation vocabulary only. Current `local_pipeline_complete` requires reporting, contrary to accepted downstream-reporting semantics. Pending/running/complete/failed/recoverable and representation of partial or blocked states remain options; scientific and reporting outcomes must remain distinguishable. |
 | `AC-DEC-013` | What is the Run Bundle contract? | Layout, portability, large artifacts, external references, redaction, archival, regeneration, sharing |
 | `AC-DEC-014` | How are the ratified downstream-reporting semantics represented? | The current lifecycle conflates report completion with `local_pipeline_complete`; standalone regeneration exists but requires low-level roots and does not adopt or repair the orchestration reporting ledger. Exact opt-out/regeneration interfaces, persisted Run/report states, retry/resume and exit presentation, scientific/evidence/operations commands or views, one shared receipt-last transaction versus profile-specific receipts, immutable artifacts versus derived views, and canonical location remain Open. Reporting is already downstream, invoked by default for a full run, able to be disabled, and independently regenerable without invalidating science. |
@@ -1865,7 +2271,7 @@ change-boundary portion of `AC-DEC-011`:
 | `AC-DEC-017` | Which advanced interfaces are stable? | inspect run/artifact, manifest, evidence, diagnostics, debug, machine-readable outputs |
 | `AC-DEC-018` | How is each bounded compatibility and retirement transition implemented? | Compatibility window, warnings, fixtures, and removal evidence; caller migration, relevant parity, owned temporary compatibility, and eventual retirement are already binding. Evidence deletion remains separately approval-gated. |
 | `AC-DEC-019` | Which campaign metrics and targets become commitments? | Reproducible UX and operational baselines; separate product, protection, configuration/documentation, and retained-evidence methods; supported environment; time targets; coverage-rebase interpretation; qualitative acceptance. Per-slice accounting is already binding. |
-| `AC-DEC-020` | How should work beyond the accepted `LOG-05` migration boundary, compression opportunities, and any just-in-time facade use be ordered? | The next documentation-only `AC-SLICE-03` field-and-authority package is selected; this does not order its later implementation or the broader campaign. Three source phase models and P0–P3 suggestion, per-slice facade need, compression/retirement opportunities, and later importance/complexity scores remain for just-in-time reconsideration. Section 13.3 settles only logging adoption sequencing. |
+| `AC-DEC-020` | How should work beyond the accepted `LOG-05` migration boundary, compression opportunities, and any just-in-time facade use be ordered? | The documentation-only `AC-SLICE-03` field-and-authority prerequisite is complete; the first caller-complete vertical implementation boundary and broader ordering remain Open. Three source phase models and P0–P3 suggestion, per-slice facade need, compression/retirement opportunities, and later importance/complexity scores remain for just-in-time reconsideration. Section 13.3 settles only logging adoption sequencing. |
 | `AC-DEC-021` | Which new architecture documents should remain after the campaign? | Invariants, current architecture, target architecture, or consolidation into existing durable owners |
 | `AC-DEC-022` | How should the Steps 07–09 audit be bounded? | Review authority, candidate universe, count/CMH/BH contracts, oracle data, evidence ceiling |
 | `AC-DEC-023` | Which historical claims from the source are accurate and useful? | Development dates, chronology, and repository-history interpretations require live Git verification before reuse |
@@ -1909,8 +2315,9 @@ implementation authorization. `AC-SLICE-01` is complete as the bounded
 mutation, protection/evidence, and compression prerequisite is complete as
 `ARCH-MODEL-AUDIT-01`. `ARCH-MODEL-DECISION-01` then selects model C, the
 compact public vocabulary, and the Run-versus-Attempt change boundary.
-`AC-SLICE-03` remains Open for the defined field-and-authority decision package
-and later separately approved introduction. Every
+`ARCH-MODEL-FIELDS-01` completes the semantic field-and-authority prerequisite.
+`AC-SLICE-03` remains Open only for later separately approved product
+introduction. Every
 later candidate still requires its own bounded owner/caller review,
 compression register, mutation inventory, non-goals, acceptance conditions,
 protection disposition, and evidence ceiling before entering the matrix. A
@@ -1921,7 +2328,7 @@ defined in Section 13.1; evidence deletion cannot be implied by promotion.
 |---|---|---|
 | `AC-SLICE-01` | Ratified all 27 architectural invariants and five migration/test guardrails against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open |
 | `AC-SLICE-02` | Ratified responsibility clusters, three separate dependency graphs, forbidden authority transfers, a current-owner crosswalk, and a fast Python source-boundary ratchet for exact CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open |
-| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Current-state prerequisite completed as `ARCH-MODEL-AUDIT-01`; model C, public vocabulary, and Run/Attempt boundary completed as `ARCH-MODEL-DECISION-01`; the next bounded field-and-authority decision package is defined in Section 8.1.2 but not implemented, so the campaign card remains Open |
+| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit completed as `ARCH-MODEL-AUDIT-01`; model/boundary completed as `ARCH-MODEL-DECISION-01`; semantic fields, identity, authorities, recovery, direct compatibility direction, and retirement targets completed as `ARCH-MODEL-FIELDS-01`. Product types, persistence, APIs, migration, and implementation remain Open, so the campaign card remains Open. |
 | `AC-SLICE-04` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` |
 | `AC-SLICE-05` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across supported local and SLURM backends | New slice; enriches `OPS-02` |
 | `AC-SLICE-06` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` |
@@ -1955,8 +2362,9 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `ARCH-CONST-01` | Completed decision/audit slice: the durable 27-invariant register and five migration/test guardrails now live in the platform-direction decision; broad implementation remains `ARCH-01` and the routed owner tasks |
 | `ARCH-LAYER-01` | Completed responsibility-shape slice: the five bands are responsibility clusters rather than package topology; source imports, runtime/control invocation, and artifact/evidence flow are separate graphs; forbidden authority transfers, current owners, exact transitional imports, and a fast import ratchet now have durable owners |
 | `ARCH-MODEL-AUDIT-01` | Completed current-model prerequisite: maps separate control paths, semantic lifetimes, owners/callers, identity boundaries, dry-run and write-before-attempt-admission gaps, Local/Slurm relationship, reporting/status mismatch, mutation ownership, protected evidence, reproducible footprint/change accounting, and 14 conditional compression candidates without selecting the application model |
-| `ARCH-MODEL-DECISION-01` | Completed direction decision: model C; public `Project -> Analysis -> Run -> Results`; progressively disclosed Attempt; internal inspectable Execution Plan; explicit Run-versus-Attempt change boundary; reporting remains downstream and identity-neutral. Exact fields, authorities, persistence, recovery, APIs, compatibility, migration, and implementation remain Open. |
-| `CONTROL-01` | Realize the ratified compact public model and progressive disclosure. Generated internals remain inspectable. Exact fields, subordinate identities, APIs, persistence, and storage remain post-decision work. |
+| `ARCH-MODEL-DECISION-01` | Completed direction decision: model C; public `Project -> Analysis -> Run -> Results`; progressively disclosed Attempt; internal inspectable Execution Plan; explicit Run-versus-Attempt change boundary; reporting remains downstream and identity-neutral. |
+| `ARCH-MODEL-FIELDS-01` | Completed semantic decision package: exact identity-bearing fields and digest composition; relocation, formatting, labels, order, and content rules; symbolic resource/Attempt envelope; one logical authority per admitted boundary; direct compatibility/retirement direction; Run-admission recovery ownership; and separate Attempt, Results, evidence, and reporting status domains. Product representation and migration remain Open. |
+| `CONTROL-01` | Realize the ratified compact public model and progressive disclosure. Generated internals remain inspectable. Semantic fields and subordinate identity rules are fixed; APIs, product types, persistence, and storage remain implementation work. |
 | `CONFIG-01` | Scientific versus execution versus evidence ownership; one scientist-facing definition; generated normalized artifacts; schema alternatives remain open |
 | `OPS-01` | Small operator-configuration surface; every effective value and source is inspectable and only explicitly safe owner-defined values are overrideable; exact interfaces, merge semantics, and named-profile model remain open |
 | `OPS-02` | Small role-aware CLI with the required capabilities; command partitioning/order, scheduler-selection behavior, and stable advanced inspection/override/debug routes remain open |
@@ -1967,8 +2375,8 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `SETUP-03` | Guided project creation, safe owned directories, generated configuration, validation, and no secret or biological invention; not containerization |
 | `RUNTIME-01` | Tiered runtime provisioning and admission; Managed/Site/Explicit are proposed labels; complete qualification includes the active internal workflow engine/Snakemake where applicable and remains separate from execution profiles |
 | `DOCTOR-01` | Project-aware readiness capabilities, actionable failures, qualified internal workflow-engine dependency, debug escape hatch, and the explicit-repair override with bounded mutation rules; exact command partitioning remains open |
-| `RUN-03` | Realize public Run as the immutable binding of one admitted Analysis revision and one internal immutable Execution Plan while eliminating run-root copying; the one-command interaction and exact ordering remain proposals, and Attempt state cannot mutate Run |
-| `IDENTITY-01` | Realize one primary ordinary Run ID and progressively disclose Attempt identity only when operationally relevant while preserving detailed identities as evidence metadata; exact digest fields and subordinate exposure remain Open |
+| `RUN-03` | Realize public Run as the immutable binding of one admitted Analysis revision and one internal immutable Execution Plan while eliminating run-root copying; semantic fields, the symbolic Attempt envelope, logical authorities, and recovery ownership are fixed, while the one-command interaction and exact implementation ordering remain Open; Attempt state cannot mutate Run |
+| `IDENTITY-01` | Realize one primary ordinary Run ID using the selected domain-separated digest over relocation-independent Analysis and Execution-Plan identities, progressively disclose Attempt identity only when operationally relevant, and preserve detailed identities as evidence metadata; product representation and subordinate exposure remain Open |
 | `FILESYSTEM-01` | Automatic predictable directory creation, one discoverable result surface, and no hidden report root; Project/inputs/runs and Run-Bundle layouts remain proposed |
 | `CONTAINER-01` | Independent managed-container/environment decision without assuming final runtime labels; institutional/native/advanced coexistence, image contents and digest, scheduler/storage/security/licensing/update contracts |
 | `REVIEW-UX-03` | Scientist, advanced scientist, operator, automation, and developer journeys; progressive disclosure; cognitive-load and golden-path baseline |
