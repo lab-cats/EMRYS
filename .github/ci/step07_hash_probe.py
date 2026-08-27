@@ -18,7 +18,13 @@ SAMPLES = tuple(f"sample_{index:02d}" for index in range(1, 7))
 ORIENTATIONS = ("FWD_like", "REV_like")
 PARTITIONS = tuple(f"p{index:02d}" for index in range(1, 26))
 COHORT = "probe"
-STEP07_SHA256 = "52c79a455049f59fe79b692fa02b289b01108186fc7068c8fb669e05b8f49ba1"
+MODES = (
+    "direct-actual",
+    "direct-no-read",
+    "reuse-actual",
+    "reuse-no-read",
+)
+STEP07_SHA256 = "d9c2b6ea2bfac3f4f0a42a611f5444e17d6e9a0e591964c46649e9b5c702f067"
 FILE_CHECKS_SHA256 = "6e066085d7cdc8e142acd9c4171b7a25cb977d7d82a8bfddede7ee5bb07bafd9"
 BENCHMARK_SHA256 = "0144d04c9b2a97242aaf84e6452a0a0e9b2226a58842ba8ff704015764bbc283"
 RECEIPT_HEADER = (
@@ -40,7 +46,7 @@ size="$(stat --format=%s -- "$target")"
 printf '%s\t%s\t%s\t%s\n' \
   "$EMRYS_PROBE_PARTITION" "$EMRYS_PROBE_HASH_MODE" "$size" "$target" \
   >> "$EMRYS_PROBE_HASH_LOG"
-if [[ "$EMRYS_PROBE_HASH_MODE" == actual ]]; then
+if [[ "$EMRYS_PROBE_HASH_MODE" == *-actual || "$target" == /dev/stdin ]]; then
   exec "$EMRYS_PROBE_REAL_PYTHON" "$@"
 fi
 printf '%064d\n' 0
@@ -91,6 +97,29 @@ def write_executable(path: Path, content: str) -> None:
     path.chmod(0o700)
 
 
+def scientific_input_paths(root: Path) -> tuple[Path, ...]:
+    paths = [
+        root / "samples.tsv",
+        root / "partitions.tsv",
+        root / "reference.fa",
+        root / "reference.fa.fai",
+    ]
+    for sample in SAMPLES:
+        sample_root = root / "orientation" / sample
+        for orientation in ORIENTATIONS:
+            bam = sample_root / f"{sample}.{orientation}.bam"
+            paths.extend((bam, Path(f"{bam}.bai")))
+    return tuple(paths)
+
+
+def bound_identity(root: Path, *, read_inputs: bool) -> str:
+    aggregate = hashlib.sha256(b"emrys.step07-input-identity.v1\0")
+    for path in scientific_input_paths(root):
+        digest = sha256_file(path) if read_inputs else "0" * 64
+        aggregate.update(os.fsencode(f"{path}\0{digest}\0"))
+    return aggregate.hexdigest()
+
+
 def assert_fixed_baseline(repo: Path) -> None:
     expected = {
         repo
@@ -114,8 +143,7 @@ def seed(root: Path) -> None:
     orientation_root.mkdir()
     sample_manifest = root / "samples.tsv"
     sample_manifest.write_text(
-        "sample_id\tcondition\n"
-        + "".join(f"{sample}\tprobe\n" for sample in SAMPLES),
+        "sample_id\tcondition\n" + "".join(f"{sample}\tprobe\n" for sample in SAMPLES),
         encoding="utf-8",
     )
     partition_manifest = root / "partitions.tsv"
@@ -145,6 +173,12 @@ def seed(root: Path) -> None:
             os.link(bai_seed, Path(f"{bam}.bai"))
     write_executable(root / "hash-python", HASH_WRAPPER)
     write_executable(root / "fake-bcftools", BCFTOOLS_WRAPPER)
+    (root / "bound-actual.sha256").write_text(
+        bound_identity(root, read_inputs=True) + "\n", encoding="ascii"
+    )
+    (root / "bound-no-read.sha256").write_text(
+        bound_identity(root, read_inputs=False) + "\n", encoding="ascii"
+    )
     with (root / "seed.tsv").open("x", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle, dialect="excel-tab")
         writer.writerow(("path", "bytes", "sha256"))
@@ -172,7 +206,11 @@ def fake_bcftools(arguments: list[str]) -> int:
     detail = ""
     if command == "mpileup":
         orientation = next(
-            (value for value in ORIENTATIONS if any(f".{value}.bam" in arg for arg in rest)),
+            (
+                value
+                for value in ORIENTATIONS
+                if any(f".{value}.bam" in arg for arg in rest)
+            ),
             "",
         )
         if not orientation:
@@ -241,6 +279,12 @@ def run_producer(mode: str, partition_count: int, trial: Path) -> None:
             "EMRYS_REQUIRE_BOUND_SHA256": "1",
         }
     )
+    base_environment.pop("EMRYS_STEP07_INPUT_IDENTITY_SHA256", None)
+    if mode.startswith("reuse-"):
+        identity_kind = "actual" if mode.endswith("-actual") else "no-read"
+        base_environment["EMRYS_STEP07_INPUT_IDENTITY_SHA256"] = (
+            (root / f"bound-{identity_kind}.sha256").read_text(encoding="ascii").strip()
+        )
     for partition in PARTITIONS[:partition_count]:
         environment = base_environment | {
             "EMRYS_PROBE_PARTITION": partition,
@@ -278,18 +322,21 @@ def read_tsv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(handle, dialect="excel-tab"))
 
 
-def expected_hashes(root: Path) -> dict[str, int]:
+def expected_hashes(root: Path, mode: str) -> dict[str, int]:
+    reuse = mode.startswith("reuse-")
     expected = {
-        str(root / "samples.tsv"): 8,
-        str(root / "partitions.tsv"): 8,
-        str(root / "reference.fa"): 3,
-        str(root / "reference.fa.fai"): 3,
+        str(root / "samples.tsv"): 6 if reuse else 8,
+        str(root / "partitions.tsv"): 6 if reuse else 8,
+        str(root / "reference.fa"): 1 if reuse else 3,
+        str(root / "reference.fa.fai"): 1 if reuse else 3,
     }
     for sample in SAMPLES:
         for orientation in ORIENTATIONS:
             bam = root / "orientation" / sample / f"{sample}.{orientation}.bam"
-            expected[str(bam)] = 3
-            expected[str(Path(f"{bam}.bai"))] = 3
+            expected[str(bam)] = 1 if reuse else 3
+            expected[str(Path(f"{bam}.bai"))] = 1 if reuse else 3
+    if reuse:
+        expected["/dev/stdin"] = 1
     return expected
 
 
@@ -297,7 +344,7 @@ def validate_outputs(mode: str, partition_count: int, trial: Path) -> None:
     root = require_root()
     partitions = PARTITIONS[:partition_count]
     hash_rows = read_tsv(trial / "hash.tsv")
-    expected = expected_hashes(root)
+    expected = expected_hashes(root, mode)
     expected_total = sum(expected.values()) * partition_count
     if len(hash_rows) != expected_total:
         raise ProbeError(f"expected {expected_total} hashes, got {len(hash_rows)}")
@@ -310,18 +357,23 @@ def validate_outputs(mode: str, partition_count: int, trial: Path) -> None:
         if observed != Counter(expected):
             raise ProbeError(f"hash roster mismatch for {partition}")
         for path, count in sorted(expected.items()):
-            size = Path(path).stat().st_size
+            size = 0 if path == "/dev/stdin" else Path(path).stat().st_size
             matching = [
                 row
                 for row in hash_rows
                 if row["partition_id"] == partition and row["path"] == path
             ]
-            if any(row["mode"] != mode or int(row["bytes"]) != size for row in matching):
+            if any(
+                row["mode"] != mode or int(row["bytes"]) != size for row in matching
+            ):
                 raise ProbeError(f"hash log metadata mismatch for {partition}: {path}")
             logical_bytes += size * count
-            roster_lines.append(
-                f"{partition}\t{Path(path).relative_to(root)}\t{count}\t{size}\n"
+            relative = (
+                "aggregate-stdin"
+                if path == "/dev/stdin"
+                else Path(path).relative_to(root)
             )
+            roster_lines.append(f"{partition}\t{relative}\t{count}\t{size}\n")
     calls = read_tsv(trial / "bcftools.tsv")
     expected_calls = Counter(
         {
@@ -344,9 +396,11 @@ def validate_outputs(mode: str, partition_count: int, trial: Path) -> None:
             raise ProbeError(f"fake bcftools call roster mismatch for {partition}")
     if len(calls) != 16 * partition_count:
         raise ProbeError("fake bcftools call count is invalid")
-    sample_hash = sha256_file(root / "samples.tsv") if mode == "actual" else "0" * 64
+    sample_hash = (
+        sha256_file(root / "samples.tsv") if mode.endswith("-actual") else "0" * 64
+    )
     partition_hash = (
-        sha256_file(root / "partitions.tsv") if mode == "actual" else "0" * 64
+        sha256_file(root / "partitions.tsv") if mode.endswith("-actual") else "0" * 64
     )
     normalized: list[str] = []
     for index, partition in enumerate(partitions, start=1):
@@ -369,13 +423,19 @@ def validate_outputs(mode: str, partition_count: int, trial: Path) -> None:
                 "sample_count": str(len(SAMPLES)),
                 "vcf_record_count": "1",
             }:
-                raise ProbeError(f"receipt content mismatch for {partition} {orientation}")
+                raise ProbeError(
+                    f"receipt content mismatch for {partition} {orientation}"
+                )
             lines = vcf.read_text(encoding="utf-8").splitlines()
             header = next(line for line in lines if line.startswith("#CHROM"))
             if tuple(header.split("\t")[9:]) != SAMPLES:
-                raise ProbeError(f"VCF sample order mismatch for {partition} {orientation}")
+                raise ProbeError(
+                    f"VCF sample order mismatch for {partition} {orientation}"
+                )
             if sum(not line.startswith("#") for line in lines) != 1:
-                raise ProbeError(f"VCF record count mismatch for {partition} {orientation}")
+                raise ProbeError(
+                    f"VCF record count mismatch for {partition} {orientation}"
+                )
             normalized.append(
                 f"{partition}\tchrProbe:{index}\t{orientation}\t{len(SAMPLES)}\t1\t"
                 f"{sha256_file(vcf)}\n"
@@ -417,25 +477,36 @@ def summarize(results: Path) -> None:
         for row in read_tsv(results / "summary.tsv")
     }
     trials = read_tsv(results / "trials.tsv")
-    if len(trials) != 18 or any(row["status"] != "pass" for row in trials):
-        raise ProbeError("all 18 benchmark trials must pass")
+    if len(trials) != 36 or any(row["status"] != "pass" for row in trials):
+        raise ProbeError("all 36 benchmark trials must pass")
     output = results / "comparison.tsv"
     with output.open("x", encoding="utf-8", newline="") as handle:
         fields = (
             "partitions",
             "samples",
             "repetitions",
-            "hash_invocations",
-            "logical_hash_bytes",
+            "direct_hash_invocations",
+            "reuse_hash_invocations",
+            "direct_logical_hash_bytes",
+            "reuse_logical_hash_bytes",
+            "logical_hash_bytes_saved",
+            "logical_hash_percent_saved",
             "bcftools_invocations",
-            "actual_median_wall_seconds",
-            "no_read_median_wall_seconds",
-            "isolated_hash_wall_seconds",
-            "actual_median_cpu_seconds",
-            "no_read_median_cpu_seconds",
-            "isolated_hash_cpu_seconds",
-            "effective_hash_mib_per_second",
-            "hash_roster_sha256",
+            "direct_actual_median_wall_seconds",
+            "reuse_actual_median_wall_seconds",
+            "observed_wall_seconds_saved",
+            "observed_wall_percent_saved",
+            "direct_no_read_median_wall_seconds",
+            "reuse_no_read_median_wall_seconds",
+            "direct_isolated_hash_wall_seconds",
+            "reuse_isolated_hash_wall_seconds",
+            "isolated_hash_wall_seconds_saved",
+            "isolated_hash_wall_percent_saved",
+            "direct_actual_median_cpu_seconds",
+            "reuse_actual_median_cpu_seconds",
+            "observed_cpu_seconds_saved",
+            "direct_hash_roster_sha256",
+            "reuse_hash_roster_sha256",
             "normalized_outputs_sha256",
         )
         writer = csv.DictWriter(handle, fieldnames=fields, dialect="excel-tab")
@@ -443,8 +514,10 @@ def summarize(results: Path) -> None:
         for partition_count in (1, 8, 25):
             metrics: dict[str, list[dict[str, str]]] = {}
             modes = (
-                ("actual", "step07_hash_actual"),
-                ("no-read", "step07_hash_no_read"),
+                ("direct-actual", "step07_direct_actual"),
+                ("direct-no-read", "step07_direct_no_read"),
+                ("reuse-actual", "step07_reuse_actual"),
+                ("reuse-no-read", "step07_reuse_no_read"),
             )
             for mode, case in modes:
                 metrics[mode] = [
@@ -466,41 +539,78 @@ def summarize(results: Path) -> None:
                 "hash_roster_sha256",
                 "normalized_outputs_sha256",
             )
-            reference = metrics["actual"][0]
-            if any(
-                any(row[field] != reference[field] for field in comparable)
-                for rows in metrics.values()
-                for row in rows
+            for variant in ("direct", "reuse"):
+                reference = metrics[f"{variant}-actual"][0]
+                if any(
+                    any(row[field] != reference[field] for field in comparable)
+                    for mode in (f"{variant}-actual", f"{variant}-no-read")
+                    for row in metrics[mode]
+                ):
+                    raise ProbeError(
+                        f"{variant} actual/control metrics differ for {partition_count}"
+                    )
+            direct_metrics = metrics["direct-actual"][0]
+            reuse_metrics = metrics["reuse-actual"][0]
+            if (
+                direct_metrics["normalized_outputs_sha256"]
+                != reuse_metrics["normalized_outputs_sha256"]
             ):
-                raise ProbeError(f"actual/control metrics differ for {partition_count}")
-            actual = summaries["step07_hash_actual", partition_count]
-            control = summaries["step07_hash_no_read", partition_count]
-            actual_wall = float(actual["median_wall_seconds"])
-            control_wall = float(control["median_wall_seconds"])
-            wall_delta = actual_wall - control_wall
-            if wall_delta <= 0:
-                raise ProbeError(f"non-positive isolated hash time for {partition_count}")
-            actual_cpu = float(actual["median_cpu_seconds"])
-            control_cpu = float(control["median_cpu_seconds"])
-            cpu_delta = actual_cpu - control_cpu
-            logical_bytes = int(reference["logical_hash_bytes"])
+                raise ProbeError(f"direct/reuse outputs differ for {partition_count}")
+
+            direct_actual = summaries["step07_direct_actual", partition_count]
+            direct_control = summaries["step07_direct_no_read", partition_count]
+            reuse_actual = summaries["step07_reuse_actual", partition_count]
+            reuse_control = summaries["step07_reuse_no_read", partition_count]
+            direct_actual_wall = float(direct_actual["median_wall_seconds"])
+            direct_control_wall = float(direct_control["median_wall_seconds"])
+            reuse_actual_wall = float(reuse_actual["median_wall_seconds"])
+            reuse_control_wall = float(reuse_control["median_wall_seconds"])
+            direct_hash_wall = direct_actual_wall - direct_control_wall
+            reuse_hash_wall = reuse_actual_wall - reuse_control_wall
+            observed_wall_saved = direct_actual_wall - reuse_actual_wall
+            isolated_hash_wall_saved = direct_hash_wall - reuse_hash_wall
+            if min(direct_hash_wall, reuse_hash_wall, observed_wall_saved) <= 0:
+                raise ProbeError(
+                    f"non-positive Step 07 timing improvement for {partition_count}"
+                )
+            if isolated_hash_wall_saved <= 0:
+                raise ProbeError(
+                    f"non-positive isolated hash improvement for {partition_count}"
+                )
+
+            direct_bytes = int(direct_metrics["logical_hash_bytes"])
+            reuse_bytes = int(reuse_metrics["logical_hash_bytes"])
+            bytes_saved = direct_bytes - reuse_bytes
+            direct_actual_cpu = float(direct_actual["median_cpu_seconds"])
+            reuse_actual_cpu = float(reuse_actual["median_cpu_seconds"])
             writer.writerow(
                 {
                     "partitions": partition_count,
-                    "samples": reference["samples"],
+                    "samples": direct_metrics["samples"],
                     "repetitions": 3,
-                    "hash_invocations": reference["hash_invocations"],
-                    "logical_hash_bytes": logical_bytes,
-                    "bcftools_invocations": reference["bcftools_invocations"],
-                    "actual_median_wall_seconds": f"{actual_wall:.6f}",
-                    "no_read_median_wall_seconds": f"{control_wall:.6f}",
-                    "isolated_hash_wall_seconds": f"{wall_delta:.6f}",
-                    "actual_median_cpu_seconds": f"{actual_cpu:.6f}",
-                    "no_read_median_cpu_seconds": f"{control_cpu:.6f}",
-                    "isolated_hash_cpu_seconds": f"{cpu_delta:.6f}",
-                    "effective_hash_mib_per_second": f"{logical_bytes / 1048576 / wall_delta:.3f}",
-                    "hash_roster_sha256": reference["hash_roster_sha256"],
-                    "normalized_outputs_sha256": reference[
+                    "direct_hash_invocations": direct_metrics["hash_invocations"],
+                    "reuse_hash_invocations": reuse_metrics["hash_invocations"],
+                    "direct_logical_hash_bytes": direct_bytes,
+                    "reuse_logical_hash_bytes": reuse_bytes,
+                    "logical_hash_bytes_saved": bytes_saved,
+                    "logical_hash_percent_saved": f"{100 * bytes_saved / direct_bytes:.3f}",
+                    "bcftools_invocations": direct_metrics["bcftools_invocations"],
+                    "direct_actual_median_wall_seconds": f"{direct_actual_wall:.6f}",
+                    "reuse_actual_median_wall_seconds": f"{reuse_actual_wall:.6f}",
+                    "observed_wall_seconds_saved": f"{observed_wall_saved:.6f}",
+                    "observed_wall_percent_saved": f"{100 * observed_wall_saved / direct_actual_wall:.3f}",
+                    "direct_no_read_median_wall_seconds": f"{direct_control_wall:.6f}",
+                    "reuse_no_read_median_wall_seconds": f"{reuse_control_wall:.6f}",
+                    "direct_isolated_hash_wall_seconds": f"{direct_hash_wall:.6f}",
+                    "reuse_isolated_hash_wall_seconds": f"{reuse_hash_wall:.6f}",
+                    "isolated_hash_wall_seconds_saved": f"{isolated_hash_wall_saved:.6f}",
+                    "isolated_hash_wall_percent_saved": f"{100 * isolated_hash_wall_saved / direct_hash_wall:.3f}",
+                    "direct_actual_median_cpu_seconds": f"{direct_actual_cpu:.6f}",
+                    "reuse_actual_median_cpu_seconds": f"{reuse_actual_cpu:.6f}",
+                    "observed_cpu_seconds_saved": f"{direct_actual_cpu - reuse_actual_cpu:.6f}",
+                    "direct_hash_roster_sha256": direct_metrics["hash_roster_sha256"],
+                    "reuse_hash_roster_sha256": reuse_metrics["hash_roster_sha256"],
+                    "normalized_outputs_sha256": direct_metrics[
                         "normalized_outputs_sha256"
                     ],
                 }
@@ -521,7 +631,7 @@ def build_parser() -> argparse.ArgumentParser:
     seed_parser.add_argument("--root", type=Path, required=True)
     for name in ("produce", "validate"):
         command = commands.add_parser(name)
-        command.add_argument("--mode", choices=("actual", "no-read"), required=True)
+        command.add_argument("--mode", choices=MODES, required=True)
         command.add_argument("--partitions", type=positive_int, required=True)
         command.add_argument("--trial-dir", type=Path, required=True)
     summary_parser = commands.add_parser("summarize")

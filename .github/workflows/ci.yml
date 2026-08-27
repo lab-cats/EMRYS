@@ -50,7 +50,9 @@ env:
 jobs:
   manual-selection:
     name: Validate manually selected long lanes
-    if: github.event_name == 'workflow_dispatch'
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      github.ref != 'refs/heads/perf/probe-optimization-02-step07-verified-reuse'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
@@ -564,8 +566,7 @@ jobs:
     name: Step 07 hashing amplification probe
     if: >-
       github.event_name == 'workflow_dispatch' &&
-      github.ref == 'refs/heads/perf/optimization-02-step07-identity' &&
-      inputs.synthetic_100000
+      github.ref == 'refs/heads/perf/probe-optimization-02-step07-verified-reuse'
     runs-on: ubuntu-24.04
     timeout-minutes: 120
     steps:

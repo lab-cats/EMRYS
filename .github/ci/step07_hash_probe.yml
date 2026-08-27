@@ -1,6 +1,6 @@
 schema_version: emrys.resource-benchmark.v1
 cases:
-  - name: step07_hash_actual
+  - name: step07_direct_actual
     values: [1, 8, 25]
     repetitions: 3
     setup_argv: null
@@ -9,7 +9,7 @@ cases:
       - .github/ci/step07_hash_probe.py
       - produce
       - --mode
-      - actual
+      - direct-actual
       - --partitions
       - "{value}"
       - --trial-dir
@@ -19,12 +19,12 @@ cases:
       - .github/ci/step07_hash_probe.py
       - validate
       - --mode
-      - actual
+      - direct-actual
       - --partitions
       - "{value}"
       - --trial-dir
       - "{trial_dir}"
-  - name: step07_hash_no_read
+  - name: step07_direct_no_read
     values: [1, 8, 25]
     repetitions: 3
     setup_argv: null
@@ -33,7 +33,7 @@ cases:
       - .github/ci/step07_hash_probe.py
       - produce
       - --mode
-      - no-read
+      - direct-no-read
       - --partitions
       - "{value}"
       - --trial-dir
@@ -43,7 +43,55 @@ cases:
       - .github/ci/step07_hash_probe.py
       - validate
       - --mode
-      - no-read
+      - direct-no-read
+      - --partitions
+      - "{value}"
+      - --trial-dir
+      - "{trial_dir}"
+  - name: step07_reuse_actual
+    values: [1, 8, 25]
+    repetitions: 3
+    setup_argv: null
+    producer_argv:
+      - .venv/bin/python
+      - .github/ci/step07_hash_probe.py
+      - produce
+      - --mode
+      - reuse-actual
+      - --partitions
+      - "{value}"
+      - --trial-dir
+      - "{trial_dir}"
+    validator_argv:
+      - .venv/bin/python
+      - .github/ci/step07_hash_probe.py
+      - validate
+      - --mode
+      - reuse-actual
+      - --partitions
+      - "{value}"
+      - --trial-dir
+      - "{trial_dir}"
+  - name: step07_reuse_no_read
+    values: [1, 8, 25]
+    repetitions: 3
+    setup_argv: null
+    producer_argv:
+      - .venv/bin/python
+      - .github/ci/step07_hash_probe.py
+      - produce
+      - --mode
+      - reuse-no-read
+      - --partitions
+      - "{value}"
+      - --trial-dir
+      - "{trial_dir}"
+    validator_argv:
+      - .venv/bin/python
+      - .github/ci/step07_hash_probe.py
+      - validate
+      - --mode
+      - reuse-no-read
       - --partitions
       - "{value}"
       - --trial-dir
