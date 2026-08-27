@@ -67,6 +67,10 @@ must equal REF plus every ALT. Semantic parsing then rejects missing required
 FORMAT/INFO definitions, malformed or negative counts, one-sided missing
 DP/AD, AD greater than DP, and sample/count inconsistencies. Header-only VCFs
 remain valid only when their receipts and zero record counts reconcile.
+VariantAnnotation retains the complete header for semantic admission but
+materializes only the `INFO/AD` and `FORMAT/DP`/`FORMAT/AD` values this stage
+consumes. Payload values belonging only to required-but-unused ADF/ADR/SP
+fields are not part of the semantic data contract.
 
 ## Outputs and transaction marker
 

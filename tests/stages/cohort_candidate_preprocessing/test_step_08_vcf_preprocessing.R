@@ -70,7 +70,8 @@ sha256_file <- function(path) {
 }
 
 vcf_header <- function(
-    samples, omit_ad_definition = FALSE, contig = "1"
+    samples, omit_ad_definition = FALSE, omit_sp_definition = FALSE,
+    contig = "1"
 ) {
     header <- c(
         "##fileformat=VCFv4.2",
@@ -91,6 +92,9 @@ vcf_header <- function(
             "##FORMAT=<ID=AD,Number=R,Type=Integer,Description=\"Allelic depths\">",
             after = 6L
         )
+    }
+    if (omit_sp_definition) {
+        header <- header[!startsWith(header, "##FORMAT=<ID=SP,")]
     }
     c(
         header,
@@ -115,8 +119,10 @@ default_fwd_rows <- function() {
         ),
         paste(
             c(
-                "1", "25", ".", "C", "T,G", "50", "q10", "AD=34,5,11",
-                "DP:AD", "20:13,2,5", "30:21,3,6"
+                "1", "25", ".", "C", "T,G", "50", "q10",
+                "AD=34,5,11;ADF=20,3,7;ADR=14,2,4",
+                "DP:AD:ADF:ADR:SP", "20:13,2,5:8,1,3:5,1,2:0",
+                "30:21,3,6:12,2,4:9,1,2:1"
             ),
             collapse = "\t"
         ),
@@ -301,6 +307,7 @@ build_case <- function(root, mode = "positive") {
     }
     p1_samples <- c("sample_A", "sample_B")
     omit_ad_definition <- FALSE
+    omit_sp_definition <- FALSE
     if (mode == "sample_order") {
         p1_samples <- rev(p1_samples)
     } else if (mode == "ad_gt_dp") {
@@ -333,6 +340,8 @@ build_case <- function(root, mode = "positive") {
         )
     } else if (mode == "missing_format_definition") {
         omit_ad_definition <- TRUE
+    } else if (mode == "missing_unused_format_definition") {
+        omit_sp_definition <- TRUE
     } else if (mode == "duplicate_candidate") {
         p1_fwd <- c(p1_fwd, p1_fwd[[1L]])
     }
@@ -353,7 +362,8 @@ build_case <- function(root, mode = "positive") {
                 c(
                     vcf_header(
                         p1_samples,
-                        omit_ad_definition = omit_ad_definition
+                        omit_ad_definition = omit_ad_definition,
+                        omit_sp_definition = omit_sp_definition
                     ),
                     p1_fwd
                 ),
@@ -637,8 +647,9 @@ assert_positive_outputs <- function(paths) {
         sites$candidate_id == "FWD_like|1|25|C>G", , drop = FALSE
     ]
     assert_true(
-        multi_one$alt_index == 1L && multi_one$AD__sample_A == 2 &&
-            multi_one$AD__sample_B == 3 &&
+        multi_one$alt_index == 1L && multi_one$qual == 50 &&
+            multi_one$filter == "q10" && multi_one$DP__sample_A == 20 &&
+            multi_one$AD__sample_A == 2 && multi_one$AD__sample_B == 3 &&
             multi_one$info_alt_depth == 5,
         "first multiallelic ALT must use its matching AD element"
     )
@@ -905,6 +916,7 @@ negative_modes <- c(
     "malformed_dp_count",
     "malformed_info_count",
     "missing_format_definition",
+    "missing_unused_format_definition",
     "duplicate_candidate",
     "receipt_path_mismatch",
     "declared_count_mismatch"
@@ -917,7 +929,10 @@ expected_negative_errors <- list(
     overlap = "Partition selectors overlap",
     malformed_count = "FORMAT/AD must contain",
     malformed_dp_count = "FORMAT/DP must contain",
-    malformed_info_count = "INFO/AD must contain"
+    malformed_info_count = "INFO/AD must contain",
+    missing_format_definition = "VCF is missing required FORMAT definition: AD",
+    missing_unused_format_definition =
+        "VCF is missing required FORMAT definition: SP"
 )
 for (mode in negative_modes) {
     case <- build_case(file.path(test_root, paste0("negative-", mode)), mode)

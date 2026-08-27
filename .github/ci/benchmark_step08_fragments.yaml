@@ -1,0 +1,61 @@
+schema_version: emrys.resource-benchmark.v1
+cases:
+  - name: step08_100k_4_bc1
+    values: [1, 2]
+    repetitions: 1
+    setup_argv: null
+    producer_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, run, "{value}", 100k_4, "{trial_dir}"]
+    validator_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, validate, "{value}", 100k_4, "{trial_dir}"]
+    artifact_paths: &artifacts
+      - "{trial_dir}/sites.tsv"
+      - "{trial_dir}/inputs.tsv"
+      - "{trial_dir}/summary.tsv"
+  - name: step08_100k_4_cb
+    values: [2, 1]
+    repetitions: 1
+    setup_argv: null
+    producer_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, run, "{value}", 100k_4, "{trial_dir}"]
+    validator_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, validate, "{value}", 100k_4, "{trial_dir}"]
+    artifact_paths: *artifacts
+  - name: step08_100k_4_bc2
+    values: [1, 2]
+    repetitions: 1
+    setup_argv: null
+    producer_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, run, "{value}", 100k_4, "{trial_dir}"]
+    validator_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, validate, "{value}", 100k_4, "{trial_dir}"]
+    artifact_paths: *artifacts
+  - name: step08_100k_16_bc1
+    values: [1, 2]
+    repetitions: 1
+    setup_argv: null
+    producer_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, run, "{value}", 100k_16, "{trial_dir}"]
+    validator_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, validate, "{value}", 100k_16, "{trial_dir}"]
+    artifact_paths: *artifacts
+  - name: step08_100k_16_cb
+    values: [2, 1]
+    repetitions: 1
+    setup_argv: null
+    producer_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, run, "{value}", 100k_16, "{trial_dir}"]
+    validator_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, validate, "{value}", 100k_16, "{trial_dir}"]
+    artifact_paths: *artifacts
+  - name: step08_100k_16_bc2
+    values: [1, 2]
+    repetitions: 1
+    setup_argv: null
+    producer_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, run, "{value}", 100k_16, "{trial_dir}"]
+    validator_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, validate, "{value}", 100k_16, "{trial_dir}"]
+    artifact_paths: *artifacts
+  - name: step08_1m_4_cb
+    values: [2, 1]
+    repetitions: 1
+    setup_argv: null
+    producer_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, run, "{value}", 1m_4, "{trial_dir}"]
+    validator_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, validate, "{value}", 1m_4, "{trial_dir}"]
+    artifact_paths: *artifacts
+  - name: step08_1m_16_cb
+    values: [2, 1]
+    repetitions: 1
+    setup_argv: null
+    producer_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, run, "{value}", 1m_16, "{trial_dir}"]
+    validator_argv: [.venv/bin/python, .github/ci/benchmark_step08_fragments.py, validate, "{value}", 1m_16, "{trial_dir}"]
+    artifact_paths: *artifacts
