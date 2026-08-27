@@ -46,7 +46,27 @@ process_vcf <- function(
     validate_raw_vcf_counts(vcf_path, sample_ids)
     vcf <- tryCatch(
         withCallingHandlers(
-            VariantAnnotation::readVcf(file = vcf_path, row.names = FALSE),
+            {
+                scan_header <- VariantAnnotation::scanVcfHeader(vcf_path)
+                required_fields_declared <-
+                    all(c("AD", "ADF", "ADR") %in%
+                        rownames(VariantAnnotation::info(scan_header))) &&
+                    all(c("DP", "AD", "ADF", "ADR", "SP") %in%
+                        rownames(VariantAnnotation::geno(scan_header)))
+                scan_param <- if (required_fields_declared) {
+                    VariantAnnotation::ScanVcfParam(
+                        info = "AD", geno = c("DP", "AD")
+                    )
+                } else {
+                    VariantAnnotation::ScanVcfParam()
+                }
+                VariantAnnotation::readVcf(
+                    file = vcf_path,
+                    genome = GenomeInfoDb::seqinfo(scan_header),
+                    param = scan_param,
+                    row.names = FALSE
+                )
+            },
             warning = function(warning) {
                 abort("VCF parser warning: ", conditionMessage(warning))
             }
