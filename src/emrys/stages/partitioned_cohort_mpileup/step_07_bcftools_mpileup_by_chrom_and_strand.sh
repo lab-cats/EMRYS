@@ -71,6 +71,9 @@ source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/argument_parsing.sh"
 # shellcheck source=../../libraries/signal_traps.sh
 source "$(dirname -- "${BASH_SOURCE[0]}")/../../libraries/signal_traps.sh"
 
+bound_scientific_input_identity="${EMRYS_STEP07_INPUT_IDENTITY_SHA256:-}"
+unset EMRYS_STEP07_INPUT_IDENTITY_SHA256
+
 confirm_input_manifest_hashes() {
     local current_sample_hash
     local current_partition_hash
@@ -89,12 +92,14 @@ capture_no_clobber_scientific_input() {
     local digest
 
     validate_nonempty_file "$label" "$path"
-    if ! digest="$(sha256_file "$path")"; then
-        die "Could not hash $label before Step 07 execution: $path"
+    if [[ -z "$bound_scientific_input_identity" ]]; then
+        if ! digest="$(sha256_file "$path")"; then
+            die "Could not hash $label before Step 07 execution: $path"
+        fi
+        scientific_input_sha256+=("$digest")
     fi
     scientific_input_labels+=("$label")
     scientific_input_paths+=("$path")
-    scientific_input_sha256+=("$digest")
 }
 
 capture_no_clobber_scientific_inputs() {
@@ -139,14 +144,35 @@ capture_no_clobber_scientific_inputs() {
 }
 
 confirm_no_clobber_scientific_inputs() {
+    local current_identity
     local current_sha256
     local index
 
     [[ "$no_clobber" == true ]] || return 0
     [[ "${#scientific_input_labels[@]}" -eq "$scientific_input_expected_count" &&
-       "${#scientific_input_paths[@]}" -eq "$scientific_input_expected_count" &&
-       "${#scientific_input_sha256[@]}" -eq "$scientific_input_expected_count" ]] ||
+       "${#scientific_input_paths[@]}" -eq "$scientific_input_expected_count" ]] ||
         die "Internal error: Step 07 scientific-input membership changed during execution."
+
+    if [[ -n "$bound_scientific_input_identity" ]]; then
+        if ! current_identity="$({
+            printf 'emrys.step07-input-identity.v1\0'
+            for index in "${!scientific_input_paths[@]}"; do
+                if ! current_sha256="$(sha256_file "${scientific_input_paths[$index]}")"; then
+                    die "Could not rehash ${scientific_input_labels[$index]} during Step 07: ${scientific_input_paths[$index]}"
+                fi
+                printf '%s\0%s\0' \
+                    "${scientific_input_paths[$index]}" "$current_sha256"
+            done
+        } | sha256_file /dev/stdin)"; then
+            die "Could not verify the Step 07 bound scientific-input identity."
+        fi
+        [[ "$current_identity" == "$bound_scientific_input_identity" ]] ||
+            die "Scientific inputs changed after local-pilot admission during Step 07 --no-clobber execution."
+        return 0
+    fi
+
+    [[ "${#scientific_input_sha256[@]}" -eq "$scientific_input_expected_count" ]] ||
+        die "Internal error: Step 07 scientific-input identity snapshot is incomplete."
 
     for index in "${!scientific_input_paths[@]}"; do
         validate_nonempty_file \
@@ -438,6 +464,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 require_arguments
+
+if [[ -n "$bound_scientific_input_identity" &&
+      ( "$no_clobber" != true || "${EMRYS_REQUIRE_BOUND_SHA256:-0}" != 1 ||
+        ! "$bound_scientific_input_identity" =~ ^[0-9a-f]{64}$ ) ]]; then
+    die "The internal Step 07 input identity is not admitted."
+fi
 
 validate_safe_id "--cohort-id" "$cohort_id"
 validate_safe_id "--partition-id" "$partition_id"
@@ -846,7 +878,8 @@ if ! "${rev_mpileup_command[@]}" | "${rev_filter_command[@]}"; then
 fi
 
 confirm_input_manifest_hashes
-confirm_no_clobber_scientific_inputs
+[[ -n "$bound_scientific_input_identity" ]] ||
+    confirm_no_clobber_scientific_inputs
 validate_vcf "Published ${ORIENTATIONS[0]} temporary" "$tmp_fwd_vcf" "$expected_samples"
 validate_vcf "Published ${ORIENTATIONS[1]} temporary" "$tmp_rev_vcf" "$expected_samples"
 tmp_fwd_count="$(vcf_record_count "$tmp_fwd_vcf")" ||
