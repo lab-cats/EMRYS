@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
@@ -1060,6 +1061,35 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
             source="second test allocation",
         ),
     )
+    source = normalized.projection_source
+    old_locator = Path(source["samples"]["rows"][0]["r1_fastq"]["path"])
+    relocated = tmp_path / "relocated-inputs" / old_locator.name
+    relocated.parent.mkdir()
+    shutil.copy2(old_locator, relocated)
+    source["samples"]["rows"][0]["r1_fastq"]["path"] = str(relocated)
+    relocated_normalized = replace(
+        normalized,
+        projection_source_bytes=orchestration_contracts.canonical_json_bytes(source),
+    )
+    relocated_run = _run_candidate(readiness_two, relocated_normalized, first_resources)
+    assert old_locator.is_file() and relocated.is_file()
+    assert relocated_run.run_id == run_one.run_id
+    assert (
+        relocated_run.execution_projection_bytes != run_one.execution_projection_bytes
+    )
+    with pytest.raises(
+        control.ControlError,
+        match="Current normalized backend projection differs",
+    ):
+        control.plan_resume(
+            first.run_root,
+            readiness_two.runtime_profile,
+            ops=replace(
+                resume_ops,
+                normalize=lambda _request, _profile: relocated_normalized,
+            ),
+        )
+
     second = control.plan_resume(
         first.run_root,
         readiness_two.runtime_profile,

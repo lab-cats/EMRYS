@@ -9,7 +9,7 @@ import shlex
 import sys
 import uuid
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -297,10 +297,12 @@ def plan_resume(
                 raise ControlError("Current inputs resolve to a different Run")
             if fixed_execution.is_symlink() or not fixed_execution.is_file():
                 raise ControlError("Successor execution projection is unavailable")
-            run = replace(
-                candidate,
-                execution_projection_bytes=fixed_execution.read_bytes(),
-            )
+            if candidate.execution_projection_bytes != fixed_execution.read_bytes():
+                raise ControlError(
+                    "Current normalized backend projection differs from the immutable "
+                    "successor projection"
+                )
+            run = candidate
             resources = resolve_resource_policy(policy, ops.observe_allocation())
         else:
             legacy_execution, legacy_bytes = normalized.historical_execution_v1()

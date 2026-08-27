@@ -526,7 +526,11 @@ recovery instructions. Version 1 supports only between-task resume. Once an
 owner or reporting producer has crossed its durable start boundary, failure or
 interruption is not automatically recoverable even when no output appears to
 have been written. Version 1 does not automate owner-internal transaction
-recovery.
+recovery. Successor resume currently also requires the same normalized backend
+projection as its predecessor. Identity-neutral projection changes, including
+content-equivalent input relocation, remain same-Run targets but are rejected
+until an Attempt-local projection can preserve the complete origin-evidence
+chain.
 
 This ledger is automatic-rerun authority, not a claim that inspection can
 globally prove the absence of every file a manual or foreign invocation might
