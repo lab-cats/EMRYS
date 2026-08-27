@@ -9,6 +9,7 @@ import pytest
 
 from emrys.contracts.orchestration import api as contracts
 from emrys.contracts.orchestration import application_model as model
+from emrys.contracts.orchestration import projection as reporting_projection
 from tests.contracts.orchestration.test_orchestration_contracts import (
     execution as historical_execution,
 )
@@ -229,6 +230,9 @@ def successor_adapter_fixture() -> tuple[
             )
         },
     )
+    projection["reporting_projection"] = reporting_projection.build_reporting_bundle(
+        projection, profile
+    ).projection_references
     attempt["run_id"] = run.run_id
     attempt["execution_contract_sha256"] = contracts.canonical_sha256(projection)
     attempt["profile_sha256"] = contracts.canonical_sha256(profile)
@@ -409,6 +413,7 @@ def test_version_aware_reader_rejects_non_string_schema_versions(version: object
 
 def test_temporary_execution_projection_is_closed_one_way_and_not_run_authority() -> None:
     legacy = historical_execution()
+    profile = historical_profile()
     run = model.bind_run(analysis_revision(), execution_plan())
     projection = model.build_execution_projection(
         run=run,
@@ -424,7 +429,20 @@ def test_temporary_execution_projection_is_closed_one_way_and_not_run_authority(
             )
         },
     )
-    model.validate_execution_view(projection, profile=historical_profile())
+    successor_reporting = reporting_projection.build_reporting_bundle(
+        projection, profile
+    )
+    projection["reporting_projection"] = successor_reporting.projection_references
+    legacy_reporting = reporting_projection.build_reporting_bundle(legacy, profile)
+    analysis = model.analysis_revision_from_execution_fields(projection)
+
+    assert successor_reporting.reporting_run_contract["primary_analysis_id"] == (
+        analysis.scope_id("analysis")
+    )
+    assert legacy_reporting.reporting_run_contract["primary_analysis_id"] == (
+        legacy["analysis"]["primary_analysis_id"]
+    )
+    model.validate_execution_view(projection, profile=profile)
     assert projection["run_id"] == run.run_id
     assert projection["run_binding_sha256"] == run.record_sha256
     assert "identity_envelope" not in projection
@@ -433,7 +451,7 @@ def test_temporary_execution_projection_is_closed_one_way_and_not_run_authority(
             contracts.canonical_json_bytes(projection)
         )
 
-    model.validate_execution_view(legacy, profile=historical_profile())
+    model.validate_execution_view(legacy, profile=profile)
 
 
 def test_analysis_admission_requires_present_conditions_and_paired_replicates() -> None:
@@ -523,6 +541,11 @@ def test_successor_adapter_rejects_projection_profile_and_stopping_drift() -> No
     analysis, plan, run, projection, profile, _, _ = successor_adapter_fixture()
     changed_projection = copy.deepcopy(projection)
     changed_projection["samples"]["rows"][0]["r1_fastq"]["sha256"] = TWO_HASH
+    changed_projection["reporting_projection"] = (
+        reporting_projection.build_reporting_bundle(
+            changed_projection, profile
+        ).projection_references
+    )
     with pytest.raises(contracts.ContractValidationError, match="reproduce"):
         model.validate_successor_adapter(
             analysis=analysis,

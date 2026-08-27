@@ -268,11 +268,16 @@ def build_reporting_bundle(
     primary_analysis_policy = dict(execution["analysis"]["policy"])
     reference_bytes = orchestration_contracts.canonical_json_bytes(reference_contract)
     policy_bytes = orchestration_contracts.canonical_json_bytes(primary_analysis_policy)
+    primary_analysis_id = str(execution["analysis"]["primary_analysis_id"])
+    if execution.get("schema_version") == EXECUTION_PROJECTION_SCHEMA_VERSION:
+        primary_analysis_id = analysis_revision_from_execution_fields(
+            execution
+        ).scope_id("analysis")
     components = {
         "sample_manifest_sha256": str(execution["samples"]["manifest"]["sha256"]),
         "reference_contract_sha256": _sha256_bytes(reference_bytes),
         "partition_manifest_sha256": str(execution["partitions"]["manifest"]["sha256"]),
-        "primary_analysis_id": str(execution["analysis"]["primary_analysis_id"]),
+        "primary_analysis_id": primary_analysis_id,
         "primary_analysis_policy_sha256": _sha256_bytes(policy_bytes),
     }
     reporting_run_contract = {
