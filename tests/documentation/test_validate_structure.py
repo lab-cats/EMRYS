@@ -36,9 +36,6 @@ CANONICAL_H1S = {
 LEGACY_H1S = {
     "docs/design/ORCHESTRATION_READINESS.md": "# Local-pilot orchestration readiness",
     "docs/operations/HANDOFF.md": "# Project handoff",
-    "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md": (
-        "# Local-pilot launcher regression test plan"
-    ),
 }
 SEMANTIC_OWNERS = (
     ("stage", "construct_STAR_index"),
@@ -103,6 +100,7 @@ RETIRED_DOCUMENTS = (
     "docs/design/QUESTIONS.md",
     "docs/design/REFACTOR_AUDIT.md",
     "docs/operations/CONCURRENT_WORK.md",
+    "docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md",
     "docs/operations/TASK_DELIVERY.md",
     "docs/tasks/BACKLOG.md",
     "docs/tasks/cards/README.md",

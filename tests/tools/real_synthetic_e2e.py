@@ -109,7 +109,7 @@ class SubmittedJob:
 
 @dataclass(frozen=True, slots=True)
 class CompletedJob:
-    """Terminal Slurm observation for one submitted wrapper job."""
+    """Terminal Slurm observation for one submitted Run job."""
 
     job_id: str
     state: str
