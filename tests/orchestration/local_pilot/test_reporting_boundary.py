@@ -12,6 +12,12 @@ import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.orchestration.local_pilot import reporting_boundary
+from tests.contracts.orchestration.test_application_model_contracts import (
+    successor_run_fixture,
+)
+from tests.contracts.orchestration.test_orchestration_contracts import (
+    execution as historical_execution,
+)
 from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
 
 FIXED_TIME = datetime(2026, 8, 12, 14, 0, tzinfo=UTC)
@@ -66,6 +72,86 @@ def _build(root: Path) -> workflow_fixture.WorkflowFixture:
     lock_path.parent.mkdir(exist_ok=True)
     lock_path.write_bytes(orchestration_contracts.canonical_json_bytes(run_lock))
     return built
+
+
+def _build_successor(root: Path) -> tuple[dict[str, Path], dict[str, Any]]:
+    analysis, plan, run, profile, attempt, resource_policy = successor_run_fixture()
+    run_root = (root / run.run_id).resolve()
+    contract = run_root / "contract"
+    contract.mkdir(parents=True)
+    for path, data in (
+        (contract / "analysis.json", analysis.canonical_bytes),
+        (contract / "execution-plan.json", plan.canonical_bytes),
+        (contract / "run.json", run.canonical_bytes),
+        (
+            contract / "profile.json",
+            orchestration_contracts.canonical_json_bytes(profile),
+        ),
+    ):
+        path.write_bytes(data)
+    source = historical_execution()
+    source["run_id"] = run.run_id
+    identifier = str(attempt["workflow_attempt_id"])
+    files, reporting_config, directories = (
+        reporting_boundary._attempt_reporting_materialization(
+            source,
+            profile,
+            run_root,
+            analysis=analysis,
+            attempt_id=identifier,
+        )
+    )
+    for directory in directories:
+        directory.mkdir(parents=True)
+    for path, data in files:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+
+    config = {
+        "run_root": str(run_root),
+        "execution_path": str(contract / "run.json"),
+        "profile_path": str(contract / "profile.json"),
+        "workflow_attempt_id": identifier,
+        "source_checkout": str(attempt["source_checkout"]["path"]),
+        "artifact_source_root": str(run_root),
+        **reporting_config,
+        "resource_policy": resource_policy,
+    }
+    config_path = contract / "workflow-configs" / f"{identifier}.json"
+    config_path.parent.mkdir()
+    config_data = orchestration_contracts.canonical_json_bytes(config)
+    config_path.write_bytes(config_data)
+    attempt["workflow_config"] = {
+        "path": config_path.relative_to(run_root).as_posix(),
+        "sha256": hashlib.sha256(config_data).hexdigest(),
+    }
+    attempt_path = run_root / "attempts" / identifier / "attempt.json"
+    attempt_path.parent.mkdir(parents=True, exist_ok=True)
+    attempt_path.write_bytes(orchestration_contracts.canonical_json_bytes(attempt))
+    run_lock = {
+        "schema_version": "emrys.run-lock.v1",
+        "run_id": run.run_id,
+        "workflow_attempt_id": identifier,
+        "attempt_record_path": attempt_path.relative_to(run_root).as_posix(),
+        "owner_token": attempt["owner_token"],
+        "process_id": attempt["process_id"],
+        "host": attempt["host"],
+        "created_at": attempt["created_at"],
+    }
+    orchestration_contracts.validate_record("run-lock", run_lock)
+    lock_path = run_root / "locks" / "run.lock"
+    lock_path.parent.mkdir()
+    lock_path.write_bytes(orchestration_contracts.canonical_json_bytes(run_lock))
+    return (
+        {
+            "run_root": run_root,
+            "execution_path": contract / "run.json",
+            "profile_path": contract / "profile.json",
+            "workflow_attempt_path": attempt_path,
+            "workflow_config_path": config_path,
+        },
+        config,
+    )
 
 
 def _terminalize_run_lock(built: workflow_fixture.WorkflowFixture) -> None:
@@ -181,6 +267,11 @@ def test_start_and_completion_publish_fixed_closed_records(
     tmp_path: Path,
 ) -> None:
     built = _build(tmp_path / "fixture")
+    legacy_config = orchestration_contracts.load_json_object(built.config_path)
+    assert all(
+        isinstance(legacy_config[f"{name}_path"], str)
+        for name in reporting_boundary.CONTRACT_PATHS
+    )
 
     def validate(
         kind: str,
@@ -189,12 +280,14 @@ def test_start_and_completion_publish_fixed_closed_records(
         execution: dict[str, Any],
         profile: dict[str, Any],
         attempt: dict[str, Any],
+        config: dict[str, Any],
     ) -> _SemanticResult:
         assert kind == "artifact_index"
         assert run_root == built.run_root
         assert execution == built.execution
         assert profile == built.profile
         assert attempt["workflow_attempt_id"] in str(built.workflow_attempt_path)
+        assert config == legacy_config
         return _semantic_result(receipt_path)
 
     ops = _publish_complete_artifact_ledger(built, validator=validate)
@@ -259,6 +352,74 @@ def test_start_and_completion_publish_fixed_closed_records(
             built.execution,
             built.profile,
             semantic_validator=mutate_start,
+        )
+
+
+def test_successor_boundary_uses_run_authority_and_exact_config_references(
+    tmp_path: Path,
+) -> None:
+    identity, config = _build_successor(tmp_path / "successor")
+    assert all(
+        set(config[f"{name}_path"]) == {"path", "sha256"}
+        for name in reporting_boundary.CONTRACT_PATHS
+    )
+
+    outcome = reporting_boundary.publish_start(
+        kind="artifact_index",
+        **identity,
+        ops=_ops(lambda *_arguments: _semantic_result(Path("/unused"))),
+    )
+    start = orchestration_contracts.load_record(
+        outcome.start_path,
+        "reporting-start",
+    )
+    assert (
+        start["execution_contract_sha256"]
+        == hashlib.sha256(identity["execution_path"].read_bytes()).hexdigest()
+    )
+    admitted = reporting_boundary.validate_start(
+        "artifact_index",
+        identity["run_root"],
+        orchestration_contracts.load_json_object(identity["execution_path"]),
+        orchestration_contracts.load_json_object(identity["profile_path"]),
+    )
+    assert admitted.origin_workflow_attempt_id == start["origin_workflow_attempt_id"]
+
+
+@pytest.mark.parametrize(
+    ("case", "message"),
+    (
+        ("path", "does not use its fixed path"),
+        ("bytes", "bytes differ from workflow config identity"),
+    ),
+)
+def test_successor_boundary_rejects_reporting_reference_tamper(
+    tmp_path: Path,
+    case: str,
+    message: str,
+) -> None:
+    identity, config = _build_successor(tmp_path / case)
+    if case == "path":
+        config["reference_contract_path"]["path"] = "contract/other.json"
+        config_data = orchestration_contracts.canonical_json_bytes(config)
+        identity["workflow_config_path"].write_bytes(config_data)
+        attempt = orchestration_contracts.load_record(
+            identity["workflow_attempt_path"],
+            "workflow-attempt",
+        )
+        attempt["workflow_config"]["sha256"] = hashlib.sha256(config_data).hexdigest()
+        identity["workflow_attempt_path"].write_bytes(
+            orchestration_contracts.canonical_json_bytes(attempt)
+        )
+    else:
+        inventory = identity["run_root"] / config["artifact_inventory_path"]["path"]
+        inventory.write_bytes(inventory.read_bytes() + b"tampered\n")
+
+    with pytest.raises(reporting_boundary.ReportingBoundaryError, match=message):
+        reporting_boundary.publish_start(
+            kind="artifact_index",
+            **identity,
+            ops=_ops(lambda *_arguments: _semantic_result(Path("/unused"))),
         )
 
 

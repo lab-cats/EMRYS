@@ -454,8 +454,8 @@ def artifact_payloads(
 ) -> dict[str, bytes]:
     sample_ids = tuple(str(row["sample_id"]) for row in execution["samples"]["rows"])
     partition_id = str(execution["partitions"]["rows"][0]["partition_id"])
-    cohort_id, = inspection.selected_scope_ids("cohort", execution)
-    analysis_id, = inspection.selected_scope_ids("analysis", execution)
+    cohort_id = str(execution["analysis"]["cohort_id"])
+    analysis_id = str(execution["analysis"]["primary_analysis_id"])
     sample_hash = str(execution["samples"]["manifest"]["sha256"])
     partition_hash = str(execution["partitions"]["manifest"]["sha256"])
     policy = execution["analysis"]["policy"]
@@ -1052,45 +1052,38 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
     }
     dispatch_paths: dict[str, dict[str, str]] = {}
     dispatch_references: dict[str, dict[str, dict[str, str]]] = {}
+    owners = {str(task["machine_key"]): task for task in profile["owner_tasks"]}
     index = 0
-    for task in profile["owner_tasks"]:
-        machine_key = str(task["machine_key"])
-        if machine_key not in profile["required_owner_keys"]:
-            continue
-        by_scope: dict[str, str] = {}
-        references_by_scope: dict[str, dict[str, str]] = {}
-        for scope_id in inspection.selected_scope_ids(
-            str(task["scope_selector"]), execution
-        ):
-            index += 1
-            dispatch_path = (
-                run_root
-                / "contract"
-                / "dispatch"
-                / workflow_attempt_id
-                / machine_key
-                / f"{scope_id}.json"
-            )
-            _write_dispatch(
-                path=dispatch_path,
-                run_root=run_root,
-                execution_path=execution_path,
-                task=task,
-                scope_id=scope_id,
-                index=index,
-                fixture_input=fixture_input,
-                execution=execution,
-                inventory_rows=inventory_rows,
-                payloads=payloads,
-                workflow_attempt_id=workflow_attempt_id,
-            )
-            by_scope[scope_id] = str(dispatch_path)
-            references_by_scope[scope_id] = {
-                "path": str(dispatch_path),
-                "sha256": hashlib.sha256(dispatch_path.read_bytes()).hexdigest(),
-            }
-        dispatch_paths[machine_key] = by_scope
-        dispatch_references[machine_key] = references_by_scope
+    for expected in inspection.expected_tasks(execution, profile):
+        machine_key = expected.machine_key
+        scope_id = expected.scope_id
+        index += 1
+        dispatch_path = (
+            run_root
+            / "contract"
+            / "dispatch"
+            / workflow_attempt_id
+            / machine_key
+            / f"{scope_id}.json"
+        )
+        _write_dispatch(
+            path=dispatch_path,
+            run_root=run_root,
+            execution_path=execution_path,
+            task=owners[machine_key],
+            scope_id=scope_id,
+            index=index,
+            fixture_input=fixture_input,
+            execution=execution,
+            inventory_rows=inventory_rows,
+            payloads=payloads,
+            workflow_attempt_id=workflow_attempt_id,
+        )
+        dispatch_paths.setdefault(machine_key, {})[scope_id] = str(dispatch_path)
+        dispatch_references.setdefault(machine_key, {})[scope_id] = {
+            "path": str(dispatch_path),
+            "sha256": hashlib.sha256(dispatch_path.read_bytes()).hexdigest(),
+        }
 
     config = {
         "run_root": str(run_root),

@@ -26,7 +26,9 @@ from pathlib import Path
 from typing import Any
 
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.application_model import validate_execution_view
+from emrys.contracts.orchestration.application_model import (
+    RUN_BINDING_SCHEMA_VERSION,
+)
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout as _attest_source_checkout,
@@ -489,24 +491,11 @@ _admit_record = partial(
     read_bytes=_read_bound_record,
     error_type=TaskBoundaryError,
 )
-
-
-def _admit_execution_view(
-    path: Path,
-    root: Path,
-    profile: Mapping[str, Any],
-) -> tuple[dict[str, Any], bytes]:
-    data = _read_bound_record(path, root, "execution")
-    try:
-        record = orchestration_contracts.load_json_object_bytes(
-            data, f"execution {path}"
-        )
-        validate_execution_view(record, profile=profile)
-    except orchestration_contracts.ContractValidationError as exc:
-        raise TaskBoundaryError(f"Invalid execution at {path}: {exc}") from exc
-    if data != orchestration_contracts.canonical_json_bytes(record):
-        raise TaskBoundaryError(f"execution must use canonical JSON bytes: {path}")
-    return record, data
+_admit_execution = partial(
+    inspection.admit_execution_path,
+    read_bytes=_read_bound_record,
+    error_type=TaskBoundaryError,
+)
 
 
 def _hash_bound_file(path: Path, label: str) -> tuple[str, os.stat_result]:
@@ -998,16 +987,27 @@ def _materialize_task_scope(dispatch: TaskDispatch) -> None:
 
 
 def _expected_scope_ids(
-    task: Mapping[str, Any], execution: Mapping[str, Any]
+    task: Mapping[str, Any],
+    execution: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    authority: inspection.SuccessorRunAuthority | None,
 ) -> set[str]:
-    try:
-        return set(
-            inspection.selected_scope_ids(
-                str(task["scope_selector"]), execution
-            )
-        )
-    except inspection.InspectionError as exc:
-        raise TaskBoundaryError(str(exc)) from exc
+    return {
+        item.scope_id
+        for item in inspection.expected_tasks(authority or execution, profile)
+        if item.machine_key == task["machine_key"]
+    }
+
+
+def _step00c_fasta(
+    dispatch: TaskDispatch,
+    execution: Mapping[str, Any],
+) -> Path:
+    if execution.get("schema_version") != RUN_BINDING_SCHEMA_VERSION:
+        return Path(str(execution["reference"]["fasta"]["path"]))
+    if len(dispatch.inputs) != 1:
+        raise TaskBoundaryError("Step 00c dispatch must bind exactly one FASTA input")
+    return dispatch.inputs[0].path
 
 
 def _admit_output_locations(
@@ -1032,7 +1032,7 @@ def _admit_output_locations(
     if not outside:
         return
     sidecar_owner = "emrys.stage.construct_FASTA_sidecars.v1"
-    fasta = Path(str(execution["reference"]["fasta"]["path"]))
+    fasta = _step00c_fasta(dispatch, execution)
     try:
         if fasta.resolve(strict=True) != fasta:
             raise TaskBoundaryError(
@@ -1072,7 +1072,7 @@ def _admit_step00c_external_parent_access(
 
     if dispatch.machine_key != "emrys.stage.construct_FASTA_sidecars.v1":
         return
-    fasta = Path(str(execution["reference"]["fasta"]["path"]))
+    fasta = _step00c_fasta(dispatch, execution)
     if not path_access(fasta, os.R_OK):
         raise TaskBoundaryError(
             f"Step 00c stationary FASTA is not readable before task entry: {fasta}"
@@ -1092,7 +1092,7 @@ def _step00c_external_outputs(
 
     if dispatch.machine_key != "emrys.stage.construct_FASTA_sidecars.v1":
         return ()
-    fasta = Path(str(execution["reference"]["fasta"]["path"]))
+    fasta = _step00c_fasta(dispatch, execution)
     expected_paths = {
         Path(f"{fasta}.fai"),
         fasta.with_name(f"{fasta.stem}.dict"),
@@ -1173,13 +1173,13 @@ def _admit_identity(
     profile, profile_data = _admit_record(
         dispatch.profile_path, dispatch.run_root, "profile"
     )
-    execution, execution_data = _admit_execution_view(
+    execution, execution_data, authority = _admit_execution(
         dispatch.execution_path,
         dispatch.run_root,
         profile,
     )
     profile_sha256 = hashlib.sha256(profile_data).hexdigest()
-    if execution["profile"]["profile_sha256"] != profile_sha256:
+    if "profile" in execution and execution["profile"]["profile_sha256"] != profile_sha256:
         raise TaskBoundaryError("Execution does not bind the admitted profile")
     tasks = [
         task
@@ -1197,8 +1197,10 @@ def _admit_identity(
         )
     if task["scope_type"] != dispatch.scope["scope_type"]:
         raise TaskBoundaryError("Dispatch scope_type does not match its profile owner")
-    if dispatch.scope["scope_id"] not in _expected_scope_ids(task, execution):
-        raise TaskBoundaryError("Dispatch scope_id is not selected by the execution")
+    if dispatch.scope["scope_id"] not in _expected_scope_ids(
+        task, execution, profile, authority
+    ):
+        raise TaskBoundaryError("Dispatch scope_id is not selected by Run authority")
     _admit_output_locations(dispatch, execution)
 
     return (
@@ -1415,7 +1417,6 @@ def validate_task_start(
         raise TaskBoundaryError("Task-start record is not at its exact ledger path")
     _safe_in_run_destination(start_path, canonical_root, "task-start path")
     orchestration_contracts.validate_record("profile", profile)
-    validate_execution_view(execution, profile=profile)
     record, start_data = _admit_record(start_path, canonical_root, "task-start")
     identity = {
         "run_id": execution["run_id"],
@@ -1523,13 +1524,11 @@ def validate_verified_task(
     verified_path = _absolute_path(str(path), "verified task path")
     _safe_in_run_destination(verified_path, canonical_root, "verified task path")
     orchestration_contracts.validate_record("profile", profile)
-    validate_execution_view(execution, profile=profile)
-    record, _ = _admit_record(verified_path, canonical_root, "verified-task")
-
     expected_scope = {
         "scope_type": _safe_id(scope.get("scope_type"), "scope.scope_type"),
         "scope_id": _safe_id(scope.get("scope_id"), "scope.scope_id"),
     }
+    record, _ = _admit_record(verified_path, canonical_root, "verified-task")
     profile_tasks = [
         item for item in profile["owner_tasks"] if item["machine_key"] == machine_key
     ]
@@ -1538,9 +1537,6 @@ def validate_verified_task(
     owner = profile_tasks[0]
     if owner["scope_type"] != expected_scope["scope_type"]:
         raise TaskBoundaryError("Verified task scope_type does not match profile owner")
-    if expected_scope["scope_id"] not in _expected_scope_ids(owner, execution):
-        raise TaskBoundaryError("Verified task scope_id is not selected by execution")
-
     execution_sha256 = hashlib.sha256(
         orchestration_contracts.canonical_json_bytes(execution)
     ).hexdigest()

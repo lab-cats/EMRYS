@@ -398,23 +398,36 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
 
 def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> None:
     plan = _plan(tmp_path)
-    execution = plan.run.execution_projection
-    reporting = build_reporting_bundle(execution, plan.run.normalized.profile)
+    source = materialization._construction_source(plan.run)
+    reporting = build_reporting_bundle(
+        source,
+        plan.run.normalized.profile,
+        plan.run.normalized.analysis_revision,
+    )
     projection_data = {
         "reference_contract": reporting.reference_contract_bytes,
         "primary_analysis_policy": reporting.primary_analysis_policy_bytes,
         "reporting_run_contract": reporting.reporting_run_contract_bytes,
         "artifact_inventory": reporting.artifact_inventory_bytes,
     }
-    fixed_files = {item.path: item.data for item in plan.fixed_files}
+    planned_files = {
+        item.path: item.data for item in (*plan.fixed_files, *plan.attempt_files)
+    }
     config = json.loads(
         next(item.data for item in plan.attempt_files if item.path == plan.config_path)
     )
 
-    for name, reference in execution["reporting_projection"].items():
+    for name in reporting.projection_references:
+        reference = config[f"{name}_path"]
         path = plan.run_root / str(reference["path"])
-        assert fixed_files[path] == projection_data[name]
-        assert config[f"{name}_path"] == str(path)
+        assert planned_files[path] == projection_data[name]
+        assert config[f"{name}_path"] == reference
+    assert plan.run_root / "contract/normalized.json" not in planned_files
+    assert plan.execution_path == plan.run_root / "contract/run.json"
+    assert (
+        plan.attempt_record["execution_contract_sha256"]
+        == plan.run.run_binding.record_sha256
+    )
     assert {
         plan.run_root / "products" / "artifact-summary",
         plan.run_root / "products" / "report",
@@ -1092,25 +1105,23 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     assert old_locator.is_file() and relocated.is_file()
     assert relocated_run.run_id == run_one.run_id
     assert (
-        relocated_run.execution_projection_bytes != run_one.execution_projection_bytes
+        relocated_normalized.projection_source_bytes
+        != normalized.projection_source_bytes
     )
-    with pytest.raises(
-        control.ControlError,
-        match="Current normalized backend projection differs",
-    ):
-        control.plan_resume(
-            first.run_root,
-            readiness_two.runtime_profile,
-            ops=replace(
-                resume_ops,
-                normalize=lambda _request, _profile: relocated_normalized,
-            ),
-        )
 
     second = control.plan_resume(
         first.run_root,
         readiness_two.runtime_profile,
-        ops=resume_ops,
+        ops=replace(
+            resume_ops,
+            normalize=lambda _request, _profile: relocated_normalized,
+        ),
+    )
+    assert second.execution_path == first.execution_path
+    assert (
+        second.attempt_record["execution_contract_sha256"]
+        == first.attempt_record["execution_contract_sha256"]
+        == run_one.run_binding.record_sha256
     )
     second_ops = replace(
         base,

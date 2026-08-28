@@ -8,40 +8,34 @@ from typing import Any
 
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.application_model import (
-    EXECUTION_PROJECTION_SCHEMA_VERSION,
-    analysis_revision_from_execution_fields,
-)
+from emrys.contracts.orchestration.application_model import AnalysisRevision
 
 
 def _template_contexts(
     selector: str,
-    execution: Mapping[str, Any],
+    source: Mapping[str, Any],
+    analysis: AnalysisRevision | None,
 ) -> tuple[dict[str, str], ...]:
-    successor = execution.get("schema_version") == EXECUTION_PROJECTION_SCHEMA_VERSION
-    analysis_revision = (
-        analysis_revision_from_execution_fields(execution) if successor else None
-    )
     reference_id = (
-        analysis_revision.scope_id("reference")
-        if analysis_revision is not None
-        else str(execution["reference"]["reference_id"])
+        analysis.scope_id("reference")
+        if analysis is not None
+        else str(source["reference"]["reference_id"])
     )
-    reference_fasta_path = str(execution["reference"]["fasta"]["path"])
+    reference_fasta_path = str(source["reference"]["fasta"]["path"])
     reference_path = Path(reference_fasta_path)
     reference_dict_path = str(reference_path.with_name(f"{reference_path.stem}.dict"))
     cohort_id = (
-        analysis_revision.scope_id("cohort")
-        if analysis_revision is not None
-        else str(execution["analysis"]["cohort_id"])
+        analysis.scope_id("cohort")
+        if analysis is not None
+        else str(source["analysis"]["cohort_id"])
     )
     analysis_id = (
-        analysis_revision.scope_id("analysis")
-        if analysis_revision is not None
-        else str(execution["analysis"]["primary_analysis_id"])
+        analysis.scope_id("analysis")
+        if analysis is not None
+        else str(source["analysis"]["primary_analysis_id"])
     )
     shared = {
-        "run_id": str(execution["run_id"]),
+        "run_id": str(source["run_id"]),
         "reference_id": reference_id,
         "reference_fasta_path": reference_fasta_path,
         "reference_dict_path": reference_dict_path,
@@ -57,7 +51,7 @@ def _template_contexts(
                 "sample_id": str(row["sample_id"]),
                 "scope_id": str(row["sample_id"]),
             }
-            for row in execution["samples"]["rows"]
+            for row in source["samples"]["rows"]
         )
     if selector == "partitions":
         return tuple(
@@ -65,14 +59,12 @@ def _template_contexts(
                 **shared,
                 "partition_id": str(row["partition_id"]),
                 "scope_id": (
-                    analysis_revision.scope_id(
-                        "cohort_partition", str(row["partition_id"])
-                    )
-                    if analysis_revision is not None
+                    analysis.scope_id("cohort_partition", str(row["partition_id"]))
+                    if analysis is not None
                     else f"{cohort_id}__{row['partition_id']}"
                 ),
             }
-            for row in execution["partitions"]["rows"]
+            for row in source["partitions"]["rows"]
         )
     if selector == "cohort":
         return ({**shared, "scope_id": cohort_id},)
@@ -137,8 +129,9 @@ def _validate_rows(rows: Sequence[Mapping[str, str]]) -> None:
 
 
 def project_rows(
-    execution: Mapping[str, Any],
+    source: Mapping[str, Any],
     profile: Mapping[str, Any],
+    analysis: AnalysisRevision | None = None,
 ) -> tuple[dict[str, str], ...]:
     """Expand the fixed artifact templates into their admitted inventory rows."""
 
@@ -160,7 +153,7 @@ def project_rows(
         templates_by_selector[selector].append(template)
 
     for selector in selector_order:
-        for context in _template_contexts(selector, execution):
+        for context in _template_contexts(selector, source, analysis):
             for template in templates_by_selector[selector]:
                 scope_type = str(template["scope_type"])
                 if expected_scope[selector] != scope_type:

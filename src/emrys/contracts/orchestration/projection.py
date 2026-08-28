@@ -12,7 +12,7 @@ from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration import artifact_inventory
 from emrys.contracts.orchestration.application_model import (
-    EXECUTION_PROJECTION_SCHEMA_VERSION,
+    AnalysisRevision,
     analysis_revision_from_execution_fields,
 )
 
@@ -81,25 +81,33 @@ def _inventory_bytes(rows: Sequence[Mapping[str, str]]) -> bytes:
 
 
 def build_reporting_bundle(
-    execution: Mapping[str, Any],
+    source: Mapping[str, Any],
     profile: Mapping[str, Any],
+    analysis: AnalysisRevision | None = None,
 ) -> ReportingBundle:
     """Build exact reporting inputs before the execution contract is finalized."""
 
     orchestration_contracts.validate_record("profile", profile)
-    reference_contract = dict(execution["reference"])
-    primary_analysis_policy = dict(execution["analysis"]["policy"])
+    if analysis is not None and (
+        analysis_revision_from_execution_fields(source).canonical_bytes
+        != analysis.canonical_bytes
+    ):
+        raise orchestration_contracts.ContractValidationError(
+            "Reporting source differs from the admitted Analysis"
+        )
+    reference_contract = dict(source["reference"])
+    primary_analysis_policy = dict(source["analysis"]["policy"])
     reference_bytes = orchestration_contracts.canonical_json_bytes(reference_contract)
     policy_bytes = orchestration_contracts.canonical_json_bytes(primary_analysis_policy)
-    primary_analysis_id = str(execution["analysis"]["primary_analysis_id"])
-    if execution.get("schema_version") == EXECUTION_PROJECTION_SCHEMA_VERSION:
-        primary_analysis_id = analysis_revision_from_execution_fields(
-            execution
-        ).scope_id("analysis")
+    primary_analysis_id = (
+        analysis.scope_id("analysis")
+        if analysis is not None
+        else str(source["analysis"]["primary_analysis_id"])
+    )
     components = {
-        "sample_manifest_sha256": str(execution["samples"]["manifest"]["sha256"]),
+        "sample_manifest_sha256": str(source["samples"]["manifest"]["sha256"]),
         "reference_contract_sha256": _sha256_bytes(reference_bytes),
-        "partition_manifest_sha256": str(execution["partitions"]["manifest"]["sha256"]),
+        "partition_manifest_sha256": str(source["partitions"]["manifest"]["sha256"]),
         "primary_analysis_id": primary_analysis_id,
         "primary_analysis_policy_sha256": _sha256_bytes(policy_bytes),
     }
@@ -110,7 +118,7 @@ def build_reporting_bundle(
     artifact_contracts.validate_run_contract(
         reporting_run_contract, "projected reporting"
     )
-    rows = artifact_inventory.project_rows(execution, profile)
+    rows = artifact_inventory.project_rows(source, profile, analysis)
     return ReportingBundle(
         reference_contract=reference_contract,
         primary_analysis_policy=primary_analysis_policy,

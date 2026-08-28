@@ -921,33 +921,6 @@ def test_dispatch_is_closed_and_binds_exact_owner_scope(tmp_path: Path) -> None:
         _execute_dispatch(built.dispatch_path, ops=_fixed_ops())
 
 
-def test_successor_dispatch_scopes_use_analysis_revision(tmp_path: Path) -> None:
-    intake = tmp_path / "intake"
-    intake.mkdir()
-    profile = orchestration_contracts.load_json_object(workflow_fixture.PROFILE_PATH)
-    normalized = normalization.normalize_request(fixture.build(intake), profile=profile)
-    execution = {
-        "schema_version": "emrys.execution-projection.v1",
-        **normalized.projection_source,
-    }
-    owners = {owner["scope_selector"]: owner for owner in profile["owner_tasks"]}
-    analysis = normalized.analysis_revision
-
-    assert task._expected_scope_ids(owners["reference"], execution) == {
-        analysis.scope_id("reference")
-    }
-    assert task._expected_scope_ids(owners["partitions"], execution) == {
-        analysis.scope_id("cohort_partition", row["partition_id"])
-        for row in execution["partitions"]["rows"]
-    }
-    assert task._expected_scope_ids(owners["cohort"], execution) == {
-        analysis.scope_id("cohort")
-    }
-    assert task._expected_scope_ids(owners["analysis"], execution) == {
-        analysis.scope_id("analysis")
-    }
-
-
 def test_dispatch_hash_is_bound_before_parsing_or_producer_execution(
     tmp_path: Path,
 ) -> None:

@@ -266,7 +266,6 @@ def plan_resume(
         readiness = ops.inspect_readiness(request, workspace, runtime_profile)
         _require_ready(readiness)
         normalized = _normalize_after_doctor(readiness, ops)
-        fixed_execution = root / "contract/normalized.json"
         predecessor_config = _load_config_reference(root, previous)
         if observed.authority_format == "successor":
             if (
@@ -295,17 +294,11 @@ def plan_resume(
             candidate = build_run_candidate(normalized, readiness, policy.declaration)
             if candidate.run_binding.canonical_bytes != observed.run_binding.canonical_bytes:
                 raise ControlError("Current inputs resolve to a different Run")
-            if fixed_execution.is_symlink() or not fixed_execution.is_file():
-                raise ControlError("Successor execution projection is unavailable")
-            if candidate.execution_projection_bytes != fixed_execution.read_bytes():
-                raise ControlError(
-                    "Current normalized backend projection differs from the immutable "
-                    "successor projection"
-                )
             run = candidate
             resources = resolve_resource_policy(policy, ops.observe_allocation())
         else:
             legacy_execution, legacy_bytes = normalized.historical_execution_v1()
+            fixed_execution = root / "contract/normalized.json"
             if legacy_execution["run_id"] != observed.run_id:
                 raise ControlError("Current authored request resolves to a different run")
             if (

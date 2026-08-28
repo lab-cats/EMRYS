@@ -1,8 +1,7 @@
 """Immutable successor records for Analysis, Execution Plan, and Run.
 
 This module owns canonical values only.  It does not publish files, allocate
-resources, create Attempts, or make the temporary execution projection a Run
-authority.
+resources, or create Attempts.
 """
 
 from __future__ import annotations
@@ -24,7 +23,6 @@ from .api import (
 ANALYSIS_SCHEMA_VERSION = "emrys.analysis-revision.v1"
 EXECUTION_PLAN_SCHEMA_VERSION = "emrys.execution-plan.v1"
 RUN_BINDING_SCHEMA_VERSION = "emrys.run-binding.v1"
-EXECUTION_PROJECTION_SCHEMA_VERSION = "emrys.execution-projection.v1"
 LEGACY_EXECUTION_SCHEMA_VERSION = "emrys.execution.v1"
 
 ANALYSIS_IDENTITY_DOMAIN = "emrys.analysis-revision-identity.v1"
@@ -627,52 +625,17 @@ def read_application_record(
     raise ContractValidationError(f"Unsupported application record: {version!r}")
 
 
-def build_execution_projection(
-    *,
-    run: RunBinding,
-    current_execution_fields: Mapping[str, Any],
-) -> dict[str, Any]:
-    """Build the temporary one-way backend view; never a Run authority."""
-
-    fields = (
-        "profile",
-        "samples",
-        "partitions",
-        "reference",
-        "analysis",
-        "reporting_projection",
-    )
-    projected = _closed_copy(
-        current_execution_fields,
-        fields,
-        "execution projection fields",
-    )
-    return {
-        "schema_version": EXECUTION_PROJECTION_SCHEMA_VERSION,
-        "run_id": run.run_id,
-        "run_binding_sha256": run.record_sha256,
-        **projected,
-    }
-
-
 def validate_execution_view(
     record: Mapping[str, Any],
     *,
     profile: Mapping[str, Any],
 ) -> None:
-    """Validate either historical execution.v1 or its temporary successor view."""
+    """Validate an exact historical execution.v1 view."""
 
     version = record.get("schema_version")
-    if version == LEGACY_EXECUTION_SCHEMA_VERSION:
-        validate_record("execution", record, profile=profile)
-        return
-    if version != EXECUTION_PROJECTION_SCHEMA_VERSION:
+    if version != LEGACY_EXECUTION_SCHEMA_VERSION:
         raise ContractValidationError(f"Unsupported execution view: {version!r}")
-    validate_record("application-model", record)
-    validate_record("profile", profile)
-    from .projection import validate_reporting_projection  # noqa: PLC0415
-
-    validate_reporting_projection(record, profile)
+    validate_record("execution", record, profile=profile)
 
 
 def _positive_integer(value: Any, label: str) -> int:
@@ -835,35 +798,22 @@ def _validate_resource_resolution(
             )
 
 
-def validate_successor_adapter(
+def validate_successor_run(
     *,
     analysis: AnalysisRevision,
     plan: ExecutionPlan,
     run: RunBinding,
-    execution_projection: Mapping[str, Any],
     profile: Mapping[str, Any],
     attempt: Mapping[str, Any] | None = None,
     resource_policy: Mapping[str, Any] | None = None,
     observed_implementation_content_sha256: str | None = None,
     observed_backend_semantics_sha256: str | None = None,
 ) -> None:
-    """Prove that temporary successor adapters agree with immutable authority."""
+    """Prove that a successor Run and optional Attempt agree with authority."""
 
     if run.canonical_bytes != bind_run(analysis, plan).canonical_bytes:
         raise ContractValidationError(
             "Run binding differs from the admitted Analysis and Execution Plan"
-        )
-    if execution_projection.get("schema_version") != EXECUTION_PROJECTION_SCHEMA_VERSION:
-        raise ContractValidationError("Successor adapter requires an execution projection")
-    validate_execution_view(execution_projection, profile=profile)
-    if execution_projection["run_id"] != run.run_id:
-        raise ContractValidationError("Execution projection Run ID differs")
-    if execution_projection["run_binding_sha256"] != run.record_sha256:
-        raise ContractValidationError("Execution projection Run binding digest differs")
-    projected_analysis = analysis_revision_from_execution_fields(execution_projection)
-    if projected_analysis.canonical_bytes != analysis.canonical_bytes:
-        raise ContractValidationError(
-            "Execution projection does not reproduce the admitted Analysis"
         )
 
     plan_identity = plan.record["identity"]
@@ -874,8 +824,6 @@ def validate_successor_adapter(
         raise ContractValidationError(
             "Profile functional specification differs from the Execution Plan"
         )
-    if execution_projection["reference"]["star_index"] != plan_identity["star_index"]:
-        raise ContractValidationError("STAR-index policy differs from the Execution Plan")
     if (
         plan_identity["scientific_stopping_owner_keys"]
         != plan_identity["functional_specification"]["required_owner_keys"]
@@ -888,10 +836,8 @@ def validate_successor_adapter(
         validate_record("workflow-attempt", attempt)
         if attempt["run_id"] != run.run_id:
             raise ContractValidationError("Attempt Run ID differs")
-        if attempt["execution_contract_sha256"] != canonical_sha256(
-            execution_projection
-        ):
-            raise ContractValidationError("Attempt execution projection digest differs")
+        if attempt["execution_contract_sha256"] != run.record_sha256:
+            raise ContractValidationError("Attempt Run binding digest differs")
         if attempt["profile_sha256"] != canonical_sha256(profile):
             raise ContractValidationError("Attempt profile digest differs")
         if (
@@ -1105,7 +1051,7 @@ def _validate_application_model_semantics(record: Mapping[str, Any]) -> None:
         _validate_plan_semantics(record)
     elif version == RUN_BINDING_SCHEMA_VERSION:
         _validate_run_semantics(record)
-    elif version != EXECUTION_PROJECTION_SCHEMA_VERSION:
+    else:
         raise ContractValidationError(f"Unsupported application record: {version!r}")
 
 
@@ -1113,7 +1059,6 @@ __all__ = (
     "ANALYSIS_SCHEMA_VERSION",
     "EXECUTION_PLAN_SCHEMA_VERSION",
     "RUN_BINDING_SCHEMA_VERSION",
-    "EXECUTION_PROJECTION_SCHEMA_VERSION",
     "LEGACY_EXECUTION_SCHEMA_VERSION",
     "AnalysisRevision",
     "ExecutionPlan",
@@ -1125,11 +1070,10 @@ __all__ = (
     "analysis_revision_from_execution_fields",
     "build_analysis_revision",
     "build_execution_plan",
-    "build_execution_projection",
     "functional_specification_from_profile",
     "implementation_content_sha256",
     "read_application_record",
     "toolchain_from_required_tools",
     "validate_execution_view",
-    "validate_successor_adapter",
+    "validate_successor_run",
 )

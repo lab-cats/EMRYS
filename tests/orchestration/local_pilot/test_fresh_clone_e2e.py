@@ -360,35 +360,13 @@ def _reusable_snapshot(run_root: Path) -> dict[Path, tuple[bytes, int]]:
     }
 
 
-def _verify_bound_input_snapshots(execution: dict[str, Any]) -> int:
-    verified_paths: set[Path] = set()
-
-    def visit(value: Any) -> None:
-        if isinstance(value, dict):
-            if set(value) == {"path", "size_bytes", "sha256"}:
-                path = Path(str(value["path"]))
-                assert path.is_file() and not path.is_symlink()
-                data = path.read_bytes()
-                assert len(data) == value["size_bytes"]
-                assert hashlib.sha256(data).hexdigest() == value["sha256"]
-                verified_paths.add(path)
-                return
-            for child in value.values():
-                visit(child)
-        elif isinstance(value, list):
-            for child in value:
-                visit(child)
-
-    visit(execution)
-    return len(verified_paths)
-
-
 def _assert_complete_products(run_root: Path, run_id: str) -> None:
     execution = orchestration_contracts.load_json_object(
-        run_root / "contract/normalized.json"
+        run_root / "contract/run.json"
     )
-    assert execution["schema_version"] == "emrys.execution-projection.v1"
+    assert execution["schema_version"] == "emrys.run-binding.v1"
     assert execution["run_id"] == run_id
+    assert not (run_root / "contract/normalized.json").exists()
     profile = orchestration_contracts.load_json_object(
         run_root / "contract/profile.json"
     )
@@ -596,10 +574,8 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         second_initial.stderr
     )
 
-    execution = orchestration_contracts.load_json_object(
-        run_root / "contract/normalized.json"
-    )
-    assert _verify_bound_input_snapshots(execution) == 12
+    execution = orchestration_contracts.load_json_object(run_root / "contract/run.json")
+    assert execution["run_id"] == run_id
     first_attempt = orchestration_contracts.load_record(
         failed_receipts[0].with_name("attempt.json"), "workflow-attempt"
     )

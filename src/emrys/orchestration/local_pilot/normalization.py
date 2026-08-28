@@ -18,10 +18,7 @@ import yaml
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
     AnalysisRevision,
-    RunBinding,
     analysis_revision_from_execution_fields,
-    build_execution_projection,
-    validate_execution_view,
 )
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import step08, step09
@@ -77,28 +74,8 @@ class NormalizationBundle:
 
         return orchestration_contracts.load_json_object_bytes(
             self.projection_source_bytes,
-            "normalized execution-projection source",
+            "normalized construction source",
         )
-
-    def execution_projection(self, run: RunBinding) -> dict[str, Any]:
-        """Derive the temporary backend view from one already-bound Run."""
-
-        fields = self.projection_source
-        provisional = {
-            "schema_version": "emrys.execution-projection.v1",
-            "run_id": run.run_id,
-            "run_binding_sha256": run.record_sha256,
-            **fields,
-            "reporting_projection": {},
-        }
-        reporting = build_reporting_bundle(provisional, self.profile)
-        fields["reporting_projection"] = reporting.projection_references
-        projected = build_execution_projection(
-            run=run,
-            current_execution_fields=fields,
-        )
-        validate_execution_view(projected, profile=self.profile)
-        return projected
 
     def historical_execution_v1(self) -> tuple[dict[str, Any], bytes]:
         """Reconstruct only an existing v1 Run for historical resume admission."""

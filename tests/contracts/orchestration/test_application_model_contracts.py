@@ -9,7 +9,6 @@ import pytest
 
 from emrys.contracts.orchestration import api as contracts
 from emrys.contracts.orchestration import application_model as model
-from emrys.contracts.orchestration import projection as reporting_projection
 from tests.contracts.orchestration.test_orchestration_contracts import (
     execution as historical_execution,
 )
@@ -180,11 +179,10 @@ def execution_plan() -> model.ExecutionPlan:
     )
 
 
-def successor_adapter_fixture() -> tuple[
+def successor_run_fixture() -> tuple[
     model.AnalysisRevision,
     model.ExecutionPlan,
     model.RunBinding,
-    dict[str, object],
     dict[str, object],
     dict[str, object],
     dict[str, object],
@@ -216,25 +214,8 @@ def successor_adapter_fixture() -> tuple[
         computational_resources=resources,
     )
     run = model.bind_run(analysis, plan)
-    projection = model.build_execution_projection(
-        run=run,
-        current_execution_fields={
-            key: copy.deepcopy(execution[key])
-            for key in (
-                "profile",
-                "samples",
-                "partitions",
-                "reference",
-                "analysis",
-                "reporting_projection",
-            )
-        },
-    )
-    projection["reporting_projection"] = reporting_projection.build_reporting_bundle(
-        projection, profile
-    ).projection_references
     attempt["run_id"] = run.run_id
-    attempt["execution_contract_sha256"] = contracts.canonical_sha256(projection)
+    attempt["execution_contract_sha256"] = run.record_sha256
     attempt["profile_sha256"] = contracts.canonical_sha256(profile)
     effective = {
         "schema_version": "emrys.local-pilot-resources.v1",
@@ -266,7 +247,7 @@ def successor_adapter_fixture() -> tuple[
             "cli_overrides": [],
         },
     }
-    return analysis, plan, run, projection, profile, attempt, resource_policy
+    return analysis, plan, run, profile, attempt, resource_policy
 
 
 def test_analysis_revision_is_order_neutral_closed_and_deeply_immutable() -> None:
@@ -411,47 +392,20 @@ def test_version_aware_reader_rejects_non_string_schema_versions(version: object
         )
 
 
-def test_temporary_execution_projection_is_closed_one_way_and_not_run_authority() -> None:
+def test_execution_view_accepts_only_historical_execution_v1() -> None:
     legacy = historical_execution()
     profile = historical_profile()
-    run = model.bind_run(analysis_revision(), execution_plan())
-    projection = model.build_execution_projection(
-        run=run,
-        current_execution_fields={
-            key: copy.deepcopy(legacy[key])
-            for key in (
-                "profile",
-                "samples",
-                "partitions",
-                "reference",
-                "analysis",
-                "reporting_projection",
-            )
-        },
-    )
-    successor_reporting = reporting_projection.build_reporting_bundle(
-        projection, profile
-    )
-    projection["reporting_projection"] = successor_reporting.projection_references
-    legacy_reporting = reporting_projection.build_reporting_bundle(legacy, profile)
-    analysis = model.analysis_revision_from_execution_fields(projection)
-
-    assert successor_reporting.reporting_run_contract["primary_analysis_id"] == (
-        analysis.scope_id("analysis")
-    )
-    assert legacy_reporting.reporting_run_contract["primary_analysis_id"] == (
-        legacy["analysis"]["primary_analysis_id"]
-    )
-    model.validate_execution_view(projection, profile=profile)
-    assert projection["run_id"] == run.run_id
-    assert projection["run_binding_sha256"] == run.record_sha256
-    assert "identity_envelope" not in projection
-    with pytest.raises(contracts.ContractValidationError, match="Unsupported"):
-        model.read_application_record(
-            contracts.canonical_json_bytes(projection)
-        )
+    retired_projection = {"schema_version": "emrys.execution-projection.v1"}
 
     model.validate_execution_view(legacy, profile=profile)
+    with pytest.raises(contracts.ContractValidationError, match="Unsupported"):
+        model.validate_execution_view(retired_projection, profile=profile)
+    with pytest.raises(contracts.ContractValidationError, match="Invalid"):
+        contracts.validate_record("application-model", retired_projection)
+    with pytest.raises(contracts.ContractValidationError, match="Unsupported"):
+        model.read_application_record(
+            contracts.canonical_json_bytes(retired_projection)
+        )
 
 
 def test_analysis_admission_requires_present_conditions_and_paired_replicates() -> None:
@@ -520,15 +474,14 @@ def test_plan_admission_rejects_rehashed_noncanonical_functional_lists() -> None
             model.ExecutionPlan.from_record(tampered)
 
 
-def test_successor_adapter_proves_authority_and_optional_attempt_observations() -> None:
-    analysis, plan, run, projection, profile, attempt, resource_policy = (
-        successor_adapter_fixture()
+def test_successor_run_proves_authority_and_optional_attempt_observations() -> None:
+    analysis, plan, run, profile, attempt, resource_policy = (
+        successor_run_fixture()
     )
-    model.validate_successor_adapter(
+    model.validate_successor_run(
         analysis=analysis,
         plan=plan,
         run=run,
-        execution_projection=projection,
         profile=profile,
         attempt=attempt,
         resource_policy=resource_policy,
@@ -579,14 +532,14 @@ def test_successor_adapter_proves_authority_and_optional_attempt_observations() 
         ),
     ),
 )
-def test_successor_adapter_rejects_invalid_resource_resolution(
+def test_successor_run_rejects_invalid_resource_resolution(
     path: tuple[str, ...],
     value: object,
     rehash: str | None,
     message: str,
 ) -> None:
-    analysis, plan, run, projection, profile, _, resource_policy = (
-        successor_adapter_fixture()
+    analysis, plan, run, profile, _, resource_policy = (
+        successor_run_fixture()
     )
     changed = copy.deepcopy(resource_policy)
     target = changed
@@ -596,31 +549,23 @@ def test_successor_adapter_rejects_invalid_resource_resolution(
     if rehash is not None:
         changed[f"{rehash}_sha256"] = contracts.canonical_sha256(changed[rehash])
     with pytest.raises(contracts.ContractValidationError, match=message):
-        model.validate_successor_adapter(
+        model.validate_successor_run(
             analysis=analysis,
             plan=plan,
             run=run,
-            execution_projection=projection,
             profile=profile,
             resource_policy=changed,
         )
 
 
-def test_successor_adapter_rejects_projection_profile_and_stopping_drift() -> None:
-    analysis, plan, run, projection, profile, _, _ = successor_adapter_fixture()
-    changed_projection = copy.deepcopy(projection)
-    changed_projection["samples"]["rows"][0]["r1_fastq"]["sha256"] = TWO_HASH
-    changed_projection["reporting_projection"] = (
-        reporting_projection.build_reporting_bundle(
-            changed_projection, profile
-        ).projection_references
-    )
-    with pytest.raises(contracts.ContractValidationError, match="reproduce"):
-        model.validate_successor_adapter(
+def test_successor_run_rejects_binding_profile_and_stopping_drift() -> None:
+    analysis, plan, run, profile, _, _ = successor_run_fixture()
+    mismatched_run = model.bind_run(analysis_revision(), plan)
+    with pytest.raises(contracts.ContractValidationError, match="Run binding differs"):
+        model.validate_successor_run(
             analysis=analysis,
             plan=plan,
-            run=run,
-            execution_projection=changed_projection,
+            run=mismatched_run,
             profile=profile,
         )
 
@@ -633,15 +578,11 @@ def test_successor_adapter_rejects_projection_profile_and_stopping_drift() -> No
     )
     changed_plan = model.ExecutionPlan.from_record(changed_plan_record)
     changed_run = model.bind_run(analysis, changed_plan)
-    changed_projection = copy.deepcopy(projection)
-    changed_projection["run_id"] = changed_run.run_id
-    changed_projection["run_binding_sha256"] = changed_run.record_sha256
     with pytest.raises(contracts.ContractValidationError, match="Profile functional"):
-        model.validate_successor_adapter(
+        model.validate_successor_run(
             analysis=analysis,
             plan=changed_plan,
             run=changed_run,
-            execution_projection=changed_projection,
             profile=profile,
         )
 
@@ -652,41 +593,57 @@ def test_successor_adapter_rejects_projection_profile_and_stopping_drift() -> No
     )
     changed_plan = model.ExecutionPlan.from_record(changed_plan_record)
     changed_run = model.bind_run(analysis, changed_plan)
-    changed_projection["run_id"] = changed_run.run_id
-    changed_projection["run_binding_sha256"] = changed_run.record_sha256
     with pytest.raises(contracts.ContractValidationError, match="stopping owners"):
-        model.validate_successor_adapter(
+        model.validate_successor_run(
             analysis=analysis,
             plan=changed_plan,
             run=changed_run,
-            execution_projection=changed_projection,
-            profile=profile,
-        )
-
-    changed_plan_record = plan.record
-    changed_plan_record["identity"]["star_index"]["sjdb_overhang"] = 150
-    changed_plan_record["execution_plan_id"] = (
-        "plan-" + contracts.canonical_sha256(changed_plan_record["identity"])
-    )
-    changed_plan = model.ExecutionPlan.from_record(changed_plan_record)
-    changed_run = model.bind_run(analysis, changed_plan)
-    changed_projection = copy.deepcopy(projection)
-    changed_projection["run_id"] = changed_run.run_id
-    changed_projection["run_binding_sha256"] = changed_run.record_sha256
-    with pytest.raises(contracts.ContractValidationError, match="STAR-index"):
-        model.validate_successor_adapter(
-            analysis=analysis,
-            plan=changed_plan,
-            run=changed_run,
-            execution_projection=changed_projection,
             profile=profile,
         )
 
 
-def test_successor_adapter_rejects_attempt_resource_and_observed_digest_drift() -> None:
-    analysis, plan, run, projection, profile, attempt, resource_policy = (
-        successor_adapter_fixture()
+def test_successor_run_rejects_attempt_resource_and_observed_digest_drift() -> None:
+    analysis, plan, run, profile, attempt, resource_policy = (
+        successor_run_fixture()
     )
+    for field, value, message in (
+        ("run_id", f"run-{TWO_HASH}", "Attempt Run ID"),
+        ("profile_sha256", TWO_HASH, "Attempt profile digest"),
+    ):
+        changed_attempt = copy.deepcopy(attempt)
+        changed_attempt[field] = value
+        with pytest.raises(contracts.ContractValidationError, match=message):
+            model.validate_successor_run(
+                analysis=analysis,
+                plan=plan,
+                run=run,
+                profile=profile,
+                attempt=changed_attempt,
+            )
+
+    changed_attempt = copy.deepcopy(attempt)
+    changed_attempt["execution_contract_sha256"] = TWO_HASH
+    with pytest.raises(contracts.ContractValidationError, match="Run binding digest"):
+        model.validate_successor_run(
+            analysis=analysis,
+            plan=plan,
+            run=run,
+            profile=profile,
+            attempt=changed_attempt,
+        )
+
+    changed_attempt = copy.deepcopy(attempt)
+    changed_attempt["cores"] = 1
+    with pytest.raises(contracts.ContractValidationError, match="Attempt cores"):
+        model.validate_successor_run(
+            analysis=analysis,
+            plan=plan,
+            run=run,
+            profile=profile,
+            attempt=changed_attempt,
+            resource_policy=resource_policy,
+        )
+
     changed_attempt = copy.deepcopy(attempt)
     changed_attempt["required_tools"].append(
         {
@@ -699,11 +656,10 @@ def test_successor_adapter_rejects_attempt_resource_and_observed_digest_drift() 
     )
     changed_attempt["required_tools"].sort(key=lambda item: item["name"])
     with pytest.raises(contracts.ContractValidationError, match="tool content"):
-        model.validate_successor_adapter(
+        model.validate_successor_run(
             analysis=analysis,
             plan=plan,
             run=run,
-            execution_projection=projection,
             profile=profile,
             attempt=changed_attempt,
         )
@@ -714,11 +670,10 @@ def test_successor_adapter_rejects_attempt_resource_and_observed_digest_drift() 
         changed_resources["effective"]
     )
     with pytest.raises(contracts.ContractValidationError, match="stage_memory_mb"):
-        model.validate_successor_adapter(
+        model.validate_successor_run(
             analysis=analysis,
             plan=plan,
             run=run,
-            execution_projection=projection,
             profile=profile,
             resource_policy=changed_resources,
         )
@@ -732,31 +687,28 @@ def test_successor_adapter_rejects_attempt_resource_and_observed_digest_drift() 
         contracts.ContractValidationError,
         match="Symbolic computational resources",
     ):
-        model.validate_successor_adapter(
+        model.validate_successor_run(
             analysis=analysis,
             plan=plan,
             run=run,
-            execution_projection=projection,
             profile=profile,
             resource_policy=changed_resources,
         )
 
     with pytest.raises(contracts.ContractValidationError, match="implementation"):
-        model.validate_successor_adapter(
+        model.validate_successor_run(
             analysis=analysis,
             plan=plan,
             run=run,
-            execution_projection=projection,
             profile=profile,
             observed_implementation_content_sha256=TWO_HASH,
         )
 
     with pytest.raises(contracts.ContractValidationError, match="backend semantics"):
-        model.validate_successor_adapter(
+        model.validate_successor_run(
             analysis=analysis,
             plan=plan,
             run=run,
-            execution_projection=projection,
             profile=profile,
             observed_backend_semantics_sha256=TWO_HASH,
         )
@@ -768,20 +720,14 @@ def test_successor_adapter_rejects_attempt_resource_and_observed_digest_drift() 
     )
     changed_plan = model.ExecutionPlan.from_record(changed_plan_record)
     changed_run = model.bind_run(analysis, changed_plan)
-    changed_projection = copy.deepcopy(projection)
-    changed_projection["run_id"] = changed_run.run_id
-    changed_projection["run_binding_sha256"] = changed_run.record_sha256
     changed_attempt = copy.deepcopy(attempt)
     changed_attempt["run_id"] = changed_run.run_id
-    changed_attempt["execution_contract_sha256"] = contracts.canonical_sha256(
-        changed_projection
-    )
+    changed_attempt["execution_contract_sha256"] = changed_run.record_sha256
     with pytest.raises(contracts.ContractValidationError, match="executor"):
-        model.validate_successor_adapter(
+        model.validate_successor_run(
             analysis=analysis,
             plan=changed_plan,
             run=changed_run,
-            execution_projection=changed_projection,
             profile=profile,
             attempt=changed_attempt,
         )

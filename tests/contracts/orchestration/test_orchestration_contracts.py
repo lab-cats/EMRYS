@@ -11,6 +11,7 @@ import pytest
 from jsonschema import Draft202012Validator
 
 from emrys.contracts import orchestration
+from emrys.contracts.orchestration import application_model
 from emrys.contracts.orchestration import artifact_inventory
 from emrys.contracts.orchestration import projection as reporting_projection
 
@@ -1057,11 +1058,6 @@ def test_execution_requires_profile_and_complete_projection_match() -> None:
 
     record = execution()
     record["reporting_projection"]["reporting_run_contract"]["sha256"] = ZERO_HASH
-    with pytest.raises(orchestration.ContractValidationError, match="projection"):
-        orchestration.validate_record("execution", record, profile=profile())
-
-    record = execution()
-    record["reporting_projection"]["artifact_inventory"]["sha256"] = ONE_HASH
     with pytest.raises(orchestration.ContractValidationError, match="projection"):
         orchestration.validate_record("execution", record, profile=profile())
 

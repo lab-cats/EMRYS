@@ -18,8 +18,8 @@ from emrys import __version__
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration import artifact_inventory
 from emrys.contracts.orchestration.application_model import (
-    EXECUTION_PROJECTION_SCHEMA_VERSION,
     LEGACY_EXECUTION_SCHEMA_VERSION,
+    AnalysisRevision,
     ExecutionPlan,
     RunBinding,
     analysis_revision_from_execution_fields,
@@ -28,7 +28,7 @@ from emrys.contracts.orchestration.application_model import (
     functional_specification_from_profile,
     toolchain_from_required_tools,
     validate_execution_view,
-    validate_successor_adapter,
+    validate_successor_run,
 )
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.orchestration.local_pilot import (
@@ -80,26 +80,22 @@ class RunCandidate:
     normalized: NormalizationBundle
     execution_plan: ExecutionPlan
     run_binding: RunBinding
-    execution_projection_bytes: bytes
 
     def __post_init__(self) -> None:
         try:
-            projection = orchestration_contracts.load_json_object_bytes(
-                self.execution_projection_bytes,
-                "successor execution projection",
-            )
             if (
-                orchestration_contracts.canonical_json_bytes(projection)
-                != self.execution_projection_bytes
+                analysis_revision_from_execution_fields(
+                    self.normalized.projection_source
+                ).canonical_bytes
+                != self.normalized.analysis_revision.canonical_bytes
             ):
                 raise orchestration_contracts.ContractValidationError(
-                    "Successor execution projection must use canonical JSON bytes"
+                    "Construction source differs from the admitted Analysis"
                 )
-            validate_successor_adapter(
+            validate_successor_run(
                 analysis=self.normalized.analysis_revision,
                 plan=self.execution_plan,
                 run=self.run_binding,
-                execution_projection=projection,
                 profile=self.normalized.profile,
             )
         except orchestration_contracts.ContractValidationError as exc:
@@ -108,13 +104,6 @@ class RunCandidate:
     @property
     def run_id(self) -> str:
         return self.run_binding.run_id
-
-    @property
-    def execution_projection(self) -> dict[str, Any]:
-        return orchestration_contracts.load_json_object_bytes(
-            self.execution_projection_bytes,
-            "successor execution projection",
-        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,7 +197,7 @@ class AttemptPlan:
 
     @property
     def execution_path(self) -> Path:
-        return self.run_root / "contract" / "normalized.json"
+        return _execution_path(self.run, self.run_root)
 
     @property
     def profile_path(self) -> Path:
@@ -291,17 +280,28 @@ def build_run_candidate(
             computational_resources=declaration.identity_document(),
         )
         run = bind_run(normalized.analysis_revision, plan)
-        projection = normalized.execution_projection(run)
         return RunCandidate(
             normalized=normalized,
             execution_plan=plan,
             run_binding=run,
-            execution_projection_bytes=orchestration_contracts.canonical_json_bytes(
-                projection
-            ),
         )
     except orchestration_contracts.ContractValidationError as exc:
         raise MaterializationError(f"Could not bind immutable Run: {exc}") from exc
+
+
+def _construction_source(run: MaterializedRun) -> dict[str, Any]:
+    """Return a disposable command/report view; never persisted authority."""
+
+    if isinstance(run, HistoricalRun):
+        return run.execution_projection
+    source = run.normalized.projection_source
+    source["run_id"] = run.run_id
+    return source
+
+
+def _execution_path(run: MaterializedRun, root: Path) -> Path:
+    name = "run.json" if isinstance(run, RunCandidate) else "normalized.json"
+    return root / "contract" / name
 
 
 def _within(path: Path, root: Path, label: str) -> None:
@@ -333,12 +333,13 @@ def _resolved_inventory_path(run_root: Path, raw: str) -> Path:
 
 
 def _artifact_rows(
-    execution: Mapping[str, Any],
+    source: Mapping[str, Any],
     profile: Mapping[str, Any],
     run_root: Path,
+    analysis: AnalysisRevision | None,
 ) -> dict[tuple[str, str], tuple[dict[str, Any], ...]]:
     grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
-    for row in artifact_inventory.project_rows(execution, profile):
+    for row in artifact_inventory.project_rows(source, profile, analysis):
         item = dict(row)
         item["path"] = _resolved_inventory_path(run_root, str(row["source_path"]))
         grouped.setdefault((str(row["step_id"]), str(row["scope_id"])), []).append(item)
@@ -427,27 +428,23 @@ def _task_commands(
     step_id: str,
     scope_id: str,
     paths: Mapping[str, list[Path]],
-    execution: Mapping[str, Any],
+    source: Mapping[str, Any],
+    analysis_revision: AnalysisRevision | None,
     run_root: Path,
     source_root: Path,
     runtime: Mapping[str, Any],
     all_paths: Mapping[tuple[str, str], Mapping[str, list[Path]]],
     threads: int | None,
 ) -> tuple[tuple[str, ...], tuple[str, ...], tuple[Path, ...]]:
-    sample_rows = {str(row["sample_id"]): row for row in execution["samples"]["rows"]}
+    sample_rows = {str(row["sample_id"]): row for row in source["samples"]["rows"]}
     partition_rows = {
-        str(row["partition_id"]): row for row in execution["partitions"]["rows"]
+        str(row["partition_id"]): row for row in source["partitions"]["rows"]
     }
-    reference = execution["reference"]
-    analysis = execution["analysis"]
-    analysis_revision = (
-        analysis_revision_from_execution_fields(execution)
-        if execution.get("schema_version") == EXECUTION_PROJECTION_SCHEMA_VERSION
-        else None
-    )
+    reference = source["reference"]
+    analysis = source["analysis"]
     policy = analysis["policy"]
-    sample_manifest = Path(str(execution["samples"]["manifest"]["path"]))
-    partition_manifest = Path(str(execution["partitions"]["manifest"]["path"]))
+    sample_manifest = Path(str(source["samples"]["manifest"]["path"]))
+    partition_manifest = Path(str(source["partitions"]["manifest"]["path"]))
     fasta = Path(str(reference["fasta"]["path"]))
     gtf = Path(str(reference["gtf"]["path"]))
     reference_id = (
@@ -1261,9 +1258,11 @@ def _dispatches(
 ) -> tuple[
     tuple[PlannedFile, ...], dict[str, dict[str, dict[str, str]]], tuple[Path, ...]
 ]:
-    execution = run.execution_projection
+    successor = isinstance(run, RunCandidate)
+    source = _construction_source(run)
+    analysis_revision = run.normalized.analysis_revision if successor else None
     profile = run.normalized.profile
-    inventory = _artifact_rows(execution, profile, run_root)
+    inventory = _artifact_rows(source, profile, run_root, analysis_revision)
     paths_by_scope: dict[tuple[str, str], dict[str, list[Path]]] = {}
     for key, rows in inventory.items():
         adapters: dict[str, list[Path]] = {}
@@ -1274,7 +1273,14 @@ def _dispatches(
     planned: list[PlannedFile] = []
     references: dict[str, dict[str, dict[str, str]]] = {}
     directories: set[Path] = set()
-    expected = inspection.expected_tasks(execution, profile)
+    authority = (
+        run.execution_projection
+        if isinstance(run, HistoricalRun)
+        else inspection.SuccessorRunAuthority(
+            run.normalized.analysis_revision, run.execution_plan, run.run_binding
+        )
+    )
+    expected = inspection.expected_tasks(authority, profile)
     owners = {
         str(item["machine_key"]): item for item in profile["owner_tasks"]
     }
@@ -1304,7 +1310,8 @@ def _dispatches(
             step_id=step_id,
             scope_id=task.scope_id,
             paths=adapters,
-            execution=execution,
+            source=source,
+            analysis_revision=analysis_revision,
             run_root=run_root,
             source_root=readiness.source_root,
             runtime=runtime,
@@ -1347,7 +1354,7 @@ def _dispatches(
         record = {
             "schema_version": "emrys.local-task-dispatch.v1",
             "run_root": str(run_root),
-            "execution_path": str(run_root / "contract/normalized.json"),
+            "execution_path": str(_execution_path(run, run_root)),
             "profile_path": str(run_root / "contract/profile.json"),
             "workflow_attempt_id": attempt_id,
             "task_attempt_id": task_id,
@@ -1428,7 +1435,13 @@ def build_attempt_plan(
     """Build one complete attempt without touching the filesystem."""
 
     normalized = run.normalized
-    execution = run.execution_projection
+    successor = isinstance(run, RunCandidate)
+    source = _construction_source(run)
+    execution_bytes = (
+        run.run_binding.canonical_bytes
+        if successor
+        else run.execution_projection_bytes
+    )
     resource_policy_record = resources.policy_record()
     if not readiness.ready:
         raise MaterializationError("Local-pilot readiness has unresolved blockers")
@@ -1498,26 +1511,33 @@ def build_attempt_plan(
     )
     reporting_files, reporting_config, reporting_directories = (
         reporting_boundary._attempt_reporting_materialization(
-            execution,
+            source,
             normalized.profile,
             run_root,
+            analysis=(normalized.analysis_revision if successor else None),
+            attempt_id=(attempt_id if successor else None),
         )
     )
     fixed_files = [
         PlannedFile(
-            run_root / "contract/normalized.json",
-            run.execution_projection_bytes,
-        ),
-        PlannedFile(
             run_root / "contract/profile.json",
             orchestration_contracts.canonical_json_bytes(normalized.profile),
         ),
-        *(PlannedFile(path, data) for path, data in reporting_files),
     ]
+    if not successor:
+        fixed_files.extend(
+            (
+                PlannedFile(
+                    run_root / "contract/normalized.json",
+                    run.execution_projection_bytes,
+                ),
+                *(PlannedFile(path, data) for path, data in reporting_files),
+            )
+        )
     config = {
         "run_root": str(run_root),
         "python_executable": sys.executable,
-        "execution_path": str(run_root / "contract/normalized.json"),
+        "execution_path": str(_execution_path(run, run_root)),
         "profile_path": str(run_root / "contract/profile.json"),
         "workflow_attempt_id": attempt_id,
         "source_checkout": str(source_root),
@@ -1543,7 +1563,7 @@ def build_attempt_plan(
     attempt = {
         "schema_version": "emrys.workflow-attempt.v1",
         "run_id": run.run_id,
-        "execution_contract_sha256": _sha256(run.execution_projection_bytes),
+        "execution_contract_sha256": _sha256(execution_bytes),
         "profile_sha256": _sha256(
             orchestration_contracts.canonical_json_bytes(normalized.profile)
         ),
@@ -1586,13 +1606,13 @@ def build_attempt_plan(
         "cores": workflow_cores,
         "required_tools": list(required_tools),
     }
-    if isinstance(run, RunCandidate):
+    if successor:
         try:
-            validate_successor_adapter(
+            assert isinstance(run, RunCandidate)
+            validate_successor_run(
                 analysis=normalized.analysis_revision,
                 plan=run.execution_plan,
                 run=run.run_binding,
-                execution_projection=execution,
                 profile=normalized.profile,
                 attempt=attempt,
                 resource_policy=resource_policy_record,
@@ -1613,6 +1633,11 @@ def build_attempt_plan(
     orchestration_contracts.validate_record("workflow-attempt", attempt)
     attempt_files = (
         *dispatch_files,
+        *(
+            PlannedFile(path, data)
+            for path, data in reporting_files
+            if successor
+        ),
         PlannedFile(config_path, config_data),
         PlannedFile(runtime_profile_path, readiness.inspection.profile_bytes),
     )
@@ -1638,9 +1663,7 @@ def build_attempt_plan(
         fixed_files=tuple(fixed_files),
         attempt_files=tuple(attempt_files),
         directories=tuple(sorted(directories)),
-        dispatch_count=len(
-            inspection.expected_tasks(execution, normalized.profile)
-        ),
+        dispatch_count=sum(len(scopes) for scopes in dispatch_references.values()),
     )
 
 

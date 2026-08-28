@@ -292,38 +292,11 @@
         },
         "run_id": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/run_id" }
       }
-    },
-    "execution_projection": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": [
-        "schema_version",
-        "run_id",
-        "run_binding_sha256",
-        "profile",
-        "samples",
-        "partitions",
-        "reference",
-        "analysis",
-        "reporting_projection"
-      ],
-      "properties": {
-        "schema_version": { "const": "emrys.execution-projection.v1" },
-        "run_id": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/run_id" },
-        "run_binding_sha256": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sha256" },
-        "profile": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/profile_identity" },
-        "samples": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/sample_set" },
-        "partitions": { "$ref": "urn:emrys:schema:orchestration:common:v1#/$defs/partition_set" },
-        "reference": { "$ref": "urn:emrys:schema:orchestration:reference:v1" },
-        "analysis": { "$ref": "urn:emrys:schema:orchestration:execution:v1#/$defs/analysis" },
-        "reporting_projection": { "$ref": "urn:emrys:schema:orchestration:execution:v1#/properties/reporting_projection" }
-      }
     }
   },
   "oneOf": [
     { "$ref": "#/$defs/analysis_revision" },
     { "$ref": "#/$defs/execution_plan" },
-    { "$ref": "#/$defs/run_binding" },
-    { "$ref": "#/$defs/execution_projection" }
+    { "$ref": "#/$defs/run_binding" }
   ]
 }

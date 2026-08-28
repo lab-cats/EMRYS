@@ -297,6 +297,7 @@ class Harness:
         _execution: dict[str, Any],
         _profile: dict[str, Any],
         _attempt: dict[str, Any],
+        _config: dict[str, Any],
     ) -> ValidatedFixtureReceipt:
         if self.reporting_error is not None:
             raise ValueError(self.reporting_error)

@@ -41,9 +41,8 @@ except ImportError:  # pragma: no cover - exercised only on unsupported platform
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
-    EXECUTION_PROJECTION_SCHEMA_VERSION,
-    validate_execution_view,
-    validate_successor_adapter,
+    RUN_BINDING_SCHEMA_VERSION,
+    validate_successor_run,
 )
 from emrys.libraries.installed_package_identity import (
     InstalledPackageIdentityError,
@@ -1186,7 +1185,13 @@ def _readmit_storage_runtime_binding(
     if attempt["execution_mode"] == "test-double":
         return None
     workspace = Path(str(attempt["workspace"]))
-    reference_fasta = Path(str(execution["reference"]["fasta"]["path"]))
+    reference_fasta = Path(
+        str(
+            attempt["authored_paths"]["reference_fasta"]
+            if execution.get("schema_version") == RUN_BINDING_SCHEMA_VERSION
+            else execution["reference"]["fasta"]["path"]
+        )
+    )
     try:
         qualified = inspect_storage(workspace, reference_fasta)
         return doctor.storage_runtime_binding(qualified)
@@ -1519,7 +1524,8 @@ def _verified_references(
     blockers: list[str] = []
     missing: list[str] = []
     verified_root = root / "state" / "verified"
-    expected_tasks = inspection.expected_tasks(execution, profile)
+    authority = inspection.admit_successor_run(root) or execution
+    expected_tasks = inspection.expected_tasks(authority, profile)
     for expected in expected_tasks:
         path = verified_root / expected.machine_key / f"{expected.scope_id}.json"
         if not path.exists() and not path.is_symlink():
@@ -1569,7 +1575,8 @@ def _task_start_references(
 
     references: list[dict[str, Any]] = []
     blockers: list[str] = []
-    expected = inspection.expected_tasks(execution, profile)
+    authority = inspection.admit_successor_run(root) or execution
+    expected = inspection.expected_tasks(authority, profile)
     for item in sorted(
         expected,
         key=lambda value: (value.machine_key, value.scope_type, value.scope_id),
@@ -1646,7 +1653,13 @@ def _preentry_task_attempt_references(
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """Use the inspection owner for the shared historical task-tree contract."""
 
-    return inspection.inspect_attempt_task_trees(root, execution, profile, attempts)
+    return inspection.inspect_attempt_task_trees(
+        root,
+        execution,
+        profile,
+        attempts,
+        authority=inspection.admit_successor_run(root),
+    )
 
 
 def _admit_run_before_attempt(root: Path, expected_run_id: str) -> None:
@@ -1675,23 +1688,11 @@ def _admit_run_before_attempt(root: Path, expected_run_id: str) -> None:
         raise LifecycleError("Prepared Attempt does not bind historical Run ID")
 
 
-def _admit_execution_view(
-    path: Path,
-    root: Path,
-    profile: Mapping[str, Any],
-) -> tuple[dict[str, Any], bytes]:
-    data = _read_stable(path, root, "execution view")
-    try:
-        record = orchestration_contracts.load_json_object_bytes(
-            data,
-            f"execution view {path}",
-        )
-        validate_execution_view(record, profile=profile)
-    except orchestration_contracts.ContractValidationError as exc:
-        raise LifecycleError(f"Invalid execution view at {path}: {exc}") from exc
-    if data != orchestration_contracts.canonical_json_bytes(record):
-        raise LifecycleError(f"Execution view must use canonical JSON bytes: {path}")
-    return record, data
+_admit_execution = partial(
+    inspection.admit_execution_path,
+    read_bytes=_read_stable,
+    error_type=LifecycleError,
+)
 
 
 def _admit_request(
@@ -1721,17 +1722,16 @@ def _admit_request(
     python_executable = request.python_executable
     _admit_python_launcher(python_executable)
     profile, profile_data = _admit_record(profile_path, root, "profile")
-    execution, execution_data = _admit_execution_view(
+    execution, execution_data, successor = _admit_execution(
         execution_path,
         root,
         profile,
     )
-    try:
-        successor = inspection.admit_successor_run(root)
-    except inspection.InspectionError as exc:
-        raise LifecycleError(f"Could not re-admit successor Run: {exc}") from exc
-    if successor is None and execution.get("schema_version") == EXECUTION_PROJECTION_SCHEMA_VERSION:
-        raise LifecycleError("Execution projection exists without successor Run")
+    expected_execution_path = root / "contract" / (
+        "run.json" if successor is not None else "normalized.json"
+    )
+    if execution_path != expected_execution_path:
+        raise LifecycleError("Lifecycle execution path differs from Run authority")
     config_data = _read_stable(config_path, root, "workflow config")
     request_source_data = _read_external_stable(
         request_source_path, "authored request source"
@@ -1831,11 +1831,10 @@ def _admit_request(
     ops.admit_runtime_context(attempt, request, storage_binding)
     if successor is not None:
         try:
-            validate_successor_adapter(
+            validate_successor_run(
                 analysis=successor.analysis_revision,
                 plan=successor.execution_plan,
                 run=successor.run_binding,
-                execution_projection=execution,
                 profile=profile,
                 attempt=attempt,
                 resource_policy=config_document["resource_policy"],

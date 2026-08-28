@@ -12,6 +12,7 @@ from pathlib import Path
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.libraries.source_authority import controlled_python_argv
+from emrys.orchestration.local_pilot import materialization
 from emrys.orchestration.local_pilot.materialization import AttemptPlan, PlannedFile
 from tests.orchestration.local_pilot.fixtures import workflow
 
@@ -23,12 +24,16 @@ def with_owner_doubles(
 ) -> AttemptPlan:
     """Return the same exact output plan with no-science test commands."""
 
-    execution = plan.run.execution_projection
-    reporting = build_reporting_bundle(execution, plan.run.normalized.profile)
+    source = materialization._construction_source(plan.run)
+    reporting = build_reporting_bundle(
+        source,
+        plan.run.normalized.profile,
+        plan.run.normalized.analysis_revision,
+    )
     rows = tuple(dict(row) for row in reporting.artifact_inventory_rows)
     raw_payloads = workflow.artifact_payloads(
         rows,
-        execution,
+        source,
         artifact_source_root=plan.run_root,
     )
     payloads: dict[Path, bytes] = {}
