@@ -96,8 +96,9 @@ Inspect state from EMRYS's admitted records rather than `.snakemake` metadata:
 Inspection is read-only. Rehashing bound evidence can be expensive, so run it
 at meaningful boundaries rather than in a tight polling loop.
 
-Resume is supported only when inspection reports both `State:
-resume_available` and `Resume available: yes`. Review the no-write plan first:
+Resume is supported only when inspection reports incomplete scientific Results,
+a failed or interrupted Attempt, and `Recovery available: yes`. Review the
+no-write plan first:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \

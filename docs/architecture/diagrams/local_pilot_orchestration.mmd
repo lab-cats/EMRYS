@@ -52,7 +52,7 @@ flowchart TB
     report_gate["Semantic HTML-report revalidation"]
     report_verified["HTML-report verified record"]
     released_lock["Owned run lock atomically retained\nas immutable attempt-local release evidence"]
-    complete["Workflow-attempt receipt published last\nlocal_pipeline_complete"]
+    complete["Workflow-attempt receipt published last\nlegacy combined status retained"]
     inspect["Read-only derived inspection\nEMRYS records only"]
     resume{"Every entered scope fully verified\nand every other scope unentered?"}
     resumable["New workflow attempt may resume"]

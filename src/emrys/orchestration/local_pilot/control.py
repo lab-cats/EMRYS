@@ -252,12 +252,16 @@ def plan_resume(
         observed = ops.inspect_run(root)
     except (OSError, inspection.InspectionError) as exc:
         raise ControlError(str(exc)) from exc
-    if observed.local_pipeline_complete:
-        raise ControlError("Completed local-pilot run refuses resume")
-    if not observed.resume_available or observed.latest_attempt is None:
+    if not observed.recovery_available or observed.latest_attempt is None:
         raise ControlError(
             "Run is not at an admissible between-task resume boundary: "
-            + "; ".join(observed.blockers or (observed.state,))
+            + "; ".join(
+                observed.blockers
+                or (
+                    f"Attempt outcome is {observed.attempt_outcome}",
+                    f"Results are {observed.results_status}",
+                )
+            )
         )
     previous = observed.latest_attempt
     request = Path(str(previous["authored_paths"]["request"]))
@@ -363,6 +367,8 @@ def _verified_report_location_lines(
         ("scientific-report-html", "Scientific report"),
         ("evidence-report-html", "Evidence report"),
     )
+    if not locations:
+        return ()
     if len(locations) != len(expected):
         raise ControlError(
             "Completed run lacks both exact verified result locations"
@@ -389,13 +395,9 @@ def execute_plan(plan: AttemptPlan, *, ops: ControlOps = DEFAULT_CONTROL_OPS) ->
     except (MaterializationError, lifecycle.LifecycleError, OSError) as exc:
         raise ControlError(str(exc)) from exc
     status = str(outcome.receipt["status"])
-    result_lines = (
-        _verified_report_location_lines(outcome.verified_report_locations)
-        if status == "succeeded"
-        else ()
-    )
+    result_lines = _verified_report_location_lines(outcome.verified_report_locations)
     print(f"Attempt receipt: {outcome.receipt_path}")
-    print(f"Attempt status: {status}")
+    print(f"Attempt receipt status: {status}")
     if outcome.receipt["blockers"]:
         for blocker in outcome.receipt["blockers"]:
             print(f"BLOCKER: {blocker}")
@@ -529,17 +531,18 @@ def inspect_from_args(
 ) -> int:
     try:
         observed = ops.inspect_run(_absolute(arguments.run_root))
-        result_lines = (
-            _verified_report_location_lines(observed.verified_report_locations)
-            if observed.local_pipeline_complete
-            else ()
+        result_lines = _verified_report_location_lines(
+            observed.verified_report_locations
         )
     except (OSError, inspection.InspectionError, ControlError) as exc:
         print(f"emrys: error: {exc}", file=sys.stderr)
         return 2
     print(f"Run ID: {observed.run_id}")
     print(f"Run root: {observed.run_root}")
-    print(f"State: {observed.state}")
+    print(f"Run integrity: {observed.integrity}")
+    print(f"Attempt outcome: {observed.attempt_outcome}")
+    print(f"Scientific Results: {observed.results_status}")
+    print(f"Reporting: {observed.reporting_status}")
     print(f"Latest workflow attempt: {observed.latest_workflow_attempt_id or 'none'}")
     for task in observed.tasks:
         print(
@@ -548,15 +551,22 @@ def inspect_from_args(
         if task.blocker:
             print(f"  BLOCKER: {task.blocker}")
     for kind, records in observed.reporting_completion_records.items():
-        state = "verified" if records["verified"] is not None else "pending"
+        if records["verified"] is not None:
+            state = "verified"
+        elif records["start"] is not None:
+            state = "started"
+        else:
+            state = "pending"
         print(f"REPORTING {kind}: {state}")
-    for blocker in observed.blockers:
-        print(f"BLOCKER: {blocker}")
-    print(f"Resume available: {'yes' if observed.resume_available else 'no'}")
-    print(
-        "Local pipeline complete: "
-        + ("yes" if observed.local_pipeline_complete else "no")
-    )
+    for blocker in observed.integrity_blockers:
+        print(f"RUN BLOCKER: {blocker}")
+    for blocker in observed.results_blockers:
+        print(f"RESULTS BLOCKER: {blocker}")
+    for blocker in observed.reporting_blockers:
+        print(f"REPORTING BLOCKER: {blocker}")
+    for blocker in observed.receipt_blockers:
+        print(f"ATTEMPT EVIDENCE BLOCKER: {blocker}")
+    print(f"Recovery available: {'yes' if observed.recovery_available else 'no'}")
     for line in result_lines:
         print(line)
     return 0

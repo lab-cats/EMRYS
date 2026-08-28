@@ -833,10 +833,12 @@ def assert_completed_run(
 
     observed = inspection.inspect_run(run_root)
     if (
-        observed.state != "local_pipeline_complete"
-        or not observed.local_pipeline_complete
+        observed.integrity != "valid"
+        or observed.attempt_outcome != "succeeded"
+        or observed.results_status != "complete"
+        or observed.reporting_status != "complete"
     ):
-        raise DriverError("assert-results", f"inspection state is {observed.state}")
+        raise DriverError("assert-results", "inspection is not fully complete")
     if observed.blockers:
         raise DriverError("assert-results", "completed inspection retained blockers")
     if len(observed.tasks) != EXPECTED_OWNER_JOBS:
@@ -1347,7 +1349,7 @@ def run_driver(
     execute_stdout = _read_retained_stream(
         execute_job.stdout_path, "Slurm execution stdout"
     )
-    if "Attempt status: succeeded" not in execute_stdout:
+    if "Attempt receipt status: succeeded" not in execute_stdout:
         raise DriverError(
             "slurm-execute", "execution stream does not report a succeeded attempt"
         )
@@ -1364,8 +1366,9 @@ def run_driver(
         cwd=repo_root,
     )
     if (
-        "State: local_pipeline_complete" not in inspect_result.stdout
-        or "Local pipeline complete: yes" not in inspect_result.stdout
+        "Attempt outcome: succeeded" not in inspect_result.stdout
+        or "Scientific Results: complete" not in inspect_result.stdout
+        or "Reporting: complete" not in inspect_result.stdout
     ):
         raise DriverError("inspect-run", "public inspection did not report completion")
 

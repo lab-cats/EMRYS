@@ -906,23 +906,26 @@ re-admit after any future explicit Doctor repair that changes owned state,
 rather than equate every repeated check with waste or carry stale facts across
 a mutating repair.
 
-#### Current status, Result, and reporting gap
+#### Status, Result, and reporting cutover
 
-Current `RunInspection` exposes five derived states:
+Before the first read-model cutover, `RunInspection` exposed five aggregate states:
 `prepared`, `running`, `resume_available`, `blocked`, and
 `local_pipeline_complete`. Attempt receipts separately expose
 `succeeded`, `failed`, `interrupted`, or `blocked`.
 
-Today a successful attempt receipt sets `local_pipeline_complete=true`, and
-inspection requires all three reporting transactions before admitting that
-success. This conflicts with the already accepted target semantics: reporting
-is downstream operational work, invoked by default for a full run, explicitly
-disableable, and independently regenerable; report failure must not invalidate
-completed science. The standalone `emrys build report` capability exists, but
-requires implementation-level input and output paths rather than a compact
-Run-oriented reference, and its output does not adopt or repair the
-orchestration reporting ledger. The audit records this gap without selecting
-new status names, persistence, command structure, or retry policy.
+The read model now derives Run integrity, scientific Attempt outcome,
+scientific Results status, reporting status, and recovery availability
+independently. Control and lifecycle recovery decisions use the separated
+domains; verified report paths remain visible independently of the legacy
+combined receipt status. Receipt-v1 and its `local_pipeline_complete` field
+remain unchanged historical evidence, with aggregate read accessors retained
+only for compatibility.
+
+The remaining reporting gap is operational: reporting still runs by default,
+but explicit disablement and compact Run-oriented regeneration/adoption remain
+Open. The standalone `emrys build report` capability still requires
+implementation-level input and output paths and does not adopt or repair the
+orchestration reporting ledger.
 
 #### Mutation inventory
 
@@ -2334,9 +2337,9 @@ semantic field-and-authority portion:
 | `AC-DEC-009` | Which repeated policy decisions deserve shared authorities? | Inventory input, validation, runtime, storage, publication, resource, and execution decisions; decide final authorities, package/service placement, configuration inputs, return/error contracts, defaults, safe overrides, precedence, compatibility, consolidation order, and migration. Every decision already requires one authority, but shared centralization must prove net reduction and avoid empty wrappers. |
 | `AC-DEC-010` | What artifact-lifecycle vocabulary and owner shape are justified? | Candidate, validation, admission, publication, commit, immutability, evidence, and rollback; generalized versus class-specific ownership; APIs, schemas, manifests, receipts, immutability mechanisms, external/large artifacts, Run Bundle/report-derived relationships, cleanup, recovery, and representative migration. Lifecycle/admission is already distinct from physical storage. |
 | `AC-DEC-011` | How are the selected Analysis/Execution-Plan/Run/Attempt semantics realized? | Immutable canonical Analysis/Execution-Plan/Run records, versioned schemas, Run-last persistence, current-path migration, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, and temporary-projection retirement are implemented. Public Project/Results representation, role-aware API/package placement, generalized backend and policy boundaries, remaining public/campaign migration, compatibility duration, and the rest of the implementation retirement roster remain Open. Mutable object state and canonical bytes cannot compete; coordination cannot absorb lower authorities or become a god object. |
-| `AC-DEC-012` | What public Run, Attempt, scientific, and reporting states are useful and truthful? | Current `RunInspection` states and attempt-receipt statuses are Observed implementation vocabulary only. Current `local_pipeline_complete` requires reporting, contrary to accepted downstream-reporting semantics. Pending/running/complete/failed/recoverable and representation of partial or blocked states remain options; scientific and reporting outcomes must remain distinguishable. |
+| `AC-DEC-012` | What public Run, Attempt, scientific, and reporting states are useful and truthful? | Resolved for the first read-only surface: Run integrity is `valid`/`blocked`; Attempt outcome is `not_started`/`running`/`succeeded`/`failed`/`interrupted`/`blocked`; scientific Results and reporting are independently `incomplete`/`complete`/`blocked`; recovery is a separate availability fact. Aggregate state and duplicate booleans survive only as compatibility projections. Higher-level progress vocabulary remains with `OBS-02`. |
 | `AC-DEC-013` | What is the Run Bundle contract? | Layout, portability, large artifacts, external references, redaction, archival, regeneration, sharing |
-| `AC-DEC-014` | How are the ratified downstream-reporting semantics represented? | The current lifecycle conflates report completion with `local_pipeline_complete`; standalone regeneration exists but requires low-level roots and does not adopt or repair the orchestration reporting ledger. Exact opt-out/regeneration interfaces, persisted Run/report states, retry/resume and exit presentation, scientific/evidence/operations commands or views, one shared receipt-last transaction versus profile-specific receipts, immutable artifacts versus derived views, and canonical location remain Open. Reporting is already downstream, invoked by default for a full run, able to be disabled, and independently regenerable without invalidating science. |
+| `AC-DEC-014` | How are the ratified downstream-reporting semantics represented? | Partially resolved: read-only scientific Attempt/Results state, reporting state, recovery, and verified report locations are independent while receipt-v1 remains historical compatibility evidence. Exact opt-out/regeneration interfaces, ledger adoption/repair, retry and exit presentation, scientific/evidence/operations views, receipt organization, immutable artifacts versus derived views, and canonical location remain Open. Reporting remains downstream, default-on for a full run, disable-able, and independently regenerable without invalidating science. |
 | `AC-DEC-015` | What replaces the current “demo” surface? | Neutral synthetic golden path; whether “demo” remains a command, test-only term, or is retired completely |
 | `AC-DEC-016` | Which filesystem concepts are public? | Project/inputs/runs/results/runtime; exact internal-to-public mapping |
 | `AC-DEC-017` | Which advanced interfaces are stable? | inspect run/artifact, manifest, evidence, diagnostics, debug, machine-readable outputs |
@@ -2402,7 +2405,7 @@ defined in Section 13.1; evidence deletion cannot be implied by promotion.
 |---|---|---|
 | `AC-SLICE-01` | Ratified all 27 architectural invariants and five migration/test guardrails against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open |
 | `AC-SLICE-02` | Ratified responsibility clusters, three separate dependency graphs, forbidden authority transfers, a current-owner crosswalk, and a fast Python source-boundary ratchet for exact CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open |
-| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. Successor Run authority, Run-last persistence, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, and temporary-projection retirement are implemented. Public Project/Results, role-aware APIs/CLI, generalized backend/policy boundaries, and remaining public/campaign migrations remain Open, so the campaign card remains Open. |
+| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. Successor Run authority, Run-last persistence, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, temporary-projection retirement, and the separated read-only Run/Attempt/Results/reporting/recovery projection are implemented. Public Project/Results control and intake surfaces, generalized backend/policy boundaries, and remaining public/campaign migrations remain Open, so the campaign card remains Open. |
 | `AC-SLICE-04` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` |
 | `AC-SLICE-05` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across supported local and SLURM backends | New slice; enriches `OPS-02` |
 | `AC-SLICE-06` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` |

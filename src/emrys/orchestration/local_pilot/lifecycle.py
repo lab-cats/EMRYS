@@ -1907,12 +1907,16 @@ def _operation_preflight(
             ops.validate_reporting_receipt,
         ),
     )
-    if observed.local_pipeline_complete:
-        raise LifecycleError("Completed run refuses resume")
-    if observed.state != "resume_available":
+    if not observed.recovery_available:
         raise LifecycleError(
             "Resume requires an independently revalidated between-task boundary: "
-            + "; ".join(observed.blockers or (observed.state,))
+            + "; ".join(
+                observed.blockers
+                or (
+                    f"Attempt outcome is {observed.attempt_outcome}",
+                    f"Results are {observed.results_status}",
+                )
+            )
         )
     latest = observed.latest_attempt
     receipt = observed.latest_receipt
@@ -1965,13 +1969,19 @@ def _under_lock_attempt_preflight(
         allowed_next_attempt=attempt,
     )
     if (
-        observed.state != "resume_available"
+        not observed.recovery_available
         or observed.latest_attempt is None
         or observed.latest_receipt is None
     ):
         raise LifecycleError(
             "Resume lost its revalidated between-task boundary under lock: "
-            + "; ".join(observed.blockers or (observed.state,))
+            + "; ".join(
+                observed.blockers
+                or (
+                    f"Attempt outcome is {observed.attempt_outcome}",
+                    f"Results are {observed.results_status}",
+                )
+            )
         )
     if attempt["supersedes_workflow_attempt_id"] != observed.latest_attempt[
         "workflow_attempt_id"
@@ -2468,9 +2478,7 @@ def _run_attempt_locked(
         released_lock_path=released_lock_path,
         receipt=receipt,
         workflow_result=result,
-        verified_report_locations=(
-            verified_report_locations if receipt["status"] == "succeeded" else ()
-        ),
+        verified_report_locations=verified_report_locations,
     )
 
 

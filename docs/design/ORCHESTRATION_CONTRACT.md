@@ -478,15 +478,22 @@ rewrites, or silently replaces one.
 
 ## Lifecycle and state
 
-The run state is derived rather than edited in place:
+Inspection derives independent read-only dimensions rather than editing one
+aggregate state in place:
 
-| Derived run state | Required facts |
+| Dimension | Derived values and authority |
 | --- | --- |
-| `prepared` | Immutable contract exists; no workflow attempt has begun |
-| `running` | Exactly one nonterminal attempt demonstrably owns the run lock through a live lifecycle process |
-| `resume_available` | Latest attempt failed or was interrupted; every entered owner/reporting scope has a complete revalidated start-to-verification chain, every remaining scope has no start record, and compatibility checks pass |
-| `blocked` | Identity is incompatible; the lock, attempt, task-start, reporting-start, or completion roster is malformed; or any entered scope lacks complete verified evidence |
-| `local_pipeline_complete` | Latest attempt receipt binds every required task-start and verified task plus complete start-to-verification chains for the artifact-index, run-summary, and HTML-report transactions |
+| Run integrity | `valid` or `blocked` from immutable Run/Attempt relationships and owned lock/chain evidence |
+| Attempt outcome | `not_started`, `running`, `succeeded`, `failed`, `interrupted`, or `blocked`; complete admitted scientific work is successful independently of downstream reporting |
+| Scientific Results | `incomplete`, `complete`, or `blocked` from the exact required verified-task roster and its evidence |
+| Reporting | `incomplete`, `complete`, or `blocked` from the three independent reporting ledgers and semantic receipts |
+| Recovery | Available only for a failed/interrupted Attempt with incomplete scientific Results and no blocker |
+
+The historical aggregate `state`, `resume_available`, and
+`local_pipeline_complete` read-model accessors remain compatibility projections;
+control and lifecycle decisions do not use them. Receipt-v1 retains its required
+`local_pipeline_complete` field as historical schema evidence, not scientific
+completion authority.
 
 A workflow attempt begins with an immutable `attempt.json` and ends with one
 receipt published last as `succeeded`, `failed`, `interrupted`, or `blocked`.
@@ -613,12 +620,13 @@ returns, the native receipt and full transaction are semantically re-admitted,
 and the reporting owner's declared control namespace is clean. A reporting
 start without that completion evidence blocks resume.
 
-The final completion operation must recheck every required profile scope, bind
+The terminal receipt operation must recheck every required profile scope, bind
 the ordered pre-entry diagnostic and task-start rosters, and admit all three reporting
 start-to-verification chains before publishing the workflow-attempt receipt.
-`local_pipeline_complete` means real or fixture local execution only as
-identified by the admitted inputs. It does not establish CSU execution,
-production-scale behavior, validated editing sites, or biological readiness.
+The legacy combined receipt still records this transaction for compatibility.
+Scientific Results and reporting are derived separately and neither establishes
+CSU execution, production-scale behavior, validated editing sites, or biological
+readiness.
 
 ## Explicit deferrals
 

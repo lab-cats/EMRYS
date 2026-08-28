@@ -627,7 +627,7 @@ def parse_identity(stdout_text):
         "workspace": r"^Workspace:\s*(.+)$",
         "source_commit": r"^Source commit:\s*(.+)$",
         "attempt": r"^Workflow attempt:\s*(.+)$",
-        "attempt_status": r"^Attempt status:\s*(.+)$",
+        "attempt_status": r"^(?:Attempt receipt status|Attempt status):\s*(.+)$",
         "runtime_hash": r"^Runtime profile SHA-256:\s*(.+)$",
         "workflow_cores": r"^Total workflow cores:\s*(\d+)\s*$",
         "workflow_memory_mb": r"^Total workflow memory:\s*(\d+)\s+MiB\s*$",
@@ -1676,7 +1676,8 @@ def activity_lines(model, slurm, identity, now):
                 slurm.get("state", "-"), slurm.get("exit_code", "-"),
                 slurm.get("elapsed", "-")),
              "green" if slurm.get("state") == "COMPLETED" else "red"),
-            "Attempt: %s" % identity.get("attempt_status", "not reported"),
+            "Attempt receipt: %s"
+            % identity.get("attempt_status", "not reported"),
             "Snakemake: %d/%d jobs complete" % progress_values(model)[:2],
             "Run root: %s" % identity.get("run_root", "-"),
         ]
