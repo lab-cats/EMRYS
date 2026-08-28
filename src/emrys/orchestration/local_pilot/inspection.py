@@ -208,42 +208,6 @@ class RunInspection:
             and not self.blockers
         )
 
-    @property
-    def resume_available(self) -> bool:
-        """Compatibility alias for the former stored resume flag."""
-
-        return self.recovery_available
-
-    @property
-    def local_pipeline_complete(self) -> bool:
-        """Compatibility projection for the retired combined status."""
-
-        return (
-            self.integrity == "valid"
-            and self.latest_receipt is not None
-            and self.latest_receipt["status"] == "succeeded"
-            and self.attempt_outcome == "succeeded"
-            and self.results_status == "complete"
-            and self.reporting_status == "complete"
-            and not self.blockers
-        )
-
-    @property
-    def state(self) -> str:
-        """Compatibility projection for callers migrating off aggregate state."""
-
-        if self.blockers:
-            return "blocked"
-        if self.latest_attempt is None:
-            return "prepared"
-        if self.attempt_outcome == "running":
-            return "running"
-        if self.recovery_available:
-            return "resume_available"
-        if self.local_pipeline_complete:
-            return "local_pipeline_complete"
-        return "blocked"
-
 
 @dataclass(frozen=True, slots=True)
 class SuccessorRunAuthority:

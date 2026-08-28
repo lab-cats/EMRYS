@@ -15,6 +15,7 @@ import threading
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -938,7 +939,13 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     ]
     assert not (plan.run_root / "attempts" / plan.workflow_attempt_id).exists()
     observed = inspection.inspect_run(plan.run_root)
-    assert observed.state == "prepared"
+    assert (
+        observed.integrity,
+        observed.attempt_outcome,
+        observed.results_status,
+        observed.reporting_status,
+        observed.recovery_available,
+    ) == ("valid", "not_started", "incomplete", "incomplete", False)
     assert observed.authority_format == "successor"
     assert observed.run_id == plan.run.run_id
     assert observed.latest_attempt is None
@@ -1014,7 +1021,9 @@ def test_post_binding_interruption_completes_the_exact_pristine_run(
 
     after = tuple((path.read_bytes(), path.stat().st_mtime_ns) for path in authority_paths)
     assert after == before
-    assert inspection.inspect_run(plan.run_root).state == "prepared"
+    observed = inspection.inspect_run(plan.run_root)
+    assert observed.integrity == "valid"
+    assert observed.attempt_outcome == "not_started"
     assert all((plan.run_root / name).is_dir() for name in ("attempts", "locks", "state"))
     control_ops = control.ControlOps(
         inspect_readiness=lambda _request, _workspace, _runtime: plan.readiness,
@@ -1055,7 +1064,7 @@ def test_post_binding_failure_retains_truthful_run_authority(
     assert tuple(
         plan.run_root.parent.glob(f"{plan.run.run_id}.uncommitted-*")
     ) == ()
-    assert inspection.inspect_run(plan.run_root).state == "blocked"
+    assert inspection.inspect_run(plan.run_root).integrity == "blocked"
 
 
 def test_locked_publication_terminalizes_failure_and_refuses_repeat(
@@ -1255,7 +1264,7 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     assert first_runtime["path"] != second_runtime["path"]
     assert first_runtime["sha256"] != second_runtime["sha256"]
     observed = inspection.inspect_run(second.run_root)
-    assert observed.state == "resume_available", observed.blockers
+    assert observed.recovery_available, observed.blockers
     assert len(tuple((second.run_root / "attempts").iterdir())) == 2
 
 
@@ -1339,7 +1348,7 @@ def test_lock_precedes_attempt_publication_failure_and_retains_evidence(
     ).is_file()
     assert not (plan.run_root / "attempts" / plan.workflow_attempt_id).exists()
     assert list((plan.run_root / "contract/dispatch").rglob("*.json"))
-    assert inspection.inspect_run(plan.run_root).state == "blocked"
+    assert inspection.inspect_run(plan.run_root).integrity == "blocked"
 
 
 def test_waiting_stale_resume_exits_before_attempt_materialization(
@@ -1379,7 +1388,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
         ops=initial_ops,
     )
     assert first.receipt["status"] == "failed"
-    assert inspection.inspect_run(initial.run_root).resume_available
+    assert inspection.inspect_run(initial.run_root).recovery_available
 
     def resume_plan(token: str, minute: int):
         return build_attempt_plan(
@@ -1488,7 +1497,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
     mutex = stale.run_root / "locks" / "acquire.mutex"
     assert mutex.is_file() and not mutex.is_symlink() and mutex.read_bytes() == b""
     observed = inspection.inspect_run(stale.run_root)
-    assert observed.state == "resume_available", observed.blockers
+    assert observed.recovery_available, observed.blockers
     assert observed.latest_workflow_attempt_id == winner.workflow_attempt_id
 
 
@@ -1536,6 +1545,51 @@ def test_report_presentation_rejects_malformed_verified_locations() -> None:
     )
     with pytest.raises(control.ControlError, match="verified result locations"):
         control._verified_report_location_lines(locations)
+
+
+def test_next_supported_action_uses_separated_status_domains() -> None:
+    def action(
+        integrity: str = "valid",
+        attempt: str = "succeeded",
+        results: str = "complete",
+        reporting: str = "complete",
+        recovery: bool = False,
+    ) -> str:
+        return control._next_supported_action(
+            SimpleNamespace(
+                integrity=integrity,
+                attempt_outcome=attempt,
+                results_status=results,
+                reporting_status=reporting,
+                recovery_available=recovery,
+            )
+        )
+
+    assert action(integrity="blocked") == (
+        "Preserve this Run; review Run integrity blockers. Do not resume."
+    )
+    assert action(attempt="blocked", results="blocked", reporting="incomplete") == (
+        "Preserve this Run; review scientific Results blockers. Do not resume."
+    )
+    assert action(reporting="blocked") == (
+        "Preserve completed Results; do not rerun science. Review blockers."
+    )
+    assert action(attempt="blocked", results="incomplete", reporting="incomplete") == (
+        "Preserve this Run; review retained evidence. Do not resume."
+    )
+    assert action(attempt="not_started", results="incomplete", reporting="incomplete") == (
+        "Repeat the original emrys run invocation with --execute."
+    )
+    running = "Wait for the active Attempt to finish, then inspect the Run again."
+    assert action(attempt="running", results="incomplete", reporting="incomplete") == running
+    assert action(attempt="running") == running
+    resume = "Use emrys resume for this Run; dry-run remains the default."
+    assert action(attempt="failed", results="incomplete", reporting="incomplete", recovery=True) == resume
+    assert action(attempt="interrupted", results="incomplete", reporting="incomplete", recovery=True) == resume
+    assert action() == "Review the verified Results and report paths."
+    assert action(reporting="incomplete") == (
+        "Preserve completed Results; report regeneration is not supported here."
+    )
 
 
 def test_public_help_routes() -> None:
@@ -1675,7 +1729,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert "Results:" not in failed_output.splitlines()
     run_root = workspace / "runs" / run_id
     failed = inspection.inspect_run(run_root)
-    assert failed.state == "resume_available"
+    assert failed.recovery_available
     assert failed.verified_report_locations == ()
     before = _verified_snapshot(run_root)
     assert 0 < len(before) < 35
@@ -1713,7 +1767,13 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
     assert expected_results in resumed_output
     completed = inspection.inspect_run(run_root)
-    assert completed.state == "local_pipeline_complete"
+    assert (
+        completed.integrity,
+        completed.attempt_outcome,
+        completed.results_status,
+        completed.reporting_status,
+        completed.recovery_available,
+    ) == ("valid", "succeeded", "complete", "complete", False)
     assert completed.verified_report_locations == (
         (
             "scientific-report-html",
@@ -1733,6 +1793,10 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert "Attempt outcome: succeeded" in inspect_output
     assert "Scientific Results: complete" in inspect_output
     assert "Reporting: complete" in inspect_output
+    assert (
+        "Next supported action: Review the verified Results and report paths."
+        in inspect_output
+    )
     assert expected_results in inspect_output
 
     resume_arguments.execute = False

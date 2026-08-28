@@ -957,7 +957,7 @@ def assert_completed_run(
     return {
         "run_id": run_id,
         "run_root": str(run_root),
-        "state": observed.state,
+        "state": "local_pipeline_complete",
         "verified_owner_jobs": len(observed.tasks),
         "verified_owner_records": verified_records,
         "step10_verified": True,

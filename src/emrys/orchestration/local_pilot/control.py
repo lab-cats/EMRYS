@@ -389,6 +389,30 @@ def _verified_report_location_lines(
     return tuple(lines)
 
 
+def _next_supported_action(observed: inspection.RunInspection) -> str:
+    if observed.integrity == "blocked":
+        return "Preserve this Run; review Run integrity blockers. Do not resume."
+    if observed.results_status == "blocked":
+        return "Preserve this Run; review scientific Results blockers. Do not resume."
+    if observed.reporting_status == "blocked":
+        if observed.results_status == "complete":
+            return "Preserve completed Results; do not rerun science. Review blockers."
+        return "Preserve this Run; review reporting blockers. Do not resume."
+    if observed.attempt_outcome == "blocked":
+        return "Preserve this Run; review retained evidence. Do not resume."
+    if observed.attempt_outcome == "not_started":
+        return "Repeat the original emrys run invocation with --execute."
+    if observed.attempt_outcome == "running":
+        return "Wait for the active Attempt to finish, then inspect the Run again."
+    if observed.recovery_available:
+        return "Use emrys resume for this Run; dry-run remains the default."
+    if observed.results_status == "complete":
+        if observed.reporting_status == "complete":
+            return "Review the verified Results and report paths."
+        return "Preserve completed Results; report regeneration is not supported here."
+    return "Preserve this Run; review retained evidence. Do not resume."
+
+
 def _execute_plan(plan: AttemptPlan, *, ops: ControlOps = DEFAULT_CONTROL_OPS) -> int:
     """Execute one already-rendered plan through its explicit lifecycle adapter."""
 
@@ -569,6 +593,7 @@ def inspect_from_args(
     for blocker in observed.receipt_blockers:
         print(f"ATTEMPT EVIDENCE BLOCKER: {blocker}")
     print(f"Recovery available: {'yes' if observed.recovery_available else 'no'}")
+    print(f"Next supported action: {_next_supported_action(observed)}")
     for line in result_lines:
         print(line)
     return 0
