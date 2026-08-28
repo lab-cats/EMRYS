@@ -107,7 +107,8 @@ def build(root: Path) -> Path:
         ">chrSynthetic\nACGTACGTACGT\n", encoding="utf-8"
     )
     (reference / "genome.gtf").write_text(
-        'chrSynthetic\tfixture\texon\t1\t12\t.\t+\t.\tgene_id "g1";\n',
+        'chrSynthetic\tfixture\texon\t1\t12\t.\t+\t.\t'
+        'gene_id "g1"; transcript_id "t1";\n',
         encoding="utf-8",
     )
     (root / "samples.tsv").write_text(

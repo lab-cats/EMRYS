@@ -39,6 +39,7 @@ from emrys.libraries.source_authority import (
     controlled_python_argv,
     inspect_source_checkout,
 )
+from emrys.orchestration.local_pilot import onboarding
 from emrys.orchestration.local_pilot.normalization import (
     NormalizationBundle,
     normalize_request,
@@ -912,6 +913,10 @@ def inspect_local_pilot(
     try:
         normalized = ops.normalize(request_path, root / PROFILE_RELATIVE_PATH)
     except (orchestration_contracts.ContractValidationError, OSError) as exc:
+        raise DoctorInputError(str(exc)) from exc
+    try:
+        onboarding.validate_normalized_request(normalized)
+    except onboarding.OnboardingError as exc:
         raise DoctorInputError(str(exc)) from exc
     step00c_blockers, step00c_remediations = _step00c_external_parent_blockers(
         normalized,

@@ -734,6 +734,14 @@ def validate_local_pilot_request(
 
     checkout = source_root() if root is None else root
     normalized = normalize_request(request, checkout / PROFILE_RELATIVE_PATH)
+    return validate_normalized_request(normalized)
+
+
+def validate_normalized_request(
+    normalized: NormalizationBundle,
+) -> RequestValidation:
+    """Compatibility-check one already admitted request without renormalizing it."""
+
     source = normalized.projection_source
     reference = source["reference"]
     fasta_snapshot = reference["fasta"]
@@ -1069,4 +1077,5 @@ __all__ = (
     "starter_members",
     "validate_from_args",
     "validate_local_pilot_request",
+    "validate_normalized_request",
 )
