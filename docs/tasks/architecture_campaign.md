@@ -617,9 +617,11 @@ authorities, and recovery ownership. The first successor cutover now realizes
 immutable canonical Analysis-revision, Execution-Plan, and Run-binding types
 and schemas; durable Run-last admission; current-path new-Run planning,
 execution, resume, and inspection; historical read/resume; and a temporary
-one-way workflow/task/reporting projection. Public Project/Results,
-role-aware APIs/CLI, generalized backend and policy boundaries, remaining
-caller migration, and projection retirement remain `AC-SLICE-03` and
+one-way workflow/task/reporting projection. A subsequent bounded cutover
+retired that projection: workflow/task now admit exact successor Run authority,
+and reporting uses exact Attempt-owned inputs bound by the origin config.
+Public Project/Results, role-aware APIs/CLI, generalized backend and policy
+boundaries, and remaining public/campaign migrations remain `AC-SLICE-03` and
 `AC-DEC-011` work.
 
 `ARCH-MODEL-AUDIT-01` completed the current-state prerequisite below.
@@ -1598,16 +1600,15 @@ another planning package unless they change these boundaries.
    as initialization residue.
 4. **Cut over without rewriting history.** Existing
    `emrys.execution.v1` Runs keep their identifiers and remain readable through
-   a version-aware reader. New Runs use only the successor authorities. A
-   legacy-shaped backend projection is allowed temporarily only for the
-   current workflow, task, and reporting adapters; it is generated one-way
-   from the successor records, cannot determine or reconstruct Run, and is
-   retired when those consumers receive narrower owner-appropriate inputs
-   derived from the successor authorities.
+   a version-aware reader. New Runs use only the successor authorities. The
+   first tranche temporarily permitted a one-way legacy-shaped backend
+   projection; the completed follow-up retires it. Workflow/task consume exact
+   `run.json`, while reporting consumes identity-neutral Attempt-owned inputs
+   bound by the origin workflow config.
 5. **Migrate one complete boundary.** The first implementation tranche moves
    new-Run creation, Run-ID/root selection, Run admission, Attempt planning and
-   admission, resume compatibility, and inspection to the successor authority
-   together. Backend execution may consume the temporary projection above.
+   admission, resume compatibility, inspection, and backend admission to the
+   successor authority together. No successor execution projection remains.
    Public command redesign, Project persistence, Results layout, Run Bundle,
    Artifact Store, generalized backend/policy APIs, reporting UX, and public
    state vocabulary are outside this tranche.
@@ -2332,7 +2333,7 @@ semantic field-and-authority portion:
 | `AC-DEC-008` | What is the minimum useful operation/Stage representation? | Name, methods, lifecycle states, typed contracts, granularity, discovery, and migration. The boundary is already constrained to remain thin, preserve functional/scientific ownership, and avoid a generic framework. |
 | `AC-DEC-009` | Which repeated policy decisions deserve shared authorities? | Inventory input, validation, runtime, storage, publication, resource, and execution decisions; decide final authorities, package/service placement, configuration inputs, return/error contracts, defaults, safe overrides, precedence, compatibility, consolidation order, and migration. Every decision already requires one authority, but shared centralization must prove net reduction and avoid empty wrappers. |
 | `AC-DEC-010` | What artifact-lifecycle vocabulary and owner shape are justified? | Candidate, validation, admission, publication, commit, immutability, evidence, and rollback; generalized versus class-specific ownership; APIs, schemas, manifests, receipts, immutability mechanisms, external/large artifacts, Run Bundle/report-derived relationships, cleanup, recovery, and representative migration. Lifecycle/admission is already distinct from physical storage. |
-| `AC-DEC-011` | How are the selected Analysis/Execution-Plan/Run/Attempt semantics realized? | The first successor realization now supplies immutable canonical Analysis/Execution-Plan/Run records, versioned schemas, Run-last persistence, current-path caller migration, historical read/resume, and a temporary one-way backend projection. Public Project/Results representation, role-aware API/package placement, generalized backend and policy boundaries, remaining caller migration, compatibility duration, projection retirement, and the rest of the implementation retirement roster remain Open. Mutable object state and canonical bytes cannot compete; coordination cannot absorb lower authorities or become a god object. |
+| `AC-DEC-011` | How are the selected Analysis/Execution-Plan/Run/Attempt semantics realized? | Immutable canonical Analysis/Execution-Plan/Run records, versioned schemas, Run-last persistence, current-path migration, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, and temporary-projection retirement are implemented. Public Project/Results representation, role-aware API/package placement, generalized backend and policy boundaries, remaining public/campaign migration, compatibility duration, and the rest of the implementation retirement roster remain Open. Mutable object state and canonical bytes cannot compete; coordination cannot absorb lower authorities or become a god object. |
 | `AC-DEC-012` | What public Run, Attempt, scientific, and reporting states are useful and truthful? | Current `RunInspection` states and attempt-receipt statuses are Observed implementation vocabulary only. Current `local_pipeline_complete` requires reporting, contrary to accepted downstream-reporting semantics. Pending/running/complete/failed/recoverable and representation of partial or blocked states remain options; scientific and reporting outcomes must remain distinguishable. |
 | `AC-DEC-013` | What is the Run Bundle contract? | Layout, portability, large artifacts, external references, redaction, archival, regeneration, sharing |
 | `AC-DEC-014` | How are the ratified downstream-reporting semantics represented? | The current lifecycle conflates report completion with `local_pipeline_complete`; standalone regeneration exists but requires low-level roots and does not adopt or repair the orchestration reporting ledger. Exact opt-out/regeneration interfaces, persisted Run/report states, retry/resume and exit presentation, scientific/evidence/operations commands or views, one shared receipt-last transaction versus profile-specific receipts, immutable artifacts versus derived views, and canonical location remain Open. Reporting is already downstream, invoked by default for a full run, able to be disabled, and independently regenerable without invalidating science. |
@@ -2387,10 +2388,10 @@ mutation, protection/evidence, and compression prerequisite is complete as
 `ARCH-MODEL-AUDIT-01`. `ARCH-MODEL-DECISION-01` then selects model C, the
 compact public vocabulary, and the Run-versus-Attempt change boundary.
 `ARCH-MODEL-FIELDS-01` completes the semantic field-and-authority prerequisite.
-The first successor Run-authority cutover now implements immutable records,
-Run-last admission, current-path caller migration, historical read/resume, and
-the temporary one-way adapter. `AC-SLICE-03` remains Open for the rest of the
-public model and adapter retirement. Every
+The successor Run-authority cutover now implements immutable records, Run-last
+admission, direct workflow/task Run admission, Attempt-owned reporting inputs,
+historical read/resume, and retirement of the temporary execution projection.
+`AC-SLICE-03` remains Open for the rest of the public model. Every
 later candidate still requires its own bounded owner/caller review,
 compression register, mutation inventory, non-goals, acceptance conditions,
 protection disposition, and evidence ceiling before entering the matrix. A
@@ -2401,7 +2402,7 @@ defined in Section 13.1; evidence deletion cannot be implied by promotion.
 |---|---|---|
 | `AC-SLICE-01` | Ratified all 27 architectural invariants and five migration/test guardrails against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open |
 | `AC-SLICE-02` | Ratified responsibility clusters, three separate dependency graphs, forbidden authority transfers, a current-owner crosswalk, and a fast Python source-boundary ratchet for exact CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open |
-| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. The first successor Run-authority cutover implements immutable Analysis/Execution-Plan/Run records, Run-last persistence, current-path migration, historical read/resume, and a temporary one-way adapter. Public Project/Results, role-aware APIs/CLI, generalized backend/policy boundaries, remaining migration, and adapter retirement remain Open, so the campaign card remains Open. |
+| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. Successor Run authority, Run-last persistence, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, and temporary-projection retirement are implemented. Public Project/Results, role-aware APIs/CLI, generalized backend/policy boundaries, and remaining public/campaign migrations remain Open, so the campaign card remains Open. |
 | `AC-SLICE-04` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` |
 | `AC-SLICE-05` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across supported local and SLURM backends | New slice; enriches `OPS-02` |
 | `AC-SLICE-06` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` |
@@ -2437,7 +2438,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `ARCH-MODEL-AUDIT-01` | Completed current-model prerequisite: maps separate control paths, semantic lifetimes, owners/callers, identity boundaries, dry-run and write-before-attempt-admission gaps, Local/Slurm relationship, reporting/status mismatch, mutation ownership, protected evidence, reproducible footprint/change accounting, and 14 conditional compression candidates without selecting the application model |
 | `ARCH-MODEL-DECISION-01` | Completed direction decision: model C; public `Project -> Analysis -> Run -> Results`; progressively disclosed Attempt; internal inspectable Execution Plan; explicit Run-versus-Attempt change boundary; reporting remains downstream and identity-neutral. |
 | `ARCH-MODEL-FIELDS-01` | Completed semantic decision package: exact identity-bearing fields and digest composition; relocation, formatting, labels, order, and content rules; symbolic resource/Attempt envelope; one logical authority per admitted boundary; direct compatibility/retirement direction; Run-admission recovery ownership; and separate Attempt, Results, evidence, and reporting status domains. The first internal successor representation and current-path migration are now implemented; broader product realization remains Open. |
-| `CONTROL-01` | Realize the ratified compact public model and progressive disclosure. The first immutable successor Run-authority boundary is implemented and generated internals remain inspectable; public Project/Results, role-aware APIs/CLI, progressive disclosure, remaining migration, and adapter retirement remain Open. |
+| `CONTROL-01` | Realize the ratified compact public model and progressive disclosure. Successor Run authority is implemented, generated internals remain inspectable, and the temporary execution projection is retired; public Project/Results, role-aware APIs/CLI, progressive disclosure, and remaining public migration remain Open. |
 | `CONFIG-01` | Scientific versus execution versus evidence ownership; one scientist-facing definition; generated normalized artifacts; schema alternatives remain open |
 | `OPS-01` | Small operator-configuration surface; every effective value and source is inspectable and only explicitly safe owner-defined values are overrideable; exact interfaces, merge semantics, and named-profile model remain open |
 | `OPS-02` | Small role-aware CLI with the required capabilities; command partitioning/order, scheduler-selection behavior, and stable advanced inspection/override/debug routes remain open |
@@ -2448,8 +2449,8 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `SETUP-03` | Guided project creation, safe owned directories, generated configuration, validation, and no secret or biological invention; not containerization |
 | `RUNTIME-01` | Tiered runtime provisioning and admission; Managed/Site/Explicit are proposed labels; complete qualification includes the active internal workflow engine/Snakemake where applicable and remains separate from execution profiles |
 | `DOCTOR-01` | Project-aware readiness capabilities, actionable failures, qualified internal workflow-engine dependency, debug escape hatch, and the explicit-repair override with bounded mutation rules; exact command partitioning remains open |
-| `RUN-03` | The current path now constructs and commits immutable successor Run authority before allocation/Attempt and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. The coherent public one-command journey, generalized executor/policy realization, remaining migration, and adapter retirement remain Open. |
-| `IDENTITY-01` | Successor Runs now use the selected domain-separated digest over relocation-independent Analysis and Execution-Plan identities, with historical Runs preserved through the version-aware reader. Ordinary public exposure, progressively disclosed Attempt identity, remaining migration, and legacy/projection retirement remain Open. |
+| `RUN-03` | The current path now constructs and commits immutable successor Run authority before allocation/Attempt, admits it directly through workflow/task boundaries, binds reporting inputs to their origin Attempt, and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. The coherent public one-command journey, generalized executor/policy realization, and remaining public migration remain Open. |
+| `IDENTITY-01` | Successor Runs now use the selected domain-separated digest over relocation-independent Analysis and Execution-Plan identities, with historical Runs preserved through the version-aware reader and no successor execution projection. Ordinary public exposure, progressively disclosed Attempt identity, and remaining public migration remain Open. |
 | `FILESYSTEM-01` | Automatic predictable directory creation, one discoverable result surface, and no hidden report root; Project/inputs/runs and Run-Bundle layouts remain proposed |
 | `CONTAINER-01` | Independent managed-container/environment decision without assuming final runtime labels; institutional/native/advanced coexistence, image contents and digest, scheduler/storage/security/licensing/update contracts |
 | `REVIEW-UX-03` | Scientist, advanced scientist, operator, automation, and developer journeys; progressive disclosure; cognitive-load and golden-path baseline |
@@ -2459,7 +2460,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `OBS-02` | High-level scientific progress, public run status, elapsed time, completion/failure, and links to recovery/inspection |
 | `ANALYSIS-01` | Stop/reuse through the Step 06 boundary and launch separately identified cohort, subset, sensitivity, or downstream work |
 | `ANALYSIS-02` | Collaborator-extensible modules with typed scientific contracts; scientific algorithms, assumptions, interpretation, and review-relevant implementation remain visible. The lightweight extension mechanism is open within the binding prohibition on a mandatory universal Stage hierarchy, registry, workflow language, or second scheduler |
-| `ARCH-01` | Consumes the completed invariant, responsibility, audit, model, and semantic prerequisites plus the first successor Run-authority cutover. Every slice performs the owner/caller/compression/mutation audit and category-separated closeout in Section 13.1. Public application/operation, generalized execution/policy/identity/artifact APIs, remaining migrations, Artifact Store decision, package realization, adapter retirement, and facade use remain just-in-time choices. Bounded migration, immutable-by-default boundaries, eventual retirement, equal-or-stronger mapped protection, and separate approval for exact evidence deletion remain binding. |
+| `ARCH-01` | Consumes the completed invariant, responsibility, audit, model, and semantic prerequisites plus successor Run-authority and execution-projection-retirement cutovers. Every slice performs the owner/caller/compression/mutation audit and category-separated closeout in Section 13.1. Public application/operation, generalized execution/policy/identity/artifact APIs, remaining migrations, Artifact Store decision, package realization, and facade use remain just-in-time choices. Bounded migration, immutable-by-default boundaries, eventual retirement, equal-or-stronger mapped protection, and separate approval for exact evidence deletion remain binding. |
 | `REPORT-03` | Primary-scientific-findings hierarchy with evidence and operational detail progressively disclosed |
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |
 | `RESULTS-01` | One discoverable results surface and coordination with the proposed Run Bundle and Artifact Store concepts without preselecting their ownership or layouts |
