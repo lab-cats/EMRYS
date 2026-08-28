@@ -968,7 +968,7 @@ def assert_completed_run(
             "machine_key": task.expected.machine_key,
             "scope_type": task.expected.scope_type,
             "scope_id": task.expected.scope_id,
-            **_artifact(task.record_path),
+            **_artifact(run_root / str(task.record_reference["path"])),
         }
         for task in observed.tasks
     ]
@@ -1022,7 +1022,7 @@ def assert_completed_run(
         "report_receipt": report_dir / f"{run_id}.report_outputs.tsv",
         "attempt_receipt": run_root
         / "attempts"
-        / str(observed.latest_workflow_attempt_id)
+        / str(observed.latest_receipt["workflow_attempt_id"])
         / "attempt-receipt.json",
     }
     admitted_artifacts = {name: _artifact(path) for name, path in artifacts.items()}

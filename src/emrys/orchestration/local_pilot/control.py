@@ -10,7 +10,7 @@ import sys
 import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import partial
 from pathlib import Path
 from typing import Any
@@ -76,6 +76,13 @@ RESUME_DESCRIPTION = (
 INSPECT_DESCRIPTION = (
     "Derive one local-pilot run state from immutable EMRYS records without "
     "reading or repairing Snakemake metadata."
+)
+_MILESTONE_STEPS = (
+    ("Preparation", ("00a", "00b", "00c")),
+    ("Alignment and sample processing", ("01", "02", "04", "05", "06")),
+    ("QC evidence", ("02b", "03")),
+    ("Candidate evidence", ("07", "08")),
+    ("Statistical/context processing", ("09", "10")),
 )
 
 
@@ -1046,6 +1053,75 @@ def configure_resume_parser(parser: argparse.ArgumentParser) -> None:
 
 def configure_inspect_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--run-root", required=True, type=Path)
+    parser.add_argument(
+        "--detail",
+        choices=("normal", "verbose", "debug"),
+        default="normal",
+        help="Select concise, operational, or exact retained-record detail.",
+    )
+
+
+def _progress_state(tasks: tuple[inspection.TaskInspection, ...]) -> str:
+    if not tasks:
+        return "not applicable"
+    if any(task.state == "blocked" for task in tasks):
+        return "blocked"
+    if all(task.state == "verified" for task in tasks):
+        return "complete"
+    return "incomplete"
+
+
+def _milestone_progress(
+    tasks: tuple[inspection.TaskInspection, ...],
+) -> tuple[tuple[str, str, int, int], ...]:
+    known_steps = {step for _label, steps in _MILESTONE_STEPS for step in steps}
+    unknown = sorted({task.expected.step_id for task in tasks} - known_steps)
+    if unknown:
+        raise ControlError(
+            "Inspected task Steps have no public milestone: " + ", ".join(unknown)
+        )
+    result = []
+    for label, steps in _MILESTONE_STEPS:
+        members = tuple(task for task in tasks if task.expected.step_id in steps)
+        result.append(
+            (
+                label,
+                _progress_state(members),
+                sum(task.state == "verified" for task in members),
+                len(members),
+            )
+        )
+    return tuple(result)
+
+
+def _attempt_elapsed_line(
+    observed: inspection.RunInspection,
+    clock: Callable[[], datetime],
+) -> str:
+    attempt = observed.latest_attempt
+    if attempt is None:
+        return "Attempt elapsed: unavailable — no Attempt"
+    label = "Current" if observed.attempt_outcome == "running" else "Latest"
+    try:
+        started = datetime.fromisoformat(
+            str(attempt["created_at"]).replace("Z", "+00:00")
+        )
+        if observed.attempt_outcome == "running":
+            finished = clock()
+        elif observed.latest_receipt is not None:
+            finished = datetime.fromisoformat(
+                str(observed.latest_receipt["finished_at"]).replace("Z", "+00:00")
+            )
+        else:
+            return f"{label} Attempt elapsed: unavailable — no terminal receipt"
+        if finished < started:
+            raise ValueError("negative Attempt duration")
+        seconds = int((finished - started).total_seconds())
+    except (KeyError, TypeError, ValueError):
+        return f"{label} Attempt elapsed: unavailable — invalid timestamp boundary"
+    if started.tzinfo is None or finished.tzinfo is None:
+        return f"{label} Attempt elapsed: unavailable — invalid timestamp boundary"
+    return f"{label} Attempt elapsed: {timedelta(seconds=seconds)}"
 
 
 def run_from_args(
@@ -1152,6 +1228,9 @@ def inspect_from_args(
 ) -> int:
     try:
         observed = ops.inspect_run(_absolute(arguments.run_root))
+        detail = getattr(arguments, "detail", "normal")
+        milestones = _milestone_progress(observed.tasks)
+        elapsed = _attempt_elapsed_line(observed, ops.now)
         result_lines = _verified_report_location_lines(
             observed.verified_report_locations
         )
@@ -1159,34 +1238,76 @@ def inspect_from_args(
         print(f"emrys: error: {exc}", file=sys.stderr)
         return 2
     print(f"Run ID: {observed.run_id}")
-    print(f"Run root: {observed.run_root}")
     print(f"Run integrity: {observed.integrity}")
     print(f"Attempt outcome: {observed.attempt_outcome}")
+    print(elapsed)
+    print("Scientific milestones:")
+    for label, state, verified, total in milestones:
+        print(f"  {label}: {state}")
+        if detail != "normal":
+            print(f"    Verified tasks: {verified}/{total}")
     print(f"Scientific Results: {observed.results_status}")
     print(f"Reporting: {observed.reporting_status}")
-    print(f"Latest workflow attempt: {observed.latest_workflow_attempt_id or 'none'}")
-    for task in observed.tasks:
-        print(
-            f"TASK {task.expected.machine_key}/{task.expected.scope_id}: {task.state}"
-        )
-        if task.blocker:
-            print(f"  BLOCKER: {task.blocker}")
-    for kind, records in observed.reporting_completion_records.items():
-        if records["verified"] is not None:
-            state = "verified"
-        elif records["start"] is not None:
-            state = "started"
-        else:
-            state = "pending"
-        print(f"REPORTING {kind}: {state}")
-    for blocker in observed.integrity_blockers:
-        print(f"RUN BLOCKER: {blocker}")
-    for blocker in observed.results_blockers:
-        print(f"RESULTS BLOCKER: {blocker}")
-    for blocker in observed.reporting_blockers:
-        print(f"REPORTING BLOCKER: {blocker}")
-    for blocker in observed.receipt_blockers:
-        print(f"ATTEMPT EVIDENCE BLOCKER: {blocker}")
+    latest = observed.latest_attempt
+    receipt = observed.latest_receipt
+    if detail != "normal":
+        print(f"Run root: {observed.run_root}")
+        print("Attempt ID: " + ("none" if latest is None else str(latest["workflow_attempt_id"])))
+        if latest is not None:
+            placement = latest.get("placement")
+            placement_kind = "legacy/unrecorded" if placement is None else placement["kind"]
+            scheduler_job_id = "none" if placement is None else placement["scheduler_job_id"] or "none"
+            print(
+                f"Execution: {latest['executor']}/{latest['execution_mode']} "
+                f"placement={placement_kind} scheduler_job_id={scheduler_job_id}"
+            )
+        print("Reporting transactions:")
+        for kind, records in observed.reporting_completion_records.items():
+            state = (
+                "complete" if records["verified"] is not None
+                else "incomplete" if records["start"] is not None
+                else "pending"
+            )
+            print(f"  {kind}: {state}")
+    if detail == "debug":
+        if latest is not None:
+            attempt_id = str(latest["workflow_attempt_id"])
+            attempt_root = observed.run_root / "attempts" / attempt_id
+            receipt_path = "none" if receipt is None else attempt_root / "attempt-receipt.json"
+            print(f"Attempt receipt: {receipt_path}")
+            print(f"Engine command: {shlex.join(latest['snakemake_argv'])}")
+            if receipt is not None:
+                print(
+                    "Attempt receipt result: "
+                    f"exit={receipt['snakemake_exit_code']} "
+                    f"signal={receipt['termination_signal']} "
+                    f"message={receipt['message']}"
+                )
+        print("Task records:")
+        for task in observed.tasks:
+            identity = f"{task.expected.machine_key}/{task.expected.scope_id}"
+            task_detail = f"  TASK {identity}: {task.state}"
+            if task.record_reference is not None:
+                task_detail += (
+                    f"; verified={observed.run_root / task.record_reference['path']}"
+                )
+            if task.record is not None:
+                attempt_reference = task.record["task_attempt_record"]
+                attempt_path = observed.run_root / attempt_reference["path"]
+                task_detail += (
+                    f"; attempt={attempt_path}"
+                    f"; stdout={attempt_path.with_name('stdout.log')}"
+                    f"; stderr={attempt_path.with_name('stderr.log')}"
+                )
+            print(task_detail)
+    for blocker_label, blockers in (
+        ("RUN BLOCKER", observed.integrity_blockers),
+        ("RESULTS BLOCKER", observed.results_blockers),
+        ("REPORTING BLOCKER", observed.reporting_blockers),
+        ("ATTEMPT EVIDENCE BLOCKER", observed.receipt_blockers),
+    ):
+        for blocker in blockers:
+            print(f"{blocker_label}: {blocker}")
     print(f"Recovery available: {'yes' if observed.recovery_available else 'no'}")
     print(f"Next supported action: {_next_supported_action(observed)}")
     for line in result_lines:

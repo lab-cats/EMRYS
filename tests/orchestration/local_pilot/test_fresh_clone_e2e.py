@@ -432,7 +432,13 @@ observed = SimpleNamespace(
     attempt_outcome="failed",
     results_status="incomplete",
     reporting_status="incomplete",
-    latest_workflow_attempt_id="workflow-explicit-ops",
+    latest_attempt={
+        "workflow_attempt_id": "workflow-explicit-ops",
+        "created_at": "2026-08-12T20:00:00Z",
+    },
+    latest_receipt={
+        "finished_at": "2026-08-12T20:01:00Z",
+    },
     tasks=(),
     reporting_completion_records={},
     blockers=(),

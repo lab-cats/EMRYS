@@ -1612,7 +1612,8 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
     assert mutex.is_file() and not mutex.is_symlink() and mutex.read_bytes() == b""
     observed = inspection.inspect_run(stale.run_root)
     assert observed.recovery_available, observed.blockers
-    assert observed.latest_workflow_attempt_id == winner.workflow_attempt_id
+    assert observed.latest_attempt is not None
+    assert observed.latest_attempt["workflow_attempt_id"] == winner.workflow_attempt_id
 
 
 def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
@@ -2183,6 +2184,99 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
     )
 
 
+def _status_task(
+    step_id: str,
+    state: inspection.TaskState,
+    index: int = 0,
+) -> inspection.TaskInspection:
+    expected = inspection.ExpectedTask(
+        machine_key=f"owner-{step_id}",
+        step_id=step_id,
+        scope_type="sample",
+        scope_id=f"scope-{index}",
+    )
+    return inspection.TaskInspection(expected, state, None, None)
+
+
+def test_status_milestones_partition_steps_and_derive_persisted_progress() -> None:
+    declared_steps = [
+        step_id
+        for _label, steps in control._MILESTONE_STEPS
+        for step_id in steps
+    ]
+    assert len(declared_steps) == len(set(declared_steps)) == 14
+    assert set(declared_steps) == {
+        "00a",
+        "00b",
+        "00c",
+        "01",
+        "02",
+        "02b",
+        "03",
+        "04",
+        "05",
+        "06",
+        "07",
+        "08",
+        "09",
+        "10",
+    }
+    progress = control._milestone_progress(
+        (
+            *(_status_task(step, "verified") for step in ("00a", "00b", "00c")),
+            _status_task("01", "verified"),
+            _status_task("02", "pending"),
+            _status_task("02b", "blocked"),
+            _status_task("09", "pending"),
+        )
+    )
+
+    assert progress == (
+        ("Preparation", "complete", 3, 3),
+        ("Alignment and sample processing", "incomplete", 1, 2),
+        ("QC evidence", "blocked", 0, 1),
+        ("Candidate evidence", "not applicable", 0, 0),
+        ("Statistical/context processing", "incomplete", 0, 1),
+    )
+
+
+def test_attempt_elapsed_uses_only_current_or_latest_attempt() -> None:
+    created = "2026-08-12T20:00:00Z"
+    latest = {"created_at": created}
+
+    assert control._attempt_elapsed_line(
+        SimpleNamespace(latest_attempt=None, attempt_outcome="not_started"),
+        lambda: datetime(2026, 8, 12, 20, 1, tzinfo=UTC),
+    ) == "Attempt elapsed: unavailable — no Attempt"
+    assert control._attempt_elapsed_line(
+        SimpleNamespace(
+            latest_attempt=latest,
+            latest_receipt=None,
+            attempt_outcome="running",
+        ),
+        lambda: datetime(2026, 8, 12, 20, 1, 30, tzinfo=UTC),
+    ) == "Current Attempt elapsed: 0:01:30"
+    assert control._attempt_elapsed_line(
+        SimpleNamespace(
+            latest_attempt={
+                **latest,
+                "supersedes_workflow_attempt_id": "workflow-earlier",
+            },
+            latest_receipt={"finished_at": "2026-08-12T20:02:00Z"},
+            attempt_outcome="failed",
+        ),
+        lambda: (_ for _ in ()).throw(AssertionError("terminal clock read")),
+    ) == "Latest Attempt elapsed: 0:02:00"
+    assert "invalid timestamp boundary" in control._attempt_elapsed_line(
+        SimpleNamespace(
+            latest_attempt=latest,
+            latest_receipt=None,
+            attempt_outcome="running",
+        ),
+        lambda: datetime(2026, 8, 12, 19, 59, 59, 200_000, tzinfo=UTC),
+    )
+
+
 def test_public_help_routes() -> None:
     for command, expected in (
         (("run", "--help"), "usage: emrys run"),
@@ -2389,7 +2483,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     after = _verified_snapshot(run_root)
     assert all(after[path] == value for path, value in before.items())
 
-    inspect_arguments = argparse.Namespace(run_root=run_root)
+    inspect_arguments = argparse.Namespace(run_root=run_root, detail="normal")
     assert control.inspect_from_args(inspect_arguments, ops=resumed_ops) == 0
     inspect_output = capsys.readouterr().out
     assert "Attempt outcome: succeeded" in inspect_output
@@ -2399,6 +2493,26 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         "Next supported action: Review the verified Results and report paths."
         in inspect_output
     )
+    assert "Scientific milestones:" in inspect_output
+    assert "Current Attempt elapsed:" not in inspect_output
+    assert "Latest Attempt elapsed:" in inspect_output
+    assert "Run root:" not in inspect_output
+    assert "Engine command:" not in inspect_output
+    inspect_arguments.detail = "verbose"
+    assert control.inspect_from_args(inspect_arguments, ops=resumed_ops) == 0
+    verbose_output = capsys.readouterr().out
+    assert f"Run root: {run_root}" in verbose_output
+    assert "Attempt ID:" in verbose_output
+    assert "Reporting transactions:" in verbose_output
+    assert "Engine command:" not in verbose_output
+    inspect_arguments.detail = "debug"
+    assert control.inspect_from_args(inspect_arguments, ops=resumed_ops) == 0
+    debug_output = capsys.readouterr().out
+    assert "Engine command:" in debug_output
+    assert "Attempt receipt:" in debug_output
+    assert "TASK " in debug_output
+    assert "stdout.log" in debug_output and "stderr.log" in debug_output
+    assert _verified_snapshot(run_root) == after
     assert expected_results in inspect_output
 
     resume_arguments.execute = False
