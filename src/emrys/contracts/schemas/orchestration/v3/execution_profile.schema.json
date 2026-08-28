@@ -118,6 +118,12 @@
         "scratch_parent": {"$ref": "#/$defs/absolute_nonroot_path"},
         "modules": {"$ref": "#/$defs/modules"}
       }
+    },
+    "placement": {
+      "oneOf": [
+        {"$ref": "#/$defs/direct_placement"},
+        {"$ref": "#/$defs/slurm_placement"}
+      ]
     }
   },
   "properties": {
@@ -126,10 +132,7 @@
       "$ref": "urn:emrys:schema:orchestration:resource-config:v1"
     },
     "placement": {
-      "oneOf": [
-        {"$ref": "#/$defs/direct_placement"},
-        {"$ref": "#/$defs/slurm_placement"}
-      ]
+      "$ref": "#/$defs/placement"
     }
   }
 }

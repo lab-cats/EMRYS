@@ -4,22 +4,14 @@ from __future__ import annotations
 
 import argparse
 import copy
-import hashlib
-import os
-import stat
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
-import yaml
-
 from emrys.contracts.orchestration import api as orchestration_contracts
 
 SCHEMA_VERSION = "emrys.local-pilot-resources.v1"
-ADJACENT_CONFIG_NAME = "emrys.resources.yaml"
-LEGACY_ADJACENT_CONFIG_NAME = "norad.resources.yaml"
-DEFAULT_CONFIG_PATH = Path(__file__).parent / "resources/default_resources.yaml"
 STAGE_IDS = (
     "00a",
     "00b",
@@ -43,32 +35,6 @@ REPORTING_KINDS = ("artifact_index", "run_summary", "html_report")
 
 class ResourceConfigError(ValueError):
     """One resource source or its resolved policy is not admissible."""
-
-
-class _ClosedSafeLoader(yaml.SafeLoader):
-    """Safe YAML loader that rejects merge and duplicate mapping keys."""
-
-    def flatten_mapping(self, node: yaml.MappingNode) -> None:
-        for key_node, _ in node.value:
-            if key_node.tag == "tag:yaml.org,2002:merge":
-                raise ResourceConfigError("YAML merge keys are not allowed")
-        super().flatten_mapping(node)
-
-    def construct_mapping(
-        self,
-        node: yaml.MappingNode,
-        deep: bool = False,
-    ) -> dict[str, Any]:
-        self.flatten_mapping(node)
-        result: dict[str, Any] = {}
-        for key_node, value_node in node.value:
-            key = self.construct_object(key_node, deep=deep)
-            if not isinstance(key, str):
-                raise ResourceConfigError("Every YAML mapping key must be a string")
-            if key in result:
-                raise ResourceConfigError(f"Duplicate YAML mapping key: {key}")
-            result[key] = self.construct_object(value_node, deep=deep)
-        return result
 
 
 @dataclass(frozen=True, slots=True)
@@ -235,22 +201,6 @@ class ResourcePlan:
         return self.policy.declaration
 
     @property
-    def default_sha256(self) -> str:
-        return self.policy.default_sha256
-
-    @property
-    def config_path(self) -> Path | None:
-        return self.policy.config_path
-
-    @property
-    def config_sha256(self) -> str | None:
-        return self.policy.config_sha256
-
-    @property
-    def override_labels(self) -> tuple[str, ...]:
-        return self.policy.override_labels
-
-    @property
     def workflow_cores(self) -> int:
         return self.declaration.workflow_cores
 
@@ -279,47 +229,6 @@ class ResourcePlan:
 
         return dict(self.step_threads).get(step_id, 1)
 
-    def thread_map(self) -> dict[str, int]:
-        """Return the closed thread-capable stage mapping."""
-
-        return dict(self.step_threads)
-
-    def concurrency_map(self) -> dict[str, int]:
-        """Return the closed repeatable-stage concurrency mapping."""
-
-        return dict(self.stage_concurrency)
-
-    def stage_memory_map(self) -> dict[str, int]:
-        """Return total memory reserved by each computational owner job."""
-
-        return dict(self.stage_memory_mb)
-
-    def reporting_memory_map(self) -> dict[str, int]:
-        """Return total memory reserved by each reporting job."""
-
-        return dict(self.reporting_memory_mb)
-
-    def concurrency_for(self, step_id: str) -> int:
-        """Return the configured repeatable-stage cap or singleton cap."""
-
-        return dict(self.stage_concurrency).get(step_id, 1)
-
-    def memory_for(self, step_id: str) -> int:
-        """Return total MiB reserved by one computational owner job."""
-
-        try:
-            return dict(self.stage_memory_mb)[step_id]
-        except KeyError as exc:
-            raise KeyError(step_id) from exc
-
-    def reporting_memory_for(self, kind: str) -> int:
-        """Return total MiB reserved by one reporting job."""
-
-        try:
-            return dict(self.reporting_memory_mb)[kind]
-        except KeyError as exc:
-            raise KeyError(kind) from exc
-
     def effective_document(self) -> dict[str, Any]:
         """Return the canonical JSON-ready effective policy."""
 
@@ -332,12 +241,6 @@ class ResourcePlan:
             "stage_memory_mb": dict(self.stage_memory_mb),
             "reporting_memory_mb": dict(self.reporting_memory_mb),
         }
-
-    @property
-    def sha256(self) -> str:
-        """Digest the exact effective policy independently of its sources."""
-
-        return orchestration_contracts.canonical_sha256(self.effective_document())
 
     def policy_record(self) -> dict[str, Any]:
         """Return the immutable effective policy and its admitted provenance."""
@@ -356,12 +259,14 @@ class ResourcePlan:
                 "slurm_job_id": self.allocation.slurm_job_id,
             },
             "sources": {
-                "default_sha256": self.default_sha256,
+                "default_sha256": self.policy.default_sha256,
                 "config_path": (
-                    None if self.config_path is None else str(self.config_path)
+                    None
+                    if self.policy.config_path is None
+                    else str(self.policy.config_path)
                 ),
-                "config_sha256": self.config_sha256,
-                "cli_overrides": list(self.override_labels),
+                "config_sha256": self.policy.config_sha256,
+                "cli_overrides": list(self.policy.override_labels),
             },
         }
 
@@ -384,56 +289,6 @@ def stage_slot_name(step_id: str) -> str:
     if step_id not in REPEATABLE_STAGE_IDS:
         raise ResourceConfigError(f"Stage is not repeatable: {step_id}")
     return f"stage_{step_id}_slots"
-
-
-def _load_yaml_mapping(data: bytes, path: Path) -> dict[str, Any]:
-    try:
-        value = yaml.load(data.decode("utf-8"), Loader=_ClosedSafeLoader)
-    except ResourceConfigError:
-        raise
-    except (UnicodeError, yaml.YAMLError) as exc:
-        raise ResourceConfigError(
-            f"Could not parse resource YAML {path}: {exc}"
-        ) from exc
-    if not isinstance(value, dict):
-        raise ResourceConfigError(
-            f"Resource YAML must contain one mapping object: {path}"
-        )
-    try:
-        orchestration_contracts.validate_record("resource-config", value)
-    except orchestration_contracts.ContractValidationError as exc:
-        raise ResourceConfigError(str(exc)) from exc
-    return value
-
-
-def _read_real_config(path: Path, label: str) -> tuple[Path, bytes, dict[str, Any]]:
-    authored = Path(os.path.abspath(path))
-    try:
-        authored_state = authored.lstat()
-        resolved = authored.resolve(strict=True)
-        state = resolved.stat()
-        data = resolved.read_bytes()
-    except OSError as exc:
-        raise ResourceConfigError(f"Could not read {label} {authored}: {exc}") from exc
-    if stat.S_ISLNK(authored_state.st_mode) or not stat.S_ISREG(state.st_mode):
-        raise ResourceConfigError(f"{label} must be one real file: {authored}")
-    if not data:
-        raise ResourceConfigError(f"{label} must be nonempty: {authored}")
-    return resolved, data, _load_yaml_mapping(data, resolved)
-
-
-def _merge_fragment(target: dict[str, Any], fragment: Mapping[str, Any]) -> None:
-    for key, value in fragment.items():
-        if key == "schema_version":
-            continue
-        if isinstance(value, Mapping):
-            selected = target.get(key)
-            if not isinstance(selected, dict):
-                selected = {}
-                target[key] = selected
-            selected.update(copy.deepcopy(dict(value)))
-        else:
-            target[key] = copy.deepcopy(value)
 
 
 def _apply_overrides(target: dict[str, Any], overrides: ResourceOverrides) -> None:
@@ -539,14 +394,7 @@ def resolve_resource_policy(
 ) -> ResourcePlan:
     """Resolve one exact admitted policy against one Attempt allocation."""
 
-    admitted = admit_resource_policy(
-        policy.document(),
-        default_sha256=policy.default_sha256,
-        config_path=policy.config_path,
-        config_sha256=policy.config_sha256,
-        override_labels=policy.override_labels,
-    )
-    declaration = admitted.declaration
+    declaration = policy.declaration
     workflow_cores = declaration.workflow_cores
     workflow_memory = (
         allocation.memory_mb
@@ -569,7 +417,7 @@ def resolve_resource_policy(
     }
     resolved_reporting_memory = {
         kind: workflow_memory if value == "workflow" else int(value)
-        for kind, value in admitted.reporting_memory_mb
+        for kind, value in policy.reporting_memory_mb
     }
     thread_values = dict(declaration.step_threads)
     concurrency_values = dict(declaration.stage_concurrency)
@@ -599,82 +447,11 @@ def resolve_resource_policy(
         stage_memory_mb=tuple((key, resolved_stage_memory[key]) for key in STAGE_IDS),
     )
     return ResourcePlan(
-        policy=admitted,
+        policy=policy,
         resolution=resolution,
         reporting_memory_mb=tuple(
             (key, resolved_reporting_memory[key]) for key in REPORTING_KINDS
         ),
-    )
-
-
-def load_resource_policy(
-    request_path: Path,
-    *,
-    config_path: Path | None = None,
-    overrides: ResourceOverrides = ResourceOverrides(),
-) -> ResourcePolicy:
-    """Load defaults, optional YAML, and overrides without observing capacity."""
-
-    default_path, default_data, default = _read_real_config(
-        DEFAULT_CONFIG_PATH,
-        "packaged resource defaults",
-    )
-    del default_path
-    document = copy.deepcopy(default)
-    selected_path: Path | None = None
-    selected_data: bytes | None = None
-    request_parent = Path(os.path.abspath(request_path)).parent
-    candidate = (
-        Path(config_path)
-        if config_path is not None
-        else request_parent / ADJACENT_CONFIG_NAME
-    )
-    if config_path is None:
-        legacy_candidate = request_parent / LEGACY_ADJACENT_CONFIG_NAME
-        if os.path.lexists(legacy_candidate):
-            if os.path.lexists(candidate):
-                raise ResourceConfigError(
-                    "Conflicting adjacent resource configurations: "
-                    f"{ADJACENT_CONFIG_NAME} and {LEGACY_ADJACENT_CONFIG_NAME}"
-                )
-            raise ResourceConfigError(
-                f"Legacy adjacent resource configuration {LEGACY_ADJACENT_CONFIG_NAME} "
-                f"is not accepted; rename it to {ADJACENT_CONFIG_NAME}"
-            )
-    if config_path is not None or os.path.lexists(candidate):
-        selected_path, selected_data, fragment = _read_real_config(
-            candidate,
-            "resource configuration",
-        )
-        _merge_fragment(document, fragment)
-    _apply_overrides(document, overrides)
-    return admit_resource_policy(
-        document,
-        default_sha256=hashlib.sha256(default_data).hexdigest(),
-        config_path=selected_path,
-        config_sha256=(
-            None if selected_data is None else hashlib.sha256(selected_data).hexdigest()
-        ),
-        override_labels=overrides.labels(),
-    )
-
-
-def load_resource_plan(
-    request_path: Path,
-    allocation: AllocationCapacity,
-    *,
-    config_path: Path | None = None,
-    overrides: ResourceOverrides = ResourceOverrides(),
-) -> ResourcePlan:
-    """Compatibility wrapper that loads then resolves one resource policy."""
-
-    return resolve_resource_policy(
-        load_resource_policy(
-            request_path,
-            config_path=config_path,
-            overrides=overrides,
-        ),
-        allocation,
     )
 
 
@@ -803,17 +580,12 @@ def admit_resource_policy_record(
         frozenset({"cores", "memory_mb", "source", "slurm_job_id"}),
     }:
         raise ResourceConfigError("Persisted resource allocation is malformed")
-    try:
-        capacity = AllocationCapacity(
-            cores=allocation["cores"],
-            memory_mb=allocation["memory_mb"],
-            source=allocation["source"],
-            slurm_job_id=allocation.get("slurm_job_id"),
-        )
-    except KeyError as exc:  # Defensive against a nonstandard Mapping implementation.
-        raise ResourceConfigError(
-            "Persisted resource allocation is malformed"
-        ) from exc
+    capacity = AllocationCapacity(
+        cores=allocation["cores"],
+        memory_mb=allocation["memory_mb"],
+        source=allocation["source"],
+        slurm_job_id=allocation.get("slurm_job_id"),
+    )
 
     if not successor:
         return resume_resource_plan(record, capacity)
@@ -872,18 +644,9 @@ def _assignment(value: str) -> tuple[str, int]:
     return key, _positive_integer(raw)
 
 
-def add_resource_arguments(parser: argparse.ArgumentParser) -> None:
-    """Add optional highest-precedence execution-resource controls."""
+def add_resource_override_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add optional highest-precedence computational-resource controls."""
 
-    parser.add_argument(
-        "--resource-config",
-        type=Path,
-        help=(
-            "Optional resource YAML. A new run otherwise discovers "
-            "emrys.resources.yaml beside the request; a resume otherwise "
-            "reuses its predecessor policy."
-        ),
-    )
     parser.add_argument(
         "--workflow-cores",
         type=_positive_integer,
@@ -928,6 +691,27 @@ def add_resource_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def resource_override_argv(overrides: ResourceOverrides) -> tuple[str, ...]:
+    """Render admitted overrides for one exact grouped-command delegate."""
+
+    arguments: list[str] = []
+    for flag, value in (
+        ("--workflow-cores", overrides.workflow_cores),
+        ("--workflow-memory-mb", overrides.workflow_memory_mb),
+    ):
+        if value is not None:
+            arguments.extend((flag, str(value)))
+    for field, flag in (
+        ("stage_concurrency", "--stage-concurrency"),
+        ("step_threads", "--step-threads"),
+        ("stage_memory_mb", "--stage-memory-mb"),
+        ("reporting_memory_mb", "--reporting-memory-mb"),
+    ):
+        for key, value in getattr(overrides, field):
+            arguments.extend((flag, f"{key}={value}"))
+    return tuple(arguments)
+
+
 def overrides_from_args(arguments: argparse.Namespace) -> ResourceOverrides:
     """Project only explicitly supplied command-line resource values."""
 
@@ -944,11 +728,9 @@ def overrides_from_args(arguments: argparse.Namespace) -> ResourceOverrides:
 
 
 __all__ = (
-    "ADJACENT_CONFIG_NAME",
     "AllocationCapacity",
     "AttemptResourceResolution",
     "ComputationalResourceDeclaration",
-    "DEFAULT_CONFIG_PATH",
     "REPORTING_KINDS",
     "REPEATABLE_STAGE_IDS",
     "ResourceConfigError",
@@ -957,12 +739,11 @@ __all__ = (
     "ResourcePlan",
     "STAGE_IDS",
     "THREAD_CAPABLE_STAGE_IDS",
-    "add_resource_arguments",
+    "add_resource_override_arguments",
     "admit_resource_policy",
     "admit_resource_policy_record",
-    "load_resource_policy",
-    "load_resource_plan",
     "overrides_from_args",
+    "resource_override_argv",
     "resolve_resource_policy",
     "resume_resource_policy",
     "resume_resource_plan",

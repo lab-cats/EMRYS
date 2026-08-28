@@ -43,21 +43,37 @@ def _slurm_placement(root: Path) -> dict[str, object]:
     }
 
 
-def test_builtin_profile_is_direct_and_ignores_adjacent_legacy_sources(
+def test_retired_adjacent_sources_require_one_explicit_profile(
     tmp_path: Path,
 ) -> None:
     request = tmp_path / "request.yaml"
     request.write_text("ignored by profile loading\n", encoding="utf-8")
-    (tmp_path / "emrys.resources.yaml").write_text("not: valid\n", encoding="utf-8")
-    (tmp_path / "emrys.launcher.yaml").write_text("not: valid\n", encoding="utf-8")
+    retired_names = (
+        "emrys.resources.yaml",
+        "emrys.launcher.yaml",
+        "norad.resources.yaml",
+        "norad.launcher.yaml",
+    )
+    for name in retired_names:
+        (tmp_path / name).write_text("not: valid\n", encoding="utf-8")
 
-    profile = load_execution_profile(request)
+    with pytest.raises(
+        ExecutionProfileError,
+        match="Retired adjacent configuration requires migration",
+    ) as caught:
+        load_execution_profile(request)
+    assert all(name in str(caught.value) for name in retired_names)
 
+    profile = load_execution_profile(
+        request,
+        config_path=execution_profile.DEFAULT_PROFILE_PATH,
+    )
     assert isinstance(profile.placement, DirectPlacement)
     assert profile.resource_policy.declaration.workflow_cores == 4
-    assert profile.config_path is None
-    assert profile.config_sha256 is None
     assert profile.source_path == execution_profile.DEFAULT_PROFILE_PATH
+    assert profile.source_raw_sha256 == hashlib.sha256(
+        execution_profile.DEFAULT_PROFILE_PATH.read_bytes()
+    ).hexdigest()
     assert profile.document()["placement"] == {"kind": "direct"}
 
 
@@ -91,9 +107,10 @@ def test_selected_resource_fragment_then_explicit_overrides(tmp_path: Path) -> N
         "step_threads.00a",
     )
     assert profile.resource_policy.config_path == selected
-    assert profile.config_path == selected
-
-
+    assert (
+        profile.resource_policy.config_sha256
+        == hashlib.sha256(selected.read_bytes()).hexdigest()
+    )
 def test_placement_only_profile_does_not_change_resource_policy(
     tmp_path: Path,
 ) -> None:
@@ -123,6 +140,76 @@ def test_placement_only_profile_does_not_change_resource_policy(
     assert scheduled.sha256 != direct.sha256
 
 
+def test_attempt_placement_projects_direct_and_slurm_provenance(
+    tmp_path: Path,
+) -> None:
+    direct = load_execution_profile(tmp_path / "request.yaml")
+
+    assert direct.source_path.is_absolute()
+    assert (
+        direct.source_raw_sha256
+        == hashlib.sha256(direct.source_path.read_bytes()).hexdigest()
+    )
+    assert direct.attempt_placement() == {
+        "kind": "direct",
+        "source": {
+            "path": str(direct.source_path),
+            "sha256": direct.source_raw_sha256,
+        },
+        "effective_sha256": direct.sha256,
+        "request": {"kind": "direct"},
+        "scheduler_job_id": None,
+    }
+
+    selected = _write_profile(
+        tmp_path / "profile.yaml",
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "placement": _slurm_placement(tmp_path),
+        },
+    )
+    scheduled = load_execution_profile(
+        tmp_path / "request.yaml",
+        config_path=selected,
+    )
+
+    assert scheduled.source_path == selected
+    assert (
+        scheduled.source_raw_sha256 == hashlib.sha256(selected.read_bytes()).hexdigest()
+    )
+    assert scheduled.attempt_placement("700123") == {
+        "kind": "slurm",
+        "source": {
+            "path": str(selected),
+            "sha256": scheduled.source_raw_sha256,
+        },
+        "effective_sha256": scheduled.sha256,
+        "request": scheduled.placement.document(),
+        "scheduler_job_id": "700123",
+    }
+
+
+@pytest.mark.parametrize("job_id", ("", "0", "00", "01", "-1", "1.0", " 1", 1, True))
+def test_attempt_placement_rejects_noncanonical_job_ids(
+    tmp_path: Path,
+    job_id: object,
+) -> None:
+    selected = _write_profile(
+        tmp_path / "profile.yaml",
+        {
+            "schema_version": execution_profile.SCHEMA_VERSION,
+            "placement": _slurm_placement(tmp_path),
+        },
+    )
+    profile = load_execution_profile(
+        tmp_path / "request.yaml",
+        config_path=selected,
+    )
+
+    with pytest.raises(ExecutionProfileError, match="canonical positive decimal"):
+        profile.attempt_placement(job_id)  # type: ignore[arg-type]
+
+
 def test_selected_source_digest_is_admitted(tmp_path: Path) -> None:
     selected = _write_profile(
         tmp_path / "profile.yaml",
@@ -144,7 +231,7 @@ def test_selected_source_digest_is_admitted(tmp_path: Path) -> None:
 
     assert profile.sha256 == expected
     assert profile.source_path == selected
-    assert profile.config_sha256 == hashlib.sha256(selected.read_bytes()).hexdigest()
+    assert profile.source_raw_sha256 == hashlib.sha256(selected.read_bytes()).hexdigest()
     with pytest.raises(ExecutionProfileError, match="SHA-256 differs"):
         load_execution_profile(
             tmp_path / "request.yaml",
@@ -256,7 +343,7 @@ def test_tracked_execution_profile_examples_are_admissible(
     assert profile.resource_policy.declaration.workflow_cores == workflow_cores
     assert profile.placement.cpus_per_task == cpus_per_task
     assert profile.placement.exclusive is exclusive
-    assert profile.placement.request_memory is False
+    assert profile.placement.memory_mb is None
 
 
 def test_exact_module_realization_is_typed(tmp_path: Path) -> None:

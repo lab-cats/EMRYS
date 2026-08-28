@@ -10,10 +10,13 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
-    from emrys.orchestration.local_pilot.execution_profile import ExecutionProfile
+    from emrys.orchestration.local_pilot.execution_profile import (
+        ExecutionProfile,
+        SlurmPlacement,
+    )
 
 
 DELEGATE_MARKER_ENV = "EMRYS_PRIVATE_SLURM_DELEGATE"
@@ -23,6 +26,7 @@ DELEGATE_MARKER = "emrys-slurm-delegate-v1"
 
 _DELEGATE_ENV_PREFIX = "EMRYS_PRIVATE_SLURM_"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_POSITIVE_DECIMAL = re.compile(r"^[1-9][0-9]*$")
 
 
 class SlurmSubmissionError(RuntimeError):
@@ -38,8 +42,6 @@ class SlurmSubmission:
     environment: Mapping[str, str] = field(repr=False, compare=False)
     stdout_pattern: Path
     stderr_pattern: Path
-    execution_profile_path: Path
-    execution_profile_sha256: str
 
 
 def _batch_script(
@@ -145,39 +147,44 @@ def plan_submission(
     profile_sha256 = profile.sha256
     if not isinstance(profile_sha256, str) or not _SHA256.fullmatch(profile_sha256):
         raise SlurmSubmissionError("execution-profile SHA-256 is invalid")
-    profile_path = Path(profile.source_path)
     placement = profile.placement
+    if getattr(placement, "kind", None) != "slurm":
+        raise SlurmSubmissionError("scheduler submission requires Slurm placement")
+    slurm_placement = cast("SlurmPlacement", placement)
 
-    stdout_pattern = Path(log_dir) / "emrys-local-pilot-%j.out"
-    stderr_pattern = Path(log_dir) / "emrys-local-pilot-%j.err"
+    scheduler_log_dir = Path(log_dir)
+    if "%" in os.fspath(scheduler_log_dir):
+        raise SlurmSubmissionError("scheduler log directory must not contain '%'")
+    stdout_pattern = scheduler_log_dir / "emrys-local-pilot-%j.out"
+    stderr_pattern = scheduler_log_dir / "emrys-local-pilot-%j.err"
     exports = (
         f"{DELEGATE_MARKER_ENV}={DELEGATE_MARKER}",
         f"{PROFILE_SHA256_ENV}={profile_sha256}",
         f"{SUBMIT_UID_ENV}={uid}",
     )
     argv = [sbatch, "--parsable"]
-    if placement.account is not None:
-        argv.append(f"--account={placement.account}")
-    if placement.partition is not None:
-        argv.append(f"--partition={placement.partition}")
-    if placement.qos is not None:
-        argv.append(f"--qos={placement.qos}")
+    if slurm_placement.account is not None:
+        argv.append(f"--account={slurm_placement.account}")
+    if slurm_placement.partition is not None:
+        argv.append(f"--partition={slurm_placement.partition}")
+    if slurm_placement.qos is not None:
+        argv.append(f"--qos={slurm_placement.qos}")
     argv.extend(
         (
             "--nodes=1",
             "--ntasks=1",
-            f"--cpus-per-task={placement.cpus_per_task}",
+            f"--cpus-per-task={slurm_placement.cpus_per_task}",
         )
     )
-    if placement.request_memory:
-        argv.append(f"--mem={placement.memory_mb}M")
-    if placement.exclusive:
+    if slurm_placement.memory_mb is not None:
+        argv.append(f"--mem={slurm_placement.memory_mb}M")
+    if slurm_placement.exclusive:
         argv.append("--exclusive")
-    if placement.nodelist is not None:
-        argv.append(f"--nodelist={placement.nodelist}")
+    if slurm_placement.nodelist is not None:
+        argv.append(f"--nodelist={slurm_placement.nodelist}")
     argv.extend(
         (
-            f"--time={placement.time}",
+            f"--time={slurm_placement.time}",
             "--job-name=emrys-local-pilot",
             f"--output={stdout_pattern}",
             f"--error={stderr_pattern}",
@@ -196,11 +203,13 @@ def plan_submission(
     )
     script = _batch_script(
         command=command,
-        scratch_parent=Path(placement.scratch_parent),
+        scratch_parent=Path(slurm_placement.scratch_parent),
         module_init=(
-            None if placement.module_init is None else Path(placement.module_init)
+            None
+            if slurm_placement.module_init is None
+            else Path(slurm_placement.module_init)
         ),
-        modules=tuple(placement.modules),
+        modules=tuple(slurm_placement.modules),
         profile_sha256=profile_sha256,
         submitter_uid=uid,
     )
@@ -210,8 +219,6 @@ def plan_submission(
         environment=scrubbed_environment,
         stdout_pattern=stdout_pattern,
         stderr_pattern=stderr_pattern,
-        execution_profile_path=profile_path,
-        execution_profile_sha256=profile_sha256,
     )
 
 
@@ -238,7 +245,7 @@ def submit(submission: SlurmSubmission) -> str:
     fields = lines[0].split(";")
     if (
         len(fields) not in {1, 2}
-        or not fields[0].isdigit()
+        or _POSITIVE_DECIMAL.fullmatch(fields[0]) is None
         or (len(fields) == 2 and not fields[1])
     ):
         raise SlurmSubmissionError("sbatch returned an invalid job ID")

@@ -28,6 +28,15 @@ from emrys.evidence.runtime_availability.inspector import (
     RuntimeObservation,
 )
 from emrys.libraries.source_authority import controlled_python_argv
+from emrys.libraries.application_logging import (
+    ApplicationLogError,
+    LogControls,
+    LogLevel,
+)
+from emrys.libraries.application_logging.storage import (
+    ApplicationLogFile,
+    ApplicationLogStorageError,
+)
 from emrys.orchestration.local_pilot import (
     control,
     doctor,
@@ -43,9 +52,9 @@ from emrys.orchestration.local_pilot.materialization import (
     publish_attempt,
 )
 from emrys.orchestration.local_pilot.normalization import normalize_request
+from emrys.orchestration.local_pilot.execution_profile import load_execution_profile
 from emrys.orchestration.local_pilot.resource_policy import (
     AllocationCapacity,
-    load_resource_plan,
     resolve_resource_policy,
 )
 from emrys.orchestration.local_pilot.run_implementation import (
@@ -70,8 +79,11 @@ def _readiness(
     intake = tmp_path / "intake"
     intake.mkdir()
     request = build(intake)
-    resource_path = request.parent / "emrys.resources.yaml"
-    resource_document = yaml.safe_load(resource_path.read_text(encoding="utf-8"))
+    execution_profile_path = request.parent / "emrys.execution.yaml"
+    profile_document = yaml.safe_load(
+        execution_profile_path.read_text(encoding="utf-8")
+    )
+    resource_document = profile_document["resources"]
     resource_document["workflow_cores"] = workflow_cores
     resource_document["workflow_memory_mb"] = max(1024, workflow_cores * 1024)
     resource_document["stage_concurrency"] = {
@@ -85,14 +97,19 @@ def _readiness(
         if step_threads is None
         else step_threads
     )
-    resource_path.write_text(
-        yaml.safe_dump(resource_document, sort_keys=False), encoding="utf-8"
+    profile_document["resources"] = resource_document
+    execution_profile_path.write_text(
+        yaml.safe_dump(profile_document, sort_keys=False),
+        encoding="utf-8",
     )
     normalized = normalize_request(
         request, source_root / "workflow/contracts/local_cmh_v2.json"
     )
-    resources = load_resource_plan(
-        request,
+    resources = resolve_resource_policy(
+        load_execution_profile(
+            request,
+            config_path=execution_profile_path,
+        ).resource_policy,
         AllocationCapacity(
             cores=workflow_cores,
             memory_mb=max(1024, workflow_cores * 1024),
@@ -585,6 +602,72 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
     )
 
 
+def test_attempt_plan_records_placement_without_making_it_run_compatibility(
+    tmp_path: Path,
+) -> None:
+    readiness, normalized, resources, _request, workspace = _readiness(tmp_path)
+    run = _run_candidate(readiness, normalized, resources)
+    context = {
+        "resources": resources,
+        "operation": "execute",
+        "now": datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
+        "token": "4" * 32,
+        "host": "placement-host",
+        "process_id": 456,
+    }
+    direct_placement = {
+        "kind": "direct",
+        "source": {"path": "/profiles/direct.yaml", "sha256": "a" * 64},
+        "effective_sha256": "b" * 64,
+        "request": {"kind": "direct"},
+        "scheduler_job_id": None,
+    }
+    slurm_placement = {
+        "kind": "slurm",
+        "source": {"path": "/profiles/site.yaml", "sha256": "c" * 64},
+        "effective_sha256": "d" * 64,
+        "request": {
+            "kind": "slurm",
+            "account": "research",
+            "partition": "compute",
+            "qos": None,
+            "cpus_per_task": 8,
+            "memory_mb": None,
+            "time": "02:00:00",
+            "exclusive": True,
+            "nodelist": None,
+            "scratch_parent": "/scratch",
+            "modules": {"mode": "none", "init": "", "load": []},
+        },
+        "scheduler_job_id": "700123",
+    }
+
+    historical = build_attempt_plan(run, readiness, workspace, **context)
+    direct = build_attempt_plan(
+        run,
+        readiness,
+        workspace,
+        placement=direct_placement,
+        **context,
+    )
+    scheduled = build_attempt_plan(
+        run,
+        readiness,
+        workspace,
+        placement=slurm_placement,
+        **context,
+    )
+
+    assert "placement" not in historical.attempt_record
+    assert direct.attempt_record["placement"] == direct_placement
+    assert scheduled.attempt_record["placement"] == slurm_placement
+    compatibility = inspection.attempt_compatibility_fields("successor")
+    assert "placement" not in compatibility
+    assert {field: direct.attempt_record[field] for field in compatibility} == {
+        field: scheduled.attempt_record[field] for field in compatibility
+    }
+
+
 def test_run_identity_excludes_attempt_reporting_and_backend_adapter_code(
     tmp_path: Path,
 ) -> None:
@@ -1029,7 +1112,7 @@ def test_post_binding_interruption_completes_the_exact_pristine_run(
         inspect_readiness=lambda _request, _workspace, _runtime: plan.readiness,
         normalize=lambda _request, _profile: plan.run.normalized,
         inspect_run=inspection.inspect_run,
-        execute_plan=lambda _plan: pytest.fail("planning must not execute"),
+        execute_plan=lambda _plan, _observe: pytest.fail("planning must not execute"),
         transform_plan=lambda value: value,
         now=lambda: datetime(2026, 8, 12, 20, 1, tzinfo=UTC),
         token=lambda: "2" * 32,
@@ -1039,6 +1122,11 @@ def test_post_binding_interruption_completes_the_exact_pristine_run(
         plan.run.normalized.request_path,
         plan.workspace,
         plan.readiness.runtime_profile,
+        execution_profile=load_execution_profile(
+            plan.run.normalized.request_path,
+            config_path=plan.run.normalized.request_path.parent
+            / "emrys.execution.yaml",
+        ),
         ops=control_ops,
     )
     assert replanned.run.run_binding.canonical_bytes == plan.run.run_binding.canonical_bytes
@@ -1192,7 +1280,7 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         inspect_readiness=lambda _request, _workspace, _runtime: readiness_two,
         normalize=lambda _request, _profile: normalized,
         inspect_run=inspection.inspect_run,
-        execute_plan=lambda _plan: pytest.fail("planning must not execute"),
+        execute_plan=lambda _plan, _observe: pytest.fail("planning must not execute"),
         transform_plan=lambda value: value,
         now=lambda: datetime(2026, 8, 12, 20, 10, tzinfo=UTC),
         token=lambda: "2" * 32,
@@ -1220,15 +1308,29 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         != normalized.projection_source_bytes
     )
 
+    resume_profile = load_execution_profile(
+        readiness_one.request_path,
+        config_path=_slurm_profile(tmp_path),
+    )
     second = control._plan_resume(
         first.run_root,
         readiness_two.runtime_profile,
+        execution_profile=resume_profile,
+        profile_resources_explicit=False,
+        scheduler_job_id="700123",
         ops=replace(
             resume_ops,
             normalize=lambda _request, _profile: relocated_normalized,
         ),
     )
     assert second.execution_path == first.execution_path
+    effective_resume_profile = replace(
+        resume_profile,
+        resource_policy=second.resources.policy,
+    )
+    assert second.attempt_record["placement"] == (
+        effective_resume_profile.attempt_placement("700123")
+    )
     assert (
         second.attempt_record["execution_contract_sha256"]
         == first.attempt_record["execution_contract_sha256"]
@@ -1509,7 +1611,7 @@ def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
         inspect_readiness=lambda _request, _workspace, _runtime: readiness,
         normalize=lambda _request, _profile: normalized,
         inspect_run=lambda _root: (_ for _ in ()).throw(AssertionError()),
-        execute_plan=lambda plan: executed.append(plan),
+        execute_plan=lambda plan, _observe: executed.append(plan),
         transform_plan=lambda plan: plan,
         now=lambda: datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
         token=lambda: "2" * 32,
@@ -1519,6 +1621,7 @@ def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
         request=request,
         workspace=workspace,
         runtime_profile=runtime,
+        execution_profile=request.parent / "emrys.execution.yaml",
         allocated_cores=1,
         execute=False,
     )
@@ -1527,15 +1630,491 @@ def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
 
     captured = capsys.readouterr()
     assert status == 0
-    assert "Owner jobs: 35" in captured.out
-    assert "Reporting transactions: 3" in captured.out
-    assert "Reporting memory per transaction:" in captured.out
-    assert "  artifact_index: 1024 MiB" in captured.out
-    assert "  run_summary: 1024 MiB" in captured.out
-    assert "  html_report: 1024 MiB" in captured.out
-    assert "Dry-run complete" in captured.out
+    assert captured.out == ""
+    assert "Pending work items: 35" in captured.err
+    assert "Resources: 1 cores, 1024 MiB" in captured.err
+    assert "Reporting: automatic after scientific work" in captured.err
+    assert "Snakemake command:" not in captured.err
+    assert "Dry-run complete" in captured.err
     assert executed == []
     assert not workspace.exists()
+
+
+def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    readiness, normalized, resources, request, workspace = _readiness(tmp_path)
+    opened = []
+    real_open = control.open_attempt_log
+
+    def capture_open(**kwargs):
+        attempt = real_open(**kwargs)
+        opened.append(attempt)
+        return attempt
+
+    def reject_readiness(*_args):
+        log_paths = list((workspace / "logs/application").rglob("*.jsonl"))
+        assert len(log_paths) == 1
+        records = [json.loads(line) for line in log_paths[0].read_text().splitlines()]
+        assert [record["event"] for record in records] == ["attempt_opened"]
+        raise doctor.DoctorInputError("injected Doctor failure")
+
+    monkeypatch.setattr(control, "open_attempt_log", capture_open)
+    ops = control.ControlOps(
+        inspect_readiness=reject_readiness,
+        normalize=lambda _request, _profile: normalized,
+        inspect_run=lambda _root: pytest.fail("new execution inspected a Run"),
+        execute_plan=lambda _plan, _observe: pytest.fail(
+            "Doctor failure reached execution"
+        ),
+        transform_plan=lambda plan: plan,
+        now=lambda: datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
+        token=lambda: "2" * 32,
+        observe_allocation=lambda: resources.allocation,
+    )
+    arguments = argparse.Namespace(
+        request=request,
+        workspace=workspace,
+        runtime_profile=readiness.runtime_profile,
+        execution_profile=request.parent / "emrys.execution.yaml",
+        log_level=None,
+        log_root=None,
+        execute=True,
+    )
+
+    assert control.run_from_args(arguments, ops=ops) == 2
+
+    assert len(opened) == 1
+    with pytest.raises(ApplicationLogError, match="closed"):
+        opened[0].logger(component="test", phase="after_preflight")
+    log_paths = list((workspace / "logs/application").rglob("*.jsonl"))
+    assert len(log_paths) == 1
+    records = [json.loads(line) for line in log_paths[0].read_text().splitlines()]
+    assert [record["event"] for record in records] == [
+        "attempt_opened",
+        "attempt_failed",
+    ]
+    assert records[-1]["phase"] == "preflight"
+    assert not (workspace / "runs").exists()
+    assert not list(workspace.rglob("run.lock"))
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "injected Doctor failure" in captured.err
+    assert "phase=preflight status=failed" in captured.err
+    assert f"Application log: {log_paths[0]}" in captured.err
+
+
+def test_execute_preflight_interrupt_terminalizes_log_and_preserves_signal(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    plan = _plan(tmp_path)
+    controls = LogControls(
+        LogLevel.NORMAL,
+        tmp_path / "application-logs",
+        "default",
+        "default",
+    )
+
+    with pytest.raises(KeyboardInterrupt):
+        control._execute_plan(
+            lambda: (_ for _ in ()).throw(KeyboardInterrupt),
+            controls=controls,
+            workspace=plan.workspace,
+            mode="execute",
+            scope_id="pending",
+            entrypoint="emrys-run",
+        )
+
+    records = [
+        json.loads(line)
+        for line in next(controls.root.rglob("*.jsonl")).read_text().splitlines()
+    ]
+    assert [record["event"] for record in records] == [
+        "attempt_opened",
+        "attempt_interrupted",
+    ]
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "phase=preflight status=interrupted" in captured.err
+    assert "Next action: Retry when ready." in captured.err
+
+
+def test_execute_failure_summary_names_owned_lock_and_recovery(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    plan = _plan(tmp_path)
+    lock_path = plan.run_root / "locks" / "run.lock"
+    recovery_path = (
+        plan.run_root
+        / "attempts"
+        / plan.workflow_attempt_id
+        / "released-run-lock.json"
+    )
+
+    def fail_with_owned_paths(_plan, _observe):
+        lock_path.parent.mkdir(parents=True)
+        lock_path.write_text("owned", encoding="utf-8")
+        recovery_path.parent.mkdir(parents=True)
+        recovery_path.write_text("owned", encoding="utf-8")
+        raise lifecycle.LifecycleError("injected lifecycle failure")
+
+    controls = LogControls(
+        LogLevel.NORMAL,
+        tmp_path / "application-logs",
+        "default",
+        "default",
+    )
+    ops = replace(control.DEFAULT_CONTROL_OPS, execute_plan=fail_with_owned_paths)
+
+    with pytest.raises(control.ControlError, match="injected lifecycle failure"):
+        control._execute_plan(
+            lambda: plan,
+            controls=controls,
+            workspace=plan.workspace,
+            mode="execute",
+            scope_id="pending",
+            entrypoint="emrys-run",
+            ops=ops,
+        )
+
+    captured = capsys.readouterr()
+    assert f"Owned lock: {lock_path}" in captured.err
+    assert f"Owned recovery: {recovery_path}" in captured.err
+
+
+def test_public_resume_logs_inspection_failure_before_run_state(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    workspace = tmp_path / "workspace"
+    run_root = workspace / "runs" / "run-preflight"
+
+    def reject_inspection(_root: Path) -> inspection.RunInspection:
+        raise inspection.InspectionError("injected resume inspection failure")
+
+    ops = replace(
+        control.DEFAULT_CONTROL_OPS,
+        inspect_run=reject_inspection,
+    )
+    arguments = argparse.Namespace(
+        run_root=run_root,
+        runtime_profile=tmp_path / "runtime.tsv",
+        execution_profile=None,
+        log_level=None,
+        log_root=None,
+        execute=True,
+    )
+
+    assert control.resume_from_args(arguments, ops=ops) == 2
+
+    log_path = next((workspace / "logs/application").rglob("*.jsonl"))
+    records = [json.loads(line) for line in log_path.read_text().splitlines()]
+    assert [record["event"] for record in records] == [
+        "attempt_opened",
+        "attempt_failed",
+    ]
+    assert records[0]["scope_id"] == "run-preflight"
+    assert not (workspace / "runs").exists()
+    captured = capsys.readouterr()
+    assert "injected resume inspection failure" in captured.err
+    assert "phase=preflight status=failed" in captured.err
+
+
+def _slurm_profile(tmp_path: Path) -> Path:
+    profile = tmp_path / "slurm.yaml"
+    profile.write_text(
+        yaml.safe_dump(
+            {
+                "schema_version": "emrys.execution-profile.v1",
+                "placement": {
+                    "kind": "slurm",
+                    "account": None,
+                    "partition": None,
+                    "qos": None,
+                    "cpus_per_task": 4,
+                    "memory_mb": None,
+                    "time": "01:00:00",
+                    "exclusive": False,
+                    "nodelist": None,
+                    "scratch_parent": str(tmp_path / "scratch"),
+                    "modules": {"mode": "none", "init": "", "load": []},
+                },
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    return profile
+
+
+def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Namespace:
+    return argparse.Namespace(
+        request=tmp_path / "request.yaml",
+        workspace=tmp_path / "workspace",
+        runtime_profile=tmp_path / "runtime.tsv",
+        execution_profile=_slurm_profile(tmp_path),
+        log_level=None,
+        log_root=None,
+        execute=execute,
+    )
+
+
+def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments = _scheduled_run_arguments(tmp_path, execute=False)
+    monkeypatch.setattr(
+        control.slurm_submission,
+        "submit",
+        lambda _plan: pytest.fail("dry-run submitted a scheduler job"),
+    )
+    ops = replace(
+        control.DEFAULT_CONTROL_OPS,
+        inspect_readiness=lambda *_args: pytest.fail(
+            "submit host performed compute-allocation readiness"
+        ),
+    )
+
+    assert control.run_from_args(arguments, ops=ops) == 0
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "Execution placement: Slurm" in captured.err
+    assert "Dry-run complete; no scheduler or workspace state was written." in captured.err
+    assert not arguments.workspace.exists()
+
+
+def test_public_slurm_execute_submits_once_and_creates_only_scheduler_log_root(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments = _scheduled_run_arguments(tmp_path, execute=True)
+    submissions = []
+
+    def submit(plan):
+        submissions.append(plan)
+        return "812345"
+
+    monkeypatch.setattr(control.slurm_submission, "submit", submit)
+    ops = replace(
+        control.DEFAULT_CONTROL_OPS,
+        inspect_readiness=lambda *_args: pytest.fail(
+            "submit host performed compute-allocation readiness"
+        ),
+    )
+
+    assert control.run_from_args(arguments, ops=ops) == 0
+
+    captured = capsys.readouterr()
+    assert captured.out == (
+        "JOB_ID=812345\n"
+        f"OUT={arguments.workspace}/logs/emrys-local-pilot-812345.out\n"
+        f"ERR={arguments.workspace}/logs/emrys-local-pilot-812345.err\n"
+    )
+    assert len(submissions) == 1
+    assert list(arguments.workspace.rglob("*")) == [arguments.workspace / "logs"]
+
+
+def test_public_slurm_rejects_symlinked_workspace_ancestor_without_mutation(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real_parent = tmp_path / "real-parent"
+    real_parent.mkdir()
+    linked_parent = tmp_path / "linked-parent"
+    linked_parent.symlink_to(real_parent, target_is_directory=True)
+    arguments = _scheduled_run_arguments(tmp_path, execute=True)
+    arguments.workspace = linked_parent / "workspace"
+    monkeypatch.setattr(
+        control.slurm_submission,
+        "submit",
+        lambda _plan: pytest.fail("symlinked workspace reached scheduler submission"),
+    )
+
+    assert control.run_from_args(arguments) == 2
+
+    assert "Workspace immediate parent must be" in capsys.readouterr().err
+    assert list(real_parent.iterdir()) == []
+
+
+def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments = _scheduled_run_arguments(tmp_path, execute=True)
+    scheduler = control.slurm_submission
+    monkeypatch.setenv(scheduler.DELEGATE_MARKER_ENV, scheduler.DELEGATE_MARKER)
+    monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, "0" * 64)
+    monkeypatch.setenv(scheduler.SUBMIT_UID_ENV, str(os.getuid()))
+    monkeypatch.setenv("SLURM_JOB_ID", "812345")
+    ops = replace(
+        control.DEFAULT_CONTROL_OPS,
+        inspect_readiness=lambda *_args: pytest.fail(
+            "digest drift reached compute readiness"
+        ),
+    )
+
+    assert control.run_from_args(arguments, ops=ops) == 2
+    assert "Execution-profile SHA-256 differs" in capsys.readouterr().err
+    assert not arguments.workspace.exists()
+
+
+def test_direct_execution_owns_one_receipt_ordered_application_log(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    plan = _plan(tmp_path)
+    receipt_path = tmp_path / "attempt-receipt.json"
+    observed_events = []
+
+    def execute(_plan, observe):
+        for event_name in ("analysis_started", "publication_ready"):
+            observed_events.append(event_name)
+            observe(event_name)
+        return lifecycle.LifecycleOutcome(
+            attempt_path=tmp_path / "attempt.json",
+            receipt_path=receipt_path,
+            lock_path=tmp_path / "run.lock",
+            released_lock_path=tmp_path / "released-lock.json",
+            receipt={"status": "succeeded"},
+            workflow_result=None,
+        )
+
+    controls = LogControls(
+        LogLevel.NORMAL,
+        tmp_path / "application-logs",
+        "default",
+        "default",
+    )
+    ops = replace(control.DEFAULT_CONTROL_OPS, execute_plan=execute)
+
+    assert (
+        control._execute_plan(
+            lambda: plan,
+            controls=controls,
+            workspace=plan.workspace,
+            mode="execute",
+            scope_id="pending",
+            entrypoint="emrys-run",
+            ops=ops,
+        )
+        == 0
+    )
+
+    log_paths = list(controls.root.rglob("*.jsonl"))
+    assert len(log_paths) == 1
+    records = [json.loads(line) for line in log_paths[0].read_text().splitlines()]
+    assert [record["event"] for record in records] == [
+        "attempt_opened",
+        "analysis_prepared",
+        "analysis_started",
+        "publication_ready",
+        "attempt_receipt_observed",
+    ]
+    assert observed_events == ["analysis_started", "publication_ready"]
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert f"Evidence: {receipt_path}" in captured.err
+
+
+@pytest.mark.parametrize(
+    ("fault", "expected_events"),
+    (
+        ("write", ["attempt_opened", "analysis_prepared"]),
+        (
+            "sync",
+            [
+                "attempt_opened",
+                "analysis_prepared",
+                "analysis_started",
+                "publication_ready",
+            ],
+        ),
+    ),
+)
+def test_application_log_degradation_cannot_change_receipt_or_exit(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+    fault: str,
+    expected_events: list[str],
+) -> None:
+    plan = _plan(tmp_path)
+    receipt_path = tmp_path / "attempt-receipt.json"
+    receipt_bytes = b"authoritative receipt\n"
+
+    def execute(_plan, observe):
+        observe("analysis_started")
+        observe("publication_ready")
+        receipt_path.write_bytes(receipt_bytes)
+        return lifecycle.LifecycleOutcome(
+            attempt_path=tmp_path / "attempt.json",
+            receipt_path=receipt_path,
+            lock_path=tmp_path / "run.lock",
+            released_lock_path=tmp_path / "released-lock.json",
+            receipt={"status": "succeeded"},
+            workflow_result=None,
+        )
+
+    controls = LogControls(
+        LogLevel.NORMAL,
+        tmp_path / "application-logs",
+        "default",
+        "default",
+    )
+    if fault == "write":
+        real_write = ApplicationLogFile.write_bytes
+        write_count = 0
+
+        def fail_third_write(file: ApplicationLogFile, payload: bytes) -> None:
+            nonlocal write_count
+            write_count += 1
+            if write_count == 3:
+                raise ApplicationLogStorageError(
+                    "injected application-log write failure"
+                )
+            real_write(file, payload)
+
+        monkeypatch.setattr(ApplicationLogFile, "write_bytes", fail_third_write)
+    else:
+        def reject_sync(_file: ApplicationLogFile) -> None:
+            raise ApplicationLogStorageError(
+                "injected application-log sync failure"
+            )
+
+        monkeypatch.setattr(ApplicationLogFile, "synchronize", reject_sync)
+    ops = replace(control.DEFAULT_CONTROL_OPS, execute_plan=execute)
+
+    status = control._execute_plan(
+        lambda: plan,
+        controls=controls,
+        workspace=plan.workspace,
+        mode="execute",
+        scope_id="pending",
+        entrypoint="emrys-run",
+        ops=ops,
+    )
+
+    assert status == 0
+    assert receipt_path.read_bytes() == receipt_bytes
+    records = [
+        json.loads(line)
+        for line in next(controls.root.rglob("*.jsonl")).read_text().splitlines()
+    ]
+    assert [record["event"] for record in records] == expected_events
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err.count("Application logging degraded") == 1
+    assert "Evidence: " + str(receipt_path) in captured.err
 
 
 def test_report_presentation_rejects_malformed_verified_locations() -> None:
@@ -1645,8 +2224,16 @@ def _clean_checkout(tmp_path: Path) -> tuple[Path, str]:
     return checkout, commit
 
 
-def _real_doubled_executor(plan, *, stop_after_target: str | None = None):
-    default_ops = lifecycle.default_lifecycle_ops()
+def _real_doubled_executor(
+    plan,
+    observe_application_event=lambda _event: None,
+    *,
+    stop_after_target: str | None = None,
+):
+    default_ops = replace(
+        lifecycle.default_lifecycle_ops(),
+        observe_application_event=observe_application_event,
+    )
 
     def run_workflow(argv: tuple[str, ...], cwd: Path) -> lifecycle.WorkflowResult:
         invoked = (*argv[:-1], stop_after_target) if stop_after_target else argv
@@ -1707,8 +2294,10 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         inspect_readiness=lambda _request, _workspace, _runtime: readiness,
         normalize=lambda _request, _profile: normalized,
         inspect_run=lambda root: inspection.inspect_run(root),
-        execute_plan=lambda plan: _real_doubled_executor(
-            plan, stop_after_target="one_sample_slice"
+        execute_plan=lambda plan, observe: _real_doubled_executor(
+            plan,
+            observe,
+            stop_after_target="one_sample_slice",
         ),
         transform_plan=with_owner_doubles,
         now=lambda: datetime.now(UTC),
@@ -1719,13 +2308,14 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         request=request,
         workspace=workspace,
         runtime_profile=readiness.runtime_profile,
+        execution_profile=request.parent / "emrys.execution.yaml",
         allocated_cores=1,
         execute=True,
     )
     run_id = _run_candidate(readiness, normalized, resources).run_id
 
     assert control.run_from_args(run_arguments, ops=first_ops) == 1
-    failed_output = capsys.readouterr().out
+    failed_output = capsys.readouterr().err
     assert "Results:" not in failed_output.splitlines()
     run_root = workspace / "runs" / run_id
     failed = inspection.inspect_run(run_root)
@@ -1751,14 +2341,14 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         execute=False,
     )
     assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 0
-    dry_output = capsys.readouterr().out
-    assert "Reusable completed owner jobs:" in dry_output
+    dry_output = capsys.readouterr().err
+    assert "Reusable completed work items:" in dry_output
     assert "Results:" not in dry_output.splitlines()
     assert _verified_snapshot(run_root) == before
 
     resume_arguments.execute = True
     assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 0
-    resumed_output = capsys.readouterr().out
+    resumed_output = capsys.readouterr().err
     report_root = run_root / "products" / "report" / run_id
     expected_results = (
         "Results:\n"

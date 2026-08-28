@@ -3,10 +3,12 @@
 This is the binding cross-cutting application logging contract. The neutral
 foundation is implemented by the
 [application-logging owner](../../src/emrys/libraries/application_logging/README.md),
-but no production command or scheduler wrapper currently adopts it. That rollout
-remains `LOG-05` in the [findings matrix](../tasks/backlog_matrix.md). A command
-implements this contract only when its owner documentation and direct tests say
-so. Foundation code remains stage-independent and never imports a stage.
+and grouped local-pilot `run`/`resume` control is its first production adopter.
+An execute owns exactly one compute-side application attempt; scheduler
+submission transport and valid dry-run own none. Further rollout remains
+`LOG-05` in the [findings matrix](../tasks/backlog_matrix.md). A command implements
+this contract only when its owner documentation and direct tests say so.
+Foundation code remains stage-independent and never imports a stage.
 
 ## Adoption boundary
 
@@ -15,6 +17,8 @@ boundary, not independently at every leaf command, compatibility facade,
 transport, or scheduler wrapper. The accepted outer operation owns exactly one
 application attempt and resolves controls once. Retained delegates receive the
 resolved controls and event context explicitly and do not open a second attempt.
+For scheduled local-pilot execution, the compute-side `run`/`resume` delegate is
+that operation; submission is transport only.
 
 Each bounded adoption package satisfies the operation, ownership, placement,
 projection, stream, and parity admission conditions in its owner documentation
@@ -56,7 +60,8 @@ policy before their own bounded decisions.
   controls fail before log, output, lock, scratch, or compute side effects while
   preserving established parse exits. A legacy alias requires parity-tested
   migration.
-- Until a state root exists, the default is
+- Grouped `run`/`resume` defaults to `<workspace>/logs/application`. Until a
+  state root exists for another adopter, its default is
   `<repository-root>/logs/application`, derived from repository/package
   identity rather than caller CWD. An explicit root is absolute. Help and
   parser diagnostics remain side-effect-free command responses.
@@ -64,10 +69,11 @@ policy before their own bounded decisions.
   errors, commands, paths, and recovery guidance use stderr. Stable machine
   bytes, paths, ordering, hashes, transactions, and validator seven-column
   output remain exact; semantic failed rows and process exits stay distinct.
-- Valid dry-run creates no application log. At `normal` it prints the resolved
-  nonsecret command and essential plan to stderr. Higher levels add context
-  without changing probes, child flags, computation, artifacts, validation,
-  locking, publication, rollback, cleanup, or exits.
+- Valid dry-run creates no application log. At `normal` it prints the essential
+  plan to stderr; grouped `run`/`resume` adds allocation detail at `verbose` and
+  exact safe commands at `debug`. Levels do not change probes, child flags,
+  computation, artifacts, validation, locking, publication, rollback, cleanup,
+  or exits.
 
 | Level | Console projection | Durable log |
 | --- | --- | --- |
@@ -85,7 +91,8 @@ SHA-256, stream, and component; never replace bytes silently.
 
 - One adopted execute, substantive validation/check, mutating maintenance
   action, or validation-gate invocation owns one application attempt. Help,
-  parse/control failures, and valid dry-runs own none.
+  CLI parse failures, invalid log controls, invalid execution-profile/delegate
+  context, inadmissible workspace scope, and valid dry-runs own none.
 - The attempt begins after minimal log-control and scope validation but before
   semantic input validation, expensive work, output directories, locks, or
   publication, so execute preflight failures are logged without authorizing
@@ -93,7 +100,9 @@ SHA-256, stream, and component; never replace bytes silently.
 - The owner assigns `scope_kind` (`run`, `sample`, `cohort`, `reference`,
   `review`, `validation`, or `maintenance` initially), `scope_id`,
   `execution_attempt_id`, and `entrypoint`. Execution attempt is distinct from
-  logical run, orchestration/transaction attempt, run token, PID, and job ID.
+  logical run, orchestration/transaction attempt, run token, PID, and job ID. A
+  new grouped Run uses provisional `run:pending` scope until planning resolves
+  the immutable Run ID, which is then recorded as event context.
 - The path is
   `<log-root>/<scope_kind>-<scope_id>/<execution_attempt_id>/<entrypoint>.jsonl`.
   Managed directories/files use `0700`/`0600` subject to stricter umask. Pin the
@@ -129,13 +138,20 @@ scientific/data fields, hashes, states, order, and exits remain exact.
   classified diagnostics through a private channel and never append
   concurrently or create duplicate attempts. Child machine stdout remains
   unchanged for its consumer.
+- Grouped `run`/`resume` records `analysis_started` before workflow execution,
+  `publication_ready` at the final pre-receipt boundary, and
+  `receipt_committed` only after receipt-last publication succeeds.
 - Flush each line, synchronize at phase/failure/recovery boundaries and before
   an existing receipt-last marker, and emit `publication_ready` as the final
   pre-receipt event. The receipt remains authoritative completion. A
   post-receipt observation is best-effort and cannot change exit, rollback, or
   committed state. Nontransactional success synchronizes a terminal event.
-- Initialization, write, or sync failure before completion follows established
-  failure/rollback behavior and preserves locks, markers, backups, staging, and
+- Initialization failure is fail-fast before semantic planning. Once an attempt
+  log is open, a write, sync, post-receipt observation, or close failure retains
+  the partial log, emits one fixed degradation warning, and disables further log
+  writes. It never changes workflow execution, authoritative receipt bytes or
+  status, rollback, recovery, locks, or exit. The operation's own failure still
+  follows established behavior and preserves markers, backups, staging, and
   recovery evidence. Interrupted attempts preserve partial logs. Catchable
   signals get best-effort event, flush, and child cleanup with established
   exits; uncatchable loss may leave a partial record and never implies capture.
@@ -161,10 +177,11 @@ relationship, and evidence policy may satisfy an existing runtime/cluster role.
 
 ## Scheduler relationship
 
-SLURM `logs/%x-%j.out` and `logs/%x-%j.err` remain scheduler-owned compatibility
-and diagnostic streams, not application logs. They open before job execution
-and retain the submit-path contract. Adopted jobs receive resolved controls via
-exported environment, record job identity as correlation metadata, and report
-the application-log path once to scheduler stderr. Machine stdout reaches
-`.out`; human projection reaches `.err`. A transport wrapper does not create a
-second attempt when its delegated semantic operation already owns one.
+Grouped `run`/`resume` writes scheduler-owned compatibility and diagnostic
+streams beneath `<workspace>/logs` as `emrys-local-pilot-%j.out` and
+`emrys-local-pilot-%j.err`; they are not application logs. The submission
+transport owns no application attempt. Its compute-side delegate receives the
+resolved controls, opens the operation's single attempt, records job identity
+as correlation metadata, and sends human projection to scheduler stderr.
+Submission dry-run creates neither the scheduler log directory nor an
+application log.

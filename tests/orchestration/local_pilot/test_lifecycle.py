@@ -1540,6 +1540,32 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
     assert observed.reporting_status == "complete"
 
 
+def test_application_event_observer_exceptions_cannot_alter_receipt(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(tmp_path)
+    built.materialize_complete = True
+    observed_events = []
+
+    def reject_event(event_name: str) -> None:
+        observed_events.append(event_name)
+        raise RuntimeError("injected diagnostic observer failure")
+
+    outcome = lifecycle.run_attempt(
+        built.request,
+        ops=replace(built.ops(), observe_application_event=reject_event),
+    )
+
+    assert observed_events == ["analysis_started", "publication_ready"]
+    assert outcome.receipt["status"] == "succeeded"
+    assert outcome.receipt_path.is_file()
+    assert json.loads(outcome.receipt_path.read_bytes()) == outcome.receipt
+    assert built.events[-2:] == [
+        "release",
+        f"publish:{outcome.receipt_path.relative_to(built.built.run_root)}",
+    ]
+
+
 def test_workflow_argv_binds_reviewed_absolute_source_files(tmp_path: Path) -> None:
     built = _build_harness(tmp_path)
     argv = list(built.request.attempt_record["snakemake_argv"])

@@ -27,9 +27,9 @@ RESOURCE_FILES: Mapping[str, bytes] = {
     "contracts/schemas/artifacts/v4/report_receipt.schema.json": b'{"schema": 4}\n',
     "contracts/schemas/orchestration/v1/common.schema.json": b'{"schema": true}\n',
     "contracts/schemas/orchestration/v2/request.schema.json": b'{"schema": true}\n',
-    "contracts/schemas/orchestration/v3/launcher_config.schema.json": b'{"schema": 3}\n',
-    "orchestration/local_pilot/resources/default_launcher.yaml": (
-        b"schema_version: emrys.local-pilot-launcher.v1\n"
+    "contracts/schemas/orchestration/v3/execution_profile.schema.json": b'{"schema": 3}\n',
+    "orchestration/local_pilot/resources/default_execution.yaml": (
+        b"schema_version: emrys.execution-profile.v1\n"
     ),
     "reporting/styles/example.css": b"body { color: black; }\n",
     "reporting/templates/example.html.j2": b"<!doctype html>\n",
@@ -398,8 +398,8 @@ def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -
         Path("contracts/schemas/artifacts/v3/report_receipt.schema.json"),
         Path("contracts/schemas/artifacts/v4/report_receipt.schema.json"),
         Path("contracts/schemas/orchestration/v1/common.schema.json"),
-        Path("contracts/schemas/orchestration/v3/launcher_config.schema.json"),
-        Path("orchestration/local_pilot/resources/default_launcher.yaml"),
+        Path("contracts/schemas/orchestration/v3/execution_profile.schema.json"),
+        Path("orchestration/local_pilot/resources/default_execution.yaml"),
     ),
 )
 def test_package_identity_includes_declared_resource_bytes(

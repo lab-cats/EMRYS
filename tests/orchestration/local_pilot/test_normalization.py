@@ -18,7 +18,7 @@ CONFIG_ROOT = REPO_ROOT / "configs"
 LOCAL_PROFILE = REPO_ROOT / "workflow/contracts/local_cmh_v2.json"
 LOCAL_PILOT_STARTERS = (
     "local_pilot_request.example.yaml",
-    "local_pilot_resources.example.yaml",
+    "execution_profile.example.yaml",
     "local_pilot_samples.example.tsv",
     "local_pilot_partitions.example.tsv",
 )
@@ -55,7 +55,7 @@ def test_local_pilot_starters_normalize_after_explicit_paths_are_populated(
         LOCAL_PROFILE,
     )
 
-    assert (starter_root / "local_pilot_resources.example.yaml").is_file()
+    assert (starter_root / "execution_profile.example.yaml").is_file()
 
     assert normalized.request["sample_manifest"] == ("local_pilot_samples.example.tsv")
     assert normalized.request["partition_manifest"] == (
@@ -199,17 +199,17 @@ def test_regions_file_resolves_from_nested_partition_manifest(
     }
 
 
-def test_resource_config_does_not_change_analysis_revision(
+def test_execution_profile_does_not_change_analysis_revision(
     tmp_path: Path,
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
     baseline = normalize_request(request, fixture.profile())
-    resource_config = request.parent / "emrys.resources.yaml"
-    resource_config.write_text(
-        resource_config.read_text(encoding="utf-8")
-        .replace("workflow_cores: 1\n", "workflow_cores: 4\n")
-        .replace('  "00a": 1\n', '  "00a": 4\n')
-        .replace('  "01": 1\n', '  "01": 4\n'),
+    execution_profile = request.parent / "emrys.execution.yaml"
+    execution_profile.write_text(
+        execution_profile.read_text(encoding="utf-8")
+        .replace("  workflow_cores: 1\n", "  workflow_cores: 4\n")
+        .replace('    "00a": 1\n', '    "00a": 4\n')
+        .replace('    "01": 1\n', '    "01": 4\n'),
         encoding="utf-8",
     )
 

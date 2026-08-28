@@ -17,12 +17,12 @@ from emrys.orchestration.local_pilot import slurm_submission
 
 @dataclass(frozen=True, slots=True)
 class _Placement:
+    kind: str
     account: str | None
     partition: str | None
     qos: str | None
     cpus_per_task: int
-    memory_mb: int
-    request_memory: bool
+    memory_mb: int | None
     time: str
     exclusive: bool
     nodelist: str | None
@@ -33,8 +33,6 @@ class _Placement:
 
 @dataclass(frozen=True, slots=True)
 class _Profile:
-    source_path: Path
-    source_sha256: str
     sha256: str
     placement: _Placement
 
@@ -44,23 +42,19 @@ def _profile(
     *,
     module_init: Path | None = None,
     modules: tuple[str, ...] = (),
-    request_memory: bool = True,
+    memory_mb: int | None = 16384,
 ) -> _Profile:
-    source = tmp_path / "execution profile.yaml"
-    source.write_text("profile fixture\n", encoding="utf-8")
     scratch = tmp_path / "scratch parent"
     scratch.mkdir()
     return _Profile(
-        source_path=source,
-        source_sha256="b" * 64,
         sha256="a" * 64,
         placement=_Placement(
+            kind="slurm",
             account="research-account",
             partition="compute",
             qos="normal",
             cpus_per_task=8,
-            memory_mb=16384,
-            request_memory=request_memory,
+            memory_mb=memory_mb,
             time="02:30:00",
             exclusive=True,
             nodelist="node-[01-02]",
@@ -79,7 +73,7 @@ def _batch_environment(
     return {
         "SLURM_JOB_ID": job_id,
         slurm_submission.DELEGATE_MARKER_ENV: slurm_submission.DELEGATE_MARKER,
-        slurm_submission.PROFILE_SHA256_ENV: plan.execution_profile_sha256,
+        slurm_submission.PROFILE_SHA256_ENV: "a" * 64,
         slurm_submission.SUBMIT_UID_ENV: str(os.getuid()),
     }
 
@@ -145,7 +139,7 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(tmp_path: Path) -> None:
 
 
 def test_optional_scheduler_flags_and_invalid_module_pairing(tmp_path: Path) -> None:
-    profile = _profile(tmp_path, request_memory=False)
+    profile = _profile(tmp_path, memory_mb=None)
     profile = replace(
         profile,
         placement=replace(
@@ -183,6 +177,29 @@ def test_optional_scheduler_flags_and_invalid_module_pairing(tmp_path: Path) -> 
             invalid,  # type: ignore[arg-type]
             emrys_argv=("emrys", "run"),
             log_dir=tmp_path / "logs",
+        )
+
+    direct = replace(profile, placement=replace(profile.placement, kind="direct"))
+    with pytest.raises(
+        slurm_submission.SlurmSubmissionError,
+        match="requires Slurm placement",
+    ):
+        slurm_submission.plan_submission(
+            direct,  # type: ignore[arg-type]
+            emrys_argv=("emrys", "run"),
+            log_dir=tmp_path / "logs",
+        )
+
+
+def test_scheduler_log_parent_rejects_sbatch_percent_tokens(tmp_path: Path) -> None:
+    with pytest.raises(
+        slurm_submission.SlurmSubmissionError,
+        match="scheduler log directory must not contain",
+    ):
+        slurm_submission.plan_submission(
+            _profile(tmp_path),  # type: ignore[arg-type]
+            emrys_argv=("emrys", "run"),
+            log_dir=tmp_path / "workspace%j" / "logs",
         )
 
 
@@ -228,6 +245,9 @@ def test_submit_uses_one_process_call_and_parses_one_job_id(
         (0, "123\n456\n", "one parsable job ID"),
         (0, "123;cluster;extra\n", "invalid job ID"),
         (0, "not-a-job\n", "invalid job ID"),
+        (0, "0\n", "invalid job ID"),
+        (0, "00\n", "invalid job ID"),
+        (0, "１２３\n", "invalid job ID"),
     ),
 )
 def test_submit_rejects_failed_or_ambiguous_scheduler_results(

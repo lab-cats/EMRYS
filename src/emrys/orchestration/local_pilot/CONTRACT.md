@@ -6,10 +6,9 @@
 external create-absent starter tree only with `--execute`. The parent must
 already be a canonical real writable/searchable directory and the target must
 not overlap the selected checkout. The owner reserves the output directory,
-writes the matched request, launcher/resource policy, sample, partition,
-runtime, and single-allocation Slurm-wrapper members create-exclusively,
-publishes the manifest last, and then re-admits exact membership, regular-file
-types, modes, sizes, and bytes.
+writes the matched request, execution profile, sample, partition, and runtime
+members create-exclusively, publishes the manifest last, and then re-admits
+exact membership, regular-file types, modes, sizes, and bytes.
 It never overwrites, adopts, installs, restores, selects reference data, or
 guesses site-specific scheduler/tool values. Failure after reservation leaves
 the partial directory for inspection with no claim that its manifest is valid.
@@ -49,83 +48,40 @@ three Step 09 computational candidates, one significant candidate, and Step 10
 workflow completion are deterministic synthetic expectations, not production
 data, scientific review, or biological interpretation.
 
-The generated `run-in-slurm.sh` is a submit-or-batch template, not a scheduler
-inside EMRYS. With no `SLURM_JOB_ID`, it calls the generation-bound controlled
-Python to resolve packaged launcher defaults, adjacent or explicit launcher
-YAML, and explicit wrapper options in ascending precedence, then invokes
-`sbatch` for exactly one node/task/allocation. It does not run the doctor or
-workflow on the submit host.
+`emrys run` and `emrys resume` accept at most one explicitly selected closed
+`emrys.execution-profile.v1` YAML fragment. The built-in base supplies
+conservative resources and direct placement. An explicit fragment may replace
+the Run-bound computational declaration and select Attempt-local direct or
+Slurm placement; resource CLI flags have highest precedence. There is no
+adjacent discovery or environment interpolation. Retired adjacent
+`emrys.resources.yaml` or `emrys.launcher.yaml` files therefore fail closed
+when no execution profile is selected.
 
-Launcher YAML is a closed `emrys.local-pilot-launcher.v1` fragment. A field is
-either a literal or its field-specific `{env: EMRYS_NAME}` object; `$VAR`, shell
-commands, merge keys, custom tags, arbitrary environment names, and execution
-mode are not configuration. A structured reference uses an existing process
-environment value before the source-checkout root `.env`. The private file is
-optional, UTF-8 `NAME=VALUE` only, closed to launcher variables, duplicate-free,
-owned by the live user, mode `0600` or stricter, and a real nonsymlink file.
-Admission errors never include private values; missing-reference and `.env`
-diagnostics identify only the affected field or variable name.
+Slurm placement submits the whole Run as exactly one node/task/allocation and
+delegates back to the same grouped control path inside it. The public dry-run
+does not submit, create the workspace, or create logs. `--execute` creates the
+canonical `<workspace>/logs` directory, calls `sbatch` once with an exact
+argument vector and stdin batch program, and prints `JOB_ID`, `OUT`, and `ERR`.
+Ambient `SBATCH_*` and private transport variables are removed before
+submission. Omitted account, partition, QOS, memory, and node-list fields defer
+to site policy; explicit values are emitted once.
 
-`account: site-default` and `qos: site-default` emit neither optional Slurm
-flag; any other admitted account or QOS emits its flag exactly once.
-`memory: site-default` emits no `--mem`; a positive explicit Slurm size is
-emitted exactly once. `exclusive: true` emits one `--exclusive`; a nonempty
-validated node list emits one exact `--nodelist=VALUE`. Both are submission-only
-placement controls. Module mode is closed to `exact` or `none`: exact mode
-requires the initializer and module roster, while none mode requires both to
-be empty and never sources the module system.
+The private compute delegate requires the bound effective-profile digest,
+submit UID, internal marker, and a positive `SLURM_JOB_ID` before module,
+scratch, doctor, or workflow work. Module mode is closed to `none` or `exact`;
+exact mode loads only its admitted initializer and roster. The delegate creates
+one mode-`0700` directory below the admitted scratch parent, exports it as
+`TMPDIR`, and removes it on exit. Doctor and resource/allocation resolution run
+inside the allocation. The effective workflow totals must fit the observed
+CPU and memory capacity.
 
-The generated source checkout and Python identities cannot be replaced by
-launcher YAML, `.env`, or wrapper options. The submitted batch `PATH` is exactly
-the absolute parent directory of that lexical Python launcher followed by
-`/usr/bin:/bin`; no ambient submit-host path entry is exported. A virtualenv
-launcher symlink is preserved after its launcher and executable target are
-stably admitted, so invoking the generated wrapper does not discard virtualenv
-identity. Before invoking `sbatch`, the launcher removes ambient `SBATCH_*`
-policy variables and ambient `EMRYS_EXECUTE`; the closed command and export
-arguments remain the submission authority.
-Submission derives `EMRYS_SUBMIT_UID` and `EMRYS_SUBMIT_USER` only from
-`/usr/bin/id`, requires nonempty export-safe `USER` and `LOGNAME` to equal
-that live user, and exports all four values. Batch mode requires and validates
-the four values against a fresh `/usr/bin/id` observation before loading
-modules, creating scratch, running doctor, or writing workflow state.
-
-In the batch allocation the wrapper creates a private mode-`0700` directory
-below the resolved real writable scratch parent, exports it as
-`TMPDIR`, records the effective path and `df -PT` filesystem/capacity
-output, and removes that private directory on exit. It then runs request
-compatibility validation before delegating the entire single-host local pilot
-to the grouped Run control path. That path owns the readiness/Doctor gate; the
-wrapper does not invoke Doctor independently. Batch mode requires both Slurm
-allocation identity and the one exact
-internal script argument emitted by the submit helper; inherited
-`SLURM_JOB_ID` alone cannot enter it. Submission without a wrapper mode flag
-always plans. Only
-`run-in-slurm.sh --execute` derives the internal `EMRYS_EXECUTE=1` batch
-transport and adds the public EMRYS `--execute` gate; ambient or authored
-`EMRYS_EXECUTE` cannot activate it. The
-wrapper does not claim login-node computation, per-owner Slurm jobs, multi-node
-scheduling, scheduler success as workflow completion, or site portability
-before site validation. The outer CPU/memory request is allocation capacity,
-not a minimum. `emrys.resources.yaml` remains the separate authority for
-workflow cores, stage concurrency, per-step threads, and per-job memory, and
-its effective totals must fit the observed allocation. The current Attempt
-resource record carries the exact Slurm job ID as structured allocation
-provenance, or null for direct execution; historical three-field allocation
-records remain readable. The job ID is not Run identity, scientific completion,
-or evidence-promotion authority.
-
-Direct and Slurm placement have one planning/materialization contract when
-effective resource resolution is held constant. With an unchanged Run and
-Attempt context, direct capacity and a larger admitted Slurm allocation then
-produce byte-for-byte-equal canonical Analysis, Execution Plan, Run, fixed
-files, task dispatches, non-configuration Attempt files, and output
-directories. The workflow configuration differs only in structured allocation
-provenance, and the Attempt record only in that configuration's digest. This
-controlled proof does not establish allocation-sensitive effective-resource
-parity, distinct-Attempt outcome parity, real scheduler or site execution,
-runtime/module portability, failure/recovery parity, or report-publication
-parity.
+Placement source/digest, request, and scheduler job ID are Attempt provenance,
+not Run identity or completion authority. Direct and Slurm use one scientific
+backend and one materialization/lifecycle contract. Focused equivalence with
+fixed resources does not establish real scheduler/site execution,
+allocation-sensitive parity, runtime/module portability, failure/recovery
+parity, or report-publication parity. Per-owner Slurm scheduling, multi-node
+execution, and the 16 stage/utility `.slurm` files remain unchanged.
 
 ## Normalization and execution
 
@@ -171,11 +127,23 @@ routes are the supported control surface; their planning helpers are private
 implementation details. `run` and `resume` require the controlled
 Python invocation and mutate nothing without `--execute`. Planning reruns the
 doctor, normalizes the authored request again, derives the deterministic run
-identity, and prints the exact request-expanded owner-job plan plus three
-reporting transactions. The tracked four-sample, one-partition starter expands
-to 35 owner jobs; other admitted sample/partition counts expand according to
-the fixed profile. The control surface exposes no raw Snakemake flags, force,
-unlock, cleanup, retry, plugin, or alternate-profile escape hatch.
+identity, and prints a concise pending-work, resource, reporting, and placement
+plan. Verbose output adds resource detail and debug output adds exact commands.
+The tracked four-sample, one-partition starter expands to 35 owner jobs; other
+admitted sample/partition counts expand according to the fixed profile. The
+control surface exposes no raw Snakemake flags, force, unlock, cleanup, retry,
+plugin, or alternate-profile escape hatch.
+
+Each executing Run Attempt owns exactly one application log under the selected
+root, which defaults to `<workspace>/logs/application`; Slurm scheduler streams
+live under `<workspace>/logs`. After minimal workspace/control admission, the
+compute delegate opens that log before semantic planning; the submission
+process and valid dry-run own none. The log records publication readiness
+before the authoritative Attempt receipt and observes the receipt only after
+its durable commit. After initialization, log degradation cannot alter
+lifecycle, receipt, recovery, or exit; the log is never completion authority.
+Reporting runs automatically after scientific work and is separately
+receipt-bound; it is not a semantic scientific stage.
 Successful run and resume execution, and only a completed final inspection,
 print a short `Results:` block with the scientific report first and evidence
 report second. Those absolute locations are carried from the fully revalidated

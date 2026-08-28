@@ -27,10 +27,14 @@ from tests.orchestration.local_pilot.fixtures.b5_doubles import (  # noqa: E402
 
 def _execute(
     plan: AttemptPlan,
+    observe_application_event,
     *,
     stop_after_target: str | None,
 ) -> lifecycle.LifecycleOutcome:
-    base = lifecycle.default_lifecycle_ops()
+    base = replace(
+        lifecycle.default_lifecycle_ops(),
+        observe_application_event=observe_application_event,
+    )
 
     def run_workflow(
         argv: tuple[str, ...],
@@ -72,8 +76,9 @@ def _control_ops(mode: str) -> control.ControlOps:
     stop_after_target = "one_sample_slice" if mode == "failure" else None
     return replace(
         control.DEFAULT_CONTROL_OPS,
-        execute_plan=lambda plan: _execute(
+        execute_plan=lambda plan, observe: _execute(
             plan,
+            observe,
             stop_after_target=stop_after_target,
         ),
         transform_plan=with_owner_doubles,

@@ -27,12 +27,13 @@ and requires external isolation and explicit reconciliation, never automatic
 repair. NFS, network/distributed filesystems, and cluster filesystem semantics
 are unproved and unsupported until separate site validation.
 
-The first implementation is deliberately source-checkout-bound and uses one
-local Snakemake scientific backend. The generated single-node Slurm wrapper is
-an outer placement adapter around that same backend, not a second application
-executor. A distinct Slurm-aware application backend, a local Linux VM, CSU
-portability, and an installed standalone control plane are later decisions.
-Deferral is not rejection.
+The implementation is deliberately source-checkout-bound and uses one local
+Snakemake scientific backend. Direct and single-node Slurm placement are
+selected through one execution profile and the same `emrys run`/`resume`
+control path. Slurm submits the whole Run around that backend; it is not a
+second application executor. A distinct Slurm-aware backend, multi-node
+execution, a local Linux VM, CSU portability, and an installed standalone
+control plane remain later decisions.
 
 ## Design outcome
 
@@ -45,16 +46,17 @@ The local pilot has one explicit path:
 3. A canonical Run binding commits those authorities and determines the
    successor `run_id`; existing `emrys.execution.v1` Runs retain their exact
    historical identity and bytes.
-4. The public dry-run prints the complete fixed command plan without creating
-   the workspace; `--execute` acquires the aggregate lock and publishes the
-   immutable attempt/config/dispatch set.
+4. The public dry-run prints the Run, pending-work, resource, reporting, and
+   placement plan without writing or submitting. `--execute` either enters the
+   direct lifecycle or submits that lifecycle into one Slurm allocation.
 5. One fixed CMH workflow profile projects the semantic DAG into Snakemake.
 6. Each workflow task invokes one owner's public producer, that owner's public
    validator, and a generic semantic all-pass check.
 7. A content-bound verified task record is published only after all three
    succeed.
-8. Required verified tasks feed the existing artifact-index, run-summary, and
-   Jinja HTML-report owners.
+8. Required verified tasks automatically feed the existing artifact-index,
+   run-summary, and Jinja HTML-report owners. Reporting is not a scientific
+   stage.
 9. A workflow-attempt receipt is published last. Inspection derives state from
    EMRYS contracts and records, never from Snakemake metadata alone.
 
@@ -68,9 +70,9 @@ automatic recovery subsystem in version 1.
 | Scientific owner identity and direct artifact edges | [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md) | Snakemake rule names, filenames, numeric aliases, and narrative order |
 | Producer, validator, output, transaction, and recovery behavior | Applicable owner `README.md` and `CONTRACT.md` | Workflow rules and lifecycle records |
 | Operator intent | Admitted YAML request plus referenced ordered TSV manifests | Caller working directory, environment discovery, filename inference, and globs |
-| Immutable local-run identity | Successor Analysis-revision and Execution-Plan digests committed by the canonical Run binding; exact `emrys.execution.v1` bytes for historical Runs | Request formatting, human label, Attempt realization, workspace, executor, host, reporting, or Snakemake state |
+| Immutable local-run identity | Successor Analysis-revision and Execution-Plan digests, including the computational resource declaration, committed by the canonical Run binding; exact `emrys.execution.v1` bytes for historical Runs | Request formatting, human label, Attempt placement/realization, workspace, host, reporting, scheduler identity, or Snakemake state |
 | Fixed pilot membership and scope expansion | Versioned local CMH workflow profile | A generic registry or automatic owner discovery |
-| Scheduling | Snakemake's local executor and static rule graph | Scientific completion, recovery authority, or evidence promotion |
+| Scheduling | Attempt-local direct or whole-Run Slurm placement around Snakemake's local executor and static rule graph | A second scientific backend, distributed execution, scientific completion, recovery authority, or evidence promotion |
 | Reusable task completion | EMRYS verified task record after owner validation and semantic all-pass gating | Process exit alone, output presence, timestamps, or `.snakemake/` metadata |
 | Reporting identity | Explicit projection from the execution contract into the existing artifact run contract | The reporting run contract as a complete execution identity |
 | Run state | Immutable workflow-attempt records, verified task records, owner receipts/reports, and observed recovery state | A mutable status cache, log, rendered report, or scheduler state |
@@ -151,12 +153,18 @@ analysis:
   background_max_fraction: 0.01
 ```
 
-Execution resources use the separate
-`emrys.local-pilot-resources.v1` configuration. EMRYS layers packaged defaults,
-optional adjacent `emrys.resources.yaml`, and explicit CLI overrides. The
-resource document contains workflow-wide cores and memory, per-stage
-concurrency, per-stage threads, and per-job computational/reporting memory.
-Resource changes do not change the normalized scientific run identity.
+Execution uses one optional explicit `emrys.execution-profile.v1` fragment.
+The built-in base supplies conservative resources and direct placement. The
+profile combines workflow-wide cores/memory, per-stage concurrency, threads,
+and computational/reporting memory with an Attempt-local direct or Slurm
+placement request. CLI resource overrides have highest precedence. EMRYS does
+not discover adjacent configuration; retired adjacent resource/launcher files
+fail closed when no explicit profile is selected.
+
+The effective computational declaration enters the successor Execution Plan
+and therefore Run identity. Profile source, reporting memory, placement,
+observed allocation, and scheduler job ID remain Attempt context. Changing
+placement alone does not create a different Run.
 
 Every field except `label` and `background_condition` is required. Unknown
 fields fail admission. The implementation may expose a schema-preserving
@@ -218,11 +226,12 @@ Historical `normalized.json` contains deterministic normalized run content and
 its explicit identity envelope and remains byte-for-byte readable and
 resumable. Non-identity admission metadata—the original
 request hash and bytes, human label, authored path strings, resolved
-attempt-level resource policy and its source provenance, observed outer
-allocation, and normalization tool identity—belongs to the immutable
-workflow-attempt/config records. Reformatting an otherwise equivalent request,
-changing its label, or tuning resources therefore does not create a new
-scientific run or demand different bytes at the same canonical contract path.
+reporting-resource policy and execution-profile source provenance, placement,
+observed outer allocation, and normalization tool identity—belongs to the
+immutable workflow-attempt/config records. Reformatting an otherwise
+equivalent request, changing its label, or changing placement therefore does
+not create a new scientific Run or demand different bytes at the same
+canonical contract path.
 
 Canonical authorities use UTF-8 JSON, sorted object keys, no insignificant
 whitespace, no NaN/infinity, and SHA-256. Successor identity uses the
@@ -230,12 +239,13 @@ domain-separated Run composition over canonical Analysis-revision and
 Execution-Plan digests; historical identity retains its existing envelope.
 The human label never selects or overwrites a Run.
 
-Workspace, output root, source-checkout path and commit, executor, host,
-resources, scratch, exact required-tool identities, timestamps, PIDs, and
-scheduler identifiers are Attempt context. The successor Attempt executor is
-read from the immutable Execution Plan. The observed outer allocation records
-an exact Slurm job ID or null for direct execution; historical allocation
-records without that field remain readable. File-backed tool identities
+Workspace, output root, source-checkout path and commit, placement, host,
+resource resolution, reporting resources, scratch, exact required-tool
+identities, timestamps, PIDs, and scheduler identifiers are Attempt context.
+The successor Attempt executor and computational resource declaration are read
+from the immutable Execution Plan. Attempt placement records the exact profile
+source/digest, request, and optional Slurm job ID; historical allocation records
+without placement fields remain readable. File-backed tool identities
 bind the authored path, canonical target, observed version, and SHA-256;
 admitted runtime directories bind their authored and canonical paths. Each
 fixed `r_*` identity binds the observed namespace version, exact canonical
@@ -268,10 +278,10 @@ already bound in its verified record; only pending tasks receive new-attempt
 dispatches. Changing producer, validator, input, output, or other dispatch
 semantics invalidates reuse instead of asking Snakemake to infer compatibility.
 
-The same identity envelope maps idempotently to the same run. Non-identity
+The same identity envelope maps idempotently to the same Run. Non-identity
 admission metadata may differ without changing that mapping. A changed bound
-input, manifest order, reference, scientific policy, or profile digest creates
-a different run.
+input, manifest order, reference, scientific policy, workflow-profile digest,
+or computational resource declaration creates a different Run.
 
 ## Reporting projection
 
@@ -343,6 +353,9 @@ identity.
 One operator-selected workspace contains immutable run directories:
 
 ```text
+<workspace>/logs/
+  emrys-local-pilot-<slurm-job-id>.out/.err
+  application/                    default structured-log root
 <workspace>/runs/<run-id>/
   contract/
     samples.tsv
@@ -389,10 +402,11 @@ records are create-exclusive and immutable. A convenience status projection
 may be regenerated, but is never authority. `.snakemake/` is disposable engine
 metadata and is never a reporting input or EMRYS completion record.
 
-Task stdout/stderr files are opaque command-stream captures for diagnosis. They
-are not the future structured application logs defined by
-`LOGGING_CONTRACT.md`. After durable task-start publication, the task boundary
-opens separate create-exclusive, no-follow descriptors and drains each child
+Task stdout/stderr files are opaque command-stream captures for diagnosis; they
+are distinct from the Run Attempt application log defined by
+[`LOGGING_CONTRACT.md`](LOGGING_CONTRACT.md). After durable task-start
+publication, the task boundary opens separate create-exclusive, no-follow
+descriptors and drains each child
 stream through EOF in bounded chunks. Bytes and order are exact within each
 stream; no stdout/stderr interleaving order is claimed. Before task-attempt
 publication, both files are fsynced and closed, and bounded pathname hashing
@@ -405,11 +419,18 @@ diagnostic evidence, not completion proof.
 
 ## Planning and mutation boundary
 
-The implemented `run` and `resume` interfaces are read-only by default. Their plan
-resolves and validates inputs, computes identity, reports the exact source and
-tool context, shows the fixed DAG/resources/commands, and lists blockers without
-creating the workspace, contract, attempt, logs, locks, or owner outputs.
-Execution requires one explicit `--execute` control.
+The implemented `run` and `resume` interfaces are read-only by default. Their
+plan admits the execution profile and reports placement without submitting or
+creating workspace, contract, Attempt, logs, locks, or owner outputs. Direct
+planning then resolves readiness and identity and shows concise pending-work,
+resource, and reporting summaries; verbose/debug levels expose progressively
+more operational detail. Execution requires one explicit `--execute` control.
+
+For Slurm placement, `--execute` creates only `<workspace>/logs` on the submit
+host, submits once, and prints `JOB_ID`, `OUT`, and `ERR`. The compute delegate
+re-admits its profile digest, UID, marker, and scheduler job ID before doctor,
+Run planning, or lifecycle mutation. It owns the single application log for
+the executing Attempt.
 
 The B5 adapter owns that exact planning and materialization boundary; direct
 manual Snakemake invocation is unsupported. A doctor is a distinct read-only
@@ -619,8 +640,10 @@ scopes, plus the exact evidence ceiling. It never accepts a caller-supplied
 residue list, infers EMRYS state from `.snakemake/`, or repairs what it
 observes.
 
-Each reporting transaction follows the same irreversible entry policy. Its
-normal read-only dry-run occurs before `start.json`; the start is then published
+Reporting is invoked automatically by a full Run but remains a separate
+non-scientific domain. Each reporting transaction follows the same irreversible
+entry policy. Its normal read-only dry-run occurs before `start.json`; the
+start is then published
 before the execute command. `verified.json` is published only after the command
 returns, the native receipt and full transaction are semantically re-admitted,
 and the reporting owner's declared control namespace is clean. A reporting
@@ -638,14 +661,16 @@ readiness.
 
 B0 makes no decision or implementation commitment for:
 
-- SLURM, a local Linux VM, CSU profiles, scheduler accounting, or cluster runs;
+- a distinct Slurm scientific backend, multi-node execution, local Linux VM,
+  CSU portability proof, scheduler accounting integration, or cluster runs;
 - dependency installation or repair;
 - synthetic-data generation or real science-tool execution;
 - a generic assay, stage, plugin, or analysis registry;
 - optional-stage and archival-success policy;
 - in-code scientific approval or biological-readiness policy;
 - public acquisition or a general provenance subsystem;
-- production-command logging adoption or generic gate receipts;
+- logging adoption beyond the `run`/`resume` Attempt boundary or generic gate
+  receipts;
 - automatic stale-lock cleanup or owner recovery;
 - artifact-schema migration or installed workflow assets;
 - a wheel-only control plane; or

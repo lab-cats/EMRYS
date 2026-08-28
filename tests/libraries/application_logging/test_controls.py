@@ -73,6 +73,11 @@ def test_resolution_precedence_default_and_scheduler_transport(
     unrelated.mkdir()
     monkeypatch.chdir(unrelated)
     default = resolve_log_controls(source_checkout=checkout, environment={})
+    scoped_default = resolve_log_controls(
+        source_checkout=checkout,
+        environment={},
+        default_root=tmp_path / "workspace" / "logs" / "application",
+    )
 
     assert cli == LogControls(
         LogLevel.DEBUG, tmp_path / "cli", "command_line", "command_line"
@@ -82,6 +87,8 @@ def test_resolution_precedence_default_and_scheduler_transport(
     )
     assert default.root == checkout.root / "logs" / "application"
     assert default.level is LogLevel.NORMAL
+    assert scoped_default.root == tmp_path / "workspace" / "logs" / "application"
+    assert scoped_default.root_source == "default"
     assert cli.scheduler_environment() == {
         EMRYS_LOG_LEVEL: "debug",
         EMRYS_LOG_ROOT: str(tmp_path / "cli"),

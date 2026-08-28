@@ -9,13 +9,10 @@ import re
 import stat
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from functools import cache
 from pathlib import Path
 from typing import Any, Literal
 
 import yaml
-from jsonschema import Draft202012Validator
-from jsonschema.exceptions import SchemaError
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.orchestration.local_pilot.resource_policy import (
@@ -27,13 +24,9 @@ from emrys.orchestration.local_pilot.resource_policy import (
 )
 
 SCHEMA_VERSION = "emrys.execution-profile.v1"
-SCHEMA_ID = "urn:emrys:schema:orchestration:execution-profile:v1"
 DEFAULT_PROFILE_PATH = Path(__file__).parent / "resources/default_execution.yaml"
-PROFILE_SCHEMA_PATH = (
-    Path(__file__).resolve().parents[2]
-    / "contracts/schemas/orchestration/v3/execution_profile.schema.json"
-)
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_POSITIVE_DECIMAL = re.compile(r"^[1-9][0-9]*$")
 
 
 class ExecutionProfileError(ValueError):
@@ -96,12 +89,6 @@ class SlurmPlacement:
     modules: tuple[str, ...]
     kind: Literal["slurm"] = field(default="slurm", init=False)
 
-    @property
-    def request_memory(self) -> bool:
-        """Return whether submission should request an explicit memory limit."""
-
-        return self.memory_mb is not None
-
     def document(self) -> dict[str, Any]:
         """Return the closed Attempt-local placement document."""
 
@@ -134,15 +121,7 @@ class ExecutionProfile:
     resource_policy: ResourcePolicy
     placement: Placement
     source_path: Path
-    default_sha256: str
-    config_path: Path | None
-    config_sha256: str | None
-
-    @property
-    def resources(self) -> ResourcePolicy:
-        """Return the retained Run-bound resource-policy projection."""
-
-        return self.resource_policy
+    source_raw_sha256: str
 
     def document(self) -> dict[str, Any]:
         """Return the complete effective profile without source locators."""
@@ -158,6 +137,31 @@ class ExecutionProfile:
         """Digest the canonical effective profile."""
 
         return orchestration_contracts.canonical_sha256(self.document())
+
+    def attempt_placement(self, slurm_job_id: str | None = None) -> dict[str, Any]:
+        """Project closed Attempt-local placement provenance."""
+
+        if isinstance(self.placement, DirectPlacement) and slurm_job_id is not None:
+            raise ExecutionProfileError("Direct placement cannot record a Slurm job ID")
+        if isinstance(self.placement, SlurmPlacement) and slurm_job_id is None:
+            raise ExecutionProfileError("Slurm placement requires one job ID")
+        if slurm_job_id is not None and (
+            not isinstance(slurm_job_id, str)
+            or _POSITIVE_DECIMAL.fullmatch(slurm_job_id) is None
+        ):
+            raise ExecutionProfileError(
+                "Slurm job ID must be one canonical positive decimal string or null"
+            )
+        return {
+            "kind": self.placement.kind,
+            "source": {
+                "path": str(self.source_path),
+                "sha256": self.source_raw_sha256,
+            },
+            "effective_sha256": self.sha256,
+            "request": self.placement.document(),
+            "scheduler_job_id": slurm_job_id,
+        }
 
 
 def _stable_file_state(value: os.stat_result) -> tuple[int, ...]:
@@ -205,8 +209,6 @@ def _read_admitted_regular_file(path: Path, label: str) -> tuple[Path, bytes]:
             chunks.append(block)
         after = os.fstat(descriptor)
         bound_after = os.stat(authored, follow_symlinks=False)
-    except ExecutionProfileError:
-        raise
     except OSError as exc:
         raise ExecutionProfileError(f"Could not read {label}: {authored}") from exc
     finally:
@@ -225,47 +227,17 @@ def _read_admitted_regular_file(path: Path, label: str) -> tuple[Path, bytes]:
     return resolved, data
 
 
-@cache
-def _profile_validator() -> Draft202012Validator:
-    _path, data = _read_admitted_regular_file(
-        PROFILE_SCHEMA_PATH,
-        "execution-profile schema",
-    )
-    try:
-        schema = orchestration_contracts.load_json_object_bytes(
-            data,
-            "execution-profile schema",
-        )
-        Draft202012Validator.check_schema(schema)
-        _schemas, registry = orchestration_contracts.load_schema_registry()
-    except (orchestration_contracts.ContractValidationError, SchemaError) as exc:
-        raise ExecutionProfileError(
-            "Execution-profile schema is not an admissible local contract"
-        ) from exc
-    if schema.get("$id") != SCHEMA_ID:
-        raise ExecutionProfileError(f"Execution-profile schema $id must be {SCHEMA_ID}")
-    return Draft202012Validator(schema, registry=registry)
-
-
 def _validate_profile(document: Mapping[str, Any]) -> None:
-    errors = sorted(
-        _profile_validator().iter_errors(dict(document)),
-        key=lambda error: tuple(str(part) for part in error.absolute_path),
-    )
-    if not errors:
-        return
-    error = errors[0]
-    location = ".".join(str(part) for part in error.absolute_path)
-    prefix = "execution profile" if not location else f"execution profile {location}"
-    raise ExecutionProfileError(f"{prefix}: {error.message}")
+    try:
+        orchestration_contracts.validate_record("execution-profile", dict(document))
+    except orchestration_contracts.ContractValidationError as exc:
+        raise ExecutionProfileError(f"Invalid execution profile: {exc}") from exc
 
 
 def _read_profile(path: Path, label: str) -> tuple[Path, bytes, dict[str, Any]]:
     resolved, data = _read_admitted_regular_file(path, label)
     try:
         value = yaml.load(data, Loader=_ClosedSafeLoader)
-    except ExecutionProfileError:
-        raise
     except (UnicodeDecodeError, yaml.YAMLError) as exc:
         raise ExecutionProfileError(f"Could not parse {label}: {resolved}") from exc
     if not isinstance(value, dict):
@@ -293,70 +265,38 @@ def _merge_resource_fragment(
 def _merge_profile(target: dict[str, Any], fragment: Mapping[str, Any]) -> None:
     resources = fragment.get("resources")
     if isinstance(resources, Mapping):
-        target_resources = target.get("resources")
-        if not isinstance(target_resources, dict):
-            raise ExecutionProfileError("Built-in execution resources are malformed")
-        _merge_resource_fragment(target_resources, resources)
+        _merge_resource_fragment(target["resources"], resources)
     if "placement" in fragment:
         target["placement"] = copy.deepcopy(fragment["placement"])
 
 
-def _absolute_nonroot_path(value: Any, label: str) -> Path:
-    if not isinstance(value, str):
-        raise ExecutionProfileError(f"{label} must be an absolute path")
-    path = Path(value)
-    if not path.is_absolute() or path == Path("/"):
-        raise ExecutionProfileError(f"{label} must be an absolute non-root path")
-    return Path(os.path.abspath(path))
+def _absolute_nonroot_path(value: str) -> Path:
+    return Path(os.path.abspath(value))
 
 
 def _admit_placement(document: Any) -> Placement:
-    if not isinstance(document, Mapping):
-        raise ExecutionProfileError("Resolved placement must be one mapping")
     if document.get("kind") == "direct":
         return DirectPlacement()
 
-    modules = document.get("modules")
-    if not isinstance(modules, Mapping):
-        raise ExecutionProfileError("Resolved Slurm modules must be one mapping")
-    mode = modules.get("mode")
-    if mode not in {"none", "exact"}:
-        raise ExecutionProfileError("Resolved Slurm module mode is invalid")
-    module_init_value = modules.get("init")
-    if not isinstance(module_init_value, str):
-        raise ExecutionProfileError("Resolved Slurm module init is invalid")
-    load = modules.get("load")
-    if not isinstance(load, list) or not all(isinstance(item, str) for item in load):
-        raise ExecutionProfileError("Resolved Slurm module roster is invalid")
+    modules = document["modules"]
+    module_init_value = modules["init"]
     return SlurmPlacement(
-        account=(None if document.get("account") is None else str(document["account"])),
-        partition=(
-            None if document.get("partition") is None else str(document["partition"])
-        ),
-        qos=None if document.get("qos") is None else str(document["qos"]),
-        cpus_per_task=int(document["cpus_per_task"]),
-        memory_mb=(
-            None if document.get("memory_mb") is None else int(document["memory_mb"])
-        ),
-        time=str(document["time"]),
-        exclusive=bool(document["exclusive"]),
-        nodelist=(
-            None if document.get("nodelist") is None else str(document["nodelist"])
-        ),
-        scratch_parent=_absolute_nonroot_path(
-            document["scratch_parent"],
-            "placement.scratch_parent",
-        ),
-        module_mode=mode,
+        account=document["account"],
+        partition=document["partition"],
+        qos=document["qos"],
+        cpus_per_task=document["cpus_per_task"],
+        memory_mb=document["memory_mb"],
+        time=document["time"],
+        exclusive=document["exclusive"],
+        nodelist=document["nodelist"],
+        scratch_parent=_absolute_nonroot_path(document["scratch_parent"]),
+        module_mode=modules["mode"],
         module_init=(
             None
             if not module_init_value
-            else _absolute_nonroot_path(
-                module_init_value,
-                "placement.modules.init",
-            )
+            else _absolute_nonroot_path(module_init_value)
         ),
-        modules=tuple(load),
+        modules=tuple(modules["load"]),
     )
 
 
@@ -368,13 +308,29 @@ def load_execution_profile(
 ) -> ExecutionProfile:
     """Load the direct default, an explicit fragment, and resource overrides.
 
-    ``request_path`` is accepted at the grouped-Run boundary but is deliberately
-    not used for adjacent profile discovery.
+    Retired adjacent configuration fails closed unless one profile is selected
+    explicitly, preventing an old starter from silently using new defaults.
     """
 
-    del request_path
     if expected_sha256 is not None and _SHA256.fullmatch(expected_sha256) is None:
         raise ExecutionProfileError("expected_sha256 must be 64 lowercase hex")
+    if config_path is None:
+        request_parent = Path(os.path.abspath(request_path)).parent
+        retired = tuple(
+            name
+            for name in (
+                "emrys.resources.yaml",
+                "emrys.launcher.yaml",
+                "norad.resources.yaml",
+                "norad.launcher.yaml",
+            )
+            if os.path.lexists(request_parent / name)
+        )
+        if retired:
+            raise ExecutionProfileError(
+                "Retired adjacent configuration requires migration to one explicit "
+                "execution profile: " + ", ".join(retired)
+            )
 
     default_path, default_data, default = _read_profile(
         DEFAULT_PROFILE_PATH,
@@ -394,27 +350,19 @@ def load_execution_profile(
         _merge_profile(document, selected_fragment)
 
     _validate_profile(document)
-    if set(document) != {"schema_version", "resources", "placement"}:
-        raise ExecutionProfileError("Resolved execution profile is incomplete")
-
     default_sha256 = hashlib.sha256(default_data).hexdigest()
     config_sha256 = (
         None if selected_data is None else hashlib.sha256(selected_data).hexdigest()
     )
-    resources = document.get("resources")
-    if not isinstance(resources, Mapping):
-        raise ExecutionProfileError("Resolved execution resources are malformed")
+    resources = document["resources"]
     selected_resources = (
         None if selected_fragment is None else selected_fragment.get("resources")
     )
-    resource_config_path = (
-        selected_path if isinstance(selected_resources, Mapping) else None
-    )
-    resource_config_sha256 = (
-        orchestration_contracts.canonical_sha256(dict(selected_resources))
-        if isinstance(selected_resources, Mapping)
-        else None
-    )
+    resource_fragment_explicit = isinstance(selected_resources, Mapping) and set(
+        selected_resources
+    ) != {"schema_version"}
+    resource_config_path = selected_path if resource_fragment_explicit else None
+    resource_config_sha256 = config_sha256 if resource_fragment_explicit else None
     try:
         policy = admit_resource_policy(
             resources,
@@ -432,9 +380,7 @@ def load_execution_profile(
         resource_policy=policy,
         placement=_admit_placement(document["placement"]),
         source_path=default_path if selected_path is None else selected_path,
-        default_sha256=default_sha256,
-        config_path=selected_path,
-        config_sha256=config_sha256,
+        source_raw_sha256=(default_sha256 if config_sha256 is None else config_sha256),
     )
     if expected_sha256 is not None and profile.sha256 != expected_sha256:
         raise ExecutionProfileError("Execution-profile SHA-256 differs")
@@ -447,7 +393,6 @@ __all__ = (
     "ExecutionProfile",
     "ExecutionProfileError",
     "Placement",
-    "PROFILE_SCHEMA_PATH",
     "SCHEMA_VERSION",
     "SlurmPlacement",
     "load_execution_profile",

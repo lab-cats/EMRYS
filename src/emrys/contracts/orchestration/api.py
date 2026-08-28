@@ -21,7 +21,7 @@ SCHEMA_ROOT = Path(__file__).resolve().parents[1] / "schemas" / "orchestration" 
 SCHEMA_NAMES = (
     "request",
     "resource-config",
-    "launcher-config",
+    "execution-profile",
     "profile",
     "execution",
     "application-model",
@@ -48,18 +48,17 @@ SCHEMA_PATHS["request"] = SCHEMA_ROOT.parent / "v3" / "request.schema.json"
 SCHEMA_PATHS["resource-config"] = (
     SCHEMA_ROOT.parent / "v3" / "resource_config.schema.json"
 )
-SCHEMA_PATHS["launcher-config"] = (
-    SCHEMA_ROOT.parent / "v3" / "launcher_config.schema.json"
+SCHEMA_PATHS["execution-profile"] = (
+    SCHEMA_ROOT.parent / "v3" / "execution_profile.schema.json"
 )
 SCHEMA_IDS = {
-    name: f"urn:emrys:schema:orchestration:{name}:v1"
-    for name in SCHEMA_PATHS
+    name: f"urn:emrys:schema:orchestration:{name}:v1" for name in SCHEMA_PATHS
 }
 SCHEMA_IDS.update(
     {
         "request": "urn:emrys:schema:orchestration:request:v3",
         "resource-config": "urn:emrys:schema:orchestration:resource-config:v1",
-        "launcher-config": "urn:emrys:schema:orchestration:launcher-config:v1",
+        "execution-profile": "urn:emrys:schema:orchestration:execution-profile:v1",
         "profile": "urn:emrys:schema:orchestration:profile:v2",
     }
 )

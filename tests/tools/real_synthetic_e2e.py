@@ -44,13 +44,17 @@ TERMINAL_SLURM_STATES = frozenset(
     }
 )
 _RUN_ROOT_RE = re.compile(r"^Run root: (/.+/runs/run-[a-f0-9]{64})$", re.MULTILINE)
-_OWNER_JOBS_RE = re.compile(r"^Owner jobs: ([0-9]+)$", re.MULTILINE)
-_REPORTING_RE = re.compile(r"^Reporting transactions: ([0-9]+)$", re.MULTILINE)
+_PENDING_WORK_RE = re.compile(r"^Pending work items: ([0-9]+)$", re.MULTILINE)
 _JOB_ID_RE = re.compile(r"^JOB_ID=([0-9]+)$", re.MULTILINE)
 _OUT_RE = re.compile(r"^OUT=(/.+)$", re.MULTILINE)
 _ERR_RE = re.compile(r"^ERR=(/.+)$", re.MULTILINE)
+_SCHEDULER_PROFILE_RE = re.compile(r"^Execution profile: (/.+)$", re.MULTILINE)
+_SCHEDULER_OUT_RE = re.compile(r"^Scheduler stdout: (/.+)$", re.MULTILINE)
+_SCHEDULER_ERR_RE = re.compile(r"^Scheduler stderr: (/.+)$", re.MULTILINE)
+_EVIDENCE_RE = re.compile(r"^Evidence: (/.+/attempt-receipt[.]json)$", re.MULTILINE)
 _STATE_RE = re.compile(r"(?:^| )JobState=([A-Z_]+)")
 _EXIT_RE = re.compile(r"(?:^| )ExitCode=([0-9]+:[0-9]+)")
+_SLURM_MEMORY_RE = re.compile(r"^([1-9][0-9]*)([MG])$")
 
 
 class DriverError(RuntimeError):
@@ -67,10 +71,9 @@ class DriverPaths:
 
     operator_root: Path
     inputs: Path
-    launcher: Path
     workspace: Path
-    logs: Path
     scratch: Path
+    execution_profile: Path
     runtime_profile: Path
     runtime_adapters: Path
     transcripts: Path
@@ -97,7 +100,7 @@ class RuntimePaths:
 
 @dataclass(frozen=True, slots=True)
 class SubmittedJob:
-    """One generated-wrapper Slurm submission and its retained streams."""
+    """One grouped Run submission and its retained streams."""
 
     job_id: str
     stdout_path: Path
@@ -137,6 +140,16 @@ def _positive_float(value: str) -> float:
     return selected
 
 
+def _memory_mb(value: str) -> int:
+    """Parse one positive Slurm M/G size into profile-native MiB."""
+
+    matched = _SLURM_MEMORY_RE.fullmatch(value)
+    if matched is None:
+        raise argparse.ArgumentTypeError("must be a positive size such as 6144M or 6G")
+    amount = int(matched.group(1))
+    return amount if matched.group(2) == "M" else amount * 1024
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the closed, explicit CI-driver argument surface."""
 
@@ -154,10 +167,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--renv-library", required=True, type=Path)
     parser.add_argument("--storage-compute-launcher-json", required=True)
     parser.add_argument("--slurm-partition", required=True)
-    parser.add_argument("--slurm-account", default="site-default")
-    parser.add_argument("--slurm-qos", default="site-default")
+    parser.add_argument("--slurm-account")
+    parser.add_argument("--slurm-qos")
     parser.add_argument("--slurm-cpus", type=_positive_int, default=4)
-    parser.add_argument("--slurm-memory", default="8G")
+    parser.add_argument("--slurm-memory", type=_memory_mb, default="8G")
     parser.add_argument("--slurm-time", default="06:00:00")
     parser.add_argument("--slurm-nodelist")
     parser.add_argument("--scontrol", type=Path)
@@ -282,10 +295,9 @@ def require_operator_root(operator_root: Path, repo_root: Path) -> DriverPaths:
     return DriverPaths(
         operator_root=root,
         inputs=root / "synthetic-inputs",
-        launcher=root / "slurm-launcher",
         workspace=root / "workspace",
-        logs=root / "slurm-logs",
         scratch=root / "scratch",
+        execution_profile=root / "emrys.execution.slurm.json",
         runtime_profile=root / "runtime.selected.tsv",
         runtime_adapters=root / "runtime-adapters",
         transcripts=root / "driver-transcripts",
@@ -443,6 +455,62 @@ def parse_launcher_prefix(value: str) -> tuple[str, ...]:
     return (str(executable), *parsed[1:])
 
 
+def slurm_execution_profile_bytes(
+    request_path: Path,
+    source_profile_path: Path,
+    *,
+    account: str | None,
+    partition: str,
+    qos: str | None,
+    cpus_per_task: int,
+    memory_mb: int,
+    time_limit: str,
+    nodelist: str | None,
+    scratch_parent: Path,
+) -> bytes:
+    """Project admitted fixture resources into one explicit Slurm profile."""
+
+    from emrys.contracts.orchestration import api as orchestration_contracts
+    from emrys.orchestration.local_pilot.execution_profile import (
+        SCHEMA_VERSION,
+        ExecutionProfileError,
+        load_execution_profile,
+    )
+
+    try:
+        source = load_execution_profile(
+            request_path,
+            config_path=source_profile_path,
+        )
+        document = {
+            "schema_version": SCHEMA_VERSION,
+            "resources": source.resources.document(),
+            "placement": {
+                "kind": "slurm",
+                "account": account,
+                "partition": partition,
+                "qos": qos,
+                "cpus_per_task": cpus_per_task,
+                "memory_mb": memory_mb,
+                "time": time_limit,
+                "exclusive": False,
+                "nodelist": nodelist,
+                "scratch_parent": str(scratch_parent),
+                "modules": {"mode": "none", "init": "", "load": []},
+            },
+        }
+        orchestration_contracts.validate_record("execution-profile", document)
+        return orchestration_contracts.canonical_json_bytes(document) + b"\n"
+    except (
+        ExecutionProfileError,
+        orchestration_contracts.ContractValidationError,
+    ) as exc:
+        raise DriverError(
+            "prepare-execution-profile",
+            f"could not project the admitted synthetic execution profile: {exc}",
+        ) from exc
+
+
 def _write_exclusive(path: Path, data: bytes, *, mode: int = 0o600) -> None:
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
     descriptor = os.open(path, flags, mode)
@@ -550,45 +618,90 @@ def _one_match(pattern: re.Pattern[str], text: str, label: str, stage: str) -> s
     return observed[0]
 
 
-def parse_run_plan(text: str, workspace: Path) -> Path:
-    """Require the public no-write plan's fixed 35-owner/3-report contract."""
+def parse_run_plan(text: str, workspace: Path, *, no_write: bool) -> Path:
+    """Require the current grouped Run plan and automatic-report contract."""
 
     stage = "plan-workflow"
     run_root = Path(_one_match(_RUN_ROOT_RE, text, "run root", stage))
-    jobs = int(_one_match(_OWNER_JOBS_RE, text, "owner-job count", stage))
-    reporting = int(_one_match(_REPORTING_RE, text, "reporting count", stage))
-    if jobs != EXPECTED_OWNER_JOBS:
+    pending = int(_one_match(_PENDING_WORK_RE, text, "pending-work count", stage))
+    if pending != EXPECTED_OWNER_JOBS:
         raise DriverError(
-            stage, f"expected {EXPECTED_OWNER_JOBS} owner jobs; observed {jobs}"
+            stage,
+            f"expected {EXPECTED_OWNER_JOBS} pending work items; observed {pending}",
         )
-    if reporting != len(EXPECTED_REPORTING_KINDS):
-        raise DriverError(
-            stage, f"expected 3 reporting transactions; observed {reporting}"
-        )
+    if "Reporting: automatic after scientific work" not in text:
+        raise DriverError(stage, "public Run plan did not declare automatic reporting")
     expected_parent = workspace / "runs"
     if run_root.parent != expected_parent:
         raise DriverError(
             stage, f"planned run root escapes selected workspace: {run_root}"
         )
-    if "Dry-run complete; no workspace state was written." not in text:
+    if no_write and "Dry-run complete; no workspace state was written." not in text:
         raise DriverError(
             stage, "public run plan did not confirm its no-write boundary"
         )
     return run_root
 
 
+def parse_scheduler_plan(
+    text: str,
+    execution_profile: Path,
+    workspace: Path,
+) -> tuple[Path, Path]:
+    """Require one scheduler dry-run without interpreting it as a submission."""
+
+    stage = "submit-slurm-plan"
+    profile = Path(_one_match(_SCHEDULER_PROFILE_RE, text, "profile path", stage))
+    stdout_pattern = Path(
+        _one_match(_SCHEDULER_OUT_RE, text, "scheduler stdout pattern", stage)
+    )
+    stderr_pattern = Path(
+        _one_match(_SCHEDULER_ERR_RE, text, "scheduler stderr pattern", stage)
+    )
+    log_dir = workspace / "logs"
+    if profile != execution_profile:
+        raise DriverError(stage, "scheduler plan selected a different profile")
+    if stdout_pattern != log_dir / "emrys-local-pilot-%j.out":
+        raise DriverError(stage, "scheduler plan selected an unexpected stdout path")
+    if stderr_pattern != log_dir / "emrys-local-pilot-%j.err":
+        raise DriverError(stage, "scheduler plan selected an unexpected stderr path")
+    if "Execution placement: Slurm" not in text:
+        raise DriverError(stage, "scheduler plan omitted Slurm placement")
+    if "Dry-run complete; no scheduler or workspace state was written." not in text:
+        raise DriverError(stage, "scheduler plan omitted its no-write boundary")
+    return stdout_pattern, stderr_pattern
+
+
 def parse_submission(text: str, expected_log_dir: Path) -> SubmittedJob:
-    """Admit the generated wrapper's exact submission receipt lines."""
+    """Admit the grouped Run command's exact submission receipt lines."""
 
     stage = "submit-slurm"
     job_id = _one_match(_JOB_ID_RE, text, "Slurm job ID", stage)
     stdout_path = Path(_one_match(_OUT_RE, text, "Slurm stdout path", stage))
     stderr_path = Path(_one_match(_ERR_RE, text, "Slurm stderr path", stage))
     if stdout_path != expected_log_dir / f"emrys-local-pilot-{job_id}.out":
-        raise DriverError(stage, "generated wrapper returned an unexpected stdout path")
+        raise DriverError(stage, "grouped Run returned an unexpected stdout path")
     if stderr_path != expected_log_dir / f"emrys-local-pilot-{job_id}.err":
-        raise DriverError(stage, "generated wrapper returned an unexpected stderr path")
+        raise DriverError(stage, "grouped Run returned an unexpected stderr path")
     return SubmittedJob(job_id, stdout_path, stderr_path)
+
+
+def parse_execution_evidence(text: str, run_root: Path) -> Path:
+    """Admit the compute-side receipt location reported on retained stderr."""
+
+    stage = "slurm-execute"
+    receipt = Path(_one_match(_EVIDENCE_RE, text, "attempt receipt", stage))
+    try:
+        relative = receipt.relative_to(run_root)
+    except ValueError as exc:
+        raise DriverError(stage, "attempt receipt escapes the selected Run") from exc
+    if (
+        len(relative.parts) != 3
+        or relative.parts[0] != "attempts"
+        or relative.parts[2] != "attempt-receipt.json"
+    ):
+        raise DriverError(stage, "attempt receipt uses an unexpected Run location")
+    return receipt
 
 
 def parse_scontrol_job(text: str) -> tuple[str, str]:
@@ -1014,7 +1127,6 @@ def run_driver(
     storage_launcher = parse_launcher_prefix(arguments.storage_compute_launcher_json)
     scontrol = _resolve_command(arguments.scontrol, "scontrol")
     scancel = _resolve_command(arguments.scancel, "scancel")
-    paths.logs.mkdir(mode=0o700)
     paths.scratch.mkdir(mode=0o700)
     paths.runtime_adapters.mkdir(mode=0o700)
     paths.transcripts.mkdir(mode=0o700)
@@ -1161,15 +1273,23 @@ def run_driver(
     transcripts.run("fixture-plan", fixture_plan, cwd=repo_root)
     transcripts.run("fixture-publish", [*fixture_plan, "--execute"], cwd=repo_root)
 
-    launcher_plan = _emrys(
-        workflow_python,
-        "init",
-        "local-pilot",
-        "--output-dir",
-        str(paths.launcher),
+    request = paths.inputs / "request.yaml"
+    direct_execution_profile = paths.inputs / "emrys.execution.yaml"
+    _write_exclusive(
+        paths.execution_profile,
+        slurm_execution_profile_bytes(
+            request,
+            direct_execution_profile,
+            account=arguments.slurm_account,
+            partition=arguments.slurm_partition,
+            qos=arguments.slurm_qos,
+            cpus_per_task=arguments.slurm_cpus,
+            memory_mb=arguments.slurm_memory,
+            time_limit=arguments.slurm_time,
+            nodelist=arguments.slurm_nodelist,
+            scratch_parent=paths.scratch,
+        ),
     )
-    transcripts.run("launcher-plan", launcher_plan, cwd=repo_root)
-    transcripts.run("launcher-publish", [*launcher_plan, "--execute"], cwd=repo_root)
 
     runtime_command = _emrys(
         workflow_python,
@@ -1201,7 +1321,6 @@ def run_driver(
     runtime_result = transcripts.run("prepare-runtime", runtime_command, cwd=repo_root)
     _write_exclusive(paths.runtime_profile, runtime_result.stdout.encode("utf-8"))
 
-    request = paths.inputs / "request.yaml"
     reference_fasta = paths.inputs / "inputs/reference/reference.fa"
     transcripts.run(
         "validate-request",
@@ -1280,64 +1399,49 @@ def run_driver(
             str(paths.workspace),
             "--runtime-profile",
             str(paths.runtime_profile),
+            "--execution-profile",
+            str(direct_execution_profile),
         ),
         cwd=repo_root,
     )
-    run_root = parse_run_plan(plan_result.stdout, paths.workspace)
+    if plan_result.stdout:
+        raise DriverError("plan-workflow", "direct Run plan wrote machine stdout")
+    run_root = parse_run_plan(plan_result.stderr, paths.workspace, no_write=True)
     if paths.workspace.exists():
         raise DriverError("plan-workflow", "no-write plan created the workspace")
 
-    wrapper = paths.launcher / "run-in-slurm.sh"
-    wrapper_arguments = [
-        str(wrapper),
-        "--account",
-        str(arguments.slurm_account),
-        "--partition",
-        str(arguments.slurm_partition),
-        "--qos",
-        str(arguments.slurm_qos),
-        "--cpus-per-task",
-        str(arguments.slurm_cpus),
-        "--memory",
-        str(arguments.slurm_memory),
-        "--time",
-        str(arguments.slurm_time),
-        "--log-dir",
-        str(paths.logs),
+    scheduled_run = _emrys(
+        workflow_python,
+        "run",
         "--request",
         str(request),
         "--workspace",
         str(paths.workspace),
         "--runtime-profile",
         str(paths.runtime_profile),
-        "--scratch-parent",
-        str(paths.scratch),
-        "--no-exclusive",
-        "--nodelist",
-        str(arguments.slurm_nodelist or ""),
-    ]
+        "--execution-profile",
+        str(paths.execution_profile),
+    )
     dry_submission_result = transcripts.run(
-        "submit-slurm-plan", wrapper_arguments, cwd=repo_root
+        "submit-slurm-plan", scheduled_run, cwd=repo_root
     )
-    dry_submission = parse_submission(dry_submission_result.stdout, paths.logs)
-    dry_job = wait_for_job(
-        dry_submission,
-        scontrol=scontrol,
-        scancel=scancel,
-        cwd=repo_root,
-        timeout_seconds=arguments.slurm_timeout_seconds,
-        poll_seconds=arguments.poll_seconds,
+    if dry_submission_result.stdout:
+        raise DriverError("submit-slurm-plan", "scheduler dry-run submitted a job")
+    dry_stdout_pattern, dry_stderr_pattern = parse_scheduler_plan(
+        dry_submission_result.stderr,
+        paths.execution_profile,
+        paths.workspace,
     )
-    dry_stdout = _read_retained_stream(dry_job.stdout_path, "Slurm plan stdout")
-    if parse_run_plan(dry_stdout, paths.workspace) != run_root:
-        raise DriverError("slurm-plan", "Slurm plan selected a different run root")
     if paths.workspace.exists():
         raise DriverError("slurm-plan", "Slurm no-write plan created the workspace")
 
     execute_result = transcripts.run(
-        "submit-slurm-execute", [*wrapper_arguments, "--execute"], cwd=repo_root
+        "submit-slurm-execute", [*scheduled_run, "--execute"], cwd=repo_root
     )
-    execute_submission = parse_submission(execute_result.stdout, paths.logs)
+    execute_submission = parse_submission(
+        execute_result.stdout,
+        paths.workspace / "logs",
+    )
     execute_job = wait_for_job(
         execute_submission,
         scontrol=scontrol,
@@ -1346,13 +1450,14 @@ def run_driver(
         timeout_seconds=arguments.slurm_timeout_seconds,
         poll_seconds=arguments.poll_seconds,
     )
-    execute_stdout = _read_retained_stream(
-        execute_job.stdout_path, "Slurm execution stdout"
+    execute_stderr = _read_retained_stream(
+        execute_job.stderr_path, "Slurm execution stderr"
     )
-    if "Attempt receipt status: succeeded" not in execute_stdout:
+    if parse_run_plan(execute_stderr, paths.workspace, no_write=False) != run_root:
         raise DriverError(
-            "slurm-execute", "execution stream does not report a succeeded attempt"
+            "slurm-execute", "Slurm execution selected a different Run root"
         )
+    execute_receipt = parse_execution_evidence(execute_stderr, run_root)
 
     inspect_result = transcripts.run(
         "inspect-run",
@@ -1416,6 +1521,7 @@ def run_driver(
         "read_pairs_per_library": fixture_metadata.get("read_pairs_per_library"),
         "operator_root": str(paths.operator_root),
         "runtime_profile": _artifact(paths.runtime_profile),
+        "execution_profile": _artifact(paths.execution_profile),
         "gatk_attestation": gatk_attestation,
         "rseqc_attestation": rseqc_attestation,
         "gunzip_attestation": gunzip_attestation,
@@ -1426,9 +1532,14 @@ def run_driver(
             "account": arguments.slurm_account,
             "qos": arguments.slurm_qos,
             "cpus": arguments.slurm_cpus,
-            "memory": arguments.slurm_memory,
-            "plan_job": _job_summary(dry_job),
+            "memory_mb": arguments.slurm_memory,
+            "dry_run": {
+                "submitted": False,
+                "stdout_pattern": str(dry_stdout_pattern),
+                "stderr_pattern": str(dry_stderr_pattern),
+            },
             "execute_job": _job_summary(execute_job),
+            "attempt_receipt": _artifact(execute_receipt),
         },
         "completion": completion,
         "commands": transcripts.records,
