@@ -5,7 +5,6 @@ from __future__ import annotations
 import errno
 import glob
 import hashlib
-import json
 import os
 import stat
 from collections.abc import Mapping
@@ -61,12 +60,31 @@ class NormalizationBundle:
     """Admitted scientific inputs plus non-identity source provenance."""
 
     request_path: Path
-    request_sha256: str
     request_bytes: bytes
-    request: dict[str, Any]
-    profile: dict[str, Any]
+    _profile_bytes: bytes
     analysis_revision: AnalysisRevision
     projection_source_bytes: bytes
+
+    @property
+    def request_sha256(self) -> str:
+        """Return the exact authored-source digest from immutable bytes."""
+
+        return hashlib.sha256(self.request_bytes).hexdigest()
+
+    @property
+    def request(self) -> dict[str, Any]:
+        """Return a fresh authored-request view for compatibility callers."""
+
+        return _load_yaml_object(self.request_bytes, self.request_path)
+
+    @property
+    def profile(self) -> dict[str, Any]:
+        """Return a fresh admitted-profile view; it is not shared authority."""
+
+        return orchestration_contracts.load_json_object_bytes(
+            self._profile_bytes,
+            "normalized profile",
+        )
 
     @property
     def projection_source(self) -> dict[str, Any]:
@@ -98,14 +116,6 @@ class NormalizationBundle:
         execution["reporting_projection"] = reporting.projection_references
         orchestration_contracts.validate_record("execution", execution, profile=self.profile)
         return execution, orchestration_contracts.canonical_json_bytes(execution)
-
-
-def _schema_validate(name: str, value: Any) -> None:
-    errors = orchestration_contracts.schema_errors(name, value)
-    if errors:
-        raise orchestration_contracts.ContractValidationError(
-            f"Invalid {name} record:\n" + "\n".join(errors)
-        )
 
 
 _READ_CHUNK_BYTES = 1024 * 1024
@@ -339,41 +349,6 @@ def _load_yaml_object(data: bytes, path: Path) -> dict[str, Any]:
     return value
 
 
-def _load_json_object_bytes(data: bytes, path: Path) -> dict[str, Any]:
-    def reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
-        value: dict[str, Any] = {}
-        for key, item in pairs:
-            if key in value:
-                raise orchestration_contracts.ContractValidationError(
-                    f"Duplicate JSON object key: {key}"
-                )
-            value[key] = item
-        return value
-
-    def reject_constant(value: str) -> None:
-        raise orchestration_contracts.ContractValidationError(
-            f"Non-standard JSON numeric constant is not allowed: {value}"
-        )
-
-    try:
-        value = json.loads(
-            data.decode("utf-8"),
-            object_pairs_hook=reject_duplicates,
-            parse_constant=reject_constant,
-        )
-    except orchestration_contracts.ContractValidationError:
-        raise
-    except (UnicodeError, json.JSONDecodeError) as exc:
-        raise orchestration_contracts.ContractValidationError(
-            f"Could not parse profile JSON {path}: {exc}"
-        ) from exc
-    if not isinstance(value, dict):
-        raise orchestration_contracts.ContractValidationError(
-            f"Profile JSON must contain one object: {path}"
-        )
-    return value
-
-
 def _load_profile(profile: Mapping[str, Any] | str | Path) -> dict[str, Any]:
     if isinstance(profile, Mapping):
         value = dict(profile)
@@ -384,7 +359,10 @@ def _load_profile(profile: Mapping[str, Any] | str | Path) -> dict[str, Any]:
         if not profile_path.is_absolute():
             profile_path = Path.cwd() / profile_path
         admitted_path, profile_data = _regular_file(profile_path, "Profile")
-        value = _load_json_object_bytes(profile_data, admitted_path)
+        value = orchestration_contracts.load_json_object_bytes(
+            profile_data,
+            f"profile JSON {admitted_path}",
+        )
     orchestration_contracts.validate_record("profile", value)
     return value
 
@@ -501,7 +479,7 @@ def normalize_request(
         authored_request = Path.cwd() / authored_request
     resolved_request, request_data = _regular_file(authored_request, "Request")
     request = _load_yaml_object(request_data, resolved_request)
-    _schema_validate("request", request)
+    orchestration_contracts.validate_record("request", request)
     profile_record = _load_profile(profile)
     expected_profile = (
         f"{profile_record['profile_id']}.{profile_record['profile_version']}"
@@ -573,10 +551,8 @@ def normalize_request(
     analysis_revision = analysis_revision_from_execution_fields(projection_source)
     return NormalizationBundle(
         request_path=resolved_request,
-        request_sha256=hashlib.sha256(request_data).hexdigest(),
         request_bytes=request_data,
-        request=request,
-        profile=profile_record,
+        _profile_bytes=orchestration_contracts.canonical_json_bytes(profile_record),
         analysis_revision=analysis_revision,
         projection_source_bytes=orchestration_contracts.canonical_json_bytes(
             projection_source

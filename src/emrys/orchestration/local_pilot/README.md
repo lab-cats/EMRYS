@@ -147,7 +147,9 @@ The underlying narrow read-only admission APIs are:
   YAML request plus its ordered TSV manifests and returns a canonical,
   content-bound execution identity without writing a run. Its no-follow,
   descriptor-bound admission makes the exact read bytes the only parse and
-  identity authority;
+  identity authority. The admitted bundle retains immutable request, profile,
+  and construction bytes plus the canonical Analysis revision; mapping access
+  returns fresh disposable views that cannot mutate that authority;
 - `all_pass.require_all_pass(...)` checks the meaning of one owner-validation
   report rather than trusting its process exit;
 - `doctor.inspect_local_pilot(...)` admits one request plus the fixed profile,
