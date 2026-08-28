@@ -144,9 +144,9 @@ timing in its diagnostic; timeouts remain readiness failures. The selected
 resolve through a cache symlink only when the loaded namespace and exact
 canonical package-tree binding agree on its target.
 
-`control.plan_run` and `plan_resume` are the B5 dry-run public Python boundary;
-the grouped `emrys run`, `emrys resume`, and `emrys inspect local-pilot-run`
-routes are the operator surface. `run` and `resume` require the controlled
+The grouped `emrys run`, `emrys resume`, and `emrys inspect local-pilot-run`
+routes are the supported control surface; their planning helpers are private
+implementation details. `run` and `resume` require the controlled
 Python invocation and mutate nothing without `--execute`. Planning reruns the
 doctor, normalizes the authored request again, derives the deterministic run
 identity, and prints the exact request-expanded owner-job plan plus three
