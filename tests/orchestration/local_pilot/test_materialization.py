@@ -253,6 +253,12 @@ def _dispatch_records(plan) -> list[dict[str, object]]:
     return [json.loads(item.data) for item in plan.new_dispatch_files]
 
 
+def _workflow_config(plan) -> dict[str, object]:
+    return json.loads(
+        next(item.data for item in plan.attempt_files if item.path == plan.config_path)
+    )
+
+
 def test_control_readiness_failure_preserves_doctor_remediation(
     tmp_path: Path,
 ) -> None:
@@ -438,9 +444,7 @@ def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> Non
     planned_files = {
         item.path: item.data for item in (*plan.fixed_files, *plan.attempt_files)
     }
-    config = json.loads(
-        next(item.data for item in plan.attempt_files if item.path == plan.config_path)
-    )
+    config = _workflow_config(plan)
 
     for name in reporting.projection_references:
         reference = config[f"{name}_path"]
@@ -459,13 +463,12 @@ def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> Non
     } <= set(plan.directories)
 
 
-def test_run_identity_excludes_reporting_and_allocation_but_binds_resources_and_tools(
+def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
     tmp_path: Path,
 ) -> None:
     readiness, normalized, resources, _request, workspace = _readiness(tmp_path)
-    baseline = _run_candidate(readiness, normalized, resources)
-
-    reallocated = resolve_resource_policy(
+    direct_run = _run_candidate(readiness, normalized, resources)
+    scheduled_resources = resolve_resource_policy(
         resources.policy,
         AllocationCapacity(
             cores=2,
@@ -474,6 +477,78 @@ def test_run_identity_excludes_reporting_and_allocation_but_binds_resources_and_
             slurm_job_id="700123",
         ),
     )
+    assert resources.effective_document() == scheduled_resources.effective_document()
+    scheduled_run = _run_candidate(readiness, normalized, scheduled_resources)
+
+    assert (
+        direct_run.normalized.analysis_revision.canonical_bytes,
+        direct_run.execution_plan.canonical_bytes,
+        direct_run.run_binding.canonical_bytes,
+    ) == (
+        scheduled_run.normalized.analysis_revision.canonical_bytes,
+        scheduled_run.execution_plan.canonical_bytes,
+        scheduled_run.run_binding.canonical_bytes,
+    )
+
+    attempt_context = {
+        "operation": "execute",
+        "now": datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
+        "token": "3" * 32,
+        "host": "parity-host",
+        "process_id": 456,
+    }
+    direct_plan = build_attempt_plan(
+        direct_run,
+        readiness,
+        workspace,
+        resources=resources,
+        **attempt_context,
+    )
+    scheduled_plan = build_attempt_plan(
+        scheduled_run,
+        readiness,
+        workspace,
+        resources=scheduled_resources,
+        **attempt_context,
+    )
+
+    assert direct_plan.fixed_files == scheduled_plan.fixed_files
+    assert direct_plan.directories == scheduled_plan.directories
+    assert tuple(
+        item for item in direct_plan.attempt_files if item.path != direct_plan.config_path
+    ) == tuple(
+        item
+        for item in scheduled_plan.attempt_files
+        if item.path != scheduled_plan.config_path
+    )
+
+    direct_config = _workflow_config(direct_plan)
+    scheduled_config = _workflow_config(scheduled_plan)
+    direct_allocation = direct_config["resource_policy"].pop("allocation")
+    scheduled_allocation = scheduled_config["resource_policy"].pop("allocation")
+    assert direct_config == scheduled_config
+    assert direct_allocation == {
+        "cores": resources.allocation.cores,
+        "memory_mb": resources.allocation.memory_mb,
+        "source": "test allocation",
+        "slurm_job_id": None,
+    }
+    assert scheduled_allocation == {
+        "cores": 2,
+        "memory_mb": 2048,
+        "source": "Slurm allocation",
+        "slurm_job_id": "700123",
+    }
+
+    direct_attempt = direct_plan.attempt_record
+    scheduled_attempt = scheduled_plan.attempt_record
+    assert direct_attempt["workflow_config"]["sha256"] != scheduled_attempt[
+        "workflow_config"
+    ]["sha256"]
+    direct_attempt["workflow_config"].pop("sha256")
+    scheduled_attempt["workflow_config"].pop("sha256")
+    assert direct_attempt == scheduled_attempt
+
     reporting_policy = replace(
         resources.policy,
         reporting_memory_mb=tuple(
@@ -484,38 +559,15 @@ def test_run_identity_excludes_reporting_and_allocation_but_binds_resources_and_
         reporting_policy,
         resources.allocation,
     )
-    assert _run_candidate(readiness, normalized, reallocated).run_id == baseline.run_id
-    scheduled_plan = build_attempt_plan(
-        baseline,
-        readiness,
-        workspace,
-        resources=reallocated,
-        operation="execute",
-        now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
-        token="3" * 32,
-        host="scheduled-host",
-        process_id=456,
-    )
-    scheduled_config = json.loads(
-        next(
-            item.data
-            for item in scheduled_plan.attempt_files
-            if item.path == scheduled_plan.config_path
-        )
-    )
-    assert scheduled_config["resource_policy"]["allocation"]["slurm_job_id"] == (
-        "700123"
-    )
-    assert scheduled_plan.run.run_id == baseline.run_id
     assert (
         _run_candidate(readiness, normalized, reporting_changed).run_id
-        == baseline.run_id
+        == direct_run.run_id
     )
 
     computational_change = replace(resources.declaration, workflow_cores=2)
     assert (
         build_run_candidate(normalized, readiness, computational_change).run_id
-        != baseline.run_id
+        != direct_run.run_id
     )
     tool_changed = replace(
         readiness,
@@ -528,7 +580,7 @@ def test_run_identity_excludes_reporting_and_allocation_but_binds_resources_and_
     )
     assert (
         build_run_candidate(normalized, tool_changed, resources.declaration).run_id
-        != baseline.run_id
+        != direct_run.run_id
     )
 
 
@@ -765,9 +817,7 @@ def test_plan_records_stage_specific_concurrency(tmp_path: Path) -> None:
         step_threads={"00a": 4, "01": 2, "02": 2, "06": 2, "08": 4},
     )
     argv = plan.attempt_record["snakemake_argv"]
-    config = json.loads(
-        next(item.data for item in plan.attempt_files if item.path == plan.config_path)
-    )
+    config = _workflow_config(plan)
 
     assert plan.resources.workflow_cores == 4
     assert dict(plan.resources.stage_concurrency)["01"] == 2
