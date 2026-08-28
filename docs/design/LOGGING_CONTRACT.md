@@ -24,6 +24,15 @@ retained-operation coverage. An unapproved retiring surface is out of scope;
 closure remains governed by the
 [matrix adoption guard](../tasks/backlog_matrix.md#log-05-adoption-and-closure-guard).
 
+Every implementation slice that touches a retained applicable operation must
+record its `LOG-05` disposition. If the slice changes that operation's human
+output or durable diagnostic path, adoption belongs in the same vertical slice
+unless the operation is explicitly classified as not applicable or retiring.
+The slice must not introduce an interim logger, log format, wrapper-owned
+attempt, or second console convention. A thin retained shell bootstrap passes
+the accepted operation context through and does not become another logging
+owner.
+
 The packaged-Python production-import roster is mechanically guarded. Changing
 it is part of the adopter's approved slice and must update the current
 [source topology](../../src/emrys/contracts/SOURCE_TOPOLOGY.md), owner contract,

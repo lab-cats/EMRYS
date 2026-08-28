@@ -204,7 +204,12 @@ campaign:
    responsibility it supersedes. Net-negative maintained product code and no
    product-file growth are the defaults; an exception requires the user's
    approval of quantified growth and its justification, plus an owner and
-   retirement condition when the growth is temporary.
+   retirement condition when the growth is temporary. Every touched shell
+   surface receives a `KEEP`, `CONVERT`, or `RETIRE` disposition; conversion
+   must reduce total maintained and cross-language surface rather than preserve
+   a second implementation. Every slice touching a retained applicable
+   operation also records its `LOG-05` disposition and incorporates adoption in
+   the same vertical change when output or durable diagnostics change.
 9. **Immutability by default; Run is the immutable plan.** Boundary values are
    immutable unless an owning contract justifies a narrow mutable lifecycle.
    Any architecture concept named `Run` denotes the immutable plan and is never
@@ -232,8 +237,9 @@ campaign:
 - a replacement completes only after caller migration and relevant parity,
   with owned, bounded, protected temporary compatibility and an explicit
   retirement condition; and
-- direct-owner, adversarial, seeded-fault, and synthetic end-to-end defenses
-  require mapped equal-or-stronger replacement at the same evidence level.
+- protections at external, filesystem, concurrency, crash/recovery,
+  persistence, evidence, and supported public-behavior boundaries require a
+  mapped equal-or-stronger surviving defense at the same evidence level.
 
 On **2026-08-26**, the user ratified three additional campaign guardrails for
 maintenance-surface compression, immutable-by-default design with `Run` as the
@@ -241,6 +247,18 @@ immutable plan, and approval-gated evidence deletion. These extend rather
 than rewrite the historical five-guardrail `ARCH-CONST-01` result. Their
 canonical definitions are `AC-GUARD-006` through `AC-GUARD-008` in the same
 platform-direction decision.
+
+On **2026-08-28**, the user refined the regression-defense rule: a check and
+check-only test for a proven impossible same-process state may retire without
+an artificial replacement, while high-risk, ambiguous, or directly
+user-facing protection removal requires explicit approval. High-risk,
+directly user-facing, execution-boundary, and evidence-validation retirement,
+consolidation, or conversion requires approval whether or not classified as a
+protection. Evidence deletion remains governed by its separate stricter gate.
+The same update made `LOG-05`
+disposition mandatory for touched retained operations and required every
+touched shell surface to be retained, converted, or retired based on total
+maintenance-surface reduction.
 
 ## 4. Invariant constitution and source trace
 
@@ -781,7 +799,7 @@ scheduled journeys.
 | [`inspection.py`](../../src/emrys/orchestration/local_pilot/inspection.py) | Derive separated Run, Attempt, Results, reporting, and recovery status from canonical contracts, records, receipts, and the owned lock | Control, lifecycle resume checks, tests | Read model only. The current `RunInspection` name is descriptive and does not select the target Run representation. |
 | [`projection.py`](../../src/emrys/contracts/orchestration/projection.py) and reporting owners | Project the execution contract into reporting contracts and render admitted results | Normalization, materialization, workflow, standalone `build report` | Downstream reporting remains separate from scientific completion and is not a scientific stage. |
 | [`launcher_config.py`](../../src/emrys/orchestration/local_pilot/launcher_config.py) | Resolve outer Slurm allocation defaults/configuration/environment/overrides and submit once | Generated `run-in-slurm.sh` | Scheduler transport only; not a second application backend or scientific authority. |
-| [`dashboard.py`](../../src/emrys/orchestration/local_pilot/dashboard.py) | CSU preview using scheduler queries plus parsed stdout/Snakemake stderr | `make dashboard` | Non-authoritative presentation with text coupling and fixed six-sample/25-partition display assumptions; eventual structured input is a candidate, not an approved rewrite. |
+| [`dashboard.py`](../../src/emrys/orchestration/local_pilot/dashboard.py) | CSU preview using scheduler queries plus parsed stdout/Snakemake stderr | `make dashboard` only; no production Python importer | Non-authoritative, stale presentation with text coupling and fixed six-sample/25-partition assumptions that disagree with the current starter. Freeze it during the campaign: do not update or extend it, implement `OBS-02` independently from persisted records, and reconsider retirement only after campaign completion and explicit approval. |
 
 #### Representation and semantic-lifetime map
 
@@ -797,7 +815,7 @@ scheduled journeys.
 | Reporting start/verified records and report receipt | One downstream report transaction/output identity | Reporting owners | Derived output that may be regenerated; not a semantic scientific stage or Run mutation. |
 | Attempt receipt | Terminal outcome of one workflow attempt | Lifecycle, published last | Attempt outcome and evidence, not a general application Result. |
 | `RunInspection` | Regenerated separated read-only status domains | Inspection over persisted authorities | Current status projection. It is not persisted authority and must not define target Run mutability. |
-| Dashboard dictionaries and stream caches | Mutable presentation state for one live view | Dashboard only | Necessary local UI state, not application or evidence authority. |
+| Dashboard dictionaries and stream caches | Mutable presentation state for one stale live view | Dashboard only | Frozen transitional UI state, not application or evidence authority; it receives no architecture-campaign updates. |
 
 There is no current application-level `Project` or `Result` representation.
 `WorkflowResult` reports the delegated process exit and `LifecycleOutcome`
@@ -974,13 +992,13 @@ create-exclusive persisted records, not in every Python aggregate:
 | `LifecycleOutcome.receipt` | Lifecycle-to-control handoff; one terminal attempt return | Lifecycle builds the terminal receipt/outcome after receipt-last publication | Control result projection, verified-report display, tests | Dictionary construction mirrors the persisted schema; post-return mutation is not required | Candidate immutable terminal view over persisted evidence; receipt file remains authority. |
 | `TransactionSignalController` and delegated-process state | `lifecycle.py`; from signal-handler installation through receipt commit/restore | Signal handlers and lifecycle execution update child, signal, interruption, and commit state | Lifecycle cleanup, termination, receipt publication, fault tests | Live process and signal ownership must change as execution advances and cannot be modeled truthfully as a fixed value | Retain tightly owned mutation. Expose only immutable outcome/evidence values after the transaction. |
 | `_OwnedRunLock.record`, bytes, inode, and live lock ownership | `lifecycle.py`; from exclusive lock acquisition through release/recovery publication | Lock acquisition constructs identity fields; lifecycle changes filesystem ownership state and publishes release evidence | Lifecycle serialization/recovery, inspection, resume, fault tests | The Python record need not mutate, but owned filesystem lock state must transition with attributable identity | Make the in-memory value deeply immutable if consolidated; retain narrowly owned live lock mutation and exact release/history records. |
-| `RunInspection` nested attempt, receipt, task, and report dictionaries | `inspection.py`; one read-only inspection call/result | Inspection derives the aggregate from persisted authorities | Control, resume/lifecycle checks, dashboard/tests | Mutable dictionaries simplify construction; post-construction mutation is not authority or required behavior | Keep a derived non-authoritative read model and make exposed boundary values immutable when selected; never persist it as status authority. |
+| `RunInspection` nested attempt, receipt, task, and report dictionaries | `inspection.py`; one read-only inspection call/result | Inspection derives the aggregate from persisted authorities | Control, resume/lifecycle checks, tests | Mutable dictionaries simplify construction; post-construction mutation is not authority or required behavior | Keep a derived non-authoritative read model and make exposed boundary values immutable when selected; never persist it as status authority. |
 | `ReportingBundle` dictionaries beside exact bytes | Contract projection; one deterministic reporting projection | Projection constructs reference, policy, run-contract, and inventory documents and bytes | Materialization, workflow/reporting owners, projection tests | Incremental projection is convenient; the admitted dictionary and byte forms need no later shared mutation | Candidate one immutable projection authority with derived views; preserve deterministic exact output and separate reporting transaction authority. |
 | `TaskDispatch.scope` and admitted dispatch collections | Task boundary; one functional-owner invocation | Task admission constructs the closed dispatch value from canonical bytes | Producer/validator invocation, stream capture, task publication and tests | Parsing constructs nested values; execution needs stable facts, not mutable shared ownership | Candidate deeply immutable admitted dispatch; canonical dispatch bytes and schema remain authority. |
 | `TaskOutcome.task_attempt` and `verified_task` | Task boundary; one successful owner return | Task transaction builds the dictionaries after create-exclusive publication | Workflow/lifecycle caller and task tests | Dictionary form mirrors persisted records; post-return mutation is not needed | Candidate immutable result view; persisted task attempt and verified records remain evidence authority. |
 | Reporting-boundary `_AdmittedIdentity` dictionaries | Reporting boundary; one report transaction admission | Reporting admission loads and validates execution, profile, attempt and references | Reporting start, semantic validation, verified publication and tests | Admission assembles related mappings; downstream mutation is not required | Candidate immutable internal admitted identity; final neutral shared admission owner remains Open and reporting ordering stays local. |
 | `_TaskStreamCapture` descriptors, digests, sizes, and completion state | `task.py`; one functional-owner process invocation | Stream callbacks and cleanup update descriptor/capture state | Task attempt/log/verified publication and fault cleanup | Streaming output identities and descriptors are only known while the process runs | Retain narrowly owned mutation; publish immutable stream evidence at the boundary. |
-| Dashboard `StreamCache` and presentation dictionaries | `dashboard.py`; one live dashboard session | Scheduler/log polling and parsing update cached state | Dashboard rendering and dashboard tests | A live view necessarily tracks changing non-authoritative presentation state | Retain as presentation-only mutation pending dashboard decisions; it cannot become Run, Attempt, or completion authority. |
+| Dashboard `StreamCache` and presentation dictionaries | `dashboard.py`; one stale live dashboard session | Scheduler/log polling and parsing update cached state | Dashboard rendering and dashboard tests | The state exists only for a non-authoritative presentation surface and duplicates status concepts using parsed human text | **Freeze during the campaign.** Do not update, extend, or make it authoritative; reconsider whole-surface retirement only after campaign completion and explicit approval. |
 | Filesystem locks, create-exclusive publications, and transaction progress | Lifecycle, task, and reporting owners; one attempt or transaction plus recovery lifetime | Owned lock/process/publication operations mutate filesystem state; receipts are committed last | Lifecycle and owner recovery, inspection, resume, audit consumers | Concurrency, crash recovery, attribution, and durable publication require controlled state transitions | Retain controlled mutation and immutable committed records. Consolidation may share primitives but cannot merge semantic owners or erase ordering/fault behavior. |
 
 Text and caller inspection within the exact in-repo contract/local-pilot roster
@@ -997,7 +1015,9 @@ These rows are the retain/evidence portion of the mandatory Section 13.1
 register. For every retained row, the directional estimate and audit actual
 are zero changed product files/lines, public concepts, configuration artifacts,
 call edges, and compatibility paths. A later slice that changes one must supply
-its own exact category deltas and equal-or-stronger replacement proof.
+its own exact category deltas and boundary/risk disposition. Boundary defenses
+require equal-or-stronger surviving protection; a proven same-process
+impossible-state check may retire without replacement under `AC-GUARD-005`.
 
 | Mechanism and category | Current owners; callers and consumers | Unique retained need; redundancy evidence | Disposition and surviving authority | Estimated and audit-actual deltas | Preconditions for any future change |
 |---|---|---|---|---|---|
@@ -1005,8 +1025,8 @@ its own exact category deltas and equal-or-stronger replacement proof.
 | Stable-file snapshots, no-follow descriptor/path binding and near-mutation rechecks; protection | Normalization, lifecycle, task, reporting and inspection; input admission, publication, recovery and adversarial tests | Prevents path replacement, symlink, inode and stale-read races; similar helpers have owner-specific semantics, not proven redundancy | **Retain; conditional primitive consolidation only.** Each current semantic owner survives | Estimate all six zero for retention; audit actual all six zero | Map large-file, inode, destination, hash, timing and error behavior and retain last-safe-boundary checks |
 | Attempt mutex, owned run lock, create-exclusive publication, fsync and receipt-last ordering; protection | Lifecycle, task and reporting transaction owners; recovery, resume, inspection and fault tests | Provides serialization, attributable ownership, durability and truthful completion; repeated mechanics do not duplicate semantic ordering | **Retain.** Transaction authorities survive; only a proven low-level primitive may consolidate | Estimate all six zero for retention; audit actual all six zero | Equal-or-stronger concurrency, crash, signal, rollback, directory-durability and failure evidence required |
 | Separate start, attempt, stream, verified, reporting, lock-release and terminal records; evidence | Task, reporting and lifecycle owners; inspection, recovery, audit and historical readers | Distinguishes entry, execution, validation, failure/recovery and terminal truth; record count alone is no redundancy evidence | **Retain pending itemized lifecycle/evidence audit.** Current record owners survive | Estimate all six zero; audit actual all six zero | Any proposal must name exact record class, producers/consumers, claim, recovery path, retention and rollback and receive explicit user approval if deleting evidence |
-| Derived inspection independent of `.snakemake`; protection | Inspection over EMRYS contracts/records/locks; control, resume, dashboard and tests | Prevents engine metadata from becoming status, recovery or completion authority; no redundant authority exists | **Retain.** Persisted EMRYS records remain authority and inspection remains derived | Estimate all six zero; audit actual all six zero | A new read model must derive the same or stronger truthful state and cannot persist a competing status |
-| Direct-owner, adversarial, seeded-fault, independent-golden, recovery, fresh-clone and synthetic E2E defenses; protection/tests | Functional owners and CI; maintainers, release review and regression diagnosis | Protects distinct failure, packaging, recovery and synthetic execution claims; coverage or happy path is not equivalent | **Retain or map individually to equal-or-stronger defense.** Existing test/evidence owner survives until mapped replacement | Estimate all six zero; audit actual all six zero | Name invariant, evidence level and surviving test for each retirement; long checks remain CI-owned |
+| Derived inspection independent of `.snakemake`; protection | Inspection over EMRYS contracts/records/locks; control, resume and tests | Prevents engine metadata from becoming status, recovery or completion authority; no redundant authority exists | **Retain.** Persisted EMRYS records remain authority and inspection remains derived | Estimate all six zero; audit actual all six zero | A new read model must derive the same or stronger truthful state and cannot persist a competing status |
+| Direct-owner, adversarial, seeded-fault, independent-golden, recovery, fresh-clone and synthetic E2E defenses; protection/tests | Functional owners and CI; maintainers, release review and regression diagnosis | Protects distinct failure, packaging, recovery and synthetic execution claims; coverage or happy path is not equivalent. Tests aimed only at an impossible same-process injection are not automatically equivalent to these boundaries | **Retain boundary defenses or map individually to equal-or-stronger surviving protection. Retire proven check-only internal seams with their redundant check.** | Estimate all six zero; audit actual all six zero | Name invariant, trust boundary, risk, evidence level and surviving authority for each retirement; high-risk, ambiguous, or directly user-facing removal requires explicit approval; long checks remain CI-owned |
 | Deliberate orchestration exports and eager-import-free local-pilot package; compatibility/protection | Contract package and local-pilot package; importers, packaging and public-contract tests | Controls supported imports and avoids import-time side effects; no redundant facade was proved | **Retain pending API/package decision.** Current boundaries survive | Estimate all six zero; audit actual all six zero | Inventory external imports and import-time behavior; do not make an interim package stack permanent |
 | Packaged retired-v2 request schema; evidence/compatibility | Orchestration schema package and distribution tests; historical package readers | Preserves declared retired-format compatibility evidence and wheel contents; age is not redundancy evidence | **Retain pending approval-gated evidence review.** Packaged schema remains authority for its historical claim | Estimate all six zero; audit actual all six zero | Exact consumer/history/claim/rollback review and explicit user approval before any evidence deletion |
 | `.snakemake/`; runtime metadata | Snakemake engine; engine only, never EMRYS completion/reporting readers | Supports engine operation but is deliberately excluded from EMRYS authority; no retained-evidence claim | **Disposable runtime metadata, not authority.** EMRYS contracts/records survive | Maintained-source estimate and audit actual all six zero | Cleanup must stay within the run/work policy and cannot substitute engine state for EMRYS evidence |
@@ -1031,7 +1051,7 @@ deletion or splitting targets:
 | `lifecycle.py` | 2,628 |
 | `task.py` | 2,111 |
 | `inspection.py` | 2,088 |
-| `dashboard.py` | 1,984 |
+| `dashboard.py` | 1,985 |
 | `materialization.py` | 1,547 |
 | `doctor.py` | 1,098 |
 | `launcher_config.py` | 1,082 |
@@ -1063,13 +1083,41 @@ reported separately below.
 | `ARCH-MODEL-COMP-05` | Maintained product code and protection | Lifecycle, task and reporting publication owners; inspection, recovery and fault tests | Create-exclusive durable bytes, directory fsync, transaction ordering, rollback and truthful terminal publication | Closely related low-level publication mechanics are implemented separately in the three transaction owners | **Defer; candidate consolidate primitive only.** Lifecycle/task/reporting remain separate semantic authorities; primitive owner Open | Est.: files no growth; lines lower; concepts/config/compat 0; low-level edges may converge without new semantic edge. Audit actual all zero | Prove byte-publication equivalence; retain signal/ownership/rollback/order/fault differences and receipt-last semantics |
 | `ARCH-MODEL-COMP-06` | Maintained product code and configuration | Doctor, onboarding, materialization and control; readiness, planning, validation and tests | Bind the reviewed fixed workflow profile and exact checkout identity | The same current-profile relative path is repeated in four owners | **Defer; candidate consolidate locator.** Current exact-profile and checkout checks survive; final profile-policy owner remains Open | Est.: files 0; lines and literal call edges lower; concepts/config/compat 0. Audit actual all zero | Decide profile/application policy; prove packaging and checkout behavior; avoid a facade that merely forwards the literal |
 | `ARCH-MODEL-COMP-07` | Maintained product code and policy/protection | Reporting boundary, resource policy, inspection, control and `Snakefile`; workflow, status, memory planning and tests | Closed report-kind roster, deterministic order, resources, transaction schemas and independent regeneration | Report kinds/count appear as a tuple, hard-coded `3`, workflow targets and validation assumptions across several owners | **Defer; candidate consolidate catalog.** Final catalog authority/package remains Open; reporting transactions retain semantic authority | Est.: files no growth; lines and repeated edges lower; concepts/config/compat 0. Audit actual all zero | Inventory all producers/consumers and dependency direction; avoid inspection/reporting cycle; prove order, memory, schema and regeneration parity |
-| `ARCH-MODEL-COMP-08` | Wrapper/compatibility path and maintained product code | Dashboard plus control/inspection and Snakemake text producers; operators and dashboard tests | Safe non-authoritative live presentation, scheduler selection, bounded reads, and historical log support | Dashboard parses human plan stdout, Snakemake stderr and legacy `sample_concurrency` text instead of a structured projection | **Defer; candidate replace then retire parsers.** Structured read-model owner remains Open; inspection-derived non-authority survives | Est.: files no growth; lines, call edges and at least one compatibility parser lower; concepts/config 0. Audit actual all zero | Decide advanced status boundary and historical support window; migrate callers/tests; prove Local/Slurm distinction and bounded-read behavior |
+| `ARCH-MODEL-COMP-08` | Wrapper/compatibility path and maintained product code | Dashboard plus control/inspection and Snakemake text producers; `make dashboard` and dashboard tests | Current-user scheduler observation and sanitized raw-stream access are the only unique operational needs; persisted EMRYS records remain status authority | The 1,985-line dashboard has no production importer, parses non-authoritative human text, duplicates 986 test lines, and hard-codes a roster incompatible with the current starter | **Mark stale and freeze.** Implement `OBS-02` independently; do not update or retire the dashboard during the campaign. Reconsider whole-surface retirement afterward. Manual scheduler accounting and raw streams survive as expert routes | Post-campaign retirement opportunity: replacement budget at most 250 product and 300 test lines would permit at least 1,751 net product/script and 686 net direct-test reduction. Audit actual all zero | Campaign completion plus explicit user approval for public-route retirement; then prove the applicable status and scheduler-observation boundaries |
 | `ARCH-MODEL-COMP-09` | Maintained product code | CLI composition, control, onboarding, launcher and owner commands; users, wrappers, automation and tests | Owner-specific actionable diagnostics and stable exit contracts | Similar exception-to-public-error projection patterns recur, but exact equivalence and caller dependence are not yet proved | **Defer pending inventory.** Each current owner remains authority until a genuinely shared projection is proved | Est.: files no growth; lines and edges may decrease; concepts/config/compat 0. Audit actual all zero | Inventory exact messages, exception types, exit codes and machine consumers; retain owner-specific context and failure ceilings |
 | `ARCH-MODEL-COMP-10` | Configuration/script/schema/documentation and compatibility | `configs/`, onboarding starter set, control/runtime/resource/launcher owners; scientists, operators, examples and tests | Scientific intent, site execution policy, inspectable defaults/sources, deterministic generated artifacts and compatibility | Twenty tracked config files and eight visible starter artifacts expose overlapping user, operator, generated, example and compatibility concerns without one classification | **Defer; classify then retain/consolidate/retire individually.** Existing owners survive until `CONFIG-01` and `OPS-01` decide authority | Est.: product files no growth; config files and public concepts lower; lines/edges likely lower; temporary compatibility path possible then retired. Audit actual all zero | Complete ownership/classification and external-caller review; preserve scientific visibility, safe override provenance and create-absent publication |
-| `ARCH-MODEL-COMP-11` | Wrapper/compatibility path | Dashboard helper/parser; dashboard callers and tests plus historical plan/log readers | Scheduler-candidate selection and explicitly supported historical dashboard input | `scheduler_candidate_ids()` is a three-line compatibility view; legacy `sample_concurrency` parsing duplicates newer text interpretation | **Defer; candidate retire after support review.** Current dashboard behavior survives until a structured replacement and retirement condition exist | Est.: files no growth; lines lower; concepts/config 0; edges lower; at least one compatibility path retired. Audit actual all zero | Search external callers; define history window; migrate tests/consumers; prove scheduler safety and rollback route |
+| `ARCH-MODEL-COMP-11` | Wrapper/compatibility path | Dashboard helper/parser; dashboard callers and tests plus historical plan/log readers | No independent responsibility outside the stale dashboard | Scheduler selection and legacy parsers exist only inside that surface | **Freeze with the dashboard.** Do not update parser compatibility during the campaign; if post-campaign retirement is approved, remove it with the whole surface rather than preserving it separately | Included in `ARCH-MODEL-COMP-08`; audit actual all zero | Same post-campaign approval and proof gate as `ARCH-MODEL-COMP-08` |
 | `ARCH-MODEL-COMP-12` | Maintained product code and wrapper/compatibility path | `__main__.py` grouped composition and command adapters; all CLI users, automation, docs and public-contract tests | Stable public capability routing, arguments, exits and advanced escape hatches | A 711-line root composes ten top-level groups and interleaves ordinary/expert plumbing; duplication cannot be quantified before the public model is chosen | **Defer.** Current CLI remains authority; later migrate directly to selected owners and retire superseded routes without a permanent facade | Est.: files no growth; lines, concepts and call edges lower; config 0; temporary compatibility route only with owner/retirement. Audit actual all zero | Decide public nouns/capabilities; roster every caller; preserve exact contracts; prove parity before retiring old tree |
 | `ARCH-MODEL-COMP-13` | Documentation and compatibility | Quickstart, orchestration, launcher and role-journey documentation; scientists, operators, maintainers and support | Canonical safety, recovery, advanced inspection and evidence-ceiling guidance | Manual directory creation, runtime-profile redirection and dry-run-root transfer recur across local and Slurm journeys | **Defer; candidate relocate unique facts and retire superseded journey text.** Final subject owners retain exact contracts | Est.: documentation files/lines, public concepts and compatibility journeys lower; product/config/call edges 0. Audit actual all zero | Implement accepted interface first; map every unique rule and inbound link; update/retire old journeys in the same bounded migration |
 | `ARCH-MODEL-COMP-14` | Wrapper/compatibility path and protection | Resource policy and launcher configuration; CLI/config callers, packaging and migration tests | Fail closed on ambiguous retired `NORAD` filenames during rename compatibility | Equivalent legacy-filename guards occur in both owners | **Defer; candidate consolidate or retire only by migration policy.** Both guards survive until one final owner or proven end of support | Est.: files no growth; lines and duplicate edges lower; concepts/config 0; compatibility support unchanged until separately retired. Audit actual all zero | Decide rename/support policy; inventory distributions/callers; preserve rejection behavior; require explicit retirement evidence before deletion |
+
+#### Focused reduction and shell-disposition audit
+
+The 2026-08-28 audit at source revision `1abbf094` reviewed observability,
+immutable handoffs, repeated validation, tracked shell, generated shell, and
+their direct protection suites. It found 10,432 tracked product shell lines
+(8,754 `.sh` and 1,678 `.slurm`). The generated-wrapper template spans 143
+physical Python source lines and currently renders 121 shell lines.
+The estimates below are directional implementation budgets, not authorization;
+product and protection/test reductions remain separately reported.
+
+| Surface | Disposition and surviving authority | Directional reduction | Gate |
+|---|---|---:|---|
+| Same-process impossible-state and test-only seams in control, materialization, lifecycle, and inspection | **Retire.** Trust the sole admitted immutable producer; retain disk re-admission, canonical bytes, schema validation, and real mutation boundaries | 90–140 product; 10–30 tests | Low risk only after the slice records sole construction, no injection/mutation path, no distinct claim, and exact surviving authority |
+| Materialization-to-lifecycle handoff | **Consolidate duplicated exact handoff facts behind one admitted immutable boundary selected during implementation.** Retain mutex, filesystem re-admission, source/tool/storage checks, lock ownership, signal handling, and receipt-last publication | 110–170 product; 150–300 tests | Explicit approval because this changes an execution boundary; prove core-path and fault parity; no evidence deletion |
+| Repeated inspection receipt/task validation | **Consolidate conditionally behind the smallest admitted view selected during implementation.** Derive status and receipt comparisons without repeated reads; retain cumulative receipt arrays and all evidence records | 350–470 product, with additional test/I/O reduction to be measured | Explicit approval because blocker specificity and authoritative status validation are affected |
+| Dashboard and `make dashboard` | **Mark stale and freeze during the campaign.** Persisted EMRYS records remain authority, inspection owns the independent derived projection, and the dashboard receives no updates | Post-campaign opportunity of at least 1,751 net product/script and 686 net direct tests under the caps in `ARCH-MODEL-COMP-08` | Reconsider only after campaign completion; exact public-route removal still requires explicit approval |
+| Sixteen stage/utility `.slurm` wrappers | **Retire, not port.** The generated whole-Run scheduler route must preserve outer placement, module/site setup, allocation provenance, and prove the applicable Local/Slurm parity | 1,678 product; at least 2,402 dedicated tests | Explicit approval because these are documented manual routes; confirm external use and whole-Run scheduler parity |
+| Generated `run-in-slurm.sh` body | **Downsize and select the minimum Python/shell ownership during implementation.** Retain only necessary shell bootstrap before `exec`; grouped Run control continues to own execution and the accepted operation owns `LOG-05` | 40–80 product; 150–300 tests after replacement | Explicit approval because this changes a supported scheduler path; preserve submitter identity, module environment, scratch cleanup, signal/exit propagation, and Python availability |
+| Step 07, Step 08, and the Step 09 shell bundle | **Convert individually to existing Python admission/publication owners; keep the R scientific implementations.** No parallel shell compatibility owner | Respectively 600–750, 650–800, and 900–1,200 net product; direct test reductions measured per slice | Separate explicit boundary/parity approval for each; preserve exact inputs, command failure, immutable publication, validation, and terminal-record ordering |
+| Steps 00c, 05, and 06 plus shared shell libraries | **Keep for now.** Reconsider only after a smaller Python owner pattern is proven; retire shared functions as their last real caller migrates | Zero now | Do not create three bespoke line-for-line ports or matching Python helper APIs |
+| Retired `scripts/git_orchestration/` namespace | **Keep absent and finish the exact history-backed disposition.** Useful documentation validation already moved to its owner; do not add a permanent return-prevention guard for an implausible invariant | Avoids new guard/test surface | `TOOLING-01` remains Open until every former file/caller is accounted for; do not revive the namespace |
+
+The combined opportunities exceed 5,000 directional net product lines before
+the approval-gated evidence-I/O consolidation candidate. This is neither a
+quota nor permission to trade away guarantees: each bounded slice must replace
+the estimate with actual category-separated accounting and stop if its total
+surface does not fall.
 
 #### Model options reviewed and remaining decision order
 
@@ -1600,8 +1648,10 @@ oversubscription checks; create-exclusive publication, fsync and publication-
 last ordering; attempt mutexes, owned locks, signal/process-group behavior;
 dispatch substitution and resume-chain checks; derived inspection independent
 of Snakemake metadata; and direct-owner, adversarial, seeded-fault, recovery,
-fresh-clone, and synthetic end-to-end defenses all survive unless an
-implementation maps an equal-or-stronger replacement.
+fresh-clone, and synthetic end-to-end boundary defenses all survive unless an
+implementation maps an equal-or-stronger replacement. This does not preserve a
+redundant check whose only reachable state is a test-manufactured violation of
+an already-admitted immutable same-process value.
 
 No retained evidence deletion is proposed or authorized. Workflow attempts,
 terminal receipts, task start/attempt/verified records, reporting ledgers and
@@ -1862,7 +1912,10 @@ caller migration, parity, owned temporary compatibility, and eventual
 retirement; and mapped equal-or-stronger protection before direct-owner,
 adversarial, seeded-fault, or synthetic end-to-end defenses are removed. The
 replacement defense may already survive elsewhere; removing redundancy does
-not require creating a duplicate test. Evidence levels remain distinct, so
+not require creating a duplicate test. A proven impossible same-process state
+may lose its redundant check and check-only test without replacement; high-risk,
+ambiguous, or directly user-facing removal remains approval-gated. Evidence
+levels remain distinct, so
 neither coverage nor a scientist-facing synthetic golden path proves scheduler,
 production, scientific-review, or biological readiness.
 
@@ -2197,6 +2250,14 @@ opportunity it finds. Each row records:
 - the evidence for redundancy;
 - proposed disposition: retain, consolidate, retire, or defer;
 - the surviving authority;
+- for a protection, the trust boundary and risk class, whether the defended
+  state is reachable outside a test seam, and whether an independent invariant
+  remains;
+- for shell or generated shell, `KEEP`, `CONVERT`, or `RETIRE`, including the
+  shell-native responsibility and total product/test/caller/cross-language
+  effect;
+- for a touched retained operation, the `LOG-05` adoption, not-applicable, or
+  retiring disposition;
 - estimated and then actual change in files, lines, public concepts,
   configuration artifacts, call edges, and compatibility paths; and
 - preconditions, including caller migration, parity, evidence review,
@@ -2226,6 +2287,19 @@ An implementation slice closes only when it:
    concepts, and compatibility paths; and
 5. reports every remaining mutable exception and its owner and justification.
 
+If a retained applicable operation's human output or durable diagnostics
+change, `LOG-05` adoption is part of that same vertical slice. The slice may not
+add an interim logger, output convention, wrapper-owned attempt, or parallel
+shell/Python implementation. A touched shell surface closes only when its
+recorded `KEEP`, `CONVERT`, or `RETIRE` disposition is realized or explicitly
+deferred with a reason and trigger.
+
+Regardless of whether a mechanism is classified as a protection, any
+high-risk, directly user-facing, execution-boundary, or evidence-validation
+retirement, consolidation, or conversion requires the user's explicit
+approval. This implementation gate is independent of the stricter retained-
+evidence deletion gate below.
+
 No category offsets another. Deleting tests, documentation, configuration, or
 evidence cannot make product growth appear net-negative. Generated files,
 runtime environments, vendored bulk, and moving logic into configuration do
@@ -2235,9 +2309,15 @@ or an extra facade beside the old authority fails the compression requirement
 even if counts decline. Temporary growth remains growth until its owner,
 retirement condition, and removal are recorded.
 
-Protection retirement follows `AC-GUARD-005`: the slice maps the invariant and
-shows the equal-or-stronger defense that survives, which need not be newly
-created. Evidence retirement follows a separate gate. The proposal must name
+Protection retirement follows `AC-GUARD-005`. External-input, filesystem,
+concurrency, crash, recovery, persistence, evidence, and supported
+public-behavior boundaries require a mapped equal-or-stronger surviving
+defense. A low-risk check and its check-only test may retire without replacement
+only when the slice proves that the state is impossible outside the test seam,
+has one admitted immutable producer, has no supported injection or mutation
+path, and supports no distinct failure mode or claim. High-risk, ambiguous, or
+directly user-facing protection removal requires explicit user approval.
+Evidence retirement follows a separate gate. The proposal must name
 the exact artifacts or bounded class; claims and recovery paths supported;
 producers and consumers; retention requirement; redundancy basis;
 discoverability, verification, and evidence-level effects; and rollback. The
@@ -2280,6 +2360,12 @@ admission and closure, and the
 [logging contract](../design/LOGGING_CONTRACT.md#adoption-boundary) owns exact
 operation behavior. Transitional compatibility support does not satisfy final
 retained-operation coverage, and retiring surfaces do not advance closure.
+
+Every implementation slice that touches a retained applicable operation now
+records its `LOG-05` disposition. A slice changing that operation's human output
+or durable diagnostics adopts the foundation in the same vertical change; it
+does not add an interim convention for later replacement. Operations proven
+not applicable or retiring are recorded as such and do not become adopters.
 
 This resolves only the `LOG-05` migration boundary within `AC-DEC-020`. It does
 not settle any other campaign ordering or interface decision.
@@ -2535,7 +2621,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `OBS-02` | High-level scientific progress, public run status, elapsed time, completion/failure, and links to recovery/inspection |
 | `ANALYSIS-01` | Stop/reuse through the Step 06 boundary and launch separately identified cohort, subset, sensitivity, or downstream work |
 | `ANALYSIS-02` | Collaborator-extensible modules with typed scientific contracts; scientific algorithms, assumptions, interpretation, and review-relevant implementation remain visible. The lightweight extension mechanism is open within the binding prohibition on a mandatory universal Stage hierarchy, registry, workflow language, or second scheduler |
-| `ARCH-01` | Consumes the completed invariant, responsibility, audit, model, and semantic prerequisites plus successor Run-authority and execution-projection-retirement cutovers. Every slice performs the owner/caller/compression/mutation audit and category-separated closeout in Section 13.1. Public application/operation, generalized execution/policy/identity/artifact APIs, remaining migrations, Artifact Store decision, package realization, and facade use remain just-in-time choices. Bounded migration, immutable-by-default boundaries, eventual retirement, equal-or-stronger mapped protection, and separate approval for exact evidence deletion remain binding. |
+| `ARCH-01` | Consumes the completed invariant, responsibility, audit, model, and semantic prerequisites plus successor Run-authority and execution-projection-retirement cutovers. Every slice performs the owner/caller/compression/mutation audit and category-separated closeout in Section 13.1. Public application/operation, generalized execution/policy/identity/artifact APIs, remaining migrations, Artifact Store decision, package realization, and facade use remain just-in-time choices. Bounded migration, immutable-by-default boundaries, eventual retirement, risk-classified protection disposition, shell `KEEP`/`CONVERT`/`RETIRE` assessment, same-slice `LOG-05` disposition, and separate approval for exact evidence deletion remain binding. |
 | `REPORT-03` | Primary-scientific-findings hierarchy with evidence and operational detail progressively disclosed |
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |
 | `RESULTS-01` | One discoverable results surface and coordination with the proposed Run Bundle and Artifact Store concepts without preselecting their ownership or layouts |
@@ -2546,7 +2632,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `DOC-05` | Consolidate useful orchestration-admission and launcher safeguards into live owners, discard stale transcripts, and retire both transition sources |
 | `BACKLOG-01` | Matrix cutover remains a discrete task; this campaign does not silently create another permanent backlog authority |
 | `DOC-TOOL-01` | Preserve useful documentation validation in a correctly named owner while removing obsolete task-registry coupling |
-| `TOOLING-01` | Verify the now-empty generic Git-orchestration namespace against history and callers, then guard its retired paths from returning |
+| `TOOLING-01` | Complete the exact former-file/caller history audit for the absent generic Git-orchestration namespace; useful validation remains with its documentation owner and no check-only return guard is required |
 | `CLEAN-01` | Retire the old demo product surface without losing a neutral synthetic golden path and its validation value; final terminology is open |
 | `CLEAN-02` | Reconcile the obsolete pending Step 04 scaffold against the active owner test, then retire the duplicate test-planning surface |
 | `FUT-DATA-02` | Preserve initial exact NCBI reference and SRA-read adapters versus possible later ENA, GEO, and BAM acquisition as an explicit nonbinding scope choice; provenance and acquisition acceptance remain matrix-owned |
@@ -2624,6 +2710,9 @@ they do not reopen it or promote any remaining proposal.
 | `AC-RAT-002` | Immutability is preferred throughout; `Run` is the immutable plan; public nouns and nesting are decided only after audit and discussion; every other application-model, API, backend, and policy decision is deferred until then | Binding requirement 9, `AC-GUARD-007`, `AC-SLICE-03`, and `AC-DEC-001`/`011` |
 | `AC-RAT-003` | Redundant evidence may be identified, but deletion requires great caution and the user's explicit approval | Binding requirement 10, `AC-GUARD-008`, and the evidence proposal and separate-commit gate in Section 13.1 |
 | `AC-RAT-004` | Adopt model C and the compact public model `Project -> Analysis -> Run -> Results`, progressively disclose Attempt, keep Execution Plan internal and inspectable, and apply the ratified Run-versus-Attempt change boundary including identity-neutral downstream reporting | Durable `ARCH-MODEL-DECISION-01`, resolved `AC-DEC-001`, the semantic package in `ARCH-MODEL-FIELDS-01`, and the first successor Run-authority realization; broader `AC-DEC-011` and `AC-SLICE-03` work remains Open |
+| `AC-RAT-005` | Remove redundant validation and protection against impossible same-process states when maintenance cost exceeds the nonexistent independent failure boundary; low-risk check-only seams need no artificial replacement, while high-risk, ambiguous, directly user-facing, execution-boundary, or evidence-validation change requires explicit approval | Refined `AC-GUARD-005`/`006`, Section 13.1 risk/trust-boundary protocol, and the focused reduction register; retained evidence remains separately governed by `AC-RAT-003` |
+| `AC-RAT-006` | Every slice touching a retained applicable operation records and incorporates the relevant `LOG-05` work when output or durable diagnostics change, without creating an interim logging convention | Binding requirement 8, Section 13.3, the logging contract adoption boundary, and the findings-matrix closure guard |
+| `AC-RAT-007` | Every touched shell or generated-shell surface is evaluated for retention, Python conversion, or retirement; conversion proceeds only when it reduces total product, protection/test, caller, and cross-language surface | `AC-GUARD-006`, Section 13.1, and the focused shell-disposition audit |
 
 ### 18.4 Duplicate policy
 
