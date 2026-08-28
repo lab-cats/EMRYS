@@ -474,6 +474,7 @@ def test_submission_command_seals_exports_and_optional_slurm_flags(
     exports = next(argument for argument in command if argument.startswith("--export="))
     assert "EMRYS_EXECUTE=1" in exports
     assert "EMRYS_MODULES=R/4.6.1:bcftools/1.22" in exports
+    assert "EMRYS_SLURM_CPUS=" not in exports
     assert command[-2:] == [str(wrapper), launcher_config.BATCH_MARKER]
 
     with pytest.raises(ValueError, match="unsafe for Slurm export"):

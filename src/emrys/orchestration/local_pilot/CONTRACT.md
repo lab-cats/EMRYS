@@ -94,8 +94,10 @@ In the batch allocation the wrapper creates a private mode-`0700` directory
 below the resolved real writable scratch parent, exports it as
 `TMPDIR`, records the effective path and `df -PT` filesystem/capacity
 output, and removes that private directory on exit. It then runs request
-compatibility and doctor checks before delegating the entire single-host local
-pilot. Batch mode requires both Slurm allocation identity and the one exact
+compatibility validation before delegating the entire single-host local pilot
+to the grouped Run control path. That path owns the readiness/Doctor gate; the
+wrapper does not invoke Doctor independently. Batch mode requires both Slurm
+allocation identity and the one exact
 internal script argument emitted by the submit helper; inherited
 `SLURM_JOB_ID` alone cannot enter it. Submission without a wrapper mode flag
 always plans. Only
@@ -107,7 +109,11 @@ scheduling, scheduler success as workflow completion, or site portability
 before site validation. The outer CPU/memory request is allocation capacity,
 not a minimum. `emrys.resources.yaml` remains the separate authority for
 workflow cores, stage concurrency, per-step threads, and per-job memory, and
-its effective totals must fit the observed allocation.
+its effective totals must fit the observed allocation. The current Attempt
+resource record carries the exact Slurm job ID as structured allocation
+provenance, or null for direct execution; historical three-field allocation
+records remain readable. The job ID is not Run identity, scientific completion,
+or evidence-promotion authority.
 
 ## Normalization and execution
 
@@ -168,6 +174,8 @@ no result locations. The dashboard does not derive or display them.
 the fixed profile to owner commands, declared inputs/outputs, validation
 reports, immutable task dispatches, reporting projections, workflow config,
 and workflow-attempt record. Initial run skeleton creation is create-absent.
+For successor Runs, the Attempt executor value comes from the admitted
+immutable Execution Plan; historical Runs retain their fixed `local` value.
 Lifecycle first holds the persistent zero-byte `locks/acquire.mutex` advisory
 mutex and revalidates the exact prepared attempt under that serialization
 boundary. The mutex is infrastructure, not run evidence. Only an admissible

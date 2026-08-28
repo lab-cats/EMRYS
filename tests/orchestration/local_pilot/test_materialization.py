@@ -253,6 +253,20 @@ def _dispatch_records(plan) -> list[dict[str, object]]:
     return [json.loads(item.data) for item in plan.new_dispatch_files]
 
 
+def test_control_readiness_failure_preserves_doctor_remediation(
+    tmp_path: Path,
+) -> None:
+    readiness, *_rest = _readiness(tmp_path)
+    blocked = replace(
+        readiness,
+        blockers=("runtime is unavailable",),
+        remediations=("load the admitted site module",),
+    )
+
+    with pytest.raises(control.ControlError, match="load the admitted site module"):
+        control._require_ready(blocked)
+
+
 def test_owner_doubles_preserve_immutable_run_toolchain(tmp_path: Path) -> None:
     plan = _plan(tmp_path)
 
@@ -302,6 +316,9 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert not plan.workspace.exists()
     assert plan.preparation.operation == "execute"
     assert json.loads(plan.preparation.attempt_record_bytes) == plan.attempt_record
+    assert plan.attempt_record["executor"] == plan.run.execution_plan.record[
+        "identity"
+    ]["backend"]["backend"]
     assert plan.dispatch_count == 35
     records = _dispatch_records(plan)
     assert len(records) == 35
@@ -445,12 +462,17 @@ def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> Non
 def test_run_identity_excludes_reporting_and_allocation_but_binds_resources_and_tools(
     tmp_path: Path,
 ) -> None:
-    readiness, normalized, resources, _request, _workspace = _readiness(tmp_path)
+    readiness, normalized, resources, _request, workspace = _readiness(tmp_path)
     baseline = _run_candidate(readiness, normalized, resources)
 
     reallocated = resolve_resource_policy(
         resources.policy,
-        AllocationCapacity(cores=2, memory_mb=2048, source="different allocation"),
+        AllocationCapacity(
+            cores=2,
+            memory_mb=2048,
+            source="Slurm allocation",
+            slurm_job_id="700123",
+        ),
     )
     reporting_policy = replace(
         resources.policy,
@@ -463,6 +485,28 @@ def test_run_identity_excludes_reporting_and_allocation_but_binds_resources_and_
         resources.allocation,
     )
     assert _run_candidate(readiness, normalized, reallocated).run_id == baseline.run_id
+    scheduled_plan = build_attempt_plan(
+        baseline,
+        readiness,
+        workspace,
+        resources=reallocated,
+        operation="execute",
+        now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
+        token="3" * 32,
+        host="scheduled-host",
+        process_id=456,
+    )
+    scheduled_config = json.loads(
+        next(
+            item.data
+            for item in scheduled_plan.attempt_files
+            if item.path == scheduled_plan.config_path
+        )
+    )
+    assert scheduled_config["resource_policy"]["allocation"]["slurm_job_id"] == (
+        "700123"
+    )
+    assert scheduled_plan.run.run_id == baseline.run_id
     assert (
         _run_candidate(readiness, normalized, reporting_changed).run_id
         == baseline.run_id

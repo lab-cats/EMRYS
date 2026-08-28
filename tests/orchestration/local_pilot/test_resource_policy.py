@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 from dataclasses import FrozenInstanceError
 from pathlib import Path
 
@@ -35,11 +36,17 @@ def _request(tmp_path: Path) -> Path:
     return request
 
 
-def _allocation(*, cores: int = 8, memory_mb: int = 16_384) -> AllocationCapacity:
+def _allocation(
+    *,
+    cores: int = 8,
+    memory_mb: int = 16_384,
+    slurm_job_id: str | None = None,
+) -> AllocationCapacity:
     return AllocationCapacity(
         cores=cores,
         memory_mb=memory_mb,
         source="test allocation",
+        slurm_job_id=slurm_job_id,
     )
 
 
@@ -84,6 +91,7 @@ def test_symbolic_computational_declaration_is_allocation_independent(
     assert set(dict(first.resolution.stage_memory_mb).values()) == {16_384}
     assert set(dict(second.resolution.stage_memory_mb).values()) == {32_768}
     record = first.policy_record()
+    assert record["allocation"]["slurm_job_id"] is None
     assert record["symbolic"] == policy.document()
     admitted = admit_resource_policy_record(record, require_symbolic=True)
     assert admitted.policy == first.policy
@@ -101,6 +109,32 @@ def test_symbolic_computational_declaration_is_allocation_independent(
         first.declaration.workflow_cores = 8  # type: ignore[misc]
     with pytest.raises(FrozenInstanceError):
         first.resolution.workflow_memory_mb = 1  # type: ignore[misc]
+
+
+def test_structured_slurm_allocation_preserves_historical_reader(
+    tmp_path: Path,
+) -> None:
+    policy = load_resource_policy(_request(tmp_path))
+    large_job_id = "9" * 5000
+    current = resolve_resource_policy(policy, _allocation(slurm_job_id=large_job_id))
+    current_record = current.policy_record()
+
+    assert current_record["allocation"]["slurm_job_id"] == large_job_id
+    assert (
+        admit_resource_policy_record(current_record, require_symbolic=True).allocation
+        == current.allocation
+    )
+
+    historical_record = copy.deepcopy(current_record)
+    historical_record["allocation"].pop("slurm_job_id")
+    historical = admit_resource_policy_record(
+        historical_record,
+        require_symbolic=True,
+    )
+    assert historical.allocation.slurm_job_id is None
+
+    with pytest.raises(ResourceConfigError, match="Slurm job ID"):
+        _allocation(slurm_job_id="0")
 
 
 def test_reporting_memory_is_excluded_from_run_bound_declaration(

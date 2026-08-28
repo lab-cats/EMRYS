@@ -695,7 +695,10 @@ def _validate_resource_resolution(
         raise ContractValidationError(
             "Workflow symbolic resource policy is incomplete: " + ", ".join(missing)
         )
-    if set(allocation) != {"cores", "memory_mb", "source"}:
+    if frozenset(allocation) not in {
+        frozenset({"cores", "memory_mb", "source"}),
+        frozenset({"cores", "memory_mb", "source", "slurm_job_id"}),
+    }:
         raise ContractValidationError("Workflow allocation fields must be closed")
     if set(sources) != {
         "default_sha256",
@@ -734,6 +737,16 @@ def _validate_resource_resolution(
     )
     if not isinstance(allocation["source"], str) or not allocation["source"]:
         raise ContractValidationError("Allocation source must be nonempty")
+    slurm_job_id = allocation.get("slurm_job_id")
+    if slurm_job_id is not None and (
+        not isinstance(slurm_job_id, str)
+        or not slurm_job_id.isascii()
+        or not slurm_job_id.isdecimal()
+        or not slurm_job_id.strip("0")
+    ):
+        raise ContractValidationError(
+            "Allocation Slurm job ID must be a positive decimal string or null"
+        )
 
     declaration = plan.record["identity"]["computational_resources"]
     if {field: symbolic[field] for field in computational_fields} != declaration:

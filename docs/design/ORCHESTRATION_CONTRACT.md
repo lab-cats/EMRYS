@@ -27,9 +27,12 @@ and requires external isolation and explicit reconciliation, never automatic
 repair. NFS, network/distributed filesystems, and cluster filesystem semantics
 are unproved and unsupported until separate site validation.
 
-The first implementation is deliberately source-checkout-bound and local. A
-SLURM executor, a local Linux VM, CSU execution, and an installed standalone
-control plane are later decisions. Deferral is not rejection.
+The first implementation is deliberately source-checkout-bound and uses one
+local Snakemake scientific backend. The generated single-node Slurm wrapper is
+an outer placement adapter around that same backend, not a second application
+executor. A distinct Slurm-aware application backend, a local Linux VM, CSU
+portability, and an installed standalone control plane are later decisions.
+Deferral is not rejection.
 
 ## Design outcome
 
@@ -229,7 +232,10 @@ The human label never selects or overwrites a Run.
 
 Workspace, output root, source-checkout path and commit, executor, host,
 resources, scratch, exact required-tool identities, timestamps, PIDs, and
-future scheduler identifiers are attempt context. File-backed tool identities
+scheduler identifiers are Attempt context. The successor Attempt executor is
+read from the immutable Execution Plan. The observed outer allocation records
+an exact Slurm job ID or null for direct execution; historical allocation
+records without that field remain readable. File-backed tool identities
 bind the authored path, canonical target, observed version, and SHA-256;
 admitted runtime directories bind their authored and canonical paths. Each
 fixed `r_*` identity binds the observed namespace version, exact canonical
@@ -319,7 +325,7 @@ Boolean.
 | Owner run token | Existing owner-local staging/publication identity |
 | Artifact attempt ID | Existing reporting artifact-attempt vocabulary |
 | `execution_attempt_id` | Future application-log identity defined by [`LOGGING_CONTRACT.md`](LOGGING_CONTRACT.md) |
-| Scheduler job ID | Future executor correlation only |
+| Scheduler job ID | Attempt-local outer-allocation correlation; never Run identity or completion authority |
 
 Workflow and task attempt IDs use
 `workflow-YYYYMMDDTHHMMSSZ-<32 lowercase hex>` and

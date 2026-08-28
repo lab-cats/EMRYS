@@ -290,7 +290,7 @@ def _qualify_storage(
         str(reference_fasta),
     ]
     compute_environment = dict(environment)
-    compute_environment["SLURM_JOB_ID"] = "fresh-clone-fixture"
+    compute_environment["SLURM_JOB_ID"] = "700123"
     compute = _public_command(
         [*common, "--phase", "compute", "--execute"],
         environment=compute_environment,

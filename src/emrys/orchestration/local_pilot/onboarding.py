@@ -334,7 +334,7 @@ fi
     die "batch mode requires the exact internal batch marker"
 shift
 
-for name in EMRYS_SUBMIT_UID EMRYS_SUBMIT_USER USER LOGNAME EMRYS_SLURM_CPUS \
+for name in EMRYS_SUBMIT_UID EMRYS_SUBMIT_USER USER LOGNAME \
     EMRYS_SOURCE_CHECKOUT EMRYS_PYTHON EMRYS_REQUEST EMRYS_WORKSPACE \
     EMRYS_RUNTIME_PROFILE EMRYS_MODULE_MODE EMRYS_SCRATCH_PARENT \
     EMRYS_EXECUTE; do
@@ -343,7 +343,6 @@ done
 for name in EMRYS_MODULE_INIT EMRYS_MODULES; do
     require_export_value "$name"
 done
-[[ "$EMRYS_SLURM_CPUS" =~ ^[1-9][0-9]*$ ]] || die "EMRYS_SLURM_CPUS must be a positive integer"
 [[ "$EMRYS_EXECUTE" == 0 || "$EMRYS_EXECUTE" == 1 ]] || die "EMRYS_EXECUTE must be 0 or 1"
 [[ "$EMRYS_SUBMIT_UID" =~ ^[0-9]+$ ]] || die "EMRYS_SUBMIT_UID must be numeric"
 [[ "$EMRYS_SUBMIT_USER" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || \
@@ -407,10 +406,6 @@ df -PT "$TMPDIR"
 cd "$EMRYS_SOURCE_CHECKOUT"
 "$EMRYS_PYTHON" -X pycache_prefix=/dev/null -I -m emrys validate \
     local-pilot-request --request "$EMRYS_REQUEST"
-"$EMRYS_PYTHON" -X pycache_prefix=/dev/null -I -m emrys doctor local-pilot \
-    --request "$EMRYS_REQUEST" \
-    --workspace "$EMRYS_WORKSPACE" \
-    --runtime-profile "$EMRYS_RUNTIME_PROFILE"
 run_arguments=(
     --request "$EMRYS_REQUEST"
     --workspace "$EMRYS_WORKSPACE"

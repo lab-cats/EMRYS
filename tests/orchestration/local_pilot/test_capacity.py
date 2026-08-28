@@ -19,6 +19,7 @@ def test_local_capacity_uses_process_limits(monkeypatch: pytest.MonkeyPatch) -> 
     assert observed.cores == 6
     assert observed.memory_mb == 12_000
     assert observed.source == "process affinity and memory limit"
+    assert observed.slurm_job_id is None
 
 
 def test_slurm_capacity_is_constrained_by_process_visibility(
@@ -38,6 +39,25 @@ def test_slurm_capacity_is_constrained_by_process_visibility(
     assert observed.cores == 3
     assert observed.memory_mb == 7000
     assert "SLURM_MEM_PER_NODE" in observed.source
+    assert observed.slurm_job_id == "123"
+
+
+@pytest.mark.parametrize("job_id", ("0", "not-a-job", "-1", "١٢٣"))
+def test_slurm_job_id_must_be_positive_ascii_decimal(
+    monkeypatch: pytest.MonkeyPatch,
+    job_id: str,
+) -> None:
+    monkeypatch.setattr(capacity, "_affinity_cores", lambda: 4)
+    monkeypatch.setattr(capacity, "_memory_limit_mb", lambda: 8192)
+
+    with pytest.raises(ResourceConfigError, match="Slurm job ID"):
+        capacity.observe_allocation(
+            {
+                "SLURM_JOB_ID": job_id,
+                "SLURM_CPUS_PER_TASK": "4",
+                "SLURM_MEM_PER_NODE": "8192",
+            }
+        )
 
 
 def test_slurm_per_cpu_memory_is_multiplied_by_allocated_cpus(
