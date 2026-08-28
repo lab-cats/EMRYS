@@ -16,7 +16,11 @@ from pathlib import Path
 from typing import Any, Literal, Protocol, cast
 
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.projection import CONTRACT_PATHS
+from emrys.contracts.orchestration.application_model import (
+    RUN_BINDING_SCHEMA_VERSION,
+    AnalysisRevision,
+)
+from emrys.contracts.orchestration.projection import CONTRACT_PATHS, build_reporting_bundle
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout,
@@ -26,6 +30,7 @@ from emrys.orchestration.local_pilot.inspection import (
     InspectionError,
     admit_attempt_run_lock,
     admit_canonical_record,
+    admit_execution_path,
 )
 
 ReportingKind = Literal["artifact_index", "run_summary", "html_report"]
@@ -88,17 +93,7 @@ def _semantic_report_locations(
     return admitted
 
 
-SemanticValidator = Callable[
-    [
-        str,
-        Path,
-        Path,
-        Mapping[str, Any],
-        Mapping[str, Any],
-        Mapping[str, Any],
-    ],
-    SemanticTransaction,
-]
+SemanticValidator = Callable[..., SemanticTransaction]
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,6 +138,7 @@ class _AdmittedIdentity:
     execution: dict[str, Any]
     profile: dict[str, Any]
     attempt: dict[str, Any]
+    config: dict[str, Any]
     execution_sha256: str
     profile_sha256: str
     attempt_reference: dict[str, str]
@@ -157,10 +153,11 @@ def _semantic_validator(
     execution: Mapping[str, Any],
     profile: Mapping[str, Any],
     attempt: Mapping[str, Any],
+    config: Mapping[str, Any],
 ) -> SemanticTransaction:
     from emrys.reporting.transaction_validation import validate_receipt  # noqa: PLC0415
 
-    return validate_receipt(kind, receipt_path, run_root, execution, profile, attempt)
+    return validate_receipt(kind, receipt_path, run_root, execution, profile, attempt, config)
 
 
 def _publish_exclusive(path: Path, data: bytes) -> None:
@@ -303,6 +300,11 @@ _admit_record = partial(
     read_bytes=_read_bound,
     error_type=ReportingBoundaryError,
 )
+_admit_execution = partial(
+    admit_execution_path,
+    read_bytes=_read_bound,
+    error_type=ReportingBoundaryError,
+)
 
 
 def _load_canonical_object(
@@ -328,32 +330,53 @@ def _reference(path: Path, root: Path, data: bytes | None = None) -> dict[str, s
     }
 
 
+def _reporting_relative(relative: str, attempt_id: object | None) -> str:
+    if attempt_id is None:
+        return relative
+    return f"contract/reporting-inputs/{attempt_id}/{Path(relative).name}"
+
+
 def _admit_reporting_projection(
     *,
     root: Path,
     execution: Mapping[str, Any],
     config: Mapping[str, Any],
 ) -> None:
-    projection = execution["reporting_projection"]
-    if set(projection) != set(CONTRACT_PATHS):
+    successor = execution.get("schema_version") == RUN_BINDING_SCHEMA_VERSION
+    projection = None if successor else execution["reporting_projection"]
+    if projection is not None and set(projection) != set(CONTRACT_PATHS):
         raise ReportingBoundaryError(
             "Execution reporting projection does not use the fixed complete roster"
         )
     for name, relative in CONTRACT_PATHS.items():
-        reference = projection[name]
-        if reference["path"] != relative:
+        expected_relative = _reporting_relative(
+            relative,
+            config.get("workflow_attempt_id") if successor else None,
+        )
+        reference = config.get(f"{name}_path") if successor else projection[name]
+        if successor and (
+            not isinstance(reference, Mapping)
+            or set(reference) != {"path", "sha256"}
+            or not all(isinstance(value, str) for value in reference.values())
+        ):
+            raise ReportingBoundaryError(
+                f"Workflow config does not bind exact reporting projection {name}"
+            )
+        assert isinstance(reference, Mapping)
+        if reference["path"] != expected_relative:
             raise ReportingBoundaryError(
                 f"Reporting projection {name} does not use its fixed path"
             )
-        path = root / relative
-        if config.get(f"{name}_path") != str(path):
+        path = root / expected_relative
+        if not successor and config.get(f"{name}_path") != str(path):
             raise ReportingBoundaryError(
                 f"Workflow config does not bind reporting projection {name}"
             )
         data = _read_bound(path, root, f"reporting projection {name}")
         if hashlib.sha256(data).hexdigest() != reference["sha256"]:
             raise ReportingBoundaryError(
-                f"Reporting projection {name} bytes differ from execution identity"
+                f"Reporting projection {name} bytes differ from "
+                f"{'workflow config' if successor else 'execution'} identity"
             )
         if path.suffix == ".json":
             try:
@@ -369,6 +392,45 @@ def _admit_reporting_projection(
                 raise ReportingBoundaryError(
                     f"Reporting projection {name} must use canonical JSON bytes"
                 )
+
+
+def _attempt_reporting_materialization(
+    source: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    run_root: Path,
+    *,
+    analysis: AnalysisRevision | None = None,
+    attempt_id: str | None = None,
+) -> tuple[
+    tuple[tuple[Path, bytes], ...],
+    dict[str, Any],
+    tuple[Path, ...],
+]:
+    """Project identity-neutral reporting inputs for one Attempt adapter."""
+
+    reporting = build_reporting_bundle(source, profile, analysis)
+    projection_data = {
+        "reference_contract": reporting.reference_contract_bytes,
+        "primary_analysis_policy": reporting.primary_analysis_policy_bytes,
+        "reporting_run_contract": reporting.reporting_run_contract_bytes,
+        "artifact_inventory": reporting.artifact_inventory_bytes,
+    }
+    files: list[tuple[Path, bytes]] = []
+    config: dict[str, Any] = {}
+    successor = analysis is not None
+    references = reporting.projection_references if successor else source["reporting_projection"]
+    for name in CONTRACT_PATHS:
+        reference = dict(references[name])
+        if successor:
+            reference["path"] = _reporting_relative(reference["path"], attempt_id)
+        path = run_root / str(reference["path"])
+        files.append((path, projection_data[name]))
+        config[f"{name}_path"] = reference if successor else str(path)
+    directories = (
+        run_root / "products" / "artifact-summary",
+        run_root / "products" / "report",
+    )
+    return tuple(files), config, directories
 
 
 def ledger_paths(run_root: Path, kind: str) -> ReportingLedgerPaths:
@@ -499,19 +561,28 @@ def _admit_identity(
     attest_source: Callable[..., Any] = attest_source_checkout,
 ) -> _AdmittedIdentity:
     root = _canonical_root(run_root)
-    expected_execution = root / "contract" / "normalized.json"
     expected_profile = root / "contract" / "profile.json"
-    if execution_path != expected_execution or profile_path != expected_profile:
+    allowed = {root / "contract" / name for name in ("normalized.json", "run.json")}
+    if profile_path != expected_profile or execution_path not in allowed:
         raise ReportingBoundaryError(
             "Reporting identity must use the fixed execution/profile contract paths"
         )
     profile, profile_data = _admit_record(profile_path, root, "profile")
-    execution, execution_data = _admit_record(
+    execution, execution_data, _authority = _admit_execution(
         execution_path,
         root,
-        "execution",
-        profile=profile,
+        profile,
     )
+    name = (
+        "run.json"
+        if execution["schema_version"] == RUN_BINDING_SCHEMA_VERSION
+        else "normalized.json"
+    )
+    expected_execution = root / "contract" / name
+    if execution_path != expected_execution:
+        raise ReportingBoundaryError(
+            "Reporting execution schema does not use its fixed contract path"
+        )
     attempt, attempt_data = _admit_record(
         workflow_attempt_path,
         root,
@@ -591,6 +662,7 @@ def _admit_identity(
         execution=execution,
         profile=profile,
         attempt=attempt,
+        config=config,
         execution_sha256=execution_sha256,
         profile_sha256=profile_sha256,
         attempt_reference=_reference(workflow_attempt_path, root, attempt_data),
@@ -759,6 +831,7 @@ def publish_verified(
             identity.execution,
             identity.profile,
             identity.attempt,
+            identity.config,
         )
     except Exception as exc:
         raise ReportingBoundaryError(
@@ -849,9 +922,10 @@ def _identity_from_origin(
     attempt_path = root / "attempts" / origin / "attempt.json"
     attempt, _attempt_data = _admit_record(attempt_path, root, "workflow-attempt")
     config_path = root / str(attempt["workflow_config"]["path"])
+    name = "run.json" if (root / "contract" / "run.json").exists() else "normalized.json"
     identity = _admit_identity(
         run_root=root,
-        execution_path=root / "contract" / "normalized.json",
+        execution_path=root / "contract" / name,
         profile_path=root / "contract" / "profile.json",
         workflow_attempt_path=attempt_path,
         workflow_config_path=config_path,
@@ -944,6 +1018,7 @@ def validate_verified(
             identity.execution,
             identity.profile,
             identity.attempt,
+            identity.config,
         )
     except Exception as exc:
         raise ReportingBoundaryError(

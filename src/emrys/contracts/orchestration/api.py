@@ -24,6 +24,7 @@ SCHEMA_NAMES = (
     "launcher-config",
     "profile",
     "execution",
+    "application-model",
     "reference",
     "policy",
     "run-lock",
@@ -736,6 +737,12 @@ def _validate_record_uncached(
         )
 
         validate_reporting_projection(record, profile)
+    elif name == "application-model":
+        from emrys.contracts.orchestration.application_model import (  # noqa: PLC0415
+            _validate_application_model_semantics,
+        )
+
+        _validate_application_model_semantics(record)
     _validate_identity_record(name, record)
 
 

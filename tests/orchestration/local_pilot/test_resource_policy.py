@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import FrozenInstanceError
 from pathlib import Path
 
 import pytest
@@ -13,8 +14,13 @@ from emrys.orchestration.local_pilot.resource_policy import (
     ResourceConfigError,
     ResourceOverrides,
     add_resource_arguments,
+    admit_resource_policy_record,
+    load_resource_policy,
     load_resource_plan,
     overrides_from_args,
+    resolve_resource_policy,
+    resume_resource_policy,
+    resume_resource_plan,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -51,6 +57,122 @@ def test_missing_adjacent_config_uses_packaged_conservative_defaults(
     assert plan.config_path is None
     assert plan.config_sha256 is None
     assert plan.override_labels == ()
+
+
+def test_symbolic_computational_declaration_is_allocation_independent(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path)
+    policy = load_resource_policy(request)
+    first = resolve_resource_policy(policy, _allocation(memory_mb=16_384))
+    second = resolve_resource_policy(policy, _allocation(memory_mb=32_768))
+
+    assert policy.declaration == first.declaration
+    assert first.declaration == second.declaration
+    assert first.declaration.workflow_memory_mb == "allocation"
+    assert set(dict(first.declaration.stage_memory_mb).values()) == {"workflow"}
+    assert first.declaration.identity_document() == {
+        "workflow_cores": 4,
+        "workflow_memory_mb": "allocation",
+        "stage_concurrency": dict(first.stage_concurrency),
+        "step_threads": dict(first.step_threads),
+        "stage_memory_mb": dict(first.declaration.stage_memory_mb),
+    }
+    assert first.resolution.allocation == first.allocation
+    assert first.resolution.workflow_memory_mb == 16_384
+    assert second.resolution.workflow_memory_mb == 32_768
+    assert set(dict(first.resolution.stage_memory_mb).values()) == {16_384}
+    assert set(dict(second.resolution.stage_memory_mb).values()) == {32_768}
+    record = first.policy_record()
+    assert record["symbolic"] == policy.document()
+    admitted = admit_resource_policy_record(record, require_symbolic=True)
+    assert admitted.policy == first.policy
+    assert admitted.effective_document() == first.effective_document()
+    reallocated = resume_resource_plan(record, _allocation(memory_mb=32_768))
+    assert reallocated.workflow_memory_mb == 32_768
+    assert set(reallocated.stage_memory_map().values()) == {32_768}
+    assert set(reallocated.reporting_memory_map().values()) == {32_768}
+
+    record["symbolic_sha256"] = "0" * 64
+    with pytest.raises(ResourceConfigError, match="symbolic resource digest differs"):
+        admit_resource_policy_record(record, require_symbolic=True)
+
+    with pytest.raises(FrozenInstanceError):
+        first.declaration.workflow_cores = 8  # type: ignore[misc]
+    with pytest.raises(FrozenInstanceError):
+        first.resolution.workflow_memory_mb = 1  # type: ignore[misc]
+
+
+def test_reporting_memory_is_excluded_from_run_bound_declaration(
+    tmp_path: Path,
+) -> None:
+    request = _request(tmp_path)
+    baseline = load_resource_policy(request)
+    (tmp_path / ADJACENT_CONFIG_NAME).write_text(
+        "schema_version: emrys.local-pilot-resources.v1\n"
+        "reporting_memory_mb:\n"
+        "  html_report: 1024\n",
+        encoding="utf-8",
+    )
+
+    changed = load_resource_policy(request)
+    changed_plan = resolve_resource_policy(changed, _allocation())
+
+    assert changed.declaration == baseline.declaration
+    assert changed_plan.reporting_memory_for("html_report") == 1024
+
+
+def test_resume_reuses_symbolic_policy_without_rereading_config(tmp_path: Path) -> None:
+    request = _request(tmp_path)
+    config = tmp_path / ADJACENT_CONFIG_NAME
+    config.write_text(
+        "schema_version: emrys.local-pilot-resources.v1\n"
+        "workflow_memory_mb: allocation\n"
+        "stage_memory_mb:\n"
+        '  "01": workflow\n',
+        encoding="utf-8",
+    )
+    policy = load_resource_policy(request)
+    config.unlink()
+
+    resumed_policy = resume_resource_policy(policy)
+    changed_policy = resume_resource_policy(
+        policy,
+        overrides=ResourceOverrides(workflow_cores=5),
+    )
+    resumed = resolve_resource_policy(
+        resumed_policy,
+        _allocation(memory_mb=32_768),
+    )
+
+    assert resumed_policy.declaration == policy.declaration
+    assert changed_policy.declaration != policy.declaration
+    assert changed_policy.declaration.workflow_cores == 5
+    assert resumed.declaration.workflow_memory_mb == "allocation"
+    assert dict(resumed.declaration.stage_memory_mb)["01"] == "workflow"
+    assert resumed.resolution.workflow_memory_mb == 32_768
+    assert resumed.memory_for("01") == 32_768
+
+
+def test_legacy_resolved_policy_resume_and_digest_guard_remain_compatible(
+    tmp_path: Path,
+) -> None:
+    original = load_resource_plan(_request(tmp_path), _allocation())
+    record = {
+        key: value
+        for key, value in original.policy_record().items()
+        if key not in {"symbolic", "symbolic_sha256"}
+    }
+
+    resumed = resume_resource_plan(record, _allocation(memory_mb=32_768))
+
+    assert resumed.effective_document() == original.effective_document()
+    assert resumed.allocation.memory_mb == 32_768
+    with pytest.raises(ResourceConfigError, match="Persisted resource policy keys"):
+        admit_resource_policy_record(record, require_symbolic=True)
+    record["effective_sha256"] = "0" * 64
+    with pytest.raises(ResourceConfigError, match="effective resource digest differs"):
+        resume_resource_plan(record, _allocation())
 
 
 def test_legacy_adjacent_config_fails_closed_instead_of_using_defaults(

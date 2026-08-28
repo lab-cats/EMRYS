@@ -40,6 +40,10 @@ except ImportError:  # pragma: no cover - exercised only on unsupported platform
     _fcntl = None  # type: ignore[assignment]
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.application_model import (
+    RUN_BINDING_SCHEMA_VERSION,
+    validate_successor_run,
+)
 from emrys.libraries.installed_package_identity import (
     InstalledPackageIdentityError,
     installed_package_tree_identity,
@@ -52,12 +56,20 @@ from emrys.libraries.process_environment import (
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.orchestration.local_pilot import inspection, task
 from emrys.orchestration.local_pilot.resource_policy import (
-    AllocationCapacity,
     REPEATABLE_STAGE_IDS,
     ResourceConfigError,
     ResourcePlan,
-    resume_resource_plan,
+    admit_resource_policy_record,
     stage_slot_name,
+)
+from emrys.orchestration.local_pilot.run_implementation import (
+    BACKEND_OPERATION_FLAGS,
+    BACKEND_TARGET,
+    SNAKEFILE_RELATIVE,
+    WORKFLOW_PROFILE_RELATIVE,
+    RunImplementationError,
+    backend_semantics_identity,
+    implementation_identity,
 )
 
 Operation = Literal["execute", "resume"]
@@ -598,8 +610,7 @@ def build_snakemake_argv(
         *(f"{name}={limits[name]}" for name in sorted(limits)),
         "--nocolor",
     ]
-    if operation == "resume":
-        argv.extend(("--rerun-triggers", "input", "--ignore-incomplete"))
+    argv.extend(BACKEND_OPERATION_FLAGS[operation])
     argv.extend(("--", target))
     observed = _FORBIDDEN_SNAKEMAKE_FLAGS.intersection(argv)
     if observed:
@@ -611,30 +622,18 @@ def build_snakemake_argv(
 
 def _resource_plan_from_workflow_config(
     config_document: Mapping[str, Any],
+    *,
+    require_symbolic: bool = False,
 ) -> ResourcePlan:
     policy = config_document.get("resource_policy")
-    if not isinstance(policy, dict) or set(policy) != {
-        "effective",
-        "effective_sha256",
-        "allocation",
-        "sources",
-    }:
+    if not isinstance(policy, dict):
         raise LifecycleError("Workflow config resource policy is malformed")
-    allocation = policy.get("allocation")
-    if not isinstance(allocation, dict) or set(allocation) != {
-        "cores",
-        "memory_mb",
-        "source",
-    }:
-        raise LifecycleError("Workflow config allocation observation is malformed")
     try:
-        capacity = AllocationCapacity(
-            cores=allocation["cores"],
-            memory_mb=allocation["memory_mb"],
-            source=allocation["source"],
+        return admit_resource_policy_record(
+            policy,
+            require_symbolic=require_symbolic,
         )
-        return resume_resource_plan(policy, capacity)
-    except (KeyError, ResourceConfigError) as exc:
+    except ResourceConfigError as exc:
         raise LifecycleError(
             f"Workflow config resource policy is invalid: {exc}"
         ) from exc
@@ -1186,7 +1185,13 @@ def _readmit_storage_runtime_binding(
     if attempt["execution_mode"] == "test-double":
         return None
     workspace = Path(str(attempt["workspace"]))
-    reference_fasta = Path(str(execution["reference"]["fasta"]["path"]))
+    reference_fasta = Path(
+        str(
+            attempt["authored_paths"]["reference_fasta"]
+            if execution.get("schema_version") == RUN_BINDING_SCHEMA_VERSION
+            else execution["reference"]["fasta"]["path"]
+        )
+    )
     try:
         qualified = inspect_storage(workspace, reference_fasta)
         return doctor.storage_runtime_binding(qualified)
@@ -1263,20 +1268,7 @@ def _admit_runtime_context(
             raise LifecycleError(
                 "Test-double attempt must not bind storage qualification"
             )
-        for name, identity in tools.items():
-            path = Path(str(identity["path"]))
-            if name in {"python", "snakemake"}:
-                continue
-            if not path.is_absolute() or path.is_symlink() or not path.is_file():
-                raise LifecycleError(
-                    f"Required tool path is not admissible: {name}: {path}"
-                )
-            observed = _tool_version((str(path),), name)
-            if observed != identity["version"]:
-                raise LifecycleError(
-                    f"Required {name} version differs: declared "
-                    f"{identity['version']!r}; observed {observed!r}"
-                )
+        # Common admission re-admits identities; doubles do not invoke science tools.
         return
 
     from emrys.evidence.runtime_availability.inspector import (  # noqa: PLC0415
@@ -1532,7 +1524,8 @@ def _verified_references(
     blockers: list[str] = []
     missing: list[str] = []
     verified_root = root / "state" / "verified"
-    expected_tasks = inspection.expected_tasks(execution, profile)
+    authority = inspection.admit_successor_run(root) or execution
+    expected_tasks = inspection.expected_tasks(authority, profile)
     for expected in expected_tasks:
         path = verified_root / expected.machine_key / f"{expected.scope_id}.json"
         if not path.exists() and not path.is_symlink():
@@ -1582,7 +1575,8 @@ def _task_start_references(
 
     references: list[dict[str, Any]] = []
     blockers: list[str] = []
-    expected = inspection.expected_tasks(execution, profile)
+    authority = inspection.admit_successor_run(root) or execution
+    expected = inspection.expected_tasks(authority, profile)
     for item in sorted(
         expected,
         key=lambda value: (value.machine_key, value.scope_type, value.scope_id),
@@ -1659,7 +1653,46 @@ def _preentry_task_attempt_references(
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """Use the inspection owner for the shared historical task-tree contract."""
 
-    return inspection.inspect_attempt_task_trees(root, execution, profile, attempts)
+    return inspection.inspect_attempt_task_trees(
+        root,
+        execution,
+        profile,
+        attempts,
+        authority=inspection.admit_successor_run(root),
+    )
+
+
+def _admit_run_before_attempt(root: Path, expected_run_id: str) -> None:
+    """Require one committed historical or successor Run before any mutex."""
+
+    try:
+        successor = inspection.admit_successor_run(root)
+    except inspection.InspectionError as exc:
+        raise LifecycleError(f"Could not admit successor Run: {exc}") from exc
+    if successor is not None:
+        if successor.run_id != expected_run_id:
+            raise LifecycleError("Prepared Attempt does not bind admitted Run ID")
+        return
+    profile_path = _canonical_file(root / "contract" / "profile.json", "profile snapshot")
+    execution_path = _canonical_file(
+        root / "contract" / "normalized.json", "historical execution contract"
+    )
+    profile, _profile_data = _admit_record(profile_path, root, "profile")
+    execution, _execution_data = _admit_record(
+        execution_path,
+        root,
+        "execution",
+        profile=profile,
+    )
+    if execution["run_id"] != expected_run_id:
+        raise LifecycleError("Prepared Attempt does not bind historical Run ID")
+
+
+_admit_execution = partial(
+    inspection.admit_execution_path,
+    read_bytes=_read_stable,
+    error_type=LifecycleError,
+)
 
 
 def _admit_request(
@@ -1689,9 +1722,16 @@ def _admit_request(
     python_executable = request.python_executable
     _admit_python_launcher(python_executable)
     profile, profile_data = _admit_record(profile_path, root, "profile")
-    execution, execution_data = _admit_record(
-        execution_path, root, "execution", profile=profile
+    execution, execution_data, successor = _admit_execution(
+        execution_path,
+        root,
+        profile,
     )
+    expected_execution_path = root / "contract" / (
+        "run.json" if successor is not None else "normalized.json"
+    )
+    if execution_path != expected_execution_path:
+        raise LifecycleError("Lifecycle execution path differs from Run authority")
     config_data = _read_stable(config_path, root, "workflow config")
     request_source_data = _read_external_stable(
         request_source_path, "authored request source"
@@ -1711,7 +1751,10 @@ def _admit_request(
     }
     attempt = dict(request.attempt_record)
     orchestration_contracts.validate_record("workflow-attempt", attempt)
-    resources = _resource_plan_from_workflow_config(config_document)
+    resources = _resource_plan_from_workflow_config(
+        config_document,
+        require_symbolic=successor is not None,
+    )
     if resources.workflow_cores != attempt["cores"]:
         raise LifecycleError(
             "Workflow config resource cores differ from the attempt record"
@@ -1730,14 +1773,14 @@ def _admit_request(
     identifier = str(attempt["workflow_attempt_id"])
     source_root = Path(str(attempt["source_checkout"]["path"]))
     _require_disjoint_roots(root, source_root)
-    expected_snakefile = source_root / "workflow" / "Snakefile"
-    expected_workflow_profile = (
-        source_root / "workflow" / "profiles" / "local" / "profile.v9+.yaml"
-    )
+    expected_snakefile = source_root / SNAKEFILE_RELATIVE
+    expected_workflow_profile = source_root / WORKFLOW_PROFILE_RELATIVE
     if snakefile != expected_snakefile:
         raise LifecycleError("Lifecycle requires the reviewed workflow/Snakefile")
     if workflow_profile != expected_workflow_profile:
         raise LifecycleError("Lifecycle requires the reviewed local workflow profile")
+    if request.target != BACKEND_TARGET:
+        raise LifecycleError("Lifecycle requires the Run-bound backend target")
     expected_config_relative = (
         Path("contract") / "workflow-configs" / f"{identifier}.json"
     ).as_posix()
@@ -1786,6 +1829,30 @@ def _admit_request(
         raise LifecycleError("Workflow attempt does not bind authored request source")
     storage_binding = ops.admit_storage_context(attempt, execution)
     ops.admit_runtime_context(attempt, request, storage_binding)
+    if successor is not None:
+        try:
+            validate_successor_run(
+                analysis=successor.analysis_revision,
+                plan=successor.execution_plan,
+                run=successor.run_binding,
+                profile=profile,
+                attempt=attempt,
+                resource_policy=config_document["resource_policy"],
+                observed_implementation_content_sha256=implementation_identity(
+                    source_root
+                ),
+                observed_backend_semantics_sha256=backend_semantics_identity(
+                    source_root
+                ),
+            )
+        except (
+            KeyError,
+            RunImplementationError,
+            orchestration_contracts.ContractValidationError,
+        ) as exc:
+            raise LifecycleError(
+                f"Successor Attempt differs from immutable Run: {exc}"
+            ) from exc
     workspace = Path(str(attempt["workspace"]))
     if not workspace.is_absolute():
         raise LifecycleError("Workflow attempt workspace must be absolute")
@@ -1855,15 +1922,7 @@ def _operation_preflight(
         raise LifecycleError("Only a failed or interrupted attempt may be resumed")
     if attempt["supersedes_workflow_attempt_id"] != latest["workflow_attempt_id"]:
         raise LifecycleError("Resume must supersede the exact latest workflow attempt")
-    for field in (
-        "run_id",
-        "execution_contract_sha256",
-        "profile_sha256",
-        "source_checkout",
-        "required_tools",
-        "execution_mode",
-        "executor",
-    ):
+    for field in inspection.attempt_compatibility_fields(observed.authority_format):
         if attempt[field] != latest[field]:
             raise LifecycleError(f"Resume attempt is incompatible on {field}")
 
@@ -1918,15 +1977,7 @@ def _under_lock_attempt_preflight(
         "workflow_attempt_id"
     ] or observed.latest_receipt["status"] not in {"failed", "interrupted"}:
         raise LifecycleError("Resume lost its admissible terminal predecessor")
-    for field in (
-        "run_id",
-        "execution_contract_sha256",
-        "profile_sha256",
-        "source_checkout",
-        "required_tools",
-        "execution_mode",
-        "executor",
-    ):
+    for field in inspection.attempt_compatibility_fields(observed.authority_format):
         if attempt[field] != observed.latest_attempt[field]:
             raise LifecycleError(f"Resume became incompatible on {field}")
 
@@ -2436,6 +2487,11 @@ def run_attempt(
         active_ops.process_group_ops,
     ) as signals:
         root = _canonical_root(request.run_root)
+        try:
+            prepared_run_id = str(request.attempt_record["run_id"])
+        except KeyError as exc:
+            raise LifecycleError("Lifecycle request has no Run ID") from exc
+        _admit_run_before_attempt(root, prepared_run_id)
         _observe_phase(active_ops, "before_mutex")
         _refuse_pre_attempt_signal(signals, "before mutex acquisition")
         with _acquire_attempt_mutex(
@@ -2514,6 +2570,7 @@ def run_materialized_attempt(
                     f"Lifecycle parent must be pre-materialized and real: {directory}"
                 )
         prepared_attempt = _admit_attempt_preparation(preparation)
+        _admit_run_before_attempt(root, preparation.run_id)
         _observe_phase(active_ops, "before_mutex")
         _refuse_pre_attempt_signal(signals, "before mutex acquisition")
         with _acquire_attempt_mutex(

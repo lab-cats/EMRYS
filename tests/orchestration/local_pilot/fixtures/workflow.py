@@ -799,25 +799,6 @@ def artifact_payloads(
     return payloads
 
 
-def _scope_ids(task: dict[str, Any], execution: dict[str, Any]) -> tuple[str, ...]:
-    selector = task["scope_selector"]
-    if selector == "reference":
-        return (str(execution["reference"]["reference_id"]),)
-    if selector == "samples":
-        return tuple(str(row["sample_id"]) for row in execution["samples"]["rows"])
-    if selector == "partitions":
-        cohort = str(execution["analysis"]["cohort_id"])
-        return tuple(
-            f"{cohort}__{row['partition_id']}"
-            for row in execution["partitions"]["rows"]
-        )
-    if selector == "cohort":
-        return (str(execution["analysis"]["cohort_id"]),)
-    if selector == "analysis":
-        return (str(execution["analysis"]["primary_analysis_id"]),)
-    raise AssertionError(f"Fixture cannot execute selector {selector!r}")
-
-
 def _task_attempt_id(index: int) -> str:
     suffix = hashlib.sha256(f"fixture-task-{index}".encode()).hexdigest()[:32]
     return f"task-20260812T120100Z-{suffix}"
@@ -965,13 +946,13 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
     request_path = build_intake(intake_root)
     profile = orchestration_contracts.load_json_object(PROFILE_PATH)
     normalized = normalize_request(request_path, profile)
-    execution = normalized.execution_contract
+    execution, execution_bytes = normalized.historical_execution_v1()
 
     run_root = (root / "run").resolve()
     contract_root = run_root / "contract"
     contract_root.mkdir(parents=True)
     execution_path = contract_root / "normalized.json"
-    execution_path.write_bytes(normalized.normalized_bytes)
+    execution_path.write_bytes(execution_bytes)
     profile_snapshot = contract_root / "profile.json"
     profile_snapshot.write_bytes(orchestration_contracts.canonical_json_bytes(profile))
     reporting = build_reporting_bundle(execution, profile)
@@ -1005,9 +986,7 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
     attempt = {
         "schema_version": "emrys.workflow-attempt.v1",
         "run_id": execution["run_id"],
-        "execution_contract_sha256": hashlib.sha256(
-            normalized.normalized_bytes
-        ).hexdigest(),
+        "execution_contract_sha256": hashlib.sha256(execution_bytes).hexdigest(),
         "profile_sha256": hashlib.sha256(profile_snapshot.read_bytes()).hexdigest(),
         "workflow_attempt_id": workflow_attempt_id,
         "supersedes_workflow_attempt_id": None,
@@ -1073,43 +1052,38 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
     }
     dispatch_paths: dict[str, dict[str, str]] = {}
     dispatch_references: dict[str, dict[str, dict[str, str]]] = {}
+    owners = {str(task["machine_key"]): task for task in profile["owner_tasks"]}
     index = 0
-    for task in profile["owner_tasks"]:
-        machine_key = str(task["machine_key"])
-        if machine_key not in profile["required_owner_keys"]:
-            continue
-        by_scope: dict[str, str] = {}
-        references_by_scope: dict[str, dict[str, str]] = {}
-        for scope_id in _scope_ids(task, execution):
-            index += 1
-            dispatch_path = (
-                run_root
-                / "contract"
-                / "dispatch"
-                / workflow_attempt_id
-                / machine_key
-                / f"{scope_id}.json"
-            )
-            _write_dispatch(
-                path=dispatch_path,
-                run_root=run_root,
-                execution_path=execution_path,
-                task=task,
-                scope_id=scope_id,
-                index=index,
-                fixture_input=fixture_input,
-                execution=execution,
-                inventory_rows=inventory_rows,
-                payloads=payloads,
-                workflow_attempt_id=workflow_attempt_id,
-            )
-            by_scope[scope_id] = str(dispatch_path)
-            references_by_scope[scope_id] = {
-                "path": str(dispatch_path),
-                "sha256": hashlib.sha256(dispatch_path.read_bytes()).hexdigest(),
-            }
-        dispatch_paths[machine_key] = by_scope
-        dispatch_references[machine_key] = references_by_scope
+    for expected in inspection.expected_tasks(execution, profile):
+        machine_key = expected.machine_key
+        scope_id = expected.scope_id
+        index += 1
+        dispatch_path = (
+            run_root
+            / "contract"
+            / "dispatch"
+            / workflow_attempt_id
+            / machine_key
+            / f"{scope_id}.json"
+        )
+        _write_dispatch(
+            path=dispatch_path,
+            run_root=run_root,
+            execution_path=execution_path,
+            task=owners[machine_key],
+            scope_id=scope_id,
+            index=index,
+            fixture_input=fixture_input,
+            execution=execution,
+            inventory_rows=inventory_rows,
+            payloads=payloads,
+            workflow_attempt_id=workflow_attempt_id,
+        )
+        dispatch_paths.setdefault(machine_key, {})[scope_id] = str(dispatch_path)
+        dispatch_references.setdefault(machine_key, {})[scope_id] = {
+            "path": str(dispatch_path),
+            "sha256": hashlib.sha256(dispatch_path.read_bytes()).hexdigest(),
+        }
 
     config = {
         "run_root": str(run_root),

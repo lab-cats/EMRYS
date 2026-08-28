@@ -20,6 +20,7 @@ from emrys.orchestration.local_pilot.task import (
     validate_verified_task,
 )
 from emrys.orchestration.local_pilot.inspection import (
+    admit_execution_path,
     expected_tasks,
     state_tree_blockers,
     task_start_tree_blockers,
@@ -85,8 +86,12 @@ STAGE_IDS = {
 REPEATABLE_STAGE_IDS = {"01", "02", "02b", "03", "04", "05", "06", "07"}
 THREAD_CAPABLE_STEP_IDS = {"00a", "01", "02", "06", "08"}
 RESOURCE_POLICY = config.get("resource_policy")
-if not isinstance(RESOURCE_POLICY, dict) or set(RESOURCE_POLICY) != {
+RESOURCE_POLICY_KEYS = {
     "effective", "effective_sha256", "allocation", "sources",
+}
+if not isinstance(RESOURCE_POLICY, dict) or frozenset(RESOURCE_POLICY) not in {
+    frozenset(RESOURCE_POLICY_KEYS),
+    frozenset(RESOURCE_POLICY_KEYS | {"symbolic", "symbolic_sha256"}),
 }:
     raise WorkflowError("Workflow config resource_policy is malformed")
 EFFECTIVE_RESOURCES = RESOURCE_POLICY.get("effective")
@@ -165,8 +170,6 @@ if not isinstance(WORKFLOW_ATTEMPT_ID, str) or re.fullmatch(
 WORKFLOW_ATTEMPT_PATH = (
     RUN_ROOT / "attempts" / WORKFLOW_ATTEMPT_ID / "attempt.json"
 )
-EXECUTION = orchestration_contracts.load_json_object(EXECUTION_PATH)
-orchestration_contracts.validate_record("execution", EXECUTION, profile=PROFILE)
 PROFILE_SNAPSHOT = orchestration_contracts.load_json_object(PROFILE_SNAPSHOT_PATH)
 if PROFILE_SNAPSHOT != PROFILE:
     raise WorkflowError("Run profile snapshot does not match the reviewed source profile")
@@ -178,6 +181,14 @@ if ARTIFACT_SOURCE_ROOT != RUN_ROOT:
     raise WorkflowError("Fixed local workflow artifact_source_root must equal run_root")
 if not SOURCE_CHECKOUT.is_dir() or SOURCE_CHECKOUT.is_symlink():
     raise WorkflowError(f"source_checkout must be a real directory: {SOURCE_CHECKOUT}")
+EXECUTION, _EXECUTION_DATA, SUCCESSOR_AUTHORITY = admit_execution_path(
+    EXECUTION_PATH, RUN_ROOT, PROFILE
+)
+EXPECTED_EXECUTION_PATH = RUN_ROOT / "contract" / (
+    "run.json" if SUCCESSOR_AUTHORITY is not None else "normalized.json"
+)
+if EXECUTION_PATH != EXPECTED_EXECUTION_PATH:
+    raise WorkflowError("execution_path does not match the admitted Run format")
 
 
 def _require_run_file(path, label):
@@ -201,8 +212,16 @@ PROJECTION_CONFIG = {
 }
 PROJECTION_PATHS = {}
 for projection_name, config_key in PROJECTION_CONFIG.items():
-    projection_path = _absolute_config_path(config_key)
-    reference = EXECUTION["reporting_projection"][projection_name]
+    if SUCCESSOR_AUTHORITY is None:
+        projection_path = _absolute_config_path(config_key)
+        reference = EXECUTION["reporting_projection"][projection_name]
+    else:
+        reference = config.get(config_key)
+        if not isinstance(reference, dict) or set(reference) != {"path", "sha256"}:
+            raise WorkflowError(
+                f"Workflow config {config_key!r} must be one exact reference"
+            )
+        projection_path = RUN_ROOT / reference["path"]
     expected_path = RUN_ROOT / reference["path"]
     if projection_path != expected_path:
         raise WorkflowError(
@@ -273,14 +292,20 @@ if (
 ):
     raise WorkflowError("workflow attempt required tools do not bind python_executable")
 
-REFERENCE_ID = EXECUTION["reference"]["reference_id"]
-SAMPLE_IDS = tuple(row["sample_id"] for row in EXECUTION["samples"]["rows"])
-COHORT_ID = EXECUTION["analysis"]["cohort_id"]
-PARTITION_SCOPES = tuple(
-    f"{COHORT_ID}__{row['partition_id']}"
-    for row in EXECUTION["partitions"]["rows"]
-)
-ANALYSIS_ID = EXECUTION["analysis"]["primary_analysis_id"]
+EXPECTED_TASKS = expected_tasks(SUCCESSOR_AUTHORITY or EXECUTION, PROFILE)
+
+
+def _scopes(scope_type):
+    return tuple(dict.fromkeys(
+        item.scope_id for item in EXPECTED_TASKS if item.scope_type == scope_type
+    ))
+
+
+REFERENCE_ID, = _scopes("reference")
+SAMPLE_IDS = _scopes("sample")
+PARTITION_SCOPES = _scopes("cohort_partition")
+COHORT_ID, = _scopes("cohort")
+ANALYSIS_ID, = _scopes("analysis")
 FIRST_SAMPLE_ID = SAMPLE_IDS[0]
 RUN_ID = EXECUTION["run_id"]
 ARTIFACT_OUTPUT_ROOT = RUN_ROOT / "products" / "artifact-summary"
@@ -660,14 +685,13 @@ def _admit_reusable_markers():
 
 
 def _admit_state_namespace():
-    expected = expected_tasks(EXECUTION, PROFILE)
     blockers = [
         *state_tree_blockers(RUN_ROOT),
-        *task_start_tree_blockers(RUN_ROOT, expected),
+        *task_start_tree_blockers(RUN_ROOT, EXPECTED_TASKS),
     ]
     if blockers:
         raise WorkflowError("Could not close EMRYS state namespace: " + "; ".join(blockers))
-    for item in expected:
+    for item in EXPECTED_TASKS:
         start_path = (
             RUN_ROOT
             / "state"

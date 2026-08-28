@@ -291,7 +291,8 @@ SIGKILL, power loss, and descendants that deliberately escape the delegated
 session/process group remain outside automatic signal recovery.
 
 The adjacent neutral [machine contracts](../../contracts/orchestration/README.md)
-define request, profile, normalized execution, lock, attempt, receipt,
+define request, profile, successor Analysis/Execution-Plan/Run or historical
+normalized execution, lock, attempt, receipt,
 task-start/task-attempt/verified-task, and reporting-ledger record shapes. No
 automatic owner-recovery mechanism is implemented. B5 materializes only the
 fixed source-checkout profile and public owner commands. B6 adds matched public

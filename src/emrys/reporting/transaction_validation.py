@@ -22,6 +22,7 @@ from typing import Any, Literal, Protocol
 
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration import application_model
 from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
     SourceCheckout,
@@ -1144,6 +1145,7 @@ def validate_receipt(
     execution: Mapping[str, Any],
     profile: Mapping[str, Any],
     attempt: Mapping[str, Any],
+    config: Mapping[str, Any],
 ) -> ValidatedTransaction:
     """Validate the exact fixed-profile receipt selected by lifecycle state."""
 
@@ -1151,11 +1153,13 @@ def validate_receipt(
         raise ReportingTransactionError(f"Unknown reporting transaction kind: {kind}")
     try:
         orchestration_contracts.validate_record("profile", profile)
-        orchestration_contracts.validate_record(
-            "execution",
-            execution,
-            profile=profile,
+        authority = application_model.read_application_record(
+            orchestration_contracts.canonical_json_bytes(execution),
+            legacy_profile=profile,
         )
+        successor = isinstance(authority, application_model.RunBinding)
+        if not successor and not isinstance(authority, application_model.LegacyExecution):
+            raise ReportingTransactionError("Reporting authority is not a Run binding")
         orchestration_contracts.validate_record("workflow-attempt", attempt)
     except Exception as exc:
         raise ReportingTransactionError(
@@ -1204,8 +1208,12 @@ def validate_receipt(
         raise ReportingTransactionError(
             f"Could not attest {kind} source checkout to its workflow attempt: {exc}"
         ) from exc
-    run_contract = run_root / "contract" / "reporting_run_contract.json"
-    inventory = run_root / "contract" / "artifact_inventory.tsv"
+    contract_root = run_root / "contract"
+    run_contract = contract_root / "reporting_run_contract.json"
+    inventory = contract_root / "artifact_inventory.tsv"
+    if successor:
+        run_contract = run_root / config["reporting_run_contract_path"]["path"]
+        inventory = run_root / config["artifact_inventory_path"]["path"]
     artifact_receipt = artifact_root / run_id / f"{run_id}.artifact_receipt.tsv"
     try:
         if kind == "artifact_index":

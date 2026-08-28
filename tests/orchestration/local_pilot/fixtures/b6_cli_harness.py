@@ -17,7 +17,7 @@ from emrys import __main__ as emrys_cli  # noqa: E402
 from emrys.orchestration.local_pilot import control, lifecycle  # noqa: E402
 from emrys.orchestration.local_pilot.materialization import (  # noqa: E402
     AttemptPlan,
-    initialize_run,
+    admit_run,
     publish_attempt,
 )
 from tests.orchestration.local_pilot.fixtures.b5_doubles import (  # noqa: E402
@@ -60,7 +60,7 @@ def _execute(
 
     lifecycle_ops = replace(base, run_workflow=run_workflow)
     if plan.operation == "execute":
-        initialize_run(plan, ops=lifecycle_ops)
+        admit_run(plan, ops=lifecycle_ops)
     return lifecycle.run_materialized_attempt(
         plan.preparation,
         lambda: publish_attempt(plan, ops=lifecycle_ops),

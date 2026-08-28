@@ -30,9 +30,16 @@ def _publish(path: Path, data: bytes) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("mode", choices=("producer", "validator"))
-    parser.add_argument("--manifest", required=True, type=Path)
+    payload = parser.add_mutually_exclusive_group(required=True)
+    payload.add_argument("--manifest", type=Path)
+    payload.add_argument("--payload-base64")
     arguments = parser.parse_args()
-    record = json.loads(arguments.manifest.read_text(encoding="utf-8"))
+    data = (
+        arguments.manifest.read_bytes()
+        if arguments.manifest is not None
+        else base64.b64decode(arguments.payload_base64, validate=True)
+    )
+    record = json.loads(data)
     entries = (
         record["producer"] if arguments.mode == "producer" else [record["validation"]]
     )

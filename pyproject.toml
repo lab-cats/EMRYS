@@ -46,6 +46,9 @@ workflow = [
     "snakemake==9.25.1",
 ]
 
+[tool.uv]
+default-groups = ["dev", "workflow"]
+
 [tool.setuptools]
 package-dir = { "" = "src" }
 include-package-data = false

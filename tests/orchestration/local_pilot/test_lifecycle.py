@@ -42,6 +42,17 @@ def _raise_signal_on_lifecycle_thread(signum: int) -> None:
     signal.raise_signal(signum)
 
 
+def test_successor_lifecycle_requires_symbolic_resource_policy() -> None:
+    config = {"resource_policy": workflow_fixture._resource_policy()}
+
+    assert lifecycle._resource_plan_from_workflow_config(config).workflow_cores == 1
+    with pytest.raises(lifecycle.LifecycleError, match="resource policy keys"):
+        lifecycle._resource_plan_from_workflow_config(
+            config,
+            require_symbolic=True,
+        )
+
+
 @pytest.mark.parametrize(
     ("run_suffix", "source_suffix", "allowed"),
     [
@@ -286,6 +297,7 @@ class Harness:
         _execution: dict[str, Any],
         _profile: dict[str, Any],
         _attempt: dict[str, Any],
+        _config: dict[str, Any],
     ) -> ValidatedFixtureReceipt:
         if self.reporting_error is not None:
             raise ValueError(self.reporting_error)

@@ -20,7 +20,8 @@ def test_reporting_projection_is_exact_deterministic_and_legacy_compatible(
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
     normalized = normalize_request(request, fixture.profile())
-    bundle = project_reporting(normalized.execution_contract, fixture.profile())
+    execution, _ = normalized.historical_execution_v1()
+    bundle = project_reporting(execution, fixture.profile())
 
     assert tuple(bundle.reporting_run_contract) == (
         "run_contract_sha256",
@@ -37,7 +38,7 @@ def test_reporting_projection_is_exact_deterministic_and_legacy_compatible(
     )
     assert (
         bundle.projection_references
-        == normalized.execution_contract["reporting_projection"]
+        == execution["reporting_projection"]
     )
     assert bundle.artifact_inventory_bytes.endswith(b"\n")
     assert b"\t09c\t" not in bundle.artifact_inventory_bytes
@@ -49,7 +50,7 @@ def test_execution_rejects_profile_identity_that_only_matches_digest(
 ) -> None:
     profile = fixture.profile()
     request = fixture.build(tmp_path / "request-root")
-    execution = normalize_request(request, profile).execution_contract
+    execution, _ = normalize_request(request, profile).historical_execution_v1()
     mutated = json.loads(json.dumps(execution))
     mutated["profile"]["profile_id"] = "wrong.profile"
     mutated["profile"]["profile_version"] = "wrong"
@@ -74,7 +75,8 @@ def test_inventory_expansion_keeps_each_logical_scope_contiguous(
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
     normalized = normalize_request(request, fixture.profile())
-    bundle = project_reporting(normalized.execution_contract, fixture.profile())
+    execution, _ = normalized.historical_execution_v1()
+    bundle = project_reporting(execution, fixture.profile())
     inventory = tmp_path / "artifact_inventory.tsv"
     inventory.write_bytes(bundle.artifact_inventory_bytes)
 
@@ -104,7 +106,8 @@ def test_inventory_bytes_preserve_row_and_scope_semantics_without_publication(
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
     normalized = normalize_request(request, fixture.profile())
-    bundle = project_reporting(normalized.execution_contract, fixture.profile())
+    execution, _ = normalized.historical_execution_v1()
+    bundle = project_reporting(execution, fixture.profile())
     reader = csv.DictReader(
         io.StringIO(bundle.artifact_inventory_bytes.decode("utf-8"), newline=""),
         delimiter="\t",
@@ -153,7 +156,8 @@ def test_reference_sidecar_templates_can_bind_stationary_external_paths(
         ]
     )
     normalized = normalize_request(request, profile)
-    bundle = project_reporting(normalized.execution_contract, profile)
+    execution, _ = normalized.historical_execution_v1()
+    bundle = project_reporting(execution, profile)
     by_id = {row["artifact_id"]: row for row in bundle.artifact_inventory_rows}
 
     fasta = request.parent / "reference" / "genome.fa"

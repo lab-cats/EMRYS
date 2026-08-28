@@ -14,6 +14,9 @@ import pytest
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.reporting import report, transaction_validation
+from tests.contracts.orchestration.test_application_model_contracts import (
+    successor_run_fixture,
+)
 from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as fixture
 
@@ -167,7 +170,68 @@ def test_fixed_dispatcher_attests_source_checkout_to_attempt_commit(
             built.execution,
             built.profile,
             attempt,
+            orchestration_contracts.load_json_object(built.config_path),
         )
+
+
+def test_fixed_dispatcher_accepts_successor_run_authority(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    analysis, plan, run, profile, attempt, _resources = successor_run_fixture()
+    run_root = (tmp_path / run.run_id).resolve()
+    contract = run_root / "contract"
+    contract.mkdir(parents=True)
+    for path, data in (
+        (contract / "analysis.json", analysis.canonical_bytes),
+        (contract / "execution-plan.json", plan.canonical_bytes),
+        (contract / "run.json", run.canonical_bytes),
+    ):
+        path.write_bytes(data)
+    receipt_path = (
+        run_root
+        / "products"
+        / "artifact-summary"
+        / run.run_id
+        / f"{run.run_id}.artifact_receipt.tsv"
+    )
+    expected = transaction_validation.ValidatedTransaction(
+        receipt_path=receipt_path,
+        receipt_sha256="c" * 64,
+    )
+    reporting_root = f"contract/reporting-inputs/{attempt['workflow_attempt_id']}"
+    config = {
+        "reporting_run_contract_path": {
+            "path": f"{reporting_root}/reporting_run_contract.json"
+        },
+        "artifact_inventory_path": {"path": f"{reporting_root}/artifact_inventory.tsv"},
+    }
+    observed: dict[str, Any] = {}
+    monkeypatch.setattr(
+        transaction_validation,
+        "attest_source_checkout",
+        lambda **_kwargs: "stable-source",
+    )
+    monkeypatch.setattr(
+        transaction_validation,
+        "validate_artifact_index_transaction",
+        lambda **kwargs: observed.update(kwargs) or expected,
+    )
+
+    assert (
+        transaction_validation.validate_receipt(
+            "artifact_index",
+            receipt_path,
+            run_root,
+            run.record,
+            profile,
+            attempt,
+            config,
+        )
+        == expected
+    )
+    assert observed["run_contract"] == run_root / config["reporting_run_contract_path"]["path"]
+    assert observed["inventory"] == run_root / config["artifact_inventory_path"]["path"]
 
 
 def test_artifact_validator_rejects_native_source_mutation(

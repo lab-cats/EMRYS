@@ -10,7 +10,7 @@ import stat
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 
@@ -160,20 +160,109 @@ class ResourceOverrides:
 
 
 @dataclass(frozen=True, slots=True)
-class ResourcePlan:
-    """Fully resolved scheduler policy for one immutable workflow attempt."""
+class ComputationalResourceDeclaration:
+    """Canonical pre-allocation computational policy for one immutable Run."""
 
     workflow_cores: int
-    workflow_memory_mb: int
+    workflow_memory_mb: int | Literal["allocation"]
     stage_concurrency: tuple[tuple[str, int], ...]
     step_threads: tuple[tuple[str, int], ...]
-    stage_memory_mb: tuple[tuple[str, int], ...]
-    reporting_memory_mb: tuple[tuple[str, int], ...]
-    allocation: AllocationCapacity
+    stage_memory_mb: tuple[tuple[str, int | Literal["workflow"]], ...]
+
+    def identity_document(self) -> dict[str, Any]:
+        """Return the Run-bound declaration without allocation or reporting policy."""
+
+        return {
+            "workflow_cores": self.workflow_cores,
+            "workflow_memory_mb": self.workflow_memory_mb,
+            "stage_concurrency": dict(self.stage_concurrency),
+            "step_threads": dict(self.step_threads),
+            "stage_memory_mb": dict(self.stage_memory_mb),
+        }
+
+@dataclass(frozen=True, slots=True)
+class ResourcePolicy:
+    """One admitted symbolic policy plus non-Run reporting and source context."""
+
+    declaration: ComputationalResourceDeclaration
+    reporting_memory_mb: tuple[
+        tuple[str, int | Literal["workflow"]], ...
+    ]
     default_sha256: str
     config_path: Path | None
     config_sha256: str | None
     override_labels: tuple[str, ...]
+
+    def document(self) -> dict[str, Any]:
+        """Return the complete symbolic policy for persistence and re-admission."""
+
+        return {
+            "schema_version": SCHEMA_VERSION,
+            **self.declaration.identity_document(),
+            "reporting_memory_mb": dict(self.reporting_memory_mb),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class AttemptResourceResolution:
+    """Allocation observation and numeric computational resolution for one Attempt."""
+
+    allocation: AllocationCapacity
+    workflow_memory_mb: int
+    stage_memory_mb: tuple[tuple[str, int], ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ResourcePlan:
+    """Compatibility view over one declaration and its Attempt resolution."""
+
+    policy: ResourcePolicy
+    resolution: AttemptResourceResolution
+    reporting_memory_mb: tuple[tuple[str, int], ...]
+
+    @property
+    def declaration(self) -> ComputationalResourceDeclaration:
+        return self.policy.declaration
+
+    @property
+    def default_sha256(self) -> str:
+        return self.policy.default_sha256
+
+    @property
+    def config_path(self) -> Path | None:
+        return self.policy.config_path
+
+    @property
+    def config_sha256(self) -> str | None:
+        return self.policy.config_sha256
+
+    @property
+    def override_labels(self) -> tuple[str, ...]:
+        return self.policy.override_labels
+
+    @property
+    def workflow_cores(self) -> int:
+        return self.declaration.workflow_cores
+
+    @property
+    def workflow_memory_mb(self) -> int:
+        return self.resolution.workflow_memory_mb
+
+    @property
+    def stage_concurrency(self) -> tuple[tuple[str, int], ...]:
+        return self.declaration.stage_concurrency
+
+    @property
+    def step_threads(self) -> tuple[tuple[str, int], ...]:
+        return self.declaration.step_threads
+
+    @property
+    def stage_memory_mb(self) -> tuple[tuple[str, int], ...]:
+        return self.resolution.stage_memory_mb
+
+    @property
+    def allocation(self) -> AllocationCapacity:
+        return self.resolution.allocation
 
     def threads_for(self, step_id: str) -> int:
         """Return explicit threads or the fixed one-thread rule default."""
@@ -243,8 +332,11 @@ class ResourcePlan:
     def policy_record(self) -> dict[str, Any]:
         """Return the immutable effective policy and its admitted provenance."""
 
+        symbolic = self.policy.document()
         effective = self.effective_document()
         return {
+            "symbolic": symbolic,
+            "symbolic_sha256": orchestration_contracts.canonical_sha256(symbolic),
             "effective": effective,
             "effective_sha256": orchestration_contracts.canonical_sha256(effective),
             "allocation": {
@@ -362,33 +454,93 @@ def _closed_map(
     return value
 
 
-def _resolve_plan(
-    document: dict[str, Any],
-    allocation: AllocationCapacity,
+def admit_resource_policy(
+    document: Mapping[str, Any],
     *,
     default_sha256: str,
-    config_path: Path | None,
-    config_sha256: str | None,
-    override_labels: tuple[str, ...],
-) -> ResourcePlan:
+    config_path: Path | None = None,
+    config_sha256: str | None = None,
+    override_labels: tuple[str, ...] = (),
+) -> ResourcePolicy:
+    """Admit one complete symbolic policy without observing an allocation."""
+
+    value = copy.deepcopy(dict(document))
     try:
-        orchestration_contracts.validate_record("resource-config", document)
+        orchestration_contracts.validate_record("resource-config", value)
     except orchestration_contracts.ContractValidationError as exc:
         raise ResourceConfigError(str(exc)) from exc
     stage_concurrency = _closed_map(
-        document, "stage_concurrency", REPEATABLE_STAGE_IDS
+        value, "stage_concurrency", REPEATABLE_STAGE_IDS
     )
-    step_threads = _closed_map(document, "step_threads", THREAD_CAPABLE_STAGE_IDS)
-    stage_memory = _closed_map(document, "stage_memory_mb", STAGE_IDS)
+    step_threads = _closed_map(value, "step_threads", THREAD_CAPABLE_STAGE_IDS)
+    stage_memory = _closed_map(value, "stage_memory_mb", STAGE_IDS)
     reporting_memory = _closed_map(
-        document, "reporting_memory_mb", REPORTING_KINDS
+        value, "reporting_memory_mb", REPORTING_KINDS
     )
-    workflow_cores = int(document["workflow_cores"])
-    configured_workflow_memory = document["workflow_memory_mb"]
-    workflow_memory = (
-        allocation.memory_mb
+    try:
+        workflow_cores = int(value["workflow_cores"])
+        configured_workflow_memory = value["workflow_memory_mb"]
+    except KeyError as exc:
+        raise ResourceConfigError(
+            f"Resolved resource policy is missing {exc.args[0]}"
+        ) from exc
+    declared_workflow_memory: int | Literal["allocation"] = (
+        "allocation"
         if configured_workflow_memory == "allocation"
         else int(configured_workflow_memory)
+    )
+    declared_stage_memory: dict[str, int | Literal["workflow"]] = {
+        step_id: "workflow" if value == "workflow" else int(value)
+        for step_id, value in stage_memory.items()
+    }
+    declaration = ComputationalResourceDeclaration(
+        workflow_cores=workflow_cores,
+        workflow_memory_mb=declared_workflow_memory,
+        stage_concurrency=tuple(
+            (key, int(stage_concurrency[key])) for key in REPEATABLE_STAGE_IDS
+        ),
+        step_threads=tuple(
+            (key, int(step_threads[key])) for key in THREAD_CAPABLE_STAGE_IDS
+        ),
+        stage_memory_mb=tuple((key, declared_stage_memory[key]) for key in STAGE_IDS),
+    )
+    return ResourcePolicy(
+        declaration=declaration,
+        reporting_memory_mb=tuple(
+            (
+                key,
+                "workflow"
+                if reporting_memory[key] == "workflow"
+                else int(reporting_memory[key]),
+            )
+            for key in REPORTING_KINDS
+        ),
+        default_sha256=default_sha256,
+        config_path=config_path,
+        config_sha256=config_sha256,
+        override_labels=override_labels,
+    )
+
+
+def resolve_resource_policy(
+    policy: ResourcePolicy,
+    allocation: AllocationCapacity,
+) -> ResourcePlan:
+    """Resolve one exact admitted policy against one Attempt allocation."""
+
+    admitted = admit_resource_policy(
+        policy.document(),
+        default_sha256=policy.default_sha256,
+        config_path=policy.config_path,
+        config_sha256=policy.config_sha256,
+        override_labels=policy.override_labels,
+    )
+    declaration = admitted.declaration
+    workflow_cores = declaration.workflow_cores
+    workflow_memory = (
+        allocation.memory_mb
+        if declaration.workflow_memory_mb == "allocation"
+        else declaration.workflow_memory_mb
     )
     if workflow_cores > allocation.cores:
         raise ResourceConfigError(
@@ -402,16 +554,14 @@ def _resolve_plan(
         )
     resolved_stage_memory = {
         step_id: workflow_memory if value == "workflow" else int(value)
-        for step_id, value in stage_memory.items()
+        for step_id, value in declaration.stage_memory_mb
     }
     resolved_reporting_memory = {
         kind: workflow_memory if value == "workflow" else int(value)
-        for kind, value in reporting_memory.items()
+        for kind, value in admitted.reporting_memory_mb
     }
-    thread_values = {key: int(value) for key, value in step_threads.items()}
-    concurrency_values = {
-        key: int(value) for key, value in stage_concurrency.items()
-    }
+    thread_values = dict(declaration.step_threads)
+    concurrency_values = dict(declaration.stage_concurrency)
     for step_id in STAGE_IDS:
         threads = thread_values.get(step_id, 1)
         memory = resolved_stage_memory[step_id]
@@ -432,37 +582,27 @@ def _resolve_plan(
                 f"Reporting {kind} memory exceeds workflow memory: "
                 f"{memory} > {workflow_memory} MiB"
             )
-    return ResourcePlan(
-        workflow_cores=workflow_cores,
+    resolution = AttemptResourceResolution(
+        allocation=allocation,
         workflow_memory_mb=workflow_memory,
-        stage_concurrency=tuple(
-            (key, concurrency_values[key]) for key in REPEATABLE_STAGE_IDS
-        ),
-        step_threads=tuple(
-            (key, thread_values[key]) for key in THREAD_CAPABLE_STAGE_IDS
-        ),
-        stage_memory_mb=tuple(
-            (key, resolved_stage_memory[key]) for key in STAGE_IDS
-        ),
+        stage_memory_mb=tuple((key, resolved_stage_memory[key]) for key in STAGE_IDS),
+    )
+    return ResourcePlan(
+        policy=admitted,
+        resolution=resolution,
         reporting_memory_mb=tuple(
             (key, resolved_reporting_memory[key]) for key in REPORTING_KINDS
         ),
-        allocation=allocation,
-        default_sha256=default_sha256,
-        config_path=config_path,
-        config_sha256=config_sha256,
-        override_labels=override_labels,
     )
 
 
-def load_resource_plan(
+def load_resource_policy(
     request_path: Path,
-    allocation: AllocationCapacity,
     *,
     config_path: Path | None = None,
     overrides: ResourceOverrides = ResourceOverrides(),
-) -> ResourcePlan:
-    """Resolve defaults, optional YAML, and explicit overrides in that order."""
+) -> ResourcePolicy:
+    """Load defaults, optional YAML, and overrides without observing capacity."""
 
     default_path, default_data, default = _read_real_config(
         DEFAULT_CONFIG_PATH,
@@ -497,9 +637,8 @@ def load_resource_plan(
         )
         _merge_fragment(document, fragment)
     _apply_overrides(document, overrides)
-    return _resolve_plan(
+    return admit_resource_policy(
         document,
-        allocation,
         default_sha256=hashlib.sha256(default_data).hexdigest(),
         config_path=selected_path,
         config_sha256=(
@@ -509,47 +648,200 @@ def load_resource_plan(
     )
 
 
+def load_resource_plan(
+    request_path: Path,
+    allocation: AllocationCapacity,
+    *,
+    config_path: Path | None = None,
+    overrides: ResourceOverrides = ResourceOverrides(),
+) -> ResourcePlan:
+    """Compatibility wrapper that loads then resolves one resource policy."""
+
+    return resolve_resource_policy(
+        load_resource_policy(
+            request_path,
+            config_path=config_path,
+            overrides=overrides,
+        ),
+        allocation,
+    )
+
+
+def _admit_policy_sources(
+    sources: Any,
+    *,
+    label: str,
+) -> tuple[str, Path | None, str | None, tuple[str, ...]]:
+    if not isinstance(sources, dict) or set(sources) != {
+        "default_sha256",
+        "config_path",
+        "config_sha256",
+        "cli_overrides",
+    }:
+        raise ResourceConfigError(f"{label} resource sources are malformed")
+    default_sha256 = sources["default_sha256"]
+    config_path_value = sources["config_path"]
+    config_sha256 = sources["config_sha256"]
+    override_values = sources["cli_overrides"]
+    if not isinstance(default_sha256, str):
+        raise ResourceConfigError(f"{label} resource default digest is malformed")
+    if config_path_value is not None and not isinstance(config_path_value, str):
+        raise ResourceConfigError(f"{label} resource config path is malformed")
+    if config_sha256 is not None and not isinstance(config_sha256, str):
+        raise ResourceConfigError(f"{label} resource config digest is malformed")
+    if not isinstance(override_values, list) or not all(
+        isinstance(value, str) for value in override_values
+    ):
+        raise ResourceConfigError(f"{label} resource overrides are malformed")
+    return (
+        default_sha256,
+        None if config_path_value is None else Path(config_path_value),
+        config_sha256,
+        tuple(override_values),
+    )
+
+
+def resume_resource_policy(
+    predecessor_policy: ResourcePolicy | Mapping[str, Any],
+    *,
+    overrides: ResourceOverrides = ResourceOverrides(),
+) -> ResourcePolicy:
+    """Re-admit a predecessor policy and explicit overrides without allocation."""
+
+    if isinstance(predecessor_policy, ResourcePolicy):
+        document = predecessor_policy.document()
+        default_sha256 = predecessor_policy.default_sha256
+        config_path = predecessor_policy.config_path
+        config_sha256 = predecessor_policy.config_sha256
+        prior_labels = predecessor_policy.override_labels
+    else:
+        effective = predecessor_policy.get("effective")
+        sources = predecessor_policy.get("sources")
+        if not isinstance(effective, dict):
+            raise ResourceConfigError("Predecessor resource policy is malformed")
+        if orchestration_contracts.canonical_sha256(
+            effective
+        ) != predecessor_policy.get("effective_sha256"):
+            raise ResourceConfigError("Predecessor effective resource digest differs")
+        document = copy.deepcopy(effective)
+        default_sha256, config_path, config_sha256, prior_labels = (
+            _admit_policy_sources(sources, label="Predecessor")
+        )
+    _apply_overrides(document, overrides)
+    combined_labels = tuple(dict.fromkeys((*prior_labels, *overrides.labels())))
+    return admit_resource_policy(
+        document,
+        default_sha256=default_sha256,
+        config_path=config_path,
+        config_sha256=config_sha256,
+        override_labels=combined_labels,
+    )
+
+
 def resume_resource_plan(
-    predecessor_policy: Mapping[str, Any],
+    predecessor_policy: ResourcePolicy | Mapping[str, Any],
     allocation: AllocationCapacity,
     *,
     overrides: ResourceOverrides = ResourceOverrides(),
 ) -> ResourcePlan:
-    """Reuse an immutable predecessor policy, applying only explicit CLI changes."""
+    """Compatibility wrapper that re-admits then resolves a predecessor policy."""
 
-    effective = predecessor_policy.get("effective")
-    sources = predecessor_policy.get("sources")
-    if not isinstance(effective, dict) or not isinstance(sources, dict):
-        raise ResourceConfigError("Predecessor resource policy is malformed")
-    if orchestration_contracts.canonical_sha256(effective) != predecessor_policy.get(
+    if not isinstance(predecessor_policy, ResourcePolicy) and (
+        "symbolic" in predecessor_policy or "symbolic_sha256" in predecessor_policy
+    ):
+        predecessor_policy = admit_resource_policy_record(
+            predecessor_policy,
+            require_symbolic=True,
+        ).policy
+    return resolve_resource_policy(
+        resume_resource_policy(predecessor_policy, overrides=overrides),
+        allocation,
+    )
+
+
+def admit_resource_policy_record(
+    record: Mapping[str, Any],
+    *,
+    require_symbolic: bool = False,
+) -> ResourcePlan:
+    """Re-admit one closed persisted policy record.
+
+    Historical records contain only the allocation-resolved policy. Successor
+    records additionally retain the symbolic policy so a later Attempt can
+    resolve the same Run declaration against a different allocation.
+    """
+
+    legacy_keys = {"effective", "effective_sha256", "allocation", "sources"}
+    successor_keys = legacy_keys | {"symbolic", "symbolic_sha256"}
+    observed_keys = set(record)
+    if observed_keys == successor_keys:
+        successor = True
+    elif observed_keys == legacy_keys and not require_symbolic:
+        successor = False
+    else:
+        expected = successor_keys if require_symbolic else legacy_keys
+        raise ResourceConfigError(
+            "Persisted resource policy keys are malformed; expected "
+            + ", ".join(sorted(expected))
+            + (" plus optional symbolic fields" if not require_symbolic else "")
+        )
+
+    allocation = record.get("allocation")
+    if not isinstance(allocation, dict) or set(allocation) != {
+        "cores",
+        "memory_mb",
+        "source",
+    }:
+        raise ResourceConfigError("Persisted resource allocation is malformed")
+    try:
+        capacity = AllocationCapacity(
+            cores=allocation["cores"],
+            memory_mb=allocation["memory_mb"],
+            source=allocation["source"],
+        )
+    except KeyError as exc:  # Defensive against a nonstandard Mapping implementation.
+        raise ResourceConfigError(
+            "Persisted resource allocation is malformed"
+        ) from exc
+
+    if not successor:
+        return resume_resource_plan(record, capacity)
+
+    symbolic = record.get("symbolic")
+    effective = record.get("effective")
+    sources = record.get("sources")
+    if (
+        not isinstance(symbolic, dict)
+        or not isinstance(effective, dict)
+        or not isinstance(sources, dict)
+    ):
+        raise ResourceConfigError("Persisted resource policy is malformed")
+    if orchestration_contracts.canonical_sha256(symbolic) != record.get(
+        "symbolic_sha256"
+    ):
+        raise ResourceConfigError("Persisted symbolic resource digest differs")
+    if orchestration_contracts.canonical_sha256(effective) != record.get(
         "effective_sha256"
     ):
-        raise ResourceConfigError("Predecessor effective resource digest differs")
-    document = copy.deepcopy(effective)
-    _apply_overrides(document, overrides)
-    default_sha256 = sources.get("default_sha256")
-    if not isinstance(default_sha256, str):
-        raise ResourceConfigError("Predecessor resource default digest is malformed")
-    config_path_value = sources.get("config_path")
-    config_sha256 = sources.get("config_sha256")
-    if config_path_value is not None and not isinstance(config_path_value, str):
-        raise ResourceConfigError("Predecessor resource config path is malformed")
-    if config_sha256 is not None and not isinstance(config_sha256, str):
-        raise ResourceConfigError("Predecessor resource config digest is malformed")
-    prior_labels = sources.get("cli_overrides")
-    if not isinstance(prior_labels, list) or not all(
-        isinstance(label, str) for label in prior_labels
-    ):
-        raise ResourceConfigError("Predecessor CLI override provenance is malformed")
-    combined_labels = tuple(dict.fromkeys((*prior_labels, *overrides.labels())))
-    return _resolve_plan(
-        document,
-        allocation,
-        default_sha256=default_sha256,
-        config_path=None if config_path_value is None else Path(config_path_value),
-        config_sha256=config_sha256,
-        override_labels=combined_labels,
+        raise ResourceConfigError("Persisted effective resource digest differs")
+
+    default_sha256, config_path, config_sha256, override_labels = (
+        _admit_policy_sources(sources, label="Persisted")
     )
+
+    policy = admit_resource_policy(
+        symbolic,
+        default_sha256=default_sha256,
+        config_path=config_path,
+        config_sha256=config_sha256,
+        override_labels=override_labels,
+    )
+    resolved = resolve_resource_policy(policy, capacity)
+    if resolved.effective_document() != effective:
+        raise ResourceConfigError(
+            "Persisted symbolic resource policy does not reproduce its resolution"
+        )
+    return resolved
 
 
 def _positive_integer(value: str) -> int:
@@ -643,17 +935,25 @@ def overrides_from_args(arguments: argparse.Namespace) -> ResourceOverrides:
 __all__ = (
     "ADJACENT_CONFIG_NAME",
     "AllocationCapacity",
+    "AttemptResourceResolution",
+    "ComputationalResourceDeclaration",
     "DEFAULT_CONFIG_PATH",
     "REPORTING_KINDS",
     "REPEATABLE_STAGE_IDS",
     "ResourceConfigError",
     "ResourceOverrides",
+    "ResourcePolicy",
     "ResourcePlan",
     "STAGE_IDS",
     "THREAD_CAPABLE_STAGE_IDS",
     "add_resource_arguments",
+    "admit_resource_policy",
+    "admit_resource_policy_record",
+    "load_resource_policy",
     "load_resource_plan",
     "overrides_from_args",
+    "resolve_resource_policy",
+    "resume_resource_policy",
     "resume_resource_plan",
     "stage_slot_name",
 )

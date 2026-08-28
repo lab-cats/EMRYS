@@ -37,9 +37,11 @@ The local pilot has one explicit path:
 
 1. An operator authors one YAML request that references ordered TSV manifests
    and stationary FASTQ/reference inputs.
-2. EMRYS validates and normalizes those inputs into one immutable canonical
-   JSON execution contract with an explicit identity envelope.
-3. The identity-envelope digest determines one immutable `run_id`.
+2. EMRYS validates and normalizes those inputs, then binds one immutable
+   Analysis revision and one immutable Execution Plan.
+3. A canonical Run binding commits those authorities and determines the
+   successor `run_id`; existing `emrys.execution.v1` Runs retain their exact
+   historical identity and bytes.
 4. The public dry-run prints the complete fixed command plan without creating
    the workspace; `--execute` acquires the aggregate lock and publishes the
    immutable attempt/config/dispatch set.
@@ -63,7 +65,7 @@ automatic recovery subsystem in version 1.
 | Scientific owner identity and direct artifact edges | [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md) | Snakemake rule names, filenames, numeric aliases, and narrative order |
 | Producer, validator, output, transaction, and recovery behavior | Applicable owner `README.md` and `CONTRACT.md` | Workflow rules and lifecycle records |
 | Operator intent | Admitted YAML request plus referenced ordered TSV manifests | Caller working directory, environment discovery, filename inference, and globs |
-| Immutable local-run identity | Canonical normalized execution contract and its SHA-256 digest | Request formatting, human label, attempt-level resources, workspace, executor, host, or Snakemake state |
+| Immutable local-run identity | Successor Analysis-revision and Execution-Plan digests committed by the canonical Run binding; exact `emrys.execution.v1` bytes for historical Runs | Request formatting, human label, Attempt realization, workspace, executor, host, reporting, or Snakemake state |
 | Fixed pilot membership and scope expansion | Versioned local CMH workflow profile | A generic registry or automatic owner discovery |
 | Scheduling | Snakemake's local executor and static rule graph | Scientific completion, recovery authority, or evidence promotion |
 | Reusable task completion | EMRYS verified task record after owner validation and semantic all-pass gating | Process exit alone, output presence, timestamps, or `.snakemake/` metadata |
@@ -184,7 +186,7 @@ Normalization must:
 Content hashing is the minimum integrity needed for immutable identity and safe
 resume. It is not a general acquisition or provenance program.
 
-### Normalized execution contract
+### Run authority and historical execution contract
 
 The canonical JSON contract contains at least:
 
@@ -198,8 +200,20 @@ The canonical JSON contract contains at least:
 | Analysis | Cohort ID, primary-analysis ID, and complete policy digest |
 | Identity envelope | The exact versioned identity fields above and their canonical digest |
 
-`normalized.json` contains only deterministic normalized run content and its
-explicit identity envelope. Non-identity admission metadata—the original
+New-format Runs persist canonical `analysis.json`, `execution-plan.json`, and
+`run.json`; the Run binding is committed last and is the sole successor Run
+authority. Successor Runs do not persist `normalized.json` or an execution
+projection. Workflow and task admission consume exact `run.json` bytes.
+Reporting inputs are identity-neutral, Attempt-owned projections beneath
+`contract/reporting-inputs/<workflow-attempt-id>/`, and the origin workflow
+config binds each exact path and SHA-256. The existing
+`execution_contract_sha256` field is format-aware: it binds exact `run.json`
+bytes for successor Attempts and exact `emrys.execution.v1` bytes for
+historical Attempts.
+
+Historical `normalized.json` contains deterministic normalized run content and
+its explicit identity envelope and remains byte-for-byte readable and
+resumable. Non-identity admission metadata—the original
 request hash and bytes, human label, authored path strings, resolved
 attempt-level resource policy and its source provenance, observed outer
 allocation, and normalization tool identity—belongs to the immutable
@@ -207,11 +221,11 @@ workflow-attempt/config records. Reformatting an otherwise equivalent request,
 changing its label, or tuning resources therefore does not create a new
 scientific run or demand different bytes at the same canonical contract path.
 
-Canonical identity-envelope serialization uses UTF-8 JSON, sorted object keys,
-no insignificant whitespace, no NaN/infinity, and SHA-256. The full digest is
-stored in the contract and the first implementation uses
-`run-<64 lowercase hex>` as the `run_id`. The human label never selects or
-overwrites a run.
+Canonical authorities use UTF-8 JSON, sorted object keys, no insignificant
+whitespace, no NaN/infinity, and SHA-256. Successor identity uses the
+domain-separated Run composition over canonical Analysis-revision and
+Execution-Plan digests; historical identity retains its existing envelope.
+The human label never selects or overwrites a Run.
 
 Workspace, output root, source-checkout path and commit, executor, host,
 resources, scratch, exact required-tool identities, timestamps, PIDs, and
@@ -299,7 +313,7 @@ Boolean.
 
 | Identifier | Meaning |
 | --- | --- |
-| `run_id` | Deterministic immutable normalized execution contract |
+| `run_id` | Successor domain-separated Run-binding identity, or the preserved deterministic `emrys.execution.v1` identity for a historical Run |
 | `workflow_attempt_id` | One execute or resume invocation for a run |
 | `task_attempt_id` | One public owner invocation within a workflow attempt |
 | Owner run token | Existing owner-local staging/publication identity |
@@ -328,11 +342,19 @@ One operator-selected workspace contains immutable run directories:
     samples.tsv
     partitions.tsv
     profile.json
-    normalized.json
-    reference_contract.json
-    primary_analysis_policy.json
-    reporting_run_contract.json
-    artifact_inventory.tsv
+    analysis.json                    successor only
+    execution-plan.json              successor only
+    run.json                         successor only
+    normalized.json                  historical only
+    reporting-inputs/<workflow-attempt-id>/
+      reference_contract.json         successor only
+      primary_analysis_policy.json    successor only
+      reporting_run_contract.json     successor only
+      artifact_inventory.tsv          successor only
+    reference_contract.json           historical only
+    primary_analysis_policy.json      historical only
+    reporting_run_contract.json       historical only
+    artifact_inventory.tsv            historical only
     workflow-configs/<workflow-attempt-id>.json
     dispatch/<workflow-attempt-id>/<machine-key>/<scope-id>.json
   results/                       owner-native outputs and validation reports
@@ -526,7 +548,11 @@ recovery instructions. Version 1 supports only between-task resume. Once an
 owner or reporting producer has crossed its durable start boundary, failure or
 interruption is not automatically recoverable even when no output appears to
 have been written. Version 1 does not automate owner-internal transaction
-recovery.
+recovery. Successor resume currently also requires the same normalized backend
+projection as its predecessor. Identity-neutral projection changes, including
+content-equivalent input relocation, remain same-Run targets but are rejected
+until an Attempt-local projection can preserve the complete origin-evidence
+chain.
 
 This ledger is automatic-rerun authority, not a claim that inspection can
 globally prove the absence of every file a manual or foreign invocation might

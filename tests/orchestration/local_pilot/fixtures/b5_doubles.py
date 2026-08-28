@@ -5,7 +5,6 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
-import platform
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -13,6 +12,7 @@ from pathlib import Path
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.libraries.source_authority import controlled_python_argv
+from emrys.orchestration.local_pilot import materialization
 from emrys.orchestration.local_pilot.materialization import AttemptPlan, PlannedFile
 from tests.orchestration.local_pilot.fixtures import workflow
 
@@ -24,14 +24,16 @@ def with_owner_doubles(
 ) -> AttemptPlan:
     """Return the same exact output plan with no-science test commands."""
 
+    source = materialization._construction_source(plan.run)
     reporting = build_reporting_bundle(
-        plan.normalized.execution_contract,
-        plan.normalized.profile,
+        source,
+        plan.run.normalized.profile,
+        plan.run.normalized.analysis_revision,
     )
     rows = tuple(dict(row) for row in reporting.artifact_inventory_rows)
     raw_payloads = workflow.artifact_payloads(
         rows,
-        plan.normalized.execution_contract,
+        source,
         artifact_source_root=plan.run_root,
     )
     payloads: dict[Path, bytes] = {}
@@ -67,14 +69,22 @@ def with_owner_doubles(
             },
         }
         manifest_data = orchestration_contracts.canonical_json_bytes(manifest_record)
-        manifest_files.append(PlannedFile(manifest, manifest_data))
+        step00c = (
+            record["machine_key"] == "emrys.stage.construct_FASTA_sidecars.v1"
+        )
+        payload_arguments = (
+            ("--payload-base64", base64.b64encode(manifest_data).decode())
+            if step00c
+            else ("--manifest", str(manifest))
+        )
+        if not step00c:
+            manifest_files.append(PlannedFile(manifest, manifest_data))
         record["producer_argv"] = list(
             controlled_python_argv(
                 sys.executable,
                 str(workflow.OWNER_ARTIFACT_DOUBLE),
                 "producer",
-                "--manifest",
-                str(manifest),
+                *payload_arguments,
             )
         )
         if record["machine_key"] == fail_machine_key:
@@ -90,13 +100,13 @@ def with_owner_doubles(
                 sys.executable,
                 str(workflow.OWNER_ARTIFACT_DOUBLE),
                 "validator",
-                "--manifest",
-                str(manifest),
+                *payload_arguments,
             )
         )
-        record["inputs"].append(
-            {"role": "test_payload_manifest", "path": str(manifest)}
-        )
+        if not step00c:
+            record["inputs"].append(
+                {"role": "test_payload_manifest", "path": str(manifest)}
+            )
         data = orchestration_contracts.canonical_json_bytes(record)
         replacement_files.append(PlannedFile(item.path, data))
         dispatch_sha[item.path] = hashlib.sha256(data).hexdigest()
@@ -117,26 +127,6 @@ def with_owner_doubles(
     replacement_files[config_index] = PlannedFile(config_file.path, config_data)
     attempt = dict(plan.attempt_record)
     attempt["execution_mode"] = "test-double"
-    attempt["required_tools"] = [
-        {
-            "name": "python",
-            "version": platform.python_version(),
-            "path": sys.executable,
-            "resolved_path": str(Path(sys.executable).resolve(strict=True)),
-            "sha256": hashlib.sha256(
-                Path(sys.executable).resolve(strict=True).read_bytes()
-            ).hexdigest(),
-        },
-        {
-            "name": "snakemake",
-            "version": "9.25.1",
-            "path": sys.executable,
-            "resolved_path": str(Path(sys.executable).resolve(strict=True)),
-            "sha256": hashlib.sha256(
-                Path(sys.executable).resolve(strict=True).read_bytes()
-            ).hexdigest(),
-        },
-    ]
     attempt["workflow_config"] = {
         **attempt["workflow_config"],
         "sha256": hashlib.sha256(config_data).hexdigest(),
@@ -144,7 +134,7 @@ def with_owner_doubles(
     orchestration_contracts.validate_record("workflow-attempt", attempt)
     return replace(
         plan,
-        attempt_record=attempt,
+        attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
         attempt_files=tuple((*replacement_files, *manifest_files)),
     )
 

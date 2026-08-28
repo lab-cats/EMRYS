@@ -1,16 +1,18 @@
 # Orchestration contracts
 
 This neutral package owns the closed, versioned machine records for the B0
-local-pilot lifecycle and the deterministic projection into the existing
-artifact reporting contract. It does not normalize YAML requests, execute
+local-pilot lifecycle, immutable successor Analysis/Execution-Plan/Run
+authorities, historical execution compatibility, and deterministic reporting
+projections. It does not normalize YAML requests, execute
 workflow jobs, infer state, publish records, or implement a CLI.
 
 The deliberate public Python API is `emrys.contracts.orchestration`. It loads
 only the adjacent registered Draft 2020-12 schemas, validates strict JSON
 objects, emits canonical identity JSON bytes and hashes, and applies the small
-cross-field invariants that JSON Schema cannot express. Complete execution
-validation requires the exact profile record so all four reporting projection
-references can be reconstructed and compared.
+cross-field invariants that JSON Schema cannot express. Successor Run admission
+binds the exact Analysis revision, Execution Plan, Run record, and profile;
+historical `emrys.execution.v1` validation retains its exact profile-bound
+reporting projection.
 
 The optional `resource-config` and `launcher-config` selectors validate authored
 configuration fragments before their application owners layer them over

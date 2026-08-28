@@ -18,10 +18,13 @@ from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.orchestration.local_pilot import capacity, doctor, inspection, lifecycle
 from emrys.orchestration.local_pilot.materialization import (
     AttemptPlan,
+    HistoricalRun,
     MaterializationError,
+    admit_run,
     build_attempt_plan,
-    initialize_run,
+    build_run_candidate,
     publish_attempt,
+    validate_run_destination,
 )
 from emrys.orchestration.local_pilot.normalization import (
     NormalizationBundle,
@@ -32,8 +35,12 @@ from emrys.orchestration.local_pilot.resource_policy import (
     ResourceConfigError,
     ResourceOverrides,
     add_resource_arguments,
+    admit_resource_policy_record,
+    load_resource_policy,
     load_resource_plan,
     overrides_from_args,
+    resolve_resource_policy,
+    resume_resource_policy,
     resume_resource_plan,
 )
 
@@ -86,7 +93,7 @@ def _default_readiness(
 def _default_execute(plan: AttemptPlan) -> lifecycle.LifecycleOutcome:
     ops = lifecycle.default_lifecycle_ops()
     if plan.operation == "execute":
-        initialize_run(plan, ops=ops)
+        admit_run(plan, ops=ops)
     return lifecycle.run_materialized_attempt(
         plan.preparation,
         lambda: publish_attempt(plan, ops=ops),
@@ -126,10 +133,6 @@ def _normalize_after_doctor(
         )
     except (OSError, orchestration_contracts.ContractValidationError) as exc:
         raise ControlError(str(exc)) from exc
-    if normalized.run_id != readiness.run_id:
-        raise ControlError(
-            "Readiness and control normalization produced different runs"
-        )
     return normalized
 
 
@@ -148,15 +151,16 @@ def plan_run(
         readiness = ops.inspect_readiness(request, workspace, runtime_profile)
         _require_ready(readiness)
         normalized = _normalize_after_doctor(readiness, ops)
-        resources = load_resource_plan(
+        policy = load_resource_policy(
             normalized.request_path,
-            ops.observe_allocation(),
             config_path=resource_config,
             overrides=resource_overrides,
         )
+        run = build_run_candidate(normalized, readiness, policy.declaration)
+        resources = resolve_resource_policy(policy, ops.observe_allocation())
         plan = ops.transform_plan(
             build_attempt_plan(
-                normalized,
+                run,
                 readiness,
                 _absolute(workspace),
                 resources=resources,
@@ -165,12 +169,20 @@ def plan_run(
                 token=ops.token(),
             )
         )
-    except (doctor.DoctorInputError, MaterializationError, ResourceConfigError) as exc:
+    except (
+        doctor.DoctorInputError,
+        MaterializationError,
+        ResourceConfigError,
+        orchestration_contracts.ContractValidationError,
+    ) as exc:
         raise ControlError(str(exc)) from exc
-    if os.path.lexists(plan.run_root):
-        raise ControlError(
-            f"Run root already exists; inspect or resume it instead: {plan.run_root}"
+    try:
+        validate_run_destination(
+            plan.run_root,
+            candidate=plan.run if not isinstance(plan.run, HistoricalRun) else None,
         )
+    except MaterializationError as exc:
+        raise ControlError(str(exc)) from exc
     return plan
 
 
@@ -254,35 +266,71 @@ def plan_resume(
         readiness = ops.inspect_readiness(request, workspace, runtime_profile)
         _require_ready(readiness)
         normalized = _normalize_after_doctor(readiness, ops)
-        if normalized.run_id != observed.run_id:
-            raise ControlError("Current authored request resolves to a different run")
-        fixed_execution = root / "contract/normalized.json"
-        if (
-            fixed_execution.is_symlink()
-            or not fixed_execution.is_file()
-            or fixed_execution.read_bytes() != normalized.normalized_bytes
-        ):
-            raise ControlError("Current normalization differs from immutable run bytes")
         predecessor_config = _load_config_reference(root, previous)
-        if resource_config is not None:
-            resources = load_resource_plan(
-                normalized.request_path,
-                ops.observe_allocation(),
-                config_path=resource_config,
-                overrides=resource_overrides,
-            )
+        if observed.authority_format == "successor":
+            if (
+                observed.analysis_revision is None
+                or observed.execution_plan is None
+                or observed.run_binding is None
+            ):
+                raise ControlError("Successor inspection omitted immutable Run records")
+            if resource_config is not None:
+                policy = load_resource_policy(
+                    normalized.request_path,
+                    config_path=resource_config,
+                    overrides=resource_overrides,
+                )
+            else:
+                prior = predecessor_config.get("resource_policy")
+                if not isinstance(prior, dict):
+                    raise ControlError("Prior workflow config has no resource policy")
+                policy = resume_resource_policy(
+                    admit_resource_policy_record(
+                        prior,
+                        require_symbolic=True,
+                    ).policy,
+                    overrides=resource_overrides,
+                )
+            candidate = build_run_candidate(normalized, readiness, policy.declaration)
+            if candidate.run_binding.canonical_bytes != observed.run_binding.canonical_bytes:
+                raise ControlError("Current inputs resolve to a different Run")
+            run = candidate
+            resources = resolve_resource_policy(policy, ops.observe_allocation())
         else:
-            policy = predecessor_config.get("resource_policy")
-            if not isinstance(policy, dict):
-                raise ControlError("Prior workflow config has no resource policy")
-            resources = resume_resource_plan(
-                policy,
-                ops.observe_allocation(),
-                overrides=resource_overrides,
+            legacy_execution, legacy_bytes = normalized.historical_execution_v1()
+            fixed_execution = root / "contract/normalized.json"
+            if legacy_execution["run_id"] != observed.run_id:
+                raise ControlError("Current authored request resolves to a different run")
+            if (
+                fixed_execution.is_symlink()
+                or not fixed_execution.is_file()
+                or fixed_execution.read_bytes() != legacy_bytes
+            ):
+                raise ControlError("Current normalization differs from immutable run bytes")
+            if resource_config is not None:
+                resources = load_resource_plan(
+                    normalized.request_path,
+                    ops.observe_allocation(),
+                    config_path=resource_config,
+                    overrides=resource_overrides,
+                )
+            else:
+                prior_record = predecessor_config.get("resource_policy")
+                if not isinstance(prior_record, dict):
+                    raise ControlError("Prior workflow config has no resource policy")
+                resources = resume_resource_plan(
+                    prior_record,
+                    ops.observe_allocation(),
+                    overrides=resource_overrides,
+                )
+            run = HistoricalRun(
+                normalized=normalized,
+                run_id=observed.run_id,
+                execution_projection_bytes=legacy_bytes,
             )
         plan = ops.transform_plan(
             build_attempt_plan(
-                normalized,
+                run,
                 readiness,
                 workspace,
                 resources=resources,
@@ -293,19 +341,16 @@ def plan_resume(
                 retained_dispatches=_retained_dispatches(observed),
             )
         )
-    except (doctor.DoctorInputError, MaterializationError, ResourceConfigError) as exc:
+    except (
+        doctor.DoctorInputError,
+        MaterializationError,
+        ResourceConfigError,
+        orchestration_contracts.ContractValidationError,
+    ) as exc:
         raise ControlError(str(exc)) from exc
     if plan.run_root != root:
         raise ControlError("Resume workspace resolves to a different run root")
-    for field in (
-        "run_id",
-        "execution_contract_sha256",
-        "profile_sha256",
-        "source_checkout",
-        "required_tools",
-        "execution_mode",
-        "executor",
-    ):
+    for field in inspection.attempt_compatibility_fields(observed.authority_format):
         if plan.attempt_record[field] != previous[field]:
             raise ControlError(f"Resume is incompatible with predecessor on {field}")
     return plan
@@ -363,24 +408,25 @@ def _print_plan(plan: AttemptPlan) -> None:
     new_dispatches = plan.new_dispatch_files
     reused = plan.dispatch_count - len(new_dispatches)
     print(f"Operation: {plan.operation}")
-    print(f"Run ID: {plan.normalized.run_id}")
+    resources = plan.resources
+    print(f"Run ID: {plan.run.run_id}")
     print(f"Run root: {plan.run_root}")
     print(f"Workflow attempt: {plan.workflow_attempt_id}")
     print(f"Owner jobs: {plan.dispatch_count}")
     print("Step thread allocations:")
-    for step_id, threads in plan.step_threads:
+    for step_id, threads in resources.step_threads:
         print(f"  Step {step_id}: {threads}")
-    print(f"Total workflow cores: {plan.workflow_cores}")
-    print(f"Total workflow memory: {plan.workflow_memory_mb} MiB")
+    print(f"Total workflow cores: {resources.workflow_cores}")
+    print(f"Total workflow memory: {resources.workflow_memory_mb} MiB")
     print("Stage concurrency:")
-    for step_id, concurrency in plan.stage_concurrency:
+    for step_id, concurrency in resources.stage_concurrency:
         print(f"  Step {step_id}: {concurrency}")
     print("Stage memory per job:")
-    for step_id, memory_mb in plan.stage_memory_mb:
+    for step_id, memory_mb in resources.stage_memory_mb:
         print(f"  Step {step_id}: {memory_mb} MiB")
     print("Reporting transactions: 3")
     print("Reporting memory per transaction:")
-    for kind, memory_mb in plan.reporting_memory_mb:
+    for kind, memory_mb in resources.reporting_memory_mb:
         print(f"  {kind}: {memory_mb} MiB")
     print(f"Reusable completed owner jobs: {reused}")
     print(f"Pending owner jobs: {plan.dispatch_count - reused}")
