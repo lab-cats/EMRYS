@@ -981,6 +981,8 @@ def _task_commands(
         )
         validator = _validator(
             "partitioned-cohort-mpileup",
+            "--scope-id",
+            scope_id,
             "--cohort-id",
             cohort_id,
             "--partition-id",

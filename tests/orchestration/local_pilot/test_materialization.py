@@ -349,6 +349,18 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert len({record["machine_key"] for record in records}) == 14
     assert all("--execute" in record["producer_argv"] for record in records)
     assert all("--execute" in record["validator_argv"] for record in records)
+    step07 = next(
+        record
+        for record in records
+        if record["machine_key"]
+        == "emrys.stage.generate_partitioned_cohort_mpileup_VCFs.v1"
+    )
+    assert step07["validator_argv"][
+        step07["validator_argv"].index("--scope-id") + 1
+    ] == step07["scope"]["scope_id"]
+    assert Path(step07["validation_report_path"]).name == (
+        f"{step07['scope']['scope_id']}.validation.tsv"
+    )
     assert not any("--unlock" in record["producer_argv"] for record in records)
     assert not {
         "--unlock",
