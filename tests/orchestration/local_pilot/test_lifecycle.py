@@ -1534,8 +1534,10 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
             built.validate_reporting,
         ),
     )
-    assert observed.state == "local_pipeline_complete", observed.blockers
-    assert observed.local_pipeline_complete
+    assert observed.integrity == "valid", observed.blockers
+    assert observed.attempt_outcome == "succeeded"
+    assert observed.results_status == "complete"
+    assert observed.reporting_status == "complete"
 
 
 def test_workflow_argv_binds_reviewed_absolute_source_files(tmp_path: Path) -> None:
@@ -1801,34 +1803,61 @@ def test_clean_failure_and_interruption_are_resume_available(
             built.validate_reporting,
         ),
     )
-    assert observed.state == "resume_available"
+    assert observed.attempt_outcome == expected
+    assert observed.results_status == "incomplete"
+    assert observed.reporting_status == "incomplete"
+    assert observed.recovery_available
 
 
-def test_resume_creates_new_attempt_and_reuses_content_bound_tasks(
+def test_complete_results_and_reports_survive_legacy_failed_receipt(
     tmp_path: Path,
 ) -> None:
-    first = _build_harness(
-        tmp_path, result=lifecycle.WorkflowResult(23, None, "fixture failure")
+    built = _build_harness(
+        tmp_path, result=lifecycle.WorkflowResult(23, None, "late failure")
     )
-    first.materialize_complete = True
-    first_outcome = lifecycle.run_attempt(first.request, ops=first.ops())
-    first_id = str(first.request.attempt_record["workflow_attempt_id"])
+    built.materialize_complete = True
+    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    observed = inspection.inspect_run(
+        built.built.run_root,
+        ops=inspection.InspectionOps(
+            lambda: "fixture-host",
+            lambda _pid: True,
+            built.validate_reporting,
+        ),
+    )
 
-    second_id = "workflow-20260812T150000Z-" + "e" * 32
-    second = first
-    second.events = []
-    second.result = lifecycle.WorkflowResult(0, None)
-    second.request, second_attempt = _resume_request(
-        first,
-        identifier=second_id,
+    assert outcome.receipt["status"] == "failed"
+    assert len(outcome.verified_report_locations) == 2
+    assert observed.attempt_outcome == "succeeded"
+    assert observed.results_status == "complete"
+    assert observed.reporting_status == "complete"
+    assert not observed.recovery_available
+    assert len(observed.verified_report_locations) == 2
+
+
+def test_resume_creates_attempt_with_content_bound_rerun_policy(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(
+        tmp_path, result=lifecycle.WorkflowResult(23, None, "preentry failure")
+    )
+    built.materialize_preentry_failure = True
+    first_outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    first_id = str(built.request.attempt_record["workflow_attempt_id"])
+
+    built.request, second_attempt = _resume_request(
+        built,
+        identifier="workflow-20260812T140500Z-" + "e" * 32,
         supersedes=first_id,
     )
-    second.materialize_complete = True
-    second_outcome = lifecycle.run_attempt(second.request, ops=second.ops())
+    built.events = []
+    built.result = lifecycle.WorkflowResult(0, None)
+    built.materialize_preentry_failure = False
+    built.materialize_complete = True
+    second_outcome = lifecycle.run_attempt(built.request, ops=built.ops())
 
     assert first_outcome.receipt["status"] == "failed"
     assert second_outcome.receipt["status"] == "succeeded"
-    assert "--rerun-triggers" in second_attempt["snakemake_argv"]
     position = second_attempt["snakemake_argv"].index("--rerun-triggers")
     assert second_attempt["snakemake_argv"][position + 1] == "input"
     assert second_attempt["snakemake_argv"].count("--ignore-incomplete") == 1
@@ -1893,6 +1922,19 @@ def test_semantically_invalid_reporting_receipt_prevents_completion(
     outcome = lifecycle.run_attempt(built.request, ops=built.ops())
     assert outcome.receipt["status"] == "blocked"
     assert any("semantic reporting" in item for item in outcome.receipt["blockers"])
+    observed = inspection.inspect_run(
+        built.built.run_root,
+        ops=inspection.InspectionOps(
+            lambda: "fixture-host",
+            lambda _pid: True,
+            built.validate_reporting,
+        ),
+    )
+    assert observed.integrity == "valid"
+    assert observed.attempt_outcome == "succeeded"
+    assert observed.results_status == "complete"
+    assert observed.reporting_status == "blocked"
+    assert not observed.recovery_available
 
 
 def test_reporting_validator_cannot_validate_a_different_receipt(
@@ -1919,6 +1961,17 @@ def test_post_child_runtime_identity_change_blocks(tmp_path: Path) -> None:
         "Runtime identity changed" in item for item in outcome.receipt["blockers"]
     )
     assert built.runtime_admissions == 2
+    observed = inspection.inspect_run(
+        built.built.run_root,
+        ops=inspection.InspectionOps(
+            lambda: "fixture-host",
+            lambda _pid: True,
+            built.validate_reporting,
+        ),
+    )
+    assert observed.integrity == "blocked"
+    assert any("Runtime identity changed" in item for item in observed.receipt_blockers)
+    assert not observed.recovery_available
 
 
 def test_initial_storage_qualification_failure_prevents_workflow(
@@ -2475,7 +2528,7 @@ def test_completed_run_refuses_rerun_and_resume(tmp_path: Path) -> None:
         attempt_record=attempt,
         request_source_path=built.request.request_source_path,
     )
-    with pytest.raises(lifecycle.LifecycleError, match="Completed run refuses"):
+    with pytest.raises(lifecycle.LifecycleError, match="Results are complete"):
         lifecycle.run_attempt(resumed, ops=built.ops())
 
 
@@ -2562,6 +2615,11 @@ def test_reporting_start_without_completion_and_deleted_completion_block(
         ),
     )
     assert observed.state == "blocked"
+    assert observed.integrity == "valid"
+    assert observed.attempt_outcome == "succeeded"
+    assert observed.results_status == "complete"
+    assert observed.reporting_status == "blocked"
+    assert not observed.recovery_available
     assert any("reporting ledger" in blocker for blocker in observed.blockers)
 
 

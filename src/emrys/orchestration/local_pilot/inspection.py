@@ -16,7 +16,7 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, cast
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import (
@@ -31,13 +31,17 @@ from emrys.contracts.orchestration.application_model import (
     validate_successor_run,
 )
 
-RunState = Literal[
-    "prepared",
+AttemptOutcome = Literal[
+    "not_started",
     "running",
-    "resume_available",
+    "succeeded",
+    "failed",
+    "interrupted",
     "blocked",
-    "local_pipeline_complete",
 ]
+RunIntegrity = Literal["valid", "blocked"]
+ResultsStatus = Literal["incomplete", "complete", "blocked"]
+ReportingStatus = Literal["incomplete", "complete", "blocked"]
 TaskState = Literal["pending", "verified", "blocked"]
 _WORKFLOW_ATTEMPT_NAME_RE = re.compile(r"^workflow-[0-9]{8}T[0-9]{6}Z-[0-9a-f]{32}$")
 _ATTEMPT_CHILD_NAMES = frozenset(
@@ -117,20 +121,128 @@ class RunInspection:
 
     run_root: Path
     run_id: str
-    state: RunState
+    attempt_outcome: AttemptOutcome
     latest_workflow_attempt_id: str | None
     latest_attempt: dict[str, Any] | None
     latest_receipt: dict[str, Any] | None
     tasks: tuple[TaskInspection, ...]
     reporting_completion_records: dict[str, dict[str, dict[str, str] | None]]
-    blockers: tuple[str, ...]
-    resume_available: bool
-    local_pipeline_complete: bool
+    integrity_blockers: tuple[str, ...]
+    results_blockers: tuple[str, ...]
+    reporting_blockers: tuple[str, ...]
     verified_report_locations: tuple[tuple[str, Path], ...] = ()
     authority_format: Literal["legacy", "successor"] = "legacy"
     analysis_revision: AnalysisRevision | None = None
     execution_plan: ExecutionPlan | None = None
     run_binding: RunBinding | None = None
+
+    @property
+    def integrity(self) -> RunIntegrity:
+        """Return whether Run and Attempt authority remain admissible."""
+
+        return (
+            "blocked"
+            if self.integrity_blockers or self.receipt_blockers
+            else "valid"
+        )
+
+    @property
+    def results_status(self) -> ResultsStatus:
+        """Return scientific Results completeness without reporting state."""
+
+        return _results_status(self.tasks, self.results_blockers)
+
+    @property
+    def reporting_status(self) -> ReportingStatus:
+        """Return downstream reporting status without changing Results."""
+
+        if self.reporting_blockers:
+            return "blocked"
+        if self.reporting_completion_records and all(
+            records["start"] is not None and records["verified"] is not None
+            for records in self.reporting_completion_records.values()
+        ):
+            return "complete"
+        return "incomplete"
+
+    @property
+    def receipt_blockers(self) -> tuple[str, ...]:
+        """Return untyped blockers retained by the legacy terminal receipt."""
+
+        if self.latest_receipt is None or self.latest_receipt["status"] != "blocked":
+            return ()
+        rederived = {
+            *self.integrity_blockers,
+            *self.results_blockers,
+            *self.reporting_blockers,
+        }
+        return tuple(
+            str(value)
+            for value in self.latest_receipt["blockers"]
+            if str(value) not in rederived
+        )
+
+    @property
+    def blockers(self) -> tuple[str, ...]:
+        """Return all blockers while preserving their owned domain fields."""
+
+        return tuple(
+            dict.fromkeys(
+                (
+                    *self.integrity_blockers,
+                    *self.results_blockers,
+                    *self.reporting_blockers,
+                    *self.receipt_blockers,
+                )
+            )
+        )
+
+    @property
+    def recovery_available(self) -> bool:
+        """Return whether incomplete scientific work has a safe resume boundary."""
+
+        return (
+            self.integrity == "valid"
+            and self.results_status == "incomplete"
+            and self.attempt_outcome in {"failed", "interrupted"}
+            and not self.blockers
+        )
+
+    @property
+    def resume_available(self) -> bool:
+        """Compatibility alias for the former stored resume flag."""
+
+        return self.recovery_available
+
+    @property
+    def local_pipeline_complete(self) -> bool:
+        """Compatibility projection for the retired combined status."""
+
+        return (
+            self.integrity == "valid"
+            and self.latest_receipt is not None
+            and self.latest_receipt["status"] == "succeeded"
+            and self.attempt_outcome == "succeeded"
+            and self.results_status == "complete"
+            and self.reporting_status == "complete"
+            and not self.blockers
+        )
+
+    @property
+    def state(self) -> str:
+        """Compatibility projection for callers migrating off aggregate state."""
+
+        if self.blockers:
+            return "blocked"
+        if self.latest_attempt is None:
+            return "prepared"
+        if self.attempt_outcome == "running":
+            return "running"
+        if self.recovery_available:
+            return "resume_available"
+        if self.local_pipeline_complete:
+            return "local_pipeline_complete"
+        return "blocked"
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,6 +266,42 @@ def _default_process_is_alive(process_id: int) -> bool:
     except PermissionError:
         return True
     return True
+
+
+def _attempt_outcome(
+    *,
+    latest: Mapping[str, Any] | None,
+    receipt: Mapping[str, Any] | None,
+    running: bool,
+    integrity_blockers: Sequence[str],
+    results_status: ResultsStatus,
+) -> AttemptOutcome:
+    """Derive scientific Attempt outcome independently of reporting."""
+
+    if latest is None:
+        return "not_started"
+    if running:
+        return "running"
+    if receipt is None or results_status == "blocked":
+        return "blocked"
+    if results_status == "complete":
+        return "succeeded"
+    if integrity_blockers:
+        return "blocked"
+    status = receipt["status"]
+    if status not in {"succeeded", "failed", "interrupted", "blocked"}:
+        return "blocked"
+    return cast(AttemptOutcome, status)
+
+
+def _results_status(
+    tasks: Sequence[TaskInspection], blockers: Sequence[str]
+) -> ResultsStatus:
+    if blockers:
+        return "blocked"
+    if tasks and all(item.state == "verified" for item in tasks):
+        return "complete"
+    return "incomplete"
 
 
 def default_inspection_ops() -> InspectionOps:
@@ -554,28 +702,44 @@ def task_start_tree_blockers(
     )
 
 
-def state_tree_blockers(root: Path) -> tuple[str, ...]:
-    """Close the aggregate EMRYS state namespace before trusting its ledgers."""
+def _state_tree_blockers_by_domain(
+    root: Path,
+) -> tuple[tuple[str, ...], tuple[str, ...], tuple[str, ...]]:
+    """Close the state namespace without collapsing science and reporting."""
 
     state_root = root / "state"
     try:
         entries = _stable_directory_entries(state_root, root, "aggregate state root")
     except InspectionError as exc:
-        return (str(exc),)
+        return (str(exc),), (), ()
     allowed = frozenset({"task-starts", "verified", "reporting"})
-    blockers: list[str] = []
+    integrity_blockers: list[str] = []
+    results_blockers: list[str] = []
+    reporting_blockers: list[str] = []
     for name in entries:
         path = state_root / name
         if name not in allowed:
-            blockers.append(f"Unexpected aggregate state path: {path}")
+            integrity_blockers.append(f"Unexpected aggregate state path: {path}")
         elif path.is_symlink() or not path.is_dir():
             label = {
                 "reporting": "Reporting state root",
                 "task-starts": "Task-start state root",
                 "verified": "Verified state root",
             }[name]
-            blockers.append(f"{label} must be a real directory: {path}")
-    return tuple(blockers)
+            target = reporting_blockers if name == "reporting" else results_blockers
+            target.append(f"{label} must be a real directory: {path}")
+    return (
+        tuple(integrity_blockers),
+        tuple(results_blockers),
+        tuple(reporting_blockers),
+    )
+
+
+def state_tree_blockers(root: Path) -> tuple[str, ...]:
+    """Close the aggregate EMRYS state namespace before trusting its ledgers."""
+
+    integrity, results, reporting = _state_tree_blockers_by_domain(root)
+    return (*integrity, *results, *reporting)
 
 
 def lock_tree_blockers(
@@ -988,7 +1152,7 @@ def attempt_compatibility_fields(
     return (*common, "source_checkout", "required_tools", *attempt_semantics)
 
 
-def inspect_attempt_chain(
+def _inspect_attempt_chain_by_domain(
     root: Path,
     *,
     authority_format: Literal["legacy", "successor"] | None = None,
@@ -997,6 +1161,8 @@ def inspect_attempt_chain(
 ) -> tuple[
     tuple[dict[str, Any], ...],
     dict[str, dict[str, Any]],
+    list[str],
+    list[str],
     list[str],
 ]:
     if authority_format is None:
@@ -1013,6 +1179,8 @@ def inspect_attempt_chain(
     receipts: dict[str, dict[str, Any]] = {}
     attempt_entries, attempt_tree_blockers = inspect_attempt_tree(root)
     blockers = list(attempt_tree_blockers)
+    results_blockers: list[str] = []
+    reporting_blockers: list[str] = []
     for entry in attempt_entries:
         attempt_path = entry / "attempt.json"
         if attempt_path.is_symlink() or not attempt_path.is_file():
@@ -1048,9 +1216,15 @@ def inspect_attempt_chain(
                 receipts[identifier] = receipt
 
     if blockers:
-        return tuple(records.values()), receipts, blockers
+        return (
+            tuple(records.values()),
+            receipts,
+            blockers,
+            results_blockers,
+            reporting_blockers,
+        )
     if not records:
-        return (), receipts, blockers
+        return (), receipts, blockers, results_blockers, reporting_blockers
     roots = [
         item
         for item in records.values()
@@ -1058,7 +1232,13 @@ def inspect_attempt_chain(
     ]
     if len(roots) != 1 or roots[0]["operation"] != "execute":
         blockers.append("Workflow attempt chain must have one execute root")
-        return tuple(records.values()), receipts, blockers
+        return (
+            tuple(records.values()),
+            receipts,
+            blockers,
+            results_blockers,
+            reporting_blockers,
+        )
     ordered = [roots[0]]
     visited = {str(roots[0]["workflow_attempt_id"])}
     while len(visited) < len(records):
@@ -1289,12 +1469,12 @@ def inspect_attempt_chain(
         ):
             raw_path = preentry_reference["record"].get("path")
             if not isinstance(raw_path, str):
-                blockers.append(
+                results_blockers.append(
                     f"Attempt receipt has invalid preentry task path: {identifier}/{index}"
                 )
                 continue
             if raw_path in seen_preentry_paths:
-                blockers.append(
+                results_blockers.append(
                     f"Attempt receipt repeats preentry task path: {identifier}/{raw_path}"
                 )
             seen_preentry_paths.add(raw_path)
@@ -1307,7 +1487,7 @@ def inspect_attempt_chain(
                 / "task-attempt.json"
             ).as_posix()
             if raw_path != expected_path:
-                blockers.append(
+                results_blockers.append(
                     "Attempt receipt preentry task path is not canonical: "
                     f"{identifier}/{raw_path}"
                 )
@@ -1318,11 +1498,11 @@ def inspect_attempt_chain(
                     record_path, root, "task-attempt"
                 )
             except InspectionError as exc:
-                blockers.append(str(exc))
+                results_blockers.append(str(exc))
                 continue
             observed_reference = _reference_for_bytes(record_path, root, preentry_data)
             if observed_reference != preentry_reference["record"]:
-                blockers.append(
+                results_blockers.append(
                     "Historical preentry task content binding no longer matches: "
                     f"{record_path}"
                 )
@@ -1330,7 +1510,7 @@ def inspect_attempt_chain(
                 preentry_record["task_start_record"] is not None
                 or preentry_record["status"] != "failed"
             ):
-                blockers.append(
+                results_blockers.append(
                     f"Historical preentry task is not an unentered failure: {record_path}"
                 )
             preentry_origin = str(preentry_record["workflow_attempt_id"])
@@ -1339,26 +1519,26 @@ def inspect_attempt_chain(
                 or preentry_origin not in attempt_positions
                 or attempt_positions[preentry_origin] > receipt_position
             ):
-                blockers.append(
+                results_blockers.append(
                     f"Attempt receipt pre-binds future preentry evidence: {identifier}/{raw_path}"
                 )
             if (
                 preentry_record["machine_key"] != preentry_reference["machine_key"]
                 or preentry_record["scope"] != preentry_reference["scope"]
             ):
-                blockers.append(
+                results_blockers.append(
                     f"Historical preentry task disagrees with receipt scope: {raw_path}"
                 )
         seen_start_paths: set[str] = set()
         for index, start_reference in enumerate(receipt["task_start_records"]):
             raw_path = start_reference["record"].get("path")
             if not isinstance(raw_path, str):
-                blockers.append(
+                results_blockers.append(
                     f"Attempt receipt has invalid task-start path: {identifier}/{index}"
                 )
                 continue
             if raw_path in seen_start_paths:
-                blockers.append(
+                results_blockers.append(
                     f"Attempt receipt repeats task-start path: {identifier}/{raw_path}"
                 )
             seen_start_paths.add(raw_path)
@@ -1369,7 +1549,7 @@ def inspect_attempt_chain(
                 / f"{start_reference['scope']['scope_id']}.json"
             ).as_posix()
             if raw_path != expected_path:
-                blockers.append(
+                results_blockers.append(
                     "Attempt receipt task-start path is not canonical: "
                     f"{identifier}/{raw_path}"
                 )
@@ -1380,11 +1560,11 @@ def inspect_attempt_chain(
                     record_path, root, "task-start"
                 )
             except InspectionError as exc:
-                blockers.append(str(exc))
+                results_blockers.append(str(exc))
                 continue
             observed_reference = _reference_for_bytes(record_path, root, start_data)
             if observed_reference != start_reference["record"]:
-                blockers.append(
+                results_blockers.append(
                     "Historical task-start content binding no longer matches: "
                     f"{record_path}"
                 )
@@ -1393,25 +1573,25 @@ def inspect_attempt_chain(
                 start_origin not in attempt_positions
                 or attempt_positions[start_origin] > receipt_position
             ):
-                blockers.append(
+                results_blockers.append(
                     f"Attempt receipt pre-binds future task-start evidence: {identifier}/{raw_path}"
                 )
             if (
                 start_record["machine_key"] != start_reference["machine_key"]
                 or start_record["scope"] != start_reference["scope"]
             ):
-                blockers.append(
+                results_blockers.append(
                     f"Historical task-start disagrees with receipt scope: {raw_path}"
                 )
         for index, task_reference in enumerate(receipt["verified_tasks"]):
             raw_path = task_reference["record"].get("path")
             if not isinstance(raw_path, str):
-                blockers.append(
+                results_blockers.append(
                     f"Attempt receipt has invalid verified-task path: {identifier}/{index}"
                 )
                 continue
             if raw_path in seen_receipt_paths:
-                blockers.append(
+                results_blockers.append(
                     f"Attempt receipt repeats verified-task path: {identifier}/{raw_path}"
                 )
             seen_receipt_paths.add(raw_path)
@@ -1422,7 +1602,7 @@ def inspect_attempt_chain(
                 / f"{task_reference['scope']['scope_id']}.json"
             ).as_posix()
             if raw_path != expected_path:
-                blockers.append(
+                results_blockers.append(
                     "Attempt receipt verified-task path is not canonical: "
                     f"{identifier}/{raw_path}"
                 )
@@ -1433,11 +1613,11 @@ def inspect_attempt_chain(
                     record_path, root, "verified-task"
                 )
             except InspectionError as exc:
-                blockers.append(str(exc))
+                results_blockers.append(str(exc))
                 continue
             observed_reference = _reference_for_bytes(record_path, root, record_data)
             if observed_reference != task_reference["record"]:
-                blockers.append(
+                results_blockers.append(
                     "Historical verified task content binding no longer matches: "
                     f"{record_path}"
                 )
@@ -1447,7 +1627,7 @@ def inspect_attempt_chain(
                 "profile_sha256",
             ):
                 if verified_record[field] != receipt[field]:
-                    blockers.append(
+                    results_blockers.append(
                         "Historical verified task disagrees with receipt on "
                         f"{field}: {identifier}/{index}"
                     )
@@ -1455,7 +1635,7 @@ def inspect_attempt_chain(
                 verified_record["machine_key"] != task_reference["machine_key"]
                 or verified_record["scope"] != task_reference["scope"]
             ):
-                blockers.append(
+                results_blockers.append(
                     "Historical verified task disagrees with receipt owner scope: "
                     f"{identifier}/{index}"
                 )
@@ -1464,7 +1644,7 @@ def inspect_attempt_chain(
                 verified_origin not in attempt_positions
                 or attempt_positions[verified_origin] > receipt_position
             ):
-                blockers.append(
+                results_blockers.append(
                     f"Attempt receipt pre-binds future verified task: {identifier}/{raw_path}"
                 )
         for kind, ledger_state in receipt["reporting_completion_records"].items():
@@ -1479,7 +1659,7 @@ def inspect_attempt_chain(
                     Path("state") / "reporting" / kind / f"{state_name}.json"
                 ).as_posix()
                 if reference["path"] != expected_path:
-                    blockers.append(
+                    reporting_blockers.append(
                         "Attempt receipt reporting ledger path is not canonical: "
                         f"{identifier}/{reference['path']}"
                     )
@@ -1490,10 +1670,10 @@ def inspect_attempt_chain(
                         ledger_path, root, schema_name
                     )
                 except InspectionError as exc:
-                    blockers.append(str(exc))
+                    reporting_blockers.append(str(exc))
                     continue
                 if _reference_for_bytes(ledger_path, root, ledger_data) != reference:
-                    blockers.append(
+                    reporting_blockers.append(
                         "Historical reporting ledger binding no longer matches: "
                         f"{ledger_path}"
                     )
@@ -1502,12 +1682,12 @@ def inspect_attempt_chain(
                     reporting_origin not in attempt_positions
                     or attempt_positions[reporting_origin] > receipt_position
                 ):
-                    blockers.append(
+                    reporting_blockers.append(
                         "Attempt receipt pre-binds future reporting evidence: "
                         f"{identifier}/{expected_path}"
                     )
                 if ledger_record["kind"] != kind:
-                    blockers.append(
+                    reporting_blockers.append(
                         f"Historical reporting ledger kind differs: {ledger_path}"
                     )
         try:
@@ -1521,7 +1701,37 @@ def inspect_attempt_chain(
                 blockers.append(
                     f"Workflow attempt changed during inspection: {identifier}"
                 )
-    return tuple(ordered), receipts, blockers
+    return (
+        tuple(ordered),
+        receipts,
+        blockers,
+        results_blockers,
+        reporting_blockers,
+    )
+
+
+def inspect_attempt_chain(
+    root: Path,
+    *,
+    authority_format: Literal["legacy", "successor"] | None = None,
+    successor_authority: SuccessorRunAuthority | None = None,
+    profile: Mapping[str, Any] | None = None,
+) -> tuple[
+    tuple[dict[str, Any], ...],
+    dict[str, dict[str, Any]],
+    list[str],
+]:
+    """Admit the Attempt chain with its historical aggregate blocker result."""
+
+    attempts, receipts, integrity, results, reporting = (
+        _inspect_attempt_chain_by_domain(
+            root,
+            authority_format=authority_format,
+            successor_authority=successor_authority,
+            profile=profile,
+        )
+    )
+    return attempts, receipts, [*integrity, *results, *reporting]
 
 
 def _parse_attempt_path_bytes(
@@ -1887,7 +2097,7 @@ def _historical_receipt_evidence_blockers(
     task_ledger: Sequence[TaskLedgerInspection],
     tasks: Sequence[TaskInspection],
     reporting: Mapping[str, Mapping[str, dict[str, str] | None]],
-) -> list[str]:
+) -> tuple[list[str], list[str], list[str]]:
     """Require every receipt to bind the exact cumulative evidence at its time."""
 
     positions = {
@@ -1906,10 +2116,14 @@ def _historical_receipt_evidence_blockers(
             value.expected.scope_id,
         ),
     )
-    blockers: list[str] = []
+    integrity_blockers: list[str] = []
+    results_blockers: list[str] = []
+    reporting_blockers: list[str] = []
     for identifier, receipt in receipts.items():
         if identifier not in positions:
-            blockers.append(f"Receipt has no workflow attempt in chain: {identifier}")
+            integrity_blockers.append(
+                f"Receipt has no workflow attempt in chain: {identifier}"
+            )
             continue
         position = positions[identifier]
         expected_preentry = [
@@ -1918,7 +2132,7 @@ def _historical_receipt_evidence_blockers(
             if admitted(item["workflow_attempt_id"], position)
         ]
         if receipt["preentry_task_attempt_records"] != expected_preentry:
-            blockers.append(
+            results_blockers.append(
                 f"Attempt receipt omits or adds cumulative preentry evidence: {identifier}"
             )
 
@@ -1932,7 +2146,7 @@ def _historical_receipt_evidence_blockers(
             if admitted(item.start["workflow_attempt_id"], position)
         ]
         if receipt["task_start_records"] != expected_starts:
-            blockers.append(
+            results_blockers.append(
                 f"Attempt receipt omits or adds cumulative task starts: {identifier}"
             )
 
@@ -1947,7 +2161,7 @@ def _historical_receipt_evidence_blockers(
             and admitted(item.record["workflow_attempt_id"], position)
         ]
         if receipt["verified_tasks"] != expected_verified:
-            blockers.append(
+            results_blockers.append(
                 f"Attempt receipt omits or adds cumulative verified tasks: {identifier}"
             )
 
@@ -1970,10 +2184,10 @@ def _historical_receipt_evidence_blockers(
                 if admitted(record["origin_workflow_attempt_id"], position):
                     expected_reporting[kind][state_name] = reference
         if receipt["reporting_completion_records"] != expected_reporting:
-            blockers.append(
+            reporting_blockers.append(
                 f"Attempt receipt omits or adds cumulative reporting evidence: {identifier}"
             )
-    return blockers
+    return integrity_blockers, results_blockers, reporting_blockers
 
 
 def _inspect_lock(
@@ -2060,13 +2274,28 @@ def inspect_run(
         legacy_execution_path.exists() or legacy_execution_path.is_symlink()
     )
     if authority is not None and not profile_present:
-        blockers = list(state_tree_blockers(root))
+        state_integrity, state_results, state_reporting = (
+            _state_tree_blockers_by_domain(root)
+        )
+        integrity_blockers = list(state_integrity)
+        results_blockers = list(state_results)
+        reporting_blockers = list(state_reporting)
         if legacy_execution_present:
-            blockers.append("Successor Run retains a retired execution projection")
-        attempts, receipts, attempt_blockers = inspect_attempt_chain(
+            integrity_blockers.append(
+                "Successor Run retains a retired execution projection"
+            )
+        (
+            attempts,
+            receipts,
+            attempt_blockers,
+            attempt_results_blockers,
+            attempt_reporting_blockers,
+        ) = _inspect_attempt_chain_by_domain(
             root, authority_format="successor"
         )
-        blockers.extend(attempt_blockers)
+        integrity_blockers.extend(attempt_blockers)
+        results_blockers.extend(attempt_results_blockers)
+        reporting_blockers.extend(attempt_reporting_blockers)
         latest = attempts[-1] if attempts else None
         latest_id = None if latest is None else str(latest["workflow_attempt_id"])
         latest_receipt = None if latest_id is None else receipts.get(latest_id)
@@ -2077,9 +2306,11 @@ def inspect_run(
             ops=active_ops,
             allowed_next_attempt=allowed_next_attempt,
         )
-        blockers.extend(lock_blockers)
+        integrity_blockers.extend(lock_blockers)
         if latest is not None:
-            blockers.append("Successor Attempt exists without its backend adapters")
+            integrity_blockers.append(
+                "Successor Attempt exists without its backend adapters"
+            )
         expected = _successor_expected_tasks(authority)
         tasks = tuple(
             TaskInspection(
@@ -2092,16 +2323,17 @@ def inspect_run(
             )
             for item in expected
         )
-        if blockers:
-            state: RunState = "blocked"
-        elif running:
-            state = "running"
-        else:
-            state = "prepared"
+        outcome = _attempt_outcome(
+            latest=latest,
+            receipt=latest_receipt,
+            running=running,
+            integrity_blockers=integrity_blockers,
+            results_status=_results_status(tasks, results_blockers),
+        )
         return RunInspection(
             run_root=root,
             run_id=authority.run_id,
-            state=state,
+            attempt_outcome=outcome,
             latest_workflow_attempt_id=latest_id,
             latest_attempt=latest,
             latest_receipt=latest_receipt,
@@ -2110,9 +2342,9 @@ def inspect_run(
                 kind: {"start": None, "verified": None}
                 for kind in ("artifact_index", "run_summary", "html_report")
             },
-            blockers=tuple(dict.fromkeys(blockers)),
-            resume_available=False,
-            local_pipeline_complete=False,
+            integrity_blockers=tuple(dict.fromkeys(integrity_blockers)),
+            results_blockers=tuple(dict.fromkeys(results_blockers)),
+            reporting_blockers=tuple(dict.fromkeys(reporting_blockers)),
             authority_format="successor",
             analysis_revision=authority.analysis_revision,
             execution_plan=authority.execution_plan,
@@ -2121,13 +2353,19 @@ def inspect_run(
     if authority is None and profile_present != legacy_execution_present:
         raise InspectionError("Run has an incomplete profile/execution contract pair")
     profile, profile_data = admit_canonical_record(profile_path, root, "profile")
-    blockers: list[str] = []
-    blockers.extend(state_tree_blockers(root))
+    state_integrity, state_results, state_reporting = _state_tree_blockers_by_domain(
+        root
+    )
+    integrity_blockers = list(state_integrity)
+    results_blockers = list(state_results)
+    reporting_blockers = list(state_reporting)
     if authority is not None:
         execution = authority.run_binding.record
         execution_data = authority.run_binding.canonical_bytes
         if legacy_execution_present:
-            blockers.append("Successor Run retains a retired execution projection")
+            integrity_blockers.append(
+                "Successor Run retains a retired execution projection"
+            )
         try:
             validate_successor_run(
                 analysis=authority.analysis_revision,
@@ -2136,7 +2374,7 @@ def inspect_run(
                 profile=profile,
             )
         except orchestration_contracts.ContractValidationError as exc:
-            blockers.append(f"Profile differs from immutable Run: {exc}")
+            integrity_blockers.append(f"Profile differs from immutable Run: {exc}")
     else:
         execution, execution_data = admit_canonical_record(
             legacy_execution_path,
@@ -2148,14 +2386,24 @@ def inspect_run(
             execution["profile"]["profile_sha256"]
             != hashlib.sha256(profile_data).hexdigest()
         ):
-            blockers.append("Execution contract no longer binds profile snapshot bytes")
-    attempts, receipts, attempt_blockers = inspect_attempt_chain(
+            integrity_blockers.append(
+                "Execution contract no longer binds profile snapshot bytes"
+            )
+    (
+        attempts,
+        receipts,
+        attempt_blockers,
+        attempt_results_blockers,
+        attempt_reporting_blockers,
+    ) = _inspect_attempt_chain_by_domain(
         root,
         authority_format="successor" if authority is not None else "legacy",
         successor_authority=authority,
         profile=profile if authority is not None else None,
     )
-    blockers.extend(attempt_blockers)
+    integrity_blockers.extend(attempt_blockers)
+    results_blockers.extend(attempt_results_blockers)
+    reporting_blockers.extend(attempt_reporting_blockers)
     latest = attempts[-1] if attempts else None
     latest_id = None if latest is None else str(latest["workflow_attempt_id"])
     latest_receipt = None if latest_id is None else receipts.get(latest_id)
@@ -2163,11 +2411,15 @@ def inspect_run(
         expected_execution_hash = hashlib.sha256(execution_data).hexdigest()
         expected_profile_hash = hashlib.sha256(profile_data).hexdigest()
         if latest["run_id"] != execution["run_id"]:
-            blockers.append("Latest attempt does not bind the admitted Run ID")
+            integrity_blockers.append(
+                "Latest attempt does not bind the admitted Run ID"
+            )
         if latest["execution_contract_sha256"] != expected_execution_hash:
-            blockers.append("Latest attempt does not bind its execution authority bytes")
+            integrity_blockers.append(
+                "Latest attempt does not bind its execution authority bytes"
+            )
         if latest["profile_sha256"] != expected_profile_hash:
-            blockers.append("Latest attempt does not bind profile bytes")
+            integrity_blockers.append("Latest attempt does not bind profile bytes")
 
     latest_terminal = latest_receipt is not None
     running, lock_blockers = _inspect_lock(
@@ -2177,7 +2429,7 @@ def inspect_run(
         ops=active_ops,
         allowed_next_attempt=allowed_next_attempt,
     )
-    blockers.extend(lock_blockers)
+    integrity_blockers.extend(lock_blockers)
     live_origin = (
         latest_id
         if running and latest_receipt is None and allowed_next_attempt is None
@@ -2186,7 +2438,7 @@ def inspect_run(
     tasks, task_blockers = _inspect_tasks(
         root, execution, profile, authority=authority
     )
-    blockers.extend(task_blockers)
+    results_blockers.extend(task_blockers)
     task_ledger, task_ledger_blockers = _inspect_task_ledger(
         root,
         execution,
@@ -2194,7 +2446,7 @@ def inspect_run(
         allow_incomplete_origin=live_origin,
         authority=authority,
     )
-    blockers.extend(task_ledger_blockers)
+    results_blockers.extend(task_ledger_blockers)
     preentry_tasks, task_tree_blockers = inspect_attempt_task_trees(
         root,
         execution,
@@ -2203,10 +2455,10 @@ def inspect_run(
         allow_incomplete_origin=live_origin,
         authority=authority,
     )
-    blockers.extend(task_tree_blockers)
+    results_blockers.extend(task_tree_blockers)
     (
         reporting,
-        reporting_blockers,
+        current_reporting_blockers,
         verified_report_locations,
     ) = _inspect_reporting_ledger_with_locations(
         root,
@@ -2215,26 +2467,31 @@ def inspect_run(
         active_ops.validate_reporting_receipt,
         allow_incomplete_origin=live_origin,
     )
-    blockers.extend(reporting_blockers)
-    blockers.extend(
-        _historical_receipt_evidence_blockers(
-            root,
-            attempts,
-            receipts,
-            preentry_tasks,
-            task_ledger,
-            tasks,
-            reporting,
-        )
+    reporting_blockers.extend(current_reporting_blockers)
+    (
+        historical_integrity_blockers,
+        historical_results_blockers,
+        historical_reporting_blockers,
+    ) = _historical_receipt_evidence_blockers(
+        root,
+        attempts,
+        receipts,
+        preentry_tasks,
+        task_ledger,
+        tasks,
+        reporting,
     )
+    integrity_blockers.extend(historical_integrity_blockers)
+    results_blockers.extend(historical_results_blockers)
+    reporting_blockers.extend(historical_reporting_blockers)
     if latest_receipt is not None:
         if latest_receipt["reporting_completion_records"] != reporting:
-            blockers.append(
+            reporting_blockers.append(
                 "Latest attempt receipt does not bind exact reporting ledger"
             )
         receipt_tasks = latest_receipt["verified_tasks"]
         if latest_receipt["preentry_task_attempt_records"] != preentry_tasks:
-            blockers.append(
+            results_blockers.append(
                 "Latest attempt receipt does not bind exact preentry task evidence"
             )
         receipt_starts = latest_receipt["task_start_records"]
@@ -2254,7 +2511,7 @@ def inspect_run(
             )
         ]
         if receipt_starts != observed_starts:
-            blockers.append(
+            results_blockers.append(
                 "Latest attempt receipt does not bind exact producer-entry ledger"
             )
         expected_references = []
@@ -2269,54 +2526,47 @@ def inspect_run(
                 }
             )
         if receipt_tasks != expected_references:
-            blockers.append(
+            results_blockers.append(
                 "Latest attempt receipt does not bind exact verified task state"
             )
         if latest_receipt["status"] == "succeeded":
             if any(item.state != "verified" for item in tasks):
-                blockers.append(
+                results_blockers.append(
                     "Successful attempt receipt is missing required verified tasks"
                 )
             if any(
                 state["start"] is None or state["verified"] is None
                 for state in reporting.values()
             ):
-                blockers.append(
+                reporting_blockers.append(
                     "Successful attempt receipt is missing reporting transactions"
                 )
-    if blockers:
-        state: RunState = "blocked"
-    elif latest is None:
-        state = "prepared"
-    elif running and allowed_next_attempt is None:
-        state = "running"
-    elif latest_receipt is None:
-        state = "blocked"
-        blockers.append(
+    if latest is not None and latest_receipt is None and not (
+        running and allowed_next_attempt is None
+    ):
+        integrity_blockers.append(
             "Latest workflow attempt is nonterminal without a live owned lock"
         )
-    elif latest_receipt["status"] in {"failed", "interrupted"}:
-        state = "resume_available"
-    elif latest_receipt["status"] == "succeeded":
-        state = "local_pipeline_complete"
-    else:
-        state = "blocked"
-        blockers.extend(str(value) for value in latest_receipt["blockers"])
-
-    complete = state == "local_pipeline_complete"
+    outcome = _attempt_outcome(
+        latest=latest,
+        receipt=latest_receipt,
+        running=running and allowed_next_attempt is None,
+        integrity_blockers=integrity_blockers,
+        results_status=_results_status(tasks, results_blockers),
+    )
     return RunInspection(
         run_root=root,
         run_id=(authority.run_id if authority is not None else str(execution["run_id"])),
-        state=state,
+        attempt_outcome=outcome,
         latest_workflow_attempt_id=latest_id,
         latest_attempt=latest,
         latest_receipt=latest_receipt,
         tasks=tasks,
         reporting_completion_records=reporting,
-        blockers=tuple(dict.fromkeys(blockers)),
-        resume_available=state == "resume_available",
-        local_pipeline_complete=complete,
-        verified_report_locations=(verified_report_locations if complete else ()),
+        integrity_blockers=tuple(dict.fromkeys(integrity_blockers)),
+        results_blockers=tuple(dict.fromkeys(results_blockers)),
+        reporting_blockers=tuple(dict.fromkeys(reporting_blockers)),
+        verified_report_locations=verified_report_locations,
         authority_format="successor" if authority is not None else "legacy",
         analysis_revision=(None if authority is None else authority.analysis_revision),
         execution_plan=(None if authority is None else authority.execution_plan),

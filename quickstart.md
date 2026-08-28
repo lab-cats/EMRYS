@@ -18,7 +18,7 @@ result, scheduler job, and report has the evidence ceiling stated below.
 | 6. Readiness | Run doctor in the execution context | Exact `READY` result |
 | 7. Plan | Run the full no-write workflow plan | Reviewed deterministic run ID, run root, and owner commands |
 | 8. Process | Submit the generated single-allocation wrapper first with no mode flag, then with explicit `--execute` | Terminal scheduler success plus verified EMRYS task records |
-| 9. Results | Inspect the run and retain its complete evidence tree | `local_pipeline_complete` and automatic scientific/evidence HTML reports |
+| 9. Results | Inspect the run and retain its complete evidence tree | Complete scientific Results and separately verified scientific/evidence HTML reports |
 
 Do not skip a gate, hand-edit the generated scheduler wrapper, adopt outputs from
 standalone stages into an orchestrated run, or interpret computational
@@ -596,17 +596,20 @@ emrys inspect local-pilot-run --run-root "$EMRYS_RUN_ROOT"
 Successful automatic completion prints:
 
 ```text
-State: local_pipeline_complete
-Local pipeline complete: yes
+Run integrity: valid
+Attempt outcome: succeeded
+Scientific Results: complete
+Reporting: complete
+Recovery available: no
 Results:
   Scientific report: /absolute/path/to/the/scientific-report.html
   Evidence report: /absolute/path/to/the/evidence-report.html
 ```
 
-The completed inspection prints those locations only after admitting the
-complete report transaction. Copy the printed paths. If inspection does not
-print a `Results:` block, do not infer locations from the run ID, run root, or
-a tree search.
+Inspection prints those locations whenever it independently admits the complete
+HTML-report transaction. Copy the printed paths. If inspection does not print a
+`Results:` block, do not infer locations from the run ID, run root, or a tree
+search. A reporting failure does not erase complete scientific Results.
 
 Copy either self-contained HTML file to a trusted workstation or open it with
 the local browser allowed by your environment. The scientific report presents

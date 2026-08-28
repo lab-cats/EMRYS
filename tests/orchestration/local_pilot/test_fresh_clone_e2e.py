@@ -376,7 +376,10 @@ def _assert_complete_products(run_root: Path, run_id: str) -> None:
     assert observed.run_binding.run_id == run_id
     assert observed.analysis_revision is not None
     assert observed.execution_plan is not None
-    assert observed.local_pipeline_complete
+    assert observed.integrity == "valid"
+    assert observed.attempt_outcome == "succeeded"
+    assert observed.results_status == "complete"
+    assert observed.reporting_status == "complete"
     assert (
         len(list((run_root / "state/verified").glob("*/*.json")))
         == EXPECTED_OWNER_JOB_COUNT
@@ -425,13 +428,19 @@ def unreachable(*_args, **_kwargs):
 observed = SimpleNamespace(
     run_id="run-explicit-ops",
     run_root=__import__("pathlib").Path("/explicit/run-root"),
-    state="resume_available",
+    integrity="valid",
+    attempt_outcome="failed",
+    results_status="incomplete",
+    reporting_status="incomplete",
     latest_workflow_attempt_id="workflow-explicit-ops",
     tasks=(),
     reporting_completion_records={},
     blockers=(),
-    resume_available=True,
-    local_pipeline_complete=False,
+    integrity_blockers=(),
+    results_blockers=(),
+    reporting_blockers=(),
+    receipt_blockers=(),
+    recovery_available=True,
     verified_report_locations=(),
 )
 ops = control.ControlOps(
@@ -463,8 +472,10 @@ print(json.dumps({"status": status}))
     )
     assert seam.returncode == 0, seam.stdout + seam.stderr
     assert "Run ID: run-explicit-ops" in seam.stdout
-    assert "State: resume_available" in seam.stdout
-    assert "Results:" not in seam.stdout
+    assert "Attempt outcome: failed" in seam.stdout
+    assert "Scientific Results: incomplete" in seam.stdout
+    assert "Recovery available: yes" in seam.stdout
+    assert "Results:" not in seam.stdout.splitlines()
     assert json.loads(seam.stdout.splitlines()[-1]) == {"status": 0}
 
     harness = _run(
@@ -543,8 +554,8 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         environment=environment,
     )
     assert failed_run.returncode == 1, failed_run.stdout + failed_run.stderr
-    assert "Attempt status: failed" in failed_run.stdout
-    assert "Results:" not in failed_run.stdout
+    assert "Attempt receipt status: failed" in failed_run.stdout
+    assert "Results:" not in failed_run.stdout.splitlines()
     assert _planned_run(failed_run.stdout, workspace) == (run_id, run_root)
     assert run_root.is_dir()
 
@@ -561,9 +572,10 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         environment=environment,
     )
     assert failed_inspect.returncode == 0, failed_inspect.stderr
-    assert "State: resume_available" in failed_inspect.stdout
-    assert "Resume available: yes" in failed_inspect.stdout
-    assert "Results:" not in failed_inspect.stdout
+    assert "Attempt outcome: failed" in failed_inspect.stdout
+    assert "Scientific Results: incomplete" in failed_inspect.stdout
+    assert "Recovery available: yes" in failed_inspect.stdout
+    assert "Results:" not in failed_inspect.stdout.splitlines()
     second_initial = _harness_command(
         "success",
         ["run", *common, "--execute"],
@@ -612,7 +624,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         resume_dry_run.stdout
     )
     assert "Dry-run complete; no resume state was written." in resume_dry_run.stdout
-    assert "Results:" not in resume_dry_run.stdout
+    assert "Results:" not in resume_dry_run.stdout.splitlines()
     assert _tree_snapshot(run_root) == before_resume_dry_run
 
     resumed = _harness_command(
@@ -621,7 +633,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         environment=environment,
     )
     assert resumed.returncode == 0, resumed.stdout + resumed.stderr
-    assert "Attempt status: succeeded" in resumed.stdout
+    assert "Attempt receipt status: succeeded" in resumed.stdout
     report_root = run_root / "products" / "report" / run_id
     expected_results = (
         "Results:\n"
@@ -638,8 +650,9 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         environment=environment,
     )
     assert completed_inspect.returncode == 0, completed_inspect.stderr
-    assert "State: local_pipeline_complete" in completed_inspect.stdout
-    assert "Local pipeline complete: yes" in completed_inspect.stdout
+    assert "Attempt outcome: succeeded" in completed_inspect.stdout
+    assert "Scientific Results: complete" in completed_inspect.stdout
+    assert "Reporting: complete" in completed_inspect.stdout
     assert expected_results in completed_inspect.stdout
 
     _assert_complete_products(run_root, run_id)
@@ -673,7 +686,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         environment=environment,
     )
     assert completed_resume.returncode == 2
-    assert "Completed local-pilot run refuses resume" in completed_resume.stderr
+    assert "Results are complete" in completed_resume.stderr
 
     forbidden = str(source_root).encode()
     for path in run_root.rglob("*"):
@@ -708,7 +721,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         environment=environment,
     )
     assert clean_run.returncode == 0, clean_run.stdout + clean_run.stderr
-    assert "Attempt status: succeeded" in clean_run.stdout
+    assert "Attempt receipt status: succeeded" in clean_run.stdout
     clean_run_id, clean_root = _planned_run(clean_run.stdout, clean_workspace)
     clean_report_root = clean_root / "products" / "report" / clean_run_id
     clean_expected_results = (
@@ -722,8 +735,9 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         environment=environment,
     )
     assert clean_inspect.returncode == 0, clean_inspect.stderr
-    assert "State: local_pipeline_complete" in clean_inspect.stdout
-    assert "Local pipeline complete: yes" in clean_inspect.stdout
+    assert "Attempt outcome: succeeded" in clean_inspect.stdout
+    assert "Scientific Results: complete" in clean_inspect.stdout
+    assert "Reporting: complete" in clean_inspect.stdout
     assert clean_expected_results in clean_inspect.stdout
     _assert_complete_products(clean_root, clean_run_id)
     for path in clean_root.rglob("*"):

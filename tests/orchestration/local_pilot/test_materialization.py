@@ -1435,16 +1435,13 @@ def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
     assert not workspace.exists()
 
 
-def test_completed_states_require_exact_verified_result_locations() -> None:
-    for locations in (
-        (),
-        (
-            ("scientific-report-html", Path("/results/scientific.html")),
-            ("wrong-output-id", Path("/results/evidence.html")),
-        ),
-    ):
-        with pytest.raises(control.ControlError, match="verified result locations"):
-            control._verified_report_location_lines(locations)
+def test_report_presentation_rejects_malformed_verified_locations() -> None:
+    locations = (
+        ("scientific-report-html", Path("/results/scientific.html")),
+        ("wrong-output-id", Path("/results/evidence.html")),
+    )
+    with pytest.raises(control.ControlError, match="verified result locations"):
+        control._verified_report_location_lines(locations)
 
 
 def test_public_help_routes() -> None:
@@ -1581,7 +1578,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
 
     assert control.run_from_args(run_arguments, ops=first_ops) == 1
     failed_output = capsys.readouterr().out
-    assert "Results:" not in failed_output
+    assert "Results:" not in failed_output.splitlines()
     run_root = workspace / "runs" / run_id
     failed = inspection.inspect_run(run_root)
     assert failed.state == "resume_available"
@@ -1608,7 +1605,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 0
     dry_output = capsys.readouterr().out
     assert "Reusable completed owner jobs:" in dry_output
-    assert "Results:" not in dry_output
+    assert "Results:" not in dry_output.splitlines()
     assert _verified_snapshot(run_root) == before
 
     resume_arguments.execute = True
@@ -1639,9 +1636,11 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     inspect_arguments = argparse.Namespace(run_root=run_root)
     assert control.inspect_from_args(inspect_arguments, ops=resumed_ops) == 0
     inspect_output = capsys.readouterr().out
-    assert "State: local_pipeline_complete" in inspect_output
+    assert "Attempt outcome: succeeded" in inspect_output
+    assert "Scientific Results: complete" in inspect_output
+    assert "Reporting: complete" in inspect_output
     assert expected_results in inspect_output
 
     resume_arguments.execute = False
     assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 2
-    assert "Completed local-pilot run refuses resume" in capsys.readouterr().err
+    assert "Results are complete" in capsys.readouterr().err
