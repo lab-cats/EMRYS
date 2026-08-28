@@ -1436,6 +1436,11 @@ def build_attempt_plan(
 
     normalized = run.normalized
     successor = isinstance(run, RunCandidate)
+    executor = (
+        str(run.execution_plan.record["identity"]["backend"]["backend"])
+        if successor
+        else "local"
+    )
     source = _construction_source(run)
     execution_bytes = (
         run.run_binding.canonical_bytes
@@ -1593,7 +1598,7 @@ def build_attempt_plan(
             "commit": readiness.source_commit,
             "clean": True,
         },
-        "executor": "local",
+        "executor": executor,
         "execution_mode": "local-science-tools",
         "snakemake_argv": list(attempt_argv),
         "workflow_config": {

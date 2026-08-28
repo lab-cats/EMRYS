@@ -78,6 +78,7 @@ class AllocationCapacity:
     cores: int
     memory_mb: int
     source: str
+    slurm_job_id: str | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -94,6 +95,15 @@ class AllocationCapacity:
             raise ResourceConfigError("Allocation memory must be a positive integer")
         if not isinstance(self.source, str) or not self.source:
             raise ResourceConfigError("Allocation source must be nonempty")
+        if self.slurm_job_id is not None and (
+            not isinstance(self.slurm_job_id, str)
+            or not self.slurm_job_id.isascii()
+            or not self.slurm_job_id.isdecimal()
+            or not self.slurm_job_id.strip("0")
+        ):
+            raise ResourceConfigError(
+                "Slurm job ID must be a positive decimal string or null"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -343,6 +353,7 @@ class ResourcePlan:
                 "cores": self.allocation.cores,
                 "memory_mb": self.allocation.memory_mb,
                 "source": self.allocation.source,
+                "slurm_job_id": self.allocation.slurm_job_id,
             },
             "sources": {
                 "default_sha256": self.default_sha256,
@@ -787,10 +798,9 @@ def admit_resource_policy_record(
         )
 
     allocation = record.get("allocation")
-    if not isinstance(allocation, dict) or set(allocation) != {
-        "cores",
-        "memory_mb",
-        "source",
+    if not isinstance(allocation, dict) or frozenset(allocation) not in {
+        frozenset({"cores", "memory_mb", "source"}),
+        frozenset({"cores", "memory_mb", "source", "slurm_job_id"}),
     }:
         raise ResourceConfigError("Persisted resource allocation is malformed")
     try:
@@ -798,6 +808,7 @@ def admit_resource_policy_record(
             cores=allocation["cores"],
             memory_mb=allocation["memory_mb"],
             source=allocation["source"],
+            slurm_job_id=allocation.get("slurm_job_id"),
         )
     except KeyError as exc:  # Defensive against a nonstandard Mapping implementation.
         raise ResourceConfigError(

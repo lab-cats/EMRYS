@@ -1798,12 +1798,19 @@ def _admit_request(
     for field, value in config_identity.items():
         if config_document.get(field) != value:
             raise LifecycleError(f"Workflow config does not bind {field}")
+    expected_executor = (
+        "local"
+        if successor is None
+        else str(
+            successor.execution_plan.record["identity"]["backend"]["backend"]
+        )
+    )
     expected = {
         "run_id": execution["run_id"],
         "execution_contract_sha256": hashlib.sha256(execution_data).hexdigest(),
         "profile_sha256": hashlib.sha256(profile_data).hexdigest(),
         "operation": request.operation,
-        "executor": "local",
+        "executor": expected_executor,
         "snakemake_argv": list(argv),
         "workflow_config": config_reference,
         "host": ops.host_name(),

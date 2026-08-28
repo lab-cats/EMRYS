@@ -119,7 +119,9 @@ def _absolute(path: Path) -> Path:
 def _require_ready(result: doctor.DoctorResult) -> None:
     if result.ready:
         return
-    raise ControlError("Local-pilot readiness blockers: " + "; ".join(result.blockers))
+    details = [*result.blockers]
+    details.extend(f"REMEDIATION: {value}" for value in result.remediations)
+    raise ControlError("Local-pilot readiness blockers: " + "; ".join(details))
 
 
 def _normalize_after_doctor(

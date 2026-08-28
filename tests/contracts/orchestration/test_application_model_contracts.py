@@ -488,6 +488,16 @@ def test_successor_run_proves_authority_and_optional_attempt_observations() -> N
         observed_implementation_content_sha256=implementation_digest(),
         observed_backend_semantics_sha256=ZERO_HASH,
     )
+    scheduled_resources = copy.deepcopy(resource_policy)
+    scheduled_resources["allocation"]["slurm_job_id"] = "9" * 5000
+    model.validate_successor_run(
+        analysis=analysis,
+        plan=plan,
+        run=run,
+        profile=profile,
+        attempt=attempt,
+        resource_policy=scheduled_resources,
+    )
 
 
 @pytest.mark.parametrize(
@@ -514,6 +524,12 @@ def test_successor_run_proves_authority_and_optional_attempt_observations() -> N
             0,
             None,
             "Allocation cores must be a positive integer",
+        ),
+        (
+            ("allocation", "slurm_job_id"),
+            "0",
+            None,
+            "Slurm job ID must be a positive decimal",
         ),
         (("effective", "workflow_cores"), 1, "effective", "workflow cores differ"),
         (

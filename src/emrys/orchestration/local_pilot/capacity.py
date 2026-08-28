@@ -122,6 +122,7 @@ def observe_allocation(
             cores=affinity_cores,
             memory_mb=process_memory_mb,
             source="process affinity and memory limit",
+            slurm_job_id=None,
         )
 
     slurm_cores = _positive_environment_integer(selected, "SLURM_CPUS_PER_TASK")
@@ -155,8 +156,9 @@ def observe_allocation(
         memory_mb=min(slurm_memory_mb, process_memory_mb),
         source=(
             "Slurm allocation constrained by process affinity/memory limit "
-            f"({memory_source}, job {job_id})"
+            f"({memory_source})"
         ),
+        slurm_job_id=job_id,
     )
 
 

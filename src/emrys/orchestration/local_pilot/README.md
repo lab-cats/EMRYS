@@ -82,14 +82,19 @@ internal batch execution flag.
 Inside an allocation the wrapper creates one mode-`0700` job directory below
 the declared `EMRYS_SCRATCH_PARENT`, exports it as `TMPDIR`, logs its
 canonical path plus `df -PT` filesystem/capacity evidence, and removes it on
-exit. It then validates the request, runs the doctor, and plans or executes the
-whole single-host local pilot. EMRYS observes `SLURM_CPUS_PER_TASK`, Slurm's
+exit. It then validates request compatibility and delegates planning or
+execution to the grouped `emrys run` control path, whose own readiness gate
+runs the doctor. The wrapper does not repeat that readiness probe. EMRYS
+observes `SLURM_CPUS_PER_TASK`, Slurm's
 memory environment, process CPU affinity, and the process memory limit before
 resolving the resource policy. When a full-node allocation omits Slurm memory
 variables, EMRYS uses process-visible memory; ambiguous partial-node
 allocations without an explicit memory boundary remain rejected. Packaged
 defaults are overridden by adjacent `emrys.resources.yaml`, then by any
-explicit resource CLI values. The wrapper never runs
+explicit resource CLI values. The resulting Attempt allocation records the
+exact Slurm job ID as structured provenance; direct execution records null.
+That placement fact does not change Run identity or turn Slurm into a second
+scientific backend. The wrapper never runs
 analysis or large-input validation on a login node and does not claim
 per-owner Slurm scheduling or multi-node execution.
 

@@ -889,22 +889,25 @@ submit host
   -> sbatch --nodes=1 --ntasks=1 ...
   -> generated wrapper inside allocation
   -> validate request
-  -> Doctor
   -> emrys run
+  -> Doctor readiness gate
   -> Snakemake local executor on the allocated node
 ```
 
-It is not currently a separate application execution backend. `AttemptPlan`
-records `executor: local`, and no scheduler job ID is stored in the workflow
-attempt or terminal lifecycle receipt. Scheduler association is reconstructed
-from wrapper/log context and by the dashboard. The generated wrapper also
-normalizes the same request four times along its validate → Doctor → run path:
-once for explicit request validation, once for standalone Doctor, once for the
-Doctor invoked by `run`, and once after that Doctor in control. Any reduction
-must retain deliberate lock-time and pre-mutation re-admission and must
-re-admit after any future explicit Doctor repair that changes owned state,
-rather than equate every repeated check with waste or carry stale facts across
-a mutating repair.
+It is not currently a separate application execution backend. Successor
+Attempts derive their executor from the admitted immutable Execution Plan;
+that value remains `local` for the only current scientific backend. The
+Attempt's structured allocation provenance records the exact Slurm job ID, or
+null for direct execution, without changing Run identity. Historical
+three-field allocation records remain readable. Scheduler state and the
+terminal lifecycle receipt remain separate authorities.
+
+The generated wrapper no longer invokes a second standalone Doctor between
+explicit request-compatibility validation and `emrys run`; the Run-control
+readiness failure retains Doctor remediations. The remaining normalization and
+re-admission points are not declared redundant: lock-time and pre-mutation
+admission must remain deliberate, and any future explicit Doctor repair must
+be followed by re-admission rather than carrying stale facts across mutation.
 
 #### Status, Result, and reporting cutover
 
@@ -1054,7 +1057,7 @@ reported separately below.
 |---|---|---|---|---|---|---|---|
 | `ARCH-MODEL-COMP-01` | Schema and protection | Contract API/execution schema; normalization, projection, materialization, lifecycle, task, reporting, inspection, workflow and tests | Canonical execution identity, closed shape, digest recomputation, and historical admission | Profile, samples, partitions, reference, and analysis occur both top-level and in `identity_envelope`; validation requires exact equality | **Defer; candidate consolidate.** Current versioned contract/schema remains authority until an approved successor and migration exist | Est.: files 0; lines lower; concepts/config 0; edges lower; at most one temporary compatibility path, then zero. Audit actual all zero | Complete consumer roster; select identity boundary; version/migrate schema; prove historical and current admission plus exact digest parity |
 | `ARCH-MODEL-COMP-02` | Maintained product code and protection | Normalization, materialization, lifecycle, inspection and projection; control, task/reporting owners and tests | Exact admitted record bytes and immutable identity/plan facts | Frozen dataclasses wrap mutable dictionaries beside cached or recomputed canonical bytes | **Defer; candidate consolidate.** One immutable admitted-record authority is required, but its type, noun, and package remain Open | Est.: files no growth; lines and competing views lower; concepts/config/compat 0; edges no increase. Audit actual all zero | Decide Run/Attempt fields; prove no mutable caller ownership; add deep-immutability and byte-divergence protection; preserve fault checks |
-| `ARCH-MODEL-COMP-03` | Maintained product code and protection | Onboarding validation, Doctor, generated wrapper and control; operators, CLI, planning and tests | Fresh admission at each mutation/repair/lock risk boundary | Generated Slurm journey normalizes the same request four times before execution; ordinary run normalizes in Doctor and again in control. Wrapper validate, Doctor, and run are separate subprocesses, so one in-memory result cannot simply cross all boundaries | **Defer; candidate consolidate reusable admission only.** Current normalization/schema authority and deliberate re-admission survive | Est.: files no growth; lines and repeated call edges lower; concepts/config/compat 0. Audit actual all zero | Separate redundant work from TOCTOU defense; either collapse an approved command boundary or use one admitted transport that cannot become a second authority; re-admit after future repair and prove changed inputs fail closed at the last safe boundary |
+| `ARCH-MODEL-COMP-03` | Maintained product code and protection | Onboarding validation, Doctor, generated wrapper and control; operators, CLI, planning and tests | Fresh admission at each mutation/repair/lock risk boundary | At the audited revision the generated Slurm journey normalized the same request four times before execution; ordinary run normalized in Doctor and again in control. The wrapper's duplicate standalone Doctor subprocess is now retired, while explicit request compatibility and Run-owned readiness remain | **Partially realized.** Current normalization/schema authority and deliberate re-admission survive; further consolidation remains conditional | Est.: files no growth; lines and repeated call edges lower; concepts/config/compat 0. Current cut removes one subprocess and one redundant batch export | Separate redundant work from TOCTOU defense; either collapse an approved command boundary or use one admitted transport that cannot become a second authority; re-admit after future repair and prove changed inputs fail closed at the last safe boundary |
 | `ARCH-MODEL-COMP-04` | Maintained product code and protection | Inspection, lifecycle, task and reporting owners; recovery, validation and tests | No-follow stable canonical-record admission with owner-specific size, inode, destination, hashing and diagnostic rules | Multiple owners already call `inspection.admit_canonical_record` while retaining parallel higher-level identity binding and specialized readers | **Defer; evaluate candidate seam.** Final neutral owner/API/package remains Open; each semantic owner retains its unique checks | Est.: files no growth; lines and duplicate call edges lower; concepts/config/compat 0. Audit actual all zero | Map exact per-owner semantics and dependency cycles; share only proven intersection; preserve large-file behavior and fault/error contracts |
 | `ARCH-MODEL-COMP-05` | Maintained product code and protection | Lifecycle, task and reporting publication owners; inspection, recovery and fault tests | Create-exclusive durable bytes, directory fsync, transaction ordering, rollback and truthful terminal publication | Closely related low-level publication mechanics are implemented separately in the three transaction owners | **Defer; candidate consolidate primitive only.** Lifecycle/task/reporting remain separate semantic authorities; primitive owner Open | Est.: files no growth; lines lower; concepts/config/compat 0; low-level edges may converge without new semantic edge. Audit actual all zero | Prove byte-publication equivalence; retain signal/ownership/rollback/order/fault differences and receipt-last semantics |
 | `ARCH-MODEL-COMP-06` | Maintained product code and configuration | Doctor, onboarding, materialization and control; readiness, planning, validation and tests | Bind the reviewed fixed workflow profile and exact checkout identity | The same current-profile relative path is repeated in four owners | **Defer; candidate consolidate locator.** Current exact-profile and checkout checks survive; final profile-policy owner remains Open | Est.: files 0; lines and literal call edges lower; concepts/config/compat 0. Audit actual all zero | Decide profile/application policy; prove packaging and checkout behavior; avoid a facade that merely forwards the literal |
@@ -1733,8 +1736,18 @@ generalization threshold.
 covering scientific boundaries, artifact integrity, recovery, and evidence.
 Mechanisms and environment-specific proof may differ.
 
+The first implementation boundary is now explicit: the current product has one
+scientific backend, local Snakemake, while the generated single-node Slurm path
+is an outer allocation/placement adapter. Successor Attempt executor provenance
+comes from the immutable Execution Plan; structured allocation provenance
+records Slurm job identity without affecting Run identity; direct execution
+records no scheduler job; and historical allocation records remain readable.
+This is groundwork, not direct/Slurm parity proof and not adoption of a named
+execution-profile model.
+
 One execution capability accepting a declared task and returning a structured
-result, with Local and SLURM implementations, remains a concrete proposal.
+result, with more than one application backend, remains a concrete proposal
+rather than an implemented or preselected interface.
 
 Scientific work declares CPU, memory, wall time, inputs, outputs, and runtime
 needs. Execution infrastructure owns process invocation, environment binding,
@@ -1743,12 +1756,13 @@ recovery metadata.
 
 The durable platform direction rejects building a second scheduler,
 stage registry, scientific implementation, or recovery system. The source
-reinforces that constraint. The open task must decide how the proposed
-execution abstraction integrates appropriate workflow machinery and where its
-supported backend boundary belongs; it does not reopen the no-second-scheduler
-authority. `AC-SLICE-05` still decides granularity, request/result types,
-backend selection, engine integration, resource vocabulary, job states,
-retries, cleanup, and recovery mechanics. EMRYS's differentiator remains evidence-bound, provenance-aware
+reinforces that constraint. The open task must decide whether another backend
+is justified, how any execution abstraction integrates appropriate workflow
+machinery, and where its supported boundary belongs; it does not reopen the
+no-second-scheduler authority. `AC-SLICE-05` still decides the remaining
+guarantee/parity scope, granularity, request/result types, engine integration,
+resource vocabulary, job states, retries, cleanup, and recovery mechanics.
+EMRYS's differentiator remains evidence-bound, provenance-aware
 scientific analysis with strong execution guarantees—not a new generic
 workflow engine.
 
@@ -2439,12 +2453,12 @@ defined in Section 13.1; evidence deletion cannot be implied by promotion.
 |---|---|---|
 | `AC-SLICE-01` | Ratified all 27 architectural invariants and five migration/test guardrails against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open |
 | `AC-SLICE-02` | Ratified responsibility clusters, three separate dependency graphs, forbidden authority transfers, a current-owner crosswalk, and a fast Python source-boundary ratchet for exact CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open |
-| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. Successor Run authority, Run-last persistence, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, temporary-projection retirement, separated read-only status, a single supported grouped-CLI Run-control boundary, and immutable current request-to-Analysis intake are implemented. Public Project/Analysis/Results representation and control, generalized backend/policy boundaries, and remaining public/campaign migrations remain Open, so the campaign card remains Open. |
+| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. Successor Run authority, Run-last persistence, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, temporary-projection retirement, separated read-only status, a single supported grouped-CLI Run-control boundary, immutable current request-to-Analysis intake, and Execution-Plan-derived successor Attempt executor provenance are implemented. Public Project/Analysis/Results representation and control, generalized backend/policy boundaries, and remaining public/campaign migrations remain Open, so the campaign card remains Open. |
 | `AC-SLICE-04` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` |
-| `AC-SLICE-05` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across supported local and SLURM backends | New slice; enriches `OPS-02` |
+| `AC-SLICE-05` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across direct and Slurm-placed realizations of each supported backend | Current local-backend/outer-Slurm boundary and structured Attempt allocation provenance are implemented; parity and any additional backend remain Open with `OPS-02` |
 | `AC-SLICE-06` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` |
 | `AC-SLICE-07` | Define artifact-class lifecycle/admission requirements, decide whether any shared lifecycle or distinct Artifact Store is justified, and migrate one path only if the selected design requires a boundary change | New slice; supports `ARCH-01` |
-| `AC-SLICE-08` | Define named execution profiles independently of Managed/Site/Explicit runtime modes | New slice; coordinates with `OPS-01` and `RUNTIME-01` |
+| `AC-SLICE-08` | Define named execution profiles independently of Managed/Site/Explicit runtime modes | Backend semantics and Attempt-local allocation provenance are separated; profile taxonomy, persistence, precedence, selection, and public surface remain Open with `OPS-01` and `RUNTIME-01` |
 | `AC-SLICE-09` | Provide expert explain/inspect interfaces for effective plan, run, artifact, and evidence | New slice or expansion of `OPS-02`/`CONTROL-01` |
 | `AC-SLICE-10` | Define high-level status and safe resume/recovery UX over existing fail-closed internals | New slice; coordinates with `OBS-02` |
 | `AC-SLICE-11` | Define a portable canonical Run Bundle contract | New slice; coordinates with `FILESYSTEM-01` and `RESULTS-01` |
@@ -2478,7 +2492,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `CONTROL-01` | Realize the ratified compact public model and progressive disclosure. Immutable current request-to-Analysis intake, successor Run authority, separated status, and one supported grouped-CLI Run-control boundary are implemented; shared mutable normalization views, the duplicate direct Python planning surface, and the temporary execution projection are retired. Public Project/Analysis/Results representation and control, progressive disclosure, and remaining public migration remain Open. |
 | `CONFIG-01` | Current request-to-Analysis admission now freezes authored/profile/construction bytes and Analysis authority without choosing the future Project representation; scientific versus execution versus evidence ownership, one scientist-facing definition, generated normalized artifacts, and schema alternatives remain open |
 | `OPS-01` | Small operator-configuration surface; every effective value and source is inspectable and only explicitly safe owner-defined values are overrideable; exact interfaces, merge semantics, and named-profile model remain open |
-| `OPS-02` | The grouped CLI is the sole supported Run-control surface and its three controlled-runtime forwarding routes share one adapter; the broader small role-aware CLI, command partitioning/order, scheduler-selection behavior, and stable advanced inspection/override/debug routes remain open |
+| `OPS-02` | The grouped CLI is the sole supported Run-control surface and its three controlled-runtime forwarding routes share one adapter. The Slurm wrapper now performs request compatibility then delegates to that Run path instead of repeating Doctor; it remains outer placement around the same local backend. The broader small role-aware CLI, command partitioning/order, scheduler-selection behavior, and stable advanced inspection/override/debug routes remain open |
 | `OPS-03` | Inline/generated program inventory, extraction of substantive reusable logic, and removal of operator dependence on helper scripts |
 | `OPS-04` | Replace “local pilot” with a domain name that remains accurate beyond one execution context |
 | `SETUP-01` | Generate structural input manifests while refusing to invent pairing, strata, conditions, cohorts, or other biological meaning |
@@ -2486,7 +2500,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `SETUP-03` | Guided project creation, safe owned directories, generated configuration, validation, and no secret or biological invention; not containerization |
 | `RUNTIME-01` | Tiered runtime provisioning and admission; Managed/Site/Explicit are proposed labels; complete qualification includes the active internal workflow engine/Snakemake where applicable and remains separate from execution profiles |
 | `DOCTOR-01` | Project-aware readiness capabilities, actionable failures, qualified internal workflow-engine dependency, debug escape hatch, and the explicit-repair override with bounded mutation rules; exact command partitioning remains open |
-| `RUN-03` | The current path now constructs and commits immutable successor Run authority before allocation/Attempt, admits it directly through workflow/task boundaries, binds reporting inputs to their origin Attempt, and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. The coherent public one-command journey, generalized executor/policy realization, and remaining public migration remain Open. |
+| `RUN-03` | The current path now constructs and commits immutable successor Run authority before allocation/Attempt, admits it directly through workflow/task boundaries, binds reporting inputs to their origin Attempt, and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. Successor Attempt executor provenance comes from that immutable plan, while structured direct/Slurm allocation provenance remains Attempt-local. The coherent public one-command journey, generalized executor/policy realization, and remaining public migration remain Open. |
 | `IDENTITY-01` | Successor Runs now use the selected domain-separated digest over relocation-independent Analysis and Execution-Plan identities, with historical Runs preserved through the version-aware reader and no successor execution projection. Ordinary public exposure, progressively disclosed Attempt identity, and remaining public migration remain Open. |
 | `FILESYSTEM-01` | Automatic predictable directory creation, one discoverable result surface, and no hidden report root; Project/inputs/runs and Run-Bundle layouts remain proposed |
 | `CONTAINER-01` | Independent managed-container/environment decision without assuming final runtime labels; institutional/native/advanced coexistence, image contents and digest, scheduler/storage/security/licensing/update contracts |

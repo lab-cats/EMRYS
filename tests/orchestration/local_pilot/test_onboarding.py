@@ -1128,7 +1128,7 @@ def test_slurm_wrapper_head_mode_only_submits_and_prints_tail(
     assert export_fields[0] == f"PATH={bound_python.parent}:/usr/bin:/bin"
     assert str(bin_dir) not in export_fields[0]
     assert "/hostile/ambient" not in export_fields[0]
-    assert "EMRYS_SLURM_CPUS=4" in export_fields
+    assert not any(field.startswith("EMRYS_SLURM_CPUS=") for field in export_fields)
     assert f"EMRYS_SUBMIT_UID={os.getuid()}" in export_fields
     assert f"EMRYS_SUBMIT_USER={pwd.getpwuid(os.getuid()).pw_name}" in export_fields
     assert f"USER={pwd.getpwuid(os.getuid()).pw_name}" in export_fields
@@ -1300,7 +1300,7 @@ def test_slurm_wrapper_rejects_invalid_portability_overrides(
 
 
 @pytest.mark.parametrize("module_mode", ("exact", "none"))
-def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
+def test_slurm_wrapper_batch_mode_handles_modules_then_runs(
     tmp_path: Path,
     module_mode: str,
 ) -> None:
@@ -1325,6 +1325,7 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
     )
     (tmp_path / "checkout").mkdir()
     environment = _wrapper_environment(tmp_path, fake_python, module_init)
+    environment.pop("EMRYS_SLURM_CPUS")
     scratch_sentinel = tmp_path / "scratch" / "sibling-sentinel"
     scratch_sentinel.write_text("preserve\n", encoding="utf-8")
     environment.update(
@@ -1377,20 +1378,18 @@ def test_slurm_wrapper_batch_mode_handles_modules_then_doctors_and_runs(
     assert list((tmp_path / "scratch").iterdir()) == [scratch_sentinel]
     assert scratch_sentinel.read_text(encoding="utf-8") == "preserve\n"
     invocations = python_capture.read_text(encoding="utf-8").splitlines()
-    assert len(invocations) == 3
+    assert len(invocations) == 2
     assert allocation_capture.read_text(encoding="utf-8").splitlines() == [
-        "700123|4|8192|",
         "700123|4|8192|",
         "700123|4|8192|",
     ]
     assert "-m emrys validate local-pilot-request" in invocations[0]
-    assert "-m emrys doctor local-pilot" in invocations[1]
-    assert "-m emrys run" in invocations[2]
-    assert "--allocated-cores" not in invocations[2]
-    assert "--threads" not in invocations[2]
-    assert "--workflow-cores" not in invocations[2]
-    assert "--sample-concurrency" not in invocations[2]
-    assert invocations[2].endswith("--execute")
+    assert "-m emrys run" in invocations[1]
+    assert "--allocated-cores" not in invocations[1]
+    assert "--threads" not in invocations[1]
+    assert "--workflow-cores" not in invocations[1]
+    assert "--sample-concurrency" not in invocations[1]
+    assert invocations[1].endswith("--execute")
 
 
 @pytest.mark.parametrize("arguments", ((), (BATCH_MARKER, "unexpected")))

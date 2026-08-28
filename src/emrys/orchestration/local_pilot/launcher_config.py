@@ -892,7 +892,6 @@ def _submission_command(
         _export_value("EMRYS_SUBMIT_USER", live_user),
         _export_value("USER", live_user),
         _export_value("LOGNAME", live_user),
-        _export_value("EMRYS_SLURM_CPUS", str(plan.cpus_per_task)),
         _export_value("EMRYS_SOURCE_CHECKOUT", str(source_checkout)),
         _export_value("EMRYS_PYTHON", str(workflow_python)),
         _export_value("EMRYS_REQUEST", str(plan.request)),
