@@ -1191,13 +1191,13 @@ def _readmit_storage_runtime_binding(
     if attempt["execution_mode"] == "test-double":
         return None
     workspace = Path(str(attempt["workspace"]))
-    reference_fasta = Path(
-        str(
-            attempt["authored_paths"]["reference_fasta"]
-            if execution.get("schema_version") == RUN_BINDING_SCHEMA_VERSION
-            else execution["reference"]["fasta"]["path"]
-        )
-    )
+    if execution.get("schema_version") == RUN_BINDING_SCHEMA_VERSION:
+        reference_fasta = Path(str(attempt["authored_paths"]["reference_fasta"]))
+        if not reference_fasta.is_absolute():
+            request_path = Path(str(attempt["authored_paths"]["request"]))
+            reference_fasta = request_path.parent / reference_fasta
+    else:
+        reference_fasta = Path(str(execution["reference"]["fasta"]["path"]))
     try:
         qualified = inspect_storage(workspace, reference_fasta)
         return doctor.storage_runtime_binding(qualified)

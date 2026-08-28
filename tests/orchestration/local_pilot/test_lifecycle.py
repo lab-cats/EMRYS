@@ -119,6 +119,44 @@ def test_storage_readmission_uses_normalized_reference_identity(
     )
 
 
+@pytest.mark.parametrize("relative_reference", (False, True))
+def test_successor_storage_readmission_resolves_authored_reference_from_request(
+    tmp_path: Path,
+    relative_reference: bool,
+) -> None:
+    workspace = tmp_path / "workspace"
+    request = tmp_path / "intake" / "request.yaml"
+    reference = request.parent / "reference" / "genome.fa"
+    calls: list[tuple[Path, Path]] = []
+
+    def inspect_storage(
+        observed_workspace: Path,
+        observed_reference: Path,
+    ) -> storage_qualification.QualifiedStorage:
+        calls.append((observed_workspace, observed_reference))
+        raise storage_qualification.StorageQualificationError("stop after capture")
+
+    with pytest.raises(lifecycle.LifecycleError, match="stop after capture"):
+        lifecycle._readmit_storage_runtime_binding(
+            {
+                "execution_mode": "local-science-tools",
+                "workspace": str(workspace),
+                "authored_paths": {
+                    "request": str(request),
+                    "reference_fasta": (
+                        "reference/genome.fa"
+                        if relative_reference
+                        else str(reference)
+                    ),
+                },
+            },
+            {"schema_version": "emrys.run-binding.v1"},
+            inspect_storage=inspect_storage,
+        )
+
+    assert calls == [(workspace, reference)]
+
+
 def test_storage_readmission_failure_is_a_lifecycle_error(tmp_path: Path) -> None:
     def reject_storage(
         _workspace: Path,
