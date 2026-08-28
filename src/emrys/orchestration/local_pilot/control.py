@@ -136,7 +136,7 @@ def _normalize_after_doctor(
     return normalized
 
 
-def plan_run(
+def _plan_run(
     request: Path,
     workspace: Path,
     runtime_profile: Path,
@@ -237,7 +237,7 @@ def _retained_dispatches(
     return retained
 
 
-def plan_resume(
+def _plan_resume(
     run_root: Path,
     runtime_profile: Path,
     *,
@@ -387,7 +387,7 @@ def _verified_report_location_lines(
     return tuple(lines)
 
 
-def execute_plan(plan: AttemptPlan, *, ops: ControlOps = DEFAULT_CONTROL_OPS) -> int:
+def _execute_plan(plan: AttemptPlan, *, ops: ControlOps = DEFAULT_CONTROL_OPS) -> int:
     """Execute one already-rendered plan through its explicit lifecycle adapter."""
 
     try:
@@ -483,7 +483,7 @@ def run_from_args(
     ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> int:
     try:
-        plan = plan_run(
+        plan = _plan_run(
             arguments.request,
             arguments.workspace,
             arguments.runtime_profile,
@@ -495,7 +495,7 @@ def run_from_args(
         if not arguments.execute:
             print("Dry-run complete; no workspace state was written.")
             return 0
-        return execute_plan(plan, ops=ops)
+        return _execute_plan(plan, ops=ops)
     except (ControlError, ResourceConfigError) as exc:
         print(f"emrys: error: {exc}", file=sys.stderr)
         return 2
@@ -507,7 +507,7 @@ def resume_from_args(
     ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> int:
     try:
-        plan = plan_resume(
+        plan = _plan_resume(
             arguments.run_root,
             arguments.runtime_profile,
             resource_config=getattr(arguments, "resource_config", None),
@@ -518,7 +518,7 @@ def resume_from_args(
         if not arguments.execute:
             print("Dry-run complete; no resume state was written.")
             return 0
-        return execute_plan(plan, ops=ops)
+        return _execute_plan(plan, ops=ops)
     except (ControlError, ResourceConfigError) as exc:
         print(f"emrys: error: {exc}", file=sys.stderr)
         return 2
@@ -582,10 +582,7 @@ __all__ = (
     "configure_inspect_parser",
     "configure_resume_parser",
     "configure_run_parser",
-    "execute_plan",
     "inspect_from_args",
-    "plan_resume",
-    "plan_run",
     "resume_from_args",
     "run_from_args",
 )

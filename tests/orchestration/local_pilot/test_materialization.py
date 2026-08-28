@@ -932,7 +932,7 @@ def test_post_binding_interruption_completes_the_exact_pristine_run(
         token=lambda: "2" * 32,
         observe_allocation=lambda: plan.resources.allocation,
     )
-    replanned = control.plan_run(
+    replanned = control._plan_run(
         plan.run.normalized.request_path,
         plan.workspace,
         plan.readiness.runtime_profile,
@@ -1117,7 +1117,7 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         != normalized.projection_source_bytes
     )
 
-    second = control.plan_resume(
+    second = control._plan_resume(
         first.run_root,
         readiness_two.runtime_profile,
         ops=replace(

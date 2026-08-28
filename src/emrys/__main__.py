@@ -273,40 +273,17 @@ def _admit_controlled_runtime() -> bool:
     return True
 
 
-def _run_local_pilot_from_args(
+def _controlled_local_pilot_from_args(
     arguments: argparse.Namespace,
     *,
+    command: Callable[..., int],
     ops: local_pilot_control_command.ControlOps = (
         local_pilot_control_command.DEFAULT_CONTROL_OPS
     ),
 ) -> int:
     if not _admit_controlled_runtime():
         return 2
-    return local_pilot_control_command.run_from_args(arguments, ops=ops)
-
-
-def _resume_local_pilot_from_args(
-    arguments: argparse.Namespace,
-    *,
-    ops: local_pilot_control_command.ControlOps = (
-        local_pilot_control_command.DEFAULT_CONTROL_OPS
-    ),
-) -> int:
-    if not _admit_controlled_runtime():
-        return 2
-    return local_pilot_control_command.resume_from_args(arguments, ops=ops)
-
-
-def _inspect_local_pilot_from_args(
-    arguments: argparse.Namespace,
-    *,
-    ops: local_pilot_control_command.ControlOps = (
-        local_pilot_control_command.DEFAULT_CONTROL_OPS
-    ),
-) -> int:
-    if not _admit_controlled_runtime():
-        return 2
-    return local_pilot_control_command.inspect_from_args(arguments, ops=ops)
+    return command(arguments, ops=ops)
 
 
 def _add_build_commands(
@@ -467,7 +444,8 @@ def build_parser(
     local_pilot_control_command.configure_run_parser(run_parser)
     run_parser.set_defaults(
         _command_handler=partial(
-            _run_local_pilot_from_args,
+            _controlled_local_pilot_from_args,
+            command=local_pilot_control_command.run_from_args,
             ops=local_pilot_control_ops,
         ),
         _command_parser=run_parser,
@@ -480,7 +458,8 @@ def build_parser(
     local_pilot_control_command.configure_resume_parser(resume_parser)
     resume_parser.set_defaults(
         _command_handler=partial(
-            _resume_local_pilot_from_args,
+            _controlled_local_pilot_from_args,
+            command=local_pilot_control_command.resume_from_args,
             ops=local_pilot_control_ops,
         ),
         _command_parser=resume_parser,
@@ -537,7 +516,8 @@ def build_parser(
     local_pilot_control_command.configure_inspect_parser(local_run_parser)
     local_run_parser.set_defaults(
         _command_handler=partial(
-            _inspect_local_pilot_from_args,
+            _controlled_local_pilot_from_args,
+            command=local_pilot_control_command.inspect_from_args,
             ops=local_pilot_control_ops,
         ),
         _command_parser=local_run_parser,

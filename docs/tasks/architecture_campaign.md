@@ -927,6 +927,20 @@ Open. The standalone `emrys build report` capability still requires
 implementation-level input and output paths and does not adopt or repair the
 orchestration reporting ledger.
 
+#### Run-control boundary compression
+
+The grouped `emrys run`, `emrys resume`, and `emrys inspect local-pilot-run`
+routes are now the sole supported Run-control surface. Their no-write planning
+and execution helpers remain private implementation details, and the grouped
+CLI composes all three routes through one controlled-runtime adapter instead of
+three duplicate forwarding functions. This changes no command, argument,
+output, Run/Attempt authority, execution behavior, or persisted format.
+
+Public Project/Analysis intake, simpler argument ownership, command naming,
+confirmation, report opt-out/regeneration, and execution-profile selection
+remain later verticals; this boundary does not settle them through a new facade
+or compatibility layer.
+
 #### Mutation inventory
 
 The strongest current immutability is in validated canonical bytes and
@@ -2394,7 +2408,9 @@ compact public vocabulary, and the Run-versus-Attempt change boundary.
 The successor Run-authority cutover now implements immutable records, Run-last
 admission, direct workflow/task Run admission, Attempt-owned reporting inputs,
 historical read/resume, and retirement of the temporary execution projection.
-`AC-SLICE-03` remains Open for the rest of the public model. Every
+The grouped CLI is now the sole supported Run-control surface and its duplicate
+direct Python planning surface is retired. `AC-SLICE-03` remains Open for the
+rest of the public model. Every
 later candidate still requires its own bounded owner/caller review,
 compression register, mutation inventory, non-goals, acceptance conditions,
 protection disposition, and evidence ceiling before entering the matrix. A
@@ -2405,7 +2421,7 @@ defined in Section 13.1; evidence deletion cannot be implied by promotion.
 |---|---|---|
 | `AC-SLICE-01` | Ratified all 27 architectural invariants and five migration/test guardrails against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open |
 | `AC-SLICE-02` | Ratified responsibility clusters, three separate dependency graphs, forbidden authority transfers, a current-owner crosswalk, and a fast Python source-boundary ratchet for exact CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open |
-| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. Successor Run authority, Run-last persistence, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, temporary-projection retirement, and the separated read-only Run/Attempt/Results/reporting/recovery projection are implemented. Public Project/Results control and intake surfaces, generalized backend/policy boundaries, and remaining public/campaign migrations remain Open, so the campaign card remains Open. |
+| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. Successor Run authority, Run-last persistence, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, temporary-projection retirement, separated read-only status, and a single supported grouped-CLI Run-control boundary are implemented. Public Project/Analysis/Results intake and control, generalized backend/policy boundaries, and remaining public/campaign migrations remain Open, so the campaign card remains Open. |
 | `AC-SLICE-04` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` |
 | `AC-SLICE-05` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across supported local and SLURM backends | New slice; enriches `OPS-02` |
 | `AC-SLICE-06` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` |
@@ -2441,10 +2457,10 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `ARCH-MODEL-AUDIT-01` | Completed current-model prerequisite: maps separate control paths, semantic lifetimes, owners/callers, identity boundaries, dry-run and write-before-attempt-admission gaps, Local/Slurm relationship, reporting/status mismatch, mutation ownership, protected evidence, reproducible footprint/change accounting, and 14 conditional compression candidates without selecting the application model |
 | `ARCH-MODEL-DECISION-01` | Completed direction decision: model C; public `Project -> Analysis -> Run -> Results`; progressively disclosed Attempt; internal inspectable Execution Plan; explicit Run-versus-Attempt change boundary; reporting remains downstream and identity-neutral. |
 | `ARCH-MODEL-FIELDS-01` | Completed semantic decision package: exact identity-bearing fields and digest composition; relocation, formatting, labels, order, and content rules; symbolic resource/Attempt envelope; one logical authority per admitted boundary; direct compatibility/retirement direction; Run-admission recovery ownership; and separate Attempt, Results, evidence, and reporting status domains. The first internal successor representation and current-path migration are now implemented; broader product realization remains Open. |
-| `CONTROL-01` | Realize the ratified compact public model and progressive disclosure. Successor Run authority is implemented, generated internals remain inspectable, and the temporary execution projection is retired; public Project/Results, role-aware APIs/CLI, progressive disclosure, and remaining public migration remain Open. |
+| `CONTROL-01` | Realize the ratified compact public model and progressive disclosure. Successor Run authority, separated status, and one supported grouped-CLI Run-control boundary are implemented; the duplicate direct Python planning surface and temporary execution projection are retired. Public Project/Analysis/Results intake and control, progressive disclosure, and remaining public migration remain Open. |
 | `CONFIG-01` | Scientific versus execution versus evidence ownership; one scientist-facing definition; generated normalized artifacts; schema alternatives remain open |
 | `OPS-01` | Small operator-configuration surface; every effective value and source is inspectable and only explicitly safe owner-defined values are overrideable; exact interfaces, merge semantics, and named-profile model remain open |
-| `OPS-02` | Small role-aware CLI with the required capabilities; command partitioning/order, scheduler-selection behavior, and stable advanced inspection/override/debug routes remain open |
+| `OPS-02` | The grouped CLI is the sole supported Run-control surface and its three controlled-runtime forwarding routes share one adapter; the broader small role-aware CLI, command partitioning/order, scheduler-selection behavior, and stable advanced inspection/override/debug routes remain open |
 | `OPS-03` | Inline/generated program inventory, extraction of substantive reusable logic, and removal of operator dependence on helper scripts |
 | `OPS-04` | Replace “local pilot” with a domain name that remains accurate beyond one execution context |
 | `SETUP-01` | Generate structural input manifests while refusing to invent pairing, strata, conditions, cohorts, or other biological meaning |

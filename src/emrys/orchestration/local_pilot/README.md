@@ -202,11 +202,11 @@ Execution re-admits the normalized reference/workspace storage qualification
 before delegation and after the child terminates. A missing, changed, or
 semantically invalid receipt blocks the attempt; the immutable attempt cannot
 accept its own declared storage identity as proof.
-The direct public Python surface is `control.plan_run`, `plan_resume`, and
-`execute_plan`, backed by the single production owner
-`materialization.build_attempt_plan`; tests pass explicit collaborators rather
-than monkeypatching module globals. Exact setup and execution order lives in
-the [runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-execution).
+The grouped CLI is the supported control surface. Its private planning helpers
+delegate to the single production owner `materialization.build_attempt_plan`;
+tests pass explicit collaborators rather than monkeypatching module globals.
+Exact setup and execution order lives in the
+[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-execution).
 
 The neutral
 `emrys.contracts.orchestration.projection.project_reporting(...)` API
