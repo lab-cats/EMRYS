@@ -263,6 +263,14 @@ def test_owner_doubles_preserve_immutable_run_toolchain(tmp_path: Path) -> None:
         doubled.attempt_record["required_tools"]
         == plan.attempt_record["required_tools"]
     )
+    step00c = next(
+        record
+        for record in _dispatch_records(doubled)
+        if record["machine_key"] == "emrys.stage.construct_FASTA_sidecars.v1"
+    )
+    assert len(step00c["inputs"]) == 1
+    assert "--payload-base64" in step00c["producer_argv"]
+    assert "--payload-base64" in step00c["validator_argv"]
 
 
 def test_owner_doubles_use_successor_scopes_inside_reporting_payloads(

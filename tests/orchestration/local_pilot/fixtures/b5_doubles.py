@@ -69,14 +69,22 @@ def with_owner_doubles(
             },
         }
         manifest_data = orchestration_contracts.canonical_json_bytes(manifest_record)
-        manifest_files.append(PlannedFile(manifest, manifest_data))
+        step00c = (
+            record["machine_key"] == "emrys.stage.construct_FASTA_sidecars.v1"
+        )
+        payload_arguments = (
+            ("--payload-base64", base64.b64encode(manifest_data).decode())
+            if step00c
+            else ("--manifest", str(manifest))
+        )
+        if not step00c:
+            manifest_files.append(PlannedFile(manifest, manifest_data))
         record["producer_argv"] = list(
             controlled_python_argv(
                 sys.executable,
                 str(workflow.OWNER_ARTIFACT_DOUBLE),
                 "producer",
-                "--manifest",
-                str(manifest),
+                *payload_arguments,
             )
         )
         if record["machine_key"] == fail_machine_key:
@@ -92,13 +100,13 @@ def with_owner_doubles(
                 sys.executable,
                 str(workflow.OWNER_ARTIFACT_DOUBLE),
                 "validator",
-                "--manifest",
-                str(manifest),
+                *payload_arguments,
             )
         )
-        record["inputs"].append(
-            {"role": "test_payload_manifest", "path": str(manifest)}
-        )
+        if not step00c:
+            record["inputs"].append(
+                {"role": "test_payload_manifest", "path": str(manifest)}
+            )
         data = orchestration_contracts.canonical_json_bytes(record)
         replacement_files.append(PlannedFile(item.path, data))
         dispatch_sha[item.path] = hashlib.sha256(data).hexdigest()
