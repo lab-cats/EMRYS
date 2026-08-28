@@ -30,14 +30,14 @@ emrys prepare local-pilot-runtime \
   > /new/absent/path/runtime.ready.tsv
 ```
 
-`init local-pilot` publishes `request.yaml`, editable `emrys.launcher.yaml` and
-`emrys.resources.yaml`, `samples.tsv`, `partitions.tsv`, `runtime.tsv`, and
-executable `run-in-slurm.sh`, then writes `starter-set.manifest.tsv` last and
-re-admits every path, mode, size, and byte.
+`init local-pilot` publishes `request.yaml`, editable `emrys.execution.yaml`,
+`samples.tsv`, `partitions.tsv`, and `runtime.tsv`, then writes
+`starter-set.manifest.tsv` last and re-admits every path, mode, size, and byte.
 The EMRYS identity cutover does not adopt or resume pre-cutover run roots.
-Legacy adjacent `norad.launcher.yaml` or `norad.resources.yaml` files fail
-closed instead of being silently ignored; rename them before admission. Use an
-exact historical checkout for an already-entered historical run.
+Retired adjacent `emrys.launcher.yaml` or `emrys.resources.yaml` files fail
+closed when no explicit execution profile is selected instead of being
+silently ignored. Use an exact historical checkout for an already-entered
+historical run.
 It neither fills unknown science-tool paths nor installs anything. The runtime
 preparer requires explicit Java, Picard-jar, Rscript, and `renv`-library paths.
 For Bash, STAR, samtools, GATK, bcftools, RSeQC `infer_experiment.py`, and
@@ -46,57 +46,33 @@ contains exactly one distinct resolved executable. It preserves the tracked
 version policy and performs no version probe; the doctor remains the readiness
 authority.
 
-`run-in-slurm.sh` has two explicit modes. Outside an allocation it resolves
-packaged launcher defaults, adjacent or explicit launcher YAML, and optional
-wrapper arguments in that order, then calls `sbatch` once. Exact `{env:
-EMRYS_NAME}` references read the invocation environment before the
-generation-bound source checkout's private root `.env`; no shell interpolation
-is accepted. The private file is optional, closed to launcher variables,
-owner-only, and never copied into a starter or printed. The generated wrapper
-binds its source checkout and controlled Python at generation instead of
-accepting either from launcher configuration.
+`emrys run` and `emrys resume` accept one optional explicit
+`--execution-profile`. Without it, EMRYS uses its built-in conservative
+resources and executes directly. The profile combines the Run-bound
+computational declaration with Attempt-local direct or Slurm placement; CLI
+resource flags have highest precedence. EMRYS performs no adjacent discovery.
 
-`account: site-default` and `qos: site-default` omit their optional Slurm
-flags so sites without accounting or QOS policy can use their scheduler
-defaults. Any explicit account or QOS is passed exactly once. Likewise,
-`memory: site-default` omits `--mem`; a positive explicit Slurm size is passed
-exactly once. `exclusive: true` and a nonempty `nodelist` emit one
-`--exclusive` and `--nodelist=...` respectively. These values request the
-outer allocation; they are not workflow-resource minima. `PATH` inside the
-allocation is sealed at submission to the generation-bound lexical Python
-launcher parent followed by `/usr/bin:/bin`; the submit shell's ambient path is
-not propagated. Virtualenv launcher symlinks retain their lexical identity
-after stable target admission. Ambient `SBATCH_*` variables and ambient
-`EMRYS_EXECUTE` are removed before the `sbatch` client is invoked.
-Submission binds the live `/usr/bin/id` UID and user name, requires
-`USER` and `LOGNAME` to agree, and exports that identity explicitly. Batch
-mode re-observes the same identity before module loading or workspace access.
-Module mode `exact` requires and loads the declared initializer and roster,
-while `none` requires both module values to be empty and loads nothing. The
-wrapper prints the job ID and exact stdout/stderr tail paths. Batch entry also
-requires the exact internal marker emitted by that submit helper, not merely an
-inherited `SLURM_JOB_ID`. Submission is dry-run-first regardless of ambient
-`EMRYS_EXECUTE`; only the explicit wrapper `--execute` action derives the
-internal batch execution flag.
+Slurm placement is a transport around the same one-host workflow, not another
+scientific backend. A dry-run prints the placement and stream plan without
+writing or submitting. `--execute` creates `<workspace>/logs`, submits the
+whole Run once, and prints exact `JOB_ID`, `OUT`, and `ERR` values. The compute
+delegate re-admits the profile digest, submission UID, internal marker, and
+Slurm job ID before planning the immutable Run. It loads only an exact declared
+module roster, creates and later removes one mode-`0700` private scratch
+directory, and runs doctor inside the allocation. Ambient `SBATCH_*` values do
+not alter the admitted request.
 
-Inside an allocation the wrapper creates one mode-`0700` job directory below
-the declared `EMRYS_SCRATCH_PARENT`, exports it as `TMPDIR`, logs its
-canonical path plus `df -PT` filesystem/capacity evidence, and removes it on
-exit. It then validates request compatibility and delegates planning or
-execution to the grouped `emrys run` control path, whose own readiness gate
-runs the doctor. The wrapper does not repeat that readiness probe. EMRYS
-observes `SLURM_CPUS_PER_TASK`, Slurm's
-memory environment, process CPU affinity, and the process memory limit before
-resolving the resource policy. When a full-node allocation omits Slurm memory
-variables, EMRYS uses process-visible memory; ambiguous partial-node
-allocations without an explicit memory boundary remain rejected. Packaged
-defaults are overridden by adjacent `emrys.resources.yaml`, then by any
-explicit resource CLI values. The resulting Attempt allocation records the
-exact Slurm job ID as structured provenance; direct execution records null.
-That placement fact does not change Run identity or turn Slurm into a second
-scientific backend. The wrapper never runs
-analysis or large-input validation on a login node and does not claim
-per-owner Slurm scheduling or multi-node execution.
+The effective resource declaration must fit the observed CPU and memory
+allocation. Placement request, profile source/digest, observed allocation, and
+scheduler job ID are Attempt provenance and do not make scheduler success
+workflow completion. Per-owner Slurm scheduling, multi-node execution, and the
+16 existing stage/utility `.slurm` files are unchanged by this whole-Run
+cutover.
+
+An executing Run Attempt owns one application log, by default beneath
+`<workspace>/logs/application`. Reporting is invoked automatically after
+scientific work, publishes its transaction receipts last, and is not a
+scientific stage.
 
 The adjacent `dashboard.py` owns a read-only live view over one wrapper job's
 Slurm metadata and append-only stdout/stderr streams. The repository-level
@@ -135,7 +111,8 @@ Focused protection is:
 
 ```bash
 .venv/bin/python -m pytest -q \
-  tests/orchestration/local_pilot/test_launcher_config.py \
+  tests/orchestration/local_pilot/test_execution_profile.py \
+  tests/orchestration/local_pilot/test_slurm_submission.py \
   tests/orchestration/local_pilot/test_onboarding.py \
   tests/orchestration/local_pilot/test_dashboard.py \
   tests/test_public_cli_contracts.py
@@ -189,22 +166,32 @@ work only through the accepted fixed profile:
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
   --request /absolute/path/to/request.yaml \
   --workspace /absolute/path/to/workspace \
-  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
+  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
+  --execution-profile /absolute/path/to/emrys.execution.yaml
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
   local-pilot-run --run-root /absolute/path/to/workspace/runs/run-DIGEST
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \
   --run-root /absolute/path/to/workspace/runs/run-DIGEST \
-  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
+  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
+  --execution-profile /absolute/path/to/emrys.execution.yaml
 ```
 
-`run` and `resume` print the exact owner and Snakemake plan and write nothing
-unless `--execute` is present. `inspect local-pilot-run` is always read-only.
-The request defines scientific identity only. Execution-resource precedence is
-packaged defaults, optional YAML, then explicit CLI values. A resume without a
-new resource source reuses its predecessor's immutable effective policy while
-checking that it still fits the newly observed allocation.
+`run` and `resume` print a concise Run, pending-work, resource, reporting, and
+placement plan and write nothing unless `--execute` is present. Verbose output
+adds allocations; debug output adds exact commands. `inspect local-pilot-run`
+is always read-only. With no execution profile, `run` uses the built-in direct
+default; `resume` reuses its predecessor's symbolic computational resources
+and places the new Attempt directly. An explicit profile may select Slurm for
+either command. Explicit resource CLI flags override the selected or inherited
+policy.
+
+Direct execution writes its application log beneath the selected root, which
+defaults to `<workspace>/logs/application`. Slurm submission writes scheduler streams
+beneath `<workspace>/logs`, while the compute delegate owns the single
+application log. Normal human output keeps raw Snakemake/task commands in the
+evidence and debug surfaces rather than the primary control stream.
 Execution re-admits the normalized reference/workspace storage qualification
 before delegation and after the child terminates. A missing, changed, or
 semantically invalid receipt blocks the attempt; the immutable attempt cannot
@@ -213,7 +200,7 @@ The grouped CLI is the supported control surface. Its private planning helpers
 delegate to the single production owner `materialization.build_attempt_plan`;
 tests pass explicit collaborators rather than monkeypatching module globals.
 Exact setup and execution order lives in the
-[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-execution).
+[runbook](../../../../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes).
 
 The neutral
 `emrys.contracts.orchestration.projection.project_reporting(...)` API

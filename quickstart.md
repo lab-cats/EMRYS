@@ -16,13 +16,13 @@ result, scheduler job, and report has the evidence ceiling stated below.
 | 4. Profile | Render a new runtime profile from the observed canonical paths | Complete create-absent runtime TSV |
 | 5. Admission | Validate the request and finalize two-phase storage qualification | Request PASS and matching final storage receipt |
 | 6. Readiness | Run doctor in the execution context | Exact `READY` result |
-| 7. Plan | Run the full no-write workflow plan | Reviewed deterministic run ID, run root, and owner commands |
-| 8. Process | Submit the generated single-allocation wrapper first with no mode flag, then with explicit `--execute` | Terminal scheduler success plus verified EMRYS task records |
+| 7. Plan | Review the no-write Run or Slurm-placement plan | Direct: deterministic Run ID and root; Slurm: one admitted submission plan |
+| 8. Process | Add `--execute` to the reviewed direct or Slurm command | Verified EMRYS records; scheduler success is only placement evidence |
 | 9. Results | Inspect the run and retain its complete evidence tree | Complete scientific Results and separately verified scientific/evidence HTML reports |
 
-Do not skip a gate, hand-edit the generated scheduler wrapper, adopt outputs from
-standalone stages into an orchestrated run, or interpret computational
-candidates as biologically validated editing sites.
+Do not skip a gate, bypass the execution-profile/control boundary, adopt
+outputs from standalone stages into an orchestrated Run, or interpret
+computational candidates as biologically validated editing sites.
 
 ## 1. Clone and install the locked Python workflow
 
@@ -77,9 +77,9 @@ The EMRYS cutover is an identity boundary. New package, CLI, environment,
 adjacent-config, schema, receipt, and recovery-state identities use EMRYS only;
 EMRYS does not adopt or resume a run root created by a pre-cutover checkout.
 Use that exact historical checkout to inspect or resume retained historical
-runs. Rename `norad.launcher.yaml`, `norad.resources.yaml`, and `NORAD_*`
-operator selectors before using this checkout; detected legacy adjacent files
-or R selectors fail closed rather than silently falling back to defaults.
+runs. Retired adjacent `emrys.launcher.yaml` or `emrys.resources.yaml` files
+fail closed when no explicit execution profile is selected; migrate them into
+one profile rather than allowing silent fallback.
 
 The onboarding commands in this guide intentionally use templates and policy
 from this exact source checkout. Run them through this checkout's editable
@@ -211,18 +211,11 @@ and execute commands. It preserves the engineered oracle while expanding to a
 5 Mb reference and 100,000 pairs per library. It is intentionally much slower
 than `smoke-v1` and still uses only synthetic data.
 
-If this synthetic run will use SLURM, also generate one separate launcher set.
-Its request/manifests are unused for the synthetic run; only its reviewed
-single-allocation wrapper is selected later:
-
-```sh
-EMRYS_LAUNCHER_DIR="$EMRYS_OPERATOR_ROOT/emrys-slurm-launcher"
-emrys init local-pilot --output-dir "$EMRYS_LAUNCHER_DIR"
-emrys init local-pilot \
-  --output-dir "$EMRYS_LAUNCHER_DIR" \
-  --execute
-EMRYS_SLURM_WRAPPER="$EMRYS_LAUNCHER_DIR/run-in-slurm.sh"
-```
+The synthetic initializer also publishes `emrys.execution.yaml` with direct
+placement and fixture-sized resources. Direct execution may select it
+explicitly or use the built-in direct default. For Slurm, replace its direct
+placement with the closed Slurm shape from the tracked execution-profile
+example and fill the site values.
 
 ### Path B: ingest your data
 
@@ -238,7 +231,6 @@ emrys init local-pilot \
 
 test -f "$EMRYS_INPUT_DIR/starter-set.manifest.tsv"
 EMRYS_REQUEST_PATH="$EMRYS_INPUT_DIR/request.yaml"
-EMRYS_SLURM_WRAPPER="$EMRYS_INPUT_DIR/run-in-slurm.sh"
 ```
 
 The completion manifest is published last. Preserve a partial generated
@@ -252,12 +244,10 @@ The generated layout is:
 ```text
 emrys-inputs/
 |-- request.yaml
-|-- emrys.launcher.yaml
-|-- emrys.resources.yaml
+|-- emrys.execution.yaml
 |-- samples.tsv
 |-- partitions.tsv
 |-- runtime.tsv
-|-- run-in-slurm.sh
 |-- starter-set.manifest.tsv
 `-- inputs/
     |-- reads/       # one explicit R1/R2 pair per manifest sample
@@ -266,8 +256,7 @@ emrys-inputs/
 ```
 
 Create and populate `inputs/` without replacing an earlier staging tree. Then
-edit `request.yaml`, `emrys.resources.yaml`, `samples.tsv`, and
-`partitions.tsv`:
+edit `request.yaml`, `samples.tsv`, and `partitions.tsv`:
 
 ```sh
 test ! -e "$EMRYS_INPUT_DIR/inputs" &&
@@ -286,9 +275,9 @@ mkdir -m 700 \
    not row order or sample names.
 3. Select one or more nonoverlapping genomic partitions using contigs present
    in the reference. Start small for the first real-runtime check.
-4. Keep the conservative resource defaults or author reviewed per-stage
-   concurrency, threads, and memory. The YAML is optional at execution time;
-   if absent, packaged defaults apply.
+4. Keep the built-in direct resources, or edit `emrys.execution.yaml` and
+   select it explicitly for reviewed resources or Slurm placement. Resource
+   CLI flags override the selected profile.
 
 The [configuration guide](configs/README.md) explains every field, threshold,
 path rule, sample-pairing requirement, and runtime row. Relative paths resolve
@@ -332,11 +321,15 @@ preserve it for diagnosis and select a new absent output name.
 
 ## 5. Validate data compatibility without scientific tools
 
-Run Steps 5–7 only on the intended workstation or inside an interactive compute
-allocation. For scheduled execution, do not perform their data reads or runtime
-probes on the login node; continue to the generated SLURM-wrapper section,
-whose default no-mode submission runs the same validation, doctor, and no-write
-plan inside its allocation.
+Run request validation and doctor only on the intended workstation or inside
+an interactive compute allocation. The two-phase storage qualification below
+is mandatory for every path and may use a separate short allocation. If only
+batch submission is available, do not move the data reads or runtime probes to
+the login node: after finalizing storage, continue to the Slurm
+execution-profile section. Its submit-host dry-run admits only placement;
+after explicit `--execute`, the compute delegate performs request admission,
+doctor, and Run planning inside the allocation and stops before lifecycle
+mutation on failure.
 
 Run the read-only intake validator first:
 
@@ -405,10 +398,16 @@ emrys run \
   --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH"
 ```
 
-Review the deterministic run ID and run root, workflow-attempt identity,
-expanded owner-job count, three reporting transactions, Snakemake command, and
-each public owner producer/validator command. A successful plan ends by saying
-that no workspace state was written.
+Review the deterministic Run ID/root, pending and reusable work counts,
+effective resources, and automatic reporting declaration. Normal output hides
+raw Snakemake/task commands; use `--log-level verbose` for allocation detail or
+`debug` for exact commands. A successful plan says no workspace state was
+written.
+
+These direct commands use the built-in profile. If you changed the generated
+profile to direct placement and edited its resources, add
+`--execution-profile "$EMRYS_INPUT_DIR/emrys.execution.yaml"` to both the plan
+and execute commands.
 
 Copy the exact run root printed by the plan:
 
@@ -416,9 +415,9 @@ Copy the exact run root printed by the plan:
 EMRYS_RUN_ROOT=/absolute/path/to/emrys-workspace/runs/run-DIGEST
 ```
 
-The run ID is derived from the exact normalized inputs and policy. Formatting
-the optional label does not change it; changing data, manifests, reference,
-partitions, profile, or analysis policy does.
+The Run ID is derived from the exact normalized inputs, scientific policy,
+workflow profile, and computational resource declaration. Formatting the
+optional label or changing only Attempt placement does not change it.
 
 ## 8. Execute on a workstation or one compute node
 
@@ -430,104 +429,72 @@ the run proceed.
 
 ### Workstation or interactive compute allocation
 
-Run only on the intended compute host. Preserve the live control stream and
-the pipeline's true exit status:
+Run only on the intended compute host. The command preserves its true exit and
+opens one structured application log automatically:
 
 ```sh
-(
-  set -o pipefail
-  EMRYS_CONTROL_DIR="$(mktemp -d \
-    "$EMRYS_OPERATOR_ROOT/.emrys-control.XXXXXX")" || exit 1
-  EMRYS_CONTROL_LOG="$EMRYS_CONTROL_DIR/emrys-run-control.log"
-  printf 'Control log: %s\n' "$EMRYS_CONTROL_LOG"
+emrys run \
+  --request "$EMRYS_REQUEST_PATH" \
+  --workspace "$EMRYS_WORKSPACE_PATH" \
+  --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH" \
+  --execute
+```
+
+The application-log root defaults to
+`$EMRYS_WORKSPACE_PATH/logs/application`. It records lifecycle diagnostics and
+receipt observation but is not completion authority.
+
+### One SLURM batch allocation
+
+Use the generated execution profile. Path B already contains the Slurm shape;
+Path A must replace its direct placement with the Slurm placement from
+`configs/execution_profile.example.yaml`. Replace every site and scratch
+placeholder, then review both Run-bound resources and Attempt-local placement:
+
+```sh
+EMRYS_EXECUTION_PROFILE_PATH="$EMRYS_INPUT_DIR/emrys.execution.yaml"
+${EDITOR:-vi} "$EMRYS_EXECUTION_PROFILE_PATH"
+```
+
+Null account, partition, QOS, memory, or node-list values defer to site policy.
+Module mode `none` loads nothing; `exact` requires an absolute initializer and
+closed module roster. Values are literal—there is no `.env`, shell, or
+environment interpolation. The scratch parent must be one real writable
+compute-node directory.
+
+Define the exact command once. First call it without arguments: this admits the
+profile and prints a no-write, no-submit placement plan without reading the
+large inputs on the login node.
+
+```sh
+emrys_slurm_run() {
   emrys run \
     --request "$EMRYS_REQUEST_PATH" \
     --workspace "$EMRYS_WORKSPACE_PATH" \
     --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH" \
-    --execute 2>&1 | tee "$EMRYS_CONTROL_LOG"
-)
+    --execution-profile "$EMRYS_EXECUTION_PROFILE_PATH" \
+    "$@"
+}
+emrys_slurm_run
 ```
 
-### One SLURM batch allocation
-
-Use the executable `run-in-slurm.sh` published by `emrys init local-pilot`.
-The generated wrapper is the supported single-allocation starter: submission
-mode validates every required value, requests one node/task, publishes exact
-`%j` stream paths, and resubmits itself as the job body. The job initializes
-modules, enters the selected checkout, runs input/runtime preflight, and then
-uses the public local executor.
-
-Edit adjacent `emrys.launcher.yaml` for non-private allocation policy. Keep
-site/private values in the selected checkout's ignored root `.env`, using the
-tracked `.env.example` only as a placeholder template:
+After reviewing the placement, submit the otherwise identical command once:
 
 ```sh
-cd "$EMRYS_REPO"
-test ! -e .env || { test -f .env && test ! -L .env; }
-test -e .env || { cp .env.example .env && chmod 600 .env; }
-
-# Replace every placeholder referenced by emrys.launcher.yaml. Keep this file
-# private and untracked; do not put credentials or EMRYS_EXECUTE in it.
-${EDITOR:-vi} .env
-
-# Review requested CPUs, memory, time, exclusive placement, and optional
-# nodelist. These are the resources Slurm will be asked for, not minima.
-${EDITOR:-vi} "$EMRYS_INPUT_DIR/emrys.launcher.yaml"
-
-"$EMRYS_SLURM_WRAPPER"
+emrys_slurm_run --execute
 ```
 
-Launcher precedence is packaged defaults, adjacent `emrys.launcher.yaml`, then
-explicit wrapper options. A YAML `{env: EMRYS_NAME}` reference reads the
-invocation environment before root `.env`; scalar `$VAR` and shell syntax are
-never evaluated. The `.env` must be an owner-only nonsymlink file and is not
-copied into the generated starter or printed.
+`--execute` creates `<workspace>/logs`, calls `sbatch` once, and prints exact
+`JOB_ID`, `OUT`, and `ERR` values. The compute delegate re-admits the profile
+digest, submit UID, private marker, and Slurm job ID; loads only declared
+modules; creates and removes one private mode-`0700` scratch directory; runs
+doctor; plans the immutable Run; and then enters the normal lifecycle. Ambient
+`SBATCH_*` variables cannot alter the admitted submission. Keep the selected
+profile bytes unchanged while the job is pending.
 
-`memory: site-default` emits no `--mem`; an explicit Slurm size is passed
-exactly once. `exclusive: true` emits `--exclusive`, and a configured nodelist
-emits one exact `--nodelist=...`. Module mode `none` requires empty module
-values and uses absolute runtime paths unchanged. Use `exact` only with a real
-nonsymlink module-init file and an exact module list. Submission seals the
-batch `PATH` to the generation-bound Python parent followed by `/usr/bin:/bin`;
-the source checkout and Python cannot be replaced from launcher configuration.
-The submit shell's `USER` and `LOGNAME` must both match `/usr/bin/id -un`.
-The wrapper binds that live user and numeric UID into the batch and rechecks
-them before any runtime or workspace action.
-`EMRYS_SCRATCH_PARENT` must already be a real writable compute-node directory;
-the job creates a private mode-`700` child, exports it as `TMPDIR`, logs its
-filesystem/capacity, and removes it at exit. The wrapper installs nothing.
-Inside the job, EMRYS observes the Slurm CPU and memory allocation together
-with process CPU affinity and memory limits. It resolves packaged resource
-defaults, adjacent `emrys.resources.yaml`, and any explicit resource CLI
-overrides in that order. Execution fails before workflow entry if the effective
-cores, memory, concurrency, or threads cannot fit.
-
-The first submission uses no mode flag: it performs compute-context preflight
-and prints the complete no-write workflow plan in the job log. Ambient or
-authored `EMRYS_EXECUTE` cannot activate execution. Copy
-the printed job ID, wait for both streams, and confirm scheduler exit plus the
-plan. Copy the exact run root printed in that completed dry-run log into the
-shell that will submit and inspect the execution:
-
-```sh
-EMRYS_RUN_ROOT=/absolute/path/printed/by/the/dry-run/plan
-case "$EMRYS_RUN_ROOT" in
-  /*/runs/run-*) ;;
-  *) printf 'Invalid EMRYS_RUN_ROOT: %s\n' "$EMRYS_RUN_ROOT" >&2; false ;;
-esac
-export EMRYS_RUN_ROOT
-```
-
-Do not infer this value from the job ID or workspace name. Only after the
-sanity check succeeds should you submit the execution job with the otherwise
-identical values:
-
-```sh
-"$EMRYS_SLURM_WRAPPER" --execute
-```
-
-Submitting one allocation does not make this distributed workflow execution;
-configured concurrent owners still run on that one compute node.
+This remains the same one-host Snakemake backend inside one allocation, not
+distributed execution. The scheduler job ID and placement are Attempt
+provenance, never Run identity or completion authority.
 
 The scheduler's stdout/stderr directory may use site-supported shared storage
 for login-node inspection. That does **not** qualify the workspace or reference
@@ -536,18 +503,13 @@ above and stable absolute paths. A passing receipt admits only that tested
 site/path pair; an unqualified NFS, distributed, or node-local arrangement
 remains unsupported.
 
-## 9. Observe the run from another terminal
+## 9. Observe and inspect the run
 
-For a workstation or interactive allocation, tail the exact control-log path
-printed when execution began:
-
-```sh
-tail -n +1 -F /exact/path/to/emrys-run-control.log
-```
-
-For a submitted SLURM job, use the exact job ID and `%j` stream paths printed
-by the generated wrapper. The Runbook owns the reusable
-[stream-wait and accounting procedure](docs/operations/RUNBOOK.md#manual-job-inspection).
+For direct execution, the invoking terminal is the primary control stream and
+the structured application log defaults beneath
+`<workspace>/logs/application`. For Slurm, use the exact `JOB_ID`, `OUT`, and
+`ERR` paths printed at submission. The Runbook owns the reusable
+[stream-wait and accounting procedure](docs/operations/RUNBOOK.md#manual-stream-and-accounting-fallback).
 Control-C stops a local `tail`; it does not cancel the allocation. Confirm
 scheduler state separately from EMRYS completion evidence.
 
@@ -555,16 +517,17 @@ EMRYS inspection is read-only and derives state from immutable records rather
 than `.snakemake` metadata. Run it only on a host where the exact workspace path
 is available under the supported filesystem contract. A login node that can see
 only the shared scheduler logs cannot inspect or collect a node-local workspace;
-the generated wrapper does not copy results. Arrange a reviewed site-native
+EMRYS does not copy results. Arrange a reviewed site-native
 retention/transfer path before execution if the workspace will otherwise become
 unreachable when the allocation ends.
 
 Before inspecting from a new terminal, repeat Step 1's `cd`, `EMRYS_PY`, and
-`emrys` function setup, then export the exact `EMRYS_RUN_ROOT` copied from the
-dry-run plan. Tailing the scheduler streams requires only `job_id` and
-`EMRYS_LOG_DIR`; running EMRYS requires the controlled checkout setup too.
+`emrys` function setup. For direct execution, use the exact Run root from Step
+7. For Slurm, copy it from the compute delegate's `ERR` stream after planning;
+never infer it from the scheduler job ID or workspace name.
 
 ```sh
+EMRYS_RUN_ROOT=/absolute/path/printed/by/emrys
 emrys inspect local-pilot-run --run-root "$EMRYS_RUN_ROOT"
 ```
 
@@ -573,7 +536,7 @@ quiet interval, or once execution ends—not in a tight loop. Owner task logs ar
 retained under
 `<run-root>/attempts/<workflow-attempt-id>/tasks/<machine-key>/<scope-id>/`,
 but they publish at the task's terminal boundary and are not the continuous
-live-tail surface. Use the top-level control or SLURM stream while running.
+live-tail surface. Use the top-level control or Slurm stream while running.
 
 Do not launch a second initial run against the same run root after a terminal
 disconnect or uncertain exit. Inspect the existing run first.
@@ -661,8 +624,8 @@ All other blocked states belong to
 | Source and Python | Exact clean commit; `uv --version` works; `uv sync --locked --group workflow` succeeds | Wrong checkout, dirty tree, missing `uv`, or stale lock |
 | Compute runtime | Canonical tools are observed on the intended compute node; guarded `r-check` passes | Login-only path, guessed module, wrong Java/R, or missing namespace |
 | Storage | Final qualification covers the workspace and Step `00c` sidecar parents | Missing, failed, stale, or mismatched qualification |
-| Inputs and plan | Request validation passes, doctor prints `READY`, and the generated no-write plan is reviewed | Any blocker, malformed input/profile, or hand-edited generated wrapper |
-| Execution | Only `--execute` changes on the reviewed command or generated wrapper | Manual output adoption, head-node science work, or an uncertain existing run root |
+| Inputs and plan | Direct: request validation and doctor pass before the no-write Run plan; Slurm: the explicit profile and no-submit placement plan are reviewed | Any blocker, malformed input/profile, or unreviewed placement |
+| Execution | Only `--execute` changes on the reviewed command | Manual output adoption, login-node science work, or an uncertain existing Run root |
 
 The full [troubleshooting matrix](docs/operations/TROUBLESHOOTING.md) owns
 recovery detail. Standalone stages remain supported, but they do not create the

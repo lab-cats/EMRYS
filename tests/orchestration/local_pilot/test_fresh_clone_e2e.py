@@ -432,7 +432,13 @@ observed = SimpleNamespace(
     attempt_outcome="failed",
     results_status="incomplete",
     reporting_status="incomplete",
-    latest_workflow_attempt_id="workflow-explicit-ops",
+    latest_attempt={
+        "workflow_attempt_id": "workflow-explicit-ops",
+        "created_at": "2026-08-12T20:00:00Z",
+    },
+    latest_receipt={
+        "finished_at": "2026-08-12T20:01:00Z",
+    },
     tasks=(),
     reporting_completion_records={},
     blockers=(),
@@ -522,6 +528,11 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         "--runtime-profile",
         str(runtime_profile),
     ]
+    run_common = [
+        *common,
+        "--execution-profile",
+        str(request.parent / "emrys.execution.yaml"),
+    ]
 
     help_result = _public_command(["--help"], environment=environment)
     assert help_result.returncode == 0, help_result.stdout + help_result.stderr
@@ -540,23 +551,23 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert readiness.returncode == 0, readiness.stdout + readiness.stderr
     assert "READY: local-pilot prerequisites passed." in readiness.stdout
 
-    dry_run = _public_command(["run", *common], environment=environment)
+    dry_run = _public_command(["run", *run_common], environment=environment)
     assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
-    assert f"Owner jobs: {EXPECTED_OWNER_JOB_COUNT}" in dry_run.stdout
-    assert "Reporting transactions: 3" in dry_run.stdout
-    assert "Dry-run complete; no workspace state was written." in dry_run.stdout
+    assert f"Pending work items: {EXPECTED_OWNER_JOB_COUNT}" in dry_run.stderr
+    assert "Reporting: automatic after scientific work" in dry_run.stderr
+    assert "Dry-run complete; no workspace state was written." in dry_run.stderr
     assert not workspace.exists()
-    run_id, run_root = _planned_run(dry_run.stdout, workspace)
+    run_id, run_root = _planned_run(dry_run.stderr, workspace)
 
     failed_run = _harness_command(
         "failure",
-        ["run", *common, "--execute"],
+        ["run", *run_common, "--execute"],
         environment=environment,
     )
     assert failed_run.returncode == 1, failed_run.stdout + failed_run.stderr
-    assert "Attempt receipt status: failed" in failed_run.stdout
-    assert "Results:" not in failed_run.stdout.splitlines()
-    assert _planned_run(failed_run.stdout, workspace) == (run_id, run_root)
+    assert "emrys-run failed: phase=terminal status=failed" in failed_run.stderr
+    assert "Results:" not in failed_run.stderr.splitlines()
+    assert _planned_run(failed_run.stderr, workspace) == (run_id, run_root)
     assert run_root.is_dir()
 
     failed_receipts = sorted(run_root.glob("attempts/*/attempt-receipt.json"))
@@ -578,7 +589,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert "Results:" not in failed_inspect.stdout.splitlines()
     second_initial = _harness_command(
         "success",
-        ["run", *common, "--execute"],
+        ["run", *run_common, "--execute"],
         environment=environment,
     )
     assert second_initial.returncode == 2
@@ -620,11 +631,11 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         environment=environment,
     )
     assert resume_dry_run.returncode == 0, resume_dry_run.stdout + resume_dry_run.stderr
-    assert f"Reusable completed owner jobs: {len(verified_before)}" in (
-        resume_dry_run.stdout
+    assert f"Reusable completed work items: {len(verified_before)}" in (
+        resume_dry_run.stderr
     )
-    assert "Dry-run complete; no resume state was written." in resume_dry_run.stdout
-    assert "Results:" not in resume_dry_run.stdout.splitlines()
+    assert "Dry-run complete; no resume state was written." in resume_dry_run.stderr
+    assert "Results:" not in resume_dry_run.stderr.splitlines()
     assert _tree_snapshot(run_root) == before_resume_dry_run
 
     resumed = _harness_command(
@@ -633,14 +644,14 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         environment=environment,
     )
     assert resumed.returncode == 0, resumed.stdout + resumed.stderr
-    assert "Attempt receipt status: succeeded" in resumed.stdout
+    assert "Evidence:" in resumed.stderr
     report_root = run_root / "products" / "report" / run_id
     expected_results = (
         "Results:\n"
         f"  Scientific report: {report_root}/{run_id}.scientific_report.html\n"
         f"  Evidence report: {report_root}/{run_id}.evidence_report.html\n"
     )
-    assert expected_results in resumed.stdout
+    assert expected_results in resumed.stderr
     reused_after = _reusable_snapshot(run_root)
     assert reused_before.keys() <= reused_after.keys()
     assert all(reused_after[path] == value for path, value in reused_before.items())
@@ -707,6 +718,8 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         str(clean_workspace),
         "--runtime-profile",
         str(runtime_profile),
+        "--execution-profile",
+        str(clean_request.parent / "emrys.execution.yaml"),
     ]
     _qualify_storage(
         clean_workspace,
@@ -721,15 +734,15 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         environment=environment,
     )
     assert clean_run.returncode == 0, clean_run.stdout + clean_run.stderr
-    assert "Attempt receipt status: succeeded" in clean_run.stdout
-    clean_run_id, clean_root = _planned_run(clean_run.stdout, clean_workspace)
+    assert "Evidence:" in clean_run.stderr
+    clean_run_id, clean_root = _planned_run(clean_run.stderr, clean_workspace)
     clean_report_root = clean_root / "products" / "report" / clean_run_id
     clean_expected_results = (
         "Results:\n"
         f"  Scientific report: {clean_report_root}/{clean_run_id}.scientific_report.html\n"
         f"  Evidence report: {clean_report_root}/{clean_run_id}.evidence_report.html\n"
     )
-    assert clean_expected_results in clean_run.stdout
+    assert clean_expected_results in clean_run.stderr
     clean_inspect = _public_command(
         ["inspect", "local-pilot-run", "--run-root", str(clean_root)],
         environment=environment,

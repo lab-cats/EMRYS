@@ -119,6 +119,44 @@ def test_storage_readmission_uses_normalized_reference_identity(
     )
 
 
+@pytest.mark.parametrize("relative_reference", (False, True))
+def test_successor_storage_readmission_resolves_authored_reference_from_request(
+    tmp_path: Path,
+    relative_reference: bool,
+) -> None:
+    workspace = tmp_path / "workspace"
+    request = tmp_path / "intake" / "request.yaml"
+    reference = request.parent / "reference" / "genome.fa"
+    calls: list[tuple[Path, Path]] = []
+
+    def inspect_storage(
+        observed_workspace: Path,
+        observed_reference: Path,
+    ) -> storage_qualification.QualifiedStorage:
+        calls.append((observed_workspace, observed_reference))
+        raise storage_qualification.StorageQualificationError("stop after capture")
+
+    with pytest.raises(lifecycle.LifecycleError, match="stop after capture"):
+        lifecycle._readmit_storage_runtime_binding(
+            {
+                "execution_mode": "local-science-tools",
+                "workspace": str(workspace),
+                "authored_paths": {
+                    "request": str(request),
+                    "reference_fasta": (
+                        "reference/genome.fa"
+                        if relative_reference
+                        else str(reference)
+                    ),
+                },
+            },
+            {"schema_version": "emrys.run-binding.v1"},
+            inspect_storage=inspect_storage,
+        )
+
+    assert calls == [(workspace, reference)]
+
+
 def test_storage_readmission_failure_is_a_lifecycle_error(tmp_path: Path) -> None:
     def reject_storage(
         _workspace: Path,
@@ -1540,6 +1578,32 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
     assert observed.reporting_status == "complete"
 
 
+def test_application_event_observer_exceptions_cannot_alter_receipt(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(tmp_path)
+    built.materialize_complete = True
+    observed_events = []
+
+    def reject_event(event_name: str) -> None:
+        observed_events.append(event_name)
+        raise RuntimeError("injected diagnostic observer failure")
+
+    outcome = lifecycle.run_attempt(
+        built.request,
+        ops=replace(built.ops(), observe_application_event=reject_event),
+    )
+
+    assert observed_events == ["analysis_started", "publication_ready"]
+    assert outcome.receipt["status"] == "succeeded"
+    assert outcome.receipt_path.is_file()
+    assert json.loads(outcome.receipt_path.read_bytes()) == outcome.receipt
+    assert built.events[-2:] == [
+        "release",
+        f"publish:{outcome.receipt_path.relative_to(built.built.run_root)}",
+    ]
+
+
 def test_workflow_argv_binds_reviewed_absolute_source_files(tmp_path: Path) -> None:
     built = _build_harness(tmp_path)
     argv = list(built.request.attempt_record["snakemake_argv"])
@@ -2651,7 +2715,9 @@ def test_historical_task_tree_is_recursively_closed(
             built.validate_reporting,
         ),
     )
-    assert observed.integrity == "blocked"
+    assert observed.integrity == "valid"
+    assert observed.results_status == "blocked"
+    assert not observed.recovery_available
     assert any("task" in blocker.lower() for blocker in observed.blockers)
 
 

@@ -58,30 +58,37 @@ Read this before installing:
 
 - The public runtime target is a Linux/POSIX host with Python `3.11` or newer,
   Git, GNU Make, `uv`, and the scientific runtime listed below.
-- The workflow uses Snakemake's **single-host local executor**. It defaults to
-  a packaged resource policy that can be overridden by adjacent
-  `emrys.resources.yaml` and then by explicit CLI values. `workflow_cores` and
-  `workflow_memory_mb` bound the whole scheduler; per-stage concurrency,
-  threads, and memory model each owner class. EMRYS neither submits SLURM jobs
-  nor distributes work across nodes.
-- Run it on a suitably provisioned Linux workstation, or run the same local
-  process inside **one** batch allocation on **one** compute node. Never run the
-  scientific workflow on a cluster login/head node; use that node only to
-  clone, edit, transfer small files, submit, inspect, and tail logs.
+- The workflow has one Snakemake **single-host local executor**. With no
+  `--execution-profile`, EMRYS uses its built-in direct placement and
+  conservative resources. One optional explicit execution profile combines
+  Run-bound computational resources with Attempt-local direct or Slurm
+  placement; explicit CLI resource values have highest precedence.
+- Slurm placement submits the whole Run into **one** allocation on **one**
+  compute node through the same `emrys run` or `emrys resume` command. It is
+  not a distributed backend. A dry-run does not submit or write; `--execute`
+  submits once and prints `JOB_ID`, `OUT`, and `ERR`. Never execute the
+  scientific workflow on a cluster login/head node.
 - One cooperative user is required. The exact workspace parent and Step `00c`
   reference-sidecar parent must pass EMRYS's two-phase site qualification for
   hard links, `flock`, rename/visibility, fsync, UID/access, and post-allocation
   durability. No filesystem family—including NFS—is admitted by name alone.
-- Local-pilot inputs, workspace, control logs, and results stay outside the Git
+- Local-pilot inputs, workspace, logs, and results stay outside the Git
   checkout. The locked ignored `.venv/`, the default ignored `renv/library/`,
   and the report-only demo's ignored `results/demo-report-jinja/` are sanctioned
   checkout-local exceptions; an already provisioned R library may instead be
   selected explicitly. The doctor requires tracked checkout content to be clean
   and binds its exact commit and installed package bytes.
-- EMRYS does not download data, install tools, load modules, restore R
-  packages, estimate runtime, force retries, delete locks, or repair outputs.
-  It does observe the CPU affinity and memory capacity available to its local
-  executor so an impossible resource policy fails before workflow entry.
+- EMRYS does not download data, install tools, restore R packages, estimate
+  runtime, force retries, delete locks, or repair outputs. Direct placement
+  uses the prepared environment; Slurm placement may load only the exact
+  modules declared in its execution profile and uses a private temporary
+  directory. EMRYS observes the CPU affinity and memory capacity available to
+  its local executor so an impossible resource policy fails before workflow
+  entry.
+
+Scheduler streams are created automatically under `<workspace>/logs` and the
+default application-log root is `<workspace>/logs/application`. Reporting runs automatically after scientific
+work and publishes its receipts last; it is not a scientific stage.
 
 Capacity depends on reference size, read count, and selected partitions. Plan
 for the STAR index and several BAM generations per sample, plus orientation

@@ -14,12 +14,13 @@ binds the exact Analysis revision, Execution Plan, Run record, and profile;
 historical `emrys.execution.v1` validation retains its exact profile-bound
 reporting projection.
 
-The optional `resource-config` and `launcher-config` selectors validate authored
-configuration fragments before their application owners layer them over
-packaged defaults. Resource configuration controls the one-host workflow budget;
-launcher configuration controls the outer single-allocation submission. Neither
-configuration is scientific run intent, and this neutral package does not load
-YAML, inspect environment variables, or choose precedence.
+The `execution-profile` selector validates the combined public authored profile:
+its resource projection is Run-bound and its placement projection is
+Attempt-local. The registered `resource-config` schema remains an internal and
+historical dependency of that profile and of Run-bound resource identity; it is
+not a separate public authored configuration. Neither projection is scientific
+run intent, and this neutral package does not load YAML, inspect environment
+variables, or choose precedence.
 
 The lifecycle family includes an explicit run-lock record, an immutable
 workflow attempt that binds its exact canonical workflow-config reference, and

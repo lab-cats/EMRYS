@@ -75,6 +75,7 @@ class ExpectedTask:
     """One required profile owner scope selected by an execution contract."""
 
     machine_key: str
+    step_id: str
     scope_type: str
     scope_id: str
 
@@ -89,8 +90,6 @@ class TaskInspection:
 
     expected: ExpectedTask
     state: TaskState
-    record_path: Path
-    blocker: str | None
     record: dict[str, Any] | None
     record_reference: dict[str, str] | None
 
@@ -102,8 +101,6 @@ class TaskLedgerInspection:
     expected: ExpectedTask
     start: dict[str, Any]
     start_reference: dict[str, str]
-    verified: dict[str, Any] | None
-    verified_reference: dict[str, str] | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -122,7 +119,6 @@ class RunInspection:
     run_root: Path
     run_id: str
     attempt_outcome: AttemptOutcome
-    latest_workflow_attempt_id: str | None
     latest_attempt: dict[str, Any] | None
     latest_receipt: dict[str, Any] | None
     tasks: tuple[TaskInspection, ...]
@@ -530,6 +526,7 @@ def _successor_expected_tasks(
     return tuple(
         ExpectedTask(
             machine_key=str(owner["machine_key"]),
+            step_id=str(owner["step_id"]),
             scope_type=str(owner["scope_type"]),
             scope_id=str(scope_id),
         )
@@ -571,6 +568,7 @@ def expected_tasks(
             projected.append(
                 ExpectedTask(
                     machine_key=machine_key,
+                    step_id=str(owner["step_id"]),
                     scope_type=str(owner["scope_type"]),
                     scope_id=scope_id,
                 )
@@ -1731,9 +1729,7 @@ def _inspect_tasks(
     for item in expected:
         record_path = verified_root / item.machine_key / f"{item.scope_id}.json"
         if not record_path.exists() and not record_path.is_symlink():
-            inspected.append(
-                TaskInspection(item, "pending", record_path, None, None, None)
-            )
+            inspected.append(TaskInspection(item, "pending", None, None))
             continue
         try:
             reference_before = _record_reference(
@@ -1762,16 +1758,12 @@ def _inspect_tasks(
         ) as exc:
             message = f"Could not admit reusable verified task {record_path}: {exc}"
             blockers.append(message)
-            inspected.append(
-                TaskInspection(item, "blocked", record_path, message, None, None)
-            )
+            inspected.append(TaskInspection(item, "blocked", None, None))
         else:
             inspected.append(
                 TaskInspection(
                     item,
                     "verified",
-                    record_path,
-                    None,
                     record,
                     reference_before,
                 )
@@ -1784,18 +1776,18 @@ def _inspect_task_ledger(
     root: Path,
     execution: Mapping[str, Any],
     profile: Mapping[str, Any],
+    tasks: Sequence[TaskInspection],
     *,
     allow_incomplete_origin: str | None = None,
-    authority: SuccessorRunAuthority | None = None,
 ) -> tuple[tuple[TaskLedgerInspection, ...], list[str]]:
     from emrys.orchestration.local_pilot import task  # noqa: PLC0415
 
     """Admit every observed producer entry and require a successful closure."""
 
-    expected = expected_tasks(authority or execution, profile)
-    blockers = list(task_start_tree_blockers(root, expected))
+    blockers = list(task_start_tree_blockers(root, [task.expected for task in tasks]))
     admitted: list[TaskLedgerInspection] = []
-    for item in expected:
+    for inspected in tasks:
+        item = inspected.expected
         start_path = (
             root / "state" / "task-starts" / item.machine_key / f"{item.scope_id}.json"
         )
@@ -1828,17 +1820,21 @@ def _inspect_task_ledger(
                             item,
                             start,
                             start_reference_before,
-                            None,
-                            None,
                         )
                     )
                     continue
                 raise InspectionError(
                     "Producer entry has no succeeded task attempt and verified record"
                 )
+            if inspected.record is None or inspected.record_reference is None:
+                raise InspectionError(
+                    "Producer entry has no admissible verified task record"
+                )
             verified_reference_before = _record_reference(
                 verified_path, root, "verified task record"
             )
+            if verified_reference_before != inspected.record_reference:
+                raise InspectionError("Verified task changed after semantic admission")
             verified = task.validate_verified_task(
                 verified_path,
                 run_root=root,
@@ -1847,10 +1843,10 @@ def _inspect_task_ledger(
                 machine_key=item.machine_key,
                 scope=item.scope,
             )
-            verified_reference_after = _record_reference(
-                verified_path, root, "verified task record"
-            )
-            if verified_reference_after != verified_reference_before:
+            if (
+                _record_reference(verified_path, root, "verified task record")
+                != verified_reference_before
+            ):
                 raise InspectionError(
                     "Verified task changed during ledger semantic admission"
                 )
@@ -1875,8 +1871,6 @@ def _inspect_task_ledger(
                 item,
                 start,
                 start_reference_before,
-                verified,
-                verified_reference_before,
             )
         )
     return tuple(admitted), blockers
@@ -2280,8 +2274,6 @@ def inspect_run(
             TaskInspection(
                 item,
                 "pending",
-                root / "state" / "verified" / item.machine_key / f"{item.scope_id}.json",
-                None,
                 None,
                 None,
             )
@@ -2298,7 +2290,6 @@ def inspect_run(
             run_root=root,
             run_id=authority.run_id,
             attempt_outcome=outcome,
-            latest_workflow_attempt_id=latest_id,
             latest_attempt=latest,
             latest_receipt=latest_receipt,
             tasks=tasks,
@@ -2407,8 +2398,8 @@ def inspect_run(
         root,
         execution,
         profile,
+        tasks,
         allow_incomplete_origin=live_origin,
-        authority=authority,
     )
     results_blockers.extend(task_ledger_blockers)
     preentry_tasks, task_tree_blockers = inspect_attempt_task_trees(
@@ -2522,7 +2513,6 @@ def inspect_run(
         run_root=root,
         run_id=(authority.run_id if authority is not None else str(execution["run_id"])),
         attempt_outcome=outcome,
-        latest_workflow_attempt_id=latest_id,
         latest_attempt=latest,
         latest_receipt=latest_receipt,
         tasks=tasks,
@@ -2546,7 +2536,6 @@ __all__ = (
     "ReportingReceiptValidator",
     "SuccessorRunAuthority",
     "TaskInspection",
-    "TaskLedgerInspection",
     "ValidatedReportingReceipt",
     "admit_canonical_record",
     "admit_execution_path",

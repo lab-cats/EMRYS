@@ -121,6 +121,7 @@ PythonLauncherIdentity = tuple[str, str, int, int]
 AttemptMaterializer = Callable[[], "LifecycleRequest"]
 MutexObserver = Callable[[str, Path], None]
 LifecyclePhaseObserver = Callable[[str], None]
+ApplicationEventObserver = Callable[[str], None]
 SignalHandler = Callable[[int, FrameType | None], None]
 SignalHandlerInstaller = Callable[
     [SignalHandler], tuple[Mapping[int, Any], set[signal.Signals]]
@@ -137,6 +138,10 @@ def _ignore_mutex_event(_event: str, _path: Path) -> None:
 
 
 def _ignore_lifecycle_phase(_phase: str) -> None:
+    return None
+
+
+def _ignore_application_event(_event: str) -> None:
     return None
 
 
@@ -418,6 +423,7 @@ class LifecycleOps:
     process_group_ops: ProcessGroupOps = DEFAULT_PROCESS_GROUP_OPS
     observe_mutex: MutexObserver = _ignore_mutex_event
     observe_phase: LifecyclePhaseObserver = _ignore_lifecycle_phase
+    observe_application_event: ApplicationEventObserver = _ignore_application_event
 
 
 @dataclass(frozen=True, slots=True)
@@ -1185,13 +1191,13 @@ def _readmit_storage_runtime_binding(
     if attempt["execution_mode"] == "test-double":
         return None
     workspace = Path(str(attempt["workspace"]))
-    reference_fasta = Path(
-        str(
-            attempt["authored_paths"]["reference_fasta"]
-            if execution.get("schema_version") == RUN_BINDING_SCHEMA_VERSION
-            else execution["reference"]["fasta"]["path"]
-        )
-    )
+    if execution.get("schema_version") == RUN_BINDING_SCHEMA_VERSION:
+        reference_fasta = Path(str(attempt["authored_paths"]["reference_fasta"]))
+        if not reference_fasta.is_absolute():
+            request_path = Path(str(attempt["authored_paths"]["request"]))
+            reference_fasta = request_path.parent / reference_fasta
+    else:
+        reference_fasta = Path(str(execution["reference"]["fasta"]["path"]))
     try:
         qualified = inspect_storage(workspace, reference_fasta)
         return doctor.storage_runtime_binding(qualified)
@@ -2050,6 +2056,15 @@ def _observe_phase(
     ops.observe_phase(phase)
 
 
+def _observe_application_event(ops: LifecycleOps, event_name: str) -> None:
+    """Project diagnostics without allowing them to control lifecycle state."""
+
+    try:
+        ops.observe_application_event(event_name)
+    except Exception:
+        pass
+
+
 def _refuse_pre_attempt_signal(
     signals: TransactionSignalController,
     phase: str,
@@ -2220,15 +2235,17 @@ def _run_attempt_locked(
                     signals.first_signal,
                     "Lifecycle interrupted before delegated workflow start",
                 )
-            elif active_ops.run_workflow is None:
-                candidate = _run_process_group(
-                    argv,
-                    root,
-                    signals,
-                    ops=active_ops.process_group_ops,
-                )
             else:
-                candidate = active_ops.run_workflow(argv, root)
+                _observe_application_event(active_ops, "analysis_started")
+                if active_ops.run_workflow is None:
+                    candidate = _run_process_group(
+                        argv,
+                        root,
+                        signals,
+                        ops=active_ops.process_group_ops,
+                    )
+                else:
+                    candidate = active_ops.run_workflow(argv, root)
             _observe_phase(active_ops, "after_workflow")
             if signals.first_signal is not None:
                 candidate = WorkflowResult(
@@ -2420,6 +2437,7 @@ def _run_attempt_locked(
         status = "blocked"
         message = "Workflow lock release left ambiguous aggregate state"
     _observe_phase(active_ops, "before_receipt_publication")
+    _observe_application_event(active_ops, "publication_ready")
     if signals.first_signal is not None:
         result = WorkflowResult(
             None,

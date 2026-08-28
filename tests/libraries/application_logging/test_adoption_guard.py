@@ -10,7 +10,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 LOGGING_NAMESPACE = "emrys.libraries.application_logging"
 
 # Add exact packaged-Python importer modules only in an approved LOG-05 slice.
-APPROVED_PRODUCTION_IMPORTERS: frozenset[str] = frozenset()
+APPROVED_PRODUCTION_IMPORTERS = frozenset(
+    {"emrys.orchestration.local_pilot.control"}
+)
 
 
 def _in_logging_namespace(module: str) -> bool:

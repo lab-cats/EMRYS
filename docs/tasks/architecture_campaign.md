@@ -204,7 +204,12 @@ campaign:
    responsibility it supersedes. Net-negative maintained product code and no
    product-file growth are the defaults; an exception requires the user's
    approval of quantified growth and its justification, plus an owner and
-   retirement condition when the growth is temporary.
+   retirement condition when the growth is temporary. Every touched shell
+   surface receives a `KEEP`, `CONVERT`, or `RETIRE` disposition; conversion
+   must reduce total maintained and cross-language surface rather than preserve
+   a second implementation. Every slice touching a retained applicable
+   operation also records its `LOG-05` disposition and incorporates adoption in
+   the same vertical change when output or durable diagnostics change.
 9. **Immutability by default; Run is the immutable plan.** Boundary values are
    immutable unless an owning contract justifies a narrow mutable lifecycle.
    Any architecture concept named `Run` denotes the immutable plan and is never
@@ -232,8 +237,9 @@ campaign:
 - a replacement completes only after caller migration and relevant parity,
   with owned, bounded, protected temporary compatibility and an explicit
   retirement condition; and
-- direct-owner, adversarial, seeded-fault, and synthetic end-to-end defenses
-  require mapped equal-or-stronger replacement at the same evidence level.
+- protections at external, filesystem, concurrency, crash/recovery,
+  persistence, evidence, and supported public-behavior boundaries require a
+  mapped equal-or-stronger surviving defense at the same evidence level.
 
 On **2026-08-26**, the user ratified three additional campaign guardrails for
 maintenance-surface compression, immutable-by-default design with `Run` as the
@@ -241,6 +247,18 @@ immutable plan, and approval-gated evidence deletion. These extend rather
 than rewrite the historical five-guardrail `ARCH-CONST-01` result. Their
 canonical definitions are `AC-GUARD-006` through `AC-GUARD-008` in the same
 platform-direction decision.
+
+On **2026-08-28**, the user refined the regression-defense rule: a check and
+check-only test for a proven impossible same-process state may retire without
+an artificial replacement, while high-risk, ambiguous, or directly
+user-facing protection removal requires explicit approval. High-risk,
+directly user-facing, execution-boundary, and evidence-validation retirement,
+consolidation, or conversion requires approval whether or not classified as a
+protection. Evidence deletion remains governed by its separate stricter gate.
+The same update made `LOG-05`
+disposition mandatory for touched retained operations and required every
+touched shell surface to be retained, converted, or retired based on total
+maintenance-surface reduction.
 
 ## 4. Invariant constitution and source trace
 
@@ -780,8 +798,8 @@ scheduled journeys.
 | Fixed [`Snakefile`](../../workflow/Snakefile), workflow contract, and local profile | Declare the reviewed task graph, fixed scientific-owner invocations, target, and local engine configuration | Materialization, local Snakemake execution, task/reporting boundaries, contract and end-to-end tests | Effective execution surface and current engine adapter; not application or scientific authority and not included in the 43-file footprint total. |
 | [`inspection.py`](../../src/emrys/orchestration/local_pilot/inspection.py) | Derive separated Run, Attempt, Results, reporting, and recovery status from canonical contracts, records, receipts, and the owned lock | Control, lifecycle resume checks, tests | Read model only. The current `RunInspection` name is descriptive and does not select the target Run representation. |
 | [`projection.py`](../../src/emrys/contracts/orchestration/projection.py) and reporting owners | Project the execution contract into reporting contracts and render admitted results | Normalization, materialization, workflow, standalone `build report` | Downstream reporting remains separate from scientific completion and is not a scientific stage. |
-| [`launcher_config.py`](../../src/emrys/orchestration/local_pilot/launcher_config.py) | Resolve outer Slurm allocation defaults/configuration/environment/overrides and submit once | Generated `run-in-slurm.sh` | Scheduler transport only; not a second application backend or scientific authority. |
-| [`dashboard.py`](../../src/emrys/orchestration/local_pilot/dashboard.py) | CSU preview using scheduler queries plus parsed stdout/Snakemake stderr | `make dashboard` | Non-authoritative presentation with text coupling and fixed six-sample/25-partition display assumptions; eventual structured input is a candidate, not an approved rewrite. |
+| `launcher_config.py` at the audited revision | Resolve outer Slurm allocation defaults/configuration/environment/overrides and submit once | Generated `run-in-slurm.sh` | Historical scheduler-transport owner later retired by Section 13.6; it was never a second application backend or scientific authority. |
+| [`dashboard.py`](../../src/emrys/orchestration/local_pilot/dashboard.py) | CSU preview using scheduler queries plus parsed stdout/Snakemake stderr | `make dashboard` only; no production Python importer | Non-authoritative, stale presentation with text coupling and fixed six-sample/25-partition assumptions that disagree with the current starter. Freeze it during the campaign: do not update or extend it, implement `OBS-02` independently from persisted records, and reconsider retirement only after campaign completion and explicit approval. |
 
 #### Representation and semantic-lifetime map
 
@@ -797,7 +815,7 @@ scheduled journeys.
 | Reporting start/verified records and report receipt | One downstream report transaction/output identity | Reporting owners | Derived output that may be regenerated; not a semantic scientific stage or Run mutation. |
 | Attempt receipt | Terminal outcome of one workflow attempt | Lifecycle, published last | Attempt outcome and evidence, not a general application Result. |
 | `RunInspection` | Regenerated separated read-only status domains | Inspection over persisted authorities | Current status projection. It is not persisted authority and must not define target Run mutability. |
-| Dashboard dictionaries and stream caches | Mutable presentation state for one live view | Dashboard only | Necessary local UI state, not application or evidence authority. |
+| Dashboard dictionaries and stream caches | Mutable presentation state for one stale live view | Dashboard only | Frozen transitional UI state, not application or evidence authority; it receives no architecture-campaign updates. |
 
 There is no current application-level `Project` or `Result` representation.
 `WorkflowResult` reports the delegated process exit and `LifecycleOutcome`
@@ -881,7 +899,8 @@ rejects the already-existing root. The audit records that unreceipted-skeleton
 state and owner/recovery gap without choosing whether planning, lifecycle,
 reconciliation, or another bounded capability should resolve it.
 
-The generated Slurm path is an outer single-node allocation wrapper:
+At the audited revision, the generated Slurm path was an outer single-node
+allocation wrapper:
 
 ```text
 submit host
@@ -908,6 +927,8 @@ readiness failure retains Doctor remediations. The remaining normalization and
 re-admission points are not declared redundant: lock-time and pre-mutation
 admission must remain deliberate, and any future explicit Doctor repair must
 be followed by re-admission rather than carrying stale facts across mutation.
+Section 13.6 records the later retirement of that wrapper and split
+configuration path; this paragraph remains the exact audit baseline.
 
 #### Status, Result, and reporting cutover
 
@@ -974,13 +995,13 @@ create-exclusive persisted records, not in every Python aggregate:
 | `LifecycleOutcome.receipt` | Lifecycle-to-control handoff; one terminal attempt return | Lifecycle builds the terminal receipt/outcome after receipt-last publication | Control result projection, verified-report display, tests | Dictionary construction mirrors the persisted schema; post-return mutation is not required | Candidate immutable terminal view over persisted evidence; receipt file remains authority. |
 | `TransactionSignalController` and delegated-process state | `lifecycle.py`; from signal-handler installation through receipt commit/restore | Signal handlers and lifecycle execution update child, signal, interruption, and commit state | Lifecycle cleanup, termination, receipt publication, fault tests | Live process and signal ownership must change as execution advances and cannot be modeled truthfully as a fixed value | Retain tightly owned mutation. Expose only immutable outcome/evidence values after the transaction. |
 | `_OwnedRunLock.record`, bytes, inode, and live lock ownership | `lifecycle.py`; from exclusive lock acquisition through release/recovery publication | Lock acquisition constructs identity fields; lifecycle changes filesystem ownership state and publishes release evidence | Lifecycle serialization/recovery, inspection, resume, fault tests | The Python record need not mutate, but owned filesystem lock state must transition with attributable identity | Make the in-memory value deeply immutable if consolidated; retain narrowly owned live lock mutation and exact release/history records. |
-| `RunInspection` nested attempt, receipt, task, and report dictionaries | `inspection.py`; one read-only inspection call/result | Inspection derives the aggregate from persisted authorities | Control, resume/lifecycle checks, dashboard/tests | Mutable dictionaries simplify construction; post-construction mutation is not authority or required behavior | Keep a derived non-authoritative read model and make exposed boundary values immutable when selected; never persist it as status authority. |
+| `RunInspection` nested attempt, receipt, task, and report dictionaries | `inspection.py`; one read-only inspection call/result | Inspection derives the aggregate from persisted authorities | Control, resume/lifecycle checks, tests | Mutable dictionaries simplify construction; post-construction mutation is not authority or required behavior | Keep a derived non-authoritative read model and make exposed boundary values immutable when selected; never persist it as status authority. |
 | `ReportingBundle` dictionaries beside exact bytes | Contract projection; one deterministic reporting projection | Projection constructs reference, policy, run-contract, and inventory documents and bytes | Materialization, workflow/reporting owners, projection tests | Incremental projection is convenient; the admitted dictionary and byte forms need no later shared mutation | Candidate one immutable projection authority with derived views; preserve deterministic exact output and separate reporting transaction authority. |
 | `TaskDispatch.scope` and admitted dispatch collections | Task boundary; one functional-owner invocation | Task admission constructs the closed dispatch value from canonical bytes | Producer/validator invocation, stream capture, task publication and tests | Parsing constructs nested values; execution needs stable facts, not mutable shared ownership | Candidate deeply immutable admitted dispatch; canonical dispatch bytes and schema remain authority. |
 | `TaskOutcome.task_attempt` and `verified_task` | Task boundary; one successful owner return | Task transaction builds the dictionaries after create-exclusive publication | Workflow/lifecycle caller and task tests | Dictionary form mirrors persisted records; post-return mutation is not needed | Candidate immutable result view; persisted task attempt and verified records remain evidence authority. |
 | Reporting-boundary `_AdmittedIdentity` dictionaries | Reporting boundary; one report transaction admission | Reporting admission loads and validates execution, profile, attempt and references | Reporting start, semantic validation, verified publication and tests | Admission assembles related mappings; downstream mutation is not required | Candidate immutable internal admitted identity; final neutral shared admission owner remains Open and reporting ordering stays local. |
 | `_TaskStreamCapture` descriptors, digests, sizes, and completion state | `task.py`; one functional-owner process invocation | Stream callbacks and cleanup update descriptor/capture state | Task attempt/log/verified publication and fault cleanup | Streaming output identities and descriptors are only known while the process runs | Retain narrowly owned mutation; publish immutable stream evidence at the boundary. |
-| Dashboard `StreamCache` and presentation dictionaries | `dashboard.py`; one live dashboard session | Scheduler/log polling and parsing update cached state | Dashboard rendering and dashboard tests | A live view necessarily tracks changing non-authoritative presentation state | Retain as presentation-only mutation pending dashboard decisions; it cannot become Run, Attempt, or completion authority. |
+| Dashboard `StreamCache` and presentation dictionaries | `dashboard.py`; one stale live dashboard session | Scheduler/log polling and parsing update cached state | Dashboard rendering and dashboard tests | The state exists only for a non-authoritative presentation surface and duplicates status concepts using parsed human text | **Freeze during the campaign.** Do not update, extend, or make it authoritative; reconsider whole-surface retirement only after campaign completion and explicit approval. |
 | Filesystem locks, create-exclusive publications, and transaction progress | Lifecycle, task, and reporting owners; one attempt or transaction plus recovery lifetime | Owned lock/process/publication operations mutate filesystem state; receipts are committed last | Lifecycle and owner recovery, inspection, resume, audit consumers | Concurrency, crash recovery, attribution, and durable publication require controlled state transitions | Retain controlled mutation and immutable committed records. Consolidation may share primitives but cannot merge semantic owners or erase ordering/fault behavior. |
 
 Text and caller inspection within the exact in-repo contract/local-pilot roster
@@ -997,7 +1018,9 @@ These rows are the retain/evidence portion of the mandatory Section 13.1
 register. For every retained row, the directional estimate and audit actual
 are zero changed product files/lines, public concepts, configuration artifacts,
 call edges, and compatibility paths. A later slice that changes one must supply
-its own exact category deltas and equal-or-stronger replacement proof.
+its own exact category deltas and boundary/risk disposition. Boundary defenses
+require equal-or-stronger surviving protection; a proven same-process
+impossible-state check may retire without replacement under `AC-GUARD-005`.
 
 | Mechanism and category | Current owners; callers and consumers | Unique retained need; redundancy evidence | Disposition and surviving authority | Estimated and audit-actual deltas | Preconditions for any future change |
 |---|---|---|---|---|---|
@@ -1005,8 +1028,8 @@ its own exact category deltas and equal-or-stronger replacement proof.
 | Stable-file snapshots, no-follow descriptor/path binding and near-mutation rechecks; protection | Normalization, lifecycle, task, reporting and inspection; input admission, publication, recovery and adversarial tests | Prevents path replacement, symlink, inode and stale-read races; similar helpers have owner-specific semantics, not proven redundancy | **Retain; conditional primitive consolidation only.** Each current semantic owner survives | Estimate all six zero for retention; audit actual all six zero | Map large-file, inode, destination, hash, timing and error behavior and retain last-safe-boundary checks |
 | Attempt mutex, owned run lock, create-exclusive publication, fsync and receipt-last ordering; protection | Lifecycle, task and reporting transaction owners; recovery, resume, inspection and fault tests | Provides serialization, attributable ownership, durability and truthful completion; repeated mechanics do not duplicate semantic ordering | **Retain.** Transaction authorities survive; only a proven low-level primitive may consolidate | Estimate all six zero for retention; audit actual all six zero | Equal-or-stronger concurrency, crash, signal, rollback, directory-durability and failure evidence required |
 | Separate start, attempt, stream, verified, reporting, lock-release and terminal records; evidence | Task, reporting and lifecycle owners; inspection, recovery, audit and historical readers | Distinguishes entry, execution, validation, failure/recovery and terminal truth; record count alone is no redundancy evidence | **Retain pending itemized lifecycle/evidence audit.** Current record owners survive | Estimate all six zero; audit actual all six zero | Any proposal must name exact record class, producers/consumers, claim, recovery path, retention and rollback and receive explicit user approval if deleting evidence |
-| Derived inspection independent of `.snakemake`; protection | Inspection over EMRYS contracts/records/locks; control, resume, dashboard and tests | Prevents engine metadata from becoming status, recovery or completion authority; no redundant authority exists | **Retain.** Persisted EMRYS records remain authority and inspection remains derived | Estimate all six zero; audit actual all six zero | A new read model must derive the same or stronger truthful state and cannot persist a competing status |
-| Direct-owner, adversarial, seeded-fault, independent-golden, recovery, fresh-clone and synthetic E2E defenses; protection/tests | Functional owners and CI; maintainers, release review and regression diagnosis | Protects distinct failure, packaging, recovery and synthetic execution claims; coverage or happy path is not equivalent | **Retain or map individually to equal-or-stronger defense.** Existing test/evidence owner survives until mapped replacement | Estimate all six zero; audit actual all six zero | Name invariant, evidence level and surviving test for each retirement; long checks remain CI-owned |
+| Derived inspection independent of `.snakemake`; protection | Inspection over EMRYS contracts/records/locks; control, resume and tests | Prevents engine metadata from becoming status, recovery or completion authority; no redundant authority exists | **Retain.** Persisted EMRYS records remain authority and inspection remains derived | Estimate all six zero; audit actual all six zero | A new read model must derive the same or stronger truthful state and cannot persist a competing status |
+| Direct-owner, adversarial, seeded-fault, independent-golden, recovery, fresh-clone and synthetic E2E defenses; protection/tests | Functional owners and CI; maintainers, release review and regression diagnosis | Protects distinct failure, packaging, recovery and synthetic execution claims; coverage or happy path is not equivalent. Tests aimed only at an impossible same-process injection are not automatically equivalent to these boundaries | **Retain boundary defenses or map individually to equal-or-stronger surviving protection. Retire proven check-only internal seams with their redundant check.** | Estimate all six zero; audit actual all six zero | Name invariant, trust boundary, risk, evidence level and surviving authority for each retirement; high-risk, ambiguous, or directly user-facing removal requires explicit approval; long checks remain CI-owned |
 | Deliberate orchestration exports and eager-import-free local-pilot package; compatibility/protection | Contract package and local-pilot package; importers, packaging and public-contract tests | Controls supported imports and avoids import-time side effects; no redundant facade was proved | **Retain pending API/package decision.** Current boundaries survive | Estimate all six zero; audit actual all six zero | Inventory external imports and import-time behavior; do not make an interim package stack permanent |
 | Packaged retired-v2 request schema; evidence/compatibility | Orchestration schema package and distribution tests; historical package readers | Preserves declared retired-format compatibility evidence and wheel contents; age is not redundancy evidence | **Retain pending approval-gated evidence review.** Packaged schema remains authority for its historical claim | Estimate all six zero; audit actual all six zero | Exact consumer/history/claim/rollback review and explicit user approval before any evidence deletion |
 | `.snakemake/`; runtime metadata | Snakemake engine; engine only, never EMRYS completion/reporting readers | Supports engine operation but is deliberately excluded from EMRYS authority; no retained-evidence claim | **Disposable runtime metadata, not authority.** EMRYS contracts/records survive | Maintained-source estimate and audit actual all six zero | Cleanup must stay within the run/work policy and cannot substitute engine state for EMRYS evidence |
@@ -1031,7 +1054,7 @@ deletion or splitting targets:
 | `lifecycle.py` | 2,628 |
 | `task.py` | 2,111 |
 | `inspection.py` | 2,088 |
-| `dashboard.py` | 1,984 |
+| `dashboard.py` | 1,985 |
 | `materialization.py` | 1,547 |
 | `doctor.py` | 1,098 |
 | `launcher_config.py` | 1,082 |
@@ -1058,18 +1081,46 @@ reported separately below.
 |---|---|---|---|---|---|---|---|
 | `ARCH-MODEL-COMP-01` | Schema and protection | Contract API/execution schema; normalization, projection, materialization, lifecycle, task, reporting, inspection, workflow and tests | Canonical execution identity, closed shape, digest recomputation, and historical admission | Profile, samples, partitions, reference, and analysis occur both top-level and in `identity_envelope`; validation requires exact equality | **Defer; candidate consolidate.** Current versioned contract/schema remains authority until an approved successor and migration exist | Est.: files 0; lines lower; concepts/config 0; edges lower; at most one temporary compatibility path, then zero. Audit actual all zero | Complete consumer roster; select identity boundary; version/migrate schema; prove historical and current admission plus exact digest parity |
 | `ARCH-MODEL-COMP-02` | Maintained product code and protection | Normalization, materialization, lifecycle, inspection and projection; control, task/reporting owners and tests | Exact admitted record bytes and immutable identity/plan facts | Frozen dataclasses wrap mutable dictionaries beside cached or recomputed canonical bytes | **Defer; candidate consolidate.** One immutable admitted-record authority is required, but its type, noun, and package remain Open | Est.: files no growth; lines and competing views lower; concepts/config/compat 0; edges no increase. Audit actual all zero | Decide Run/Attempt fields; prove no mutable caller ownership; add deep-immutability and byte-divergence protection; preserve fault checks |
-| `ARCH-MODEL-COMP-03` | Maintained product code and protection | Onboarding validation, Doctor, generated wrapper and control; operators, CLI, planning and tests | Fresh admission at each mutation/repair/lock risk boundary | At the audited revision the generated Slurm journey normalized the same request four times before execution; ordinary run normalized in Doctor and again in control. The wrapper's duplicate standalone Doctor subprocess is now retired, while explicit request compatibility and Run-owned readiness remain | **Partially realized.** Current normalization/schema authority and deliberate re-admission survive; further consolidation remains conditional | Est.: files no growth; lines and repeated call edges lower; concepts/config/compat 0. Current cut removes one subprocess and one redundant batch export | Separate redundant work from TOCTOU defense; either collapse an approved command boundary or use one admitted transport that cannot become a second authority; re-admit after future repair and prove changed inputs fail closed at the last safe boundary |
+| `ARCH-MODEL-COMP-03` | Maintained product code and protection | Onboarding validation, Doctor, grouped control and lifecycle; operators, CLI, planning and tests | Fresh admission at each mutation/repair/lock risk boundary | At the audited revision the generated Slurm journey normalized the same request four times before execution. The wrapper and its duplicate validation path are now retired; one allocated grouped command retains deliberate profile, request, runtime/tool, storage, and lifecycle re-admission at their real boundaries. | **Partially realized.** Section 13.6 removes the duplicate composition path while preserving boundary re-admission; any further consolidation remains conditional. | Actual execution-profile cut is recorded in Section 13.6. | Separate redundant work from TOCTOU defense; re-admit after future repair and prove changed inputs fail closed at the last safe boundary. |
 | `ARCH-MODEL-COMP-04` | Maintained product code and protection | Inspection, lifecycle, task and reporting owners; recovery, validation and tests | No-follow stable canonical-record admission with owner-specific size, inode, destination, hashing and diagnostic rules | Multiple owners already call `inspection.admit_canonical_record` while retaining parallel higher-level identity binding and specialized readers | **Defer; evaluate candidate seam.** Final neutral owner/API/package remains Open; each semantic owner retains its unique checks | Est.: files no growth; lines and duplicate call edges lower; concepts/config/compat 0. Audit actual all zero | Map exact per-owner semantics and dependency cycles; share only proven intersection; preserve large-file behavior and fault/error contracts |
 | `ARCH-MODEL-COMP-05` | Maintained product code and protection | Lifecycle, task and reporting publication owners; inspection, recovery and fault tests | Create-exclusive durable bytes, directory fsync, transaction ordering, rollback and truthful terminal publication | Closely related low-level publication mechanics are implemented separately in the three transaction owners | **Defer; candidate consolidate primitive only.** Lifecycle/task/reporting remain separate semantic authorities; primitive owner Open | Est.: files no growth; lines lower; concepts/config/compat 0; low-level edges may converge without new semantic edge. Audit actual all zero | Prove byte-publication equivalence; retain signal/ownership/rollback/order/fault differences and receipt-last semantics |
 | `ARCH-MODEL-COMP-06` | Maintained product code and configuration | Doctor, onboarding, materialization and control; readiness, planning, validation and tests | Bind the reviewed fixed workflow profile and exact checkout identity | The same current-profile relative path is repeated in four owners | **Defer; candidate consolidate locator.** Current exact-profile and checkout checks survive; final profile-policy owner remains Open | Est.: files 0; lines and literal call edges lower; concepts/config/compat 0. Audit actual all zero | Decide profile/application policy; prove packaging and checkout behavior; avoid a facade that merely forwards the literal |
 | `ARCH-MODEL-COMP-07` | Maintained product code and policy/protection | Reporting boundary, resource policy, inspection, control and `Snakefile`; workflow, status, memory planning and tests | Closed report-kind roster, deterministic order, resources, transaction schemas and independent regeneration | Report kinds/count appear as a tuple, hard-coded `3`, workflow targets and validation assumptions across several owners | **Defer; candidate consolidate catalog.** Final catalog authority/package remains Open; reporting transactions retain semantic authority | Est.: files no growth; lines and repeated edges lower; concepts/config/compat 0. Audit actual all zero | Inventory all producers/consumers and dependency direction; avoid inspection/reporting cycle; prove order, memory, schema and regeneration parity |
-| `ARCH-MODEL-COMP-08` | Wrapper/compatibility path and maintained product code | Dashboard plus control/inspection and Snakemake text producers; operators and dashboard tests | Safe non-authoritative live presentation, scheduler selection, bounded reads, and historical log support | Dashboard parses human plan stdout, Snakemake stderr and legacy `sample_concurrency` text instead of a structured projection | **Defer; candidate replace then retire parsers.** Structured read-model owner remains Open; inspection-derived non-authority survives | Est.: files no growth; lines, call edges and at least one compatibility parser lower; concepts/config 0. Audit actual all zero | Decide advanced status boundary and historical support window; migrate callers/tests; prove Local/Slurm distinction and bounded-read behavior |
+| `ARCH-MODEL-COMP-08` | Wrapper/compatibility path and maintained product code | Dashboard plus control/inspection and Snakemake text producers; `make dashboard` and dashboard tests | Current-user scheduler observation and sanitized raw-stream access are the only unique operational needs; persisted EMRYS records remain status authority | The 1,985-line dashboard has no production importer, parses non-authoritative human text, duplicates 986 test lines, and hard-codes a roster incompatible with the current starter | **Mark stale and freeze.** Implement `OBS-02` independently; do not update or retire the dashboard during the campaign. Reconsider whole-surface retirement afterward. Manual scheduler accounting and raw streams survive as expert routes | Post-campaign retirement opportunity: replacement budget at most 250 product and 300 test lines would permit at least 1,751 net product/script and 686 net direct-test reduction. Audit actual all zero | Campaign completion plus explicit user approval for public-route retirement; then prove the applicable status and scheduler-observation boundaries |
 | `ARCH-MODEL-COMP-09` | Maintained product code | CLI composition, control, onboarding, launcher and owner commands; users, wrappers, automation and tests | Owner-specific actionable diagnostics and stable exit contracts | Similar exception-to-public-error projection patterns recur, but exact equivalence and caller dependence are not yet proved | **Defer pending inventory.** Each current owner remains authority until a genuinely shared projection is proved | Est.: files no growth; lines and edges may decrease; concepts/config/compat 0. Audit actual all zero | Inventory exact messages, exception types, exit codes and machine consumers; retain owner-specific context and failure ceilings |
-| `ARCH-MODEL-COMP-10` | Configuration/script/schema/documentation and compatibility | `configs/`, onboarding starter set, control/runtime/resource/launcher owners; scientists, operators, examples and tests | Scientific intent, site execution policy, inspectable defaults/sources, deterministic generated artifacts and compatibility | Twenty tracked config files and eight visible starter artifacts expose overlapping user, operator, generated, example and compatibility concerns without one classification | **Defer; classify then retain/consolidate/retire individually.** Existing owners survive until `CONFIG-01` and `OPS-01` decide authority | Est.: product files no growth; config files and public concepts lower; lines/edges likely lower; temporary compatibility path possible then retired. Audit actual all zero | Complete ownership/classification and external-caller review; preserve scientific visibility, safe override provenance and create-absent publication |
-| `ARCH-MODEL-COMP-11` | Wrapper/compatibility path | Dashboard helper/parser; dashboard callers and tests plus historical plan/log readers | Scheduler-candidate selection and explicitly supported historical dashboard input | `scheduler_candidate_ids()` is a three-line compatibility view; legacy `sample_concurrency` parsing duplicates newer text interpretation | **Defer; candidate retire after support review.** Current dashboard behavior survives until a structured replacement and retirement condition exist | Est.: files no growth; lines lower; concepts/config 0; edges lower; at least one compatibility path retired. Audit actual all zero | Search external callers; define history window; migrate tests/consumers; prove scheduler safety and rollback route |
+| `ARCH-MODEL-COMP-10` | Configuration/script/schema/documentation and compatibility | `configs/`, onboarding starter set, grouped control, runtime and execution-profile owners; scientists, operators, examples and tests | Scientific intent, site execution policy, inspectable defaults/sources, deterministic generated artifacts and compatibility | The audited split launcher/resource surface exposed one execution decision through parallel files, defaults, schemas, wrapper, and tests. | **Partially realized.** Section 13.6 consolidates current resources and placement into one profile, shrinks the starter to six visible artifacts including its manifest, and retires the wrapper/split examples without compatibility aliases. Scientific Project input, runtime, storage, and named-profile management remain Open. | Actual execution-profile cut is recorded in Section 13.6. | Preserve scientific visibility, safe override provenance, create-absent publication, and historical record admission in each later configuration slice. |
+| `ARCH-MODEL-COMP-11` | Wrapper/compatibility path | Dashboard helper/parser; dashboard callers and tests plus historical plan/log readers | No independent responsibility outside the stale dashboard | Scheduler selection and legacy parsers exist only inside that surface | **Freeze with the dashboard.** Do not update parser compatibility during the campaign; if post-campaign retirement is approved, remove it with the whole surface rather than preserving it separately | Included in `ARCH-MODEL-COMP-08`; audit actual all zero | Same post-campaign approval and proof gate as `ARCH-MODEL-COMP-08` |
 | `ARCH-MODEL-COMP-12` | Maintained product code and wrapper/compatibility path | `__main__.py` grouped composition and command adapters; all CLI users, automation, docs and public-contract tests | Stable public capability routing, arguments, exits and advanced escape hatches | A 711-line root composes ten top-level groups and interleaves ordinary/expert plumbing; duplication cannot be quantified before the public model is chosen | **Defer.** Current CLI remains authority; later migrate directly to selected owners and retire superseded routes without a permanent facade | Est.: files no growth; lines, concepts and call edges lower; config 0; temporary compatibility route only with owner/retirement. Audit actual all zero | Decide public nouns/capabilities; roster every caller; preserve exact contracts; prove parity before retiring old tree |
 | `ARCH-MODEL-COMP-13` | Documentation and compatibility | Quickstart, orchestration, launcher and role-journey documentation; scientists, operators, maintainers and support | Canonical safety, recovery, advanced inspection and evidence-ceiling guidance | Manual directory creation, runtime-profile redirection and dry-run-root transfer recur across local and Slurm journeys | **Defer; candidate relocate unique facts and retire superseded journey text.** Final subject owners retain exact contracts | Est.: documentation files/lines, public concepts and compatibility journeys lower; product/config/call edges 0. Audit actual all zero | Implement accepted interface first; map every unique rule and inbound link; update/retire old journeys in the same bounded migration |
-| `ARCH-MODEL-COMP-14` | Wrapper/compatibility path and protection | Resource policy and launcher configuration; CLI/config callers, packaging and migration tests | Fail closed on ambiguous retired `NORAD` filenames during rename compatibility | Equivalent legacy-filename guards occur in both owners | **Defer; candidate consolidate or retire only by migration policy.** Both guards survive until one final owner or proven end of support | Est.: files no growth; lines and duplicate edges lower; concepts/config 0; compatibility support unchanged until separately retired. Audit actual all zero | Decide rename/support policy; inventory distributions/callers; preserve rejection behavior; require explicit retirement evidence before deletion |
+| `ARCH-MODEL-COMP-14` | Wrapper/compatibility path and protection | Execution-profile admission; CLI/config callers, packaging and migration tests | Fail closed on ambiguous retired EMRYS/NORAD adjacent configuration | Split launcher/resource readers would preserve two architectures. | **Realized for current authoring.** One execution-profile owner rejects retired adjacent names; no launcher/resource compatibility reader or alias survives. Historical persisted records remain readable. | Actual compatibility reduction is recorded in Section 13.6. | Any later removal of the explicit fail-closed migration diagnostic requires a separate support-policy review. |
+
+#### Focused reduction and shell-disposition audit
+
+The 2026-08-28 audit at source revision `1abbf094` reviewed observability,
+immutable handoffs, repeated validation, tracked shell, generated shell, and
+their direct protection suites. It found 10,432 tracked product shell lines
+(8,754 `.sh` and 1,678 `.slurm`). The generated-wrapper template spans 143
+physical Python source lines and currently renders 121 shell lines.
+The estimates below are directional implementation budgets, not authorization;
+product and protection/test reductions remain separately reported.
+
+| Surface | Disposition and surviving authority | Directional reduction | Gate |
+|---|---|---:|---|
+| Same-process impossible-state and test-only seams in control, materialization, lifecycle, and inspection | **Retire.** Trust the sole admitted immutable producer; retain disk re-admission, canonical bytes, schema validation, and real mutation boundaries | 90–140 product; 10–30 tests | Low risk only after the slice records sole construction, no injection/mutation path, no distinct claim, and exact surviving authority |
+| Materialization-to-lifecycle handoff | **Consolidate duplicated exact handoff facts behind one admitted immutable boundary selected during implementation.** Retain mutex, filesystem re-admission, source/tool/storage checks, lock ownership, signal handling, and receipt-last publication | 110–170 product; 150–300 tests | Explicit approval because this changes an execution boundary; prove core-path and fault parity; no evidence deletion |
+| Repeated inspection receipt/task validation | **Consolidate conditionally behind the smallest admitted view selected during implementation.** Derive status and receipt comparisons without repeated reads; retain cumulative receipt arrays and all evidence records | 350–470 product, with additional test/I/O reduction to be measured | Explicit approval because blocker specificity and authoritative status validation are affected |
+| Dashboard and `make dashboard` | **Mark stale and freeze during the campaign.** Persisted EMRYS records remain authority, inspection owns the independent derived projection, and the dashboard receives no updates | Post-campaign opportunity of at least 1,751 net product/script and 686 net direct tests under the caps in `ARCH-MODEL-COMP-08` | Reconsider only after campaign completion; exact public-route removal still requires explicit approval |
+| Sixteen stage/utility `.slurm` wrappers | **Retire, not port.** The generated whole-Run scheduler route must preserve outer placement, module/site setup, allocation provenance, and prove the applicable Local/Slurm parity | 1,678 product; at least 2,402 dedicated tests | Explicit approval because these are documented manual routes; confirm external use and whole-Run scheduler parity |
+| Generated `run-in-slurm.sh` body | **RETIRE realized in Section 13.6.** Grouped Run control and the private Python transport own submission; one private stdin batch bootstrap remains **KEEP** for module initialization, scratch cleanup, and final `exec`. | Actual product, test, configuration, and compatibility reductions are recorded in Section 13.6. | Real scheduler/site parity remains Open; preserve submitter/profile/job binding, module environment, scratch cleanup, signal/exit propagation, and Python availability. |
+| Step 07, Step 08, and the Step 09 shell bundle | **Convert individually to existing Python admission/publication owners; keep the R scientific implementations.** No parallel shell compatibility owner | Respectively 600–750, 650–800, and 900–1,200 net product; direct test reductions measured per slice | Separate explicit boundary/parity approval for each; preserve exact inputs, command failure, immutable publication, validation, and terminal-record ordering |
+| Steps 00c, 05, and 06 plus shared shell libraries | **Keep for now.** Reconsider only after a smaller Python owner pattern is proven; retire shared functions as their last real caller migrates | Zero now | Do not create three bespoke line-for-line ports or matching Python helper APIs |
+| Retired `scripts/git_orchestration/` namespace | **Keep absent and finish the exact history-backed disposition.** Useful documentation validation already moved to its owner; do not add a permanent return-prevention guard for an implausible invariant | Avoids new guard/test surface | `TOOLING-01` remains Open until every former file/caller is accounted for; do not revive the namespace |
+
+The combined opportunities exceed 5,000 directional net product lines before
+the approval-gated evidence-I/O consolidation candidate. This is neither a
+quota nor permission to trade away guarantees: each bounded slice must replace
+the estimate with actual category-separated accounting and stop if its total
+surface does not fall.
 
 #### Model options reviewed and remaining decision order
 
@@ -1600,8 +1651,10 @@ oversubscription checks; create-exclusive publication, fsync and publication-
 last ordering; attempt mutexes, owned locks, signal/process-group behavior;
 dispatch substitution and resume-chain checks; derived inspection independent
 of Snakemake metadata; and direct-owner, adversarial, seeded-fault, recovery,
-fresh-clone, and synthetic end-to-end defenses all survive unless an
-implementation maps an equal-or-stronger replacement.
+fresh-clone, and synthetic end-to-end boundary defenses all survive unless an
+implementation maps an equal-or-stronger replacement. This does not preserve a
+redundant check whose only reachable state is a test-manufactured violation of
+an already-admitted immutable same-process value.
 
 No retained evidence deletion is proposed or authorized. Workflow attempts,
 terminal receipts, task start/attempt/verified records, reporting ledgers and
@@ -1738,11 +1791,14 @@ covering scientific boundaries, artifact integrity, recovery, and evidence.
 Mechanisms and environment-specific proof may differ.
 
 The first implementation boundary is now explicit: the current product has one
-scientific backend, local Snakemake, while the generated single-node Slurm path
-is an outer allocation/placement adapter. Successor Attempt executor provenance
-comes from the immutable Execution Plan; structured allocation provenance
-records Slurm job identity without affecting Run identity; direct execution
-records no scheduler job; and historical allocation records remain readable.
+scientific backend, local Snakemake, while one private single-node Slurm
+transport places the entire grouped Run-control operation inside an outer
+allocation. The former generated wrapper and separate launcher owner are
+retired. Successor Attempt executor provenance comes from the immutable
+Execution Plan; structured placement provenance records the admitted profile
+source and exact Slurm job identity without affecting Run identity; direct
+execution records no scheduler job; and historical allocation and Attempt
+records remain readable.
 A controlled planning/materialization proof now holds Run, Attempt context,
 and effective resource resolution constant while changing only direct versus
 larger admitted Slurm allocation. Canonical Analysis, Execution Plan, Run,
@@ -1750,8 +1806,10 @@ fixed files, dispatches, other Attempt files, and output directories remain
 byte-for-byte equal; only allocation provenance and its workflow-configuration
 digest differ. This is not allocation-sensitive effective-resource parity,
 distinct-Attempt outcome parity, real scheduler/site execution, runtime/module
-portability, failure/recovery or report-publication parity, or adoption of a
-named execution-profile model.
+portability, failure/recovery or report-publication parity. One explicit
+execution-profile format now combines resource declaration and placement, but
+a named profile registry, discovery/acceptance lifecycle, and final profile
+taxonomy remain open.
 
 One execution capability accepting a declared task and returning a structured
 result, with more than one application backend, remains a concrete proposal
@@ -1862,7 +1920,10 @@ caller migration, parity, owned temporary compatibility, and eventual
 retirement; and mapped equal-or-stronger protection before direct-owner,
 adversarial, seeded-fault, or synthetic end-to-end defenses are removed. The
 replacement defense may already survive elsewhere; removing redundancy does
-not require creating a duplicate test. Evidence levels remain distinct, so
+not require creating a duplicate test. A proven impossible same-process state
+may lose its redundant check and check-only test without replacement; high-risk,
+ambiguous, or directly user-facing removal remains approval-gated. Evidence
+levels remain distinct, so
 neither coverage nor a scientist-facing synthetic golden path proves scheduler,
 production, scientific-review, or biological readiness.
 
@@ -1902,10 +1963,14 @@ then present versions and readiness before selection. Snakemake remains an
 internal execution dependency, not a scientific authority or a configuration
 surface ordinary scientists must author.
 
-Execution profiles are a different axis. Proposed profiles include `local`,
-`cluster`, `cluster-debug`, `development`, and `production`. A profile may bind
-backend, resources, storage, and runtime selection. The exact profile taxonomy
-is open.
+Execution profiles are a different axis. The implemented v1 profile combines
+computational resources with direct or Slurm placement, uses a packaged direct
+default when no file is selected, and accepts an explicit profile path plus
+the existing admitted resource overrides. It does not select runtime
+provisioning mode, storage policy, or a second application backend. Proposed
+future names include `local`, `cluster`, `cluster-debug`, `development`, and
+`production`; a registry, discovery/acceptance lifecycle, storage location,
+and final taxonomy remain open.
 
 Containerization is an independent architecture decision, not part of guided
 setup. A managed image could contain Python, Snakemake, scientific tools, R,
@@ -1916,11 +1981,12 @@ requirements require a separate decision.
 
 ### 9.2 Transparent execution
 
-Ordinary users should be able to request a run without operating a SLURM
-wrapper or selecting submission mechanics. EMRYS may choose an admitted default
-from the execution profile, while an advanced user can explicitly select or
-inspect the backend. Automatic local-versus-SLURM selection versus explicit
-profile selection remains open.
+Ordinary users can now request a run without operating a SLURM wrapper or
+assembling launcher configuration. The grouped `run` and `resume` routes use
+the built-in direct profile by default or one explicitly selected profile; a
+Slurm profile causes exactly one outer submission and the allocated process
+runs the same local scientific backend. Automatic profile discovery or
+selection, named profiles, and the eventual role-aware surface remain open.
 
 The primary progress surface should use scientific milestones such as
 preparation, alignment, QC, candidate evidence, statistical testing, and report
@@ -2197,6 +2263,14 @@ opportunity it finds. Each row records:
 - the evidence for redundancy;
 - proposed disposition: retain, consolidate, retire, or defer;
 - the surviving authority;
+- for a protection, the trust boundary and risk class, whether the defended
+  state is reachable outside a test seam, and whether an independent invariant
+  remains;
+- for shell or generated shell, `KEEP`, `CONVERT`, or `RETIRE`, including the
+  shell-native responsibility and total product/test/caller/cross-language
+  effect;
+- for a touched retained operation, the `LOG-05` adoption, not-applicable, or
+  retiring disposition;
 - estimated and then actual change in files, lines, public concepts,
   configuration artifacts, call edges, and compatibility paths; and
 - preconditions, including caller migration, parity, evidence review,
@@ -2226,6 +2300,19 @@ An implementation slice closes only when it:
    concepts, and compatibility paths; and
 5. reports every remaining mutable exception and its owner and justification.
 
+If a retained applicable operation's human output or durable diagnostics
+change, `LOG-05` adoption is part of that same vertical slice. The slice may not
+add an interim logger, output convention, wrapper-owned attempt, or parallel
+shell/Python implementation. A touched shell surface closes only when its
+recorded `KEEP`, `CONVERT`, or `RETIRE` disposition is realized or explicitly
+deferred with a reason and trigger.
+
+Regardless of whether a mechanism is classified as a protection, any
+high-risk, directly user-facing, execution-boundary, or evidence-validation
+retirement, consolidation, or conversion requires the user's explicit
+approval. This implementation gate is independent of the stricter retained-
+evidence deletion gate below.
+
 No category offsets another. Deleting tests, documentation, configuration, or
 evidence cannot make product growth appear net-negative. Generated files,
 runtime environments, vendored bulk, and moving logic into configuration do
@@ -2235,9 +2322,15 @@ or an extra facade beside the old authority fails the compression requirement
 even if counts decline. Temporary growth remains growth until its owner,
 retirement condition, and removal are recorded.
 
-Protection retirement follows `AC-GUARD-005`: the slice maps the invariant and
-shows the equal-or-stronger defense that survives, which need not be newly
-created. Evidence retirement follows a separate gate. The proposal must name
+Protection retirement follows `AC-GUARD-005`. External-input, filesystem,
+concurrency, crash, recovery, persistence, evidence, and supported
+public-behavior boundaries require a mapped equal-or-stronger surviving
+defense. A low-risk check and its check-only test may retire without replacement
+only when the slice proves that the state is impossible outside the test seam,
+has one admitted immutable producer, has no supported injection or mutation
+path, and supports no distinct failure mode or claim. High-risk, ambiguous, or
+directly user-facing protection removal requires explicit user approval.
+Evidence retirement follows a separate gate. The proposal must name
 the exact artifacts or bounded class; claims and recovery paths supported;
 producers and consumers; retention requirement; redundancy basis;
 discoverability, verification, and evidence-level effects; and rollback. The
@@ -2281,6 +2374,12 @@ admission and closure, and the
 operation behavior. Transitional compatibility support does not satisfy final
 retained-operation coverage, and retiring surfaces do not advance closure.
 
+Every implementation slice that touches a retained applicable operation now
+records its `LOG-05` disposition. A slice changing that operation's human output
+or durable diagnostics adopts the foundation in the same vertical change; it
+does not add an interim convention for later replacement. Operations proven
+not applicable or retiring are recorded as such and do not become adopters.
+
 This resolves only the `LOG-05` migration boundary within `AC-DEC-020`. It does
 not settle any other campaign ordering or interface decision.
 
@@ -2309,21 +2408,68 @@ The sole new boundary value is one immutable 64-character aggregate written once
 | Compatibility paths | `0` | `0`; direct three-pass path retained |
 | Persisted mutable state | `0` | `0`; one producer-lifetime immutable value only |
 
-### 13.5 Bounded slice record: safe Run next-action guidance
+### 13.5 Bounded slice record: Run status and recovery guidance
 
 | Surface/category | Finding | Disposition and surviving authority | Preconditions or retirement condition |
 |---|---|---|---|
 | Maintained product: aggregate `RunInspection` projections | `state`, `resume_available`, and `local_pipeline_complete` have no production callers and duplicate the separated status domains. | **Retire.** Current callers use integrity, Attempt outcome, Results, reporting, and recovery directly. | All direct callers migrated; focused lifecycle and presentation coverage retained. |
 | Maintained product: inspection guidance | The separated domains identify a safe action, but the existing public inspection leaves the operator to infer it. | **Retain one projection.** The existing inspect route prints one deterministic next action and fails closed for blockers. | No new command, schema, backend, repair operation, or persisted authority. |
+| Maintained product: scientific progress | Internal Step identities are already admitted persisted facts, but exposing each task by default leaks orchestration detail. | **Project five public milestones.** Preparation, alignment/sample processing, QC evidence, candidate evidence, and statistical/context processing derive only from admitted task records. Reporting remains downstream and separate; an unmapped admitted Step fails closed. | No workflow stage, status store, schema, backend, dashboard, or mutable progress authority is added. |
+| Maintained product: elapsed time | Summing resumed work or estimating completion would manufacture semantics absent from retained evidence. | **Project one bounded duration.** A running Attempt uses its creation time and the current clock; a terminal Attempt uses its own creation and receipt-finish times. Missing, mixed, or negative boundaries report unavailable. Predecessor durations are never summed and ETA is never inferred. | Attempt and receipt records remain the only persisted boundaries. |
+| Public presentation | One detail level either overwhelms ordinary users or withholds useful operator evidence. | **Tier the existing route.** Normal shows public status, milestones, Results, reporting, blockers, recovery, next action, and result links; verbose adds milestone counts, Run/Attempt placement, and transaction aggregates; debug adds exact admitted receipt, engine, task, task-attempt, and stream references. | One `--detail` selector only; no new command, API, role registry, or alternate authority. |
 | Compatibility/evidence | Receipt-v1 and the retained CI E2E summary v1 use `local_pipeline_complete` as historical format evidence. | **Retain unchanged.** Neither field is status authority for current product decisions. | Any future deletion requires exact evidence review and separate explicit approval. |
-| Protections | Aggregate assertions obscure which authority blocked or completed a Run. | **Consolidate.** Existing fault/lifecycle tests assert the owning domain; one compact action table and the public inspect seam protect presentation. | No direct-owner, fault, lifecycle, or E2E defense class is removed. |
-| Deferred UX | Milestones, elapsed time, and role-aware progressive disclosure require broader presentation decisions. | **Defer to `OBS-02`.** | Do not grow this slice into a status API or interim public model. |
+| Protections and redundant inspection state | Aggregate assertions obscure which authority blocked or completed a Run. Inspection also retained unused copies of records, paths, blockers, and identifiers. | **Consolidate projections, retain evidence re-admission.** Existing fault/lifecycle tests assert the owning domain. Five unused projections and one internal export retire. Independent review confirmed that the ledger's second semantic admission protects transitive evidence against concurrent mutation, so it remains alongside task-start admission, reference rechecks, exact start/origin binding, and verified-file concurrency detection. | No direct-owner, trust-boundary, fault, lifecycle, or E2E defense class is removed; retained evidence is unchanged. |
+| `LOG-05` | Read-only inspection neither starts work nor owns a durable diagnostic lifecycle. | **Not applicable to this operation.** Do not create an application Attempt or log merely to read persisted state. | `LOG-05` remains Open for other retained applicable operations and parity. |
 
-Closeout: maintained product Python two existing files, `+25/-36`, net `-11`;
+Initial next-action cut closeout: maintained product Python two existing files, `+25/-36`, net `-11`;
 protections/tests three existing files, `+100/-31`; documentation five files,
 `+34/-13`; configuration/schema/workflow and retained evidence zero;
 one inspect output line added and three direct Python accessors retired; receipt-v1
 and CI E2E summary v1 unchanged; no compatibility path or mutable state added.
+
+`OBS-02` completion increment before commit: maintained product Python two
+existing files, `+166/-56`, net `+110`; protections/tests three existing files,
+`+125/-5`; documentation three existing files, `+23/-8`;
+configuration/schema/workflow and retained evidence zero; one optional selector on
+the existing inspect route; five unused Python projections and one internal
+export retired while high-risk semantic evidence re-admission remains; no compatibility path, evidence deletion,
+status store, backend, dashboard change, application log, or mutable state added.
+The user approved this permanent net `+110` maintained-product exception on
+2026-08-28; the existing control and inspection owners retain the surface.
+
+### 13.6 Bounded slice record: unified execution profile and Run placement
+
+This approved cutover replaces the split launcher/resource/wrapper surface with
+one admitted execution profile and one private whole-Run Slurm transport. It
+also adopts the `LOG-05` foundation for retained `run` and `resume` execution.
+Local Snakemake remains the only scientific backend.
+
+| Surface/category | Finding | Disposition and surviving authority | Preconditions or retirement condition |
+|---|---|---|---|
+| Maintained product: launcher, resource, and Run-control owners | A 1,081-line launcher owner, a generated wrapper, separate launcher/resource defaults, and grouped control divided one execution decision across parallel paths. | **Consolidate and retire.** `execution_profile.py` owns immutable profile admission, `slurm_submission.py` owns the private one-submission transport, and grouped control owns run/resume behavior. `launcher_config.py` and its schema/defaults are retired. | Direct and Slurm planning parity, exact profile/source binding, one scheduler submission, and current caller migration. |
+| Public configuration and compatibility | Operators previously assembled two adjacent files and a wrapper. | **Replace.** A built-in direct profile is the default; `--execution-profile` selects one explicit combined profile. The starter contains `emrys.execution.yaml`. Retired adjacent launcher/resource names fail closed instead of invoking a shadow compatibility implementation. | Historical Run, Attempt, and allocation records remain readable; no alias or dual authority survives. |
+| Shell | The generated `run-in-slurm.sh` made users and tests carry cross-language control logic. | **RETIRE** the generated wrapper. **KEEP** only the private minimal batch bootstrap for module initialization, private scratch cleanup, and final `exec`. The sixteen owner-local stage/utility `.slurm` scripts are untouched and **DEFERRED** to their own caller-complete slices. | Real scheduler/site behavior and the deferred scripts remain open; no dashboard change. |
+| Protections/tests | Launcher-only tests repeated policy now admitted by profile, transport, control, and lifecycle owners. Some same-process re-admission and frozen-dataclass tests defended impossible states. | **Consolidate.** Preserve external-input, no-follow filesystem, environment scrubbing, scheduler-result, source/profile binding, allocation/placement, signal, recovery, receipt-last, and historical-read defenses in their final owners. Retire launcher-only and check-only tests with the removed paths. | No evidence oracle, receipt, log, recovery record, scientific protection, or supported external-boundary defense is deleted. |
+| `LOG-05` | Retained run/resume execution lacked one concise application-attempt log and milestone surface. | **ADOPT.** Run/resume execution owns one protected non-authoritative application log, terminalizes preflight failures/interruption, reports owned lock/recovery paths, and cannot change receipt or exit outcome after log initialization. Scheduler submission emits only its machine receipt; the allocated Run process owns the application log. | Broader operation adoption and role-aware scientific progress remain open under `LOG-05`/`OBS-02`. |
+| Documentation | The legacy launcher regression transcript names retired files and commands after its live safeguards moved to owner contracts, tests, CI, the runbook, and configuration guide. | **RETIRE** `LOCAL_PILOT_LAUNCHER_TEST_PLAN.md`; Git history preserves the non-authoritative transcript. `ORCHESTRATION_READINESS.md` remains the sole open `DOC-05` transition source. | This is stale-document retirement, not retained-evidence deletion. |
+| Mutable state | Placement and runtime mechanics previously leaked across configuration and wrapper state. | Run remains immutable. Computational declaration remains Run-bound; profile source, realized allocation, placement, and scheduler job ID are immutable Attempt-local facts. Application-log state, lifecycle locks/transactions, external scheduler queue state, and private scratch remain tightly owned mutable exceptions. | No Attempt may alter or reconstruct Run; reporting remains default-on and downstream rather than a semantic stage. |
+
+**Category-separated closeout from `1abbf094`:**
+
+| Category | Actual delta and disposition |
+|---|---|
+| Product implementation | Twelve Python owner files, `+1496/-1704`, net `-208` lines. Two focused owners replace the launcher monolith, so the approved responsibility split adds one net maintained product file while materially reducing product lines and eliminating the parallel launcher authority. |
+| Protections/tests | Twenty-one test/documentation-gate files, `+2104/-2036`, net `+68` lines. Launcher-only and impossible-state checks retire; final-owner external, filesystem, scheduler, lifecycle, recovery, persistence, and logging defenses remain. |
+| Configuration/schema/workflow | Fourteen files, `+452/-584`, net `-132` lines and two fewer maintained files: five added execution-profile, default, and schema owners replace seven split examples, defaults, and launcher-schema paths; the two remaining files are updated configuration/schema guides. |
+| Documentation | Eighteen files, `+700/-763`, net `-63` lines. Current owner, operator, onboarding, campaign, and matrix text replaces wrapper/config-split guidance; the stale launcher transcript retires. |
+| Retained evidence | `0`; no evidence was added, rewritten, moved, or deleted. Historical persisted formats remain readable. |
+| Public concepts/interfaces | One explicit execution-profile artifact/selector replaces the generated wrapper, separate launcher/resource artifacts, and launcher-specific control surface. Run/resume gain concise `LOG-05` milestones and durable log discovery; no second backend, scheduler, runtime mode, named-profile registry, or new scientific noun is added. |
+| Compatibility paths | The generated wrapper and split current configuration paths retire without aliases; retired adjacent filenames fail closed. Historical Run, Attempt, allocation, and receipt formats remain admitted. |
+| Mutable product state | No Run mutation is added. Attempt placement is immutable provenance; only the existing bounded lifecycle state plus the non-authoritative application log, scheduler queue, and private scratch are mutable. |
+
+Focused local evidence is recorded in the findings matrix. Long aggregate,
+fresh-clone, real-tool, and scheduler/site validation remains CI or site work;
+none is inferred from the focused local checks.
 
 ## 14. Measurement plan
 
@@ -2398,14 +2544,14 @@ semantic field-and-authority portion:
 | `AC-DEC-002` | Which names form the stable public CLI? | setup/init, validate/check/doctor, status/resume, config, inspect/explain/debug |
 | `AC-DEC-003` | How are Doctor diagnosis and repair divided? | default read-only diagnosis plus explicit `--fix`, dedicated repair command, or setup-owned mutations; repair provenance and safety |
 | `AC-DEC-004` | What is the user-authored scientific schema? | project.yaml versus analysis.yaml; embedded samples versus TSV; configuration evolution |
-| `AC-DEC-005` | What are the exact merge semantics within the ratified inspectable effective-value model? | Exact defaults/site/project/CLI order and list/map/null semantics; every effective value and source remains inspectable, and only owner-defined safe values are overrideable |
-| `AC-DEC-006` | How are runtime and execution choices represented? | Managed/Site/Explicit runtimes; local/cluster profiles; explicit versus automatic backend selection. External mechanisms remain behind owned boundaries and supported backends owe equivalent declared guarantees. |
+| `AC-DEC-005` | What broader merge semantics remain beyond the implemented execution-profile boundary? | Current execution precedence is packaged defaults, one explicitly selected closed fragment, then owner-defined CLI resource overrides, with source/effective provenance retained. Site/project/scientist configuration precedence and broader list/map/null semantics remain Open. |
+| `AC-DEC-006` | How are runtime and future named execution choices represented? | One explicit file-bound direct/Slurm execution profile is implemented and runtime remains separate. Managed/Site/Explicit runtime modes, named profile registry/discovery, and any future automatic site selection remain Open. External mechanisms stay behind owned boundaries and supported backends owe equivalent declared guarantees. |
 | `AC-DEC-007` | Is a supported managed container/environment accepted? | Scheduler, storage, architecture, security, licensing, updates, native escape hatch, image and tool provenance |
 | `AC-DEC-008` | What is the minimum useful operation/Stage representation? | Name, methods, lifecycle states, typed contracts, granularity, discovery, and migration. The boundary is already constrained to remain thin, preserve functional/scientific ownership, and avoid a generic framework. |
 | `AC-DEC-009` | Which repeated policy decisions deserve shared authorities? | Inventory input, validation, runtime, storage, publication, resource, and execution decisions; decide final authorities, package/service placement, configuration inputs, return/error contracts, defaults, safe overrides, precedence, compatibility, consolidation order, and migration. Every decision already requires one authority, but shared centralization must prove net reduction and avoid empty wrappers. |
 | `AC-DEC-010` | What artifact-lifecycle vocabulary and owner shape are justified? | Candidate, validation, admission, publication, commit, immutability, evidence, and rollback; generalized versus class-specific ownership; APIs, schemas, manifests, receipts, immutability mechanisms, external/large artifacts, Run Bundle/report-derived relationships, cleanup, recovery, and representative migration. Lifecycle/admission is already distinct from physical storage. |
 | `AC-DEC-011` | How are the selected Analysis/Execution-Plan/Run/Attempt semantics realized? | Immutable canonical Analysis/Execution-Plan/Run records, versioned schemas, Run-last persistence, current-path migration, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, and temporary-projection retirement are implemented. Public Project/Results representation, role-aware API/package placement, generalized backend and policy boundaries, remaining public/campaign migration, compatibility duration, and the rest of the implementation retirement roster remain Open. Mutable object state and canonical bytes cannot compete; coordination cannot absorb lower authorities or become a god object. |
-| `AC-DEC-012` | What public Run, Attempt, scientific, and reporting states are useful and truthful? | Resolved for the first read-only surface: Run integrity is `valid`/`blocked`; Attempt outcome is `not_started`/`running`/`succeeded`/`failed`/`interrupted`/`blocked`; scientific Results and reporting are independently `incomplete`/`complete`/`blocked`; recovery is a separate availability fact. The superseded aggregate Python accessors are retired; receipt-v1 remains historical schema evidence. Higher-level progress vocabulary remains with `OBS-02`. |
+| `AC-DEC-012` | What public Run, Attempt, scientific, and reporting states are useful and truthful? | Resolved for the supported read-only surface: Run integrity is `valid`/`blocked`; Attempt outcome is `not_started`/`running`/`succeeded`/`failed`/`interrupted`/`blocked`; scientific Results and reporting are independently `incomplete`/`complete`/`blocked`; recovery is a separate availability fact. Five scientific milestones use `not applicable`/`incomplete`/`complete`/`blocked`; reporting is not a milestone. Current/latest Attempt elapsed time uses only that Attempt's retained boundaries, with no resume summation or ETA. Normal/verbose/debug disclosure is presentation, not authority. The superseded aggregate Python accessors are retired; receipt-v1 remains historical schema evidence. |
 | `AC-DEC-013` | What is the Run Bundle contract? | Layout, portability, large artifacts, external references, redaction, archival, regeneration, sharing |
 | `AC-DEC-014` | How are the ratified downstream-reporting semantics represented? | Partially resolved: read-only scientific Attempt/Results state, reporting state, recovery, and verified report locations are independent while receipt-v1 remains historical compatibility evidence. Exact opt-out/regeneration interfaces, ledger adoption/repair, retry and exit presentation, scientific/evidence/operations views, receipt organization, immutable artifacts versus derived views, and canonical location remain Open. Reporting remains downstream, default-on for a full run, disable-able, and independently regenerable without invalidating science. |
 | `AC-DEC-015` | What replaces the current “demo” surface? | Neutral synthetic golden path; whether “demo” remains a command, test-only term, or is retired completely |
@@ -2479,19 +2625,19 @@ defined in Section 13.1; evidence deletion cannot be implied by promotion.
 | `AC-SLICE-02` | Ratified responsibility clusters, three separate dependency graphs, forbidden authority transfers, a current-owner crosswalk, and a fast Python source-boundary ratchet for exact CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open |
 | `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. Successor Run authority, Run-last persistence, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, temporary-projection retirement, separated read-only status, a single supported grouped-CLI Run-control boundary, immutable current request-to-Analysis intake, and Execution-Plan-derived successor Attempt executor provenance are implemented. Public Project/Analysis/Results representation and control, generalized backend/policy boundaries, and remaining public/campaign migrations remain Open, so the campaign card remains Open. |
 | `AC-SLICE-04` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` |
-| `AC-SLICE-05` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across direct and Slurm-placed realizations of each supported backend | Current local-backend/outer-Slurm boundary, structured Attempt allocation provenance, and controlled planning/materialization parity with equal effective resource resolution are implemented. Allocation-sensitive effective-resource, distinct-Attempt outcome, real scheduler/site, runtime/module, failure/recovery, and report-publication parity plus any additional backend remain Open with `OPS-02` |
+| `AC-SLICE-05` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across direct and Slurm-placed realizations of each supported backend | One file-bound profile and grouped `run`/`resume` route now select direct or whole-Run Slurm placement around the same one-host Snakemake backend. Private Slurm transport submits once and records Attempt-local placement provenance; the generated wrapper is retired. Controlled planning/materialization parity is implemented. Real scheduler/site, allocation-sensitive, distinct-Attempt outcome, runtime/module, failure/recovery, and report-publication parity plus any additional backend remain Open with `OPS-02`. |
 | `AC-SLICE-06` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` |
 | `AC-SLICE-07` | Define artifact-class lifecycle/admission requirements, decide whether any shared lifecycle or distinct Artifact Store is justified, and migrate one path only if the selected design requires a boundary change | New slice; supports `ARCH-01` |
-| `AC-SLICE-08` | Define named execution profiles independently of Managed/Site/Explicit runtime modes | Backend semantics and Attempt-local allocation provenance are separated; profile taxonomy, persistence, precedence, selection, and public surface remain Open with `OPS-01` and `RUNTIME-01` |
+| `AC-SLICE-08` | Define named execution profiles independently of Managed/Site/Explicit runtime modes | One v1 file-bound format, built-in direct default, explicit selector, current precedence, and source/effective provenance are implemented. Run-bound resources, Attempt-local placement, and the separate runtime profile remain distinct. Named taxonomy, registry/discovery, higher-level management, storage/runtime integration, and future profile commands remain Open with `OPS-01` and `RUNTIME-01`. |
 | `AC-SLICE-09` | Provide expert explain/inspect interfaces for effective plan, run, artifact, and evidence | New slice or expansion of `OPS-02`/`CONTROL-01` |
-| `AC-SLICE-10` | Define high-level status and safe resume/recovery UX over existing fail-closed internals | Separated status, recovery gating, and deterministic safe next-action guidance are implemented. Milestones, elapsed time, and remaining role-aware presentation stay Open with `OBS-02`. |
+| `AC-SLICE-10` | Define high-level status and safe resume/recovery UX over existing fail-closed internals | **Complete.** Separated status, recovery gating, deterministic next-action guidance, five persisted-authority scientific milestones, current/latest Attempt elapsed time, and normal/verbose/debug progressive disclosure are implemented on the existing read-only inspect route. Reporting remains separate; no ETA, status store, dashboard dependency, or inspection-side write is introduced. `OBS-01` and `LOG-05` retain their broader distinct outcomes. |
 | `AC-SLICE-11` | Define a portable canonical Run Bundle contract | New slice; coordinates with `FILESYSTEM-01` and `RESULTS-01` |
 | `AC-SLICE-12` | Formalize scientific, evidence, and operational report purposes and navigation | New slice or expansion of `REPORT-03` and `RESULTS-01` |
 | `AC-SLICE-13` | Deliver a supported fresh-install-to-valid-synthetic-result golden path after ratifying its capability order | New cross-cutting outcome; coordinates with setup, runtime, Doctor, run, results, and `CLEAN-01` |
 | `AC-SLICE-14` | Establish reproducible UX, operational, and separate product/protection/configuration-documentation/retained-evidence baselines and ratify their interpretation methods and campaign success measures | New aggregate-measurement slice; per-slice accounting starts immediately and coordinates with `REVIEW-UX-03` and `ARCH-01` |
 | `AC-SLICE-15` | Audit the Steps 07–09 statistical contract | New scientific-review slice; not architecture evidence |
 | `AC-SLICE-16` | Build independent numerical oracles for Steps 08 and 09 | New scientific-validation slice |
-| `AC-SLICE-17` | Retire duplicated lifecycle, validator, infrastructure, adapter, or compatibility paths after each replacement is proven; classify dual-purpose fixtures, goldens, logs, receipts, reports, and dated records before deletion | Multiple bounded deletion slices; never one unbounded cleanup task, and exact evidence deletion requires separate user approval and commit |
+| `AC-SLICE-17` | Retire duplicated lifecycle, validator, infrastructure, adapter, or compatibility paths after each replacement is proven; classify dual-purpose fixtures, goldens, logs, receipts, reports, and dated records before deletion | The generated wrapper, launcher owner/schema/defaults, split resource/launcher examples/defaults, and dedicated launcher tests are retired by Section 13.6. The private minimal batch bootstrap remains; sixteen owner-local `.slurm` paths stay deferred. Further reductions remain separate bounded slices, and exact evidence deletion still requires separate user approval and commit. |
 | `AC-SLICE-18` | Rewrite navigation and documentation around scientist/operator/developer journeys | Expansion or slicing of `DOC-01`; use the accepted `DOC-02`/`DOC-03` traces and coordinate with `DOC-04`–`DOC-05` retirements |
 | `AC-SLICE-19` | Define Doctor repair ownership, supported mutations, preview/reporting, and safety contracts | Expansion of `DOCTOR-01` reflecting the explicit override |
 
@@ -2514,9 +2660,9 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `ARCH-MODEL-DECISION-01` | Completed direction decision: model C; public `Project -> Analysis -> Run -> Results`; progressively disclosed Attempt; internal inspectable Execution Plan; explicit Run-versus-Attempt change boundary; reporting remains downstream and identity-neutral. |
 | `ARCH-MODEL-FIELDS-01` | Completed semantic decision package: exact identity-bearing fields and digest composition; relocation, formatting, labels, order, and content rules; symbolic resource/Attempt envelope; one logical authority per admitted boundary; direct compatibility/retirement direction; Run-admission recovery ownership; and separate Attempt, Results, evidence, and reporting status domains. The first internal successor representation and current-path migration are now implemented; broader product realization remains Open. |
 | `CONTROL-01` | Realize the ratified compact public model and progressive disclosure. Immutable current request-to-Analysis intake, successor Run authority, separated status, and one supported grouped-CLI Run-control boundary are implemented; shared mutable normalization views, the duplicate direct Python planning surface, and the temporary execution projection are retired. Public Project/Analysis/Results representation and control, progressive disclosure, and remaining public migration remain Open. |
-| `CONFIG-01` | Current request-to-Analysis admission now freezes authored/profile/construction bytes and Analysis authority without choosing the future Project representation; scientific versus execution versus evidence ownership, one scientist-facing definition, generated normalized artifacts, and schema alternatives remain open |
-| `OPS-01` | Small operator-configuration surface; every effective value and source is inspectable and only explicitly safe owner-defined values are overrideable; exact interfaces, merge semantics, and named-profile model remain open |
-| `OPS-02` | The grouped CLI is the sole supported Run-control surface and its three controlled-runtime forwarding routes share one adapter. The Slurm wrapper now performs request compatibility then delegates to that Run path instead of repeating Doctor; it remains outer placement around the same local backend. Direct and Slurm placement now share an exact controlled planning/materialization contract when effective resource resolution is equal. The broader small role-aware CLI, command partitioning/order, scheduler-selection behavior, allocation-sensitive and real placement outcome parity, and stable advanced inspection/override/debug routes remain open |
+| `CONFIG-01` | Current request-to-Analysis admission remains internal. The operator path now collapses separate launcher and resource files into one optional execution profile; omission selects packaged direct defaults and admitted CLI resource overrides have highest current precedence. Run-bound resources, Attempt-local placement, and the separate runtime profile remain distinct and inspectable. One scientist-facing Project definition and generation of remaining scientific/runtime inputs remain Open. |
+| `OPS-01` | The current operator surface is one optional closed execution-profile file plus explicit resource overrides, with implemented current precedence and source/effective provenance. Named profiles, discovery/registry, broader site/project precedence, storage/runtime integration, and the final safe override roster remain Open. |
+| `OPS-02` | Grouped `run`/`resume` now select direct or whole-Run Slurm placement from the admitted profile. Slurm submits once through a private transport and re-enters the same one-host backend; the generated wrapper is retired. Dry-run is no-write/no-submit, while execute emits exact scheduler receipt paths. Real scheduler/site and allocation-sensitive outcome parity, broader command simplification, progress/status, and stable expert routes remain Open. |
 | `OPS-03` | Inline/generated program inventory, extraction of substantive reusable logic, and removal of operator dependence on helper scripts |
 | `OPS-04` | Replace “local pilot” with a domain name that remains accurate beyond one execution context |
 | `SETUP-01` | Generate structural input manifests while refusing to invent pairing, strata, conditions, cohorts, or other biological meaning |
@@ -2524,18 +2670,18 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `SETUP-03` | Guided project creation, safe owned directories, generated configuration, validation, and no secret or biological invention; not containerization |
 | `RUNTIME-01` | Tiered runtime provisioning and admission; Managed/Site/Explicit are proposed labels; complete qualification includes the active internal workflow engine/Snakemake where applicable and remains separate from execution profiles |
 | `DOCTOR-01` | Project-aware readiness capabilities, actionable failures, qualified internal workflow-engine dependency, debug escape hatch, and the explicit-repair override with bounded mutation rules; exact command partitioning remains open |
-| `RUN-03` | The current path now constructs and commits immutable successor Run authority before allocation/Attempt, admits it directly through workflow/task boundaries, binds reporting inputs to their origin Attempt, and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. Successor Attempt executor provenance comes from that immutable plan, while structured direct/Slurm allocation provenance remains Attempt-local; controlled placement changes with equal effective resource resolution leave Run and non-placement materialization bytes unchanged. The coherent public one-command journey, allocation-sensitive and real placement/outcome parity, generalized executor/policy realization, and remaining public migration remain Open. |
+| `RUN-03` | The current path constructs and commits immutable successor Run authority, admits it through workflow/task boundaries, binds reporting inputs to their origin Attempt, and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. The same grouped surface now owns direct and whole-Run Slurm realization without a generated wrapper. Computational declaration may affect Run identity; profile location/raw bytes, placement, allocation, scheduler job ID, logging, and transport state remain Run-neutral Attempt facts. The broader one-command journey, real placement/outcome parity, generalized realization, report opt-out/regeneration, and remaining public migration remain Open. |
 | `IDENTITY-01` | Successor Runs now use the selected domain-separated digest over relocation-independent Analysis and Execution-Plan identities, with historical Runs preserved through the version-aware reader and no successor execution projection. Ordinary public exposure, progressively disclosed Attempt identity, and remaining public migration remain Open. |
 | `FILESYSTEM-01` | Automatic predictable directory creation, one discoverable result surface, and no hidden report root; Project/inputs/runs and Run-Bundle layouts remain proposed |
 | `CONTAINER-01` | Independent managed-container/environment decision without assuming final runtime labels; institutional/native/advanced coexistence, image contents and digest, scheduler/storage/security/licensing/update contracts |
 | `REVIEW-UX-03` | Scientist, advanced scientist, operator, automation, and developer journeys; progressive disclosure; cognitive-load and golden-path baseline |
 | `LOG-03` | Durable complete attempt logging remains infrastructure while concise output becomes the default role-appropriate surface |
-| `LOG-05` | Scientific milestone language, actionable failures, and normal-command adoption |
+| `LOG-05` | Grouped `run`/`resume` execution is the first production adopter: one compute-side operation owns one protected application attempt; valid dry-run and scheduler submission own none. Bounded failures identify the durable log and owned recovery paths, while post-open logging degradation cannot change execution, evidence, recovery, or exit. Other retained operations and required parity remain Open. |
 | `OBS-01` | Remove engine, owner, transaction, and low-value noise from the primary view while retaining durable detail |
 | `OBS-02` | High-level scientific progress, public run status, elapsed time, completion/failure, and links to recovery/inspection |
 | `ANALYSIS-01` | Stop/reuse through the Step 06 boundary and launch separately identified cohort, subset, sensitivity, or downstream work |
 | `ANALYSIS-02` | Collaborator-extensible modules with typed scientific contracts; scientific algorithms, assumptions, interpretation, and review-relevant implementation remain visible. The lightweight extension mechanism is open within the binding prohibition on a mandatory universal Stage hierarchy, registry, workflow language, or second scheduler |
-| `ARCH-01` | Consumes the completed invariant, responsibility, audit, model, and semantic prerequisites plus successor Run-authority and execution-projection-retirement cutovers. Every slice performs the owner/caller/compression/mutation audit and category-separated closeout in Section 13.1. Public application/operation, generalized execution/policy/identity/artifact APIs, remaining migrations, Artifact Store decision, package realization, and facade use remain just-in-time choices. Bounded migration, immutable-by-default boundaries, eventual retirement, equal-or-stronger mapped protection, and separate approval for exact evidence deletion remain binding. |
+| `ARCH-01` | Consumes the completed prerequisites and current vertical cutovers. Section 13.6 realizes one execution/configuration boundary: split launcher/resource configuration and the generated wrapper retire in favor of one execution-profile owner, one private Slurm transport, and grouped Run control. Run remains immutable, placement/diagnostics remain Attempt-local, and no second backend, scheduler, or facade is introduced. Public application/operation, policy, identity, artifact/storage, package, and remaining migration work stays Open under the Section 13.1 protocol. |
 | `REPORT-03` | Primary-scientific-findings hierarchy with evidence and operational detail progressively disclosed |
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |
 | `RESULTS-01` | One discoverable results surface and coordination with the proposed Run Bundle and Artifact Store concepts without preselecting their ownership or layouts |
@@ -2543,10 +2689,10 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `DOC-02` | Completed repository-wide documentation disposition and authority cutover; bounded migration and retirement now remain under completed `DOC-03`, open `DOC-04`–`DOC-05`, `CLEAN-01`, and `CLEAN-02` |
 | `DOC-03` | Completed source reconciliation and retirement of the stale future-architecture, pipeline-plan, question-index, and future-diagram surfaces without settling the final architecture-document set; the [durable trace](../design/decisions/repository-and-delivery.md#doc-03-source-to-destination-trace-2026-08-25) lives in the repository-and-delivery decision record |
 | `DOC-04` | Reconcile every handoff section, preserve unique dated evidence and durable recovery facts without promotion, discard blocker/takeover prose, and retire the rolling handoff |
-| `DOC-05` | Consolidate useful orchestration-admission and launcher safeguards into live owners, discard stale transcripts, and retire both transition sources |
+| `DOC-05` | The launcher transition plan is retired after its current safeguards move to execution-profile, transport, onboarding, package, contract, test, CI, runbook, and configuration owners. `ORCHESTRATION_READINESS.md` still requires its separate consolidation and retirement, so the card remains Open. |
 | `BACKLOG-01` | Matrix cutover remains a discrete task; this campaign does not silently create another permanent backlog authority |
 | `DOC-TOOL-01` | Preserve useful documentation validation in a correctly named owner while removing obsolete task-registry coupling |
-| `TOOLING-01` | Verify the now-empty generic Git-orchestration namespace against history and callers, then guard its retired paths from returning |
+| `TOOLING-01` | Complete the exact former-file/caller history audit for the absent generic Git-orchestration namespace; useful validation remains with its documentation owner and no check-only return guard is required |
 | `CLEAN-01` | Retire the old demo product surface without losing a neutral synthetic golden path and its validation value; final terminology is open |
 | `CLEAN-02` | Reconcile the obsolete pending Step 04 scaffold against the active owner test, then retire the duplicate test-planning surface |
 | `FUT-DATA-02` | Preserve initial exact NCBI reference and SRA-read adapters versus possible later ENA, GEO, and BAM acquisition as an explicit nonbinding scope choice; provenance and acquisition acceptance remain matrix-owned |
@@ -2624,6 +2770,9 @@ they do not reopen it or promote any remaining proposal.
 | `AC-RAT-002` | Immutability is preferred throughout; `Run` is the immutable plan; public nouns and nesting are decided only after audit and discussion; every other application-model, API, backend, and policy decision is deferred until then | Binding requirement 9, `AC-GUARD-007`, `AC-SLICE-03`, and `AC-DEC-001`/`011` |
 | `AC-RAT-003` | Redundant evidence may be identified, but deletion requires great caution and the user's explicit approval | Binding requirement 10, `AC-GUARD-008`, and the evidence proposal and separate-commit gate in Section 13.1 |
 | `AC-RAT-004` | Adopt model C and the compact public model `Project -> Analysis -> Run -> Results`, progressively disclose Attempt, keep Execution Plan internal and inspectable, and apply the ratified Run-versus-Attempt change boundary including identity-neutral downstream reporting | Durable `ARCH-MODEL-DECISION-01`, resolved `AC-DEC-001`, the semantic package in `ARCH-MODEL-FIELDS-01`, and the first successor Run-authority realization; broader `AC-DEC-011` and `AC-SLICE-03` work remains Open |
+| `AC-RAT-005` | Remove redundant validation and protection against impossible same-process states when maintenance cost exceeds the nonexistent independent failure boundary; low-risk check-only seams need no artificial replacement, while high-risk, ambiguous, directly user-facing, execution-boundary, or evidence-validation change requires explicit approval | Refined `AC-GUARD-005`/`006`, Section 13.1 risk/trust-boundary protocol, and the focused reduction register; retained evidence remains separately governed by `AC-RAT-003` |
+| `AC-RAT-006` | Every slice touching a retained applicable operation records and incorporates the relevant `LOG-05` work when output or durable diagnostics change, without creating an interim logging convention | Binding requirement 8, Section 13.3, the logging contract adoption boundary, and the findings-matrix closure guard |
+| `AC-RAT-007` | Every touched shell or generated-shell surface is evaluated for retention, Python conversion, or retirement; conversion proceeds only when it reduces total product, protection/test, caller, and cross-language surface | `AC-GUARD-006`, Section 13.1, and the focused shell-disposition audit |
 
 ### 18.4 Duplicate policy
 

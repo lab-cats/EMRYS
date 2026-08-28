@@ -175,7 +175,7 @@ sample.{sample_id}.orientation_validation|06|sample|samples|step06_validation_re
 cohort.{cohort_id}.{partition_id}.fwd_vcf|07|cohort_partition|partitions|step07_mpileup_vcf_v1|results/mpileup/{cohort_id}/{partition_id}/{cohort_id}.{partition_id}.FWD_like.mpileup.vcf|true
 cohort.{cohort_id}.{partition_id}.rev_vcf|07|cohort_partition|partitions|step07_mpileup_vcf_v1|results/mpileup/{cohort_id}/{partition_id}/{cohort_id}.{partition_id}.REV_like.mpileup.vcf|true
 cohort.{cohort_id}.{partition_id}.receipt|07|cohort_partition|partitions|step07_mpileup_receipt_v1|results/mpileup/{cohort_id}/{partition_id}/{cohort_id}.{partition_id}.step07_outputs.tsv|true
-cohort.{cohort_id}.{partition_id}.validation|07|cohort_partition|partitions|step07_validation_report_v1|results/qc/validation/07/{cohort_id}__{partition_id}.validation.tsv|true
+cohort.{cohort_id}.{partition_id}.validation|07|cohort_partition|partitions|step07_validation_report_v1|results/qc/validation/07/{scope_id}.validation.tsv|true
 cohort.{cohort_id}.step08_sites|08|cohort|cohort|step08_sites_v1|results/vcf_preprocessed/{cohort_id}/{cohort_id}.step08_sites.tsv|true
 cohort.{cohort_id}.step08_inputs|08|cohort|cohort|step08_inputs_v1|results/vcf_preprocessed/{cohort_id}/{cohort_id}.step08_inputs.tsv|true
 cohort.{cohort_id}.step08_summary|08|cohort|cohort|step08_summary_v1|results/qc/vcf_preprocessing/{cohort_id}.step08_summary.tsv|true

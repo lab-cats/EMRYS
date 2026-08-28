@@ -611,44 +611,48 @@ analysis:
 """.encode("utf-8")
 
 
-def _resources() -> bytes:
-    return b"""schema_version: emrys.local-pilot-resources.v1
-workflow_cores: 1
-workflow_memory_mb: allocation
-stage_concurrency:
-  "01": 1
-  "02": 1
-  "02b": 1
-  "03": 1
-  "04": 1
-  "05": 1
-  "06": 1
-  "07": 1
-step_threads:
-  "00a": 1
-  "01": 1
-  "02": 1
-  "06": 1
-  "08": 1
-stage_memory_mb:
-  "00a": workflow
-  "00b": workflow
-  "00c": workflow
-  "01": workflow
-  "02": workflow
-  "02b": workflow
-  "03": workflow
-  "04": workflow
-  "05": workflow
-  "06": workflow
-  "07": workflow
-  "08": workflow
-  "09": workflow
-  "10": workflow
-reporting_memory_mb:
-  artifact_index: workflow
-  run_summary: workflow
-  html_report: workflow
+def _execution_profile() -> bytes:
+    return b"""schema_version: emrys.execution-profile.v1
+resources:
+  schema_version: emrys.local-pilot-resources.v1
+  workflow_cores: 1
+  workflow_memory_mb: allocation
+  stage_concurrency:
+    "01": 1
+    "02": 1
+    "02b": 1
+    "03": 1
+    "04": 1
+    "05": 1
+    "06": 1
+    "07": 1
+  step_threads:
+    "00a": 1
+    "01": 1
+    "02": 1
+    "06": 1
+    "08": 1
+  stage_memory_mb:
+    "00a": workflow
+    "00b": workflow
+    "00c": workflow
+    "01": workflow
+    "02": workflow
+    "02b": workflow
+    "03": workflow
+    "04": workflow
+    "05": workflow
+    "06": workflow
+    "07": workflow
+    "08": workflow
+    "09": workflow
+    "10": workflow
+  reporting_memory_mb:
+    artifact_index: workflow
+    run_summary: workflow
+    html_report: workflow
+placement:
+  kind: direct
 """
 
 
@@ -801,7 +805,7 @@ def fixture_members(
     reference = _reference(profile)
     members: dict[str, tuple[bytes, int]] = {
         "request.yaml": (_request(profile), 0o644),
-        "emrys.resources.yaml": (_resources(), 0o644),
+        "emrys.execution.yaml": (_execution_profile(), 0o644),
         "samples.tsv": (_sample_manifest(), 0o644),
         "partitions.tsv": (
             f"partition_id\tselector_type\tselector_value\nprimary\tregion\t{CONTIG}\n".encode(),

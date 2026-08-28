@@ -107,7 +107,8 @@ def build(root: Path) -> Path:
         ">chrSynthetic\nACGTACGTACGT\n", encoding="utf-8"
     )
     (reference / "genome.gtf").write_text(
-        'chrSynthetic\tfixture\texon\t1\t12\t.\t+\t.\tgene_id "g1";\n',
+        'chrSynthetic\tfixture\texon\t1\t12\t.\t+\t.\t'
+        'gene_id "g1"; transcript_id "t1";\n',
         encoding="utf-8",
     )
     (root / "samples.tsv").write_text(
@@ -152,44 +153,48 @@ def build(root: Path) -> Path:
         "  background_max_fraction: 0.01\n",
         encoding="utf-8",
     )
-    (root / "emrys.resources.yaml").write_text(
-        "schema_version: emrys.local-pilot-resources.v1\n"
-        "workflow_cores: 1\n"
-        "workflow_memory_mb: 1024\n"
-        "stage_concurrency:\n"
-        '  "01": 1\n'
-        '  "02": 1\n'
-        '  "02b": 1\n'
-        '  "03": 1\n'
-        '  "04": 1\n'
-        '  "05": 1\n'
-        '  "06": 1\n'
-        '  "07": 1\n'
-        "step_threads:\n"
-        '  "00a": 1\n'
-        '  "01": 1\n'
-        '  "02": 1\n'
-        '  "06": 1\n'
-        '  "08": 1\n'
-        "stage_memory_mb:\n"
-        '  "00a": 1024\n'
-        '  "00b": 1024\n'
-        '  "00c": 1024\n'
-        '  "01": 1024\n'
-        '  "02": 1024\n'
-        '  "02b": 1024\n'
-        '  "03": 1024\n'
-        '  "04": 1024\n'
-        '  "05": 1024\n'
-        '  "06": 1024\n'
-        '  "07": 1024\n'
-        '  "08": 1024\n'
-        '  "09": 1024\n'
-        '  "10": 1024\n'
-        "reporting_memory_mb:\n"
-        "  artifact_index: 1024\n"
-        "  run_summary: 1024\n"
-        "  html_report: 1024\n",
+    (root / "emrys.execution.yaml").write_text(
+        "schema_version: emrys.execution-profile.v1\n"
+        "resources:\n"
+        "  schema_version: emrys.local-pilot-resources.v1\n"
+        "  workflow_cores: 1\n"
+        "  workflow_memory_mb: 1024\n"
+        "  stage_concurrency:\n"
+        '    "01": 1\n'
+        '    "02": 1\n'
+        '    "02b": 1\n'
+        '    "03": 1\n'
+        '    "04": 1\n'
+        '    "05": 1\n'
+        '    "06": 1\n'
+        '    "07": 1\n'
+        "  step_threads:\n"
+        '    "00a": 1\n'
+        '    "01": 1\n'
+        '    "02": 1\n'
+        '    "06": 1\n'
+        '    "08": 1\n'
+        "  stage_memory_mb:\n"
+        '    "00a": 1024\n'
+        '    "00b": 1024\n'
+        '    "00c": 1024\n'
+        '    "01": 1024\n'
+        '    "02": 1024\n'
+        '    "02b": 1024\n'
+        '    "03": 1024\n'
+        '    "04": 1024\n'
+        '    "05": 1024\n'
+        '    "06": 1024\n'
+        '    "07": 1024\n'
+        '    "08": 1024\n'
+        '    "09": 1024\n'
+        '    "10": 1024\n'
+        "  reporting_memory_mb:\n"
+        "    artifact_index: 1024\n"
+        "    run_summary: 1024\n"
+        "    html_report: 1024\n"
+        "placement:\n"
+        "  kind: direct\n",
         encoding="utf-8",
     )
     return request

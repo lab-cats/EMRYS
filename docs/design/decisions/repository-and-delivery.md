@@ -113,7 +113,8 @@ The audit establishes these current authority routes:
 
 `HANDOFF.md` and `PIPELINE_PLAN.md` therefore ceased to be current authority at
 the audit cutover. Completed `DOC-03` has since reconciled and retired three of
-the six legacy pages plus both future diagrams. The remaining three pages stay
+the six legacy pages plus both future diagrams, and the partial `DOC-05` cut
+has since retired the launcher transition plan. The remaining two pages stay
 visibly marked until `DOC-04`/`DOC-05` preserve their durable value.
 
 ### Owner-local and repository-support disposition
@@ -165,7 +166,7 @@ handoff, or stale roadmap authority.
 | `docs/history/README.md` | Retain and refresh routes | Dated evidence policy and future index for unique handoff evidence selected for migration. |
 | `docs/operations/ENGINEERING_CONVENTIONS.md` | Retain | Stable repository dependency, tooling, and implementation conventions. |
 | `docs/operations/HANDOFF.md` | Reconcile durable content, then retire under `DOC-04` | Trace every section. Preserve unique VM, renderer, PORT-NC-01, Viking Step 07–09, cohort/Step 03, artifact-identity, and recovery facts in dated history or live owners with exact provenance and evidence ceilings; discard blockers and immediate-resume prose only after the trace; never promote historical claims to current proof. |
-| `docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md` | Consolidate, then retire under `DOC-05` | Active behavior stays in tests/CI; delivery safety stays in `AGENTS.md`/workflow; commands stay in the runbook; discard the stale transcript and unverifiable short references. |
+| `docs/operations/LOCAL_PILOT_LAUNCHER_TEST_PLAN.md` | Retired by the partial `DOC-05` execution-profile cut | Current safeguards now live in execution-profile, transport, grouped-control, onboarding, package, contract, test, CI, runbook, and configuration owners. Obsolete `.env`, generated-wrapper, split-config, and Bash-3.2 instructions remain in Git history rather than current documentation. |
 | `docs/operations/README.md` | Retain and refresh routes | Necessary operations index; current-evidence routing is corrected now. |
 | `docs/operations/RUNBOOK.md` | Retain | Supported cross-cutting commands and operator procedures. |
 | `docs/operations/TROUBLESHOOTING.md` | Retain and refresh routes | Common diagnosis and evidence-preserving recovery; exact current evidence no longer routes to the handoff. |

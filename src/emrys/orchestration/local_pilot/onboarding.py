@@ -10,7 +10,6 @@ import io
 import json
 import os
 import re
-import shlex
 import stat
 import sys
 from collections.abc import Callable, Iterator, Mapping, Sequence
@@ -26,7 +25,6 @@ from emrys.orchestration.local_pilot.normalization import (
     NormalizationBundle,
     normalize_request,
 )
-from emrys.orchestration.local_pilot.launcher_config import BATCH_MARKER
 from emrys.stages.gtf_to_bed12 import converter as gtf_converter
 
 DESCRIPTION = (
@@ -36,8 +34,6 @@ DESCRIPTION = (
 )
 PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v2.json")
 STARTER_MANIFEST = "starter-set.manifest.tsv"
-SLURM_WRAPPER = "run-in-slurm.sh"
-LAUNCHER_CONFIG = "emrys.launcher.yaml"
 RUNTIME_HEADER = (
     "check_id",
     "check_type",
@@ -272,160 +268,6 @@ def publish_create_absent_tree(
         ) from exc
 
 
-def _slurm_wrapper_bytes(source_checkout: Path, python_executable: Path) -> bytes:
-    template = b"""#!/bin/bash
-set -euo pipefail
-
-die() {
-    printf 'ERROR: %s\n' "$*" >&2
-    exit 2
-}
-
-require_export_value() {
-    local name="$1"
-    declare -p "$name" >/dev/null 2>&1 || \
-        die "$name must be explicitly set"
-    [[ "${!name}" != *$'\n'* && "${!name}" != *','* ]] || \
-        die "$name contains a newline or comma"
-}
-
-require_value() {
-    local name="$1"
-    require_export_value "$name"
-    [[ -n "${!name}" ]] || die "$name must be nonempty"
-}
-
-observe_live_identity() {
-    [[ -x /usr/bin/id ]] || die "/usr/bin/id is unavailable"
-    live_uid="$(/usr/bin/id -u)" || die "could not resolve the live numeric UID"
-    live_user="$(/usr/bin/id -un)" || die "could not resolve the live user name"
-    [[ "$live_uid" =~ ^[0-9]+$ ]] || die "live numeric UID is invalid"
-    [[ "$live_user" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || \
-        die "live user name is unsafe for Slurm export"
-}
-
-validate_module_settings() {
-    case "$EMRYS_MODULE_MODE" in
-        exact)
-            require_value EMRYS_MODULE_INIT
-            require_value EMRYS_MODULES
-            ;;
-        none)
-            [[ -z "$EMRYS_MODULE_INIT" && -z "$EMRYS_MODULES" ]] || \
-                die "EMRYS_MODULE_INIT and EMRYS_MODULES must be empty when EMRYS_MODULE_MODE=none"
-            ;;
-        *)
-            die "EMRYS_MODULE_MODE must be exact or none"
-            ;;
-    esac
-}
-
-if [[ -z "${SLURM_JOB_ID:-}" ]]; then
-    [[ "${1:-}" != __EMRYS_BATCH_MARKER__ ]] || \
-        die "internal batch marker requires a Slurm allocation"
-    EMRYS_LAUNCHER_SOURCE_CHECKOUT=__EMRYS_LAUNCHER_SOURCE_CHECKOUT__
-    EMRYS_LAUNCHER_PYTHON=__EMRYS_LAUNCHER_PYTHON__
-    export EMRYS_LAUNCHER_SOURCE_CHECKOUT EMRYS_LAUNCHER_PYTHON
-    exec __EMRYS_LAUNCHER_PYTHON__ -X pycache_prefix=/dev/null -I \
-        -m emrys.orchestration.local_pilot.launcher_config "$0" "$@"
-fi
-
-[[ "$#" -eq 1 && "$1" == __EMRYS_BATCH_MARKER__ ]] || \
-    die "batch mode requires the exact internal batch marker"
-shift
-
-for name in EMRYS_SUBMIT_UID EMRYS_SUBMIT_USER USER LOGNAME \
-    EMRYS_SOURCE_CHECKOUT EMRYS_PYTHON EMRYS_REQUEST EMRYS_WORKSPACE \
-    EMRYS_RUNTIME_PROFILE EMRYS_MODULE_MODE EMRYS_SCRATCH_PARENT \
-    EMRYS_EXECUTE; do
-    require_value "$name"
-done
-for name in EMRYS_MODULE_INIT EMRYS_MODULES; do
-    require_export_value "$name"
-done
-[[ "$EMRYS_EXECUTE" == 0 || "$EMRYS_EXECUTE" == 1 ]] || die "EMRYS_EXECUTE must be 0 or 1"
-[[ "$EMRYS_SUBMIT_UID" =~ ^[0-9]+$ ]] || die "EMRYS_SUBMIT_UID must be numeric"
-[[ "$EMRYS_SUBMIT_USER" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || \
-    die "EMRYS_SUBMIT_USER is invalid"
-observe_live_identity
-[[ "$EMRYS_SUBMIT_UID" == "$live_uid" && \
-    "$EMRYS_SUBMIT_USER" == "$live_user" && \
-    "$USER" == "$live_user" && "$LOGNAME" == "$live_user" ]] || \
-    die "batch identity does not match the admitted submitter"
-readonly live_uid live_user
-validate_module_settings
-if [[ "$EMRYS_MODULE_MODE" == exact ]]; then
-    [[ -f "$EMRYS_MODULE_INIT" && ! -L "$EMRYS_MODULE_INIT" ]] || \
-        die "EMRYS_MODULE_INIT must be an explicit real file"
-    # shellcheck disable=SC1090
-    source "$EMRYS_MODULE_INIT"
-    command -v module >/dev/null 2>&1 || die "module command is unavailable after EMRYS_MODULE_INIT"
-    IFS=: read -r -a requested_modules <<< "$EMRYS_MODULES"
-    (( ${#requested_modules[@]} > 0 )) || die "EMRYS_MODULES is empty"
-    for module_name in "${requested_modules[@]}"; do
-        [[ "$module_name" =~ ^[A-Za-z0-9][A-Za-z0-9._+/-]*$ ]] || \
-            die "unsafe module identifier: $module_name"
-        module load "$module_name"
-    done
-fi
-[[ -d "$EMRYS_SOURCE_CHECKOUT" && ! -L "$EMRYS_SOURCE_CHECKOUT" ]] || \
-    die "EMRYS_SOURCE_CHECKOUT must be an existing real directory"
-[[ -x "$EMRYS_PYTHON" ]] || die "EMRYS_PYTHON must be an explicit executable"
-[[ -d "$EMRYS_SCRATCH_PARENT" && ! -L "$EMRYS_SCRATCH_PARENT" && \
-    -w "$EMRYS_SCRATCH_PARENT" && -x "$EMRYS_SCRATCH_PARENT" ]] || \
-    die "EMRYS_SCRATCH_PARENT must be an existing real writable directory"
-command -v mktemp >/dev/null 2>&1 || die "mktemp is unavailable in the allocation"
-command -v df >/dev/null 2>&1 || die "df is unavailable in the allocation"
-scratch_parent="$(cd -P "$EMRYS_SCRATCH_PARENT" && pwd)"
-job_tmpdir="$(mktemp -d "$scratch_parent/emrys-${SLURM_JOB_ID}.XXXXXX")" || \
-    die "unable to create private compute scratch directory"
-job_tmpdir_name="${job_tmpdir##*/}"
-job_tmpdir_suffix="${job_tmpdir_name#"emrys-${SLURM_JOB_ID}."}"
-canonical_job_tmpdir="$(cd -P "$job_tmpdir" && pwd)" || \
-    die "unable to canonicalize private compute scratch directory"
-[[ "${job_tmpdir%/*}" == "$scratch_parent" && \
-    "$canonical_job_tmpdir" == "$job_tmpdir" && \
-    "$job_tmpdir_name" == "emrys-${SLURM_JOB_ID}.$job_tmpdir_suffix" && \
-    "$job_tmpdir_suffix" =~ ^[A-Za-z0-9]{6}$ ]] || \
-    die "mktemp returned an unsafe compute scratch directory"
-readonly scratch_parent job_tmpdir
-cleanup_job_tmpdir() {
-    if [[ "${OSTYPE:-}" == linux* ]]; then
-        rm -rf --one-file-system -- "$job_tmpdir"
-    else
-        rm -rf -- "$job_tmpdir"
-    fi
-}
-trap cleanup_job_tmpdir EXIT
-chmod 700 "$job_tmpdir"
-export TMPDIR="$job_tmpdir"
-printf 'EMRYS_SCRATCH_PARENT=%s\n' "$scratch_parent"
-printf 'TMPDIR=%s\n' "$TMPDIR"
-printf 'TMPDIR filesystem and capacity:\n'
-df -PT "$TMPDIR"
-cd "$EMRYS_SOURCE_CHECKOUT"
-"$EMRYS_PYTHON" -X pycache_prefix=/dev/null -I -m emrys validate \
-    local-pilot-request --request "$EMRYS_REQUEST"
-run_arguments=(
-    --request "$EMRYS_REQUEST"
-    --workspace "$EMRYS_WORKSPACE"
-    --runtime-profile "$EMRYS_RUNTIME_PROFILE"
-)
-if [[ "$EMRYS_EXECUTE" == 1 ]]; then
-    run_arguments+=(--execute)
-fi
-"$EMRYS_PYTHON" -X pycache_prefix=/dev/null -I -m emrys run "${run_arguments[@]}"
-"""
-    source_value = shlex.quote(str(source_checkout)).encode("utf-8")
-    python_value = shlex.quote(str(python_executable)).encode("utf-8")
-    marker_value = shlex.quote(BATCH_MARKER).encode("utf-8")
-    return (
-        template.replace(b"__EMRYS_LAUNCHER_SOURCE_CHECKOUT__", source_value)
-        .replace(b"__EMRYS_LAUNCHER_PYTHON__", python_value)
-        .replace(b"__EMRYS_BATCH_MARKER__", marker_value)
-    )
-
-
 def starter_members(
     *,
     root: Path | None = None,
@@ -447,56 +289,12 @@ def starter_members(
     if not checkout.is_dir():
         raise OnboardingError(f"source checkout must be a directory: {checkout}")
     selected_python = _absolute(requested_python)
-    if selected_python.parent == Path("/"):
-        raise OnboardingError(
-            "selected Python parent must not be the filesystem root"
-        )
-    if ":" in str(selected_python.parent):
-        raise OnboardingError(
-            "selected Python parent is unsafe for the sealed PATH"
-        )
-    try:
-        parent_state = selected_python.parent.lstat()
-        parent_resolved = selected_python.parent.resolve(strict=True)
-        before = selected_python.lstat()
-        link_before = (
-            os.readlink(selected_python) if stat.S_ISLNK(before.st_mode) else ""
-        )
-        target = selected_python.resolve(strict=True)
-        target_before = target.stat(follow_symlinks=False)
-        after = selected_python.lstat()
-        link_after = (
-            os.readlink(selected_python) if stat.S_ISLNK(after.st_mode) else ""
-        )
-        confirmed_target = selected_python.resolve(strict=True)
-        target_after = confirmed_target.stat(follow_symlinks=False)
-    except OSError as exc:
-        raise OnboardingError(
-            f"selected Python must resolve to an executable file: "
-            f"{selected_python}: {exc}"
-        ) from exc
-    if (
-        stat.S_ISLNK(parent_state.st_mode)
-        or not stat.S_ISDIR(parent_state.st_mode)
-        or parent_resolved != selected_python.parent
-        or (before.st_dev, before.st_ino, before.st_mode, before.st_mtime_ns)
-        != (after.st_dev, after.st_ino, after.st_mode, after.st_mtime_ns)
-        or link_before != link_after
-        or confirmed_target != target
-        or (target_before.st_dev, target_before.st_ino, target_before.st_mode)
-        != (target_after.st_dev, target_after.st_ino, target_after.st_mode)
-        or not stat.S_ISREG(target_after.st_mode)
-        or not os.access(selected_python, os.X_OK)
-    ):
-        raise OnboardingError(
-            "selected Python launcher identity is invalid or changed: "
-            f"{selected_python}"
-        )
+    _admit_explicit_file(selected_python, "selected Python", executable=True)
     for label, path in (
         ("source checkout", checkout),
         ("selected Python", selected_python),
     ):
-        if any(character in str(path) for character in ("\n", "\r", ",")):
+        if any(character in str(path) for character in ("\n", "\r", "\t")):
             raise OnboardingError(f"{label} path contains an unsafe character")
     request = (checkout / "configs/local_pilot_request.example.yaml").read_text(
         encoding="utf-8"
@@ -508,11 +306,8 @@ def starter_members(
         "partition_manifest: local_pilot_partitions.example.tsv",
         "partition_manifest: partitions.tsv",
     )
-    resource_config = (
-        checkout / "configs/local_pilot_resources.example.yaml"
-    ).read_bytes()
-    launcher_config = (
-        checkout / "configs/local_pilot_launcher.example.yaml"
+    execution_profile = (
+        checkout / "configs/execution_profile.example.yaml"
     ).read_bytes()
     runtime = (checkout / "configs/local_pilot_runtime.example.tsv").read_text(
         encoding="utf-8"
@@ -522,8 +317,7 @@ def starter_members(
     ).replace("/absolute/path/to/emrys", str(checkout))
     return {
         "request.yaml": (request.encode("utf-8"), 0o644),
-        LAUNCHER_CONFIG: (launcher_config, 0o644),
-        "emrys.resources.yaml": (resource_config, 0o644),
+        "emrys.execution.yaml": (execution_profile, 0o644),
         "samples.tsv": (
             (checkout / "configs/local_pilot_samples.example.tsv").read_bytes(),
             0o644,
@@ -533,10 +327,6 @@ def starter_members(
             0o644,
         ),
         "runtime.tsv": (runtime.encode("utf-8"), 0o644),
-        SLURM_WRAPPER: (
-            _slurm_wrapper_bytes(checkout, selected_python),
-            0o755,
-        ),
     }
 
 
@@ -734,6 +524,14 @@ def validate_local_pilot_request(
 
     checkout = source_root() if root is None else root
     normalized = normalize_request(request, checkout / PROFILE_RELATIVE_PATH)
+    return validate_normalized_request(normalized)
+
+
+def validate_normalized_request(
+    normalized: NormalizationBundle,
+) -> RequestValidation:
+    """Compatibility-check one already admitted request without renormalizing it."""
+
     source = normalized.projection_source
     reference = source["reference"]
     fasta_snapshot = reference["fasta"]
@@ -1069,4 +867,5 @@ __all__ = (
     "starter_members",
     "validate_from_args",
     "validate_local_pilot_request",
+    "validate_normalized_request",
 )

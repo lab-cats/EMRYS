@@ -17,11 +17,13 @@ from tests.tools import real_synthetic_e2e as DRIVER
 def _plan_text(workspace: Path) -> str:
     return "\n".join(
         (
-            "Operation: run",
+            "Operation: execute",
             "Run ID: run-" + "a" * 64,
             f"Run root: {workspace}/runs/run-{'a' * 64}",
-            "Owner jobs: 35",
-            "Reporting transactions: 3",
+            "Pending work items: 35",
+            "Reusable completed work items: 0",
+            "Resources: 1 cores, 6144 MiB",
+            "Reporting: automatic after scientific work",
             "Dry-run complete; no workspace state was written.",
         )
     )
@@ -52,10 +54,35 @@ def test_parser_exposes_only_explicit_profiles_and_external_runtime_inputs() -> 
 
     assert arguments.profile == "100000"
     assert DRIVER.PROFILE_DATASETS[arguments.profile] == "production-like-v1"
-    assert arguments.slurm_account == "site-default"
-    assert arguments.slurm_qos == "site-default"
+    assert arguments.slurm_account is None
+    assert arguments.slurm_qos is None
     assert arguments.slurm_cpus == 4
+    assert arguments.slurm_memory == 8192
     assert arguments.execute is False
+
+    selected = parser.parse_args(
+        [
+            "--profile",
+            "130",
+            "--repo-root",
+            "/repo",
+            "--operator-root",
+            "/operator",
+            "--runtime-prefix",
+            "/runtime",
+            "--rscript",
+            "/runtime/Rscript",
+            "--renv-library",
+            "/runtime/renv",
+            "--storage-compute-launcher-json",
+            '["/usr/bin/srun"]',
+            "--slurm-partition",
+            "emrys-ci",
+            "--slurm-memory",
+            "6G",
+        ]
+    )
+    assert selected.slurm_memory == 6144
 
     with pytest.raises(SystemExit):
         parser.parse_args(
@@ -83,6 +110,45 @@ def test_storage_launcher_is_one_explicit_no_shell_argv(tmp_path: Path) -> None:
         DRIVER.parse_launcher_prefix(json.dumps(str(launcher)))
     with pytest.raises(DRIVER.DriverError, match="control character"):
         DRIVER.parse_launcher_prefix(json.dumps([str(launcher), "bad\nargument"]))
+
+
+def test_slurm_profile_reuses_admitted_synthetic_resources(tmp_path: Path) -> None:
+    from emrys.orchestration.local_pilot import synthetic_fixture
+    from emrys.orchestration.local_pilot.execution_profile import (
+        SlurmPlacement,
+        load_execution_profile,
+    )
+
+    request = tmp_path / "request.yaml"
+    request.write_text("fixture request\n", encoding="utf-8")
+    direct_path = tmp_path / "emrys.execution.yaml"
+    direct_path.write_bytes(synthetic_fixture._execution_profile())
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+
+    rendered = DRIVER.slurm_execution_profile_bytes(
+        request,
+        direct_path,
+        account=None,
+        partition="emrys-ci",
+        qos=None,
+        cpus_per_task=2,
+        memory_mb=6144,
+        time_limit="02:00:00",
+        nodelist=None,
+        scratch_parent=scratch,
+    )
+    slurm_path = tmp_path / "emrys.execution.slurm.json"
+    slurm_path.write_bytes(rendered)
+    direct = load_execution_profile(request, config_path=direct_path)
+    slurm = load_execution_profile(request, config_path=slurm_path)
+
+    assert slurm.resource_policy.document() == direct.resource_policy.document()
+    assert isinstance(slurm.placement, SlurmPlacement)
+    assert slurm.placement.partition == "emrys-ci"
+    assert slurm.placement.cpus_per_task == 2
+    assert slurm.placement.memory_mb == 6144
+    assert slurm.placement.scratch_parent == scratch
 
 
 def test_workflow_python_preserves_lexical_virtualenv_launcher(tmp_path: Path) -> None:
@@ -357,22 +423,70 @@ def test_rseqc_adapter_has_exact_version_surface_and_delegates_other_args(
     }
 
 
-def test_plan_parser_requires_current_job_and_reporting_counts(tmp_path: Path) -> None:
+def test_plan_parser_requires_current_work_and_reporting_contract(
+    tmp_path: Path,
+) -> None:
     workspace = tmp_path / "workspace"
     expected = workspace / "runs" / f"run-{'a' * 64}"
 
-    assert DRIVER.parse_run_plan(_plan_text(workspace), workspace) == expected
+    assert (
+        DRIVER.parse_run_plan(_plan_text(workspace), workspace, no_write=True)
+        == expected
+    )
 
-    with pytest.raises(DRIVER.DriverError, match="expected 35 owner jobs"):
+    with pytest.raises(DRIVER.DriverError, match="expected 35 pending work items"):
         DRIVER.parse_run_plan(
-            _plan_text(workspace).replace("Owner jobs: 35", "Owner jobs: 34"),
+            _plan_text(workspace).replace(
+                "Pending work items: 35", "Pending work items: 34"
+            ),
             workspace,
+            no_write=True,
         )
     with pytest.raises(DRIVER.DriverError, match="no-write boundary"):
         DRIVER.parse_run_plan(
             _plan_text(workspace).replace(
                 "Dry-run complete; no workspace state was written.", ""
             ),
+            workspace,
+            no_write=True,
+        )
+
+    executed = _plan_text(workspace).replace(
+        "Dry-run complete; no workspace state was written.",
+        f"Evidence: {expected}/attempts/workflow-attempt-1/attempt-receipt.json",
+    )
+    assert DRIVER.parse_run_plan(executed, workspace, no_write=False) == expected
+    assert DRIVER.parse_execution_evidence(executed, expected) == (
+        expected / "attempts/workflow-attempt-1/attempt-receipt.json"
+    )
+
+
+def test_scheduler_plan_parser_requires_no_write_workspace_log_patterns(
+    tmp_path: Path,
+) -> None:
+    workspace = tmp_path / "workspace"
+    profile = tmp_path / "emrys.execution.slurm.json"
+    text = "\n".join(
+        (
+            "Execution placement: Slurm",
+            f"Execution profile: {profile}",
+            f"Scheduler stdout: {workspace}/logs/emrys-local-pilot-%j.out",
+            f"Scheduler stderr: {workspace}/logs/emrys-local-pilot-%j.err",
+            "Dry-run complete; no scheduler or workspace state was written.",
+        )
+    )
+
+    assert DRIVER.parse_scheduler_plan(text, profile, workspace) == (
+        workspace / "logs/emrys-local-pilot-%j.out",
+        workspace / "logs/emrys-local-pilot-%j.err",
+    )
+    with pytest.raises(DRIVER.DriverError, match="no-write boundary"):
+        DRIVER.parse_scheduler_plan(
+            text.replace(
+                "Dry-run complete; no scheduler or workspace state was written.",
+                "",
+            ),
+            profile,
             workspace,
         )
 

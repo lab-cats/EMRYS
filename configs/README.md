@@ -1,10 +1,10 @@
 # Configuration and input guide
 
-The tracked `local_pilot_*` examples are the policy templates behind the
-generated matched starter set for the supported automatic workflow. They
-describe what to analyze and how to request one outer allocation; they do not
-contain reads, a reference, scientific software, private site values, or a
-ready-to-run production selection.
+The tracked `local_pilot_*` inputs and `execution_profile.*.yaml` files are
+starters for the supported automatic workflow. They describe what to analyze
+and, when selected explicitly, how to resource and place the whole Run. They
+do not contain reads, a reference, scientific software, private site values,
+or a ready-to-run production selection.
 
 Initialize the set in an operator-managed directory **outside the Git
 checkout**. Both forms are dry-run-first; the output must be an absolute absent
@@ -17,17 +17,17 @@ emrys init local-pilot \
   --execute
 ```
 
-The execute form publishes `request.yaml`, `emrys.launcher.yaml`,
-`emrys.resources.yaml`, `samples.tsv`, `partitions.tsv`, `runtime.tsv`,
-executable `run-in-slurm.sh`, and then `starter-set.manifest.tsv` last. The
-manifest proves only the initial generated starter; expected data/config edits
-make those original hashes historical.
+The execute form publishes `request.yaml`, `emrys.execution.yaml`,
+`samples.tsv`, `partitions.tsv`, `runtime.tsv`, and then
+`starter-set.manifest.tsv` last. The manifest proves only the initial
+generated starter; expected data/config edits make those original hashes
+historical.
 
-Keep the authored request, launcher and resource configurations, manifests,
-selected runtime profile, and source data together for the life of the run.
-EMRYS binds the scientific inputs into run identity and snapshots the effective
-workflow resource policy for each attempt; changing either is not a way to
-repair an entered attempt.
+Keep the authored request, execution profile, manifests, selected runtime
+profile, and source data together for the life of the run. EMRYS binds the
+scientific inputs and computational resource declaration into Run identity;
+placement and observed allocation are Attempt context. Changing either is not
+a way to repair an entered Attempt.
 
 ## Recommended input layout
 
@@ -37,13 +37,11 @@ checkout clean:
 ```text
 emrys-inputs/
 |-- request.yaml
-|-- emrys.launcher.yaml
-|-- emrys.resources.yaml
+|-- emrys.execution.yaml
 |-- samples.tsv
 |-- partitions.tsv
 |-- runtime.tsv
 |-- runtime.selected.tsv
-|-- run-in-slurm.sh
 |-- starter-set.manifest.tsv
 `-- inputs/
     |-- reads/
@@ -67,42 +65,36 @@ request. They must be explicit: no `~`, environment variables, templates,
 globs, redundant separators, or `.`/`..` components. EMRYS does not search for
 files or infer which sample, reference, or runtime you intended.
 
-## Launcher configuration and private site values
+## Execution profile
 
-[`local_pilot_launcher.example.yaml`](local_pilot_launcher.example.yaml) is
-published as `emrys.launcher.yaml` beside `run-in-slurm.sh`. It controls the
-single outer Slurm allocation, launcher paths, and module setup. It is separate
-from `emrys.resources.yaml`, which controls Snakemake's workflow resources
-inside that allocation.
+EMRYS has one optional public execution configuration. With no
+`--execution-profile`, the built-in profile uses conservative resources and
+direct placement. An explicit profile is a closed YAML fragment with two
+concerns:
 
-Launcher precedence is packaged defaults, adjacent or explicitly selected
-launcher YAML, then explicit `run-in-slurm.sh` options. A YAML value may be a
-literal or the exact structured form `{env: EMRYS_NAME}` allowed for that
-field. EMRYS does not perform `$VAR`, command, shell, template, or arbitrary
-environment interpolation.
+- `resources` declares the single-host computational policy; and
+- `placement` selects direct execution or one outer Slurm allocation.
 
-Structured references read the invocation environment first and then the
-source-checkout root `.env` for missing values. Copy the tracked
-[`../.env.example`](../.env.example) to `.env` at that root, keep only the
-site/private EMRYS values used by your launcher YAML, and set mode `0600`.
-The real `.env` is Git-ignored; it must be an owner-controlled nonsymlink file.
-Unknown variables, duplicates, shell syntax, loose permissions, and
-`EMRYS_EXECUTE` fail admission without printing private values.
+The built-in profile is the base, the explicitly selected file overrides it,
+and CLI resource flags override both. EMRYS does not discover adjacent
+configuration. If retired `emrys.resources.yaml` or `emrys.launcher.yaml`
+files remain beside the request, omitting `--execution-profile` fails closed
+and requires deliberate migration.
 
-The launcher requests its configured CPUs, memory, time, placement, and node
-selection; these are not lower bounds or workflow measurements. `exclusive:
-true` emits `--exclusive`, while a nonempty `nodelist` emits one exact
-`--nodelist=...`. Review the outer request together with the effective
-`emrys.resources.yaml` so workflow totals fit inside the allocation.
+Use [`execution_profile.example.yaml`](execution_profile.example.yaml) as the
+Slurm starter. `account`, `partition`, `qos`, `memory_mb`, and `nodelist` may
+be null to use site defaults. `cpus_per_task`, `time`, `exclusive`, and
+`scratch_parent` define the one outer allocation. `modules.mode: none` loads
+nothing; `modules.mode: exact` requires one absolute initializer and a closed
+module roster. Paths and values are literal: environment interpolation,
+templates, shell commands, merge keys, and unknown fields are rejected.
 
-Execution is deliberately absent from launcher YAML and `.env`. Invoking the
-wrapper without a mode flag submits a no-write plan. Only the explicit
-`run-in-slurm.sh --execute` action activates workflow execution. Ambient
-`SBATCH_*` policy variables are removed before submission so they cannot alter
-omitted options such as `account: site-default`, `qos: site-default`,
-`memory: site-default`, `exclusive: false`, or a null node list. The two
-identity defaults omit `--account` and `--qos`; any explicit admitted value is
-passed exactly once.
+Select the file only with `--execution-profile FILE` on the `emrys run` or
+`emrys resume` command; see the [runbook](../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes)
+for the complete command. Planning never submits or writes. `--execute`
+submits exactly once and prints `JOB_ID`, `OUT`, and `ERR`. Scheduler streams
+use `<workspace>/logs`; the application-log root defaults to its `application/`
+subdirectory. Execution mode is never inferred from the profile or environment.
 
 ## Request YAML
 
@@ -126,15 +118,12 @@ merge keys are rejected.
 | `reference.star_index.genome_sa_index_nbases` | STAR suffix-array index parameter. | Select for the reference size according to the admitted STAR release; `14` is appropriate for many mammalian references but is not universal. |
 | `cohort_id` | Identity shared by the samples entering cohort processing. | Use a stable safe ID, not an analysis conclusion. |
 
-### Resource configuration
+### Resource fields
 
-Execution resources are separate from scientific run intent. The optional
-[`local_pilot_resources.example.yaml`](local_pilot_resources.example.yaml) is
-published by `emrys init local-pilot` as `emrys.resources.yaml` beside
-`request.yaml`. If that adjacent file is absent, EMRYS uses its packaged
-conservative defaults. An explicitly selected `--resource-config` replaces
-adjacent discovery, and individual resource CLI options override the selected
-YAML and packaged defaults.
+Execution resources are separate from scientific intent and live under the
+execution profile's `resources` key. An explicit profile may override any
+closed resource field; individual resource CLI options have highest
+precedence.
 
 | Field | Meaning |
 | --- | --- |
@@ -146,27 +135,21 @@ YAML and packaged defaults.
 | `reporting_memory_mb` | Total memory reserved by each reporting transaction, in MiB or `workflow`. |
 
 The tracked
-[`local_pilot_resources.csu_viking_ev_pum1.yaml`](local_pilot_resources.csu_viking_ev_pum1.yaml)
-is the workload-specific retained policy for the six-library EV/PUM1 run on
-CSU Viking node002. It is not a packaged default or a general CSU profile.
-Copy it to the matched operator input directory as `emrys.resources.yaml` only
-for that workload and its reviewed exclusive 256-CPU node allocation. The
-workflow exposes 12 schedulable cores to Snakemake while retaining 524,288 MiB
-as its internal memory budget; unmodeled JVM/native helper threads remain
-bounded by the outer exclusive allocation.
-Copy the matching
-[`local_pilot_launcher.csu_viking_ev_pum1.yaml`](local_pilot_launcher.csu_viking_ev_pum1.yaml)
-as the adjacent `emrys.launcher.yaml`. It requests all 256 CPUs and exclusive
-node placement but deliberately leaves memory at `site-default`, matching
-Viking's no-explicit-memory site policy. Its 12-hour walltime is conservative
-operator headroom rather than a benchmark result; private site values and
-operator paths remain references to the ignored source-checkout root `.env`.
+[`execution_profile.csu_viking_ev_pum1.yaml`](execution_profile.csu_viking_ev_pum1.yaml)
+retains the workload-specific six-library EV/PUM1 policy for one reviewed
+exclusive 256-CPU CSU Viking allocation. It is not a packaged default or a
+general CSU profile. The workflow exposes 12 schedulable cores to Snakemake,
+uses a 524,288 MiB internal memory budget, leaves scheduler memory unset, and
+retains a conservative 12-hour walltime. Replace the explicit site and scratch
+placeholders in an operator-owned copy before selecting it.
 
 EMRYS rejects a policy when concurrency multiplied by per-job threads exceeds
 workflow cores, when concurrency multiplied by per-job memory exceeds workflow
 memory, or when workflow totals exceed the process-visible outer allocation.
-The effective policy, source digests, explicit override paths, and observed
-allocation are stored in the immutable attempt workflow config.
+The effective policy, source digests, explicit overrides, placement request,
+and observed allocation are stored with the immutable Attempt. The
+computational declaration is also bound into the successor Run; placement and
+the scheduler job ID are not.
 
 Safe IDs begin with an ASCII letter or digit and then contain only letters,
 digits, `.`, `_`, or `-`.
@@ -327,12 +310,11 @@ must be an existing canonical library that passed the guarded `r-check` for
 that checkout. Doctor and execution never install, download, restore, load
 modules, or repair a missing runtime.
 
-On a module-based cluster, module loading belongs in the batch environment
-that will run EMRYS. Load the selected modules there, resolve their canonical
-commands (for example with `readlink -f "$(command -v STAR)"` where supported),
-and author those absolute targets in the profile. Repeat admission inside the
-same batch allocation; a successful head-node probe does not establish
-compute-node visibility.
+On a module-based cluster, declare the exact initializer and module roster in
+the execution profile. EMRYS loads that roster inside the allocation before
+runtime admission. Author the runtime TSV with the resulting canonical tool
+paths (for example, from `readlink -f "$(command -v STAR)"` where supported).
+A successful head-node probe does not establish compute-node visibility.
 
 ## Before requesting `READY`
 

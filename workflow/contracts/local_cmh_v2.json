@@ -705,7 +705,7 @@
       "scope_type": "cohort_partition",
       "scope_selector": "partitions",
       "adapter": "step07_validation_report_v1",
-      "source_path_template": "results/qc/validation/07/{cohort_id}__{partition_id}.validation.tsv",
+      "source_path_template": "results/qc/validation/07/{scope_id}.validation.tsv",
       "required": true
     },
     {

@@ -176,3 +176,27 @@ One operation owns one no-clobber log, delegated components do not append
 concurrently, and receipts remain authoritative transaction markers. Logs are
 protected operator data: no automatic upload, truncation, rotation, deletion,
 or evidence promotion without a separate authorized relationship.
+
+### Derive status from retained records
+
+Persisted Run contracts, Attempt and task records, reporting records, receipts,
+and owned-lock state remain status authority. Inspection may derive a read-only
+projection from them but never persists a competing status. Snakemake text,
+scheduler accounting, application logs, and terminal-renderer caches are
+observations only; none establishes scientific or reporting completion.
+
+The ordinary projection uses preparation, alignment, QC, candidate evidence,
+statistical/context processing, and downstream reporting milestones. Reporting
+may appear in progress without becoming a semantic scientific stage. Elapsed
+time is labelled for the current or latest Attempt: running time is measured
+from its admitted creation time to observation, and terminal time ends at its
+receipt timestamp. Resumed Attempts remain separately visible; EMRYS does not
+silently sum them or infer an ETA.
+
+Task, transaction, engine, scheduler, receipt, and raw-stream detail remains
+available through explicit expert or debug inspection. The current dashboard's
+parsed human-output model is not retained as a second status authority. It is a
+stale, frozen transitional surface: the architecture campaign does not update
+or extend it, and status work proceeds independently from persisted records.
+Retirement is reconsidered only after the architecture campaign is complete
+and still requires separate approval for that exact public-surface removal.

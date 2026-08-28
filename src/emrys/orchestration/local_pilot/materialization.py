@@ -981,6 +981,8 @@ def _task_commands(
         )
         validator = _validator(
             "partitioned-cohort-mpileup",
+            "--scope-id",
+            scope_id,
             "--cohort-id",
             cohort_id,
             "--partition-id",
@@ -1425,6 +1427,7 @@ def build_attempt_plan(
     *,
     resources: ResourcePlan,
     operation: Operation,
+    placement: Mapping[str, Any] | None = None,
     now: datetime | None = None,
     token: str | None = None,
     host: str | None = None,
@@ -1611,6 +1614,8 @@ def build_attempt_plan(
         "cores": workflow_cores,
         "required_tools": list(required_tools),
     }
+    if placement is not None:
+        attempt["placement"] = dict(placement)
     if successor:
         try:
             assert isinstance(run, RunCandidate)

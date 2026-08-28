@@ -34,7 +34,6 @@ command -v sbatch
 command -v squeue
 sinfo
 module list 2>&1 || true
-mkdir -p logs
 ```
 
 The login node is for Git, small transfers, editing, inspection, submission,
@@ -76,12 +75,29 @@ walkthrough.
 | Inspect run state or plan a supported resume | Commands below and the [local-pilot owner](../../src/emrys/orchestration/local_pilot/README.md) |
 | Diagnose blocked, partial, locked, or uncertain state | [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) |
 
-The lifecycle-generated `run-in-slurm.sh` is the supported whole-run
-single-allocation launcher. It runs EMRYS's one-host local workflow inside one
-approved compute-node allocation; it is not a distributed executor.
-Owner-local `.slurm` files are separate supported scheduler entry points for
-running one stage. They publish only that owner's native outputs and
-validation evidence and never create or adopt an orchestrated run root.
+`emrys run` and `emrys resume` are the whole-Run execution surface. With no
+`--execution-profile`, they execute directly with the built-in conservative
+resources. An explicit profile can place the same one-host workflow inside one
+Slurm allocation; it is not a distributed executor:
+
+```bash
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
+  --request /absolute/path/to/request.yaml \
+  --workspace /absolute/path/to/workspace \
+  --runtime-profile /absolute/path/to/runtime.selected.tsv \
+  --execution-profile /absolute/path/to/emrys.execution.yaml
+```
+
+Add `--execute` only after reviewing this no-write, no-submit plan. Submission
+prints exact `JOB_ID`, `OUT`, and `ERR` values. Scheduler streams
+are created automatically under `<workspace>/logs`; the compute-side Run
+Attempt's application-log root defaults to `<workspace>/logs/application`.
+Reporting runs automatically after scientific work and remains a separate,
+receipt-last transaction rather than a scientific stage.
+
+The 16 owner-local stage/utility `.slurm` files are unchanged and remain
+separate scheduler entry points. They publish only their owner's native outputs
+and validation evidence and never create or adopt an orchestrated Run.
 
 ### Recurring inspection and resume
 
@@ -106,7 +122,10 @@ no-write plan first:
   --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
 ```
 
-Add `--execute` only after reviewing that exact plan. A scope that crossed
+Without an explicit execution profile, resume reuses the predecessor's
+symbolic computational resources and places the new Attempt directly. Select
+an explicit profile to request Slurm placement. Resource CLI overrides have
+highest precedence. Add `--execute` only after reviewing that exact plan. A scope that crossed
 producer entry without verified completion remains blocked rather than being
 retried or cleaned. A complete run refuses resume, and the public lifecycle
 exposes no force, unlock, metadata-cleanup, or raw-engine bypass.
@@ -231,9 +250,10 @@ RSCRIPT_BIN=/usr/local/bin/Rscript make -s all-checks VALIDATION_ARGS=--verbose
 The assembled gate has five evidence lanes. Static preflight runs first and
 owns configuration, documentation, syntax, compilation, and manifest checks.
 Python coverage then owns Python behavior, branch/subprocess coverage, and
-Jinja HTML reporting while excluding the isolated-wheel and SLURM-wrapper
+Jinja HTML reporting while excluding the isolated-wheel and scheduler-wrapper
 suites. The wheel lane owns installed-package integrity. The shell/SLURM lane
-owns shell behavior and scheduler-wrapper contracts. Guarded real R remains
+owns shell behavior, owner-local scheduler wrappers, and whole-Run submission
+transport contracts. Guarded real R remains
 separate because Python and shell substitutes do not execute R semantics.
 Independent lanes run with bounded concurrency after preflight; `--serial`
 selects one top-level lane and one Python worker.
@@ -299,7 +319,8 @@ slow R restore or shell lane cannot serialize the Python suite:
   owner.
 - `Python 3.14 complete suite and coverage policy` aggregates the four
   complete-suite coverage shards and the isolated subprocess probes.
-- `Shell and Slurm contracts` runs the shell and generated-wrapper owner.
+- `Shell and Slurm contracts` runs shell, owner-local wrapper, and whole-Run
+  submission contracts.
 - `Guarded R fixtures` restores the exact R 4.6.1 environment and runs the
   guarded R owner.
 - `Fresh-clone E2E (Python 3.14)` creates a separate ordinary clone, performs
@@ -313,9 +334,9 @@ slow R restore or shell lane cannot serialize the Python suite:
 The scheduled real synthetic lane restores the checked-in Linux lock for STAR,
 Samtools, GATK, BCFtools, Picard, and RSeQC, restores the exact R and Python
 authorities separately, and configures one disposable real Slurm node on the
-GitHub-hosted runner. It executes the public workflow through the generated
-Slurm launcher and retains runtime, scheduler, transcript, partial-state, and
-result evidence even when a selected profile fails. The direct completion
+GitHub-hosted runner. It executes the public workflow through Slurm
+execution-profile placement and retains runtime, scheduler, transcript,
+partial-state, and result evidence even when a selected profile fails. The direct completion
 oracle requires all 35 owner jobs, Step 10, all three reporting transactions,
 the three-row/one-significant-row Step 09 result, and both HTML reports.
 
@@ -411,9 +432,9 @@ discovery is unavailable or when exact raw scheduler streams are required.
 
 ### Manual stream and accounting fallback
 
-For a lifecycle-generated one-allocation job, use the exact job ID and log
-directory printed at submission. Wait for both `%j` streams, but stop waiting
-if accounting shows a terminal allocation:
+For a whole-Run Slurm placement, use the exact job ID and log directory printed
+at submission. The default directory is `<workspace>/logs`. Wait for both `%j`
+streams, but stop waiting if accounting shows a terminal allocation:
 
 ```bash
 job_id=replace-with-printed-job-id
@@ -468,7 +489,6 @@ cd <approved-checkout>
 git branch --show-current
 git rev-parse HEAD
 test -z "$(git status --porcelain=v1)"
-mkdir -p logs
 ```
 
 Then:

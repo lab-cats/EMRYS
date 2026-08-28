@@ -83,31 +83,11 @@ def resource_config() -> dict[str, Any]:
     }
 
 
-def launcher_config() -> dict[str, Any]:
+def execution_profile() -> dict[str, Any]:
     return {
-        "schema_version": "emrys.local-pilot-launcher.v1",
-        "slurm": {
-            "account": {"env": "EMRYS_SLURM_ACCOUNT"},
-            "partition": "example-partition",
-            "qos": {"env": "EMRYS_SLURM_QOS"},
-            "cpus_per_task": 4,
-            "memory": "site-default",
-            "time": "00:30:00",
-            "exclusive": False,
-            "nodelist": {"env": "EMRYS_SLURM_NODELIST"},
-        },
-        "paths": {
-            "log_dir": {"env": "EMRYS_LOG_DIR"},
-            "request": "/absolute/path/to/request.yaml",
-            "workspace": {"env": "EMRYS_WORKSPACE"},
-            "runtime_profile": {"env": "EMRYS_RUNTIME_PROFILE"},
-            "scratch_parent": "/absolute/path/to/scratch",
-        },
-        "modules": {
-            "mode": "none",
-            "init": "",
-            "load": [],
-        },
+        "schema_version": "emrys.execution-profile.v1",
+        "resources": resource_config(),
+        "placement": {"kind": "direct"},
     }
 
 
@@ -514,14 +494,14 @@ def test_registry_is_closed_and_every_schema_is_draft_2020_12() -> None:
                 stack.extend(value)
 
 
-def test_launcher_config_schema_is_registered_as_v3() -> None:
-    assert "launcher-config" in orchestration.SCHEMA_NAMES
-    assert orchestration.SCHEMA_PATHS["launcher-config"].name == (
-        "launcher_config.schema.json"
+def test_execution_profile_schema_is_registered_as_v3() -> None:
+    assert "execution-profile" in orchestration.SCHEMA_NAMES
+    assert orchestration.SCHEMA_PATHS["execution-profile"].name == (
+        "execution_profile.schema.json"
     )
-    assert orchestration.SCHEMA_PATHS["launcher-config"].parent.name == "v3"
-    assert orchestration.SCHEMA_IDS["launcher-config"] == (
-        "urn:emrys:schema:orchestration:launcher-config:v1"
+    assert orchestration.SCHEMA_PATHS["execution-profile"].parent.name == "v3"
+    assert orchestration.SCHEMA_IDS["execution-profile"] == (
+        "urn:emrys:schema:orchestration:execution-profile:v1"
     )
 
 
@@ -543,12 +523,11 @@ def test_unknown_schema_selector_and_nonstandard_json_constant_are_rejected(
         orchestration.load_json_object(record_path)
 
 
-def test_request_resource_launcher_profile_reference_policy_and_execution_records_pass(
-) -> None:
+def test_request_resource_execution_profile_and_run_records_pass() -> None:
     records = {
         "request": request(),
         "resource-config": resource_config(),
-        "launcher-config": launcher_config(),
+        "execution-profile": execution_profile(),
         "profile": profile(),
         "reference": reference(),
         "policy": policy(),
@@ -566,46 +545,73 @@ def test_request_resource_launcher_profile_reference_policy_and_execution_record
     orchestration.validate_record("request", request_without_background)
 
 
-def test_launcher_config_accepts_a_schema_only_authored_fragment() -> None:
-    orchestration.validate_record(
-        "launcher-config",
-        {"schema_version": "emrys.local-pilot-launcher.v1"},
-    )
-
-
-@pytest.mark.parametrize(
-    "mutate",
-    (
-        lambda record: record.__setitem__("unknown", True),
-        lambda record: record["slurm"].__setitem__("unknown", True),
-        lambda record: record["slurm"].__setitem__(
-            "account",
-            {"env": "EMRYS_SLURM_ACCOUNT", "fallback": "example"},
-        ),
-    ),
-)
-def test_launcher_config_rejects_unknown_fields(mutate: Any) -> None:
-    record = launcher_config()
-    mutate(record)
-
-    with pytest.raises(
-        orchestration.ContractValidationError,
-        match="Additional properties|not valid under any of the given schemas",
-    ):
-        orchestration.validate_record("launcher-config", record)
-
-
-def test_launcher_config_rejects_an_environment_reference_for_another_field() -> None:
-    record = launcher_config()
-    record["slurm"]["account"] = {"env": "EMRYS_WORKSPACE"}
-
-    with pytest.raises(orchestration.ContractValidationError, match="EMRYS_WORKSPACE"):
-        orchestration.validate_record("launcher-config", record)
-
-
 def test_lifecycle_and_verified_records_pass() -> None:
     for name, record in lifecycle_records().items():
         orchestration.validate_record(name, record)
+
+
+def test_workflow_attempt_accepts_closed_direct_and_slurm_placement() -> None:
+    direct = lifecycle_records()["workflow-attempt"]
+    direct["placement"] = {
+        "kind": "direct",
+        "source": {"path": "/profiles/direct.yaml", "sha256": ZERO_HASH},
+        "effective_sha256": ONE_HASH,
+        "request": {"kind": "direct"},
+        "scheduler_job_id": None,
+    }
+    orchestration.validate_record("workflow-attempt", direct)
+
+    scheduled = lifecycle_records()["workflow-attempt"]
+    scheduled["placement"] = {
+        "kind": "slurm",
+        "source": {"path": "/profiles/site.yaml", "sha256": ZERO_HASH},
+        "effective_sha256": ONE_HASH,
+        "request": {
+            "kind": "slurm",
+            "account": "research",
+            "partition": "compute",
+            "qos": None,
+            "cpus_per_task": 8,
+            "memory_mb": None,
+            "time": "02:00:00",
+            "exclusive": True,
+            "nodelist": None,
+            "scratch_parent": "/scratch",
+            "modules": {"mode": "none", "init": "", "load": []},
+        },
+        "scheduler_job_id": "700123",
+    }
+    orchestration.validate_record("workflow-attempt", scheduled)
+
+    malformed_source = copy.deepcopy(direct)
+    malformed_source["placement"]["source"]["unexpected"] = True
+    with pytest.raises(orchestration.ContractValidationError, match="Additional"):
+        orchestration.validate_record("workflow-attempt", malformed_source)
+
+    mismatched_kind = copy.deepcopy(scheduled)
+    mismatched_kind["placement"]["kind"] = "direct"
+    with pytest.raises(orchestration.ContractValidationError):
+        orchestration.validate_record("workflow-attempt", mismatched_kind)
+
+
+@pytest.mark.parametrize("job_id", ("0", "00", "01", "-1", 1, True))
+def test_workflow_attempt_rejects_noncanonical_scheduler_job_ids(
+    job_id: object,
+) -> None:
+    attempt = lifecycle_records()["workflow-attempt"]
+    attempt["placement"] = {
+        "kind": "direct",
+        "source": {"path": "/profiles/direct.yaml", "sha256": ZERO_HASH},
+        "effective_sha256": ONE_HASH,
+        "request": {"kind": "direct"},
+        "scheduler_job_id": job_id,
+    }
+
+    with pytest.raises(
+        orchestration.ContractValidationError,
+        match="scheduler_job_id",
+    ):
+        orchestration.validate_record("workflow-attempt", attempt)
 
 
 @pytest.mark.parametrize(

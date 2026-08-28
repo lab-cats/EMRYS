@@ -106,11 +106,18 @@ settles conceptual vocabulary and semantics, not an API realization.
    compatibility path has a named owner, bounded scope, parity protection, and
    explicit retirement condition; the superseded path retires when that
    condition is met.
-5. **Equal-or-stronger regression defense (`AC-GUARD-005`).** Direct-owner,
-   adversarial, seeded-fault, and synthetic end-to-end defenses may be removed
+5. **Boundary- and risk-aware regression defense (`AC-GUARD-005`).** A
+   protection at an external-input, filesystem, concurrency, crash, recovery,
+   persistence, evidence, or supported public-behavior boundary may be removed
    only through an explicit invariant-to-test mapping that establishes an
-   equal-or-stronger replacement at the same declared evidence level. Coverage
-   or the scientist-facing synthetic golden path alone is insufficient.
+   equal-or-stronger surviving defense at the same declared evidence level.
+   Coverage or the scientist-facing synthetic golden path alone is
+   insufficient. A redundant check or test aimed only at an impossible
+   same-process state may instead retire without replacement when the audit
+   proves one admitted immutable producer, no supported injection or mutation
+   path, no distinct failure mode or claim, and the exact surviving authority.
+   High-risk, ambiguous, or directly user-facing protection retirement requires
+   the user's explicit approval.
 6. **Maintenance-surface compression (`AC-GUARD-006`).** Every architecture
    audit records concrete compression opportunities across implementation,
    compatibility paths, configuration, scripts, schemas, documentation,
@@ -126,6 +133,16 @@ settles conceptual vocabulary and semantics, not an API realization.
    indicators, not authority to create god modules, displace logic into
    generated/configured form, or weaken a guarantee. Temporary growth remains
    counted until retired.
+   Every touched shell or generated-shell surface is classified `KEEP`,
+   `CONVERT`, or `RETIRE`. Conversion is permitted only when the same slice
+   removes more total product, protection/test, caller, and cross-language
+   surface than it adds; a line-for-line port or parallel shell/Python owner is
+   not compression. `KEEP` is correct when conversion would increase total
+   surface, even if the retained implementation is not intrinsically
+   shell-native; the audit records the reason and reconsideration trigger.
+   Any high-risk, directly user-facing, execution-boundary, or
+   evidence-validation retirement, consolidation, or conversion requires the
+   user's explicit approval whether or not it is classified as a protection.
 7. **Immutable by default; `Run` is the plan (`AC-GUARD-007`).** Boundary
    values are immutable unless the owning contract justifies a narrow mutable
    lifecycle. A `Run` is an immutable plan and is never modified in place; a
@@ -154,7 +171,9 @@ definition is not evidence merely because it can produce a result; a retained
 result may be. Fixtures, goldens, and oracles can be both, so both guardrails
 apply. An existing surviving defense may satisfy `AC-GUARD-005` when the
 mapping establishes equal-or-stronger coverage; replacement does not require a
-new one-for-one test.
+new one-for-one test. Conversely, a proven impossible internal state has no
+independent invariant to re-protect: its redundant check and check-only test
+may retire together under the recorded low-risk disposition.
 
 ## Ratified responsibility and dependency model
 

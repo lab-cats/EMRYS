@@ -39,6 +39,7 @@ from emrys.libraries.source_authority import (
     controlled_python_argv,
     inspect_source_checkout,
 )
+from emrys.orchestration.local_pilot import onboarding
 from emrys.orchestration.local_pilot.normalization import (
     NormalizationBundle,
     normalize_request,
@@ -324,7 +325,7 @@ def _absolute_path(value: str | Path, *, base: Path | None = None) -> Path:
     return Path(os.path.abspath(path))
 
 
-def _workspace_blockers(
+def workspace_location_blockers(
     workspace: Path, source_root: Path
 ) -> tuple[list[str], list[str]]:
     blockers: list[str] = []
@@ -899,7 +900,7 @@ def inspect_local_pilot(
     root = _absolute_path(_source_root() if source_root is None else source_root)
     profile_path = _absolute_path(runtime_profile)
     workspace_path = _absolute_path(workspace)
-    blockers, remediations = _workspace_blockers(workspace_path, root)
+    blockers, remediations = workspace_location_blockers(workspace_path, root)
     source_commit: str | None = None
     try:
         identity = ops.inspect_source(root, _package_root())
@@ -912,6 +913,10 @@ def inspect_local_pilot(
     try:
         normalized = ops.normalize(request_path, root / PROFILE_RELATIVE_PATH)
     except (orchestration_contracts.ContractValidationError, OSError) as exc:
+        raise DoctorInputError(str(exc)) from exc
+    try:
+        onboarding.validate_normalized_request(normalized)
+    except onboarding.OnboardingError as exc:
         raise DoctorInputError(str(exc)) from exc
     step00c_blockers, step00c_remediations = _step00c_external_parent_blockers(
         normalized,
