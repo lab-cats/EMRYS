@@ -484,7 +484,7 @@ def slurm_execution_profile_bytes(
         )
         document = {
             "schema_version": SCHEMA_VERSION,
-            "resources": source.resources.document(),
+            "resources": source.resource_policy.document(),
             "placement": {
                 "kind": "slurm",
                 "account": account,

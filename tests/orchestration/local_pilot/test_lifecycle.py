@@ -2677,7 +2677,9 @@ def test_historical_task_tree_is_recursively_closed(
             built.validate_reporting,
         ),
     )
-    assert observed.integrity == "blocked"
+    assert observed.integrity == "valid"
+    assert observed.results_status == "blocked"
+    assert not observed.recovery_available
     assert any("task" in blocker.lower() for blocker in observed.blockers)
 
 
