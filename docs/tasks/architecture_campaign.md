@@ -778,7 +778,7 @@ scheduled journeys.
 | [`lifecycle.py`](../../src/emrys/orchestration/local_pilot/lifecycle.py) | Serialize admission, own the run lock, execute the delegated process, bind recovery evidence, and publish the terminal receipt last | Control, task/reporting boundaries, inspection | Strong operational transaction authority cannot be transferred into application coordination. Future class/package/facade placement remains Open. |
 | [`task.py`](../../src/emrys/orchestration/local_pilot/task.py) and [`reporting_boundary.py`](../../src/emrys/orchestration/local_pilot/reporting_boundary.py) | Admit one owner scope or reporting transaction and publish start/attempt/verified records | Fixed Snakemake workflow and lifecycle | Retain functional and downstream transaction authority; do not move it into application coordination around Run. |
 | Fixed [`Snakefile`](../../workflow/Snakefile), workflow contract, and local profile | Declare the reviewed task graph, fixed scientific-owner invocations, target, and local engine configuration | Materialization, local Snakemake execution, task/reporting boundaries, contract and end-to-end tests | Effective execution surface and current engine adapter; not application or scientific authority and not included in the 43-file footprint total. |
-| [`inspection.py`](../../src/emrys/orchestration/local_pilot/inspection.py) | Derive current aggregate state from canonical contracts, records, receipts, and the owned lock | Control, lifecycle resume checks, tests | Read model only. The current `RunInspection` name is descriptive and does not select the target Run representation. |
+| [`inspection.py`](../../src/emrys/orchestration/local_pilot/inspection.py) | Derive separated Run, Attempt, Results, reporting, and recovery status from canonical contracts, records, receipts, and the owned lock | Control, lifecycle resume checks, tests | Read model only. The current `RunInspection` name is descriptive and does not select the target Run representation. |
 | [`projection.py`](../../src/emrys/contracts/orchestration/projection.py) and reporting owners | Project the execution contract into reporting contracts and render admitted results | Normalization, materialization, workflow, standalone `build report` | Downstream reporting remains separate from scientific completion and is not a scientific stage. |
 | [`launcher_config.py`](../../src/emrys/orchestration/local_pilot/launcher_config.py) | Resolve outer Slurm allocation defaults/configuration/environment/overrides and submit once | Generated `run-in-slurm.sh` | Scheduler transport only; not a second application backend or scientific authority. |
 | [`dashboard.py`](../../src/emrys/orchestration/local_pilot/dashboard.py) | CSU preview using scheduler queries plus parsed stdout/Snakemake stderr | `make dashboard` | Non-authoritative presentation with text coupling and fixed six-sample/25-partition display assumptions; eventual structured input is a candidate, not an approved rewrite. |
@@ -796,7 +796,7 @@ scheduled journeys.
 | Task dispatch/start/attempt/verified records | One functional-owner scope within an attempt, with reusable verified state across compatible attempts | Task boundary and owner validation | Internal operational/evidence detail; not required ordinary public vocabulary. |
 | Reporting start/verified records and report receipt | One downstream report transaction/output identity | Reporting owners | Derived output that may be regenerated; not a semantic scientific stage or Run mutation. |
 | Attempt receipt | Terminal outcome of one workflow attempt | Lifecycle, published last | Attempt outcome and evidence, not a general application Result. |
-| `RunInspection` | Regenerated read-only aggregate state | Inspection over persisted authorities | Current state projection. It is not persisted authority and must not define target Run mutability. |
+| `RunInspection` | Regenerated separated read-only status domains | Inspection over persisted authorities | Current status projection. It is not persisted authority and must not define target Run mutability. |
 | Dashboard dictionaries and stream caches | Mutable presentation state for one live view | Dashboard only | Necessary local UI state, not application or evidence authority. |
 
 There is no current application-level `Project` or `Result` representation.
@@ -921,8 +921,9 @@ scientific Results status, reporting status, and recovery availability
 independently. Control and lifecycle recovery decisions use the separated
 domains; verified report paths remain visible independently of the legacy
 combined receipt status. Receipt-v1 and its `local_pipeline_complete` field
-remain unchanged historical evidence, with aggregate read accessors retained
-only for compatibility.
+remain unchanged historical evidence. The superseded aggregate `state`,
+`resume_available`, and `local_pipeline_complete` Python accessors are retired
+after current callers migrated to the separated domains.
 
 The remaining reporting gap is operational: reporting still runs by default,
 but explicit disablement and compact Run-oriented regeneration/adoption remain
@@ -1487,7 +1488,7 @@ these tables settle the target allocation.
 | Attempt receipt `schema_version`, `run_id`, `execution_contract_sha256`, `profile_sha256`, `workflow_attempt_id`, `attempt_record`, `released_run_lock`, `status`, `finished_at`, `snakemake_exit_code`, `termination_signal`, `preentry_task_attempt_records`, `task_start_records`, `verified_tasks`, `blockers`, `message` | Immutable Attempt terminal evidence and exact subordinate evidence references |
 | Attempt receipt `reporting_completion_records` | Downstream Results/reporting lineage, not Attempt-success authority |
 | Attempt receipt `local_pipeline_complete` | Current compatibility projection only; retire as scientific-completion authority |
-| `RunInspection.run_root`, `run_id`, state, latest Attempt/receipt, tasks, reporting, blockers, resume/completion booleans, report locations | Read-only derived projection. Duplicate booleans become derived accessors, never persisted state. |
+| `RunInspection.run_root`, `run_id`, latest Attempt/receipt, tasks, reporting records, domain blockers, integrity, Attempt outcome, Results status, reporting status, recovery availability, and report locations | Read-only derived projection over persisted authorities. The superseded aggregate state and duplicate booleans are retired. |
 | `ReportingBoundaryOutcome.kind`, `start_path`, `verified_path`, `origin_workflow_attempt_id`, `semantic_receipt_path`, `semantic_receipt_sha256`, `verified_report_locations` | Derived reporting-transaction return view; persisted start, verified, and semantic receipt records remain authorities |
 
 | Current artifact/report field family | Final semantic owner or disposition |
@@ -2308,6 +2309,22 @@ The sole new boundary value is one immutable 64-character aggregate written once
 | Compatibility paths | `0` | `0`; direct three-pass path retained |
 | Persisted mutable state | `0` | `0`; one producer-lifetime immutable value only |
 
+### 13.5 Bounded slice record: safe Run next-action guidance
+
+| Surface/category | Finding | Disposition and surviving authority | Preconditions or retirement condition |
+|---|---|---|---|
+| Maintained product: aggregate `RunInspection` projections | `state`, `resume_available`, and `local_pipeline_complete` have no production callers and duplicate the separated status domains. | **Retire.** Current callers use integrity, Attempt outcome, Results, reporting, and recovery directly. | All direct callers migrated; focused lifecycle and presentation coverage retained. |
+| Maintained product: inspection guidance | The separated domains identify a safe action, but the existing public inspection leaves the operator to infer it. | **Retain one projection.** The existing inspect route prints one deterministic next action and fails closed for blockers. | No new command, schema, backend, repair operation, or persisted authority. |
+| Compatibility/evidence | Receipt-v1 and the retained CI E2E summary v1 use `local_pipeline_complete` as historical format evidence. | **Retain unchanged.** Neither field is status authority for current product decisions. | Any future deletion requires exact evidence review and separate explicit approval. |
+| Protections | Aggregate assertions obscure which authority blocked or completed a Run. | **Consolidate.** Existing fault/lifecycle tests assert the owning domain; one compact action table and the public inspect seam protect presentation. | No direct-owner, fault, lifecycle, or E2E defense class is removed. |
+| Deferred UX | Milestones, elapsed time, and role-aware progressive disclosure require broader presentation decisions. | **Defer to `OBS-02`.** | Do not grow this slice into a status API or interim public model. |
+
+Closeout: maintained product Python two existing files, `+25/-36`, net `-11`;
+protections/tests three existing files, `+100/-31`; documentation five files,
+`+34/-13`; configuration/schema/workflow and retained evidence zero;
+one inspect output line added and three direct Python accessors retired; receipt-v1
+and CI E2E summary v1 unchanged; no compatibility path or mutable state added.
+
 ## 14. Measurement plan
 
 Measurement is required so the campaign does not merely move complexity.
@@ -2388,7 +2405,7 @@ semantic field-and-authority portion:
 | `AC-DEC-009` | Which repeated policy decisions deserve shared authorities? | Inventory input, validation, runtime, storage, publication, resource, and execution decisions; decide final authorities, package/service placement, configuration inputs, return/error contracts, defaults, safe overrides, precedence, compatibility, consolidation order, and migration. Every decision already requires one authority, but shared centralization must prove net reduction and avoid empty wrappers. |
 | `AC-DEC-010` | What artifact-lifecycle vocabulary and owner shape are justified? | Candidate, validation, admission, publication, commit, immutability, evidence, and rollback; generalized versus class-specific ownership; APIs, schemas, manifests, receipts, immutability mechanisms, external/large artifacts, Run Bundle/report-derived relationships, cleanup, recovery, and representative migration. Lifecycle/admission is already distinct from physical storage. |
 | `AC-DEC-011` | How are the selected Analysis/Execution-Plan/Run/Attempt semantics realized? | Immutable canonical Analysis/Execution-Plan/Run records, versioned schemas, Run-last persistence, current-path migration, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, and temporary-projection retirement are implemented. Public Project/Results representation, role-aware API/package placement, generalized backend and policy boundaries, remaining public/campaign migration, compatibility duration, and the rest of the implementation retirement roster remain Open. Mutable object state and canonical bytes cannot compete; coordination cannot absorb lower authorities or become a god object. |
-| `AC-DEC-012` | What public Run, Attempt, scientific, and reporting states are useful and truthful? | Resolved for the first read-only surface: Run integrity is `valid`/`blocked`; Attempt outcome is `not_started`/`running`/`succeeded`/`failed`/`interrupted`/`blocked`; scientific Results and reporting are independently `incomplete`/`complete`/`blocked`; recovery is a separate availability fact. Aggregate state and duplicate booleans survive only as compatibility projections. Higher-level progress vocabulary remains with `OBS-02`. |
+| `AC-DEC-012` | What public Run, Attempt, scientific, and reporting states are useful and truthful? | Resolved for the first read-only surface: Run integrity is `valid`/`blocked`; Attempt outcome is `not_started`/`running`/`succeeded`/`failed`/`interrupted`/`blocked`; scientific Results and reporting are independently `incomplete`/`complete`/`blocked`; recovery is a separate availability fact. The superseded aggregate Python accessors are retired; receipt-v1 remains historical schema evidence. Higher-level progress vocabulary remains with `OBS-02`. |
 | `AC-DEC-013` | What is the Run Bundle contract? | Layout, portability, large artifacts, external references, redaction, archival, regeneration, sharing |
 | `AC-DEC-014` | How are the ratified downstream-reporting semantics represented? | Partially resolved: read-only scientific Attempt/Results state, reporting state, recovery, and verified report locations are independent while receipt-v1 remains historical compatibility evidence. Exact opt-out/regeneration interfaces, ledger adoption/repair, retry and exit presentation, scientific/evidence/operations views, receipt organization, immutable artifacts versus derived views, and canonical location remain Open. Reporting remains downstream, default-on for a full run, disable-able, and independently regenerable without invalidating science. |
 | `AC-DEC-015` | What replaces the current “demo” surface? | Neutral synthetic golden path; whether “demo” remains a command, test-only term, or is retired completely |
@@ -2467,7 +2484,7 @@ defined in Section 13.1; evidence deletion cannot be implied by promotion.
 | `AC-SLICE-07` | Define artifact-class lifecycle/admission requirements, decide whether any shared lifecycle or distinct Artifact Store is justified, and migrate one path only if the selected design requires a boundary change | New slice; supports `ARCH-01` |
 | `AC-SLICE-08` | Define named execution profiles independently of Managed/Site/Explicit runtime modes | Backend semantics and Attempt-local allocation provenance are separated; profile taxonomy, persistence, precedence, selection, and public surface remain Open with `OPS-01` and `RUNTIME-01` |
 | `AC-SLICE-09` | Provide expert explain/inspect interfaces for effective plan, run, artifact, and evidence | New slice or expansion of `OPS-02`/`CONTROL-01` |
-| `AC-SLICE-10` | Define high-level status and safe resume/recovery UX over existing fail-closed internals | New slice; coordinates with `OBS-02` |
+| `AC-SLICE-10` | Define high-level status and safe resume/recovery UX over existing fail-closed internals | Separated status, recovery gating, and deterministic safe next-action guidance are implemented. Milestones, elapsed time, and remaining role-aware presentation stay Open with `OBS-02`. |
 | `AC-SLICE-11` | Define a portable canonical Run Bundle contract | New slice; coordinates with `FILESYSTEM-01` and `RESULTS-01` |
 | `AC-SLICE-12` | Formalize scientific, evidence, and operational report purposes and navigation | New slice or expansion of `REPORT-03` and `RESULTS-01` |
 | `AC-SLICE-13` | Deliver a supported fresh-install-to-valid-synthetic-result golden path after ratifying its capability order | New cross-cutting outcome; coordinates with setup, runtime, Doctor, run, results, and `CLEAN-01` |

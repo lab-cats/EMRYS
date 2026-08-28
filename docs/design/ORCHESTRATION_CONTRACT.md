@@ -496,8 +496,8 @@ aggregate state in place:
 | Recovery | Available only for a failed/interrupted Attempt with incomplete scientific Results and no blocker |
 
 The historical aggregate `state`, `resume_available`, and
-`local_pipeline_complete` read-model accessors remain compatibility projections;
-control and lifecycle decisions do not use them. Receipt-v1 retains its required
+`local_pipeline_complete` read-model accessors are retired after all current
+callers migrated to these dimensions. Receipt-v1 retains its required
 `local_pipeline_complete` field as historical schema evidence, not scientific
 completion authority.
 

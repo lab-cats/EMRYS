@@ -180,7 +180,10 @@ Successful run and resume execution, and only a completed final inspection,
 print a short `Results:` block with the scientific report first and evidence
 report second. Those absolute locations are carried from the fully revalidated
 report receipt; dry-run, failed, blocked, incomplete, or unverified state prints
-no result locations. The dashboard does not derive or display them.
+no result locations. Inspection also prints one deterministic next supported
+action derived from the separated Run, Attempt, Results, reporting, and recovery
+domains; blocked evidence is preserved and never presented as resumable. The
+dashboard does not derive or display result locations or recovery guidance.
 
 `materialization.build_attempt_plan` is the sole production projection from
 the fixed profile to owner commands, declared inputs/outputs, validation

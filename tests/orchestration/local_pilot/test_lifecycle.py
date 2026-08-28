@@ -1909,7 +1909,7 @@ def test_verified_tree_residue_blocks_lifecycle_and_inspection(
             built.validate_reporting,
         ),
     )
-    assert observed.state == "blocked"
+    assert observed.results_status == "blocked"
     assert any("verified task" in value.lower() for value in observed.blockers)
 
 
@@ -2088,7 +2088,7 @@ def test_foreign_attempt_directory_race_is_refused_after_lock_acquisition(
             built.validate_reporting,
         ),
     )
-    assert observed.state == "blocked"
+    assert observed.integrity == "blocked"
     assert any("retained aggregate lock" in value for value in observed.blockers)
 
 
@@ -2361,7 +2361,7 @@ def test_inspection_blocks_empty_or_foreign_attempt_state(tmp_path: Path) -> Non
             built.validate_reporting,
         ),
     )
-    assert observed.state == "blocked"
+    assert observed.integrity == "blocked"
     assert any("no immutable attempt" in item for item in observed.blockers)
 
 
@@ -2387,7 +2387,7 @@ def test_attempts_root_must_be_pre_materialized_and_real(
             built.validate_reporting,
         ),
     )
-    assert observed.state == "blocked"
+    assert observed.integrity == "blocked"
     assert any("attempts root" in item for item in observed.blockers)
 
     with pytest.raises(lifecycle.LifecycleError, match="Aggregate attempt state"):
@@ -2414,7 +2414,7 @@ def test_nonattempt_entry_and_unexpected_attempt_child_block_before_lock(
             built.validate_reporting,
         ),
     )
-    assert observed.state == "blocked"
+    assert observed.integrity == "blocked"
     assert any(
         "Unexpected aggregate attempt state" in item for item in observed.blockers
     )
@@ -2483,7 +2483,7 @@ def test_success_receipt_with_verified_subset_is_blocked_on_inspection(
             built.validate_reporting,
         ),
     )
-    assert observed.state == "blocked"
+    assert observed.results_status == "blocked"
     assert any("exact verified task" in item for item in observed.blockers)
 
 
@@ -2542,8 +2542,8 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
     outcome = lifecycle.run_attempt(built.request, ops=built.ops())
 
     assert built.live_observation is not None
-    assert built.live_observation.state == "running"
-    assert not built.live_observation.resume_available
+    assert built.live_observation.attempt_outcome == "running"
+    assert not built.live_observation.recovery_available
     assert outcome.receipt["status"] == "blocked"
     assert len(outcome.receipt["task_start_records"]) == 1
 
@@ -2555,7 +2555,7 @@ def test_live_owned_incomplete_start_is_running_then_terminally_blocked(
             built.validate_reporting,
         ),
     )
-    assert observed.state == "blocked"
+    assert observed.integrity == "blocked"
 
 
 def test_task_start_crash_and_deletion_remain_blocked(tmp_path: Path) -> None:
@@ -2579,7 +2579,7 @@ def test_task_start_crash_and_deletion_remain_blocked(tmp_path: Path) -> None:
             built.validate_reporting,
         ),
     )
-    assert observed.state == "blocked"
+    assert observed.results_status == "blocked"
     assert any("task-start" in blocker for blocker in observed.blockers)
 
 
@@ -2614,7 +2614,6 @@ def test_reporting_start_without_completion_and_deleted_completion_block(
             complete.validate_reporting,
         ),
     )
-    assert observed.state == "blocked"
     assert observed.integrity == "valid"
     assert observed.attempt_outcome == "succeeded"
     assert observed.results_status == "complete"
@@ -2652,7 +2651,7 @@ def test_historical_task_tree_is_recursively_closed(
             built.validate_reporting,
         ),
     )
-    assert observed.state == "blocked"
+    assert observed.integrity == "blocked"
     assert any("task" in blocker.lower() for blocker in observed.blockers)
 
 
@@ -2747,7 +2746,7 @@ def test_attempt_logs_are_chunk_hashed_for_inspect_and_resume_preflights(
     )
 
     observed = inspection.inspect_run(first.built.run_root, ops=inspect_ops)
-    assert observed.state == "resume_available"
+    assert observed.recovery_available
     assert stable_calls == [stdout_path, stderr_path]
     for path, expected_size in (
         (stdout_path, len(stdout_data)),
@@ -2829,7 +2828,7 @@ def test_task_log_mutation_blocks_completed_run_inspection(
             built.validate_reporting,
         ),
     )
-    assert observed.state == "blocked"
+    assert observed.results_status == "blocked"
     assert any(
         "binds different" in blocker and file_name.split(".")[0] in blocker
         for blocker in observed.blockers
@@ -2865,8 +2864,8 @@ def test_preentry_task_log_mutation_blocks_resume(
             built.validate_reporting,
         ),
     )
-    assert observed.state == "blocked"
-    assert observed.resume_available is False
+    assert observed.results_status == "blocked"
+    assert observed.recovery_available is False
     assert any(
         "binds different" in blocker and file_name.split(".")[0] in blocker
         for blocker in observed.blockers
@@ -2889,8 +2888,7 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
                 lambda _pid: True,
                 first.validate_reporting,
             ),
-        ).state
-        == "resume_available"
+        ).recovery_available
     )
 
     first_id = str(first.request.attempt_record["workflow_attempt_id"])
@@ -2915,7 +2913,13 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
             first.validate_reporting,
         ),
     )
-    assert complete_observation.state == "local_pipeline_complete", (
+    assert (
+        complete_observation.integrity,
+        complete_observation.attempt_outcome,
+        complete_observation.results_status,
+        complete_observation.reporting_status,
+        complete_observation.recovery_available,
+    ) == ("valid", "succeeded", "complete", "complete", False), (
         complete_observation.blockers
     )
 
@@ -2935,7 +2939,7 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
             first.validate_reporting,
         ),
     )
-    assert omitted_observation.state == "blocked"
+    assert omitted_observation.results_status == "blocked"
     assert any(
         "cumulative preentry evidence" in blocker
         for blocker in omitted_observation.blockers
@@ -2965,7 +2969,8 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
             first.validate_reporting,
         ),
     )
-    assert forged_observation.state == "blocked"
+    assert forged_observation.integrity == "blocked"
+    assert forged_observation.results_status == "blocked"
     assert any(
         "pre-binds future task-start" in blocker
         for blocker in forged_observation.blockers
