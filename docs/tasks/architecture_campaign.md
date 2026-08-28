@@ -941,6 +941,22 @@ confirmation, report opt-out/regeneration, and execution-profile selection
 remain later verticals; this boundary does not settle them through a new facade
 or compatibility layer.
 
+#### Request-to-Analysis intake hardening
+
+The existing authored request remains a temporary Project-source/provenance
+adapter; no public Project type, schema, command, or filesystem layout is
+introduced. Normalization now retains immutable authored request bytes,
+canonical profile bytes, canonical construction bytes, and the admitted
+Analysis revision. Compatibility mappings are reconstructed as fresh views, so
+a caller cannot mutate later views, Analysis identity, historical-v1 bytes, or
+subsequent Run construction.
+
+This implements the immutable admission boundary beneath future Project intake
+without selecting its public representation. Project persistence/discovery,
+scientist-facing file shape, embedded versus tabular samples, CLI spelling,
+precedence/defaults, setup/edit lifecycle, and public package/error design
+remain Open.
+
 #### Mutation inventory
 
 The strongest current immutability is in validated canonical bytes and
@@ -948,7 +964,7 @@ create-exclusive persisted records, not in every Python aggregate:
 
 | State | Current owner and lifetime | Writers | Readers | Why mutation exists now | Immutable-boundary disposition |
 |---|---|---|---|---|---|
-| Normalization drafts and `NormalizationBundle` mappings | `normalization.py`; one normalization call, then the returned bundle's in-memory lifetime | Normalization builders populate request, profile, and execution dictionaries | Onboarding validation, Doctor, control, projection, materialization, tests | Draft parsing, defaulting, snapshot admission, and canonical construction are naturally incremental; post-admission mutability is not required | Retain mutable local drafts; candidate one immutable admitted result whose canonical bytes and views cannot diverge. Final public type and owner remain Open. |
+| Normalization drafts and `NormalizationBundle` views | `normalization.py`; drafts live only during one normalization call, then immutable admitted bytes/revision back fresh views | Normalization builders populate local request, profile, and construction drafts; callers may mutate only their disposable views | Onboarding validation, Doctor, control, projection, materialization, tests | Draft parsing, defaulting, snapshot admission, and canonical construction remain naturally incremental; shared post-admission mutation is removed | Implemented for current intake: retain local mutable drafts, then store immutable request/profile/construction bytes and canonical Analysis revision. Public Project representation and owner remain Open. |
 | `AttemptPlan.attempt_record` and nested bundle | `materialization.py` and control; one execute or resume planning invocation through lifecycle handoff | `build_attempt_plan` constructs it; an injected control transformer may replace the plan before return; audited in-repo local-pilot callers showed no later mutation | Control display/execution, materialization publication, lifecycle admission, tests | Construction combines readiness, resources, identity, time/token/host/process, files, and command facts; later mutability is incidental | Exact admitted plan boundary is required. Preserve prepared-versus-materialized byte equality; whether Attempt fields belong to Run remains Open. |
 | `LifecycleRequest.attempt_record` | Materialization-to-lifecycle handoff; one materialized attempt admission | `publish_attempt` constructs the request from the plan | Lifecycle admission, identity/resource/argv rechecks, tests | Mapping shape is inherited from construction; no mutation after handoff is necessary | Candidate immutable admitted request value; do not conflate it with live lifecycle transaction state. |
 | `LifecycleOutcome.receipt` | Lifecycle-to-control handoff; one terminal attempt return | Lifecycle builds the terminal receipt/outcome after receipt-last publication | Control result projection, verified-report display, tests | Dictionary construction mirrors the persisted schema; post-return mutation is not required | Candidate immutable terminal view over persisted evidence; receipt file remains authority. |
@@ -2409,8 +2425,10 @@ The successor Run-authority cutover now implements immutable records, Run-last
 admission, direct workflow/task Run admission, Attempt-owned reporting inputs,
 historical read/resume, and retirement of the temporary execution projection.
 The grouped CLI is now the sole supported Run-control surface and its duplicate
-direct Python planning surface is retired. `AC-SLICE-03` remains Open for the
-rest of the public model. Every
+direct Python planning surface is retired. Current request-to-Analysis intake
+now freezes admitted bytes and authority while returning only fresh disposable
+compatibility views. `AC-SLICE-03` remains Open for the rest of the public
+model. Every
 later candidate still requires its own bounded owner/caller review,
 compression register, mutation inventory, non-goals, acceptance conditions,
 protection disposition, and evidence ceiling before entering the matrix. A
@@ -2421,7 +2439,7 @@ defined in Section 13.1; evidence deletion cannot be implied by promotion.
 |---|---|---|
 | `AC-SLICE-01` | Ratified all 27 architectural invariants and five migration/test guardrails against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open |
 | `AC-SLICE-02` | Ratified responsibility clusters, three separate dependency graphs, forbidden authority transfers, a current-owner crosswalk, and a fast Python source-boundary ratchet for exact CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open |
-| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. Successor Run authority, Run-last persistence, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, temporary-projection retirement, separated read-only status, and a single supported grouped-CLI Run-control boundary are implemented. Public Project/Analysis/Results intake and control, generalized backend/policy boundaries, and remaining public/campaign migrations remain Open, so the campaign card remains Open. |
+| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. Successor Run authority, Run-last persistence, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, temporary-projection retirement, separated read-only status, a single supported grouped-CLI Run-control boundary, and immutable current request-to-Analysis intake are implemented. Public Project/Analysis/Results representation and control, generalized backend/policy boundaries, and remaining public/campaign migrations remain Open, so the campaign card remains Open. |
 | `AC-SLICE-04` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` |
 | `AC-SLICE-05` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across supported local and SLURM backends | New slice; enriches `OPS-02` |
 | `AC-SLICE-06` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` |
@@ -2457,8 +2475,8 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `ARCH-MODEL-AUDIT-01` | Completed current-model prerequisite: maps separate control paths, semantic lifetimes, owners/callers, identity boundaries, dry-run and write-before-attempt-admission gaps, Local/Slurm relationship, reporting/status mismatch, mutation ownership, protected evidence, reproducible footprint/change accounting, and 14 conditional compression candidates without selecting the application model |
 | `ARCH-MODEL-DECISION-01` | Completed direction decision: model C; public `Project -> Analysis -> Run -> Results`; progressively disclosed Attempt; internal inspectable Execution Plan; explicit Run-versus-Attempt change boundary; reporting remains downstream and identity-neutral. |
 | `ARCH-MODEL-FIELDS-01` | Completed semantic decision package: exact identity-bearing fields and digest composition; relocation, formatting, labels, order, and content rules; symbolic resource/Attempt envelope; one logical authority per admitted boundary; direct compatibility/retirement direction; Run-admission recovery ownership; and separate Attempt, Results, evidence, and reporting status domains. The first internal successor representation and current-path migration are now implemented; broader product realization remains Open. |
-| `CONTROL-01` | Realize the ratified compact public model and progressive disclosure. Successor Run authority, separated status, and one supported grouped-CLI Run-control boundary are implemented; the duplicate direct Python planning surface and temporary execution projection are retired. Public Project/Analysis/Results intake and control, progressive disclosure, and remaining public migration remain Open. |
-| `CONFIG-01` | Scientific versus execution versus evidence ownership; one scientist-facing definition; generated normalized artifacts; schema alternatives remain open |
+| `CONTROL-01` | Realize the ratified compact public model and progressive disclosure. Immutable current request-to-Analysis intake, successor Run authority, separated status, and one supported grouped-CLI Run-control boundary are implemented; shared mutable normalization views, the duplicate direct Python planning surface, and the temporary execution projection are retired. Public Project/Analysis/Results representation and control, progressive disclosure, and remaining public migration remain Open. |
+| `CONFIG-01` | Current request-to-Analysis admission now freezes authored/profile/construction bytes and Analysis authority without choosing the future Project representation; scientific versus execution versus evidence ownership, one scientist-facing definition, generated normalized artifacts, and schema alternatives remain open |
 | `OPS-01` | Small operator-configuration surface; every effective value and source is inspectable and only explicitly safe owner-defined values are overrideable; exact interfaces, merge semantics, and named-profile model remain open |
 | `OPS-02` | The grouped CLI is the sole supported Run-control surface and its three controlled-runtime forwarding routes share one adapter; the broader small role-aware CLI, command partitioning/order, scheduler-selection behavior, and stable advanced inspection/override/debug routes remain open |
 | `OPS-03` | Inline/generated program inventory, extraction of substantive reusable logic, and removal of operator dependence on helper scripts |

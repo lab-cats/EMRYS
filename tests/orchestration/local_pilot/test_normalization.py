@@ -83,6 +83,32 @@ def test_local_pilot_starters_normalize_after_explicit_paths_are_populated(
     ]
 
 
+def test_admitted_intake_views_cannot_mutate_analysis_authority(
+    tmp_path: Path,
+) -> None:
+    request = fixture.build(tmp_path / "request-root")
+    normalized = normalize_request(request, fixture.profile())
+    expected_request = normalized.request
+    expected_profile = normalized.profile
+    expected_projection = normalized.projection_source
+    expected_request_sha256 = normalized.request_sha256
+    expected_analysis_id = normalized.analysis_revision.analysis_revision_id
+    expected_analysis_bytes = normalized.analysis_revision.canonical_bytes
+    _, expected_historical_bytes = normalized.historical_execution_v1()
+
+    normalized.request["analysis"]["min_sample_dp"] = 999
+    normalized.profile["profile_id"] = "mutated"
+    normalized.projection_source["analysis"]["cohort_id"] = "mutated"
+
+    assert normalized.request == expected_request
+    assert normalized.profile == expected_profile
+    assert normalized.projection_source == expected_projection
+    assert normalized.request_sha256 == expected_request_sha256
+    assert normalized.analysis_revision.analysis_revision_id == expected_analysis_id
+    assert normalized.analysis_revision.canonical_bytes == expected_analysis_bytes
+    assert normalized.historical_execution_v1()[1] == expected_historical_bytes
+
+
 def test_analysis_revision_is_deterministic_path_neutral_and_label_independent(
     tmp_path: Path,
 ) -> None:

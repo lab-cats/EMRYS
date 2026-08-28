@@ -119,7 +119,11 @@ matching compression mode, snapshots declared regular non-symlink inputs, and
 validates the canonical execution contract. Duplicate keys, custom tags, merge
 keys, globs, templates, environment/home interpolation, unknown fields, and
 ambiguous paths fail admission. Request formatting and the optional human
-label do not enter the execution identity.
+label do not enter the execution identity. The admitted normalization bundle
+retains immutable request, canonical profile, and canonical construction bytes
+plus the canonical Analysis revision. Its request, profile, and construction
+mappings are fresh disposable views and cannot mutate identity or historical
+compatibility bytes.
 
 `doctor.inspect_local_pilot` and the grouped `emrys doctor local-pilot` route
 are the read-only B5 setup boundary. They reuse normalization plus the runtime-
