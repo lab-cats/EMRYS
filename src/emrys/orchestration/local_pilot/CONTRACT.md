@@ -115,6 +115,18 @@ provenance, or null for direct execution; historical three-field allocation
 records remain readable. The job ID is not Run identity, scientific completion,
 or evidence-promotion authority.
 
+Direct and Slurm placement have one planning/materialization contract when
+effective resource resolution is held constant. With an unchanged Run and
+Attempt context, direct capacity and a larger admitted Slurm allocation then
+produce byte-for-byte-equal canonical Analysis, Execution Plan, Run, fixed
+files, task dispatches, non-configuration Attempt files, and output
+directories. The workflow configuration differs only in structured allocation
+provenance, and the Attempt record only in that configuration's digest. This
+controlled proof does not establish allocation-sensitive effective-resource
+parity, distinct-Attempt outcome parity, real scheduler or site execution,
+runtime/module portability, failure/recovery parity, or report-publication
+parity.
+
 ## Normalization and execution
 
 `normalization.normalize_request` is a read-only public Python boundary. It
