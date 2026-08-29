@@ -18,7 +18,7 @@ generates these expected files.
 - `report_html_input.json` binds fixed renderer metadata and CSS to the
   independently reviewed, schema- and semantics-valid run-summary fixture;
   `report_html.sha256` records separate exact Jinja HTML digests for the
-  scientific and operational-evidence views. The test validates the public
+  scientific and evidence-and-operations views. The test validates the public
   summary contract before rendering and checks that view-specific sections do
   not cross their reporting boundary.
 The identifiers, paths, hashes, and content are synthetic. These fixtures

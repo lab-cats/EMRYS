@@ -457,6 +457,11 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     assert 'id="motif-context-enrichment-figure"' in scientific_html
     assert 'id="selected-context-track-figure"' in scientific_html
     assert scientific_html.count("data:image/svg+xml;base64,") == 7
+    for content in (scientific_html, evidence_html):
+        assert f'href="{run_id}.scientific_report.html"' in content
+        assert f'href="{run_id}.evidence_report.html#evidence-category"' in content
+        assert f'href="{run_id}.evidence_report.html#operations-category"' in content
+    assert "EMRYS evidence and operations report" in evidence_html
     assert "Matplotlib 3.11.1" in evidence_html
     assert "Logomaker 0.8.7" in evidence_html
     with (report_directory / f"{run_id}.report_outputs.tsv").open(

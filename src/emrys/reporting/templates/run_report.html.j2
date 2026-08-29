@@ -194,6 +194,11 @@
   data-template-sha256="{{ view.metadata.template_sha256 }}"
   data-css-sha256="{{ view.metadata.css_sha256 }}"
 {% endif %}>
+  <nav class="fact-grid" aria-label="Report purposes">
+    <a class="fact-item" href="{{ view.run_id }}.scientific_report.html"><strong>Scientific report</strong><span class="candidate-status">What did the analysis find?</span></a>
+    <a class="fact-item" href="{{ view.run_id }}.evidence_report.html#evidence-category"><strong>Evidence and provenance</strong><span class="candidate-status">Why should the reader trust this result?</span></a>
+    <a class="fact-item" href="{{ view.run_id }}.evidence_report.html#operations-category"><strong>Operations</strong><span class="candidate-status">How did execution proceed?</span></a>
+  </nav>
   <h1 id="emrys-report-title">{{ view.heading }}</h1>
   <div class="state-banner state-{{ view.boundary_class }}" role="status" aria-live="polite">{{ view.banner }}</div>
   <p class="report-disclaimer">{{ view.introduction }}</p>

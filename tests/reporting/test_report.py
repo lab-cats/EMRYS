@@ -28,6 +28,7 @@ from emrys.reporting._run_report import context as report_context
 from emrys.reporting._run_report import publication, receipt, validation, view
 from emrys.reporting._run_report import scientific_context as report_scientific_context
 from emrys.reporting._run_report.models import (
+    EVIDENCE_REPORT_SECTION_IDS,
     JINJA_VERSION,
     LOGOMAKER_VERSION,
     MATPLOTLIB_VERSION,
@@ -508,6 +509,10 @@ def test_success_publishes_two_html_views_summary_and_v4_receipt_last(
     ]
     assert document["outputs"][0]["self_contained"] is True
     assert document["outputs"][1]["self_contained"] is True
+    html_paths = (context.output_scientific_html, context.output_evidence_html)
+    for descriptor, path in zip(document["outputs"][:2], html_paths, strict=True):
+        assert descriptor["sha256"] == hashlib.sha256(path.read_bytes()).hexdigest()
+    assert document["outputs"][0]["sha256"] != document["outputs"][1]["sha256"]
     assert document["analysis_execution_performed"] is False
     assert document["validation_claimed"] is False
 
@@ -787,6 +792,29 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert banner in scientific and banner in evidence
     assert 'data-report-view="scientific"' in scientific
     assert 'data-report-view="evidence"' in evidence
+    run_id = context.summary["run_id"]
+    destinations = (
+        (
+            "Scientific report",
+            "What did the analysis find?",
+            f"{run_id}.scientific_report.html",
+        ),
+        (
+            "Evidence and provenance",
+            "Why should the reader trust this result?",
+            f"{run_id}.evidence_report.html#evidence-category",
+        ),
+        (
+            "Operations",
+            "How did execution proceed?",
+            f"{run_id}.evidence_report.html#operations-category",
+        ),
+    )
+    for content in (scientific, evidence):
+        assert 'aria-label="Report purposes"' in content
+        for label, question, href in destinations:
+            assert f'href="{href}"><strong>{label}</strong>' in content
+            assert f'<span class="candidate-status">{question}</span>' in content
     assert "CMH-ranked candidates" in scientific
     assert "FWD_like" in scientific
     assert 'id="computational_significant_sites"' not in scientific
@@ -893,6 +921,13 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert 'id="computational_all_sites"' not in evidence
     assert "candidate_1" not in evidence
     assert "Attempt lineage" in evidence
+    assert "EMRYS evidence and operations report" in evidence
+    assert evidence.index('id="evidence-category"') < evidence.index(
+        'id="operations-category"'
+    )
+    assert 'id="provenance-category"' not in evidence
+    for section_id in EVIDENCE_REPORT_SECTION_IDS:
+        assert evidence.count(f'id="{section_id}"') == 1
     assert "<details" in evidence
     assert "Artifact appendix" in evidence
     assert "Report provenance" in evidence
@@ -1111,6 +1146,25 @@ def test_report_displays_print_first_selected_candidate_evidence(
             context.scientific_context_unavailable_reason
         ),
     )
+    assert tuple(category["id"] for category in evidence_view["categories"]) == (
+        "overview-category",
+        "evidence-category",
+        "operations-category",
+    )
+    evidence_sections = tuple(
+        section["id"] for section in evidence_view["categories"][1]["sections"]
+    )
+    operations_sections = tuple(
+        section["id"] for section in evidence_view["categories"][2]["sections"]
+    )
+    assert evidence_sections == (
+        "step09-sources-section",
+        "qc-metrics-section",
+        "artifact-appendix-section",
+        "tools-issues-section",
+        "report-provenance-section",
+    )
+    assert operations_sections == ("attempt-lineage-section",)
     source_section = next(
         section
         for category in evidence_view["categories"]
