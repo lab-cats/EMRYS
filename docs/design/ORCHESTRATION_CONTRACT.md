@@ -5,12 +5,12 @@ pilot. B2 implements its closed machine schemas, read-only Project admission,
 reporting projection, and semantic all-pass checker. B3 implements the fixed
 local-CMH profile, static fourteen-scientific-owner-rule Snakemake graph, local executor profile,
 and generic task boundary that publishes task attempts and content-bound
-verified records. B4 implements the three reporting rules and the
+verified records. B4 implements the three downstream reporting transactions and the
 internal durable producer-entry, immutable-attempt, terminal-receipt,
 between-task-resume, and
 read-only-inspection APIs for an already materialized run. B5 implements the
 read-only doctor, fixed-profile production materializer, and public dry-run-
-first `run`, `resume`, and `inspect local-pilot-run` adapter. No real science-
+first `run`, `resume`, `report`, and `inspect local-pilot-run` adapter. No real science-
 tool execution has been proven. Current
 scientific behavior remains with the
 applicable functional owner, and exact semantic identities and artifact edges remain in
@@ -57,11 +57,14 @@ The local pilot has one explicit path:
    validator, and a generic semantic all-pass check.
 7. A content-bound verified task record is published only after all three
    succeed.
-8. Required verified tasks automatically feed the existing artifact-index,
-   run-summary, and Jinja HTML-report owners. Reporting is not a scientific
-   stage.
-9. A workflow-attempt receipt is published last. Inspection derives state from
-   EMRYS contracts and records, never from Snakemake metadata alone.
+8. After every required task is verified, lifecycle releases the Run lock and
+   publishes a v2 workflow-attempt receipt last.
+9. Public control then invokes the fixed artifact-index, run-summary, and Jinja
+   HTML-report sequence by default. `--no-report` disables only that downstream
+   work, and `emrys report` can plan or generate it independently. Reporting is
+   not a scientific stage and creates neither Run nor Attempt.
+10. Inspection derives state from EMRYS contracts and records, never from
+    Snakemake metadata alone.
 
 There is no Project inbox, watcher, database, service, plugin registry, or
 automatic recovery subsystem in version 1.
@@ -94,8 +97,9 @@ The only selected profile is the current paired-CMH workflow:
 - automatic per-sample evidence `02b` and `03`;
 - cohort/analysis work through `07`, `08`, `09`, and the post-Step09
   scientific-context projection `10`;
-- artifact indexing, canonical run-summary assembly, and separate
-  self-contained scientific and evidence HTML reports.
+- default downstream artifact indexing, canonical run-summary assembly, and
+  separate self-contained scientific and evidence HTML reports; these can be
+  disabled for execution or generated independently after successful science.
 
 The `02b` and `03` evidence branches do not gate downstream scientific compute,
 but the local profile requires them before workflow completion. Step `10`
@@ -519,13 +523,14 @@ aggregate state in place:
 | Attempt outcome | `not_started`, `running`, `succeeded`, `failed`, `interrupted`, or `blocked`; complete admitted scientific work is successful independently of downstream reporting |
 | Scientific Results | `incomplete`, `complete`, or `blocked` from the exact required verified-task roster and its evidence |
 | Reporting | `incomplete`, `complete`, or `blocked` from the three independent reporting ledgers and semantic receipts |
-| Recovery | Available only for a failed/interrupted Attempt with incomplete scientific Results and no blocker |
+| Recovery | Available only for a failed/interrupted Attempt with incomplete scientific Results and no scientific or Run-integrity blocker; reporting state does not gate recovery |
 
 The historical aggregate `state`, `resume_available`, and
 `local_pipeline_complete` read-model accessors are retired after all current
 callers migrated to these dimensions. Receipt-v1 retains its required
 `local_pipeline_complete` field as historical schema evidence, not scientific
-completion authority.
+completion authority. Current lifecycle emits receipt v2, which removes both
+receipt-v1 reporting fields and closes solely over the scientific Attempt.
 
 A workflow attempt begins with an immutable `attempt.json` and ends with one
 receipt published last as `succeeded`, `failed`, `interrupted`, or `blocked`.
@@ -572,7 +577,7 @@ reused only after EMRYS rechecks:
 - the execution contract and profile digest;
 - the clean source checkout plus every exact required-tool authored path,
   canonical target, version, and file digest or admitted directory identity;
-- the exact closed task-start and reporting-start rosters;
+- the exact closed task-start roster;
 - the task-start, task-attempt, and verified-task identity chain;
 - the verified-record schema and complete hash bindings;
 - every declared native output and native receipt;
@@ -583,11 +588,13 @@ reused only after EMRYS rechecks:
 Timestamp freshness and Snakemake completion metadata are insufficient. A
 failed or missing recheck never causes automatic deletion or rerun over an
 ambiguous output set. It yields `blocked` and routes to the applicable owner
-recovery instructions. Version 1 supports only between-task resume. Once an
-owner or reporting producer has crossed its durable start boundary, failure or
+recovery instructions. Version 1 supports only scientific between-task resume.
+Once a scientific owner has crossed its durable start boundary, failure or
 interruption is not automatically recoverable even when no output appears to
 have been written. Version 1 does not automate owner-internal transaction
-recovery. Successor resume currently also requires the same normalized backend
+recovery. Downstream reporting never controls scientific resume; its own
+partial transaction remains fail-closed and is not repaired or restarted.
+Successor resume currently also requires the same normalized backend
 projection as its predecessor. Identity-neutral projection changes, including
 content-equivalent input relocation, remain same-Run targets but are rejected
 until an Attempt-local projection can preserve the complete origin-evidence
@@ -646,19 +653,28 @@ scopes, plus the exact evidence ceiling. It never accepts a caller-supplied
 residue list, infers EMRYS state from `.snakemake/`, or repairs what it
 observes.
 
-Reporting is invoked automatically by a full Run but remains a separate
-non-scientific domain. Each reporting transaction follows the same irreversible
-entry policy. Its normal read-only dry-run occurs before `start.json`; the
-start is then published
+Reporting is invoked automatically after a successful full scientific Run but
+remains a separate non-scientific domain. `run` and `resume` may disable it with
+`--no-report`; `emrys report --run-root ...` performs the same admission and is
+read-only unless `--execute` is present. Reporting creates no Run or Attempt and
+cannot alter the successful v2 Attempt receipt. Each reporting transaction
+follows the same irreversible entry policy. Its read-only preflight occurs
+before `start.json`; the start is then published
 before the execute command. `verified.json` is published only after the command
 returns, the native receipt and full transaction are semantically re-admitted,
-and the reporting owner's declared control namespace is clean. A reporting
-start without that completion evidence blocks resume.
+and the reporting owner's declared control namespace is clean. New generation
+requires fully empty ledgers and output directories; complete transactions are
+reused, while partial, corrupt, orphaned, symlinked, or concurrent state fails
+closed without repair, overwrite, deletion, or adoption.
 
-The terminal receipt operation must recheck every required profile scope, bind
-the ordered pre-entry diagnostic and task-start rosters, and admit all three reporting
-start-to-verification chains before publishing the workflow-attempt receipt.
-The legacy combined receipt still records this transaction for compatibility.
+Automatic reporting shares the `run` or `resume` log. A standalone executing
+`emrys report` operation owns a reporting log once generation starts; its
+dry-run and complete-reuse paths own no durable log.
+
+The terminal scientific receipt operation rechecks every required profile
+scope and binds the ordered pre-entry diagnostic and task-start rosters before
+publishing receipt v2. Receipt v1 remains exactly readable and a complete v1
+report transaction may be reused, but v1 cannot originate new reports.
 Scientific Results and reporting are derived separately and neither establishes
 CSU execution, production-scale behavior, validated editing sites, or biological
 readiness.
@@ -675,8 +691,9 @@ B0 makes no decision or implementation commitment for:
 - optional-stage and archival-success policy;
 - in-code scientific approval or biological-readiness policy;
 - public acquisition or a general provenance subsystem;
-- logging adoption beyond the `run`/`resume` Attempt boundary or generic gate
-  receipts;
+- logging adoption beyond the `run`/`resume` Attempt boundary and standalone
+  executing report generation, or generic gate receipts; standalone report
+  dry-run and reuse own no durable log;
 - automatic stale-lock cleanup or owner recovery;
 - artifact-schema migration or installed workflow assets;
 - a wheel-only control plane; or

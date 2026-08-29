@@ -42,21 +42,10 @@ EMRYS_COMMANDS = (
         ("prepare", "local-pilot-runtime"),
         "usage: emrys prepare local-pilot-runtime",
     ),
-    (
-        ("build", "artifact-index"),
-        "usage: emrys build artifact-index",
-    ),
-    (
-        ("build", "run-summary"),
-        "usage: emrys build run-summary",
-    ),
-    (
-        ("build", "report"),
-        "usage: emrys build report",
-    ),
     (("doctor", "local-pilot"), "usage: emrys doctor local-pilot"),
     (("run",), "usage: emrys run"),
     (("resume",), "usage: emrys resume"),
+    (("report",), "usage: emrys report"),
     (
         ("validate", "artifact-contracts"),
         "usage: emrys validate artifact-contracts",
@@ -641,7 +630,7 @@ def test_checkout_authority_ignores_nonowners_and_rejects_another_owner(
     assert relative_snapshot(tmp_path) == before
 
 
-def test_run_summary_help_and_parse_failure_are_side_effect_free(
+def test_retired_build_group_is_rejected_without_side_effects(
     tmp_path: Path,
 ) -> None:
     """Parser termination preserves public exits without filesystem effects."""
@@ -650,14 +639,12 @@ import json
 
 from emrys import __main__ as cli
 
-statuses = []
-for arguments in (["build", "run-summary", "--help"], ["build", "run-summary"]):
-    try:
-        cli.main(arguments)
-    except SystemExit as error:
-        statuses.append(error.code)
+try:
+    cli.main(["build", "run-summary"])
+except SystemExit as error:
+    status = error.code
 print(json.dumps({
-    "statuses": statuses,
+    "status": status,
 }))
 """
     result = run_command(
@@ -667,7 +654,7 @@ print(json.dumps({
 
     assert result.returncode == 0, result.stdout + result.stderr
     observed = json.loads(result.stdout.splitlines()[-1])
-    assert observed == {"statuses": [0, CLI_USAGE_ERROR]}
+    assert observed == {"status": CLI_USAGE_ERROR}
     assert relative_snapshot(tmp_path) == ()
 
 
@@ -677,7 +664,7 @@ print(json.dumps({
         ("--help",),
         ("init", "--help"),
         ("prepare", "--help"),
-        ("build", "--help"),
+        ("report", "--help"),
         ("convert", "--help"),
         ("validate", "--help"),
     ),

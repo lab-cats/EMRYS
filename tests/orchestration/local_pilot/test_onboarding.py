@@ -228,6 +228,7 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
     assert result.fasta_contigs == (("chrSynthetic", 100_000),)
     assert result.transcript_count == 2
     metadata = json.loads((first / "fixture.json").read_text(encoding="utf-8"))
+    assert metadata["schema_version"] == "emrys.synthetic-local-pilot.v2"
     assert metadata["dataset_profile"] == "smoke-v1"
     assert metadata["fixture_id"] == "deterministic-science-smoke-v1"
     assert metadata["read_pairs_per_library"] == 130
@@ -249,7 +250,8 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
             "or biological evidence"
         ),
         "last_scientific_step": "10",
-        "local_pipeline_complete": True,
+        "reporting_complete": True,
+        "scientific_results_complete": True,
     }
     manifest = json.loads((first / synthetic_fixture.COMPLETION_MANIFEST).read_text())
     assert set(manifest) == set(_tree_bytes(first)) - {
@@ -322,7 +324,8 @@ def test_production_like_profile_is_explicit_and_dry_run_skips_generation(
         "treatment_af": 0.5,
     }
     assert metadata["expected_terminal_workflow"]["last_scientific_step"] == "10"
-    assert metadata["expected_terminal_workflow"]["local_pipeline_complete"] is True
+    assert metadata["expected_terminal_workflow"]["scientific_results_complete"] is True
+    assert metadata["expected_terminal_workflow"]["reporting_complete"] is True
     request = synthetic_fixture._project_definition(profile).decode("utf-8")
     assert "label: deterministic-production-like-v1" in request
     assert "id: synthetic-production-like-v1" in request

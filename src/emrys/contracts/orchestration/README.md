@@ -25,7 +25,9 @@ variables, or choose precedence.
 The lifecycle family includes an explicit run-lock record, an immutable
 workflow attempt that binds its exact canonical workflow-config reference, and
 a terminal attempt receipt with mutually consistent executor exit/signal,
-blocker, message, verified-scope, reporting, and completion facts. The public
+blocker, message, and verified-scope facts. Current receipt v2 closes over the
+scientific Attempt only; receipt v1 remains exactly readable with its historical
+reporting/completion fields. The public
 `load_json_object_bytes` parser exists so a caller can parse already admitted
 descriptor bytes without reopening a pathname.
 

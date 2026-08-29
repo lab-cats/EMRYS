@@ -9,6 +9,7 @@ import shlex
 import sys
 import uuid
 from collections.abc import Callable, Mapping
+from contextlib import suppress
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from functools import partial
@@ -30,7 +31,13 @@ from emrys.libraries.application_logging import (
     resolve_log_controls,
 )
 from emrys.libraries.source_authority import SourceCheckout
-from emrys.orchestration.local_pilot import capacity, doctor, inspection, lifecycle
+from emrys.orchestration.local_pilot import (
+    capacity,
+    doctor,
+    inspection,
+    lifecycle,
+    reporting_operation,
+)
 from emrys.orchestration.local_pilot.execution_profile import (
     ExecutionProfile,
     ExecutionProfileError,
@@ -77,6 +84,10 @@ INSPECT_DESCRIPTION = (
     "Derive one local-pilot run state from immutable EMRYS records without "
     "reading or repairing Snakemake metadata."
 )
+REPORT_DESCRIPTION = (
+    "Plan, generate, or reuse the fixed reports for one completed immutable Run. "
+    "Dry-run is the default and reporting never creates a scientific Attempt."
+)
 _MILESTONE_STEPS = (
     ("Preparation", ("00a", "00b", "00c")),
     ("Alignment and sample processing", ("01", "02", "04", "05", "06")),
@@ -118,6 +129,9 @@ class ControlOps:
     now: Callable[[], datetime]
     token: Callable[[], str]
     observe_allocation: AllocationObserver = capacity.observe_allocation
+    report_run: Callable[..., reporting_operation.ReportingOperationOutcome] = (
+        reporting_operation.run_reporting
+    )
 
 
 def _default_readiness(
@@ -456,7 +470,10 @@ def _next_supported_action(observed: inspection.RunInspection) -> str:
     if observed.results_status == "complete":
         if observed.reporting_status == "complete":
             return "Review the verified Results and report paths."
-        return "Preserve completed Results; report regeneration is not supported here."
+        return (
+            "Generate reports with emrys report --run-root "
+            f"{observed.run_root} --execute."
+        )
     return "Preserve this Run; review retained evidence. Do not resume."
 
 
@@ -579,6 +596,8 @@ def _delegate_argv(
             "--execute",
         )
     )
+    if getattr(arguments, "no_report", False):
+        argv.append("--no-report")
     return tuple(argv)
 
 
@@ -693,6 +712,7 @@ def _execute_plan(
     mode: str,
     scope_id: str,
     entrypoint: str,
+    report_enabled: bool = True,
     ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> int:
     """Build and execute one plan inside one non-authoritative application log."""
@@ -751,6 +771,10 @@ def _execute_plan(
             file=sys.stderr,
         )
         return False
+
+    def close_log_best_effort() -> None:
+        with suppress(Exception):
+            attempt.close()
 
     try:
         plan = build_plan()
@@ -813,7 +837,7 @@ def _execute_plan(
             ),
         )
     )
-    _print_plan(plan, level=controls.level)
+    _print_plan(plan, level=controls.level, report_enabled=report_enabled)
     receipt_ready = False
 
     def observe_application_event(event_name: str) -> None:
@@ -876,6 +900,7 @@ def _execute_plan(
             end="",
             file=sys.stderr,
         )
+        close_log_best_effort()
         raise ControlError(str(exc), reported=True) from exc
 
     status = str(outcome.receipt["status"])
@@ -891,7 +916,6 @@ def _execute_plan(
                 },
             )
         )
-        log_best_effort(attempt.close)
     elif not logging_degraded:
         log_best_effort(
             lambda: attempt.terminal(
@@ -901,12 +925,77 @@ def _execute_plan(
             )
         )
 
-    result_lines = _verified_report_location_lines(outcome.verified_report_locations)
+    def observe_reporting(
+        event_name: str,
+        message: str,
+        fields: Mapping[str, object] | None = None,
+    ) -> None:
+        if receipt_ready:
+            log_best_effort(
+                lambda: attempt.observe_post_receipt(
+                    event_name=event_name,
+                    message=message,
+                    fields=fields,
+                )
+            )
+
     if status == "succeeded":
         print(f"Evidence: {outcome.receipt_path}", file=sys.stderr)
+        if not report_enabled:
+            observe_reporting(
+                "reporting_skipped", "Reporting was disabled for this execution."
+            )
+            close_log_best_effort()
+            print("Reporting: skipped (--no-report)", file=sys.stderr)
+            return 0
+        observe_reporting("reporting_started", "Generating downstream reports.")
+        try:
+            reported = ops.report_run(plan.run_root, execute=True)
+        except (reporting_operation.ReportingOperationError, OSError) as exc:
+            observe_reporting(
+                "reporting_failed",
+                "Reporting failed after scientific Results completed.",
+                {"error": field(str(exc))},
+            )
+            close_log_best_effort()
+            print(
+                "emrys: error: Reporting failed after scientific Results completed: "
+                f"{exc}",
+                file=sys.stderr,
+            )
+            print(
+                render_failure_summary(
+                    entrypoint=entrypoint,
+                    phase="reporting",
+                    status="failed",
+                    scope=f"run:{plan.run.run_id}",
+                    execution_attempt_id=execution_attempt_id,
+                    log_path=attempt.path,
+                    recent_events=attempt.recent_console_events,
+                    durable_only_count=attempt.durable_only_count,
+                    next_action=(
+                        "Scientific Results remain complete. Inspect the Run, then "
+                        "use emrys report --run-root "
+                        f"{plan.run_root} --execute."
+                    ),
+                ),
+                end="",
+                file=sys.stderr,
+            )
+            return 1
+        observe_reporting(
+            "reporting_completed",
+            "Downstream reports are verified.",
+            {"reporting_status": field(reported.status)},
+        )
+        close_log_best_effort()
+        result_lines = _verified_report_location_lines(
+            reported.verified_report_locations
+        )
         for line in result_lines:
             print(line, file=sys.stderr)
         return 0
+    close_log_best_effort()
     print(
         render_failure_summary(
             entrypoint=entrypoint,
@@ -932,7 +1021,9 @@ def _execute_plan(
     return 1
 
 
-def _print_plan(plan: AttemptPlan, *, level: LogLevel) -> None:
+def _print_plan(
+    plan: AttemptPlan, *, level: LogLevel, report_enabled: bool = True
+) -> None:
     new_dispatches = plan.new_dispatch_files
     reused = plan.dispatch_count - len(new_dispatches)
     resources = plan.resources
@@ -942,7 +1033,15 @@ def _print_plan(plan: AttemptPlan, *, level: LogLevel) -> None:
     print(f"Project: {project_label!a}", file=sys.stderr)
     print(f"Run ID: {plan.run.run_id}", file=sys.stderr)
     print(f"Work: {len(new_dispatches)} pending, {reused} reusable", file=sys.stderr)
-    print("Reporting: automatic after scientific work", file=sys.stderr)
+    print(
+        "Reporting: "
+        + (
+            "automatic after scientific work"
+            if report_enabled
+            else "disabled for this execution"
+        ),
+        file=sys.stderr,
+    )
     if level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
         print(
             f"Analysis ID: {plan.run.project.analysis.analysis_revision_id}",
@@ -999,6 +1098,7 @@ def _finish_control(
     build_plan: PlanBuilder,
     ops: ControlOps,
 ) -> int:
+    report_enabled = not getattr(arguments, "no_report", False)
     if isinstance(profile.placement, SlurmPlacement) and scheduler_job_id is None:
         return _schedule(
             command,
@@ -1009,7 +1109,11 @@ def _finish_control(
             workspace,
         )
     if not arguments.execute:
-        _print_plan(build_plan(), level=controls.level)
+        _print_plan(
+            build_plan(),
+            level=controls.level,
+            report_enabled=report_enabled,
+        )
         print(
             "Dry-run complete; no "
             f"{'workspace' if command == 'run' else 'resume'} state was written.",
@@ -1023,6 +1127,7 @@ def _finish_control(
         mode="execute" if command == "run" else "resume",
         scope_id="pending" if command == "run" else _absolute(arguments.run_root).name,
         entrypoint=f"emrys-{command}",
+        report_enabled=report_enabled,
         ops=ops,
     )
 
@@ -1038,6 +1143,11 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
     )
     add_resource_override_arguments(parser)
     add_log_arguments(parser)
+    parser.add_argument(
+        "--no-report",
+        action="store_true",
+        help="Finish after scientific Results without generating reports.",
+    )
     parser.add_argument(
         "--execute",
         action="store_true",
@@ -1059,9 +1169,24 @@ def configure_resume_parser(parser: argparse.ArgumentParser) -> None:
     add_resource_override_arguments(parser)
     add_log_arguments(parser)
     parser.add_argument(
+        "--no-report",
+        action="store_true",
+        help="Finish after scientific Results without generating reports.",
+    )
+    parser.add_argument(
         "--execute",
         action="store_true",
         help="Execute the safe resume. Without this flag, write nothing.",
+    )
+
+
+def configure_report_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--run-root", required=True, type=Path)
+    add_log_arguments(parser)
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Generate reports when absent. Without this flag, write nothing.",
     )
 
 
@@ -1235,6 +1360,112 @@ def resume_from_args(
         return 2
 
 
+def _print_reporting_outcome(
+    outcome: reporting_operation.ReportingOperationOutcome,
+) -> None:
+    print(f"Reporting: {outcome.status}", file=sys.stderr)
+    for line in _verified_report_location_lines(outcome.verified_report_locations):
+        print(line, file=sys.stderr)
+
+
+def report_from_args(
+    arguments: argparse.Namespace,
+    *,
+    ops: ControlOps = DEFAULT_CONTROL_OPS,
+) -> int:
+    root = _absolute(arguments.run_root)
+    try:
+        workspace = _resume_workspace(root)
+    except ControlError as exc:
+        print(f"emrys: error: {exc}", file=sys.stderr)
+        return 2
+    if not arguments.execute:
+        try:
+            planned = ops.report_run(root, execute=False)
+        except (reporting_operation.ReportingOperationError, OSError) as exc:
+            print(f"emrys: error: {exc}", file=sys.stderr)
+            return 2
+        _print_reporting_outcome(planned)
+        if planned.status == "planned":
+            print("Dry-run complete; no reporting state was written.", file=sys.stderr)
+        return 0
+
+    execution_attempt_id = f"application-{uuid.uuid4().hex}"
+    attempt = None
+
+    def close_log_best_effort() -> None:
+        if attempt is not None:
+            with suppress(Exception):
+                attempt.close()
+
+    def observe_generation_start() -> None:
+        nonlocal attempt
+        try:
+            controls = _resolve_controls(arguments, workspace)
+            attempt = open_attempt_log(
+                controls=controls,
+                identity=AttemptIdentity(
+                    "run",
+                    root.name,
+                    execution_attempt_id,
+                    "emrys-report",
+                ),
+                mode="report",
+                component="reporting",
+                scheduler_environment=os.environ,
+            )
+            attempt.logger(component="reporting", phase="execute").info(
+                "Generating downstream reports.",
+                extra=event("reporting_started", fields={"run_root": field(root)}),
+            )
+        except Exception as exc:
+            close_log_best_effort()
+            attempt = None
+            print(
+                "WARNING: Application logging unavailable for reporting; "
+                f"publication remains controlled by reporting receipts: {exc}",
+                file=sys.stderr,
+            )
+
+    try:
+        completed = ops.report_run(
+            root,
+            execute=True,
+            observe_generation_start=observe_generation_start,
+        )
+    except (reporting_operation.ReportingOperationError, OSError) as exc:
+        if attempt is not None:
+            with suppress(Exception):
+                attempt.fail(
+                    phase="reporting",
+                    message="Downstream reporting failed.",
+                    fields={"error": field(str(exc))},
+                )
+        close_log_best_effort()
+        print(f"emrys: error: {exc}", file=sys.stderr)
+        print(
+            "Scientific Results remain complete; reporting state was preserved "
+            "for inspection.",
+            file=sys.stderr,
+        )
+        return 1
+    if attempt is not None:
+        try:
+            attempt.terminal(
+                event_name="reporting_completed",
+                message="Downstream reports are verified.",
+                fields={"reporting_status": field(completed.status)},
+            )
+        except Exception:
+            print(
+                "WARNING: Reporting completed, but application logging degraded.",
+                file=sys.stderr,
+            )
+    close_log_best_effort()
+    _print_reporting_outcome(completed)
+    return 0
+
+
 def inspect_from_args(
     arguments: argparse.Namespace,
     *,
@@ -1345,12 +1576,15 @@ __all__ = (
     "ControlOps",
     "DEFAULT_CONTROL_OPS",
     "INSPECT_DESCRIPTION",
+    "REPORT_DESCRIPTION",
     "RESUME_DESCRIPTION",
     "RUN_DESCRIPTION",
     "configure_inspect_parser",
+    "configure_report_parser",
     "configure_resume_parser",
     "configure_run_parser",
     "inspect_from_args",
+    "report_from_args",
     "resume_from_args",
     "run_from_args",
 )

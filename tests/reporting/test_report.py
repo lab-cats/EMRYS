@@ -7,8 +7,6 @@ import csv
 import hashlib
 import json
 import os
-import subprocess
-import sys
 from importlib.resources import files
 from dataclasses import replace
 from pathlib import Path
@@ -20,7 +18,6 @@ from jinja2 import StrictUndefined, UndefinedError
 from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
     SourceCheckout,
-    controlled_python_argv,
 )
 from emrys.reporting import report as REPORT
 from emrys.reporting._run_report import computational as report_computational
@@ -42,26 +39,10 @@ from emrys.reporting._run_report.models import (
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-FIXED_EPOCH = "1700000000"
 
 
 def publish_run_summary(fixture: Any) -> Path:
-    environment = os.environ.copy()
-    environment["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
-    result = subprocess.run(
-        [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
-            "build",
-            "run-summary",
-            *fixture.command_args(execute=True),
-        ],
-        cwd=REPO_ROOT,
-        env=environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
+    FIXTURE.publish_run_summary(fixture)
     return fixture.summary_json_path
 
 
@@ -370,62 +351,23 @@ def publish(context: Any, ops: REPORT.ReportPublicationOps | None = None) -> Non
     publication.publish_report(context, ops or REPORT.default_publication_ops())
 
 
-def test_grouped_help_exposes_only_direct_html_contract(tmp_path: Path) -> None:
-    result = subprocess.run(
-        [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
-            "build",
-            "report",
-            "--help",
-        ],
-        cwd=tmp_path,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    missing = subprocess.run(
-        [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
-            "build",
-            "report",
-        ],
-        cwd=tmp_path,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert result.returncode == 0
-    assert "usage: emrys build report" in result.stdout
-    assert "--source-checkout" in result.stdout
-    assert "--artifact-source-root" in result.stdout
-    assert "--run-summary" in result.stdout
-    assert "--output-root" in result.stdout
-    assert "--execute" in result.stdout
-    assert "--formats" not in result.stdout
-    assert "--quarto-bin" not in result.stdout
-    assert missing.returncode == 2
-    assert "required" in missing.stderr
-
-
 def test_source_checkout_is_admitted_before_report_inputs(
     tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     invalid_checkout = tmp_path / "not-emrys"
     invalid_checkout.mkdir()
-    result = REPORT.build_from_args(
-        argparse.Namespace(
-            source_checkout=invalid_checkout,
-            artifact_source_root=tmp_path,
-            run_summary=tmp_path / "missing.json",
-            output_root=tmp_path / "reports",
-            execute=False,
+    with pytest.raises(ReportRenderError) as captured:
+        REPORT.prepare_report(
+            argparse.Namespace(
+                source_checkout=invalid_checkout,
+                artifact_source_root=tmp_path,
+                run_summary=tmp_path / "missing.json",
+                output_root=tmp_path / "reports",
+                execute=False,
+            )
         )
-    )
-    captured = capsys.readouterr()
-    assert result == 1
-    assert "Source checkout project metadata is unavailable" in captured.err
-    assert "missing.json" not in captured.err
+    assert "Source checkout project metadata is unavailable" in str(captured.value)
+    assert "missing.json" not in str(captured.value)
 
 
 def test_renderer_git_identity_uses_checkout_not_artifact_root(
@@ -461,14 +403,10 @@ def test_renderer_git_identity_uses_checkout_not_artifact_root(
 def test_dry_run_is_side_effect_free(
     computational_summary: Path,
     tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
 ) -> None:
     output_root = tmp_path / "reports"
-    result = REPORT.build_from_args(arguments(computational_summary, output_root))
-    captured = capsys.readouterr()
-    assert result == 0
-    assert "Dry-run only" in captured.out
-    assert not captured.err
+    context = REPORT.prepare_report(arguments(computational_summary, output_root))
+    assert context.output_dir == output_root / context.summary["run_id"]
     assert not output_root.exists()
 
 

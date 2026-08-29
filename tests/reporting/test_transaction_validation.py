@@ -5,9 +5,6 @@ from __future__ import annotations
 import argparse
 import copy
 import hashlib
-import os
-import subprocess
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -17,9 +14,9 @@ from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
     SourceCheckout,
-    controlled_python_argv,
 )
 from emrys.reporting import report, transaction_validation
+from emrys.reporting._run_report import publication as report_publication
 from emrys.reporting._run_report import receipt
 from emrys.reporting._run_summary import builder as summary_builder
 from emrys.reporting._run_summary import publication as summary_publication
@@ -30,7 +27,6 @@ from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixtur
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-FIXED_EPOCH = "1700000000"
 
 
 def _fixture_receipt_ops(
@@ -45,22 +41,12 @@ def _fixture_receipt_ops(
 
 
 def _publish_summary(built: Any) -> None:
-    environment = os.environ.copy()
-    environment["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
-    result = subprocess.run(
-        [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
-            "build",
-            "run-summary",
-            *built.command_args(execute=True),
-        ],
-        cwd=REPO_ROOT,
-        env=environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
+    fixture.publish_run_summary(built)
+
+
+def _publish_report(arguments: argparse.Namespace) -> None:
+    context = report.prepare_report(arguments)
+    report_publication.publish_report(context, report.default_publication_ops())
 
 
 def _publish_summary_with_commit(built: Any, commit: str) -> None:
@@ -96,7 +82,7 @@ def complete_reporting(tmp_path: Path) -> tuple[Any, Path]:
         output_root=report_root,
         execute=True,
     )
-    assert report.build_from_args(arguments) == 0
+    _publish_report(arguments)
     return built, report_root
 
 
@@ -403,7 +389,7 @@ def test_historical_report_admission_uses_each_recorded_producer_identity(
         output_root=report_root,
         execute=True,
     )
-    assert report.build_from_args(arguments) == 0
+    _publish_report(arguments)
     receipt_path = report_root / built.run_id / f"{built.run_id}.report_outputs.tsv"
     document = receipt.read_receipt_tsv(receipt_path)
     current_report_commit = str(document["provenance"]["git_commit"])
@@ -577,7 +563,10 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
         )
         == expected
     )
-    assert observed["run_contract"] == run_root / config["reporting_run_contract_path"]["path"]
+    assert (
+        observed["run_contract"]
+        == run_root / config["reporting_run_contract_path"]["path"]
+    )
     assert observed["inventory"] == run_root / config["artifact_inventory_path"]["path"]
 
 
@@ -634,16 +623,19 @@ def test_fixed_dispatcher_admits_historical_report_only_at_legacy_root(
         lambda **kwargs: observed.update(kwargs) or expected,
     )
 
-    assert transaction_validation.validate_receipt(
-        "html_report",
-        receipt_path,
-        run_root,
-        run.record,
-        legacy_profile,
-        attempt,
-        config,
-        historical_read=True,
-    ) == expected
+    assert (
+        transaction_validation.validate_receipt(
+            "html_report",
+            receipt_path,
+            run_root,
+            run.record,
+            legacy_profile,
+            attempt,
+            config,
+            historical_read=True,
+        )
+        == expected
+    )
     assert observed["output_root"] == run_root / "products" / "report"
     assert observed["expected_source_commit"] == historical_commit
 
@@ -690,9 +682,7 @@ def test_public_historical_dispatch_rejects_symlinks_before_parsing(
         "reporting_run_contract_path": {
             "path": f"{reporting_root}/reporting_run_contract.json"
         },
-        "artifact_inventory_path": {
-            "path": f"{reporting_root}/artifact_inventory.tsv"
-        },
+        "artifact_inventory_path": {"path": f"{reporting_root}/artifact_inventory.tsv"},
     }
 
     followed: list[Path] = []

@@ -9,7 +9,6 @@ from pathlib import Path
 
 import emrys
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout,
@@ -25,12 +24,6 @@ from emrys.orchestration.local_pilot.inspection import (
     expected_tasks,
     state_tree_blockers,
     task_start_tree_blockers,
-)
-from emrys.orchestration.local_pilot.reporting_boundary import (
-    REPORTING_KINDS,
-    ReportingBoundaryError,
-    ledger_paths,
-    validate_verified,
 )
 
 try:
@@ -132,26 +125,15 @@ if not isinstance(STAGE_MEMORY_MB, dict) or set(STAGE_MEMORY_MB) != STAGE_IDS:
         "Workflow config stage_memory_mb keys must be exactly "
         + ", ".join(sorted(STAGE_IDS))
     )
-REPORTING_MEMORY_MB = EFFECTIVE_RESOURCES.get("reporting_memory_mb")
-if not isinstance(REPORTING_MEMORY_MB, dict) or set(REPORTING_MEMORY_MB) != {
-    "artifact_index", "run_summary", "html_report",
-}:
-    raise WorkflowError("Workflow config reporting_memory_mb keys are malformed")
 for field, values in (
     ("stage_concurrency", STAGE_CONCURRENCY),
     ("stage_memory_mb", STAGE_MEMORY_MB),
-    ("reporting_memory_mb", REPORTING_MEMORY_MB),
 ):
     for key, value in values.items():
         if isinstance(value, bool) or not isinstance(value, int) or value < 1:
             raise WorkflowError(
                 f"Workflow config {field}[{key!r}] must be a positive integer"
             )
-for kind, memory_mb in REPORTING_MEMORY_MB.items():
-    if memory_mb > WORKFLOW_MEMORY_MB:
-        raise WorkflowError(
-            f"Reporting {kind} memory exceeds workflow memory"
-        )
 for step_id in STAGE_IDS:
     concurrency = STAGE_CONCURRENCY.get(step_id, 1)
     threads = STEP_THREADS.get(step_id, 1)
@@ -208,8 +190,6 @@ _require_run_file(WORKFLOW_ATTEMPT_PATH, "workflow_attempt_path")
 PROJECTION_CONFIG = {
     "reference_contract": "reference_contract_path",
     "primary_analysis_policy": "primary_analysis_policy_path",
-    "reporting_run_contract": "reporting_run_contract_path",
-    "artifact_inventory": "artifact_inventory_path",
 }
 PROJECTION_PATHS = {}
 for projection_name, config_key in PROJECTION_CONFIG.items():
@@ -309,22 +289,6 @@ COHORT_ID, = _scopes("cohort")
 ANALYSIS_ID, = _scopes("analysis")
 FIRST_SAMPLE_ID = SAMPLE_IDS[0]
 RUN_ID = EXECUTION["run_id"]
-ARTIFACT_OUTPUT_ROOT = RUN_ROOT / "products" / "artifact-summary"
-ARTIFACT_RECEIPT = (
-    ARTIFACT_OUTPUT_ROOT / RUN_ID / f"{RUN_ID}.artifact_receipt.tsv"
-)
-RUN_SUMMARY = ARTIFACT_OUTPUT_ROOT / RUN_ID / f"{RUN_ID}.run_summary.json"
-RUN_SUMMARY_RECEIPT = (
-    ARTIFACT_OUTPUT_ROOT / RUN_ID / f"{RUN_ID}.run_summary_receipt.tsv"
-)
-REPORT_OUTPUT_ROOT = report_output_root(RUN_ROOT, PROFILE)
-REPORT_RECEIPT = REPORT_OUTPUT_ROOT / RUN_ID / f"{RUN_ID}.report_outputs.tsv"
-REPORTING_LEDGERS = {
-    kind: ledger_paths(RUN_ROOT, kind) for kind in REPORTING_KINDS
-}
-ARTIFACT_INDEX_VERIFIED = REPORTING_LEDGERS["artifact_index"].verified
-RUN_SUMMARY_VERIFIED = REPORTING_LEDGERS["run_summary"].verified
-HTML_REPORT_VERIFIED = REPORTING_LEDGERS["html_report"].verified
 
 OWNER_TASKS = {
     task["rule_name"]: task
@@ -726,57 +690,6 @@ _admit_state_namespace()
 _admit_reusable_markers()
 
 
-def _admit_reusable_reporting():
-    reporting_root = RUN_ROOT / "state" / "reporting"
-    if reporting_root.exists() or reporting_root.is_symlink():
-        if reporting_root.is_symlink() or not reporting_root.is_dir():
-            raise WorkflowError(
-                f"Reporting state root must be a real directory: {reporting_root}"
-            )
-        for kind_path in reporting_root.iterdir():
-            if (
-                kind_path.name not in REPORTING_KINDS
-                or kind_path.is_symlink()
-                or not kind_path.is_dir()
-            ):
-                raise WorkflowError(
-                    f"Unexpected reporting state entry: {kind_path}"
-                )
-            expected = {
-                REPORTING_LEDGERS[kind_path.name].start,
-                REPORTING_LEDGERS[kind_path.name].verified,
-            }
-            observed = set(kind_path.iterdir())
-            unexpected = observed - expected
-            if unexpected:
-                raise WorkflowError(
-                    "Unexpected reporting ledger entry: "
-                    + str(sorted(unexpected)[0])
-                )
-            for entry in observed:
-                if entry.is_symlink() or not entry.is_file():
-                    raise WorkflowError(
-                        f"Reporting ledger entry must be a real file: {entry}"
-                    )
-    for kind in REPORTING_KINDS:
-        paths = REPORTING_LEDGERS[kind]
-        has_start = paths.start.exists() or paths.start.is_symlink()
-        has_verified = paths.verified.exists() or paths.verified.is_symlink()
-        if has_start != has_verified:
-            state = "entered but incomplete" if has_start else "orphan completion"
-            raise WorkflowError(f"Reporting ledger {kind} is {state}")
-        if has_verified:
-            try:
-                validate_verified(kind, RUN_ROOT, EXECUTION, PROFILE)
-            except (OSError, ReportingBoundaryError) as exc:
-                raise WorkflowError(
-                    f"Could not admit reusable {kind} reporting ledger: {exc}"
-                ) from exc
-
-
-_admit_reusable_reporting()
-
-
 wildcard_constraints:
     sample_id="(?:" + "|".join(re.escape(value) for value in SAMPLE_IDS) + ")",
     partition_scope="(?:" + "|".join(re.escape(value) for value in PARTITION_SCOPES) + ")"
@@ -806,147 +719,7 @@ rule one_sample_slice:
 rule cohort_slice:
     input:
         _all_owner_outputs()
-
-
-rule local_pipeline_slice:
-    input:
-        str(HTML_REPORT_VERIFIED)
     default_target: True
-
-
-rule build_artifact_index:
-    input:
-        verified=_all_owner_outputs(),
-        run_contract=str(PROJECTION_PATHS["reporting_run_contract"]),
-        inventory=str(PROJECTION_PATHS["artifact_inventory"])
-    output:
-        str(ARTIFACT_INDEX_VERIFIED)
-    threads:
-        1
-    resources:
-        mem_mb=REPORTING_MEMORY_MB["artifact_index"]
-    params:
-        python=PYTHON,
-        source_checkout=str(SOURCE_CHECKOUT),
-        artifact_source_root=str(ARTIFACT_SOURCE_ROOT),
-        run_id=RUN_ID,
-        output_root=str(ARTIFACT_OUTPUT_ROOT),
-        run_root=str(RUN_ROOT),
-        execution=str(EXECUTION_PATH),
-        profile=str(PROFILE_SNAPSHOT_PATH),
-        workflow_attempt=str(WORKFLOW_ATTEMPT_PATH),
-        workflow_config=str(WORKFLOW_CONFIG_PATH),
-        receipt=str(ARTIFACT_RECEIPT)
-    shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys build artifact-index "
-        "--source-checkout {params.source_checkout:q} "
-        "--artifact-source-root {params.artifact_source_root:q} "
-        "--run-id {params.run_id:q} --run-contract {input.run_contract:q} "
-        "--inventory {input.inventory:q} --output-root {params.output_root:q} && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.reporting_boundary start "
-        "--kind artifact_index --run-root {params.run_root:q} "
-        "--execution {params.execution:q} --profile {params.profile:q} "
-        "--workflow-attempt {params.workflow_attempt:q} "
-        "--workflow-config {params.workflow_config:q} && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys build artifact-index "
-        "--source-checkout {params.source_checkout:q} "
-        "--artifact-source-root {params.artifact_source_root:q} "
-        "--run-id {params.run_id:q} --run-contract {input.run_contract:q} "
-        "--inventory {input.inventory:q} --output-root {params.output_root:q} "
-        "--execute && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.reporting_boundary complete "
-        "--kind artifact_index --run-root {params.run_root:q} "
-        "--execution {params.execution:q} --profile {params.profile:q} "
-        "--workflow-attempt {params.workflow_attempt:q} "
-        "--workflow-config {params.workflow_config:q} --receipt {params.receipt:q}"
-
-
-rule build_run_summary:
-    input:
-        artifact_index_verified=str(ARTIFACT_INDEX_VERIFIED)
-    output:
-        str(RUN_SUMMARY_VERIFIED)
-    threads:
-        1
-    resources:
-        mem_mb=REPORTING_MEMORY_MB["run_summary"]
-    params:
-        python=PYTHON,
-        source_checkout=str(SOURCE_CHECKOUT),
-        artifact_source_root=str(ARTIFACT_SOURCE_ROOT),
-        run_id=RUN_ID,
-        artifact_receipt=str(ARTIFACT_RECEIPT),
-        output_root=str(ARTIFACT_OUTPUT_ROOT),
-        run_root=str(RUN_ROOT),
-        execution=str(EXECUTION_PATH),
-        profile=str(PROFILE_SNAPSHOT_PATH),
-        workflow_attempt=str(WORKFLOW_ATTEMPT_PATH),
-        workflow_config=str(WORKFLOW_CONFIG_PATH),
-        receipt=str(RUN_SUMMARY_RECEIPT)
-    shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys build run-summary "
-        "--source-checkout {params.source_checkout:q} "
-        "--artifact-source-root {params.artifact_source_root:q} "
-        "--run-id {params.run_id:q} --artifact-receipt {params.artifact_receipt:q} "
-        "--output-root {params.output_root:q} && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.reporting_boundary start "
-        "--kind run_summary --run-root {params.run_root:q} "
-        "--execution {params.execution:q} --profile {params.profile:q} "
-        "--workflow-attempt {params.workflow_attempt:q} "
-        "--workflow-config {params.workflow_config:q} && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys build run-summary "
-        "--source-checkout {params.source_checkout:q} "
-        "--artifact-source-root {params.artifact_source_root:q} "
-        "--run-id {params.run_id:q} --artifact-receipt {params.artifact_receipt:q} "
-        "--output-root {params.output_root:q} --execute && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.reporting_boundary complete "
-        "--kind run_summary --run-root {params.run_root:q} "
-        "--execution {params.execution:q} --profile {params.profile:q} "
-        "--workflow-attempt {params.workflow_attempt:q} "
-        "--workflow-config {params.workflow_config:q} --receipt {params.receipt:q}"
-
-
-rule build_html_report:
-    input:
-        run_summary_verified=str(RUN_SUMMARY_VERIFIED)
-    output:
-        str(HTML_REPORT_VERIFIED)
-    threads:
-        1
-    resources:
-        mem_mb=REPORTING_MEMORY_MB["html_report"]
-    params:
-        python=PYTHON,
-        source_checkout=str(SOURCE_CHECKOUT),
-        artifact_source_root=str(ARTIFACT_SOURCE_ROOT),
-        run_summary=str(RUN_SUMMARY),
-        output_root=str(REPORT_OUTPUT_ROOT),
-        run_root=str(RUN_ROOT),
-        execution=str(EXECUTION_PATH),
-        profile=str(PROFILE_SNAPSHOT_PATH),
-        workflow_attempt=str(WORKFLOW_ATTEMPT_PATH),
-        workflow_config=str(WORKFLOW_CONFIG_PATH),
-        receipt=str(REPORT_RECEIPT)
-    shell:
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys build report "
-        "--source-checkout {params.source_checkout:q} "
-        "--artifact-source-root {params.artifact_source_root:q} "
-        "--run-summary {params.run_summary:q} --output-root {params.output_root:q} && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.reporting_boundary start "
-        "--kind html_report --run-root {params.run_root:q} "
-        "--execution {params.execution:q} --profile {params.profile:q} "
-        "--workflow-attempt {params.workflow_attempt:q} "
-        "--workflow-config {params.workflow_config:q} && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys build report "
-        "--source-checkout {params.source_checkout:q} "
-        "--artifact-source-root {params.artifact_source_root:q} "
-        "--run-summary {params.run_summary:q} --output-root {params.output_root:q} "
-        "--execute && "
-        "{params.python:q} -X pycache_prefix=/dev/null -I -m emrys.orchestration.local_pilot.reporting_boundary complete "
-        "--kind html_report --run-root {params.run_root:q} "
-        "--execution {params.execution:q} --profile {params.profile:q} "
-        "--workflow-attempt {params.workflow_attempt:q} "
-        "--workflow-config {params.workflow_config:q} --receipt {params.receipt:q}"
 
 
 rule construct_STAR_index:

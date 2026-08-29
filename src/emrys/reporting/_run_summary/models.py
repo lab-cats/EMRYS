@@ -131,7 +131,6 @@ class OutputPaths:
 @dataclass
 class BuildContext:
     run_id: str
-    execute: bool
     artifact_receipt_path: Path
     artifact_receipt: dict[str, str]
     run_contract_path: Path

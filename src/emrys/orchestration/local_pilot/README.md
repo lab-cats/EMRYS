@@ -102,7 +102,7 @@ the supported preview commands and explicit override rules.
 deterministic neutral background and deliberate duplicate templates to reach
 100,000 pairs per library, and uses a 5 Mb reference. Both profiles publish
 matched Project/manifests and explicit fixture metadata for the current
-Step 00a-10 and reporting workflow. `fixture.manifest.json` is written last
+Step 00a-10 scientific workflow and downstream reporting. `fixture.manifest.json` is written last
 after the generated Project passes the same admission and reference-
 compatibility checks. Their expectation is three Step 09 computational rows,
 one significant row, and a complete Step 10 projection; none is production
@@ -177,11 +177,18 @@ work only through the accepted fixed profile:
   --run-root /absolute/path/to/workspace/runs/run-DIGEST \
   --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
   --execution-profile /absolute/path/to/emrys.execution.yaml
+
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \
+  --run-root /absolute/path/to/workspace/runs/run-DIGEST
 ```
 
 `run` and `resume` print concise Run identity, combined pending/reusable work,
 reporting, and scheduled-placement information and write nothing unless
-`--execute` is present. Verbose output adds the Run root,
+`--execute` is present. After successful scientific execution they generate the
+fixed reports by default; `--no-report` stops after the successful v2 Attempt
+receipt without changing Results. `report` independently validates a completed
+Run and plans without writes, then generates with `--execute` or reuses an exact
+complete report transaction. Verbose output adds the Run root,
 resources/allocation, execution profile, and scheduler streams; debug output
 adds exact engine, scheduler, and task commands. `inspect local-pilot-run` is
 always read-only. With no execution profile, `run` uses the built-in direct
@@ -192,7 +199,10 @@ command. Explicit resource CLI flags override the selected or inherited policy.
 Direct execution writes its application log beneath the selected root, which
 defaults to `<workspace>/logs/application`. Slurm submission writes scheduler streams
 beneath `<workspace>/logs`, while the compute delegate owns the single
-application log. Normal human output keeps raw Snakemake/task commands in the
+application log. Automatic reporting shares that Run log. A standalone
+executing `emrys report` owns a reporting log; dry-run and verified reuse own no
+durable application log. Logging failure never changes reporting admission or
+publication. Normal human output keeps raw Snakemake/task commands in the
 evidence and debug surfaces rather than the primary control stream.
 Execution re-admits the normalized reference/workspace storage qualification
 before delegation and after the child terminates. A missing, changed, or
@@ -252,15 +262,19 @@ B4 supplies the internal lifecycle authorities used by the B5 public adapter:
 - `inspection.admit_canonical_record(...)` owns direct-path schema admission;
   `inspect_run(...)` derives state without `.snakemake/` metadata;
 - `reporting_boundary` owns reporting transaction publication and semantic
-  validation. Its grouped module CLI is internal to the fixed workflow.
+  validation; `reporting_operation` alone composes the three private reporting
+  producers for public Run-oriented control.
 
 Each science scope publishes
 `state/task-starts/<machine>/<scope>.json` immediately before producer entry.
 An entered scope is reusable only with its succeeded task attempt and exact
 verified record. A failed pre-entry diagnostic has no start record, remains
-bound in terminal receipts, and may be retried by a later attempt. Reporting
-uses the equivalent fixed `state/reporting/<kind>/{start,verified}.json`
-ledger, with full semantic receipt revalidation.
+bound in terminal receipts, and may be retried by a later attempt. Reporting is
+downstream of the released scientific Attempt and uses the fixed
+`state/reporting/<kind>/{start,verified}.json` ledger with full semantic receipt
+revalidation. New generation requires completely empty reporting ledgers and
+output directories; partial, corrupt, orphaned, symlinked, or concurrent state
+fails closed and is never repaired, overwritten, or adopted.
 
 Resume creates a new immutable attempt, accepts only a failed/interrupted
 between-task boundary, rechecks source/tool/config/contracts and every ledger

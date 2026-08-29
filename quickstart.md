@@ -547,11 +547,25 @@ disconnect or uncertain exit. Inspect the existing run first.
 | Route | Result |
 | --- | --- |
 | Owner-local stage scheduler entry points | Native stage outputs and validation TSVs; no orchestration report or adoption |
-| `emrys run` | Attempts, verified records, artifact index, run summary, and automatic scientific and evidence HTML reports |
-| `emrys build report` | Rebuild from an existing canonical run summary; never adopt standalone outputs |
+| `emrys run` / `emrys resume` | A scientific Attempt through `cohort_slice`, followed by automatic reporting by default |
+| `emrys run ... --no-report` / `emrys resume ... --no-report` | The same scientific Attempt and Results, with only downstream reporting skipped |
+| `emrys report --run-root ...` | Read-only report plan or validated reuse; add `--execute` to generate reports independently |
 
-The reporting sequence is part of the orchestrated workflow. Run a final
-inspection:
+The terminal scientific Attempt receipt is published and its Run lock released
+before reporting starts. A reporting failure therefore returns a failure to the
+operator but does not rewrite or negate the successful scientific receipt or
+complete Results. Generate omitted reports independently by reviewing the
+read-only plan and then adding `--execute`:
+
+```sh
+emrys report --run-root "$EMRYS_RUN_ROOT"
+emrys report --run-root "$EMRYS_RUN_ROOT" --execute
+```
+
+EMRYS reuses an existing report bundle only after full validation. It generates
+only when all reporting ledgers and Run-specific report locations are empty;
+partial, corrupt, mismatched, or ambiguous state fails closed and is preserved.
+Run a final inspection:
 
 ```sh
 emrys inspect local-pilot-run --run-root "$EMRYS_RUN_ROOT"
@@ -588,7 +602,7 @@ eight-figure views of candidates, editing rates, locations, sequence context,
 the registered PUM motif, and sample behavior; it does not turn a threshold-
 passing row into a validated editing site. The
 [reporting owner](src/emrys/reporting/README.md) defines the two views, source
-admission, display and figure policy, and direct build transaction. The
+admission, display and figure policy, and independent report transaction. The
 [Step 09 owner](src/emrys/analyses/paired_cmh_candidate_ranking/README.md)
 defines the complete native scientific tables and field semantics.
 

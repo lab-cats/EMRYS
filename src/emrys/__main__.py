@@ -240,30 +240,6 @@ def _add_onboarding_commands(command_parsers: _SubparserCollection) -> None:
     )
 
 
-def _build_artifact_index_from_args(arguments: argparse.Namespace) -> int:
-    if not _admit_controlled_runtime():
-        return 2
-    from emrys.reporting._artifact_index import builder  # noqa: PLC0415
-
-    return builder.build_from_args(arguments)
-
-
-def _build_run_summary_from_args(arguments: argparse.Namespace) -> int:
-    if not _admit_controlled_runtime():
-        return 2
-    from emrys.reporting._run_summary import builder  # noqa: PLC0415
-
-    return builder.build_from_args(arguments)
-
-
-def _build_report_from_args(arguments: argparse.Namespace) -> int:
-    if not _admit_controlled_runtime():
-        return 2
-    from emrys.reporting import report  # noqa: PLC0415
-
-    return report.build_from_args(arguments)
-
-
 def _admit_controlled_runtime() -> bool:
     try:
         require_controlled_python_runtime()
@@ -286,128 +262,6 @@ def _controlled_local_pilot_from_args(
     return command(arguments, ops=ops)
 
 
-def _add_build_commands(
-    command_parsers: _SubparserCollection,
-) -> None:
-    build_parser = command_parsers.add_parser(
-        "build",
-        help="Build an explicitly declared EMRYS output.",
-    )
-    build_parsers = build_parser.add_subparsers(
-        dest="build",
-        metavar="SUBJECT",
-        required=True,
-    )
-    artifact_parser = build_parsers.add_parser(
-        "artifact-index",
-        help="Build one explicit read-only artifact index.",
-        description=(
-            "Build an explicit read-only EMRYS artifact index. Dry-run is "
-            "the default; add --execute to publish the receipt-last "
-            "transaction."
-        ),
-    )
-    artifact_parser.add_argument(
-        "--source-checkout",
-        required=True,
-        type=Path,
-        help="Absolute canonical EMRYS source checkout owning producer evidence.",
-    )
-    artifact_parser.add_argument(
-        "--artifact-source-root",
-        required=True,
-        type=Path,
-        help="Absolute canonical root resolving contract-relative artifacts.",
-    )
-    artifact_parser.add_argument("--run-id", required=True, help="Immutable run ID.")
-    artifact_parser.add_argument(
-        "--run-contract",
-        required=True,
-        type=Path,
-        help=(
-            "Strict JSON file containing exactly the six-field canonical run contract."
-        ),
-    )
-    artifact_parser.add_argument(
-        "--inventory",
-        required=True,
-        type=Path,
-        help="Explicit expected-artifact inventory TSV.",
-    )
-    artifact_parser.add_argument(
-        "--output-root",
-        required=True,
-        type=Path,
-        help="Parent directory under which <run-id>/ is published.",
-    )
-    artifact_parser.add_argument(
-        "--execute",
-        action="store_true",
-        help="Publish records, index, and receipt. Default is dry-run.",
-    )
-    artifact_parser.set_defaults(
-        _command_handler=_build_artifact_index_from_args,
-        _command_parser=artifact_parser,
-    )
-
-    summary_parser = build_parsers.add_parser(
-        "run-summary",
-        help="Build one deterministic run summary.",
-        description=(
-            "Build a deterministic run summary from one complete EMRYS "
-            "artifact-index receipt. Dry-run is the default; add --execute "
-            "to publish the receipt-last transaction."
-        ),
-    )
-    summary_parser.add_argument(
-        "--source-checkout",
-        required=True,
-        type=Path,
-        help="Absolute canonical EMRYS source checkout owning producer evidence.",
-    )
-    summary_parser.add_argument(
-        "--artifact-source-root",
-        required=True,
-        type=Path,
-        help="Absolute canonical root resolving contract-relative artifacts.",
-    )
-    summary_parser.add_argument("--run-id", required=True, help="Immutable run ID.")
-    summary_parser.add_argument(
-        "--artifact-receipt",
-        required=True,
-        type=Path,
-        help="Exact completed artifact-index receipt TSV.",
-    )
-    summary_parser.add_argument(
-        "--output-root",
-        required=True,
-        type=Path,
-        help="Artifact output root containing <run-id>/.",
-    )
-    summary_parser.add_argument(
-        "--execute",
-        action="store_true",
-        help="Publish the four-file transaction; otherwise only validate.",
-    )
-    summary_parser.set_defaults(
-        _command_handler=_build_run_summary_from_args,
-        _command_parser=summary_parser,
-    )
-
-    from emrys.reporting import report  # noqa: PLC0415
-
-    report_parser = build_parsers.add_parser(
-        "report",
-        help="Build one self-contained scientific/evidence report transaction.",
-        description=report.DESCRIPTION,
-    )
-    report.configure_parser(report_parser)
-    report_parser.set_defaults(
-        _command_handler=_build_report_from_args,
-        _command_parser=report_parser,
-    )
-
-
 def build_parser(
     *,
     local_pilot_control_ops: local_pilot_control_command.ControlOps = (
@@ -425,7 +279,6 @@ def build_parser(
         required=True,
     )
     _add_onboarding_commands(command_parsers)
-    _add_build_commands(command_parsers)
     doctor_parser = command_parsers.add_parser(
         "doctor",
         help="Check readiness for an explicitly selected EMRYS workflow.",
@@ -463,6 +316,20 @@ def build_parser(
             ops=local_pilot_control_ops,
         ),
         _command_parser=resume_parser,
+    )
+    report_parser = command_parsers.add_parser(
+        "report",
+        help="Plan, generate, or reuse reports for one completed Run.",
+        description=local_pilot_control_command.REPORT_DESCRIPTION,
+    )
+    local_pilot_control_command.configure_report_parser(report_parser)
+    report_parser.set_defaults(
+        _command_handler=partial(
+            _controlled_local_pilot_from_args,
+            command=local_pilot_control_command.report_from_args,
+            ops=local_pilot_control_ops,
+        ),
+        _command_parser=report_parser,
     )
     reconcile_parser = command_parsers.add_parser(
         "reconcile",

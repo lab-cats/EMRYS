@@ -284,7 +284,7 @@ def lifecycle_records() -> dict[str, dict[str, Any]]:
             "-m",
             "snakemake",
             "--",
-            "local_pipeline_slice",
+            "cohort_slice",
         ],
         "workflow_config": record_reference("contract/workflow-config.json"),
         "host": "localhost",
@@ -872,6 +872,24 @@ def test_attempt_receipt_terminal_semantics_and_unique_scope_references() -> Non
         orchestration.validate_record("attempt-receipt", receipt)
 
 
+def test_attempt_receipt_v2_closes_science_without_reporting_fields() -> None:
+    receipt = lifecycle_records()["attempt-receipt"]
+    receipt["schema_version"] = "emrys.attempt-receipt.v2"
+    receipt.pop("reporting_completion_records")
+    receipt.pop("local_pipeline_complete")
+
+    orchestration.validate_record("attempt-receipt", receipt)
+
+    for retired_field in ("reporting_completion_records", "local_pipeline_complete"):
+        incompatible = copy.deepcopy(receipt)
+        incompatible[retired_field] = True
+        with pytest.raises(
+            orchestration.ContractValidationError,
+            match=f"{retired_field}.*unexpected",
+        ):
+            orchestration.validate_record("attempt-receipt", incompatible)
+
+
 def test_workflow_attempt_requires_clean_checkout_and_named_tools() -> None:
     attempt = lifecycle_records()["workflow-attempt"]
     attempt["source_checkout"]["clean"] = False
@@ -990,7 +1008,7 @@ def test_workflow_attempt_requires_exact_internal_resume_controls() -> None:
             "input",
             "--ignore-incomplete",
             "--",
-            "local_pipeline_slice",
+            "cohort_slice",
         ],
     )
     orchestration.validate_record("workflow-attempt", resume)

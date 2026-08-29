@@ -565,7 +565,6 @@ class ReportContext:
     render_metadata: Mapping[str, str]
     scientific_html_bytes: bytes
     evidence_html_bytes: bytes
-    execute: bool
 
     @property
     def input_rechecks(self) -> tuple[tuple[FileSnapshot, str, bool], ...]:

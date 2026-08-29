@@ -12,7 +12,7 @@ from emrys.contracts.orchestration.application_model import (
     implementation_content_sha256,
 )
 
-BACKEND_TARGET = "local_pipeline_slice"
+BACKEND_TARGET = "cohort_slice"
 SNAKEFILE_RELATIVE = Path("workflow/Snakefile")
 WORKFLOW_PROFILE_RELATIVE = Path("workflow/profiles/local/profile.v9+.yaml")
 BACKEND_OPERATION_FLAGS = {
@@ -61,6 +61,7 @@ _ADMISSION_ROOTS = (
     "src/emrys/contracts/schemas/orchestration/v1/task_start.schema.json",
     "src/emrys/contracts/schemas/orchestration/v1/verified_task.schema.json",
     "src/emrys/contracts/schemas/orchestration/v1/workflow_attempt.schema.json",
+    "src/emrys/contracts/schemas/orchestration/v2/attempt_receipt.schema.json",
     "src/emrys/contracts/schemas/orchestration/v2/profile.schema.json",
     "src/emrys/contracts/schemas/orchestration/v3/resource_config.schema.json",
     "src/emrys/contracts/scientific_evidence",

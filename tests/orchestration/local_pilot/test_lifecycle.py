@@ -28,7 +28,6 @@ from emrys.orchestration.local_pilot import (
     doctor,
     inspection,
     lifecycle,
-    reporting_boundary,
 )
 from tests.orchestration.local_pilot.fixtures import workflow as workflow_fixture
 
@@ -219,8 +218,6 @@ class Harness:
     result: lifecycle.WorkflowResult
     materialize_complete: bool = False
     mutate_verified: bool = False
-    reporting_error: str | None = None
-    reporting_identity_lie: bool = False
     storage_admissions: int = 0
     fail_first_storage_admission: bool = False
     fail_second_storage_admission: bool = False
@@ -229,7 +226,6 @@ class Harness:
     mutate_request_on_first_admission: bool = False
     inject_attempt_entry_after_lock: bool = False
     materialize_start_only: bool = False
-    materialize_reporting_start_only: bool = False
     materialize_preentry_failure: bool = False
     preentry_stdout: bytes = b"fixture preentry stdout\n"
     preentry_stderr: bytes = b"fixture preentry stderr\n"
@@ -337,15 +333,11 @@ class Harness:
         _attempt: dict[str, Any],
         _config: dict[str, Any],
     ) -> ValidatedFixtureReceipt:
-        if self.reporting_error is not None:
-            raise ValueError(self.reporting_error)
         record = json.loads(path.read_text(encoding="utf-8"))
         if record != {"kind": name, "run_id": self.built.execution["run_id"]}:
             raise ValueError("reporting receipt has wrong semantic identity")
         return ValidatedFixtureReceipt(
-            receipt_path=path.with_name("foreign")
-            if self.reporting_identity_lie
-            else path,
+            receipt_path=path,
             receipt_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
         )
 
@@ -369,8 +361,6 @@ class Harness:
             )
         if self.materialize_start_only or self.inspect_live_transient:
             _materialize_start_only(self.built, attempt_path)
-        if self.materialize_reporting_start_only:
-            _materialize_reporting_start_only(self.request, "artifact_index")
         if self.inspect_live_transient:
             self.live_observation = inspection.inspect_run(
                 self.built.run_root,
@@ -385,7 +375,6 @@ class Harness:
                 self.built,
                 attempt_path,
             )
-            _materialize_reporting(self.request, self.built)
         if self.mutate_verified:
             marker = next(self.built.verified_root.glob("*/*.json"))
             record = orchestration_contracts.load_record(marker, "verified-task")
@@ -1164,107 +1153,6 @@ def _materialize_verified(
         marker.write_bytes(orchestration_contracts.canonical_json_bytes(verified))
 
 
-def _materialize_reporting(
-    request: lifecycle.LifecycleRequest,
-    built: workflow_fixture.WorkflowFixture,
-) -> None:
-    run_id = str(built.execution["run_id"])
-    semantic_paths = {
-        "artifact_index": built.artifact_receipt,
-        "run_summary": built.run_summary_receipt,
-        "html_report": built.report_receipt,
-    }
-    for name in ("artifact_index", "run_summary", "html_report"):
-        ledger = reporting_boundary.ledger_paths(request.run_root, name)
-        if ledger.verified.is_file() and not ledger.verified.is_symlink():
-            continue
-        path = semantic_paths[name]
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(
-            orchestration_contracts.canonical_json_bytes(
-                {"kind": name, "run_id": run_id}
-            )
-        )
-        reporting_boundary.publish_start(
-            kind=name,
-            run_root=request.run_root,
-            execution_path=request.execution_path,
-            profile_path=request.profile_path,
-            workflow_attempt_path=(
-                request.run_root
-                / "attempts"
-                / str(request.attempt_record["workflow_attempt_id"])
-                / "attempt.json"
-            ),
-            workflow_config_path=request.workflow_config_path,
-            ops=reporting_boundary.ReportingBoundaryOps(
-                publish_bytes=_publish_fixture_bytes,
-                now=lambda: FINISHED_TIME,
-                validate_semantic_receipt=lambda *args: ValidatedFixtureReceipt(
-                    receipt_path=args[1],
-                    receipt_sha256=hashlib.sha256(args[1].read_bytes()).hexdigest(),
-                ),
-                attest_source_checkout=lambda **_kwargs: None,
-            ),
-        )
-        reporting_boundary.publish_verified(
-            kind=name,
-            receipt_path=path,
-            run_root=request.run_root,
-            execution_path=request.execution_path,
-            profile_path=request.profile_path,
-            workflow_attempt_path=(
-                request.run_root
-                / "attempts"
-                / str(request.attempt_record["workflow_attempt_id"])
-                / "attempt.json"
-            ),
-            workflow_config_path=request.workflow_config_path,
-            ops=reporting_boundary.ReportingBoundaryOps(
-                publish_bytes=_publish_fixture_bytes,
-                now=lambda: FINISHED_TIME,
-                validate_semantic_receipt=lambda *args: ValidatedFixtureReceipt(
-                    receipt_path=args[1],
-                    receipt_sha256=hashlib.sha256(args[1].read_bytes()).hexdigest(),
-                ),
-                attest_source_checkout=lambda **_kwargs: None,
-            ),
-        )
-
-
-def _materialize_reporting_start_only(
-    request: lifecycle.LifecycleRequest,
-    kind: str,
-) -> None:
-    reporting_boundary.publish_start(
-        kind=kind,
-        run_root=request.run_root,
-        execution_path=request.execution_path,
-        profile_path=request.profile_path,
-        workflow_attempt_path=(
-            request.run_root
-            / "attempts"
-            / str(request.attempt_record["workflow_attempt_id"])
-            / "attempt.json"
-        ),
-        workflow_config_path=request.workflow_config_path,
-        ops=reporting_boundary.ReportingBoundaryOps(
-            publish_bytes=_publish_fixture_bytes,
-            now=lambda: FINISHED_TIME,
-            validate_semantic_receipt=lambda *args: ValidatedFixtureReceipt(
-                receipt_path=args[1],
-                receipt_sha256=hashlib.sha256(args[1].read_bytes()).hexdigest(),
-            ),
-            attest_source_checkout=lambda **_kwargs: None,
-        ),
-    )
-
-
-def _publish_fixture_bytes(path: Path, data: bytes) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(data)
-
-
 def _materialize_workflow_config(
     built: workflow_fixture.WorkflowFixture,
     identifier: str,
@@ -1434,7 +1322,7 @@ def _build_harness(
         ).resolve(),
         configfile=config,
         run_root=built.run_root,
-        target="local_pipeline_slice",
+        target="cohort_slice",
         operation=operation,
         cores=1,
         resource_limits=workflow_fixture._resource_limits(),
@@ -1456,7 +1344,7 @@ def _build_harness(
         workflow_profile=(
             workflow_fixture.REPO_ROOT / "workflow/profiles/local/profile.v9+.yaml"
         ).resolve(),
-        target="local_pipeline_slice",
+        target="cohort_slice",
         operation=operation,
         attempt_record=attempt,
         request_source_path=(built.root / "intake" / "request.yaml").resolve(),
@@ -1513,6 +1401,9 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
     outcome = lifecycle.run_attempt(built.request, ops=built.ops())
 
     assert outcome.receipt["status"] == "succeeded"
+    assert outcome.receipt["schema_version"] == "emrys.attempt-receipt.v2"
+    assert "reporting_completion_records" not in outcome.receipt
+    assert "local_pipeline_complete" not in outcome.receipt
     expected_task_count = len(
         inspection.expected_tasks(built.built.execution, built.built.profile)
     )
@@ -1558,7 +1449,7 @@ def test_success_publishes_receipt_last_and_inspection_ignores_engine_metadata(
     assert observed.integrity == "valid", observed.blockers
     assert observed.attempt_outcome == "succeeded"
     assert observed.results_status == "complete"
-    assert observed.reporting_status == "complete"
+    assert observed.reporting_status == "incomplete"
 
 
 def test_application_event_observer_exceptions_cannot_alter_receipt(
@@ -1856,7 +1747,33 @@ def test_clean_failure_and_interruption_are_resume_available(
     assert observed.recovery_available
 
 
-def test_complete_results_and_reports_survive_legacy_failed_receipt(
+def test_reporting_residue_does_not_gate_failed_science_recovery(
+    tmp_path: Path,
+) -> None:
+    built = _build_harness(
+        tmp_path,
+        result=lifecycle.WorkflowResult(23, None, "scientific failure"),
+    )
+    residue = built.built.run_root / "state" / "reporting" / "foreign"
+    residue.mkdir(parents=True)
+
+    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
+    observed = inspection.inspect_run(
+        built.built.run_root,
+        ops=inspection.InspectionOps(
+            lambda: "fixture-host",
+            lambda _pid: True,
+            built.validate_reporting,
+        ),
+    )
+
+    assert outcome.receipt["status"] == "failed"
+    assert outcome.receipt["blockers"] == []
+    assert observed.reporting_status == "blocked"
+    assert observed.recovery_available
+
+
+def test_complete_results_survive_failed_scientific_receipt(
     tmp_path: Path,
 ) -> None:
     built = _build_harness(
@@ -1874,12 +1791,11 @@ def test_complete_results_and_reports_survive_legacy_failed_receipt(
     )
 
     assert outcome.receipt["status"] == "failed"
-    assert len(outcome.verified_report_locations) == 2
     assert observed.attempt_outcome == "succeeded"
     assert observed.results_status == "complete"
-    assert observed.reporting_status == "complete"
+    assert observed.reporting_status == "incomplete"
     assert not observed.recovery_available
-    assert len(observed.verified_report_locations) == 2
+    assert observed.verified_report_locations == ()
 
 
 def test_resume_creates_attempt_with_content_bound_rerun_policy(
@@ -1958,44 +1874,6 @@ def test_verified_tree_residue_blocks_lifecycle_and_inspection(
     )
     assert observed.results_status == "blocked"
     assert any("verified task" in value.lower() for value in observed.blockers)
-
-
-def test_semantically_invalid_reporting_receipt_prevents_completion(
-    tmp_path: Path,
-) -> None:
-    built = _build_harness(tmp_path)
-    built.materialize_complete = True
-    built.reporting_error = "semantic reporting validation failed"
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
-    assert outcome.receipt["status"] == "blocked"
-    assert any("semantic reporting" in item for item in outcome.receipt["blockers"])
-    observed = inspection.inspect_run(
-        built.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            built.validate_reporting,
-        ),
-    )
-    assert observed.integrity == "valid"
-    assert observed.attempt_outcome == "succeeded"
-    assert observed.results_status == "complete"
-    assert observed.reporting_status == "blocked"
-    assert not observed.recovery_available
-
-
-def test_reporting_validator_cannot_validate_a_different_receipt(
-    tmp_path: Path,
-) -> None:
-    built = _build_harness(tmp_path)
-    built.materialize_complete = True
-    built.reporting_identity_lie = True
-    outcome = lifecycle.run_attempt(built.request, ops=built.ops())
-    assert outcome.receipt["status"] == "blocked"
-    assert any(
-        "semantic receipt identity no longer matches" in item
-        for item in outcome.receipt["blockers"]
-    )
 
 
 def test_post_child_runtime_identity_change_blocks(tmp_path: Path) -> None:
@@ -2517,7 +2395,6 @@ def test_success_receipt_with_verified_subset_is_blocked_on_inspection(
         status="blocked",
         blockers=["fixture forged subset"],
         message="fixture forged subset",
-        local_pipeline_complete=False,
     )
     outcome.receipt_path.write_bytes(
         orchestration_contracts.canonical_json_bytes(receipt)
@@ -2550,7 +2427,7 @@ def test_completed_run_refuses_rerun_and_resume(tmp_path: Path) -> None:
         workflow_profile=built.request.workflow_profile,
         configfile=config,
         run_root=built.built.run_root,
-        target="local_pipeline_slice",
+        target="cohort_slice",
         operation="resume",
         cores=1,
         resource_limits=workflow_fixture._resource_limits(),
@@ -2570,7 +2447,7 @@ def test_completed_run_refuses_rerun_and_resume(tmp_path: Path) -> None:
         snakefile=built.request.snakefile,
         python_executable=built.request.python_executable,
         workflow_profile=built.request.workflow_profile,
-        target="local_pipeline_slice",
+        target="cohort_slice",
         operation="resume",
         attempt_record=attempt,
         request_source_path=built.request.request_source_path,
@@ -2628,45 +2505,6 @@ def test_task_start_crash_and_deletion_remain_blocked(tmp_path: Path) -> None:
     )
     assert observed.results_status == "blocked"
     assert any("task-start" in blocker for blocker in observed.blockers)
-
-
-def test_reporting_start_without_completion_and_deleted_completion_block(
-    tmp_path: Path,
-) -> None:
-    entered = _build_harness(
-        tmp_path / "entered",
-        result=lifecycle.WorkflowResult(19, None, "reporting crash"),
-    )
-    entered.materialize_reporting_start_only = True
-    entered_outcome = lifecycle.run_attempt(entered.request, ops=entered.ops())
-    assert entered_outcome.receipt["status"] == "blocked"
-    assert (
-        entered_outcome.receipt["reporting_completion_records"]["artifact_index"][
-            "start"
-        ]
-        is not None
-    )
-
-    complete = _build_harness(tmp_path / "complete")
-    complete.materialize_complete = True
-    lifecycle.run_attempt(complete.request, ops=complete.ops())
-    reporting_boundary.ledger_paths(
-        complete.built.run_root, "html_report"
-    ).verified.unlink()
-    observed = inspection.inspect_run(
-        complete.built.run_root,
-        ops=inspection.InspectionOps(
-            lambda: "fixture-host",
-            lambda _pid: True,
-            complete.validate_reporting,
-        ),
-    )
-    assert observed.integrity == "valid"
-    assert observed.attempt_outcome == "succeeded"
-    assert observed.results_status == "complete"
-    assert observed.reporting_status == "blocked"
-    assert not observed.recovery_available
-    assert any("reporting ledger" in blocker for blocker in observed.blockers)
 
 
 @pytest.mark.parametrize("tamper", ["extra", "deep", "symlink"])
@@ -2968,7 +2806,7 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
         complete_observation.results_status,
         complete_observation.reporting_status,
         complete_observation.recovery_available,
-    ) == ("valid", "succeeded", "complete", "complete", False), (
+    ) == ("valid", "succeeded", "complete", "incomplete", False), (
         complete_observation.blockers
     )
 
@@ -3004,7 +2842,6 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
         status="blocked",
         blockers=["forged future binding"],
         message="forged future binding",
-        local_pipeline_complete=False,
         task_start_records=[second_outcome.receipt["task_start_records"][0]],
     )
     first_outcome.receipt_path.write_bytes(

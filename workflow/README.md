@@ -9,7 +9,7 @@ evidence.
 
 | Path | Purpose |
 | --- | --- |
-| [`Snakefile`](Snakefile) | Static scheduling projection for the supported local CMH graph and its reporting tail. |
+| [`Snakefile`](Snakefile) | Static scheduling projection for the supported local CMH scientific graph. |
 | [`contracts/`](contracts/README.md) | Reviewed workflow-projection instances that select owners, scopes, edges, and reportable artifacts. |
 | [`profiles/`](profiles/README.md) | Snakemake engine settings selected by EMRYS's lifecycle. |
 
@@ -28,8 +28,9 @@ The supported flow is:
 emrys run / emrys resume
   -> Project admission and lifecycle materialization
   -> fixed Snakefile plus checkout-bound local engine profile
-  -> public owner producers and validators
-  -> artifact index, run summary, and report bundle
+  -> public owner producers and validators through cohort_slice
+  -> terminal scientific Attempt receipt and released Run lock
+  -> downstream reporting by default, unless --no-report was selected
 ```
 
 The lifecycle materializes an immutable attempt-specific configuration and
@@ -38,8 +39,10 @@ bound public owners and declares only their verified records. Native scientific
 outputs, locks, receipts, and rollback remain owner-controlled rather than
 becoming generic Snakemake outputs.
 
-Verified task and reporting records are reusable only after EMRYS re-admits
-their canonical identities, bound evidence, and semantic transactions. A path,
+Verified task records are reusable only after EMRYS re-admits their canonical
+identities and bound evidence. Reporting is a separate post-Attempt operation:
+it reuses only a fully validated report set, generates only into exactly empty
+reporting state, and fails closed on partial or ambiguous state. A path,
 timestamp, process exit, `.snakemake` entry, or receipt name alone is not
 completion authority. The local-pilot
 [`README`](../src/emrys/orchestration/local_pilot/README.md) and
@@ -50,10 +53,8 @@ state, recovery, and resume rules.
 
 The Snakefile projects fourteen executable scientific and evidence owners.
 Steps `02b` and `03` are required evidence leaves of a complete run but do not
-gate downstream scientific computation. After the owner graph completes, the
-workflow runs the artifact-index, run-summary, and report transactions in
-order. Reporting consumes only explicit admitted inputs and never reruns an
-analysis.
+gate downstream scientific computation. The default backend target is
+`cohort_slice`; reporting is not a Snakemake rule or scientific stage.
 
 The checked-in projection instance is
 [`contracts/local_cmh_v2.json`](contracts/local_cmh_v2.json). The lifecycle
@@ -67,11 +68,11 @@ owner dependencies:
 
 - `reference_slice`: reference preparation;
 - `one_sample_slice`: reference preparation plus one declared sample; and
-- `cohort_slice`: the complete scientific/evidence owner graph.
+- `cohort_slice`: the complete scientific/evidence owner graph and default
+  backend target.
 
-The default `local_pipeline_slice` adds the ordered reporting tail. These
-targets support review and deterministic tests; they are not alternate
-scientific profiles.
+These targets support review and deterministic tests; they are not alternate
+scientific profiles. The former composite `local_pipeline_slice` is retired.
 
 ## Execution boundary
 

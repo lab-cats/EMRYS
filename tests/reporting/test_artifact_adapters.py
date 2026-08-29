@@ -10,7 +10,6 @@ import importlib
 import json
 import os
 import subprocess
-import sys
 from collections import Counter
 from collections.abc import Mapping
 from pathlib import Path
@@ -20,7 +19,6 @@ import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 from emrys.contracts.artifacts import api as ARTIFACT_CONTRACTS
 from emrys.contracts.scientific_evidence import step08, step09
-from emrys.libraries.source_authority import controlled_python_argv
 from tests.contract_integration.validation_rosters.validation_roster_expectations import (
     assert_exact_check_roster,
 )
@@ -55,10 +53,7 @@ EXPECTED_PRODUCER_PATHS = {
         "src/emrys/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh"
     ),
-    "07": (
-        "src/emrys/stages/partitioned_cohort_mpileup/"
-        "producer.py"
-    ),
+    "07": ("src/emrys/stages/partitioned_cohort_mpileup/producer.py"),
     "08": ("src/emrys/stages/cohort_candidate_preprocessing/producer.py"),
     "09": (
         "src/emrys/analyses/paired_cmh_candidate_ranking/"
@@ -123,29 +118,84 @@ def artifact_fixture(tmp_path: Path) -> Any:
     return FIXTURE.build_fixture(tmp_path / "fixture")
 
 
-def run_cli(
+def artifact_index_arguments(
     fixture: Any,
     *,
     execute: bool = False,
-    extra_env: Mapping[str, str] | None = None,
-) -> subprocess.CompletedProcess[str]:
-    environment = os.environ.copy()
-    environment["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
-    if extra_env:
-        environment.update(extra_env)
-    return subprocess.run(
-        [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
-            "build",
-            "artifact-index",
-            *fixture.command_args(execute=execute),
-        ],
-        cwd=REPO_ROOT,
-        env=environment,
-        text=True,
-        capture_output=True,
-        check=False,
+) -> argparse.Namespace:
+    return argparse.Namespace(
+        source_checkout=REPO_ROOT,
+        artifact_source_root=fixture.root,
+        run_id=fixture.run_id,
+        run_contract=fixture.run_contract,
+        inventory=fixture.inventory,
+        output_root=fixture.output_root,
+        execute=execute,
     )
+
+
+@dataclasses.dataclass(frozen=True)
+class DirectTransactionResult:
+    """Prepared context or typed producer error from a direct transaction."""
+
+    context: Any | None = None
+    error: Exception | None = None
+
+    @property
+    def returncode(self) -> int:
+        return int(self.error is not None)
+
+    @property
+    def stderr(self) -> str:
+        return "" if self.error is None else str(self.error)
+
+
+def run_builder(
+    fixture: Any,
+    *,
+    execute: bool = False,
+    arguments: argparse.Namespace | None = None,
+) -> DirectTransactionResult:
+    prepared_arguments = arguments or artifact_index_arguments(
+        fixture,
+        execute=execute,
+    )
+    previous_epoch = os.environ.get("SOURCE_DATE_EPOCH")
+    os.environ["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
+    try:
+        try:
+            context = ARTIFACT_CONTEXT.prepare_context(
+                prepared_arguments,
+                source_checkout=SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT),
+                artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(
+                    root=prepared_arguments.artifact_source_root
+                ),
+                identity_ops=ARTIFACT_CONTEXT.ArtifactIdentityOps(
+                    matching_clean_checkout_head_commit=(
+                        lambda **_kwargs: ARTIFACT_CORE.get_git_commit(
+                            source_root=REPO_ROOT,
+                            sanitize_git_routing=True,
+                        )
+                    )
+                ),
+            )
+            if prepared_arguments.execute:
+                ARTIFACT_PUBLICATION.publish_context(context)
+            return DirectTransactionResult(context=context)
+        except (
+            ARTIFACT_MODELS.ArtifactIndexError,
+            SOURCE_AUTHORITY.ArtifactSourceRootError,
+            SOURCE_AUTHORITY.SourceCheckoutError,
+            ARTIFACT_CONTRACTS.ContractValidationError,
+            OSError,
+            ValueError,
+        ) as exc:
+            return DirectTransactionResult(error=exc)
+    finally:
+        if previous_epoch is None:
+            os.environ.pop("SOURCE_DATE_EPOCH", None)
+        else:
+            os.environ["SOURCE_DATE_EPOCH"] = previous_epoch
 
 
 def read_tsv(path: Path) -> list[dict[str, str]]:
@@ -459,71 +509,14 @@ def test_publication_rechecks_source_identity_before_terminal_receipt(
     assert not context.receipt_path.exists()
 
 
-def test_help_and_dry_run_validate_all_sources_without_writing(
+def test_dry_run_validates_all_sources_without_writing(
     artifact_fixture: Any,
 ) -> None:
-    help_result = subprocess.run(
-        [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
-            "build",
-            "artifact-index",
-            "--help",
-        ],
-        cwd=REPO_ROOT,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    result = run_cli(artifact_fixture)
+    result = run_builder(artifact_fixture)
 
-    assert help_result.returncode == 0, help_result.stderr
-    for option in (
-        "--source-checkout",
-        "--artifact-source-root",
-        "--run-id",
-        "--run-contract",
-        "--inventory",
-        "--output-root",
-        "--execute",
-    ):
-        assert option in help_result.stdout
     assert result.returncode == 0, result.stderr
-    assert "Mode: dry-run" in result.stdout
-    assert "Inventory artifacts: 74" in result.stdout
-    assert "present=74" in result.stdout
-    assert "complete=74" in result.stdout
-    assert "Receipt (published last)" in result.stdout
-    assert "Dry-run only" in result.stdout
-    assert not artifact_fixture.output_root.exists()
-
-
-@pytest.mark.parametrize(
-    "required_option",
-    ("--source-checkout", "--artifact-source-root"),
-)
-def test_public_cli_requires_both_source_authorities(
-    artifact_fixture: Any,
-    required_option: str,
-) -> None:
-    arguments = artifact_fixture.command_args(execute=False)
-    option_index = arguments.index(required_option)
-    del arguments[option_index : option_index + 2]
-
-    result = subprocess.run(
-        [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
-            "build",
-            "artifact-index",
-            *arguments,
-        ],
-        cwd=REPO_ROOT,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-    assert result.returncode == 2
-    assert required_option in result.stderr
+    assert result.context is not None
+    assert len(result.context.records) == 74
     assert not artifact_fixture.output_root.exists()
 
 
@@ -546,10 +539,9 @@ def test_live_artifact_index_header_owner_controls_serialized_bytes(
 def test_execute_publishes_inventory_ordered_schema_valid_transaction(
     artifact_fixture: Any,
 ) -> None:
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
-    assert "Published receipt last" in result.stdout
     index_rows = read_tsv(artifact_fixture.artifacts_path)
     receipt_rows = read_tsv(artifact_fixture.receipt_path)
     assert len(index_rows) == 74
@@ -596,7 +588,7 @@ def test_execute_publishes_inventory_ordered_schema_valid_transaction(
 def test_fixed_time_retry_keeps_records_and_index_deterministic(
     artifact_fixture: Any,
 ) -> None:
-    first = run_cli(artifact_fixture, execute=True)
+    first = run_builder(artifact_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     first_record_bytes = {
         path.name: path.read_bytes()
@@ -605,7 +597,7 @@ def test_fixed_time_retry_keeps_records_and_index_deterministic(
     first_index = artifact_fixture.artifacts_path.read_bytes()
     first_receipt = read_tsv(artifact_fixture.receipt_path)[0]
 
-    second = run_cli(artifact_fixture, execute=True)
+    second = run_builder(artifact_fixture, execute=True)
     assert second.returncode == 0, second.stderr
     second_record_bytes = {
         path.name: path.read_bytes()
@@ -635,7 +627,7 @@ def test_missing_and_malformed_sources_are_explicit_and_scope_reconciled(
         encoding="utf-8",
     )
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     missing = record_for(artifact_fixture, "sample.SYNTH_A.canonical_bai")
@@ -714,7 +706,7 @@ def test_validation_adapter_preserves_failed_check_status(
         encoding="utf-8",
     )
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     record = record_for(artifact_fixture, artifact_id)
@@ -750,7 +742,7 @@ def test_validation_adapter_rejects_roster_shape_mutations(
         rows[-1]["check_id"] = rows[0]["check_id"]
     FIXTURE.write_tsv(report, tuple(rows[0]), rows)
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     record = record_for(artifact_fixture, artifact_id)
@@ -774,7 +766,7 @@ def test_validation_adapter_accepts_roster_identity_defects_as_characterized(
         rows[0]["check_id"] = "unexpected_check"
     FIXTURE.write_tsv(report, tuple(rows[0]), rows)
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     record = record_for(artifact_fixture, artifact_id)
@@ -785,7 +777,7 @@ def test_validation_adapter_accepts_roster_identity_defects_as_characterized(
 def test_same_run_id_rejects_changed_run_contract_without_touching_outputs(
     artifact_fixture: Any,
 ) -> None:
-    initial = run_cli(artifact_fixture, execute=True)
+    initial = run_builder(artifact_fixture, execute=True)
     assert initial.returncode == 0, initial.stderr
     before = owned_snapshot(artifact_fixture)
 
@@ -805,7 +797,7 @@ def test_same_run_id_rejects_changed_run_contract_without_touching_outputs(
         encoding="utf-8",
     )
 
-    collision = run_cli(artifact_fixture, execute=True)
+    collision = run_builder(artifact_fixture, execute=True)
 
     assert collision.returncode != 0
     assert "different immutable run contract" in collision.stderr
@@ -836,8 +828,8 @@ def test_undeclared_source_and_unrelated_run_outputs_are_ignored_and_preserved(
     unrelated_payload = b'{"owned_by":"future-run-summary"}\n'
     unrelated.write_bytes(unrelated_payload)
 
-    first = run_cli(artifact_fixture, execute=True)
-    second = run_cli(artifact_fixture, execute=True)
+    first = run_builder(artifact_fixture, execute=True)
+    second = run_builder(artifact_fixture, execute=True)
 
     assert first.returncode == 0, first.stderr
     assert second.returncode == 0, second.stderr
@@ -859,7 +851,7 @@ def test_foreign_lock_and_partial_prior_transaction_are_preserved(
     lock_payload = b"foreign lock\n"
     locked.lock_path.write_bytes(lock_payload)
 
-    locked_result = run_cli(locked, execute=True)
+    locked_result = run_builder(locked, execute=True)
 
     assert locked_result.returncode != 0
     assert "locked" in locked_result.stderr
@@ -873,7 +865,7 @@ def test_foreign_lock_and_partial_prior_transaction_are_preserved(
     partial_payload = b"partial prior index\n"
     partial.artifacts_path.write_bytes(partial_payload)
 
-    partial_result = run_cli(partial, execute=True)
+    partial_result = run_builder(partial, execute=True)
 
     assert partial_result.returncode != 0
     assert "output set is incomplete" in partial_result.stderr
@@ -1013,7 +1005,7 @@ def test_run_contract_is_order_independent_but_strict_json(
         + "\n",
         encoding="utf-8",
     )
-    reordered = run_cli(artifact_fixture)
+    reordered = run_builder(artifact_fixture)
     assert reordered.returncode == 0, reordered.stderr
 
     fields = list(contract.items())
@@ -1032,7 +1024,7 @@ def test_run_contract_is_order_independent_but_strict_json(
         duplicate_payload,
         encoding="utf-8",
     )
-    duplicate = run_cli(artifact_fixture)
+    duplicate = run_builder(artifact_fixture)
     assert duplicate.returncode != 0
     assert "Duplicate JSON object key" in duplicate.stderr
 
@@ -1044,7 +1036,7 @@ def test_run_contract_is_order_independent_but_strict_json(
         nonstandard + "\n",
         encoding="utf-8",
     )
-    nan_result = run_cli(artifact_fixture)
+    nan_result = run_builder(artifact_fixture)
     assert nan_result.returncode != 0
     assert "Non-standard JSON numeric constant" in nan_result.stderr
     assert not artifact_fixture.output_root.exists()
@@ -1053,7 +1045,7 @@ def test_run_contract_is_order_independent_but_strict_json(
 def test_semantically_identical_moved_run_contract_can_retry(
     artifact_fixture: Any,
 ) -> None:
-    first = run_cli(artifact_fixture, execute=True)
+    first = run_builder(artifact_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     first_receipt = read_tsv(artifact_fixture.receipt_path)[0]
     moved_contract = artifact_fixture.root / "moved_contract.json"
@@ -1066,23 +1058,12 @@ def test_semantically_identical_moved_run_contract_can_retry(
         + "\n",
         encoding="utf-8",
     )
-    arguments = artifact_fixture.command_args(execute=True)
-    arguments[arguments.index("--run-contract") + 1] = str(moved_contract)
-    environment = os.environ.copy()
-    environment["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
+    arguments = artifact_index_arguments(artifact_fixture, execute=True)
+    arguments.run_contract = moved_contract
 
-    second = subprocess.run(
-        [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
-            "build",
-            "artifact-index",
-            *arguments,
-        ],
-        cwd=REPO_ROOT,
-        env=environment,
-        text=True,
-        capture_output=True,
-        check=False,
+    second = run_builder(
+        artifact_fixture,
+        arguments=arguments,
     )
 
     assert second.returncode == 0, second.stderr
@@ -1106,7 +1087,7 @@ def test_unknown_adapter_fails_before_any_output(
         rows,
     )
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode != 0
     assert "unsupported adapter" in result.stderr
@@ -1122,7 +1103,7 @@ def test_output_directory_and_owned_component_symlinks_are_rejected(
     external.mkdir()
     escaped.output_dir.symlink_to(external, target_is_directory=True)
 
-    escaped_result = run_cli(escaped, execute=True)
+    escaped_result = run_builder(escaped, execute=True)
 
     assert escaped_result.returncode != 0
     assert "must not be a symlink" in escaped_result.stderr
@@ -1136,7 +1117,7 @@ def test_output_directory_and_owned_component_symlinks_are_rejected(
     records_target.mkdir()
     owned.records_dir.symlink_to(records_target, target_is_directory=True)
 
-    owned_result = run_cli(owned, execute=True)
+    owned_result = run_builder(owned, execute=True)
 
     assert owned_result.returncode != 0
     assert "records path is not a regular owned directory" in owned_result.stderr
@@ -1177,7 +1158,7 @@ def test_native_receipt_mismatch_is_published_as_explicit_failure(
     rows[0]["vcf_record_count"] = "2"
     FIXTURE.write_tsv(receipt_path, ARTIFACT_MODELS.STEP07_RECEIPT_HEADER, rows)
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     receipt = record_for(artifact_fixture, "cohort.synthetic.p1.receipt")
@@ -1199,7 +1180,7 @@ def test_dangling_declared_symlink_is_externally_unavailable(
     source.unlink()
     source.symlink_to(artifact_fixture.root / "absent.log")
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     record = record_for(artifact_fixture, "sample.SYNTH_A.star_log")
@@ -1214,7 +1195,7 @@ def test_dangling_declared_symlink_is_externally_unavailable(
 def test_tampered_receipt_and_extra_record_entry_block_retry(
     artifact_fixture: Any,
 ) -> None:
-    published = run_cli(artifact_fixture, execute=True)
+    published = run_builder(artifact_fixture, execute=True)
     assert published.returncode == 0, published.stderr
     original_receipt = artifact_fixture.receipt_path.read_bytes()
     rows = read_tsv(artifact_fixture.receipt_path)
@@ -1225,7 +1206,7 @@ def test_tampered_receipt_and_extra_record_entry_block_retry(
         rows,
     )
 
-    tampered = run_cli(artifact_fixture)
+    tampered = run_builder(artifact_fixture)
 
     assert tampered.returncode != 0
     assert "receipt rollup is invalid" in tampered.stderr
@@ -1234,7 +1215,7 @@ def test_tampered_receipt_and_extra_record_entry_block_retry(
     original_record = record_path.read_bytes()
     record_path.write_text("{}\n", encoding="utf-8")
 
-    bad_record = run_cli(artifact_fixture)
+    bad_record = run_builder(artifact_fixture)
 
     assert bad_record.returncode != 0
     assert "record hash is invalid" in bad_record.stderr
@@ -1242,7 +1223,7 @@ def test_tampered_receipt_and_extra_record_entry_block_retry(
     unexpected = artifact_fixture.records_dir / "unexpected"
     unexpected.mkdir()
 
-    extra_entry = run_cli(artifact_fixture)
+    extra_entry = run_builder(artifact_fixture)
 
     assert extra_entry.returncode != 0
     assert "missing or unexpected files" in extra_entry.stderr
@@ -1253,7 +1234,7 @@ def test_tampered_receipt_and_extra_record_entry_block_retry(
     record_path.unlink()
     record_path.symlink_to(target)
 
-    symlinked_record = run_cli(artifact_fixture)
+    symlinked_record = run_builder(artifact_fixture)
 
     assert symlinked_record.returncode != 0
     assert "non-regular owned entry" in symlinked_record.stderr
@@ -1396,7 +1377,7 @@ def test_post_commit_backup_cleanup_failure_preserves_new_transaction(
 def test_native_metrics_and_artifact_state_are_conservative(
     artifact_fixture: Any,
 ) -> None:
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
     assert result.returncode == 0, result.stderr
 
     quickcheck = record_for(artifact_fixture, "sample.SYNTH_A.quickcheck")
@@ -1502,7 +1483,7 @@ def test_all_missing_sources_publish_complete_index_transaction(
     for path in artifact_fixture.source_paths.values():
         path.unlink()
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     receipt = read_tsv(artifact_fixture.receipt_path)[0]
@@ -1699,7 +1680,7 @@ def test_native_transaction_reconciliation_rejects_internal_mismatch(
     else:
         raise AssertionError(f"Unhandled native transaction step: {step_id}")
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     marker = record_for(artifact_fixture, marker_artifact)
@@ -1757,7 +1738,7 @@ def test_contract_and_inventory_mutation_after_context_is_rejected(
 def test_inventory_revision_creates_new_attempt_without_changing_run_identity(
     artifact_fixture: Any,
 ) -> None:
-    first = run_cli(artifact_fixture, execute=True)
+    first = run_builder(artifact_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     first_receipt = read_tsv(artifact_fixture.receipt_path)[0]
     rows = list(artifact_fixture.inventory_rows)
@@ -1778,7 +1759,7 @@ def test_inventory_revision_creates_new_attempt_without_changing_run_identity(
         revised,
     )
 
-    second = run_cli(artifact_fixture, execute=True)
+    second = run_builder(artifact_fixture, execute=True)
 
     assert second.returncode == 0, second.stderr
     second_receipt = read_tsv(artifact_fixture.receipt_path)[0]
@@ -1822,7 +1803,7 @@ def test_native_dependency_order_is_independent_of_inventory_scope_order(
         receipt_rows,
     )
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     step07 = record_for(
@@ -1848,7 +1829,7 @@ def test_step07_requires_all_declared_mpileup_annotation_definitions(
         encoding="utf-8",
     )
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     receipt = record_for(
@@ -1879,7 +1860,7 @@ def test_binary_adapters_reject_signature_only_or_truncated_sources(
 ) -> None:
     artifact_fixture.source_for(artifact_id).write_bytes(payload)
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     record = record_for(artifact_fixture, artifact_id)
@@ -1911,7 +1892,7 @@ def test_step06_accepts_producer_six_decimal_fraction(
     )
     FIXTURE.write_tsv(counts, ARTIFACT_MODELS.STEP06_COUNTS_HEADER, rows)
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     record = record_for(
@@ -1932,7 +1913,7 @@ def test_step09_significant_rows_must_be_full_exact_subset(
     header = tuple(rows[0])
     FIXTURE.write_tsv(significant, header, rows)
 
-    result = run_cli(artifact_fixture, execute=True)
+    result = run_builder(artifact_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     summary = record_for(
@@ -1950,7 +1931,7 @@ def test_step09_rejects_unknown_status_and_pairwise_spectrum_mismatch(
     all_rows[0]["test_status"] = "unknown_status"
     FIXTURE.write_tsv(all_sites, tuple(all_rows[0]), all_rows)
 
-    first = run_cli(artifact_fixture, execute=True)
+    first = run_builder(artifact_fixture, execute=True)
 
     assert first.returncode == 0, first.stderr
     assert (
@@ -1982,7 +1963,7 @@ def test_step09_rejects_unknown_status_and_pairwise_spectrum_mismatch(
         spectrum_rows,
     )
 
-    second = run_cli(second_fixture, execute=True)
+    second = run_builder(second_fixture, execute=True)
 
     assert second.returncode == 0, second.stderr
     assert (

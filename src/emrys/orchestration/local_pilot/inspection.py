@@ -67,6 +67,10 @@ class ValidatedReportingReceipt(Protocol):
 ReportingReceiptValidator = Callable[..., ValidatedReportingReceipt]
 
 
+def _receipt_binds_reporting(receipt: Mapping[str, Any]) -> bool:
+    return receipt.get("schema_version") == "emrys.attempt-receipt.v1"
+
+
 class InspectionError(RuntimeError):
     """Raised when the immutable run identity itself cannot be admitted."""
 
@@ -138,9 +142,7 @@ class RunInspection:
         """Return whether Run and Attempt authority remain admissible."""
 
         return (
-            "blocked"
-            if self.integrity_blockers or self.receipt_blockers
-            else "valid"
+            "blocked" if self.integrity_blockers or self.receipt_blockers else "valid"
         )
 
     @property
@@ -168,11 +170,9 @@ class RunInspection:
 
         if self.latest_receipt is None or self.latest_receipt["status"] != "blocked":
             return ()
-        rederived = {
-            *self.integrity_blockers,
-            *self.results_blockers,
-            *self.reporting_blockers,
-        }
+        rederived = {*self.integrity_blockers, *self.results_blockers}
+        if _receipt_binds_reporting(self.latest_receipt):
+            rederived.update(self.reporting_blockers)
         return tuple(
             str(value)
             for value in self.latest_receipt["blockers"]
@@ -202,7 +202,6 @@ class RunInspection:
             self.integrity == "valid"
             and self.results_status == "incomplete"
             and self.attempt_outcome in {"failed", "interrupted"}
-            and not self.blockers
         )
 
 
@@ -435,14 +434,14 @@ def admit_successor_run(root: Path) -> SuccessorRunAuthority | None:
         "execution_plan": root / "contract" / "execution-plan.json",
         "run": root / "contract" / "run.json",
     }
-    present = {name for name, path in paths.items() if path.exists() or path.is_symlink()}
+    present = {
+        name for name, path in paths.items() if path.exists() or path.is_symlink()
+    }
     if not present:
         return None
     if present != set(paths):
         missing = ", ".join(sorted(set(paths) - present))
-        raise InspectionError(
-            f"Incomplete successor Run authority; missing: {missing}"
-        )
+        raise InspectionError(f"Incomplete successor Run authority; missing: {missing}")
     values: dict[str, Any] = {}
     for name, path in paths.items():
         data = _read_bytes(path, root, f"successor {name} authority")
@@ -460,7 +459,9 @@ def admit_successor_run(root: Path) -> SuccessorRunAuthority | None:
     if not isinstance(run, RunBinding):
         raise InspectionError("run.json is not a Run binding")
     if run.canonical_bytes != bind_run(analysis, plan).canonical_bytes:
-        raise InspectionError("Run binding does not bind its Analysis and Execution Plan")
+        raise InspectionError(
+            "Run binding does not bind its Analysis and Execution Plan"
+        )
     if root.name != run.run_id:
         raise InspectionError("Run root name does not match successor Run ID")
     return SuccessorRunAuthority(analysis, plan, run)
@@ -478,7 +479,9 @@ def admit_execution_path(
 
     data = read_bytes(path, root, "execution authority")
     try:
-        record = orchestration_contracts.load_json_object_bytes(data, f"execution {path}")
+        record = orchestration_contracts.load_json_object_bytes(
+            data, f"execution {path}"
+        )
         canonical = orchestration_contracts.canonical_json_bytes(record)
         version = record.get("schema_version")
         authority = None
@@ -508,9 +511,7 @@ def admit_execution_path(
 def _successor_expected_tasks(
     authority: SuccessorRunAuthority,
 ) -> tuple[ExpectedTask, ...]:
-    functional = authority.execution_plan.record["identity"][
-        "functional_specification"
-    ]
+    functional = authority.execution_plan.record["identity"]["functional_specification"]
     required = set(functional["required_owner_keys"])
     analysis = authority.analysis_revision
     identity = analysis.record["identity"]
@@ -699,10 +700,10 @@ def _state_tree_blockers_by_domain(
 
 
 def state_tree_blockers(root: Path) -> tuple[str, ...]:
-    """Close the aggregate EMRYS state namespace before trusting its ledgers."""
+    """Close Attempt-owned aggregate state without gating on reporting."""
 
-    integrity, results, reporting = _state_tree_blockers_by_domain(root)
-    return (*integrity, *results, *reporting)
+    integrity, results, _reporting = _state_tree_blockers_by_domain(root)
+    return (*integrity, *results)
 
 
 def lock_tree_blockers(
@@ -963,14 +964,11 @@ def _inspect_reporting_ledger_with_locations(
                 )
             continue
         try:
-            start_outcome = reporting_boundary.validate_start(
-                kind, root, execution, profile
-            )
+            origin = reporting_boundary.validate_start(kind, root, execution, profile)
             start, start_data = admit_canonical_record(
                 start_path, root, "reporting-start"
             )
             start_reference = _reference_for_bytes(start_path, root, start_data)
-            origin = start_outcome.origin_workflow_attempt_id
             result[kind]["start"] = start_reference
             if not verified_exists:
                 if origin == allow_incomplete_origin:
@@ -978,7 +976,7 @@ def _inspect_reporting_ledger_with_locations(
                 raise InspectionError(
                     f"{kind} reporting start has no verified completion"
                 )
-            verified_outcome = reporting_boundary.validate_verified(
+            semantic_receipt_path, locations = reporting_boundary.validate_verified(
                 kind,
                 root,
                 execution,
@@ -995,13 +993,13 @@ def _inspect_reporting_ledger_with_locations(
                 raise InspectionError(
                     f"{kind} verified reporting does not bind its exact start"
                 )
-            if verified_outcome.semantic_receipt_path != semantic_path:
+            if semantic_receipt_path != semantic_path:
                 raise InspectionError(
                     f"{kind} reporting boundary selected a different semantic receipt"
                 )
             result[kind]["verified"] = verified_reference
             if kind == "html_report":
-                verified_report_locations = verified_outcome.verified_report_locations
+                verified_report_locations = locations
         except Exception as exc:
             blockers.append(f"Could not close {kind} reporting ledger: {exc}")
     return result, blockers, verified_report_locations
@@ -1140,10 +1138,11 @@ def _inspect_attempt_chain_by_domain(
             "successor" if admit_successor_run(root) is not None else "legacy"
         )
     if successor_authority is not None and (
-        authority_format != "successor"
-        or profile is None
+        authority_format != "successor" or profile is None
     ):
-        raise InspectionError("Successor Attempt admission requires complete Run context")
+        raise InspectionError(
+            "Successor Attempt admission requires complete Run context"
+        )
     records: dict[str, dict[str, Any]] = {}
     attempt_references: dict[str, dict[str, str]] = {}
     receipts: dict[str, dict[str, Any]] = {}
@@ -1617,7 +1616,11 @@ def _inspect_attempt_chain_by_domain(
                 results_blockers.append(
                     f"Attempt receipt pre-binds future verified task: {identifier}/{raw_path}"
                 )
-        for kind, ledger_state in receipt["reporting_completion_records"].items():
+        for kind, ledger_state in (
+            receipt["reporting_completion_records"].items()
+            if _receipt_binds_reporting(receipt)
+            else ()
+        ):
             for state_name, schema_name in (
                 ("start", "reporting-start"),
                 ("verified", "verified-reporting"),
@@ -1693,7 +1696,7 @@ def inspect_attempt_chain(
 ]:
     """Admit the Attempt chain with its historical aggregate blocker result."""
 
-    attempts, receipts, integrity, results, reporting = (
+    attempts, receipts, integrity, results, _reporting = (
         _inspect_attempt_chain_by_domain(
             root,
             authority_format=authority_format,
@@ -1701,7 +1704,7 @@ def inspect_attempt_chain(
             profile=profile,
         )
     )
-    return attempts, receipts, [*integrity, *results, *reporting]
+    return attempts, receipts, [*integrity, *results]
 
 
 def _parse_attempt_path_bytes(
@@ -2131,28 +2134,30 @@ def _historical_receipt_evidence_blockers(
                 f"Attempt receipt omits or adds cumulative verified tasks: {identifier}"
             )
 
-        expected_reporting: dict[str, dict[str, dict[str, str] | None]] = {}
-        for kind, states in reporting.items():
-            expected_reporting[kind] = {"start": None, "verified": None}
-            for state_name, schema_name in (
-                ("start", "reporting-start"),
-                ("verified", "verified-reporting"),
-            ):
-                reference = states[state_name]
-                if reference is None:
-                    continue
-                try:
-                    record, _ = admit_canonical_record(
-                        root / reference["path"], root, schema_name
-                    )
-                except InspectionError:
-                    continue
-                if admitted(record["origin_workflow_attempt_id"], position):
-                    expected_reporting[kind][state_name] = reference
-        if receipt["reporting_completion_records"] != expected_reporting:
-            reporting_blockers.append(
-                f"Attempt receipt omits or adds cumulative reporting evidence: {identifier}"
-            )
+        if _receipt_binds_reporting(receipt):
+            expected_reporting: dict[str, dict[str, dict[str, str] | None]] = {}
+            for kind, states in reporting.items():
+                expected_reporting[kind] = {"start": None, "verified": None}
+                for state_name, schema_name in (
+                    ("start", "reporting-start"),
+                    ("verified", "verified-reporting"),
+                ):
+                    reference = states[state_name]
+                    if reference is None:
+                        continue
+                    try:
+                        record, _ = admit_canonical_record(
+                            root / reference["path"], root, schema_name
+                        )
+                    except InspectionError:
+                        continue
+                    if admitted(record["origin_workflow_attempt_id"], position):
+                        expected_reporting[kind][state_name] = reference
+            if receipt["reporting_completion_records"] != expected_reporting:
+                reporting_blockers.append(
+                    "Attempt receipt omits or adds cumulative reporting evidence: "
+                    f"{identifier}"
+                )
     return integrity_blockers, results_blockers, reporting_blockers
 
 
@@ -2256,9 +2261,7 @@ def inspect_run(
             attempt_blockers,
             attempt_results_blockers,
             attempt_reporting_blockers,
-        ) = _inspect_attempt_chain_by_domain(
-            root, authority_format="successor"
-        )
+        ) = _inspect_attempt_chain_by_domain(root, authority_format="successor")
         integrity_blockers.extend(attempt_blockers)
         results_blockers.extend(attempt_results_blockers)
         reporting_blockers.extend(attempt_reporting_blockers)
@@ -2398,9 +2401,7 @@ def inspect_run(
         if running and latest_receipt is None and allowed_next_attempt is None
         else None
     )
-    tasks, task_blockers = _inspect_tasks(
-        root, execution, profile, authority=authority
-    )
+    tasks, task_blockers = _inspect_tasks(root, execution, profile, authority=authority)
     results_blockers.extend(task_blockers)
     task_ledger, task_ledger_blockers = _inspect_task_ledger(
         root,
@@ -2448,7 +2449,10 @@ def inspect_run(
     results_blockers.extend(historical_results_blockers)
     reporting_blockers.extend(historical_reporting_blockers)
     if latest_receipt is not None:
-        if latest_receipt["reporting_completion_records"] != reporting:
+        if (
+            _receipt_binds_reporting(latest_receipt)
+            and latest_receipt["reporting_completion_records"] != reporting
+        ):
             reporting_blockers.append(
                 "Latest attempt receipt does not bind exact reporting ledger"
             )
@@ -2497,15 +2501,17 @@ def inspect_run(
                 results_blockers.append(
                     "Successful attempt receipt is missing required verified tasks"
                 )
-            if any(
+            if _receipt_binds_reporting(latest_receipt) and any(
                 state["start"] is None or state["verified"] is None
                 for state in reporting.values()
             ):
                 reporting_blockers.append(
                     "Successful attempt receipt is missing reporting transactions"
                 )
-    if latest is not None and latest_receipt is None and not (
-        running and allowed_next_attempt is None
+    if (
+        latest is not None
+        and latest_receipt is None
+        and not (running and allowed_next_attempt is None)
     ):
         integrity_blockers.append(
             "Latest workflow attempt is nonterminal without a live owned lock"
@@ -2519,7 +2525,9 @@ def inspect_run(
     )
     return RunInspection(
         run_root=root,
-        run_id=(authority.run_id if authority is not None else str(execution["run_id"])),
+        run_id=(
+            authority.run_id if authority is not None else str(execution["run_id"])
+        ),
         attempt_outcome=outcome,
         latest_attempt=latest,
         latest_receipt=latest_receipt,

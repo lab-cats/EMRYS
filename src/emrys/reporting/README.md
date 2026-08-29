@@ -7,37 +7,23 @@ analysis, decide scientific validity, or promote evidence.
 
 | Interface | Supported role | Responsibility |
 | --- | --- | --- |
-| `python -X pycache_prefix=/dev/null -I -m emrys build report` | Operator-facing standalone rebuild | Render one canonical run summary under distinct code and artifact authorities into self-contained scientific and evidence-and-operations HTML views, summary TSV, and a v4 receipt published last. |
-| `python -X pycache_prefix=/dev/null -I -m emrys build artifact-index` | Workflow-owned transaction; advanced diagnosis/recovery | Reconcile one declared artifact root and inventory under an independent producer-checkout authority into a receipt-last artifact index. |
-| `python -X pycache_prefix=/dev/null -I -m emrys build run-summary` | Workflow-owned transaction; advanced diagnosis/recovery | Project one admitted artifact-index receipt into the canonical run summary. |
+| `emrys run` / `emrys resume` | Normal operator path | Close the scientific Attempt at `cohort_slice`, release its Run lock, then invoke reporting automatically unless `--no-report` was selected. |
+| `emrys report --run-root ABSOLUTE_RUN_ROOT` | Independent reporting path | Re-admit one successful scientific Run and either validate reusable reports or print a no-write generation plan; add `--execute` to generate an absent bundle. |
 
-The normal researcher path is `emrys run`, which invokes all three transactions
-in order. `build report` is also a supported direct operator route for an
-existing canonical summary. The two intermediate commands remain stable and
-documented for workflow execution and bounded diagnosis or recovery; they are
-not a general invitation to assemble or adopt reporting state manually.
+Reporting is downstream of, and not part of, the scientific Attempt. A
+reporting failure returns nonzero but leaves the successful Attempt receipt and
+scientific Results unchanged. `--no-report` disables only this downstream
+operation; it does not change the scientific graph, receipt, or Results.
 
-All three build routes require both `--source-checkout
-ABSOLUTE_CANONICAL_CHECKOUT` and `--artifact-source-root
-ABSOLUTE_CANONICAL_ARTIFACT_ROOT`. The report command is dry-run by default
-and accepts only explicit inputs:
+The independent command is dry-run/read-only by default:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys build report \
-  --source-checkout /absolute/path/to/emrys \
-  --artifact-source-root /absolute/path/to/run-root \
-  --run-summary /absolute/path/to/run-root/products/artifact-summary/RUN_ID/RUN_ID.run_summary.json \
-  --output-root /absolute/path/to/run-root/results/reports
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \
+  --run-root /absolute/path/to/workspace/runs/run-DIGEST
 ```
 
-`--source-checkout` names the absolute canonical EMRYS Git top level whose
-Python and packaged-resource bytes match the executing package; it owns
-producer and renderer Git identity. `--artifact-source-root` independently
-resolves contract-relative inventory and native artifact paths. Reporting
-infers neither root from the working directory
-or the run-summary location.
-
-Repeat with `--execute` to publish exactly:
+Repeat with `--execute` to publish the ordered artifact-index, run-summary, and
+HTML transactions. The final report transaction publishes exactly:
 
 - `RUN_ID.scientific_report.html`
 - `RUN_ID.evidence_report.html`
@@ -45,8 +31,15 @@ Repeat with `--execute` to publish exactly:
 - `RUN_ID.report_outputs.tsv`
 
 The last file is the `emrys.report_receipt` v4 receipt. Existing older output
-directories, bare HTML predecessors, and incomplete sets are rejected; use a
-fresh output root unless an explicit migration is separately approved.
+directories, bare HTML predecessors, partial ledgers, and incomplete sets are
+rejected and preserved. A complete existing bundle is reused only after every
+transaction and output is revalidated. New publication begins only when all
+three reporting ledgers and both Run-specific output locations are exactly
+empty; the public command does not overwrite, adopt, delete, or repair state.
+
+The artifact-index, run-summary, and HTML builder modules remain private
+implementation used by the Run-level coordinator and developer fixtures. They
+are not installed public commands or operator recovery routes.
 
 For current fixed-profile Runs, orchestration publishes this bundle only at
 `results/reports/RUN_ID`. An exact historical profile and verified reporting
@@ -146,7 +139,8 @@ adjudicated**. Candidate review, adjudication, and biological interpretation
 are external research activities and are not inferred from threshold-passing
 rows.
 
-[`report.py`](report.py) is the one public report owner. The private
+[`report.py`](report.py) is the private HTML builder used by the Run-level
+reporting coordinator and developer fixtures. The private
 [`_run_report/`](_run_report/README.md) package owns explicit input admission,
 checkout-rooted semantic and table validation, structured view data, Jinja
 rendering, centralized deterministic figure rendering, per-view static HTML
