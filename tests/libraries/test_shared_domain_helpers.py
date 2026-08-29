@@ -269,6 +269,9 @@ def test_mpileup_manifest_and_selector_failure_branches(tmp_path: Path) -> None:
     write_tsv(sample_manifest, ("sample_id",), [("S",), ("S",)])
     with pytest.raises(report.ValidationError, match="nonempty and unique"):
         mpileup.read_sample_ids(sample_manifest)
+    sample_manifest.write_text("sample_id\nS\n\nT\n")
+    with pytest.raises(report.ValidationError, match="row 3"):
+        mpileup.read_sample_ids(sample_manifest)
 
     partition_manifest = tmp_path / "partitions.tsv"
     write_tsv(partition_manifest, ("partition_id",), [("p1",)])
@@ -281,13 +284,21 @@ def test_mpileup_manifest_and_selector_failure_branches(tmp_path: Path) -> None:
     )
     with pytest.raises(report.ValidationError, match="one declared partition"):
         mpileup.read_partition(partition_manifest, "absent")
-    write_tsv(
-        partition_manifest,
-        ("partition_id", "selector_type", "selector_value"),
-        [("p1", "invalid", "chr1")],
-    )
-    with pytest.raises(report.ValidationError, match="selector is invalid"):
-        mpileup.read_partition(partition_manifest, "p1")
+    for rows, message in (
+        ([("p1", "invalid", "chr1")], "Invalid selector type"),
+        ([("p1", "region", "")], "empty value"),
+        (
+            [("p1", "region", "chr1"), ("p1", "region", "chr2")],
+            "Duplicate partition ID",
+        ),
+    ):
+        write_tsv(
+            partition_manifest,
+            ("partition_id", "selector_type", "selector_value"),
+            rows,
+        )
+        with pytest.raises(report.ValidationError, match=message):
+            mpileup.read_partition(partition_manifest, "p1")
 
     invalid_fai = tmp_path / "reference.fa.fai"
     invalid_fai.write_text("bad\n", encoding="utf-8")
@@ -295,7 +306,16 @@ def test_mpileup_manifest_and_selector_failure_branches(tmp_path: Path) -> None:
         mpileup.read_fai(invalid_fai)
 
     contigs = {"chr1": 10}
-    for selector in ("", "chr2", "chr1:bad", "chr1:0-1", "chr1:1-11"):
+    for selector in (
+        "",
+        "chr2",
+        "chr1:bad",
+        "chr1:0-1",
+        "chr1:1-11",
+        "chr1:1--",
+        "chr1:1---",
+        "chr1:1-2-",
+    ):
         assert not mpileup.selector_ok(
             "region",
             selector,

@@ -33,6 +33,8 @@ source "src/emrys/libraries/argument_parsing.sh"
 MAX_DEPTH="${MAX_DEPTH:-10000000}"
 FILTER_EXPRESSION="${FILTER_EXPRESSION:-INFO/AD[1-]>2 & MAX(FORMAT/DP)>20}"
 BCFTOOLS_BIN="$BCFTOOLS_BIN_OVERRIDE"
+PYTHON_BIN="${EMRYS_PYTHON_BIN:-$PWD/.venv/bin/python}"
+PRODUCER_PATH="$PWD/src/emrys/stages/partitioned_cohort_mpileup/producer.py"
 EXECUTE="${EXECUTE:-0}"
 
 # Keep the SLURM execution gate narrow and explicit. The script receives
@@ -45,6 +47,16 @@ case "$EXECUTE" in
 esac
 
 mkdir -p logs
+
+[[ -x "$PYTHON_BIN" ]] ||
+    die "Python executable not found or not executable: $PYTHON_BIN"
+[[ -f "$PRODUCER_PATH" ]] ||
+    die "Step 07 Python producer not found: $PRODUCER_PATH"
+
+RESOLVED_PRODUCER="$("$PYTHON_BIN" -X pycache_prefix=/dev/null -I -c \
+    'from emrys.stages.partitioned_cohort_mpileup import producer; print(producer.__file__)')"
+[[ "$RESOLVED_PRODUCER" -ef "$PRODUCER_PATH" ]] ||
+    die "Python runtime does not resolve Step 07 from the submitted checkout: $RESOLVED_PRODUCER"
 
 PARTITION_OUTPUT_DIR="$OUTPUT_ROOT/$COHORT_ID/$PARTITION_ID"
 FWD_VCF="$PARTITION_OUTPUT_DIR/${COHORT_ID}.${PARTITION_ID}.FWD_like.mpileup.vcf"
@@ -71,6 +83,8 @@ echo "Output receipt: $OUTPUT_RECEIPT"
 echo "Maximum depth: $MAX_DEPTH"
 echo "Filter expression: $FILTER_EXPRESSION"
 echo "bcftools: $BCFTOOLS_BIN"
+echo "Python: $PYTHON_BIN"
+echo "Python producer: $RESOLVED_PRODUCER"
 echo "Execute mode: $EXECUTE"
 
 echo "Loaded modules for Step 07:"
@@ -88,8 +102,9 @@ else
 fi
 
 cmd=(
-    bash
-    src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh
+    "$PYTHON_BIN"
+    -X pycache_prefix=/dev/null -I
+    -m emrys.stages.partitioned_cohort_mpileup.producer
     --cohort-id "$COHORT_ID"
     --sample-manifest "$SAMPLE_MANIFEST"
     --partition-manifest "$PARTITION_MANIFEST"
@@ -105,7 +120,7 @@ if [[ "$EXECUTE" == "1" ]]; then
     cmd+=(--execute)
 fi
 
-# The script owns bcftools command construction, locking, validation, and
+# The Python producer owns bcftools command construction, locking, validation, and
 # publication. This wrapper supplies cluster defaults and prints job context.
 echo "Wrapper command:"
 print_command "${cmd[@]}"

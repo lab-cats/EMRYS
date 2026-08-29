@@ -105,8 +105,8 @@ CONTRACTS = {
         submit_cwd="required",
     ),
     "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": contract(
-        "src/emrys/stages/partitioned_cohort_mpileup/"
-        "step_07_bcftools_mpileup_by_chrom_and_strand.sh",
+        "python -X pycache_prefix=/dev/null -I "
+        "-m emrys.stages.partitioned_cohort_mpileup.producer",
         module_calls=("list",),
         submit_cwd="required",
     ),
@@ -166,6 +166,10 @@ JOB_PATHS.update(
         ),
         "step_00b_gtf_to_bed12.slurm": Path(
             "src/emrys/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm"
+        ),
+        "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": Path(
+            "src/emrys/stages/partitioned_cohort_mpileup/"
+            "step_07_bcftools_mpileup_by_chrom_and_strand.slurm"
         ),
         "step_08_vcf_preprocessing.slurm": Path(
             "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm"
@@ -546,6 +550,7 @@ DELEGATED_FIXTURES = {
             ("MAX_DEPTH", "123"),
             ("FILTER_EXPRESSION", "INFO/AD[1-]>7 & MAX(FORMAT/DP)>31"),
             ("BCFTOOLS_BIN_OVERRIDE", "{fake_bin}/bcftools"),
+            ("EMRYS_PYTHON_BIN", "{fake_bin}/emrys-python"),
         ),
         arguments=(
             ("--cohort-id", "cohort07"),

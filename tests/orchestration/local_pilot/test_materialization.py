@@ -412,6 +412,19 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert Path(step07["validation_report_path"]).name == (
         f"{step07['scope']['scope_id']}.validation.tsv"
     )
+    step07_prefix = controlled_python_argv(
+        sys.executable,
+        "-m",
+        "emrys.stages.partitioned_cohort_mpileup.producer",
+    )
+    producer_argv = tuple(step07["producer_argv"])
+    assert any(
+        producer_argv[index : index + len(step07_prefix)] == step07_prefix
+        for index in range(len(producer_argv) - len(step07_prefix) + 1)
+    )
+    assert "step_07_bcftools_mpileup_by_chrom_and_strand.sh" not in " ".join(
+        step07["producer_argv"]
+    )
     assert_root(step07, "--orientation-root", ".FWD_like.bam", 1)
     assert_root(step07, "--output-root", ".FWD_like.mpileup.vcf", 2)
     assert not any("--unlock" in record["producer_argv"] for record in records)

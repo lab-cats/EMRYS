@@ -174,6 +174,7 @@ def test_fasta_duplicate_membership_work_grows_linearly() -> None:
     [
         ("chr1\n", "FAI row 1 is malformed"),
         ("chr1\t1\nMT\tnot-a-number\n", "FAI row 2 is malformed"),
+        ("chr1\t²\n", "FAI row 1 is malformed"),
         ("", "FAI contigs are empty or duplicated"),
         ("chr1\t1\nchr1\t2\n", "FAI contigs are empty or duplicated"),
     ],
@@ -188,15 +189,10 @@ def test_fai_failures_preserve_exact_messages(
     assert str(raised.value) == message
 
 
-def test_fai_preserves_empty_name_zero_length_and_raw_conversion_error(
-    tmp_path: Path,
-) -> None:
+def test_fai_preserves_empty_name_and_zero_length(tmp_path: Path) -> None:
     path = tmp_path / "genome.fa.fai"
     path.write_text("\t0\textra\n", encoding="utf-8")
     assert REFERENCE_CONTIGS.parse_fai(path) == [("", 0)]
-    path.write_text("chr1\t²\n", encoding="utf-8")
-    with pytest.raises(ValueError):
-        REFERENCE_CONTIGS.parse_fai(path)
 
 
 @pytest.mark.parametrize(

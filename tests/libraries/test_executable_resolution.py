@@ -40,8 +40,6 @@ CONSUMERS = {
         1,
         1,
     ),
-    "stages/partitioned_cohort_mpileup/"
-    "step_07_bcftools_mpileup_by_chrom_and_strand.sh": (0o755, 0, 1, 1),
     "analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh": (
         0o755,
         1,

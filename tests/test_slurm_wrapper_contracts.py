@@ -48,6 +48,14 @@ CHECKOUT_HELPERS = (
     Path("src/emrys/libraries/orientation.sh"),
     Path("src/emrys/libraries/process_environment.py"),
 )
+PYTHON_PRODUCERS = {
+    "step_07_bcftools_mpileup_by_chrom_and_strand.slurm": Path(
+        "src/emrys/stages/partitioned_cohort_mpileup/producer.py"
+    ),
+    "step_08_vcf_preprocessing.slurm": Path(
+        "src/emrys/stages/cohort_candidate_preprocessing/producer.py"
+    ),
+}
 
 
 def job_path(name: str) -> Path:
@@ -246,12 +254,11 @@ def prepare_delegated(name: str, tmp_path: Path) -> PreparedWrapper:
     install_module_fake(fake_bin)
     install_tool_fakes(fake_bin)
     install_checkout_helpers(submit)
-    if name == "step_08_vcf_preprocessing.slurm":
-        producer = (
-            submit / "src/emrys/stages/cohort_candidate_preprocessing/producer.py"
-        )
+    producer_relative = PYTHON_PRODUCERS.get(name)
+    if producer_relative is not None:
+        producer = submit / producer_relative
         producer.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(REPO_ROOT / producer.relative_to(submit), producer)
+        shutil.copy2(REPO_ROOT / producer_relative, producer)
         install_delegate_stub(fake_bin / "emrys-python", python_prefix=True)
     else:
         install_delegate_stub(submit / contract.delegation)
@@ -266,10 +273,8 @@ def prepare_delegated(name: str, tmp_path: Path) -> PreparedWrapper:
             "FAKE_SKIP_OUTPUTS": "0",
         }
     )
-    if name == "step_08_vcf_preprocessing.slurm":
-        environment["FAKE_PYTHON_MODULE_PATH"] = str(
-            submit / "src/emrys/stages/cohort_candidate_preprocessing/producer.py"
-        )
+    if producer_relative is not None:
+        environment["FAKE_PYTHON_MODULE_PATH"] = str(submit / producer_relative)
     context = {
         "submit": str(submit),
         "fake_bin": str(fake_bin),
@@ -1490,10 +1495,19 @@ def test_step_08_vcf_preprocessing_forwards_r_program_for_child_validation(
     )
 
 
-def test_step_08_vcf_preprocessing_rejects_foreign_python_source(
+@pytest.mark.parametrize(
+    ("name", "step"),
+    (
+        ("step_07_bcftools_mpileup_by_chrom_and_strand.slurm", "07"),
+        ("step_08_vcf_preprocessing.slurm", "08"),
+    ),
+)
+def test_python_producer_wrappers_reject_foreign_python_source(
+    name: str,
+    step: str,
     tmp_path: Path,
 ) -> None:
-    prepared = prepare_delegated("step_08_vcf_preprocessing.slurm", tmp_path)
+    prepared = prepare_delegated(name, tmp_path)
     foreign = tmp_path / "foreign-source/producer.py"
     foreign.parent.mkdir()
     foreign.write_text("# foreign producer\n")
@@ -1504,7 +1518,7 @@ def test_step_08_vcf_preprocessing_rejects_foreign_python_source(
     )
 
     assert result.returncode == 1
-    assert "does not resolve Step 08 from the submitted checkout" in result.stderr
+    assert f"does not resolve Step {step} from the submitted checkout" in result.stderr
     assert not prepared.delegate_log.exists()
 
 

@@ -117,7 +117,7 @@ STEP_PRODUCERS = {
     ),
     "07": (
         "src/emrys/stages/partitioned_cohort_mpileup/"
-        "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
+        "producer.py"
     ),
     "08": (
         "src/emrys/stages/cohort_candidate_preprocessing/producer.py"

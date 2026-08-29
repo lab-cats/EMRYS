@@ -6,8 +6,8 @@ owned by the
 [semantic stage map](../../contracts/STAGE_MAP.md#identity-map). This directory
 is the lowercase physical owner for that public slug and owns the producer,
 validator, and scheduler assets. Its Python validator is installed only through
-the grouped command; the shell producer and scheduler remain explicit
-repository-path interfaces.
+the grouped command; the private Python producer is invoked by orchestration or
+the repository-owned scheduler wrapper rather than exposed as a public command.
 
 ## Responsibility and execution dependencies
 
@@ -70,8 +70,8 @@ record-count checked before the receipt becomes visible. The receipt itself is
 then checked inside the owned rollback boundary; its mere presence is not
 independent proof of a successfully completed immutable computation.
 
-[`step_07_bcftools_mpileup_by_chrom_and_strand.sh`](step_07_bcftools_mpileup_by_chrom_and_strand.sh)
-is side-effect-free in dry-run. Execute mode hashes and later rechecks both
+[`producer.py`](producer.py) is side-effect-free in dry-run. Execute mode hashes
+and later rechecks both
 manifests, uses a cohort/partition lock and run-token temporary/backup paths,
 rejects stale owned paths and partial prior sets, validates temporary VCF
 sample order and counts, then replaces all three outputs with the receipt last.
@@ -151,7 +151,7 @@ controlled exit-`2` boundary.
 - Artifact adapters register both VCFs, the receipt, and
   `step07_validation_report_v1`; reports consume registered evidence without
   rerunning pileup.
-- [`test_step_07_bcftools_mpileup_by_chrom_and_strand.sh`](../../../../tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh)
+- [`test_producer.py`](../../../../tests/stages/partitioned_cohort_mpileup/test_producer.py)
   protects selector modes, manifest order, commands, dry-run, publication,
   locking, stale paths, child failures, transaction ordering, replacement,
   rollback failures, signals, mutation gaps, and provenance omissions.
@@ -170,9 +170,8 @@ cluster, scientific-review, or biological evidence.
 - Shared report publication remains in neutral
   [`validation/report.py`](../../libraries/validation/report.py), imported
   through `emrys.libraries.validation`.
-- The producer uses `resolve_overridable_executable` from neutral
-  [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
-  bcftools precedence, checks, and commands remain owned here.
+- The producer resolves the explicit argument, `BCFTOOLS_BIN_OVERRIDE`, then
+  `PATH`; bcftools precedence, checks, and commands remain owned here.
 - Attempt identity, complete provenance, output hashes, and an automated
   recovery interface remain absent. The native receipt binds only manifests;
   `--no-clobber` adds in-attempt byte stability for all stationary scientific
