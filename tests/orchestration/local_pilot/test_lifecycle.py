@@ -385,7 +385,7 @@ class Harness:
                 self.built,
                 attempt_path,
             )
-            _materialize_reporting(self.request, self.built.execution["run_id"])
+            _materialize_reporting(self.request, self.built)
         if self.mutate_verified:
             marker = next(self.built.verified_root.glob("*/*.json"))
             record = orchestration_contracts.load_record(marker, "verified-task")
@@ -1166,30 +1166,13 @@ def _materialize_verified(
 
 def _materialize_reporting(
     request: lifecycle.LifecycleRequest,
-    run_id: str,
+    built: workflow_fixture.WorkflowFixture,
 ) -> None:
+    run_id = str(built.execution["run_id"])
     semantic_paths = {
-        "artifact_index": (
-            request.run_root
-            / "products"
-            / "artifact-summary"
-            / run_id
-            / f"{run_id}.artifact_receipt.tsv"
-        ),
-        "run_summary": (
-            request.run_root
-            / "products"
-            / "artifact-summary"
-            / run_id
-            / f"{run_id}.run_summary_receipt.tsv"
-        ),
-        "html_report": (
-            request.run_root
-            / "products"
-            / "report"
-            / run_id
-            / f"{run_id}.report_outputs.tsv"
-        ),
+        "artifact_index": built.artifact_receipt,
+        "run_summary": built.run_summary_receipt,
+        "html_report": built.report_receipt,
     }
     for name in ("artifact_index", "run_summary", "html_report"):
         ledger = reporting_boundary.ledger_paths(request.run_root, name)

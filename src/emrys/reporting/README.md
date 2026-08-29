@@ -27,7 +27,7 @@ and accepts only explicit inputs:
   --source-checkout /absolute/path/to/emrys \
   --artifact-source-root /absolute/path/to/run-root \
   --run-summary /absolute/path/to/run-root/products/artifact-summary/RUN_ID/RUN_ID.run_summary.json \
-  --output-root /absolute/path/to/run-root/products/report
+  --output-root /absolute/path/to/run-root/results/reports
 ```
 
 `--source-checkout` names the absolute canonical EMRYS Git top level whose
@@ -47,6 +47,13 @@ Repeat with `--execute` to publish exactly:
 The last file is the `emrys.report_receipt` v4 receipt. Existing older output
 directories, bare HTML predecessors, and incomplete sets are rejected; use a
 fresh output root unless an explicit migration is separately approved.
+
+For current fixed-profile Runs, orchestration publishes this bundle only at
+`results/reports/RUN_ID`. An exact historical profile and verified reporting
+ledger may still bind `products/report/RUN_ID` for read-only inspection; current
+publication cannot select or adopt that legacy location. The fixed-profile
+content change creates new Run identities, so historical Runs remain readable
+but are not thereby made resumable under the current profile.
 
 The scientific HTML is the print-oriented reader-facing interpretation view.
 It opens with a concise analysis summary, then presents four primary figures,
@@ -80,7 +87,10 @@ artifact. Evidence and provenance owns admitted scientific sources, artifact-
 level QC, the artifact appendix, tools/issues, and renderer provenance. The
 retained Run overview owns run identity, status,
 limitations, expected scopes, and the accessible artifact-availability figure;
-Operations owns Attempt lineage. A compact six-record table binds the
+Operations owns Attempt lineage and the existing Run-inspection command. Both
+views also link, using portable relative paths, to every admitted Step `09`
+all-sites and threshold-passing table and Step `10` candidate-context table;
+unavailable inputs produce no dead link. A compact six-record table binds the
 admitted Step `09` all-sites, significant-sites, summary, mutation-spectrum,
 all-pass owner-validation, and its summary-bound sample manifest. A separate
 table binds the Step `10` validation, receipt, four outputs, and all six receipt-
@@ -161,6 +171,16 @@ receipt identity by no-follow descriptor before and after semantic validation,
 then revalidate bound native sources, records, indexes, summaries, both HTML
 views, TSV,
 and receipts. A receipt path or hash alone is never completion evidence.
+Current reports are reconstructed byte-for-byte. Read-only inspection of an
+exact verified legacy profile instead re-admits the artifact-index, run-summary,
+and report ledgers against each transaction's recorded producer identity and
+full bound inputs and outputs. Historical artifact records are admitted from
+their receipt-bound roster rather than reconstructed from today's producer
+registry. The current checkout is admitted as the reader, not misrepresented as
+any historical producer. The report read validates
+receipt v4, its bound run summary, and every declared output path/hash/size; it
+does not misclassify preserved 5.1.0 HTML as a failed 5.2.0 reconstruction or
+permit that legacy location for current publication.
 
 This completion boundary assumes the same single-user, cooperative workspace
 as the local pilot. Pre-existing symlink components, leaf substitution,

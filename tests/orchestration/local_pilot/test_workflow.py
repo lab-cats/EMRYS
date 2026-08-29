@@ -62,11 +62,7 @@ SCIENTIFIC_BINARIES = {
 }
 
 
-@pytest.fixture(scope="session")
-def clean_source_checkout(
-    tmp_path_factory: pytest.TempPathFactory,
-) -> tuple[Path, str]:
-    checkout = tmp_path_factory.mktemp("workflow-source") / "checkout"
+def _create_clean_source_checkout(checkout: Path) -> tuple[Path, str]:
     checkout.mkdir()
     shutil.copy2(workflow_fixture.REPO_ROOT / "pyproject.toml", checkout)
     shutil.copytree(
@@ -101,6 +97,14 @@ def clean_source_checkout(
         text=True,
     ).stdout.strip()
     return checkout, commit
+
+
+@pytest.fixture(scope="session")
+def clean_source_checkout(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> tuple[Path, str]:
+    checkout = tmp_path_factory.mktemp("workflow-source") / "checkout"
+    return _create_clean_source_checkout(checkout)
 
 
 def _bind_source_checkout(
@@ -141,6 +145,7 @@ def _snakemake(
     *arguments: str,
     check: bool = True,
     metadata_name: str = "snakemake-metadata",
+    snakefile: Path | None = None,
 ) -> subprocess.CompletedProcess[str]:
     metadata = built.root / metadata_name
     cache = built.root / "cache"
@@ -152,7 +157,7 @@ def _snakemake(
         "-m",
         "snakemake",
         "--snakefile",
-        str(workflow_fixture.SNAKEFILE),
+        str(workflow_fixture.SNAKEFILE if snakefile is None else snakefile),
         "--workflow-profile",
         "local",
         "--runtime-source-cache-path",
@@ -582,6 +587,178 @@ def test_real_local_pipeline_validates_outputs_and_reusable_reporting_ledgers(
         receipt.write_bytes(original)
 
 
+def test_inspection_reads_legacy_reporting_after_source_checkout_advances(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from emrys.reporting import transaction_validation
+    from emrys.reporting._artifact_index import api as artifact_api
+    from emrys.reporting._artifact_index import records as artifact_records
+    from emrys.reporting._run_summary import transaction as summary_transaction
+
+    profile = orchestration_contracts.load_json_object(workflow_fixture.PROFILE_PATH)
+    for template in profile["artifact_templates"]:
+        template["source_path_template"] = str(
+            template["source_path_template"]
+        ).replace("products/native/", "results/", 1)
+    legacy_profile = tmp_path / "legacy-profile.json"
+    legacy_profile.write_bytes(orchestration_contracts.canonical_json_bytes(profile))
+    monkeypatch.setattr(workflow_fixture, "PROFILE_PATH", legacy_profile)
+    legacy_workflow = tmp_path / "legacy-workflow"
+    shutil.copytree(workflow_fixture.REPO_ROOT / "workflow", legacy_workflow)
+    (legacy_workflow / "contracts" / "local_cmh_v2.json").write_bytes(
+        legacy_profile.read_bytes()
+    )
+
+    source = _create_clean_source_checkout(tmp_path / "source-checkout")
+    built = workflow_fixture.build(tmp_path / "legacy-fixture")
+    _bind_source_checkout(built, source)
+    workflow_fixture.materialize_active_run_lock(built)
+    completed = _snakemake(
+        built,
+        "--",
+        "local_pipeline_slice",
+        check=False,
+        snakefile=legacy_workflow / "Snakefile",
+    )
+    assert completed.returncode == 0, completed.stdout
+
+    checkout, producer_commit = source
+    marker = checkout / "reader-revision.txt"
+    marker.write_text("reader advanced after historical production\n", encoding="utf-8")
+    subprocess.run(["git", "add", marker.name], cwd=checkout, check=True)
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=EMRYS Fixture",
+            "-c",
+            "user.email=emrys-fixture@example.invalid",
+            "commit",
+            "--quiet",
+            "-m",
+            "advance reader checkout",
+        ],
+        cwd=checkout,
+        check=True,
+    )
+    reader_commit = subprocess.run(
+        ["git", "rev-parse", "--verify", "HEAD"],
+        cwd=checkout,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert reader_commit != producer_commit
+
+    observed = inspection.inspect_run(built.run_root)
+    assert observed.reporting_blockers == ()
+    assert observed.verified_report_locations == (
+        (
+            "scientific-report-html",
+            built.report_receipt.with_name(
+                f"{built.execution['run_id']}.scientific_report.html"
+            ),
+        ),
+        (
+            "evidence-report-html",
+            built.report_receipt.with_name(
+                f"{built.execution['run_id']}.evidence_report.html"
+            ),
+        ),
+    )
+    assert built.report_receipt.is_relative_to(
+        built.run_root / "products" / "report"
+    )
+
+    receipt = artifact_api.read_exact_tsv(
+        built.artifact_receipt,
+        artifact_api.ARTIFACT_RECEIPT_HEADER,
+        exact_rows=1,
+    )[0]
+    artifact_index = Path(receipt["artifacts_index_path"])
+    index_rows = artifact_api.read_exact_tsv(
+        artifact_index,
+        artifact_api.ARTIFACT_INDEX_HEADER,
+    )
+    outside_record = (tmp_path / "outside-record.json").resolve()
+    outside_record.write_bytes(Path(index_rows[0]["record_path"]).read_bytes())
+    index_rows[0]["record_path"] = str(outside_record)
+    index_bytes = artifact_records.tsv_bytes(
+        artifact_api.ARTIFACT_INDEX_HEADER,
+        index_rows,
+    )
+    artifact_index.write_bytes(index_bytes)
+    receipt["artifacts_index_sha256"] = hashlib.sha256(index_bytes).hexdigest()
+    built.artifact_receipt.write_bytes(
+        artifact_records.tsv_bytes(
+            artifact_api.ARTIFACT_RECEIPT_HEADER,
+            [receipt],
+        )
+    )
+
+    outside_touches: list[str] = []
+    original_snapshot_receipt = transaction_validation._snapshot_receipt
+
+    def track_receipt_snapshot(path: Path) -> Any:
+        if path == outside_record:
+            outside_touches.append("receipt snapshot")
+        return original_snapshot_receipt(path)
+
+    original_snapshot_roster = transaction_validation._snapshot_bound_roster
+
+    def track_roster(files: Any, *args: Any, **kwargs: Any) -> Any:
+        admitted_files = tuple(files)
+        if outside_record in admitted_files:
+            outside_touches.append("bound roster")
+        return original_snapshot_roster(admitted_files, *args, **kwargs)
+
+    original_require_regular_file = summary_transaction._require_regular_file
+
+    def track_summary_file(label: str, value: str | Path) -> Path:
+        if Path(value) == outside_record:
+            outside_touches.append("run-summary input")
+        return original_require_regular_file(label, value)
+
+    monkeypatch.setattr(
+        transaction_validation,
+        "_snapshot_receipt",
+        track_receipt_snapshot,
+    )
+    monkeypatch.setattr(
+        transaction_validation,
+        "_snapshot_bound_roster",
+        track_roster,
+    )
+    monkeypatch.setattr(
+        summary_transaction,
+        "_require_regular_file",
+        track_summary_file,
+    )
+    defaults = inspection.default_inspection_ops()
+    validated_kinds: list[str] = []
+
+    def track_validation(kind: str, *args: Any, **kwargs: Any) -> Any:
+        validated_kinds.append(kind)
+        return defaults.validate_reporting_receipt(kind, *args, **kwargs)
+
+    rejected = inspection.inspect_run(
+        built.run_root,
+        ops=inspection.InspectionOps(
+            host_name=defaults.host_name,
+            process_is_alive=defaults.process_is_alive,
+            validate_reporting_receipt=track_validation,
+        ),
+    )
+    assert tuple(validated_kinds) == REPORTING_KINDS
+    assert outside_touches == []
+    for kind in REPORTING_KINDS:
+        assert any(
+            f"Could not close {kind} reporting ledger" in blocker
+            for blocker in rejected.reporting_blockers
+        )
+
+
 def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
     built: workflow_fixture.WorkflowFixture,
 ) -> None:
@@ -590,7 +767,7 @@ def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
         built.verified_root,
         built.reporting_root,
         built.run_root / "products" / "artifact-summary",
-        built.run_root / "products" / "report",
+        built.run_root / "results" / "reports",
     )
     resumed = workflow_fixture.refresh_attempt(built, sequence=1)
     machine_key = "emrys.stage.construct_STAR_index.v1"
@@ -614,7 +791,7 @@ def test_resume_reuses_every_completed_file_with_existing_engine_metadata(
             resumed.verified_root,
             resumed.reporting_root,
             resumed.run_root / "products" / "artifact-summary",
-            resumed.run_root / "products" / "report",
+            resumed.run_root / "results" / "reports",
         )
         == before
     )
@@ -729,7 +906,7 @@ def test_resume_reuses_completed_reporting_without_engine_metadata(
         built.verified_root,
         built.reporting_root,
         built.run_root / "products" / "artifact-summary",
-        built.run_root / "products" / "report",
+        built.run_root / "results" / "reports",
     )
     resumed = workflow_fixture.refresh_attempt(built, sequence=5)
     completed = _snakemake(
@@ -747,7 +924,7 @@ def test_resume_reuses_completed_reporting_without_engine_metadata(
             resumed.verified_root,
             resumed.reporting_root,
             resumed.run_root / "products" / "artifact-summary",
-            resumed.run_root / "products" / "report",
+            resumed.run_root / "results" / "reports",
         )
         == before
     )
@@ -762,7 +939,7 @@ def test_pinned_snakemake_requires_ignore_incomplete_for_validated_resume(
         built.verified_root,
         built.reporting_root,
         built.run_root / "products" / "artifact-summary",
-        built.run_root / "products" / "report",
+        built.run_root / "results" / "reports",
     )
     _leave_real_incomplete_marker(built, built.reporting_verified("html_report"))
     resumed = workflow_fixture.refresh_attempt(built, sequence=3)
@@ -792,7 +969,7 @@ def test_pinned_snakemake_requires_ignore_incomplete_for_validated_resume(
             resumed.verified_root,
             resumed.reporting_root,
             resumed.run_root / "products" / "artifact-summary",
-            resumed.run_root / "products" / "report",
+            resumed.run_root / "results" / "reports",
         )
         == before
     )

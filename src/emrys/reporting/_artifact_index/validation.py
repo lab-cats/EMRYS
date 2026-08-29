@@ -11,7 +11,7 @@ from typing import Any
 
 from emrys.contracts.artifacts import api as contracts
 
-from .core import canonical_digest
+from .core import canonical_digest, canonical_json_bytes, sha256_bytes
 from .models import (
     ARTIFACT_INDEX_HEADER,
     ARTIFACT_INDEX_SCHEMA_VERSION,
@@ -27,8 +27,9 @@ from .models import (
 from .records import (
     build_index_rows,
     inventory_rows_from_published_index,
-    read_exact_tsv,
+    read_exact_tsv_bytes,
     record_manifest,
+    tsv_bytes,
     validate_record_in_memory,
 )
 
@@ -55,7 +56,23 @@ def validate_published_transaction(
     receipt_path: Path,
     require_current_source_locations: bool,
     source_root: Path = contracts.REPO_ROOT,
+    admitted_bytes: Mapping[Path, bytes] | None = None,
 ) -> None:
+    def bound_bytes(path: Path) -> bytes:
+        if admitted_bytes is None:
+            try:
+                return path.read_bytes()
+            except OSError as exc:
+                raise ArtifactIndexError(
+                    f"Could not read published transaction file {path}: {exc}"
+                ) from exc
+        try:
+            return admitted_bytes[path]
+        except KeyError as exc:
+            raise ArtifactIndexError(
+                f"Admitted transaction bytes are missing: {path}"
+            ) from exc
+
     for label, path in (
         ("receipt", receipt_path),
         ("artifact index", artifacts_path),
@@ -69,11 +86,15 @@ def validate_published_transaction(
             f"Published records path is not a regular owned directory: {records_dir}"
         )
 
-    receipt_rows = read_exact_tsv(
+    receipt_payload = bound_bytes(receipt_path)
+    receipt_rows = read_exact_tsv_bytes(
+        receipt_payload,
         receipt_path,
         ARTIFACT_RECEIPT_HEADER,
         exact_rows=1,
     )
+    if tsv_bytes(ARTIFACT_RECEIPT_HEADER, receipt_rows) != receipt_payload:
+        raise ArtifactIndexError("Published artifact receipt is not canonical")
     receipt = receipt_rows[0]
     if receipt["run_id"] != run_id:
         raise ArtifactIndexError("Published receipt run_id is invalid")
@@ -149,10 +170,17 @@ def validate_published_transaction(
         raise ArtifactIndexError("Published receipt timestamp ordering is invalid")
     if receipt["artifacts_index_path"] != str(artifacts_path):
         raise ArtifactIndexError("Published receipt index path is invalid")
-    if receipt["artifacts_index_sha256"] != contracts.sha256_file(artifacts_path):
+    artifacts_payload = bound_bytes(artifacts_path)
+    if receipt["artifacts_index_sha256"] != sha256_bytes(artifacts_payload):
         raise ArtifactIndexError("Published artifact-index hash is invalid")
 
-    index_rows = read_exact_tsv(artifacts_path, ARTIFACT_INDEX_HEADER)
+    index_rows = read_exact_tsv_bytes(
+        artifacts_payload,
+        artifacts_path,
+        ARTIFACT_INDEX_HEADER,
+    )
+    if tsv_bytes(ARTIFACT_INDEX_HEADER, index_rows) != artifacts_payload:
+        raise ArtifactIndexError("Published artifact index is not canonical")
     if [row["artifact_id"] for row in index_rows] != [
         row["artifact_id"] for row in inventory_rows
     ]:
@@ -190,21 +218,20 @@ def validate_published_transaction(
             raise ArtifactIndexError(
                 f"Published record path is invalid: {index_row['record_path']}"
             )
-        observed_hash = contracts.sha256_file(expected_path)
+        payload = bound_bytes(expected_path)
+        observed_hash = sha256_bytes(payload)
         if index_row["record_sha256"] != observed_hash:
             raise ArtifactIndexError(
                 f"Published record hash is invalid: {expected_path}"
             )
-        try:
-            payload = expected_path.read_bytes()
-        except OSError as exc:
-            raise ArtifactIndexError(
-                f"Could not read published artifact record {expected_path}: {exc}"
-            ) from exc
-        record = contracts.load_json_object(
-            expected_path,
-            f"artifact record {inventory_row['artifact_id']}",
+        record = contracts.load_json_object_bytes(
+            payload,
+            f"artifact record {inventory_row['artifact_id']} {expected_path}",
         )
+        if canonical_json_bytes(record) != payload:
+            raise ArtifactIndexError(
+                f"Published artifact record is not canonical: {expected_path}"
+            )
         validate_record_in_memory(
             record,
             inventory_row,

@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Any, Literal, Protocol, cast
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.application_model import (
     RUN_BINDING_SCHEMA_VERSION,
     AnalysisRevision,
@@ -158,6 +159,32 @@ def _semantic_validator(
     from emrys.reporting.transaction_validation import validate_receipt  # noqa: PLC0415
 
     return validate_receipt(kind, receipt_path, run_root, execution, profile, attempt, config)
+
+
+def validate_read_semantic_receipt(
+    kind: str,
+    receipt_path: Path,
+    run_root: Path,
+    execution: Mapping[str, Any],
+    profile: Mapping[str, Any],
+    attempt: Mapping[str, Any],
+    config: Mapping[str, Any],
+) -> SemanticTransaction:
+    from emrys.reporting.transaction_validation import validate_receipt  # noqa: PLC0415
+
+    return validate_receipt(
+        kind,
+        receipt_path,
+        run_root,
+        execution,
+        profile,
+        attempt,
+        config,
+        historical_read=(
+            report_output_root(run_root, profile)
+            == run_root / "products" / "report"
+        ),
+    )
 
 
 def _publish_exclusive(path: Path, data: bytes) -> None:
@@ -428,7 +455,7 @@ def _attempt_reporting_materialization(
         config[f"{name}_path"] = reference if successor else str(path)
     directories = (
         run_root / "products" / "artifact-summary",
-        run_root / "products" / "report",
+        report_output_root(run_root, profile),
     )
     return tuple(files), config, directories
 
@@ -977,7 +1004,7 @@ def validate_verified(
     execution: Mapping[str, Any],
     profile: Mapping[str, Any],
     *,
-    semantic_validator: SemanticValidator = _semantic_validator,
+    semantic_validator: SemanticValidator = validate_read_semantic_receipt,
 ) -> ReportingBoundaryOutcome:
     """Read-only revalidation of a verified ledger and full semantic transaction."""
 
@@ -1140,6 +1167,7 @@ __all__ = (
     "main",
     "publish_start",
     "publish_verified",
+    "validate_read_semantic_receipt",
     "validate_start",
     "validate_verified",
 )

@@ -127,6 +127,8 @@ def _load_input_transaction(
     artifact_receipt_value: Path,
     output_root_value: Path,
     source_root: Path,
+    expected_run_contract_path: Path | None = None,
+    expected_inventory_path: Path | None = None,
 ) -> tuple[
     Path,
     str,
@@ -159,6 +161,12 @@ def _load_input_transaction(
         _fail("Artifact receipt run_id differs from --run-id")
     if receipt["transaction_state"] != "complete":
         _fail("Artifact receipt transaction_state is not complete")
+    for field, expected in (
+        ("run_contract_path", expected_run_contract_path),
+        ("inventory_path", expected_inventory_path),
+    ):
+        if expected is not None and Path(receipt[field]) != expected:
+            _fail(f"Artifact receipt binds a noncanonical {field}")
 
     raw_output_root = _resolved_path(output_root_value)
     if raw_output_root.is_symlink() or not raw_output_root.is_dir():
@@ -211,22 +219,20 @@ def _load_input_transaction(
         inventory_path,
         source_root=source_root,
     )
-    artifacts_path = _require_regular_file(
-        "Artifact index", receipt["artifacts_index_path"]
-    )
-    if artifacts_path.parent != output_dir or artifacts_path.name != (
-        f"{run_id}.artifacts.tsv"
-    ):
-        _fail("Artifact index path is outside the exact run output directory")
+    artifacts_path = output_dir / f"{run_id}.artifacts.tsv"
+    if Path(receipt["artifacts_index_path"]) != artifacts_path:
+        _fail("Artifact receipt binds a noncanonical artifacts_index_path")
+    artifacts_path = _require_regular_file("Artifact index", artifacts_path)
     records_dir = output_dir / "records"
     index_rows = adapter.read_exact_tsv(artifacts_path, adapter.ARTIFACT_INDEX_HEADER)
 
     record_paths: list[Path] = []
     record_hashes: list[str] = []
     artifacts: list[dict[str, Any]] = []
-    for row in index_rows:
+    for row in inventory_rows:
+        canonical_record = records_dir / f"{row['artifact_id']}.json"
         record_path = _require_regular_file(
-            f"Artifact record {row['artifact_id']}", row["record_path"]
+            f"Artifact record {row['artifact_id']}", canonical_record
         )
         record_paths.append(record_path)
         record_hashes.append(contracts.sha256_file(record_path))
@@ -300,7 +306,7 @@ def _load_input_transaction(
     snapshots.append(artifacts_snapshot)
 
     for row, record_path, record_hash, artifact in zip(
-        index_rows,
+        inventory_rows,
         record_paths,
         record_hashes,
         artifacts,

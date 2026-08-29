@@ -329,6 +329,11 @@ def test_historical_summary_discloses_step10_unavailability_in_candidate_evidenc
         candidate.motif.state == "step10_unavailable"
         for candidate in context.candidate_display.candidates
     )
+    html = context.scientific_html_bytes.decode("utf-8")
+    assert 'aria-label="Result files"' in html
+    assert "Threshold-passing candidates" in html
+    assert "Complete candidate table" in html
+    assert "Candidate context" not in html
 
 
 def test_step10_report_admission_calls_the_canonical_transaction_once(
@@ -815,6 +820,41 @@ def test_two_html_views_separate_science_from_operational_evidence(
         for label, question, href in destinations:
             assert f'href="{href}"><strong>{label}</strong>' in content
             assert f'<span class="candidate-status">{question}</span>' in content
+    assert context.computational_results is not None
+    assert context.scientific_context_results is not None
+    result_destinations = (
+        (
+            "Threshold-passing candidates",
+            "Ranked Step 09 result table",
+            context.computational_results.significant_sites.path,
+        ),
+        (
+            "Complete candidate table",
+            "All tested Step 09 candidates",
+            context.computational_results.all_sites.path,
+        ),
+        (
+            "Candidate context",
+            "Step 10 scientific context",
+            context.scientific_context_results.candidate_context.path,
+        ),
+    )
+    for content in (scientific, evidence):
+        assert 'aria-label="Result files"' in content
+        for label, description, target in result_destinations:
+            href = Path(os.path.relpath(target, start=context.output_dir)).as_posix()
+            assert f'href="{href}"><strong>{label}</strong>' in content
+            assert f'<span class="candidate-status">{description}</span>' in content
+            assert Path(os.path.normpath(context.output_dir / href)) == target
+        assert 'href="file:' not in content
+        assert 'href="http:' not in content
+        assert 'href="https:' not in content
+        assert 'href="/' not in content
+    assert "emrys inspect local-pilot-run --run-root" not in scientific
+    assert (
+        "Inspect this Run: emrys inspect local-pilot-run --run-root &lt;run-root&gt;"
+        in evidence
+    )
     assert "CMH-ranked candidates" in scientific
     assert "FWD_like" in scientific
     assert 'id="computational_significant_sites"' not in scientific
@@ -936,7 +976,6 @@ def test_two_html_views_separate_science_from_operational_evidence(
     assert f"Matplotlib {MATPLOTLIB_VERSION}" in evidence
     assert f"Logomaker {LOGOMAKER_VERSION}" in evidence
     assert "exact significant overlay" in evidence
-    assert context.computational_results is not None
     for table in context.computational_results.tables:
         assert str(table.path) not in scientific
         assert table.sha256 not in scientific
@@ -1301,6 +1340,15 @@ def test_incomplete_step09_trio_is_disclosed_without_opening_candidate_rows(
     assert 'id="computational_all_sites"' not in scientific
     assert "no computational candidate rows were opened or displayed" in evidence
     assert 'id="step09-source-records"' not in evidence
+    if artifact_id.endswith("cmh_all_sites"):
+        assert 'aria-label="Result files"' not in scientific
+        assert 'aria-label="Result files"' not in evidence
+    else:
+        for content in (scientific, evidence):
+            assert 'aria-label="Result files"' in content
+            assert "Candidate context" in content
+            assert "Threshold-passing candidates" not in content
+            assert "Complete candidate table" not in content
 
 
 def test_report_delegates_mutation_spectrum_reconciliation_to_step09(

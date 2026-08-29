@@ -1010,7 +1010,16 @@ def assert_completed_run(
 
     run_id = observed.run_id
     summary_dir = run_root / "products" / "artifact-summary" / run_id
-    report_dir = run_root / "products" / "report" / run_id
+    report_dir = run_root / "results" / "reports" / run_id
+    result_children = {path.name for path in (run_root / "results").iterdir()}
+    if (
+        result_children != {"editing", "reports", "scientific_context"}
+        or not (run_root / "products" / "native").is_dir()
+        or os.path.lexists(run_root / "products" / "report")
+    ):
+        raise DriverError(
+            "assert-results", "canonical scientist/internal result layout differs"
+        )
     artifacts = {
         "artifact_index": summary_dir / f"{run_id}.artifacts.tsv",
         "artifact_receipt": summary_dir / f"{run_id}.artifact_receipt.tsv",
@@ -1028,6 +1037,26 @@ def assert_completed_run(
         / "attempt-receipt.json",
     }
     admitted_artifacts = {name: _artifact(path) for name, path in artifacts.items()}
+    try:
+        scientific_html = artifacts["scientific_html"].read_text(encoding="utf-8")
+        evidence_html = artifacts["evidence_html"].read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        raise DriverError(
+            "assert-results", f"report HTML is unreadable: {exc}"
+        ) from exc
+    for content in (scientific_html, evidence_html):
+        if (
+            'aria-label="Result files"' not in content
+            or "Threshold-passing candidates" not in content
+            or "Complete candidate table" not in content
+            or "Candidate context" not in content
+        ):
+            raise DriverError("assert-results", "report result-file navigation differs")
+    if (
+        "emrys inspect local-pilot-run --run-root" in scientific_html
+        or "emrys inspect local-pilot-run --run-root" not in evidence_html
+    ):
+        raise DriverError("assert-results", "report inspection guidance differs")
     try:
         summary = json.loads(artifacts["run_summary_json"].read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:

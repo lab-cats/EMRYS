@@ -379,8 +379,9 @@ One operator-selected workspace contains immutable run directories:
     artifact_inventory.tsv            historical only
     workflow-configs/<workflow-attempt-id>.json
     dispatch/<workflow-attempt-id>/<machine-key>/<scope-id>.json
-  results/                       owner-native outputs and validation reports
-  products/                      artifact index, run summary, and two HTML reports
+  results/                       editing, scientific-context, and report outputs
+  products/native/               nonfinal native and validation outputs
+  products/artifact-summary/     artifact index and run summary
   attempts/<workflow-attempt-id>/
     request.yaml                 exact authored request for this invocation
     attempt.json

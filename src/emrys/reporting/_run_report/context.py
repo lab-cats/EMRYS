@@ -5,12 +5,14 @@ from __future__ import annotations
 import argparse
 import importlib.metadata
 import os
+import shlex
 import stat
 from collections.abc import Callable
 from dataclasses import dataclass
 from importlib.resources import files
 from pathlib import Path
 from typing import Literal
+from urllib.parse import quote
 
 from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
@@ -41,6 +43,8 @@ from .models import (
     PRODUCER,
     PRODUCER_VERSION,
     BOUNDARY_BANNER,
+    ComputationalResults,
+    ScientificContextResults,
     TEMPLATE_RESOURCE,
     FileSnapshot,
     ReportContext,
@@ -61,6 +65,53 @@ class ReportIdentityOps:
 DEFAULT_REPORT_IDENTITY_OPS = ReportIdentityOps(
     matching_checkout_head_commit=matching_checkout_head_commit,
 )
+
+
+def _result_links(
+    output_dir: Path,
+    computational_results: ComputationalResults | None,
+    scientific_context_results: ScientificContextResults | None,
+) -> tuple[dict[str, str], ...]:
+    links: list[dict[str, str]] = []
+
+    def append(label: str, description: str, target: Path) -> None:
+        relative = os.path.relpath(target, start=output_dir)
+        links.append({
+            "label": label,
+            "description": description,
+            "href": quote(Path(relative).as_posix(), safe="/._-"),
+        })
+
+    if computational_results is not None:
+        append(
+            "Threshold-passing candidates",
+            "Ranked Step 09 result table",
+            computational_results.significant_sites.path,
+        )
+        append(
+            "Complete candidate table",
+            "All tested Step 09 candidates",
+            computational_results.all_sites.path,
+        )
+    if scientific_context_results is not None:
+        append(
+            "Candidate context",
+            "Step 10 scientific context",
+            scientific_context_results.candidate_context.path,
+        )
+    return tuple(links)
+
+
+def _inspect_command(source_root: Path, output_root: Path) -> str:
+    canonical_roots = (
+        source_root / "results" / "reports",
+        source_root / "products" / "report",
+    )
+    if output_root not in canonical_roots:
+        return "emrys inspect local-pilot-run --run-root <run-root>"
+    return shlex.join(
+        ("emrys", "inspect", "local-pilot-run", "--run-root", str(source_root))
+    )
 
 
 def expected_html_identity(
@@ -299,6 +350,11 @@ def prepare_context(
         scientific_context_unavailable_reason,
         candidate_display,
     )
+    result_links = _result_links(
+        output_dir,
+        computational_results,
+        scientific_context_results,
+    )
     scientific_html_bytes = render_html(
         build_scientific_view(
             summary,
@@ -311,6 +367,7 @@ def prepare_context(
             ),
             candidate_display=candidate_display,
             scientific_figures=scientific_figures,
+            result_links=result_links,
         ),
         css,
     )
@@ -325,6 +382,8 @@ def prepare_context(
                 scientific_context_unavailable_reason
             ),
             scientific_figures=scientific_figures,
+            result_links=result_links,
+            inspect_command=_inspect_command(source_root, output_root),
         ),
         css,
     )

@@ -12,7 +12,7 @@ This private package supports the direct public
 | [`candidate_display.py`](candidate_display.py) | One immutable selected-candidate roster joining admitted Step 09 evidence to admitted Step 10 display ranks, contexts, and registered-motif hits without rescanning or reranking. |
 | [`figures.py`](figures.py) | Shared controlled Matplotlib/Logomaker SVG boundary plus deterministic candidate, mutation, concordance, paired-profile, and location figures. |
 | [`scientific_context_figures.py`](scientific_context_figures.py) | Presentation-only observed/registered logos, motif-position/enrichment, and multi-panel selected candidate-centered context views from admitted values. |
-| [`context.py`](context.py) | Resource, output, and predecessor preparation without durable output state; cleaned temporary renderer initialization is explicit. |
+| [`context.py`](context.py) | Resource, output, predecessor, portable admitted-result link, and Run-inspection guidance preparation without durable output state; cleaned temporary renderer initialization is explicit. |
 | [`view.py`](view.py) | Separate structured scientific and evidence-and-operations projections, including role navigation, the print-oriented hierarchy, figure guide, and vertical candidate records, without HTML construction. |
 | [`validation.py`](validation.py) | Autoescaped strict Jinja environment plus CSS, security, per-view semantic HTML, and accessibility validation. |
 | [`receipt.py`](receipt.py) | Deterministic summary TSV and v4 two-view receipt projection/validation. |
@@ -90,7 +90,10 @@ the artifact-availability figure are excluded from this view.
 
 Both HTML files provide relative destinations for the scientific report,
 evidence and provenance, and operations. The combined **Evidence and
-operations** view contains no candidate rows. Its evidence category owns
+operations** view contains no candidate rows. Both views also link directly to
+the admitted all-sites, threshold-passing, and candidate-context TSVs through
+portable relative paths; absent inputs produce no link. The existing inspect
+command appears only under Operations. Its evidence category owns
 artifact QC, the artifact appendix, tools/issues, renderer provenance, the
 scientific source records; its retained Run overview owns identity, status,
 limitations, expected scopes, and the accessible artifact-availability figure;
@@ -112,5 +115,5 @@ The transaction retains input rechecks, lock ownership, predecessor identity,
 backup/rollback, recovery markers, foreign-state preservation, staged
 validation, receipt-last publication, and characterized interruption behavior.
 Tests inject a frozen `ReportPublicationOps` value rather than patching module
-globals. The renderer producer is `5.1.0`; run-summary `2.0.0` and
+globals. The renderer producer is `5.2.0`; run-summary `2.0.0` and
 report-receipt `4.0.0` are clean breaking contracts with no compatibility shim.

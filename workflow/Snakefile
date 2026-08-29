@@ -9,6 +9,7 @@ from pathlib import Path
 
 import emrys
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout,
@@ -316,7 +317,7 @@ RUN_SUMMARY = ARTIFACT_OUTPUT_ROOT / RUN_ID / f"{RUN_ID}.run_summary.json"
 RUN_SUMMARY_RECEIPT = (
     ARTIFACT_OUTPUT_ROOT / RUN_ID / f"{RUN_ID}.run_summary_receipt.tsv"
 )
-REPORT_OUTPUT_ROOT = RUN_ROOT / "products" / "report"
+REPORT_OUTPUT_ROOT = report_output_root(RUN_ROOT, PROFILE)
 REPORT_RECEIPT = REPORT_OUTPUT_ROOT / RUN_ID / f"{RUN_ID}.report_outputs.tsv"
 REPORTING_LEDGERS = {
     kind: ledger_paths(RUN_ROOT, kind) for kind in REPORTING_KINDS

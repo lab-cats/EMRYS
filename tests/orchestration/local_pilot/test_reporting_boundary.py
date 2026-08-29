@@ -11,7 +11,8 @@ from typing import Any
 import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.orchestration.local_pilot import reporting_boundary
+from emrys.orchestration.local_pilot import inspection, reporting_boundary
+from emrys.reporting import transaction_validation
 from tests.contracts.orchestration.test_application_model_contracts import (
     successor_run_fixture,
 )
@@ -41,6 +42,36 @@ def _semantic_result(path: Path) -> _SemanticResult:
         receipt_path=path,
         receipt_sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
     )
+
+
+def test_default_inspection_selects_historical_read_from_bound_profile(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed: list[bool] = []
+    expected = _ReportSemanticResult(Path("/receipt.tsv"), "a" * 64, ())
+
+    def validate(*_arguments: Any, historical_read: bool = False) -> Any:
+        observed.append(historical_read)
+        return expected
+
+    monkeypatch.setattr(transaction_validation, "validate_receipt", validate)
+    validator = inspection.default_inspection_ops().validate_reporting_receipt
+    assert validator is reporting_boundary.validate_read_semantic_receipt
+    for kind in ("artifact_index", "run_summary", "html_report"):
+        common = (kind, Path("/run/receipt.tsv"), tmp_path, {})
+        assert validator(*common, {"artifact_templates": []}, {}, {}) == expected
+        assert validator(
+            *common,
+            {
+                "artifact_templates": [
+                    {"source_path_template": "products/native/reference/output"}
+                ]
+            },
+            {},
+            {},
+        ) == expected
+    assert observed == [True, False] * 3
 
 
 def _reference(path: Path, root: Path) -> dict[str, str]:

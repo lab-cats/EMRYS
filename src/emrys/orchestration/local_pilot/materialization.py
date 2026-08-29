@@ -950,6 +950,8 @@ def _task_commands(
                     _one(orientation, "step06_rev_bai_v1"),
                 )
             )
+        orientation_root = orientation_inputs[0].parents[1]
+        mpileup_root = fwd.parents[2]
         fai = _one(all_paths["00c", reference_id], "step00c_reference_fai_v1")
         producer = (
             bash,
@@ -966,11 +968,11 @@ def _task_commands(
             "--partition-id",
             partition_id,
             "--orientation-root",
-            str(run_root / "results/orientation"),
+            str(orientation_root),
             "--reference-fasta",
             str(fasta),
             "--output-root",
-            str(run_root / "results/mpileup"),
+            str(mpileup_root),
             "--bcftools-bin",
             bcftools,
             "--no-clobber",
@@ -1024,6 +1026,7 @@ def _task_commands(
             for adapter in ("step07_mpileup_vcf_v1", "step07_mpileup_receipt_v1")
             for path in all_paths["07", partition_scopes[partition_id]][adapter]
         )
+        step07_root = step07_inputs[0].parents[2]
         arguments = (
             "--cohort-id",
             cohort_id,
@@ -1032,13 +1035,13 @@ def _task_commands(
             "--partition-manifest",
             str(partition_manifest),
             "--step07-root",
-            str(run_root / "results/mpileup"),
+            str(step07_root),
             "--annotation-gtf",
             str(gtf),
             "--output-root",
-            str(run_root / "results/vcf_preprocessed"),
+            str(sites.parents[1]),
             "--qc-root",
-            str(run_root / "results/qc/vcf_preprocessing"),
+            str(summary.parent),
             "--threads",
             str(declared_threads()),
             "--rscript-bin",
@@ -1107,9 +1110,9 @@ def _task_commands(
             "--partition-manifest",
             str(partition_manifest),
             "--step08-root",
-            str(run_root / "results/vcf_preprocessed"),
+            str(sites.parents[1]),
             "--output-root",
-            str(run_root / "results/editing"),
+            str(all_sites.parents[1]),
             "--control-condition",
             str(policy["control_condition"]),
             "--treatment-condition",
@@ -1203,6 +1206,7 @@ def _task_commands(
             / "src/emrys/analyses/scientific_context_projection/resources/pum_motifs_v1.tsv"
         )
         receipt = _one(paths, "step10_context_receipt_v1")
+        candidate_context = _one(paths, "step10_candidate_context_v1")
         arguments = (
             "--analysis-id",
             analysis_id,
@@ -1217,7 +1221,7 @@ def _task_commands(
             "--reference-fai",
             str(fai),
             "--output-root",
-            str(run_root / "results/scientific_context"),
+            str(candidate_context.parents[1]),
             "--motif-catalog",
             str(motif_catalog),
             "--rscript-bin",
