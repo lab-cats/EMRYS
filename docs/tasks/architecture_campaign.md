@@ -949,11 +949,13 @@ remain unchanged historical evidence. The superseded aggregate `state`,
 `resume_available`, and `local_pipeline_complete` Python accessors are retired
 after current callers migrated to the separated domains.
 
-The remaining reporting gap is operational: reporting still runs by default,
-but explicit disablement and compact Run-oriented regeneration/adoption remain
-Open. The standalone `emrys build report` capability still requires
-implementation-level input and output paths and does not adopt or repair the
-orchestration reporting ledger.
+The operational cutover is now implemented. The scientific workflow stops at
+`cohort_slice`, releases the Run lock, and publishes a receipt-v2 Attempt before
+public control invokes reporting. `run` and `resume` report by default and
+accept `--no-report`; `emrys report --run-root ...` plans or reuses without
+writes and generates only with `--execute`. Reporting creates no Run or Attempt
+and cannot change scientific success. The low-level build commands are retired;
+one fixed Run-oriented coordinator fails closed on partial or ambiguous state.
 
 #### Run-control boundary compression
 
@@ -1413,13 +1415,13 @@ they are not recomputed into the successor domain.
 | Change only a raw profile/config path, formatting, source hash, default source, or override source while the canonical effective declaration is unchanged | Provenance change only; no new Run. |
 | Change report enablement, format, renderer, template, output path, or reporting resource policy | No Analysis revision, Run, or Attempt by itself. The reporting transaction records the change. |
 
-The present `local_pipeline_slice` target is a composite backend target whose
-only direct prerequisite is the verified HTML report. It is therefore not the
-Run-bound target. For a full current Run, the Run-bound stopping boundary is
-the required scientific/evidence-owner closure currently exposed by
-`cohort_slice`/`_all_owner_outputs()`; the artifact-index, summary, and HTML
-targets are downstream default reporting adapters. A later backend may name or
-represent those boundaries differently without changing the semantic split.
+The implemented Run-bound stopping boundary is the required
+scientific/evidence-owner closure exposed by `cohort_slice` and
+`_all_owner_outputs()`. The former composite `local_pipeline_slice` and its
+three reporting rules are retired from the workflow. Artifact indexing,
+run-summary assembly, and HTML rendering are downstream default reporting
+operations. A later backend may name or represent the scientific boundary
+differently without changing the semantic split.
 
 `strandedness` remains an Analysis design declaration even though the present
 pipeline does not consume it computationally. That gap must stay visible until
@@ -1546,16 +1548,16 @@ these tables settle the target allocation.
 | Current lifecycle/inspection field | Final semantic owner or disposition |
 |---|---|
 | `LifecycleRequest.run_root`, contract/config/Snakefile/Python/profile paths, authored request path | Derived Attempt invocation/placement |
-| `LifecycleRequest.target` | Current `local_pipeline_slice` is a composite scientific-plus-reporting adapter and is not directly Run-bound. A derived invocation must separately select the Run-bound scientific stopping boundary and any default downstream reporting target. |
+| `LifecycleRequest.target` | The current fixed backend targets the Run-bound scientific closure `cohort_slice`; downstream reporting is selected by public control, not the lifecycle request. |
 | `LifecycleRequest.operation`, `attempt_record` | Attempt occurrence and admitted Attempt reference |
 | `AttemptPreparation.run_root`, `run_id`, `workflow_attempt_id`, `owner_token`, `host`, `process_id`, `created_at`, `operation`, `attempt_record_bytes` | Transient pre-publication view of one immutable Attempt record; duplicated scalars do not become authorities |
 | `WorkflowResult.exit_code`, `termination_signal`, `message` | Attempt observation reduced into terminal evidence |
-| `LifecycleOutcome.attempt_path`, `receipt_path`, lock paths, `receipt`, `workflow_result`, verified report locations | Derived post-transaction view; persisted records remain authorities |
-| Attempt receipt `schema_version`, `run_id`, `execution_contract_sha256`, `profile_sha256`, `workflow_attempt_id`, `attempt_record`, `released_run_lock`, `status`, `finished_at`, `snakemake_exit_code`, `termination_signal`, `preentry_task_attempt_records`, `task_start_records`, `verified_tasks`, `blockers`, `message` | Immutable Attempt terminal evidence and exact subordinate evidence references |
-| Attempt receipt `reporting_completion_records` | Downstream Results/reporting lineage, not Attempt-success authority |
-| Attempt receipt `local_pipeline_complete` | Current compatibility projection only; retire as scientific-completion authority |
+| `LifecycleOutcome.attempt_path`, `receipt_path`, lock paths, `receipt`, `workflow_result` | Derived post-science view; persisted records remain authorities and no reporting result is carried by lifecycle |
+| Attempt receipt v2 `schema_version`, `run_id`, `execution_contract_sha256`, `profile_sha256`, `workflow_attempt_id`, `attempt_record`, `released_run_lock`, `status`, `finished_at`, `snakemake_exit_code`, `termination_signal`, `preentry_task_attempt_records`, `task_start_records`, `verified_tasks`, `blockers`, `message` | Immutable scientific Attempt terminal evidence and exact subordinate evidence references |
+| Attempt receipt v1 `reporting_completion_records`, `local_pipeline_complete` | Exact historical compatibility evidence only; current receipt v2 omits both fields and neither is scientific-completion authority |
 | `RunInspection.run_root`, `run_id`, latest Attempt/receipt, tasks, reporting records, domain blockers, integrity, Attempt outcome, Results status, reporting status, recovery availability, and report locations | Read-only derived projection over persisted authorities. The superseded aggregate state and duplicate booleans are retired. |
-| `ReportingBoundaryOutcome.kind`, `start_path`, `verified_path`, `origin_workflow_attempt_id`, `semantic_receipt_path`, `semantic_receipt_sha256`, `verified_report_locations` | Derived reporting-transaction return view; persisted start, verified, and semantic receipt records remain authorities |
+| Former `ReportingBoundaryOutcome` aggregate | Retired after callers moved to the minimum kind-specific values; persisted start, verified, and semantic receipt records remain authorities |
+| `ReportingOperationOutcome.status`, `verified_report_locations` | Derived Run-oriented plan/generate/reuse view; it creates no persisted aggregate status or identity |
 
 | Current artifact/report field family | Final semantic owner or disposition |
 |---|---|
@@ -2431,7 +2433,7 @@ The sole new boundary value is one immutable 64-character aggregate written once
 | Maintained product: scientific progress | Internal Step identities are already admitted persisted facts, but exposing each task by default leaks orchestration detail. | **Project five public milestones.** Preparation, alignment/sample processing, QC evidence, candidate evidence, and statistical/context processing derive only from admitted task records. Reporting remains downstream and separate; an unmapped admitted Step fails closed. | No workflow stage, status store, schema, backend, dashboard, or mutable progress authority is added. |
 | Maintained product: elapsed time | Summing resumed work or estimating completion would manufacture semantics absent from retained evidence. | **Project one bounded duration.** A running Attempt uses its creation time and the current clock; a terminal Attempt uses its own creation and receipt-finish times. Missing, mixed, or negative boundaries report unavailable. Predecessor durations are never summed and ETA is never inferred. | Attempt and receipt records remain the only persisted boundaries. |
 | Public presentation | One detail level either overwhelms ordinary users or withholds useful operator evidence. | **Tier the existing route.** Normal shows public status, milestones, Results, reporting, blockers, recovery, next action, and result links; verbose adds milestone counts, Run/Attempt placement, and transaction aggregates; debug adds exact admitted receipt, engine, task, task-attempt, and stream references. | One `--detail` selector only; no new command, API, role registry, or alternate authority. |
-| Compatibility/evidence | Receipt-v1 and the retained CI E2E summary v1 use `local_pipeline_complete` as historical format evidence. | **Retain unchanged.** Neither field is status authority for current product decisions. | Any future deletion requires exact evidence review and separate explicit approval. |
+| Compatibility/evidence | Receipt-v1 uses `local_pipeline_complete` as historical format evidence; the active CI E2E summary no longer copies that aggregate. | **Retain receipt v1 unchanged.** Its field is not status authority for current product decisions. | Any future receipt-v1 evidence deletion requires exact review and separate explicit approval. |
 | Protections and redundant inspection state | Aggregate assertions obscure which authority blocked or completed a Run. Inspection also retained unused copies of records, paths, blockers, and identifiers. | **Consolidate projections, retain evidence re-admission.** Existing fault/lifecycle tests assert the owning domain. Five unused projections and one internal export retire. Independent review confirmed that the ledger's second semantic admission protects transitive evidence against concurrent mutation, so it remains alongside task-start admission, reference rechecks, exact start/origin binding, and verified-file concurrency detection. | No direct-owner, trust-boundary, fault, lifecycle, or E2E defense class is removed; retained evidence is unchanged. |
 | `LOG-05` | Read-only inspection neither starts work nor owns a durable diagnostic lifecycle. | **Not applicable to this operation.** Do not create an application Attempt or log merely to read persisted state. | `LOG-05` remains Open for other retained applicable operations and parity. |
 
@@ -2551,6 +2553,20 @@ evidence is deleted. `AC-SLICE-17` advances by one bounded retirement, while
 the retained Step `07` Slurm wrapper and the other shell candidates remain
 separate work.
 
+### 13.11 Bounded slice record: downstream Run reporting cutover
+
+| Surface/category | Finding | Disposition and surviving authority |
+|---|---|---|
+| Scientific lifecycle and receipts | Reporting was coupled to the workflow target and terminal Attempt receipt even though it is not scientific work. | **End the Attempt at science.** `cohort_slice` is the fixed-profile stopping boundary; the lock is released and receipt v2 is published before reporting. Receipt v2 is receipt v1 minus the two reporting fields. Exact receipt-v1 reads and complete-report reuse remain supported; v1 cannot originate a new report transaction. |
+| Public control and workflow | Users needed three low-level build commands and a composite workflow tail. | **Replace them caller-completely.** `run` and `resume` report by default and accept `--no-report`; `emrys report --run-root ... [--execute]` plans, generates, or reuses reports independently. Reporting creates no Run or Attempt and cannot change scientific success. The three low-level routes, their CLI-shaped adapters, and the workflow reporting rules are retired without aliases. |
+| Transaction safety and reuse | Valid complete reporting can be reused, but partial, corrupt, orphaned, linked, or concurrent state is ambiguous. | **Reuse only exact complete state; generate only into empty owned locations.** Preserve artifact-index → run-summary → HTML ordering, preflight → immutable start → fresh preparation → receipt-last publication → semantic verification, no-follow admission, exclusive locks, durability, rollback/recovery, and final read-only inspection. Do not adopt, repair, replace, or delete ambiguous state. |
+| Compression and evidence | Private print/int adapters and copied return state added no authority; publisher replacement/recovery branches protect higher-risk cases. | **Delete the low-risk transport copies and retain the protection owners.** One artifact-builder file, adapter-only printers, dead execute fields, a forwarding serializer, broad boundary return state, and obsolete fixture arguments retire. Publisher transactions, independent goldens, historical readers, and predecessor recovery remain; evidence changed by zero. Removing predecessor replacement support requires separate explicit approval. |
+| Logging, mutation, and deferred configuration | Reporting needs diagnostics but not another semantic lifecycle. Its former workflow memory settings no longer govern execution. | **Keep logging observational and state bounded.** Automatic reporting continues in the Run application log; standalone generation opens one log only after generation begins; dry-run and reuse open none. Only existing ledgers, output transactions, and the application log may change. `reporting_memory_mb` remains a visible redundant-configuration candidate pending explicit approval; the frozen dashboard and `DOC-05` are untouched. |
+
+Category-separated closeout is recorded in the findings matrix. `RUN-03`
+remains Open for the broader one-command journey, real placement/outcome
+parity, generalized realization, and remaining public migration.
+
 ## 14. Measurement plan
 
 Measurement is required so the campaign does not merely move complexity.
@@ -2633,7 +2649,7 @@ semantic field-and-authority portion:
 | `AC-DEC-011` | How are the selected Analysis/Execution-Plan/Run/Attempt semantics realized? | Immutable canonical Analysis/Execution-Plan/Run records, versioned schemas, Run-last persistence, current-path migration, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, and temporary-projection retirement are implemented. Public Project/Results representation, role-aware API/package placement, generalized backend and policy boundaries, remaining public/campaign migration, compatibility duration, and the rest of the implementation retirement roster remain Open. Mutable object state and canonical bytes cannot compete; coordination cannot absorb lower authorities or become a god object. |
 | `AC-DEC-012` | What public Run, Attempt, scientific, and reporting states are useful and truthful? | Resolved for the supported read-only surface: Run integrity is `valid`/`blocked`; Attempt outcome is `not_started`/`running`/`succeeded`/`failed`/`interrupted`/`blocked`; scientific Results and reporting are independently `incomplete`/`complete`/`blocked`; recovery is a separate availability fact. Five scientific milestones use `not applicable`/`incomplete`/`complete`/`blocked`; reporting is not a milestone. Current/latest Attempt elapsed time uses only that Attempt's retained boundaries, with no resume summation or ETA. Normal/verbose/debug disclosure is presentation, not authority. The superseded aggregate Python accessors are retired; receipt-v1 remains historical schema evidence. |
 | `AC-DEC-013` | What is the Run Bundle contract? | Layout, portability, large artifacts, external references, redaction, archival, regeneration, sharing |
-| `AC-DEC-014` | How are the ratified downstream-reporting semantics represented? | Partially resolved: read-only scientific Attempt/Results state, reporting state, recovery, and verified report locations are independent while receipt-v1 remains historical compatibility evidence. Exact opt-out/regeneration interfaces, ledger adoption/repair, retry and exit presentation, scientific/evidence/operations views, receipt organization, immutable artifacts versus derived views, and canonical location remain Open. Reporting remains downstream, default-on for a full run, disable-able, and independently regenerable without invalidating science. |
+| `AC-DEC-014` | How are the ratified downstream-reporting semantics represented? | Resolved for the current fixed profile: scientific Attempt/Results state, reporting state, recovery, and verified locations are independent; receipt v2 ends at science while receipt v1 remains exact historical evidence. `run`/`resume` report by default, `--no-report` opts out, and dry-run-first `emrys report --run-root ... [--execute]` regenerates without a Run or Attempt. Complete transactions are revalidated/reused; partial or ambiguous state is never adopted, repaired, deleted, or retried. The existing scientific and Evidence-and-operations HTML views and `results/reports/<run-id>` remain canonical. Broader Run-Bundle, format, portability, archival, and future-profile choices remain with their own cards. |
 | `AC-DEC-015` | What replaces the current “demo” surface? | Neutral synthetic golden path; whether “demo” remains a command, test-only term, or is retired completely |
 | `AC-DEC-016` | Which filesystem concepts are public? | Project/inputs/runs/results/runtime; exact internal-to-public mapping |
 | `AC-DEC-017` | Which advanced interfaces are stable? | inspect run/artifact, manifest, evidence, diagnostics, debug, machine-readable outputs |
@@ -2751,13 +2767,13 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `SETUP-03` | Guided project creation, safe owned directories, generated configuration, validation, and no secret or biological invention; not containerization |
 | `RUNTIME-01` | Tiered runtime provisioning and admission; Managed/Site/Explicit are proposed labels; complete qualification includes the active internal workflow engine/Snakemake where applicable and remains separate from execution profiles |
 | `DOCTOR-01` | Project-aware readiness capabilities, actionable failures, qualified internal workflow-engine dependency, debug escape hatch, and the explicit-repair override with bounded mutation rules; exact command partitioning remains open |
-| `RUN-03` | The current path constructs and commits immutable successor Run authority, admits it through workflow/task boundaries, binds reporting inputs to their origin Attempt, and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. The same grouped surface now owns direct and whole-Run Slurm realization without a generated wrapper. Computational declaration may affect Run identity; profile location/raw bytes, placement, allocation, scheduler job ID, logging, and transport state remain Run-neutral Attempt facts. The broader one-command journey, real placement/outcome parity, generalized realization, report opt-out/regeneration, and remaining public migration remain Open. |
+| `RUN-03` | The current path constructs and commits immutable successor Run authority, admits it through workflow/task boundaries, and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. The scientific Attempt now ends at `cohort_slice` with a released lock and receipt v2; default reporting runs afterward, `--no-report` disables it, and `emrys report` plans/generates/reuses it independently without creating a Run or Attempt. Low-level reporting commands and the composite workflow tail are retired. The same grouped surface owns direct and whole-Run Slurm realization without a generated wrapper. Computational declaration may affect Run identity; profile location/raw bytes, placement, allocation, scheduler job ID, logging, reporting, and transport state remain Run-neutral facts. The broader one-command journey, real placement/outcome parity, generalized realization, and remaining public migration remain Open. |
 | `IDENTITY-01` | Successor Runs now use the selected domain-separated digest over relocation-independent Analysis and Execution-Plan identities, with historical Runs preserved through the version-aware reader and no successor execution projection. Ordinary public exposure, progressively disclosed Attempt identity, and remaining public migration remain Open. |
 | `FILESYSTEM-01` | Completed `RESULTS-01` supplies one current discoverable result/report surface with no hidden competing report root; automatic broader directory creation and the Project/inputs/runs and Run-Bundle layouts remain proposed |
 | `CONTAINER-01` | Independent managed-container/environment decision without assuming final runtime labels; institutional/native/advanced coexistence, image contents and digest, scheduler/storage/security/licensing/update contracts |
 | `REVIEW-UX-03` | Scientist, advanced scientist, operator, automation, and developer journeys; progressive disclosure; cognitive-load and golden-path baseline |
 | `LOG-03` | Durable complete attempt logging remains infrastructure while concise output becomes the default role-appropriate surface |
-| `LOG-05` | Grouped `run`/`resume` execution is the first production adopter: one compute-side operation owns one protected application attempt; valid dry-run and scheduler submission own none. Bounded failures identify the durable log and owned recovery paths, while post-open logging degradation cannot change execution, evidence, recovery, or exit. Other retained operations and required parity remain Open. |
+| `LOG-05` | Grouped `run`/`resume` execution owns one protected compute-side application attempt; automatic reporting continues in that same log after the scientific receipt. Standalone executing `report` owns one reporting log, while report dry-run/reuse and scheduler submission own none. Logging degradation cannot change scientific or reporting evidence, recovery, or exit. Other retained operations and required parity remain Open. |
 | `OBS-01` | **Complete.** Grouped Run control now keeps Run/work/reporting, meaningful phases, Results/evidence, warnings/failures, and the log path normal; operational paths/resources/profile/streams are verbose; exact engine/scheduler/task commands are debug. Durable evidence and machine output are unchanged. |
 | `OBS-02` | High-level scientific progress, public run status, elapsed time, completion/failure, and links to recovery/inspection |
 | `ANALYSIS-01` | Stop/reuse through the Step 06 boundary and launch separately identified cohort, subset, sensitivity, or downstream work |
