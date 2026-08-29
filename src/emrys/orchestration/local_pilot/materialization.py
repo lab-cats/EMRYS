@@ -372,8 +372,7 @@ def _r_owner_command(
     bash: str,
     source_root: Path,
     renv_library: Path,
-    script: Path,
-    arguments: Sequence[str],
+    command: Sequence[str],
 ) -> tuple[str, ...]:
     selected = guarded_r_environment(source_root, renv_library, base_environment={})
     names = tuple(selected)
@@ -395,9 +394,7 @@ def _r_owner_command(
         bootstrap,
         "emrys-r",
         *(selected[name] for name in names),
-        bash,
-        str(script),
-        *arguments,
+        *command,
     )
 
 
@@ -1058,9 +1055,12 @@ def _task_commands(
             bash,
             source_root,
             renv_library,
-            source_root
-            / "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
-            arguments,
+            controlled_python_argv(
+                sys.executable,
+                "-m",
+                "emrys.stages.cohort_candidate_preprocessing.producer",
+                *arguments,
+            ),
         )
         validator = _validator(
             "cohort-candidate-preprocessing",
@@ -1148,9 +1148,14 @@ def _task_commands(
             bash,
             source_root,
             renv_library,
-            source_root
-            / "src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh",
-            arguments,
+            (
+                bash,
+                str(
+                    source_root
+                    / "src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh"
+                ),
+                *arguments,
+            ),
         )
         validator = _validator(
             "paired-cmh-candidate-ranking",
@@ -1229,9 +1234,14 @@ def _task_commands(
             bash,
             source_root,
             renv_library,
-            source_root
-            / "src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh",
-            arguments,
+            (
+                bash,
+                str(
+                    source_root
+                    / "src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh"
+                ),
+                *arguments,
+            ),
         )
         validator = _validator(
             "scientific-context-projection",

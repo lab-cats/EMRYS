@@ -957,8 +957,7 @@ def test_r_owner_bootstrap_clears_hostile_selectors_and_exports_exact_library(
         "/bin/bash",
         REPO_ROOT,
         library,
-        probe,
-        (),
+        ("/bin/bash", str(probe)),
     )
     assert command[-2:] == ("/bin/bash", str(probe))
     completed = subprocess.run(

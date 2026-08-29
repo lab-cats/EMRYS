@@ -1761,28 +1761,26 @@ execution enforces that resolution; lifecycle and admission remain logically
 distinct. Execution may invoke and record owner validation, but it cannot
 redefine scientific success.
 
-Whatever it is called, a common operation representation must be able to
-express, directly or by reference, stable owner identity; typed inputs and
-outputs; explicit dependencies; runtime and resource needs; semantic
-validation authority; failure behavior; provenance and trust requirements;
-and report integration where applicable. These are representation obligations,
-not approved fields or methods.
+`AC-SLICE-04` found that the minimum common representation already exists and
+that another Stage/Operation API would add a second authority. Transformation
+Step `00b`, scientific Step `09`, and evidence Step `02b` all map without
+distortion to the private `TaskDispatch` boundary: owner command, validator,
+declared inputs/outputs, resources, identity, and task-level execution evidence.
+Profiles and the execution graph separately retain dependencies, semantic
+identity, and scheduling. Reporting deliberately does not map: it is downstream
+Run work with its own ledger and independent regeneration semantics, not a
+scientific Stage. This four-owner map also proves a second and third distinct
+owner against the selected denominator.
 
-A common boundary must remove demonstrated repetition without becoming a
-mandatory inheritance hierarchy, universal registry, generic workflow
-language, abstract-factory tree, or second scheduler. Before selecting a common
-denominator, `AC-SLICE-04` should paper-map a transformation owner, a scientific
-analysis, an evidence owner, and reporting. One representative migration is a
-candidate only after that mapping; generalization requires demonstrated net
-reduction and evidence that a second distinct owner maps without distortion.
-The exact mapping count and migration order remain unsettled.
-
-`AC-SLICE-04` still decides the name and representation; operation granularity;
-methods or fields; lifecycle vocabulary; input/output representation and schema
-evolution; resource units, minima, defaults, precedence, and scheduler
-translation; runtime/tool representation; extension discovery, installation,
-trust admission, and version compatibility; and the representative owner and
-generalization threshold.
+The binding decision is therefore to retain the existing private functional-
+owner dispatch boundary and add no Stage class, Operation protocol, registry,
+schema, lifecycle vocabulary, public noun, or universal publication framework.
+The caller-complete Step `08` migration proves the boundary by replacing its
+shell coordinator with one owner-local Python producer while preserving the R
+scientific implementation, neutral scientific-evidence contracts, independent
+validator, scheduler route, immutable input checks, receipt-last transaction,
+rollback/recovery evidence, and task/run logging. This decision does not settle
+future extension discovery, collaborator libraries, or additional backends.
 
 ### 8.3 Execution boundary
 
@@ -2490,6 +2488,21 @@ added or removed; mutable authority zero added. Documentation actuals and
 focused validation are recorded in the findings matrix. `OBS-01` is complete;
 `LOG-05` remains Open for other retained applicable operations and parity.
 
+### 13.8 Bounded slice record: existing task boundary and Step 08 migration
+
+| Surface/category | Finding | Disposition and surviving authority |
+|---|---|---|
+| Shared representation | Transformation, scientific-analysis, and evidence owners already share private `TaskDispatch`; reporting does not fit without semantic distortion. | **Retain the existing boundary.** Add no Stage/Operation type, registry, schema, public noun, lifecycle framework, or second scheduler. Profiles and the graph retain identity/dependency/resource concerns; reporting remains downstream. |
+| Step `08` owner | The shell coordinator duplicated Python scientific-evidence validation and carried a large transaction harness around an R scientific core. | **Convert caller-completely.** One private owner-local Python producer replaces the shell path in materialization, Slurm, provenance, documentation, and tests. The R coordinator/modules and independent validator remain authoritative for their existing responsibilities. |
+| Publication and recovery | Lock ownership, exact admitted inputs, staged validation, complete-set replacement, create-exclusive no-clobber publication, input-receipt-last commit, post-publication revalidation, rollback, signal exit, and ambiguous recovery residue are high-risk defenses. | **Retain.** Focused Python tests cover dry-run, successful receipt-last publication, no-clobber refusal, predecessor restoration, failed-restoration residue, foreign locks/incomplete sets, signals, and residue refusal. No evidence is deleted. |
+| Scheduler and execution | Sixteen owner-local scheduler wrappers remain a deferred family; this slice touches only Step `08`. | **Migrate the exact caller.** Its existing wrapper invokes the Python owner with the controlled checkout interpreter; local-pilot materialization uses the same owner under the existing guarded R environment. No backend or parity claim is added. |
+| `LOG-05` | Step `08` does not own a new application lifecycle. | **Use the existing lifecycle.** Within a full Run it remains a task whose streams and milestones feed the existing Run application Attempt/log; the private direct owner keeps concise human diagnostics. No parallel log, status, or evidence authority is introduced. |
+
+Category-separated actuals and focused validation are recorded in the findings
+matrix. `AC-SLICE-04` is complete; broad `ARCH-01`, `ANALYSIS-02`, `LOG-05`,
+future collaborator-library design, and the other shell/scheduler candidates
+remain Open.
+
 ## 14. Measurement plan
 
 Measurement is required so the campaign does not merely move complexity.
@@ -2557,6 +2570,7 @@ semantic field-and-authority portion:
 | `AC-DEC-001` | The compact public conceptual model is `Project -> Analysis -> Run -> Results`; Run is public and owns the primary ordinary identity, while Attempt is progressively disclosed. Execution Plan is internal and inspectable; Dataset, Reference, and ExperimentalDesign are scientific-definition sections; Runtime/profile is operator-facing; Artifact is advanced, Task internal, and Report a downstream Results capability. |
 | `AC-DEC-011` (partial) | Model C is selected. A Run immutably binds one admitted immutable Analysis revision to one immutable effective Execution Plan. Scientific-intent or declared-plan changes create a new Run; re-execution creates an Attempt; attempt-local realization may vary only inside the Run's declared envelope; reporting changes create neither. |
 | `AC-DEC-011` (semantic fields and authorities) | Section 8.1.3 fixes the Analysis, Execution-Plan, and Run identity fields and digest composition; relocation/content/order rules; symbolic resource envelope; Attempt variation; logical canonical authorities and direct retirement direction; Run-admission recovery owner; and five separate status domains. |
+| `AC-DEC-008` | The minimum useful common operation representation is the existing private `TaskDispatch` plus profile/graph references. Reporting remains a separate downstream boundary. No new Stage/Operation API, schema, registry, lifecycle vocabulary, or public noun is justified. |
 
 | Decision ID | Open question | Retained options or concerns |
 |---|---|---|
@@ -2566,7 +2580,6 @@ semantic field-and-authority portion:
 | `AC-DEC-005` | What broader merge semantics remain beyond the implemented execution-profile boundary? | Current execution precedence is packaged defaults, one explicitly selected closed fragment, then owner-defined CLI resource overrides, with source/effective provenance retained. Site/project/scientist configuration precedence and broader list/map/null semantics remain Open. |
 | `AC-DEC-006` | How are runtime and future named execution choices represented? | One explicit file-bound direct/Slurm execution profile is implemented and runtime remains separate. Managed/Site/Explicit runtime modes, named profile registry/discovery, and any future automatic site selection remain Open. External mechanisms stay behind owned boundaries and supported backends owe equivalent declared guarantees. |
 | `AC-DEC-007` | Is a supported managed container/environment accepted? | Scheduler, storage, architecture, security, licensing, updates, native escape hatch, image and tool provenance |
-| `AC-DEC-008` | What is the minimum useful operation/Stage representation? | Name, methods, lifecycle states, typed contracts, granularity, discovery, and migration. The boundary is already constrained to remain thin, preserve functional/scientific ownership, and avoid a generic framework. |
 | `AC-DEC-009` | Which repeated policy decisions deserve shared authorities? | Inventory input, validation, runtime, storage, publication, resource, and execution decisions; decide final authorities, package/service placement, configuration inputs, return/error contracts, defaults, safe overrides, precedence, compatibility, consolidation order, and migration. Every decision already requires one authority, but shared centralization must prove net reduction and avoid empty wrappers. |
 | `AC-DEC-010` | What artifact-lifecycle vocabulary and owner shape are justified? | Candidate, validation, admission, publication, commit, immutability, evidence, and rollback; generalized versus class-specific ownership; APIs, schemas, manifests, receipts, immutability mechanisms, external/large artifacts, Run Bundle/report-derived relationships, cleanup, recovery, and representative migration. Lifecycle/admission is already distinct from physical storage. |
 | `AC-DEC-011` | How are the selected Analysis/Execution-Plan/Run/Attempt semantics realized? | Immutable canonical Analysis/Execution-Plan/Run records, versioned schemas, Run-last persistence, current-path migration, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, and temporary-projection retirement are implemented. Public Project/Results representation, role-aware API/package placement, generalized backend and policy boundaries, remaining public/campaign migration, compatibility duration, and the rest of the implementation retirement roster remain Open. Mutable object state and canonical bytes cannot compete; coordination cannot absorb lower authorities or become a god object. |
@@ -2643,7 +2656,7 @@ defined in Section 13.1; evidence deletion cannot be implied by promotion.
 | `AC-SLICE-01` | Ratified all 27 architectural invariants and five migration/test guardrails against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open |
 | `AC-SLICE-02` | Ratified responsibility clusters, three separate dependency graphs, forbidden authority transfers, a current-owner crosswalk, and a fast Python source-boundary ratchet for exact CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open |
 | `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. Successor Run authority, Run-last persistence, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, temporary-projection retirement, separated read-only status, a single supported grouped-CLI Run-control boundary, immutable current request-to-Analysis intake, and Execution-Plan-derived successor Attempt executor provenance are implemented. Public Project/Analysis/Results representation and control, generalized backend/policy boundaries, and remaining public/campaign migrations remain Open, so the campaign card remains Open. |
-| `AC-SLICE-04` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | New slice; coordinate with `ANALYSIS-02` and `ARCH-01` |
+| `AC-SLICE-04` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | **Complete.** The four-owner map retained private `TaskDispatch`, rejected a new universal Stage/Operation representation, and proved the decision through the caller-complete Step `08` Python-owner migration. `ANALYSIS-02` and broad `ARCH-01` retain their wider outcomes. |
 | `AC-SLICE-05` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across direct and Slurm-placed realizations of each supported backend | One file-bound profile and grouped `run`/`resume` route now select direct or whole-Run Slurm placement around the same one-host Snakemake backend. Private Slurm transport submits once and records Attempt-local placement provenance; the generated wrapper is retired. Controlled planning/materialization parity is implemented. Real scheduler/site, allocation-sensitive, distinct-Attempt outcome, runtime/module, failure/recovery, and report-publication parity plus any additional backend remain Open with `OPS-02`. |
 | `AC-SLICE-06` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` |
 | `AC-SLICE-07` | Define artifact-class lifecycle/admission requirements, decide whether any shared lifecycle or distinct Artifact Store is justified, and migrate one path only if the selected design requires a boundary change | New slice; supports `ARCH-01` |

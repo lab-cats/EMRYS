@@ -59,9 +59,7 @@ EXPECTED_PRODUCER_PATHS = {
         "src/emrys/stages/partitioned_cohort_mpileup/"
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
-    "08": (
-        "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
-    ),
+    "08": ("src/emrys/stages/cohort_candidate_preprocessing/producer.py"),
     "09": (
         "src/emrys/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh"

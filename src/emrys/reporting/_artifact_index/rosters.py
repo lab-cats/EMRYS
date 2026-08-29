@@ -120,7 +120,7 @@ STEP_PRODUCERS = {
         "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
     ),
     "08": (
-        "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh"
+        "src/emrys/stages/cohort_candidate_preprocessing/producer.py"
     ),
     "09": (
         "src/emrys/analyses/paired_cmh_candidate_ranking/"
