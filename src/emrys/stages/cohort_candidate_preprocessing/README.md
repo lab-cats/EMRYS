@@ -6,7 +6,7 @@ three-output transaction, retained defects, consumers, and evidence semantics.
 
 ## Entry points
 
-- producer: [`step_08_vcf_preprocessing.sh`](step_08_vcf_preprocessing.sh)
+- producer: private Python module [`producer.py`](producer.py)
 - R implementation: [`step_08_vcf_preprocessing.R`](step_08_vcf_preprocessing.R)
 - validator: grouped `python -I -m emrys validate cohort-candidate-preprocessing`,
   implemented by private [`validator.py`](validator.py)
@@ -22,7 +22,7 @@ Producer no-write dry-run:
 
 ```bash
 : "${EMRYS_RSCRIPT_BIN:?export the admitted Rscript executable path}"
-src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
+.venv/bin/python -I -m emrys.stages.cohort_candidate_preprocessing.producer \
   --cohort-id NORAD_EV_PUM1 \
   --sample-manifest data/raw/samples.paired.tsv \
   --partition-manifest configs/step_07_partitions.primary_contigs.tsv \
@@ -99,8 +99,8 @@ Never combine attempts or reuse ambiguous roots; incomplete restoration
 retains the owned lock and remaining backups for operator recovery.
 
 ```bash
-bash tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.sh
 .venv/bin/python -m pytest -q \
+  tests/stages/cohort_candidate_preprocessing/test_producer.py \
   tests/contracts/scientific_evidence/test_step08.py \
   tests/stages/cohort_candidate_preprocessing/test_validate_step_08_preprocessing_outputs.py
 RSCRIPT_BIN=/usr/local/bin/Rscript \
@@ -109,4 +109,4 @@ RSCRIPT_BIN=/usr/local/bin/Rscript \
   tests/test_slurm_wrapper_contracts.py -k step_08_vcf_preprocessing
 ```
 
-This is local shell/R/fixture evidence only.
+This is local Python/R/fixture evidence only.

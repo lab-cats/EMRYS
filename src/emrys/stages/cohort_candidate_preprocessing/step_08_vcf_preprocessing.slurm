@@ -32,6 +32,8 @@ export TMPDIR="${TMPDIR:-/tmp}"
 : "${RSCRIPT_BIN_OVERRIDE:?RSCRIPT_BIN_OVERRIDE is required}"
 
 RSCRIPT_BIN="$RSCRIPT_BIN_OVERRIDE"
+PYTHON_BIN="${EMRYS_PYTHON_BIN:-$PWD/.venv/bin/python}"
+PRODUCER_PATH="$PWD/src/emrys/stages/cohort_candidate_preprocessing/producer.py"
 R_SCRIPT="${STEP08_R_SCRIPT:-src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.R}"
 THREADS="${THREADS:-${SLURM_CPUS_PER_TASK:-1}}"
 EXECUTE="${EXECUTE:-0}"
@@ -44,6 +46,16 @@ case "$EXECUTE" in
 esac
 
 mkdir -p logs
+
+[[ -x "$PYTHON_BIN" ]] ||
+    die "Python executable not found or not executable: $PYTHON_BIN"
+[[ -f "$PRODUCER_PATH" ]] ||
+    die "Step 08 Python producer not found: $PRODUCER_PATH"
+
+RESOLVED_PRODUCER="$("$PYTHON_BIN" -X pycache_prefix=/dev/null -I -c \
+    'from emrys.stages.cohort_candidate_preprocessing import producer; print(producer.__file__)')"
+[[ "$RESOLVED_PRODUCER" -ef "$PRODUCER_PATH" ]] ||
+    die "Python runtime does not resolve Step 08 from the submitted checkout: $RESOLVED_PRODUCER"
 
 COHORT_OUTPUT_DIR="$OUTPUT_ROOT/$COHORT_ID"
 SITES_OUTPUT="$COHORT_OUTPUT_DIR/$COHORT_ID.step08_sites.tsv"
@@ -67,6 +79,8 @@ printf 'Sites table: %s\n' "$SITES_OUTPUT"
 printf 'Input receipt: %s\n' "$INPUTS_OUTPUT"
 printf 'QC summary: %s\n' "$SUMMARY_OUTPUT"
 printf 'Rscript: %s\n' "$RSCRIPT_BIN"
+printf 'Python: %s\n' "$PYTHON_BIN"
+printf 'Python producer: %s\n' "$RESOLVED_PRODUCER"
 printf 'R script: %s\n' "$R_SCRIPT"
 printf 'Threads: %s\n' "$THREADS"
 printf 'Execute mode: %s\n' "$EXECUTE"
@@ -92,8 +106,9 @@ else
 fi
 
 cmd=(
-    bash
-    src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh
+    "$PYTHON_BIN"
+    -X pycache_prefix=/dev/null -I
+    -m emrys.stages.cohort_candidate_preprocessing.producer
     --cohort-id "$COHORT_ID"
     --sample-manifest "$SAMPLE_MANIFEST"
     --partition-manifest "$PARTITION_MANIFEST"
@@ -109,8 +124,8 @@ if [[ "$EXECUTE" == "1" ]]; then
     cmd+=(--execute)
 fi
 
-# The shell script owns exact input enumeration, R command construction,
-# locking, validation, publication, cleanup, and rollback.
+# The Python producer owns exact input enumeration, R command construction,
+# locking, validation, publication, cleanup, and rollback; R owns the science.
 printf 'Wrapper command:\n'
 print_command "${cmd[@]}"
 

@@ -35,7 +35,6 @@ SHELL_SYNTAX_PATHS := \
 	src/emrys/stages/split_n_cigar/step_05_split_n_cigar_reads.sh \
 	src/emrys/stages/mechanical_orientation/step_06_split_bam_by_read_orientation.sh \
 	src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh \
-	src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh \
 	src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh \
 	src/emrys/analyses/scientific_context_projection/scientific_context_projection.sh \
 	tests/analyses/scientific_context_projection/run_scientific_context_projection_tests.sh \
@@ -73,7 +72,6 @@ validation-shell-contracts:
 	bash tests/stages/split_n_cigar/test_step_05_split_n_cigar_reads.sh
 	bash tests/stages/mechanical_orientation/test_step_06_split_bam_by_read_orientation.sh
 	bash tests/stages/partitioned_cohort_mpileup/test_step_07_bcftools_mpileup_by_chrom_and_strand.sh
-	bash tests/stages/cohort_candidate_preprocessing/test_step_08_vcf_preprocessing.sh
 	bash tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.sh
 	bash tests/analyses/scientific_context_projection/test_scientific_context_projection.sh
 	bash tests/shell/test_local_r_environment.sh

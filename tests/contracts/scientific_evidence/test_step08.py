@@ -449,6 +449,7 @@ def test_private_parsing_closure_preserves_exact_edges(tmp_path: Path) -> None:
         ("sample_empty", "Sample manifest contains no sample rows."),
         ("sample_duplicate", "Sample manifest contains duplicate sample_id: S"),
         ("sample_unsafe_id", "sample_id must match"),
+        ("sample_na", "Sample manifest row 2 has an empty required value."),
         (
             "sample_bad_strandedness",
             "Sample manifest row 2 has invalid strandedness: diagonal",
@@ -567,6 +568,8 @@ def test_exact_rejection_contract(case: str, expected: str, tmp_path: Path) -> N
             write_tsv(target, rows[0], (rows[1], rows[1]))
         elif case == "sample_unsafe_id":
             replace_cell(target, 0, "sample_id", "unsafe/id")
+        elif case == "sample_na":
+            replace_cell(target, 0, "condition", "NA")
         else:
             replace_cell(target, 0, "strandedness", "diagonal")
         call = lambda: STEP08.validate_sample_manifest(target)

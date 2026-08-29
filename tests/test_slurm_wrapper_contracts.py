@@ -159,11 +159,24 @@ esac
         write_executable(fake_bin / name, body)
 
 
-def install_delegate_stub(path: Path) -> None:
+def install_delegate_stub(path: Path, *, python_prefix: bool = False) -> None:
+    prefix = (
+        """if [[ "${4:-}" == "-c" ]]; then
+    printf '%s\n' "${FAKE_PYTHON_MODULE_PATH:?}"
+    exit 0
+fi
+shift 5
+"""
+        if python_prefix
+        else ""
+    )
     write_executable(
         path,
         """#!/bin/bash
 set -euo pipefail
+"""
+        + prefix
+        + """\
 printf '%s\n' "$@" > "${FAKE_DELEGATE_LOG:?}"
 printf '%s\n' "$PWD" > "${FAKE_DELEGATE_CWD_LOG:?}"
 if [[ "${FAKE_CHILD_EXIT:-0}" != "0" ]]; then
@@ -233,7 +246,15 @@ def prepare_delegated(name: str, tmp_path: Path) -> PreparedWrapper:
     install_module_fake(fake_bin)
     install_tool_fakes(fake_bin)
     install_checkout_helpers(submit)
-    install_delegate_stub(submit / contract.delegation)
+    if name == "step_08_vcf_preprocessing.slurm":
+        producer = (
+            submit / "src/emrys/stages/cohort_candidate_preprocessing/producer.py"
+        )
+        producer.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(REPO_ROOT / producer.relative_to(submit), producer)
+        install_delegate_stub(fake_bin / "emrys-python", python_prefix=True)
+    else:
+        install_delegate_stub(submit / contract.delegation)
 
     environment = base_environment(tmp_path, fake_bin)
     environment.update(
@@ -245,6 +266,10 @@ def prepare_delegated(name: str, tmp_path: Path) -> PreparedWrapper:
             "FAKE_SKIP_OUTPUTS": "0",
         }
     )
+    if name == "step_08_vcf_preprocessing.slurm":
+        environment["FAKE_PYTHON_MODULE_PATH"] = str(
+            submit / "src/emrys/stages/cohort_candidate_preprocessing/producer.py"
+        )
     context = {
         "submit": str(submit),
         "fake_bin": str(fake_bin),
@@ -1463,6 +1488,24 @@ def test_step_08_vcf_preprocessing_forwards_r_program_for_child_validation(
     assert all(
         output.read_bytes() == b"mock wrapper output\n" for output in prepared.outputs
     )
+
+
+def test_step_08_vcf_preprocessing_rejects_foreign_python_source(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_delegated("step_08_vcf_preprocessing.slurm", tmp_path)
+    foreign = tmp_path / "foreign-source/producer.py"
+    foreign.parent.mkdir()
+    foreign.write_text("# foreign producer\n")
+
+    result = run_prepared(
+        prepared,
+        environment_updates={"FAKE_PYTHON_MODULE_PATH": str(foreign)},
+    )
+
+    assert result.returncode == 1
+    assert "does not resolve Step 08 from the submitted checkout" in result.stderr
+    assert not prepared.delegate_log.exists()
 
 
 def test_step_09_cmh_editing_site_calling_forwards_missing_r_program_to_child(

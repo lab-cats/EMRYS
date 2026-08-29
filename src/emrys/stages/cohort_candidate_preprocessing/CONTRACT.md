@@ -42,7 +42,7 @@ declared manifest/orientation order before deterministic aggregation; Windows
 direct execution falls back to one worker. Annotation import/model construction
 and aggregate reconciliation remain single-owner R operations. R also owns
 deterministic candidate construction, aggregation, and TSV serialization. The
-shell owner performs post-serialization admission and publication.
+Python producer performs post-serialization admission and publication.
 
 The fixed `legacy_provisional_v1` compatibility policy maps:
 
@@ -85,7 +85,7 @@ row per partition/orientation, ordered by the partition manifest then
 hashes, annotation path/hash, observed and skipped counts, and policy. The
 one-row summary reconciles aggregate counts and identities.
 
-[`step_08_vcf_preprocessing.sh`](step_08_vcf_preprocessing.sh)
+The private [`producer.py`](producer.py) module
 is side-effect-free in dry-run. Execute mode uses a cohort lock, run-token
 temporary/backup paths, all-three-or-none prior-state enforcement, repeated
 input hash checks, prepublication validation, and rollback. It publishes sites,
@@ -107,9 +107,9 @@ operator recovery. No automated recovery interface exists.
 
 [`step_08_vcf_preprocessing.R`](step_08_vcf_preprocessing.R)
 owns semantic parsing, deterministic candidate construction and TSV
-serialization, provisional orientation policy, and annotation. The shell owns
+serialization, provisional orientation policy, and annotation. Python owns
 orchestration, locking, staged post-serialization admission, and publication.
-Its admission checks exact headers and field/row counts, declared input-receipt
+Its post-serialization admission checks exact headers and field/row counts, declared input-receipt
 ordering and identities, basic site fields and candidate uniqueness, and
 policy/count reconciliation. It does not reparse source VCFs or reconstruct
 within-VCF candidate order.
@@ -117,7 +117,7 @@ within-VCF candidate order.
 The canonical R facade requires its adjacent owner-private input-contract,
 annotation, Step `07` receipt, VCF/count, and candidate-processing modules. It
 resolves every sibling from Rscript's exact `--file=` entry path and sources
-them into the existing program environment. The shell's `--r-script` option and
+them into the existing program environment. The producer's `--r-script` option and
 `STEP08_R_SCRIPT` environment override replace the whole R program for
 diagnostics; they do not override private modules independently, so a
 replacement owns its complete implementation and dependency behavior.
@@ -170,14 +170,14 @@ peer-stage implementation dependencies are not supported interfaces.
 - Artifact adapters register all three outputs and
   `step08_validation_report_v1`; reporting consumes registered evidence
   without rerunning R.
-- Direct shell, R, and Python validator suites protect the cohort barrier,
+- Direct producer, R, and Python validator suites protect the cohort barrier,
   schema, allele/count rules, annotation, policy, dry-run, locks, replacement,
   rollback, and independent validation boundary.
 - Wrapper, roster, publication-fault, public-CLI, artifact, report, coverage,
   and Step `09` consumer tests protect cross-boundary behavior.
 
 The guarded real-R fixtures compare exact candidate order and byte equality
-across worker counts. The shell fault fixtures prove structural and
+across worker counts. The Python producer fault fixtures prove structural and
 reconciliation admission, not independent reconstruction of candidate order.
 This is local fixture characterization, including guarded real-R fixtures, not
 production, cluster, scientific-review, or biological evidence.

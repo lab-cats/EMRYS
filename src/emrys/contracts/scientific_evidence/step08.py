@@ -337,6 +337,8 @@ def _validate_sample_manifest_table(
     for row_number, row in enumerate(table.rows, start=2):
         for column in SAMPLE_MANIFEST_REQUIRED:
             require_text(f"Sample manifest row {row_number} {column}", row[column])
+            if row[column] == NA_VALUE:
+                fail(f"Sample manifest row {row_number} has an empty required value.")
         validate_safe_id("sample_id", row["sample_id"])
         validate_safe_id("replicate", row["replicate"])
         if row["strandedness"] not in (

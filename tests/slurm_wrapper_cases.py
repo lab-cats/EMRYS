@@ -111,7 +111,8 @@ CONTRACTS = {
         submit_cwd="required",
     ),
     "step_08_vcf_preprocessing.slurm": contract(
-        "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.sh",
+        "python -X pycache_prefix=/dev/null -I "
+        "-m emrys.stages.cohort_candidate_preprocessing.producer",
         submit_cwd="required",
     ),
     "step_09_cmh_editing_site_calling.slurm": contract(
@@ -165,6 +166,9 @@ JOB_PATHS.update(
         ),
         "step_00b_gtf_to_bed12.slurm": Path(
             "src/emrys/stages/gtf_to_bed12/step_00b_gtf_to_bed12.slurm"
+        ),
+        "step_08_vcf_preprocessing.slurm": Path(
+            "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm"
         ),
         "tool_check.slurm": Path(
             "src/emrys/evidence/runtime_availability/tool_check.slurm"
@@ -581,6 +585,7 @@ DELEGATED_FIXTURES = {
             ("OUTPUT_ROOT", "{output_root}"),
             ("QC_ROOT", "{qc_root}"),
             ("RSCRIPT_BIN_OVERRIDE", "{fake_bin}/Rscript"),
+            ("EMRYS_PYTHON_BIN", "{fake_bin}/emrys-python"),
             ("STEP08_R_SCRIPT", "{r_script}"),
             ("THREADS", "3"),
         ),
