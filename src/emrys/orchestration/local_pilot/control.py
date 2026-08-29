@@ -48,8 +48,8 @@ from emrys.orchestration.local_pilot.materialization import (
     validate_run_destination,
 )
 from emrys.orchestration.local_pilot.normalization import (
-    NormalizationBundle,
-    normalize_request,
+    ProjectAdmission,
+    admit_project,
 )
 from emrys.orchestration.local_pilot.resource_policy import (
     AllocationCapacity,
@@ -66,7 +66,7 @@ from emrys.orchestration.local_pilot.resource_policy import (
 from emrys.orchestration.local_pilot import slurm_submission
 
 RUN_DESCRIPTION = (
-    "Plan or execute one fixed source-checkout-bound local CMH pipeline. "
+    "Plan or execute one immutable Run from an admitted EMRYS Project. "
     "Dry-run is the default; this command never installs or repairs tools."
 )
 RESUME_DESCRIPTION = (
@@ -95,7 +95,7 @@ class ControlError(RuntimeError):
 
 
 ReadinessInspector = Callable[[Path, Path, Path], doctor.DoctorResult]
-Normalizer = Callable[[Path, Mapping[str, Any] | Path], NormalizationBundle]
+ProjectAdmitter = Callable[[Path, Mapping[str, Any] | Path], ProjectAdmission]
 RunInspector = Callable[[Path], inspection.RunInspection]
 ApplicationEventObserver = Callable[[str], None]
 PlanExecutor = Callable[
@@ -111,7 +111,7 @@ class ControlOps:
     """Explicit collaborators for planning, execution, and public adapter tests."""
 
     inspect_readiness: ReadinessInspector
-    normalize: Normalizer
+    admit_project: ProjectAdmitter
     inspect_run: RunInspector
     execute_plan: PlanExecutor
     transform_plan: PlanTransformer
@@ -121,9 +121,9 @@ class ControlOps:
 
 
 def _default_readiness(
-    request: Path, workspace: Path, runtime_profile: Path
+    project: Path, workspace: Path, runtime_profile: Path
 ) -> doctor.DoctorResult:
-    return doctor.inspect_local_pilot(request, workspace, runtime_profile)
+    return doctor.inspect_local_pilot(project, workspace, runtime_profile)
 
 
 def _default_execute(
@@ -145,7 +145,7 @@ def _default_execute(
 
 DEFAULT_CONTROL_OPS = ControlOps(
     inspect_readiness=_default_readiness,
-    normalize=normalize_request,
+    admit_project=admit_project,
     inspect_run=inspection.inspect_run,
     execute_plan=_default_execute,
     transform_plan=lambda plan: plan,
@@ -166,22 +166,22 @@ def _require_ready(result: doctor.DoctorResult) -> None:
     raise ControlError("Local-pilot readiness blockers: " + "; ".join(details))
 
 
-def _normalize_after_doctor(
+def _admit_project_after_doctor(
     readiness: doctor.DoctorResult,
     ops: ControlOps,
-) -> NormalizationBundle:
+) -> ProjectAdmission:
     try:
-        normalized = ops.normalize(
-            readiness.request_path,
+        project = ops.admit_project(
+            readiness.project_path,
             readiness.source_root / "workflow/contracts/local_cmh_v2.json",
         )
     except (OSError, orchestration_contracts.ContractValidationError) as exc:
         raise ControlError(str(exc)) from exc
-    return normalized
+    return project
 
 
 def _plan_run(
-    request: Path,
+    project_path: Path,
     workspace: Path,
     runtime_profile: Path,
     *,
@@ -192,11 +192,11 @@ def _plan_run(
     """Plan a new run without writing any workspace state."""
 
     try:
-        readiness = ops.inspect_readiness(request, workspace, runtime_profile)
+        readiness = ops.inspect_readiness(project_path, workspace, runtime_profile)
         _require_ready(readiness)
-        normalized = _normalize_after_doctor(readiness, ops)
+        project = _admit_project_after_doctor(readiness, ops)
         policy = execution_profile.resource_policy
-        run = build_run_candidate(normalized, readiness, policy.declaration)
+        run = build_run_candidate(project, readiness, policy.declaration)
         resources = resolve_resource_policy(policy, ops.observe_allocation())
         plan = ops.transform_plan(
             build_attempt_plan(
@@ -308,12 +308,12 @@ def _plan_resume(
             )
         )
     previous = observed.latest_attempt
-    request = Path(str(previous["authored_paths"]["request"]))
+    project_path = Path(str(previous["authored_paths"]["request"]))
     workspace = Path(str(previous["workspace"]))
     try:
-        readiness = ops.inspect_readiness(request, workspace, runtime_profile)
+        readiness = ops.inspect_readiness(project_path, workspace, runtime_profile)
         _require_ready(readiness)
-        normalized = _normalize_after_doctor(readiness, ops)
+        project = _admit_project_after_doctor(readiness, ops)
         predecessor_config = _load_config_reference(root, previous)
         if observed.authority_format == "successor":
             if (
@@ -339,22 +339,25 @@ def _plan_resume(
                     execution_profile,
                     resource_policy=policy,
                 )
-            candidate = build_run_candidate(normalized, readiness, policy.declaration)
-            if candidate.run_binding.canonical_bytes != observed.run_binding.canonical_bytes:
+            candidate = build_run_candidate(project, readiness, policy.declaration)
+            if (
+                candidate.run_binding.canonical_bytes
+                != observed.run_binding.canonical_bytes
+            ):
                 raise ControlError("Current inputs resolve to a different Run")
             run = candidate
             resources = resolve_resource_policy(policy, ops.observe_allocation())
         else:
-            legacy_execution, legacy_bytes = normalized.historical_execution_v1()
+            legacy_execution, legacy_bytes = project.historical_execution_v1()
             fixed_execution = root / "contract/normalized.json"
             if legacy_execution["run_id"] != observed.run_id:
-                raise ControlError("Current authored request resolves to a different run")
+                raise ControlError("Current Project resolves to a different Run")
             if (
                 fixed_execution.is_symlink()
                 or not fixed_execution.is_file()
                 or fixed_execution.read_bytes() != legacy_bytes
             ):
-                raise ControlError("Current normalization differs from immutable run bytes")
+                raise ControlError("Current Project differs from immutable Run bytes")
             if profile_resources_explicit:
                 resources = resolve_resource_policy(
                     execution_profile.resource_policy,
@@ -374,7 +377,7 @@ def _plan_resume(
                     resource_policy=resources.policy,
                 )
             run = HistoricalRun(
-                normalized=normalized,
+                project=project,
                 run_id=observed.run_id,
                 execution_projection_bytes=legacy_bytes,
             )
@@ -418,9 +421,7 @@ def _verified_report_location_lines(
     if not locations:
         return ()
     if len(locations) != len(expected):
-        raise ControlError(
-            "Completed run lacks both exact verified result locations"
-        )
+        raise ControlError("Completed run lacks both exact verified result locations")
     lines = ["Results:"]
     for (output_id, path), (expected_id, label) in zip(
         locations, expected, strict=True
@@ -475,7 +476,9 @@ def _private_delegate_digest() -> str | None:
     if values[slurm_submission.DELEGATE_MARKER_ENV] != slurm_submission.DELEGATE_MARKER:
         raise ControlError("Private Slurm delegate marker is invalid")
     if values[slurm_submission.SUBMIT_UID_ENV] != str(os.getuid()):
-        raise ControlError("Private Slurm delegate UID differs from the current process")
+        raise ControlError(
+            "Private Slurm delegate UID differs from the current process"
+        )
     return values[slurm_submission.PROFILE_SHA256_ENV]
 
 
@@ -516,7 +519,9 @@ def _resolve_controls(arguments: argparse.Namespace, workspace: Path) -> LogCont
 def _resume_workspace(run_root: Path) -> Path:
     root = _absolute(run_root)
     if root.parent.name != "runs" or root.parent.parent == Path("/"):
-        raise ControlError("Run root must use the canonical <workspace>/runs/<run-id> layout")
+        raise ControlError(
+            "Run root must use the canonical <workspace>/runs/<run-id> layout"
+        )
     return root.parent.parent
 
 
@@ -552,8 +557,8 @@ def _delegate_argv(
     if command == "run":
         argv.extend(
             (
-                "--request",
-                str(_absolute(arguments.request)),
+                "--project",
+                str(_absolute(arguments.project)),
                 "--workspace",
                 str(_absolute(arguments.workspace)),
             )
@@ -624,9 +629,7 @@ def _owned_failure_paths(
         / "attempts"
         / plan.workflow_attempt_id
         / "released-run-lock.json",
-        plan.run_root
-        / "locks"
-        / f"released-{plan.workflow_attempt_id}-run-lock.json",
+        plan.run_root / "locks" / f"released-{plan.workflow_attempt_id}-run-lock.json",
     )
     for path in recovery_paths:
         if os.path.lexists(path):
@@ -665,7 +668,10 @@ def _schedule(
     if controls.level is LogLevel.DEBUG:
         print("Scheduler command: " + shlex.join(submission.argv), file=sys.stderr)
     if not arguments.execute:
-        print("Dry-run complete; no scheduler or workspace state was written.", file=sys.stderr)
+        print(
+            "Dry-run complete; no scheduler or workspace state was written.",
+            file=sys.stderr,
+        )
         return 0
     _admit_workspace_location(workspace)
     _prepare_scheduler_log_dir(workspace)
@@ -930,10 +936,18 @@ def _print_plan(plan: AttemptPlan, *, level: LogLevel) -> None:
     new_dispatches = plan.new_dispatch_files
     reused = plan.dispatch_count - len(new_dispatches)
     resources = plan.resources
+    project_label = (
+        plan.run.project.definition.get("label") or plan.run.project.source_path.name
+    )
+    print(f"Project: {project_label!a}", file=sys.stderr)
     print(f"Run ID: {plan.run.run_id}", file=sys.stderr)
     print(f"Work: {len(new_dispatches)} pending, {reused} reusable", file=sys.stderr)
     print("Reporting: automatic after scientific work", file=sys.stderr)
     if level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
+        print(
+            f"Analysis ID: {plan.run.project.analysis.analysis_revision_id}",
+            file=sys.stderr,
+        )
         print(f"Run root: {plan.run_root}", file=sys.stderr)
         print(
             f"Resources: {resources.workflow_cores} cores, "
@@ -948,12 +962,13 @@ def _print_plan(plan: AttemptPlan, *, level: LogLevel) -> None:
             print(f"  Step {step_id}: {concurrency}", file=sys.stderr)
     if level is LogLevel.DEBUG:
         print(
-            "Snakemake command: "
-            + shlex.join(plan.attempt_record["snakemake_argv"]),
+            "Snakemake command: " + shlex.join(plan.attempt_record["snakemake_argv"]),
             file=sys.stderr,
         )
         for item in new_dispatches:
-            record = orchestration_contracts.load_json_object_bytes(item.data, item.path)
+            record = orchestration_contracts.load_json_object_bytes(
+                item.data, item.path
+            )
             print(
                 f"TASK {record['machine_key']}/{record['scope']['scope_id']} producer: "
                 + shlex.join(record["producer_argv"]),
@@ -1013,7 +1028,7 @@ def _finish_control(
 
 
 def configure_run_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--request", required=True, type=Path)
+    parser.add_argument("--project", required=True, type=Path)
     parser.add_argument("--workspace", required=True, type=Path)
     parser.add_argument("--runtime-profile", required=True, type=Path)
     parser.add_argument(
@@ -1132,7 +1147,7 @@ def run_from_args(
         overrides = overrides_from_args(arguments)
         expected_profile_sha256 = _private_delegate_digest()
         profile = load_execution_profile(
-            arguments.request,
+            arguments.project,
             config_path=getattr(arguments, "execution_profile", None),
             resource_overrides=overrides,
             expected_sha256=expected_profile_sha256,
@@ -1141,7 +1156,7 @@ def run_from_args(
         controls = _resolve_controls(arguments, arguments.workspace)
         build_plan = partial(
             _plan_run,
-            arguments.request,
+            arguments.project,
             arguments.workspace,
             arguments.runtime_profile,
             execution_profile=profile,
@@ -1251,11 +1266,18 @@ def inspect_from_args(
     receipt = observed.latest_receipt
     if detail != "normal":
         print(f"Run root: {observed.run_root}")
-        print("Attempt ID: " + ("none" if latest is None else str(latest["workflow_attempt_id"])))
+        print(
+            "Attempt ID: "
+            + ("none" if latest is None else str(latest["workflow_attempt_id"]))
+        )
         if latest is not None:
             placement = latest.get("placement")
-            placement_kind = "legacy/unrecorded" if placement is None else placement["kind"]
-            scheduler_job_id = "none" if placement is None else placement["scheduler_job_id"] or "none"
+            placement_kind = (
+                "legacy/unrecorded" if placement is None else placement["kind"]
+            )
+            scheduler_job_id = (
+                "none" if placement is None else placement["scheduler_job_id"] or "none"
+            )
             print(
                 f"Execution: {latest['executor']}/{latest['execution_mode']} "
                 f"placement={placement_kind} scheduler_job_id={scheduler_job_id}"
@@ -1263,8 +1285,10 @@ def inspect_from_args(
         print("Reporting transactions:")
         for kind, records in observed.reporting_completion_records.items():
             state = (
-                "complete" if records["verified"] is not None
-                else "incomplete" if records["start"] is not None
+                "complete"
+                if records["verified"] is not None
+                else "incomplete"
+                if records["start"] is not None
                 else "pending"
             )
             print(f"  {kind}: {state}")
@@ -1272,7 +1296,9 @@ def inspect_from_args(
         if latest is not None:
             attempt_id = str(latest["workflow_attempt_id"])
             attempt_root = observed.run_root / "attempts" / attempt_id
-            receipt_path = "none" if receipt is None else attempt_root / "attempt-receipt.json"
+            receipt_path = (
+                "none" if receipt is None else attempt_root / "attempt-receipt.json"
+            )
             print(f"Attempt receipt: {receipt_path}")
             print(f"Engine command: {shlex.join(latest['snakemake_argv'])}")
             if receipt is not None:

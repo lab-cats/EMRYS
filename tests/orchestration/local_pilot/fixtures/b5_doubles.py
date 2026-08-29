@@ -27,8 +27,8 @@ def with_owner_doubles(
     source = materialization._construction_source(plan.run)
     reporting = build_reporting_bundle(
         source,
-        plan.run.normalized.profile,
-        plan.run.normalized.analysis_revision,
+        plan.run.project.profile,
+        plan.run.project.analysis,
     )
     rows = tuple(dict(row) for row in reporting.artifact_inventory_rows)
     raw_payloads = workflow.artifact_payloads(
@@ -69,9 +69,7 @@ def with_owner_doubles(
             },
         }
         manifest_data = orchestration_contracts.canonical_json_bytes(manifest_record)
-        step00c = (
-            record["machine_key"] == "emrys.stage.construct_FASTA_sidecars.v1"
-        )
+        step00c = record["machine_key"] == "emrys.stage.construct_FASTA_sidecars.v1"
         payload_arguments = (
             ("--payload-base64", base64.b64encode(manifest_data).decode())
             if step00c

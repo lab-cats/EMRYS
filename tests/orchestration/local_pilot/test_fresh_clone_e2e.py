@@ -22,7 +22,7 @@ from emrys.evidence.runtime_availability._probes import (
     R_NAMESPACE_ROOT_OUTPUT_MARKER,
 )
 from emrys.orchestration.local_pilot import doctor, inspection, reporting_boundary
-from emrys.orchestration.local_pilot.normalization import normalize_request
+from emrys.orchestration.local_pilot.normalization import admit_project
 from tests.orchestration.local_pilot.fixture import build as build_intake_fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -359,9 +359,7 @@ def _reusable_snapshot(run_root: Path) -> dict[Path, tuple[bytes, int]]:
 
 
 def _assert_complete_products(run_root: Path, run_id: str) -> None:
-    execution = orchestration_contracts.load_json_object(
-        run_root / "contract/run.json"
-    )
+    execution = orchestration_contracts.load_json_object(run_root / "contract/run.json")
     assert execution["schema_version"] == "emrys.run-binding.v1"
     assert execution["run_id"] == run_id
     assert not (run_root / "contract/normalized.json").exists()
@@ -446,9 +444,9 @@ def _assert_complete_products(run_root: Path, run_id: str) -> None:
             scientific_html,
         )
         assert match is not None
-        assert (report_root / unquote(match.group(1))).resolve(strict=True) == artifacts[
-            adapter
-        ].resolve(strict=True)
+        assert (report_root / unquote(match.group(1))).resolve(
+            strict=True
+        ) == artifacts[adapter].resolve(strict=True)
     assert "emrys inspect local-pilot-run --run-root" not in scientific_html
     assert f"emrys inspect local-pilot-run --run-root {run_root}" in evidence_html
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
@@ -497,7 +495,7 @@ observed = SimpleNamespace(
 )
 ops = control.ControlOps(
     inspect_readiness=unreachable,
-    normalize=unreachable,
+    admit_project=unreachable,
     inspect_run=lambda _root: observed,
     execute_plan=unreachable,
     transform_plan=unreachable,
@@ -562,12 +560,12 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     runtime_profile = _write_runtime_profile(tmp_path / "runtime")
     environment = _command_environment(source_root, tmp_path)
-    normalized = normalize_request(
+    normalized = admit_project(
         request,
         REPO_ROOT / "workflow/contracts/local_cmh_v2.json",
     )
     common = [
-        "--request",
+        "--project",
         str(request),
         "--workspace",
         str(workspace),
@@ -586,7 +584,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
 
     _qualify_storage(
         workspace,
-        Path(str(normalized.projection_source["reference"]["fasta"]["path"])),
+        Path(str(normalized.construction["reference"]["fasta"]["path"])),
         environment=environment,
     )
 
@@ -753,13 +751,13 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
 
     clean_intake_root = tmp_path / "clean-intake"
     clean_request = build_intake_fixture(clean_intake_root)
-    clean_normalized = normalize_request(
+    clean_normalized = admit_project(
         clean_request,
         REPO_ROOT / "workflow/contracts/local_cmh_v2.json",
     )
     clean_workspace = tmp_path / "clean-workspace"
     clean_common = [
-        "--request",
+        "--project",
         str(clean_request),
         "--workspace",
         str(clean_workspace),
@@ -770,9 +768,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     ]
     _qualify_storage(
         clean_workspace,
-        Path(
-            str(clean_normalized.projection_source["reference"]["fasta"]["path"])
-        ),
+        Path(str(clean_normalized.construction["reference"]["fasta"]["path"])),
         environment=environment,
     )
     clean_run = _harness_command(

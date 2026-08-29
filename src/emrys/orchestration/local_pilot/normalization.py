@@ -1,4 +1,4 @@
-"""Read-only admission and canonical normalization for the local CMH pilot."""
+"""Read-only Project admission for the current local CMH implementation."""
 
 from __future__ import annotations
 
@@ -56,26 +56,26 @@ class _ClosedSafeLoader(yaml.SafeLoader):
 
 
 @dataclass(frozen=True, slots=True)
-class NormalizationBundle:
-    """Admitted scientific inputs plus non-identity source provenance."""
+class ProjectAdmission:
+    """Immutable admission snapshot of one mutable scientist-authored Project."""
 
-    request_path: Path
-    request_bytes: bytes
+    source_path: Path
+    source_bytes: bytes
     _profile_bytes: bytes
-    analysis_revision: AnalysisRevision
-    projection_source_bytes: bytes
+    analysis: AnalysisRevision
+    construction_bytes: bytes
 
     @property
-    def request_sha256(self) -> str:
-        """Return the exact authored-source digest from immutable bytes."""
+    def source_sha256(self) -> str:
+        """Return the exact Project-source digest from immutable bytes."""
 
-        return hashlib.sha256(self.request_bytes).hexdigest()
+        return hashlib.sha256(self.source_bytes).hexdigest()
 
     @property
-    def request(self) -> dict[str, Any]:
-        """Return a fresh authored-request view for compatibility callers."""
+    def definition(self) -> dict[str, Any]:
+        """Return a fresh view of the admitted Project definition."""
 
-        return _load_yaml_object(self.request_bytes, self.request_path)
+        return _load_yaml_object(self.source_bytes, self.source_path)
 
     @property
     def profile(self) -> dict[str, Any]:
@@ -87,26 +87,32 @@ class NormalizationBundle:
         )
 
     @property
-    def projection_source(self) -> dict[str, Any]:
+    def construction(self) -> dict[str, Any]:
         """Return a fresh construction view; it is never Run authority."""
 
         return orchestration_contracts.load_json_object_bytes(
-            self.projection_source_bytes,
-            "normalized construction source",
+            self.construction_bytes,
+            "Project construction source",
         )
 
     def historical_execution_v1(self) -> tuple[dict[str, Any], bytes]:
         """Reconstruct only an existing v1 Run for historical resume admission."""
 
-        source = self.projection_source
+        source = self.construction
         envelope = {
             "schema_version": "emrys.identity-envelope.v1",
-            **{key: source[key] for key in ("profile", "samples", "partitions", "reference", "analysis")},
+            **{
+                key: source[key]
+                for key in ("profile", "samples", "partitions", "reference", "analysis")
+            },
         }
         digest = orchestration_contracts.canonical_sha256(envelope)
         execution = {
             "schema_version": "emrys.execution.v1",
-            **{key: source[key] for key in ("profile", "samples", "partitions", "reference", "analysis")},
+            **{
+                key: source[key]
+                for key in ("profile", "samples", "partitions", "reference", "analysis")
+            },
             "identity_envelope": envelope,
             "identity_envelope_sha256": digest,
             "run_id": f"run-{digest}",
@@ -114,7 +120,9 @@ class NormalizationBundle:
         }
         reporting = build_reporting_bundle(execution, self.profile)
         execution["reporting_projection"] = reporting.projection_references
-        orchestration_contracts.validate_record("execution", execution, profile=self.profile)
+        orchestration_contracts.validate_record(
+            "execution", execution, profile=self.profile
+        )
         return execution, orchestration_contracts.canonical_json_bytes(execution)
 
 
@@ -340,11 +348,11 @@ def _load_yaml_object(data: bytes, path: Path) -> dict[str, Any]:
         raise
     except (UnicodeError, yaml.YAMLError) as exc:
         raise orchestration_contracts.ContractValidationError(
-            f"Could not parse request YAML {path}: {exc}"
+            f"Could not parse Project YAML {path}: {exc}"
         ) from exc
     if not isinstance(value, dict):
         raise orchestration_contracts.ContractValidationError(
-            f"Request YAML must contain one mapping object: {path}"
+            f"Project YAML must contain one mapping object: {path}"
         )
     return value
 
@@ -370,7 +378,7 @@ def _load_profile(profile: Mapping[str, Any] | str | Path) -> dict[str, Any]:
 def _normalize_samples(
     manifest_path: Path,
     manifest_data: bytes,
-    request_dir: Path,
+    project_dir: Path,
 ) -> dict[str, Any]:
     try:
         table, _, rows = step08.validate_sample_manifest_bytes(
@@ -381,10 +389,10 @@ def _normalize_samples(
     normalized_rows: list[dict[str, Any]] = []
     for index, row in enumerate(rows, start=2):
         r1_path, r1_snapshot = _resolve_authored_snapshot(
-            row["r1_fastq"], request_dir, f"Sample manifest row {index} R1 FASTQ"
+            row["r1_fastq"], project_dir, f"Sample manifest row {index} R1 FASTQ"
         )
         r2_path, r2_snapshot = _resolve_authored_snapshot(
-            row["r2_fastq"], request_dir, f"Sample manifest row {index} R2 FASTQ"
+            row["r2_fastq"], project_dir, f"Sample manifest row {index} R2 FASTQ"
         )
         if r1_path == r2_path:
             raise orchestration_contracts.ContractValidationError(
@@ -445,8 +453,8 @@ def _normalize_partitions(
     }
 
 
-def _policy(request: Mapping[str, Any]) -> dict[str, Any]:
-    analysis = dict(request["analysis"])
+def _policy(definition: Mapping[str, Any]) -> dict[str, Any]:
+    analysis = dict(definition["analysis"])
     analysis_id = analysis.pop("id")
     analysis.setdefault("background_condition", None)
     value = {
@@ -455,50 +463,44 @@ def _policy(request: Mapping[str, Any]) -> dict[str, Any]:
         **analysis,
     }
     orchestration_contracts.validate_record("policy", value)
-    if value["control_condition"] == value["treatment_condition"]:
-        raise orchestration_contracts.ContractValidationError(
-            "Control and treatment conditions must differ"
-        )
-    if value["rna_ref"] == value["rna_alt"]:
-        raise orchestration_contracts.ContractValidationError(
-            "RNA reference and alternate alleles must differ"
-        )
     return value
 
 
-def normalize_request(
-    request_path: str | Path,
+def admit_project(
+    project_path: str | Path,
     profile: Mapping[str, Any] | str | Path,
-) -> NormalizationBundle:
-    """Admit one request without writing and return its canonical execution."""
+) -> ProjectAdmission:
+    """Admit one Project without writing through the current request-v3 adapter."""
 
-    authored_request_value = os.fspath(request_path)
-    _validate_authored_path(authored_request_value, "Request")
-    authored_request = Path(authored_request_value)
-    if not authored_request.is_absolute():
-        authored_request = Path.cwd() / authored_request
-    resolved_request, request_data = _regular_file(authored_request, "Request")
-    request = _load_yaml_object(request_data, resolved_request)
-    orchestration_contracts.validate_record("request", request)
+    authored_project_value = os.fspath(project_path)
+    _validate_authored_path(authored_project_value, "Project definition")
+    authored_project = Path(authored_project_value)
+    if not authored_project.is_absolute():
+        authored_project = Path.cwd() / authored_project
+    resolved_project, project_data = _regular_file(
+        authored_project, "Project definition"
+    )
+    definition = _load_yaml_object(project_data, resolved_project)
+    orchestration_contracts.validate_record("request", definition)
     profile_record = _load_profile(profile)
     expected_profile = (
         f"{profile_record['profile_id']}.{profile_record['profile_version']}"
     )
-    if request["profile"] != expected_profile:
+    if definition["profile"] != expected_profile:
         raise orchestration_contracts.ContractValidationError(
-            f"Request profile {request['profile']} does not match {expected_profile}"
+            f"Project profile {definition['profile']} does not match {expected_profile}"
         )
-    request_dir = resolved_request.parent
+    project_dir = resolved_project.parent
 
     sample_path, sample_data = _resolve_authored_path(
-        request["sample_manifest"], request_dir, "Sample manifest"
+        definition["sample_manifest"], project_dir, "Sample manifest"
     )
     partition_path, partition_data = _resolve_authored_path(
-        request["partition_manifest"], request_dir, "Partition manifest"
+        definition["partition_manifest"], project_dir, "Partition manifest"
     )
-    samples = _normalize_samples(sample_path, sample_data, request_dir)
+    samples = _normalize_samples(sample_path, sample_data, project_dir)
     partitions = _normalize_partitions(partition_path, partition_data)
-    policy = _policy(request)
+    policy = _policy(definition)
     try:
         step09.paired_samples(
             samples["rows"],
@@ -516,17 +518,17 @@ def normalize_request(
         )
 
     _fasta_path, fasta_snapshot = _resolve_authored_snapshot(
-        request["reference"]["fasta"], request_dir, "Reference FASTA"
+        definition["reference"]["fasta"], project_dir, "Reference FASTA"
     )
     _gtf_path, gtf_snapshot = _resolve_authored_snapshot(
-        request["reference"]["gtf"], request_dir, "Reference GTF"
+        definition["reference"]["gtf"], project_dir, "Reference GTF"
     )
     reference = {
         "schema_version": "emrys.reference.v1",
-        "reference_id": request["reference"]["id"],
+        "reference_id": definition["reference"]["id"],
         "fasta": fasta_snapshot,
         "gtf": gtf_snapshot,
-        "star_index": dict(request["reference"]["star_index"]),
+        "star_index": dict(definition["reference"]["star_index"]),
     }
     orchestration_contracts.validate_record("reference", reference)
 
@@ -536,31 +538,29 @@ def normalize_request(
         "profile_sha256": orchestration_contracts.canonical_sha256(profile_record),
     }
     analysis = {
-        "cohort_id": request["cohort_id"],
+        "cohort_id": definition["cohort_id"],
         "primary_analysis_id": policy["analysis_id"],
         "policy": policy,
         "policy_sha256": orchestration_contracts.canonical_sha256(policy),
     }
-    projection_source = {
+    construction = {
         "profile": profile_identity,
         "samples": samples,
         "partitions": partitions,
         "reference": reference,
         "analysis": analysis,
     }
-    analysis_revision = analysis_revision_from_execution_fields(projection_source)
-    return NormalizationBundle(
-        request_path=resolved_request,
-        request_bytes=request_data,
+    admitted_analysis = analysis_revision_from_execution_fields(construction)
+    return ProjectAdmission(
+        source_path=resolved_project,
+        source_bytes=project_data,
         _profile_bytes=orchestration_contracts.canonical_json_bytes(profile_record),
-        analysis_revision=analysis_revision,
-        projection_source_bytes=orchestration_contracts.canonical_json_bytes(
-            projection_source
-        ),
+        analysis=admitted_analysis,
+        construction_bytes=orchestration_contracts.canonical_json_bytes(construction),
     )
 
 
 __all__ = (
-    "NormalizationBundle",
-    "normalize_request",
+    "ProjectAdmission",
+    "admit_project",
 )

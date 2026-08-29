@@ -82,7 +82,7 @@ Slurm allocation; it is not a distributed executor:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
-  --request /absolute/path/to/request.yaml \
+  --project /absolute/path/to/project.yaml \
   --workspace /absolute/path/to/workspace \
   --runtime-profile /absolute/path/to/runtime.selected.tsv \
   --execution-profile /absolute/path/to/emrys.execution.yaml
@@ -183,7 +183,7 @@ Each trial records exact logs, producer wall time, child-process peak RSS, and
 validator status. `summary.tsv` marks the smallest resource value within five
 percent of the fastest successful median. Apply that result only to the tested
 dataset scale, runtime, machine, memory, and storage system; preserve the raw
-trial tree with the resulting request resource plan.
+trial tree with the resulting execution-profile resource plan.
 
 ## Task selection
 

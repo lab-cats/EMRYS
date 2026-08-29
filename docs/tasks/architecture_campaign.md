@@ -964,26 +964,37 @@ CLI composes all three routes through one controlled-runtime adapter instead of
 three duplicate forwarding functions. This changes no command, argument,
 output, Run/Attempt authority, execution behavior, or persisted format.
 
-Public Project/Analysis intake, simpler argument ownership, command naming,
-confirmation, report opt-out/regeneration, and execution-profile selection
-remain later verticals; this boundary does not settle them through a new facade
-or compatibility layer.
+The subsequent narrow Project vertical now owns active scientist intake;
+confirmation, report opt-out/regeneration, broader argument ownership, final
+command naming, and higher-level execution-profile selection remain later work.
 
 #### Request-to-Analysis intake hardening
 
-The existing authored request remains a temporary Project-source/provenance
-adapter; no public Project type, schema, command, or filesystem layout is
-introduced. Normalization now retains immutable authored request bytes,
-canonical profile bytes, canonical construction bytes, and the admitted
-Analysis revision. Compatibility mappings are reconstructed as fresh views, so
-a caller cannot mutate later views, Analysis identity, historical-v1 bytes, or
-subsequent Run construction.
+The preceding hardening cut kept the existing authored request as a temporary
+Project-source/provenance adapter and introduced no public Project type,
+schema, command, or filesystem layout. Admission retained immutable authored
+source bytes, canonical profile bytes, canonical construction bytes, and the
+admitted Analysis revision. Compatibility mappings are reconstructed as fresh
+views, so a caller cannot mutate later views, Analysis identity, historical-v1
+bytes, or subsequent Run construction.
 
-This implements the immutable admission boundary beneath future Project intake
-without selecting its public representation. Project persistence/discovery,
-scientist-facing file shape, embedded versus tabular samples, CLI spelling,
-precedence/defaults, setup/edit lifecycle, and public package/error design
-remain Open.
+This first implemented the immutable admission boundary beneath future Project
+intake. The subsequent narrow vertical directly replaces
+`NormalizationBundle` with owner-local immutable `ProjectAdmission`, publishes
+`project.yaml`, and makes `emrys validate project`, `emrys doctor local-pilot`,
+and `emrys run` accept only `--project`. `RunCandidate.project.analysis` binds
+the admitted Analysis to the existing immutable Execution Plan and Run, while
+the existing read-only Results surface remains unchanged. The current closed
+`emrys.request.v3` shape is deliberately reused as a temporary adapter; no
+second schema, storage model, registry, backend, policy abstraction, or public
+root-package API is introduced.
+
+Doctor admission, fresh post-Doctor Project re-admission, and lifecycle's
+lock-time exact-source re-read remain distinct mutation-window defenses.
+Persisted workflow-attempt fields and snapshots retain their request-era names
+for historical evidence compatibility. Final Project nesting/schema,
+persistence/discovery, embedded versus tabular samples, defaults/precedence,
+setup/edit lifecycle, and public package/error design remain Open.
 
 #### Mutation inventory
 
@@ -992,7 +1003,7 @@ create-exclusive persisted records, not in every Python aggregate:
 
 | State | Current owner and lifetime | Writers | Readers | Why mutation exists now | Immutable-boundary disposition |
 |---|---|---|---|---|---|
-| Normalization drafts and `NormalizationBundle` views | `normalization.py`; drafts live only during one normalization call, then immutable admitted bytes/revision back fresh views | Normalization builders populate local request, profile, and construction drafts; callers may mutate only their disposable views | Onboarding validation, Doctor, control, projection, materialization, tests | Draft parsing, defaulting, snapshot admission, and canonical construction remain naturally incremental; shared post-admission mutation is removed | Implemented for current intake: retain local mutable drafts, then store immutable request/profile/construction bytes and canonical Analysis revision. Public Project representation and owner remain Open. |
+| Project-admission drafts and `ProjectAdmission` views | `normalization.py`; drafts live only during one admission call, then immutable admitted source/profile/construction bytes and Analysis back fresh views | Admission builders populate local definition, profile, and construction drafts; callers may mutate only disposable views | Project validation, Doctor, control, projection, materialization, tests | Draft parsing, defaulting, snapshot admission, and canonical construction remain naturally incremental; shared post-admission mutation is removed | Implemented for current intake. The owner-local boundary is connected through `RunCandidate.project.analysis`; the final Project schema, persistence, and root-package API remain Open. |
 | `AttemptPlan.attempt_record` and nested bundle | `materialization.py` and control; one execute or resume planning invocation through lifecycle handoff | `build_attempt_plan` constructs it; an injected control transformer may replace the plan before return; audited in-repo local-pilot callers showed no later mutation | Control display/execution, materialization publication, lifecycle admission, tests | Construction combines readiness, resources, identity, time/token/host/process, files, and command facts; later mutability is incidental | Exact admitted plan boundary is required. Preserve prepared-versus-materialized byte equality; whether Attempt fields belong to Run remains Open. |
 | `LifecycleRequest.attempt_record` | Materialization-to-lifecycle handoff; one materialized attempt admission | `publish_attempt` constructs the request from the plan | Lifecycle admission, identity/resource/argv rechecks, tests | Mapping shape is inherited from construction; no mutation after handoff is necessary | Candidate immutable admitted request value; do not conflate it with live lifecycle transaction state. |
 | `LifecycleOutcome.receipt` | Lifecycle-to-control handoff; one terminal attempt return | Lifecycle builds the terminal receipt/outcome after receipt-last publication | Control result projection, verified-report display, tests | Dictionary construction mirrors the persisted schema; post-return mutation is not required | Candidate immutable terminal view over persisted evidence; receipt file remains authority. |
@@ -1247,15 +1258,16 @@ and status-domain questions. Product representation, persistence, APIs,
 backend realization, compatibility mechanics, and caller migration remain
 Open. No interim parallel model or god object is authorized.
 
-#### Next bounded `AC-SLICE-03` field-and-authority decision package
+#### Bounded `AC-SLICE-03` field-and-authority decision package
 
-This is a documentation-only decision package, defined but not yet
-implemented. It does not receive a new backlog identity: `AC-SLICE-03`,
+This documentation-only decision package preceded implementation. It did not
+receive a new backlog identity: `AC-SLICE-03`,
 `CONTROL-01`, `RUN-03`, `IDENTITY-01`, and `ARCH-01` remain its planning
 owners.
 
-The minimum current representation roster is `emrys.request.v3`,
-`NormalizationBundle`, `emrys.execution.v1`/`contract/normalized.json`,
+The minimum representation roster at that decision boundary was
+`emrys.request.v3`, `NormalizationBundle`,
+`emrys.execution.v1`/`contract/normalized.json`,
 `emrys.identity-envelope.v1`, `ResourcePlan`, `AttemptPlan`, the unversioned
 workflow configuration, `emrys.workflow-attempt.v1`, `AttemptPreparation`,
 `LifecycleRequest`, `WorkflowResult`, `LifecycleOutcome`,
@@ -1494,7 +1506,7 @@ these tables settle the target allocation.
 | Computational `RuntimeBinding.check_id`, `sha256`, and content-bearing `observed` fact | Resolve exact Execution-Plan tool/environment content identity where semantically relevant; retained again as Attempt admission observation |
 | `RuntimeBinding.path`, `resolved_path` | Attempt physical realization/provenance only |
 | Raw runtime-profile identity and `storage_qualification` binding/receipt | Readiness and Attempt admission provenance only. They prove how/where the fixed plan was admitted but never enter Run identity. |
-| `DoctorResult.request_path`, `workspace`, `source_root`, `runtime_profile`; `inspection`; `blockers`, `remediations`, and derived `ready` | Readiness/locator projection, not Run or Attempt authority |
+| `DoctorResult.project_path`, `workspace`, `source_root`, `runtime_profile`; `inspection`; `blockers`, `remediations`, and derived `ready` | Readiness/locator projection, not Run or Attempt authority |
 | `DoctorResult.run_id`, `source_commit`, `runtime_profile_sha256`, `bindings` | Current candidate/reference and provenance; exact executable/tool content is projected into Execution Plan, while path-bound re-observation remains Attempt admission evidence |
 | Launcher `slurm.account`, `partition`, `qos`, `cpus_per_task`, `memory`, `time`, `exclusive`, `nodelist` / `LauncherPlan` equivalents | Attempt scheduler placement and requested/observed allocation provenance. Capacity must admit the unchanged Run declaration; changing placement alone does not change Run. |
 | Launcher `paths.log_dir`, `request`, `workspace`, `runtime_profile`, `scratch_parent` | Attempt locators/placement provenance only |
@@ -1503,9 +1515,9 @@ these tables settle the target allocation.
 
 | Current representation field | Final semantic owner or disposition |
 |---|---|
-| `NormalizationBundle.request_path`, `request_sha256`, `request_bytes` | Authored-source locator/evidence passed into Attempt provenance |
-| `NormalizationBundle.request`, `profile`, `execution_contract` mutable dictionaries | Construction-only views; retire as authorities |
-| `NormalizationBundle.normalized_bytes`; computed `run_id` | Current-format compatibility authority/derived view until successor cutover; not a second successor authority |
+| `ProjectAdmission.source_path`, `source_sha256`, `source_bytes` | Authored-source locator/evidence passed into Attempt provenance |
+| `ProjectAdmission.definition`, `profile`, `construction` fresh dictionaries | Construction-only views; never authorities |
+| `ProjectAdmission.construction_bytes` | Temporary-adapter construction authority; successor `RunBinding` owns new Run identity, while exact historical execution-v1 is reconstructed only for resume |
 | Current execution top-level `profile`, `samples`, `partitions`, `reference`, `analysis` and their duplicate `identity_envelope` copies | Migrate into one Analysis record, one Execution Plan record, and one Run binding; duplicate envelope retires |
 | `identity_envelope.schema_version`, `identity_envelope_sha256`, current `run_id` | Historical identity authority for current-format Runs; successor generation uses the domain-separated binding above |
 | `reporting_projection.{reference_contract,primary_analysis_policy,reporting_run_contract,artifact_inventory}.{path,sha256}` | Derived reporting adapter/Results projection; identity-neutral |
@@ -1513,7 +1525,7 @@ these tables settle the target allocation.
 
 | Current Attempt/materialization field | Final semantic owner or disposition |
 |---|---|
-| `AttemptPlan.normalized` | Run candidate/reference until successor Run admission |
+| `AttemptPlan.run` | Immutable successor Run candidate or exact historical Run reference through one Attempt plan |
 | `AttemptPlan.readiness`, `workspace`; `run_root`; fixed/attempt files, directories, path properties, `dispatch_count` | Transient readiness, placement, and derived materialization |
 | `operation`, `workflow_attempt_id`, `supersedes_workflow_attempt_id` | Attempt identity/chain |
 | `AttemptPlan.step_threads`, `workflow_cores`, `workflow_memory_mb`, `stage_concurrency`, `stage_memory_mb`, `reporting_memory_mb`, and mutable `attempt_record` | Replace with one Run resource declaration reference, one Attempt resolution/report-policy view, and one immutable admitted Attempt record |
@@ -1592,9 +1604,10 @@ Migration is direct and bounded rather than a permanent parallel stack:
 3. Stop producing current-format compatibility projections for new Runs when
    those callers migrate. Keep historical records readable; do not rewrite or
    delete them.
-4. Retire `NormalizationBundle`/mutable-dictionary authority and workflow
-   config authority in the same caller-complete migrations, without adding a
-   forwarding facade or god object.
+4. The minimal Project vertical retired `NormalizationBundle`. Retire the
+   remaining mutable-dictionary and workflow-config authority in the same
+   caller-complete migrations, without adding a forwarding facade or god
+   object.
 
 #### Run admission and unreceipted-skeleton recovery
 
@@ -2506,6 +2519,20 @@ matrix. `AC-SLICE-04` is complete; broad `ARCH-01`, `ANALYSIS-02`, `LOG-05`,
 future collaborator-library design, and the other shell/scheduler candidates
 remain Open.
 
+### 13.9 Bounded slice record: minimal Project vertical
+
+| Surface/category | Finding | Disposition and surviving authority |
+|---|---|---|
+| Scientist intake | The active path exposed a request noun even though the selected public model begins at Project. | **Replace directly.** Starter and synthetic input sets publish `project.yaml`; validation, Doctor, and Run accept only `--project`. No alias or second active intake remains. |
+| Application boundary | `NormalizationBundle` described a transformation rather than the admitted domain value passed into Run construction. | **Rename and narrow.** Owner-local frozen `ProjectAdmission` retains exact source/profile/construction bytes plus immutable `AnalysisRevision`; `RunCandidate.project.analysis` connects it to existing immutable Run authority and read-only Results. |
+| Schema and future design | Final Project keys, nesting, embedded/tabular sample choice, persistence, discovery, defaults, and public package API are not yet selected. | **Defer.** The current closed `emrys.request.v3` record is the temporary adapter behind the Project boundary. No new schema, registry, backend, storage model, or policy abstraction is added. |
+| Mutation, evidence, and compression | Doctor and lifecycle span real mutation windows; persisted request-era evidence must remain readable. The policy helper repeated two checks already owned by the policy contract. | **Retain the three temporal admissions; delete only the duplicate in-process semantic checks.** Workflow-attempt request fields/snapshots stay unchanged. No evidence is deleted, no shell is touched, and current Run/Results persistence is unchanged. |
+
+Category-separated actuals and focused validation are recorded in the findings
+matrix. `AC-SLICE-03` remains Open for final Project shape/persistence, broader
+public Analysis/Results APIs and role disclosure, generalized backend/policy
+boundaries, and remaining migrations.
+
 ## 14. Measurement plan
 
 Measurement is required so the campaign does not merely move complexity.
@@ -2644,10 +2671,11 @@ The successor Run-authority cutover now implements immutable records, Run-last
 admission, direct workflow/task Run admission, Attempt-owned reporting inputs,
 historical read/resume, and retirement of the temporary execution projection.
 The grouped CLI is now the sole supported Run-control surface and its duplicate
-direct Python planning surface is retired. Current request-to-Analysis intake
-now freezes admitted bytes and authority while returning only fresh disposable
-compatibility views. `AC-SLICE-03` remains Open for the rest of the public
-model. Every
+direct Python planning surface is retired. Current Project admission freezes
+admitted source/profile/construction bytes and Analysis authority, surfaces
+`project.yaml` and `--project` through validation, Doctor, and Run control, and
+connects directly to immutable Analysis/Execution Plan/Run and read-only
+Results. `AC-SLICE-03` remains Open for the rest of the public model. Every
 later candidate still requires its own bounded owner/caller review,
 compression register, mutation inventory, non-goals, acceptance conditions,
 protection disposition, and evidence ceiling before entering the matrix. A
@@ -2658,7 +2686,7 @@ defined in Section 13.1; evidence deletion cannot be implied by promotion.
 |---|---|---|
 | `AC-SLICE-01` | Ratified all 27 architectural invariants and five migration/test guardrails against live contracts and representative tests | Completed as `ARCH-CONST-01`; broad `ARCH-01` remains Open |
 | `AC-SLICE-02` | Ratified responsibility clusters, three separate dependency graphs, forbidden authority transfers, a current-owner crosswalk, and a fast Python source-boundary ratchet for exact CLI seams and transitional imports | Completed as `ARCH-LAYER-01`; broad `ARCH-01` remains Open |
-| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. Successor Run authority, Run-last persistence, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, temporary-projection retirement, separated read-only status, a single supported grouped-CLI Run-control boundary, immutable current request-to-Analysis intake, and Execution-Plan-derived successor Attempt executor provenance are implemented. Public Project/Analysis/Results representation and control, generalized backend/policy boundaries, and remaining public/campaign migrations remain Open, so the campaign card remains Open. |
+| `AC-SLICE-03` | Establish the compact public application model and introduce it only after exact fields, identity, authority, recovery, compatibility, and retirement decisions are complete | Audit, model/boundary, and semantic decisions are complete. Successor Run authority, Run-last persistence, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, temporary-projection retirement, separated read-only status, a single supported grouped-CLI Run-control boundary, Execution-Plan-derived successor Attempt provenance, and the first narrow Project vertical are implemented. `project.yaml`/`--project` now admit immutable `ProjectAdmission.analysis` into Run and existing Results without a new schema or compatibility alias. Final Project nesting/persistence, broader public Analysis/Results APIs and role disclosure, generalized backend/policy boundaries, and remaining public/campaign migrations remain Open, so the campaign card remains Open. |
 | `AC-SLICE-04` | Decide whether a shared thin operation representation is justified and, if so, define the minimum boundary and prove it through one representative migration only after the mapping test passes | **Complete.** The four-owner map retained private `TaskDispatch`, rejected a new universal Stage/Operation representation, and proved the decision through the caller-complete Step `08` Python-owner migration. `ANALYSIS-02` and broad `ARCH-01` retain their wider outcomes. |
 | `AC-SLICE-05` | Ratify the execution guarantee contract, select the minimum justified capability boundary, and prove equivalent declared guarantees across direct and Slurm-placed realizations of each supported backend | One file-bound profile and grouped `run`/`resume` route now select direct or whole-Run Slurm placement around the same one-host Snakemake backend. Private Slurm transport submits once and records Attempt-local placement provenance; the generated wrapper is retired. Controlled planning/materialization parity is implemented. Real scheduler/site, allocation-sensitive, distinct-Attempt outcome, runtime/module, failure/recovery, and report-publication parity plus any additional backend remain Open with `OPS-02`. |
 | `AC-SLICE-06` | Inventory duplicated policy decisions, declare their final authorities, and centralize only a selected repeated decision whose migration proves net reduction | New per-policy slices after inventory; supports `ARCH-01` |

@@ -61,7 +61,7 @@ def test_init_local_pilot_is_dry_run_first_and_receipt_last(
 
     assert onboarding.init_from_args(_namespace(output, execute=True)) == 0
     expected = {
-        "request.yaml",
+        "project.yaml",
         "emrys.execution.yaml",
         "samples.tsv",
         "partitions.tsv",
@@ -82,7 +82,7 @@ def test_init_local_pilot_is_dry_run_first_and_receipt_last(
         data = (output / row["path"]).read_bytes()
         assert int(row["size_bytes"]) == len(data)
         assert row["sha256"] == hashlib.sha256(data).hexdigest()
-    request = (output / "request.yaml").read_text(encoding="utf-8")
+    request = (output / "project.yaml").read_text(encoding="utf-8")
     assert "sample_manifest: samples.tsv" in request
     assert "partition_manifest: partitions.tsv" in request
     execution_bytes = (output / "emrys.execution.yaml").read_bytes()
@@ -163,10 +163,10 @@ def test_publication_re_admits_every_member_after_completion(
     def write_then_tamper(path: Path, data: bytes, mode: int) -> None:
         real_write(path, data, mode)
         if path.name == "complete.tsv":
-            (path.parent / "request.yaml").write_bytes(b"changed after preparation\n")
+            (path.parent / "project.yaml").write_bytes(b"changed after preparation\n")
 
     monkeypatch.setattr(onboarding, "_write_member", write_then_tamper)
-    members = {"request.yaml": (b"original\n", 0o644)}
+    members = {"project.yaml": (b"original\n", 0o644)}
 
     with pytest.raises(
         onboarding.OnboardingError, match="member bytes changed"
@@ -181,7 +181,7 @@ def test_publication_re_admits_every_member_after_completion(
     assert "present-but-invalid" in str(failure.value)
     assert "presence alone is not completion proof" in str(failure.value)
     assert (output / "complete.tsv").is_file()
-    assert (output / "request.yaml").read_bytes() == b"changed after preparation\n"
+    assert (output / "project.yaml").read_bytes() == b"changed after preparation\n"
 
 
 @pytest.mark.parametrize(
@@ -221,7 +221,7 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
     _publish_synthetic(second)
 
     assert _tree_bytes(first) == _tree_bytes(second)
-    result = onboarding.validate_local_pilot_request(first / "request.yaml")
+    result = onboarding.validate_project(first / "project.yaml")
     assert result.sample_count == 4
     assert result.pair_count == 2
     assert result.partition_count == 1
@@ -323,7 +323,7 @@ def test_production_like_profile_is_explicit_and_dry_run_skips_generation(
     }
     assert metadata["expected_terminal_workflow"]["last_scientific_step"] == "10"
     assert metadata["expected_terminal_workflow"]["local_pipeline_complete"] is True
-    request = synthetic_fixture._request(profile).decode("utf-8")
+    request = synthetic_fixture._project_definition(profile).decode("utf-8")
     assert "label: deterministic-production-like-v1" in request
     assert "id: synthetic-production-like-v1" in request
     assert "cohort_id: synthetic-production-like-v1" in request
@@ -594,14 +594,14 @@ def test_synthetic_fastqs_have_complete_matching_mates(tmp_path: Path) -> None:
         assert all(len(sequence) == 75 for sequence in r2_lines[1::4])
 
 
-def test_request_validation_is_read_only(tmp_path: Path) -> None:
+def test_project_validation_is_read_only(tmp_path: Path) -> None:
     output = tmp_path / "fixture"
     _publish_synthetic(output)
     before = _tree_bytes(output)
 
     assert (
         onboarding.validate_from_args(
-            argparse.Namespace(request=output / "request.yaml")
+            argparse.Namespace(project=output / "project.yaml")
         )
         == 0
     )
@@ -609,14 +609,14 @@ def test_request_validation_is_read_only(tmp_path: Path) -> None:
     assert _tree_bytes(output) == before
 
 
-def test_request_validation_reports_invalid_request(
+def test_project_validation_reports_invalid_request(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    missing_request = tmp_path / "missing-request.yaml"
+    missing_request = tmp_path / "missing-project.yaml"
 
     assert (
-        onboarding.validate_from_args(argparse.Namespace(request=missing_request)) == 1
+        onboarding.validate_from_args(argparse.Namespace(project=missing_request)) == 1
     )
     assert "ERROR:" in capsys.readouterr().err
 
@@ -642,16 +642,16 @@ def test_public_cli_routes_synthetic_init_and_request_validation(
         cli.main(
             [
                 "validate",
-                "local-pilot-request",
-                "--request",
-                str(output / "request.yaml"),
+                "project",
+                "--project",
+                str(output / "project.yaml"),
             ]
         )
         == 0
     )
     stdout = capsys.readouterr().out
     assert "Published deterministic local-pilot fixture" in stdout
-    assert "Local-pilot request validation: PASS" in stdout
+    assert "Project validation: PASS" in stdout
 
 
 @pytest.mark.parametrize(
@@ -671,7 +671,7 @@ def test_public_cli_routes_synthetic_init_and_request_validation(
         ),
     ),
 )
-def test_request_validation_rejects_reference_incompatibility(
+def test_project_validation_rejects_reference_incompatibility(
     tmp_path: Path,
     target: str,
     old: str,
@@ -686,10 +686,10 @@ def test_request_validation_rejects_reference_incompatibility(
     )
 
     with pytest.raises(onboarding.OnboardingError, match=message):
-        onboarding.validate_local_pilot_request(output / "request.yaml")
+        onboarding.validate_project(output / "project.yaml")
 
 
-def test_request_validation_checks_regions_file_against_fasta(tmp_path: Path) -> None:
+def test_project_validation_checks_regions_file_against_fasta(tmp_path: Path) -> None:
     output = tmp_path / "fixture"
     _publish_synthetic(output)
     regions = output / "regions.tsv"
@@ -699,15 +699,15 @@ def test_request_validation_checks_regions_file_against_fasta(tmp_path: Path) ->
         "primary\tregions_file\tregions.tsv\n",
         encoding="utf-8",
     )
-    result = onboarding.validate_local_pilot_request(output / "request.yaml")
+    result = onboarding.validate_project(output / "project.yaml")
     assert result.partition_count == 1
 
     regions.write_text("chrAbsent\t1\t2\n", encoding="utf-8")
     with pytest.raises(onboarding.OnboardingError, match="absent from FASTA"):
-        onboarding.validate_local_pilot_request(output / "request.yaml")
+        onboarding.validate_project(output / "project.yaml")
 
 
-def test_request_validation_streams_gzip_regions_file(tmp_path: Path) -> None:
+def test_project_validation_streams_gzip_regions_file(tmp_path: Path) -> None:
     import gzip
 
     output = tmp_path / "fixture"
@@ -722,7 +722,7 @@ def test_request_validation_streams_gzip_regions_file(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    result = onboarding.validate_local_pilot_request(output / "request.yaml")
+    result = onboarding.validate_project(output / "project.yaml")
 
     assert result.partition_count == 1
 

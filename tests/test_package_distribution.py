@@ -349,8 +349,8 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
             "usage: emrys prepare local-pilot-runtime",
         ),
         (
-            ("validate", "local-pilot-request", "--help"),
-            "usage: emrys validate local-pilot-request",
+            ("validate", "project", "--help"),
+            "usage: emrys validate project",
         ),
         (("run", "--help"), "usage: emrys run"),
         (("resume", "--help"), "usage: emrys resume"),

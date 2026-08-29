@@ -75,7 +75,7 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
     intake.mkdir(parents=True)
     request = fixture.build(intake)
     profile = fixture.profile()
-    normalized = normalization.normalize_request(request, profile=profile)
+    normalized = normalization.admit_project(request, profile=profile)
     execution, execution_bytes = normalized.historical_execution_v1()
 
     run_root = tmp_path / "run"

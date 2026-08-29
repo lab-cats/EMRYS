@@ -92,7 +92,7 @@ def test_plan_is_no_write_and_builds_exact_sbatch_argv(tmp_path: Path) -> None:
             "-m",
             "emrys",
             "run",
-            "--request",
+            "--project",
             "/data/request with spaces.yaml",
         ),
         log_dir=log_dir,

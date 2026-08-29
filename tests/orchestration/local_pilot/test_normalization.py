@@ -10,21 +10,21 @@ import pytest
 
 from emrys.contracts.orchestration import api as contracts
 from emrys.orchestration.local_pilot import normalization
-from emrys.orchestration.local_pilot.normalization import normalize_request
+from emrys.orchestration.local_pilot.normalization import admit_project
 from tests.orchestration.local_pilot import fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 CONFIG_ROOT = REPO_ROOT / "configs"
 LOCAL_PROFILE = REPO_ROOT / "workflow/contracts/local_cmh_v2.json"
 LOCAL_PILOT_STARTERS = (
-    "local_pilot_request.example.yaml",
+    "project.example.yaml",
     "execution_profile.example.yaml",
     "local_pilot_samples.example.tsv",
     "local_pilot_partitions.example.tsv",
 )
 
 
-def test_local_pilot_starters_normalize_after_explicit_paths_are_populated(
+def test_local_pilot_starters_admit_after_explicit_paths_are_populated(
     tmp_path: Path,
 ) -> None:
     starter_root = tmp_path / "local-pilot-inputs"
@@ -50,20 +50,22 @@ def test_local_pilot_starters_normalize_after_explicit_paths_are_populated(
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(f"placeholder for {relative_path}\n".encode())
 
-    normalized = normalize_request(
-        starter_root / "local_pilot_request.example.yaml",
+    normalized = admit_project(
+        starter_root / "project.example.yaml",
         LOCAL_PROFILE,
     )
 
     assert (starter_root / "execution_profile.example.yaml").is_file()
 
-    assert normalized.request["sample_manifest"] == ("local_pilot_samples.example.tsv")
-    assert normalized.request["partition_manifest"] == (
+    assert normalized.definition["sample_manifest"] == (
+        "local_pilot_samples.example.tsv"
+    )
+    assert normalized.definition["partition_manifest"] == (
         "local_pilot_partitions.example.tsv"
     )
     assert normalized.profile["profile_id"] == "emrys.profile.local_cmh"
     assert normalized.profile["profile_version"] == "v2"
-    source = normalized.projection_source
+    source = normalized.construction
     assert [
         (row["sample_id"], row["condition"], row["replicate"])
         for row in source["samples"]["rows"]
@@ -87,25 +89,25 @@ def test_admitted_intake_views_cannot_mutate_analysis_authority(
     tmp_path: Path,
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
-    normalized = normalize_request(request, fixture.profile())
-    expected_request = normalized.request
+    normalized = admit_project(request, fixture.profile())
+    expected_request = normalized.definition
     expected_profile = normalized.profile
-    expected_projection = normalized.projection_source
-    expected_request_sha256 = normalized.request_sha256
-    expected_analysis_id = normalized.analysis_revision.analysis_revision_id
-    expected_analysis_bytes = normalized.analysis_revision.canonical_bytes
+    expected_projection = normalized.construction
+    expected_request_sha256 = normalized.source_sha256
+    expected_analysis_id = normalized.analysis.analysis_revision_id
+    expected_analysis_bytes = normalized.analysis.canonical_bytes
     _, expected_historical_bytes = normalized.historical_execution_v1()
 
-    normalized.request["analysis"]["min_sample_dp"] = 999
+    normalized.definition["analysis"]["min_sample_dp"] = 999
     normalized.profile["profile_id"] = "mutated"
-    normalized.projection_source["analysis"]["cohort_id"] = "mutated"
+    normalized.construction["analysis"]["cohort_id"] = "mutated"
 
-    assert normalized.request == expected_request
+    assert normalized.definition == expected_request
     assert normalized.profile == expected_profile
-    assert normalized.projection_source == expected_projection
-    assert normalized.request_sha256 == expected_request_sha256
-    assert normalized.analysis_revision.analysis_revision_id == expected_analysis_id
-    assert normalized.analysis_revision.canonical_bytes == expected_analysis_bytes
+    assert normalized.construction == expected_projection
+    assert normalized.source_sha256 == expected_request_sha256
+    assert normalized.analysis.analysis_revision_id == expected_analysis_id
+    assert normalized.analysis.canonical_bytes == expected_analysis_bytes
     assert normalized.historical_execution_v1()[1] == expected_historical_bytes
 
 
@@ -113,51 +115,43 @@ def test_analysis_revision_is_deterministic_path_neutral_and_label_independent(
     tmp_path: Path,
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
-    first = normalize_request(request, fixture.profile())
+    first = admit_project(request, fixture.profile())
     elsewhere = tmp_path / "elsewhere"
     elsewhere.mkdir()
     previous = Path.cwd()
     try:
         os.chdir(elsewhere)
-        second = normalize_request(request, fixture.profile())
+        second = admit_project(request, fixture.profile())
     finally:
         os.chdir(previous)
 
-    relocated = normalize_request(
+    relocated = admit_project(
         fixture.build(tmp_path / "relocated-request-root"),
         fixture.profile(),
     )
-    assert first.analysis_revision.analysis_revision_id == (
-        second.analysis_revision.analysis_revision_id
+    assert first.analysis.analysis_revision_id == (second.analysis.analysis_revision_id)
+    assert first.analysis.canonical_bytes == (second.analysis.canonical_bytes)
+    assert first.analysis.analysis_revision_id == (
+        relocated.analysis.analysis_revision_id
     )
-    assert first.analysis_revision.canonical_bytes == (
-        second.analysis_revision.canonical_bytes
-    )
-    assert first.analysis_revision.analysis_revision_id == (
-        relocated.analysis_revision.analysis_revision_id
-    )
-    assert first.analysis_revision.canonical_bytes == (
-        relocated.analysis_revision.canonical_bytes
-    )
-    assert first.projection_source_bytes != relocated.projection_source_bytes
-    original_request_hash = first.request_sha256
+    assert first.analysis.canonical_bytes == (relocated.analysis.canonical_bytes)
+    assert first.construction_bytes != relocated.construction_bytes
+    original_request_hash = first.source_sha256
     request.write_text(
         request.read_text(encoding="utf-8")
         .replace("label: first label\n", "label: reformatted label\n")
         .replace("schema_version:", "schema_version: "),
         encoding="utf-8",
     )
-    relabeled = normalize_request(request, fixture.profile())
-    assert relabeled.request_sha256 != original_request_hash
-    assert relabeled.analysis_revision.analysis_revision_id == (
-        first.analysis_revision.analysis_revision_id
+    relabeled = admit_project(request, fixture.profile())
+    assert relabeled.source_sha256 != original_request_hash
+    assert relabeled.analysis.analysis_revision_id == (
+        first.analysis.analysis_revision_id
     )
-    assert relabeled.analysis_revision.canonical_bytes == (
-        first.analysis_revision.canonical_bytes
-    )
-    assert relabeled.projection_source_bytes == first.projection_source_bytes
-    assert "label" not in first.analysis_revision.canonical_bytes.decode("utf-8")
-    contracts.validate_record("application-model", first.analysis_revision.record)
+    assert relabeled.analysis.canonical_bytes == (first.analysis.canonical_bytes)
+    assert relabeled.construction_bytes == first.construction_bytes
+    assert "label" not in first.analysis.canonical_bytes.decode("utf-8")
+    contracts.validate_record("application-model", first.analysis.record)
 
     historical, historical_bytes = first.historical_execution_v1()
     contracts.validate_record("execution", historical, profile=fixture.profile())
@@ -187,9 +181,9 @@ def test_regions_file_resolves_from_nested_partition_manifest(
         encoding="utf-8",
     )
 
-    row = normalize_request(request, fixture.profile()).projection_source["partitions"][
-        "rows"
-    ][0]
+    row = admit_project(request, fixture.profile()).construction["partitions"]["rows"][
+        0
+    ]
 
     assert row["selector_value"] == str(selector)
     assert row["selector_file"] == {
@@ -203,7 +197,7 @@ def test_execution_profile_does_not_change_analysis_revision(
     tmp_path: Path,
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
-    baseline = normalize_request(request, fixture.profile())
+    baseline = admit_project(request, fixture.profile())
     execution_profile = request.parent / "emrys.execution.yaml"
     execution_profile.write_text(
         execution_profile.read_text(encoding="utf-8")
@@ -213,31 +207,25 @@ def test_execution_profile_does_not_change_analysis_revision(
         encoding="utf-8",
     )
 
-    tuned = normalize_request(request, fixture.profile())
+    tuned = admit_project(request, fixture.profile())
 
-    assert tuned.request_sha256 == baseline.request_sha256
-    assert tuned.analysis_revision.analysis_revision_id == (
-        baseline.analysis_revision.analysis_revision_id
+    assert tuned.source_sha256 == baseline.source_sha256
+    assert tuned.analysis.analysis_revision_id == (
+        baseline.analysis.analysis_revision_id
     )
-    assert tuned.analysis_revision.canonical_bytes == (
-        baseline.analysis_revision.canonical_bytes
-    )
-    assert tuned.projection_source_bytes == baseline.projection_source_bytes
+    assert tuned.analysis.canonical_bytes == (baseline.analysis.canonical_bytes)
+    assert tuned.construction_bytes == baseline.construction_bytes
 
 
 def test_bound_input_change_creates_a_new_analysis_revision(tmp_path: Path) -> None:
     request = fixture.build(tmp_path / "request-root")
-    before = normalize_request(request, fixture.profile())
+    before = admit_project(request, fixture.profile())
     changed = request.parent / "reads" / "PUM1_2_R1.fastq"
     changed.write_text("@changed/1\nGGGG\n+\nIIII\n", encoding="utf-8")
-    after = normalize_request(request, fixture.profile())
+    after = admit_project(request, fixture.profile())
 
-    assert after.analysis_revision.analysis_revision_id != (
-        before.analysis_revision.analysis_revision_id
-    )
-    assert after.analysis_revision.canonical_bytes != (
-        before.analysis_revision.canonical_bytes
-    )
+    assert after.analysis.analysis_revision_id != (before.analysis.analysis_revision_id)
+    assert after.analysis.canonical_bytes != (before.analysis.canonical_bytes)
 
 
 def test_large_input_identities_are_streamed_without_byte_capture(
@@ -257,10 +245,14 @@ def test_large_input_identities_are_streamed_without_byte_capture(
 
     monkeypatch.setattr(normalization, "_regular_file", reject_large_byte_capture)
 
-    normalized = normalize_request(request, fixture.profile())
+    normalized = admit_project(request, fixture.profile())
 
-    assert captured_labels == ["Request", "Sample manifest", "Partition manifest"]
-    source = normalized.projection_source
+    assert captured_labels == [
+        "Project definition",
+        "Sample manifest",
+        "Partition manifest",
+    ]
+    source = normalized.construction
     reference = source["reference"]
     for key in ("fasta", "gtf"):
         path = Path(reference[key]["path"])
@@ -291,7 +283,7 @@ def test_mixed_fastq_compression_is_rejected_before_analysis_identity(
         contracts.ContractValidationError,
         match="EV_1 R1 and R2 FASTQs must use the same compression mode",
     ):
-        normalize_request(request, fixture.profile())
+        admit_project(request, fixture.profile())
 
 
 @pytest.mark.parametrize("replacement_kind", ("file", "symlink"))
@@ -326,7 +318,7 @@ def test_admission_rejects_deterministic_pathname_replacement_after_open(
         "must not be a symlink" if replacement_kind == "symlink" else "pathname changed"
     )
     with pytest.raises(contracts.ContractValidationError, match=expected):
-        normalize_request(request, fixture.profile())
+        admit_project(request, fixture.profile())
 
 
 @pytest.mark.parametrize("manifest_name", ("samples.tsv", "partitions.tsv"))
@@ -380,10 +372,10 @@ def test_manifest_parsing_uses_admitted_bytes_across_an_aba_path_swap(
     monkeypatch.setattr(normalization.os, "open", aba_open)
     monkeypatch.setattr(normalization.os, "stat", stat_then_swap)
 
-    normalized = normalize_request(request, fixture.profile())
+    normalized = admit_project(request, fixture.profile())
 
     assert state == {"opens": 1, "path_checks": 2, "swapped": True}
-    source = normalized.projection_source
+    source = normalized.construction
     if manifest_name == "samples.tsv":
         assert [row["sample_id"] for row in source["samples"]["rows"]] == [
             "EV_1",
@@ -401,21 +393,19 @@ def test_absent_optional_background_normalizes_to_explicit_null(
     tmp_path: Path,
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
-    explicit = normalize_request(request, fixture.profile())
+    explicit = admit_project(request, fixture.profile())
     request.write_text(
         request.read_text(encoding="utf-8").replace(
             "  background_condition: null\n", ""
         ),
         encoding="utf-8",
     )
-    omitted = normalize_request(request, fixture.profile())
+    omitted = admit_project(request, fixture.profile())
 
-    assert omitted.analysis_revision.analysis_revision_id == (
-        explicit.analysis_revision.analysis_revision_id
+    assert omitted.analysis.analysis_revision_id == (
+        explicit.analysis.analysis_revision_id
     )
-    assert (
-        omitted.projection_source["analysis"]["policy"]["background_condition"] is None
-    )
+    assert omitted.construction["analysis"]["policy"]["background_condition"] is None
 
 
 def test_declared_background_requires_at_least_one_sample(tmp_path: Path) -> None:
@@ -432,7 +422,7 @@ def test_declared_background_requires_at_least_one_sample(tmp_path: Path) -> Non
         contracts.ContractValidationError,
         match="background_condition has no sample rows",
     ):
-        normalize_request(request, fixture.profile())
+        admit_project(request, fixture.profile())
 
 
 @pytest.mark.parametrize(
@@ -460,7 +450,7 @@ def test_normalization_rejects_step09_threshold_boundaries(
     )
 
     with pytest.raises(contracts.ContractValidationError, match=field):
-        normalize_request(request, fixture.profile())
+        admit_project(request, fixture.profile())
 
 
 @pytest.mark.parametrize(
@@ -486,7 +476,7 @@ def test_yaml_extensions_are_rejected(
     request.write_text(replacement, encoding="utf-8")
 
     with pytest.raises(contracts.ContractValidationError, match=message):
-        normalize_request(request, fixture.profile())
+        admit_project(request, fixture.profile())
 
 
 @pytest.mark.parametrize(
@@ -519,7 +509,7 @@ def test_literal_existing_unsafe_or_interpolated_paths_are_rejected_before_acces
         "redundant path separators" if "//" in unsafe else "explicit normalized path"
     )
     with pytest.raises(contracts.ContractValidationError, match=expected):
-        normalize_request(request, fixture.profile())
+        admit_project(request, fixture.profile())
 
 
 def test_request_path_uses_the_same_lexical_policy_before_access(
@@ -532,7 +522,7 @@ def test_request_path_uses_the_same_lexical_policy_before_access(
         contracts.ContractValidationError,
         match="redundant path separators",
     ):
-        normalize_request(unsafe_request, fixture.profile())
+        admit_project(unsafe_request, fixture.profile())
 
 
 def test_path_profile_is_parsed_from_strict_admitted_json_bytes(
@@ -559,7 +549,7 @@ def test_path_profile_is_parsed_from_strict_admitted_json_bytes(
         unexpected_profile_reopen,
     )
 
-    normalized = normalize_request(request, profile_path)
+    normalized = admit_project(request, profile_path)
 
     assert normalized.profile == fixture.profile()
 
@@ -573,7 +563,7 @@ def test_path_profile_rejects_duplicate_json_keys(tmp_path: Path) -> None:
         contracts.ContractValidationError,
         match="Duplicate JSON object key: schema_version",
     ):
-        normalize_request(request, profile_path)
+        admit_project(request, profile_path)
 
 
 def test_symlinked_fastq_is_rejected(tmp_path: Path) -> None:
@@ -586,7 +576,7 @@ def test_symlinked_fastq_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(
         contracts.ContractValidationError, match="must not be a symlink"
     ):
-        normalize_request(request, fixture.profile())
+        admit_project(request, fixture.profile())
 
 
 def test_incomplete_paired_strata_are_rejected(tmp_path: Path) -> None:
@@ -599,4 +589,4 @@ def test_incomplete_paired_strata_are_rejected(tmp_path: Path) -> None:
         contracts.ContractValidationError,
         match="exactly one control and one treatment",
     ):
-        normalize_request(request, fixture.profile())
+        admit_project(request, fixture.profile())

@@ -41,12 +41,12 @@ from emrys.libraries.source_authority import (
 )
 from emrys.orchestration.local_pilot import onboarding
 from emrys.orchestration.local_pilot.normalization import (
-    NormalizationBundle,
-    normalize_request,
+    ProjectAdmission,
+    admit_project,
 )
 
 DESCRIPTION = (
-    "Check whether one explicit request, workspace, source checkout, runtime "
+    "Check whether one explicit Project, workspace, source checkout, runtime "
     "profile, and final storage qualification are ready for the fixed local "
     "pilot. This command is read-only and never installs, repairs, loads "
     "modules, or creates a workspace."
@@ -106,7 +106,7 @@ class RuntimeBinding:
 class DoctorResult:
     """Immutable read-only local-pilot readiness result."""
 
-    request_path: Path
+    project_path: Path
     workspace: Path
     source_root: Path
     source_commit: str | None
@@ -165,9 +165,7 @@ def required_tool_identities(
     if len(bound) != len(bindings):
         raise DoctorInputError("Runtime file bindings must use unique check IDs")
     if "storage_qualification" not in bound:
-        raise DoctorInputError(
-            "Runtime file binding is absent: storage_qualification"
-        )
+        raise DoctorInputError("Runtime file binding is absent: storage_qualification")
 
     def file_identity(name: str, version: str) -> dict[str, str | None]:
         try:
@@ -237,8 +235,8 @@ class DoctorOps:
     """Explicit fault-injection dependencies for read-only admission."""
 
     inspect_source: Callable[[Path, Path], SourceCheckoutIdentity]
-    normalize: Callable[
-        [str | Path, Mapping[str, object] | str | Path], NormalizationBundle
+    admit_project: Callable[
+        [str | Path, Mapping[str, object] | str | Path], ProjectAdmission
     ]
     inspect_runtime: Callable[[Path, str, Mapping[str, str]], RuntimeInspection]
     observe_snakemake: Callable[[Path], str]
@@ -301,7 +299,7 @@ def _default_profile_loader(profile: Path) -> tuple[bytes, tuple[RuntimeCheck, .
 
 DEFAULT_DOCTOR_OPS = DoctorOps(
     inspect_source=_default_source_inspector,
-    normalize=normalize_request,
+    admit_project=admit_project,
     inspect_runtime=_default_runtime_inspector,
     observe_snakemake=_default_snakemake_observer,
     load_runtime_profile=_default_profile_loader,
@@ -390,13 +388,13 @@ def workspace_location_blockers(
 
 
 def _step00c_external_parent_blockers(
-    normalized: NormalizationBundle,
+    project: ProjectAdmission,
     *,
     path_access: Callable[[Path, int], bool],
 ) -> tuple[list[str], list[str]]:
     """Check the stationary FASTA parent needed for Step 00c sidecar publication."""
 
-    fasta = Path(str(normalized.projection_source["reference"]["fasta"]["path"]))
+    fasta = Path(str(project.construction["reference"]["fasta"]["path"]))
     parent = fasta.parent
     try:
         fasta_state = fasta.lstat()
@@ -604,9 +602,7 @@ def _declared_renv_library(checks: tuple[RuntimeCheck, ...]) -> Path:
         raise DoctorInputError(
             f"Selected renv_library has no readable installed renv package: {exc}"
         ) from exc
-    if not (
-        stat.S_ISDIR(entry_before.st_mode) or stat.S_ISLNK(entry_before.st_mode)
-    ):
+    if not (stat.S_ISDIR(entry_before.st_mode) or stat.S_ISLNK(entry_before.st_mode)):
         raise DoctorInputError(
             f"Installed renv package entry must be a directory or symlink: "
             f"{package_entry}"
@@ -633,24 +629,20 @@ def _declared_renv_library(checks: tuple[RuntimeCheck, ...]) -> Path:
             f"Installed renv DESCRIPTION must be a regular non-symlink file: {description}"
         )
     if (
-        (
-            entry_before.st_dev,
-            entry_before.st_ino,
-            entry_before.st_mode,
-            entry_before.st_size,
-            entry_before.st_mtime_ns,
-            entry_before.st_ctime_ns,
-        )
-        != (
-            entry_after.st_dev,
-            entry_after.st_ino,
-            entry_after.st_mode,
-            entry_after.st_size,
-            entry_after.st_mtime_ns,
-            entry_after.st_ctime_ns,
-        )
-        or resolved_after != package_root
-    ):
+        entry_before.st_dev,
+        entry_before.st_ino,
+        entry_before.st_mode,
+        entry_before.st_size,
+        entry_before.st_mtime_ns,
+        entry_before.st_ctime_ns,
+    ) != (
+        entry_after.st_dev,
+        entry_after.st_ino,
+        entry_after.st_mode,
+        entry_after.st_size,
+        entry_after.st_mtime_ns,
+        entry_after.st_ctime_ns,
+    ) or resolved_after != package_root:
         raise DoctorInputError("Installed renv package entry changed during admission")
     if (
         package_state.st_dev,
@@ -740,16 +732,14 @@ def runtime_file_bindings(
                     f"{package_entry}: {exc}"
                 ) from exc
             if not (
-                stat.S_ISDIR(entry_before.st_mode)
-                or stat.S_ISLNK(entry_before.st_mode)
+                stat.S_ISDIR(entry_before.st_mode) or stat.S_ISLNK(entry_before.st_mode)
             ):
                 raise DoctorInputError(
                     f"Installed R package entry must be a directory or symlink: "
                     f"{check.check_id}: {package_entry}"
                 )
-            if (
-                stat.S_ISLNK(target_before.st_mode)
-                or not stat.S_ISDIR(target_before.st_mode)
+            if stat.S_ISLNK(target_before.st_mode) or not stat.S_ISDIR(
+                target_before.st_mode
             ):
                 raise DoctorInputError(
                     f"Installed R package must resolve to a canonical real directory: "
@@ -888,14 +878,14 @@ def runtime_file_bindings(
 
 
 def inspect_local_pilot(
-    request_path: str | Path,
+    project_path: str | Path,
     workspace: str | Path,
     runtime_profile: str | Path,
     *,
     source_root: Path | None = None,
     ops: DoctorOps = DEFAULT_DOCTOR_OPS,
 ) -> DoctorResult:
-    """Inspect one local-pilot request and runtime without writing anything."""
+    """Inspect one Project and runtime without writing anything."""
 
     root = _absolute_path(_source_root() if source_root is None else source_root)
     profile_path = _absolute_path(runtime_profile)
@@ -911,22 +901,20 @@ def inspect_local_pilot(
             "Use the clean reviewed EMRYS checkout and selected workflow environment."
         )
     try:
-        normalized = ops.normalize(request_path, root / PROFILE_RELATIVE_PATH)
+        project = ops.admit_project(project_path, root / PROFILE_RELATIVE_PATH)
     except (orchestration_contracts.ContractValidationError, OSError) as exc:
         raise DoctorInputError(str(exc)) from exc
     try:
-        onboarding.validate_normalized_request(normalized)
+        onboarding.validate_project_admission(project)
     except onboarding.OnboardingError as exc:
         raise DoctorInputError(str(exc)) from exc
     step00c_blockers, step00c_remediations = _step00c_external_parent_blockers(
-        normalized,
+        project,
         path_access=ops.path_access,
     )
     blockers.extend(step00c_blockers)
     remediations.extend(step00c_remediations)
-    reference_fasta = Path(
-        str(normalized.projection_source["reference"]["fasta"]["path"])
-    )
+    reference_fasta = Path(str(project.construction["reference"]["fasta"]["path"]))
     qualification_binding: RuntimeBinding | None = None
     try:
         qualified_storage = ops.inspect_storage(workspace_path, reference_fasta)
@@ -1008,7 +996,7 @@ def inspect_local_pilot(
                 f"{profile_path}."
             )
     return DoctorResult(
-        request_path=normalized.request_path,
+        project_path=project.source_path,
         workspace=workspace_path,
         source_root=root,
         source_commit=source_commit,
@@ -1026,7 +1014,7 @@ def inspect_local_pilot(
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--request", required=True, type=Path)
+    parser.add_argument("--project", required=True, type=Path)
     parser.add_argument("--workspace", required=True, type=Path)
     parser.add_argument("--runtime-profile", required=True, type=Path)
 
@@ -1039,7 +1027,7 @@ def doctor_from_args(
 ) -> int:
     try:
         result = inspect_local_pilot(
-            arguments.request,
+            arguments.project,
             arguments.workspace,
             arguments.runtime_profile,
             source_root=source_root,
@@ -1048,7 +1036,7 @@ def doctor_from_args(
     except DoctorInputError as exc:
         print(f"emrys: error: {exc}", file=sys.stderr)
         return 2
-    print(f"Request: {result.request_path}")
+    print(f"Project: {result.project_path}")
     print(f"Workspace: {result.workspace}")
     print(f"Source checkout: {result.source_root}")
     print(f"Source commit: {result.source_commit or 'not admitted'}")

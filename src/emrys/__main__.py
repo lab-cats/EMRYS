@@ -197,7 +197,7 @@ def _add_onboarding_commands(command_parsers: _SubparserCollection) -> None:
         "local-pilot",
         help="Create a matched local-pilot starter set without replacing files.",
         description=(
-            "Plan or publish one matched request, sample, partition, runtime, "
+            "Plan or publish one matched Project, sample, partition, runtime, "
             "and single-allocation Slurm starter set. The output directory "
             "must be absent and outside the EMRYS checkout."
         ),
@@ -556,13 +556,13 @@ def build_parser(
         help_text="Require every row in one owner-validation report to pass.",
         command=all_pass_validation_command,
     )
-    local_request_parser = validation_parsers.add_parser(
-        "local-pilot-request",
-        help="Validate local-pilot inputs before requiring scientific tools.",
+    project_parser = validation_parsers.add_parser(
+        "project",
+        help="Validate one scientist-authored Project before requiring tools.",
         description=local_pilot_onboarding_command.DESCRIPTION,
     )
-    local_pilot_onboarding_command.configure_validation_parser(local_request_parser)
-    local_request_parser.set_defaults(
+    local_pilot_onboarding_command.configure_validation_parser(project_parser)
+    project_parser.set_defaults(
         _command_handler=local_pilot_onboarding_command.validate_from_args
     )
     _add_validation_command(

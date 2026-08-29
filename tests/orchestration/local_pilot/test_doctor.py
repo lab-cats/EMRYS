@@ -37,7 +37,7 @@ from emrys.libraries.source_authority import (
     controlled_python_argv,
 )
 from emrys.orchestration.local_pilot import doctor
-from emrys.orchestration.local_pilot.normalization import normalize_request
+from emrys.orchestration.local_pilot.normalization import admit_project
 
 from tests.orchestration.local_pilot.fixture import build
 
@@ -241,7 +241,7 @@ def _ops(
 
     return doctor.DoctorOps(
         inspect_source=inspect_source,
-        normalize=normalize_request,
+        admit_project=admit_project,
         inspect_runtime=inspect_runtime,
         observe_snakemake=lambda _python: doctor.SNAKEMAKE_VERSION,
         load_runtime_profile=lambda _path: (
@@ -292,7 +292,7 @@ def test_ready_doctor_is_read_only_and_guards_renv(
     )
 
     assert result.ready
-    assert result.request_path == request.resolve(strict=True)
+    assert result.project_path == request.resolve(strict=True)
     assert not hasattr(result, "run_id")
     assert result.source_commit == "a" * 40
     assert not workspace.exists()
@@ -770,7 +770,7 @@ def test_malformed_runtime_profile_is_usage_error(tmp_path: Path) -> None:
     ops = _ops(_inspection(tmp_path))
     rejecting = doctor.DoctorOps(
         inspect_source=ops.inspect_source,
-        normalize=ops.normalize,
+        admit_project=ops.admit_project,
         inspect_runtime=reject_runtime,
         observe_snakemake=ops.observe_snakemake,
         load_runtime_profile=ops.load_runtime_profile,
@@ -1181,6 +1181,7 @@ def test_cli_statuses_and_help(
         check=False,
     )
     assert help_result.returncode == 0
+    assert "--project" in help_result.stdout
     assert "--runtime-profile" in help_result.stdout
     assert "--workspace" in help_result.stdout
 
@@ -1188,7 +1189,7 @@ def test_cli_statuses_and_help(
     runtime = tmp_path / "runtime.tsv"
     runtime.write_text("placeholder\n", encoding="utf-8")
     arguments = argparse.Namespace(
-        request=request,
+        project=request,
         workspace=tmp_path / "workspace",
         runtime_profile=runtime,
     )
@@ -1224,7 +1225,7 @@ def test_cli_statuses_and_help(
         source_root=REPO_ROOT,
         ops=doctor.DoctorOps(
             inspect_source=base_ops.inspect_source,
-            normalize=base_ops.normalize,
+            admit_project=base_ops.admit_project,
             inspect_runtime=reject_runtime,
             observe_snakemake=base_ops.observe_snakemake,
             load_runtime_profile=base_ops.load_runtime_profile,

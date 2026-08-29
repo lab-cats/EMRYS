@@ -26,7 +26,7 @@ The supported flow is:
 
 ```text
 emrys run / emrys resume
-  -> request admission and lifecycle materialization
+  -> Project admission and lifecycle materialization
   -> fixed Snakefile plus checkout-bound local engine profile
   -> public owner producers and validators
   -> artifact index, run summary, and report bundle
@@ -76,8 +76,8 @@ scientific profiles.
 ## Execution boundary
 
 [`profiles/local/profile.v9+.yaml`](profiles/local/profile.v9+.yaml) runs every
-Snakemake job on one host. The admitted request supplies total workflow cores,
-sample concurrency, and owner thread counts. A workstation or one allocated
+Snakemake job on one host. The immutable Execution Plan and Attempt-local
+resolution supply total workflow cores, sample concurrency, and owner thread counts. A workstation or one allocated
 Slurm node may be that host, but this is not a distributed or Slurm-executor
 profile.
 

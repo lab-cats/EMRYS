@@ -37,7 +37,7 @@ from emrys.orchestration.local_pilot import (
     lifecycle,
     reporting_boundary,
 )
-from emrys.orchestration.local_pilot.normalization import NormalizationBundle
+from emrys.orchestration.local_pilot.normalization import ProjectAdmission
 from emrys.orchestration.local_pilot.resource_policy import (
     ComputationalResourceDeclaration,
     THREAD_CAPABLE_STAGE_IDS,
@@ -77,7 +77,7 @@ class PlannedFile:
 class RunCandidate:
     """One complete immutable Run value before filesystem admission."""
 
-    normalized: NormalizationBundle
+    project: ProjectAdmission
     execution_plan: ExecutionPlan
     run_binding: RunBinding
 
@@ -85,18 +85,18 @@ class RunCandidate:
         try:
             if (
                 analysis_revision_from_execution_fields(
-                    self.normalized.projection_source
+                    self.project.construction
                 ).canonical_bytes
-                != self.normalized.analysis_revision.canonical_bytes
+                != self.project.analysis.canonical_bytes
             ):
                 raise orchestration_contracts.ContractValidationError(
                     "Construction source differs from the admitted Analysis"
                 )
             validate_successor_run(
-                analysis=self.normalized.analysis_revision,
+                analysis=self.project.analysis,
                 plan=self.execution_plan,
                 run=self.run_binding,
-                profile=self.normalized.profile,
+                profile=self.project.profile,
             )
         except orchestration_contracts.ContractValidationError as exc:
             raise MaterializationError(f"Invalid Run candidate: {exc}") from exc
@@ -110,7 +110,7 @@ class RunCandidate:
 class HistoricalRun:
     """Exact existing execution.v1 authority retained only for resume."""
 
-    normalized: NormalizationBundle
+    project: ProjectAdmission
     run_id: str
     execution_projection_bytes: bytes
 
@@ -128,7 +128,7 @@ class HistoricalRun:
                 raise orchestration_contracts.ContractValidationError(
                     "Historical execution must retain canonical execution.v1 bytes"
                 )
-            validate_execution_view(execution, profile=self.normalized.profile)
+            validate_execution_view(execution, profile=self.project.profile)
             if execution["run_id"] != self.run_id:
                 raise orchestration_contracts.ContractValidationError(
                     "Historical Run ID differs from execution.v1"
@@ -239,7 +239,7 @@ def _absolute(path: Path) -> Path:
 
 
 def build_run_candidate(
-    normalized: NormalizationBundle,
+    project: ProjectAdmission,
     readiness: doctor.DoctorResult,
     declaration: ComputationalResourceDeclaration,
 ) -> RunCandidate:
@@ -264,13 +264,13 @@ def build_run_candidate(
         backend_sha256 = backend_semantics_identity(readiness.source_root)
     except RunImplementationError as exc:
         raise MaterializationError(str(exc)) from exc
-    source = normalized.projection_source
+    source = project.construction
     try:
         plan = build_execution_plan(
             functional_specification=functional_specification_from_profile(
-                normalized.profile
+                project.profile
             ),
-            scientific_stopping_owner_keys=normalized.profile["required_owner_keys"],
+            scientific_stopping_owner_keys=project.profile["required_owner_keys"],
             implementation_content_sha256=implementation_sha256,
             toolchain=toolchain_from_required_tools(required_tools),
             backend="local",
@@ -279,9 +279,9 @@ def build_run_candidate(
             star_index=source["reference"]["star_index"],
             computational_resources=declaration.identity_document(),
         )
-        run = bind_run(normalized.analysis_revision, plan)
+        run = bind_run(project.analysis, plan)
         return RunCandidate(
-            normalized=normalized,
+            project=project,
             execution_plan=plan,
             run_binding=run,
         )
@@ -294,7 +294,7 @@ def _construction_source(run: MaterializedRun) -> dict[str, Any]:
 
     if isinstance(run, HistoricalRun):
         return run.execution_projection
-    source = run.normalized.projection_source
+    source = run.project.construction
     source["run_id"] = run.run_id
     return source
 
@@ -1276,8 +1276,8 @@ def _dispatches(
 ]:
     successor = isinstance(run, RunCandidate)
     source = _construction_source(run)
-    analysis_revision = run.normalized.analysis_revision if successor else None
-    profile = run.normalized.profile
+    analysis_revision = run.project.analysis if successor else None
+    profile = run.project.profile
     inventory = _artifact_rows(source, profile, run_root, analysis_revision)
     paths_by_scope: dict[tuple[str, str], dict[str, list[Path]]] = {}
     for key, rows in inventory.items():
@@ -1293,13 +1293,11 @@ def _dispatches(
         run.execution_projection
         if isinstance(run, HistoricalRun)
         else inspection.SuccessorRunAuthority(
-            run.normalized.analysis_revision, run.execution_plan, run.run_binding
+            run.project.analysis, run.execution_plan, run.run_binding
         )
     )
     expected = inspection.expected_tasks(authority, profile)
-    owners = {
-        str(item["machine_key"]): item for item in profile["owner_tasks"]
-    }
+    owners = {str(item["machine_key"]): item for item in profile["owner_tasks"]}
     for index, task in enumerate(expected, start=1):
         identity = (task.machine_key, task.scope_id)
         references.setdefault(task.machine_key, {})
@@ -1451,7 +1449,7 @@ def build_attempt_plan(
 ) -> AttemptPlan:
     """Build one complete attempt without touching the filesystem."""
 
-    normalized = run.normalized
+    project = run.project
     successor = isinstance(run, RunCandidate)
     executor = (
         str(run.execution_plan.record["identity"]["backend"]["backend"])
@@ -1460,9 +1458,7 @@ def build_attempt_plan(
     )
     source = _construction_source(run)
     execution_bytes = (
-        run.run_binding.canonical_bytes
-        if successor
-        else run.execution_projection_bytes
+        run.run_binding.canonical_bytes if successor else run.execution_projection_bytes
     )
     resource_policy_record = resources.policy_record()
     if not readiness.ready:
@@ -1490,14 +1486,15 @@ def build_attempt_plan(
     run_root = workspace_path / "runs" / run.run_id
     source_root = readiness.source_root
     fixed_profile = source_root / PROFILE_RELATIVE
-    if normalized.profile != orchestration_contracts.load_json_object(fixed_profile):
-        raise MaterializationError("Normalization did not use the fixed source profile")
+    if project.profile != orchestration_contracts.load_json_object(fixed_profile):
+        raise MaterializationError(
+            "Project admission did not use the fixed source profile"
+        )
     runtime_profile_path = (
         run_root / "contract" / "runtime-profiles" / f"{attempt_id}.tsv"
     )
     storage_binding_count = sum(
-        binding.check_id == "storage_qualification"
-        for binding in readiness.bindings
+        binding.check_id == "storage_qualification" for binding in readiness.bindings
     )
     if storage_binding_count != 1:
         raise MaterializationError(
@@ -1534,16 +1531,16 @@ def build_attempt_plan(
     reporting_files, reporting_config, reporting_directories = (
         reporting_boundary._attempt_reporting_materialization(
             source,
-            normalized.profile,
+            project.profile,
             run_root,
-            analysis=(normalized.analysis_revision if successor else None),
+            analysis=(project.analysis if successor else None),
             attempt_id=(attempt_id if successor else None),
         )
     )
     fixed_files = [
         PlannedFile(
             run_root / "contract/profile.json",
-            orchestration_contracts.canonical_json_bytes(normalized.profile),
+            orchestration_contracts.canonical_json_bytes(project.profile),
         ),
     ]
     if not successor:
@@ -1581,13 +1578,13 @@ def build_attempt_plan(
         cores=workflow_cores,
         resource_limits=resources.scheduler_limits(),
     )
-    request = normalized.request
+    definition = project.definition
     attempt = {
         "schema_version": "emrys.workflow-attempt.v1",
         "run_id": run.run_id,
         "execution_contract_sha256": _sha256(execution_bytes),
         "profile_sha256": _sha256(
-            orchestration_contracts.canonical_json_bytes(normalized.profile)
+            orchestration_contracts.canonical_json_bytes(project.profile)
         ),
         "workflow_attempt_id": attempt_id,
         "supersedes_workflow_attempt_id": supersedes_workflow_attempt_id,
@@ -1595,16 +1592,16 @@ def build_attempt_plan(
         "created_at": created_at,
         "request": {
             "path": str(run_root / "attempts" / attempt_id / "request.yaml"),
-            "size_bytes": len(normalized.request_bytes),
-            "sha256": normalized.request_sha256,
+            "size_bytes": len(project.source_bytes),
+            "sha256": project.source_sha256,
         },
-        "request_label": request.get("label"),
+        "request_label": definition.get("label"),
         "authored_paths": {
-            "request": str(normalized.request_path),
-            "sample_manifest": str(request["sample_manifest"]),
-            "partition_manifest": str(request["partition_manifest"]),
-            "reference_fasta": str(request["reference"]["fasta"]),
-            "reference_gtf": str(request["reference"]["gtf"]),
+            "request": str(project.source_path),
+            "sample_manifest": str(definition["sample_manifest"]),
+            "partition_manifest": str(definition["partition_manifest"]),
+            "reference_fasta": str(definition["reference"]["fasta"]),
+            "reference_gtf": str(definition["reference"]["gtf"]),
             "analysis_policy": None,
         },
         "normalizer": normalizer_identity,
@@ -1634,10 +1631,10 @@ def build_attempt_plan(
         try:
             assert isinstance(run, RunCandidate)
             validate_successor_run(
-                analysis=normalized.analysis_revision,
+                analysis=project.analysis,
                 plan=run.execution_plan,
                 run=run.run_binding,
-                profile=normalized.profile,
+                profile=project.profile,
                 attempt=attempt,
                 resource_policy=resource_policy_record,
                 observed_implementation_content_sha256=implementation_identity(
@@ -1657,11 +1654,7 @@ def build_attempt_plan(
     orchestration_contracts.validate_record("workflow-attempt", attempt)
     attempt_files = (
         *dispatch_files,
-        *(
-            PlannedFile(path, data)
-            for path, data in reporting_files
-            if successor
-        ),
+        *(PlannedFile(path, data) for path, data in reporting_files if successor),
         PlannedFile(config_path, config_data),
         PlannedFile(runtime_profile_path, readiness.inspection.profile_bytes),
     )
@@ -1699,16 +1692,20 @@ def _validate_pristine_committed_run(root: Path, candidate: RunCandidate) -> Non
             f"Run root contains invalid committed authority: {root}: {exc}"
         ) from exc
     if authority is None:
-        raise MaterializationError(f"Run root has no committed successor authority: {root}")
+        raise MaterializationError(
+            f"Run root has no committed successor authority: {root}"
+        )
     if (
         authority.analysis_revision.canonical_bytes
-        != candidate.normalized.analysis_revision.canonical_bytes
+        != candidate.project.analysis.canonical_bytes
         or authority.execution_plan.canonical_bytes
         != candidate.execution_plan.canonical_bytes
         or authority.run_binding.canonical_bytes
         != candidate.run_binding.canonical_bytes
     ):
-        raise MaterializationError("Existing Run authority differs from the planned Run")
+        raise MaterializationError(
+            "Existing Run authority differs from the planned Run"
+        )
     attempts = root / "attempts"
     if (
         attempts.exists()
@@ -1721,7 +1718,9 @@ def _validate_pristine_committed_run(root: Path, candidate: RunCandidate) -> Non
         )
     allowed_root = {"contract", "attempts", "locks", "state"}
     if {item.name for item in root.iterdir()} - allowed_root:
-        raise MaterializationError("Committed Run contains unexpected pre-Attempt state")
+        raise MaterializationError(
+            "Committed Run contains unexpected pre-Attempt state"
+        )
     contract = root / "contract"
     if {item.name for item in contract.iterdir()} != {
         "analysis.json",
@@ -1749,7 +1748,9 @@ def validate_run_destination(
     if not (root.exists() or root.is_symlink()):
         return
     if root.is_symlink() or not root.is_dir():
-        raise MaterializationError(f"Uncommitted Run residue is not a real directory: {root}")
+        raise MaterializationError(
+            f"Uncommitted Run residue is not a real directory: {root}"
+        )
     run_path = root / "contract" / "run.json"
     if run_path.exists() or run_path.is_symlink():
         if candidate is not None:
@@ -1767,9 +1768,15 @@ def validate_run_destination(
     allowed_contract = {"analysis.json", "execution-plan.json"}
     if contract.exists() or contract.is_symlink():
         if contract.is_symlink() or not contract.is_dir():
-            raise MaterializationError(f"Run contract residue is not a real directory: {contract}")
+            raise MaterializationError(
+                f"Run contract residue is not a real directory: {contract}"
+            )
         for item in contract.iterdir():
-            if item.name not in allowed_contract or item.is_symlink() or not item.is_file():
+            if (
+                item.name not in allowed_contract
+                or item.is_symlink()
+                or not item.is_file()
+            ):
                 raise MaterializationError(
                     f"Run contract contains ambiguous residue: {item}"
                 )
@@ -1785,7 +1792,9 @@ def _quarantine_uncommitted_run(
         f"{root.name}.uncommitted-{plan.workflow_attempt_id.removeprefix('workflow-')}"
     )
     if quarantine.exists() or quarantine.is_symlink():
-        raise MaterializationError(f"Run-residue quarantine already exists: {quarantine}")
+        raise MaterializationError(
+            f"Run-residue quarantine already exists: {quarantine}"
+        )
     try:
         root.rename(quarantine)
     except OSError as exc:
@@ -1827,7 +1836,7 @@ def admit_run(plan: AttemptPlan, *, ops: lifecycle.LifecycleOps) -> None:
         try:
             ops.publish_bytes(
                 contract / "analysis.json",
-                plan.run.normalized.analysis_revision.canonical_bytes,
+                plan.run.project.analysis.canonical_bytes,
             )
             ops.publish_bytes(
                 contract / "execution-plan.json",
@@ -1908,7 +1917,7 @@ def publish_attempt(
         target=BACKEND_TARGET,
         operation=plan.operation,
         attempt_record=plan.attempt_record,
-        request_source_path=plan.run.normalized.request_path,
+        request_source_path=plan.run.project.source_path,
     )
 
 

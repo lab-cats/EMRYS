@@ -1,4 +1,4 @@
-"""Create and validate explicit local-pilot onboarding inputs."""
+"""Create and validate explicit scientist-facing Project inputs."""
 
 from __future__ import annotations
 
@@ -22,13 +22,13 @@ from emrys.libraries.references.contigs import (
     parse_fasta_lines,
 )
 from emrys.orchestration.local_pilot.normalization import (
-    NormalizationBundle,
-    normalize_request,
+    ProjectAdmission,
+    admit_project,
 )
 from emrys.stages.gtf_to_bed12 import converter as gtf_converter
 
 DESCRIPTION = (
-    "Validate one complete local-pilot request before probing the scientific "
+    "Validate one complete EMRYS Project before probing the scientific "
     "runtime. This command reads declared inputs, checks reference compatibility, "
     "and writes nothing."
 )
@@ -60,10 +60,10 @@ class OnboardingError(RuntimeError):
 
 
 @dataclass(frozen=True, slots=True)
-class RequestValidation:
-    """Read-only normalized request and compatibility evidence."""
+class ProjectValidation:
+    """Read-only admitted Project and compatibility evidence."""
 
-    normalized: NormalizationBundle
+    project: ProjectAdmission
     fasta_contigs: tuple[tuple[str, int], ...]
     transcript_count: int
     sample_count: int
@@ -296,10 +296,8 @@ def starter_members(
     ):
         if any(character in str(path) for character in ("\n", "\r", "\t")):
             raise OnboardingError(f"{label} path contains an unsafe character")
-    request = (checkout / "configs/local_pilot_request.example.yaml").read_text(
-        encoding="utf-8"
-    )
-    request = request.replace(
+    project = (checkout / "configs/project.example.yaml").read_text(encoding="utf-8")
+    project = project.replace(
         "sample_manifest: local_pilot_samples.example.tsv",
         "sample_manifest: samples.tsv",
     ).replace(
@@ -316,7 +314,7 @@ def starter_members(
         "/absolute/path/to/emrys/.venv/bin/python", str(selected_python)
     ).replace("/absolute/path/to/emrys", str(checkout))
     return {
-        "request.yaml": (request.encode("utf-8"), 0o644),
+        "project.yaml": (project.encode("utf-8"), 0o644),
         "emrys.execution.yaml": (execution_profile, 0o644),
         "samples.tsv": (
             (checkout / "configs/local_pilot_samples.example.tsv").read_bytes(),
@@ -400,7 +398,7 @@ def _require_snapshot(snapshot: Mapping[str, object], label: str) -> Path:
         raise OnboardingError(f"{label} must remain a real regular file: {path}")
     digest, size = _sha256_and_size(path)
     if digest != snapshot["sha256"] or size != snapshot["size_bytes"]:
-        raise OnboardingError(f"{label} changed after request normalization: {path}")
+        raise OnboardingError(f"{label} changed after Project admission: {path}")
     return path
 
 
@@ -515,24 +513,24 @@ def _validate_regions_file(path: Path, lengths: Mapping[str, int]) -> None:
         raise OnboardingError(f"regions file contains no selector rows: {path}")
 
 
-def validate_local_pilot_request(
-    request: str | Path,
+def validate_project(
+    project: str | Path,
     *,
     root: Path | None = None,
-) -> RequestValidation:
-    """Normalize and compatibility-check one request without runtime probes."""
+) -> ProjectValidation:
+    """Admit and compatibility-check one Project without runtime probes."""
 
     checkout = source_root() if root is None else root
-    normalized = normalize_request(request, checkout / PROFILE_RELATIVE_PATH)
-    return validate_normalized_request(normalized)
+    admission = admit_project(project, checkout / PROFILE_RELATIVE_PATH)
+    return validate_project_admission(admission)
 
 
-def validate_normalized_request(
-    normalized: NormalizationBundle,
-) -> RequestValidation:
-    """Compatibility-check one already admitted request without renormalizing it."""
+def validate_project_admission(
+    project: ProjectAdmission,
+) -> ProjectValidation:
+    """Compatibility-check one already admitted Project without re-admitting it."""
 
-    source = normalized.projection_source
+    source = project.construction
     reference = source["reference"]
     fasta_snapshot = reference["fasta"]
     gtf_snapshot = reference["gtf"]
@@ -590,8 +588,8 @@ def validate_normalized_request(
     pair_count = len(
         {row["replicate"] for row in samples if row["condition"] == control}
     )
-    return RequestValidation(
-        normalized=normalized,
+    return ProjectValidation(
+        project=project,
         fasta_contigs=fasta_contigs,
         transcript_count=len(transcripts),
         sample_count=len(samples),
@@ -602,13 +600,13 @@ def validate_normalized_request(
 
 
 def configure_validation_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--request", required=True, type=Path)
+    parser.add_argument("--project", required=True, type=Path)
     parser.set_defaults(_command_parser=parser)
 
 
 def validate_from_args(arguments: argparse.Namespace) -> int:
     try:
-        result = validate_local_pilot_request(arguments.request)
+        result = validate_project(arguments.project)
     except (
         OSError,
         OnboardingError,
@@ -616,12 +614,12 @@ def validate_from_args(arguments: argparse.Namespace) -> int:
     ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
-    normalized = result.normalized
-    reference = normalized.projection_source["reference"]
-    print("Local-pilot request validation: PASS")
-    print(f"  Request: {normalized.request_path}")
-    print(f"  Request SHA-256: {normalized.request_sha256}")
-    print(f"  Analysis revision: {normalized.analysis_revision.analysis_revision_id}")
+    project = result.project
+    reference = project.construction["reference"]
+    print("Project validation: PASS")
+    print(f"  Project: {project.source_path}")
+    print(f"  Project SHA-256: {project.source_sha256}")
+    print(f"  Analysis revision: {project.analysis.analysis_revision_id}")
     print(f"  Samples / paired strata: {result.sample_count} / {result.pair_count}")
     print(f"  Partitions: {result.partition_count}")
     print(
@@ -856,7 +854,7 @@ def prepare_runtime_from_args(arguments: argparse.Namespace) -> int:
 __all__ = (
     "DESCRIPTION",
     "OnboardingError",
-    "RequestValidation",
+    "ProjectValidation",
     "configure_init_parser",
     "configure_runtime_parser",
     "configure_validation_parser",
@@ -866,6 +864,6 @@ __all__ = (
     "render_runtime_profile",
     "starter_members",
     "validate_from_args",
-    "validate_local_pilot_request",
-    "validate_normalized_request",
+    "validate_project",
+    "validate_project_admission",
 )

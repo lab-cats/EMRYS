@@ -13,7 +13,7 @@ from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.projection import build_reporting_bundle
-from emrys.orchestration.local_pilot.normalization import normalize_request
+from emrys.orchestration.local_pilot.normalization import admit_project
 from tests.orchestration.local_pilot.fixture import build
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -311,7 +311,7 @@ def test_profile_expands_to_exact_formula_and_contiguous_scopes(
     profile: dict[str, object],
 ) -> None:
     request = build(tmp_path)
-    execution, _execution_bytes = normalize_request(
+    execution, _execution_bytes = admit_project(
         request,
         profile,
     ).historical_execution_v1()
