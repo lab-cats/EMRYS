@@ -316,20 +316,32 @@ def test_owner_doubles_use_successor_scopes_inside_reporting_payloads(
 ) -> None:
     plan = _plan(tmp_path)
     doubled = with_owner_doubles(plan)
-    payloads: list[bytes] = []
+    payloads: dict[Path, bytes] = {}
     for item in doubled.attempt_files:
         if not item.path.name.endswith(".payload.json"):
             continue
         manifest = json.loads(item.data)
-        payloads.extend(
-            base64.b64decode(output["data_base64"])
-            for output in manifest["producer"]
+        payloads.update(
+            {
+                Path(output["path"]): base64.b64decode(output["data_base64"])
+                for output in manifest["producer"]
+            }
         )
-    combined = b"\n".join(payloads)
     analysis = plan.run.normalized.analysis_revision
 
-    assert analysis.scope_id("cohort").encode() in combined
-    assert analysis.scope_id("analysis").encode() in combined
+    def one(suffix: str) -> bytes:
+        matches = [
+            data for path, data in payloads.items() if path.name.endswith(suffix)
+        ]
+        assert len(matches) == 1
+        return matches[0]
+
+    cohort_id = analysis.scope_id("cohort").encode()
+    analysis_id = analysis.scope_id("analysis").encode()
+    assert cohort_id in one(".step08_summary.tsv")
+    assert cohort_id in one(".cmh_summary.tsv")
+    assert analysis_id in one(".cmh_summary.tsv")
+    assert analysis_id in one(".context_receipt.tsv")
 
 
 def test_plan_is_no_write_and_projects_exact_public_owner_roster(

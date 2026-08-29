@@ -318,7 +318,7 @@ def _candidate(
         "candidate_id": f"candidate_{index}",
         "orientation": orientation,
         "chromosome": "chrSynthetic",
-        "position": str(index),
+        "position": str(index * 4),
         "alt_index": "1",
         "genomic_ref": "T",
         "genomic_alt": "C",
@@ -348,8 +348,8 @@ def _validation_bytes(row: dict[str, str]) -> bytes:
     spec = ADAPTER_REGISTRY[str(row["adapter"])]
     assert spec.expected_header is not None
     count = spec.exact_data_rows or 1
-    check_ids = (
-        (
+    if row["adapter"] == "step09_validation_report_v1":
+        check_ids = (
             "output_transaction",
             "upstream_identity_and_candidate_order",
             "status_semantics",
@@ -358,9 +358,10 @@ def _validation_bytes(row: dict[str, str]) -> bytes:
             "mutation_spectrum_reconciliation",
             "pdf_structure",
         )
-        if row["adapter"] == "step09_validation_report_v1"
-        else tuple(f"fixture_check_{index}" for index in range(1, count + 1))
-    )
+    elif row["adapter"] == "step10_validation_report_v1":
+        check_ids = ("scientific_context_transaction",)
+    else:
+        check_ids = tuple(f"fixture_check_{index}" for index in range(1, count + 1))
     assert len(check_ids) == count
     rows = [
         {
@@ -453,8 +454,6 @@ def artifact_payloads(
 ) -> dict[str, bytes]:
     sample_ids = tuple(str(row["sample_id"]) for row in execution["samples"]["rows"])
     partition_id = str(execution["partitions"]["rows"][0]["partition_id"])
-    cohort_id = str(execution["analysis"]["cohort_id"])
-    analysis_id = str(execution["analysis"]["primary_analysis_id"])
     sample_hash = str(execution["samples"]["manifest"]["sha256"])
     partition_hash = str(execution["partitions"]["manifest"]["sha256"])
     policy = execution["analysis"]["policy"]
@@ -487,6 +486,9 @@ def artifact_payloads(
                 "step10_context_receipt_v1",
             }:
                 payloads[str(row["source_path"])] = _generic_artifact_bytes(row)
+
+    cohort_id = str(by_adapter["step08_sites_v1"][0]["scope_id"])
+    analysis_id = str(by_adapter["step09_cmh_all_sites_v1"][0]["scope_id"])
 
     orientation_rows = by_adapter["step06_orientation_counts_v1"]
     for row in orientation_rows:
