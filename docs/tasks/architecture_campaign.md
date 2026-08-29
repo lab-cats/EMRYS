@@ -820,13 +820,16 @@ scheduled journeys.
 There is no current application-level `Project` or `Result` representation.
 `WorkflowResult` reports the delegated process exit and `LifecycleOutcome`
 reports one terminal attempt; neither is the campaign's possible public
-Result. The current run root is an aggregate namespace containing an immutable
-contract, evolving attempts, locks, task/report state, native results,
-products including reports, attempt-local stream logs, and disposable engine
-metadata. It has no top-level report surface; generated reports live under
-`products/report/<run-id>/`. Treating that entire directory or `RunInspection`
-as the target Run would therefore contradict the settled immutable-plan
-meaning.
+Result. At audit time, the current run root was an aggregate namespace
+containing an immutable contract, evolving attempts, locks, task/report state,
+native results, products including reports, attempt-local stream logs, and
+disposable engine metadata. It had no top-level report surface; generated
+reports lived under `products/report/<run-id>/`. `RESULTS-01` subsequently
+established the current scientist-facing surface at
+`results/{editing,scientific_context,reports}` and moved nonfinal/QC workflow
+artifacts to `products/native`, without making the run-root directory or
+`RunInspection` the target immutable Run. Exact legacy-profile report ledgers
+remain readable only as historical evidence.
 
 #### Current identity boundary
 
@@ -2663,8 +2666,8 @@ defined in Section 13.1; evidence deletion cannot be implied by promotion.
 | `AC-SLICE-08` | Define named execution profiles independently of Managed/Site/Explicit runtime modes | One v1 file-bound format, built-in direct default, explicit selector, current precedence, and source/effective provenance are implemented. Run-bound resources, Attempt-local placement, and the separate runtime profile remain distinct. Named taxonomy, registry/discovery, higher-level management, storage/runtime integration, and future profile commands remain Open with `OPS-01` and `RUNTIME-01`. |
 | `AC-SLICE-09` | Provide expert explain/inspect interfaces for effective plan, run, artifact, and evidence | New slice or expansion of `OPS-02`/`CONTROL-01` |
 | `AC-SLICE-10` | Define high-level status and safe resume/recovery UX over existing fail-closed internals | **Complete.** Separated status, recovery gating, deterministic next-action guidance, five persisted-authority scientific milestones, current/latest Attempt elapsed time, and normal/verbose/debug progressive disclosure are implemented on the existing read-only inspect route. Reporting remains separate; no ETA, status store, dashboard dependency, or inspection-side write is introduced. `OBS-01` is complete; `LOG-05` remains open for broader retained-operation adoption and parity. |
-| `AC-SLICE-11` | Define a portable canonical Run Bundle contract | New slice; coordinates with `FILESYSTEM-01` and `RESULTS-01` |
-| `AC-SLICE-12` | Formalize scientific, evidence, and operational report purposes and navigation | **Complete.** The two receipt-bound HTML reports retain their output identities and now carry fixed sibling-relative navigation for the three accepted questions. The scientific report remains primary. The combined **Evidence and operations** report retains Run overview, folds both provenance sections into Evidence, and places Attempt lineage under Operations. No third report, schema, receipt, command, or filesystem surface was added. `REPORT-03` remains Verification pending for rendered acceptance and `RESULTS-01` remains Open for the canonical result bundle. |
+| `AC-SLICE-11` | Define a portable canonical Run Bundle contract | New slice; coordinates with `FILESYSTEM-01` and the completed `RESULTS-01` scientist-facing surface |
+| `AC-SLICE-12` | Formalize scientific, evidence, and operational report purposes and navigation | **Complete.** The two receipt-bound HTML reports retain their output identities and now carry fixed sibling-relative navigation for the three accepted questions. The scientific report remains primary. The combined **Evidence and operations** report retains Run overview, folds both provenance sections into Evidence, and places Attempt lineage under Operations. No third report, schema, receipt, command, or filesystem surface was added. `RESULTS-01` subsequently co-located both reports with the admitted result tables; `REPORT-03` remains Verification pending for rendered acceptance. |
 | `AC-SLICE-13` | Deliver a supported fresh-install-to-valid-synthetic-result golden path after ratifying its capability order | New cross-cutting outcome; coordinates with setup, runtime, Doctor, run, results, and `CLEAN-01` |
 | `AC-SLICE-14` | Establish reproducible UX, operational, and separate product/protection/configuration-documentation/retained-evidence baselines and ratify their interpretation methods and campaign success measures | New aggregate-measurement slice; per-slice accounting starts immediately and coordinates with `REVIEW-UX-03` and `ARCH-01` |
 | `AC-SLICE-15` | Audit the Steps 07–09 statistical contract | New scientific-review slice; not architecture evidence |
@@ -2704,7 +2707,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `DOCTOR-01` | Project-aware readiness capabilities, actionable failures, qualified internal workflow-engine dependency, debug escape hatch, and the explicit-repair override with bounded mutation rules; exact command partitioning remains open |
 | `RUN-03` | The current path constructs and commits immutable successor Run authority, admits it through workflow/task boundaries, binds reporting inputs to their origin Attempt, and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. The same grouped surface now owns direct and whole-Run Slurm realization without a generated wrapper. Computational declaration may affect Run identity; profile location/raw bytes, placement, allocation, scheduler job ID, logging, and transport state remain Run-neutral Attempt facts. The broader one-command journey, real placement/outcome parity, generalized realization, report opt-out/regeneration, and remaining public migration remain Open. |
 | `IDENTITY-01` | Successor Runs now use the selected domain-separated digest over relocation-independent Analysis and Execution-Plan identities, with historical Runs preserved through the version-aware reader and no successor execution projection. Ordinary public exposure, progressively disclosed Attempt identity, and remaining public migration remain Open. |
-| `FILESYSTEM-01` | Automatic predictable directory creation, one discoverable result surface, and no hidden report root; Project/inputs/runs and Run-Bundle layouts remain proposed |
+| `FILESYSTEM-01` | Completed `RESULTS-01` supplies one current discoverable result/report surface with no hidden competing report root; automatic broader directory creation and the Project/inputs/runs and Run-Bundle layouts remain proposed |
 | `CONTAINER-01` | Independent managed-container/environment decision without assuming final runtime labels; institutional/native/advanced coexistence, image contents and digest, scheduler/storage/security/licensing/update contracts |
 | `REVIEW-UX-03` | Scientist, advanced scientist, operator, automation, and developer journeys; progressive disclosure; cognitive-load and golden-path baseline |
 | `LOG-03` | Durable complete attempt logging remains infrastructure while concise output becomes the default role-appropriate surface |
@@ -2716,7 +2719,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `ARCH-01` | Consumes the completed prerequisites and current vertical cutovers. Section 13.6 realizes one execution/configuration boundary: split launcher/resource configuration and the generated wrapper retire in favor of one execution-profile owner, one private Slurm transport, and grouped Run control. Run remains immutable, placement/diagnostics remain Attempt-local, and no second backend, scheduler, or facade is introduced. Public application/operation, policy, identity, artifact/storage, package, and remaining migration work stays Open under the Section 13.1 protocol. |
 | `REPORT-03` | Primary-scientific-findings hierarchy with evidence and operational detail progressively disclosed |
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |
-| `RESULTS-01` | One discoverable results surface and coordination with the proposed Run Bundle and Artifact Store concepts without preselecting their ownership or layouts |
+| `RESULTS-01` | **Complete.** Current Runs expose only editing results, scientific context, and receipt-bound reports beneath `results`; nonfinal/QC artifacts live beneath `products/native`; both reports link to admitted primary result tables; no copy, symlink, new manifest/index, or competing current report root exists. Exact legacy-profile report ledgers remain readable as historical evidence, while old-layout Runs are not automatically resumable under the changed current profile. |
 | `DOC-01` | Role- and journey-based scientist/operator/developer documentation that does not assume campaign history |
 | `DOC-02` | Completed repository-wide documentation disposition and authority cutover; bounded migration and retirement now remain under completed `DOC-03`, open `DOC-04`–`DOC-05`, `CLEAN-01`, and `CLEAN-02` |
 | `DOC-03` | Completed source reconciliation and retirement of the stale future-architecture, pipeline-plan, question-index, and future-diagram surfaces without settling the final architecture-document set; the [durable trace](../design/decisions/repository-and-delivery.md#doc-03-source-to-destination-trace-2026-08-25) lives in the repository-and-delivery decision record |

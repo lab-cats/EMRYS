@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import copy
+import hashlib
 import os
 import subprocess
 import sys
@@ -12,8 +14,15 @@ from typing import Any
 import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.libraries.source_authority import controlled_python_argv
+from emrys.libraries.source_authority import (
+    ArtifactSourceRoot,
+    SourceCheckout,
+    controlled_python_argv,
+)
 from emrys.reporting import report, transaction_validation
+from emrys.reporting._run_report import receipt
+from emrys.reporting._run_summary import builder as summary_builder
+from emrys.reporting._run_summary import publication as summary_publication
 from tests.contracts.orchestration.test_application_model_contracts import (
     successor_run_fixture,
 )
@@ -52,6 +61,27 @@ def _publish_summary(built: Any) -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def _publish_summary_with_commit(built: Any, commit: str) -> None:
+    previous, _epoch = fixture.fixed_epoch()
+    try:
+        context = summary_builder.prepare_context(
+            argparse.Namespace(
+                run_id=built.run_id,
+                artifact_receipt=built.artifact_receipt,
+                output_root=built.output_root,
+                execute=True,
+            ),
+            source_checkout=SourceCheckout(root=REPO_ROOT),
+            artifact_source_root=ArtifactSourceRoot(root=built.root),
+            deps=summary_builder.RunSummaryBuildDeps(
+                matching_checkout_head_commit=lambda **_kwargs: commit,
+            ),
+        )
+        summary_publication.publish_context(context)
+    finally:
+        fixture.restore_epoch(previous)
 
 
 @pytest.fixture
@@ -115,6 +145,323 @@ def test_direct_validators_recheck_each_complete_transaction(
             report_root / built.run_id / f"{built.run_id}.evidence_report.html",
         ),
     )
+
+
+def test_historical_artifact_validation_uses_recorded_producer_roster(
+    complete_reporting: tuple[Any, Path],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from emrys.reporting._artifact_index import api as artifact_api
+    from emrys.reporting._artifact_index import records as artifact_records
+
+    built, _report_root = complete_reporting
+    summary = fixture.ARTIFACT_CONTRACTS.load_json_object(
+        built.summary_json_path,
+        "run summary",
+    )
+    recorded_producer = REPO_ROOT / artifact_records.STEP_PRODUCERS["08"]
+    monkeypatch.setitem(
+        artifact_records.STEP_PRODUCERS,
+        "08",
+        "src/emrys/reporting/transaction_validation.py",
+    )
+
+    def reject_live_producer_binding(paths: tuple[Path, ...]) -> None:
+        assert recorded_producer not in paths
+
+    with pytest.raises(
+        transaction_validation.ReportingTransactionError,
+        match="current declared source",
+    ):
+        transaction_validation.validate_artifact_index_transaction(
+            source_checkout=REPO_ROOT,
+            artifact_source_root=built.root,
+            run_id=built.run_id,
+            run_contract=built.adapter_fixture.run_contract,
+            inventory=built.adapter_fixture.inventory,
+            output_root=built.adapter_fixture.output_root,
+            receipt_ops=_fixture_receipt_ops(),
+        )
+
+    historical_artifact = (
+        transaction_validation._validate_historical_artifact_index_transaction(
+            source_checkout=REPO_ROOT,
+            artifact_source_root=built.root,
+            run_id=built.run_id,
+            run_contract=built.adapter_fixture.run_contract,
+            inventory=built.adapter_fixture.inventory,
+            output_root=built.adapter_fixture.output_root,
+            receipt_ops=_fixture_receipt_ops(
+                before_final_snapshot=reject_live_producer_binding,
+            ),
+        )
+    )
+    historical_summary = transaction_validation.validate_run_summary_transaction(
+        source_checkout=REPO_ROOT,
+        artifact_source_root=built.root,
+        run_id=built.run_id,
+        artifact_receipt=built.artifact_receipt,
+        output_root=built.output_root,
+        receipt_ops=_fixture_receipt_ops(
+            before_final_snapshot=reject_live_producer_binding,
+        ),
+        recorded_producer_commit=str(summary["provenance"]["git_commit"]),
+        expected_run_contract=built.adapter_fixture.run_contract,
+        expected_inventory=built.adapter_fixture.inventory,
+    )
+
+    assert historical_artifact.receipt_path == built.artifact_receipt
+    assert historical_summary.receipt_path == built.summary_receipt_path
+    artifact_receipt = artifact_api.read_exact_tsv(
+        built.artifact_receipt,
+        artifact_api.ARTIFACT_RECEIPT_HEADER,
+        exact_rows=1,
+    )[0]
+    index_rows = artifact_api.read_exact_tsv(
+        Path(artifact_receipt["artifacts_index_path"]),
+        artifact_api.ARTIFACT_INDEX_HEADER,
+    )
+    step08 = next(row for row in index_rows if row["step_id"] == "08")
+    recorded = fixture.ARTIFACT_CONTRACTS.load_json_object(
+        Path(step08["record_path"]),
+        "Step 08 artifact record",
+    )
+    assert recorded["implementation"]["evidence"][0]["path"].endswith(
+        "/cohort_candidate_preprocessing/producer.py"
+    )
+
+
+def test_historical_artifact_validation_binds_one_record_generation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from emrys.reporting._artifact_index import api as artifact_api
+    from emrys.reporting._artifact_index import validation as artifact_validation
+
+    built = fixture.build_fixture(tmp_path / "run")
+    receipt_row = artifact_api.read_exact_tsv(
+        built.artifact_receipt,
+        artifact_api.ARTIFACT_RECEIPT_HEADER,
+        exact_rows=1,
+    )[0]
+    index_rows = artifact_api.read_exact_tsv(
+        Path(receipt_row["artifacts_index_path"]),
+        artifact_api.ARTIFACT_INDEX_HEADER,
+    )
+    record_path = Path(index_rows[0]["record_path"])
+    admitted = record_path.read_bytes()
+    validate = artifact_validation.validate_published_transaction
+
+    def swap_live_record(**kwargs: Any) -> None:
+        assert kwargs["admitted_bytes"][record_path] == admitted
+        record_path.write_bytes(b"{}\n")
+        try:
+            validate(**kwargs)
+        finally:
+            record_path.write_bytes(admitted)
+
+    monkeypatch.setattr(
+        artifact_validation,
+        "validate_published_transaction",
+        swap_live_record,
+    )
+    with pytest.raises(
+        transaction_validation.ReportingTransactionError,
+        match="roster changed during semantic validation",
+    ):
+        transaction_validation._validate_historical_artifact_index_transaction(
+            source_checkout=REPO_ROOT,
+            artifact_source_root=built.root,
+            run_id=built.run_id,
+            run_contract=built.adapter_fixture.run_contract,
+            inventory=built.adapter_fixture.inventory,
+            output_root=built.adapter_fixture.output_root,
+            receipt_ops=_fixture_receipt_ops(),
+        )
+
+
+def test_historical_artifact_validation_never_opens_index_selected_path(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from emrys.reporting._artifact_index import api as artifact_api
+    from emrys.reporting._artifact_index import records as artifact_records
+
+    built = fixture.build_fixture(tmp_path / "run")
+    receipt = artifact_api.read_exact_tsv(
+        built.artifact_receipt,
+        artifact_api.ARTIFACT_RECEIPT_HEADER,
+        exact_rows=1,
+    )[0]
+    index_path = Path(receipt["artifacts_index_path"])
+    index_rows = artifact_api.read_exact_tsv(
+        index_path,
+        artifact_api.ARTIFACT_INDEX_HEADER,
+    )
+    outside = (tmp_path / "outside.json").resolve()
+    outside.write_text("not an artifact record\n", encoding="utf-8")
+    index_rows[0]["record_path"] = str(outside)
+    index_bytes = artifact_records.tsv_bytes(
+        artifact_api.ARTIFACT_INDEX_HEADER,
+        index_rows,
+    )
+    index_path.write_bytes(index_bytes)
+    receipt["artifacts_index_sha256"] = hashlib.sha256(index_bytes).hexdigest()
+    built.artifact_receipt.write_bytes(
+        artifact_records.tsv_bytes(
+            artifact_api.ARTIFACT_RECEIPT_HEADER,
+            [receipt],
+        )
+    )
+    snapshot = transaction_validation._snapshot_receipt
+
+    def reject_outside(path: Path) -> Any:
+        assert path != outside
+        return snapshot(path)
+
+    monkeypatch.setattr(transaction_validation, "_snapshot_receipt", reject_outside)
+    with pytest.raises(
+        artifact_api.ArtifactIndexError,
+        match="Published record path is invalid",
+    ):
+        transaction_validation._validate_historical_artifact_index_transaction(
+            source_checkout=REPO_ROOT,
+            artifact_source_root=built.root,
+            run_id=built.run_id,
+            run_contract=built.adapter_fixture.run_contract,
+            inventory=built.adapter_fixture.inventory,
+            output_root=built.adapter_fixture.output_root,
+            receipt_ops=_fixture_receipt_ops(),
+        )
+
+
+def test_historical_report_admission_preserves_noncurrent_verified_bytes(
+    complete_reporting: tuple[Any, Path],
+) -> None:
+    built, report_root = complete_reporting
+    output_dir = report_root / built.run_id
+    scientific = output_dir / f"{built.run_id}.scientific_report.html"
+    receipt_path = output_dir / f"{built.run_id}.report_outputs.tsv"
+    scientific.write_bytes(scientific.read_bytes() + b"\n<!-- legacy 5.1.0 -->\n")
+    document = receipt.read_receipt_tsv(receipt_path)
+    document["provenance"]["producer_version"] = "5.1.0"
+    descriptor = next(
+        output
+        for output in document["outputs"]
+        if output["output_id"] == "scientific-report-html"
+    )
+    descriptor["sha256"] = hashlib.sha256(scientific.read_bytes()).hexdigest()
+    descriptor["size_bytes"] = scientific.stat().st_size
+    receipt_path.write_bytes(receipt.receipt_tsv_bytes(document))
+
+    with pytest.raises(
+        transaction_validation.ReportingTransactionError,
+        match="current deterministic projection",
+    ):
+        transaction_validation.validate_report_transaction(
+            source_checkout=REPO_ROOT,
+            artifact_source_root=built.root,
+            run_summary=built.summary_json_path,
+            output_root=report_root,
+            receipt_ops=_fixture_receipt_ops(),
+        )
+
+    admitted = transaction_validation._validate_historical_report_transaction(
+        source_checkout=REPO_ROOT,
+        artifact_source_root=built.root,
+        run_id=built.run_id,
+        run_summary=built.summary_json_path,
+        output_root=report_root,
+        expected_source_commit=document["provenance"]["git_commit"],
+        expected_run_contract=built.adapter_fixture.run_contract,
+        expected_inventory=built.adapter_fixture.inventory,
+        receipt_ops=_fixture_receipt_ops(),
+    )
+    assert admitted.receipt_path == receipt_path
+    assert admitted.verified_report_locations == (
+        ("scientific-report-html", scientific),
+        (
+            "evidence-report-html",
+            output_dir / f"{built.run_id}.evidence_report.html",
+        ),
+    )
+
+
+def test_historical_report_admission_uses_each_recorded_producer_identity(
+    tmp_path: Path,
+) -> None:
+    built = fixture.build_fixture(tmp_path / "run")
+    summary_commit = "b" * 40
+    report_commit = "c" * 40
+    assert summary_commit != workflow_fixture.source_checkout_commit()
+    _publish_summary_with_commit(built, summary_commit)
+    report_root = built.root / "reports"
+    arguments = argparse.Namespace(
+        source_checkout=REPO_ROOT,
+        artifact_source_root=built.root,
+        run_summary=built.summary_json_path,
+        output_root=report_root,
+        execute=True,
+    )
+    assert report.build_from_args(arguments) == 0
+    receipt_path = report_root / built.run_id / f"{built.run_id}.report_outputs.tsv"
+    document = receipt.read_receipt_tsv(receipt_path)
+    current_report_commit = str(document["provenance"]["git_commit"])
+    document["provenance"]["git_commit"] = report_commit
+    document["provenance"]["producer_version"] = "5.1.0"
+    for output in document["outputs"]:
+        path = Path(str(output["path"]))
+        path.write_bytes(
+            path.read_bytes().replace(
+                current_report_commit.encode("ascii"),
+                report_commit.encode("ascii"),
+            )
+        )
+        output["sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+        output["size_bytes"] = path.stat().st_size
+    receipt_path.write_bytes(receipt.receipt_tsv_bytes(document))
+
+    admitted = transaction_validation._validate_historical_report_transaction(
+        source_checkout=REPO_ROOT,
+        artifact_source_root=built.root,
+        run_id=built.run_id,
+        run_summary=built.summary_json_path,
+        output_root=report_root,
+        expected_source_commit=report_commit,
+        expected_run_contract=built.adapter_fixture.run_contract,
+        expected_inventory=built.adapter_fixture.inventory,
+        receipt_ops=_fixture_receipt_ops(),
+    )
+    assert admitted.receipt_path == receipt_path
+
+
+def test_historical_report_admission_rechecks_transitive_native_inputs(
+    complete_reporting: tuple[Any, Path],
+) -> None:
+    built, report_root = complete_reporting
+    native_source = built.adapter_fixture.source_for("sample.SYNTH_A.star_log")
+    receipt_path = report_root / built.run_id / f"{built.run_id}.report_outputs.tsv"
+    document = receipt.read_receipt_tsv(receipt_path)
+
+    def mutate_native(paths: tuple[Path, ...]) -> None:
+        assert native_source in paths
+        native_source.write_text("mutated during historical read\n", encoding="utf-8")
+
+    with pytest.raises(
+        transaction_validation.ReportingTransactionError,
+        match="roster changed during semantic validation",
+    ):
+        transaction_validation._validate_historical_report_transaction(
+            source_checkout=REPO_ROOT,
+            artifact_source_root=built.root,
+            run_id=built.run_id,
+            run_summary=built.summary_json_path,
+            output_root=report_root,
+            expected_source_commit=document["provenance"]["git_commit"],
+            expected_run_contract=built.adapter_fixture.run_contract,
+            expected_inventory=built.adapter_fixture.inventory,
+            receipt_ops=_fixture_receipt_ops(before_final_snapshot=mutate_native),
+        )
 
 
 def test_report_validator_rechecks_bound_reference_identity_without_rereading(
@@ -232,6 +579,219 @@ def test_fixed_dispatcher_accepts_successor_run_authority(
     )
     assert observed["run_contract"] == run_root / config["reporting_run_contract_path"]["path"]
     assert observed["inventory"] == run_root / config["artifact_inventory_path"]["path"]
+
+
+def test_fixed_dispatcher_admits_historical_report_only_at_legacy_root(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _analysis, _plan, run, profile, attempt, _resources = successor_run_fixture()
+    current_attempt = copy.deepcopy(attempt)
+    legacy_profile = copy.deepcopy(profile)
+    current_profile = copy.deepcopy(profile)
+    for template in current_profile["artifact_templates"]:
+        template["source_path_template"] = str(
+            template["source_path_template"]
+        ).replace("results/", "products/native/", 1)
+    attempt["profile_sha256"] = hashlib.sha256(
+        orchestration_contracts.canonical_json_bytes(legacy_profile)
+    ).hexdigest()
+    current_attempt["profile_sha256"] = hashlib.sha256(
+        orchestration_contracts.canonical_json_bytes(current_profile)
+    ).hexdigest()
+    historical_commit = "f" * 40
+    attempt["source_checkout"]["commit"] = historical_commit
+    run_root = (tmp_path / run.run_id).resolve()
+    receipt_path = (
+        run_root
+        / "products"
+        / "report"
+        / run.run_id
+        / f"{run.run_id}.report_outputs.tsv"
+    )
+    expected = transaction_validation.ValidatedTransaction(
+        receipt_path=receipt_path,
+        receipt_sha256="c" * 64,
+    )
+    reporting_root = f"contract/reporting-inputs/{attempt['workflow_attempt_id']}"
+    config = {
+        "reporting_run_contract_path": {
+            "path": f"{reporting_root}/reporting_run_contract.json"
+        },
+        "artifact_inventory_path": {"path": f"{reporting_root}/artifact_inventory.tsv"},
+    }
+    observed: dict[str, Any] = {}
+    monkeypatch.setattr(
+        transaction_validation,
+        "attest_source_checkout",
+        lambda **_kwargs: pytest.fail(
+            "historical read required the current reader to be its old producer"
+        ),
+    )
+    monkeypatch.setattr(
+        transaction_validation,
+        "_validate_historical_report_transaction",
+        lambda **kwargs: observed.update(kwargs) or expected,
+    )
+
+    assert transaction_validation.validate_receipt(
+        "html_report",
+        receipt_path,
+        run_root,
+        run.record,
+        legacy_profile,
+        attempt,
+        config,
+        historical_read=True,
+    ) == expected
+    assert observed["output_root"] == run_root / "products" / "report"
+    assert observed["expected_source_commit"] == historical_commit
+
+    current_receipt = (
+        run_root
+        / "results"
+        / "reports"
+        / run.run_id
+        / f"{run.run_id}.report_outputs.tsv"
+    )
+    with pytest.raises(
+        transaction_validation.ReportingTransactionError,
+        match="requires the bound legacy profile",
+    ):
+        transaction_validation.validate_receipt(
+            "html_report",
+            current_receipt,
+            run_root,
+            run.record,
+            current_profile,
+            current_attempt,
+            config,
+            historical_read=True,
+        )
+
+
+def test_public_historical_dispatch_rejects_symlinks_before_parsing(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from emrys.contracts.artifacts import api as artifact_contracts
+    from emrys.reporting._artifact_index import api as artifact_api
+
+    _analysis, _plan, run, profile, attempt, _resources = successor_run_fixture()
+    attempt["profile_sha256"] = hashlib.sha256(
+        orchestration_contracts.canonical_json_bytes(profile)
+    ).hexdigest()
+    attempt["source_checkout"]["commit"] = "f" * 40
+    run_root = (tmp_path / run.run_id).resolve()
+    artifact_output = run_root / "products" / "artifact-summary" / run.run_id
+    artifact_output.mkdir(parents=True)
+    reporting_root = f"contract/reporting-inputs/{attempt['workflow_attempt_id']}"
+    config = {
+        "reporting_run_contract_path": {
+            "path": f"{reporting_root}/reporting_run_contract.json"
+        },
+        "artifact_inventory_path": {
+            "path": f"{reporting_root}/artifact_inventory.tsv"
+        },
+    }
+
+    followed: list[Path] = []
+    target_receipt = tmp_path / "outside-run-summary-receipt.tsv"
+    target_receipt.write_text("outside\n", encoding="utf-8")
+    summary_receipt = artifact_output / f"{run.run_id}.run_summary_receipt.tsv"
+    summary_receipt.symlink_to(target_receipt)
+    original_read_tsv = artifact_api.read_exact_tsv
+
+    def track_tsv(path: Path, *args: Any, **kwargs: Any) -> Any:
+        if Path(path) == summary_receipt:
+            followed.append(summary_receipt)
+        return original_read_tsv(path, *args, **kwargs)
+
+    monkeypatch.setattr(artifact_api, "read_exact_tsv", track_tsv)
+    with pytest.raises(
+        transaction_validation.ReportingTransactionError,
+        match="canonical and nonsymlink",
+    ):
+        transaction_validation.validate_receipt(
+            "run_summary",
+            summary_receipt,
+            run_root,
+            run.record,
+            profile,
+            attempt,
+            config,
+            historical_read=True,
+        )
+    assert followed == []
+
+    target_summary = tmp_path / "outside-run-summary.json"
+    target_summary.write_text("{}\n", encoding="utf-8")
+    run_summary = artifact_output / f"{run.run_id}.run_summary.json"
+    run_summary.symlink_to(target_summary)
+    report_receipt = (
+        run_root
+        / "products"
+        / "report"
+        / run.run_id
+        / f"{run.run_id}.report_outputs.tsv"
+    )
+    original_load_json = artifact_contracts.load_json_object
+
+    def track_json(path: Path, *args: Any, **kwargs: Any) -> Any:
+        if Path(path) == run_summary:
+            followed.append(run_summary)
+        return original_load_json(path, *args, **kwargs)
+
+    monkeypatch.setattr(artifact_contracts, "load_json_object", track_json)
+    with pytest.raises(
+        transaction_validation.ReportingTransactionError,
+        match="canonical and nonsymlink",
+    ):
+        transaction_validation.validate_receipt(
+            "html_report",
+            report_receipt,
+            run_root,
+            run.record,
+            profile,
+            attempt,
+            config,
+            historical_read=True,
+        )
+    assert followed == []
+
+    run_summary.unlink()
+    run_summary.write_bytes(
+        orchestration_contracts.canonical_json_bytes(
+            {"run_id": str((tmp_path / "outside-run").resolve())}
+        )
+    )
+    snapshots: list[Path] = []
+    original_snapshot_receipt = transaction_validation._snapshot_receipt
+
+    def track_snapshot(path: Path) -> Any:
+        snapshots.append(path)
+        return original_snapshot_receipt(path)
+
+    monkeypatch.setattr(
+        transaction_validation,
+        "_snapshot_receipt",
+        track_snapshot,
+    )
+    with pytest.raises(
+        transaction_validation.ReportingTransactionError,
+        match="Run summary binds another Run",
+    ):
+        transaction_validation.validate_receipt(
+            "html_report",
+            report_receipt,
+            run_root,
+            run.record,
+            profile,
+            attempt,
+            config,
+            historical_read=True,
+        )
+    assert snapshots == [run_summary]
 
 
 def test_artifact_validator_rejects_native_source_mutation(

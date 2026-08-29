@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import csv
 from collections import Counter
 from pathlib import Path
@@ -10,6 +11,7 @@ import pytest
 
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.orchestration.local_pilot.normalization import normalize_request
 from tests.orchestration.local_pilot.fixture import build
@@ -123,76 +125,76 @@ EXPECTED_TASKS = (
 # Independent compact representation of every exact public artifact template.
 # Fields are artifact ID, step, scope type, selector, adapter, path, required.
 EXPECTED_ARTIFACT_ROWS = """
-ref.star_index.genome_parameters|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/genomeParameters.txt|true
-ref.star_index.genome|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/Genome|true
-ref.star_index.sa|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/SA|true
-ref.star_index.saindex|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/SAindex|true
-ref.star_index.chr_length|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/chrLength.txt|true
-ref.star_index.chr_name|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/chrName.txt|true
-ref.star_index.chr_name_length|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/chrNameLength.txt|true
-ref.star_index.chr_start|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/chrStart.txt|true
-ref.star_index.exon_getr_info|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/exonGeTrInfo.tab|true
-ref.star_index.exon_info|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/exonInfo.tab|true
-ref.star_index.gene_info|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/geneInfo.tab|true
-ref.star_index.sjdb_info|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/sjdbInfo.txt|true
-ref.star_index.sjdb_from_gtf|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/sjdbList.fromGTF.out.tab|true
-ref.star_index.sjdb_list|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/sjdbList.out.tab|true
-ref.star_index.transcript_info|00a|reference|reference|step00a_star_index_v1|results/star/{reference_id}/index/transcriptInfo.tab|true
-ref.star_index.validation|00a|reference|reference|step00a_validation_report_v1|results/qc/validation/00a/{reference_id}.validation.tsv|true
-ref.bed12|00b|reference|reference|step00b_bed12_v1|results/qc/reference/{reference_id}.bed|true
-ref.bed12.validation|00b|reference|reference|step00b_validation_report_v1|results/qc/validation/00b/{reference_id}.validation.tsv|true
+ref.star_index.genome_parameters|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/genomeParameters.txt|true
+ref.star_index.genome|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/Genome|true
+ref.star_index.sa|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/SA|true
+ref.star_index.saindex|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/SAindex|true
+ref.star_index.chr_length|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/chrLength.txt|true
+ref.star_index.chr_name|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/chrName.txt|true
+ref.star_index.chr_name_length|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/chrNameLength.txt|true
+ref.star_index.chr_start|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/chrStart.txt|true
+ref.star_index.exon_getr_info|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/exonGeTrInfo.tab|true
+ref.star_index.exon_info|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/exonInfo.tab|true
+ref.star_index.gene_info|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/geneInfo.tab|true
+ref.star_index.sjdb_info|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/sjdbInfo.txt|true
+ref.star_index.sjdb_from_gtf|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/sjdbList.fromGTF.out.tab|true
+ref.star_index.sjdb_list|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/sjdbList.out.tab|true
+ref.star_index.transcript_info|00a|reference|reference|step00a_star_index_v1|products/native/star/{reference_id}/index/transcriptInfo.tab|true
+ref.star_index.validation|00a|reference|reference|step00a_validation_report_v1|products/native/qc/validation/00a/{reference_id}.validation.tsv|true
+ref.bed12|00b|reference|reference|step00b_bed12_v1|products/native/qc/reference/{reference_id}.bed|true
+ref.bed12.validation|00b|reference|reference|step00b_validation_report_v1|products/native/qc/validation/00b/{reference_id}.validation.tsv|true
 ref.fasta|00c|reference|reference|step00c_reference_fasta_v1|{reference_fasta_path}|true
 ref.fai|00c|reference|reference|step00c_reference_fai_v1|{reference_fasta_path}.fai|true
 ref.dict|00c|reference|reference|step00c_reference_dict_v1|{reference_dict_path}|true
-ref.sidecars.validation|00c|reference|reference|step00c_validation_report_v1|results/qc/validation/00c/{reference_id}.validation.tsv|true
-sample.{sample_id}.star_bam|01|sample|samples|step01_star_bam_v1|results/star/{sample_id}/{sample_id}.Aligned.sortedByCoord.out.bam|true
-sample.{sample_id}.star_log_final|01|sample|samples|step01_star_log_final_v1|results/star/{sample_id}/{sample_id}.Log.final.out|true
-sample.{sample_id}.star_log|01|sample|samples|step01_star_log_v1|results/star/{sample_id}/{sample_id}.Log.out|true
-sample.{sample_id}.star_log_progress|01|sample|samples|step01_star_log_progress_v1|results/star/{sample_id}/{sample_id}.Log.progress.out|true
-sample.{sample_id}.star_sj|01|sample|samples|step01_star_sj_v1|results/star/{sample_id}/{sample_id}.SJ.out.tab|true
-sample.{sample_id}.star_validation|01|sample|samples|step01_validation_report_v1|results/qc/validation/01/{sample_id}.validation.tsv|true
-sample.{sample_id}.canonical_bam|02|sample|samples|step02_canonical_bam_v1|results/bam/{sample_id}/{sample_id}.sorted.bam|true
-sample.{sample_id}.canonical_bai|02|sample|samples|step02_canonical_bai_v1|results/bam/{sample_id}/{sample_id}.sorted.bam.bai|true
-sample.{sample_id}.canonical_validation|02|sample|samples|step02_validation_report_v1|results/qc/validation/02/{sample_id}.validation.tsv|true
-sample.{sample_id}.quickcheck|02b|sample|samples|step02b_quickcheck_v1|results/qc/bam/{sample_id}.quickcheck.txt|true
-sample.{sample_id}.flagstat|02b|sample|samples|step02b_flagstat_v1|results/qc/bam/{sample_id}.flagstat.txt|true
-sample.{sample_id}.bam_qc_validation|02b|sample|samples|step02b_validation_report_v1|results/qc/validation/02b/{sample_id}.validation.tsv|true
-sample.{sample_id}.strand|03|sample|samples|step03_rseqc_infer_v1|results/qc/strandedness/{sample_id}.infer_experiment.txt|true
-sample.{sample_id}.strand_validation|03|sample|samples|step03_validation_report_v1|results/qc/validation/03/{sample_id}.validation.tsv|true
-sample.{sample_id}.markdup_bam|04|sample|samples|step04_markdup_bam_v1|results/markdup/{sample_id}/{sample_id}.markdup.bam|true
-sample.{sample_id}.markdup_bai|04|sample|samples|step04_markdup_bai_v1|results/markdup/{sample_id}/{sample_id}.markdup.bam.bai|true
-sample.{sample_id}.markdup_metrics|04|sample|samples|step04_markdup_metrics_v1|results/qc/markdup/{sample_id}.markdup.metrics.txt|true
-sample.{sample_id}.markdup_validation|04|sample|samples|step04_validation_report_v1|results/qc/validation/04/{sample_id}.validation.tsv|true
-sample.{sample_id}.split_bam|05|sample|samples|step05_split_bam_v1|results/split_ncigar/{sample_id}/{sample_id}.split_ncigar.bam|true
-sample.{sample_id}.split_bai|05|sample|samples|step05_split_bai_v1|results/split_ncigar/{sample_id}/{sample_id}.split_ncigar.bam.bai|true
-sample.{sample_id}.split_validation|05|sample|samples|step05_validation_report_v1|results/qc/validation/05/{sample_id}.validation.tsv|true
-sample.{sample_id}.fwd_bam|06|sample|samples|step06_fwd_bam_v1|results/orientation/{sample_id}/{sample_id}.FWD_like.bam|true
-sample.{sample_id}.fwd_bai|06|sample|samples|step06_fwd_bai_v1|results/orientation/{sample_id}/{sample_id}.FWD_like.bam.bai|true
-sample.{sample_id}.rev_bam|06|sample|samples|step06_rev_bam_v1|results/orientation/{sample_id}/{sample_id}.REV_like.bam|true
-sample.{sample_id}.rev_bai|06|sample|samples|step06_rev_bai_v1|results/orientation/{sample_id}/{sample_id}.REV_like.bam.bai|true
-sample.{sample_id}.orientation_counts|06|sample|samples|step06_orientation_counts_v1|results/qc/orientation/{sample_id}.orientation_counts.tsv|true
-sample.{sample_id}.orientation_validation|06|sample|samples|step06_validation_report_v1|results/qc/validation/06/{sample_id}.validation.tsv|true
-cohort.{cohort_id}.{partition_id}.fwd_vcf|07|cohort_partition|partitions|step07_mpileup_vcf_v1|results/mpileup/{cohort_id}/{partition_id}/{cohort_id}.{partition_id}.FWD_like.mpileup.vcf|true
-cohort.{cohort_id}.{partition_id}.rev_vcf|07|cohort_partition|partitions|step07_mpileup_vcf_v1|results/mpileup/{cohort_id}/{partition_id}/{cohort_id}.{partition_id}.REV_like.mpileup.vcf|true
-cohort.{cohort_id}.{partition_id}.receipt|07|cohort_partition|partitions|step07_mpileup_receipt_v1|results/mpileup/{cohort_id}/{partition_id}/{cohort_id}.{partition_id}.step07_outputs.tsv|true
-cohort.{cohort_id}.{partition_id}.validation|07|cohort_partition|partitions|step07_validation_report_v1|results/qc/validation/07/{scope_id}.validation.tsv|true
-cohort.{cohort_id}.step08_sites|08|cohort|cohort|step08_sites_v1|results/vcf_preprocessed/{cohort_id}/{cohort_id}.step08_sites.tsv|true
-cohort.{cohort_id}.step08_inputs|08|cohort|cohort|step08_inputs_v1|results/vcf_preprocessed/{cohort_id}/{cohort_id}.step08_inputs.tsv|true
-cohort.{cohort_id}.step08_summary|08|cohort|cohort|step08_summary_v1|results/qc/vcf_preprocessing/{cohort_id}.step08_summary.tsv|true
-cohort.{cohort_id}.step08_validation|08|cohort|cohort|step08_validation_report_v1|results/qc/validation/08/{cohort_id}.validation.tsv|true
+ref.sidecars.validation|00c|reference|reference|step00c_validation_report_v1|products/native/qc/validation/00c/{reference_id}.validation.tsv|true
+sample.{sample_id}.star_bam|01|sample|samples|step01_star_bam_v1|products/native/star/{sample_id}/{sample_id}.Aligned.sortedByCoord.out.bam|true
+sample.{sample_id}.star_log_final|01|sample|samples|step01_star_log_final_v1|products/native/star/{sample_id}/{sample_id}.Log.final.out|true
+sample.{sample_id}.star_log|01|sample|samples|step01_star_log_v1|products/native/star/{sample_id}/{sample_id}.Log.out|true
+sample.{sample_id}.star_log_progress|01|sample|samples|step01_star_log_progress_v1|products/native/star/{sample_id}/{sample_id}.Log.progress.out|true
+sample.{sample_id}.star_sj|01|sample|samples|step01_star_sj_v1|products/native/star/{sample_id}/{sample_id}.SJ.out.tab|true
+sample.{sample_id}.star_validation|01|sample|samples|step01_validation_report_v1|products/native/qc/validation/01/{sample_id}.validation.tsv|true
+sample.{sample_id}.canonical_bam|02|sample|samples|step02_canonical_bam_v1|products/native/bam/{sample_id}/{sample_id}.sorted.bam|true
+sample.{sample_id}.canonical_bai|02|sample|samples|step02_canonical_bai_v1|products/native/bam/{sample_id}/{sample_id}.sorted.bam.bai|true
+sample.{sample_id}.canonical_validation|02|sample|samples|step02_validation_report_v1|products/native/qc/validation/02/{sample_id}.validation.tsv|true
+sample.{sample_id}.quickcheck|02b|sample|samples|step02b_quickcheck_v1|products/native/qc/bam/{sample_id}.quickcheck.txt|true
+sample.{sample_id}.flagstat|02b|sample|samples|step02b_flagstat_v1|products/native/qc/bam/{sample_id}.flagstat.txt|true
+sample.{sample_id}.bam_qc_validation|02b|sample|samples|step02b_validation_report_v1|products/native/qc/validation/02b/{sample_id}.validation.tsv|true
+sample.{sample_id}.strand|03|sample|samples|step03_rseqc_infer_v1|products/native/qc/strandedness/{sample_id}.infer_experiment.txt|true
+sample.{sample_id}.strand_validation|03|sample|samples|step03_validation_report_v1|products/native/qc/validation/03/{sample_id}.validation.tsv|true
+sample.{sample_id}.markdup_bam|04|sample|samples|step04_markdup_bam_v1|products/native/markdup/{sample_id}/{sample_id}.markdup.bam|true
+sample.{sample_id}.markdup_bai|04|sample|samples|step04_markdup_bai_v1|products/native/markdup/{sample_id}/{sample_id}.markdup.bam.bai|true
+sample.{sample_id}.markdup_metrics|04|sample|samples|step04_markdup_metrics_v1|products/native/qc/markdup/{sample_id}.markdup.metrics.txt|true
+sample.{sample_id}.markdup_validation|04|sample|samples|step04_validation_report_v1|products/native/qc/validation/04/{sample_id}.validation.tsv|true
+sample.{sample_id}.split_bam|05|sample|samples|step05_split_bam_v1|products/native/split_ncigar/{sample_id}/{sample_id}.split_ncigar.bam|true
+sample.{sample_id}.split_bai|05|sample|samples|step05_split_bai_v1|products/native/split_ncigar/{sample_id}/{sample_id}.split_ncigar.bam.bai|true
+sample.{sample_id}.split_validation|05|sample|samples|step05_validation_report_v1|products/native/qc/validation/05/{sample_id}.validation.tsv|true
+sample.{sample_id}.fwd_bam|06|sample|samples|step06_fwd_bam_v1|products/native/orientation/{sample_id}/{sample_id}.FWD_like.bam|true
+sample.{sample_id}.fwd_bai|06|sample|samples|step06_fwd_bai_v1|products/native/orientation/{sample_id}/{sample_id}.FWD_like.bam.bai|true
+sample.{sample_id}.rev_bam|06|sample|samples|step06_rev_bam_v1|products/native/orientation/{sample_id}/{sample_id}.REV_like.bam|true
+sample.{sample_id}.rev_bai|06|sample|samples|step06_rev_bai_v1|products/native/orientation/{sample_id}/{sample_id}.REV_like.bam.bai|true
+sample.{sample_id}.orientation_counts|06|sample|samples|step06_orientation_counts_v1|products/native/qc/orientation/{sample_id}.orientation_counts.tsv|true
+sample.{sample_id}.orientation_validation|06|sample|samples|step06_validation_report_v1|products/native/qc/validation/06/{sample_id}.validation.tsv|true
+cohort.{cohort_id}.{partition_id}.fwd_vcf|07|cohort_partition|partitions|step07_mpileup_vcf_v1|products/native/mpileup/{cohort_id}/{partition_id}/{cohort_id}.{partition_id}.FWD_like.mpileup.vcf|true
+cohort.{cohort_id}.{partition_id}.rev_vcf|07|cohort_partition|partitions|step07_mpileup_vcf_v1|products/native/mpileup/{cohort_id}/{partition_id}/{cohort_id}.{partition_id}.REV_like.mpileup.vcf|true
+cohort.{cohort_id}.{partition_id}.receipt|07|cohort_partition|partitions|step07_mpileup_receipt_v1|products/native/mpileup/{cohort_id}/{partition_id}/{cohort_id}.{partition_id}.step07_outputs.tsv|true
+cohort.{cohort_id}.{partition_id}.validation|07|cohort_partition|partitions|step07_validation_report_v1|products/native/qc/validation/07/{scope_id}.validation.tsv|true
+cohort.{cohort_id}.step08_sites|08|cohort|cohort|step08_sites_v1|products/native/vcf_preprocessed/{cohort_id}/{cohort_id}.step08_sites.tsv|true
+cohort.{cohort_id}.step08_inputs|08|cohort|cohort|step08_inputs_v1|products/native/vcf_preprocessed/{cohort_id}/{cohort_id}.step08_inputs.tsv|true
+cohort.{cohort_id}.step08_summary|08|cohort|cohort|step08_summary_v1|products/native/qc/vcf_preprocessing/{cohort_id}.step08_summary.tsv|true
+cohort.{cohort_id}.step08_validation|08|cohort|cohort|step08_validation_report_v1|products/native/qc/validation/08/{cohort_id}.validation.tsv|true
 analysis.{analysis_id}.cmh_all_sites|09|analysis|analysis|step09_cmh_all_sites_v1|results/editing/{analysis_id}/{analysis_id}.cmh_all_sites.tsv|true
 analysis.{analysis_id}.cmh_significant_sites|09|analysis|analysis|step09_cmh_significant_sites_v1|results/editing/{analysis_id}/{analysis_id}.cmh_significant_sites.tsv|true
 analysis.{analysis_id}.cmh_summary|09|analysis|analysis|step09_cmh_summary_v1|results/editing/{analysis_id}/{analysis_id}.cmh_summary.tsv|true
 analysis.{analysis_id}.mutation_spectrum_tsv|09|analysis|analysis|step09_mutation_spectrum_tsv_v1|results/editing/{analysis_id}/{analysis_id}.mutation_spectrum.tsv|true
 analysis.{analysis_id}.mutation_spectrum_pdf|09|analysis|analysis|step09_mutation_spectrum_pdf_v1|results/editing/{analysis_id}/{analysis_id}.mutation_spectrum.pdf|true
 analysis.{analysis_id}.depth_delta_pdf|09|analysis|analysis|step09_depth_delta_pdf_v1|results/editing/{analysis_id}/{analysis_id}.depth_delta.pdf|true
-analysis.{analysis_id}.cmh_validation|09|analysis|analysis|step09_validation_report_v1|results/qc/validation/09/{analysis_id}.validation.tsv|true
+analysis.{analysis_id}.cmh_validation|09|analysis|analysis|step09_validation_report_v1|products/native/qc/validation/09/{analysis_id}.validation.tsv|true
 analysis.{analysis_id}.candidate_context|10|analysis|analysis|step10_candidate_context_v1|results/scientific_context/{analysis_id}/{analysis_id}.candidate_context.tsv|true
 analysis.{analysis_id}.motif_hits|10|analysis|analysis|step10_motif_hits_v1|results/scientific_context/{analysis_id}/{analysis_id}.motif_hits.tsv|true
 analysis.{analysis_id}.sequence_logo|10|analysis|analysis|step10_sequence_logo_v1|results/scientific_context/{analysis_id}/{analysis_id}.sequence_logo.tsv|true
 analysis.{analysis_id}.motif_statistics|10|analysis|analysis|step10_motif_statistics_v1|results/scientific_context/{analysis_id}/{analysis_id}.motif_statistics.tsv|true
 analysis.{analysis_id}.context_receipt|10|analysis|analysis|step10_context_receipt_v1|results/scientific_context/{analysis_id}/{analysis_id}.context_receipt.tsv|true
-analysis.{analysis_id}.context_validation|10|analysis|analysis|step10_validation_report_v1|results/qc/validation/10/{analysis_id}.validation.tsv|true
+analysis.{analysis_id}.context_validation|10|analysis|analysis|step10_validation_report_v1|products/native/qc/validation/10/{analysis_id}.validation.tsv|true
 """.strip().splitlines()
 
 
@@ -346,7 +348,7 @@ def test_every_profile_owner_is_required_without_an_exclusion_surface(
     )
 
 
-def test_only_stationary_step00c_native_artifacts_are_absolute_templates(
+def test_profile_separates_native_products_from_scientist_results(
     profile: dict[str, object],
 ) -> None:
     absolute_templates = [
@@ -364,11 +366,37 @@ def test_only_stationary_step00c_native_artifacts_are_absolute_templates(
         "{reference_fasta_path}.fai",
         "{reference_dict_path}",
     ]
-    assert all(
-        template["source_path_template"].startswith("results/")
+    relative_paths = [
+        template["source_path_template"]
         for template in profile["artifact_templates"]
         if template not in absolute_templates
-    )
+    ]
+    assert Counter(
+        "native"
+        if path.startswith("products/native/")
+        else "editing"
+        if path.startswith("results/editing/")
+        else "scientific_context"
+        if path.startswith("results/scientific_context/")
+        else "unexpected"
+        for path in relative_paths
+    ) == Counter({"native": 56, "editing": 6, "scientific_context": 5})
+
+
+def test_report_root_follows_the_profile_bound_layout(
+    profile: dict[str, object],
+    tmp_path: Path,
+) -> None:
+    assert report_output_root(tmp_path, profile) == tmp_path / "results" / "reports"
+
+    historical = copy.deepcopy(profile)
+    for template in historical["artifact_templates"]:
+        path = template["source_path_template"]
+        if path.startswith("products/native/"):
+            template["source_path_template"] = path.replace(
+                "products/native/", "results/", 1
+            )
+    assert report_output_root(tmp_path, historical) == tmp_path / "products" / "report"
 
 
 def test_step09_keeps_native_diagnostic_pdfs(profile: dict[str, object]) -> None:

@@ -12,6 +12,7 @@ import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote
 
 import pytest
 
@@ -392,7 +393,7 @@ def _assert_complete_products(run_root: Path, run_id: str) -> None:
         )
 
     summary_root = run_root / "products/artifact-summary" / run_id
-    report_root = run_root / "products/report" / run_id
+    report_root = run_root / "results/reports" / run_id
     assert (summary_root / f"{run_id}.artifacts.tsv").is_file()
     assert (summary_root / f"{run_id}.artifact_receipt.tsv").is_file()
     summary_path = summary_root / f"{run_id}.run_summary.json"
@@ -402,6 +403,54 @@ def _assert_complete_products(run_root: Path, run_id: str) -> None:
     assert (report_root / f"{run_id}.evidence_report.html").is_file()
     assert (report_root / f"{run_id}.run_summary.tsv").is_file()
     assert (report_root / f"{run_id}.report_outputs.tsv").is_file()
+    results_root = run_root / "results"
+    assert results_root.is_dir() and not results_root.is_symlink()
+    assert {path.name for path in results_root.iterdir()} == {
+        "editing",
+        "reports",
+        "scientific_context",
+    }
+    for directory in (
+        results_root / "editing",
+        results_root / "reports",
+        results_root / "scientific_context",
+        run_root / "products" / "native",
+    ):
+        assert directory.is_dir() and not directory.is_symlink()
+    assert not os.path.lexists(run_root / "products" / "report")
+    scientific_html = (report_root / f"{run_id}.scientific_report.html").read_text(
+        encoding="utf-8"
+    )
+    evidence_html = (report_root / f"{run_id}.evidence_report.html").read_text(
+        encoding="utf-8"
+    )
+    for content in (scientific_html, evidence_html):
+        assert 'aria-label="Result files"' in content
+        assert "Threshold-passing candidates" in content
+        assert "Complete candidate table" in content
+        assert "Candidate context" in content
+    with (summary_root / f"{run_id}.artifacts.tsv").open(
+        "r", encoding="utf-8", newline=""
+    ) as stream:
+        artifacts = {
+            row["adapter"]: run_root / row["source_path"]
+            for row in csv.DictReader(stream, delimiter="\t")
+        }
+    for label, adapter in (
+        ("Threshold-passing candidates", "step09_cmh_significant_sites_v1"),
+        ("Complete candidate table", "step09_cmh_all_sites_v1"),
+        ("Candidate context", "step10_candidate_context_v1"),
+    ):
+        match = re.search(
+            rf'href="([^"]+)"><strong>{re.escape(label)}</strong>',
+            scientific_html,
+        )
+        assert match is not None
+        assert (report_root / unquote(match.group(1))).resolve(strict=True) == artifacts[
+            adapter
+        ].resolve(strict=True)
+    assert "emrys inspect local-pilot-run --run-root" not in scientific_html
+    assert f"emrys inspect local-pilot-run --run-root {run_root}" in evidence_html
     summary = json.loads(summary_path.read_text(encoding="utf-8"))
     assert summary["interpretation_boundary"] == (
         "computational_candidates_only_biological_validation_outside_emrys"
@@ -643,7 +692,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     )
     assert resumed.returncode == 0, resumed.stdout + resumed.stderr
     assert "Evidence:" in resumed.stderr
-    report_root = run_root / "products" / "report" / run_id
+    report_root = run_root / "results" / "reports" / run_id
     expected_results = (
         "Results:\n"
         f"  Scientific report: {report_root}/{run_id}.scientific_report.html\n"
@@ -734,7 +783,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert clean_run.returncode == 0, clean_run.stdout + clean_run.stderr
     assert "Evidence:" in clean_run.stderr
     clean_run_id, clean_root = _planned_run(clean_run.stderr, clean_workspace)
-    clean_report_root = clean_root / "products" / "report" / clean_run_id
+    clean_report_root = clean_root / "results" / "reports" / clean_run_id
     clean_expected_results = (
         "Results:\n"
         f"  Scientific report: {clean_report_root}/{clean_run_id}.scientific_report.html\n"

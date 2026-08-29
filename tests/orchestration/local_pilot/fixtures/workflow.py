@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.contracts.scientific_evidence import scientific_context, step08, step09
 from emrys.libraries.source_authority import controlled_python_argv
@@ -148,9 +149,7 @@ class WorkflowFixture:
     def report_receipt(self) -> Path:
         run_id = str(self.execution["run_id"])
         return (
-            self.run_root
-            / "products"
-            / "report"
+            report_output_root(self.run_root, self.profile)
             / run_id
             / f"{run_id}.report_outputs.tsv"
         )

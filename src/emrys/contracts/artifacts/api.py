@@ -39,6 +39,7 @@ from ._artifact_contracts.run_summary_validation import (
 from ._artifact_contracts.schema import (
     format_json_path,
     load_json_object,
+    load_json_object_bytes,
     load_schema_registry,
     reject_duplicate_json_keys,
     reject_nonstandard_json_constant,
@@ -60,6 +61,7 @@ __all__ = (
     "artifact_status_dimensions",
     "format_json_path",
     "load_json_object",
+    "load_json_object_bytes",
     "load_schema_registry",
     "reconcile_artifact_inventory_row",
     "reconcile_document_inventory",

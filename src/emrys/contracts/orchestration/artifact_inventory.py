@@ -1,4 +1,4 @@
-"""Run-bound expansion and validation of artifact-inventory adapters."""
+"""Run-bound artifact-layout expansion and validation."""
 
 from __future__ import annotations
 
@@ -9,6 +9,17 @@ from typing import Any
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.application_model import AnalysisRevision
+
+
+def report_output_root(run_root: Path, profile: Mapping[str, Any]) -> Path:
+    """Select the report root bound to the admitted profile's artifact layout."""
+
+    if any(
+        str(template["source_path_template"]).startswith("products/native/")
+        for template in profile["artifact_templates"]
+    ):
+        return run_root / "results" / "reports"
+    return run_root / "products" / "report"
 
 
 def _template_contexts(

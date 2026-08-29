@@ -327,7 +327,11 @@ completed EMRYS run.
 | `state/task-starts/` | Immutable producer-entry records. |
 | `state/verified/` | Hash-bound successful owner-task records. |
 | `state/reporting/` | Start and verified records for artifact index, run summary, and report publication. |
-| `results/` | Native scientific outputs, QC evidence, intermediates, and ranked-candidate products. |
+| `results/` | Scientist-facing results only. Current Runs contain `editing/`, `scientific_context/`, and `reports/`; scratch and nonfinal workflow products do not belong here. |
+| `results/editing/` | Step `09` candidate tables, summary, mutation spectrum, and diagnostic PDFs. |
+| `results/scientific_context/` | Step `10` candidate context, motif, population, enrichment, and receipt. |
+| `results/reports/<run-id>/` | Self-contained scientific and evidence-and-operations reports, renderer summary TSV, and the report receipt published last. |
+| `products/native/` | Nonfinal native workflow artifacts and owner QC/validation outputs required for evidence, reuse, and downstream computation. |
 | `products/artifact-summary/<run-id>/records/` | Canonical records for every declared artifact, including explicit incomplete or unavailable state. |
 | `products/artifact-summary/<run-id>/<run-id>.artifacts.tsv` | Deterministic artifact index. |
 | `products/artifact-summary/<run-id>/<run-id>.artifact_receipt.tsv` | Artifact-index receipt, published last for that transaction. |
@@ -335,13 +339,23 @@ completed EMRYS run.
 | `products/artifact-summary/<run-id>/<run-id>.run_summary.tsv` | Tabular run-status summary. |
 | `products/artifact-summary/<run-id>/<run-id>.qc_summary.tsv` | Consolidated QC projection. |
 | `products/artifact-summary/<run-id>/<run-id>.run_summary_receipt.tsv` | Run-summary receipt, published last. |
-| `products/report/<run-id>/` | Self-contained human report output, renderer summary TSV, and the report receipt published last. |
 | Beside the declared FASTA | Step `00c` `.fai` and `.dict`, the only owner outputs outside the run root. |
 
 Locks, released-lock evidence, partials, backups, task logs, and failed attempts
 are not disposable merely because a later output exists. Exact report-bundle
 members and their receipt semantics belong to the
 [`reporting` owner](../../reporting/README.md).
+
+An exactly bound historical profile may retain a verified report transaction at
+`products/report/<run-id>/`; that location is read-only historical evidence, not
+a second current publication root. The changed fixed-profile bytes deliberately
+produce new Run identities. Historical Runs remain inspectable, but current
+normalization does not make an old-layout Run automatically resumable. During
+that read-only inspection, artifact-index, run-summary, and report ledgers use
+their receipt-bound artifact roster and recorded producer identities rather
+than today's producer registry, while the current checkout acts only as the
+reader; current-profile validation and all publication paths retain strict
+current-checkout attestation.
 
 The B6 proof extends the B5 adapter evidence to a clean fresh clone with the
 locked workflow environment. It exercises the top-level parser using explicit

@@ -99,6 +99,16 @@ def prepare_context(
         artifact_receipt_value=arguments.artifact_receipt,
         output_root_value=arguments.output_root,
         source_root=source_root,
+        expected_run_contract_path=getattr(
+            arguments,
+            "expected_run_contract_path",
+            None,
+        ),
+        expected_inventory_path=getattr(
+            arguments,
+            "expected_inventory_path",
+            None,
+        ),
     )
     snapshot_by_path = {snapshot.path: snapshot for snapshot in input_snapshots}
     artifact_receipt_snapshot = snapshot_by_path[artifact_receipt_path]

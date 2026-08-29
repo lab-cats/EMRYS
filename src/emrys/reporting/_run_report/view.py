@@ -1112,6 +1112,7 @@ def _document_view(
     end_note: str,
     categories: tuple[dict[str, Any], ...],
     selected_candidate_ids: tuple[str, ...] = (),
+    result_links: tuple[dict[str, str], ...] = (),
 ) -> dict[str, Any]:
     run_id = summary["run_id"]
     return {
@@ -1126,6 +1127,7 @@ def _document_view(
         "metadata": dict(metadata),
         "categories": categories,
         "selected_candidate_ids": selected_candidate_ids,
+        "result_links": result_links,
     }
 
 
@@ -1159,6 +1161,7 @@ def build_scientific_view(
     scientific_context_results: ScientificContextResults | None = None,
     scientific_context_unavailable_reason: str | None = None,
     candidate_display: SelectedCandidateProjection | None = None,
+    result_links: tuple[dict[str, str], ...] = (),
 ) -> dict[str, Any]:
     """Build the scientific interpretation view without operational provenance."""
 
@@ -1184,6 +1187,7 @@ def build_scientific_view(
             if candidate_display is not None
             else ()
         ),
+        result_links=result_links,
         categories=(
             {
                 "id": "scientific-category",
@@ -1243,6 +1247,8 @@ def build_evidence_view(
     computational_unavailable_reason: str | None = None,
     scientific_context_results: ScientificContextResults | None = None,
     scientific_context_unavailable_reason: str | None = None,
+    result_links: tuple[dict[str, str], ...] = (),
+    inspect_command: str = "emrys inspect local-pilot-run --run-root <run-root>",
 ) -> dict[str, Any]:
     """Build the evidence and operations view without candidate rows."""
 
@@ -1261,6 +1267,7 @@ def build_evidence_view(
             "End of evidence and operations report. Report generation did not change "
             "any computational status."
         ),
+        result_links=result_links,
         categories=(
             {
                 "id": "overview-category",
@@ -1345,7 +1352,10 @@ def build_evidence_view(
                     {
                         "id": "attempt-lineage-section",
                         "title": "Attempt lineage",
-                        "blocks": tuple(_attempt_lineage(summary)),
+                        "blocks": (
+                            _note(f"Inspect this Run: {inspect_command}"),
+                            *_attempt_lineage(summary),
+                        ),
                     },
                 ),
             },

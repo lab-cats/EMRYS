@@ -349,6 +349,44 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert len({record["machine_key"] for record in records}) == 14
     assert all("--execute" in record["producer_argv"] for record in records)
     assert all("--execute" in record["validator_argv"] for record in records)
+
+    produced_paths = [
+        Path(item["path"]) for record in records for item in record["outputs"]
+    ] + [Path(record["validation_report_path"]) for record in records]
+    run_produced_paths = [
+        path for path in produced_paths if path.is_relative_to(plan.run_root)
+    ]
+    assert all(
+        path.is_relative_to(plan.run_root / "products" / "native")
+        or path.is_relative_to(plan.run_root / "results" / "editing")
+        or path.is_relative_to(plan.run_root / "results" / "scientific_context")
+        for path in run_produced_paths
+    )
+    assert {
+        path.relative_to(plan.run_root / "results").parts[0]
+        for path in run_produced_paths
+        if path.is_relative_to(plan.run_root / "results")
+    } == {"editing", "scientific_context"}
+
+    def producer_argument(record: dict[str, object], option: str) -> Path:
+        argv = record["producer_argv"]
+        return Path(argv[argv.index(option) + 1])
+
+    def artifact_path(record: dict[str, object], suffix: str) -> Path:
+        return next(
+            Path(item["path"])
+            for field in ("inputs", "outputs")
+            for item in record[field]
+            if str(item["path"]).endswith(suffix)
+        )
+
+    def assert_root(
+        record: dict[str, object], option: str, suffix: str, parent_index: int
+    ) -> None:
+        assert producer_argument(record, option) == artifact_path(
+            record, suffix
+        ).parents[parent_index]
+
     step07 = next(
         record
         for record in records
@@ -361,6 +399,8 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert Path(step07["validation_report_path"]).name == (
         f"{step07['scope']['scope_id']}.validation.tsv"
     )
+    assert_root(step07, "--orientation-root", ".FWD_like.bam", 1)
+    assert_root(step07, "--output-root", ".FWD_like.mpileup.vcf", 2)
     assert not any("--unlock" in record["producer_argv"] for record in records)
     assert not {
         "--unlock",
@@ -418,6 +458,17 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert "R_DEFAULT_PACKAGES" in r_bootstrap
     assert "--no-environ" not in producer
     assert str(tmp_path / "renv-library") in producer
+    assert_root(step08, "--step07-root", ".FWD_like.mpileup.vcf", 2)
+    assert_root(step08, "--output-root", ".step08_sites.tsv", 1)
+    assert_root(step08, "--qc-root", ".step08_summary.tsv", 0)
+    step09 = next(
+        record
+        for record in records
+        if record["machine_key"]
+        == "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1"
+    )
+    assert_root(step09, "--step08-root", ".step08_sites.tsv", 1)
+    assert_root(step09, "--output-root", ".cmh_all_sites.tsv", 1)
     step10 = next(
         record
         for record in records
@@ -427,6 +478,7 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
     assert "scientific_context_projection.sh" in " ".join(step10["producer_argv"])
     assert "--motif-catalog" in step10["producer_argv"]
     assert "scientific-context-projection" in step10["validator_argv"]
+    assert_root(step10, "--output-root", ".candidate_context.tsv", 1)
     assert len(step10["inputs"]) == 6
     assert len(step10["outputs"]) == 5
     assert plan.attempt_record["execution_mode"] == "local-science-tools"
@@ -489,7 +541,7 @@ def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> Non
     )
     assert {
         plan.run_root / "products" / "artifact-summary",
-        plan.run_root / "products" / "report",
+        plan.run_root / "results" / "reports",
     } <= set(plan.directories)
 
 
@@ -2501,7 +2553,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     resume_arguments.execute = True
     assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 0
     resumed_output = capsys.readouterr().err
-    report_root = run_root / "products" / "report" / run_id
+    report_root = run_root / "results" / "reports" / run_id
     expected_results = (
         "Results:\n"
         f"  Scientific report: {report_root}/{run_id}.scientific_report.html\n"

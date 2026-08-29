@@ -37,25 +37,32 @@ def reject_nonstandard_json_constant(value: str) -> None:
     )
 
 
+def load_json_object_bytes(data: bytes, label: str) -> dict[str, Any]:
+    try:
+        value = json.loads(
+            data.decode("utf-8"),
+            object_pairs_hook=reject_duplicate_json_keys,
+            parse_constant=reject_nonstandard_json_constant,
+        )
+    except ContractValidationError:
+        raise
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ContractValidationError(f"Could not parse {label}: {exc}") from exc
+    if not isinstance(value, dict):
+        raise ContractValidationError(f"{label} must contain a JSON object")
+    return value
+
+
 def load_json_object(path: Path, label: str) -> dict[str, Any]:
     if not path.exists():
         raise ContractValidationError(f"{label} does not exist: {path}")
     if not path.is_file():
         raise ContractValidationError(f"{label} is not a file: {path}")
     try:
-        with path.open(encoding="utf-8") as stream:
-            value = json.load(
-                stream,
-                object_pairs_hook=reject_duplicate_json_keys,
-                parse_constant=reject_nonstandard_json_constant,
-            )
-    except ContractValidationError:
-        raise
-    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        data = path.read_bytes()
+    except OSError as exc:
         raise ContractValidationError(f"Could not parse {label} {path}: {exc}") from exc
-    if not isinstance(value, dict):
-        raise ContractValidationError(f"{label} must contain a JSON object: {path}")
-    return value
+    return load_json_object_bytes(data, f"{label} {path}")
 
 
 def load_schema(name: str) -> dict[str, Any]:

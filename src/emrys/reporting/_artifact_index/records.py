@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import io
 from collections import Counter
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
@@ -244,6 +245,32 @@ def load_existing_receipt(
     return rows[0]
 
 
+def read_exact_tsv_bytes(
+    payload: bytes,
+    path: Path,
+    header: Sequence[str],
+    *,
+    exact_rows: int | None = None,
+) -> list[dict[str, str]]:
+    try:
+        reader = csv.DictReader(
+            io.StringIO(payload.decode("utf-8"), newline=""),
+            delimiter="\t",
+        )
+        if tuple(reader.fieldnames or ()) != tuple(header):
+            raise ArtifactIndexError(f"TSV header is invalid: {path}")
+        rows = list(reader)
+    except ArtifactIndexError:
+        raise
+    except (UnicodeError, csv.Error) as exc:
+        raise ArtifactIndexError(f"Could not read TSV {path}: {exc}") from exc
+    if exact_rows is not None and len(rows) != exact_rows:
+        raise ArtifactIndexError(
+            f"TSV {path} must contain {exact_rows} rows; observed {len(rows)}"
+        )
+    return rows
+
+
 def read_exact_tsv(
     path: Path,
     header: Sequence[str],
@@ -251,20 +278,15 @@ def read_exact_tsv(
     exact_rows: int | None = None,
 ) -> list[dict[str, str]]:
     try:
-        with path.open(encoding="utf-8", newline="") as stream:
-            reader = csv.DictReader(stream, delimiter="\t")
-            if tuple(reader.fieldnames or ()) != tuple(header):
-                raise ArtifactIndexError(f"TSV header is invalid: {path}")
-            rows = list(reader)
-    except ArtifactIndexError:
-        raise
-    except (OSError, UnicodeError, csv.Error) as exc:
+        payload = path.read_bytes()
+    except OSError as exc:
         raise ArtifactIndexError(f"Could not read TSV {path}: {exc}") from exc
-    if exact_rows is not None and len(rows) != exact_rows:
-        raise ArtifactIndexError(
-            f"TSV {path} must contain {exact_rows} rows; observed {len(rows)}"
-        )
-    return rows
+    return read_exact_tsv_bytes(
+        payload,
+        path,
+        header,
+        exact_rows=exact_rows,
+    )
 
 
 def validate_existing_identity(

@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any, Literal, Protocol, cast
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.contracts.orchestration.artifact_inventory import report_output_root
 from emrys.contracts.orchestration.application_model import (
     LEGACY_EXECUTION_SCHEMA_VERSION,
     RUN_BINDING_SCHEMA_VERSION,
@@ -267,12 +268,12 @@ def _results_status(
 def default_inspection_ops() -> InspectionOps:
     """Construct production-only process observations."""
 
-    from emrys.reporting import transaction_validation  # noqa: PLC0415
+    from emrys.orchestration.local_pilot import reporting_boundary  # noqa: PLC0415
 
     return InspectionOps(
         host_name=socket.gethostname,
         process_is_alive=_default_process_is_alive,
-        validate_reporting_receipt=transaction_validation.validate_receipt,
+        validate_reporting_receipt=reporting_boundary.validate_read_semantic_receipt,
     )
 
 
@@ -872,7 +873,12 @@ def _admit_reference(
     return None
 
 
-def _fixed_reporting_receipt(root: Path, run_id: str, kind: str) -> Path:
+def _fixed_reporting_receipt(
+    root: Path,
+    run_id: str,
+    kind: str,
+    profile: Mapping[str, Any],
+) -> Path:
     if kind == "artifact_index":
         return (
             root
@@ -890,7 +896,9 @@ def _fixed_reporting_receipt(root: Path, run_id: str, kind: str) -> Path:
             / f"{run_id}.run_summary_receipt.tsv"
         )
     if kind == "html_report":
-        return root / "products" / "report" / run_id / f"{run_id}.report_outputs.tsv"
+        return (
+            report_output_root(root, profile) / run_id / f"{run_id}.report_outputs.tsv"
+        )
     raise InspectionError(f"Unknown reporting transaction kind: {kind}")
 
 
@@ -942,7 +950,7 @@ def _inspect_reporting_ledger_with_locations(
         kind_root = state_root / kind
         start_path = kind_root / "start.json"
         verified_path = kind_root / "verified.json"
-        semantic_path = _fixed_reporting_receipt(root, run_id, kind)
+        semantic_path = _fixed_reporting_receipt(root, run_id, kind, profile)
         start_exists = start_path.exists() or start_path.is_symlink()
         verified_exists = verified_path.exists() or verified_path.is_symlink()
         semantic_exists = semantic_path.exists() or semantic_path.is_symlink()
