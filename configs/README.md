@@ -17,13 +17,13 @@ emrys init local-pilot \
   --execute
 ```
 
-The execute form publishes `request.yaml`, `emrys.execution.yaml`,
+The execute form publishes `project.yaml`, `emrys.execution.yaml`,
 `samples.tsv`, `partitions.tsv`, `runtime.tsv`, and then
 `starter-set.manifest.tsv` last. The manifest proves only the initial
 generated starter; expected data/config edits make those original hashes
 historical.
 
-Keep the authored request, execution profile, manifests, selected runtime
+Keep the authored Project, execution profile, manifests, selected runtime
 profile, and source data together for the life of the run. EMRYS binds the
 scientific inputs and computational resource declaration into Run identity;
 placement and observed allocation are Attempt context. Changing either is not
@@ -31,12 +31,12 @@ a way to repair an entered Attempt.
 
 ## Recommended input layout
 
-This layout makes every data path relative to the request and keeps the
+This layout makes every data path relative to the Project and keeps the
 checkout clean:
 
 ```text
 emrys-inputs/
-|-- request.yaml
+|-- project.yaml
 |-- emrys.execution.yaml
 |-- samples.tsv
 |-- partitions.tsv
@@ -61,7 +61,7 @@ directory. Do not put the workspace, large inputs, restored R library, or
 results in the checkout.
 
 Authored paths may be absolute or relative to the directory containing the
-request. They must be explicit: no `~`, environment variables, templates,
+Project definition. They must be explicit: no `~`, environment variables, templates,
 globs, redundant separators, or `.`/`..` components. EMRYS does not search for
 files or infer which sample, reference, or runtime you intended.
 
@@ -78,7 +78,7 @@ concerns:
 The built-in profile is the base, the explicitly selected file overrides it,
 and CLI resource flags override both. EMRYS does not discover adjacent
 configuration. If retired `emrys.resources.yaml` or `emrys.launcher.yaml`
-files remain beside the request, omitting `--execution-profile` fails closed
+files remain beside the Project definition, omitting `--execution-profile` fails closed
 and requires deliberate migration.
 
 Use [`execution_profile.example.yaml`](execution_profile.example.yaml) as the
@@ -96,20 +96,21 @@ submits exactly once and prints `JOB_ID`, `OUT`, and `ERR`. Scheduler streams
 use `<workspace>/logs`; the application-log root defaults to its `application/`
 subdirectory. Execution mode is never inferred from the profile or environment.
 
-## Request YAML
+## Project YAML
 
-[`local_pilot_request.example.yaml`](local_pilot_request.example.yaml) is the
-complete request shape. YAML keys are closed; unknown or duplicate keys and
-merge keys are rejected.
+[`project.example.yaml`](project.example.yaml) is the current Project-definition
+shape. It remains the temporary `emrys.request.v3` adapter while final Project
+nesting is deferred. YAML keys are closed; unknown or duplicate keys and merge
+keys are rejected.
 
 ### Run and reference fields
 
 | Field | Meaning | How to choose it |
 | --- | --- | --- |
-| `schema_version` | Request contract version. | Keep `emrys.request.v3`. |
+| `schema_version` | Temporary Project-adapter contract version. | Keep `emrys.request.v3`. |
 | `label` | Optional human label. It does not affect the run ID. | Use a short description for operators. |
 | `profile` | Fixed automatic workflow. | Keep `emrys.profile.local_cmh.v2`. There is no public alternate profile. |
-| `sample_manifest` | Sample TSV path. | Point to the matched sample manifest, normally beside the request. |
+| `sample_manifest` | Sample TSV path. | Point to the matched sample manifest, normally beside the Project. |
 | `partition_manifest` | Genomic partition TSV path. | Point to the matched partition manifest. |
 | `reference.id` | Stable reference-build identity. | Use a safe ID such as `grch38_gencode_v47`; do not use a filename as a substitute for provenance. |
 | `reference.fasta` | Materialized, nonempty reference FASTA. | Use the same assembly/build as the annotation and partition selectors. The reference directory must be writable because Step `00c` creates or reuses `.fai` and `.dict` sidecars beside it. |
@@ -192,7 +193,7 @@ may be appended as the final optional column.
 | `r1_fastq` | Read-1 FASTQ path. | Required nonempty regular file; plain FASTQ or `.gz`. |
 | `r2_fastq` | Read-2 FASTQ path. | Required, distinct from R1, and uses the same compression mode as R1. |
 | `strandedness` | Authored library metadata. | Exactly `forward`, `reverse`, `unstranded`, or `unknown`. RSeQC evidence does not silently rewrite it. |
-| `condition` | Experimental condition. | Must exactly match a request condition when the row participates in control/treatment or background analysis. |
+| `condition` | Experimental condition. | Must exactly match a Project condition when the row participates in control/treatment or background analysis. |
 | `replicate` | Pairing-stratum identity. | Required safe ID. It—not row order or sample naming—defines control/treatment pairing. |
 | `notes` | Optional free text. | If used, add it as the last column on every row. |
 
@@ -210,8 +211,8 @@ Do not use technical lanes as independent biological strata unless that is the
 declared experimental design. Merge or model lanes according to an approved
 upstream policy before authoring this manifest.
 
-EMRYS checks the declared FASTQ files and binds their bytes, but the request
-contract does not prove sample provenance or complete record-level pairing.
+EMRYS checks the declared FASTQ files and binds their bytes, but the temporary
+Project adapter contract does not prove sample provenance or complete record-level pairing.
 Confirm checksums from the sequencing provider and use the paired-FASTQ
 diagnostic described in the [ingestion owner](../src/emrys/ingestion/sample_manifest_admission/README.md)
 when appropriate.
@@ -226,7 +227,7 @@ columns:
 | --- | --- | --- |
 | `partition_id` | Stable partition identity. | Required, unique, safe ID. |
 | `selector_type` | How bcftools selects the region. | `region` passes the value to `bcftools mpileup -r`; `regions_file` passes an admitted file to `-R`. |
-| `selector_value` | Contig/region expression or regions-file path. | For `region`, use the FASTA/FAI contig vocabulary, for example `chr1` or `chr1:1-1000000`. For `regions_file`, use an explicit file path relative to the request directory or an absolute path. |
+| `selector_value` | Contig/region expression or regions-file path. | For `region`, use the FASTA/FAI contig vocabulary, for example `chr1` or `chr1:1-1000000`. For `regions_file`, use an explicit file path relative to the Project directory or an absolute path. |
 
 Partitions must be nonoverlapping for Step `08`. Start with one small declared
 region for installation/runtime verification before scheduling a whole-genome
@@ -320,7 +321,7 @@ A successful head-node probe does not establish compute-node visibility.
 
 Check these facts first:
 
-- the request directory and source data are durable and readable on the
+- the Project directory and source data are durable and readable on the
   execution host;
 - FASTQ R1/R2 files are distinct, use matching compression, and have retained
   provider checksums;
@@ -344,7 +345,7 @@ scientific result.
 Before doctor, run the tool-free compatibility validator on the execution host:
 
 ```sh
-emrys validate local-pilot-request --request /absolute/emrys-inputs/request.yaml
+emrys validate project --project /absolute/emrys-inputs/project.yaml
 ```
 
 It streams and binds declared inputs, checks paired strata, reconciles
@@ -354,7 +355,7 @@ It writes nothing and establishes no runtime or scientific evidence.
 ## Other configuration assets
 
 The remaining files in this directory serve narrower owners. They are not
-alternate local-pilot overlays and should not be mixed into a request unless
+alternate local-pilot overlays and should not be mixed into a Project unless
 their owner explicitly calls for them.
 
 | Area | Consumer | Tracked inputs |

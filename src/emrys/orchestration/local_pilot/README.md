@@ -18,8 +18,8 @@ emrys init synthetic-local-pilot \
   --dataset-profile production-like-v1
 
 # Validate all declared inputs without requiring or probing science tools.
-emrys validate local-pilot-request \
-  --request /absolute/path/to/request.yaml
+emrys validate project \
+  --project /absolute/path/to/project.yaml
 
 # Print a fixed-policy runtime TSV to stdout; this command writes nothing.
 emrys prepare local-pilot-runtime \
@@ -30,7 +30,7 @@ emrys prepare local-pilot-runtime \
   > /new/absent/path/runtime.ready.tsv
 ```
 
-`init local-pilot` publishes `request.yaml`, editable `emrys.execution.yaml`,
+`init local-pilot` publishes `project.yaml`, editable `emrys.execution.yaml`,
 `samples.tsv`, `partitions.tsv`, and `runtime.tsv`, then writes
 `starter-set.manifest.tsv` last and re-admits every path, mode, size, and byte.
 The EMRYS identity cutover does not adopt or resume pre-cutover run roots.
@@ -61,7 +61,7 @@ delegate re-admits the profile digest, submission UID, internal marker, and
 Slurm job ID before planning the immutable Run. It loads only an exact declared
 module roster, creates and later removes one mode-`0700` private scratch
 directory, and runs doctor inside the allocation. Ambient `SBATCH_*` values do
-not alter the admitted request.
+not alter the admitted Project.
 
 The effective resource declaration must fit the observed CPU and memory
 allocation. Placement request, profile source/digest, observed allocation, and
@@ -101,9 +101,9 @@ the supported preview commands and explicit override rules.
 `production-like-v1` profile retains the same engineered core and oracle, adds
 deterministic neutral background and deliberate duplicate templates to reach
 100,000 pairs per library, and uses a 5 Mb reference. Both profiles publish
-matched request/manifests and explicit fixture metadata for the current
+matched Project/manifests and explicit fixture metadata for the current
 Step 00a-10 and reporting workflow. `fixture.manifest.json` is written last
-after the generated request passes the same normalizer and reference-
+after the generated Project passes the same admission and reference-
 compatibility checks. Their expectation is three Step 09 computational rows,
 one significant row, and a complete Step 10 projection; none is production
 data, scientific adjudication, or biological evidence.
@@ -126,16 +126,16 @@ they are not inferred from static validation.
 
 The underlying narrow read-only admission APIs are:
 
-- `normalization.normalize_request(request_path, profile)` safely admits one
-  YAML request plus its ordered TSV manifests and returns a canonical,
-  content-bound execution identity without writing a run. Its no-follow,
+- `normalization.admit_project(project_path, profile)` safely admits one
+  YAML Project definition plus its ordered TSV manifests and returns an
+  immutable Analysis revision without writing a Run. Its no-follow,
   descriptor-bound admission makes the exact read bytes the only parse and
-  identity authority. The admitted bundle retains immutable request, profile,
-  and construction bytes plus the canonical Analysis revision; mapping access
-  returns fresh disposable views that cannot mutate that authority;
+  identity authority. `ProjectAdmission` retains immutable source, profile,
+  and construction bytes plus that Analysis; mapping access returns fresh
+  disposable views that cannot mutate that authority;
 - `all_pass.require_all_pass(...)` checks the meaning of one owner-validation
   report rather than trusting its process exit;
-- `doctor.inspect_local_pilot(...)` admits one request plus the fixed profile,
+- `doctor.inspect_local_pilot(...)` admits one Project plus the fixed profile,
   checks a disjoint workspace plan, exact clean source checkout, controlled
   Python/Snakemake, science-tool paths and versions, Picard jar, guarded
   `renv`, Step `08` namespaces, and the exact final storage qualification
@@ -145,7 +145,7 @@ The doctor also has the grouped public command:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor local-pilot \
-  --request /absolute/path/to/request.yaml \
+  --project /absolute/path/to/project.yaml \
   --workspace /absolute/path/to/workspace \
   --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
 ```
@@ -165,7 +165,7 @@ work only through the accepted fixed profile:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
-  --request /absolute/path/to/request.yaml \
+  --project /absolute/path/to/project.yaml \
   --workspace /absolute/path/to/workspace \
   --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
   --execution-profile /absolute/path/to/emrys.execution.yaml
@@ -287,12 +287,12 @@ SIGKILL, power loss, and descendants that deliberately escape the delegated
 session/process group remain outside automatic signal recovery.
 
 The adjacent neutral [machine contracts](../../contracts/orchestration/README.md)
-define request, profile, successor Analysis/Execution-Plan/Run or historical
+define the temporary Project-adapter request schema, profile, successor Analysis/Execution-Plan/Run or historical
 normalized execution, lock, attempt, receipt,
 task-start/task-attempt/verified-task, and reporting-ledger record shapes. No
 automatic owner-recovery mechanism is implemented. B5 materializes only the
 fixed source-checkout profile and public owner commands. B6 adds matched public
-request, sample, and partition starters plus a clean fresh-clone no-science E2E
+Project, sample, and partition starters plus a clean fresh-clone no-science E2E
 covering readiness, no-write planning, separate clean success, controlled
 between-task failure, byte-preserving resume, inspection, reporting, and
 completed-run refusal. The E2E supplies explicit repository-only collaborators;

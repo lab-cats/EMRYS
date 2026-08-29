@@ -23,7 +23,7 @@ from emrys.orchestration.local_pilot.onboarding import (
     _require_external_absent_output,
     publish_create_absent_tree,
     source_root,
-    validate_local_pilot_request,
+    validate_project,
 )
 
 DESCRIPTION = (
@@ -581,7 +581,7 @@ def _sample_manifest() -> bytes:
     return ("\n".join(rows) + "\n").encode("utf-8")
 
 
-def _request(profile: DatasetProfile = DEFAULT_PROFILE) -> bytes:
+def _project_definition(profile: DatasetProfile = DEFAULT_PROFILE) -> bytes:
     return f"""schema_version: emrys.request.v3
 label: {profile.fixture_id}
 profile: emrys.profile.local_cmh.v2
@@ -804,7 +804,7 @@ def fixture_members(
     _validate_dataset_profile(profile)
     reference = _reference(profile)
     members: dict[str, tuple[bytes, int]] = {
-        "request.yaml": (_request(profile), 0o644),
+        "project.yaml": (_project_definition(profile), 0o644),
         "emrys.execution.yaml": (_execution_profile(), 0o644),
         "samples.tsv": (_sample_manifest(), 0o644),
         "partitions.tsv": (
@@ -908,7 +908,7 @@ def init_from_args(arguments: argparse.Namespace) -> int:
         members = fixture_members(profile)
 
         def validate_before_completion(published: Path) -> None:
-            validate_local_pilot_request(published / "request.yaml", root=root)
+            validate_project(published / "project.yaml", root=root)
 
         publish_create_absent_tree(
             output,
@@ -918,7 +918,7 @@ def init_from_args(arguments: argparse.Namespace) -> int:
             before_completion=validate_before_completion,
         )
         print(f"Published deterministic local-pilot fixture ({profile.name}): {output}")
-        print(f"Request: {output / 'request.yaml'}")
+        print(f"Project: {output / 'project.yaml'}")
         print(
             "Evidence boundary: synthetic workflow smoke input; not biological evidence."
         )

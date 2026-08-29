@@ -1,7 +1,7 @@
 # Local-pilot orchestration contract
 
 This document is the binding architecture for EMRYS's first local Snakemake
-pilot. B2 implements its closed machine schemas, read-only request normalizer,
+pilot. B2 implements its closed machine schemas, read-only Project admission,
 reporting projection, and semantic all-pass checker. B3 implements the fixed
 local-CMH profile, static fourteen-scientific-owner-rule Snakemake graph, local executor profile,
 and generic task boundary that publishes task attempts and content-bound
@@ -39,9 +39,9 @@ control plane remain later decisions.
 
 The local pilot has one explicit path:
 
-1. An operator authors one YAML request that references ordered TSV manifests
+1. A scientist authors one YAML Project definition that references ordered TSV manifests
    and stationary FASTQ/reference inputs.
-2. EMRYS validates and normalizes those inputs, then binds one immutable
+2. EMRYS validates and admits those inputs, then binds one immutable
    Analysis revision and one immutable Execution Plan.
 3. A canonical Run binding commits those authorities and determines the
    successor `run_id`; existing `emrys.execution.v1` Runs retain their exact
@@ -63,7 +63,7 @@ The local pilot has one explicit path:
 9. A workflow-attempt receipt is published last. Inspection derives state from
    EMRYS contracts and records, never from Snakemake metadata alone.
 
-There is no request inbox, watcher, database, service, plugin registry, or
+There is no Project inbox, watcher, database, service, plugin registry, or
 automatic recovery subsystem in version 1.
 
 ## Authority matrix
@@ -72,8 +72,8 @@ automatic recovery subsystem in version 1.
 | --- | --- | --- |
 | Scientific owner identity and direct artifact edges | [`STAGE_MAP.md`](../../src/emrys/contracts/STAGE_MAP.md) | Snakemake rule names, filenames, numeric aliases, and narrative order |
 | Producer, validator, output, transaction, and recovery behavior | Applicable owner `README.md` and `CONTRACT.md` | Workflow rules and lifecycle records |
-| Operator intent | Admitted YAML request plus referenced ordered TSV manifests | Caller working directory, environment discovery, filename inference, and globs |
-| Immutable local-run identity | Successor Analysis-revision and Execution-Plan digests, including the computational resource declaration, committed by the canonical Run binding; exact `emrys.execution.v1` bytes for historical Runs | Request formatting, human label, Attempt placement/realization, workspace, host, reporting, scheduler identity, or Snakemake state |
+| Scientist intent | Admitted YAML Project definition plus referenced ordered TSV manifests | Caller working directory, environment discovery, filename inference, and globs |
+| Immutable local-run identity | Successor Analysis-revision and Execution-Plan digests, including the computational resource declaration, committed by the canonical Run binding; exact `emrys.execution.v1` bytes for historical Runs | Project formatting, human label, Attempt placement/realization, workspace, host, reporting, scheduler identity, or Snakemake state |
 | Fixed pilot membership and scope expansion | Versioned local CMH workflow profile | A generic registry or automatic owner discovery |
 | Scheduling | Attempt-local direct or whole-Run Slurm placement around Snakemake's local executor and static rule graph | A second scientific backend, distributed execution, scientific completion, recovery authority, or evidence promotion |
 | Reusable task completion | EMRYS verified task record after owner validation and semantic all-pass gating | Process exit alone, output presence, timestamps, or `.snakemake/` metadata |
@@ -111,21 +111,21 @@ checkout. It imports no peer-private Python implementation. Repository shell
 and R producer assets are not currently installed package data, so wheel-only
 execution is outside this version.
 
-## Intake and normalization
+## Intake and Project admission
 
 ### Authored inputs
 
-The authored YAML request carries only run intent and explicit references:
+The authored YAML Project definition carries only scientific intent and explicit references:
 
-- request schema version and an optional human label;
+- temporary adapter schema version and an optional human label;
 - fixed workflow profile identity;
 - sample-manifest and partition-manifest paths;
 - reference FASTA and GTF paths;
 - cohort and primary-analysis identities;
 - the complete inline Step `09` analysis policy.
 
-Version 3 uses this closed top-level shape, encoded by the request schema
-without adding discovery or extension fields:
+The current Project adapter uses this closed version-3 top-level shape, encoded
+by the retained request schema without adding discovery or extension fields:
 
 ```yaml
 schema_version: emrys.request.v3
@@ -171,8 +171,8 @@ placement alone does not create a different Run.
 
 Every field except `label` and `background_condition` is required. Unknown
 fields fail admission. The implementation may expose a schema-preserving
-starter, but it may not supply hidden scientific defaults during normalization;
-the request records the selected policy explicitly.
+starter, but it may not supply hidden scientific defaults during admission;
+the Project definition records the selected policy explicitly.
 
 Repeated sample and partition records remain ordered TSV. The local CMH profile
 adds admission requirements without silently tightening the general manifest
@@ -182,18 +182,18 @@ never inferred from sample names.
 
 ### Admission rules
 
-Normalization must:
+Project admission must:
 
 - use safe YAML loading, reject duplicate keys, custom tags, merge keys, globs,
   templates, and environment interpolation;
-- resolve relative paths against the request file's directory, never the
+- resolve relative paths against the Project file's directory, never the
   caller's working directory;
 - validate the base sample manifest plus the stricter profile requirements;
 - preserve manifest row order;
 - require explicit regular files and reject unsafe or unresolved path forms;
-- compute SHA-256 for the request, manifests, every declared FASTQ, and the
+- compute SHA-256 for the Project source, manifests, every declared FASTQ, and the
   reference FASTA and GTF; and
-- snapshot only the small request, manifests, profile, policy, and normalized
+- snapshot only the small Project source, manifests, profile, policy, and normalized
   contracts in their declared run- or attempt-specific locations. Raw reads and
   references remain stationary.
 
@@ -228,11 +228,11 @@ historical Attempts.
 Historical `normalized.json` contains deterministic normalized run content and
 its explicit identity envelope and remains byte-for-byte readable and
 resumable. Non-identity admission metadata—the original
-request hash and bytes, human label, authored path strings, resolved
+Project-source hash and bytes, human label, authored path strings, resolved
 reporting-resource policy and execution-profile source provenance, placement,
 observed outer allocation, and normalization tool identity—belongs to the
 immutable workflow-attempt/config records. Reformatting an otherwise
-equivalent request, changing its label, or changing placement therefore does
+equivalent Project definition, changing its label, or changing placement therefore does
 not create a new scientific Run or demand different bytes at the same
 canonical contract path.
 
@@ -299,7 +299,7 @@ The current artifact `run_contract` contains only:
 
 It does not bind raw FASTQ content, exact reference files, or the workflow
 profile. It therefore remains a reporting projection, not the orchestration
-identity. Normalization must materialize an explicit
+identity. Attempt materialization must derive explicit
 `reference_contract.json`, `primary_analysis_policy.json`, and
 `reporting_run_contract.json` from the execution contract. The reference
 projection binds its schema version, declared reference ID, normalized
@@ -383,7 +383,7 @@ One operator-selected workspace contains immutable run directories:
   products/native/               nonfinal native and validation outputs
   products/artifact-summary/     artifact index and run summary
   attempts/<workflow-attempt-id>/
-    request.yaml                 exact authored request for this invocation
+    request.yaml                 exact Project source; historical evidence name
     attempt.json
     tasks/<machine-key>/<scope-id>/
       task-attempt.json
@@ -637,7 +637,8 @@ remains untouched.
 
 ## Inspection and completion
 
-Inspection reads the normalized contract, exact attempt and task trees,
+Inspection reads the successor Run records or exact historical normalized contract,
+the exact Attempt and task trees,
 task-start and verified-task records, reporting start/completion records, owner
 receipts and validation reports, and the aggregate run-lock evidence. It
 reports pending, entered, verified, failed, resume-available, and blocked

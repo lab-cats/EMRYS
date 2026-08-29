@@ -71,9 +71,12 @@ def test_retired_adjacent_sources_require_one_explicit_profile(
     assert isinstance(profile.placement, DirectPlacement)
     assert profile.resource_policy.declaration.workflow_cores == 4
     assert profile.source_path == execution_profile.DEFAULT_PROFILE_PATH
-    assert profile.source_raw_sha256 == hashlib.sha256(
-        execution_profile.DEFAULT_PROFILE_PATH.read_bytes()
-    ).hexdigest()
+    assert (
+        profile.source_raw_sha256
+        == hashlib.sha256(
+            execution_profile.DEFAULT_PROFILE_PATH.read_bytes()
+        ).hexdigest()
+    )
     assert profile.document()["placement"] == {"kind": "direct"}
 
 
@@ -111,6 +114,8 @@ def test_selected_resource_fragment_then_explicit_overrides(tmp_path: Path) -> N
         profile.resource_policy.config_sha256
         == hashlib.sha256(selected.read_bytes()).hexdigest()
     )
+
+
 def test_placement_only_profile_does_not_change_resource_policy(
     tmp_path: Path,
 ) -> None:
@@ -231,7 +236,9 @@ def test_selected_source_digest_is_admitted(tmp_path: Path) -> None:
 
     assert profile.sha256 == expected
     assert profile.source_path == selected
-    assert profile.source_raw_sha256 == hashlib.sha256(selected.read_bytes()).hexdigest()
+    assert (
+        profile.source_raw_sha256 == hashlib.sha256(selected.read_bytes()).hexdigest()
+    )
     with pytest.raises(ExecutionProfileError, match="SHA-256 differs"):
         load_execution_profile(
             tmp_path / "request.yaml",
@@ -335,7 +342,7 @@ def test_tracked_execution_profile_examples_are_admissible(
     exclusive: bool,
 ) -> None:
     profile = load_execution_profile(
-        REPO_ROOT / "configs/local_pilot_request.example.yaml",
+        REPO_ROOT / "configs/project.example.yaml",
         config_path=REPO_ROOT / relative_path,
     )
 

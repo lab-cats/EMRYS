@@ -292,16 +292,14 @@ def _admit_placement(document: Any) -> Placement:
         scratch_parent=_absolute_nonroot_path(document["scratch_parent"]),
         module_mode=modules["mode"],
         module_init=(
-            None
-            if not module_init_value
-            else _absolute_nonroot_path(module_init_value)
+            None if not module_init_value else _absolute_nonroot_path(module_init_value)
         ),
         modules=tuple(modules["load"]),
     )
 
 
 def load_execution_profile(
-    request_path: Path,
+    context_path: Path,
     config_path: Path | None = None,
     resource_overrides: ResourceOverrides = ResourceOverrides(),
     expected_sha256: str | None = None,
@@ -315,7 +313,7 @@ def load_execution_profile(
     if expected_sha256 is not None and _SHA256.fullmatch(expected_sha256) is None:
         raise ExecutionProfileError("expected_sha256 must be 64 lowercase hex")
     if config_path is None:
-        request_parent = Path(os.path.abspath(request_path)).parent
+        context_parent = Path(os.path.abspath(context_path)).parent
         retired = tuple(
             name
             for name in (
@@ -324,7 +322,7 @@ def load_execution_profile(
                 "norad.resources.yaml",
                 "norad.launcher.yaml",
             )
-            if os.path.lexists(request_parent / name)
+            if os.path.lexists(context_parent / name)
         )
         if retired:
             raise ExecutionProfileError(

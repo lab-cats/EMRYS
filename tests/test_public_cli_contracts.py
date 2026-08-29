@@ -63,8 +63,8 @@ EMRYS_COMMANDS = (
     ),
     (("validate", "all-pass"), "usage: emrys validate all-pass"),
     (
-        ("validate", "local-pilot-request"),
-        "usage: emrys validate local-pilot-request",
+        ("validate", "project"),
+        "usage: emrys validate project",
     ),
     (
         ("reconcile", "reference-provenance"),
@@ -593,6 +593,24 @@ def test_installed_emrys_commands_are_isolated_and_cwd_independent(
 
 
 @pytest.mark.parametrize(
+    "command",
+    (("validate", "project"), ("doctor", "local-pilot"), ("run",)),
+)
+def test_project_is_the_only_active_intake_spelling(
+    command: tuple[str, ...],
+    tmp_path: Path,
+) -> None:
+    result = run_command(
+        [sys.executable, "-I", "-m", "emrys", *command, "--help"],
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "--project" in result.stdout
+    assert "--request" not in result.stdout
+
+
+@pytest.mark.parametrize(
     ("configuration", "expected_status"),
     (
         ("[project\n", 0),
@@ -804,8 +822,10 @@ def test_rscript_only_entrypoint_modes_are_explicit(entrypoint: str) -> None:
 def test_make_target_inventory_and_applicability_decisions_are_complete() -> None:
     makefile_lines = (REPO_ROOT / "Makefile").read_text(encoding="utf-8").splitlines()
     operations_makefile_lines = (
-        REPO_ROOT / "scripts" / "make_operations.mk"
-    ).read_text(encoding="utf-8").splitlines()
+        (REPO_ROOT / "scripts" / "make_operations.mk")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    )
     phony_line = next(line for line in makefile_lines if line.startswith(".PHONY:"))
     live_targets = set(phony_line.partition(":")[2].split())
     configurable_variables = {

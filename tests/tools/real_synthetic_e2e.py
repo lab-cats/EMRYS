@@ -1304,7 +1304,7 @@ def run_driver(
     transcripts.run("fixture-plan", fixture_plan, cwd=repo_root)
     transcripts.run("fixture-publish", [*fixture_plan, "--execute"], cwd=repo_root)
 
-    request = paths.inputs / "request.yaml"
+    request = paths.inputs / "project.yaml"
     direct_execution_profile = paths.inputs / "emrys.execution.yaml"
     _write_exclusive(
         paths.execution_profile,
@@ -1358,8 +1358,8 @@ def run_driver(
         _emrys(
             workflow_python,
             "validate",
-            "local-pilot-request",
-            "--request",
+            "project",
+            "--project",
             str(request),
         ),
         cwd=repo_root,
@@ -1410,7 +1410,7 @@ def run_driver(
             workflow_python,
             "doctor",
             "local-pilot",
-            "--request",
+            "--project",
             str(request),
             "--workspace",
             str(paths.workspace),
@@ -1424,7 +1424,7 @@ def run_driver(
         _emrys(
             workflow_python,
             "run",
-            "--request",
+            "--project",
             str(request),
             "--workspace",
             str(paths.workspace),
@@ -1446,7 +1446,7 @@ def run_driver(
     scheduled_run = _emrys(
         workflow_python,
         "run",
-        "--request",
+        "--project",
         str(request),
         "--workspace",
         str(paths.workspace),

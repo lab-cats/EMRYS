@@ -11,7 +11,7 @@ import pytest
 from emrys.contracts.artifacts import api as artifact_contracts
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.projection import project_reporting
-from emrys.orchestration.local_pilot.normalization import normalize_request
+from emrys.orchestration.local_pilot.normalization import admit_project
 from tests.orchestration.local_pilot import fixture
 
 
@@ -19,7 +19,7 @@ def test_reporting_projection_is_exact_deterministic_and_legacy_compatible(
     tmp_path: Path,
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
-    normalized = normalize_request(request, fixture.profile())
+    normalized = admit_project(request, fixture.profile())
     execution, _ = normalized.historical_execution_v1()
     bundle = project_reporting(execution, fixture.profile())
 
@@ -36,10 +36,7 @@ def test_reporting_projection_is_exact_deterministic_and_legacy_compatible(
     assert bundle.reporting_run_contract["primary_analysis_policy_sha256"] == (
         hashlib.sha256(bundle.primary_analysis_policy_bytes).hexdigest()
     )
-    assert (
-        bundle.projection_references
-        == execution["reporting_projection"]
-    )
+    assert bundle.projection_references == execution["reporting_projection"]
     assert bundle.artifact_inventory_bytes.endswith(b"\n")
     assert b"\t09c\t" not in bundle.artifact_inventory_bytes
     assert b"scientific_review" not in bundle.artifact_inventory_bytes
@@ -50,7 +47,7 @@ def test_execution_rejects_profile_identity_that_only_matches_digest(
 ) -> None:
     profile = fixture.profile()
     request = fixture.build(tmp_path / "request-root")
-    execution, _ = normalize_request(request, profile).historical_execution_v1()
+    execution, _ = admit_project(request, profile).historical_execution_v1()
     mutated = json.loads(json.dumps(execution))
     mutated["profile"]["profile_id"] = "wrong.profile"
     mutated["profile"]["profile_version"] = "wrong"
@@ -74,7 +71,7 @@ def test_inventory_expansion_keeps_each_logical_scope_contiguous(
     tmp_path: Path,
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
-    normalized = normalize_request(request, fixture.profile())
+    normalized = admit_project(request, fixture.profile())
     execution, _ = normalized.historical_execution_v1()
     bundle = project_reporting(execution, fixture.profile())
     inventory = tmp_path / "artifact_inventory.tsv"
@@ -105,7 +102,7 @@ def test_inventory_bytes_preserve_row_and_scope_semantics_without_publication(
     tmp_path: Path,
 ) -> None:
     request = fixture.build(tmp_path / "request-root")
-    normalized = normalize_request(request, fixture.profile())
+    normalized = admit_project(request, fixture.profile())
     execution, _ = normalized.historical_execution_v1()
     bundle = project_reporting(execution, fixture.profile())
     reader = csv.DictReader(
@@ -155,7 +152,7 @@ def test_reference_sidecar_templates_can_bind_stationary_external_paths(
             },
         ]
     )
-    normalized = normalize_request(request, profile)
+    normalized = admit_project(request, profile)
     execution, _ = normalized.historical_execution_v1()
     bundle = project_reporting(execution, profile)
     by_id = {row["artifact_id"]: row for row in bundle.artifact_inventory_rows}

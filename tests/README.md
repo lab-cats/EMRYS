@@ -10,7 +10,7 @@ are in the [operations runbook](../docs/operations/RUNBOOK.md).
 
 - `analyses/`, `stages/`, `evidence/`, `ingestion/`, and `reporting/` protect
   their matching functional owners.
-- `orchestration/local_pilot/` protects request admission, readiness, fixed
+- `orchestration/local_pilot/` protects Project admission, readiness, fixed
   graph materialization, task/reporting records, lifecycle, inspection, resume,
   and no-science fresh-clone execution for the local-pilot application owner.
 - `contracts/` and `contract_integration/` protect shared and independent

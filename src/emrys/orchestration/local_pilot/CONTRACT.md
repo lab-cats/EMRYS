@@ -6,15 +6,15 @@
 external create-absent starter tree only with `--execute`. The parent must
 already be a canonical real writable/searchable directory and the target must
 not overlap the selected checkout. The owner reserves the output directory,
-writes the matched request, execution profile, sample, partition, and runtime
+writes the matched Project, execution profile, sample, partition, and runtime
 members create-exclusively, publishes the manifest last, and then re-admits
 exact membership, regular-file types, modes, sizes, and bytes.
 It never overwrites, adopts, installs, restores, selects reference data, or
 guesses site-specific scheduler/tool values. Failure after reservation leaves
 the partial directory for inspection with no claim that its manifest is valid.
 
-`emrys validate local-pilot-request --request FILE` calls the canonical
-normalizer with the tracked `emrys.profile.local_cmh.v2` contract, then reuses
+`emrys validate project --project FILE` calls the canonical Project admission
+with the tracked `emrys.profile.local_cmh.v2` contract, then reuses
 the reference-contig and GTF-to-BED12 owners to require nonempty FASTA contigs,
 usable exon transcript models, matching contig names, in-bounds transcript
 coordinates, and in-bounds `region` or `regions_file` partition selectors. It
@@ -42,7 +42,7 @@ retains the exact engineered core while adding globally disjoint deterministic
 neutral templates and an explicit deliberate-duplicate subset. Dry-run plans
 either profile without generating its reference or FASTQs. Execute writes the
 reference, annotation, four paired libraries, matched manifests, and explicit
-metadata, validates its own request before publishing `fixture.manifest.json`
+metadata, validates its own Project before publishing `fixture.manifest.json`
 last, and then re-admits the complete transaction. The metadata's expected
 three Step 09 computational candidates, one significant candidate, and Step 10
 workflow completion are deterministic synthetic expectations, not production
@@ -75,7 +75,7 @@ one mode-`0700` directory below the admitted scratch parent, exports it as
 inside the allocation. The effective workflow totals must fit the observed
 CPU and memory capacity.
 
-Placement source/digest, request, and scheduler job ID are Attempt provenance,
+Placement source/digest, Project source, and scheduler job ID are Attempt provenance,
 not Run identity or completion authority. Direct and Slurm use one scientific
 backend and one materialization/lifecycle contract. Focused equivalence with
 fixed resources does not establish real scheduler/site execution,
@@ -83,24 +83,23 @@ allocation-sensitive parity, runtime/module portability, failure/recovery
 parity, or report-publication parity. Per-owner Slurm scheduling, multi-node
 execution, and the 16 stage/utility `.slurm` files remain unchanged.
 
-## Normalization and execution
+## Project admission and execution
 
-`normalization.normalize_request` is a read-only public Python boundary. It
-uses the closed safe YAML loader, resolves paths against the request directory,
+`normalization.admit_project` is a read-only public Python boundary. It
+uses the closed safe YAML loader, resolves paths against the Project directory,
 reuses the public Step `08`/`09` manifest contracts, requires at least two
 exact control/treatment strata, requires each paired FASTQ row to use one
 matching compression mode, snapshots declared regular non-symlink inputs, and
 validates the canonical execution contract. Duplicate keys, custom tags, merge
 keys, globs, templates, environment/home interpolation, unknown fields, and
-ambiguous paths fail admission. Request formatting and the optional human
-label do not enter the execution identity. The admitted normalization bundle
-retains immutable request, canonical profile, and canonical construction bytes
-plus the canonical Analysis revision. Its request, profile, and construction
-mappings are fresh disposable views and cannot mutate identity or historical
-compatibility bytes.
+ambiguous paths fail admission. Project formatting and the optional human
+label do not enter Analysis identity. `ProjectAdmission` retains immutable
+source, canonical profile, and canonical construction bytes plus the canonical
+Analysis revision. Its definition, profile, and construction mappings are fresh
+disposable views and cannot mutate identity or historical compatibility bytes.
 
 `doctor.inspect_local_pilot` and the grouped `emrys doctor local-pilot` route
-are the read-only B5 setup boundary. They reuse normalization plus the runtime-
+are the read-only B5 setup boundary. They reuse Project admission plus the runtime-
 availability owner's direct API, require the exact fixed local runtime roster
 and policy fields before any probe, run R namespace probes with explicit
 guarded `renv` variables, compare the selected Python/Snakemake identity, bind
@@ -126,7 +125,7 @@ The grouped `emrys run`, `emrys resume`, and `emrys inspect local-pilot-run`
 routes are the supported control surface; their planning helpers are private
 implementation details. `run` and `resume` require the controlled
 Python invocation and mutate nothing without `--execute`. Planning reruns the
-doctor, normalizes the authored request again, derives the deterministic run
+Doctor, admits the authored Project again, derives the deterministic Run
 identity, and prints concise Run identity, combined pending/reusable work,
 reporting, and scheduled-placement information. Verbose output adds the Run
 root, resources/allocation, execution profile, and scheduler streams; debug
@@ -174,7 +173,7 @@ scopes and materializes new dispatches for the unentered remainder.
 Every authored file path passes one lexical policy before access. Admission
 opens the file without following a final symbolic link, verifies that the open
 descriptor and pathname name the same inode before and after reading, and binds
-the exact descriptor bytes. Request YAML, path-based profile JSON, and sample
+the exact descriptor bytes. Project YAML, path-based profile JSON, and sample
 and partition TSV parsing consume those admitted bytes without reopening the
 pathname.
 
@@ -322,7 +321,7 @@ completed EMRYS run.
 
 | Location | Durable contents |
 | --- | --- |
-| `contract/` | Normalized request, fixed profile, admitted runtime snapshot, reporting inputs, workflow configs, and task dispatches. |
+| `contract/` | Successor Analysis, Execution Plan, and Run records (or historical normalized execution), fixed profile, admitted runtime snapshot, reporting inputs, workflow configs, and task dispatches. |
 | `attempts/<workflow-attempt-id>/` | Attempt record, owner-task attempts and terminal logs, and the attempt receipt published last. |
 | `state/task-starts/` | Immutable producer-entry records. |
 | `state/verified/` | Hash-bound successful owner-task records. |
@@ -350,7 +349,7 @@ An exactly bound historical profile may retain a verified report transaction at
 `products/report/<run-id>/`; that location is read-only historical evidence, not
 a second current publication root. The changed fixed-profile bytes deliberately
 produce new Run identities. Historical Runs remain inspectable, but current
-normalization does not make an old-layout Run automatically resumable. During
+Project admission does not make an old-layout Run automatically resumable. During
 that read-only inspection, artifact-index, run-summary, and report ledgers use
 their receipt-bound artifact roster and recorded producer identities rather
 than today's producer registry, while the current checkout acts only as the

@@ -12,9 +12,9 @@ result, scheduler job, and report has the evidence ceiling stated below.
 | --- | --- | --- |
 | 1. Source | Clone, select one immutable commit, and install the locked Python environment | Clean detached commit and working `emrys --help` |
 | 2. Runtime | Provision exact scientific tools and restore/check the canonical R library outside workflow execution | Canonical compute-node paths and passing `r-check` |
-| 3. Inputs | Generate a create-absent starter set, then stage FASTQ, FASTA, GTF, and optional regions files | Explicit request, paired sample rows, and nonoverlapping partitions |
+| 3. Inputs | Generate a create-absent starter set, then stage FASTQ, FASTA, GTF, and optional regions files | Explicit Project definition, paired sample rows, and nonoverlapping partitions |
 | 4. Profile | Render a new runtime profile from the observed canonical paths | Complete create-absent runtime TSV |
-| 5. Admission | Validate the request and finalize two-phase storage qualification | Request PASS and matching final storage receipt |
+| 5. Admission | Validate the Project and finalize two-phase storage qualification | Project PASS and matching final storage receipt |
 | 6. Readiness | Run doctor in the execution context | Exact `READY` result |
 | 7. Plan | Review the no-write Run or Slurm-placement plan | Direct: deterministic Run ID and root; Slurm: one admitted submission plan |
 | 8. Process | Add `--execute` to the reviewed direct or Slurm command | Verified EMRYS records; scheduler success is only placement evidence |
@@ -195,7 +195,7 @@ emrys init synthetic-local-pilot \
   --execute
 
 test -f "$EMRYS_INPUT_DIR/fixture.manifest.json"
-EMRYS_REQUEST_PATH="$EMRYS_INPUT_DIR/request.yaml"
+EMRYS_PROJECT_PATH="$EMRYS_INPUT_DIR/project.yaml"
 ```
 
 The fixture has a deterministic 100 kb reference, matching GTF, one partition,
@@ -230,7 +230,7 @@ emrys init local-pilot \
   --execute
 
 test -f "$EMRYS_INPUT_DIR/starter-set.manifest.tsv"
-EMRYS_REQUEST_PATH="$EMRYS_INPUT_DIR/request.yaml"
+EMRYS_PROJECT_PATH="$EMRYS_INPUT_DIR/project.yaml"
 ```
 
 The completion manifest is published last. Preserve a partial generated
@@ -243,7 +243,7 @@ The generated layout is:
 
 ```text
 emrys-inputs/
-|-- request.yaml
+|-- project.yaml
 |-- emrys.execution.yaml
 |-- samples.tsv
 |-- partitions.tsv
@@ -256,7 +256,7 @@ emrys-inputs/
 ```
 
 Create and populate `inputs/` without replacing an earlier staging tree. Then
-edit `request.yaml`, `samples.tsv`, and `partitions.tsv`:
+edit `project.yaml`, `samples.tsv`, and `partitions.tsv`:
 
 ```sh
 test ! -e "$EMRYS_INPUT_DIR/inputs" &&
@@ -267,7 +267,7 @@ mkdir -m 700 \
   "$EMRYS_INPUT_DIR/inputs/regions"
 ```
 
-1. Give the request stable reference, cohort, and analysis IDs; point it to the
+1. Give the Project stable reference, cohort, and analysis IDs; point it to the
    matching FASTA/GTF; select STAR-index parameters and analysis policy.
 2. Give every sample an explicit R1/R2 FASTQ, condition, replicate, and
    strandedness declaration. Each of at least two replicate strata needs
@@ -281,7 +281,7 @@ mkdir -m 700 \
 
 The [configuration guide](configs/README.md) explains every field, threshold,
 path rule, sample-pairing requirement, and runtime row. Relative paths resolve
-from the request file's directory—not the terminal's current directory.
+from the Project file's directory—not the terminal's current directory.
 
 ## 4. Prepare one explicit runtime profile
 
@@ -321,23 +321,23 @@ preserve it for diagnosis and select a new absent output name.
 
 ## 5. Validate data compatibility without scientific tools
 
-Run request validation and doctor only on the intended workstation or inside
+Run Project validation and Doctor only on the intended workstation or inside
 an interactive compute allocation. The two-phase storage qualification below
 is mandatory for every path and may use a separate short allocation. If only
 batch submission is available, do not move the data reads or runtime probes to
 the login node: after finalizing storage, continue to the Slurm
 execution-profile section. Its submit-host dry-run admits only placement;
-after explicit `--execute`, the compute delegate performs request admission,
+after explicit `--execute`, the compute delegate performs Project admission,
 doctor, and Run planning inside the allocation and stops before lifecycle
 mutation on failure.
 
 Run the read-only intake validator first:
 
 ```sh
-emrys validate local-pilot-request --request "$EMRYS_REQUEST_PATH"
+emrys validate project --project "$EMRYS_PROJECT_PATH"
 ```
 
-Continue only after `Local-pilot request validation: PASS`. It normalizes and
+Continue only after `Project validation: PASS`. It admits and
 hashes the declared files, proves paired strata, checks FASTA/GTF contigs and
 bounds, and checks region or regions-file bounds. FASTQ hashing streams in
 bounded chunks, but time and I/O still scale with the declared read bytes. No
@@ -349,7 +349,7 @@ node, let that allocation end, then run the finalize phase from the durable
 control context:
 
 ```sh
-EMRYS_REFERENCE_FASTA=/absolute/path/from/request/to/reference.fa
+EMRYS_REFERENCE_FASTA=/absolute/path/from/project/to/reference.fa
 emrys inspect storage-qualification \
   --workspace "$EMRYS_WORKSPACE_PATH" \
   --reference-fasta "$EMRYS_REFERENCE_FASTA" --phase compute
@@ -366,12 +366,12 @@ its durable retention path.
 
 ## 6. Require full runtime `READY`
 
-The doctor safely re-admits the request and source files plus the workspace
+The doctor safely re-admits the Project and source files plus the workspace
 plan, checkout, locked workflow, tools, jar, R project/library, and namespaces:
 
 ```sh
 emrys doctor local-pilot \
-  --request "$EMRYS_REQUEST_PATH" \
+  --project "$EMRYS_PROJECT_PATH" \
   --workspace "$EMRYS_WORKSPACE_PATH" \
   --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH"
 ```
@@ -383,7 +383,7 @@ READY: local-pilot prerequisites passed.
 ```
 
 Exit `1` prints one or more `BLOCKER` and `REMEDIATION` entries. Exit `2`
-means the authored request, profile, or path boundary is malformed or unsafe.
+means the authored Project, profile, or path boundary is malformed or unsafe.
 Doctor does not create the workspace, execute Snakemake or scientific tools,
 load modules, or alter an input.
 
@@ -393,7 +393,7 @@ load modules, or alter an input.
 
 ```sh
 emrys run \
-  --request "$EMRYS_REQUEST_PATH" \
+  --project "$EMRYS_PROJECT_PATH" \
   --workspace "$EMRYS_WORKSPACE_PATH" \
   --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH" \
   --log-level verbose
@@ -416,8 +416,7 @@ Copy the exact run root printed by the plan:
 EMRYS_RUN_ROOT=/absolute/path/to/emrys-workspace/runs/run-DIGEST
 ```
 
-The Run ID is derived from the exact normalized inputs, scientific policy,
-workflow profile, and computational resource declaration. Formatting the
+The Run ID binds the immutable Analysis revision and Execution Plan. Formatting the
 optional label or changing only Attempt placement does not change it.
 
 ## 8. Execute on a workstation or one compute node
@@ -435,7 +434,7 @@ opens one structured application log automatically:
 
 ```sh
 emrys run \
-  --request "$EMRYS_REQUEST_PATH" \
+  --project "$EMRYS_PROJECT_PATH" \
   --workspace "$EMRYS_WORKSPACE_PATH" \
   --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH" \
   --execute
@@ -470,7 +469,7 @@ large inputs on the login node.
 ```sh
 emrys_slurm_run() {
   emrys run \
-    --request "$EMRYS_REQUEST_PATH" \
+    --project "$EMRYS_PROJECT_PATH" \
     --workspace "$EMRYS_WORKSPACE_PATH" \
     --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH" \
     --execution-profile "$EMRYS_EXECUTION_PROFILE_PATH" \
@@ -626,7 +625,7 @@ All other blocked states belong to
 | Source and Python | Exact clean commit; `uv --version` works; `uv sync --locked --group workflow` succeeds | Wrong checkout, dirty tree, missing `uv`, or stale lock |
 | Compute runtime | Canonical tools are observed on the intended compute node; guarded `r-check` passes | Login-only path, guessed module, wrong Java/R, or missing namespace |
 | Storage | Final qualification covers the workspace and Step `00c` sidecar parents | Missing, failed, stale, or mismatched qualification |
-| Inputs and plan | Direct: request validation and doctor pass before the no-write Run plan; Slurm: the explicit profile and no-submit placement plan are reviewed | Any blocker, malformed input/profile, or unreviewed placement |
+| Inputs and plan | Direct: Project validation and Doctor pass before the no-write Run plan; Slurm: the explicit profile and no-submit placement plan are reviewed | Any blocker, malformed input/profile, or unreviewed placement |
 | Execution | Only `--execute` changes on the reviewed command | Manual output adoption, login-node science work, or an uncertain existing Run root |
 
 The full [troubleshooting matrix](docs/operations/TROUBLESHOOTING.md) owns

@@ -23,7 +23,7 @@ from emrys.contracts.scientific_evidence import scientific_context, step08, step
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.orchestration.local_pilot import inspection
 from emrys.orchestration.local_pilot.lifecycle import build_snakemake_argv
-from emrys.orchestration.local_pilot.normalization import normalize_request
+from emrys.orchestration.local_pilot.normalization import admit_project
 from emrys.reporting._artifact_index.registry import ADAPTER_REGISTRY
 from tests.reporting.fixtures.artifact_adapters_v1.build_fixture import (
     minimal_bai_bytes,
@@ -47,15 +47,26 @@ def _resource_policy() -> dict[str, Any]:
         "workflow_cores": 1,
         "workflow_memory_mb": 1024,
         "stage_concurrency": {
-            step_id: 1
-            for step_id in ("01", "02", "02b", "03", "04", "05", "06", "07")
+            step_id: 1 for step_id in ("01", "02", "02b", "03", "04", "05", "06", "07")
         },
         "step_threads": {step_id: 1 for step_id in ("00a", "01", "02", "06", "08")},
         "stage_memory_mb": {
             step_id: 1024
             for step_id in (
-                "00a", "00b", "00c", "01", "02", "02b", "03", "04", "05",
-                "06", "07", "08", "09", "10",
+                "00a",
+                "00b",
+                "00c",
+                "01",
+                "02",
+                "02b",
+                "03",
+                "04",
+                "05",
+                "06",
+                "07",
+                "08",
+                "09",
+                "10",
             )
         },
         "reporting_memory_mb": {
@@ -80,9 +91,10 @@ def _resource_policy() -> dict[str, Any]:
 def _resource_limits() -> tuple[tuple[str, int], ...]:
     return (
         ("mem_mb", 1024),
-        *((f"stage_{step_id}_slots", 1) for step_id in (
-            "01", "02", "02b", "03", "04", "05", "06", "07"
-        )),
+        *(
+            (f"stage_{step_id}_slots", 1)
+            for step_id in ("01", "02", "02b", "03", "04", "05", "06", "07")
+        ),
     )
 
 
@@ -946,7 +958,7 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
     intake_root.mkdir()
     request_path = build_intake(intake_root)
     profile = orchestration_contracts.load_json_object(PROFILE_PATH)
-    normalized = normalize_request(request_path, profile)
+    normalized = admit_project(request_path, profile)
     execution, execution_bytes = normalized.historical_execution_v1()
 
     run_root = (root / "run").resolve()

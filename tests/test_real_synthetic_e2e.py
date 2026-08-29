@@ -117,7 +117,7 @@ def test_slurm_profile_reuses_admitted_synthetic_resources(tmp_path: Path) -> No
         load_execution_profile,
     )
 
-    request = tmp_path / "request.yaml"
+    request = tmp_path / "project.yaml"
     request.write_text("fixture request\n", encoding="utf-8")
     direct_path = tmp_path / "emrys.execution.yaml"
     direct_path.write_bytes(synthetic_fixture._execution_profile())
