@@ -81,7 +81,9 @@ backend and one materialization/lifecycle contract. Focused equivalence with
 fixed resources does not establish real scheduler/site execution,
 allocation-sensitive parity, runtime/module portability, failure/recovery
 parity, or report-publication parity. Per-owner Slurm scheduling, multi-node
-execution, and the 16 stage/utility `.slurm` files remain unchanged.
+execution, and all 16 stage/utility `.slurm` entry points remain available;
+Steps `07` and `08` delegate to Python owners and the other 14 retain their
+prior forms.
 
 ## Project admission and execution
 

@@ -192,14 +192,12 @@ production, cluster, scientific-review, or biological evidence.
   `ContractError` and `Table` identity.
 - The producer and artifact adapter both treat the input receipt as the native
   transaction marker.
-- Receipt and candidate checks remain duplicated across shell, R, Python,
-  Step `09`, and artifact adapters. Shared report publication remains in
+- Receipt and candidate checks remain duplicated across Python, R, Step `09`,
+  and artifact adapters. Shared report publication remains in
   neutral [`validation/report.py`](../../libraries/validation/report.py),
   imported through `emrys.libraries.validation`.
-- The shell producer uses `resolve_overridable_executable` from neutral
-  [`executable_resolution.sh`](../../libraries/executable_resolution.sh);
-  argument → `RSCRIPT_BIN_OVERRIDE` → PATH precedence, checks, and commands
-  remain owned here.
+- The Python producer resolves its explicit argument, `RSCRIPT_BIN_OVERRIDE`,
+  then `PATH`; precedence, checks, and commands remain owned here.
 - The validator does not reopen the upstream Step `07` files to recompute
   their declared hashes.
 - The producer preserves the supplied annotation path spelling, while the

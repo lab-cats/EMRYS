@@ -95,9 +95,10 @@ Attempt's application-log root defaults to `<workspace>/logs/application`.
 Reporting runs automatically after scientific work and remains a separate,
 receipt-last transaction rather than a scientific stage.
 
-The 16 owner-local stage/utility `.slurm` files are unchanged and remain
-separate scheduler entry points. They publish only their owner's native outputs
-and validation evidence and never create or adopt an orchestrated Run.
+All 16 owner-local stage/utility `.slurm` files remain separate scheduler entry
+points. The Step `07` and `08` wrappers delegate to their Python owners; the
+other 14 retain their prior forms. They publish only their owner's native
+outputs and validation evidence and never create or adopt an orchestrated Run.
 
 ### Recurring inspection and resume
 

@@ -953,12 +953,10 @@ def _task_commands(
         orientation_root = orientation_inputs[0].parents[1]
         mpileup_root = fwd.parents[2]
         fai = _one(all_paths["00c", reference_id], "step00c_reference_fai_v1")
-        producer = (
-            bash,
-            str(
-                source_root
-                / "src/emrys/stages/partitioned_cohort_mpileup/step_07_bcftools_mpileup_by_chrom_and_strand.sh"
-            ),
+        producer = controlled_python_argv(
+            sys.executable,
+            "-m",
+            "emrys.stages.partitioned_cohort_mpileup.producer",
             "--cohort-id",
             cohort_id,
             "--sample-manifest",

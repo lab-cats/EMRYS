@@ -161,10 +161,6 @@ SHELL_ENTRYPOINT_PATHS = {
         "src/emrys/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh"
     ),
-    "step_07_bcftools_mpileup_by_chrom_and_strand.sh": Path(
-        "src/emrys/stages/partitioned_cohort_mpileup/"
-        "step_07_bcftools_mpileup_by_chrom_and_strand.sh"
-    ),
     "step_09_cmh_editing_site_calling.sh": Path(
         "src/emrys/analyses/paired_cmh_candidate_ranking/"
         "step_09_cmh_editing_site_calling.sh"

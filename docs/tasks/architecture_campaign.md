@@ -2533,6 +2533,24 @@ matrix. `AC-SLICE-03` remains Open for final Project shape/persistence, broader
 public Analysis/Results APIs and role disclosure, generalized backend/policy
 boundaries, and remaining migrations.
 
+### 13.10 Bounded slice record: Step 07 Python-owner migration
+
+| Surface/category | Finding | Disposition and surviving authority |
+|---|---|---|
+| Step `07` owner and callers | The 976-line shell coordinator duplicated Python parsing and carried publication, process, and recovery state in shell. | **Convert caller-completely.** One private owner-local Python producer replaces the shell path in materialization, the retained Slurm wrapper, provenance rosters, documentation, and tests. There is no compatibility wrapper or new public command. |
+| Parsing and validation | Producer and validator used adjacent manifest parsers, while the shell test repeated the same admission cases. | **Consolidate in the existing neutral Step `07` helper.** Strict physical TSV parsing and full partition-row admission now serve both producer and validator. Temporary and final VCF validation, exact sample order, input hashing, receipt-last publication, and the independent validator remain. |
+| Compression and protections | PIPE-null branches, type-only assertions, repeated state bits, and shell-only test permutations defended impossible in-process states or the retired implementation. | **Retire only those copies.** Lock ownership, full scientific-input binding, manifest mutation checks, process-group signal/reap behavior, complete-set admission, create-exclusive no-clobber publication, predecessor rollback, failed-restoration residue, and post-publication revalidation remain directly covered. |
+| Scheduler and `LOG-05` | Step `07` remains one private task inside the existing Run lifecycle. | **Retain the `.slurm` transport and existing Run logging authority.** The wrapper now delegates to the controlled checkout Python owner. No task-local application log, status authority, scheduler, or backend is added; broader `LOG-05` adoption/parity remains Open. |
+| Compatibility and evidence | Changing the registered producer path changes current source identity. | New records identify `producer.py`. Exact historical records remain bound to their recorded producing checkout; this slice does not broaden historical admission or rewrite/delete evidence. No schema, receipt, public noun, Run/Attempt/Results authority, or mutable state changes. |
+
+Category-separated closeout is recorded in the findings matrix. The maintained
+product is net-negative with no file growth; the 1,323-line shell-only suite is
+replaced by a smaller owner-focused suite plus retained independent validator,
+wrapper, materialization, artifact, and public-contract coverage. No retained
+evidence is deleted. `AC-SLICE-17` advances by one bounded retirement, while
+the retained Step `07` Slurm wrapper and the other shell candidates remain
+separate work.
+
 ## 14. Measurement plan
 
 Measurement is required so the campaign does not merely move complexity.
@@ -2700,7 +2718,7 @@ defined in Section 13.1; evidence deletion cannot be implied by promotion.
 | `AC-SLICE-14` | Establish reproducible UX, operational, and separate product/protection/configuration-documentation/retained-evidence baselines and ratify their interpretation methods and campaign success measures | New aggregate-measurement slice; per-slice accounting starts immediately and coordinates with `REVIEW-UX-03` and `ARCH-01` |
 | `AC-SLICE-15` | Audit the Steps 07–09 statistical contract | New scientific-review slice; not architecture evidence |
 | `AC-SLICE-16` | Build independent numerical oracles for Steps 08 and 09 | New scientific-validation slice |
-| `AC-SLICE-17` | Retire duplicated lifecycle, validator, infrastructure, adapter, or compatibility paths after each replacement is proven; classify dual-purpose fixtures, goldens, logs, receipts, reports, and dated records before deletion | The generated wrapper, launcher owner/schema/defaults, split resource/launcher examples/defaults, and dedicated launcher tests are retired by Section 13.6. The private minimal batch bootstrap remains; sixteen owner-local `.slurm` paths stay deferred. Further reductions remain separate bounded slices, and exact evidence deletion still requires separate user approval and commit. |
+| `AC-SLICE-17` | Retire duplicated lifecycle, validator, infrastructure, adapter, or compatibility paths after each replacement is proven; classify dual-purpose fixtures, goldens, logs, receipts, reports, and dated records before deletion | Sections 13.6, 13.8, and 13.10 retire the generated wrapper/configuration split and the Step `07` and `08` shell owners plus their shell-only suites after caller-complete replacements. The private batch bootstrap and all sixteen owner-local `.slurm` paths remain; Steps `07` and `08` now delegate to Python and the other fourteen retain their prior forms. Further reductions remain separate bounded slices, and exact evidence deletion still requires separate user approval and commit. |
 | `AC-SLICE-18` | Rewrite navigation and documentation around scientist/operator/developer journeys | Expansion or slicing of `DOC-01`; use the accepted `DOC-02`/`DOC-03` traces and coordinate with `DOC-04`–`DOC-05` retirements |
 | `AC-SLICE-19` | Define Doctor repair ownership, supported mutations, preview/reporting, and safety contracts | Expansion of `DOCTOR-01` reflecting the explicit override |
 
