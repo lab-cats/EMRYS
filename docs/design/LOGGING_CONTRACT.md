@@ -69,17 +69,19 @@ policy before their own bounded decisions.
   errors, commands, paths, and recovery guidance use stderr. Stable machine
   bytes, paths, ordering, hashes, transactions, and validator seven-column
   output remain exact; semantic failed rows and process exits stay distinct.
-- Valid dry-run creates no application log. At `normal` it prints the essential
-  plan to stderr; grouped `run`/`resume` adds allocation detail at `verbose` and
-  exact safe commands at `debug`. Levels do not change probes, child flags,
-  computation, artifacts, validation, locking, publication, rollback, cleanup,
-  or exits.
+- Valid dry-run creates no application log. Direct `run`/`resume` planning at
+  `normal` prints the essential Run/work/reporting plan to stderr; a submit-host
+  Slurm dry-run prints only concise placement. `verbose` adds applicable
+  Run-root/resource/allocation or execution-profile/scheduler-stream detail;
+  `debug` adds exact safe engine, scheduler, and task commands. Levels do not
+  change probes, child flags, computation, artifacts, validation, locking,
+  publication, rollback, cleanup, or exits.
 
 | Level | Console projection | Durable log |
 | --- | --- | --- |
-| `normal` | identity, meaningful phases, result, evidence boundary, warnings, errors, bounded failure summary | complete observed event set |
-| `verbose` | `normal` plus resolved inputs/outputs, safe commands, declared hashes, versions, publication plan | same event semantics |
-| `debug` | `verbose` plus classified child diagnostics, allowed environment context, timing, recovery identities | same event semantics |
+| `normal` | Run identity and work/reporting summary; meaningful phases; verified Results/evidence; warnings, errors, durable log path, and bounded failure summary | complete observed event set |
+| `verbose` | `normal` plus Run root, resources/allocation, execution profile, scheduler streams, and other resolved operational paths | same event semantics |
+| `debug` | `verbose` plus exact safe engine/scheduler/task commands, classified child diagnostics, allowed environment context, timing, and recovery identities | same event semantics |
 
 Machine payloads, binary streams, FASTQ/BAM/VCF content, large tables, and
 report bytes are not copied to JSONL. Record roles, paths, hashes, and available

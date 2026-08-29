@@ -46,9 +46,12 @@ The local pilot has one explicit path:
 3. A canonical Run binding commits those authorities and determines the
    successor `run_id`; existing `emrys.execution.v1` Runs retain their exact
    historical identity and bytes.
-4. The public dry-run prints the Run, pending-work, resource, reporting, and
-   placement plan without writing or submitting. `--execute` either enters the
-   direct lifecycle or submits that lifecycle into one Slurm allocation.
+4. Direct public planning prints concise Run identity, work, and reporting
+   without writing. A submit-host Slurm dry-run instead prints concise placement
+   without building a Run or submitting. Verbose output adds the applicable Run
+   root/resources or execution-profile/scheduler-stream detail; `--execute`
+   either enters the direct lifecycle or submits that lifecycle into one Slurm
+   allocation.
 5. One fixed CMH workflow profile projects the semantic DAG into Snakemake.
 6. Each workflow task invokes one owner's public producer, that owner's public
    validator, and a generic semantic all-pass check.
@@ -422,9 +425,10 @@ diagnostic evidence, not completion proof.
 The implemented `run` and `resume` interfaces are read-only by default. Their
 plan admits the execution profile and reports placement without submitting or
 creating workspace, contract, Attempt, logs, locks, or owner outputs. Direct
-planning then resolves readiness and identity and shows concise pending-work,
-resource, and reporting summaries; verbose/debug levels expose progressively
-more operational detail. Execution requires one explicit `--execute` control.
+planning then resolves readiness and identity and shows concise work and
+reporting summaries. Verbose adds the Run root, resources/allocation, execution
+profile, and scheduler streams; debug adds exact safe engine, scheduler, and
+task commands. Execution requires one explicit `--execute` control.
 
 For Slurm placement, `--execute` creates only `<workspace>/logs` on the submit
 host, submits once, and prints `JOB_ID`, `OUT`, and `ERR`. The compute delegate

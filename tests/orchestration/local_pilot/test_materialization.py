@@ -1639,18 +1639,45 @@ def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
         execute=False,
     )
 
-    status = control.run_from_args(arguments, ops=ops)
+    projections = {}
+    for level in ("normal", "verbose", "debug"):
+        arguments.log_level = level
+        assert control.run_from_args(arguments, ops=ops) == 0
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        projections[level] = captured.err
+        assert "Dry-run complete" in captured.err
+        assert not workspace.exists()
 
-    captured = capsys.readouterr()
-    assert status == 0
-    assert captured.out == ""
-    assert "Pending work items: 35" in captured.err
-    assert "Resources: 1 cores, 1024 MiB" in captured.err
-    assert "Reporting: automatic after scientific work" in captured.err
-    assert "Snakemake command:" not in captured.err
-    assert "Dry-run complete" in captured.err
+    normal = projections["normal"]
+    assert "Run ID:" in normal
+    assert "Work: 35 pending, 0 reusable" in normal
+    assert "Reporting: automatic after scientific work" in normal
+    assert "Evidence boundary:" in normal
+    for hidden in (
+        "Operation:",
+        "Run root:",
+        "Resources:",
+        "Step thread allocations:",
+        "Stage concurrency:",
+        "Snakemake command:",
+        "TASK ",
+    ):
+        assert hidden not in normal
+
+    verbose = projections["verbose"]
+    assert set(normal.splitlines()) <= set(verbose.splitlines())
+    assert "Run root:" in verbose
+    assert "Resources: 1 cores, 1024 MiB" in verbose
+    assert "Step thread allocations:" in verbose
+    assert "Stage concurrency:" in verbose
+    assert "Snakemake command:" not in verbose
+
+    debug = projections["debug"]
+    assert set(verbose.splitlines()) <= set(debug.splitlines())
+    assert "Snakemake command:" in debug
+    assert "TASK " in debug
     assert executed == []
-    assert not workspace.exists()
 
 
 def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
@@ -1894,13 +1921,33 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
         ),
     )
 
-    assert control.run_from_args(arguments, ops=ops) == 0
+    projections = {}
+    for level in ("normal", "verbose", "debug"):
+        arguments.log_level = level
+        assert control.run_from_args(arguments, ops=ops) == 0
+        captured = capsys.readouterr()
+        assert captured.out == ""
+        projections[level] = captured.err
+        assert not arguments.workspace.exists()
 
-    captured = capsys.readouterr()
-    assert captured.out == ""
-    assert "Execution placement: Slurm" in captured.err
-    assert "Dry-run complete; no scheduler or workspace state was written." in captured.err
-    assert not arguments.workspace.exists()
+    normal = projections["normal"]
+    assert "Execution placement: Slurm" in normal
+    assert "Dry-run complete; no scheduler or workspace state was written." in normal
+    assert "Execution profile:" not in normal
+    assert "Scheduler stdout:" not in normal
+    assert "Scheduler stderr:" not in normal
+    assert "Scheduler command:" not in normal
+
+    verbose = projections["verbose"]
+    assert set(normal.splitlines()) <= set(verbose.splitlines())
+    assert f"Execution profile: {arguments.execution_profile}" in verbose
+    assert f"Scheduler stdout: {arguments.workspace}/logs/emrys-local-pilot-%j.out" in verbose
+    assert f"Scheduler stderr: {arguments.workspace}/logs/emrys-local-pilot-%j.err" in verbose
+    assert "Scheduler command:" not in verbose
+
+    debug = projections["debug"]
+    assert set(verbose.splitlines()) <= set(debug.splitlines())
+    assert "Scheduler command:" in debug
 
 
 def test_public_slurm_execute_submits_once_and_creates_only_scheduler_log_root(
@@ -2448,7 +2495,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
     assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 0
     dry_output = capsys.readouterr().err
-    assert "Reusable completed work items:" in dry_output
+    assert "Work:" in dry_output and " reusable" in dry_output
     assert "Results:" not in dry_output.splitlines()
     assert _verified_snapshot(run_root) == before
 

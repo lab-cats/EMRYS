@@ -127,8 +127,10 @@ routes are the supported control surface; their planning helpers are private
 implementation details. `run` and `resume` require the controlled
 Python invocation and mutate nothing without `--execute`. Planning reruns the
 doctor, normalizes the authored request again, derives the deterministic run
-identity, and prints a concise pending-work, resource, reporting, and placement
-plan. Verbose output adds resource detail and debug output adds exact commands.
+identity, and prints concise Run identity, combined pending/reusable work,
+reporting, and scheduled-placement information. Verbose output adds the Run
+root, resources/allocation, execution profile, and scheduler streams; debug
+output adds exact engine, scheduler, and task commands.
 The tracked four-sample, one-partition starter expands to 35 owner jobs; other
 admitted sample/partition counts expand according to the fixed profile. The
 control surface exposes no raw Snakemake flags, force, unlock, cleanup, retry,
