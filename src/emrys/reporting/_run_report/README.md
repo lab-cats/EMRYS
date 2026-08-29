@@ -13,7 +13,7 @@ This private package supports the direct public
 | [`figures.py`](figures.py) | Shared controlled Matplotlib/Logomaker SVG boundary plus deterministic candidate, mutation, concordance, paired-profile, and location figures. |
 | [`scientific_context_figures.py`](scientific_context_figures.py) | Presentation-only observed/registered logos, motif-position/enrichment, and multi-panel selected candidate-centered context views from admitted values. |
 | [`context.py`](context.py) | Resource, output, and predecessor preparation without durable output state; cleaned temporary renderer initialization is explicit. |
-| [`view.py`](view.py) | Separate structured scientific and operational-evidence projections, including the print-oriented hierarchy, figure guide, and vertical candidate records, without HTML construction. |
+| [`view.py`](view.py) | Separate structured scientific and evidence-and-operations projections, including role navigation, the print-oriented hierarchy, figure guide, and vertical candidate records, without HTML construction. |
 | [`validation.py`](validation.py) | Autoescaped strict Jinja environment plus CSS, security, per-view semantic HTML, and accessibility validation. |
 | [`receipt.py`](receipt.py) | Deterministic summary TSV and v4 two-view receipt projection/validation. |
 | [`publication.py`](publication.py) | One receipt-last two-HTML transaction using injected immutable fault operations. |
@@ -88,10 +88,13 @@ populations, run enrichment, smooth profiles, choose an isoform, or rerank
 candidates. Paths, hashes, attempts, artifacts, tools, renderer provenance, and
 the artifact-availability figure are excluded from this view.
 
-The operational-evidence view contains no candidate rows. It retains run and
-execution status, limitations, expected scopes, artifact QC, attempt lineage,
-the artifact appendix, tools and issues, renderer provenance, and the accessible
-artifact-availability figure. Its compact six-record Step 09 source table
+Both HTML files provide relative destinations for the scientific report,
+evidence and provenance, and operations. The combined **Evidence and
+operations** view contains no candidate rows. Its evidence category owns
+artifact QC, the artifact appendix, tools/issues, renderer provenance, the
+scientific source records; its retained Run overview owns identity, status,
+limitations, expected scopes, and the accessible artifact-availability figure;
+its operations category owns attempt lineage. Its compact six-record Step 09 source table
 preserves exact path, hash, size, and row-count orientation for the validation,
 all-sites, significant-sites, summary, mutation-spectrum, and summary-bound
 sample-manifest inputs. A separate Step 10 table records its validation,
@@ -109,5 +112,5 @@ The transaction retains input rechecks, lock ownership, predecessor identity,
 backup/rollback, recovery markers, foreign-state preservation, staged
 validation, receipt-last publication, and characterized interruption behavior.
 Tests inject a frozen `ReportPublicationOps` value rather than patching module
-globals. The renderer producer is `5.0.0`; run-summary `2.0.0` and
+globals. The renderer producer is `5.1.0`; run-summary `2.0.0` and
 report-receipt `4.0.0` are clean breaking contracts with no compatibility shim.

@@ -1,4 +1,4 @@
-"""Scientific and operational-evidence projections for static HTML reports."""
+"""Scientific and evidence-and-operations projections for static HTML reports."""
 
 from __future__ import annotations
 
@@ -1107,20 +1107,19 @@ def _document_view(
     *,
     report_view: str,
     document_title: str,
-    heading: str,
     banner: str,
-    boundary_class: str,
     introduction: str,
     end_note: str,
     categories: tuple[dict[str, Any], ...],
     selected_candidate_ids: tuple[str, ...] = (),
 ) -> dict[str, Any]:
+    run_id = summary["run_id"]
     return {
         "report_view": report_view,
         "document_title": document_title,
-        "heading": heading,
-        "run_id": summary["run_id"],
-        "boundary_class": boundary_class,
+        "heading": document_title,
+        "run_id": run_id,
+        "boundary_class": f"{report_view}-boundary",
         "banner": banner,
         "introduction": introduction,
         "end_note": end_note,
@@ -1171,9 +1170,7 @@ def build_scientific_view(
         metadata,
         report_view="scientific",
         document_title=f"EMRYS scientific report: {summary['run_id']}",
-        heading=f"EMRYS scientific report: {summary['run_id']}",
         banner=BOUNDARY_BANNER,
-        boundary_class="scientific-boundary",
         introduction=(
             "This read-only scientific view reports the completed Step 09 "
             f"analysis as {CANDIDATE_TERMINOLOGY}. It does not claim biological "
@@ -1191,7 +1188,6 @@ def build_scientific_view(
             {
                 "id": "scientific-category",
                 "title": "Scientific results",
-                "open": True,
                 "sections": (
                     {
                         "id": "scientific-summary-section",
@@ -1248,23 +1244,21 @@ def build_evidence_view(
     scientific_context_results: ScientificContextResults | None = None,
     scientific_context_unavailable_reason: str | None = None,
 ) -> dict[str, Any]:
-    """Build the operational evidence and provenance view without candidate rows."""
+    """Build the evidence and operations view without candidate rows."""
 
     return _document_view(
         summary,
         metadata,
         report_view="evidence",
-        document_title=f"EMRYS operational evidence report: {summary['run_id']}",
-        heading=f"EMRYS operational evidence report: {summary['run_id']}",
+        document_title=f"EMRYS evidence and operations report: {summary['run_id']}",
         banner=BOUNDARY_BANNER,
-        boundary_class="evidence-boundary",
         introduction=(
-            "This read-only view records operational status, evidence, and "
-            "provenance. It does not display Step 09 candidate rows and does not "
-            "provide scientific or biological interpretation."
+            "This read-only view separates evidence and provenance from operational "
+            "execution detail. It does not display Step 09 candidate rows and does "
+            "not provide scientific or biological interpretation."
         ),
         end_note=(
-            "End of operational evidence report. Report generation did not change "
+            "End of evidence and operations report. Report generation did not change "
             "any computational status."
         ),
         categories=(
@@ -1297,7 +1291,7 @@ def build_evidence_view(
             },
             {
                 "id": "evidence-category",
-                "title": "QC and evidence",
+                "title": "Evidence and provenance",
                 "open": False,
                 "sections": (
                     {
@@ -1324,22 +1318,10 @@ def build_evidence_view(
                         "blocks": (_qc_metrics(summary),),
                     },
                     {
-                        "id": "attempt-lineage-section",
-                        "title": "Attempt lineage",
-                        "blocks": tuple(_attempt_lineage(summary)),
-                    },
-                    {
                         "id": "artifact-appendix-section",
                         "title": "Artifact appendix",
                         "blocks": (_artifact_appendix(summary),),
                     },
-                ),
-            },
-            {
-                "id": "provenance-category",
-                "title": "Provenance",
-                "open": False,
-                "sections": (
                     {
                         "id": "tools-issues-section",
                         "title": "Tools and issues",
@@ -1352,6 +1334,18 @@ def build_evidence_view(
                             _report_provenance(metadata),
                             _scientific_figure_provenance(scientific_figures),
                         ),
+                    },
+                ),
+            },
+            {
+                "id": "operations-category",
+                "title": "Operations",
+                "open": False,
+                "sections": (
+                    {
+                        "id": "attempt-lineage-section",
+                        "title": "Attempt lineage",
+                        "blocks": tuple(_attempt_lineage(summary)),
                     },
                 ),
             },

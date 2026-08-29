@@ -1,13 +1,14 @@
 # Reporting template
 
 [`run_report.html.j2`](run_report.html.j2) is the single packaged report
-template shared by the scientific and operational-evidence HTML views. The
+template shared by the scientific and evidence-and-operations HTML views. The
 Python view builders select each document's title, banner context, introduction,
-sections, and end note; this template owns their common accessible structure,
+sections, and end note; this template owns their fixed relative role destinations
+and common accessible structure,
 tables, figure cards, the ranked selected-candidate card index, detailed
 candidate records, and block rendering. The scientific hierarchy is static and
 print-oriented, with no `details` elements;
-the operational-evidence categories retain their bounded disclosure controls.
+the evidence and operations categories retain their bounded disclosure controls.
 Scientific SVG figures, including multi-panel candidate views, are validated
 and supplied as base64 data URIs; the artifact-availability SVG is emitted only
 when the evidence view supplies that block. A bounded macro section avoids

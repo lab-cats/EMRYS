@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from .candidate_display import SelectedCandidateProjection
 
 PRODUCER = "emrys.reporting.report"
-PRODUCER_VERSION = "5.0.0"
+PRODUCER_VERSION = "5.1.0"
 RUN_SUMMARY_SCHEMA_VERSION = "2.0.0"
 REPORT_RECEIPT_SCHEMA_VERSION = "4.0.0"
 JINJA_VERSION = "3.1.6"

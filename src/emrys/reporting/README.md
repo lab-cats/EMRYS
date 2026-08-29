@@ -7,7 +7,7 @@ analysis, decide scientific validity, or promote evidence.
 
 | Interface | Supported role | Responsibility |
 | --- | --- | --- |
-| `python -X pycache_prefix=/dev/null -I -m emrys build report` | Operator-facing standalone rebuild | Render one canonical run summary under distinct code and artifact authorities into separate self-contained scientific and evidence HTML views, summary TSV, and a v4 receipt published last. |
+| `python -X pycache_prefix=/dev/null -I -m emrys build report` | Operator-facing standalone rebuild | Render one canonical run summary under distinct code and artifact authorities into self-contained scientific and evidence-and-operations HTML views, summary TSV, and a v4 receipt published last. |
 | `python -X pycache_prefix=/dev/null -I -m emrys build artifact-index` | Workflow-owned transaction; advanced diagnosis/recovery | Reconcile one declared artifact root and inventory under an independent producer-checkout authority into a receipt-last artifact index. |
 | `python -X pycache_prefix=/dev/null -I -m emrys build run-summary` | Workflow-owned transaction; advanced diagnosis/recovery | Project one admitted artifact-index receipt into the canonical run summary. |
 
@@ -73,10 +73,14 @@ biological strand. The scientific view
 intentionally omits source paths, hashes, attempts, the artifact appendix, tool
 records, renderer provenance, and the artifact-availability figure.
 
-The evidence HTML is the operational and provenance view. It retains run
-identity and status, limitations, expected scopes, artifact-level QC, attempt
-lineage, artifact appendix, tools and issues, renderer provenance, and the
-accessible artifact-availability figure. A compact six-record table binds the
+Both HTML files carry relative navigation to the scientific report, evidence
+and provenance, and operations. The evidence HTML is titled **Evidence and
+operations** and separates those two audiences without introducing another
+artifact. Evidence and provenance owns admitted scientific sources, artifact-
+level QC, the artifact appendix, tools/issues, and renderer provenance. The
+retained Run overview owns run identity, status,
+limitations, expected scopes, and the accessible artifact-availability figure;
+Operations owns Attempt lineage. A compact six-record table binds the
 admitted Step `09` all-sites, significant-sites, summary, mutation-spectrum,
 all-pass owner-validation, and its summary-bound sample manifest. A separate
 table binds the Step `10` validation, receipt, four outputs, and all six receipt-
