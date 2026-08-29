@@ -658,9 +658,10 @@ def _schedule(
     except slurm_submission.SlurmSubmissionError as exc:
         raise ControlError(str(exc)) from exc
     print("Execution placement: Slurm", file=sys.stderr)
-    print(f"Execution profile: {profile.source_path}", file=sys.stderr)
-    print(f"Scheduler stdout: {submission.stdout_pattern}", file=sys.stderr)
-    print(f"Scheduler stderr: {submission.stderr_pattern}", file=sys.stderr)
+    if controls.level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
+        print(f"Execution profile: {profile.source_path}", file=sys.stderr)
+        print(f"Scheduler stdout: {submission.stdout_pattern}", file=sys.stderr)
+        print(f"Scheduler stderr: {submission.stderr_pattern}", file=sys.stderr)
     if controls.level is LogLevel.DEBUG:
         print("Scheduler command: " + shlex.join(submission.argv), file=sys.stderr)
     if not arguments.execute:
@@ -800,7 +801,7 @@ def _execute_plan(
             extra=event(
                 "analysis_prepared",
                 fields={
-                    "run_id": field(plan.run.run_id, console=True),
+                    "run_id": field(plan.run.run_id),
                     "workflow_attempt_id": field(plan.workflow_attempt_id),
                 },
             ),
@@ -928,19 +929,17 @@ def _execute_plan(
 def _print_plan(plan: AttemptPlan, *, level: LogLevel) -> None:
     new_dispatches = plan.new_dispatch_files
     reused = plan.dispatch_count - len(new_dispatches)
-    print(f"Operation: {plan.operation}", file=sys.stderr)
     resources = plan.resources
     print(f"Run ID: {plan.run.run_id}", file=sys.stderr)
-    print(f"Run root: {plan.run_root}", file=sys.stderr)
-    print(f"Pending work items: {plan.dispatch_count - reused}", file=sys.stderr)
-    print(f"Reusable completed work items: {reused}", file=sys.stderr)
-    print(
-        f"Resources: {resources.workflow_cores} cores, "
-        f"{resources.workflow_memory_mb} MiB",
-        file=sys.stderr,
-    )
+    print(f"Work: {len(new_dispatches)} pending, {reused} reusable", file=sys.stderr)
     print("Reporting: automatic after scientific work", file=sys.stderr)
     if level in {LogLevel.VERBOSE, LogLevel.DEBUG}:
+        print(f"Run root: {plan.run_root}", file=sys.stderr)
+        print(
+            f"Resources: {resources.workflow_cores} cores, "
+            f"{resources.workflow_memory_mb} MiB",
+            file=sys.stderr,
+        )
         print("Step thread allocations:", file=sys.stderr)
         for step_id, threads in resources.step_threads:
             print(f"  Step {step_id}: {threads}", file=sys.stderr)

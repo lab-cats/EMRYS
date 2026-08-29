@@ -44,7 +44,9 @@ TERMINAL_SLURM_STATES = frozenset(
     }
 )
 _RUN_ROOT_RE = re.compile(r"^Run root: (/.+/runs/run-[a-f0-9]{64})$", re.MULTILINE)
-_PENDING_WORK_RE = re.compile(r"^Pending work items: ([0-9]+)$", re.MULTILINE)
+_PENDING_WORK_RE = re.compile(
+    r"^Work: ([0-9]+) pending, [0-9]+ reusable$", re.MULTILINE
+)
 _JOB_ID_RE = re.compile(r"^JOB_ID=([0-9]+)$", re.MULTILINE)
 _OUT_RE = re.compile(r"^OUT=(/.+)$", re.MULTILINE)
 _ERR_RE = re.compile(r"^ERR=(/.+)$", re.MULTILINE)
@@ -1401,6 +1403,8 @@ def run_driver(
             str(paths.runtime_profile),
             "--execution-profile",
             str(direct_execution_profile),
+            "--log-level",
+            "verbose",
         ),
         cwd=repo_root,
     )
@@ -1421,6 +1425,8 @@ def run_driver(
         str(paths.runtime_profile),
         "--execution-profile",
         str(paths.execution_profile),
+        "--log-level",
+        "verbose",
     )
     dry_submission_result = transcripts.run(
         "submit-slurm-plan", scheduled_run, cwd=repo_root

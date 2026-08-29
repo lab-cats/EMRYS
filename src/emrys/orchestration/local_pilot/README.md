@@ -53,9 +53,10 @@ computational declaration with Attempt-local direct or Slurm placement; CLI
 resource flags have highest precedence. EMRYS performs no adjacent discovery.
 
 Slurm placement is a transport around the same one-host workflow, not another
-scientific backend. A dry-run prints the placement and stream plan without
-writing or submitting. `--execute` creates `<workspace>/logs`, submits the
-whole Run once, and prints exact `JOB_ID`, `OUT`, and `ERR` values. The compute
+scientific backend. A dry-run prints concise placement without writing or
+submitting; verbose output adds the exact profile and stream paths. `--execute`
+creates `<workspace>/logs`, submits the whole Run once, and prints exact
+`JOB_ID`, `OUT`, and `ERR` values. The compute
 delegate re-admits the profile digest, submission UID, internal marker, and
 Slurm job ID before planning the immutable Run. It loads only an exact declared
 module roster, creates and later removes one mode-`0700` private scratch
@@ -178,14 +179,15 @@ work only through the accepted fixed profile:
   --execution-profile /absolute/path/to/emrys.execution.yaml
 ```
 
-`run` and `resume` print a concise Run, pending-work, resource, reporting, and
-placement plan and write nothing unless `--execute` is present. Verbose output
-adds allocations; debug output adds exact commands. `inspect local-pilot-run`
-is always read-only. With no execution profile, `run` uses the built-in direct
-default; `resume` reuses its predecessor's symbolic computational resources
-and places the new Attempt directly. An explicit profile may select Slurm for
-either command. Explicit resource CLI flags override the selected or inherited
-policy.
+`run` and `resume` print concise Run identity, combined pending/reusable work,
+reporting, and scheduled-placement information and write nothing unless
+`--execute` is present. Verbose output adds the Run root,
+resources/allocation, execution profile, and scheduler streams; debug output
+adds exact engine, scheduler, and task commands. `inspect local-pilot-run` is
+always read-only. With no execution profile, `run` uses the built-in direct
+default; `resume` reuses its predecessor's symbolic computational resources and
+places the new Attempt directly. An explicit profile may select Slurm for either
+command. Explicit resource CLI flags override the selected or inherited policy.
 
 Direct execution writes its application log beneath the selected root, which
 defaults to `<workspace>/logs/application`. Slurm submission writes scheduler streams

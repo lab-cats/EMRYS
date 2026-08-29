@@ -395,14 +395,15 @@ load modules, or alter an input.
 emrys run \
   --request "$EMRYS_REQUEST_PATH" \
   --workspace "$EMRYS_WORKSPACE_PATH" \
-  --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH"
+  --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH" \
+  --log-level verbose
 ```
 
 Review the deterministic Run ID/root, pending and reusable work counts,
-effective resources, and automatic reporting declaration. Normal output hides
-raw Snakemake/task commands; use `--log-level verbose` for allocation detail or
-`debug` for exact commands. A successful plan says no workspace state was
-written.
+effective resources, and automatic reporting declaration. This walkthrough
+requests verbose detail because it needs the Run root and resources; omit that
+option for the concise normal view, or use `debug` for exact commands. A
+successful plan says no workspace state was written.
 
 These direct commands use the built-in profile. If you changed the generated
 profile to direct placement and edited its resources, add
@@ -473,6 +474,7 @@ emrys_slurm_run() {
     --workspace "$EMRYS_WORKSPACE_PATH" \
     --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH" \
     --execution-profile "$EMRYS_EXECUTION_PROFILE_PATH" \
+    --log-level verbose \
     "$@"
 }
 emrys_slurm_run

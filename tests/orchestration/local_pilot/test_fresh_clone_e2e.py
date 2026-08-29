@@ -331,12 +331,9 @@ def _planned_run(stdout: str, workspace: Path) -> tuple[str, Path]:
     """Read the immutable Run selected by the public control-plane plan."""
 
     run_ids = re.findall(r"^Run ID: (run-[0-9a-f]{64})$", stdout, re.MULTILINE)
-    run_roots = re.findall(r"^Run root: (.+)$", stdout, re.MULTILINE)
     assert len(run_ids) == 1, stdout
-    assert len(run_roots) == 1, stdout
     run_id = run_ids[0]
-    run_root = Path(run_roots[0])
-    assert run_root == workspace.resolve() / "runs" / run_id
+    run_root = workspace.resolve() / "runs" / run_id
     return run_id, run_root
 
 
@@ -553,7 +550,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
 
     dry_run = _public_command(["run", *run_common], environment=environment)
     assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
-    assert f"Pending work items: {EXPECTED_OWNER_JOB_COUNT}" in dry_run.stderr
+    assert f"Work: {EXPECTED_OWNER_JOB_COUNT} pending, 0 reusable" in dry_run.stderr
     assert "Reporting: automatic after scientific work" in dry_run.stderr
     assert "Dry-run complete; no workspace state was written." in dry_run.stderr
     assert not workspace.exists()
@@ -631,9 +628,10 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         environment=environment,
     )
     assert resume_dry_run.returncode == 0, resume_dry_run.stdout + resume_dry_run.stderr
-    assert f"Reusable completed work items: {len(verified_before)}" in (
-        resume_dry_run.stderr
-    )
+    assert (
+        f"Work: {EXPECTED_OWNER_JOB_COUNT - len(verified_before)} pending, "
+        f"{len(verified_before)} reusable"
+    ) in resume_dry_run.stderr
     assert "Dry-run complete; no resume state was written." in resume_dry_run.stderr
     assert "Results:" not in resume_dry_run.stderr.splitlines()
     assert _tree_snapshot(run_root) == before_resume_dry_run

@@ -17,11 +17,9 @@ from tests.tools import real_synthetic_e2e as DRIVER
 def _plan_text(workspace: Path) -> str:
     return "\n".join(
         (
-            "Operation: execute",
             "Run ID: run-" + "a" * 64,
             f"Run root: {workspace}/runs/run-{'a' * 64}",
-            "Pending work items: 35",
-            "Reusable completed work items: 0",
+            "Work: 35 pending, 0 reusable",
             "Resources: 1 cores, 6144 MiB",
             "Reporting: automatic after scientific work",
             "Dry-run complete; no workspace state was written.",
@@ -437,7 +435,7 @@ def test_plan_parser_requires_current_work_and_reporting_contract(
     with pytest.raises(DRIVER.DriverError, match="expected 35 pending work items"):
         DRIVER.parse_run_plan(
             _plan_text(workspace).replace(
-                "Pending work items: 35", "Pending work items: 34"
+                "Work: 35 pending, 0 reusable", "Work: 34 pending, 1 reusable"
             ),
             workspace,
             no_write=True,
