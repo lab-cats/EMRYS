@@ -2262,16 +2262,6 @@ def test_initial_and_resume_argv_never_contain_recovery_bypasses(
         orchestration_contracts.validate_record("workflow-attempt", record)
 
 
-def test_inspection_parses_only_already_admitted_attempt_bytes() -> None:
-    valid = orchestration_contracts.canonical_json_bytes(
-        {
-            "not": "a full record",
-        }
-    )
-    with pytest.raises(inspection.InspectionError, match="Invalid workflow-attempt"):
-        inspection._parse_attempt_path_bytes(valid, Path("/changed/attempt.json"))
-
-
 def test_inspection_blocks_empty_or_foreign_attempt_state(tmp_path: Path) -> None:
     built = _build_harness(tmp_path)
     empty = (
@@ -2408,7 +2398,7 @@ def test_success_receipt_with_verified_subset_is_blocked_on_inspection(
         ),
     )
     assert observed.results_status == "blocked"
-    assert any("exact verified task" in item for item in observed.blockers)
+    assert any("cumulative verified tasks" in item for item in observed.blockers)
 
 
 def test_completed_run_refuses_rerun_and_resume(tmp_path: Path) -> None:
@@ -2858,7 +2848,7 @@ def test_preentry_failure_can_resume_into_later_verified_start(tmp_path: Path) -
     assert forged_observation.integrity == "blocked"
     assert forged_observation.results_status == "blocked"
     assert any(
-        "pre-binds future task-start" in blocker
+        "cumulative task starts" in blocker
         for blocker in forged_observation.blockers
     )
     assert any(
