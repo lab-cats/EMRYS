@@ -359,6 +359,15 @@ def test_controlled_python_ignores_timestamp_valid_adjacent_bytecode(
     assert controlled.stdout.strip() == "safe"
 
 
+def test_uncontrolled_python_runtime_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(source_authority.sys, "pycache_prefix", None)
+
+    with pytest.raises(source_authority.SourceCheckoutError, match="pycache_prefix"):
+        source_authority.require_controlled_python_runtime()
+
+
 def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -> None:
     fixture = _build_fixture(tmp_path)
     _commit_package(fixture)
