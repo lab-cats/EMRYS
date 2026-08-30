@@ -360,6 +360,10 @@ jobs:
           test -e "${r_prefix}/lib/libxml2.so"
           test -x "${r_prefix}/bin/xml2-config"
           "${r_prefix}/bin/pkg-config" --exists libxml-2.0
+          PATH="${native_prefix}/bin" "${native_prefix}/bin/STAR" --version
+          PATH="${native_prefix}/bin" "${r_prefix}/bin/Rscript" \
+            --no-environ --no-site-file --no-restore --no-save \
+            -e 'cat(R.version.string)'
           shopt -s nullglob
           picard_jars=("${native_prefix}"/share/picard-slim-3.1.1-*/picard.jar)
           test "${#picard_jars[@]}" -eq 1

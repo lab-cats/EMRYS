@@ -212,6 +212,8 @@ def test_managed_runtime_lock_has_one_linux_floor_and_exact_science_versions() -
         }
     ]
     assert manifest["environments"] == {"native": ["native"], "r": ["r"]}
+    native_dependencies = manifest["feature"]["native"]["dependencies"]
+    assert {"coreutils", "grep"} <= native_dependencies.keys()
     r_dependencies = manifest["feature"]["r"]["dependencies"]
     assert "libxml2-devel" in r_dependencies
     assert "libxml2" not in r_dependencies
@@ -248,6 +250,8 @@ def test_managed_runtime_lock_has_one_linux_floor_and_exact_science_versions() -
     assert len(r_bases) == 1
     assert "/r-base-4.6.1-" in r_bases[0]
     assert sum("/libxml2-devel-" in url for url in r_environment) == 1
+    assert sum("/coreutils-" in url for url in native) == 1
+    assert sum("/grep-" in url for url in native) == 1
     metadata = {row["conda"]: row for row in lock["packages"]}
     locked_environment = {*native, *r_environment}
     assert locked_environment <= metadata.keys()
@@ -298,6 +302,8 @@ def test_managed_runtime_userspace_matrix_proves_the_same_lock() -> None:
     assert "src/emrys/resources/runtime/pixi.lock" in verify["run"]
     assert 'test -e "${r_prefix}/lib/libxml2.so"' in verify["run"]
     assert '"${r_prefix}/bin/pkg-config" --exists libxml-2.0' in verify["run"]
+    assert 'PATH="${native_prefix}/bin" "${native_prefix}/bin/STAR" --version' in verify["run"]
+    assert 'PATH="${native_prefix}/bin" "${r_prefix}/bin/Rscript"' in verify["run"]
     assert 'pixi list --locked --manifest-path "${PIXI_MANIFEST}"' in verify["run"]
 
 
