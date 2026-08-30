@@ -26,6 +26,7 @@ from emrys.libraries.validation.tsv import tsv_bytes
 from emrys.orchestration.local_pilot.normalization import (
     ProjectAdmission,
     admit_project,
+    validate_authored_path,
 )
 from emrys.stages.gtf_to_bed12 import converter as gtf_converter
 
@@ -386,7 +387,11 @@ def init_from_args(arguments: argparse.Namespace) -> int:
 
 def _admit_supplied_file(value: str | Path, label: str) -> Path:
     path = Path(value)
-    return _admit_explicit_file(path if path.is_absolute() else Path.cwd() / path, label)
+    admitted = _admit_explicit_file(
+        path if path.is_absolute() else Path.cwd() / path, label
+    )
+    validate_authored_path(str(admitted), label)
+    return admitted
 
 
 def _indexed_values(
@@ -409,20 +414,18 @@ def _draft_manifest_members(
 
     pairs: dict[str, dict[str, tuple[Path, bool]]] = {}
     for value in fastqs:
-        match = FASTQ_PAIR_NAME.fullmatch(Path(value).name)
+        admitted_path = _admit_supplied_file(value, "supplied FASTQ")
+        match = FASTQ_PAIR_NAME.fullmatch(admitted_path.name)
         if match is None:
             raise OnboardingError(
                 "FASTQ names must end in <sample>_R1 or _R2 followed by "
-                f".fastq/.fq and optional .gz: {value}"
+                f".fastq/.fq and optional .gz: {admitted_path}"
             )
         sample_id, mate = match["sample"], match["mate"]
         pair = pairs.setdefault(sample_id, {})
         if mate in pair:
             raise OnboardingError(f"duplicate R{mate} FASTQ for sample {sample_id}")
-        pair[mate] = (
-            _admit_supplied_file(value, f"sample {sample_id} R{mate} FASTQ"),
-            match["suffix"].endswith(".gz"),
-        )
+        pair[mate] = (admitted_path, match["suffix"].endswith(".gz"))
 
     admitted: dict[str, tuple[Path, Path]] = {}
     for sample_id, pair in pairs.items():
@@ -541,7 +544,12 @@ def init_manifests_from_args(arguments: argparse.Namespace) -> int:
         )
         print(f"Published validated manifest drafts: {output}")
         return 0
-    except (OSError, OnboardingError, step08.ContractError) as exc:
+    except (
+        OSError,
+        OnboardingError,
+        orchestration_contracts.ContractValidationError,
+        step08.ContractError,
+    ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 

@@ -209,6 +209,44 @@ def test_manifest_init_rejects_unpaired_fastq_without_writing(
     assert "unpaired FASTQ sample: sample_a" in capsys.readouterr().err
 
 
+def test_manifest_init_rejects_paths_the_project_cannot_admit(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    unsafe_directory = tmp_path / "[literal]"
+    unsafe_directory.mkdir()
+    fastqs = _fastqs(unsafe_directory, "sample_a")
+    output = tmp_path / "drafts"
+
+    assert cli.main([
+        "init", "manifests", "--output-dir", str(output), "--fastq",
+        *(str(path) for path in fastqs),
+        "--sample", "sample_a", "control", "pair_1", "forward", "--execute",
+    ]) == 2
+    assert not output.exists()
+    assert "explicit normalized path" in capsys.readouterr().err
+
+
+def test_manifest_init_pairs_by_the_admitted_file_not_a_symlink_alias(
+    tmp_path: Path,
+) -> None:
+    canonical = _fastqs(tmp_path, "actual")
+    aliases = [tmp_path / f"alias_R{mate}.fastq.gz" for mate in (1, 2)]
+    aliases[0].symlink_to(canonical[1])
+    aliases[1].symlink_to(canonical[0])
+    output = tmp_path / "drafts"
+
+    assert cli.main([
+        "init", "manifests", "--output-dir", str(output), "--fastq",
+        *(str(path) for path in aliases),
+        "--sample", "actual", "control", "pair_1", "forward",
+        "--execute",
+    ]) == 0
+    rows = step08.validate_sample_manifest(output / "samples.tsv")[0].rows
+    assert rows[0]["r1_fastq"] == str(canonical[0])
+    assert rows[0]["r2_fastq"] == str(canonical[1])
+
+
 def test_synthetic_init_is_dry_run_first_and_refuses_predecessor(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
