@@ -36,6 +36,7 @@ from emrys.orchestration.local_pilot import (
     doctor,
     inspection,
     lifecycle,
+    onboarding,
     reporting_operation,
 )
 from emrys.orchestration.local_pilot.execution_profile import (
@@ -200,7 +201,6 @@ def _admit_project_after_doctor(
 def _plan_run(
     project_path: Path,
     workspace: Path,
-    runtime_profile: Path,
     *,
     execution_profile: ExecutionProfile,
     scheduler_job_id: str | None = None,
@@ -209,7 +209,11 @@ def _plan_run(
     """Plan a new run without writing any workspace state."""
 
     try:
-        readiness = ops.inspect_readiness(project_path, workspace, runtime_profile)
+        readiness = ops.inspect_readiness(
+            project_path,
+            workspace,
+            onboarding.runtime_profile_path(project_path),
+        )
         _require_ready(readiness)
         project = _admit_project_after_doctor(readiness, ops)
         policy = execution_profile.resource_policy
@@ -296,9 +300,44 @@ def _retained_dispatches(
     return retained
 
 
+def _retained_runtime_profile_path(
+    predecessor: Mapping[str, Any],
+) -> Path:
+    """Re-admit the predecessor's one exact retained runtime profile binding."""
+
+    retained = tuple(
+        identity
+        for identity in predecessor["required_tools"]
+        if identity["name"] == "runtime_profile"
+    )
+    if len(retained) != 1:
+        raise ControlError(
+            "Predecessor attempt does not bind one retained runtime profile"
+        )
+    identity = retained[0]
+    path = Path(str(identity["path"]))
+    resolved = Path(str(identity["resolved_path"]))
+    try:
+        data = path.read_bytes()
+        observed = path.resolve(strict=True)
+    except OSError as exc:
+        raise ControlError(
+            f"Retained runtime profile is unavailable: {path}: {exc}"
+        ) from exc
+    digest = hashlib.sha256(data).hexdigest()
+    if (
+        not path.is_absolute()
+        or path != resolved
+        or observed != path
+        or identity["sha256"] != digest
+        or identity["version"] != f"sha256:{digest}"
+    ):
+        raise ControlError("Retained runtime profile differs from its binding")
+    return path
+
+
 def _plan_resume(
     run_root: Path,
-    runtime_profile: Path,
     *,
     execution_profile: ExecutionProfile,
     profile_resources_explicit: bool,
@@ -327,8 +366,24 @@ def _plan_resume(
     previous = observed.latest_attempt
     project_path = Path(str(previous["authored_paths"]["request"]))
     workspace = Path(str(previous["workspace"]))
+    retained_runtime_profile = (
+        _retained_runtime_profile_path(previous)
+        if observed.authority is None
+        else None
+    )
+    runtime_profile = onboarding.runtime_profile_path(project_path)
+    if not os.path.lexists(runtime_profile):
+        runtime_profile = (
+            retained_runtime_profile
+            if retained_runtime_profile is not None
+            else _retained_runtime_profile_path(previous)
+        )
     try:
-        readiness = ops.inspect_readiness(project_path, workspace, runtime_profile)
+        readiness = ops.inspect_readiness(
+            project_path,
+            workspace,
+            runtime_profile,
+        )
         _require_ready(readiness)
         project = _admit_project_after_doctor(readiness, ops)
         predecessor_config = _load_config_reference(root, previous)
@@ -403,6 +458,7 @@ def _plan_resume(
                 token=ops.token(),
                 supersedes_workflow_attempt_id=str(previous["workflow_attempt_id"]),
                 retained_dispatches=_retained_dispatches(observed),
+                retained_runtime_profile_path=retained_runtime_profile,
                 placement=execution_profile.attempt_placement(scheduler_job_id),
             )
         )
@@ -569,8 +625,6 @@ def _delegate_argv(
         argv.extend(("--run-root", str(_absolute(arguments.run_root))))
     argv.extend(
         (
-            "--runtime-profile",
-            str(_absolute(arguments.runtime_profile)),
             "--execution-profile",
             str(profile.source_path),
             "--log-level",
@@ -1145,7 +1199,6 @@ def _add_execution_arguments(parser: argparse.ArgumentParser) -> None:
 
 def configure_run_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--project", default=Path("project.yaml"), type=Path)
-    parser.add_argument("--runtime-profile", required=True, type=Path)
     parser.add_argument(
         "--execution-profile",
         type=Path,
@@ -1158,7 +1211,6 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
 
 def configure_resume_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--run-root", required=True, type=Path)
-    parser.add_argument("--runtime-profile", required=True, type=Path)
     parser.add_argument(
         "--execution-profile",
         type=Path,
@@ -1280,7 +1332,6 @@ def run_from_args(
             _plan_run,
             arguments.project,
             workspace,
-            arguments.runtime_profile,
             execution_profile=profile,
             scheduler_job_id=scheduler_job_id,
             ops=ops,
@@ -1321,7 +1372,6 @@ def resume_from_args(
         build_plan = partial(
             _plan_resume,
             arguments.run_root,
-            arguments.runtime_profile,
             execution_profile=profile,
             profile_resources_explicit=(
                 profile.resource_policy.config_path is not None

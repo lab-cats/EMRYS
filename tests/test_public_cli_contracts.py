@@ -38,10 +38,7 @@ EMRYS_COMMANDS = (
         ("init", "synthetic-local-pilot"),
         "usage: emrys init synthetic-local-pilot",
     ),
-    (
-        ("prepare", "local-pilot-runtime"),
-        "usage: emrys prepare local-pilot-runtime",
-    ),
+    (("runtime", "discover"), "usage: emrys runtime discover"),
     (("doctor", "local-pilot"), "usage: emrys doctor local-pilot"),
     (("run",), "usage: emrys run"),
     (("resume",), "usage: emrys resume"),
@@ -579,7 +576,12 @@ def test_installed_emrys_commands_are_isolated_and_cwd_independent(
 
 @pytest.mark.parametrize(
     "command",
-    (("validate", "project"), ("doctor", "local-pilot"), ("run",)),
+    (
+        ("runtime", "discover"),
+        ("validate", "project"),
+        ("doctor", "local-pilot"),
+        ("run",),
+    ),
 )
 def test_project_is_the_only_active_intake_spelling(
     command: tuple[str, ...],
@@ -594,6 +596,23 @@ def test_project_is_the_only_active_intake_spelling(
     assert "--project" in result.stdout
     assert "--request" not in result.stdout
     assert "--workspace" not in result.stdout
+
+
+@pytest.mark.parametrize(
+    "command",
+    (("doctor", "local-pilot"), ("run",), ("resume",)),
+)
+def test_runtime_profile_is_project_owned_not_public_path_glue(
+    command: tuple[str, ...],
+    tmp_path: Path,
+) -> None:
+    result = run_command(
+        [sys.executable, "-I", "-m", "emrys", *command, "--help"],
+        cwd=tmp_path,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "--runtime-profile" not in result.stdout
 
 
 @pytest.mark.parametrize(
@@ -664,7 +683,7 @@ print(json.dumps({
     (
         ("--help",),
         ("init", "--help"),
-        ("prepare", "--help"),
+        ("runtime", "--help"),
         ("report", "--help"),
         ("convert", "--help"),
         ("validate", "--help"),

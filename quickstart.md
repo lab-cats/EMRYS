@@ -11,9 +11,9 @@ result, scheduler job, and report has the evidence ceiling stated below.
 | Phase | Operator action | Required result before continuing |
 | --- | --- | --- |
 | 1. Source | Clone, select one immutable commit, and install the locked Python environment | Clean detached commit and working `emrys --help` |
-| 2. Runtime | Provision exact scientific tools and restore/check the canonical R library outside workflow execution | Canonical compute-node paths and passing `r-check` |
+| 2. Provision | Provision exact scientific tools and restore/check the canonical R library outside workflow execution | Canonical compute-node paths and passing `r-check` |
 | 3. Project | Draft manifests, then create one validated Project root around the referenced FASTQ, FASTA, GTF, and optional regions files | Explicit Project definition, paired sample rows, nonoverlapping partitions, and owned `runs/`, `logs/`, and `runtime/` directories |
-| 4. Profile | Render a new runtime profile from the observed canonical paths | Complete create-absent runtime TSV |
+| 4. Runtime admission | Discover and admit the active environment | Project-owned `runtime/runtime.tsv` |
 | 5. Admission | Validate the Project and finalize two-phase storage qualification | Project PASS and matching final storage receipt |
 | 6. Readiness | Run doctor in the execution context | Exact `READY` result |
 | 7. Plan | Invoke `emrys run` once and review its Run or Slurm-placement plan | Direct: deterministic Run ID and root; Slurm: one admitted submission plan |
@@ -120,26 +120,17 @@ Install or select these exact accepted identities before continuing:
 | RSeQC | `infer_experiment.py 5.0.4` |
 | gzip | compatible `gunzip` |
 | R | `Rscript 4.6.1` |
-| R namespaces | Exact lock-selected versions in `local_pilot_runtime.example.tsv` |
+| R namespaces | Exact lock-selected versions in the internal fixed runtime policy |
 
-The runtime profile binds canonical executable or jar paths, versions, and
+Runtime admission binds canonical executable or jar paths, versions, and
 SHA-256 identities. An environment-module name is not sufficient. On a cluster,
-discover the runtime inside the intended compute allocation before preparing
-the profile; head-node visibility is not evidence.
+discover inside the intended compute allocation; head-node visibility is not
+compute-node evidence.
 
-```sh
-hostname
-for tool in STAR samtools gatk bcftools infer_experiment.py gunzip Rscript java; do
-  printf '%-24s' "$tool"
-  command -v "$tool" || printf 'MISSING\n'
-done
-java -version 2>&1 || true
-Rscript --version 2>&1 || true
-```
-
-Load only the site's approved modules in that allocation, record the canonical
-targets actually observed there, and provision missing tools outside EMRYS
-before continuing.
+Load only the site's approved modules in that allocation and provision missing
+tools outside EMRYS. Section 4 performs discovery after the Project exists;
+discovery installs nothing, loads no module, and refuses missing or ambiguous
+installations rather than silently selecting one.
 
 The exact clean checkout is also the guarded `renv` project. It requires an
 existing canonical R library with the lock-selected `renv` and Step `08`
@@ -284,44 +275,32 @@ mode-`0700` `runs/`, `logs/`, and `runtime/` directories. Preserve any partial
 create-absent root for inspection and retry with a new absent destination.
 
 The [configuration guide](configs/README.md) explains every field, threshold,
-path rule, sample-pairing requirement, and runtime row. Relative paths resolve
+path rule, sample-pairing requirement, and runtime requirement. Relative paths resolve
 from the Project file's directory—not the terminal's current directory.
 
-## 4. Prepare one explicit runtime profile
+## 4. Discover and admit the runtime
 
-The current preparation helper accepts exact existing runtime paths, fills the
-complete fixed roster, and emits TSV to standard output. It does not install
-tools, probe versions, or write a file.
-
-Redirect it to a **new absent filename** in the Project-owned runtime
-directory:
+Run discovery in the intended execution environment. The first invocation is a
+no-write preview of the fixed policy and observed tool identities; the second
+publishes the admitted profile at the one Project-owned path:
 
 ```sh
-EMRYS_RUNTIME_PROFILE_PATH="$EMRYS_PROJECT_ROOT/runtime/runtime.selected.tsv"
-
-test ! -e "$EMRYS_RUNTIME_PROFILE_PATH" && (
-  set -C
-  emrys prepare local-pilot-runtime \
-    --bash /canonical/path/to/bash \
-    --star /canonical/path/to/STAR \
-    --samtools /canonical/path/to/samtools \
-    --gatk /canonical/path/to/gatk \
-    --bcftools /canonical/path/to/bcftools \
-    --infer-experiment /canonical/path/to/infer_experiment.py \
-    --gunzip /canonical/path/to/gunzip \
-    --java /canonical/java-home/bin/java \
-    --picard-jar /canonical/path/to/picard.jar \
-    --rscript /canonical/path/to/Rscript \
-    --renv-library /canonical/path/to/renv-library \
-    > "$EMRYS_RUNTIME_PROFILE_PATH"
-)
+export EMRYS_PICARD_JAR=/canonical/path/to/picard.jar
+export EMRYS_RSCRIPT=/canonical/path/to/Rscript
+export EMRYS_RENV_LIBRARY=/canonical/path/to/renv-library
+emrys runtime discover --project "$EMRYS_PROJECT_PATH"
+emrys runtime discover --project "$EMRYS_PROJECT_PATH" --execute
 ```
 
-All explicit paths must be absolute canonical real files/directories. An
-ordinary tool option may be omitted only when `PATH` contains one distinct
-executable for that command. The helper still does not prove versions; doctor
-does. If preparation fails after shell redirection creates an incomplete file,
-preserve it for diagnosis and select a new absent output name.
+Other commands are discovered from the active `PATH`; `JAVA_HOME`, when set,
+must identify the same Java exposed there. Only the explicit EMRYS selectors
+above affect Picard, Rscript, and renv-library discovery. Multiple distinct
+command selections fail closed.
+
+The canonical profile is `$EMRYS_PROJECT_ROOT/runtime/runtime.tsv`. Ordinary
+`run`, `resume`, and Doctor commands derive it from the Project; do not edit or
+pass it manually. Use `emrys inspect runtime-availability` only when advanced
+profile-driven evidence is needed outside the ordinary journey.
 
 ## 5. Validate data compatibility without scientific tools
 
@@ -376,8 +355,7 @@ namespaces:
 
 ```sh
 emrys doctor local-pilot \
-  --project "$EMRYS_PROJECT_PATH" \
-  --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH"
+  --project "$EMRYS_PROJECT_PATH"
 ```
 
 Continue only after:
@@ -399,7 +377,6 @@ Run plan, then asks once whether to execute it:
 ```sh
 emrys run \
   --project "$EMRYS_PROJECT_PATH" \
-  --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH" \
   --log-level verbose
 ```
 
@@ -470,7 +447,6 @@ the large inputs on the login node, and asks before submission.
 emrys_slurm_run() {
   emrys run \
     --project "$EMRYS_PROJECT_PATH" \
-    --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH" \
     --execution-profile "$EMRYS_EXECUTION_PROFILE_PATH" \
     --log-level verbose \
     "$@"

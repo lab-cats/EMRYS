@@ -24,17 +24,18 @@ rechecks every reference/selector content snapshot after compatibility parsing.
 It writes nothing and invokes no external tool. Success is input/configuration
 compatibility evidence only, not readiness, execution, or scientific evidence.
 
-`emrys prepare local-pilot-runtime` renders the tracked fixed runtime policy to
-standard output without writing a file, probing a version, loading a module,
-or installing software. Java, Picard jar, Rscript, and the `renv` library must
-be explicit paths resolving to canonical real files/directories. The ordinary
-command-line tools may be explicit;
-an omitted tool is accepted only when the existing absolute PATH entries yield
-one distinct resolved executable. Zero or multiple identities fail closed.
-The helper changes editable paths and their dependent Picard/R-namespace probe
-arguments only; the tracked check roster, expected versions, contexts,
-required flags, and descriptions remain unchanged. Doctor owns the later
-content binding and actual version/readiness probes.
+`emrys runtime discover [--project FILE]` derives one Project and resolves the
+active environment against the tracked fixed runtime policy. It loads no
+module, installs nothing, and silently selects nothing: a missing or ambiguous
+tool, jar, Python/Snakemake environment, R installation, library, or required
+namespace fails closed. The default is a no-write inventory. `--execute`
+publishes the admitted bytes only at `<project-root>/runtime/runtime.tsv` and
+re-admits that file; it does not create another runtime identity or accept a
+caller-selected output path. Any existing profile is preserved and fails
+publication, including byte-identical content. Ordinary run, resume, and Doctor
+routes derive the canonical profile from the Project. The generic
+profile-driven `emrys inspect runtime-availability` route remains the advanced evidence
+surface and does not establish the ordinary Project runtime authority.
 
 `emrys init synthetic-local-pilot` uses the same external, dry-run-first,
 create-absent publication policy. Its closed `--dataset-profile` selector
@@ -107,7 +108,8 @@ Analysis revision. Its definition, profile, and construction mappings are fresh
 disposable views and cannot mutate identity or historical compatibility bytes.
 
 `doctor.inspect_local_pilot` and the grouped `emrys doctor local-pilot` route
-are the read-only B5 setup boundary. They reuse Project admission plus the runtime-
+are the read-only B5 setup boundary. They derive
+`<project-root>/runtime/runtime.tsv`, reuse Project admission plus the runtime-
 availability owner's direct API, require the exact fixed local runtime roster
 and policy fields before any probe, run R namespace probes with explicit
 guarded `renv` variables, compare the selected Python/Snakemake identity, bind

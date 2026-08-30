@@ -21,7 +21,7 @@ from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.evidence.runtime_availability._probes import (
     R_NAMESPACE_ROOT_OUTPUT_MARKER,
 )
-from emrys.orchestration.local_pilot import doctor, inspection, reporting_boundary
+from emrys.orchestration.local_pilot import inspection, reporting_boundary
 from emrys.orchestration.local_pilot.normalization import admit_project
 from tests.orchestration.local_pilot.fixture import build as build_intake_fixture
 
@@ -97,7 +97,19 @@ def _assert_prepared_fresh_clone(source_root: Path) -> None:
     assert check.returncode == 0, check.stdout + check.stderr
 
 
-def _write_runtime_profile(root: Path) -> Path:
+def _project_fixture(root: Path) -> Path:
+    request = build_intake_fixture(root)
+    project = root / "project.yaml"
+    request.rename(project)
+    for name in ("logs", "runs", "runtime"):
+        (root / name).mkdir(mode=0o700)
+    return project
+
+
+def _runtime_discovery_environment(
+    root: Path,
+    base_environment: dict[str, str],
+) -> dict[str, str]:
     root.mkdir()
 
     def executable(name: str, output: str) -> Path:
@@ -109,15 +121,11 @@ def _write_runtime_profile(root: Path) -> Path:
         path.chmod(0o755)
         return path
 
-    tools = {
-        "star": executable("STAR", "2.7.11b"),
-        "samtools": executable("samtools", "samtools 1.19.2"),
-        "bcftools": executable("bcftools", "bcftools 1.21"),
-        "infer_experiment": executable(
-            "infer_experiment.py", "infer_experiment.py 5.0.4"
-        ),
-        "gunzip": executable("gunzip", "gzip 1.13"),
-    }
+    executable("STAR", "2.7.11b")
+    executable("samtools", "samtools 1.19.2")
+    executable("bcftools", "bcftools 1.21")
+    executable("infer_experiment.py", "infer_experiment.py 5.0.4")
+    executable("gunzip", "gzip 1.13")
     java_home = root / "fixture-jdk"
     java = java_home / "bin" / "java"
     picard_jar = root / "fixture-picard.jar"
@@ -157,16 +165,17 @@ def _write_runtime_profile(root: Path) -> Path:
     (installed_renv / "DESCRIPTION").write_text(
         "Package: renv\nVersion: 1.2.3\n", encoding="utf-8"
     )
-    starter = REPO_ROOT / "configs/local_pilot_runtime.example.tsv"
+    starter = REPO_ROOT / "src/emrys/resources/runtime/runtime_policy.tsv"
     with starter.open(encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         assert reader.fieldnames is not None
-        header = tuple(reader.fieldnames)
         rows = list(reader)
-    by_name = {row["check_id"]: row for row in rows}
     package_versions: dict[str, str] = {}
-    for check_id, package in doctor.LOCAL_PILOT_R_PACKAGES:
-        exact = by_name[check_id]["expected"]
+    for row in rows:
+        if row["check_type"] != "r_namespace":
+            continue
+        package = row["target"]
+        exact = row["expected"]
         version = exact.removeprefix("^").removesuffix("$").replace("[.]", ".")
         assert re.fullmatch(r"[0-9]+(?:[.][0-9]+)+", version)
         package_versions[package] = version
@@ -189,62 +198,16 @@ def _write_runtime_profile(root: Path) -> Path:
     rscript.write_text("\n".join(r_lines) + "\n", encoding="utf-8")
     rscript.chmod(0o755)
 
-    for row in rows:
-        check_id = row["check_id"]
-        check_type = row["check_type"]
-        target = str(tools.get(check_id, root / check_id))
-        probe_args = json.loads(row["probe_args"])
-        if check_id == "bash":
-            target = "/bin/bash"
-        elif check_id == "python":
-            target = sys.executable
-        elif check_id in {"snakemake", "sha256_python"}:
-            target = sys.executable
-            if check_id == "snakemake":
-                probe_args = [
-                    "-X",
-                    "pycache_prefix=/dev/null",
-                    "-I",
-                    "-m",
-                    "snakemake",
-                    "--version",
-                ]
-            else:
-                probe_args = ["python_hashlib"]
-        elif check_id == "java":
-            target = str(java)
-        elif check_id == "gatk":
-            target = str(gatk)
-        elif check_id == "picard":
-            target = str(java)
-            probe_args = [
-                "-jar",
-                str(picard_jar),
-                "MarkDuplicates",
-                "--version",
-            ]
-        elif check_id == "picard_jar":
-            target = str(picard_jar)
-        elif check_id == "rscript":
-            target = str(rscript)
-        elif check_id == "renv_project":
-            target = str(REPO_ROOT)
-        elif check_id == "renv_library":
-            target = str(renv_library)
-        elif check_type == "r_namespace":
-            target = row["target"]
-            probe_args = [str(rscript)]
-        row["target"] = target
-        row["probe_args"] = json.dumps(probe_args, separators=(",", ":"))
-
-    profile = root / "runtime.tsv"
-    with profile.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(
-            handle, fieldnames=header, delimiter="\t", lineterminator="\n"
-        )
-        writer.writeheader()
-        writer.writerows(rows)
-    return profile
+    (root / "bash").symlink_to("/bin/bash")
+    (root / "java").symlink_to(java)
+    return {
+        **base_environment,
+        "PATH": str(root),
+        "JAVA_HOME": str(java_home),
+        "EMRYS_PICARD_JAR": str(picard_jar),
+        "EMRYS_RSCRIPT": str(rscript),
+        "EMRYS_RENV_LIBRARY": str(renv_library),
+    }
 
 
 def _command_environment(source_root: Path, tmp_path: Path) -> dict[str, str]:
@@ -563,20 +526,29 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     _assert_prepared_fresh_clone(source_root)
 
     intake_root = tmp_path / "intake"
-    request = build_intake_fixture(intake_root)
+    request = _project_fixture(intake_root)
     workspace = request.parent
-    runtime_profile = _write_runtime_profile(tmp_path / "runtime")
     environment = _command_environment(source_root, tmp_path)
+    runtime_environment = _runtime_discovery_environment(
+        tmp_path / "runtime-tools", environment
+    )
+    runtime_profile = workspace / "runtime/runtime.tsv"
     normalized = admit_project(
         request,
         REPO_ROOT / "workflow/contracts/local_cmh_v2.json",
     )
-    common = [
-        "--project",
-        str(request),
-        "--runtime-profile",
-        str(runtime_profile),
-    ]
+    discovery = ["runtime", "discover", "--project", str(request)]
+    discovery_plan = _public_command(discovery, environment=runtime_environment)
+    assert discovery_plan.returncode == 0, discovery_plan.stdout + discovery_plan.stderr
+    assert not runtime_profile.exists()
+    discovery_execute = _public_command(
+        [*discovery, "--execute"], environment=runtime_environment
+    )
+    assert discovery_execute.returncode == 0, (
+        discovery_execute.stdout + discovery_execute.stderr
+    )
+    assert runtime_profile.is_file()
+    common = ["--project", str(request)]
     run_common = [
         *common,
         "--execution-profile",
@@ -605,7 +577,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     assert f"Work: {EXPECTED_OWNER_JOB_COUNT} pending, 0 reusable" in dry_run.stderr
     assert "Reporting: automatic after scientific work" in dry_run.stderr
     assert "Dry-run complete; no workspace state was written." in dry_run.stderr
-    assert not workspace.exists()
+    assert not any((workspace / name).iterdir() for name in ("runs", "logs"))
     run_id, run_root = _planned_run(dry_run.stderr, workspace)
 
     failed_run = _harness_command(
@@ -675,8 +647,6 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         "resume",
         "--run-root",
         str(run_root),
-        "--runtime-profile",
-        str(runtime_profile),
     ]
     resume_dry_run = _harness_command(
         "success",
@@ -762,17 +732,29 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
             assert forbidden not in path.read_bytes(), path
 
     clean_intake_root = tmp_path / "clean-intake"
-    clean_request = build_intake_fixture(clean_intake_root)
+    clean_request = _project_fixture(clean_intake_root)
     clean_normalized = admit_project(
         clean_request,
         REPO_ROOT / "workflow/contracts/local_cmh_v2.json",
     )
     clean_workspace = clean_request.parent
+    clean_discovery = _public_command(
+        [
+            "runtime",
+            "discover",
+            "--project",
+            str(clean_request),
+            "--execute",
+        ],
+        environment=runtime_environment,
+    )
+    assert clean_discovery.returncode == 0, (
+        clean_discovery.stdout + clean_discovery.stderr
+    )
+    assert (clean_workspace / "runtime/runtime.tsv").is_file()
     clean_common = [
         "--project",
         str(clean_request),
-        "--runtime-profile",
-        str(runtime_profile),
         "--execution-profile",
         str(clean_request.parent / "emrys.execution.yaml"),
     ]

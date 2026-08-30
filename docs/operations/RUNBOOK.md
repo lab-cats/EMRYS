@@ -70,7 +70,7 @@ walkthrough.
 | Need | Canonical route |
 | --- | --- |
 | Create a Project root around synthetic or real inputs | [Quickstart: initialize and ingest](../../quickstart.md#3-initialize-and-ingest-synthetic-or-real-inputs) |
-| Prepare the explicit runtime profile | [Quickstart: runtime profile](../../quickstart.md#4-prepare-one-explicit-runtime-profile) and [`configs/README.md`](../../configs/README.md) |
+| Discover and admit the active runtime | [Quickstart: runtime discovery](../../quickstart.md#4-discover-and-admit-the-runtime) and [`configs/README.md`](../../configs/README.md) |
 | Qualify storage and obtain runtime `READY` | [Quickstart: compatibility](../../quickstart.md#5-validate-data-compatibility-without-scientific-tools) and [runtime readiness](../../quickstart.md#6-require-full-runtime-ready) |
 | Review and execute the fixed workflow | [Quickstart: plan and execution](../../quickstart.md#7-review-and-confirm-one-immutable-plan) |
 | Inspect run state or plan a supported resume | Commands below and the [local-pilot owner](../../src/emrys/orchestration/local_pilot/README.md) |
@@ -84,7 +84,6 @@ Slurm allocation; it is not a distributed executor:
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
   --project /absolute/path/to/project.yaml \
-  --runtime-profile /absolute/path/to/runtime.selected.tsv \
   --execution-profile /absolute/path/to/emrys.execution.yaml
 ```
 
@@ -95,7 +94,8 @@ inside the allocation. Refusal, EOF, or interruption writes and submits
 nothing. Use `--execute` only for deliberate noninteractive automation.
 Accepted Slurm submission prints exact `JOB_ID`, `OUT`, and `ERR` values. Setup
 creates `runs/`, `logs/`, and `runtime/` beneath the `project.yaml` parent;
-scheduler and application logs use its `logs/` tree. Only the advanced
+scheduler and application logs use its `logs/` tree. Run, resume, and Doctor
+derive the admitted `runtime/runtime.tsv` from that Project. Only the advanced
 `inspect storage-qualification --workspace PROJECT_ROOT ...` probe retains an
 explicit storage target; run and Doctor derive it.
 Reporting runs automatically after scientific work and remains a separate,
@@ -131,8 +131,7 @@ a failed or interrupted Attempt, and `Recovery available: yes`:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \
-  --run-root /absolute/project/runs/run-DIGEST \
-  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
+  --run-root /absolute/project/runs/run-DIGEST
 ```
 
 Without an explicit execution profile, resume reuses the predecessor's

@@ -26,6 +26,7 @@ from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
     RuntimeObservation,
+    load_runtime_profile_contract,
 )
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.libraries.application_logging import (
@@ -43,6 +44,7 @@ from emrys.orchestration.local_pilot import (
     inspection,
     lifecycle,
     materialization,
+    onboarding,
     reporting_operation,
 )
 from emrys.orchestration.local_pilot.materialization import (
@@ -65,6 +67,17 @@ from tests.orchestration.local_pilot.fixture import build
 from tests.orchestration.local_pilot.fixtures.b5_doubles import with_owner_doubles
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
+_POLICY_BYTES, POLICY_CHECKS = load_runtime_profile_contract(
+    onboarding.runtime_policy_path()
+)
+RUNTIME_CHECKS = tuple(
+    (check.check_id, check.check_type) for check in POLICY_CHECKS
+)
+R_PACKAGES = tuple(
+    (check.check_id, check.target)
+    for check in POLICY_CHECKS
+    if check.check_type == "r_namespace"
+)
 
 
 class _InputStream:
@@ -145,7 +158,8 @@ def _readiness(
             source="test allocation",
         ),
     )
-    runtime = tmp_path / "runtime.tsv"
+    runtime = workspace / "runtime/runtime.tsv"
+    runtime.parent.mkdir(mode=0o700)
     runtime_bytes = b"fixed test runtime profile\n"
     runtime.write_bytes(runtime_bytes)
     tool = tmp_path / "tool"
@@ -160,7 +174,7 @@ def _readiness(
     (installed_renv / "DESCRIPTION").write_text(
         "Package: renv\nVersion: 1.2.3\n", encoding="utf-8"
     )
-    for _check_id, package in doctor.LOCAL_PILOT_R_PACKAGES:
+    for _check_id, package in R_PACKAGES:
         package_root = renv_library / package
         package_root.mkdir()
         (package_root / "DESCRIPTION").write_text(
@@ -168,7 +182,7 @@ def _readiness(
         )
     observations: list[RuntimeObservation] = []
     rscript = str(tool)
-    for check_id, check_type in doctor.LOCAL_PILOT_RUNTIME_CHECKS:
+    for check_id, check_type in RUNTIME_CHECKS:
         if check_id in {"python", "sha256_python"}:
             target = sys.executable
         elif check_id == "snakemake":
@@ -182,7 +196,7 @@ def _readiness(
         elif check_type == "r_namespace":
             target = next(
                 package
-                for key, package in doctor.LOCAL_PILOT_R_PACKAGES
+                for key, package in R_PACKAGES
                 if key == check_id
             )
         else:
@@ -219,7 +233,7 @@ def _readiness(
                 ),
                 status="pass",
                 observed=(
-                    doctor.SNAKEMAKE_VERSION
+                    "9.25.1"
                     if check_id == "snakemake"
                     else f"observed-{check_id}"
                 ),
@@ -255,8 +269,6 @@ def _readiness(
         workspace=workspace,
         source_root=source_root,
         source_commit=source_commit,
-        runtime_profile=runtime,
-        runtime_profile_sha256=runtime_inspection.profile_sha256,
         inspection=runtime_inspection,
         bindings=bindings,
         blockers=(),
@@ -299,7 +311,6 @@ def _run_control(tmp_path: Path, execute_plan, transform_plan):
     readiness, project, resources, project_path, workspace = _readiness(tmp_path)
     arguments = argparse.Namespace(
         project=project_path,
-        runtime_profile=readiness.runtime_profile,
         execution_profile=project_path.parent / "emrys.execution.yaml",
         log_level=None,
         log_root=None,
@@ -1340,7 +1351,6 @@ def test_post_binding_interruption_completes_the_exact_pristine_run(
     replanned = control._plan_run(
         plan.run.project.source_path,
         plan.workspace,
-        plan.readiness.runtime_profile,
         execution_profile=load_execution_profile(
             plan.run.project.source_path,
             config_path=plan.run.project.source_path.parent / "emrys.execution.yaml",
@@ -1408,6 +1418,161 @@ def test_locked_publication_terminalizes_failure_and_refuses_repeat(
         admit_run(plan, ops=ops)
 
 
+def _failed_run(plan):
+    ops = replace(
+        lifecycle.default_lifecycle_ops(),
+        run_workflow=lambda _argv, _cwd: lifecycle.WorkflowResult(9, None),
+        now=lambda: datetime(2026, 8, 12, 20, 5, tzinfo=UTC),
+        host_name=lambda: "test-host",
+        process_id=lambda: 123,
+        process_is_alive=lambda _pid: False,
+        admit_storage_context=lambda _attempt, _execution: None,
+        admit_runtime_context=lambda _attempt, _request, _storage: None,
+    )
+    if isinstance(plan.run, materialization.HistoricalRun):
+        for item in plan.fixed_files:
+            item.path.parent.mkdir(parents=True, exist_ok=True)
+            item.path.write_bytes(item.data)
+        for name in ("attempts", "locks", "state"):
+            (plan.run_root / name).mkdir()
+    else:
+        admit_run(plan, ops=ops)
+    outcome = lifecycle.run_materialized_attempt(
+        plan.preparation,
+        lambda: publish_attempt(plan, ops=ops),
+        ops=ops,
+    )
+    assert outcome.receipt["status"] == "failed"
+    observed = inspection.inspect_run(plan.run_root)
+    assert observed.recovery_available, observed.blockers
+    return observed
+
+
+def _resume_ops(observed, readiness, project, resources, selected):
+    def inspect_readiness(
+        _project: Path,
+        _workspace: Path,
+        runtime_profile: Path,
+    ) -> doctor.DoctorResult:
+        selected.append(runtime_profile)
+        return readiness
+
+    return replace(
+        control.DEFAULT_CONTROL_OPS,
+        inspect_run=lambda _root: observed,
+        inspect_readiness=inspect_readiness,
+        admit_project=lambda _request, _profile: project,
+        now=lambda: datetime(2026, 8, 12, 20, 10, tzinfo=UTC),
+        token=lambda: "2" * 32,
+        observe_allocation=lambda: resources.allocation,
+    )
+
+
+def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
+    tmp_path: Path,
+) -> None:
+    readiness, project, resources, request, workspace = _readiness(tmp_path)
+    legacy, legacy_bytes = project.historical_execution_v1()
+    first = build_attempt_plan(
+        materialization.HistoricalRun(
+            project=project,
+            run_id=str(legacy["run_id"]),
+            execution_projection_bytes=legacy_bytes,
+        ),
+        readiness,
+        workspace,
+        resources=resources,
+        operation="execute",
+        now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
+        token="1" * 32,
+        host="test-host",
+        process_id=123,
+    )
+    observed = _failed_run(first)
+    assert observed.authority is None
+    retained = next(
+        Path(str(item["path"]))
+        for item in first.attempt_record["required_tools"]
+        if item["name"] == "runtime_profile"
+    )
+    onboarding.runtime_profile_path(project.source_path).unlink()
+    fallback_readiness = replace(
+        readiness,
+        inspection=replace(readiness.inspection, profile_path=retained),
+    )
+    selected: list[Path] = []
+    second = control._plan_resume(
+        first.run_root,
+        execution_profile=load_execution_profile(request),
+        profile_resources_explicit=False,
+        ops=_resume_ops(
+            observed,
+            fallback_readiness,
+            project,
+            resources,
+            selected,
+        ),
+    )
+
+    assert selected == [retained]
+    assert second.attempt_record["required_tools"] == first.attempt_record[
+        "required_tools"
+    ]
+    assert not {
+        retained,
+        second.run_root
+        / "contract/runtime-profiles"
+        / f"{second.workflow_attempt_id}.tsv",
+    } & {item.path for item in second.attempt_files}
+
+
+def test_pre_cutover_successor_resume_snapshots_retained_runtime_profile(
+    tmp_path: Path,
+) -> None:
+    first = _plan(tmp_path)
+    observed = _failed_run(first)
+    assert observed.authority is not None
+    retained = next(
+        Path(str(item["path"]))
+        for item in first.attempt_record["required_tools"]
+        if item["name"] == "runtime_profile"
+    )
+    onboarding.runtime_profile_path(first.run.project.source_path).unlink()
+    fallback_readiness = replace(
+        first.readiness,
+        inspection=replace(first.readiness.inspection, profile_path=retained),
+    )
+    selected: list[Path] = []
+    second = control._plan_resume(
+        first.run_root,
+        execution_profile=load_execution_profile(first.run.project.source_path),
+        profile_resources_explicit=False,
+        ops=_resume_ops(
+            observed,
+            fallback_readiness,
+            first.run.project,
+            first.resources,
+            selected,
+        ),
+    )
+
+    new_profile = next(
+        Path(str(item["path"]))
+        for item in second.attempt_record["required_tools"]
+        if item["name"] == "runtime_profile"
+    )
+    assert selected == [retained]
+    assert new_profile != retained
+    assert new_profile == (
+        second.run_root
+        / "contract/runtime-profiles"
+        / f"{second.workflow_attempt_id}.tsv"
+    )
+    assert [
+        item.data for item in second.attempt_files if item.path == new_profile
+    ] == [first.readiness.inspection.profile_bytes]
+
+
 def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     tmp_path: Path,
 ) -> None:
@@ -1430,13 +1595,12 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         )
     )
     runtime_bytes = b"different admitted runtime profile\n"
-    readiness_two.runtime_profile.write_bytes(runtime_bytes)
+    readiness_two.inspection.profile_path.write_bytes(runtime_bytes)
     runtime_sha256 = hashlib.sha256(runtime_bytes).hexdigest()
     readiness_two = replace(
         readiness_two,
         project_path=readiness_one.project_path,
         workspace=workspace,
-        runtime_profile_sha256=runtime_sha256,
         inspection=replace(
             readiness_two.inspection,
             profile_sha256=runtime_sha256,
@@ -1496,8 +1660,18 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     )
     assert first_outcome.receipt["status"] == "failed"
 
+    selected_runtime_profiles: list[Path] = []
+
+    def inspect_second_runtime(
+        _request: Path,
+        _workspace: Path,
+        runtime_profile: Path,
+    ) -> doctor.DoctorResult:
+        selected_runtime_profiles.append(runtime_profile)
+        return readiness_two
+
     resume_ops = control.ControlOps(
-        inspect_readiness=lambda _request, _workspace, _runtime: readiness_two,
+        inspect_readiness=inspect_second_runtime,
         admit_project=lambda _request, _profile: normalized,
         inspect_run=inspection.inspect_run,
         execute_plan=lambda _plan, _observe: pytest.fail("planning must not execute"),
@@ -1531,7 +1705,6 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     )
     second = control._plan_resume(
         first.run_root,
-        readiness_two.runtime_profile,
         execution_profile=resume_profile,
         profile_resources_explicit=False,
         scheduler_job_id="700123",
@@ -1540,6 +1713,9 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
             admit_project=lambda _request, _profile: relocated_normalized,
         ),
     )
+    assert selected_runtime_profiles == [
+        onboarding.runtime_profile_path(readiness_one.project_path)
+    ]
     assert second.execution_path == first.execution_path
     effective_resume_profile = replace(
         resume_profile,
@@ -1965,7 +2141,6 @@ def test_interactive_resume_uses_the_same_no_write_gate(
     monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
     arguments = argparse.Namespace(
         run_root=plan.run_root,
-        runtime_profile=tmp_path / "runtime.tsv",
         execution_profile=None,
         log_level=None,
         log_root=None,
@@ -2027,7 +2202,6 @@ def test_run_re_admits_project_after_doctor(tmp_path: Path) -> None:
     plan = control._plan_run(
         project_path,
         workspace,
-        readiness.runtime_profile,
         execution_profile=load_execution_profile(
             project_path,
             config_path=project_path.parent / "emrys.execution.yaml",
@@ -2077,7 +2251,6 @@ def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
     )
     arguments = argparse.Namespace(
         project=request,
-        runtime_profile=readiness.runtime_profile,
         execution_profile=request.parent / "emrys.execution.yaml",
         log_level=None,
         log_root=None,
@@ -2200,7 +2373,6 @@ def test_public_resume_logs_inspection_failure_before_run_state(
     )
     arguments = argparse.Namespace(
         run_root=run_root,
-        runtime_profile=tmp_path / "runtime.tsv",
         execution_profile=None,
         log_level=None,
         log_root=None,
@@ -2252,7 +2424,6 @@ def _slurm_profile(tmp_path: Path) -> Path:
 def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Namespace:
     return argparse.Namespace(
         project=tmp_path / "project.yaml",
-        runtime_profile=tmp_path / "runtime.tsv",
         execution_profile=_slurm_profile(tmp_path),
         log_level=None,
         log_root=None,
@@ -3025,7 +3196,6 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
     run_arguments = argparse.Namespace(
         project=request,
-        runtime_profile=readiness.runtime_profile,
         execution_profile=request.parent / "emrys.execution.yaml",
         allocated_cores=1,
         execute=True,
@@ -3054,7 +3224,6 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
     resume_arguments = argparse.Namespace(
         run_root=run_root,
-        runtime_profile=readiness.runtime_profile,
         allocated_cores=1,
         execute=False,
     )

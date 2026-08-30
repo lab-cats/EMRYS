@@ -28,13 +28,9 @@ emrys init synthetic-local-pilot \
 emrys validate project \
   --project /absolute/path/to/project.yaml
 
-# Print a fixed-policy runtime TSV to stdout; this command writes nothing.
-emrys prepare local-pilot-runtime \
-  --java /canonical/java-home/bin/java \
-  --picard-jar /canonical/path/picard.jar \
-  --rscript /canonical/path/Rscript \
-  --renv-library /canonical/path/to/renv/library \
-  > /new/absent/path/runtime.ready.tsv
+# Preview the fixed runtime policy, then publish the admitted Project profile.
+emrys runtime discover --project /absolute/path/to/project.yaml
+emrys runtime discover --project /absolute/path/to/project.yaml --execute
 ```
 
 `init manifests` produces deterministic strict manifests with absolute data
@@ -45,10 +41,12 @@ request-v3 `project.yaml` last. Its canonical parent is the Project root used by
 run and Doctor; Results remain under `runs/<run-id>/results`. Setup creates no
 execution or runtime profile, Run, Attempt, Results, or application log.
 
-The retained runtime preparer renders the fixed roster without probing or
-installing; ambiguous PATH resolution fails closed and Doctor remains the
-readiness authority. Use an exact historical checkout for an entered
-historical Run.
+Runtime discovery probes the active environment without installing or loading
+modules. Missing or ambiguous identities fail closed. `--execute` publishes
+the sole ordinary runtime authority at `<project-root>/runtime/runtime.tsv`;
+run, resume, and Doctor derive it. The generic `inspect runtime-availability`
+route remains available for advanced profile-driven evidence. Use an exact
+historical checkout for an entered historical Run.
 
 `emrys run` and `emrys resume` accept one optional explicit
 `--execution-profile`. Without it, EMRYS uses its built-in conservative
@@ -151,8 +149,7 @@ The doctor also has the grouped public command:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor local-pilot \
-  --project /absolute/path/to/project.yaml \
-  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
+  --project /absolute/path/to/project.yaml
 ```
 
 Exit `0` means every declared readiness check passed, exit `1` reports exact
@@ -171,7 +168,6 @@ work only through the accepted fixed profile:
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
   --project /absolute/path/to/project.yaml \
-  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
   --execution-profile /absolute/path/to/emrys.execution.yaml
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
@@ -179,7 +175,6 @@ work only through the accepted fixed profile:
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \
   --run-root /absolute/project/runs/run-DIGEST \
-  --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
   --execution-profile /absolute/path/to/emrys.execution.yaml
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \

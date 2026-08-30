@@ -31,8 +31,8 @@ Setup records the admitted absolute sample and partition manifest paths in
 remain in place. `emrys init manifests` produces the required portable form
 without inventing biological assignments. No execution or runtime profile is
 generated or selected. Without `--execution-profile`, execution remains direct
-with the built-in resource policy; the current explicit runtime-profile route
-remains required until runtime discovery replaces it.
+with the built-in resource policy. Runtime discovery separately admits the
+Project-owned `runtime/runtime.tsv`.
 
 Keep the Project and every referenced input for the life of its Runs. Changing
 scientific inputs or computational policy is not a way to repair an entered
@@ -165,59 +165,28 @@ region for installation/runtime verification before scheduling a whole-genome
 analysis. A header-only VCF and zero candidates can be a valid outcome when
 all declared counts and receipts reconcile.
 
-## Runtime profile
+## Runtime discovery
 
-[`local_pilot_runtime.example.tsv`](local_pilot_runtime.example.tsv) is a
-fixed admission roster, not a shell setup script. It tells EMRYS exactly which
-already-installed executables, jar, Python environment, R project/library, and
-R namespaces to use.
-
-| Column | Meaning |
-| --- | --- |
-| `check_id` | Fixed identity consumed by the profile. |
-| `check_type` | Fixed probe kind: tool version, path visibility, hash utility, or R namespace. |
-| `runtime_context` | Fixed execution context; currently `local`. |
-| `required` | Fixed policy; every row is required. |
-| `target` | The only generally editable field: replace a path placeholder with the selected executable, jar, directory, or R package name already specified by policy. |
-| `probe_args` | JSON array of probe arguments. Change only path values explicitly coupled to a replaced target, such as the Picard jar or Rscript path. |
-| `expected` | Fixed accepted version/readability expression. |
-| `description` | Fixed human description. |
-
-Do not delete, reorder, or weaken rows to make doctor pass. The roster,
-versions, check types, contexts, required flags, ordinary probes, descriptions,
-and R package names are policy. File-backed tools are bound by authored path,
-canonical target, observed version, and SHA-256. Module names and the login
-node's `PATH` are not identities.
-
-Prefer the read-only preparation helper over manually editing 24 coupled rows.
-It renders the complete fixed TSV to stdout; redirect it only to a new absent
-file:
+Run discovery in the environment that will execute EMRYS. It checks the fixed
+runtime policy and displays the one profile it would admit without writing:
 
 ```sh
-test ! -e /absolute/project/runtime/runtime.selected.tsv && (
-  set -C
-  emrys prepare local-pilot-runtime \
-    --bash /canonical/path/to/bash \
-    --star /canonical/path/to/STAR \
-    --samtools /canonical/path/to/samtools \
-    --gatk /canonical/path/to/gatk \
-    --bcftools /canonical/path/to/bcftools \
-    --infer-experiment /canonical/path/to/infer_experiment.py \
-    --gunzip /canonical/path/to/gunzip \
-    --java /canonical/java-home/bin/java \
-    --picard-jar /canonical/path/to/picard.jar \
-    --rscript /canonical/path/to/Rscript \
-    --renv-library /canonical/path/to/renv-library \
-    > /absolute/project/runtime/runtime.selected.tsv
-)
+emrys runtime discover --project /absolute/project/project.yaml
+emrys runtime discover --project /absolute/project/project.yaml --execute
 ```
 
-Java, Picard jar, Rscript, and the `renv` library are always explicit.
-`--bash`, `--star`, `--samtools`, `--gatk`, `--bcftools`,
-`--infer-experiment`, and `--gunzip` may be omitted only if `PATH` exposes one
-distinct executable for the corresponding command. The helper checks safe
-canonical path structure but performs no version/namespace probe and writes no
-file itself. Doctor remains the runtime admission authority.
+`--execute` publishes the only ordinary runtime authority at
+`<project-root>/runtime/runtime.tsv`. `run`, `resume`, and Doctor derive that
+path; users do not author the TSV or pass it to those commands. Any existing
+profile is preserved and rejected, including byte-identical content.
+Discovery does not install software or load modules. A missing or ambiguous
+installation fails without silent selection, so load the approved site environment first
+and rerun discovery there. Commands come from the active `PATH`. Select the
+Picard jar and R library with `EMRYS_PICARD_JAR` and
+`EMRYS_RENV_LIBRARY`. `EMRYS_RSCRIPT` can select Rscript directly, and
+`JAVA_HOME` must agree with the Java on `PATH`. The advanced
+`emrys inspect runtime-availability` route remains available for explicit
+evidence collection against a supplied profile.
 
 The accepted tool versions are:
 
@@ -236,17 +205,15 @@ The accepted tool versions are:
 | gzip | a compatible `gunzip` command |
 | R | `Rscript 4.6.1` |
 
-The exact Step `08` R namespace versions remain in the runtime policy. The
-`renv_project` target must be the exact clean EMRYS checkout; `renv_library`
-must be an existing canonical library that passed the guarded `r-check` for
-that checkout. Doctor and execution never install, download, restore, load
-modules, or repair a missing runtime.
+The exact Step `08` R namespace versions remain in the internal runtime policy.
+The discovered R project is the exact clean EMRYS checkout and its library must
+pass the guarded `r-check`. Discovery, Doctor, and execution never install,
+download, restore, load modules, or repair a missing runtime.
 
 On a module-based cluster, declare the exact initializer and module roster in
 the execution profile. EMRYS loads that roster inside the allocation before
-runtime admission. Author the runtime TSV with the resulting canonical tool
-paths (for example, from `readlink -f "$(command -v STAR)"` where supported).
-A successful head-node probe does not establish compute-node visibility.
+runtime admission. Discover the resulting canonical tools in that environment;
+a successful head-node probe does not establish compute-node visibility.
 
 ## Before requesting `READY`
 

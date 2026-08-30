@@ -467,7 +467,7 @@ def test_tracked_gatk_policy_handles_official_launcher_prelude(
     )
     gatk.chmod(0o755)
     _, policy_checks = load_profile(
-        REPO_ROOT / "configs" / "local_pilot_runtime.example.tsv"
+        REPO_ROOT / "src/emrys/resources/runtime/runtime_policy.tsv"
     )
     selected = {
         check.check_id: check
@@ -1302,8 +1302,17 @@ def test_profile_symlink_and_changed_profile_fail_closed(
 
     original_run_checks = inspector.run_checks
 
-    def mutate(checks: Sequence[Check], runtime_context: str) -> list[Result]:
-        results = original_run_checks(checks, runtime_context)
+    def mutate(
+        checks: Sequence[Check],
+        runtime_context: str,
+        *,
+        environment: Mapping[str, str] | None = None,
+    ) -> list[Result]:
+        results = original_run_checks(
+            checks,
+            runtime_context,
+            environment=environment,
+        )
         profile.write_text(profile.read_text() + "\n", encoding="utf-8")
         return results
 

@@ -589,7 +589,8 @@ def test_operator_root_is_empty_external_and_preserved(tmp_path: Path) -> None:
     operator.mkdir()
 
     paths = DRIVER.require_operator_root(operator, repo)
-    assert paths.workspace == operator / "workspace"
+    assert paths.workspace == operator / "synthetic-inputs"
+    assert paths.runtime_profile == paths.workspace / "runtime/runtime.tsv"
     assert not paths.workspace.exists()
 
     retained = operator / "retained.partial"

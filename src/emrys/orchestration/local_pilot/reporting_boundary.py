@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import os
 import stat
-import uuid
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -23,6 +22,7 @@ from emrys.contracts.orchestration.projection import (
     CONTRACT_PATHS,
     build_reporting_bundle,
 )
+from emrys.libraries.exclusive_publication import publish_exclusive
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
     attest_source_checkout,
@@ -48,8 +48,7 @@ class ReportingBoundaryError(RuntimeError):
 
 def _sync_directory(path: Path) -> None:
     flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
-    flags |= getattr(os, "O_CLOEXEC", 0)
-    flags |= getattr(os, "O_NOFOLLOW", 0)
+    flags |= getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
     try:
         descriptor = os.open(path, flags)
         try:
@@ -172,50 +171,12 @@ def validate_read_semantic_receipt(
 
 
 def _publish_exclusive(path: Path, data: bytes) -> None:
-    parent = path.parent
-    if parent.is_symlink() or not parent.is_dir():
-        raise ReportingBoundaryError(
-            f"Reporting ledger parent must be a real directory: {parent}"
-        )
-    if not hasattr(os, "O_NOFOLLOW"):
-        raise ReportingBoundaryError(
-            "This platform lacks required O_NOFOLLOW reporting publication"
-        )
-    stage = parent / f".{path.name}.{uuid.uuid4().hex}.emrys-stage"
-    descriptor = -1
-    try:
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
-        flags |= getattr(os, "O_CLOEXEC", 0)
-        descriptor = os.open(stage, flags, 0o600)
-        remaining = memoryview(data)
-        while remaining:
-            written = os.write(descriptor, remaining)
-            remaining = remaining[written:]
-        os.fsync(descriptor)
-        os.close(descriptor)
-        descriptor = -1
-        os.link(stage, path, follow_symlinks=False)
-        staged = stage.stat(follow_symlinks=False)
-        final = path.stat(follow_symlinks=False)
-        if (staged.st_dev, staged.st_ino) != (final.st_dev, final.st_ino):
-            raise ReportingBoundaryError(
-                f"Reporting publication did not retain staged inode: {path}"
-            )
-        stage.unlink()
-        _sync_directory(parent)
-    except FileExistsError as exc:
-        raise ReportingBoundaryError(
-            f"Refusing to replace reporting ledger state: {path}"
-        ) from exc
-    except OSError as exc:
-        raise ReportingBoundaryError(f"Could not publish {path}: {exc}") from exc
-    finally:
-        if descriptor >= 0:
-            os.close(descriptor)
-        try:
-            stage.unlink()
-        except FileNotFoundError:
-            pass
+    publish_exclusive(
+        path,
+        data,
+        ReportingBoundaryError,
+        existing=f"Refusing to replace reporting ledger state: {path}",
+    )
 
 
 DEFAULT_REPORTING_BOUNDARY_OPS = ReportingBoundaryOps(

@@ -225,27 +225,27 @@ def _add_onboarding_commands(command_parsers: _SubparserCollection) -> None:
         _command_handler=local_pilot_synthetic_fixture_command.init_from_args
     )
 
-    prepare_parser = command_parsers.add_parser(
-        "prepare",
-        help="Prepare explicit EMRYS configuration bytes without installation.",
+    runtime_parser = command_parsers.add_parser(
+        "runtime",
+        help="Discover and admit the active Project runtime.",
     )
-    prepare_parsers = prepare_parser.add_subparsers(
-        dest="preparation",
+    runtime_parsers = runtime_parser.add_subparsers(
+        dest="runtime_operation",
         metavar="SUBJECT",
         required=True,
     )
-    runtime_parser = prepare_parsers.add_parser(
-        "local-pilot-runtime",
-        help="Render a fixed-policy local-pilot runtime profile to stdout.",
+    discover_parser = runtime_parsers.add_parser(
+        "discover",
+        help="Inspect the active environment and admit one Project runtime.",
         description=(
-            "Render a complete fixed-policy runtime TSV to standard output. "
-            "This command writes nothing, installs nothing, runs no version "
-            "probes, and accepts PATH tools only when resolution is unambiguous."
+            "Discover one unambiguous fixed-workflow runtime, run its readiness "
+            "probes, and optionally publish the Project-owned profile. Discovery "
+            "is read-only unless --execute is supplied."
         ),
     )
-    local_pilot_onboarding_command.configure_runtime_parser(runtime_parser)
-    runtime_parser.set_defaults(
-        _command_handler=local_pilot_onboarding_command.prepare_runtime_from_args
+    local_pilot_onboarding_command.configure_runtime_discovery_parser(discover_parser)
+    discover_parser.set_defaults(
+        _command_handler=local_pilot_onboarding_command.discover_runtime_from_args
     )
 
 

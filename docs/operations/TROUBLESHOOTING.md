@@ -34,8 +34,8 @@ publication failure.
 ## Public local-pilot diagnosis
 
 Begin with the root [researcher journey](../../README.md). Keep the exact
-Project definition, runtime profile, run root, and clean source checkout selected for the
-attempt; changing them is not recovery.
+Project definition, Project-owned admitted runtime, run root, and clean source
+checkout selected for the attempt; changing them is not recovery.
 
 The table spells out command intent compactly. Invoke every `run`, `resume`,
 and `inspect` route with the controlled checkout interpreter shown in the root
@@ -47,10 +47,10 @@ local-pilot ...`.
 | Observed state or symptom | Public route and safe response |
 | --- | --- |
 | Doctor prints `NOT READY` | Read every `BLOCKER` and `REMEDIATION` from `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor local-pilot ...`. Correct the declared input, checkout, Project root, or runtime outside the doctor, then rerun it. Do not start `emrys run`. |
-| Doctor exits `2` | The Project definition, runtime profile, or path boundary is malformed or unsafe. Correct the authored file or path; do not bypass admission or edit a result to manufacture `READY`. |
+| Doctor exits `2` | The Project definition, discovered runtime, or path boundary is malformed or unsafe. Correct the Project or active environment and rerun `emrys runtime discover --project ... --execute`; do not edit `runtime/runtime.tsv` or manufacture `READY`. |
 | Readiness passed, but execution has not started | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run ...` once on a terminal. For direct placement, review the complete Run plan; for Slurm placement, review the submission summary, with Run planning continuing inside the allocation. Confirm once; refusal, EOF, or interruption writes nothing. Use `--execute` only for deliberate noninteractive automation. |
 | An initial run fails or its state is uncertain | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect local-pilot-run --run-root /absolute/run/root`. Do not submit another initial run against the existing run root. |
-| Inspection prints incomplete scientific Results, a failed or interrupted Attempt, and `Recovery available: yes` | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume --run-root ... --runtime-profile ...` once. Direct placement shows reusable and pending jobs before confirmation; Slurm confirms submission first and shows that work inside the allocation. EMRYS re-admits completed work before reuse. Use `--execute` only for noninteractive automation. |
+| Inspection prints incomplete scientific Results, a failed or interrupted Attempt, and `Recovery available: yes` | Run `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume --run-root ...` once. It derives the admitted runtime from the Run's Project. Direct placement shows reusable and pending jobs before confirmation; Slurm confirms submission first and shows that work inside the allocation. EMRYS re-admits completed work before reuse. Use `--execute` only for noninteractive automation. |
 | Run integrity, scientific Results, or reporting is `blocked` | Preserve the complete run root, attempt receipts, locks, task/reporting ledgers, logs, native artifacts, partials, backups, and recovery markers. Read the domain-specific status and blockers; no public command forces, unlocks, cleans, or automatically reconciles ambiguous evidence. Route the failing scope to its owner below. |
 | Scientific Results are `complete`, but reporting is incomplete after no-report or a reporting failure | The successful scientific Attempt receipt and Results remain unchanged. Review `emrys report --run-root ...` without `--execute`, then add `--execute` only when it reports an admissible empty reporting state. Complete reports are revalidated and reused; partial or ambiguous state fails closed and must be preserved. |
 | `Run root already exists; inspect or resume it instead` | Use `.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect local-pilot-run --run-root ...` on that exact root. Never delete or rename it merely to make an initial run start. |
@@ -81,11 +81,11 @@ infer such a claim from this recovery guide.
 
 | Symptom or message | What it means | Safe next action |
 | --- | --- | --- |
-| Tool is visible on the login node but absent in a job | Login and batch module environments differ. | Submit a small batch probe to the intended compute node, load modules in that job, and author the resulting canonical executable paths. Do not treat the head-node result as runtime evidence. |
-| `module avail` lists a tool but doctor cannot run it | A module name is not a selected executable identity. | Load the module in the execution context, resolve the actual command/jar, confirm its version, and put the absolute target in the runtime profile. |
+| Tool is visible on the login node but absent in a job | Login and batch module environments differ. | Enter the intended compute environment, load the approved modules, and rerun `emrys runtime discover --project ...`; do not treat the head-node result as runtime evidence. |
+| `module avail` lists a tool but discovery cannot admit it | A module name is not an executable identity, and discovery never loads modules. | Load the module in the execution context, ensure exactly one matching installation is visible, then rerun discovery. |
 | `module purge` emits unload errors | The site has default modules whose unload metadata is incomplete. | Preserve the output and use the site's supported module initialization/selection. Do not infer that requested scientific modules failed solely from purge warnings; inspect `module list` and actual probes. |
-| Java module name and `java -version` disagree | The site module may expose the system launcher or only supporting variables. | Author the canonical executable that actually reports Java 17 or newer. Picard and GATK use that same selected launcher. |
-| Picard sets `PICARD`, not `PICARD_JAR` | The site module's environment name differs from a generic probe. | Put the actual readable Picard 3.1.1 jar path in the `picard_jar` row and its coupled `-jar` argument. EMRYS does not depend on either environment-variable name. |
+| Java module name and `java -version` disagree | The site module may expose the system launcher or only supporting variables. | Make `JAVA_HOME` and the Java on `PATH` identify the same canonical Java 17-or-newer launcher, then rediscover; Picard and GATK use that identity. |
+| Picard sets `PICARD`, not `PICARD_JAR` | The site module's environment name differs from the discovery selector. | Set `EMRYS_PICARD_JAR` to the actual readable Picard 3.1.1 jar, then rediscover. |
 | `srun` or `sbatch` reports an unsatisfied memory/node configuration | The requested launcher resources or placement do not match an eligible node, or the site rejects explicit memory. | Inspect `sinfo` and account policy. Set launcher `memory: site-default` only when the site supplies memory and rejects `--mem`; otherwise keep an explicit reviewed size. Recheck `exclusive` and `nodelist` together. |
 | `invalid partition specified` | A literal placeholder or unavailable partition was submitted. | Use a partition authorized for the account, verified by `sinfo`/site policy. Do not submit `YOUR_PARTITION` or another documentation placeholder. |
 | `tail` says the SLURM log does not exist | The job is pending or SLURM has not opened the declared stream; the parent may also have been absent at submission. | Ensure the log parent existed before `sbatch`, inspect `squeue`/`sacct`, wait until both exact `%j` paths exist, then use `tail -n +1 -F`. |
@@ -115,7 +115,7 @@ infer such a claim from this recovery guide.
 | `/local/tmp` is unwritable | Set the generated wrapper's explicit writable scratch parent and inspect its logged private `TMPDIR` capacity. |
 | Tool/module appears on login but not in a job | Establish the exact executable in the approved batch context. Module names are not runtime proof. |
 | Picard `UnsupportedClassVersionError` | Step `04` requires the effective Java major version to be at least 17. Validate the selected executable, not `JAVA_HOME` alone. |
-| R or namespace unavailable | Restore only as a separate operator action into the declared library, then run strict non-mutating `r-check` in the compute context. The workflow and generated wrapper never install. |
+| R or namespace unavailable | Restore only as a separate operator action, set `EMRYS_RENV_LIBRARY` and, when needed, `EMRYS_RSCRIPT`, then run strict non-mutating `r-check` and rediscover in the compute context. Workflow execution never installs. |
 | `uv` is unavailable | Use the [official user-level installer](https://docs.astral.sh/uv/getting-started/installation/) as an explicit setup action, run `uv --version`, then `uv sync --locked --group workflow`. EMRYS commands never install it. |
 | `uv sync --locked` reports a stale lock | Stop and review the `pyproject.toml`/`uv.lock` diff. Do not relock as an incidental setup side effect. |
 | Validation reports that the selected Python environment does not match `uv.lock` | Run `uv sync --locked` as an explicit setup action, then rerun validation. Do not let the validation command repair or relock the environment. |
