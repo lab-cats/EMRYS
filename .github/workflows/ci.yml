@@ -431,6 +431,7 @@ jobs:
           evidence_root="${{ steps.golden.outputs.evidence }}"
           project_root="${evidence_root}/project"
           emrys=("${clean_clone}/.venv/bin/python" -X pycache_prefix=/dev/null -I -m emrys)
+          cd "${clean_clone}"
 
           "${emrys[@]}" init synthetic \
             --output-dir "${project_root}" --execute \

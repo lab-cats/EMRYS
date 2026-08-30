@@ -305,6 +305,9 @@ def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
     )
     assert setup["with"]["run-install"] is False
     path = _named_step(job, "Exercise the supported managed golden path")["run"]
+    assert path.index('cd "${clean_clone}"') < path.index(
+        '"${emrys[@]}" init synthetic'
+    )
     for command in (
         "init synthetic",
         "doctor",
