@@ -7,6 +7,12 @@ surface. The zero-context entry points are:
 # Plan first; add --execute to create one absent starter directory.
 emrys init local-pilot --output-dir /absolute/outside-checkout/starter
 
+# Infer exact <sample>_R1/_R2 pairs and require all biological metadata.
+emrys init manifests \
+  --output-dir /absolute/outside-checkout/manifest-drafts \
+  --fastq /data/control_1_R1.fastq.gz /data/control_1_R2.fastq.gz \
+  --sample control_1 control pair_1 forward
+
 # Generate the default 130-pair deterministic science fixture the same way.
 emrys init synthetic-local-pilot \
   --output-dir /absolute/outside-checkout/synthetic-smoke \
@@ -38,6 +44,12 @@ Retired adjacent `emrys.launcher.yaml` or `emrys.resources.yaml` files fail
 closed when no explicit execution profile is selected instead of being
 silently ignored. Use an exact historical checkout for an already-entered
 historical run.
+`init manifests` instead writes only strict `samples.tsv` and, when one or more
+`--regions-file PARTITION_ID PATH` declarations are supplied, `partitions.tsv`.
+It recognizes only the closed `<sample>_R1`/`<sample>_R2` FASTQ convention and
+lists every missing condition, replicate, and strandedness assignment without
+writing. Drafts are sorted, validated by the current Project contracts,
+dry-run-first, and published only into an absent directory with `--execute`.
 It neither fills unknown science-tool paths nor installs anything. The runtime
 preparer requires explicit Java, Picard-jar, Rscript, and `renv`-library paths.
 For Bash, STAR, samtools, GATK, bcftools, RSeQC `infer_experiment.py`, and

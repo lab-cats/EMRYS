@@ -206,6 +206,15 @@ def _add_onboarding_commands(command_parsers: _SubparserCollection) -> None:
     local_parser.set_defaults(
         _command_handler=local_pilot_onboarding_command.init_from_args
     )
+    manifests_parser = init_parsers.add_parser(
+        "manifests",
+        help="Draft strict sample and optional partition manifests from paths.",
+        description="Infer structural pairs and require explicit biological metadata.",
+    )
+    local_pilot_onboarding_command.configure_manifest_init_parser(manifests_parser)
+    manifests_parser.set_defaults(
+        _command_handler=local_pilot_onboarding_command.init_manifests_from_args
+    )
     synthetic_parser = init_parsers.add_parser(
         "synthetic-local-pilot",
         help="Create a deterministic four-library synthetic science fixture.",

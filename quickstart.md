@@ -219,6 +219,27 @@ example and fill the site values.
 
 ### Path B: ingest your data
 
+For existing FASTQs named `<sample>_R1.fastq[.gz]` and
+`<sample>_R2.fastq[.gz]`, EMRYS can draft the strict manifests without guessing
+biology. Every condition, replicate, and strandedness remains explicit; omit
+`--execute` to preview without writing:
+
+```sh
+emrys init manifests \
+  --output-dir "$EMRYS_OPERATOR_ROOT/emrys-manifest-drafts" \
+  --fastq /data/control_1_R1.fastq.gz /data/control_1_R2.fastq.gz \
+          /data/treated_1_R1.fastq.gz /data/treated_1_R2.fastq.gz \
+  --sample control_1 control pair_1 forward \
+  --sample treated_1 treatment pair_1 forward \
+  --regions-file primary /data/targets.bed \
+  --execute
+```
+
+The absent output receives `samples.tsv` and, only when declared,
+`partitions.tsv`. Ambiguous names or missing assignments fail before creation.
+This helper does not create a Project, infer conditions/cohorts, inspect FASTQ
+contents, or replace full Project validation.
+
 Generate one matched, create-absent starter set:
 
 ```sh

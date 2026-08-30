@@ -327,6 +327,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
             ("init", "local-pilot", "--help"),
             "usage: emrys init local-pilot",
         ),
+        (("init", "manifests", "--help"), "usage: emrys init manifests"),
         (
             ("init", "synthetic-local-pilot", "--help"),
             "usage: emrys init synthetic-local-pilot",

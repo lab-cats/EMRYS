@@ -62,7 +62,9 @@ errors; no receipt, normalized manifest, hash, frozen copy, or other output is
 published. This admission schema intentionally continues to permit a missing
 `replicate` column. Stricter sample-manifest requirements owned by downstream
 neutral scientific-evidence contracts are separate and are not weakened or
-replaced by this validator.
+replaced by this validator. The strict Project draft route is `emrys init
+manifests`; it requires `replicate` and delegates final admission back to those
+current contracts.
 
 ## Paired-FASTQ diagnostic
 
