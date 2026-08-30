@@ -12,6 +12,7 @@ import platform
 import subprocess
 import sys
 import tempfile
+import zlib
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
@@ -38,7 +39,7 @@ PROFILE_PATH = REPO_ROOT / "workflow" / "contracts" / "local_cmh_v2.json"
 SNAKEFILE = REPO_ROOT / "workflow" / "Snakefile"
 WORKFLOW_PROFILE = REPO_ROOT / "workflow" / "profiles" / "local" / "profile.v9+.yaml"
 TASK_DOUBLE = Path(__file__).with_name("task_double.py").resolve()
-OWNER_ARTIFACT_DOUBLE = Path(__file__).with_name("owner_artifact_double.py").resolve()
+_MAX_INLINE_PAYLOAD_CHARS = 64 * 1024
 
 
 def _resource_policy() -> dict[str, Any]:
@@ -108,6 +109,47 @@ def source_checkout_commit() -> str:
         capture_output=True,
         text=True,
     ).stdout.strip()
+
+
+def _inline_payload_argument(data: bytes) -> str:
+    """Encode one bounded no-science payload for the test-owned command seam."""
+
+    encoded = base64.b64encode(zlib.compress(data, level=9)).decode()
+    if len(encoded) > _MAX_INLINE_PAYLOAD_CHARS:
+        raise ValueError("No-science payload exceeds the bounded inline argument")
+    return encoded
+
+
+def _attempt_runtime_identities(
+    root: Path,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    python_path = Path(sys.executable).resolve(strict=True)
+    python_identity = {
+        "path": sys.executable,
+        "resolved_path": str(python_path),
+        "sha256": hashlib.sha256(python_path.read_bytes()).hexdigest(),
+    }
+    storage_receipt = (root / "storage.qualified.json").resolve(strict=True)
+    storage_sha256 = hashlib.sha256(storage_receipt.read_bytes()).hexdigest()
+    return (
+        {"name": "emrys", "version": "0.1.0", **python_identity},
+        [
+            {"name": "python", "version": platform.python_version(), **python_identity},
+            {
+                "name": "sha256_python",
+                "version": platform.python_version(),
+                **python_identity,
+            },
+            {"name": "snakemake", "version": "9.25.1", **python_identity},
+            {
+                "name": "storage_qualification",
+                "version": storage_sha256,
+                "path": str(storage_receipt),
+                "resolved_path": str(storage_receipt),
+                "sha256": storage_sha256,
+            },
+        ],
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -864,15 +906,13 @@ def _write_dispatch(
     verified = run_root / "state" / "verified" / machine_key / f"{scope_id}.json"
     stdout = attempt_root / "stdout.log"
     stderr = attempt_root / "stderr.log"
-    manifest = path.with_suffix(".payload.json")
     for parent in {
         path.parent,
-        manifest.parent,
         task_start.parent,
         verified.parent,
     }:
         parent.mkdir(parents=True, exist_ok=True)
-    manifest_record = {
+    payload_record = {
         "producer": [
             {
                 "path": str(resolved(row)),
@@ -887,29 +927,30 @@ def _write_dispatch(
             ).decode(),
         },
     }
-    manifest.write_bytes(orchestration_contracts.canonical_json_bytes(manifest_record))
+    payload_argument = _inline_payload_argument(
+        orchestration_contracts.canonical_json_bytes(payload_record)
+    )
     producer = list(
         controlled_python_argv(
             sys.executable,
-            str(OWNER_ARTIFACT_DOUBLE),
+            str(TASK_DOUBLE),
+            "payload",
             "producer",
-            "--manifest",
-            str(manifest),
+            "--payload-base64",
+            payload_argument,
         )
     )
     validator = list(
         controlled_python_argv(
             sys.executable,
-            str(OWNER_ARTIFACT_DOUBLE),
+            str(TASK_DOUBLE),
+            "payload",
             "validator",
-            "--manifest",
-            str(manifest),
+            "--payload-base64",
+            payload_argument,
         )
     )
-    input_declarations = [
-        {"role": "fixture_input", "path": str(fixture_input)},
-        {"role": "payload_manifest", "path": str(manifest)},
-    ]
+    input_declarations = [{"role": "fixture_input", "path": str(fixture_input)}]
     if step_id == "00c":
         input_declarations.append(
             {
@@ -996,6 +1037,9 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
     request_bytes = request_path.read_bytes()
     attempt_request_path = workflow_attempt_path.parent / "request.yaml"
     git_commit = source_checkout_commit()
+    storage_receipt = root / "storage.qualified.json"
+    storage_receipt.write_bytes(b"bounded no-science storage qualification\n")
+    normalizer, required_tools = _attempt_runtime_identities(root)
     attempt = {
         "schema_version": "emrys.workflow-attempt.v1",
         "run_id": execution["run_id"],
@@ -1019,15 +1063,7 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
             "reference_gtf": "reference/genome.gtf",
             "analysis_policy": None,
         },
-        "normalizer": {
-            "name": "emrys",
-            "version": "0.1.0",
-            "path": sys.executable,
-            "resolved_path": str(Path(sys.executable).resolve(strict=True)),
-            "sha256": hashlib.sha256(
-                Path(sys.executable).resolve(strict=True).read_bytes()
-            ).hexdigest(),
-        },
+        "normalizer": normalizer,
         "workspace": str(root.resolve(strict=True)),
         "scratch": None,
         "source_checkout": {
@@ -1036,32 +1072,13 @@ def build(root: Path, *, materialize_attempt: bool = True) -> WorkflowFixture:
             "clean": True,
         },
         "executor": "local",
-        "execution_mode": "test-double",
+        "execution_mode": "local-science-tools",
         "snakemake_argv": [],
         "host": "workflow-fixture",
         "process_id": os.getpid(),
         "owner_token": "workflow-fixture-owner",
         "cores": 1,
-        "required_tools": [
-            {
-                "name": "python",
-                "version": platform.python_version(),
-                "path": sys.executable,
-                "resolved_path": str(Path(sys.executable).resolve(strict=True)),
-                "sha256": hashlib.sha256(
-                    Path(sys.executable).resolve(strict=True).read_bytes()
-                ).hexdigest(),
-            },
-            {
-                "name": "snakemake",
-                "version": "9.25.1",
-                "path": sys.executable,
-                "resolved_path": str(Path(sys.executable).resolve(strict=True)),
-                "sha256": hashlib.sha256(
-                    Path(sys.executable).resolve(strict=True).read_bytes()
-                ).hexdigest(),
-            },
-        ],
+        "required_tools": required_tools,
     }
     dispatch_paths: dict[str, dict[str, str]] = {}
     dispatch_references: dict[str, dict[str, dict[str, str]]] = {}
@@ -1294,7 +1311,6 @@ def refresh_attempt(
 __all__ = (
     "PROFILE_PATH",
     "REPO_ROOT",
-    "OWNER_ARTIFACT_DOUBLE",
     "SNAKEFILE",
     "TASK_DOUBLE",
     "WorkflowFixture",

@@ -60,10 +60,14 @@ reference/one-sample/cohort slice requirements. B4 satisfies the run-specific
 inventory, downstream reporting, immutable attempt, aggregate
 failure/interruption/between-task-resume, durable producer-entry, and
 derived-inspection requirements
-for the no-science test-double profile. B5 adds the exact runtime-profile-
-bound public command projection and lock-before-attempt materialization while
-retaining every disposition in this table. Explicit `renv` launch authority and
-exact existing project-library selection are now admitted by the guarded local
+for the no-science test-owned command/effect harness. Current fixture Attempts
+retain `local-science-tools` semantics and their production input/output
+rosters; doubles replace only command effects and their transitive hashes.
+Historical `test-double` schema vocabulary remains readable but has no
+lifecycle admission exception. B5 adds the exact runtime-profile-bound public
+command projection and lock-before-attempt materialization while retaining
+every disposition in this table. Explicit `renv` launch authority and exact
+existing project-library selection are now admitted by the guarded local
 runtime boundary; real-tool behavior remains a prerequisite for a later
 real-runtime proof.
 
