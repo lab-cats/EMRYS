@@ -46,7 +46,7 @@ new evidence level.
 | `AC-INV-008` | Every admitted durable artifact reference binds a stable semantic identity plus exact content digest; changed bytes cannot retain admission under the old binding. | Preserved | The [artifact schemas](../../../src/emrys/contracts/artifacts/) and [artifact contract tests](../../../tests/contracts/artifacts/) keep semantic identity distinct from content identity. |
 | `AC-INV-009` | Mutation of a published artifact invalidates its prior admission and is detected at every required re-admission; physical write prevention is not implied. | Target | Verified-task and reporting paths recheck content identity. Rewrite-blindness and owner transaction defects remain characterized in the test baseline and must be resolved or explicitly preserved by the applicable `ARCH-01` migration. |
 | `AC-INV-010` | Every generated manifest or normalized configuration artifact that affects a run remains inspectable and source-attributed even when a user does not author it. | Preserved | The orchestration materialization contract and [materialization tests](../../../tests/orchestration/local_pilot/test_materialization.py) protect current generated artifacts; `CONFIG-01` and `SETUP-03` inherit the rule. |
-| `AC-INV-011` | Each artifact class and guarantee has one declared admission chain and one final authority; this must not become one global implementation or god object. | Target | The current native publication → owner validation → verified result → explicit adapter/index flow is defined by the [current architecture](../../architecture/ARCHITECTURE.md). `ARCH-01`, `AC-DEC-010`, and `AC-DEC-025` own the generalized lifecycle and boundary decisions. |
+| `AC-INV-011` | Each artifact class and guarantee has one declared admission chain and one final authority; this must not become one global implementation or god object. | Target | The current native publication → owner validation → verified result → explicit adapter/index flow is defined by the [current architecture](../../architecture/ARCHITECTURE.md). Class-specific authorities remain the accepted default. `ARCH-01` and `AC-DEC-010` own any demonstrated lifecycle gap; `AC-DEC-025` defers a distinct Artifact Store until a concrete trigger requires reconsideration. |
 
 ### Execution and recovery invariants
 
@@ -58,7 +58,7 @@ new evidence level.
 | `AC-INV-015` | Resume reuses only compatible admitted work; timestamps, file presence, and workflow-engine metadata are insufficient. | Preserved | The orchestration contract and [workflow tests](../../../tests/orchestration/local_pilot/test_workflow.py) require content and contract re-admission. |
 | `AC-INV-016` | Local and HPC execution must provide equivalent scientific, artifact-integrity, recovery, and evidence guarantees, not identical mechanisms; each environment requires separate proof. | Target | `OPS-02`, `RUNTIME-01`, and `DOCTOR-01` own realization. Wrapper contracts are not parity, cluster, production, or scientific proof. |
 | `AC-INV-017` | An immutable plan exists internally before the first execution mutation, even when planning and execution become one conceptual user operation. | Preserved | The orchestration contract and materialization tests protect no-write planning and immutable publication; `RUN-03` may simplify the interaction without weakening the order. |
-| `AC-INV-018` | Failure and every supported repair are attributable and auditable. Repair is explicit, bounded to owned safe state, precisely reported, provenance-aware where applicable, and cannot alter declared scientific inputs or invent biology or secrets. | Target | Failure attribution exists in task/lifecycle records. Supported repair does not yet exist and remains `DOCTOR-01`; production adoption of durable application logging remains `LOG-05`. |
+| `AC-INV-018` | Failure and every supported repair are attributable and auditable. Repair is explicit, bounded to owned safe state, precisely reported, provenance-aware where applicable, and cannot alter declared scientific inputs or invent biology or secrets. | Target | Failure attribution exists in task/lifecycle records. Supported repair remains `DOCTOR-01`: Doctor plans, verifies explicit operator authority, reports, and requalifies repair while established package managers own dependency solving and installation. Production adoption of durable application logging remains `LOG-05`. |
 
 ### Evidence and reporting invariants
 
@@ -127,6 +127,16 @@ settles conceptual vocabulary and semantics, not an API realization.
    product-file growth; an exception requires the user's explicit approval of
    quantified growth and its justification, plus an owner and retirement
    condition when temporary.
+   Before new owned machinery, the slice evaluates the existing repository
+   authority, standard library, mature maintained tools/libraries, and the
+   relevant established package manager. Bespoke code records the unmet
+   capability or proves a smaller total maintained surface.
+   A shared policy authority is justified only when at least two
+   production owners make the same decision from equivalent inputs with the
+   same defaults, precedence, override, error, and output semantics; one bounded
+   migration must move every caller and retire the duplicate decisions with a
+   net reduction. Re-admission at a distinct trust or mutation boundary is not
+   duplicate policy.
    The full category-separated closeout in the campaign's
    [per-slice protocol](../../tasks/architecture_campaign.md#131-mandatory-per-slice-compression-and-mutation-protocol)
    is binding; categories never offset one another. File and line counts are
@@ -301,25 +311,33 @@ with the named later slices:
   science away from its owner. Functional owners declare needs and semantic
   validity; allocation authority resolves resources; execution enforces the
   result; lifecycle/admission remains logically distinct.
-- Supported execution backends owe equivalent declared scientific,
+- Each supported execution realization owes equivalent declared scientific,
   artifact-integrity, recovery, and evidence guarantees, while mechanisms and
-  environment-specific proof may differ. This guarantee contract does not
-  select a request/result API or Local/SLURM class design.
+  environment-specific proof may differ. Local Snakemake remains the only
+  application backend and Slurm remains outer placement. A generalized backend
+  boundary must be evaluated near campaign closure but is implemented only for
+  a concrete approved extension or demonstrated compression, with parity and
+  no duplicate authority. Compression must be net-negative; extension growth
+  follows the normal quantified-exception gate.
 - Every policy decision has one declared final authority. Repeated equivalent
-  owner-local decisions may move to one shared authority only after inventory
-  demonstrates real net reduction; policy is not a mandatory central layer.
+  owner-local decisions may move to one shared authority only when at least two
+  production owners have equivalent inputs and complete semantics and a
+  caller-complete migration demonstrates net reduction; policy is not a
+  mandatory central layer.
 - Logical artifact lifecycle/admission is distinct from physical storage.
   Storage, copying, publication, or engine success cannot by itself grant
-  scientific completion or admission, and the requirement does not presume a
-  distinct Artifact Store.
+  scientific completion or admission. A distinct Artifact Store is deliberately
+  deferred until a separately approved concrete unmet need cannot be handled
+  cleanly by current class-specific authorities.
 
 The public application vocabulary, nesting, and Run-versus-Attempt boundary are
 now settled below. Exact field and identity composition, persisted authorities,
 recovery ownership, compatibility, and migration remain in `AC-SLICE-03`; the
-minimum operation representation remains `AC-SLICE-04`; execution
-request/result and backend design remain `AC-SLICE-05`; policy inventory and
-owners remain `AC-SLICE-06`; and artifact states, lifecycle API, and Artifact
-Store decision remain `AC-SLICE-07`.
+minimum operation representation remains `AC-SLICE-04`; execution parity
+remains `AC-SLICE-05`; conditional policy inventory remains `AC-SLICE-06`;
+and demonstrated artifact-lifecycle gaps remain `AC-SLICE-07`. Generalized
+backend evaluation remains a near-closure checkpoint, but implementation is
+conditional; a distinct Artifact Store is not a campaign prerequisite.
 
 ### Enforcement strategy
 

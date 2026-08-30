@@ -367,11 +367,12 @@ def _assert_complete_products(run_root: Path, run_id: str) -> None:
         run_root / "contract/profile.json"
     )
     observed = inspection.inspect_run(run_root)
-    assert observed.authority_format == "successor"
-    assert observed.run_binding is not None
-    assert observed.run_binding.run_id == run_id
-    assert observed.analysis_revision is not None
-    assert observed.execution_plan is not None
+    assert observed.authority is not None
+    assert observed.authority.run_binding.run_id == run_id
+    assert observed.authority.analysis_revision.analysis_revision_id.startswith(
+        "analysis-"
+    )
+    assert observed.authority.execution_plan.execution_plan_id.startswith("plan-")
     assert observed.integrity == "valid"
     assert observed.attempt_outcome == "succeeded"
     assert observed.results_status == "complete"

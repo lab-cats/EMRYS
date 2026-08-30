@@ -14,7 +14,7 @@ from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.libraries.application_logging import (
@@ -332,13 +332,7 @@ def _plan_resume(
         _require_ready(readiness)
         project = _admit_project_after_doctor(readiness, ops)
         predecessor_config = _load_config_reference(root, previous)
-        if observed.authority_format == "successor":
-            if (
-                observed.analysis_revision is None
-                or observed.execution_plan is None
-                or observed.run_binding is None
-            ):
-                raise ControlError("Successor inspection omitted immutable Run records")
+        if observed.authority is not None:
             if profile_resources_explicit:
                 policy = execution_profile.resource_policy
             else:
@@ -359,7 +353,7 @@ def _plan_resume(
             candidate = build_run_candidate(project, readiness, policy.declaration)
             if (
                 candidate.run_binding.canonical_bytes
-                != observed.run_binding.canonical_bytes
+                != observed.authority.run_binding.canonical_bytes
             ):
                 raise ControlError("Current inputs resolve to a different Run")
             run = candidate
@@ -422,7 +416,7 @@ def _plan_resume(
         raise ControlError(str(exc)) from exc
     if plan.run_root != root:
         raise ControlError("Resume workspace resolves to a different run root")
-    for field in inspection.attempt_compatibility_fields(observed.authority_format):
+    for field in inspection.attempt_fields(observed.authority is not None):
         if plan.attempt_record[field] != previous[field]:
             raise ControlError(f"Resume is incompatible with predecessor on {field}")
     return plan
@@ -431,26 +425,16 @@ def _plan_resume(
 def _verified_report_location_lines(
     locations: tuple[tuple[str, Path], ...],
 ) -> tuple[str, ...]:
-    expected = (
-        ("scientific-report-html", "Scientific report"),
-        ("evidence-report-html", "Evidence report"),
-    )
     if not locations:
         return ()
-    if len(locations) != len(expected):
-        raise ControlError("Completed run lacks both exact verified result locations")
-    lines = ["Results:"]
-    for (output_id, path), (expected_id, label) in zip(
-        locations, expected, strict=True
-    ):
-        if (
-            output_id != expected_id
-            or not isinstance(path, Path)
-            or not path.is_absolute()
-        ):
-            raise ControlError("Completed run has malformed verified result locations")
-        lines.append(f"  {label}: {path}")
-    return tuple(lines)
+    labels = ("Scientific report", "Evidence report")
+    return (
+        "Results:",
+        *(
+            f"  {label}: {path}"
+            for label, (_, path) in zip(labels, locations, strict=True)
+        ),
+    )
 
 
 def _next_supported_action(observed: inspection.RunInspection) -> str:
@@ -1060,6 +1044,11 @@ def _print_plan(
             f"Analysis ID: {plan.run.project.analysis.analysis_revision_id}",
             file=sys.stderr,
         )
+        if not isinstance(plan.run, HistoricalRun):
+            print(
+                f"Execution Plan ID: {plan.run.execution_plan.execution_plan_id}",
+                file=sys.stderr,
+            )
         print(f"Run root: {plan.run_root}", file=sys.stderr)
         print(
             f"Resources: {resources.workflow_cores} cores, "
@@ -1269,6 +1258,10 @@ def _attempt_elapsed_line(
     return f"{label} Attempt elapsed: {timedelta(seconds=seconds)}"
 
 
+def _print_safe(value: object, *, file: TextIO | None = None) -> None:
+    print(ascii(str(value))[1:-1], file=file)
+
+
 def run_from_args(
     arguments: argparse.Namespace,
     *,
@@ -1474,7 +1467,7 @@ def inspect_from_args(
             observed.verified_report_locations
         )
     except (OSError, inspection.InspectionError, ControlError) as exc:
-        print(f"emrys: error: {exc}", file=sys.stderr)
+        _print_safe(f"emrys: error: {exc}", file=sys.stderr)
         return 2
     print(f"Run ID: {observed.run_id}")
     print(f"Run integrity: {observed.integrity}")
@@ -1490,11 +1483,15 @@ def inspect_from_args(
     latest = observed.latest_attempt
     receipt = observed.latest_receipt
     if detail != "normal":
-        print(f"Run root: {observed.run_root}")
-        print(
-            "Attempt ID: "
-            + ("none" if latest is None else str(latest["workflow_attempt_id"]))
-        )
+        authority = observed.authority
+        if authority is None:
+            print("Identity model: historical execution.v1")
+        else:
+            print(f"Analysis ID: {authority.analysis_revision.analysis_revision_id}")
+            print(f"Execution Plan ID: {authority.execution_plan.execution_plan_id}")
+        _print_safe(f"Run root: {observed.run_root}")
+        attempt_id = "none" if latest is None else latest["workflow_attempt_id"]
+        print(f"Attempt ID: {attempt_id}")
         if latest is not None:
             placement = latest.get("placement")
             placement_kind = (
@@ -1503,7 +1500,7 @@ def inspect_from_args(
             scheduler_job_id = (
                 "none" if placement is None else placement["scheduler_job_id"] or "none"
             )
-            print(
+            _print_safe(
                 f"Execution: {latest['executor']}/{latest['execution_mode']} "
                 f"placement={placement_kind} scheduler_job_id={scheduler_job_id}"
             )
@@ -1518,16 +1515,40 @@ def inspect_from_args(
             )
             print(f"  {kind}: {state}")
     if detail == "debug":
+        authority = observed.authority
+        if authority is None:
+            _print_safe(
+                "Historical authority record: "
+                f"{observed.run_root / 'contract/normalized.json'}"
+            )
+        else:
+            print("Run authority records:")
+            for label, name, record in (
+                ("Analysis", "analysis.json", authority.analysis_revision),
+                ("Execution Plan", "execution-plan.json", authority.execution_plan),
+                ("Run", "run.json", authority.run_binding),
+            ):
+                path = observed.run_root / "contract" / name
+                _print_safe(f"  {label}: path={path}; SHA-256={record.record_sha256}")
+            plan_identity = authority.execution_plan.record["identity"]
+            backend = plan_identity["backend"]
+            resources = plan_identity["computational_resources"]
+            _print_safe(
+                "Effective plan: "
+                f"backend={backend['backend']}; engine={backend['engine']}; "
+                f"cores={resources['workflow_cores']}; "
+                f"memory_mib={resources['workflow_memory_mb']}"
+            )
         if latest is not None:
             attempt_id = str(latest["workflow_attempt_id"])
             attempt_root = observed.run_root / "attempts" / attempt_id
             receipt_path = (
                 "none" if receipt is None else attempt_root / "attempt-receipt.json"
             )
-            print(f"Attempt receipt: {receipt_path}")
-            print(f"Engine command: {shlex.join(latest['snakemake_argv'])}")
+            _print_safe(f"Attempt receipt: {receipt_path}")
+            _print_safe(f"Engine command: {shlex.join(latest['snakemake_argv'])}")
             if receipt is not None:
-                print(
+                _print_safe(
                     "Attempt receipt result: "
                     f"exit={receipt['snakemake_exit_code']} "
                     f"signal={receipt['termination_signal']} "
@@ -1549,7 +1570,12 @@ def inspect_from_args(
                     f"; stdout={attempt_path.with_name('stdout.log')}"
                     f"; stderr={attempt_path.with_name('stderr.log')}"
                 )
-            print(task_detail)
+            _print_safe(task_detail)
+            for output in () if task.record is None else task.record["outputs"]:
+                _print_safe(
+                    f"    OUTPUT {output['role']}: path={output['path']}; "
+                    f"size={output['size_bytes']}; SHA-256={output['sha256']}"
+                )
     for blocker_label, blockers in (
         ("RUN BLOCKER", observed.integrity_blockers),
         ("RESULTS BLOCKER", observed.results_blockers),
@@ -1557,11 +1583,11 @@ def inspect_from_args(
         ("ATTEMPT EVIDENCE BLOCKER", observed.receipt_blockers),
     ):
         for blocker in blockers:
-            print(f"{blocker_label}: {blocker}")
+            _print_safe(f"{blocker_label}: {blocker}")
     print(f"Recovery available: {'yes' if observed.recovery_available else 'no'}")
-    print(f"Next supported action: {_next_supported_action(observed)}")
+    _print_safe(f"Next supported action: {_next_supported_action(observed)}")
     for line in result_lines:
-        print(line)
+        _print_safe(line)
     return 0
 
 

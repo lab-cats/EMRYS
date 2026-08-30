@@ -140,9 +140,15 @@ remains no-write, while `--execute` is the explicit automation path. Direct
 planning reruns the Doctor, admits the authored Project again, derives the
 deterministic Run identity, and prints concise Run identity, combined
 pending/reusable work, and reporting information. Verbose output adds the Run
-root and resources/allocation; debug output adds exact engine and task commands.
+root, admitted Analysis and Execution-Plan identity, and
+resources/allocation; debug output adds exact engine and task commands.
 Slurm submission output instead adds placement detail, profile and stream paths
 at verbose level, and the scheduler command at debug level.
+Read-only Run inspection follows the same disclosure boundary: normal uses the
+primary Run ID, verbose adds admitted Analysis, Execution Plan, and Attempt
+identity plus effective execution facts, and debug adds canonical authority
+paths/digests, verified output bindings, receipts, and task evidence.
+Historical Runs are labeled and never receive fabricated successor identities.
 The tracked four-sample, one-partition starter expands to 35 owner jobs; other
 admitted sample/partition counts expand according to the fixed profile. The
 control surface exposes no raw Snakemake flags, force, unlock, cleanup, retry,

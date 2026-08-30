@@ -54,7 +54,7 @@ from emrys.libraries.process_environment import (
     sanitized_subprocess_environment,
 )
 from emrys.libraries.source_authority import controlled_python_argv
-from emrys.orchestration.local_pilot import inspection, task
+from emrys.orchestration.local_pilot import inspection
 from emrys.orchestration.local_pilot.resource_policy import (
     REPEATABLE_STAGE_IDS,
     ResourceConfigError,
@@ -1520,153 +1520,6 @@ def _reference(path: Path, root: Path, label: str) -> dict[str, str]:
     }
 
 
-def _verified_references(
-    root: Path,
-    execution: Mapping[str, Any],
-    profile: Mapping[str, Any],
-) -> tuple[list[dict[str, Any]], list[str], list[str]]:
-    references: list[dict[str, Any]] = []
-    blockers: list[str] = []
-    missing: list[str] = []
-    verified_root = root / "state" / "verified"
-    authority = inspection.admit_successor_run(root) or execution
-    expected_tasks = inspection.expected_tasks(authority, profile)
-    for expected in expected_tasks:
-        path = verified_root / expected.machine_key / f"{expected.scope_id}.json"
-        if not path.exists() and not path.is_symlink():
-            missing.append(f"{expected.machine_key}/{expected.scope_id}")
-            continue
-        try:
-            reference_before = _reference(path, root, "verified task record")
-            task.validate_verified_task(
-                path,
-                run_root=root,
-                execution=execution,
-                profile=profile,
-                machine_key=expected.machine_key,
-                scope=expected.scope,
-            )
-            reference_after = _reference(path, root, "verified task record")
-            if reference_after != reference_before:
-                raise LifecycleError(
-                    "Verified task record changed during semantic admission"
-                )
-            reference = reference_before
-        except (
-            OSError,
-            LifecycleError,
-            task.TaskBoundaryError,
-            orchestration_contracts.ContractValidationError,
-        ) as exc:
-            blockers.append(f"Could not admit reusable verified task {path}: {exc}")
-            continue
-        references.append(
-            {
-                "machine_key": expected.machine_key,
-                "scope": expected.scope,
-                "record": reference,
-            }
-        )
-    blockers.extend(inspection.verified_tree_blockers(root, expected_tasks))
-    return references, blockers, missing
-
-
-def _task_start_references(
-    root: Path,
-    execution: Mapping[str, Any],
-    profile: Mapping[str, Any],
-) -> tuple[list[dict[str, Any]], list[str]]:
-    """Admit the exact producer-entry ledger in normalized owner/scope order."""
-
-    references: list[dict[str, Any]] = []
-    blockers: list[str] = []
-    authority = inspection.admit_successor_run(root) or execution
-    expected = inspection.expected_tasks(authority, profile)
-    for item in sorted(
-        expected,
-        key=lambda value: (value.machine_key, value.scope_type, value.scope_id),
-    ):
-        path = (
-            root / "state" / "task-starts" / item.machine_key / f"{item.scope_id}.json"
-        )
-        if not path.exists() and not path.is_symlink():
-            continue
-        try:
-            reference_before = _reference(path, root, "task-start record")
-            task.validate_task_start(
-                path,
-                run_root=root,
-                execution=execution,
-                profile=profile,
-                machine_key=item.machine_key,
-                scope=item.scope,
-            )
-            reference_after = _reference(path, root, "task-start record")
-            if reference_after != reference_before:
-                raise LifecycleError(
-                    "Task-start record changed during semantic admission"
-                )
-        except (
-            OSError,
-            LifecycleError,
-            task.TaskBoundaryError,
-            orchestration_contracts.ContractValidationError,
-        ) as exc:
-            blockers.append(f"Could not admit task-start record {path}: {exc}")
-            continue
-        references.append(
-            {
-                "machine_key": item.machine_key,
-                "scope": item.scope,
-                "record": reference_before,
-            }
-        )
-    blockers.extend(inspection.task_start_tree_blockers(root, expected))
-    return references, blockers
-
-
-def _incomplete_task_start_blockers(
-    task_starts: Sequence[Mapping[str, Any]],
-    verified: Sequence[Mapping[str, Any]],
-) -> list[str]:
-    verified_identities = {
-        (
-            str(item["machine_key"]),
-            str(item["scope"]["scope_type"]),
-            str(item["scope"]["scope_id"]),
-        )
-        for item in verified
-    }
-    return [
-        "Entered task scope has no succeeded task-attempt and verified record: "
-        f"{item['machine_key']}/{item['scope']['scope_id']}"
-        for item in task_starts
-        if (
-            str(item["machine_key"]),
-            str(item["scope"]["scope_type"]),
-            str(item["scope"]["scope_id"]),
-        )
-        not in verified_identities
-    ]
-
-
-def _preentry_task_attempt_references(
-    root: Path,
-    execution: Mapping[str, Any],
-    profile: Mapping[str, Any],
-    attempts: Sequence[Mapping[str, Any]],
-) -> tuple[list[dict[str, Any]], list[str]]:
-    """Use the inspection owner for the shared historical task-tree contract."""
-
-    return inspection.inspect_attempt_task_trees(
-        root,
-        execution,
-        profile,
-        attempts,
-        authority=inspection.admit_successor_run(root),
-    )
-
-
 def _admit_run_before_attempt(root: Path, expected_run_id: str) -> None:
     """Require one committed historical or successor Run before any mutex."""
 
@@ -1675,7 +1528,7 @@ def _admit_run_before_attempt(root: Path, expected_run_id: str) -> None:
     except inspection.InspectionError as exc:
         raise LifecycleError(f"Could not admit successor Run: {exc}") from exc
     if successor is not None:
-        if successor.run_id != expected_run_id:
+        if successor.run_binding.run_id != expected_run_id:
             raise LifecycleError("Prepared Attempt does not bind admitted Run ID")
         return
     profile_path = _canonical_file(root / "contract" / "profile.json", "profile snapshot")
@@ -1707,6 +1560,7 @@ def _admit_request(
     Path,
     dict[str, Any],
     dict[str, Any],
+    inspection.SuccessorRunAuthority | None,
     dict[str, Any],
     tuple[str, ...],
     dict[str, str],
@@ -1878,6 +1732,7 @@ def _admit_request(
         root,
         profile,
         execution,
+        successor,
         attempt,
         argv,
         config_reference,
@@ -1938,7 +1793,7 @@ def _operation_preflight(
         raise LifecycleError("Only a failed or interrupted attempt may be resumed")
     if attempt["supersedes_workflow_attempt_id"] != latest["workflow_attempt_id"]:
         raise LifecycleError("Resume must supersede the exact latest workflow attempt")
-    for field in inspection.attempt_compatibility_fields(observed.authority_format):
+    for field in inspection.attempt_fields(observed.authority is not None):
         if attempt[field] != latest[field]:
             raise LifecycleError(f"Resume attempt is incompatible on {field}")
 
@@ -1999,7 +1854,7 @@ def _under_lock_attempt_preflight(
         "workflow_attempt_id"
     ] or observed.latest_receipt["status"] not in {"failed", "interrupted"}:
         raise LifecycleError("Resume lost its admissible terminal predecessor")
-    for field in inspection.attempt_compatibility_fields(observed.authority_format):
+    for field in inspection.attempt_fields(observed.authority is not None):
         if attempt[field] != observed.latest_attempt[field]:
             raise LifecycleError(f"Resume became incompatible on {field}")
 
@@ -2084,6 +1939,7 @@ def _run_attempt_locked(
         root,
         profile,
         execution,
+        authority,
         attempt,
         argv,
         config_reference,
@@ -2192,18 +2048,26 @@ def _run_attempt_locked(
         ) from exc
 
     result: WorkflowResult | None = None
-    verified, task_blockers, missing = _verified_references(root, execution, profile)
-    task_starts, start_blockers = _task_start_references(root, execution, profile)
-    preentry_tasks, task_tree_blockers = _preentry_task_attempt_references(
-        root, execution, profile, (attempt,)
+    attempts, receipts, chain_blockers = inspection.inspect_attempt_chain(root)
+    evidence = inspection.inspect_evidence(
+        root,
+        execution,
+        profile,
+        attempts,
+        receipts,
+        active_ops.validate_reporting_receipt,
+        authority=authority,
     )
+    verified = list(evidence.verified_tasks)
+    task_starts = list(evidence.task_start_records)
+    preentry_tasks = list(evidence.preentry_task_attempt_records)
+    missing = list(evidence.missing_tasks)
     blockers = [
         *inspection.state_tree_blockers(root),
         *inspection.lock_tree_blockers(root, expected_run_lock=True),
-        *task_blockers,
-        *start_blockers,
-        *task_tree_blockers,
-        *_incomplete_task_start_blockers(task_starts, verified),
+        *chain_blockers,
+        *evidence.integrity_blockers,
+        *evidence.results_blockers,
     ]
     if blockers:
         status = "blocked"
@@ -2322,23 +2186,27 @@ def _run_attempt_locked(
                 )
         except Exception as exc:
             runtime_blockers.append(str(exc))
-        verified, task_blockers, missing = _verified_references(
-            root, execution, profile
+        attempts, receipts, chain_blockers = inspection.inspect_attempt_chain(root)
+        evidence = inspection.inspect_evidence(
+            root,
+            execution,
+            profile,
+            attempts,
+            receipts,
+            active_ops.validate_reporting_receipt,
+            authority=authority,
         )
-        task_starts, start_blockers = _task_start_references(root, execution, profile)
-        attempts, _receipts, _chain_blockers = inspection.inspect_attempt_chain(root)
-        preentry_tasks, task_tree_blockers = _preentry_task_attempt_references(
-            root, execution, profile, attempts
-        )
-        task_tree_blockers.extend(_chain_blockers)
+        verified = list(evidence.verified_tasks)
+        task_starts = list(evidence.task_start_records)
+        preentry_tasks = list(evidence.preentry_task_attempt_records)
+        missing = list(evidence.missing_tasks)
         blockers = [
             *runtime_blockers,
             *inspection.state_tree_blockers(root),
             *inspection.lock_tree_blockers(root, expected_run_lock=True),
-            *task_blockers,
-            *start_blockers,
-            *task_tree_blockers,
-            *_incomplete_task_start_blockers(task_starts, verified),
+            *chain_blockers,
+            *evidence.integrity_blockers,
+            *evidence.results_blockers,
         ]
         if blockers:
             status = "blocked"

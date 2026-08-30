@@ -807,8 +807,13 @@ def test_attempt_plan_records_placement_without_making_it_run_compatibility(
     assert "placement" not in historical.attempt_record
     assert direct.attempt_record["placement"] == direct_placement
     assert scheduled.attempt_record["placement"] == slurm_placement
-    compatibility = inspection.attempt_compatibility_fields("successor")
+    compatibility = inspection.attempt_fields(True)
     assert "placement" not in compatibility
+    assert set(inspection.attempt_fields(False)) == {
+        *compatibility,
+        "source_checkout",
+        "required_tools",
+    }
     assert {field: direct.attempt_record[field] for field in compatibility} == {
         field: scheduled.attempt_record[field] for field in compatibility
     }
@@ -1151,6 +1156,7 @@ def test_every_projected_owner_command_is_accepted_by_public_help(
 
 def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     tmp_path: Path,
+    capsys,
 ) -> None:
     plan = _plan(tmp_path)
     base = lifecycle.default_lifecycle_ops()
@@ -1176,9 +1182,71 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
         observed.reporting_status,
         observed.recovery_available,
     ) == ("valid", "not_started", "incomplete", "incomplete", False)
-    assert observed.authority_format == "successor"
+    assert observed.authority is not None
     assert observed.run_id == plan.run.run_id
     assert observed.latest_attempt is None
+
+    arguments = argparse.Namespace(run_root=plan.run_root, detail="normal")
+    assert control.inspect_from_args(arguments) == 0
+    normal = capsys.readouterr().out
+    assert normal.count(f"Run ID: {plan.run.run_id}") == 1
+    assert "Analysis ID:" not in normal
+    assert "Execution Plan ID:" not in normal
+    assert "Run root:" not in normal
+
+    arguments.detail = "verbose"
+    assert control.inspect_from_args(arguments) == 0
+    verbose = capsys.readouterr().out
+    assert f"Analysis ID: {plan.run.project.analysis.analysis_revision_id}" in verbose
+    assert f"Execution Plan ID: {plan.run.execution_plan.execution_plan_id}" in verbose
+    assert "Attempt ID: none" in verbose
+
+    arguments.detail = "debug"
+    assert control.inspect_from_args(arguments) == 0
+    debug = capsys.readouterr().out
+    assert "Run authority records:" in debug
+    assert f"path={plan.run_root / 'contract/execution-plan.json'}" in debug
+    assert f"SHA-256={plan.run.execution_plan.record_sha256}" in debug
+    assert "Effective plan: backend=local; engine=snakemake" in debug
+    assert "Attempt receipt:" not in debug
+    assert "Engine command:" not in debug
+
+    historical = replace(
+        observed,
+        run_root=Path("/tmp/historical\x1b[31m-run"),
+        authority=None,
+    )
+    historical_ops = replace(
+        control.DEFAULT_CONTROL_OPS,
+        inspect_run=lambda _root: historical,
+    )
+    arguments.detail = "verbose"
+    assert control.inspect_from_args(arguments, ops=historical_ops) == 0
+    historical_output = capsys.readouterr().out
+    assert "Identity model: historical execution.v1" in historical_output
+    assert "Analysis ID:" not in historical_output
+    assert "Execution Plan ID:" not in historical_output
+    assert "\x1b" not in historical_output
+    assert r"\x1b" in historical_output
+
+    arguments.detail = "debug"
+    assert control.inspect_from_args(arguments, ops=historical_ops) == 0
+    historical_debug = capsys.readouterr().out
+    assert "Historical authority record:" in historical_debug
+    assert "Run authority records:" not in historical_debug
+    assert "contract/execution-plan.json" not in historical_debug
+
+    unsafe_error_ops = replace(
+        control.DEFAULT_CONTROL_OPS,
+        inspect_run=lambda _root: (_ for _ in ()).throw(
+            inspection.InspectionError("invalid /tmp/run\x1b[31m-root")
+        ),
+    )
+    assert control.inspect_from_args(arguments, ops=unsafe_error_ops) == 2
+    unsafe_error = capsys.readouterr().err
+    assert "\x1b" not in unsafe_error
+    assert r"\x1b" in unsafe_error
+
     with pytest.raises(MaterializationError, match="inspect or resume"):
         materialization.validate_run_destination(plan.run_root)
     materialization.validate_run_destination(plan.run_root, candidate=plan.run)
@@ -1304,7 +1372,7 @@ def test_post_binding_failure_retains_truthful_run_authority(
 
     authority = inspection.admit_successor_run(plan.run_root)
     assert authority is not None
-    assert authority.run_id == plan.run.run_id
+    assert authority.run_binding.run_id == plan.run.run_id
     assert tuple(plan.run_root.parent.glob(f"{plan.run.run_id}.uncommitted-*")) == ()
     assert inspection.inspect_run(plan.run_root).integrity == "blocked"
 
@@ -1797,6 +1865,7 @@ def test_public_run_dry_run_is_no_write(
     for hidden in (
         "Operation:",
         "Analysis ID:",
+        "Execution Plan ID:",
         "Run root:",
         "Resources:",
         "Step thread allocations:",
@@ -1809,6 +1878,7 @@ def test_public_run_dry_run_is_no_write(
     verbose = projections["verbose"]
     assert set(normal.splitlines()) <= set(verbose.splitlines())
     assert "Analysis ID: analysis-" in verbose
+    assert "Execution Plan ID: plan-" in verbose
     assert "Run root:" in verbose
     assert "Resources: 1 cores, 1024 MiB" in verbose
     assert "Step thread allocations:" in verbose
@@ -2560,15 +2630,6 @@ def test_application_log_degradation_cannot_change_receipt_or_exit(
     assert "Evidence: " + str(receipt_path) in captured.err
 
 
-def test_report_presentation_rejects_malformed_verified_locations() -> None:
-    locations = (
-        ("scientific-report-html", Path("/results/scientific.html")),
-        ("wrong-output-id", Path("/results/evidence.html")),
-    )
-    with pytest.raises(control.ControlError, match="verified result locations"):
-        control._verified_report_location_lines(locations)
-
-
 @pytest.mark.parametrize(
     (
         "outcome_status",
@@ -3012,6 +3073,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
     assert expected_results in resumed_output
     completed = inspection.inspect_run(run_root)
+    assert completed.authority is not None
     assert (
         completed.integrity,
         completed.attempt_outcome,
@@ -3046,11 +3108,21 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert "Current Attempt elapsed:" not in inspect_output
     assert "Latest Attempt elapsed:" in inspect_output
     assert "Run root:" not in inspect_output
+    assert "Analysis ID:" not in inspect_output
+    assert "Execution Plan ID:" not in inspect_output
     assert "Engine command:" not in inspect_output
     inspect_arguments.detail = "verbose"
     assert control.inspect_from_args(inspect_arguments, ops=resumed_ops) == 0
     verbose_output = capsys.readouterr().out
     assert f"Run root: {run_root}" in verbose_output
+    assert (
+        f"Analysis ID: {completed.authority.analysis_revision.analysis_revision_id}"
+        in verbose_output
+    )
+    assert (
+        f"Execution Plan ID: {completed.authority.execution_plan.execution_plan_id}"
+        in verbose_output
+    )
     assert "Attempt ID:" in verbose_output
     assert "Reporting transactions:" in verbose_output
     assert "Engine command:" not in verbose_output
@@ -3059,7 +3131,27 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     debug_output = capsys.readouterr().out
     assert "Engine command:" in debug_output
     assert "Attempt receipt:" in debug_output
+    assert "Run authority records:" in debug_output
+    assert (
+        f"SHA-256={completed.authority.analysis_revision.record_sha256}" in debug_output
+    )
+    assert f"SHA-256={completed.authority.execution_plan.record_sha256}" in debug_output
+    assert f"SHA-256={completed.authority.run_binding.record_sha256}" in debug_output
+    assert "Effective plan: backend=local; engine=snakemake" in debug_output
     assert "TASK " in debug_output
+    assert "OUTPUT " in debug_output
+    assert "size=" in debug_output and "SHA-256=" in debug_output
+    first_output = next(
+        output
+        for inspected in completed.tasks
+        if inspected.record is not None
+        for output in inspected.record["outputs"]
+    )
+    assert (
+        f"OUTPUT {first_output['role']}: path={first_output['path']}; "
+        f"size={first_output['size_bytes']}; SHA-256={first_output['sha256']}"
+        in debug_output
+    )
     assert "stdout.log" in debug_output and "stderr.log" in debug_output
     assert _verified_snapshot(run_root) == after
     assert expected_results in inspect_output
