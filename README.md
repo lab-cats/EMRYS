@@ -49,7 +49,7 @@ scientific computation. External review or adjudication may use EMRYS's
 computational outputs and provenance, but it is not part of `emrys run`.
 
 The fixed graph contains `3 + 7S + P + 3` scientific-owner jobs for `S`
-samples and `P` genomic partitions. The four-sample, one-partition starter
+samples and `P` genomic partitions. The four-sample, one-partition synthetic fixture
 therefore expands to 35 jobs, followed by three reporting transactions.
 
 ## Supported execution boundary
@@ -69,12 +69,13 @@ Read this before installing:
   terminal confirmation or explicit noninteractive `--execute` submits once
   and prints `JOB_ID`, `OUT`, and `ERR`. Never execute the scientific workflow
   on a cluster login/head node.
-- One cooperative user is required. The exact workspace parent and Step `00c`
+- One cooperative user is required. The exact Project root and Step `00c`
   reference-sidecar parent must pass EMRYS's two-phase site qualification for
   hard links, `flock`, rename/visibility, fsync, UID/access, and post-allocation
   durability. No filesystem family—including NFS—is admitted by name alone.
-- Local-pilot inputs, workspace, logs, and results stay outside the Git
-  checkout. The locked ignored `.venv/`, the default ignored `renv/library/`,
+- The Project, referenced inputs, logs, and results stay outside the Git
+  checkout. Setup creates and owns `runs/`, `logs/`, and `runtime/` beneath the
+  `project.yaml` parent. The locked ignored `.venv/`, the default ignored `renv/library/`,
   and the report-only demo's ignored `results/demo-report-jinja/` are sanctioned
   checkout-local exceptions; an already provisioned R library may instead be
   selected explicitly. The doctor requires tracked checkout content to be clean
@@ -87,8 +88,8 @@ Read this before installing:
   its local executor so an impossible resource policy fails before workflow
   entry.
 
-Scheduler streams are created automatically under `<workspace>/logs` and the
-default application-log root is `<workspace>/logs/application`. Reporting runs automatically after scientific
+Scheduler streams are created automatically under `<project-root>/logs` and the
+default application-log root is `<project-root>/logs/application`. Reporting runs automatically after scientific
 work and publishes its receipts last; it is not a scientific stage.
 
 Capacity depends on reference size, read count, and selected partitions. Plan
@@ -97,7 +98,7 @@ BAMs, VCFs, logs, and immutable recovery evidence. Before a real run, inspect
 the input size and destination capacity on the execution host:
 
 ```sh
-du -sh /absolute/path/to/emrys-inputs/inputs
+du -sh /absolute/path/to/referenced-fastqs /absolute/path/to/reference
 df -h /absolute/path/to/operator-managed-storage
 free -h
 ```

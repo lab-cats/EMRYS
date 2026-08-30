@@ -33,7 +33,7 @@ PRIVATE_PYTHON_MODULES = frozenset()
 DIRECT_PYTHON_ENTRYPOINTS = frozenset({"benchmark_stage_resources.py"})
 INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPOINTS
 EMRYS_COMMANDS = (
-    (("init", "local-pilot"), "usage: emrys init local-pilot"),
+    (("init", "project"), "usage: emrys init project"),
     (
         ("init", "synthetic-local-pilot"),
         "usage: emrys init synthetic-local-pilot",
@@ -593,6 +593,7 @@ def test_project_is_the_only_active_intake_spelling(
     assert result.returncode == 0, result.stderr
     assert "--project" in result.stdout
     assert "--request" not in result.stdout
+    assert "--workspace" not in result.stdout
 
 
 @pytest.mark.parametrize(

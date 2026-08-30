@@ -60,7 +60,7 @@ policy before their own bounded decisions.
   controls fail before log, output, lock, scratch, or compute side effects while
   preserving established parse exits. A legacy alias requires parity-tested
   migration.
-- Grouped `run`/`resume` defaults to `<workspace>/logs/application`. Until a
+- Grouped `run`/`resume` defaults to `<project-root>/logs/application`. Until a
   state root exists for another adopter, its default is
   `<repository-root>/logs/application`, derived from repository/package
   identity rather than caller CWD. An explicit root is absolute. Help and
@@ -188,7 +188,7 @@ relationship, and evidence policy may satisfy an existing runtime/cluster role.
 ## Scheduler relationship
 
 Grouped `run`/`resume` writes scheduler-owned compatibility and diagnostic
-streams beneath `<workspace>/logs` as `emrys-local-pilot-%j.out` and
+streams beneath `<project-root>/logs` as `emrys-local-pilot-%j.out` and
 `emrys-local-pilot-%j.err`; they are not application logs. The submission
 transport owns no application attempt. Its compute-side delegate receives the
 resolved controls, opens the operation's single attempt, records job identity

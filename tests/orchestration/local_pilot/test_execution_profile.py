@@ -342,7 +342,7 @@ def test_tracked_execution_profile_examples_are_admissible(
     exclusive: bool,
 ) -> None:
     profile = load_execution_profile(
-        REPO_ROOT / "configs/project.example.yaml",
+        REPO_ROOT / "project.yaml",
         config_path=REPO_ROOT / relative_path,
     )
 

@@ -21,6 +21,7 @@ from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.orchestration.local_pilot.execution_profile import DEFAULT_PROFILE_PATH
 from emrys.orchestration.local_pilot.onboarding import (
     OnboardingError,
+    PROJECT_DIRECTORIES,
     _require_external_absent_output,
     publish_create_absent_tree,
     source_root,
@@ -760,6 +761,7 @@ def init_from_args(arguments: argparse.Namespace) -> int:
             members,
             completion_name=COMPLETION_MANIFEST,
             completion_bytes=_completion_bytes(members),
+            directories=PROJECT_DIRECTORIES,
             before_completion=validate_before_completion,
         )
         print(f"Published deterministic local-pilot fixture ({profile.name}): {output}")

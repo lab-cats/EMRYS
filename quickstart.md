@@ -12,7 +12,7 @@ result, scheduler job, and report has the evidence ceiling stated below.
 | --- | --- | --- |
 | 1. Source | Clone, select one immutable commit, and install the locked Python environment | Clean detached commit and working `emrys --help` |
 | 2. Runtime | Provision exact scientific tools and restore/check the canonical R library outside workflow execution | Canonical compute-node paths and passing `r-check` |
-| 3. Inputs | Generate a create-absent starter set, then stage FASTQ, FASTA, GTF, and optional regions files | Explicit Project definition, paired sample rows, and nonoverlapping partitions |
+| 3. Project | Draft manifests, then create one validated Project root around the referenced FASTQ, FASTA, GTF, and optional regions files | Explicit Project definition, paired sample rows, nonoverlapping partitions, and owned `runs/`, `logs/`, and `runtime/` directories |
 | 4. Profile | Render a new runtime profile from the observed canonical paths | Complete create-absent runtime TSV |
 | 5. Admission | Validate the Project and finalize two-phase storage qualification | Project PASS and matching final storage receipt |
 | 6. Readiness | Run doctor in the execution context | Exact `READY` result |
@@ -166,19 +166,19 @@ runtime.
 ## 3. Initialize and ingest synthetic or real inputs
 
 Choose durable storage visible from the execution host. The parent must exist;
-the selected input directory and workspace leaf must not:
+the selected Project root must not:
 
 ```sh
 EMRYS_OPERATOR_ROOT=/absolute/path/to/operator-managed-storage
-EMRYS_WORKSPACE_PATH="$EMRYS_OPERATOR_ROOT/emrys-workspace"
+EMRYS_PROJECT_ROOT="$EMRYS_OPERATOR_ROOT/my-project"
 
 test -d "$EMRYS_OPERATOR_ROOT" &&
 test -w "$EMRYS_OPERATOR_ROOT" &&
-test ! -e "$EMRYS_WORKSPACE_PATH"
+test ! -e "$EMRYS_PROJECT_ROOT"
 ```
 
 If that check fails, stop and choose the correct existing parent or a new
-absent workspace. EMRYS does not recursively create a missing workspace parent.
+absent Project root. EMRYS does not recursively create a missing parent.
 
 ### Path A: deterministic synthetic science smoke
 
@@ -196,6 +196,7 @@ emrys init synthetic-local-pilot \
 
 test -f "$EMRYS_INPUT_DIR/fixture.manifest.json"
 EMRYS_PROJECT_PATH="$EMRYS_INPUT_DIR/project.yaml"
+EMRYS_PROJECT_ROOT="$EMRYS_INPUT_DIR"
 ```
 
 The fixture has a deterministic 100 kb reference, matching GTF, one partition,
@@ -240,65 +241,47 @@ The absent output receives `samples.tsv` and, only when declared,
 This helper does not create a Project, infer conditions/cohorts, inspect FASTQ
 contents, or replace full Project validation.
 
-Generate one matched, create-absent starter set:
+Create the Project root from those manifests and the current profile's explicit
+scientific answers. The numerical values below are examples, not implicit
+defaults; review and deliberately replace or accept every one:
 
 ```sh
-EMRYS_INPUT_DIR="$EMRYS_OPERATOR_ROOT/emrys-inputs"
+EMRYS_MANIFEST_DIR="$EMRYS_OPERATOR_ROOT/emrys-manifest-drafts"
+emrys_project_init() {
+  emrys init project \
+    --output-dir "$EMRYS_PROJECT_ROOT" \
+    --sample-manifest "$EMRYS_MANIFEST_DIR/samples.tsv" \
+    --partition-manifest "$EMRYS_MANIFEST_DIR/partitions.tsv" \
+    --reference-id grch38_gencode_v47 \
+    --reference-fasta /data/reference/genome.fa \
+    --reference-gtf /data/reference/annotation.gtf \
+    --sjdb-overhang 149 \
+    --genome-sa-index-nbases 14 \
+    --cohort-id experiment_01 \
+    --analysis-id primary \
+    --control-condition control \
+    --treatment-condition treatment \
+    --target-change 'A>G' \
+    --min-sample-dp 1 \
+    --mean-dp-threshold 50 \
+    --fdr-threshold 0.05 \
+    --common-or-threshold 1.2 \
+    --absolute-difference-threshold 0.005 \
+    --background-max-fraction 0.01 \
+    "$@"
+}
+emrys_project_init
+emrys_project_init --execute
 
-emrys init local-pilot --output-dir "$EMRYS_INPUT_DIR"
-emrys init local-pilot \
-  --output-dir "$EMRYS_INPUT_DIR" \
-  --execute
-
-test -f "$EMRYS_INPUT_DIR/starter-set.manifest.tsv"
-EMRYS_PROJECT_PATH="$EMRYS_INPUT_DIR/project.yaml"
+EMRYS_PROJECT_PATH="$EMRYS_PROJECT_ROOT/project.yaml"
 ```
 
-The completion manifest is published last. Preserve a partial generated
-directory without that manifest for inspection; choose a new absent directory
-instead of rerunning over it. The manifest proves the initial starter
-publication only; the expected edits below intentionally make its recorded
-starter hashes historical rather than a current input attestation.
-
-The generated layout is:
-
-```text
-emrys-inputs/
-|-- project.yaml
-|-- emrys.execution.yaml
-|-- samples.tsv
-|-- partitions.tsv
-|-- runtime.tsv
-|-- starter-set.manifest.tsv
-`-- inputs/
-    |-- reads/       # one explicit R1/R2 pair per manifest sample
-    |-- reference/   # one matching materialized FASTA and GTF
-    `-- regions/     # optional files used by regions_file partitions
-```
-
-Create and populate `inputs/` without replacing an earlier staging tree. Then
-edit `project.yaml`, `samples.tsv`, and `partitions.tsv`:
-
-```sh
-test ! -e "$EMRYS_INPUT_DIR/inputs" &&
-mkdir -m 700 "$EMRYS_INPUT_DIR/inputs" &&
-mkdir -m 700 \
-  "$EMRYS_INPUT_DIR/inputs/reads" \
-  "$EMRYS_INPUT_DIR/inputs/reference" \
-  "$EMRYS_INPUT_DIR/inputs/regions"
-```
-
-1. Give the Project stable reference, cohort, and analysis IDs; point it to the
-   matching FASTA/GTF; select STAR-index parameters and analysis policy.
-2. Give every sample an explicit R1/R2 FASTQ, condition, replicate, and
-   strandedness declaration. Each of at least two replicate strata needs
-   exactly one control and one treatment row. Pairing comes from `replicate`,
-   not row order or sample names.
-3. Select one or more nonoverlapping genomic partitions using contigs present
-   in the reference. Start small for the first real-runtime check.
-4. Keep the built-in direct resources, or edit `emrys.execution.yaml` and
-   select it explicitly for reviewed resources or Slurm placement. Resource
-   CLI flags override the selected profile.
+On a terminal, omitted answers are prompted instead. For automation every
+scientific answer is required; EMRYS never silently chooses biology or
+thresholds. The command references the admitted manifests and their raw data
+in place, writes `project.yaml` last, and creates empty
+mode-`0700` `runs/`, `logs/`, and `runtime/` directories. Preserve any partial
+create-absent root for inspection and retry with a new absent destination.
 
 The [configuration guide](configs/README.md) explains every field, threshold,
 path rule, sample-pairing requirement, and runtime row. Relative paths resolve
@@ -306,15 +289,15 @@ from the Project file's directory—not the terminal's current directory.
 
 ## 4. Prepare one explicit runtime profile
 
-The starter's `runtime.tsv` records policy and already fills this checkout and
-workflow Python. The safer preparation helper accepts exact existing runtime
-paths, fills the complete fixed roster, and emits TSV to standard output. It
-does not install tools, probe versions, or write a file.
+The current preparation helper accepts exact existing runtime paths, fills the
+complete fixed roster, and emits TSV to standard output. It does not install
+tools, probe versions, or write a file.
 
-Redirect it to a **new absent filename**, never over the generated starter:
+Redirect it to a **new absent filename** in the Project-owned runtime
+directory:
 
 ```sh
-EMRYS_RUNTIME_PROFILE_PATH="$EMRYS_INPUT_DIR/runtime.selected.tsv"
+EMRYS_RUNTIME_PROFILE_PATH="$EMRYS_PROJECT_ROOT/runtime/runtime.selected.tsv"
 
 test ! -e "$EMRYS_RUNTIME_PROFILE_PATH" && (
   set -C
@@ -364,7 +347,7 @@ bounds, and checks region or regions-file bounds. FASTQ hashing streams in
 bounded chunks, but time and I/O still scale with the declared read bytes. No
 scientific executable is probed and no output is written.
 
-Qualify the exact workspace and Step `00c` reference-sidecar storage before
+Qualify the exact Project root and Step `00c` reference-sidecar storage before
 doctor. Run the compute phase inside a short allocation on the intended compute
 node, let that allocation end, then run the finalize phase from the durable
 control context:
@@ -372,28 +355,28 @@ control context:
 ```sh
 EMRYS_REFERENCE_FASTA=/absolute/path/from/project/to/reference.fa
 emrys inspect storage-qualification \
-  --workspace "$EMRYS_WORKSPACE_PATH" \
+  --workspace "$EMRYS_PROJECT_ROOT" \
   --reference-fasta "$EMRYS_REFERENCE_FASTA" --phase compute
 # Repeat the same command with --execute inside the allocation.
 emrys inspect storage-qualification \
-  --workspace "$EMRYS_WORKSPACE_PATH" \
+  --workspace "$EMRYS_PROJECT_ROOT" \
   --reference-fasta "$EMRYS_REFERENCE_FASTA" --phase finalize
 # Repeat the same command with --execute after the allocation has ended.
 ```
 
 Doctor rejects missing, failed, stale, or mismatched final qualification. A
-node-local workspace is not supported unless the same qualification establishes
+node-local Project root is not supported unless the same qualification establishes
 its durable retention path.
 
 ## 6. Require full runtime `READY`
 
-The doctor safely re-admits the Project and source files plus the workspace
-plan, checkout, locked workflow, tools, jar, R project/library, and namespaces:
+The doctor derives the Project root from `project.yaml` and safely re-admits
+the source files, checkout, locked workflow, tools, jar, R project/library, and
+namespaces:
 
 ```sh
 emrys doctor local-pilot \
   --project "$EMRYS_PROJECT_PATH" \
-  --workspace "$EMRYS_WORKSPACE_PATH" \
   --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH"
 ```
 
@@ -405,8 +388,8 @@ READY: local-pilot prerequisites passed.
 
 Exit `1` prints one or more `BLOCKER` and `REMEDIATION` entries. Exit `2`
 means the authored Project, profile, or path boundary is malformed or unsafe.
-Doctor does not create the workspace, execute Snakemake or scientific tools,
-load modules, or alter an input.
+Doctor does not execute Snakemake or scientific tools, load modules, or alter
+an input.
 
 ## 7. Review and confirm one immutable plan
 
@@ -416,7 +399,6 @@ Run plan, then asks once whether to execute it:
 ```sh
 emrys run \
   --project "$EMRYS_PROJECT_PATH" \
-  --workspace "$EMRYS_WORKSPACE_PATH" \
   --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH" \
   --log-level verbose
 ```
@@ -430,15 +412,14 @@ application log, writes nothing, and executes or submits nothing. In a
 noninteractive context, omission of `--execute` retains that no-write behavior;
 use `--execute` only when automation deliberately authorizes execution.
 
-These direct commands use the built-in profile. If you changed the generated
-profile to direct placement and edited its resources, add
-`--execution-profile "$EMRYS_INPUT_DIR/emrys.execution.yaml"` to the command.
+These direct commands use the built-in execution profile. Select an explicit
+profile only when the Run needs different resources or Slurm placement.
 
 Record the exact Run root printed by this invocation for later inspection; it
 is not transferred into a second execution command:
 
 ```sh
-EMRYS_RUN_ROOT=/absolute/path/to/emrys-workspace/runs/run-DIGEST
+EMRYS_RUN_ROOT="$EMRYS_PROJECT_ROOT/runs/run-DIGEST"
 ```
 
 The Run ID binds the immutable Analysis revision and Execution Plan. Formatting the
@@ -459,18 +440,19 @@ the single direct invocation: it executes the exact displayed plan, preserves
 its true exit, and opens one structured application log only after consent.
 
 The application-log root defaults to
-`$EMRYS_WORKSPACE_PATH/logs/application`. It records lifecycle diagnostics and
+`$EMRYS_PROJECT_ROOT/logs/application`. It records lifecycle diagnostics and
 receipt observation but is not completion authority.
 
 ### One SLURM batch allocation
 
-Use the generated execution profile. Path B already contains the Slurm shape;
-Path A must replace its direct placement with the Slurm placement from
-`configs/execution_profile.example.yaml`. Replace every site and scratch
-placeholder, then review both Run-bound resources and Attempt-local placement:
+Create an operator-owned copy of `configs/execution_profile.example.yaml`,
+replace every site and scratch placeholder, then review both Run-bound
+resources and Attempt-local placement:
 
 ```sh
-EMRYS_EXECUTION_PROFILE_PATH="$EMRYS_INPUT_DIR/emrys.execution.yaml"
+EMRYS_EXECUTION_PROFILE_PATH="$EMRYS_PROJECT_ROOT/emrys.execution.yaml"
+cp "$EMRYS_REPO/configs/execution_profile.example.yaml" \
+  "$EMRYS_EXECUTION_PROFILE_PATH"
 ${EDITOR:-vi} "$EMRYS_EXECUTION_PROFILE_PATH"
 ```
 
@@ -488,7 +470,6 @@ the large inputs on the login node, and asks before submission.
 emrys_slurm_run() {
   emrys run \
     --project "$EMRYS_PROJECT_PATH" \
-    --workspace "$EMRYS_WORKSPACE_PATH" \
     --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH" \
     --execution-profile "$EMRYS_EXECUTION_PROFILE_PATH" \
     --log-level verbose \
@@ -504,8 +485,8 @@ automation, invoke the function with `--execute` instead; do not run both forms:
 emrys_slurm_run --execute
 ```
 
-An accepted terminal confirmation or explicit `--execute` creates
-`<workspace>/logs`, calls `sbatch` once, and prints exact `JOB_ID`, `OUT`, and
+An accepted terminal confirmation or explicit `--execute` uses the
+Project-owned `logs/`, calls `sbatch` once, and prints exact `JOB_ID`, `OUT`, and
 `ERR` values. The compute delegate re-admits the profile
 digest, submit UID, private marker, and Slurm job ID; loads only declared
 modules; creates and removes one private mode-`0700` scratch directory; runs
@@ -518,7 +499,7 @@ distributed execution. The scheduler job ID and placement are Attempt
 provenance, never Run identity or completion authority.
 
 The scheduler's stdout/stderr directory may use site-supported shared storage
-for login-node inspection. That does **not** qualify the workspace or reference
+for login-node inspection. That does **not** qualify the Project root or reference
 sidecars. Those exact mutation roots need the final two-phase qualification
 above and stable absolute paths. A passing receipt admits only that tested
 site/path pair; an unqualified NFS, distributed, or node-local arrangement
@@ -528,25 +509,25 @@ remains unsupported.
 
 For direct execution, the invoking terminal is the primary control stream and
 the structured application log defaults beneath
-`<workspace>/logs/application`. For Slurm, use the exact `JOB_ID`, `OUT`, and
+`<project-root>/logs/application`. For Slurm, use the exact `JOB_ID`, `OUT`, and
 `ERR` paths printed at submission. The Runbook owns the reusable
 [stream-wait and accounting procedure](docs/operations/RUNBOOK.md#manual-stream-and-accounting-fallback).
 Control-C stops a local `tail`; it does not cancel the allocation. Confirm
 scheduler state separately from EMRYS completion evidence.
 
 EMRYS inspection is read-only and derives state from immutable records rather
-than `.snakemake` metadata. Run it only on a host where the exact workspace path
+than `.snakemake` metadata. Run it only on a host where the exact Project-root path
 is available under the supported filesystem contract. A login node that can see
-only the shared scheduler logs cannot inspect or collect a node-local workspace;
+only the shared scheduler logs cannot inspect or collect a node-local Project root;
 EMRYS does not copy results. Arrange a reviewed site-native
-retention/transfer path before execution if the workspace will otherwise become
+retention/transfer path before execution if the Project root will otherwise become
 unreachable when the allocation ends.
 
 Before inspecting from a new terminal, repeat Step 1's `cd`, `EMRYS_PY`, and
 `emrys` function setup. For direct execution, use the Run root recorded from
 the same Step 7 invocation. For Slurm, record it from the compute delegate's
 `ERR` stream after planning; never infer it from the scheduler job ID or
-workspace name. This locator is for later read-only inspection, not a
+Project-root name. This locator is for later read-only inspection, not a
 plan-to-execution handoff.
 
 ```sh
@@ -660,7 +641,7 @@ All other blocked states belong to
 | --- | --- | --- |
 | Source and Python | Exact clean commit; `uv --version` works; `uv sync --locked --group workflow` succeeds | Wrong checkout, dirty tree, missing `uv`, or stale lock |
 | Compute runtime | Canonical tools are observed on the intended compute node; guarded `r-check` passes | Login-only path, guessed module, wrong Java/R, or missing namespace |
-| Storage | Final qualification covers the workspace and Step `00c` sidecar parents | Missing, failed, stale, or mismatched qualification |
+| Storage | Final qualification covers the Project root and Step `00c` sidecar parents | Missing, failed, stale, or mismatched qualification |
 | Inputs and plan | Direct: Project validation and Doctor pass before the no-write Run plan; Slurm: the explicit profile and no-submit placement plan are reviewed | Any blocker, malformed input/profile, or unreviewed placement |
 | Execution | One terminal invocation is reviewed and confirmed; `--execute` is only the explicit automation path | Manual output adoption, login-node science work, or an uncertain existing Run root |
 

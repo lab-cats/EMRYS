@@ -563,8 +563,6 @@ def _delegate_argv(
             (
                 "--project",
                 str(_absolute(arguments.project)),
-                "--workspace",
-                str(_absolute(arguments.workspace)),
             )
         )
     else:
@@ -1146,8 +1144,7 @@ def _add_execution_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 def configure_run_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--project", required=True, type=Path)
-    parser.add_argument("--workspace", required=True, type=Path)
+    parser.add_argument("--project", default=Path("project.yaml"), type=Path)
     parser.add_argument("--runtime-profile", required=True, type=Path)
     parser.add_argument(
         "--execution-profile",
@@ -1270,6 +1267,7 @@ def run_from_args(
     try:
         overrides = overrides_from_args(arguments)
         expected_profile_sha256 = _private_delegate_digest()
+        workspace = _absolute(arguments.project).parent
         profile = load_execution_profile(
             arguments.project,
             config_path=getattr(arguments, "execution_profile", None),
@@ -1277,11 +1275,11 @@ def run_from_args(
             expected_sha256=expected_profile_sha256,
         )
         scheduler_job_id = _delegate_job_id(profile, expected_profile_sha256)
-        controls = _resolve_controls(arguments, arguments.workspace)
+        controls = _resolve_controls(arguments, workspace)
         build_plan = partial(
             _plan_run,
             arguments.project,
-            arguments.workspace,
+            workspace,
             arguments.runtime_profile,
             execution_profile=profile,
             scheduler_job_id=scheduler_job_id,
@@ -1295,7 +1293,7 @@ def run_from_args(
             controls=controls,
             overrides=overrides,
             scheduler_job_id=scheduler_job_id,
-            workspace=arguments.workspace,
+            workspace=workspace,
             ops=ops,
         )
     except _CONTROL_ERRORS as exc:

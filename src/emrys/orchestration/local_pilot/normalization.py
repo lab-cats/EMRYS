@@ -468,20 +468,18 @@ def _policy(definition: Mapping[str, Any]) -> dict[str, Any]:
     return value
 
 
-def admit_project(
+def _admit_project_data(
     project_path: str | Path,
+    project_data: bytes,
     profile: Mapping[str, Any] | str | Path,
 ) -> ProjectAdmission:
-    """Admit one Project without writing through the current request-v3 adapter."""
+    """Admit prepared Project bytes at their intended canonical location."""
 
-    authored_project_value = os.fspath(project_path)
-    validate_authored_path(authored_project_value, "Project definition")
-    authored_project = Path(authored_project_value)
-    if not authored_project.is_absolute():
-        authored_project = Path.cwd() / authored_project
-    resolved_project, project_data = _regular_file(
-        authored_project, "Project definition"
-    )
+    resolved_project = Path(os.path.abspath(project_path))
+    if not project_data:
+        raise orchestration_contracts.ContractValidationError(
+            "Project definition must be nonempty"
+        )
     definition = _load_yaml_object(project_data, resolved_project)
     orchestration_contracts.validate_record("request", definition)
     profile_record = _load_profile(profile)
@@ -560,6 +558,23 @@ def admit_project(
         analysis=admitted_analysis,
         construction_bytes=orchestration_contracts.canonical_json_bytes(construction),
     )
+
+
+def admit_project(
+    project_path: str | Path,
+    profile: Mapping[str, Any] | str | Path,
+) -> ProjectAdmission:
+    """Admit one file-bound Project through the current request-v3 adapter."""
+
+    authored_value = os.fspath(project_path)
+    validate_authored_path(authored_value, "Project definition")
+    authored_path = Path(authored_value)
+    if not authored_path.is_absolute():
+        authored_path = Path.cwd() / authored_path
+    resolved_project, project_data = _regular_file(
+        authored_path, "Project definition"
+    )
+    return _admit_project_data(resolved_project, project_data, profile)
 
 
 __all__ = (

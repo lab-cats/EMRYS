@@ -297,7 +297,7 @@ def require_operator_root(operator_root: Path, repo_root: Path) -> DriverPaths:
     return DriverPaths(
         operator_root=root,
         inputs=root / "synthetic-inputs",
-        workspace=root / "workspace",
+        workspace=root / "synthetic-inputs",
         scratch=root / "scratch",
         execution_profile=root / "emrys.execution.slurm.json",
         runtime_profile=root / "runtime.selected.tsv",
@@ -1426,8 +1426,6 @@ def run_driver(
             "local-pilot",
             "--project",
             str(request),
-            "--workspace",
-            str(paths.workspace),
             "--runtime-profile",
             str(paths.runtime_profile),
         ),
@@ -1440,8 +1438,6 @@ def run_driver(
             "run",
             "--project",
             str(request),
-            "--workspace",
-            str(paths.workspace),
             "--runtime-profile",
             str(paths.runtime_profile),
             "--execution-profile",
@@ -1454,16 +1450,16 @@ def run_driver(
     if plan_result.stdout:
         raise DriverError("plan-workflow", "direct Run plan wrote machine stdout")
     run_root = parse_run_plan(plan_result.stderr, paths.workspace, no_write=True)
-    if paths.workspace.exists():
-        raise DriverError("plan-workflow", "no-write plan created the workspace")
+    if any(
+        any((paths.workspace / name).iterdir()) for name in ("runs", "logs")
+    ):
+        raise DriverError("plan-workflow", "no-write plan created Run or log state")
 
     scheduled_run = _emrys(
         workflow_python,
         "run",
         "--project",
         str(request),
-        "--workspace",
-        str(paths.workspace),
         "--runtime-profile",
         str(paths.runtime_profile),
         "--execution-profile",
@@ -1481,8 +1477,10 @@ def run_driver(
         paths.execution_profile,
         paths.workspace,
     )
-    if paths.workspace.exists():
-        raise DriverError("slurm-plan", "Slurm no-write plan created the workspace")
+    if any(
+        any((paths.workspace / name).iterdir()) for name in ("runs", "logs")
+    ):
+        raise DriverError("slurm-plan", "Slurm no-write plan created Run or log state")
 
     execute_result = transcripts.run(
         "submit-slurm-execute", [*scheduled_run, "--execute"], cwd=repo_root

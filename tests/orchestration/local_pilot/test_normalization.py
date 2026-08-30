@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import shutil
 from pathlib import Path
 
 import pytest
@@ -14,75 +13,7 @@ from emrys.orchestration.local_pilot.normalization import admit_project
 from tests.orchestration.local_pilot import fixture
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-CONFIG_ROOT = REPO_ROOT / "configs"
 LOCAL_PROFILE = REPO_ROOT / "workflow/contracts/local_cmh_v2.json"
-LOCAL_PILOT_STARTERS = (
-    "project.example.yaml",
-    "execution_profile.example.yaml",
-    "local_pilot_samples.example.tsv",
-    "local_pilot_partitions.example.tsv",
-)
-
-
-def test_local_pilot_starters_admit_after_explicit_paths_are_populated(
-    tmp_path: Path,
-) -> None:
-    starter_root = tmp_path / "local-pilot-inputs"
-    starter_root.mkdir()
-    for name in LOCAL_PILOT_STARTERS:
-        shutil.copy2(CONFIG_ROOT / name, starter_root / name)
-
-    placeholder_paths = (
-        "inputs/reference/genome.fa",
-        "inputs/reference/annotation.gtf",
-        "inputs/reads/sample_001_R1.fastq.gz",
-        "inputs/reads/sample_001_R2.fastq.gz",
-        "inputs/reads/sample_002_R1.fastq.gz",
-        "inputs/reads/sample_002_R2.fastq.gz",
-        "inputs/reads/sample_003_R1.fastq.gz",
-        "inputs/reads/sample_003_R2.fastq.gz",
-        "inputs/reads/sample_004_R1.fastq.gz",
-        "inputs/reads/sample_004_R2.fastq.gz",
-    )
-    assert all(not (CONFIG_ROOT / path).exists() for path in placeholder_paths)
-    for relative_path in placeholder_paths:
-        path = starter_root / relative_path
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(f"placeholder for {relative_path}\n".encode())
-
-    normalized = admit_project(
-        starter_root / "project.example.yaml",
-        LOCAL_PROFILE,
-    )
-
-    assert (starter_root / "execution_profile.example.yaml").is_file()
-
-    assert normalized.definition["sample_manifest"] == (
-        "local_pilot_samples.example.tsv"
-    )
-    assert normalized.definition["partition_manifest"] == (
-        "local_pilot_partitions.example.tsv"
-    )
-    assert normalized.profile["profile_id"] == "emrys.profile.local_cmh"
-    assert normalized.profile["profile_version"] == "v2"
-    source = normalized.construction
-    assert [
-        (row["sample_id"], row["condition"], row["replicate"])
-        for row in source["samples"]["rows"]
-    ] == [
-        ("sample_001", "control", "pair_01"),
-        ("sample_002", "treatment", "pair_01"),
-        ("sample_003", "control", "pair_02"),
-        ("sample_004", "treatment", "pair_02"),
-    ]
-    assert source["partitions"]["rows"] == [
-        {
-            "partition_id": "primary",
-            "selector_type": "region",
-            "selector_value": "chr1",
-            "selector_file": None,
-        }
-    ]
 
 
 def test_admitted_intake_views_cannot_mutate_analysis_authority(
