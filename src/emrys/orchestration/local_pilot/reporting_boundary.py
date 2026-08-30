@@ -129,7 +129,7 @@ class _AdmittedIdentity:
     run_lock_reference: dict[str, str]
 
 
-def _semantic_validator(
+def _validate_semantic_receipt(
     kind: str,
     receipt_path: Path,
     run_root: Path,
@@ -137,22 +137,9 @@ def _semantic_validator(
     profile: Mapping[str, Any],
     attempt: Mapping[str, Any],
     config: Mapping[str, Any],
-) -> SemanticTransaction:
-    from emrys.reporting.transaction_validation import validate_receipt  # noqa: PLC0415
-
-    return validate_receipt(
-        kind, receipt_path, run_root, execution, profile, attempt, config
-    )
-
-
-def validate_read_semantic_receipt(
-    kind: str,
-    receipt_path: Path,
-    run_root: Path,
-    execution: Mapping[str, Any],
-    profile: Mapping[str, Any],
-    attempt: Mapping[str, Any],
-    config: Mapping[str, Any],
+    *,
+    read: bool = False,
+    validated_predecessor: SemanticTransaction | None = None,
 ) -> SemanticTransaction:
     from emrys.reporting.transaction_validation import validate_receipt  # noqa: PLC0415
 
@@ -165,9 +152,30 @@ def validate_read_semantic_receipt(
         attempt,
         config,
         historical_read=(
-            report_output_root(run_root, profile) == run_root / "products" / "report"
+            read
+            and report_output_root(run_root, profile) == run_root / "products" / "report"
         ),
+        validated_predecessor=validated_predecessor,
     )
+
+
+_semantic_validator = partial(_validate_semantic_receipt, read=False)
+validate_read_semantic_receipt = partial(_validate_semantic_receipt, read=True)
+
+
+def semantic_validator_session(*, read: bool) -> SemanticValidator:
+    """Reuse only the immediately preceding transaction in one fixed sequence."""
+
+    predecessor: SemanticTransaction | None = None
+
+    def validate(*args: Any) -> SemanticTransaction:
+        nonlocal predecessor
+        predecessor = _validate_semantic_receipt(
+            *args, read=read, validated_predecessor=predecessor
+        )
+        return predecessor
+
+    return validate
 
 
 def _publish_exclusive(path: Path, data: bytes) -> None:
@@ -783,7 +791,7 @@ def publish_verified(
     workflow_attempt_path: Path,
     workflow_config_path: Path,
     ops: ReportingBoundaryOps = DEFAULT_REPORTING_BOUNDARY_OPS,
-) -> None:
+) -> tuple[tuple[str, Path], ...]:
     """Semantically validate a completed transaction and publish proof last."""
 
     admitted_kind = _kind(kind)
@@ -877,6 +885,7 @@ def publish_verified(
     ops.publish_bytes(
         paths.verified, orchestration_contracts.canonical_json_bytes(record)
     )
+    return verified_report_locations
 
 
 def _identity_from_origin(

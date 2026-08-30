@@ -144,24 +144,21 @@ def test_dry_run_validates_first_producer_without_publishing(
     assert capsys.readouterr() == ("", "")
 
 
-def test_execute_publishes_fixed_sequence_then_reinspects(
+def test_execute_prepares_and_publishes_each_fixed_transaction_once(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     root = (tmp_path / "run-execute").resolve()
     root.mkdir()
     initial = _state(root)
-    completed = _state(root, reporting_status="complete")
     locations = (
         ("scientific-report-html", root / "results" / "scientific.html"),
         ("evidence-report-html", root / "results" / "evidence.html"),
     )
-    completed.verified_report_locations = locations
-    states = iter((initial, completed))
     monkeypatch.setattr(
         reporting_operation.inspection,
         "inspect_run",
-        lambda _root: next(states),
+        lambda _root: initial,
     )
     identity = _identity(root, initial)
     monkeypatch.setattr(
@@ -184,11 +181,9 @@ def test_execute_publishes_fixed_sequence_then_reinspects(
     def start(*, kind: str, **_kwargs: Any) -> None:
         observed.append(f"start:{kind}")
 
-    def verified(*, kind: str, **_kwargs: Any) -> SimpleNamespace:
+    def verified(*, kind: str, **_kwargs: Any) -> tuple[tuple[str, Path], ...]:
         observed.append(f"verified:{kind}")
-        return SimpleNamespace(
-            verified_report_locations=locations if kind == "html_report" else ()
-        )
+        return locations if kind == "html_report" else ()
 
     monkeypatch.setattr(reporting_operation, "_prepare_transaction", prepare)
     monkeypatch.setattr(reporting_operation, "_publish_prepared", publish)
@@ -206,17 +201,14 @@ def test_execute_publishes_fixed_sequence_then_reinspects(
     assert observed == [
         "prepare:artifact_index:1",
         "start:artifact_index",
-        "prepare:artifact_index:2",
         "publish:artifact_index",
         "verified:artifact_index",
         "prepare:run_summary:1",
         "start:run_summary",
-        "prepare:run_summary:2",
         "publish:run_summary",
         "verified:run_summary",
         "prepare:html_report:1",
         "start:html_report",
-        "prepare:html_report:2",
         "publish:html_report",
         "verified:html_report",
     ]
@@ -229,12 +221,10 @@ def test_generation_observer_runs_only_after_first_published_start(
     root = (tmp_path / "run-observed").resolve()
     root.mkdir()
     initial = _state(root)
-    completed = _state(root, reporting_status="complete")
-    states = iter((initial, completed))
     monkeypatch.setattr(
         reporting_operation.inspection,
         "inspect_run",
-        lambda _root: next(states),
+        lambda _root: initial,
     )
     identity = _identity(root, initial)
     monkeypatch.setattr(
@@ -264,9 +254,7 @@ def test_generation_observer_runs_only_after_first_published_start(
     monkeypatch.setattr(
         reporting_operation.reporting_boundary,
         "publish_verified",
-        lambda *, kind, **_kwargs: SimpleNamespace(
-            verified_report_locations=() if kind != "html_report" else ()
-        ),
+        lambda **_kwargs: (),
     )
 
     outcome = reporting_operation.run_reporting(
@@ -278,7 +266,7 @@ def test_generation_observer_runs_only_after_first_published_start(
     assert outcome.status == "generated"
     assert observed.count("observed") == 1
     assert observed.index("start:artifact_index") < observed.index("observed")
-    assert observed.index("observed") < observed.index("prepare:artifact_index:2")
+    assert observed.index("observed") < observed.index("publish:artifact_index")
 
 
 @pytest.mark.parametrize(
@@ -289,7 +277,7 @@ def test_generation_observer_runs_only_after_first_published_start(
         ("results_status", "blocked", "requires a successful Attempt"),
     ),
 )
-def test_final_inspection_rejects_blocked_scientific_state(
+def test_generation_rejects_blocked_scientific_state_before_publication(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     field: str,
@@ -299,42 +287,11 @@ def test_final_inspection_rejects_blocked_scientific_state(
     root = (tmp_path / field).resolve()
     root.mkdir()
     initial = _state(root)
-    completed = _state(root, reporting_status="complete")
-    setattr(completed, field, value)
-    locations = (
-        ("scientific-report-html", root / "results" / "scientific.html"),
-        ("evidence-report-html", root / "results" / "evidence.html"),
-    )
-    completed.verified_report_locations = locations
-    states = iter((initial, completed))
+    setattr(initial, field, value)
     monkeypatch.setattr(
         reporting_operation.inspection,
         "inspect_run",
-        lambda _root: next(states),
-    )
-    identity = _identity(root, initial)
-    monkeypatch.setattr(
-        reporting_operation.reporting_boundary,
-        "_admit_identity",
-        lambda **_kwargs: identity,
-    )
-    monkeypatch.setattr(
-        reporting_operation, "_prepare_transaction", lambda *_args: object()
-    )
-    monkeypatch.setattr(
-        reporting_operation,
-        "_publish_prepared",
-        lambda kind, _context: root / f"{kind}.receipt",
-    )
-    monkeypatch.setattr(
-        reporting_operation.reporting_boundary,
-        "publish_start",
-        lambda **_kwargs: None,
-    )
-    monkeypatch.setattr(
-        reporting_operation.reporting_boundary,
-        "publish_verified",
-        lambda **_kwargs: SimpleNamespace(verified_report_locations=locations),
+        lambda _root: initial,
     )
 
     with pytest.raises(reporting_operation.ReportingOperationError, match=message):

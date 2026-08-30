@@ -2741,6 +2741,7 @@ untouched.
 | Surface/category | Selected implementation and boundary |
 |---|---|
 | Runtime admission | Immediate noninteractive `run`/`resume --execute` reuses the runtime inspection that constructed the immutable plan, then retains the full post-workflow probe. A terminal-confirmed plan still performs a fresh execution-time probe because confirmation may introduce delay. Exact tool bytes, profile bytes and hash, fixed policy, source, storage, and Attempt identities are re-admitted before publication in every path. Public behavior, schemas, evidence, logging, and retained files change by zero. |
+| Reporting admission | One reporting invocation prepares each transaction once and validates artifact index, run summary, and HTML report topologically. Each downstream step rechecks the exact predecessor receipt; independent validators and later `inspect run` calls start fresh. Duplicate recursive semantic validation, its test-only collaborator wiring, and the final same-invocation reconstruction retire while receipt-last publication, immutable snapshots, source attestation, roster closure, recovery, historical reads, and independent direct validation remain. Product Python is net `-25` lines and protections/tests are net `-45`; no public output, schema, evidence, logging, or retained file changes. |
 
 ## 14. Measurement plan
 

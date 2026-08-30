@@ -286,7 +286,9 @@ def default_inspection_ops() -> InspectionOps:
     return InspectionOps(
         host_name=socket.gethostname,
         process_is_alive=_default_process_is_alive,
-        validate_reporting_receipt=reporting_boundary.validate_read_semantic_receipt,
+        validate_reporting_receipt=reporting_boundary.semantic_validator_session(
+            read=True
+        ),
     )
 
 
