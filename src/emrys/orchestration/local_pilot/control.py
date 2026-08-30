@@ -653,6 +653,7 @@ def _execute_plan(
     """Build and execute one plan inside one non-authoritative application log."""
 
     _admit_workspace_location(workspace)
+    reuse_runtime_inspection = callable(plan_source)
 
     execution_attempt_id = f"application-{uuid.uuid4().hex}"
     try:
@@ -786,7 +787,12 @@ def _execute_plan(
         )
         if plan.operation == "execute":
             admit_run(plan, ops=ops)
-        outcome = lifecycle.run_materialized_attempt(plan.preparation, lambda: publish_attempt(plan, ops=ops), ops=ops)
+        outcome = lifecycle.run_materialized_attempt(
+            plan.preparation,
+            lambda: publish_attempt(plan, ops=ops),
+            ops=ops,
+            initial_runtime_inspection=plan.readiness.inspection if reuse_runtime_inspection else None,
+        )
     except (
         MaterializationError,
         lifecycle.LifecycleError,

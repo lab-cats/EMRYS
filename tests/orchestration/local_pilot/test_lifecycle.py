@@ -21,6 +21,7 @@ from typing import Any
 import pytest
 
 from emrys.contracts.orchestration import api as orchestration_contracts
+from emrys.evidence.runtime_availability.inspector import RuntimeInspection
 from emrys.evidence.storage_inventory import qualification as storage_qualification
 from emrys.libraries.installed_package_identity import installed_package_tree_identity
 from emrys.orchestration.local_pilot import (
@@ -372,6 +373,7 @@ class Harness:
         _attempt: dict[str, Any],
         _request: lifecycle.LifecycleRequest,
         _storage_binding: doctor.RuntimeBinding | None,
+        _initial_inspection: RuntimeInspection | None,
     ) -> None:
         self.runtime_admissions += 1
         self.events.append("runtime-admitted")
@@ -2325,6 +2327,7 @@ def test_lying_runtime_authority_fails_before_mutation(tmp_path: Path) -> None:
         _attempt: dict[str, Any],
         _request: lifecycle.LifecycleRequest,
         _storage_binding: doctor.RuntimeBinding | None,
+        _initial_inspection: RuntimeInspection | None,
     ) -> None:
         raise lifecycle.LifecycleError("declared checkout differs from observed")
 

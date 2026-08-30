@@ -24,12 +24,14 @@ import yaml
 
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.projection import build_reporting_bundle
+from emrys.evidence.runtime_availability import inspector as runtime_inspector
 from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
     RuntimeObservation,
     load_runtime_profile_contract,
 )
+from emrys.libraries import source_authority
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.libraries.application_logging import (
     ApplicationLogError,
@@ -380,9 +382,9 @@ def _patch_lifecycle_execution(
 ) -> None:
     monkeypatch.setattr(control, "admit_run", lambda *_args, **_kwargs: None)
 
-    def run(_preparation, _publish, *, ops):
+    def run(_preparation, _publish, *, ops, initial_runtime_inspection=None):
         plan = plan_source() if callable(plan_source) else plan_source
-        return execute(plan, ops.observe_application_event)
+        return execute(plan, ops.observe_application_event, initial_runtime_inspection)
 
     monkeypatch.setattr(control.lifecycle, "run_materialized_attempt", run)
 
@@ -691,6 +693,80 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         set(item) == {"name", "version", "path", "resolved_path", "sha256"}
         for item in plan.attempt_record["required_tools"]
     )
+
+
+def _runtime_admission_fixture(
+    plan: materialization.AttemptPlan,
+    monkeypatch: pytest.MonkeyPatch,
+) -> tuple[lifecycle.LifecycleRequest, doctor.RuntimeBinding]:
+    ops = lifecycle.default_lifecycle_ops()
+    admit_run(plan, ops=ops)
+    request = publish_attempt(plan, ops=ops)
+    monkeypatch.setattr(
+        source_authority,
+        "inspect_source_checkout",
+        lambda **_kwargs: SimpleNamespace(
+            root=plan.readiness.source_root,
+            commit=plan.readiness.source_commit,
+            clean=True,
+        ),
+    )
+    monkeypatch.setattr(
+        doctor,
+        "validate_runtime_profile_contract",
+        lambda _checks, _source_root: None,
+    )
+    return request, next(
+        binding
+        for binding in plan.readiness.bindings
+        if binding.check_id == "storage_qualification"
+    )
+
+
+def test_runtime_admission_reuses_initial_inspection_then_reprobes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plan = _plan(tmp_path)
+    request, storage = _runtime_admission_fixture(plan, monkeypatch)
+    probes: list[Path] = []
+
+    def inspect(_data, path, _context, **_kwargs):
+        probes.append(path)
+        return plan.readiness.inspection
+
+    monkeypatch.setattr(runtime_inspector, "inspect_runtime_profile_bytes", inspect)
+
+    lifecycle._admit_runtime_context(
+        plan.attempt_record,
+        request,
+        storage,
+        plan.readiness.inspection,
+    )
+    assert probes == []
+
+    lifecycle._admit_runtime_context(plan.attempt_record, request, storage, None)
+    runtime_profile = next(
+        item
+        for item in plan.attempt_record["required_tools"]
+        if item["name"] == "runtime_profile"
+    )
+    assert probes == [Path(str(runtime_profile["path"]))]
+    profile_path = Path(str(runtime_profile["resolved_path"]))
+    profile_path.write_bytes(profile_path.read_bytes() + b"drift\n")
+    monkeypatch.setattr(
+        runtime_inspector,
+        "inspect_runtime_profile_bytes",
+        lambda *_args, **_kwargs: pytest.fail("drift reached external probes"),
+    )
+
+    with pytest.raises(lifecycle.LifecycleError, match="digest differs"):
+        lifecycle._admit_runtime_context(
+            plan.attempt_record,
+            request,
+            storage,
+            plan.readiness.inspection,
+        )
 
 
 def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> None:
@@ -1066,7 +1142,7 @@ def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
         process_id=lambda: plan.attempt_record["process_id"],
         process_is_alive=lambda _pid: True,
         admit_storage_context=lambda _attempt, _execution: None,
-        admit_runtime_context=lambda _attempt, _request, _storage: None,
+        admit_runtime_context=lambda _attempt, _request, _storage, _inspection: None,
     )
     admit_run(plan, ops=ops)
     implementation = checkout / relative
@@ -1452,7 +1528,7 @@ def test_locked_publication_terminalizes_failure_and_refuses_repeat(
         process_id=lambda: plan.attempt_record["process_id"],
         process_is_alive=lambda _pid: False,
         admit_storage_context=lambda _attempt, _execution: None,
-        admit_runtime_context=lambda _attempt, _request, _storage: None,
+        admit_runtime_context=lambda _attempt, _request, _storage, _inspection: None,
     )
 
     admit_run(plan, ops=ops)
@@ -1480,7 +1556,7 @@ def _failed_run(plan):
         process_id=lambda: plan.attempt_record["process_id"],
         process_is_alive=lambda _pid: False,
         admit_storage_context=lambda _attempt, _execution: None,
-        admit_runtime_context=lambda _attempt, _request, _storage: None,
+        admit_runtime_context=lambda _attempt, _request, _storage, _inspection: None,
     )
     if isinstance(plan.run, materialization.HistoricalRun):
         for item in plan.fixed_files:
@@ -1723,7 +1799,7 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         process_id=lambda: first.attempt_record["process_id"],
         process_is_alive=lambda _pid: True,
         admit_storage_context=lambda _attempt, _execution: None,
-        admit_runtime_context=lambda _attempt, _request, _storage: None,
+        admit_runtime_context=lambda _attempt, _request, _storage, _inspection: None,
     )
     admit_run(first, ops=first_ops)
     first_outcome = lifecycle.run_materialized_attempt(
@@ -1803,7 +1879,7 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         run_workflow=lambda _argv, _cwd: lifecycle.WorkflowResult(9, None),
         now=lambda: _after_plan(second),
         admit_storage_context=lambda _attempt, _execution: None,
-        admit_runtime_context=lambda _attempt, _request, _storage: None,
+        admit_runtime_context=lambda _attempt, _request, _storage, _inspection: None,
     )
     second_outcome = lifecycle.run_materialized_attempt(
         second.preparation,
@@ -1869,7 +1945,7 @@ def test_attempt_publication_leaves_star_index_directory_for_owner(
         process_id=lambda: plan.attempt_record["process_id"],
         process_is_alive=lambda _pid: False,
         admit_storage_context=lambda _attempt, _execution: None,
-        admit_runtime_context=lambda _attempt, _request, _storage: None,
+        admit_runtime_context=lambda _attempt, _request, _storage, _inspection: None,
     )
 
     admit_run(plan, ops=ops)
@@ -1898,7 +1974,7 @@ def test_lock_precedes_attempt_publication_failure_and_retains_evidence(
         base,
         publish_bytes=fail_on_config,
         admit_storage_context=lambda _attempt, _execution: None,
-        admit_runtime_context=lambda _attempt, _request, _storage: None,
+        admit_runtime_context=lambda _attempt, _request, _storage, _inspection: None,
     )
     admit_run(plan, ops=ops)
 
@@ -1938,7 +2014,7 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
         process_id=lambda: initial.attempt_record["process_id"],
         process_is_alive=lambda _pid: True,
         admit_storage_context=lambda _attempt, _execution: None,
-        admit_runtime_context=lambda _attempt, _request, _storage: None,
+        admit_runtime_context=lambda _attempt, _request, _storage, _inspection: None,
     )
     initial_ops = replace(
         common_ops,
@@ -2070,7 +2146,7 @@ def test_public_run_dry_run_is_no_write(
     arguments, workspace = _patch_run_control(
         tmp_path,
         monkeypatch,
-        execute_plan=lambda plan, _observe: executed.append(plan),
+        execute_plan=lambda plan, _observe, _inspection: executed.append(plan),
         transform_plan=lambda plan: plan,
     )
 
@@ -2144,13 +2220,15 @@ def test_interactive_run_confirms_exact_plan_before_every_write(
 ) -> None:
     planned = []
     executed = []
+    runtime_inspections: list[RuntimeInspection | None] = []
 
     def transform(plan):
         planned.append(plan)
         return plan
 
-    def execute(plan, _observe):
+    def execute(plan, _observe, initial_runtime_inspection):
         executed.append(plan)
+        runtime_inspections.append(initial_runtime_inspection)
         return lifecycle.LifecycleOutcome(
             attempt_path=plan.run_root / "attempt.json",
             receipt_path=plan.run_root / "attempt-receipt.json",
@@ -2189,9 +2267,11 @@ def test_interactive_run_confirms_exact_plan_before_every_write(
     if expected_exit == 1:
         assert len(planned) == len(executed) == 1
         assert executed[0] is planned[0]
+        assert runtime_inspections == [None]
         assert list(log_root.rglob("*.jsonl"))
     else:
         assert len(planned) == 1 and executed == []
+        assert runtime_inspections == []
         assert not (workspace / "runs").exists()
         assert not (workspace / "logs").exists()
         assert not log_root.exists()
@@ -2345,7 +2425,7 @@ def test_execute_failure_summary_names_owned_lock_and_recovery(
         plan.run_root / "attempts" / plan.workflow_attempt_id / "released-run-lock.json"
     )
 
-    def fail_with_owned_paths(_plan, _observe):
+    def fail_with_owned_paths(_plan, _observe, _inspection):
         lock_path.parent.mkdir(parents=True)
         lock_path.write_text("owned", encoding="utf-8")
         recovery_path.parent.mkdir(parents=True)
@@ -2713,8 +2793,10 @@ def test_direct_execution_owns_receipt_ordered_reporting_log(
     lock_path.write_text("active\n")
     observed_events = []
     report_calls = []
+    runtime_inspections = []
 
-    def execute(_plan, observe):
+    def execute(_plan, observe, initial_runtime_inspection):
+        runtime_inspections.append(initial_runtime_inspection)
         for event_name in ("analysis_started", "publication_ready"):
             observed_events.append(event_name)
             observe(event_name)
@@ -2813,6 +2895,7 @@ def test_direct_execution_owns_receipt_ordered_reporting_log(
         + reporting_events[report_mode]
     )
     assert observed_events == ["analysis_started", "publication_ready"]
+    assert runtime_inspections == [plan.readiness.inspection]
     captured = capsys.readouterr()
     assert captured.out == ""
     assert f"Evidence: {receipt_path}" in captured.err
@@ -2847,7 +2930,7 @@ def test_application_log_degradation_cannot_change_receipt_or_exit(
     receipt_path = tmp_path / "attempt-receipt.json"
     receipt_bytes = b"authoritative receipt\n"
 
-    def execute(_plan, observe):
+    def execute(_plan, observe, _inspection):
         observe("analysis_started")
         observe("publication_ready")
         receipt_path.write_bytes(receipt_bytes)
@@ -3268,6 +3351,7 @@ def _doubled_lifecycle_ops(
         attempt: Mapping[str, object],
         _request: lifecycle.LifecycleRequest,
         storage_binding: doctor.RuntimeBinding | None,
+        _initial_inspection: RuntimeInspection | None,
     ) -> None:
         assert attempt["execution_mode"] == "local-science-tools"
         assert storage_binding is None

@@ -12,7 +12,6 @@ from __future__ import annotations
 import hashlib
 import errno
 import os
-import platform
 import re
 import signal
 import socket
@@ -30,6 +29,7 @@ from types import FrameType
 from typing import TYPE_CHECKING, Any, Iterator, Literal
 
 if TYPE_CHECKING:
+    from emrys.evidence.runtime_availability.inspector import RuntimeInspection
     from emrys.evidence.storage_inventory.qualification import QualifiedStorage
     from emrys.orchestration.local_pilot.doctor import RuntimeBinding
 
@@ -112,7 +112,7 @@ StorageContextAdmission = Callable[
     "RuntimeBinding | None",
 ]
 RuntimeContextAdmission = Callable[
-    [Mapping[str, Any], "LifecycleRequest", "RuntimeBinding | None"],
+    [Mapping[str, Any], "LifecycleRequest", "RuntimeBinding | None", "RuntimeInspection | None"],
     None,
 ]
 DirectorySynchronizer = Callable[[Path, str], None]
@@ -942,23 +942,6 @@ def _process_is_alive(process_id: int) -> bool:
     return True
 
 
-def _tool_version(argv: Sequence[str], label: str) -> str:
-    try:
-        completed = subprocess.run(
-            [*argv, "--version"],
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-    except (OSError, UnicodeError, subprocess.CalledProcessError) as exc:
-        raise LifecycleError(f"Could not observe required tool: {label}") from exc
-    version = completed.stdout.strip().splitlines()
-    if not version or not version[0].strip():
-        raise LifecycleError(f"Required tool reported no version: {label}")
-    return version[0].strip()
-
-
 def _admit_required_tool_identity(identity: Mapping[str, Any]) -> None:
     """Re-admit one authored path against its canonical content digest."""
 
@@ -1074,6 +1057,7 @@ def _admit_runtime_context(
     attempt: Mapping[str, Any],
     request: LifecycleRequest,
     storage_binding: "RuntimeBinding | None",
+    initial_inspection: "RuntimeInspection | None",
 ) -> None:
     """Observe clean source/package and exact required executor identity."""
 
@@ -1104,8 +1088,6 @@ def _admit_runtime_context(
     snakemake = tools.get("snakemake")
     if python is None or snakemake is None:
         raise LifecycleError("Workflow attempt must declare required Python and Snakemake identities")
-    if Path(str(python["path"])) != request.python_executable:
-        raise LifecycleError("Required Python path differs from workflow runtime")
     if Path(str(attempt["normalizer"]["path"])) != request.python_executable:
         raise LifecycleError("Normalizer does not bind the workflow Python runtime")
     if (
@@ -1113,17 +1095,11 @@ def _admit_runtime_context(
         or attempt["normalizer"]["sha256"] != python["sha256"]
     ):
         raise LifecycleError("Normalizer does not bind the workflow Python bytes")
-    observed_python_version = _tool_version((str(request.python_executable),), "python")
-    expected_python_version = platform.python_version()
-    if observed_python_version.split()[-1] != expected_python_version:
-        raise LifecycleError("Bound Python runtime version differs from this process")
-    if python["version"] != expected_python_version:
-        raise LifecycleError("Required Python version differs from the bound runtime")
     if Path(str(snakemake["path"])) != request.python_executable:
         raise LifecycleError("Snakemake module identity must bind the Python runtime")
     from emrys.evidence.runtime_availability.inspector import (  # noqa: PLC0415
         RuntimeInspectionError,
-        inspect_runtime_availability,
+        inspect_runtime_profile_bytes,
     )
     from emrys.orchestration.local_pilot import doctor  # noqa: PLC0415
 
@@ -1131,32 +1107,34 @@ def _admit_runtime_context(
     if runtime_profile is None:
         raise LifecycleError("Local science attempt must bind its exact runtime profile")
     profile_path = Path(str(runtime_profile["path"]))
-    if profile_path != Path(str(runtime_profile["resolved_path"])):
-        raise LifecycleError(f"Runtime profile must be an absolute canonical file: {profile_path}")
     profile_bytes, _profile_identity = _read_bound_file(
         profile_path,
         "runtime profile",
     )
     profile_sha256 = hashlib.sha256(profile_bytes).hexdigest()
-    if runtime_profile["sha256"] != profile_sha256 or runtime_profile["version"] != f"sha256:{profile_sha256}":
-        raise LifecycleError("Required runtime profile digest differs from its bytes")
-    renv_project = tools.get("renv_project")
     renv_library = tools.get("renv_library")
-    if renv_project is None or renv_library is None or tools.get("java") is None:
-        raise LifecycleError("Local science attempt must bind its renv project, library, and Java launcher")
-    if Path(str(renv_project["resolved_path"])) != observed.root:
-        raise LifecycleError("Required renv project differs from the source checkout")
+    if renv_library is None:
+        raise LifecycleError("Local science attempt must bind its renv library")
     environment = guarded_r_environment(
         observed.root,
         Path(str(renv_library["resolved_path"])),
         base_environment=os.environ,
     )
     try:
-        runtime_inspection = inspect_runtime_availability(
+        runtime_inspection = initial_inspection or inspect_runtime_profile_bytes(
+            profile_bytes,
             profile_path,
             "local",
             environment=environment,
         )
+        if (
+            runtime_inspection.profile_bytes != profile_bytes
+            or runtime_inspection.profile_sha256 != profile_sha256
+            or runtime_inspection.runtime_context != "local"
+        ):
+            raise RuntimeInspectionError(
+                "Planning runtime inspection differs from the immutable Attempt profile"
+            )
         doctor.validate_runtime_profile_contract(
             tuple(item.check for item in runtime_inspection.observations),
             observed.root,
@@ -1303,6 +1281,7 @@ _admit_execution = partial(
 def _admit_request(
     request: LifecycleRequest,
     ops: LifecycleOps,
+    initial_runtime_inspection: "RuntimeInspection | None" = None,
 ) -> tuple[
     Path,
     dict[str, Any],
@@ -1419,7 +1398,7 @@ def _admit_request(
     }:
         raise LifecycleError("Workflow attempt does not bind authored request source")
     storage_binding = ops.admit_storage_context(attempt, execution)
-    ops.admit_runtime_context(attempt, request, storage_binding)
+    ops.admit_runtime_context(attempt, request, storage_binding, initial_runtime_inspection)
     if successor is not None:
         try:
             validate_successor_run(
@@ -1636,6 +1615,7 @@ def _run_attempt_locked(
     active_ops: LifecycleOps,
     signals: TransactionSignalController,
     _owned_lock: _OwnedRunLock | None = None,
+    initial_runtime_inspection: "RuntimeInspection | None" = None,
 ) -> LifecycleOutcome:
     """Execute one immutable local attempt while the fixed mutex is held."""
     (
@@ -1647,7 +1627,7 @@ def _run_attempt_locked(
         argv,
         config_reference,
         request_source_data,
-    ) = _admit_request(request, active_ops)
+    ) = _admit_request(request, active_ops, initial_runtime_inspection)
     if _owned_lock is None:
         _operation_preflight(request.operation, root, attempt, active_ops)
     identifier = str(attempt["workflow_attempt_id"])
@@ -1811,7 +1791,7 @@ def _run_attempt_locked(
             result = candidate
         try:
             storage_binding = active_ops.admit_storage_context(attempt, execution)
-            active_ops.admit_runtime_context(attempt, request, storage_binding)
+            active_ops.admit_runtime_context(attempt, request, storage_binding, None)
         except Exception as exc:
             runtime_blockers.append(f"Runtime identity changed during workflow execution: {exc}")
         try:
@@ -2066,6 +2046,7 @@ def run_materialized_attempt(
     materialize: AttemptMaterializer,
     *,
     ops: LifecycleOps | None = None,
+    initial_runtime_inspection: "RuntimeInspection | None" = None,
 ) -> LifecycleOutcome:
     """Serialize admission before publishing lock or attempt-specific inputs."""
 
@@ -2145,6 +2126,7 @@ def run_materialized_attempt(
                     active_ops=active_ops,
                     signals=signals,
                     _owned_lock=owned,
+                    initial_runtime_inspection=initial_runtime_inspection,
                 )
             except Exception as exc:
                 attempt_path = attempts_root / preparation.workflow_attempt_id / "attempt.json"
