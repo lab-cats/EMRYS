@@ -1675,7 +1675,7 @@ def _admit_run_before_attempt(root: Path, expected_run_id: str) -> None:
     except inspection.InspectionError as exc:
         raise LifecycleError(f"Could not admit successor Run: {exc}") from exc
     if successor is not None:
-        if successor.run_id != expected_run_id:
+        if successor.run_binding.run_id != expected_run_id:
             raise LifecycleError("Prepared Attempt does not bind admitted Run ID")
         return
     profile_path = _canonical_file(root / "contract" / "profile.json", "profile snapshot")
@@ -1938,7 +1938,7 @@ def _operation_preflight(
         raise LifecycleError("Only a failed or interrupted attempt may be resumed")
     if attempt["supersedes_workflow_attempt_id"] != latest["workflow_attempt_id"]:
         raise LifecycleError("Resume must supersede the exact latest workflow attempt")
-    for field in inspection.attempt_compatibility_fields(observed.authority_format):
+    for field in inspection.attempt_fields(observed.authority is not None):
         if attempt[field] != latest[field]:
             raise LifecycleError(f"Resume attempt is incompatible on {field}")
 
@@ -1999,7 +1999,7 @@ def _under_lock_attempt_preflight(
         "workflow_attempt_id"
     ] or observed.latest_receipt["status"] not in {"failed", "interrupted"}:
         raise LifecycleError("Resume lost its admissible terminal predecessor")
-    for field in inspection.attempt_compatibility_fields(observed.authority_format):
+    for field in inspection.attempt_fields(observed.authority is not None):
         if attempt[field] != observed.latest_attempt[field]:
             raise LifecycleError(f"Resume became incompatible on {field}")
 

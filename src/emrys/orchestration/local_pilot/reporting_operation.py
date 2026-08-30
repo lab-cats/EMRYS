@@ -218,7 +218,7 @@ def _require_successful_results(state: inspection.RunInspection) -> None:
 
 
 def _admit_generation(state: inspection.RunInspection) -> Any:
-    if state.authority_format != "successor":
+    if state.authority is None:
         raise ReportingOperationError(
             "New reporting generation requires a successor Run authority"
         )

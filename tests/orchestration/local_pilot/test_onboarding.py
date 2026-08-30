@@ -655,6 +655,7 @@ def test_public_cli_routes_synthetic_init_and_request_validation(
     stdout = capsys.readouterr().out
     assert "Published deterministic local-pilot fixture" in stdout
     assert "Project validation: PASS" in stdout
+    assert "Analysis revision:" not in stdout
 
 
 @pytest.mark.parametrize(

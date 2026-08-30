@@ -27,7 +27,7 @@ def _state(
     }
     return SimpleNamespace(
         run_root=root,
-        authority_format="successor",
+        authority=object(),
         integrity="valid",
         attempt_outcome="succeeded",
         results_status="complete",

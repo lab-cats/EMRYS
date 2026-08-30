@@ -619,7 +619,6 @@ def validate_from_args(arguments: argparse.Namespace) -> int:
     print("Project validation: PASS")
     print(f"  Project: {project.source_path}")
     print(f"  Project SHA-256: {project.source_sha256}")
-    print(f"  Analysis revision: {project.analysis.analysis_revision_id}")
     print(f"  Samples / paired strata: {result.sample_count} / {result.pair_count}")
     print(f"  Partitions: {result.partition_count}")
     print(

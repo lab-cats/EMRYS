@@ -118,6 +118,15 @@ class InspectionOps:
 
 
 @dataclass(frozen=True, slots=True)
+class SuccessorRunAuthority:
+    """One fully admitted successor authority triple."""
+
+    analysis_revision: AnalysisRevision
+    execution_plan: ExecutionPlan
+    run_binding: RunBinding
+
+
+@dataclass(frozen=True, slots=True)
 class RunInspection:
     """Complete derived state without a mutable status cache."""
 
@@ -132,10 +141,7 @@ class RunInspection:
     results_blockers: tuple[str, ...]
     reporting_blockers: tuple[str, ...]
     verified_report_locations: tuple[tuple[str, Path], ...] = ()
-    authority_format: Literal["legacy", "successor"] = "legacy"
-    analysis_revision: AnalysisRevision | None = None
-    execution_plan: ExecutionPlan | None = None
-    run_binding: RunBinding | None = None
+    authority: SuccessorRunAuthority | None = None
 
     @property
     def integrity(self) -> RunIntegrity:
@@ -205,19 +211,6 @@ class RunInspection:
         )
 
 
-@dataclass(frozen=True, slots=True)
-class SuccessorRunAuthority:
-    """One fully admitted successor authority triple."""
-
-    analysis_revision: AnalysisRevision
-    execution_plan: ExecutionPlan
-    run_binding: RunBinding
-
-    @property
-    def run_id(self) -> str:
-        return self.run_binding.run_id
-
-
 def _default_process_is_alive(process_id: int) -> bool:
     try:
         os.kill(process_id, 0)
@@ -248,10 +241,7 @@ def _attempt_outcome(
         return "succeeded"
     if integrity_blockers:
         return "blocked"
-    status = receipt["status"]
-    if status not in {"succeeded", "failed", "interrupted", "blocked"}:
-        return "blocked"
-    return cast(AttemptOutcome, status)
+    return cast(AttemptOutcome, receipt["status"])
 
 
 def _results_status(
@@ -1108,14 +1098,14 @@ def inspect_attempt_tree(root: Path) -> tuple[tuple[Path, ...], tuple[str, ...]]
     return tuple(entries), tuple(blockers)
 
 
-def attempt_compatibility_fields(
-    authority_format: Literal["legacy", "successor"],
+def attempt_fields(
+    successor: bool,
 ) -> tuple[str, ...]:
     """Return fields that must remain equal across Attempts for one Run format."""
 
     common = ("run_id", "execution_contract_sha256", "profile_sha256")
     attempt_semantics = ("execution_mode", "executor")
-    if authority_format == "successor":
+    if successor:
         return (*common, *attempt_semantics)
     return (*common, "source_checkout", "required_tools", *attempt_semantics)
 
@@ -1123,8 +1113,7 @@ def attempt_compatibility_fields(
 def _inspect_attempt_chain_by_domain(
     root: Path,
     *,
-    authority_format: Literal["legacy", "successor"] | None = None,
-    successor_authority: SuccessorRunAuthority | None = None,
+    authority: SuccessorRunAuthority | None = None,
     profile: Mapping[str, Any] | None = None,
 ) -> tuple[
     tuple[dict[str, Any], ...],
@@ -1133,16 +1122,9 @@ def _inspect_attempt_chain_by_domain(
     list[str],
     list[str],
 ]:
-    if authority_format is None:
-        authority_format = (
-            "successor" if admit_successor_run(root) is not None else "legacy"
-        )
-    if successor_authority is not None and (
-        authority_format != "successor" or profile is None
-    ):
-        raise InspectionError(
-            "Successor Attempt admission requires complete Run context"
-        )
+    if authority is None:
+        authority = admit_successor_run(root)
+    successor_format = authority is not None
     records: dict[str, dict[str, Any]] = {}
     attempt_references: dict[str, dict[str, str]] = {}
     receipts: dict[str, dict[str, Any]] = {}
@@ -1238,9 +1220,9 @@ def _inspect_attempt_chain_by_domain(
                 "Superseded workflow attempt is not resumable: "
                 f"{identifier}/{predecessor_receipt['status']}"
             )
-        successor = ordered[index + 1]
-        for field in attempt_compatibility_fields(authority_format):
-            if successor[field] != attempt[field]:
+        next_attempt = ordered[index + 1]
+        for field in attempt_fields(successor_format):
+            if next_attempt[field] != attempt[field]:
                 blockers.append(
                     f"Adjacent workflow attempts differ on {field}: {identifier}"
                 )
@@ -1252,7 +1234,7 @@ def _inspect_attempt_chain_by_domain(
                 str(predecessor_receipt["finished_at"]).replace("Z", "+00:00")
             )
             successor_created = datetime.fromisoformat(
-                str(successor["created_at"]).replace("Z", "+00:00")
+                str(next_attempt["created_at"]).replace("Z", "+00:00")
             )
         except ValueError:
             blockers.append(
@@ -1326,11 +1308,7 @@ def _inspect_attempt_chain_by_domain(
                     "execution_path": str(
                         root
                         / "contract"
-                        / (
-                            "run.json"
-                            if authority_format == "successor"
-                            else "normalized.json"
-                        )
+                        / ("run.json" if successor_format else "normalized.json")
                     ),
                     "profile_path": str(root / "contract" / "profile.json"),
                     "workflow_attempt_id": identifier,
@@ -1351,12 +1329,12 @@ def _inspect_attempt_chain_by_domain(
                     blockers.append(
                         f"Workflow attempt config binding no longer matches: {identifier}"
                     )
-                if successor_authority is not None:
+                if authority is not None and profile is not None:
                     try:
                         validate_successor_run(
-                            analysis=successor_authority.analysis_revision,
-                            plan=successor_authority.execution_plan,
-                            run=successor_authority.run_binding,
+                            analysis=authority.analysis_revision,
+                            plan=authority.execution_plan,
+                            run=authority.run_binding,
                             profile=profile,
                             attempt=attempt,
                             resource_policy=config_document["resource_policy"],
@@ -1685,10 +1663,6 @@ def _inspect_attempt_chain_by_domain(
 
 def inspect_attempt_chain(
     root: Path,
-    *,
-    authority_format: Literal["legacy", "successor"] | None = None,
-    successor_authority: SuccessorRunAuthority | None = None,
-    profile: Mapping[str, Any] | None = None,
 ) -> tuple[
     tuple[dict[str, Any], ...],
     dict[str, dict[str, Any]],
@@ -1697,12 +1671,7 @@ def inspect_attempt_chain(
     """Admit the Attempt chain with its historical aggregate blocker result."""
 
     attempts, receipts, integrity, results, _reporting = (
-        _inspect_attempt_chain_by_domain(
-            root,
-            authority_format=authority_format,
-            successor_authority=successor_authority,
-            profile=profile,
-        )
+        _inspect_attempt_chain_by_domain(root)
     )
     return attempts, receipts, [*integrity, *results]
 
@@ -2261,7 +2230,7 @@ def inspect_run(
             attempt_blockers,
             attempt_results_blockers,
             attempt_reporting_blockers,
-        ) = _inspect_attempt_chain_by_domain(root, authority_format="successor")
+        ) = _inspect_attempt_chain_by_domain(root, authority=authority)
         integrity_blockers.extend(attempt_blockers)
         results_blockers.extend(attempt_results_blockers)
         reporting_blockers.extend(attempt_reporting_blockers)
@@ -2299,7 +2268,7 @@ def inspect_run(
         )
         return RunInspection(
             run_root=root,
-            run_id=authority.run_id,
+            run_id=authority.run_binding.run_id,
             attempt_outcome=outcome,
             latest_attempt=latest,
             latest_receipt=latest_receipt,
@@ -2311,10 +2280,7 @@ def inspect_run(
             integrity_blockers=tuple(dict.fromkeys(integrity_blockers)),
             results_blockers=tuple(dict.fromkeys(results_blockers)),
             reporting_blockers=tuple(dict.fromkeys(reporting_blockers)),
-            authority_format="successor",
-            analysis_revision=authority.analysis_revision,
-            execution_plan=authority.execution_plan,
-            run_binding=authority.run_binding,
+            authority=authority,
         )
     if authority is None and profile_present != legacy_execution_present:
         raise InspectionError("Run has an incomplete profile/execution contract pair")
@@ -2363,8 +2329,7 @@ def inspect_run(
         attempt_reporting_blockers,
     ) = _inspect_attempt_chain_by_domain(
         root,
-        authority_format="successor" if authority is not None else "legacy",
-        successor_authority=authority,
+        authority=authority,
         profile=profile if authority is not None else None,
     )
     integrity_blockers.extend(attempt_blockers)
@@ -2526,7 +2491,9 @@ def inspect_run(
     return RunInspection(
         run_root=root,
         run_id=(
-            authority.run_id if authority is not None else str(execution["run_id"])
+            authority.run_binding.run_id
+            if authority is not None
+            else str(execution["run_id"])
         ),
         attempt_outcome=outcome,
         latest_attempt=latest,
@@ -2537,10 +2504,7 @@ def inspect_run(
         results_blockers=tuple(dict.fromkeys(results_blockers)),
         reporting_blockers=tuple(dict.fromkeys(reporting_blockers)),
         verified_report_locations=verified_report_locations,
-        authority_format="successor" if authority is not None else "legacy",
-        analysis_revision=(None if authority is None else authority.analysis_revision),
-        execution_plan=(None if authority is None else authority.execution_plan),
-        run_binding=(None if authority is None else authority.run_binding),
+        authority=authority,
     )
 
 
@@ -2557,7 +2521,7 @@ __all__ = (
     "admit_execution_path",
     "admit_successor_run",
     "admit_attempt_run_lock",
-    "attempt_compatibility_fields",
+    "attempt_fields",
     "default_inspection_ops",
     "expected_tasks",
     "inspect_attempt_tree",
