@@ -427,7 +427,7 @@ def _assert_complete_products(run_root: Path, run_id: str) -> None:
     assert "scientific_review" not in summary
 
 
-def test_public_cli_accepts_explicit_control_ops_and_harness_starts(
+def test_public_cli_inspection_uses_the_production_boundary(
     tmp_path: Path,
 ) -> None:
     program = """
@@ -463,19 +463,8 @@ observed = SimpleNamespace(
     recovery_available=True,
     verified_report_locations=(),
 )
-ops = control.ControlOps(
-    inspect_readiness=unreachable,
-    admit_project=unreachable,
-    inspect_run=lambda _root: observed,
-    execute_plan=unreachable,
-    transform_plan=unreachable,
-    now=unreachable,
-    token=unreachable,
-)
-status = cli.main(
-    ["inspect", "local-pilot-run", "--run-root", "/ignored"],
-    local_pilot_control_ops=ops,
-)
+control.inspection.inspect_run = lambda _root: observed
+status = cli.main(["inspect", "local-pilot-run", "--run-root", "/ignored"])
 print(json.dumps({"status": status}))
 """
     seam = _run(
@@ -566,11 +555,12 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     )
 
     readiness = _public_command(
-        ["doctor", "local-pilot", *common],
+        ["doctor", *common],
         environment=environment,
     )
     assert readiness.returncode == 0, readiness.stdout + readiness.stderr
-    assert "READY: local-pilot prerequisites passed." in readiness.stdout
+    assert readiness.stdout == ""
+    assert "EMRYS is ready." in readiness.stderr
 
     dry_run = _public_command(["run", *run_common], environment=environment)
     assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr

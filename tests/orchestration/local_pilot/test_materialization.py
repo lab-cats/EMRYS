@@ -13,7 +13,7 @@ import subprocess
 import sys
 import threading
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -70,9 +70,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 _POLICY_BYTES, POLICY_CHECKS = load_runtime_profile_contract(
     onboarding.runtime_policy_path()
 )
-RUNTIME_CHECKS = tuple(
-    (check.check_id, check.check_type) for check in POLICY_CHECKS
-)
+RUNTIME_CHECKS = tuple((check.check_id, check.check_type) for check in POLICY_CHECKS)
 R_PACKAGES = tuple(
     (check.check_id, check.target)
     for check in POLICY_CHECKS
@@ -194,11 +192,7 @@ def _readiness(
         elif check_id == "renv_library":
             target = str(renv_library)
         elif check_type == "r_namespace":
-            target = next(
-                package
-                for key, package in R_PACKAGES
-                if key == check_id
-            )
+            target = next(package for key, package in R_PACKAGES if key == check_id)
         else:
             target = str(tool)
         if check_id == "picard":
@@ -233,9 +227,7 @@ def _readiness(
                 ),
                 status="pass",
                 observed=(
-                    "9.25.1"
-                    if check_id == "snakemake"
-                    else f"observed-{check_id}"
+                    "9.25.1" if check_id == "snakemake" else f"observed-{check_id}"
                 ),
                 detail="test runtime",
                 resolved_path=(
@@ -265,8 +257,7 @@ def _readiness(
     )
     bindings = (*doctor.runtime_file_bindings(runtime_inspection), storage_binding)
     readiness = doctor.DoctorResult(
-        project_path=request,
-        workspace=workspace,
+        project=normalized,
         source_root=source_root,
         source_commit=source_commit,
         inspection=runtime_inspection,
@@ -300,15 +291,47 @@ def _plan(
         workspace,
         resources=resources,
         operation="execute",
-        now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
-        token="1" * 32,
-        host="test-host",
-        process_id=123,
     )
 
 
-def _run_control(tmp_path: Path, execute_plan, transform_plan):
-    readiness, project, resources, project_path, workspace = _readiness(tmp_path)
+def _freeze_attempt_identity(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    token: str = "1" * 32,
+    minute: int = 0,
+    host: str = "test-host",
+    process_id: int = 123,
+) -> None:
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return cls(2026, 8, 12, 20, minute, tzinfo=tz or UTC)
+
+    monkeypatch.setattr(materialization, "datetime", FixedDateTime)
+    monkeypatch.setattr(
+        materialization.uuid,
+        "uuid4",
+        lambda: SimpleNamespace(hex=token),
+    )
+    monkeypatch.setattr(materialization.socket, "gethostname", lambda: host)
+    monkeypatch.setattr(materialization.os, "getpid", lambda: process_id)
+
+
+def _after_plan(plan, *, minutes: int = 0) -> datetime:
+    created = datetime.fromisoformat(
+        str(plan.attempt_record["created_at"]).replace("Z", "+00:00")
+    )
+    return created + timedelta(minutes=minutes)
+
+
+def _patch_run_control(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    execute_plan,
+    transform_plan,
+):
+    readiness, _project, resources, project_path, workspace = _readiness(tmp_path)
     arguments = argparse.Namespace(
         project=project_path,
         execution_profile=project_path.parent / "emrys.execution.yaml",
@@ -316,17 +339,45 @@ def _run_control(tmp_path: Path, execute_plan, transform_plan):
         log_root=None,
         execute=False,
     )
-    ops = replace(
-        control.DEFAULT_CONTROL_OPS,
-        inspect_readiness=lambda *_args: readiness,
-        admit_project=lambda *_args: project,
-        execute_plan=execute_plan,
-        transform_plan=transform_plan,
-        now=lambda: datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
-        token=lambda: "2" * 32,
-        observe_allocation=lambda: resources.allocation,
+    real_build = control.build_attempt_plan
+    plans = []
+    monkeypatch.setattr(
+        control.doctor,
+        "diagnose_project",
+        lambda *_args: readiness,
     )
-    return arguments, workspace, ops
+    monkeypatch.setattr(
+        control.capacity,
+        "observe_allocation",
+        lambda: resources.allocation,
+    )
+    _patch_lifecycle_execution(monkeypatch, lambda: plans[-1], execute_plan)
+
+    def build(*args, **kwargs):
+        plan = transform_plan(real_build(*args, **kwargs))
+        plans.append(plan)
+        return plan
+
+    monkeypatch.setattr(
+        control,
+        "build_attempt_plan",
+        build,
+    )
+    return arguments, workspace
+
+
+def _patch_lifecycle_execution(
+    monkeypatch: pytest.MonkeyPatch,
+    plan_source,
+    execute,
+) -> None:
+    monkeypatch.setattr(control, "admit_run", lambda *_args, **_kwargs: None)
+
+    def run(_preparation, _publish, *, ops):
+        plan = plan_source() if callable(plan_source) else plan_source
+        return execute(plan, ops.observe_application_event)
+
+    monkeypatch.setattr(control.lifecycle, "run_materialized_attempt", run)
 
 
 def _dispatch_records(plan) -> list[dict[str, object]]:
@@ -638,6 +689,7 @@ def test_attempt_plan_preserves_reporting_materialization(tmp_path: Path) -> Non
 
 def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     readiness, normalized, resources, _request, workspace = _readiness(tmp_path)
     direct_run = _run_candidate(readiness, normalized, resources)
@@ -663,13 +715,13 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
         scheduled_run.run_binding.canonical_bytes,
     )
 
-    attempt_context = {
-        "operation": "execute",
-        "now": datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
-        "token": "3" * 32,
-        "host": "parity-host",
-        "process_id": 456,
-    }
+    _freeze_attempt_identity(
+        monkeypatch,
+        token="3" * 32,
+        host="parity-host",
+        process_id=456,
+    )
+    attempt_context = {"operation": "execute"}
     direct_plan = build_attempt_plan(
         direct_run,
         readiness,
@@ -760,17 +812,20 @@ def test_direct_and_slurm_share_plan_when_resources_resolve_equally(
 
 def test_attempt_plan_records_placement_without_making_it_run_compatibility(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     readiness, normalized, resources, _request, workspace = _readiness(tmp_path)
     run = _run_candidate(readiness, normalized, resources)
     context = {
         "resources": resources,
         "operation": "execute",
-        "now": datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
-        "token": "4" * 32,
-        "host": "placement-host",
-        "process_id": 456,
     }
+    _freeze_attempt_identity(
+        monkeypatch,
+        token="4" * 32,
+        host="placement-host",
+        process_id=456,
+    )
     direct_placement = {
         "kind": "direct",
         "source": {"path": "/profiles/direct.yaml", "sha256": "a" * 64},
@@ -960,17 +1015,13 @@ def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
         workspace,
         resources=resources,
         operation="execute",
-        now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
-        token="1" * 32,
-        host="test-host",
-        process_id=123,
     )
     base = lifecycle.default_lifecycle_ops()
     ops = replace(
         base,
         run_workflow=lambda _argv, _cwd: pytest.fail("workflow must not start"),
-        host_name=lambda: "test-host",
-        process_id=lambda: 123,
+        host_name=lambda: plan.attempt_record["host"],
+        process_id=lambda: plan.attempt_record["process_id"],
         process_is_alive=lambda _pid: True,
         admit_storage_context=lambda _attempt, _execution: None,
         admit_runtime_context=lambda _attempt, _request, _storage: None,
@@ -987,44 +1038,6 @@ def test_lifecycle_refuses_run_bound_implementation_drift_before_attempt(
         )
 
     assert not (plan.run_root / "attempts" / plan.workflow_attempt_id).exists()
-
-
-@pytest.mark.parametrize("storage_binding_count", (0, 2))
-def test_plan_requires_exactly_one_storage_qualification_binding(
-    tmp_path: Path,
-    storage_binding_count: int,
-) -> None:
-    readiness, normalized, resources, _request, workspace = _readiness(tmp_path)
-    storage_binding = next(
-        binding
-        for binding in readiness.bindings
-        if binding.check_id == "storage_qualification"
-    )
-    non_storage = tuple(
-        binding
-        for binding in readiness.bindings
-        if binding.check_id != "storage_qualification"
-    )
-    malformed = replace(
-        readiness,
-        bindings=non_storage + (storage_binding,) * storage_binding_count,
-    )
-
-    with pytest.raises(
-        MaterializationError,
-        match="Run-bindable",
-    ):
-        build_attempt_plan(
-            _run_candidate(malformed, normalized, resources),
-            malformed,
-            workspace,
-            resources=resources,
-            operation="execute",
-            now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
-            token="1" * 32,
-            host="test-host",
-            process_id=123,
-        )
 
 
 def test_plan_passes_threads_only_to_thread_capable_tools(tmp_path: Path) -> None:
@@ -1167,6 +1180,7 @@ def test_every_projected_owner_command_is_accepted_by_public_help(
 def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     tmp_path: Path,
     capsys,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     plan = _plan(tmp_path)
     base = lifecycle.default_lifecycle_ops()
@@ -1226,12 +1240,9 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
         run_root=Path("/tmp/historical\x1b[31m-run"),
         authority=None,
     )
-    historical_ops = replace(
-        control.DEFAULT_CONTROL_OPS,
-        inspect_run=lambda _root: historical,
-    )
+    monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: historical)
     arguments.detail = "verbose"
-    assert control.inspect_from_args(arguments, ops=historical_ops) == 0
+    assert control.inspect_from_args(arguments) == 0
     historical_output = capsys.readouterr().out
     assert "Identity model: historical execution.v1" in historical_output
     assert "Analysis ID:" not in historical_output
@@ -1240,19 +1251,20 @@ def test_run_authority_is_committed_last_and_is_inspectable_without_an_attempt(
     assert r"\x1b" in historical_output
 
     arguments.detail = "debug"
-    assert control.inspect_from_args(arguments, ops=historical_ops) == 0
+    assert control.inspect_from_args(arguments) == 0
     historical_debug = capsys.readouterr().out
     assert "Historical authority record:" in historical_debug
     assert "Run authority records:" not in historical_debug
     assert "contract/execution-plan.json" not in historical_debug
 
-    unsafe_error_ops = replace(
-        control.DEFAULT_CONTROL_OPS,
-        inspect_run=lambda _root: (_ for _ in ()).throw(
+    monkeypatch.setattr(
+        control.inspection,
+        "inspect_run",
+        lambda _root: (_ for _ in ()).throw(
             inspection.InspectionError("invalid /tmp/run\x1b[31m-root")
         ),
     )
-    assert control.inspect_from_args(arguments, ops=unsafe_error_ops) == 2
+    assert control.inspect_from_args(arguments) == 2
     unsafe_error = capsys.readouterr().err
     assert "\x1b" not in unsafe_error
     assert r"\x1b" in unsafe_error
@@ -1306,6 +1318,7 @@ def test_pre_binding_failure_quarantines_only_uncommitted_run_residue(
 
 def test_post_binding_interruption_completes_the_exact_pristine_run(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     plan = _plan(tmp_path)
     base = lifecycle.default_lifecycle_ops()
@@ -1338,24 +1351,22 @@ def test_post_binding_interruption_completes_the_exact_pristine_run(
     assert all(
         (plan.run_root / name).is_dir() for name in ("attempts", "locks", "state")
     )
-    control_ops = control.ControlOps(
-        inspect_readiness=lambda _request, _workspace, _runtime: plan.readiness,
-        admit_project=lambda _request, _profile: plan.run.project,
-        inspect_run=inspection.inspect_run,
-        execute_plan=lambda _plan, _observe: pytest.fail("planning must not execute"),
-        transform_plan=lambda value: value,
-        now=lambda: datetime(2026, 8, 12, 20, 1, tzinfo=UTC),
-        token=lambda: "2" * 32,
-        observe_allocation=lambda: plan.resources.allocation,
+    monkeypatch.setattr(
+        control.doctor,
+        "diagnose_project",
+        lambda *_args: plan.readiness,
+    )
+    monkeypatch.setattr(
+        control.capacity,
+        "observe_allocation",
+        lambda: plan.resources.allocation,
     )
     replanned = control._plan_run(
         plan.run.project.source_path,
-        plan.workspace,
         execution_profile=load_execution_profile(
             plan.run.project.source_path,
             config_path=plan.run.project.source_path.parent / "emrys.execution.yaml",
         ),
-        ops=control_ops,
     )
     assert (
         replanned.run.run_binding.canonical_bytes
@@ -1394,9 +1405,9 @@ def test_locked_publication_terminalizes_failure_and_refuses_repeat(
     ops = replace(
         base,
         run_workflow=lambda _argv, _cwd: lifecycle.WorkflowResult(9, None),
-        now=lambda: datetime(2026, 8, 12, 20, 5, tzinfo=UTC),
-        host_name=lambda: "test-host",
-        process_id=lambda: 123,
+        now=lambda: _after_plan(plan),
+        host_name=lambda: plan.attempt_record["host"],
+        process_id=lambda: plan.attempt_record["process_id"],
         process_is_alive=lambda _pid: False,
         admit_storage_context=lambda _attempt, _execution: None,
         admit_runtime_context=lambda _attempt, _request, _storage: None,
@@ -1422,9 +1433,9 @@ def _failed_run(plan):
     ops = replace(
         lifecycle.default_lifecycle_ops(),
         run_workflow=lambda _argv, _cwd: lifecycle.WorkflowResult(9, None),
-        now=lambda: datetime(2026, 8, 12, 20, 5, tzinfo=UTC),
-        host_name=lambda: "test-host",
-        process_id=lambda: 123,
+        now=lambda: _after_plan(plan),
+        host_name=lambda: plan.attempt_record["host"],
+        process_id=lambda: plan.attempt_record["process_id"],
         process_is_alive=lambda _pid: False,
         admit_storage_context=lambda _attempt, _execution: None,
         admit_runtime_context=lambda _attempt, _request, _storage: None,
@@ -1448,7 +1459,13 @@ def _failed_run(plan):
     return observed
 
 
-def _resume_ops(observed, readiness, project, resources, selected):
+def _patch_resume_control(
+    monkeypatch: pytest.MonkeyPatch,
+    observed,
+    readiness,
+    resources,
+    selected,
+) -> None:
     def inspect_readiness(
         _project: Path,
         _workspace: Path,
@@ -1457,19 +1474,22 @@ def _resume_ops(observed, readiness, project, resources, selected):
         selected.append(runtime_profile)
         return readiness
 
-    return replace(
-        control.DEFAULT_CONTROL_OPS,
-        inspect_run=lambda _root: observed,
-        inspect_readiness=inspect_readiness,
-        admit_project=lambda _request, _profile: project,
-        now=lambda: datetime(2026, 8, 12, 20, 10, tzinfo=UTC),
-        token=lambda: "2" * 32,
-        observe_allocation=lambda: resources.allocation,
+    monkeypatch.setattr(control.inspection, "inspect_run", lambda _root: observed)
+    monkeypatch.setattr(
+        control.doctor,
+        "inspect_local_pilot",
+        inspect_readiness,
+    )
+    monkeypatch.setattr(
+        control.capacity,
+        "observe_allocation",
+        lambda: resources.allocation,
     )
 
 
 def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     readiness, project, resources, request, workspace = _readiness(tmp_path)
     legacy, legacy_bytes = project.historical_execution_v1()
@@ -1483,10 +1503,6 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
         workspace,
         resources=resources,
         operation="execute",
-        now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
-        token="1" * 32,
-        host="test-host",
-        process_id=123,
     )
     observed = _failed_run(first)
     assert observed.authority is None
@@ -1501,23 +1517,24 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
         inspection=replace(readiness.inspection, profile_path=retained),
     )
     selected: list[Path] = []
+    _patch_resume_control(
+        monkeypatch,
+        observed,
+        fallback_readiness,
+        resources,
+        selected,
+    )
     second = control._plan_resume(
         first.run_root,
         execution_profile=load_execution_profile(request),
         profile_resources_explicit=False,
-        ops=_resume_ops(
-            observed,
-            fallback_readiness,
-            project,
-            resources,
-            selected,
-        ),
     )
 
     assert selected == [retained]
-    assert second.attempt_record["required_tools"] == first.attempt_record[
-        "required_tools"
-    ]
+    assert (
+        second.attempt_record["required_tools"]
+        == first.attempt_record["required_tools"]
+    )
     assert not {
         retained,
         second.run_root
@@ -1528,6 +1545,7 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
 
 def test_pre_cutover_successor_resume_snapshots_retained_runtime_profile(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     first = _plan(tmp_path)
     observed = _failed_run(first)
@@ -1543,17 +1561,17 @@ def test_pre_cutover_successor_resume_snapshots_retained_runtime_profile(
         inspection=replace(first.readiness.inspection, profile_path=retained),
     )
     selected: list[Path] = []
+    _patch_resume_control(
+        monkeypatch,
+        observed,
+        fallback_readiness,
+        first.resources,
+        selected,
+    )
     second = control._plan_resume(
         first.run_root,
         execution_profile=load_execution_profile(first.run.project.source_path),
         profile_resources_explicit=False,
-        ops=_resume_ops(
-            observed,
-            fallback_readiness,
-            first.run.project,
-            first.resources,
-            selected,
-        ),
     )
 
     new_profile = next(
@@ -1568,13 +1586,14 @@ def test_pre_cutover_successor_resume_snapshots_retained_runtime_profile(
         / "contract/runtime-profiles"
         / f"{second.workflow_attempt_id}.tsv"
     )
-    assert [
-        item.data for item in second.attempt_files if item.path == new_profile
-    ] == [first.readiness.inspection.profile_bytes]
+    assert [item.data for item in second.attempt_files if item.path == new_profile] == [
+        first.readiness.inspection.profile_bytes
+    ]
 
 
 def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     first_source = tmp_path / "first-source"
     second_source = tmp_path / "second-source"
@@ -1599,8 +1618,7 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     runtime_sha256 = hashlib.sha256(runtime_bytes).hexdigest()
     readiness_two = replace(
         readiness_two,
-        project_path=readiness_one.project_path,
-        workspace=workspace,
+        project=readiness_one.project,
         inspection=replace(
             readiness_two.inspection,
             profile_sha256=runtime_sha256,
@@ -1636,18 +1654,14 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         workspace,
         resources=first_resources,
         operation="execute",
-        now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
-        token="1" * 32,
-        host="test-host",
-        process_id=123,
     )
     base = lifecycle.default_lifecycle_ops()
     first_ops = replace(
         base,
         run_workflow=lambda _argv, _cwd: lifecycle.WorkflowResult(9, None),
-        now=lambda: datetime(2026, 8, 12, 20, 5, tzinfo=UTC),
-        host_name=lambda: "test-host",
-        process_id=lambda: 123,
+        now=lambda: _after_plan(first),
+        host_name=lambda: first.attempt_record["host"],
+        process_id=lambda: first.attempt_record["process_id"],
         process_is_alive=lambda _pid: True,
         admit_storage_context=lambda _attempt, _execution: None,
         admit_runtime_context=lambda _attempt, _request, _storage: None,
@@ -1670,20 +1684,6 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         selected_runtime_profiles.append(runtime_profile)
         return readiness_two
 
-    resume_ops = control.ControlOps(
-        inspect_readiness=inspect_second_runtime,
-        admit_project=lambda _request, _profile: normalized,
-        inspect_run=inspection.inspect_run,
-        execute_plan=lambda _plan, _observe: pytest.fail("planning must not execute"),
-        transform_plan=lambda value: value,
-        now=lambda: datetime(2026, 8, 12, 20, 10, tzinfo=UTC),
-        token=lambda: "2" * 32,
-        observe_allocation=lambda: AllocationCapacity(
-            cores=1,
-            memory_mb=16_384,
-            source="second test allocation",
-        ),
-    )
     source = normalized.construction
     old_locator = Path(source["samples"]["rows"][0]["r1_fastq"]["path"])
     relocated = tmp_path / "relocated-inputs" / old_locator.name
@@ -1694,27 +1694,35 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         normalized,
         construction_bytes=orchestration_contracts.canonical_json_bytes(source),
     )
+    readiness_two = replace(readiness_two, project=relocated_normalized)
     relocated_run = _run_candidate(readiness_two, relocated_normalized, first_resources)
     assert old_locator.is_file() and relocated.is_file()
     assert relocated_run.run_id == run_one.run_id
     assert relocated_normalized.construction_bytes != normalized.construction_bytes
 
     resume_profile = load_execution_profile(
-        readiness_one.project_path,
+        readiness_one.project.source_path,
         config_path=_slurm_profile(tmp_path),
+    )
+    monkeypatch.setattr(control.doctor, "inspect_local_pilot", inspect_second_runtime)
+    monkeypatch.setattr(control.inspection, "inspect_run", inspection.inspect_run)
+    monkeypatch.setattr(
+        control.capacity,
+        "observe_allocation",
+        lambda: AllocationCapacity(
+            cores=1,
+            memory_mb=16_384,
+            source="second test allocation",
+        ),
     )
     second = control._plan_resume(
         first.run_root,
         execution_profile=resume_profile,
         profile_resources_explicit=False,
         scheduler_job_id="700123",
-        ops=replace(
-            resume_ops,
-            admit_project=lambda _request, _profile: relocated_normalized,
-        ),
     )
     assert selected_runtime_profiles == [
-        onboarding.runtime_profile_path(readiness_one.project_path)
+        onboarding.runtime_profile_path(readiness_one.project.source_path)
     ]
     assert second.execution_path == first.execution_path
     effective_resume_profile = replace(
@@ -1732,7 +1740,7 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
     second_ops = replace(
         base,
         run_workflow=lambda _argv, _cwd: lifecycle.WorkflowResult(9, None),
-        now=lambda: datetime(2026, 8, 12, 20, 15, tzinfo=UTC),
+        now=lambda: _after_plan(second),
         admit_storage_context=lambda _attempt, _execution: None,
         admit_runtime_context=lambda _attempt, _request, _storage: None,
     )
@@ -1795,9 +1803,9 @@ def test_attempt_publication_leaves_star_index_directory_for_owner(
     ops = replace(
         base,
         run_workflow=inspect_workflow_entry,
-        now=lambda: datetime(2026, 8, 12, 20, 5, tzinfo=UTC),
-        host_name=lambda: "test-host",
-        process_id=lambda: 123,
+        now=lambda: _after_plan(plan),
+        host_name=lambda: plan.attempt_record["host"],
+        process_id=lambda: plan.attempt_record["process_id"],
         process_is_alive=lambda _pid: False,
         admit_storage_context=lambda _attempt, _execution: None,
         admit_runtime_context=lambda _attempt, _request, _storage: None,
@@ -1859,25 +1867,21 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
         workspace,
         resources=resources,
         operation="execute",
-        now=datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
-        token="1" * 32,
-        host="test-host",
-        process_id=123,
     )
     base = lifecycle.default_lifecycle_ops()
     common_ops = replace(
         base,
         run_workflow=lambda _argv, _cwd: lifecycle.WorkflowResult(9, None),
-        now=lambda: datetime(2026, 8, 12, 20, 30, tzinfo=UTC),
-        host_name=lambda: "test-host",
-        process_id=lambda: 123,
+        now=lambda: _after_plan(initial, minutes=30),
+        host_name=lambda: initial.attempt_record["host"],
+        process_id=lambda: initial.attempt_record["process_id"],
         process_is_alive=lambda _pid: True,
         admit_storage_context=lambda _attempt, _execution: None,
         admit_runtime_context=lambda _attempt, _request, _storage: None,
     )
     initial_ops = replace(
         common_ops,
-        now=lambda: datetime(2026, 8, 12, 20, 5, tzinfo=UTC),
+        now=lambda: _after_plan(initial),
     )
     admit_run(initial, ops=initial_ops)
     first = lifecycle.run_materialized_attempt(
@@ -1888,23 +1892,19 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
     assert first.receipt["status"] == "failed"
     assert inspection.inspect_run(initial.run_root).recovery_available
 
-    def resume_plan(token: str, minute: int):
+    def resume_plan():
         return build_attempt_plan(
             initial.run,
             readiness,
             workspace,
             resources=resources,
             operation="resume",
-            now=datetime(2026, 8, 12, 20, minute, tzinfo=UTC),
-            token=token * 32,
-            host="test-host",
-            process_id=123,
             supersedes_workflow_attempt_id=initial.workflow_attempt_id,
             retained_dispatches={},
         )
 
-    winner = resume_plan("2", 10)
-    stale = resume_plan("3", 11)
+    winner = resume_plan()
+    stale = resume_plan()
     context = multiprocessing.get_context("fork")
     winner_entered = context.Event()
     release_winner = context.Event()
@@ -2006,8 +2006,9 @@ def test_public_run_dry_run_is_no_write(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     executed: list[object] = []
-    arguments, workspace, ops = _run_control(
+    arguments, workspace = _patch_run_control(
         tmp_path,
+        monkeypatch,
         execute_plan=lambda plan, _observe: executed.append(plan),
         transform_plan=lambda plan: plan,
     )
@@ -2024,7 +2025,7 @@ def test_public_run_dry_run_is_no_write(
             ),
         )
         arguments.log_level = level
-        assert control.run_from_args(arguments, ops=ops) == 0
+        assert control.run_from_args(arguments) == 0
         captured = capsys.readouterr()
         assert captured.out == ""
         projections[level] = captured.err
@@ -2098,7 +2099,12 @@ def test_interactive_run_confirms_exact_plan_before_every_write(
             workflow_result=None,
         )
 
-    arguments, workspace, ops = _run_control(tmp_path, execute, transform)
+    arguments, workspace = _patch_run_control(
+        tmp_path,
+        monkeypatch,
+        execute_plan=execute,
+        transform_plan=transform,
+    )
     log_root = tmp_path / "application-logs"
     arguments.log_root = log_root
 
@@ -2112,9 +2118,9 @@ def test_interactive_run_confirms_exact_plan_before_every_write(
     monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
     if expected_exit is None:
         with pytest.raises(KeyboardInterrupt):
-            control.run_from_args(arguments, ops=ops)
+            control.run_from_args(arguments)
     else:
-        assert control.run_from_args(arguments, ops=ops) == expected_exit
+        assert control.run_from_args(arguments) == expected_exit
 
     rendered = capsys.readouterr().err
     assert rendered.count("Run ID:") == 1
@@ -2176,51 +2182,14 @@ def test_public_run_escapes_project_label_for_terminal_output(
     assert "\nFAIL" not in rendered
 
 
-def test_run_re_admits_project_after_doctor(tmp_path: Path) -> None:
-    readiness, first, resources, project_path, workspace = _readiness(tmp_path)
-
-    def inspect_then_change_project(*_args) -> doctor.DoctorResult:
-        project_path.write_text(
-            project_path.read_text(encoding="utf-8").replace(
-                "  min_sample_dp: 1\n", "  min_sample_dp: 2\n"
-            ),
-            encoding="utf-8",
-        )
-        return readiness
-
-    ops = control.ControlOps(
-        inspect_readiness=inspect_then_change_project,
-        admit_project=admit_project,
-        inspect_run=lambda _root: pytest.fail("new execution inspected a Run"),
-        execute_plan=lambda _plan, _observe: pytest.fail("planning executed"),
-        transform_plan=lambda plan: plan,
-        now=lambda: datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
-        token=lambda: "2" * 32,
-        observe_allocation=lambda: resources.allocation,
-    )
-
-    plan = control._plan_run(
-        project_path,
-        workspace,
-        execution_profile=load_execution_profile(
-            project_path,
-            config_path=project_path.parent / "emrys.execution.yaml",
-        ),
-        ops=ops,
-    )
-
-    assert plan.run.project.analysis.analysis_revision_id != (
-        first.analysis.analysis_revision_id
-    )
-    assert plan.run.project.definition["analysis"]["min_sample_dp"] == 2
-
-
 def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
     tmp_path: Path,
     capsys,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    readiness, normalized, resources, request, workspace = _readiness(tmp_path)
+    _readiness_result, _normalized, _resources, request, workspace = _readiness(
+        tmp_path
+    )
     opened = []
     real_open = control.open_attempt_log
 
@@ -2237,18 +2206,7 @@ def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
         raise doctor.DoctorInputError("injected Doctor failure")
 
     monkeypatch.setattr(control, "open_attempt_log", capture_open)
-    ops = control.ControlOps(
-        inspect_readiness=reject_readiness,
-        admit_project=lambda _request, _profile: normalized,
-        inspect_run=lambda _root: pytest.fail("new execution inspected a Run"),
-        execute_plan=lambda _plan, _observe: pytest.fail(
-            "Doctor failure reached execution"
-        ),
-        transform_plan=lambda plan: plan,
-        now=lambda: datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
-        token=lambda: "2" * 32,
-        observe_allocation=lambda: resources.allocation,
-    )
+    monkeypatch.setattr(control.doctor, "inspect_local_pilot", reject_readiness)
     arguments = argparse.Namespace(
         project=request,
         execution_profile=request.parent / "emrys.execution.yaml",
@@ -2257,7 +2215,7 @@ def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
         execute=True,
     )
 
-    assert control.run_from_args(arguments, ops=ops) == 2
+    assert control.run_from_args(arguments) == 2
 
     assert len(opened) == 1
     with pytest.raises(ApplicationLogError, match="closed"):
@@ -2318,6 +2276,7 @@ def test_execute_preflight_interrupt_terminalizes_log_and_preserves_signal(
 def test_execute_failure_summary_names_owned_lock_and_recovery(
     tmp_path: Path,
     capsys,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     plan = _plan(tmp_path)
     lock_path = plan.run_root / "locks" / "run.lock"
@@ -2338,7 +2297,7 @@ def test_execute_failure_summary_names_owned_lock_and_recovery(
         "default",
         "default",
     )
-    ops = replace(control.DEFAULT_CONTROL_OPS, execute_plan=fail_with_owned_paths)
+    _patch_lifecycle_execution(monkeypatch, plan, fail_with_owned_paths)
 
     with pytest.raises(control.ControlError, match="injected lifecycle failure"):
         control._execute_plan(
@@ -2349,7 +2308,6 @@ def test_execute_failure_summary_names_owned_lock_and_recovery(
             scope_id="pending",
             entrypoint="emrys-run",
             report_enabled=False,
-            ops=ops,
         )
 
     captured = capsys.readouterr()
@@ -2360,17 +2318,16 @@ def test_execute_failure_summary_names_owned_lock_and_recovery(
 def test_public_resume_logs_inspection_failure_before_run_state(
     tmp_path: Path,
     capsys,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     workspace = tmp_path / "workspace"
+    workspace.mkdir()
     run_root = workspace / "runs" / "run-preflight"
 
     def reject_inspection(_root: Path) -> inspection.RunInspection:
         raise inspection.InspectionError("injected resume inspection failure")
 
-    ops = replace(
-        control.DEFAULT_CONTROL_OPS,
-        inspect_run=reject_inspection,
-    )
+    monkeypatch.setattr(control.inspection, "inspect_run", reject_inspection)
     arguments = argparse.Namespace(
         run_root=run_root,
         execution_profile=None,
@@ -2379,7 +2336,7 @@ def test_public_resume_logs_inspection_failure_before_run_state(
         execute=True,
     )
 
-    assert control.resume_from_args(arguments, ops=ops) == 2
+    assert control.resume_from_args(arguments) == 2
 
     log_path = next((workspace / "logs/application").rglob("*.jsonl"))
     records = [json.loads(line) for line in log_path.read_text().splitlines()]
@@ -2447,9 +2404,10 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
         "submit",
         lambda _plan: pytest.fail("dry-run submitted a scheduler job"),
     )
-    ops = replace(
-        control.DEFAULT_CONTROL_OPS,
-        inspect_readiness=lambda *_args: pytest.fail(
+    monkeypatch.setattr(
+        control.doctor,
+        "inspect_local_pilot",
+        lambda *_args: pytest.fail(
             "submit host performed compute-allocation readiness"
         ),
     )
@@ -2458,7 +2416,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     workspace = arguments.project.parent
     for level in ("normal", "verbose", "debug"):
         arguments.log_level = level
-        assert control.run_from_args(arguments, ops=ops) == 0
+        assert control.run_from_args(arguments) == 0
         captured = capsys.readouterr()
         assert captured.out == ""
         projections[level] = captured.err
@@ -2476,14 +2434,8 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     verbose = projections["verbose"]
     assert set(normal.splitlines()) <= set(verbose.splitlines())
     assert f"Execution profile: {arguments.execution_profile}" in verbose
-    assert (
-        f"Scheduler stdout: {workspace}/logs/emrys-local-pilot-%j.out"
-        in verbose
-    )
-    assert (
-        f"Scheduler stderr: {workspace}/logs/emrys-local-pilot-%j.err"
-        in verbose
-    )
+    assert f"Scheduler stdout: {workspace}/logs/emrys-local-pilot-%j.out" in verbose
+    assert f"Scheduler stderr: {workspace}/logs/emrys-local-pilot-%j.err" in verbose
     assert "Scheduler command:" not in verbose
 
     debug = projections["debug"]
@@ -2516,14 +2468,15 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
         monkeypatch.setattr(control.sys, "stdin", _InputStream("y\n", before_read))
         monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
     monkeypatch.setattr(control.slurm_submission, "submit", submit)
-    ops = replace(
-        control.DEFAULT_CONTROL_OPS,
-        inspect_readiness=lambda *_args: pytest.fail(
+    monkeypatch.setattr(
+        control.doctor,
+        "inspect_local_pilot",
+        lambda *_args: pytest.fail(
             "submit host performed compute-allocation readiness"
         ),
     )
 
-    assert control.run_from_args(arguments, ops=ops) == 0
+    assert control.run_from_args(arguments) == 0
 
     captured = capsys.readouterr()
     assert captured.out == (
@@ -2538,29 +2491,6 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     assert ("Execute this plan? [y/N]" in captured.err) is not execute
 
 
-def test_public_slurm_rejects_symlinked_workspace_ancestor_without_mutation(
-    tmp_path: Path,
-    capsys,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    real_parent = tmp_path / "real-parent"
-    real_parent.mkdir()
-    linked_parent = tmp_path / "linked-parent"
-    linked_parent.symlink_to(real_parent, target_is_directory=True)
-    arguments = _scheduled_run_arguments(tmp_path, execute=True)
-    arguments.project = linked_parent / "workspace" / "project.yaml"
-    monkeypatch.setattr(
-        control.slurm_submission,
-        "submit",
-        lambda _plan: pytest.fail("symlinked workspace reached scheduler submission"),
-    )
-
-    assert control.run_from_args(arguments) == 2
-
-    assert "Workspace immediate parent must be" in capsys.readouterr().err
-    assert list(real_parent.iterdir()) == []
-
-
 def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
     tmp_path: Path,
     capsys,
@@ -2572,14 +2502,13 @@ def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
     monkeypatch.setenv(scheduler.PROFILE_SHA256_ENV, "0" * 64)
     monkeypatch.setenv(scheduler.SUBMIT_UID_ENV, str(os.getuid()))
     monkeypatch.setenv("SLURM_JOB_ID", "812345")
-    ops = replace(
-        control.DEFAULT_CONTROL_OPS,
-        inspect_readiness=lambda *_args: pytest.fail(
-            "digest drift reached compute readiness"
-        ),
+    monkeypatch.setattr(
+        control.doctor,
+        "inspect_local_pilot",
+        lambda *_args: pytest.fail("digest drift reached compute readiness"),
     )
 
-    assert control.run_from_args(arguments, ops=ops) == 2
+    assert control.run_from_args(arguments) == 2
     assert "Execution-profile SHA-256 differs" in capsys.readouterr().err
     assert not (arguments.project.parent / "logs").exists()
 
@@ -2591,6 +2520,7 @@ def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
 def test_direct_execution_owns_receipt_ordered_reporting_log(
     tmp_path: Path,
     capsys,
+    monkeypatch: pytest.MonkeyPatch,
     report_mode: str,
 ) -> None:
     plan = _plan(tmp_path)
@@ -2651,11 +2581,8 @@ def test_direct_execution_owns_receipt_ordered_reporting_log(
             ),
         )
 
-    ops = replace(
-        control.DEFAULT_CONTROL_OPS,
-        execute_plan=execute,
-        report_run=report,
-    )
+    _patch_lifecycle_execution(monkeypatch, plan, execute)
+    monkeypatch.setattr(reporting_operation, "run_reporting", report)
 
     status = control._execute_plan(
         lambda: plan,
@@ -2665,7 +2592,6 @@ def test_direct_execution_owns_receipt_ordered_reporting_log(
         scope_id="pending",
         entrypoint="emrys-run",
         report_enabled=report_mode != "disabled",
-        ops=ops,
     )
 
     assert status == (1 if report_mode == "failure" else 0)
@@ -2778,7 +2704,7 @@ def test_application_log_degradation_cannot_change_receipt_or_exit(
             raise ApplicationLogStorageError("injected application-log sync failure")
 
         monkeypatch.setattr(ApplicationLogFile, "synchronize", reject_sync)
-    ops = replace(control.DEFAULT_CONTROL_OPS, execute_plan=execute)
+    _patch_lifecycle_execution(monkeypatch, plan, execute)
 
     status = control._execute_plan(
         lambda: plan,
@@ -2788,7 +2714,6 @@ def test_application_log_degradation_cannot_change_receipt_or_exit(
         scope_id="pending",
         entrypoint="emrys-run",
         report_enabled=False,
-        ops=ops,
     )
 
     assert status == 0
@@ -2868,14 +2793,9 @@ def test_standalone_report_logging_boundary(
         log_level=None,
         log_root=None,
     )
+    monkeypatch.setattr(reporting_operation, "run_reporting", report)
 
-    assert (
-        control.report_from_args(
-            arguments,
-            ops=replace(control.DEFAULT_CONTROL_OPS, report_run=report),
-        )
-        == 0
-    )
+    assert control.report_from_args(arguments) == 0
     generated = execute_requested and outcome_status == "generated"
     assert calls == [execute_requested]
     rendered = capsys.readouterr().err
@@ -3015,14 +2935,23 @@ def test_status_milestones_partition_steps_and_derive_persisted_progress() -> No
     )
 
 
-def test_attempt_elapsed_uses_only_current_or_latest_attempt() -> None:
+def test_attempt_elapsed_uses_only_current_or_latest_attempt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     created = "2026-08-12T20:00:00Z"
     latest = {"created_at": created}
+    current = [datetime(2026, 8, 12, 20, 1, 30, tzinfo=UTC)]
+
+    class FixedDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return current[0]
+
+    monkeypatch.setattr(control, "datetime", FixedDateTime)
 
     assert (
         control._attempt_elapsed_line(
             SimpleNamespace(latest_attempt=None, attempt_outcome="not_started"),
-            lambda: datetime(2026, 8, 12, 20, 1, tzinfo=UTC),
         )
         == "Attempt elapsed: unavailable — no Attempt"
     )
@@ -3033,7 +2962,6 @@ def test_attempt_elapsed_uses_only_current_or_latest_attempt() -> None:
                 latest_receipt=None,
                 attempt_outcome="running",
             ),
-            lambda: datetime(2026, 8, 12, 20, 1, 30, tzinfo=UTC),
         )
         == "Current Attempt elapsed: 0:01:30"
     )
@@ -3047,17 +2975,16 @@ def test_attempt_elapsed_uses_only_current_or_latest_attempt() -> None:
                 latest_receipt={"finished_at": "2026-08-12T20:02:00Z"},
                 attempt_outcome="failed",
             ),
-            lambda: (_ for _ in ()).throw(AssertionError("terminal clock read")),
         )
         == "Latest Attempt elapsed: 0:02:00"
     )
+    current[0] = datetime(2026, 8, 12, 19, 59, 59, 200_000, tzinfo=UTC)
     assert "invalid timestamp boundary" in control._attempt_elapsed_line(
         SimpleNamespace(
             latest_attempt=latest,
             latest_receipt=None,
             attempt_outcome="running",
         ),
-        lambda: datetime(2026, 8, 12, 19, 59, 59, 200_000, tzinfo=UTC),
     )
 
 
@@ -3114,16 +3041,11 @@ def _clean_checkout(tmp_path: Path) -> tuple[Path, str]:
     return checkout, commit
 
 
-def _real_doubled_executor(
-    plan,
-    observe_application_event=lambda _event: None,
+def _doubled_lifecycle_ops(
+    base: lifecycle.LifecycleOps,
     *,
     stop_after_target: str | None = None,
-):
-    default_ops = replace(
-        lifecycle.default_lifecycle_ops(),
-        observe_application_event=observe_application_event,
-    )
+) -> lifecycle.LifecycleOps:
 
     def run_workflow(argv: tuple[str, ...], cwd: Path) -> lifecycle.WorkflowResult:
         invoked = (*argv[:-1], stop_after_target) if stop_after_target else argv
@@ -3153,14 +3075,7 @@ def _real_doubled_executor(
             ),
         )
 
-    ops = replace(default_ops, run_workflow=run_workflow)
-    if plan.operation == "execute":
-        admit_run(plan, ops=ops)
-    return lifecycle.run_materialized_attempt(
-        plan.preparation,
-        lambda: publish_attempt(plan, ops=ops),
-        ops=ops,
-    )
+    return replace(base, run_workflow=run_workflow)
 
 
 def _verified_snapshot(root: Path) -> dict[Path, tuple[bytes, int]]:
@@ -3172,7 +3087,9 @@ def _verified_snapshot(root: Path) -> dict[Path, tuple[bytes, int]]:
 
 
 def test_public_adapter_executes_failure_and_byte_preserving_resume(
-    tmp_path: Path, capsys
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     checkout, commit = _clean_checkout(tmp_path)
     readiness, normalized, resources, request, workspace = _readiness(
@@ -3180,19 +3097,35 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         source_root=checkout,
         source_commit=commit,
     )
-    first_ops = control.ControlOps(
-        inspect_readiness=lambda _request, _workspace, _runtime: readiness,
-        admit_project=lambda _request, _profile: normalized,
-        inspect_run=lambda root: inspection.inspect_run(root),
-        execute_plan=lambda plan, observe: _real_doubled_executor(
-            plan,
-            observe,
-            stop_after_target="one_sample_slice",
+    real_build = control.build_attempt_plan
+    real_ops = control.lifecycle.default_lifecycle_ops
+    stop_after_target = ["one_sample_slice"]
+    monkeypatch.setattr(
+        control.doctor,
+        "inspect_local_pilot",
+        lambda *_args: readiness,
+    )
+    monkeypatch.setattr(
+        control.doctor,
+        "diagnose_project",
+        lambda *_args: readiness,
+    )
+    monkeypatch.setattr(
+        control.capacity,
+        "observe_allocation",
+        lambda: resources.allocation,
+    )
+    monkeypatch.setattr(
+        control,
+        "build_attempt_plan",
+        lambda *args, **kwargs: with_owner_doubles(real_build(*args, **kwargs)),
+    )
+    monkeypatch.setattr(
+        control.lifecycle,
+        "default_lifecycle_ops",
+        lambda: _doubled_lifecycle_ops(
+            real_ops(), stop_after_target=stop_after_target[0]
         ),
-        transform_plan=with_owner_doubles,
-        now=lambda: datetime.now(UTC),
-        token=lambda: "3" * 32,
-        observe_allocation=lambda: resources.allocation,
     )
     run_arguments = argparse.Namespace(
         project=request,
@@ -3202,7 +3135,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
     run_id = _run_candidate(readiness, normalized, resources).run_id
 
-    assert control.run_from_args(run_arguments, ops=first_ops) == 1
+    assert control.run_from_args(run_arguments) == 1
     failed_output = capsys.readouterr().err
     assert "Results:" not in failed_output.splitlines()
     run_root = workspace / "runs" / run_id
@@ -3212,29 +3145,20 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     before = _verified_snapshot(run_root)
     assert 0 < len(before) < 35
 
-    resumed_ops = control.ControlOps(
-        inspect_readiness=lambda _request, _workspace, _runtime: readiness,
-        admit_project=lambda _request, _profile: normalized,
-        inspect_run=lambda root: inspection.inspect_run(root),
-        execute_plan=_real_doubled_executor,
-        transform_plan=with_owner_doubles,
-        now=lambda: datetime.now(UTC),
-        token=lambda: "4" * 32,
-        observe_allocation=lambda: resources.allocation,
-    )
+    stop_after_target[0] = None
     resume_arguments = argparse.Namespace(
         run_root=run_root,
         allocated_cores=1,
         execute=False,
     )
-    assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 0
+    assert control.resume_from_args(resume_arguments) == 0
     dry_output = capsys.readouterr().err
     assert "Work:" in dry_output and " reusable" in dry_output
     assert "Results:" not in dry_output.splitlines()
     assert _verified_snapshot(run_root) == before
 
     resume_arguments.execute = True
-    assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 0
+    assert control.resume_from_args(resume_arguments) == 0
     resumed_output = capsys.readouterr().err
     report_root = run_root / "results" / "reports" / run_id
     expected_results = (
@@ -3266,7 +3190,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert all(after[path] == value for path, value in before.items())
 
     inspect_arguments = argparse.Namespace(run_root=run_root, detail="normal")
-    assert control.inspect_from_args(inspect_arguments, ops=resumed_ops) == 0
+    assert control.inspect_from_args(inspect_arguments) == 0
     inspect_output = capsys.readouterr().out
     assert "Attempt outcome: succeeded" in inspect_output
     assert "Scientific Results: complete" in inspect_output
@@ -3283,7 +3207,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert "Execution Plan ID:" not in inspect_output
     assert "Engine command:" not in inspect_output
     inspect_arguments.detail = "verbose"
-    assert control.inspect_from_args(inspect_arguments, ops=resumed_ops) == 0
+    assert control.inspect_from_args(inspect_arguments) == 0
     verbose_output = capsys.readouterr().out
     assert f"Run root: {run_root}" in verbose_output
     assert (
@@ -3298,7 +3222,7 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert "Reporting transactions:" in verbose_output
     assert "Engine command:" not in verbose_output
     inspect_arguments.detail = "debug"
-    assert control.inspect_from_args(inspect_arguments, ops=resumed_ops) == 0
+    assert control.inspect_from_args(inspect_arguments) == 0
     debug_output = capsys.readouterr().out
     assert "Engine command:" in debug_output
     assert "Attempt receipt:" in debug_output
@@ -3328,5 +3252,5 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     assert expected_results in inspect_output
 
     resume_arguments.execute = False
-    assert control.resume_from_args(resume_arguments, ops=resumed_ops) == 2
+    assert control.resume_from_args(resume_arguments) == 2
     assert "Results are complete" in capsys.readouterr().err

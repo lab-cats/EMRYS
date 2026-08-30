@@ -169,20 +169,6 @@ def _add_storage_qualification_inspection_command(
     )
 
 
-def _add_local_pilot_doctor_command(
-    doctor_parsers: _SubparserCollection,
-) -> None:
-    local_parser = doctor_parsers.add_parser(
-        "local-pilot",
-        help="Check fixed local-pilot readiness without installation or repair.",
-        description=local_pilot_doctor_command.DESCRIPTION,
-    )
-    local_pilot_doctor_command.configure_parser(local_parser)
-    local_parser.set_defaults(
-        _command_handler=local_pilot_doctor_command.doctor_from_args
-    )
-
-
 def _add_onboarding_commands(command_parsers: _SubparserCollection) -> None:
     init_parser = command_parsers.add_parser(
         "init",
@@ -262,21 +248,13 @@ def _controlled_local_pilot_from_args(
     arguments: argparse.Namespace,
     *,
     command: Callable[..., int],
-    ops: local_pilot_control_command.ControlOps = (
-        local_pilot_control_command.DEFAULT_CONTROL_OPS
-    ),
 ) -> int:
     if not _admit_controlled_runtime():
         return 2
-    return command(arguments, ops=ops)
+    return command(arguments)
 
 
-def build_parser(
-    *,
-    local_pilot_control_ops: local_pilot_control_command.ControlOps = (
-        local_pilot_control_command.DEFAULT_CONTROL_OPS
-    ),
-) -> argparse.ArgumentParser:
+def build_parser() -> argparse.ArgumentParser:
     """Build the public parser from owner-supplied command definitions."""
     parser = argparse.ArgumentParser(
         prog="emrys",
@@ -290,14 +268,13 @@ def build_parser(
     _add_onboarding_commands(command_parsers)
     doctor_parser = command_parsers.add_parser(
         "doctor",
-        help="Check readiness for an explicitly selected EMRYS workflow.",
+        help="Diagnose Project readiness and explicitly repair managed runtime state.",
+        description=local_pilot_doctor_command.DESCRIPTION,
     )
-    doctor_parsers = doctor_parser.add_subparsers(
-        dest="doctor",
-        metavar="SUBJECT",
-        required=True,
+    local_pilot_doctor_command.configure_parser(doctor_parser)
+    doctor_parser.set_defaults(
+        _command_handler=local_pilot_doctor_command.doctor_from_args
     )
-    _add_local_pilot_doctor_command(doctor_parsers)
     run_parser = command_parsers.add_parser(
         "run",
         help="Plan or execute the fixed local CMH pipeline.",
@@ -308,7 +285,6 @@ def build_parser(
         _command_handler=partial(
             _controlled_local_pilot_from_args,
             command=local_pilot_control_command.run_from_args,
-            ops=local_pilot_control_ops,
         ),
         _command_parser=run_parser,
     )
@@ -322,7 +298,6 @@ def build_parser(
         _command_handler=partial(
             _controlled_local_pilot_from_args,
             command=local_pilot_control_command.resume_from_args,
-            ops=local_pilot_control_ops,
         ),
         _command_parser=resume_parser,
     )
@@ -336,7 +311,6 @@ def build_parser(
         _command_handler=partial(
             _controlled_local_pilot_from_args,
             command=local_pilot_control_command.report_from_args,
-            ops=local_pilot_control_ops,
         ),
         _command_parser=report_parser,
     )
@@ -394,7 +368,6 @@ def build_parser(
         _command_handler=partial(
             _controlled_local_pilot_from_args,
             command=local_pilot_control_command.inspect_from_args,
-            ops=local_pilot_control_ops,
         ),
         _command_parser=local_run_parser,
     )
@@ -540,18 +513,12 @@ def build_parser(
     return parser
 
 
-def main(
-    argv: Sequence[str] | None = None,
-    *,
-    local_pilot_control_ops: local_pilot_control_command.ControlOps = (
-        local_pilot_control_command.DEFAULT_CONTROL_OPS
-    ),
-) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
     """Parse and dispatch one supported EMRYS command."""
     if mismatch := _checkout_mismatch():
         print(f"emrys: error: {mismatch}", file=sys.stderr)
         return 2
-    parser = build_parser(local_pilot_control_ops=local_pilot_control_ops)
+    parser = build_parser()
     arguments, unrecognized = parser.parse_known_args(argv)
     if unrecognized:
         error_parser = cast(

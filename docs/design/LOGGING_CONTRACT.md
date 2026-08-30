@@ -4,8 +4,10 @@ This is the binding cross-cutting application logging contract. The neutral
 foundation is implemented by the
 [application-logging owner](../../src/emrys/libraries/application_logging/README.md),
 and grouped local-pilot `run`/`resume` control is its first production adopter.
-An execute owns exactly one compute-side application attempt; scheduler
-submission transport and valid dry-run own none. Further rollout remains
+Confirmed `emrys doctor --repair` is a second bounded adopter: it owns exactly
+one maintenance attempt, while diagnosis, preview, refusal, EOF, interruption
+before authority, and help own none. A Run execute owns exactly one compute-side
+application attempt; scheduler submission transport and valid dry-run own none. Further rollout remains
 `LOG-05` in the [findings matrix](../tasks/backlog_matrix.md). A command implements
 this contract only when its owner documentation and direct tests say so.
 Foundation code remains stage-independent and never imports a stage.
@@ -18,7 +20,9 @@ transport, or scheduler wrapper. The accepted outer operation owns exactly one
 application attempt and resolves controls once. Retained delegates receive the
 resolved controls and event context explicitly and do not open a second attempt.
 For scheduled local-pilot execution, the compute-side `run`/`resume` delegate is
-that operation; submission is transport only.
+that operation; submission is transport only. For Doctor, only the confirmed
+repair is the operation; read-only readiness diagnosis is not a durable
+diagnostic lifecycle.
 
 Each bounded adoption package satisfies the operation, ownership, placement,
 projection, stream, and parity admission conditions in its owner documentation
@@ -60,7 +64,8 @@ policy before their own bounded decisions.
   controls fail before log, output, lock, scratch, or compute side effects while
   preserving established parse exits. A legacy alias requires parity-tested
   migration.
-- Grouped `run`/`resume` defaults to `<project-root>/logs/application`. Until a
+- Grouped `run`/`resume` and confirmed Doctor repair default to
+  `<project-root>/logs/application`. Until a
   state root exists for another adopter, its default is
   `<repository-root>/logs/application`, derived from repository/package
   identity rather than caller CWD. An explicit root is absolute. Help and
@@ -104,6 +109,13 @@ SHA-256, stream, and component; never replace bytes silently.
   Confirmation passes that exact frozen plan into execution and opens the
   application log before lifecycle admission; explicit noninteractive
   `--execute` retains the log-before-semantic-preflight behavior above.
+- Doctor diagnosis and managed-repair preview own no attempt. Terminal repair
+  opens one `maintenance` attempt only after confirmation and before its first
+  filesystem or package-manager mutation; noninteractive mutation requires
+  `--repair --execute`. The log binds the exact package managers and packaged
+  Pixi inputs, records each delegated action, and terminalizes only after
+  complete Project requalification. Logging cannot authorize migration or
+  mutation of a site/user runtime profile.
 - Terminal Slurm placement confirms a frozen submission plan, not a Run plan,
   and owns no application log. Its private compute delegate constructs the Run
   and opens the application log inside the allocation.

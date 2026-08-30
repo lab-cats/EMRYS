@@ -71,7 +71,7 @@ walkthrough.
 | --- | --- |
 | Create a Project root around synthetic or real inputs | [Quickstart: initialize and ingest](../../quickstart.md#3-initialize-and-ingest-synthetic-or-real-inputs) |
 | Discover and admit the active runtime | [Quickstart: runtime discovery](../../quickstart.md#4-discover-and-admit-the-runtime) and [`configs/README.md`](../../configs/README.md) |
-| Qualify storage and obtain runtime `READY` | [Quickstart: compatibility](../../quickstart.md#5-validate-data-compatibility-without-scientific-tools) and [runtime readiness](../../quickstart.md#6-require-full-runtime-ready) |
+| Qualify storage, diagnose Project readiness, or repair the managed runtime | [Quickstart: compatibility](../../quickstart.md#5-validate-data-compatibility-without-scientific-tools) and [Doctor](../../quickstart.md#6-diagnose-readiness-and-optionally-repair-the-managed-runtime) |
 | Review and execute the fixed workflow | [Quickstart: plan and execution](../../quickstart.md#7-review-and-confirm-one-immutable-plan) |
 | Inspect run state or plan a supported resume | Commands below and the [local-pilot owner](../../src/emrys/orchestration/local_pilot/README.md) |
 | Diagnose blocked, partial, locked, or uncertain state | [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) |
@@ -98,6 +98,17 @@ scheduler and application logs use its `logs/` tree. Run, resume, and Doctor
 derive the admitted `runtime/runtime.tsv` from that Project. Only the advanced
 `inspect storage-qualification --workspace PROJECT_ROOT ...` probe retains an
 explicit storage target; run and Doctor derive it.
+
+`emrys doctor --project /absolute/path/to/project.yaml` is the top-level
+readiness route. Diagnosis is side-effect-free; `--log-level verbose` and
+`--log-level debug` reveal progressively more retained operational evidence. A
+missing or incomplete EMRYS-managed runtime can be previewed with `--repair`.
+Terminal confirmation or explicit noninteractive `--repair --execute` delegates
+locked installation to `uv`, Pixi, and `renv`, writes only the active
+checkout-owned `.venv` and Project-owned `runtime/managed`, owns one maintenance
+log, and requalifies. It does not migrate site/user profiles, alter inputs, or
+repair workflow outputs. Managed repair currently targets Linux x86-64; use
+`runtime discover` for an institution-provided environment.
 Reporting runs automatically after scientific work and remains a separate,
 receipt-last transaction rather than a scientific stage. The scientific
 Attempt ends at `cohort_slice` before reporting begins. `--no-report` disables

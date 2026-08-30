@@ -134,6 +134,9 @@ def with_owner_doubles(
         plan,
         attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
         attempt_files=tuple((*replacement_files, *manifest_files)),
+        new_dispatch_files=tuple(
+            item for item in replacement_files if item.path in dispatch_paths
+        ),
     )
 
 

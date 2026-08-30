@@ -11,7 +11,10 @@ LOGGING_NAMESPACE = "emrys.libraries.application_logging"
 
 # Add exact packaged-Python importer modules only in an approved LOG-05 slice.
 APPROVED_PRODUCTION_IMPORTERS = frozenset(
-    {"emrys.orchestration.local_pilot.control"}
+    {
+        "emrys.orchestration.local_pilot.control",
+        "emrys.orchestration.local_pilot.doctor",
+    }
 )
 
 

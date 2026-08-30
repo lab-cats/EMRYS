@@ -142,13 +142,13 @@ The underlying narrow read-only admission APIs are:
 - `doctor.inspect_local_pilot(...)` admits one Project plus the fixed profile,
   checks its external Project root, exact clean source checkout, controlled
   Python/Snakemake, science-tool paths and versions, Picard jar, guarded
-  `renv`, Step `08` namespaces, and the exact final storage qualification
-  without creating or repairing anything.
+  `renv`, Step `08` namespaces, and the exact final storage qualification. It
+  remains the read-only internal readiness capability used by Run and resume.
 
-The doctor also has the grouped public command:
+The Project-aware public command is top-level:
 
 ```bash
-.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor local-pilot \
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor \
   --project /absolute/path/to/project.yaml
 ```
 
@@ -159,7 +159,27 @@ path probes. Ordinary commands retain a 30-second bound; guarded R namespace
 loads have a separate 120-second bound with elapsed diagnostics and fail closed
 on timeout. Even exit `0` is only local readiness evidence: no workflow or
 scientific-owner computation, scheduler, cluster job, scientific review, or
-biological validation ran.
+biological validation ran. Diagnosis, detail projection, help, repair preview,
+refusal, EOF, and interruption before repair authority write nothing and open
+no log. `--log-level verbose` adds source/runtime observations and
+`--log-level debug` adds exact path/hash bindings.
+
+An absent or incomplete EMRYS-managed runtime has one explicit repair path:
+
+```bash
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor \
+  --project /absolute/path/to/project.yaml --repair
+```
+
+On a terminal, Doctor prints and confirms the exact plan. Noninteractive
+mutation requires `--repair --execute`; `--execute` alone is invalid. Managed
+repair currently supports Linux x86-64 and requires the active
+checkout-owned `.venv`. It delegates the locked Python environment to `uv`,
+the packaged native/R lock to Pixi, and the R library to `renv`; only `.venv`,
+`<project-root>/runtime/managed`, a create-absent canonical runtime profile,
+and one maintenance log are writable. It then reruns complete Project
+readiness. Declared inputs and admitted site/user profiles are preserved rather
+than modified or silently migrated.
 
 B5 adds the source-checkout-bound public control surface. Every mutating route
 requires the controlled Python runtime, is dry-run-first, and delegates owner

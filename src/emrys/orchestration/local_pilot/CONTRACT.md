@@ -107,8 +107,9 @@ source, canonical profile, and canonical construction bytes plus the canonical
 Analysis revision. Its definition, profile, and construction mappings are fresh
 disposable views and cannot mutate identity or historical compatibility bytes.
 
-`doctor.inspect_local_pilot` and the grouped `emrys doctor local-pilot` route
-are the read-only B5 setup boundary. They derive
+`doctor.inspect_local_pilot` is the read-only internal B5 setup capability used
+by Run and resume. The top-level `emrys doctor` route composes it into one
+Project-aware readiness and explicit managed-repair boundary. They derive
 `<project-root>/runtime/runtime.tsv`, reuse Project admission plus the runtime-
 availability owner's direct API, require the exact fixed local runtime roster
 and policy fields before any probe, run R namespace probes with explicit
@@ -118,10 +119,25 @@ root overlapping the source checkout. The Java path must resolve to canonical
 `<JAVA_HOME>/bin/java`; doctor, lifecycle, and GATK owner work share that
 selected launcher after ambient JVM/GATK selectors are removed. The Project
 root must be canonical, real, writable, searchable, and external to the source
-checkout. The doctor neither installs nor repairs dependencies, loads
-modules, mutates a run, executes Snakemake/scientific owners, or promotes
-readiness into local-runtime, scheduler, cluster, scientific-review, or
-biological evidence.
+checkout. Diagnosis, detail projection, help, repair preview, refusal, EOF, and
+interruption before repair authority write nothing and open no application
+log. Diagnosis never loads modules, mutates a Run, executes
+Snakemake/scientific owners, or promotes readiness into local-runtime,
+scheduler, cluster, scientific-review, or biological evidence.
+
+`emrys doctor --repair` separately plans the supported managed-runtime repair.
+Terminal mutation requires confirmation; noninteractive mutation requires the
+combined `--repair --execute`. The current repair supports Linux x86-64 only,
+requires the active checkout-owned `.venv`, and permits writes only to that
+environment and Project-owned `runtime/managed`, plus create-absent publication
+of `runtime/runtime.tsv`. `uv`, Pixi, and `renv` remain the package-solving and
+installation authorities. Doctor orchestrates their exact locked actions,
+owns one maintenance application log beginning after authority and before
+mutation, and re-runs complete Project readiness afterward. An existing
+site/user profile is never overwritten or silently migrated; declared inputs
+and workflow outputs are outside repair ownership. Ambient Pixi configuration
+is disabled and Project-local Pixi configuration is rejected so it cannot
+redirect managed environments beyond that boundary.
 The advanced storage-evidence command retains
 `inspect storage-qualification --workspace PROJECT_ROOT`; this explicit probe
 target is not an ordinary Project/workspace choice.

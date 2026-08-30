@@ -1,4 +1,4 @@
-"""Read-only readiness doctor for the fixed local CMH pilot."""
+"""Project-aware readiness diagnosis and explicit managed-runtime repair."""
 
 from __future__ import annotations
 
@@ -6,10 +6,14 @@ import argparse
 import hashlib
 import os
 import platform
+import shutil
 import stat
+import subprocess
 import sys
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+import uuid
+from collections.abc import Callable
+from contextlib import suppress
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from emrys.contracts.orchestration import api as orchestration_contracts
@@ -21,37 +25,50 @@ from emrys.evidence.runtime_availability.inspector import (
     load_runtime_profile_contract,
 )
 from emrys.evidence.storage_inventory import qualification as storage_qualification
+from emrys.libraries.application_logging import (
+    ApplicationLogError,
+    AttemptIdentity,
+    LogControlError,
+    LogControls,
+    LogLevel,
+    add_log_arguments,
+    event,
+    field,
+    open_attempt_log,
+    resolve_log_controls,
+)
 from emrys.libraries.installed_package_identity import (
     InstalledPackageIdentityError,
     installed_package_tree_identity,
 )
+from emrys.libraries.exclusive_publication import publish_exclusive
 from emrys.libraries.process_environment import (
-    RENV_VERSION,
     guarded_r_environment,
+    guarded_rscript_argv,
+    sanitized_subprocess_environment,
 )
 from emrys.libraries.source_authority import (
+    SourceCheckout,
     SourceCheckoutError,
-    SourceCheckoutIdentity,
     controlled_python_argv,
     inspect_source_checkout,
 )
 from emrys.orchestration.local_pilot import onboarding
-from emrys.orchestration.local_pilot.normalization import (
-    ProjectAdmission,
-    admit_project,
-)
+from emrys.orchestration.local_pilot.normalization import ProjectAdmission
 
 DESCRIPTION = (
-    "Check whether one Project, its owned runtime, source checkout, and final "
-    "storage qualification are ready for the fixed local "
-    "pilot. This command is read-only and never installs, repairs, loads "
-    "modules, or creates a workspace."
+    "Diagnose one Project across inputs, storage, runtime, and execution. "
+    "Diagnosis and repair preview are read-only; an explicitly confirmed "
+    "repair may restore only EMRYS-owned runtime state through uv, Pixi, and renv."
 )
-PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v2.json")
 
 
 class DoctorInputError(RuntimeError):
     """The doctor invocation contains malformed or unsafe input."""
+
+
+class DoctorRepairError(RuntimeError):
+    """The managed-runtime repair cannot proceed or did not complete."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,20 +84,21 @@ class RuntimeBinding:
 
 @dataclass(frozen=True, slots=True)
 class DoctorResult:
-    """Immutable read-only local-pilot readiness result."""
+    """Immutable readiness result consumed by Run planning."""
 
-    project_path: Path
-    workspace: Path
+    project: ProjectAdmission
     source_root: Path
     source_commit: str | None
-    inspection: RuntimeInspection
+    inspection: RuntimeInspection | None
     bindings: tuple[RuntimeBinding, ...]
     blockers: tuple[str, ...]
     remediations: tuple[str, ...]
+    storage_ready: bool = True
+    runtime_ready: bool = True
 
     @property
     def ready(self) -> bool:
-        return not self.blockers
+        return self.source_commit is not None and self.storage_ready and self.runtime_ready and not self.blockers
 
 
 def storage_runtime_binding(
@@ -89,11 +107,9 @@ def storage_runtime_binding(
     """Project one semantically admitted storage receipt into runtime identity."""
 
     return RuntimeBinding(
-        check_id="storage_qualification",
-        path=qualified.receipt_path,
-        resolved_path=qualified.receipt_path.resolve(strict=True),
-        sha256=qualified.receipt_sha256,
-        observed=qualified.qualification_id,
+        "storage_qualification", qualified.receipt_path,
+        qualified.receipt_path.resolve(strict=True), qualified.receipt_sha256,
+        qualified.qualification_id,
     )
 
 
@@ -107,12 +123,7 @@ def required_tool_identities(
     """Project exact attempt tool identities from one admitted runtime probe."""
 
     bound = {item.check_id: item for item in bindings}
-    if len(bound) != len(bindings):
-        raise DoctorInputError("Runtime file bindings must use unique check IDs")
-    if "storage_qualification" not in bound:
-        raise DoctorInputError("Runtime file binding is absent: storage_qualification")
-
-    def file_identity(name: str, version: str) -> dict[str, str | None]:
+    def identity(name: str, version: str) -> dict[str, str | None]:
         try:
             binding = bound[name]
         except KeyError as exc:
@@ -125,40 +136,20 @@ def required_tool_identities(
             "sha256": binding.sha256,
         }
 
-    python_binding = file_identity("python", platform.python_version())
+    python_binding = identity("python", platform.python_version())
     if Path(str(python_binding["path"])) != python_executable:
         raise DoctorInputError("Runtime Python binding differs from this interpreter")
-    snakemake_observations = [
-        item
-        for item in inspection.observations
-        if item.check.check_id == "snakemake" and item.status == "pass"
-    ]
-    if len(snakemake_observations) != 1:
-        raise DoctorInputError("Runtime inspection has no unique passing Snakemake probe")
-    identities: list[dict[str, str | None]] = [
-        python_binding,
-        {
+    profile = inspection.profile_path if runtime_profile_path is None else runtime_profile_path
+    identities: list[dict[str, str | None]] = [{
             "name": "runtime_profile",
             "version": f"sha256:{inspection.profile_sha256}",
-            "path": str(
-                inspection.profile_path
-                if runtime_profile_path is None
-                else runtime_profile_path
-            ),
-            "resolved_path": str(
-                inspection.profile_path
-                if runtime_profile_path is None
-                else runtime_profile_path
-            ),
+            "path": str(profile),
+            "resolved_path": str(profile),
             "sha256": inspection.profile_sha256,
-        },
-        file_identity("snakemake", snakemake_observations[0].observed),
-    ]
+        }, python_binding]
     for observation in inspection.observations:
         check = observation.check
-        if observation.status != "pass":
-            continue
-        if check.check_id in {"python", "snakemake"}:
+        if observation.status != "pass" or check.check_id == "python":
             continue
         if check.check_id in {"renv_project", "renv_library"}:
             path = Path(check.target)
@@ -172,194 +163,45 @@ def required_tool_identities(
                 }
             )
             continue
-        identities.append(file_identity(check.check_id, observation.observed))
-    identities.append(
-        file_identity(
-            "storage_qualification",
-            bound["storage_qualification"].observed,
-        )
-    )
+        identities.append(identity(check.check_id, observation.observed))
+    identities.append(identity("storage_qualification", bound["storage_qualification"].observed))
     return tuple(sorted(identities, key=lambda item: item["name"]))
 
 
-@dataclass(frozen=True, slots=True)
-class DoctorOps:
-    """Explicit fault-injection dependencies for read-only admission."""
-
-    inspect_source: Callable[[Path, Path], SourceCheckoutIdentity]
-    admit_project: Callable[
-        [str | Path, Mapping[str, object] | str | Path], ProjectAdmission
-    ]
-    inspect_runtime: Callable[
-        [bytes, Path, str, Mapping[str, str]], RuntimeInspection
-    ]
-    path_access: Callable[[Path, int], bool]
-    inspect_storage: Callable[
-        [Path, Path],
-        storage_qualification.QualifiedStorage,
-    ] = storage_qualification.admit_final_qualification
+_PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 
 
-def _default_source_inspector(root: Path, package_root: Path) -> SourceCheckoutIdentity:
-    return inspect_source_checkout(
-        root=root,
-        package_root=package_root,
-        require_clean=True,
-    )
-
-
-def _default_runtime_inspector(
-    profile_bytes: bytes,
-    profile: Path,
-    context: str,
-    environment: Mapping[str, str],
-) -> RuntimeInspection:
-    return inspect_runtime_profile_bytes(
-        profile_bytes,
-        profile,
-        context,
-        environment=environment,
-    )
-
-
-DEFAULT_DOCTOR_OPS = DoctorOps(
-    inspect_source=_default_source_inspector,
-    admit_project=admit_project,
-    inspect_runtime=_default_runtime_inspector,
-    path_access=os.access,
-    inspect_storage=storage_qualification.admit_final_qualification,
-)
-
-
-def _source_root() -> Path:
-    return Path(__file__).resolve().parents[4]
-
-
-def _package_root() -> Path:
-    return Path(__file__).resolve().parents[2]
-
-
-def _absolute_path(value: str | Path, *, base: Path | None = None) -> Path:
+def _absolute_path(value: str | Path) -> Path:
     path = Path(value)
-    if not path.is_absolute():
-        path = (Path.cwd() if base is None else base) / path
+    path = path if path.is_absolute() else Path.cwd() / path
     return Path(os.path.abspath(path))
 
 
 def workspace_location_blockers(
     workspace: Path, source_root: Path
 ) -> tuple[list[str], list[str]]:
-    blockers: list[str] = []
-    remediations: list[str] = []
-    if (
-        workspace == source_root
-        or workspace in source_root.parents
-        or source_root in workspace.parents
-    ):
-        blockers.append(f"workspace overlaps the EMRYS source checkout: {workspace}")
-        remediations.append(
-            "Choose a workspace outside and not containing the EMRYS source checkout."
-        )
-        return blockers, remediations
-    if os.path.lexists(workspace):
-        try:
-            state = workspace.lstat()
-        except OSError as exc:
-            raise DoctorInputError(
-                f"Could not inspect workspace {workspace}: {exc}"
-            ) from exc
-        if stat.S_ISLNK(state.st_mode) or not stat.S_ISDIR(state.st_mode):
-            raise DoctorInputError(
-                f"Workspace must be an existing real directory or an absent path: {workspace}"
-            )
-        if workspace.resolve(strict=True) != workspace:
-            raise DoctorInputError(f"Workspace must be canonical: {workspace}")
-        if not os.access(workspace, os.R_OK | os.W_OK | os.X_OK):
-            blockers.append(
-                f"workspace is not readable, writable, and searchable: {workspace}"
-            )
-            remediations.append(
-                f"Grant user access to the existing workspace: {workspace}"
-            )
-        return blockers, remediations
-    parent = workspace.parent
-    if not os.path.lexists(parent):
-        blockers.append(f"workspace immediate parent does not exist: {parent}")
-        remediations.append(
-            f"Create the immediate parent as a canonical real directory first: {parent}"
-        )
-        return blockers, remediations
-    try:
-        parent_state = parent.lstat()
-        resolved_parent = parent.resolve(strict=True)
-    except OSError as exc:
-        raise DoctorInputError(
-            f"Could not inspect workspace immediate parent {parent}: {exc}"
-        ) from exc
-    if (
-        stat.S_ISLNK(parent_state.st_mode)
-        or not stat.S_ISDIR(parent_state.st_mode)
-        or resolved_parent != parent
-    ):
-        raise DoctorInputError(
-            f"Workspace immediate parent must be a canonical real directory: {parent}"
-        )
-    if not os.access(parent, os.W_OK | os.X_OK):
-        blockers.append(f"workspace parent is not writable and searchable: {parent}")
-        remediations.append(f"Choose a writable workspace parent instead of: {parent}")
-    return blockers, remediations
+    """Admit the already-created Project root without legacy absent-workspace logic."""
 
-
-def _step00c_external_parent_blockers(
-    project: ProjectAdmission,
-    *,
-    path_access: Callable[[Path, int], bool],
-) -> tuple[list[str], list[str]]:
-    """Check the stationary FASTA parent needed for Step 00c sidecar publication."""
-
-    fasta = Path(str(project.construction["reference"]["fasta"]["path"]))
-    parent = fasta.parent
-    try:
-        fasta_state = fasta.lstat()
-        parent_state = parent.lstat()
-        canonical_fasta = fasta.resolve(strict=True)
-        canonical_parent = parent.resolve(strict=True)
-    except OSError as exc:
-        raise DoctorInputError(
-            f"Could not admit Step 00c stationary FASTA and parent: {fasta}: {exc}"
-        ) from exc
-    blockers: list[str] = []
-    if (
-        stat.S_ISLNK(fasta_state.st_mode)
-        or not stat.S_ISREG(fasta_state.st_mode)
-        or canonical_fasta != fasta
-    ):
-        raise DoctorInputError(
-            f"Step 00c stationary FASTA must be a canonical real file: {fasta}"
-        )
-    elif not path_access(fasta, os.R_OK):
-        blockers.append(f"Step 00c stationary FASTA is not readable: {fasta}")
-    if (
-        stat.S_ISLNK(parent_state.st_mode)
-        or not stat.S_ISDIR(parent_state.st_mode)
-        or canonical_parent != parent
-    ):
-        raise DoctorInputError(
-            f"Step 00c stationary FASTA parent must be a canonical real directory: {parent}"
-        )
-    elif not path_access(parent, os.R_OK | os.W_OK | os.X_OK):
-        blockers.append(
-            "Step 00c stationary FASTA parent is not readable, writable, and "
-            f"searchable: {parent}"
-        )
-    remediations = (
-        []
-        if not blockers
-        else [
-            "Use a canonical readable FASTA in a readable, writable, searchable parent."
+    if workspace == source_root or workspace in source_root.parents or source_root in workspace.parents:
+        return [f"workspace overlaps the EMRYS source checkout: {workspace}"], [
+            "Choose a Project outside and not containing the EMRYS source checkout."
         ]
-    )
-    return blockers, remediations
+    try:
+        state = workspace.lstat()
+        resolved = workspace.resolve(strict=True)
+    except OSError as exc:
+        raise DoctorInputError(f"Project root is unavailable: {workspace}: {exc}") from exc
+    if (
+        stat.S_ISLNK(state.st_mode)
+        or not stat.S_ISDIR(state.st_mode)
+        or resolved != workspace
+    ):
+        raise DoctorInputError(f"Project root must be a canonical real directory: {workspace}")
+    if not os.access(workspace, os.R_OK | os.W_OK | os.X_OK):
+        return [f"Project root is not readable, writable, and searchable: {workspace}"], [
+            f"Grant user access to the Project root: {workspace}"
+        ]
+    return [], []
 
 
 def validate_runtime_profile_contract(
@@ -368,155 +210,58 @@ def validate_runtime_profile_contract(
     """Bind every editable runtime path to the tracked fixed probe policy."""
 
     try:
-        _policy_bytes, policy_checks = load_runtime_profile_contract(
+        _bytes, policy = load_runtime_profile_contract(
             onboarding.runtime_policy_path()
         )
     except RuntimeInspectionError as exc:
-        raise DoctorInputError(
-            f"Could not load the tracked local-pilot runtime policy: {exc}"
-        ) from exc
-    observed_shape = tuple((check.check_id, check.check_type) for check in checks)
-    policy_shape = tuple(
-        (check.check_id, check.check_type) for check in policy_checks
+        raise DoctorInputError(f"Could not load fixed runtime policy: {exc}") from exc
+    shape = lambda values: tuple(  # noqa: E731 - compact immutable projection
+        (item.check_id, item.check_type) for item in values
     )
-    if observed_shape != policy_shape:
+    if shape(checks) != shape(policy):
         raise DoctorInputError(
-            "Local-pilot runtime profile must contain the exact ordered check roster: "
-            + ", ".join(check_id for check_id, _kind in policy_shape)
+            "Runtime profile must contain the exact ordered fixed-policy roster"
         )
-    policy_by_name = {check.check_id: check for check in policy_checks}
+    selected = {item.check_id: item for item in checks}
+    fixed = {item.check_id: item for item in policy}
+    rscript = selected["rscript"].target
     for check in checks:
-        policy = policy_by_name[check.check_id]
-        if (
-            check.runtime_context != policy.runtime_context
-            or check.required != policy.required
-            or check.expected != policy.expected
-            or check.description != policy.description
+        expected = fixed[check.check_id]
+        dynamic = check.check_id in {"snakemake", "sha256_python", "picard"}
+        wanted_args = (rscript,) if check.check_type == "r_namespace" else expected.probe_args
+        fixed_fields = (check.runtime_context, check.required, check.expected, check.description)
+        expected_fields = (expected.runtime_context, expected.required, expected.expected, expected.description)
+        target_valid = (
+            check.target == expected.target
+            if check.check_type == "r_namespace"
+            else Path(check.target).is_absolute()
+        )
+        if fixed_fields != expected_fields or not target_valid or (
+            not dynamic and check.probe_args != wanted_args
         ):
-            raise DoctorInputError(
-                "Local-pilot runtime check changes fixed probe policy: "
-                f"{check.check_id}"
-            )
-        if check.check_type != "r_namespace" and not Path(check.target).is_absolute():
-            raise DoctorInputError(
-                f"Local-pilot runtime path must be absolute: {check.check_id}"
-            )
-        if check.check_type == "r_namespace" and check.target != policy.target:
-            raise DoctorInputError(
-                f"R namespace target differs from fixed policy: {check.check_id}"
-            )
-
-    rscript_target = next(
-        check.target for check in checks if check.check_id == "rscript"
-    )
-    dynamic_probe_args = {"snakemake", "sha256_python", "picard"}
-    for check in checks:
-        if check.check_id.startswith("r_") and check.probe_args != (rscript_target,):
-            raise DoctorInputError(
-                f"R namespace check must use the declared Rscript target: {check.check_id}"
-            )
-        if (
-            not check.check_id.startswith("r_")
-            and check.check_id not in dynamic_probe_args
-            and check.probe_args != policy_by_name[check.check_id].probe_args
-        ):
-            raise DoctorInputError(
-                "Local-pilot runtime check changes fixed probe policy arguments: "
-                f"{check.check_id}"
-            )
-    checks = {check.check_id: check for check in checks}
-    expected_snakemake_args = controlled_python_argv(
-        checks["python"].target,
-        "-m",
-        "snakemake",
-        "--version",
-    )[1:]
-    if (
-        checks["snakemake"].target != checks["python"].target
-        or checks["snakemake"].probe_args != expected_snakemake_args
-    ):
-        raise DoctorInputError(
-            "Snakemake probing must use the declared controlled Python module invocation"
-        )
-    if checks["sha256_python"].target != checks["python"].target or checks[
-        "sha256_python"
-    ].probe_args != ("python_hashlib",):
-        raise DoctorInputError(
-            "SHA-256 probing must use the declared controlled Python runtime"
-        )
-    picard_args = checks["picard"].probe_args
-    expected_picard_args = (
-        "-jar",
-        checks["picard_jar"].target,
-        "MarkDuplicates",
-        "--version",
-    )
-    if (
-        checks["picard"].target != checks["java"].target
-        or picard_args != expected_picard_args
-    ):
-        raise DoctorInputError(
-            "Picard version probing must use the declared Java and Picard jar"
-        )
-    renv = checks["renv_project"].target
-    if Path(renv) != source_root:
-        raise DoctorInputError(
-            f"renv_project must be the EMRYS source checkout: expected {source_root}"
-        )
-
-
-def _admit_runtime_directory(path: Path, label: str) -> Path:
-    if not path.is_absolute():
-        raise DoctorInputError(f"{label} must be absolute: {path}")
+            raise DoctorInputError(f"Runtime check changes fixed policy: {check.check_id}")
+    renv_library = Path(selected["renv_library"].target)
     try:
-        state = path.lstat()
-        resolved = path.resolve(strict=True)
+        state = renv_library.lstat()
+        canonical_library = renv_library.resolve(strict=True)
     except OSError as exc:
-        raise DoctorInputError(f"Could not inspect {label} {path}: {exc}") from exc
-    if (
-        stat.S_ISLNK(state.st_mode)
-        or not stat.S_ISDIR(state.st_mode)
-        or resolved != path
-    ):
-        raise DoctorInputError(f"{label} must be a canonical real directory: {path}")
-    if not os.access(path, os.R_OK | os.X_OK):
-        raise DoctorInputError(f"{label} must be readable and searchable: {path}")
-    return resolved
-
-
-def _declared_renv_library(checks: tuple[RuntimeCheck, ...]) -> Path:
-    matches = [check for check in checks if check.check_id == "renv_library"]
-    if len(matches) != 1:
-        raise DoctorInputError(
-            "Runtime profile must declare exactly one renv_library check"
-        )
-    check = matches[0]
-    if check.check_type != "path_visibility" or check.probe_args != (
-        "directory_readable",
-    ):
-        raise DoctorInputError(
-            "renv_library must be one readable-directory visibility check"
-        )
-    library = _admit_runtime_directory(Path(check.target), "renv_library")
-    try:
-        description = (library / "renv").resolve(strict=True) / "DESCRIPTION"
-        text = description.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise DoctorInputError(
-            f"Selected renv_library has no readable installed renv package: {exc}"
-        ) from exc
-    except UnicodeDecodeError as exc:
-        raise DoctorInputError("Installed renv DESCRIPTION is not UTF-8") from exc
-    versions = [
-        line.removeprefix("Version:").strip()
-        for line in text.splitlines()
-        if line.startswith("Version:")
-    ]
-    if versions != [RENV_VERSION]:
-        raise DoctorInputError(
-            f"Selected renv_library must contain installed renv {RENV_VERSION}"
-        )
-    return library
+        raise DoctorInputError(f"renv library is unavailable: {renv_library}: {exc}") from exc
+    if stat.S_ISLNK(state.st_mode) or not stat.S_ISDIR(state.st_mode) or canonical_library != renv_library:
+        raise DoctorInputError(f"renv library must be a canonical real directory: {renv_library}")
+    python = selected["python"].target
+    relations = (
+        selected["snakemake"].target == python
+        and selected["snakemake"].probe_args
+        == controlled_python_argv(python, "-m", "snakemake", "--version")[1:]
+        and selected["sha256_python"].target == python
+        and selected["sha256_python"].probe_args == ("python_hashlib",)
+        and selected["picard"].target == selected["java"].target
+        and selected["picard"].probe_args
+        == ("-jar", selected["picard_jar"].target, "MarkDuplicates", "--version")
+        and Path(selected["renv_project"].target) == source_root
+    )
+    if not relations:
+        raise DoctorInputError("Runtime profile changes a fixed cross-check binding")
 
 
 def runtime_file_bindings(
@@ -525,248 +270,673 @@ def runtime_file_bindings(
     """Bind executable/jar bytes and exact installed R package trees."""
 
     bindings: list[RuntimeBinding] = []
-    renv_libraries = [
+    renv_library = next(
         Path(item.check.target)
         for item in inspection.observations
         if item.check.check_id == "renv_library"
-    ]
-    if len(renv_libraries) != 1:
-        raise DoctorInputError(
-            "Runtime inspection must contain exactly one renv_library binding"
-        )
-    renv_library = renv_libraries[0]
+    )
     for observation in inspection.observations:
         check = observation.check
-        if observation.status != "pass":
-            continue
-        if check.check_id in {"renv_project", "renv_library"}:
-            continue
-        if check.check_type not in {
-            "tool_version",
-            "tool_version_exit_1",
-            "path_visibility",
-            "r_namespace",
-            "hash_utility",
-        }:
+        if observation.status != "pass" or check.check_id in {"renv_project", "renv_library"}:
             continue
         if check.check_type == "r_namespace":
-            package_entry = renv_library / check.target
             try:
-                path = package_entry.resolve(strict=True)
-                identity = installed_package_tree_identity(path)
+                identity = installed_package_tree_identity(
+                    (renv_library / check.target).resolve(strict=True)
+                )
             except (OSError, InstalledPackageIdentityError) as exc:
-                raise DoctorInputError(
-                    f"Could not bind installed R package {check.check_id}: {exc}"
-                ) from exc
+                raise DoctorInputError(f"Could not bind R package {check.check_id}: {exc}") from exc
             if observation.resolved_path is None or identity.root != observation.resolved_path:
-                raise DoctorInputError(
-                    f"Loaded R namespace root differs from its package binding: "
-                    f"{check.check_id}"
-                )
-            bindings.append(
-                RuntimeBinding(
-                    check_id=check.check_id,
-                    path=identity.root,
-                    resolved_path=identity.root,
-                    sha256=identity.sha256,
-                    observed=observation.observed,
-                )
-            )
+                raise DoctorInputError(f"Loaded R namespace root changed: {check.check_id}")
+            bindings.append(RuntimeBinding(check.check_id, identity.root, identity.root, identity.sha256, observation.observed))
             continue
         path = Path(check.target)
-        if not path.is_absolute():
-            raise DoctorInputError(
-                f"Local-pilot runtime target must be absolute: {check.check_id}"
-            )
         try:
             resolved = path.resolve(strict=True)
             data = resolved.read_bytes()
         except OSError as exc:
-            raise DoctorInputError(
-                f"Could not bind runtime file {check.check_id}: {path}: {exc}"
-            ) from exc
-        bindings.append(
-            RuntimeBinding(
-                check_id=check.check_id,
-                path=path,
-                resolved_path=resolved,
-                sha256=hashlib.sha256(data).hexdigest(),
-                observed=observation.observed,
-            )
-        )
+            raise DoctorInputError(f"Could not bind runtime file {check.check_id}: {exc}") from exc
+        bindings.append(RuntimeBinding(check.check_id, path, resolved, hashlib.sha256(data).hexdigest(), observation.observed))
     return tuple(bindings)
+
+
+def _inspect_foundations(
+    project_path: str | Path,
+    workspace: str | Path,
+) -> DoctorResult:
+    root = _absolute_path(onboarding.source_root())
+    workspace_path = _absolute_path(workspace)
+    blockers, remediations = workspace_location_blockers(workspace_path, root)
+    try:
+        source_commit = inspect_source_checkout(
+            root=root, package_root=_PACKAGE_ROOT, require_clean=True
+        ).commit
+    except SourceCheckoutError as exc:
+        source_commit = None
+        blockers.append(f"source checkout is not ready: {exc}")
+        remediations.append("Use the clean reviewed EMRYS checkout and workflow environment.")
+    try:
+        project = onboarding.validate_project(project_path, root=root).project
+    except (
+        onboarding.OnboardingError,
+        orchestration_contracts.ContractValidationError,
+        OSError,
+    ) as exc:
+        raise DoctorInputError(str(exc)) from exc
+    fasta = Path(str(project.construction["reference"]["fasta"]["path"]))
+    try:
+        bindings = (storage_runtime_binding(
+            storage_qualification.admit_final_qualification(workspace_path, fasta)
+        ),)
+    except storage_qualification.StorageQualificationError as exc:
+        bindings = ()
+        blockers.append(f"storage is not site-qualified: {exc}")
+        remediations.append(
+            "Run `emrys inspect storage-qualification` for Project "
+            f"{workspace_path} and reference FASTA {fasta}."
+        )
+    return DoctorResult(
+        project=project,
+        source_root=root,
+        source_commit=source_commit,
+        inspection=None,
+        bindings=bindings,
+        blockers=tuple(blockers),
+        remediations=tuple(remediations),
+        storage_ready=bool(bindings),
+        runtime_ready=False,
+    )
 
 
 def inspect_local_pilot(
     project_path: str | Path,
     workspace: str | Path,
     runtime_profile: str | Path,
-    *,
-    source_root: Path | None = None,
-    ops: DoctorOps = DEFAULT_DOCTOR_OPS,
 ) -> DoctorResult:
     """Inspect one Project and runtime without writing anything."""
 
-    root = _absolute_path(_source_root() if source_root is None else source_root)
+    foundations = _inspect_foundations(project_path, workspace)
     profile_path = _absolute_path(runtime_profile)
-    workspace_path = _absolute_path(workspace)
-    blockers, remediations = workspace_location_blockers(workspace_path, root)
-    source_commit: str | None = None
-    try:
-        identity = ops.inspect_source(root, _package_root())
-        source_commit = identity.commit
-    except SourceCheckoutError as exc:
-        blockers.append(f"source checkout is not ready: {exc}")
-        remediations.append(
-            "Use the clean reviewed EMRYS checkout and selected workflow environment."
-        )
-    try:
-        project = ops.admit_project(project_path, root / PROFILE_RELATIVE_PATH)
-    except (orchestration_contracts.ContractValidationError, OSError) as exc:
-        raise DoctorInputError(str(exc)) from exc
-    try:
-        onboarding.validate_project_admission(project)
-    except onboarding.OnboardingError as exc:
-        raise DoctorInputError(str(exc)) from exc
-    step00c_blockers, step00c_remediations = _step00c_external_parent_blockers(
-        project,
-        path_access=ops.path_access,
-    )
-    blockers.extend(step00c_blockers)
-    remediations.extend(step00c_remediations)
-    reference_fasta = Path(str(project.construction["reference"]["fasta"]["path"]))
-    qualification_binding: RuntimeBinding | None = None
-    try:
-        qualified_storage = ops.inspect_storage(workspace_path, reference_fasta)
-    except storage_qualification.StorageQualificationError as exc:
-        blockers.append(f"storage is not site-qualified: {exc}")
-        remediations.append(
-            "Run the compute and post-allocation finalize phases of "
-            "`emrys inspect storage-qualification` for workspace "
-            f"{workspace_path} and reference FASTA {reference_fasta}."
-        )
-    else:
-        qualification_binding = storage_runtime_binding(qualified_storage)
     try:
         profile_bytes, declared_checks = load_runtime_profile_contract(profile_path)
     except RuntimeInspectionError as exc:
         raise DoctorInputError(str(exc)) from exc
-    validate_runtime_profile_contract(declared_checks, root)
-    renv_library = _declared_renv_library(declared_checks)
+    validate_runtime_profile_contract(declared_checks, foundations.source_root)
+    renv_library = next(
+        Path(check.target) for check in declared_checks if check.check_id == "renv_library"
+    )
     environment = guarded_r_environment(
-        root,
-        renv_library,
-        base_environment=os.environ,
+        foundations.source_root, renv_library
     )
     try:
-        inspection = ops.inspect_runtime(
-            profile_bytes,
-            profile_path,
-            "local",
-            environment,
+        inspection = inspect_runtime_profile_bytes(
+            profile_bytes, profile_path, "local", environment=environment
         )
     except RuntimeInspectionError as exc:
         raise DoctorInputError(str(exc)) from exc
-    python_check = next(
-        item for item in inspection.observations if item.check.check_id == "python"
-    )
-    if Path(python_check.check.target) != Path(sys.executable):
-        blockers.append(
-            f"runtime profile Python does not match this interpreter: {python_check.check.target}"
-        )
+    blockers = list(foundations.blockers)
+    remediations = list(foundations.remediations)
+    python = next(item for item in inspection.observations if item.check.check_id == "python")
+    python_ready = Path(python.check.target) == Path(sys.executable)
+    if not python_ready:
+        blockers.append(f"runtime Python differs from this interpreter: {python.check.target}")
         remediations.append(
-            "Activate the workflow environment admitted by the Project runtime "
-            "profile, then rerun Doctor. Do not edit the admitted profile."
+            "Activate the Python environment admitted by the Project runtime, then rerun Doctor."
         )
-    for observation in inspection.observations:
-        if observation.check.required and observation.status != "pass":
-            blockers.append(
-                f"{observation.check.check_id}: {observation.status} ({observation.observed})"
-            )
-            remediations.append(
-                f"Restore or activate {observation.check.check_id} as admitted by the "
-                "Project runtime profile, preview the environment with `emrys runtime "
-                "discover`, then rerun Doctor. Adopting a different environment requires "
-                "explicit runtime migration or repair; do not edit the admitted profile."
-            )
+    failed = [item for item in inspection.observations if item.check.required and item.status != "pass"]
+    blockers.extend(
+        f"{item.check.check_id}: {item.status} ({item.observed})" for item in failed
+    )
+    if failed:
+        remediations.append(
+            "Run `emrys doctor --repair` for an EMRYS-managed runtime, or repair and "
+            "re-admit the selected site environment without editing runtime.tsv."
+        )
+    bindings = (*runtime_file_bindings(inspection), *foundations.bindings)
     return DoctorResult(
-        project_path=project.source_path,
-        workspace=workspace_path,
-        source_root=root,
-        source_commit=source_commit,
+        project=foundations.project,
+        source_root=foundations.source_root,
+        source_commit=foundations.source_commit,
         inspection=inspection,
-        bindings=(
-            runtime_file_bindings(inspection)
-            if qualification_binding is None
-            else (*runtime_file_bindings(inspection), qualification_binding)
-        ),
+        bindings=bindings,
         blockers=tuple(blockers),
         remediations=tuple(dict.fromkeys(remediations)),
+        storage_ready=foundations.storage_ready,
+        runtime_ready=python_ready and not failed,
     )
+
+
+def diagnose_project(project_path: str | Path) -> DoctorResult:
+    """Diagnose the canonical Project runtime, including an absent profile."""
+
+    project = _absolute_path(project_path)
+    profile = onboarding.runtime_profile_path(project)
+    if os.path.lexists(profile):
+        return inspect_local_pilot(project, project.parent, profile)
+    foundations = _inspect_foundations(project, project.parent)
+    remediation = (
+        "Run `emrys doctor --repair`, or admit a complete site runtime with "
+        "`emrys runtime discover --execute`."
+    )
+    return replace(
+        foundations,
+        blockers=(*foundations.blockers, f"runtime profile is not admitted: {profile}"),
+        remediations=tuple(dict.fromkeys((*foundations.remediations, remediation))),
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class _RepairPlan:
+    project: ProjectAdmission
+    source_root: Path
+    source_commit: str
+    managed_root: Path
+    native: Path
+    r: Path
+    renv: Path
+    profile: Path
+    uv: Path
+    pixi: Path
+    uv_sha256: str
+    pixi_sha256: str
+    profile_bytes: bytes | None
+    manifest_bytes: bytes
+    lock_bytes: bytes
+
+def _profile_is_managed(checks: tuple[RuntimeCheck, ...], plan: _RepairPlan) -> bool:
+    def owned(target: Path) -> bool:
+        try:
+            return target.is_relative_to(plan.managed_root) and (
+                not os.path.lexists(plan.managed_root)
+                or target.resolve(strict=False).is_relative_to(plan.managed_root)
+            )
+        except (OSError, RuntimeError):
+            return False
+
+    for check in checks:
+        if check.check_type == "r_namespace":
+            continue
+        target = _absolute_path(check.target)
+        if check.check_id in {"python", "snakemake", "sha256_python"}:
+            allowed = target == Path(sys.executable)
+        elif check.check_id == "renv_project":
+            allowed = target == plan.source_root
+        else:
+            allowed = owned(target)
+        if not allowed:
+            return False
+    return True
+
+
+def _manager(name: str) -> Path:
+    selected = shutil.which(name)
+    if selected:
+        try:
+            path = _absolute_path(selected).resolve(strict=True)
+        except OSError as exc:
+            raise DoctorRepairError(f"could not admit {name}: {exc}") from exc
+        if path.is_file() and os.access(path, os.R_OK | os.X_OK):
+            return path
+    raise DoctorRepairError(f"{name} is required; install it through site policy")
+
+
+def _file_sha256(path: Path) -> str:
+    try:
+        with path.open("rb") as handle:
+            return hashlib.file_digest(handle, "sha256").hexdigest()
+    except OSError as exc:
+        raise DoctorRepairError(f"could not bind package manager {path}: {exc}") from exc
+
+
+def _build_repair_plan(result: DoctorResult) -> _RepairPlan:
+    if result.source_commit is None:
+        raise DoctorRepairError("repair requires a clean reviewed EMRYS checkout")
+    machine = platform.machine().casefold()
+    if platform.system() != "Linux" or machine not in {"amd64", "x86_64"}:
+        raise DoctorRepairError(
+            "managed repair currently supports x86-64 Linux; use site runtime "
+            "discovery on this platform"
+        )
+    venv = result.source_root / ".venv"
+    if _absolute_path(sys.prefix) != venv:
+        raise DoctorRepairError(
+            "Python repair is restricted to the active checkout-owned .venv; "
+            f"found {sys.prefix}"
+        )
+    try:
+        state = venv.lstat()
+        owned_venv = stat.S_ISDIR(state.st_mode) and not stat.S_ISLNK(state.st_mode)
+        owned_venv = owned_venv and venv.resolve(strict=True) == venv
+    except OSError as exc:
+        raise DoctorRepairError(f"checkout-owned .venv is unavailable: {exc}") from exc
+    if not owned_venv or not os.access(venv, os.R_OK | os.W_OK | os.X_OK):
+        raise DoctorRepairError(f"checkout-owned .venv is not canonical and writable: {venv}")
+    try:
+        project = result.project
+        runtime = onboarding.project_runtime_directory(project)
+        resources = _PACKAGE_ROOT / "resources/runtime"
+        manifest_bytes = (resources / "pixi.toml").read_bytes()
+        lock_bytes = (resources / "pixi.lock").read_bytes()
+    except (OSError, onboarding.OnboardingError) as exc:
+        raise DoctorRepairError(str(exc)) from exc
+    managed = runtime / "managed"
+    uv, pixi = _manager("uv"), _manager("pixi")
+    plan = _RepairPlan(
+        project=project,
+        source_root=result.source_root,
+        source_commit=result.source_commit,
+        managed_root=managed,
+        native=managed / ".pixi/envs/native",
+        r=managed / ".pixi/envs/r",
+        renv=managed / "renv/library",
+        profile=runtime / "runtime.tsv",
+        uv=uv,
+        pixi=pixi,
+        uv_sha256=_file_sha256(uv),
+        pixi_sha256=_file_sha256(pixi),
+        profile_bytes=None if result.inspection is None else result.inspection.profile_bytes,
+        manifest_bytes=manifest_bytes,
+        lock_bytes=lock_bytes,
+    )
+    if result.inspection is not None:
+        checks = tuple(item.check for item in result.inspection.observations)
+        if not _profile_is_managed(checks, plan):
+            raise DoctorRepairError(
+                "the admitted runtime profile is site- or user-owned and was "
+                "preserved; repair that environment or explicitly admit a replacement"
+            )
+    return plan
+
+
+def _readmit_repair_plan(plan: _RepairPlan) -> None:
+    try:
+        source = inspect_source_checkout(
+            root=plan.source_root, package_root=_PACKAGE_ROOT, require_clean=True
+        )
+        project = onboarding.validate_project(
+            plan.project.source_path, root=plan.source_root
+        ).project
+        runtime = onboarding.project_runtime_directory(project)
+    except (OSError, RuntimeError) as exc:
+        raise DoctorRepairError(f"repair plan changed before execution: {exc}") from exc
+    if (
+        source.commit != plan.source_commit
+        or project != plan.project
+        or runtime != plan.managed_root.parent
+    ):
+        raise DoctorRepairError("repair plan changed before execution")
+    if _file_sha256(plan.uv) != plan.uv_sha256 or _file_sha256(plan.pixi) != plan.pixi_sha256:
+        raise DoctorRepairError("admitted package manager changed before execution")
+    if plan.profile_bytes is None:
+        if os.path.lexists(plan.profile):
+            raise DoctorRepairError("runtime profile appeared after repair confirmation")
+        return
+    try:
+        state = plan.profile.lstat()
+        data = plan.profile.read_bytes()
+    except OSError as exc:
+        raise DoctorRepairError(f"runtime profile changed before execution: {exc}") from exc
+    if stat.S_ISLNK(state.st_mode) or not stat.S_ISREG(state.st_mode) or data != plan.profile_bytes:
+        raise DoctorRepairError("runtime profile changed before execution")
+
+
+def _admit_managed_root(plan: _RepairPlan) -> None:
+    root = plan.managed_root
+    try:
+        if not os.path.lexists(root):
+            root.mkdir(mode=0o700)
+        state = root.lstat()
+        safe = stat.S_ISDIR(state.st_mode) and not stat.S_ISLNK(state.st_mode)
+        safe = safe and root.resolve(strict=True) == root
+        if not safe or not os.access(root, os.R_OK | os.W_OK | os.X_OK):
+            raise DoctorRepairError(f"managed runtime must be canonical and writable: {root}")
+        allowed = {".pixi", "cache", "pixi.lock", "pixi.toml", "renv"}
+        unexpected = {path.name for path in root.iterdir()} - allowed
+        if unexpected:
+            raise DoctorRepairError("foreign managed-runtime entries: " + ", ".join(sorted(unexpected)))
+        if os.path.lexists(root / ".pixi/config.toml"):
+            raise DoctorRepairError("Project-local Pixi configuration is not permitted during repair")
+        for relative in (".pixi", ".pixi/envs", ".pixi/envs/native", ".pixi/envs/r"):
+            directory = root / relative
+            if os.path.lexists(directory) and (
+                directory.is_symlink()
+                or not directory.is_dir()
+                or root not in directory.resolve(strict=True).parents
+            ):
+                raise DoctorRepairError(f"managed Pixi state is not owned: {directory}")
+        for name, data in (("pixi.toml", plan.manifest_bytes), ("pixi.lock", plan.lock_bytes)):
+            destination = root / name
+            if os.path.lexists(destination):
+                state = destination.lstat()
+                observed = destination.read_bytes()
+                if not stat.S_ISREG(state.st_mode) or observed != data:
+                    raise DoctorRepairError(f"managed {name} differs from packaged bytes")
+            else:
+                publish_exclusive(destination, data, DoctorRepairError)
+        for relative in ("cache", "cache/uv", "cache/pixi", "renv", "renv/cache", "renv/library"):
+            directory = root / relative
+            directory.mkdir(mode=0o700, exist_ok=True)
+            if directory.is_symlink() or not directory.is_dir():
+                raise DoctorRepairError(f"managed directory is not owned state: {directory}")
+    except OSError as exc:
+        raise DoctorRepairError(f"managed runtime is unavailable: {root}: {exc}") from exc
+
+
+def _repair_actions(plan: _RepairPlan) -> tuple[tuple[tuple[str, ...], dict[str, str]], ...]:
+    base = sanitized_subprocess_environment()
+    uv = dict(base)
+    uv.update(
+        {
+            "UV_CACHE_DIR": str(plan.managed_root / "cache/uv"),
+            "UV_PROJECT_ENVIRONMENT": sys.prefix,
+        }
+    )
+    pixi = dict(base)
+    for name in tuple(pixi):
+        if name.startswith("PIXI_"):
+            del pixi[name]
+    pixi.update({
+        "PIXI_CACHE_DIR": str(plan.managed_root / "cache/pixi"),
+        "PIXI_DISABLE_NETFS_REDIRECT": "1",
+        "PIXI_NO_CONFIG": "1",
+    })
+    restore = dict(pixi)
+    for name in tuple(restore):
+        if name.startswith(("R_LIBS", "R_PROFILE", "R_ENVIRON", "RENV_")) or name == "R_DEFAULT_PACKAGES":
+            del restore[name]
+    restore.update(
+        {
+            "EMRYS_USE_RENV": "1",
+            "EMRYS_LOCAL_PILOT_R": "0",
+            "RENV_PROJECT": str(plan.source_root),
+            "RENV_PATHS_LIBRARY": str(plan.renv),
+            "RENV_PATHS_CACHE": str(plan.managed_root / "renv/cache"),
+            "RENV_CONFIG_SANDBOX_ENABLED": "FALSE",
+            "RENV_CONFIG_AUTO_SNAPSHOT": "FALSE",
+            "R_PROFILE_USER": str(plan.source_root / ".Rprofile"),
+        }
+    )
+    manifest = str(plan.managed_root / "pixi.toml")
+    restore_argv = guarded_rscript_argv(
+        str(plan.r / "bin/Rscript"),
+        (str(plan.source_root / "scripts/restore_r_environment.R"),),
+    )
+    return (
+        ((str(plan.uv), "sync", "--locked", "--no-default-groups", "--group", "workflow", "--python", sys.executable, "--project", str(plan.source_root)), uv),
+        ((str(plan.pixi), "install", "--manifest-path", manifest, "--locked", "--all"), pixi),
+        (
+            (
+                str(plan.pixi), "run", "--manifest-path", manifest,
+                "--environment", "r", "--locked", "--executable", *restore_argv,
+            ),
+            restore,
+        ),
+    )
+
+
+def _managed_discovery_environment(plan: _RepairPlan) -> dict[str, str]:
+    jars = tuple(
+        path for path in (plan.native / "share").glob(
+            "picard-slim-3.1.1-*/picard.jar"
+        ) if path.is_file() and not path.is_symlink()
+    )
+    if len(jars) != 1:
+        raise DoctorRepairError("locked runtime must contain one Picard 3.1.1 jar")
+    libraries = tuple(
+        description.parents[1]
+        for description in plan.renv.rglob("renv/DESCRIPTION")
+        if description.is_file()
+    )
+    if len(libraries) != 1:
+        raise DoctorRepairError("managed renv restore must produce one qualified library")
+    library = libraries[0]
+    try:
+        if library.is_symlink() or not library.is_dir() or library.resolve(strict=True) != library:
+            raise DoctorRepairError(f"managed renv library is not owned: {library}")
+    except OSError as exc:
+        raise DoctorRepairError(f"managed renv library is unavailable: {exc}") from exc
+    environment = sanitized_subprocess_environment()
+    environment.pop("JAVA_HOME", None)
+    environment.update(
+        {
+            "PATH": str(plan.native / "bin"),
+            "EMRYS_RSCRIPT": str(plan.r / "bin/Rscript"),
+            "EMRYS_PICARD_JAR": str(jars[0]),
+            "EMRYS_RENV_LIBRARY": str(library),
+        }
+    )
+    return environment
+
+
+def _stderr(message: str) -> None:
+    print(message, file=sys.stderr)
+
+
+def _print_result(result: DoctorResult, detail: LogLevel) -> None:
+    _stderr("EMRYS Doctor")
+    _stderr(f"  Project    PASS  {result.project.source_path.parent}")
+    _stderr("  Inputs     PASS")
+    for label, ready in (("Storage", result.storage_ready), ("Runtime", result.runtime_ready), ("Execution", result.ready)):
+        _stderr(f"  {label:<10} {'PASS' if ready else 'FAIL'}")
+    if detail in {LogLevel.VERBOSE, LogLevel.DEBUG}:
+        _stderr(f"Source checkout: {result.source_root}")
+        _stderr(f"Source commit: {result.source_commit or 'not admitted'}")
+        if result.inspection is not None:
+            _stderr(f"Runtime profile: {result.inspection.profile_path}")
+            _stderr(f"Runtime profile SHA-256: {result.inspection.profile_sha256}")
+            for observation in result.inspection.observations:
+                _stderr(
+                    f"  {observation.check.check_id}: {observation.status} "
+                    f"({observation.observed})"
+                )
+    if detail is LogLevel.DEBUG:
+        for binding in result.bindings:
+            _stderr(
+                f"Binding {binding.check_id}: {binding.path} -> "
+                f"{binding.resolved_path} sha256:{binding.sha256}"
+            )
+    _stderr("EMRYS is ready." if result.ready else "EMRYS is not ready.")
+    for blocker in result.blockers:
+        _stderr(f"BLOCKER: {blocker}")
+    for remediation in result.remediations:
+        _stderr(f"REMEDIATION: {remediation}")
+
+
+def _print_repair_plan(plan: _RepairPlan) -> None:
+    _stderr("EMRYS Doctor repair plan")
+    _stderr(f"  Project: {plan.project.source_path}")
+    _stderr(f"  Managed runtime: {plan.managed_root}")
+    _stderr(f"  uv: {plan.uv}")
+    _stderr(f"  Pixi: {plan.pixi}")
+    _stderr("  Actions: uv sync; Pixi native/R install; renv restore; runtime qualification")
+    _stderr("Declared inputs and site/user environments will not be modified.")
+
+
+def _confirm_repair() -> bool:
+    if not sys.stdin.isatty() or not sys.stderr.isatty():
+        return False
+    print("Apply this repair? [y/N] ", end="", file=sys.stderr, flush=True)
+    return sys.stdin.readline().strip().casefold() in {"y", "yes"}
+
+
+def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult:
+    try:
+        attempt = open_attempt_log(
+            controls=controls,
+            identity=AttemptIdentity("maintenance", plan.project.source_sha256[:16], f"repair-{uuid.uuid4().hex}", "emrys-doctor"),
+            mode="repair",
+            component="maintenance",
+        )
+    except (ApplicationLogError, ValueError) as exc:
+        raise DoctorRepairError(f"could not open repair log before mutation: {exc}") from exc
+    logger = attempt.logger(component="maintenance", phase="repair")
+    degraded = False
+
+    def record(operation: Callable[[], object]) -> None:
+        nonlocal degraded
+        if not degraded:
+            try:
+                degraded = operation() is False
+            except Exception:
+                degraded = True
+            if degraded:
+                print("WARNING: repair logging degraded; requalification remains controlling.", file=sys.stderr)
+
+    def emit(name: str, message: str, **values: object) -> None:
+        record(lambda: logger.info(message, extra=event(name, fields={key: field(value) for key, value in values.items()})))
+
+    emit(
+        "repair_started", "Managed runtime repair started.",
+        project=plan.project.source_path, managed_root=plan.managed_root,
+        uv=plan.uv, pixi=plan.pixi,
+        uv_sha256=plan.uv_sha256, pixi_sha256=plan.pixi_sha256,
+        pixi_manifest_sha256=hashlib.sha256(plan.manifest_bytes).hexdigest(),
+        pixi_lock_sha256=hashlib.sha256(plan.lock_bytes).hexdigest(),
+    )
+    try:
+        _readmit_repair_plan(plan)
+        _admit_managed_root(plan)
+        for argv, environment in _repair_actions(plan):
+            manager = Path(argv[0]).name
+            if manager == "pixi" and os.path.lexists(plan.managed_root / ".pixi/config.toml"):
+                raise DoctorRepairError("Project-local Pixi configuration appeared during repair")
+            emit("package_manager_started", "Package-manager action started.", manager=manager, argv=argv)
+            try:
+                completed = subprocess.run(
+                    argv, cwd=plan.source_root, env=environment,
+                    stdout=sys.stderr, stderr=sys.stderr, check=False,
+                )
+            except OSError as exc:
+                raise DoctorRepairError(f"could not start {manager}: {exc}") from exc
+            emit("package_manager_completed", "Package-manager action completed.", manager=manager, exit_status=completed.returncode)
+            if completed.returncode != 0:
+                raise DoctorRepairError(f"{manager} exited with status {completed.returncode}")
+        _readmit_repair_plan(plan)
+        candidate = onboarding.discover_runtime_profile(
+            project=plan.project.source_path,
+            environment=_managed_discovery_environment(plan),
+            root=plan.source_root,
+            python_executable=Path(sys.executable),
+        )
+        if not candidate.required_ready:
+            raise DoctorRepairError("repaired runtime did not pass qualification")
+        published = plan.profile_bytes is None
+        if published:
+            onboarding.publish_runtime_profile(candidate)
+            emit("runtime_profile_admitted", "Managed runtime profile admitted.", profile=plan.profile, sha256=candidate.profile_sha256)
+        else:
+            try:
+                state = plan.profile.lstat()
+                existing = plan.profile.read_bytes()
+            except OSError as exc:
+                raise DoctorRepairError(f"could not read runtime profile: {exc}") from exc
+            if (
+                stat.S_ISLNK(state.st_mode)
+                or not stat.S_ISREG(state.st_mode)
+                or existing != plan.profile_bytes
+                or existing != candidate.profile_bytes
+            ):
+                raise DoctorRepairError("existing managed profile differs and was preserved")
+        final = diagnose_project(plan.project.source_path)
+        if not final.ready:
+            raise DoctorRepairError(
+                "Project remained not ready after managed-runtime requalification"
+            )
+        record(
+            lambda: attempt.terminal(
+                event_name="repair_requalified",
+                message="Managed runtime repair completed and Project was requalified.",
+                fields={"ready": field(final.ready, console=True), "runtime_ready": field(final.runtime_ready)},
+            )
+        )
+        return final
+    except KeyboardInterrupt:
+        record(lambda: attempt.interrupt_best_effort(message="Managed runtime repair interrupted."))
+        raise
+    except (
+        DoctorInputError,
+        DoctorRepairError,
+        RuntimeInspectionError,
+        onboarding.OnboardingError,
+        orchestration_contracts.ContractValidationError,
+    ) as exc:
+        error = str(exc)
+        record(lambda: attempt.fail(phase="repair", message="Managed runtime repair failed.", fields={"error": field(error)}))
+        raise DoctorRepairError(str(exc)) from exc
+    finally:
+        with suppress(Exception):
+            attempt.close()
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--project", default=Path("project.yaml"), type=Path)
+    add_log_arguments(parser)
+    parser.add_argument(
+        "--repair",
+        action="store_true",
+        help="Preview a supported EMRYS-owned runtime repair and confirm on a terminal.",
+    )
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Apply --repair noninteractively; invalid without --repair.",
+    )
     parser.set_defaults(_command_parser=parser)
 
 
-def doctor_from_args(
-    arguments: argparse.Namespace,
-    *,
-    source_root: Path | None = None,
-    ops: DoctorOps = DEFAULT_DOCTOR_OPS,
-) -> int:
+def doctor_from_args(arguments: argparse.Namespace) -> int:
+    if arguments.execute and not arguments.repair:
+        print("emrys: error: --execute requires --repair", file=sys.stderr)
+        return 2
     try:
-        result = inspect_local_pilot(
-            arguments.project,
-            Path(os.path.abspath(arguments.project)).parent,
-            onboarding.runtime_profile_path(arguments.project),
-            source_root=source_root,
-            ops=ops,
+        result = diagnose_project(arguments.project)
+        controls = resolve_log_controls(
+            source_checkout=SourceCheckout(result.source_root),
+            cli_level=arguments.log_level,
+            cli_root=arguments.log_root,
+            default_root=result.project.source_path.parent / "logs/application",
         )
-    except DoctorInputError as exc:
+    except (DoctorInputError, LogControlError) as exc:
         print(f"emrys: error: {exc}", file=sys.stderr)
         return 2
-    print(f"Project: {result.project_path}")
-    print(f"Workspace: {result.workspace}")
-    print(f"Source checkout: {result.source_root}")
-    print(f"Source commit: {result.source_commit or 'not admitted'}")
-    print(f"Runtime profile SHA-256: {result.inspection.profile_sha256}")
-    storage_binding = next(
-        (
-            binding
-            for binding in result.bindings
-            if binding.check_id == "storage_qualification"
-        ),
-        None,
-    )
-    if storage_binding is not None:
-        print(f"Storage qualification: {storage_binding.path}")
-        print(f"Storage qualification SHA-256: {storage_binding.sha256}")
-    for observation in result.inspection.observations:
-        print(
-            f"{observation.check.check_id}: {observation.status} "
-            f"({observation.observed})"
-        )
-    if result.ready:
-        print("READY: local-pilot prerequisites passed.")
-        return 0
-    print("NOT READY: local-pilot prerequisites have blockers.")
-    for blocker in result.blockers:
-        print(f"BLOCKER: {blocker}")
-    for remediation in result.remediations:
-        print(f"REMEDIATION: {remediation}")
-    return 1
+    detail = controls.level
+    _print_result(result, detail)
+    if not arguments.repair or result.ready:
+        return 0 if result.ready else 1
+    try:
+        plan = _build_repair_plan(result)
+    except DoctorRepairError as exc:
+        print(f"REPAIR BLOCKED: {exc}", file=sys.stderr)
+        return 1
+    _print_repair_plan(plan)
+    if not arguments.execute:
+        try:
+            confirmed = _confirm_repair()
+        except KeyboardInterrupt:
+            confirmed = False
+        if not confirmed:
+            print("Repair preview complete; no files were written.", file=sys.stderr)
+            return 1
+    try:
+        final = _execute_repair(plan, controls=controls)
+    except KeyboardInterrupt:
+        print("Repair interrupted; partial managed state was preserved.", file=sys.stderr)
+        return 130
+    except DoctorRepairError as exc:
+        print(f"REPAIR FAILED: {exc}", file=sys.stderr)
+        return 1
+    _print_result(final, detail)
+    return 0 if final.ready else 1
 
 
 __all__ = (
-    "DEFAULT_DOCTOR_OPS",
     "DESCRIPTION",
     "DoctorInputError",
-    "DoctorOps",
+    "DoctorRepairError",
     "DoctorResult",
     "RuntimeBinding",
     "configure_parser",
+    "diagnose_project",
     "doctor_from_args",
     "inspect_local_pilot",
     "required_tool_identities",

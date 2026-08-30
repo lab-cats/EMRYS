@@ -10,7 +10,7 @@ import sys
 import uuid
 from collections.abc import Callable, Mapping
 from contextlib import suppress
-from dataclasses import dataclass, replace
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from functools import partial
 from pathlib import Path
@@ -55,12 +55,7 @@ from emrys.orchestration.local_pilot.materialization import (
     publish_attempt,
     validate_run_destination,
 )
-from emrys.orchestration.local_pilot.normalization import (
-    ProjectAdmission,
-    admit_project,
-)
 from emrys.orchestration.local_pilot.resource_policy import (
-    AllocationCapacity,
     ResourceConfigError,
     ResourceOverrides,
     add_resource_override_arguments,
@@ -109,67 +104,7 @@ def _control_failure(exc: Exception) -> int:
     return 2
 
 
-ReadinessInspector = Callable[[Path, Path, Path], doctor.DoctorResult]
-ProjectAdmitter = Callable[[Path, Mapping[str, Any] | Path], ProjectAdmission]
-RunInspector = Callable[[Path], inspection.RunInspection]
-ApplicationEventObserver = Callable[[str], None]
-PlanExecutor = Callable[
-    [AttemptPlan, ApplicationEventObserver], lifecycle.LifecycleOutcome
-]
 PlanBuilder = Callable[[], AttemptPlan]
-PlanTransformer = Callable[[AttemptPlan], AttemptPlan]
-AllocationObserver = Callable[[], AllocationCapacity]
-
-
-@dataclass(frozen=True, slots=True)
-class ControlOps:
-    """Explicit collaborators for planning, execution, and public adapter tests."""
-
-    inspect_readiness: ReadinessInspector
-    admit_project: ProjectAdmitter
-    inspect_run: RunInspector
-    execute_plan: PlanExecutor
-    transform_plan: PlanTransformer
-    now: Callable[[], datetime]
-    token: Callable[[], str]
-    observe_allocation: AllocationObserver = capacity.observe_allocation
-    report_run: Callable[..., reporting_operation.ReportingOperationOutcome] = (
-        reporting_operation.run_reporting
-    )
-
-
-def _default_readiness(
-    project: Path, workspace: Path, runtime_profile: Path
-) -> doctor.DoctorResult:
-    return doctor.inspect_local_pilot(project, workspace, runtime_profile)
-
-
-def _default_execute(
-    plan: AttemptPlan,
-    observe_application_event: ApplicationEventObserver,
-) -> lifecycle.LifecycleOutcome:
-    ops = replace(
-        lifecycle.default_lifecycle_ops(),
-        observe_application_event=observe_application_event,
-    )
-    if plan.operation == "execute":
-        admit_run(plan, ops=ops)
-    return lifecycle.run_materialized_attempt(
-        plan.preparation,
-        lambda: publish_attempt(plan, ops=ops),
-        ops=ops,
-    )
-
-
-DEFAULT_CONTROL_OPS = ControlOps(
-    inspect_readiness=_default_readiness,
-    admit_project=admit_project,
-    inspect_run=inspection.inspect_run,
-    execute_plan=_default_execute,
-    transform_plan=lambda plan: plan,
-    now=lambda: datetime.now(UTC),
-    token=lambda: uuid.uuid4().hex,
-)
 
 
 def _absolute(path: Path) -> Path:
@@ -184,53 +119,31 @@ def _require_ready(result: doctor.DoctorResult) -> None:
     raise ControlError("Local-pilot readiness blockers: " + "; ".join(details))
 
 
-def _admit_project_after_doctor(
-    readiness: doctor.DoctorResult,
-    ops: ControlOps,
-) -> ProjectAdmission:
-    try:
-        project = ops.admit_project(
-            readiness.project_path,
-            readiness.source_root / "workflow/contracts/local_cmh_v2.json",
-        )
-    except (OSError, orchestration_contracts.ContractValidationError) as exc:
-        raise ControlError(str(exc)) from exc
-    return project
-
-
 def _plan_run(
     project_path: Path,
-    workspace: Path,
     *,
     execution_profile: ExecutionProfile,
     scheduler_job_id: str | None = None,
-    ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> AttemptPlan:
     """Plan a new run without writing any workspace state."""
 
+    workspace = _absolute(project_path).parent
     try:
-        readiness = ops.inspect_readiness(
-            project_path,
-            workspace,
-            onboarding.runtime_profile_path(project_path),
-        )
+        readiness = doctor.diagnose_project(project_path)
         _require_ready(readiness)
-        project = _admit_project_after_doctor(readiness, ops)
+        project = readiness.project
         policy = execution_profile.resource_policy
         run = build_run_candidate(project, readiness, policy.declaration)
-        resources = resolve_resource_policy(policy, ops.observe_allocation())
-        plan = ops.transform_plan(
-            build_attempt_plan(
-                run,
-                readiness,
-                _absolute(workspace),
-                resources=resources,
-                operation="execute",
-                now=ops.now(),
-                token=ops.token(),
-                placement=execution_profile.attempt_placement(scheduler_job_id),
-            )
+        resources = resolve_resource_policy(policy, capacity.observe_allocation())
+        plan = build_attempt_plan(
+            run,
+            readiness,
+            _absolute(workspace),
+            resources=resources,
+            operation="execute",
+            placement=execution_profile.attempt_placement(scheduler_job_id),
         )
+        validate_run_destination(plan.run_root, candidate=plan.run)
     except (
         doctor.DoctorInputError,
         MaterializationError,
@@ -238,13 +151,6 @@ def _plan_run(
         ExecutionProfileError,
         orchestration_contracts.ContractValidationError,
     ) as exc:
-        raise ControlError(str(exc)) from exc
-    try:
-        validate_run_destination(
-            plan.run_root,
-            candidate=plan.run if not isinstance(plan.run, HistoricalRun) else None,
-        )
-    except MaterializationError as exc:
         raise ControlError(str(exc)) from exc
     return plan
 
@@ -271,10 +177,8 @@ def _load_config_reference(
 
 def _retained_dispatches(
     observed: inspection.RunInspection,
+    config: Mapping[str, Any],
 ) -> dict[tuple[str, str], dict[str, str]]:
-    if observed.latest_attempt is None:
-        raise ControlError("Resume has no predecessor workflow attempt")
-    config = _load_config_reference(observed.run_root, observed.latest_attempt)
     dispatches = config.get("dispatch_paths")
     if not isinstance(dispatches, dict):
         raise ControlError("Prior workflow config has no closed dispatch map")
@@ -343,13 +247,12 @@ def _plan_resume(
     profile_resources_explicit: bool,
     resource_overrides: ResourceOverrides = ResourceOverrides(),
     scheduler_job_id: str | None = None,
-    ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> AttemptPlan:
     """Plan a safe between-task resume without writing run state."""
 
     root = _absolute(run_root)
     try:
-        observed = ops.inspect_run(root)
+        observed = inspection.inspect_run(root)
     except (OSError, inspection.InspectionError) as exc:
         raise ControlError(str(exc)) from exc
     if not observed.recovery_available or observed.latest_attempt is None:
@@ -379,13 +282,13 @@ def _plan_resume(
             else _retained_runtime_profile_path(previous)
         )
     try:
-        readiness = ops.inspect_readiness(
+        readiness = doctor.inspect_local_pilot(
             project_path,
             workspace,
             runtime_profile,
         )
         _require_ready(readiness)
-        project = _admit_project_after_doctor(readiness, ops)
+        project = readiness.project
         predecessor_config = _load_config_reference(root, previous)
         if observed.authority is not None:
             if profile_resources_explicit:
@@ -412,7 +315,7 @@ def _plan_resume(
             ):
                 raise ControlError("Current inputs resolve to a different Run")
             run = candidate
-            resources = resolve_resource_policy(policy, ops.observe_allocation())
+            resources = resolve_resource_policy(policy, capacity.observe_allocation())
         else:
             legacy_execution, legacy_bytes = project.historical_execution_v1()
             fixed_execution = root / "contract/normalized.json"
@@ -427,7 +330,7 @@ def _plan_resume(
             if profile_resources_explicit:
                 resources = resolve_resource_policy(
                     execution_profile.resource_policy,
-                    ops.observe_allocation(),
+                    capacity.observe_allocation(),
                 )
             else:
                 prior_record = predecessor_config.get("resource_policy")
@@ -435,7 +338,7 @@ def _plan_resume(
                     raise ControlError("Prior workflow config has no resource policy")
                 resources = resume_resource_plan(
                     prior_record,
-                    ops.observe_allocation(),
+                    capacity.observe_allocation(),
                     overrides=resource_overrides,
                 )
                 execution_profile = replace(
@@ -447,20 +350,16 @@ def _plan_resume(
                 run_id=observed.run_id,
                 execution_projection_bytes=legacy_bytes,
             )
-        plan = ops.transform_plan(
-            build_attempt_plan(
-                run,
-                readiness,
-                workspace,
-                resources=resources,
-                operation="resume",
-                now=ops.now(),
-                token=ops.token(),
-                supersedes_workflow_attempt_id=str(previous["workflow_attempt_id"]),
-                retained_dispatches=_retained_dispatches(observed),
-                retained_runtime_profile_path=retained_runtime_profile,
-                placement=execution_profile.attempt_placement(scheduler_job_id),
-            )
+        plan = build_attempt_plan(
+            run,
+            readiness,
+            workspace,
+            resources=resources,
+            operation="resume",
+            supersedes_workflow_attempt_id=str(previous["workflow_attempt_id"]),
+            retained_dispatches=_retained_dispatches(observed, predecessor_config),
+            retained_runtime_profile_path=retained_runtime_profile,
+            placement=execution_profile.attempt_placement(scheduler_job_id),
         )
     except (
         doctor.DoctorInputError,
@@ -761,7 +660,6 @@ def _execute_plan(
     entrypoint: str,
     report_enabled: bool = True,
     render_plan: bool = True,
-    ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> int:
     """Build and execute one plan inside one non-authoritative application log."""
 
@@ -905,7 +803,15 @@ def _execute_plan(
             )
 
     try:
-        outcome = ops.execute_plan(plan, observe_application_event)
+        ops = replace(
+            lifecycle.default_lifecycle_ops(),
+            observe_application_event=observe_application_event,
+        )
+        if plan.operation == "execute":
+            admit_run(plan, ops=ops)
+        outcome = lifecycle.run_materialized_attempt(
+            plan.preparation, lambda: publish_attempt(plan, ops=ops), ops=ops
+        )
     except (
         MaterializationError,
         lifecycle.LifecycleError,
@@ -999,7 +905,7 @@ def _execute_plan(
             return 0
         observe_reporting("reporting_started", "Generating downstream reports.")
         try:
-            reported = ops.report_run(plan.run_root, execute=True)
+            reported = reporting_operation.run_reporting(plan.run_root, execute=True)
         except (reporting_operation.ReportingOperationError, OSError) as exc:
             observe_reporting(
                 "reporting_failed",
@@ -1150,7 +1056,6 @@ def _finish_control(
     scheduler_job_id: str | None,
     workspace: Path,
     build_plan: PlanBuilder,
-    ops: ControlOps,
 ) -> int:
     report_enabled = not getattr(arguments, "no_report", False)
     if isinstance(profile.placement, SlurmPlacement) and scheduler_job_id is None:
@@ -1184,7 +1089,6 @@ def _finish_control(
         entrypoint=f"emrys-{command}",
         report_enabled=report_enabled,
         render_plan=arguments.execute,
-        ops=ops,
     )
 
 
@@ -1279,7 +1183,6 @@ def _milestone_progress(
 
 def _attempt_elapsed_line(
     observed: inspection.RunInspection,
-    clock: Callable[[], datetime],
 ) -> str:
     attempt = observed.latest_attempt
     if attempt is None:
@@ -1290,7 +1193,7 @@ def _attempt_elapsed_line(
             str(attempt["created_at"]).replace("Z", "+00:00")
         )
         if observed.attempt_outcome == "running":
-            finished = clock()
+            finished = datetime.now(UTC)
         elif observed.latest_receipt is not None:
             finished = datetime.fromisoformat(
                 str(observed.latest_receipt["finished_at"]).replace("Z", "+00:00")
@@ -1313,8 +1216,6 @@ def _print_safe(value: object, *, file: TextIO | None = None) -> None:
 
 def run_from_args(
     arguments: argparse.Namespace,
-    *,
-    ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> int:
     try:
         overrides = overrides_from_args(arguments)
@@ -1331,10 +1232,8 @@ def run_from_args(
         build_plan = partial(
             _plan_run,
             arguments.project,
-            workspace,
             execution_profile=profile,
             scheduler_job_id=scheduler_job_id,
-            ops=ops,
         )
         return _finish_control(
             arguments,
@@ -1345,7 +1244,6 @@ def run_from_args(
             overrides=overrides,
             scheduler_job_id=scheduler_job_id,
             workspace=workspace,
-            ops=ops,
         )
     except _CONTROL_ERRORS as exc:
         return _control_failure(exc)
@@ -1353,8 +1251,6 @@ def run_from_args(
 
 def resume_from_args(
     arguments: argparse.Namespace,
-    *,
-    ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> int:
     try:
         overrides = overrides_from_args(arguments)
@@ -1378,7 +1274,6 @@ def resume_from_args(
             ),
             resource_overrides=overrides,
             scheduler_job_id=scheduler_job_id,
-            ops=ops,
         )
         return _finish_control(
             arguments,
@@ -1389,7 +1284,6 @@ def resume_from_args(
             overrides=overrides,
             scheduler_job_id=scheduler_job_id,
             workspace=workspace,
-            ops=ops,
         )
     except _CONTROL_ERRORS as exc:
         return _control_failure(exc)
@@ -1405,8 +1299,6 @@ def _print_reporting_outcome(
 
 def report_from_args(
     arguments: argparse.Namespace,
-    *,
-    ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> int:
     root = _absolute(arguments.run_root)
     try:
@@ -1416,7 +1308,7 @@ def report_from_args(
         return 2
     if not arguments.execute:
         try:
-            planned = ops.report_run(root, execute=False)
+            planned = reporting_operation.run_reporting(root, execute=False)
         except (reporting_operation.ReportingOperationError, OSError) as exc:
             print(f"emrys: error: {exc}", file=sys.stderr)
             return 2
@@ -1463,7 +1355,7 @@ def report_from_args(
             )
 
     try:
-        completed = ops.report_run(
+        completed = reporting_operation.run_reporting(
             root,
             execute=True,
             observe_generation_start=observe_generation_start,
@@ -1503,14 +1395,12 @@ def report_from_args(
 
 def inspect_from_args(
     arguments: argparse.Namespace,
-    *,
-    ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> int:
     try:
-        observed = ops.inspect_run(_absolute(arguments.run_root))
+        observed = inspection.inspect_run(_absolute(arguments.run_root))
         detail = getattr(arguments, "detail", "normal")
         milestones = _milestone_progress(observed.tasks)
-        elapsed = _attempt_elapsed_line(observed, ops.now)
+        elapsed = _attempt_elapsed_line(observed)
         result_lines = _verified_report_location_lines(
             observed.verified_report_locations
         )
@@ -1641,8 +1531,6 @@ def inspect_from_args(
 
 __all__ = (
     "ControlError",
-    "ControlOps",
-    "DEFAULT_CONTROL_OPS",
     "INSPECT_DESCRIPTION",
     "REPORT_DESCRIPTION",
     "RESUME_DESCRIPTION",
