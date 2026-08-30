@@ -1,7 +1,8 @@
 # Run-report implementation owners
 
-This private package supports the direct public
-[`emrys build report`](../report.py) owner. It adds no command surface.
+This private package implements the HTML transaction used by the Run-level
+reporting coordinator and developer fixtures through [`report.py`](../report.py).
+It has no installed public command or operator recovery route.
 
 | Module | Responsibility |
 | --- | --- |
@@ -19,12 +20,11 @@ This private package supports the direct public
 | [`publication.py`](publication.py) | One receipt-last two-HTML transaction using injected immutable fault operations. |
 | [`transaction.py`](transaction.py) | Lock, snapshot, durability, staging, and recovery primitives. |
 
-The public owner admits the required absolute canonical source checkout and
-independent artifact source root before reading report inputs and passes both
-into this package explicitly. The artifact root governs contract-relative
-paths recorded in the run summary; the
-checkout governs renderer Git identity. Private owners infer neither root from
-the working directory or run-summary location and do not re-admit during
+The Run-level coordinator supplies the admitted absolute canonical source
+checkout and independent artifact source root before reading report inputs.
+The artifact root governs contract-relative paths recorded in the run summary;
+the checkout governs renderer Git identity. Private owners infer neither root
+from the working directory or run-summary location and do not re-admit during
 publication.
 
 When the canonical run summary declares a complete primary Step 09 trio

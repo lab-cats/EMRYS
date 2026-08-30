@@ -1,14 +1,12 @@
 """Assemble one validated EMRYS artifact transaction into a run summary.
 
-The command is explicit-input-only and dry-run-first. It never discovers
-pipeline outputs, invokes an analysis engine, or promotes computational or
-scientific state. Execute mode publishes canonical JSON, two deterministic
-TSV views, and a receipt last as one rollback-protected transaction.
+The private builder is explicit-input-only. It never discovers pipeline outputs,
+invokes an analysis engine, publishes files, or promotes computational or
+scientific state.
 """
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,25 +15,16 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     import argparse
 
-from emrys.contracts.artifacts import api as contracts
 from emrys.libraries.source_authority import (
     ArtifactSourceRoot,
-    ArtifactSourceRootError,
     SourceCheckout,
-    SourceCheckoutError,
-    admit_artifact_source_root,
-    admit_source_checkout,
     matching_checkout_head_commit,
 )
 from emrys.reporting import transaction_validation
 from emrys.reporting._artifact_index import api as adapter
 from emrys.reporting._run_summary import models
-from emrys.reporting._run_summary import publication
 from emrys.reporting._run_summary.document import _build_document
-from emrys.reporting._run_summary.models import (
-    BuildContext,
-    RunSummaryError,
-)
+from emrys.reporting._run_summary.models import BuildContext
 from emrys.reporting._run_summary.projection import (
     _build_qc_rows,
     _build_summary_rows,
@@ -209,7 +198,6 @@ def prepare_context(
     )
     context = BuildContext(
         run_id=arguments.run_id,
-        execute=arguments.execute,
         artifact_receipt_path=artifact_receipt_path,
         artifact_receipt=artifact_receipt,
         run_contract_path=run_contract_path,
@@ -240,70 +228,3 @@ def prepare_context(
     )
     deps.recheck_inputs(context)
     return context
-
-
-def print_context(context: BuildContext) -> None:
-    mode = "execute" if context.execute else "dry-run"
-    rollup = context.document["computational_rollup"]
-    print("EMRYS run-summary context")
-    print(f"  Mode: {mode}")
-    print(f"  Run ID: {context.run_id}")
-    print(f"  Artifact receipt: {context.artifact_receipt_path}")
-    print(f"  Adapter attempt: {context.artifact_receipt['adapter_attempt_id']}")
-    print(f"  Expected artifacts: {len(context.artifacts)}")
-    print(f"  Expected scopes: {len(context.document['expected_scopes'])}")
-    print(f"  Complete artifacts: {rollup['complete_artifact_count']}")
-    print(f"  Missing artifacts: {rollup['missing_artifact_count']}")
-    print(f"  Incomplete artifacts: {rollup['incomplete_artifact_count']}")
-    print(f"  Failed artifacts: {rollup['failed_artifact_count']}")
-    print(
-        "  Externally unavailable artifacts: "
-        f"{rollup['externally_unavailable_artifact_count']}"
-    )
-    print(f"  Interpretation boundary: {context.document['interpretation_boundary']}")
-    print(f"  Output JSON: {context.paths.summary_json}")
-    print(f"  Output TSV: {context.paths.summary_tsv}")
-    print(f"  QC TSV: {context.paths.qc_summary}")
-    print(f"  Receipt (published last): {context.paths.receipt}")
-    print(f"  Run-summary attempt: {context.attempt_id}")
-    if not context.execute:
-        print("Dry-run complete; no run-summary files were written.")
-
-
-def build_from_args(
-    arguments: argparse.Namespace,
-    *,
-    deps: RunSummaryBuildDeps = DEFAULT_RUN_SUMMARY_BUILD_DEPS,
-) -> int:
-    """Build one run summary from grouped command arguments."""
-    try:
-        source_checkout = admit_source_checkout(
-            root=arguments.source_checkout,
-            package_root=Path(__file__).resolve().parents[2],
-        )
-        artifact_source_root = admit_artifact_source_root(
-            root=arguments.artifact_source_root,
-        )
-        context = prepare_context(
-            arguments,
-            source_checkout=source_checkout,
-            artifact_source_root=artifact_source_root,
-            deps=deps,
-        )
-        print_context(context)
-        if arguments.execute:
-            publication.publish_context(context)
-            print(f"Published run summary: {context.paths.summary_json}")
-            print(f"Published receipt last: {context.paths.receipt}")
-        return 0
-    except (
-        RunSummaryError,
-        adapter.ArtifactIndexError,
-        ArtifactSourceRootError,
-        SourceCheckoutError,
-        contracts.ContractValidationError,
-        OSError,
-        ValueError,
-    ) as exc:
-        print(f"ERROR: {exc}", file=sys.stderr)
-        return 1

@@ -44,8 +44,9 @@ either profile without generating its reference or FASTQs. Execute writes the
 reference, annotation, four paired libraries, matched manifests, and explicit
 metadata, validates its own Project before publishing `fixture.manifest.json`
 last, and then re-admits the complete transaction. The metadata's expected
-three Step 09 computational candidates, one significant candidate, and Step 10
-workflow completion are deterministic synthetic expectations, not production
+    three Step 09 computational candidates, one significant candidate, complete
+    scientific Results through Step 10, and complete default reporting are
+    deterministic synthetic expectations, not production
 data, scientific review, or biological interpretation.
 
 `emrys run` and `emrys resume` accept at most one explicitly selected closed
@@ -123,7 +124,8 @@ timing in its diagnostic; timeouts remain readiness failures. The selected
 resolve through a cache symlink only when the loaded namespace and exact
 canonical package-tree binding agree on its target.
 
-The grouped `emrys run`, `emrys resume`, and `emrys inspect local-pilot-run`
+The grouped `emrys run`, `emrys resume`, `emrys report`, and
+`emrys inspect local-pilot-run`
 routes are the supported control surface; their planning helpers are private
 implementation details. `run` and `resume` require the controlled
 Python invocation and mutate nothing without `--execute`. Planning reruns the
@@ -145,9 +147,13 @@ process and valid dry-run own none. The log records publication readiness
 before the authoritative Attempt receipt and observes the receipt only after
 its durable commit. After initialization, log degradation cannot alter
 lifecycle, receipt, recovery, or exit; the log is never completion authority.
-Reporting runs automatically after scientific work and is separately
-receipt-bound; it is not a semantic scientific stage.
-Successful run and resume execution, and only a completed final inspection,
+After every required scientific/evidence task is verified, lifecycle releases
+the Run lock and publishes the v2 Attempt receipt. Reporting then runs
+automatically unless `run` or `resume` receives `--no-report`; it is separately
+receipt-bound, creates no Run or Attempt, and cannot change the scientific
+receipt. `emrys report --run-root RUN_ROOT` plans independently without writes
+and generates only with `--execute`. Successful default run/resume reporting,
+successful independent generation or reuse, and completed final inspection
 print a short `Results:` block with the scientific report first and evidence
 report second. Those absolute locations are carried from the fully revalidated
 report receipt; dry-run, failed, blocked, incomplete, or unverified state prints
@@ -295,13 +301,13 @@ evidence is never auto-deleted; inspection treats it, the partial attempt
 directory, or both as blocked state requiring explicit reconciliation.
 The retained filename alone never proves reconciliation.
 
-Only failed/interrupted between-task boundaries are automatically resumable. Resume
+Only failed/interrupted scientific between-task boundaries are automatically resumable. Resume
 requires the same run, profile, execution, source commit, executor, execution
 mode, and ordered tool identities. The closed task-start ledger must prove that
 every entered scope has a succeeded task-attempt and verified-task chain; an
 unverified scope must have no start, though an exact receipt-bound pre-entry
-failure may remain in an earlier attempt. Each reporting start must likewise
-have its exact verified completion. Its fixed Snakemake arguments add
+failure may remain in an earlier attempt. Independent reporting state does not
+gate scientific resume. Its fixed Snakemake arguments add
 `--rerun-triggers input --ignore-incomplete`; this accepts already-admitted
 EMRYS evidence despite engine metadata, but does not rerun or repair incomplete
 owner state. Blocked attempts remain blocked: B4 defines no reconciliation
@@ -363,7 +369,7 @@ locked workflow environment. It exercises the top-level parser using explicit
 repository-only no-science collaborators and leaves the shipped command default
 unchanged, with no fake mode or raw-engine option. Separate clean-success and
 controlled between-task failure/resume paths cover all 35 owner jobs, the three
-real reporting transactions, byte-preserving reuse, final inspection, and
+downstream reporting transactions, byte-preserving reuse, final inspection, and
 completed-run refusal. These are local structural/no-science workflow facts,
 not real science-tool or cluster proof, completed scientific review, or
 biological validation.

@@ -359,23 +359,13 @@ def test_controlled_python_ignores_timestamp_valid_adjacent_bytecode(
     assert controlled.stdout.strip() == "safe"
 
 
-def test_uncontrolled_reporting_build_rejects_before_lazy_owner_import() -> None:
-    program = (
-        "import sys; "
-        "from emrys import __main__ as cli; "
-        "sys.modules.pop('emrys.reporting._artifact_index.builder', None); "
-        "status = cli._build_artifact_index_from_args(None); "
-        "print(status, 'emrys.reporting._artifact_index.builder' in sys.modules)"
-    )
-    result = subprocess.run(
-        [sys.executable, "-I", "-c", program],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+def test_uncontrolled_python_runtime_is_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(source_authority.sys, "pycache_prefix", None)
 
-    assert result.stdout.strip() == "2 False"
-    assert "Controlled EMRYS Python children require" in result.stderr
+    with pytest.raises(source_authority.SourceCheckoutError, match="pycache_prefix"):
+        source_authority.require_controlled_python_runtime()
 
 
 def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -> None:

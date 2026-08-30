@@ -376,6 +376,12 @@ def _assert_complete_products(run_root: Path, run_id: str) -> None:
     assert observed.attempt_outcome == "succeeded"
     assert observed.results_status == "complete"
     assert observed.reporting_status == "complete"
+    assert observed.latest_attempt is not None
+    assert observed.latest_attempt["snakemake_argv"][-2:] == ["--", "cohort_slice"]
+    assert observed.latest_receipt is not None
+    assert observed.latest_receipt["schema_version"] == "emrys.attempt-receipt.v2"
+    assert "reporting_completion_records" not in observed.latest_receipt
+    assert "local_pipeline_complete" not in observed.latest_receipt
     assert (
         len(list((run_root / "state/verified").glob("*/*.json")))
         == EXPECTED_OWNER_JOB_COUNT
@@ -619,8 +625,11 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     first_receipt = orchestration_contracts.load_record(
         failed_receipts[0], "attempt-receipt"
     )
+    assert first_receipt["schema_version"] == "emrys.attempt-receipt.v2"
     assert first_receipt["status"] == "failed"
     assert first_receipt["snakemake_exit_code"] == 23
+    assert "reporting_completion_records" not in first_receipt
+    assert "local_pipeline_complete" not in first_receipt
 
     failed_inspect = _public_command(
         ["inspect", "local-pilot-run", "--run-root", str(run_root)],
@@ -646,6 +655,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     first_attempt = orchestration_contracts.load_record(
         failed_receipts[0].with_name("attempt.json"), "workflow-attempt"
     )
+    assert first_attempt["snakemake_argv"][-2:] == ["--", "cohort_slice"]
     assert first_attempt["source_checkout"] == {
         "path": str(REPO_ROOT),
         "commit": _git("rev-parse", "HEAD"),
@@ -725,7 +735,10 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         if record["workflow_attempt_id"] != first_receipt["workflow_attempt_id"]
     )
     second_receipt = receipt_records[second_index]
+    assert second_receipt["schema_version"] == "emrys.attempt-receipt.v2"
     assert second_receipt["status"] == "succeeded"
+    assert "reporting_completion_records" not in second_receipt
+    assert "local_pipeline_complete" not in second_receipt
     second_attempt_path = receipts[second_index].with_name("attempt.json")
     second_attempt = orchestration_contracts.load_record(
         second_attempt_path, "workflow-attempt"

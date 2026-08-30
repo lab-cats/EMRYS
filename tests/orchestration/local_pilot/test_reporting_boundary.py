@@ -61,16 +61,19 @@ def test_default_inspection_selects_historical_read_from_bound_profile(
     for kind in ("artifact_index", "run_summary", "html_report"):
         common = (kind, Path("/run/receipt.tsv"), tmp_path, {})
         assert validator(*common, {"artifact_templates": []}, {}, {}) == expected
-        assert validator(
-            *common,
-            {
-                "artifact_templates": [
-                    {"source_path_template": "products/native/reference/output"}
-                ]
-            },
-            {},
-            {},
-        ) == expected
+        assert (
+            validator(
+                *common,
+                {
+                    "artifact_templates": [
+                        {"source_path_template": "products/native/reference/output"}
+                    ]
+                },
+                {},
+                {},
+            )
+            == expected
+        )
     assert observed == [True, False] * 3
 
 
@@ -81,7 +84,11 @@ def _reference(path: Path, root: Path) -> dict[str, str]:
     }
 
 
-def _build(root: Path) -> workflow_fixture.WorkflowFixture:
+def _build(
+    root: Path,
+    *,
+    terminal: bool = True,
+) -> workflow_fixture.WorkflowFixture:
     built = workflow_fixture.build(root)
     attempt = orchestration_contracts.load_record(
         built.workflow_attempt_path,
@@ -102,6 +109,8 @@ def _build(root: Path) -> workflow_fixture.WorkflowFixture:
     lock_path = built.run_root / "locks" / "run.lock"
     lock_path.parent.mkdir(exist_ok=True)
     lock_path.write_bytes(orchestration_contracts.canonical_json_bytes(run_lock))
+    if terminal:
+        _terminalize_attempt(built.run_root, built.workflow_attempt_path)
     return built
 
 
@@ -173,6 +182,7 @@ def _build_successor(root: Path) -> tuple[dict[str, Path], dict[str, Any]]:
     lock_path = run_root / "locks" / "run.lock"
     lock_path.parent.mkdir()
     lock_path.write_bytes(orchestration_contracts.canonical_json_bytes(run_lock))
+    _terminalize_attempt(run_root, attempt_path)
     return (
         {
             "run_root": run_root,
@@ -185,49 +195,41 @@ def _build_successor(root: Path) -> tuple[dict[str, Path], dict[str, Any]]:
     )
 
 
-def _terminalize_run_lock(built: workflow_fixture.WorkflowFixture) -> None:
+def _terminalize_attempt(run_root: Path, attempt_path: Path) -> None:
     attempt = orchestration_contracts.load_record(
-        built.workflow_attempt_path,
+        attempt_path,
         "workflow-attempt",
     )
-    lock_path = built.run_root / "locks" / "run.lock"
+    lock_path = run_root / "locks" / "run.lock"
     lock_bytes = lock_path.read_bytes()
-    released_path = built.workflow_attempt_path.with_name("released-run-lock.json")
+    released_path = attempt_path.with_name("released-run-lock.json")
     released_path.write_bytes(lock_bytes)
     lock_path.unlink()
-    reporting: dict[str, dict[str, dict[str, str] | None]] = {}
-    for kind in reporting_boundary.REPORTING_KINDS:
-        paths = reporting_boundary.ledger_paths(built.run_root, kind)
-        reporting[kind] = {
-            "start": _reference(paths.start, built.run_root)
-            if paths.start.is_file()
-            else None,
-            "verified": _reference(paths.verified, built.run_root)
-            if paths.verified.is_file()
-            else None,
-        }
+    task_evidence = {
+        "machine_key": "fixture-owner",
+        "scope": {"scope_type": "analysis", "scope_id": "fixture"},
+        "record": _reference(attempt_path, run_root),
+    }
     terminal = {
-        "schema_version": "emrys.attempt-receipt.v1",
+        "schema_version": "emrys.attempt-receipt.v2",
         "run_id": attempt["run_id"],
         "execution_contract_sha256": attempt["execution_contract_sha256"],
         "profile_sha256": attempt["profile_sha256"],
         "workflow_attempt_id": attempt["workflow_attempt_id"],
-        "attempt_record": _reference(built.workflow_attempt_path, built.run_root),
-        "released_run_lock": _reference(released_path, built.run_root),
-        "status": "blocked",
+        "attempt_record": _reference(attempt_path, run_root),
+        "released_run_lock": _reference(released_path, run_root),
+        "status": "succeeded",
         "finished_at": "2026-08-12T15:00:00Z",
-        "snakemake_exit_code": None,
+        "snakemake_exit_code": 0,
         "termination_signal": None,
         "preentry_task_attempt_records": [],
-        "task_start_records": [],
-        "verified_tasks": [],
-        "reporting_completion_records": reporting,
-        "blockers": ["fixture terminalization"],
-        "message": "fixture terminalization",
-        "local_pipeline_complete": False,
+        "task_start_records": [task_evidence],
+        "verified_tasks": [task_evidence],
+        "blockers": [],
+        "message": None,
     }
     orchestration_contracts.validate_record("attempt-receipt", terminal)
-    built.workflow_attempt_path.with_name("attempt-receipt.json").write_bytes(
+    attempt_path.with_name("attempt-receipt.json").write_bytes(
         orchestration_contracts.canonical_json_bytes(terminal)
     )
 
@@ -340,7 +342,7 @@ def test_start_and_completion_publish_fixed_closed_records(
             .as_posix()
         ),
         "sha256": hashlib.sha256(
-            (built.run_root / "locks" / "run.lock").read_bytes()
+            built.workflow_attempt_path.with_name("released-run-lock.json").read_bytes()
         ).hexdigest(),
     }
     assert verified["reporting_start"] == {
@@ -354,15 +356,14 @@ def test_start_and_completion_publish_fixed_closed_records(
         orchestration_contracts.canonical_json_bytes(verified)
     )
 
-    _terminalize_run_lock(built)
-    observed = reporting_boundary.validate_verified(
+    semantic_receipt, _locations = reporting_boundary.validate_verified(
         "artifact_index",
         built.run_root,
         built.execution,
         built.profile,
         semantic_validator=ops.validate_semantic_receipt,
     )
-    assert observed.semantic_receipt_path == built.artifact_receipt
+    assert semantic_receipt == built.artifact_receipt
 
     def mutate_start(*_arguments: Any) -> _SemanticResult:
         changed = orchestration_contracts.load_record(
@@ -395,26 +396,26 @@ def test_successor_boundary_uses_run_authority_and_exact_config_references(
         for name in reporting_boundary.CONTRACT_PATHS
     )
 
-    outcome = reporting_boundary.publish_start(
+    reporting_boundary.publish_start(
         kind="artifact_index",
         **identity,
         ops=_ops(lambda *_arguments: _semantic_result(Path("/unused"))),
     )
     start = orchestration_contracts.load_record(
-        outcome.start_path,
+        reporting_boundary.ledger_paths(identity["run_root"], "artifact_index").start,
         "reporting-start",
     )
     assert (
         start["execution_contract_sha256"]
         == hashlib.sha256(identity["execution_path"].read_bytes()).hexdigest()
     )
-    admitted = reporting_boundary.validate_start(
+    admitted_origin = reporting_boundary.validate_start(
         "artifact_index",
         identity["run_root"],
         orchestration_contracts.load_json_object(identity["execution_path"]),
         orchestration_contracts.load_json_object(identity["profile_path"]),
     )
-    assert admitted.origin_workflow_attempt_id == start["origin_workflow_attempt_id"]
+    assert admitted_origin == start["origin_workflow_attempt_id"]
 
 
 @pytest.mark.parametrize(
@@ -487,30 +488,25 @@ def test_verified_boundary_carries_admitted_report_locations_unchanged(
     )
     built.report_receipt.parent.mkdir(parents=True, exist_ok=True)
     built.report_receipt.write_bytes(b"semantic report receipt\n")
-    published = reporting_boundary.publish_verified(
+    reporting_boundary.publish_verified(
         kind="html_report",
         receipt_path=built.report_receipt,
         **_identity_paths(built),
         ops=ops,
     )
-    assert published.verified_report_locations == locations
-
-    _terminalize_run_lock(built)
-    observed = reporting_boundary.validate_verified(
+    _receipt_path, observed_locations = reporting_boundary.validate_verified(
         "html_report",
         built.run_root,
         built.execution,
         built.profile,
         semantic_validator=validate,
     )
-    assert observed.verified_report_locations == locations
+    assert observed_locations == locations
 
 
 def test_only_html_semantic_results_require_verified_locations() -> None:
     legacy = _SemanticResult(Path("/receipt.tsv"), "a" * 64)
-    assert (
-        reporting_boundary._semantic_report_locations("artifact_index", legacy) == ()
-    )
+    assert reporting_boundary._semantic_report_locations("artifact_index", legacy) == ()
     with pytest.raises(
         reporting_boundary.ReportingBoundaryError,
         match="lacks both exact verified result locations",
@@ -654,11 +650,11 @@ def test_new_reporting_ledger_directories_are_durably_linked(
     ]
 
 
-def test_start_rechecks_active_run_lock_immediately_before_publication(
+def test_start_rechecks_released_run_lock_immediately_before_publication(
     tmp_path: Path,
 ) -> None:
     built = _build(tmp_path / "fixture")
-    lock_path = built.run_root / "locks" / "run.lock"
+    lock_path = built.workflow_attempt_path.with_name("released-run-lock.json")
 
     def mutate_lock() -> datetime:
         lock = orchestration_contracts.load_record(lock_path, "run-lock")
@@ -673,7 +669,7 @@ def test_start_rechecks_active_run_lock_immediately_before_publication(
     paths = reporting_boundary.ledger_paths(built.run_root, "artifact_index")
     with pytest.raises(
         reporting_boundary.ReportingBoundaryError,
-        match="Run-lock evidence disagrees.*owner_token",
+        match="released run-lock evidence",
     ):
         reporting_boundary.publish_start(
             kind="artifact_index",
@@ -762,7 +758,9 @@ def test_completion_rejects_start_and_receipt_mutation(tmp_path: Path) -> None:
         )
 
 
-def test_incomplete_start_and_terminal_origin_fail_closed(tmp_path: Path) -> None:
+def test_incomplete_start_and_concurrent_publication_fail_closed(
+    tmp_path: Path,
+) -> None:
     built = _build(tmp_path / "fixture")
     identity = _identity_paths(built)
     reporting_boundary.publish_start(
@@ -801,20 +799,17 @@ def test_incomplete_start_and_terminal_origin_fail_closed(tmp_path: Path) -> Non
         )
     unexpected.unlink()
 
-    _terminalize_run_lock(built)
     with pytest.raises(
         reporting_boundary.ReportingBoundaryError,
-        match="terminal workflow attempt",
+        match="start marker already exists",
     ):
         reporting_boundary.publish_start(
-            kind="html_report",
+            kind="run_summary",
             **identity,
             ops=_ops(lambda *_arguments: _semantic_result(built.artifact_receipt)),
         )
 
 
-def test_cli_contract_requires_fixed_identity_and_receipt(capsys: Any) -> None:
-    with pytest.raises(SystemExit) as exc:
-        reporting_boundary.main(["complete", "--kind", "artifact_index"])
-    assert exc.value.code == 2
-    assert "--receipt" in capsys.readouterr().err
+def test_private_reporting_boundary_cli_is_retired() -> None:
+    assert not hasattr(reporting_boundary, "configure_parser")
+    assert not hasattr(reporting_boundary, "main")

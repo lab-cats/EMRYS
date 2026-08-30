@@ -30,7 +30,7 @@ DESCRIPTION = (
     "Generate one deterministic four-library RNA fixture for a real-tool "
     "local-pilot run. Dry-run is the default."
 )
-FIXTURE_SCHEMA = "emrys.synthetic-local-pilot.v1"
+FIXTURE_SCHEMA = "emrys.synthetic-local-pilot.v2"
 COMPLETION_MANIFEST = "fixture.manifest.json"
 CONTIG = "chrSynthetic"
 READ_LENGTH = 75
@@ -787,7 +787,8 @@ def fixture_metadata(
         },
         "expected_terminal_workflow": {
             "last_scientific_step": "10",
-            "local_pipeline_complete": True,
+            "scientific_results_complete": True,
+            "reporting_complete": True,
             "interpretation": (
                 "synthetic functional expectation; not production, scientific-review, "
                 "or biological evidence"

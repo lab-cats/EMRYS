@@ -26,11 +26,13 @@ Numeric step labels are historical aliases rather than a complete execution
 order.
 
 EMRYS currently exposes owner-local commands, SLURM entry points, read-only
-local-pilot admission, dry-run-first public run/resume/inspection commands, and
+local-pilot admission, dry-run-first public run/resume/report/inspection commands, and
 one fixed source-checkout-bound Snakemake graph for local execution. The static
 graph invokes public owners through hash-bound closed dispatch records,
-schedules only content-bound verified-task records, and feeds the existing
-artifact-index, run-summary, and HTML-report transactions. An internal
+schedules only content-bound verified-task records, and stops at the complete
+scientific/evidence owner closure. After its v2 Attempt receipt, public control
+invokes the artifact-index, run-summary, and HTML-report transactions by default
+as a separate downstream operation. An internal
 filesystem-first lifecycle owns the run lock, immutable workflow attempts,
 terminal receipts, durable producer-entry ledgers, between-task resume, and
 read-only state inspection. The production materializer projects the fixed
@@ -64,7 +66,7 @@ not selected a representation. No status authorizes a source move.
 
 | Current owner | Responsibility represented today | Graph(s) | Status | Later decision or exit condition |
 |---|---|---|---|---|
-| Package root `__main__.py` | Grouped CLI composition over owner validation, inspection, onboarding, control, and reporting entry points | Source import and invocation | Transitional | `AC-SLICE-03` plus the public-UX slices select the ordinary application surface. Two private reporting imports remain exact ratcheted transitions until a public capability replaces them or their permanence is explicitly justified. |
+| Package root `__main__.py` | Grouped CLI composition over owner validation, inspection, onboarding, and Run/report control | Source import and invocation | Transitional | `AC-SLICE-03` plus the public-UX slices select the ordinary application surface. Low-level reporting builders are private; the grouped CLI reaches only the Run-oriented reporting operation. |
 | `ingestion/` | External sample/input admission and diagnostics | Import and emitted declarations | Aligned | Public configuration and setup slices may simplify intake without giving ingestion execution or scientific authority. |
 | `contracts/` | Closed schemas, vocabularies, identity facts, and cross-owner records | Import and artifact/evidence contracts | Transitional | The neutral role is aligned, but exact upward imports into shared implementation are ratcheted in `SOURCE_TOPOLOGY.md`; `AC-SLICE-03`, `AC-SLICE-04`, and `AC-SLICE-07` must resolve or permanently justify them. |
 | `libraries/` | Narrow implementation shared only across demonstrated consumers | Import | Aligned | Every seam stays independently justified and acyclic. `AC-SLICE-06` may consolidate repeated decisions only after inventory proves net reduction. |
@@ -72,7 +74,7 @@ not selected a representation. No status authorizes a source move.
 | Owner-local cross-cutting mechanics under `stages/`, `analyses/`, and `evidence/` | Current shell/SLURM wrappers, runtime resolution, filesystem operations, and publication transactions adjacent to the semantic owner | Import and runtime/control invocation | Transitional | `AC-SLICE-04` through `AC-SLICE-07` must inventory these mechanics and move only demonstrated repeated responsibilities behind an owned boundary, with caller migration and equal-or-stronger protection. |
 | Runtime, reference, and storage evidence owners | Explicit operational observations that do not become computation or admission authority | Import and invocation | Transitional | Current application code imports named public modules directly. `AC-SLICE-03`, `AC-SLICE-05`, and the runtime/storage slices select the final capability boundary without broadening these edges by analogy. |
 | `orchestration/local_pilot/` and `contracts/orchestration/` | Request normalization, planning, current application coordination, fixed-profile materialization, execution/reuse admission, lifecycle, inspection, and resource decisions | Import and invocation | Transitional | It remains the current behavior oracle, not a future Run god object. `AC-SLICE-03`, `AC-SLICE-05`, `AC-SLICE-06`, and `AC-SLICE-07` assign final application, execution, policy, and lifecycle interfaces. |
-| `reporting/` | Read-only artifact adaptation, canonical summary, static views, and receipt-last report publication | Import and artifact/evidence flow | Transitional | Its downstream direction is aligned. Inspection now separates scientific Results from reporting status while retaining receipt-v1 compatibility; later Run/report work must add disablement and independent Run-oriented regeneration. |
+| `reporting/` | Read-only artifact adaptation, canonical summary, static views, and receipt-last report publication | Import and artifact/evidence flow | Aligned | Reporting is default-on but disable-able, independently regenerable through one Run-oriented operation, and separate from scientific Attempt authority; exact receipt-v1 reports remain read-only compatible. |
 | Root `workflow/` and the fixed profile | Snakemake scheduling of public owner commands through hash-bound task records | Runtime/control invocation | Transitional | `AC-SLICE-05` retains one execution guarantee contract while deciding the backend boundary. Snakemake remains a mechanism, not scientific, admission, or recovery authority. |
 | Repository `scripts/`, tests, Git, Make, CI, and environments | Development, validation, restoration, and delivery controls | Outside the product graphs except as test or build consumers | Aligned | These remain repository controls and never become scientific-workflow owners or evidence promotion. |
 | OS, R, Python, filesystem, Snakemake, and SLURM mechanisms | External effects and observations reached through current owner code | Runtime/control invocation | Unresolved | Owned adapter placement remains later design. Equivalent guarantees, attributable observations, and mechanism non-authority are already binding. |
@@ -171,26 +173,28 @@ layer.
 
 Static reporting follows that rule through the private
 [`_run_report/`](../../src/emrys/reporting/_run_report/README.md) package.
-The installed `python -X pycache_prefix=/dev/null -I -m emrys build report` route is owned directly by
-[`report.py`](../../src/emrys/reporting/report.py). Its admitted source checkout
-governs code and renderer identity, while the separately admitted artifact root
-governs contract-relative run inputs. Private owners separate
+The installed `emrys report --run-root RUN_ROOT` route admits one successful
+Run and plans, generates, or reuses the fixed artifact-index → run-summary →
+HTML sequence. Its admitted source checkout governs code and renderer identity,
+while the Run governs the separately admitted artifact root and report output.
+Private owners separate
 immutable models, explicit input/context validation, two structured view
 projections, fixed Matplotlib/Logomaker SVG figures, Jinja rendering, v4
 receipt projection, and one receipt-last transaction. The locked Python
 renderer plus the single packaged HTML template and CSS resource are the
 complete rendering runtime; reporting has no PDF, external renderer,
-compatibility facade, shell wrapper, or format-selection surface.
+shell wrapper, or format-selection surface. The three low-level builders are
+implementation details rather than public recovery commands.
 
-The local lifecycle consumes only the direct public reporting-transaction
-validator in `reporting/transaction_validation.py`; it does not import a
-reporting-private package or turn rendering into completion authority. Source
-checkout identity and the independent artifact-source root are admitted by the
-neutral `libraries/source_authority.py` seam. Completion is derived only after
-every required owner scope has a complete durable start-to-verification chain
-and all three reporting transactions are semantically revalidated through the
-same irreversible-entry policy. An entered but incomplete scope blocks
-automatic resume; an unentered scope remains pending.
+The scientific lifecycle ends after every required owner scope has a complete
+durable start-to-verification chain, releases the Run lock, and publishes a v2
+Attempt receipt. Reporting is then invoked by public control unless disabled;
+it creates neither a Run nor an Attempt and cannot alter that receipt. The
+dedicated reporting operation is the only orchestration owner that composes the
+three private builders. It generates only from fully empty reporting state,
+reuses only a semantically complete transaction, and fails closed on partial or
+ambiguous state. Receipt-v1 Runs remain exactly readable and may reuse complete
+reports, but cannot originate new reports.
 
 ## Identity, inputs, and outputs
 
@@ -219,9 +223,10 @@ The downstream product flow is one-way:
 4. The static report owner consumes that canonical summary under distinct
    admitted code and artifact roots, then publishes scientific HTML,
    evidence/provenance HTML, summary TSV, and the v4 receipt last.
-5. The local lifecycle independently re-admits the exact required task-start
-   and verified-task roster plus all three reporting start/completion chains,
-   then publishes the immutable workflow-attempt receipt last.
+5. The scientific lifecycle independently re-admits the exact required
+   task-start and verified-task roster, releases the Run lock, and publishes the
+   immutable v2 workflow-attempt receipt last. Public control then invokes the
+   reporting flow by default as a separate downstream operation.
 
 Operational evidence owners sit beside this product flow. Runtime, reference,
 and storage observations can inform execution or review, but do not become

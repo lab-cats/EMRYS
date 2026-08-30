@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-SUMMARY_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v1"
+SUMMARY_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v2"
 PROFILE_DATASETS = {
     "130": "smoke-v1",
     "100000": "production-like-v1",
@@ -1000,12 +1000,25 @@ def assert_completed_run(
         }
         for kind in EXPECTED_REPORTING_KINDS
     }
+    latest_attempt = observed.latest_attempt
+    if latest_attempt is None or latest_attempt.get("snakemake_argv", [])[-2:] != [
+        "--",
+        "cohort_slice",
+    ]:
+        raise DriverError(
+            "assert-results", "latest workflow attempt did not target cohort_slice"
+        )
+    latest_receipt = observed.latest_receipt
     if (
-        observed.latest_receipt is None
-        or observed.latest_receipt.get("status") != "succeeded"
+        latest_receipt is None
+        or latest_receipt.get("schema_version") != "emrys.attempt-receipt.v2"
+        or latest_receipt.get("status") != "succeeded"
+        or "reporting_completion_records" in latest_receipt
+        or "local_pipeline_complete" in latest_receipt
     ):
         raise DriverError(
-            "assert-results", "latest workflow attempt receipt is not succeeded"
+            "assert-results",
+            "latest scientific workflow receipt is not a succeeded v2 receipt",
         )
 
     run_id = observed.run_id
@@ -1033,7 +1046,7 @@ def assert_completed_run(
         "report_receipt": report_dir / f"{run_id}.report_outputs.tsv",
         "attempt_receipt": run_root
         / "attempts"
-        / str(observed.latest_receipt["workflow_attempt_id"])
+        / str(latest_receipt["workflow_attempt_id"])
         / "attempt-receipt.json",
     }
     admitted_artifacts = {name: _artifact(path) for name, path in artifacts.items()}
@@ -1101,7 +1114,8 @@ def assert_completed_run(
     return {
         "run_id": run_id,
         "run_root": str(run_root),
-        "state": "local_pipeline_complete",
+        "scientific_results_complete": True,
+        "reporting_complete": True,
         "verified_owner_jobs": len(observed.tasks),
         "verified_owner_records": verified_records,
         "step10_verified": True,
@@ -1540,7 +1554,8 @@ def run_driver(
     if (
         not isinstance(expected_workflow, dict)
         or expected_workflow.get("last_scientific_step") != "10"
-        or expected_workflow.get("local_pipeline_complete") is not True
+        or expected_workflow.get("scientific_results_complete") is not True
+        or expected_workflow.get("reporting_complete") is not True
     ):
         raise DriverError(
             "assert-results",

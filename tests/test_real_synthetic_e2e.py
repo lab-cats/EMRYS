@@ -632,6 +632,7 @@ def test_failure_summary_disclaims_completion_and_cleanup(tmp_path: Path) -> Non
         DRIVER.DriverError("doctor", "injected blocker"),
     )
 
+    assert summary["schema_version"] == "emrys.ci-real-synthetic-e2e-summary.v2"
     assert summary["status"] == "failed"
     assert summary["failed_stage"] == "doctor"
     assert summary["biological_interpretation_claimed"] is False

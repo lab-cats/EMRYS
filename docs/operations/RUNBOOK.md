@@ -52,7 +52,7 @@ Step `05` owner requires its documented project-storage temporary directory.
 | Paired CMH ranking | [`rank_cohort_candidates_with_paired_CMH`](../../src/emrys/analyses/paired_cmh_candidate_ranking/README.md) |
 | Runtime, reference, storage, and QC evidence | [`evidence`](../../src/emrys/evidence/README.md); runtime `inspect runtime-availability`; storage `inspect storage-inventory` and `inspect storage-qualification`; reference `reconcile reference-provenance` |
 | Artifact schemas | [`artifact contracts`](../../src/emrys/contracts/artifacts/README.md); installed route `python -I -m emrys validate artifact-contracts` |
-| Artifact index, run summary, and reports | [`reporting`](../../src/emrys/reporting/README.md); `artifact-index` and `run-summary` are workflow-owned transaction commands, while `build report` is the operator-facing standalone rebuild |
+| Artifact index, run summary, and reports | [`reporting`](../../src/emrys/reporting/README.md); the public independent route is `emrys report --run-root ...`, while low-level builders are private implementation and developer-fixture surfaces |
 | Synthetic demonstration | [`demo`](../demo/README.md) |
 
 Each owner README supplies supported help, dry-run, execute, scheduler, focused
@@ -93,7 +93,9 @@ prints exact `JOB_ID`, `OUT`, and `ERR` values. Scheduler streams
 are created automatically under `<workspace>/logs`; the compute-side Run
 Attempt's application-log root defaults to `<workspace>/logs/application`.
 Reporting runs automatically after scientific work and remains a separate,
-receipt-last transaction rather than a scientific stage.
+receipt-last transaction rather than a scientific stage. The scientific
+Attempt ends at `cohort_slice` before reporting begins. `--no-report` disables
+only downstream reporting and leaves the scientific Attempt unchanged.
 
 All 16 owner-local stage/utility `.slurm` files remain separate scheduler entry
 points. The Step `07` and `08` wrappers delegate to their Python owners; the
@@ -130,6 +132,22 @@ highest precedence. Add `--execute` only after reviewing that exact plan. A scop
 producer entry without verified completion remains blocked rather than being
 retried or cleaned. A complete run refuses resume, and the public lifecycle
 exposes no force, unlock, metadata-cleanup, or raw-engine bypass.
+
+Generate reports independently only for a completed scientific Run. The first
+command is read-only; add `--execute` after reviewing its plan:
+
+```bash
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \
+  --run-root /absolute/path/to/workspace/runs/run-DIGEST
+.venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \
+  --run-root /absolute/path/to/workspace/runs/run-DIGEST \
+  --execute
+```
+
+Validated complete reports are reused. Partial, corrupt, orphaned, mismatched,
+or concurrent reporting state fails closed and is preserved; the public route
+does not overwrite, adopt, delete, or repair it. Reporting failure does not
+rewrite a successful scientific Attempt receipt or make Results incomplete.
 
 ## Resource benchmarking
 
@@ -337,9 +355,10 @@ Samtools, GATK, BCFtools, Picard, and RSeQC, restores the exact R and Python
 authorities separately, and configures one disposable real Slurm node on the
 GitHub-hosted runner. It executes the public workflow through Slurm
 execution-profile placement and retains runtime, scheduler, transcript,
-partial-state, and result evidence even when a selected profile fails. The direct completion
-oracle requires all 35 owner jobs, Step 10, all three reporting transactions,
-the three-row/one-significant-row Step 09 result, and both HTML reports.
+partial-state, and result evidence even when a selected profile fails. Its
+scientific oracle separately requires all 35 owner jobs, Step 10, and the
+three-row/one-significant-row Step 09 result; its reporting oracle then requires
+all three downstream transactions and both HTML reports.
 
 The workflow bootstrap may download explicitly selected dependencies, but the
 ordinary validation commands themselves remain non-restoring. A green ordinary
@@ -427,9 +446,10 @@ using the exact run root printed by the control stream:
 
 A successful run or resume, and a completed inspection, supply verified result
 locations. If no `Results:` block is printed, do not construct or search for
-report paths. The admitted run records and owner validations establish
-local-pilot completion. Use the manual stream procedure below when dashboard
-discovery is unavailable or when exact raw scheduler streams are required.
+report paths. Admitted owner records establish scientific Results; separately
+validated reporting ledgers establish report completion. Use the manual stream
+procedure below when dashboard discovery is unavailable or when exact raw
+scheduler streams are required.
 
 ### Manual stream and accounting fallback
 

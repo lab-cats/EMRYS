@@ -29,7 +29,8 @@ ARTIFACT_INDEX_RECORDS = importlib.import_module(
     "emrys.reporting._artifact_index.records",
 )
 RUN_SUMMARY = importlib.import_module("emrys.reporting._run_summary.models")
-REPORT = importlib.import_module("emrys.reporting.report")
+REPORT_MODELS = importlib.import_module("emrys.reporting._run_report.models")
+REPORT_RECEIPT = importlib.import_module("emrys.reporting._run_report.receipt")
 REPORT_FIGURES = importlib.import_module("emrys.reporting._run_report.figures")
 REPORT_VALIDATION = importlib.import_module("emrys.reporting._run_report.validation")
 REPORT_VIEW = importlib.import_module("emrys.reporting._run_report.view")
@@ -38,7 +39,7 @@ REPORT_VIEW = importlib.import_module("emrys.reporting._run_report.view")
 HEADER_MODULES: Mapping[str, ModuleType] = {
     "build_artifact_index": ARTIFACT_INDEX_MODELS,
     "build_run_summary": RUN_SUMMARY,
-    "build_report": REPORT,
+    "build_report": REPORT_MODELS,
 }
 
 
@@ -117,7 +118,7 @@ def assert_canonical_json(
 
 
 def assert_report_receipt(
-    serializer: Callable[[Mapping[str, Any]], bytes] = REPORT.serialize_receipt,
+    serializer: Callable[[Mapping[str, Any]], bytes] = REPORT_RECEIPT.receipt_tsv_bytes,
 ) -> None:
     document = load_json(GOLDENS / "report_receipt_input.json")
     expected = (GOLDENS / "report_receipt.tsv").read_bytes()
@@ -244,7 +245,9 @@ def test_report_receipt_projection_matches_exact_independent_golden() -> None:
 
 def test_mutated_report_receipt_serialization_is_rejected() -> None:
     def mutated_serializer(document: Mapping[str, Any]) -> bytes:
-        return REPORT.serialize_receipt(document).replace(b"\ttrue\t", b"\tTRUE\t", 1)
+        return REPORT_RECEIPT.receipt_tsv_bytes(document).replace(
+            b"\ttrue\t", b"\tTRUE\t", 1
+        )
 
     with pytest.raises(AssertionError):
         assert_report_receipt(mutated_serializer)

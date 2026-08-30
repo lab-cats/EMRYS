@@ -18,6 +18,10 @@ from emrys.reporting._artifact_index import context as ARTIFACT_CONTEXT
 from emrys.reporting._artifact_index import core as ARTIFACT_CORE
 from emrys.reporting._artifact_index import models as ARTIFACT_MODELS
 from emrys.reporting._artifact_index import publication as ARTIFACT_PUBLICATION
+from emrys.reporting._run_summary import builder as RUN_SUMMARY_BUILDER
+from emrys.reporting._run_summary import publication as RUN_SUMMARY_PUBLICATION
+from emrys.reporting import report as REPORT
+from emrys.reporting._run_report import publication as REPORT_PUBLICATION
 from tests.reporting.fixtures.artifact_adapters_v1 import (
     build_fixture as ADAPTER_FIXTURE,
 )
@@ -68,23 +72,6 @@ class RunSummaryFixture:
             self.qc_summary_path,
             self.summary_receipt_path,
         )
-
-    def command_args(self, *, execute: bool = False) -> list[str]:
-        arguments = [
-            "--source-checkout",
-            str(REPO_ROOT),
-            "--artifact-source-root",
-            str(self.root),
-            "--run-id",
-            self.run_id,
-            "--artifact-receipt",
-            str(self.artifact_receipt),
-            "--output-root",
-            str(self.output_root),
-        ]
-        if execute:
-            arguments.append("--execute")
-        return arguments
 
 
 def fixed_epoch() -> tuple[str | None, str]:
@@ -198,6 +185,54 @@ def build_missing_fixture(
     return _fixture_from_adapter(root, adapter_fixture)
 
 
+def publish_run_summary(fixture: RunSummaryFixture) -> Path:
+    """Publish the fixture's private run-summary owner transaction."""
+
+    previous, _ = fixed_epoch()
+    try:
+        context = RUN_SUMMARY_BUILDER.prepare_context(
+            argparse.Namespace(
+                run_id=fixture.run_id,
+                artifact_receipt=fixture.artifact_receipt,
+                output_root=fixture.output_root,
+            ),
+            source_checkout=SourceCheckout(root=REPO_ROOT),
+            artifact_source_root=ArtifactSourceRoot(root=fixture.root),
+        )
+        RUN_SUMMARY_PUBLICATION.publish_context(context)
+        return context.paths.receipt
+    finally:
+        restore_epoch(previous)
+
+
+def publish_report(
+    fixture: RunSummaryFixture,
+    output_root: Path,
+    *,
+    execute: bool,
+) -> Path:
+    """Invoke the private renderer for a developer-owned fixture."""
+
+    previous, _ = fixed_epoch()
+    try:
+        context = REPORT.prepare_report(
+            argparse.Namespace(
+                source_checkout=REPO_ROOT,
+                artifact_source_root=fixture.root,
+                run_summary=fixture.summary_json_path,
+                output_root=output_root,
+            )
+        )
+        if execute:
+            REPORT_PUBLICATION.publish_report(
+                context,
+                REPORT.default_publication_ops(),
+            )
+        return context.output_receipt
+    finally:
+        restore_epoch(previous)
+
+
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as stream:
@@ -235,10 +270,19 @@ def main() -> int:
     )
     parser.add_argument("--root", required=True, type=Path)
     parser.add_argument("--run-id", default="synthetic_run")
+    parser.add_argument("--report-output-root", type=Path)
     arguments = parser.parse_args()
     fixture = build_fixture(arguments.root, run_id=arguments.run_id)
+    publish_run_summary(fixture)
     print(f"Artifact receipt: {fixture.artifact_receipt}")
-    print(f"Run-summary output root: {fixture.output_root}")
+    print(f"Run summary: {fixture.summary_json_path}")
+    if arguments.report_output_root is not None:
+        for execute in (False, True):
+            publish_report(
+                fixture,
+                arguments.report_output_root,
+                execute=execute,
+            )
     return 0
 
 

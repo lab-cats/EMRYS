@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import copy
 import csv
 import dataclasses
@@ -10,30 +11,22 @@ import importlib
 import json
 import os
 import signal
-import subprocess
-import sys
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 
-from emrys import __main__ as emrys_cli
 from emrys.contracts.artifacts import api as CONTRACTS
 from emrys.libraries import source_authority as SOURCE_AUTHORITY
-from emrys.libraries.source_authority import controlled_python_argv
 from emrys.reporting import transaction_validation as REPORTING_VALIDATION
 from emrys.reporting._artifact_index import api as ARTIFACT_INDEX_API
 from tests.reporting.fixtures.artifact_run_summary_v2 import build_fixture as FIXTURE
 
-if TYPE_CHECKING:
-    import argparse
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIXED_EPOCH = "1700000000"
-CLI_USAGE_ERROR = 2
 
 RUN_SUMMARY = importlib.import_module("emrys.reporting._run_summary.builder")
 RUN_SUMMARY_DOCUMENT = importlib.import_module("emrys.reporting._run_summary.document")
@@ -43,9 +36,6 @@ RUN_SUMMARY_PROJECTION = importlib.import_module(
 )
 RUN_SUMMARY_PUBLICATION = importlib.import_module(
     "emrys.reporting._run_summary.publication"
-)
-RUN_SUMMARY_TRANSACTION = importlib.import_module(
-    "emrys.reporting._run_summary.transaction"
 )
 SOURCE_CHECKOUT = SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT)
 
@@ -69,43 +59,76 @@ def run_summary_fixture(tmp_path: Path) -> Any:
     return FIXTURE.build_fixture(tmp_path / "fixture")
 
 
-def run_cli(
+def run_summary_arguments(
     fixture: Any,
     *,
     execute: bool = False,
-    arguments: Sequence[str] | None = None,
-    extra_env: Mapping[str, str] | None = None,
-) -> subprocess.CompletedProcess[str]:
-    environment = os.environ.copy()
-    environment["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
-    if extra_env:
-        environment.update(extra_env)
-    cli_arguments = (
-        list(arguments)
-        if arguments is not None
-        else fixture.command_args(execute=execute)
-    )
-    return subprocess.run(
-        [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
-            "build",
-            "run-summary",
-            *cli_arguments,
-        ],
-        cwd=REPO_ROOT,
-        env=environment,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-
-def _parse_run_summary_arguments(
-    arguments: Sequence[str],
 ) -> argparse.Namespace:
-    return emrys_cli.build_parser().parse_args(
-        ["build", "run-summary", *arguments],
+    return argparse.Namespace(
+        source_checkout=REPO_ROOT,
+        artifact_source_root=fixture.root,
+        run_id=fixture.run_id,
+        artifact_receipt=fixture.artifact_receipt,
+        output_root=fixture.output_root,
+        execute=execute,
     )
+
+
+@dataclasses.dataclass(frozen=True)
+class DirectTransactionResult:
+    """Prepared context or typed producer error from a direct transaction."""
+
+    context: Any | None = None
+    error: Exception | None = None
+
+    @property
+    def returncode(self) -> int:
+        return int(self.error is not None)
+
+    @property
+    def stderr(self) -> str:
+        return "" if self.error is None else str(self.error)
+
+
+def run_builder(
+    fixture: Any,
+    *,
+    execute: bool = False,
+    arguments: argparse.Namespace | None = None,
+) -> DirectTransactionResult:
+    prepared_arguments = arguments or run_summary_arguments(
+        fixture,
+        execute=execute,
+    )
+    previous_epoch = os.environ.get("SOURCE_DATE_EPOCH")
+    os.environ["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
+    try:
+        try:
+            context = RUN_SUMMARY.prepare_context(
+                prepared_arguments,
+                source_checkout=SOURCE_CHECKOUT,
+                artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(
+                    root=prepared_arguments.artifact_source_root
+                ),
+            )
+            if prepared_arguments.execute:
+                RUN_SUMMARY_PUBLICATION.publish_context(context)
+            return DirectTransactionResult(context=context)
+        except (
+            RUN_SUMMARY_MODELS.RunSummaryError,
+            ARTIFACT_INDEX_API.ArtifactIndexError,
+            SOURCE_AUTHORITY.ArtifactSourceRootError,
+            SOURCE_AUTHORITY.SourceCheckoutError,
+            CONTRACTS.ContractValidationError,
+            OSError,
+            ValueError,
+        ) as exc:
+            return DirectTransactionResult(error=exc)
+    finally:
+        if previous_epoch is None:
+            os.environ.pop("SOURCE_DATE_EPOCH", None)
+        else:
+            os.environ["SOURCE_DATE_EPOCH"] = previous_epoch
 
 
 def read_tsv(path: Path) -> list[dict[str, str]]:
@@ -186,7 +209,7 @@ def context_for(fixture: Any, *, deps: Any | None = None) -> Any:
     previous = os.environ.get("SOURCE_DATE_EPOCH")
     os.environ["SOURCE_DATE_EPOCH"] = FIXED_EPOCH
     try:
-        arguments = _parse_run_summary_arguments(fixture.command_args(execute=True))
+        arguments = run_summary_arguments(fixture, execute=True)
         return RUN_SUMMARY.prepare_context(
             arguments,
             source_checkout=SOURCE_CHECKOUT,
@@ -216,136 +239,6 @@ def _source_root_spy(
         return real_call(*args, source_root=source_root, **kwargs)
 
     return rooted_call
-
-
-def test_grouped_builder_admits_before_loading_inputs_and_retains_token(
-    run_summary_fixture: Any,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The grouped builder admits its checkout before reading run inputs."""
-    admitted = SOURCE_AUTHORITY.SourceCheckout(root=REPO_ROOT)
-    artifact_root = SOURCE_AUTHORITY.ArtifactSourceRoot(root=run_summary_fixture.root)
-    expected_package_root = Path(RUN_SUMMARY.__file__).resolve().parents[2]
-    real_load_input_transaction = RUN_SUMMARY_TRANSACTION._load_input_transaction
-    events: list[str] = []
-    observed_contexts: list[RUN_SUMMARY_MODELS.BuildContext] = []
-
-    def admit_source_checkout(
-        *,
-        root: Path,
-        package_root: Path,
-    ) -> SOURCE_AUTHORITY.SourceCheckout:
-        assert root == REPO_ROOT
-        assert package_root == expected_package_root
-        events.append("admit")
-        return admitted
-
-    def admit_artifact_source_root(
-        *, root: Path
-    ) -> SOURCE_AUTHORITY.ArtifactSourceRoot:
-        assert root == run_summary_fixture.root
-        events.append("admit-artifacts")
-        return artifact_root
-
-    def load_input_transaction(*, source_root: Path, **kwargs: Any) -> object:
-        assert source_root == artifact_root.root
-        events.append("load")
-        return real_load_input_transaction(
-            source_root=source_root,
-            **kwargs,
-        )
-
-    def observe_context(context: RUN_SUMMARY_MODELS.BuildContext) -> None:
-        events.append("print")
-        observed_contexts.append(context)
-
-    monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    monkeypatch.setattr(
-        RUN_SUMMARY,
-        "admit_source_checkout",
-        admit_source_checkout,
-    )
-    monkeypatch.setattr(
-        RUN_SUMMARY,
-        "admit_artifact_source_root",
-        admit_artifact_source_root,
-    )
-    monkeypatch.setattr(RUN_SUMMARY, "print_context", observe_context)
-    arguments = _parse_run_summary_arguments(
-        run_summary_fixture.command_args(execute=False),
-    )
-
-    status = RUN_SUMMARY.build_from_args(
-        arguments,
-        deps=build_deps(load_input_transaction=load_input_transaction),
-    )
-
-    assert status == 0
-    assert events == ["admit", "admit-artifacts", "load", "print"]
-    assert len(observed_contexts) == 1
-    assert observed_contexts[0].source_checkout == admitted
-    assert observed_contexts[0].artifact_source_root == artifact_root
-
-
-@pytest.mark.parametrize(
-    ("arguments", "expected_status"),
-    [(["--help"], 0), ([], 2)],
-)
-def test_parser_termination_precedes_lazy_run_summary_builder_import(
-    arguments: list[str],
-    expected_status: int,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Help and parse failures terminate before the lazy builder handler."""
-    dispatch_attempted = False
-
-    def unexpected_dispatch(_arguments: argparse.Namespace) -> int:
-        nonlocal dispatch_attempted
-        dispatch_attempted = True
-        pytest.fail("run-summary builder was imported before parsing terminated")
-
-    monkeypatch.setattr(
-        emrys_cli,
-        "_build_run_summary_from_args",
-        unexpected_dispatch,
-    )
-
-    with pytest.raises(SystemExit) as termination:
-        emrys_cli.main(["build", "run-summary", *arguments])
-
-    assert not dispatch_attempted
-    assert termination.value.code == expected_status
-
-
-def test_grouped_cli_requires_explicit_source_checkout(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """Missing checkout authority fails parsing before builder dispatch."""
-    monkeypatch.setattr(
-        emrys_cli,
-        "_build_run_summary_from_args",
-        lambda _arguments: pytest.fail("run-summary builder was dispatched"),
-    )
-    arguments = [
-        "build",
-        "run-summary",
-        "--run-id",
-        "synthetic-run",
-        "--artifact-receipt",
-        str(tmp_path / "artifact-receipt.tsv"),
-        "--output-root",
-        str(tmp_path / "output"),
-    ]
-
-    with pytest.raises(SystemExit) as termination:
-        emrys_cli.main(arguments)
-
-    assert termination.value.code == CLI_USAGE_ERROR
-    captured = capsys.readouterr()
-    assert not captured.out
-    assert "--source-checkout" in captured.err
 
 
 def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
@@ -402,7 +295,7 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
     def recheck_inputs(context: Any) -> None:
         REPORTING_VALIDATION.recheck_run_summary_inputs(context, ops=recheck_ops)
 
-    arguments = _parse_run_summary_arguments(fixture.command_args(execute=False))
+    arguments = run_summary_arguments(fixture)
 
     context = RUN_SUMMARY.prepare_context(
         arguments,
@@ -430,9 +323,7 @@ def test_prepare_context_uses_local_build_for_unattributable_package(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    arguments = _parse_run_summary_arguments(
-        run_summary_fixture.command_args(execute=False)
-    )
+    arguments = run_summary_arguments(run_summary_fixture)
     context = RUN_SUMMARY.prepare_context(
         arguments,
         source_checkout=SOURCE_CHECKOUT,
@@ -451,13 +342,11 @@ def test_explicit_artifact_root_reaches_predecessor_and_post_publish_rechecks(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Publication retains the prepared authority through its success checks."""
-    first = run_cli(run_summary_fixture, execute=True)
+    first = run_builder(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     authority = SOURCE_AUTHORITY.ArtifactSourceRoot(root=run_summary_fixture.root)
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    arguments = _parse_run_summary_arguments(
-        run_summary_fixture.command_args(execute=True),
-    )
+    arguments = run_summary_arguments(run_summary_fixture, execute=True)
     context = RUN_SUMMARY.prepare_context(
         arguments,
         source_checkout=SOURCE_CHECKOUT,
@@ -513,14 +402,12 @@ def test_explicit_artifact_root_reaches_restored_rollback_validation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Rollback validates the restored predecessor with the retained root."""
-    first = run_cli(run_summary_fixture, execute=True)
+    first = run_builder(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     before = summary_snapshot(run_summary_fixture)
     authority = SOURCE_AUTHORITY.ArtifactSourceRoot(root=run_summary_fixture.root)
     monkeypatch.setenv("SOURCE_DATE_EPOCH", FIXED_EPOCH)
-    arguments = _parse_run_summary_arguments(
-        run_summary_fixture.command_args(execute=True),
-    )
+    arguments = run_summary_arguments(run_summary_fixture, execute=True)
     context = RUN_SUMMARY.prepare_context(
         arguments,
         source_checkout=SOURCE_CHECKOUT,
@@ -580,46 +467,6 @@ def test_explicit_artifact_root_reaches_restored_rollback_validation(
     assert_no_summary_residue_after_success(run_summary_fixture)
 
 
-def test_source_checkout_admission_error_precedes_input_diagnostics(
-    run_summary_fixture: Any,
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """Grouped admission failures are controlled before any input is loaded."""
-    expected_package_root = Path(RUN_SUMMARY.__file__).resolve().parents[2]
-
-    def reject_source_checkout(
-        *,
-        root: Path,
-        package_root: Path,
-    ) -> SOURCE_AUTHORITY.SourceCheckout:
-        assert root == REPO_ROOT
-        assert package_root == expected_package_root
-        message = "injected run-summary checkout rejection"
-        raise SOURCE_AUTHORITY.SourceCheckoutError(message)
-
-    monkeypatch.setattr(
-        RUN_SUMMARY,
-        "admit_source_checkout",
-        reject_source_checkout,
-    )
-    monkeypatch.setattr(emrys_cli, "require_controlled_python_runtime", lambda: None)
-    assert (
-        emrys_cli.main(
-            [
-                "build",
-                "run-summary",
-                *run_summary_fixture.command_args(execute=False),
-            ],
-        )
-        == 1
-    )
-    captured = capsys.readouterr()
-    assert not captured.out
-    assert captured.err == "ERROR: injected run-summary checkout rejection\n"
-    assert_no_summary_outputs(run_summary_fixture)
-
-
 def validate_summary_document(fixture: Any) -> dict[str, Any]:
     document = read_json(fixture.summary_json_path)
     schemas, registry = CONTRACTS.load_schema_registry()
@@ -644,38 +491,14 @@ def validate_summary_document(fixture: Any) -> dict[str, Any]:
     return document
 
 
-def test_help_and_dry_run_validate_without_summary_writes(
+def test_dry_run_validates_without_summary_writes(
     run_summary_fixture: Any,
 ) -> None:
-    help_result = subprocess.run(
-        [
-            *controlled_python_argv(sys.executable, "-m", "emrys"),
-            "build",
-            "run-summary",
-            "--help",
-        ],
-        cwd=REPO_ROOT,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    result = run_cli(run_summary_fixture)
+    result = run_builder(run_summary_fixture)
 
-    assert help_result.returncode == 0, help_result.stderr
-    for option in (
-        "--source-checkout",
-        "--run-id",
-        "--artifact-receipt",
-        "--output-root",
-        "--execute",
-    ):
-        assert option in help_result.stdout
-    assert "science-review" not in help_result.stdout
-    assert "report-table-approvals" not in help_result.stdout
     assert result.returncode == 0, result.stderr
-    assert "dry-run" in result.stdout.lower()
-    assert run_summary_fixture.run_id in result.stdout
-    assert "receipt" in result.stdout.lower()
+    assert result.context is not None
+    assert result.context.run_id == run_summary_fixture.run_id
     assert_no_summary_outputs(run_summary_fixture)
 
 
@@ -699,7 +522,7 @@ def test_live_run_summary_header_owner_controls_serialized_bytes(
 def test_execute_publishes_exact_canonical_schema_valid_transaction(
     run_summary_fixture: Any,
 ) -> None:
-    result = run_cli(run_summary_fixture, execute=True)
+    result = run_builder(run_summary_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     assert all(path.is_file() for path in run_summary_fixture.summary_paths)
@@ -755,13 +578,13 @@ def assert_no_summary_residue_after_success(fixture: Any) -> None:
 def test_fixed_epoch_rerender_keeps_json_and_views_byte_identical(
     run_summary_fixture: Any,
 ) -> None:
-    first = run_cli(run_summary_fixture, execute=True)
+    first = run_builder(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     before = {
         path.name: path.read_bytes() for path in run_summary_fixture.summary_paths[:3]
     }
 
-    second = run_cli(run_summary_fixture, execute=True)
+    second = run_builder(run_summary_fixture, execute=True)
 
     assert second.returncode == 0, second.stderr
     assert {
@@ -780,7 +603,7 @@ def test_unrelated_files_are_ignored_and_preserved(
     decoy_payload = b"unrelated\nvalue\n"
     decoy.write_bytes(decoy_payload)
 
-    result = run_cli(run_summary_fixture, execute=True)
+    result = run_builder(run_summary_fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     document = validate_summary_document(run_summary_fixture)
@@ -795,9 +618,9 @@ def test_run_id_mismatch_and_tampered_artifact_receipt_fail_closed(
     tmp_path: Path,
 ) -> None:
     wrong_run = FIXTURE.build_fixture(tmp_path / "wrong_run")
-    arguments = wrong_run.command_args()
-    arguments[arguments.index("--run-id") + 1] = "different_run"
-    mismatch = run_cli(wrong_run, arguments=arguments)
+    arguments = run_summary_arguments(wrong_run)
+    arguments.run_id = "different_run"
+    mismatch = run_builder(wrong_run, arguments=arguments)
     assert mismatch.returncode != 0
     assert_no_summary_outputs(wrong_run)
 
@@ -806,7 +629,7 @@ def test_run_id_mismatch_and_tampered_artifact_receipt_fail_closed(
     rows = read_tsv(tampered.artifact_receipt)
     rows[0]["artifacts_index_sha256"] = "f" * 64
     write_tsv(tampered.artifact_receipt, header, rows)
-    result = run_cli(tampered)
+    result = run_builder(tampered)
     assert result.returncode != 0
     assert_no_summary_outputs(tampered)
 
@@ -814,7 +637,7 @@ def test_run_id_mismatch_and_tampered_artifact_receipt_fail_closed(
 def test_qc_view_keeps_all_repeated_metrics_but_json_ids_are_unique(
     run_summary_fixture: Any,
 ) -> None:
-    result = run_cli(run_summary_fixture, execute=True)
+    result = run_builder(run_summary_fixture, execute=True)
     assert result.returncode == 0, result.stderr
     document = validate_summary_document(run_summary_fixture)
     index_rows = read_tsv(run_summary_fixture.adapter_fixture.artifacts_path)
@@ -879,7 +702,7 @@ def test_complete_summary_preserves_required_missing_artifact_state(
 ) -> None:
     fixture = FIXTURE.build_missing_fixture(tmp_path / "missing")
 
-    result = run_cli(fixture, execute=True)
+    result = run_builder(fixture, execute=True)
 
     assert result.returncode == 0, result.stderr
     document = validate_summary_document(fixture)
@@ -907,7 +730,7 @@ def test_partial_prior_summary_and_foreign_lock_are_preserved(
     partial_payload = b'{"partial":true}\n'
     partial.summary_json_path.write_bytes(partial_payload)
 
-    partial_result = run_cli(partial, execute=True)
+    partial_result = run_builder(partial, execute=True)
 
     assert partial_result.returncode != 0
     assert partial.summary_json_path.read_bytes() == partial_payload
@@ -917,7 +740,7 @@ def test_partial_prior_summary_and_foreign_lock_are_preserved(
     lock_payload = b"foreign run-summary lock\n"
     locked.lock_path.write_bytes(lock_payload)
 
-    locked_result = run_cli(locked, execute=True)
+    locked_result = run_builder(locked, execute=True)
 
     assert locked_result.returncode != 0
     assert locked.lock_path.read_bytes() == lock_payload
@@ -928,7 +751,7 @@ def test_replacement_publication_failure_restores_prior_transaction(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    first = run_cli(run_summary_fixture, execute=True)
+    first = run_builder(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     before = summary_snapshot(run_summary_fixture)
     context = context_for(run_summary_fixture)
@@ -1098,7 +921,7 @@ def test_signal_after_receipt_backup_rename_restores_prior_transaction(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    first = run_cli(run_summary_fixture, execute=True)
+    first = run_builder(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     before = summary_snapshot(run_summary_fixture)
     original_handlers = {
@@ -1148,7 +971,7 @@ def test_corrupted_restored_receipt_is_quarantined_and_retains_recovery(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    first = run_cli(run_summary_fixture, execute=True)
+    first = run_builder(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     before = summary_snapshot(run_summary_fixture)
     context = context_for(run_summary_fixture)
@@ -1244,7 +1067,7 @@ def test_incomplete_replacement_rollback_retains_lock_and_recovery_paths(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    first = run_cli(run_summary_fixture, execute=True)
+    first = run_builder(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     context = context_for(run_summary_fixture)
     real_replace = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.replace
@@ -1360,7 +1183,7 @@ def test_post_commit_cleanup_failure_preserves_new_transaction_and_lock(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    first = run_cli(run_summary_fixture, execute=True)
+    first = run_builder(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     context = context_for(run_summary_fixture)
     real_remove_owned = (
@@ -1417,7 +1240,7 @@ def test_tampered_prior_receipt_provenance_is_rejected(
     value: str,
     token: str,
 ) -> None:
-    first = run_cli(run_summary_fixture, execute=True)
+    first = run_builder(run_summary_fixture, execute=True)
     assert first.returncode == 0, first.stderr
     header = read_tsv_header(run_summary_fixture.summary_receipt_path)
     rows = read_tsv(run_summary_fixture.summary_receipt_path)
@@ -1468,9 +1291,7 @@ def test_prepared_snapshot_rejects_transaction_mutated_during_validation(
     def recheck_inputs(context: Any) -> None:
         REPORTING_VALIDATION.recheck_run_summary_inputs(context, ops=recheck_ops)
 
-    arguments = _parse_run_summary_arguments(
-        run_summary_fixture.command_args(execute=True)
-    )
+    arguments = run_summary_arguments(run_summary_fixture, execute=True)
 
     with pytest.raises(
         RUN_SUMMARY_MODELS.RunSummaryError,
@@ -1511,9 +1332,7 @@ def test_prepare_recheck_rejects_identical_byte_record_replacement(
             replaced = True
         return result
 
-    arguments = _parse_run_summary_arguments(
-        run_summary_fixture.command_args(execute=True)
-    )
+    arguments = run_summary_arguments(run_summary_fixture, execute=True)
 
     with pytest.raises(
         RUN_SUMMARY_MODELS.RunSummaryError,

@@ -476,7 +476,6 @@ class LifecycleOutcome:
     released_lock_path: Path
     receipt: dict[str, Any]
     workflow_result: WorkflowResult | None
-    verified_report_locations: tuple[tuple[str, Path], ...] = ()
 
 
 def _canonical_file(path: Path, label: str) -> Path:
@@ -2017,13 +2016,12 @@ def _terminal_receipt(
     preentry_tasks: list[dict[str, Any]],
     task_starts: list[dict[str, Any]],
     verified: list[dict[str, Any]],
-    reporting: Mapping[str, Mapping[str, dict[str, str] | None]],
     blockers: Sequence[str],
     message: str | None,
     now: datetime,
 ) -> dict[str, Any]:
     receipt = {
-        "schema_version": "emrys.attempt-receipt.v1",
+        "schema_version": "emrys.attempt-receipt.v2",
         "run_id": attempt["run_id"],
         "execution_contract_sha256": attempt["execution_contract_sha256"],
         "profile_sha256": attempt["profile_sha256"],
@@ -2040,10 +2038,8 @@ def _terminal_receipt(
         "preentry_task_attempt_records": preentry_tasks,
         "task_start_records": task_starts,
         "verified_tasks": verified,
-        "reporting_completion_records": dict(reporting),
         "blockers": list(dict.fromkeys(blockers)),
         "message": message,
-        "local_pipeline_complete": status == "succeeded",
     }
     orchestration_contracts.validate_record("attempt-receipt", receipt)
     return receipt
@@ -2209,17 +2205,6 @@ def _run_attempt_locked(
         *task_tree_blockers,
         *_incomplete_task_start_blockers(task_starts, verified),
     ]
-    (
-        reporting,
-        reporting_blockers,
-        verified_report_locations,
-    ) = inspection._inspect_reporting_ledger_with_locations(
-        root,
-        execution,
-        profile,
-        active_ops.validate_reporting_receipt,
-    )
-    blockers.extend(reporting_blockers)
     if blockers:
         status = "blocked"
         message = "Workflow preflight found ambiguous reusable state"
@@ -2346,16 +2331,6 @@ def _run_attempt_locked(
             root, execution, profile, attempts
         )
         task_tree_blockers.extend(_chain_blockers)
-        (
-            reporting,
-            reporting_blockers,
-            verified_report_locations,
-        ) = inspection._inspect_reporting_ledger_with_locations(
-            root,
-            execution,
-            profile,
-            active_ops.validate_reporting_receipt,
-        )
         blockers = [
             *runtime_blockers,
             *inspection.state_tree_blockers(root),
@@ -2364,7 +2339,6 @@ def _run_attempt_locked(
             *start_blockers,
             *task_tree_blockers,
             *_incomplete_task_start_blockers(task_starts, verified),
-            *reporting_blockers,
         ]
         if blockers:
             status = "blocked"
@@ -2377,24 +2351,11 @@ def _run_attempt_locked(
         elif result.exit_code != 0:
             status = "failed"
             message = result.message or f"Snakemake exited {result.exit_code}"
-        elif (
-            blockers
-            or missing
-            or any(
-                state["start"] is None or state["verified"] is None
-                for state in reporting.values()
-            )
-        ):
+        elif blockers or missing:
             status = "failed"
-            absent = [*missing]
-            absent.extend(
-                name
-                for name, state in reporting.items()
-                if state["start"] is None or state["verified"] is None
-            )
             message = "Snakemake exited zero without complete EMRYS state"
-            if absent:
-                message += ": " + ", ".join(absent)
+            if missing:
+                message += ": " + ", ".join(missing)
         else:
             status = "succeeded"
             message = None
@@ -2458,7 +2419,6 @@ def _run_attempt_locked(
         preentry_tasks=preentry_tasks,
         task_starts=task_starts,
         verified=verified,
-        reporting=reporting,
         blockers=blockers,
         message=message,
         now=active_ops.now(),
@@ -2483,7 +2443,6 @@ def _run_attempt_locked(
                     preentry_tasks=preentry_tasks,
                     task_starts=task_starts,
                     verified=verified,
-                    reporting=reporting,
                     blockers=blockers,
                     message=result.message,
                     now=active_ops.now(),
@@ -2503,7 +2462,6 @@ def _run_attempt_locked(
         released_lock_path=released_lock_path,
         receipt=receipt,
         workflow_result=result,
-        verified_report_locations=verified_report_locations,
     )
 
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -292,59 +291,3 @@ def recheck_source_identity(context: BuildContext) -> None:
         raise ArtifactIndexError(
             "Artifact-index producer checkout changed after provenance attribution"
         )
-
-
-def print_context(context: BuildContext, execute: bool) -> None:
-    availability = Counter(
-        inspection.availability_status for inspection in context.inspections
-    )
-    completion = Counter(
-        inspection.completion_status for inspection in context.inspections
-    )
-    print("EMRYS artifact-index context")
-    print(f"  Mode: {'execute' if execute else 'dry-run'}")
-    print(f"  Run ID: {context.run_id}")
-    print(f"  Run contract SHA-256: {context.run_contract['run_contract_sha256']}")
-    print(f"  Run contract: {context.run_contract_path}")
-    print(f"  Inventory: {context.inventory_path}")
-    print(f"  Inventory artifacts: {len(context.inventory_rows)}")
-    print(f"  Output directory: {context.output_dir}")
-    print(f"  Records directory: {context.records_dir}")
-    print(f"  Artifact index: {context.artifacts_path}")
-    print(f"  Receipt (published last): {context.receipt_path}")
-    print(f"  Adapter attempt ID: {context.attempt_id}")
-    print(
-        "  Availability: "
-        + ", ".join(
-            f"{status}={availability[status]}"
-            for status in (
-                "present",
-                "missing",
-                "externally_unavailable",
-                "unknown",
-            )
-        )
-    )
-    print(
-        "  Completion: "
-        + ", ".join(
-            f"{status}={completion[status]}"
-            for status in (
-                "complete",
-                "not_attempted",
-                "in_progress",
-                "incomplete",
-                "failed",
-            )
-        )
-    )
-    for inspection in context.inspections:
-        print(
-            "  Artifact: "
-            f"{inspection.row['artifact_id']} "
-            f"availability={inspection.availability_status} "
-            f"completion={inspection.completion_status} "
-            f"source={inspection.row['source_path']}"
-        )
-    if not execute:
-        print("Dry-run only. Add --execute to publish the artifact-index transaction.")

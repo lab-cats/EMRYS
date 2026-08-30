@@ -414,7 +414,6 @@ def prepare_context(
         render_metadata=metadata,
         scientific_html_bytes=scientific_html_bytes,
         evidence_html_bytes=evidence_html_bytes,
-        execute=arguments.execute,
     )
     for recheck in context.input_rechecks:
         _assert_input_recheck(*recheck)

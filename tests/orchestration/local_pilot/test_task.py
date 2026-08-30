@@ -229,7 +229,7 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
                 "-m",
                 "snakemake",
                 "--",
-                "local_pipeline_slice",
+                "cohort_slice",
             )
         ),
         "workflow_config": {

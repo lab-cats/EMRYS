@@ -151,7 +151,7 @@ controlled exit-`2` boundary.
 - Artifact adapters register both VCFs, the receipt, and
   `step07_validation_report_v1`; reports consume registered evidence without
   rerunning pileup.
-- [`test_producer.py`](../../../../tests/stages/partitioned_cohort_mpileup/test_producer.py)
+- [`test_partitioned_cohort_mpileup_producer.py`](../../../../tests/stages/partitioned_cohort_mpileup/test_partitioned_cohort_mpileup_producer.py)
   protects selector modes, manifest order, commands, dry-run, publication,
   locking, stale paths, child failures, transaction ordering, replacement,
   rollback failures, signals, mutation gaps, and provenance omissions.

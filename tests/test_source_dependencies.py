@@ -98,10 +98,47 @@ def test_exact_public_reporting_seam_is_allowed(tmp_path: Path) -> None:
     repository = write_repository(
         tmp_path,
         {
-            "src/emrys/orchestration/control.py": (
+            "src/emrys/orchestration/local_pilot/reporting_boundary.py": (
                 "from emrys.reporting import transaction_validation\n"
             ),
             "src/emrys/reporting/transaction_validation.py": "",
+        },
+    )
+
+    assert inspect(repository) == ()
+
+
+@pytest.mark.parametrize(
+    ("statement", "target_path"),
+    (
+        (
+            "from emrys.reporting._artifact_index.context import prepare_context\n",
+            "src/emrys/reporting/_artifact_index/context.py",
+        ),
+        (
+            "from emrys.reporting._artifact_index.publication import publish_context\n",
+            "src/emrys/reporting/_artifact_index/publication.py",
+        ),
+        (
+            "from emrys.reporting._run_summary.builder import prepare_context\n",
+            "src/emrys/reporting/_run_summary/builder.py",
+        ),
+        (
+            "from emrys.reporting._run_summary.publication import publish_context\n",
+            "src/emrys/reporting/_run_summary/publication.py",
+        ),
+    ),
+)
+def test_exact_reporting_coordinator_private_seam_is_allowed(
+    tmp_path: Path,
+    statement: str,
+    target_path: str,
+) -> None:
+    repository = write_repository(
+        tmp_path,
+        {
+            "src/emrys/orchestration/local_pilot/reporting_operation.py": statement,
+            target_path: "",
         },
     )
 

@@ -50,6 +50,7 @@ RESOURCE_PATHS = (
     "emrys/contracts/schemas/orchestration/v1/policy.schema.json",
     "emrys/contracts/schemas/orchestration/v1/workflow_attempt.schema.json",
     "emrys/contracts/schemas/orchestration/v1/attempt_receipt.schema.json",
+    "emrys/contracts/schemas/orchestration/v2/attempt_receipt.schema.json",
     "emrys/contracts/schemas/orchestration/v1/run_lock.schema.json",
     "emrys/contracts/schemas/orchestration/v1/task_start.schema.json",
     "emrys/contracts/schemas/orchestration/v1/task_attempt.schema.json",
@@ -287,21 +288,7 @@ def installed_probe(environment_python: Path, cwd: Path) -> dict[str, object]:
 
 def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -> None:
     fixture = FIXTURE.build_fixture(tmp_path / "report-fixture")
-    summary_result = run_command(
-        [
-            sys.executable,
-            "-X",
-            "pycache_prefix=/dev/null",
-            "-I",
-            "-m",
-            "emrys",
-            "build",
-            "run-summary",
-            *fixture.command_args(execute=True),
-        ],
-        cwd=REPO_ROOT,
-    )
-    require_success(summary_result)
+    FIXTURE.publish_run_summary(fixture)
     artifact_source_root = fixture.root
     summary = json.loads(fixture.summary_json_path.read_text(encoding="utf-8"))
     summary["provenance"]["git_commit"] = "upstream-summary-commit"
@@ -354,6 +341,7 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
         ),
         (("run", "--help"), "usage: emrys run"),
         (("resume", "--help"), "usage: emrys resume"),
+        (("report", "--help"), "usage: emrys report"),
         (
             ("inspect", "local-pilot-run", "--help"),
             "usage: emrys inspect local-pilot-run",
@@ -395,43 +383,43 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
     assert "Manifest validation passed." in validation.stdout
     assert "Samples: 1" in validation.stdout
     report_output_root = arbitrary_cwd / "reports"
-    report_help = run_command(
-        [str(environment_python), "-I", "-m", "emrys", "build", "report", "--help"],
-        cwd=arbitrary_cwd,
-        hostile_pythonpath=True,
-    )
-    require_success(report_help)
-    assert "--source-checkout" in report_help.stdout
-    assert "--artifact-source-root" in report_help.stdout
-    assert "--quarto-bin" not in report_help.stdout
+    render_program = """
+import argparse
+import sys
+from pathlib import Path
+
+from emrys.reporting import report
+from emrys.reporting._run_report.publication import publish_report
+
+context = report.prepare_report(argparse.Namespace(
+    source_checkout=Path(sys.argv[1]),
+    artifact_source_root=Path(sys.argv[2]),
+    run_summary=Path(sys.argv[3]),
+    output_root=Path(sys.argv[4]),
+))
+publish_report(context, report.default_publication_ops())
+print(context.output_receipt)
+"""
     rendered = run_command(
         [
             str(environment_python),
             "-X",
             "pycache_prefix=/dev/null",
             "-I",
-            "-m",
-            "emrys",
-            "build",
-            "report",
-            "--source-checkout",
+            "-c",
+            render_program,
             str(REPO_ROOT),
-            "--artifact-source-root",
             str(artifact_source_root),
-            "--run-summary",
             str(fixture.summary_json_path),
-            "--output-root",
             str(report_output_root),
-            "--execute",
         ],
         cwd=arbitrary_cwd,
         hostile_pythonpath=True,
     )
     require_success(rendered)
-    assert f"Source checkout: {REPO_ROOT}" in rendered.stdout
-    assert f"Artifact source root: {artifact_source_root}" in rendered.stdout
     run_id = fixture.run_id
     report_directory = report_output_root / run_id
+    assert str(report_directory / f"{run_id}.report_outputs.tsv") in rendered.stdout
     assert {path.name for path in report_directory.iterdir()} == {
         f"{run_id}.scientific_report.html",
         f"{run_id}.evidence_report.html",

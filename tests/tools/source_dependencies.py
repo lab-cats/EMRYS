@@ -56,7 +56,33 @@ KNOWN_RULE_IDS = frozenset(
         RULE_SOURCE_CLASSIFICATION,
     }
 )
-PUBLIC_REPORTING_SEAM = "emrys.reporting.transaction_validation"
+_REPORTING_OPERATION = "emrys.orchestration.local_pilot.reporting_operation"
+ORCHESTRATION_REPORTING_SEAMS = frozenset(
+    {
+        (
+            "emrys.orchestration.local_pilot.lifecycle",
+            "emrys.reporting.transaction_validation",
+        ),
+        (
+            "emrys.orchestration.local_pilot.reporting_boundary",
+            "emrys.reporting.transaction_validation",
+        ),
+        *(
+            (_REPORTING_OPERATION, target)
+            for target in (
+                "emrys.reporting._artifact_index.context",
+                "emrys.reporting._artifact_index.models",
+                "emrys.reporting._artifact_index.publication",
+                "emrys.reporting._run_summary.builder",
+                "emrys.reporting._run_summary.models",
+                "emrys.reporting._run_summary.publication",
+                "emrys.reporting.report",
+                "emrys.reporting._run_report.models",
+                "emrys.reporting._run_report.publication",
+            )
+        ),
+    }
+)
 
 # (documented ID, exact target); descriptive current behavior, not target APIs.
 COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
@@ -76,7 +102,6 @@ COMPOSITION_SEAMS: tuple[tuple[str, str], ...] = (
     ("CLI-SEAM-014", "emrys.orchestration.local_pilot.control"),
     ("CLI-SEAM-015", "emrys.orchestration.local_pilot.onboarding"),
     ("CLI-SEAM-016", "emrys.orchestration.local_pilot.synthetic_fixture"),
-    ("CLI-SEAM-017", "emrys.reporting.report"),
     ("CLI-SEAM-018", "emrys.stages.canonical_bam.validator"),
     ("CLI-SEAM-019", "emrys.stages.cohort_candidate_preprocessing.validator"),
     ("CLI-SEAM-020", "emrys.stages.duplicate_marking.validator"),
@@ -104,8 +129,6 @@ TRANSITIONS: tuple[tuple[str, str, str, str], ...] = (
     ("SRC-TRANS-009", "src/emrys/orchestration/local_pilot/lifecycle.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
     ("SRC-TRANS-010", "src/emrys/orchestration/local_pilot/lifecycle.py", "emrys.evidence.storage_inventory.qualification", RULE_ORCHESTRATION_BOUNDARY),
     ("SRC-TRANS-011", "src/emrys/orchestration/local_pilot/onboarding.py", "emrys.stages.gtf_to_bed12.converter", RULE_ORCHESTRATION_BOUNDARY),
-    ("SRC-TRANS-012", "src/emrys/__main__.py", "emrys.reporting._artifact_index.builder", RULE_PRIVATE_OWNER),
-    ("SRC-TRANS-013", "src/emrys/__main__.py", "emrys.reporting._run_summary.builder", RULE_PRIVATE_OWNER),
 )
 
 
@@ -305,6 +328,10 @@ def forbidden_rule(
 ) -> tuple[str, str] | None:
     source_kind, source_owner = owner(edge.source_module)
     target_kind, target_owner = owner(edge.target_module)
+    declared_reporting_seam = (
+        edge.source_module,
+        edge.target_module,
+    ) in ORCHESTRATION_REPORTING_SEAMS
     if target_kind == "unclassified":
         return RULE_SOURCE_CLASSIFICATION, "target belongs to an unclassified domain"
     if source_kind == "root" and target_kind != "root":
@@ -315,7 +342,7 @@ def forbidden_rule(
         part.startswith("_") and not part.startswith("__")
         for part in edge.target_module.split(".")[2:]
     )
-    if source_owner != target_owner and private:
+    if source_owner != target_owner and private and not declared_reporting_seam:
         return RULE_PRIVATE_OWNER, "private modules are owner-local"
     if source_kind == "composition":
         if edge.target_module not in composition_targets:
@@ -338,7 +365,7 @@ def forbidden_rule(
         rule = RULE_INGESTION_BOUNDARY if source_kind == "ingestion" else RULE_REPORTING_DOWNSTREAM
         return rule, f"{source_kind} dependency direction is reversed"
     if source_kind == "orchestration" and target_kind in {"functional", "ingestion", "reporting"}:
-        if edge.target_module != PUBLIC_REPORTING_SEAM:
+        if not declared_reporting_seam:
             return RULE_ORCHESTRATION_BOUNDARY, "target is not a declared public capability"
     return None
 

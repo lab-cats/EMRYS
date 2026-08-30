@@ -105,7 +105,7 @@ imported across peers.
 | `libraries/` | `contracts/` and lower neutral libraries in an acyclic chain | none | functional, ingestion, application, or reporting owners |
 | `stages/`, `analyses/`, `evidence/` | `contracts/`, approved `libraries/`, owner-local code | owner-local tools and peer artifacts through contracts | peer implementation, ingestion, or reporting implementation |
 | `ingestion/` | `contracts/`, approved `libraries/`, ingestion-local code | external inputs; emitted validated declarations | functional-owner implementation or execution |
-| `orchestration/` | `contracts/`, approved `libraries/`, orchestration-local code, the direct public `reporting.transaction_validation` completion API, and the exact transitions below | public owner commands/capabilities and declared artifacts | peer-private implementation, ingestion, or scientific logic outside a named transition |
+| `orchestration/` | `contracts/`, approved `libraries/`, orchestration-local code, and the exact reporting seams and transitions below | public owner commands/capabilities and declared artifacts | peer-private implementation, ingestion, or scientific logic outside a named seam or transition |
 | `reporting/` | `contracts/`, approved `libraries/`, reporting-local code | explicit public artifacts and summaries | functional-owner implementation, input discovery, or analysis execution |
 
 Scientific functional-owner data flow follows the explicit semantic DAG edges
@@ -125,7 +125,7 @@ transition cannot be copied to justify another edge.
 ### Current CLI composition seams
 
 The grouped `src/emrys/__main__.py` dispatcher may import only this exact
-current roster plus the two private reporting transitions below. The roster is
+current roster. The roster is
 descriptive current behavior, not the future application API. A new target or
 a stale target fails the source-dependency gate so owner privacy and public CLI
 composition are reviewed together.
@@ -148,7 +148,6 @@ composition are reviewed together.
 | `CLI-SEAM-014` | `emrys.orchestration.local_pilot.control` | Current plan/execute/inspect commands |
 | `CLI-SEAM-015` | `emrys.orchestration.local_pilot.onboarding` | Current onboarding commands |
 | `CLI-SEAM-016` | `emrys.orchestration.local_pilot.synthetic_fixture` | Current synthetic-fixture command |
-| `CLI-SEAM-017` | `emrys.reporting.report` | Current run-report commands |
 | `CLI-SEAM-018` | `emrys.stages.canonical_bam.validator` | Owner validation command |
 | `CLI-SEAM-019` | `emrys.stages.cohort_candidate_preprocessing.validator` | Owner validation command |
 | `CLI-SEAM-020` | `emrys.stages.duplicate_marking.validator` | Owner validation command |
@@ -160,6 +159,27 @@ composition are reviewed together.
 | `CLI-SEAM-026` | `emrys.stages.split_n_cigar.validator` | Owner validation command |
 | `CLI-SEAM-027` | `emrys.stages.star_alignment.validator` | Owner validation command |
 | `CLI-SEAM-028` | `emrys.stages.star_index.validator` | Owner validation command |
+
+### Fixed orchestration-to-reporting seams
+
+The local-pilot application may cross into reporting only through these exact
+edges. Lifecycle and historical inspection validate receipts; the dedicated
+reporting operation owns the fixed artifact-index → run-summary → HTML sequence.
+No functional owner or grouped command imports reporting internals directly.
+
+| Exact source | Exact target | Purpose |
+|---|---|---|
+| `emrys.orchestration.local_pilot.lifecycle` | `emrys.reporting.transaction_validation` | Historical receipt validation during Attempt inspection |
+| `emrys.orchestration.local_pilot.reporting_boundary` | `emrys.reporting.transaction_validation` | Semantic validation before immutable reporting completion |
+| `emrys.orchestration.local_pilot.reporting_operation` | `emrys.reporting._artifact_index.context` | Prepare the first fixed reporting transaction |
+| `emrys.orchestration.local_pilot.reporting_operation` | `emrys.reporting._artifact_index.publication` | Publish the first fixed reporting transaction |
+| `emrys.orchestration.local_pilot.reporting_operation` | `emrys.reporting._artifact_index.models` | First-transaction error identity |
+| `emrys.orchestration.local_pilot.reporting_operation` | `emrys.reporting._run_summary.builder` | Prepare the second fixed reporting transaction through `prepare_context` |
+| `emrys.orchestration.local_pilot.reporting_operation` | `emrys.reporting._run_summary.publication` | Publish the second fixed reporting transaction |
+| `emrys.orchestration.local_pilot.reporting_operation` | `emrys.reporting._run_summary.models` | Second-transaction error identity |
+| `emrys.orchestration.local_pilot.reporting_operation` | `emrys.reporting.report` | Final fixed HTML transaction |
+| `emrys.orchestration.local_pilot.reporting_operation` | `emrys.reporting._run_report.publication` | Publish the final fixed HTML transaction |
+| `emrys.orchestration.local_pilot.reporting_operation` | `emrys.reporting._run_report.models` | Final-transaction error identity |
 
 ### Bounded current import transitions
 
@@ -183,8 +203,6 @@ explicit permanent justification in the durable owner.
 | `SRC-TRANS-009` | `orchestration/local_pilot/lifecycle.py` → `emrys.evidence.runtime_availability.inspector` | Runtime re-admission before execution/reuse | `AC-SLICE-03`, `AC-SLICE-05`, and `AC-SLICE-08`: preserve re-admission and evidence attribution while selecting the final boundary. |
 | `SRC-TRANS-010` | `orchestration/local_pilot/lifecycle.py` → `emrys.evidence.storage_inventory.qualification` | Storage re-admission before execution/reuse | `AC-SLICE-05` and `AC-SLICE-06`: preserve fail-closed qualification and recovery while selecting the final boundary. |
 | `SRC-TRANS-011` | `orchestration/local_pilot/onboarding.py` → `emrys.stages.gtf_to_bed12.converter` | Reference GTF/FASTA compatibility using the current normalization implementation | `AC-SLICE-03` and `AC-SLICE-04`: select a public capability/contract boundary without duplicating GTF semantics. |
-| `SRC-TRANS-012` | `__main__.py` → `emrys.reporting._artifact_index.builder` | Current grouped `build artifact-index` composition | `AC-SLICE-03` and `AC-SLICE-12`: route through a public reporting capability or explicitly justify the retained private access. |
-| `SRC-TRANS-013` | `__main__.py` → `emrys.reporting._run_summary.builder` | Current grouped `build run-summary` composition | `AC-SLICE-03` and `AC-SLICE-12`: route through a public reporting capability or explicitly justify the retained private access. |
 
 ### Automated import projection
 
@@ -195,7 +213,7 @@ standard-library dynamic import forms without importing product modules or
 writing the tree. It enforces the stable negative directions above,
 functional-owner isolation, exact current CLI composition, private-module
 isolation, acyclicity between neutral library owners, explicit classification
-for every product source domain, the single public reporting transaction seam,
+for every product source domain, the exact fixed reporting seams,
 and the exact transition roster. Focused tests keep the executable
 seam/transition rosters equal to the tables above.
 
@@ -215,10 +233,9 @@ portable repository-root semantics. Its installed `python -I -m emrys` module
 interface contains explicitly migrated owner routes, the read-only semantic
 all-pass/readiness checks, and the source-checkout-bound fixed-profile control
 routes. `orchestration/local_pilot/control.py` and `materialization.py` are the
-single public application owner for that projection; they do not import peer-
-private implementations. The packaged internal task module is invoked only by
-the fixed source-checkout workflow; it is not a public lifecycle command, scheduler
+single public application owner for that projection. The dedicated
+`reporting_operation.py` coordinator is the only owner allowed to compose the
+three fixed reporting producers; the grouped command does not expose those
+producers separately. The packaged internal task module is invoked only by the
+fixed source-checkout workflow; it is not a public lifecycle command, scheduler
 abstraction, universal transaction framework, or generic stage dispatcher.
-The internal lifecycle consumes only reporting's direct semantic transaction
-validator; it does not import `_artifact_index`, `_run_summary`, or
-`_run_report` internals.

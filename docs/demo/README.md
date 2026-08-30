@@ -15,6 +15,11 @@ default output is under
 `results/demo-report-jinja/reports/synthetic_full_run_demo/`. An explicit
 ignored `DEMO_REPORT_ROOT` may select another fresh root.
 
+This target deliberately exercises private reporting builders as a developer
+fixture. Those builders are not public commands or operator recovery routes;
+operators use default-on reporting after `emrys run`/`emrys resume` or the
+independent `emrys report --run-root ...` route for an admitted Run.
+
 Existing pre-v4 report directories are not adopted or overwritten. The older
 ignored `results/demo-report/` tree, if present, remains untouched pending
 separate destructive-cleanup or migration authority.

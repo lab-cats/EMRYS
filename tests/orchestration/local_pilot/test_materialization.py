@@ -43,6 +43,7 @@ from emrys.orchestration.local_pilot import (
     inspection,
     lifecycle,
     materialization,
+    reporting_operation,
 )
 from emrys.orchestration.local_pilot.materialization import (
     MaterializationError,
@@ -814,6 +815,7 @@ def test_run_identity_excludes_attempt_reporting_and_backend_adapter_code(
     (
         "src/emrys/orchestration/local_pilot/all_pass.py",
         "src/emrys/contracts/orchestration/artifact_inventory.py",
+        "src/emrys/contracts/schemas/orchestration/v2/attempt_receipt.schema.json",
     ),
 )
 def test_run_identity_binds_semantic_admission_code(
@@ -1964,6 +1966,7 @@ def test_execute_failure_summary_names_owned_lock_and_recovery(
             mode="execute",
             scope_id="pending",
             entrypoint="emrys-run",
+            report_enabled=False,
             ops=ops,
         )
 
@@ -2108,6 +2111,7 @@ def test_public_slurm_execute_submits_once_and_creates_only_scheduler_log_root(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=True)
+    arguments.no_report = True
     submissions = []
 
     def submit(plan):
@@ -2131,6 +2135,7 @@ def test_public_slurm_execute_submits_once_and_creates_only_scheduler_log_root(
         f"ERR={arguments.workspace}/logs/emrys-local-pilot-812345.err\n"
     )
     assert len(submissions) == 1
+    assert " --execute --no-report" in submissions[0].batch_script
     assert list(arguments.workspace.rglob("*")) == [arguments.workspace / "logs"]
 
 
@@ -2180,23 +2185,35 @@ def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
     assert not arguments.workspace.exists()
 
 
-def test_direct_execution_owns_one_receipt_ordered_application_log(
+@pytest.mark.parametrize(
+    "report_mode",
+    ("disabled", "success", "failure"),
+)
+def test_direct_execution_owns_receipt_ordered_reporting_log(
     tmp_path: Path,
     capsys,
+    report_mode: str,
 ) -> None:
     plan = _plan(tmp_path)
     receipt_path = tmp_path / "attempt-receipt.json"
+    receipt_bytes = b"immutable scientific receipt\n"
+    lock_path = tmp_path / "run.lock"
+    released_lock_path = tmp_path / "released-lock.json"
+    lock_path.write_text("active\n")
     observed_events = []
+    report_calls = []
 
     def execute(_plan, observe):
         for event_name in ("analysis_started", "publication_ready"):
             observed_events.append(event_name)
             observe(event_name)
+        receipt_path.write_bytes(receipt_bytes)
+        lock_path.replace(released_lock_path)
         return lifecycle.LifecycleOutcome(
             attempt_path=tmp_path / "attempt.json",
             receipt_path=receipt_path,
-            lock_path=tmp_path / "run.lock",
-            released_lock_path=tmp_path / "released-lock.json",
+            lock_path=lock_path,
+            released_lock_path=released_lock_path,
             receipt={"status": "succeeded"},
             workflow_result=None,
         )
@@ -2207,35 +2224,94 @@ def test_direct_execution_owns_one_receipt_ordered_application_log(
         "default",
         "default",
     )
-    ops = replace(control.DEFAULT_CONTROL_OPS, execute_plan=execute)
 
-    assert (
-        control._execute_plan(
-            lambda: plan,
-            controls=controls,
-            workspace=plan.workspace,
-            mode="execute",
-            scope_id="pending",
-            entrypoint="emrys-run",
-            ops=ops,
+    def report(run_root: Path, *, execute: bool):
+        if report_mode == "disabled":
+            pytest.fail("--no-report invoked reporting")
+        events = [
+            json.loads(line)["event"]
+            for line in next(controls.root.rglob("*.jsonl")).read_text().splitlines()
+        ]
+        report_calls.append(
+            (
+                run_root,
+                execute,
+                receipt_path.read_bytes(),
+                lock_path.exists(),
+                released_lock_path.exists(),
+                events[-2:],
+            )
         )
-        == 0
+        if report_mode == "failure":
+            raise reporting_operation.ReportingOperationError("injected failure")
+        return reporting_operation.ReportingOperationOutcome(
+            status="generated",
+            verified_report_locations=(
+                ("scientific-report-html", tmp_path / "scientific.html"),
+                ("evidence-report-html", tmp_path / "evidence.html"),
+            ),
+        )
+
+    ops = replace(
+        control.DEFAULT_CONTROL_OPS,
+        execute_plan=execute,
+        report_run=report,
     )
 
-    log_paths = list(controls.root.rglob("*.jsonl"))
-    assert len(log_paths) == 1
-    records = [json.loads(line) for line in log_paths[0].read_text().splitlines()]
-    assert [record["event"] for record in records] == [
-        "attempt_opened",
-        "analysis_prepared",
-        "analysis_started",
-        "publication_ready",
-        "attempt_receipt_observed",
+    status = control._execute_plan(
+        lambda: plan,
+        controls=controls,
+        workspace=plan.workspace,
+        mode="execute",
+        scope_id="pending",
+        entrypoint="emrys-run",
+        report_enabled=report_mode != "disabled",
+        ops=ops,
+    )
+
+    assert status == (1 if report_mode == "failure" else 0)
+    assert report_calls == (
+        []
+        if report_mode == "disabled"
+        else [
+            (
+                plan.run_root,
+                True,
+                receipt_bytes,
+                False,
+                True,
+                ["attempt_receipt_observed", "reporting_started"],
+            )
+        ]
+    )
+    assert receipt_path.read_bytes() == receipt_bytes
+    events = [
+        json.loads(line)["event"]
+        for line in next(controls.root.rglob("*.jsonl")).read_text().splitlines()
     ]
+    reporting_events = {
+        "disabled": ["reporting_skipped"],
+        "success": ["reporting_started", "reporting_completed"],
+        "failure": ["reporting_started", "reporting_failed"],
+    }
+    assert (
+        events
+        == [
+            "attempt_opened",
+            "analysis_prepared",
+            "analysis_started",
+            "publication_ready",
+            "attempt_receipt_observed",
+        ]
+        + reporting_events[report_mode]
+    )
     assert observed_events == ["analysis_started", "publication_ready"]
     captured = capsys.readouterr()
     assert captured.out == ""
     assert f"Evidence: {receipt_path}" in captured.err
+    if report_mode == "failure":
+        assert "Scientific Results remain complete" in captured.err
+        assert f"emrys report --run-root {plan.run_root} --execute" in captured.err
 
 
 @pytest.mark.parametrize(
@@ -2312,6 +2388,7 @@ def test_application_log_degradation_cannot_change_receipt_or_exit(
         mode="execute",
         scope_id="pending",
         entrypoint="emrys-run",
+        report_enabled=False,
         ops=ops,
     )
 
@@ -2337,6 +2414,98 @@ def test_report_presentation_rejects_malformed_verified_locations() -> None:
         control._verified_report_location_lines(locations)
 
 
+@pytest.mark.parametrize(
+    (
+        "outcome_status",
+        "execute_requested",
+        "logging_fails",
+    ),
+    (
+        ("planned", False, False),
+        ("reused", False, False),
+        ("generated", True, False),
+        ("generated", True, True),
+        ("reused", True, False),
+    ),
+)
+def test_standalone_report_logging_boundary(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+    outcome_status: str,
+    execute_requested: bool,
+    logging_fails: bool,
+) -> None:
+    workspace = tmp_path / "workspace"
+    run_root = workspace / "runs" / ("run-" + "a" * 64)
+    run_root.mkdir(parents=True)
+    calls: list[bool] = []
+    locations = (
+        ("scientific-report-html", run_root / "scientific.html"),
+        ("evidence-report-html", run_root / "evidence.html"),
+    )
+
+    def report(
+        _root: Path,
+        *,
+        execute: bool,
+        observe_generation_start=None,
+    ):
+        calls.append(execute)
+        if execute and outcome_status == "generated":
+            assert observe_generation_start is not None
+            observe_generation_start()
+        return reporting_operation.ReportingOperationOutcome(
+            status=outcome_status,
+            verified_report_locations=(
+                locations if outcome_status != "planned" else ()
+            ),
+        )
+
+    if logging_fails:
+
+        def reject_log(**_kwargs):
+            raise ApplicationLogError(
+                "injected standalone-report log failure",
+                stage="open",
+                path=None,
+            )
+
+        monkeypatch.setattr(control, "open_attempt_log", reject_log)
+    arguments = argparse.Namespace(
+        run_root=run_root,
+        execute=execute_requested,
+        log_level=None,
+        log_root=None,
+    )
+
+    assert (
+        control.report_from_args(
+            arguments,
+            ops=replace(control.DEFAULT_CONTROL_OPS, report_run=report),
+        )
+        == 0
+    )
+    generated = execute_requested and outcome_status == "generated"
+    assert calls == [execute_requested]
+    rendered = capsys.readouterr().err
+    assert f"Reporting: {outcome_status}" in rendered
+    log_paths = list((workspace / "logs" / "application").rglob("*.jsonl"))
+    if logging_fails:
+        assert log_paths == []
+        assert "Application logging unavailable for reporting" in rendered
+    elif generated:
+        assert len(log_paths) == 1
+        records = [json.loads(line) for line in log_paths[0].read_text().splitlines()]
+        assert [record["event"] for record in records] == [
+            "attempt_opened",
+            "reporting_started",
+            "reporting_completed",
+        ]
+    else:
+        assert log_paths == []
+
+
 def test_next_supported_action_uses_separated_status_domains() -> None:
     def action(
         integrity: str = "valid",
@@ -2352,6 +2521,7 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
                 results_status=results,
                 reporting_status=reporting,
                 recovery_available=recovery,
+                run_root=Path("/run"),
             )
         )
 
@@ -2397,7 +2567,7 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
     )
     assert action() == "Review the verified Results and report paths."
     assert action(reporting="incomplete") == (
-        "Preserve completed Results; report regeneration is not supported here."
+        "Generate reports with emrys report --run-root /run --execute."
     )
 
 

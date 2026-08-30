@@ -37,7 +37,7 @@ flowchart TB
         validator -.->|fails| preserved
     end
 
-    reporting_plan["Three ordered reporting transactions\neach begins with a read-only dry-run"]
+    reporting_plan["Optional downstream reporting\ndefault after full run; --no-report skips\nno Run or Attempt created"]
     artifact_start["Artifact-index durable start"]
     artifact_receipt["Artifact-index execute\nreceipt published last"]
     artifact_gate["Semantic artifact-index revalidation"]
@@ -47,12 +47,12 @@ flowchart TB
     summary_gate["Semantic run-summary revalidation"]
     summary_verified["Run-summary verified record"]
     report_start["HTML-report durable start"]
-    barriers["Declared sample, partition, and profile barriers"]
+    barriers["Scientific owner completion\ndeclared sample, partition, and profile barriers satisfied"]
     report["Self-contained Jinja HTML execute\nreceipt published last"]
     report_gate["Semantic HTML-report revalidation"]
     report_verified["HTML-report verified record"]
     released_lock["Owned run lock atomically retained\nas immutable attempt-local release evidence"]
-    complete["Workflow-attempt receipt published last\nlegacy combined status retained"]
+    complete["Terminal v2 Attempt receipt published last\nscientific success is complete"]
     inspect["Read-only derived inspection\nEMRYS records only"]
     resume{"Every entered scope fully verified\nand every other scope unentered?"}
     resumable["New workflow attempt may resume"]
@@ -70,13 +70,13 @@ flowchart TB
     profile --> control --> run_lock --> materialize --> attempt
     attempt --> config --> engine --> preflight
     config --> dispatch --> preflight
-    verified --> barriers --> reporting_plan
+    verified --> barriers --> released_lock --> complete
     reporting_contract --> reporting_plan
     inventory --> reporting_plan
+    complete -->|default; optional downstream work| reporting_plan
     reporting_plan --> artifact_start --> artifact_receipt --> artifact_gate --> artifact_verified
     artifact_verified --> summary_start --> summary_receipt --> summary_gate --> summary_verified
     summary_verified --> report_start --> report --> report_gate --> report_verified
-    report_verified --> released_lock --> complete
     task_start --> inspect
     verified --> inspect
     attempt --> inspect

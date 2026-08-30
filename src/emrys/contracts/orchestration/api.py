@@ -51,6 +51,8 @@ SCHEMA_PATHS["resource-config"] = (
 SCHEMA_PATHS["execution-profile"] = (
     SCHEMA_ROOT.parent / "v3" / "execution_profile.schema.json"
 )
+_ATTEMPT_RECEIPT_V2_PATH = SCHEMA_ROOT.parent / "v2" / "attempt_receipt.schema.json"
+_ATTEMPT_RECEIPT_V2_ID = "urn:emrys:schema:orchestration:attempt-receipt:v2"
 SCHEMA_IDS = {
     name: f"urn:emrys:schema:orchestration:{name}:v1" for name in SCHEMA_PATHS
 }
@@ -188,11 +190,39 @@ def schema_validator(name: str) -> Draft202012Validator:
     )
 
 
+@cache
+def _attempt_receipt_v2_validator() -> Draft202012Validator:
+    schema = load_json_object(_ATTEMPT_RECEIPT_V2_PATH)
+    try:
+        Draft202012Validator.check_schema(schema)
+    except SchemaError as exc:
+        raise ContractValidationError(
+            f"attempt-receipt v2 is not valid Draft 2020-12: {exc.message}"
+        ) from exc
+    if schema.get("$id") != _ATTEMPT_RECEIPT_V2_ID:
+        raise ContractValidationError(
+            f"attempt-receipt v2 schema $id must be {_ATTEMPT_RECEIPT_V2_ID}"
+        )
+    _schemas, registry = load_schema_registry()
+    return Draft202012Validator(
+        schema,
+        registry=registry,
+        format_checker=FormatChecker(),
+    )
+
+
 def schema_errors(name: str, record: Any) -> tuple[str, ...]:
     """Return stable path-qualified schema diagnostics."""
 
+    validator = schema_validator(name)
+    if (
+        name == "attempt-receipt"
+        and isinstance(record, Mapping)
+        and record.get("schema_version") == "emrys.attempt-receipt.v2"
+    ):
+        validator = _attempt_receipt_v2_validator()
     errors = sorted(
-        schema_validator(name).iter_errors(record),
+        validator.iter_errors(record),
         key=lambda error: (
             tuple(str(part) for part in error.absolute_path),
             error.message,
@@ -631,21 +661,22 @@ def _validate_identity_record(name: str, record: Mapping[str, Any]) -> None:
             raise ContractValidationError(
                 "Non-blocked attempt receipts require every task start to be verified"
             )
-        for kind, reporting_state in record["reporting_completion_records"].items():
-            if (
-                reporting_state["verified"] is not None
-                and reporting_state["start"] is None
-            ):
-                raise ContractValidationError(
-                    f"Attempt receipt {kind} verified reporting requires a start"
-                )
-            if status != "blocked" and (
-                (reporting_state["start"] is None)
-                != (reporting_state["verified"] is None)
-            ):
-                raise ContractValidationError(
-                    f"Non-blocked attempt receipt has incomplete {kind} reporting"
-                )
+        if record["schema_version"] == "emrys.attempt-receipt.v1":
+            for kind, reporting_state in record["reporting_completion_records"].items():
+                if (
+                    reporting_state["verified"] is not None
+                    and reporting_state["start"] is None
+                ):
+                    raise ContractValidationError(
+                        f"Attempt receipt {kind} verified reporting requires a start"
+                    )
+                if status != "blocked" and (
+                    (reporting_state["start"] is None)
+                    != (reporting_state["verified"] is None)
+                ):
+                    raise ContractValidationError(
+                        f"Non-blocked attempt receipt has incomplete {kind} reporting"
+                    )
         if status == "succeeded" and (exit_code != 0 or signal_number is not None):
             raise ContractValidationError(
                 "Successful attempt receipt requires exit 0 and no signal"
