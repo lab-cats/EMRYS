@@ -357,6 +357,9 @@ jobs:
           test -x "${native_prefix}/bin/java"
           test -x "${native_prefix}/bin/gunzip"
           test -x "${r_prefix}/bin/Rscript"
+          test -e "${r_prefix}/lib/libxml2.so"
+          test -x "${r_prefix}/bin/xml2-config"
+          "${r_prefix}/bin/pkg-config" --exists libxml-2.0
           shopt -s nullglob
           picard_jars=("${native_prefix}"/share/picard-slim-3.1.1-*/picard.jar)
           test "${#picard_jars[@]}" -eq 1
