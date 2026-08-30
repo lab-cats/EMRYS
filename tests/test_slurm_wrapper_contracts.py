@@ -55,6 +55,9 @@ PYTHON_PRODUCERS = {
     "step_08_vcf_preprocessing.slurm": Path(
         "src/emrys/stages/cohort_candidate_preprocessing/producer.py"
     ),
+    "step_09_cmh_editing_site_calling.slurm": Path(
+        "src/emrys/analyses/paired_cmh_candidate_ranking/producer.py"
+    ),
 }
 
 
@@ -1500,6 +1503,7 @@ def test_step_08_vcf_preprocessing_forwards_r_program_for_child_validation(
     (
         ("step_07_bcftools_mpileup_by_chrom_and_strand.slurm", "07"),
         ("step_08_vcf_preprocessing.slurm", "08"),
+        ("step_09_cmh_editing_site_calling.slurm", "09"),
     ),
 )
 def test_python_producer_wrappers_reject_foreign_python_source(

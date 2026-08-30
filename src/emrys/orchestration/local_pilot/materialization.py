@@ -1048,12 +1048,10 @@ def _task_commands(
             bash,
             source_root,
             renv_library,
-            (
-                bash,
-                str(
-                    source_root
-                    / "src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh"
-                ),
+            controlled_python_argv(
+                sys.executable,
+                "-m",
+                "emrys.analyses.paired_cmh_candidate_ranking.producer",
                 *arguments,
             ),
         )

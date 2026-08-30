@@ -81,8 +81,8 @@ hashes, analysis conditions, thresholds, method, provisional policy, and
 reconciled counts. Mutation-spectrum TSV/PDF and depth/delta PDF are derived
 diagnostics. Header-only candidate tables are valid when all counts reconcile.
 
-[`step_09_cmh_editing_site_calling.sh`](step_09_cmh_editing_site_calling.sh)
-is side-effect-free in dry-run. Execute mode hashes and repeatedly rechecks
+Private [`producer.py`](producer.py) is side-effect-free in dry-run. Execute
+mode hashes and repeatedly rechecks
 manifests plus both Step `08` inputs, uses an analysis-owned lock and run-token
 scratch/backups, requires all six previous outputs or none, validates all
 temporaries, publishes the summary last as native commit marker, then
@@ -147,7 +147,7 @@ publication failures exit `2`.
 - Artifact adapters register all six outputs and
   `step09_validation_report_v1`; reporting presents them as computational
   candidates rather than treating threshold-passing rows as biological truth.
-- Direct shell/R/validator tests protect manifests and pairing, statuses,
+- Direct producer/R/validator tests protect manifests and pairing, statuses,
   thresholds, method metadata, dry-run, transaction, rollback, plots, and the
   independent validation boundary.
 - Independent Python-oracle and real-R corpus comparisons protect CMH/BH
@@ -166,8 +166,9 @@ cluster, completed scientific review, or biological interpretation readiness.
 - Step `09` schemas and reusable validators now belong to neutral
   [`step09.py`](../../contracts/scientific_evidence/step09.py), imported by
   this validator and artifact indexing under one shared ready-owner identity.
-- Method/schema/status logic is duplicated across shell, R, Python, oracle,
-  artifact, and validation surfaces; shared report publication belongs to
+- Method/schema/status logic remains distributed across the R implementation,
+  neutral Python contract, independent oracle, artifact, and validation
+  surfaces; shared report publication belongs to
   neutral [`validation/report.py`](../../libraries/validation/report.py).
 - Producer-recorded relative paths are later interpreted from a consumer's
   working directory, and the summary omits implementation, runtime, R/package,

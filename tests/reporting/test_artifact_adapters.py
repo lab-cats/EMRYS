@@ -55,10 +55,7 @@ EXPECTED_PRODUCER_PATHS = {
     ),
     "07": ("src/emrys/stages/partitioned_cohort_mpileup/producer.py"),
     "08": ("src/emrys/stages/cohort_candidate_preprocessing/producer.py"),
-    "09": (
-        "src/emrys/analyses/paired_cmh_candidate_ranking/"
-        "step_09_cmh_editing_site_calling.sh"
-    ),
+    "09": ("src/emrys/analyses/paired_cmh_candidate_ranking/producer.py"),
     "10": (
         "src/emrys/analyses/scientific_context_projection/"
         "scientific_context_projection.sh"

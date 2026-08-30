@@ -147,10 +147,6 @@ SHELL_ENTRYPOINT_PATHS = {
         "src/emrys/stages/mechanical_orientation/"
         "step_06_split_bam_by_read_orientation.sh"
     ),
-    "step_09_cmh_editing_site_calling.sh": Path(
-        "src/emrys/analyses/paired_cmh_candidate_ranking/"
-        "step_09_cmh_editing_site_calling.sh"
-    ),
     "scientific_context_projection.sh": Path(
         "src/emrys/analyses/scientific_context_projection/"
         "scientific_context_projection.sh"

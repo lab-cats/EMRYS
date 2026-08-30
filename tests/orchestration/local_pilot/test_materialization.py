@@ -653,6 +653,23 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
         if record["machine_key"]
         == "emrys.analysis.rank_cohort_candidates_with_paired_CMH.v1"
     )
+    step09_prefix = controlled_python_argv(
+        sys.executable,
+        "-m",
+        "emrys.analyses.paired_cmh_candidate_ranking.producer",
+    )
+    producer_argv = tuple(step09["producer_argv"])
+    assert any(
+        producer_argv[index : index + len(step09_prefix)] == step09_prefix
+        for index in range(len(producer_argv) - len(step09_prefix) + 1)
+    )
+    assert (
+        next(item for item in producer_argv if "EMRYS_LOCAL_PILOT_R" in item)
+        == r_bootstrap
+    )
+    assert "step_09_cmh_editing_site_calling.sh" not in " ".join(
+        step09["producer_argv"]
+    )
     assert_root(step09, "--step08-root", ".step08_sites.tsv", 1)
     assert_root(step09, "--output-root", ".cmh_all_sites.tsv", 1)
     step10 = next(
@@ -1094,8 +1111,6 @@ def test_implementation_identity_closes_direct_scientific_dependencies(
         "src/emrys/libraries/input_contract.R",
         "src/emrys/libraries/orientation.sh",
         "src/emrys/libraries/signal_traps.sh",
-        "src/emrys/analyses/paired_cmh_candidate_ranking/"
-        "step_09_cmh_awk_validation_functions.awk",
         "src/emrys/analyses/scientific_context_projection/resources/pum_motifs_v1.tsv",
     )
 
