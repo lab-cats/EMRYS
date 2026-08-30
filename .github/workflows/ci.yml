@@ -284,10 +284,13 @@ jobs:
             os_id: debian
             os_version: "12"
             glibc: "2.36"
-    env:
-      PIXI_WORKSPACE: ${{ runner.temp }}/emrys-managed-runtime
-      PIXI_MANIFEST: ${{ runner.temp }}/emrys-managed-runtime/pixi.toml
     steps:
+      - name: Select managed-runtime paths
+        shell: bash
+        run: |
+          printf 'PIXI_WORKSPACE=%s/emrys-managed-runtime\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+          printf 'PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+
       - name: Check out the triggering commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -666,10 +669,13 @@ jobs:
       (inputs.synthetic_130 || inputs.synthetic_100000))
     runs-on: ubuntu-24.04
     timeout-minutes: 360
-    env:
-      PIXI_WORKSPACE: ${{ runner.temp }}/emrys-managed-runtime
-      PIXI_MANIFEST: ${{ runner.temp }}/emrys-managed-runtime/pixi.toml
     steps:
+      - name: Select managed-runtime paths
+        shell: bash
+        run: |
+          printf 'PIXI_WORKSPACE=%s/emrys-managed-runtime\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+          printf 'PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml\n' "${RUNNER_TEMP}" >> "${GITHUB_ENV}"
+
       - name: Seed external evidence roots for selected profiles
         shell: bash
         env:

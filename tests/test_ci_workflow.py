@@ -125,9 +125,10 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
     assert "${RUNNER_TEMP}/emrys-synthetic-e2e" in seed["run"]
     assert "${GITHUB_WORKSPACE}" not in seed["run"]
 
-    assert job["env"]["PIXI_MANIFEST"].endswith(
-        "/emrys-managed-runtime/pixi.toml"
-    )
+    paths = _named_step(job, "Select managed-runtime paths")
+    assert "PIXI_WORKSPACE=%s/emrys-managed-runtime" in paths["run"]
+    assert "PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml" in paths["run"]
+    assert "${RUNNER_TEMP}" in paths["run"]
     stage = _named_step(job, "Stage the reviewed runtime lock outside the checkout")
     assert "src/emrys/resources/runtime/pixi.toml" in stage["run"]
     assert "src/emrys/resources/runtime/pixi.lock" in stage["run"]
@@ -276,6 +277,10 @@ def test_managed_runtime_userspace_matrix_proves_the_same_lock() -> None:
             "glibc": "2.36",
         },
     ]
+    paths = _named_step(job, "Select managed-runtime paths")
+    assert "PIXI_WORKSPACE=%s/emrys-managed-runtime" in paths["run"]
+    assert "PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml" in paths["run"]
+    assert "${RUNNER_TEMP}" in paths["run"]
     setup = _named_step(job, "Install both managed environments from the unchanged lock")
     assert setup["uses"] == (
         "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e"
