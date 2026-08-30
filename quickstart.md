@@ -327,9 +327,9 @@ is mandatory for every path and may use a separate short allocation. If only
 batch submission is available, do not move the data reads or runtime probes to
 the login node: after finalizing storage, continue to the Slurm
 execution-profile section. Its submit-host dry-run admits only placement;
-after explicit `--execute`, the compute delegate performs Project admission,
-doctor, and Run planning inside the allocation and stops before lifecycle
-mutation on failure.
+after terminal confirmation or explicit noninteractive `--execute`, the compute
+delegate performs Project admission, doctor, and Run planning inside the
+allocation and stops before lifecycle mutation on failure.
 
 Run the read-only intake validator first:
 
@@ -413,7 +413,8 @@ These direct commands use the built-in profile. If you changed the generated
 profile to direct placement and edited its resources, add
 `--execution-profile "$EMRYS_INPUT_DIR/emrys.execution.yaml"` to the command.
 
-Copy the exact run root printed by the plan:
+Record the exact Run root printed by this invocation for later inspection; it
+is not transferred into a second execution command:
 
 ```sh
 EMRYS_RUN_ROOT=/absolute/path/to/emrys-workspace/runs/run-DIGEST
@@ -521,9 +522,11 @@ retention/transfer path before execution if the workspace will otherwise become
 unreachable when the allocation ends.
 
 Before inspecting from a new terminal, repeat Step 1's `cd`, `EMRYS_PY`, and
-`emrys` function setup. For direct execution, use the exact Run root from Step
-7. For Slurm, copy it from the compute delegate's `ERR` stream after planning;
-never infer it from the scheduler job ID or workspace name.
+`emrys` function setup. For direct execution, use the Run root recorded from
+the same Step 7 invocation. For Slurm, record it from the compute delegate's
+`ERR` stream after planning; never infer it from the scheduler job ID or
+workspace name. This locator is for later read-only inspection, not a
+plan-to-execution handoff.
 
 ```sh
 EMRYS_RUN_ROOT=/absolute/path/printed/by/emrys
@@ -638,7 +641,7 @@ All other blocked states belong to
 | Compute runtime | Canonical tools are observed on the intended compute node; guarded `r-check` passes | Login-only path, guessed module, wrong Java/R, or missing namespace |
 | Storage | Final qualification covers the workspace and Step `00c` sidecar parents | Missing, failed, stale, or mismatched qualification |
 | Inputs and plan | Direct: Project validation and Doctor pass before the no-write Run plan; Slurm: the explicit profile and no-submit placement plan are reviewed | Any blocker, malformed input/profile, or unreviewed placement |
-| Execution | Only `--execute` changes on the reviewed command | Manual output adoption, login-node science work, or an uncertain existing Run root |
+| Execution | One terminal invocation is reviewed and confirmed; `--execute` is only the explicit automation path | Manual output adoption, login-node science work, or an uncertain existing Run root |
 
 The full [troubleshooting matrix](docs/operations/TROUBLESHOOTING.md) owns
 recovery detail. Standalone stages remain supported, but they do not create the

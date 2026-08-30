@@ -2572,9 +2572,11 @@ separate work.
 | Compression and evidence | Private print/int adapters and copied return state added no authority; publisher replacement/recovery branches protect higher-risk cases. | **Delete the low-risk transport copies and retain the protection owners.** One artifact-builder file, adapter-only printers, dead execute fields, a forwarding serializer, broad boundary return state, and obsolete fixture arguments retire. Publisher transactions, independent goldens, historical readers, and predecessor recovery remain; evidence changed by zero. Removing predecessor replacement support requires separate explicit approval. |
 | Logging, mutation, and deferred configuration | Reporting needs diagnostics but not another semantic lifecycle. Its former workflow memory settings no longer govern execution. | **Keep logging observational and state bounded.** Automatic reporting continues in the Run application log; standalone generation opens one log only after generation begins; dry-run and reuse open none. Only existing ledgers, output transactions, and the application log may change. `reporting_memory_mb` remains a visible redundant-configuration candidate pending explicit approval; the frozen dashboard and `DOC-05` are untouched. |
 
-Category-separated closeout is recorded in the findings matrix. `RUN-03`
-remains Open for real placement/outcome parity, generalized realization, and
-remaining public migration.
+Category-separated closeout is recorded in the findings matrix. At this cut,
+`RUN-03` still awaited the single-invocation journey; Section 13.12 subsequently
+completed that card. Real scheduler/site and outcome parity remain with
+`AC-SLICE-05`/`OPS-02`, while broader public-model realization remains with
+`AC-SLICE-03`/`CONTROL-01`/`ARCH-01`.
 
 ### 13.12 Bounded slice record: single-invocation Run journey
 
@@ -2600,12 +2602,24 @@ The actual product change is `+56/-62`, net `-6`, with zero growth in each of
 those other categories. Caller migration is complete for grouped `run` and
 `resume`; the duplicate paths are removed. Preconditions were approval of the
 bounded behavior, exact-plan/no-write/single-submit focused parity,
-documentation alignment, and clean CI; only CI remains external acceptance.
+documentation alignment, and clean CI. Standard CI run `33286493310` and
+extended synthetic CI run `33286499044` both passed on exact implementation
+commit `1adb036c9a1052b00ce71552be85300b77532750`; the hosted extended evidence
+used disposable single-node Slurm and is not CSU/site or production proof.
 The immutable pre-confirmation plan is transient. Accepted direct execution
 owns the existing application log and bounded lifecycle state. Slurm
 submission and stream state remain transport state; its compute delegate later
 owns the application log and Attempt. Test, documentation, and evidence
 actuals are recorded in the findings matrix.
+
+This completes `RUN-03`: the current immutable admitted Run plan now supports
+terminal confirmation, explicit automation, scientific Results, and downstream
+reporting without manual planning-to-execution transfer of a run root or
+internal state, while exact historical read/resume compatibility remains
+supported through its version-aware path. Real
+scheduler/site and outcome parity remain with `AC-SLICE-05`/`OPS-02`; broader
+public-model migration remains with `AC-SLICE-03`/`CONTROL-01`/`ARCH-01`; later
+Run-locator disclosure remains with `CONTROL-01`/`IDENTITY-01`.
 
 ## 14. Measurement plan
 
@@ -2807,7 +2821,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `SETUP-03` | Guided project creation, safe owned directories, generated configuration, validation, and no secret or biological invention; not containerization |
 | `RUNTIME-01` | Tiered runtime provisioning and admission; Managed/Site/Explicit are proposed labels; complete qualification includes the active internal workflow engine/Snakemake where applicable and remains separate from execution profiles |
 | `DOCTOR-01` | Project-aware readiness capabilities, actionable failures, qualified internal workflow-engine dependency, debug escape hatch, and the explicit-repair override with bounded mutation rules; exact command partitioning remains open |
-| `RUN-03` | The current path constructs and commits immutable successor Run authority, admits it through workflow/task boundaries, and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. One terminal direct invocation now displays and confirms the exact frozen Run plan. Slurm instead constructs one frozen submission plan, displays its placement summary, and submits that same object once after confirmation; its private delegate constructs the Run and opens the application log inside the allocation. `--execute` remains the explicit automation path. Refusal, EOF, or interruption precedes every applicable direct or transport mutation. The scientific Attempt ends at `cohort_slice` with a released lock and receipt v2; default reporting runs afterward, `--no-report` disables it, and `emrys report` plans/generates/reuses it independently without creating a Run or Attempt. Low-level reporting commands and the composite workflow tail are retired. Computational declaration may affect Run identity; profile location/raw bytes, placement, allocation, scheduler job ID, logging, reporting, and transport state remain Run-neutral facts. Real placement/outcome parity, generalized realization, and remaining public migration remain Open. |
+| `RUN-03` | **Complete.** The current path constructs and commits immutable successor Run authority, admits it through workflow/task boundaries, and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. One terminal direct invocation displays and confirms the exact frozen Run plan. Slurm constructs one frozen submission plan, displays its placement summary, and submits that same object once after confirmation; its private delegate constructs the Run and opens the application log inside the allocation. `--execute` remains the explicit automation path. Refusal, EOF, or interruption precedes every applicable direct or transport mutation. The scientific Attempt ends at `cohort_slice` with a released lock and receipt v2; default reporting runs afterward, `--no-report` disables it, and `emrys report` plans/generates/reuses it independently without creating a Run or Attempt. Low-level reporting commands and the composite workflow tail are retired. Computational declaration may affect Run identity; profile location/raw bytes, placement, allocation, scheduler job ID, logging, reporting, and transport state remain Run-neutral facts. Real scheduler/site and outcome parity remain with `AC-SLICE-05`/`OPS-02`; broader public-model migration remains with `AC-SLICE-03`/`CONTROL-01`/`ARCH-01`; later Run-locator disclosure remains with `CONTROL-01`/`IDENTITY-01`. |
 | `IDENTITY-01` | Successor Runs now use the selected domain-separated digest over relocation-independent Analysis and Execution-Plan identities, with historical Runs preserved through the version-aware reader and no successor execution projection. Ordinary public exposure, progressively disclosed Attempt identity, and remaining public migration remain Open. |
 | `FILESYSTEM-01` | Completed `RESULTS-01` supplies one current discoverable result/report surface with no hidden competing report root; automatic broader directory creation and the Project/inputs/runs and Run-Bundle layouts remain proposed |
 | `CONTAINER-01` | Independent managed-container/environment decision without assuming final runtime labels; institutional/native/advanced coexistence, image contents and digest, scheduler/storage/security/licensing/update contracts |
