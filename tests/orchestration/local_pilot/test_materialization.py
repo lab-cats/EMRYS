@@ -12,6 +12,8 @@ import shutil
 import subprocess
 import sys
 import threading
+import zlib
+from collections.abc import Mapping
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -414,19 +416,52 @@ def test_owner_doubles_preserve_immutable_run_toolchain(tmp_path: Path) -> None:
 
     doubled = with_owner_doubles(plan)
 
-    assert doubled.attempt_record["execution_mode"] == "test-double"
-    assert (
-        doubled.attempt_record["required_tools"]
-        == plan.attempt_record["required_tools"]
+    assert replace(
+        doubled,
+        attempt_record_bytes=plan.attempt_record_bytes,
+        attempt_files=plan.attempt_files,
+        new_dispatch_files=plan.new_dispatch_files,
+    ) == plan
+    attempt = doubled.attempt_record
+    assert attempt["execution_mode"] == "local-science-tools"
+    original_attempt = plan.attempt_record
+    assert doubled.config_path == plan.config_path
+    attempt["workflow_config"] = original_attempt["workflow_config"]
+    assert attempt == original_attempt
+
+    original_files = {item.path: item.data for item in plan.attempt_files}
+    doubled_files = {item.path: item.data for item in doubled.attempt_files}
+    dispatch_paths = {item.path for item in plan.new_dispatch_files}
+    assert doubled_files.keys() == original_files.keys()
+    assert {item.path for item in doubled.new_dispatch_files} == dispatch_paths
+    for path in dispatch_paths:
+        original = json.loads(original_files[path])
+        replacement = json.loads(doubled_files[path])
+        replacement["producer_argv"] = original["producer_argv"]
+        replacement["validator_argv"] = original["validator_argv"]
+        assert replacement == original
+
+    original_config = json.loads(original_files[plan.config_path])
+    doubled_config = json.loads(doubled_files[plan.config_path])
+    for machine_key, scopes in doubled_config["dispatch_paths"].items():
+        for scope_id, doubled_reference in scopes.items():
+            original_reference = original_config["dispatch_paths"][machine_key][
+                scope_id
+            ]
+            assert doubled_reference["path"] == original_reference["path"]
+            doubled_reference["sha256"] = original_reference["sha256"]
+    assert doubled_config == original_config
+    assert all(
+        doubled_files[path] == data
+        for path, data in original_files.items()
+        if path not in dispatch_paths and path != plan.config_path
     )
-    step00c = next(
-        record
+
+    assert all(
+        "--payload-base64" in record[field]
         for record in _dispatch_records(doubled)
-        if record["machine_key"] == "emrys.stage.construct_FASTA_sidecars.v1"
+        for field in ("producer_argv", "validator_argv")
     )
-    assert len(step00c["inputs"]) == 1
-    assert "--payload-base64" in step00c["producer_argv"]
-    assert "--payload-base64" in step00c["validator_argv"]
 
 
 def test_owner_doubles_use_successor_scopes_inside_reporting_payloads(
@@ -435,10 +470,12 @@ def test_owner_doubles_use_successor_scopes_inside_reporting_payloads(
     plan = _plan(tmp_path)
     doubled = with_owner_doubles(plan)
     payloads: dict[Path, bytes] = {}
-    for item in doubled.attempt_files:
-        if not item.path.name.endswith(".payload.json"):
-            continue
-        manifest = json.loads(item.data)
+    for record in _dispatch_records(doubled):
+        argv = record["producer_argv"]
+        encoded = argv[argv.index("--payload-base64") + 1]
+        manifest = json.loads(
+            zlib.decompress(base64.b64decode(encoded, validate=True))
+        )
         payloads.update(
             {
                 Path(output["path"]): base64.b64decode(output["data_base64"])
@@ -3220,7 +3257,27 @@ def _doubled_lifecycle_ops(
             ),
         )
 
-    return replace(base, run_workflow=run_workflow)
+    def admit_storage(
+        attempt: Mapping[str, object],
+        _execution: Mapping[str, object],
+    ) -> None:
+        assert attempt["execution_mode"] == "local-science-tools"
+        return None
+
+    def admit_runtime(
+        attempt: Mapping[str, object],
+        _request: lifecycle.LifecycleRequest,
+        storage_binding: doctor.RuntimeBinding | None,
+    ) -> None:
+        assert attempt["execution_mode"] == "local-science-tools"
+        assert storage_binding is None
+
+    return replace(
+        base,
+        run_workflow=run_workflow,
+        admit_storage_context=admit_storage,
+        admit_runtime_context=admit_runtime,
+    )
 
 
 def _verified_snapshot(root: Path) -> dict[Path, tuple[bytes, int]]:
@@ -3269,7 +3326,8 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
         control.lifecycle,
         "default_lifecycle_ops",
         lambda: _doubled_lifecycle_ops(
-            real_ops(), stop_after_target=stop_after_target[0]
+            real_ops(),
+            stop_after_target=stop_after_target[0],
         ),
     )
     run_arguments = argparse.Namespace(

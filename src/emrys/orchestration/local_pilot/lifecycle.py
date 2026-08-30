@@ -1033,8 +1033,6 @@ def _readmit_storage_runtime_binding(
     from emrys.evidence.storage_inventory import qualification  # noqa: PLC0415
     from emrys.orchestration.local_pilot import doctor  # noqa: PLC0415
 
-    if attempt["execution_mode"] == "test-double":
-        return None
     workspace = Path(str(attempt["workspace"]))
     if execution.get("schema_version") == RUN_BINDING_SCHEMA_VERSION:
         reference_fasta = Path(str(attempt["authored_paths"]["reference_fasta"]))
@@ -1123,20 +1121,6 @@ def _admit_runtime_context(
         raise LifecycleError("Required Python version differs from the bound runtime")
     if Path(str(snakemake["path"])) != request.python_executable:
         raise LifecycleError("Snakemake module identity must bind the Python runtime")
-    if attempt["execution_mode"] == "test-double":
-        observed_version = _tool_version(
-            controlled_python_argv(request.python_executable, "-m", "snakemake"),
-            "snakemake module",
-        )
-        if observed_version != snakemake["version"]:
-            raise LifecycleError(
-                f"Required Snakemake version differs: declared {snakemake['version']!r}; observed {observed_version!r}"
-            )
-        if storage_binding is not None:
-            raise LifecycleError("Test-double attempt must not bind storage qualification")
-        # Common admission re-admits identities; doubles do not invoke science tools.
-        return
-
     from emrys.evidence.runtime_availability.inspector import (  # noqa: PLC0415
         RuntimeInspectionError,
         inspect_runtime_availability,

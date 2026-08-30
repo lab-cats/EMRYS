@@ -13,16 +13,12 @@ from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.orchestration.projection import build_reporting_bundle
 from emrys.libraries.source_authority import controlled_python_argv
 from emrys.orchestration.local_pilot import materialization
-from emrys.orchestration.local_pilot.materialization import AttemptPlan, PlannedFile
+from emrys.orchestration.local_pilot.materialization import AttemptPlan
 from tests.orchestration.local_pilot.fixtures import workflow
 
 
-def with_owner_doubles(
-    plan: AttemptPlan,
-    *,
-    fail_machine_key: str | None = None,
-) -> AttemptPlan:
-    """Return the same exact output plan with no-science test commands."""
+def with_owner_doubles(plan: AttemptPlan) -> AttemptPlan:
+    """Replace only owner command effects in an otherwise unchanged plan."""
 
     source = materialization._construction_source(plan.run)
     reporting = build_reporting_bundle(
@@ -41,8 +37,7 @@ def with_owner_doubles(
         path = Path(raw)
         payloads[path if path.is_absolute() else plan.run_root / path] = data
 
-    replacement_files: list[PlannedFile] = []
-    manifest_files: list[PlannedFile] = []
+    replacement_files = []
     dispatch_sha: dict[Path, str] = {}
     dispatch_paths = {item.path for item in plan.new_dispatch_files}
     for item in plan.attempt_files:
@@ -50,8 +45,7 @@ def with_owner_doubles(
             replacement_files.append(item)
             continue
         record = json.loads(item.data)
-        manifest = item.path.with_suffix(".payload.json")
-        manifest_record = {
+        payload_record = {
             "producer": [
                 {
                     "path": output["path"],
@@ -68,45 +62,30 @@ def with_owner_doubles(
                 ).decode(),
             },
         }
-        manifest_data = orchestration_contracts.canonical_json_bytes(manifest_record)
-        step00c = record["machine_key"] == "emrys.stage.construct_FASTA_sidecars.v1"
-        payload_arguments = (
-            ("--payload-base64", base64.b64encode(manifest_data).decode())
-            if step00c
-            else ("--manifest", str(manifest))
-        )
-        if not step00c:
-            manifest_files.append(PlannedFile(manifest, manifest_data))
+        payload_data = orchestration_contracts.canonical_json_bytes(payload_record)
+        payload_argument = workflow._inline_payload_argument(payload_data)
         record["producer_argv"] = list(
             controlled_python_argv(
                 sys.executable,
-                str(workflow.OWNER_ARTIFACT_DOUBLE),
+                str(workflow.TASK_DOUBLE),
+                "payload",
                 "producer",
-                *payload_arguments,
+                "--payload-base64",
+                payload_argument,
             )
         )
-        if record["machine_key"] == fail_machine_key:
-            record["producer_argv"] = list(
-                controlled_python_argv(
-                    sys.executable,
-                    "-c",
-                    "raise SystemExit(17)",
-                )
-            )
         record["validator_argv"] = list(
             controlled_python_argv(
                 sys.executable,
-                str(workflow.OWNER_ARTIFACT_DOUBLE),
+                str(workflow.TASK_DOUBLE),
+                "payload",
                 "validator",
-                *payload_arguments,
+                "--payload-base64",
+                payload_argument,
             )
         )
-        if not step00c:
-            record["inputs"].append(
-                {"role": "test_payload_manifest", "path": str(manifest)}
-            )
         data = orchestration_contracts.canonical_json_bytes(record)
-        replacement_files.append(PlannedFile(item.path, data))
+        replacement_files.append(replace(item, data=data))
         dispatch_sha[item.path] = hashlib.sha256(data).hexdigest()
 
     config_index = next(
@@ -122,9 +101,8 @@ def with_owner_doubles(
             if path in dispatch_sha:
                 reference["sha256"] = dispatch_sha[path]
     config_data = orchestration_contracts.canonical_json_bytes(config)
-    replacement_files[config_index] = PlannedFile(config_file.path, config_data)
+    replacement_files[config_index] = replace(config_file, data=config_data)
     attempt = dict(plan.attempt_record)
-    attempt["execution_mode"] = "test-double"
     attempt["workflow_config"] = {
         **attempt["workflow_config"],
         "sha256": hashlib.sha256(config_data).hexdigest(),
@@ -133,7 +111,7 @@ def with_owner_doubles(
     return replace(
         plan,
         attempt_record_bytes=orchestration_contracts.canonical_json_bytes(attempt),
-        attempt_files=tuple((*replacement_files, *manifest_files)),
+        attempt_files=tuple(replacement_files),
         new_dispatch_files=tuple(
             item for item in replacement_files if item.path in dispatch_paths
         ),

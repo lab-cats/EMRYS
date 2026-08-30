@@ -182,6 +182,11 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
     request_bytes = b"task-fixture: true\n"
     request_snapshot.write_bytes(request_bytes)
     config_bytes = config_path.read_bytes()
+    storage_receipt = tmp_path / "storage.qualified.json"
+    storage_receipt.write_bytes(b"bounded task-fixture storage qualification\n")
+    normalizer, required_tools = workflow_fixture._attempt_runtime_identities(
+        tmp_path
+    )
     attempt = {
         "schema_version": "emrys.workflow-attempt.v1",
         "run_id": execution["run_id"],
@@ -205,15 +210,7 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
             "reference_gtf": "reference.gtf",
             "analysis_policy": None,
         },
-        "normalizer": {
-            "name": "emrys",
-            "version": "0.1.0",
-            "path": sys.executable,
-            "resolved_path": str(Path(sys.executable).resolve(strict=True)),
-            "sha256": hashlib.sha256(
-                Path(sys.executable).resolve(strict=True).read_bytes()
-            ).hexdigest(),
-        },
+        "normalizer": normalizer,
         "workspace": str(tmp_path.resolve()),
         "scratch": None,
         "source_checkout": {
@@ -222,7 +219,7 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
             "clean": True,
         },
         "executor": "local",
-        "execution_mode": "test-double",
+        "execution_mode": "local-science-tools",
         "snakemake_argv": list(
             controlled_python_argv(
                 sys.executable,
@@ -240,26 +237,7 @@ def _task_fixture(tmp_path: Path) -> TaskFixture:
         "process_id": 1,
         "owner_token": "task-fixture-owner",
         "cores": 1,
-        "required_tools": [
-            {
-                "name": "python",
-                "version": "3.14",
-                "path": sys.executable,
-                "resolved_path": str(Path(sys.executable).resolve(strict=True)),
-                "sha256": hashlib.sha256(
-                    Path(sys.executable).resolve(strict=True).read_bytes()
-                ).hexdigest(),
-            },
-            {
-                "name": "snakemake",
-                "version": "9.25.1",
-                "path": sys.executable,
-                "resolved_path": str(Path(sys.executable).resolve(strict=True)),
-                "sha256": hashlib.sha256(
-                    Path(sys.executable).resolve(strict=True).read_bytes()
-                ).hexdigest(),
-            },
-        ],
+        "required_tools": required_tools,
     }
     orchestration_contracts.validate_record("workflow-attempt", attempt)
     _publish_json(attempt_path, attempt)

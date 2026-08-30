@@ -7,7 +7,6 @@ import fcntl
 import hashlib
 import json
 import os
-import platform
 import signal
 import shutil
 import subprocess
@@ -76,8 +75,13 @@ def test_run_root_and_source_checkout_must_be_disjoint(
         lifecycle._require_disjoint_roots(run_root, source_checkout)
 
 
+@pytest.mark.parametrize(
+    "execution_mode",
+    ("local-science-tools", "test-double"),
+)
 def test_storage_readmission_uses_normalized_reference_identity(
     tmp_path: Path,
+    execution_mode: str,
 ) -> None:
     workspace = tmp_path / "workspace"
     authored_fasta = tmp_path / "authored.fa"
@@ -100,7 +104,7 @@ def test_storage_readmission_uses_normalized_reference_identity(
 
     binding = lifecycle._readmit_storage_runtime_binding(
         {
-            "execution_mode": "local-science-tools",
+            "execution_mode": execution_mode,
             "workspace": str(workspace),
             "authored_paths": {"reference_fasta": str(authored_fasta)},
         },
@@ -1304,6 +1308,9 @@ def _attempt(
     profile_bytes = (built.run_root / "contract" / "profile.json").read_bytes()
     created = identifier.split("-")[1]
     created_at = datetime.strptime(created, "%Y%m%dT%H%M%SZ").replace(tzinfo=UTC)
+    normalizer, required_tools = workflow_fixture._attempt_runtime_identities(
+        built.root
+    )
     return {
         "schema_version": "emrys.workflow-attempt.v1",
         "run_id": built.execution["run_id"],
@@ -1329,15 +1336,7 @@ def _attempt(
             "reference_gtf": "reference/genome.gtf",
             "analysis_policy": None,
         },
-        "normalizer": {
-            "name": "emrys",
-            "version": "0.1.0",
-            "path": sys.executable,
-            "resolved_path": str(Path(sys.executable).resolve(strict=True)),
-            "sha256": hashlib.sha256(
-                Path(sys.executable).resolve(strict=True).read_bytes()
-            ).hexdigest(),
-        },
+        "normalizer": normalizer,
         "workspace": str(built.run_root.parent.parent),
         "scratch": None,
         "source_checkout": {
@@ -1346,7 +1345,7 @@ def _attempt(
             "clean": True,
         },
         "executor": "local",
-        "execution_mode": "test-double",
+        "execution_mode": "local-science-tools",
         "snakemake_argv": list(argv),
         "workflow_config": _record_reference(
             built.run_root / "contract" / "workflow-configs" / f"{identifier}.json",
@@ -1356,26 +1355,7 @@ def _attempt(
         "process_id": 4242,
         "owner_token": f"owner-{identifier[-8:]}",
         "cores": 1,
-        "required_tools": [
-            {
-                "name": "python",
-                "version": platform.python_version(),
-                "path": sys.executable,
-                "resolved_path": str(Path(sys.executable).resolve(strict=True)),
-                "sha256": hashlib.sha256(
-                    Path(sys.executable).resolve(strict=True).read_bytes()
-                ).hexdigest(),
-            },
-            {
-                "name": "snakemake",
-                "version": "9.25.1",
-                "path": sys.executable,
-                "resolved_path": str(Path(sys.executable).resolve(strict=True)),
-                "sha256": hashlib.sha256(
-                    Path(sys.executable).resolve(strict=True).read_bytes()
-                ).hexdigest(),
-            },
-        ],
+        "required_tools": required_tools,
     }
 
 

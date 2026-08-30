@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import sys
+import zlib
 from pathlib import Path
 
 HEADER = (
@@ -88,6 +90,18 @@ def _validate(arguments: argparse.Namespace) -> int:
     return arguments.exit_code
 
 
+def _publish_payload(arguments: argparse.Namespace) -> int:
+    record = json.loads(
+        zlib.decompress(base64.b64decode(arguments.payload_base64, validate=True))
+    )
+    entries = record["producer"] if arguments.mode == "producer" else [
+        record["validation"]
+    ]
+    for entry in entries:
+        _publish(Path(entry["path"]), base64.b64decode(entry["data_base64"]))
+    return 0
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -106,6 +120,11 @@ def _parser() -> argparse.ArgumentParser:
     validator.add_argument("--status", choices=("pass", "fail"), default="pass")
     validator.add_argument("--exit-code", type=int, default=0)
     validator.set_defaults(action=_validate)
+
+    payload = subparsers.add_parser("payload")
+    payload.add_argument("mode", choices=("producer", "validator"))
+    payload.add_argument("--payload-base64", required=True)
+    payload.set_defaults(action=_publish_payload)
     return parser
 
 

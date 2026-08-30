@@ -2728,6 +2728,14 @@ untouched.
 | Retirement and compression | Demo docs/Make ownership, the fake fresh-clone harness, and the coupled public spellings retire. Focused failure/resume tests and independent report goldens remain. A shared stable no-follow reader and the existing exclusive-publication primitive replace duplicate local mechanics without widening the package API. The real Slurm driver/test pair is reduced by 1,271 lines while preserving its scheduler, storage, Step 09 oracle, reporting, retention, and failure boundaries. Maintained product is net `-74` lines and the exact tree is net `-2279`; exact category accounting lives in the findings matrix. No retained evidence is deleted. |
 | Mutation and logging | The only new authority is an immutable direct-storage receipt. Synthetic initialization is bounded create-absent publication with no Attempt log; Doctor diagnosis/preview/refusal and Run inspection are read-only/no-log; confirmed repair uses one maintenance log from before mutation through requalification; Run plus automatic reporting keeps its existing single Run log. `LOG-05` remains Open elsewhere; no dashboard or mutable Run authority changes. |
 
+### 13.16 Bounded slice record: no-science harness boundary
+
+| Surface/category | Selected implementation and boundary |
+|---|---|
+| Command/effect seam | Current no-science Attempts retain `local-science-tools`, immutable Run/Attempt values, required tools, paths, and dispatch input/output rosters. Tests may replace only producer/validator argv plus the directly derived dispatch, workflow-config, and Attempt hashes. Storage/runtime effects use the existing test-owned `LifecycleOps` seams. |
+| Retirement and compression | The production `test-double` storage/runtime admission branches, 34 side-manifest inputs, manifest CLI mode, dead fault selector, and duplicate artifact publisher retire. One bounded inline-payload mode remains in the existing test task double. Version-one `test-double` vocabulary remains schema-reader compatibility only; current materialization and executable harness fixtures do not emit it. Exact category accounting lives in the findings matrix. |
+| Protections, evidence, mutation, and logging | Exact replacement-invariance, lifecycle re-admission, create-exclusive/fsynced publication, receipts, failure/recovery, and byte-preserving resume remain. No retained evidence is deleted. The harness mutates only isolated test workspaces, changes no public operation output or durable diagnostic, and adds no `LOG-05`, shell, mutable Run, schema, backend, or compatibility path. Its controlled proof remains no-science/no-real-runtime engineering evidence. |
+
 ## 14. Measurement plan
 
 Measurement is required so the campaign does not merely move complexity.
