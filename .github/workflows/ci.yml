@@ -357,9 +357,11 @@ jobs:
           test -x "${native_prefix}/bin/java"
           test -x "${native_prefix}/bin/gunzip"
           test -x "${r_prefix}/bin/Rscript"
-          mapfile -t picard_jars < <(find "${native_prefix}/share" \
-            -type f -path '*/picard-slim-3.1.1-*/picard.jar' -print)
+          shopt -s nullglob
+          picard_jars=("${native_prefix}"/share/picard-slim-3.1.1-*/picard.jar)
           test "${#picard_jars[@]}" -eq 1
+          test -f "${picard_jars[0]}"
+          test ! -L "${picard_jars[0]}"
           "${native_prefix}/bin/STAR" --version
           "${native_prefix}/bin/samtools" --version
           "${native_prefix}/bin/gatk" --version

@@ -555,11 +555,12 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     )
 
     readiness = _public_command(
-        ["doctor", "local-pilot", *common],
+        ["doctor", *common],
         environment=environment,
     )
     assert readiness.returncode == 0, readiness.stdout + readiness.stderr
-    assert "READY: local-pilot prerequisites passed." in readiness.stdout
+    assert readiness.stdout == ""
+    assert "EMRYS is ready." in readiness.stderr
 
     dry_run = _public_command(["run", *run_common], environment=environment)
     assert dry_run.returncode == 0, dry_run.stdout + dry_run.stderr
