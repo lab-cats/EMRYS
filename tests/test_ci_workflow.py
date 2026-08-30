@@ -281,6 +281,9 @@ def test_managed_runtime_userspace_matrix_proves_the_same_lock() -> None:
     assert "PIXI_WORKSPACE=%s/emrys-managed-runtime" in paths["run"]
     assert "PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml" in paths["run"]
     assert "${RUNNER_TEMP}" in paths["run"]
+    trust = _named_step(job, "Install the distro TLS trust bundle")
+    assert "dnf --assumeyes install ca-certificates" in trust["run"]
+    assert "apt-get install --yes --no-install-recommends ca-certificates" in trust["run"]
     setup = _named_step(job, "Install both managed environments from the unchanged lock")
     assert setup["uses"] == (
         "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e"

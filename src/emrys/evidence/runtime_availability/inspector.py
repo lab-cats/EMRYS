@@ -24,7 +24,7 @@ from ._result_contract import (
     result_bytes,
     validate_result_bytes,
 )
-from ._runtime_model import Check, PreflightError, _fail
+from ._runtime_model import PROFILE_HEADER, Check, PreflightError, _fail
 
 DESCRIPTION = (
     "Run explicit, read-only runtime checks and optionally publish "

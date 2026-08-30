@@ -314,6 +314,19 @@ jobs:
           printf 'Observed shared runner kernel (not a 4.18-kernel proof): %s\n' \
             "$(uname -r)"
 
+      - name: Install the distro TLS trust bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          . /etc/os-release
+          if [[ "${ID}" = rocky ]]; then
+            dnf --assumeyes install ca-certificates
+          else
+            apt-get update
+            DEBIAN_FRONTEND=noninteractive \
+              apt-get install --yes --no-install-recommends ca-certificates
+          fi
+
       - name: Install both managed environments from the unchanged lock
         uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
         with:

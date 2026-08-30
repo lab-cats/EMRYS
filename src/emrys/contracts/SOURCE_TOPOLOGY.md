@@ -203,6 +203,7 @@ explicit permanent justification in the durable owner.
 | `SRC-TRANS-009` | `orchestration/local_pilot/lifecycle.py` → `emrys.evidence.runtime_availability.inspector` | Runtime re-admission before execution/reuse | `AC-SLICE-03`, `AC-SLICE-05`, and `AC-SLICE-08`: preserve re-admission and evidence attribution while selecting the final boundary. |
 | `SRC-TRANS-010` | `orchestration/local_pilot/lifecycle.py` → `emrys.evidence.storage_inventory.qualification` | Storage re-admission before execution/reuse | `AC-SLICE-05` and `AC-SLICE-06`: preserve fail-closed qualification and recovery while selecting the final boundary. |
 | `SRC-TRANS-011` | `orchestration/local_pilot/onboarding.py` → `emrys.stages.gtf_to_bed12.converter` | Reference GTF/FASTA compatibility using the current normalization implementation | `AC-SLICE-03` and `AC-SLICE-04`: select a public capability/contract boundary without duplicating GTF semantics. |
+| `SRC-TRANS-012` | `orchestration/local_pilot/onboarding.py` → `emrys.evidence.runtime_availability.inspector` | Project runtime discovery and admission through the public inspection capability | `AC-SLICE-08` and `RUNTIME-01`: preserve one runtime-inspection authority while Project orchestration owns admission. |
 
 ### Automated import projection
 

@@ -18,12 +18,12 @@ from emrys import __version__
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability.inspector import (
+    PROFILE_HEADER,
     RuntimeInspection,
     RuntimeInspectionError,
     inspect_runtime_profile_bytes,
     load_runtime_profile_contract,
 )
-from emrys.evidence.runtime_availability._runtime_model import PROFILE_HEADER
 from emrys.libraries.exclusive_publication import publish_exclusive
 from emrys.libraries.process_environment import guarded_r_environment
 from emrys.libraries.references.contigs import (

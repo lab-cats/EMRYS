@@ -129,6 +129,7 @@ TRANSITIONS: tuple[tuple[str, str, str, str], ...] = (
     ("SRC-TRANS-009", "src/emrys/orchestration/local_pilot/lifecycle.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
     ("SRC-TRANS-010", "src/emrys/orchestration/local_pilot/lifecycle.py", "emrys.evidence.storage_inventory.qualification", RULE_ORCHESTRATION_BOUNDARY),
     ("SRC-TRANS-011", "src/emrys/orchestration/local_pilot/onboarding.py", "emrys.stages.gtf_to_bed12.converter", RULE_ORCHESTRATION_BOUNDARY),
+    ("SRC-TRANS-012", "src/emrys/orchestration/local_pilot/onboarding.py", "emrys.evidence.runtime_availability.inspector", RULE_ORCHESTRATION_BOUNDARY),
 )
 
 
