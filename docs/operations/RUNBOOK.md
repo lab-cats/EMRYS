@@ -120,6 +120,11 @@ Inspect state from EMRYS's admitted records rather than `.snakemake` metadata:
 
 Inspection is read-only. Rehashing bound evidence can be expensive, so run it
 at meaningful boundaries rather than in a tight polling loop.
+The normal view uses the primary Run ID and scientific outcome. Add
+`--detail verbose` for admitted Analysis, Execution Plan, and Attempt identity
+plus effective execution facts; use `--detail debug` only when exact authority
+paths/digests, verified output bindings, receipt evidence, or task commands are
+needed. Historical Runs are labeled rather than assigned successor identities.
 
 Resume is supported only when inspection reports incomplete scientific Results,
 a failed or interrupted Attempt, and `Recovery available: yes`:
