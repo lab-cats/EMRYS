@@ -98,7 +98,7 @@ lock. Use a fresh root for an authorized diagnostic retry.
 
 ```bash
 .venv/bin/python -m pytest -q \
-  tests/stages/partitioned_cohort_mpileup/test_producer.py
+  tests/stages/partitioned_cohort_mpileup/test_partitioned_cohort_mpileup_producer.py
 .venv/bin/python -m pytest -q \
   tests/stages/partitioned_cohort_mpileup/test_validate_step_07_mpileup_outputs.py
 .venv/bin/python -m pytest -q \
