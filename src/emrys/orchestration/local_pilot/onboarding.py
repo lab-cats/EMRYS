@@ -416,6 +416,7 @@ def _draft_manifest_members(
     """Render validated manifest drafts from explicit paths and biology."""
 
     pairs: dict[str, dict[str, tuple[Path, bool]]] = {}
+    file_roles: dict[tuple[int, int], str] = {}
     for value in fastqs:
         admitted_path = _admit_supplied_file(value, "supplied FASTQ")
         match = FASTQ_PAIR_NAME.fullmatch(admitted_path.name)
@@ -425,6 +426,12 @@ def _draft_manifest_members(
                 f".fastq/.fq and optional .gz: {admitted_path}"
             )
         sample_id, mate = match["sample"], match["mate"]
+        role = f"sample {sample_id} R{mate}"
+        state = admitted_path.stat()
+        identity = (state.st_dev, state.st_ino)
+        if previous := file_roles.get(identity):
+            raise OnboardingError(f"one FASTQ file is reused as {previous} and {role}")
+        file_roles[identity] = role
         pair = pairs.setdefault(sample_id, {})
         if mate in pair:
             raise OnboardingError(f"duplicate R{mate} FASTQ for sample {sample_id}")
@@ -439,8 +446,6 @@ def _draft_manifest_members(
             raise OnboardingError(
                 f"R1 and R2 FASTQs use different compression for sample {sample_id}"
             )
-        if r1 == r2:
-            raise OnboardingError(f"sample {sample_id} R1 and R2 resolve to one file")
         admitted[sample_id] = (r1, r2)
 
     assignments = _indexed_values(samples, "--sample assignment")

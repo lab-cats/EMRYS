@@ -270,6 +270,24 @@ def test_manifest_init_pairs_by_the_admitted_file_not_a_symlink_alias(
     assert rows[0]["r2_fastq"] == str(canonical[1])
 
 
+def test_manifest_init_rejects_hard_linked_fastq_reuse(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    r1 = tmp_path / "sample_a_R1.fastq.gz"
+    r2 = tmp_path / "sample_a_R2.fastq.gz"
+    r1.write_bytes(b"same file\n")
+    r2.hardlink_to(r1)
+    output = tmp_path / "drafts"
+
+    assert cli.main([
+        "init", "manifests", "--output-dir", str(output), "--fastq", str(r1), str(r2),
+        "--sample", "sample_a", "control", "pair_1", "forward", "--execute",
+    ]) == 2
+    assert not output.exists()
+    assert "one FASTQ file is reused" in capsys.readouterr().err
+
+
 def test_synthetic_init_is_dry_run_first_and_refuses_predecessor(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
