@@ -90,7 +90,7 @@ or stale scheduler success. Use a fresh root for an authorized diagnostic run.
 
 ```bash
 .venv/bin/python -m pytest -q \
-  tests/analyses/paired_cmh_candidate_ranking/test_producer.py \
+  tests/analyses/paired_cmh_candidate_ranking/test_paired_cmh_producer.py \
   tests/contracts/scientific_evidence/test_step08.py \
   tests/contracts/scientific_evidence/test_step09.py \
   tests/analyses/paired_cmh_candidate_ranking/test_validate_step_09_cmh_outputs.py \
