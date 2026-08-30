@@ -45,6 +45,9 @@ RESOURCE_PATHS = (
     "emrys/contracts/schemas/orchestration/v3/resource_config.schema.json",
     "emrys/contracts/schemas/orchestration/v3/execution_profile.schema.json",
     "emrys/orchestration/local_pilot/resources/default_execution.yaml",
+    "emrys/resources/runtime/runtime_policy.tsv",
+    "emrys/resources/runtime/pixi.toml",
+    "emrys/resources/runtime/pixi.lock",
     "emrys/contracts/schemas/orchestration/v1/execution.schema.json",
     "emrys/contracts/schemas/orchestration/v1/reference.schema.json",
     "emrys/contracts/schemas/orchestration/v1/policy.schema.json",
@@ -333,8 +336,8 @@ def test_isolated_wheel_installs_resources_and_public_commands(tmp_path: Path) -
             "usage: emrys init synthetic-local-pilot",
         ),
         (
-            ("prepare", "local-pilot-runtime", "--help"),
-            "usage: emrys prepare local-pilot-runtime",
+            ("runtime", "discover", "--help"),
+            "usage: emrys runtime discover",
         ),
         (
             ("validate", "project", "--help"),

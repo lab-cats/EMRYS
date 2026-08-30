@@ -27,8 +27,9 @@ data-flow inference or infer shell/R invocation, artifact flow, scientific
 semantics, future package placement, or a general architecture framework.
 
 `real_synthetic_e2e.py` is the CI-owned retained real-runtime driver. It
-initializes one public synthetic profile, prepares an exact runtime TSV from
-already-provisioned paths, performs real two-phase storage qualification,
+initializes one public synthetic profile, discovers the already-provisioned
+runtime into the Project-owned admitted profile, performs real two-phase
+storage qualification,
 submits both the no-write plan and explicit execution through grouped Run
 control with the single-node Slurm execution profile, and independently checks
 the fixed completion oracles. The default invocation is a no-write plan; only

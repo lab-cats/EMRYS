@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import argparse
-import csv
 import gzip
 import hashlib
-import io
 import json
 import os
 import re
@@ -16,8 +14,18 @@ from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from emrys import __version__
 from emrys.contracts.orchestration import api as orchestration_contracts
 from emrys.contracts.scientific_evidence import step08
+from emrys.evidence.runtime_availability.inspector import (
+    PROFILE_HEADER,
+    RuntimeInspection,
+    RuntimeInspectionError,
+    inspect_runtime_profile_bytes,
+    load_runtime_profile_contract,
+)
+from emrys.libraries.exclusive_publication import publish_exclusive
+from emrys.libraries.process_environment import guarded_r_environment
 from emrys.libraries.references.contigs import (
     ReferenceContigError,
     parse_fasta_lines,
@@ -38,20 +46,12 @@ DESCRIPTION = (
 )
 PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v2.json")
 PROJECT_DIRECTORIES = ("logs", "runs", "runtime")
-RUNTIME_HEADER = (
-    "check_id",
-    "check_type",
-    "runtime_context",
-    "required",
-    "target",
-    "probe_args",
-    "expected",
-    "description",
-)
+RUNTIME_PROFILE_RELATIVE_PATH = Path("runtime/runtime.tsv")
 PATH_TOOL_COMMANDS = {
     "bash": "bash",
     "star": "STAR",
     "samtools": "samtools",
+    "java": "java",
     "gatk": "gatk",
     "bcftools": "bcftools",
     "infer_experiment": "infer_experiment.py",
@@ -65,6 +65,10 @@ FASTQ_PAIR_NAME = re.compile(
 
 class OnboardingError(RuntimeError):
     """An onboarding input or publication boundary is unsafe or invalid."""
+
+
+class RuntimeDiscoveryError(OnboardingError):
+    """The active environment does not identify one complete runtime."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -921,6 +925,18 @@ def _admit_explicit_directory(value: str | Path, label: str) -> Path:
     return resolved
 
 
+def runtime_policy_path() -> Path:
+    """Return the single packaged fixed-workflow runtime policy."""
+
+    return Path(__file__).resolve().parents[2] / "resources/runtime/runtime_policy.tsv"
+
+
+def runtime_profile_path(project: Path) -> Path:
+    """Derive the one current runtime profile owned by a Project."""
+
+    return Path(os.path.abspath(project)).parent / RUNTIME_PROFILE_RELATIVE_PATH
+
+
 def _path_candidates(command: str, environment: Mapping[str, str]) -> tuple[Path, ...]:
     raw_path = environment.get("PATH", "")
     if not raw_path:
@@ -945,173 +961,275 @@ def _path_candidates(command: str, environment: Mapping[str, str]) -> tuple[Path
 
 def _selected_tool(
     check_id: str,
-    explicit: Path | None,
+    command: str,
     environment: Mapping[str, str],
+    *,
+    selector: str | None = None,
 ) -> Path:
-    if explicit is not None:
-        return _admit_explicit_file(explicit, check_id, executable=True)
-    command = PATH_TOOL_COMMANDS[check_id]
+    if selector and environment.get(selector):
+        return _admit_explicit_file(
+            environment[selector],
+            selector,
+            executable=True,
+        )
     candidates = _path_candidates(command, environment)
+    if check_id == "java" and environment.get("JAVA_HOME"):
+        java_home = Path(environment["JAVA_HOME"])
+        if not java_home.is_absolute():
+            raise RuntimeDiscoveryError("JAVA_HOME must be absolute")
+        candidates = tuple(
+            sorted(
+                {
+                    *candidates,
+                    _admit_explicit_file(
+                        java_home / "bin/java",
+                        "JAVA_HOME launcher",
+                        executable=True,
+                    ),
+                }
+            )
+        )
     if not candidates:
-        raise OnboardingError(
-            f"{check_id}: {command} is absent from PATH; supply --{check_id.replace('_', '-')}"
+        raise RuntimeDiscoveryError(
+            f"{check_id}: {command} is absent from the active environment"
         )
     if len(candidates) != 1:
-        raise OnboardingError(
-            f"{check_id}: PATH resolves {command} to multiple executables: "
+        raise RuntimeDiscoveryError(
+            f"{check_id}: the active environment exposes multiple {command} installations: "
             + ", ".join(str(path) for path in candidates)
-            + f"; supply --{check_id.replace('_', '-')}"
         )
     return candidates[0]
 
 
-def render_runtime_profile(
+def _selected_environment_path(
+    environment: Mapping[str, str],
+    name: str,
+    label: str,
     *,
-    java: Path,
-    picard_jar: Path,
-    rscript: Path,
-    renv_library: Path,
-    explicit_tools: Mapping[str, Path | None],
+    directory: bool = False,
+) -> Path:
+    value = environment.get(name)
+    if not value:
+        raise RuntimeDiscoveryError(
+            f"{label} is not selected; set {name} in the active environment"
+        )
+    return (
+        _admit_explicit_directory(value, name)
+        if directory
+        else _admit_explicit_file(value, name)
+    )
+
+
+def _workflow_python(path: Path) -> Path:
+    if not path.is_absolute():
+        raise OnboardingError(f"workflow Python must be absolute: {path}")
+    try:
+        state = path.stat()
+    except OSError as exc:
+        raise OnboardingError(f"could not inspect workflow Python {path}: {exc}") from exc
+    if not stat.S_ISREG(state.st_mode) or not os.access(path, os.R_OK | os.X_OK):
+        raise OnboardingError(f"workflow Python must be an executable file: {path}")
+    return path
+
+
+def _runtime_profile_bytes(
+    environment: Mapping[str, str],
+    checkout: Path,
+    python_executable: Path,
+) -> tuple[bytes, Path]:
+    try:
+        _policy_bytes, policy = load_runtime_profile_contract(runtime_policy_path())
+    except RuntimeInspectionError as exc:
+        raise OnboardingError(f"packaged runtime policy is invalid: {exc}") from exc
+    selected = {
+        check_id: _selected_tool(check_id, command, environment)
+        for check_id, command in PATH_TOOL_COMMANDS.items()
+    }
+    rscript = _selected_tool(
+        "rscript",
+        "Rscript",
+        environment,
+        selector="EMRYS_RSCRIPT",
+    )
+    picard = _selected_environment_path(
+        environment,
+        "EMRYS_PICARD_JAR",
+        "Picard jar",
+    )
+    renv_library = _selected_environment_path(
+        environment,
+        "EMRYS_RENV_LIBRARY",
+        "renv library",
+        directory=True,
+    )
+    python = _workflow_python(python_executable)
+    rows: list[dict[str, str]] = []
+    for check in policy:
+        target = check.target
+        probe_args = check.probe_args
+        if check.check_id in selected:
+            target = str(selected[check.check_id])
+        elif check.check_id in {"python", "snakemake", "sha256_python"}:
+            target = str(python)
+        elif check.check_id == "picard":
+            target = str(selected["java"])
+            probe_args = ("-jar", str(picard), "MarkDuplicates", "--version")
+        elif check.check_id == "picard_jar":
+            target = str(picard)
+        elif check.check_id == "rscript":
+            target = str(rscript)
+        elif check.check_id == "renv_project":
+            target = str(checkout)
+        elif check.check_id == "renv_library":
+            target = str(renv_library)
+        elif check.check_type == "r_namespace":
+            probe_args = (str(rscript),)
+        else:
+            raise OnboardingError(
+                f"packaged runtime policy has no discovery rule: {check.check_id}"
+            )
+        rows.append(
+            {
+                "check_id": check.check_id,
+                "check_type": check.check_type,
+                "runtime_context": check.runtime_context,
+                "required": "true" if check.required else "false",
+                "target": target,
+                "probe_args": json.dumps(probe_args, separators=(",", ":")),
+                "expected": check.expected,
+                "description": check.description,
+            }
+        )
+    return tsv_bytes(PROFILE_HEADER, rows), renv_library
+
+
+def _project_runtime_directory(project: ProjectAdmission) -> Path:
+    directory = project.source_path.parent / "runtime"
+    try:
+        state = directory.lstat()
+        resolved = directory.resolve(strict=True)
+    except OSError as exc:
+        raise OnboardingError(
+            f"Project runtime directory is unavailable; run `emrys init project`: {exc}"
+        ) from exc
+    if (
+        stat.S_ISLNK(state.st_mode)
+        or not stat.S_ISDIR(state.st_mode)
+        or resolved != directory
+        or not os.access(directory, os.R_OK | os.W_OK | os.X_OK)
+    ):
+        raise OnboardingError(
+            f"Project runtime directory must be canonical and writable: {directory}"
+        )
+    return directory
+
+
+def discover_runtime_profile(
+    *,
+    project: Path,
     environment: Mapping[str, str] | None = None,
     root: Path | None = None,
     python_executable: Path | None = None,
-) -> bytes:
-    """Render a fixed-policy profile without probing or writing tools."""
+) -> RuntimeInspection:
+    """Discover and probe one candidate profile without publishing it."""
 
-    checkout = source_root() if root is None else root
+    checkout = _absolute(source_root() if root is None else root)
+    admitted = validate_project(project, root=checkout).project
+    destination = _project_runtime_directory(admitted) / "runtime.tsv"
     selected_environment = os.environ if environment is None else environment
-    selected_python = (
-        Path(sys.executable) if python_executable is None else python_executable
+    profile_bytes, renv_library = _runtime_profile_bytes(
+        selected_environment,
+        checkout,
+        Path(sys.executable) if python_executable is None else python_executable,
     )
-    if not selected_python.is_absolute():
-        raise OnboardingError(f"workflow Python must be absolute: {selected_python}")
-    java_path = _admit_explicit_file(java, "Java launcher", executable=True)
-    jar_path = _admit_explicit_file(picard_jar, "Picard jar")
-    rscript_path = _admit_explicit_file(rscript, "Rscript", executable=True)
-    library_path = _admit_explicit_directory(renv_library, "renv library")
-    selected = {
-        check_id: _selected_tool(
-            check_id,
-            explicit_tools.get(check_id),
-            selected_environment,
-        )
-        for check_id in PATH_TOOL_COMMANDS
-    }
-    template = checkout / "configs/local_pilot_runtime.example.tsv"
-    with template.open(encoding="utf-8", newline="") as handle:
-        reader = csv.DictReader(handle, delimiter="\t", strict=True)
-        if tuple(reader.fieldnames or ()) != RUNTIME_HEADER:
-            raise OnboardingError(
-                f"tracked runtime template header is invalid: {template}"
-            )
-        rows = list(reader)
-    if {row["check_id"] for row in rows} != {
-        *PATH_TOOL_COMMANDS,
-        "python",
-        "snakemake",
-        "sha256_python",
-        "java",
-        "picard",
-        "picard_jar",
-        "rscript",
-        "renv_project",
-        "renv_library",
-        "r_variant_annotation",
-        "r_genomic_ranges",
-        "r_iranges",
-        "r_biostrings",
-        "r_rsamtools",
-        "r_s4vectors",
-        "r_summarized_experiment",
-        "r_genome_info_db",
-        "r_bioc_generics",
-        "r_rtracklayer",
-    }:
-        raise OnboardingError("tracked runtime template roster is unexpected")
-    for row in rows:
-        check_id = row["check_id"]
-        if check_id in selected:
-            row["target"] = str(selected[check_id])
-        elif check_id in {"python", "snakemake", "sha256_python"}:
-            row["target"] = str(selected_python)
-        elif check_id == "java":
-            row["target"] = str(java_path)
-        elif check_id == "picard":
-            row["target"] = str(java_path)
-            row["probe_args"] = json.dumps(
-                ["-jar", str(jar_path), "MarkDuplicates", "--version"],
-                separators=(",", ":"),
-            )
-        elif check_id == "picard_jar":
-            row["target"] = str(jar_path)
-        elif check_id == "rscript":
-            row["target"] = str(rscript_path)
-        elif check_id == "renv_project":
-            row["target"] = str(checkout)
-        elif check_id == "renv_library":
-            row["target"] = str(library_path)
-        elif check_id.startswith("r_"):
-            row["probe_args"] = json.dumps([str(rscript_path)], separators=(",", ":"))
-    output = io.StringIO(newline="")
-    writer = csv.DictWriter(
-        output,
-        fieldnames=RUNTIME_HEADER,
-        delimiter="\t",
-        lineterminator="\n",
+    inspection_environment = guarded_r_environment(
+        checkout,
+        renv_library,
+        base_environment=selected_environment,
     )
-    writer.writeheader()
-    writer.writerows(rows)
-    return output.getvalue().encode("utf-8")
+    return inspect_runtime_profile_bytes(
+        profile_bytes,
+        destination,
+        "local",
+        environment=inspection_environment,
+    )
 
 
-def configure_runtime_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--java", required=True, type=Path)
-    parser.add_argument("--picard-jar", required=True, type=Path)
-    parser.add_argument("--rscript", required=True, type=Path)
-    parser.add_argument("--renv-library", required=True, type=Path)
-    for check_id, command in PATH_TOOL_COMMANDS.items():
-        parser.add_argument(
-            f"--{check_id.replace('_', '-')}",
-            type=Path,
-            help=f"Explicit {command} path; omit only for unambiguous PATH resolution.",
-        )
+def _publish_runtime_profile(inspection: RuntimeInspection) -> None:
+    destination = inspection.profile_path
+    publish_exclusive(
+        destination,
+        inspection.profile_bytes,
+        OnboardingError,
+        existing=f"runtime profile already exists and was preserved: {destination}",
+    )
+
+
+def configure_runtime_discovery_parser(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--project", default=Path("project.yaml"), type=Path)
+    parser.add_argument(
+        "--execute",
+        action="store_true",
+        help="Publish the admitted profile; omission is a no-write discovery.",
+    )
     parser.set_defaults(_command_parser=parser)
 
 
-def prepare_runtime_from_args(arguments: argparse.Namespace) -> int:
-    """Print one complete runtime profile to stdout without writing or probing."""
+def _print_runtime_inventory(inspection: RuntimeInspection) -> None:
+    print("EMRYS runtime profile")
+    print(f"  emrys: PASS ({__version__})")
+    for observation in inspection.observations:
+        print(
+            f"  {observation.check.check_id}: {observation.status.upper()} "
+            f"({observation.observed})"
+        )
+
+
+def discover_runtime_from_args(arguments: argparse.Namespace) -> int:
+    """Discover, probe, and optionally admit the active Project runtime."""
 
     try:
-        explicit = {
-            check_id: getattr(arguments, check_id) for check_id in PATH_TOOL_COMMANDS
-        }
-        payload = render_runtime_profile(
-            java=arguments.java,
-            picard_jar=arguments.picard_jar,
-            rscript=arguments.rscript,
-            renv_library=arguments.renv_library,
-            explicit_tools=explicit,
-        )
-    except (OSError, csv.Error, OnboardingError) as exc:
+        inspection = discover_runtime_profile(project=arguments.project)
+        _print_runtime_inventory(inspection)
+        print(f"Profile: {inspection.profile_path}")
+        if not inspection.required_ready:
+            print("NOT READY: required runtime checks did not pass.")
+            return 1
+        if not arguments.execute:
+            print("Dry-run complete; no files were written.")
+            return 0
+        _publish_runtime_profile(inspection)
+        print("Runtime profile admitted.")
+        return 0
+    except RuntimeDiscoveryError as exc:
+        print(f"NOT READY: {exc}", file=sys.stderr)
+        return 1
+    except (
+        OSError,
+        OnboardingError,
+        RuntimeInspectionError,
+        orchestration_contracts.ContractValidationError,
+    ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
-    sys.stdout.write(payload.decode("utf-8"))
-    return 0
 
 
 __all__ = (
     "DESCRIPTION",
     "OnboardingError",
     "ProjectValidation",
+    "RuntimeDiscoveryError",
+    "configure_runtime_discovery_parser",
     "configure_manifest_init_parser",
     "configure_project_init_parser",
-    "configure_runtime_parser",
     "configure_validation_parser",
+    "discover_runtime_from_args",
+    "discover_runtime_profile",
     "init_manifests_from_args",
     "init_project_from_args",
-    "prepare_runtime_from_args",
     "publish_create_absent_tree",
-    "render_runtime_profile",
+    "runtime_policy_path",
+    "runtime_profile_path",
     "validate_from_args",
     "validate_project",
     "validate_project_admission",

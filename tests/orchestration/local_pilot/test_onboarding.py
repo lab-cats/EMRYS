@@ -16,8 +16,9 @@ import yaml
 
 from emrys import __main__ as cli
 from emrys.contracts.scientific_evidence import step08
-from emrys.evidence.runtime_availability.inspector import load_runtime_profile_contract
+from emrys.evidence.runtime_availability.inspector import RuntimeInspection
 from emrys.libraries.validation.tsv import tsv_bytes
+from emrys.libraries import exclusive_publication
 from emrys.orchestration.local_pilot import doctor, onboarding, synthetic_fixture
 from tests.orchestration.local_pilot.fixture import build
 
@@ -878,69 +879,199 @@ def test_project_validation_streams_gzip_regions_file(tmp_path: Path) -> None:
     assert result.partition_count == 1
 
 
-def _runtime_files(
-    tmp_path: Path,
-) -> tuple[dict[str, Path], Path, Path, Path, Path, Path]:
+def _runtime_environment(tmp_path: Path) -> tuple[dict[str, str], Path]:
     tool_dir = tmp_path / "tools"
     tool_dir.mkdir()
-    tools = {
-        check_id: _executable(tool_dir / command)
-        for check_id, command in onboarding.PATH_TOOL_COMMANDS.items()
-    }
-    java = _executable(tmp_path / "java")
+    for command in onboarding.PATH_TOOL_COMMANDS.values():
+        _executable(tool_dir / command)
     rscript = _executable(tmp_path / "Rscript")
     picard = tmp_path / "picard.jar"
     picard.write_bytes(b"synthetic jar\n")
     renv = tmp_path / "renv-library"
     renv.mkdir()
-    return tools, tool_dir, java, rscript, picard, renv
+    return (
+        {
+            "PATH": str(tool_dir),
+            "EMRYS_PICARD_JAR": str(picard),
+            "EMRYS_RSCRIPT": str(rscript),
+            "EMRYS_RENV_LIBRARY": str(renv),
+        },
+        tool_dir,
+    )
 
 
-def test_runtime_preparation_renders_fixed_policy_without_probes(
+def _project_with_owned_runtime(tmp_path: Path) -> Path:
+    project = build(tmp_path)
+    authored = tmp_path / "project.yaml"
+    project.rename(authored)
+    (tmp_path / "runtime").mkdir(mode=0o700)
+    return authored
+
+
+def test_runtime_profile_path_derives_from_a_relative_default_project() -> None:
+    assert onboarding.runtime_profile_path(Path("project.yaml")) == (
+        Path.cwd() / "runtime/runtime.tsv"
+    )
+
+
+def _no_probe_inspection(
+    profile_bytes: bytes,
+    profile_path: Path,
+    runtime_context: str,
+    **_kwargs,
+) -> RuntimeInspection:
+    return RuntimeInspection(
+        profile_path=profile_path,
+        profile_sha256=hashlib.sha256(profile_bytes).hexdigest(),
+        profile_bytes=profile_bytes,
+        runtime_context=runtime_context,
+        observations=(),
+        rendered_bytes=b"",
+    )
+
+
+def test_runtime_discovery_builds_project_owned_fixed_policy_without_writing(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    tools, tool_dir, java, rscript, picard, renv = _runtime_files(tmp_path)
-    payload = onboarding.render_runtime_profile(
-        java=java,
-        picard_jar=picard,
-        rscript=rscript,
-        renv_library=renv,
-        explicit_tools={check_id: None for check_id in tools},
-        environment={"PATH": str(tool_dir)},
+    project = _project_with_owned_runtime(tmp_path / "project")
+    environment, tool_dir = _runtime_environment(tmp_path)
+    monkeypatch.setattr(
+        onboarding,
+        "inspect_runtime_profile_bytes",
+        _no_probe_inspection,
+    )
+
+    inspection = onboarding.discover_runtime_profile(
+        project=project,
+        environment=environment,
         root=REPO_ROOT,
         python_executable=Path(sys.executable),
     )
     rows = list(
-        csv.DictReader(payload.decode().splitlines(), delimiter="\t", strict=True)
+        csv.DictReader(
+            inspection.profile_bytes.decode().splitlines(),
+            delimiter="\t",
+            strict=True,
+        )
     )
     by_id = {row["check_id"]: row for row in rows}
-    assert by_id["java"]["target"] == str(java)
-    assert by_id["picard_jar"]["target"] == str(picard)
-    assert by_id["renv_library"]["target"] == str(renv)
-    assert json.loads(by_id["picard"]["probe_args"])[1] == str(picard)
-    assert json.loads(by_id["r_variant_annotation"]["probe_args"]) == [str(rscript)]
-    assert by_id["star"]["target"] == str(tools["star"])
-    rendered = tmp_path / "runtime.tsv"
-    rendered.write_bytes(payload)
-    _profile_bytes, checks = load_runtime_profile_contract(rendered)
-    doctor.validate_runtime_profile_contract(checks, REPO_ROOT)
+    assert inspection.profile_path == project.parent / "runtime/runtime.tsv"
+    assert onboarding.runtime_profile_path(project) == inspection.profile_path
+    assert by_id["python"]["target"] == sys.executable
+    assert by_id["star"]["target"] == str((tool_dir / "STAR").resolve())
+    assert by_id["picard_jar"]["target"] == environment["EMRYS_PICARD_JAR"]
+    assert by_id["renv_library"]["target"] == environment["EMRYS_RENV_LIBRARY"]
+    assert json.loads(by_id["picard"]["probe_args"])[1] == environment[
+        "EMRYS_PICARD_JAR"
+    ]
+    assert json.loads(by_id["r_variant_annotation"]["probe_args"]) == [
+        environment["EMRYS_RSCRIPT"]
+    ]
+    assert not inspection.profile_path.exists()
 
 
-def test_runtime_preparation_rejects_ambiguous_path_tool(tmp_path: Path) -> None:
-    tools, first_dir, java, rscript, picard, renv = _runtime_files(tmp_path)
+def test_runtime_discovery_rejects_missing_and_ambiguous_tools(
+    tmp_path: Path,
+) -> None:
+    project = _project_with_owned_runtime(tmp_path / "project")
+    environment, first_dir = _runtime_environment(tmp_path)
+    (first_dir / "STAR").unlink()
+
+    with pytest.raises(onboarding.RuntimeDiscoveryError, match="star: STAR is absent"):
+        onboarding.discover_runtime_profile(
+            project=project,
+            environment=environment,
+            root=REPO_ROOT,
+        )
+
+    _executable(first_dir / "STAR")
     second_dir = tmp_path / "second"
     second_dir.mkdir()
     _executable(second_dir / "STAR", "#!/bin/sh\nexit 99\n")
-    explicit = {check_id: path for check_id, path in tools.items()}
-    explicit["star"] = None
+    environment["PATH"] = f"{first_dir}{os.pathsep}{second_dir}"
 
-    with pytest.raises(onboarding.OnboardingError, match="multiple executables"):
-        onboarding.render_runtime_profile(
-            java=java,
-            picard_jar=picard,
-            rscript=rscript,
-            renv_library=renv,
-            explicit_tools=explicit,
-            environment={"PATH": f"{first_dir}{os.pathsep}{second_dir}"},
+    with pytest.raises(
+        onboarding.RuntimeDiscoveryError,
+        match="multiple STAR installations",
+    ):
+        onboarding.discover_runtime_profile(
+            project=project,
+            environment=environment,
             root=REPO_ROOT,
         )
+
+
+def test_runtime_discovery_cli_is_dry_run_then_create_absent(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    project = _project_with_owned_runtime(tmp_path / "project")
+    environment, _tool_dir = _runtime_environment(tmp_path)
+    monkeypatch.setattr(
+        onboarding,
+        "inspect_runtime_profile_bytes",
+        _no_probe_inspection,
+    )
+    inspection = onboarding.discover_runtime_profile(
+        project=project,
+        environment=environment,
+        root=REPO_ROOT,
+    )
+    monkeypatch.setattr(
+        onboarding,
+        "discover_runtime_profile",
+        lambda **_kwargs: inspection,
+    )
+    arguments = argparse.Namespace(project=project, execute=False)
+
+    assert onboarding.discover_runtime_from_args(arguments) == 0
+    assert "Dry-run complete" in capsys.readouterr().out
+    assert not inspection.profile_path.exists()
+
+    arguments.execute = True
+    assert onboarding.discover_runtime_from_args(arguments) == 0
+    assert inspection.profile_path.read_bytes() == inspection.profile_bytes
+    before = inspection.profile_path.stat()
+    assert onboarding.discover_runtime_from_args(arguments) == 2
+    assert inspection.profile_path.stat() == before
+
+
+def test_runtime_publication_rejects_a_swapped_project_parent(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project = _project_with_owned_runtime(tmp_path / "project")
+    environment, _tool_dir = _runtime_environment(tmp_path)
+    monkeypatch.setattr(
+        onboarding,
+        "inspect_runtime_profile_bytes",
+        _no_probe_inspection,
+    )
+    inspection = onboarding.discover_runtime_profile(
+        project=project,
+        environment=environment,
+        root=REPO_ROOT,
+    )
+    runtime = project.parent / "runtime"
+    displaced = project.parent / "runtime-displaced"
+    redirected = tmp_path / "redirected"
+    redirected.mkdir()
+    real_link = exclusive_publication.os.link
+    swapped = False
+
+    def swap_parent(source: str, destination: str, **options) -> None:
+        nonlocal swapped
+        if not swapped:
+            runtime.rename(displaced)
+            runtime.symlink_to(redirected, target_is_directory=True)
+            swapped = True
+        real_link(source, destination, **options)
+
+    monkeypatch.setattr(exclusive_publication.os, "link", swap_parent)
+
+    with pytest.raises(onboarding.OnboardingError, match="changed during publication"):
+        onboarding._publish_runtime_profile(inspection)
+
+    assert not (redirected / "runtime.tsv").exists()

@@ -7,7 +7,6 @@ import hashlib
 import os
 import platform
 import stat
-import subprocess
 import sys
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -18,7 +17,7 @@ from emrys.evidence.runtime_availability.inspector import (
     RuntimeCheck,
     RuntimeInspection,
     RuntimeInspectionError,
-    inspect_runtime_availability,
+    inspect_runtime_profile_bytes,
     load_runtime_profile_contract,
 )
 from emrys.evidence.storage_inventory import qualification as storage_qualification
@@ -27,11 +26,8 @@ from emrys.libraries.installed_package_identity import (
     installed_package_tree_identity,
 )
 from emrys.libraries.process_environment import (
-    ProcessEnvironmentError,
     RENV_VERSION,
-    gatk_subprocess_environment,
     guarded_r_environment,
-    sanitized_subprocess_environment,
 )
 from emrys.libraries.source_authority import (
     SourceCheckoutError,
@@ -46,45 +42,12 @@ from emrys.orchestration.local_pilot.normalization import (
 )
 
 DESCRIPTION = (
-    "Check whether one explicit Project, workspace, source checkout, runtime "
-    "profile, and final storage qualification are ready for the fixed local "
+    "Check whether one Project, its owned runtime, source checkout, and final "
+    "storage qualification are ready for the fixed local "
     "pilot. This command is read-only and never installs, repairs, loads "
     "modules, or creates a workspace."
 )
-SNAKEMAKE_VERSION = "9.25.1"
 PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v2.json")
-
-LOCAL_PILOT_R_PACKAGES = (
-    ("r_variant_annotation", "VariantAnnotation"),
-    ("r_genomic_ranges", "GenomicRanges"),
-    ("r_iranges", "IRanges"),
-    ("r_biostrings", "Biostrings"),
-    ("r_rsamtools", "Rsamtools"),
-    ("r_s4vectors", "S4Vectors"),
-    ("r_summarized_experiment", "SummarizedExperiment"),
-    ("r_genome_info_db", "GenomeInfoDb"),
-    ("r_bioc_generics", "BiocGenerics"),
-    ("r_rtracklayer", "rtracklayer"),
-)
-LOCAL_PILOT_RUNTIME_CHECKS = (
-    ("bash", "tool_version"),
-    ("python", "tool_version"),
-    ("snakemake", "tool_version"),
-    ("sha256_python", "hash_utility"),
-    ("star", "tool_version"),
-    ("samtools", "tool_version"),
-    ("java", "tool_version"),
-    ("gatk", "tool_version"),
-    ("picard", "tool_version_exit_1"),
-    ("picard_jar", "path_visibility"),
-    ("bcftools", "tool_version"),
-    ("infer_experiment", "tool_version"),
-    ("gunzip", "tool_version"),
-    ("rscript", "tool_version"),
-    ("renv_project", "path_visibility"),
-    ("renv_library", "path_visibility"),
-    *((check_id, "r_namespace") for check_id, _package in LOCAL_PILOT_R_PACKAGES),
-)
 
 
 class DoctorInputError(RuntimeError):
@@ -110,8 +73,6 @@ class DoctorResult:
     workspace: Path
     source_root: Path
     source_commit: str | None
-    runtime_profile: Path
-    runtime_profile_sha256: str
     inspection: RuntimeInspection
     bindings: tuple[RuntimeBinding, ...]
     blockers: tuple[str, ...]
@@ -136,27 +97,11 @@ def storage_runtime_binding(
     )
 
 
-def runtime_environment(
-    source_root: Path,
-    renv_library: Path,
-    *,
-    base_environment: Mapping[str, str] | None = None,
-) -> dict[str, str]:
-    """Return the sanitized guarded R environment used by every runtime probe."""
-
-    return guarded_r_environment(
-        source_root,
-        renv_library,
-        base_environment=base_environment,
-    )
-
-
 def required_tool_identities(
     inspection: RuntimeInspection,
     *,
     bindings: tuple[RuntimeBinding, ...],
     python_executable: Path,
-    snakemake_version: str = SNAKEMAKE_VERSION,
     runtime_profile_path: Path | None = None,
 ) -> tuple[dict[str, str | None], ...]:
     """Project exact attempt tool identities from one admitted runtime probe."""
@@ -183,6 +128,13 @@ def required_tool_identities(
     python_binding = file_identity("python", platform.python_version())
     if Path(str(python_binding["path"])) != python_executable:
         raise DoctorInputError("Runtime Python binding differs from this interpreter")
+    snakemake_observations = [
+        item
+        for item in inspection.observations
+        if item.check.check_id == "snakemake" and item.status == "pass"
+    ]
+    if len(snakemake_observations) != 1:
+        raise DoctorInputError("Runtime inspection has no unique passing Snakemake probe")
     identities: list[dict[str, str | None]] = [
         python_binding,
         {
@@ -200,7 +152,7 @@ def required_tool_identities(
             ),
             "sha256": inspection.profile_sha256,
         },
-        file_identity("snakemake", snakemake_version),
+        file_identity("snakemake", snakemake_observations[0].observed),
     ]
     for observation in inspection.observations:
         check = observation.check
@@ -238,9 +190,9 @@ class DoctorOps:
     admit_project: Callable[
         [str | Path, Mapping[str, object] | str | Path], ProjectAdmission
     ]
-    inspect_runtime: Callable[[Path, str, Mapping[str, str]], RuntimeInspection]
-    observe_snakemake: Callable[[Path], str]
-    load_runtime_profile: Callable[[Path], tuple[bytes, tuple[RuntimeCheck, ...]]]
+    inspect_runtime: Callable[
+        [bytes, Path, str, Mapping[str, str]], RuntimeInspection
+    ]
     path_access: Callable[[Path, int], bool]
     inspect_storage: Callable[
         [Path, Path],
@@ -257,52 +209,23 @@ def _default_source_inspector(root: Path, package_root: Path) -> SourceCheckoutI
 
 
 def _default_runtime_inspector(
+    profile_bytes: bytes,
     profile: Path,
     context: str,
     environment: Mapping[str, str],
 ) -> RuntimeInspection:
-    return inspect_runtime_availability(profile, context, environment=environment)
-
-
-def _default_snakemake_observer(python_executable: Path) -> str:
-    try:
-        completed = subprocess.run(
-            controlled_python_argv(
-                python_executable,
-                "-m",
-                "snakemake",
-                "--version",
-            ),
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            env=sanitized_subprocess_environment(),
-        )
-    except (OSError, subprocess.TimeoutExpired) as exc:
-        raise DoctorInputError(f"Could not inspect Snakemake: {exc}") from exc
-    observed = " ".join((completed.stdout + " " + completed.stderr).split())
-    if completed.returncode != 0:
-        raise DoctorInputError(
-            f"Could not inspect Snakemake through {python_executable}: "
-            f"{observed or f'exit {completed.returncode}'}"
-        )
-    return observed
-
-
-def _default_profile_loader(profile: Path) -> tuple[bytes, tuple[RuntimeCheck, ...]]:
-    try:
-        return load_runtime_profile_contract(profile)
-    except RuntimeInspectionError as exc:
-        raise DoctorInputError(str(exc)) from exc
+    return inspect_runtime_profile_bytes(
+        profile_bytes,
+        profile,
+        context,
+        environment=environment,
+    )
 
 
 DEFAULT_DOCTOR_OPS = DoctorOps(
     inspect_source=_default_source_inspector,
     admit_project=admit_project,
     inspect_runtime=_default_runtime_inspector,
-    observe_snakemake=_default_snakemake_observer,
-    load_runtime_profile=_default_profile_loader,
     path_access=os.access,
     inspect_storage=storage_qualification.admit_final_qualification,
 )
@@ -444,33 +367,28 @@ def validate_runtime_profile_contract(
 ) -> None:
     """Bind every editable runtime path to the tracked fixed probe policy."""
 
-    observed_shape = tuple((check.check_id, check.check_type) for check in checks)
-    if observed_shape != LOCAL_PILOT_RUNTIME_CHECKS:
-        expected = ", ".join(check_id for check_id, _kind in LOCAL_PILOT_RUNTIME_CHECKS)
-        raise DoctorInputError(
-            "Local-pilot runtime profile must contain the exact ordered check roster: "
-            + expected
-        )
     try:
         _policy_bytes, policy_checks = load_runtime_profile_contract(
-            source_root / "configs/local_pilot_runtime.example.tsv"
+            onboarding.runtime_policy_path()
         )
     except RuntimeInspectionError as exc:
         raise DoctorInputError(
             f"Could not load the tracked local-pilot runtime policy: {exc}"
         ) from exc
-    if tuple((check.check_id, check.check_type) for check in policy_checks) != (
-        LOCAL_PILOT_RUNTIME_CHECKS
-    ):
+    observed_shape = tuple((check.check_id, check.check_type) for check in checks)
+    policy_shape = tuple(
+        (check.check_id, check.check_type) for check in policy_checks
+    )
+    if observed_shape != policy_shape:
         raise DoctorInputError(
-            "Tracked local-pilot runtime policy differs from the fixed roster"
+            "Local-pilot runtime profile must contain the exact ordered check roster: "
+            + ", ".join(check_id for check_id, _kind in policy_shape)
         )
     policy_by_name = {check.check_id: check for check in policy_checks}
     for check in checks:
         policy = policy_by_name[check.check_id]
         if (
-            check.check_type != policy.check_type
-            or check.runtime_context != policy.runtime_context
+            check.runtime_context != policy.runtime_context
             or check.required != policy.required
             or check.expected != policy.expected
             or check.description != policy.description
@@ -493,10 +411,6 @@ def validate_runtime_profile_contract(
     )
     dynamic_probe_args = {"snakemake", "sha256_python", "picard"}
     for check in checks:
-        if not check.required or check.runtime_context not in {"local", "any"}:
-            raise DoctorInputError(
-                f"Local-pilot runtime check must be required in local/any context: {check.check_id}"
-            )
         if check.check_id.startswith("r_") and check.probe_args != (rscript_target,):
             raise DoctorInputError(
                 f"R namespace check must use the declared Rscript target: {check.check_id}"
@@ -551,15 +465,6 @@ def validate_runtime_profile_contract(
         )
 
 
-def validate_runtime_profile(inspection: RuntimeInspection, source_root: Path) -> None:
-    """Re-admit observed checks against the tracked fixed runtime policy."""
-
-    validate_runtime_profile_contract(
-        tuple(observation.check for observation in inspection.observations),
-        source_root,
-    )
-
-
 def _admit_runtime_directory(path: Path, label: str) -> Path:
     if not path.is_absolute():
         raise DoctorInputError(f"{label} must be absolute: {path}")
@@ -593,89 +498,13 @@ def _declared_renv_library(checks: tuple[RuntimeCheck, ...]) -> Path:
             "renv_library must be one readable-directory visibility check"
         )
     library = _admit_runtime_directory(Path(check.target), "renv_library")
-    package_entry = library / "renv"
     try:
-        entry_before = package_entry.lstat()
-        package_root = package_entry.resolve(strict=True)
-        package_state = package_root.lstat()
+        description = (library / "renv").resolve(strict=True) / "DESCRIPTION"
+        text = description.read_text(encoding="utf-8")
     except OSError as exc:
         raise DoctorInputError(
             f"Selected renv_library has no readable installed renv package: {exc}"
         ) from exc
-    if not (stat.S_ISDIR(entry_before.st_mode) or stat.S_ISLNK(entry_before.st_mode)):
-        raise DoctorInputError(
-            f"Installed renv package entry must be a directory or symlink: "
-            f"{package_entry}"
-        )
-    if stat.S_ISLNK(package_state.st_mode) or not stat.S_ISDIR(package_state.st_mode):
-        raise DoctorInputError(
-            f"Installed renv package must resolve to a canonical real directory: "
-            f"{package_entry}"
-        )
-    description = package_root / "DESCRIPTION"
-    try:
-        state = description.lstat()
-        data = description.read_bytes()
-        after = description.lstat()
-        entry_after = package_entry.lstat()
-        resolved_after = package_entry.resolve(strict=True)
-        package_after = package_root.lstat()
-    except OSError as exc:
-        raise DoctorInputError(
-            f"Selected renv_library has no readable installed renv package: {exc}"
-        ) from exc
-    if not stat.S_ISREG(state.st_mode) or stat.S_ISLNK(state.st_mode):
-        raise DoctorInputError(
-            f"Installed renv DESCRIPTION must be a regular non-symlink file: {description}"
-        )
-    if (
-        entry_before.st_dev,
-        entry_before.st_ino,
-        entry_before.st_mode,
-        entry_before.st_size,
-        entry_before.st_mtime_ns,
-        entry_before.st_ctime_ns,
-    ) != (
-        entry_after.st_dev,
-        entry_after.st_ino,
-        entry_after.st_mode,
-        entry_after.st_size,
-        entry_after.st_mtime_ns,
-        entry_after.st_ctime_ns,
-    ) or resolved_after != package_root:
-        raise DoctorInputError("Installed renv package entry changed during admission")
-    if (
-        package_state.st_dev,
-        package_state.st_ino,
-        package_state.st_mode,
-        package_state.st_size,
-        package_state.st_mtime_ns,
-        package_state.st_ctime_ns,
-    ) != (
-        package_after.st_dev,
-        package_after.st_ino,
-        package_after.st_mode,
-        package_after.st_size,
-        package_after.st_mtime_ns,
-        package_after.st_ctime_ns,
-    ):
-        raise DoctorInputError("Installed renv package root changed during admission")
-    if (
-        state.st_dev,
-        state.st_ino,
-        state.st_size,
-        state.st_mtime_ns,
-        state.st_ctime_ns,
-    ) != (
-        after.st_dev,
-        after.st_ino,
-        after.st_size,
-        after.st_mtime_ns,
-        after.st_ctime_ns,
-    ):
-        raise DoctorInputError("Installed renv DESCRIPTION changed during admission")
-    try:
-        text = data.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise DoctorInputError("Installed renv DESCRIPTION is not UTF-8") from exc
     versions = [
@@ -723,98 +552,16 @@ def runtime_file_bindings(
         if check.check_type == "r_namespace":
             package_entry = renv_library / check.target
             try:
-                entry_before = package_entry.lstat()
                 path = package_entry.resolve(strict=True)
-                target_before = path.lstat()
-            except OSError as exc:
-                raise DoctorInputError(
-                    f"Could not resolve installed R package {check.check_id}: "
-                    f"{package_entry}: {exc}"
-                ) from exc
-            if not (
-                stat.S_ISDIR(entry_before.st_mode) or stat.S_ISLNK(entry_before.st_mode)
-            ):
-                raise DoctorInputError(
-                    f"Installed R package entry must be a directory or symlink: "
-                    f"{check.check_id}: {package_entry}"
-                )
-            if stat.S_ISLNK(target_before.st_mode) or not stat.S_ISDIR(
-                target_before.st_mode
-            ):
-                raise DoctorInputError(
-                    f"Installed R package must resolve to a canonical real directory: "
-                    f"{check.check_id}: {package_entry}"
-                )
-            if observation.resolved_path is None:
-                raise DoctorInputError(
-                    f"Passing R namespace observation did not bind its loaded root: "
-                    f"{check.check_id}"
-                )
-            if path != observation.resolved_path:
-                raise DoctorInputError(
-                    f"Loaded R namespace root changed before package binding: "
-                    f"{check.check_id}: observed {observation.resolved_path}; "
-                    f"bound {path}"
-                )
-            try:
                 identity = installed_package_tree_identity(path)
-            except InstalledPackageIdentityError as exc:
+            except (OSError, InstalledPackageIdentityError) as exc:
                 raise DoctorInputError(
                     f"Could not bind installed R package {check.check_id}: {exc}"
                 ) from exc
-            if identity.root != observation.resolved_path:
+            if observation.resolved_path is None or identity.root != observation.resolved_path:
                 raise DoctorInputError(
-                    f"Loaded R namespace root changed before package binding: "
-                    f"{check.check_id}: observed {observation.resolved_path}; "
-                    f"bound {identity.root}"
-                )
-            try:
-                entry_after = package_entry.lstat()
-                resolved_after = package_entry.resolve(strict=True)
-                target_after = path.lstat()
-            except OSError as exc:
-                raise DoctorInputError(
-                    f"Could not re-admit installed R package {check.check_id}: "
-                    f"{package_entry}: {exc}"
-                ) from exc
-            if (
-                (
-                    entry_before.st_dev,
-                    entry_before.st_ino,
-                    entry_before.st_mode,
-                    entry_before.st_size,
-                    entry_before.st_mtime_ns,
-                    entry_before.st_ctime_ns,
-                )
-                != (
-                    entry_after.st_dev,
-                    entry_after.st_ino,
-                    entry_after.st_mode,
-                    entry_after.st_size,
-                    entry_after.st_mtime_ns,
-                    entry_after.st_ctime_ns,
-                )
-                or resolved_after != path
-                or (
-                    target_before.st_dev,
-                    target_before.st_ino,
-                    target_before.st_mode,
-                    target_before.st_size,
-                    target_before.st_mtime_ns,
-                    target_before.st_ctime_ns,
-                )
-                != (
-                    target_after.st_dev,
-                    target_after.st_ino,
-                    target_after.st_mode,
-                    target_after.st_size,
-                    target_after.st_mtime_ns,
-                    target_after.st_ctime_ns,
-                )
-            ):
-                raise DoctorInputError(
-                    f"Installed R package entry changed during admission: "
-                    f"{check.check_id}: {package_entry}"
+                    f"Loaded R namespace root differs from its package binding: "
+                    f"{check.check_id}"
                 )
             bindings.append(
                 RuntimeBinding(
@@ -833,38 +580,11 @@ def runtime_file_bindings(
             )
         try:
             resolved = path.resolve(strict=True)
-            before = resolved.stat()
             data = resolved.read_bytes()
         except OSError as exc:
             raise DoctorInputError(
                 f"Could not bind runtime file {check.check_id}: {path}: {exc}"
             ) from exc
-        try:
-            after = resolved.stat()
-        except OSError as exc:
-            raise DoctorInputError(
-                f"Could not recheck runtime file {check.check_id}: {resolved}: {exc}"
-            ) from exc
-        if not stat.S_ISREG(before.st_mode):
-            raise DoctorInputError(
-                f"Runtime binding must resolve to a regular file: {check.check_id}: {resolved}"
-            )
-        if (
-            before.st_dev,
-            before.st_ino,
-            before.st_size,
-            before.st_mtime_ns,
-            before.st_ctime_ns,
-        ) != (
-            after.st_dev,
-            after.st_ino,
-            after.st_size,
-            after.st_mtime_ns,
-            after.st_ctime_ns,
-        ):
-            raise DoctorInputError(
-                f"Runtime file changed while it was being bound: {check.check_id}"
-            )
         bindings.append(
             RuntimeBinding(
                 check_id=check.check_id,
@@ -927,40 +647,26 @@ def inspect_local_pilot(
         )
     else:
         qualification_binding = storage_runtime_binding(qualified_storage)
-    profile_bytes, declared_checks = ops.load_runtime_profile(profile_path)
+    try:
+        profile_bytes, declared_checks = load_runtime_profile_contract(profile_path)
+    except RuntimeInspectionError as exc:
+        raise DoctorInputError(str(exc)) from exc
     validate_runtime_profile_contract(declared_checks, root)
     renv_library = _declared_renv_library(declared_checks)
-    environment = runtime_environment(
+    environment = guarded_r_environment(
         root,
         renv_library,
         base_environment=os.environ,
     )
-    java_targets = [
-        check.target for check in declared_checks if check.check_id == "java"
-    ]
-    if len(java_targets) != 1:
-        raise DoctorInputError("Runtime profile must declare exactly one Java launcher")
     try:
-        environment = gatk_subprocess_environment(
-            java_targets[0],
-            base_environment=environment,
+        inspection = ops.inspect_runtime(
+            profile_bytes,
+            profile_path,
+            "local",
+            environment,
         )
-    except ProcessEnvironmentError as exc:
-        raise DoctorInputError(f"Could not admit Java for GATK: {exc}") from exc
-    try:
-        inspection = ops.inspect_runtime(profile_path, "local", environment)
     except RuntimeInspectionError as exc:
         raise DoctorInputError(str(exc)) from exc
-    if inspection.profile_bytes != profile_bytes:
-        raise DoctorInputError("Runtime profile changed while it was being inspected")
-    validate_runtime_profile(inspection, root)
-    observed_renv_library = next(
-        Path(item.check.target)
-        for item in inspection.observations
-        if item.check.check_id == "renv_library"
-    )
-    if _admit_runtime_directory(observed_renv_library, "renv_library") != renv_library:
-        raise DoctorInputError("renv_library changed during runtime inspection")
     python_check = next(
         item for item in inspection.observations if item.check.check_id == "python"
     )
@@ -969,39 +675,25 @@ def inspect_local_pilot(
             f"runtime profile Python does not match this interpreter: {python_check.check.target}"
         )
         remediations.append(
-            f"Run the doctor with and declare the workflow Python launcher: {sys.executable}"
+            "Activate the workflow environment admitted by the Project runtime "
+            "profile, then rerun Doctor. Do not edit the admitted profile."
         )
-    try:
-        snakemake_version = ops.observe_snakemake(Path(sys.executable))
-    except DoctorInputError as exc:
-        blockers.append(str(exc))
-        remediations.append(
-            "Run `uv sync --locked --group workflow` in the EMRYS checkout."
-        )
-    else:
-        if snakemake_version != SNAKEMAKE_VERSION:
-            blockers.append(
-                f"Snakemake version is {snakemake_version!r}; expected {SNAKEMAKE_VERSION}"
-            )
-            remediations.append(
-                "Restore the locked workflow environment with `uv sync --locked --group workflow`."
-            )
     for observation in inspection.observations:
         if observation.check.required and observation.status != "pass":
             blockers.append(
                 f"{observation.check.check_id}: {observation.status} ({observation.observed})"
             )
             remediations.append(
-                f"Set {observation.check.check_id} to the exact local path/version required by "
-                f"{profile_path}."
+                f"Restore or activate {observation.check.check_id} as admitted by the "
+                "Project runtime profile, preview the environment with `emrys runtime "
+                "discover`, then rerun Doctor. Adopting a different environment requires "
+                "explicit runtime migration or repair; do not edit the admitted profile."
             )
     return DoctorResult(
         project_path=project.source_path,
         workspace=workspace_path,
         source_root=root,
         source_commit=source_commit,
-        runtime_profile=profile_path,
-        runtime_profile_sha256=inspection.profile_sha256,
         inspection=inspection,
         bindings=(
             runtime_file_bindings(inspection)
@@ -1015,7 +707,7 @@ def inspect_local_pilot(
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--project", default=Path("project.yaml"), type=Path)
-    parser.add_argument("--runtime-profile", required=True, type=Path)
+    parser.set_defaults(_command_parser=parser)
 
 
 def doctor_from_args(
@@ -1028,7 +720,7 @@ def doctor_from_args(
         result = inspect_local_pilot(
             arguments.project,
             Path(os.path.abspath(arguments.project)).parent,
-            arguments.runtime_profile,
+            onboarding.runtime_profile_path(arguments.project),
             source_root=source_root,
             ops=ops,
         )
@@ -1039,7 +731,7 @@ def doctor_from_args(
     print(f"Workspace: {result.workspace}")
     print(f"Source checkout: {result.source_root}")
     print(f"Source commit: {result.source_commit or 'not admitted'}")
-    print(f"Runtime profile SHA-256: {result.runtime_profile_sha256}")
+    print(f"Runtime profile SHA-256: {result.inspection.profile_sha256}")
     storage_binding = next(
         (
             binding
@@ -1073,15 +765,11 @@ __all__ = (
     "DoctorInputError",
     "DoctorOps",
     "DoctorResult",
-    "LOCAL_PILOT_R_PACKAGES",
-    "LOCAL_PILOT_RUNTIME_CHECKS",
     "RuntimeBinding",
     "configure_parser",
     "doctor_from_args",
     "inspect_local_pilot",
     "required_tool_identities",
     "runtime_file_bindings",
-    "runtime_environment",
     "storage_runtime_binding",
-    "validate_runtime_profile",
 )

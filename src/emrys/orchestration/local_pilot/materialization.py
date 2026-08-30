@@ -1444,6 +1444,7 @@ def build_attempt_plan(
     process_id: int | None = None,
     supersedes_workflow_attempt_id: str | None = None,
     retained_dispatches: Mapping[tuple[str, str], dict[str, str]] | None = None,
+    retained_runtime_profile_path: Path | None = None,
 ) -> AttemptPlan:
     """Build one complete attempt without touching the filesystem."""
 
@@ -1464,10 +1465,6 @@ def build_attempt_plan(
     workflow_cores = resources.workflow_cores
     if readiness.source_commit is None:
         raise MaterializationError("Doctor did not admit one exact source commit")
-    if readiness.runtime_profile_sha256 != readiness.inspection.profile_sha256:
-        raise MaterializationError(
-            "Doctor runtime profile digest differs from its inspected bytes"
-        )
     if operation == "execute" and supersedes_workflow_attempt_id is not None:
         raise MaterializationError("Initial execution may not supersede an attempt")
     if operation == "resume" and supersedes_workflow_attempt_id is None:
@@ -1488,9 +1485,16 @@ def build_attempt_plan(
         raise MaterializationError(
             "Project admission did not use the fixed source profile"
         )
-    runtime_profile_path = (
-        run_root / "contract" / "runtime-profiles" / f"{attempt_id}.tsv"
-    )
+    if retained_runtime_profile_path is not None:
+        if successor or operation != "resume":
+            raise MaterializationError(
+                "Only a historical resume may retain its predecessor runtime profile"
+            )
+        runtime_profile_path = _absolute(retained_runtime_profile_path)
+    else:
+        runtime_profile_path = (
+            run_root / "contract" / "runtime-profiles" / f"{attempt_id}.tsv"
+        )
     storage_binding_count = sum(
         binding.check_id == "storage_qualification" for binding in readiness.bindings
     )
@@ -1650,11 +1654,16 @@ def build_attempt_plan(
                 f"Attempt differs from immutable Run: {exc}"
             ) from exc
     orchestration_contracts.validate_record("workflow-attempt", attempt)
+    runtime_profile_files = (
+        ()
+        if retained_runtime_profile_path is not None
+        else (PlannedFile(runtime_profile_path, readiness.inspection.profile_bytes),)
+    )
     attempt_files = (
         *dispatch_files,
         *(PlannedFile(path, data) for path, data in reporting_files if successor),
         PlannedFile(config_path, config_data),
-        PlannedFile(runtime_profile_path, readiness.inspection.profile_bytes),
+        *runtime_profile_files,
     )
     directories = {
         run_root / "contract",

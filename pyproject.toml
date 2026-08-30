@@ -59,6 +59,11 @@ include = ["emrys*"]
 namespaces = false
 
 [tool.setuptools.package-data]
+"emrys" = [
+    "resources/runtime/*.lock",
+    "resources/runtime/*.toml",
+    "resources/runtime/*.tsv",
+]
 "emrys.contracts" = [
     "schemas/artifacts/v1/*.json",
     "schemas/artifacts/v2/*.json",

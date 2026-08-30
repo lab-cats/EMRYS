@@ -22,12 +22,12 @@ from emrys.evidence.runtime_availability.inspector import (
     RuntimeObservation,
     load_runtime_profile_contract,
 )
+from emrys.evidence.runtime_availability._runtime_model import PROFILE_HEADER
 from emrys.evidence.storage_inventory import qualification as storage_qualification
 from emrys.libraries.installed_package_identity import (
     installed_package_tree_identity,
 )
 from emrys.libraries.process_environment import (
-    gatk_subprocess_environment,
     guarded_r_environment,
     guarded_rscript_argv,
 )
@@ -36,14 +36,25 @@ from emrys.libraries.source_authority import (
     SourceCheckoutIdentity,
     controlled_python_argv,
 )
-from emrys.orchestration.local_pilot import doctor
+from emrys.libraries.validation.tsv import tsv_bytes
+from emrys.orchestration.local_pilot import doctor, onboarding
 from emrys.orchestration.local_pilot.normalization import admit_project
 
 from tests.orchestration.local_pilot.fixture import build
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 PROFILE = REPO_ROOT / "workflow/contracts/local_cmh_v2.json"
-EXAMPLE_RUNTIME = REPO_ROOT / "configs/local_pilot_runtime.example.tsv"
+RUNTIME_POLICY = REPO_ROOT / "src/emrys/resources/runtime/runtime_policy.tsv"
+_POLICY_BYTES, POLICY_CHECKS = load_runtime_profile_contract(RUNTIME_POLICY)
+RUNTIME_CHECKS = tuple(
+    (check.check_id, check.check_type) for check in POLICY_CHECKS
+)
+R_PACKAGES = tuple(
+    (check.check_id, check.target)
+    for check in POLICY_CHECKS
+    if check.check_type == "r_namespace"
+)
+POLICY_BY_ID = {check.check_id: check for check in POLICY_CHECKS}
 
 
 def _check(
@@ -55,8 +66,7 @@ def _check(
     status: str = "pass",
     resolved_path: Path | None = None,
 ) -> RuntimeObservation:
-    _policy_bytes, policy_checks = load_runtime_profile_contract(EXAMPLE_RUNTIME)
-    policy = next(item for item in policy_checks if item.check_id == check_id)
+    policy = POLICY_BY_ID[check_id]
     return RuntimeObservation(
         check=RuntimeCheck(
             check_id=check_id,
@@ -75,7 +85,12 @@ def _check(
     )
 
 
-def _inspection(tmp_path: Path, *, failing: str | None = None) -> RuntimeInspection:
+def _inspection(
+    tmp_path: Path,
+    *,
+    failing: str | None = None,
+    profile_path: Path | None = None,
+) -> RuntimeInspection:
     tool = tmp_path / "tool"
     tool.write_bytes(b"tool\n")
     tool.chmod(0o755)
@@ -92,7 +107,7 @@ def _inspection(tmp_path: Path, *, failing: str | None = None) -> RuntimeInspect
     (installed_renv / "DESCRIPTION").write_text(
         "Package: renv\nVersion: 1.2.3\n", encoding="utf-8"
     )
-    for _check_id, package in doctor.LOCAL_PILOT_R_PACKAGES:
+    for _check_id, package in R_PACKAGES:
         package_root = renv_library / package
         package_root.mkdir(exist_ok=True)
         (package_root / "DESCRIPTION").write_text(
@@ -154,7 +169,7 @@ def _inspection(tmp_path: Path, *, failing: str | None = None) -> RuntimeInspect
             probe_args=("directory_readable",),
         ),
     ]
-    for check_id, package in doctor.LOCAL_PILOT_R_PACKAGES:
+    for check_id, package in R_PACKAGES:
         observations.append(
             _check(
                 check_id,
@@ -177,14 +192,33 @@ def _inspection(tmp_path: Path, *, failing: str | None = None) -> RuntimeInspect
             observed="unavailable",
             detail="missing in test",
         )
-    data = b"runtime profile\n"
+    data = _profile_bytes(tuple(item.check for item in observations))
     return RuntimeInspection(
-        profile_path=tmp_path / "runtime.tsv",
+        profile_path=tmp_path / "runtime.tsv" if profile_path is None else profile_path,
         profile_sha256=hashlib.sha256(data).hexdigest(),
         profile_bytes=data,
         runtime_context="local",
         observations=tuple(observations),
         rendered_bytes=b"rendered\n",
+    )
+
+
+def _profile_bytes(checks: tuple[RuntimeCheck, ...]) -> bytes:
+    return tsv_bytes(
+        PROFILE_HEADER,
+        (
+            {
+                "check_id": check.check_id,
+                "check_type": check.check_type,
+                "runtime_context": check.runtime_context,
+                "required": "true" if check.required else "false",
+                "target": check.target,
+                "probe_args": json.dumps(check.probe_args, separators=(",", ":")),
+                "expected": check.expected,
+                "description": check.description,
+            }
+            for check in checks
+        ),
     )
 
 
@@ -217,14 +251,20 @@ def _ops(
         return SourceCheckoutIdentity(root=root, commit="a" * 40, clean=True)
 
     def inspect_runtime(
-        _path: Path,
+        profile_bytes: bytes,
+        profile_path: Path,
         context: str,
         environment: dict[str, str],
     ) -> RuntimeInspection:
         assert context == "local"
         if environment_log is not None:
             environment_log.append(dict(environment))
-        return inspection
+        return replace(
+            inspection,
+            profile_path=profile_path,
+            profile_bytes=profile_bytes,
+            profile_sha256=hashlib.sha256(profile_bytes).hexdigest(),
+        )
 
     def inspect_storage(
         _workspace: Path,
@@ -243,11 +283,6 @@ def _ops(
         inspect_source=inspect_source,
         admit_project=admit_project,
         inspect_runtime=inspect_runtime,
-        observe_snakemake=lambda _python: doctor.SNAKEMAKE_VERSION,
-        load_runtime_profile=lambda _path: (
-            inspection.profile_bytes,
-            tuple(item.check for item in inspection.observations),
-        ),
         path_access=os.access,
         inspect_storage=inspect_storage,
     )
@@ -262,7 +297,7 @@ def test_ready_doctor_is_read_only_and_guards_renv(
     request = build(request_root)
     workspace = tmp_path / "future-workspace"
     runtime = tmp_path / "runtime.tsv"
-    runtime.write_text("placeholder\n", encoding="utf-8")
+    runtime.write_bytes(_inspection(tmp_path).profile_bytes)
     environment_log: list[dict[str, str]] = []
     inspection = _inspection(tmp_path)
     monkeypatch.setenv("R_LIBS_USER", "/ambient/r-library")
@@ -297,13 +332,10 @@ def test_ready_doctor_is_read_only_and_guards_renv(
     assert result.source_commit == "a" * 40
     assert not workspace.exists()
     assert environment_log == [
-        gatk_subprocess_environment(
-            tmp_path / "java-home" / "bin" / "java",
-            base_environment=doctor.runtime_environment(
-                REPO_ROOT,
-                tmp_path / "renv-library",
-                base_environment=os.environ,
-            ),
+        guarded_r_environment(
+            REPO_ROOT,
+            tmp_path / "renv-library",
+            base_environment=os.environ,
         )
     ]
     assert not {
@@ -382,7 +414,7 @@ def test_doctor_blocks_when_storage_is_not_site_qualified(
 ) -> None:
     request = build(tmp_path)
     runtime = tmp_path / "runtime.tsv"
-    runtime.write_text("placeholder\n", encoding="utf-8")
+    runtime.write_bytes(_inspection(tmp_path).profile_bytes)
     result = doctor.inspect_local_pilot(
         request,
         tmp_path / "workspace",
@@ -565,7 +597,9 @@ def test_default_doctor_gatk_probe_uses_declared_java_not_ambient_java(
         "_JAVA_OPTIONS": "-Dambient.underscore.java.options=true",
     }
 
-    inspection = doctor._default_runtime_inspector(profile, "local", environment)
+    inspection = doctor._default_runtime_inspector(
+        profile.read_bytes(), profile, "local", environment
+    )
 
     assert [item.status for item in inspection.observations] == ["pass", "pass"]
     assert selected_marker.read_text(encoding="utf-8").splitlines() == [
@@ -590,7 +624,7 @@ def test_not_ready_has_exact_blocker_and_remediation(tmp_path: Path) -> None:
     request_root.mkdir()
     request = build(request_root)
     runtime = tmp_path / "runtime.tsv"
-    runtime.write_text("placeholder\n", encoding="utf-8")
+    runtime.write_bytes(_inspection(tmp_path).profile_bytes)
 
     result = doctor.inspect_local_pilot(
         request,
@@ -603,14 +637,17 @@ def test_not_ready_has_exact_blocker_and_remediation(tmp_path: Path) -> None:
     assert not result.ready
     assert result.blockers == ("star: fail (unavailable)",)
     assert result.remediations == (
-        f"Set star to the exact local path/version required by {runtime}.",
+        "Restore or activate star as admitted by the Project runtime profile, "
+        "preview the environment with `emrys runtime discover`, then rerun "
+        "Doctor. Adopting a different environment requires explicit runtime "
+        "migration or repair; do not edit the admitted profile.",
     )
 
 
 def test_source_and_workspace_blockers_do_not_mutate(tmp_path: Path) -> None:
     request = build(tmp_path)
     runtime = tmp_path / "runtime.tsv"
-    runtime.write_text("placeholder\n", encoding="utf-8")
+    runtime.write_bytes(_inspection(tmp_path).profile_bytes)
 
     result = doctor.inspect_local_pilot(
         request,
@@ -634,7 +671,7 @@ def test_nested_absent_workspace_is_not_ready_and_is_not_created(
 ) -> None:
     request = build(tmp_path)
     runtime = tmp_path / "runtime.tsv"
-    runtime.write_text("placeholder\n", encoding="utf-8")
+    runtime.write_bytes(_inspection(tmp_path).profile_bytes)
     workspace = tmp_path / "absent-parent" / "workspace"
 
     result = doctor.inspect_local_pilot(
@@ -661,7 +698,7 @@ def test_unwritable_step00c_fasta_parent_is_not_ready_without_mutation(
 ) -> None:
     request = build(tmp_path)
     runtime = tmp_path / "runtime.tsv"
-    runtime.write_text("placeholder\n", encoding="utf-8")
+    runtime.write_bytes(_inspection(tmp_path).profile_bytes)
     inspection = _inspection(tmp_path)
     reference_parent = tmp_path / "reference"
     before = {
@@ -705,7 +742,7 @@ def test_unwritable_step00c_fasta_parent_is_not_ready_without_mutation(
 def test_workspace_rejects_symlink_immediate_parent(tmp_path: Path) -> None:
     request = build(tmp_path)
     runtime = tmp_path / "runtime.tsv"
-    runtime.write_text("placeholder\n", encoding="utf-8")
+    runtime.write_bytes(_inspection(tmp_path).profile_bytes)
     target = tmp_path / "target"
     target.mkdir()
     link = tmp_path / "linked-parent"
@@ -726,7 +763,7 @@ def test_step00c_fasta_through_symlinked_parent_is_usage_error_without_mutation(
 ) -> None:
     request = build(tmp_path)
     runtime = tmp_path / "runtime.tsv"
-    runtime.write_text("placeholder\n", encoding="utf-8")
+    runtime.write_bytes(_inspection(tmp_path).profile_bytes)
     reference = tmp_path / "reference"
     real_reference = tmp_path / "reference-real"
     reference.rename(real_reference)
@@ -760,30 +797,14 @@ def test_malformed_runtime_profile_is_usage_error(tmp_path: Path) -> None:
     runtime = tmp_path / "runtime.tsv"
     runtime.write_text("malformed\n", encoding="utf-8")
 
-    def reject_runtime(
-        _path: Path,
-        _context: str,
-        _environment: dict[str, str],
-    ) -> RuntimeInspection:
-        raise RuntimeInspectionError("invalid runtime profile")
-
     ops = _ops(_inspection(tmp_path))
-    rejecting = doctor.DoctorOps(
-        inspect_source=ops.inspect_source,
-        admit_project=ops.admit_project,
-        inspect_runtime=reject_runtime,
-        observe_snakemake=ops.observe_snakemake,
-        load_runtime_profile=ops.load_runtime_profile,
-        path_access=ops.path_access,
-        inspect_storage=ops.inspect_storage,
-    )
-    with pytest.raises(doctor.DoctorInputError, match="invalid runtime profile"):
+    with pytest.raises(doctor.DoctorInputError, match="Runtime profile"):
         doctor.inspect_local_pilot(
             request,
             tmp_path / "workspace",
             runtime,
             source_root=REPO_ROOT,
-            ops=rejecting,
+            ops=ops,
         )
 
 
@@ -817,6 +838,7 @@ def test_runtime_profile_cannot_weaken_fixed_probe_policy_before_probing(
         declared[index] = replace(check, target="IRanges")
 
     def unexpected_probe(
+        _profile_bytes: bytes,
         _path: Path,
         _context: str,
         _environment: dict[str, str],
@@ -824,14 +846,8 @@ def test_runtime_profile_cannot_weaken_fixed_probe_policy_before_probing(
         raise AssertionError("runtime probes must not run for weakened policy")
 
     base = _ops(inspection)
-    ops = replace(
-        base,
-        inspect_runtime=unexpected_probe,
-        load_runtime_profile=lambda _path: (
-            inspection.profile_bytes,
-            tuple(declared),
-        ),
-    )
+    runtime.write_bytes(_profile_bytes(tuple(declared)))
+    ops = replace(base, inspect_runtime=unexpected_probe)
     with pytest.raises(doctor.DoctorInputError, match="fixed.*policy"):
         doctor.inspect_local_pilot(
             request,
@@ -888,6 +904,7 @@ def test_picard_profile_requires_exact_java_jar_and_args_before_probing(
         )
 
     def unexpected_probe(
+        _profile_bytes: bytes,
         _path: Path,
         _context: str,
         _environment: dict[str, str],
@@ -897,14 +914,8 @@ def test_picard_profile_requires_exact_java_jar_and_args_before_probing(
         )
 
     base = _ops(inspection)
-    ops = replace(
-        base,
-        inspect_runtime=unexpected_probe,
-        load_runtime_profile=lambda _path: (
-            inspection.profile_bytes,
-            tuple(declared),
-        ),
-    )
+    runtime.write_bytes(_profile_bytes(tuple(declared)))
+    ops = replace(base, inspect_runtime=unexpected_probe)
     with pytest.raises(
         doctor.DoctorInputError,
         match="Picard version probing must use the declared Java and Picard jar",
@@ -923,7 +934,7 @@ def test_renv_library_must_be_an_existing_canonical_real_directory(
 ) -> None:
     request = build(tmp_path)
     runtime = tmp_path / "runtime.tsv"
-    runtime.write_text("placeholder\n", encoding="utf-8")
+    runtime.write_bytes(_inspection(tmp_path).profile_bytes)
     inspection = _inspection(tmp_path)
     real_library = tmp_path / "renv-library"
     linked_library = tmp_path / "linked-renv-library"
@@ -937,7 +948,14 @@ def test_renv_library_must_be_an_existing_canonical_real_directory(
         else item
         for item in inspection.observations
     )
-    linked_inspection = replace(inspection, observations=observations)
+    linked_bytes = _profile_bytes(tuple(item.check for item in observations))
+    runtime.write_bytes(linked_bytes)
+    linked_inspection = replace(
+        inspection,
+        profile_bytes=linked_bytes,
+        profile_sha256=hashlib.sha256(linked_bytes).hexdigest(),
+        observations=observations,
+    )
 
     with pytest.raises(doctor.DoctorInputError, match="canonical real directory"):
         doctor.inspect_local_pilot(
@@ -983,43 +1001,11 @@ def test_installed_renv_package_entry_rejects_dangling_cache_symlink(
         doctor._declared_renv_library(checks)
 
 
-def test_installed_renv_package_entry_rejects_retarget_during_admission(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    inspection = _inspection(tmp_path)
-    package_entry = tmp_path / "renv-library" / "renv"
-    cache_root = tmp_path / "renv-cache"
-    cache_root.mkdir()
-    cached_a = cache_root / "renv-a"
-    cached_b = cache_root / "renv-b"
-    package_entry.rename(cached_a)
-    shutil.copytree(cached_a, cached_b)
-    package_entry.symlink_to(cached_a, target_is_directory=True)
-    checks = tuple(item.check for item in inspection.observations)
-    real_read_bytes = Path.read_bytes
-
-    def retarget_after_read(path: Path) -> bytes:
-        data = real_read_bytes(path)
-        if path == cached_a / "DESCRIPTION":
-            package_entry.unlink()
-            package_entry.symlink_to(cached_b, target_is_directory=True)
-        return data
-
-    monkeypatch.setattr(Path, "read_bytes", retarget_after_read)
-
-    with pytest.raises(
-        doctor.DoctorInputError,
-        match="Installed renv package entry changed during admission",
-    ):
-        doctor._declared_renv_library(checks)
-
-
 def test_runtime_bindings_resolve_symlinked_installed_package_entry(
     tmp_path: Path,
 ) -> None:
     inspection = _inspection(tmp_path)
-    check_id, package = doctor.LOCAL_PILOT_R_PACKAGES[0]
+    check_id, package = R_PACKAGES[0]
     package_entry = tmp_path / "renv-library" / package
     cache_root = tmp_path / "renv-cache"
     cache_root.mkdir()
@@ -1045,7 +1031,7 @@ def test_runtime_bindings_reject_package_retargeted_after_namespace_probe(
     tmp_path: Path,
 ) -> None:
     inspection = _inspection(tmp_path)
-    check_id, package = doctor.LOCAL_PILOT_R_PACKAGES[0]
+    check_id, package = R_PACKAGES[0]
     package_entry = tmp_path / "renv-library" / package
     observed_root = package_entry.resolve(strict=True)
     cache_root = tmp_path / "renv-cache"
@@ -1057,7 +1043,7 @@ def test_runtime_bindings_reject_package_retargeted_after_namespace_probe(
 
     with pytest.raises(
         doctor.DoctorInputError,
-        match=f"Loaded R namespace root changed before package binding: {check_id}",
+        match=f"Loaded R namespace root differs from its package binding: {check_id}",
     ):
         doctor.runtime_file_bindings(inspection)
 
@@ -1066,53 +1052,12 @@ def test_runtime_bindings_require_loaded_root_on_passing_namespace(
     tmp_path: Path,
 ) -> None:
     inspection = _inspection(tmp_path)
-    check_id, _package = doctor.LOCAL_PILOT_R_PACKAGES[0]
+    check_id, _package = R_PACKAGES[0]
     inspection = _with_namespace_root(inspection, check_id, None)
 
     with pytest.raises(
         doctor.DoctorInputError,
-        match=f"Passing R namespace observation did not bind its loaded root: {check_id}",
-    ):
-        doctor.runtime_file_bindings(inspection)
-
-
-def test_runtime_bindings_reject_package_entry_retargeted_during_hash(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    inspection = _inspection(tmp_path)
-    check_id, package = doctor.LOCAL_PILOT_R_PACKAGES[0]
-    package_entry = tmp_path / "renv-library" / package
-    cache_root = tmp_path / "renv-cache"
-    cache_root.mkdir()
-    cached_a = cache_root / f"{package}-a"
-    cached_b = cache_root / f"{package}-b"
-    package_entry.rename(cached_a)
-    shutil.copytree(cached_a, cached_b)
-    package_entry.symlink_to(cached_a, target_is_directory=True)
-    inspection = _with_namespace_root(
-        inspection,
-        check_id,
-        cached_a.resolve(strict=True),
-    )
-    real_identity = doctor.installed_package_tree_identity
-
-    def retarget_after_hash(root: Path):
-        identity = real_identity(root)
-        if root == cached_a.resolve(strict=True):
-            package_entry.unlink()
-            package_entry.symlink_to(cached_b, target_is_directory=True)
-        return identity
-
-    monkeypatch.setattr(
-        doctor,
-        "installed_package_tree_identity",
-        retarget_after_hash,
-    )
-
-    with pytest.raises(
-        doctor.DoctorInputError,
-        match=f"Installed R package entry changed during admission: {check_id}",
+        match=f"Loaded R namespace root differs from its package binding: {check_id}",
     ):
         doctor.runtime_file_bindings(inspection)
 
@@ -1121,7 +1066,7 @@ def test_runtime_bindings_reject_broken_package_entry_symlink(
     tmp_path: Path,
 ) -> None:
     inspection = _inspection(tmp_path)
-    check_id, package = doctor.LOCAL_PILOT_R_PACKAGES[0]
+    check_id, package = R_PACKAGES[0]
     package_entry = tmp_path / "renv-library" / package
     (package_entry / "DESCRIPTION").unlink()
     package_entry.rmdir()
@@ -1129,7 +1074,7 @@ def test_runtime_bindings_reject_broken_package_entry_symlink(
 
     with pytest.raises(
         doctor.DoctorInputError,
-        match=f"Could not resolve installed R package {check_id}",
+        match=f"Could not bind installed R package {check_id}",
     ):
         doctor.runtime_file_bindings(inspection)
 
@@ -1139,7 +1084,7 @@ def test_missing_installed_renv_fails_before_probe_without_bootstrap(
 ) -> None:
     request = build(tmp_path)
     runtime = tmp_path / "runtime.tsv"
-    runtime.write_text("placeholder\n", encoding="utf-8")
+    runtime.write_bytes(_inspection(tmp_path).profile_bytes)
     inspection = _inspection(tmp_path)
     description = tmp_path / "renv-library" / "renv" / "DESCRIPTION"
     description.unlink()
@@ -1149,6 +1094,7 @@ def test_missing_installed_renv_fails_before_probe_without_bootstrap(
     defaults = _ops(inspection)
 
     def forbidden_probe(
+        _profile_bytes: bytes,
         _path: Path,
         _context: str,
         _environment: dict[str, str],
@@ -1182,20 +1128,18 @@ def test_cli_statuses_and_help(
     )
     assert help_result.returncode == 0
     assert "--project" in help_result.stdout
-    assert "--runtime-profile" in help_result.stdout
+    assert "--runtime-profile" not in help_result.stdout
     assert "--workspace" not in help_result.stdout
 
     request = build(tmp_path)
-    runtime = tmp_path / "runtime.tsv"
-    runtime.write_text("placeholder\n", encoding="utf-8")
-    arguments = argparse.Namespace(
-        project=request,
-        runtime_profile=runtime,
-    )
+    runtime = tmp_path / "runtime/runtime.tsv"
+    runtime.parent.mkdir()
+    runtime.write_bytes(_inspection(tmp_path, profile_path=runtime).profile_bytes)
+    arguments = argparse.Namespace(project=request)
     ready_status = doctor.doctor_from_args(
         arguments,
         source_root=REPO_ROOT,
-        ops=_ops(_inspection(tmp_path)),
+        ops=_ops(_inspection(tmp_path, profile_path=runtime)),
     )
     ready_output = capsys.readouterr()
     assert ready_status == 0
@@ -1204,7 +1148,7 @@ def test_cli_statuses_and_help(
     status = doctor.doctor_from_args(
         arguments,
         source_root=REPO_ROOT,
-        ops=_ops(_inspection(tmp_path, failing="star")),
+        ops=_ops(_inspection(tmp_path, failing="star", profile_path=runtime)),
     )
     captured = capsys.readouterr()
     assert status == 1
@@ -1212,13 +1156,14 @@ def test_cli_statuses_and_help(
     assert "BLOCKER: star: fail" in captured.out
 
     def reject_runtime(
+        _profile_bytes: bytes,
         _path: Path,
         _context: str,
         _environment: dict[str, str],
     ) -> RuntimeInspection:
         raise RuntimeInspectionError("invalid runtime profile")
 
-    base_ops = _ops(_inspection(tmp_path))
+    base_ops = _ops(_inspection(tmp_path, profile_path=runtime))
     malformed_status = doctor.doctor_from_args(
         arguments,
         source_root=REPO_ROOT,
@@ -1226,8 +1171,6 @@ def test_cli_statuses_and_help(
             inspect_source=base_ops.inspect_source,
             admit_project=base_ops.admit_project,
             inspect_runtime=reject_runtime,
-            observe_snakemake=base_ops.observe_snakemake,
-            load_runtime_profile=base_ops.load_runtime_profile,
             path_access=base_ops.path_access,
             inspect_storage=base_ops.inspect_storage,
         ),
@@ -1237,13 +1180,13 @@ def test_cli_statuses_and_help(
     assert "invalid runtime profile" in malformed_output.err
 
 
-def test_tracked_runtime_starter_has_exact_contract() -> None:
-    lines = EXAMPLE_RUNTIME.read_text(encoding="utf-8").splitlines()
+def test_packaged_runtime_policy_has_exact_contract() -> None:
+    lines = RUNTIME_POLICY.read_text(encoding="utf-8").splitlines()
     header = lines[0].split("\t")
     rows = [dict(zip(header, line.split("\t"), strict=True)) for line in lines[1:]]
     assert (
         tuple((row["check_id"], row["check_type"]) for row in rows)
-        == doctor.LOCAL_PILOT_RUNTIME_CHECKS
+        == RUNTIME_CHECKS
     )
     assert all(row["required"] == "true" for row in rows)
     assert all(row["runtime_context"] == "local" for row in rows)
@@ -1304,12 +1247,12 @@ def test_tracked_runtime_starter_has_exact_contract() -> None:
         ),
     ),
 )
-def test_tracked_runtime_version_policies_are_strict(
+def test_packaged_runtime_version_policies_are_strict(
     check_id: str,
     accepted: tuple[str, ...],
     rejected: tuple[str, ...],
 ) -> None:
-    lines = EXAMPLE_RUNTIME.read_text(encoding="utf-8").splitlines()
+    lines = RUNTIME_POLICY.read_text(encoding="utf-8").splitlines()
     header = lines[0].split("\t")
     rows = [dict(zip(header, line.split("\t"), strict=True)) for line in lines[1:]]
     expected = {row["check_id"]: row["expected"] for row in rows}[check_id]

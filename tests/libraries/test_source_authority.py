@@ -31,6 +31,9 @@ RESOURCE_FILES: Mapping[str, bytes] = {
     "orchestration/local_pilot/resources/default_execution.yaml": (
         b"schema_version: emrys.execution-profile.v1\n"
     ),
+    "resources/runtime/runtime_policy.tsv": b"check_id\tcheck_type\n",
+    "resources/runtime/pixi.toml": b"[workspace]\n",
+    "resources/runtime/pixi.lock": b"version: 7\n",
     "reporting/styles/example.css": b"body { color: black; }\n",
     "reporting/templates/example.html.j2": b"<!doctype html>\n",
     "runtime/data.bin": b"synthetic package data\n",
@@ -124,6 +127,7 @@ def _project_configuration(name: str = PROJECT_NAME) -> bytes:
         "[tool.setuptools.package-data]\n"
         '"emrys.contracts" = ["schemas/artifacts/v1/*.json", "schemas/artifacts/v2/*.json", "schemas/artifacts/v3/*.json", "schemas/artifacts/v4/*.json", "schemas/orchestration/v1/*.json", "schemas/orchestration/v2/*.json", "schemas/orchestration/v3/*.json"]\n'
         '"emrys.orchestration.local_pilot" = ["resources/*.yaml"]\n'
+        '"emrys" = ["resources/runtime/*"]\n'
         '"emrys.reporting" = ["styles/*.css", "templates/*.html.j2"]\n'
     ).encode()
 
@@ -390,6 +394,7 @@ def test_package_identity_rejects_dirty_tracked_checkout_bytes(tmp_path: Path) -
         Path("contracts/schemas/orchestration/v1/common.schema.json"),
         Path("contracts/schemas/orchestration/v3/execution_profile.schema.json"),
         Path("orchestration/local_pilot/resources/default_execution.yaml"),
+        Path("resources/runtime/runtime_policy.tsv"),
     ),
 )
 def test_package_identity_includes_declared_resource_bytes(

@@ -19,12 +19,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ._probes import run_checks
-from ._profile_contract import _read_regular_file, load_profile
+from ._profile_contract import _read_regular_file, load_profile, load_profile_bytes
 from ._result_contract import (
     result_bytes,
     validate_result_bytes,
 )
-from ._runtime_model import Check, PreflightError, _fail
+from ._runtime_model import PROFILE_HEADER, Check, PreflightError, _fail
 
 DESCRIPTION = (
     "Run explicit, read-only runtime checks and optionally publish "
@@ -104,16 +104,43 @@ def inspect_runtime_availability(
     """Run one explicit profile without publishing or repairing anything."""
 
     try:
+        profile_data = _read_regular_file(profile, "Runtime profile")
+    except PreflightError as exc:
+        raise RuntimeInspectionError(str(exc)) from exc
+    return inspect_runtime_profile_bytes(
+        profile_data,
+        profile,
+        runtime_context,
+        environment=environment,
+    )
+
+
+def inspect_runtime_profile_bytes(
+    profile_data: bytes,
+    profile_path: Path,
+    runtime_context: str,
+    *,
+    environment: Mapping[str, str] | None = None,
+) -> RuntimeInspection:
+    """Probe validated candidate bytes without publishing a temporary profile."""
+
+    try:
         if runtime_context not in {"local", "cluster_batch"}:
             _fail(f"Unsupported runtime context: {runtime_context}")
-        profile_data, checks = load_profile(profile)
+        profile_data, loaded_checks = load_profile_bytes(profile_data)
         profile_sha256 = hashlib.sha256(profile_data).hexdigest()
-        if environment is None:
-            results = run_checks(checks, runtime_context)
-        else:
-            results = run_checks(checks, runtime_context, environment=environment)
+        results = run_checks(
+            loaded_checks,
+            runtime_context,
+            environment=environment,
+        )
         rendered = result_bytes(profile_sha256, runtime_context, results)
-        validate_result_bytes(rendered, profile_sha256, runtime_context, checks)
+        validate_result_bytes(
+            rendered,
+            profile_sha256,
+            runtime_context,
+            loaded_checks,
+        )
     except PreflightError as exc:
         raise RuntimeInspectionError(str(exc)) from exc
     observations = tuple(
@@ -131,7 +158,7 @@ def inspect_runtime_availability(
         for result in results
     )
     return RuntimeInspection(
-        profile_path=profile,
+        profile_path=profile_path,
         profile_sha256=profile_sha256,
         profile_bytes=profile_data,
         runtime_context=runtime_context,

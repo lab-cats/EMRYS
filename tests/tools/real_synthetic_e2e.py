@@ -300,7 +300,7 @@ def require_operator_root(operator_root: Path, repo_root: Path) -> DriverPaths:
         workspace=root / "synthetic-inputs",
         scratch=root / "scratch",
         execution_profile=root / "emrys.execution.slurm.json",
-        runtime_profile=root / "runtime.selected.tsv",
+        runtime_profile=root / "synthetic-inputs/runtime/runtime.tsv",
         runtime_adapters=root / "runtime-adapters",
         transcripts=root / "driver-transcripts",
         summary=root / "e2e-summary.json",
@@ -428,6 +428,30 @@ def gunzip_adapter_bytes(delegate: Path) -> bytes:
         "fi\n"
         f'exec {quoted_delegate} -d "$@"\n'
     ).encode("utf-8")
+
+
+def runtime_discovery_environment(
+    paths: DriverPaths,
+    runtime: RuntimePaths,
+) -> dict[str, str]:
+    """Select one exact native command set for project-aware discovery."""
+
+    for name, target in (
+        ("bash", runtime.bash),
+        ("STAR", runtime.star),
+        ("samtools", runtime.samtools),
+        ("bcftools", runtime.bcftools),
+        ("java", runtime.java),
+    ):
+        (paths.runtime_adapters / name).symlink_to(target)
+    return {
+        **os.environ,
+        "PATH": str(paths.runtime_adapters),
+        "JAVA_HOME": str(runtime.java.parent.parent),
+        "EMRYS_PICARD_JAR": str(runtime.picard_jar),
+        "EMRYS_RSCRIPT": str(runtime.rscript),
+        "EMRYS_RENV_LIBRARY": str(runtime.renv_library),
+    }
 
 
 def parse_launcher_prefix(value: str) -> tuple[str, ...]:
@@ -1338,33 +1362,27 @@ def run_driver(
 
     runtime_command = _emrys(
         workflow_python,
-        "prepare",
-        "local-pilot-runtime",
-        "--bash",
-        str(runtime.bash),
-        "--star",
-        str(runtime.star),
-        "--samtools",
-        str(runtime.samtools),
-        "--gatk",
-        str(gatk_adapter),
-        "--bcftools",
-        str(runtime.bcftools),
-        "--infer-experiment",
-        str(rseqc_adapter),
-        "--gunzip",
-        str(gunzip_adapter),
-        "--java",
-        str(runtime.java),
-        "--picard-jar",
-        str(runtime.picard_jar),
-        "--rscript",
-        str(runtime.rscript),
-        "--renv-library",
-        str(runtime.renv_library),
+        "runtime",
+        "discover",
+        "--project",
+        str(request),
     )
-    runtime_result = transcripts.run("prepare-runtime", runtime_command, cwd=repo_root)
-    _write_exclusive(paths.runtime_profile, runtime_result.stdout.encode("utf-8"))
+    discovery_environment = runtime_discovery_environment(paths, runtime)
+    transcripts.run(
+        "runtime-discovery-plan",
+        runtime_command,
+        cwd=repo_root,
+        environment=discovery_environment,
+    )
+    if paths.runtime_profile.exists():
+        raise DriverError("runtime-discovery-plan", "dry-run published a profile")
+    transcripts.run(
+        "runtime-discovery-publish",
+        [*runtime_command, "--execute"],
+        cwd=repo_root,
+        environment=discovery_environment,
+    )
+    _canonical_file(paths.runtime_profile, "admitted runtime profile")
 
     reference_fasta = paths.inputs / "inputs/reference/reference.fa"
     transcripts.run(
@@ -1426,8 +1444,6 @@ def run_driver(
             "local-pilot",
             "--project",
             str(request),
-            "--runtime-profile",
-            str(paths.runtime_profile),
         ),
         cwd=repo_root,
     )
@@ -1438,8 +1454,6 @@ def run_driver(
             "run",
             "--project",
             str(request),
-            "--runtime-profile",
-            str(paths.runtime_profile),
             "--execution-profile",
             str(direct_execution_profile),
             "--log-level",
@@ -1460,8 +1474,6 @@ def run_driver(
         "run",
         "--project",
         str(request),
-        "--runtime-profile",
-        str(paths.runtime_profile),
         "--execution-profile",
         str(paths.execution_profile),
         "--log-level",

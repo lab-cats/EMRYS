@@ -20,7 +20,6 @@ import stat
 import subprocess
 import sys
 import time
-import uuid
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -48,9 +47,9 @@ from emrys.libraries.installed_package_identity import (
     InstalledPackageIdentityError,
     installed_package_tree_identity,
 )
+from emrys.libraries.exclusive_publication import publish_exclusive
 from emrys.libraries.process_environment import (
-    ProcessEnvironmentError,
-    gatk_subprocess_environment,
+    guarded_r_environment,
     sanitized_subprocess_environment,
 )
 from emrys.libraries.source_authority import controlled_python_argv
@@ -645,46 +644,7 @@ def _resource_plan_from_workflow_config(
 
 
 def _publish_exclusive(path: Path, data: bytes) -> None:
-    parent = path.parent
-    if not parent.is_dir() or parent.is_symlink():
-        raise LifecycleError(f"Publication parent must be a real directory: {parent}")
-    if not hasattr(os, "O_NOFOLLOW"):
-        raise LifecycleError("This platform lacks required O_NOFOLLOW publication")
-    staging = parent / f".{path.name}.{uuid.uuid4().hex}.emrys-stage"
-    descriptor = -1
-    try:
-        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
-        flags |= getattr(os, "O_CLOEXEC", 0)
-        descriptor = os.open(staging, flags, 0o600)
-        remaining = memoryview(data)
-        while remaining:
-            written = os.write(descriptor, remaining)
-            remaining = remaining[written:]
-        os.fsync(descriptor)
-        os.close(descriptor)
-        descriptor = -1
-        os.link(staging, path, follow_symlinks=False)
-        staged = staging.stat(follow_symlinks=False)
-        final = path.stat(follow_symlinks=False)
-        if (staged.st_dev, staged.st_ino) != (final.st_dev, final.st_ino):
-            raise LifecycleError(f"Publication did not retain staged inode: {path}")
-        staging.unlink()
-        directory = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
-        try:
-            os.fsync(directory)
-        finally:
-            os.close(directory)
-    except FileExistsError as exc:
-        raise LifecycleError(f"Refusing to replace existing file: {path}") from exc
-    except OSError as exc:
-        raise LifecycleError(f"Could not publish {path}: {exc}") from exc
-    finally:
-        if descriptor >= 0:
-            os.close(descriptor)
-        try:
-            staging.unlink()
-        except FileNotFoundError:
-            pass
+    publish_exclusive(path, data, LifecycleError)
 
 
 def _sync_real_directory(path: Path, label: str) -> None:
@@ -1259,16 +1219,16 @@ def _admit_runtime_context(
         raise LifecycleError("Required Python version differs from the bound runtime")
     if Path(str(snakemake["path"])) != request.python_executable:
         raise LifecycleError("Snakemake module identity must bind the Python runtime")
-    observed_version = _tool_version(
-        controlled_python_argv(request.python_executable, "-m", "snakemake"),
-        "snakemake module",
-    )
-    if observed_version != snakemake["version"]:
-        raise LifecycleError(
-            "Required Snakemake version differs: "
-            f"declared {snakemake['version']!r}; observed {observed_version!r}"
-        )
     if attempt["execution_mode"] == "test-double":
+        observed_version = _tool_version(
+            controlled_python_argv(request.python_executable, "-m", "snakemake"),
+            "snakemake module",
+        )
+        if observed_version != snakemake["version"]:
+            raise LifecycleError(
+                "Required Snakemake version differs: "
+                f"declared {snakemake['version']!r}; observed {observed_version!r}"
+            )
         if storage_binding is not None:
             raise LifecycleError(
                 "Test-double attempt must not bind storage qualification"
@@ -1300,17 +1260,15 @@ def _admit_runtime_context(
         raise LifecycleError("Required runtime profile digest differs from its bytes")
     renv_project = tools.get("renv_project")
     renv_library = tools.get("renv_library")
-    java = tools.get("java")
-    if renv_project is None or renv_library is None or java is None:
+    if renv_project is None or renv_library is None or tools.get("java") is None:
         raise LifecycleError(
             "Local science attempt must bind its renv project, library, and Java launcher"
         )
     if Path(str(renv_project["resolved_path"])) != observed.root:
         raise LifecycleError("Required renv project differs from the source checkout")
-    environment = _local_runtime_environment(
+    environment = guarded_r_environment(
         observed.root,
         Path(str(renv_library["resolved_path"])),
-        Path(str(java["resolved_path"])),
         base_environment=os.environ,
     )
     try:
@@ -1319,7 +1277,10 @@ def _admit_runtime_context(
             "local",
             environment=environment,
         )
-        doctor.validate_runtime_profile(runtime_inspection, observed.root)
+        doctor.validate_runtime_profile_contract(
+            tuple(item.check for item in runtime_inspection.observations),
+            observed.root,
+        )
     except (RuntimeInspectionError, doctor.DoctorInputError) as exc:
         raise LifecycleError(
             f"Could not re-admit local runtime profile: {exc}"
@@ -1347,7 +1308,6 @@ def _admit_runtime_context(
                 storage_binding,
             ),
             python_executable=request.python_executable,
-            snakemake_version=observed_version,
             runtime_profile_path=profile_path,
         )
     except doctor.DoctorInputError as exc:
@@ -1358,34 +1318,6 @@ def _admit_runtime_context(
         raise LifecycleError(
             "Workflow attempt required tools differ from the re-observed runtime profile"
         )
-
-
-def _local_runtime_environment(
-    source_root: Path,
-    renv_library: Path,
-    selected_java: Path,
-    *,
-    base_environment: Mapping[str, str],
-) -> dict[str, str]:
-    """Construct the one guarded R and selected-Java runtime environment."""
-
-    from emrys.orchestration.local_pilot import doctor  # noqa: PLC0415
-
-    environment = doctor.runtime_environment(
-        source_root,
-        renv_library,
-        base_environment=base_environment,
-    )
-    try:
-        return gatk_subprocess_environment(
-            selected_java,
-            base_environment=environment,
-        )
-    except ProcessEnvironmentError as exc:
-        raise LifecycleError(
-            f"Could not admit Java for local GATK runtime: {exc}"
-        ) from exc
-
 
 def default_lifecycle_ops() -> LifecycleOps:
     """Construct production effects without mutable facade globals."""

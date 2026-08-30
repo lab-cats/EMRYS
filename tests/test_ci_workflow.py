@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -10,7 +11,9 @@ import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_PATH = REPO_ROOT / ".github" / "workflows" / "ci.yml"
-REAL_TOOLS_LOCK_PATH = REPO_ROOT / ".github" / "ci" / "real-tools.conda-lock.yml"
+MANAGED_RUNTIME_ROOT = REPO_ROOT / "src" / "emrys" / "resources" / "runtime"
+MANAGED_RUNTIME_LOCK_PATH = MANAGED_RUNTIME_ROOT / "pixi.lock"
+MANAGED_RUNTIME_MANIFEST_PATH = MANAGED_RUNTIME_ROOT / "pixi.toml"
 SLURM_SETUP_PATH = REPO_ROOT / "tests" / "tools" / "configure_ci_slurm.sh"
 SHELL_RECEIPT_ROOT = "${RUNNER_TEMP}/emrys-python311-test-shards"
 ACTION_RECEIPT_ROOT = "${{ runner.temp }}/emrys-python311-test-shards"
@@ -19,6 +22,7 @@ ORDINARY_JOB_IDS = (
     "static-wheel",
     "shell-slurm",
     "guarded-r",
+    "managed-runtime-userspace",
     "fresh-clone-e2e",
     "python314-coverage-shards",
     "python314-coverage",
@@ -121,14 +125,23 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
     assert "${RUNNER_TEMP}/emrys-synthetic-e2e" in seed["run"]
     assert "${GITHUB_WORKSPACE}" not in seed["run"]
 
-    tools = _named_step(job, "Restore exact real-tool environment from the Linux lock")
+    paths = _named_step(job, "Select managed-runtime paths")
+    assert "PIXI_WORKSPACE=%s/emrys-managed-runtime" in paths["run"]
+    assert "PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml" in paths["run"]
+    assert "${RUNNER_TEMP}" in paths["run"]
+    stage = _named_step(job, "Stage the reviewed runtime lock outside the checkout")
+    assert "src/emrys/resources/runtime/pixi.toml" in stage["run"]
+    assert "src/emrys/resources/runtime/pixi.lock" in stage["run"]
+    tools = _named_step(job, "Restore locked native and R base environments")
     assert tools["uses"] == (
-        "mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39"
+        "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e"
     )
-    assert tools["with"]["environment-file"] == (".github/ci/real-tools.conda-lock.yml")
-    assert tools["with"]["environment-name"] == "emrys-real-e2e-tools"
-    assert tools["with"]["micromamba-version"] == "${{ env.MICROMAMBA_VERSION }}"
-    assert "create-args" not in tools["with"]
+    assert tools["with"]["pixi-version"] == "${{ env.PIXI_VERSION }}"
+    assert tools["with"]["manifest-path"] == "${{ env.PIXI_MANIFEST }}"
+    assert tools["with"]["environments"] == "native r"
+    assert tools["with"]["activate-environment"] == "r"
+    assert tools["with"]["locked"] is True
+    assert "setup-micromamba" not in WORKFLOW_PATH.read_text(encoding="utf-8")
 
     slurm = _named_step(job, "Configure and prove one disposable Slurm node")
     assert "tests/tools/configure_ci_slurm.sh" in slurm["run"]
@@ -136,6 +149,10 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
     authorities = _named_step(
         job, "Record exact runtime authorities outside the checkout"
     )
+    assert "pixi-native-packages.json" in authorities["run"]
+    assert "pixi-r-packages.json" in authorities["run"]
+    assert "uv.lock" in authorities["run"]
+    assert "renv.lock" in authorities["run"]
     assert "picard-slim-3.1.1-*/picard.jar" in authorities["run"]
     assert "*/picard-3.1.1-*/picard.jar" not in authorities["run"]
 
@@ -183,33 +200,99 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
     assert "github.event.schedule == '17 5 * * 0'" in _expression(weekly["if"])
 
 
-def test_real_tool_lock_is_linux_only_and_keeps_exact_science_versions() -> None:
-    lock = yaml.safe_load(REAL_TOOLS_LOCK_PATH.read_text(encoding="utf-8"))
-    assert lock["metadata"]["platforms"] == ["linux-64"]
-    packages = {
-        row["name"]: row for row in lock["package"] if row["platform"] == "linux-64"
-    }
-    expected = {
-        "star": "2.7.11b",
-        "samtools": "1.19.2",
-        "bcftools": "1.21",
-        "gatk4": "4.6.1.0",
-        "gzip": "1.14",
-        "openjdk": "17.0.11",
-        "picard-slim": "3.1.1",
-        "rseqc": "5.0.4",
-    }
-    assert {name: packages[name]["version"] for name in expected} == expected
-    assert {row["manager"] for row in lock["package"]} == {"conda"}
-    assert {row["platform"] for row in lock["package"]} == {"linux-64"}
-    for row in lock["package"]:
-        assert row["hash"]["sha256"]
-        assert row["url"].startswith(
-            (
-                "https://conda.anaconda.org/bioconda/",
-                "https://conda.anaconda.org/conda-forge/",
-            )
-        )
+def test_managed_runtime_lock_has_one_linux_floor_and_exact_science_versions() -> None:
+    manifest = tomllib.loads(MANAGED_RUNTIME_MANIFEST_PATH.read_text(encoding="utf-8"))
+    platform = manifest["workspace"]["platforms"]
+    assert platform == [
+        {
+            "name": "linux-x86-64-floor",
+            "platform": "linux-64",
+            "linux": "4.18",
+            "glibc": "2.28",
+        }
+    ]
+    assert manifest["environments"] == {"native": ["native"], "r": ["r"]}
+
+    lock = yaml.safe_load(MANAGED_RUNTIME_LOCK_PATH.read_text(encoding="utf-8"))
+    assert lock["platforms"] == [
+        {
+            "name": "p1",
+            "subdir": "linux-64",
+            "virtual-packages": [
+                "__glibc=2.28",
+                "__linux=4.18",
+                "__unix=0=0",
+                "__archspec=0=x86_64",
+            ],
+        }
+    ]
+    native = [item["conda"] for item in lock["environments"]["native"]["packages"]["p1"]]
+    for fragment in (
+        "/star-2.7.11b-",
+        "/samtools-1.19.2-",
+        "/bcftools-1.21-",
+        "/gatk4-4.6.1.0-",
+        "/gzip-1.14-",
+        "/openjdk-17.0.11-",
+        "/picard-slim-3.1.1-",
+        "/rseqc-5.0.4-",
+    ):
+        assert sum(fragment in url for url in native) == 1
+    r_environment = [
+        item["conda"] for item in lock["environments"]["r"]["packages"]["p1"]
+    ]
+    r_bases = [url for url in r_environment if "/r-base-" in url]
+    assert len(r_bases) == 1
+    assert "/r-base-4.6.1-" in r_bases[0]
+    metadata = {row["conda"]: row for row in lock["packages"]}
+    locked_environment = {*native, *r_environment}
+    assert locked_environment <= metadata.keys()
+    assert all(metadata[url]["sha256"] for url in locked_environment)
+
+
+def test_managed_runtime_userspace_matrix_proves_the_same_lock() -> None:
+    job = _workflow_jobs()["managed-runtime-userspace"]
+    assert job["container"]["image"] == "${{ matrix.image }}"
+    assert job["strategy"]["fail-fast"] is False
+    assert job["strategy"]["matrix"]["include"] == [
+        {
+            "label": "Rocky 8.10",
+            "image": "rockylinux/rockylinux:8.10",
+            "os_id": "rocky",
+            "os_version": "8.10",
+            "glibc": "2.28",
+        },
+        {
+            "label": "Ubuntu 22.04",
+            "image": "ubuntu:22.04",
+            "os_id": "ubuntu",
+            "os_version": "22.04",
+            "glibc": "2.35",
+        },
+        {
+            "label": "Debian 12",
+            "image": "debian:12",
+            "os_id": "debian",
+            "os_version": "12",
+            "glibc": "2.36",
+        },
+    ]
+    paths = _named_step(job, "Select managed-runtime paths")
+    assert "PIXI_WORKSPACE=%s/emrys-managed-runtime" in paths["run"]
+    assert "PIXI_MANIFEST=%s/emrys-managed-runtime/pixi.toml" in paths["run"]
+    assert "${RUNNER_TEMP}" in paths["run"]
+    trust = _named_step(job, "Install the distro TLS trust bundle")
+    assert "dnf --assumeyes install ca-certificates" in trust["run"]
+    assert "apt-get install --yes --no-install-recommends ca-certificates" in trust["run"]
+    setup = _named_step(job, "Install both managed environments from the unchanged lock")
+    assert setup["uses"] == (
+        "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e"
+    )
+    assert setup["with"]["environments"] == "native r"
+    assert setup["with"]["locked"] is True
+    verify = _named_step(job, "Verify locked tools in this container userspace")
+    assert "src/emrys/resources/runtime/pixi.lock" in verify["run"]
+    assert 'pixi list --locked --manifest-path "${PIXI_MANIFEST}"' in verify["run"]
 
 
 def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:

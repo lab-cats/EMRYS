@@ -51,10 +51,9 @@ The committed
 is a structural starter requiring site-specific paths and expectations. Direct
 protection lives in
 [`test_runtime_availability.py`](../../../../tests/evidence/runtime_availability/test_runtime_availability.py).
-The stricter fixed-pilot roster is a separate public starter at
-[`local_pilot_runtime.example.tsv`](../../../../configs/local_pilot_runtime.example.tsv)
-and is admitted by the local-pilot owner rather than changing this generic
-profile contract.
+The stricter fixed-pilot roster is the packaged internal
+[`runtime_policy.tsv`](../../resources/runtime/runtime_policy.tsv) used by
+Project runtime discovery; it does not change this generic profile contract.
 For the guarded local pilot, the declared `renv_library` itself remains one
 canonical real directory. An installed package entry may be a normal `renv`
 cache symlink, but the probe resolves it and requires `find.package`, the loaded
