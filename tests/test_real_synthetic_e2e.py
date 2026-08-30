@@ -50,6 +50,7 @@ def _plan(workspace: Path) -> str:
 def test_cli_defaults_to_a_no_write_plan(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     arguments = driver.build_parser().parse_args(_argv(tmp_path))
     assert arguments.execute is False
+    assert arguments.slurm_cpus == 4
     assert arguments.slurm_memory == 6144
     assert driver.main(_argv(tmp_path)) == 0
     output = capsys.readouterr().out

@@ -194,6 +194,7 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
         assert profile_argument in step["run"]
         assert "tests/tools/real_synthetic_e2e.py" in step["run"]
         assert '"/usr/bin/srun"' in step["run"]
+        assert "--slurm-cpus" not in step["run"]
         assert "--execute" in step["run"]
 
     weekly = _named_step(job, "Run the selected 100,000-pair real synthetic E2E")

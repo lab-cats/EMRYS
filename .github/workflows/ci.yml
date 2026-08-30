@@ -959,7 +959,6 @@ jobs:
             --storage-compute-launcher-json \
               '["/usr/bin/srun","--partition=emrys-ci","--nodes=1","--ntasks=1","--cpus-per-task=1","--mem=1G","--time=00:05:00","--wait=60"]' \
             --slurm-partition emrys-ci \
-            --slurm-cpus 2 \
             --slurm-memory 6G \
             --slurm-time 02:00:00 \
             --slurm-timeout-seconds 7200 \
@@ -999,7 +998,6 @@ jobs:
             --storage-compute-launcher-json \
               '["/usr/bin/srun","--partition=emrys-ci","--nodes=1","--ntasks=1","--cpus-per-task=1","--mem=1G","--time=00:05:00","--wait=60"]' \
             --slurm-partition emrys-ci \
-            --slurm-cpus 2 \
             --slurm-memory 6G \
             --slurm-time 02:00:00 \
             --slurm-timeout-seconds 7200 \
