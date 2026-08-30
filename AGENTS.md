@@ -22,9 +22,20 @@ take priority over speed or convenience.
   approval.
 - long running checks should be run in CI, with quick targeted checks
   being run locally
-- prefer using standard libraries over bespoke implementation except
-  when standard libraries would be insufficient or when bespoke implementation
-  would permit for a smaller implementation
+- Before adding owned machinery, evaluate the existing repository authority,
+  the standard library, a mature maintained tool/library, and the relevant
+  established package manager. Bespoke code requires a recorded capability
+  gap or a demonstrably smaller total maintained surface.
+- Add a shared policy authority only when at least two production owners make
+  the same decision from equivalent inputs with the same semantics and one
+  bounded migration retires every duplicate caller net-negatively. Re-admission
+  at a distinct trust or mutation boundary is not duplication.
+- Evaluate a generalized execution-backend boundary near campaign closure, but
+  add one only for a concrete approved extension or demonstrated compression,
+  with parity and no duplicate authority. Compression must be net-negative;
+  extension growth follows the normal quantified-exception gate. Do not add a
+  distinct Artifact Store without a separately approved concrete unmet need;
+  current class-specific artifact authorities remain valid.
 - features should be implemented with the MINIMUM possible footprint
   while still maintaining repo quality
 - Treat boundary values as immutable by default. A `Run` is an immutable plan:
@@ -45,7 +56,9 @@ take priority over speed or convenience.
   production artifacts without explicit operator intent. Preserve ambiguous
   locks, partials, backups, logs, and recovery markers.
 - Compute, validation, rendering, and scheduler code never installs or repairs
-  dependencies. Restoration is a separate operator action.
+  dependencies. Explicit Doctor/runtime repair is a separate operator action
+  that delegates dependency solving and installation to an established package
+  manager within the selected environment and authority boundary.
 
 ## Evidence guard
 
