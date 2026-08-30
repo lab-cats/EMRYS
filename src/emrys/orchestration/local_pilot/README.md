@@ -48,7 +48,7 @@ historical run.
 `--regions-file PARTITION_ID PATH` declarations are supplied, `partitions.tsv`.
 It recognizes only the closed `<sample>_R1`/`<sample>_R2` FASTQ convention and
 lists every missing condition, replicate, and strandedness assignment without
-writing. Drafts are sorted, validated by the current Project contracts,
+writing. Drafts are sorted, validated by the current strict manifest contracts,
 dry-run-first, and published only into an absent directory with `--execute`.
 It neither fills unknown science-tool paths nor installs anything. The runtime
 preparer requires explicit Java, Picard-jar, Rscript, and `renv`-library paths.
