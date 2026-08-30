@@ -59,9 +59,12 @@ adjacent discovery or environment interpolation. Retired adjacent
 when no execution profile is selected.
 
 Slurm placement submits the whole Run as exactly one node/task/allocation and
-delegates back to the same grouped control path inside it. The public dry-run
-does not submit, create the workspace, or create logs. `--execute` creates the
-canonical `<workspace>/logs` directory, calls `sbatch` once with an exact
+delegates back to the same grouped control path inside it. EMRYS constructs one
+frozen submission plan; a terminal displays its placement summary and asks
+before submitting that same object once. Refusal, EOF,
+interruption, or noninteractive omission of `--execute` does not submit, create
+the workspace, or create logs. Confirmation or explicit `--execute` creates
+the canonical `<workspace>/logs` directory, calls `sbatch` once with an exact
 argument vector and stdin batch program, and prints `JOB_ID`, `OUT`, and `ERR`.
 Ambient `SBATCH_*` and private transport variables are removed before
 submission. Omitted account, partition, QOS, memory, and node-list fields defer
@@ -127,13 +130,19 @@ canonical package-tree binding agree on its target.
 The grouped `emrys run`, `emrys resume`, `emrys report`, and
 `emrys inspect local-pilot-run`
 routes are the supported control surface; their planning helpers are private
-implementation details. `run` and `resume` require the controlled
-Python invocation and mutate nothing without `--execute`. Planning reruns the
-Doctor, admits the authored Project again, derives the deterministic Run
-identity, and prints concise Run identity, combined pending/reusable work,
-reporting, and scheduled-placement information. Verbose output adds the Run
-root, resources/allocation, execution profile, and scheduler streams; debug
-output adds exact engine, scheduler, and task commands.
+implementation details. `run` and `resume` require the controlled Python
+invocation. With direct placement, a terminal builds and prints one frozen Run
+plan, asks once, and executes that same object only after confirmation. Slurm
+placement instead confirms the frozen submission plan described above; Run
+planning occurs later inside the allocation. Refusal, EOF, or interruption
+mutates nothing and opens no log; noninteractive omission of `--execute`
+remains no-write, while `--execute` is the explicit automation path. Direct
+planning reruns the Doctor, admits the authored Project again, derives the
+deterministic Run identity, and prints concise Run identity, combined
+pending/reusable work, and reporting information. Verbose output adds the Run
+root and resources/allocation; debug output adds exact engine and task commands.
+Slurm submission output instead adds placement detail, profile and stream paths
+at verbose level, and the scheduler command at debug level.
 The tracked four-sample, one-partition starter expands to 35 owner jobs; other
 admitted sample/partition counts expand according to the fixed profile. The
 control surface exposes no raw Snakemake flags, force, unlock, cleanup, retry,
@@ -142,8 +151,10 @@ plugin, or alternate-profile escape hatch.
 Each executing Run Attempt owns exactly one application log under the selected
 root, which defaults to `<workspace>/logs/application`; Slurm scheduler streams
 live under `<workspace>/logs`. After minimal workspace/control admission, the
-compute delegate opens that log before semantic planning; the submission
-process and valid dry-run own none. The log records publication readiness
+compute delegate and explicit direct `--execute` path open that log before
+semantic planning; confirmed terminal direct execution opens it immediately
+after consent and before lifecycle admission. The submission process and
+unconfirmed plan own none. The log records publication readiness
 before the authoritative Attempt receipt and observes the receipt only after
 its durable commit. After initialization, log degradation cannot alter
 lifecycle, receipt, recovery, or exit; the log is never completion authority.

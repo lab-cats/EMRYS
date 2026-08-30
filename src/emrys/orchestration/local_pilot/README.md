@@ -53,10 +53,12 @@ computational declaration with Attempt-local direct or Slurm placement; CLI
 resource flags have highest precedence. EMRYS performs no adjacent discovery.
 
 Slurm placement is a transport around the same one-host workflow, not another
-scientific backend. A dry-run prints concise placement without writing or
-submitting; verbose output adds the exact profile and stream paths. `--execute`
-creates `<workspace>/logs`, submits the whole Run once, and prints exact
-`JOB_ID`, `OUT`, and `ERR` values. The compute
+scientific backend. On a terminal, EMRYS prints concise placement and asks
+before creating the scheduler-log directory or submitting. Refusal, EOF, or
+interruption writes and submits nothing; verbose output adds the exact profile
+and stream paths. `--execute` is the noninteractive automation path. An
+accepted command submits the whole Run once and prints exact `JOB_ID`, `OUT`,
+and `ERR` values. The compute
 delegate re-admits the profile digest, submission UID, internal marker, and
 Slurm job ID before planning the immutable Run. It loads only an exact declared
 module roster, creates and later removes one mode-`0700` private scratch
@@ -182,13 +184,19 @@ work only through the accepted fixed profile:
   --run-root /absolute/path/to/workspace/runs/run-DIGEST
 ```
 
-`run` and `resume` print concise Run identity, combined pending/reusable work,
-reporting, and scheduled-placement information and write nothing unless
-`--execute` is present. After successful scientific execution they generate the
-fixed reports by default; `--no-report` stops after the successful v2 Attempt
-receipt without changing Results. `report` independently validates a completed
-Run and plans without writes, then generates with `--execute` or reuses an exact
-complete report transaction. Verbose output adds the Run root,
+With direct placement, `run` and `resume` print concise Run identity, combined
+pending/reusable work, and reporting information; a terminal asks once before
+executing that exact plan. With Slurm placement, EMRYS constructs one frozen
+submission plan, prints its placement summary, and after confirmation submits
+that same object once; Run planning occurs inside the allocation. Refusal, EOF,
+or interruption opens no application log and writes nothing. Noninteractive
+omission of `--execute` retains the no-write/no-submit behavior, while
+`--execute` remains the explicit automation path. After successful scientific
+execution they generate the fixed reports by
+default; `--no-report` stops after the successful v2 Attempt receipt without
+changing Results. `report` independently validates a completed Run and plans
+without writes, then generates with `--execute` or reuses an exact complete
+report transaction. Verbose output adds the Run root,
 resources/allocation, execution profile, and scheduler streams; debug output
 adds exact engine, scheduler, and task commands. `inspect local-pilot-run` is
 always read-only. With no execution profile, `run` uses the built-in direct

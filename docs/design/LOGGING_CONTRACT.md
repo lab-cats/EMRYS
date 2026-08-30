@@ -99,6 +99,14 @@ SHA-256, stream, and component; never replace bytes silently.
   semantic input validation, expensive work, output directories, locks, or
   publication, so execute preflight failures are logged without authorizing
   other side effects.
+- A terminal direct `run` or `resume` plan is not an adopted execution Attempt
+  until the user confirms it. Planning and refusal therefore own no log.
+  Confirmation passes that exact frozen plan into execution and opens the
+  application log before lifecycle admission; explicit noninteractive
+  `--execute` retains the log-before-semantic-preflight behavior above.
+- Terminal Slurm placement confirms a frozen submission plan, not a Run plan,
+  and owns no application log. Its private compute delegate constructs the Run
+  and opens the application log inside the allocation.
 - The owner assigns `scope_kind` (`run`, `sample`, `cohort`, `reference`,
   `review`, `validation`, or `maintenance` initially), `scope_id`,
   `execution_attempt_id`, and `entrypoint`. Execution attempt is distinct from

@@ -773,12 +773,12 @@ reporting transactions, the raw Snakemake command, and every pending producer
 and validator command. Those details are useful expert evidence but exceed the
 intended ordinary control plane.
 
-The current [quickstart](../../quickstart.md) also tells the operator to create
-and populate the input-directory tree manually, redirect a complete runtime
-profile to a new filename, copy the run root from a dry-run, and repeat that
-transfer from a completed Slurm dry-run log before execution. This confirms
-that safe internal boundaries still leak user-as-glue work into both local and
-scheduled journeys.
+At the audited revision, the [quickstart](../../quickstart.md) also told the
+operator to create and populate the input-directory tree manually, redirect a
+complete runtime profile to a new filename, copy the run root from a dry-run,
+and repeat that transfer from a completed Slurm dry-run log before execution.
+Section 13.12 supersedes the two-invocation Run guidance; the remaining setup
+work still confirms that safe internal boundaries leak user-as-glue work.
 
 #### Current owner and caller map
 
@@ -867,15 +867,23 @@ plan records remains Open.
 
 #### Plan, execute, and scheduler observations
 
-`plan_run` performs readiness, normalization, resource resolution, and attempt
-planning without writing workspace state. In one `emrys run --execute`
-invocation, the same in-memory `AttemptPlan` is printed and then executed. A
-plain dry-run persists no accepted plan. If the user later invokes
-`emrys run --execute` separately, EMRYS recomputes normalization/readiness and
-creates a new attempt time, token, owner token, process identity, and attempt
-paths. The user therefore cannot currently approve and execute the exact prior
-dry-run plan. There is also no built-in interactive confirmation between plan
-display and mutation.
+At the audited revision, `plan_run` performed readiness, normalization,
+resource resolution, and attempt planning without writing workspace state. In
+one `emrys run --execute` invocation, the same in-memory `AttemptPlan` was
+printed and then executed. A plain dry-run persisted no accepted plan. A later
+`emrys run --execute` recomputed normalization/readiness and created a new
+attempt time, token, owner token, process identity, and attempt paths. The user
+therefore could not approve and execute the exact prior dry-run plan, and there
+was no interactive confirmation between plan display and mutation.
+
+Section 13.12 closes that audited direct-control gap: one terminal invocation
+builds and displays one `AttemptPlan`, then executes that same frozen object
+only after confirmation. Whole-Run Slurm constructs one frozen submission plan,
+displays its placement summary, and after confirmation submits that same object
+once; the compute delegate still constructs the immutable Run only after it can
+bind the admitted Slurm job ID.
+The submit host does not manufacture compute-allocation readiness or a Run plan
+it cannot admit.
 
 The current ordering has an important qualification. The normalized execution
 contract candidate and the in-memory `AttemptPlan` exist before mutation, but
@@ -966,9 +974,10 @@ CLI composes all three routes through one controlled-runtime adapter instead of
 three duplicate forwarding functions. This changes no command, argument,
 output, Run/Attempt authority, execution behavior, or persisted format.
 
-The subsequent narrow Project vertical now owns active scientist intake;
-confirmation, report opt-out/regeneration, broader argument ownership, final
-command naming, and higher-level execution-profile selection remain later work.
+The subsequent narrow Project vertical now owns active scientist intake.
+Terminal confirmation and report opt-out/regeneration are implemented; broader
+argument ownership, final command naming, and higher-level execution-profile
+selection remain later work.
 
 #### Request-to-Analysis intake hardening
 
@@ -2564,8 +2573,39 @@ separate work.
 | Logging, mutation, and deferred configuration | Reporting needs diagnostics but not another semantic lifecycle. Its former workflow memory settings no longer govern execution. | **Keep logging observational and state bounded.** Automatic reporting continues in the Run application log; standalone generation opens one log only after generation begins; dry-run and reuse open none. Only existing ledgers, output transactions, and the application log may change. `reporting_memory_mb` remains a visible redundant-configuration candidate pending explicit approval; the frozen dashboard and `DOC-05` are untouched. |
 
 Category-separated closeout is recorded in the findings matrix. `RUN-03`
-remains Open for the broader one-command journey, real placement/outcome
-parity, generalized realization, and remaining public migration.
+remains Open for real placement/outcome parity, generalized realization, and
+remaining public migration.
+
+### 13.12 Bounded slice record: single-invocation Run journey
+
+| Surface/category | Finding | Disposition and surviving authority |
+|---|---|---|
+| Direct `run`/`resume` control | Separate no-write and `--execute` invocations rebuilt Attempt-specific plan fields, so the operator could not approve the object later executed. | **Consolidate.** A terminal builds and displays one frozen `AttemptPlan`, reads one confirmation, and passes that exact object into the existing lifecycle. Refusal or EOF returns without mutation; interruption propagates before mutation. Noninteractive omission of `--execute` remains the no-write path. |
+| Whole-Run Slurm | Submit-host planning owns placement and transport, while immutable Run admission requires compute-allocation readiness and the scheduler job ID. | **Confirm the exact authority available.** EMRYS constructs one frozen submission plan and displays its placement summary; confirmation creates `<workspace>/logs` and passes that same object to `sbatch` once. The private `--execute` delegate remains noninteractive and constructs the Run inside the allocation. No false submit-host Run/readiness claim is added. |
+| Automation and reporting | Automation needs an explicit noninteractive route, and reporting is downstream rather than a semantic stage. | **Retain `--execute`; change no reporting behavior.** Explicit automation and the private delegate never prompt. Default automatic reporting, `--no-report`, and independent `emrys report` generation/reuse retain their existing owners and semantics. |
+| Compression and protections | Run/Resume duplicated execution-option definitions, no-write rendering, and identical public error rendering. Scheduler admission, lifecycle/logging, recovery, reporting, and evidence validation protect independent boundaries. | **Consolidate only the low-risk copies.** One shared execution-option owner, no-write renderer, and public control-failure renderer replace the duplicates. Explicit direct `--execute` still opens the application log before semantic preflight; accepted interactive direct execution opens it after consent. Slurm submission owns no application log. No filesystem, scheduler, lifecycle, signal, recovery, reporting, evidence, or historical-reader defense is removed. |
+| `LOG-05`, mutation, shell, and evidence | A declined plan is not an adopted execution Attempt. Direct application-log and lifecycle state begin only after execution authority; Slurm transport state begins only after submission authority. | **Keep mutation bounded.** Pre-confirmation creates no workspace, log, Run, Attempt, report transaction, or scheduler submission. After direct confirmation, the existing application-log, lifecycle, and reporting owners remain unchanged. After Slurm confirmation, only scheduler transport state begins; its private delegate later owns the compute-side application log and lifecycle. No shell is touched, no mutable Run state is added, and retained evidence changes by zero. |
+
+The current owner is `local_pilot/control.py`; its callers are the grouped CLI,
+the private Slurm delegate, and their control/transport tests. The three
+consolidated render/argument/error helpers had no independent invariant. The
+retained scheduler, path-admission, lifecycle, logging, recovery, reporting,
+and evidence protections defend reachable user-input, external-system,
+failure, concurrency, and corruption boundaries; none is deleted. Their
+independent checks remain in their existing owners.
+
+The estimate was one existing product file, net nonpositive lines, and zero new
+public concepts, configuration artifacts, call edges, or compatibility paths.
+The actual product change is `+56/-62`, net `-6`, with zero growth in each of
+those other categories. Caller migration is complete for grouped `run` and
+`resume`; the duplicate paths are removed. Preconditions were approval of the
+bounded behavior, exact-plan/no-write/single-submit focused parity,
+documentation alignment, and clean CI; only CI remains external acceptance.
+The immutable pre-confirmation plan is transient. Accepted direct execution
+owns the existing application log and bounded lifecycle state. Slurm
+submission and stream state remain transport state; its compute delegate later
+owns the application log and Attempt. Test, documentation, and evidence
+actuals are recorded in the findings matrix.
 
 ## 14. Measurement plan
 
@@ -2759,7 +2799,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `CONTROL-01` | Realize the ratified compact public model and progressive disclosure. Immutable current request-to-Analysis intake, successor Run authority, separated status, and one supported grouped-CLI Run-control boundary are implemented; shared mutable normalization views, the duplicate direct Python planning surface, and the temporary execution projection are retired. Public Project/Analysis/Results representation and control, progressive disclosure, and remaining public migration remain Open. |
 | `CONFIG-01` | Current request-to-Analysis admission remains internal. The operator path now collapses separate launcher and resource files into one optional execution profile; omission selects packaged direct defaults and admitted CLI resource overrides have highest current precedence. Run-bound resources, Attempt-local placement, and the separate runtime profile remain distinct and inspectable. One scientist-facing Project definition and generation of remaining scientific/runtime inputs remain Open. |
 | `OPS-01` | The current operator surface is one optional closed execution-profile file plus explicit resource overrides, with implemented current precedence and source/effective provenance. Named profiles, discovery/registry, broader site/project precedence, storage/runtime integration, and the final safe override roster remain Open. |
-| `OPS-02` | Grouped `run`/`resume` now select direct or whole-Run Slurm placement from the admitted profile. Slurm submits once through a private transport and re-enters the same one-host backend; the generated wrapper is retired. Dry-run is no-write/no-submit, while execute emits exact scheduler receipt paths. Real scheduler/site and allocation-sensitive outcome parity, broader command simplification, progress/status, and stable expert routes remain Open. |
+| `OPS-02` | Grouped `run`/`resume` now select direct or whole-Run Slurm placement from the admitted profile. A terminal direct invocation displays and confirms the exact frozen plan. Whole-Run Slurm constructs one frozen submission plan, displays its placement summary, and submits that same object once after confirmation before re-entering the same one-host backend. Noninteractive omission of `--execute` remains no-write/no-submit; explicit automation emits exact scheduler receipt paths. The generated wrapper is retired. Real scheduler/site and allocation-sensitive outcome parity, broader command simplification, and stable expert routes remain Open. |
 | `OPS-03` | Inline/generated program inventory, extraction of substantive reusable logic, and removal of operator dependence on helper scripts |
 | `OPS-04` | Replace “local pilot” with a domain name that remains accurate beyond one execution context |
 | `SETUP-01` | Generate structural input manifests while refusing to invent pairing, strata, conditions, cohorts, or other biological meaning |
@@ -2767,7 +2807,7 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `SETUP-03` | Guided project creation, safe owned directories, generated configuration, validation, and no secret or biological invention; not containerization |
 | `RUNTIME-01` | Tiered runtime provisioning and admission; Managed/Site/Explicit are proposed labels; complete qualification includes the active internal workflow engine/Snakemake where applicable and remains separate from execution profiles |
 | `DOCTOR-01` | Project-aware readiness capabilities, actionable failures, qualified internal workflow-engine dependency, debug escape hatch, and the explicit-repair override with bounded mutation rules; exact command partitioning remains open |
-| `RUN-03` | The current path constructs and commits immutable successor Run authority, admits it through workflow/task boundaries, and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. The scientific Attempt now ends at `cohort_slice` with a released lock and receipt v2; default reporting runs afterward, `--no-report` disables it, and `emrys report` plans/generates/reuses it independently without creating a Run or Attempt. Low-level reporting commands and the composite workflow tail are retired. The same grouped surface owns direct and whole-Run Slurm realization without a generated wrapper. Computational declaration may affect Run identity; profile location/raw bytes, placement, allocation, scheduler job ID, logging, reporting, and transport state remain Run-neutral facts. The broader one-command journey, real placement/outcome parity, generalized realization, and remaining public migration remain Open. |
+| `RUN-03` | The current path constructs and commits immutable successor Run authority, admits it through workflow/task boundaries, and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. One terminal direct invocation now displays and confirms the exact frozen Run plan. Slurm instead constructs one frozen submission plan, displays its placement summary, and submits that same object once after confirmation; its private delegate constructs the Run and opens the application log inside the allocation. `--execute` remains the explicit automation path. Refusal, EOF, or interruption precedes every applicable direct or transport mutation. The scientific Attempt ends at `cohort_slice` with a released lock and receipt v2; default reporting runs afterward, `--no-report` disables it, and `emrys report` plans/generates/reuses it independently without creating a Run or Attempt. Low-level reporting commands and the composite workflow tail are retired. Computational declaration may affect Run identity; profile location/raw bytes, placement, allocation, scheduler job ID, logging, reporting, and transport state remain Run-neutral facts. Real placement/outcome parity, generalized realization, and remaining public migration remain Open. |
 | `IDENTITY-01` | Successor Runs now use the selected domain-separated digest over relocation-independent Analysis and Execution-Plan identities, with historical Runs preserved through the version-aware reader and no successor execution projection. Ordinary public exposure, progressively disclosed Attempt identity, and remaining public migration remain Open. |
 | `FILESYSTEM-01` | Completed `RESULTS-01` supplies one current discoverable result/report surface with no hidden competing report root; automatic broader directory creation and the Project/inputs/runs and Run-Bundle layouts remain proposed |
 | `CONTAINER-01` | Independent managed-container/environment decision without assuming final runtime labels; institutional/native/advanced coexistence, image contents and digest, scheduler/storage/security/licensing/update contracts |
