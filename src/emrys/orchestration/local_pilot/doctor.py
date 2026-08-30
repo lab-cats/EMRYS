@@ -1014,8 +1014,7 @@ def inspect_local_pilot(
 
 
 def configure_parser(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--project", required=True, type=Path)
-    parser.add_argument("--workspace", required=True, type=Path)
+    parser.add_argument("--project", default=Path("project.yaml"), type=Path)
     parser.add_argument("--runtime-profile", required=True, type=Path)
 
 
@@ -1028,7 +1027,7 @@ def doctor_from_args(
     try:
         result = inspect_local_pilot(
             arguments.project,
-            arguments.workspace,
+            Path(os.path.abspath(arguments.project)).parent,
             arguments.runtime_profile,
             source_root=source_root,
             ops=ops,

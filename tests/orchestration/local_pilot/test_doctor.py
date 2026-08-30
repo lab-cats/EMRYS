@@ -1183,14 +1183,13 @@ def test_cli_statuses_and_help(
     assert help_result.returncode == 0
     assert "--project" in help_result.stdout
     assert "--runtime-profile" in help_result.stdout
-    assert "--workspace" in help_result.stdout
+    assert "--workspace" not in help_result.stdout
 
     request = build(tmp_path)
     runtime = tmp_path / "runtime.tsv"
     runtime.write_text("placeholder\n", encoding="utf-8")
     arguments = argparse.Namespace(
         project=request,
-        workspace=tmp_path / "workspace",
         runtime_profile=runtime,
     )
     ready_status = doctor.doctor_from_args(

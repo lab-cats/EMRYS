@@ -4,17 +4,22 @@ import argparse
 import csv
 import gzip
 import hashlib
+import io
 import json
 import os
+import stat
 import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 from emrys import __main__ as cli
 from emrys.contracts.scientific_evidence import step08
 from emrys.evidence.runtime_availability.inspector import load_runtime_profile_contract
+from emrys.libraries.validation.tsv import tsv_bytes
 from emrys.orchestration.local_pilot import doctor, onboarding, synthetic_fixture
+from tests.orchestration.local_pilot.fixture import build
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -57,87 +62,135 @@ def _fastqs(root: Path, *sample_ids: str) -> list[Path]:
     return paths
 
 
-def test_init_local_pilot_is_dry_run_first_and_receipt_last(
+def _project_arguments(
+    tmp_path: Path, output: Path, *, execute: bool
+) -> argparse.Namespace:
+    source = tmp_path / "source"
+    request = build(source)
+    definition = yaml.safe_load(request.read_text(encoding="utf-8"))
+    table, _sample_ids, rows = step08.validate_sample_manifest(source / "samples.tsv")
+    for row in rows:
+        row["r1_fastq"] = str((source / row["r1_fastq"]).resolve())
+        row["r2_fastq"] = str((source / row["r2_fastq"]).resolve())
+    sample_manifest = tmp_path / "samples.absolute.tsv"
+    sample_manifest.write_bytes(tsv_bytes(table.header, rows))
+    analysis = definition["analysis"]
+    reference = definition["reference"]
+    return argparse.Namespace(
+        output_dir=output,
+        sample_manifest=sample_manifest,
+        partition_manifest=source / "partitions.tsv",
+        reference_id=reference["id"],
+        reference_fasta=(source / reference["fasta"]).resolve(),
+        reference_gtf=(source / reference["gtf"]).resolve(),
+        sjdb_overhang=reference["star_index"]["sjdb_overhang"],
+        genome_sa_index_nbases=reference["star_index"]["genome_sa_index_nbases"],
+        cohort_id=definition["cohort_id"],
+        analysis_id=analysis["id"],
+        control_condition=analysis["control_condition"],
+        treatment_condition=analysis["treatment_condition"],
+        target_change=f"{analysis['rna_ref']}>{analysis['rna_alt']}",
+        min_sample_dp=analysis["min_sample_dp"],
+        mean_dp_threshold=analysis["mean_dp_threshold"],
+        fdr_threshold=analysis["fdr_threshold"],
+        common_or_threshold=analysis["common_or_threshold"],
+        absolute_difference_threshold=analysis["absolute_difference_threshold"],
+        background_condition=analysis["background_condition"],
+        background_max_fraction=analysis["background_max_fraction"],
+        label="guided-project",
+        execute=execute,
+    )
+
+
+def test_init_project_is_dry_run_first_and_creates_only_the_project_root(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    output = tmp_path / "starter"
-    assert onboarding.init_from_args(_namespace(output, execute=False)) == 0
+    output = tmp_path / "project"
+    arguments = _project_arguments(tmp_path, output, execute=False)
+    assert onboarding.init_project_from_args(arguments) == 0
     assert not output.exists()
     assert "Dry-run complete" in capsys.readouterr().out
 
-    assert onboarding.init_from_args(_namespace(output, execute=True)) == 0
-    expected = {
-        "project.yaml",
-        "emrys.execution.yaml",
-        "samples.tsv",
-        "partitions.tsv",
-        "runtime.tsv",
-        "starter-set.manifest.tsv",
-    }
-    assert set(_tree_bytes(output)) == expected
-    rows = list(
-        csv.DictReader(
-            (output / "starter-set.manifest.tsv").open(encoding="utf-8"),
-            delimiter="\t",
-        )
+    arguments.execute = True
+    assert onboarding.init_project_from_args(arguments) == 0
+    assert set(_tree_bytes(output)) == {"project.yaml"}
+    directories = {path.name for path in output.iterdir() if path.is_dir()}
+    assert directories == {"logs", "runs", "runtime"}
+    assert all(
+        stat.S_IMODE((output / name).stat().st_mode) == 0o700
+        for name in directories
     )
-    assert [row["path"] for row in rows] == sorted(
-        expected - {"starter-set.manifest.tsv"}
+    definition = yaml.safe_load((output / "project.yaml").read_text(encoding="utf-8"))
+    assert definition["sample_manifest"] == str(arguments.sample_manifest.resolve())
+    assert definition["partition_manifest"] == str(
+        arguments.partition_manifest.resolve()
     )
-    for row in rows:
-        data = (output / row["path"]).read_bytes()
-        assert int(row["size_bytes"]) == len(data)
-        assert row["sha256"] == hashlib.sha256(data).hexdigest()
-    request = (output / "project.yaml").read_text(encoding="utf-8")
-    assert "sample_manifest: samples.tsv" in request
-    assert "partition_manifest: partitions.tsv" in request
-    execution_bytes = (output / "emrys.execution.yaml").read_bytes()
-    assert (
-        execution_bytes
-        == (REPO_ROOT / "configs/execution_profile.example.yaml").read_bytes()
-    )
-    runtime_rows = {
-        row["check_id"]: row
-        for row in csv.DictReader(
-            (output / "runtime.tsv").open(encoding="utf-8"),
-            delimiter="\t",
-            strict=True,
-        )
-    }
-    assert runtime_rows["python"]["target"] == str(Path(sys.executable))
-    assert runtime_rows["renv_project"]["target"] == str(REPO_ROOT)
+    assert Path(definition["reference"]["fasta"]).is_absolute()
+    assert not list(output.rglob("*.fastq"))
+    assert onboarding.validate_project(output / "project.yaml").sample_count == 4
 
 
-def test_starter_runtime_preserves_selected_virtualenv_launcher(
-    tmp_path: Path,
-) -> None:
-    target = _executable(tmp_path / "python-target")
-    launcher = tmp_path / "venv/bin/python"
-    launcher.parent.mkdir(parents=True)
-    launcher.symlink_to(target)
-
-    runtime = onboarding.starter_members(
-        root=REPO_ROOT,
-        python_executable=launcher,
-    )["runtime.tsv"][0]
-    rows = {
-        row["check_id"]: row
-        for row in csv.DictReader(runtime.decode().splitlines(), delimiter="\t")
-    }
-
-    assert rows["python"]["target"] == str(launcher)
-    assert rows["renv_project"]["target"] == str(REPO_ROOT)
-
-
-def test_init_refuses_predecessor_without_changing_it(tmp_path: Path) -> None:
-    output = tmp_path / "starter"
+def test_init_project_refuses_predecessor_without_changing_it(tmp_path: Path) -> None:
+    output = tmp_path / "project"
+    arguments = _project_arguments(tmp_path, output, execute=True)
     output.mkdir()
     predecessor = output / "owned.txt"
     predecessor.write_bytes(b"preserve me\n")
 
-    assert onboarding.init_from_args(_namespace(output, execute=True)) == 2
+    assert onboarding.init_project_from_args(arguments) == 2
     assert _tree_bytes(output) == {"owned.txt": b"preserve me\n"}
+
+
+def test_init_project_requires_every_noninteractive_answer(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert cli.main(["init", "project"]) == 2
+    error = capsys.readouterr().err
+    assert "missing Project setup answers" in error
+    assert "--output-dir" in error
+    assert "--background-max-fraction" in error
+
+
+def test_init_project_prompts_and_requires_explicit_suggestion_acceptance(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    arguments = _project_arguments(tmp_path, tmp_path / "project", execute=False)
+    arguments.target_change = None
+    arguments.min_sample_dp = None
+    terminal_input = Terminal("C>T\n\n")
+    terminal_output = Terminal()
+    monkeypatch.setattr(onboarding.sys, "stdin", terminal_input)
+    monkeypatch.setattr(onboarding.sys, "stderr", terminal_output)
+
+    answers = onboarding._collect_project_answers(arguments)
+
+    assert answers["target_change"] == "C>T"
+    assert answers["min_sample_dp"] == 1
+    assert "target change:" in terminal_output.getvalue()
+    assert "min sample dp [1]:" in terminal_output.getvalue()
+
+
+def test_init_project_rejects_eof_instead_of_accepting_a_suggestion(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Terminal(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    arguments = _project_arguments(tmp_path, tmp_path / "project", execute=False)
+    arguments.min_sample_dp = None
+    monkeypatch.setattr(onboarding.sys, "stdin", Terminal())
+    monkeypatch.setattr(onboarding.sys, "stderr", Terminal())
+
+    with pytest.raises(onboarding.OnboardingError, match="ended before min sample dp"):
+        onboarding._collect_project_answers(arguments)
 
 
 def test_manifest_init_is_deterministic_validated_and_dry_run_first(
@@ -358,13 +411,10 @@ def test_publication_rejects_unsafe_member_paths(
 
 
 def test_init_requires_an_absolute_external_output(tmp_path: Path) -> None:
-    assert onboarding.init_from_args(_namespace(Path("relative"), execute=True)) == 2
-    assert (
-        onboarding.init_from_args(
-            _namespace(REPO_ROOT / "forbidden-output", execute=True)
-        )
-        == 2
-    )
+    arguments = _project_arguments(tmp_path, Path("relative"), execute=True)
+    assert onboarding.init_project_from_args(arguments) == 2
+    arguments.output_dir = REPO_ROOT / "forbidden-output"
+    assert onboarding.init_project_from_args(arguments) == 2
 
 
 def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
@@ -376,6 +426,15 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
     _publish_synthetic(second)
 
     assert _tree_bytes(first) == _tree_bytes(second)
+    assert {
+        path.relative_to(first).as_posix()
+        for path in first.rglob("*")
+        if path.is_dir()
+    } >= {"logs", "runs", "runtime"}
+    assert all(
+        stat.S_IMODE((first / name).stat().st_mode) == 0o700
+        for name in onboarding.PROJECT_DIRECTORIES
+    )
     result = onboarding.validate_project(first / "project.yaml")
     assert result.sample_count == 4
     assert result.pair_count == 2

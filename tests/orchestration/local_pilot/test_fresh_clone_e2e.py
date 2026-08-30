@@ -564,7 +564,7 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
 
     intake_root = tmp_path / "intake"
     request = build_intake_fixture(intake_root)
-    workspace = tmp_path / "workspace"
+    workspace = request.parent
     runtime_profile = _write_runtime_profile(tmp_path / "runtime")
     environment = _command_environment(source_root, tmp_path)
     normalized = admit_project(
@@ -574,8 +574,6 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
     common = [
         "--project",
         str(request),
-        "--workspace",
-        str(workspace),
         "--runtime-profile",
         str(runtime_profile),
     ]
@@ -769,12 +767,10 @@ def test_fresh_clone_public_failure_resume_and_outputs(tmp_path: Path) -> None:
         clean_request,
         REPO_ROOT / "workflow/contracts/local_cmh_v2.json",
     )
-    clean_workspace = tmp_path / "clean-workspace"
+    clean_workspace = clean_request.parent
     clean_common = [
         "--project",
         str(clean_request),
-        "--workspace",
-        str(clean_workspace),
         "--runtime-profile",
         str(runtime_profile),
         "--execution-profile",

@@ -193,18 +193,18 @@ def _add_onboarding_commands(command_parsers: _SubparserCollection) -> None:
         metavar="SUBJECT",
         required=True,
     )
-    local_parser = init_parsers.add_parser(
-        "local-pilot",
-        help="Create a matched local-pilot starter set without replacing files.",
+    project_parser = init_parsers.add_parser(
+        "project",
+        help="Create one validated Project root around existing inputs.",
         description=(
-            "Plan or publish one matched Project, sample, partition, runtime, "
-            "and single-allocation Slurm starter set. The output directory "
-            "must be absent and outside the EMRYS checkout."
+            "Collect the current scientific inputs, validate them, then plan or "
+            "publish one absent Project root with owned run, log, and runtime "
+            "directories. Input data remains in place."
         ),
     )
-    local_pilot_onboarding_command.configure_init_parser(local_parser)
-    local_parser.set_defaults(
-        _command_handler=local_pilot_onboarding_command.init_from_args
+    local_pilot_onboarding_command.configure_project_init_parser(project_parser)
+    project_parser.set_defaults(
+        _command_handler=local_pilot_onboarding_command.init_project_from_args
     )
     manifests_parser = init_parsers.add_parser(
         "manifests",

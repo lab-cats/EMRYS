@@ -107,9 +107,9 @@ def _readiness(
     step_threads: dict[str, int] | None = None,
 ) -> tuple[doctor.DoctorResult, object, object, Path, Path]:
     tmp_path.mkdir(parents=True, exist_ok=True)
-    intake = tmp_path / "intake"
-    intake.mkdir()
-    request = build(intake)
+    workspace = tmp_path / "project"
+    workspace.mkdir()
+    request = build(workspace)
     execution_profile_path = request.parent / "emrys.execution.yaml"
     profile_document = yaml.safe_load(
         execution_profile_path.read_text(encoding="utf-8")
@@ -239,7 +239,6 @@ def _readiness(
         observations=tuple(observations),
         rendered_bytes=b"test runtime report\n",
     )
-    workspace = tmp_path / "workspace"
     storage_receipt = tmp_path / "storage.qualified.json"
     storage_bytes = b"fixed storage qualification receipt\n"
     storage_receipt.write_bytes(storage_bytes)
@@ -300,7 +299,6 @@ def _run_control(tmp_path: Path, execute_plan, transform_plan):
     readiness, project, resources, project_path, workspace = _readiness(tmp_path)
     arguments = argparse.Namespace(
         project=project_path,
-        workspace=workspace,
         runtime_profile=readiness.runtime_profile,
         execution_profile=project_path.parent / "emrys.execution.yaml",
         log_level=None,
@@ -402,7 +400,8 @@ def test_plan_is_no_write_and_projects_exact_public_owner_roster(
 ) -> None:
     plan = _plan(tmp_path)
 
-    assert not plan.workspace.exists()
+    assert not (plan.workspace / "runs").exists()
+    assert not (plan.workspace / "logs").exists()
     assert plan.preparation.operation == "execute"
     assert json.loads(plan.preparation.attempt_record_bytes) == plan.attempt_record
     assert (
@@ -1838,6 +1837,7 @@ def test_public_run_dry_run_is_no_write(
     )
 
     projections = {}
+    workspace = arguments.project.parent
     for level in ("normal", "verbose", "debug"):
         monkeypatch.setattr(
             control.sys,
@@ -1854,7 +1854,8 @@ def test_public_run_dry_run_is_no_write(
         projections[level] = captured.err
         assert "Dry-run complete" in captured.err
         assert "Execute this plan?" not in captured.err
-        assert not workspace.exists()
+        assert not (workspace / "runs").exists()
+        assert not (workspace / "logs").exists()
 
     normal = projections["normal"]
     assert "Project: 'first label'" in normal
@@ -1926,7 +1927,8 @@ def test_interactive_run_confirms_exact_plan_before_every_write(
     arguments.log_root = log_root
 
     def before_read() -> None:
-        assert not workspace.exists()
+        assert not (workspace / "runs").exists()
+        assert not (workspace / "logs").exists()
         assert not log_root.exists()
         assert executed == []
 
@@ -1947,7 +1949,8 @@ def test_interactive_run_confirms_exact_plan_before_every_write(
         assert list(log_root.rglob("*.jsonl"))
     else:
         assert len(planned) == 1 and executed == []
-        assert not workspace.exists()
+        assert not (workspace / "runs").exists()
+        assert not (workspace / "logs").exists()
         assert not log_root.exists()
 
 
@@ -1974,7 +1977,7 @@ def test_interactive_resume_uses_the_same_no_write_gate(
     rendered = capsys.readouterr().err
     assert "Execute this plan? [y/N]" in rendered
     assert "Dry-run complete; no resume state was written." in rendered
-    assert not plan.workspace.exists()
+    assert not plan.run_root.exists()
 
 
 def test_public_run_escapes_project_label_for_terminal_output(
@@ -2074,7 +2077,6 @@ def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
     )
     arguments = argparse.Namespace(
         project=request,
-        workspace=workspace,
         runtime_profile=readiness.runtime_profile,
         execution_profile=request.parent / "emrys.execution.yaml",
         log_level=None,
@@ -2249,8 +2251,7 @@ def _slurm_profile(tmp_path: Path) -> Path:
 
 def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Namespace:
     return argparse.Namespace(
-        project=tmp_path / "request.yaml",
-        workspace=tmp_path / "workspace",
+        project=tmp_path / "project.yaml",
         runtime_profile=tmp_path / "runtime.tsv",
         execution_profile=_slurm_profile(tmp_path),
         log_level=None,
@@ -2283,6 +2284,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     )
 
     projections = {}
+    workspace = arguments.project.parent
     for level in ("normal", "verbose", "debug"):
         arguments.log_level = level
         assert control.run_from_args(arguments, ops=ops) == 0
@@ -2290,7 +2292,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
         assert captured.out == ""
         projections[level] = captured.err
         assert "Execute this plan?" not in captured.err
-        assert not arguments.workspace.exists()
+        assert not (workspace / "logs").exists()
 
     normal = projections["normal"]
     assert "Execution placement: Slurm" in normal
@@ -2304,11 +2306,11 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     assert set(normal.splitlines()) <= set(verbose.splitlines())
     assert f"Execution profile: {arguments.execution_profile}" in verbose
     assert (
-        f"Scheduler stdout: {arguments.workspace}/logs/emrys-local-pilot-%j.out"
+        f"Scheduler stdout: {workspace}/logs/emrys-local-pilot-%j.out"
         in verbose
     )
     assert (
-        f"Scheduler stderr: {arguments.workspace}/logs/emrys-local-pilot-%j.err"
+        f"Scheduler stderr: {workspace}/logs/emrys-local-pilot-%j.err"
         in verbose
     )
     assert "Scheduler command:" not in verbose
@@ -2327,6 +2329,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=execute)
     arguments.no_report = True
+    workspace = arguments.project.parent
     submissions = []
 
     def submit(plan):
@@ -2337,7 +2340,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
 
         def before_read() -> None:
             assert submissions == []
-            assert not arguments.workspace.exists()
+            assert not (workspace / "logs").exists()
 
         monkeypatch.setattr(control.sys, "stdin", _InputStream("y\n", before_read))
         monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
@@ -2354,12 +2357,12 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     captured = capsys.readouterr()
     assert captured.out == (
         "JOB_ID=812345\n"
-        f"OUT={arguments.workspace}/logs/emrys-local-pilot-812345.out\n"
-        f"ERR={arguments.workspace}/logs/emrys-local-pilot-812345.err\n"
+        f"OUT={workspace}/logs/emrys-local-pilot-812345.out\n"
+        f"ERR={workspace}/logs/emrys-local-pilot-812345.err\n"
     )
     assert len(submissions) == 1
     assert " --execute --no-report" in submissions[0].batch_script
-    assert list(arguments.workspace.rglob("*")) == [arguments.workspace / "logs"]
+    assert list((workspace / "logs").iterdir()) == []
     assert "Execution placement: Slurm" in captured.err
     assert ("Execute this plan? [y/N]" in captured.err) is not execute
 
@@ -2374,7 +2377,7 @@ def test_public_slurm_rejects_symlinked_workspace_ancestor_without_mutation(
     linked_parent = tmp_path / "linked-parent"
     linked_parent.symlink_to(real_parent, target_is_directory=True)
     arguments = _scheduled_run_arguments(tmp_path, execute=True)
-    arguments.workspace = linked_parent / "workspace"
+    arguments.project = linked_parent / "workspace" / "project.yaml"
     monkeypatch.setattr(
         control.slurm_submission,
         "submit",
@@ -2407,7 +2410,7 @@ def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
 
     assert control.run_from_args(arguments, ops=ops) == 2
     assert "Execution-profile SHA-256 differs" in capsys.readouterr().err
-    assert not arguments.workspace.exists()
+    assert not (arguments.project.parent / "logs").exists()
 
 
 @pytest.mark.parametrize(
@@ -3022,7 +3025,6 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     )
     run_arguments = argparse.Namespace(
         project=request,
-        workspace=workspace,
         runtime_profile=readiness.runtime_profile,
         execution_profile=request.parent / "emrys.execution.yaml",
         allocated_cores=1,

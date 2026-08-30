@@ -1,69 +1,43 @@
 # Configuration and input guide
 
-The tracked `local_pilot_*` inputs and `execution_profile.*.yaml` files are
-starters for the supported automatic workflow. They describe what to analyze
-and, when selected explicitly, how to resource and place the whole Run. They
-do not contain reads, a reference, scientific software, private site values,
-or a ready-to-run production selection.
+`emrys init project` is the supported Project-creation route. It collects the
+current profile's scientific answers, validates existing sample and partition
+manifests plus their reference, and plans one absent Project root. On a
+terminal, omitted answers are prompted; automation supplies them as flags.
+Add `--execute` only after reviewing the no-write plan.
 
-Initialize the set in an operator-managed directory **outside the Git
-checkout**. Both forms are dry-run-first; the output must be an absolute absent
-directory beneath an existing writable real parent:
-
-```sh
-emrys init local-pilot --output-dir /absolute/absent/emrys-inputs
-emrys init local-pilot \
-  --output-dir /absolute/absent/emrys-inputs \
-  --execute
-```
-
-The execute form publishes `project.yaml`, `emrys.execution.yaml`,
-`samples.tsv`, `partitions.tsv`, `runtime.tsv`, and then
-`starter-set.manifest.tsv` last. The manifest proves only the initial
-generated starter; expected data/config edits make those original hashes
-historical.
-
-Keep the authored Project, execution profile, manifests, selected runtime
-profile, and source data together for the life of the run. EMRYS binds the
-scientific inputs and computational resource declaration into Run identity;
-placement and observed allocation are Attempt context. Changing either is not
-a way to repair an entered Attempt.
-
-## Recommended input layout
-
-This layout makes every data path relative to the Project and keeps the
-checkout clean:
+The output must be outside the EMRYS checkout beneath an existing canonical,
+writable parent. Setup creates the root and empty owned directories; Runs later
+extend them as follows:
 
 ```text
-emrys-inputs/
+PROJECT/
 |-- project.yaml
-|-- emrys.execution.yaml
-|-- samples.tsv
-|-- partitions.tsv
-|-- runtime.tsv
-|-- runtime.selected.tsv
-|-- starter-set.manifest.tsv
-`-- inputs/
-    |-- reads/
-    |   |-- control_01_R1.fastq.gz
-    |   |-- control_01_R2.fastq.gz
-    |   |-- treatment_01_R1.fastq.gz
-    |   `-- treatment_01_R2.fastq.gz
-    |-- reference/
-    |   |-- genome.fa
-    |   `-- annotation.gtf
-    `-- regions/
-        `-- selected_regions.txt
+|-- logs/
+|-- runtime/
+`-- runs/
+    `-- RUN-ID/
+        `-- results/
 ```
 
-The workspace is a separate, initially absent directory beside this input
-directory. Do not put the workspace, large inputs, restored R library, or
-results in the checkout.
+The `project.yaml` parent is the Project root. EMRYS creates and owns
+`logs/`, `runtime/`, and `runs/`; ordinary `run` and Doctor commands derive
+that root and do not accept a separate workspace. Scientist-facing Results
+remain under `runs/<run-id>/results`, including reports beneath
+`results/reports/<run-id>`.
 
-Authored paths may be absolute or relative to the directory containing the
-Project definition. They must be explicit: no `~`, environment variables, templates,
-globs, redundant separators, or `.`/`..` components. EMRYS does not search for
-files or infer which sample, reference, or runtime you intended.
+Setup records the admitted absolute sample and partition manifest paths in
+`project.yaml`; manifests and FASTQ, FASTA, GTF, and regions-file data all
+remain in place. `emrys init manifests` produces the required portable form
+without inventing biological assignments. No execution or runtime profile is
+generated or selected. Without `--execution-profile`, execution remains direct
+with the built-in resource policy; the current explicit runtime-profile route
+remains required until runtime discovery replaces it.
+
+Keep the Project and every referenced input for the life of its Runs. Changing
+scientific inputs or computational policy is not a way to repair an entered
+Attempt. Authored paths are literal: no `~`, environment interpolation,
+templates, globs, redundant separators, or `.`/`..` components.
 
 ## Execution profile
 
@@ -93,69 +67,26 @@ Select the file only with `--execution-profile FILE` on the `emrys run` or
 `emrys resume` command; see the [runbook](../docs/operations/RUNBOOK.md#local-pilot-lifecycle-routes)
 for the complete command. Planning never submits or writes. `--execute`
 submits exactly once and prints `JOB_ID`, `OUT`, and `ERR`. Scheduler streams
-use `<workspace>/logs`; the application-log root defaults to its `application/`
-subdirectory. Execution mode is never inferred from the profile or environment.
+use `<project-root>/logs`; the application-log root defaults to its
+`application/` subdirectory. Execution mode is never inferred from the profile
+or environment.
 
-## Project YAML
+## Project definition and analysis
 
-[`project.example.yaml`](project.example.yaml) is the current Project-definition
-shape. It remains the temporary `emrys.request.v3` adapter while final Project
-nesting is deferred. YAML keys are closed; unknown or duplicate keys and merge
-keys are rejected.
+Setup generates closed request-v3 `project.yaml` adapter bytes; scientists do
+not assemble that internal shape. Its prompts collect stable Project,
+reference, cohort, and analysis IDs, the existing manifests and reference,
+STAR index parameters, paired conditions, target RNA change, and analysis
+thresholds. The FASTA parent must be writable for Step `00c` sidecars. Safe IDs
+begin with an ASCII letter or digit and then contain only letters, digits,
+`.`, `_`, or `-`.
 
-### Run and reference fields
+Execution resources remain separate. Packaged defaults apply first, an
+explicit `--execution-profile` may replace them, and owner-defined CLI
+overrides have highest precedence. EMRYS records effective values and sources
+and rejects policies that exceed the visible allocation.
 
-| Field | Meaning | How to choose it |
-| --- | --- | --- |
-| `schema_version` | Temporary Project-adapter contract version. | Keep `emrys.request.v3`. |
-| `label` | Optional human label. It does not affect the run ID. | Use a short description for operators. |
-| `profile` | Fixed automatic workflow. | Keep `emrys.profile.local_cmh.v2`. There is no public alternate profile. |
-| `sample_manifest` | Sample TSV path. | Point to the matched sample manifest, normally beside the Project. |
-| `partition_manifest` | Genomic partition TSV path. | Point to the matched partition manifest. |
-| `reference.id` | Stable reference-build identity. | Use a safe ID such as `grch38_gencode_v47`; do not use a filename as a substitute for provenance. |
-| `reference.fasta` | Materialized, nonempty reference FASTA. | Use the same assembly/build as the annotation and partition selectors. The reference directory must be writable because Step `00c` creates or reuses `.fai` and `.dict` sidecars beside it. |
-| `reference.gtf` | Materialized, nonempty annotation GTF. | Use an annotation whose contig vocabulary agrees with the FASTA. |
-| `reference.star_index.sjdb_overhang` | STAR splice-junction overhang. | Select deliberately for the read design; a common choice is maximum read length minus one. The value is recorded and later validated. |
-| `reference.star_index.genome_sa_index_nbases` | STAR suffix-array index parameter. | Select for the reference size according to the admitted STAR release; `14` is appropriate for many mammalian references but is not universal. |
-| `cohort_id` | Identity shared by the samples entering cohort processing. | Use a stable safe ID, not an analysis conclusion. |
-
-### Resource fields
-
-Execution resources are separate from scientific intent and live under the
-execution profile's `resources` key. An explicit profile may override any
-closed resource field; individual resource CLI options have highest
-precedence.
-
-| Field | Meaning |
-| --- | --- |
-| `workflow_cores` | Total CPU capacity made available to Snakemake. |
-| `workflow_memory_mb` | Total global scheduler memory in MiB, or `allocation` to use observed capacity. |
-| `stage_concurrency` | Closed per-stage caps for repeatable Steps `01`, `02`, `02b`, `03`, `04`, `05`, `06`, and `07`. |
-| `step_threads` | Closed thread mapping for Steps `00a`, `01`, `02`, `06`, and `08`. |
-| `stage_memory_mb` | Total memory reserved by one computational owner job, in MiB or `workflow`. |
-| `reporting_memory_mb` | Total memory reserved by each reporting transaction, in MiB or `workflow`. |
-
-The tracked
-[`execution_profile.csu_viking_ev_pum1.yaml`](execution_profile.csu_viking_ev_pum1.yaml)
-retains the workload-specific six-library EV/PUM1 policy for one reviewed
-exclusive 256-CPU CSU Viking allocation. It is not a packaged default or a
-general CSU profile. The workflow exposes 12 schedulable cores to Snakemake,
-uses a 524,288 MiB internal memory budget, leaves scheduler memory unset, and
-retains a conservative 12-hour walltime. Replace the explicit site and scratch
-placeholders in an operator-owned copy before selecting it.
-
-EMRYS rejects a policy when concurrency multiplied by per-job threads exceeds
-workflow cores, when concurrency multiplied by per-job memory exceeds workflow
-memory, or when workflow totals exceed the process-visible outer allocation.
-The effective policy, source digests, explicit overrides, placement request,
-and observed allocation are stored with the immutable Attempt. The
-computational declaration is also bound into the successor Run; placement and
-the scheduler job ID are not.
-
-Safe IDs begin with an ASCII letter or digit and then contain only letters,
-digits, `.`, `_`, or `-`.
-
-### Analysis fields
+### Analysis answers
 
 The current profile performs a paired, two-sided, continuity-corrected
 Cochran-Mantel-Haenszel (CMH) test across declared replicate strata and applies
@@ -183,9 +114,10 @@ editing site or biological conclusion.
 
 ## Sample manifest
 
-[`local_pilot_samples.example.tsv`](local_pilot_samples.example.tsv) is a
-literal tab-separated file. Keep the exact column order shown below; `notes`
-may be appended as the final optional column.
+`samples.tsv` is a literal tab-separated file. `emrys init manifests` can
+generate a portable draft from supplied FASTQ paths and explicit biological
+metadata. Keep the exact column order shown below; `notes` may be appended as
+the final optional column.
 
 | Column | Meaning | Rules |
 | --- | --- | --- |
@@ -219,9 +151,8 @@ when appropriate.
 
 ## Partition manifest
 
-[`local_pilot_partitions.example.tsv`](local_pilot_partitions.example.tsv)
-limits the genomic regions entering cohort mpileup. It has exactly three
-columns:
+`partitions.tsv` limits the genomic regions entering cohort mpileup. It has
+exactly three columns:
 
 | Column | Meaning | Rules |
 | --- | --- | --- |
@@ -263,7 +194,7 @@ It renders the complete fixed TSV to stdout; redirect it only to a new absent
 file:
 
 ```sh
-test ! -e /absolute/emrys-inputs/runtime.selected.tsv && (
+test ! -e /absolute/project/runtime/runtime.selected.tsv && (
   set -C
   emrys prepare local-pilot-runtime \
     --bash /canonical/path/to/bash \
@@ -277,7 +208,7 @@ test ! -e /absolute/emrys-inputs/runtime.selected.tsv && (
     --picard-jar /canonical/path/to/picard.jar \
     --rscript /canonical/path/to/Rscript \
     --renv-library /canonical/path/to/renv-library \
-    > /absolute/emrys-inputs/runtime.selected.tsv
+    > /absolute/project/runtime/runtime.selected.tsv
 )
 ```
 
@@ -305,7 +236,7 @@ The accepted tool versions are:
 | gzip | a compatible `gunzip` command |
 | R | `Rscript 4.6.1` |
 
-The exact Step `08` R namespace versions remain in the starter. The
+The exact Step `08` R namespace versions remain in the runtime policy. The
 `renv_project` target must be the exact clean EMRYS checkout; `renv_library`
 must be an existing canonical library that passed the guarded `r-check` for
 that checkout. Doctor and execution never install, download, restore, load
@@ -321,7 +252,7 @@ A successful head-node probe does not establish compute-node visibility.
 
 Check these facts first:
 
-- the Project directory and source data are durable and readable on the
+- the Project root and referenced source data are durable and readable on the
   execution host;
 - FASTQ R1/R2 files are distinct, use matching compression, and have retained
   provider checksums;
@@ -331,8 +262,8 @@ Check these facts first:
 - the reference directory is the intended writable authority for `.fai` and
   `.dict` sidecars;
 - the runtime paths resolve in the actual execution environment;
-- the checkout is clean, and the external workspace leaf is absent beneath an
-  existing writable real directory; and
+- the checkout is clean, and the Project root is canonical, writable, and
+  outside the checkout; and
 - storage and memory have been planned for the reference index, several BAM
   generations per sample, orientation BAMs, VCFs, logs, and immutable recovery
   evidence.
@@ -345,7 +276,7 @@ scientific result.
 Before doctor, run the tool-free compatibility validator on the execution host:
 
 ```sh
-emrys validate project --project /absolute/emrys-inputs/project.yaml
+emrys validate project --project /absolute/project/project.yaml
 ```
 
 It streams and binds declared inputs, checks paired strata, reconciles

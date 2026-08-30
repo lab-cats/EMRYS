@@ -69,7 +69,7 @@ walkthrough.
 
 | Need | Canonical route |
 | --- | --- |
-| Create matched starters and choose synthetic or real inputs | [Quickstart: initialize and ingest](../../quickstart.md#3-initialize-and-ingest-synthetic-or-real-inputs) |
+| Create a Project root around synthetic or real inputs | [Quickstart: initialize and ingest](../../quickstart.md#3-initialize-and-ingest-synthetic-or-real-inputs) |
 | Prepare the explicit runtime profile | [Quickstart: runtime profile](../../quickstart.md#4-prepare-one-explicit-runtime-profile) and [`configs/README.md`](../../configs/README.md) |
 | Qualify storage and obtain runtime `READY` | [Quickstart: compatibility](../../quickstart.md#5-validate-data-compatibility-without-scientific-tools) and [runtime readiness](../../quickstart.md#6-require-full-runtime-ready) |
 | Review and execute the fixed workflow | [Quickstart: plan and execution](../../quickstart.md#7-review-and-confirm-one-immutable-plan) |
@@ -84,7 +84,6 @@ Slurm allocation; it is not a distributed executor:
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
   --project /absolute/path/to/project.yaml \
-  --workspace /absolute/path/to/workspace \
   --runtime-profile /absolute/path/to/runtime.selected.tsv \
   --execution-profile /absolute/path/to/emrys.execution.yaml
 ```
@@ -94,10 +93,11 @@ execute it. Slurm placement instead prints its placement summary and asks
 whether to submit that frozen submission plan once; the Run plan is constructed
 inside the allocation. Refusal, EOF, or interruption writes and submits
 nothing. Use `--execute` only for deliberate noninteractive automation.
-Accepted Slurm submission prints exact `JOB_ID`, `OUT`, and `ERR` values.
-Scheduler streams are created automatically under `<workspace>/logs`; the
-compute-side Run Attempt later opens its application log under
-`<workspace>/logs/application`.
+Accepted Slurm submission prints exact `JOB_ID`, `OUT`, and `ERR` values. Setup
+creates `runs/`, `logs/`, and `runtime/` beneath the `project.yaml` parent;
+scheduler and application logs use its `logs/` tree. Only the advanced
+`inspect storage-qualification --workspace PROJECT_ROOT ...` probe retains an
+explicit storage target; run and Doctor derive it.
 Reporting runs automatically after scientific work and remains a separate,
 receipt-last transaction rather than a scientific stage. The scientific
 Attempt ends at `cohort_slice` before reporting begins. `--no-report` disables
@@ -115,7 +115,7 @@ Inspect state from EMRYS's admitted records rather than `.snakemake` metadata:
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
   local-pilot-run \
-  --run-root /absolute/path/to/workspace/runs/run-DIGEST
+  --run-root /absolute/project/runs/run-DIGEST
 ```
 
 Inspection is read-only. Rehashing bound evidence can be expensive, so run it
@@ -131,7 +131,7 @@ a failed or interrupted Attempt, and `Recovery available: yes`:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \
-  --run-root /absolute/path/to/workspace/runs/run-DIGEST \
+  --run-root /absolute/project/runs/run-DIGEST \
   --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
 ```
 
@@ -151,9 +151,9 @@ command is read-only; add `--execute` after reviewing its plan:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \
-  --run-root /absolute/path/to/workspace/runs/run-DIGEST
+  --run-root /absolute/project/runs/run-DIGEST
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \
-  --run-root /absolute/path/to/workspace/runs/run-DIGEST \
+  --run-root /absolute/project/runs/run-DIGEST \
   --execute
 ```
 
@@ -454,7 +454,7 @@ using the exact run root printed by the control stream:
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
   local-pilot-run \
-  --run-root /absolute/path/to/workspace/runs/run-DIGEST
+  --run-root /absolute/project/runs/run-DIGEST
 ```
 
 A successful run or resume, and a completed inspection, supply verified result
@@ -467,7 +467,7 @@ scheduler streams are required.
 ### Manual stream and accounting fallback
 
 For a whole-Run Slurm placement, use the exact job ID and log directory printed
-at submission. The default directory is `<workspace>/logs`. Wait for both `%j`
+at submission. The default directory is `<project-root>/logs`. Wait for both `%j`
 streams, but stop waiting if accounting shows a terminal allocation:
 
 ```bash

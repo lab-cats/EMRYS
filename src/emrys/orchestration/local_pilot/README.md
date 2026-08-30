@@ -4,14 +4,15 @@ This owner exposes the fixed local-pilot admission, onboarding, and lifecycle
 surface. The zero-context entry points are:
 
 ```bash
-# Plan first; add --execute to create one absent starter directory.
-emrys init local-pilot --output-dir /absolute/outside-checkout/starter
-
 # Infer exact <sample>_R1/_R2 pairs and require all biological metadata.
 emrys init manifests \
   --output-dir /absolute/outside-checkout/manifest-drafts \
   --fastq /data/control_1_R1.fastq.gz /data/control_1_R2.fastq.gz \
   --sample control_1 control pair_1 forward
+
+# Collect the remaining scientific answers and plan an absent Project root.
+# Omitted answers are prompted on a terminal; add --execute after review.
+emrys init project
 
 # Generate the default 130-pair deterministic science fixture the same way.
 emrys init synthetic-local-pilot \
@@ -36,27 +37,18 @@ emrys prepare local-pilot-runtime \
   > /new/absent/path/runtime.ready.tsv
 ```
 
-`init local-pilot` publishes `project.yaml`, editable `emrys.execution.yaml`,
-`samples.tsv`, `partitions.tsv`, and `runtime.tsv`, then writes
-`starter-set.manifest.tsv` last and re-admits every path, mode, size, and byte.
-The EMRYS identity cutover does not adopt or resume pre-cutover run roots.
-Retired adjacent `emrys.launcher.yaml` or `emrys.resources.yaml` files fail
-closed when no explicit execution profile is selected instead of being
-silently ignored. Use an exact historical checkout for an already-entered
-historical run.
-`init manifests` instead writes only strict `samples.tsv` and, when one or more
-`--regions-file PARTITION_ID PATH` declarations are supplied, `partitions.tsv`.
-It recognizes only the closed `<sample>_R1`/`<sample>_R2` FASTQ convention and
-lists every missing condition, replicate, and strandedness assignment without
-writing. Drafts are sorted, validated by the current strict manifest contracts,
-dry-run-first, and published only into an absent directory with `--execute`.
-It neither fills unknown science-tool paths nor installs anything. The runtime
-preparer requires explicit Java, Picard-jar, Rscript, and `renv`-library paths.
-For Bash, STAR, samtools, GATK, bcftools, RSeQC `infer_experiment.py`, and
-gunzip, omission of the corresponding optional path is allowed only when PATH
-contains exactly one distinct resolved executable. It preserves the tracked
-version policy and performs no version probe; the doctor remains the readiness
-authority.
+`init manifests` produces deterministic strict manifests with absolute data
+paths and requires every biological assignment explicitly. `init project`
+validates them, records their admitted absolute paths without copying manifests
+or raw data, creates mode-`0700` `runs/`, `logs/`, and `runtime/`, and publishes
+request-v3 `project.yaml` last. Its canonical parent is the Project root used by
+run and Doctor; Results remain under `runs/<run-id>/results`. Setup creates no
+execution or runtime profile, Run, Attempt, Results, or application log.
+
+The retained runtime preparer renders the fixed roster without probing or
+installing; ambiguous PATH resolution fails closed and Doctor remains the
+readiness authority. Use an exact historical checkout for an entered
+historical Run.
 
 `emrys run` and `emrys resume` accept one optional explicit
 `--execution-profile`. Without it, EMRYS uses its built-in conservative
@@ -85,7 +77,7 @@ workflow completion. Per-owner Slurm scheduling, multi-node execution, and the
 cutover.
 
 An executing Run Attempt owns one application log, by default beneath
-`<workspace>/logs/application`. Reporting is invoked automatically after
+`<project-root>/logs/application`. Reporting is invoked automatically after
 scientific work, publishes its transaction receipts last, and is not a
 scientific stage.
 
@@ -150,7 +142,7 @@ The underlying narrow read-only admission APIs are:
 - `all_pass.require_all_pass(...)` checks the meaning of one owner-validation
   report rather than trusting its process exit;
 - `doctor.inspect_local_pilot(...)` admits one Project plus the fixed profile,
-  checks a disjoint workspace plan, exact clean source checkout, controlled
+  checks its external Project root, exact clean source checkout, controlled
   Python/Snakemake, science-tool paths and versions, Picard jar, guarded
   `renv`, Step `08` namespaces, and the exact final storage qualification
   without creating or repairing anything.
@@ -160,7 +152,6 @@ The doctor also has the grouped public command:
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys doctor local-pilot \
   --project /absolute/path/to/project.yaml \
-  --workspace /absolute/path/to/workspace \
   --runtime-profile /absolute/path/to/local_pilot_runtime.tsv
 ```
 
@@ -180,20 +171,19 @@ work only through the accepted fixed profile:
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys run \
   --project /absolute/path/to/project.yaml \
-  --workspace /absolute/path/to/workspace \
   --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
   --execution-profile /absolute/path/to/emrys.execution.yaml
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys inspect \
-  local-pilot-run --run-root /absolute/path/to/workspace/runs/run-DIGEST
+  local-pilot-run --run-root /absolute/project/runs/run-DIGEST
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \
-  --run-root /absolute/path/to/workspace/runs/run-DIGEST \
+  --run-root /absolute/project/runs/run-DIGEST \
   --runtime-profile /absolute/path/to/local_pilot_runtime.tsv \
   --execution-profile /absolute/path/to/emrys.execution.yaml
 
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys report \
-  --run-root /absolute/path/to/workspace/runs/run-DIGEST
+  --run-root /absolute/project/runs/run-DIGEST
 ```
 
 With direct placement, `run` and `resume` print concise Run identity, combined
@@ -217,14 +207,14 @@ places the new Attempt directly. An explicit profile may select Slurm for either
 command. Explicit resource CLI flags override the selected or inherited policy.
 
 Direct execution writes its application log beneath the selected root, which
-defaults to `<workspace>/logs/application`. Slurm submission writes scheduler streams
-beneath `<workspace>/logs`, while the compute delegate owns the single
+defaults to `<project-root>/logs/application`. Slurm submission writes scheduler
+streams beneath `<project-root>/logs`, while the compute delegate owns the single
 application log. Automatic reporting shares that Run log. A standalone
 executing `emrys report` owns a reporting log; dry-run and verified reuse own no
 durable application log. Logging failure never changes reporting admission or
 publication. Normal human output keeps raw Snakemake/task commands in the
 evidence and debug surfaces rather than the primary control stream.
-Execution re-admits the normalized reference/workspace storage qualification
+Execution re-admits the normalized reference/Project-root storage qualification
 before delegation and after the child terminates. A missing, changed, or
 semantically invalid receipt blocks the attempt; the immutable attempt cannot
 accept its own declared storage identity as proof.
@@ -325,9 +315,9 @@ define the temporary Project-adapter request schema, profile, successor Analysis
 normalized execution, lock, attempt, receipt,
 task-start/task-attempt/verified-task, and reporting-ledger record shapes. No
 automatic owner-recovery mechanism is implemented. B5 materializes only the
-fixed source-checkout profile and public owner commands. B6 adds matched public
-Project, sample, and partition starters plus a clean fresh-clone no-science E2E
-covering readiness, no-write planning, separate clean success, controlled
+fixed source-checkout profile and public owner commands. B6 adds Project and
+manifest initialization plus a clean fresh-clone no-science E2E covering
+readiness, no-write planning, separate clean success, controlled
 between-task failure, byte-preserving resume, inspection, reporting, and
 completed-run refusal. The E2E supplies explicit repository-only collaborators;
 the shipped command has no fake mode or engine escape hatch. Real-tool, VM,

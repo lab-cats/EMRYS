@@ -358,13 +358,13 @@ identity.
 
 ## Filesystem layout
 
-One operator-selected workspace contains immutable run directories:
+The canonical `project.yaml` parent contains immutable run directories:
 
 ```text
-<workspace>/logs/
+<project-root>/logs/
   emrys-local-pilot-<slurm-job-id>.out/.err
   application/                    default structured-log root
-<workspace>/runs/<run-id>/
+<project-root>/runs/<run-id>/
   contract/
     samples.tsv
     partitions.tsv
@@ -439,7 +439,7 @@ profile, and scheduler streams; debug adds exact safe engine, scheduler, and
 task commands.
 
 For Slurm placement, terminal confirmation or explicit noninteractive
-`--execute` creates only `<workspace>/logs` on the submit host, submits the
+`--execute` uses only `<project-root>/logs` on the submit host, submits the
 displayed placement once, and prints `JOB_ID`, `OUT`, and `ERR`. The compute
 delegate re-admits its profile digest, UID, marker, and scheduler job ID before
 doctor, Run planning, or lifecycle mutation. It owns the single application

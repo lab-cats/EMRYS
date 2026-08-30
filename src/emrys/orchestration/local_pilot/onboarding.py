@@ -25,6 +25,7 @@ from emrys.libraries.references.contigs import (
 from emrys.libraries.validation.tsv import tsv_bytes
 from emrys.orchestration.local_pilot.normalization import (
     ProjectAdmission,
+    _admit_project_data,
     admit_project,
     validate_authored_path,
 )
@@ -36,7 +37,7 @@ DESCRIPTION = (
     "and writes nothing."
 )
 PROFILE_RELATIVE_PATH = Path("workflow/contracts/local_cmh_v2.json")
-STARTER_MANIFEST = "starter-set.manifest.tsv"
+PROJECT_DIRECTORIES = ("logs", "runs", "runtime")
 RUNTIME_HEADER = (
     "check_id",
     "check_type",
@@ -148,6 +149,7 @@ def _re_admit_published_tree(
     members: Mapping[str, tuple[bytes, int]],
     completion_name: str,
     completion_bytes: bytes,
+    expected_directories: set[str],
 ) -> None:
     try:
         output_state = output.lstat()
@@ -180,12 +182,6 @@ def _re_admit_published_tree(
             "published tree membership differs from the prepared transaction: "
             f"expected {sorted(expected)}, observed {sorted(observed)}"
         )
-    expected_directories = {
-        parent.as_posix()
-        for name in expected
-        for parent in Path(name).parents
-        if parent != Path(".")
-    }
     if observed_directories != expected_directories:
         raise OnboardingError(
             "published directory membership differs from the prepared transaction: "
@@ -213,11 +209,16 @@ def publish_create_absent_tree(
     *,
     completion_name: str,
     completion_bytes: bytes,
+    directories: Sequence[str] = (),
     before_completion: Callable[[Path], None] | None = None,
 ) -> None:
     """Publish one reserved tree with its completion member written last."""
 
-    for name in (*members, completion_name):
+    file_names = (*members, completion_name)
+    entry_names = (*file_names, *directories)
+    if len(set(entry_names)) != len(entry_names):
+        raise OnboardingError("publication member or directory is duplicated")
+    for name in entry_names:
         relative = Path(name)
         if (
             not name
@@ -227,19 +228,19 @@ def publish_create_absent_tree(
             or any(part in {"", ".", ".."} for part in relative.parts)
         ):
             raise OnboardingError(f"unsafe publication member path: {name!r}")
-    if completion_name in members:
-        raise OnboardingError(f"completion member is duplicated: {completion_name}")
-    all_names = (*members, completion_name)
+    explicit_directories = set(directories)
+    directory_paths = {Path(name) for name in explicit_directories}
+    directory_paths.update(
+        parent
+        for name in entry_names
+        for parent in Path(name).parents
+        if parent != Path(".")
+    )
     directories = sorted(
-        {
-            parent
-            for name in all_names
-            for parent in Path(name).parents
-            if parent != Path(".")
-        },
+        directory_paths,
         key=lambda path: (len(path.parts), path.as_posix()),
     )
-    if any(directory.as_posix() in all_names for directory in directories):
+    if any(directory.as_posix() in file_names for directory in directories):
         raise OnboardingError("publication member is also required as a directory")
     try:
         output.mkdir(mode=0o700, parents=False, exist_ok=False)
@@ -265,6 +266,7 @@ def publish_create_absent_tree(
             members,
             completion_name,
             completion_bytes,
+            {path.as_posix() for path in directories},
         )
     except BaseException as exc:
         raise OnboardingError(
@@ -275,112 +277,173 @@ def publish_create_absent_tree(
         ) from exc
 
 
-def starter_members(
-    *,
-    root: Path | None = None,
-    python_executable: Path | None = None,
-) -> dict[str, tuple[bytes, int]]:
-    """Render one matched starter set from the tracked policy templates."""
-
-    requested_checkout = source_root() if root is None else root
-    requested_python = (
-        Path(sys.executable) if python_executable is None else python_executable
+_PROJECT_FIELDS = """output_dir sample_manifest partition_manifest reference_id
+reference_fasta reference_gtf sjdb_overhang genome_sa_index_nbases cohort_id
+analysis_id control_condition treatment_condition target_change min_sample_dp
+mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold
+background_max_fraction""".split()
+_PROJECT_TYPES = {
+    field: converter
+    for fields, converter in (
+        ("output_dir sample_manifest partition_manifest reference_fasta reference_gtf".split(), Path),
+        ("sjdb_overhang genome_sa_index_nbases min_sample_dp".split(), int),
+        ("mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold background_max_fraction".split(), float),
     )
-    try:
-        checkout = requested_checkout.resolve(strict=True)
-    except OSError as exc:
-        raise OnboardingError(
-            f"source checkout must resolve to an existing directory: "
-            f"{requested_checkout}: {exc}"
-        ) from exc
-    if not checkout.is_dir():
-        raise OnboardingError(f"source checkout must be a directory: {checkout}")
-    selected_python = _absolute(requested_python)
-    _admit_explicit_file(selected_python, "selected Python", executable=True)
-    for label, path in (
-        ("source checkout", checkout),
-        ("selected Python", selected_python),
-    ):
-        if any(character in str(path) for character in ("\n", "\r", "\t")):
-            raise OnboardingError(f"{label} path contains an unsafe character")
-    project = (checkout / "configs/project.example.yaml").read_text(encoding="utf-8")
-    project = project.replace(
-        "sample_manifest: local_pilot_samples.example.tsv",
-        "sample_manifest: samples.tsv",
-    ).replace(
-        "partition_manifest: local_pilot_partitions.example.tsv",
-        "partition_manifest: partitions.tsv",
+    for field in fields
+}
+_PROJECT_SUGGESTIONS = dict(
+    zip(
+        "min_sample_dp mean_dp_threshold fdr_threshold common_or_threshold absolute_difference_threshold background_max_fraction".split(),
+        (1, 50, 0.05, 1.2, 0.005, 0.01),
+        strict=True,
     )
-    execution_profile = (
-        checkout / "configs/execution_profile.example.yaml"
-    ).read_bytes()
-    runtime = (checkout / "configs/local_pilot_runtime.example.tsv").read_text(
-        encoding="utf-8"
-    )
-    runtime = runtime.replace(
-        "/absolute/path/to/emrys/.venv/bin/python", str(selected_python)
-    ).replace("/absolute/path/to/emrys", str(checkout))
-    return {
-        "project.yaml": (project.encode("utf-8"), 0o644),
-        "emrys.execution.yaml": (execution_profile, 0o644),
-        "samples.tsv": (
-            (checkout / "configs/local_pilot_samples.example.tsv").read_bytes(),
-            0o644,
-        ),
-        "partitions.tsv": (
-            (checkout / "configs/local_pilot_partitions.example.tsv").read_bytes(),
-            0o644,
-        ),
-        "runtime.tsv": (runtime.encode("utf-8"), 0o644),
-    }
+)
 
 
-def _manifest_bytes(members: Mapping[str, tuple[bytes, int]]) -> bytes:
-    lines = ["path\tmode\tsize_bytes\tsha256"]
-    for name, (data, mode) in sorted(members.items()):
-        lines.append(
-            f"{name}\t{mode:04o}\t{len(data)}\t{hashlib.sha256(data).hexdigest()}"
+def configure_project_init_parser(parser: argparse.ArgumentParser) -> None:
+    for destination in _PROJECT_FIELDS:
+        parser.add_argument(
+            f"--{destination.replace('_', '-')}",
+            type=_PROJECT_TYPES.get(destination, str),
+            help=f"{destination.replace('_', ' ')}; prompted when omitted.",
         )
-    return ("\n".join(lines) + "\n").encode("utf-8")
-
-
-def configure_init_parser(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
-        "--output-dir",
-        required=True,
-        type=Path,
-        help="Absolute absent directory to receive the matched starter set.",
+        "--background-condition",
+        help="Optional background condition; omission means no background cohort.",
     )
     parser.add_argument(
-        "--execute",
-        action="store_true",
-        help="Create the starter set. Default is a no-write plan.",
+        "--label", help="Optional display label; the Project directory name is used."
+    )
+    parser.add_argument(
+        "--execute", action="store_true", help="Create; omission is a no-write plan."
     )
     parser.set_defaults(_command_parser=parser)
 
 
-def init_from_args(arguments: argparse.Namespace) -> int:
-    """Plan or create one matched, create-absent local-pilot starter set."""
+def _collect_project_answers(arguments: argparse.Namespace) -> dict[str, object]:
+    missing = [
+        f"--{destination.replace('_', '-')}"
+        for destination in _PROJECT_FIELDS
+        if getattr(arguments, destination) is None
+    ]
+    interactive = sys.stdin.isatty() and sys.stderr.isatty()
+    if missing and not interactive:
+        raise OnboardingError(
+            "missing Project setup answers: "
+            + ", ".join(missing)
+            + "; supply them explicitly or run this command in a terminal"
+        )
+    answers: dict[str, object] = {}
+    for destination in _PROJECT_FIELDS:
+        value = getattr(arguments, destination)
+        if value is None:
+            label = destination.replace("_", " ")
+            suggestion = _PROJECT_SUGGESTIONS.get(destination)
+            suffix = f" [{suggestion}]" if suggestion is not None else ""
+            print(f"{label}{suffix}: ", end="", file=sys.stderr, flush=True)
+            raw = sys.stdin.readline()
+            if raw == "":
+                raise OnboardingError(f"Project setup ended before {label} was supplied")
+            raw = raw.strip() or ("" if suggestion is None else str(suggestion))
+            if not raw:
+                raise OnboardingError(f"{label} is required")
+            try:
+                value = _PROJECT_TYPES.get(destination, str)(raw)
+            except (TypeError, ValueError) as exc:
+                raise OnboardingError(f"invalid {label}: {raw!r}") from exc
+        answers[destination] = value
+    return answers
+
+
+def _project_yaml(answers: Mapping[str, object]) -> bytes:
+    target = str(answers["target_change"]).upper()
+    match = re.fullmatch(r"([ACGT])>([ACGT])", target)
+    if match is None or match[1] == match[2]:
+        raise OnboardingError("target RNA change must name two different bases, like A>G")
+    rendered = {
+        key: json.dumps(
+            str(value) if isinstance(value, Path) else value,
+            separators=(",", ":"),
+        )
+        for key, value in answers.items()
+    }
+    return f"""schema_version: emrys.request.v3
+label: {rendered["label"]}
+profile: emrys.profile.local_cmh.v2
+sample_manifest: {rendered["sample_manifest"]}
+partition_manifest: {rendered["partition_manifest"]}
+reference:
+  id: {rendered["reference_id"]}
+  fasta: {rendered["reference_fasta"]}
+  gtf: {rendered["reference_gtf"]}
+  star_index:
+    sjdb_overhang: {rendered["sjdb_overhang"]}
+    genome_sa_index_nbases: {rendered["genome_sa_index_nbases"]}
+cohort_id: {rendered["cohort_id"]}
+analysis:
+  id: {rendered["analysis_id"]}
+  control_condition: {rendered["control_condition"]}
+  treatment_condition: {rendered["treatment_condition"]}
+  rna_ref: {match[1]}
+  rna_alt: {match[2]}
+  min_sample_dp: {rendered["min_sample_dp"]}
+  mean_dp_threshold: {rendered["mean_dp_threshold"]}
+  fdr_threshold: {rendered["fdr_threshold"]}
+  common_or_threshold: {rendered["common_or_threshold"]}
+  absolute_difference_threshold: {rendered["absolute_difference_threshold"]}
+  background_condition: {rendered["background_condition"]}
+  background_max_fraction: {rendered["background_max_fraction"]}
+""".encode("utf-8")
+
+
+def init_project_from_args(arguments: argparse.Namespace) -> int:
+    """Plan or create one validated Project root around existing inputs."""
 
     try:
-        root = source_root()
-        output = _require_external_absent_output(arguments.output_dir, root)
-        members = starter_members(root=root)
-        print(f"Output directory: {output}")
-        print("Members: " + ", ".join((*sorted(members), STARTER_MANIFEST)))
-        print("Publication policy: create-absent; no file will be replaced or adopted.")
+        answers = _collect_project_answers(arguments)
+        output = _require_external_absent_output(
+            Path(answers["output_dir"]), source_root()
+        )
+        for field in (
+            "sample_manifest",
+            "partition_manifest",
+            "reference_fasta",
+            "reference_gtf",
+        ):
+            answers[field] = _admit_explicit_file(
+                Path(answers[field]), field.replace("_", " ")
+            )
+        answers["label"] = arguments.label or output.name
+        answers["background_condition"] = arguments.background_condition
+        project_bytes = _project_yaml(answers)
+        preview = _admit_project_data(
+            output / "project.yaml",
+            project_bytes,
+            source_root() / PROFILE_RELATIVE_PATH,
+        )
+        validate_project_admission(preview)
+        print(f"Project root: {output}")
+        print("Owned directories: logs, runs, runtime")
+        print("Referenced inputs remain in place; setup copies no input files.")
         if not arguments.execute:
             print("Dry-run complete; no files were written.")
             return 0
         publish_create_absent_tree(
             output,
-            members,
-            completion_name=STARTER_MANIFEST,
-            completion_bytes=_manifest_bytes(members),
+            {},
+            completion_name="project.yaml",
+            completion_bytes=project_bytes,
+            directories=PROJECT_DIRECTORIES,
         )
-        print(f"Published matched local-pilot starter set: {output}")
+        validate_project(output / "project.yaml")
+        print(f"Project ready: {output / 'project.yaml'}")
         return 0
-    except (OSError, OnboardingError) as exc:
+    except (
+        OSError,
+        OnboardingError,
+        orchestration_contracts.ContractValidationError,
+        step08.ContractError,
+    ) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
 
@@ -1040,16 +1103,15 @@ __all__ = (
     "DESCRIPTION",
     "OnboardingError",
     "ProjectValidation",
-    "configure_init_parser",
     "configure_manifest_init_parser",
+    "configure_project_init_parser",
     "configure_runtime_parser",
     "configure_validation_parser",
-    "init_from_args",
     "init_manifests_from_args",
+    "init_project_from_args",
     "prepare_runtime_from_args",
     "publish_create_absent_tree",
     "render_runtime_profile",
-    "starter_members",
     "validate_from_args",
     "validate_project",
     "validate_project_admission",

@@ -2,16 +2,18 @@
 
 ## Public onboarding boundary
 
-`emrys init local-pilot --output-dir ABSENT` is dry-run-first and publishes one
-external create-absent starter tree only with `--execute`. The parent must
-already be a canonical real writable/searchable directory and the target must
-not overlap the selected checkout. The owner reserves the output directory,
-writes the matched Project, execution profile, sample, partition, and runtime
-members create-exclusively, publishes the manifest last, and then re-admits
-exact membership, regular-file types, modes, sizes, and bytes.
-It never overwrites, adopts, installs, restores, selects reference data, or
-guesses site-specific scheduler/tool values. Failure after reservation leaves
-the partial directory for inspection with no claim that its manifest is valid.
+`emrys init project` is dry-run-first and publishes only with `--execute` into
+one absent external root beneath a canonical writable/searchable parent. It
+validates supplied strict manifests and referenced data, records the manifests'
+admitted absolute paths without copying inputs, creates mode-`0700` `runs/`,
+`logs/`, and `runtime/`, publishes generated request-v3 `project.yaml` last,
+then re-admits exact tree types, modes, sizes, and bytes before full Project
+validation. No execution/runtime profile, Results, Run, Attempt, or log is
+created. Failure
+preserves the partial root and never overwrites or adopts it.
+
+The canonical `project.yaml` parent is the Project root derived by ordinary
+run and Doctor routes. Results exist only under `runs/<run-id>/results`.
 
 `emrys validate project --project FILE` calls the canonical Project admission
 with the tracked `emrys.profile.local_cmh.v2` contract, then reuses
@@ -62,9 +64,9 @@ Slurm placement submits the whole Run as exactly one node/task/allocation and
 delegates back to the same grouped control path inside it. EMRYS constructs one
 frozen submission plan; a terminal displays its placement summary and asks
 before submitting that same object once. Refusal, EOF,
-interruption, or noninteractive omission of `--execute` does not submit, create
-the workspace, or create logs. Confirmation or explicit `--execute` creates
-the canonical `<workspace>/logs` directory, calls `sbatch` once with an exact
+interruption, or noninteractive omission of `--execute` does not submit or
+create logs. Confirmation or explicit `--execute` admits the canonical
+`<project-root>/logs` directory, calls `sbatch` once with an exact
 argument vector and stdin batch program, and prints `JOB_ID`, `OUT`, and `ERR`.
 Ambient `SBATCH_*` and private transport variables are removed before
 submission. Omitted account, partition, QOS, memory, and node-list fields defer
@@ -109,17 +111,18 @@ are the read-only B5 setup boundary. They reuse Project admission plus the runti
 availability owner's direct API, require the exact fixed local runtime roster
 and policy fields before any probe, run R namespace probes with explicit
 guarded `renv` variables, compare the selected Python/Snakemake identity, bind
-admitted tool/jar bytes and installed R-package trees, and reject a workspace
-overlapping the source checkout. The Java path must resolve to canonical
+admitted tool/jar bytes and installed R-package trees, and reject a Project
+root overlapping the source checkout. The Java path must resolve to canonical
 `<JAVA_HOME>/bin/java`; doctor, lifecycle, and GATK owner work share that
-selected launcher after ambient JVM/GATK selectors are removed. An absent
-workspace is admissible
-only as one missing leaf beneath an existing canonical, real,
-writable/searchable immediate parent; the doctor plans that leaf but never
-creates it. The doctor neither installs nor repairs dependencies, loads
+selected launcher after ambient JVM/GATK selectors are removed. The Project
+root must be canonical, real, writable, searchable, and external to the source
+checkout. The doctor neither installs nor repairs dependencies, loads
 modules, mutates a run, executes Snakemake/scientific owners, or promotes
 readiness into local-runtime, scheduler, cluster, scientific-review, or
 biological evidence.
+The advanced storage-evidence command retains
+`inspect storage-qualification --workspace PROJECT_ROOT`; this explicit probe
+target is not an ordinary Project/workspace choice.
 Ordinary executable and hash probes are bounded at 30 seconds. Each guarded R
 namespace load has a separate 120-second bound and records elapsed/configured
 timing in its diagnostic; timeouts remain readiness failures. The selected
@@ -149,14 +152,14 @@ primary Run ID, verbose adds admitted Analysis, Execution Plan, and Attempt
 identity plus effective execution facts, and debug adds canonical authority
 paths/digests, verified output bindings, receipts, and task evidence.
 Historical Runs are labeled and never receive fabricated successor identities.
-The tracked four-sample, one-partition starter expands to 35 owner jobs; other
+The fixed four-sample, one-partition synthetic fixture expands to 35 owner jobs; other
 admitted sample/partition counts expand according to the fixed profile. The
 control surface exposes no raw Snakemake flags, force, unlock, cleanup, retry,
 plugin, or alternate-profile escape hatch.
 
 Each executing Run Attempt owns exactly one application log under the selected
-root, which defaults to `<workspace>/logs/application`; Slurm scheduler streams
-live under `<workspace>/logs`. After minimal workspace/control admission, the
+root, which defaults to `<project-root>/logs/application`; Slurm scheduler
+streams live under `<project-root>/logs`. After minimal Project-root/control admission, the
 compute delegate and explicit direct `--execute` path open that log before
 semantic planning; confirmed terminal direct execution opens it immediately
 after consent and before lifecycle admission. The submission process and
@@ -286,7 +289,7 @@ Runtime source checkout and required-tool identities are observed before
 mutation and again after the child exits. The subprocess environment removes
 inherited noninteractive-shell startup hooks before Snakemake starts.
 For a local-science attempt, those observations include a fresh semantic
-admission of the final storage-qualification receipt for the attempt workspace
+admission of the final storage-qualification receipt for the Project root
 and the canonical normalized reference FASTA. The observed receipt path,
 digest, qualification identifier, and qualified root identities must reproduce
 the one immutable `storage_qualification` tool identity before and after the
