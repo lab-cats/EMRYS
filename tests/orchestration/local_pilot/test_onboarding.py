@@ -436,6 +436,7 @@ def test_synthetic_fixture_is_deterministic_complete_and_normalizable(
         stat.S_IMODE((first / name).stat().st_mode) == 0o700
         for name in onboarding.PROJECT_DIRECTORIES
     )
+    assert not (first / "emrys.execution.yaml").exists()
     result = onboarding.validate_project(first / "project.yaml")
     assert result.sample_count == 4
     assert result.pair_count == 2
@@ -542,10 +543,10 @@ def test_production_like_profile_is_explicit_and_dry_run_skips_generation(
     assert metadata["expected_terminal_workflow"]["scientific_results_complete"] is True
     assert metadata["expected_terminal_workflow"]["reporting_complete"] is True
     request = synthetic_fixture._project_definition(profile).decode("utf-8")
-    assert "label: deterministic-production-like-v1" in request
-    assert "id: synthetic-production-like-v1" in request
-    assert "cohort_id: synthetic-production-like-v1" in request
-    assert "id: synthetic-production-like-cmh-v1" in request
+    assert 'label: "deterministic-production-like-v1"' in request
+    assert 'id: "synthetic-production-like-v1"' in request
+    assert 'cohort_id: "synthetic-production-like-v1"' in request
+    assert 'id: "synthetic-production-like-cmh-v1"' in request
     assert "genome_sa_index_nbases: 10" in request
 
 
@@ -781,7 +782,7 @@ def test_public_cli_routes_synthetic_init_and_request_validation(
         cli.main(
             [
                 "init",
-                "synthetic-local-pilot",
+                "synthetic",
                 "--output-dir",
                 str(output),
                 "--execute",
@@ -801,7 +802,7 @@ def test_public_cli_routes_synthetic_init_and_request_validation(
         == 0
     )
     stdout = capsys.readouterr().out
-    assert "Published deterministic local-pilot fixture" in stdout
+    assert "Published deterministic synthetic Project" in stdout
     assert "Project validation: PASS" in stdout
     assert "Analysis revision:" not in stdout
 

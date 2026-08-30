@@ -20,7 +20,11 @@ from emrys.evidence.runtime_availability.inspector import (
     RuntimeObservation,
 )
 from emrys.evidence.storage_inventory.qualification import QualifiedStorage
-from emrys.libraries.application_logging import ApplicationLogError, LogControls, LogLevel
+from emrys.libraries.application_logging import (
+    ApplicationLogError,
+    LogControls,
+    LogLevel,
+)
 from emrys.orchestration.local_pilot import doctor
 from emrys.orchestration.local_pilot.normalization import ProjectAdmission
 
@@ -113,19 +117,28 @@ def _plan(project: ProjectAdmission) -> doctor._RepairPlan:
         project=project,
         source_root=project.source_path.parent / "source",
         source_commit="a" * 40,
-        managed_root=managed,
-        native=managed / ".pixi/envs/native",
-        r=managed / ".pixi/envs/r",
-        renv=managed / "renv/library",
-        profile=project.source_path.parent / "runtime/runtime.tsv",
-        uv=Path("/managers/uv"),
-        pixi=Path("/managers/pixi"),
-        uv_sha256="b" * 64,
-        pixi_sha256="c" * 64,
-        profile_bytes=None,
-        manifest_bytes=b"[workspace]\nname = \"emrys\"\n",
-        lock_bytes=b"locked\n",
+        storage=None,
+        runtime=doctor._ManagedRuntimePlan(
+            source_root=project.source_path.parent / "source",
+            managed_root=managed,
+            native=managed / ".pixi/envs/native",
+            r=managed / ".pixi/envs/r",
+            renv=managed / "renv/library",
+            profile=project.source_path.parent / "runtime/runtime.tsv",
+            uv=Path("/managers/uv"),
+            pixi=Path("/managers/pixi"),
+            uv_sha256="b" * 64,
+            pixi_sha256="c" * 64,
+            profile_bytes=None,
+            manifest_bytes=b'[workspace]\nname = "emrys"\n',
+            lock_bytes=b"locked\n",
+        ),
     )
+
+
+def _runtime(plan: doctor._RepairPlan) -> doctor._ManagedRuntimePlan:
+    assert plan.runtime is not None
+    return plan.runtime
 
 
 def _controls(project: ProjectAdmission) -> LogControls:
@@ -167,7 +180,9 @@ def test_runtime_identity_binds_executables_packages_and_storage(
     receipt = tmp_path / "storage.tsv"
     receipt.write_bytes(b"qualified\n")
     storage = doctor.storage_runtime_binding(
-        QualifiedStorage(receipt, hashlib.sha256(receipt.read_bytes()).hexdigest(), "site-1")
+        QualifiedStorage(
+            receipt, hashlib.sha256(receipt.read_bytes()).hexdigest(), "site-1"
+        )
     )
 
     bindings = (*doctor.runtime_file_bindings(inspection), storage)
@@ -259,7 +274,9 @@ def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
         storage_ready=True,
         runtime_ready=False,
     )
-    monkeypatch.setattr(doctor, "_inspect_foundations", lambda *_args, **_kwargs: foundations)
+    monkeypatch.setattr(
+        doctor, "_inspect_foundations", lambda *_args, **_kwargs: foundations
+    )
     monkeypatch.setattr(
         doctor,
         "open_attempt_log",
@@ -384,30 +401,104 @@ def test_repair_refuses_a_site_owned_runtime_without_mutation(
     assert _snapshot(tmp_path) == before
 
 
+def test_storage_only_repair_preserves_ready_site_runtime_and_skips_managers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from emrys.evidence.storage_inventory import qualification
+
+    project = _project(tmp_path)
+    profile = project.source_path.parent / "runtime/runtime.tsv"
+    profile.write_bytes(b"site runtime\n")
+    inspection = _inspection(
+        tmp_path, profile=profile, profile_bytes=profile.read_bytes()
+    )
+    blocked = doctor.DoctorResult(
+        project=project,
+        source_root=project.source_path.parent / "source",
+        source_commit="a" * 40,
+        inspection=inspection,
+        bindings=(),
+        blockers=("single-host storage is not qualified",),
+        remediations=("Run `emrys doctor --repair`.",),
+        storage_ready=False,
+        runtime_ready=True,
+    )
+    monkeypatch.setattr(
+        doctor,
+        "_manager",
+        lambda _name: pytest.fail("storage-only repair admitted a package manager"),
+    )
+    monkeypatch.setattr(
+        qualification,
+        "_mount_identity",
+        lambda path: {
+            "mount_point": path.anchor,
+            "filesystem_type": "test",
+            "filesystem_source": "test",
+        },
+    )
+
+    plan = doctor._build_repair_plan(blocked)
+
+    assert plan.runtime is None
+    assert plan.storage is not None
+    records: list[str] = []
+    _patch_logging(monkeypatch, plan, records)
+    monkeypatch.setattr(
+        doctor,
+        "_repair_actions",
+        lambda _plan: pytest.fail("storage-only repair planned a manager action"),
+    )
+    ready = replace(
+        blocked,
+        blockers=(),
+        remediations=(),
+        storage_ready=True,
+    )
+
+    def diagnose(*_args: object, **_kwargs: object) -> doctor.DoctorResult:
+        assert profile.read_bytes() == b"site runtime\n"
+        qualification.admit_direct_qualification(
+            project.source_path.parent,
+            Path(str(project.construction["reference"]["fasta"]["path"])),
+        )
+        return ready
+
+    monkeypatch.setattr(doctor, "diagnose_project", diagnose)
+
+    assert doctor._execute_repair(plan, controls=_controls(project)) is ready
+    assert profile.read_bytes() == b"site runtime\n"
+    assert records[0] == "opened"
+    assert "terminal" in records
+
+
 def test_repair_refuses_redirected_pixi_state(tmp_path: Path) -> None:
     plan = _plan(_project(tmp_path))
-    plan.managed_root.mkdir()
+    runtime = _runtime(plan)
+    runtime.managed_root.mkdir()
     external = tmp_path / "external-pixi"
     external.mkdir()
-    (plan.managed_root / ".pixi").symlink_to(external, target_is_directory=True)
+    (runtime.managed_root / ".pixi").symlink_to(external, target_is_directory=True)
 
     with pytest.raises(doctor.DoctorRepairError, match="Pixi state is not owned"):
-        doctor._admit_managed_root(plan)
+        doctor._admit_managed_root(runtime)
 
-    assert not (plan.managed_root / "pixi.toml").exists()
+    assert not (runtime.managed_root / "pixi.toml").exists()
 
 
 def test_repair_isolates_and_refuses_pixi_configuration(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     plan = _plan(_project(tmp_path))
-    plan.managed_root.mkdir()
-    config = plan.managed_root / ".pixi/config.toml"
+    runtime = _runtime(plan)
+    runtime.managed_root.mkdir()
+    config = runtime.managed_root / ".pixi/config.toml"
     config.parent.mkdir()
     config.write_text('detached-environments = "/tmp/external"\n', encoding="utf-8")
 
     with pytest.raises(doctor.DoctorRepairError, match="Pixi configuration"):
-        doctor._admit_managed_root(plan)
+        doctor._admit_managed_root(runtime)
 
     config.unlink()
     monkeypatch.setenv("PIXI_HOME", "/tmp/external")
@@ -418,8 +509,13 @@ def test_repair_isolates_and_refuses_pixi_configuration(
         if Path(argv[0]).name == "pixi"
     ]
     assert pixi_environments
-    assert all(environment["PIXI_NO_CONFIG"] == "1" for environment in pixi_environments)
-    assert all(environment["PIXI_DISABLE_NETFS_REDIRECT"] == "1" for environment in pixi_environments)
+    assert all(
+        environment["PIXI_NO_CONFIG"] == "1" for environment in pixi_environments
+    )
+    assert all(
+        environment["PIXI_DISABLE_NETFS_REDIRECT"] == "1"
+        for environment in pixi_environments
+    )
     assert all("PIXI_HOME" not in environment for environment in pixi_environments)
     assert all(
         "PIXI_CACHE_DETACHED_ENVIRONMENTS_DIR" not in environment
@@ -464,10 +560,21 @@ def _patch_logging(
     plan: doctor._RepairPlan,
     records: list[str],
 ) -> None:
-    monkeypatch.setattr(doctor, "_readmit_repair_plan", lambda _plan: None)
+    monkeypatch.setattr(
+        doctor,
+        "_readmit_repair_plan",
+        lambda _plan, **_kwargs: None,
+    )
 
     def open_log(**_kwargs: object) -> _Attempt:
-        assert not plan.managed_root.exists(), "repair mutated before opening its log"
+        if plan.runtime is not None:
+            assert not plan.runtime.managed_root.exists(), (
+                "repair mutated before opening its log"
+            )
+        if plan.storage is not None:
+            assert not plan.storage.receipt_path.exists(), (
+                "repair mutated before opening its log"
+            )
         records.append("opened")
         return _Attempt(records)
 
@@ -478,8 +585,11 @@ def test_repair_readmission_rejects_a_profile_that_appeared(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     plan = _plan(_project(tmp_path))
+    runtime = _runtime(plan)
     monkeypatch.setattr(
-        doctor, "inspect_source_checkout", lambda **_kwargs: SimpleNamespace(commit=plan.source_commit)
+        doctor,
+        "inspect_source_checkout",
+        lambda **_kwargs: SimpleNamespace(commit=plan.source_commit),
     )
     monkeypatch.setattr(
         doctor.onboarding,
@@ -489,22 +599,25 @@ def test_repair_readmission_rejects_a_profile_that_appeared(
     monkeypatch.setattr(
         doctor,
         "_file_sha256",
-        lambda path: plan.uv_sha256 if path == plan.uv else plan.pixi_sha256,
+        lambda path: runtime.uv_sha256 if path == runtime.uv else runtime.pixi_sha256,
     )
-    plan.profile.write_bytes(b"unapproved\n")
+    runtime.profile.write_bytes(b"unapproved\n")
 
-    with pytest.raises(doctor.DoctorRepairError, match="appeared after repair confirmation"):
-        doctor._readmit_repair_plan(plan)
+    with pytest.raises(
+        doctor.DoctorRepairError, match="appeared after repair confirmation"
+    ):
+        doctor._readmit_repair_plan(plan, before_storage=True)
 
 
 def test_repair_readmission_rejects_a_redirected_runtime_before_writing(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     plan = _plan(_project(tmp_path))
+    runtime = _runtime(plan)
     external = tmp_path / "external-runtime"
     external.mkdir()
-    plan.managed_root.parent.rmdir()
-    plan.managed_root.parent.symlink_to(external, target_is_directory=True)
+    runtime.managed_root.parent.rmdir()
+    runtime.managed_root.parent.symlink_to(external, target_is_directory=True)
     monkeypatch.setattr(
         doctor,
         "inspect_source_checkout",
@@ -517,7 +630,7 @@ def test_repair_readmission_rejects_a_redirected_runtime_before_writing(
     )
 
     with pytest.raises(doctor.DoctorRepairError, match="changed before execution"):
-        doctor._readmit_repair_plan(plan)
+        doctor._readmit_repair_plan(plan, before_storage=True)
 
     assert not (external / "managed").exists()
 
@@ -526,30 +639,51 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from emrys.evidence.storage_inventory import qualification
+
     project = _project(tmp_path)
-    plan = _plan(project)
+    monkeypatch.setattr(
+        qualification,
+        "_mount_identity",
+        lambda path: {
+            "mount_point": path.anchor,
+            "filesystem_type": "test",
+            "filesystem_source": "test",
+        },
+    )
+    plan = replace(
+        _plan(project),
+        storage=qualification.plan_direct_qualification(
+            project.source_path.parent,
+            Path(str(project.construction["reference"]["fasta"]["path"])),
+        ),
+    )
+    runtime = _runtime(plan)
     records: list[str] = []
     commands: list[tuple[str, ...]] = []
     _patch_logging(monkeypatch, plan, records)
+    real_subprocess_run = doctor.subprocess.run
 
     def run_manager(argv: tuple[str, ...], **_kwargs: object) -> Any:
+        if Path(argv[0]) == Path(sys.executable):
+            return real_subprocess_run(argv, **_kwargs)
         commands.append(tuple(argv))
         if Path(argv[0]).name == "pixi" and "install" in argv:
-            jar = plan.native / "share/picard-slim-3.1.1-0/picard.jar"
+            jar = runtime.native / "share/picard-slim-3.1.1-0/picard.jar"
             jar.parent.mkdir(parents=True)
             jar.write_bytes(b"jar\n")
-            rscript = plan.r / "bin/Rscript"
+            rscript = runtime.r / "bin/Rscript"
             rscript.parent.mkdir(parents=True)
             rscript.write_bytes(b"rscript\n")
         if "run" in argv:
-            renv = plan.renv / "R-4.6/x86_64-pc-linux-gnu/renv/DESCRIPTION"
+            renv = runtime.renv / "R-4.6/x86_64-pc-linux-gnu/renv/DESCRIPTION"
             renv.parent.mkdir(parents=True)
             renv.write_bytes(b"Package: renv\nVersion: 1.2.3\n")
         return SimpleNamespace(returncode=0)
 
     candidate = _inspection(
         tmp_path,
-        profile=plan.profile,
+        profile=runtime.profile,
         profile_bytes=b"admitted runtime\n",
     )
     discovery_calls: list[dict[str, object]] = []
@@ -562,7 +696,7 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     requalified: list[Path] = []
 
     def diagnose(path: Path, **_kwargs: object) -> doctor.DoctorResult:
-        assert plan.profile.read_bytes() == candidate.profile_bytes
+        assert runtime.profile.read_bytes() == candidate.profile_bytes
         requalified.append(path)
         return final
 
@@ -582,7 +716,12 @@ def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     )
     assert discovery_calls[0]["project"] == project.source_path
     assert requalified == [project.source_path]
-    assert plan.profile.read_bytes() == b"admitted runtime\n"
+    assert plan.storage is not None
+    qualification.admit_direct_qualification(
+        plan.storage.workspace,
+        plan.storage.reference_fasta,
+    )
+    assert runtime.profile.read_bytes() == b"admitted runtime\n"
     assert records[0] == "opened"
     assert "terminal" in records
     assert records[-1] == "closed"
@@ -600,6 +739,7 @@ def test_repair_records_manager_failure_or_interruption(
 ) -> None:
     project = _project(tmp_path)
     plan = _plan(project)
+    runtime = _runtime(plan)
     records: list[str] = []
     _patch_logging(monkeypatch, plan, records)
 
@@ -617,7 +757,7 @@ def test_repair_records_manager_failure_or_interruption(
     assert expected_record in records
     assert "terminal" not in records
     assert records[-1] == "closed"
-    assert not plan.profile.exists()
+    assert not runtime.profile.exists()
 
 
 def test_repair_records_failed_final_requalification(
@@ -625,8 +765,10 @@ def test_repair_records_failed_final_requalification(
 ) -> None:
     project = _project(tmp_path)
     candidate_bytes = b"admitted runtime\n"
-    plan = replace(_plan(project), profile_bytes=candidate_bytes)
-    plan.profile.write_bytes(candidate_bytes)
+    base = _plan(project)
+    runtime = replace(_runtime(base), profile_bytes=candidate_bytes)
+    plan = replace(base, runtime=runtime)
+    runtime.profile.write_bytes(candidate_bytes)
     records: list[str] = []
     _patch_logging(monkeypatch, plan, records)
     monkeypatch.setattr(doctor, "_admit_managed_root", lambda _plan: None)
@@ -637,7 +779,7 @@ def test_repair_records_failed_final_requalification(
         "discover_runtime_profile",
         lambda **_kwargs: _inspection(
             tmp_path,
-            profile=plan.profile,
+            profile=runtime.profile,
             profile_bytes=candidate_bytes,
         ),
     )
@@ -661,6 +803,7 @@ def test_log_open_failure_prevents_the_first_repair_write(
 ) -> None:
     project = _project(tmp_path)
     plan = _plan(project)
+    runtime = _runtime(plan)
     monkeypatch.setattr(
         doctor,
         "open_attempt_log",
@@ -672,7 +815,7 @@ def test_log_open_failure_prevents_the_first_repair_write(
     with pytest.raises(doctor.DoctorRepairError, match="before mutation"):
         doctor._execute_repair(plan, controls=_controls(project))
 
-    assert not plan.managed_root.exists()
+    assert not runtime.managed_root.exists()
 
 
 def test_malformed_project_is_a_usage_error(

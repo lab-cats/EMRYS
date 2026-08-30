@@ -35,8 +35,8 @@ INTERPRETER_ONLY_PYTHON_ENTRYPOINTS = PYTHON_ENTRYPOINTS - DIRECT_PYTHON_ENTRYPO
 EMRYS_COMMANDS = (
     (("init", "project"), "usage: emrys init project"),
     (
-        ("init", "synthetic-local-pilot"),
-        "usage: emrys init synthetic-local-pilot",
+        ("init", "synthetic"),
+        "usage: emrys init synthetic",
     ),
     (("runtime", "discover"), "usage: emrys runtime discover"),
     (("doctor",), "usage: emrys doctor"),
@@ -57,8 +57,8 @@ EMRYS_COMMANDS = (
         "usage: emrys reconcile reference-provenance",
     ),
     (
-        ("inspect", "local-pilot-run"),
-        "usage: emrys inspect local-pilot-run",
+        ("inspect", "run"),
+        "usage: emrys inspect run",
     ),
     (
         ("inspect", "runtime-availability"),
@@ -205,7 +205,6 @@ MAKE_TARGET_DECISIONS = {
     "r-check": "local_gate",
     "local-real-r-test": "local_gate",
     "report-test": "local_gate",
-    "demo-report": "explicit_output",
     "dashboard": "operator_observation",
     "python-coverage-shard": "internal_lane",
     "python-coverage-finalize": "internal_lane",
@@ -230,7 +229,6 @@ MAKE_OPERATION_CONTEXT_VARIABLES = frozenset(
 )
 MAKE_CONTEXT_VARIABLES = frozenset(
     {
-        "DEMO_REPORT_ROOT",
         "PYTHON_BIN",
         "PYTHON_COVERAGE_BASELINE",
         "PYTHON_COVERAGE_CURRENT",
@@ -853,7 +851,6 @@ def test_make_target_inventory_and_applicability_decisions_are_complete() -> Non
     )
     assert include_lines == [
         "include $(EMRYS_MAKE_ROOT)/scripts/make_quality.mk",
-        "include $(EMRYS_MAKE_ROOT)/scripts/make_reporting.mk",
         "include $(EMRYS_MAKE_ROOT)/scripts/make_operations.mk",
     ]
     assert set(MAKE_TARGET_DECISIONS.values()) == {

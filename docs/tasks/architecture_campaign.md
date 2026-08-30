@@ -405,24 +405,24 @@ remain Open.
 ### 5.2 Proposed public commands
 
 The normal surface should express user intent rather than engine mechanics.
-The following names are **proposed, not settled**:
+The table retains intake candidates; implemented selections are identified
+explicitly and the remaining names are not settled:
 
 | Intent | Suggested names retained from intake |
 |---|---|
-| Create or prepare a project | `emrys setup`, `emrys init` |
-| Validate readiness | `emrys validate`, `emrys check`, `emrys doctor` |
-| Plan and execute | `emrys run` |
-| Observe current work | `emrys status` |
-| Recover compatible work | `emrys resume` |
-| Inspect internals or provenance | `emrys inspect`, `emrys run --explain`, `emrys diagnostics`, `emrys debug ...` |
-| Read or regenerate reports | `emrys report` |
-| Manage runtime modes | `emrys runtime discover`, `accept`, `define`, or `install` |
+| Create or prepare a project | `emrys init project` is selected; a separate `setup` name remains unselected |
+| Validate readiness | `emrys doctor` is selected; `validate` remains for admitted definitions rather than readiness |
+| Plan and execute | `emrys run` is selected |
+| Observe current work | `emrys inspect run` is selected; a separate `status` name remains unselected |
+| Recover compatible work | `emrys resume` is selected |
+| Inspect internals or provenance | `emrys inspect run` with progressive detail is selected; separate `explain`, `diagnostics`, and `debug` names remain unselected |
+| Read or regenerate reports | `emrys report` is selected |
+| Manage runtime modes | `emrys runtime discover` is selected; `accept`, `define`, and `install` remain unselected |
 | Inspect or manage effective configuration | `emrys config` |
-| Exercise a neutral synthetic path | `emrys demo` was suggested, but the name conflicts with the planned demo-surface retirement and remains open |
+| Exercise a neutral synthetic path | `emrys init synthetic` is selected; the public `demo` name and surface are retired, with exact-head verification pending |
 
-The interface must remain automation-friendly, including deliberate
-noninteractive confirmation such as the proposed `emrys run --yes`, without
-making raw engine commands the automation API.
+Noninteractive mutation uses the explicit `--execute` path; terminal journeys
+may confirm before mutation. Raw engine commands are not the automation API.
 
 ### 5.3 Configuration ownership
 
@@ -763,8 +763,8 @@ automatic pipeline:
 
 ```text
 emrys
-  +-- init -> onboarding -> starter-set publication
-  +-- validate local-pilot-request -> request admission/normalization only
+  +-- init project/manifests/synthetic -> bounded Project or draft publication
+  +-- validate project -> Project/request admission only
   +-- doctor -> Project readiness and explicit managed repair
   +-- run -> control -> Doctor -> normalization -> resource/capacity policy
   |    -> AttemptPlan
@@ -774,18 +774,18 @@ emrys
   |            -> artifact index -> run summary -> HTML reports
   |            -> terminal attempt receipt
   +-- resume -> inspection/readiness -> AttemptPlan -> optional execution
-  +-- inspect local-pilot-run -> explicit read-only derived inspection
-  +-- build report -> separate low-level report regeneration path
+  +-- inspect run -> explicit read-only derived inspection
+  +-- report -> independent dry-run-first report regeneration
 ```
 
 Ordinary `emrys run` does not invoke onboarding or the explicit request-
 validation command, and full `inspect_run` is an explicit command or an
 internal resume/lifecycle check rather than an automatic post-receipt step.
-The generated Slurm wrapper composes validation, Doctor, and `run` separately,
-as recorded below.
+The private Slurm transport submits one frozen plan and re-enters the same
+single-host backend inside the allocation, as recorded below.
 
 The installed entry point is [`emrys.__main__:main`](../../pyproject.toml).
-The current composition root is a 711-line
+The current composition root is a 534-line
 [`__main__.py`](../../src/emrys/__main__.py) with ten top-level command groups:
 `init`, `prepare`, `build`, `doctor`, `run`, `resume`, `reconcile`, `inspect`,
 `convert`, and `validate`. This is a supported compatibility surface, not the
@@ -999,7 +999,7 @@ one fixed Run-oriented coordinator fails closed on partial or ambiguous state.
 
 #### Run-control boundary compression
 
-The grouped `emrys run`, `emrys resume`, and `emrys inspect local-pilot-run`
+The grouped `emrys run`, `emrys resume`, and `emrys inspect run`
 routes are now the sole supported Run-control surface. Their no-write planning
 and execution helpers remain private implementation details, and the grouped
 CLI composes all three routes through one controlled-runtime adapter instead of
@@ -2040,11 +2040,12 @@ remain unselected.
 
 Managed-runtime groundwork uses Pixi with one Linux x86-64 manifest/lock and
 declared glibc 2.28/Linux 4.18 virtual-package values. Those solve inputs do
-not prove an actual kernel, cluster, or full EMRYS execution. Ordinary CI now
-installs the unchanged lock and invokes its tools in Rocky 8.10, Ubuntu 22.04,
-and Debian 12 userspaces. Actual Linux 4.18, full R-package/EMRYS execution,
-site, scheduler, storage, security, and update qualification remain open. A container
-remains an independent `CONTAINER-01` option rather than part of guided setup.
+not prove an actual kernel or cluster. Ordinary CI installs the unchanged lock
+and invokes its tools in Rocky 8.10, Ubuntu 22.04, and Debian 12 userspaces. A
+real-tool managed direct Ubuntu golden-path job is implemented; its exact-head
+execution is pending. Actual Linux 4.18, broader portability, site, scheduler,
+security, and update qualification remain open. A container remains an
+independent `CONTAINER-01` option rather than part of guided setup.
 
 ### 9.2 Transparent execution
 
@@ -2106,11 +2107,17 @@ is an open UX decision.
 
 ## 10. Golden path
 
-The golden path is a **binding capability set and successful end state**. Its
-exact command names, command partitioning, ordering, and whether the synthetic
-path is called “demo” are open.
+The golden path is a **binding capability set and successful end state**. The
+current supported synthetic order is:
 
-The intake supplied three materially different nonbinding sequences:
+```text
+emrys init synthetic -> emrys doctor --repair -> emrys run -> emrys inspect run
+```
+
+Reporting remains automatic by default after successful scientific work and
+can be disabled or regenerated independently. The intake's three materially
+different sequences remain historical suggestions rather than current
+interfaces:
 
 ```text
 AC-SRC-001: init -> check -> run -> reports
@@ -2118,10 +2125,11 @@ AC-SRC-002: repository -> doctor -> demo -> init -> run -> report
 AC-SRC-003: install -> Doctor -> Demo -> Configure -> Run -> Inspect result
 ```
 
-In particular, the sources do not settle whether neutral synthetic execution
-precedes project creation, uses a generated project, or follows project setup.
-`AC-DEC-024` preserves that choice. The required capabilities, shown without
-selecting an order, are:
+The selected synthetic initializer creates its Project, Doctor establishes
+readiness, Run executes the immutable plan and automatic reporting, and
+inspection admits the retained outcome. The broader real-data, site-runtime,
+and Slurm journeys remain role-specific extensions. The required capabilities
+remain:
 
 ```text
 supported installation/runtime
@@ -2699,17 +2707,26 @@ CI evidence and its ceiling are recorded in the findings matrix.
 | Surface/category | Finding | Disposition and surviving authority |
 |---|---|---|
 | Public readiness | The old grouped Doctor spelling and path-heavy rendering exposed an obsolete campaign name and required operators to assemble readiness context. | **Use top-level `emrys doctor`.** It derives Project, input, storage, runtime, and execution readiness and uses normal/verbose/debug progressive disclosure. Advanced runtime and storage evidence routes remain available without becoming ordinary inputs. |
-| Mutation and runtime ownership | Readiness needed an actionable repair without making EMRYS a package solver or authorizing mutation of institutional state. | **Add one explicit managed repair.** `--repair` previews and terminal-confirms; noninteractive mutation requires `--repair --execute`. Only the active checkout-owned `.venv` and Project `runtime/managed` are mutable, with create-absent profile admission. `uv`, Pixi, and `renv` own solving/installation. Site/user profiles and declared scientific inputs are preserved, not migrated. Linux x86-64 is the current managed target. |
+| Mutation and runtime ownership | Readiness needed actionable storage/runtime repair without making EMRYS a package solver or authorizing mutation of institutional state. | **Use one explicit repair.** `--repair` previews and terminal-confirms; noninteractive mutation requires `--repair --execute`. Doctor may publish the Project-owned direct-storage receipt and mutate only the active checkout-owned `.venv` and Project `runtime/managed`, with create-absent profile admission. `uv`, Pixi, and `renv` own solving/installation. Site/user profiles and declared scientific inputs are preserved, not migrated. Linux x86-64 is the current managed-runtime target. |
 | Logging and evidence | Diagnosis is a read and does not own a durable operation; confirmed repair is an attributable maintenance action. | **Adopt `LOG-05` only for repair.** Diagnosis, detail, help, preview, refusal, EOF, and pre-authority interruption open no log. Confirmed repair owns one Project maintenance attempt and terminalizes only after complete requalification. Runtime/storage evidence authorities remain distinct and no retained evidence is deleted. |
-| Compression and protections | Doctor and control carried `DoctorOps`/`ControlOps` test-only collaborator facades; materialization accepted test-only clock/token inputs; a legacy absent-workspace branch, duplicate Step `00c` checks already admitted by storage qualification, duplicate runtime/roster checks, and repeated same-process validation added further maintenance surface. | **Retire the low-value copies caller-completely.** Tests inject at real package-manager, subprocess, inspection, publication, time, and UUID boundaries rather than production test-only inputs. External-input admission, clean source identity, Project validation, final storage receipt, runtime-policy tamper checks, package-tree/no-follow identity, namespace-root checks, lifecycle temporal re-admission, confirmation, logging, and requalification survive. Final category accounting and exact-head engineering evidence belong in the findings matrix. |
+| Compression and protections | Doctor and control carried `DoctorOps`/`ControlOps` test-only collaborator facades; materialization accepted test-only clock/token inputs; a legacy absent-workspace branch, duplicate Step `00c` checks already admitted by storage qualification, duplicate runtime/roster checks, and repeated same-process validation added further maintenance surface. | **Retire the low-value copies caller-completely.** Tests inject at real package-manager, subprocess, inspection, publication, time, and UUID boundaries rather than production test-only inputs. External-input admission, clean source identity, Project validation, final storage receipt, runtime-policy tamper checks, package-tree/no-follow identity, namespace-root checks, lifecycle temporal re-admission, confirmation, logging, and requalification survive. Storage-only repair preserves an already-ready site runtime and invokes no package manager. Final category accounting and exact-head engineering evidence belong in the findings matrix. |
 
 `DOCTOR-01` and `AC-SLICE-19` are complete. `AC-INV-018` is preserved for the
 implemented supported repair catalog. `RUNTIME-01` remains Open for Explicit
-definition, named profiles, broader portability/taxonomy, updates, and the
-integrated managed golden path. `LOG-05` remains Open for other retained
-operations and parity, and `AC-SLICE-13` remains Open for the end-to-end
-fresh-install-to-valid-synthetic-result proof. The frozen dashboard and
-post-campaign documentation retirement remain untouched.
+definition, named profiles, broader portability/taxonomy, and updates.
+`LOG-05` remains Open for other retained operations and parity. The integrated
+`AC-SLICE-13` implementation exists and awaits exact-head managed execution.
+The frozen dashboard and post-campaign documentation retirement remain
+untouched.
+
+### 13.15 Bounded slice record: managed golden path and demo retirement
+
+| Surface/category | Selected implementation and boundary |
+|---|---|
+| Supported journey | The current neutral synthetic path is `emrys init synthetic → emrys doctor --repair → emrys run → emrys inspect run`. Doctor-managed runtime repair and automatic reporting stay inside that journey; real-data, site-runtime, and Slurm variants remain advanced extensions. Exact-head CI execution is pending. |
+| Storage and placement | Doctor can publish one receipt-last single-host qualification for direct execution. Direct Runs admit that receipt or stronger retained v1 evidence. Slurm and placement-less historical Runs still require the unchanged two-phase v1 receipt; lifecycle re-admits the exact class bound to the Attempt. |
+| Retirement and compression | Demo docs/Make ownership, the fake fresh-clone harness, and the coupled public spellings retire. Focused failure/resume tests and independent report goldens remain. A shared stable no-follow reader and the existing exclusive-publication primitive replace duplicate local mechanics without widening the package API. The real Slurm driver/test pair is reduced by 1,271 lines while preserving its scheduler, storage, Step 09 oracle, reporting, retention, and failure boundaries. Maintained product is net `-74` lines and the exact tree is net `-2279`; exact category accounting lives in the findings matrix. No retained evidence is deleted. |
+| Mutation and logging | The only new authority is an immutable direct-storage receipt. Synthetic initialization is bounded create-absent publication with no Attempt log; Doctor diagnosis/preview/refusal and Run inspection are read-only/no-log; confirmed repair uses one maintenance log from before mutation through requalification; Run plus automatic reporting keeps its existing single Run log. `LOG-05` remains Open elsewhere; no dashboard or mutable Run authority changes. |
 
 ## 14. Measurement plan
 
@@ -2780,7 +2797,10 @@ semantic field-and-authority portion:
 | `AC-DEC-011` (semantic fields and authorities) | Section 8.1.3 fixes the Analysis, Execution-Plan, and Run identity fields and digest composition; relocation/content/order rules; symbolic resource envelope; Attempt variation; logical canonical authorities and direct retirement direction; Run-admission recovery owner; and five separate status domains. |
 | `AC-DEC-008` | The minimum useful common operation representation is the existing private `TaskDispatch` plus profile/graph references. Reporting remains a separate downstream boundary. No new Stage/Operation API, schema, registry, lifecycle vocabulary, or public noun is justified. |
 | `AC-DEC-009` | Shared policy is conditional rather than a required layer. Centralize only when at least two production owners make the same decision from equivalent inputs with identical complete semantics and one bounded caller-complete migration retires the duplicates net-negatively. Distinct trust-boundary re-admission is not duplication; the inventory may select no shared abstraction. |
-| `AC-DEC-003` | Top-level `emrys doctor` diagnoses without writing or logging. Repair is separately operator-authorized: `--repair` previews one managed-runtime plan and confirms on a terminal, while noninteractive mutation requires `--repair --execute`. Repair is bounded to the active checkout-owned `.venv` and Project `runtime/managed`, delegates dependency solving/installation to `uv`, Pixi, and `renv`, owns one maintenance log, preserves site/user profiles and declared inputs, and requalifies. Linux x86-64 is the current managed target; advanced evidence routes remain separate. |
+| `AC-DEC-003` | Top-level `emrys doctor` diagnoses without writing or logging. Repair is separately operator-authorized: `--repair` previews one plan and confirms on a terminal, while noninteractive mutation requires `--repair --execute`. Doctor may publish one receipt-last Project-owned direct-storage qualification and may mutate only the active checkout-owned `.venv` and Project `runtime/managed`; it delegates dependency solving/installation to `uv`, Pixi, and `renv`, owns one maintenance log, preserves site/user profiles and declared inputs, and requalifies. Storage-only repair preserves an already-ready site runtime and invokes no package manager. Direct Runs admit that local receipt or stronger v1 evidence; Slurm and placement-less historical Runs remain v1-only. Linux x86-64 is the current managed-runtime target; advanced evidence routes remain separate. |
+| `AC-DEC-007` | A supported managed environment is accepted through Pixi for the initial Linux x86-64 path; containerization remains an independent option. The packaged manifest/lock declares glibc 2.28 and Linux 4.18 virtual-package values. Ordinary CI installs that unchanged lock in Rocky 8.10, Ubuntu 22.04, and Debian 12 userspaces, and the real-tool managed direct Ubuntu golden-path job is implemented with exact-head execution pending. Actual Linux 4.18, broader portability, cluster/site, scheduler, security, licensing, updates, native escape hatches, and full tool-provenance policy remain with `RUNTIME-01`/`CONTAINER-01`. |
+| `AC-DEC-015` | The public demo surface is retired. The neutral supported synthetic path begins with `emrys init synthetic`; the internal fixture schema remains compatibility metadata rather than a public command or product concept. |
+| `AC-DEC-024` | The current supported synthetic capability order is `emrys init synthetic -> emrys doctor --repair -> emrys run -> emrys inspect run`. The initializer creates its Project, Doctor establishes readiness, Run executes the immutable plan with reporting automatic by default, and inspection admits the retained outcome. Real-data, site-runtime, and Slurm journeys remain role-specific extensions rather than alternate ordinary orders. |
 | `AC-DEC-017` | The stable advanced surface is the existing role-tiered grouped Run control and read-only Run inspection route. Normal output keeps the primary Run ID and scientific outcome; verbose adds admitted Analysis, Execution Plan, and Attempt identity plus effective placement/resources; debug adds canonical authority paths/digests, effective-plan facts, verified artifacts, task/receipt evidence, and exact safe commands. Historical Runs are labeled without successor identities. Durable records remain the machine-readable evidence surface; no separate explain, manifest, evidence, or diagnostics command is required. |
 
 | Decision ID | Open question | Retained options or concerns |
@@ -2789,13 +2809,11 @@ semantic field-and-authority portion:
 | `AC-DEC-004` | What is the user-authored scientific schema? | project.yaml versus analysis.yaml; embedded samples versus TSV; configuration evolution |
 | `AC-DEC-005` | What broader merge semantics remain beyond the implemented execution-profile boundary? | Current execution precedence is packaged defaults, one explicitly selected closed fragment, then owner-defined CLI resource overrides, with source/effective provenance retained. Site/project/scientist configuration precedence and broader list/map/null semantics remain Open. |
 | `AC-DEC-006` | How are runtime and future named execution choices represented? | One explicit file-bound direct/Slurm execution profile is implemented and runtime remains separate. Institution-provided discovery publishes one Project-owned admitted runtime authority that ordinary commands derive, and Doctor implements the first bounded Managed installation/repair. Named execution profiles are likely necessary; Explicit definition, registry/management, final taxonomy, broader portability, and persistence remain Open. External mechanisms stay behind owned boundaries and supported realizations owe equivalent declared guarantees. |
-| `AC-DEC-007` | Is a supported managed container/environment accepted? | Pixi is selected for the initial managed Linux-environment candidate. Its packaged manifest/lock targets Linux x86-64 with declared glibc 2.28 and Linux 4.18 virtual-package values. Ordinary CI installs the unchanged lock and invokes its tools in Rocky 8.10, Ubuntu 22.04, and Debian 12 userspaces. Actual Linux 4.18, full R-package/EMRYS execution, cluster/site, scheduler, storage, security, licensing, updates, native escape hatch, and tool provenance remain Open. |
 | `AC-DEC-010` | What artifact-lifecycle vocabulary and owner shape are justified? | Candidate, validation, admission, publication, commit, immutability, evidence, and rollback; generalized versus class-specific ownership; APIs, schemas, manifests, receipts, immutability mechanisms, external/large artifacts, Run Bundle/report-derived relationships, cleanup, recovery, and representative migration. Lifecycle/admission is already distinct from physical storage. |
 | `AC-DEC-011` | How are the selected Analysis/Execution-Plan/Run/Attempt semantics realized? | Immutable canonical Analysis/Execution-Plan/Run records, versioned schemas, Run-last persistence, current-path migration, direct workflow/task Run admission, Attempt-owned reporting inputs, historical read/resume, and temporary-projection retirement are implemented. Public Project/Results representation, role-aware API/package placement, remaining public/campaign migration, compatibility duration, and the rest of the implementation retirement roster remain Open. A generalized backend is evaluated near closure only for concrete extension or compression evidence; shared-policy migrations follow resolved `AC-DEC-009`. Mutable object state and canonical bytes cannot compete; coordination cannot absorb lower authorities or become a god object. |
 | `AC-DEC-012` | What public Run, Attempt, scientific, and reporting states are useful and truthful? | Resolved for the supported read-only surface: Run integrity is `valid`/`blocked`; Attempt outcome is `not_started`/`running`/`succeeded`/`failed`/`interrupted`/`blocked`; scientific Results and reporting are independently `incomplete`/`complete`/`blocked`; recovery is a separate availability fact. Five scientific milestones use `not applicable`/`incomplete`/`complete`/`blocked`; reporting is not a milestone. Current/latest Attempt elapsed time uses only that Attempt's retained boundaries, with no resume summation or ETA. Normal/verbose/debug disclosure is presentation, not authority. The superseded aggregate Python accessors are retired; receipt-v1 remains historical schema evidence. |
 | `AC-DEC-013` | What is the Run Bundle contract? | A Run Bundle is likely useful, but view/export/snapshot shape, mutability, ownership, persistence, layout, portability, large artifacts, external references, redaction, archival, regeneration, and sharing remain Open. |
 | `AC-DEC-014` | How are the ratified downstream-reporting semantics represented? | Resolved for the current fixed profile: scientific Attempt/Results state, reporting state, recovery, and verified locations are independent; receipt v2 ends at science while receipt v1 remains exact historical evidence. `run`/`resume` report by default, `--no-report` opts out, and dry-run-first `emrys report --run-root ... [--execute]` regenerates without a Run or Attempt. Complete transactions are revalidated/reused; partial or ambiguous state is never adopted, repaired, deleted, or retried. The existing scientific and Evidence-and-operations HTML views and `results/reports/<run-id>` remain canonical. Broader Run-Bundle, format, portability, archival, and future-profile choices remain with their own cards. |
-| `AC-DEC-015` | What replaces the current “demo” surface? | Neutral synthetic golden path; whether “demo” remains a command, test-only term, or is retired completely |
 | `AC-DEC-016` | Which filesystem concepts are public? | Project/inputs/runs/results/runtime; exact internal-to-public mapping |
 | `AC-DEC-018` | How is each bounded compatibility and retirement transition implemented? | Compatibility window, warnings, fixtures, and removal evidence; caller migration, relevant parity, owned temporary compatibility, and eventual retirement are already binding. Evidence deletion remains separately approval-gated. |
 | `AC-DEC-019` | Which campaign metrics and targets become commitments? | Reproducible UX and operational baselines; separate product, protection, configuration/documentation, and retained-evidence methods; supported environment; time targets; coverage-rebase interpretation; qualitative acceptance. Per-slice accounting is already binding. |
@@ -2803,7 +2821,6 @@ semantic field-and-authority portion:
 | `AC-DEC-021` | Which new architecture documents should remain after the campaign? | Invariants, current architecture, target architecture, or consolidation into existing durable owners |
 | `AC-DEC-022` | How should the Steps 07–09 audit be bounded? | Review authority, candidate universe, count/CMH/BH contracts, oracle data, evidence ceiling |
 | `AC-DEC-023` | Which historical claims from the source are accurate and useful? | Development dates, chronology, and repository-history interpretations require live Git verification before reuse |
-| `AC-DEC-024` | What is the canonical golden-path capability order? | `init -> check -> run`; repository/doctor/demo/init/run/report; Install/Doctor/Demo/Configure/Run/Inspect; placement of synthetic execution relative to project creation; interactive and automation journeys |
 | `AC-DEC-025` | Deferred trigger: does a distinct Artifact Store become necessary? | No Store is selected or required now. Reconsider only after a separately approved concrete unmet need that current class-specific authorities cannot handle cleanly; any Store must replace rather than duplicate admission authority. Nonbinding example needs remain in the suggestion register. |
 
 No open decision is resolved merely because one source supplied a concrete
@@ -2875,7 +2892,7 @@ defined in Section 13.1; evidence deletion cannot be implied by promotion.
 | `AC-SLICE-10` | Define high-level status and safe resume/recovery UX over existing fail-closed internals | **Complete.** Separated status, recovery gating, deterministic next-action guidance, five persisted-authority scientific milestones, current/latest Attempt elapsed time, and normal/verbose/debug progressive disclosure are implemented on the existing read-only inspect route. Reporting remains separate; no ETA, status store, dashboard dependency, or inspection-side write is introduced. `OBS-01` is complete; `LOG-05` remains open for broader retained-operation adoption and parity. |
 | `AC-SLICE-11` | Decide whether a canonical Run Bundle is accepted and, if so, define its contract | A Run Bundle is likely useful; shape, ownership, persistence, and exact contract remain Open and coordinate with `FILESYSTEM-01` and completed `RESULTS-01` |
 | `AC-SLICE-12` | Formalize scientific, evidence, and operational report purposes and navigation | **Complete.** The two receipt-bound HTML reports retain their output identities and now carry fixed sibling-relative navigation for the three accepted questions. The scientific report remains primary. The combined **Evidence and operations** report retains Run overview, folds both provenance sections into Evidence, and places Attempt lineage under Operations. No third report, schema, receipt, command, or filesystem surface was added. `RESULTS-01` subsequently co-located both reports with the admitted result tables; `REPORT-03` remains Verification pending for rendered acceptance. |
-| `AC-SLICE-13` | Deliver a supported fresh-install-to-valid-synthetic-result golden path after ratifying its capability order | Manifest drafting, guided Project setup, runtime discovery, bounded managed provisioning/repair, Doctor, Run, and Results capabilities exist; the integrated fresh-install-to-valid-synthetic-result proof remains Open |
+| `AC-SLICE-13` | Deliver a supported fresh-install-to-valid-synthetic-result golden path after ratifying its capability order | **Implementation complete; Verification pending.** The ordinary CI lane contains the supported managed direct journey `init synthetic -> doctor --repair -> run -> inspect run` and exact retained Project/Run/Results/report assertions. Exact-head managed execution and aggregate CI remain pending. |
 | `AC-SLICE-14` | Establish reproducible UX, operational, and separate product/protection/configuration-documentation/retained-evidence baselines and ratify their interpretation methods and campaign success measures | New aggregate-measurement slice; per-slice accounting starts immediately and coordinates with `REVIEW-UX-03` and `ARCH-01` |
 | `AC-SLICE-15` | Audit the Steps 07–09 statistical contract | New scientific-review slice; not architecture evidence |
 | `AC-SLICE-16` | Build independent numerical oracles for Steps 08 and 09 | New scientific-validation slice |
@@ -2910,8 +2927,8 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `SETUP-01` | **Complete.** `emrys init manifests` admits canonical paired FASTQ paths plus explicit condition/replicate/strandedness, optionally admits declared partitions, and produces deterministic strict drafts through dry-run-first, absent-directory, no-clobber, completion-last publication without inspecting content or inventing biology. Guided Project setup, runtime acquisition, Doctor, and data acquisition remain separate. |
 | `SETUP-02` | Portable setup-adjacent benchmarking with advisory, evidence-bound recommendations |
 | `SETUP-03` | **Complete.** `emrys init project` validates the explicit scientific inputs before dry-run-first, create-absent publication; creates only Project-owned `project.yaml`, `runs/`, `logs/`, and `runtime/`; references inputs in place; and retires the local-pilot starter/manual-workspace path without coupling setup to runtime acquisition. |
-| `RUNTIME-01` | Institution-provided discovery is implemented as a dry-run-first route publishing only Project-owned `runtime/runtime.tsv`, which run, resume, and Doctor derive; generic profile-driven inspection remains advanced evidence. The packaged Pixi Managed resources target Linux x86-64 with declared glibc 2.28/Linux 4.18 virtual-package values, and Doctor repair now delegates locked `.venv`, native/R, and R-package provisioning to `uv`, Pixi, and `renv` under owned paths before requalification. Ordinary CI installs the unchanged lock and invokes its tools in Rocky 8.10, Ubuntu 22.04, and Debian 12 userspaces. Actual Linux 4.18, complete managed golden-path execution, cluster/site, scheduler, storage, security, update qualification, Explicit definition, named profiles, and taxonomy remain Open; runtime stays separate from execution profiles. |
-| `DOCTOR-01` | **Complete.** Top-level Project-aware diagnosis derives input, storage, runtime, and execution readiness with normal/verbose/debug disclosure. Diagnosis and preview write/log nothing. Confirmed managed repair is bounded to the active checkout-owned `.venv` and Project `runtime/managed`, delegates to established package managers, owns one maintenance log, preserves inputs and site/user profiles, and requalifies. |
+| `RUNTIME-01` | Institution-provided discovery is implemented as a dry-run-first route publishing only Project-owned `runtime/runtime.tsv`, which run, resume, and Doctor derive; generic profile-driven inspection remains advanced evidence. The packaged Pixi Managed resources target Linux x86-64 with declared glibc 2.28/Linux 4.18 virtual-package values, and Doctor repair delegates locked `.venv`, native/R, and R-package provisioning to `uv`, Pixi, and `renv` under owned paths before requalification. Ordinary CI installs the unchanged lock and invokes its tools in Rocky 8.10, Ubuntu 22.04, and Debian 12 userspaces; the real-tool managed direct Ubuntu golden-path job is implemented with exact-head execution pending. Actual Linux 4.18, broader portability, cluster/site, scheduler, security, update qualification, Explicit definition, named profiles, and taxonomy remain Open; runtime stays separate from execution profiles. |
+| `DOCTOR-01` | **Complete.** Top-level Project-aware diagnosis derives input, storage, runtime, and execution readiness with normal/verbose/debug disclosure. Diagnosis and preview write/log nothing. Confirmed repair may publish one receipt-last Project-owned direct-storage qualification and is otherwise bounded to the active checkout-owned `.venv` and Project `runtime/managed`; it delegates to established package managers, owns one maintenance log, preserves inputs and site/user profiles, and requalifies. Storage-only repair preserves an already-ready site runtime and invokes no package manager. Direct Runs admit the local receipt or stronger v1 evidence; Slurm and placement-less historical Runs remain v1-only. |
 | `RUN-03` | **Complete.** The current path constructs and commits immutable successor Run authority, admits it through workflow/task boundaries, and supports zero-Attempt inspection, execution, and compatible resume without permitting Attempt mutation of Run. One terminal direct invocation displays and confirms the exact frozen Run plan. Slurm constructs one frozen submission plan, displays its placement summary, and submits that same object once after confirmation; its private delegate constructs the Run and opens the application log inside the allocation. `--execute` remains the explicit automation path. Refusal, EOF, or interruption precedes every applicable direct or transport mutation. The scientific Attempt ends at `cohort_slice` with a released lock and receipt v2; default reporting runs afterward, `--no-report` disables it, and `emrys report` plans/generates/reuses it independently without creating a Run or Attempt. Low-level reporting commands and the composite workflow tail are retired. Computational declaration may affect Run identity; profile location/raw bytes, placement, allocation, scheduler job ID, logging, reporting, and transport state remain Run-neutral facts. Real scheduler/site and outcome parity remain with `AC-SLICE-05`/`OPS-02`; broader public-model migration remains with `AC-SLICE-03`/`CONTROL-01`/`ARCH-01`; role-tiered Run identity and locator disclosure are complete under `AC-SLICE-09`/`IDENTITY-01`. |
 | `IDENTITY-01` | **Complete.** Successor Runs use the selected domain-separated digest over relocation-independent Analysis and Execution-Plan identities, with historical Runs preserved through the version-aware reader and no successor execution projection. Normal operation uses one primary Run ID; verbose inspection adds admitted Analysis, Execution Plan, and Attempt identity; debug retains detailed authority, artifact, receipt, task, and evidence metadata. No subsystem reconstructs a competing Run identity. |
 | `FILESYSTEM-01` | Completed `RESULTS-01` supplies one current discoverable result/report surface with no hidden competing report root; a Run Bundle is likely useful while its acceptance, shape, exact contract, and automatic broader directory creation remain Open; no distinct Artifact Store is currently selected |
@@ -2928,14 +2945,14 @@ this campaign preserves the cross-task rationale and unsettled alternatives.
 | `REPORT-04` | Preserve the requested ability to render nine A-through-I selections when the admitted result warrants them |
 | `RESULTS-01` | **Complete.** Current Runs expose only editing results, scientific context, and receipt-bound reports beneath `results`; nonfinal/QC artifacts live beneath `products/native`; both reports link to admitted primary result tables; no copy, symlink, new manifest/index, or competing current report root exists. Exact legacy-profile report ledgers remain readable as historical evidence, while old-layout Runs are not automatically resumable under the changed current profile. |
 | `DOC-01` | Role- and journey-based scientist/operator/developer documentation that does not assume campaign history |
-| `DOC-02` | Completed repository-wide documentation disposition and authority cutover; bounded migration and retirement now remain under completed `DOC-03`, open `DOC-04`–`DOC-05`, `CLEAN-01`, and `CLEAN-02` |
+| `DOC-02` | Completed repository-wide documentation disposition and authority cutover; bounded migration and retirement now remain under completed `DOC-03`, open `DOC-04`–`DOC-05`, Verification-pending `CLEAN-01`, and open `CLEAN-02` |
 | `DOC-03` | Completed source reconciliation and retirement of the stale future-architecture, pipeline-plan, question-index, and future-diagram surfaces without settling the final architecture-document set; the [durable trace](../design/decisions/repository-and-delivery.md#doc-03-source-to-destination-trace-2026-08-25) lives in the repository-and-delivery decision record |
 | `DOC-04` | Reconcile every handoff section, preserve unique dated evidence and durable recovery facts without promotion, discard blocker/takeover prose, and retire the rolling handoff |
 | `DOC-05` | The launcher transition plan is retired after its current safeguards move to execution-profile, transport, onboarding, package, contract, test, CI, runbook, and configuration owners. `ORCHESTRATION_READINESS.md` still requires its separate consolidation and retirement, so the card remains Open. |
 | `BACKLOG-01` | Matrix cutover remains a discrete task; this campaign does not silently create another permanent backlog authority |
 | `DOC-TOOL-01` | Preserve useful documentation validation in a correctly named owner while removing obsolete task-registry coupling |
 | `TOOLING-01` | Complete the exact former-file/caller history audit for the absent generic Git-orchestration namespace; useful validation remains with its documentation owner and no check-only return guard is required |
-| `CLEAN-01` | Retire the old demo product surface without losing a neutral synthetic golden path and its validation value; final terminology is open |
+| `CLEAN-01` | **Implementation complete; Verification pending.** The public demo surface, docs/Make owner, and fake fresh-clone harness retire; `emrys init synthetic` and focused lifecycle/reporting evidence retain the neutral supported value. Exact-head aggregate CI remains pending. |
 | `CLEAN-02` | Reconcile the obsolete pending Step 04 scaffold against the active owner test, then retire the duplicate test-planning surface |
 | `FUT-DATA-02` | Preserve initial exact NCBI reference and SRA-read adapters versus possible later ENA, GEO, and BAM acquisition as an explicit nonbinding scope choice; provenance and acquisition acceptance remain matrix-owned |
 | `FUT-INDEX-01` | Reuse a compatible declared index rather than regenerate it; compatibility and identity remain fail-closed |

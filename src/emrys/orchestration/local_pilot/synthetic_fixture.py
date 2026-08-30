@@ -1,4 +1,4 @@
-"""Generate deterministic four-library local-pilot science fixtures."""
+"""Generate deterministic four-library synthetic Projects."""
 
 from __future__ import annotations
 
@@ -18,10 +18,10 @@ from types import MappingProxyType
 from typing import cast
 
 from emrys.contracts.orchestration import api as orchestration_contracts
-from emrys.orchestration.local_pilot.execution_profile import DEFAULT_PROFILE_PATH
 from emrys.orchestration.local_pilot.onboarding import (
     OnboardingError,
     PROJECT_DIRECTORIES,
+    _project_yaml,
     _require_external_absent_output,
     publish_create_absent_tree,
     source_root,
@@ -30,7 +30,7 @@ from emrys.orchestration.local_pilot.onboarding import (
 
 DESCRIPTION = (
     "Generate one deterministic four-library RNA fixture for a real-tool "
-    "local-pilot run. Dry-run is the default."
+    "EMRYS Project. Dry-run is the default."
 )
 FIXTURE_SCHEMA = "emrys.synthetic-local-pilot.v2"
 COMPLETION_MANIFEST = "fixture.manifest.json"
@@ -466,47 +466,30 @@ def _sample_manifest() -> bytes:
 
 
 def _project_definition(profile: DatasetProfile = DEFAULT_PROFILE) -> bytes:
-    return f"""schema_version: emrys.request.v3
-label: {profile.fixture_id}
-profile: emrys.profile.local_cmh.v2
-sample_manifest: samples.tsv
-partition_manifest: partitions.tsv
-reference:
-  id: {profile.reference_id}
-  fasta: inputs/reference/reference.fa
-  gtf: inputs/reference/genes.gtf
-  star_index:
-    sjdb_overhang: 74
-    genome_sa_index_nbases: {profile.genome_sa_index_nbases}
-cohort_id: {profile.cohort_id}
-analysis:
-  id: {profile.analysis_id}
-  control_condition: control
-  treatment_condition: treatment
-  rna_ref: A
-  rna_alt: G
-  min_sample_dp: 1
-  mean_dp_threshold: 50
-  fdr_threshold: 0.05
-  common_or_threshold: 1.2
-  absolute_difference_threshold: 0.005
-  background_condition: null
-  background_max_fraction: 0.01
-""".encode("utf-8")
-
-
-def _execution_profile() -> bytes:
-    profile = DEFAULT_PROFILE_PATH.read_bytes()
-    for source, replacement in (
-        (b"workflow_cores: 4", b"workflow_cores: 1"),
-        (b'    "00a": 4', b'    "00a": 1'),
-        (b'    "01": 4', b'    "01": 1'),
-        (b'    "06": 4', b'    "06": 1'),
-    ):
-        if profile.count(source) != 1:
-            raise ValueError("packaged execution-profile defaults changed")
-        profile = profile.replace(source, replacement)
-    return profile
+    return _project_yaml(
+        {
+            "label": profile.fixture_id,
+            "sample_manifest": Path("samples.tsv"),
+            "partition_manifest": Path("partitions.tsv"),
+            "reference_id": profile.reference_id,
+            "reference_fasta": Path("inputs/reference/reference.fa"),
+            "reference_gtf": Path("inputs/reference/genes.gtf"),
+            "sjdb_overhang": READ_LENGTH - 1,
+            "genome_sa_index_nbases": profile.genome_sa_index_nbases,
+            "cohort_id": profile.cohort_id,
+            "analysis_id": profile.analysis_id,
+            "control_condition": "control",
+            "treatment_condition": "treatment",
+            "target_change": "A>G",
+            "min_sample_dp": 1,
+            "mean_dp_threshold": 50,
+            "fdr_threshold": 0.05,
+            "common_or_threshold": 1.2,
+            "absolute_difference_threshold": 0.005,
+            "background_condition": None,
+            "background_max_fraction": 0.01,
+        }
+    )
 
 
 def _candidate_metadata(site: dict[str, object]) -> dict[str, object]:
@@ -657,7 +640,6 @@ def fixture_members(
     reference = _reference(profile)
     members: dict[str, tuple[bytes, int]] = {
         "project.yaml": (_project_definition(profile), 0o644),
-        "emrys.execution.yaml": (_execution_profile(), 0o644),
         "samples.tsv": (_sample_manifest(), 0o644),
         "partitions.tsv": (
             f"partition_id\tselector_type\tselector_value\nprimary\tregion\t{CONTIG}\n".encode(),
@@ -764,7 +746,7 @@ def init_from_args(arguments: argparse.Namespace) -> int:
             directories=PROJECT_DIRECTORIES,
             before_completion=validate_before_completion,
         )
-        print(f"Published deterministic local-pilot fixture ({profile.name}): {output}")
+        print(f"Published deterministic synthetic Project ({profile.name}): {output}")
         print(f"Project: {output / 'project.yaml'}")
         print(
             "Evidence boundary: synthetic workflow smoke input; not biological evidence."

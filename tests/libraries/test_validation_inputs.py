@@ -34,6 +34,25 @@ READERS = pytest.mark.parametrize(
 )
 
 
+def test_read_bytes_with_identity_returns_bound_file_and_allows_declared_empty(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "empty.lock"
+    source.touch()
+
+    data, identity = INPUTS.read_bytes_with_identity(
+        source,
+        "Empty lock",
+        nonempty=False,
+    )
+
+    assert data == b""
+    assert (identity.st_dev, identity.st_ino) == (
+        source.stat().st_dev,
+        source.stat().st_ino,
+    )
+
+
 def test_require_executable_rejects_non_executable_file(tmp_path: Path) -> None:
     tool = tmp_path / "not_executable.sh"
     tool.write_text("#!/usr/bin/env bash\n")

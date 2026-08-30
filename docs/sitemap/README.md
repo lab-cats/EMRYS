@@ -18,7 +18,6 @@ the routes below explain the human boundaries.
 - [Tasks](../tasks/README.md) — canonical planning matrix, temporary unsliced
   architecture context, provisional architecture ranking, and disposition
   rules.
-- [Demonstrations](../demo/README.md) — reviewed presenter guides.
 - [History](../history/) — immutable dated records maintained separately.
 
 For task orientation and approved delivery, use

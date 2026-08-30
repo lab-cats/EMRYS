@@ -1,7 +1,7 @@
 # Documentation
 
 This tree contains repository guidance, architecture and design authority,
-operator procedures, task routing, reference material, demonstrations, and
+operator procedures, task routing, reference material, and
 frozen historical evidence. It does not own executable behavior or replace the
 functional `README.md` and `CONTRACT.md` beside an implementation.
 
@@ -14,7 +14,6 @@ functional `README.md` and `CONTRACT.md` beside an implementation.
   handoff retained only for `DOC-04` evidence and recovery reconciliation.
 - [`reference/`](reference/) — terminology and other non-authoritative lookup
   aids that link back to subject owners.
-- [`demo/`](demo/) — reviewed presenter guides.
 - [`history/`](history/) — frozen dated evidence that does not own current
   state.
 - [`tasks/`](tasks/) — the canonical findings matrix, temporary architecture

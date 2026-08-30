@@ -92,9 +92,6 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
     quality_makefile = (REPO_ROOT / "scripts" / "make_quality.mk").read_text(
         encoding="utf-8"
     )
-    reporting_makefile = (REPO_ROOT / "scripts" / "make_reporting.mk").read_text(
-        encoding="utf-8"
-    )
     for target in (
         "python-coverage-check:",
         "python-coverage-enforce:",
@@ -103,12 +100,11 @@ def test_dependency_and_make_wiring_are_explicit() -> None:
         "validation-wheel-smoke:",
         "validation-guarded-r:",
         "validation-static:",
+        "report-test:",
         "all-checks:",
     ):
         assert target in quality_makefile
-    for target in ("report-test:", "demo-report:"):
-        assert target in reporting_makefile
-    assert "validation-report-runtime:" not in reporting_makefile
+    assert "demo-report:" not in root_makefile + quality_makefile
     assert "tests/tools/run_validation.py" in quality_makefile
     assert "tests/tools/source_dependencies.py" in quality_makefile
     assert "PYTHON_COVERAGE_WORKERS" in root_makefile

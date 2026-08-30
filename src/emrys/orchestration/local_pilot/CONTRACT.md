@@ -37,7 +37,7 @@ routes derive the canonical profile from the Project. The generic
 profile-driven `emrys inspect runtime-availability` route remains the advanced evidence
 surface and does not establish the ordinary Project runtime authority.
 
-`emrys init synthetic-local-pilot` uses the same external, dry-run-first,
+`emrys init synthetic` uses the same external, dry-run-first,
 create-absent publication policy. Its closed `--dataset-profile` selector
 defaults to `smoke-v1` (130 pairs per library on 100 kb) and also admits
 `production-like-v1` (100,000 pairs per library on 5 Mb). The larger profile
@@ -127,20 +127,22 @@ scheduler, cluster, scientific-review, or biological evidence.
 
 `emrys doctor --repair` separately plans the supported managed-runtime repair.
 Terminal mutation requires confirmation; noninteractive mutation requires the
-combined `--repair --execute`. The current repair supports Linux x86-64 only,
-requires the active checkout-owned `.venv`, and permits writes only to that
-environment and Project-owned `runtime/managed`, plus create-absent publication
-of `runtime/runtime.tsv`. `uv`, Pixi, and `renv` remain the package-solving and
-installation authorities. Doctor orchestrates their exact locked actions,
-owns one maintenance application log beginning after authority and before
-mutation, and re-runs complete Project readiness afterward. An existing
-site/user profile is never overwritten or silently migrated; declared inputs
-and workflow outputs are outside repair ownership. Ambient Pixi configuration
-is disabled and Project-local Pixi configuration is rejected so it cannot
-redirect managed environments beyond that boundary.
+combined `--repair --execute`. Repair may create one Project-owned direct
+storage receipt after bounded single-host probes. Managed-runtime repair
+supports Linux x86-64 only, requires the active checkout-owned `.venv`, and
+permits writes only to that environment and Project-owned `runtime/managed`,
+plus create-absent publication of `runtime/runtime.tsv`. `uv`, Pixi, and `renv`
+remain the package-solving and installation authorities. Doctor orchestrates
+the selected storage/runtime actions, owns one maintenance application log
+beginning after authority and before mutation, and re-runs complete Project
+readiness afterward. A ready site/user profile is never overwritten, migrated,
+or passed through package-manager repair; declared input files and workflow
+outputs are outside repair ownership. Ambient Pixi configuration is disabled
+and Project-local Pixi configuration is rejected so it cannot redirect managed
+environments beyond that boundary.
 The advanced storage-evidence command retains
-`inspect storage-qualification --workspace PROJECT_ROOT`; this explicit probe
-target is not an ordinary Project/workspace choice.
+`inspect storage-qualification --workspace PROJECT_ROOT`; this explicit
+two-phase Slurm/site probe is not an ordinary Project/workspace choice.
 Ordinary executable and hash probes are bounded at 30 seconds. Each guarded R
 namespace load has a separate 120-second bound and records elapsed/configured
 timing in its diagnostic; timeouts remain readiness failures. The selected
@@ -149,7 +151,7 @@ resolve through a cache symlink only when the loaded namespace and exact
 canonical package-tree binding agree on its target.
 
 The grouped `emrys run`, `emrys resume`, `emrys report`, and
-`emrys inspect local-pilot-run`
+`emrys inspect run`
 routes are the supported control surface; their planning helpers are private
 implementation details. `run` and `resume` require the controlled Python
 invocation. With direct placement, a terminal builds and prints one frozen Run
@@ -306,13 +308,16 @@ version, normalizer path, and config are admitted as one runtime identity.
 Runtime source checkout and required-tool identities are observed before
 mutation and again after the child exits. The subprocess environment removes
 inherited noninteractive-shell startup hooks before Snakemake starts.
-For a local-science attempt, those observations include a fresh semantic
-admission of the final storage-qualification receipt for the Project root
-and the canonical normalized reference FASTA. The observed receipt path,
-digest, qualification identifier, and qualified root identities must reproduce
-the one immutable `storage_qualification` tool identity before and after the
-child; copying the declared identity into the observed roster is not
-admission.
+For a scientific Attempt, those observations include fresh semantic admission
+of the placement-appropriate storage receipt for the Project root and canonical
+normalized reference FASTA. Direct placement accepts the Doctor-owned
+single-host receipt or the stronger final two-phase site receipt; Slurm
+placement requires the latter.
+The observed receipt path, digest, qualification identifier, and qualified root
+identities must reproduce the one immutable `storage_qualification` tool
+identity before and after the child; copying the declared identity into the
+observed roster is not admission. Historical Attempts without placement retain
+the two-phase requirement, and a direct receipt can never admit Slurm.
 SIGINT/SIGTERM is controlled from before mutex acquisition through durable
 receipt or recovery disposition and is forwarded at most once to the delegated
 process group. Terminal success, failure, interruption, or a diagnosed state
@@ -323,14 +328,16 @@ receipt. Bounded TERM then KILL escalation covers members that remain in the
 original process group after the leader exits; SIGKILL, power loss, and a
 descendant deliberately escaping the delegated session/group are excluded.
 
-This implementation requires POSIX signal masking and a doctor-admitted final
-storage-qualification receipt for the workflow parent and Step `00c` sidecar
-parent. The two-phase compute/head probe must reconcile same-filesystem hard
-links, advisory `flock` contention, atomic rename visibility, write/fsync,
-numeric UID/GID access, mount identity, and post-allocation durability.
-Network/distributed storage remains unsupported until that exact receipt
-finalizes. A node-local root invisible after the allocation cannot qualify;
-there is no implicit stage-in/stage-out or copy exception.
+This implementation requires POSIX signal masking and a Doctor-admitted
+placement-appropriate receipt for the Project root and Step `00c` sidecar
+parent. Direct qualification proves same-host hard links, advisory `flock`
+contention, atomic rename visibility, and write/fsync under the current
+host/UID/GID and exact root identities; it makes no cross-node or
+post-allocation claim. Slurm's two-phase compute/head probe additionally
+reconciles numeric access, mount identity, and post-allocation durability.
+Network/distributed storage remains unsupported for Slurm until that exact
+site receipt finalizes. A node-local root invisible after the allocation cannot
+qualify Slurm; there is no implicit stage-in/stage-out or copy exception.
 
 If attempt establishment fails after the public lock is acquired but before a
 complete attempt record exists, lifecycle still atomically retains the lock as

@@ -23,7 +23,7 @@ ORDINARY_JOB_IDS = (
     "shell-slurm",
     "guarded-r",
     "managed-runtime-userspace",
-    "fresh-clone-e2e",
+    "managed-golden-path",
     "python314-coverage-shards",
     "python314-coverage",
     "python311-smoke",
@@ -194,6 +194,7 @@ def test_synthetic_job_uses_locked_real_runtime_and_real_slurm() -> None:
         assert profile_argument in step["run"]
         assert "tests/tools/real_synthetic_e2e.py" in step["run"]
         assert '"/usr/bin/srun"' in step["run"]
+        assert "--slurm-cpus" not in step["run"]
         assert "--execute" in step["run"]
 
     weekly = _named_step(job, "Run the selected 100,000-pair real synthetic E2E")
@@ -212,6 +213,11 @@ def test_managed_runtime_lock_has_one_linux_floor_and_exact_science_versions() -
         }
     ]
     assert manifest["environments"] == {"native": ["native"], "r": ["r"]}
+    native_dependencies = manifest["feature"]["native"]["dependencies"]
+    assert {"coreutils", "grep"} <= native_dependencies.keys()
+    r_dependencies = manifest["feature"]["r"]["dependencies"]
+    assert "libxml2-devel" in r_dependencies
+    assert "libxml2" not in r_dependencies
 
     lock = yaml.safe_load(MANAGED_RUNTIME_LOCK_PATH.read_text(encoding="utf-8"))
     assert lock["platforms"] == [
@@ -244,6 +250,9 @@ def test_managed_runtime_lock_has_one_linux_floor_and_exact_science_versions() -
     r_bases = [url for url in r_environment if "/r-base-" in url]
     assert len(r_bases) == 1
     assert "/r-base-4.6.1-" in r_bases[0]
+    assert sum("/libxml2-devel-" in url for url in r_environment) == 1
+    assert sum("/coreutils-" in url for url in native) == 1
+    assert sum("/grep-" in url for url in native) == 1
     metadata = {row["conda"]: row for row in lock["packages"]}
     locked_environment = {*native, *r_environment}
     assert locked_environment <= metadata.keys()
@@ -292,7 +301,47 @@ def test_managed_runtime_userspace_matrix_proves_the_same_lock() -> None:
     assert setup["with"]["locked"] is True
     verify = _named_step(job, "Verify locked tools in this container userspace")
     assert "src/emrys/resources/runtime/pixi.lock" in verify["run"]
+    assert 'test -e "${r_prefix}/lib/libxml2.so"' in verify["run"]
+    assert '"${r_prefix}/bin/pkg-config" --exists libxml-2.0' in verify["run"]
+    assert 'PATH="${native_prefix}/bin" "${native_prefix}/bin/STAR" --version' in verify["run"]
+    assert 'PATH="${native_prefix}/bin" "${r_prefix}/bin/Rscript"' in verify["run"]
     assert 'pixi list --locked --manifest-path "${PIXI_MANIFEST}"' in verify["run"]
+
+
+def test_managed_golden_path_uses_only_the_public_direct_journey() -> None:
+    job = _workflow_jobs()["managed-golden-path"]
+    assert job["runs-on"] == "ubuntu-24.04"
+    assert job["timeout-minutes"] == 180
+    setup = _named_step(job, "Install Pixi without provisioning the scientific runtime")
+    assert setup["uses"] == (
+        "prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e"
+    )
+    assert setup["with"]["run-install"] is False
+    path = _named_step(job, "Exercise the supported managed golden path")["run"]
+    assert path.index('cd "${clean_clone}"') < path.index(
+        '"${emrys[@]}" init synthetic'
+    )
+    for command in (
+        "init synthetic",
+        "doctor",
+        "--repair --execute",
+        "run",
+        "inspect run",
+    ):
+        assert command in path
+    for retired in (
+        "storage-qualification",
+        "runtime discover",
+        "execution-profile",
+        "synthetic-local-pilot",
+        "local-pilot-run",
+        "test_fresh_clone_e2e.py",
+    ):
+        assert retired not in path
+    upload = _named_step(job, "Upload managed golden-path evidence")
+    assert _expression(upload["if"]) == "always()"
+    assert upload["with"]["include-hidden-files"] is True
+    assert upload["with"]["if-no-files-found"] == "error"
 
 
 def test_synthetic_evidence_is_always_uploaded_with_hidden_state() -> None:

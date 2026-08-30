@@ -194,6 +194,14 @@ validation-guarded-r:
 	$(MAKE) -s r-check
 	$(MAKE) -s local-real-r-test
 
+report-test:
+	"$(REPORT_PYTHON_BIN)" -m pytest \
+		tests/reporting/test_artifact_run_summary.py \
+		tests/reporting/test_candidate_display.py \
+		tests/reporting/test_figures.py \
+		tests/reporting/test_report.py \
+		tests/reporting/test_transaction_validation.py
+
 define STATIC_SHELL_CHECKS
 bash -n $(SHELL_SYNTAX_PATHS)
 bash -n $(SLURM_SYNTAX_PATHS)

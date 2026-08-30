@@ -14,14 +14,11 @@ PYTHON_TEST_SHARD_RECEIPT ?= $(PYTHON_COVERAGE_ROOT)/python-test-shard-$(PYTHON_
 VALIDATION_JOBS ?= 3
 VALIDATION_PYTHON_WORKERS ?= 2
 VALIDATION_ARGS ?=
-DEMO_REPORT_ROOT ?= $(CURDIR)/results/demo-report-jinja
-
-.PHONY: test documentation-check shell-test validation-shell-contracts validation-shell-slurm validation-wheel-smoke real-r-test r-restore r-check local-real-r-test report-test demo-report dashboard python-coverage-shard python-coverage-finalize python-coverage-measure python-coverage-enforce python-coverage-check python-coverage-baseline-update validation-guarded-r validation-static validate smoke lint all-checks
+.PHONY: test documentation-check shell-test validation-shell-contracts validation-shell-slurm validation-wheel-smoke real-r-test r-restore r-check local-real-r-test report-test dashboard python-coverage-shard python-coverage-finalize python-coverage-measure python-coverage-enforce python-coverage-check python-coverage-baseline-update validation-guarded-r validation-static validate smoke lint all-checks
 
 test:
 	"$(REPORT_PYTHON_BIN)" -m pytest
 
 EMRYS_MAKE_ROOT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 include $(EMRYS_MAKE_ROOT)/scripts/make_quality.mk
-include $(EMRYS_MAKE_ROOT)/scripts/make_reporting.mk
 include $(EMRYS_MAKE_ROOT)/scripts/make_operations.mk

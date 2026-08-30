@@ -11,7 +11,7 @@ between-task-resume, and
 read-only-inspection APIs for an already materialized run. B5 implements the
 read-only-by-default Project Doctor with separately authorized managed-runtime
 repair, fixed-profile production materializer, and public dry-run-
-first `run`, `resume`, `report`, and `inspect local-pilot-run` adapter. No real science-
+first `run`, `resume`, `report`, and `inspect run` adapter. No real science-
 tool execution has been proven. Current
 scientific behavior remains with the
 applicable functional owner, and exact semantic identities and artifact edges remain in
@@ -268,11 +268,15 @@ automatic resume nevertheless requires the same clean source commit, profile
 digest, and ordered exact required-tool identities, then re-admits those paths
 and bytes; otherwise the run becomes blocked pending an explicit compatibility
 or new-profile decision.
-Every local-science attempt has exactly one file-backed
-`storage_qualification` identity. Lifecycle re-runs semantic qualification for
-the attempt workspace and canonical normalized reference before delegation and
-after the child exits, and requires the resulting receipt identity to reproduce
-that immutable roster entry.
+Every scientific Attempt has exactly one file-backed `storage_qualification`
+identity. Lifecycle re-runs semantic qualification for the Attempt workspace
+and canonical normalized reference before delegation and after the child exits,
+and requires the resulting receipt identity to reproduce that immutable roster
+entry. Direct placement accepts the current-host receipt created only by
+explicit Doctor repair or the stronger two-phase compute/head receipt; Slurm
+uses only the latter. Historical
+Attempts without placement retain the two-phase requirement, and the narrower
+direct evidence can never satisfy Slurm.
 
 Each workflow attempt binds one canonical attempt-specific workflow-config
 snapshot by relative path and SHA-256. That config binds every owner/scope

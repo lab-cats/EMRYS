@@ -12,31 +12,6 @@
     "\t\t\"<REPO_ROOT>/src/emrys/orchestration/local_pilot/dashboard.py\" \\",
     "\t\t--refresh \"$EMRYS_DASHBOARD_REFRESH\""
   ],
-  "demo-report": [
-    "command -v \"<REPO_ROOT>/.venv/bin/python\" >/dev/null 2>&1 || { \\",
-    "\t\tprintf 'ERROR: report Python is unavailable: %s\\n' \\",
-    "\t\t\t\"<REPO_ROOT>/.venv/bin/python\" >&2; \\",
-    "\t\texit 1; \\",
-    "\t}",
-    "\"<REPO_ROOT>/.venv/bin/python\" -c \\",
-    "\t\t'import importlib.metadata, jinja2, jsonschema; assert importlib.metadata.version(\"matplotlib\") == \"3.11.1\"; assert importlib.metadata.version(\"logomaker\") == \"0.8.7\"' || { \\",
-    "\t\tprintf 'ERROR: report Python dependencies are unavailable: %s\\n' \\",
-    "\t\t\t\"<REPO_ROOT>/.venv/bin/python\" >&2; \\",
-    "\t\texit 1; \\",
-    "\t\t}",
-    "\"<REPO_ROOT>/.venv/bin/python\" -m \\",
-    "\t\ttests.reporting.fixtures.artifact_run_summary_v2.build_fixture \\",
-    "\t\t--root \"<REPO_ROOT>/results/demo-report-jinja/full-run-fixture\" \\",
-    "\t\t--run-id \"synthetic_run\" \\",
-    "\t\t--report-output-root \"<REPO_ROOT>/results/demo-report-jinja/reports\"",
-    "printf 'Demo report transaction: %s\\n' \\",
-    "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run\"",
-    "printf '  Scientific HTML: %s\\n  Evidence HTML: %s\\n  Summary: %s\\n  Receipt: %s\\n' \\",
-    "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run/synthetic_run.scientific_report.html\" \\",
-    "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run/synthetic_run.evidence_report.html\" \\",
-    "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run/synthetic_run.run_summary.tsv\" \\",
-    "\t\t\"<REPO_ROOT>/results/demo-report-jinja/reports/synthetic_run/synthetic_run.report_outputs.tsv\""
-  ],
   "documentation-check": [
     "./scripts/documentation/validate_structure.py --repo \"<REPO_ROOT>\""
   ],

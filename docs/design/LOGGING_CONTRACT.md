@@ -109,13 +109,14 @@ SHA-256, stream, and component; never replace bytes silently.
   Confirmation passes that exact frozen plan into execution and opens the
   application log before lifecycle admission; explicit noninteractive
   `--execute` retains the log-before-semantic-preflight behavior above.
-- Doctor diagnosis and managed-repair preview own no attempt. Terminal repair
+- Doctor diagnosis and repair preview own no attempt. Terminal repair
   opens one `maintenance` attempt only after confirmation and before its first
   filesystem or package-manager mutation; noninteractive mutation requires
-  `--repair --execute`. The log binds the exact package managers and packaged
-  Pixi inputs, records each delegated action, and terminalizes only after
-  complete Project requalification. Logging cannot authorize migration or
-  mutation of a site/user runtime profile.
+  `--repair --execute`. The log binds any direct-storage receipt and the exact
+  package managers/packaged Pixi inputs when runtime work is selected, records
+  each action, and terminalizes only after complete Project requalification.
+  Logging cannot authorize input mutation or migration/mutation of a ready
+  site/user runtime profile.
 - Terminal Slurm placement confirms a frozen submission plan, not a Run plan,
   and owns no application log. Its private compute delegate constructs the Run
   and opens the application log inside the allocation.

@@ -341,10 +341,15 @@ def _patch_run_control(
     )
     real_build = control.build_attempt_plan
     plans = []
+
+    def diagnose(*_args, **kwargs):
+        assert kwargs == {"storage_requirement": "direct"}
+        return readiness
+
     monkeypatch.setattr(
         control.doctor,
         "diagnose_project",
-        lambda *_args: readiness,
+        diagnose,
     )
     monkeypatch.setattr(
         control.capacity,
@@ -1354,7 +1359,7 @@ def test_post_binding_interruption_completes_the_exact_pristine_run(
     monkeypatch.setattr(
         control.doctor,
         "diagnose_project",
-        lambda *_args: plan.readiness,
+        lambda *_args, **_kwargs: plan.readiness,
     )
     monkeypatch.setattr(
         control.capacity,
@@ -1470,7 +1475,9 @@ def _patch_resume_control(
         _project: Path,
         _workspace: Path,
         runtime_profile: Path,
+        **_kwargs: object,
     ) -> doctor.DoctorResult:
+        assert _kwargs == {"storage_requirement": "direct"}
         selected.append(runtime_profile)
         return readiness
 
@@ -1492,6 +1499,17 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     readiness, project, resources, request, workspace = _readiness(tmp_path)
+    symbolic_policy = replace(
+        resources.policy,
+        declaration=replace(
+            resources.declaration,
+            workflow_memory_mb="allocation",
+        ),
+    )
+    resources = resolve_resource_policy(
+        symbolic_policy,
+        AllocationCapacity(cores=1, memory_mb=16_384, source="first allocation"),
+    )
     legacy, legacy_bytes = project.historical_execution_v1()
     first = build_attempt_plan(
         materialization.HistoricalRun(
@@ -1521,7 +1539,10 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
         monkeypatch,
         observed,
         fallback_readiness,
-        resources,
+        resolve_resource_policy(
+            symbolic_policy,
+            AllocationCapacity(cores=1, memory_mb=8_192, source="resume allocation"),
+        ),
         selected,
     )
     second = control._plan_resume(
@@ -1531,6 +1552,7 @@ def test_legacy_resume_reuses_predecessor_retained_runtime_profile(
     )
 
     assert selected == [retained]
+    assert second.resources.workflow_memory_mb == 8_192
     assert (
         second.attempt_record["required_tools"]
         == first.attempt_record["required_tools"]
@@ -1680,7 +1702,9 @@ def test_successor_resume_allows_relocated_checkout_and_new_runtime_profile(
         _request: Path,
         _workspace: Path,
         runtime_profile: Path,
+        **_kwargs: object,
     ) -> doctor.DoctorResult:
+        assert _kwargs == {"storage_requirement": "slurm"}
         selected_runtime_profiles.append(runtime_profile)
         return readiness_two
 
@@ -2198,7 +2222,7 @@ def test_public_execute_logs_and_terminalizes_doctor_failure_before_run_state(
         opened.append(attempt)
         return attempt
 
-    def reject_readiness(*_args):
+    def reject_readiness(*_args, **_kwargs):
         log_paths = list((workspace / "logs/application").rglob("*.jsonl"))
         assert len(log_paths) == 1
         records = [json.loads(line) for line in log_paths[0].read_text().splitlines()]
@@ -2351,7 +2375,7 @@ def test_public_resume_logs_inspection_failure_before_run_state(
     assert "phase=preflight status=failed" in captured.err
 
 
-def _slurm_profile(tmp_path: Path) -> Path:
+def _slurm_profile(tmp_path: Path, *, cpus_per_task: int = 4) -> Path:
     profile = tmp_path / "slurm.yaml"
     profile.write_text(
         yaml.safe_dump(
@@ -2362,7 +2386,7 @@ def _slurm_profile(tmp_path: Path) -> Path:
                     "account": None,
                     "partition": None,
                     "qos": None,
-                    "cpus_per_task": 4,
+                    "cpus_per_task": cpus_per_task,
                     "memory_mb": None,
                     "time": "01:00:00",
                     "exclusive": False,
@@ -2378,6 +2402,51 @@ def _slurm_profile(tmp_path: Path) -> Path:
     return profile
 
 
+def test_new_run_doctor_storage_requirement_tracks_execution_placement(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    readiness, _project, _resources, project_path, _workspace = _readiness(tmp_path)
+    requirements: list[str] = []
+
+    def diagnose(_project_path: Path, *, storage_requirement: str):
+        requirements.append(storage_requirement)
+        return readiness
+
+    monkeypatch.setattr(control.doctor, "diagnose_project", diagnose)
+    monkeypatch.setattr(
+        control.capacity,
+        "observe_allocation",
+        lambda: AllocationCapacity(
+            cores=4,
+            memory_mb=16_384,
+            source="placement test allocation",
+        ),
+    )
+
+    direct = load_execution_profile(project_path)
+    slurm = load_execution_profile(
+        project_path,
+        config_path=_slurm_profile(tmp_path),
+    )
+    assert (
+        control._plan_run(
+            project_path,
+            execution_profile=direct,
+        ).attempt_record["placement"]["kind"]
+        == "direct"
+    )
+    assert (
+        control._plan_run(
+            project_path,
+            execution_profile=slurm,
+            scheduler_job_id="700123",
+        ).attempt_record["placement"]["kind"]
+        == "slurm"
+    )
+    assert requirements == ["direct", "slurm"]
+
+
 def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Namespace:
     return argparse.Namespace(
         project=tmp_path / "project.yaml",
@@ -2386,6 +2455,82 @@ def _scheduled_run_arguments(tmp_path: Path, *, execute: bool) -> argparse.Names
         log_root=None,
         execute=execute,
     )
+
+
+def test_public_slurm_rejects_cpu_shortfall_before_submission(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    arguments = _scheduled_run_arguments(tmp_path, execute=True)
+    arguments.execution_profile = _slurm_profile(tmp_path, cpus_per_task=3)
+    monkeypatch.setattr(
+        control.slurm_submission,
+        "plan_submission",
+        lambda *_args, **_kwargs: pytest.fail(
+            "CPU shortfall reached submission planning"
+        ),
+    )
+
+    assert control.run_from_args(arguments) == 2
+    assert (
+        "Slurm CPUs per task cannot be lower than workflow cores: 3 < 4"
+        in capsys.readouterr().err
+    )
+    assert not (arguments.project.parent / "logs").exists()
+
+
+@pytest.mark.parametrize(
+    ("workflow_cores", "cpus_per_task", "expected_exit"),
+    ((8, 4, 2), (2, 2, 0)),
+    ids=("inherited-shortfall", "inherited-exact-fit"),
+)
+def test_public_slurm_resume_admits_inherited_workflow_cores_before_submission(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+    workflow_cores: int,
+    cpus_per_task: int,
+    expected_exit: int,
+) -> None:
+    first = _plan(tmp_path, workflow_cores=workflow_cores)
+    _failed_run(first)
+    arguments = argparse.Namespace(
+        run_root=first.run_root,
+        execution_profile=_slurm_profile(
+            tmp_path,
+            cpus_per_task=cpus_per_task,
+        ),
+        log_level=None,
+        log_root=None,
+        execute=True,
+    )
+    submissions = []
+    monkeypatch.setattr(
+        control.slurm_submission,
+        "submit",
+        lambda submission: submissions.append(submission) or "812345",
+    )
+    monkeypatch.setattr(
+        control.doctor,
+        "inspect_local_pilot",
+        lambda *_args, **_kwargs: pytest.fail(
+            "submit host performed compute-allocation readiness"
+        ),
+    )
+
+    assert control.resume_from_args(arguments) == expected_exit
+    captured = capsys.readouterr()
+    if expected_exit == 2:
+        assert submissions == []
+        assert (
+            "Slurm CPUs per task cannot be lower than workflow cores: 4 < 8"
+            in captured.err
+        )
+        assert not (first.workspace / "logs").exists()
+    else:
+        assert len(submissions) == 1
+        assert captured.out.startswith("JOB_ID=812345\n")
 
 
 def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
@@ -2407,7 +2552,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     monkeypatch.setattr(
         control.doctor,
         "inspect_local_pilot",
-        lambda *_args: pytest.fail(
+        lambda *_args, **_kwargs: pytest.fail(
             "submit host performed compute-allocation readiness"
         ),
     )
@@ -2471,7 +2616,7 @@ def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     monkeypatch.setattr(
         control.doctor,
         "inspect_local_pilot",
-        lambda *_args: pytest.fail(
+        lambda *_args, **_kwargs: pytest.fail(
             "submit host performed compute-allocation readiness"
         ),
     )
@@ -2505,7 +2650,7 @@ def test_private_slurm_delegate_rejects_profile_drift_before_readiness(
     monkeypatch.setattr(
         control.doctor,
         "inspect_local_pilot",
-        lambda *_args: pytest.fail("digest drift reached compute readiness"),
+        lambda *_args, **_kwargs: pytest.fail("digest drift reached compute readiness"),
     )
 
     assert control.run_from_args(arguments) == 2
@@ -2993,8 +3138,8 @@ def test_public_help_routes() -> None:
         (("run", "--help"), "usage: emrys run"),
         (("resume", "--help"), "usage: emrys resume"),
         (
-            ("inspect", "local-pilot-run", "--help"),
-            "usage: emrys inspect local-pilot-run",
+            ("inspect", "run", "--help"),
+            "usage: emrys inspect run",
         ),
     ):
         result = subprocess.run(
@@ -3103,12 +3248,12 @@ def test_public_adapter_executes_failure_and_byte_preserving_resume(
     monkeypatch.setattr(
         control.doctor,
         "inspect_local_pilot",
-        lambda *_args: readiness,
+        lambda *_args, **_kwargs: readiness,
     )
     monkeypatch.setattr(
         control.doctor,
         "diagnose_project",
-        lambda *_args: readiness,
+        lambda *_args, **_kwargs: readiness,
     )
     monkeypatch.setattr(
         control.capacity,

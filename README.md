@@ -69,21 +69,24 @@ Read this before installing:
   terminal confirmation or explicit noninteractive `--execute` submits once
   and prints `JOB_ID`, `OUT`, and `ERR`. Never execute the scientific workflow
   on a cluster login/head node.
-- One cooperative user is required. The exact Project root and Step `00c`
-  reference-sidecar parent must pass EMRYS's two-phase site qualification for
-  hard links, `flock`, rename/visibility, fsync, UID/access, and post-allocation
-  durability. No filesystem family—including NFS—is admitted by name alone.
+- One cooperative user is required. Direct placement uses Doctor's
+  single-host qualification (or an existing stronger site receipt) for the
+  exact Project root and Step `00c` reference-sidecar parent, covering hard
+  links, `flock`, rename/visibility, and fsync. Slurm placement requires the
+  existing two-phase
+  compute/head receipt for numeric access and post-allocation durability. No
+  filesystem family—including NFS—is admitted by name alone.
 - The Project, referenced inputs, logs, and results stay outside the Git
   checkout. Setup creates and owns `runs/`, `logs/`, and `runtime/` beneath the
-  `project.yaml` parent. The locked ignored `.venv/`, the default ignored `renv/library/`,
-  and the report-only demo's ignored `results/demo-report-jinja/` are sanctioned
-  checkout-local exceptions; an already provisioned R library may instead be
+  `project.yaml` parent. The locked ignored `.venv/` and the default ignored
+  `renv/library/` are sanctioned checkout-local exceptions; an already provisioned R library may instead be
   selected explicitly. The doctor requires tracked checkout content to be clean
   and binds its exact commit and installed package bytes.
 - EMRYS never downloads data, force-retries work, deletes locks, repairs
   outputs, or mutates declared scientific inputs. `emrys doctor` is read-only
-  by default. Its separately authorized `--repair` action can restore only the
-  active checkout-owned `.venv` and `<project-root>/runtime/managed`, delegating
+  by default. Its separately authorized `--repair` action can publish the
+  Project-owned direct-storage receipt and restore only the active
+  checkout-owned `.venv` and `<project-root>/runtime/managed`, delegating
   dependency solving and installation to `uv`, Pixi, and `renv`, then
   requalifying the Project. Site- or user-owned runtime profiles are preserved,
   not migrated or overwritten. Direct placement uses the admitted environment;
@@ -115,7 +118,7 @@ representative samples before authorizing the full analysis.
 ## Choose a first run
 
 - **Synthetic installation check:** use [`quickstart.md`](quickstart.md),
-  Path A, with `emrys init synthetic-local-pilot`. The default `smoke-v1`
+  Path A, with `emrys init synthetic`. The default `smoke-v1`
   creates small explicit inputs; the closed `production-like-v1` selector
   creates the 100,000-pair-per-library, 5 Mb functional fixture. Both write
   outside the repository and still require the real admitted scientific
@@ -124,13 +127,8 @@ representative samples before authorizing the full analysis.
   validity.
 - **Your data:** follow [`quickstart.md`](quickstart.md), Path B, and replace
   every starter identity and path with your own declared inputs.
-- **Report-only preview:** run `make demo-report` after installation and follow
-  [`docs/demo/README.md`](docs/demo/README.md). This renders bundled reporting
-  fixtures and does not execute ingestion, STAR, samtools, GATK, Picard,
-  RSeQC, bcftools, R analysis, or the workflow.
-
 Use checks and retained artifacts bound to the exact commit for validation
-observations and their evidence ceilings. A demo, dry run, synthetic fixture,
+observations and their evidence ceilings. A dry run, synthetic fixture,
 successful job, or report must not be promoted beyond the evidence it actually
 establishes.
 

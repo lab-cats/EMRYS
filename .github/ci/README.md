@@ -22,7 +22,14 @@ pixi lock --manifest-path src/emrys/resources/runtime/pixi.toml
 ```
 
 Lock generation is maintenance, not a local E2E run. Full synthetic execution
-belongs only in the selected GitHub Actions lanes.
+belongs in the tracked GitHub Actions lanes.
+
+The ordinary managed golden-path job installs only the Pixi binary before it
+invokes Doctor. Doctor, rather than workflow setup, provisions and admits the
+Project-owned locked native/R environments. The retained artifact excludes
+installed environments and package-manager caches while preserving the
+synthetic inputs, runtime/storage receipts, logs, Run records, Results,
+reports, and command transcripts.
 
 The ordinary CI matrix installs the same unchanged lock in Rocky Linux 8.10,
 Ubuntu 22.04, and Debian 12 containers and invokes both managed environments.

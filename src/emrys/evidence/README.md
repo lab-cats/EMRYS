@@ -11,7 +11,7 @@ adjudication, biological interpretation, or neutral contracts.
 | [`collect_RSeQC_paired_orientation_evidence`](rseqc_orientation/README.md) | Numbered evidence operation `03`; collects paired-orientation evidence without selecting a biological strandedness policy. |
 | [`reference_provenance`](reference_provenance/README.md) | Reconciles one explicitly declared reference bundle without repair. |
 | [`runtime_preflight`](runtime_availability/README.md) | Semantic runtime-preflight evidence, physically owned by `runtime_availability`; records declared availability probes and owns a separate manual cluster module/tool smoke probe. Neither installs software or executes the workflow. |
-| [`storage_inventory`](storage_inventory/README.md) | Measures declared roots, records retention policy, and owns two-phase site qualification without staging data. |
+| [`storage_inventory`](storage_inventory/README.md) | Measures declared roots, records retention policy, and owns direct/single-host plus two-phase site qualification without staging data. |
 
 Each child owns its inputs, outputs, publication/recovery behavior, direct
 tests, and evidence boundary. The two numbered operations participate in the
@@ -23,9 +23,10 @@ evidence tools are cross-cutting checks, not additional stages.
 - **Pipeline evidence owners:** Steps `02b` and `03` are required graph
   operations and remain owner-local producers, validators, and scheduler entry
   points.
-- **Required readiness:** the local-pilot doctor consumes the direct admitted
-  runtime inspection result and the final two-phase storage-qualification
-  receipt. These protect execution authority without becoming workflow jobs.
+- **Required readiness:** Doctor consumes the admitted runtime plus a
+  single-host direct receipt or stronger final two-phase site receipt. Slurm
+  and historical unplaced Attempts require the stronger receipt. These protect
+  execution authority without becoming workflow jobs.
 - **Optional operator diagnostics:** reference-provenance reconciliation,
   standalone runtime-availability publication, storage inventory, and the
   manual module/tool probe remain available for inspection. Their results do
