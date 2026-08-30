@@ -390,7 +390,10 @@ def _admit_supplied_file(value: str | Path, label: str) -> Path:
     admitted = _admit_explicit_file(
         path if path.is_absolute() else Path.cwd() / path, label
     )
-    validate_authored_path(str(admitted), label)
+    emitted = str(admitted)
+    if any(character in emitted for character in ('"', "\t", "\r", "\n")):
+        raise OnboardingError(f"{label} cannot be represented in a raw TSV field")
+    validate_authored_path(emitted, label)
     return admitted
 
 
@@ -453,6 +456,8 @@ def _draft_manifest_members(
             f"  --sample {key} CONDITION REPLICATE STRANDEDNESS" for key in missing
         )
         raise OnboardingError(f"biological assignments are required:\n{flags}")
+    for sample_id, assignment in assignments.items():
+        step08.validate_safe_id(f"sample {sample_id} condition", assignment[0])
 
     sample_rows = [
         {

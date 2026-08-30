@@ -209,11 +209,17 @@ def test_manifest_init_rejects_unpaired_fastq_without_writing(
     assert "unpaired FASTQ sample: sample_a" in capsys.readouterr().err
 
 
-def test_manifest_init_rejects_paths_the_project_cannot_admit(
+@pytest.mark.parametrize(
+    ("unsafe_name", "message"),
+    (("[literal]", "explicit normalized path"), ('literal"path', "raw TSV field")),
+)
+def test_manifest_init_rejects_paths_the_project_cannot_consume(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
+    unsafe_name: str,
+    message: str,
 ) -> None:
-    unsafe_directory = tmp_path / "[literal]"
+    unsafe_directory = tmp_path / unsafe_name
     unsafe_directory.mkdir()
     fastqs = _fastqs(unsafe_directory, "sample_a")
     output = tmp_path / "drafts"
@@ -224,7 +230,24 @@ def test_manifest_init_rejects_paths_the_project_cannot_admit(
         "--sample", "sample_a", "control", "pair_1", "forward", "--execute",
     ]) == 2
     assert not output.exists()
-    assert "explicit normalized path" in capsys.readouterr().err
+    assert message in capsys.readouterr().err
+
+
+def test_manifest_init_rejects_a_condition_that_requires_tsv_quoting(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fastqs = _fastqs(tmp_path, "sample_a")
+    output = tmp_path / "drafts"
+
+    assert cli.main([
+        "init", "manifests", "--output-dir", str(output), "--fastq",
+        *(str(path) for path in fastqs),
+        "--sample", "sample_a", "bad\tcondition", "pair_1", "forward",
+        "--execute",
+    ]) == 2
+    assert not output.exists()
+    assert "condition must match" in capsys.readouterr().err
 
 
 def test_manifest_init_pairs_by_the_admitted_file_not_a_symlink_alias(
