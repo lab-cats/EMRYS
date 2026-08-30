@@ -19,6 +19,7 @@ SCHEMA_VERSION = "1.0.0"
 DEFAULT_DURATION_BASELINE = Path("tests/baselines/python_test_durations.json")
 DEFAULT_IGNORES = (
     "tests/test_package_distribution.py",
+    "tests/test_python_test_shards.py",
     "tests/test_slurm_wrapper_contracts.py",
 )
 DEFAULT_REPORTED_DURATIONS = 50

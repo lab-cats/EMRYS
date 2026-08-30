@@ -136,6 +136,7 @@ jobs:
         run: |
           set -euo pipefail
           make -s validation-static
+          .venv/bin/python -m pytest -q tests/test_python_test_shards.py
           make -s validation-wheel-smoke
 
   shell-slurm:
