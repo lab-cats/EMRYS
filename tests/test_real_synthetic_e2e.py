@@ -113,6 +113,45 @@ def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> No
     ).resource_policy.document() == load_execution_profile(project).resource_policy.document()
 
 
+def test_runtime_environment_seals_science_adapters_and_managed_utilities(
+    tmp_path: Path,
+) -> None:
+    adapters = tmp_path / "adapters"
+    native_bin = tmp_path / "managed/bin"
+    adapters.mkdir()
+    native_bin.mkdir(parents=True)
+    adapted = ("gatk", "infer_experiment.py", "gunzip")
+    for name in adapted:
+        (adapters / name).touch()
+        (native_bin / name).touch()
+    runtime = SimpleNamespace(
+        bash=Path("/bin/bash"),
+        star=native_bin / "STAR",
+        samtools=native_bin / "samtools",
+        bcftools=native_bin / "bcftools",
+        java=native_bin / "java",
+        picard=tmp_path / "picard.jar",
+        rscript=tmp_path / "Rscript",
+        renv=tmp_path / "renv",
+        discovery_utilities=tuple(
+            native_bin / name for name in driver.DISCOVERY_UTILITIES
+        ),
+    )
+
+    environment = driver.runtime_environment(
+        SimpleNamespace(adapters=adapters), runtime
+    )
+
+    assert environment["PATH"] == str(adapters)
+    assert {
+        name: (adapters / name).readlink()
+        for name in driver.DISCOVERY_UTILITIES
+    } == {
+        name: native_bin / name for name in driver.DISCOVERY_UTILITIES
+    }
+    assert all((adapters / name).is_file() for name in adapted)
+
+
 def test_run_submission_and_wait_failure_cancel_once(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

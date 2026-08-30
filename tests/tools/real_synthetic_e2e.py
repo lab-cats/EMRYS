@@ -20,6 +20,7 @@ from typing import Any
 
 SUMMARY_SCHEMA = "emrys.ci-real-synthetic-e2e-summary.v2"
 PROFILE_DATASETS = {"130": "smoke-v1", "100000": "production-like-v1"}
+DISCOVERY_UTILITIES = ("basename", "dirname", "grep", "rm", "uname")
 TERMINAL_STATES = frozenset(
     {
         "BOOT_FAIL",
@@ -76,6 +77,7 @@ class Runtime:
     picard: Path
     rscript: Path
     renv: Path
+    discovery_utilities: tuple[Path, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -223,6 +225,7 @@ def resolve_runtime(prefix: Path, rscript: Path, renv: Path) -> Runtime:
         _real(jars[0], "Picard jar"),
         _real(rscript, "Rscript", executable=True),
         _real(renv, "renv library", directory=True),
+        tuple(tool(f"bin/{name}", name) for name in DISCOVERY_UTILITIES),
     )
 
 
@@ -308,6 +311,8 @@ def runtime_environment(paths: Paths, runtime: Runtime) -> dict[str, str]:
         ("java", runtime.java),
     ):
         (paths.adapters / name).symlink_to(target)
+    for target in runtime.discovery_utilities:
+        (paths.adapters / target.name).symlink_to(target)
     return {
         **os.environ,
         "PATH": str(paths.adapters),
