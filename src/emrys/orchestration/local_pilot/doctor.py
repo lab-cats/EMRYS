@@ -556,9 +556,14 @@ def _readmit_repair_plan(plan: _RepairPlan) -> None:
         project = onboarding.validate_project(
             plan.project.source_path, root=plan.source_root
         ).project
+        runtime = onboarding.project_runtime_directory(project)
     except (OSError, RuntimeError) as exc:
         raise DoctorRepairError(f"repair plan changed before execution: {exc}") from exc
-    if source.commit != plan.source_commit or project != plan.project:
+    if (
+        source.commit != plan.source_commit
+        or project != plan.project
+        or runtime != plan.managed_root.parent
+    ):
         raise DoctorRepairError("repair plan changed before execution")
     if _file_sha256(plan.uv) != plan.uv_sha256 or _file_sha256(plan.pixi) != plan.pixi_sha256:
         raise DoctorRepairError("admitted package manager changed before execution")
@@ -703,44 +708,48 @@ def _managed_discovery_environment(plan: _RepairPlan) -> dict[str, str]:
     return environment
 
 
+def _stderr(message: str) -> None:
+    print(message, file=sys.stderr)
+
+
 def _print_result(result: DoctorResult, detail: LogLevel) -> None:
-    print("EMRYS Doctor")
-    print(f"  Project    PASS  {result.project.source_path.parent}")
-    print("  Inputs     PASS")
+    _stderr("EMRYS Doctor")
+    _stderr(f"  Project    PASS  {result.project.source_path.parent}")
+    _stderr("  Inputs     PASS")
     for label, ready in (("Storage", result.storage_ready), ("Runtime", result.runtime_ready), ("Execution", result.ready)):
-        print(f"  {label:<10} {'PASS' if ready else 'FAIL'}")
+        _stderr(f"  {label:<10} {'PASS' if ready else 'FAIL'}")
     if detail in {LogLevel.VERBOSE, LogLevel.DEBUG}:
-        print(f"Source checkout: {result.source_root}")
-        print(f"Source commit: {result.source_commit or 'not admitted'}")
+        _stderr(f"Source checkout: {result.source_root}")
+        _stderr(f"Source commit: {result.source_commit or 'not admitted'}")
         if result.inspection is not None:
-            print(f"Runtime profile: {result.inspection.profile_path}")
-            print(f"Runtime profile SHA-256: {result.inspection.profile_sha256}")
+            _stderr(f"Runtime profile: {result.inspection.profile_path}")
+            _stderr(f"Runtime profile SHA-256: {result.inspection.profile_sha256}")
             for observation in result.inspection.observations:
-                print(
+                _stderr(
                     f"  {observation.check.check_id}: {observation.status} "
                     f"({observation.observed})"
                 )
     if detail is LogLevel.DEBUG:
         for binding in result.bindings:
-            print(
+            _stderr(
                 f"Binding {binding.check_id}: {binding.path} -> "
                 f"{binding.resolved_path} sha256:{binding.sha256}"
             )
-    print("EMRYS is ready." if result.ready else "EMRYS is not ready.")
+    _stderr("EMRYS is ready." if result.ready else "EMRYS is not ready.")
     for blocker in result.blockers:
-        print(f"BLOCKER: {blocker}")
+        _stderr(f"BLOCKER: {blocker}")
     for remediation in result.remediations:
-        print(f"REMEDIATION: {remediation}")
+        _stderr(f"REMEDIATION: {remediation}")
 
 
 def _print_repair_plan(plan: _RepairPlan) -> None:
-    print("EMRYS Doctor repair plan")
-    print(f"  Project: {plan.project.source_path}")
-    print(f"  Managed runtime: {plan.managed_root}")
-    print(f"  uv: {plan.uv}")
-    print(f"  Pixi: {plan.pixi}")
-    print("  Actions: uv sync; Pixi native/R install; renv restore; runtime qualification")
-    print("Declared inputs and site/user environments will not be modified.")
+    _stderr("EMRYS Doctor repair plan")
+    _stderr(f"  Project: {plan.project.source_path}")
+    _stderr(f"  Managed runtime: {plan.managed_root}")
+    _stderr(f"  uv: {plan.uv}")
+    _stderr(f"  Pixi: {plan.pixi}")
+    _stderr("  Actions: uv sync; Pixi native/R install; renv restore; runtime qualification")
+    _stderr("Declared inputs and site/user environments will not be modified.")
 
 
 def _confirm_repair() -> bool:
@@ -829,6 +838,10 @@ def _execute_repair(plan: _RepairPlan, *, controls: LogControls) -> DoctorResult
             ):
                 raise DoctorRepairError("existing managed profile differs and was preserved")
         final = diagnose_project(plan.project.source_path)
+        if not final.ready:
+            raise DoctorRepairError(
+                "Project remained not ready after managed-runtime requalification"
+            )
         record(
             lambda: attempt.terminal(
                 event_name="repair_requalified",

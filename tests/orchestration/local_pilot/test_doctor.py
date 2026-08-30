@@ -283,6 +283,7 @@ def test_absent_runtime_diagnosis_is_read_only_and_opens_no_log(
 def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
     execute: bool,
     repair: bool,
     expected_status: int,
@@ -317,6 +318,7 @@ def test_diagnosis_and_repair_preview_write_nothing_and_open_no_log(
 
     assert status == expected_status
     assert _snapshot(tmp_path) == before
+    assert capsys.readouterr().out == ""
 
 
 def test_diagnosis_resolves_shared_log_controls_without_opening_a_log(
@@ -495,6 +497,31 @@ def test_repair_readmission_rejects_a_profile_that_appeared(
         doctor._readmit_repair_plan(plan)
 
 
+def test_repair_readmission_rejects_a_redirected_runtime_before_writing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = _plan(_project(tmp_path))
+    external = tmp_path / "external-runtime"
+    external.mkdir()
+    plan.managed_root.parent.rmdir()
+    plan.managed_root.parent.symlink_to(external, target_is_directory=True)
+    monkeypatch.setattr(
+        doctor,
+        "inspect_source_checkout",
+        lambda **_kwargs: SimpleNamespace(commit=plan.source_commit),
+    )
+    monkeypatch.setattr(
+        doctor.onboarding,
+        "validate_project",
+        lambda *_args, **_kwargs: SimpleNamespace(project=plan.project),
+    )
+
+    with pytest.raises(doctor.DoctorRepairError, match="changed before execution"):
+        doctor._readmit_repair_plan(plan)
+
+    assert not (external / "managed").exists()
+
+
 def test_repair_delegates_to_managers_admits_profile_logs_and_requalifies(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -591,6 +618,41 @@ def test_repair_records_manager_failure_or_interruption(
     assert "terminal" not in records
     assert records[-1] == "closed"
     assert not plan.profile.exists()
+
+
+def test_repair_records_failed_final_requalification(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = _project(tmp_path)
+    candidate_bytes = b"admitted runtime\n"
+    plan = replace(_plan(project), profile_bytes=candidate_bytes)
+    plan.profile.write_bytes(candidate_bytes)
+    records: list[str] = []
+    _patch_logging(monkeypatch, plan, records)
+    monkeypatch.setattr(doctor, "_admit_managed_root", lambda _plan: None)
+    monkeypatch.setattr(doctor, "_repair_actions", lambda _plan: ())
+    monkeypatch.setattr(doctor, "_managed_discovery_environment", lambda _plan: {})
+    monkeypatch.setattr(
+        doctor.onboarding,
+        "discover_runtime_profile",
+        lambda **_kwargs: _inspection(
+            tmp_path,
+            profile=plan.profile,
+            profile_bytes=candidate_bytes,
+        ),
+    )
+    monkeypatch.setattr(
+        doctor,
+        "diagnose_project",
+        lambda *_args, **_kwargs: _result(project, ready=False),
+    )
+
+    with pytest.raises(doctor.DoctorRepairError, match="remained not ready"):
+        doctor._execute_repair(plan, controls=_controls(project))
+
+    assert "failed" in records
+    assert "terminal" not in records
+    assert records[-1] == "closed"
 
 
 def test_log_open_failure_prevents_the_first_repair_write(
