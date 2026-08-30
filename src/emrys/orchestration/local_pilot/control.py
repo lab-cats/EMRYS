@@ -72,14 +72,8 @@ from emrys.orchestration.local_pilot.resource_policy import (
 )
 from emrys.orchestration.local_pilot import slurm_submission
 
-RUN_DESCRIPTION = (
-    "Plan or execute one immutable Run from an admitted EMRYS Project. "
-    "Dry-run is the default; this command never installs or repairs tools."
-)
-RESUME_DESCRIPTION = (
-    "Plan or resume one failed/interrupted local pilot only from an independently "
-    "verified between-task boundary. Dry-run is the default."
-)
+RUN_DESCRIPTION = "Plan an immutable Run; confirm or use --execute. Installs nothing."
+RESUME_DESCRIPTION = "Plan a safe resume, then confirm or use --execute for automation."
 INSPECT_DESCRIPTION = (
     "Derive one local-pilot run state from immutable EMRYS records without "
     "reading or repairing Snakemake metadata."
@@ -103,6 +97,15 @@ class ControlError(RuntimeError):
     def __init__(self, message: str, *, reported: bool = False) -> None:
         super().__init__(message)
         self.reported = reported
+
+
+_CONTROL_ERRORS = (ControlError, ExecutionProfileError, ResourceConfigError)
+
+
+def _control_failure(exc: Exception) -> int:
+    if not isinstance(exc, ControlError) or not exc.reported:
+        print(f"emrys: error: {exc}", file=sys.stderr)
+    return 2
 
 
 ReadinessInspector = Callable[[Path, Path, Path], doctor.DoctorResult]
@@ -462,11 +465,11 @@ def _next_supported_action(observed: inspection.RunInspection) -> str:
     if observed.attempt_outcome == "blocked":
         return "Preserve this Run; review retained evidence. Do not resume."
     if observed.attempt_outcome == "not_started":
-        return "Repeat the original emrys run invocation with --execute."
+        return "Repeat the original emrys run invocation and confirm execution."
     if observed.attempt_outcome == "running":
         return "Wait for the active Attempt to finish, then inspect the Run again."
     if observed.recovery_available:
-        return "Use emrys resume for this Run; dry-run remains the default."
+        return "Use emrys resume for this Run; review and confirm the plan."
     if observed.results_status == "complete":
         if observed.reporting_status == "complete":
             return "Review the verified Results and report paths."
@@ -657,6 +660,17 @@ def _owned_failure_paths(
     return owned
 
 
+def _confirm_execution() -> bool:
+    if not sys.stdin.isatty() or not sys.stderr.isatty():
+        return False
+    print("Execute this plan? [y/N] ", end="", file=sys.stderr, flush=True)
+    return sys.stdin.readline().strip().casefold() in {"y", "yes"}
+
+
+def _print_no_write(subject: str) -> None:
+    print(f"Dry-run complete; no {subject} state was written.", file=sys.stderr)
+
+
 def _schedule(
     command: str,
     arguments: argparse.Namespace,
@@ -686,11 +700,8 @@ def _schedule(
         print(f"Scheduler stderr: {submission.stderr_pattern}", file=sys.stderr)
     if controls.level is LogLevel.DEBUG:
         print("Scheduler command: " + shlex.join(submission.argv), file=sys.stderr)
-    if not arguments.execute:
-        print(
-            "Dry-run complete; no scheduler or workspace state was written.",
-            file=sys.stderr,
-        )
+    if not arguments.execute and not _confirm_execution():
+        _print_no_write("scheduler or workspace")
         return 0
     _admit_workspace_location(workspace)
     _prepare_scheduler_log_dir(workspace)
@@ -705,7 +716,7 @@ def _schedule(
 
 
 def _execute_plan(
-    build_plan: PlanBuilder,
+    plan_source: AttemptPlan | PlanBuilder,
     *,
     controls: LogControls,
     workspace: Path,
@@ -713,6 +724,7 @@ def _execute_plan(
     scope_id: str,
     entrypoint: str,
     report_enabled: bool = True,
+    render_plan: bool = True,
     ops: ControlOps = DEFAULT_CONTROL_OPS,
 ) -> int:
     """Build and execute one plan inside one non-authoritative application log."""
@@ -777,7 +789,7 @@ def _execute_plan(
             attempt.close()
 
     try:
-        plan = build_plan()
+        plan = plan_source() if callable(plan_source) else plan_source
     except KeyboardInterrupt:
         log_best_effort(
             lambda: attempt.interrupt_best_effort(
@@ -837,7 +849,8 @@ def _execute_plan(
             ),
         )
     )
-    _print_plan(plan, level=controls.level, report_enabled=report_enabled)
+    if render_plan:
+        _print_plan(plan, level=controls.level, report_enabled=report_enabled)
     receipt_ready = False
 
     def observe_application_event(event_name: str) -> None:
@@ -1109,26 +1122,37 @@ def _finish_control(
             workspace,
         )
     if not arguments.execute:
+        plan = build_plan()
         _print_plan(
-            build_plan(),
+            plan,
             level=controls.level,
             report_enabled=report_enabled,
         )
-        print(
-            "Dry-run complete; no "
-            f"{'workspace' if command == 'run' else 'resume'} state was written.",
-            file=sys.stderr,
-        )
-        return 0
+        if not _confirm_execution():
+            _print_no_write("workspace" if command == "run" else "resume")
+            return 0
+        plan_source: AttemptPlan | PlanBuilder = plan
+    else:
+        plan_source = build_plan
     return _execute_plan(
-        build_plan,
+        plan_source,
         controls=controls,
         workspace=workspace,
         mode="execute" if command == "run" else "resume",
         scope_id="pending" if command == "run" else _absolute(arguments.run_root).name,
         entrypoint=f"emrys-{command}",
         report_enabled=report_enabled,
+        render_plan=arguments.execute,
         ops=ops,
+    )
+
+
+def _add_execution_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--no-report", action="store_true", help="Skip reporting after Results."
+    )
+    parser.add_argument(
+        "--execute", action="store_true", help="Execute noninteractively."
     )
 
 
@@ -1143,16 +1167,7 @@ def configure_run_parser(parser: argparse.ArgumentParser) -> None:
     )
     add_resource_override_arguments(parser)
     add_log_arguments(parser)
-    parser.add_argument(
-        "--no-report",
-        action="store_true",
-        help="Finish after scientific Results without generating reports.",
-    )
-    parser.add_argument(
-        "--execute",
-        action="store_true",
-        help="Create and execute the planned run. Without this flag, write nothing.",
-    )
+    _add_execution_arguments(parser)
 
 
 def configure_resume_parser(parser: argparse.ArgumentParser) -> None:
@@ -1168,16 +1183,7 @@ def configure_resume_parser(parser: argparse.ArgumentParser) -> None:
     )
     add_resource_override_arguments(parser)
     add_log_arguments(parser)
-    parser.add_argument(
-        "--no-report",
-        action="store_true",
-        help="Finish after scientific Results without generating reports.",
-    )
-    parser.add_argument(
-        "--execute",
-        action="store_true",
-        help="Execute the safe resume. Without this flag, write nothing.",
-    )
+    _add_execution_arguments(parser)
 
 
 def configure_report_parser(parser: argparse.ArgumentParser) -> None:
@@ -1299,14 +1305,8 @@ def run_from_args(
             workspace=arguments.workspace,
             ops=ops,
         )
-    except (
-        ControlError,
-        ExecutionProfileError,
-        ResourceConfigError,
-    ) as exc:
-        if not isinstance(exc, ControlError) or not exc.reported:
-            print(f"emrys: error: {exc}", file=sys.stderr)
-        return 2
+    except _CONTROL_ERRORS as exc:
+        return _control_failure(exc)
 
 
 def resume_from_args(
@@ -1350,14 +1350,8 @@ def resume_from_args(
             workspace=workspace,
             ops=ops,
         )
-    except (
-        ControlError,
-        ExecutionProfileError,
-        ResourceConfigError,
-    ) as exc:
-        if not isinstance(exc, ControlError) or not exc.reported:
-            print(f"emrys: error: {exc}", file=sys.stderr)
-        return 2
+    except _CONTROL_ERRORS as exc:
+        return _control_failure(exc)
 
 
 def _print_reporting_outcome(

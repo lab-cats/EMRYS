@@ -46,12 +46,13 @@ The local pilot has one explicit path:
 3. A canonical Run binding commits those authorities and determines the
    successor `run_id`; existing `emrys.execution.v1` Runs retain their exact
    historical identity and bytes.
-4. Direct public planning prints concise Run identity, work, and reporting
-   without writing. A submit-host Slurm dry-run instead prints concise placement
-   without building a Run or submitting. Verbose output adds the applicable Run
-   root/resources or execution-profile/scheduler-stream detail; `--execute`
-   either enters the direct lifecycle or submits that lifecycle into one Slurm
-   allocation.
+4. Direct public control prints concise Run identity, work, and reporting, then
+   either enters that exact plan after terminal confirmation or stops without
+   writing. Submit-host Slurm control similarly confirms one exact placement
+   plan before one submission. Noninteractive omission of `--execute` remains
+   no-write/no-submit; `--execute` is the explicit automation path. Verbose
+   output adds the applicable Run root/resources or
+   execution-profile/scheduler-stream detail.
 5. One fixed CMH workflow profile projects the semantic DAG into Snakemake.
 6. Each workflow task invokes one owner's public producer, that owner's public
    validator, and a generic semantic all-pass check.
@@ -427,19 +428,22 @@ diagnostic evidence, not completion proof.
 
 ## Planning and mutation boundary
 
-The implemented `run` and `resume` interfaces are read-only by default. Their
-plan admits the execution profile and reports placement without submitting or
-creating workspace, contract, Attempt, logs, locks, or owner outputs. Direct
-planning then resolves readiness and identity and shows concise work and
+The implemented `run` and `resume` interfaces construct and display one frozen
+plan before mutation. A terminal asks once whether to proceed and executes that
+same object only after confirmation. Refusal, EOF, or interruption writes and
+submits nothing. In a noninteractive context, omission of `--execute` retains
+the no-write/no-submit plan; `--execute` remains the explicit automation path.
+Direct planning resolves readiness and identity and shows concise work and
 reporting summaries. Verbose adds the Run root, resources/allocation, execution
 profile, and scheduler streams; debug adds exact safe engine, scheduler, and
-task commands. Execution requires one explicit `--execute` control.
+task commands.
 
-For Slurm placement, `--execute` creates only `<workspace>/logs` on the submit
-host, submits once, and prints `JOB_ID`, `OUT`, and `ERR`. The compute delegate
-re-admits its profile digest, UID, marker, and scheduler job ID before doctor,
-Run planning, or lifecycle mutation. It owns the single application log for
-the executing Attempt.
+For Slurm placement, terminal confirmation or explicit noninteractive
+`--execute` creates only `<workspace>/logs` on the submit host, submits the
+displayed placement once, and prints `JOB_ID`, `OUT`, and `ERR`. The compute
+delegate re-admits its profile digest, UID, marker, and scheduler job ID before
+doctor, Run planning, or lifecycle mutation. It owns the single application
+log for the executing Attempt.
 
 The B5 adapter owns that exact planning and materialization boundary; direct
 manual Snakemake invocation is unsupported. A doctor is a distinct read-only

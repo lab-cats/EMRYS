@@ -67,6 +67,36 @@ from tests.orchestration.local_pilot.fixtures.b5_doubles import with_owner_doubl
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
+class _InputStream:
+    def __init__(self, response, before_read=lambda: None, *, terminal=True) -> None:
+        self.response = response
+        self.before_read = before_read
+        self.terminal = terminal
+
+    def isatty(self) -> bool:
+        return self.terminal
+
+    def readline(self) -> str:
+        self.before_read()
+        if isinstance(self.response, BaseException):
+            raise self.response
+        return self.response
+
+
+class _TerminalOutput:
+    def __init__(self, stream) -> None:
+        self.stream = stream
+
+    def isatty(self) -> bool:
+        return True
+
+    def write(self, value: str) -> int:
+        return self.stream.write(value)
+
+    def flush(self) -> None:
+        self.stream.flush()
+
+
 def _readiness(
     tmp_path: Path,
     *,
@@ -264,6 +294,30 @@ def _plan(
         host="test-host",
         process_id=123,
     )
+
+
+def _run_control(tmp_path: Path, execute_plan, transform_plan):
+    readiness, project, resources, project_path, workspace = _readiness(tmp_path)
+    arguments = argparse.Namespace(
+        project=project_path,
+        workspace=workspace,
+        runtime_profile=readiness.runtime_profile,
+        execution_profile=project_path.parent / "emrys.execution.yaml",
+        log_level=None,
+        log_root=None,
+        execute=False,
+    )
+    ops = replace(
+        control.DEFAULT_CONTROL_OPS,
+        inspect_readiness=lambda *_args: readiness,
+        admit_project=lambda *_args: project,
+        execute_plan=execute_plan,
+        transform_plan=transform_plan,
+        now=lambda: datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
+        token=lambda: "2" * 32,
+        observe_allocation=lambda: resources.allocation,
+    )
+    return arguments, workspace, ops
 
 
 def _dispatch_records(plan) -> list[dict[str, object]]:
@@ -1703,37 +1757,35 @@ def test_waiting_stale_resume_exits_before_attempt_materialization(
     assert observed.latest_attempt["workflow_attempt_id"] == winner.workflow_attempt_id
 
 
-def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
-    readiness, normalized, resources, request, workspace = _readiness(tmp_path)
-    runtime = readiness.runtime_profile
+def test_public_run_dry_run_is_no_write(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     executed: list[object] = []
-    ops = control.ControlOps(
-        inspect_readiness=lambda _request, _workspace, _runtime: readiness,
-        admit_project=lambda _request, _profile: normalized,
-        inspect_run=lambda _root: (_ for _ in ()).throw(AssertionError()),
+    arguments, workspace, ops = _run_control(
+        tmp_path,
         execute_plan=lambda plan, _observe: executed.append(plan),
         transform_plan=lambda plan: plan,
-        now=lambda: datetime(2026, 8, 12, 20, 0, tzinfo=UTC),
-        token=lambda: "2" * 32,
-        observe_allocation=lambda: resources.allocation,
-    )
-    arguments = argparse.Namespace(
-        project=request,
-        workspace=workspace,
-        runtime_profile=runtime,
-        execution_profile=request.parent / "emrys.execution.yaml",
-        allocated_cores=1,
-        execute=False,
     )
 
     projections = {}
     for level in ("normal", "verbose", "debug"):
+        monkeypatch.setattr(
+            control.sys,
+            "stdin",
+            _InputStream(
+                AssertionError("unconfirmed input was read"),
+                terminal=level == "normal",
+            ),
+        )
         arguments.log_level = level
         assert control.run_from_args(arguments, ops=ops) == 0
         captured = capsys.readouterr()
         assert captured.out == ""
         projections[level] = captured.err
         assert "Dry-run complete" in captured.err
+        assert "Execute this plan?" not in captured.err
         assert not workspace.exists()
 
     normal = projections["normal"]
@@ -1768,6 +1820,91 @@ def test_public_run_dry_run_is_no_write(tmp_path: Path, capsys) -> None:
     assert "Snakemake command:" in debug
     assert "TASK " in debug
     assert executed == []
+
+
+@pytest.mark.parametrize(
+    ("response", "expected_exit"),
+    (("yes\n", 1), ("n\n", 0), ("", 0), (KeyboardInterrupt(), None)),
+)
+def test_interactive_run_confirms_exact_plan_before_every_write(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+    response,
+    expected_exit: int | None,
+) -> None:
+    planned = []
+    executed = []
+
+    def transform(plan):
+        planned.append(plan)
+        return plan
+
+    def execute(plan, _observe):
+        executed.append(plan)
+        return lifecycle.LifecycleOutcome(
+            attempt_path=plan.run_root / "attempt.json",
+            receipt_path=plan.run_root / "attempt-receipt.json",
+            lock_path=plan.run_root / "locks/run.lock",
+            released_lock_path=plan.run_root / "locks/released.json",
+            receipt={"status": "failed"},
+            workflow_result=None,
+        )
+
+    arguments, workspace, ops = _run_control(tmp_path, execute, transform)
+    log_root = tmp_path / "application-logs"
+    arguments.log_root = log_root
+
+    def before_read() -> None:
+        assert not workspace.exists()
+        assert not log_root.exists()
+        assert executed == []
+
+    monkeypatch.setattr(control.sys, "stdin", _InputStream(response, before_read))
+    monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
+    if expected_exit is None:
+        with pytest.raises(KeyboardInterrupt):
+            control.run_from_args(arguments, ops=ops)
+    else:
+        assert control.run_from_args(arguments, ops=ops) == expected_exit
+
+    rendered = capsys.readouterr().err
+    assert rendered.count("Run ID:") == 1
+    assert rendered.index("Run ID:") < rendered.index("Execute this plan? [y/N]")
+    if expected_exit == 1:
+        assert len(planned) == len(executed) == 1
+        assert executed[0] is planned[0]
+        assert list(log_root.rglob("*.jsonl"))
+    else:
+        assert len(planned) == 1 and executed == []
+        assert not workspace.exists()
+        assert not log_root.exists()
+
+
+def test_interactive_resume_uses_the_same_no_write_gate(
+    tmp_path: Path,
+    capsys,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plan = _plan(tmp_path)
+    monkeypatch.setattr(control, "_plan_resume", lambda *_args, **_kwargs: plan)
+    monkeypatch.setattr(control.sys, "stdin", _InputStream("no\n"))
+    monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
+    arguments = argparse.Namespace(
+        run_root=plan.run_root,
+        runtime_profile=tmp_path / "runtime.tsv",
+        execution_profile=None,
+        log_level=None,
+        log_root=None,
+        execute=False,
+    )
+
+    assert control.resume_from_args(arguments) == 0
+
+    rendered = capsys.readouterr().err
+    assert "Execute this plan? [y/N]" in rendered
+    assert "Dry-run complete; no resume state was written." in rendered
+    assert not plan.workspace.exists()
 
 
 def test_public_run_escapes_project_label_for_terminal_output(
@@ -2059,6 +2196,11 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
 ) -> None:
     arguments = _scheduled_run_arguments(tmp_path, execute=False)
     monkeypatch.setattr(
+        control.sys,
+        "stdin",
+        _InputStream(AssertionError("nonterminal input was read"), terminal=False),
+    )
+    monkeypatch.setattr(
         control.slurm_submission,
         "submit",
         lambda _plan: pytest.fail("dry-run submitted a scheduler job"),
@@ -2077,6 +2219,7 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
         captured = capsys.readouterr()
         assert captured.out == ""
         projections[level] = captured.err
+        assert "Execute this plan?" not in captured.err
         assert not arguments.workspace.exists()
 
     normal = projections["normal"]
@@ -2105,12 +2248,14 @@ def test_public_slurm_dry_run_is_no_write_and_skips_compute_readiness(
     assert "Scheduler command:" in debug
 
 
-def test_public_slurm_execute_submits_once_and_creates_only_scheduler_log_root(
+@pytest.mark.parametrize("execute", (False, True))
+def test_public_slurm_submits_once_only_after_confirmation_or_execute(
     tmp_path: Path,
     capsys,
     monkeypatch: pytest.MonkeyPatch,
+    execute: bool,
 ) -> None:
-    arguments = _scheduled_run_arguments(tmp_path, execute=True)
+    arguments = _scheduled_run_arguments(tmp_path, execute=execute)
     arguments.no_report = True
     submissions = []
 
@@ -2118,6 +2263,14 @@ def test_public_slurm_execute_submits_once_and_creates_only_scheduler_log_root(
         submissions.append(plan)
         return "812345"
 
+    if not execute:
+
+        def before_read() -> None:
+            assert submissions == []
+            assert not arguments.workspace.exists()
+
+        monkeypatch.setattr(control.sys, "stdin", _InputStream("y\n", before_read))
+        monkeypatch.setattr(control.sys, "stderr", _TerminalOutput(control.sys.stderr))
     monkeypatch.setattr(control.slurm_submission, "submit", submit)
     ops = replace(
         control.DEFAULT_CONTROL_OPS,
@@ -2137,6 +2290,8 @@ def test_public_slurm_execute_submits_once_and_creates_only_scheduler_log_root(
     assert len(submissions) == 1
     assert " --execute --no-report" in submissions[0].batch_script
     assert list(arguments.workspace.rglob("*")) == [arguments.workspace / "logs"]
+    assert "Execution placement: Slurm" in captured.err
+    assert ("Execute this plan? [y/N]" in captured.err) is not execute
 
 
 def test_public_slurm_rejects_symlinked_workspace_ancestor_without_mutation(
@@ -2539,14 +2694,14 @@ def test_next_supported_action_uses_separated_status_domains() -> None:
     )
     assert action(
         attempt="not_started", results="incomplete", reporting="incomplete"
-    ) == ("Repeat the original emrys run invocation with --execute.")
+    ) == ("Repeat the original emrys run invocation and confirm execution.")
     running = "Wait for the active Attempt to finish, then inspect the Run again."
     assert (
         action(attempt="running", results="incomplete", reporting="incomplete")
         == running
     )
     assert action(attempt="running") == running
-    resume = "Use emrys resume for this Run; dry-run remains the default."
+    resume = "Use emrys resume for this Run; review and confirm the plan."
     assert (
         action(
             attempt="failed",

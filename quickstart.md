@@ -16,8 +16,8 @@ result, scheduler job, and report has the evidence ceiling stated below.
 | 4. Profile | Render a new runtime profile from the observed canonical paths | Complete create-absent runtime TSV |
 | 5. Admission | Validate the Project and finalize two-phase storage qualification | Project PASS and matching final storage receipt |
 | 6. Readiness | Run doctor in the execution context | Exact `READY` result |
-| 7. Plan | Review the no-write Run or Slurm-placement plan | Direct: deterministic Run ID and root; Slurm: one admitted submission plan |
-| 8. Process | Add `--execute` to the reviewed direct or Slurm command | Verified EMRYS records; scheduler success is only placement evidence |
+| 7. Plan | Invoke `emrys run` once and review its Run or Slurm-placement plan | Direct: deterministic Run ID and root; Slurm: one admitted submission plan |
+| 8. Process | Confirm on the terminal, or use `--execute` for automation | Verified EMRYS records; scheduler success is only placement evidence |
 | 9. Results | Inspect the run and retain its complete evidence tree | Complete scientific Results and separately verified scientific/evidence HTML reports |
 
 Do not skip a gate, bypass the execution-profile/control boundary, adopt
@@ -327,9 +327,9 @@ is mandatory for every path and may use a separate short allocation. If only
 batch submission is available, do not move the data reads or runtime probes to
 the login node: after finalizing storage, continue to the Slurm
 execution-profile section. Its submit-host dry-run admits only placement;
-after explicit `--execute`, the compute delegate performs Project admission,
-doctor, and Run planning inside the allocation and stops before lifecycle
-mutation on failure.
+after terminal confirmation or explicit noninteractive `--execute`, the compute
+delegate performs Project admission, doctor, and Run planning inside the
+allocation and stops before lifecycle mutation on failure.
 
 Run the read-only intake validator first:
 
@@ -387,9 +387,10 @@ means the authored Project, profile, or path boundary is malformed or unsafe.
 Doctor does not create the workspace, execute Snakemake or scientific tools,
 load modules, or alter an input.
 
-## 7. Review the strict no-write plan
+## 7. Review and confirm one immutable plan
 
-`emrys run` is a dry run unless `--execute` is present:
+With direct placement on a terminal, `emrys run` constructs and displays the
+Run plan, then asks once whether to execute it:
 
 ```sh
 emrys run \
@@ -402,15 +403,18 @@ emrys run \
 Review the deterministic Run ID/root, pending and reusable work counts,
 effective resources, and automatic reporting declaration. This walkthrough
 requests verbose detail because it needs the Run root and resources; omit that
-option for the concise normal view, or use `debug` for exact commands. A
-successful plan says no workspace state was written.
+option for the concise normal view, or use `debug` for exact commands. Confirm
+only after reviewing the displayed plan. Refusal, EOF, or interruption opens no
+application log, writes nothing, and executes or submits nothing. In a
+noninteractive context, omission of `--execute` retains that no-write behavior;
+use `--execute` only when automation deliberately authorizes execution.
 
 These direct commands use the built-in profile. If you changed the generated
 profile to direct placement and edited its resources, add
-`--execution-profile "$EMRYS_INPUT_DIR/emrys.execution.yaml"` to both the plan
-and execute commands.
+`--execution-profile "$EMRYS_INPUT_DIR/emrys.execution.yaml"` to the command.
 
-Copy the exact run root printed by the plan:
+Record the exact Run root printed by this invocation for later inspection; it
+is not transferred into a second execution command:
 
 ```sh
 EMRYS_RUN_ROOT=/absolute/path/to/emrys-workspace/runs/run-DIGEST
@@ -429,16 +433,9 @@ the run proceed.
 
 ### Workstation or interactive compute allocation
 
-Run only on the intended compute host. The command preserves its true exit and
-opens one structured application log automatically:
-
-```sh
-emrys run \
-  --project "$EMRYS_PROJECT_PATH" \
-  --workspace "$EMRYS_WORKSPACE_PATH" \
-  --runtime-profile "$EMRYS_RUNTIME_PROFILE_PATH" \
-  --execute
-```
+Run only on the intended compute host. The confirmed command in Section 7 is
+the single direct invocation: it executes the exact displayed plan, preserves
+its true exit, and opens one structured application log only after consent.
 
 The application-log root defaults to
 `$EMRYS_WORKSPACE_PATH/logs/application`. It records lifecycle diagnostics and
@@ -462,9 +459,9 @@ closed module roster. Values are literal—there is no `.env`, shell, or
 environment interpolation. The scratch parent must be one real writable
 compute-node directory.
 
-Define the exact command once. First call it without arguments: this admits the
-profile and prints a no-write, no-submit placement plan without reading the
-large inputs on the login node.
+Define the exact command once. On a terminal, calling it without extra
+arguments admits the profile, prints a no-write placement plan without reading
+the large inputs on the login node, and asks before submission.
 
 ```sh
 emrys_slurm_run() {
@@ -479,14 +476,16 @@ emrys_slurm_run() {
 emrys_slurm_run
 ```
 
-After reviewing the placement, submit the otherwise identical command once:
+Review the placement and answer yes to submit it once. For noninteractive
+automation, invoke the function with `--execute` instead; do not run both forms:
 
 ```sh
 emrys_slurm_run --execute
 ```
 
-`--execute` creates `<workspace>/logs`, calls `sbatch` once, and prints exact
-`JOB_ID`, `OUT`, and `ERR` values. The compute delegate re-admits the profile
+An accepted terminal confirmation or explicit `--execute` creates
+`<workspace>/logs`, calls `sbatch` once, and prints exact `JOB_ID`, `OUT`, and
+`ERR` values. The compute delegate re-admits the profile
 digest, submit UID, private marker, and Slurm job ID; loads only declared
 modules; creates and removes one private mode-`0700` scratch directory; runs
 doctor; plans the immutable Run; and then enters the normal lifecycle. Ambient
@@ -523,9 +522,11 @@ retention/transfer path before execution if the workspace will otherwise become
 unreachable when the allocation ends.
 
 Before inspecting from a new terminal, repeat Step 1's `cd`, `EMRYS_PY`, and
-`emrys` function setup. For direct execution, use the exact Run root from Step
-7. For Slurm, copy it from the compute delegate's `ERR` stream after planning;
-never infer it from the scheduler job ID or workspace name.
+`emrys` function setup. For direct execution, use the Run root recorded from
+the same Step 7 invocation. For Slurm, record it from the compute delegate's
+`ERR` stream after planning; never infer it from the scheduler job ID or
+workspace name. This locator is for later read-only inspection, not a
+plan-to-execution handoff.
 
 ```sh
 EMRYS_RUN_ROOT=/absolute/path/printed/by/emrys
@@ -628,7 +629,7 @@ Do not launch a second initial run, delete a lock, or repair output after a
 disconnect, terminal scheduler state, or uncertain exit. Preserve the run root
 and inspect it first. If inspection reports a supported between-task resume,
 follow the Runbook's
-[dry-run-first resume procedure](docs/operations/RUNBOOK.md#recurring-inspection-and-resume).
+[single-invocation resume procedure](docs/operations/RUNBOOK.md#recurring-inspection-and-resume).
 All other blocked states belong to
 [troubleshooting](docs/operations/TROUBLESHOOTING.md).
 
@@ -640,7 +641,7 @@ All other blocked states belong to
 | Compute runtime | Canonical tools are observed on the intended compute node; guarded `r-check` passes | Login-only path, guessed module, wrong Java/R, or missing namespace |
 | Storage | Final qualification covers the workspace and Step `00c` sidecar parents | Missing, failed, stale, or mismatched qualification |
 | Inputs and plan | Direct: Project validation and Doctor pass before the no-write Run plan; Slurm: the explicit profile and no-submit placement plan are reviewed | Any blocker, malformed input/profile, or unreviewed placement |
-| Execution | Only `--execute` changes on the reviewed command | Manual output adoption, login-node science work, or an uncertain existing Run root |
+| Execution | One terminal invocation is reviewed and confirmed; `--execute` is only the explicit automation path | Manual output adoption, login-node science work, or an uncertain existing Run root |
 
 The full [troubleshooting matrix](docs/operations/TROUBLESHOOTING.md) owns
 recovery detail. Standalone stages remain supported, but they do not create the

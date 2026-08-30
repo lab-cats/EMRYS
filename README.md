@@ -65,9 +65,10 @@ Read this before installing:
   placement; explicit CLI resource values have highest precedence.
 - Slurm placement submits the whole Run into **one** allocation on **one**
   compute node through the same `emrys run` or `emrys resume` command. It is
-  not a distributed backend. A dry-run does not submit or write; `--execute`
-  submits once and prints `JOB_ID`, `OUT`, and `ERR`. Never execute the
-  scientific workflow on a cluster login/head node.
+  not a distributed backend. A noninteractive dry-run does not submit or write;
+  terminal confirmation or explicit noninteractive `--execute` submits once
+  and prints `JOB_ID`, `OUT`, and `ERR`. Never execute the scientific workflow
+  on a cluster login/head node.
 - One cooperative user is required. The exact workspace parent and Step `00c`
   reference-sidecar parent must pass EMRYS's two-phase site qualification for
   hard links, `flock`, rename/visibility, fsync, UID/access, and post-allocation

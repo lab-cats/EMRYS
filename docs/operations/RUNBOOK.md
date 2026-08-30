@@ -37,11 +37,12 @@ module list 2>&1 || true
 ```
 
 The login node is for Git, small transfers, editing, inspection, submission,
-and small smoke checks. Never run `emrys run --execute`, STAR, BAM processing,
-mpileup, or R analysis there. The public local pilot runs inside one approved
+and small smoke checks. Never confirm or explicitly execute a directly placed
+Run, STAR, BAM processing, mpileup, or R analysis there. Whole-Run Slurm
+submission is allowed because the scientific work runs inside one approved
 compute-node allocation; individual owner operations may instead use the
-owner-local `.slurm` entry points. Ordinary wrappers use `TMPDIR=/tmp`; the
-Step `05` owner requires its documented project-storage temporary directory.
+owner-local `.slurm` entry points. Ordinary wrappers use `TMPDIR=/tmp`; the Step
+`05` owner requires its documented project-storage temporary directory.
 
 ## Owner command routes
 
@@ -71,7 +72,7 @@ walkthrough.
 | Create matched starters and choose synthetic or real inputs | [Quickstart: initialize and ingest](../../quickstart.md#3-initialize-and-ingest-synthetic-or-real-inputs) |
 | Prepare the explicit runtime profile | [Quickstart: runtime profile](../../quickstart.md#4-prepare-one-explicit-runtime-profile) and [`configs/README.md`](../../configs/README.md) |
 | Qualify storage and obtain runtime `READY` | [Quickstart: compatibility](../../quickstart.md#5-validate-data-compatibility-without-scientific-tools) and [runtime readiness](../../quickstart.md#6-require-full-runtime-ready) |
-| Review and execute the fixed workflow | [Quickstart: plan and execution](../../quickstart.md#7-review-the-strict-no-write-plan) |
+| Review and execute the fixed workflow | [Quickstart: plan and execution](../../quickstart.md#7-review-and-confirm-one-immutable-plan) |
 | Inspect run state or plan a supported resume | Commands below and the [local-pilot owner](../../src/emrys/orchestration/local_pilot/README.md) |
 | Diagnose blocked, partial, locked, or uncertain state | [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md) |
 
@@ -88,10 +89,15 @@ Slurm allocation; it is not a distributed executor:
   --execution-profile /absolute/path/to/emrys.execution.yaml
 ```
 
-Add `--execute` only after reviewing this no-write, no-submit plan. Submission
-prints exact `JOB_ID`, `OUT`, and `ERR` values. Scheduler streams
-are created automatically under `<workspace>/logs`; the compute-side Run
-Attempt's application-log root defaults to `<workspace>/logs/application`.
+On a terminal, direct placement prints one frozen Run plan and asks whether to
+execute it. Slurm placement instead prints its placement summary and asks
+whether to submit that frozen submission plan once; the Run plan is constructed
+inside the allocation. Refusal, EOF, or interruption writes and submits
+nothing. Use `--execute` only for deliberate noninteractive automation.
+Accepted Slurm submission prints exact `JOB_ID`, `OUT`, and `ERR` values.
+Scheduler streams are created automatically under `<workspace>/logs`; the
+compute-side Run Attempt later opens its application log under
+`<workspace>/logs/application`.
 Reporting runs automatically after scientific work and remains a separate,
 receipt-last transaction rather than a scientific stage. The scientific
 Attempt ends at `cohort_slice` before reporting begins. `--no-report` disables
@@ -116,8 +122,7 @@ Inspection is read-only. Rehashing bound evidence can be expensive, so run it
 at meaningful boundaries rather than in a tight polling loop.
 
 Resume is supported only when inspection reports incomplete scientific Results,
-a failed or interrupted Attempt, and `Recovery available: yes`. Review the
-no-write plan first:
+a failed or interrupted Attempt, and `Recovery available: yes`:
 
 ```bash
 .venv/bin/python -X pycache_prefix=/dev/null -I -m emrys resume \
@@ -128,10 +133,13 @@ no-write plan first:
 Without an explicit execution profile, resume reuses the predecessor's
 symbolic computational resources and places the new Attempt directly. Select
 an explicit profile to request Slurm placement. Resource CLI overrides have
-highest precedence. Add `--execute` only after reviewing that exact plan. A scope that crossed
-producer entry without verified completion remains blocked rather than being
-retried or cleaned. A complete run refuses resume, and the public lifecycle
-exposes no force, unlock, metadata-cleanup, or raw-engine bypass.
+highest precedence. Direct placement displays reusable and pending work, then
+asks once before execution. Slurm placement confirms the submission first;
+reusable and pending work is displayed later inside the allocation.
+`--execute` skips only the applicable prompt for automation. A scope that
+crossed producer entry without verified completion remains blocked rather than
+being retried or cleaned. A complete run refuses resume, and the public
+lifecycle exposes no force, unlock, metadata-cleanup, or raw-engine bypass.
 
 Generate reports independently only for a completed scientific Run. The first
 command is read-only; add `--execute` after reviewing its plan:
