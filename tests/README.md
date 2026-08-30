@@ -20,7 +20,6 @@ are in the [operations runbook](../docs/operations/RUNBOOK.md).
   cross-cutting support checks.
 - `fixtures/`, `baselines/`, and `tools/` own shared test inputs, accepted
   comparator state, and test-only runners.
-- `pending/` holds non-runnable future scaffolds, not current protection.
 
 The files directly under this directory protect cross-cutting public CLI,
 SLURM-wrapper, validation-runner, coverage-policy, package, and grouped-CLI behavior.

@@ -20,8 +20,8 @@ Detailed rationale: [`repository-and-delivery.md`](decisions/repository-and-deli
 - Keep executable logic in tested source, not Markdown.
 - Deliver bounded semantic changes, validate the final affected state
   proportionally, and publish only under separate authority.
-- Keep active tests separate from non-runnable future scaffolds; coverage is a
-  regression signal, not a substitute for behavioral or scientific evidence.
+- Record future test work in the findings matrix rather than non-runnable
+  scaffolds; coverage is not a substitute for behavioral or scientific evidence.
 - Update documentation when its subject changes and keep exact operator detail
   with its functional owner.
 - Follow the accepted
