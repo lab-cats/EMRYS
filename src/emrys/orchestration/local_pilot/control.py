@@ -60,13 +60,13 @@ from emrys.orchestration.local_pilot.materialization import (
 from emrys.orchestration.local_pilot.resource_policy import (
     ResourceConfigError,
     ResourceOverrides,
+    ResourcePolicy,
     add_resource_override_arguments,
     admit_resource_policy_record,
     overrides_from_args,
     resource_override_argv,
     resolve_resource_policy,
     resume_resource_policy,
-    resume_resource_plan,
 )
 from emrys.orchestration.local_pilot import slurm_submission
 
@@ -181,6 +181,55 @@ def _load_config_reference(
     return value
 
 
+def _admit_resume_predecessor(
+    run_root: Path,
+) -> tuple[inspection.RunInspection, dict[str, Any], dict[str, Any]]:
+    """Admit the one recoverable predecessor and its bound workflow config."""
+
+    root = _absolute(run_root)
+    try:
+        observed = inspection.inspect_run(root)
+    except (OSError, inspection.InspectionError) as exc:
+        raise ControlError(str(exc)) from exc
+    if not observed.recovery_available or observed.latest_attempt is None:
+        raise ControlError(
+            "Run is not at an admissible between-task resume boundary: "
+            + "; ".join(
+                observed.blockers
+                or (
+                    f"Attempt outcome is {observed.attempt_outcome}",
+                    f"Results are {observed.results_status}",
+                )
+            )
+        )
+    previous = observed.latest_attempt
+    return observed, previous, _load_config_reference(root, previous)
+
+
+def _resume_predecessor_policy(
+    observed: inspection.RunInspection,
+    predecessor_config: Mapping[str, Any],
+    overrides: ResourceOverrides,
+) -> ResourcePolicy:
+    """Re-admit the predecessor policy without observing an allocation."""
+
+    prior = predecessor_config.get("resource_policy")
+    if not isinstance(prior, dict):
+        raise ControlError("Prior workflow config has no resource policy")
+    try:
+        has_symbolic_policy = (
+            "symbolic" in prior or "symbolic_sha256" in prior
+        )
+        predecessor: ResourcePolicy | Mapping[str, Any] = (
+            admit_resource_policy_record(prior, require_symbolic=True).policy
+            if observed.authority is not None or has_symbolic_policy
+            else prior
+        )
+        return resume_resource_policy(predecessor, overrides=overrides)
+    except ResourceConfigError as exc:
+        raise ControlError(str(exc)) from exc
+
+
 def _retained_dispatches(
     observed: inspection.RunInspection,
     config: Mapping[str, Any],
@@ -251,22 +300,7 @@ def _plan_resume(
     """Plan a safe between-task resume without writing run state."""
 
     root = _absolute(run_root)
-    try:
-        observed = inspection.inspect_run(root)
-    except (OSError, inspection.InspectionError) as exc:
-        raise ControlError(str(exc)) from exc
-    if not observed.recovery_available or observed.latest_attempt is None:
-        raise ControlError(
-            "Run is not at an admissible between-task resume boundary: "
-            + "; ".join(
-                observed.blockers
-                or (
-                    f"Attempt outcome is {observed.attempt_outcome}",
-                    f"Results are {observed.results_status}",
-                )
-            )
-        )
-    previous = observed.latest_attempt
+    observed, previous, predecessor_config = _admit_resume_predecessor(root)
     project_path = Path(str(previous["authored_paths"]["request"]))
     workspace = Path(str(previous["workspace"]))
     retained_runtime_profile = _retained_runtime_profile_path(previous) if observed.authority is None else None
@@ -286,30 +320,22 @@ def _plan_resume(
         )
         _require_ready(readiness)
         project = readiness.project
-        predecessor_config = _load_config_reference(root, previous)
+        policy = execution_profile.resource_policy
+        if not profile_resources_explicit:
+            policy = _resume_predecessor_policy(
+                observed,
+                predecessor_config,
+                resource_overrides,
+            )
+            execution_profile = replace(
+                execution_profile,
+                resource_policy=policy,
+            )
         if observed.authority is not None:
-            if profile_resources_explicit:
-                policy = execution_profile.resource_policy
-            else:
-                prior = predecessor_config.get("resource_policy")
-                if not isinstance(prior, dict):
-                    raise ControlError("Prior workflow config has no resource policy")
-                policy = resume_resource_policy(
-                    admit_resource_policy_record(
-                        prior,
-                        require_symbolic=True,
-                    ).policy,
-                    overrides=resource_overrides,
-                )
-                execution_profile = replace(
-                    execution_profile,
-                    resource_policy=policy,
-                )
             candidate = build_run_candidate(project, readiness, policy.declaration)
             if candidate.run_binding.canonical_bytes != observed.authority.run_binding.canonical_bytes:
                 raise ControlError("Current inputs resolve to a different Run")
             run = candidate
-            resources = resolve_resource_policy(policy, capacity.observe_allocation())
         else:
             legacy_execution, legacy_bytes = project.historical_execution_v1()
             fixed_execution = root / "contract/normalized.json"
@@ -321,29 +347,12 @@ def _plan_resume(
                 or fixed_execution.read_bytes() != legacy_bytes
             ):
                 raise ControlError("Current Project differs from immutable Run bytes")
-            if profile_resources_explicit:
-                resources = resolve_resource_policy(
-                    execution_profile.resource_policy,
-                    capacity.observe_allocation(),
-                )
-            else:
-                prior_record = predecessor_config.get("resource_policy")
-                if not isinstance(prior_record, dict):
-                    raise ControlError("Prior workflow config has no resource policy")
-                resources = resume_resource_plan(
-                    prior_record,
-                    capacity.observe_allocation(),
-                    overrides=resource_overrides,
-                )
-                execution_profile = replace(
-                    execution_profile,
-                    resource_policy=resources.policy,
-                )
             run = HistoricalRun(
                 project=project,
                 run_id=observed.run_id,
                 execution_projection_bytes=legacy_bytes,
             )
+        resources = resolve_resource_policy(policy, capacity.observe_allocation())
         plan = build_attempt_plan(
             run,
             readiness,
@@ -580,10 +589,20 @@ def _schedule(
     command: str,
     arguments: argparse.Namespace,
     profile: ExecutionProfile,
+    effective_workflow_cores: int,
     controls: LogControls,
     overrides: ResourceOverrides,
     workspace: Path,
 ) -> int:
+    placement = profile.placement
+    if (
+        isinstance(placement, SlurmPlacement)
+        and placement.cpus_per_task < effective_workflow_cores
+    ):
+        raise ControlError(
+            "Slurm CPUs per task cannot be lower than workflow cores: "
+            f"{placement.cpus_per_task} < {effective_workflow_cores}"
+        )
     try:
         submission = slurm_submission.plan_submission(
             profile,
@@ -976,6 +995,7 @@ def _finish_control(
     *,
     command: str,
     profile: ExecutionProfile,
+    effective_workflow_cores: int,
     controls: LogControls,
     overrides: ResourceOverrides,
     scheduler_job_id: str | None,
@@ -988,6 +1008,7 @@ def _finish_control(
             command,
             arguments,
             profile,
+            effective_workflow_cores,
             controls,
             overrides,
             workspace,
@@ -1151,6 +1172,7 @@ def run_from_args(
             arguments,
             command="run",
             profile=profile,
+            effective_workflow_cores=profile.resource_policy.declaration.workflow_cores,
             build_plan=build_plan,
             controls=controls,
             overrides=overrides,
@@ -1176,12 +1198,27 @@ def resume_from_args(
         )
         scheduler_job_id = _delegate_job_id(profile, expected_profile_sha256)
         workspace = _resume_workspace(arguments.run_root)
+        profile_resources_explicit = profile.resource_policy.config_path is not None
+        effective_workflow_cores = profile.resource_policy.declaration.workflow_cores
+        if (
+            isinstance(profile.placement, SlurmPlacement)
+            and scheduler_job_id is None
+            and not profile_resources_explicit
+        ):
+            observed, _previous, predecessor_config = _admit_resume_predecessor(
+                arguments.run_root
+            )
+            effective_workflow_cores = _resume_predecessor_policy(
+                observed,
+                predecessor_config,
+                overrides,
+            ).declaration.workflow_cores
         controls = _resolve_controls(arguments, workspace)
         build_plan = partial(
             _plan_resume,
             arguments.run_root,
             execution_profile=profile,
-            profile_resources_explicit=(profile.resource_policy.config_path is not None),
+            profile_resources_explicit=profile_resources_explicit,
             resource_overrides=overrides,
             scheduler_job_id=scheduler_job_id,
         )
@@ -1189,6 +1226,7 @@ def resume_from_args(
             arguments,
             command="resume",
             profile=profile,
+            effective_workflow_cores=effective_workflow_cores,
             build_plan=build_plan,
             controls=controls,
             overrides=overrides,

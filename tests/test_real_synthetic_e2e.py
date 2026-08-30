@@ -101,7 +101,7 @@ def test_launcher_adapters_and_default_resource_projection(tmp_path: Path) -> No
         account=None,
         partition="emrys-ci",
         qos=None,
-        cpus_per_task=2,
+        cpus_per_task=4,
         memory_mb=6144,
         time_limit="02:00:00",
         nodelist=None,
