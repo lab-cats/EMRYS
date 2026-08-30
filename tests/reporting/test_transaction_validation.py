@@ -602,6 +602,19 @@ def test_fixed_dispatcher_admits_historical_report_only_at_legacy_root(
         receipt_path=receipt_path,
         receipt_sha256="c" * 64,
     )
+    summary_receipt = (
+        run_root
+        / "products"
+        / "artifact-summary"
+        / run.run_id
+        / f"{run.run_id}.run_summary_receipt.tsv"
+    )
+    summary_receipt.parent.mkdir(parents=True)
+    summary_receipt.write_bytes(b"admitted summary receipt\n")
+    predecessor = transaction_validation.ValidatedTransaction(
+        receipt_path=summary_receipt,
+        receipt_sha256=hashlib.sha256(summary_receipt.read_bytes()).hexdigest(),
+    )
     reporting_root = f"contract/reporting-inputs/{attempt['workflow_attempt_id']}"
     config = {
         "reporting_run_contract_path": {
@@ -633,6 +646,7 @@ def test_fixed_dispatcher_admits_historical_report_only_at_legacy_root(
             attempt,
             config,
             historical_read=True,
+            validated_predecessor=predecessor,
         )
         == expected
     )

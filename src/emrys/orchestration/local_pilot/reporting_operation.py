@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import stat
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import Any, Literal, NamedTuple
 
@@ -159,52 +160,6 @@ def _publish_prepared(kind: str, context: Any) -> Path:
     return context.output_receipt
 
 
-def _identity_paths(identity: Any) -> dict[str, Path]:
-    identifier = str(identity.attempt["workflow_attempt_id"])
-    attempt_path = identity.root / "attempts" / identifier / "attempt.json"
-    return {
-        "run_root": identity.root,
-        "execution_path": identity.root / "contract" / "run.json",
-        "profile_path": identity.root / "contract" / "profile.json",
-        "workflow_attempt_path": attempt_path,
-        "workflow_config_path": identity.root
-        / str(identity.attempt["workflow_config"]["path"]),
-    }
-
-
-def _publish_transaction(
-    kind: str,
-    arguments: argparse.Namespace,
-    identity: Any,
-    *,
-    observe_generation_start: Callable[[], None] | None = None,
-) -> None:
-    identity_paths = _identity_paths(identity)
-    try:
-        _prepare_transaction(kind, arguments)
-    except _PRODUCER_ERRORS as exc:
-        raise _producer_error(
-            kind, "preflight failed before ledger entry", exc
-        ) from exc
-    reporting_boundary.publish_start(kind=kind, **identity_paths)
-    if observe_generation_start is not None:
-        try:
-            observe_generation_start()
-        except Exception:
-            # Application logging is observational and cannot govern reporting.
-            pass
-    try:
-        context = _prepare_transaction(kind, arguments)
-        receipt_path = _publish_prepared(kind, context)
-    except _PRODUCER_ERRORS as exc:
-        raise _producer_error(kind, "producer failed after ledger entry", exc) from exc
-    reporting_boundary.publish_verified(
-        kind=kind,
-        receipt_path=receipt_path,
-        **identity_paths,
-    )
-
-
 def _require_successful_results(state: inspection.RunInspection) -> None:
     if state.integrity != "valid":
         raise ReportingOperationError("Run integrity is blocked")
@@ -275,26 +230,56 @@ def run_reporting(
                 verified_report_locations=(),
             )
 
+        publish_ops = replace(
+            reporting_boundary.DEFAULT_REPORTING_BOUNDARY_OPS,
+            validate_semantic_receipt=reporting_boundary.semantic_validator_session(
+                read=False
+            ),
+        )
+        identifier = str(identity.attempt["workflow_attempt_id"])
+        identity_paths = {
+            "run_root": identity.root,
+            "execution_path": identity.root / "contract" / "run.json",
+            "profile_path": identity.root / "contract" / "profile.json",
+            "workflow_attempt_path": (
+                identity.root / "attempts" / identifier / "attempt.json"
+            ),
+            "workflow_config_path": identity.root
+            / str(identity.attempt["workflow_config"]["path"]),
+        }
+        locations: tuple[tuple[str, Path], ...] = ()
         for kind in reporting_boundary.REPORTING_KINDS:
-            _publish_transaction(
-                kind,
-                _arguments(identity, kind),
-                identity,
-                observe_generation_start=(
-                    observe_generation_start
-                    if kind == reporting_boundary.REPORTING_KINDS[0]
-                    else None
-                ),
+            try:
+                context = _prepare_transaction(kind, _arguments(identity, kind))
+            except _PRODUCER_ERRORS as exc:
+                raise _producer_error(
+                    kind, "preflight failed before ledger entry", exc
+                ) from exc
+            reporting_boundary.publish_start(
+                kind=kind,
+                **identity_paths,
+                ops=publish_ops,
             )
-        completed = inspection.inspect_run(identity.root)
-        _require_successful_results(completed)
-        if completed.reporting_status != "complete":
-            raise ReportingOperationError(
-                "Generated reporting transactions did not pass final inspection"
+            if kind == reporting_boundary.REPORTING_KINDS[0] and observe_generation_start:
+                try:
+                    observe_generation_start()
+                except Exception:
+                    pass
+            try:
+                receipt_path = _publish_prepared(kind, context)
+            except _PRODUCER_ERRORS as exc:
+                raise _producer_error(
+                    kind, "producer failed after ledger entry", exc
+                ) from exc
+            locations = reporting_boundary.publish_verified(
+                kind=kind,
+                receipt_path=receipt_path,
+                **identity_paths,
+                ops=publish_ops,
             )
         return ReportingOperationOutcome(
             status="generated",
-            verified_report_locations=completed.verified_report_locations,
+            verified_report_locations=locations,
         )
     except (
         inspection.InspectionError,

@@ -48,33 +48,49 @@ def test_default_inspection_selects_historical_read_from_bound_profile(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    observed: list[bool] = []
+    observed: list[tuple[bool, Any]] = []
     expected = _ReportSemanticResult(Path("/receipt.tsv"), "a" * 64, ())
 
-    def validate(*_arguments: Any, historical_read: bool = False) -> Any:
-        observed.append(historical_read)
+    def validate(
+        *_arguments: Any,
+        historical_read: bool = False,
+        validated_predecessor: Any = None,
+    ) -> Any:
+        observed.append((historical_read, validated_predecessor))
         return expected
 
     monkeypatch.setattr(transaction_validation, "validate_receipt", validate)
-    validator = inspection.default_inspection_ops().validate_reporting_receipt
-    assert validator is reporting_boundary.validate_read_semantic_receipt
-    for kind in ("artifact_index", "run_summary", "html_report"):
-        common = (kind, Path("/run/receipt.tsv"), tmp_path, {})
-        assert validator(*common, {"artifact_templates": []}, {}, {}) == expected
-        assert (
-            validator(
-                *common,
-                {
-                    "artifact_templates": [
-                        {"source_path_template": "products/native/reference/output"}
-                    ]
-                },
-                {},
-                {},
+    profiles = (
+        ({"artifact_templates": []}, True),
+        (
+            {
+                "artifact_templates": [
+                    {"source_path_template": "products/native/reference/output"}
+                ]
+            },
+            False,
+        ),
+    )
+    for profile, _historical in profiles:
+        validator = inspection.default_inspection_ops().validate_reporting_receipt
+        for kind in ("artifact_index", "run_summary", "html_report"):
+            assert (
+                validator(
+                    kind,
+                    Path("/run/receipt.tsv"),
+                    tmp_path,
+                    {},
+                    profile,
+                    {},
+                    {},
+                )
+                == expected
             )
-            == expected
-        )
-    assert observed == [True, False] * 3
+    assert observed == [
+        (historical, None if index == 0 else expected)
+        for _profile, historical in profiles
+        for index in range(3)
+    ]
 
 
 def _reference(path: Path, root: Path) -> dict[str, str]:

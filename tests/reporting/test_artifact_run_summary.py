@@ -282,19 +282,6 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
                 label,
             ),
         )
-    validate_artifact_transaction = _source_root_spy(
-        RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.validate_artifact_transaction,
-        artifact_root.root,
-        root_calls,
-        "published_transaction",
-    )
-    recheck_ops = publication_ops(
-        validate_artifact_transaction=validate_artifact_transaction,
-    )
-
-    def recheck_inputs(context: Any) -> None:
-        REPORTING_VALIDATION.recheck_run_summary_inputs(context, ops=recheck_ops)
-
     arguments = run_summary_arguments(fixture)
 
     context = RUN_SUMMARY.prepare_context(
@@ -302,18 +289,15 @@ def test_prepare_context_keeps_checkout_and_artifact_roots_distinct(
         source_checkout=source_checkout,
         artifact_source_root=artifact_root,
         deps=build_deps(
-            recheck_inputs=recheck_inputs,
             matching_checkout_head_commit=matching_checkout_head_commit,
         ),
     )
 
     expected_single_calls = 1
-    expected_prepare_rechecks = 1
     assert context.source_checkout == source_checkout
     assert context.artifact_source_root == artifact_root
     assert root_calls["git"] == expected_single_calls
     assert root_calls["inventory"] == expected_single_calls
-    assert root_calls["published_transaction"] == expected_prepare_rechecks
     assert root_calls["document_semantics"] == expected_single_calls
     assert root_calls["document_inventory"] == expected_single_calls
 
@@ -365,12 +349,6 @@ def test_explicit_artifact_root_reaches_predecessor_and_post_publish_rechecks(
     )
     default_ops = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS
     ops = publication_ops(
-        validate_artifact_transaction=_source_root_spy(
-            default_ops.validate_artifact_transaction,
-            authority.root,
-            root_calls,
-            "recheck",
-        ),
         validate_document=_source_root_spy(
             default_ops.validate_document,
             authority.root,
@@ -387,10 +365,8 @@ def test_explicit_artifact_root_reaches_predecessor_and_post_publish_rechecks(
 
     RUN_SUMMARY_PUBLICATION.publish_context(context, ops=ops)
 
-    expected_rechecks = 2
     expected_predecessor_and_published_checks = 2
     expected_semantic_checks = 3
-    assert root_calls["recheck"] == expected_rechecks
     assert root_calls["post_publish_document"] == 1
     assert root_calls["predecessor"] == expected_predecessor_and_published_checks
     assert root_calls["semantic_validation"] == expected_semantic_checks
@@ -1272,24 +1248,16 @@ def test_prepared_snapshot_rejects_transaction_mutated_during_validation(
     run_summary_fixture: Any,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    real_validate = RUN_SUMMARY_PUBLICATION.DEFAULT_RUN_SUMMARY_PUBLICATION_OPS.validate_artifact_transaction
     mutated = False
 
-    def validate_then_mutate(**kwargs: Any) -> None:
+    def mutate_then_recheck(context: Any) -> None:
         nonlocal mutated
-        real_validate(**kwargs)
         if not mutated:
             run_summary_fixture.adapter_fixture.artifacts_path.write_bytes(
                 run_summary_fixture.adapter_fixture.artifacts_path.read_bytes() + b"\n"
             )
             mutated = True
-
-    recheck_ops = publication_ops(
-        validate_artifact_transaction=validate_then_mutate,
-    )
-
-    def recheck_inputs(context: Any) -> None:
-        REPORTING_VALIDATION.recheck_run_summary_inputs(context, ops=recheck_ops)
+        REPORTING_VALIDATION.recheck_run_summary_inputs(context)
 
     arguments = run_summary_arguments(run_summary_fixture, execute=True)
 
@@ -1303,7 +1271,7 @@ def test_prepared_snapshot_rejects_transaction_mutated_during_validation(
             artifact_source_root=SOURCE_AUTHORITY.ArtifactSourceRoot(
                 root=run_summary_fixture.root
             ),
-            deps=build_deps(recheck_inputs=recheck_inputs),
+            deps=build_deps(recheck_inputs=mutate_then_recheck),
         )
 
     assert mutated
