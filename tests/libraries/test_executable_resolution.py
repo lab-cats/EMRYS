@@ -40,12 +40,6 @@ CONSUMERS = {
         1,
         1,
     ),
-    "analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh": (
-        0o755,
-        1,
-        0,
-        2,
-    ),
     "analyses/scientific_context_projection/scientific_context_projection.sh": (
         0o755,
         1,

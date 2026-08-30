@@ -39,6 +39,8 @@ ABSOLUTE_DIFFERENCE_THRESHOLD="${ABSOLUTE_DIFFERENCE_THRESHOLD:-0.005}"
 BACKGROUND_CONDITION="${BACKGROUND_CONDITION:-}"
 BACKGROUND_MAX_FRACTION="${BACKGROUND_MAX_FRACTION:-0.01}"
 RSCRIPT_BIN="${RSCRIPT_BIN_OVERRIDE:-Rscript}"
+PYTHON_BIN="${EMRYS_PYTHON_BIN:-$PWD/.venv/bin/python}"
+PRODUCER_PATH="$PWD/src/emrys/analyses/paired_cmh_candidate_ranking/producer.py"
 R_SCRIPT="${STEP09_R_SCRIPT:-src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.R}"
 EXECUTE="${EXECUTE:-0}"
 
@@ -48,6 +50,17 @@ case "$EXECUTE" in
 esac
 
 mkdir -p logs
+
+[[ -x "$PYTHON_BIN" ]] ||
+    die "Python executable not found or not executable: $PYTHON_BIN"
+[[ -f "$PRODUCER_PATH" ]] ||
+    die "Step 09 Python producer not found: $PRODUCER_PATH"
+
+RESOLVED_PRODUCER="$("$PYTHON_BIN" -X pycache_prefix=/dev/null -I -c \
+    'from emrys.analyses.paired_cmh_candidate_ranking import producer; print(producer.__file__)')"
+[[ "$RESOLVED_PRODUCER" -ef "$PRODUCER_PATH" ]] ||
+    die "Python runtime does not resolve Step 09 from the submitted checkout: $RESOLVED_PRODUCER"
+
 analysis_dir="$OUTPUT_ROOT/$ANALYSIS_ID"
 outputs=(
     "$analysis_dir/$ANALYSIS_ID.cmh_all_sites.tsv"
@@ -72,13 +85,17 @@ printf 'Output root: %s\n' "$OUTPUT_ROOT"
 printf 'Control / treatment: %s / %s\n' "$CONTROL_CONDITION" "$TREATMENT_CONDITION"
 printf 'RNA change: %s>%s\n' "$RNA_REF" "$RNA_ALT"
 printf 'Background: %s\n' "${BACKGROUND_CONDITION:-disabled}"
+printf 'Python: %s\n' "$PYTHON_BIN"
+printf 'Python producer: %s\n' "$RESOLVED_PRODUCER"
 printf 'Rscript / R implementation: %s / %s\n' "$RSCRIPT_BIN" "$R_SCRIPT"
 printf 'Execute mode: %s\n' "$EXECUTE"
 printf 'Loaded modules before Step 09:\n'
 module list 2>&1 || true
 
 cmd=(
-    bash src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh
+    "$PYTHON_BIN"
+    -X pycache_prefix=/dev/null -I
+    -m emrys.analyses.paired_cmh_candidate_ranking.producer
     --analysis-id "$ANALYSIS_ID"
     --cohort-id "$COHORT_ID"
     --sample-manifest "$SAMPLE_MANIFEST"

@@ -117,8 +117,8 @@ Attempt ends at `cohort_slice` before reporting begins. `--no-report` disables
 only downstream reporting and leaves the scientific Attempt unchanged.
 
 All 16 owner-local stage/utility `.slurm` files remain separate scheduler entry
-points. The Step `07` and `08` wrappers delegate to their Python owners; the
-other 14 retain their prior forms. They publish only their owner's native
+points. The Step `07`–`09` wrappers delegate to their Python owners; the other
+13 retain their prior forms. They publish only their owner's native
 outputs and validation evidence and never create or adopt an orchestrated Run.
 
 ### Recurring inspection and resume

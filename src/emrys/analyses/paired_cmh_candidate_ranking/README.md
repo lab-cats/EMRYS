@@ -6,7 +6,7 @@ six-output transaction, validation, consumer, and evidence semantics.
 
 ## Entry points
 
-- repository transaction owner: [`step_09_cmh_editing_site_calling.sh`](step_09_cmh_editing_site_calling.sh)
+- private repository transaction owner: [`producer.py`](producer.py)
 - repository statistical coordinator: [`step_09_cmh_editing_site_calling.R`](step_09_cmh_editing_site_calling.R)
 - grouped validator: `python -I -m emrys validate paired-cmh-candidate-ranking`,
   implemented by private [`validator.py`](validator.py)
@@ -20,7 +20,7 @@ script is an algorithm reference, not a runtime dependency or parity proof.
 The sample manifest is the only pairing authority. Dry-run writes nothing:
 
 ```bash
-src/emrys/analyses/paired_cmh_candidate_ranking/step_09_cmh_editing_site_calling.sh \
+.venv/bin/python -I -m emrys.analyses.paired_cmh_candidate_ranking.producer \
   --analysis-id NORAD_EV_vs_PUM1 \
   --cohort-id NORAD_EV_PUM1 \
   --sample-manifest samples.tsv \
@@ -89,8 +89,8 @@ Never combine attempts or trust summary visibility, names, hashes, timestamps,
 or stale scheduler success. Use a fresh root for an authorized diagnostic run.
 
 ```bash
-bash tests/analyses/paired_cmh_candidate_ranking/test_step_09_cmh_editing_site_calling.sh
 .venv/bin/python -m pytest -q \
+  tests/analyses/paired_cmh_candidate_ranking/test_producer.py \
   tests/contracts/scientific_evidence/test_step08.py \
   tests/contracts/scientific_evidence/test_step09.py \
   tests/analyses/paired_cmh_candidate_ranking/test_validate_step_09_cmh_outputs.py \
@@ -100,4 +100,4 @@ RSCRIPT_BIN=/usr/local/bin/Rscript \
 .venv/bin/python -m pytest -q tests/test_slurm_wrapper_contracts.py -k step_09_cmh
 ```
 
-This is local shell/R/fixture evidence only.
+This is local Python/R/fixture evidence only.

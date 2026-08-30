@@ -116,8 +116,8 @@ CONTRACTS = {
         submit_cwd="required",
     ),
     "step_09_cmh_editing_site_calling.slurm": contract(
-        "src/emrys/analyses/paired_cmh_candidate_ranking/"
-        "step_09_cmh_editing_site_calling.sh",
+        "python -X pycache_prefix=/dev/null -I "
+        "-m emrys.analyses.paired_cmh_candidate_ranking.producer",
         submit_cwd="required",
     ),
     "scientific_context_projection.slurm": contract(
@@ -173,6 +173,10 @@ JOB_PATHS.update(
         ),
         "step_08_vcf_preprocessing.slurm": Path(
             "src/emrys/stages/cohort_candidate_preprocessing/step_08_vcf_preprocessing.slurm"
+        ),
+        "step_09_cmh_editing_site_calling.slurm": Path(
+            "src/emrys/analyses/paired_cmh_candidate_ranking/"
+            "step_09_cmh_editing_site_calling.slurm"
         ),
         "tool_check.slurm": Path(
             "src/emrys/evidence/runtime_availability/tool_check.slurm"
@@ -640,6 +644,7 @@ DELEGATED_FIXTURES = {
             ("BACKGROUND_CONDITION", "background"),
             ("BACKGROUND_MAX_FRACTION", "0.03"),
             ("RSCRIPT_BIN_OVERRIDE", "{fake_bin}/Rscript"),
+            ("EMRYS_PYTHON_BIN", "{fake_bin}/emrys-python"),
             ("STEP09_R_SCRIPT", "{r_script}"),
         ),
         arguments=(
